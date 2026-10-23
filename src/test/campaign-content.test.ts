@@ -11,5 +11,5 @@ describe('Missivas e imagens',()=>{
   it('preserva texto e referência privada da imagem',()=>expect(contentParts('Carta\n'+imageToken('user/id/0.jpg','Castelo'))).toEqual([{text:'Carta\n'},{path:'user/id/0.jpg',caption:'Castelo'}]));
   it('recusa arquivos executáveis ou SVG',()=>expect(()=>validateImage({type:'image/svg+xml',size:100})).toThrow());
   it('recusa imagem acima de 5 MB',()=>expect(()=>validateImage({type:'image/png',size:5242881})).toThrow());
-  it('lê texto em tabelas e abas sem inventar personagens',()=>expect(docsText({tabs:[{documentTab:{body:{content:[{paragraph:{elements:[{textRun:{content:'Kael Ashkar\n'}}]}}]}}}]})).toBe('Kael Ashkar\n')));
+  it('lê texto em tabelas e abas sem inventar personagens',()=>{const doc={tabs:[{documentTab:{body:{content:[{paragraph:{elements:[{textRun:{content:'Kael Ashkar\n'}}]}}]}}}]};expect(docsText(doc)).toBe('Kael Ashkar\n');});
 });

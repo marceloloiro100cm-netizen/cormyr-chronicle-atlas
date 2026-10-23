@@ -10,7 +10,8 @@ export const syncPlayerFolder=createServerFn({method:'POST'}).middleware([requir
     const member=await context.supabase.from('house_memberships').select('player_id').eq('player_id',player.data.id).eq('house_id',data.houseId).maybeSingle();if(member.error)throw member.error;if(!member.data)throw new Error('Casa não autorizada.');
   }
   const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
-  let query=supabaseAdmin.from('drive_sync_bindings').select('*').eq('house_id',data.houseId).eq('enabled',true).eq('privacy_reviewed',true).eq('runtime_authorized',true);
+  let query=supabaseAdmin.from('drive_sync_bindings').select('*').eq('enabled',true).eq('privacy_reviewed',true).eq('runtime_authorized',true);
+  if(data.houseId)query=query.eq('house_id',data.houseId);
   if(!role.data)query=query.eq('player_id',player.data?.id??'');
   const bindings=await query;if(bindings.error)throw bindings.error;
   if(!bindings.data?.length)return {message:'Salvo no site; pasta ainda não autorizada.',imported:0};
