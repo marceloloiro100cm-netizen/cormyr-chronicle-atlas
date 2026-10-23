@@ -14,3 +14,4 @@
 - Folder synchronization uses a server-only fetch adapter, leased durable mappings, transactional imports and a versioned outbox; each mapping requires explicit admin privacy review and runtime authorization, because archive association is not permission.
 - Drive reconciliation uses one authenticated managed hourly callback plus admin execution; files are conditionally updated with ETag and read back before confirmation, because external work cannot be simulated or trusted without evidence.
 - Official roster affiliation is stored separately from authorized memberships; this permits unlinked player registration without granting identity access.
+- Narrator-only Eventos/Aventuras live in src/server/gm-content.json, served by /api/public/gm-content after an admin check; why: public static files are readable by anyone.

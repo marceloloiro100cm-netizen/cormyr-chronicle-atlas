@@ -149,6 +149,7 @@
  adventureSelect.innerHTML=data.adventures.map(a=>`<option value="${esc(a.id)}">${esc(a.title)} — ${esc(a.status)}</option>`).join('');
  function renderAdventure(){
   const adventure=data.adventures.find(a=>a.id===state.adventure)||data.adventures[0];
+  if(!adventure)return;
   state.adventure=adventure.id;adventureSelect.value=adventure.id;
   $('adventure-title').textContent=adventure.title;
   $('adventure-season').textContent=adventure.season;

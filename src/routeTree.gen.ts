@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedJogadoresRouteImport } from './routes/_authenticated/jogadores'
+import { Route as ApiPublicGmContentRouteImport } from './routes/api/public/gm-content'
 import { Route as ApiPublicJobsDriveSyncRouteImport } from './routes/api/public/jobs/drive-sync'
 
 const IndexRoute = IndexRouteImport.update({
@@ -40,6 +41,11 @@ const AuthenticatedJogadoresRoute = AuthenticatedJogadoresRouteImport.update({
   path: '/jogadores',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicGmContentRoute = ApiPublicGmContentRouteImport.update({
+  id: '/api/public/gm-content',
+  path: '/api/public/gm-content',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicJobsDriveSyncRoute = ApiPublicJobsDriveSyncRouteImport.update({
   id: '/api/public/jobs/drive-sync',
   path: '/api/public/jobs/drive-sync',
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/jogadores': typeof AuthenticatedJogadoresRoute
+  '/api/public/gm-content': typeof ApiPublicGmContentRoute
   '/api/public/jobs/drive-sync': typeof ApiPublicJobsDriveSyncRoute
 }
 export interface FileRoutesByTo {
@@ -58,6 +65,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/jogadores': typeof AuthenticatedJogadoresRoute
+  '/api/public/gm-content': typeof ApiPublicGmContentRoute
   '/api/public/jobs/drive-sync': typeof ApiPublicJobsDriveSyncRoute
 }
 export interface FileRoutesById {
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/jogadores': typeof AuthenticatedJogadoresRoute
+  '/api/public/gm-content': typeof ApiPublicGmContentRoute
   '/api/public/jobs/drive-sync': typeof ApiPublicJobsDriveSyncRoute
 }
 export interface FileRouteTypes {
@@ -76,6 +85,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/jogadores'
+    | '/api/public/gm-content'
     | '/api/public/jobs/drive-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -83,6 +93,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/jogadores'
+    | '/api/public/gm-content'
     | '/api/public/jobs/drive-sync'
   id:
     | '__root__'
@@ -91,6 +102,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/jogadores'
+    | '/api/public/gm-content'
     | '/api/public/jobs/drive-sync'
   fileRoutesById: FileRoutesById
 }
@@ -99,6 +111,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicGmContentRoute: typeof ApiPublicGmContentRoute
   ApiPublicJobsDriveSyncRoute: typeof ApiPublicJobsDriveSyncRoute
 }
 
@@ -139,6 +152,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedJogadoresRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/gm-content': {
+      id: '/api/public/gm-content'
+      path: '/api/public/gm-content'
+      fullPath: '/api/public/gm-content'
+      preLoaderRoute: typeof ApiPublicGmContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/jobs/drive-sync': {
       id: '/api/public/jobs/drive-sync'
       path: '/api/public/jobs/drive-sync'
@@ -165,6 +185,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicGmContentRoute: ApiPublicGmContentRoute,
   ApiPublicJobsDriveSyncRoute: ApiPublicJobsDriveSyncRoute,
 }
 export const routeTree = rootRouteImport
