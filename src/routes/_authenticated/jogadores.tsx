@@ -7,6 +7,7 @@ import { CampaignShell } from '@/components/campaign-shell';
 import { Button } from '@/components/ui/button';
 import { registerPlayer, retryFolderSync } from '@/lib/campaign.functions';
 import { DriveSyncAdmin } from '@/components/drive-sync-admin';
+import { groupReceivedLetters, nextLetterNumber, sentLetters, type LetterRow } from '@/lib/letters';
 import type { Database } from '@/integrations/supabase/types';
 
 type RecordRow = Database['public']['Tables']['campaign_records']['Row'];
