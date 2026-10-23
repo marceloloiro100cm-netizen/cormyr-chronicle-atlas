@@ -534,6 +534,15 @@ export type Database = {
         }
         Returns: string
       }
+      send_campaign_message: {
+        Args: {
+          p_content: string
+          p_key: string
+          p_recipient: string
+          p_subject: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
