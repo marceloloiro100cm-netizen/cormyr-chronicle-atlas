@@ -12,3 +12,4 @@
 - The authenticated season-two extension lives in TanStack routes while the original archive remains static; this preserves the complete migrated app and supports managed authentication.
 - Player and house permissions are enforced by RLS and transactional database functions; selecting a house is never a permission grant.
 - Folder synchronization uses durable versioned records and an outbox; external provider execution stays disabled until a verified connection is linked.
+- Official roster affiliation is stored separately from authorized memberships; this permits unlinked player registration without granting identity access.

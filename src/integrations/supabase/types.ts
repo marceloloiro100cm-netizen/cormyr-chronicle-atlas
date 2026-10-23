@@ -17,34 +17,46 @@ export type Database = {
       campaign_houses: {
         Row: {
           active: boolean
+          archive_house_id: string | null
           castle: string | null
           crest: string | null
           details: string
           folder_id: string | null
           id: string
+          lord_name: string | null
           name: string
+          region: string | null
+          review_note: string | null
           season: number
           source: string
         }
         Insert: {
           active?: boolean
+          archive_house_id?: string | null
           castle?: string | null
           crest?: string | null
           details?: string
           folder_id?: string | null
           id: string
+          lord_name?: string | null
           name: string
+          region?: string | null
+          review_note?: string | null
           season?: number
           source?: string
         }
         Update: {
           active?: boolean
+          archive_house_id?: string | null
           castle?: string | null
           crest?: string | null
           details?: string
           folder_id?: string | null
           id?: string
+          lord_name?: string | null
           name?: string
+          region?: string | null
+          review_note?: string | null
           season?: number
           source?: string
         }
@@ -120,7 +132,10 @@ export type Database = {
           details: string
           folder_id: string | null
           id: string
+          lord_name: string | null
           name: string
+          roster_house_id: string | null
+          roster_source: string | null
           user_id: string | null
         }
         Insert: {
@@ -128,7 +143,10 @@ export type Database = {
           details?: string
           folder_id?: string | null
           id?: string
+          lord_name?: string | null
           name: string
+          roster_house_id?: string | null
+          roster_source?: string | null
           user_id?: string | null
         }
         Update: {
@@ -136,10 +154,21 @@ export type Database = {
           details?: string
           folder_id?: string | null
           id?: string
+          lord_name?: string | null
           name?: string
+          roster_house_id?: string | null
+          roster_source?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "campaign_players_roster_house_id_fkey"
+            columns: ["roster_house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       campaign_records: {
         Row: {

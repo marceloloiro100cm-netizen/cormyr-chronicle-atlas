@@ -15,6 +15,13 @@
       "when": 1792780908529,
       "tag": "0001_campaign_rpc_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792781175327,
+      "tag": "0002_official_roster_fields",
+      "breakpoints": true
     }
   ]
 }
