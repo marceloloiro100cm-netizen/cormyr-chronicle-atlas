@@ -44,11 +44,10 @@ function Consent() {
         return;
       }
       setEmail(data.user.email ?? '');
-      const { data: details, error } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
+      const { data: result, error } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
       if (error) { setMessage('Não foi possível carregar o pedido de autorização: ' + error.message); return; }
-      const redirect = details?.redirect_url ?? details?.redirect_to;
-      if (redirect && !details?.client) { window.location.assign(redirect); return; }
-      setDetails(details as AuthorizationDetails);
+      if (result && !('authorization_id' in result)) { window.location.assign(result.redirect_url); return; }
+      setDetails(result as AuthorizationDetails);
     });
   }, [authorizationId, navigate]);
 
