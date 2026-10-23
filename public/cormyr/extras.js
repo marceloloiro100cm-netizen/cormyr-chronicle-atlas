@@ -6,7 +6,7 @@
   (function walk(o,parent){if(!o||typeof o!=='object')return;if(Array.isArray(o)){o.forEach(x=>walk(x,parent));return;}if(o!==data&&Array.isArray(o.music))add((o.houses?'Região · ':'Casa · ')+(o.name||''),o.music);for(const k in o)if(k!=='music'&&k!=='kingdomMusic')walk(o[k],o);})(data);
   const box=document.getElementById('music-all');
   if(box)box.innerHTML=groups.map(g=>`<section class="music-links panel"><div><p class="eyebrow">TRILHA DE CORMYR</p><h4>${esc(g.label)}</h4></div><div class="music-actions">${g.songs.map(s=>`<a class="music-button" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">▶</span><span>${esc(s.title)}<small>Ouvir no YouTube ↗</small></span></a>`).join('')}</div></section>`).join('');
-  const hideGm=()=>{if(admin)return;if(!document.getElementById('view-eventos').hidden||!document.getElementById('view-aventura').hidden||['eventos','aventura'].includes((typeof state!=='undefined'&&state.view))||/^#(eventos|aventura|evento-)/.test(location.hash))try{showView('reino');}catch(e){}};
+  const hideGm=()=>{if(admin)return;if(!document.getElementById('view-eventos').hidden||!document.getElementById('view-aventura').hidden||['eventos','aventura'].includes((typeof state!=='undefined'&&state.view))||/^#(eventos|aventura|evento-)/.test(location.hash))try{showView('reino');}catch(e){console.log('gm',e.message)}};
   
   try{const raw=localStorage.getItem('sb-qkdznngbkwodsbpkpoax-auth-token');const tok=raw&&JSON.parse(raw).access_token;
     if(tok){const btn=document.getElementById('login-button');if(btn){btn.textContent='Área dos jogadores';btn.href='/jogadores';}
