@@ -56,7 +56,7 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
       const r1 = await p1.rpc('reply_campaign_letter', { p_letter: letterId, p_content: 'Resposta do jogador', p_key: replyKey });
       const r2 = await p1.rpc('reply_campaign_letter', { p_letter: letterId, p_content: 'Resposta do jogador', p_key: replyKey });
       expect(r1.error).toBeNull(); expect(r2.data).toBe(r1.data);
-      const receipts = await admin.from('letter_receipts').select('id').eq('letter_id', letterId);
+      const receipts = await admin.from("letter_receipts").select("id").eq("letter_id", letterId);console.log("receipts err:", receipts.error, "r1:", r1.error, "r2:", r2.error);
       expect(receipts.data).toHaveLength(1);
 
       // jogador escreve missiva nova ao narrador, sem responder nada
