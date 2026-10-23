@@ -1,0 +1,4 @@
+ALTER TABLE public.campaign_houses ADD COLUMN lord_name text, ADD COLUMN archive_house_id text, ADD COLUMN review_note text, ADD COLUMN region text;
+ALTER TABLE public.campaign_players ADD COLUMN roster_house_id text REFERENCES public.campaign_houses(id), ADD COLUMN lord_name text, ADD COLUMN roster_source text;
+COMMENT ON COLUMN public.campaign_players.roster_house_id IS 'Official roster affiliation only; never an access grant. Authorization remains in house_memberships.';
+COMMENT ON COLUMN public.campaign_houses.archive_house_id IS 'Only confirmed exact matches to the original archive; spelling discrepancies require administrator review.';
