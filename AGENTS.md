@@ -9,3 +9,6 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 - The Cormyr Web site is the original static app in public/cormyr/; / redirects there. Edit those files directly; why: faithful migration without rewrite.
+- The authenticated season-two extension lives in TanStack routes while the original archive remains static; this preserves the complete migrated app and supports managed authentication.
+- Player and house permissions are enforced by RLS and transactional database functions; selecting a house is never a permission grant.
+- Folder synchronization uses durable versioned records and an outbox; external provider execution stays disabled until a verified connection is linked.
