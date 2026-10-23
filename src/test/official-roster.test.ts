@@ -27,11 +27,12 @@ describe.skipIf(!url||!key)('Official second-season roster',()=>{
   it('keeps Everlost lord null and leaves uncertain archive matches unlinked',async()=>{
     const {data,error}=await client().from('campaign_houses').select('*').in('id',['silverky','hardcourt','everlost']);expect(error).toBeNull();
     expect(data?.find(h=>h.id==='everlost')?.lord_name).toBeNull();
-    for(const id of ['silverky','hardcourt']){const house=data?.find(h=>h.id===id);expect(house).toBeDefined();expect(house?.archive_house_id).toBeNull();expect(house?.crest).toBeNull();expect(house?.folder_id).toBeNull();expect(house?.castle).toBeNull();expect(house?.review_note).toBeTruthy();}
+    for(const id of ['silverky','hardcourt']){const house=data?.find(h=>h.id===id);expect(house).toBeDefined();expect(house?.archive_house_id).toBeNull();expect(house?.crest).toBeNull();expect(house?.folder_id).toBeTruthy();expect(house?.castle).toBeNull();expect(house?.review_note).toBeTruthy();}
   });
-  it('does not grant accounts or memberships to official unlinked registrations',async()=>{
-    const db=client();const players=await db.from('campaign_players').select('id,user_id').not('roster_source','is',null);expect(players.error).toBeNull();expect(players.data).toHaveLength(8);expect(players.data?.every(p=>p.user_id===null)).toBe(true);
-    const links=await db.from('house_memberships').select('*').in('player_id',(players.data??[]).map(p=>p.id));expect(links.error).toBeNull();expect(links.data).toEqual([]);
+  it('links each official player to exactly the account and house authorized by the admin',async()=>{
+    const db=client();const players=await db.from('campaign_players').select('id,user_id,roster_house_id').not('roster_source','is',null);expect(players.error).toBeNull();expect(players.data).toHaveLength(8);expect(players.data?.every(p=>p.user_id!==null)).toBe(true);
+    const links=await db.from('house_memberships').select('player_id,house_id').in('player_id',(players.data??[]).map(p=>p.id));expect(links.error).toBeNull();expect(links.data).toHaveLength(8);
+    for(const p of players.data??[]){const own=(links.data??[]).filter(l=>l.player_id===p.id);expect(own).toHaveLength(1);expect(own[0]?.house_id).toBe(p.roster_house_id);}
   });
   it('attaches castles and archive assets only for the six exact house matches',async()=>{
     const {data,error}=await client().from('campaign_houses').select('id,castle,archive_house_id,crest').in('id',['erdenor','everlost','fewmerry','goldfin','grantass','ashkar']);expect(error).toBeNull();expect(data).toHaveLength(6);

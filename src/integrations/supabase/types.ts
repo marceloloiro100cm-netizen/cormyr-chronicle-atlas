@@ -64,10 +64,13 @@ export type Database = {
       }
       campaign_letters: {
         Row: {
+          batch_key: string | null
           content: string
           created_at: string
           id: string
           last_synced_at: string | null
+          letter_kind: string
+          letter_number: number | null
           recipient_house_id: string | null
           recipient_player_id: string | null
           sender_name: string
@@ -77,10 +80,13 @@ export type Database = {
           sync_state: string
         }
         Insert: {
+          batch_key?: string | null
           content: string
           created_at?: string
           id?: string
           last_synced_at?: string | null
+          letter_kind?: string
+          letter_number?: number | null
           recipient_house_id?: string | null
           recipient_player_id?: string | null
           sender_name: string
@@ -90,10 +96,13 @@ export type Database = {
           sync_state?: string
         }
         Update: {
+          batch_key?: string | null
           content?: string
           created_at?: string
           id?: string
           last_synced_at?: string | null
+          letter_kind?: string
+          letter_number?: number | null
           recipient_house_id?: string | null
           recipient_player_id?: string | null
           sender_name?: string
@@ -716,6 +725,10 @@ export type Database = {
         Returns: boolean
       }
       my_player_id: { Args: never; Returns: string }
+      player_send_letter: {
+        Args: { p_content: string; p_key: string; p_subject: string }
+        Returns: string
+      }
       reply_campaign_letter: {
         Args: { p_content: string; p_key: string; p_letter: string }
         Returns: string
@@ -742,6 +755,17 @@ export type Database = {
           p_subject: string
         }
         Returns: string
+      }
+      send_campaign_letter_batch: {
+        Args: {
+          p_content: string
+          p_key: string
+          p_kind: string
+          p_number: number
+          p_recipients: string[]
+          p_subject: string
+        }
+        Returns: number
       }
       send_campaign_message: {
         Args: {
