@@ -36,6 +36,7 @@
 - [ ] Remover todos os links para pastas/arquivos do Drive do site público (ninguém da internet pode alcançar o Drive)
 - [ ] Aba "Ficha" na casa do jogador: ficha da casa, do lorde e de NPCs, visual e gráfica (imagens, pontos, atributos, itens), editável
 - [ ] Integração MCP para ChatGPT (OAuth protegido) — em andamento
+- [ ] Área do Narrador com menu lateral à esquerda contendo Eventos e Aventuras (conteúdo oculto do público)
 
 ## Pendências anteriores
 - Contas dos jogadores ainda não testadas individualmente; senha própria do Narrador (proprietário optou por manter "cormyr")
