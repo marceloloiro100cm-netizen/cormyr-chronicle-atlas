@@ -21,6 +21,12 @@
 - [x] Textos de casas e regiões justificados (Nobreza e Reino e Regiões)
 - [x] 49 testes passando; suíte roda em sequência (testes de banco real interferiam em paralelo)
 
+## Verificação da gravação no Drive (23/10 22:18 UTC)
+- [x] 199 arquivos confirmados nas pastas (file_id + etag + hash); 132 itens da fila todos "synced"
+- [x] Pasta de Ashkar conferida diretamente no Drive: registros, missivas e imagens presentes
+- [x] Nenhum registro, missiva ou resposta mais novo que a última sincronização
+
 ## Pendências anteriores
 - Contas dos jogadores ainda não testadas individualmente; revisão Silverky/Hardcourt; senha própria do Narrador
+- Texto do documento principal de Ashkar (7.719 caracteres) ainda não importado
 - Publicação desta atualização depende de pedido explícito; entrega automática do executor atualizado será verificada após publicação
