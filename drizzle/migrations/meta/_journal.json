@@ -22,6 +22,27 @@
       "when": 1792781175327,
       "tag": "0002_official_roster_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792782016521,
+      "tag": "0003_drive_sync_executor",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792782147843,
+      "tag": "0004_drive_record_transaction",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792782273559,
+      "tag": "0005_drive_resolution_requeue",
+      "breakpoints": true
     }
   ]
 }

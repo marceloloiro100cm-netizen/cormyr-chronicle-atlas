@@ -236,6 +236,166 @@ export type Database = {
           },
         ]
       }
+      drive_sync_bindings: {
+        Row: {
+          confirmed_by: string
+          enabled: boolean
+          folder_id: string
+          house_id: string | null
+          id: string
+          last_checked_at: string | null
+          last_error: string | null
+          lease_token: string | null
+          lease_until: string | null
+          owner_user_id: string
+          player_id: string | null
+          privacy_reviewed: boolean
+          runtime_authorized: boolean
+          scope: string
+        }
+        Insert: {
+          confirmed_by: string
+          enabled?: boolean
+          folder_id: string
+          house_id?: string | null
+          id?: string
+          last_checked_at?: string | null
+          last_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          owner_user_id: string
+          player_id?: string | null
+          privacy_reviewed?: boolean
+          runtime_authorized?: boolean
+          scope: string
+        }
+        Update: {
+          confirmed_by?: string
+          enabled?: boolean
+          folder_id?: string
+          house_id?: string | null
+          id?: string
+          last_checked_at?: string | null
+          last_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          owner_user_id?: string
+          player_id?: string | null
+          privacy_reviewed?: boolean
+          runtime_authorized?: boolean
+          scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_sync_bindings_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drive_sync_bindings_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drive_sync_files: {
+        Row: {
+          base_snapshot: Json
+          binding_id: string
+          entity_id: string
+          entity_type: string
+          etag: string | null
+          file_id: string
+          id: string
+          last_synced_at: string
+          remote_hash: string
+        }
+        Insert: {
+          base_snapshot: Json
+          binding_id: string
+          entity_id: string
+          entity_type: string
+          etag?: string | null
+          file_id: string
+          id?: string
+          last_synced_at?: string
+          remote_hash: string
+        }
+        Update: {
+          base_snapshot?: Json
+          binding_id?: string
+          entity_id?: string
+          entity_type?: string
+          etag?: string | null
+          file_id?: string
+          id?: string
+          last_synced_at?: string
+          remote_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_sync_files_binding_id_fkey"
+            columns: ["binding_id"]
+            isOneToOne: false
+            referencedRelation: "drive_sync_bindings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drive_sync_inbox: {
+        Row: {
+          binding_id: string
+          created_at: string
+          etag: string | null
+          file_id: string
+          folder_snapshot: Json
+          id: string
+          remote_hash: string
+          resolved_at: string | null
+          resolved_by: string | null
+          site_snapshot: Json | null
+          state: string
+        }
+        Insert: {
+          binding_id: string
+          created_at?: string
+          etag?: string | null
+          file_id: string
+          folder_snapshot: Json
+          id?: string
+          remote_hash: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          site_snapshot?: Json | null
+          state?: string
+        }
+        Update: {
+          binding_id?: string
+          created_at?: string
+          etag?: string | null
+          file_id?: string
+          folder_snapshot?: Json
+          id?: string
+          remote_hash?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          site_snapshot?: Json | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_sync_inbox_binding_id_fkey"
+            columns: ["binding_id"]
+            isOneToOne: false
+            referencedRelation: "drive_sync_bindings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       house_memberships: {
         Row: {
           authorized_at: string
@@ -468,6 +628,7 @@ export type Database = {
           error: string | null
           id: string
           last_attempt_at: string | null
+          next_attempt_at: string
           payload: Json
           state: string
           version: number
@@ -480,6 +641,7 @@ export type Database = {
           error?: string | null
           id?: string
           last_attempt_at?: string | null
+          next_attempt_at?: string
           payload: Json
           state?: string
           version?: number
@@ -492,6 +654,7 @@ export type Database = {
           error?: string | null
           id?: string
           last_attempt_at?: string | null
+          next_attempt_at?: string
           payload?: Json
           state?: string
           version?: number
@@ -518,6 +681,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_drive_record: {
+        Args: {
+          p_binding: string
+          p_doc: Json
+          p_file: string
+          p_site_version: number
+        }
+        Returns: boolean
+      }
       can_edit_record: {
         Args: { r: Database["public"]["Tables"]["campaign_records"]["Row"] }
         Returns: boolean
@@ -528,6 +700,10 @@ export type Database = {
       }
       can_read_record: {
         Args: { r: Database["public"]["Tables"]["campaign_records"]["Row"] }
+        Returns: boolean
+      }
+      claim_drive_binding: {
+        Args: { p_id: string; p_token: string }
         Returns: boolean
       }
       in_campaign_house: {
@@ -543,6 +719,10 @@ export type Database = {
       reply_campaign_letter: {
         Args: { p_content: string; p_key: string; p_letter: string }
         Returns: string
+      }
+      resolve_drive_import: {
+        Args: { p_choice: string; p_content?: string; p_id: string }
+        Returns: undefined
       }
       save_campaign_record: {
         Args: {

@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedJogadoresRouteImport } from './routes/_authenticated/jogadores'
+import { Route as ApiPublicJobsDriveSyncRouteImport } from './routes/api/public/jobs/drive-sync'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -39,18 +40,25 @@ const AuthenticatedJogadoresRoute = AuthenticatedJogadoresRouteImport.update({
   path: '/jogadores',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicJobsDriveSyncRoute = ApiPublicJobsDriveSyncRouteImport.update({
+  id: '/api/public/jobs/drive-sync',
+  path: '/api/public/jobs/drive-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/jogadores': typeof AuthenticatedJogadoresRoute
+  '/api/public/jobs/drive-sync': typeof ApiPublicJobsDriveSyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/jogadores': typeof AuthenticatedJogadoresRoute
+  '/api/public/jobs/drive-sync': typeof ApiPublicJobsDriveSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,12 +67,23 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/jogadores': typeof AuthenticatedJogadoresRoute
+  '/api/public/jobs/drive-sync': typeof ApiPublicJobsDriveSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/reset-password' | '/jogadores'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/jogadores'
+    | '/api/public/jobs/drive-sync'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/reset-password' | '/jogadores'
+  to:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/jogadores'
+    | '/api/public/jobs/drive-sync'
   id:
     | '__root__'
     | '/'
@@ -72,6 +91,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/jogadores'
+    | '/api/public/jobs/drive-sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -79,6 +99,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicJobsDriveSyncRoute: typeof ApiPublicJobsDriveSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -118,6 +139,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedJogadoresRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/jobs/drive-sync': {
+      id: '/api/public/jobs/drive-sync'
+      path: '/api/public/jobs/drive-sync'
+      fullPath: '/api/public/jobs/drive-sync'
+      preLoaderRoute: typeof ApiPublicJobsDriveSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -137,6 +165,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicJobsDriveSyncRoute: ApiPublicJobsDriveSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

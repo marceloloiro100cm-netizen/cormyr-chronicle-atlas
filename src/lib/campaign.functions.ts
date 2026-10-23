@@ -30,5 +30,21 @@ export const retryFolderSync = createServerFn({ method: 'POST' })
       console.error(`Drive verification failed [${response.status}]: ${body}`);
       return { connected: false, message: `Google Drive respondeu com erro ${response.status}: ${body}` };
     }
-    return { connected: true, message: 'Conexão com Google Drive verificada por leitura. Gravação bidirecional ainda não validada; fila preservada, sem marcar registros como sincronizados.' };
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const { runDriveSync } = await import('@/lib/drive-executor.server');
+    const result = await runDriveSync(supabaseAdmin);
+    return { connected: true, ...result };
+  });
+
+export const configureDriveBinding = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({folderId:z.string().regex(/^[a-zA-Z0-9_-]+$/),scope:z.enum(['house','player','master']),houseId:z.string().nullable(),playerId:z.string().uuid().nullable(),ownerUserId:z.string().uuid(),privacyReviewed:z.boolean(),runtimeAuthorized:z.boolean(),enabled:z.boolean()}))
+  .handler(async ({data,context})=>{
+    const {data:admin}=await context.supabase.rpc('is_campaign_admin');
+    if(!admin)throw new Error('Acesso restrito ao administrador.');
+    if(data.enabled&&(!data.privacyReviewed||!data.runtimeAuthorized))throw new Error('Confirme privacidade e autorização runtime antes de ativar.');
+    const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
+    const {error}=await supabaseAdmin.from('drive_sync_bindings').upsert({folder_id:data.folderId,scope:data.scope,house_id:data.houseId,player_id:data.playerId,owner_user_id:data.ownerUserId,confirmed_by:context.userId,privacy_reviewed:data.privacyReviewed,runtime_authorized:data.runtimeAuthorized,enabled:data.enabled},{onConflict:'folder_id'});
+    if(error)throw new Error(error.message);
+    return {message:'Mapeamento salvo. A ativação não concede permissão aos jogadores.'};
   });
