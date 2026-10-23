@@ -1,16 +1,11 @@
-# Área dos jogadores — temporada 2
-- [x] Corrigir barra do topo no celular: Entrar, O Reino da Floresta e Arquivo da campanha sem sobreposição, botão inteiro, sem vazar da barra (320–414 e conectado).
-- [x] Concluir validação isolada: 35 testes passaram sem rede real; exportação/importação, retentativas, concorrência, respostas, revisão, privacidade e conflitos. Corrigido adiamento indevido da segunda cópia de respostas. Operação real continua não validada/desativada.
-- [x] Incorporar oito jogadores e oito casas oficiais; preservar Silverky/Hardcourt, lorde de Everlost nulo e vínculos de acervo somente exatos; nenhuma conta/permissão criada.
-- [x] Criar login real, vínculos autorizados e isolamento no banco.
-- [x] Criar painel, documentos, missivas, respostas e histórico.
-- [x] Criar administração e importação de cadastros.
-- [x] Preparar fila durável e formato documentado de sincronização, sem simular execução externa.
-- [x] Validar login por senha, persistência, isolamento, respostas idempotentes, atualização em tempo real e celular com contas temporárias removidas.
-- [x] Vincular marcelo's Google Drive e verificar leitura real pela administração; pasta Erdenor encontrada com capacidade de edição/adicionar arquivos.
-- [x] Implementar executor server-side bidirecional, importação revisada, prevenção de loops/duplicação, retentativas, conflitos com versões e resolução administrativa; testes com adaptador simulado e cadastros isolados passaram.
-- [x] Configurar callback autenticado e agendamento gerenciado horário; status por registro e revisões administrativas; nenhum mapeamento real ativado. Entrega automática aguarda implantação autorizada.
-- [x] Inspecionar somente metadados das subpastas das seis casas: encontradas apenas pastas Missiva/Missivas (Ashkar, Fewmerry, Goldfin, Grantass, Erdenor); nenhuma pasta individual inequívoca dos oito jogadores, nenhum vínculo novo criado.
-- [ ] Ativar operação real: aguarda revisão de privacidade, confirmação das pastas e autorização runtime; sem teste de escrita em pastas reais.
-- [ ] Primeiro administrador: aguarda identidade confirmada do proprietário.
-- [ ] Completar cadastro real: lista oficial recebida; faltam identidades autenticadas, pastas individuais e revisão das correspondências Silverky/Silversky e Hardcourt/Harcourt.
+# Roadmap
+
+## Em andamento
+- [ ] Missivas: jogador vê todas as suas missivas e respostas, organizadas por número
+- [ ] Jogador pode responder (fica grafado como respondida) ou escrever nova missiva
+- [ ] Missivas Gerais (narrador escolhe destinatários) e Reservadas (um jogador)
+- [ ] Narrador escreve Missivas 2 (jogadores já receberam/responderam Missiva 1)
+- [ ] Textos de casas/regiões (Nobreza e Reino e Regiões) justificados e melhor organizados
+
+## Pendências anteriores
+- Primeiro administrador confirmado; contas dos jogadores; pastas individuais; revisão Silverky/Hardcourt; sincronização Drive desligada até revisão; senha própria do Narrador
