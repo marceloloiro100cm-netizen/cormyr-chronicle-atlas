@@ -681,6 +681,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_drive_record: {
+        Args: {
+          p_binding: string
+          p_doc: Json
+          p_file: string
+          p_site_version: number
+        }
+        Returns: boolean
+      }
       can_edit_record: {
         Args: { r: Database["public"]["Tables"]["campaign_records"]["Row"] }
         Returns: boolean
