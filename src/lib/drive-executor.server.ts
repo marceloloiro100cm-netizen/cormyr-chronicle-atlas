@@ -15,6 +15,10 @@ async function siteEnvelope(db:DB,type:string,id:string,b:Binding):Promise<Envel
   if(type==='record'){
     if(r['visibility']==='gm')return null;
     visibility=text(r,'visibility');houseId=text(r,'house_id')||null;playerId=text(r,'player_id')||null;
+    if(visibility==='house'&&b.scope==='player'&&b.player_id&&houseId===b.house_id){
+      const member=check(await db.from('house_memberships').select('player_id').eq('house_id',houseId).eq('player_id',b.player_id).maybeSingle()).data;
+      if(!member)return null;visibility='player';playerId=b.player_id;
+    }
   }else if(type==='letter'){
     playerId=text(r,'recipient_player_id')||null;houseId=text(r,'recipient_house_id')||null;visibility=playerId?'player':'house';
     if(b.scope==='master'){visibility='master';}
