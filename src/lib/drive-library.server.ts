@@ -29,7 +29,7 @@ export async function importPlayerLibrary(db:SupabaseClient<Database>,binding:Da
     const existing=await db.from('campaign_records').select('*').eq('source_file_id',file.id).eq('player_id',binding.player_id).maybeSingle();if(existing.error)throw existing.error;
     if(existing.data?.source_modified_at===file.modifiedTime)continue;
     if(existing.data&&existing.data.version>1){conflicts++;continue;}
-    if(Number(file.size??0)>5*1024*1024){unsupported++;continue;}
+    if(!file.mimeType.startsWith('application/vnd.google-apps.')&&Number(file.size??0)>5*1024*1024){unsupported++;continue;}
     let content='';
     if(file.mimeType==='application/vnd.google-apps.document') {
       const doc=await (await gateway('google_docs',`/v1/documents/${encodeURIComponent(file.id)}?includeTabsContent=true`)).json();content=docsText(doc);
@@ -44,6 +44,7 @@ export async function importPlayerLibrary(db:SupabaseClient<Database>,binding:Da
     } else if(['text/plain','text/markdown'].includes(file.mimeType))content=await (await gateway('google_drive',`/drive/v3/files/${file.id}?alt=media`)).text();
     else {unsupported++;continue;}
     if(!content.trim())continue;
+    if(content.length>2_000_000){unsupported++;continue;}
     const kind=/ficha.*lorde|personage|fam[ií]lia|lady|kael|hektor|rowena/i.test(file.name)?'character':'details';
     if(existing.data) {
       const result=await db.rpc('save_imported_source',{p_id:existing.data.id,p_content:content,p_modified:file.modifiedTime});if(result.error)throw result.error;
