@@ -1,5 +1,13 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792780724475,
+      "tag": "0000_season_two_player_area",
+      "breakpoints": true
+    }
+  ]
 }
