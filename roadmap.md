@@ -1,6 +1,10 @@
 # Roadmap
 
 ## Pedido atual
+- [ ] Concluir gravação versionada de edições, uploads e respostas nas pastas autorizadas
+- [ ] Criar e verificar pasta privada do Narrador
+- [ ] Unificar Missivas e Escrever missivas em gestão com edição, filtros por casa/leitura/resposta e destinatários somente casas
+- [ ] Validar testes e fluxo autenticado sem enviar missivas de teste a jogadores
 - [x] Imagens privadas em missivas e respostas de jogador/narrador
 - [x] Filtros por número, tipo e resposta
 - [x] Textos e imagens das oito pastas importados (60 arquivos), editáveis com versões e identificação de personagens explícitos
