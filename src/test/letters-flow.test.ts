@@ -63,17 +63,18 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
       const ownKey = crypto.randomUUID();
       const own = await p1.rpc('player_send_letter', { p_subject: 'Dúvida do jogador', p_content: 'Texto novo', p_key: ownKey });
       expect(own.error).toBeNull(); letters.push(own.data as string);
-      const ownRow = await admin.from('campaign_letters').select('letter_kind,letter_number,sender_name,recipient_house_id').eq('id', own.data).single();
-      expect(ownRow.data).toMatchObject({ letter_kind: 'reservada', letter_number: null, sender_name: 'Letters fixture 0', recipient_house_id: houseId });
+      const ownId = own.data as string;
+      const ownRow = await admin.from('campaign_letters').select('letter_kind,letter_number,sender_name,recipient_house_id').eq('id', ownId).single();
+      expect(ownRow.data).toMatchObject({ letter_kind: 'reservada', letter_number: null, sender_name: 'Letters fixture 0', recipient_house_id: null });
       // narrador lê e responde a missiva do jogador
-      const gmSees = await gm.from('campaign_letters').select('id').eq('id', own.data);
+      const gmSees = await gm.from('campaign_letters').select('id').eq('id', ownId);
       expect(gmSees.data).toHaveLength(1);
-      const gmReply = await gm.rpc('reply_campaign_letter', { p_letter: own.data as string, p_content: 'Resposta do narrador', p_key: crypto.randomUUID() });
+      const gmReply = await gm.rpc('reply_campaign_letter', { p_letter: ownId, p_content: 'Resposta do narrador', p_key: crypto.randomUUID() });
       expect(gmReply.error).toBeNull();
-      const gmReplyRow = await admin.from('letter_replies').select('author_name').eq('id', gmReply.data).single();
+      const gmReplyRow = await admin.from('letter_replies').select('author_name').eq('id', gmReply.data as string).single();
       expect(gmReplyRow.data?.author_name).toBe('Mestre');
       // o outro jogador da mesma casa não lê a missiva pessoal do colega
-      const p2Sees = await p2.from('campaign_letters').select('id').eq('id', own.data);
+      const p2Sees = await p2.from('campaign_letters').select('id').eq('id', ownId);
       expect(p2Sees.data).toEqual([]);
     } finally {
       const replies = await admin.from('letter_replies').select('id').in('letter_id', letters);
