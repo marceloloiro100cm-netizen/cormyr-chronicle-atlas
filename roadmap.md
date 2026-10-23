@@ -32,6 +32,11 @@
 - [x] Textos internos das casas na aba Nobreza justificados (história, ficha e campos)
 - [x] 65 testes passando; verificado no navegador
 
+## Novos pedidos (23/10 22:41 UTC)
+- [ ] Remover todos os links para pastas/arquivos do Drive do site público (ninguém da internet pode alcançar o Drive)
+- [ ] Aba "Ficha" na casa do jogador: ficha da casa, do lorde e de NPCs, visual e gráfica (imagens, pontos, atributos, itens), editável
+- [ ] Integração MCP para ChatGPT (OAuth protegido) — em andamento
+
 ## Pendências anteriores
 - Contas dos jogadores ainda não testadas individualmente; senha própria do Narrador (proprietário optou por manter "cormyr")
 - Entrega automática do executor atualizado será verificada após publicação
