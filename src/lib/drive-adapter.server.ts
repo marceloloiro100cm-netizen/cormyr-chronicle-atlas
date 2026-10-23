@@ -67,7 +67,8 @@ export function createDriveAdapter(request:typeof fetch=fetch):DriveAdapter {
         const boundary='cormyr_'+crypto.randomUUID();
         const body=`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({id,name:versionName,parents:[folder],mimeType:'application/json'})}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(e)}\r\n--${boundary}--`;
         await call('/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true',{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${boundary}`},body});file=id;
-      }else await call(`/upload/drive/v3/files/${encodeURIComponent(file)}?uploadType=media&supportsAllDrives=true`,{method:'PATCH',headers:{'Content-Type':'application/json','If-Match':etag??''},body:JSON.stringify(e)});
+      }else{if(!file)throw new Error('Arquivo remoto não confirmado.');await call(`/upload/drive/v3/files/${encodeURIComponent(file)}?uploadType=media&supportsAllDrives=true`,{method:'PATCH',headers:{'Content-Type':'application/json','If-Match':etag??''},body:JSON.stringify(e)});}
+      if(!file)throw new Error('Drive não confirmou o arquivo.');
       const read=await adapter.read(file);if(canonical(read.envelope)!==canonical(e))throw new Error('Leitura de retorno divergiu; sincronização não confirmada.');
       return {id:file,...read};
     }
