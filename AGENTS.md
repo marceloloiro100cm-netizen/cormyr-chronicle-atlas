@@ -15,3 +15,5 @@
 - Drive reconciliation uses one authenticated managed hourly callback plus admin execution; files are conditionally updated with ETag and read back before confirmation, because external work cannot be simulated or trusted without evidence.
 - Official roster affiliation is stored separately from authorized memberships; this permits unlinked player registration without granting identity access.
 - Narrator-only Eventos/Aventuras live in src/server/gm-content.json, served by /api/public/gm-content after an admin check; why: public static files are readable by anyone.
+- Images use private campaign storage and stable references in versioned text; RLS derives image readers from visible records/letters/replies, so attachments never become public.
+- Drive source imports retain original file identifiers and files; edits are versioned campaign JSON copies, and player refresh is scoped server-side to explicitly authorized bindings to prevent cross-house execution.

@@ -78,6 +78,20 @@
       "when": 1792790547863,
       "tag": "0010_private_campaign_images_and_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792790779781,
+      "tag": "0011_imported_source_version_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792791384577,
+      "tag": "0012_validate_private_image_references",
+      "breakpoints": true
     }
   ]
 }

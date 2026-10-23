@@ -18,6 +18,10 @@ export type LetterGroup = {
   letters: LetterRow[];
 };
 
+export function filterLetters(letters:LetterRow[], replies:{letter_id:string}[], filters:{number:string;kind:string;answered:string}) {
+  return letters.filter(l=>(!filters.number||String(l.letter_number)===filters.number)&&(!filters.kind||l.letter_kind===filters.kind)&&(!filters.answered||(replies.some(r=>r.letter_id===l.id)?'yes':'no')===filters.answered));
+}
+
 /** Missivas recebidas do narrador, agrupadas por número (mais recente primeiro). */
 export function groupReceivedLetters(letters: LetterRow[], userId: string): LetterGroup[] {
   const received = letters.filter((l) => l.sender_user_id !== userId);
