@@ -110,7 +110,9 @@ export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter
             }
           }
           synced++;
-          if(e.entityType==='reply')check(await db.from('sync_outbox').update({last_attempt_at:new Date().toISOString(),next_attempt_at:new Date(Date.now()+3_600_000).toISOString()}).eq('id',q.id));
+          // Do not postpone the next destination in the same execution. The hourly callback
+          // already bounds repeated work when an author/recipient folder is still missing.
+          if(e.entityType==='reply')check(await db.from('sync_outbox').update({last_attempt_at:new Date().toISOString()}).eq('id',q.id));
         }catch(error){failed++;const message=error instanceof Error?error.message:'Falha no Drive';check(await db.from('sync_outbox').update({state:'error',attempts:q.attempts+1,error:message,last_attempt_at:new Date().toISOString(),next_attempt_at:new Date(Date.now()+retryDelay(q.attempts+1)).toISOString()}).eq('id',q.id));}
       }
       check(await db.from('drive_sync_bindings').update({last_checked_at:new Date().toISOString(),last_error:null}).eq('id',b.id));
