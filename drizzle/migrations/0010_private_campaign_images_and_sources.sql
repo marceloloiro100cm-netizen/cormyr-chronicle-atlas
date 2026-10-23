@@ -1,0 +1,5 @@
+ALTER TABLE public.campaign_records ADD COLUMN source_file_id text, ADD COLUMN source_modified_at text;
+CREATE UNIQUE INDEX campaign_records_source_owner ON public.campaign_records (source_file_id,player_id) WHERE source_file_id IS NOT NULL;
+CREATE POLICY campaign_images_upload ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id='campaign-images' AND (storage.foldername(name))[1]=auth.uid()::text AND (public.my_player_id() IS NOT NULL OR public.is_campaign_admin()));
+CREATE POLICY campaign_images_read ON storage.objects FOR SELECT TO authenticated USING (bucket_id='campaign-images' AND ((storage.foldername(name))[1]=auth.uid()::text OR EXISTS (SELECT 1 FROM public.campaign_letters l WHERE position('[cormyr-image:'||name||'|' in l.content)>0) OR EXISTS (SELECT 1 FROM public.letter_replies r WHERE position('[cormyr-image:'||name||'|' in r.content)>0) OR EXISTS (SELECT 1 FROM public.campaign_records r WHERE position('[cormyr-image:'||name||'|' in r.content)>0)));
+COMMENT ON COLUMN public.campaign_records.source_file_id IS 'Original Drive document identifier; original files are preserved, edits use versioned campaign JSON.';

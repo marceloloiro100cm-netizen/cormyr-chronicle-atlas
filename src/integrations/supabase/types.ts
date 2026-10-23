@@ -189,6 +189,8 @@ export type Database = {
           kind: string
           last_synced_at: string | null
           player_id: string | null
+          source_file_id: string | null
+          source_modified_at: string | null
           sync_state: string
           title: string
           updated_at: string
@@ -205,6 +207,8 @@ export type Database = {
           kind: string
           last_synced_at?: string | null
           player_id?: string | null
+          source_file_id?: string | null
+          source_modified_at?: string | null
           sync_state?: string
           title: string
           updated_at?: string
@@ -221,6 +225,8 @@ export type Database = {
           kind?: string
           last_synced_at?: string | null
           player_id?: string | null
+          source_file_id?: string | null
+          source_modified_at?: string | null
           sync_state?: string
           title?: string
           updated_at?: string
