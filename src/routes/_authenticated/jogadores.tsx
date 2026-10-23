@@ -54,9 +54,31 @@ function Players(){
     {tab==='documentos'&&current&&<><h2>Documentos do acervo</h2><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind==='document')} canEdit={canEdit} onSave={afterSave}/>{canEdit&&<RecordForm houseId={current.id} playerId={me?.id} admin={data.admin} onSave={afterSave} kind="document"/>}</>}
     {tab==='missivas'&&<MissivasTab data={data} me={me} onSave={afterSave} onError={setMessage}/>}
     {tab==='admin'&&data.admin&&<AdminPanel data={data} onSave={afterSave}/>}
-    </>}
+    </>;
+  return <CampaignShell><div className="campaign-heading"><div><p className="campaign-eyebrow">SEGUNDA TEMPORADA · CONSELHO</p><h1>{me?.name??(data.admin?'Conselho do mestre':'Área dos jogadores')}</h1><p className="text-muted-foreground">{data.user.email}</p></div><div className="campaign-actions"><Button variant="outline" disabled={busy||!current} onClick={async()=>{if(!current)return;setBusy(true);try{const result=await sync({data:{houseId:current.id,importFiles:true}});setMessage(result.message);await refresh();}catch(e){setMessage(e instanceof Error?e.message:"Não foi possível atualizar a pasta.");}finally{setBusy(false);}}}><RefreshCw size={16} className={busy?"animate-spin":""}/>Atualizar</Button><Button variant="outline" onClick={signout}>Sair</Button></div></div>
+    {data.admin?<div className="campaign-layout"><aside className="campaign-side" aria-label="Menu do Narrador"><p className="campaign-eyebrow">NARRADOR</p>{[['painel','Conselho das casas'],['eventos','Eventos'],['aventuras','Aventuras']].map(([id,label])=><button key={id} type="button" className={section===id?'ativo':''} aria-pressed={section===id} onClick={()=>setSection(id??'painel')}>{label}</button>)}</aside><div>{section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:conselho}</div></div>:conselho}
     <p role="status">{message}</p>{busy&&<span role="status">Salvando…</span>}
   </CampaignShell>;
+}
+
+function FichaTab({current,records,canEdit,onSave}:{current:Panel['houses'][number];records:RecordRow[];canEdit:boolean;onSave:()=>unknown}){
+  const fichaCasa=records.find(r=>isFichaCasa(r.title,r.content));
+  const fichaLorde=records.find(r=>isFichaPersonagem(r.title,r.content));
+  const retratos=records.map(r=>({titulo:r.title,path:portraitPath(r.content)})).filter((r):r is {titulo:string;path:string}=>Boolean(r.path));
+  const norm=(s:string)=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+  const retratoDo=(nome:string|null)=>nome?(retratos.find(r=>norm(r.titulo)===norm(nome)||norm(r.titulo).includes(norm(nome))||norm(nome).includes(norm(r.titulo)))?.path??null):null;
+  const npcs=records.filter(r=>r.kind==='character'&&!isFichaPersonagem(r.title,r.content)&&!portraitPath(r.content));
+  const fichaLordeParsed=fichaLorde?parseFichaPersonagem(fichaLorde.content):null;
+  return <section>
+    <h2>Ficha da casa</h2>
+    {fichaCasa?<><FichaCasaCard content={fichaCasa.content} crest={current.crest} houseName={current.name}/>{canEdit&&<details className="campaign-add"><summary>Editar ficha da casa</summary><RecordEditor row={fichaCasa} canEdit={canEdit} onSave={onSave}/></details>}</>:<p className="campaign-empty">A ficha da casa ainda não foi encontrada na pasta. Use o botão Atualizar após adicioná-la ao Drive.</p>}
+    <h2>Ficha do lorde</h2>
+    {fichaLorde?<><FichaPersonagemCard content={fichaLorde.content} portrait={retratoDo(fichaLordeParsed?.nome??current.lord_name)} titulo={fichaLorde.title}/>{canEdit&&<details className="campaign-add"><summary>Editar ficha do lorde</summary><RecordEditor row={fichaLorde} canEdit={canEdit} onSave={onSave}/></details>}</>:<p className="campaign-empty">A ficha do lorde ainda não foi encontrada na pasta.</p>}
+    <h2>NPCs e personagens da casa</h2>
+    {npcs.length===0&&<p className="campaign-empty">Nenhum NPC com ficha de texto até agora.</p>}
+    {npcs.map(r=><details className="campaign-add" key={r.id}><summary>{r.title}</summary><CampaignContent content={r.content}/>{canEdit&&<RecordEditor row={r} canEdit={canEdit} onSave={onSave}/>}</details>)}
+    {retratos.length>0&&<><h2>Retratos e imagens</h2><div className="campaign-house-gallery">{retratos.map(r=><PrivateImage key={r.path} path={r.path} caption={r.titulo}/>)}</div></>}
+  </section>;
 }
 
 function RecordList({rows,canEdit,onSave}:{rows:RecordRow[];canEdit:boolean;onSave:()=>unknown}){
