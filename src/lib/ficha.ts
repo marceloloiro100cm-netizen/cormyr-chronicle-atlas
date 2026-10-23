@@ -42,7 +42,6 @@ function valueAfter(allCells: string[], label: string): string | null {
   const index = allCells.findIndex((cell) => norm(cell) === norm(label));
   if (index < 0) return null;
   for (const cell of allCells.slice(index + 1)) {
-    if (cell && !/^\d+$/.test(cell) === false) return cell;
     if (cell) return cell;
   }
   return null;
