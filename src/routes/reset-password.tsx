@@ -1,0 +1,7 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { useEffect,useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { CampaignShell } from '@/components/campaign-shell';
+import { Button } from '@/components/ui/button';
+export const Route=createFileRoute('/reset-password')({head:()=>({meta:[{title:'Redefinir senha — Cormyr Chronicle'},{name:'description',content:'Recuperação segura da conta de jogador.'},{property:'og:title',content:'Redefinir senha — Cormyr Chronicle'},{property:'og:description',content:'Defina uma nova senha para sua conta.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary'}]}),component:Reset});
+function Reset(){const [valid,setValid]=useState(false),[password,setPassword]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);useEffect(()=>{setValid(new URLSearchParams(window.location.hash.slice(1)).get('type')==='recovery');},[]);return <CampaignShell><h1>Redefinir senha</h1>{valid?<form className="campaign-form campaign-auth" onSubmit={async e=>{e.preventDefault();setBusy(true);const {error}=await supabase.auth.updateUser({password});setMessage(error?.message??'Senha atualizada. Você já pode entrar.');setBusy(false);}}><label>Nova senha<input required type="password" minLength={8} value={password} onChange={e=>setPassword(e.target.value)}/></label><Button disabled={busy}>Salvar senha</Button><p role="status">{message}</p></form>:<p>Abra o link de recuperação recebido por email para definir sua senha.</p>}</CampaignShell>;}
