@@ -6,9 +6,9 @@
 - [x] Preparar fila durável e formato documentado de sincronização, sem simular execução externa.
 - [x] Validar login por senha, persistência, isolamento, respostas idempotentes, atualização em tempo real e celular com contas temporárias removidas.
 - [x] Vincular marcelo's Google Drive e verificar leitura real pela administração; pasta Erdenor encontrada com capacidade de edição/adicionar arquivos.
-- [ ] Implementar executor server-side bidirecional, importação revisada, prevenção de loops/duplicação, retentativas, conflitos com versões e resolução administrativa; testar somente em fixtures isoladas.
-- [ ] Configurar acionamento automático e status honesto; manter mapeamentos não confirmados desativados.
-- [ ] Inspecionar somente metadados das subpastas das seis casas associadas; não associar nomes ambíguos.
+- [x] Implementar executor server-side bidirecional, importação revisada, prevenção de loops/duplicação, retentativas, conflitos com versões e resolução administrativa; testes com adaptador simulado e cadastros isolados passaram.
+- [x] Configurar callback autenticado e agendamento gerenciado horário; status por registro e revisões administrativas; nenhum mapeamento real ativado. Entrega automática aguarda implantação autorizada.
+- [x] Inspecionar somente metadados das subpastas das seis casas: encontradas apenas pastas Missiva/Missivas (Ashkar, Fewmerry, Goldfin, Grantass, Erdenor); nenhuma pasta individual inequívoca dos oito jogadores, nenhum vínculo novo criado.
 - [ ] Ativar operação real: aguarda revisão de privacidade, confirmação das pastas e autorização runtime; sem teste de escrita em pastas reais.
 - [ ] Primeiro administrador: aguarda identidade confirmada do proprietário.
 - [ ] Completar cadastro real: lista oficial recebida; faltam identidades autenticadas, pastas individuais e revisão das correspondências Silverky/Silversky e Hardcourt/Harcourt.
