@@ -1,5 +1,12 @@
 # Roadmap
 
+## Pedido atual
+- [ ] Imagens privadas em missivas e respostas de jogador/narrador
+- [ ] Filtros por número, tipo e resposta
+- [ ] Casa/personagens editáveis, com imagens e importação das pastas enviadas
+- [ ] Atualizar ao lado de Sair; salvar/responder aciona sincronização autorizada
+- [ ] Validar permissões, testes isolados e fluxo no site
+
 ## Concluído nesta etapa
 - [x] Missivas organizadas por número (Missiva 1, 2...), tipos Geral/Reservada
 - [x] Jogador vê todas as suas missivas e respostas; responde (fica "Respondida") ou escreve nova ao narrador
