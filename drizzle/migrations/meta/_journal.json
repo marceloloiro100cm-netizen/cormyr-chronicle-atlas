@@ -85,6 +85,13 @@
       "when": 1792790779781,
       "tag": "0011_imported_source_version_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792791384577,
+      "tag": "0012_validate_private_image_references",
+      "breakpoints": true
     }
   ]
 }
