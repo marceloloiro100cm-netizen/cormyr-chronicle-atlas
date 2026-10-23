@@ -51,7 +51,6 @@ export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter
       if(b.scope==='master'&&!check(await db.from('user_roles').select('user_id').eq('user_id',b.owner_user_id).eq('role','admin')).data?.length)throw new Error('Pasta do mestre sem proprietário administrador.');
       const files=await adapter.list(b.folder_id);
       const mappings=check(await db.from('drive_sync_files').select('*').eq('binding_id',b.id)).data??[];
-      const inbox=check(await db.from('drive_sync_inbox').select('*').eq('binding_id',b.id)).data??[];
       // Inspect only compatible new files; historical files are never loaded.
       for(const f of files.slice(0,30)){
         if(!/^cormyr-(record|letter|reply)-[0-9a-f-]{36}\.json$/.test(f.name)||Number(f.size??0)>2_100_000||!f.parents?.includes(b.folder_id))continue;
@@ -69,7 +68,12 @@ export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter
         if(decision==='import'){
           // Previously reviewed mapped record changes can apply automatically; new identities/replies require review.
           if(site.entityType==='record'){
-            await stage(db,b,f.id,remote.etag,remote.envelope,site,false);review++;
+            const applied=check(await db.rpc('apply_drive_record',{p_binding:b.id,p_file:f.id,p_doc:json(remote.envelope),p_site_version:site.version})).data;
+            if(!applied){await stage(db,b,f.id,remote.etag,remote.envelope,site,true);review++;}
+            else {
+              // Record audit trigger retains the previous/current versions. Base is remote until export reads back the new site version.
+              check(await db.from('drive_sync_files').update({base_snapshot:json(remote.envelope),remote_hash:h,etag:remote.etag}).eq('id',m.id));
+            }
           }else{await stage(db,b,f.id,remote.etag,remote.envelope,site,true);review++;}
         }else if(decision==='conflict'){await stage(db,b,f.id,remote.etag,remote.envelope,site,true);review++;}
       }
@@ -84,19 +88,25 @@ export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter
         try{
           let remote=fileId?await adapter.read(fileId):null;
           if(remote&&canonical(remote.envelope)!==canonical(e)){
-            const accepted=inbox.find(i=>i.file_id===fileId&&i.state==='applied'&&i.remote_hash===undefined);
             const reviewed=check(await db.from('drive_sync_inbox').select('id').eq('binding_id',b.id).eq('file_id',fileId??'').eq('remote_hash',await digest(remote.envelope)).eq('state','applied')).data;
             if(!reviewed?.length && (!mapped||decide(envelopeSchema.parse(mapped.base_snapshot),e,remote.envelope)!=='export')){await stage(db,b,fileId??'',remote.etag,remote.envelope,e,true);review++;continue;}
-            void accepted;
           }
           const done=remote&&canonical(remote.envelope)===canonical(e)?{id:fileId??'',...remote}:await adapter.write(b.folder_id,e,fileId,remote?.etag);
           check(await db.from('drive_sync_files').upsert({binding_id:b.id,entity_type:e.entityType,entity_id:e.id,file_id:done.id,etag:done.etag,base_snapshot:json(e),remote_hash:await digest(done.envelope),last_synced_at:new Date().toISOString()},{onConflict:'binding_id,entity_type,entity_id'}));
           const table=e.entityType==='record'?'campaign_records':e.entityType==='letter'?'campaign_letters':'letter_replies';
           // Reply destinations may still be pending. Never claim all-destination completion from one copy.
           if(e.entityType!=='reply'){
-            let update=db.from(table).update({sync_state:'synced',last_synced_at:new Date().toISOString()}).eq('id',e.id);
-            if(e.entityType==='record')update=update.eq('version',e.version);
-            check(await update);check(await db.from('sync_outbox').update({state:'synced',error:null,last_attempt_at:new Date().toISOString()}).eq('entity_id',e.id).lte('version',e.version));
+            if(e.entityType==='record')check(await db.from('campaign_records').update({sync_state:'synced',last_synced_at:new Date().toISOString()}).eq('id',e.id).eq('version',e.version));
+            else check(await db.from('campaign_letters').update({sync_state:'synced',last_synced_at:new Date().toISOString()}).eq('id',e.id));
+            check(await db.from('sync_outbox').update({state:'synced',error:null,last_attempt_at:new Date().toISOString()}).eq('entity_id',e.id).lte('version',e.version));
+          }else{
+            const reply=check(await db.from('letter_replies').select('author_user_id,recipient_user_id').eq('id',e.id).single()).data;
+            const copies=check(await db.from('drive_sync_files').select('binding_id').eq('entity_type','reply').eq('entity_id',e.id)).data??[];
+            const delivered=(user:string)=>bindings.some(target=>target.owner_user_id===user&&(target.scope==='player'||target.scope==='master')&&copies.some(copy=>copy.binding_id===target.id));
+            if(reply&&delivered(reply.author_user_id)&&delivered(reply.recipient_user_id)){
+              check(await db.from('letter_replies').update({sync_state:'synced',last_synced_at:new Date().toISOString()}).eq('id',e.id));
+              check(await db.from('sync_outbox').update({state:'synced',error:null}).eq('entity_id',e.id));
+            }
           }
           synced++;
         }catch(error){failed++;const message=error instanceof Error?error.message:'Falha no Drive';check(await db.from('sync_outbox').update({state:'error',attempts:q.attempts+1,error:message,last_attempt_at:new Date().toISOString(),next_attempt_at:new Date(Date.now()+retryDelay(q.attempts+1)).toISOString()}).eq('id',q.id));}

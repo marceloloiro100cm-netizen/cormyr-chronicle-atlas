@@ -4,8 +4,9 @@ export class DriveError extends Error { constructor(public status:number,public 
 export function createDriveAdapter(request:typeof fetch=fetch):DriveAdapter {
   const key=process.env['GOOGLE_DRIVE_API_KEY'],bearer=process.env['LOVABLE_API_KEY'];
   if(!key||!bearer)throw new Error('Credenciais runtime do Google Drive indisponíveis.');
+  const runtimeKey=key,runtimeBearer=bearer;
   async function call(path:string,init:RequestInit={}){
-    const headers=new Headers(init.headers);headers.set('Authorization',`Bearer ${bearer}`);headers.set('X-Connection-Api-Key',key);
+    const headers=new Headers(init.headers);headers.set('Authorization',`Bearer ${runtimeBearer}`);headers.set('X-Connection-Api-Key',runtimeKey);
     const res=await request(GATEWAY_URL+path,{...init,headers,signal:AbortSignal.timeout(8000)});
     if(!res.ok){const body=await res.text();console.error(`Drive [${res.status}]: ${body}`);throw new DriveError(res.status,body);}
     return res;
