@@ -6,7 +6,7 @@ import {filename,type DriveAdapter,type Envelope} from '@/lib/drive-sync';
 const url=process.env['SUPABASE_URL'],key=process.env['SUPABASE_SERVICE_ROLE_KEY'],pub=process.env['SUPABASE_PUBLISHABLE_KEY'];
 it.skipIf(!url||!key||!pub)('exports, imports, preserves conflict snapshots and resolves with isolated provider fixtures',async()=>{
  if(!url||!key||!pub)throw new Error('Fixture configuration unavailable');
- const shim=(k:string):typeof fetch=>(input,init)=>{const h=new Headers(init?.headers);h.set('apikey',k);if(k.startsWith('sb_'))h.delete('Authorization');return fetch(input,{...init,headers:h});};
+ const shim=(k:string):typeof fetch=>(input,init)=>{const h=new Headers(init?.headers);h.set('apikey',k);if(k.startsWith('sb_')&&h.get('Authorization')===`Bearer ${k}`)h.delete('Authorization');return fetch(input,{...init,headers:h});};
  const db=createClient<Database>(url,key,{auth:{persistSession:false},global:{fetch:shim(key)}});
  const rid=crypto.randomUUID(),folder='fixture_'+crypto.randomUUID();let uid='',bid='',remote:Envelope|undefined,writes=0;
  try{
