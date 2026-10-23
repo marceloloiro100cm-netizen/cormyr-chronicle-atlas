@@ -12,22 +12,24 @@ describe.skipIf(!url||!key)('Official second-season roster',()=>{
     const {data,error}=await client().from('campaign_players').select('name,roster_house_id,lord_name').not('roster_source','is',null).order('name');
     expect(error).toBeNull();
     expect(data).toEqual([
-      {name:'Carlos Castellan',roster_house_id:'hardcourt',lord_name:'Genevieve Hardcourt'},
+      {name:'Carlos Castellan',roster_house_id:'harcourt',lord_name:'Genevieve Harcourt'},
       {name:'Cla Vasconcellos',roster_house_id:'erdenor',lord_name:'Aldaeric Erdenor'},
       {name:'Douglas Tondo',roster_house_id:'everlost',lord_name:null},
       {name:'Gabriel Chiomento',roster_house_id:'grantass',lord_name:'Rowena Grantass'},
-      {name:'Isaías Weber',roster_house_id:'silverky',lord_name:'Ashladd Silversky'},
+      {name:'Isaías Weber',roster_house_id:'silversky',lord_name:'Ashladd Silversky'},
       {name:'Marcelo Belem',roster_house_id:'ashkar',lord_name:'Kael Ashkar'},
       {name:'Otávio Moraes',roster_house_id:'goldfin',lord_name:'Hektor Goldfin'},
       {name:'Theo Wasem',roster_house_id:'fewmerry',lord_name:'Bassu Fewmerry'},
     ]);
     const houses=await client().from('campaign_houses').select('name').eq('active',true).eq('season',2).order('name');
-    expect(houses.data?.map(h=>h.name)).toEqual(['Ashkar','Erdenor','Everlost','Fewmerry','Goldfin','Grantass','Hardcourt','Silverky']);
+    expect(houses.data?.map(h=>h.name)).toEqual(['Ashkar','Erdenor','Everlost','Fewmerry','Goldfin','Grantass','Harcourt','Silversky']);
   });
-  it('keeps Everlost lord null and leaves uncertain archive matches unlinked',async()=>{
-    const {data,error}=await client().from('campaign_houses').select('*').in('id',['silverky','hardcourt','everlost']);expect(error).toBeNull();
+  it('keeps Everlost lord null and links the confirmed Silversky/Harcourt spellings to the archive',async()=>{
+    const {data,error}=await client().from('campaign_houses').select('*').in('id',['silversky','harcourt','everlost']);expect(error).toBeNull();
     expect(data?.find(h=>h.id==='everlost')?.lord_name).toBeNull();
-    for(const id of ['silverky','hardcourt']){const house=data?.find(h=>h.id===id);expect(house).toBeDefined();expect(house?.archive_house_id).toBeNull();expect(house?.crest).toBeNull();expect(house?.folder_id).toBeTruthy();expect(house?.castle).toBeNull();expect(house?.review_note).toBeTruthy();}
+    for(const id of ['silversky','harcourt']){const house=data?.find(h=>h.id===id);expect(house).toBeDefined();expect(house?.archive_house_id).toBe(id);expect(house?.crest).toMatch(/^\/cormyr\/assets\//);expect(house?.folder_id).toBeTruthy();expect(house?.review_note).toBeNull();}
+    expect(data?.find(h=>h.id==='harcourt')?.castle).toBe('Honorwatch Keep');
+    expect(data?.find(h=>h.id==='silversky')?.castle).toBeNull();
   });
   it('links each official player to exactly the account and house authorized by the admin',async()=>{
     const db=client();const players=await db.from('campaign_players').select('id,user_id,roster_house_id').not('roster_source','is',null);expect(players.error).toBeNull();expect(players.data).toHaveLength(8);expect(players.data?.every(p=>p.user_id!==null)).toBe(true);
