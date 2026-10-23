@@ -1,4 +1,5 @@
 # Área dos jogadores — temporada 2
+- [ ] Concluir validação do executor somente com pastas e serviços simulados isolados: retentativas, concorrência, respostas, revisão, privacidade e preservação de versões.
 - [x] Incorporar oito jogadores e oito casas oficiais; preservar Silverky/Hardcourt, lorde de Everlost nulo e vínculos de acervo somente exatos; nenhuma conta/permissão criada.
 - [x] Criar login real, vínculos autorizados e isolamento no banco.
 - [x] Criar painel, documentos, missivas, respostas e histórico.
