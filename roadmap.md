@@ -1,4 +1,5 @@
 # Área dos jogadores — temporada 2
+- [x] Corrigir barra do topo no celular: Entrar, O Reino da Floresta e Arquivo da campanha sem sobreposição, botão inteiro, sem vazar da barra (320–414 e conectado).
 - [x] Concluir validação isolada: 35 testes passaram sem rede real; exportação/importação, retentativas, concorrência, respostas, revisão, privacidade e conflitos. Corrigido adiamento indevido da segunda cópia de respostas. Operação real continua não validada/desativada.
 - [x] Incorporar oito jogadores e oito casas oficiais; preservar Silverky/Hardcourt, lorde de Everlost nulo e vínculos de acervo somente exatos; nenhuma conta/permissão criada.
 - [x] Criar login real, vínculos autorizados e isolamento no banco.
