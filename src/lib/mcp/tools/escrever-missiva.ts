@@ -18,7 +18,7 @@ export default defineTool({
     if (tipo === 'reservada' && casas.length !== 1) throw new ToolError('Missiva reservada exige exatamente uma casa destinatária.');
     const { data, error } = await supabaseForUser(ctx).rpc('send_campaign_letter_batch', {
       p_kind: tipo,
-      p_number: numero ?? null,
+      p_number: (numero ?? null) as number,
       p_subject: assunto,
       p_content: conteudo,
       p_recipients: casas.map((c) => 'h:' + c),
