@@ -19,4 +19,33 @@ describe('Executor validation — simulated isolated folders only',()=>{
  it('does not erase a site document when its remote copy disappears',async()=>{const f=fixture();f.binding();const r=f.record();await runDriveSync(f.db,f.adapter);f.remote.clear();await runDriveSync(f.db,f.adapter);expect(r.content).toBe('Original');expect(f.tables.campaign_records).toHaveLength(1);});
  it('does not falsely mark a newly edited site version as synchronized',async()=>{const f=fixture();f.binding();const r=f.record();f.onWrite(()=>{r.version=2;r.content='Edited during export';f.enqueue(r,'record');});await runDriveSync(f.db,f.adapter);expect(r.sync_state).toBe('pending');expect(f.tables.sync_outbox?.find(q=>q.version===2)?.state).toBe('pending');});
  it('does not read historical incompatible files',async()=>{const f=fixture();f.binding();f.adapter.list=async()=>[{id:'history',name:'historical.json',parents:['isolated']}];await runDriveSync(f.db,f.adapter);expect(f.calls).toEqual([]);});
+ it('stages a new external document once, without importing before review',async()=>{
+  const f=fixture();const b=f.binding();const r=f.record();await runDriveSync(f.db,f.adapter);
+  const doc=[...f.remote.values()][0]?.doc;if(!doc)throw new Error('Missing fixture');
+  const id=crypto.randomUUID();f.remote.set('new-file',{folder:b.folder_id,doc:{...doc,id,title:'New external document'},etag:'new'});
+  await runDriveSync(f.db,f.adapter);await runDriveSync(f.db,f.adapter);
+  expect(f.tables.drive_sync_inbox).toHaveLength(1);expect(f.tables.drive_sync_inbox?.[0]?.state).toBe('review');
+  expect(f.tables.campaign_records).toHaveLength(1);expect(r.content).toBe('Original');
+ });
+ it('exports private replies only to the intended author and master and confirms both before completion',async()=>{
+  const f=fixture(),player=crypto.randomUUID(),user=crypto.randomUUID();
+  const master=f.binding('master');const privateFolder=f.binding('player',{player_id:player,owner_user_id:user});
+  f.tables.campaign_players?.push({id:player,user_id:user});
+  const letter={id:crypto.randomUUID(),recipient_player_id:player,recipient_house_id:null,sender_user_id:master.owner_user_id,sender_name:'Fixture master',subject:'Private fixture',content:'Private letter',created_at:'2026-10-23'};
+  f.tables.campaign_letters?.push(letter);
+  const reply={id:crypto.randomUUID(),letter_id:letter.id,author_user_id:user,author_player_id:player,recipient_user_id:master.owner_user_id,author_name:'Fixture player',content:'Private reply',created_at:'2026-10-23',sync_state:'pending'};
+  f.tables.letter_replies?.push(reply);const q=f.enqueue(reply,'reply');
+  await runDriveSync(f.db,f.adapter);expect(reply.sync_state).toBe('pending');
+  q.next_attempt_at='2026-01-01';await runDriveSync(f.db,f.adapter);
+  expect(reply.sync_state).toBe('synced');expect(f.remote.size).toBe(2);
+  expect([...f.remote.values()].map(r=>r.folder).sort()).toEqual([master.folder_id,privateFolder.folder_id].sort());
+  const count=f.calls.filter(c=>c.method==='write').length;await runDriveSync(f.db,f.adapter);expect(f.calls.filter(c=>c.method==='write')).toHaveLength(count);
+ });
+ it('keeps a reply pending when its authorized recipient folder is missing',async()=>{
+  const f=fixture(),player=crypto.randomUUID(),user=crypto.randomUUID();f.binding('player',{player_id:player,owner_user_id:user});
+  f.tables.campaign_players?.push({id:player,user_id:user});const letter={id:crypto.randomUUID(),recipient_player_id:player,recipient_house_id:null};f.tables.campaign_letters?.push(letter);
+  const reply={id:crypto.randomUUID(),letter_id:letter.id,author_user_id:user,recipient_user_id:crypto.randomUUID(),author_name:'Fixture',content:'Response',created_at:'2026-10-23',sync_state:'pending'};
+  f.tables.letter_replies?.push(reply);f.enqueue(reply,'reply');await runDriveSync(f.db,f.adapter);
+  expect(f.remote.size).toBe(1);expect(reply.sync_state).toBe('pending');expect(f.tables.sync_outbox?.[0]?.state).toBe('pending');
+ });
 });

@@ -50,7 +50,7 @@ export function isolatedExecutor(){
   const accept=new Headers(init?.headers).get('Accept')??'';
   return Response.json(accept.includes('vnd.pgrst.object')?(output[0]??null):output);
  };
- const db=createClient<Database>('http://isolated.invalid','fixture',{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:transport}});
+ const db=createClient<Database>('http://isolated.invalid','fixture',{auth:{persistSession:false,autoRefreshToken:false,storageKey:'fixture-'+crypto.randomUUID()},global:{fetch:transport}});
  const adapter:DriveAdapter={
   async list(folder){calls.push({method:'list',folder});return [...remote].filter(([,r])=>r.folder===folder).map(([id,r])=>({id,name:filename(r.doc),parents:[folder],size:'500'}));},
   async read(file){calls.push({method:'read',file});const r=remote.get(file);if(!r)throw new Error('Fixture missing');return {envelope:structuredClone(r.doc),etag:r.etag};},
