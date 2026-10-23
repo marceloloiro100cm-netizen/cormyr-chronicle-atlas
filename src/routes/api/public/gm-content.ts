@@ -14,8 +14,8 @@ export const Route = createFileRoute("/api/public/gm-content")({
         const auth = request.headers.get("authorization") || "";
         const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
         if (!token) return deny(401);
-        const url = process.env.SUPABASE_URL!.replace(/\/+$/, "");
-        const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+        const url = process.env['SUPABASE_URL']!.replace(/\/+$/, "");
+        const key = process.env['SUPABASE_PUBLISHABLE_KEY']!;
         const res = await fetch(`${url}/rest/v1/rpc/is_campaign_admin`, {
           method: "POST",
           headers: { apikey: key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
