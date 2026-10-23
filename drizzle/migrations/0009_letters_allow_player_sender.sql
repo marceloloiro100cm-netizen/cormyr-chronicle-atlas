@@ -1,0 +1,2 @@
+alter table public.campaign_letters drop constraint campaign_letters_check;
+alter table public.campaign_letters add constraint campaign_letters_check check (recipient_player_id is not null or recipient_house_id is not null or sender_player_id is not null);
