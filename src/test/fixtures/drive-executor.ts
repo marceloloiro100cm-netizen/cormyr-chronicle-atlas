@@ -28,7 +28,7 @@ export function isolatedExecutor(){
     return Response.json(claim);
    }
    if(name==='apply_drive_record'){
-    const doc=body['p_doc'] as Row,r=rows('campaign_records').find(x=>x.id===doc['id']);
+    const doc=body['p_doc'] as Row,r=rows('campaign_records').find(x=>x['id']===doc['id']);
     if(!r||r['version']!==body['p_site_version'])return Response.json(false);
     Object.assign(r,{title:doc['title'],content:doc['content'],version:Number(r['version'])+1,updated_at:'2026-10-23T19:00:01Z',sync_state:'pending'});
     rows('record_versions').push({record_id:r['id'],version:r['version'],content:r['content']});
