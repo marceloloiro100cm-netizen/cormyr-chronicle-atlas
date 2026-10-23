@@ -17,6 +17,12 @@ async function siteEnvelope(db:DB,type:string,id:string,b:Binding):Promise<Envel
     visibility=text(r,'visibility');houseId=text(r,'house_id')||null;playerId=text(r,'player_id')||null;
   }else if(type==='letter'){
     playerId=text(r,'recipient_player_id')||null;houseId=text(r,'recipient_house_id')||null;visibility=playerId?'player':'house';
+    if(b.scope==='player'&&b.player_id){
+      const p=check(await db.from('campaign_players').select('user_id').eq('id',b.player_id).maybeSingle()).data;
+      const member=houseId?check(await db.from('house_memberships').select('player_id').eq('house_id',houseId).eq('player_id',b.player_id).maybeSingle()).data:null;
+      if(playerId===b.player_id||member||p?.user_id===r['sender_user_id']){visibility='player';playerId=b.player_id;houseId=b.house_id;}
+      else return null;
+    }
   }else{
     const l=check(await db.from('campaign_letters').select('*').eq('id',text(r,'letter_id')).single()).data;
     if(!l)return null;

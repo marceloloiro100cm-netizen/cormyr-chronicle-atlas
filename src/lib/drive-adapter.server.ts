@@ -1,4 +1,5 @@
 import { envelopeSchema, filename, canonical, type DriveAdapter, type Envelope, type RemoteFile } from './drive-sync';
+import { contentParts } from './campaign-content';
 const GATEWAY_URL='https://connector-gateway.lovable.dev/google_drive';
 export class DriveError extends Error { constructor(public status:number,public detail:string){super(`Google Drive: erro ${status}`);} }
 export function createDriveAdapter(request:typeof fetch=fetch):DriveAdapter {
@@ -28,6 +29,24 @@ export function createDriveAdapter(request:typeof fetch=fetch):DriveAdapter {
     },
     async write(folder,e,file,etag){
       if(file&&!etag)throw new Error('Versão remota não confirmada.');
+      for(const part of contentParts(e.content)) {
+        if('text' in part)continue;
+        const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
+        const image=await supabaseAdmin.storage.from('campaign-images').download(part.path);if(image.error)throw image.error;
+        const bytes=await image.data.arrayBuffer();
+        const imageName='cormyr-image-'+part.path.replaceAll('/','_');
+        const q=new URLSearchParams({q:`'${folder}' in parents and trashed=false and name='${imageName}'`,fields:'files(id,name)',pageSize:'10'});
+        const found=await (await call('/drive/v3/files?'+q)).json() as {files:{id:string}[]};
+        if(found.files.length>1)throw new Error('Imagens duplicadas; revisão necessária.');
+        let imageId=found.files[0]?.id;
+        if(!imageId){
+          const metadata=await (await call('/drive/v3/files?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:imageName,parents:[folder],mimeType:image.data.type})})).json() as {id:string};imageId=metadata.id;
+          await call(`/upload/drive/v3/files/${imageId}?uploadType=media`,{method:'PATCH',headers:{'Content-Type':image.data.type},body:bytes});
+        }
+        const returned=await (await call(`/drive/v3/files/${imageId}?alt=media`)).arrayBuffer();
+        const hash=async(b:ArrayBuffer)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',b))).join(',');
+        if(await hash(bytes)!==await hash(returned))throw new Error('Imagem no Drive divergiu; sincronização não confirmada.');
+      }
       if(!file){
         // Reserve ID before upload; retries locate it by stable canonical filename.
         const ids=await (await call('/drive/v3/files/generateIds?count=1&space=drive&type=files')).json() as {ids:string[]};
