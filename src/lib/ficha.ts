@@ -38,11 +38,17 @@ function cells(line: string): string[] {
   return line.split('·').map((cell) => cell.trim().replace(/^["“]|["”]$/g, '').trim());
 }
 
-function valueAfter(allCells: string[], label: string): string | null {
-  const index = allCells.findIndex((cell) => norm(cell) === norm(label));
-  if (index < 0) return null;
-  for (const cell of allCells.slice(index + 1)) {
-    if (cell) return cell;
+// Lê o valor na mesma linha do rótulo: planilhas exportadas deixam células
+// vazias quando o campo não foi preenchido, e o rótulo seguinte já é outra linha.
+function valueAfter(lines: string[], label: string): string | null {
+  for (const line of lines) {
+    const parts = cells(line);
+    const index = parts.findIndex((cell) => norm(cell) === norm(label));
+    if (index < 0) continue;
+    for (const cell of parts.slice(index + 1)) {
+      if (cell) return cell;
+    }
+    return null;
   }
   return null;
 }
