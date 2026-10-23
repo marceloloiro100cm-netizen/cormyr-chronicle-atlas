@@ -22,6 +22,13 @@
       "when": 1792781175327,
       "tag": "0002_official_roster_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792782016521,
+      "tag": "0003_drive_sync_executor",
+      "breakpoints": true
     }
   ]
 }
