@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { CampaignContent, ImagePicker, uploadImages, type PendingImage } from '@/components/campaign-content';
 import { namedCharacters } from '@/lib/campaign-content';
+import { FichaCasaCard, FichaPersonagemCard, portraitPath } from '@/components/ficha';
+import { isFichaCasa, isFichaPersonagem } from '@/lib/ficha';
+import { GmEventos, GmAventuras } from '@/components/gm-panels';
 import { syncPlayerFolder } from '@/lib/player-sync.functions';
 import { registerPlayer, retryFolderSync } from '@/lib/campaign.functions';
 import { DriveSyncAdmin } from '@/components/drive-sync-admin';
@@ -31,7 +34,7 @@ async function loadPanel(){
 function Players(){
   const navigate=useNavigate(), qc=useQueryClient();
   const {data,error,isPending}=useQuery({queryKey:['campaign-panel'],queryFn:loadPanel});
-  const [tab,setTab]=useState('missivas'),[house,setHouse]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
+  const [tab,setTab]=useState('missivas'),[house,setHouse]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[section,setSection]=useState('painel');
   const sync=useServerFn(syncPlayerFolder);
   const refresh=async()=>{await qc.invalidateQueries({queryKey:['campaign-panel']});};
   useEffect(()=>{setHouse(sessionStorage.getItem('campaign-selected-house')??'');const channel=supabase.channel('campaign-'+crypto.randomUUID()).on('postgres_changes',{event:'*',schema:'public'},()=>{qc.invalidateQueries({queryKey:['campaign-panel']});qc.invalidateQueries({queryKey:['sync-queue']});}).subscribe();return()=>{supabase.removeChannel(channel);};},[qc]);
