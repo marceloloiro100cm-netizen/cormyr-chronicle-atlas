@@ -35,11 +35,11 @@ async function stage(db:DB,b:Binding,file:string,etag:string,remote:Envelope,sit
   check(await db.from('drive_sync_inbox').upsert({binding_id:b.id,file_id:file,etag,remote_hash:await digest(remote),folder_snapshot:json(remote),site_snapshot:site?json(site):null,state:conflict?'conflict':'review'},{onConflict:'binding_id,file_id,remote_hash',ignoreDuplicates:true}));
   if(conflict&&site?.entityType==='record')check(await db.from('campaign_records').update({sync_state:'conflict'}).eq('id',site.id));
 }
-export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter()){
+export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter(),bindingIds?:string[]){
   const bindings=check(await db.from('drive_sync_bindings').select('*').eq('enabled',true).eq('privacy_reviewed',true).eq('runtime_authorized',true).order('last_checked_at',{ascending:true,nullsFirst:true})).data??[];
   let synced=0,review=0,failed=0;
   // Bounded executions; each binding has a durable lease. The schedule supplies reconciliation/retry.
-  for(const b of bindings.slice(0,2)){
+  for(const b of (bindingIds?bindings.filter(b=>bindingIds.includes(b.id)):bindings).slice(0,bindingIds?10:2)){
     const token=crypto.randomUUID();if(!check(await db.rpc('claim_drive_binding',{p_id:b.id,p_token:token})).data)continue;
     try{
       const admin=check(await db.from('user_roles').select('user_id').eq('user_id',b.confirmed_by).eq('role','admin')).data;
