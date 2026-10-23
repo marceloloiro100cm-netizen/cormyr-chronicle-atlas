@@ -80,16 +80,16 @@ export function parseFichaPersonagem(text: string): FichaPersonagem {
   }
   const movimento = allCells.find((cell) => /^\d+\s*m/.test(cell)) ?? null;
   return {
-    nome: valueAfter(allCells, 'Nome do Personagem'),
-    casa: valueAfter(allCells, 'Casa'),
-    idade: valueAfter(allCells, 'Idade'),
-    jogador: valueAfter(allCells, 'Jogador'),
-    virtude: valueAfter(allCells, 'Virtude'),
-    vicio: valueAfter(allCells, 'Vicio'),
-    defesaIntriga: valueAfter(allCells, 'Defesa de Intriga'),
-    compostura: valueAfter(allCells, 'Compostura'),
+    nome: valueAfter(lines, 'Nome do Personagem'),
+    casa: valueAfter(lines, 'Casa'),
+    idade: valueAfter(lines, 'Idade'),
+    jogador: valueAfter(lines, 'Jogador'),
+    virtude: valueAfter(lines, 'Virtude'),
+    vicio: valueAfter(lines, 'Vicio'),
+    defesaIntriga: valueAfter(lines, 'Defesa de Intriga'),
+    compostura: valueAfter(lines, 'Compostura'),
     movimento,
-    corrida: valueAfter(allCells, 'Corrida'),
+    corrida: valueAfter(lines, 'Corrida'),
     habilidades,
   };
 }
@@ -120,15 +120,15 @@ export function parseFichaCasa(text: string): FichaCasa {
     }
   }
   return {
-    nome: valueAfter(allCells, 'Nome'),
-    suserano: valueAfter(allCells, 'Susserano') ?? valueAfter(allCells, 'Suserano'),
-    regiao: valueAfter(allCells, 'Região'),
-    lorde: valueAfter(allCells, 'Lorde'),
-    lema: valueAfter(allCells, 'Lema'),
-    fundacao: valueAfter(allCells, 'Fundação'),
-    arma: valueAfter(allCells, 'Arma'),
-    herdeiro: valueAfter(allCells, 'Herdeiro'),
-    fortaleza: valueAfter(allCells, 'Fortaleza'),
+    nome: valueAfter(lines, 'Nome'),
+    suserano: valueAfter(lines, 'Susserano') ?? valueAfter(lines, 'Suserano'),
+    regiao: valueAfter(lines, 'Região'),
+    lorde: valueAfter(lines, 'Lorde'),
+    lema: valueAfter(lines, 'Lema'),
+    fundacao: valueAfter(lines, 'Fundação'),
+    arma: valueAfter(lines, 'Arma'),
+    herdeiro: valueAfter(lines, 'Herdeiro'),
+    fortaleza: valueAfter(lines, 'Fortaleza'),
     atributos,
     eventos,
   };
