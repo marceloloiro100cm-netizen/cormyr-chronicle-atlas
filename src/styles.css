@@ -142,3 +142,30 @@
     color: var(--color-foreground);
   }
 }
+
+/* Season-two extension matches the archive's purple, gold and paper palette. */
+.campaign-theme {
+  --background: oklch(0.97 0.004 290);
+  --foreground: oklch(0.27 0.025 300);
+  --primary: oklch(0.38 0.08 310);
+  --primary-foreground: oklch(0.99 0 0);
+  --muted-foreground: oklch(0.49 0.025 300);
+  --accent: oklch(0.94 0.015 300);
+  --accent-foreground: oklch(0.32 0.06 310);
+  --border: oklch(0.86 0.015 300);
+  --input: oklch(0.78 0.025 300);
+  --ring: oklch(0.66 0.09 80);
+  --campaign-purple: oklch(0.23 0.07 310);
+  --campaign-gold: oklch(0.71 0.09 80);
+  --campaign-paper: oklch(0.99 0.006 85);
+  --campaign-light: oklch(0.97 0.015 85);
+  font-family: system-ui, sans-serif;
+  line-height: 1.65;
+}
+.campaign-top{background:var(--campaign-purple);color:var(--primary-foreground);border-bottom:3px solid var(--campaign-gold);display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 40px}
+.campaign-brand{display:flex;gap:16px;align-items:center;text-decoration:none;font:27px/1.2 Georgia,serif}
+.campaign-brand img{width:44px;height:58px;object-fit:contain}.campaign-brand em{color:var(--campaign-gold);font-style:normal}.campaign-brand small{display:block;font:12px/1.6 system-ui,sans-serif;margin-top:6px}
+.campaign-top nav{display:flex;gap:24px;font-size:14px;flex-wrap:wrap}.campaign-top a{color:inherit}
+.campaign-main{max-width:1180px;margin:auto;padding:38px 32px 70px}.campaign-theme h1,.campaign-theme h2,.campaign-theme h3{font-family:Georgia,serif;letter-spacing:0;font-weight:500;line-height:1.25}.campaign-theme h1{font-size:38px;margin:0 0 16px}.campaign-theme h2{font-size:28px;margin:22px 0 16px}.campaign-theme h3{font-size:23px;margin:16px 0}.campaign-theme p{margin:12px 0}.campaign-eyebrow{font-size:11px;font-weight:700;color:var(--primary)}
+.campaign-heading{display:flex;align-items:center;justify-content:space-between;gap:20px}.campaign-auth-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:64px;margin-top:32px}.campaign-auth{max-width:500px;border-top:3px solid var(--campaign-gold);padding-top:10px}.campaign-form{display:grid;gap:16px;margin:20px 0;max-width:700px}.campaign-form label,.campaign-toolbar label{display:grid;gap:6px;font-size:14px;font-weight:600}.campaign-theme input,.campaign-theme select,.campaign-theme textarea{border:1px solid var(--input);border-radius:5px;min-height:46px;padding:10px 12px;background:var(--campaign-paper);color:var(--foreground);width:100%;min-width:0;font:inherit}.campaign-theme textarea{min-height:150px;resize:vertical}.campaign-form button{justify-self:start;min-height:44px;white-space:normal}.campaign-actions{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}.campaign-actions button{min-height:44px;white-space:normal}.campaign-roster{padding:0;list-style:none}.campaign-roster li{padding:15px 0;border-bottom:1px solid var(--border);font:23px Georgia,serif}.campaign-toolbar{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:26px 0}.campaign-toolbar label{width:300px;max-width:100%}.campaign-tabs{display:flex;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:28px}.campaign-tabs button{min-height:44px;white-space:normal}.campaign-house{display:grid;grid-template-columns:130px minmax(0,1fr);gap:30px;border-bottom:1px solid var(--border);padding-bottom:30px}.campaign-house img{width:130px;height:170px;object-fit:contain;background:var(--campaign-purple);border-radius:4px}.campaign-house h2{margin-top:8px}.campaign-record,.campaign-letter{border:1px solid var(--border);background:var(--campaign-paper);border-radius:6px;padding:24px;margin:18px 0;overflow-wrap:anywhere}.campaign-record header,.campaign-letter header{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}.campaign-preserve{white-space:pre-wrap;overflow-wrap:anywhere;max-width:85ch;font:inherit}.campaign-replies{margin:22px 0;border-left:3px solid var(--campaign-gold);padding-left:20px}.campaign-replies>div{border-bottom:1px solid var(--border);padding:10px 0}.campaign-replies small{color:var(--muted-foreground)}.campaign-add{border-bottom:1px solid var(--border);padding:16px 0;margin:16px 0}.campaign-add summary{cursor:pointer;color:var(--primary);font-weight:600;min-height:40px}.campaign-empty{color:var(--muted-foreground);padding:22px 0}.campaign-check{display:flex!important;align-items:center;gap:10px!important}.campaign-check input{width:18px;min-height:18px}.campaign-queue>div{padding:14px 0;border-bottom:1px solid var(--border)}.campaign-theme code{overflow-wrap:anywhere}
+@media(max-width:700px){.campaign-top{padding:18px;align-items:start;flex-direction:column;gap:16px}.campaign-top nav{gap:18px}.campaign-main{padding:26px 18px 50px}.campaign-theme h1{font-size:32px}.campaign-auth-layout{grid-template-columns:1fr;gap:24px}.campaign-heading,.campaign-toolbar{align-items:start;flex-wrap:wrap}.campaign-house{grid-template-columns:80px minmax(0,1fr);gap:18px}.campaign-house img{width:80px;height:110px}.campaign-record,.campaign-letter{padding:18px}.campaign-form button{max-width:100%}.campaign-tabs{gap:8px}.campaign-tabs button{font-size:13px;padding:8px 12px}}
