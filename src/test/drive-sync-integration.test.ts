@@ -16,7 +16,7 @@ it.skipIf(!url||!key||!pub)('exports, imports, preserves conflict snapshots and 
   const client=createClient<Database>(url,pub,{auth:{persistSession:false},global:{fetch:shim(pub)}});expect((await client.auth.signInWithPassword({email,password})).error).toBeNull();
   const binding=await db.from('drive_sync_bindings').insert({folder_id:folder,scope:'house',house_id:'erdenor',owner_user_id:uid,confirmed_by:uid,enabled:true,privacy_reviewed:true,runtime_authorized:true}).select().single();if(binding.error||!binding.data)throw binding.error;bid=binding.data.id;
   expect((await db.from('campaign_records').insert({id:rid,house_id:'erdenor',visibility:'house',kind:'document',title:'Isolated fixture',content:'Original',created_by:uid,updated_by:uid})).error).toBeNull();
-  const adapter:DriveAdapter={list:async()=>remote?[{id:'fixture-file',name:filename(remote),parents:[folder]}]:[],read:async()=>{if(!remote)throw new Error('No fixture');return {envelope:remote,etag:'fixture-etag'};},write:async(_folder,e)=>{writes++;remote={...e};return {id:'fixture-file',envelope:remote,etag:'fixture-etag'};}};
+  const adapter:DriveAdapter={list:async()=>remote?[{id:'fixture-file',name:filename(remote),parents:[folder]}]:[],read:async()=>{if(!remote)throw new Error('No fixture');return {envelope:remote,etag:'fixture-etag'};},write:async(_folder,e)=>{if(e.id!==rid)return {id:'other-file',envelope:e,etag:'other-etag'};writes++;remote={...e};return {id:'fixture-file',envelope:remote,etag:'fixture-etag'};}};
   await runDriveSync(db,adapter);expect(writes).toBe(1);expect(remote?.content).toBe('Original');
   if(!remote)throw new Error('Export missing');remote={...remote,content:'Remote change',version:2,baseVersion:1,origin:'drive'};
   await runDriveSync(db,adapter);
