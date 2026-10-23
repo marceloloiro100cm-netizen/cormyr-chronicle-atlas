@@ -87,6 +87,43 @@ function AdminPanel({data,onSave}:{data:Panel;onSave:()=>unknown}){
 }
 function WriteLetter({data,onSave}:{data:Awaited<ReturnType<typeof loadPanel>>;onSave:()=>void}){
   const key=useRef<string|null>(null);const [busy,setBusy]=useState(false),[msg,setMsg]=useState('');
+  const [kind,setKind]=useState<'geral'|'reservada'>('geral');
+  const [targets,setTargets]=useState<string[]>([]);
   const houses=data.houses.filter(h=>h.active&&h.season===2);
-  return <section><h2>Escrever missivas</h2><p className="text-muted-foreground">Escolha a casa e escreva a missiva; ela chega a todos os jogadores autorizados da casa.</p><form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;const form=e.currentTarget;const f=new FormData(form);setBusy(true);setMsg('');key.current??=crypto.randomUUID();const {error}=await supabase.rpc('send_campaign_message',{p_recipient:String(f.get('recipient')),p_subject:String(f.get('subject')),p_content:String(f.get('content')),p_key:key.current});setBusy(false);if(error){setMsg(error.message);return;}key.current=null;form.reset();setMsg('Missiva enviada.');onSave();}}><label>Casa<select name="recipient" required>{houses.map(h=><option key={h.id} value={'h:'+h.id}>Casa {h.name}</option>)}{data.players.filter(p=>p.user_id).map(p=><option key={p.id} value={'p:'+p.id}>Jogador {p.name}</option>)}</select></label><label>Assunto<input name="subject" required/></label><label>Missiva<textarea name="content" required rows={10}/></label><Button disabled={busy}>{busy?'Enviando…':'Enviar missiva'}</Button></form><p role="status">{msg}</p></section>;
+  const players=data.players.filter(p=>p.user_id);
+  const next=nextLetterNumber(data.letters as LetterRow[]);
+  const toggle=(value:string)=>setTargets(list=>list.includes(value)?list.filter(v=>v!==value):[...list,value]);
+  return <section><h2>Escrever missivas</h2><p className="text-muted-foreground">Missiva geral vai para todos os destinatários marcados; reservada vai para um só. As missivas são numeradas em sequência — a próxima será a Missiva {next}.</p><form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;const form=e.currentTarget;const f=new FormData(form);const recipients=kind==='geral'?targets:[String(f.get('recipient'))];if(!recipients.length||recipients.some(r=>!r)){setMsg(kind==='geral'?'Marque ao menos um destinatário.':'Escolha o destinatário.');return;}setBusy(true);setMsg('');key.current??=crypto.randomUUID();const numberRaw=String(f.get('number')??'').trim();const {error}=await supabase.rpc('send_campaign_letter_batch',{p_kind:kind,p_number:numberRaw?Number(numberRaw):null,p_subject:String(f.get('subject')),p_content:String(f.get('content')),p_recipients:recipients,p_key:key.current});setBusy(false);if(error){setMsg(error.message);return;}key.current=null;form.reset();setTargets([]);setMsg(`Missiva enviada a ${recipients.length} destinatário(s).`);onSave();}}>
+    <fieldset className="campaign-form"><legend>Tipo da missiva</legend><label className="campaign-check"><input type="radio" name="kind" checked={kind==='geral'} onChange={()=>setKind('geral')}/>Geral — vai para todos os destinatários marcados</label><label className="campaign-check"><input type="radio" name="kind" checked={kind==='reservada'} onChange={()=>setKind('reservada')}/>Reservada — vai para um único jogador ou casa</label></fieldset>
+    {kind==='geral'?<fieldset className="campaign-form"><legend>Destinatários ({targets.length} marcados)</legend>{houses.map(h=><label className="campaign-check" key={h.id}><input type="checkbox" checked={targets.includes('h:'+h.id)} onChange={()=>toggle('h:'+h.id)}/>Casa {h.name}</label>)}{players.map(p=><label className="campaign-check" key={p.id}><input type="checkbox" checked={targets.includes('p:'+p.id)} onChange={()=>toggle('p:'+p.id)}/>Jogador {p.name}</label>)}</fieldset>:<label>Destinatário<select name="recipient" required>{houses.map(h=><option key={h.id} value={'h:'+h.id}>Casa {h.name}</option>)}{players.map(p=><option key={p.id} value={'p:'+p.id}>Jogador {p.name}</option>)}</select></label>}
+    <label>Número da missiva<input name="number" type="number" min={1} placeholder={`Automático: ${next}`}/></label>
+    <label>Assunto<input name="subject" required/></label>
+    <label>Missiva<textarea name="content" required rows={10}/></label>
+    <Button disabled={busy}>{busy?'Enviando…':'Enviar missiva'}</Button></form><p role="status">{msg}</p></section>;
+}
+
+function MissivasTab({data,me,onSave,onError}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void}){
+  const letters=data.letters as LetterRow[];
+  const groups=groupReceivedLetters(letters,data.user.id);
+  const mine=sentLetters(letters,data.user.id);
+  const isRecipient=(letter:LetterRow)=>letter.recipient_player_id===me?.id||(letter.recipient_player_id===null&&data.members.some(m=>m.player_id===me?.id&&m.house_id===letter.recipient_house_id));
+  const card=(letter:LetterRow,canAnswer:boolean)=>{
+    const answers=data.replies.filter(r=>r.letter_id===letter.id);
+    const read=data.receipts.some(r=>r.letter_id===letter.id&&r.user_id===data.user.id);
+    return <article className="campaign-letter" key={letter.id}><header><span className="campaign-eyebrow">{letter.letter_kind==='geral'?'Geral':'Reservada'} · {answers.length?'Respondida':read?'Lida':'Não lida'}</span><span className="text-muted-foreground text-sm">{date(letter.created_at)}</span></header><h3>{letter.subject}</h3><p className="text-muted-foreground text-sm">De: {letter.sender_name} · Para: {data.houses.find(h=>h.id===letter.recipient_house_id)?.name??data.players.find(p=>p.id===letter.recipient_player_id)?.name??'Jogador autorizado'}</p><p className="campaign-preserve">{letter.content}</p><p className="text-muted-foreground text-sm">{syncLabel(letter.sync_state)} · {letter.last_synced_at?date(letter.last_synced_at):'Ainda não sincronizada'}</p>{canAnswer&&!read&&<Button variant="outline" onClick={async()=>{const {error}=await supabase.from('letter_receipts').insert({letter_id:letter.id,user_id:data.user.id});if(error&&error.code!=='23505')onError(error.message);else onSave();}}>Marcar como lida</Button>}<div className="campaign-replies">{answers.map(answer=><div key={answer.id}><strong>{answer.author_name}</strong><small> · {date(answer.created_at)} · {syncLabel(answer.sync_state)}</small><p className="campaign-preserve">{answer.content}</p></div>)}</div>{canAnswer&&<ReplyForm letterId={letter.id} onSave={onSave}/>}</article>;
+  };
+  return <>
+    <div className="campaign-heading"><h2>Missivas recebidas</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
+    {groups.length===0&&<p className="campaign-empty">Nenhuma missiva recebida até agora.</p>}
+    {groups.map(group=><section key={group.number??'sem-numero'}>{group.number!==null&&<h3 className="campaign-letter-number">Missiva {group.number}</h3>}{group.letters.map(letter=>card(letter,isRecipient(letter)||data.admin))}</section>)}
+    <div className="campaign-heading"><h2>Missivas enviadas por você</h2><span>{mine.length} missivas</span></div>
+    {mine.length===0&&<p className="campaign-empty">Você ainda não enviou missivas.</p>}
+    {mine.map(letter=>card(letter,data.admin))}
+    <NewLetter onSave={onSave}/>
+  </>;
+}
+
+function NewLetter({onSave}:{onSave:()=>void}){
+  const [open,setOpen]=useState(false),[busy,setBusy]=useState(false),[msg,setMsg]=useState('');const key=useRef<string|null>(null);
+  return <details className="campaign-add" open={open} onToggle={e=>setOpen((e.target as HTMLDetailsElement).open)}><summary>Escrever nova missiva ao narrador</summary><form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;const form=e.currentTarget;const f=new FormData(form);setBusy(true);setMsg('');key.current??=crypto.randomUUID();const {error}=await supabase.rpc('player_send_letter',{p_subject:String(f.get('subject')),p_content:String(f.get('content')),p_key:key.current});setBusy(false);if(error){setMsg(error.message);return;}key.current=null;form.reset();setMsg('Missiva enviada ao narrador.');onSave();}}><label>Assunto<input name="subject" required/></label><label>Missiva<textarea name="content" required rows={8}/></label><Button disabled={busy}>{busy?'Enviando…':'Enviar missiva'}</Button><p role="status">{msg}</p></form></details>;
 }
