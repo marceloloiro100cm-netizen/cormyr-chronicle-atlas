@@ -32,6 +32,14 @@
 - [x] Textos internos das casas na aba Nobreza justificados (história, ficha e campos)
 - [x] 65 testes passando; verificado no navegador
 
+## Novos pedidos (23/10 22:41 UTC)
+- [x] Remover todos os links para pastas/arquivos do Drive do site público (1.130 campos removidos do acervo, 170 histórias limpas, rodapé e fichas sem links; verificado: 0 links no navegador)
+- [x] Aba "Ficha" na casa do jogador: ficha da casa (7 atributos em barras, eventos históricos), ficha do lorde (retrato, habilidades com graduação em pontos, selos de intriga/compostura/movimento), NPCs e retratos; edição com versões preservadas
+- [x] Integração MCP para ChatGPT (OAuth protegido): 7 ferramentas (casas, documentos, missivas), tela de autorização, manifesto gerado; falta republicar para o ChatGPT alcançar
+- [x] Área do Narrador com menu lateral à esquerda contendo Eventos (200, com filtros e Limpar filtros) e Aventuras (3)
+- [x] Botão "Limpar filtros" em todos os filtros (missivas do jogador era o único que faltava; Reino padronizado)
+- [x] Textos de 26 casas importados das pastas do Drive; Obarskyr (pasta vazia) e Battlestar (sem pasta) seguem sem texto
+
 ## Pendências anteriores
 - Contas dos jogadores ainda não testadas individualmente; senha própria do Narrador (proprietário optou por manter "cormyr")
 - Entrega automática do executor atualizado será verificada após publicação

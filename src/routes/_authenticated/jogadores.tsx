@@ -6,8 +6,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { CampaignShell } from '@/components/campaign-shell';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
-import { CampaignContent, ImagePicker, uploadImages, type PendingImage } from '@/components/campaign-content';
+import { CampaignContent, ImagePicker, PrivateImage, uploadImages, type PendingImage } from '@/components/campaign-content';
 import { namedCharacters } from '@/lib/campaign-content';
+import { FichaCasaCard, FichaPersonagemCard, portraitPath } from '@/components/ficha';
+import { isFichaCasa, isFichaPersonagem, parseFichaPersonagem } from '@/lib/ficha';
+import { GmEventos, GmAventuras } from '@/components/gm-panels';
 import { syncPlayerFolder } from '@/lib/player-sync.functions';
 import { registerPlayer, retryFolderSync } from '@/lib/campaign.functions';
 import { DriveSyncAdmin } from '@/components/drive-sync-admin';
@@ -31,7 +34,7 @@ async function loadPanel(){
 function Players(){
   const navigate=useNavigate(), qc=useQueryClient();
   const {data,error,isPending}=useQuery({queryKey:['campaign-panel'],queryFn:loadPanel});
-  const [tab,setTab]=useState('missivas'),[house,setHouse]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
+  const [tab,setTab]=useState('missivas'),[house,setHouse]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[section,setSection]=useState('painel');
   const sync=useServerFn(syncPlayerFolder);
   const refresh=async()=>{await qc.invalidateQueries({queryKey:['campaign-panel']});};
   useEffect(()=>{setHouse(sessionStorage.getItem('campaign-selected-house')??'');const channel=supabase.channel('campaign-'+crypto.randomUUID()).on('postgres_changes',{event:'*',schema:'public'},()=>{qc.invalidateQueries({queryKey:['campaign-panel']});qc.invalidateQueries({queryKey:['sync-queue']});}).subscribe();return()=>{supabase.removeChannel(channel);};},[qc]);
@@ -42,18 +45,40 @@ function Players(){
   const current=authorized.find(h=>h.id===house)??authorized[0];
   const canEdit=data.admin||data.members.some(m=>m.player_id===me?.id&&m.house_id===current?.id&&m.can_edit);
   const afterSave=async()=>{await refresh();if(!current)return;try{const result=await sync({data:{houseId:data.admin?'':current.id,importFiles:false}});setMessage(result.message);await refresh();}catch(e){setMessage('Salvo no site · pasta pendente: '+(e instanceof Error?e.message:'Falha no Drive.'));}};
-  async function signout(){await qc.cancelQueries();qc.clear();await supabase.auth.signOut();await navigate({to:'/auth',replace:true});}
-  return <CampaignShell><div className="campaign-heading"><div><p className="campaign-eyebrow">SEGUNDA TEMPORADA · CONSELHO</p><h1>{me?.name??(data.admin?'Conselho do mestre':'Área dos jogadores')}</h1><p className="text-muted-foreground">{data.user.email}</p></div><div className="campaign-actions"><Button variant="outline" disabled={busy||!current} onClick={async()=>{if(!current)return;setBusy(true);try{const result=await sync({data:{houseId:current.id,importFiles:true}});setMessage(result.message);await refresh();}catch(e){setMessage(e instanceof Error?e.message:"Não foi possível atualizar a pasta.");}finally{setBusy(false);}}}><RefreshCw size={16} className={busy?"animate-spin":""}/>Atualizar</Button><Button variant="outline" onClick={signout}>Sair</Button></div></div>
-    {!current&&!data.admin?<section><h2>Vínculo aguardando autorização</h2><p>Sua identidade foi autenticada, mas nenhuma casa foi autorizada para esta conta. O administrador precisa cadastrar seu jogador e aprovar o vínculo.</p><p>Identificador da conta: <code>{data.user.id}</code></p><p>Não há acesso a documentos, personagens ou missivas de outras casas.</p></section>:<>
+  async function signout(){await qc.cancelQueries();qc.clear();await supabase.auth.signOut();await navigate({to:'/auth',search:{next:'/'},replace:true});}
+  const conselho=!current&&!data.admin?<section><h2>Vínculo aguardando autorização</h2><p>Sua identidade foi autenticada, mas nenhuma casa foi autorizada para esta conta. O administrador precisa cadastrar seu jogador e aprovar o vínculo.</p><p>Identificador da conta: <code>{data.user.id}</code></p><p>Não há acesso a documentos, personagens ou missivas de outras casas.</p></section>:<>
     <div className="campaign-toolbar"><label>Casa autorizada<select value={current?.id??''} onChange={e=>setHouse(e.target.value)}>{authorized.map(h=><option value={h.id} key={h.id}>{h.name}</option>)}</select></label><p className="text-muted-foreground text-sm">Pastas dependem de confirmação administrativa · consulte o status de cada registro</p></div>
-    <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa e personagens'],['documentos','Documentos'],['missivas','Missivas'],...(data.admin?[['admin','Administração']]:[])].map(([id,label])=><Button key={id} variant={tab===id?'default':'outline'} aria-pressed={tab===id} onClick={()=>setTab(id??'casa')}>{label}</Button>)}</nav>
+    <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa e personagens'],['ficha','Ficha'],['documentos','Documentos'],['missivas','Missivas'],...(data.admin?[['admin','Administração']]:[])].map(([id,label])=><Button key={id} variant={tab===id?'default':'outline'} aria-pressed={tab===id} onClick={()=>setTab(id??'casa')}>{label}</Button>)}</nav>
     {tab==='casa'&&current&&<><section className="campaign-house"><img src={current.crest??'/cormyr/assets/cormyr.jpg'} alt={'Brasão da casa '+current.name}/><div><p className="campaign-eyebrow">{current.region??'REGIÃO EM REVISÃO'} · CASA NOBRE</p><h2>{current.name}</h2><p><strong>Lorde:</strong> {current.lord_name??'Não informado'}</p>{current.review_note&&<p role="status">Revisão administrativa: {current.review_note}</p>}<p><strong>Castelo:</strong> {current.castle??'Não informado'}</p><CampaignContent content={current.details}/><p className="text-muted-foreground text-sm">Fonte: {current.source}</p></div></section><h2>Personagens da casa</h2><ul className="campaign-roster">{namedCharacters(data.records.filter(r=>r.house_id===current.id).map(r=>r.content)).map(name=><li key={name}>{name}</li>)}</ul><h2>Textos e imagens da pasta</h2><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind!=='document')} canEdit={canEdit} onSave={afterSave}/>{canEdit&&<RecordForm houseId={current.id} playerId={me?.id} admin={data.admin} onSave={afterSave} kind="character"/>}</>}
+    {tab==='ficha'&&current&&<FichaTab current={current} records={data.records.filter(r=>r.house_id===current.id)} canEdit={canEdit} onSave={afterSave}/>}
     {tab==='documentos'&&current&&<><h2>Documentos do acervo</h2><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind==='document')} canEdit={canEdit} onSave={afterSave}/>{canEdit&&<RecordForm houseId={current.id} playerId={me?.id} admin={data.admin} onSave={afterSave} kind="document"/>}</>}
     {tab==='missivas'&&<MissivasTab data={data} me={me} onSave={afterSave} onError={setMessage}/>}
     {tab==='admin'&&data.admin&&<AdminPanel data={data} onSave={afterSave}/>}
-    </>}
+    </>;
+  return <CampaignShell><div className="campaign-heading"><div><p className="campaign-eyebrow">SEGUNDA TEMPORADA · CONSELHO</p><h1>{me?.name??(data.admin?'Conselho do mestre':'Área dos jogadores')}</h1><p className="text-muted-foreground">{data.user.email}</p></div><div className="campaign-actions"><Button variant="outline" disabled={busy||!current} onClick={async()=>{if(!current)return;setBusy(true);try{const result=await sync({data:{houseId:current.id,importFiles:true}});setMessage(result.message);await refresh();}catch(e){setMessage(e instanceof Error?e.message:"Não foi possível atualizar a pasta.");}finally{setBusy(false);}}}><RefreshCw size={16} className={busy?"animate-spin":""}/>Atualizar</Button><Button variant="outline" onClick={signout}>Sair</Button></div></div>
+    {data.admin?<div className="campaign-layout"><aside className="campaign-side" aria-label="Menu do Narrador"><p className="campaign-eyebrow">NARRADOR</p>{[['painel','Conselho das casas'],['eventos','Eventos'],['aventuras','Aventuras']].map(([id,label])=><button key={id} type="button" className={section===id?'ativo':''} aria-pressed={section===id} onClick={()=>setSection(id??'painel')}>{label}</button>)}</aside><div>{section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:conselho}</div></div>:conselho}
     <p role="status">{message}</p>{busy&&<span role="status">Salvando…</span>}
   </CampaignShell>;
+}
+
+function FichaTab({current,records,canEdit,onSave}:{current:Panel['houses'][number];records:RecordRow[];canEdit:boolean;onSave:()=>unknown}){
+  const fichaCasa=records.find(r=>isFichaCasa(r.title,r.content));
+  const fichaLorde=records.find(r=>isFichaPersonagem(r.title,r.content));
+  const retratos=records.map(r=>({titulo:r.title,path:portraitPath(r.content)})).filter((r):r is {titulo:string;path:string}=>Boolean(r.path));
+  const norm=(s:string)=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+  const retratoDo=(nome:string|null)=>nome?(retratos.find(r=>norm(r.titulo)===norm(nome)||norm(r.titulo).includes(norm(nome))||norm(nome).includes(norm(r.titulo)))?.path??null):null;
+  const npcs=records.filter(r=>r.kind==='character'&&!isFichaPersonagem(r.title,r.content)&&!portraitPath(r.content));
+  const fichaLordeParsed=fichaLorde?parseFichaPersonagem(fichaLorde.content):null;
+  return <section>
+    <h2>Ficha da casa</h2>
+    {fichaCasa?<><FichaCasaCard content={fichaCasa.content} crest={current.crest} houseName={current.name}/>{canEdit&&<details className="campaign-add"><summary>Editar ficha da casa</summary><RecordEditor row={fichaCasa} canEdit={canEdit} onSave={onSave}/></details>}</>:<p className="campaign-empty">A ficha da casa ainda não foi encontrada na pasta. Use o botão Atualizar após adicioná-la ao Drive.</p>}
+    <h2>Ficha do lorde</h2>
+    {fichaLorde?<><FichaPersonagemCard content={fichaLorde.content} portrait={retratoDo(fichaLordeParsed?.nome??current.lord_name)} titulo={fichaLorde.title}/>{canEdit&&<details className="campaign-add"><summary>Editar ficha do lorde</summary><RecordEditor row={fichaLorde} canEdit={canEdit} onSave={onSave}/></details>}</>:<p className="campaign-empty">A ficha do lorde ainda não foi encontrada na pasta.</p>}
+    <h2>NPCs e personagens da casa</h2>
+    {npcs.length===0&&<p className="campaign-empty">Nenhum NPC com ficha de texto até agora.</p>}
+    {npcs.map(r=><details className="campaign-add" key={r.id}><summary>{r.title}</summary><CampaignContent content={r.content}/>{canEdit&&<RecordEditor row={r} canEdit={canEdit} onSave={onSave}/>}</details>)}
+    {retratos.length>0&&<><h2>Retratos e imagens</h2><div className="campaign-house-gallery">{retratos.map(r=><PrivateImage key={r.path} path={r.path} caption={r.titulo}/>)}</div></>}
+  </section>;
 }
 
 function RecordList({rows,canEdit,onSave}:{rows:RecordRow[];canEdit:boolean;onSave:()=>unknown}){

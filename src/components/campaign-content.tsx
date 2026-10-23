@@ -8,7 +8,7 @@ import { contentParts, imageToken, validateImage } from '@/lib/campaign-content'
 export function CampaignContent({content}:{content:string}) {
   return <div className="campaign-prose">{contentParts(content).map((part,i)=>'text' in part?<p className="campaign-preserve" key={i}>{part.text}</p>:<PrivateImage key={i} path={part.path} caption={part.caption}/>)}</div>;
 }
-function PrivateImage({path,caption}:{path:string;caption:string}) {
+export function PrivateImage({path,caption}:{path:string;caption:string}) {
   const {data,error}=useQuery({queryKey:['private-image',path],queryFn:async()=>{
     const result=await supabase.storage.from('campaign-images').download(path);if(result.error)throw result.error;
     return result.data;
