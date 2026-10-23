@@ -5,7 +5,7 @@ type Row=Record<string,unknown>;
 export function isolatedExecutor(){
  const tables:Record<string,Row[]>={drive_sync_bindings:[],user_roles:[],campaign_players:[],campaign_records:[],campaign_letters:[],letter_replies:[],sync_outbox:[],drive_sync_files:[],drive_sync_inbox:[],record_versions:[]};
  const remote=new Map<string,{folder:string;doc:Envelope;etag:string}>();
- const calls:{method:string;folder?:string;file?:string}[]=[];
+ const calls:{method:string;folder?:string;file?:string|undefined}[]=[];
  let failWrites=0,writeHook:(()=>void)|undefined;
  function rows(name:string){return tables[name]??(tables[name]=[]);}
  function matches(row:Row,params:URLSearchParams){
@@ -22,16 +22,16 @@ export function isolatedExecutor(){
   const body=init?.body?JSON.parse(String(init.body)) as Row:{};
   if(url.pathname.includes('/rpc/')){
    if(name==='claim_drive_binding'){
-    const b=rows('drive_sync_bindings').find(r=>r.id===body.p_id);
-    const claim=Boolean(b&&b.enabled&&b.privacy_reviewed&&b.runtime_authorized&&(!b.lease_until||String(b.lease_until)<new Date().toISOString()));
-    if(b&&claim){b.lease_token=body.p_token;b.lease_until=new Date(Date.now()+120000).toISOString();}
+    const b=rows('drive_sync_bindings').find(r=>r['id']===body['p_id']);
+    const claim=Boolean(b&&b['enabled']&&b['privacy_reviewed']&&b['runtime_authorized']&&(!b['lease_until']||String(b['lease_until'])<new Date().toISOString()));
+    if(b&&claim){b['lease_token']=body['p_token'];b['lease_until']=new Date(Date.now()+120000).toISOString();}
     return Response.json(claim);
    }
    if(name==='apply_drive_record'){
-    const doc=body.p_doc as Row,r=rows('campaign_records').find(x=>x.id===doc.id);
-    if(!r||r.version!==body.p_site_version)return Response.json(false);
-    Object.assign(r,{title:doc.title,content:doc.content,version:Number(r.version)+1,updated_at:'2026-10-23T19:00:01Z',sync_state:'pending'});
-    rows('record_versions').push({record_id:r.id,version:r.version,content:r.content});
+    const doc=body['p_doc'] as Row,r=rows('campaign_records').find(x=>x.id===doc['id']);
+    if(!r||r['version']!==body['p_site_version'])return Response.json(false);
+    Object.assign(r,{title:doc['title'],content:doc['content'],version:Number(r['version'])+1,updated_at:'2026-10-23T19:00:01Z',sync_state:'pending'});
+    rows('record_versions').push({record_id:r['id'],version:r['version'],content:r['content']});
     enqueue(r,'record');return Response.json(true);
    }
    throw new Error('Unexpected fixture RPC: '+name);
@@ -52,8 +52,8 @@ export function isolatedExecutor(){
  };
  const db=createClient<Database>('http://isolated.invalid','fixture',{auth:{persistSession:false,autoRefreshToken:false,storageKey:'fixture-'+crypto.randomUUID()},global:{fetch:transport}});
  const adapter:DriveAdapter={
-  async list(folder){calls.push({method:'list',folder});return [...remote].filter(([,r])=>r.folder===folder).map(([id,r])=>({id,name:filename(r.doc),parents:[folder],size:'500'}));},
-  async read(file){calls.push({method:'read',file});const r=remote.get(file);if(!r)throw new Error('Fixture missing');return {envelope:structuredClone(r.doc),etag:r.etag};},
+  async list(folder){calls.push({method:'list',folder});return [...remote].filter(([,r])=>r['folder']===folder).map(([id,r])=>({id,name:filename(r['doc']),parents:[folder],size:'500'}));},
+  async read(file){calls.push({method:'read',file});const r=remote.get(file);if(!r)throw new Error('Fixture missing');return {envelope:structuredClone(r['doc']),etag:r['etag']};},
   async write(folder,doc,file,etag){calls.push({method:'write',folder,file});if(failWrites>0){failWrites--;throw new Error('Fixture 503');}writeHook?.();
    const id=file??crypto.randomUUID(),previous=remote.get(id);if(previous&&previous.etag!==etag)throw new Error('Fixture 412');
    const entry={folder,doc:structuredClone(doc),etag:crypto.randomUUID()};remote.set(id,entry);return {id,envelope:entry.doc,etag:entry.etag};
@@ -63,7 +63,7 @@ export function isolatedExecutor(){
   const id=crypto.randomUUID(),owner=crypto.randomUUID();rows('user_roles').push({user_id:owner,role:'admin'});
   const b={id,folder_id:'isolated_'+id,scope,house_id:scope==='house'?'fixture-house':null,player_id:null,owner_user_id:owner,confirmed_by:owner,enabled:true,privacy_reviewed:true,runtime_authorized:true,last_checked_at:null,...extra};rows('drive_sync_bindings').push(b);return b;
  }
- function enqueue(r:Row,type:string){const q={id:crypto.randomUUID(),entity_type:type,entity_id:r.id,version:r.version??1,state:'pending',attempts:0,payload:{...r},next_attempt_at:'2026-01-01T00:00:00Z',created_at:'2026-01-01T00:00:00Z',last_attempt_at:null};rows('sync_outbox').push(q);return q;}
+ function enqueue(r:Row,type:string){const q={id:crypto.randomUUID(),entity_type:type,entity_id:r['id'],version:r['version']??1,state:'pending',attempts:0,payload:{...r},next_attempt_at:'2026-01-01T00:00:00Z',created_at:'2026-01-01T00:00:00Z',last_attempt_at:null};rows('sync_outbox').push(q);return q;}
  function record(extra:Row={}){const r={id:crypto.randomUUID(),house_id:'fixture-house',player_id:null,visibility:'house',kind:'document',title:'Isolated',content:'Original',version:1,created_at:'2026-10-23T19:00:00Z',updated_at:'2026-10-23T19:00:00Z',sync_state:'pending',...extra};rows('campaign_records').push(r);enqueue(r,'record');return r;}
  return {db,adapter,tables,remote,calls,binding,record,enqueue,fail:(n:number)=>{failWrites=n;},onWrite:(fn:()=>void)=>{writeHook=fn;}};
 }
