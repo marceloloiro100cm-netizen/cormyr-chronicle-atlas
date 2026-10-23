@@ -73,6 +73,11 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
       expect(gmReply.error).toBeNull();
       const gmReplyRow = await admin.from('letter_replies').select('author_name').eq('id', gmReply.data as string).single();
       expect(gmReplyRow.data?.author_name).toBe('Mestre');
+      // Narrator edits are versioned and reject both non-admins and stale saves.
+      expect((await p1.rpc('edit_campaign_letter',{p_id:ownId,p_version:1,p_subject:'Forbidden',p_content:'Forbidden'})).error).not.toBeNull();
+      expect((await gm.rpc('edit_campaign_letter',{p_id:ownId,p_version:1,p_subject:'Edited',p_content:'Revised content'})).error).toBeNull();
+      expect((await gm.rpc('edit_campaign_letter',{p_id:ownId,p_version:1,p_subject:'Stale',p_content:'Must not overwrite'})).error).not.toBeNull();
+      const history=await gm.from('letter_versions').select('version').eq('letter_id',ownId).order('version');expect(history.data?.map(v=>v.version)).toEqual([1,2]);
       // o outro jogador da mesma casa não lê a missiva pessoal do colega
       const p2Sees = await p2.from('campaign_letters').select('id').eq('id', ownId);
       expect(p2Sees.data).toEqual([]);
@@ -82,6 +87,7 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
       await admin.from('sync_outbox').delete().in('entity_id', entities);
       await admin.from('letter_replies').delete().in('letter_id', letters);
       await admin.from('letter_receipts').delete().in('letter_id', letters);
+      await admin.from('letter_versions').delete().in('letter_id', letters);
       await admin.from('campaign_letters').delete().in('id', letters);
       await admin.from('house_memberships').delete().in('player_id', players);
       await admin.from('campaign_players').delete().in('id', players);

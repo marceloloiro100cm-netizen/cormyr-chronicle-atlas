@@ -43,6 +43,7 @@ describe.skipIf(!url||!key||!publicKey)('Campaign authorization and persistence'
       const receipt=await a.from('letter_receipts').select('*').eq('letter_id',lid);expect(receipt.data?.length).toBe(1);
       const queue=await admin.from('sync_outbox').select('entity_type,state').in('entity_id',[...records,lid,first.data??'00000000-0000-0000-0000-000000000000']);expect(queue.data?.length).toBe(6);expect(queue.data?.every(q=>q.state==='pending')).toBe(true);
     }finally{
+      await admin.from('letter_versions').delete().in('letter_id',letters);
       const replies=await admin.from('letter_replies').select('id').in('letter_id',letters);const entities=[...records,...letters,...(replies.data??[]).map(r=>r.id)];
       await admin.from('sync_outbox').delete().in('entity_id',entities);await admin.from('letter_replies').delete().in('letter_id',letters);await admin.from('letter_receipts').delete().in('letter_id',letters);await admin.from('campaign_letters').delete().in('id',letters);await admin.from('record_versions').delete().in('record_id',records);await admin.from('campaign_records').delete().in('id',records);await admin.from('house_memberships').delete().in('player_id',players);await admin.from('campaign_players').delete().in('id',players);for(const id of ids)await admin.auth.admin.deleteUser(id);
     }
