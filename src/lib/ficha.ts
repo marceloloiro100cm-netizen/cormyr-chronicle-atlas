@@ -98,7 +98,6 @@ const ATRIBUTOS_CASA = ['Defesa', 'Influência', 'Terras', 'Lei', 'População',
 
 export function parseFichaCasa(text: string): FichaCasa {
   const lines = text.split(/\r?\n/);
-  const allCells = lines.flatMap(cells).filter((cell) => cell !== '');
   const atributos: { rotulo: string; valor: number }[] = [];
   for (let i = 0; i < lines.length; i++) {
     const parts = cells(lines[i] ?? '').map(norm);

@@ -36,6 +36,9 @@ describe('ficha de personagem', () => {
     expect(ficha.compostura).toBe('12');
     expect(ficha.movimento).toBe('4m+1m /28 em corrida');
     expect(ficha.corrida).toBe('0');
+    // Campos vazios na planilha não puxam o rótulo da linha seguinte.
+    expect(ficha.virtude).toBeNull();
+    expect(ficha.vicio).toBeNull();
   });
   it('extrai as habilidades com graduação', () => {
     const ficha = parseFichaPersonagem(FICHA_LORDE);
