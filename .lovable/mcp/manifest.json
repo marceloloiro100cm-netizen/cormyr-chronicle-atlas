@@ -1,0 +1,255 @@
+{
+  "version": 1,
+  "sdk_version": "3.3.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://qkdznngbkwodsbpkpoax.supabase.co/auth/v1",
+    "require_oauth_client_claim": true,
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "cormyr-chronicle-atlas",
+      "version": "0.1.0",
+      "title": "Cormyr Chronicle Atlas"
+    },
+    "tools": [
+      {
+        "name": "listar_casas",
+        "title": "Listar casas da temporada",
+        "description": "Lista as oito casas nobres oficiais da segunda temporada de Cormyr, com lorde, castelo e região.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "listar_documentos",
+        "title": "Listar documentos das casas",
+        "description": "Lista os documentos da campanha que o usuário conectado pode ver, com título, casa, tipo e versão.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "casa": {
+              "description": "Identificador da casa para filtrar, por exemplo \"ashkar\".",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "ler_documento",
+        "title": "Ler documento",
+        "description": "Lê o conteúdo completo de um documento da campanha pelo seu identificador.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Identificador do documento, obtido em listar_documentos."
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "editar_documento",
+        "title": "Editar documento",
+        "description": "Salva uma nova versão de um documento da campanha. Exige a versão atual para evitar sobrescrever edições de outra pessoa; o histórico de versões é preservado.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Identificador do documento."
+            },
+            "titulo": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Título do documento."
+            },
+            "conteudo": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Novo conteúdo completo do documento."
+            },
+            "versao": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "description": "Versão atual do documento, obtida em ler_documento."
+            }
+          },
+          "required": [
+            "id",
+            "titulo",
+            "conteudo",
+            "versao"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "listar_missivas",
+        "title": "Listar missivas",
+        "description": "Lista as missivas da campanha visíveis ao usuário conectado, com número, tipo, assunto e data.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "casa": {
+              "description": "Filtrar pela casa destinatária, por exemplo \"harcourt\".",
+              "type": "string"
+            },
+            "limite": {
+              "description": "Quantidade máxima de missivas (padrão 50).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "escrever_missiva",
+        "title": "Escrever missiva",
+        "description": "Envia uma missiva do Narrador para uma ou mais casas. Gerais podem ter várias casas; reservadas vão para uma só. A numeração segue a sequência das missivas da campanha.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "tipo": {
+              "type": "string",
+              "enum": [
+                "geral",
+                "reservada"
+              ],
+              "description": "Geral vai para várias casas; reservada para uma única casa."
+            },
+            "numero": {
+              "description": "Número da missiva na sequência da campanha, por exemplo 2 para a Missiva 2.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "assunto": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Assunto da missiva."
+            },
+            "conteudo": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Texto completo da missiva."
+            },
+            "casas": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Identificadores das casas destinatárias, por exemplo [\"ashkar\",\"harcourt\"]."
+            }
+          },
+          "required": [
+            "tipo",
+            "assunto",
+            "conteudo",
+            "casas"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "responder_missiva",
+        "title": "Responder missiva",
+        "description": "Registra uma resposta a uma missiva recebida, marcando-a como respondida. A operação é idempotente: repetir o mesmo envio não duplica a resposta.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "missiva_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Identificador da missiva, obtido em listar_missivas."
+            },
+            "conteudo": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Texto da resposta."
+            }
+          },
+          "required": [
+            "missiva_id",
+            "conteudo"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
