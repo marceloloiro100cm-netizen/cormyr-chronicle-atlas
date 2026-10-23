@@ -60,7 +60,7 @@ function Consent() {
         : supabase.auth.oauth.denyAuthorization(authorizationId);
       const { data, error } = await call;
       if (error) throw error;
-      const redirect = data?.redirect_url ?? data?.redirect_to;
+      const redirect = data?.redirect_url;
       if (redirect) window.location.assign(redirect);
       else setMessage(approve ? 'Conexão autorizada. Pode voltar ao aplicativo.' : 'Conexão cancelada. Pode voltar ao aplicativo.');
     } catch (e) {
