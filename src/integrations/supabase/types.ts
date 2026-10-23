@@ -67,6 +67,8 @@ export type Database = {
           batch_key: string | null
           content: string
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           last_synced_at: string | null
           letter_kind: string
@@ -85,6 +87,8 @@ export type Database = {
           batch_key?: string | null
           content: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           last_synced_at?: string | null
           letter_kind?: string
@@ -103,6 +107,8 @@ export type Database = {
           batch_key?: string | null
           content?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           last_synced_at?: string | null
           letter_kind?: string
@@ -549,6 +555,24 @@ export type Database = {
           },
         ]
       }
+      letter_rounds: {
+        Row: {
+          closed: boolean
+          number: number
+          updated_at: string
+        }
+        Insert: {
+          closed?: boolean
+          number: number
+          updated_at?: string
+        }
+        Update: {
+          closed?: boolean
+          number?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       letter_versions: {
         Row: {
           author: string
@@ -762,6 +786,7 @@ export type Database = {
         Args: { p_id: string; p_token: string }
         Returns: boolean
       }
+      delete_campaign_letter: { Args: { p_id: string }; Returns: undefined }
       edit_campaign_letter: {
         Args: {
           p_content: string
@@ -781,8 +806,18 @@ export type Database = {
         Returns: boolean
       }
       my_player_id: { Args: never; Returns: string }
+      open_letter_round: { Args: never; Returns: number }
       player_send_letter: {
         Args: { p_content: string; p_key: string; p_subject: string }
+        Returns: string
+      }
+      player_send_letter_to: {
+        Args: {
+          p_content: string
+          p_house: string
+          p_key: string
+          p_subject: string
+        }
         Returns: string
       }
       reply_campaign_letter: {
@@ -835,6 +870,10 @@ export type Database = {
           p_subject: string
         }
         Returns: string
+      }
+      set_letter_round: {
+        Args: { p_closed: boolean; p_number: number }
+        Returns: undefined
       }
     }
     Enums: {

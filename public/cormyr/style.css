@@ -23,3 +23,5 @@
 .region-description,.politics,.region-full-text p,#noble-history p,.house-detail-grid>div>p,.house-data dd,.era-context,.hierarchy-help{text-align:justify;text-align-last:left;hyphens:auto}
 .region-full-text p,#noble-history p{margin:0 0 1.1em}
 .region-full-text p:last-child,#noble-history p:last-child{margin-bottom:0}
+.house-card.player-house{border:3px solid #6b1f2e;box-shadow:0 0 0 2px #6b1f2e33,0 6px 16px #6b1f2e40}
+.house-card.player-house:hover,.house-card.player-house:focus-visible{border-color:#8a2a3c}

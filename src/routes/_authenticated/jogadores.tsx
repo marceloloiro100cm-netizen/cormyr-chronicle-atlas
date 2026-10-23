@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { CampaignShell } from '@/components/campaign-shell';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, ChevronDown } from 'lucide-react';
 import { CampaignContent, ImagePicker, PrivateImage, uploadImages, type PendingImage } from '@/components/campaign-content';
 import { namedCharacters } from '@/lib/campaign-content';
 import { FichaCasaCard, FichaPersonagemCard, portraitPath } from '@/components/ficha';
@@ -29,7 +29,8 @@ async function loadPanel(){
     supabase.from('campaign_houses').select('*').order('name'),supabase.from('campaign_players').select('*').order('name'),supabase.from('house_memberships').select('*'),supabase.from('campaign_records').select('*').order('updated_at',{ascending:false}),supabase.from('campaign_letters').select('*').order('created_at',{ascending:false}),supabase.from('letter_receipts').select('*')]);
   for(const result of [houses,players,members,records,letters,receipts])if(result.error)throw result.error;
   const replies=await supabase.from('letter_replies').select('*').order('created_at');if(replies.error)throw replies.error;
-  return {user,admin:Boolean(admin),houses:houses.data??[],players:players.data??[],members:members.data??[],records:records.data??[],letters:letters.data??[],receipts:receipts.data??[],replies:replies.data??[]};
+  const rounds=await supabase.from('letter_rounds').select('*');if(rounds.error)throw rounds.error;
+  return {user,admin:Boolean(admin),houses:houses.data??[],players:players.data??[],members:members.data??[],records:records.data??[],letters:letters.data??[],receipts:receipts.data??[],replies:replies.data??[],rounds:rounds.data??[]};
 }
 function Players(){
   const navigate=useNavigate(), qc=useQueryClient();
@@ -125,7 +126,7 @@ function WriteLetter({data,onSave}:{data:Awaited<ReturnType<typeof loadPanel>>;o
   const houses=data.houses.filter(h=>h.active&&h.season===2);
   const next=nextLetterNumber(data.letters as LetterRow[]);
   const toggle=(value:string)=>setTargets(list=>list.includes(value)?list.filter(v=>v!==value):[...list,value]);
-  return <section><h2>Escrever missivas</h2><p className="text-muted-foreground">Missiva geral vai para todos os destinatários marcados; reservada vai para um só. As missivas são numeradas em sequência — a próxima será a Missiva {next}.</p><form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;const form=e.currentTarget;const f=new FormData(form);const recipients=kind==='geral'?targets:[String(f.get('recipient'))];if(!recipients.length||recipients.some(r=>!r)){setMsg(kind==='geral'?'Marque ao menos um destinatário.':'Escolha o destinatário.');return;}setBusy(true);setMsg('');key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(String(f.get('content')),images,key.current);}catch(err){setMsg(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const numberRaw=String(f.get('number')??'').trim();const {error}=await supabase.rpc('send_campaign_letter_batch',{p_kind:kind,p_number:numberRaw?Number(numberRaw):next,p_subject:String(f.get('subject')),p_content:richContent,p_recipients:recipients,p_key:key.current});setBusy(false);if(error){setMsg(error.message);return;}key.current=null;form.reset();setImages([]);setTargets([]);setMsg(`Missiva enviada a ${recipients.length} destinatário(s).`);onSave();}}>
+  return <section><h2>Escrever missivas</h2><p className="text-muted-foreground">Missiva geral vai para todos os destinatários marcados; reservada vai para um só. As missivas são numeradas em sequência — a próxima será a Missiva {next}.</p><form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;const form=e.currentTarget;const f=new FormData(form);const recipients=kind==='geral'?targets:[String(f.get('recipient'))];if(!recipients.length||recipients.some(r=>!r)){setMsg(kind==='geral'?'Marque ao menos um destinatário.':'Escolha o destinatário.');return;}setBusy(true);setMsg('');key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(String(f.get('content')),images,key.current);}catch(err){setMsg(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const numberRaw=String(f.get('number')??'').trim();const {error}=await supabase.rpc('send_campaign_letter_batch',{p_kind:kind,p_number:numberRaw?Number(numberRaw):next,p_subject:String(f.get('subject')),p_content:richContent,p_recipients:recipients,p_key:key.current});setBusy(false);if(error){setMsg(error.message);return;}await supabase.rpc('set_letter_round',{p_number:numberRaw?Number(numberRaw):next,p_closed:false});key.current=null;form.reset();setImages([]);setTargets([]);setMsg(`Missiva enviada a ${recipients.length} destinatário(s).`);onSave();}}>
     <fieldset className="campaign-form"><legend>Tipo da missiva</legend><label className="campaign-check"><input type="radio" name="kind" checked={kind==='geral'} onChange={()=>setKind('geral')}/>Geral — vai para todos os destinatários marcados</label><label className="campaign-check"><input type="radio" name="kind" checked={kind==='reservada'} onChange={()=>setKind('reservada')}/>Reservada — vai para uma única casa</label></fieldset>
     {kind==='geral'?<fieldset className="campaign-form"><legend>Destinatários ({targets.length} marcados)</legend>{houses.map(h=><label className="campaign-check" key={h.id}><input type="checkbox" checked={targets.includes('h:'+h.id)} onChange={()=>toggle('h:'+h.id)}/>Casa {h.name}</label>)}</fieldset>:<label>Destinatário<select name="recipient" required>{houses.map(h=><option key={h.id} value={'h:'+h.id}>Casa {h.name}</option>)}</select></label>}
     <label>Número da missiva<input name="number" type="number" min={1} placeholder={`Automático: ${next}`}/></label>
@@ -135,35 +136,93 @@ function WriteLetter({data,onSave}:{data:Awaited<ReturnType<typeof loadPanel>>;o
 }
 
 function MissivasTab({data,me,onSave,onError}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void}){
-  const [filters,setFilters]=useState({number:'',kind:'',answered:'',house:'',read:''});
+  const empty={number:'',kind:'',answered:'',house:'',read:'',text:'',box:''};
+  const [filters,setFilters]=useState(empty);
   const [compose,setCompose]=useState(false);
-  const allLetters=data.letters as LetterRow[];
-  const letters=filterLetters(allLetters,data.replies,filters,{players:data.players,receipts:data.receipts,userId:data.user.id,admin:data.admin});
-  const groups=groupReceivedLetters(letters,data.user.id);
-  const mine=sentLetters(letters,data.user.id);
-  const isRecipient=(letter:LetterRow)=>letter.recipient_player_id===me?.id||(letter.recipient_player_id===null&&data.members.some(m=>m.player_id===me?.id&&m.house_id===letter.recipient_house_id));
-  const card=(letter:LetterRow,canAnswer:boolean)=>{
+  const [expanded,setExpanded]=useState<Set<string>>(new Set());
+  const [draft,setDraft]=useState<{key:number;subject:string;content:string}|null>(null);
+  const [roundNumber,setRoundNumber]=useState('');
+  const open=data.rounds.filter(r=>!r.closed).map(r=>r.number).sort((a,b)=>b-a)[0]??null;
+  const allLetters=(data.letters as (LetterRow&{deleted_at?:string|null})[]).filter(l=>filters.box==='excluidas'?l.deleted_at:!l.deleted_at);
+  const norm=(s:string)=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const letters=filterLetters(allLetters,data.replies,filters,{players:data.players,receipts:data.receipts,userId:data.user.id,admin:data.admin}).filter(l=>!filters.text||norm(l.subject+' '+l.content+' '+l.sender_name).includes(norm(filters.text)));
+  const groups=filters.box==='enviadas'?[]:groupReceivedLetters(letters,data.user.id);
+  const mine=filters.box==='recebidas'?[]:sentLetters(letters,data.user.id);
+  const myHouses=data.members.filter(m=>m.player_id===me?.id).map(m=>m.house_id);
+  const isRecipient=(letter:LetterRow)=>letter.recipient_player_id===me?.id||(letter.recipient_player_id===null&&myHouses.includes(letter.recipient_house_id??''));
+  const toggle=(id:string)=>setExpanded(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
+  const houseName=(id:string|null)=>data.houses.find(h=>h.id===id)?.name;
+  const card=(letter:LetterRow&{deleted_at?:string|null},canAnswer:boolean)=>{
     const answers=data.replies.filter(r=>r.letter_id===letter.id);
     const read=data.receipts.some(r=>r.letter_id===letter.id&&(data.admin&&letter.sender_user_id===data.user.id?r.user_id!==data.user.id:r.user_id===data.user.id));
-    return <article className="campaign-letter" key={letter.id}><header><span className="campaign-eyebrow">{letter.letter_kind==='geral'?'Geral':'Reservada'} · {answers.length?'Respondida':read?'Lida':'Não lida'}</span><span className="text-muted-foreground text-sm">{date(letter.created_at)}</span></header><h3>{letter.subject}</h3><p className="text-muted-foreground text-sm">De: {letter.sender_name} · Para: {data.houses.find(h=>h.id===letter.recipient_house_id)?.name??data.players.find(p=>p.id===letter.recipient_player_id)?.name??'Jogador autorizado'}</p><CampaignContent content={letter.content}/><p className="text-muted-foreground text-sm">{syncLabel(letter.sync_state)} · {letter.last_synced_at?date(letter.last_synced_at):'Ainda não sincronizada'}</p>{canAnswer&&!read&&<Button variant="outline" onClick={async()=>{const {error}=await supabase.from('letter_receipts').insert({letter_id:letter.id,user_id:data.user.id});if(error&&error.code!=='23505')onError(error.message);else onSave();}}>Marcar como lida</Button>}<div className="campaign-replies">{answers.map(answer=><div key={answer.id}><strong>{answer.author_name}</strong><small> · {date(answer.created_at)} · {syncLabel(answer.sync_state)}</small><CampaignContent content={answer.content}/></div>)}</div>{data.admin&&<LetterEdit letter={letter} onSave={onSave}/>}{canAnswer&&<ReplyForm letterId={letter.id} onSave={onSave}/>}</article>;
+    const isOpen=expanded.has(letter.id);
+    const to=letter.recipient_house_id?'Casa '+(houseName(letter.recipient_house_id)??letter.recipient_house_id):letter.recipient_player_id?(data.players.find(p=>p.id===letter.recipient_player_id)?.name??'Jogador'):'Narrador';
+    const fromHouse=letter.sender_player_id?houseName(data.players.find(p=>p.id===letter.sender_player_id)?.roster_house_id??null):null;
+    const canDelete=!letter.deleted_at&&(data.admin||letter.sender_user_id===data.user.id);
+    return <article className={'campaign-letter'+(isOpen?'':' recolhida')} key={letter.id} id={'missiva-'+letter.id}>
+      <button type="button" className="campaign-letter-toggle" aria-expanded={isOpen} onClick={()=>toggle(letter.id)}>
+        <ChevronDown size={18} className={isOpen?'rotate-180 transition-transform':'transition-transform'}/>
+        <span className="campaign-eyebrow">{letter.letter_number?`Missiva ${letter.letter_number} · `:''}{letter.letter_kind==='geral'?'Geral':'Reservada'} · {answers.length?'Respondida':read?'Lida':'Não lida'}{letter.deleted_at?' · Excluída':''}</span>
+        <strong className="campaign-letter-subject">{letter.subject}</strong>
+        <span className="text-muted-foreground text-sm">De: {letter.sender_name}{fromHouse?` (${fromHouse})`:''} · Para: {to} · {date(letter.created_at)}{answers.length?` · ${answers.length} resposta(s)`:''}</span>
+      </button>
+      {isOpen&&<div className="campaign-letter-body">
+        <CampaignContent content={letter.content}/>
+        <p className="text-muted-foreground text-sm">{syncLabel(letter.sync_state)} · {letter.last_synced_at?date(letter.last_synced_at):'Ainda não sincronizada'}</p>
+        {answers.length>0&&<div className="campaign-replies">{answers.map(answer=><div key={answer.id}><strong>{answer.author_name}</strong><small> · {date(answer.created_at)} · {syncLabel(answer.sync_state)}</small><CampaignContent content={answer.content}/></div>)}</div>}
+        {!letter.deleted_at&&<div className="campaign-actions">
+          {canAnswer&&!read&&<Button variant="outline" onClick={async()=>{const {error}=await supabase.from('letter_receipts').insert({letter_id:letter.id,user_id:data.user.id});if(error&&error.code!=='23505')onError(error.message);else onSave();}}>Marcar como lida</Button>}
+          {open!==null&&!data.admin&&<Button variant="outline" onClick={()=>{setDraft({key:Date.now(),subject:'Enc: '+letter.subject,content:`— Missiva encaminhada —\nDe: ${letter.sender_name} · ${date(letter.created_at)}\nAssunto: ${letter.subject}\n\n${letter.content}`});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Encaminhar</Button>}
+          {canDelete&&<Button variant="outline" onClick={async()=>{if(!confirm('Excluir esta missiva? Ela deixará de aparecer para os jogadores.'))return;const {error}=await supabase.rpc('delete_campaign_letter',{p_id:letter.id});if(error)onError(error.message);else onSave();}}>Excluir</Button>}
+        </div>}
+        {!letter.deleted_at&&data.admin&&<LetterEdit letter={letter} onSave={onSave}/>}
+        {!letter.deleted_at&&canAnswer&&(data.admin||open!==null)&&<ReplyForm letterId={letter.id} onSave={onSave}/>}
+        <Button variant="ghost" size="sm" onClick={()=>{toggle(letter.id);document.getElementById('missiva-'+letter.id)?.scrollIntoView({block:'nearest'});}}>Recolher</Button>
+      </div>}
+    </article>;
   };
-  return <>
-    {data.admin&&<><div className="campaign-heading"><h2>Gestão de missivas</h2><Button onClick={()=>setCompose(v=>!v)}>{compose?'Fechar escrita':'Escrever missiva'}</Button></div><p>{allLetters.length} missivas · {allLetters.filter(l=>!data.replies.some(r=>r.letter_id===l.id)).length} não respondidas</p>{compose&&<WriteLetter data={data} onSave={onSave}/>}</>}
-    <div className="campaign-mail-filters">{data.admin&&<label>Casa<select value={filters.house} onChange={e=>setFilters({...filters,house:e.target.value})}><option value="">Todas as casas</option>{data.houses.filter(h=>h.active&&h.season===2).map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label>}<label>Leitura<select value={filters.read} onChange={e=>setFilters({...filters,read:e.target.value})}><option value="">Todas</option><option value="no">Não lidas</option><option value="yes">Lidas</option></select></label><label>Número<select value={filters.number} onChange={e=>setFilters({...filters,number:e.target.value})}><option value="">Todos os números</option>{[...new Set(allLetters.map(l=>l.letter_number).filter(n=>n!==null))].sort((a,b)=>(b??0)-(a??0)).map(n=><option key={n} value={String(n)}>Missiva {n}</option>)}</select></label><label>Tipo<select value={filters.kind} onChange={e=>setFilters({...filters,kind:e.target.value})}><option value="">Todos os tipos</option><option value="geral">Geral</option><option value="reservada">Reservada</option></select></label><label>Resposta<select value={filters.answered} onChange={e=>setFilters({...filters,answered:e.target.value})}><option value="">Todas</option><option value="yes">Respondida</option><option value="no">Não respondida</option></select></label><Button variant="outline" onClick={()=>setFilters({house:'',read:'',number:'',kind:'',answered:''})}>Limpar filtros</Button></div>
-    <div className="campaign-heading"><h2>Missivas recebidas</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
-    {groups.length===0&&<p className="campaign-empty">Nenhuma missiva recebida até agora.</p>}
-    {groups.map(group=><section key={group.number??'sem-numero'}>{group.number!==null&&<h3 className="campaign-letter-number">Missiva {group.number}</h3>}{group.letters.map(letter=>card(letter,isRecipient(letter)||data.admin))}</section>)}
-    <div className="campaign-heading"><h2>Missivas enviadas por você</h2><span>{mine.length} missivas</span></div>
-    {mine.length===0&&<p className="campaign-empty">Você ainda não enviou missivas.</p>}
-    {mine.map(letter=>card(letter,data.admin))}
-    {!data.admin&&<NewLetter onSave={onSave}/>}
-  </>;
+  const sel=(label:string,key:keyof typeof empty,opts:[string,string][])=><label>{label}<select value={filters[key]} onChange={e=>setFilters({...filters,[key]:e.target.value})}>{opts.map(([v,t])=><option key={v} value={v}>{t}</option>)}</select></label>;
+  const numbers=[...new Set(data.letters.map(l=>l.letter_number).filter((n):n is number=>n!==null))].sort((a,b)=>b-a);
+  const visibleIds=[...groups.flatMap(g=>g.letters),...mine].map(l=>l.id);
+  return <div className="campaign-mail-layout">
+    <aside className="campaign-mail-side" aria-label="Filtros das missivas">
+      <p className="campaign-eyebrow">FILTROS</p>
+      <label>Buscar<input type="search" value={filters.text} onChange={e=>setFilters({...filters,text:e.target.value})} placeholder="Assunto, texto ou remetente…"/></label>
+      {sel('Caixa','box',[['','Todas'],['recebidas','Recebidas'],['enviadas','Enviadas'],...(data.admin?[['excluidas','Excluídas']] as [string,string][]:[])])}
+      {data.admin&&sel('Casa','house',[['','Todas as casas'],...data.houses.filter(h=>h.active&&h.season===2).map(h=>[h.id,h.name] as [string,string])])}
+      {sel('Número','number',[['','Todos os números'],...numbers.map(n=>[String(n),'Missiva '+n] as [string,string])])}
+      {sel('Tipo','kind',[['','Todos os tipos'],['geral','Geral'],['reservada','Reservada']])}
+      {sel('Resposta','answered',[['','Todas'],['yes','Respondidas'],['no','Não respondidas']])}
+      {sel('Leitura','read',[['','Todas'],['no','Não lidas'],['yes','Lidas']])}
+      <Button variant="outline" onClick={()=>setFilters(empty)}>Limpar filtros</Button>
+      <div className="campaign-actions"><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set(visibleIds))}>Expandir todas</Button><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set())}>Recolher todas</Button></div>
+      {!data.admin&&open!==null&&<Button onClick={()=>{setDraft({key:Date.now(),subject:'',content:''});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Escrever missiva</Button>}
+    </aside>
+    <div>
+      <div className={'campaign-round '+(open===null?'fechada':'')} role="status">{open===null?'Missivas fechadas, aguarde o narrador abrir a próxima semana.':`Missiva ${open} aberta — respostas, novas missivas e encaminhamentos liberados.`}</div>
+      {data.admin&&<><div className="campaign-heading"><h2>Gestão de missivas</h2><Button onClick={()=>setCompose(v=>!v)}>{compose?'Fechar escrita':'Escrever missiva'}</Button></div>
+        <p>{allLetters.length} missivas · {allLetters.filter(l=>!data.replies.some(r=>r.letter_id===l.id)).length} não respondidas</p>
+        <div className="campaign-actions">{open!==null&&<Button variant="outline" onClick={async()=>{if(!confirm(`Fechar a Missiva ${open}? Os jogadores não poderão mais responder nem escrever.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:open,p_closed:true});if(error)onError(error.message);else onSave();}}>Fechar Missiva {open}</Button>}<input type="number" min={1} style={{width:140}} value={roundNumber} onChange={e=>setRoundNumber(e.target.value)} placeholder={`Nº (ex.: ${(numbers[0]??0)+1})`} aria-label="Número da missiva a abrir"/><Button variant="outline" onClick={async()=>{const n=Number(roundNumber||(numbers[0]??0)+1);const {error}=await supabase.rpc('set_letter_round',{p_number:n,p_closed:false});if(error)onError(error.message);else{setRoundNumber('');onSave();}}}>Abrir missiva</Button></div>
+        {compose&&<WriteLetter data={data} onSave={onSave}/>}</>}
+      {filters.box!=='enviadas'&&<><div className="campaign-heading"><h2>{filters.box==='excluidas'?'Missivas excluídas':'Missivas recebidas'}</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
+      {groups.length===0&&<p className="campaign-empty">Nenhuma missiva encontrada.</p>}
+      {groups.map(group=><section key={group.number??'sem-numero'}>{group.number!==null&&<h3 className="campaign-letter-number">Missiva {group.number}{data.rounds.find(r=>r.number===group.number)?.closed?' · fechada':''}</h3>}{group.letters.map(letter=>card(letter,isRecipient(letter)||data.admin))}</section>)}</>}
+      {filters.box!=='recebidas'&&<><div className="campaign-heading"><h2>Missivas enviadas por você</h2><span>{mine.length} missivas</span></div>
+      {mine.length===0&&<p className="campaign-empty">Nenhuma missiva enviada encontrada.</p>}
+      {mine.map(letter=>card(letter,data.admin))}</>}
+      {!data.admin&&(open===null?<p className="campaign-round fechada">Missivas fechadas, aguarde o narrador abrir a próxima semana.</p>:<NewLetter key={draft?.key??0} data={data} myHouses={myHouses} initial={draft} onSave={onSave}/>)}
+    </div>
+  </div>;
 }
 
-function NewLetter({onSave}:{onSave:()=>void}){
+function NewLetter({data,myHouses,initial,onSave}:{data:Panel;myHouses:string[];initial:{subject:string;content:string}|null;onSave:()=>void}){
   const [images,setImages]=useState<PendingImage[]>([]);
-  const [open,setOpen]=useState(false),[busy,setBusy]=useState(false),[msg,setMsg]=useState('');const key=useRef<string|null>(null);
-  return <details className="campaign-add" open={open} onToggle={e=>setOpen((e.target as HTMLDetailsElement).open)}><summary>Escrever nova missiva ao narrador</summary><form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;const form=e.currentTarget;const f=new FormData(form);setBusy(true);setMsg('');key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(String(f.get('content')),images,key.current);}catch(err){setMsg(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const {error}=await supabase.rpc('player_send_letter',{p_subject:String(f.get('subject')),p_content:richContent,p_key:key.current});setBusy(false);if(error){setMsg(error.message);return;}key.current=null;form.reset();setImages([]);setMsg('Missiva enviada ao narrador.');onSave();}}><label>Assunto<input name="subject" required/></label><label>Missiva<textarea name="content" required rows={8}/></label><ImagePicker images={images} onChange={setImages} disabled={busy}/><Button disabled={busy}>{busy?'Enviando…':'Enviar missiva'}</Button><p role="status">{msg}</p></form></details>;
+  const [busy,setBusy]=useState(false),[msg,setMsg]=useState('');const key=useRef<string|null>(null);
+  const houses=data.houses.filter(h=>h.active&&h.season===2&&!myHouses.includes(h.id));
+  return <details className="campaign-add" id="nova-missiva" open={Boolean(initial)}><summary>Escrever nova missiva</summary><form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;const form=e.currentTarget;const f=new FormData(form);setBusy(true);setMsg('');key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(String(f.get('content')),images,key.current);}catch(err){setMsg(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const to=String(f.get('to'));const {error}=await supabase.rpc('player_send_letter_to',{p_subject:String(f.get('subject')),p_content:richContent,p_house:to||null as unknown as string,p_key:key.current});setBusy(false);if(error){setMsg(error.message);return;}key.current=null;form.reset();setImages([]);setMsg(to?'Missiva enviada à casa. O Narrador também pode lê-la.':'Missiva enviada ao Narrador.');onSave();}}>
+    <label>Destinatário<select name="to" defaultValue=""><option value="">Narrador</option>{houses.map(h=><option key={h.id} value={h.id}>Casa {h.name}</option>)}</select></label>
+    <p className="text-muted-foreground text-sm">Missivas entre casas são sempre visíveis ao Narrador.</p>
+    <label>Assunto<input name="subject" required defaultValue={initial?.subject}/></label><label>Missiva<textarea name="content" required rows={8} defaultValue={initial?.content}/></label><ImagePicker images={images} onChange={setImages} disabled={busy}/><Button disabled={busy}>{busy?'Enviando…':'Enviar missiva'}</Button><p role="status">{msg}</p></form></details>;
 }
 
 function LetterEdit({letter,onSave}:{letter:LetterRow;onSave:()=>void}){
