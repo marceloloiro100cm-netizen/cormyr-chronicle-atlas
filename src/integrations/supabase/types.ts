@@ -752,6 +752,10 @@ export type Database = {
         }
         Returns: Json
       }
+      save_imported_source: {
+        Args: { p_content: string; p_id: string; p_modified: string }
+        Returns: undefined
+      }
       send_campaign_letter: {
         Args: {
           p_content: string
