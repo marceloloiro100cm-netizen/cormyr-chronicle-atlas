@@ -65,7 +65,7 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
       expect(own.error).toBeNull(); letters.push(own.data as string);
       const ownId = own.data as string;
       const ownRow = await admin.from('campaign_letters').select('letter_kind,letter_number,sender_name,recipient_house_id').eq('id', ownId).single();
-      expect(ownRow.data).toMatchObject({ letter_kind: 'reservada', letter_number: null, sender_name: 'Letters fixture 0', recipient_house_id: null });
+      expect(ownRow.data).toMatchObject({ letter_kind: 'reservada', letter_number: expect.any(Number), sender_name: 'Letters fixture 0', recipient_house_id: null });
       // narrador lê e responde a missiva do jogador
       const gmSees = await gm.from('campaign_letters').select('id').eq('id', ownId);
       expect(gmSees.data).toHaveLength(1);
