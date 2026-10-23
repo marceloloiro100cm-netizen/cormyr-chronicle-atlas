@@ -78,6 +78,8 @@ export type Database = {
           sender_user_id: string
           subject: string
           sync_state: string
+          updated_at: string
+          version: number
         }
         Insert: {
           batch_key?: string | null
@@ -94,6 +96,8 @@ export type Database = {
           sender_user_id?: string
           subject: string
           sync_state?: string
+          updated_at?: string
+          version?: number
         }
         Update: {
           batch_key?: string | null
@@ -110,6 +114,8 @@ export type Database = {
           sender_user_id?: string
           subject?: string
           sync_state?: string
+          updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -543,6 +549,41 @@ export type Database = {
           },
         ]
       }
+      letter_versions: {
+        Row: {
+          author: string
+          created_at: string
+          id: string
+          letter_id: string
+          snapshot: Json
+          version: number
+        }
+        Insert: {
+          author: string
+          created_at?: string
+          id?: string
+          letter_id: string
+          snapshot: Json
+          version: number
+        }
+        Update: {
+          author?: string
+          created_at?: string
+          id?: string
+          letter_id?: string
+          snapshot?: Json
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "letter_versions_letter_id_fkey"
+            columns: ["letter_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_letters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -720,6 +761,15 @@ export type Database = {
       claim_drive_binding: {
         Args: { p_id: string; p_token: string }
         Returns: boolean
+      }
+      edit_campaign_letter: {
+        Args: {
+          p_content: string
+          p_id: string
+          p_subject: string
+          p_version: number
+        }
+        Returns: Json
       }
       in_campaign_house: {
         Args: { edit_required?: boolean; h: string }
