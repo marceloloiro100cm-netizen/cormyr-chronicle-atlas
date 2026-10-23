@@ -98,6 +98,8 @@ export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter
       }
       const queue=check(await db.from('sync_outbox').select('*').in('state',['pending','error']).lte('next_attempt_at',new Date().toISOString()).order('last_attempt_at',{ascending:true,nullsFirst:true}).limit(100)).data??[];
       for(const q of queue){
+        const lease=check(await db.from('drive_sync_bindings').update({lease_until:new Date(Date.now()+120000).toISOString()}).eq('id',b.id).eq('lease_token',token).select('id')).data;
+        if(!lease?.length)throw new Error('Execução perdeu a autorização temporária da pasta.');
         const e=await siteEnvelope(db,q.entity_type,q.entity_id,b);if(!e)continue;
         // A single queue row can have multiple authorized destinations; don't drain before all are confirmed.
         const mapped=check(await db.from('drive_sync_files').select('*').eq('binding_id',b.id).eq('entity_type',q.entity_type).eq('entity_id',q.entity_id).maybeSingle()).data;
@@ -115,13 +117,15 @@ export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter
           // Reply destinations may still be pending. Never claim all-destination completion from one copy.
           if(e.entityType!=='reply'){
             if(e.entityType==='record')check(await db.from('campaign_records').update({sync_state:'synced',last_synced_at:new Date().toISOString()}).eq('id',e.id).eq('version',e.version));
-            else check(await db.from('campaign_letters').update({sync_state:'synced',last_synced_at:new Date().toISOString()}).eq('id',e.id).eq('version',e.version));
             // A letter fan-out completes only after every authorized audience has this version.
             const destinations=[];
             for(const target of bindings){if(await siteEnvelope(db,q.entity_type,q.entity_id,target))destinations.push(target);}
             const copies=check(await db.from('drive_sync_files').select('*').eq('entity_type',e.entityType).eq('entity_id',e.id)).data??[];
             const complete=destinations.every(target=>copies.some(copy=>copy.binding_id===target.id&&envelopeSchema.parse(copy.base_snapshot).version===e.version));
-            if(complete)check(await db.from('sync_outbox').update({state:'synced',error:null,last_attempt_at:new Date().toISOString()}).eq('entity_id',e.id).lte('version',e.version));
+            if(complete){
+              if(e.entityType==='letter')check(await db.from('campaign_letters').update({sync_state:'synced',last_synced_at:new Date().toISOString()}).eq('id',e.id).eq('version',e.version));
+              check(await db.from('sync_outbox').update({state:'synced',error:null,last_attempt_at:new Date().toISOString()}).eq('entity_id',e.id).lte('version',e.version));
+            }
           }else{
             const reply=check(await db.from('letter_replies').select('author_user_id,recipient_user_id').eq('id',e.id).single()).data;
             const copies=check(await db.from('drive_sync_files').select('binding_id').eq('entity_type','reply').eq('entity_id',e.id)).data??[];
