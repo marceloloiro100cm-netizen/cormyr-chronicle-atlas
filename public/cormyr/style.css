@@ -20,6 +20,6 @@
 .music-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px;padding:20px 24px;margin-bottom:22px}.music-controls .view-options{flex-wrap:wrap}.music-controls .region-control{flex:1 1 280px}.music-controls .quiet{align-self:flex-end}.music-controls .download-status{margin:0}.region-view-button b{margin-left:8px;padding:2px 7px;border-radius:10px;background:#f0e6d3;color:#78531c;font:700 11px/1.4 var(--sans)}@media(max-width:700px){.music-controls{padding:18px}.music-controls .region-control{flex:1 1 100%}.music-controls .quiet{width:100%}}
 @media(max-width:900px){.workspace-bar{height:auto;min-height:50px;align-items:center}.workspace-bar a.solid{min-height:36px;padding:6px 13px;font-size:12px}}
 @media(max-width:600px){.workspace-bar{height:auto;min-height:52px;padding:8px 16px 13px;gap:7px 14px;flex-wrap:wrap;justify-content:space-between;align-items:center}.workspace-bar a.solid{min-height:36px;padding:6px 13px;font-size:12px;flex:0 0 auto}.workspace-bar>span{font-size:11px;white-space:nowrap;min-width:0}.workspace-bar b{margin-left:8px}}
-.region-description,.politics,.region-full-text p,.noble-history p,.house-detail-grid>div>p,.era-context,.hierarchy-help{text-align:justify;text-align-last:left;hyphens:auto}
-.region-full-text p,.noble-history p{margin:0 0 1.1em}
-.region-full-text p:last-child,.noble-history p:last-child{margin-bottom:0}
+.region-description,.politics,.region-full-text p,#noble-history p,.house-detail-grid>div>p,.house-data dd,.era-context,.hierarchy-help{text-align:justify;text-align-last:left;hyphens:auto}
+.region-full-text p,#noble-history p{margin:0 0 1.1em}
+.region-full-text p:last-child,#noble-history p:last-child{margin-bottom:0}

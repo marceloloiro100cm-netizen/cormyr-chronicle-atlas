@@ -9,7 +9,7 @@ import '@lovable.dev/cloud-auth-js/styles.css';
 
 export const Route = createFileRoute('/auth')({ head: () => ({ meta: [{ title: 'Entrar — Cormyr Chronicle' },{name:'description',content:'Entrada segura para jogadores da segunda temporada de Cormyr.'},{property:'og:title',content:'Entrar — Cormyr Chronicle'},{property:'og:description',content:'Área reservada às casas e jogadores autorizados.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary'}] }), component: Auth });
 
-const LOGIN_EMAILS:Record<string,string>={narrador:'marcelo5.2@hotmail.com.br',erdenor:'clavas23@gmail.com',silverky:'isaias.s.weber@gmail.com',everlost:'dtondo@gmail.com',hardcourt:'carlosaugustocastellan@gmail.com',fewmerry:'theo.wasem@gmail.com',goldfin:'otaviofmoraes@gmail.com',grantass:'gabriel.chiomento@gmail.com',ashkar:'marcelorbelem@gmail.com'};
+const LOGIN_EMAILS:Record<string,string>={narrador:'marcelo5.2@hotmail.com.br',erdenor:'clavas23@gmail.com',silversky:'isaias.s.weber@gmail.com',everlost:'dtondo@gmail.com',harcourt:'carlosaugustocastellan@gmail.com',fewmerry:'theo.wasem@gmail.com',goldfin:'otaviofmoraes@gmail.com',grantass:'gabriel.chiomento@gmail.com',ashkar:'marcelorbelem@gmail.com'};
 
 function Auth() {
   const navigate = useNavigate();

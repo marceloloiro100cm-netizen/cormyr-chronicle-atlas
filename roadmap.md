@@ -26,7 +26,12 @@
 - [x] Pasta de Ashkar conferida diretamente no Drive: registros, missivas e imagens presentes
 - [x] Nenhum registro, missiva ou resposta mais novo que a última sincronização
 
+## Ajustes de 23/10 (22:30 UTC)
+- [x] Grafias oficiais corrigidas: Silversky e Harcourt (casas, jogadores, missivas, pastas e vínculos em cascata; acervo vinculado com brasão e castelo)
+- [x] Documento principal ASHKAR (7.719 caracteres) confirmado importado na aba da casa
+- [x] Textos internos das casas na aba Nobreza justificados (história, ficha e campos)
+- [x] 65 testes passando; verificado no navegador
+
 ## Pendências anteriores
-- Contas dos jogadores ainda não testadas individualmente; revisão Silverky/Hardcourt; senha própria do Narrador
-- Texto do documento principal de Ashkar (7.719 caracteres) ainda não importado
-- Publicação desta atualização depende de pedido explícito; entrega automática do executor atualizado será verificada após publicação
+- Contas dos jogadores ainda não testadas individualmente; senha própria do Narrador (proprietário optou por manter "cormyr")
+- Entrega automática do executor atualizado será verificada após publicação
