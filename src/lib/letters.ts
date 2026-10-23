@@ -1,6 +1,8 @@
 export type LetterRow = {
   id: string;
   sender_user_id: string;
+  sender_player_id?: string | null;
+  version?: number;
   sender_name: string;
   recipient_house_id: string | null;
   recipient_player_id: string | null;
@@ -18,8 +20,13 @@ export type LetterGroup = {
   letters: LetterRow[];
 };
 
-export function filterLetters(letters:LetterRow[], replies:{letter_id:string}[], filters:{number:string;kind:string;answered:string}) {
-  return letters.filter(l=>(!filters.number||String(l.letter_number)===filters.number)&&(!filters.kind||l.letter_kind===filters.kind)&&(!filters.answered||(replies.some(r=>r.letter_id===l.id)?'yes':'no')===filters.answered));
+export function filterLetters(letters:LetterRow[], replies:{letter_id:string}[], filters:{number:string;kind:string;answered:string;house?:string;read?:string}, context?:{players:{id:string;user_id:string|null;roster_house_id:string|null}[];receipts:{letter_id:string;user_id:string}[];userId:string;admin:boolean}) {
+  return letters.filter(l=>{
+    const player=context?.players.find(p=>p.id===l.sender_player_id||p.id===l.recipient_player_id||p.user_id===l.sender_user_id);
+    const house=l.recipient_house_id??player?.roster_house_id;
+    const read=context?.receipts.some(r=>r.letter_id===l.id&&(context.admin&&l.sender_user_id===context.userId?r.user_id!==context.userId:r.user_id===context.userId))??false;
+    return (!filters.number||String(l.letter_number)===filters.number)&&(!filters.kind||l.letter_kind===filters.kind)&&(!filters.answered||(replies.some(r=>r.letter_id===l.id)?'yes':'no')===filters.answered)&&(!filters.house||house===filters.house)&&(!filters.read||(read?'yes':'no')===filters.read);
+  });
 }
 
 /** Missivas recebidas do narrador, agrupadas por número (mais recente primeiro). */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupReceivedLetters, nextLetterNumber, sentLetters, type LetterRow } from '@/lib/letters';
+import { filterLetters, groupReceivedLetters, nextLetterNumber, sentLetters, type LetterRow } from '@/lib/letters';
 
 const row = (over: Partial<LetterRow>): LetterRow => ({
   id: crypto.randomUUID(),
@@ -60,4 +60,12 @@ describe('nextLetterNumber', () => {
     expect(nextLetterNumber([row({ letter_number: null })])).toBe(1);
     expect(nextLetterNumber([])).toBe(1);
   });
+});
+
+describe('Narrator management filters',()=>{
+  const context={userId:'narrador',admin:true,players:[{id:'player',user_id:'jogador',roster_house_id:'ashkar'}],receipts:[] as {letter_id:string;user_id:string}[]};
+  it('filters by the house of a player writing to the Narrator',()=>{const incoming=row({sender_user_id:'jogador',sender_player_id:'player',recipient_house_id:null});expect(filterLetters([incoming,row({})],[],{number:'',kind:'',answered:'',house:'ashkar'},context)).toEqual([incoming]);});
+  it('filters unread outgoing letters using player receipts rather than narrator receipts',()=>{const a=row({id:'a'}),b=row({id:'b'});const ctx={...context,receipts:[{letter_id:'a',user_id:'narrador'},{letter_id:'b',user_id:'jogador'}]};expect(filterLetters([a,b],[],{number:'',kind:'',answered:'',read:'no'},ctx)).toEqual([a]);});
+  it('filters unread incoming letters using the narrator receipt',()=>{const a=row({id:'a',sender_user_id:'jogador'}),b=row({id:'b',sender_user_id:'jogador'});const ctx={...context,receipts:[{letter_id:'a',user_id:'jogador'},{letter_id:'b',user_id:'narrador'}]};expect(filterLetters([a,b],[],{number:'',kind:'',answered:'',read:'no'},ctx)).toEqual([a]);});
+  it('combines house, number, reserved type and unanswered filters',()=>{const a=row({id:'a',letter_kind:'reservada',letter_number:2});const b=row({id:'b',letter_kind:'reservada',letter_number:2});expect(filterLetters([a,b,row({})],[{letter_id:'b'}],{house:'erdenor',number:'2',kind:'reservada',answered:'no'},context)).toEqual([a]);});
 });

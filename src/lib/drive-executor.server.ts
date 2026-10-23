@@ -15,8 +15,13 @@ async function siteEnvelope(db:DB,type:string,id:string,b:Binding):Promise<Envel
   if(type==='record'){
     if(r['visibility']==='gm')return null;
     visibility=text(r,'visibility');houseId=text(r,'house_id')||null;playerId=text(r,'player_id')||null;
+    if(visibility==='house'&&b.scope==='player'&&b.player_id&&houseId&&houseId===b.house_id){
+      const member=check(await db.from('house_memberships').select('player_id').eq('house_id',houseId).eq('player_id',b.player_id).maybeSingle()).data;
+      if(!member)return null;visibility='player';playerId=b.player_id;
+    }
   }else if(type==='letter'){
     playerId=text(r,'recipient_player_id')||null;houseId=text(r,'recipient_house_id')||null;visibility=playerId?'player':'house';
+    if(b.scope==='master'){visibility='master';}
     if(b.scope==='player'&&b.player_id){
       const p=check(await db.from('campaign_players').select('user_id').eq('id',b.player_id).maybeSingle()).data;
       const member=houseId?check(await db.from('house_memberships').select('player_id').eq('house_id',houseId).eq('player_id',b.player_id).maybeSingle()).data:null;
@@ -28,12 +33,12 @@ async function siteEnvelope(db:DB,type:string,id:string,b:Binding):Promise<Envel
     if(!l)return null;
     // Replies are copied only to the original audience and the sender's explicitly approved private/master folder.
     const p=b.player_id?check(await db.from('campaign_players').select('user_id').eq('id',b.player_id).maybeSingle()).data:null;
-    if(b.scope==='master'&&b.owner_user_id===r['recipient_user_id'])visibility='master';
+    if(b.scope==='master'&&(b.owner_user_id===r['recipient_user_id']||b.owner_user_id===r['author_user_id']))visibility='master';
     else if(b.scope==='player'&&(b.player_id===l.recipient_player_id||p?.user_id===r['recipient_user_id']||p?.user_id===r['author_user_id'])){visibility='player';playerId=b.player_id;}
     else if(b.scope==='house'&&l.recipient_player_id===null&&b.house_id===l.recipient_house_id){visibility='house';houseId=b.house_id;}
     else return null;
   }
-  const version=type==='record'?Number(r['version']):1;
+  const version=type==='reply'?1:Number(r['version']??1);
   const e=envelopeSchema.parse({schema:'cormyr-record-v1',entityType:type,id,houseId,playerId,visibility,version,baseVersion:Math.max(version-1,0),title:text(r,type==='record'?'title':type==='letter'?'subject':'author_name'),content:text(r,'content'),...(type==='record'?{kind:r['kind']}:{}),...(type==='reply'?{letterId:r['letter_id']}:{}),createdAt:text(r,'created_at'),updatedAt:text(r,'updated_at')||text(r,'created_at'),authorName:text(r,type==='letter'?'sender_name':'author_name'),mutationId:id,origin:'site'});
   return allowed(b,e)?e:null;
 }
@@ -59,11 +64,17 @@ export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter
       const mappings=check(await db.from('drive_sync_files').select('*').eq('binding_id',b.id)).data??[];
       // Inspect only compatible new files; historical files are never loaded.
       for(const f of files){
-        if(!/^cormyr-(record|letter|reply)-[0-9a-f-]{36}\.json$/.test(f.name)||Number(f.size??0)>2_100_000||!f.parents?.includes(b.folder_id))continue;
-        const remote=await adapter.read(f.id);if(!allowed(b,remote.envelope)||f.name!==filename(remote.envelope))continue;
+        if(!/^cormyr-(record|letter|reply)-[0-9a-f-]{36}(-v[0-9]+-[0-9a-f]{64})?\.json$/.test(f.name)||Number(f.size??0)>2_100_000||!f.parents?.includes(b.folder_id))continue;
+        const remote=await adapter.read(f.id);if(!allowed(b,remote.envelope))continue;
+        const canonicalName=filename(remote.envelope);
+        const versionName=canonicalName.replace('.json',`-v${remote.envelope.version}-${await digest(remote.envelope)}.json`);
+        if(f.name!==canonicalName&&f.name!==versionName)continue;
         const site=await siteEnvelope(db,remote.envelope.entityType,remote.envelope.id,b);
         const m=mappings.find(x=>x.file_id===f.id);
         const h=await digest(remote.envelope);
+        // Append-only prior versions remain in Drive but are not new imports/conflicts.
+        const head=mappings.find(x=>x.entity_id===remote.envelope.id&&x.entity_type===remote.envelope.entityType);
+        if(!m&&head&&remote.envelope.version<=envelopeSchema.parse(head.base_snapshot).version)continue;
         if(!m){
           if(site&&canonical(site)===canonical(remote.envelope)){
             check(await db.from('drive_sync_files').upsert({binding_id:b.id,entity_type:site.entityType,entity_id:site.id,file_id:f.id,etag:remote.etag,base_snapshot:json(site),remote_hash:h},{onConflict:'binding_id,entity_type,entity_id'}));
@@ -104,8 +115,13 @@ export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter
           // Reply destinations may still be pending. Never claim all-destination completion from one copy.
           if(e.entityType!=='reply'){
             if(e.entityType==='record')check(await db.from('campaign_records').update({sync_state:'synced',last_synced_at:new Date().toISOString()}).eq('id',e.id).eq('version',e.version));
-            else check(await db.from('campaign_letters').update({sync_state:'synced',last_synced_at:new Date().toISOString()}).eq('id',e.id));
-            check(await db.from('sync_outbox').update({state:'synced',error:null,last_attempt_at:new Date().toISOString()}).eq('entity_id',e.id).lte('version',e.version));
+            else check(await db.from('campaign_letters').update({sync_state:'synced',last_synced_at:new Date().toISOString()}).eq('id',e.id).eq('version',e.version));
+            // A letter fan-out completes only after every authorized audience has this version.
+            const destinations=[];
+            for(const target of bindings){if(await siteEnvelope(db,q.entity_type,q.entity_id,target))destinations.push(target);}
+            const copies=check(await db.from('drive_sync_files').select('*').eq('entity_type',e.entityType).eq('entity_id',e.id)).data??[];
+            const complete=destinations.every(target=>copies.some(copy=>copy.binding_id===target.id&&envelopeSchema.parse(copy.base_snapshot).version===e.version));
+            if(complete)check(await db.from('sync_outbox').update({state:'synced',error:null,last_attempt_at:new Date().toISOString()}).eq('entity_id',e.id).lte('version',e.version));
           }else{
             const reply=check(await db.from('letter_replies').select('author_user_id,recipient_user_id').eq('id',e.id).single()).data;
             const copies=check(await db.from('drive_sync_files').select('binding_id').eq('entity_type','reply').eq('entity_id',e.id)).data??[];
