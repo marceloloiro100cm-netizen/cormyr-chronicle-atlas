@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,9 @@ export const Route = createFileRoute('/auth')({ head: () => ({ meta: [{ title: '
 
 function Auth() {
   const navigate = useNavigate();
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => { if (data.user) navigate({ to: '/jogadores' }); });
+  }, [navigate]);
   const [signup,setSignup] = useState(false), [email,setEmail] = useState(''), [password,setPassword] = useState(''), [name,setName] = useState(''), [house,setHouse] = useState(''), [message,setMessage] = useState(''), [busy,setBusy] = useState(false);
   const {data:houses=[]} = useQuery({queryKey:['season-houses'],queryFn:async()=>{const {data,error}=await supabase.from('campaign_houses').select('id,name').order('name');if(error)throw error;return data;}});
   async function submit(event:FormEvent) {event.preventDefault();setBusy(true);setMessage('');try {
