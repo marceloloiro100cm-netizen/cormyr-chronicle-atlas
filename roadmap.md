@@ -6,6 +6,9 @@
 - [x] Preparar fila durável e formato documentado de sincronização, sem simular execução externa.
 - [x] Validar login por senha, persistência, isolamento, respostas idempotentes, atualização em tempo real e celular com contas temporárias removidas.
 - [x] Vincular marcelo's Google Drive e verificar leitura real pela administração; pasta Erdenor encontrada com capacidade de edição/adicionar arquivos.
-- [ ] Ativar executor bidirecional, eventos/reconciliação, retentativas e resolução de conflitos: faltam pastas individuais e confirmação das pastas divergentes; gravação com scopes atuais e fluxo externo ainda não validados, sem alterações a arquivos reais.
+- [ ] Implementar executor server-side bidirecional, importação revisada, prevenção de loops/duplicação, retentativas, conflitos com versões e resolução administrativa; testar somente em fixtures isoladas.
+- [ ] Configurar acionamento automático e status honesto; manter mapeamentos não confirmados desativados.
+- [ ] Inspecionar somente metadados das subpastas das seis casas associadas; não associar nomes ambíguos.
+- [ ] Ativar operação real: aguarda revisão de privacidade, confirmação das pastas e autorização runtime; sem teste de escrita em pastas reais.
 - [ ] Primeiro administrador: aguarda identidade confirmada do proprietário.
 - [ ] Completar cadastro real: lista oficial recebida; faltam identidades autenticadas, pastas individuais e revisão das correspondências Silverky/Silversky e Hardcourt/Harcourt.
