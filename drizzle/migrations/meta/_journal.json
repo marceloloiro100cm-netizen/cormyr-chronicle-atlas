@@ -43,6 +43,13 @@
       "when": 1792782273559,
       "tag": "0005_drive_resolution_requeue",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792787353922,
+      "tag": "0006_letter_numbering_and_kinds",
+      "breakpoints": true
     }
   ]
 }
