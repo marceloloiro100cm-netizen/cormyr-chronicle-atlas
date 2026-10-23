@@ -18,3 +18,12 @@ export function contentParts(content:string) {
   if(start<content.length)result.push({text:content.slice(start)});
   return result;
 }
+
+export function namedCharacters(contents:string[]) {
+  const names=new Set<string>();
+  for(const content of contents)for(const match of content.matchAll(/(?:^|\n)Nome(?: do Personagem)?\s*[:·]\s*["“]?([^\n·]+)/gi)) {
+    const name=(match[1]??'').replace(/["”]/g,'').trim().replace(/\.$/,'');
+    if(name&&name.length<120)names.add(name);
+  }
+  return [...names];
+}
