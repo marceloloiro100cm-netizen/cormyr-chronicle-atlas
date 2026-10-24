@@ -145,6 +145,10 @@ export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter
           if(e.entityType==='reply')check(await db.from('sync_outbox').update({last_attempt_at:new Date().toISOString()}).eq('id',q.id));
         }catch(error){failed++;const message=error instanceof Error?error.message:'Falha no Drive';check(await db.from('sync_outbox').update({state:'error',attempts:q.attempts+1,error:message,last_attempt_at:new Date().toISOString(),next_attempt_at:new Date(Date.now()+retryDelay(q.attempts+1)).toISOString()}).eq('id',q.id));}
       }
+      if(b.house_id&&b.technical_folder_id&&b.scope!=='master'){
+        const {exportBindingHouse}=await import('./house/drive-export.server');
+        const houseResult=await exportBindingHouse(db,b.id);if(houseResult.synced)synced++;
+      }
       check(await db.from('drive_sync_bindings').update({last_checked_at:new Date().toISOString(),last_error:null}).eq('id',b.id));
     }catch(error){failed++;check(await db.from('drive_sync_bindings').update({last_error:error instanceof Error?error.message:'Falha de sincronização',last_checked_at:new Date().toISOString()}).eq('id',b.id));}
     finally{check(await db.from('drive_sync_bindings').update({lease_token:null,lease_until:null}).eq('id',b.id).eq('lease_token',token));}
