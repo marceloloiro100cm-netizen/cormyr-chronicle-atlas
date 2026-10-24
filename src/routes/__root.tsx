@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from '@/integrations/supabase/client';
+import { oauthReturnPath } from '@/lib/oauth-return-path';
 
 function NotFoundComponent() {
   return (
@@ -124,6 +125,10 @@ function RootComponent() {
       if (!['SIGNED_IN', 'SIGNED_OUT', 'USER_UPDATED'].includes(event)) return;
       router.invalidate();
       if (event !== 'SIGNED_OUT') queryClient.invalidateQueries();
+      if(event==='SIGNED_IN'){
+        const next=sessionStorage.getItem('campaign-oauth-next');
+        if(next){sessionStorage.removeItem('campaign-oauth-next');router.navigate({to:oauthReturnPath(next)});}
+      }
     });
     return () => subscription.unsubscribe();
   }, [router, queryClient]);
