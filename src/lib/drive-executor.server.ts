@@ -11,6 +11,9 @@ async function siteEnvelope(db:DB,type:string,id:string,b:Binding):Promise<Envel
   const table=type==='record'?'campaign_records':type==='letter'?'campaign_letters':'letter_replies';
   const result=check(await db.from(table).select('*').eq('id',id).maybeSingle());if(!result.data)return null;
   const r=result.data as unknown as Row;
+  // Technical folders are still readable by their owners. Never export a draft
+  // or a scheduled message there, including copies for the author.
+  if(type!=='record'&&b.scope!=='master'&&r['publication_state']&&r['publication_state']!=='delivered')return null;
   let visibility:string,houseId:string|null=null,playerId:string|null=null;
   if(type==='record'){
     if(r['visibility']==='gm')return null;
@@ -35,7 +38,7 @@ async function siteEnvelope(db:DB,type:string,id:string,b:Binding):Promise<Envel
     const p=b.player_id?check(await db.from('campaign_players').select('user_id').eq('id',b.player_id).maybeSingle()).data:null;
     if(b.scope==='master'&&(b.owner_user_id===r['recipient_user_id']||b.owner_user_id===r['author_user_id']))visibility='master';
     else if(b.scope==='player'&&(b.player_id===l.recipient_player_id||p?.user_id===r['recipient_user_id']||p?.user_id===r['author_user_id'])){visibility='player';playerId=b.player_id;}
-    else if(b.scope==='house'&&l.recipient_player_id===null&&b.house_id===l.recipient_house_id){visibility='house';houseId=b.house_id;}
+    // A private reply to a general letter must not fan out to a house folder.
     else return null;
   }
   const version=type==='reply'?1:Number(r['version']??1);
