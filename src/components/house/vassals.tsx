@@ -11,7 +11,7 @@ import type { HouseState } from '@/lib/house/types';
 import type { VassalHouse, VassalNpc } from '@/lib/house/vassal-links';
 
 type NpcOption={id:string;title:string};
-function NpcChoices({npcs,selected=[]}:{npcs:NpcOption[];selected?:string[]}) {
+function NpcChoices({npcs,selected=[]}:{npcs:NpcOption[];selected?:string[]|undefined}) {
  return <fieldset><legend>NPCs existentes associados</legend>{npcs.length?npcs.map(n=><label className="campaign-check" key={n.id}><input type="checkbox" name="npc" value={n.id} defaultChecked={selected.includes(n.id)}/>{n.title}</label>):<p className="house-caption">Nenhum NPC acessível nesta casa.</p>}</fieldset>;
 }
 export function Vassals({state,houses,npcs,admin,busy,canEdit,onPropose,onApprove,onLink}:{state:HouseState;houses:VassalHouse[];npcs:NpcOption[];admin:boolean;busy:boolean;canEdit:boolean;onPropose:(args:Record<string,unknown>)=>Promise<boolean>;onApprove:(args:Record<string,unknown>,note:string)=>Promise<boolean>;onLink:(args:Record<string,unknown>,note:string)=>Promise<boolean>}) {
