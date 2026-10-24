@@ -35,7 +35,7 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
  readHash();regionSelect.value=state.region;
  fetch('/api/public/catalog',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Catálogo indisponível');return r.json();}).then(result=>{
   for(const item of result.playerHouses||[])PLAYER_HOUSES.add(item.house_id);
-  for(const item of result.houses||[]){const h=data.regions.flatMap(r=>r.houses).find(h=>h.nobleId===item.id);if(h)h.catalogClassification=item.classification;}
+  for(const item of result.houses||[]){const h=data.regions.flatMap(r=>r.houses).find(h=>h.nobleId===item.id);if(h){h.catalogClassification=item.classification;h.gallery=item.gallery||[];h.publicNarrative=item.narrative_text;}}
   renderRegion();renderNobility();
  }).catch(()=>{});
 
@@ -195,7 +195,7 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
  async function loadHouseHistory(h){
   const request=++historyRequest,target=$('noble-history');target.innerHTML='<p role="status">Carregando história…</p>';
   if(!h.historyPath){target.innerHTML='<p>A história desta casa ainda não está disponível nos documentos consultados. Os dados conhecidos estão na ficha acima.</p>';return;}
-  try{let doc=historyCache.get(h.historyPath);if(!doc){const response=await fetch(h.historyPath);if(!response.ok)throw new Error('HTTP '+response.status);doc=await response.json();historyCache.set(h.historyPath,doc);}if(request!==historyRequest)return;
+  try{let doc=h.publicNarrative?{text:h.publicNarrative}:historyCache.get(h.historyPath);if(!doc){const response=await fetch(h.historyPath);if(!response.ok)throw new Error('HTTP '+response.status);doc=await response.json();historyCache.set(h.historyPath,doc);}if(request!==historyRequest)return;
    const paragraphs=doc.text.split(/\r?\n/).filter(t=>t.trim());target.innerHTML=(h.historyBrief?'<p class="small">O documento disponível contém apenas um registro breve; sua transcrição está abaixo.</p>':'')+paragraphs.map(t=>/^[_━─]{4,}$/.test(t.trim())?'<hr>':t.trim().length<100&&!/[.!?;:]$/.test(t.trim())&&!t.includes(':')?`<h4>${esc(t)}</h4>`:`<p>${esc(t)}</p>`).join('');
   }catch(error){if(request!==historyRequest)return;target.innerHTML='<p>Não foi possível carregar a história. Tente novamente.</p><button type="button" class="quiet" data-retry-history>Tentar novamente</button>';target.querySelector('[data-retry-history]').addEventListener('click',()=>loadHouseHistory(h));}
  }
