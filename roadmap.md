@@ -1,6 +1,9 @@
 # Roadmap
 
 ## Hub de casa nobre — 24/10 21:38 UTC
+- [x] Pedido22:34: publicação solicitada após91 testes/buildOK e segurança sem críticos;aviso conhecido de senhas vazadas mantido,audiência não alterada;conclusão da implantação não confirmada.
+- [x] Pedido22:33: cargos ligados a registros existentes,inclusive ficha do lorde,sem duplicação;área Casa e Corte;testes de cargos/permissões e prévia sem salvar.
+- [x] Pedido22:29: vínculos aprovados/decisão do Narrador,brasões oficiais ampliáveis e NPCs por referências sem duplicação;82 testes do hub e prévia sem operações reais/publicação.
 - [x] Pedido22:22: cobertura dos cinco anexos e11 grupos de pendências no hub;busca/filtros conferidos com Narrador na prévia,sem alterar regras ou casas reais/publicação.
 - [x] Pedido22:12: mistas com decisãoNarrador,montarias,evolução tabela10-6,cerco11 itens/operadores e propostas/aprovação de vassalos;82 testes e telas autenticadas sem escrita real/publicação.
 - [ ] Extensões militares pendentes: campanha/recrutamento,prêmios acimaElite individuais,estado/dano de cerco,ciclos/lealdade/criação de vassalas — implementação parcial conforme matriz; fontes mistas e itens ilegíveis exigem decisão explícita.

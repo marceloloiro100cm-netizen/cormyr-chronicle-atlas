@@ -45,10 +45,11 @@ export function changeUnitState(state:HouseState,input:{unitId:string;mounted:bo
  u.mounted=input.mounted;u.atHome=input.atHome;u.casualties=input.casualties;u.situation=input.situation;
  if(input.health>unitStats(u).maxHealth)throw new Error('Saúde excede o máximo na condição selecionada.');u.health=input.health;return next;
 }
-export function proposeVassal(state:HouseState,input:{id:string;houseId:string;name:string;notes:string}):HouseState {
+export function proposeVassal(state:HouseState,input:{id:string;houseId:string;name:string;notes:string;npcIds?:string[]}):HouseState {
  if(input.houseId===state.houseId)throw new Error('Uma casa não pode ser vassala de si mesma.');
  if(state.vassals?.some(v=>v.houseId===input.houseId&&v.status!=='ended'))throw new Error('Vínculo já registrado.');
- const next=structuredClone(state);next.vassals??=[];next.vassals.push({...input,status:'proposed',cost:0,influencePenalty:0});return next;
+ if(state.vassals?.some(v=>v.id===input.id)||state.holdings.some(h=>h.id===input.id))throw new Error('Identificador de vínculo já utilizado.');
+ const next=structuredClone(state);next.vassals??=[];next.vassals.push({...input,npcIds:[...new Set(input.npcIds??[])],status:'proposed',cost:0,influencePenalty:0});return next;
 }
 export function approveVassal(state:HouseState,id:string,influencePenalty:number):HouseState {
  const next=structuredClone(state),v=next.vassals?.find(v=>v.id===id);if(!v||v.status!=='proposed')throw new Error('Proposta não disponível.');
