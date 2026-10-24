@@ -24,11 +24,31 @@ export type LetterGroup = {
   letters: LetterRow[];
 };
 
-export function filterLetters(letters:LetterRow[], replies:{letter_id:string}[], filters:{number:string;kind:string;answered:string;house?:string;read?:string}, context?:{players:{id:string;user_id:string|null;roster_house_id:string|null}[];receipts:{letter_id:string;user_id:string}[];userId:string;admin:boolean}) {
+export type ReplyRef = {letter_id:string;created_at?:string;delivered_at?:string|null};
+export type ReceiptRef = {letter_id:string;user_id:string;read_at?:string};
+
+/** Momento da informação mais recente de uma missiva (a resposta entregue mais nova). */
+export function lastReplyActivity(letterId:string, replies:ReplyRef[]):string {
+  return replies.reduce((latest,r)=>{
+    if(r.letter_id!==letterId)return latest;
+    const t=r.delivered_at??r.created_at??'';
+    return t>latest?t:latest;
+  },'');
+}
+
+/** Uma missiva lida volta a ser não lida quando chega resposta mais nova que a leitura. */
+export function isLetterRead(letterId:string, receipt:ReceiptRef|undefined, replies:ReplyRef[]):boolean {
+  if(!receipt)return false;
+  const lastReply=lastReplyActivity(letterId,replies);
+  return !lastReply||!receipt.read_at||receipt.read_at>=lastReply;
+}
+
+export function filterLetters(letters:LetterRow[], replies:ReplyRef[], filters:{number:string;kind:string;answered:string;house?:string;read?:string}, context?:{players:{id:string;user_id:string|null;roster_house_id:string|null}[];receipts:ReceiptRef[];userId:string;admin:boolean}) {
   return letters.filter(l=>{
     const player=context?.players.find(p=>p.id===l.sender_player_id||p.id===l.recipient_player_id||p.user_id===l.sender_user_id);
     const house=l.recipient_house_id??player?.roster_house_id;
-    const read=context?.receipts.some(r=>r.letter_id===l.id&&(context.admin&&l.sender_user_id===context.userId?r.user_id!==context.userId:r.user_id===context.userId))??false;
+    const receipt=context?.receipts.find(r=>r.letter_id===l.id&&(context.admin&&l.sender_user_id===context.userId?r.user_id!==context.userId:r.user_id===context.userId));
+    const read=isLetterRead(l.id,receipt,replies);
     return (!filters.number||String(l.letter_number)===filters.number)&&(!filters.kind||l.letter_kind===filters.kind)&&(!filters.answered||(replies.some(r=>r.letter_id===l.id)?'yes':'no')===filters.answered)&&(!filters.house||house===filters.house)&&(!filters.read||(read?'yes':'no')===filters.read);
   });
 }
