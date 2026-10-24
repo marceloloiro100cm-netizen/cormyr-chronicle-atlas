@@ -25,11 +25,9 @@ export const managePlayerAccount=createServerFn({method:'POST'}).middleware([req
   }
   if(data.password&&userId){const updated=await db.auth.admin.updateUserById(userId,{password:data.password});if(updated.error)throw new Error('O provedor não aceitou a nova senha; o acesso anterior foi preservado.');}
   if(!player&&userId){const found=await db.from('campaign_players').select('*').eq('user_id',userId).maybeSingle();if(found.error)throw new Error('Vínculo duplicado exige revisão administrativa.');player=found.data;}
-  const saved=player?await db.from('campaign_players').update({name:data.name,active:data.active,require_password_change:data.requireChange,roster_house_id:data.houseId,folder_id:data.folderId,user_id:userId}).eq('id',player.id).select().single():await db.from('campaign_players').insert({name:data.name,active:data.active,require_password_change:data.requireChange,roster_house_id:data.houseId,folder_id:data.folderId,user_id:userId}).select().single();
-  if(saved.error||!saved.data)throw new Error('Conta preservada; cadastro do jogador ficou pendente.');
-  const link=await db.from('house_memberships').upsert({player_id:saved.data.id,house_id:data.houseId,can_edit:data.canEdit,authorized_by:context.userId});if(link.error)throw new Error('Jogador salvo; autorização da casa ficou pendente.');
-  const audit=await db.from('campaign_admin_audit').insert({actor:context.userId,target_player:saved.data.id,action:data.password?'account_password_set':'player_management',details:{active:data.active,requireChange:data.requireChange,houseId:data.houseId}});if(audit.error)throw new Error('Operação executada; registro administrativo pendente.');
-  return {message:'Jogador e autorização atualizados. Nenhuma senha atual foi consultada.',playerId:saved.data.id};
+  const saved=await db.rpc('admin_save_player_account',{p_actor:context.userId,p_player:player?.id??null as unknown as string,p_user:userId??null as unknown as string,p_name:data.name,p_house:data.houseId,p_active:data.active,p_edit:data.canEdit,p_change:data.requireChange,p_folder:data.folderId??null as unknown as string,p_password_set:Boolean(data.password)});
+  if(saved.error)throw new Error(data.password?'Senha aceita pelo provedor; cadastro e autorização ficaram pendentes. Tente novamente.':'Conta preservada; cadastro e autorização ficaram pendentes.');
+  return {message:'Jogador e autorização atualizados. Nenhuma senha atual foi consultada.',playerId:saved.data};
 });
 export const completePasswordChange=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({password:z.string().min(8).max(200)})).handler(async({data,context})=>{
   const update=await context.supabase.auth.updateUser({password:data.password});if(update.error)throw new Error('O provedor não aceitou a alteração.');
