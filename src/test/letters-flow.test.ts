@@ -26,6 +26,13 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
       const gmId = ids[2]; if (!gmId) throw new Error('Missing gm');
       expect((await admin.from('user_roles').insert({ user_id: gmId, role: 'admin' })).error).toBeNull();
 
+      roundsBefore = (await admin.from('letter_rounds').select('*')).data ?? [];
+      // Rodada fechada: jogador não responde nem escreve
+      await admin.from('letter_rounds').update({ closed: true }).gte('number', 0);
+      const locked = await p1.rpc('player_send_letter_to', { p_subject: 'x', p_content: 'y', p_house: null as unknown as string, p_key: crypto.randomUUID() });
+      expect(locked.error?.message).toBe('Missivas fechadas, aguarde o narrador abrir a próxima semana');
+      expect((await gm.rpc('set_letter_round', { p_number: 1, p_closed: false })).error).toBeNull();
+      expect((await p1.rpc('set_letter_round', { p_number: 9, p_closed: false })).error).not.toBeNull();
       // Missiva 1 geral para a casa toda (uma linha por destinatário, mesmo número)
       const batchKey = crypto.randomUUID();
       const sent = await gm.rpc('send_campaign_letter_batch', { p_kind: 'geral', p_number: 1, p_subject: 'Fixture Missiva 1', p_content: 'Conteúdo geral', p_recipients: ['h:' + houseId, 'p:' + players[0]], p_key: batchKey });
@@ -82,6 +89,7 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
       const p2Sees = await p2.from('campaign_letters').select('id').eq('id', ownId);
       expect(p2Sees.data).toEqual([]);
     } finally {
+      if (roundsBefore) { await admin.from('letter_rounds').delete().gte('number', 0); if (roundsBefore.length) await admin.from('letter_rounds').insert(roundsBefore); }
       const replies = await admin.from('letter_replies').select('id').in('letter_id', letters);
       const entities = [...letters, ...(replies.data ?? []).map(r => r.id)];
       await admin.from('sync_outbox').delete().in('entity_id', entities);
