@@ -1,5 +1,14 @@
 # Roadmap
 
+## Hub de casa nobre — 24/10 21:38 UTC
+- [ ] Conferir cinco fontes e imagens das tabelas; catálogo e matriz de cobertura com pendências explícitas.
+- [ ] Motor central: recursos, alocações, custos permanentes, requisitos, unidades, projetos, calendário e Sorte.
+- [ ] Persistência privada, validação transacional, concorrência, idempotência e auditoria; nenhuma migração de dados reais.
+- [ ] Integração em Ficha com navegação editorial, criação guiada, compra em três passos e personagens preservados.
+- [ ] Conciliação de planilhas por contexto, erros e casas divergentes; importação somente com confirmação.
+- [ ] Exportação legível, sincronização estável autorizada e regras editáveis pelo Narrador.
+- [ ] Testes isolados de regras/permissões, fluxo completo e computador/celular; não publicar.
+
 ## Pedido atual
 - [x] Concluir gravação versionada de edições, uploads e respostas nas oito pastas autorizadas; 60 registros, 44 missivas e 28 respostas confirmados por leitura de retorno
 - [x] Criar e verificar pasta privada do Narrador, sem compartilhamento e com cópias privadas confirmadas
