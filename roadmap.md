@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Hub de casa nobre — 24/10 21:38 UTC
+- [ ] Pedido23:01: vincular fichas reais e trazer valores conferidos, preservar compras/originais; divergências ficam pendentes. 
 - [x] Pedido22:54: Trocar Visão reversível no cabeçalho; totais na escala0–100, saldo intacto; computador/celular conferidos.
 - [x] Pedido22:50: exportação unidirecional ligada à pasta técnica existente, mapeamento próprio, ETag real/versões imutáveis, status e executor; 125 testes isolados aprovados; gravação real no Drive não executada.
 - [x] Pedido22:48: prévia somente leitura das fontes reais por casa, valores candidatos/origens/divergências e conferência local de planilhas, sem migração ou publicação.
