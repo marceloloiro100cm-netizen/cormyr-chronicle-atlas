@@ -71,3 +71,4 @@
 - [ ] Senha própria do Narrador — não alterada sem confirmação da conta correta
 - [x] Corrigida visibilidade das respostas do Narrador (15 respostas de Ashkar, Grantass e Fewmerry reendereçadas aos jogadores; leitura ampliada para membros da casa)
 - [ ] Concluir galerias das 170 casas — 80 importadas em 24/10; restante segue pela rotina automática horária
+- [x] Missivas: resposta nova marca a missiva como não lida (gatilho no banco + limpeza dos registros antigos); respostas exibem cabeçalho "Missiva N · Resposta"; status mostra "Respondida · Não lida"; botão "Ver fio completo" abre toda a conversa entre semanas; 90 testes passando (24/10)
