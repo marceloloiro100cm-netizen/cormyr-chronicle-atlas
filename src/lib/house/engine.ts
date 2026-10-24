@@ -12,7 +12,7 @@ export function balances(state: HouseState): Balance {
       else allocated[cost.resource] += cost.amount;
     }
   }
-  for (const unit of state.units) for (const cost of unit.costs) if (cost.mode === 'allocation') allocated[cost.resource] += cost.amount;
+  for (const unit of state.units) if(!unit.destroyed) for (const cost of unit.costs) if (cost.mode === 'allocation') allocated[cost.resource] += cost.amount;
   for (const r of RESOURCE_KEYS) available[r] = total[r] - allocated[r] - committed[r];
   return {total, allocated, committed, available, permanent: state.permanent};
 }
@@ -111,14 +111,20 @@ export const UNIT_TYPES: UnitType[] = ([
 export function unitStats(unit: Unit) {
   const training = TRAINING[unit.training as keyof typeof TRAINING];
   if(!training) throw new Error('Treinamento inválido.');
-  const movement=Math.max(0,(unit.types.includes('warships')?60:unit.types.includes('cavalry')?80:40)-(unit.bulk??0)*10);
-  return { movement,maxHealth:unit.skills.endurance*3, health:Math.max(0,Math.min(unit.health,unit.skills.endurance*3)), defense:unit.skills.agility+unit.skills.athletics+unit.skills.awareness-unit.armorPenalty, discipline:Math.max(0,training.discipline+unit.disciplineModifier), xpSpent:SKILLS.reduce((sum,key)=>sum+Math.max(0,unit.skills[key]-2)*20,0) };
+  const mounted=unit.types.includes('cavalry')&&unit.mounted!==false;
+  const endurance=mounted&&unit.mount?unit.mount.endurance:unit.skills.endurance,athletics=mounted&&unit.mount?unit.mount.athletics:unit.skills.athletics;
+  const movement=Math.max(0,(unit.types.includes('warships')?60:mounted?80:40)-(unit.bulk??0)*10);
+  const garrisonAway=unit.types.includes('garrison')&&unit.atHome===false?6:0;
+  return { movement,maxHealth:endurance*3, health:Math.max(0,Math.min(unit.health,endurance*3)), defense:unit.skills.agility+athletics+unit.skills.awareness-unit.armorPenalty, discipline:Math.max(0,training.discipline+unit.disciplineModifier+garrisonAway), xpSpent:SKILLS.reduce((sum,key)=>sum+Math.max(0,unit.skills[key]-2)*20,0) };
 }
 export function validateUnit(unit: Unit, state: HouseState, types: UnitType[]) {
   const training = TRAINING[unit.training as keyof typeof TRAINING]; if(!training)throw new Error('Treinamento inválido.');
   if(!unit.types.length || new Set(unit.types).size!==unit.types.length) throw new Error('Selecione tipos distintos.');
   const selected = unit.types.map(id=>types.find(t=>t.id===id));
   if(selected.some(t=>!t||t.pending))throw new Error('Tipo de unidade indisponível.');
+  if(unit.types.includes('cavalry')&&(!unit.mount||!unit.mount.name.trim()||!unit.mount.source.trim()||![unit.mount.athletics,unit.mount.endurance].every(v=>Number.isInteger(v)&&v>=1&&v<=12)))throw new Error('Cavalaria exige montaria identificada, atributos e fonte.');
+  if(unit.types.length>1&&!unit.types.includes(unit.equipmentTypeId??''))throw new Error('Escolha um conjunto completo de equipamento entre os tipos da unidade.');
+  if(!state.domains.some(d=>d.id===unit.domainId))throw new Error('Domínio da unidade não encontrado.');
   const allowed = new Set(selected.flatMap(t=>t?.skills??[]));
   for(const s of SKILLS) { if(!Number.isInteger(unit.skills[s])||unit.skills[s]<2)throw new Error('Habilidade começa em 2.'); if(unit.skills[s]>2&&!allowed.has(s))throw new Error('Habilidade fora das opções deste tipo.'); }
   const spent = unitStats(unit).xpSpent; if(spent>training.xp) throw new Error('XP insuficiente.');
@@ -134,7 +140,8 @@ export function createUnit(state: HouseState, unit: Unit, types: UnitType[]): Ho
   for(const cost of costs){const discounts=activeHoldings(state).flatMap(h=>h.effects.filter(e=>e.kind==='discount'&&e.resource===cost.resource&&unit.types.some(t=>e.target==='unit:'+t)));if(discounts.length>1)throw new Error('Descontos de unidade múltiplos exigem decisão do Narrador.');cost.amount=Math.max(0,cost.amount-(discounts[0]?.amount??0));}
   const available = balances(state).available;
   for(const cost of costs) {available[cost.resource]-=cost.amount;if(available[cost.resource]<0)throw new Error('Saldo insuficiente para a unidade.');}
-  const next=structuredClone(state), maxHealth=unit.skills.endurance*3;
+  if(state.units.some(u=>u.id===unit.id))throw new Error('Identificador da unidade já utilizado.');
+  const next=structuredClone(state), maxHealth=unitStats(unit).maxHealth;
   next.units.push({...unit,costs,xp:training.xp-unitStats(unit).xpSpent,health:maxHealth,casualties:0,disciplineModifier:selected.reduce((n,t)=>n+(t?.discipline??0),0)});
   for(const c of costs)if(c.mode==='permanent')next.permanent[c.resource]-=c.amount;
   return next;
