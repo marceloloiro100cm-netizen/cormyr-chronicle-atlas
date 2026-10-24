@@ -17,7 +17,7 @@ export function CollapsibleText({ title, children }: { title: ReactNode; childre
   </div>;
 }
 
-export function NpcHub({ records, houseId, playerId, admin, canEdit, onSave, renderEditor }: { records: RecordRow[]; houseId: string; playerId?: string; admin: boolean; canEdit: boolean; onSave: () => unknown; renderEditor: (row: RecordRow) => ReactNode }) {
+export function NpcHub({ records, houseId, playerId, admin, canEdit, onSave, renderEditor }: { records: RecordRow[]; houseId: string; playerId?: string | undefined; admin: boolean; canEdit: boolean; onSave: () => unknown; renderEditor: (row: RecordRow) => ReactNode }) {
   const npcs = records.filter(r => r.kind === 'character' && !isFichaPersonagem(r.title, r.content)).map(r => ({ row: r, ...parseNpc(r.title, r.content) })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   const [aberto, setAberto] = useState<string | null>(null);
   return <section className="campaign-npc-hub">
@@ -36,7 +36,7 @@ export function NpcHub({ records, houseId, playerId, admin, canEdit, onSave, ren
   </section>;
 }
 
-function NpcForm({ houseId, playerId, admin, onSave }: { houseId: string; playerId?: string; admin: boolean; onSave: () => unknown }) {
+function NpcForm({ houseId, playerId, admin, onSave }: { houseId: string; playerId?: string | undefined; admin: boolean; onSave: () => unknown }) {
   const [nome, setNome] = useState(''), [cargo, setCargo] = useState(''), [descricao, setDescricao] = useState(''), [visibility, setVisibility] = useState<'house' | 'player' | 'gm'>(playerId ? 'player' : 'house'), [message, setMessage] = useState(''), [busy, setBusy] = useState(false);
   const [images, setImages] = useState<PendingImage[]>([]); const key = useRef<string | null>(null);
   return <details className="campaign-add"><summary>Adicionar personagem</summary><form className="campaign-form" onSubmit={async e => {
