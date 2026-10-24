@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaign_admin_audit: {
+        Row: {
+          action: string
+          actor: string
+          created_at: string
+          details: Json
+          id: string
+          target_player: string | null
+        }
+        Insert: {
+          action: string
+          actor: string
+          created_at?: string
+          details?: Json
+          id?: string
+          target_player?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          target_player?: string | null
+        }
+        Relationships: []
+      }
       campaign_houses: {
         Row: {
           active: boolean
@@ -191,34 +218,40 @@ export type Database = {
       }
       campaign_players: {
         Row: {
+          active: boolean
           created_at: string
           details: string
           folder_id: string | null
           id: string
           lord_name: string | null
           name: string
+          require_password_change: boolean
           roster_house_id: string | null
           roster_source: string | null
           user_id: string | null
         }
         Insert: {
+          active?: boolean
           created_at?: string
           details?: string
           folder_id?: string | null
           id?: string
           lord_name?: string | null
           name: string
+          require_password_change?: boolean
           roster_house_id?: string | null
           roster_source?: string | null
           user_id?: string | null
         }
         Update: {
+          active?: boolean
           created_at?: string
           details?: string
           folder_id?: string | null
           id?: string
           lord_name?: string | null
           name?: string
+          require_password_change?: boolean
           roster_house_id?: string | null
           roster_source?: string | null
           user_id?: string | null
@@ -464,6 +497,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      house_catalog: {
+        Row: {
+          archive_data: Json
+          classification: string
+          id: string
+          name: string
+          public_reviewed: boolean
+          region: string
+          source_folder_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          archive_data: Json
+          classification?: string
+          id: string
+          name: string
+          public_reviewed?: boolean
+          region: string
+          source_folder_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archive_data?: Json
+          classification?: string
+          id?: string
+          name?: string
+          public_reviewed?: boolean
+          region?: string
+          source_folder_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       house_memberships: {
         Row: {
@@ -848,6 +914,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      campaign_access_active: { Args: never; Returns: boolean }
       can_edit_record: {
         Args: { r: Database["public"]["Tables"]["campaign_records"]["Row"] }
         Returns: boolean
@@ -903,6 +970,12 @@ export type Database = {
         Returns: string
       }
       prepare_letter_week: { Args: { p_number: number }; Returns: undefined }
+      public_player_houses: {
+        Args: never
+        Returns: {
+          house_id: string
+        }[]
+      }
       reply_campaign_letter: {
         Args: { p_content: string; p_key: string; p_letter: string }
         Returns: string

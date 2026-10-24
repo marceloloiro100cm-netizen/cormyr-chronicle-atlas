@@ -134,6 +134,13 @@
       "when": 1792859551389,
       "tag": "0018_weekly_delivery_validation",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792859754800,
+      "tag": "0019_active_players_public_catalog",
+      "breakpoints": true
     }
   ]
 }
