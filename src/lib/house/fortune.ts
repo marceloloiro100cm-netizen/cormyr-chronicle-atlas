@@ -8,7 +8,8 @@ export function fortuneModifier(law:number,population:number) {return (LAW.find(
 export function fortuneOutcome(total:number){return FORTUNE_TABLE.find(([min,max])=>total>=min&&total<=max)?.[2]??'Resultado pendente';}
 export function rollPreview(state:HouseState,args:{status:number;testDice:number[];bonusDice:number[];modifier:number;fortuneStackDice?:number[]|undefined}) {
   if(!Number.isInteger(args.status)||args.status<1||args.status>10)throw new Error('Status inválido.');
-  if(args.testDice.length<args.status||[...args.testDice,...args.bonusDice].some(d=>!Number.isInteger(d)||d<1||d>6))throw new Error('Dados de teste inválidos.');
+  const vassalDice=(state.vassals??[]).filter(v=>v.status==='approved').length;
+  if(args.testDice.length!==args.status+vassalDice||[...args.testDice,...args.bonusDice].some(d=>!Number.isInteger(d)||d<1||d>6))throw new Error(`Registre ${args.status+vassalDice} dados de teste (Status + ${vassalDice} brasões vassalos).`);
   const kept=[...args.testDice,...args.bonusDice].sort((a,b)=>b-a).slice(0,args.testDice.length);
   const holdings=activeHoldings(state).flatMap(h=>h.effects).filter(e=>e.kind==='fortune');
   const holdingBonus=stackingBonus(holdings.reduce((n,e)=>n+(e.amount??0),0),args.fortuneStackDice??[]);
