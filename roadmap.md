@@ -43,3 +43,11 @@
 ## Pendências anteriores
 - Contas dos jogadores ainda não testadas individualmente; senha própria do Narrador (proprietário optou por manter "cormyr")
 - Entrega automática do executor atualizado será verificada após publicação
+
+## Missivas v3 (23/10 23:08 UTC)
+- [x] Borda vinho nas casas de jogador (Reino e Regiões)
+- [x] Cartões de missiva recolhíveis com setinha, expandir/recolher todas, busca
+- [x] Excluir missiva (remetente ou Narrador; Narrador consulta "Excluídas")
+- [x] Jogador escreve para outras casas e encaminha; Narrador sempre vê
+- [x] Filtros laterais fixos
+- [x] Abrir/fechar rodada de missiva; jogador vê "Missivas fechadas, aguarde..."
