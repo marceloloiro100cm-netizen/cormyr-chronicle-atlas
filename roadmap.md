@@ -84,3 +84,4 @@
 
 ## Pedido de 24/10 18:26 UTC
 - [ ] Imagens das fichas das casas pequenas no canto, preservando ampliação ao clicar e dados de todas as casas
+- [ ] Redefinir senha apenas da conta do Narrador conforme pedido de 18:27 UTC, preservando jogadores e permissões
