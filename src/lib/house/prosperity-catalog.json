@@ -255,14 +255,10 @@
     ],
     "effects": [
       {
-        "kind": "action",
-        "description": "G Riqueza +2."
-      },
-      {
         "kind": "gain",
         "resource": "wealth",
         "amount": 2,
-        "description": "Ganho por Sorte: +2 wealth."
+        "description": "Ganho por Sorte: +2 Riqueza."
       }
     ],
     "duration": {
@@ -309,20 +305,16 @@
     ],
     "effects": [
       {
-        "kind": "action",
-        "description": "G População +1, Riqueza +1."
-      },
-      {
         "kind": "gain",
         "resource": "population",
         "amount": 1,
-        "description": "Ganho por Sorte: +1 population."
+        "description": "Ganho por Sorte: +1 População."
       },
       {
         "kind": "gain",
         "resource": "wealth",
         "amount": 1,
-        "description": "Ganho por Sorte: +1 wealth."
+        "description": "Ganho por Sorte: +1 Riqueza."
       }
     ],
     "duration": {
@@ -727,20 +719,16 @@
     ],
     "effects": [
       {
-        "kind": "action",
-        "description": "G Riqueza +1; M Influência +1."
-      },
-      {
         "kind": "gain",
         "resource": "wealth",
         "amount": 1,
-        "description": "Ganho por Sorte: +1 wealth."
+        "description": "Ganho por Sorte: +1 Riqueza."
       },
       {
         "kind": "mitigation",
         "resource": "influence",
         "amount": 1,
-        "description": "Mitigação de perda: +1 influence."
+        "description": "Mitigação de perda: +1 Influência."
       }
     ],
     "duration": {
@@ -839,20 +827,16 @@
     ],
     "effects": [
       {
-        "kind": "action",
-        "description": "G População +1, Riqueza +1."
-      },
-      {
         "kind": "gain",
         "resource": "population",
         "amount": 1,
-        "description": "Ganho por Sorte: +1 population."
+        "description": "Ganho por Sorte: +1 População."
       },
       {
         "kind": "gain",
         "resource": "wealth",
         "amount": 1,
-        "description": "Ganho por Sorte: +1 wealth."
+        "description": "Ganho por Sorte: +1 Riqueza."
       }
     ],
     "duration": {
@@ -2522,20 +2506,16 @@
     ],
     "effects": [
       {
-        "kind": "action",
-        "description": "G Influência +1, Lei +1."
-      },
-      {
         "kind": "gain",
         "resource": "influence",
         "amount": 1,
-        "description": "Ganho por Sorte: +1 influence."
+        "description": "Ganho por Sorte: +1 Influência."
       },
       {
         "kind": "gain",
         "resource": "law",
         "amount": 1,
-        "description": "Ganho por Sorte: +1 law."
+        "description": "Ganho por Sorte: +1 Lei."
       }
     ],
     "duration": {
@@ -7054,13 +7034,13 @@
         "kind": "gain",
         "resource": "population",
         "amount": 1,
-        "description": "Ganho por Sorte: +1 population."
+        "description": "Ganho por Sorte: +1 População."
       },
       {
         "kind": "gain",
         "resource": "wealth",
         "amount": 1,
-        "description": "Ganho por Sorte: +1 wealth."
+        "description": "Ganho por Sorte: +1 Riqueza."
       }
     ],
     "duration": {
@@ -8411,6 +8391,13 @@
       {
         "kind": "action",
         "description": "Realizar torneio custa -1 Riqueza, cumulativo com Tournament Master."
+      },
+      {
+        "kind": "discount",
+        "target": "pros-tournament-master",
+        "resource": "wealth",
+        "amount": 2,
+        "description": "Mestre de torneios: desconto de 2 Riqueza."
       }
     ],
     "duration": {
