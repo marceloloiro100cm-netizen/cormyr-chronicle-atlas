@@ -18,7 +18,7 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
   if(!house.data)throw new Error('Casa oficial não encontrada.');
   const overrides=(rules.data??[]).map(r=>catalogSchema.parse(r.definition));
   const catalog=[...CORE_CATALOG.filter(i=>!overrides.some(o=>o.id===i.id)),...overrides];
-  return {state:(sheet.data?.state??newHouseState(data.houseId,house.data.region??'')) as unknown as HouseState,version:sheet.data?.version??0,catalog,ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(admin.data)};
+  return {state:(sheet.data?.state??newHouseState(data.houseId,house.data.region??'')) as unknown as HouseState,version:sheet.data?.version??0,catalog,houses:admin.data?(await db.from('campaign_houses').select('id,name')).data??[]:[{id:house.data.id,name:house.data.name}],ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(admin.data)};
 });
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
@@ -55,7 +55,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     const dice=state.phase==='active'?Array.from({length:item.duration.dice??0},()=>(crypto.getRandomValues(new Uint32Array(1))[0]??0)%(item.duration.sides??6)+1):[];
     next=purchase(state,item,{...purchaseArgs,dice});rule=item.source+' · '+item.section+' · '+item.version;
   }
-  if(data.action==='unit') {if(state.phase==='active')throw new Error('Recrutamento em campanha exige projeto aprovado.');const parsed=unitSchema.parse(args['unit']);const unit=equipUnit({...parsed,costs:[],xp:0,equipment:[]});next=createUnit(state,unit,UNIT_TYPES);rule='Livro básico · Tipos mistos e tabelas10-1/10-2';}
+  if(data.action==='unit') {if(state.phase==='active')throw new Error('Recrutamento em campanha exige projeto aprovado.');const parsed=unitSchema.parse(args['unit']);if(parsed.types.length>1&&!admin)throw new Error('O Narrador precisa confirmar a adaptação dos tipos mistos.');const unit=equipUnit({...parsed,costs:[],xp:0,equipment:[]});next=createUnit(state,unit,UNIT_TYPES);rule='Livro básico · Tipos mistos e tabelas10-1/10-2';}
   if(data.action==='unit_state'){const input=z.object({unitId:z.string(),mounted:z.boolean(),atHome:z.boolean(),health:z.number(),casualties:z.number().int(),situation:z.string().max(1000)}).parse(args);next=changeUnitState(state,input);rule='Livro básico · Condição, cavalaria e guarnição';}
   if(data.action==='survivors'){const input=z.object({id:z.string().uuid(),unitId:z.string(),roll:z.number().int(),condition:z.enum(SURVIVOR_CONDITIONS),disorganizations:z.number().int().nonnegative(),skills:unitSchema.shape.skills,justification:z.string().min(1)}).parse(args);next=resolveSurvivors(state,input);rule='Livro básico · tabela10-6 Sobreviventes';}
   if(data.action==='vassal'){const input=z.object({id:z.string().uuid(),houseId:z.string(),name:z.string(),notes:z.string().max(4000)}).parse(args);const h=await context.supabase.from('campaign_houses').select('name').eq('id',input.houseId).single();if(h.error||!h.data)throw new Error('Casa oficial não encontrada.');next=proposeVassal(state,{...input,name:h.data.name});rule='Proposta privada de vassalagem, sem permissão ou cobrança';}
