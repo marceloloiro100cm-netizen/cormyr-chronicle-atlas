@@ -47,7 +47,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   }
   if(data.action==='domain') {const domain=z.object({id:z.string().uuid(),name:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args);next.domains.push({...domain,terrain:'',features:[]});}
   if(data.action==='purchase') {
-    const purchaseArgs=z.object({id:z.string().uuid(),itemId:z.string(),domainId:z.string(),name:z.string().max(160),parentId:z.string().optional()}).parse(args);
+    const purchaseArgs=z.object({id:z.string().uuid(),itemId:z.string(),domainId:z.string(),name:z.string().max(160),parentId:z.string().optional(),supportId:z.string().optional()}).parse(args);
     const overrides=await db.from('noble_house_rule_overrides').select('definition');if(overrides.error)throw new Error('Regras indisponíveis.');
     const item=overrides.data.map(r=>catalogSchema.parse(r.definition)).find(i=>i.id===purchaseArgs.itemId)??CORE_CATALOG.find(i=>i.id===purchaseArgs.itemId);
     if(!item)throw new Error('Posse não encontrada.');
