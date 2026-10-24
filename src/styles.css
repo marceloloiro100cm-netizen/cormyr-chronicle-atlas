@@ -262,3 +262,5 @@
 .campaign-npc-chevron{transition:transform .2s}
 .campaign-npc-list>li.aberto .campaign-npc-chevron{transform:rotate(180deg)}
 .campaign-npc-detail{padding:0 1rem 1rem}
+.campaign-npc-toggle{flex:1;display:flex;align-items:center;gap:1rem;text-align:left;background:none;border:0;padding:.25rem 0;cursor:pointer}
+.campaign-npc-photo .campaign-image p{font-size:.6rem;margin:0}
