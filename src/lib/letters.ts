@@ -59,6 +59,6 @@ export function sentLetters(letters: LetterRow[], userId: string): LetterRow[] {
 }
 
 /** Próximo número de missiva do narrador. */
-export function nextLetterNumber(letters: LetterRow[]): number {
+export function nextLetterNumber(letters: {letter_number:number|null}[]): number {
   return letters.reduce((max, l) => Math.max(max, l.letter_number ?? 0), 0) + 1;
 }
