@@ -1,0 +1,39 @@
+import { describe,it,expect } from 'vitest';
+import { newHouseState,SKILLS,type Unit,type CatalogItem } from '@/lib/house/types';
+import { CORE_CATALOG } from '@/lib/house/catalog';
+import { balances,purchase,createUnit,UNIT_TYPES,advance,alternativeFortune,gainFromFortune,unitStats } from '@/lib/house/engine';
+import { regionBonus } from '@/lib/house/regions';
+import { previewWorkbook } from '@/lib/house/import';
+const start=()=>{const s=newHouseState('isolated');s.base={defense:50,influence:50,lands:100,law:30,population:10,power:100,wealth:100};s.domains=[{id:'domain',name:'Domínio isolado',terrain:'hills',features:[],notes:''}];return s;};
+const item=(id:string)=>{const i=CORE_CATALOG.find(i=>i.id===id);if(!i)throw new Error(id);return i;};
+const buy=(s:ReturnType<typeof start>,id:string)=>purchase(s,item(id),{id:'purchase-'+id,domainId:'domain',name:id,dice:[]});
+const unit=(types:string[]):Unit=>({id:'u',name:'Unidade isolada',types,training:'trained',origin:'',domainId:'domain',skills:Object.fromEntries(SKILLS.map(s=>[s,2])) as Unit['skills'],xp:60,costs:[],armor:3,armorPenalty:2,health:6,casualties:3,strength:100,disciplineModifier:0,equipment:[],situation:'',notes:''});
+describe('contabilidade da casa',()=>{
+ it('Defesa50 Castelo40 mantém total50 e disponível10',()=>{const b=balances(buy(start(),'castle'));expect(b.total.defense).toBe(50);expect(b.allocated.defense).toBe(40);expect(b.available.defense).toBe(10);});
+ it('saldo insuficiente não altera a ficha',()=>{const s=start();s.base.defense=39;expect(()=>buy(s,'castle')).toThrow('Saldo insuficiente');expect(s.holdings).toHaveLength(0);expect(s.base.defense).toBe(39);});
+ it('custos multirrecurso são tudo ou nada',()=>{const s=start();s.base.wealth=1;const mixed:CatalogItem={...item('castle'),costs:[{resource:'defense',amount:40,mode:'allocation'},{resource:'wealth',amount:2,mode:'permanent'}]};expect(()=>purchase(s,mixed,{id:'x',domainId:'domain',name:'x',dice:[]})).toThrow();expect(s.permanent.wealth).toBe(0);expect(s.holdings).toHaveLength(0);});
+ it('colina7 e vila pequena20 somam27',()=>{const s=start();s.domains[0]={id:'domain',name:'Teste',terrain:'',features:[],notes:''};expect(balances(buy(buy(s,'hills'),'small-town')).allocated.lands).toBe(27);});
+ it('trocar região substitui o bônus',()=>{const s=start();s.regionalApplied=true;s.identity.region='helmlands';expect(balances(s).total.defense).toBe(55);s.identity.region='veilstone';expect(balances(s).total.defense).toBe(70);});
+ it('importação não reaplica bônus',()=>{const s=start();s.method='import';s.regionalApplied=true;s.identity.region='helmlands';expect(balances(s).total.defense).toBe(50);});
+ it('usa os valores explícitos de Swordmarch',()=>{expect(regionBonus('Swordmarch').law).toBe(5);});
+ it('custos fracionários permanecem exatos',()=>{const s=start();const i={...item('castle'),costs:[{resource:'wealth' as const,amount:0.5,mode:'permanent' as const}]};const b=balances(purchase(s,i,{id:'fraction',domainId:'domain',name:'x',dice:[]}));expect(b.total.wealth).toBe(99.5);expect(b.allocated.wealth).toBe(0);});
+ it('melhoria sem posse principal bloqueada',()=>{const i=CORE_CATALOG.find(i=>i.category==='improvement'&&!i.pending);if(!i)throw new Error('catálogo');expect(()=>purchase(start(),i,{id:'x',domainId:'domain',name:'x',dice:[]})).toThrow('principal');});
+ it('destruição não devolve pontos',()=>{const s=buy(start(),'castle');const h=s.holdings[0];if(h)h.status='destroyed';expect(balances(s).available.defense).toBe(10);});
+});
+describe('unidades e calendário',()=>{
+ it('guarnição treinada3+2=5',()=>{expect(createUnit(start(),unit(['garrison']),UNIT_TYPES).units[0]?.costs[0]?.amount).toBe(5);});
+ it('infantaria arqueiros treinada3+4+3=10',()=>{expect(createUnit(start(),unit(['infantry','archers']),UNIT_TYPES).units[0]?.costs[0]?.amount).toBe(10);});
+ it('plebeus reduzem População2 permanentemente',()=>{expect(balances(createUnit(start(),unit(['levies']),UNIT_TYPES)).total.population).toBe(8);});
+ it('navios exigem água',()=>{expect(()=>createUnit(start(),unit(['warships']),UNIT_TYPES)).toThrow('água');});
+ it('XP insuficiente bloqueia',()=>{const u=unit(['garrison']);u.skills.fighting=6;expect(()=>createUnit(start(),u,UNIT_TYPES)).toThrow('XP');});
+ it('recalcular equipamento não apaga baixas',()=>{const u=unit(['garrison']);u.armorPenalty=3;unitStats(u);expect(u.casualties).toBe(3);expect(u.health).toBe(6);});
+ it('projeto somente ativa concluído',()=>{const s=start();s.phase='active';const n=purchase(s,item('castle'),{id:'castle-project',domainId:'domain',name:'Castelo',dice:Array(10).fill(1)});expect(n.holdings[0]?.status).toBe('building');expect(advance(n,n.month+105).holdings[0]?.status).toBe('building');expect(advance(n,n.month+106).holdings[0]?.status).toBe('active');});
+ it('avanço idempotente',()=>{const s=start();expect(advance(advance(s,s.month+1),s.month+1)).toEqual(advance(s,s.month+1));});
+ it('ganho Riqueza não é renda mensal',()=>{const s=start();s.holdings.push({id:'gain',itemId:'x',name:'x',domainId:'domain',costs:[],effects:[{kind:'gain',amount:2,resource:'wealth',description:'Ganho'}],ruleVersion:'1',source:'fonte',status:'active'});expect(advance(s,s.month+1).permanent.wealth).toBe(0);expect(gainFromFortune(s,'wealth',1,true)).toBe(3);expect(gainFromFortune(s,'wealth',1,false)).toBe(1);});
+ it('+1 sem rolagem não recebe bônus de ganho',()=>{const s=start();s.phase='active';expect(alternativeFortune(s,'wealth').permanent.wealth).toBe(1);expect(()=>alternativeFortune(alternativeFortune(s,'wealth'),'wealth')).toThrow('já');});
+});
+describe('conciliação dos anexos',()=>{
+ it('detecta #REF! Evenhand em B38',()=>{const preview=previewWorkbook([{name:'Casa',rows:[[{address:'B38',value:'#REF!'}]]}],'Evenhand');expect(preview.issues.some(i=>i.includes('Casa!B38: #REF!'))).toBe(true);});
+ it('detecta Erdenor no Exército de Ashkar',()=>{const cell=(value:unknown,address='A1')=>({value,address});const p=previewWorkbook([{name:'Casa',rows:[[cell('Nome'),cell('Ashkar'),cell('Região'),cell('Dragoncoast')]]},{name:'Exército',rows:[[cell('Casa Nobre'),cell('Tipo'),cell('Treinamento')],[cell('Erdenor'),cell('Saqueadores'),cell('Veterano')]]}],'Ficha');expect(p.units).toHaveLength(0);expect(p.issues.some(i=>i.includes('Erdenor')&&i.includes('Ashkar'))).toBe(true);});
+ it('catálogo não duplica mina e mercado básicos substituídos',()=>{expect(CORE_CATALOG.some(i=>i.id==='basic-book-mine')).toBe(false);expect(CORE_CATALOG.some(i=>i.original==='Rich Mine')).toBe(true);expect(CORE_CATALOG.filter(i=>i.original==='Marketplace')).toHaveLength(1);});
+});

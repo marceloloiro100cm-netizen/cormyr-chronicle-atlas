@@ -1,0 +1,2334 @@
+{
+  "fonte": {
+    "titulo": "Out of Strife, Prosperity",
+    "arquivo": "/mnt/user-uploads/Prosperidade.md",
+    "escopo": "Exclusivamente Prosperidade; 64 investimentos principais, além de variantes, melhorias e adaptações de Westeros.",
+    "leitura": "Texto integral examinado. As 16 imagens incorporadas foram decodificadas em /tmp e inspecionadas visualmente: são ilustrações, logotipos e elementos gráficos, não reproduções das páginas ou tabelas. Portanto, não permitem recuperar campos perdidos no OCR.",
+    "citacoes": "Cada campo src identifica seção/subseção do arquivo. A paginação impressa não foi preservada sistematicamente; não foram inventadas páginas.",
+    "traducao": "Nomes portugueses são traduções de trabalho; original preservado."
+  },
+  "convencoes": {
+    "custos": "Números de custo são Riqueza, salvo indicação de Defesa, Poder ou Terras. Melhorias têm custo adicional, exceto quando o texto explicita inclusão de melhoria anterior.",
+    "tempo": "Todos os tempos são meses, salvo indicação contrária. null significa não recuperável ou não informado, conforme observação.",
+    "SF": "Modificador de teste de Sorte da Casa.",
+    "G": "Bônus ao ganho do recurso indicado quando aumentado por uma rolagem efetiva de Sorte da Casa; não beneficia o +1 escolhido ao dispensar a rolagem.",
+    "M": "Mitigação de perda do recurso indicado por Sorte da Casa; pode reduzir a perda a zero.",
+    "C": "Conversão unidirecional de ganhos de recursos, inclusive ganhos que não vêm de Sorte da Casa; também permite conversão 1:1 por Administrar Recursos, mesmo apressada.",
+    "B_D": "+nB são dados de bônus; +nD são dados de teste.",
+    "asterisco": "Em geral melhorias de um mesmo investimento são mutuamente exclusivas. As marcadas com * são exceções e podem coexistir com outras melhorias. Exceções particulares estão registradas.",
+    "heranca": "Aplicam-se os requisitos e regras do investimento às suas melhorias. O investimento continua fornecendo seus benefícios enquanto uma melhoria é estabelecida."
+  },
+  "regras_gerais": [
+    {
+      "src": "Introduction > Improvements",
+      "regra": "Pagar o custo adicional inicia o prazo da melhoria; seus benefícios começam após esse prazo."
+    },
+    {
+      "src": "Introduction > Stacking Bonuses",
+      "regra": "SF, G e M não são simplesmente somados como modificadores fixos: somar os bônus aplicáveis e usar a tabela de bônus aleatório. Também se aplica a penalidades e reduções.",
+      "tabela_transcrita": [
+        [
+          "+1",
+          "+1"
+        ],
+        [
+          "+2 a +3",
+          "+1d3 (1d6 dividido por dois)"
+        ],
+        [
+          "+4 a +6",
+          "+1d6"
+        ],
+        [
+          "+7 a +12",
+          "+2d6"
+        ],
+        [
+          "+12 a +18",
+          "+3d6"
+        ]
+      ],
+      "ambiguidade": "A tabela textual contém sobreposição em +12; não corrigida. Não explica totais superiores a 18 ou arredondamento do d6 dividido por dois."
+    },
+    {
+      "src": "Estate Wealth Holdings",
+      "regra": "Cada domínio pode ter apenas um investimento da categoria Estate."
+    },
+    {
+      "src": "Personage Wealth Holdings",
+      "regra": "Não há limite de investimentos Personage por domínio."
+    },
+    {
+      "src": "Settlement Wealth Holdings",
+      "regra": "Capacidade por comunidade/fortificação: Hamlet ou Tower: 1; Small Town ou Hall: 2; Large Town ou Castle: 4; maiores: sem limite. Personage não consome esses espaços. Abbey, Tolls e Trading Inn são explicitamente independentes desses limites.",
+      "ambiguidade": "Não esclarece explicitamente nessa passagem o enquadramento de Small Castle ou a soma de espaços quando comunidade e fortificação coexistem."
+    },
+    {
+      "src": "Introduction > Which Resources Increase?",
+      "regra": "Sugestão: jogadores declaram o recurso pretendido antes da rolagem de Sorte; resultado positivo aumenta-o e negativo diminui-o. Narrador escolhe recursos secundários."
+    }
+  ],
+  "catalogo": {
+    "Estate": [
+      {
+        "nome": "Criação de Animais",
+        "original": "Animal Husbandry",
+        "src": "Estate Wealth Holdings > Animal Husbandry",
+        "custo": 10,
+        "tempo": null,
+        "requisitos": "Nenhuma comunidade maior que Hamlet.",
+        "efeitos": [
+          "SF +2.",
+          "Definir espécie de rebanho apropriada ao terreno e clima."
+        ],
+        "incerteza": "Prazo e eventual restrição sazonal desapareceram do cabeçalho; não atribuídos a partir da coluna vizinha.",
+        "melhorias": [
+          {
+            "nome": "Matadouro",
+            "original": "Shambles",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "M População +2."
+            ]
+          },
+          {
+            "nome": "Oficina de Lã ou Couro",
+            "original": "Woolworks or Leatherworks",
+            "custo": 5,
+            "tempo": "2d6",
+            "efeitos": [
+              "G Riqueza +2."
+            ]
+          },
+          {
+            "nome": "Oficina de Lã ou Couro de Alta Qualidade",
+            "original": "High-Quality Woolworks or Leatherworks",
+            "custo": 10,
+            "tempo": "Especial: operação anterior por pelo menos 5 anos",
+            "requisitos": "Oficina correspondente funcionando há 5 anos; compra direta permitida na criação do domínio.",
+            "efeitos": [
+              "Como a oficina anterior; G Influência +1 e Riqueza +1 conforme texto adicional."
+            ],
+            "regras": [
+              "Custo inclui o investimento da oficina inicial."
+            ],
+            "incerteza": "A relação entre o G Riqueza +2 anterior e os bônus listados na versão superior não é explicitamente resolvida."
+          }
+        ]
+      },
+      {
+        "nome": "Apiário",
+        "original": "Apiary",
+        "src": "Estate Wealth Holdings > Apiary",
+        "custo": 5,
+        "tempo": "3d6+6",
+        "requisitos": "Grasslands ou Woods; nenhuma comunidade maior que Hamlet; não iniciar no outono ou inverno.",
+        "efeitos": [
+          "SF +1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Oficina de Velas",
+            "original": "Candleworks",
+            "custo": 5,
+            "tempo": "1d6+6",
+            "efeitos": [
+              "G Riqueza +2."
+            ]
+          },
+          {
+            "nome": "Destilaria de Hidromel",
+            "original": "Mead Distillery",
+            "custo": 5,
+            "tempo": "1d6+6",
+            "efeitos": [
+              "G População +1, Riqueza +1."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Carvoaria",
+        "original": "Charcoal",
+        "src": "Estate Wealth Holdings > Charcoal",
+        "custo": 10,
+        "tempo": "2d6+6",
+        "requisitos": "Heavy Woods.",
+        "efeitos": [
+          "SF +1.",
+          "Artisan que dependa de fornos muito quentes, como ferreiro ou vidraceiro: custo -2 Riqueza."
+        ],
+        "incerteza": "Há um fragmento '(limits)' junto ao prazo, sem explicação recuperável.",
+        "melhorias": [
+          {
+            "nome": "Produção de Alcatrão",
+            "original": "Tar Works",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "G Riqueza +1.",
+              "Custo de unidades Ships -1."
+            ]
+          },
+          {
+            "nome": "Processamento de Combustível",
+            "original": "Fuel Processing",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "G Riqueza +2."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Canis",
+        "original": "Dog Kennels",
+        "src": "Estate Wealth Holdings > Dog Kennels",
+        "custo": 10,
+        "tempo": "6+1d6",
+        "requisitos": "Nenhum.",
+        "efeitos": [
+          "SF +1.",
+          "Master of the Hunt: custo -2.",
+          "Cães treinados: preço -40% para membros da Casa."
+        ],
+        "melhorias": [
+          {
+            "nome": "Cães de Rastreamento",
+            "original": "Scouting Hounds",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "2d6",
+            "efeitos": [
+              "Scouts da Casa: +2B Survival (Tracking), dano corpo a corpo +1, podendo ultrapassar o máximo normal."
+            ]
+          },
+          {
+            "nome": "Cães de Guerra",
+            "original": "War Hounds",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "2d6",
+            "efeitos": [
+              "Equipar uma unidade não montada e não naval custa 2 Riqueza; concede +1B ataques corpo a corpo e dano corpo a corpo +2, além do máximo normal."
+            ]
+          },
+          {
+            "nome": "Cães de Guarda",
+            "original": "Guard Dogs",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Dificuldade de testes de Astúcia de sabotadores, espiões e outros agentes inimigos +3."
+            ]
+          },
+          {
+            "nome": "Linhagem Rara",
+            "original": "Rare Bloodline",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "2d6+12",
+            "efeitos": [
+              "G Riqueza +1; M Influência +1."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Pesqueiro",
+        "original": "Fishery",
+        "src": "Estate Wealth Holdings > Fishery",
+        "custo": 5,
+        "tempo": "2d6",
+        "requisitos": "Coast, Island, River ou Lake.",
+        "efeitos": [
+          "SF +1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Beneficiamento de Pescado",
+            "original": "Processing",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "G População +1, Riqueza +1."
+            ]
+          },
+          {
+            "nome": "Caça à Baleia",
+            "original": "Whaling",
+            "custo": 5,
+            "tempo": "2d6",
+            "requisitos": "Coast ou Island.",
+            "efeitos": [
+              "G Influência +1, Riqueza +1."
+            ]
+          },
+          {
+            "nome": "Frota Pesqueira",
+            "original": "Fishing Fleet",
+            "custo": 10,
+            "tempo": "6d6",
+            "requisitos": "Coast.",
+            "efeitos": [
+              "G População +2; M População +1, Riqueza +1."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Agricultura Alimentar",
+        "original": "Food Agriculture",
+        "src": "Estate Wealth Holdings > Food Agriculture",
+        "custo": 5,
+        "tempo": "1d6+3",
+        "requisitos": "Plains ou Hills sem Woods; nenhuma comunidade maior que Hamlet; não iniciar no outono ou inverno.",
+        "efeitos": [
+          "SF +1; G População +1, Poder +1.",
+          "Benefícios aplicam-se apenas na primavera, verão e outono."
+        ],
+        "melhorias": [
+          {
+            "nome": "Moinho",
+            "original": "Mill",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "G Riqueza +1."
+            ]
+          },
+          {
+            "nome": "Celeiros",
+            "original": "Granaries",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "M População +1."
+            ]
+          },
+          {
+            "nome": "Destilaria de Álcool",
+            "original": "Alcohol Distillery",
+            "custo": 5,
+            "tempo": "1d6+6",
+            "efeitos": [
+              "G População +1, Riqueza +1."
+            ]
+          }
+        ],
+        "incerteza": "A abrangência da restrição sazonal sobre melhorias não é discutida separadamente."
+      },
+      {
+        "nome": "Comércio de Peles",
+        "original": "Fur-Trade",
+        "src": "Estate Wealth Holdings > Fur-Trade",
+        "custo": 10,
+        "tempo": "2d6",
+        "requisitos": "Domínio sem comunidade.",
+        "efeitos": [
+          "SF +2."
+        ],
+        "melhorias": [
+          {
+            "nome": "Criação de Animais de Pele",
+            "original": "Fur Ranch",
+            "custo": 5,
+            "tempo": "2d6",
+            "efeitos": [
+              "G Riqueza +2."
+            ]
+          },
+          {
+            "nome": "Armadilheiros",
+            "original": "Trappers",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Custo de unidades Guerillas -2."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Campos de Ervas",
+        "original": "Herb Fields",
+        "src": "Estate Wealth Holdings > Herb Fields",
+        "custo": 5,
+        "tempo": "2d6",
+        "requisitos": "Plains ou Hills sem Woods; nenhuma comunidade maior que Hamlet; não iniciar no outono ou inverno.",
+        "efeitos": [
+          "SF +1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Perfumaria ou Tinturaria",
+            "original": "Perfumery or Dyeworks",
+            "custo": 5,
+            "tempo": "1d6+6",
+            "efeitos": [
+              "M Influência +1, Riqueza +1."
+            ]
+          },
+          {
+            "nome": "Destilaria de Álcool",
+            "original": "Alcohol Distillery",
+            "custo": 5,
+            "tempo": "1d6+6",
+            "efeitos": [
+              "G População +1, Riqueza +1."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Criação de Cavalos",
+        "original": "Horse Husbandry",
+        "src": "Estate Wealth Holdings > Horse Husbandry",
+        "custo": 10,
+        "tempo": "2d6+12",
+        "requisitos": "Plains ou Hills com Grassland; nenhuma comunidade maior que Hamlet.",
+        "efeitos": [
+          "SF +1; G Riqueza +1.",
+          "Uma raça de cavalos treinados disponível aos membros por 40% do preço normal, não desconto de 40%."
+        ],
+        "melhorias": [
+          {
+            "nome": "Cavalos Esportivos",
+            "original": "Sporting Horse Herds",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "2d6",
+            "efeitos": [
+              "Custo de Tourney Master -5."
+            ]
+          },
+          {
+            "nome": "Cavalos de Guerra",
+            "original": "War Horse Herds",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "2d6",
+            "efeitos": [
+              "Custo de Cavalry -2."
+            ]
+          },
+          {
+            "nome": "Linhagem Rara",
+            "original": "Rare Bloodline",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "2d6+12",
+            "efeitos": [
+              "G Influência +1; M Riqueza +1."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Mina",
+        "original": "Mine",
+        "src": "Estate Wealth Holdings > Mine; remissão interna p. 12",
+        "tempo": "2d6+24",
+        "requisitos": "Hills ou Mountains.",
+        "variantes": [
+          {
+            "nome": "Mina Básica",
+            "original": "Basic Mine",
+            "custo": 10,
+            "efeitos": [
+              "SF +2."
+            ],
+            "produtos": "Estanho, cobre, carvão ou equivalentes."
+          },
+          {
+            "nome": "Mina Valiosa",
+            "original": "Valuable Mine",
+            "custo": 15,
+            "efeitos": [
+              "SF +2; G Riqueza +2."
+            ],
+            "produtos": "Sal, ferro, pedras semipreciosas ou equivalentes."
+          },
+          {
+            "nome": "Mina Rica",
+            "original": "Rich Mine",
+            "custo": 20,
+            "efeitos": [
+              "SF +3; G Riqueza +2."
+            ],
+            "produtos": "Prata, ouro, gemas ou equivalentes."
+          }
+        ],
+        "melhorias": [
+          {
+            "nome": "Fundição",
+            "original": "Smelter",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "G População +1.",
+              "Artisan apropriado: custo -2."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Pedreira",
+        "original": "Quarry",
+        "src": "Estate Wealth Holdings > Quarry",
+        "tempo": "2d6+9",
+        "requisitos": "Hills ou Mountains.",
+        "variantes": [
+          {
+            "nome": "Pedreira Básica",
+            "original": "Basic Quarry",
+            "custo": 10,
+            "efeitos": [
+              "SF +1; G Defesa +1."
+            ],
+            "produtos": "Granito, calcário ou equivalentes."
+          },
+          {
+            "nome": "Pedreira Valiosa",
+            "original": "Valuable Quarry",
+            "custo": 15,
+            "efeitos": [
+              "SF +2; G Defesa +2."
+            ],
+            "produtos": "Mármore ou equivalentes."
+          }
+        ],
+        "melhorias": [
+          {
+            "nome": "Oficina de Cantaria",
+            "original": "Stoneworks",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "G População +1.",
+              "Artisan apropriado: custo -2."
+            ]
+          }
+        ],
+        "incerteza": "O resumo inicial sugere ausência de melhorias, mas a seção detalhada apresenta Stoneworks; preservada a regra detalhada."
+      },
+      {
+        "nome": "Salinas",
+        "original": "Salt Works",
+        "src": "Estate Wealth Holdings > Salt Works",
+        "custo": 10,
+        "tempo": "2d6+6",
+        "requisitos": "Coastal; água salgada. Sal interior usa Valuable Mine.",
+        "efeitos": [
+          "SF +1."
+        ],
+        "melhorias": [],
+        "incerteza": "Resumo inicial também lista G Riqueza +1 e M População +1; esses efeitos não aparecem no corpo recuperado. Registrar como conflito, não como benefícios confirmados."
+      },
+      {
+        "nome": "Agricultura Têxtil",
+        "original": "Textile Agriculture",
+        "src": "Estate Wealth Holdings > Textile Agriculture",
+        "custo": 5,
+        "tempo": "1d6+3",
+        "requisitos": "Plains ou Hills sem Woods; nenhuma comunidade maior que Hamlet; não iniciar no outono ou inverno.",
+        "efeitos": [
+          "SF +1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Tecelagem",
+            "original": "Weavery",
+            "custo": 5,
+            "tempo": "2d6",
+            "efeitos": [
+              "G Riqueza +2."
+            ]
+          },
+          {
+            "nome": "Tecelagem de Alta Qualidade",
+            "original": "High-Quality Weavery",
+            "custo": 10,
+            "tempo": "Especial: tecelagem operando há pelo menos 5 anos",
+            "requisitos": "Compra direta apenas na criação do domínio; depois exige 5 anos de operação da tecelagem.",
+            "efeitos": [
+              "Como Weavery; G Influência +1; M Riqueza +1."
+            ],
+            "regras": [
+              "Custo inclui a tecelagem inicial."
+            ],
+            "incerteza": "Não explicita se os benefícios apresentados substituem ou acrescentam-se ao G Riqueza +2 anterior."
+          }
+        ]
+      },
+      {
+        "nome": "Exploração Madeireira",
+        "original": "Timber",
+        "src": "Estate Wealth Holdings > Timber",
+        "custo": 5,
+        "tempo": "1d6+6",
+        "requisitos": "Woods; nenhuma comunidade maior que Hamlet, conforme resumo.",
+        "efeitos": [
+          "SF +1."
+        ],
+        "incerteza": "Cabeçalho contém 'May not be begun in' sem continuação; estação proibida não recuperável.",
+        "melhorias": [
+          {
+            "nome": "Serraria",
+            "original": "Lumber Mill",
+            "custo": 5,
+            "tempo": "1d3",
+            "efeitos": [
+              "Ganhos de Riqueza por Sorte da Casa aumentam em 1."
+            ]
+          },
+          {
+            "nome": "Estaleiros",
+            "original": "Ship Yards",
+            "custo": 5,
+            "tempo": "2d6",
+            "requisitos": "Casa deve possuir Port e Lumber Mill neste investimento.",
+            "efeitos": [
+              "Artisan (Shipwright): custo -2.",
+              "Unidades Ships: custo -2."
+            ],
+            "incerteza": "Não marcado com *, embora exija outra melhoria; a exigência pressupõe sua coexistência com Lumber Mill."
+          }
+        ]
+      }
+    ],
+    "Lifestyle": [
+      {
+        "nome": "Capela",
+        "original": "Chapel",
+        "src": "Lifestyle Wealth Holdings > Chapel",
+        "custo": {
+          "Defesa": 1,
+          "Riqueza": 4
+        },
+        "tempo": "1d6+6",
+        "requisitos": "Hall ou fortificação maior.",
+        "efeitos": [
+          "SF +1."
+        ],
+        "melhorias": []
+      },
+      {
+        "nome": "Corte",
+        "original": "Court",
+        "src": "Lifestyle Wealth Holdings > Court",
+        "custo": 5,
+        "tempo": "2d6+6",
+        "requisitos": "Influência 31+",
+        "efeitos": [
+          "M Influência +2."
+        ],
+        "melhorias": [
+          {
+            "nome": "Gente Bela",
+            "original": "Beautiful People",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "C Influência → Riqueza."
+            ]
+          },
+          {
+            "nome": "Figuras Influentes",
+            "original": "Movers & Shakers",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "G Influência +1, Lei +1."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Criptas",
+        "original": "Crypts",
+        "src": "Lifestyle Wealth Holdings > Crypts",
+        "custo": {
+          "Defesa": 2,
+          "Riqueza": 3
+        },
+        "tempo": "1d6+12",
+        "requisitos": "Influência 21+",
+        "efeitos": [
+          "G Influência +2."
+        ],
+        "melhorias": []
+      },
+      {
+        "nome": "Festivais",
+        "original": "Festivals",
+        "src": "Lifestyle Wealth Holdings > Festivals",
+        "tempo": "6",
+        "requisitos": "Nenhum.",
+        "variantes": [
+          {
+            "nome": "Festivais Anuais",
+            "original": "Annual Festivals",
+            "custo": 2,
+            "efeitos": [
+              "Membros da Casa: +1B em Intrigas com súditos da Casa."
+            ]
+          },
+          {
+            "nome": "Festivais Sazonais",
+            "original": "Seasonal Festivals",
+            "custo": 5,
+            "efeitos": [
+              "M População +1.",
+              "Membros: +1B em Intrigas com súditos."
+            ]
+          },
+          {
+            "nome": "Festivais Mensais",
+            "original": "Monthly Festivals",
+            "custo": 10,
+            "efeitos": [
+              "M População +1; C Influência → População.",
+              "Membros: +2B em Intrigas com súditos."
+            ]
+          }
+        ],
+        "melhorias": [
+          {
+            "nome": "Festivais Marciais",
+            "original": "Martial Festivals",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Peasant Levies levantados começam com -3 em Disciplina."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Jardins",
+        "original": "Gardens",
+        "src": "Lifestyle Wealth Holdings > Gardens",
+        "custo": {
+          "Defesa": 1,
+          "Riqueza": 4
+        },
+        "tempo": "2d6",
+        "requisitos": "Hall ou fortificação maior; não iniciar no inverno.",
+        "efeitos": [
+          "M Influência +1, Riqueza +1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Jardins Florais",
+            "original": "Flower Gardens",
+            "asterisco": true,
+            "custo": 2,
+            "tempo": "1d6",
+            "efeitos": [
+              "G Riqueza +1."
+            ]
+          },
+          {
+            "nome": "Jardins de Ervas",
+            "original": "Herb Gardens",
+            "asterisco": true,
+            "custo": 2,
+            "tempo": "1d6",
+            "efeitos": [
+              "SF +1 apenas na primavera, verão e outono."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Estufa",
+        "original": "Greenhouse",
+        "src": "Lifestyle Wealth Holdings > Greenhouse",
+        "custo": {
+          "Defesa": 1,
+          "Riqueza": 3
+        },
+        "tempo": "2d6+6",
+        "requisitos": "Hall ou fortificação maior.",
+        "regras": [
+          "Escolher um cultivo na compra."
+        ],
+        "variantes": [
+          {
+            "nome": "Estufa Alimentar",
+            "original": "Food House",
+            "efeitos": [
+              "M População +1."
+            ]
+          },
+          {
+            "nome": "Estufa Floral",
+            "original": "Flower House",
+            "efeitos": [
+              "M Riqueza +1."
+            ]
+          },
+          {
+            "nome": "Estufa de Ervas",
+            "original": "Herb House",
+            "efeitos": [
+              "+1B em Healing (Treat Ailment ou Treat Injury) na fortificação."
+            ]
+          }
+        ],
+        "melhorias": [
+          {
+            "nome": "Cultivos Diversificados",
+            "original": "Diverse Plantings",
+            "asterisco": true,
+            "custo": {
+              "Defesa": 1,
+              "Riqueza": 1
+            },
+            "tempo": "2d6",
+            "repetivel": true,
+            "efeitos": [
+              "Acrescentar outra categoria de cultivo da lista."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Biblioteca",
+        "original": "Library",
+        "src": "Lifestyle Wealth Holdings > Library",
+        "tempo": "12+2d6",
+        "requisitos": "Hall ou fortificação maior; variantes maiores exigem fortificações maiores.",
+        "variantes": [
+          {
+            "nome": "Biblioteca Moderada",
+            "original": "Moderate Library",
+            "custo": {
+              "Defesa": 1,
+              "Riqueza": 2
+            },
+            "efeitos": [
+              "+1B Knowledge (Research) ao usá-la."
+            ]
+          },
+          {
+            "nome": "Biblioteca Grande",
+            "original": "Large Library",
+            "custo": {
+              "Defesa": 2,
+              "Riqueza": 5
+            },
+            "requisitos": "Small Castle.",
+            "efeitos": [
+              "+2B Knowledge (Research).",
+              "Scholar: custo -2."
+            ]
+          },
+          {
+            "nome": "Biblioteca Senhorial",
+            "original": "Lordly Library",
+            "custo": {
+              "Defesa": 3,
+              "Riqueza": 7
+            },
+            "requisitos": "Castle.",
+            "efeitos": [
+              "M Lei +1.",
+              "+2B Knowledge (Research).",
+              "Scholar: custo -2."
+            ]
+          },
+          {
+            "nome": "Biblioteca Régia",
+            "original": "Kingly Library",
+            "custo": {
+              "Defesa": 5,
+              "Riqueza": 12
+            },
+            "requisitos": "Superior Castle.",
+            "efeitos": [
+              "M Influência +1, Lei +1, Riqueza +1.",
+              "+2B Knowledge (Research).",
+              "Scholar: custo -2."
+            ]
+          }
+        ],
+        "melhorias": [
+          {
+            "nome": "Escritório de Copistas",
+            "original": "Scriptorum",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "requisitos": "Large Library ou maior.",
+            "efeitos": [
+              "G Influência +1, Riqueza +1."
+            ]
+          },
+          {
+            "nome": "Arquivistas Pesquisadores",
+            "original": "Research Archivists",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Equipe por biblioteca: Moderate 1, Large 3, Lordly 6, Kingly 12.",
+              "Usam os dados de bônus de pesquisa da biblioteca.",
+              "Pesquisa demora 1d6 dias em Moderate/Large, 2d6 em Lordly, 3d6 em Kingly."
+            ],
+            "incerteza": "Conhecimento transcrito: 'Moderate and Lordly ... 4, Lordly ... 5, Kingly ... 6'. Lordly aparece duas vezes e Large é omitida; não corrigido para Large=4 por suposição."
+          }
+        ]
+      },
+      {
+        "nome": "Observatório",
+        "original": "Observatory",
+        "src": "Lifestyle Wealth Holdings > Observatory",
+        "custo": {
+          "Defesa": 1,
+          "Riqueza": 4
+        },
+        "tempo": "1d6+3",
+        "requisitos": "Hall ou fortificação maior, OU Small Town ou comunidade maior.",
+        "efeitos": [
+          "SF +1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Astrônomo",
+            "original": "Astronomer",
+            "custo": 5,
+            "tempo": "1d6+6",
+            "efeitos": [
+              "Tratado como um investimento Scholar."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Aposento Privativo",
+        "original": "Solar",
+        "src": "Lifestyle Wealth Holdings > Solar",
+        "custo": {
+          "Defesa": 1,
+          "Riqueza": 4
+        },
+        "tempo": "1d6+12",
+        "requisitos": "Small Castle ou fortificação maior.",
+        "efeitos": [
+          "SF +1."
+        ],
+        "melhorias": []
+      },
+      {
+        "nome": "Padrão de Vida",
+        "original": "Standard of Living",
+        "src": "Lifestyle Wealth Holdings > Standard of Living",
+        "requisitos": "Nenhum.",
+        "regras": [
+          "Apenas um por Casa; aplica-se a todas as suas propriedades.",
+          "Pode substituir ou complementar a associação do padrão de vida ao valor de Riqueza do sistema básico."
+        ],
+        "variantes": [
+          {
+            "nome": "Pobre",
+            "original": "Poor",
+            "custo": -5,
+            "tempo": "6",
+            "efeitos": [
+              "SF -1.",
+              "Status dos membros considerado 1 menor para Defesa de Intriga contra personagens de Status 3+."
+            ]
+          },
+          {
+            "nome": "Confortável",
+            "original": "Comfortable",
+            "custo": 5,
+            "tempo": "6",
+            "efeitos": [
+              "Defesa de Intriga +1.",
+              "+1B Endurance para cura natural nas propriedades.",
+              "Maioria dos bens de até 1 dragão pode ser adquirida com fundos, crédito ou estipêndio da Casa."
+            ]
+          },
+          {
+            "nome": "Rico",
+            "original": "Rich",
+            "custo": 10,
+            "tempo": "12+1d6",
+            "efeitos": [
+              "SF +1.",
+              "Defesa de Intriga e valores de Disposição +1.",
+              "+1B Endurance para cura natural nas propriedades.",
+              "Maioria dos bens de até 5 dragões com recursos da Casa."
+            ]
+          },
+          {
+            "nome": "Luxuoso",
+            "original": "Lavish",
+            "custo": 15,
+            "tempo": "24+2d6",
+            "efeitos": [
+              "SF +2.",
+              "Defesa de Intriga e valores de Disposição +2.",
+              "+2B Endurance para cura natural nas propriedades.",
+              "Maioria dos bens de até 25 dragões com recursos da Casa."
+            ]
+          }
+        ],
+        "melhorias": [
+          {
+            "nome": "Séquito",
+            "original": "Entourage",
+            "custo": "1 Confortável; 2 Rico; 3 Luxuoso",
+            "tempo": null,
+            "requisitos": "Comfortable, Rich ou Lavish.",
+            "efeitos": [
+              "Mantém o padrão de vida em viagem.",
+              "Viagem considerada Heavy Burden.",
+              "Riqueza investida é liberada ao regressar."
+            ],
+            "incerteza": "Prazo de estabelecimento não informado."
+          }
+        ]
+      },
+      {
+        "nome": "Residência Urbana",
+        "original": "Townhouse",
+        "src": "Lifestyle Wealth Holdings > Townhouse",
+        "custo": "2 em towns; 4 em cities",
+        "tempo": "1d6+12",
+        "requisitos": "Small Town ou comunidade maior pertencente a suserano, aliado ou vassalo.",
+        "efeitos": [
+          "Alojamento próprio relativamente seguro fora do domínio; sem bônus mecânico normal."
+        ],
+        "regras": [
+          "Se o dono da comunidade atacar a residência, pode vender seus bens por metade do investimento: 1 ou 2 Riqueza. A Casa proprietária perde essa metade; a outra metade é liberada nos seus recursos."
+        ],
+        "melhorias": []
+      },
+      {
+        "nome": "Sala de Troféus",
+        "original": "Trophy Room",
+        "src": "Lifestyle Wealth Holdings > Trophy Room",
+        "custo": 5,
+        "tempo": "1d6+12",
+        "requisitos": "Hall ou fortificação maior.",
+        "efeitos": [
+          "G Influência +1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Curador",
+            "original": "Curator",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6+12",
+            "efeitos": [
+              "Funciona como Scholar."
+            ]
+          },
+          {
+            "nome": "Grande Salão",
+            "original": "Grand Room",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "2d6+12",
+            "efeitos": [
+              "G Influência adicional +1, total +2."
+            ]
+          }
+        ]
+      }
+    ],
+    "Personage": [
+      {
+        "nome": "Artesão Especializado",
+        "original": "Artisan Craftsman",
+        "src": "Personage Wealth Holdings > Artisan Craftsman; remissão interna p. 19",
+        "custo": 10,
+        "tempo": "2d6",
+        "requisitos": "Hall ou fortificação maior, OU Small Town ou comunidade maior.",
+        "efeitos": [
+          "SF +1; G Riqueza +1.",
+          "Bens da especialidade custam 10% menos."
+        ],
+        "variantes": [
+          {
+            "nome": "Arqueiro/Flecheiro ou Armeiro",
+            "original": "Bowyer/Fletcher or Weaponsmith",
+            "requisitos": "Hall ou fortificação maior.",
+            "substitui": "SF e G da versão básica.",
+            "efeitos": [
+              "SF +1.",
+              "Armas dos membros, servidores e soldados são Castle-forged.",
+              "Dano de unidades +1 em Marksmanship para bowyer ou Fighting para weaponsmith."
+            ]
+          },
+          {
+            "nome": "Pedreiro",
+            "original": "Stonemason",
+            "substitui": "SF e G básicos.",
+            "efeitos": [
+              "SF +1.",
+              "Prazo de fortificações -10%.",
+              "Bônus de Warfare de comunidades e fortificações da Casa +1."
+            ]
+          },
+          {
+            "nome": "Construtor Naval",
+            "original": "Shipwright",
+            "requisitos": "Port.",
+            "substitui": "SF e G básicos.",
+            "efeitos": [
+              "SF +1.",
+              "Compra de Warships -2."
+            ]
+          }
+        ],
+        "melhorias": [
+          {
+            "nome": "Guilda",
+            "original": "Guild",
+            "custo": 5,
+            "tempo": "2d6",
+            "requisitos": "Large Town ou maior; Artisan existente na área há pelo menos 15 anos.",
+            "efeitos": [
+              "G Riqueza +1.",
+              "Desconto adicional de 10% em bens associados ao Artisan, além dos demais descontos do investimento."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Assassinos",
+        "original": "Assassins",
+        "src": "Personage Wealth Holdings > Assassins",
+        "custo": {
+          "Poder": 5,
+          "Riqueza": 10
+        },
+        "tempo": "6+1d6",
+        "requisitos": "Nenhum.",
+        "efeitos": [
+          "Desbloqueia Assassination Plot."
+        ],
+        "melhorias": [
+          {
+            "nome": "Assassino Especialista",
+            "original": "Expert Assassin",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "+2B aos testes de Astúcia para sucesso da missão."
+            ]
+          },
+          {
+            "nome": "Negação Plausível",
+            "original": "Plausible Deniability",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Fracasso dos assassinos não causa perda de Influência nem exposição do envolvimento da Casa."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Oficiais de Justiça",
+        "original": "Bailiffs",
+        "src": "Personage Wealth Holdings > Bailiffs",
+        "custo": {
+          "Poder": 2,
+          "Riqueza": 10
+        },
+        "tempo": "6+1d6",
+        "requisitos": "Hamlet ou comunidade maior.",
+        "efeitos": [
+          "Escolher um domínio ou comunidade: a Casa possui Connections ali.",
+          "Perdas de Lei por Warfare nessa área -1.",
+          "Transferir oficiais para outra comunidade do domínio remove os benefícios por um mês.",
+          "Penalidade de SF por Lei baixa reduzida em 1.",
+          "Ao converter Poder em Lei por Administrar Recursos, +1 Lei temporária por ponto convertido, somente para modificador de Lei a SF; esse bônus decai 1 por mês."
+        ],
+        "melhorias": [
+          {
+            "nome": "Comunidades Adicionais",
+            "original": "Additional Communities",
+            "asterisco": true,
+            "custo": {
+              "Riqueza": 3,
+              "Poder": 1
+            },
+            "tempo": "1",
+            "repetivel": true,
+            "efeitos": [
+              "Benefícios em mais um domínio ou comunidade por compra."
+            ]
+          },
+          {
+            "nome": "Treinamento Militar",
+            "original": "Military Training",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Podem atuar como Trained Garrison na área designada; fazê-lo custa 1 Lei."
+            ]
+          },
+          {
+            "nome": "Treinamento Investigativo",
+            "original": "Investigative Training",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Astúcia de assassinos, espiões, sabotadores e agentes inimigos na área: dificuldade +3; fracasso significa captura pelo bailiffs."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Jurista",
+        "original": "Barrister",
+        "src": "Personage Wealth Holdings > Barrister",
+        "custo": 10,
+        "tempo": "12+2d6",
+        "requisitos": "Lei 41+.",
+        "efeitos": [
+          "Bônus de Lei a SF aumenta em +2 desde que o modificador não seja penalidade.",
+          "+1D em Intrigas jurídicas dos membros quando o jurista os representa perante tribunal ou autoridade."
+        ],
+        "melhorias": [],
+        "incerteza": "O resumo menciona Investigative Training, mas o corpo não fornece essa melhoria para Barrister; não transferida de Bailiffs."
+      },
+      {
+        "nome": "Sindicato Criminoso",
+        "original": "Criminal Syndicate",
+        "src": "Personage Wealth Holdings > Criminal Syndicate",
+        "custo": 10,
+        "tempo": "2d6+6",
+        "requisitos": "Lei menor que 30; Brothel, Gambling Dens ou Street Gangs no domínio.",
+        "efeitos": [
+          "+10 pontos fictícios de Lei somente para seu modificador de SF.",
+          "M Riqueza +1; cada uso desse benefício também reduz Lei em 1."
+        ],
+        "regras": [
+          "Se Lei subir acima de 31, para de funcionar. A partir daí perdas de recursos em SF são retiradas primeiro de Lei, até o investimento voltar a funcionar ou a Casa abandonar toda a Riqueza investida, subtraindo-a de sua Riqueza."
+        ],
+        "incerteza": "Requisito de compra <30, desligamento >31; funcionamento exato em Lei 30–31 não é explicitado.",
+        "melhorias": []
+      },
+      {
+        "nome": "Engenheiro",
+        "original": "Engineer",
+        "src": "Personage Wealth Holdings > Engineer",
+        "custo": 15,
+        "tempo": "12+2d6",
+        "requisitos": "Nenhum.",
+        "efeitos": [
+          "Prazo de fortificações, armas de cerco e investimentos de Riqueza que envolvam construção -20%.",
+          "Unidades em fortificações da Casa: Defesa +1.",
+          "Aparelhos tecnológicos para membros custam 80% do normal."
+        ],
+        "melhorias": [
+          {
+            "nome": "Engenheiro de Cerco",
+            "original": "Siege Engineer",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Armas e torres de cerco: custo -1 Riqueza; se cair a zero, obtém 2 máquinas por 1 Riqueza."
+            ]
+          },
+          {
+            "nome": "Engenheiro Comandante",
+            "original": "Engineer Commander",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Subcomandante de unidade Engineer, Warfare 4.",
+              "Custo de unidades Engineer -1."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Artista Mestre",
+        "original": "Master Artist",
+        "src": "Personage Wealth Holdings > Master Artist",
+        "custo": 5,
+        "tempo": "1d6+6",
+        "requisitos": "Influência 31+.",
+        "efeitos": [
+          "G Influência +1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Obra-Prima",
+            "original": "Magnum Opus",
+            "custo": 2,
+            "tempo": "2d6+6",
+            "repetivel": true,
+            "efeitos": [
+              "Ganho único de 1d6 Influência."
+            ],
+            "regras": [
+              "Pode ser comprada repetidamente em sequência; cada compra acrescenta +1 Riqueza e +2 meses aos custos."
+            ],
+            "incerteza": "A redação não distingue explicitamente se o acréscimo já incide na primeira compra; base apresentada é 2 Riqueza, 2d6+6 meses."
+          }
+        ]
+      },
+      {
+        "nome": "Mestre de Armas",
+        "original": "Master of Arms",
+        "src": "Personage Wealth Holdings > Master of Arms",
+        "custo": 10,
+        "tempo": null,
+        "requisitos": "Poder 31+, conforme resumo.",
+        "efeitos": [
+          "Cada unidade da Casa recebe 1 Riqueza em melhorias gratuitas.",
+          "+1 na rolagem de ferimentos após batalha."
+        ],
+        "incerteza": "Prazo perdido no cabeçalho.",
+        "melhorias": [
+          {
+            "nome": "Mestre de Campo",
+            "original": "Field Master",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Subcomandante com Warfare 4.",
+              "Custo de um tipo de unidade, sua especialidade, -1."
+            ]
+          },
+          {
+            "nome": "Preparado para Cerco",
+            "original": "Prepared for Siege",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Investimentos da Casa possuem provisões para seis meses de cerco e equipamento de reserva.",
+              "Unidades neles estacionadas: AR +1."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Mestre da Caça",
+        "original": "Master of the Hunt",
+        "src": "Personage Wealth Holdings > Master of the Hunt",
+        "custo": 10,
+        "tempo": "12+2d6",
+        "requisitos": "Terras 31+.",
+        "efeitos": [
+          "SF +1.",
+          "Uma caça por rolagem de SF, sem consumir ação da Casa: custa 3 Riqueza, Status (Reputation) dificuldade 9; sucesso dá 1d3 Influência. Vencedor de disputa Survival (Hunt) ganha 1 Glória."
+        ],
+        "melhorias": [
+          {
+            "nome": "Grande Caçada",
+            "original": "Great Hunt",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Desbloqueia Great Hunt: ação da Casa, custo 10 Riqueza, ganho 1d3+6 Influência; vencedor ganha 3 Glória."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Magistrado",
+        "original": "Magistrate",
+        "src": "Personage Wealth Holdings > Magistrate",
+        "custo": 5,
+        "tempo": "6+1d6",
+        "requisitos": "Lei 11+.",
+        "efeitos": [
+          "M Lei +1.",
+          "Lei perdida por batalha perdida também reduzida em 1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Juiz Itinerante",
+            "original": "Trail Judge",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Penalidade de SF por Lei baixa reduzida em 1."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Sacerdote",
+        "original": "Priest",
+        "src": "Personage Wealth Holdings > Priest",
+        "custo": 5,
+        "tempo": "1d6",
+        "requisitos": "Temple ou Chapel.",
+        "efeitos": [
+          "SF +1; M Influência +1."
+        ],
+        "melhorias": []
+      },
+      {
+        "nome": "Sabotadores",
+        "original": "Saboteurs",
+        "src": "Personage Wealth Holdings > Saboteurs",
+        "custo": 5,
+        "tempo": "6+1d6",
+        "requisitos": "Nenhum.",
+        "efeitos": [
+          "Desbloqueia Sabotage Plot."
+        ],
+        "melhorias": [
+          {
+            "nome": "Sabotador Especialista",
+            "original": "Expert Saboteur",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "+2B em Astúcia para sucesso da missão."
+            ]
+          },
+          {
+            "nome": "Negação Plausível",
+            "original": "Plausible Deniability",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Fracasso dos sabotadores não causa perda de Influência."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Erudito",
+        "original": "Scholar",
+        "src": "Personage Wealth Holdings > Scholar",
+        "custo": 5,
+        "tempo": "1d6",
+        "requisitos": "Influência 21+.",
+        "efeitos": [
+          "SF +1.",
+          "+2 de assistência em testes de Knowledge quando consultado."
+        ],
+        "melhorias": [
+          {
+            "nome": "Escola",
+            "original": "School",
+            "custo": 5,
+            "tempo": "2d6+12",
+            "requisitos": "Small Town ou comunidade maior.",
+            "efeitos": [
+              "SF +1."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Polícia Secreta",
+        "original": "Secret Police",
+        "src": "Personage Wealth Holdings > Secret Police",
+        "custo": {
+          "Poder": 3,
+          "Riqueza": 10
+        },
+        "tempo": null,
+        "requisitos": "Small Town ou comunidade maior.",
+        "efeitos": null,
+        "incerteza": "Prazo e regras básicas não recuperáveis no OCR. O prazo 12+2d6 entre cabeçalhos não foi atribuído por suposição.",
+        "melhorias": [
+          {
+            "nome": "Destacamento Especial",
+            "original": "Special Detachment",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Desbloqueia Secret Police Infiltration."
+            ]
+          },
+          {
+            "nome": "Reinado de Terror",
+            "original": "Reign of Terror",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Administrar Recursos: População → Lei 1:1.",
+              "No mês de uso, SF -1 por ponto transferido."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Rede de Espiões",
+        "original": "Spy Network",
+        "src": "Personage Wealth Holdings > Spy Network",
+        "custo": 10,
+        "tempo": null,
+        "requisitos": "Nenhum, conforme resumo.",
+        "efeitos": [
+          "Desbloqueia Spy Cell Infiltration.",
+          "Texto preservado descreve teste relacionado à descoberta com dificuldade 6 para Lei ≤30, +3 por 5 pontos acima de 30; fracasso compromete e perde a célula.",
+          "Revelação pública da rede custa 1d3+3 Influência."
+        ],
+        "incerteza": "Cabeçalho e início das regras perdidos: prazo, número inicial de células, distribuição, frequência e responsável pelo teste de descoberta não recuperáveis. A frase seguinte diz que dois graus de sucesso revelam o mestre da célula, apesar de a anterior associar fracasso à perda; não harmonizado.",
+        "melhorias": [
+          {
+            "nome": "Rede Ampliada",
+            "original": "Expanded Network",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "repetivel": true,
+            "efeitos": [
+              "Duas células adicionais por compra, criadas no próprio domínio; enviá-las para fora exige Spy Cell Infiltration."
+            ]
+          },
+          {
+            "nome": "Espiões Especialistas",
+            "original": "Expert Spies",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Testes de Astúcia para detectar os espiões sofrem -1D."
+            ]
+          },
+          {
+            "nome": "Negação Plausível",
+            "original": "Plausible Deniability",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Fracasso dos espiões não causa perda de Influência nem exposição da Casa."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Administrador",
+        "original": "Steward",
+        "src": "Personage Wealth Holdings > Steward",
+        "custo": 5,
+        "tempo": "12+1d6",
+        "requisitos": "Nenhum.",
+        "efeitos": [
+          "SF +1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Senescal",
+            "original": "Seneschal",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "requisitos": "Chefe da Casa com Status 4+.",
+            "efeitos": [
+              "Chefe considerado com especialidade Stewardship 3B, além do benefício básico."
+            ]
+          },
+          {
+            "nome": "Supervisor Hábil",
+            "original": "Skilled Overseer",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Pode redirecionar perdas de recursos por SF a outros recursos na proporção 1:2: perde o dobro, mas em outros recursos."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Gangues de Rua",
+        "original": "Street Gangs",
+        "src": "Personage Wealth Holdings > Street Gangs",
+        "custo": 5,
+        "tempo": "1d6",
+        "requisitos": "Small Town ou comunidade maior.",
+        "efeitos": [
+          "M Riqueza +1.",
+          "Perdas de Lei por SF aumentam em 1.",
+          "Custo de Peasant Levy -2."
+        ],
+        "melhorias": [
+          {
+            "nome": "Olhos por Toda Parte",
+            "original": "Eyes Everywhere",
+            "custo": 5,
+            "tempo": "2d6",
+            "efeitos": [
+              "Lorde ou contato da gangue tem Connections na comunidade e domínio; informação adjudicada como Spy Network."
+            ]
+          },
+          {
+            "nome": "Capangas de Prontidão",
+            "original": "Thugs at the Ready",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Em conflito de grande escala, mobilizam-se em 1d6 horas como Trained Criminals."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Mestre de Torneios",
+        "original": "Tournament Master",
+        "src": "Personage Wealth Holdings > Tournament Master",
+        "custo": 10,
+        "tempo": "12+1d6",
+        "requisitos": "Poder 21+.",
+        "efeitos": [
+          "Custo de realizar torneio -1; custo de cada prêmio -1.",
+          "Influência obtida em torneio +2."
+        ],
+        "melhorias": [
+          {
+            "nome": "Arauto",
+            "original": "Herald",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Identifica nobres por sua Casa e responde às perguntas de Herald's Lore: chefe e principais membros, recurso maior/menor, comparação de recurso específico, investimento mais caro, Status do chefe, idade da Casa, maior realização e localização das terras."
+            ],
+            "incerteza": "Corpo permite qualquer nação conhecida; quadro limita à nação do senhor e menciona 'Well-Versed Herald Improvement' para outras nações. Essa melhoria não possui entrada, custo ou prazo no suplemento."
+          }
+        ]
+      }
+    ],
+    "Settlement": [
+      {
+        "nome": "Abadia",
+        "original": "Abbey",
+        "src": "Settlement Wealth Holdings > Abbey",
+        "custo": 10,
+        "tempo": "2d6+12",
+        "requisitos": "Nenhum.",
+        "efeitos": [
+          "SF +1; G Influência +1, População +1.",
+          "Não consome espaço normal de Settlement."
+        ],
+        "melhorias": [
+          {
+            "nome": "Irmandade Guerreira",
+            "original": "Warrior Brotherhood",
+            "custo": 5,
+            "tempo": "2d6",
+            "efeitos": [
+              "Crusaders: custo -1.",
+              "Abadia é fortificação, +2 Defesa para uma unidade."
+            ]
+          },
+          {
+            "nome": "Escritório de Copistas",
+            "original": "Scriptorum",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "G Riqueza +1.",
+              "Biblioteca concede +2B Knowledge (Research)."
+            ]
+          },
+          {
+            "nome": "Missão de Misericórdia",
+            "original": "Mission of Mercy",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "M População +1.",
+              "+2B em testes de Healing na abadia."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Mercado Negro",
+        "original": "Black Market",
+        "src": "Settlement Wealth Holdings > Black Market",
+        "custo": 10,
+        "tempo": "6+1d6",
+        "requisitos": "Lei ≤30.",
+        "efeitos": [
+          "G Riqueza +1.",
+          "Pode sacrificar permanentemente 1 Lei por +1 adicional nesse bônus para uma única rolagem.",
+          "Bens ilegais acessíveis com pouca dificuldade e preço -10%.",
+          "Administrar Recursos: Lei → Riqueza 1:1 como conversão apressada."
+        ],
+        "melhorias": [
+          {
+            "nome": "Ouvido no Submundo",
+            "original": "Ear in the Underworld",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Agentes subversivos contra a Casa: dificuldade de Astúcia +3."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Bordéis",
+        "original": "Brothels",
+        "src": "Settlement Wealth Holdings > Brothels",
+        "custo": 5,
+        "tempo": "1d6",
+        "requisitos": "Small Town ou comunidade maior.",
+        "efeitos": [
+          "G Riqueza +2.",
+          "Perdas de Influência por SF aumentam em 1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Casas de Prazer",
+            "original": "Pleasure Houses",
+            "custo": 5,
+            "tempo": "2d6+6",
+            "requisitos": "Large Town ou maior.",
+            "efeitos": [
+              "G Influência +1.",
+              "Elimina a penalidade de perda de Influência do investimento."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Casas de Jogo",
+        "original": "Gambling Dens",
+        "src": "Settlement Wealth Holdings > Gambling Dens",
+        "custo": 5,
+        "tempo": "1d6",
+        "requisitos": "Large Town ou maior.",
+        "efeitos": [
+          "G Poder +1, Riqueza +1.",
+          "Perdas de Lei por SF aumentam em 1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Esportes Sangrentos",
+            "original": "Bloodsports",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Peasant Levy: custo -2 Poder."
+            ]
+          },
+          {
+            "nome": "Casinos",
+            "original": "Houses of Chance",
+            "custo": 5,
+            "tempo": "2d6",
+            "efeitos": [
+              "G Influência +1, Riqueza +1."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Prisão",
+        "original": "Gaol",
+        "src": "Settlement Wealth Holdings > Gaol",
+        "custo": {
+          "Poder": 5,
+          "Riqueza": 10
+        },
+        "tempo": "24+2d5",
+        "requisitos": "Nenhum.",
+        "efeitos": [
+          "Criminal ou Garrison: custo -2.",
+          "Administrar Recursos permite População → Lei.",
+          "Em Warfare funciona como Hall."
+        ],
+        "incerteza": "Prazo transcrito é 2d5, não 2d6; preservado, possível erro do original/OCR.",
+        "melhorias": [
+          {
+            "nome": "À Prova de Fugas",
+            "original": "Inescapable",
+            "asterisco": true,
+            "custo": 10,
+            "tempo": "24+2d6",
+            "efeitos": [
+              "G Influência +1, Lei +1.",
+              "Descrição de fuga extremamente difícil, sem dificuldade numérica."
+            ]
+          },
+          {
+            "nome": "Carcereiros",
+            "original": "Jailors",
+            "asterisco": true,
+            "custo": 10,
+            "tempo": "2d6",
+            "efeitos": [
+              "Em guerra atuam como Trained Garrison, com Awareness +1 e Cunning +1."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Local de Cura",
+        "original": "Healing Site",
+        "src": "Settlement Wealth Holdings > Healing Site",
+        "custo": 10,
+        "tempo": "12+1d6",
+        "requisitos": "Nenhum.",
+        "efeitos": [
+          "SF +1; G População +1, Riqueza +1.",
+          "Sem melhoria, a eficácia sobrenatural da cura não é afirmada."
+        ],
+        "melhorias": [
+          {
+            "nome": "Artefato de Cura Verdadeira",
+            "original": "Actual Healing Artifact",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": null,
+            "requisitos": "Somente na compra do Healing Site.",
+            "efeitos": [
+              "Quem o toca recebe +1B Endurance em cura natural pelo mês seguinte."
+            ]
+          },
+          {
+            "nome": "Solo Sagrado ou Protegido",
+            "original": "Holy or Warded Grounds",
+            "asterisco": true,
+            "custo": 10,
+            "tempo": null,
+            "requisitos": "Somente na compra do Healing Site.",
+            "efeitos": [
+              "Na área próxima, +1D Will contra efeitos mágicos ou sobrenaturais.",
+              "Seres sobrenaturais malignos não podem entrar."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Mercado",
+        "original": "Marketplace",
+        "src": "Settlement Wealth Holdings > Marketplace; remissão interna p. 30",
+        "custo": 10,
+        "tempo": "2d6",
+        "requisitos": "Small Town ou comunidade maior.",
+        "efeitos": [
+          "G Riqueza +1, aumentado em +1 por Estate e por Artisan Personage no mesmo domínio."
+        ],
+        "regras": [
+          "Trade Connections e Trade Routes podem coexistir explicitamente."
+        ],
+        "melhorias": [
+          {
+            "nome": "Mercado Especializado",
+            "original": "Specialty Market",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "requisitos": "Pelo menos um Estate no domínio.",
+            "efeitos": [
+              "M População +1."
+            ]
+          },
+          {
+            "nome": "Conexões Comerciais",
+            "original": "Trade Connections",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d3",
+            "requisitos": "Ambos os domínios têm Roads; domínio vizinho pertence à própria Casa ou a vassalo.",
+            "efeitos": [
+              "Conta Estates e Artisans do domínio conectado para o bônus do Marketplace."
+            ],
+            "limite": "Small Town: até 2 conexões; comunidades maiores: até 5.",
+            "repetivel": true
+          },
+          {
+            "nome": "Rotas Comerciais",
+            "original": "Trade Routes",
+            "asterisco": true,
+            "custo": {
+              "Riqueza": 5,
+              "Influência": 2
+            },
+            "tempo": "2d6",
+            "requisitos": "Complex Intrigue bem-sucedida, com pontos de vitória iguais ao total de Holdings contribuídos pelo domínio +1.",
+            "efeitos": [
+              "Como Trade Connections, mas pode conectar domínio de outra Casa.",
+              "Cada ganho de Riqueza dos benefícios do Marketplace envia 1 ponto à Casa aliada."
+            ],
+            "regras": [
+              "Romper acordo exige ação da Casa e custa 1d6 Influência à Casa que rompe.",
+              "Ao romper, a Casa do Marketplace recupera os 5 Riqueza investidos."
+            ],
+            "incerteza": "A relação com limite de conexões e exigência de Roads decorre de 'funciona como Trade Connections', sem repetição explícita desses pontos."
+          }
+        ]
+      },
+      {
+        "nome": "Academia Militar",
+        "original": "Military Academy",
+        "src": "Settlement Wealth Holdings > Military Academy",
+        "custo": {
+          "Poder": 5,
+          "Riqueza": 10
+        },
+        "tempo": "20+3d6",
+        "requisitos": "Poder 21+.",
+        "efeitos": [
+          "Administrar Recursos: Riqueza → Poder 1:1.",
+          "Perda de habilidades de unidades por dano de Warfare reduzida em 1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Treinamento Amplo",
+            "original": "Broad Training",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "6+1d6",
+            "efeitos": [
+              "Uma ação da Casa acrescenta uma quarta habilidade às disponíveis de uma unidade."
+            ]
+          },
+          {
+            "nome": "Treinamento Fundamental",
+            "original": "Core Training",
+            "asterisco": true,
+            "custo": 10,
+            "tempo": "6+1d6",
+            "efeitos": [
+              "Escolher uma habilidade: todas as unidades da Casa recebem +1 nela."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Sede de Menestréis",
+        "original": "Minstrel's Seat",
+        "src": "Settlement Wealth Holdings > Minstrel's Seat",
+        "custo": 10,
+        "tempo": "2d6",
+        "requisitos": "Small Castle ou fortificação maior, OU Small Town ou comunidade maior.",
+        "efeitos": [
+          "Para cada 3 pontos de qualquer recurso ganhos por SF, a Casa também ganha 1 Influência.",
+          "Perdas de Riqueza por SF aumentam em 1.",
+          "Membro pode buscar informações entre artistas por teste de Status, dificuldade conforme segredo e distância."
+        ],
+        "incerteza": "Não fornece tabela de dificuldade de informação nem esclarece agregação/arredondamento dos grupos de 3 recursos.",
+        "melhorias": [
+          {
+            "nome": "Colégio de Bardos",
+            "original": "Bardic College",
+            "custo": 5,
+            "tempo": "3d6",
+            "efeitos": [
+              "G Influência +1."
+            ]
+          },
+          {
+            "nome": "Teatro de Saltimbancos",
+            "original": "Mummer's Hall",
+            "custo": 5,
+            "tempo": "2d6",
+            "requisitos": "Small Town ou maior.",
+            "efeitos": [
+              "Elimina a penalidade de perda de Riqueza."
+            ]
+          },
+          {
+            "nome": "Oradores e Ouvintes",
+            "original": "Speakers & Listeners",
+            "asterisco": true,
+            "custo": "3, mais 2 por área adicional",
+            "tempo": "2d6",
+            "efeitos": [
+              "Connections em uma área, mais uma por 2 Riqueza adicionais."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Porto",
+        "original": "Port",
+        "src": "Settlement Wealth Holdings > Port; remissão interna p. 32",
+        "custo": 10,
+        "tempo": "2d6+6",
+        "requisitos": "Small Town ou maior; River, Coast ou Island.",
+        "efeitos": [
+          "SF +2."
+        ],
+        "melhorias": [
+          {
+            "nome": "Armazéns Mercantis",
+            "original": "Trader's Warehouses",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "G Riqueza +1; M Riqueza +1."
+            ]
+          },
+          {
+            "nome": "Docas Secas",
+            "original": "Drydocks",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "2d6+6",
+            "efeitos": [
+              "Warships da Casa podem ignorar até 2 pontos de penalidades na etapa Units & Casualties do passo 11 de Warfare."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Operação de Salvamento",
+        "original": "Salvage Operation",
+        "src": "Settlement Wealth Holdings > Salvage Operation",
+        "custo": 5,
+        "tempo": "2d6",
+        "requisitos": "Coast, River, Island ou Lake.",
+        "efeitos": [
+          "SF +1."
+        ],
+        "melhorias": [
+          {
+            "nome": "Provocadores de Naufrágios",
+            "original": "Wreckers",
+            "custo": 3,
+            "tempo": "1d6+12",
+            "requisitos": "Lei ≤31.",
+            "efeitos": [
+              "G Riqueza +1; deixa de funcionar se Lei >31."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Esgotos",
+        "original": "Sewer",
+        "src": "Settlement Wealth Holdings > Sewer",
+        "custo": 10,
+        "tempo": "12+2d6",
+        "requisitos": "Small Town ou maior.",
+        "efeitos": [
+          "G População +2; M População +1.",
+          "Penalidades de SF por População alta reduzidas em 2."
+        ],
+        "melhorias": [
+          {
+            "nome": "Túneis Secretos",
+            "original": "Secret Tunnels",
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Túneis paralelos aos esgotos permitem entrada, saída e deslocamento não observado; a Casa possui as únicas chaves e mapas."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Mercado de Escravos",
+        "original": "Slave Market",
+        "src": "Settlement Wealth Holdings > Slave Market",
+        "custo": 10,
+        "tempo": "12+1d6",
+        "requisitos": "Marketplace.",
+        "efeitos": [
+          "Administrar Recursos: Riqueza ↔ População e Riqueza ↔ Poder, 1:1."
+        ],
+        "regras": [
+          "Se escravidão for ilegal, descoberta pode causar graves consequências; não há penalidade numérica fixa."
+        ],
+        "melhorias": [
+          {
+            "nome": "Escravos Especializados",
+            "original": "Skilled Slave Stock",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Custo de qualquer Personage -2."
+            ]
+          },
+          {
+            "nome": "Escravidão Penal",
+            "original": "Penal Slavery",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Ganha 1 Lei quando Riqueza aumenta por SF."
+            ]
+          },
+          {
+            "nome": "Escravos Soldados",
+            "original": "Soldier Slaves",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Destruir unidade inimiga e vencer batalha: +1 Riqueza pela venda dos sobreviventes.",
+              "Capturar unidade inteira e vendê-la: Riqueza igual ao Poder da unidade."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Templo",
+        "original": "Temple",
+        "src": "Settlement Wealth Holdings > Temple",
+        "custo": 10,
+        "tempo": "3d6+12",
+        "requisitos": "Small Town ou maior.",
+        "efeitos": [
+          "SF +1; G Lei +1, População +1."
+        ],
+        "melhorias": []
+      },
+      {
+        "nome": "Pedágios",
+        "original": "Tolls",
+        "src": "Settlement Wealth Holdings > Tolls",
+        "custo": 5,
+        "tempo": "1d6",
+        "requisitos": "Road ou River.",
+        "efeitos": [
+          "G Lei +1, Riqueza +1.",
+          "Não consome espaço normal de Settlement."
+        ],
+        "melhorias": []
+      },
+      {
+        "nome": "Campo de Torneios",
+        "original": "Tournament Field",
+        "src": "Settlement Wealth Holdings > Tournament Field",
+        "custo": {
+          "Terras": 1,
+          "Riqueza": 5
+        },
+        "tempo": "6",
+        "requisitos": "Nenhum.",
+        "efeitos": [
+          "Custo de Festivals -2 e Tournament Master -2.",
+          "Realizar torneio custa -1 Riqueza, cumulativo com Tournament Master."
+        ],
+        "melhorias": [
+          {
+            "nome": "Dias de Mercado",
+            "original": "Market Days",
+            "asterisco": true,
+            "custo": 5,
+            "tempo": "1d6",
+            "efeitos": [
+              "Ao usar ação da Casa para torneio, SF +3 naquele mês."
+            ]
+          },
+          {
+            "nome": "Cultura Competitiva",
+            "original": "Competition Culture",
+            "asterisco": true,
+            "custo": 10,
+            "tempo": "1d6",
+            "requisitos": "Tournament Master.",
+            "efeitos": [
+              "Influência obtida por torneio +3."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Estalagem Comercial",
+        "original": "Trading Inn",
+        "src": "Settlement Wealth Holdings > Trading Inn",
+        "custo": 10,
+        "tempo": "1d6+6",
+        "requisitos": "Road ou River.",
+        "efeitos": [
+          "SF +1.",
+          "Fortificação: +2 Defesa para uma unidade.",
+          "Não consome espaço normal de Settlement."
+        ],
+        "melhorias": [
+          {
+            "nome": "Crescimento",
+            "original": "Growth",
+            "custo": 5,
+            "tempo": "2d6+6",
+            "repetivel": true,
+            "efeitos": [
+              "Considerada Small Town ou Hall para comprar e instalar outros investimentos.",
+              "Cada compra cria espaço para dois investimentos."
+            ],
+            "incerteza": "Repetição é explicitada pelo efeito 'cada compra', embora não tenha *; não esclarece compatibilidade com outras melhorias futuras."
+          }
+        ]
+      }
+    ]
+  },
+  "acoes": [
+    {
+      "nome": "Conspiração de Assassinato",
+      "original": "Assassination Plot",
+      "src": "Personage Wealth Holdings > Assassination Plot (House Action)",
+      "requisitos": "Assassins.",
+      "regra": "Ação da Casa; chefe ou mestre dos assassinos testa Astúcia.",
+      "dificuldade": {
+        "terciario": 6,
+        "secundario": 9,
+        "primario": 12
+      },
+      "modificadores": [
+        "Lei alvo ≤30: +0; por 5 Lei acima de 30: +3.",
+        "Alvos adicionais no mesmo domínio: +3 cumulativo por alvo após o primeiro; teste separado.",
+        "Prazo: uma semana por 3 pontos de dificuldade; apressar aumenta dificuldade em +3 por semana removida."
+      ],
+      "resultado": [
+        "Fracasso: alvo sobrevive, assassino capturado ou morto, perda de 1 Riqueza.",
+        "Após primeiro assassinato, líder da busca testa Astúcia contra o resultado de Astúcia do mestre; sucesso encontra o assassino antes de fugir ou matar novamente.",
+        "Captura revela mandante: perda de 2d6+6 Influência, além de consequências narrativas."
+      ],
+      "personagens": "Se necessário, assassinos são personagens secundários com habilidades e uma qualidade apropriadas ao estilo. Tentativas contra personagens jogadores devem ser jogadas em cena."
+    },
+    {
+      "nome": "Conspiração de Sabotagem",
+      "original": "Sabotage Plot",
+      "src": "Personage Wealth Holdings > Sabotage Plot (House Action)",
+      "requisitos": "Saboteurs.",
+      "regra": "Ação da Casa; chefe ou mestre dos sabotadores testa Astúcia.",
+      "dificuldade": {
+        "investimento_Terras_ou_Riqueza": 6,
+        "investimento_Defesa": 9,
+        "investimento_Poder": 12
+      },
+      "modificadores": [
+        "Lei ≤30: +0; por 5 acima de 30: +3.",
+        "Alvos adicionais no mesmo domínio: +3 cumulativo, testes separados.",
+        "Uma semana por 3 pontos de dificuldade; +3 dificuldade por semana antecipada."
+      ],
+      "resultado": [
+        "Fracasso: alvo não é perturbado; sabotador capturado ou morto; perde 1 Riqueza.",
+        "Após primeiro acidente, busca por Astúcia contra resultado do mestre; sucesso encontra o agente.",
+        "Captura revela mandante: perde 1d6+3 Influência e sofre consequências narrativas."
+      ],
+      "personagens": "Sabotadores são secundários, com habilidades e uma qualidade conforme estilo.",
+      "ambiguidade": "O texto não quantifica dano, atraso, destruição ou perda de recursos causada por sabotagem bem-sucedida. O quadro reaproveita linguagem de assassinato, incluindo 'individual' e 'kill again'."
+    },
+    {
+      "nome": "Infiltração da Polícia Secreta",
+      "original": "Secret Police Infiltration",
+      "src": "Personage Wealth Holdings > Secret Police Infiltration (House Action)",
+      "requisitos": "Secret Police + Special Detachment.",
+      "regra": "Ação da Casa desloca polícia para domínio de outra Casa; oferece ali os mesmos benefícios contra espiões à própria Casa e, se desejado, à governante local.",
+      "sigilo": "Astúcia dificuldade 12; fracasso revela operação e custa 1d6+3 Influência, além de constrangimento/incidente diplomático.",
+      "ambiguidade": "Benefícios básicos da Secret Police estão ausentes no OCR."
+    },
+    {
+      "nome": "Infiltração de Célula de Espiões",
+      "original": "Spy Cell Infiltration",
+      "src": "Personage Wealth Holdings > Spy Cell Infiltration (House Action)",
+      "requisitos": "Spy Network.",
+      "regra": "Ação da Casa; Status (Steward), dificuldade 9. Cada grau de sucesso transfere uma célula para nova localização; leva o mês inteiro, sem conceder Connections durante a mudança. Fracasso perde a célula.",
+      "ambiguidade": "Não resolve expressamente qual célula se perde em uma tentativa que pretendia transferir várias."
+    }
+  ],
+  "adaptacoes_Westeros": [
+    {
+      "nome": "Artesão",
+      "original": "Artisan",
+      "categoria": "Personage",
+      "src": "Introduction > Westerosi Holdings",
+      "regra": "Substituído por Artisan Personage, p. 19."
+    },
+    {
+      "nome": "Bosque Sagrado",
+      "original": "Godswood",
+      "categoria": "Lifestyle",
+      "src": "Introduction > Westerosi Holdings",
+      "custo": null,
+      "tempo": null,
+      "regra": "Mecânica inalterada; não reproduzida neste suplemento."
+    },
+    {
+      "nome": "Guildas",
+      "original": "Guilds",
+      "src": "Introduction > Westerosi Holdings",
+      "regra": "Convertido em melhoria de Artisan."
+    },
+    {
+      "nome": "Meistre",
+      "original": "Maester",
+      "categoria": "Personage",
+      "src": "Introduction > Westerosi Holdings",
+      "custo": 10,
+      "tempo": null,
+      "regra": "Reduzir investimento a 10; considerado Iconic Setting Trait. Demais regras não reproduzidas."
+    },
+    {
+      "nome": "Mercado",
+      "original": "Marketplace",
+      "categoria": "Settlement",
+      "src": "Introduction > Westerosi Holdings",
+      "regra": "Substituído pela versão deste suplemento, p. 30."
+    },
+    {
+      "nome": "Mina",
+      "original": "Mine",
+      "categoria": "Estate",
+      "src": "Introduction > Westerosi Holdings",
+      "regra": "Substituída pela versão deste suplemento, p. 12."
+    },
+    {
+      "nome": "Porto",
+      "original": "Port",
+      "categoria": "Settlement",
+      "src": "Introduction > Westerosi Holdings",
+      "regra": "Substituído pela versão deste suplemento, p. 32."
+    },
+    {
+      "nome": "Septão e Septo",
+      "original": "Septon and Sept",
+      "src": "Introduction > Westerosi Holdings",
+      "regra": "Dividir Sept em dois investimentos: Septon equivale a Priest Personage; Sept equivale a Temple Settlement. Clero menor inclui septãs."
+    }
+  ],
+  "diretrizes_criacao": {
+    "src": "Introduction > Building New Holdings",
+    "regras": [
+      "SF: 5 Riqueza por +1 geral ou +2 específico; o específico pode ser +2 a um recurso ou +1 a dois.",
+      "G: 5 Riqueza por 2 pontos de bônus, frequentemente divididos entre recursos.",
+      "M: 5 Riqueza por 2 pontos de mitigação, frequentemente divididos entre recursos.",
+      "C: 5 Riqueza por conversão unidirecional.",
+      "Desconto de outro investimento: 5 Riqueza por desconto de 5 em um investimento ou de 2 em dois investimentos.",
+      "Unidades: 5 Riqueza por desconto de 2 ou por benefício; desconto pode ser dividido entre dois tipos.",
+      "Nova ação/regra: 10–15 Riqueza; efeitos internos geralmente 10, capazes de afetar outras Casas geralmente 15.",
+      "Traço icônico de cenário: reduzir custo em 5.",
+      "Indisponível uma estação ou durante um quarto a metade do tempo: reduzir custo em 5.",
+      "Disponível apenas uma estação ou durante um quarto do tempo: reduzir custo em 10."
+    ]
+  },
+  "alertas_integridade": [
+    "Catálogo completo quanto aos nomes de investimentos e melhorias identificados no suplemento, mas não é possível recuperar todas as regras a partir deste markdown corrompido.",
+    "Campos críticos ausentes: prazo de Animal Husbandry, prazo de Master of Arms, prazo/regras básicas de Secret Police, prazo/início das regras de Spy Network.",
+    "Não atribuído o 12+2d6 isolado entre Secret Police e Spy Network.",
+    "Não inferidos números de colunas embaralhadas; requisitos recuperáveis dos resumos foram explicitamente usados onde indicado.",
+    "Conflitos preservados: Salt Works, tabela de empilhamento, Research Archivists, Herald, variantes têxteis superiores e prazo 2d5 de Gaol.",
+    "Descontos gerais de compras, unidades e construção não recebem uma regra universal de acumulação adicional no suplemento. Apenas acumulações expressamente descritas foram afirmadas.",
+    "Nenhum arquivo do projeto foi alterado."
+  ]
+}

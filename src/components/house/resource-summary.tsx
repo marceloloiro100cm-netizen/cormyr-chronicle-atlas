@@ -1,0 +1,5 @@
+import { Shield, Crown, Mountain, Scale, Users, Swords, Coins } from 'lucide-react';
+import { balances } from '@/lib/house/engine';
+import { RESOURCE_KEYS, RESOURCE_NAMES, type HouseState } from '@/lib/house/types';
+const ICONS={defense:Shield,influence:Crown,lands:Mountain,law:Scale,population:Users,power:Swords,wealth:Coins};
+export function ResourceSummary({state}:{state:HouseState}) {const b=balances(state);return <div className="house-resource-bar" aria-label="Resumo dos recursos">{RESOURCE_KEYS.map(r=>{const Icon=ICONS[r];return <div key={r} className="house-resource"><div><Icon size={16}/><span>{RESOURCE_NAMES[r]}</span></div><strong>{b.available[r].toLocaleString('pt-BR')}<small>disponível</small></strong><details><summary>Total {b.total[r]}</summary><dl><dt>Alocado</dt><dd>{b.allocated[r]}</dd><dt>Em obras</dt><dd>{b.committed[r]}</dd><dt>Ganhos / perdas</dt><dd>{b.permanent[r]}</dd></dl></details></div>;})}</div>;}

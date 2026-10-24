@@ -7,6 +7,7 @@ import { PlayerRepresentation } from '@/components/player-representation';
 import { PlayerAccountForm } from '@/components/player-account-form';
 import { ChangePassword, ChangePasswordButton } from '@/components/change-password';
 import { NpcHub, CollapsibleText } from '@/components/npc-hub';
+import { NobleHouseHub } from '@/components/house/hub';
 import { CampaignShell } from '@/components/campaign-shell';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, ChevronDown } from 'lucide-react';
@@ -70,6 +71,7 @@ function Players(){
 }
 
 function FichaTab({current,records,canEdit,onSave}:{current:Panel['houses'][number];records:RecordRow[];canEdit:boolean;onSave:()=>unknown}){
+  const [view,setView]=useState<'house'|'character'|'legacy'>('house');
   const fichaCasa=records.find(r=>isFichaCasa(r.title,r.content));
   const fichaLorde=records.find(r=>isFichaPersonagem(r.title,r.content));
   const retratos=records.map(r=>({titulo:r.title,path:portraitPath(r.content)})).filter((r):r is {titulo:string;path:string}=>Boolean(r.path));
@@ -78,14 +80,19 @@ function FichaTab({current,records,canEdit,onSave}:{current:Panel['houses'][numb
   const npcs=records.filter(r=>r.kind==='character'&&!isFichaPersonagem(r.title,r.content)&&!portraitPath(r.content));
   const fichaLordeParsed=fichaLorde?parseFichaPersonagem(fichaLorde.content):null;
   return <section>
-    <h2>Ficha da casa</h2>
+    <nav className="campaign-tabs" aria-label="Tipo de ficha"><Button variant={view==='house'?'default':'outline'} aria-pressed={view==='house'} onClick={()=>setView('house')}>Ficha da Casa</Button><Button variant={view==='character'?'default':'outline'} aria-pressed={view==='character'} onClick={()=>setView('character')}>Ficha do Personagem</Button><Button variant={view==='legacy'?'default':'ghost'} aria-pressed={view==='legacy'} onClick={()=>setView('legacy')}>Ficha anterior preservada</Button></nav>
+    {view==='house'&&<NobleHouseHub house={current} canEdit={canEdit} npcs={records.filter(r=>r.kind==='character'&&!isFichaPersonagem(r.title,r.content)).map(r=>({id:r.id,title:r.title}))}/>}
+    {view==='legacy'&&<><h2>Ficha da casa — registro anterior</h2>
     {fichaCasa?<><FichaCasaCard content={fichaCasa.content} crest={current.crest} houseName={current.name}/>{canEdit&&<details className="campaign-add"><summary>Editar ficha da casa</summary><RecordEditor row={fichaCasa} canEdit={canEdit} onSave={onSave}/></details>}</>:<p className="campaign-empty">A ficha da casa ainda não foi encontrada na pasta. Use o botão Atualizar após adicioná-la ao Drive.</p>}
+    </>}
+    {view==='character'&&<>
     <h2>Ficha do lorde</h2>
     {fichaLorde?<><FichaPersonagemCard content={fichaLorde.content} portrait={retratoDo(fichaLordeParsed?.nome??current.lord_name)} titulo={fichaLorde.title}/>{canEdit&&<details className="campaign-add"><summary>Editar ficha do lorde</summary><RecordEditor row={fichaLorde} canEdit={canEdit} onSave={onSave}/></details>}</>:<p className="campaign-empty">A ficha do lorde ainda não foi encontrada na pasta.</p>}
     <h2>NPCs e personagens da casa</h2>
     {npcs.length===0&&<p className="campaign-empty">Nenhum NPC com ficha de texto até agora.</p>}
     {npcs.map(r=><details className="campaign-add" key={r.id}><summary>{r.title}</summary><CampaignContent content={r.content}/>{canEdit&&<RecordEditor row={r} canEdit={canEdit} onSave={onSave}/>}</details>)}
     {retratos.length>0&&<><h2>Retratos e imagens</h2><div className="campaign-house-gallery">{retratos.map(r=><PrivateImage key={r.path} path={r.path} caption={r.titulo}/>)}</div></>}
+    </>}
   </section>;
 }
 
