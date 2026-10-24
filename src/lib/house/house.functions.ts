@@ -33,6 +33,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   const state=(current.data?.state??newHouseState(data.houseId,official.data.region??'')) as unknown as HouseState;
   if((current.data?.version??0)!==data.version)throw new Error('A ficha mudou. Recarregue para conciliar as versões.');
   let next=structuredClone(state),rule='Cormyr · gestão auditada';const args=data.args;
+  if(state.phase==='review'&&!['approve','correct'].includes(data.action))throw new Error('Criação em revisão; aguarde aprovação ou correção do Narrador.');
   if(data.action==='draft') {
     if(state.phase==='active'||state.phase==='review')throw new Error('Criação aprovada ou em revisão não permite redistribuição livre.');
     const values=resourcesSchema.parse(args['base']);validateResources(values);
