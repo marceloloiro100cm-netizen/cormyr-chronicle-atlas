@@ -1,0 +1,23 @@
+import { describe,it,expect } from 'vitest';
+import { newHouseState,SKILLS,type Unit } from '@/lib/house/types';
+import { CORE_CATALOG } from '@/lib/house/catalog';
+import { balances,purchase,quote,createUnit,UNIT_TYPES,gainFromFortune } from '@/lib/house/engine';
+import { improveEquipment } from '@/lib/house/equipment';
+import { stackingBonus } from '@/lib/house/stacking';
+const item=(id:string)=>{const i=CORE_CATALOG.find(i=>i.id===id);if(!i)throw new Error(id);return i;};
+const start=()=>{const s=newHouseState('isolated');s.base={defense:50,influence:50,lands:100,law:30,population:10,power:100,wealth:100};s.domains=[{id:'domain',name:'Isolado',terrain:'hills',features:[],community:'small-town',notes:''}];return s;};
+describe('regras conferidas de Prosperidade',()=>{
+ it('pesqueiro aceita ilha mas não córrego',()=>{const s=start();const d=s.domains[0];if(!d)throw new Error('domain');d.features=['stream'];expect(quote(item('pros-fishery'),s,'domain').errors.join(' ')).toContain('Característica');d.features=['island'];expect(quote(item('pros-fishery'),s,'domain').errors).toEqual([]);});
+ it('corte exige Influência31',()=>{const s=start();s.base.influence=30;expect(quote(item('pros-court'),s,'domain').errors).toContain('Recurso mínimo não atingido.');s.base.influence=31;expect(quote(item('pros-court'),s,'domain').errors).toEqual([]);});
+ it('vila pequena reserva dois espaços de assentamento incluindo obras',()=>{const s=start();s.holdings=[{id:'1',itemId:'one',name:'1',category:'settlement',domainId:'domain',costs:[],effects:[],ruleVersion:'1',source:'Prosperidade',status:'active'},{id:'2',itemId:'two',name:'2',category:'settlement',domainId:'domain',costs:[],effects:[],ruleVersion:'1',source:'Prosperidade',status:'building'}];expect(quote(item('pros-marketplace'),s,'domain').errors.join(' ')).toContain('2 de 2');});
+ it('pedágios não consomem espaço normal',()=>{const s=start();s.domains[0]?.features.push('road');s.holdings.push({id:'toll',itemId:'pros-tolls',name:'Pedágio',category:'settlement',domainId:'domain',costs:[],effects:[],ruleVersion:'1',source:'Prosperidade',status:'active'});expect(quote(item('pros-marketplace'),s,'domain').errors).toEqual([]);});
+ it('rota comercial paga Influência2 permanentemente',()=>{expect(item('pros-marketplace--trade-routes').costs.find(c=>c.resource==='influence')).toEqual({resource:'influence',amount:2,mode:'permanent'});});
+ it('canis desconta2 do Mestre da Caça quando ativo',()=>{const s=start();const withKennel=purchase(s,item('pros-dog-kennels'),{id:'kennel',domainId:'domain',name:'Canis',dice:[]});expect(quote(item('pros-master-of-the-hunt'),withKennel,'domain').discounts[0]?.amount).toBe(2);});
+ it('bônus de ganho não transforma perda ou zero em ganho',()=>{const s=start();s.holdings.push({id:'gain',itemId:'x',name:'x',domainId:'domain',costs:[],effects:[{kind:'gain',resource:'wealth',amount:2,description:'Ganho'}],source:'Prosperidade',ruleVersion:'1',status:'active'});expect(gainFromFortune(s,'wealth',0,true)).toBe(0);expect(gainFromFortune(s,'wealth',-1,true)).toBe(-1);});
+ it('tabela converte4–6 em1d6 e7–11 em2d6; ambiguidades bloqueadas',()=>{expect(stackingBonus(4,[6])).toBe(6);expect(stackingBonus(6,[2])).toBe(2);expect(stackingBonus(7,[2,3])).toBe(5);expect(stackingBonus(11,[6,6])).toBe(12);expect(stackingBonus(13,[1,2,3])).toBe(6);expect(()=>stackingBonus(12,[1,2])).toThrow('ambíguo');expect(()=>stackingBonus(2,[4])).toThrow('arredondamento');});
+});
+describe('mercenários e equipamento',()=>{
+ const unit=(training:string):Unit=>({id:'unit',name:'Isolada',types:['mercenaries'],training,origin:'',domainId:'domain',skills:Object.fromEntries(SKILLS.map(s=>[s,2])) as Unit['skills'],xp:0,costs:[],armor:4,armorPenalty:2,health:6,casualties:0,strength:100,disciplineModifier:3,equipment:[],situation:'',notes:''});
+ it('mercenários custam Poder2/4/6/8 e Riqueza permanente1/3/6/9',()=>{for(const [training,power,wealth] of [['green',2,1],['trained',4,3],['veteran',6,6],['elite',8,9]] as const){const s=createUnit(start(),unit(training),UNIT_TYPES);expect(balances(s).allocated.power).toBe(power);expect(balances(s).total.wealth).toBe(100-wealth);}});
+ it('melhoria gasta Riqueza1 permanentemente e preserva baixas/saúde',()=>{const s=start();const u=unit('trained');u.casualties=7;u.health=3;s.units=[u];const n=improveEquipment(s,'unit','armor');expect(balances(n).total.wealth).toBe(99);expect(balances(n).allocated.wealth).toBe(0);expect(n.units[0]?.health).toBe(3);expect(n.units[0]?.casualties).toBe(7);expect(n.units[0]?.bulk).toBe(2);expect(()=>improveEquipment(n,'unit','armor')).toThrow('já');});
+});
