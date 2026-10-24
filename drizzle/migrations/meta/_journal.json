@@ -127,6 +127,13 @@
       "when": 1792859442093,
       "tag": "0017_campaign_weekly_delivery_privacy",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792859551389,
+      "tag": "0018_weekly_delivery_validation",
+      "breakpoints": true
     }
   ]
 }
