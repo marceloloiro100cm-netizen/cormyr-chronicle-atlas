@@ -980,6 +980,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_save_player_account: {
+        Args: {
+          p_active: boolean
+          p_actor: string
+          p_change: boolean
+          p_edit: boolean
+          p_folder: string
+          p_house: string
+          p_name: string
+          p_password_set: boolean
+          p_player: string
+          p_user: string
+        }
+        Returns: string
+      }
       apply_drive_record: {
         Args: {
           p_binding: string
@@ -1085,6 +1100,17 @@ export type Database = {
       save_imported_source: {
         Args: { p_content: string; p_id: string; p_modified: string }
         Returns: undefined
+      }
+      save_letter_batch_drafts: {
+        Args: {
+          p_content: string
+          p_key: string
+          p_kind: string
+          p_number: number
+          p_recipients: string[]
+          p_subject: string
+        }
+        Returns: number
       }
       save_letter_draft: {
         Args: {
