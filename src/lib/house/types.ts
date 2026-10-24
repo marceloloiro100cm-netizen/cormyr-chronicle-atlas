@@ -11,10 +11,10 @@ export type CatalogItem = {
   description: string; costs: Cost[]; requirements: Requirement[]; effects: Effect[];
   duration: { months: number; dice?: number | undefined; sides?: number | undefined };
   source: string; section: string; version: string; repeatable: boolean;
-  pending?: string | undefined; parent?: string | undefined; capacity?: number | undefined; custom?: boolean | undefined;
+  pending?: string | undefined; parent?: string | undefined; capacity?: number | undefined; custom?: boolean | undefined; coexists?: boolean | undefined;
 };
 export type Domain = { id: string; name: string; terrain: string; features: string[]; community?: string | undefined; notes: string; image?: string | undefined };
-export type Holding = { id: string; itemId: string; name: string; domainId: string; parentId?: string | undefined; costs: Cost[]; effects: Effect[]; ruleVersion: string; source: string; status: 'active' | 'building' | 'destroyed' | 'abandoned' | 'sold' | 'cancelled'; lostAllocation?: boolean | undefined; category?: CatalogItem['category'] | undefined; originalCosts?: Cost[] | undefined; discounts?: {source:string;resource:Resource;amount:number}[] | undefined };
+export type Holding = { id: string; itemId: string; name: string; domainId: string; parentId?: string | undefined; supportId?: string | undefined; coexists?: boolean | undefined; costs: Cost[]; effects: Effect[]; ruleVersion: string; source: string; status: 'active' | 'building' | 'destroyed' | 'abandoned' | 'sold' | 'cancelled'; lostAllocation?: boolean | undefined; category?: CatalogItem['category'] | undefined; originalCosts?: Cost[] | undefined; discounts?: {source:string;resource:Resource;amount:number}[] | undefined };
 export type Project = { id: string; holdingId: string; name: string; start: number; duration: number; dice: number[]; status: 'building' | 'completed' | 'cancelled'; modifier: number };
 export const SKILLS = ['agility', 'athletics', 'awareness', 'endurance', 'fighting', 'marksmanship', 'stealth', 'cunning', 'healing', 'animalHandling', 'warfare', 'survival'] as const;
 export type Skill = typeof SKILLS[number];
