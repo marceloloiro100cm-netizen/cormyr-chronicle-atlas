@@ -81,3 +81,7 @@
 ## Pedido de 24/10 18:22 UTC
 - [x] Painel exclusivo do Narrador com casas que receberam mensagens na rodada aberta e ainda têm respostas pendentes; 31 testes de missivas passaram, sem enviar mensagens reais
 - [ ] Conferir novo painel na conta do Narrador — entrada automatizada não alcançou o conselho; precisa de sessão na prévia
+
+## Pedido de 24/10 18:26 UTC
+- [x] Imagens das fichas das casas pequenas no canto; verificado 84×110 no computador e 60×80 no celular, ampliação funcionando
+- [x] Redefinir senha apenas da conta confirmada do Narrador conforme pedido de 18:27 UTC; entrada validada, jogadores e permissões preservados

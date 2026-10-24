@@ -173,7 +173,10 @@
 
 /* Fichas visuais das casas e personagens */
 .ficha-card{border:1px solid var(--border);background:var(--campaign-paper);border-radius:8px;padding:28px;margin:20px 0;border-top:3px solid var(--campaign-gold);overflow-wrap:anywhere}
-.ficha-cabecalho{display:flex;gap:22px;align-items:center;margin-bottom:18px}
+.ficha-cabecalho{display:grid;grid-template-columns:auto minmax(0,1fr);gap:22px;align-items:start;margin-bottom:18px}
+.ficha-cabecalho>div{min-width:0}
+.ficha-cabecalho>button{width:84px;height:110px;padding:0;align-self:start;overflow:hidden;border-radius:4px}
+.ficha-cabecalho>button img{width:100%;height:100%;object-fit:contain}
 .ficha-cabecalho>img{width:84px;height:110px;object-fit:contain;background:var(--campaign-purple);border-radius:4px;flex-shrink:0}
 .ficha-cabecalho figure{margin:0;width:110px;flex-shrink:0}
 .ficha-cabecalho figure img{max-height:140px}
@@ -207,7 +210,7 @@
 .campaign-side button:hover{background:#ffffff14}
 .campaign-side button.ativo{background:#ffffff1f;border-color:var(--campaign-gold);color:#fff;box-shadow:inset 3px 0 var(--campaign-gold)}
 @media(max-width:900px){.campaign-layout{grid-template-columns:1fr}.campaign-side{position:static;display:flex;flex-wrap:wrap}.campaign-side button{width:auto}}
-@media(max-width:700px){.ficha-card{padding:18px}.ficha-cabecalho{gap:14px}.ficha-cabecalho>img{width:60px;height:80px}}
+@media(max-width:700px){.ficha-card{padding:18px}.ficha-cabecalho{gap:14px}.ficha-cabecalho>img,.ficha-cabecalho>button{width:60px;height:80px}.ficha-cabecalho figure{width:60px}.ficha-cabecalho figure img{max-height:80px}}
 
 /* Missivas: filtros laterais fixos e cartões recolhíveis */
 .campaign-mail-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:28px;align-items:start}
