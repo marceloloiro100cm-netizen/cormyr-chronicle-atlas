@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { ChangePassword } from '@/components/change-password';
 import { CampaignShell } from '@/components/campaign-shell';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, ChevronDown } from 'lucide-react';
@@ -58,7 +59,7 @@ function Players(){
     </>;
   return <CampaignShell><div className="campaign-heading"><div><p className="campaign-eyebrow">SEGUNDA TEMPORADA · CONSELHO</p><h1>{me?.name??(data.admin?'Conselho do mestre':'Área dos jogadores')}</h1><p className="text-muted-foreground">{data.user.email}</p></div><div className="campaign-actions"><Button variant="outline" disabled={busy||!current} onClick={async()=>{if(!current)return;setBusy(true);try{const result=await sync({data:{houseId:current.id,importFiles:true}});setMessage(result.message);await refresh();}catch(e){setMessage(e instanceof Error?e.message:"Não foi possível atualizar a pasta.");}finally{setBusy(false);}}}><RefreshCw size={16} className={busy?"animate-spin":""}/>Atualizar</Button><Button variant="outline" onClick={signout}>Sair</Button></div></div>
     {data.admin?<div className="campaign-layout"><aside className="campaign-side" aria-label="Menu do Narrador"><p className="campaign-eyebrow">NARRADOR</p>{[['painel','Conselho das casas'],['eventos','Eventos'],['aventuras','Aventuras']].map(([id,label])=><button key={id} type="button" className={section===id?'ativo':''} aria-pressed={section===id} onClick={()=>setSection(id??'painel')}>{label}</button>)}</aside><div>{section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:conselho}</div></div>:conselho}
-    <p role="status">{message}</p>{busy&&<span role="status">Salvando…</span>}
+    <ChangePassword/><p role="status">{message}</p>{busy&&<span role="status">Salvando…</span>}
   </CampaignShell>;
 }
 
