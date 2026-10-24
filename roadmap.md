@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Hub de casa nobre — 24/10 21:38 UTC
+- [ ] Continuação solicitada às22:02: aprofundar compras/requisitos, exército e exportações completas; validar apenas em isolamento, sem publicação.
 - [x] Conferir cinco fontes e imagens; 173 entradas de Prosperidade, catálogo básico adicional e matriz em docs/house-hub-coverage.md.
 - [x] Motor central: sete recursos/alocações/permanentes, requisitos, tropas simples, projetos, calendário, Sorte básica e conversões6-19.
 - [x] Persistência privada, validação transacional, versão/idempotência e auditoria; zero casas reais migradas.
