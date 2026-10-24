@@ -1122,8 +1122,21 @@ export type Database = {
         }
         Returns: string
       }
+      save_weekly_reply_draft: {
+        Args: {
+          p_content: string
+          p_id: string
+          p_letter: string
+          p_reply: string
+        }
+        Returns: string
+      }
       schedule_letter_draft: {
         Args: { p_id: string; p_week: number }
+        Returns: undefined
+      }
+      schedule_weekly_reply_draft: {
+        Args: { p_id: string }
         Returns: undefined
       }
       send_campaign_letter: {
