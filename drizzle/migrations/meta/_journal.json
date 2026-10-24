@@ -225,6 +225,13 @@
       "when": 1792878106760,
       "tag": "0031_noble_house_private_management",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1792882356452,
+      "tag": "0032_noble_house_drive_exports",
+      "breakpoints": true
     }
   ]
 }

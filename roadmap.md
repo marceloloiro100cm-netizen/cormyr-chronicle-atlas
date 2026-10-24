@@ -1,6 +1,9 @@
 # Roadmap
 
 ## Hub de casa nobre — 24/10 21:38 UTC
+- [x] Pedido22:54: Trocar Visão reversível no cabeçalho; totais na escala0–100, saldo intacto; computador/celular conferidos.
+- [x] Pedido22:50: exportação unidirecional ligada à pasta técnica existente, mapeamento próprio, ETag real/versões imutáveis, status e executor; 125 testes isolados aprovados; gravação real no Drive não executada.
+- [x] Pedido22:48: prévia somente leitura das fontes reais por casa, valores candidatos/origens/divergências e conferência local de planilhas, sem migração ou publicação.
 - [x] Pedido22:34: publicação solicitada após91 testes/buildOK e segurança sem críticos;aviso conhecido de senhas vazadas mantido,audiência não alterada;conclusão da implantação não confirmada.
 - [x] Pedido22:33: cargos ligados a registros existentes,inclusive ficha do lorde,sem duplicação;área Casa e Corte;testes de cargos/permissões e prévia sem salvar.
 - [x] Pedido22:29: vínculos aprovados/decisão do Narrador,brasões oficiais ampliáveis e NPCs por referências sem duplicação;82 testes do hub e prévia sem operações reais/publicação.
@@ -17,7 +20,7 @@
 - [x] 47 testes isolados; tela autenticada, teclado e celular390px sem cortes; nenhuma publicação.
 - [ ] Concluir automação de todos efeitos, descontos, stacking e limites de Prosperidade — campos corrompidos/ambíguos precisam de conciliação; requisitos conhecidos ainda têm implementação parcial (matriz detalhada).
 - [ ] Completar criação mecânica/história, unidades mistas, montarias, evolução, cerco, vassalos e projetos personalizados — implementação ainda parcial; mercenários com custos conferidos concluídos.
-- [ ] Integrar exportação estruturada Drive/conciliação externa e representação — implementação não concluída; PDF direto concluído, sincronização anterior preservada.
+- [ ] Conciliação externa e representação do hub — pendentes; exportação estruturada Drive unidirecional implementada, operação real ainda não validada.
 - [ ] Validar gravação/leitura e concorrência no banco isolado — banco atual compartilhado com produção; não usar casas reais como teste.
 
 ## Pedido atual
