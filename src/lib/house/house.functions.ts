@@ -7,6 +7,7 @@ import { newHouseState, RESOURCE_KEYS, type HouseState, type CatalogItem, type U
 import { advance, alternativeFortune, balances, createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
 import { confirmFortune, convertResources } from './fortune';
 import { improveEquipment } from './equipment';
+import { buySiege } from './siege';
 import { equipUnit, resolveSurvivors, changeUnitState, proposeVassal, approveVassal, SURVIVOR_CONDITIONS } from './military';
 const houseInput=z.object({houseId:z.string().min(1).max(100)});
 export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(houseInput).handler(async({data,context})=>{
@@ -56,6 +57,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     next=purchase(state,item,{...purchaseArgs,dice});rule=item.source+' · '+item.section+' · '+item.version;
   }
   if(data.action==='unit') {if(state.phase==='active')throw new Error('Recrutamento em campanha exige projeto aprovado.');const parsed=unitSchema.parse(args['unit']);if(parsed.types.length>1&&!admin)throw new Error('O Narrador precisa confirmar a adaptação dos tipos mistos.');const unit=equipUnit({...parsed,costs:[],xp:0,equipment:[]});next=createUnit(state,unit,UNIT_TYPES);rule='Livro básico · Tipos mistos e tabelas10-1/10-2';}
+  if(data.action==='siege'){next=buySiege(state,z.object({id:z.string().uuid(),itemId:z.string(),engineerId:z.string(),carrierId:z.string(),domainId:z.string(),name:z.string().max(160)}).parse(args));rule='Livro básico · Cerco e operadores,pp.223–230';}
   if(data.action==='unit_state'){const input=z.object({unitId:z.string(),mounted:z.boolean(),atHome:z.boolean(),health:z.number(),casualties:z.number().int(),situation:z.string().max(1000)}).parse(args);next=changeUnitState(state,input);rule='Livro básico · Condição, cavalaria e guarnição';}
   if(data.action==='survivors'){const input=z.object({id:z.string().uuid(),unitId:z.string(),roll:z.number().int(),condition:z.enum(SURVIVOR_CONDITIONS),disorganizations:z.number().int().nonnegative(),skills:unitSchema.shape.skills,justification:z.string().min(1)}).parse(args);next=resolveSurvivors(state,input);rule='Livro básico · tabela10-6 Sobreviventes';}
   if(data.action==='vassal'){const input=z.object({id:z.string().uuid(),houseId:z.string(),name:z.string(),notes:z.string().max(4000)}).parse(args);const h=await context.supabase.from('campaign_houses').select('name').eq('id',input.houseId).single();if(h.error||!h.data)throw new Error('Casa oficial não encontrada.');next=proposeVassal(state,{...input,name:h.data.name});rule='Proposta privada de vassalagem, sem permissão ou cobrança';}

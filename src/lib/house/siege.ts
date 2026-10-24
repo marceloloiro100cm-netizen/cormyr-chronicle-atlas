@@ -19,8 +19,8 @@ export function buySiege(state:HouseState,args:{id:string;itemId:string;engineer
  if(item.carrier&&!carrier)throw new Error('Exige unidade portadora.');
  if(item.engineer&&item.carrier&&engineer?.id===carrier?.id)throw new Error('Exige outra unidade além dos engenheiros.');
  if(item.excludesMounted&&carrier&&(carrier.types.includes('cavalry')||carrier.types.includes('warships')))throw new Error('Portadora não pode ser cavalaria ou navios.');
- if(item.engineer&&!item.carrier&&state.holdings.filter(h=>h.status==='active'&&h.parentId===args.engineerId&&SIEGE.some(i=>i.id===h.itemId&&i.engineer&&!i.carrier)).length>=4)throw new Error('Engenheiros controlam no máximo quatro armas de cerco.');
+ if(item.engineer&&!item.carrier&&state.holdings.filter(h=>h.status==='active'&&h.supportId===args.engineerId&&SIEGE.some(i=>i.id===h.itemId&&i.engineer&&!i.carrier)).length>=4)throw new Error('Engenheiros controlam no máximo quatro armas de cerco.');
  if(balances(state).available[item.resource]<item.cost)throw new Error('Saldo insuficiente para cerco.');
  const next=structuredClone(state);next.permanent[item.resource]-=item.cost;
- next.holdings.push({id:args.id,itemId:item.id,name:args.name||item.name,domainId:domain.id,parentId:args.engineerId||args.carrierId,costs:[{resource:item.resource,amount:item.cost,mode:'permanent'}],category:'equipment',source:'Livro básico · Equipamento especial e cerco,pp.223–230',ruleVersion:'2026-10-24',effects:[{kind:'action',description:item.description+' Operadora: '+(engineer?.name??carrier?.name??'')+'; portadora: '+(carrier?.name??'não se aplica')}],status:'active'});return next;
+ next.holdings.push({id:args.id,itemId:item.id,name:args.name||item.name,domainId:domain.id,supportId:args.engineerId||args.carrierId,costs:[{resource:item.resource,amount:item.cost,mode:'permanent'}],category:'equipment',source:'Livro básico · Equipamento especial e cerco,pp.223–230',ruleVersion:'2026-10-24',effects:[{kind:'action',description:item.description+' Operadora: '+(engineer?.name??carrier?.name??'')+'; portadora: '+(carrier?.name??'não se aplica')}],status:'active'});return next;
 }
