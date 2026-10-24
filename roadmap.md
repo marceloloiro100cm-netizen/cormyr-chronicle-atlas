@@ -51,3 +51,20 @@
 - [x] Jogador escreve para outras casas e encaminha; Narrador sempre vê
 - [x] Filtros laterais fixos
 - [x] Abrir/fechar rodada de missiva; jogador vê "Missivas fechadas, aguarde..."
+
+## Pedido integral de 24/10 (arquivo enviado)
+- [x] Phelles como Royal House com moldura dourada (prévia verificada)
+- [ ] Inventário e cópia de segurança dos dados e apontamentos afetados
+- [ ] Semanas explícitas preparada/aberta/encerrada; conversas, rascunhos e entregas programadas sem abertura automática
+- [ ] Sigilo de entregas futuras no banco, imagens, MCP, realtime e Drive
+- [ ] Caixas e filtros de missivas; prévia da semana de entrega e confirmação de abertura
+- [ ] Recuperação/alteração de senha e administração segura de contas; acesso como jogador auditado
+- [ ] Cadastro, inativação/reativação e catálogo central dinâmico sem e-mails públicos
+- [ ] Classificações e bordas por dados em todas as listagens
+- [ ] Atualização administrativa e descoberta autorizada no Drive; conflitos e resultados honestos
+- [ ] Controles regionais abaixo do mapa; remover somente notas editoriais públicas
+- [ ] Galerias e visualizador acessível com zoom, downloads e permissões
+- [ ] Casa e Personagens somente narrativa; remover Bonus/Bônus de Eventos Históricos sem apagar mecânica
+- [ ] Histórico de Goldfin da fonte indicada, sem duplicatas, leituras inventadas ou reabertura
+- [ ] Subpastas técnicas Gestão do Site - Não Mexer com migração idempotente e vínculos preservados
+- [ ] Testes isolados, fluxos autenticados e verificação em computador/celular; informar bloqueios reais
