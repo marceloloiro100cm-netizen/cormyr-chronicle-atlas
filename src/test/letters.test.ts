@@ -32,7 +32,7 @@ describe('casas com respostas pendentes na rodada aberta',()=>{
   it('resposta posterior da casa resolve a nova narrativa do fio antigo',()=>{const old={...letter,letter_number:1,delivery_week:1};expect(pending([old],[reply({author_user_id:'narrador',author_player_id:null}),reply({created_at:'2026-10-24T12:00:00Z'})])).toEqual([]);});
   it('não conta narrativas excluídas, futuras ou rascunhos',()=>{expect(pending([{...letter,deleted_at:'2026-10-24T12:00:00Z'},{...letter,publication_state:'scheduled'},{...letter,publication_state:'draft'}])).toEqual([]);});
   it('não mostra pendências sem rodada aberta',()=>{expect(pending([letter],[],null)).toEqual([]);});
-  it('não conta jogador sem vínculo autorizado ou inativo',()=>{expect(pendingRoundHouses(2,houses,[{...players[0],active:false}],members,[letter],[])).toEqual([]);expect(pendingRoundHouses(2,houses,players,[],[letter],[])).toEqual([]);});
+  it('não conta jogador sem vínculo autorizado ou inativo',()=>{expect(pendingRoundHouses(2,houses,[{id:'a',user_id:'ashkar-user',active:false}],members,[letter],[])).toEqual([]);expect(pendingRoundHouses(2,houses,players,[],[letter],[])).toEqual([]);});
   it('não considera missiva de outro jogador como cobrança do Narrador',()=>{expect(pending([{...letter,sender_player_id:'g',sender_user_id:'grantass-user'}])).toEqual([]);});
 });
 
