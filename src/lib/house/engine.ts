@@ -107,7 +107,8 @@ export const UNIT_TYPES: UnitType[] = ([
 export function unitStats(unit: Unit) {
   const training = TRAINING[unit.training as keyof typeof TRAINING];
   if(!training) throw new Error('Treinamento inválido.');
-  return { maxHealth:unit.skills.endurance*3, health:Math.max(0,Math.min(unit.health,unit.skills.endurance*3)), defense:unit.skills.agility+unit.skills.athletics+unit.skills.awareness-unit.armorPenalty, discipline:Math.max(0,training.discipline+unit.disciplineModifier), xpSpent:SKILLS.reduce((sum,key)=>sum+Math.max(0,unit.skills[key]-2)*20,0) };
+  const movement=Math.max(0,(unit.types.includes('warships')?60:unit.types.includes('cavalry')?80:40)-(unit.bulk??0)*10);
+  return { movement,maxHealth:unit.skills.endurance*3, health:Math.max(0,Math.min(unit.health,unit.skills.endurance*3)), defense:unit.skills.agility+unit.skills.athletics+unit.skills.awareness-unit.armorPenalty, discipline:Math.max(0,training.discipline+unit.disciplineModifier), xpSpent:SKILLS.reduce((sum,key)=>sum+Math.max(0,unit.skills[key]-2)*20,0) };
 }
 export function validateUnit(unit: Unit, state: HouseState, types: UnitType[]) {
   const training = TRAINING[unit.training as keyof typeof TRAINING]; if(!training)throw new Error('Treinamento inválido.');

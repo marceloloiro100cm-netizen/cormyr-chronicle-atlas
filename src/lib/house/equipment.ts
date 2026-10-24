@@ -4,3 +4,17 @@ const rows:[string,number,number,number,string,string,number,number,number,strin
 ];
 export const UNIT_EQUIPMENT:EquipmentRow[]=rows.map(([id,a,p,b,f,m,ia,ip,ib,ifight,im])=>({id,initial:{armor:a,penalty:p,bulk:b,fighting:f,marksmanship:m},improved:{armor:ia,penalty:ip,bulk:ib,fighting:ifight,marksmanship:im}}));
 export const EQUIPMENT_SOURCE='Guerra dos Tronos RPG · tabelas 10-1/10-2, pp. 219–220; melhora p. 223';
+export function improveEquipment(state:import('./types').HouseState,unitId:string,category:'armor'|'fighting'|'marksmanship'):import('./types').HouseState {
+ const next=structuredClone(state),unit=next.units.find(u=>u.id===unitId);
+ if(!unit||unit.types.length!==1)throw new Error('Seleção de equipamento para unidade mista ainda exige conciliação.');
+ const row=UNIT_EQUIPMENT.find(r=>r.id===unit.types[0]);if(!row)throw new Error('Equipamento não identificado.');
+ if(unit.equipment.includes(category))throw new Error('Esta categoria já foi melhorada.');
+ if(category==='marksmanship'&&row.improved.marksmanship==='—')throw new Error('Esta unidade não tem ataque de Pontaria.');
+ // A permanent expense is separate from allocations and must not erase casualty state.
+ const wealth=state.base.wealth+state.permanent.wealth;
+ const reserved=[...state.holdings.flatMap(h=>h.costs),...state.units.flatMap(u=>u.costs)].filter(c=>c.resource==='wealth'&&c.mode==='allocation').reduce((n,c)=>n+c.amount,0);
+ if(wealth-reserved<1)throw new Error('Riqueza insuficiente.');
+ unit.costs.push({resource:'wealth',amount:1,mode:'permanent'});next.permanent.wealth-=1;unit.equipment.push(category);
+ if(category==='armor'){unit.armor=row.improved.armor;unit.armorPenalty=row.improved.penalty;unit.bulk=row.improved.bulk;}
+ return next;
+}
