@@ -18,12 +18,12 @@ export function CollapsibleText({ title, children }: { title: ReactNode; childre
 }
 
 export function NpcHub({ records, houseId, playerId, admin, canEdit, onSave, renderEditor }: { records: RecordRow[]; houseId: string; playerId?: string | undefined; admin: boolean; canEdit: boolean; onSave: () => unknown; renderEditor: (row: RecordRow) => ReactNode }) {
-  const npcs = records.filter(r => r.kind === 'character' && !isFichaPersonagem(r.title, r.content)).map(r => ({ row: r, ...parseNpc(r.title, r.content) })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const npcs = records.filter(r => r.kind === 'character').map(r => ({ row: r, ...parseNpc(r.title, r.content) })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   const [aberto, setAberto] = useState<string | null>(null);
   return <section className="campaign-npc-hub">
-    <div className="campaign-npc-head"><h2>Personagens da casa</h2><span className="campaign-npc-count" aria-label={`${npcs.length} personagens`}>{npcs.length} {npcs.length === 1 ? 'NPC' : "NPC's"}</span></div>
+    <div className="campaign-npc-head"><h2>Corte</h2><span className="campaign-npc-count" aria-label={`${npcs.length} integrantes da Corte`}>{npcs.length} {npcs.length === 1 ? 'integrante' : 'integrantes'}</span></div>
     {canEdit && <NpcForm houseId={houseId} playerId={playerId} admin={admin} onSave={onSave} />}
-    {npcs.length === 0 ? <p className="campaign-empty">Nenhum personagem cadastrado.</p> : <ul className="campaign-npc-list">{npcs.map(n => <li key={n.row.id} className={aberto === n.row.id ? 'aberto' : ''}>
+    {npcs.length === 0 ? <p className="campaign-empty">Nenhum integrante da Corte cadastrado.</p> : <ul className="campaign-npc-list">{npcs.map(n => <li key={n.row.id} className={aberto === n.row.id ? 'aberto' : ''}>
       <div className="campaign-npc-row">
         <span className="campaign-npc-photo">{n.foto ? <PrivateImage path={n.foto} caption={n.nome} /> : <UserRound size={28} aria-hidden="true" />}</span>
         <button type="button" className="campaign-npc-toggle" aria-expanded={aberto === n.row.id} onClick={() => setAberto(aberto === n.row.id ? null : n.row.id)}>
@@ -39,7 +39,7 @@ export function NpcHub({ records, houseId, playerId, admin, canEdit, onSave, ren
 function NpcForm({ houseId, playerId, admin, onSave }: { houseId: string; playerId?: string | undefined; admin: boolean; onSave: () => unknown }) {
   const [nome, setNome] = useState(''), [cargo, setCargo] = useState(''), [descricao, setDescricao] = useState(''), [visibility, setVisibility] = useState<'house' | 'player' | 'gm'>(playerId ? 'player' : 'house'), [message, setMessage] = useState(''), [busy, setBusy] = useState(false);
   const [images, setImages] = useState<PendingImage[]>([]); const key = useRef<string | null>(null);
-  return <details className="campaign-add"><summary>Adicionar personagem</summary><form className="campaign-form" onSubmit={async e => {
+  return <details className="campaign-add"><summary>Adicionar integrante da Corte</summary><form className="campaign-form" onSubmit={async e => {
     e.preventDefault(); setBusy(true);
     const { data: { user } } = await supabase.auth.getUser(); if (!user) { setMessage('Sessão expirada.'); setBusy(false); return; }
     key.current ??= crypto.randomUUID();
@@ -48,5 +48,5 @@ function NpcForm({ houseId, playerId, admin, onSave }: { houseId: string; player
     const { error } = await supabase.from('campaign_records').insert({ id: key.current, title: nome.trim(), content: content || nome.trim(), visibility, kind: 'character', house_id: houseId, player_id: visibility === 'player' ? (playerId ?? null) : null, created_by: user.id, updated_by: user.id });
     if (error && error.code !== '23505') setMessage(error.message); else { key.current = null; setNome(''); setCargo(''); setDescricao(''); setImages([]); setMessage('Personagem salvo.'); onSave(); }
     setBusy(false);
-  }}><label>Nome<input required value={nome} onChange={e => setNome(e.target.value)} /></label><label>Cargo<input value={cargo} placeholder="Ex.: Mestre de armas" onChange={e => setCargo(e.target.value)} /></label><label>Descrição<textarea value={descricao} onChange={e => setDescricao(e.target.value)} /></label><label>Visibilidade<select value={visibility} onChange={e => setVisibility(e.target.value as 'house' | 'player' | 'gm')}><option value="house">Compartilhado da casa</option>{playerId && <option value="player">Privado do jogador</option>}{admin && <option value="gm">Segredo do mestre</option>}</select></label><ImagePicker images={images} onChange={setImages} disabled={busy} /><Button disabled={busy}>Salvar personagem</Button><p role="status">{message}</p></form></details>;
+  }}><label>Nome<input required value={nome} onChange={e => setNome(e.target.value)} /></label><label>Cargo<input value={cargo} placeholder="Ex.: Mestre de armas" onChange={e => setCargo(e.target.value)} /></label><label>Descrição<textarea value={descricao} onChange={e => setDescricao(e.target.value)} /></label><label>Visibilidade<select value={visibility} onChange={e => setVisibility(e.target.value as 'house' | 'player' | 'gm')}><option value="house">Compartilhado da casa</option>{playerId && <option value="player">Privado do jogador</option>}{admin && <option value="gm">Segredo do mestre</option>}</select></label><ImagePicker images={images} onChange={setImages} disabled={busy} /><Button disabled={busy}>Salvar integrante da Corte</Button><p role="status">{message}</p></form></details>;
 }
