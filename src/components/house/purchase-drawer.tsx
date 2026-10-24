@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ArrowRight, Check, Search, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -6,6 +6,7 @@ import { quote } from '@/lib/house/engine';
 import { RESOURCE_NAMES, type CatalogItem, type HouseState } from '@/lib/house/types';
 export function PurchaseDrawer({open,onClose,state,catalog,busy,onConfirm}:{open:boolean;onClose:()=>void;state:HouseState;catalog:CatalogItem[];busy:boolean;onConfirm:(args:Record<string,unknown>)=>Promise<boolean>}) {
   const [step,setStep]=useState(0),[query,setQuery]=useState(''),[category,setCategory]=useState(''),[itemId,setItem]=useState(''),[domainId,setDomain]=useState(''),[parentId,setParent]=useState(''),[supportId,setSupport]=useState(''),[name,setName]=useState(''),[availableOnly,setAvailable]=useState(false),[compare,setCompare]=useState<string[]>([]);
+  const purchaseId=useRef<string|null>(null);
   const selected=catalog.find(i=>i.id===itemId),q=selected?quote(selected,state,domainId,parentId||undefined,supportId||undefined):null;
   const categories=[...new Set(catalog.map(c=>c.category))];
   const labels:Record<string,string>={terrain:'Terrenos',feature:'Características',community:'Comunidades',fortification:'Fortificações',estate:'Explorações',lifestyle:'Estilo de vida',personage:'Especialistas',settlement:'Assentamentos',improvement:'Melhorias',equipment:'Equipamento',vassal:'Vassalos'};
