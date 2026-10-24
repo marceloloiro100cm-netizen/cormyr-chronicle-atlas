@@ -125,7 +125,8 @@ export function validateUnit(unit: Unit, state: HouseState, types: UnitType[]) {
   if(unit.types.includes('cavalry')&&(!unit.mount||!unit.mount.name.trim()||!unit.mount.source.trim()||![unit.mount.athletics,unit.mount.endurance].every(v=>Number.isInteger(v)&&v>=1&&v<=12)))throw new Error('Cavalaria exige montaria identificada, atributos e fonte.');
   if(unit.types.length>1&&!unit.types.includes(unit.equipmentTypeId??''))throw new Error('Escolha um conjunto completo de equipamento entre os tipos da unidade.');
   if(!state.domains.some(d=>d.id===unit.domainId))throw new Error('Domínio da unidade não encontrado.');
-  const allowed = new Set(selected.flatMap(t=>t?.skills??[]));
+  if(unit.types.length>1&&!unit.mixedRule?.justification.trim())throw new Error('Tipos mistos exigem decisão explícita do Narrador sobre habilidades e Disciplina.');
+  const allowed = new Set(unit.types.length>1?unit.mixedRule?.allowedSkills:selected.flatMap(t=>t?.skills??[]));
   for(const s of SKILLS) { if(!Number.isInteger(unit.skills[s])||unit.skills[s]<2)throw new Error('Habilidade começa em 2.'); if(unit.skills[s]>2&&!allowed.has(s))throw new Error('Habilidade fora das opções deste tipo.'); }
   const spent = unitStats(unit).xpSpent; if(spent>training.xp) throw new Error('XP insuficiente.');
   if(unit.types.includes('special')&&SKILLS.filter(s=>unit.skills[s]>2).length>3)throw new Error('Unidade especial escolhe somente três habilidades.');
@@ -142,7 +143,7 @@ export function createUnit(state: HouseState, unit: Unit, types: UnitType[]): Ho
   for(const cost of costs) {available[cost.resource]-=cost.amount;if(available[cost.resource]<0)throw new Error('Saldo insuficiente para a unidade.');}
   if(state.units.some(u=>u.id===unit.id))throw new Error('Identificador da unidade já utilizado.');
   const next=structuredClone(state), maxHealth=unitStats(unit).maxHealth;
-  next.units.push({...unit,costs,xp:training.xp-unitStats(unit).xpSpent,health:maxHealth,casualties:0,disciplineModifier:selected.reduce((n,t)=>n+(t?.discipline??0),0)});
+  next.units.push({...unit,costs,xp:training.xp-unitStats(unit).xpSpent,health:maxHealth,casualties:0,disciplineModifier:unit.types.length>1?(unit.mixedRule?.disciplineModifier??0):(selected[0]?.discipline??0)});
   for(const c of costs)if(c.mode==='permanent')next.permanent[c.resource]-=c.amount;
   return next;
 }

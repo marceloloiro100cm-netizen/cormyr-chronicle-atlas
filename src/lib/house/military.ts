@@ -28,13 +28,13 @@ export function resolveSurvivors(state:HouseState,input:{id:string;unitId:string
  else {
   const training=levels[Math.min(3,target)];if(!training)throw new Error('Treinamento inválido.');
   const extra=(unit.bonusRanks??0)+Math.max(0,target-3);
-  const allowed=new Set(unit.types.flatMap(id=>UNIT_TYPES.find(t=>t.id===id)?.skills??[]));
+  const allowed=new Set(unit.mixedRule?.allowedSkills??unit.types.flatMap(id=>UNIT_TYPES.find(t=>t.id===id)?.skills??[]));
   for(const skill of SKILLS){const value=input.skills[skill];if(!Number.isInteger(value)||value<2||value>12)throw new Error('Graduação inválida.');if(value>2&&!allowed.has(skill)&&extra===0)throw new Error('Habilidade não permitida para esta unidade.');}
   const spent=SKILLS.reduce((n,s)=>n+(input.skills[s]-2)*20,0),budget=TRAINING[training].xp+extra*20;
   if(spent>budget)throw new Error('Redistribua habilidades: XP excede o treinamento resultante.');
   unit.training=training;unit.skills=input.skills;unit.xp=budget-spent;unit.bonusRanks=extra;
   // Intact result explicitly heals damage; numeric casualty count is retained, not recreated.
-  unit.health=unitStats(unit).maxHealth;unit.situation='Sobrevivente';
+  unit.health=result.steps===0?unitStats(unit).maxHealth:Math.min(unit.health,unitStats(unit).maxHealth);unit.situation='Sobrevivente';
  }
  unit.evolution??=[];unit.evolution.push({id:input.id,month:state.month,roll:input.roll,condition:input.condition,disorganizations:input.disorganizations,steps:result.steps==='destroyed'?-99:result.steps,before,after:unit.destroyed?'destroyed':unit.training,justification:input.justification});
  return next;
