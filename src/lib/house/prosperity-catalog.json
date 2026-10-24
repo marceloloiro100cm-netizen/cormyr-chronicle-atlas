@@ -255,8 +255,10 @@
     ],
     "effects": [
       {
-        "kind": "action",
-        "description": "G Riqueza +2."
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 2,
+        "description": "Ganho por Sorte: +2 Riqueza."
       }
     ],
     "duration": {
@@ -303,8 +305,16 @@
     ],
     "effects": [
       {
-        "kind": "action",
-        "description": "G População +1, Riqueza +1."
+        "kind": "gain",
+        "resource": "population",
+        "amount": 1,
+        "description": "Ganho por Sorte: +1 População."
+      },
+      {
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
+        "description": "Ganho por Sorte: +1 Riqueza."
       }
     ],
     "duration": {
@@ -509,6 +519,13 @@
       {
         "kind": "action",
         "description": "Cães treinados: preço -40% para membros da Casa."
+      },
+      {
+        "kind": "discount",
+        "target": "pros-master-of-the-hunt",
+        "resource": "wealth",
+        "amount": 2,
+        "description": "Desconto de 2 na compra de pros-master-of-the-hunt."
       }
     ],
     "duration": {
@@ -702,8 +719,16 @@
     ],
     "effects": [
       {
-        "kind": "action",
-        "description": "G Riqueza +1; M Influência +1."
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
+        "description": "Ganho por Sorte: +1 Riqueza."
+      },
+      {
+        "kind": "mitigation",
+        "resource": "influence",
+        "amount": 1,
+        "description": "Mitigação de perda: +1 Influência."
       }
     ],
     "duration": {
@@ -743,7 +768,14 @@
     ],
     "requirements": [
       {
-        "kind": "water"
+        "kind": "feature",
+        "values": [
+          "coast",
+          "island",
+          "river",
+          "lake-small",
+          "lake-large"
+        ]
       }
     ],
     "effects": [
@@ -795,8 +827,16 @@
     ],
     "effects": [
       {
-        "kind": "action",
-        "description": "G População +1, Riqueza +1."
+        "kind": "gain",
+        "resource": "population",
+        "amount": 1,
+        "description": "Ganho por Sorte: +1 População."
+      },
+      {
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
+        "description": "Ganho por Sorte: +1 Riqueza."
       }
     ],
     "duration": {
@@ -1463,6 +1503,13 @@
       {
         "kind": "action",
         "description": "Custo de Tourney Master -5."
+      },
+      {
+        "kind": "discount",
+        "target": "pros-tournament-master",
+        "resource": "wealth",
+        "amount": 5,
+        "description": "Desconto de 5 na compra de pros-tournament-master."
       }
     ],
     "duration": {
@@ -1512,6 +1559,13 @@
       {
         "kind": "action",
         "description": "Custo de Cavalry -2."
+      },
+      {
+        "kind": "discount",
+        "target": "unit:cavalry",
+        "resource": "power",
+        "amount": 2,
+        "description": "Desconto de 2 na compra de unit:cavalry."
       }
     ],
     "duration": {
@@ -2346,7 +2400,13 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "resource",
+        "resource": "influence",
+        "minimum": 31
+      }
+    ],
     "effects": [
       {
         "kind": "mitigation",
@@ -2372,8 +2432,7 @@
         "M Influência +2."
       ],
       "uncertainty": null
-    },
-    "pending": "Requisitos adicionais precisam de validação narrativa: Influência 31+"
+    }
   },
   {
     "id": "pros-court--beautiful-people",
@@ -2447,8 +2506,16 @@
     ],
     "effects": [
       {
-        "kind": "action",
-        "description": "G Influência +1, Lei +1."
+        "kind": "gain",
+        "resource": "influence",
+        "amount": 1,
+        "description": "Ganho por Sorte: +1 Influência."
+      },
+      {
+        "kind": "gain",
+        "resource": "law",
+        "amount": 1,
+        "description": "Ganho por Sorte: +1 Lei."
       }
     ],
     "duration": {
@@ -4072,6 +4139,13 @@
       {
         "kind": "action",
         "description": "Compra de Warships -2."
+      },
+      {
+        "kind": "discount",
+        "target": "unit:warships",
+        "resource": "power",
+        "amount": 2,
+        "description": "Desconto de 2 na compra de unit:warships."
       }
     ],
     "duration": {
@@ -6955,6 +7029,18 @@
       {
         "kind": "action",
         "description": "Sem melhoria, a eficácia sobrenatural da cura não é afirmada."
+      },
+      {
+        "kind": "gain",
+        "resource": "population",
+        "amount": 1,
+        "description": "Ganho por Sorte: +1 População."
+      },
+      {
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
+        "description": "Ganho por Sorte: +1 Riqueza."
       }
     ],
     "duration": {
@@ -7093,7 +7179,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "community",
+        "values": [
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "action",
@@ -7119,8 +7215,7 @@
         "G Riqueza +1, aumentado em +1 por Estate e por Artisan Personage no mesmo domínio."
       ],
       "uncertainty": null
-    },
-    "pending": "Requisitos adicionais precisam de validação narrativa: Small Town ou comunidade maior."
+    }
   },
   {
     "id": "pros-marketplace--specialty-market",
@@ -7241,7 +7336,7 @@
       {
         "resource": "influence",
         "amount": 2,
-        "mode": "allocation"
+        "mode": "permanent"
       }
     ],
     "requirements": [
@@ -7653,7 +7748,25 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "community",
+        "values": [
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
+      },
+      {
+        "kind": "feature",
+        "values": [
+          "river",
+          "coast",
+          "island"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -7678,8 +7791,7 @@
         "SF +2."
       ],
       "uncertainty": null
-    },
-    "pending": "Requisitos adicionais precisam de validação narrativa: Small Town ou maior; River, Coast ou Island."
+    }
   },
   {
     "id": "pros-port--trader-s-warehouses",
@@ -8213,7 +8325,15 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "feature",
+        "values": [
+          "road",
+          "river"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "action",
@@ -8242,8 +8362,7 @@
         "Não consome espaço normal de Settlement."
       ],
       "uncertainty": null
-    },
-    "pending": "Requisitos adicionais precisam de validação narrativa: Road ou River."
+    }
   },
   {
     "id": "pros-tournament-field",
@@ -8272,6 +8391,13 @@
       {
         "kind": "action",
         "description": "Realizar torneio custa -1 Riqueza, cumulativo com Tournament Master."
+      },
+      {
+        "kind": "discount",
+        "target": "pros-tournament-master",
+        "resource": "wealth",
+        "amount": 2,
+        "description": "Mestre de torneios: desconto de 2 Riqueza."
       }
     ],
     "duration": {
@@ -8405,7 +8531,15 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "feature",
+        "values": [
+          "road",
+          "river"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -8440,8 +8574,7 @@
         "Não consome espaço normal de Settlement."
       ],
       "uncertainty": null
-    },
-    "pending": "Requisitos adicionais precisam de validação narrativa: Road ou River."
+    }
   },
   {
     "id": "pros-trading-inn--growth",
@@ -8496,7 +8629,6 @@
         "Cada compra cria espaço para dois investimentos."
       ],
       "incerteza": "Repetição é explicitada pelo efeito 'cada compra', embora não tenha *; não esclarece compatibilidade com outras melhorias futuras."
-    },
-    "pending": "Repetição é explicitada pelo efeito 'cada compra', embora não tenha *; não esclarece compatibilidade com outras melhorias futuras."
+    }
   }
 ]

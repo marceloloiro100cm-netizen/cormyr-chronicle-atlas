@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Hub de casa nobre — 24/10 21:38 UTC
+- [x] Continuação22:02: requisitos/limites de assentamentos, melhorias,descontos conferidos,mercenários,equipamento,Sorte estruturada,PDF direto/Excel13 abas;65 testes e downloads autenticados,sem escrita real/publicação.
 - [x] Conferir cinco fontes e imagens; 173 entradas de Prosperidade, catálogo básico adicional e matriz em docs/house-hub-coverage.md.
 - [x] Motor central: sete recursos/alocações/permanentes, requisitos, tropas simples, projetos, calendário, Sorte básica e conversões6-19.
 - [x] Persistência privada, validação transacional, versão/idempotência e auditoria; zero casas reais migradas.
@@ -9,8 +10,8 @@
 - [x] Exportação Excel/PDF por impressão e edição administrativa de custos/descrições/itens personalizados.
 - [x] 47 testes isolados; tela autenticada, teclado e celular390px sem cortes; nenhuma publicação.
 - [ ] Concluir automação de todos efeitos, descontos, stacking e limites de Prosperidade — campos corrompidos/ambíguos precisam de conciliação; requisitos conhecidos ainda têm implementação parcial (matriz detalhada).
-- [ ] Completar criação mecânica/história, unidades mistas, montarias, mercenários, evolução, cerco, vassalos e projetos personalizados — faltam regras operacionais e integração descritas na matriz.
-- [ ] Integrar exportação estruturada Drive/conciliação externa, representação e PDF direto — implementação não concluída; sincronização anterior preservada.
+- [ ] Completar criação mecânica/história, unidades mistas, montarias, evolução, cerco, vassalos e projetos personalizados — implementação ainda parcial; mercenários com custos conferidos concluídos.
+- [ ] Integrar exportação estruturada Drive/conciliação externa e representação — implementação não concluída; PDF direto concluído, sincronização anterior preservada.
 - [ ] Validar gravação/leitura e concorrência no banco isolado — banco atual compartilhado com produção; não usar casas reais como teste.
 
 ## Pedido atual

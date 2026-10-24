@@ -6,7 +6,7 @@ export function balances(state: HouseState): Balance {
   const total = zeroResources(), allocated = zeroResources(), committed = zeroResources(), available = zeroResources();
   for (const r of RESOURCE_KEYS) total[r] = state.base[r] + state.permanent[r] + regional[r];
   for (const holding of state.holdings) {
-    if (holding.status === 'cancelled' || holding.status === 'sold') continue;
+    // A condition change never authorizes reimbursement; an audited correction must do that.
     for (const cost of holding.costs) if (cost.mode === 'allocation') {
       if (holding.status === 'building') committed[cost.resource] += cost.amount;
       else allocated[cost.resource] += cost.amount;
@@ -17,16 +17,36 @@ export function balances(state: HouseState): Balance {
   return {total, allocated, committed, available, permanent: state.permanent};
 }
 export function validateResources(values: Resources) { for (const r of RESOURCE_KEYS) if (!Number.isFinite(values[r]) || Math.abs(values[r]) > 100000) throw new Error('Valor de recurso inválido.'); }
-export function requirements(item: CatalogItem, state: HouseState, domain?: Domain, parentId?: string): string[] {
+export function activeHoldings(state:HouseState) {
+ const enabled=(id:string,seen:Set<string>):boolean=>{if(seen.has(id))return false;const h=state.holdings.find(h=>h.id===id);if(!h||h.status!=='active')return false;if(!h.parentId)return true;return enabled(h.parentId,new Set([...seen,id]));};
+ return state.holdings.filter(h=>enabled(h.id,new Set()));
+}
+export function settlementCapacity(state:HouseState,domainId:string,supportId?:string):{capacity:number;used:number;error?:string} {
+ const domain=state.domains.find(d=>d.id===domainId);
+ const support=state.holdings.find(h=>h.id===supportId&&h.domainId===domainId&&h.status==='active');
+ let capacity=0;
+ if(supportId){
+  if(!support)return {capacity:0,used:0,error:'Escolha um suporte ativo no mesmo domínio.'};
+  const capacities:Record<string,number>={tower:1,hall:2,castle:4,hamlet:1,'small-town':2,'large-town':4,'small-city':Infinity,'large-city':Infinity};
+  if(support.itemId==='pros-trading-inn')capacity=2*state.holdings.filter(h=>h.parentId===support.id&&h.itemId==='pros-trading-inn--growth'&&h.status==='active').length;
+  else if(capacities[support.itemId]!==undefined)capacity=capacities[support.itemId]??0;
+  else return {capacity:0,used:0,error:'Este suporte exige adaptação explícita de capacidade; não somar suportes.'};
+ } else {const capacities:Record<string,number>={hamlet:1,'small-town':2,'large-town':4,'small-city':Infinity,'large-city':Infinity};capacity=capacities[domain?.community??'']??0;}
+ const used=state.holdings.filter(h=>h.domainId===domainId&&h.category==='settlement'&&!['pros-abbey','pros-tolls','pros-trading-inn'].includes(h.itemId)&&['active','building'].includes(h.status)&&(h.supportId??'')===(supportId??'')).length;
+ return {capacity,used};
+}
+export function requirements(item: CatalogItem, state: HouseState, domain?: Domain, parentId?: string,supportId?:string): string[] {
   const errors: string[] = [];
   if (item.pending) errors.push(item.pending);
   if (['terrain','feature','community','fortification','estate','settlement'].includes(item.category) && !domain) errors.push('Escolha um domínio.');
   if (item.category === 'terrain' && domain?.terrain) errors.push('O domínio já possui terreno principal.');
   if (item.category === 'community' && domain?.community) errors.push('O domínio já possui uma comunidade.');
-  if (!item.repeatable && state.holdings.some(h=>h.itemId===item.id && h.domainId === (domain?.id ?? '') && ['active','building'].includes(h.status))) errors.push('Esta posse já existe neste local.');
-  if(item.category==='estate'&&state.holdings.some(h=>h.domainId===domain?.id&&['active','building'].includes(h.status)&&h.source.startsWith('Prosperidade')&&h.itemId.startsWith('pros-')&&!h.itemId.includes('--')&&['animal-husbandry','apiary','charcoal','dog-kennels','fishery','food-agriculture','fur-trade','herb-fields','horse-husbandry','basic-mine','valuable-mine','rich-mine','basic-quarry','valuable-quarry','salt-works','textile-agriculture','timber'].some(id=>h.itemId==='pros-'+id)))errors.push('O domínio permite somente uma exploração Estate.');
-  if(item.category==='settlement'&&!['pros-abbey','pros-tolls','pros-trading-inn'].includes(item.id))errors.push('Capacidade do assentamento requer conciliação antes da compra.');
-  if(item.category==='improvement'&&state.holdings.some(h=>h.parentId===parentId&&['active','building'].includes(h.status)))errors.push('Compatibilidade entre melhorias exige conferência; não acumular automaticamente.');
+  const parent=state.holdings.find(h=>h.id===parentId);
+  if(item.category==='improvement'&&parent&&parent.domainId!==(domain?.id??'')) errors.push('A melhoria deve ficar no mesmo domínio da posse principal.');
+  if (!item.repeatable && state.holdings.some(h=>h.itemId===item.id && (item.category==='improvement'?h.parentId===parentId:h.domainId === (domain?.id ?? '')) && ['active','building'].includes(h.status))) errors.push('Esta posse já existe neste local.');
+  if(item.category==='estate'&&state.holdings.some(h=>h.domainId===domain?.id&&['active','building'].includes(h.status)&&(h.category==='estate'||h.source.startsWith('Prosperidade')&&h.itemId.startsWith('pros-')&&!h.itemId.includes('--')&&['animal-husbandry','apiary','charcoal','dog-kennels','fishery','food-agriculture','fur-trade','herb-fields','horse-husbandry','basic-mine','valuable-mine','rich-mine','basic-quarry','valuable-quarry','salt-works','textile-agriculture','timber'].some(id=>h.itemId==='pros-'+id))))errors.push('O domínio permite somente uma exploração Estate.');
+  if(item.category==='settlement'&&!['pros-abbey','pros-tolls','pros-trading-inn'].includes(item.id)){const c=settlementCapacity(state,domain?.id??'',supportId);if(c.error)errors.push(c.error);else if(c.used>=c.capacity)errors.push(`Sem espaço no suporte: ${c.used} de ${c.capacity} ocupado(s).`);}
+  if(item.category==='improvement'&&!item.coexists&&!item.repeatable&&state.holdings.some(h=>h.parentId===parentId&&!h.coexists&&['active','building'].includes(h.status)))errors.push('Esta melhoria não pode ser combinada com outra melhoria exclusiva.');
   if(item.category==='fortification'&&state.holdings.some(h=>h.domainId===domain?.id&&['tower','hall','small-castle','castle','superior-castle'].includes(h.itemId)&&['active','building'].includes(h.status)))errors.push('Fortificação existente: upgrade precisa de regra explícita.');
   for (const req of item.requirements) {
     if (req.kind==='terrain' && (!domain?.terrain || (req.values?.length && !req.values.includes(domain.terrain)))) errors.push('Terreno necessário: '+(req.values?.join(', ') || 'um terreno principal adquirido'));
@@ -39,13 +59,13 @@ export function requirements(item: CatalogItem, state: HouseState, domain?: Doma
   }
   return errors;
 }
-export function quote(item: CatalogItem, state: HouseState, domainId: string, parentId?: string) {
+export function quote(item: CatalogItem, state: HouseState, domainId: string, parentId?: string,supportId?:string) {
   const before = balances(state), costs = item.costs.map(c=>({...c}));
-  const errors = requirements(item, state, state.domains.find(d=>d.id===domainId), parentId);
+  const errors = requirements(item, state, state.domains.find(d=>d.id===domainId), parentId,supportId);
   const discounts: { source: string; resource: Resource; amount: number }[] = [];
   for (const cost of costs) {
-    const discountEffects = state.holdings.filter(h=>h.status==='active').flatMap(h=>h.effects.filter(e=>e.kind==='discount'&&e.target===item.id&&e.resource===cost.resource).map(e=>({source:h.name, amount:e.amount??0})));
-    // No implicit stacking: largest explicit discount only, never below zero.
+    const discountEffects = activeHoldings(state).flatMap(h=>h.effects.filter(e=>e.kind==='discount'&&e.target===item.id&&e.resource===cost.resource).map(e=>({source:h.name, amount:e.amount??0})));
+    if(discountEffects.length>1){errors.push('Mais de um desconto aplicável: requer decisão registrada do Narrador.');continue;}
     const best = discountEffects.sort((a,b)=>b.amount-a.amount)[0];
     if (best) { const amount = Math.min(best.amount,cost.amount); cost.amount -= amount; discounts.push({source:best.source,resource:cost.resource,amount}); }
   }
@@ -54,12 +74,13 @@ export function quote(item: CatalogItem, state: HouseState, domainId: string, pa
   for (const r of RESOURCE_KEYS) if (after[r]<0) errors.push(`Saldo insuficiente: ${r}.`);
   return {before:before.available,after,costs,original:item.costs,discounts,errors};
 }
-export function purchase(state: HouseState, item: CatalogItem, args: {id:string;domainId:string;name:string;parentId?:string | undefined;dice:number[]}): HouseState {
-  const q = quote(item,state,args.domainId,args.parentId); if(q.errors.length) throw new Error(q.errors.join(' '));
+export function purchase(state: HouseState, item: CatalogItem, args: {id:string;domainId:string;name:string;parentId?:string | undefined;supportId?:string|undefined;dice:number[]}): HouseState {
+  const q = quote(item,state,args.domainId,args.parentId,args.supportId); if(q.errors.length) throw new Error(q.errors.join(' '));
   const next = structuredClone(state), building = state.phase==='active' && (item.duration.months>0||Boolean(item.duration.dice));
   const expected = building ? (item.duration.dice??0) : 0;
   if(args.dice.length!==expected || args.dice.some(v=>!Number.isInteger(v)||v<1||v>(item.duration.sides??6))) throw new Error('Dados de duração inválidos.');
-  next.holdings.push({id:args.id,itemId:item.id,name:args.name||item.name,domainId:args.domainId,parentId:args.parentId,costs:q.costs,effects:item.effects,ruleVersion:item.version,source:item.source+' · '+item.section,status:building?'building':'active'});
+  if(next.holdings.some(h=>h.id===args.id))throw new Error('Identificador de compra já utilizado.');
+  next.holdings.push({id:args.id,itemId:item.id,name:args.name||item.name,domainId:args.domainId,parentId:args.parentId,supportId:args.supportId,coexists:item.coexists,costs:q.costs,originalCosts:structuredClone(item.costs),discounts:q.discounts,category:item.category,effects:structuredClone(item.effects),ruleVersion:item.version,source:item.source+' · '+item.section,status:building?'building':'active'});
   for(const cost of q.costs) if(cost.mode==='permanent') next.permanent[cost.resource]-=cost.amount;
   const domain = next.domains.find(d=>d.id===args.domainId);
   if(domain) { if(item.category==='terrain') domain.terrain=item.id; if(item.category==='feature') domain.features.push(item.id); if(item.category==='community') domain.community=item.id; }
@@ -90,7 +111,8 @@ export const UNIT_TYPES: UnitType[] = ([
 export function unitStats(unit: Unit) {
   const training = TRAINING[unit.training as keyof typeof TRAINING];
   if(!training) throw new Error('Treinamento inválido.');
-  return { maxHealth:unit.skills.endurance*3, health:Math.max(0,Math.min(unit.health,unit.skills.endurance*3)), defense:unit.skills.agility+unit.skills.athletics+unit.skills.awareness-unit.armorPenalty, discipline:Math.max(0,training.discipline+unit.disciplineModifier), xpSpent:SKILLS.reduce((sum,key)=>sum+Math.max(0,unit.skills[key]-2)*20,0) };
+  const movement=Math.max(0,(unit.types.includes('warships')?60:unit.types.includes('cavalry')?80:40)-(unit.bulk??0)*10);
+  return { movement,maxHealth:unit.skills.endurance*3, health:Math.max(0,Math.min(unit.health,unit.skills.endurance*3)), defense:unit.skills.agility+unit.skills.athletics+unit.skills.awareness-unit.armorPenalty, discipline:Math.max(0,training.discipline+unit.disciplineModifier), xpSpent:SKILLS.reduce((sum,key)=>sum+Math.max(0,unit.skills[key]-2)*20,0) };
 }
 export function validateUnit(unit: Unit, state: HouseState, types: UnitType[]) {
   const training = TRAINING[unit.training as keyof typeof TRAINING]; if(!training)throw new Error('Treinamento inválido.');
@@ -108,7 +130,8 @@ export function createUnit(state: HouseState, unit: Unit, types: UnitType[]): Ho
   const selected = validateUnit(unit,state,types), training = TRAINING[unit.training as keyof typeof TRAINING];
   const costs:Cost[]=[{resource:'power',amount:training.power+selected.reduce((n,t)=>n+(t?.cost??0),0),mode:'allocation'}];
   if(unit.types.includes('levies')) costs.push({resource:'population',amount:2,mode:'permanent'});
-  if(unit.types.includes('mercenaries'))throw new Error('Mercenários exigem contrato e conciliação do custo; não trate como Poder comum.');
+  if(unit.types.includes('mercenaries')) costs.push({resource:'wealth',amount:({green:1,trained:3,veteran:6,elite:9})[unit.training as keyof typeof TRAINING],mode:'permanent'});
+  for(const cost of costs){const discounts=activeHoldings(state).flatMap(h=>h.effects.filter(e=>e.kind==='discount'&&e.resource===cost.resource&&unit.types.some(t=>e.target==='unit:'+t)));if(discounts.length>1)throw new Error('Descontos de unidade múltiplos exigem decisão do Narrador.');cost.amount=Math.max(0,cost.amount-(discounts[0]?.amount??0));}
   const available = balances(state).available;
   for(const cost of costs) {available[cost.resource]-=cost.amount;if(available[cost.resource]<0)throw new Error('Saldo insuficiente para a unidade.');}
   const next=structuredClone(state), maxHealth=unit.skills.endurance*3;
@@ -116,7 +139,7 @@ export function createUnit(state: HouseState, unit: Unit, types: UnitType[]): Ho
   for(const c of costs)if(c.mode==='permanent')next.permanent[c.resource]-=c.amount;
   return next;
 }
-export function advance(state:HouseState,target:number):HouseState { if(!Number.isInteger(target)||target<state.month||target>state.month+120)throw new Error('Período inválido.');const next=structuredClone(state);next.month=target;for(const p of next.projects)if(p.status==='building'&&p.start+p.duration+p.modifier<=target){p.status='completed';const h=next.holdings.find(h=>h.id===p.holdingId);if(h)h.status='active';}return next; }
+export function advance(state:HouseState,target:number):HouseState { if(!Number.isInteger(target)||target<state.month||target>state.month+120)throw new Error('Período inválido.');const next=structuredClone(state);next.month=target;for(const p of next.projects)if(p.status==='building'&&p.start+p.duration+p.modifier<=target){const h=next.holdings.find(h=>h.id===p.holdingId);if(!h||h.status!=='building'){p.status='cancelled';continue;}const parent=h.parentId?next.holdings.find(parent=>parent.id===h.parentId):undefined;if(h.parentId&&parent?.status!=='active')continue;p.status='completed';h.status='active';}return next; }
 export function alternativeFortune(state:HouseState,resource:Resource):HouseState {if(state.fortunes.some(f=>f.month===state.month))throw new Error('A Sorte deste mês já foi resolvida.');const lastRoll=[...state.fortunes].reverse().find(f=>f.mode==='roll');const first=state.fortunes[0];if((lastRoll&&state.month-lastRoll.month>=3)||(!lastRoll&&first&&state.month-first.month>=2))throw new Error('É necessário rolar Sorte ao menos uma vez a cada três meses.');const next=structuredClone(state);next.permanent[resource]+=1;next.fortunes.push({month:state.month,mode:'alternative',dice:[],bonusDice:[],modifier:0,result:0,outcome:'+1 recurso sem rolagem',resource,changes:{[resource]:1},source:'Livro básico · Sorte da casa; Prosperidade · Resource Gain Bonus'});return next; }
-export function gainFromFortune(state:HouseState,resource:Resource,amount:number,rolled:boolean) { if(!rolled)return amount;const effects=state.holdings.filter(h=>h.status==='active').flatMap(h=>h.effects).filter(e=>e.kind==='gain'&&e.resource===resource);if(effects.length>1)throw new Error('Empilhamento exige dados registrados; não some bônus fixos.');return amount+(effects[0]?.amount??0); }
+export function gainFromFortune(state:HouseState,resource:Resource,amount:number,rolled:boolean) { if(!rolled||amount<=0)return amount;const effects=activeHoldings(state).flatMap(h=>h.effects).filter(e=>e.kind==='gain'&&e.resource===resource);if(effects.length>1)throw new Error('Empilhamento exige dados registrados; não some bônus fixos.');return amount+(effects[0]?.amount??0); }
 export function ledgerEntry(before:HouseState,after:HouseState,action:string,key:string,explanation:string,rule:string):Ledger {return {id:key,key,action,explanation,rule,campaignMonth:after.month,before:balances(before).total,after:balances(after).total};}
