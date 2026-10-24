@@ -157,11 +157,15 @@ function MissivasTab({data,me,onSave,onError}:{data:Panel;me:Panel['players'][nu
   const myHouses=data.members.filter(m=>m.player_id===me?.id).map(m=>m.house_id);
   const isRecipient=(letter:LetterRow)=>letter.recipient_player_id===me?.id||(letter.recipient_player_id===null&&myHouses.includes(letter.recipient_house_id??''));
   const toggle=(id:string)=>setExpanded(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
+  const toggleThread=(id:string)=>setThreads(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
   const houseName=(id:string|null)=>data.houses.find(h=>h.id===id)?.name;
   const card=(letter:LetterRow&{deleted_at?:string|null;publication_state?:string;delivery_week?:number|null},canAnswer:boolean)=>{
     const answers=data.replies.filter(r=>r.letter_id===letter.id);
-    const read=data.receipts.some(r=>r.letter_id===letter.id&&(data.admin&&letter.sender_user_id===data.user.id?r.user_id!==data.user.id:r.user_id===data.user.id));
+    const receipt=data.receipts.find(r=>r.letter_id===letter.id&&(data.admin&&letter.sender_user_id===data.user.id?r.user_id!==data.user.id:r.user_id===data.user.id));
+    const read=isLetterRead(letter.id,receipt,answers);
     const isOpen=expanded.has(letter.id);
+    const threadLetters=letter.conversation_id?allLetters.filter(o=>o.conversation_id===letter.conversation_id&&o.id!==letter.id).sort((a,b)=>a.created_at.localeCompare(b.created_at)):[];
+    const threadOpen=threads.has(letter.id);
     const to=letter.recipient_house_id?'Casa '+(houseName(letter.recipient_house_id)??letter.recipient_house_id):letter.recipient_player_id?(data.players.find(p=>p.id===letter.recipient_player_id)?.name??'Jogador'):'Narrador';
     const fromHouse=letter.sender_player_id?houseName(data.players.find(p=>p.id===letter.sender_player_id)?.roster_house_id??null):null;
     const canDelete=!letter.deleted_at&&(data.admin||letter.sender_user_id===data.user.id);
