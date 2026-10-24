@@ -17,9 +17,11 @@ export async function organizeTechnicalFolders(db:SupabaseClient<Database>,actor
    }
    const mappings=await db.from('drive_sync_files').select('*').eq('binding_id',binding.id);if(mappings.error)throw mappings.error;
    for(const mapping of mappings.data){
+    const renewed=await db.from('drive_sync_bindings').update({lease_until:new Date(Date.now()+120000).toISOString()}).eq('id',binding.id).eq('lease_token',token).select('id');if(renewed.error||!renewed.data?.length)throw new Error('Organização perdeu a autorização temporária.');
     const source=envelopeSchema.parse(mapping.base_snapshot),remote=await adapter.read(mapping.file_id);if(remote.envelope.id!==source.id||remote.envelope.entityType!==source.entityType)throw new Error('Vínculo técnico divergente; arquivo não movido.');
     const meta=await (await call('/files/'+mapping.file_id+'?fields=id,parents,name')).json() as {parents?:string[];name:string};if(meta.parents?.includes(folder))continue;if(!meta.parents?.includes(binding.folder_id)||!/^cormyr-(record|letter|reply)-/.test(meta.name))continue;
-    await call('/files/'+mapping.file_id+'?addParents='+encodeURIComponent(folder)+'&removeParents='+encodeURIComponent(binding.folder_id)+'&fields=id,parents',{method:'PATCH',headers:{'Content-Type':'application/json'},body:'{}'});moved++;
+    await call('/files/'+mapping.file_id+'?addParents='+encodeURIComponent(folder)+'&removeParents='+encodeURIComponent(binding.folder_id)+'&fields=id,parents',{method:'PATCH',headers:{'Content-Type':'application/json'},body:'{}'});
+    const verified=await (await call('/files/'+mapping.file_id+'?fields=id,parents')).json() as {id:string;parents?:string[]};if(verified.id!==mapping.file_id||!verified.parents?.includes(folder)||verified.parents.includes(binding.folder_id))throw new Error('O Drive não confirmou o destino; execute novamente para reconciliar.');moved++;
    }
    await db.from('campaign_admin_audit').insert({actor,action:'technical_folder_organization',target_player:binding.player_id,details:{bindingId:binding.id}});
   }finally{await db.from('drive_sync_bindings').update({lease_token:null,lease_until:null}).eq('id',binding.id).eq('lease_token',token);}
