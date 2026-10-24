@@ -1,16 +1,30 @@
-import { balances, unitStats } from './engine';
+import { houseReport, type ReportLedger } from './report';
 import { campaignMonth } from './regions';
-import { RESOURCE_KEYS, RESOURCE_NAMES, type HouseState } from './types';
-export async function exportHouseExcel(state:HouseState,name:string) {
-  const XLSX=await import('xlsx'),wb=XLSX.utils.book_new(),b=balances(state);
-  const resources=[['Casa',name],['Data da campanha',campaignMonth(state.month)],[],['Recurso','Total','Alocado','Em obras','Disponível','Ganhos/perdas permanentes'],...RESOURCE_KEYS.map(r=>[RESOURCE_NAMES[r],b.total[r],b.allocated[r],b.committed[r],b.available[r],b.permanent[r]])];
-  const sheets:Record<string,unknown[][]>={Recursos:resources,Domínios:[['Nome','Terreno','Características','Comunidade','Notas'],...state.domains.map(d=>[d.name,d.terrain,d.features.join(', '),d.community??'',d.notes])],Posses:[['Nome','Domínio','Estado','Custos','Fonte','Versão'],...state.holdings.map(h=>[h.name,state.domains.find(d=>d.id===h.domainId)?.name??'',h.status,h.costs.map(c=>`${c.amount} ${RESOURCE_NAMES[c.resource]} (${c.mode})`).join('; '),h.source,h.ruleVersion])],Tropas:[['Nome','Tipos','Efetivo','Baixas','Saúde','Saúde máxima','Defesa','XP'],...state.units.map(u=>[u.name,u.types.join(' / '),u.strength,u.casualties,u.health,unitStats(u).maxHealth,unitStats(u).defense,u.xp])],Projetos:[['Nome','Início','Duração (meses)','Previsão','Estado','Dados'],...state.projects.map(p=>[p.name,campaignMonth(p.start),p.duration,campaignMonth(p.start+p.duration+p.modifier),p.status,p.dice.join(', ')])],Família:[['Nome','Função','NPC vinculado','Notas'],...state.court.map(m=>[m.name,m.role,m.npcId??'',m.notes])],Pendências:[['Pendência'],...state.pending.map(p=>[p])]};
-  for(const [title,rows]of Object.entries(sheets)){const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=Array.from({length:Math.max(...rows.map(r=>r.length))},(_,i)=>({wch:i===0?30:24}));XLSX.utils.book_append_sheet(wb,ws,title);}
-  XLSX.writeFile(wb,`Casa-${name}-Cormyr.xlsx`);
+import type { HouseState, CatalogItem } from './types';
+
+export async function exportHouseExcel(state:HouseState,name:string,catalog:CatalogItem[]=[],ledger:ReportLedger[]=[]) {
+ const XLSX=await import('xlsx'),wb=XLSX.utils.book_new();
+ for(const section of houseReport(state,name,catalog,ledger)) {
+  const rows=[section.headers,...section.rows],ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=section.headers.map((header,i)=>({wch:Math.min(55,Math.max(16,header.length+2,...section.rows.map(row=>String(row[i]??'').length)))}));
+  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(0,rows.length-1),c:section.headers.length-1}})};
+  XLSX.utils.book_append_sheet(wb,ws,section.title.slice(0,31));
+ }
+ XLSX.writeFile(wb,`Casa-${name}-Cormyr.xlsx`);
 }
-export function exportHousePdf(state:HouseState,name:string) {
-  const popup=window.open('','_blank');if(!popup)throw new Error('Permita a janela de impressão para exportar PDF.');
-  const escape=(s:unknown)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]??c));
-  const b=balances(state),doc=popup.document;
-  doc.open();doc.write(`<!doctype html><html lang="pt-BR"><head><title>Casa ${escape(name)} — Cormyr</title><style>body{font:12pt Georgia;margin:2cm;color:var(--ink,#222)}h1,h2{font-weight:normal}table{border-collapse:collapse;width:100%;margin:1em 0}td,th{border-bottom:1px solid;padding:8px;text-align:left}section{break-inside:avoid}small{font:10pt Arial}@page{size:A4;margin:1.5cm}</style></head><body><h1>Casa ${escape(name)}</h1><p>${escape(campaignMonth(state.month))} · ${escape(state.identity.motto)}</p><h2>Recursos</h2><table><tr><th>Recurso</th><th>Total</th><th>Alocado</th><th>Em obras</th><th>Disponível</th></tr>${RESOURCE_KEYS.map(r=>`<tr><td>${RESOURCE_NAMES[r]}</td><td>${b.total[r]}</td><td>${b.allocated[r]}</td><td>${b.committed[r]}</td><td>${b.available[r]}</td></tr>`).join('')}</table><h2>Domínios</h2>${state.domains.map(d=>`<section><h3>${escape(d.name)}</h3><p>${escape(d.terrain)} · ${escape(d.features.join(', '))} · ${escape(d.community)}</p></section>`).join('')}<h2>Posses</h2>${state.holdings.map(h=>`<section><h3>${escape(h.name)}</h3><p>${escape(h.status)} · ${escape(h.costs.map(c=>`${c.amount} ${RESOURCE_NAMES[c.resource]}`).join(', '))}</p><small>${escape(h.source)} · ${escape(h.ruleVersion)}</small></section>`).join('')}<h2>Exército</h2>${state.units.map(u=>`<section><h3>${escape(u.name)}</h3><p>${escape(u.types.join(' / '))} · Efetivo ${u.strength-u.casualties}/${u.strength} · Saúde ${u.health}/${unitStats(u).maxHealth} · Defesa ${unitStats(u).defense}</p></section>`).join('')}<h2>Projetos</h2>${state.projects.map(p=>`<p>${escape(p.name)} · ${escape(campaignMonth(p.start+p.duration+p.modifier))} · ${escape(p.status)}</p>`).join('')}<h2>Pendências</h2>${state.pending.map(p=>`<p>${escape(p)}</p>`).join('')}</body></html>`);doc.close();popup.focus();popup.print();
+
+export async function exportHousePdf(state:HouseState,name:string,catalog:CatalogItem[]=[],ledger:ReportLedger[]=[]) {
+ const [{jsPDF},{default:autoTable}]=await Promise.all([import('jspdf'),import('jspdf-autotable')]);
+ const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+ pdf.setFont('times','bold');pdf.setFontSize(22);pdf.text(`Casa ${name}`,14,18);
+ pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.text(`${campaignMonth(state.month)} | Registro privado da casa`,14,26);
+ let y=34;
+ for(const section of houseReport(state,name,catalog,ledger)) {
+  if(y>170){pdf.addPage();y=16;}
+  pdf.setFont('times','bold');pdf.setFontSize(14);pdf.text(section.title,14,y);y+=4;
+  autoTable(pdf,{startY:y,head:[section.headers],body:section.rows.length?section.rows:[['Nenhum registro']],theme:'grid',styles:{font:'helvetica',fontSize:8,overflow:'linebreak',cellPadding:2},margin:{top:14,bottom:16,left:14,right:14},didDrawPage:()=>{y=14;},didDrawCell:ctx=>{y=Math.max(y,ctx.cell.y+ctx.cell.height+12);}});
+ }
+ const pages=pdf.getNumberOfPages();
+ for(let n=1;n<=pages;n++){pdf.setPage(n);pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.text(`Cormyr | Casa ${name} | ${n} / ${pages}`,14,202);}
+ pdf.save(`Casa-${name}-Cormyr.pdf`);
 }
