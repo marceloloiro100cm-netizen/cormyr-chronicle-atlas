@@ -37,7 +37,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     if(state.phase==='active'||state.phase==='review')throw new Error('Criação aprovada ou em revisão não permite redistribuição livre.');
     const values=resourcesSchema.parse(args['base']);validateResources(values);
     const identity=z.object({region:z.string(),motto:z.string().max(500),foundation:z.number().int().optional(),history:z.array(z.string()).max(100),notes:z.string().max(10000)}).parse(args['identity']);
-    next.base=values;next.identity=identity;next.creationStep=z.number().int().min(0).max(10).parse(args['creationStep']);
+    next.base=state.method!=="budget"?state.base:values;next.identity=identity;next.creationStep=z.number().int().min(0).max(10).parse(args['creationStep']);
     if(!admin&&(state.method!=='budget'||state.budget===null))throw new Error('O Narrador precisa autorizar o método e orçamento antes de distribuir recursos.');
     if(admin){next.method=z.enum(['budget','roll','import']).parse(args['method']);next.budget=z.number().nonnegative().nullable().parse(args['budget']);}
     next.regionalApplied=next.method!=='import';
