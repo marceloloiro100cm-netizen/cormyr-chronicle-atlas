@@ -24,3 +24,4 @@
 - Technical Drive exports target a dedicated folder ID while narrative imports retain the original root; leased organization validates mappings and preserves file IDs to avoid moving original documents.
 - Public archive refresh visits only catalog-approved house sources in bounded batches, preserving official metadata and recording conflicting narrative versions for administrative review.
 - Narrator representation is a short-lived database session bound to the real actor; one transactional RPC applies player-scoped permissions and audits actions without authenticating as the player.
+- Narrator round-response summaries derive from delivered messages and replies plus active authorized memberships; scheduled content and narrator replies never count as a house response.
