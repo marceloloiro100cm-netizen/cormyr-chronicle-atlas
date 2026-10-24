@@ -19,7 +19,7 @@ import { HouseCoverage } from './coverage';
 import { Court } from './court';
 import { HouseReconciliation } from './reconciliation';
 import type { ReconciliationRecord } from '@/lib/house/reconciliation';
-const NAV=[['overview','Visão geral',LayoutDashboard],['creation','Criação',Feather],['domains','Terras e domínios',Mountain],['fortifications','Fortificações',Castle],['economy','Economia',Coins],['army','Exército',Swords],['court','Corte e vassalos',Users],['projects','Projetos e calendário',CalendarDays],['fortune','Sorte e ações',Dice5],['history','Histórico e documentos',ScrollText],['coverage','Cobertura e pendências',AlertTriangle]] as const;
+const NAV=[['overview','Visão geral',LayoutDashboard],['creation','Criação',Feather],['domains','Terras e domínios',Mountain],['fortifications','Fortificações',Castle],['economy','Economia',Coins],['army','Exército',Swords],['court','Corte e vassalos',Users],['projects','Projetos e calendário',CalendarDays],['fortune','Sorte e ações',Dice5],['history','Histórico e documentos',ScrollText],['reconciliation','Prévia de conciliação',ScrollText],['coverage','Cobertura e pendências',AlertTriangle]] as const;
 type Props={house:{id:string;name:string;region:string|null;crest:string|null;lord_name:string|null;castle:string|null};canEdit:boolean;npcs:{id:string;title:string}[];courtMembers:{id:string;title:string}[];records?:ReconciliationRecord[]};
 export function NobleHouseHub(props:Props) {
   const load=useServerFn(loadHouseHub),operation=useServerFn(houseOperation),qc=useQueryClient();
