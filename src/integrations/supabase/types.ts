@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      archive_source_review: {
+        Row: {
+          created_at: string
+          house_id: string
+          id: string
+          local_text: string | null
+          modified_at: string
+          reason: string
+          remote_text: string | null
+          source_file_id: string
+        }
+        Insert: {
+          created_at?: string
+          house_id: string
+          id?: string
+          local_text?: string | null
+          modified_at: string
+          reason: string
+          remote_text?: string | null
+          source_file_id: string
+        }
+        Update: {
+          created_at?: string
+          house_id?: string
+          id?: string
+          local_text?: string | null
+          modified_at?: string
+          reason?: string
+          remote_text?: string | null
+          source_file_id?: string
+        }
+        Relationships: []
+      }
       campaign_admin_audit: {
         Row: {
           action: string
@@ -354,6 +387,7 @@ export type Database = {
           privacy_reviewed: boolean
           runtime_authorized: boolean
           scope: string
+          technical_folder_id: string | null
         }
         Insert: {
           confirmed_by: string
@@ -370,6 +404,7 @@ export type Database = {
           privacy_reviewed?: boolean
           runtime_authorized?: boolean
           scope: string
+          technical_folder_id?: string | null
         }
         Update: {
           confirmed_by?: string
@@ -386,6 +421,7 @@ export type Database = {
           privacy_reviewed?: boolean
           runtime_authorized?: boolean
           scope?: string
+          technical_folder_id?: string | null
         }
         Relationships: [
           {
@@ -502,31 +538,40 @@ export type Database = {
         Row: {
           archive_data: Json
           classification: string
+          gallery: Json
           id: string
           name: string
+          narrative_text: string | null
           public_reviewed: boolean
           region: string
           source_folder_id: string | null
+          source_modified_at: string | null
           updated_at: string
         }
         Insert: {
           archive_data: Json
           classification?: string
+          gallery?: Json
           id: string
           name: string
+          narrative_text?: string | null
           public_reviewed?: boolean
           region: string
           source_folder_id?: string | null
+          source_modified_at?: string | null
           updated_at?: string
         }
         Update: {
           archive_data?: Json
           classification?: string
+          gallery?: Json
           id?: string
           name?: string
+          narrative_text?: string | null
           public_reviewed?: boolean
           region?: string
           source_folder_id?: string | null
+          source_modified_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -767,6 +812,36 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+        }
+        Relationships: []
+      }
+      public_archive_roots: {
+        Row: {
+          approved_at: string
+          approved_by: string
+          enabled: boolean
+          id: string
+          last_checked_at: string | null
+          last_error: string | null
+          name: string
+        }
+        Insert: {
+          approved_at?: string
+          approved_by: string
+          enabled?: boolean
+          id: string
+          last_checked_at?: string | null
+          last_error?: string | null
+          name: string
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string
+          enabled?: boolean
+          id?: string
+          last_checked_at?: string | null
+          last_error?: string | null
+          name?: string
         }
         Relationships: []
       }

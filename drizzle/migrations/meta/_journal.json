@@ -141,6 +141,13 @@
       "when": 1792859754800,
       "tag": "0019_active_players_public_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792860410932,
+      "tag": "0020_drive_technical_folder_mapping",
+      "breakpoints": true
     }
   ]
 }
