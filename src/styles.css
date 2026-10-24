@@ -232,3 +232,7 @@
 .campaign-mail-jump button{min-height:38px;padding:6px 12px;border:1px solid var(--campaign-gold);border-radius:999px;background:var(--campaign-paper);color:var(--primary);font:600 13px/1.2 Georgia,serif;cursor:pointer}
 .campaign-mail-jump button:hover{background:var(--campaign-light)}
 .campaign-mail-group{scroll-margin-top:90px}
+.campaign-round-pending{margin:24px 0;padding:16px 0;border-top:2px solid var(--campaign-gold);border-bottom:1px solid var(--border)}
+.campaign-round-pending ul{list-style:none;padding:0;margin:0}
+.campaign-round-pending li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--border)}
+.campaign-round-pending li>div{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}

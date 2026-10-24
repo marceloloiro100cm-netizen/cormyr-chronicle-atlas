@@ -18,6 +18,7 @@ export type LetterRow = {
   creation_week?: number | null;
   conversation_id?: string | null;
   deleted_at?: string | null;
+  delivered_at?: string | null;
 };
 
 export type LetterGroup = {
@@ -97,4 +98,40 @@ export function unreadReceivedCount(letters: LetterRow[], replies: ReplyRef[], r
     const receipt = receipts.find((r) => r.letter_id === l.id && r.user_id === userId);
     return !isLetterRead(l.id, receipt, replies);
   }).length;
+}
+
+type RoundReply = ReplyRef & { author_user_id: string; author_player_id: string | null; house_id: string | null; publication_state: string; delivery_week: number | null };
+type RoundPlayer = { id: string; user_id: string | null; active: boolean };
+
+/** Pendências por casa: somente narrativa entregue na semana aberta, sem resposta posterior da casa. */
+export function pendingRoundHouses(week: number | null, houses: {id:string;name:string;active:boolean;season:number}[], players: RoundPlayer[], members: {house_id:string;player_id:string}[], letters: LetterRow[], replies: RoundReply[]) {
+  if (week === null) return [];
+  const activePlayers = players.filter(p => p.active && p.user_id);
+  const playerFor = (id:string|null|undefined,userId?:string) => activePlayers.find(p => p.id === id || (userId && p.user_id === userId));
+  const housesFor = (player:RoundPlayer|undefined) => player ? members.filter(m => m.player_id === player.id).map(m => m.house_id) : [];
+  const pending = new Map<string,Set<string>>();
+  for (const letter of letters) {
+    if (letter.deleted_at || letter.publication_state !== 'delivered') continue;
+    const answers = replies.filter(r => r.letter_id === letter.id && r.publication_state === 'delivered');
+    const latest = new Map<string,string>();
+    const add = (ids:string[],time:string) => ids.forEach(id => latest.set(id, time > (latest.get(id) ?? '') ? time : (latest.get(id) ?? '')));
+    if (!letter.sender_player_id && !playerFor(null,letter.sender_user_id) && (letter.delivery_week ?? letter.letter_number) === week) {
+      add(letter.recipient_house_id ? [letter.recipient_house_id] : housesFor(playerFor(letter.recipient_player_id)),letter.delivered_at ?? letter.created_at);
+    }
+    for (const reply of answers) {
+      if (reply.author_player_id || playerFor(null,reply.author_user_id) || reply.delivery_week !== week) continue;
+      const targets = reply.house_id ? [reply.house_id] : letter.recipient_house_id ? [letter.recipient_house_id] : housesFor(playerFor(letter.recipient_player_id ?? letter.sender_player_id,letter.sender_user_id));
+      add(targets,reply.delivered_at ?? reply.created_at ?? '');
+    }
+    for (const [houseId,lastNarrative] of latest) {
+      const eligible = activePlayers.filter(p => housesFor(p).includes(houseId));
+      if (!eligible.length) continue;
+      const answered = answers.some(r => r.delivery_week === week && eligible.some(p => p.id === r.author_player_id || p.user_id === r.author_user_id) && (r.delivered_at ?? r.created_at ?? '') >= lastNarrative);
+      if (!answered) {
+        const ids = pending.get(houseId) ?? new Set<string>();
+        ids.add(letter.id); pending.set(houseId,ids);
+      }
+    }
+  }
+  return houses.filter(h => h.active && h.season === 2 && pending.has(h.id)).map(h => ({id:h.id,name:h.name,letterIds:[...(pending.get(h.id) ?? [])]})).sort((a,b) => a.name.localeCompare(b.name,'pt-BR'));
 }
