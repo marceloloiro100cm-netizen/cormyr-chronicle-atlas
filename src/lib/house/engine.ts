@@ -24,6 +24,10 @@ export function requirements(item: CatalogItem, state: HouseState, domain?: Doma
   if (item.category === 'terrain' && domain?.terrain) errors.push('O domínio já possui terreno principal.');
   if (item.category === 'community' && domain?.community) errors.push('O domínio já possui uma comunidade.');
   if (!item.repeatable && state.holdings.some(h=>h.itemId===item.id && h.domainId === (domain?.id ?? '') && ['active','building'].includes(h.status))) errors.push('Esta posse já existe neste local.');
+  if(item.category==='estate'&&state.holdings.some(h=>h.domainId===domain?.id&&['active','building'].includes(h.status)&&h.source.startsWith('Prosperidade')&&h.itemId.startsWith('pros-')&&!h.itemId.includes('--')&&['animal-husbandry','apiary','charcoal','dog-kennels','fishery','food-agriculture','fur-trade','herb-fields','horse-husbandry','basic-mine','valuable-mine','rich-mine','basic-quarry','valuable-quarry','salt-works','textile-agriculture','timber'].some(id=>h.itemId==='pros-'+id)))errors.push('O domínio permite somente uma exploração Estate.');
+  if(item.category==='settlement'&&!['pros-abbey','pros-tolls','pros-trading-inn'].includes(item.id))errors.push('Capacidade do assentamento requer conciliação antes da compra.');
+  if(item.category==='improvement'&&state.holdings.some(h=>h.parentId===parentId&&['active','building'].includes(h.status)))errors.push('Compatibilidade entre melhorias exige conferência; não acumular automaticamente.');
+  if(item.category==='fortification'&&state.holdings.some(h=>h.domainId===domain?.id&&['tower','hall','small-castle','castle','superior-castle'].includes(h.itemId)&&['active','building'].includes(h.status)))errors.push('Fortificação existente: upgrade precisa de regra explícita.');
   for (const req of item.requirements) {
     if (req.kind==='terrain' && (!domain?.terrain || (req.values?.length && !req.values.includes(domain.terrain)))) errors.push('Terreno necessário: '+(req.values?.join(', ') || 'um terreno principal adquirido'));
     if (req.kind==='feature' && !req.values?.some(v=>domain?.features.includes(v))) errors.push('Característica necessária: '+req.values?.join(', '));

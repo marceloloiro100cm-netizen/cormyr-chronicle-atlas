@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
-import { operationSchema, resourcesSchema, catalogSchema } from './schemas';
+import { operationSchema, resourcesSchema, catalogSchema, unitSchema } from './schemas';
 import { CORE_CATALOG } from './catalog';
 import { newHouseState, RESOURCE_KEYS, type HouseState, type CatalogItem, type Unit, type Resource, type CourtMember } from './types';
 import { advance, alternativeFortune, balances, createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
@@ -36,6 +36,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     const values=resourcesSchema.parse(args['base']);validateResources(values);
     const identity=z.object({region:z.string(),motto:z.string().max(500),foundation:z.number().int().optional(),history:z.array(z.string()).max(100),notes:z.string().max(10000)}).parse(args['identity']);
     next.base=values;next.identity=identity;next.creationStep=z.number().int().min(0).max(10).parse(args['creationStep']);
+    if(!admin&&(state.method!=='budget'||state.budget===null))throw new Error('O Narrador precisa autorizar o método e orçamento antes de distribuir recursos.');
     if(admin){next.method=z.enum(['budget','roll','import']).parse(args['method']);next.budget=z.number().nonnegative().nullable().parse(args['budget']);}
     next.regionalApplied=next.method!=='import';
     if(next.budget!==null&&RESOURCE_KEYS.reduce((n,r)=>n+next.base[r],0)>next.budget)throw new Error('Os recursos excedem o orçamento autorizado.');
@@ -50,7 +51,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     const dice=state.phase==='active'?Array.from({length:item.duration.dice??0},()=>(crypto.getRandomValues(new Uint32Array(1))[0]??0)%(item.duration.sides??6)+1):[];
     next=purchase(state,item,{...purchaseArgs,dice});rule=item.source+' · '+item.section+' · '+item.version;
   }
-  if(data.action==='unit') {if(state.phase==='active')throw new Error('Recrutamento em campanha exige projeto e regra de treino aprovada pelo Narrador.');const unit=args['unit'] as Unit;if(!unit||typeof unit!=='object')throw new Error('Unidade inválida.');next=createUnit(state,unit,UNIT_TYPES);rule='Livro básico · Unidades';}
+  if(data.action==='unit') {if(state.phase==='active')throw new Error('Recrutamento em campanha exige projeto e regra de treino aprovada pelo Narrador.');const parsed=unitSchema.parse(args['unit']);const first=UNIT_TYPES.find(t=>t.id===parsed.types[0]);if(!first)throw new Error('Tipo inválido.');if(parsed.types.length>1)throw new Error('Unidades mistas: custo calculável, mas equipamento e disciplina exigem conciliação do Narrador.');if(first.id==='cavalry')throw new Error('Cavalaria exige ficha da montaria conciliada; não usar Vigor humano.');const unit:Unit={...parsed,costs:[],armor:first.armor??0,armorPenalty:first.penalty??0,strength:first.strength??100,health:parsed.skills.endurance*3,casualties:0,disciplineModifier:first.discipline,xp:0,equipment:[]};next=createUnit(state,unit,UNIT_TYPES);rule='Livro básico · Unidades';}
   if(data.action==='court') {const member=z.object({id:z.string().uuid(),npcId:z.string().uuid().optional(),name:z.string().min(1).max(160),role:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args) as CourtMember;if(member.npcId){const record=await context.supabase.from('campaign_records').select('house_id,kind').eq('id',member.npcId).single();if(record.error||record.data.house_id!==data.houseId||record.data.kind!=='character')throw new Error('NPC não pertence a esta casa.');}next.court.push(member);}
   if(data.action==='submit'){if(state.phase!=='draft')throw new Error('Criação já enviada.');if(!state.domains.length)throw new Error('Adicione ao menos um domínio.');if(!state.regionalApplied&&state.method!=='import')throw new Error('Revise os recursos.');next.phase='review';}
   if(data.action==='approve'){if(state.phase!=='review')throw new Error('Envie a criação para revisão primeiro.');if(state.pending.length)throw new Error('Resolva as pendências de conciliação.');next.phase='active';}
