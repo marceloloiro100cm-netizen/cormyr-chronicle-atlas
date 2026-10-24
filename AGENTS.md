@@ -26,3 +26,4 @@
 - Narrator representation is a short-lived database session bound to the real actor; one transactional RPC applies player-scoped permissions and audits actions without authenticating as the player.
 - Narrator round-response summaries derive from delivered messages and replies plus active authorized memberships; scheduled content and narrator replies never count as a house response.
 - Structured noble-house management is isolated from legacy narrative/character records, uses a versioned central rules engine and transactional private snapshots with immutable ledger entries; legacy data enters only through explicit reconciliation.
+- House exports share a browser-safe report model for PDF and Excel, including recorded costs, discounts and ledger entries; this keeps exported accounting consistent with the private workspace.
