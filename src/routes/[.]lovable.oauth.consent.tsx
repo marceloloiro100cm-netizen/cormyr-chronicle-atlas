@@ -20,7 +20,7 @@ const SCOPE_LABELS: Record<string, string> = {
 
 export const Route = createFileRoute('/.lovable/oauth/consent')({
   validateSearch: (search: Record<string, unknown>) => ({ authorization_id: typeof search['authorization_id'] === 'string' ? search['authorization_id'] : '' }),
-  head: () => ({ meta: [{ title: 'Conectar aplicativo — Cormyr Chronicle' }, { name: 'description', content: 'Autorize um aplicativo externo a usar o Cormyr Chronicle com a sua conta.' }, { property: 'og:title', content: 'Conectar aplicativo — Cormyr Chronicle' }, { property: 'og:type', content: 'website' }, { name: 'twitter:card', content: 'summary' }] }),
+  head: () => ({ meta: [{ title: 'Conectar aplicativo — Cormyr Chronicle' }, { name: 'description', content: 'Autorize um aplicativo externo a usar o Cormyr Chronicle com a sua conta.' }, { property: 'og:title', content: 'Conectar aplicativo — Cormyr Chronicle' }, { property: 'og:description', content: 'Autorize o acesso à campanha com as permissões da sua conta.' }, { property: 'og:type', content: 'website' }, { name: 'twitter:card', content: 'summary' }] }),
   component: Consent,
   errorComponent: ({ error }) => (
     <CampaignShell><h1>Conexão com aplicativo</h1><p role="alert">Não foi possível carregar esta autorização: {error instanceof Error ? error.message : 'erro desconhecido'}.</p></CampaignShell>
