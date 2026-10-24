@@ -81,7 +81,7 @@ function FichaTab({current,records,canEdit,onSave}:{current:Panel['houses'][numb
   const fichaLordeParsed=fichaLorde?parseFichaPersonagem(fichaLorde.content):null;
   return <section>
     <nav className="campaign-tabs" aria-label="Tipo de ficha"><Button variant={view==='house'?'default':'outline'} aria-pressed={view==='house'} onClick={()=>setView('house')}>Ficha da Casa</Button><Button variant={view==='character'?'default':'outline'} aria-pressed={view==='character'} onClick={()=>setView('character')}>Ficha do Personagem</Button><Button variant={view==='legacy'?'default':'ghost'} aria-pressed={view==='legacy'} onClick={()=>setView('legacy')}>Ficha anterior preservada</Button></nav>
-    {view==='house'&&<NobleHouseHub house={current} canEdit={canEdit} npcs={records.filter(r=>r.kind==='character').map(r=>({id:r.id,title:r.title}))}/>}
+    {view==='house'&&<NobleHouseHub house={current} canEdit={canEdit} npcs={records.filter(r=>r.kind==='character'&&!isFichaPersonagem(r.title,r.content)).map(r=>({id:r.id,title:r.title}))} courtMembers={records.filter(r=>r.kind==='character').map(r=>({id:r.id,title:r.title}))}/>}
     {view==='legacy'&&<><h2>Ficha da casa — registro anterior</h2>
     {fichaCasa?<><FichaCasaCard content={fichaCasa.content} crest={current.crest} houseName={current.name}/>{canEdit&&<details className="campaign-add"><summary>Editar ficha da casa</summary><RecordEditor row={fichaCasa} canEdit={canEdit} onSave={onSave}/></details>}</>:<p className="campaign-empty">A ficha da casa ainda não foi encontrada na pasta. Use o botão Atualizar após adicioná-la ao Drive.</p>}
     </>}
