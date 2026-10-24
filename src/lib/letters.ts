@@ -13,6 +13,10 @@ export type LetterRow = {
   last_synced_at: string | null;
   letter_number: number | null;
   letter_kind: 'geral' | 'reservada';
+  publication_state?: string;
+  delivery_week?: number | null;
+  creation_week?: number | null;
+  conversation_id?: string | null;
 };
 
 export type LetterGroup = {
