@@ -83,6 +83,19 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
       expect(gmReplyRow.data?.author_name).toBe('Mestre');
       const future=await p1.from('letter_replies').select('id,content').eq('id',gmReply.data as string);expect(future.data).toEqual([]);
       const meta=await admin.from('letter_replies').select('delivery_week,publication_state').eq('id',gmReply.data as string).single();expect(meta.data).toMatchObject({delivery_week:100002,publication_state:'scheduled'});
+      // Explicit opening releases future content; closing keeps delivered history readable.
+      expect((await gm.rpc('set_letter_round',{p_number:100002,p_closed:false})).error).toBeNull();
+      expect((await p1.from('letter_replies').select('id').eq('id',gmReply.data as string)).data).toHaveLength(1);
+      expect((await gm.rpc('set_letter_round',{p_number:100002,p_closed:true})).error).toBeNull();
+      expect((await p1.from('letter_replies').select('id').eq('id',gmReply.data as string)).data).toHaveLength(1);
+      // Draft replies remain editable while closed, but cannot be sent by a player.
+      const draftKey=crypto.randomUUID();
+      const replyDraft=await p1.rpc('save_weekly_reply_draft',{p_id:draftKey,p_letter:ownId,p_reply:gmReply.data as string,p_content:'Resposta em rascunho'});
+      expect(replyDraft.error).toBeNull();
+      expect((await p1.rpc('save_weekly_reply_draft',{p_id:replyDraft.data as string,p_letter:ownId,p_reply:gmReply.data as string,p_content:'Rascunho revisado'})).data).toBe(replyDraft.data);
+      expect((await p1.rpc('schedule_weekly_reply_draft',{p_id:replyDraft.data as string})).error).not.toBeNull();
+      // Message publication cannot be bypassed by direct client table writes.
+      expect((await p1.from('campaign_letters').update({publication_state:'delivered'}).eq('id',ownId)).error).not.toBeNull();
       // Narrator edits are versioned and reject both non-admins and stale saves.
       expect((await p1.rpc('edit_campaign_letter',{p_id:ownId,p_version:1,p_subject:'Forbidden',p_content:'Forbidden'})).error).not.toBeNull();
       expect((await gm.rpc('edit_campaign_letter',{p_id:ownId,p_version:1,p_subject:'Edited',p_content:'Revised content'})).error).toBeNull();
@@ -91,6 +104,12 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
       // o outro jogador da mesma casa não lê a missiva pessoal do colega
       const p2Sees = await p2.from('campaign_letters').select('id').eq('id', ownId);
       expect(p2Sees.data).toEqual([]);
+      // Inactivation blocks an existing player session without deleting the history.
+      expect((await admin.from('campaign_players').update({active:false}).eq('id',players[0]??'')).error).toBeNull();
+      expect((await p1.from('campaign_letters').select('id').eq('id',ownId)).data).toEqual([]);
+      expect((await p1.rpc('schedule_weekly_reply_draft',{p_id:replyDraft.data as string})).error).not.toBeNull();
+      expect((await admin.from('campaign_players').update({active:true}).eq('id',players[0]??'')).error).toBeNull();
+      expect((await p1.from('campaign_letters').select('id').eq('id',ownId)).data).toHaveLength(1);
     } finally {
       if (roundsBefore) { await admin.from('letter_rounds').delete().gte('number', 0); if (roundsBefore.length) await admin.from('letter_rounds').insert(roundsBefore); }
       const replies = await admin.from('letter_replies').select('id').in('letter_id', letters);
