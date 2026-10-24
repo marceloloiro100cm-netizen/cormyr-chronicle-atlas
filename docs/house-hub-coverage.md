@@ -27,7 +27,7 @@ As imagens de Bonus por Região foram lidas visualmente. As 16 imagens de Prospe
 | Família/vassalos |NPCs vinculados sem duplicar ou cobrar cadastro; funções de corte; custos20/10/5 catalogados | Status/herdeiros/sucessão mecânica e criação de vassalos |
 | Calendário |Meses Faerûn CV separados do real; avanço idempotente; projetos ativam na conclusão |Projetos personalizados, tesouro/câmbio, sazonalidade e ações desbloqueadas completas |
 | Sorte |Tabela6-18 não linear,Lei/Pop,dados de teste/bônus separados,melhores dados,consequências narrador,máximo1/mês; alternativa+1; tabela6-19 |Efeitos de posses exigem conciliação; nenhum empilhamento inventado |
-| Importação |Prévia por cabeçalho/contexto,erros,#REF!Casa!B38,Erdenor/Ashkar,linhas vazias,originais intactos |Confirmação transacional de snapshots e decisões campo a campo |
+| Importação |Prévia por cabeçalho/contexto,erros,#REF!Casa!B38,Erdenor/Ashkar,linhas vazias; Narrador confirma snapshot de recursos e decisões, sem tropas/compras e sem reaplicar bônus |Conciliação campo a campo de posses/tropas e resolução das pendências antes da aprovação |
 | Permissões |RLS privado,grants,server auth/vínculo ativo/can_edit; GM separado; RPC de commit só service role |Testes de acesso cruzado e concorrência reais ainda não executados |
 | Histórico |Snapshots antes/depois,autor,data real/campanha,regra,versão,chave,desfazer rascunho |Estorno ativo e custo completo dos descontos históricos |
 | Drive/export |Excel multiaba legível e PDF por impressão; sincronização anterior intacta |Novo formato estruturado Drive,conciliação externa,Excel com fórmulas/estilo,PDF direto e histórico exportado |
@@ -42,6 +42,6 @@ As imagens de Bonus por Região foram lidas visualmente. As 16 imagens de Prospe
 Animal Husbandry, Master of Arms, Secret Police e Spy Network têm campos críticos perdidos. Salt Works, Research Archivists, Herald e versões têxteis têm conflitos explícitos. Gaol: prazo literal2d5 preservado como pendência. Stacking: +12 sobreposto; total>18 e arredondamento não definidos. Texto de escadas/cordas/arpéus e dano da catapulta média não recuperável. Todo item bloqueado exibe sua pendência no catálogo.
 
 ## Estado de validação
-Testes isolados de motor e regressões de fichas/NPCs. Tela autenticada do Narrador lida sem salvar casas reais; busca de castelos e uploads das duas planilhas verificados. Celular390px sem overflow após correção. Nenhuma compra, missiva, avanço ou dado fictício gravado em casa real.
+47 testes isolados passaram: motor, regras de Sorte/conversões, permissões e idempotência simuladas, compra em três passos e regressões de fichas/NPCs. Compilação automática OK. Tela autenticada do Narrador lida sem salvar casas reais; busca de castelos e uploads das duas planilhas verificados. Celular390px sem overflow após correção; seleção por teclado e confirmação bloqueada por saldo insuficiente conferidas. Nenhuma compra, missiva, avanço ou dado fictício gravado em casa real. Banco confirmado com zero fichas novas, zero operações e zero adaptações gravadas. Transação concorrente real e gravação/leitura end-to-end não foram exercitadas no banco compartilhado.
 
 **Não declarar o hub completo:** os pontos da última coluna continuam abertos e precisam de implementação ou conciliação específica.
