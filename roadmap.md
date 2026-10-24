@@ -1,13 +1,17 @@
 # Roadmap
 
 ## Hub de casa nobre — 24/10 21:38 UTC
-- [ ] Conferir cinco fontes e imagens das tabelas; catálogo e matriz de cobertura com pendências explícitas.
-- [ ] Motor central: recursos, alocações, custos permanentes, requisitos, unidades, projetos, calendário e Sorte.
-- [ ] Persistência privada, validação transacional, concorrência, idempotência e auditoria; nenhuma migração de dados reais.
-- [ ] Integração em Ficha com navegação editorial, criação guiada, compra em três passos e personagens preservados.
-- [ ] Conciliação de planilhas por contexto, erros e casas divergentes; importação somente com confirmação.
-- [ ] Exportação legível, sincronização estável autorizada e regras editáveis pelo Narrador.
-- [ ] Testes isolados de regras/permissões, fluxo completo e computador/celular; não publicar.
+- [x] Conferir cinco fontes e imagens; 173 entradas de Prosperidade, catálogo básico adicional e matriz em docs/house-hub-coverage.md.
+- [x] Motor central: sete recursos/alocações/permanentes, requisitos, tropas simples, projetos, calendário, Sorte básica e conversões6-19.
+- [x] Persistência privada, validação transacional, versão/idempotência e auditoria; zero casas reais migradas.
+- [x] Integrar em Ficha com navegação editorial, criação guiada, compra em três passos e fichas de personagem preservadas.
+- [x] Prévia por contexto, #REF!Evenhand e Erdenor/Ashkar; snapshot legado somente por confirmação administrativa.
+- [x] Exportação Excel/PDF por impressão e edição administrativa de custos/descrições/itens personalizados.
+- [x] 47 testes isolados; tela autenticada, teclado e celular390px sem cortes; nenhuma publicação.
+- [ ] Concluir automação de todos efeitos, descontos, stacking e limites de Prosperidade — campos corrompidos/ambíguos precisam de conciliação; requisitos conhecidos ainda têm implementação parcial (matriz detalhada).
+- [ ] Completar criação mecânica/história, unidades mistas, montarias, mercenários, evolução, cerco, vassalos e projetos personalizados — faltam regras operacionais e integração descritas na matriz.
+- [ ] Integrar exportação estruturada Drive/conciliação externa, representação e PDF direto — implementação não concluída; sincronização anterior preservada.
+- [ ] Validar gravação/leitura e concorrência no banco isolado — banco atual compartilhado com produção; não usar casas reais como teste.
 
 ## Pedido atual
 - [x] Concluir gravação versionada de edições, uploads e respostas nas oito pastas autorizadas; 60 registros, 44 missivas e 28 respostas confirmados por leitura de retorno
