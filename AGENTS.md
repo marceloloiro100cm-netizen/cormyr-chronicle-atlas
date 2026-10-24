@@ -35,3 +35,4 @@
 - House reconciliation previews use existing RLS-readable source records and session-local workbooks without mutation callbacks; candidate resource rows retain provenance and missing values rather than approving or merging balances.
 
 - Structured house Drive exports have a dedicated one-way mapping in the existing leased technical-folder executor; private sheet and ledger remain authoritative, with real provider ETags required for stable updates and immutable versions otherwise.
+- House resource views share the same central balance calculation and switch only presentation; chart saturation never changes recorded totals or allocations.
