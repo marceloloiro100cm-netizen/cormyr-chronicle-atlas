@@ -55,3 +55,9 @@ export const organizeDriveFiles=createServerFn({method:'POST'}).middleware([requ
   const {organizeTechnicalFolders}=await import('./drive-organization.server');
   return organizeTechnicalFolders(supabaseAdmin,context.userId);
 });
+
+export const refreshPublicArchive=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).handler(async({context})=>{
+  const role=await context.supabase.rpc('is_campaign_admin');if(role.error||!role.data)throw new Error('Acesso restrito ao Narrador.');
+  const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
+  const {updatePublicArchive}=await import('./archive-update.server');return updatePublicArchive(supabaseAdmin);
+});
