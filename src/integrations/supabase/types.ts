@@ -832,6 +832,147 @@ export type Database = {
           },
         ]
       }
+      noble_house_gm_notes: {
+        Row: {
+          house_id: string
+          notes: string
+          secret_state: Json
+          updated_at: string
+        }
+        Insert: {
+          house_id: string
+          notes?: string
+          secret_state?: Json
+          updated_at?: string
+        }
+        Update: {
+          house_id?: string
+          notes?: string
+          secret_state?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "noble_house_gm_notes_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: true
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      noble_house_ledger: {
+        Row: {
+          action: string
+          actor: string
+          after_state: Json
+          before_state: Json
+          campaign_month: number
+          created_at: string
+          explanation: string
+          house_id: string
+          id: string
+          operation_key: string
+          rule: string
+          version: number
+        }
+        Insert: {
+          action: string
+          actor: string
+          after_state: Json
+          before_state: Json
+          campaign_month: number
+          created_at?: string
+          explanation?: string
+          house_id: string
+          id?: string
+          operation_key: string
+          rule?: string
+          version: number
+        }
+        Update: {
+          action?: string
+          actor?: string
+          after_state?: Json
+          before_state?: Json
+          campaign_month?: number
+          created_at?: string
+          explanation?: string
+          house_id?: string
+          id?: string
+          operation_key?: string
+          rule?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "noble_house_ledger_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      noble_house_rule_overrides: {
+        Row: {
+          definition: Json
+          id: string
+          updated_at: string
+          updated_by: string
+          version: number
+        }
+        Insert: {
+          definition: Json
+          id: string
+          updated_at?: string
+          updated_by: string
+          version?: number
+        }
+        Update: {
+          definition?: Json
+          id?: string
+          updated_at?: string
+          updated_by?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      noble_house_sheets: {
+        Row: {
+          house_id: string
+          state: Json
+          sync_state: string
+          updated_at: string
+          updated_by: string
+          version: number
+        }
+        Insert: {
+          house_id: string
+          state?: Json
+          sync_state?: string
+          updated_at?: string
+          updated_by: string
+          version?: number
+        }
+        Update: {
+          house_id?: string
+          state?: Json
+          sync_state?: string
+          updated_at?: string
+          updated_by?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "noble_house_sheets_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: true
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1067,6 +1208,19 @@ export type Database = {
       claim_drive_binding: {
         Args: { p_id: string; p_token: string }
         Returns: boolean
+      }
+      commit_noble_house_operation: {
+        Args: {
+          p_action: string
+          p_actor: string
+          p_explanation: string
+          p_house: string
+          p_key: string
+          p_rule: string
+          p_state: Json
+          p_version: number
+        }
+        Returns: Json
       }
       delete_campaign_letter: { Args: { p_id: string }; Returns: undefined }
       edit_campaign_letter: {
