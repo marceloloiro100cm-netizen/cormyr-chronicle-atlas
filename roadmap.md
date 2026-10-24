@@ -10,7 +10,7 @@
 - [x] Exportação Excel/PDF por impressão e edição administrativa de custos/descrições/itens personalizados.
 - [x] 47 testes isolados; tela autenticada, teclado e celular390px sem cortes; nenhuma publicação.
 - [ ] Concluir automação de todos efeitos, descontos, stacking e limites de Prosperidade — campos corrompidos/ambíguos precisam de conciliação; requisitos conhecidos ainda têm implementação parcial (matriz detalhada).
-- [ ] Completar criação mecânica/história, unidades mistas, montarias, mercenários, evolução, cerco, vassalos e projetos personalizados — faltam regras operacionais e integração descritas na matriz.
+- [ ] Completar criação mecânica/história, unidades mistas, montarias, evolução, cerco, vassalos e projetos personalizados — implementação ainda parcial; mercenários com custos conferidos concluídos.
 - [ ] Integrar exportação estruturada Drive/conciliação externa e representação — implementação não concluída; PDF direto concluído, sincronização anterior preservada.
 - [ ] Validar gravação/leitura e concorrência no banco isolado — banco atual compartilhado com produção; não usar casas reais como teste.
 
