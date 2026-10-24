@@ -126,6 +126,7 @@ export function validateUnit(unit: Unit, state: HouseState, types: UnitType[]) {
   if(unit.types.length>1&&!unit.types.includes(unit.equipmentTypeId??''))throw new Error('Escolha um conjunto completo de equipamento entre os tipos da unidade.');
   if(!state.domains.some(d=>d.id===unit.domainId))throw new Error('Domínio da unidade não encontrado.');
   if(unit.types.length>1&&!unit.mixedRule?.justification.trim())throw new Error('Tipos mistos exigem decisão explícita do Narrador sobre habilidades e Disciplina.');
+  if(unit.mixedRule&&(!unit.mixedRule.allowedSkills.length||unit.mixedRule.allowedSkills.some(s=>!SKILLS.includes(s))||!Number.isInteger(unit.mixedRule.disciplineModifier)||Math.abs(unit.mixedRule.disciplineModifier)>30))throw new Error('Adaptação militar inválida.');
   const allowed = new Set(unit.types.length>1?unit.mixedRule?.allowedSkills:selected.flatMap(t=>t?.skills??[]));
   for(const s of SKILLS) { if(!Number.isInteger(unit.skills[s])||unit.skills[s]<2)throw new Error('Habilidade começa em 2.'); if(unit.skills[s]>2&&!allowed.has(s))throw new Error('Habilidade fora das opções deste tipo.'); }
   const spent = unitStats(unit).xpSpent; if(spent>training.xp) throw new Error('XP insuficiente.');

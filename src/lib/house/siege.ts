@@ -15,6 +15,7 @@ export function buySiege(state:HouseState,args:{id:string;itemId:string;engineer
  const domain=state.domains.find(d=>d.id===args.domainId);if(!domain)throw new Error('Escolha um domínio.');
  const engineer=state.units.find(u=>u.id===args.engineerId&&!u.destroyed&&u.types.includes('engineers'));
  const carrier=state.units.find(u=>u.id===args.carrierId&&!u.destroyed);
+ if(domain.terrain==='mountains'&&!state.holdings.some(h=>h.domainId===domain.id&&h.category==='fortification'&&h.status==='active'))throw new Error('Montanhas não permitem armas de cerco, exceto defensor fortificado.');
  if(item.engineer&&!engineer)throw new Error('Exige unidade de engenheiros.');
  if(item.carrier&&!carrier)throw new Error('Exige unidade portadora.');
  if(item.engineer&&item.carrier&&engineer?.id===carrier?.id)throw new Error('Exige outra unidade além dos engenheiros.');
