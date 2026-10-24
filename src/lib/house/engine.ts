@@ -64,7 +64,25 @@ export function purchase(state: HouseState, item: CatalogItem, args: {id:string;
 }
 export const TRAINING = { green:{name:'Verde',power:1,xp:20,discipline:9}, trained:{name:'Treinada',power:3,xp:60,discipline:6}, veteran:{name:'Veterana',power:5,xp:100,discipline:3}, elite:{name:'Elite',power:7,xp:140,discipline:0} };
 export type UnitType = {id:string;name:string;cost:number;discipline:number;skills:string[];description:string;source:string;armor?:number;penalty?:number;strength?:number;pending?:string};
-export const UNIT_TYPES: UnitType[] = [];
+export const UNIT_TYPES: UnitType[] = ([
+  ['support','Apoio',2,3,['healing','animalHandling','endurance'],0,0],
+  ['archers','Arqueiros',3,3,['agility','awareness','marksmanship'],2,1],
+  ['scouts','Batedores',2,3,['stealth','awareness','endurance'],2,1],
+  ['cavalry','Cavalaria',5,-3,['agility','animalHandling','fighting'],5,3],
+  ['criminals','Criminosos',1,6,['stealth','fighting','endurance'],1,0],
+  ['crusaders','Cruzados',4,0,['athletics','fighting','endurance'],3,2],
+  ['engineers','Engenheiros',2,3,['warfare','fighting','endurance'],2,1],
+  ['special','Especial',5,0,['agility','athletics','awareness','endurance','fighting','marksmanship','stealth','cunning','healing','animalHandling','warfare','survival'],2,1],
+  ['personal-guard','Guarda pessoal',6,-6,['athletics','fighting','endurance'],6,3],
+  ['garrison','Guarnição',2,-3,['fighting','awareness','endurance'],3,2],
+  ['guerrillas','Guerrilheiros',2,3,['athletics','stealth','marksmanship'],1,0],
+  ['infantry','Infantaria',4,0,['athletics','fighting','endurance'],3,2],
+  ['sailors','Marinheiros',4,0,['agility','fighting','awareness'],0,0],
+  ['mercenaries','Mercenários',1,3,['athletics','fighting','endurance'],4,2],
+  ['warships','Navios de guerra',7,0,['fighting','awareness','marksmanship'],5,0],
+  ['levies','Plebeus recrutados',0,6,['animalHandling','awareness','survival'],0,0],
+  ['raiders','Saqueadores',3,3,['agility','fighting','endurance'],2,1],
+] as const).map(([id,name,cost,discipline,skills,armor,penalty])=>({id,name,cost,discipline,skills:[...skills],armor,penalty,strength:id==='cavalry'?20:id==='warships'?5:100,description:id==='garrison'?'Disciplina −3 em seu lar, +3 fora dele.':id==='cavalry'?'20 cavaleiros e montarias; Atletismo e Vigor das montarias.':id==='mercenaries'?'Contrato com custo adicional de Riqueza segundo treinamento, sem manutenção mensal presumida.':id==='warships'?'Cinco navios; exige água e transporta uma unidade.':'100 soldados; custo do tipo soma ao treinamento.',source:'Guerra dos Tronos RPG · tabela 6-8, pp. 136–139; tabela 10-1, p. 219'}));
 export function unitStats(unit: Unit) {
   const training = TRAINING[unit.training as keyof typeof TRAINING];
   if(!training) throw new Error('Treinamento inválido.');
@@ -78,7 +96,8 @@ export function validateUnit(unit: Unit, state: HouseState, types: UnitType[]) {
   const allowed = new Set(selected.flatMap(t=>t?.skills??[]));
   for(const s of SKILLS) { if(!Number.isInteger(unit.skills[s])||unit.skills[s]<2)throw new Error('Habilidade começa em 2.'); if(unit.skills[s]>2&&!allowed.has(s))throw new Error('Habilidade fora das opções deste tipo.'); }
   const spent = unitStats(unit).xpSpent; if(spent>training.xp) throw new Error('XP insuficiente.');
-  if(unit.types.includes('warships')&&!state.domains.find(d=>d.id===unit.domainId)?.features.some(f=>['coast','river','lake-large'].includes(f))) throw new Error('Navios exigem água navegável.');
+  if(unit.types.includes('special')&&SKILLS.filter(s=>unit.skills[s]>2).length>3)throw new Error('Unidade especial escolhe somente três habilidades.');
+  if(unit.types.includes('warships')&&!state.domains.find(d=>d.id===unit.domainId)?.features.some(f=>['coast','river','lake-small','lake-large','island'].includes(f))) throw new Error('Navios exigem água navegável.');
   return selected;
 }
 export function createUnit(state: HouseState, unit: Unit, types: UnitType[]): HouseState {
