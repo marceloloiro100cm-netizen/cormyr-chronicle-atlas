@@ -33,6 +33,7 @@ As imagens de Bonus por Região foram lidas visualmente. As 16 imagens de Prospe
 | Drive/export |Download PDF direto paginado e Excel13 abas com identidade,recursos,domínios,poss es,benefícios,tropas/habilidades,projetos,corte,Sorte/ações,história,ledger e conciliação; downloads autenticados verificados |Novo formato estruturado Drive,conciliação externa e fórmulas Excel; ledger exportado limitado às100 operações atualmente carregadas |
 
 ## Integridade dos anexos
+Atualização22:35: área Casa e Corte;cargos Lorde/Lady,Consorte,Herdeiro e Administrador vinculam registros existentes,inclusive fichas de personagem,sem copiar nomes privados ou criar personagens;repetição do mesmo vínculo atualiza notas sem duplicar.91 testes do hub aprovados. Prévia autenticada confirmou cinco registros disponíveis e quatro cargos,sem salvar em casas reais.
 - Evenhand: `Casa!B38=#REF!` exibido; lançamentos não escondidos para forçar saldo.
 - Ficha da Casa: identidade Ashkar; unidades Exército Erdenor separadas/bloqueadas.
 - Sorte por Lei/Pop não debitada. Bônus não vira evento. Vazio não equivale a zero.
