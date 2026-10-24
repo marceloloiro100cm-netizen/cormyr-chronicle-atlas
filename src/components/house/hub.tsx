@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { LayoutDashboard, Feather, Mountain, Castle, Coins, Swords, Users, CalendarDays, Dice5, ScrollText, Plus, Undo2, Download, Check, ShieldCheck, AlertTriangle } from 'lucide-react';
@@ -20,7 +20,8 @@ export function NobleHouseHub(props:Props) {
   const load=useServerFn(loadHouseHub),operation=useServerFn(houseOperation),qc=useQueryClient();
   const query=useQuery({queryKey:['noble-house',props.house.id],queryFn:()=>load({data:{houseId:props.house.id}})});
   const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState(false);
-  const run=useCallback(async(action:Parameters<typeof operation>[0]['data']['action'],args:Record<string,unknown>={},explanation='')=>{if(busy||!query.data)return false;setBusy(true);setError(false);try{await operation({data:{houseId:props.house.id,version:query.data.version,key:crypto.randomUUID(),action,args,explanation}});await qc.invalidateQueries({queryKey:['noble-house',props.house.id]});setMessage('Salvo no site. Histórico preservado.');return true;}catch(e){setMessage(e instanceof Error?e.message:'Não foi possível salvar.');setError(true);return false;}finally{setBusy(false);}},[busy,query.data,operation,props.house.id,qc]);
+  const lock=useRef(false),retry=useRef<{payload:string;key:string}|null>(null);
+  const run=useCallback(async(action:Parameters<typeof operation>[0]['data']['action'],args:Record<string,unknown>={},explanation='')=>{if(lock.current||!query.data)return false;lock.current=true;setBusy(true);setError(false);const payload=JSON.stringify({houseId:props.house.id,action,args,explanation});if(retry.current?.payload!==payload)retry.current={payload,key:crypto.randomUUID()};const key=retry.current.key;try{await operation({data:{houseId:props.house.id,version:query.data.version,key,action,args,explanation}});retry.current=null;await qc.invalidateQueries({queryKey:['noble-house',props.house.id]});setMessage('Salvo no site. Histórico preservado.');return true;}catch(e){setMessage(e instanceof Error?e.message:'Não foi possível salvar.');setError(true);return false;}finally{lock.current=false;setBusy(false);}},[query.data,operation,props.house.id,qc]);
   if(query.isPending)return <p role="status">Consultando a ficha da casa…</p>;
   if(query.error||!query.data)return <div role="alert"><p>{query.error?.message??'Ficha indisponível'}</p><Button onClick={()=>query.refetch()}>Tentar novamente</Button></div>;
   return <HouseWorkspace key={props.house.id} {...props} state={query.data.state} catalog={query.data.catalog} admin={query.data.admin} version={query.data.version} ledger={query.data.ledger} busy={busy} message={message} error={error} run={run}/>;
