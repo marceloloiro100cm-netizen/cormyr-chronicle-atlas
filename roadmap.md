@@ -69,3 +69,5 @@
 - [ ] Validar callback periódico publicado — esta revisão não foi publicada
 - [ ] Descoberta de pastas novas fora dos 170 IDs oficiais — nenhum diretório-pai oficial foi identificado
 - [ ] Senha própria do Narrador — não alterada sem confirmação da conta correta
+- [x] Corrigida visibilidade das respostas do Narrador (15 respostas de Ashkar, Grantass e Fewmerry reendereçadas aos jogadores; leitura ampliada para membros da casa)
+- [ ] Concluir galerias das 170 casas — 80 importadas em 24/10; restante segue pela rotina automática horária
