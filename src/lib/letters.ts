@@ -17,6 +17,7 @@ export type LetterRow = {
   delivery_week?: number | null;
   creation_week?: number | null;
   conversation_id?: string | null;
+  deleted_at?: string | null;
 };
 
 export type LetterGroup = {
@@ -81,4 +82,19 @@ export function sentLetters(letters: LetterRow[], userId: string): LetterRow[] {
 /** Próximo número de missiva do narrador. */
 export function nextLetterNumber(letters: {letter_number:number|null}[]): number {
   return letters.reduce((max, l) => Math.max(max, l.letter_number ?? 0), 0) + 1;
+}
+
+/**
+ * Missivas que chegaram ao usuário e ainda não foram abertas: recebidas (não escritas por ele),
+ * não excluídas, já entregues, sem registro de leitura — ou lidas antes de uma resposta mais nova.
+ * Segue exatamente a mesma regra do rótulo "Não lida" e do filtro de leitura da lista.
+ */
+export function unreadReceivedCount(letters: LetterRow[], replies: ReplyRef[], receipts: ReceiptRef[], userId: string): number {
+  return letters.filter((l) => {
+    if (l.sender_user_id === userId) return false;
+    if (l.deleted_at) return false;
+    if (l.publication_state && l.publication_state !== 'delivered') return false;
+    const receipt = receipts.find((r) => r.letter_id === l.id && r.user_id === userId);
+    return !isLetterRead(l.id, receipt, replies);
+  }).length;
 }

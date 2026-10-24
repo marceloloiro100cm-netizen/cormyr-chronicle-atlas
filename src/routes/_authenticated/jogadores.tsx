@@ -17,7 +17,7 @@ import { GmEventos, GmAventuras } from '@/components/gm-panels';
 import { syncPlayerFolder } from '@/lib/player-sync.functions';
 import { registerPlayer, retryFolderSync, organizeDriveFiles, refreshPublicArchive } from '@/lib/campaign.functions';
 import { DriveSyncAdmin } from '@/components/drive-sync-admin';
-import { filterLetters, groupReceivedLetters, isLetterRead, nextLetterNumber, sentLetters, type LetterRow } from '@/lib/letters';
+import { filterLetters, groupReceivedLetters, isLetterRead, nextLetterNumber, sentLetters, unreadReceivedCount, type LetterRow } from '@/lib/letters';
 import type { Database } from '@/integrations/supabase/types';
 
 type RecordRow = Database['public']['Tables']['campaign_records']['Row'];
@@ -49,11 +49,12 @@ function Players(){
   const authorized=data.admin?data.houses.filter(h=>h.active&&h.season===2):data.houses.filter(h=>data.members.some(m=>m.house_id===h.id&&m.player_id===me?.id));
   const current=authorized.find(h=>h.id===house)??authorized[0];
   const canEdit=data.admin||data.members.some(m=>m.player_id===me?.id&&m.house_id===current?.id&&m.can_edit);
+  const unread=unreadReceivedCount(data.letters as LetterRow[],data.replies,data.receipts,data.user.id);
   const afterSave=async()=>{await refresh();if(!current)return;try{const result=await sync({data:{houseId:data.admin?'':current.id,importFiles:false}});setMessage(result.message);await refresh();}catch(e){setMessage('Salvo no site · pasta pendente: '+(e instanceof Error?e.message:'Falha no Drive.'));}};
   async function signout(){await qc.cancelQueries();qc.clear();await supabase.auth.signOut();await navigate({to:'/auth',search:{next:'/'},replace:true});}
   const conselho=!current&&!data.admin?<section><h2>Vínculo aguardando autorização</h2><p>Sua identidade foi autenticada, mas nenhuma casa foi autorizada para esta conta. O administrador precisa cadastrar seu jogador e aprovar o vínculo.</p><p>Identificador da conta: <code>{data.user.id}</code></p><p>Não há acesso a documentos, personagens ou missivas de outras casas.</p></section>:<>
     <div className="campaign-toolbar"><label>Casa autorizada<select value={current?.id??''} onChange={e=>setHouse(e.target.value)}>{authorized.map(h=><option value={h.id} key={h.id}>{h.name}</option>)}</select></label><p className="text-muted-foreground text-sm">Pastas dependem de confirmação administrativa · consulte o status de cada registro</p></div>
-    <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa e personagens'],['ficha','Ficha'],['documentos','Documentos'],['missivas','Missivas'],...(data.admin?[['admin','Administração']]:[])].map(([id,label])=><Button key={id} variant={tab===id?'default':'outline'} aria-pressed={tab===id} onClick={()=>setTab(id??'casa')}>{label}</Button>)}</nav>
+    <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa e personagens'],['ficha','Ficha'],['documentos','Documentos'],['missivas','Missivas'],...(data.admin?[['admin','Administração']]:[])].map(([id,label])=><Button key={id} variant={tab===id?'default':'outline'} aria-pressed={tab===id} aria-label={id==='missivas'&&unread>0?`${label}: ${unread} missiva${unread===1?'':'s'} não lida${unread===1?'':'s'}`:undefined} onClick={()=>setTab(id??'casa')}>{label}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}</Button>)}</nav>
     {tab==='casa'&&current&&<><section><p className="campaign-eyebrow">{current.region} · CASA NOBRE</p><h2>{current.name}</h2><CampaignContent content={narrativeText(current.details)}/></section><h2>Textos da casa e personagens</h2><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind!=='document'&&!isFichaCasa(r.title,r.content)&&!isFichaPersonagem(r.title,r.content)&&Boolean(narrativeText(r.content)))} narrativeOnly canEdit={canEdit} onSave={afterSave}/>{canEdit&&<RecordForm houseId={current.id} playerId={me?.id} admin={data.admin} onSave={afterSave} kind="character"/>}</>}
     {tab==='ficha'&&current&&<FichaTab current={current} records={data.records.filter(r=>r.house_id===current.id)} canEdit={canEdit} onSave={afterSave}/>}
     {tab==='documentos'&&current&&<><h2>Documentos do acervo</h2><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind==='document')} canEdit={canEdit} onSave={afterSave}/>{canEdit&&<RecordForm houseId={current.id} playerId={me?.id} admin={data.admin} onSave={afterSave} kind="document"/>}</>}
