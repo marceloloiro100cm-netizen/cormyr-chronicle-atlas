@@ -11,6 +11,7 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
     const shim = (k: string): typeof fetch => (input, init) => { const h = new Headers(init?.headers); if (k.startsWith('sb_') && h.get('Authorization') === `Bearer ${k}`) h.delete('Authorization'); h.set('apikey', k); return fetch(input, { ...init, headers: h }); };
     const admin = createClient<Database>(url, key, { auth: { persistSession: false }, global: { fetch: shim(key) } });
     const ids: string[] = [], players: string[] = [], letters: string[] = [];
+    let roundsBefore: Database['public']['Tables']['letter_rounds']['Row'][] | null = null;
     const houseId = 'fixture-house-' + crypto.randomUUID().slice(0, 8);
     try {
       await admin.from('campaign_houses').insert({ id: houseId, name: 'Isolated fixture house', source: 'fixture', active: true, season: 2 });
