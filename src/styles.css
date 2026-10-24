@@ -228,3 +228,7 @@
 .campaign-thread-item small{color:var(--muted-foreground)}
 .campaign-tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;margin-left:8px;border-radius:999px;background:var(--campaign-gold);color:var(--campaign-purple);font:700 12px/1 Georgia,serif}
 @media(max-width:700px){.campaign-tab-count{min-width:20px;height:20px;margin-left:6px}}
+.campaign-mail-jump{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 2px}
+.campaign-mail-jump button{min-height:38px;padding:6px 12px;border:1px solid var(--campaign-gold);border-radius:999px;background:var(--campaign-paper);color:var(--primary);font:600 13px/1.2 Georgia,serif;cursor:pointer}
+.campaign-mail-jump button:hover{background:var(--campaign-light)}
+.campaign-mail-group{scroll-margin-top:90px}

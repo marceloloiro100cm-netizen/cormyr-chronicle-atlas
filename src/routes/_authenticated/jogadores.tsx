@@ -206,6 +206,7 @@ function MissivasTab({data,me,onSave,onError}:{data:Panel;me:Panel['players'][nu
       {sel('Tipo','kind',[['','Todos os tipos'],['geral','Geral'],['reservada','Reservada']])}
       {sel('Resposta','answered',[['','Todas'],['yes','Respondidas'],['no','Não respondidas']])}
       {sel('Leitura','read',[['','Todas'],['no','Não lidas'],['yes','Lidas']])}
+      {groups.some(g=>g.number!==null)&&<nav className="campaign-mail-jump" aria-label="Ir para uma semana de missiva">{groups.filter(g=>g.number!==null).map(g=><button key={g.number} type="button" onClick={()=>document.getElementById('grupo-missiva-'+g.number)?.scrollIntoView({behavior:'smooth',block:'start'})}>Missiva {g.number}</button>)}</nav>}
       <Button variant="outline" onClick={()=>setFilters(empty)}>Limpar filtros</Button>
       <div className="campaign-actions"><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set(visibleIds))}>Expandir todas</Button><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set())}>Recolher todas</Button></div>
       {!data.admin&&open!==null&&<Button onClick={()=>{setDraft({key:Date.now(),subject:'',content:''});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Escrever missiva</Button>}
@@ -218,7 +219,7 @@ function MissivasTab({data,me,onSave,onError}:{data:Panel;me:Panel['players'][nu
         {compose&&<WriteLetter data={data} onSave={onSave}/>}</>}
       {filters.box!=='enviadas'&&<><div className="campaign-heading"><h2>{filters.box==='excluidas'?'Missivas excluídas':'Missivas recebidas'}</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
       {groups.length===0&&<p className="campaign-empty">Nenhuma missiva encontrada.</p>}
-      {groups.map(group=><section key={group.number??'sem-numero'}>{group.number!==null&&<h3 className="campaign-letter-number">Missiva {group.number}{data.rounds.find(r=>r.number===group.number)?.closed?' · fechada':''}</h3>}{group.letters.map(letter=>card(letter,isRecipient(letter)||data.admin))}</section>)}</>}
+      {groups.map(group=><section key={group.number??'sem-numero'} id={group.number!==null?'grupo-missiva-'+group.number:undefined} className="campaign-mail-group">{group.number!==null&&<h3 className="campaign-letter-number">Missiva {group.number}{data.rounds.find(r=>r.number===group.number)?.closed?' · fechada':''}</h3>}{group.letters.map(letter=>card(letter,isRecipient(letter)||data.admin))}</section>)}</>}
       {filters.box!=='recebidas'&&<><div className="campaign-heading"><h2>Missivas enviadas por você</h2><span>{mine.length} missivas</span></div>
       {mine.length===0&&<p className="campaign-empty">Nenhuma missiva enviada encontrada.</p>}
       {mine.map(letter=>card(letter,data.admin))}</>}
