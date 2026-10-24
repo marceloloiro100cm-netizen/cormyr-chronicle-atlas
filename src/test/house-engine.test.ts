@@ -7,7 +7,7 @@ import { previewWorkbook } from '@/lib/house/import';
 const start=()=>{const s=newHouseState('isolated');s.base={defense:50,influence:50,lands:100,law:30,population:10,power:100,wealth:100};s.domains=[{id:'domain',name:'Domínio isolado',terrain:'hills',features:[],notes:''}];return s;};
 const item=(id:string)=>{const i=CORE_CATALOG.find(i=>i.id===id);if(!i)throw new Error(id);return i;};
 const buy=(s:ReturnType<typeof start>,id:string)=>purchase(s,item(id),{id:'purchase-'+id,domainId:'domain',name:id,dice:[]});
-const unit=(types:string[]):Unit=>({id:'u',name:'Unidade isolada',types,training:'trained',origin:'',domainId:'domain',skills:Object.fromEntries(SKILLS.map(s=>[s,2])) as Unit['skills'],xp:60,costs:[],armor:3,armorPenalty:2,health:6,casualties:3,strength:100,disciplineModifier:0,equipment:[],situation:'',notes:''});
+const unit=(types:string[]):Unit=>({id:'u',name:'Unidade isolada',types,equipmentTypeId:types[0],mixedRule:types.length>1?{allowedSkills:[...SKILLS],disciplineModifier:3,justification:'Adaptação isolada para o teste'}:undefined,training:'trained',origin:'',domainId:'domain',skills:Object.fromEntries(SKILLS.map(s=>[s,2])) as Unit['skills'],xp:60,costs:[],armor:3,armorPenalty:2,health:6,casualties:3,strength:100,disciplineModifier:0,equipment:[],situation:'',notes:''});
 describe('contabilidade da casa',()=>{
  it('Defesa50 Castelo40 mantém total50 e disponível10',()=>{const b=balances(buy(start(),'castle'));expect(b.total.defense).toBe(50);expect(b.allocated.defense).toBe(40);expect(b.available.defense).toBe(10);});
  it('saldo insuficiente não altera a ficha',()=>{const s=start();s.base.defense=39;expect(()=>buy(s,'castle')).toThrow('Saldo insuficiente');expect(s.holdings).toHaveLength(0);expect(s.base.defense).toBe(39);});
