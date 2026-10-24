@@ -1,0 +1,4 @@
+CREATE OR REPLACE FUNCTION public.can_read_public_gallery_image(p_path text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT EXISTS(SELECT 1 FROM public.house_catalog h CROSS JOIN LATERAL jsonb_array_elements(h.gallery) image WHERE h.public_reviewed AND image->>'path'=p_path) $$;
+REVOKE ALL ON FUNCTION public.can_read_public_gallery_image(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.can_read_public_gallery_image(text) TO anon,authenticated;
+CREATE POLICY public_gallery_image_read ON storage.objects FOR SELECT TO anon,authenticated USING(bucket_id='campaign-images' AND public.can_read_public_gallery_image(name));

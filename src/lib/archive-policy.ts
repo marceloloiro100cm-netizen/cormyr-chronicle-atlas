@@ -1,0 +1,3 @@
+export const normalizeArchiveName=(s:string)=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+export function isPublicArchiveFile(name:string){return !/^(cormyr-|Gestão do Site)|missiva|resposta|ficha|privad|segredo/i.test(name);}
+export function isPrincipalArchiveDocument(name:string,house:string){return isPublicArchiveFile(name)&&[normalizeArchiveName(house),normalizeArchiveName('Casa '+house)].includes(normalizeArchiveName(name));}

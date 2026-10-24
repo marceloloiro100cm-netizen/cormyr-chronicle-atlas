@@ -20,7 +20,7 @@ function Auth() {
     supabase.auth.getUser().then(({ data }) => { if (data.user) navigate({ to: destino }); });
   }, [navigate, destino]);
   const [signup,setSignup] = useState(false), [email,setEmail] = useState(''), [password,setPassword] = useState(''), [name,setName] = useState(''), [house,setHouse] = useState(''), [message,setMessage] = useState(''), [busy,setBusy] = useState(false);
-  const {data:houses=[]} = useQuery({queryKey:['season-houses'],queryFn:async()=>{const {data,error}=await supabase.from('campaign_houses').select('id,name').eq('active',true).eq('season',2).order('name');if(error)throw error;return data;}});
+  const {data:houses=[]} = useQuery({queryKey:['season-houses'],queryFn:async()=>{const [houses,players]=await Promise.all([supabase.from('campaign_houses').select('id,name').eq('active',true).eq('season',2).order('name'),supabase.rpc('public_player_houses')]);if(houses.error)throw houses.error;if(players.error)throw players.error;const ids=new Set(players.data.map(p=>p.house_id));return houses.data.filter(h=>ids.has(h.id));}});
   async function submit(event:FormEvent) {event.preventDefault();setBusy(true);setMessage('');try {
     if(signup){const {error}=await supabase.auth.signUp({email,password,options:{data:{display_name:name},emailRedirectTo:new URL(destino,window.location.origin).href}});if(error)throw error;setMessage('Confira seu email para confirmar a conta. O administrador deverá autorizar seu vínculo com a casa.');}
     else {const {error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error;sessionStorage.setItem('campaign-selected-house',house==='narrador'?'':house);await navigate({to:destino});}

@@ -1,6 +1,7 @@
 import { parseFichaCasa, parseFichaPersonagem, type FichaCasa, type FichaPersonagem } from '@/lib/ficha';
 import { contentParts } from '@/lib/campaign-content';
 import { PrivateImage } from '@/components/campaign-content';
+import { ImageViewer } from '@/components/image-viewer';
 
 function Pips({ valor, max = 7 }: { valor: number; max?: number }) {
   return <span className="ficha-pips" aria-label={`Graduação ${valor} de ${max}`}>{Array.from({ length: max }, (_, i) => <span key={i} className={i < valor ? 'ficha-pip cheio' : 'ficha-pip'} />)}</span>;
@@ -29,7 +30,7 @@ export function FichaCasaCard({ content, crest, houseName }: { content: string; 
   return (
     <article className="ficha-card">
       <header className="ficha-cabecalho">
-        {crest && <img src={crest} alt={`Brasão da Casa ${houseName}`} />}
+        {crest && <ImageViewer src={crest} caption={`Brasão da Casa ${houseName}`} />}
         <div>
           <p className="campaign-eyebrow">FICHA DA CASA</p>
           <h3>{ficha.nome ?? houseName}</h3>

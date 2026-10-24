@@ -1,0 +1,12 @@
+ALTER TABLE public.drive_sync_bindings ADD COLUMN technical_folder_id text;
+ALTER TABLE public.house_catalog ADD COLUMN gallery jsonb NOT NULL DEFAULT '[]'::jsonb, ADD COLUMN narrative_text text, ADD COLUMN source_modified_at text;
+CREATE TABLE public.public_archive_roots(id text PRIMARY KEY,name text NOT NULL,approved_by uuid NOT NULL,approved_at timestamptz NOT NULL DEFAULT now(),enabled boolean NOT NULL DEFAULT false,last_checked_at timestamptz,last_error text);
+GRANT SELECT ON public.public_archive_roots TO authenticated;
+GRANT ALL ON public.public_archive_roots TO service_role;
+ALTER TABLE public.public_archive_roots ENABLE ROW LEVEL SECURITY;
+CREATE POLICY archive_roots_admin ON public.public_archive_roots FOR SELECT TO authenticated USING(public.is_campaign_admin());
+CREATE TABLE public.archive_source_review(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),house_id text NOT NULL,source_file_id text NOT NULL,modified_at text NOT NULL,remote_text text,local_text text,reason text NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(house_id,source_file_id,modified_at));
+GRANT SELECT ON public.archive_source_review TO authenticated;
+GRANT ALL ON public.archive_source_review TO service_role;
+ALTER TABLE public.archive_source_review ENABLE ROW LEVEL SECURITY;
+CREATE POLICY archive_review_admin ON public.archive_source_review FOR SELECT TO authenticated USING(public.is_campaign_admin());

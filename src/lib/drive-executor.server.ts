@@ -63,11 +63,12 @@ export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter
         if(!player||player.user_id!==b.owner_user_id)throw new Error('Identidade da pasta individual não confirmada.');
       }
       if(b.scope==='master'&&!check(await db.from('user_roles').select('user_id').eq('user_id',b.owner_user_id).eq('role','admin')).data?.length)throw new Error('Pasta do mestre sem proprietário administrador.');
-      const files=await adapter.list(b.folder_id);
+      const technicalFolder=b.technical_folder_id??b.folder_id;
+      const files=await adapter.list(technicalFolder);
       const mappings=check(await db.from('drive_sync_files').select('*').eq('binding_id',b.id)).data??[];
       // Inspect only compatible new files; historical files are never loaded.
       for(const f of files){
-        if(!/^cormyr-(record|letter|reply)-[0-9a-f-]{36}(-v[0-9]+-[0-9a-f]{64})?\.json$/.test(f.name)||Number(f.size??0)>2_100_000||!f.parents?.includes(b.folder_id))continue;
+        if(!/^cormyr-(record|letter|reply)-[0-9a-f-]{36}(-v[0-9]+-[0-9a-f]{64})?\.json$/.test(f.name)||Number(f.size??0)>2_100_000||!f.parents?.includes(technicalFolder))continue;
         const remote=await adapter.read(f.id);if(!allowed(b,remote.envelope))continue;
         const canonicalName=filename(remote.envelope);
         const versionName=canonicalName.replace('.json',`-v${remote.envelope.version}-${await digest(remote.envelope)}.json`);
@@ -115,7 +116,7 @@ export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter
             const reviewed=check(await db.from('drive_sync_inbox').select('id').eq('binding_id',b.id).eq('file_id',fileId??'').eq('remote_hash',await digest(remote.envelope)).eq('state','applied')).data;
             if(!reviewed?.length && (!mapped||decide(envelopeSchema.parse(mapped.base_snapshot),e,remote.envelope)!=='export')){await stage(db,b,fileId??'',remote.etag,remote.envelope,e,true);review++;continue;}
           }
-          const done=remote&&canonical(remote.envelope)===canonical(e)?{id:fileId??'',...remote}:await adapter.write(b.folder_id,e,fileId,remote?.etag);
+          const done=remote&&canonical(remote.envelope)===canonical(e)?{id:fileId??'',...remote}:await adapter.write(technicalFolder,e,fileId,remote?.etag);
           check(await db.from('drive_sync_files').upsert({binding_id:b.id,entity_type:e.entityType,entity_id:e.id,file_id:done.id,etag:done.etag,base_snapshot:json(e),remote_hash:await digest(done.envelope),last_synced_at:new Date().toISOString()},{onConflict:'binding_id,entity_type,entity_id'}));
           // Reply destinations may still be pending. Never claim all-destination completion from one copy.
           if(e.entityType!=='reply'){

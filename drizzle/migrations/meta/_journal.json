@@ -141,6 +141,34 @@
       "when": 1792859754800,
       "tag": "0019_active_players_public_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792860410932,
+      "tag": "0020_drive_technical_folder_mapping",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792860519892,
+      "tag": "0021_public_gallery_image_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792860700652,
+      "tag": "0022_weekly_rpc_and_catalog_boundaries",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792860998284,
+      "tag": "0023_transactional_player_registration",
+      "breakpoints": true
     }
   ]
 }

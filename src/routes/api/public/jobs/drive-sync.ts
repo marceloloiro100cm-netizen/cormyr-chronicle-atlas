@@ -7,5 +7,8 @@ export const Route=createFileRoute('/api/public/jobs/drive-sync')({server:{handl
   if(!body||typeof body!=='object'||!('kind' in body)||body.kind!=='reconcile')return new Response('Invalid request',{status:400});
   const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
   const {runDriveSync}=await import('@/lib/drive-executor.server');
-  return Response.json(await runDriveSync(supabaseAdmin),{headers:{'Cache-Control':'no-store'}});
+  const sync=await runDriveSync(supabaseAdmin);
+  const {updatePublicArchive}=await import('@/lib/archive-update.server');
+  let archive;try{archive=await updatePublicArchive(supabaseAdmin);}catch(error){archive={error:error instanceof Error?error.message:'Acervo indisponível'};}
+  return Response.json({sync,archive},{headers:{'Cache-Control':'no-store'}});
 }}}});
