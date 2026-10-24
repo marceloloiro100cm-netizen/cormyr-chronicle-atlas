@@ -7,7 +7,7 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Cormyr Web — Crônicas do Reino" },
       { name: "description", content: "Cormyr Web: casas nobres, hierarquias, aventuras e 200 eventos para narrar a campanha em Cormyr." },
-      { property: "og:title", content: "Cormyr Web — Crônicas do Reino" },
+      { property: "og:title", content: "Cormyr Web — Casas, regiões e crônicas" },
       { property: "og:description", content: "Casas nobres, hierarquias, aventuras e eventos da campanha em Cormyr." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

@@ -169,6 +169,20 @@
       "when": 1792860998284,
       "tag": "0023_transactional_player_registration",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792861227003,
+      "tag": "0024_reply_draft_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792861352151,
+      "tag": "0025_audited_narrator_representation",
+      "breakpoints": true
     }
   ]
 }

@@ -52,19 +52,20 @@
 - [x] Filtros laterais fixos
 - [x] Abrir/fechar rodada de missiva; jogador vê "Missivas fechadas, aguarde..."
 
-## Pedido integral de 24/10 (arquivo enviado)
-- [x] Phelles como Royal House com moldura dourada (prévia verificada)
-- [ ] Inventário e cópia de segurança dos dados e apontamentos afetados
-- [ ] Semanas explícitas preparada/aberta/encerrada; conversas, rascunhos e entregas programadas sem abertura automática
-- [ ] Sigilo de entregas futuras no banco, imagens, MCP, realtime e Drive
-- [ ] Caixas e filtros de missivas; prévia da semana de entrega e confirmação de abertura
-- [ ] Recuperação/alteração de senha e administração segura de contas; acesso como jogador auditado
-- [ ] Cadastro, inativação/reativação e catálogo central dinâmico sem e-mails públicos
-- [ ] Classificações e bordas por dados em todas as listagens
-- [ ] Atualização administrativa e descoberta autorizada no Drive; conflitos e resultados honestos
-- [ ] Controles regionais abaixo do mapa; remover somente notas editoriais públicas
-- [ ] Galerias e visualizador acessível com zoom, downloads e permissões
-- [ ] Casa e Personagens somente narrativa; remover Bonus/Bônus de Eventos Históricos sem apagar mecânica
-- [ ] Histórico de Goldfin da fonte indicada, sem duplicatas, leituras inventadas ou reabertura
-- [ ] Subpastas técnicas Gestão do Site - Não Mexer com migração idempotente e vínculos preservados
-- [ ] Testes isolados, fluxos autenticados e verificação em computador/celular; informar bloqueios reais
+## Implementação de 24/10
+- [x] Inventário privado anterior às mudanças; Semana 1 encerrada e Semana 2 aberta preservadas
+- [x] Entregas por semana, sigilo no banco/imagens/Drive, rascunhos e programação separados; abertura somente pelo Narrador
+- [x] Contas: recuperação, alteração, redefinição administrativa auditada, cadastro transacional, inativação e seletor sem e-mails
+- [x] Catálogo com 172 casas; classificação e prioridade de bordas; controles abaixo do mapa; notas editoriais públicas removidas
+- [x] 170 pastas oficiais associadas; atualização administrativa e periódica de textos/imagens públicas, conflitos preservados
+- [x] Galerias, download e ampliação acessível em imagens públicas e privadas
+- [x] Casa e Personagens somente narrativo; Bonus fora de Eventos Históricos
+- [x] Goldfin: nove mensagens da Semana 1 importadas sem respostas, leituras ou reabertura
+- [x] Organização técnica em subpasta com confirmação de vínculo e destino (aguarda acionamento pelo Narrador)
+- [x] Acessar como jogador: sessão administrativa auditada, faixa persistente, retorno ao Narrador, escopo do jogador e bloqueio de respostas futuras testados
+- [ ] Validar conselho na conta real do Narrador — sessão do proprietário não disponível; exige login na prévia
+- [ ] Executar organização das pastas técnicas reais — código disponível, ainda não acionado; preservação dos documentos originais exige validação da operação
+- [ ] Completar atualização das 170 galerias — primeira execução real verificou oito casas e importou 32 imagens; restante via Atualizar/periódico
+- [ ] Validar callback periódico publicado — esta revisão não foi publicada
+- [ ] Descoberta de pastas novas fora dos 170 IDs oficiais — nenhum diretório-pai oficial foi identificado
+- [ ] Senha própria do Narrador — não alterada sem confirmação da conta correta

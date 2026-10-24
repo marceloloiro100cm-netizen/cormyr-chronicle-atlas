@@ -124,6 +124,7 @@ export type Database = {
       }
       campaign_letters: {
         Row: {
+          administrative_actor: string | null
           batch_key: string | null
           campaign_date: string | null
           content: string
@@ -151,6 +152,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          administrative_actor?: string | null
           batch_key?: string | null
           campaign_date?: string | null
           content: string
@@ -178,6 +180,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          administrative_actor?: string | null
           batch_key?: string | null
           campaign_date?: string | null
           content?: string
@@ -364,6 +367,35 @@ export type Database = {
           },
           {
             foreignKeyName: "campaign_records_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_representation_sessions: {
+        Row: {
+          actor: string
+          expires_at: string
+          player_id: string
+          started_at: string
+        }
+        Insert: {
+          actor: string
+          expires_at: string
+          player_id: string
+          started_at?: string
+        }
+        Update: {
+          actor?: string
+          expires_at?: string
+          player_id?: string
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_representation_sessions_player_id_fkey"
             columns: ["player_id"]
             isOneToOne: false
             referencedRelation: "campaign_players"
@@ -643,6 +675,7 @@ export type Database = {
       }
       letter_replies: {
         Row: {
+          administrative_actor: string | null
           author_name: string
           author_player_id: string | null
           author_user_id: string
@@ -664,6 +697,7 @@ export type Database = {
           sync_state: string
         }
         Insert: {
+          administrative_actor?: string | null
           author_name: string
           author_player_id?: string | null
           author_user_id?: string
@@ -685,6 +719,7 @@ export type Database = {
           sync_state?: string
         }
         Update: {
+          administrative_actor?: string | null
           author_name?: string
           author_player_id?: string | null
           author_user_id?: string
@@ -1005,6 +1040,10 @@ export type Database = {
         Returns: boolean
       }
       campaign_access_active: { Args: never; Returns: boolean }
+      campaign_representation_action: {
+        Args: { p_action: string; p_args: Json }
+        Returns: Json
+      }
       can_edit_record: {
         Args: { r: Database["public"]["Tables"]["campaign_records"]["Row"] }
         Returns: boolean
@@ -1122,8 +1161,21 @@ export type Database = {
         }
         Returns: string
       }
+      save_weekly_reply_draft: {
+        Args: {
+          p_content: string
+          p_id: string
+          p_letter: string
+          p_reply: string
+        }
+        Returns: string
+      }
       schedule_letter_draft: {
         Args: { p_id: string; p_week: number }
+        Returns: undefined
+      }
+      schedule_weekly_reply_draft: {
+        Args: { p_id: string }
         Returns: undefined
       }
       send_campaign_letter: {
@@ -1160,6 +1212,11 @@ export type Database = {
         Args: { p_closed: boolean; p_number: number }
         Returns: undefined
       }
+      start_campaign_representation: {
+        Args: { p_player: string }
+        Returns: undefined
+      }
+      stop_campaign_representation: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
