@@ -18,3 +18,5 @@
 - Images use private campaign storage and stable references in versioned text; RLS derives image readers from visible records/letters/replies, so attachments never become public.
 - Drive source imports retain original file identifiers and files; edits are versioned campaign JSON copies, and player refresh is scoped server-side to explicitly authorized bindings to prevent cross-house execution.
 - Narrator mail editing is an admin-only transactional RPC with optimistic versions and immutable audit rows; the unified mail view retains original audiences and replies to avoid silent disclosure or history loss.
+- Weekly delivery is enforced transactionally by message publication state and reply audience; Drive exports exclude unreleased messages from every non-master binding, because technical subfolders do not provide privacy.
+- Additive campaign migrations retain a service-only inventory snapshot before backfilling delivery metadata, so historical IDs, readers and current round state remain recoverable.

@@ -83,6 +83,13 @@ describe('ficha da casa', () => {
     const ficha = parseFichaCasa(FICHA_CASA);
     expect(ficha.eventos).toEqual(['Traição', 'Infraestrutura', 'Vitória']);
   });
+  it('não classifica Bonus/Bônus como evento e preserva os atributos', () => {
+    const source = FICHA_CASA + '\n Bonus \n BÔNUS \n bônus \n';
+    const ficha = parseFichaCasa(source);
+    expect(ficha.eventos).toEqual(['Traição', 'Infraestrutura', 'Vitória']);
+    expect(ficha.atributos).toEqual(parseFichaCasa(FICHA_CASA).atributos);
+    expect(source).toContain('BÔNUS');
+  });
   it('reconhece o formato pelo conteúdo', () => {
     expect(isFichaCasa('Ficha da Casa', FICHA_CASA)).toBe(true);
     expect(isFichaCasa('Ficha - Lorde', FICHA_LORDE)).toBe(false);

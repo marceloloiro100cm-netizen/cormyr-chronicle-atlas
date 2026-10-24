@@ -114,7 +114,7 @@ export function parseFichaCasa(text: string): FichaCasa {
   if (inicio >= 0) {
     for (const line of lines.slice(inicio + 1)) {
       const parts = cells(line).filter(Boolean);
-      if (parts.length === 1 && parts[0] && eventos.length < 12) eventos.push(parts[0]);
+      if (parts.length === 1 && parts[0] && norm(parts[0]) !== 'bonus' && eventos.length < 12) eventos.push(parts[0]);
       else if (parts.length > 1 && eventos.length > 0) break;
     }
   }

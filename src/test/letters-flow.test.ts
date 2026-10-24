@@ -29,21 +29,21 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
 
       roundsBefore = (await admin.from('letter_rounds').select('*')).data ?? [];
       // Rodada fechada: jogador não responde nem escreve
-      await admin.from('letter_rounds').update({ closed: true }).gte('number', 0);
+      await admin.from('letter_rounds').update({ closed: true,status:'closed' }).gte('number', 0);
       const locked = await p1.rpc('player_send_letter_to', { p_subject: 'x', p_content: 'y', p_house: null as unknown as string, p_key: crypto.randomUUID() });
       expect(locked.error?.message).toBe('Missivas fechadas, aguarde o narrador abrir a próxima semana');
-      expect((await gm.rpc('set_letter_round', { p_number: 1, p_closed: false })).error).toBeNull();
+      expect((await gm.rpc('set_letter_round', { p_number: 100001, p_closed: false })).error).toBeNull();
       expect((await p1.rpc('set_letter_round', { p_number: 9, p_closed: false })).error).not.toBeNull();
       // Missiva 1 geral para a casa toda (uma linha por destinatário, mesmo número)
       const batchKey = crypto.randomUUID();
-      const sent = await gm.rpc('send_campaign_letter_batch', { p_kind: 'geral', p_number: 1, p_subject: 'Fixture Missiva 1', p_content: 'Conteúdo geral', p_recipients: ['h:' + houseId, 'p:' + players[0]], p_key: batchKey });
+      const sent = await gm.rpc('send_campaign_letter_batch', { p_kind: 'geral', p_number: 100001, p_subject: 'Fixture Missiva 1', p_content: 'Conteúdo geral', p_recipients: ['h:' + houseId, 'p:' + players[0]], p_key: batchKey });
       expect(sent.error).toBeNull(); expect(sent.data).toBe(2);
       // repetição com a mesma chave não duplica destinatários
-      const again = await gm.rpc('send_campaign_letter_batch', { p_kind: 'geral', p_number: 1, p_subject: 'Fixture Missiva 1', p_content: 'Conteúdo geral', p_recipients: ['h:' + houseId, 'p:' + players[0]], p_key: batchKey });
+      const again = await gm.rpc('send_campaign_letter_batch', { p_kind: 'geral', p_number: 100001, p_subject: 'Fixture Missiva 1', p_content: 'Conteúdo geral', p_recipients: ['h:' + houseId, 'p:' + players[0]], p_key: batchKey });
       expect(again.error).toBeNull(); expect(again.data).toBe(0);
       const stored = await admin.from('campaign_letters').select('id,letter_number,letter_kind').eq('batch_key', batchKey);
       expect(stored.data).toHaveLength(2);
-      expect(stored.data?.every(l => l.letter_number === 1 && l.letter_kind === 'geral')).toBe(true);
+      expect(stored.data?.every(l => l.letter_number === 100001 && l.letter_kind === 'geral')).toBe(true);
       letters.push(...(stored.data ?? []).map(l => l.id));
 
       // numeração automática: sem número explícito, vira a próxima
@@ -51,7 +51,7 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
       const auto = await gm.rpc('send_campaign_letter_batch', { p_kind: 'reservada', p_number: null as unknown as number, p_subject: 'Fixture reservada', p_content: 'Só um destinatário', p_recipients: ['p:' + players[1]], p_key: autoKey });
       expect(auto.error).toBeNull(); expect(auto.data).toBe(1);
       const autoRow = await admin.from('campaign_letters').select('id,letter_number,letter_kind').eq('batch_key', autoKey).single();
-      expect(autoRow.data?.letter_number).toBe(2); expect(autoRow.data?.letter_kind).toBe('reservada');
+      expect(autoRow.data?.letter_number).toBe(100002); expect(autoRow.data?.letter_kind).toBe('reservada');
       if (autoRow.data) letters.push(autoRow.data.id);
 
       // reservada exige exatamente um destinatário
@@ -81,6 +81,8 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
       expect(gmReply.error).toBeNull();
       const gmReplyRow = await admin.from('letter_replies').select('author_name').eq('id', gmReply.data as string).single();
       expect(gmReplyRow.data?.author_name).toBe('Mestre');
+      const future=await p1.from('letter_replies').select('id,content').eq('id',gmReply.data as string);expect(future.data).toEqual([]);
+      const meta=await admin.from('letter_replies').select('delivery_week,publication_state').eq('id',gmReply.data as string).single();expect(meta.data).toMatchObject({delivery_week:100002,publication_state:'scheduled'});
       // Narrator edits are versioned and reject both non-admins and stale saves.
       expect((await p1.rpc('edit_campaign_letter',{p_id:ownId,p_version:1,p_subject:'Forbidden',p_content:'Forbidden'})).error).not.toBeNull();
       expect((await gm.rpc('edit_campaign_letter',{p_id:ownId,p_version:1,p_subject:'Edited',p_content:'Revised content'})).error).toBeNull();

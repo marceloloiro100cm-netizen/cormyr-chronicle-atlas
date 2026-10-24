@@ -27,3 +27,7 @@ export function namedCharacters(contents:string[]) {
   }
   return [...names];
 }
+
+export function narrativeText(content:string) {
+  return contentParts(content).flatMap(part=>'text' in part?[part.text]:[]).join('\n').trim();
+}
