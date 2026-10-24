@@ -7,8 +7,10 @@ export const UNIT_EQUIPMENT:EquipmentRow[]=rows.map(([id,a,p,b,f,m,ia,ip,ib,ifig
 export const EQUIPMENT_SOURCE='Guerra dos Tronos RPG · tabelas 10-1/10-2, pp. 219–220; melhora p. 223';
 export function improveEquipment(state:import('./types').HouseState,unitId:string,category:'armor'|'fighting'|'marksmanship'):import('./types').HouseState {
  const next=structuredClone(state),unit=next.units.find(u=>u.id===unitId);
- if(!unit||unit.types.length!==1)throw new Error('Seleção de equipamento para unidade mista ainda exige conciliação.');
- const row=UNIT_EQUIPMENT.find(r=>r.id===unit.types[0]);if(!row)throw new Error('Equipamento não identificado.');
+  if(!unit||unit.destroyed)throw new Error('Unidade indisponível.');
+ const selected=unit.equipmentTypeId??(unit.types.length===1?unit.types[0]:undefined);
+ if(!selected||!unit.types.includes(selected))throw new Error('Selecione o conjunto de equipamento da unidade.');
+ const row=UNIT_EQUIPMENT.find(r=>r.id===selected);if(!row)throw new Error('Equipamento não identificado.');
  if(unit.equipment.includes(category))throw new Error('Esta categoria já foi melhorada.');
  if(category==='marksmanship'&&row.improved.marksmanship==='—')throw new Error('Esta unidade não tem ataque de Pontaria.');
  // A permanent expense is separate from allocations and must not erase casualty state.

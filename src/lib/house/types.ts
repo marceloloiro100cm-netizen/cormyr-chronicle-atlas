@@ -19,7 +19,10 @@ export type Project = { id: string; holdingId: string; name: string; start: numb
 export const SKILLS = ['agility', 'athletics', 'awareness', 'endurance', 'fighting', 'marksmanship', 'stealth', 'cunning', 'healing', 'animalHandling', 'warfare', 'survival'] as const;
 export type Skill = typeof SKILLS[number];
 export const SKILL_NAMES: Record<Skill, string> = { agility: 'Agilidade', athletics: 'Atletismo', awareness: 'Percepção', endurance: 'Vigor', fighting: 'Luta', marksmanship: 'Pontaria', stealth: 'Furtividade', cunning: 'Astúcia', healing:'Cura',animalHandling:'Lidar com animais',warfare:'Guerra',survival:'Sobrevivência' };
-export type Unit = { id: string; name: string; types: string[]; training: string; commanderId?: string | undefined; origin: string; domainId: string; skills: Record<Skill, number>; xp: number; costs: Cost[]; armor: number; armorPenalty: number; health: number; casualties: number; strength: number; disciplineModifier: number; equipment: string[]; situation: string; notes: string; bulk?:number|undefined };
+export type MountProfile={name:string;athletics:number;endurance:number;source:string};
+export type MixedRule={allowedSkills:Skill[];disciplineModifier:number;justification:string};
+export type Unit = { id: string; name: string; types: string[]; training: string; commanderId?: string | undefined; origin: string; domainId: string; skills: Record<Skill, number>; xp: number; costs: Cost[]; armor: number; armorPenalty: number; health: number; casualties: number; strength: number; disciplineModifier: number; equipment: string[]; situation: string; notes: string; bulk?:number|undefined; equipmentTypeId?:string|undefined; mount?:MountProfile|undefined; mounted?:boolean|undefined; atHome?:boolean|undefined; destroyed?:boolean|undefined; evolution?:{id:string;month:number;roll:number;condition:string;disorganizations:number;steps:number;before:string;after:string;justification:string}[]|undefined; bonusRanks?:number|undefined; mixedRule?:MixedRule|undefined };
+export type Vassal={id:string;houseId:string;name:string;status:'proposed'|'approved'|'ended';cost:number;influencePenalty:number;notes:string;approvedMonth?:number|undefined};
 export type CourtMember = { id: string; npcId?: string | undefined; name: string; role: string; notes: string };
 export type Fortune = { month: number; mode: 'roll' | 'alternative'; dice: number[]; bonusDice: number[]; modifier: number; result: number; outcome: string; resource: Resource; changes: Partial<Resources>; source: string };
 export type HouseState = {
@@ -28,7 +31,7 @@ export type HouseState = {
   method: 'budget' | 'roll' | 'import'; budget: number | null; base: Resources; permanent: Resources;
   regionalApplied: boolean; rolls: number[][]; domains: Domain[]; holdings: Holding[]; units: Unit[]; projects: Project[]; court: CourtMember[];
   month: number; treasury: number; fortunes: Fortune[]; actions: { month: number; type: string; notes: string }[];
-  pending: string[]; importSources: string[];
+  pending: string[]; importSources: string[]; vassals?:Vassal[]|undefined;
 };
 export type Ledger = { id: string; action: string; explanation: string; campaignMonth: number; before: Resources; after: Resources; rule: string; key: string; createdAt?: string | undefined; actor?: string | undefined };
 export type HouseDocument = { state: HouseState; version: number; ledger: Ledger[]; syncState: string };

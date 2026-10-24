@@ -6,7 +6,9 @@ import { CORE_CATALOG } from './catalog';
 import { newHouseState, RESOURCE_KEYS, type HouseState, type CatalogItem, type Unit, type Resource, type CourtMember } from './types';
 import { advance, alternativeFortune, balances, createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
 import { confirmFortune, convertResources } from './fortune';
-import { UNIT_EQUIPMENT, improveEquipment } from './equipment';
+import { improveEquipment } from './equipment';
+import { buySiege } from './siege';
+import { equipUnit, resolveSurvivors, changeUnitState, proposeVassal, approveVassal, SURVIVOR_CONDITIONS } from './military';
 const houseInput=z.object({houseId:z.string().min(1).max(100)});
 export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(houseInput).handler(async({data,context})=>{
   const db=context.supabase;
@@ -17,12 +19,12 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
   if(!house.data)throw new Error('Casa oficial não encontrada.');
   const overrides=(rules.data??[]).map(r=>catalogSchema.parse(r.definition));
   const catalog=[...CORE_CATALOG.filter(i=>!overrides.some(o=>o.id===i.id)),...overrides];
-  return {state:(sheet.data?.state??newHouseState(data.houseId,house.data.region??'')) as unknown as HouseState,version:sheet.data?.version??0,catalog,ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(admin.data)};
+  return {state:(sheet.data?.state??newHouseState(data.houseId,house.data.region??'')) as unknown as HouseState,version:sheet.data?.version??0,catalog,houses:(await db.from('campaign_houses').select('id,name')).data??[],ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(admin.data)};
 });
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
   const admin=Boolean(role.data);if(!admin&&!membership.data)throw new Error('Edição desta casa não autorizada.');
-  if(['approve','advance','import','correct','fortune','roll'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
+  if(['approve','advance','import','correct','fortune','roll','survivors','vassal_approve'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   const duplicate=await db.from('noble_house_ledger').select('after_state,version,actor,action').eq('house_id',data.houseId).eq('operation_key',data.key).maybeSingle();
   if(duplicate.error)throw new Error('Não foi possível conferir a operação.');
@@ -54,7 +56,12 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     const dice=state.phase==='active'?Array.from({length:item.duration.dice??0},()=>(crypto.getRandomValues(new Uint32Array(1))[0]??0)%(item.duration.sides??6)+1):[];
     next=purchase(state,item,{...purchaseArgs,dice});rule=item.source+' · '+item.section+' · '+item.version;
   }
-  if(data.action==='unit') {if(state.phase==='active')throw new Error('Recrutamento em campanha exige projeto e regra de treino aprovada pelo Narrador.');const parsed=unitSchema.parse(args['unit']);const first=UNIT_TYPES.find(t=>t.id===parsed.types[0]);if(!first)throw new Error('Tipo inválido.');if(parsed.types.length>1)throw new Error('Unidades mistas: custo calculável, mas equipamento e disciplina exigem conciliação do Narrador.');if(first.id==='cavalry')throw new Error('Cavalaria exige ficha da montaria conciliada; não usar Vigor humano.');const unit:Unit={...parsed,costs:[],armor:first.armor??0,armorPenalty:first.penalty??0,bulk:UNIT_EQUIPMENT.find(e=>e.id===first.id)?.initial.bulk??0,strength:first.strength??100,health:parsed.skills.endurance*3,casualties:0,disciplineModifier:first.discipline,xp:0,equipment:[]};next=createUnit(state,unit,UNIT_TYPES);rule='Livro básico · Unidades';}
+  if(data.action==='unit') {if(state.phase==='active')throw new Error('Recrutamento em campanha exige projeto aprovado.');const parsed=unitSchema.parse(args['unit']);if(parsed.types.length>1&&!admin)throw new Error('O Narrador precisa confirmar a adaptação dos tipos mistos.');const unit=equipUnit({...parsed,costs:[],xp:0,equipment:[]});next=createUnit(state,unit,UNIT_TYPES);rule='Livro básico · Tipos mistos e tabelas10-1/10-2';}
+  if(data.action==='siege'){next=buySiege(state,z.object({id:z.string().uuid(),itemId:z.string(),engineerId:z.string(),carrierId:z.string(),domainId:z.string(),name:z.string().max(160)}).parse(args));rule='Livro básico · Cerco e operadores,pp.223–230';}
+  if(data.action==='unit_state'){const input=z.object({unitId:z.string(),mounted:z.boolean(),atHome:z.boolean(),health:z.number(),casualties:z.number().int(),situation:z.string().max(1000)}).parse(args);next=changeUnitState(state,input);rule='Livro básico · Condição, cavalaria e guarnição';}
+  if(data.action==='survivors'){const input=z.object({id:z.string().uuid(),unitId:z.string(),roll:z.number().int(),condition:z.enum(SURVIVOR_CONDITIONS),disorganizations:z.number().int().nonnegative(),skills:unitSchema.shape.skills,justification:z.string().min(1)}).parse(args);next=resolveSurvivors(state,input);rule='Livro básico · tabela10-6 Sobreviventes';}
+  if(data.action==='vassal'){const input=z.object({id:z.string().uuid(),houseId:z.string(),name:z.string(),notes:z.string().max(4000)}).parse(args);const h=await context.supabase.from('campaign_houses').select('name').eq('id',input.houseId).single();if(h.error||!h.data)throw new Error('Casa oficial não encontrada.');next=proposeVassal(state,{...input,name:h.data.name});rule='Proposta privada de vassalagem, sem permissão ou cobrança';}
+  if(data.action==='vassal_approve'){const input=z.object({id:z.string(),influencePenalty:z.number().int().nonnegative()}).parse(args);if(!data.explanation.trim())throw new Error('Registre a decisão de vínculo e Influência.');next=approveVassal(state,input.id,input.influencePenalty);rule='Livro básico · Brasões vassalos20/10/5Poder; decisão registrada';}
   if(data.action==='court') {const member=z.object({id:z.string().uuid(),npcId:z.string().uuid().optional(),name:z.string().min(1).max(160),role:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args) as CourtMember;if(member.npcId){const record=await context.supabase.from('campaign_records').select('house_id,kind').eq('id',member.npcId).single();if(record.error||record.data.house_id!==data.houseId||record.data.kind!=='character')throw new Error('NPC não pertence a esta casa.');}next.court.push(member);}
   if(data.action==='submit'){if(state.phase!=='draft')throw new Error('Criação já enviada.');if(!state.domains.length)throw new Error('Adicione ao menos um domínio.');if(!state.regionalApplied&&state.method!=='import')throw new Error('Revise os recursos.');next.phase='review';}
   if(data.action==='approve'){if(state.phase!=='review')throw new Error('Envie a criação para revisão primeiro.');if(state.pending.length)throw new Error('Resolva as pendências de conciliação.');next.phase='active';}
