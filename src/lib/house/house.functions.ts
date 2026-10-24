@@ -11,6 +11,12 @@ import { buySiege } from './siege';
 import { equipUnit, resolveSurvivors, changeUnitState, proposeVassal, approveVassal, SURVIVOR_CONDITIONS } from './military';
 import { linkVassalNpcs, validateVassalNpcs } from './vassal-links';
 const npcIdsSchema=z.array(z.string().uuid()).max(100);
+export const readVassalNpc=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({houseId:z.string(),id:z.string().uuid()})).handler(async({data,context})=>{
+  const records=await context.supabase.from('campaign_records').select('id,house_id,kind,title,content').eq('house_id',data.houseId).eq('id',data.id).single();
+  if(records.error||!records.data)throw new Error('NPC indisponível para este acesso.');
+  validateVassalNpcs(data.houseId,[data.id],[records.data]);
+  return {id:records.data.id,title:records.data.title,content:records.data.content};
+});
 const houseInput=z.object({houseId:z.string().min(1).max(100)});
 export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(houseInput).handler(async({data,context})=>{
   const db=context.supabase;
