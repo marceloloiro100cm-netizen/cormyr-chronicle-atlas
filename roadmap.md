@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Hub de casa nobre — 24/10 21:38 UTC
+- [ ] Pedido22:33: cargos lorde/consorte/herdeiros/administrador ligados a personagens existentes sem duplicação;renomear área coletiva para Corte.
 - [x] Pedido22:29: vínculos aprovados/decisão do Narrador,brasões oficiais ampliáveis e NPCs por referências sem duplicação;82 testes do hub e prévia sem operações reais/publicação.
 - [x] Pedido22:22: cobertura dos cinco anexos e11 grupos de pendências no hub;busca/filtros conferidos com Narrador na prévia,sem alterar regras ou casas reais/publicação.
 - [x] Pedido22:12: mistas com decisãoNarrador,montarias,evolução tabela10-6,cerco11 itens/operadores e propostas/aprovação de vassalos;82 testes e telas autenticadas sem escrita real/publicação.
