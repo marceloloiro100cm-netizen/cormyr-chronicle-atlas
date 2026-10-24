@@ -50,7 +50,7 @@ export function quote(item: CatalogItem, state: HouseState, domainId: string, pa
   for (const r of RESOURCE_KEYS) if (after[r]<0) errors.push(`Saldo insuficiente: ${r}.`);
   return {before:before.available,after,costs,original:item.costs,discounts,errors};
 }
-export function purchase(state: HouseState, item: CatalogItem, args: {id:string;domainId:string;name:string;parentId?:string;dice:number[]}): HouseState {
+export function purchase(state: HouseState, item: CatalogItem, args: {id:string;domainId:string;name:string;parentId?:string | undefined;dice:number[]}): HouseState {
   const q = quote(item,state,args.domainId,args.parentId); if(q.errors.length) throw new Error(q.errors.join(' '));
   const next = structuredClone(state), building = state.phase==='active' && (item.duration.months>0||Boolean(item.duration.dice));
   const expected = building ? (item.duration.dice??0) : 0;
