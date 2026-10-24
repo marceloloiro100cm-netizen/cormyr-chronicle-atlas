@@ -998,6 +998,10 @@ export type Database = {
         Args: { l: Database["public"]["Tables"]["campaign_letters"]["Row"] }
         Returns: boolean
       }
+      can_read_public_gallery_image: {
+        Args: { p_path: string }
+        Returns: boolean
+      }
       can_read_record: {
         Args: { r: Database["public"]["Tables"]["campaign_records"]["Row"] }
         Returns: boolean

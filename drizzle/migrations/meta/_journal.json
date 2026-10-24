@@ -148,6 +148,13 @@
       "when": 1792860410932,
       "tag": "0020_drive_technical_folder_mapping",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792860519892,
+      "tag": "0021_public_gallery_image_access",
+      "breakpoints": true
     }
   ]
 }
