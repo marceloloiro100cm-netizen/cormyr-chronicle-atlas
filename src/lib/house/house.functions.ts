@@ -19,7 +19,7 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
   if(!house.data)throw new Error('Casa oficial não encontrada.');
   const overrides=(rules.data??[]).map(r=>catalogSchema.parse(r.definition));
   const catalog=[...CORE_CATALOG.filter(i=>!overrides.some(o=>o.id===i.id)),...overrides];
-  return {state:(sheet.data?.state??newHouseState(data.houseId,house.data.region??'')) as unknown as HouseState,version:sheet.data?.version??0,catalog,houses:admin.data?(await db.from('campaign_houses').select('id,name')).data??[]:[{id:house.data.id,name:house.data.name}],ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(admin.data)};
+  return {state:(sheet.data?.state??newHouseState(data.houseId,house.data.region??'')) as unknown as HouseState,version:sheet.data?.version??0,catalog,houses:(await db.from('campaign_houses').select('id,name')).data??[],ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(admin.data)};
 });
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);

@@ -1,7 +1,8 @@
 # Roadmap
 
 ## Hub de casa nobre — 24/10 21:38 UTC
-- [ ] Pedido22:12: tropas mistas/montarias,evolução,cerco,vassalos com validação isolada na prévia; sem casas reais/publicação.
+- [x] Pedido22:12: mistas com decisãoNarrador,montarias,evolução tabela10-6,cerco11 itens/operadores e propostas/aprovação de vassalos;82 testes e telas autenticadas sem escrita real/publicação.
+- [ ] Extensões militares pendentes: campanha/recrutamento,prêmios acimaElite individuais,estado/dano de cerco,ciclos/lealdade/criação de vassalas — implementação parcial conforme matriz; fontes mistas e itens ilegíveis exigem decisão explícita.
 - [x] Continuação22:02: requisitos/limites de assentamentos, melhorias,descontos conferidos,mercenários,equipamento,Sorte estruturada,PDF direto/Excel13 abas;65 testes e downloads autenticados,sem escrita real/publicação.
 - [x] Conferir cinco fontes e imagens; 173 entradas de Prosperidade, catálogo básico adicional e matriz em docs/house-hub-coverage.md.
 - [x] Motor central: sete recursos/alocações/permanentes, requisitos, tropas simples, projetos, calendário, Sorte básica e conversões6-19.
