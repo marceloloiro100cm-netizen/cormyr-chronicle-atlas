@@ -33,3 +33,9 @@
 .house-caption .royal::before{content:'\2756';margin-right:6px;color:#b8892f}
 .hierarchy-house.hierarchy-royal-house{background:linear-gradient(#faf3e2,#f6ead0);border:2px solid #b8892f;box-shadow:0 0 0 1px #6f5320,0 0 14px #b8892f33}
 .hierarchy-house.hierarchy-royal-house:hover{background:#fbf5e6;border-color:#d9b871}
+
+:root{--house-silver:#aeb4bd;--house-player:#9e233b;--house-royal:#b8892f}
+.house-card.major-house,.noble-card.major-house{border:3px solid var(--house-silver);box-shadow:0 0 0 1px var(--line)}
+.noble-card.player-house,.house-card.player-house{border:3px solid var(--house-player)}
+.noble-card.royal-house{border:3px solid var(--house-royal);box-shadow:0 0 0 2px var(--gold)}
+.noble-card .player-tag{color:var(--house-player);font-weight:700}

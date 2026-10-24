@@ -17,6 +17,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedJogadoresRouteImport } from './routes/_authenticated/jogadores'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as ApiPublicCatalogRouteImport } from './routes/api/public/catalog'
 import { Route as ApiPublicGmContentRouteImport } from './routes/api/public/gm-content'
 import { Route as ApiPublicJobsDriveSyncRouteImport } from './routes/api/public/jobs/drive-sync'
 
@@ -60,6 +61,11 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCatalogRoute = ApiPublicCatalogRouteImport.update({
+  id: '/api/public/catalog',
+  path: '/api/public/catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicGmContentRoute = ApiPublicGmContentRouteImport.update({
   id: '/api/public/gm-content',
   path: '/api/public/gm-content',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/jogadores': typeof AuthenticatedJogadoresRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/public/catalog': typeof ApiPublicCatalogRoute
   '/api/public/gm-content': typeof ApiPublicGmContentRoute
   '/api/public/jobs/drive-sync': typeof ApiPublicJobsDriveSyncRoute
 }
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/jogadores': typeof AuthenticatedJogadoresRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/public/catalog': typeof ApiPublicCatalogRoute
   '/api/public/gm-content': typeof ApiPublicGmContentRoute
   '/api/public/jobs/drive-sync': typeof ApiPublicJobsDriveSyncRoute
 }
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/jogadores': typeof AuthenticatedJogadoresRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/public/catalog': typeof ApiPublicCatalogRoute
   '/api/public/gm-content': typeof ApiPublicGmContentRoute
   '/api/public/jobs/drive-sync': typeof ApiPublicJobsDriveSyncRoute
 }
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/jogadores'
     | '/.lovable/oauth/consent'
+    | '/api/public/catalog'
     | '/api/public/gm-content'
     | '/api/public/jobs/drive-sync'
   fileRoutesByTo: FileRoutesByTo
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/jogadores'
     | '/.lovable/oauth/consent'
+    | '/api/public/catalog'
     | '/api/public/gm-content'
     | '/api/public/jobs/drive-sync'
   id:
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/jogadores'
     | '/.lovable/oauth/consent'
+    | '/api/public/catalog'
     | '/api/public/gm-content'
     | '/api/public/jobs/drive-sync'
   fileRoutesById: FileRoutesById
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  ApiPublicCatalogRoute: typeof ApiPublicCatalogRoute
   ApiPublicGmContentRoute: typeof ApiPublicGmContentRoute
   ApiPublicJobsDriveSyncRoute: typeof ApiPublicJobsDriveSyncRoute
 }
@@ -213,6 +226,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/catalog': {
+      id: '/api/public/catalog'
+      path: '/api/public/catalog'
+      fullPath: '/api/public/catalog'
+      preLoaderRoute: typeof ApiPublicCatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/gm-content': {
       id: '/api/public/gm-content'
       path: '/api/public/gm-content'
@@ -250,6 +270,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  ApiPublicCatalogRoute: ApiPublicCatalogRoute,
   ApiPublicGmContentRoute: ApiPublicGmContentRoute,
   ApiPublicJobsDriveSyncRoute: ApiPublicJobsDriveSyncRoute,
 }
