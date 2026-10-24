@@ -3,7 +3,7 @@ import { DriveError } from '@/lib/drive-adapter.server';
 
 export function createHouseExportAdapter(request: typeof fetch = fetch): HouseExportAdapter {
   const key = process.env['GOOGLE_DRIVE_API_KEY'], bearer = process.env['LOVABLE_API_KEY'];
-  if (!key || !bearer) throw new Error('Connexion Google Drive indisponível.');
+  if (!key || !bearer) throw new Error('Conexão Google Drive indisponível.');
   async function call(path: string, init: RequestInit = {}) {
     const headers = new Headers(init.headers); headers.set('Authorization', `Bearer ${bearer}`); headers.set('X-Connection-Api-Key', key ?? '');
     const r = await request(`https://connector-gateway.lovable.dev/google_drive${path}`, { ...init, headers, signal: AbortSignal.timeout(8000) });

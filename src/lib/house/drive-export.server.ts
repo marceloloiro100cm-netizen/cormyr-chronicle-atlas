@@ -6,7 +6,7 @@ import { createHouseExportAdapter } from './drive-adapter.server';
 type DB = SupabaseClient<Database>;
 function check<T extends { error: unknown }>(r: T): T { if (r.error) throw r.error; return r; }
 
-export async function exportBindingHouse(db: DB, bindingId: string, adapter: HouseExportAdapter = createHouseExportAdapter()) {
+export async function exportBindingHouse(db: DB, bindingId: string, adapter?: HouseExportAdapter) {
   const b = check(await db.from('drive_sync_bindings').select('*').eq('id', bindingId).single()).data;
   if (!b || !b.house_id || !b.technical_folder_id || !b.enabled || !b.privacy_reviewed || !b.runtime_authorized || !['player', 'house'].includes(b.scope)) throw new Error('Pasta técnica não autorizada para a Ficha.');
   const admin = check(await db.from('user_roles').select('user_id').eq('user_id', b.confirmed_by).eq('role', 'admin')).data;
@@ -23,11 +23,13 @@ export async function exportBindingHouse(db: DB, bindingId: string, adapter: Hou
   const document = buildHouseExport(b.house_id, sheet.version, sheet.updated_at, sheet.state as unknown as HouseState, ledger);
   const mapped = check(await db.from('noble_house_drive_exports').select('*').eq('binding_id', b.id).maybeSingle()).data;
   try {
-    const result = await exportHouseVersion(adapter, b.technical_folder_id, document, mapped?.file_id && mapped.content_hash ? { fileId: mapped.file_id, hash: mapped.content_hash, version: mapped.exported_version } : undefined);
+    const result = await exportHouseVersion(adapter ?? createHouseExportAdapter(), b.technical_folder_id, document, mapped?.file_id && mapped.content_hash ? { fileId: mapped.file_id, hash: mapped.content_hash, version: mapped.exported_version } : undefined);
     const current = check(await db.from('noble_house_sheets').select('version').eq('house_id', b.house_id).single()).data;
     const synced = current?.version === sheet.version;
     check(await db.from('noble_house_drive_exports').upsert({ binding_id: b.id, house_id: b.house_id, file_id: result.fileId, provider_etag: result.etag, content_hash: result.hash, exported_version: sheet.version, status: synced ? 'synced' : 'pending', error: null, last_synced_at: new Date().toISOString() }));
-    return { message: synced ? `Ficha v${sheet.version} confirmada no Drive; compras preservadas.` : 'Versão exportada; há compras mais recentes aguardando exportação.', synced };
+    const latest = check(await db.from('noble_house_sheets').select('version').eq('house_id', b.house_id).single()).data;
+    if (latest?.version !== sheet.version) check(await db.from('noble_house_drive_exports').update({status:'pending'}).eq('binding_id',b.id));
+    return { message: latest?.version === sheet.version ? `Ficha v${sheet.version} confirmada no Drive; compras preservadas.` : 'Versão exportada; há compras mais recentes aguardando exportação.', synced: latest?.version === sheet.version };
   } catch (err) {
     check(await db.from('noble_house_drive_exports').upsert({ binding_id: b.id, house_id: b.house_id, status: 'error', error: err instanceof Error ? err.message : 'Falha no Drive' }));
     throw err;
