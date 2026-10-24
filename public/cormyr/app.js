@@ -6,6 +6,7 @@
  const normalize=value=>String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
  const PLAYER_HOUSES=new Set();
  const ROYAL_HOUSE='Phelles';
+ const imageViewer=document.createElement('script');imageViewer.src='image-viewer.js';document.body.append(imageViewer);
 const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'post',kind:'mundanos',query:'',theme:'',eventPage:1,houseQuery:'',adventure:'pacto-varzea',noble:{region:'',name:'',leader:'',castle:'',city:'',page:1,house:''}};
  const regionSelect=$('region-select');
  $('kingdom-music').innerHTML=musicLinks(data.kingdomMusic,'Música do reino');
