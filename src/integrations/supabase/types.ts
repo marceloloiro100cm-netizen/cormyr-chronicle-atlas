@@ -832,6 +832,57 @@ export type Database = {
           },
         ]
       }
+      noble_house_drive_exports: {
+        Row: {
+          binding_id: string
+          content_hash: string | null
+          error: string | null
+          exported_version: number
+          file_id: string | null
+          house_id: string
+          last_synced_at: string | null
+          provider_etag: string | null
+          status: string
+        }
+        Insert: {
+          binding_id: string
+          content_hash?: string | null
+          error?: string | null
+          exported_version?: number
+          file_id?: string | null
+          house_id: string
+          last_synced_at?: string | null
+          provider_etag?: string | null
+          status?: string
+        }
+        Update: {
+          binding_id?: string
+          content_hash?: string | null
+          error?: string | null
+          exported_version?: number
+          file_id?: string | null
+          house_id?: string
+          last_synced_at?: string | null
+          provider_etag?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "noble_house_drive_exports_binding_id_fkey"
+            columns: ["binding_id"]
+            isOneToOne: true
+            referencedRelation: "drive_sync_bindings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "noble_house_drive_exports_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       noble_house_gm_notes: {
         Row: {
           house_id: string
