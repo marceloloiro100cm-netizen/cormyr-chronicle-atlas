@@ -29,3 +29,4 @@
 - House exports share a browser-safe report model for PDF and Excel, including recorded costs, discounts and ledger entries; this keeps exported accounting consistent with the private workspace.
 - Military operations use browser-safe pure rules with transactional server wrappers; mixed-unit missing rules require a narrator-recorded decision and survivors retain immutable battle events, preventing fabricated defaults or duplicate losses.
 - House coverage is a read-only presentation of authorized-source coverage and gaps, separate from private house state; it must distinguish implementation, source reconciliation and unverified operations without estimating completion percentages.
+- Vassal crests resolve from official house metadata; NPC links store only existing source-house record IDs and recheck reader access on opening, so narrator approval never copies private character content or grants cross-house access.
