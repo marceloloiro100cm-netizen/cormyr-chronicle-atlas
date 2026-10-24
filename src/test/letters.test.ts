@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterLetters, groupReceivedLetters, isLetterRead, nextLetterNumber, sentLetters, unreadReceivedCount, type LetterRow } from '@/lib/letters';
+import { filterLetters, groupReceivedLetters, isLetterRead, nextLetterNumber, pendingRoundHouses, sentLetters, unreadReceivedCount, type LetterRow } from '@/lib/letters';
 
 const row = (over: Partial<LetterRow>): LetterRow => ({
   id: crypto.randomUUID(),
@@ -15,6 +15,25 @@ const row = (over: Partial<LetterRow>): LetterRow => ({
   letter_number: 1,
   letter_kind: 'geral',
   ...over,
+});
+
+describe('casas com respostas pendentes na rodada aberta',()=>{
+  const houses=[{id:'ashkar',name:'Ashkar',active:true,season:2},{id:'grantass',name:'Grantass',active:true,season:2}];
+  const players=[{id:'a',user_id:'ashkar-user',active:true},{id:'a2',user_id:'ashkar-user-2',active:true},{id:'g',user_id:'grantass-user',active:true}];
+  const members=[{player_id:'a',house_id:'ashkar'},{player_id:'a2',house_id:'ashkar'},{player_id:'g',house_id:'grantass'}];
+  const letter=row({id:'letter',recipient_house_id:'ashkar',letter_number:2,delivery_week:2,publication_state:'delivered',delivered_at:'2026-10-24T10:00:00Z'});
+  const reply=(over={})=>({letter_id:'letter',author_user_id:'ashkar-user',author_player_id:'a' as string|null,house_id:'ashkar',publication_state:'delivered',delivery_week:2,created_at:'2026-10-24T11:00:00Z',...over});
+  const pending=(letters:LetterRow[]=[letter],replies:ReturnType<typeof reply>[]=[],week:number|null=2)=>pendingRoundHouses(week,houses,players,members,letters,replies);
+  it('lista uma casa uma vez e conta as missivas pendentes da Semana 2',()=>{expect(pending([letter,{...letter,id:'second'}])).toEqual([{id:'ashkar',name:'Ashkar',letterIds:['letter','second']}]);});
+  it('não lista casas que não receberam missivas na rodada atual',()=>{expect(pending([{...letter,delivery_week:1,letter_number:1}])).toEqual([]);});
+  it('uma resposta de qualquer jogador autorizado da casa resolve a pendência',()=>{expect(pending([letter],[reply({author_user_id:'ashkar-user-2',author_player_id:'a2'})])).toEqual([]);});
+  it('respostas antigas, de outra casa ou programadas não resolvem a pendência',()=>{expect(pending([letter],[reply({delivery_week:1}),reply({author_user_id:'grantass-user',author_player_id:'g'}),reply({publication_state:'scheduled'})])).toHaveLength(1);});
+  it('resposta do Narrador entregue na Semana 2 reabre pendência de fio da Semana 1',()=>{const old={...letter,letter_number:1,delivery_week:1};expect(pending([old],[reply({delivery_week:1}),reply({author_user_id:'narrador',author_player_id:null})])).toHaveLength(1);});
+  it('resposta posterior da casa resolve a nova narrativa do fio antigo',()=>{const old={...letter,letter_number:1,delivery_week:1};expect(pending([old],[reply({author_user_id:'narrador',author_player_id:null}),reply({created_at:'2026-10-24T12:00:00Z'})])).toEqual([]);});
+  it('não conta narrativas excluídas, futuras ou rascunhos',()=>{expect(pending([{...letter,deleted_at:'2026-10-24T12:00:00Z'},{...letter,publication_state:'scheduled'},{...letter,publication_state:'draft'}])).toEqual([]);});
+  it('não mostra pendências sem rodada aberta',()=>{expect(pending([letter],[],null)).toEqual([]);});
+  it('não conta jogador sem vínculo autorizado ou inativo',()=>{expect(pendingRoundHouses(2,houses,[{...players[0],active:false}],members,[letter],[])).toEqual([]);expect(pendingRoundHouses(2,houses,players,[],[letter],[])).toEqual([]);});
+  it('não considera missiva de outro jogador como cobrança do Narrador',()=>{expect(pending([{...letter,sender_player_id:'g',sender_user_id:'grantass-user'}])).toEqual([]);});
 });
 
 describe('groupReceivedLetters', () => {
