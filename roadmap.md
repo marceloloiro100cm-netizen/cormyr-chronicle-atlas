@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Hub de casa nobre — 24/10 21:38 UTC
+- [ ] Pedido22:48: prévia somente leitura das fontes reais por casa, valores candidatos/origens/divergências e conferência local de planilhas, sem migração ou publicação.
 - [x] Pedido22:34: publicação solicitada após91 testes/buildOK e segurança sem críticos;aviso conhecido de senhas vazadas mantido,audiência não alterada;conclusão da implantação não confirmada.
 - [x] Pedido22:33: cargos ligados a registros existentes,inclusive ficha do lorde,sem duplicação;área Casa e Corte;testes de cargos/permissões e prévia sem salvar.
 - [x] Pedido22:29: vínculos aprovados/decisão do Narrador,brasões oficiais ampliáveis e NPCs por referências sem duplicação;82 testes do hub e prévia sem operações reais/publicação.

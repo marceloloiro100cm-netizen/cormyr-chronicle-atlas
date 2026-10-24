@@ -32,3 +32,4 @@
 - Vassal crests resolve from official house metadata; NPC links store only existing source-house record IDs and recheck reader access on opening, so narrator approval never copies private character content or grants cross-house access.
 
 - Court roles reference existing same-house character records, including character sheets, while vassal selectors retain narrative-member eligibility; labels and content resolve under viewer access rather than copying private names into shared snapshots.
+- House reconciliation previews use existing RLS-readable source records and session-local workbooks without mutation callbacks; candidate resource rows retain provenance and missing values rather than approving or merging balances.
