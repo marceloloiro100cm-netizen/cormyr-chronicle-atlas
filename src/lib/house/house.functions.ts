@@ -47,7 +47,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     const overrides=await db.from('noble_house_rule_overrides').select('definition');if(overrides.error)throw new Error('Regras indisponíveis.');
     const item=overrides.data.map(r=>catalogSchema.parse(r.definition)).find(i=>i.id===purchaseArgs.itemId)??CORE_CATALOG.find(i=>i.id===purchaseArgs.itemId);
     if(!item)throw new Error('Posse não encontrada.');
-    const dice=state.phase==='active'?Array.from({length:item.duration.dice??0},()=>crypto.getRandomValues(new Uint32Array(1))[0]%(item.duration.sides??6)+1):[];
+    const dice=state.phase==='active'?Array.from({length:item.duration.dice??0},()=>(crypto.getRandomValues(new Uint32Array(1))[0]??0)%(item.duration.sides??6)+1):[];
     next=purchase(state,item,{...purchaseArgs,dice});rule=item.source+' · '+item.section+' · '+item.version;
   }
   if(data.action==='unit') {if(state.phase==='active')throw new Error('Recrutamento em campanha exige projeto e regra de treino aprovada pelo Narrador.');const unit=args['unit'] as Unit;if(!unit||typeof unit!=='object')throw new Error('Unidade inválida.');next=createUnit(state,unit,UNIT_TYPES);rule='Livro básico · Unidades';}
