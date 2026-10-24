@@ -3,6 +3,7 @@ import { newHouseState,SKILLS,type Unit } from '@/lib/house/types';
 import { createUnit,UNIT_TYPES,balances,unitStats } from '@/lib/house/engine';
 import { equipUnit,resolveSurvivors,survivorResult,changeUnitState,proposeVassal,approveVassal } from '@/lib/house/military';
 import { improveEquipment } from '@/lib/house/equipment';
+import { buySiege } from '@/lib/house/siege';
 const start=()=>{const s=newHouseState('isolated');s.base.power=100;s.base.wealth=100;s.domains=[{id:'d',name:'Isolado',terrain:'hills',features:[],notes:''}];return s;};
 const unit=(types=['infantry']):Unit=>({id:'u',name:'Teste isolado',types,equipmentTypeId:types[0],training:'trained',domainId:'d',origin:'',skills:Object.fromEntries(SKILLS.map(s=>[s,2])) as Unit['skills'],xp:0,costs:[],armor:0,armorPenalty:0,health:6,casualties:0,strength:100,disciplineModifier:0,equipment:[],situation:'',notes:''});
 describe('tipos mistos e montarias',()=>{
@@ -21,4 +22,10 @@ describe('sobreviventes tabela10-6',()=>{
 describe('vassalos privados',()=>{
  it('proposta não cobra, aprovação usa20/10/5 sem somar recursos vassalos',()=>{let s=start();for(let i=0;i<3;i++){s=proposeVassal(s,{id:'v'+i,houseId:'isolated-v'+i,name:'Vassala isolada',notes:'Teste'});expect(s.vassals?.[i]?.cost).toBe(0);s=approveVassal(s,'v'+i,0);}expect(s.vassals?.map(v=>v.cost)).toEqual([20,10,5]);expect(balances(s).total.power).toBe(100);expect(balances(s).available.power).toBe(65);});
  it('não permite autovassalagem ou vínculo duplicado',()=>{expect(()=>proposeVassal(start(),{id:'v',houseId:'isolated',name:'Teste',notes:''})).toThrow('si mesma');const s=proposeVassal(start(),{id:'v',houseId:'other',name:'Teste',notes:''});expect(()=>proposeVassal(s,{id:'v2',houseId:'other',name:'Teste',notes:''})).toThrow('já');});
+});
+describe('cerco e operadores',()=>{
+ it('aríete consome1Terras permanente, não Riqueza',()=>{const s=start();s.base.lands=5;s.units=[equipUnit(unit())];const n=buySiege(s,{id:'ram',itemId:'ram',name:'Aríete',engineerId:'',carrierId:'u',domainId:'d'});expect(balances(n).total.lands).toBe(4);expect(balances(n).total.wealth).toBe(100);expect(balances(n).allocated.lands).toBe(0);});
+ it('aríete coberto exige engenheiros e outra portadora',()=>{const s=start();s.base.lands=10;const u=unit(['engineers']);s.units=[equipUnit(u)];expect(()=>buySiege(s,{id:'covered',itemId:'covered-ram',name:'',engineerId:'u',carrierId:'u',domainId:'d'})).toThrow('outra unidade');expect(s.holdings).toHaveLength(0);});
+ it('engenheiros não podem operar mais de quatro armas',()=>{let s=start();s.units=[equipUnit(unit(['engineers']))];for(let i=0;i<4;i++)s=buySiege(s,{id:'catapult'+i,itemId:'small-catapult',name:'',engineerId:'u',carrierId:'',domainId:'d'});expect(()=>buySiege(s,{id:'fifth',itemId:'small-catapult',name:'',engineerId:'u',carrierId:'',domainId:'d'})).toThrow('quatro');expect(balances(s).total.wealth).toBe(96);});
+ it('catapulta média ilegível não inventa dano',()=>{expect(()=>buySiege(start(),{id:'medium',itemId:'medium-catapult',name:'',engineerId:'u',carrierId:'',domainId:'d'})).toThrow('conciliação');});
 });
