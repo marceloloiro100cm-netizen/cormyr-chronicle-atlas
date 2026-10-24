@@ -77,3 +77,6 @@
 - [x] Contador de missivas não lidas na aba Missivas (visível sem abrir a lista;Narrador vê 3)
 - [x] Lista de números (Missiva 1 · Missiva 2) na lateral das missivas com salto direto a cada grupo
 - [x] Correção: resposta guarda a semana em que foi escrita (cabeçalho) sem perder a semana agendada de entrega
+
+## Pedido de 24/10 18:22 UTC
+- [ ] Painel exclusivo do Narrador com casas que receberam mensagens na rodada aberta e ainda têm respostas pendentes; validar sem enviar mensagens reais
