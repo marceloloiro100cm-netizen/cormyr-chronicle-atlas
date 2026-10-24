@@ -4,6 +4,7 @@ import { ImagePlus, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { contentParts, imageToken, validateImage } from '@/lib/campaign-content';
+import { ImageViewer } from '@/components/image-viewer';
 
 export function CampaignContent({content}:{content:string}) {
   return <div className="campaign-prose">{contentParts(content).map((part,i)=>'text' in part?<p className="campaign-preserve" key={i}>{part.text}</p>:<PrivateImage key={i} path={part.path} caption={part.caption}/>)}</div>;
@@ -15,7 +16,7 @@ export function PrivateImage({path,caption}:{path:string;caption:string}) {
   }});
   const [url,setUrl]=useState('');
   useEffect(()=>{if(!data)return;const objectUrl=URL.createObjectURL(data);setUrl(objectUrl);return()=>URL.revokeObjectURL(objectUrl);},[data]);
-  return <figure className="campaign-image">{url?<a href={url} target="_blank" rel="noopener"><img src={url} alt={caption||'Imagem da campanha'} loading="lazy"/></a>:<p role="status">{error?'Imagem indisponível.':'Carregando imagem…'}</p>}{caption&&<figcaption>{caption}</figcaption>}</figure>;
+  return <figure className="campaign-image">{url?<ImageViewer src={url} caption={caption||'Imagem da campanha'}/>:<p role="status">{error?'Imagem indisponível.':'Carregando imagem…'}</p>}{caption&&<figcaption>{caption}</figcaption>}</figure>;
 }
 export type PendingImage={file:File;caption:string};
 export function ImagePicker({images,onChange,disabled}:{images:PendingImage[];onChange:(images:PendingImage[])=>void;disabled?:boolean}) {

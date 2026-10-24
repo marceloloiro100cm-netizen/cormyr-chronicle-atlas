@@ -1,0 +1,12 @@
+import { useState } from 'react';
+import { useServerFn } from '@tanstack/react-start';
+import { managePlayerAccount } from '@/lib/player-admin.functions';
+import { Button } from '@/components/ui/button';
+export function PlayerAccountForm({houses,player,onSave}:{houses:{id:string;name:string}[];player?:{id:string;name:string;roster_house_id:string|null;folder_id:string|null;active:boolean;require_password_change:boolean};onSave:()=>unknown}) {
+  const save=useServerFn(managePlayerAccount);const [message,setMessage]=useState(''),[busy,setBusy]=useState(false);
+  return <details className="campaign-add"><summary>{player?'Gerenciar conta e situação de '+player.name:'Cadastrar conta e jogador'}</summary><form className="campaign-form" onSubmit={async e=>{
+    e.preventDefault();setBusy(true);const f=new FormData(e.currentTarget);
+    try{const result=await save({data:{playerId:player?.id,name:String(f.get('name')),email:String(f.get('email'))||undefined,password:String(f.get('password'))||undefined,houseId:String(f.get('house')),active:f.get('active')==='on',canEdit:f.get('edit')==='on',requireChange:f.get('change')==='on',folderId:String(f.get('folder'))||null}});setMessage(result.message);onSave();}
+    catch(error){setMessage(error instanceof Error?error.message:'Não foi possível salvar.');}finally{setBusy(false);}
+  }}><label>Nome<input name="name" defaultValue={player?.name} required/></label><label>E-mail<input type="email" name="email" required={!player}/></label><label>{player?'Nova senha (deixe vazio para manter)':'Senha inicial'}<input type="password" name="password" autoComplete="new-password" minLength={6} required={!player}/></label><label>Casa<select name="house" defaultValue={player?.roster_house_id??''} required>{houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label><label>Pasta individual (ID)<input name="folder" defaultValue={player?.folder_id??''}/></label><label className="campaign-check"><input name="active" type="checkbox" defaultChecked={player?.active??true}/>Jogador ativo</label><label className="campaign-check"><input name="edit" type="checkbox" defaultChecked/>Pode editar</label><label className="campaign-check"><input name="change" type="checkbox" defaultChecked={player?.require_password_change??false}/>Exigir alteração da senha no próximo acesso</label><Button disabled={busy}>Salvar conta e jogador</Button><p role="status">{message}</p></form></details>;
+}
