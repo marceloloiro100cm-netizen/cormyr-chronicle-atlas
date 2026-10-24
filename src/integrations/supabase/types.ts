@@ -65,16 +65,23 @@ export type Database = {
       campaign_letters: {
         Row: {
           batch_key: string | null
+          campaign_date: string | null
           content: string
+          conversation_id: string | null
           created_at: string
+          creation_week: number | null
           deleted_at: string | null
           deleted_by: string | null
+          delivered_at: string | null
+          delivery_week: number | null
           id: string
           last_synced_at: string | null
           letter_kind: string
           letter_number: number | null
+          publication_state: string
           recipient_house_id: string | null
           recipient_player_id: string | null
+          reply_to_id: string | null
           sender_name: string
           sender_player_id: string | null
           sender_user_id: string
@@ -85,16 +92,23 @@ export type Database = {
         }
         Insert: {
           batch_key?: string | null
+          campaign_date?: string | null
           content: string
+          conversation_id?: string | null
           created_at?: string
+          creation_week?: number | null
           deleted_at?: string | null
           deleted_by?: string | null
+          delivered_at?: string | null
+          delivery_week?: number | null
           id?: string
           last_synced_at?: string | null
           letter_kind?: string
           letter_number?: number | null
+          publication_state?: string
           recipient_house_id?: string | null
           recipient_player_id?: string | null
+          reply_to_id?: string | null
           sender_name: string
           sender_player_id?: string | null
           sender_user_id?: string
@@ -105,16 +119,23 @@ export type Database = {
         }
         Update: {
           batch_key?: string | null
+          campaign_date?: string | null
           content?: string
+          conversation_id?: string | null
           created_at?: string
+          creation_week?: number | null
           deleted_at?: string | null
           deleted_by?: string | null
+          delivered_at?: string | null
+          delivery_week?: number | null
           id?: string
           last_synced_at?: string | null
           letter_kind?: string
           letter_number?: number | null
+          publication_state?: string
           recipient_house_id?: string | null
           recipient_player_id?: string | null
+          reply_to_id?: string | null
           sender_name?: string
           sender_player_id?: string | null
           sender_user_id?: string
@@ -146,6 +167,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      campaign_migration_backups: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string
+          snapshot: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason: string
+          snapshot: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string
+          snapshot?: Json
+        }
+        Relationships: []
       }
       campaign_players: {
         Row: {
@@ -493,42 +535,63 @@ export type Database = {
           author_name: string
           author_player_id: string | null
           author_user_id: string
+          campaign_date: string | null
           content: string
+          conversation_id: string | null
           created_at: string
+          creation_week: number | null
+          delivered_at: string | null
+          delivery_week: number | null
           house_id: string | null
           id: string
           idempotency_key: string
           last_synced_at: string | null
           letter_id: string
+          publication_state: string
           recipient_user_id: string
+          reply_to_id: string | null
           sync_state: string
         }
         Insert: {
           author_name: string
           author_player_id?: string | null
           author_user_id?: string
+          campaign_date?: string | null
           content: string
+          conversation_id?: string | null
           created_at?: string
+          creation_week?: number | null
+          delivered_at?: string | null
+          delivery_week?: number | null
           house_id?: string | null
           id?: string
           idempotency_key: string
           last_synced_at?: string | null
           letter_id: string
+          publication_state?: string
           recipient_user_id: string
+          reply_to_id?: string | null
           sync_state?: string
         }
         Update: {
           author_name?: string
           author_player_id?: string | null
           author_user_id?: string
+          campaign_date?: string | null
           content?: string
+          conversation_id?: string | null
           created_at?: string
+          creation_week?: number | null
+          delivered_at?: string | null
+          delivery_week?: number | null
           house_id?: string | null
           id?: string
           idempotency_key?: string
           last_synced_at?: string | null
           letter_id?: string
+          publication_state?: string
           recipient_user_id?: string
+          reply_to_id?: string | null
           sync_state?: string
         }
         Relationships: [
@@ -558,17 +621,32 @@ export type Database = {
       letter_rounds: {
         Row: {
           closed: boolean
+          closed_at: string | null
+          closed_by: string | null
           number: number
+          opened_at: string | null
+          opened_by: string | null
+          status: string
           updated_at: string
         }
         Insert: {
           closed?: boolean
+          closed_at?: string | null
+          closed_by?: string | null
           number: number
+          opened_at?: string | null
+          opened_by?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
           closed?: boolean
+          closed_at?: string | null
+          closed_by?: string | null
           number?: number
+          opened_at?: string | null
+          opened_by?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: []
@@ -782,6 +860,10 @@ export type Database = {
         Args: { r: Database["public"]["Tables"]["campaign_records"]["Row"] }
         Returns: boolean
       }
+      can_read_reply: {
+        Args: { r: Database["public"]["Tables"]["letter_replies"]["Row"] }
+        Returns: boolean
+      }
       claim_drive_binding: {
         Args: { p_id: string; p_token: string }
         Returns: boolean
@@ -820,8 +902,19 @@ export type Database = {
         }
         Returns: string
       }
+      prepare_letter_week: { Args: { p_number: number }; Returns: undefined }
       reply_campaign_letter: {
         Args: { p_content: string; p_key: string; p_letter: string }
+        Returns: string
+      }
+      reply_weekly_message: {
+        Args: {
+          p_content: string
+          p_draft?: boolean
+          p_key: string
+          p_letter: string
+          p_reply: string
+        }
         Returns: string
       }
       resolve_drive_import: {
@@ -839,6 +932,20 @@ export type Database = {
       }
       save_imported_source: {
         Args: { p_content: string; p_id: string; p_modified: string }
+        Returns: undefined
+      }
+      save_letter_draft: {
+        Args: {
+          p_content: string
+          p_house: string
+          p_id: string
+          p_subject: string
+          p_week: number
+        }
+        Returns: string
+      }
+      schedule_letter_draft: {
+        Args: { p_id: string; p_week: number }
         Returns: undefined
       }
       send_campaign_letter: {

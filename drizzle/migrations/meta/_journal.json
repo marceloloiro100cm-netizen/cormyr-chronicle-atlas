@@ -120,6 +120,13 @@
       "when": 1792796975482,
       "tag": "0016_letter_rounds_delete_player_mail",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792859442093,
+      "tag": "0017_campaign_weekly_delivery_privacy",
+      "breakpoints": true
     }
   ]
 }
