@@ -25,3 +25,11 @@
 .region-full-text p:last-child,#noble-history p:last-child{margin-bottom:0}
 .house-card.player-house{border:3px solid #6b1f2e;box-shadow:0 0 0 2px #6b1f2e33,0 6px 16px #6b1f2e40}
 .house-card.player-house:hover,.house-card.player-house:focus-visible{border-color:#8a2a3c}
+/* Royal House — Casa Phelles */
+.house-card.royal-house{border:2px solid #b8892f;background:linear-gradient(#fffdf7,#faf3e4);box-shadow:0 0 0 1px #6f5320,0 0 0 4px #e0c184,0 0 0 5px #8a6524,0 0 22px #b8892f3d,0 12px 26px #4b351038}
+.house-card.royal-house:hover,.house-card.royal-house:focus-visible{border-color:#d9b871;box-shadow:0 0 0 1px #6f5320,0 0 0 4px #f0dfae,0 0 0 5px #a97c2f,0 0 26px #b8892f55,0 16px 32px #4b351045}
+.house-card.royal-house .crest-frame{border-bottom:2px solid #b8892f}
+.house-caption .royal{color:#7a5a1f;font-weight:700;letter-spacing:.12em}
+.house-caption .royal::before{content:'\2756';margin-right:6px;color:#b8892f}
+.hierarchy-house.hierarchy-royal-house{background:linear-gradient(#faf3e2,#f6ead0);border:2px solid #b8892f;box-shadow:0 0 0 1px #6f5320,0 0 14px #b8892f33}
+.hierarchy-house.hierarchy-royal-house:hover{background:#fbf5e6;border-color:#d9b871}
