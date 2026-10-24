@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterLetters, groupReceivedLetters, isLetterRead, nextLetterNumber, sentLetters, type LetterRow } from '@/lib/letters';
+import { filterLetters, groupReceivedLetters, isLetterRead, nextLetterNumber, sentLetters, unreadReceivedCount, type LetterRow } from '@/lib/letters';
 
 const row = (over: Partial<LetterRow>): LetterRow => ({
   id: crypto.randomUUID(),
@@ -81,5 +81,34 @@ describe('leitura com respostas novas',()=>{
     const a=row({id:'a',sender_user_id:'narrador'});
     expect(filterLetters([a],[{letter_id:'a',created_at:'2026-10-21T09:00:00Z'}],{number:'',kind:'',answered:'',read:'no'},context)).toEqual([a]);
     expect(filterLetters([a],[{letter_id:'a',created_at:'2026-10-19T09:00:00Z'}],{number:'',kind:'',answered:'',read:'no'},context)).toEqual([]);
+  });
+});
+
+describe('contador de missivas não lidas',()=>{
+  it('conta as missivas recebidas sem leitura registrada',()=>{
+    expect(unreadReceivedCount([row({id:'a'}),row({id:'b',letter_number:2})],[],[],'jogador')).toBe(2);
+  });
+  it('não conta missivas escritas pelo próprio usuário',()=>{
+    expect(unreadReceivedCount([row({id:'a',sender_user_id:'jogador'}),row({id:'b'})],[],[],'jogador')).toBe(1);
+  });
+  it('ignora excluídas, rascunhos e programadas',()=>{
+    const letters=[row({id:'a',deleted_at:'2026-10-22T10:00:00Z'}),row({id:'b',publication_state:'draft'}),row({id:'c',publication_state:'scheduled'}),row({id:'d',publication_state:'delivered'})];
+    expect(unreadReceivedCount(letters,[],[],'jogador')).toBe(1);
+  });
+  it('deixa de contar a missiva marcada como lida',()=>{
+    const letters=[row({id:'a',publication_state:'delivered'})];
+    const receipts=[{letter_id:'a',user_id:'jogador',read_at:'2026-10-20T10:00:00Z'}];
+    expect(unreadReceivedCount(letters,[],receipts,'jogador')).toBe(0);
+  });
+  it('volta a contar quando chega resposta mais nova que a leitura',()=>{
+    const letters=[row({id:'a',publication_state:'delivered'})];
+    const receipts=[{letter_id:'a',user_id:'jogador',read_at:'2026-10-20T10:00:00Z'}];
+    expect(unreadReceivedCount(letters,[{letter_id:'a',created_at:'2026-10-21T09:00:00Z'}],receipts,'jogador')).toBe(1);
+    expect(unreadReceivedCount(letters,[{letter_id:'a',created_at:'2026-10-19T09:00:00Z'}],receipts,'jogador')).toBe(0);
+  });
+  it('usa o registro de leitura do narrador para as missivas que ele recebeu',()=>{
+    const letters=[row({id:'a',sender_user_id:'jogador',publication_state:'delivered'}),row({id:'b',sender_user_id:'jogador',publication_state:'delivered'})];
+    const receipts=[{letter_id:'a',user_id:'jogador',read_at:'2026-10-20T10:00:00Z'},{letter_id:'b',user_id:'narrador',read_at:'2026-10-20T10:00:00Z'}];
+    expect(unreadReceivedCount(letters,[],receipts,'narrador')).toBe(1);
   });
 });

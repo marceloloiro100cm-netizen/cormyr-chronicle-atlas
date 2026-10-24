@@ -82,7 +82,7 @@ describe.skipIf(!url || !key || !publicKey)('Numbered letters, kinds and player 
       const gmReplyRow = await admin.from('letter_replies').select('author_name').eq('id', gmReply.data as string).single();
       expect(gmReplyRow.data?.author_name).toBe('Mestre');
       const future=await p1.from('letter_replies').select('id,content').eq('id',gmReply.data as string);expect(future.data).toEqual([]);
-      const meta=await admin.from('letter_replies').select('delivery_week,publication_state').eq('id',gmReply.data as string).single();expect(meta.data).toMatchObject({delivery_week:100002,publication_state:'scheduled'});
+      const meta=await admin.from('letter_replies').select('creation_week,delivery_week,publication_state').eq('id',gmReply.data as string).single();expect(meta.data).toMatchObject({creation_week:100001,delivery_week:100002,publication_state:'scheduled'});
       expect((await p1.rpc('start_campaign_representation',{p_player:players[0]??''})).error).not.toBeNull();
       expect((await gm.rpc('start_campaign_representation',{p_player:players[0]??''})).error).toBeNull();
       const represented=await gm.rpc('campaign_representation_action',{p_action:'read',p_args:{}});expect(represented.error).toBeNull();

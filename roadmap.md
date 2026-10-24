@@ -72,3 +72,8 @@
 - [x] Corrigida visibilidade das respostas do Narrador (15 respostas de Ashkar, Grantass e Fewmerry reendereçadas aos jogadores; leitura ampliada para membros da casa)
 - [ ] Concluir galerias das 170 casas — 80 importadas em 24/10; restante segue pela rotina automática horária
 - [x] Missivas: resposta nova marca a missiva como não lida (gatilho no banco + limpeza dos registros antigos); respostas exibem cabeçalho "Missiva N · Resposta"; status mostra "Respondida · Não lida"; botão "Ver fio completo" abre toda a conversa entre semanas; 90 testes passando (24/10)
+
+## Pedido de 24/10 18:17 UTC
+- [x] Contador de missivas não lidas na aba Missivas (visível sem abrir a lista;Narrador vê 3)
+- [x] Lista de números (Missiva 1 · Missiva 2) na lateral das missivas com salto direto a cada grupo
+- [x] Correção: resposta guarda a semana em que foi escrita (cabeçalho) sem perder a semana agendada de entrega
