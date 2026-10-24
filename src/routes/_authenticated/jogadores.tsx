@@ -17,7 +17,7 @@ import { GmEventos, GmAventuras } from '@/components/gm-panels';
 import { syncPlayerFolder } from '@/lib/player-sync.functions';
 import { registerPlayer, retryFolderSync, organizeDriveFiles, refreshPublicArchive } from '@/lib/campaign.functions';
 import { DriveSyncAdmin } from '@/components/drive-sync-admin';
-import { filterLetters, groupReceivedLetters, nextLetterNumber, sentLetters, type LetterRow } from '@/lib/letters';
+import { filterLetters, groupReceivedLetters, isLetterRead, nextLetterNumber, sentLetters, type LetterRow } from '@/lib/letters';
 import type { Database } from '@/integrations/supabase/types';
 
 type RecordRow = Database['public']['Tables']['campaign_records']['Row'];
@@ -145,6 +145,7 @@ function MissivasTab({data,me,onSave,onError}:{data:Panel;me:Panel['players'][nu
   const [filters,setFilters]=useState(empty);
   const [compose,setCompose]=useState(false);
   const [expanded,setExpanded]=useState<Set<string>>(new Set());
+  const [threads,setThreads]=useState<Set<string>>(new Set());
   const [draft,setDraft]=useState<{key:number;subject:string;content:string}|null>(null);
   const [roundNumber,setRoundNumber]=useState('');
   const open=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
