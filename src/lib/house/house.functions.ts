@@ -10,7 +10,13 @@ import { improveEquipment } from './equipment';
 import { buySiege } from './siege';
 import { equipUnit, resolveSurvivors, changeUnitState, proposeVassal, approveVassal, SURVIVOR_CONDITIONS } from './military';
 import { linkVassalNpcs, validateVassalNpcs } from './vassal-links';
+import { assignCourt, validateCourtRecord } from './court';
 const npcIdsSchema=z.array(z.string().uuid()).max(100);
+export const readCourtMember=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({houseId:z.string(),id:z.string().uuid()})).handler(async({data,context})=>{
+ const r=await context.supabase.from('campaign_records').select('id,house_id,kind,title,content').eq('house_id',data.houseId).eq('id',data.id).single();
+ if(r.error)throw new Error('Integrante da Corte indisponível.');validateCourtRecord(data.houseId,r.data);
+ if(!r.data)throw new Error('Integrante da Corte indisponível.');return {id:r.data.id,title:r.data.title,content:r.data.content};
+});
 export const readVassalNpc=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({houseId:z.string(),id:z.string().uuid()})).handler(async({data,context})=>{
   const records=await context.supabase.from('campaign_records').select('id,house_id,kind,title,content').eq('house_id',data.houseId).eq('id',data.id).single();
   if(records.error||!records.data)throw new Error('NPC indisponível para este acesso.');
@@ -78,7 +84,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     else if(data.action==='vassal_approve'){const input=z.object({id:z.string(),influencePenalty:z.number().int().nonnegative()}).parse(args);if(!data.explanation.trim())throw new Error('Registre a decisão de vínculo e Influência.');next=linkVassalNpcs(approveVassal(state,input.id,input.influencePenalty),input.id,npcIds);const v=next.vassals?.find(v=>v.id===input.id);if(v){v.approvalNote=data.explanation;v.approvedBy=context.userId;}rule='Livro básico · Brasões vassalos20/10/5Poder; decisão e NPCs confirmados pelo Narrador';}
     else{const id=z.string().parse(args['id']);if(!data.explanation.trim())throw new Error('Registre a decisão de alteração dos NPCs.');next=linkVassalNpcs(state,id,npcIds);rule='Referências a NPCs existentes alteradas pelo Narrador; sem duplicação ou novo custo';}
   }
-  if(data.action==='court') {const member=z.object({id:z.string().uuid(),npcId:z.string().uuid().optional(),name:z.string().min(1).max(160),role:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args) as CourtMember;if(member.npcId){const record=await context.supabase.from('campaign_records').select('house_id,kind').eq('id',member.npcId).single();if(record.error||record.data.house_id!==data.houseId||record.data.kind!=='character')throw new Error('NPC não pertence a esta casa.');}next.court.push(member);}
+  if(data.action==='court') {const member=z.object({id:z.string().uuid(),npcId:z.string().uuid(),role:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args);const record=await context.supabase.from('campaign_records').select('house_id,kind').eq('id',member.npcId).single();if(record.error)throw new Error('Integrante da Corte indisponível.');validateCourtRecord(data.houseId,record.data);next=assignCourt(state,member);rule='Corte · cargo ligado a registro existente, sem copiar personagem';}
   if(data.action==='submit'){if(state.phase!=='draft')throw new Error('Criação já enviada.');if(!state.domains.length)throw new Error('Adicione ao menos um domínio.');if(!state.regionalApplied&&state.method!=='import')throw new Error('Revise os recursos.');next.phase='review';}
   if(data.action==='approve'){if(state.phase!=='review')throw new Error('Envie a criação para revisão primeiro.');if(state.pending.length)throw new Error('Resolva as pendências de conciliação.');next.phase='active';}
   if(data.action==='advance')next=advance(state,z.number().int().parse(args['month']));
