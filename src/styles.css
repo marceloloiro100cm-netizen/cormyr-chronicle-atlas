@@ -239,3 +239,26 @@
 .campaign-round-pending ul{list-style:none;padding:0;margin:0}
 .campaign-round-pending li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--border)}
 .campaign-round-pending li>div{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
+
+/* Hub de casa e NPCs */
+.campaign-collapse{margin-top:1.5rem}
+.campaign-collapse-head{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.campaign-collapse-toggle{display:inline-flex;align-items:center;gap:.35rem;font-size:.85rem;color:var(--primary);border:1px solid var(--border);border-radius:999px;padding:.25rem .75rem;background:var(--card)}
+.campaign-collapse-toggle svg{transition:transform .2s}
+.campaign-collapse.fechado .campaign-collapse-toggle svg{transform:rotate(-90deg)}
+.campaign-collapse.fechado .campaign-collapse-body{max-height:7rem;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,#000 30%,transparent);mask-image:linear-gradient(to bottom,#000 30%,transparent)}
+.campaign-npc-hub{margin-top:2rem}
+.campaign-npc-head{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.campaign-npc-count{background:var(--primary);color:var(--primary-foreground);border-radius:999px;padding:.15rem .7rem;font-size:.85rem;font-weight:600}
+.campaign-npc-list{list-style:none;padding:0;margin:1rem 0;display:grid;gap:.5rem}
+.campaign-npc-list>li{border:1px solid var(--border);border-radius:.6rem;background:var(--card)}
+.campaign-npc-row{display:flex;align-items:center;gap:1rem;width:100%;padding:.6rem .9rem;text-align:left}
+.campaign-npc-photo{flex:none;width:56px;height:56px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:var(--muted);color:var(--muted-foreground);border:2px solid var(--accent)}
+.campaign-npc-photo figure{margin:0;width:100%;height:100%}
+.campaign-npc-photo img{width:100%!important;height:100%!important;max-width:none!important;object-fit:cover;margin:0!important}
+.campaign-npc-photo figcaption{display:none}
+.campaign-npc-name{flex:1;display:flex;flex-direction:column}
+.campaign-npc-name span{font-size:.85rem;color:var(--muted-foreground)}
+.campaign-npc-chevron{transition:transform .2s}
+.campaign-npc-list>li.aberto .campaign-npc-chevron{transform:rotate(180deg)}
+.campaign-npc-detail{padding:0 1rem 1rem}
