@@ -23,3 +23,4 @@
 - Additive campaign migrations retain a service-only inventory snapshot before backfilling delivery metadata, so historical IDs, readers and current round state remain recoverable.
 - Technical Drive exports target a dedicated folder ID while narrative imports retain the original root; leased organization validates mappings and preserves file IDs to avoid moving original documents.
 - Public archive refresh visits only catalog-approved house sources in bounded batches, preserving official metadata and recording conflicting narrative versions for administrative review.
+- Narrator representation is a short-lived database session bound to the real actor; one transactional RPC applies player-scoped permissions and audits actions without authenticating as the player.
