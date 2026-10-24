@@ -17,7 +17,7 @@ import { GmEventos, GmAventuras } from '@/components/gm-panels';
 import { syncPlayerFolder } from '@/lib/player-sync.functions';
 import { registerPlayer, retryFolderSync, organizeDriveFiles, refreshPublicArchive } from '@/lib/campaign.functions';
 import { DriveSyncAdmin } from '@/components/drive-sync-admin';
-import { filterLetters, groupReceivedLetters, nextLetterNumber, sentLetters, type LetterRow } from '@/lib/letters';
+import { filterLetters, groupReceivedLetters, isLetterRead, nextLetterNumber, sentLetters, type LetterRow } from '@/lib/letters';
 import type { Database } from '@/integrations/supabase/types';
 
 type RecordRow = Database['public']['Tables']['campaign_records']['Row'];
@@ -145,6 +145,7 @@ function MissivasTab({data,me,onSave,onError}:{data:Panel;me:Panel['players'][nu
   const [filters,setFilters]=useState(empty);
   const [compose,setCompose]=useState(false);
   const [expanded,setExpanded]=useState<Set<string>>(new Set());
+  const [threads,setThreads]=useState<Set<string>>(new Set());
   const [draft,setDraft]=useState<{key:number;subject:string;content:string}|null>(null);
   const [roundNumber,setRoundNumber]=useState('');
   const open=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
@@ -156,25 +157,30 @@ function MissivasTab({data,me,onSave,onError}:{data:Panel;me:Panel['players'][nu
   const myHouses=data.members.filter(m=>m.player_id===me?.id).map(m=>m.house_id);
   const isRecipient=(letter:LetterRow)=>letter.recipient_player_id===me?.id||(letter.recipient_player_id===null&&myHouses.includes(letter.recipient_house_id??''));
   const toggle=(id:string)=>setExpanded(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
+  const toggleThread=(id:string)=>setThreads(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
   const houseName=(id:string|null)=>data.houses.find(h=>h.id===id)?.name;
   const card=(letter:LetterRow&{deleted_at?:string|null;publication_state?:string;delivery_week?:number|null},canAnswer:boolean)=>{
     const answers=data.replies.filter(r=>r.letter_id===letter.id);
-    const read=data.receipts.some(r=>r.letter_id===letter.id&&(data.admin&&letter.sender_user_id===data.user.id?r.user_id!==data.user.id:r.user_id===data.user.id));
+    const receipt=data.receipts.find(r=>r.letter_id===letter.id&&(data.admin&&letter.sender_user_id===data.user.id?r.user_id!==data.user.id:r.user_id===data.user.id));
+    const read=isLetterRead(letter.id,receipt,answers);
     const isOpen=expanded.has(letter.id);
+    const threadLetters=letter.conversation_id?allLetters.filter(o=>o.conversation_id===letter.conversation_id&&o.id!==letter.id).sort((a,b)=>a.created_at.localeCompare(b.created_at)):[];
+    const threadOpen=threads.has(letter.id);
     const to=letter.recipient_house_id?'Casa '+(houseName(letter.recipient_house_id)??letter.recipient_house_id):letter.recipient_player_id?(data.players.find(p=>p.id===letter.recipient_player_id)?.name??'Jogador'):'Narrador';
     const fromHouse=letter.sender_player_id?houseName(data.players.find(p=>p.id===letter.sender_player_id)?.roster_house_id??null):null;
     const canDelete=!letter.deleted_at&&(data.admin||letter.sender_user_id===data.user.id);
     return <article className={'campaign-letter'+(isOpen?'':' recolhida')} key={letter.id} id={'missiva-'+letter.id}>
       <button type="button" className="campaign-letter-toggle" aria-expanded={isOpen} onClick={()=>toggle(letter.id)}>
         <ChevronDown size={18} className={isOpen?'rotate-180 transition-transform':'transition-transform'}/>
-        <span className="campaign-eyebrow">{letter.letter_number?`Missiva ${letter.letter_number} · `:''}{letter.letter_kind==='geral'?'Geral':'Reservada'} · {answers.length?'Respondida':read?'Lida':'Não lida'}{letter.publication_state==='draft'?' · Rascunho':letter.publication_state==='scheduled'?` · Aguardando abertura da Semana ${letter.delivery_week}`:''}{letter.deleted_at?' · Excluída':''}</span>
+        <span className="campaign-eyebrow">{letter.letter_number?`Missiva ${letter.letter_number} · `:''}{letter.letter_kind==='geral'?'Geral':'Reservada'} · {answers.length?'Respondida · ':''}{read?'Lida':'Não lida'}{letter.publication_state==='draft'?' · Rascunho':letter.publication_state==='scheduled'?` · Aguardando abertura da Semana ${letter.delivery_week}`:''}{letter.deleted_at?' · Excluída':''}</span>
         <strong className="campaign-letter-subject">{letter.subject}</strong>
         <span className="text-muted-foreground text-sm">De: {letter.sender_name}{fromHouse?` (${fromHouse})`:''} · Para: {to} · {date(letter.created_at)}{answers.length?` · ${answers.length} resposta(s)`:''}</span>
       </button>
       {isOpen&&<div className="campaign-letter-body">
         <CampaignContent content={letter.content}/>
         <p className="text-muted-foreground text-sm">{syncLabel(letter.sync_state)} · {letter.last_synced_at?date(letter.last_synced_at):'Ainda não sincronizada'}</p>
-        {answers.length>0&&<div className="campaign-replies">{answers.map(answer=><div key={answer.id}><strong>{answer.author_name}</strong>{answer.publication_state==='draft'?<p>Rascunho{answer.author_user_id===data.user.id&&<Button size="sm" variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const r=await supabase.rpc('schedule_weekly_reply_draft',{p_id:answer.id});if(r.error)onError(r.error.message);else onSave();}}>Programar entrega</Button>}</p>:answer.publication_state==='scheduled'&&<p>Aguardando abertura da Semana {answer.delivery_week}</p>}<small> · {date(answer.created_at)} · {syncLabel(answer.sync_state)}</small><CampaignContent content={answer.content}/>{answer.author_user_id!==data.user.id&&answer.publication_state==='delivered'&&<ReplyForm letterId={letter.id} replyId={answer.id} deliveryWeek={data.admin||answer.author_player_id!==null?(open??nextLetterNumber(data.letters))+1:open} onSave={onSave}/>}</div>)}</div>}
+        {answers.length>0&&<div className="campaign-replies">{answers.map(answer=><div key={answer.id}><span className="campaign-eyebrow">Missiva {answer.delivery_week??answer.creation_week??letter.letter_number??'?'} · Resposta</span><br/><strong>{answer.author_name}</strong>{answer.publication_state==='draft'?<p>Rascunho{answer.author_user_id===data.user.id&&<Button size="sm" variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const r=await supabase.rpc('schedule_weekly_reply_draft',{p_id:answer.id});if(r.error)onError(r.error.message);else onSave();}}>Programar entrega</Button>}</p>:answer.publication_state==='scheduled'&&<p>Aguardando abertura da Semana {answer.delivery_week}</p>}<small> · {date(answer.created_at)} · {syncLabel(answer.sync_state)}</small><CampaignContent content={answer.content}/>{answer.author_user_id!==data.user.id&&answer.publication_state==='delivered'&&<ReplyForm letterId={letter.id} replyId={answer.id} deliveryWeek={data.admin||answer.author_player_id!==null?(open??nextLetterNumber(data.letters))+1:open} onSave={onSave}/>}</div>)}</div>}
+        {threadLetters.length>0&&<div className="campaign-thread"><Button size="sm" variant="ghost" aria-expanded={threadOpen} onClick={()=>toggleThread(letter.id)}>{threadOpen?'Ocultar fio da conversa':`Ver fio completo (${threadLetters.length} missiva(s) relacionada(s))`}</Button>{threadOpen&&threadLetters.map(other=>{const otherAnswers=data.replies.filter(r=>r.letter_id===other.id);return <div key={other.id} className="campaign-thread-item"><span className="campaign-eyebrow">{other.letter_number?`Missiva ${other.letter_number} · `:''}{other.letter_kind==='geral'?'Geral':'Reservada'}</span><strong>{other.subject}</strong><small> · De: {other.sender_name} · {date(other.created_at)}</small><CampaignContent content={other.content}/>{otherAnswers.map(a=><div key={a.id} className="campaign-replies"><span className="campaign-eyebrow">Missiva {a.delivery_week??a.creation_week??'?'} · Resposta</span><br/><strong>{a.author_name}</strong><small> · {date(a.created_at)}</small><CampaignContent content={a.content}/></div>)}</div>;})}</div>}
         {!letter.deleted_at&&<div className="campaign-actions">
           {canAnswer&&!read&&letter.publication_state==='delivered'&&<Button variant="outline" onClick={async()=>{const {error}=await supabase.from('letter_receipts').insert({letter_id:letter.id,user_id:data.user.id});if(error&&error.code!=='23505')onError(error.message);else onSave();}}>Marcar como lida</Button>}
           {open!==null&&!data.admin&&<Button variant="outline" onClick={()=>{setDraft({key:Date.now(),subject:'Enc: '+letter.subject,content:`— Missiva encaminhada —\nDe: ${letter.sender_name} · ${date(letter.created_at)}\nAssunto: ${letter.subject}\n\n${letter.content}`});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Encaminhar</Button>}
