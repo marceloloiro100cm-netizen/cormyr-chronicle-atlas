@@ -69,3 +69,5 @@
 - [ ] Validar callback periódico publicado — esta revisão não foi publicada
 - [ ] Descoberta de pastas novas fora dos 170 IDs oficiais — nenhum diretório-pai oficial foi identificado
 - [ ] Senha própria do Narrador — não alterada sem confirmação da conta correta
+- [ ] Corrigir visibilidade das respostas do Narrador às missivas da Semana 1 (Ashkar, Grantass) — jogador deve ver respostas de missivas passadas
+- [ ] Concluir galerias das 170 casas — importação em lotes de 8 em andamento (24/10)
