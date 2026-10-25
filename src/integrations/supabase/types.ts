@@ -1024,6 +1024,63 @@ export type Database = {
           },
         ]
       }
+      noble_house_source_links: {
+        Row: {
+          actor: string
+          after_version: number
+          before_state: Json
+          confirmed_totals: Json
+          created_at: string
+          house_id: string
+          record_id: string
+          source_file_id: string | null
+          source_modified_at: string | null
+          source_snapshot: Json
+          source_version: number
+        }
+        Insert: {
+          actor: string
+          after_version: number
+          before_state: Json
+          confirmed_totals: Json
+          created_at?: string
+          house_id: string
+          record_id: string
+          source_file_id?: string | null
+          source_modified_at?: string | null
+          source_snapshot: Json
+          source_version: number
+        }
+        Update: {
+          actor?: string
+          after_version?: number
+          before_state?: Json
+          confirmed_totals?: Json
+          created_at?: string
+          house_id?: string
+          record_id?: string
+          source_file_id?: string | null
+          source_modified_at?: string | null
+          source_snapshot?: Json
+          source_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "noble_house_source_links_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: true
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "noble_house_source_links_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1269,6 +1326,21 @@ export type Database = {
           p_key: string
           p_rule: string
           p_state: Json
+          p_version: number
+        }
+        Returns: Json
+      }
+      commit_noble_house_source: {
+        Args: {
+          p_actor: string
+          p_house: string
+          p_key: string
+          p_note: string
+          p_record: string
+          p_source_hash: string
+          p_source_version: number
+          p_state: Json
+          p_totals: Json
           p_version: number
         }
         Returns: Json
