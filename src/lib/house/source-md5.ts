@@ -1,0 +1,2 @@
+import { md5 as digest } from '@noble/hashes/legacy.js';
+export function md5(content:string){return Array.from(digest(new TextEncoder().encode(content))).map(x=>x.toString(16).padStart(2,'0')).join('');}
