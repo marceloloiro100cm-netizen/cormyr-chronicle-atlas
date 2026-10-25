@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { reconciliationPreview, reconciliationSources, type ReconciliationRecord } from '@/lib/house/reconciliation';
 import { readWorkbook, type ImportPreview } from '@/lib/house/import';
 import { RESOURCE_KEYS, RESOURCE_NAMES } from '@/lib/house/types';
+import { LinkExistingSources } from './source-link';
 
-export function HouseReconciliation({ houses, records }: { houses: { id: string; name: string }[]; records: ReconciliationRecord[] }) {
+export function HouseReconciliation({ houses, records, admin=false }: { houses: { id: string; name: string }[]; records: ReconciliationRecord[]; admin?:boolean }) {
   const [selected, setSelected] = useState('');
   const [uploads, setUploads] = useState<ImportPreview[]>([]);
   const [error, setError] = useState('');
@@ -15,6 +16,7 @@ export function HouseReconciliation({ houses, records }: { houses: { id: string;
   return <section className="house-panel" aria-labelledby="reconciliation-title">
     <div className="house-section-heading"><h3 id="reconciliation-title">Prévia de conciliação das casas</h3><FileSearch className="text-primary" size={22}/></div>
     <p className="house-warning">Somente leitura · Nenhum dado migrado ou salvo.</p>
+    {admin&&<LinkExistingSources/>}
     <p className="house-caption">Fontes já preservadas no acervo privado; esta consulta não atualiza o Drive. Valores reconhecidos não são saldos aprovados.</p>
     <label>Casa na prévia<select value={selected} onChange={e => setSelected(e.target.value)}><option value="">Todas as casas autorizadas</option>{houses.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select></label>
     <p className="house-caption">{sources.length} fontes encontradas · {houses.length} casas autorizadas</p>
