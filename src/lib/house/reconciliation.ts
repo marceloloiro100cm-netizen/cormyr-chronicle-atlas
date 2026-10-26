@@ -10,12 +10,12 @@ export function reconciliationPreview(record: ReconciliationRecord, houseName: s
   const candidates: ResourceCandidate[] = [];
   const issues: string[] = [];
   let columns: number[] | null = null;
-  let houseName: string | null = null;
+  let blockHouseName: string | null = null;
   let section = 0;
   for (const [index, line] of lines.entries()) {
     const cells = line.split('·').map(s => s.trim().replace(/^["“]|["”]$/g, '').trim());
     if (norm(cells[0] ?? '') === 'nome' && cells.some(c => ['susserano', 'suserano', 'regiao', 'lorde'].includes(norm(c)))) {
-      houseName = cells[1] || null;
+      blockHouseName = cells[1] || null;
       section += 1;
       columns = null;
     }
@@ -30,7 +30,7 @@ export function reconciliationPreview(record: ReconciliationRecord, houseName: s
       })) as Record<Resource, number | null>;
       // Summary tables with repeated Total labels are not resource rows.
       if (!cells.slice(1).some(c => norm(c) === 'total')) {
-        candidates.push({ origin: `Linha ${index + 1} · ${cells[0]}`, values, houseName, section });
+        candidates.push({ origin: `Linha ${index + 1} · ${cells[0]}`, values, houseName: blockHouseName, section });
         if (Object.values(values).some(v => v === null)) issues.push(`Linha ${index + 1}: campos vazios ou não numéricos; não equivalem a zero.`);
       }
     }
