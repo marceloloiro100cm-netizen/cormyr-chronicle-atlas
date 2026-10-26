@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Hub de casa nobre — 24/10 21:38 UTC
+- [ ] Pedido26/10 00:34: comparar todas as fontes de Everlost e Harcourt, expor valores/identidades e solicitar decisão; não importar posses ou tropas.
 - [x] Pedido23:01: seis casas vinculadas com totais finais, backups e versões; leituraUI Ashkar50/50/20/30/10/50/40 confirmada,48 testes; Everlost fontes múltiplas e Harcourt identidade/totais divergentes aguardam decisão; posses/tropas legadas não importadas.
 - [x] Pedido22:54: Trocar Visão reversível no cabeçalho; totais na escala0–100, saldo intacto; computador/celular conferidos.
 - [x] Pedido22:50: exportação unidirecional ligada à pasta técnica existente, mapeamento próprio, ETag real/versões imutáveis, status e executor; 125 testes isolados aprovados; gravação real no Drive não executada.
