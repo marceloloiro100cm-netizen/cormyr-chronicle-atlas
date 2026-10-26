@@ -8,7 +8,7 @@ import { reconciliationSources } from './reconciliation';
 export const linkExistingHouseSources=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({key:z.string().uuid()})).handler(async({data,context})=>{
  const role=await context.supabase.rpc('is_campaign_admin');if(role.error||!role.data)throw new Error('Somente o Narrador pode vincular fichas.');
  const houses=await context.supabase.from('campaign_houses').select('id,name,region').eq('active',true).eq('season',2);
- const records=await context.supabase.from('campaign_records').select('id,house_id,title,content,version,source_file_id,source_modified_at').eq('visibility','house');
+ const records=await context.supabase.from('campaign_records').select('id,house_id,title,content,version,source_file_id,source_modified_at').in('visibility',['house','player']);
  if(houses.error||records.error)throw new Error('Fontes indisponíveis.');
  const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
  const results:{house:string;status:string;message:string}[]=[];
