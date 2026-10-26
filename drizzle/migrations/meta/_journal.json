@@ -239,6 +239,13 @@
       "when": 1792889950425,
       "tag": "0033_noble_house_source_links",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792974390740,
+      "tag": "0034_noble_source_authorized_player_records",
+      "breakpoints": true
     }
   ]
 }
