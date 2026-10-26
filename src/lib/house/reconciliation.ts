@@ -2,7 +2,7 @@ import { isFichaCasa, parseFichaCasa } from '@/lib/ficha';
 import { RESOURCE_KEYS, type Resource } from './types';
 
 export type ReconciliationRecord = { id: string; house_id: string | null; title: string; content: string; version: number; source_file_id: string | null; source_modified_at: string | null };
-export type ResourceCandidate = { origin: string; values: Record<Resource, number | null> };
+export type ResourceCandidate = { origin: string; values: Record<Resource, number | null>; houseName: string | null; section: number };
 const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/^["“]|["”]$/g, '').trim();
 const aliases = [['defesa'], ['influencia'], ['terras'], ['lei'], ['populacao'], ['poder'], ['riqueza', 'riquiza']];
 export function reconciliationPreview(record: ReconciliationRecord, houseName: string) {
@@ -10,8 +10,15 @@ export function reconciliationPreview(record: ReconciliationRecord, houseName: s
   const candidates: ResourceCandidate[] = [];
   const issues: string[] = [];
   let columns: number[] | null = null;
+  let blockHouseName: string | null = null;
+  let section = 0;
   for (const [index, line] of lines.entries()) {
     const cells = line.split('·').map(s => s.trim().replace(/^["“]|["”]$/g, '').trim());
+    if (norm(cells[0] ?? '') === 'nome' && cells.some(c => ['susserano', 'suserano', 'regiao', 'lorde'].includes(norm(c)))) {
+      blockHouseName = cells[1] || null;
+      section += 1;
+      columns = null;
+    }
     if (aliases.every(a => cells.some(c => a.includes(norm(c))))) {
       columns = aliases.map(a => cells.findIndex(c => a.includes(norm(c))));
       continue;
@@ -23,7 +30,7 @@ export function reconciliationPreview(record: ReconciliationRecord, houseName: s
       })) as Record<Resource, number | null>;
       // Summary tables with repeated Total labels are not resource rows.
       if (!cells.slice(1).some(c => norm(c) === 'total')) {
-        candidates.push({ origin: `Linha ${index + 1} · ${cells[0]}`, values });
+        candidates.push({ origin: `Linha ${index + 1} · ${cells[0]}`, values, houseName: blockHouseName, section });
         if (Object.values(values).some(v => v === null)) issues.push(`Linha ${index + 1}: campos vazios ou não numéricos; não equivalem a zero.`);
       }
     }
