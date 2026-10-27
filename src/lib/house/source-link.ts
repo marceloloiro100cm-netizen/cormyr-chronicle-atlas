@@ -2,6 +2,14 @@ import { balances } from './engine';
 import { reconciliationPreview, type ReconciliationRecord } from './reconciliation';
 import { RESOURCE_KEYS, type Resources, type HouseState } from './types';
 const norm=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+export function selectedSourceTotals(record:ReconciliationRecord,houseId:string,houseName:string,origin:string):Resources {
+ if(record.house_id!==houseId)throw new Error('Fonte de outra casa.');
+ const candidate=reconciliationPreview(record,houseName).candidates.find(c=>c.origin===origin&&c.origin.endsWith('· Total'));
+ if(!candidate?.houseName||norm(candidate.houseName)!==norm(houseName))throw new Error('Identidade do bloco não confirmada.');
+ if(RESOURCE_KEYS.some(k=>candidate.values[k]===null))throw new Error('Total incompleto.');
+ if(/#(?:REF!|DIV\/0!|VALUE!|N\/A|NAME\?)/i.test(record.content))throw new Error('Fonte contém erro de planilha; requer conciliação.');
+ return Object.fromEntries(RESOURCE_KEYS.map(k=>[k,candidate.values[k]])) as Resources;
+}
 export function confirmedSourceTotals(record:ReconciliationRecord,houseName:string):Resources {
  const p=reconciliationPreview(record,houseName);
  if(!p.identity.nome||norm(p.identity.nome)!==norm(houseName))throw new Error('Identidade da fonte não confirmada.');
