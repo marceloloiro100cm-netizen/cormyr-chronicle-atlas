@@ -25,7 +25,7 @@ export function HouseReconciliation({ houses, records, admin=false }: { houses: 
       const houseSources = sources.filter(r => r.house_id === h.id);
       const pendingComparison = ['everlost', 'harcourt'].includes(h.name.toLowerCase());
       return <details className="house-ledger" key={h.id} open={Boolean(selected) || pendingComparison}><summary><strong>Casa {h.name}</strong> · {houseSources.length} fontes</summary>
-        {pendingComparison && <SourceComparison records={houseSources} houseName={h.name}/>}
+        {pendingComparison && <SourceComparison records={houseSources} houseName={h.name} houseId={h.id} admin={admin}/>}
         {!houseSources.length && <p className="campaign-empty">Nenhuma planilha ou ficha de casa reconhecida no acervo disponível; nenhum valor presumido.</p>}
         {houseSources.length > 1 && <p className="house-warning">Fontes múltiplas: comparar versões antes de escolher qualquer saldo.</p>}
         {houseSources.map(r => { const p = reconciliationPreview(r, h.name); return <div key={r.id} className="my-4 space-y-3">

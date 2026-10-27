@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest';
-import { confirmedSourceTotals,linkSourceTotals } from '@/lib/house/source-link';
+import { confirmedSourceTotals,selectedSourceTotals,linkSourceTotals } from '@/lib/house/source-link';
 import { newHouseState } from '@/lib/house/types';
 import { balances } from '@/lib/house/engine';
 import { md5 } from '@/lib/house/source-md5';
@@ -12,4 +12,17 @@ describe('vínculo de fontes reais',()=>{
  it('bloqueia erroREF sem inventar saldo',()=>{expect(()=>confirmedSourceTotals(source('Ashkar','#REF!'),'Ashkar')).toThrow('erro');});
  it('não aplica fonte duas vezes',()=>{const s=linkSourceTotals(newHouseState('ashkar'),confirmedSourceTotals(source(),'Ashkar'),'record:id:v1');expect(()=>linkSourceTotals(s,confirmedSourceTotals(source(),'Ashkar'),'record:id:v1')).toThrow('já vinculada');});
  it('hash corresponde ao PostgreSQL md5',()=>{expect(md5('abc')).toBe('900150983cd24fb0d6963f7d28e17f72');});
+ it('aplica a decisão Everlost10/20/20/40/29/80/51 sem posses ou tropas',()=>{
+  const r={...source(),house_id:'everlost',content:'Nome · Everlost · Região · Horselands\nBonus Inicial · Defesa · Influencia · Terras · Lei · População · Poder · Riqueza\nTotal · 10 · 20 · 20 · 40 · 29 · 80 · 51\nPosses · Hall\nExercito · Cavalaria'};
+  const totals=selectedSourceTotals(r,'everlost','Everlost','Linha 3 · Total');
+  expect(totals).toEqual({defense:10,influence:20,lands:20,law:40,population:29,power:80,wealth:51});
+  const next=linkSourceTotals(newHouseState('everlost'),totals,'record:id:v1');expect(next.holdings).toEqual([]);expect(next.units).toEqual([]);
+ });
+ it('aplica somente o bloco identificado Harcourt35/50/55/30/40/50/51',()=>{
+  const header='Bonus Inicial · Defesa · Influencia · Terras · Lei · População · Poder · Riqueza';
+  const r={...source(),house_id:'harcourt',content:`Nome · · Região ·\n${header}\nTotal · 10 · 20 · 20 · 40 · 29 · 80 · 51\nNome · Harcourt · Região · Horseland\n${header}\nTotal · 35 · 50 · 55 · 30 · 40 · 50 · 51`};
+  expect(selectedSourceTotals(r,'harcourt','Harcourt','Linha 6 · Total')).toEqual({defense:35,influence:50,lands:55,law:30,population:40,power:50,wealth:51});
+  expect(()=>selectedSourceTotals(r,'harcourt','Harcourt','Linha 3 · Total')).toThrow('Identidade');
+  expect(()=>selectedSourceTotals(r,'everlost','Everlost','Linha 6 · Total')).toThrow('outra casa');
+ });
 });

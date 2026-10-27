@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
-import { confirmedSourceTotals, linkSourceTotals } from './source-link';
+import { confirmedSourceTotals, selectedSourceTotals, linkSourceTotals } from './source-link';
 import { newHouseState, type HouseState } from './types';
 import { reconciliationSources } from './reconciliation';
 
@@ -34,3 +34,18 @@ async function sourceMd5(content:string){
  // PostgreSQL compares the source in the same transaction. A portable hash avoids Node crypto in Workers.
  const {md5}=await import('./source-md5');return md5(content);
 }
+export const resolveHouseSource=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({houseId:z.string().min(1),recordId:z.string().uuid(),sourceVersion:z.number().int().positive(),origin:z.string().min(1),key:z.string().uuid()})).handler(async({data,context})=>{
+ const role=await context.supabase.rpc('is_campaign_admin');if(role.error||!role.data)throw new Error('Somente o Narrador pode decidir a conciliação.');
+ const house=await context.supabase.from('campaign_houses').select('id,name,region').eq('id',data.houseId).eq('active',true).eq('season',2).single();
+ const source=await context.supabase.from('campaign_records').select('id,house_id,title,content,version,source_file_id,source_modified_at').eq('id',data.recordId).in('visibility',['house','player']).single();
+ if(house.error||source.error)throw new Error('Casa ou fonte indisponível.');
+ if(source.data.version!==data.sourceVersion)throw new Error('Fonte mudou; confira novamente os valores.');
+ const totals=selectedSourceTotals(source.data,house.data.id,house.data.name,data.origin);
+ const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
+ const current=await db.from('noble_house_sheets').select('state,version').eq('house_id',house.data.id).maybeSingle();if(current.error)throw new Error('Ficha indisponível.');
+ const state=(current.data?.state??newHouseState(house.data.id,house.data.region??'')) as unknown as HouseState;
+ const next=linkSourceTotals(state,totals,`record:${source.data.id}:v${source.data.version}`);
+ const result=await db.rpc('commit_noble_house_source',{p_actor:context.userId,p_house:house.data.id,p_version:current.data?.version??0,p_key:data.key,p_record:source.data.id,p_source_version:source.data.version,p_source_hash:await sourceMd5(source.data.content),p_totals:totals,p_state:JSON.parse(JSON.stringify(next)),p_note:`Decisão explícita do Narrador: ${source.data.title} v${source.data.version}, ${data.origin}, bloco identificado ${house.data.name}. Totais ${JSON.stringify(totals)}. Outras fontes preservadas. Compras preservadas; nenhuma posse ou tropa legada importada.`});
+ if(result.error)throw new Error(result.error.message);
+ return {house:house.data.name,totals,message:'Conciliação aplicada; compras preservadas. Posses e tropas legadas não importadas.'};
+});

@@ -34,6 +34,7 @@
 - Court roles reference existing same-house character records, including character sheets, while vassal selectors retain narrative-member eligibility; labels and content resolve under viewer access rather than copying private names into shared snapshots.
 - House reconciliation previews use RLS-readable source records and session-local workbooks; separate narrator-only source linking locks source and sheet versions, backs up originals and preserves purchases while applying unique final totals as audited adjustments.
 - Conflicting source comparisons retain each resource row's local house-header block and never select totals by date; this distinguishes unnamed template blocks from identified house data without weakening source-link validation.
+- Explicit narrator source decisions validate the selected identified Total row server-side and reuse the version-locked source-link transaction; this resolves multi-block ambiguity while retaining originals, backups and purchases.
 
 - Structured house Drive exports have a dedicated one-way mapping in the existing leased technical-folder executor; private sheet and ledger remain authoritative, with real provider ETags required for stable updates and immutable versions otherwise.
 - House resource views share the same central balance calculation and switch only presentation; chart saturation never changes recorded totals or allocations.
