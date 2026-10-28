@@ -48,7 +48,7 @@ UPDATE campaign_letters SET deleted_at=now() WHERE id='00000000-0000-0000-0000-0
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert((SELECT count(*)=0 FROM letter_replies),'deleted parent hides replies from author');
 SELECT set_config('test.stale_draft', :'stale_draft_id', true);
-DO $ BEGIN
+DO $$ BEGIN
  BEGIN PERFORM public.schedule_weekly_reply_draft(current_setting('test.stale_draft')::uuid); RAISE EXCEPTION 'deleted parent accepted';
  EXCEPTION WHEN raise_exception THEN IF SQLERRM='deleted parent accepted' THEN RAISE; END IF; END;
 END $$;
