@@ -27,6 +27,10 @@
 - [ ] Validar gravação/leitura e concorrência no banco isolado — banco atual compartilhado com produção; não usar casas reais como teste.
 
 ## Pedido atual
+- [ ] Auditoria das missivas: corrigir filtros por atividade/entrega, caixas de respostas, contador e estados de resposta com testes isolados.
+- [ ] Retomar e reeditar os mesmos rascunhos, preservando texto/anexos e prevenindo abandono silencioso.
+- [ ] Unificar semana prevista sem rodada aberta e sugestão do Narrador por rodadas; não reclassificar histórico nem abrir/encerrar semanas.
+- [ ] Verificar prévia autenticada sem enviar mensagens reais; testes de envio/abertura somente isolados.
 - [x] Concluir gravação versionada de edições, uploads e respostas nas oito pastas autorizadas; 60 registros, 44 missivas e 28 respostas confirmados por leitura de retorno
 - [x] Criar e verificar pasta privada do Narrador, sem compartilhamento e com cópias privadas confirmadas
 - [x] Unificar Missivas e Escrever missivas em gestão com edição versionada, filtros por casa/leitura/resposta e destinatários somente casas
