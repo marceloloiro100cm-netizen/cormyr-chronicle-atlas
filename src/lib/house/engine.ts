@@ -22,8 +22,7 @@ export function balances(state: HouseState): Balance {
       }
     }
   }
-  const units = state.units;
-  for (let i = 0, len = units.length; i < len; i++) {
+  for (let i = 0, units = state.units, len = units.length; i < len; i++) {
     const unit = units[i];
     if (unit.destroyed) continue;
     const costs = unit.costs;
