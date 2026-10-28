@@ -24,4 +24,10 @@ describe('executor de Ficha isolado',()=>{
  it('bloqueia pasta sem revisão e mantém ficha intacta',async()=>{
   const {f,b}=fixture();b.privacy_reviewed=false;const a:HouseExportAdapter={read:vi.fn(),write:vi.fn()};await expect(exportBindingHouse(f.db,b.id,a)).rejects.toThrow('não autorizada');expect(a.write).not.toHaveBeenCalled();
  });
+ it('registra erro no banco quando a gravação no Drive falha',async()=>{
+  const {f,b}=fixture();
+  const a:HouseExportAdapter={read:vi.fn(),write:async()=>{throw new Error('Falha simulada no Drive');}};
+  await expect(exportBindingHouse(f.db,b.id,a)).rejects.toThrow('Falha simulada no Drive');
+  expect(f.tables['noble_house_drive_exports']?.[0]).toMatchObject({status:'error',error:'Falha simulada no Drive'});
+ });
 });
