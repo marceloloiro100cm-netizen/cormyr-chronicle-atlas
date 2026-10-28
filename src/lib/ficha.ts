@@ -132,3 +132,63 @@ export function parseFichaCasa(text: string): FichaCasa {
     eventos,
   };
 }
+
+export function serializeFichaPersonagem(ficha: FichaPersonagem): string {
+  const result: string[] = [];
+  result.push(`Nome do Personagem · ${ficha.nome ?? ''}`);
+  result.push(`Casa · ${ficha.casa ?? ''}`);
+  result.push(`Idade · ${ficha.idade ?? ''}`);
+  result.push(`Jogador · ${ficha.jogador ?? ''}`);
+  result.push(`Virtude · ${ficha.virtude ?? ''}`);
+  result.push(`Vicio · ${ficha.vicio ?? ''}`);
+  result.push(`Defesa de Intriga · ${ficha.defesaIntriga ?? ''}`);
+  result.push(`Compostura · ${ficha.compostura ?? ''}`);
+  if (ficha.movimento) {
+    result.push(ficha.movimento);
+  }
+  result.push(`Corrida · ${ficha.corrida ?? ''}`);
+
+  if (ficha.habilidades && ficha.habilidades.length > 0) {
+    result.push('');
+    result.push('Graduação · Habilidade · Especialização');
+    for (const hab of ficha.habilidades) {
+      result.push(`${hab.graduacao} · ${hab.nome} · ${hab.especializacao ?? ''}`);
+    }
+  }
+
+  return result.filter(line => line !== null).join('\n');
+}
+
+export function serializeFichaCasa(ficha: FichaCasa): string {
+  const result: string[] = [];
+  result.push(`Nome · ${ficha.nome ?? ''}`);
+  result.push(`Suserano · ${ficha.suserano ?? ''}`);
+  result.push(`Região · ${ficha.regiao ?? ''}`);
+  result.push(`Lorde · ${ficha.lorde ?? ''}`);
+  result.push(`Lema · ${ficha.lema ?? ''}`);
+  result.push(`Fundação · ${ficha.fundacao ?? ''}`);
+  result.push(`Arma · ${ficha.arma ?? ''}`);
+  result.push(`Herdeiro · ${ficha.herdeiro ?? ''}`);
+  result.push(`Fortaleza · ${ficha.fortaleza ?? ''}`);
+
+  if (ficha.atributos && ficha.atributos.length > 0) {
+    result.push('');
+    result.push('Atributos da Casa');
+    result.push(ATRIBUTOS_CASA.join(' · '));
+    const vals = ATRIBUTOS_CASA.map(rotulo => {
+      const found = ficha.atributos.find(a => norm(a.rotulo) === norm(rotulo));
+      return found ? found.valor.toString() : '0';
+    });
+    result.push(vals.join(' · '));
+  }
+
+  if (ficha.eventos && ficha.eventos.length > 0) {
+    result.push('');
+    result.push('Eventos Historicos');
+    for (const evento of ficha.eventos) {
+      result.push(evento);
+    }
+  }
+
+  return result.filter(line => line !== null).join('\n');
+}
