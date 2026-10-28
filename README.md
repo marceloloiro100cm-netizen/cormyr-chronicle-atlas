@@ -35,7 +35,7 @@ bun run dev
 Antes de enviar alterações:
 
 ```sh
-node --test scripts/archive.test.mjs
+node --test scripts/*.test.mjs
 bun run test
 bun run build
 ```

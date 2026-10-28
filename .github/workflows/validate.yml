@@ -27,7 +27,7 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
       - name: Validate public archive
-        run: node --test scripts/archive.test.mjs
+        run: node --test scripts/*.test.mjs
       - name: Unit and component tests
         run: bun run test
       - name: Production build
