@@ -22,7 +22,7 @@ describe('interface de missivas',()=>{
   fireEvent.change(screen.getByLabelText('Caixa'),{target:{value:'rascunhos'}});
   fireEvent.click(screen.getByRole('button',{name:/Ordem enviada/}));
   fireEvent.click(screen.getByRole('button',{name:'Editar rascunho'}));
-  fireEvent.change(screen.getByLabelText('Resposta'),{target:{value:'Texto atualizado'}});
+  fireEvent.change(screen.getByRole('textbox',{name:'Resposta'}),{target:{value:'Texto atualizado'}});
   fireEvent.click(screen.getAllByRole('button',{name:'Salvar rascunho'})[0]!);
   await waitFor(()=>expect(rpc).toHaveBeenCalledWith('save_weekly_reply_draft',{p_id:'draft',p_letter:'letter',p_reply:'reply',p_content:'Texto atualizado'}));
  });

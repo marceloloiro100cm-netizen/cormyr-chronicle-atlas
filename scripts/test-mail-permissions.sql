@@ -32,6 +32,9 @@ DO $$ BEGIN
  BEGIN PERFORM public.edit_letter_draft('00000000-0000-0000-0000-000000000200',2,'Draft','Stale'); RAISE EXCEPTION 'stale version accepted';
  EXCEPTION WHEN raise_exception THEN IF SQLERRM='stale version accepted' THEN RAISE; END IF; END;
 END $$;
+SELECT public.schedule_letter_draft('00000000-0000-0000-0000-000000000200',1);
+SELECT public.mark_letter_read('00000000-0000-0000-0000-000000000200');
+SELECT pg_temp.assert((SELECT count(*)=1 FROM letter_receipts WHERE letter_id='00000000-0000-0000-0000-000000000200'),'author can mark own delivered thread read');
 SELECT public.save_weekly_reply_draft('00000000-0000-0000-0000-000000000201','00000000-0000-0000-0000-000000000100',NULL,'Saved reply');
 SELECT public.save_weekly_reply_draft('00000000-0000-0000-0000-000000000201','00000000-0000-0000-0000-000000000100',NULL,'Edited reply');
 SELECT pg_temp.assert(public.reply_delivery_week('00000000-0000-0000-0000-000000000001')=1,'player to GM same week');
@@ -39,12 +42,14 @@ SELECT pg_temp.assert(public.reply_delivery_week('00000000-0000-0000-0000-000000
 SELECT public.schedule_weekly_reply_draft((SELECT id FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000201'));
 SELECT pg_temp.assert((SELECT publication_state='delivered' FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000201'),'draft reply delivered now');
 SELECT public.save_weekly_reply_draft('00000000-0000-0000-0000-000000000202','00000000-0000-0000-0000-000000000100',NULL,'Will become inaccessible');
+SELECT id AS stale_draft_id FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000202' \gset
 RESET ROLE;
 UPDATE campaign_letters SET deleted_at=now() WHERE id='00000000-0000-0000-0000-000000000100';
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert((SELECT count(*)=0 FROM letter_replies),'deleted parent hides replies from author');
-DO $$ BEGIN
- BEGIN PERFORM public.schedule_weekly_reply_draft((SELECT id FROM public.letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000202')); RAISE EXCEPTION 'deleted parent accepted';
+SELECT set_config('test.stale_draft', :'stale_draft_id', true);
+DO $ BEGIN
+ BEGIN PERFORM public.schedule_weekly_reply_draft(current_setting('test.stale_draft')::uuid); RAISE EXCEPTION 'deleted parent accepted';
  EXCEPTION WHEN raise_exception THEN IF SQLERRM='deleted parent accepted' THEN RAISE; END IF; END;
 END $$;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000005',true);
@@ -67,4 +72,5 @@ SELECT pg_temp.assert((SELECT delivery_week=2 FROM letter_replies WHERE idempote
 SELECT public.save_weekly_reply_draft('00000000-0000-0000-0000-000000000204','00000000-0000-0000-0000-000000000100','00000000-0000-0000-0000-000000000101','Next round draft');
 SELECT public.schedule_weekly_reply_draft((SELECT id FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000204'));
 SELECT pg_temp.assert((SELECT delivery_week=2 FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000204'),'draft matches direct reply');
+SELECT pg_temp.assert(NOT has_function_privilege('authenticated','public.can_export_mail(text,uuid,uuid)','EXECUTE'),'export authorization is service only');
 ROLLBACK;
