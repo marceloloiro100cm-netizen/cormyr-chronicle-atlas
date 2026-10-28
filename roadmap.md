@@ -2,7 +2,7 @@
 
 ## Hub de casa nobre — 24/10 21:38 UTC
 - [x] Pedido26/10 00:34: comparação por fonte/bloco de Everlost e Harcourt disponível; valores reais conferidos na conta do Narrador e12 testes aprovados; posses/tropas intactas, sem publicação.
-- [ ] Aplicar decisão do Narrador: Casa Everlost e bloco identificado Harcourt; preservar compras, não importar posses/tropas.
+- [x] Decisão aplicada: Casa Everlost10/20/20/40/29/80/51 e bloco identificado Harcourt35/50/55/30/40/50/51; cópias de segurança e leitura de retorno confirmadas, posses/tropas vazias e originais preservados;14 testes aprovados, sem publicação.
 - [x] Pedido23:01: seis casas vinculadas com totais finais, backups e versões; leituraUI Ashkar50/50/20/30/10/50/40 confirmada,48 testes; Everlost fontes múltiplas e Harcourt identidade/totais divergentes aguardam decisão; posses/tropas legadas não importadas.
 - [x] Pedido22:54: Trocar Visão reversível no cabeçalho; totais na escala0–100, saldo intacto; computador/celular conferidos.
 - [x] Pedido22:50: exportação unidirecional ligada à pasta técnica existente, mapeamento próprio, ETag real/versões imutáveis, status e executor; 125 testes isolados aprovados; gravação real no Drive não executada.
