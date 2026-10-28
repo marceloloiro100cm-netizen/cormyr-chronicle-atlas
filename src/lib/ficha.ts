@@ -30,6 +30,8 @@ export type FichaCasa = {
   fortaleza: string | null;
   atributos: { rotulo: string; valor: number }[];
   eventos: string[];
+  posses: string[];
+  exercitos: string[];
 };
 
 const norm = (value: string) => value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
@@ -118,6 +120,26 @@ export function parseFichaCasa(text: string): FichaCasa {
       else if (parts.length > 1 && eventos.length > 0) break;
     }
   }
+
+  const posses: string[] = [];
+  const exercitos: string[] = [];
+  for (const line of lines) {
+    const parts = cells(line);
+    if (parts.length >= 2) {
+      const firstNorm = norm(parts[0] ?? '');
+      if (firstNorm === 'posse' || firstNorm === 'posses') {
+        for (let i = 1; i < parts.length; i++) {
+          if (parts[i]) posses.push(parts[i]!);
+        }
+      }
+      if (firstNorm === 'exercito' || firstNorm === 'exercitos' || firstNorm === 'tropa' || firstNorm === 'tropas' || firstNorm === 'unidade' || firstNorm === 'unidades') {
+        for (let i = 1; i < parts.length; i++) {
+          if (parts[i]) exercitos.push(parts[i]!);
+        }
+      }
+    }
+  }
+
   return {
     nome: valueAfter(lines, 'Nome'),
     suserano: valueAfter(lines, 'Susserano') ?? valueAfter(lines, 'Suserano'),
@@ -130,6 +152,8 @@ export function parseFichaCasa(text: string): FichaCasa {
     fortaleza: valueAfter(lines, 'Fortaleza'),
     atributos,
     eventos,
+    posses,
+    exercitos,
   };
 }
 
@@ -187,6 +211,20 @@ export function serializeFichaCasa(ficha: FichaCasa): string {
     result.push('Eventos Historicos');
     for (const evento of ficha.eventos) {
       result.push(evento);
+    }
+  }
+
+  if (ficha.posses && ficha.posses.length > 0) {
+    result.push('');
+    for (const posse of ficha.posses) {
+      result.push(`Posses · ${posse}`);
+    }
+  }
+
+  if (ficha.exercitos && ficha.exercitos.length > 0) {
+    result.push('');
+    for (const exercito of ficha.exercitos) {
+      result.push(`Exercito · ${exercito}`);
     }
   }
 
