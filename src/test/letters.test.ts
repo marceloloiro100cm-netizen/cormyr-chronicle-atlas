@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterLetters, groupReceivedLetters, isLetterRead, nextLetterNumber, pendingRoundHouses, sentLetters, unreadReceivedCount, type LetterRow } from '@/lib/letters';
+import { filterLetters, hasDeliveredAnswer, matchesLetterBox, groupReceivedLetters, isLetterRead, nextLetterNumber, pendingRoundHouses, sentLetters, unreadReceivedCount, type LetterRow } from '@/lib/letters';
 
 const row = (over: Partial<LetterRow>): LetterRow => ({
   id: crypto.randomUUID(),
@@ -84,7 +84,7 @@ describe('nextLetterNumber', () => {
 describe('Narrator management filters',()=>{
   const context={userId:'narrador',admin:true,players:[{id:'player',user_id:'jogador',roster_house_id:'ashkar'}],receipts:[] as {letter_id:string;user_id:string}[]};
   it('filters by the house of a player writing to the Narrator',()=>{const incoming=row({sender_user_id:'jogador',sender_player_id:'player',recipient_house_id:null});expect(filterLetters([incoming,row({})],[],{number:'',kind:'',answered:'',house:'ashkar'},context)).toEqual([incoming]);});
-  it('filters unread outgoing letters using player receipts rather than narrator receipts',()=>{const a=row({id:'a'}),b=row({id:'b'});const ctx={...context,receipts:[{letter_id:'a',user_id:'narrador'},{letter_id:'b',user_id:'jogador'}]};expect(filterLetters([a,b],[],{number:'',kind:'',answered:'',read:'no'},ctx)).toEqual([a]);});
+  it('filters outgoing conversations using the viewer receipt',()=>{const a=row({id:'a'}),b=row({id:'b'});const ctx={...context,receipts:[{letter_id:'a',user_id:'narrador'},{letter_id:'b',user_id:'jogador'}]};expect(filterLetters([a,b],[],{number:'',kind:'',answered:'',read:'no'},ctx)).toEqual([b]);});
   it('filters unread incoming letters using the narrator receipt',()=>{const a=row({id:'a',sender_user_id:'jogador'}),b=row({id:'b',sender_user_id:'jogador'});const ctx={...context,receipts:[{letter_id:'a',user_id:'jogador'},{letter_id:'b',user_id:'narrador'}]};expect(filterLetters([a,b],[],{number:'',kind:'',answered:'',read:'no'},ctx)).toEqual([a]);});
   it('combines house, number, reserved type and unanswered filters',()=>{const a=row({id:'a',letter_kind:'reservada',letter_number:2});const b=row({id:'b',letter_kind:'reservada',letter_number:2});expect(filterLetters([a,b,row({})],[{letter_id:'b'}],{house:'erdenor',number:'2',kind:'reservada',answered:'no'},context)).toEqual([a]);});
 });
@@ -130,4 +130,27 @@ describe('contador de missivas não lidas',()=>{
     const receipts=[{letter_id:'a',user_id:'jogador',read_at:'2026-10-20T10:00:00Z'},{letter_id:'b',user_id:'narrador',read_at:'2026-10-20T10:00:00Z'}];
     expect(unreadReceivedCount(letters,[],receipts,'narrador')).toBe(1);
   });
+});
+
+describe('regressões de entrega e caixas',()=>{
+ const letter=row({id:'thread',sender_user_id:'author',publication_state:'delivered'});
+ const reply={letter_id:letter.id,author_user_id:'recipient',publication_state:'delivered',created_at:'2026-10-28T12:00:00Z'};
+ it('não considera rascunho, resposta futura ou do próprio autor como resposta recebida',()=>{
+  for(const r of [{...reply,publication_state:'draft'},{...reply,publication_state:'scheduled'},{...reply,author_user_id:'author'}])expect(hasDeliveredAnswer(letter,[r])).toBe(false);
+  expect(hasDeliveredAnswer(letter,[reply])).toBe(true);
+ });
+ it('conta resposta recebida numa missiva enviada pelo usuário',()=>{
+  expect(unreadReceivedCount([letter],[reply],[],'author')).toBe(1);
+  expect(unreadReceivedCount([letter],[{...reply,publication_state:'scheduled'}],[],'author')).toBe(0);
+ });
+ it('ignora atividade própria e futura após leitura',()=>{
+  const receipt={letter_id:letter.id,user_id:'author',read_at:'2026-10-28T11:00:00Z'};
+  expect(isLetterRead(letter.id,receipt,[{...reply,author_user_id:'author'},{...reply,publication_state:'scheduled'}])).toBe(true);
+  expect(isLetterRead(letter.id,receipt,[reply])).toBe(false);
+ });
+ it('encontra rascunho e resposta programada numa conversa entregue',()=>{
+  expect(matchesLetterBox(letter,[{...reply,publication_state:'draft'}],'rascunhos')).toBe(true);
+  expect(matchesLetterBox(letter,[{...reply,publication_state:'scheduled'}],'programadas')).toBe(true);
+  expect(matchesLetterBox({...letter,deleted_at:'now'},[reply],'historico')).toBe(false);
+ });
 });

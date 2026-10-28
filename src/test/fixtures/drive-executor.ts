@@ -21,6 +21,16 @@ export function isolatedExecutor(){
   const method=init?.method??'GET',name=url.pathname.split('/').at(-1)??'';
   const body=init?.body?JSON.parse(String(init.body)) as Row:{};
   if(url.pathname.includes('/rpc/')){
+   if(name==='can_export_mail'){
+    const viewer=body['p_viewer'],type=body['p_type'];
+    const admin=rows('user_roles').some(r=>r['user_id']===viewer&&r['role']==='admin');
+    const player=rows('campaign_players').find(p=>p['user_id']===viewer&&p['active']!==false&&!p['require_password_change']);
+    const member=(house:unknown)=>player&&rows('house_memberships').some(m=>m['player_id']===player['id']&&m['house_id']===house);
+    const readable=(l:Row)=>admin||Boolean(player&&(l['sender_user_id']===viewer||l['recipient_player_id']===player['id']||(!l['recipient_player_id']&&member(l['recipient_house_id']))));
+    const row=rows(type==='letter'?'campaign_letters':'letter_replies').find(r=>r['id']===body['p_id']);
+    const l=type==='letter'?row:rows('campaign_letters').find(l=>l['id']===row?.['letter_id']);
+    return Response.json(Boolean(row&&l&&!l['deleted_at']&&(!row['publication_state']||row['publication_state']==='delivered')&&(!l['publication_state']||l['publication_state']==='delivered')&&readable(l)&&(type==='letter'||admin||row['author_user_id']===viewer||row['recipient_user_id']===viewer||member(row['house_id']))));
+   }
    if(name==='claim_drive_binding'){
     const b=rows('drive_sync_bindings').find(r=>r['id']===body['p_id']);
     const claim=Boolean(b&&b['enabled']&&b['privacy_reviewed']&&b['runtime_authorized']&&(!b['lease_until']||String(b['lease_until'])<new Date().toISOString()));

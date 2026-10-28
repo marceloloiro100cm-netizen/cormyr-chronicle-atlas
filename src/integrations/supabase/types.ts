@@ -1264,6 +1264,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      mark_letter_read: { Args: { p_id: string }; Returns: undefined }
+      reply_delivery_week: { Args: { p_recipient: string }; Returns: number | null }
+      can_export_mail: { Args: { p_type: string; p_id: string; p_viewer: string }; Returns: boolean }
+      edit_letter_draft: { Args: { p_id:string; p_version:number; p_subject:string; p_content:string }; Returns: Json }
+
       admin_save_player_account: {
         Args: {
           p_active: boolean

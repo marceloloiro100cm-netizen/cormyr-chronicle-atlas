@@ -22,24 +22,15 @@ async function siteEnvelope(db:DB,type:string,id:string,b:Binding):Promise<Envel
       const member=check(await db.from('house_memberships').select('player_id').eq('house_id',houseId).eq('player_id',b.player_id).maybeSingle()).data;
       if(!member)return null;visibility='player';playerId=b.player_id;
     }
-  }else if(type==='letter'){
-    playerId=text(r,'recipient_player_id')||null;houseId=text(r,'recipient_house_id')||null;visibility=playerId?'player':'house';
-    if(b.scope==='master'){visibility='master';}
-    if(b.scope==='player'&&b.player_id){
-      const p=check(await db.from('campaign_players').select('user_id').eq('id',b.player_id).maybeSingle()).data;
-      const member=houseId?check(await db.from('house_memberships').select('player_id').eq('house_id',houseId).eq('player_id',b.player_id).maybeSingle()).data:null;
-      if(playerId===b.player_id||member||p?.user_id===r['sender_user_id']){visibility='player';playerId=b.player_id;houseId=b.house_id;}
-      else return null;
-    }
   }else{
-    const l=check(await db.from('campaign_letters').select('*').eq('id',text(r,'letter_id')).single()).data;
-    if(!l)return null;
-    // Replies are copied only to the original audience and the sender's explicitly approved private/master folder.
-    const p=b.player_id?check(await db.from('campaign_players').select('user_id').eq('id',b.player_id).maybeSingle()).data:null;
-    if(b.scope==='master'&&(b.owner_user_id===r['recipient_user_id']||b.owner_user_id===r['author_user_id']))visibility='master';
-    else if(b.scope==='player'&&(b.player_id===l.recipient_player_id||p?.user_id===r['recipient_user_id']||p?.user_id===r['author_user_id'])){visibility='player';playerId=b.player_id;}
-    // A private reply to a general letter must not fan out to a house folder.
-    else return null;
+    // Mail exports use the database audience, including active membership and parent visibility.
+    // Shared folders cannot represent a per-user authorization decision.
+    if(b.scope!=='player'&&b.scope!=='master')return null;
+    const permitted=check(await db.rpc('can_export_mail',{p_type:type,p_id:id,p_viewer:b.owner_user_id})).data;
+    if(!permitted)return null;
+    visibility=b.scope==='master'?'master':'player';
+    playerId=b.scope==='player'?b.player_id:null;
+    houseId=b.scope==='player'?b.house_id:null;
   }
   const version=type==='reply'?1:Number(r['version']??1);
   const e=envelopeSchema.parse({schema:'cormyr-record-v1',entityType:type,id,houseId,playerId,visibility,version,baseVersion:Math.max(version-1,0),title:text(r,type==='record'?'title':type==='letter'?'subject':'author_name'),content:text(r,'content'),...(type==='record'?{kind:r['kind']}:{}),...(type==='reply'?{letterId:r['letter_id']}:{}),createdAt:text(r,'created_at'),updatedAt:text(r,'updated_at')||text(r,'created_at'),authorName:text(r,type==='letter'?'sender_name':'author_name'),mutationId:id,origin:'site'});
