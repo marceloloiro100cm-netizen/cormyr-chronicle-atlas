@@ -4,16 +4,40 @@ export type Balance = { total: Resources; allocated: Resources; committed: Resou
 export function balances(state: HouseState): Balance {
   const regional = state.regionalApplied && state.method !== 'import' ? regionBonus(state.identity.region) : zeroResources();
   const total = zeroResources(), allocated = zeroResources(), committed = zeroResources(), available = zeroResources();
-  for (const r of RESOURCE_KEYS) total[r] = state.base[r] + state.permanent[r] + regional[r];
-  for (const holding of state.holdings) {
+  for (let i = 0, len = RESOURCE_KEYS.length; i < len; i++) {
+    const r = RESOURCE_KEYS[i];
+    total[r] = state.base[r] + state.permanent[r] + regional[r];
+  }
+  const holdings = state.holdings;
+  for (let i = 0, len = holdings.length; i < len; i++) {
+    const holding = holdings[i];
     // A condition change never authorizes reimbursement; an audited correction must do that.
-    for (const cost of holding.costs) if (cost.mode === 'allocation') {
-      if (holding.status === 'building') committed[cost.resource] += cost.amount;
-      else allocated[cost.resource] += cost.amount;
+    const isBuilding = holding.status === 'building';
+    const costs = holding.costs;
+    for (let j = 0, clen = costs.length; j < clen; j++) {
+      const cost = costs[j];
+      if (cost.mode === 'allocation') {
+        if (isBuilding) committed[cost.resource] += cost.amount;
+        else allocated[cost.resource] += cost.amount;
+      }
     }
   }
-  for (const unit of state.units) if(!unit.destroyed) for (const cost of unit.costs) if (cost.mode === 'allocation') allocated[cost.resource] += cost.amount;
-  for (const r of RESOURCE_KEYS) available[r] = total[r] - allocated[r] - committed[r];
+  const units = state.units;
+  for (let i = 0, len = units.length; i < len; i++) {
+    const unit = units[i];
+    if (unit.destroyed) continue;
+    const costs = unit.costs;
+    for (let j = 0, clen = costs.length; j < clen; j++) {
+      const cost = costs[j];
+      if (cost.mode === 'allocation') {
+        allocated[cost.resource] += cost.amount;
+      }
+    }
+  }
+  for (let i = 0, len = RESOURCE_KEYS.length; i < len; i++) {
+    const r = RESOURCE_KEYS[i];
+    available[r] = total[r] - allocated[r] - committed[r];
+  }
   return {total, allocated, committed, available, permanent: state.permanent};
 }
 export function validateResources(values: Resources) { for (const r of RESOURCE_KEYS) if (!Number.isFinite(values[r]) || Math.abs(values[r]) > 100000) throw new Error('Valor de recurso inválido.'); }
