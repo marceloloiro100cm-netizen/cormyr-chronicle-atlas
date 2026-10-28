@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import DOMPurify from 'dompurify';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 
@@ -68,7 +69,7 @@ export function GmAventuras() {
           <header><span className="campaign-eyebrow">{a.season}</span><span className="text-sm text-muted-foreground">{a.status}</span></header>
           <h3>{a.title}</h3>
           <p>{a.summary}</p>
-          <details><summary>Ler a aventura completa</summary><div className="campaign-prose" dangerouslySetInnerHTML={{ __html: a.content }} /></details>
+          <details><summary>Ler a aventura completa</summary><div className="campaign-prose" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(a.content) }} /></details>
         </article>
       ))}
     </section>
