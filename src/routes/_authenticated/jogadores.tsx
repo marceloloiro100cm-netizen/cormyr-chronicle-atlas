@@ -1,43 +1,30 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PlayerRepresentation } from '@/components/player-representation';
-import { PlayerAccountForm } from '@/components/player-account-form';
 import { ChangePassword, ChangePasswordButton } from '@/components/change-password';
 import { NpcHub, CollapsibleText } from '@/components/npc-hub';
-import { NobleHouseHub } from '@/components/house/hub';
 import { HouseReconciliation } from '@/components/house/reconciliation';
 import { CampaignShell } from '@/components/campaign-shell';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, ChevronDown } from 'lucide-react';
-import { CampaignContent, ImagePicker, PrivateImage, uploadImages, type PendingImage } from '@/components/campaign-content';
-import { namedCharacters, narrativeText } from '@/lib/campaign-content';
-import { FichaCasaCard, FichaPersonagemCard, portraitPath } from '@/components/ficha';
-import { isFichaCasa, isFichaPersonagem, parseFichaPersonagem } from '@/lib/ficha';
+import { RefreshCw } from 'lucide-react';
+import { CampaignContent } from '@/components/campaign-content';
+import { narrativeText } from '@/lib/campaign-content';
+import { isFichaCasa, isFichaPersonagem } from '@/lib/ficha';
 import { GmEventos, GmAventuras } from '@/components/gm-panels';
 import { syncPlayerFolder } from '@/lib/player-sync.functions';
-import { registerPlayer, retryFolderSync, organizeDriveFiles, refreshPublicArchive } from '@/lib/campaign.functions';
-import { DriveSyncAdmin } from '@/components/drive-sync-admin';
-import { filterLetters, groupReceivedLetters, isLetterRead, nextLetterNumber, pendingRoundHouses, sentLetters, unreadReceivedCount, type LetterRow } from '@/lib/letters';
-import type { Database } from '@/integrations/supabase/types';
+import { refreshPublicArchive } from '@/lib/campaign.functions';
+import { unreadReceivedCount, type LetterRow } from '@/lib/letters';
+import { loadPanel } from '@/components/players/panel-data';
+import { RecordList, RecordEditor, RecordForm } from '@/components/players/records';
+import { FichaTab } from '@/components/players/ficha-tab';
+import { AdminPanel } from '@/components/players/admin-panel';
+import { MissivasTab } from '@/components/players/missivas-tab';
 
-type RecordRow = Database['public']['Tables']['campaign_records']['Row'];
-const date=(value:string)=>new Date(value).toLocaleString('pt-BR');
-const syncLabel=(state:string)=>({pending:'Salvo no site · pasta pendente',synced:'Sincronizado',error:'Erro de sincronização',conflict:'Conflito de versões'}[state]??state);
 export const Route=createFileRoute('/_authenticated/jogadores')({head:()=>({meta:[{title:'Conselho dos jogadores — Cormyr Chronicle'},{name:'description',content:'Casas, personagens, documentos e missivas da segunda temporada.'},{property:'og:title',content:'Conselho dos jogadores — Cormyr Chronicle'},{property:'og:description',content:'Painel reservado aos jogadores autorizados da campanha.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary'}]}),component:Players});
 
-async function loadPanel(){
-  const {data:{user},error:authError}=await supabase.auth.getUser();if(authError||!user)throw new Error('Sessão expirada.');
-  const {data:admin,error:roleError}=await supabase.rpc('is_campaign_admin');if(roleError)throw roleError;
-  const [houses,players,members,records,letters,receipts,catalog]=await Promise.all([
-    supabase.from('campaign_houses').select('*').order('name'),supabase.from('campaign_players').select('*').order('name'),supabase.from('house_memberships').select('*'),supabase.from('campaign_records').select('*').order('updated_at',{ascending:false}),supabase.from('campaign_letters').select('*').order('created_at',{ascending:false}),supabase.from('letter_receipts').select('*'),supabase.from('house_catalog').select('id,name').order('name')]);
-  for(const result of [houses,players,members,records,letters,receipts,catalog])if(result.error)throw result.error;
-  const replies=await supabase.from('letter_replies').select('*').order('created_at');if(replies.error)throw replies.error;
-  const rounds=await supabase.from('letter_rounds').select('*');if(rounds.error)throw rounds.error;
-  return {user,catalog:catalog.data??[],admin:Boolean(admin),houses:houses.data??[],players:players.data??[],members:members.data??[],records:records.data??[],letters:letters.data??[],receipts:receipts.data??[],replies:replies.data??[],rounds:rounds.data??[]};
-}
 function Players(){
   const navigate=useNavigate(), qc=useQueryClient();
   const {data,error,isPending}=useQuery({queryKey:['campaign-panel'],queryFn:loadPanel});
@@ -69,194 +56,4 @@ function Players(){
     {data.admin?<div className="campaign-layout"><aside className="campaign-side" aria-label="Menu do Narrador"><p className="campaign-eyebrow">NARRADOR</p>{[['painel','Conselho das casas'],['conciliação','Conciliação das casas'],['eventos','Eventos'],['aventuras','Aventuras']].map(([id,label])=><button key={id} type="button" className={section===id?'ativo':''} aria-pressed={section===id} onClick={()=>setSection(id??'painel')}>{label}</button>)}</aside><div>{section==='conciliação'?<HouseReconciliation houses={authorized} records={data.records} admin={data.admin}/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:conselho}</div></div>:conselho}
     <p role="status">{message}</p>{busy&&<span role="status">Salvando…</span>}
   </CampaignShell>;
-}
-
-function FichaTab({current,records,canEdit,onSave}:{current:Panel['houses'][number];records:RecordRow[];canEdit:boolean;onSave:()=>unknown}){
-  const [view,setView]=useState<'house'|'character'|'legacy'>('house');
-  const fichaCasa=records.find(r=>isFichaCasa(r.title,r.content));
-  const fichaLorde=records.find(r=>isFichaPersonagem(r.title,r.content));
-  const retratos=records.map(r=>({titulo:r.title,path:portraitPath(r.content)})).filter((r):r is {titulo:string;path:string}=>Boolean(r.path));
-  const norm=(s:string)=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
-  const retratoDo=(nome:string|null)=>nome?(retratos.find(r=>norm(r.titulo)===norm(nome)||norm(r.titulo).includes(norm(nome))||norm(nome).includes(norm(r.titulo)))?.path??null):null;
-  const npcs=records.filter(r=>r.kind==='character'&&!isFichaPersonagem(r.title,r.content)&&!portraitPath(r.content));
-  const fichaLordeParsed=fichaLorde?parseFichaPersonagem(fichaLorde.content):null;
-  return <section>
-    <nav className="campaign-tabs" aria-label="Tipo de ficha"><Button variant={view==='house'?'default':'outline'} aria-pressed={view==='house'} onClick={()=>setView('house')}>Ficha da Casa</Button><Button variant={view==='character'?'default':'outline'} aria-pressed={view==='character'} onClick={()=>setView('character')}>Ficha do Personagem</Button><Button variant={view==='legacy'?'default':'ghost'} aria-pressed={view==='legacy'} onClick={()=>setView('legacy')}>Ficha anterior preservada</Button></nav>
-    {view==='house'&&<NobleHouseHub house={current} records={records} canEdit={canEdit} npcs={records.filter(r=>r.kind==='character'&&!isFichaPersonagem(r.title,r.content)).map(r=>({id:r.id,title:r.title}))} courtMembers={records.filter(r=>r.kind==='character').map(r=>({id:r.id,title:r.title}))}/>}
-    {view==='legacy'&&<><h2>Ficha da casa — registro anterior</h2>
-    {fichaCasa?<><FichaCasaCard content={fichaCasa.content} crest={current.crest} houseName={current.name}/>{canEdit&&<details className="campaign-add"><summary>Editar ficha da casa</summary><RecordEditor row={fichaCasa} canEdit={canEdit} onSave={onSave}/></details>}</>:<p className="campaign-empty">A ficha da casa ainda não foi encontrada na pasta. Use o botão Atualizar após adicioná-la ao Drive.</p>}
-    </>}
-    {view==='character'&&<>
-    <h2>Ficha do lorde</h2>
-    {fichaLorde?<><FichaPersonagemCard content={fichaLorde.content} portrait={retratoDo(fichaLordeParsed?.nome??current.lord_name)} titulo={fichaLorde.title}/>{canEdit&&<details className="campaign-add"><summary>Editar ficha do lorde</summary><RecordEditor row={fichaLorde} canEdit={canEdit} onSave={onSave}/></details>}</>:<p className="campaign-empty">A ficha do lorde ainda não foi encontrada na pasta.</p>}
-    <h2>Corte</h2>
-    {npcs.length===0&&<p className="campaign-empty">Nenhum integrante da Corte com ficha de texto até agora.</p>}
-    {npcs.map(r=><details className="campaign-add" key={r.id}><summary>{r.title}</summary><CampaignContent content={r.content}/>{canEdit&&<RecordEditor row={r} canEdit={canEdit} onSave={onSave}/>}</details>)}
-    {retratos.length>0&&<><h2>Retratos e imagens</h2><div className="campaign-house-gallery">{retratos.map(r=><PrivateImage key={r.path} path={r.path} caption={r.titulo}/>)}</div></>}
-    </>}
-  </section>;
-}
-
-function RecordList({rows,narrativeOnly=false,canEdit,onSave}:{rows:RecordRow[];narrativeOnly?:boolean;canEdit:boolean;onSave:()=>unknown}){
-  return rows.length?<div>{rows.map(row=><RecordEditor key={row.id} row={row} narrativeOnly={narrativeOnly} canEdit={canEdit} onSave={onSave}/>)}</div>:<p className="campaign-empty">Nenhum registro cadastrado. Documentos existentes no acervo original foram preservados e não são importados automaticamente para esta área privada.</p>;
-}
-function RecordEditor({row,narrativeOnly=false,canEdit,onSave}:{row:RecordRow;narrativeOnly?:boolean;canEdit:boolean;onSave:()=>unknown}){
-  const [editing,setEditing]=useState(false),[title,setTitle]=useState(row.title),[content,setContent]=useState(row.content),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
-  const [images,setImages]=useState<PendingImage[]>([]);
-  const {data:versions=[]}=useQuery({queryKey:['versions',row.id,row.version],enabled:editing,queryFn:async()=>{const {data,error}=await supabase.from('record_versions').select('id,version,created_at,author,snapshot').eq('record_id',row.id).order('version',{ascending:false});if(error)throw error;return data??[];}});
-  return <article className="campaign-record"><header><span className="campaign-eyebrow">{row.visibility==='house'?'Compartilhado da casa':row.visibility==='gm'?'Segredo do mestre':'Privado do jogador'}</span><span className="text-sm text-muted-foreground">v{row.version}</span></header>{editing?<form className="campaign-form" onSubmit={async e=>{e.preventDefault();setBusy(true);let richContent;try{richContent=await uploadImages(content,images,crypto.randomUUID());}catch(err){setMessage(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const {error}=await supabase.rpc('save_campaign_record',{p_id:row.id,p_version:row.version,p_title:title,p_content:richContent});if(error)setMessage(error.message);else{setEditing(false);setImages([]);onSave();}setBusy(false);}}><label>Título<input required value={title} onChange={e=>setTitle(e.target.value)}/></label><label>Conteúdo<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label><ImagePicker images={images} onChange={setImages} disabled={busy}/><div className="campaign-actions"><Button disabled={busy}>Salvar nova versão</Button><Button type="button" variant="outline" onClick={()=>setEditing(false)}>Cancelar</Button></div><p role="status">{message}</p><details><summary>Histórico de versões</summary>{versions.map(v=><div key={v.id}><p>Versão {v.version} · {date(v.created_at)} · Autor: {v.author}</p><pre className="campaign-preserve">{typeof v.snapshot==='object'&&v.snapshot&&'content' in v.snapshot?String(v.snapshot['content']):''}</pre></div>)}</details></form>:<><h3>{row.title}</h3><CampaignContent content={narrativeOnly?narrativeText(row.content):row.content}/>{canEdit&&<Button variant="outline" onClick={()=>{setTitle(row.title);setContent(row.content);setEditing(true);}}>Editar</Button>}</>}<p className="text-sm text-muted-foreground">{syncLabel(row.sync_state)} · atualizado {date(row.updated_at)} · autor: {row.updated_by} · última sincronização: {row.last_synced_at?date(row.last_synced_at):'nunca'}</p></article>;
-}
-function RecordForm({houseId,playerId,admin,onSave,kind}:{houseId:string;playerId?:string|undefined;admin:boolean;onSave:()=>unknown;kind:'document'|'character'}){
-  const [title,setTitle]=useState(''),[content,setContent]=useState(''),[visibility,setVisibility]=useState<'house'|'player'|'gm'>(playerId?'player':'house'),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);const key=useRef<string|null>(null);
-  const [images,setImages]=useState<PendingImage[]>([]);
-  return <details className="campaign-add"><summary>{kind==='document'?'Adicionar documento / importar texto':'Adicionar personagem ou informações'}</summary><form className="campaign-form" onSubmit={async e=>{e.preventDefault();setBusy(true);const {data:{user}}=await supabase.auth.getUser();if(!user){setMessage('Sessão expirada.');setBusy(false);return;}key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(content,images,key.current);}catch(err){setMessage(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const {error}=await supabase.from('campaign_records').insert({id:key.current,title,content:richContent,visibility,kind,house_id:houseId,player_id:visibility==='player'?(playerId??null):null,created_by:user.id,updated_by:user.id});if(error){if(error.code==='23505'){onSave();setMessage('Este registro já foi salvo.');}else setMessage(error.message);}else{key.current=null;setTitle('');setContent('');setImages([]);setMessage('Salvo no site. Atualizando pasta…');onSave();}setBusy(false);}}><label>Título / nome<input required value={title} onChange={e=>setTitle(e.target.value)}/></label><label>Visibilidade<select value={visibility} onChange={e=>setVisibility(e.target.value as 'house'|'player'|'gm')}><option value="house">Compartilhado da casa</option>{playerId&&<option value="player">Privado do jogador</option>}{admin&&<option value="gm">Segredo do mestre</option>}</select></label>{kind==='document'&&<label>Importar arquivo de texto<input type="file" accept=".txt,.md" onChange={async e=>{const file=e.target.files?.[0];if(file){if(file.size>2_000_000){setMessage('Limite de importação: 2 MB.');return;}setContent(await file.text());if(!title)setTitle(file.name);}}}/></label>}<label>{kind==='character'?'Descrição do personagem / informações':'Conteúdo'}<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label><ImagePicker images={images} onChange={setImages} disabled={busy}/><Button disabled={busy}>Salvar</Button><p role="status">{message}</p></form></details>;
-}
-function ReplyForm({letterId,replyId,deliveryWeek,onSave}:{letterId:string;replyId?:string;deliveryWeek:number|null;onSave:()=>unknown}){
-  const [open,setOpen]=useState(false),[content,setContent]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);const key=useRef<string|null>(null);
-  const [images,setImages]=useState<PendingImage[]>([]);
-  return open?<form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(content,images,key.current);}catch(err){setMessage(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const draft=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';const {error}=draft?await supabase.rpc('save_weekly_reply_draft',{p_id:key.current,p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent}):await supabase.rpc('reply_weekly_message',{p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent,p_key:key.current,p_draft:false});if(error)setMessage(error.message);else{key.current=null;setContent('');setImages([]);setOpen(false);onSave();}setBusy(false);}}><p role="status">{deliveryWeek?`Esta resposta será entregue na Semana ${deliveryWeek}, quando o narrador a abrir.`:"Sem semana aberta."}</p><label>Resposta<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label><ImagePicker images={images} onChange={setImages} disabled={busy}/><div className="campaign-actions"><Button name="action" value="draft" variant="outline" disabled={busy}>Salvar rascunho</Button><Button disabled={busy||deliveryWeek===null}>{busy?'Salvando…':'Enviar resposta'}</Button></div><p role="status">{message}</p></form>:<Button onClick={()=>setOpen(true)}>Responder</Button>;
-}
-
-type Panel=Awaited<ReturnType<typeof loadPanel>>;
-function AdminPanel({data,onSave}:{data:Panel;onSave:()=>unknown}){
-  const register=useServerFn(registerPlayer),retry=useServerFn(retryFolderSync),organize=useServerFn(organizeDriveFiles);
-  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false);const mailKey=useRef<string|null>(null);
-  const {data:queue=[]}=useQuery({queryKey:['sync-queue'],queryFn:async()=>{const {data,error}=await supabase.from('sync_outbox').select('id,entity_type,state,error,created_at,attempts').order('created_at',{ascending:false});if(error)throw error;return data??[];}});
-  const {data:profiles=[]}=useQuery({queryKey:['admin-profiles'],queryFn:async()=>{const {data,error}=await supabase.from('profiles').select('*');if(error)throw error;return data??[];}});
-  async function action(fn:()=>Promise<unknown>){setBusy(true);setMessage('');try{await fn();onSave();setMessage('Salvo no site.');}catch(e){setMessage(e instanceof Error?e.message:'Não foi possível salvar.');}finally{setBusy(false);}}
-  return <section><h2>Administração da temporada</h2><p>{data.players.length} jogadores cadastrados · {data.houses.filter(h=>h.active&&h.season===2).length} casas ativas</p><p className="text-muted-foreground">Lista oficial cadastrada sem criar contas ou permissões. Grafias oficiais confirmadas: Silversky e Harcourt, já vinculadas ao acervo. Everlost permanece sem lorde.</p>
-    <details className="campaign-add" open><summary>Cadastrar jogador e autorizar casa</summary><form className="campaign-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action(()=>register({data:{name:String(f.get('name')),userId:String(f.get('user'))||null,houseId:String(f.get('house')),folderId:String(f.get('folder'))||null,canEdit:f.get('edit')==='on'}}));}}><label>Jogador<input name="name" required/></label><label>Conta autenticada<select name="user"><option value="">Ainda sem conta vinculada</option>{profiles.map(p=><option key={p.id} value={p.id}>{p.display_name||'Conta'} · {p.id}</option>)}</select></label><label>Casa<select name="house" required>{data.houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label><label>ID da pasta individual no Drive<input name="folder"/></label><label className="campaign-check"><input name="edit" type="checkbox" defaultChecked/>Pode editar informações autorizadas</label><Button disabled={busy}>Cadastrar e autorizar</Button></form></details>
-    <details className="campaign-add"><summary>Importar jogadores (JSON)</summary><label>Arquivo<input type="file" accept=".json" disabled={busy} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;action(async()=>{const rows:unknown=JSON.parse(await file.text());if(!Array.isArray(rows)||rows.length>200)throw new Error('Use uma lista JSON de até 200 jogadores.');for(const row of rows){if(!row||typeof row!=='object'||!('name' in row)||!('houseId' in row))throw new Error('Cada jogador precisa de name e houseId.');await register({data:{name:String(row.name),houseId:String(row.houseId),userId:'userId' in row&&row.userId?String(row.userId):null,folderId:'folderId' in row&&row.folderId?String(row.folderId):null,canEdit:'canEdit' in row?Boolean(row.canEdit):true}});}});}}/></label><p>Campos: name, houseId, userId (opcional), folderId (opcional), canEdit.</p></details>
-    <PlayerAccountForm houses={data.catalog} onSave={onSave}/>{data.players.map(p=><PlayerAccountForm key={p.id} houses={data.catalog} player={p} canEdit={data.members.find(m=>m.player_id===p.id&&m.house_id===p.roster_house_id)?.can_edit??false} onSave={onSave}/>)}<h3>Jogadores e vínculos autorizados</h3>{data.players.length===0?<p>Nenhum nome de jogador confirmado nas fontes locais.</p>:data.players.map(p=><details className="campaign-add" key={p.id}><summary>{p.name} · {data.members.filter(m=>m.player_id===p.id).map(m=>data.houses.find(h=>h.id===m.house_id)?.name).join(', ')||('Casa oficial: '+(data.houses.find(h=>h.id===p.roster_house_id)?.name??'Não informada')+' · acesso não autorizado')}</summary><form className="campaign-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action(async()=>{const {error}=await supabase.from('campaign_players').update({name:String(f.get('name')),user_id:String(f.get('user'))||null,folder_id:String(f.get('folder'))||null,details:String(f.get('details'))}).eq('id',p.id);if(error)throw error;});}}><p><strong>Casa oficial:</strong> {data.houses.find(h=>h.id===p.roster_house_id)?.name??'Não informada'} · <strong>Lorde:</strong> {p.lord_name??'Não informado'}</p><label>Nome<input name="name" defaultValue={p.name} required/></label><label>Conta<select name="user" defaultValue={p.user_id??''}><option value="">Não vinculada</option>{profiles.map(profile=><option key={profile.id} value={profile.id}>{profile.display_name||profile.id}</option>)}</select></label><label>Pasta individual<input name="folder" defaultValue={p.folder_id??''}/></label><label>Detalhes<textarea name="details" defaultValue={p.details}/></label><Button disabled={busy}>Salvar jogador</Button></form><div className="campaign-actions">{data.members.filter(m=>m.player_id===p.id).map(m=><Button key={m.house_id} disabled={busy} variant="outline" onClick={()=>action(async()=>{const {error}=await supabase.from('house_memberships').delete().eq('player_id',p.id).eq('house_id',m.house_id);if(error)throw error;})}>Revogar {m.house_id}</Button>)}</div><form className="campaign-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action(async()=>{const {error}=await supabase.from('house_memberships').upsert({player_id:p.id,house_id:String(f.get('house')),can_edit:f.get('edit')==='on',authorized_by:data.user.id});if(error)throw error;});}}><label>Autorizar / ajustar casa<select name="house">{data.houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label><label className="campaign-check"><input name="edit" type="checkbox" defaultChecked/>Permitir edição</label><Button disabled={busy}>Salvar permissão</Button></form></details>)}
-    <h3>Casas, castelos e pastas</h3>{data.houses.map(h=><details className="campaign-add" key={h.id}><summary>{h.name}{!h.active?' · registro anterior inativo':''} · {h.castle??'Castelo não informado'}</summary><form className="campaign-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action(async()=>{const {error}=await supabase.from('campaign_houses').update({name:String(f.get('name')),castle:String(f.get('castle'))||null,details:String(f.get('details')),lord_name:String(f.get('lord'))||null,review_note:String(f.get('review'))||null,region:String(f.get('region'))||null,folder_id:String(f.get('folder'))||null}).eq('id',h.id);if(error)throw error;});}}><label>Casa<input name="name" defaultValue={h.name} required/></label><label>Lorde<input name="lord" defaultValue={h.lord_name??''}/></label><label>Região<input name="region" defaultValue={h.region??''}/></label><label>Revisão administrativa<textarea name="review" defaultValue={h.review_note??''}/></label><label>Castelo<input name="castle" defaultValue={h.castle??''}/></label><label>Pasta compartilhada (ID do Drive)<input name="folder" defaultValue={h.folder_id??''}/></label><label>Detalhes<textarea name="details" defaultValue={h.details}/></label><Button disabled={busy}>Salvar casa</Button></form></details>)}
-    <details className="campaign-add"><summary>Adicionar casa confirmada da temporada</summary><form className="campaign-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action(async()=>{const {error}=await supabase.from('campaign_houses').insert({id:String(f.get('id')),name:String(f.get('name')),castle:String(f.get('castle'))||null,source:String(f.get('source'))});if(error)throw error;});}}><label>ID estável<input name="id" required pattern="[a-z0-9-]+"/></label><label>Casa<input name="name" required/></label><label>Castelo<input name="castle"/></label><label>Fonte que confirma participação<input name="source" required/></label><Button disabled={busy}>Adicionar casa</Button></form></details>
-    <h3>Sincronização e falhas</h3><Button variant="outline" disabled={busy} onClick={()=>{if(confirm('Organizar somente arquivos técnicos confirmados, preservando documentos pessoais e narrativos?'))action(async()=>{const result=await organize();setMessage(result.message);});}}>Organizar arquivos técnicos</Button><p>Somente pastas confirmadas, revisadas e autorizadas são processadas. Novos arquivos exigem revisão; segredos do mestre permanecem no site.</p><Button disabled={busy} variant="outline" onClick={async()=>{setBusy(true);try{const result=await retry();setMessage(result.message);onSave();}catch(e){setMessage(e instanceof Error?e.message:'Falha na execução.');}finally{setBusy(false);}}}>Executar / retentar pastas autorizadas</Button><DriveSyncAdmin/><div className="campaign-queue">{queue.length===0?<p>Fila vazia.</p>:queue.map(q=><div key={q.id}><strong>{q.entity_type}</strong> · {q.state} · {q.attempts} tentativas · {date(q.created_at)}{q.error&&<p>{q.error}</p>}</div>)}</div><p><a href="/cormyr/player-sync-format.md" target="_blank" rel="noopener">Formato de arquivos e requisitos de conexão</a></p><p role="status">{message}</p>
-  </section>;
-}
-function WriteLetter({data,onSave}:{data:Awaited<ReturnType<typeof loadPanel>>;onSave:()=>void}){
-  const key=useRef<string|null>(null);const [busy,setBusy]=useState(false),[msg,setMsg]=useState('');
-  const [images,setImages]=useState<PendingImage[]>([]);
-  const [kind,setKind]=useState<'geral'|'reservada'>('geral');
-  const [targets,setTargets]=useState<string[]>([]);
-  const houses=data.houses.filter(h=>h.active&&h.season===2);
-  const next=nextLetterNumber(data.letters as LetterRow[]);
-  const toggle=(value:string)=>setTargets(list=>list.includes(value)?list.filter(v=>v!==value):[...list,value]);
-  return <section><h2>Escrever missivas</h2><p className="text-muted-foreground">Missiva geral vai para todos os destinatários marcados; reservada vai para um só. A entrega depende da abertura explícita da semana pelo Narrador.</p><form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;const form=e.currentTarget;const f=new FormData(form);const recipients=kind==='geral'?targets:[String(f.get('recipient'))];if(!recipients.length||recipients.some(r=>!r)){setMsg(kind==='geral'?'Marque ao menos um destinatário.':'Escolha o destinatário.');return;}setBusy(true);setMsg('');key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(String(f.get('content')),images,key.current);}catch(err){setMsg(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const numberRaw=String(f.get('number')??'').trim();const savingDraft=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';const {error}=await supabase.rpc(savingDraft?'save_letter_batch_drafts':'send_campaign_letter_batch',{p_kind:kind,p_number:numberRaw?Number(numberRaw):next,p_subject:String(f.get('subject')),p_content:richContent,p_recipients:recipients,p_key:key.current});setBusy(false);if(error){setMsg(error.message);return;}key.current=null;form.reset();setImages([]);setTargets([]);setMsg(`Mensagem programada para ${recipients.length} destinatário(s); não abre a semana.`);onSave();}}>
-    <fieldset className="campaign-form"><legend>Tipo da missiva</legend><label className="campaign-check"><input type="radio" name="kind" checked={kind==='geral'} onChange={()=>setKind('geral')}/>Geral — vai para todos os destinatários marcados</label><label className="campaign-check"><input type="radio" name="kind" checked={kind==='reservada'} onChange={()=>setKind('reservada')}/>Reservada — vai para uma única casa</label></fieldset>
-    {kind==='geral'?<fieldset className="campaign-form"><legend>Destinatários ({targets.length} marcados)</legend>{houses.map(h=><label className="campaign-check" key={h.id}><input type="checkbox" checked={targets.includes('h:'+h.id)} onChange={()=>toggle('h:'+h.id)}/>Casa {h.name}</label>)}</fieldset>:<label>Destinatário<select name="recipient" required>{houses.map(h=><option key={h.id} value={'h:'+h.id}>Casa {h.name}</option>)}</select></label>}
-    <label>Semana de entrega<input name="number" type="number" min={1} placeholder={`Automático: ${next}`}/></label>
-    <label>Assunto<input name="subject" required/></label>
-    <label>Missiva<textarea name="content" required rows={10}/></label>
-    <ImagePicker images={images} onChange={setImages} disabled={busy}/><div className="campaign-actions"><Button name="action" value="draft" variant="outline" disabled={busy}>Salvar rascunho</Button><Button disabled={busy}>{busy?'Programando…':'Programar entrega'}</Button></div></form><p role="status">{msg}</p></section>;
-}
-
-function MissivasTab({data,me,onSave,onError}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void}){
-  const empty={number:'',kind:'',answered:'',house:'',read:'',text:'',box:''};
-  const [filters,setFilters]=useState(empty);
-  const [compose,setCompose]=useState(false);
-  const [expanded,setExpanded]=useState<Set<string>>(new Set());
-  const [threads,setThreads]=useState<Set<string>>(new Set());
-  const [draft,setDraft]=useState<{key:number;subject:string;content:string}|null>(null);
-  const [roundNumber,setRoundNumber]=useState('');
-  const open=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
-  const pendingHouses=data.admin?pendingRoundHouses(open,data.houses,data.players,data.members,data.letters as LetterRow[],data.replies):[];
-  const allLetters=(data.letters as (LetterRow&{deleted_at?:string|null;publication_state?:string;delivery_week?:number|null})[]).filter(l=>filters.box==='excluidas'?l.deleted_at:!l.deleted_at&&(filters.box==='programadas'?l.publication_state==='scheduled':filters.box==='rascunhos'?l.publication_state==='draft':filters.box==='historico'?l.publication_state==='delivered':true));
-  const norm=(s:string)=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const letters=filterLetters(allLetters,data.replies,filters,{players:data.players,receipts:data.receipts,userId:data.user.id,admin:data.admin}).filter(l=>!filters.text||norm(l.subject+' '+l.content+' '+l.sender_name).includes(norm(filters.text)));
-  const groups=filters.box==='enviadas'?[]:groupReceivedLetters(letters,data.user.id);
-  const mine=filters.box==='recebidas'?[]:sentLetters(letters,data.user.id);
-  const myHouses=data.members.filter(m=>m.player_id===me?.id).map(m=>m.house_id);
-  const isRecipient=(letter:LetterRow)=>letter.recipient_player_id===me?.id||(letter.recipient_player_id===null&&myHouses.includes(letter.recipient_house_id??''));
-  const toggle=(id:string)=>setExpanded(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
-  const toggleThread=(id:string)=>setThreads(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
-  const houseName=(id:string|null)=>data.houses.find(h=>h.id===id)?.name;
-  const card=(letter:LetterRow&{deleted_at?:string|null;publication_state?:string;delivery_week?:number|null},canAnswer:boolean)=>{
-    const answers=data.replies.filter(r=>r.letter_id===letter.id);
-    const receipt=data.receipts.find(r=>r.letter_id===letter.id&&(data.admin&&letter.sender_user_id===data.user.id?r.user_id!==data.user.id:r.user_id===data.user.id));
-    const read=isLetterRead(letter.id,receipt,answers);
-    const isOpen=expanded.has(letter.id);
-    const threadLetters=letter.conversation_id?allLetters.filter(o=>o.conversation_id===letter.conversation_id&&o.id!==letter.id).sort((a,b)=>a.created_at.localeCompare(b.created_at)):[];
-    const threadOpen=threads.has(letter.id);
-    const to=letter.recipient_house_id?'Casa '+(houseName(letter.recipient_house_id)??letter.recipient_house_id):letter.recipient_player_id?(data.players.find(p=>p.id===letter.recipient_player_id)?.name??'Jogador'):'Narrador';
-    const fromHouse=letter.sender_player_id?houseName(data.players.find(p=>p.id===letter.sender_player_id)?.roster_house_id??null):null;
-    const canDelete=!letter.deleted_at&&(data.admin||letter.sender_user_id===data.user.id);
-    return <article className={'campaign-letter'+(isOpen?'':' recolhida')} key={letter.id} id={'missiva-'+letter.id}>
-      <button type="button" className="campaign-letter-toggle" aria-expanded={isOpen} onClick={()=>toggle(letter.id)}>
-        <ChevronDown size={18} className={isOpen?'rotate-180 transition-transform':'transition-transform'}/>
-        <span className="campaign-eyebrow">{letter.letter_number?`Missiva ${letter.letter_number} · `:''}{letter.letter_kind==='geral'?'Geral':'Reservada'} · {answers.length?'Respondida · ':''}{read?'Lida':'Não lida'}{letter.publication_state==='draft'?' · Rascunho':letter.publication_state==='scheduled'?` · Aguardando abertura da Semana ${letter.delivery_week}`:''}{letter.deleted_at?' · Excluída':''}</span>
-        <strong className="campaign-letter-subject">{letter.subject}</strong>
-        <span className="text-muted-foreground text-sm">De: {letter.sender_name}{fromHouse?` (${fromHouse})`:''} · Para: {to} · {date(letter.created_at)}{answers.length?` · ${answers.length} resposta(s)`:''}</span>
-      </button>
-      {isOpen&&<div className="campaign-letter-body">
-        <CampaignContent content={letter.content}/>
-        <p className="text-muted-foreground text-sm">{syncLabel(letter.sync_state)} · {letter.last_synced_at?date(letter.last_synced_at):'Ainda não sincronizada'}</p>
-        {answers.length>0&&<div className="campaign-replies">{answers.map(answer=><div key={answer.id}><span className="campaign-eyebrow">Missiva {answer.creation_week??answer.delivery_week??letter.letter_number??'?'} · Resposta</span><br/><strong>{answer.author_name}</strong>{answer.publication_state==='draft'?<p>Rascunho{answer.author_user_id===data.user.id&&<Button size="sm" variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const r=await supabase.rpc('schedule_weekly_reply_draft',{p_id:answer.id});if(r.error)onError(r.error.message);else onSave();}}>Programar entrega</Button>}</p>:answer.publication_state==='scheduled'&&<p>Aguardando abertura da Semana {answer.delivery_week}</p>}<small> · {date(answer.created_at)} · {syncLabel(answer.sync_state)}</small><CampaignContent content={answer.content}/>{answer.author_user_id!==data.user.id&&answer.publication_state==='delivered'&&<ReplyForm letterId={letter.id} replyId={answer.id} deliveryWeek={data.admin||answer.author_player_id!==null?(open??nextLetterNumber(data.letters))+1:open} onSave={onSave}/>}</div>)}</div>}
-        {threadLetters.length>0&&<div className="campaign-thread"><Button size="sm" variant="ghost" aria-expanded={threadOpen} onClick={()=>toggleThread(letter.id)}>{threadOpen?'Ocultar fio da conversa':`Ver fio completo (${threadLetters.length} missiva(s) relacionada(s))`}</Button>{threadOpen&&threadLetters.map(other=>{const otherAnswers=data.replies.filter(r=>r.letter_id===other.id);return <div key={other.id} className="campaign-thread-item"><span className="campaign-eyebrow">{other.letter_number?`Missiva ${other.letter_number} · `:''}{other.letter_kind==='geral'?'Geral':'Reservada'}</span><strong>{other.subject}</strong><small> · De: {other.sender_name} · {date(other.created_at)}</small><CampaignContent content={other.content}/>{otherAnswers.map(a=><div key={a.id} className="campaign-replies"><span className="campaign-eyebrow">Missiva {a.creation_week??a.delivery_week??'?'} · Resposta</span><br/><strong>{a.author_name}</strong><small> · {date(a.created_at)}</small><CampaignContent content={a.content}/></div>)}</div>;})}</div>}
-        {!letter.deleted_at&&<div className="campaign-actions">
-          {canAnswer&&!read&&letter.publication_state==='delivered'&&<Button variant="outline" onClick={async()=>{const {error}=await supabase.from('letter_receipts').insert({letter_id:letter.id,user_id:data.user.id});if(error&&error.code!=='23505')onError(error.message);else onSave();}}>Marcar como lida</Button>}
-          {open!==null&&!data.admin&&<Button variant="outline" onClick={()=>{setDraft({key:Date.now(),subject:'Enc: '+letter.subject,content:`— Missiva encaminhada —\nDe: ${letter.sender_name} · ${date(letter.created_at)}\nAssunto: ${letter.subject}\n\n${letter.content}`});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Encaminhar</Button>}
-          {canDelete&&<Button variant="outline" onClick={async()=>{if(!confirm('Excluir esta missiva? Ela deixará de aparecer para os jogadores.'))return;const {error}=await supabase.rpc('delete_campaign_letter',{p_id:letter.id});if(error)onError(error.message);else onSave();}}>Excluir</Button>}
-        </div>}
-        {letter.publication_state==='draft'&&letter.sender_user_id===data.user.id&&<Button variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const result=await supabase.rpc('schedule_letter_draft',{p_id:letter.id,p_week:letter.delivery_week??open??nextLetterNumber(data.letters)});if(result.error)onError(result.error.message);else onSave();}}>Programar entrega</Button>}{!letter.deleted_at&&data.admin&&<LetterEdit letter={letter} onSave={onSave}/>}
-        {!letter.deleted_at&&canAnswer&&<ReplyForm letterId={letter.id} deliveryWeek={data.admin?(open??nextLetterNumber(data.letters))+1:letter.sender_player_id?(open??0)+1:open} onSave={onSave}/>}
-        <Button variant="ghost" size="sm" onClick={()=>{toggle(letter.id);document.getElementById('missiva-'+letter.id)?.scrollIntoView({block:'nearest'});}}>Recolher</Button>
-      </div>}
-    </article>;
-  };
-  const sel=(label:string,key:keyof typeof empty,opts:[string,string][])=><label>{label}<select value={filters[key]} onChange={e=>setFilters({...filters,[key]:e.target.value})}>{opts.map(([v,t])=><option key={v} value={v}>{t}</option>)}</select></label>;
-  const numbers=[...new Set(data.letters.map(l=>l.letter_number).filter((n):n is number=>n!==null))].sort((a,b)=>b-a);
-  const visibleIds=[...groups.flatMap(g=>g.letters),...mine].map(l=>l.id);
-  return <div className="campaign-mail-layout">
-    <aside className="campaign-mail-side" aria-label="Filtros das missivas">
-      <p className="campaign-eyebrow">FILTROS</p>
-      <label>Buscar<input type="search" value={filters.text} onChange={e=>setFilters({...filters,text:e.target.value})} placeholder="Assunto, texto ou remetente…"/></label>
-      {sel('Caixa','box',[['','Todas'],['recebidas','Recebidas'],['enviadas','Enviadas'],['programadas','Programadas'],['rascunhos','Rascunhos'],['historico','Histórico por semana'],...(data.admin?[['excluidas','Excluídas']] as [string,string][]:[])])}
-      {data.admin&&sel('Casa','house',[['','Todas as casas'],...data.houses.filter(h=>h.active&&h.season===2).map(h=>[h.id,h.name] as [string,string])])}
-      {sel('Semana','number',[['','Todas as semanas'],...numbers.map(n=>[String(n),'Semana '+n] as [string,string])])}
-      {sel('Tipo','kind',[['','Todos os tipos'],['geral','Geral'],['reservada','Reservada']])}
-      {sel('Resposta','answered',[['','Todas'],['yes','Respondidas'],['no','Não respondidas']])}
-      {sel('Leitura','read',[['','Todas'],['no','Não lidas'],['yes','Lidas']])}
-      {groups.some(g=>g.number!==null)&&<nav className="campaign-mail-jump" aria-label="Ir para uma semana de missiva">{groups.filter(g=>g.number!==null).map(g=><button key={g.number} type="button" onClick={()=>document.getElementById('grupo-missiva-'+g.number)?.scrollIntoView({behavior:'smooth',block:'start'})}>Missiva {g.number}</button>)}</nav>}
-      <Button variant="outline" onClick={()=>setFilters(empty)}>Limpar filtros</Button>
-      <div className="campaign-actions"><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set(visibleIds))}>Expandir todas</Button><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set())}>Recolher todas</Button></div>
-      {!data.admin&&open!==null&&<Button onClick={()=>{setDraft({key:Date.now(),subject:'',content:''});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Escrever missiva</Button>}
-    </aside>
-    <div>
-      <div className={'campaign-round '+(open===null?'fechada':'')} role="status">{open===null?'Missivas fechadas, aguarde o narrador abrir a próxima semana.':`Missiva ${open} aberta — respostas, novas missivas e encaminhamentos liberados.`}</div>
-      {data.admin&&<><div className="campaign-heading"><h2>Gestão de missivas</h2><Button onClick={()=>setCompose(v=>!v)}>{compose?'Fechar escrita':'Escrever missiva'}</Button></div>
-        <section className="campaign-round-pending" aria-label="Casas com respostas pendentes">
-          <h3>{open===null?'Respostas da rodada':`Missiva ${open} · Casas com respostas pendentes`}</h3>
-          {open===null?<p className="text-muted-foreground">Nenhuma rodada aberta.</p>:<><p>{pendingHouses.length} casa{pendingHouses.length===1?'':'s'} aguardando resposta</p>{pendingHouses.length===0?<p className="text-muted-foreground">Nenhuma resposta pendente às missivas entregues nesta rodada.</p>:<ul>{pendingHouses.map(h=><li key={h.id}><div><strong>{h.name}</strong><span className="text-muted-foreground text-sm">{h.letterIds.length} missiva{h.letterIds.length===1?'':'s'} pendente{h.letterIds.length===1?'':'s'}</span></div><Button size="sm" variant="outline" onClick={()=>{setFilters({...empty,house:h.id});setExpanded(new Set(h.letterIds));}}>Ver missivas</Button></li>)}</ul>}</>}
-        </section>
-        <p>{allLetters.length} missivas · {allLetters.filter(l=>!data.replies.some(r=>r.letter_id===l.id)).length} não respondidas</p>
-        <div className="campaign-actions">{open!==null&&<Button variant="outline" onClick={async()=>{if(!confirm(`Fechar a Missiva ${open}? Os jogadores não poderão mais responder nem escrever.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:open,p_closed:true});if(error)onError(error.message);else onSave();}}>Fechar Missiva {open}</Button>}<input type="number" min={1} style={{width:140}} value={roundNumber} onChange={e=>setRoundNumber(e.target.value)} placeholder={`Nº (ex.: ${(numbers[0]??0)+1})`} aria-label="Número da missiva a abrir"/><Button variant="outline" onClick={async()=>{const n=Number(roundNumber||(numbers[0]??0)+1);const preview=data.letters.filter(l=>l.delivery_week===n&&l.publication_state==='scheduled');const responses=data.replies.filter(r=>r.delivery_week===n&&r.publication_state==='scheduled');if(!confirm(`Abrir Semana ${n}? ${preview.length} mensagens e ${responses.length} respostas serão liberadas. Destinatários: ${preview.map(l=>houseName(l.recipient_house_id)||'Jogador autorizado').join(', ')||'Nenhuma nova mensagem'}. A semana anterior será encerrada.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:n,p_closed:false});if(error)onError(error.message);else{setRoundNumber('');onSave();}}}>Abrir missiva</Button></div>
-        {compose&&<WriteLetter data={data} onSave={onSave}/>}</>}
-      {filters.box!=='enviadas'&&<><div className="campaign-heading"><h2>{filters.box==='excluidas'?'Missivas excluídas':'Missivas recebidas'}</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
-      {groups.length===0&&<p className="campaign-empty">Nenhuma missiva encontrada.</p>}
-      {groups.map(group=><section key={group.number??'sem-numero'} id={group.number!==null?'grupo-missiva-'+group.number:undefined} className="campaign-mail-group">{group.number!==null&&<h3 className="campaign-letter-number">Missiva {group.number}{data.rounds.find(r=>r.number===group.number)?.closed?' · fechada':''}</h3>}{group.letters.map(letter=>card(letter,isRecipient(letter)||data.admin))}</section>)}</>}
-      {filters.box!=='recebidas'&&<><div className="campaign-heading"><h2>Missivas enviadas por você</h2><span>{mine.length} missivas</span></div>
-      {mine.length===0&&<p className="campaign-empty">Nenhuma missiva enviada encontrada.</p>}
-      {mine.map(letter=>card(letter,data.admin))}</>}
-      {!data.admin&&<NewLetter key={draft?.key??0} data={data} myHouses={myHouses} initial={draft} onSave={onSave}/>}
-    </div>
-  </div>;
-}
-
-function NewLetter({data,myHouses,initial,onSave}:{data:Panel;myHouses:string[];initial:{subject:string;content:string}|null;onSave:()=>void}){
-  const [images,setImages]=useState<PendingImage[]>([]);
-  const [busy,setBusy]=useState(false),[msg,setMsg]=useState('');const key=useRef<string|null>(null);
-  const houses=data.houses.filter(h=>h.active&&h.season===2&&!myHouses.includes(h.id));
-  const currentWeek=data.rounds.find(r=>r.status==='open')?.number??null;
-  return <details className="campaign-add" id="nova-missiva" open={Boolean(initial)}><summary>Escrever nova missiva</summary><form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;const form=e.currentTarget;const f=new FormData(form);setBusy(true);setMsg('');key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(String(f.get('content')),images,key.current);}catch(err){setMsg(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const to=String(f.get('to'));const savingDraft=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';const {error}=await supabase.rpc(savingDraft?'save_letter_draft':'player_send_letter_to',savingDraft?{p_id:key.current,p_house:(to||null) as unknown as string,p_subject:String(f.get('subject')),p_content:richContent,p_week:currentWeek as unknown as number}:{p_subject:String(f.get('subject')),p_content:richContent,p_house:to||null as unknown as string,p_key:key.current});setBusy(false);if(error){setMsg(error.message);return;}key.current=null;form.reset();setImages([]);setMsg(to?'Missiva enviada à casa. O Narrador também pode lê-la.':'Missiva enviada ao Narrador.');onSave();}}>
-    <label>Destinatário<select name="to" defaultValue=""><option value="">Narrador</option>{houses.map(h=><option key={h.id} value={h.id}>Casa {h.name}</option>)}</select></label>
-    <p className="text-muted-foreground text-sm">Missivas entre casas são sempre visíveis ao Narrador.</p>
-    <label>Assunto<input name="subject" required defaultValue={initial?.subject}/></label><label>Missiva<textarea name="content" required rows={8} defaultValue={initial?.content}/></label><ImagePicker images={images} onChange={setImages} disabled={busy}/><p>{currentWeek?`Esta mensagem será entregue na Semana ${currentWeek}.`:'Sem semana aberta: você pode salvar um rascunho.'}</p><div className="campaign-actions"><Button name="action" value="draft" variant="outline" disabled={busy}>Salvar rascunho</Button><Button disabled={busy||currentWeek===null}>{busy?'Enviando…':'Enviar missiva'}</Button></div><p role="status">{msg}</p></form></details>;
-}
-
-function LetterEdit({letter,onSave}:{letter:LetterRow;onSave:()=>void}){
-  const [open,setOpen]=useState(false),[subject,setSubject]=useState(letter.subject),[content,setContent]=useState(letter.content),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
-  const [images,setImages]=useState<PendingImage[]>([]);
-  const {data:versions=[]}=useQuery({queryKey:['letter-versions',letter.id,letter.version],enabled:open,queryFn:async()=>{const r=await supabase.from('letter_versions').select('*').eq('letter_id',letter.id).order('version',{ascending:false});if(r.error)throw r.error;return r.data??[];}});
-  if(!open)return <Button variant="outline" onClick={()=>{setSubject(letter.subject);setContent(letter.content);setOpen(true);}}>Editar missiva</Button>;
-  return <form className="campaign-form" onSubmit={async e=>{e.preventDefault();setBusy(true);try{const rich=await uploadImages(content,images,crypto.randomUUID());const result=await supabase.rpc('edit_campaign_letter',{p_id:letter.id,p_version:letter.version??1,p_subject:subject,p_content:rich});if(result.error)throw result.error;setOpen(false);setImages([]);onSave();}catch(err){setMessage(err instanceof Error?err.message:'Não foi possível salvar.');}finally{setBusy(false);}}}><label>Assunto<input required value={subject} onChange={e=>setSubject(e.target.value)}/></label><label>Missiva<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label><ImagePicker images={images} onChange={setImages} disabled={busy}/><div className="campaign-actions"><Button disabled={busy}>Salvar nova versão</Button><Button type="button" variant="outline" onClick={()=>setOpen(false)}>Cancelar</Button></div><details><summary>Histórico de versões</summary>{versions.map(v=><div key={v.id}><strong>Versão {v.version}</strong><CampaignContent content={typeof v.snapshot==='object'&&v.snapshot&&'content' in v.snapshot?String(v.snapshot['content']):''}/></div>)}</details><p role="status">{message}</p></form>;
 }

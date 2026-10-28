@@ -1,26 +1,71 @@
 # Cormyr Chronicle Atlas
 
-Migre integralmente para este projeto Lovable o site Cormyr Web V2 contido no ZIP anexo. Nome: Cormyr Web. O ZIP contém a aplicação real completa em dist/, não um exemplo. Extraia e incorpore todos os arquivos, dados e assets ao projeto; use o código existente para preservar fielmente visual e comportamento. Não recrie dados manualmente, não use amostras, não faça iframe/hotlink para o site antigo. Pode manter o frontend HTML/JS existente funcionando na infraestrutura Lovable e adaptar o entrypoint/build à stack do projeto; prioridade é migração completa e editável, não reescrita desnecessária. O site original https://cormyr-cronicas-do-reino.corodo.chatgpt.site/ tem acesso restrito, por isso entrego fonte completa anexada. NÃO publicar publicamente nem ativar banco/autenticação adicional agora. Entregue preview e projeto editável. Preserve todas as 6 abas: Reino e regiões, Eventos, Notebook LM, Aventuras, Constituição de Cormyr, Nobreza. 11 regiões,172 casas,172 brasões,98 retratos,144 arquivos de histórias integrais,100 eventos mundanos+100 místicos, aventuras incluindo decisões por casas, busca da Constituição, filtros de nobreza por região/casa/lorde/castelo/cidade. Preserve hierarquias atualizadas com 42 vínculos e Shieldmark completa; histórico Antes/Pós1522 em Elfhold/Helmlands, clãs de Volkumburgh, downloads PNG das casas e hierarquia, mapas ampliáveis/baixáveis, ler mais/menos regional, downloads brasão/retrato, hash deep links e voltar. Preserve as 15 músicas YouTube (8 regiões,6 casas,tema reino), cada qual link direto playlist. Mapa Horselands atual é assets/mapa-horselands-2026-10-23.png. Botões 'Baixar casas da Região' e 'Baixar Mapa' já corrigidos. Todo conteúdo pt-BR e identidade púrpura/ouro/pergaminho do original. Verifique build, inicialização, busca e navegação, arquivos/imagens/histórias locais, downloads e rotas. Confirme quantitativos reais ao concluir. Se não conseguir extrair ZIP, reporte o bloqueio antes de produzir substituto incompleto.
+Site da campanha de Cormyr, com acervo público e Conselho dos Jogadores da segunda temporada.
 
-This project was built with [Lovable](https://lovable.dev).
+- Site: https://cormyr-chronicle-atlas.lovable.app
+- Editor e publicação: https://lovable.dev/projects/bdc007de-2bdf-4e28-8df8-b09ce46f884c
+- Branch principal: `main`.
 
-**Live app**: https://cormyr-chronicle-atlas.lovable.app
+## Estrutura
 
-## Build with Lovable
+| Caminho | Responsabilidade |
+| --- | --- |
+| `public/cormyr/` | Acervo original em HTML, CSS e JavaScript |
+| `public/cormyr/data.js` | Catálogo inicial: 11 regiões e 172 casas |
+| `public/cormyr/regions/` | Textos integrais regionais, carregados ao abrir “Ler mais” |
+| `public/cormyr/histories/` | 170 arquivos JSON de histórias; o total não equivale ao número de casas |
+| `src/routes/` | Rotas TanStack Start, autenticação e endpoints |
+| `src/components/players/` | Conselho: carregamento, fichas, registros, administração e missivas |
+| `src/lib/house/` | Regras de recursos, compras, exércitos, corte e vassalos |
+| `src/server/gm-content.json` | Eventos e aventuras exclusivos do narrador |
+| `drizzle/migrations/` | 35 migrações SQL versionadas |
+| `src/test/` | Testes unitários, de componentes e de integração |
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/bdc007de-2bdf-4e28-8df8-b09ce46f884c).
+Stack: React 19, TypeScript, TanStack Start, Vite, Tailwind, Supabase/PostgreSQL e Drizzle. O build usa a configuração gerenciada da Lovable. A rota `/` encaminha ao acervo estático; a área autenticada fica em `/jogadores`.
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+## Desenvolvimento
 
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Use Node.js 24 e Bun 1.3.3. O lockfile versionado é `bun.lock`; não crie um segundo lockfile com npm.
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+bun install --frozen-lockfile
+bun run dev
 ```
+
+Antes de enviar alterações:
+
+```sh
+node --test scripts/archive.test.mjs
+bun run test
+bun run build
+```
+
+`bun run lint` executa ESLint e regras de formatação do projeto. O workflow inicial valida acervo, testes e build; lint ainda não é um bloqueio global, pois o código legado não foi reformatado integralmente.
+
+## Atualizações pelo GitHub
+
+1. Crie uma branch a partir da `main`.
+2. Faça as alterações e abra um pull request.
+3. Confira o workflow **Validate** e revise o resultado.
+4. Integre na `main`, mantendo o histórico existente.
+5. Confira a sincronização no editor Lovable e use **Publish changes** para atualizar o site publicado.
+
+O workflow roda em pull requests, pushes para `main` e execução manual. Ele não publica, não aplica migrações e não recebe credenciais administrativas do banco. Para exigir aprovação dos checks antes do merge, configure uma regra de proteção da branch no GitHub.
+
+A sincronização segue a branch ativa da integração Lovable. Não renomeie ou desconecte o repositório sem revisar essa integração. Não use force push nem reescreva commits já enviados.
+
+## Banco, credenciais e testes de integração
+
+As variáveis de servidor e as credenciais do Drive permanecem no ambiente de hospedagem. Nunca exponha chaves administrativas no navegador ou no repositório.
+
+Os testes de integração que exigem `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_SERVICE_ROLE_KEY` são pulados quando essas variáveis estão ausentes. **Execute-os apenas em um banco descartável de testes com as migrações aplicadas**: alguns alteram rodadas e criam usuários. A aprovação do CI comum não certifica permissões do banco em produção.
+
+Mudanças SQL exigem um procedimento próprio de aplicação e verificação. A presença de arquivos no GitHub não comprova que as migrações estão aplicadas.
+
+## Acervo e desempenho
+
+Textos regionais são preservados integralmente em JSON e carregados somente quando solicitados, com cache na sessão, mensagem de falha e opção de tentar novamente. O catálogo inicial permanece disponível para busca e navegação.
+
+Os mapas originais e seus downloads são preservados. As imagens de mapas já usam carregamento adiado; compressão ou novas miniaturas podem ser feitas separadamente, com conferência visual da legibilidade.
+
+Consulte `AGENTS.md` antes de alterar regras de acesso, sincronização, conteúdo privado ou gestão das casas.
