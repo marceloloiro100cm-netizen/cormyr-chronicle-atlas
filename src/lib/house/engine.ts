@@ -13,12 +13,15 @@ export function balances(state: HouseState): Balance {
     const holding = holdings[i];
     // A condition change never authorizes reimbursement; an audited correction must do that.
     const isBuilding = holding.status === 'building';
-    const costs = holding.costs;
-    for (let j = 0, clen = costs.length; j < clen; j++) {
-      const cost = costs[j];
-      if (cost.mode === 'allocation') {
-        if (isBuilding) committed[cost.resource] += cost.amount;
-        else allocated[cost.resource] += cost.amount;
+    const target = isBuilding ? committed : allocated;
+    const ac = holding.allocatedCosts;
+    if (ac) {
+      for (const r in ac) target[r as Resource] += ac[r as Resource]!;
+    } else {
+      const costs = holding.costs;
+      for (let j = 0, clen = costs.length; j < clen; j++) {
+        const cost = costs[j];
+        if (cost.mode === 'allocation') target[cost.resource] += cost.amount;
       }
     }
   }
@@ -26,11 +29,14 @@ export function balances(state: HouseState): Balance {
   for (let i = 0, len = units.length; i < len; i++) {
     const unit = units[i];
     if (unit.destroyed) continue;
-    const costs = unit.costs;
-    for (let j = 0, clen = costs.length; j < clen; j++) {
-      const cost = costs[j];
-      if (cost.mode === 'allocation') {
-        allocated[cost.resource] += cost.amount;
+    const ac = unit.allocatedCosts;
+    if (ac) {
+      for (const r in ac) allocated[r as Resource] += ac[r as Resource]!;
+    } else {
+      const costs = unit.costs;
+      for (let j = 0, clen = costs.length; j < clen; j++) {
+        const cost = costs[j];
+        if (cost.mode === 'allocation') allocated[cost.resource] += cost.amount;
       }
     }
   }
@@ -104,7 +110,9 @@ export function purchase(state: HouseState, item: CatalogItem, args: {id:string;
   const expected = building ? (item.duration.dice??0) : 0;
   if(args.dice.length!==expected || args.dice.some(v=>!Number.isInteger(v)||v<1||v>(item.duration.sides??6))) throw new Error('Dados de duração inválidos.');
   if(next.holdings.some(h=>h.id===args.id))throw new Error('Identificador de compra já utilizado.');
-  next.holdings.push({id:args.id,itemId:item.id,name:args.name||item.name,domainId:args.domainId,parentId:args.parentId,supportId:args.supportId,coexists:item.coexists,costs:q.costs,originalCosts:structuredClone(item.costs),discounts:q.discounts,category:item.category,effects:structuredClone(item.effects),ruleVersion:item.version,source:item.source+' · '+item.section,status:building?'building':'active'});
+  const allocatedCosts: Partial<Record<Resource, number>> = {};
+  for(const c of q.costs) if(c.mode === 'allocation') allocatedCosts[c.resource] = (allocatedCosts[c.resource] || 0) + c.amount;
+  next.holdings.push({id:args.id,itemId:item.id,name:args.name||item.name,domainId:args.domainId,parentId:args.parentId,supportId:args.supportId,coexists:item.coexists,costs:q.costs,originalCosts:structuredClone(item.costs),discounts:q.discounts,category:item.category,effects:structuredClone(item.effects),ruleVersion:item.version,source:item.source+' · '+item.section,status:building?'building':'active',allocatedCosts});
   for(const cost of q.costs) if(cost.mode==='permanent') next.permanent[cost.resource]-=cost.amount;
   const domain = next.domains.find(d=>d.id===args.domainId);
   if(domain) { if(item.category==='terrain') domain.terrain=item.id; if(item.category==='feature') domain.features.push(item.id); if(item.category==='community') domain.community=item.id; }
@@ -168,7 +176,9 @@ export function createUnit(state: HouseState, unit: Unit, types: UnitType[]): Ho
   for(const cost of costs) {available[cost.resource]-=cost.amount;if(available[cost.resource]<0)throw new Error('Saldo insuficiente para a unidade.');}
   if(state.units.some(u=>u.id===unit.id))throw new Error('Identificador da unidade já utilizado.');
   const next=structuredClone(state), maxHealth=unitStats(unit).maxHealth;
-  next.units.push({...unit,costs,xp:training.xp-unitStats(unit).xpSpent,health:maxHealth,casualties:0,disciplineModifier:unit.types.length>1?(unit.mixedRule?.disciplineModifier??0):(selected[0]?.discipline??0)});
+  const allocatedCosts: Partial<Record<Resource, number>> = {};
+  for(const c of costs) if(c.mode === 'allocation') allocatedCosts[c.resource] = (allocatedCosts[c.resource] || 0) + c.amount;
+  next.units.push({...unit,costs,xp:training.xp-unitStats(unit).xpSpent,health:maxHealth,casualties:0,disciplineModifier:unit.types.length>1?(unit.mixedRule?.disciplineModifier??0):(selected[0]?.discipline??0),allocatedCosts});
   for(const c of costs)if(c.mode==='permanent')next.permanent[c.resource]-=c.amount;
   return next;
 }
