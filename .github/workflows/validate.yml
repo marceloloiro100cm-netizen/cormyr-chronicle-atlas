@@ -32,3 +32,33 @@ jobs:
         run: bun run test
       - name: Production build
         run: bun run build
+
+  mail-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: isolated
+          POSTGRES_DB: mail_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: isolated
+      PGDATABASE: mail_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply every migration in disposable database
+        run: |
+          psql -v ON_ERROR_STOP=1 -f scripts/test-mail-bootstrap.sql
+          for migration in drizzle/migrations/*.sql; do
+            psql -v ON_ERROR_STOP=1 --single-transaction -f "$migration"
+          done
+      - name: Validate mail lifecycle and RLS
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-mail-permissions.sql
