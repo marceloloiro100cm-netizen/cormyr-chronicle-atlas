@@ -14,13 +14,13 @@ export default defineTool({
   handler: async ({ casa, limite }, ctx) => {
     let query = supabaseForUser(ctx)
       .from('campaign_letters')
-      .select('id,letter_number,letter_kind,subject,recipient_house_id,created_at,version')
+      .select('id,letter_number,letter_kind,subject,recipient_house_id,created_at,version,publication_state,delivery_week')
       .order('created_at', { ascending: false })
       .limit(limite ?? 50);
     if (casa) query = query.eq('recipient_house_id', casa);
     const { data, error } = await query;
     if (error) throw error;
-    const missivas = (data ?? []).map((l) => ({ id: l.id, numero: l.letter_number, tipo: l.letter_kind, assunto: l.subject, casa: l.recipient_house_id, enviada_em: l.created_at, versao: l.version }));
+    const missivas = (data ?? []).map((l) => ({ id: l.id, numero: l.letter_number, tipo: l.letter_kind, assunto: l.subject, casa: l.recipient_house_id, enviada_em: l.created_at, versao: l.version, publicacao: l.publication_state, entrega_semana: l.delivery_week }));
     return { content: [{ type: 'text', text: `${missivas.length} missivas visíveis.` }], structuredContent: { missivas } };
   },
 });

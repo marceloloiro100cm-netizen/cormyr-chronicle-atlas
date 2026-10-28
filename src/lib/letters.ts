@@ -26,13 +26,38 @@ export type LetterGroup = {
   letters: LetterRow[];
 };
 
-export type ReplyRef = {letter_id:string;created_at?:string;delivered_at?:string|null};
+export type ReplyRef = {letter_id:string;created_at?:string;delivered_at?:string|null;publication_state?:string;delivery_week?:number|null};
 export type ReceiptRef = {letter_id:string;user_id:string;read_at?:string};
+
+export type PlayerWeeklyCompletion = {
+  id: string;
+  player_id: string;
+  week: number;
+  status: 'in_progress' | 'completed';
+  completed_at: string | null;
+  resumed_at: string | null;
+  actor: string;
+  narrator_actor: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PlayerWeeklyCompletionLog = {
+  id: string;
+  completion_id: string;
+  player_id: string;
+  week: number;
+  status: string;
+  actor: string;
+  narrator_actor: string | null;
+  created_at: string;
+};
 
 /** Momento da informação mais recente de uma missiva (a resposta entregue mais nova). */
 export function lastReplyActivity(letterId:string, replies:ReplyRef[]):string {
   return replies.reduce((latest,r)=>{
-    if(r.letter_id!==letterId)return latest;
+    if(r.letter_id!==letterId || (r.publication_state && r.publication_state !== 'delivered'))return latest;
     const t=r.delivered_at??r.created_at??'';
     return t>latest?t:latest;
   },'');
@@ -51,16 +76,31 @@ export function filterLetters(letters:LetterRow[], replies:ReplyRef[], filters:{
     const house=l.recipient_house_id??player?.roster_house_id;
     const receipt=context?.receipts.find(r=>r.letter_id===l.id&&(context.admin&&l.sender_user_id===context.userId?r.user_id!==context.userId:r.user_id===context.userId));
     const read=isLetterRead(l.id,receipt,replies);
-    return (!filters.number||String(l.letter_number)===filters.number)&&(!filters.kind||l.letter_kind===filters.kind)&&(!filters.answered||(replies.some(r=>r.letter_id===l.id)?'yes':'no')===filters.answered)&&(!filters.house||house===filters.house)&&(!filters.read||(read?'yes':'no')===filters.read);
+
+    const letterWeek = l.delivery_week ?? l.letter_number;
+    const letterMatchesWeek = !filters.number || String(letterWeek) === filters.number;
+    const hasDeliveredReplyInWeek = !filters.number ? false : replies.some(r => r.letter_id === l.id && String(r.delivery_week) === filters.number && r.publication_state === 'delivered');
+    const matchesWeekFilter = letterMatchesWeek || hasDeliveredReplyInWeek;
+
+    if (matchesWeekFilter && hasDeliveredReplyInWeek) {
+      (l as any)._has_received_reply_in_week = true;
+      (l as any)._filter_week = Number(filters.number);
+    }
+
+    return matchesWeekFilter &&
+      (!filters.kind||l.letter_kind===filters.kind) &&
+      (!filters.answered||(replies.some(r=>r.letter_id===l.id && (!r.publication_state || r.publication_state === 'delivered'))?'yes':'no')===filters.answered) &&
+      (!filters.house||house===filters.house) &&
+      (!filters.read||(read?'yes':'no')===filters.read);
   });
 }
 
 /** Missivas recebidas do narrador, agrupadas por número (mais recente primeiro). */
 export function groupReceivedLetters(letters: LetterRow[], userId: string): LetterGroup[] {
-  const received = letters.filter((l) => l.sender_user_id !== userId);
+  const received = letters.filter((l) => l.sender_user_id !== userId || (l as any)._has_received_reply_in_week);
   const byNumber = new Map<number | null, LetterRow[]>();
   for (const letter of received) {
-    const key = letter.letter_number;
+    const key = (letter as any)._filter_week ?? letter.delivery_week ?? letter.letter_number;
     const list = byNumber.get(key) ?? [];
     list.push(letter);
     byNumber.set(key, list);
@@ -92,11 +132,19 @@ export function nextLetterNumber(letters: {letter_number:number|null}[]): number
  */
 export function unreadReceivedCount(letters: LetterRow[], replies: ReplyRef[], receipts: ReceiptRef[], userId: string): number {
   return letters.filter((l) => {
-    if (l.sender_user_id === userId) return false;
     if (l.deleted_at) return false;
-    if (l.publication_state && l.publication_state !== 'delivered') return false;
-    const receipt = receipts.find((r) => r.letter_id === l.id && r.user_id === userId);
-    return !isLetterRead(l.id, receipt, replies);
+    if (l.sender_user_id !== userId) {
+      if (l.publication_state && l.publication_state !== 'delivered') return false;
+      const receipt = receipts.find((r) => r.letter_id === l.id && r.user_id === userId);
+      if (!isLetterRead(l.id, receipt, replies)) return true;
+    }
+
+    // Check if the user initiated the conversation but a new reply arrived
+    const hasUnreadReply = replies.some(r => r.letter_id === l.id && r.publication_state === 'delivered' && (r as any).author_user_id !== userId && (!receipts.find(rc => rc.letter_id === l.id && rc.user_id === userId)?.read_at || receipts.find(rc => rc.letter_id === l.id && rc.user_id === userId)!.read_at! < (r.delivered_at ?? r.created_at ?? '')));
+
+    if (l.sender_user_id === userId && hasUnreadReply) return true;
+
+    return false;
   }).length;
 }
 

@@ -41,7 +41,21 @@ export function MissivasTab({data,me,onSave,onError}:{data:Panel;me:Panel['playe
   const [roundNumber,setRoundNumber]=useState('');
   const open=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
   const pendingHouses=data.admin?pendingRoundHouses(open,data.houses,data.players,data.members,data.letters as LetterRow[],data.replies):[];
-  const allLetters=(data.letters as (LetterRow&{deleted_at?:string|null;publication_state?:string;delivery_week?:number|null})[]).filter(l=>filters.box==='excluidas'?l.deleted_at:!l.deleted_at&&(filters.box==='programadas'?l.publication_state==='scheduled':filters.box==='rascunhos'?l.publication_state==='draft':filters.box==='historico'?l.publication_state==='delivered':true));
+  const allLetters=(data.letters as (LetterRow&{deleted_at?:string|null;publication_state?:string;delivery_week?:number|null})[]).filter(l=>{
+    if (filters.box === 'excluidas') return !!l.deleted_at;
+    if (l.deleted_at) return false;
+
+    // Check if the letter itself or any of its replies matches the box criteria
+    const replies = data.replies.filter(r => r.letter_id === l.id);
+    const hasDraftReply = replies.some(r => r.publication_state === 'draft' && (r as any).author_user_id === data.user.id);
+    const hasScheduledReply = replies.some(r => r.publication_state === 'scheduled' && (r as any).author_user_id === data.user.id);
+
+    if (filters.box === 'programadas') return l.publication_state === 'scheduled' || hasScheduledReply;
+    if (filters.box === 'rascunhos') return l.publication_state === 'draft' || hasDraftReply;
+    if (filters.box === 'historico') return l.publication_state === 'delivered';
+
+    return true;
+  });
   const norm=(s:string)=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const letters=filterLetters(allLetters,data.replies,filters,{players:data.players,receipts:data.receipts,userId:data.user.id,admin:data.admin}).filter(l=>!filters.text||norm(l.subject+' '+l.content+' '+l.sender_name).includes(norm(filters.text)));
   const groups=filters.box==='enviadas'?[]:groupReceivedLetters(letters,data.user.id);
@@ -103,14 +117,100 @@ export function MissivasTab({data,me,onSave,onError}:{data:Panel;me:Panel['playe
       {!data.admin&&open!==null&&<Button onClick={()=>{setDraft({key:Date.now(),subject:'',content:''});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Escrever missiva</Button>}
     </aside>
     <div>
-      <div className={'campaign-round '+(open===null?'fechada':'')} role="status">{open===null?'Missivas fechadas, aguarde o narrador abrir a próxima semana.':`Missiva ${open} aberta — respostas, novas missivas e encaminhamentos liberados.`}</div>
+      <div className={'campaign-round '+(open===null?'fechada':'')} role="status">
+        {open===null?'Missivas fechadas, aguarde o narrador abrir a próxima semana.':`Missiva ${open} aberta — respostas, novas missivas e encaminhamentos liberados.`}
+        {!data.admin && open !== null && me && (() => {
+          const comp = data.completions?.find(c => c.player_id === me.id && c.week === open);
+          const isCompleted = comp?.status === 'completed';
+          const draftsCount = allLetters.filter(l => l.publication_state === 'draft' && l.sender_user_id === data.user.id).length + data.replies.filter(r => r.publication_state === 'draft' && (r as any).author_user_id === data.user.id).length;
+
+          let newMessagesWarning = false;
+          if (isCompleted && comp?.completed_at) {
+            const compTime = new Date(comp.completed_at).getTime();
+            const newLetters = data.letters.filter(l => (l.recipient_player_id === me.id || myHouses.includes(l.recipient_house_id??'')) && l.delivery_week === open && new Date(l.delivered_at ?? l.created_at).getTime() > compTime);
+            const newReplies = data.replies.filter(r => {
+              if ((r as any).author_user_id === data.user.id || (r as any).delivery_week !== open) return false;
+              if (new Date(r.delivered_at ?? r.created_at ?? '').getTime() <= compTime) return false;
+              const original = allLetters.find(l => l.id === r.letter_id);
+              if (!original) return false;
+              return original.sender_user_id === data.user.id || original.recipient_player_id === me.id || myHouses.includes(original.recipient_house_id??'');
+            });
+            newMessagesWarning = newLetters.length > 0 || newReplies.length > 0;
+          }
+
+          return (
+            <div className="mt-4 p-4 border rounded-md bg-zinc-50 dark:bg-zinc-900 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div>
+                <p className="font-bold">Sua situação na Semana {open}: {isCompleted ? <span className="text-emerald-600">Finalizado</span> : <span className="text-amber-600">Em andamento</span>}</p>
+                {comp?.completed_at && isCompleted && <p className="text-sm text-muted-foreground">Finalizado em {date(comp.completed_at)}</p>}
+                {newMessagesWarning && <p className="text-destructive font-bold text-sm mt-1">Há novas mensagens recebidas após sua finalização.</p>}
+                {draftsCount > 0 && <p className="text-sm text-muted-foreground mt-1">Você possui {draftsCount} rascunho(s) não enviado(s).</p>}
+              </div>
+              <Button
+                variant={isCompleted ? "outline" : "default"}
+                onClick={async () => {
+                  if (!isCompleted) {
+                    if (!confirm(`Finalizar suas missivas da Semana ${open}?\nIsso informa ao narrador que você concluiu sua participação nesta semana. As respostas já programadas continuarão aguardando a semana correta de entrega.` + (draftsCount > 0 ? `\n\nVocê possui ${draftsCount} rascunho(s) não enviado(s). Eles continuarão salvos e não serão enviados ao finalizar.` : ''))) return;
+                    const {error} = await supabase.rpc('complete_weekly_letters', {p_player: me.id, p_week: open, p_actor: data.user.id});
+                    if (error) onError(error.message);
+                    else onSave();
+                  } else {
+                    const {error} = await supabase.rpc('resume_weekly_letters', {p_player: me.id, p_week: open, p_actor: data.user.id});
+                    if (error) onError(error.message);
+                    else onSave();
+                  }
+                }}
+              >
+                {isCompleted ? 'Retomar Missivas da Semana' : 'Finalizar Missivas Semanais'}
+              </Button>
+            </div>
+          );
+        })()}
+      </div>
       {data.admin&&<><div className="campaign-heading"><h2>Gestão de missivas</h2><Button onClick={()=>setCompose(v=>!v)}>{compose?'Fechar escrita':'Escrever missiva'}</Button></div>
         <section className="campaign-round-pending" aria-label="Casas com respostas pendentes">
           <h3>{open===null?'Respostas da rodada':`Missiva ${open} · Casas com respostas pendentes`}</h3>
           {open===null?<p className="text-muted-foreground">Nenhuma rodada aberta.</p>:<><p>{pendingHouses.length} casa{pendingHouses.length===1?'':'s'} aguardando resposta</p>{pendingHouses.length===0?<p className="text-muted-foreground">Nenhuma resposta pendente às missivas entregues nesta rodada.</p>:<ul>{pendingHouses.map(h=><li key={h.id}><div><strong>{h.name}</strong><span className="text-muted-foreground text-sm">{h.letterIds.length} missiva{h.letterIds.length===1?'':'s'} pendente{h.letterIds.length===1?'':'s'}</span></div><Button size="sm" variant="outline" onClick={()=>{setFilters({...empty,house:h.id});setExpanded(new Set(h.letterIds));}}>Ver missivas</Button></li>)}</ul>}</>}
         </section>
         <p>{allLetters.length} missivas · {allLetters.filter(l=>!data.replies.some(r=>r.letter_id===l.id)).length} não respondidas</p>
-        <div className="campaign-actions">{open!==null&&<Button variant="outline" onClick={async()=>{if(!confirm(`Fechar a Missiva ${open}? Os jogadores não poderão mais responder nem escrever.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:open,p_closed:true});if(error)onError(error.message);else onSave();}}>Fechar Missiva {open}</Button>}<input type="number" min={1} style={{width:140}} value={roundNumber} onChange={e=>setRoundNumber(e.target.value)} placeholder={`Nº (ex.: ${(numbers[0]??0)+1})`} aria-label="Número da missiva a abrir"/><Button variant="outline" onClick={async()=>{const n=Number(roundNumber||(numbers[0]??0)+1);const preview=data.letters.filter(l=>l.delivery_week===n&&l.publication_state==='scheduled');const responses=data.replies.filter(r=>r.delivery_week===n&&r.publication_state==='scheduled');if(!confirm(`Abrir Semana ${n}? ${preview.length} mensagens e ${responses.length} respostas serão liberadas. Destinatários: ${preview.map(l=>houseName(l.recipient_house_id)||'Jogador autorizado').join(', ')||'Nenhuma nova mensagem'}. A semana anterior será encerrada.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:n,p_closed:false});if(error)onError(error.message);else{setRoundNumber('');onSave();}}}>Abrir missiva</Button></div>
+        <div className="campaign-actions">{open!==null&&<Button variant="outline" onClick={async()=>{
+          const activePlayers = data.players.filter(p=>p.active);
+          const completions = data.completions?.filter(c=>c.week===open) ?? [];
+          const notCompletedCount = activePlayers.filter(p=>completions.find(c=>c.player_id===p.id)?.status!=='completed').length;
+          const warning = notCompletedCount > 0 ? `Atenção: ${notCompletedCount} jogador(es) ainda não finalizaram a Missiva ${open}.\n\n` : '';
+
+          if(!confirm(`${warning}Fechar a Missiva ${open}? Os jogadores não poderão mais responder nem escrever (jogadores não são finalizados automaticamente).`))return;
+          const {error}=await supabase.rpc('set_letter_round',{p_number:open,p_closed:true});
+          if(error)onError(error.message);
+          else onSave();
+        }}>Fechar Missiva {open}</Button>}<input type="number" min={1} style={{width:140}} value={roundNumber} onChange={e=>setRoundNumber(e.target.value)} placeholder={`Nº (ex.: ${(numbers[0]??0)+1})`} aria-label="Número da missiva a abrir"/><Button variant="outline" onClick={async()=>{
+          const n=Number(roundNumber||(numbers[0]??0)+1);
+          const preview=data.letters.filter(l=>l.delivery_week===n&&l.publication_state==='scheduled');
+          const responses=data.replies.filter(r=>r.delivery_week===n&&r.publication_state==='scheduled');
+
+          let confirmText = `Semana que será aberta: ${n}\n`;
+          if (open !== null) confirmText += `Semana que será encerrada: ${open}\n`;
+          confirmText += `Quantidade de cartas a entregar: ${preview.length}\n`;
+          confirmText += `Quantidade de respostas a entregar: ${responses.length}\n`;
+
+          if (open !== null) {
+            const activePlayers = data.players.filter(p=>p.active);
+            const completions = data.completions?.filter(c=>c.week===open) ?? [];
+            const completedCount = activePlayers.filter(p=>completions.find(c=>c.player_id===p.id)?.status==='completed').length;
+            confirmText += `Resumo da semana atual (${open}): ${completedCount} de ${activePlayers.length} jogadores finalizaram.\n`;
+          }
+
+          if (open !== null && n > open + 1) {
+            confirmText += `\nAVISO: Semanas intermediárias pendentes! Esta ação pode não liberar conteúdo intermediário sem tratamento explícito.\n`;
+          }
+
+          confirmText += `\nConfirmar abertura?`;
+
+          if(!confirm(confirmText))return;
+          const {error}=await supabase.rpc('set_letter_round',{p_number:n,p_closed:false});
+          if(error)onError(error.message);
+          else{setRoundNumber('');onSave();}
+        }}>Abrir missiva</Button></div>
         {compose&&<WriteLetter data={data} onSave={onSave}/>}</>}
       {filters.box!=='enviadas'&&<><div className="campaign-heading"><h2>{filters.box==='excluidas'?'Missivas excluídas':'Missivas recebidas'}</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
       {groups.length===0&&<p className="campaign-empty">Nenhuma missiva encontrada.</p>}

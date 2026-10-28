@@ -12,8 +12,8 @@ export default defineTool({
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   handler: async ({ missiva_id, conteudo }, ctx) => {
-    const { data, error } = await supabaseForUser(ctx).rpc('reply_campaign_letter', { p_letter: missiva_id, p_content: conteudo, p_key: crypto.randomUUID() });
+    const { data, error } = await supabaseForUser(ctx).rpc('reply_weekly_message', { p_letter: missiva_id, p_reply: null, p_content: conteudo, p_key: crypto.randomUUID(), p_draft: false });
     if (error) throw new ToolError(`Não foi possível responder: ${error.message}`);
-    return { content: [{ type: 'text', text: 'Resposta registrada e missiva marcada como respondida.' }], structuredContent: { resultado: data } };
+    return { content: [{ type: 'text', text: 'Resposta registrada e programada para a semana de entrega correta.' }], structuredContent: { resultado: data } };
   },
 });

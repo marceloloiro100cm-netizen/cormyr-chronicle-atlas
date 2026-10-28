@@ -8,7 +8,8 @@ export async function loadPanel(){
   for(const result of [houses,players,members,records,letters,receipts,catalog])if(result.error)throw result.error;
   const replies=await supabase.from('letter_replies').select('*').order('created_at');if(replies.error)throw replies.error;
   const rounds=await supabase.from('letter_rounds').select('*');if(rounds.error)throw rounds.error;
-  return {user,catalog:catalog.data??[],admin:Boolean(admin),houses:houses.data??[],players:players.data??[],members:members.data??[],records:records.data??[],letters:letters.data??[],receipts:receipts.data??[],replies:replies.data??[],rounds:rounds.data??[]};
+  const completions=await supabase.from('player_weekly_completion').select('*');if(completions.error)throw completions.error;
+  return {user,catalog:catalog.data??[],admin:Boolean(admin),houses:houses.data??[],players:players.data??[],members:members.data??[],records:records.data??[],letters:letters.data??[],receipts:receipts.data??[],replies:replies.data??[],rounds:rounds.data??[],completions:completions.data??[]};
 }
 
 export type Panel=Awaited<ReturnType<typeof loadPanel>>;
