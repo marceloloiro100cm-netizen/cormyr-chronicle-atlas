@@ -11,6 +11,14 @@ describe("error-capture", () => {
       expect(describeError({ foo: "bar" })).toBe('{"foo":"bar"}');
     });
 
+    it("handles values where JSON.stringify returns undefined", () => {
+      // JSON.stringify(() => {}) is undefined, so safeStringify should fall back to String()
+      const fn = () => {};
+      expect(describeError(fn)).toBe(String(fn));
+      const sym = Symbol("test");
+      expect(describeError(sym)).toBe(String(sym));
+    });
+
     it("handles unstringifiable non-circular objects gracefully", () => {
       const unstringifiable: any = {};
       // By default `String(obj)` on `{}` returns `"[object Object]"` which doesn't trigger the catch block of `safeStringify`.
