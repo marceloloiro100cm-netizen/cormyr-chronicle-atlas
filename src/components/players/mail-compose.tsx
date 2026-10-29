@@ -24,10 +24,11 @@ export function MailLinkFields({value,onChange,options,onManage}:{value:MailLink
 }
 type Draft={subject:string;content:string;targets:string[];links:MailLinks;week:string;images:PendingImage[]};
 const drafts=new Map<string,Draft>();
+export function replaceMailDraft(userId:string){const current=drafts.get(userId+':mail-compose');return !current||(!current.subject&&!current.content)||window.confirm('Substituir o texto da missiva ainda não enviada?');}
 export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Panel['players'][number]|undefined;initial?:{subject:string;content:string}|null;onSave:()=>void;onManage?:(house:string)=>void}){
  const {data:options,error,refetch}=useMailOptions();
  const scope=data.user.id+':mail-compose';
- const [draft,setDraft]=useState<Draft>(()=>drafts.get(scope)??{subject:initial?.subject??'',content:initial?.content??'',targets:data.admin?[]:['narrator'],links:{...emptyLinks},week:'',images:[]});
+ const [draft,setDraft]=useState<Draft>(()=>initial?{subject:initial.subject,content:initial.content,targets:data.admin?[]:['narrator'],links:{...emptyLinks},week:'',images:[]}:drafts.get(scope)??{subject:'',content:'',targets:data.admin?[]:['narrator'],links:{...emptyLinks},week:'',images:[]});
  const [query,setQuery]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
  const key=useRef<string|null>(null);
  const change=(next:Draft)=>{setDraft(next);drafts.set(scope,next);};

@@ -7,7 +7,7 @@ import { CampaignContent, ImagePicker, uploadImages, type PendingImage } from '@
 import { hasDeliveredAnswer, groupReceivedLetters, isLetterRead, nextLetterNumber, pendingRoundHouses, sentLetters, type LetterRow } from '@/lib/letters';
 import { date, syncLabel } from './shared';
 import type { Panel } from './panel-data';
-import {MailComposer,MailLinkFields,useMailOptions,emptyLinks,type MailLinks,type MailOptions} from './mail-compose';
+import {MailComposer,replaceMailDraft,MailLinkFields,useMailOptions,emptyLinks,type MailLinks,type MailOptions} from './mail-compose';
 
 
 function ReplyForm({letterId,replyId,recipientId,onSave}:{letterId:string;replyId?:string;recipientId:string;onSave:()=>unknown}){
@@ -85,7 +85,7 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
         {threadLetters.length>0&&<div className="campaign-thread"><Button size="sm" variant="ghost" aria-expanded={threadOpen} onClick={()=>toggleThread(letter.id)}>{threadOpen?'Ocultar fio da conversa':`Ver relacionadas nesta página (${threadLetters.length} missiva(s) relacionada(s))`}</Button>{threadOpen&&threadLetters.map(other=>{const otherAnswers=viewReplies.filter(r=>r.letter_id===other.id);return <div key={other.id} className="campaign-thread-item"><span className="campaign-eyebrow">{other.letter_number?`Missiva ${other.letter_number} · `:''}{other.letter_kind==='geral'?'Geral':'Reservada'}</span><strong>{other.subject}</strong><small> · De: {other.sender_name} · {date(other.created_at)}</small><CampaignContent content={other.content}/>{otherAnswers.map(a=><div key={a.id} className="campaign-replies"><span className="campaign-eyebrow">Missiva {a.creation_week??a.delivery_week??'?'} · Resposta</span><br/><strong>{a.author_name}</strong><small> · {date(a.created_at)}</small><CampaignContent content={a.content}/></div>)}</div>;})}</div>}
         {!letter.deleted_at&&<div className="campaign-actions">
           {!read&&letter.publication_state==='delivered'&&<Button variant="outline" onClick={async()=>{const {error}=await supabase.rpc('mark_letter_read',{p_id:letter.id});if(error&&error.code!=='23505')onError(error.message);else saved();}}>Marcar como lida</Button>}
-          {open!==null&&!data.admin&&<Button variant="outline" onClick={()=>{setDraft({key:Date.now(),subject:'Enc: '+letter.subject,content:`— Missiva encaminhada —\nDe: ${letter.sender_name} · ${date(letter.created_at)}\nAssunto: ${letter.subject}\n\n${letter.content}`});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Encaminhar</Button>}
+          {open!==null&&!data.admin&&<Button variant="outline" onClick={()=>{if(!replaceMailDraft(data.user.id))return;setDraft({key:Date.now(),subject:'Enc: '+letter.subject,content:`— Missiva encaminhada —\nDe: ${letter.sender_name} · ${date(letter.created_at)}\nAssunto: ${letter.subject}\n\n${letter.content}`});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Encaminhar</Button>}
           {canDelete&&<Button variant="outline" onClick={async()=>{if(!confirm('Excluir esta missiva? Ela deixará de aparecer para os jogadores.'))return;const {error}=await supabase.rpc('delete_campaign_letter',{p_id:letter.id});if(error)onError(error.message);else saved();}}>Excluir</Button>}
         </div>}
         {!letter.deleted_at&&letter.publication_state==='draft'&&letter.sender_user_id===data.user.id&&<Button variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const result=await supabase.rpc('schedule_letter_draft',{p_id:letter.id,p_week:letter.delivery_week??open??nextLetterNumber(data.letters)});if(result.error)onError(result.error.message);else saved();}}>Programar entrega</Button>}{!letter.deleted_at&&((data.admin&&letter.publication_state!=='draft')||(letter.publication_state==='draft'&&letter.sender_user_id===data.user.id))&&<LetterEdit letter={letter} onSave={saved}/>}
@@ -103,7 +103,7 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
       <label>Buscar<input type="search" value={filters.text} onChange={e=>setFilters({...filters,text:e.target.value})} placeholder="Assunto, texto ou remetente…"/></label>
       {sel('Caixa','box',[['','Todas'],['recebidas','Recebidas'],['enviadas','Enviadas'],['programadas','Programadas'],['rascunhos','Rascunhos'],['historico','Histórico por semana'],...(data.admin?[['excluidas','Excluídas']] as [string,string][]:[])])}
       {data.admin&&sel('Casa destinatária / legado','house',[['','Todas as casas'],...data.houses.filter(h=>h.active&&h.season===2).map(h=>[h.id,h.name] as [string,string])])}
-      {sel('Casa remetente','origin',[['','Todas as casas'],...data.houses.map(h=>[h.id,h.name] as [string,string])])}
+      {sel('Casa remetente','origin',[['','Todas as casas'],['none','Sem vínculo / legado'],...data.houses.map(h=>[h.id,h.name] as [string,string])])}
       {sel('Membro da corte','court',linkOptions('court'))}
       {sel('Unidade militar','unit',linkOptions('unit'))}
       {sel('Semana','number',[['','Todas as semanas'],...numbers.map(n=>[String(n),'Semana '+n] as [string,string])])}
@@ -116,7 +116,7 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
       {!data.admin&&open!==null&&<Button onClick={()=>{setDraft({key:Date.now(),subject:'',content:''});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Escrever missiva</Button>}
     </aside>
     <div>
-      <MailInsights options={options} houseName={houseName} onSelect={row=>setFilters({...empty,origin:row.origin_house_id??'',court:row.court_member_id?row.origin_house_id+':'+row.court_member_id:'none',unit:row.military_unit_id?row.origin_house_id+':'+row.military_unit_id:'none'})}/>
+      <MailInsights options={options} houseName={houseName} onSelect={row=>setFilters({...empty,origin:row.origin_house_id??'none',court:row.court_member_id?row.origin_house_id+':'+row.court_member_id:'none',unit:row.military_unit_id?row.origin_house_id+':'+row.military_unit_id:'none'})}/>
       {listing.isPending&&<p role="status">Carregando missivas…</p>}
       {listing.error&&<p role="alert">Não foi possível carregar as missivas. <Button onClick={()=>listing.refetch()}>Tentar novamente</Button></p>}
       <nav className="campaign-actions" aria-label="Páginas de missivas"><Button disabled={page===0||listing.isFetching} onClick={()=>setPage(p=>p-1)}>Anterior</Button><span>Página {page+1} · {listing.data?.total??0} entregas encontradas</span><Button disabled={listing.isFetching||(page+1)*20>=(listing.data?.total??0)} onClick={()=>setPage(p=>p+1)}>Próxima</Button></nav>
@@ -135,7 +135,7 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
       {filters.box!=='recebidas'&&<><div className="campaign-heading"><h2>Missivas enviadas por você</h2><span>{mine.length} missivas</span></div>
       {mine.length===0&&<p className="campaign-empty">Nenhuma missiva enviada encontrada.</p>}
       {mine.map(letter=>card(letter,data.admin))}</>}
-      {!data.admin&&<MailComposer key={draft?.key??0} data={data} me={me} initial={draft} onSave={saved} onManage={onManage}/>}
+      {!data.admin&&<MailComposer key={draft?.key??0} data={data} me={me} initial={draft} onSave={()=>{setDraft(null);saved();}} onManage={onManage}/>}
     </div>
   </div>;
 }

@@ -91,7 +91,7 @@ BEGIN
  ELSE RAISE EXCEPTION 'Destinatário inválido'; END IF;
  lid:=gen_random_uuid();
  INSERT INTO campaign_letters(id,sender_user_id,sender_player_id,sender_name,recipient_player_id,recipient_house_id,subject,content,letter_kind,letter_number,batch_key,conversation_id,publication_state,origin_house_id,court_member_id,military_unit_id,court_assignment,house_sheet_version)
- VALUES(lid,auth.uid(),public.my_player_id(),pname,pid,hid,p_subject,p_content,CASE WHEN cardinality(targets)>1 THEN 'geral' ELSE 'reservada' END,delivery,p_key,lid,CASE WHEN p_draft THEN 'draft' ELSE 'scheduled' END,p_origin,p_court,p_unit,p_role,sheet_version);
+ VALUES(lid,auth.uid(),CASE WHEN public.is_campaign_admin() THEN NULL ELSE public.my_player_id() END,pname,pid,hid,p_subject,p_content,CASE WHEN cardinality(targets)>1 THEN 'geral' ELSE 'reservada' END,delivery,p_key,lid,CASE WHEN p_draft THEN 'draft' ELSE 'scheduled' END,p_origin,p_court,p_unit,p_role,sheet_version);
  END LOOP;
  SELECT jsonb_agg(id ORDER BY id) INTO ids FROM campaign_letters WHERE batch_key=p_key AND sender_user_id=auth.uid();
  RETURN jsonb_build_object('ids',ids,'duplicate',false,'week',delivery,'state',CASE WHEN p_draft THEN 'draft' WHEN delivery=n THEN 'delivered' ELSE 'scheduled' END);
@@ -160,7 +160,7 @@ RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=public AS
 DECLARE result jsonb;
 BEGIN
  IF NOT public.campaign_access_active() THEN RAISE EXCEPTION 'Jogador não autorizado'; END IF;
- IF p_page<0 OR p_size<1 OR p_size>50 THEN RAISE EXCEPTION 'Página inválida'; END IF;
+ IF p_page IS NULL OR p_size IS NULL OR p_page<0 OR p_size<1 OR p_size>50 THEN RAISE EXCEPTION 'Página inválida'; END IF;
  WITH visible AS (
  SELECT l.* FROM campaign_letters l
  WHERE CASE WHEN p_filters->>'box'='excluidas' THEN l.deleted_at IS NOT NULL ELSE l.deleted_at IS NULL END
@@ -170,7 +170,7 @@ BEGIN
  OR EXISTS(SELECT 1 FROM letter_replies r WHERE r.letter_id=l.id AND r.publication_state=CASE p_filters->>'box' WHEN 'rascunhos' THEN 'draft' WHEN 'programadas' THEN 'scheduled' ELSE 'delivered' END))
  AND (coalesce(p_filters->>'number','')='' OR l.delivery_week::text=p_filters->>'number' OR EXISTS(SELECT 1 FROM letter_replies r WHERE r.letter_id=l.id AND r.publication_state='delivered' AND r.delivery_week::text=p_filters->>'number'))
  AND (coalesce(p_filters->>'kind','')='' OR l.letter_kind=p_filters->>'kind')
- AND (coalesce(p_filters->>'origin','')='' OR l.origin_house_id=p_filters->>'origin')
+ AND (coalesce(p_filters->>'origin','')='' OR (p_filters->>'origin'='none' AND l.origin_house_id IS NULL) OR l.origin_house_id=p_filters->>'origin')
  AND (coalesce(p_filters->>'house','')='' OR l.recipient_house_id=p_filters->>'house' OR (l.recipient_house_id IS NULL AND EXISTS(SELECT 1 FROM campaign_players p WHERE p.id=l.sender_player_id AND p.roster_house_id=p_filters->>'house')))
  AND (coalesce(p_filters->>'court','')='' OR (p_filters->>'court'='none' AND l.court_member_id IS NULL) OR l.origin_house_id||':'||l.court_member_id=p_filters->>'court')
  AND (coalesce(p_filters->>'unit','')='' OR (p_filters->>'unit'='none' AND l.military_unit_id IS NULL) OR l.origin_house_id||':'||l.military_unit_id=p_filters->>'unit')

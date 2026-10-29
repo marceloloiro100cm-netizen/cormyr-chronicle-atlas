@@ -1,19 +1,14 @@
-import { defineTool, ToolError } from '@lovable.dev/mcp-js';
-import { z } from 'zod';
-import { supabaseForUser } from '../supabase';
-
+import {defineTool,ToolError} from '@lovable.dev/mcp-js';
+import {z} from 'zod';
+import {supabaseForUser} from '../supabase';
 export default defineTool({
-  name: 'responder_missiva',
-  title: 'Responder missiva',
-  description: 'Registra uma resposta a uma missiva recebida, marcando-a como respondida. A operação é idempotente: repetir o mesmo envio não duplica a resposta.',
-  inputSchema: {
-    missiva_id: z.string().uuid().describe('Identificador da missiva, obtido em listar_missivas.'),
-    conteudo: z.string().min(1).describe('Texto da resposta.'),
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  handler: async ({ missiva_id, conteudo }, ctx) => {
-    const { data, error } = await supabaseForUser(ctx).rpc('reply_campaign_letter', { p_letter: missiva_id, p_content: conteudo, p_key: crypto.randomUUID() });
-    if (error) throw new ToolError(`Não foi possível responder: ${error.message}`);
-    return { content: [{ type: 'text', text: 'Resposta registrada e missiva marcada como respondida.' }], structuredContent: { resultado: data } };
-  },
+ name:'responder_missiva',title:'Responder missiva',
+ description:'Responde a uma missiva ou resposta específica. A entrega segue a semana calculada no servidor; só respostas entregues contam como respondidas. Repita a mesma chave e o mesmo texto em caso de falha de rede.',
+ inputSchema:{missiva_id:z.string().uuid(),resposta_id:z.string().uuid().optional(),chave_envio:z.string().uuid().describe('UUID estável da operação.'),conteudo:z.string().min(1)},
+ annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false},
+ handler:async({missiva_id,resposta_id,chave_envio,conteudo},ctx)=>{
+ const {data,error}=await supabaseForUser(ctx).rpc('reply_weekly_message',{p_letter:missiva_id,p_reply:(resposta_id??null) as unknown as string,p_content:conteudo,p_key:chave_envio,p_draft:false});
+ if(error)throw new ToolError(error.message);
+ return {content:[{type:'text',text:'Resposta registrada. A entrega depende da semana da campanha.'}],structuredContent:{resultado:data}};
+ }
 });
