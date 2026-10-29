@@ -50,7 +50,7 @@ export function settlementCapacity(state:HouseState,domainId:string,supportId?:s
  let capacity=0;
  if(supportId){
   if(!support)return {capacity:0,used:0,error:'Escolha um suporte ativo no mesmo domínio.'};
-  const capacities:Record<string,number>={tower:1,hall:2,castle:4,'small-castle':3,'superior-castle':5,hamlet:1,'small-town':2,'large-town':4,'small-city':Infinity,'large-city':Infinity};
+  const capacities:Record<string,number>={tower:1,hall:2,'small-castle':3,castle:4,'superior-castle':5,hamlet:1,'small-town':2,'large-town':4,'small-city':Infinity,'large-city':Infinity};
   if(support.itemId==='pros-trading-inn')capacity=2*state.holdings.filter(h=>h.parentId===support.id&&h.itemId==='pros-trading-inn--growth'&&h.status==='active').length;
   else if(capacities[support.itemId]!==undefined)capacity=capacities[support.itemId]??0;
   else return {capacity:0,used:0,error:'Este suporte exige adaptação explícita de capacidade; não somar suportes.'};
@@ -58,7 +58,7 @@ export function settlementCapacity(state:HouseState,domainId:string,supportId?:s
  const used=state.holdings.filter(h=>h.domainId===domainId&&h.category==='settlement'&&!['pros-abbey','pros-tolls','pros-trading-inn'].includes(h.itemId)&&['active','building'].includes(h.status)&&(h.supportId??'')===(supportId??'')).length;
  return {capacity,used};
 }
-export function requirements(item: CatalogItem, state: HouseState, domain?: Domain, parentId?: string,supportId?:string): string[] {
+export function requirements(item: CatalogItem, state: HouseState, domain?: Domain, parentId?: string,supportId?:string,replaceId?:string): string[] {
   const errors: string[] = [];
   // Pending source notes are warnings; concrete requirements still apply.
   if (['terrain','feature','community','fortification','estate','settlement'].includes(item.category) && !domain) errors.push('Escolha um domínio.');
@@ -70,7 +70,15 @@ export function requirements(item: CatalogItem, state: HouseState, domain?: Doma
   if(item.category==='estate'&&state.holdings.some(h=>h.domainId===domain?.id&&['active','building'].includes(h.status)&&(h.category==='estate'||h.source.startsWith('Prosperidade')&&h.itemId.startsWith('pros-')&&!h.itemId.includes('--')&&['animal-husbandry','apiary','charcoal','dog-kennels','fishery','food-agriculture','fur-trade','herb-fields','horse-husbandry','basic-mine','valuable-mine','rich-mine','basic-quarry','valuable-quarry','salt-works','textile-agriculture','timber'].some(id=>h.itemId==='pros-'+id))))errors.push('O domínio permite somente uma exploração Estate.');
   if(item.category==='settlement'&&!['pros-abbey','pros-tolls','pros-trading-inn'].includes(item.id)){const c=settlementCapacity(state,domain?.id??'',supportId);if(c.error)errors.push(c.error);else if(c.used>=c.capacity)errors.push(`Sem espaço no suporte: ${c.used} de ${c.capacity} ocupado(s).`);}
   if(item.category==='improvement'&&!item.coexists&&!item.repeatable&&state.holdings.some(h=>h.parentId===parentId&&!h.coexists&&['active','building'].includes(h.status)))errors.push('Esta melhoria não pode ser combinada com outra melhoria exclusiva.');
-  if(item.category==='fortification'&&state.holdings.some(h=>h.domainId===domain?.id&&['tower','hall','small-castle','castle','superior-castle'].includes(h.itemId)&&['active','building'].includes(h.status)))errors.push('Fortificação existente: upgrade precisa de regra explícita.');
+  if(item.category==='fortification') {
+    const existing = state.holdings.find(h=>h.domainId===domain?.id&&['tower','hall','small-castle','castle','superior-castle'].includes(h.itemId)&&['active','building'].includes(h.status));
+    if(existing && existing.id !== replaceId) errors.push('Fortificação existente: upgrade precisa de regra explícita.');
+    else if (replaceId && !existing) errors.push('Fortificação a evoluir não encontrada.');
+    else if (replaceId && existing) {
+      const order = ['tower','hall','small-castle','castle','superior-castle'];
+      if(order.indexOf(item.id) <= order.indexOf(existing.itemId)) errors.push('A nova fortificação deve ser maior que a existente.');
+    }
+  }
   for (const req of item.requirements) {
     if (req.kind==='terrain' && (!domain?.terrain || (req.values?.length && !req.values.includes(domain.terrain)))) errors.push('Terreno necessário: '+(req.values?.join(', ') || 'um terreno principal adquirido'));
     if (req.kind==='feature' && !req.values?.some(v=>domain?.features.includes(v))) errors.push('Característica necessária: '+req.values?.join(', '));
@@ -82,9 +90,9 @@ export function requirements(item: CatalogItem, state: HouseState, domain?: Doma
   }
   return errors;
 }
-export function quote(item: CatalogItem, state: HouseState, domainId: string, parentId?: string,supportId?:string) {
+export function quote(item: CatalogItem, state: HouseState, domainId: string, parentId?: string,supportId?:string,replaceId?:string) {
   const before = balances(state), costs = item.costs.map(c=>({...c}));
-  const errors = requirements(item, state, state.domains.find(d=>d.id===domainId), parentId,supportId);
+  const errors = requirements(item, state, state.domains.find(d=>d.id===domainId), parentId,supportId,replaceId);
   const discounts: { source: string; resource: Resource; amount: number }[] = [];
   for (const cost of costs) {
     const discountEffects = activeHoldings(state).flatMap(h=>h.effects.filter(e=>e.kind==='discount'&&e.target===item.id&&e.resource===cost.resource).map(e=>({source:h.name, amount:e.amount??0})));
@@ -93,16 +101,36 @@ export function quote(item: CatalogItem, state: HouseState, domainId: string, pa
     if (best) { const amount = Math.min(best.amount,cost.amount); cost.amount -= amount; discounts.push({source:best.source,resource:cost.resource,amount}); }
   }
   const after = {...before.available};
+  let replacedCosts: Partial<Record<Resource, number>> = {};
+  if (replaceId) {
+    const existing = state.holdings.find(h=>h.id === replaceId);
+    if (existing) {
+      replacedCosts = existing.allocatedCosts ?? {};
+      if (Object.keys(replacedCosts).length === 0) {
+        for (const c of existing.costs) if (c.mode === 'allocation') replacedCosts[c.resource] = (replacedCosts[c.resource] || 0) + c.amount;
+      }
+    }
+  }
+  for (const [r, amt] of Object.entries(replacedCosts)) after[r as Resource] += (amt as number);
   for (const cost of costs) { if (!Number.isFinite(cost.amount)||cost.amount<0) errors.push('Custo inválido.'); after[cost.resource]-=cost.amount; }
   for (const r of RESOURCE_KEYS) if (after[r]<0) errors.push(`Saldo insuficiente: ${r}.`);
-  return {before:before.available,after,costs,original:item.costs,discounts,errors};
+  return {before:before.available,after,costs,original:item.costs,discounts,errors,replacedCosts};
 }
-export function purchase(state: HouseState, item: CatalogItem, args: {id:string;domainId:string;name:string;parentId?:string | undefined;supportId?:string|undefined;dice:number[]}): HouseState {
-  const q = quote(item,state,args.domainId,args.parentId,args.supportId); if(q.errors.length) throw new Error(q.errors.join(' '));
+export function purchase(state: HouseState, item: CatalogItem, args: {id:string;domainId:string;name:string;parentId?:string | undefined;supportId?:string|undefined;dice:number[];replaceId?:string}): HouseState {
+  const q = quote(item,state,args.domainId,args.parentId,args.supportId,args.replaceId); if(q.errors.length) throw new Error(q.errors.join(' '));
   const next = structuredClone(state), building = state.phase==='active' && (item.duration.months>0||Boolean(item.duration.dice));
   const expected = building ? (item.duration.dice??0) : 0;
   if(args.dice.length!==expected || args.dice.some(v=>!Number.isInteger(v)||v<1||v>(item.duration.sides??6))) throw new Error('Dados de duração inválidos.');
   if(next.holdings.some(h=>h.id===args.id))throw new Error('Identificador de compra já utilizado.');
+
+  if (args.replaceId) {
+    const existingIndex = next.holdings.findIndex(h => h.id === args.replaceId);
+    if (existingIndex !== -1) {
+      for (const h of next.holdings) if (h.supportId === args.replaceId) h.supportId = args.id;
+      next.holdings.splice(existingIndex, 1);
+    }
+  }
+
   const allocatedCosts: Partial<Record<Resource, number>> = {};
   for(const c of q.costs) if(c.mode === 'allocation') allocatedCosts[c.resource] = (allocatedCosts[c.resource] || 0) + c.amount;
   next.holdings.push({id:args.id,itemId:item.id,name:args.name||item.name,domainId:args.domainId,parentId:args.parentId,supportId:args.supportId,coexists:item.coexists,costs:q.costs,originalCosts:structuredClone(item.costs),discounts:q.discounts,category:item.category,effects:structuredClone(item.effects),ruleVersion:item.version,source:item.source+' · '+item.section,status:building?'building':'active',allocatedCosts});
