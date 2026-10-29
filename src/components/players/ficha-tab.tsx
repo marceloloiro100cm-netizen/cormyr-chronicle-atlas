@@ -11,7 +11,7 @@ import type { Panel } from './panel-data';
 import { RecordEditor } from './records';
 import { FichaPersonagemForm, FichaCasaForm } from './ficha-form';
 
-export function FichaTab({current,records,canEdit,onSave,npcManager}:{npcManager?:ReactNode;current:Panel['houses'][number];records:RecordRow[];canEdit:boolean;onSave:()=>unknown}){
+export function FichaTab({current,records,canEdit,onSave,npcManager,resolveAuthor}:{npcManager?:ReactNode;current:Panel['houses'][number];records:RecordRow[];canEdit:boolean;onSave:()=>unknown;resolveAuthor?:((id:string|null)=>string|null)|undefined}){
   const [view,setView]=useState<'house'|'character'|'legacy'>('house');
   const fichaCasa=records.find(r=>isFichaCasa(r.title,r.content));
   const fichaLorde=records.find(r=>isFichaPersonagem(r.title,r.content));
@@ -31,7 +31,7 @@ export function FichaTab({current,records,canEdit,onSave,npcManager}:{npcManager
     {fichaLorde?<><FichaPersonagemCard content={fichaLorde.content} portrait={retratoDo(fichaLordeParsed?.nome??current.lord_name)} titulo={fichaLorde.title}/>{canEdit&&<details className="campaign-add"><summary>Editar ficha do lorde</summary><FichaPersonagemForm initialData={parseFichaPersonagem(fichaLorde.content)} row={fichaLorde} onSave={(newContent)=>{ fichaLorde.content=newContent; onSave(); }} onCancel={()=>{}} /></details>}</>:<p className="campaign-empty">A ficha do lorde ainda não foi encontrada na pasta.</p>}
     <h2>Corte</h2>
     {npcs.length===0&&<p className="campaign-empty">Nenhum integrante da Corte com ficha de texto até agora.</p>}
-    {npcs.map(r=><details className="campaign-add" key={r.id}><summary>{r.title}</summary><CampaignContent content={r.content}/>{canEdit&&<RecordEditor row={r} canEdit={canEdit} onSave={onSave}/>}</details>)}
+    {npcs.map(r=><details className="campaign-add" key={r.id}><summary>{r.title}</summary><CampaignContent content={r.content}/>{canEdit&&<RecordEditor row={r} canEdit={canEdit} onSave={onSave} resolveAuthor={resolveAuthor}/>}</details>)}
     {retratos.length>0&&<><h2>Retratos e imagens</h2><div className="campaign-house-gallery">{retratos.map(r=><PrivateImage key={r.path} path={r.path} caption={r.titulo}/>)}</div></>}
     </>}
   </section>;

@@ -1,0 +1,5 @@
+1. **Fix `sessionStorage` in `jogadores.tsx`**: Add `sessionStorage.setItem('campaign-selected-house', e.target.value)` inside the `onChange` handler of the `select` element in `src/routes/_authenticated/jogadores.tsx` (around line 47).
+2. **Debounce Supabase Realtime in `jogadores.tsx`**: Modify the `useEffect` that listens to `postgres_changes` in `src/routes/_authenticated/jogadores.tsx` to use a debounce (e.g. `setTimeout` of 400ms) before calling `qc.invalidateQueries`.
+3. **Resolve `updated_by` author in `records.tsx`**: Modify `RecordList` and `RecordEditor` in `src/components/players/records.tsx` to accept a new prop (e.g., `resolveAuthor?: (userId: string | null) => string`) or `players` array and `admin` boolean. Then resolve `row.updated_by` to the player's name (from `data.players`) or 'Narrador' if admin. Pass this prop down from `jogadores.tsx` and `ficha-tab.tsx`.
+4. **Complete pre-commit steps**: Run tests and verifications using `pre_commit_instructions` to make sure proper testing, verification, review, and reflection are done.
+5. **Submit**: Submit the changes via `submit`.
