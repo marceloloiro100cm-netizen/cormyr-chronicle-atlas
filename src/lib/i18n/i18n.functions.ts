@@ -16,7 +16,7 @@ export const loadDynamicTranslations = createServerFn({ method: 'POST' })
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
 
     let query = supabaseAdmin
-      .from('campaign_translations')
+      .from('campaign_translations' as any)
       .select('entity_type, entity_id, field_name, translated_text')
       .eq('locale', data.locale);
 
@@ -32,7 +32,7 @@ export const loadDynamicTranslations = createServerFn({ method: 'POST' })
     }
 
     const dictionary: Record<string, string> = {};
-    for (const row of rows || []) {
+    for (const row of (rows as any[]) || []) {
       dictionary[`${row.entity_type}:${row.entity_id}:${row.field_name}`] = row.translated_text;
     }
     return dictionary;
@@ -63,7 +63,7 @@ export const upsertTranslationsBatch = createServerFn({ method: 'POST' })
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
 
     const { error } = await supabaseAdmin
-      .from('campaign_translations')
+      .from('campaign_translations' as any)
       .upsert(itemsToUpsert, { onConflict: 'entity_type,entity_id,field_name,locale' });
 
     if (error) {
