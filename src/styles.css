@@ -450,3 +450,10 @@
   font-size: 0.75rem;
   line-height: 1;
 }
+@media(max-width: 600px) {
+  .castle-art-gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1.5rem 1rem;
+    padding: 1rem;
+  }
+}
