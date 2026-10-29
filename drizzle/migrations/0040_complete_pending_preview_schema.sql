@@ -1,0 +1,1 @@
+COMMENT ON TABLE public.campaign_letters IS 'Campaign mail: permission-checked, versioned weekly delivery; historical content preserved.';
