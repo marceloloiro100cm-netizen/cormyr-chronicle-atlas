@@ -24,18 +24,18 @@ export function confirmFortune(state:HouseState,args:{status:number;testDice:num
   for(const [r,v]of changes)if(!RESOURCE_KEYS.includes(r as Resource)||typeof v!=='number'||!Number.isInteger(v)||(positive?v<=0:v>=0)||Math.abs(v)>max||(changes.length===2&&Math.abs(v)>(max===6?3:1)))throw new Error('Consequências fora da faixa da tabela 6-18.');
   if(!args.justification.trim())throw new Error('Registre a decisão narrativa.');
   const effects=activeHoldings(state).flatMap(h=>h.effects);
-  if(effects.some(e=>e.kind==='action'&&/ganho|\bG\s|sazon|season/i.test(e.description)))throw new Error('Efeito condicional de ganho exige conciliação antes da rolagem.');
   const next=structuredClone(state),finalChanges:Partial<Resources>={};
   for(const [key,value]of changes){const r=key as Resource,v=value??0;const relevant=effects.filter(e=>e.resource===r&&e.kind===(v>0?'gain':'mitigation'));const adjustment=stackingBonus(relevant.reduce((n,e)=>n+(e.amount??0),0),args.resourceStackDice?.[r]??[]);const final=v>0?v+adjustment:Math.min(0,v+adjustment);next.permanent[r]+=final;finalChanges[r]=final;}
   next.fortunes.push({month:state.month,mode:'roll',dice:args.testDice,bonusDice:args.bonusDice,modifier:p.modifier,result:p.total,outcome:p.outcome,resource:args.resource,changes:finalChanges,source:'Guerra dos Tronos RPG · tabela6-18; Prosperidade · Stacking Bonuses · '+args.justification+' · dados de efeitos: '+JSON.stringify({fortune:args.fortuneStackDice??[],resources:args.resourceStackDice??{}})});return next;
 }
 export const CONVERSIONS:Partial<Record<Resource,Resource[]>>={influence:['law'],lands:['defense'],population:['power'],power:['influence','law','population'],wealth:[...RESOURCE_KEYS].filter(r=>r!=='wealth')};
-export function convertResources(state:HouseState,from:Resource,to:Resource,amount:number,rushed:boolean):HouseState {
+export function convertResources(state:HouseState,from:Resource,to:Resource,amount:number,rushed:boolean,rate?:number):HouseState {
   if(!CONVERSIONS[from]?.includes(to))throw new Error('Conversão não permitida na tabela 6-19.');
   if(!Number.isFinite(amount)||amount<=0)throw new Error('Quantidade inválida.');
   const actions=state.actions.filter(a=>a.month===state.month&&a.type.startsWith('convert:'));
   if(actions.length>=2||actions.length===1&&!rushed)throw new Error('A segunda conversão deve ser apressada; máximo duas por mês.');
-  const ratio=from==='wealth'?(rushed?3:2):(rushed?2:1),cost=amount*ratio;
+  if(rate!==undefined&&!activeHoldings(state).flatMap(h=>h.effects).some(e=>e.kind==='conversion'))throw new Error('Taxa especial exige posse ativa com efeito de conversão.');
+  const ratio=rate??(from==='wealth'?(rushed?3:2):(rushed?2:1)),cost=Math.floor(amount*ratio);
   if(balances(state).available[from]<cost)throw new Error('Saldo insuficiente para conversão.');
   const next=structuredClone(state);next.permanent[from]-=cost;next.permanent[to]+=amount;next.actions.push({month:state.month,type:`convert:${from}:${to}`,notes:`Tabela 6-19 · ${cost}:${amount}${rushed?' · apressada':''}`});return next;
 }
