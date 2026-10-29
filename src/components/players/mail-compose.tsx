@@ -50,7 +50,8 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  setMessage(result.duplicate?'Envio já registrado; nenhuma cópia duplicada.':result.state==='draft'?'Rascunhos salvos.':result.state==='delivered'?`Missiva entregue a ${result.ids.length} destinatário(s).`:`Entrega programada para a Semana ${result.week}.`);
  key.current=null;drafts.delete(scope);setDraft({...draft,subject:'',content:'',images:[]});onSave();
  }catch(err){setMessage(err instanceof Error?err.message:typeof err==='object'&&err&&'message'in err?String(err.message):'Não foi possível salvar. Seu texto foi preservado.');}finally{setBusy(false);}}}>
- <fieldset disabled={busy} className="campaign-form"><legend>Destinatários ({draft.targets.length} selecionados)</legend>
+ <fieldset disabled={busy} className="campaign-form"><legend>Composição da missiva</legend>
+ <fieldset className="campaign-form"><legend>Destinatários ({draft.targets.length} selecionados)</legend>
  <label>Buscar destinatário<input type="search" value={query} onChange={e=>setQuery(e.target.value)}/></label>
  {!data.admin&&<label><input type="checkbox" checked={draft.targets.includes('narrator')} onChange={()=>toggle('narrator')}/>Narrador</label>}
  {options?.players?.filter(p=>p.id!==me?.id&&p.name.toLocaleLowerCase('pt-BR').includes(search)).map(p=><label key={p.id}><input type="checkbox" checked={draft.targets.includes('p:'+p.id)} onChange={()=>toggle('p:'+p.id)}/>{p.name} {p.houses.length?('— '+p.houses.map(id=>data.houses.find(h=>h.id===id)?.name??id).join(', ')):''}</label>)}
@@ -63,5 +64,5 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  <ImagePicker images={draft.images} onChange={images=>change({...draft,images})} disabled={busy}/>
  <p>{data.admin?`Entrega prevista: Semana ${draft.week||suggested}.`:current?`Entrega na Semana ${current}.`:'Sem semana aberta. Você pode salvar rascunhos.'}</p>
  <div className="campaign-actions"><Button value="draft" variant="outline" disabled={busy||!draft.targets.length||(!data.admin&&!draft.links.origin)}>Salvar rascunho</Button><Button disabled={busy||!draft.targets.length||(!data.admin&&(!draft.links.origin||current===null))}>{busy?'Salvando…':data.admin?'Programar entrega':'Enviar missiva'}</Button></div>
- </form><p role="status">{message}</p></section>;
+ </fieldset></form><p role="status">{message}</p></section>;
 }

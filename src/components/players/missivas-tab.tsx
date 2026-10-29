@@ -7,7 +7,7 @@ import { CampaignContent, ImagePicker, uploadImages, type PendingImage } from '@
 import { hasDeliveredAnswer, groupReceivedLetters, isLetterRead, nextLetterNumber, pendingRoundHouses, sentLetters, type LetterRow } from '@/lib/letters';
 import { date, syncLabel } from './shared';
 import type { Panel } from './panel-data';
-import {MailComposer,replaceMailDraft,MailLinkFields,useMailOptions,emptyLinks,type MailLinks,type MailOptions} from './mail-compose';
+import {MailComposer,replaceMailDraft,MailLinkFields,useMailOptions,type MailLinks,type MailOptions} from './mail-compose';
 
 
 function ReplyForm({letterId,replyId,recipientId,onSave}:{letterId:string;replyId?:string;recipientId:string;onSave:()=>unknown}){

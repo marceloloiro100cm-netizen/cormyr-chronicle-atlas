@@ -4,7 +4,7 @@ INSERT INTO auth.users(id) VALUES ('10000000-0000-0000-0000-000000000001'),('100
 INSERT INTO user_roles VALUES('10000000-0000-0000-0000-000000000001','admin');
 INSERT INTO campaign_houses(id,name) VALUES('mail-a','A'),('mail-b','B'),('mail-c','C');
 INSERT INTO campaign_players(id,user_id,name) VALUES ('10000000-0000-0000-0000-000000000012','10000000-0000-0000-0000-000000000002','Recipient 2'),('10000000-0000-0000-0000-000000000013','10000000-0000-0000-0000-000000000003','Recipient 3'),('10000000-0000-0000-0000-000000000014','10000000-0000-0000-0000-000000000004','Recipient 4'),('10000000-0000-0000-0000-000000000015','10000000-0000-0000-0000-000000000005','Recipient 5');
-INSERT INTO house_memberships(player_id,house_id,authorized_by) VALUES('10000000-0000-0000-0000-000000000012','mail-a','10000000-0000-0000-0000-000000000001'),('10000000-0000-0000-0000-000000000013','mail-b','10000000-0000-0000-0000-000000000001'),('10000000-0000-0000-0000-000000000014','mail-c','10000000-0000-0000-0000-000000000001');
+INSERT INTO house_memberships(player_id,house_id,authorized_by) VALUES('10000000-0000-0000-0000-000000000012','mail-a','10000000-0000-0000-0000-000000000001'),('10000000-0000-0000-0000-000000000013','mail-b','10000000-0000-0000-0000-000000000001'),('10000000-0000-0000-0000-000000000014','mail-c','10000000-0000-0000-0000-000000000001'),('10000000-0000-0000-0000-000000000015','mail-b','10000000-0000-0000-0000-000000000001');
 INSERT INTO campaign_records(id,house_id,visibility,kind,title,content,created_by,updated_by)
 VALUES('10000000-0000-0000-0000-000000000050','mail-a','house','character','Court source','Private biography','10000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000002');
 INSERT INTO noble_house_sheets(house_id,updated_by,state) VALUES('mail-a','10000000-0000-0000-0000-000000000002','{"court":[{"id":"court-1","npcId":"10000000-0000-0000-0000-000000000050","role":"Administrador","name":""}],"units":[{"id":"unit-1","name":"Guard","destroyed":false},{"id":"unit-dead","name":"Destroyed","destroyed":true}]}');
@@ -24,6 +24,7 @@ SELECT pg_temp.assert((public.mail_page('{"court":"mail-a:court-1","unit":"mail-
 SELECT pg_temp.assert(jsonb_array_length(public.mail_page('{}',0,1)->'letters')=1,'bounded page');
 SELECT pg_temp.assert(public.mail_page('{}',0,1)->'letters'->0->>'id'<>public.mail_page('{}',1,1)->'letters'->0->>'id','stable nonoverlapping pages');
 DO $$ BEGIN
+ BEGIN PERFORM public.mail_page('{}',0,NULL); RAISE EXCEPTION 'null page limit accepted'; EXCEPTION WHEN raise_exception THEN IF SQLERRM='null page limit accepted' THEN RAISE; END IF; END;
  BEGIN PERFORM public.send_linked_mail('10000000-0000-0000-0000-000000000100','mail-a',ARRAY['p:10000000-0000-0000-0000-000000000013'],'Changed','Dispatch'); RAISE EXCEPTION 'changed retry accepted'; EXCEPTION WHEN raise_exception THEN IF SQLERRM='changed retry accepted' THEN RAISE; END IF; END;
  BEGIN PERFORM public.send_linked_mail('10000000-0000-0000-0000-000000000101','mail-a',ARRAY['p:10000000-0000-0000-0000-000000000013','p:10000000-0000-0000-0000-000000000999'],'Invalid batch','Body'); RAISE EXCEPTION 'invalid target accepted'; EXCEPTION WHEN raise_exception THEN IF SQLERRM='invalid target accepted' THEN RAISE; END IF; END;
  BEGIN PERFORM public.send_linked_mail('10000000-0000-0000-0000-000000000102','mail-b',ARRAY['p:10000000-0000-0000-0000-000000000013'],'Foreign origin','Body'); RAISE EXCEPTION 'foreign house accepted'; EXCEPTION WHEN raise_exception THEN IF SQLERRM='foreign house accepted' THEN RAISE; END IF; END;
@@ -68,7 +69,7 @@ SELECT pg_temp.assert((public.mail_page('{"number":"2","text":"Specific reply"}'
 SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000004',true);
 SELECT pg_temp.assert((public.mail_page('{"text":"Specific reply"}')->>'total')::int=0,'search cannot reveal another recipient response');
 SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000005',true);
-SELECT pg_temp.assert((public.mail_page()->>'total')::int=0,'outsider page empty');
-SELECT pg_temp.assert(public.mail_insights()='[]'::jsonb,'outsider analytics empty');
+SELECT pg_temp.assert((public.mail_page()->>'total')::int=0,'same-house nonrecipient page empty');
+SELECT pg_temp.assert(public.mail_insights()='[]'::jsonb,'same-house nonrecipient analytics empty');
 SELECT pg_temp.assert(NOT has_function_privilege('anon','public.send_linked_mail(uuid,text,text[],text,text,text,text,text,boolean,integer)','EXECUTE'),'anonymous send denied');
 ROLLBACK;
