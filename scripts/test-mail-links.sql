@@ -1,4 +1,6 @@
 BEGIN;
+-- Explicit date for pre-calendar lifecycle fixtures. Date enforcement is tested separately.
+SELECT set_config('cormyr.mail_date','1522-01-01',true);
 CREATE FUNCTION pg_temp.assert(ok boolean,label text) RETURNS void LANGUAGE plpgsql AS $$ BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'Assertion failed: %',label; END IF; END $$;
 INSERT INTO auth.users(id) VALUES ('10000000-0000-0000-0000-000000000001'),('10000000-0000-0000-0000-000000000002'),('10000000-0000-0000-0000-000000000003'),('10000000-0000-0000-0000-000000000004'),('10000000-0000-0000-0000-000000000005');
 INSERT INTO user_roles VALUES('10000000-0000-0000-0000-000000000001','admin');

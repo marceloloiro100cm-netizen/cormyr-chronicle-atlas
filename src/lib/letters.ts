@@ -1,4 +1,5 @@
 export type LetterRow = {
+  campaign_date?:string|null;
  origin_house_id?:string|null;court_member_id?:string|null;court_assignment?:string|null;military_unit_id?:string|null;house_sheet_version?:number|null;batch_key?:string|null;recipient_read?:boolean;
   id: string;
   sender_user_id: string;

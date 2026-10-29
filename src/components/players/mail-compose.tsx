@@ -1,3 +1,5 @@
+import {CampaignDatePicker} from '@/components/calendar/date-picker';
+import {datedMail} from '@/lib/calendar/mail';
 import {useEffect,useRef,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
@@ -22,13 +24,13 @@ export function MailLinkFields({value,onChange,options,onManage}:{value:MailLink
  <p className="text-muted-foreground text-sm">Membro e unidade são opcionais. Os vínculos não executam ordens nem alteram o exército. A identificação privada só aparece a quem tem acesso à ficha.</p>
  </fieldset>;
 }
-type Draft={subject:string;content:string;targets:string[];links:MailLinks;week:string;images:PendingImage[]};
+type Draft={campaignDate:string;subject:string;content:string;targets:string[];links:MailLinks;week:string;images:PendingImage[]};
 const drafts=new Map<string,Draft>();
 export function replaceMailDraft(userId:string){const current=drafts.get(userId+':mail-compose');return !current||(!current.subject&&!current.content)||window.confirm('Substituir o texto da missiva ainda não enviada?');}
 export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Panel['players'][number]|undefined;initial?:{subject:string;content:string}|null;onSave:()=>void;onManage?:(house:string)=>void}){
  const {data:options,error,refetch}=useMailOptions();
  const scope=data.user.id+':mail-compose';
- const [draft,setDraft]=useState<Draft>(()=>initial?{subject:initial.subject,content:initial.content,targets:data.admin?[]:['narrator'],links:{...emptyLinks},week:'',images:[]}:drafts.get(scope)??{subject:'',content:'',targets:data.admin?[]:['narrator'],links:{...emptyLinks},week:'',images:[]});
+ const [draft,setDraft]=useState<Draft>(()=>initial?{subject:initial.subject,content:initial.content,targets:data.admin?[]:['narrator'],links:{...emptyLinks},week:'',campaignDate:'',images:[]}:drafts.get(scope)??{subject:'',content:'',targets:data.admin?[]:['narrator'],links:{...emptyLinks},week:'',campaignDate:'',images:[]});
  const [query,setQuery]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
  const key=useRef<string|null>(null);
  const change=(next:Draft)=>{setDraft(next);drafts.set(scope,next);};
@@ -44,7 +46,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  <form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);setMessage('');key.current??=crypto.randomUUID();try{
  const content=await uploadImages(draft.content,draft.images,key.current);
  const saving=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';
- const r=await supabase.rpc('send_linked_mail',{p_key:key.current,p_origin:draft.links.origin||null,p_targets:draft.targets,p_subject:draft.subject,p_content:content,p_court:draft.links.court||null,p_unit:draft.links.unit||null,p_role:draft.links.court?draft.links.role:null,p_draft:saving,p_week:data.admin?Number(draft.week||suggested):null});
+ const r=await datedMail('send_linked_mail',{p_key:key.current,p_origin:draft.links.origin||null,p_targets:draft.targets,p_subject:draft.subject,p_content:content,p_court:draft.links.court||null,p_unit:draft.links.unit||null,p_role:draft.links.court?draft.links.role:null,p_draft:saving,p_week:data.admin?Number(draft.week||suggested):null},draft.campaignDate);
  if(r.error)throw r.error;
  const result=r.data as unknown as {ids:string[];state:string;week:number|null;duplicate:boolean};
  setMessage(result.duplicate?'Envio já registrado; nenhuma cópia duplicada.':result.state==='draft'?'Rascunhos salvos.':result.state==='delivered'?`Missiva entregue a ${result.ids.length} destinatário(s).`:`Entrega programada para a Semana ${result.week}.`);
@@ -59,7 +61,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  </fieldset>
  <MailLinkFields value={draft.links} onChange={links=>change({...draft,links})} options={options??{players:[],houses:[]}} onManage={onManage}/>
  {data.admin&&<label>Semana de entrega<input type="number" min={1} value={draft.week} placeholder={String(suggested)} onChange={e=>change({...draft,week:e.target.value})}/></label>}
- <label>Assunto<input required value={draft.subject} onChange={e=>change({...draft,subject:e.target.value})}/></label>
+ <CampaignDatePicker value={draft.campaignDate} onChange={campaignDate=>change({...draft,campaignDate})}/><label>Assunto<input required value={draft.subject} onChange={e=>change({...draft,subject:e.target.value})}/></label>
  <label>Missiva<textarea required rows={10} value={draft.content} onChange={e=>change({...draft,content:e.target.value})}/></label>
  <ImagePicker images={draft.images} onChange={images=>change({...draft,images})} disabled={busy}/>
  <p>{data.admin?`Entrega prevista: Semana ${draft.week||suggested}.`:current?`Entrega na Semana ${current}.`:'Sem semana aberta. Você pode salvar rascunhos.'}</p>
