@@ -18,6 +18,23 @@
     },
     "tools": [
       {
+        "name": "opcoes_missivas",
+        "title": "Cadastros para missivas",
+        "description": "Lista jogadores destinatários e casas autorizadas com membros da corte e unidades militares. Não expõe e-mails, fichas completas ou personagens privados de outras casas.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
         "name": "listar_casas",
         "title": "Listar casas da temporada",
         "description": "Lista as oito casas nobres oficiais da segunda temporada de Cormyr, com lorde, castelo e região.",
@@ -133,7 +150,7 @@
       {
         "name": "listar_missivas",
         "title": "Listar missivas",
-        "description": "Lista as missivas da campanha visíveis ao usuário conectado, com número, tipo, assunto e data.",
+        "description": "Pesquisa missivas e respostas autorizadas, com paginação, semana de atividade e vínculos com corte e unidades.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -144,14 +161,36 @@
           "type": "object",
           "properties": {
             "casa": {
-              "description": "Filtrar pela casa destinatária, por exemplo \"harcourt\".",
               "type": "string"
             },
+            "origem": {
+              "type": "string"
+            },
+            "membro_corte": {
+              "description": "Chave casa:id ou none para sem vínculo.",
+              "type": "string"
+            },
+            "unidade_militar": {
+              "description": "Chave casa:id ou none para sem vínculo.",
+              "type": "string"
+            },
+            "semana": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "texto": {
+              "type": "string"
+            },
+            "pagina": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
             "limite": {
-              "description": "Quantidade máxima de missivas (padrão 50).",
               "type": "integer",
               "minimum": 1,
-              "maximum": 100
+              "maximum": 50
             }
           },
           "additionalProperties": false
@@ -161,7 +200,7 @@
       {
         "name": "escrever_missiva",
         "title": "Escrever missiva",
-        "description": "Envia uma missiva do Narrador para uma ou mais casas. Gerais podem ter várias casas; reservadas vão para uma só. A numeração segue a sequência das missivas da campanha.",
+        "description": "Envia entregas privadas individuais para jogadores, casas ou Narrador, com vínculos opcionais da ficha. Consulte opcoes_missivas para IDs válidos. Repita a mesma chave e o mesmo conteúdo em caso de falha de rede.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -172,45 +211,72 @@
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
           "properties": {
-            "tipo": {
+            "data_campanha": {
               "type": "string",
-              "enum": [
-                "geral",
-                "reservada"
-              ],
-              "description": "Geral vai para várias casas; reservada para uma única casa."
+              "description": "Data de Harptos obrigatória: AAAA-MM-DD, dias 01–30, ou AAAA-F-midwinter/greengrass/midsummer/shieldmeet/highharvestide/feast-moon. Shieldmeet apenas em anos divisíveis por 4."
             },
-            "numero": {
-              "description": "Número da missiva na sequência da campanha, por exemplo 2 para a Missiva 2.",
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 9007199254740991
-            },
-            "assunto": {
+            "chave_envio": {
               "type": "string",
-              "minLength": 1,
-              "description": "Assunto da missiva."
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "UUID estável da operação; reutilizar somente para repetir o mesmo envio."
             },
-            "conteudo": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Texto completo da missiva."
+            "casa_remetente": {
+              "type": "string"
             },
-            "casas": {
-              "minItems": 1,
+            "jogadores": {
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
-              },
-              "description": "Identificadores das casas destinatárias, por exemplo [\"ashkar\",\"harcourt\"]."
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "casas": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "narrador": {
+              "type": "boolean"
+            },
+            "assunto": {
+              "type": "string",
+              "minLength": 1
+            },
+            "conteudo": {
+              "type": "string",
+              "minLength": 1
+            },
+            "membro_corte": {
+              "type": "string"
+            },
+            "unidade_militar": {
+              "type": "string"
+            },
+            "responsabilidade": {
+              "type": "string",
+              "enum": [
+                "executor",
+                "order_recipient"
+              ]
+            },
+            "rascunho": {
+              "type": "boolean"
+            },
+            "numero": {
+              "description": "Semana de entrega, usada pelo Narrador; não é um número individual da mensagem.",
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
             }
           },
           "required": [
-            "tipo",
+            "data_campanha",
+            "chave_envio",
             "assunto",
-            "conteudo",
-            "casas"
+            "conteudo"
           ],
           "additionalProperties": false
         },
@@ -219,7 +285,7 @@
       {
         "name": "responder_missiva",
         "title": "Responder missiva",
-        "description": "Registra uma resposta a uma missiva recebida, marcando-a como respondida. A operação é idempotente: repetir o mesmo envio não duplica a resposta.",
+        "description": "Responde a uma missiva ou resposta específica. A entrega segue a semana calculada no servidor; só respostas entregues contam como respondidas. Repita a mesma chave e o mesmo texto em caso de falha de rede.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -230,20 +296,35 @@
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
           "properties": {
+            "data_campanha": {
+              "type": "string",
+              "description": "Data de Harptos obrigatória: AAAA-MM-DD, dias 01–30, ou AAAA-F-midwinter/greengrass/midsummer/shieldmeet/highharvestide/feast-moon. Shieldmeet apenas em anos divisíveis por 4."
+            },
             "missiva_id": {
               "type": "string",
               "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "resposta_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "chave_envio": {
+              "type": "string",
+              "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
-              "description": "Identificador da missiva, obtido em listar_missivas."
+              "description": "UUID estável da operação."
             },
             "conteudo": {
               "type": "string",
-              "minLength": 1,
-              "description": "Texto da resposta."
+              "minLength": 1
             }
           },
           "required": [
+            "data_campanha",
             "missiva_id",
+            "chave_envio",
             "conteudo"
           ],
           "additionalProperties": false

@@ -120,8 +120,7 @@ export function pendingRoundHouses(week: number | null, houses: {id:string;name:
 
   const playerById = new Map<string, RoundPlayer>();
   const playerByUserId = new Map<string, RoundPlayer>();
-  for (let i = 0; i < activePlayers.length; i++) {
-    const p = activePlayers[i];
+  for (const p of activePlayers) {
     if (p.id) playerById.set(p.id, p);
     if (p.user_id) playerByUserId.set(p.user_id, p);
   }
@@ -138,8 +137,7 @@ export function pendingRoundHouses(week: number | null, houses: {id:string;name:
   };
 
   const housesByPlayerId = new Map<string, string[]>();
-  for (let i = 0; i < members.length; i++) {
-    const m = members[i];
+  for (const m of members) {
     let arr = housesByPlayerId.get(m.player_id);
     if (!arr) {
       arr = [];
@@ -150,8 +148,7 @@ export function pendingRoundHouses(week: number | null, houses: {id:string;name:
   const housesFor = (player:RoundPlayer|undefined) => player ? (housesByPlayerId.get(player.id) || []) : [];
 
   const repliesByLetter = new Map<string, RoundReply[]>();
-  for (let i = 0; i < replies.length; i++) {
-    const r = replies[i];
+  for (const r of replies) {
     if (r.publication_state === 'delivered') {
       let arr = repliesByLetter.get(r.letter_id);
       if (!arr) {
@@ -163,14 +160,12 @@ export function pendingRoundHouses(week: number | null, houses: {id:string;name:
   }
 
   const pending = new Map<string,Set<string>>();
-  for (let i = 0; i < letters.length; i++) {
-    const letter = letters[i];
+  for (const letter of letters) {
     if (letter.deleted_at || letter.publication_state !== 'delivered') continue;
     const answers = repliesByLetter.get(letter.id) || [];
     const latest = new Map<string,string>();
     const add = (ids:string[],time:string) => {
-      for (let j = 0; j < ids.length; j++) {
-        const id = ids[j];
+      for (const id of ids) {
         const prev = latest.get(id) ?? '';
         latest.set(id, time > prev ? time : prev);
       }
@@ -178,8 +173,7 @@ export function pendingRoundHouses(week: number | null, houses: {id:string;name:
     if (!letter.sender_player_id && !playerFor(null,letter.sender_user_id) && (letter.delivery_week ?? letter.letter_number) === week) {
       add(letter.recipient_house_id ? [letter.recipient_house_id] : housesFor(playerFor(letter.recipient_player_id)),letter.delivered_at ?? letter.created_at);
     }
-    for (let j = 0; j < answers.length; j++) {
-      const reply = answers[j];
+    for (const reply of answers) {
       if (reply.author_player_id || playerFor(null,reply.author_user_id) || reply.delivery_week !== week) continue;
       const targets = reply.house_id ? [reply.house_id] : letter.recipient_house_id ? [letter.recipient_house_id] : housesFor(playerFor(letter.recipient_player_id ?? letter.sender_player_id,letter.sender_user_id));
       add(targets,reply.delivered_at ?? reply.created_at ?? '');
@@ -188,8 +182,7 @@ export function pendingRoundHouses(week: number | null, houses: {id:string;name:
       const eligible = activePlayers.filter(p => housesFor(p).includes(houseId));
       if (!eligible.length) continue;
       let answered = false;
-      for (let j = 0; j < answers.length; j++) {
-        const r = answers[j];
+      for (const r of answers) {
         if (r.delivery_week === week && (r.delivered_at ?? r.created_at ?? '') >= lastNarrative) {
           if (eligible.some(p => p.id === r.author_player_id || p.user_id === r.author_user_id)) {
             answered = true;

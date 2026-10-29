@@ -74,6 +74,72 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_calendar: {
+        Row: {
+          auto_advance: boolean
+          day: number
+          festival: string | null
+          id: boolean
+          last_round: number | null
+          month: number
+          updated_at: string
+          updated_by: string | null
+          version: number
+          year: number
+        }
+        Insert: {
+          auto_advance?: boolean
+          day?: number
+          festival?: string | null
+          id?: boolean
+          last_round?: number | null
+          month?: number
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          year?: number
+        }
+        Update: {
+          auto_advance?: boolean
+          day?: number
+          festival?: string | null
+          id?: boolean
+          last_round?: number | null
+          month?: number
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          year?: number
+        }
+        Relationships: []
+      }
+      campaign_calendar_audit: {
+        Row: {
+          actor: string | null
+          after_state: Json
+          before_state: Json
+          created_at: string
+          id: string
+          reason: string
+        }
+        Insert: {
+          actor?: string | null
+          after_state: Json
+          before_state: Json
+          created_at?: string
+          id?: string
+          reason: string
+        }
+        Update: {
+          actor?: string | null
+          after_state?: Json
+          before_state?: Json
+          created_at?: string
+          id?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       campaign_houses: {
         Row: {
           active: boolean
@@ -124,26 +190,26 @@ export type Database = {
       }
       campaign_letters: {
         Row: {
-          origin_house_id: string | null
-          court_member_id: string | null
-          court_assignment: string | null
-          military_unit_id: string | null
-          house_sheet_version: number | null
           administrative_actor: string | null
           batch_key: string | null
           campaign_date: string | null
           content: string
           conversation_id: string | null
+          court_assignment: string | null
+          court_member_id: string | null
           created_at: string
           creation_week: number | null
           deleted_at: string | null
           deleted_by: string | null
           delivered_at: string | null
           delivery_week: number | null
+          house_sheet_version: number | null
           id: string
           last_synced_at: string | null
           letter_kind: string
           letter_number: number | null
+          military_unit_id: string | null
+          origin_house_id: string | null
           publication_state: string
           recipient_house_id: string | null
           recipient_player_id: string | null
@@ -157,26 +223,26 @@ export type Database = {
           version: number
         }
         Insert: {
-          origin_house_id?: string | null
-          court_member_id?: string | null
-          court_assignment?: string | null
-          military_unit_id?: string | null
-          house_sheet_version?: number | null
           administrative_actor?: string | null
           batch_key?: string | null
           campaign_date?: string | null
           content: string
           conversation_id?: string | null
+          court_assignment?: string | null
+          court_member_id?: string | null
           created_at?: string
           creation_week?: number | null
           deleted_at?: string | null
           deleted_by?: string | null
           delivered_at?: string | null
           delivery_week?: number | null
+          house_sheet_version?: number | null
           id?: string
           last_synced_at?: string | null
           letter_kind?: string
           letter_number?: number | null
+          military_unit_id?: string | null
+          origin_house_id?: string | null
           publication_state?: string
           recipient_house_id?: string | null
           recipient_player_id?: string | null
@@ -190,26 +256,26 @@ export type Database = {
           version?: number
         }
         Update: {
-          origin_house_id?: string | null
-          court_member_id?: string | null
-          court_assignment?: string | null
-          military_unit_id?: string | null
-          house_sheet_version?: number | null
           administrative_actor?: string | null
           batch_key?: string | null
           campaign_date?: string | null
           content?: string
           conversation_id?: string | null
+          court_assignment?: string | null
+          court_member_id?: string | null
           created_at?: string
           creation_week?: number | null
           deleted_at?: string | null
           deleted_by?: string | null
           delivered_at?: string | null
           delivery_week?: number | null
+          house_sheet_version?: number | null
           id?: string
           last_synced_at?: string | null
           letter_kind?: string
           letter_number?: number | null
+          military_unit_id?: string | null
+          origin_house_id?: string | null
           publication_state?: string
           recipient_house_id?: string | null
           recipient_player_id?: string | null
@@ -223,6 +289,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "campaign_letters_origin_house_id_fkey"
+            columns: ["origin_house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "campaign_letters_recipient_house_id_fkey"
             columns: ["recipient_house_id"]
@@ -847,6 +920,27 @@ export type Database = {
           },
         ]
       }
+      mail_submissions: {
+        Row: {
+          author_user_id: string
+          created_at: string
+          id: string
+          request: Json
+        }
+        Insert: {
+          author_user_id: string
+          created_at?: string
+          id: string
+          request: Json
+        }
+        Update: {
+          author_user_id?: string
+          created_at?: string
+          id?: string
+          request?: Json
+        }
+        Relationships: []
+      }
       noble_house_drive_exports: {
         Row: {
           binding_id: string
@@ -1279,22 +1373,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      dated_mail_action: { Args: {p_action:string;p_args:Json;p_date:string}; Returns:Json }
-      get_campaign_calendar: { Args: Record<PropertyKey,never>; Returns:Json }
-      set_campaign_calendar: { Args: {p_version:number;p_date:string;p_auto:boolean}; Returns:undefined }
-      calendar_mail_events: { Args: {p_year:number;p_month:number}; Returns:Json }
-
-      mail_compose_options: { Args: Record<PropertyKey,never>; Returns: Json }
-      send_linked_mail: { Args: {p_key:string;p_origin:string|null;p_targets:string[];p_subject:string;p_content:string;p_court?:string|null;p_unit?:string|null;p_role?:string|null;p_draft?:boolean;p_week?:number|null}; Returns: Json }
-      edit_linked_mail_draft: {Args:{p_id:string;p_version:number;p_subject:string;p_content:string;p_origin:string|null;p_court:string|null;p_unit:string|null;p_role:string|null};Returns:Json}
-      mail_page: { Args: {p_filters?:Json;p_page?:number;p_size?:number}; Returns:Json }
-      mail_insights: { Args: Record<PropertyKey,never>; Returns: Json }
-
-      mark_letter_read: { Args: { p_id: string }; Returns: undefined }
-      reply_delivery_week: { Args: { p_recipient: string }; Returns: number | null }
-      can_export_mail: { Args: { p_type: string; p_id: string; p_viewer: string }; Returns: boolean }
-      edit_letter_draft: { Args: { p_id:string; p_version:number; p_subject:string; p_content:string }; Returns: Json }
-
       admin_save_player_account: {
         Args: {
           p_active: boolean
@@ -1310,6 +1388,7 @@ export type Database = {
         }
         Returns: string
       }
+      apply_calendar_months: { Args: { delta: number }; Returns: undefined }
       apply_drive_record: {
         Args: {
           p_binding: string
@@ -1318,6 +1397,10 @@ export type Database = {
           p_site_version: number
         }
         Returns: boolean
+      }
+      calendar_mail_events: {
+        Args: { p_month: number; p_year: number }
+        Returns: Json
       }
       campaign_access_active: { Args: never; Returns: boolean }
       campaign_representation_action: {
@@ -1328,8 +1411,19 @@ export type Database = {
         Args: { r: Database["public"]["Tables"]["campaign_records"]["Row"] }
         Returns: boolean
       }
+      can_export_mail: {
+        Args: { p_id: string; p_type: string; p_viewer: string }
+        Returns: boolean
+      }
       can_read_letter: {
         Args: { l: Database["public"]["Tables"]["campaign_letters"]["Row"] }
+        Returns: boolean
+      }
+      can_read_letter_as: {
+        Args: {
+          l: Database["public"]["Tables"]["campaign_letters"]["Row"]
+          viewer: string
+        }
         Returns: boolean
       }
       can_read_public_gallery_image: {
@@ -1342,6 +1436,13 @@ export type Database = {
       }
       can_read_reply: {
         Args: { r: Database["public"]["Tables"]["letter_replies"]["Row"] }
+        Returns: boolean
+      }
+      can_read_reply_as: {
+        Args: {
+          r: Database["public"]["Tables"]["letter_replies"]["Row"]
+          viewer: string
+        }
         Returns: boolean
       }
       claim_drive_binding: {
@@ -1376,6 +1477,10 @@ export type Database = {
         }
         Returns: Json
       }
+      dated_mail_action: {
+        Args: { p_action: string; p_args: Json; p_date: string }
+        Returns: Json
+      }
       delete_campaign_letter: { Args: { p_id: string }; Returns: undefined }
       edit_campaign_letter: {
         Args: {
@@ -1386,6 +1491,29 @@ export type Database = {
         }
         Returns: Json
       }
+      edit_letter_draft: {
+        Args: {
+          p_content: string
+          p_id: string
+          p_subject: string
+          p_version: number
+        }
+        Returns: Json
+      }
+      edit_linked_mail_draft: {
+        Args: {
+          p_content: string
+          p_court: string
+          p_id: string
+          p_origin: string
+          p_role: string
+          p_subject: string
+          p_unit: string
+          p_version: number
+        }
+        Returns: Json
+      }
+      get_campaign_calendar: { Args: never; Returns: Json }
       in_campaign_house: {
         Args: { edit_required?: boolean; h: string }
         Returns: boolean
@@ -1395,6 +1523,14 @@ export type Database = {
         Args: { l: Database["public"]["Tables"]["campaign_letters"]["Row"] }
         Returns: boolean
       }
+      mail_compose_options: { Args: never; Returns: Json }
+      mail_insights: { Args: never; Returns: Json }
+      mail_page: {
+        Args: { p_filters?: Json; p_page?: number; p_size?: number }
+        Returns: Json
+      }
+      mail_recipient_read: { Args: { p_id: string }; Returns: boolean }
+      mark_letter_read: { Args: { p_id: string }; Returns: undefined }
       my_player_id: { Args: never; Returns: string }
       open_letter_round: { Args: never; Returns: number }
       player_send_letter: {
@@ -1421,6 +1557,7 @@ export type Database = {
         Args: { p_content: string; p_key: string; p_letter: string }
         Returns: string
       }
+      reply_delivery_week: { Args: { p_recipient: string }; Returns: number }
       reply_weekly_message: {
         Args: {
           p_content: string
@@ -1516,6 +1653,25 @@ export type Database = {
         }
         Returns: string
       }
+      send_linked_mail: {
+        Args: {
+          p_content: string
+          p_court?: string
+          p_draft?: boolean
+          p_key: string
+          p_origin: string
+          p_role?: string
+          p_subject: string
+          p_targets: string[]
+          p_unit?: string
+          p_week?: number
+        }
+        Returns: Json
+      }
+      set_campaign_calendar: {
+        Args: { p_auto: boolean; p_date: string; p_version: number }
+        Returns: undefined
+      }
       set_letter_round: {
         Args: { p_closed: boolean; p_number: number }
         Returns: undefined
@@ -1525,6 +1681,16 @@ export type Database = {
         Returns: undefined
       }
       stop_campaign_representation: { Args: never; Returns: undefined }
+      valid_campaign_date: { Args: { v: string }; Returns: boolean }
+      validate_mail_links: {
+        Args: {
+          p_court: string
+          p_origin: string
+          p_role: string
+          p_unit: string
+        }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
