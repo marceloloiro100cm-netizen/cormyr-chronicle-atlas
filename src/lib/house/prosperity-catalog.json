@@ -204,7 +204,29 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "terrain",
+        "values": [
+          "grasslands",
+          "grasslands-light"
+        ]
+      },
+      {
+        "kind": "feature",
+        "values": [
+          "woods-dense",
+          "woods-light"
+        ]
+      },
+      {
+        "kind": "community",
+        "values": [
+          "",
+          "hamlet"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -880,6 +902,9 @@
         "values": [
           "pros-fishery"
         ]
+      },
+      {
+        "kind": "water"
       }
     ],
     "effects": [
@@ -930,6 +955,9 @@
         "values": [
           "pros-fishery"
         ]
+      },
+      {
+        "kind": "water"
       }
     ],
     "effects": [
@@ -974,7 +1002,32 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "terrain",
+        "values": [
+          "plains",
+          "plains-light",
+          "hills",
+          "hills-light",
+          "hills-dense"
+        ]
+      },
+      {
+        "kind": "feature",
+        "values": [
+          "woods-dense",
+          "woods-light"
+        ]
+      },
+      {
+        "kind": "community",
+        "values": [
+          "",
+          "hamlet"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -1165,7 +1218,15 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "community",
+        "values": [
+          "",
+          "hamlet"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -1302,7 +1363,32 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "terrain",
+        "values": [
+          "plains",
+          "plains-light",
+          "hills",
+          "hills-light",
+          "hills-dense"
+        ]
+      },
+      {
+        "kind": "feature",
+        "values": [
+          "woods-dense",
+          "woods-light"
+        ]
+      },
+      {
+        "kind": "community",
+        "values": [
+          "",
+          "hamlet"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -1439,7 +1525,22 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "terrain",
+        "values": [
+          "grasslands",
+          "grasslands-light"
+        ]
+      },
+      {
+        "kind": "community",
+        "values": [
+          "",
+          "hamlet"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -2027,7 +2128,11 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "water"
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -2068,7 +2173,32 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "terrain",
+        "values": [
+          "plains",
+          "plains-light",
+          "hills",
+          "hills-light",
+          "hills-dense"
+        ]
+      },
+      {
+        "kind": "feature",
+        "values": [
+          "woods-dense",
+          "woods-light"
+        ]
+      },
+      {
+        "kind": "community",
+        "values": [
+          "",
+          "hamlet"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -2209,7 +2339,22 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "feature",
+        "values": [
+          "woods-dense",
+          "woods-light"
+        ]
+      },
+      {
+        "kind": "community",
+        "values": [
+          "",
+          "hamlet"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -2359,7 +2504,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "hall",
+          "castle",
+          "small-castle",
+          "superior-castle"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -2558,7 +2713,13 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "resource",
+        "resource": "influence",
+        "minimum": 21
+      }
+    ],
     "effects": [
       {
         "kind": "gain",
@@ -2780,7 +2941,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "hall",
+          "castle",
+          "small-castle",
+          "superior-castle"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "action",
@@ -2923,7 +3094,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "hall",
+          "castle",
+          "small-castle",
+          "superior-castle"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "mitigation",
@@ -2972,7 +3153,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "hall",
+          "castle",
+          "small-castle",
+          "superior-castle"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "mitigation",
@@ -3021,7 +3212,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "hall",
+          "castle",
+          "small-castle",
+          "superior-castle"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "action",
@@ -3128,7 +3329,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "hall",
+          "castle",
+          "small-castle",
+          "superior-castle"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "action",
@@ -3173,7 +3384,16 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "castle",
+          "small-castle",
+          "superior-castle"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "action",
@@ -3453,7 +3673,26 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "hall",
+          "castle",
+          "small-castle",
+          "superior-castle"
+        ]
+      },
+      {
+        "kind": "community",
+        "values": [
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -3547,7 +3786,16 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "castle",
+          "small-castle",
+          "superior-castle"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -3845,7 +4093,17 @@
     "category": "lifestyle",
     "description": "Alojamento próprio relativamente seguro fora do domínio; sem bônus mecânico normal.",
     "costs": [],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "community",
+        "values": [
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "action",
@@ -3887,7 +4145,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "hall",
+          "castle",
+          "small-castle",
+          "superior-castle"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "gain",
@@ -4027,7 +4295,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "hall",
+          "castle",
+          "small-castle",
+          "superior-castle"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -4078,7 +4356,26 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "hall",
+          "castle",
+          "small-castle",
+          "superior-castle"
+        ]
+      },
+      {
+        "kind": "community",
+        "values": [
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -4189,6 +4486,14 @@
           "pros-bowyer-fletcher-or-weaponsmith",
           "pros-stonemason",
           "pros-shipwright"
+        ]
+      },
+      {
+        "kind": "community",
+        "values": [
+          "large-town",
+          "small-city",
+          "large-city"
         ]
       }
     ],
@@ -5542,6 +5847,15 @@
         "values": [
           "pros-scholar"
         ]
+      },
+      {
+        "kind": "community",
+        "values": [
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
       }
     ],
     "effects": [
@@ -5591,7 +5905,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "community",
+        "values": [
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
+      }
+    ],
     "effects": [],
     "duration": {
       "months": 0
@@ -6061,7 +6385,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "community",
+        "values": [
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "mitigation",
@@ -6618,7 +6952,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "community",
+        "values": [
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "gain",
@@ -6671,6 +7015,14 @@
         "values": [
           "pros-brothels"
         ]
+      },
+      {
+        "kind": "community",
+        "values": [
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
       }
     ],
     "effects": [
@@ -6720,7 +7072,16 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "community",
+        "values": [
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "action",
@@ -7556,7 +7917,25 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "castle",
+          "small-castle",
+          "superior-castle"
+        ]
+      },
+      {
+        "kind": "community",
+        "values": [
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "action",
@@ -7659,6 +8038,15 @@
         "kind": "parent",
         "values": [
           "pros-minstrel-s-seat"
+        ]
+      },
+      {
+        "kind": "community",
+        "values": [
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
         ]
       }
     ],
@@ -7904,7 +8292,11 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "water"
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -7995,7 +8387,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "community",
+        "values": [
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "gain",
@@ -8284,7 +8686,17 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "community",
+        "values": [
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
