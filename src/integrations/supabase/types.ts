@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaign_translations: {
+        Row: {
+          id: string
+          entity_type: string
+          entity_id: string
+          field_name: string
+          locale: string
+          translated_text: string
+          updated_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          entity_type: string
+          entity_id: string
+          field_name: string
+          locale: string
+          translated_text: string
+          updated_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          entity_type?: string
+          entity_id?: string
+          field_name?: string
+          locale?: string
+          translated_text?: string
+          updated_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       archive_source_review: {
         Row: {
           created_at: string
