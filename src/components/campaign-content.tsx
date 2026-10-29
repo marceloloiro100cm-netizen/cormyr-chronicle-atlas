@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { contentParts, imageToken, validateImage } from '@/lib/campaign-content';
 import { ImageViewer } from '@/components/image-viewer';
+import { cleanGalleryTitle } from '@/lib/gallery';
 
 export function CampaignContent({content}:{content:string}) {
   return <div className="campaign-prose">{contentParts(content).map((part,i)=>'text' in part?<p className="campaign-preserve" key={i}>{part.text}</p>:<PrivateImage key={i} path={part.path} caption={part.caption}/>)}</div>;
@@ -16,7 +17,36 @@ export function PrivateImage({path,caption}:{path:string;caption:string}) {
   }});
   const [url,setUrl]=useState('');
   useEffect(()=>{if(!data)return;const objectUrl=URL.createObjectURL(data);setUrl(objectUrl);return()=>URL.revokeObjectURL(objectUrl);},[data]);
-  return <figure className="campaign-image">{url?<ImageViewer src={url} caption={caption||'Imagem da campanha'}/>:<p role="status">{error?'Imagem indisponível.':'Carregando imagem…'}</p>}{caption&&<figcaption>{caption}</figcaption>}</figure>;
+  const cleanCaption = cleanGalleryTitle(caption);
+  return (
+    <figure className="castle-gallery-artwork">
+      <div className="castle-gallery-frame">
+        <div className="castle-gallery-mat">
+          <div className="castle-gallery-canvas">
+            {url ? (
+              <ImageViewer src={url} caption={cleanCaption || 'Imagem da campanha'} />
+            ) : (
+              <p role="status" style={{ color: 'white', padding: '1rem', textAlign: 'center' }}>
+                {error ? 'Imagem indisponível.' : 'Carregando imagem…'}
+              </p>
+            )}
+          </div>
+        </div>
+        <span className="castle-frame-corner corner-tl" aria-hidden="true" />
+        <span className="castle-frame-corner corner-tr" aria-hidden="true" />
+        <span className="castle-frame-corner corner-bl" aria-hidden="true" />
+        <span className="castle-frame-corner corner-br" aria-hidden="true" />
+      </div>
+
+      {cleanCaption && (
+        <figcaption className="castle-gallery-plaque">
+          <span className="plaque-rivet" aria-hidden="true">•</span>
+          <span className="plaque-title">{cleanCaption}</span>
+          <span className="plaque-rivet" aria-hidden="true">•</span>
+        </figcaption>
+      )}
+    </figure>
+  );
 }
 export type PendingImage={file:File;caption:string};
 export function ImagePicker({images,onChange,disabled}:{images:PendingImage[];onChange:(images:PendingImage[])=>void;disabled?:boolean}) {
