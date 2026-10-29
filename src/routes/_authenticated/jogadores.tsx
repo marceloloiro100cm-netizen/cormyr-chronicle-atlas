@@ -48,7 +48,7 @@ function Players(){
     {tab==='casa'&&current&&<><section><p className="campaign-eyebrow">{current.region} · CASA NOBRE</p><h2>{current.name}</h2><CampaignContent content={narrativeText(current.details)}/></section><CollapsibleText title={<h2>Textos da casa</h2>}><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind!=='document'&&r.kind!=='character'&&!isFichaCasa(r.title,r.content)&&!isFichaPersonagem(r.title,r.content)&&Boolean(narrativeText(r.content)))} narrativeOnly canEdit={canEdit} onSave={afterSave}/></CollapsibleText><NpcHub records={data.records.filter(r=>r.house_id===current.id)} houseId={current.id} playerId={me?.id} admin={data.admin} canEdit={canEdit} onSave={afterSave} renderEditor={row=><RecordEditor row={row} canEdit={canEdit} onSave={afterSave}/>}/></>}
     {tab==='ficha'&&current&&<FichaTab current={current} records={data.records.filter(r=>r.house_id===current.id)} canEdit={canEdit} onSave={afterSave}/>}
     {tab==='documentos'&&current&&<><h2>Documentos do acervo</h2><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind==='document')} canEdit={canEdit} onSave={afterSave}/>{canEdit&&<RecordForm houseId={current.id} playerId={me?.id} admin={data.admin} onSave={afterSave} kind="document"/>}</>}
-    {tab==='missivas'&&<MissivasTab data={data} me={me} onSave={afterSave} onError={setMessage}/>}
+    {tab==='missivas'&&<MissivasTab data={data} me={me} onSave={afterSave} onError={setMessage} onManage={id=>{setHouse(id);setTab('ficha');}}/>}
     {tab==='admin'&&data.admin&&<AdminPanel data={data} onSave={afterSave}/>}
     </>;
   if(data.admin&&representing)return <CampaignShell><PlayerRepresentation onReturn={()=>{setRepresenting(false);refresh();}}/></CampaignShell>;

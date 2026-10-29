@@ -35,3 +35,17 @@ describe('Drive adapter isolated fixtures',()=>{
   vi.stubEnv('GOOGLE_DRIVE_API_KEY','fixture');vi.stubEnv('LOVABLE_API_KEY','fixture');const methods:string[]=[];const drive=createDriveAdapter(async(input,init)=>{methods.push(init?.method??'GET');return String(input).includes('alt=media')?Response.json(base):Response.json({files:[{id:'already-uploaded'}]});});const result=await drive.write('isolated',base);expect(result.id).toBe('already-uploaded');expect(methods).toEqual(['GET','GET']);
  });
 });
+
+describe('metadados estruturados de missivas',()=>{
+ const links={originHouseId:'erdenor',courtMemberId:'court-1',courtAssignment:'executor' as const,militaryUnitId:'unit-1',sheetVersion:2,deliveryWeek:3};
+ it('aceita envelopes antigos sem alterar sua forma canônica',()=>{
+  expect(envelopeSchema.parse(base)).toEqual(base);
+  expect(canonical(base)).toBe(JSON.stringify([base.schema,base.entityType,base.id,base.houseId,base.playerId,base.visibility,base.version,base.title,base.content,base.kind??null,base.letterId??null,base.createdAt,base.updatedAt,base.authorName??null]));
+ });
+ it('preserva IDs e detecta alterações dos vínculos na reconciliação',()=>{
+  const letter={...base,entityType:'letter' as const,mailLinks:links};
+  expect(envelopeSchema.parse(letter).mailLinks).toEqual(links);
+  expect(canonical(letter)).not.toBe(canonical({...letter,mailLinks:{...links,militaryUnitId:'unit-2'}}));
+  expect(JSON.stringify(letter.mailLinks)).not.toContain('biography');
+ });
+});

@@ -33,7 +33,7 @@ async function siteEnvelope(db:DB,type:string,id:string,b:Binding):Promise<Envel
     houseId=b.scope==='player'?b.house_id:null;
   }
   const version=type==='reply'?1:Number(r['version']??1);
-  const e=envelopeSchema.parse({schema:'cormyr-record-v1',entityType:type,id,houseId,playerId,visibility,version,baseVersion:Math.max(version-1,0),title:text(r,type==='record'?'title':type==='letter'?'subject':'author_name'),content:text(r,'content'),...(type==='record'?{kind:r['kind']}:{}),...(type==='reply'?{letterId:r['letter_id']}:{}),createdAt:text(r,'created_at'),updatedAt:text(r,'updated_at')||text(r,'created_at'),authorName:text(r,type==='letter'?'sender_name':'author_name'),mutationId:id,origin:'site'});
+  const e=envelopeSchema.parse({schema:'cormyr-record-v1',entityType:type,id,houseId,playerId,visibility,version,baseVersion:Math.max(version-1,0),title:text(r,type==='record'?'title':type==='letter'?'subject':'author_name'),content:text(r,'content'),...(type==='record'?{kind:r['kind']}:{}),...(type==='reply'?{letterId:r['letter_id']}:{}),...(type==='letter'&&r['origin_house_id']?{mailLinks:{originHouseId:r['origin_house_id']??null,courtMemberId:r['court_member_id']??null,courtAssignment:r['court_assignment']??null,militaryUnitId:r['military_unit_id']??null,sheetVersion:r['house_sheet_version']??null,deliveryWeek:r['delivery_week']??null}}:{}),createdAt:text(r,'created_at'),updatedAt:text(r,'updated_at')||text(r,'created_at'),authorName:text(r,type==='letter'?'sender_name':'author_name'),mutationId:id,origin:'site'});
   return allowed(b,e)?e:null;
 }
 async function stage(db:DB,b:Binding,file:string,etag:string,remote:Envelope,site:Envelope|null,conflict:boolean){
