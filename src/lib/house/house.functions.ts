@@ -143,7 +143,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   }
   if(data.action==='undo'){if(state.phase!=='draft')throw new Error('Somente rascunhos podem ser desfeitos.');const last=await db.from('noble_house_ledger').select('before_state,action').eq('house_id',data.houseId).order('version',{ascending:false}).limit(1).single();if(last.error||!last.data.before_state||last.data.action==='undo')throw new Error('Nada para desfazer.');const prior=last.data.before_state as unknown as HouseState;next=prior.schemaVersion===1?prior:newHouseState(data.houseId,official.data.region??'');}
   validateResources(next.base);validateResources(next.permanent);
-  if(RESOURCE_KEYS.some(r=>balances(next).available[r]<0)&&!['correct','fortune','survivors','return_to_draft','clear_pending','court','unit_state','vassal_domain','unit'].includes(data.action))throw new Error('Saldo insuficiente; nenhuma alteração foi gravada.');
+  if(RESOURCE_KEYS.some(r=>balances(next).available[r]<0)&&!['correct','fortune','survivors','return_to_draft','clear_pending','court','unit_state','vassal_domain'].includes(data.action))throw new Error('Saldo insuficiente; nenhuma alteração foi gravada.');
   const result=await db.rpc('commit_noble_house_operation',{p_actor:context.userId,p_house:data.houseId,p_version:data.version,p_key:data.key,p_action:data.action,p_state:JSON.parse(JSON.stringify(next)),p_explanation:data.explanation,p_rule:rule});
   if(result.error)throw new Error(result.error.message);
   return result.data as unknown as {state:HouseState;version:number;duplicate:boolean};
