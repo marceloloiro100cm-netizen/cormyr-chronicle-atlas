@@ -34,6 +34,7 @@ export function PurchaseDrawer({
   const [domainId, setDomain] = useState('');
   const [parentId, setParent] = useState('');
   const [supportId, setSupport] = useState('');
+  const [replaceId, setReplaceId] = useState('');
   const [name, setName] = useState('');
   const [compare, setCompare] = useState<string[]>([]);
 
@@ -56,7 +57,7 @@ export function PurchaseDrawer({
   }, [open, initialCategory]);
 
   const selected = catalog.find(i => i.id === itemId);
-  const q = selected ? quote(selected, state, domainId, parentId || undefined, supportId || undefined) : null;
+  const q = selected ? quote(selected, state, domainId, parentId || undefined, supportId || undefined, replaceId || undefined) : null;
   const categories = [...new Set(catalog.map(c => c.category))];
   const labels: Record<string, string> = {
     terrain: 'Terrenos',
@@ -126,7 +127,7 @@ export function PurchaseDrawer({
     if (repeatableFilter === 'unique' && i.repeatable) return false;
 
     if (availableOnly) {
-      const qRes = quote(i, state, domainId, parentId || undefined, supportId || undefined);
+      const qRes = quote(i, state, domainId, parentId || undefined, supportId || undefined, replaceId || undefined);
       if (qRes.errors.length > 0) return false;
     }
 
@@ -293,13 +294,24 @@ export function PurchaseDrawer({
             </label>
             <label>
               <span><MapPin size={16} /> Domínio</span>
-              <select value={domainId} onChange={e => { setDomain(e.target.value); setSupport(''); setParent(''); }}>
+              <select value={domainId} onChange={e => { setDomain(e.target.value); setSupport(''); setParent(''); setReplaceId(''); }}>
                 <option value="">Selecione o domínio</option>
                 {state.domains.map(d => (
                   <option value={d.id} key={d.id}>{d.name}</option>
                 ))}
               </select>
             </label>
+            {selected.category === 'fortification' && state.holdings.some(h => h.domainId === domainId && ['tower', 'hall', 'small-castle', 'castle', 'superior-castle'].includes(h.itemId) && ['active', 'building'].includes(h.status)) && (
+              <label>
+                Evolução (Upgrade)
+                <select value={replaceId} onChange={e => setReplaceId(e.target.value)}>
+                  <option value="">Selecione a fortificação para evoluir</option>
+                  {state.holdings.filter(h => h.domainId === domainId && ['tower', 'hall', 'small-castle', 'castle', 'superior-castle'].includes(h.itemId) && ['active', 'building'].includes(h.status)).map(h => (
+                    <option key={h.id} value={h.id}>Evoluir {h.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             {selected.category === 'settlement' && !['pros-abbey', 'pros-tolls', 'pros-trading-inn'].includes(selected.id) && (
               <label>
                 Suporte do assentamento
@@ -346,6 +358,9 @@ export function PurchaseDrawer({
             {q.discounts.map((d, i) => (
               <p key={i}>Desconto {d.amount}: {d.source}</p>
             ))}
+            {replaceId && q.replacedCosts && Object.keys(q.replacedCosts).length > 0 && (
+              <p>Upgrade: Custo reduzido pelo valor da fortificação substituída.</p>
+            )}
             <p>{state.phase === 'active' ? `Prazo: ${selected.duration.months} meses${selected.duration.dice ? ` + ${selected.duration.dice}d${selected.duration.sides}` : ''}. Benefícios após conclusão.` : 'Posse preexistente na criação; sem obra em andamento.'}</p>
             {selected.effects.map((e, i) => <p key={i}>{e.description}</p>)}
             <details>
@@ -358,7 +373,7 @@ export function PurchaseDrawer({
               <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
               <Button disabled={busy || q.errors.length > 0} onClick={async () => {
                 purchaseId.current ??= crypto.randomUUID();
-                if (await onConfirm({ id: purchaseId.current, itemId: selected.id, domainId, parentId: parentId || undefined, supportId: supportId || undefined, name })) {
+                if (await onConfirm({ id: purchaseId.current, itemId: selected.id, domainId, parentId: parentId || undefined, supportId: supportId || undefined, replaceId: replaceId || undefined, name })) {
                   purchaseId.current = null;
                   setStep(0);
                   setItem('');
