@@ -1,20 +1,25 @@
-import { useForm, useFieldArray } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { FichaPersonagem, FichaCasa, serializeFichaPersonagem, serializeFichaCasa } from '@/lib/ficha';
-import type { RecordRow } from './shared';
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  FichaPersonagem,
+  FichaCasa,
+  serializeFichaPersonagem,
+  serializeFichaCasa,
+} from "@/lib/ficha";
+import type { RecordRow } from "./shared";
 
 const habilidadeSchema = z.object({
-  nome: z.string().min(1, 'Obrigatório'),
+  nome: z.string().min(1, "Obrigatório"),
   graduacao: z.number().min(1).max(10),
   especializacao: z.string().nullable().optional(),
 });
 
 const fichaPersonagemSchema = z.object({
-  nome: z.string().min(1, 'Nome é obrigatório').nullable(),
+  nome: z.string().min(1, "Nome é obrigatório").nullable(),
   casa: z.string().nullable(),
   idade: z.string().nullable(),
   jogador: z.string().nullable(),
@@ -31,7 +36,7 @@ export function FichaPersonagemForm({
   initialData,
   row,
   onSave,
-  onCancel
+  onCancel,
 }: {
   initialData: FichaPersonagem;
   row: RecordRow;
@@ -42,77 +47,85 @@ export function FichaPersonagemForm({
     resolver: zodResolver(fichaPersonagemSchema),
     defaultValues: {
       ...initialData,
-      habilidades: initialData.habilidades.length > 0 ? initialData.habilidades : []
+      habilidades: initialData.habilidades.length > 0 ? initialData.habilidades : [],
     },
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: 'habilidades',
+    name: "habilidades",
   });
 
   const onSubmit = (values: z.infer<typeof fichaPersonagemSchema>) => {
     // Para manter integridade da conversão, convertemos explicitamente os nulls
     const mappedValues: FichaPersonagem = {
       ...values,
-      habilidades: values.habilidades.map(h => ({
+      habilidades: values.habilidades.map((h) => ({
         ...h,
-        especializacao: h.especializacao ?? null
-      }))
+        especializacao: h.especializacao ?? null,
+      })),
     };
     const newContent = serializeFichaPersonagem(mappedValues);
     onSave(newContent);
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 border p-4 rounded-md bg-zinc-50 dark:bg-zinc-900 mt-2">
+    <form
+      onSubmit={form.handleSubmit(onSubmit)}
+      className="space-y-4 border p-4 rounded-md bg-zinc-50 dark:bg-zinc-900 mt-2"
+    >
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Nome</Label>
-          <Input {...form.register('nome')} placeholder="Nome do Personagem" />
+          <Input {...form.register("nome")} placeholder="Nome do Personagem" />
         </div>
         <div className="space-y-2">
           <Label>Casa</Label>
-          <Input {...form.register('casa')} placeholder="Casa" />
+          <Input {...form.register("casa")} placeholder="Casa" />
         </div>
         <div className="space-y-2">
           <Label>Idade</Label>
-          <Input {...form.register('idade')} placeholder="Idade" />
+          <Input {...form.register("idade")} placeholder="Idade" />
         </div>
         <div className="space-y-2">
           <Label>Jogador</Label>
-          <Input {...form.register('jogador')} placeholder="Jogador" />
+          <Input {...form.register("jogador")} placeholder="Jogador" />
         </div>
         <div className="space-y-2">
           <Label>Virtude</Label>
-          <Input {...form.register('virtude')} placeholder="Ex: Corajoso" />
+          <Input {...form.register("virtude")} placeholder="Ex: Corajoso" />
         </div>
         <div className="space-y-2">
           <Label>Vício</Label>
-          <Input {...form.register('vicio')} placeholder="Ex: Arrogante" />
+          <Input {...form.register("vicio")} placeholder="Ex: Arrogante" />
         </div>
         <div className="space-y-2">
           <Label>Defesa de Intriga</Label>
-          <Input {...form.register('defesaIntriga')} placeholder="Valor numérico" />
+          <Input {...form.register("defesaIntriga")} placeholder="Valor numérico" />
         </div>
         <div className="space-y-2">
           <Label>Compostura</Label>
-          <Input {...form.register('compostura')} placeholder="Valor numérico" />
+          <Input {...form.register("compostura")} placeholder="Valor numérico" />
         </div>
         <div className="space-y-2">
           <Label>Movimento</Label>
-          <Input {...form.register('movimento')} placeholder="Ex: 4m" />
+          <Input {...form.register("movimento")} placeholder="Ex: 4m" />
         </div>
         <div className="space-y-2">
           <Label>Corrida</Label>
-          <Input {...form.register('corrida')} placeholder="Ex: 16m" />
+          <Input {...form.register("corrida")} placeholder="Ex: 16m" />
         </div>
       </div>
 
       <div className="space-y-2 mt-4 border-t pt-4">
         <div className="flex justify-between items-center mb-2">
           <Label className="text-lg">Habilidades</Label>
-          <Button type="button" variant="outline" size="sm" onClick={() => append({ nome: '', graduacao: 2, especializacao: '' })}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => append({ nome: "", graduacao: 2, especializacao: "" })}
+          >
             + Adicionar
           </Button>
         </div>
@@ -125,11 +138,17 @@ export function FichaPersonagemForm({
             </div>
             <div className="w-20 space-y-1">
               <Label className="text-xs">Grau</Label>
-              <Input type="number" {...form.register(`habilidades.${index}.graduacao`, { valueAsNumber: true })} />
+              <Input
+                type="number"
+                {...form.register(`habilidades.${index}.graduacao`, { valueAsNumber: true })}
+              />
             </div>
             <div className="flex-1 space-y-1">
               <Label className="text-xs">Especialização</Label>
-              <Input {...form.register(`habilidades.${index}.especializacao`)} placeholder="Opcional" />
+              <Input
+                {...form.register(`habilidades.${index}.especializacao`)}
+                placeholder="Opcional"
+              />
             </div>
             <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
               -
@@ -139,7 +158,9 @@ export function FichaPersonagemForm({
       </div>
 
       <div className="flex justify-end gap-2 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancelar
+        </Button>
         <Button type="submit">Salvar Ficha</Button>
       </div>
     </form>
@@ -154,7 +175,7 @@ const atributoSchema = z.object({
 const stringObjSchema = z.object({ name: z.string() });
 
 const fichaCasaSchema = z.object({
-  nome: z.string().min(1, 'Nome é obrigatório').nullable(),
+  nome: z.string().min(1, "Nome é obrigatório").nullable(),
   suserano: z.string().nullable(),
   regiao: z.string().nullable(),
   lorde: z.string().nullable(),
@@ -165,91 +186,103 @@ const fichaCasaSchema = z.object({
   fortaleza: z.string().nullable(),
   atributos: z.array(atributoSchema),
   eventos: z.array(stringObjSchema),
-  exercitos: z.array(stringObjSchema).default([]),
+  exercitos: z.array(stringObjSchema),
 });
 
 export function FichaCasaForm({
   initialData,
   row,
   onSave,
-  onCancel
+  onCancel,
 }: {
   initialData: FichaCasa;
   row: RecordRow;
   onSave: (newContent: string) => unknown;
   onCancel: () => void;
 }) {
-  const form = useForm<z.infer<typeof fichaCasaSchema>>({
+  type FichaCasaSchema = z.infer<typeof fichaCasaSchema>;
+  const form = useForm<FichaCasaSchema>({
     resolver: zodResolver(fichaCasaSchema),
     defaultValues: {
       ...initialData,
-      eventos: initialData.eventos.map(e => ({ name: e })),
-      exercitos: initialData.exercitos?.map(e => ({ name: e })) || [],
+      eventos: initialData.eventos.map((e) => ({ name: e })),
+      exercitos: initialData.exercitos?.map((e) => ({ name: e })) || [],
     },
   });
 
   const { fields: attrFields } = useFieldArray({
     control: form.control,
-    name: 'atributos',
+    name: "atributos",
   });
 
-  const { fields: eventFields, append: appendEvent, remove: removeEvent } = useFieldArray({
+  const {
+    fields: eventFields,
+    append: appendEvent,
+    remove: removeEvent,
+  } = useFieldArray({
     control: form.control,
-    name: 'eventos' as any,
+    name: "eventos",
   });
 
-  const { fields: exercitoFields, append: appendExercito, remove: removeExercito } = useFieldArray({
+  const {
+    fields: exercitoFields,
+    append: appendExercito,
+    remove: removeExercito,
+  } = useFieldArray({
     control: form.control,
-    name: 'exercitos' as any,
+    name: "exercitos",
   });
 
   const onSubmit = (values: z.infer<typeof fichaCasaSchema>) => {
     const newContent = serializeFichaCasa({
       ...values,
-      eventos: values.eventos.map(e => e.name),
-      exercitos: values.exercitos.map(e => e.name)
+      eventos: values.eventos.map((e) => e.name),
+      exercitos: values.exercitos.map((e) => e.name),
     } as FichaCasa);
     onSave(newContent);
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 border p-4 rounded-md bg-zinc-50 dark:bg-zinc-900 mt-2">
+    <form
+      onSubmit={form.handleSubmit(onSubmit)}
+      className="space-y-4 border p-4 rounded-md bg-zinc-50 dark:bg-zinc-900 mt-2"
+    >
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Nome</Label>
-          <Input {...form.register('nome')} placeholder="Nome da Casa" />
+          <Input {...form.register("nome")} placeholder="Nome da Casa" />
         </div>
         <div className="space-y-2">
           <Label>Lorde</Label>
-          <Input {...form.register('lorde')} placeholder="Lorde Atual" />
+          <Input {...form.register("lorde")} placeholder="Lorde Atual" />
         </div>
         <div className="space-y-2">
           <Label>Herdeiro</Label>
-          <Input {...form.register('herdeiro')} placeholder="Herdeiro" />
+          <Input {...form.register("herdeiro")} placeholder="Herdeiro" />
         </div>
         <div className="space-y-2">
           <Label>Suserano</Label>
-          <Input {...form.register('suserano')} placeholder="Suserano" />
+          <Input {...form.register("suserano")} placeholder="Suserano" />
         </div>
         <div className="space-y-2">
           <Label>Região</Label>
-          <Input {...form.register('regiao')} placeholder="Região" />
+          <Input {...form.register("regiao")} placeholder="Região" />
         </div>
         <div className="space-y-2">
           <Label>Fortaleza</Label>
-          <Input {...form.register('fortaleza')} placeholder="Fortaleza" />
+          <Input {...form.register("fortaleza")} placeholder="Fortaleza" />
         </div>
         <div className="space-y-2">
           <Label>Lema</Label>
-          <Input {...form.register('lema')} placeholder="Lema da Família" />
+          <Input {...form.register("lema")} placeholder="Lema da Família" />
         </div>
         <div className="space-y-2">
           <Label>Arma (Brasão)</Label>
-          <Input {...form.register('arma')} placeholder="Arma/Símbolo" />
+          <Input {...form.register("arma")} placeholder="Arma/Símbolo" />
         </div>
         <div className="space-y-2">
           <Label>Fundação</Label>
-          <Input {...form.register('fundacao')} placeholder="Fundação" />
+          <Input {...form.register("fundacao")} placeholder="Fundação" />
         </div>
       </div>
 
@@ -259,7 +292,10 @@ export function FichaCasaForm({
           {attrFields.map((field, index) => (
             <div key={field.id} className="space-y-1">
               <Label className="text-xs">{field.rotulo}</Label>
-              <Input type="number" {...form.register(`atributos.${index}.valor`, { valueAsNumber: true })} />
+              <Input
+                type="number"
+                {...form.register(`atributos.${index}.valor`, { valueAsNumber: true })}
+              />
             </div>
           ))}
         </div>
@@ -268,14 +304,24 @@ export function FichaCasaForm({
       <div className="space-y-2 mt-4 border-t pt-4">
         <div className="flex justify-between items-center mb-2">
           <Label className="text-lg">Eventos Históricos</Label>
-          <Button type="button" variant="outline" size="sm" onClick={() => appendEvent({ name: '' })}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => appendEvent({ name: "" })}
+          >
             + Adicionar
           </Button>
         </div>
         {eventFields.map((field, index) => (
           <div key={field.id} className="flex gap-2 items-center">
             <Input {...form.register(`eventos.${index}.name`)} placeholder="Descreva o evento" />
-            <Button type="button" variant="destructive" size="icon" onClick={() => removeEvent(index)}>
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              onClick={() => removeEvent(index)}
+            >
               -
             </Button>
           </div>
@@ -285,14 +331,27 @@ export function FichaCasaForm({
       <div className="space-y-2 mt-4 border-t pt-4">
         <div className="flex justify-between items-center mb-2">
           <Label className="text-lg">Exército (Tropas)</Label>
-          <Button type="button" variant="outline" size="sm" onClick={() => appendExercito({ name: '' })}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => appendExercito({ name: "" })}
+          >
             + Adicionar
           </Button>
         </div>
         {exercitoFields.map((field, index) => (
           <div key={field.id} className="flex gap-2 items-center">
-            <Input {...form.register(`exercitos.${index}.name`)} placeholder="Nome da tropa/exército" />
-            <Button type="button" variant="destructive" size="icon" onClick={() => removeExercito(index)}>
+            <Input
+              {...form.register(`exercitos.${index}.name`)}
+              placeholder="Nome da tropa/exército"
+            />
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              onClick={() => removeExercito(index)}
+            >
               -
             </Button>
           </div>
@@ -300,7 +359,9 @@ export function FichaCasaForm({
       </div>
 
       <div className="flex justify-end gap-2 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancelar
+        </Button>
         <Button type="submit">Salvar Ficha</Button>
       </div>
     </form>
