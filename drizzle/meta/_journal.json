@@ -8,6 +8,41 @@
       "when": 1793228226522,
       "tag": "0036_seed_legacy_houses_state",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793228226523,
+      "tag": "0037_mail_recipients_and_assignments",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793228226524,
+      "tag": "0038_harptos_calendar",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793228226525,
+      "tag": "0039_house_commander_transaction",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793228226526,
+      "tag": "0040_complete_pending_preview_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793228226527,
+      "tag": "0041_campaign_translations",
+      "breakpoints": true
     }
   ]
 }

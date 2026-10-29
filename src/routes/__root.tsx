@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from '@/integrations/supabase/client';
 import { oauthReturnPath } from '@/lib/oauth-return-path';
+import { I18nProvider } from '@/lib/i18n/context';
 
 function NotFoundComponent() {
   return (
@@ -135,8 +136,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <I18nProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </I18nProvider>
     </QueryClientProvider>
   );
 }
