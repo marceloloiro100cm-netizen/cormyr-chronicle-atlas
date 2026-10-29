@@ -151,6 +151,8 @@ const atributoSchema = z.object({
   valor: z.number().min(0),
 });
 
+const stringObjSchema = z.object({ name: z.string() });
+
 const fichaCasaSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório').nullable(),
   suserano: z.string().nullable(),
@@ -162,7 +164,8 @@ const fichaCasaSchema = z.object({
   herdeiro: z.string().nullable(),
   fortaleza: z.string().nullable(),
   atributos: z.array(atributoSchema),
-  eventos: z.array(z.string()),
+  eventos: z.array(stringObjSchema),
+  exercitos: z.array(stringObjSchema).default([]),
 });
 
 export function FichaCasaForm({
@@ -178,7 +181,11 @@ export function FichaCasaForm({
 }) {
   const form = useForm<z.infer<typeof fichaCasaSchema>>({
     resolver: zodResolver(fichaCasaSchema),
-    defaultValues: initialData,
+    defaultValues: {
+      ...initialData,
+      eventos: initialData.eventos.map(e => ({ name: e })),
+      exercitos: initialData.exercitos?.map(e => ({ name: e })) || [],
+    },
   });
 
   const { fields: attrFields } = useFieldArray({
@@ -191,10 +198,16 @@ export function FichaCasaForm({
     name: 'eventos' as any,
   });
 
+  const { fields: exercitoFields, append: appendExercito, remove: removeExercito } = useFieldArray({
+    control: form.control,
+    name: 'exercitos' as any,
+  });
+
   const onSubmit = (values: z.infer<typeof fichaCasaSchema>) => {
     const newContent = serializeFichaCasa({
       ...values,
-      eventos: values.eventos as unknown as string[]
+      eventos: values.eventos.map(e => e.name),
+      exercitos: values.exercitos.map(e => e.name)
     } as FichaCasa);
     onSave(newContent);
   };
@@ -255,19 +268,31 @@ export function FichaCasaForm({
       <div className="space-y-2 mt-4 border-t pt-4">
         <div className="flex justify-between items-center mb-2">
           <Label className="text-lg">Eventos Históricos</Label>
-          {/* @ts-ignore */}
-          <Button type="button" variant="outline" size="sm" onClick={() => appendEvent('')}>
+          <Button type="button" variant="outline" size="sm" onClick={() => appendEvent({ name: '' })}>
             + Adicionar
           </Button>
         </div>
-        {form.watch('eventos').map((field, index) => (
-          <div key={index} className="flex gap-2 items-center">
-            <Input {...form.register(`eventos.${index}` as any)} placeholder="Descreva o evento" />
-            <Button type="button" variant="destructive" size="icon" onClick={() => {
-              const current = form.getValues('eventos');
-              current.splice(index, 1);
-              form.setValue('eventos', current);
-            }}>
+        {eventFields.map((field, index) => (
+          <div key={field.id} className="flex gap-2 items-center">
+            <Input {...form.register(`eventos.${index}.name`)} placeholder="Descreva o evento" />
+            <Button type="button" variant="destructive" size="icon" onClick={() => removeEvent(index)}>
+              -
+            </Button>
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-2 mt-4 border-t pt-4">
+        <div className="flex justify-between items-center mb-2">
+          <Label className="text-lg">Exército (Tropas)</Label>
+          <Button type="button" variant="outline" size="sm" onClick={() => appendExercito({ name: '' })}>
+            + Adicionar
+          </Button>
+        </div>
+        {exercitoFields.map((field, index) => (
+          <div key={field.id} className="flex gap-2 items-center">
+            <Input {...form.register(`exercitos.${index}.name`)} placeholder="Nome da tropa/exército" />
+            <Button type="button" variant="destructive" size="icon" onClick={() => removeExercito(index)}>
               -
             </Button>
           </div>
