@@ -10,12 +10,12 @@ describe('Legacy House Seeds', () => {
     it(`should correctly validate ${house} data structure and balances`, () => {
       const seed = LEGACY_HOUSE_SEEDS[house];
       expect(seed).toBeDefined();
-      expect(seed.phase).toBe('active');
-      expect(seed.domains.length).toBeGreaterThan(0);
-      expect(seed.holdings.length).toBeGreaterThan(0);
-      expect(seed.units.length).toBeGreaterThan(0);
+      expect(seed!.phase).toBe('active');
+      expect(seed!.domains.length).toBeGreaterThan(0);
+      expect(seed!.holdings.length).toBeGreaterThan(0);
+      expect(seed!.units.length).toBeGreaterThan(0);
 
-      const b = balances(seed);
+      const b = balances(seed!);
       // Validate that the totals calculated from the balances() function don't throw an error and exist.
       expect(b).toBeDefined();
       expect(b.total).toBeDefined();
