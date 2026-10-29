@@ -39,9 +39,10 @@ export function resolveSurvivors(state:HouseState,input:{id:string;unitId:string
  unit.evolution??=[];unit.evolution.push({id:input.id,month:state.month,roll:input.roll,condition:input.condition,disorganizations:input.disorganizations,steps:result.steps==='destroyed'?-99:result.steps,before,after:unit.destroyed?'destroyed':unit.training,justification:input.justification});
  return next;
 }
-export function changeUnitState(state:HouseState,input:{unitId:string;mounted:boolean;atHome:boolean;health:number;casualties:number;situation:string}):HouseState {
+export function changeUnitState(state:HouseState,input:{unitId:string;mounted:boolean;atHome:boolean;health:number;casualties:number;situation:string;commanderName?:string|undefined}):HouseState {
  const next=structuredClone(state),u=next.units.find(u=>u.id===input.unitId);if(!u||u.destroyed)throw new Error('Unidade indisponível.');
  if(!Number.isInteger(input.casualties)||input.casualties<0||input.casualties>u.strength||!Number.isFinite(input.health)||input.health<0)throw new Error('Saúde ou baixas inválidas.');
+ if(input.commanderName!==undefined){u.commanderName=input.commanderName.trim();if(!u.commanderName)delete u.commanderId;}
  u.mounted=input.mounted;u.atHome=input.atHome;u.casualties=input.casualties;u.situation=input.situation;
  if(input.health>unitStats(u).maxHealth)throw new Error('Saúde excede o máximo na condição selecionada.');u.health=input.health;return next;
 }
