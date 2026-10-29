@@ -38,7 +38,8 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
   const [houses,archive]=await Promise.all([db.from('campaign_houses').select('id,name,region,crest,castle,lord_name'),(async()=>{const rows=[];for(let from=0;;from+=500){const page=await db.from('house_catalog').select('id,name,region,archive_data').order('id').range(from,from+499);if(page.error)return {data:null,error:page.error};rows.push(...(page.data??[]));if((page.data?.length??0)<500)return {data:rows,error:null};}})()]);if(houses.error||archive.error)throw new Error('Não foi possível consultar os brasões oficiais.');
   const merged=new Map((archive.data??[]).map(h=>{const a=(h.archive_data??{}) as Record<string,unknown>;return [h.id,{id:h.id,name:h.name,region:h.region,crest:typeof a['crest']==='string'?a['crest']:null,castle:typeof a['castle']==='string'?a['castle']:null,lord_name:typeof a['lord_name']==='string'?a['lord_name']:null}];}));for(const h of houses.data??[])merged.set(h.id,h);
 
-  return {state:(sheet.data?.state??newHouseState(data.houseId,house.data.region??'')) as unknown as HouseState,version:sheet.data?.version??0,catalog,houses:[...merged.values()].sort((a,b)=>a.name.localeCompare(b.name)),ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(admin.data)};
+  const initial=newHouseState(data.houseId,house.data.region??'');if(!sheet.data){const c=await db.rpc('get_campaign_calendar');const value=c.data as {year?:number;month?:number}|null;if(value?.year&&value.month!==undefined)initial.month=value.year*12+value.month;}
+  return {state:(sheet.data?.state??initial) as unknown as HouseState,version:sheet.data?.version??0,catalog,houses:[...merged.values()].sort((a,b)=>a.name.localeCompare(b.name)),ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(admin.data)};
 });
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
@@ -52,6 +53,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   const official=await context.supabase.from('campaign_houses').select('region').eq('id',data.houseId).single();
   if(current.error||official.error)throw new Error('Casa não encontrada.');
   const state=(current.data?.state??newHouseState(data.houseId,official.data.region??'')) as unknown as HouseState;
+  if(!current.data){const c=await context.supabase.rpc('get_campaign_calendar');const value=c.data as {year?:number;month?:number}|null;if(value?.year&&value.month!==undefined)state.month=value.year*12+value.month;}
   if((current.data?.version??0)!==data.version)throw new Error('A ficha mudou. Recarregue para conciliar as versões.');
   let next=structuredClone(state),rule='Cormyr · gestão auditada';const args=data.args;
   if(state.phase==='review'&&!['approve','correct','return_to_draft','clear_pending'].includes(data.action))throw new Error('Criação em revisão; aguarde aprovação ou correção do Narrador.');

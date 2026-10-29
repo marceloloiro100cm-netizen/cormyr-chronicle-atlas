@@ -41,3 +41,23 @@ BEGIN
  INSERT INTO public.noble_house_ledger(house_id,operation_key,actor,action,explanation,rule,campaign_month,before_state,after_state,version) VALUES(p_house,p_key,p_actor,p_action,p_explanation,p_rule,(p_state->>'month')::integer,coalesce(current_row.state,'{}'::jsonb),p_state,next_version);
  RETURN jsonb_build_object('state',p_state,'version',next_version,'duplicate',false);
 END $$;
+
+-- Technical character sheets are not narrative court choices.
+CREATE OR REPLACE FUNCTION public.mail_compose_options() RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $$
+DECLARE directory jsonb; houses jsonb;
+BEGIN
+ IF NOT public.campaign_access_active() THEN RAISE EXCEPTION 'Jogador não autorizado'; END IF;
+ SELECT coalesce(jsonb_agg(jsonb_build_object('id',p.id,'name',p.name,'houses',(SELECT coalesce(jsonb_agg(m.house_id),'[]'::jsonb) FROM house_memberships m WHERE m.player_id=p.id)) ORDER BY p.name),'[]'::jsonb) INTO directory
+ FROM campaign_players p WHERE p.active AND NOT p.require_password_change AND p.user_id IS NOT NULL;
+ SELECT coalesce(jsonb_agg(jsonb_build_object('id',h.id,'name',h.name,'version',s.version,
+ 'court',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',c->>'id','name',coalesce(r.title,nullif(c->>'name',''),'Integrante sem identificação'),'role',c->>'role')),'[]'::jsonb)
+ FROM jsonb_array_elements(coalesce(s.state->'court','[]'::jsonb)) c
+ LEFT JOIN campaign_records r ON r.id::text=c->>'npcId' AND r.house_id=h.id AND r.kind='character' AND r.title !~* '^ficha\M' AND public.can_read_record(r)
+ WHERE c->>'id' IS NOT NULL AND (nullif(c->>'npcId','') IS NULL OR r.id IS NOT NULL)),
+ 'units',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',u->>'id','name',u->>'name','available',coalesce(u->>'destroyed','false')<>'true')),'[]'::jsonb) FROM jsonb_array_elements(coalesce(s.state->'units','[]'::jsonb)) u WHERE u->>'id' IS NOT NULL)
+ ) ORDER BY h.name),'[]'::jsonb) INTO houses
+ FROM campaign_houses h LEFT JOIN noble_house_sheets s ON s.house_id=h.id
+ WHERE h.active AND h.season=2 AND (public.is_campaign_admin() OR public.in_campaign_house(h.id));
+ RETURN jsonb_build_object('players',directory,'houses',houses);
+END $$;
+

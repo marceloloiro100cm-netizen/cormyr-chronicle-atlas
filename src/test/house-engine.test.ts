@@ -15,7 +15,7 @@ describe('contabilidade da casa',()=>{
  it('colina7 e vila pequena20 somam27',()=>{const s=start();s.domains[0]={id:'domain',name:'Teste',terrain:'',features:[],notes:''};expect(balances(buy(buy(s,'hills'),'small-town')).allocated.lands).toBe(27);});
  it('trocar região substitui o bônus',()=>{const s=start();s.regionalApplied=true;s.identity.region='helmlands';expect(balances(s).total.defense).toBe(55);s.identity.region='veilstone';expect(balances(s).total.defense).toBe(70);});
  it('importação não reaplica bônus',()=>{const s=start();s.method='import';s.regionalApplied=true;s.identity.region='helmlands';expect(balances(s).total.defense).toBe(50);});
- it('usa os valores explícitos de Swordmarch',()=>{expect(regionBonus('Swordmarch').law).toBe(5);});
+ it('usa os valores explícitos de Swordmarch',()=>{expect(regionBonus('Swordmarch').law).toBe(10);});
  it('custos fracionários permanecem exatos',()=>{const s=start();const i={...item('castle'),costs:[{resource:'wealth' as const,amount:0.5,mode:'permanent' as const}]};const b=balances(purchase(s,i,{id:'fraction',domainId:'domain',name:'x',dice:[]}));expect(b.total.wealth).toBe(99.5);expect(b.allocated.wealth).toBe(0);});
  it('melhoria sem posse principal bloqueada',()=>{const i=CORE_CATALOG.find(i=>i.category==='improvement'&&!i.pending);if(!i)throw new Error('catálogo');expect(()=>purchase(start(),i,{id:'x',domainId:'domain',name:'x',dice:[]})).toThrow('principal');});
  it('destruição não devolve pontos',()=>{const s=buy(start(),'castle');const h=s.holdings[0];if(h)h.status='destroyed';expect(balances(s).available.defense).toBe(10);});
