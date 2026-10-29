@@ -58,7 +58,7 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
   const admin=Boolean(role.data);if(!admin&&!membership.data)throw new Error('Edição desta casa não autorizada.');
-  if(['approve','advance','import','correct','fortune','roll','survivors','vassal_approve','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
+  if(['approve','advance','import','correct','fortune','roll','survivors','vassal_approve','vassal_npcs','return_to_draft','resolve_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   const duplicate=await db.from('noble_house_ledger').select('after_state,version,actor,action').eq('house_id',data.houseId).eq('operation_key',data.key).maybeSingle();
   if(duplicate.error)throw new Error('Não foi possível conferir a operação.');
@@ -70,7 +70,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   if(!current.data){const c=await context.supabase.rpc('get_campaign_calendar');const value=c.data as {year?:number;month?:number}|null;if(value?.year&&value.month!==undefined)state.month=value.year*12+value.month;}
   if((current.data?.version??0)!==data.version)throw new Error('A ficha mudou. Recarregue para conciliar as versões.');
   let next=structuredClone(state),rule='Cormyr · gestão auditada';const args=data.args;
-  if(state.phase==='review'&&!['approve','correct','return_to_draft','clear_pending'].includes(data.action))throw new Error('Criação em revisão; aguarde aprovação ou correção do Narrador.');
+  if(state.phase==='review'&&!['approve','correct','return_to_draft','resolve_pending'].includes(data.action))throw new Error('Criação em revisão; aguarde aprovação ou correção do Narrador.');
   if(data.action==='draft') {
     if(state.phase==='active'||state.phase==='review')throw new Error('Criação aprovada ou em revisão não permite redistribuição livre.');
     const values=resourcesSchema.parse(args['base']);validateResources(values);
@@ -117,7 +117,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   }
   if(data.action==='court') {const member=z.object({id:z.string().uuid(),npcId:z.string().uuid(),role:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args);const record=await context.supabase.from('campaign_records').select('house_id,kind,title,content,visibility').eq('id',member.npcId).single();if(record.error)throw new Error('Integrante da Corte indisponível.');validateCourtRecord(data.houseId,record.data);if(!isNarrativeNpc(record.data))throw new Error('Selecione um NPC narrativo, não uma ficha técnica.');next=assignCourt(state,{...member,name:record.data.visibility==='house'?record.data.title:'Integrante restrito'});rule='Corte · cargo ligado a registro existente, sem copiar personagem';}
   if(data.action==='return_to_draft'){if(state.phase!=='review')throw new Error('A criação não está em revisão.');if(data.explanation.trim().length<5)throw new Error('Registre o motivo da devolução.');next.phase='draft';}
-  if(data.action==='clear_pending'){const {indices}=z.object({indices:z.array(z.number().int().nonnegative()).min(1)}).parse(args);if(data.explanation.trim().length<10)throw new Error('Registre como as pendências foram resolvidas.');if(indices.some(i=>i>=state.pending.length))throw new Error('Pendência indisponível.');data.explanation+=' · Resolvidas: '+indices.map(i=>state.pending[i]).join('; ');next.pending=state.pending.filter((_,i)=>!indices.includes(i));}
+  if(data.action==='resolve_pending'){const {indices}=z.object({indices:z.array(z.number().int().nonnegative()).min(1).optional()}).parse(args);if(data.explanation.trim().length<10)throw new Error('Registre como as pendências foram resolvidas.');if(indices&&indices.some(i=>i>=state.pending.length))throw new Error('Pendência indisponível.');data.explanation+=' · Resolvidas: '+(indices?indices.map(i=>state.pending[i]).join('; '):'Todas');next.pending=indices?state.pending.filter((_,i)=>!indices.includes(i)):[];}
   if(data.action==='submit'){if(state.phase!=='draft')throw new Error('Criação já enviada.');if(!state.domains.length)throw new Error('Adicione ao menos um domínio.');if(!state.regionalApplied&&state.method!=='import')throw new Error('Revise os recursos.');next.phase='review';}
   if(data.action==='approve'){if(state.phase!=='review')throw new Error('Envie a criação para revisão primeiro.');if(state.pending.length)throw new Error('Resolva as pendências de conciliação.');next.phase='active';}
   if(data.action==='advance')next=advance(state,z.number().int().parse(args['month']));
@@ -143,7 +143,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   }
   if(data.action==='undo'){if(state.phase!=='draft')throw new Error('Somente rascunhos podem ser desfeitos.');const last=await db.from('noble_house_ledger').select('before_state,action').eq('house_id',data.houseId).order('version',{ascending:false}).limit(1).single();if(last.error||!last.data.before_state||last.data.action==='undo')throw new Error('Nada para desfazer.');const prior=last.data.before_state as unknown as HouseState;next=prior.schemaVersion===1?prior:newHouseState(data.houseId,official.data.region??'');}
   validateResources(next.base);validateResources(next.permanent);
-  if(RESOURCE_KEYS.some(r=>balances(next).available[r]<0)&&!['correct','fortune','survivors','return_to_draft','clear_pending','court','unit_state','vassal_domain'].includes(data.action))throw new Error('Saldo insuficiente; nenhuma alteração foi gravada.');
+  if(RESOURCE_KEYS.some(r=>balances(next).available[r]<0)&&!['correct','fortune','survivors','return_to_draft','resolve_pending','court','unit_state','vassal_domain'].includes(data.action))throw new Error('Saldo insuficiente; nenhuma alteração foi gravada.');
   const result=await db.rpc('commit_noble_house_operation',{p_actor:context.userId,p_house:data.houseId,p_version:data.version,p_key:data.key,p_action:data.action,p_state:JSON.parse(JSON.stringify(next)),p_explanation:data.explanation,p_rule:rule});
   if(result.error)throw new Error(result.error.message);
   return result.data as unknown as {state:HouseState;version:number;duplicate:boolean};
