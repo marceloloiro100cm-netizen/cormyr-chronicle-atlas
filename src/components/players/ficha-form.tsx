@@ -163,6 +163,8 @@ const fichaCasaSchema = z.object({
   fortaleza: z.string().nullable(),
   atributos: z.array(atributoSchema),
   eventos: z.array(z.string()),
+  posses: z.array(z.string()),
+  exercitos: z.array(z.string()),
 });
 
 export function FichaCasaForm({
