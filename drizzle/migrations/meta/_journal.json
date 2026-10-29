@@ -260,6 +260,20 @@
       "when": 1793257200000,
       "tag": "0037_mail_recipients_and_assignments",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1793257200001,
+      "tag": "0038_harptos_calendar",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1793257200002,
+      "tag": "0039_house_commander_transaction",
+      "breakpoints": true
     }
   ]
 }

@@ -30,6 +30,8 @@ jobs:
         run: node --test scripts/*.test.mjs
       - name: Unit and component tests
         run: bun run test
+      - name: TypeScript verification
+        run: bunx tsc --noEmit
       - name: Production build
         run: bun run build
 
@@ -64,3 +66,5 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -f scripts/test-mail-permissions.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-mail-links.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-calendar.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-house-management.sql

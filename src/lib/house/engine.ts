@@ -56,7 +56,7 @@ export function settlementCapacity(state:HouseState,domainId:string,supportId?:s
  let capacity=0;
  if(supportId){
   if(!support)return {capacity:0,used:0,error:'Escolha um suporte ativo no mesmo domínio.'};
-  const capacities:Record<string,number>={tower:1,hall:2,castle:4,hamlet:1,'small-town':2,'large-town':4,'small-city':Infinity,'large-city':Infinity};
+  const capacities:Record<string,number>={tower:1,hall:2,castle:4,'small-castle':3,'superior-castle':5,hamlet:1,'small-town':2,'large-town':4,'small-city':Infinity,'large-city':Infinity};
   if(support.itemId==='pros-trading-inn')capacity=2*state.holdings.filter(h=>h.parentId===support.id&&h.itemId==='pros-trading-inn--growth'&&h.status==='active').length;
   else if(capacities[support.itemId]!==undefined)capacity=capacities[support.itemId]??0;
   else return {capacity:0,used:0,error:'Este suporte exige adaptação explícita de capacidade; não somar suportes.'};
@@ -66,7 +66,7 @@ export function settlementCapacity(state:HouseState,domainId:string,supportId?:s
 }
 export function requirements(item: CatalogItem, state: HouseState, domain?: Domain, parentId?: string,supportId?:string): string[] {
   const errors: string[] = [];
-  if (item.pending) errors.push(item.pending);
+  // Pending source notes are warnings; concrete requirements still apply.
   if (['terrain','feature','community','fortification','estate','settlement'].includes(item.category) && !domain) errors.push('Escolha um domínio.');
   if (item.category === 'terrain' && domain?.terrain) errors.push('O domínio já possui terreno principal.');
   if (item.category === 'community' && domain?.community) errors.push('O domínio já possui uma comunidade.');

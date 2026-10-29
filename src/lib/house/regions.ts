@@ -6,7 +6,7 @@ export const REGIONS: Record<string, { name: string; values: number[]; aliases: 
   helmlands: { name: 'Helmlands', values: [5,10,15,10,20,5,5], aliases: [] },
   horselands: { name: 'Horselands', values: [0,10,20,5,10,10,15], aliases: [] },
   dragoncoast: { name: 'Dragon Coast', values: [5,10,15,0,10,10,20], aliases: ['dragon coast'] },
-  swordmark: { name: 'Swordmarch', values: [10,20,0,5,5,10,15], aliases: ['swordmarch'] },
+  swordmark: { name: 'Swordmarch', values: [10,20,0,10,5,10,15], aliases: ['swordmarch'] },
   ferlin: { name: 'Ferlin', values: [10,10,10,10,10,10,10], aliases: [] },
   stonelands: { name: 'Stonelands', values: [10,5,15,0,10,15,15], aliases: [] },
   elfhold: { name: 'Elfhold', values: [10,10,5,15,0,15,15], aliases: [] },

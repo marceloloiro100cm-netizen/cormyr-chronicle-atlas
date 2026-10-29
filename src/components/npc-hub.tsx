@@ -1,3 +1,4 @@
+import {isNarrativeNpc} from '@/lib/house/narrative-npc';
 import { useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, UserRound } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +19,7 @@ export function CollapsibleText({ title, children }: { title: ReactNode; childre
 }
 
 export function NpcHub({ records, houseId, playerId, admin, canEdit, onSave, renderEditor }: { records: RecordRow[]; houseId: string; playerId?: string | undefined; admin: boolean; canEdit: boolean; onSave: () => unknown; renderEditor: (row: RecordRow) => ReactNode }) {
-  const npcs = records.filter(r => r.kind === 'character').map(r => ({ row: r, ...parseNpc(r.title, r.content) })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const npcs = records.filter(isNarrativeNpc).map(r => ({ row: r, ...parseNpc(r.title, r.content) })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   const [aberto, setAberto] = useState<string | null>(null);
   return <section className="campaign-npc-hub">
     <div className="campaign-npc-head"><h2>Corte</h2><span className="campaign-npc-count" aria-label={`${npcs.length} integrantes da Corte`}>{npcs.length} {npcs.length === 1 ? 'integrante' : 'integrantes'}</span></div>

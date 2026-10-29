@@ -1,3 +1,5 @@
+import type {ReactNode} from 'react';
+import {isNarrativeNpc} from '@/lib/house/narrative-npc';
 import { useState } from 'react';
 import { NobleHouseHub } from '@/components/house/hub';
 import { Button } from '@/components/ui/button';
@@ -9,7 +11,7 @@ import type { Panel } from './panel-data';
 import { RecordEditor } from './records';
 import { FichaPersonagemForm, FichaCasaForm } from './ficha-form';
 
-export function FichaTab({current,records,canEdit,onSave}:{current:Panel['houses'][number];records:RecordRow[];canEdit:boolean;onSave:()=>unknown}){
+export function FichaTab({current,records,canEdit,onSave,npcManager}:{npcManager?:ReactNode;current:Panel['houses'][number];records:RecordRow[];canEdit:boolean;onSave:()=>unknown}){
   const [view,setView]=useState<'house'|'character'|'legacy'>('house');
   const fichaCasa=records.find(r=>isFichaCasa(r.title,r.content));
   const fichaLorde=records.find(r=>isFichaPersonagem(r.title,r.content));
@@ -20,7 +22,7 @@ export function FichaTab({current,records,canEdit,onSave}:{current:Panel['houses
   const fichaLordeParsed=fichaLorde?parseFichaPersonagem(fichaLorde.content):null;
   return <section>
     <nav className="campaign-tabs" aria-label="Tipo de ficha"><Button variant={view==='house'?'default':'outline'} aria-pressed={view==='house'} onClick={()=>setView('house')}>Ficha da Casa</Button><Button variant={view==='character'?'default':'outline'} aria-pressed={view==='character'} onClick={()=>setView('character')}>Ficha do Personagem</Button><Button variant={view==='legacy'?'default':'ghost'} aria-pressed={view==='legacy'} onClick={()=>setView('legacy')}>Ficha anterior preservada</Button></nav>
-    {view==='house'&&<NobleHouseHub house={current} records={records} canEdit={canEdit} npcs={records.filter(r=>r.kind==='character'&&!isFichaPersonagem(r.title,r.content)).map(r=>({id:r.id,title:r.title}))} courtMembers={records.filter(r=>r.kind==='character').map(r=>({id:r.id,title:r.title}))}/>}
+    {view==='house'&&<NobleHouseHub npcManager={npcManager} house={current} records={records} canEdit={canEdit} npcs={records.filter(isNarrativeNpc).map(r=>({id:r.id,title:r.title}))} courtMembers={records.filter(isNarrativeNpc).map(r=>({id:r.id,title:r.title}))}/>}
     {view==='legacy'&&<><h2>Ficha da casa — registro anterior</h2>
     {fichaCasa?<><FichaCasaCard content={fichaCasa.content} crest={current.crest} houseName={current.name}/>{canEdit&&<details className="campaign-add"><summary>Editar ficha da casa</summary><FichaCasaForm initialData={parseFichaCasa(fichaCasa.content)} row={fichaCasa} onSave={(newContent)=>{ fichaCasa.content=newContent; onSave(); }} onCancel={()=>{}} /></details>}</>:<p className="campaign-empty">A ficha da casa ainda não foi encontrada na pasta. Use o botão Atualizar após adicioná-la ao Drive.</p>}
     </>}

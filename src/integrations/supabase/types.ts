@@ -1279,6 +1279,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      dated_mail_action: { Args: {p_action:string;p_args:Json;p_date:string}; Returns:Json }
+      get_campaign_calendar: { Args: Record<PropertyKey,never>; Returns:Json }
+      set_campaign_calendar: { Args: {p_version:number;p_date:string;p_auto:boolean}; Returns:undefined }
+      calendar_mail_events: { Args: {p_year:number;p_month:number}; Returns:Json }
+
       mail_compose_options: { Args: Record<PropertyKey,never>; Returns: Json }
       send_linked_mail: { Args: {p_key:string;p_origin:string|null;p_targets:string[];p_subject:string;p_content:string;p_court?:string|null;p_unit?:string|null;p_role?:string|null;p_draft?:boolean;p_week?:number|null}; Returns: Json }
       edit_linked_mail_draft: {Args:{p_id:string;p_version:number;p_subject:string;p_content:string;p_origin:string|null;p_court:string|null;p_unit:string|null;p_role:string|null};Returns:Json}
