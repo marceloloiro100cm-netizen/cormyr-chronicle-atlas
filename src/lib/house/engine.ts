@@ -87,10 +87,20 @@ export function quote(item: CatalogItem, state: HouseState, domainId: string, pa
   const errors = requirements(item, state, state.domains.find(d=>d.id===domainId), parentId,supportId);
   const discounts: { source: string; resource: Resource; amount: number }[] = [];
   for (const cost of costs) {
-    const discountEffects = activeHoldings(state).flatMap(h=>h.effects.filter(e=>e.kind==='discount'&&e.target===item.id&&e.resource===cost.resource).map(e=>({source:h.name, amount:e.amount??0})));
-    if(discountEffects.length>1){errors.push('Mais de um desconto aplicável: requer decisão registrada do Narrador.');continue;}
-    const best = discountEffects.sort((a,b)=>b.amount-a.amount)[0];
-    if (best) { const amount = Math.min(best.amount,cost.amount); cost.amount -= amount; discounts.push({source:best.source,resource:cost.resource,amount}); }
+    const discountEffects = activeHoldings(state).flatMap(h=>h.effects.filter(e=>e.kind==='discount'&&e.target===item.id&&e.resource===cost.resource).map(e=>({source:h.name, amount:e.amount??0, resource:cost.resource})));
+    const sum = discountEffects.reduce((a, b) => a + b.amount, 0);
+    if (sum > 0) {
+      let reduction = Math.min(sum, cost.amount > 0 ? cost.amount - 1 : 0);
+      cost.amount -= reduction;
+      for (const d of discountEffects) {
+        if (reduction <= 0) break;
+        const applied = Math.min(d.amount, reduction);
+        if (applied > 0) {
+          discounts.push({...d, amount: applied});
+          reduction -= applied;
+        }
+      }
+    }
   }
   const after = {...before.available};
   for (const cost of costs) { if (!Number.isFinite(cost.amount)||cost.amount<0) errors.push('Custo inválido.'); after[cost.resource]-=cost.amount; }
@@ -164,7 +174,7 @@ export function createUnit(state: HouseState, unit: Unit, types: UnitType[]): Ho
   const costs:Cost[]=[{resource:'power',amount:training.power+selected.reduce((n,t)=>n+(t?.cost??0),0),mode:'allocation'}];
   if(unit.types.includes('levies')) costs.push({resource:'population',amount:2,mode:'permanent'});
   if(unit.types.includes('mercenaries')) costs.push({resource:'wealth',amount:({green:1,trained:3,veteran:6,elite:9})[unit.training as keyof typeof TRAINING],mode:'permanent'});
-  for(const cost of costs){const discounts=activeHoldings(state).flatMap(h=>h.effects.filter(e=>e.kind==='discount'&&e.resource===cost.resource&&unit.types.some(t=>e.target==='unit:'+t)));if(discounts.length>1)throw new Error('Descontos de unidade múltiplos exigem decisão do Narrador.');cost.amount=Math.max(0,cost.amount-(discounts[0]?.amount??0));}
+  for(const cost of costs){const discounts=activeHoldings(state).flatMap(h=>h.effects.filter(e=>e.kind==='discount'&&e.resource===cost.resource&&unit.types.some(t=>e.target==='unit:'+t)));const sum=discounts.reduce((a,b)=>a+(b.amount??0),0);cost.amount=Math.max(cost.amount>0?1:0,cost.amount-sum);}
   const available = balances(state).available;
   for(const cost of costs) {available[cost.resource]-=cost.amount;if(available[cost.resource]<0)throw new Error('Saldo insuficiente para a unidade.');}
   if(state.units.some(u=>u.id===unit.id))throw new Error('Identificador da unidade já utilizado.');
