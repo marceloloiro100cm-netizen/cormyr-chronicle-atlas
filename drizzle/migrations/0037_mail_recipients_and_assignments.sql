@@ -168,7 +168,7 @@ BEGIN
  AND (coalesce(p_filters->>'box','') NOT IN ('rascunhos','programadas','historico') OR
  l.publication_state=CASE p_filters->>'box' WHEN 'rascunhos' THEN 'draft' WHEN 'programadas' THEN 'scheduled' ELSE 'delivered' END
  OR EXISTS(SELECT 1 FROM letter_replies r WHERE r.letter_id=l.id AND r.publication_state=CASE p_filters->>'box' WHEN 'rascunhos' THEN 'draft' WHEN 'programadas' THEN 'scheduled' ELSE 'delivered' END))
- AND (coalesce(p_filters->>'number','')='' OR l.delivery_week::text=p_filters->>'number' OR EXISTS(SELECT 1 FROM letter_replies r WHERE r.letter_id=l.id AND r.publication_state='delivered' AND r.delivery_week::text=p_filters->>'number'))
+ AND (coalesce(p_filters->>'number','')='' OR l.delivery_week::text=p_filters->>'number' OR EXISTS(SELECT 1 FROM letter_replies r WHERE r.letter_id=l.id AND (coalesce(p_filters->>'box','')<>'historico' OR r.publication_state='delivered') AND r.delivery_week::text=p_filters->>'number'))
  AND (coalesce(p_filters->>'kind','')='' OR l.letter_kind=p_filters->>'kind')
  AND (coalesce(p_filters->>'origin','')='' OR (p_filters->>'origin'='none' AND l.origin_house_id IS NULL) OR l.origin_house_id=p_filters->>'origin')
  AND (coalesce(p_filters->>'house','')='' OR l.recipient_house_id=p_filters->>'house' OR (l.recipient_house_id IS NULL AND EXISTS(SELECT 1 FROM campaign_players p WHERE p.id=l.sender_player_id AND p.roster_house_id=p_filters->>'house')))

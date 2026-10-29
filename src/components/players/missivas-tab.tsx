@@ -95,7 +95,7 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
     </article>;
   };
   const sel=(label:string,key:keyof typeof empty,opts:[string,string][])=><label>{label}<select value={filters[key]} onChange={e=>setFilters({...filters,[key]:e.target.value})}>{opts.map(([v,t])=><option key={v} value={v}>{t}</option>)}</select></label>;
-  const numbers=[...new Set([...data.letters.map(l=>l.letter_number),...data.replies.filter(r=>r.publication_state==='delivered').map(r=>r.delivery_week)].filter((n):n is number=>n!==null))].sort((a,b)=>b-a);
+  const numbers=[...new Set([...data.letters.map(l=>l.letter_number),...data.replies.map(r=>r.delivery_week)].filter((n):n is number=>n!==null))].sort((a,b)=>b-a);
   const visibleIds=[...groups.flatMap(g=>g.letters),...mine].map(l=>l.id);
   return <div className="campaign-mail-layout">
     <aside className="campaign-mail-side" aria-label="Filtros das missivas">

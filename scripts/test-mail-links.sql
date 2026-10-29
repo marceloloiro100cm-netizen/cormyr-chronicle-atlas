@@ -46,6 +46,7 @@ SELECT pg_temp.assert((SELECT count(*)=1 FROM campaign_letters),'recipient sees 
 SELECT pg_temp.assert(strpos(public.mail_compose_options()::text,'Court source')=0,'foreign source name remains private');
 SELECT public.mark_letter_read(:'b_id');
 SELECT public.reply_weekly_message(:'b_id',NULL,'Specific reply content','10000000-0000-0000-0000-000000000110',false);
+SELECT pg_temp.assert((public.mail_page('{"box":"programadas","number":"2"}')->>'total')::int=1,'scheduled reply matches its delivery week');
 SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000004',true);
 SELECT pg_temp.assert((SELECT count(*)=0 FROM letter_replies),'other recipient cannot read private reply');
 SELECT pg_temp.assert((SELECT count(*)=1 FROM campaign_letters),'other recipient sees own copy only');
