@@ -7,10 +7,10 @@ vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:(...args:unknown[])
 afterEach(cleanup);
 it('shows daily events on hover, focus and touch, keeping narrator controls private',async()=>{
  render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><CampaignCalendar/></QueryClientProvider>);
- const day=await screen.findByRole('button',{name:/2 de Hammer.*1 evento/});
+ const day=await screen.findByRole('button',{name:/^2 de Hammer.*1 evento/});
  fireEvent.mouseEnter(day);expect(screen.getByText('Convocação da corte')).toBeInTheDocument();
- fireEvent.focus(screen.getByRole('button',{name:/3 de Hammer/}));expect(screen.queryByText('Convocação da corte')).not.toBeInTheDocument();
+ fireEvent.focus(screen.getByRole('button',{name:/^3 de Hammer/}));expect(screen.queryByText('Convocação da corte')).not.toBeInTheDocument();
  fireEvent.click(day);expect(screen.getByText('Convocação da corte')).toBeInTheDocument();
  expect(screen.queryByText('Ajustar calendário da campanha')).not.toBeInTheDocument();
- await waitFor(()=>expect(screen.getByRole('button',{name:/11 de Hammer/})).toHaveAttribute('aria-current','date'));
+ await waitFor(()=>expect(screen.getByRole('button',{name:/^11 de Hammer/})).toHaveAttribute('aria-current','date'));
 });
