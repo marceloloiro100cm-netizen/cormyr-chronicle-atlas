@@ -281,6 +281,13 @@
       "when": 1793290109327,
       "tag": "0040_complete_pending_preview_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793298339930,
+      "tag": "0041_seed_complete_noble_house_possessions",
+      "breakpoints": true
     }
   ]
 }
