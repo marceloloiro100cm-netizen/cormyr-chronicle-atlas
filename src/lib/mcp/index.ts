@@ -5,6 +5,7 @@ import lerDocumentoTool from './tools/ler-documento';
 import editarDocumentoTool from './tools/editar-documento';
 import listarMissivasTool from './tools/listar-missivas';
 import escreverMissivaTool from './tools/escrever-missiva';
+import opcoesMissivasTool from './tools/opcoes-missivas';
 import responderMissivaTool from './tools/responder-missiva';
 
 // Vite inlines the stable ref; the published SUPABASE_URL may be a proxy.
@@ -21,5 +22,5 @@ export default defineMcp({
     acceptedAudiences: 'authenticated',
     requireOAuthClientClaim: true,
   }),
-  tools: [listarCasasTool, listarDocumentosTool, lerDocumentoTool, editarDocumentoTool, listarMissivasTool, escreverMissivaTool, responderMissivaTool],
+  tools: [opcoesMissivasTool, listarCasasTool, listarDocumentosTool, lerDocumentoTool, editarDocumentoTool, listarMissivasTool, escreverMissivaTool, responderMissivaTool],
 });

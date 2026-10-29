@@ -7,6 +7,7 @@ export const envelopeSchema = z.object({
   baseVersion: z.number().int().nonnegative(), title: z.string().max(500), content: z.string().max(2_000_000),
   kind: z.enum(['document','character','details']).optional(), letterId: z.string().uuid().optional(),
   createdAt: z.string(), updatedAt: z.string(), authorName: z.string().max(160).optional(),
+  mailLinks: z.object({originHouseId:z.string().nullable(),courtMemberId:z.string().nullable(),courtAssignment:z.enum(['executor','order_recipient']).nullable(),militaryUnitId:z.string().nullable(),sheetVersion:z.number().int().nullable(),deliveryWeek:z.number().int().nullable()}).strict().optional(),
   mutationId: z.string().uuid(), origin: z.enum(['site','drive']),
 }).strict();
 export type Envelope = z.infer<typeof envelopeSchema>;
@@ -18,7 +19,8 @@ export function allowed(b:Binding,e:Envelope) {
     b.scope==='player' ? e.visibility==='player'&&e.playerId===b.player_id : e.visibility==='master';
 }
 export function canonical(e:Envelope){
-  return JSON.stringify([e.schema,e.entityType,e.id,e.houseId,e.playerId,e.visibility,e.version,e.title,e.content,e.kind??null,e.letterId??null,e.createdAt,e.updatedAt,e.authorName??null]);
+  const base=[e.schema,e.entityType,e.id,e.houseId,e.playerId,e.visibility,e.version,e.title,e.content,e.kind??null,e.letterId??null,e.createdAt,e.updatedAt,e.authorName??null];
+  return JSON.stringify(e.mailLinks?[...base,[e.mailLinks.originHouseId,e.mailLinks.courtMemberId,e.mailLinks.courtAssignment,e.mailLinks.militaryUnitId,e.mailLinks.sheetVersion,e.mailLinks.deliveryWeek]]:base);
 }
 export async function digest(e:Envelope){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonical(e))))).map(x=>x.toString(16).padStart(2,'0')).join('');}
 export function decide(base:Envelope,site:Envelope,remote:Envelope):'noop'|'export'|'import'|'conflict'{

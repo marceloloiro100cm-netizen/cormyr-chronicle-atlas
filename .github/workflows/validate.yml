@@ -61,4 +61,6 @@ jobs:
             psql -v ON_ERROR_STOP=1 --single-transaction -f "$migration"
           done
       - name: Validate mail lifecycle and RLS
-        run: psql -v ON_ERROR_STOP=1 -f scripts/test-mail-permissions.sql
+        run: |
+          psql -v ON_ERROR_STOP=1 -f scripts/test-mail-permissions.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-mail-links.sql
