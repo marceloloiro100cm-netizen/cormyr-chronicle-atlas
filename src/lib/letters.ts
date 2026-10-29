@@ -49,8 +49,8 @@ export function lastReplyActivity(letterId:string, replies:ReplyRef[], userId?:s
 }
 
 /** Uma missiva lida volta a ser não lida quando chega resposta mais nova que a leitura. */
-export function isLetterRead(letterId:string, receipt:ReceiptRef|undefined, replies:ReplyRef[], userId?:string, senderUserId?:string):boolean {
-  if(!receipt) return false;
+export function isLetterRead(letterId:string, receipt:ReceiptRef|undefined, replies:ReplyRef[]):boolean {
+  if(!receipt)return false;
   const lastReply=lastReplyActivity(letterId,replies,receipt.user_id);
   return !lastReply||!receipt.read_at||receipt.read_at>=lastReply;
 }
@@ -59,10 +59,9 @@ export function filterLetters(letters:LetterRow[], replies:ReplyRef[], filters:{
   return letters.filter(l=>{
     const player=context?.players.find(p=>p.id===l.sender_player_id||p.id===l.recipient_player_id||p.user_id===l.sender_user_id);
     const house=l.recipient_house_id??player?.roster_house_id;
-    const receipt=context?.receipts.find(r=>r.letter_id===l.id&&r.user_id===context?.userId);
+    const receipt=context?.receipts.find(r=>r.letter_id===l.id&&r.user_id===context.userId);
     const read=isLetterRead(l.id,receipt,replies);
-    const hasMatchingNumber = !filters.number || String(l.letter_number) === filters.number || String(l.delivery_week) === filters.number || replies.some(r => r.letter_id === l.id && String(r.delivery_week) === filters.number);
-    return hasMatchingNumber&&(!filters.kind||l.letter_kind===filters.kind)&&(!filters.answered||(hasDeliveredAnswer(l,replies)?'yes':'no')===filters.answered)&&(!filters.house||house===filters.house)&&(!filters.read||(read?'yes':'no')===filters.read);
+    return (!filters.number||String(l.letter_number)===filters.number)&&(!filters.kind||l.letter_kind===filters.kind)&&(!filters.answered||(hasDeliveredAnswer(l,replies)?'yes':'no')===filters.answered)&&(!filters.house||house===filters.house)&&(!filters.read||(read?'yes':'no')===filters.read);
   });
 }
 
@@ -103,10 +102,9 @@ export function nextLetterNumber(letters: {letter_number:number|null}[]): number
  */
 export function unreadReceivedCount(letters: LetterRow[], replies: ReplyRef[], receipts: ReceiptRef[], userId: string): number {
   return letters.filter((l) => {
-    const hasExternalReply = replies.some(r=>r.letter_id===l.id&&deliveredReply(r)&&r.author_user_id!==userId);
-    if (l.sender_user_id === userId && !hasExternalReply) return false;
+    if (l.sender_user_id === userId && !replies.some(r=>r.letter_id===l.id&&deliveredReply(r)&&r.author_user_id!==userId)) return false;
     if (l.deleted_at) return false;
-    if (l.publication_state && l.publication_state !== 'delivered' && !hasExternalReply) return false;
+    if (l.publication_state && l.publication_state !== 'delivered') return false;
     const receipt = receipts.find((r) => r.letter_id === l.id && r.user_id === userId);
     return !isLetterRead(l.id, receipt, replies);
   }).length;
