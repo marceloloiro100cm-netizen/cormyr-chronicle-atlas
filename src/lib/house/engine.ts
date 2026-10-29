@@ -4,43 +4,37 @@ export type Balance = { total: Resources; allocated: Resources; committed: Resou
 export function balances(state: HouseState): Balance {
   const regional = state.regionalApplied && state.method !== 'import' ? regionBonus(state.identity.region) : zeroResources();
   const total = zeroResources(), allocated = zeroResources(), committed = zeroResources(), available = zeroResources();
-  for (let i = 0, len = RESOURCE_KEYS.length; i < len; i++) {
-    const r = RESOURCE_KEYS[i];
+  for (const r of RESOURCE_KEYS) {
     total[r] = state.base[r] + state.permanent[r] + regional[r];
   }
   const holdings = state.holdings;
-  for (let i = 0, len = holdings.length; i < len; i++) {
-    const holding = holdings[i];
+  for (const holding of holdings) {
     // A condition change never authorizes reimbursement; an audited correction must do that.
     const isBuilding = holding.status === 'building';
     const target = isBuilding ? committed : allocated;
     const ac = holding.allocatedCosts;
     if (ac) {
-      for (const r in ac) target[r as Resource] += ac[r as Resource]!;
+      for (const r of RESOURCE_KEYS) target[r] += ac[r] ?? 0;
     } else {
       const costs = holding.costs;
-      for (let j = 0, clen = costs.length; j < clen; j++) {
-        const cost = costs[j];
+      for (const cost of costs) {
         if (cost.mode === 'allocation') target[cost.resource] += cost.amount;
       }
     }
   }
-  for (let i = 0, units = state.units, len = units.length; i < len; i++) {
-    const unit = units[i];
+  for (const unit of state.units) {
     if (unit.destroyed) continue;
     const ac = unit.allocatedCosts;
     if (ac) {
-      for (const r in ac) allocated[r as Resource] += ac[r as Resource]!;
+      for (const r of RESOURCE_KEYS) allocated[r] += ac[r] ?? 0;
     } else {
       const costs = unit.costs;
-      for (let j = 0, clen = costs.length; j < clen; j++) {
-        const cost = costs[j];
+      for (const cost of costs) {
         if (cost.mode === 'allocation') allocated[cost.resource] += cost.amount;
       }
     }
   }
-  for (let i = 0, len = RESOURCE_KEYS.length; i < len; i++) {
-    const r = RESOURCE_KEYS[i];
+  for (const r of RESOURCE_KEYS) {
     available[r] = total[r] - allocated[r] - committed[r];
   }
   return {total, allocated, committed, available, permanent: state.permanent};

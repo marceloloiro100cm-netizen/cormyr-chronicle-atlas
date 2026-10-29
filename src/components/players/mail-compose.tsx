@@ -13,7 +13,7 @@ export function useMailOptions(){
  return useQuery({queryKey:['mail-options'],queryFn:async()=>{const r=await supabase.rpc('mail_compose_options');if(r.error)throw r.error;return r.data as unknown as MailOptions;},staleTime:30000});
 }
 export const emptyLinks:MailLinks={origin:'',court:'',unit:'',role:'executor'};
-export function MailLinkFields({value,onChange,options,onManage}:{value:MailLinks;onChange:(v:MailLinks)=>void;options:MailOptions;onManage?:(house:string)=>void}){
+export function MailLinkFields({value,onChange,options,onManage}:{value:MailLinks;onChange:(v:MailLinks)=>void;options:MailOptions;onManage?:((house:string)=>void)|undefined}){
  const house=options.houses?.find(h=>h.id===value.origin);
  return <fieldset className="campaign-form"><legend>Vínculos da missiva</legend>
  <label>Casa remetente<select value={value.origin} onChange={e=>onChange({...emptyLinks,origin:e.target.value})}><option value="">Selecione a casa</option>{options.houses?.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label>
@@ -27,14 +27,14 @@ export function MailLinkFields({value,onChange,options,onManage}:{value:MailLink
 type Draft={campaignDate:string;subject:string;content:string;targets:string[];links:MailLinks;week:string;images:PendingImage[]};
 const drafts=new Map<string,Draft>();
 export function replaceMailDraft(userId:string){const current=drafts.get(userId+':mail-compose');return !current||(!current.subject&&!current.content)||window.confirm('Substituir o texto da missiva ainda não enviada?');}
-export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Panel['players'][number]|undefined;initial?:{subject:string;content:string}|null;onSave:()=>void;onManage?:(house:string)=>void}){
+export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Panel['players'][number]|undefined;initial?:{subject:string;content:string}|null;onSave:()=>void;onManage?:((house:string)=>void)|undefined}){
  const {data:options,error,refetch}=useMailOptions();
  const scope=data.user.id+':mail-compose';
  const [draft,setDraft]=useState<Draft>(()=>initial?{subject:initial.subject,content:initial.content,targets:data.admin?[]:['narrator'],links:{...emptyLinks},week:'',campaignDate:'',images:[]}:drafts.get(scope)??{subject:'',content:'',targets:data.admin?[]:['narrator'],links:{...emptyLinks},week:'',campaignDate:'',images:[]});
  const [query,setQuery]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
  const key=useRef<string|null>(null);
  const change=(next:Draft)=>{setDraft(next);drafts.set(scope,next);};
- useEffect(()=>{if(options?.houses?.length===1&&!draft.links.origin)change({...draft,links:{...draft.links,origin:options.houses[0]!.id}});},[options]);
+ useEffect(()=>{const house=options?.houses?.[0];if(options?.houses?.length===1&&house&&!draft.links.origin)change({...draft,links:{...draft.links,origin:house.id}});},[options]);
  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{const d=drafts.get(scope);if(d?.content||d?.subject){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[scope]);
  const current=data.rounds.find(r=>r.status==='open')?.number??null;
  const suggested=(current??Math.max(0,...data.rounds.map(r=>r.number)))+1;

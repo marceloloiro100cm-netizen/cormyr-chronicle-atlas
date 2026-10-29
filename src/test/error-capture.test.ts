@@ -74,7 +74,7 @@ describe("error-capture", () => {
 
     it("formats Error without a stack trace", () => {
       const error = new Error("No stack here");
-      error.stack = undefined; // simulate missing stack
+      delete error.stack; // simulate missing stack
       const result = describeError(error);
       expect(result).toBe("Error: No stack here");
     });

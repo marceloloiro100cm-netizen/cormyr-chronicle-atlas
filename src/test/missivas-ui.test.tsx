@@ -3,7 +3,7 @@ import {render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {MissivasTab} from '@/components/players/missivas-tab';
 import type {Panel} from '@/components/players/panel-data';
-const {rpc}=vi.hoisted(()=>({rpc:vi.fn(async()=>({data:2,error:null}))}));
+const {rpc}=vi.hoisted(()=>({rpc:vi.fn<(name:string,args?:unknown)=>Promise<{data:unknown;error:null}>>(async()=>({data:2,error:null}))}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc,from:()=>({select:()=>({eq:()=>({order:async()=>({data:[],error:null})})})})}}));
 vi.mock('@/components/campaign-content',()=>({CampaignContent:({content}:{content:string})=><div>{content}</div>,ImagePicker:()=>null,uploadImages:async(content:string)=>content}));
 const letter={id:'letter',sender_user_id:'me',sender_player_id:'player',sender_name:'Autor',recipient_house_id:'other',recipient_player_id:null,subject:'Ordem enviada',content:'Original',created_at:'2026-10-28',sync_state:'pending',last_synced_at:null,letter_number:1,letter_kind:'reservada',publication_state:'delivered',delivery_week:1,version:1};

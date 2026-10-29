@@ -21,7 +21,8 @@ it('records 5d6 and purchases only against the vassal resources',()=>{
  expect(()=>createVassal(s,{id:'bad',name:'Bad',region:'',motto:'',lordName:''},{...rolls,power:[7,1,1,1,1]})).toThrow('cinco');
 });
 it('Swordmarch totals 70 and technical sheets are not NPCs',()=>{
- expect(REGIONS.swordmark!.values.reduce((a,b)=>a+b,0)).toBe(70);
+ const region=REGIONS['swordmark'];if(!region)throw new Error('Missing Swordmarch region');
+ expect(region.values.reduce((a,b)=>a+b,0)).toBe(70);
  expect(isNarrativeNpc({kind:'character',title:'Ficha do Lorde',content:''})).toBe(false);
  expect(isNarrativeNpc({kind:'character',title:'Sir Arlen',content:'Capitão'})).toBe(true);
 });
