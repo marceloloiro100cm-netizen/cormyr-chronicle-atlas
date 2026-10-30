@@ -100,5 +100,16 @@ SELECT pg_temp.assert((public.mail_page('{"answered":"pending-outgoing","text":"
 SELECT pg_temp.assert((public.mail_page('{"answered":"awaiting-narrator","text":"Narrator Batch3"}')->>'total')::int=1,'draft does not alter active delivered turn');
 SELECT public.mark_letter_read(:'gm_batch3_id');
 SELECT pg_temp.assert((public.mail_page('{"read":"yes","text":"Narrator Batch3"}')->>'total')::int=1,'GM read receipt makes returned letter read independently');
+-- Lote 4: leitura e autor das respostas, nomes das casas e vínculos reais.
+UPDATE campaign_houses SET name='Casa Nimbus' WHERE id='mail-b';
+SELECT pg_temp.assert((public.mail_page('{"text":"Casa Nimbus"}')->>'total')::int>=1,'search includes recipient house name');
+SELECT pg_temp.assert((public.mail_page('{"text":"Recipient 3"}')->>'total')::int>=1,'search includes reply author name');
+SELECT pg_temp.assert((public.mail_page('{"house":"mail-b","text":"Joint order"}')->>'total')::int=1,'filter house resolves recipient_player membership');
+SELECT pg_temp.assert((public.mail_page('{"group_house_ids":["mail-b"],"text":"Joint order"}')->>'total')::int=1,'group filter resolves member-linked recipient house');
+SELECT pg_temp.assert((public.mail_page('{"text":"Narrator Batch3"}')->'kpis'->>'delivered')::int=1,'filtered KPI includes delivered root');
+SELECT pg_temp.assert((public.mail_page('{"text":"Narrator Batch3"}')->'kpis'->>'awaiting_narrator')::int=1,'filtered KPI recognizes pending narrator turn');
+SELECT pg_temp.assert((public.mail_page('{"text":"Narrator Batch3"}')->'kpis'->>'drafts')::int=1,'filtered KPI includes only own answer draft');
+SELECT pg_temp.assert((public.mail_page('{"answered":"awaiting-house","text":"Narrator Batch3"}')->'kpis'->>'delivered')::int=0,'KPI respects answer-status filter');
+SELECT pg_temp.assert((public.mail_page('{"text":"No-match-batch-four"}')->'kpis'->>'delivered')::int=0,'KPIs respect text filters beyond pagination');
 SELECT pg_temp.assert(NOT has_function_privilege('anon','public.send_linked_mail(uuid,text,text[],text,text,text,text,text,boolean,integer)','EXECUTE'),'anonymous send denied');
 ROLLBACK;
