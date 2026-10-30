@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { CampaignContent, ImagePicker, uploadImages, type PendingImage } from '@/components/campaign-content';
-import { hasDeliveredAnswer, groupReceivedLetters, isLetterRead, nextLetterNumber, pendingRoundHouses, sentLetters, type LetterRow } from '@/lib/letters';
+import { hasDeliveredAnswer, groupReceivedLetters, isLetterRead, nextLetterNumber, pendingRoundHouses, sentLetters, mailRecipientLabel, type LetterRow } from '@/lib/letters';
 import { date, syncLabel } from './shared';
 import type { Panel } from './panel-data';
 import {MailComposer,replaceMailDraft,MailLinkFields,useMailOptions,type MailLinks,type MailOptions} from './mail-compose';
@@ -69,7 +69,7 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
     const isOpen=expanded.has(letter.id);
     const threadLetters=letter.conversation_id?allLetters.filter(o=>o.conversation_id===letter.conversation_id&&o.id!==letter.id).sort((a,b)=>a.created_at.localeCompare(b.created_at)):[];
     const threadOpen=threads.has(letter.id);
-    const to=letter.recipient_house_id?'Casa '+(houseName(letter.recipient_house_id)??letter.recipient_house_id):letter.recipient_player_id?(options?.players?.find(p=>p.id===letter.recipient_player_id)?.name??'Jogador'):'Narrador';
+    const to=mailRecipientLabel(letter,houseName,id=>options?.players?.find(p=>p.id===id)?.name);
     const fromHouse=houseName(letter.origin_house_id??null)??(letter.sender_player_id?houseName(data.players.find(p=>p.id===letter.sender_player_id)?.roster_house_id??null):null);
     const canDelete=!letter.deleted_at&&(data.admin||letter.sender_user_id===data.user.id);
     return <article className={'campaign-letter'+(isOpen?'':' recolhida')} key={letter.id} id={'missiva-'+letter.id}>
@@ -77,10 +77,12 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
         <ChevronDown size={18} className={isOpen?'rotate-180 transition-transform':'transition-transform'}/>
         <span className="campaign-eyebrow">{letter.letter_number?`Missiva ${letter.letter_number} · `:''}{letter.letter_kind==='geral'?'Geral':'Reservada'} · {hasDeliveredAnswer(letter,answers)?'Respondida · ':''}{read?'Lida':'Não lida'}{letter.publication_state==='draft'?' · Rascunho':letter.publication_state==='scheduled'?` · Aguardando abertura da Semana ${letter.delivery_week}`:''}{letter.deleted_at?' · Excluída':''}</span>
         <strong className="campaign-letter-subject">{letter.subject}</strong>
-        <span className="text-muted-foreground text-sm">De: {letter.sender_name}{fromHouse?` (${fromHouse})`:''} · Para: {to} · {date(letter.created_at)}{answers.length?` · ${answers.length} resposta(s)`:''}</span>
+        <span className="text-muted-foreground text-sm">De: {letter.sender_name}{fromHouse?` (${fromHouse})`:''} · Para: {to} · {letter.historical_source&&letter.campaign_date?formatDate(letter.campaign_date):date(letter.created_at)}{letter.historical_source?' · Arquivo histórico':''}{answers.length?` · ${answers.length} resposta(s)`:''}</span>
       </button>
       {isOpen&&<div className="campaign-letter-body">
-        <p>{formatDate(letter.campaign_date)}</p><CampaignContent content={letter.content}/>
+        <p>{formatDate(letter.campaign_date)}</p>
+        {letter.historical_source&&<p className="text-muted-foreground text-sm">Correspondência histórica importada de {letter.historical_source} · não representa um novo envio pelo site.</p>}
+        <CampaignContent content={letter.content}/>
         {(letter.court_member_id||letter.military_unit_id)&&<div className="campaign-eyebrow">{letter.court_member_id&&<p>Corte: {linkName('court',letter.origin_house_id,letter.court_member_id)} · {letter.court_assignment==='order_recipient'?'Destinatário da ordem':'Executor'}</p>}{letter.military_unit_id&&<p>Unidade: {linkName('unit',letter.origin_house_id,letter.military_unit_id)}</p>}</div>}
         {letter.sender_user_id===data.user.id&&letter.publication_state==='delivered'&&<p>Destinatário: {letter.recipient_read?'leitura registrada':'sem leitura registrada'} · {hasDeliveredAnswer(letter,answers)?'resposta recebida':'aguardando resposta'}</p>}
         {data.admin&&letter.sender_user_id===data.user.id&&<details><summary>Leituras registradas pelos destinatários</summary>{data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).length===0?<p>Nenhuma leitura registrada.</p>:data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).map(r=><p key={r.user_id}>{data.players.find(p=>p.user_id===r.user_id)?.name??'Destinatário autorizado'} · {date(r.read_at)}{isLetterRead(letter.id,r,answers)?'':' · Há respostas posteriores'}</p>)}</details>}
