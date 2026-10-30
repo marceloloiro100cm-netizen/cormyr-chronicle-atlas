@@ -6,10 +6,10 @@ import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {useState} from 'react';
 
 const mock=vi.hoisted(()=>({
-  rpc:vi.fn(),
+  rpc:vi.fn(),channel:vi.fn(),on:vi.fn(),subscribe:vi.fn(),removeChannel:vi.fn(),
   current:{year:1522,month:0,day:1,festival:null as string|null,auto_advance:true,version:1,published_week:2}
 }));
-vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:mock.rpc}}));
+vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:mock.rpc,channel:mock.channel,removeChannel:mock.removeChannel}}));
 
 const setup=()=>{
  const qc=new QueryClient({defaultOptions:{queries:{retry:false}}});
@@ -32,6 +32,12 @@ const setupRpc=()=>{
 beforeEach(()=>{
  mock.current={year:1522,month:0,day:1,festival:null,auto_advance:true,version:1,published_week:2};
  mock.rpc.mockReset();
+ for(const fn of [mock.channel,mock.on,mock.subscribe,mock.removeChannel])fn.mockReset();
+ const channel={on:mock.on,subscribe:mock.subscribe};
+ mock.channel.mockReturnValue(channel);
+ mock.on.mockReturnValue(channel);
+ mock.subscribe.mockReturnValue(channel);
+ mock.removeChannel.mockResolvedValue('ok');
  setupRpc();
  vi.spyOn(window,'confirm').mockReturnValue(true);
 });
