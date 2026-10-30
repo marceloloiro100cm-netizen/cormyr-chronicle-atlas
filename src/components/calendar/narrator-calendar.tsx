@@ -1,10 +1,10 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
 import {Button} from '@/components/ui/button';
 import {CampaignDatePicker} from './date-picker';
 import {CampaignCalendar,type CalendarState} from './calendar';
-import {dateKey,formatDate} from '@/lib/calendar/harptos';
+import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 
 type DraftEvent={
  id:string;date:string;title:string;description:string;deleted:boolean;
@@ -26,12 +26,17 @@ export function NarratorCalendar(){
  const [date,setDate]=useState(''),[week,setWeek]=useState(1),[automatic,setAutomatic]=useState(true);
  const [editId,setEditId]=useState<string|null>(null),[editVersion,setEditVersion]=useState<number|null>(null);
  const [eventDate,setEventDate]=useState(''),[title,setTitle]=useState(''),[description,setDescription]=useState('');
- const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[saveError,setSaveError]=useState(false);
+ const editedRef=useRef(false),baseVersionRef=useRef<number|null>(null);
  useEffect(()=>{
   if(!calendar.data)return;
-  setDate(dateKey(calendar.data));setWeek(calendar.data.published_week??1);
+  // Polling must not silently replace a date/round edited by the Narrador.
+  if(editedRef.current)return;
+  const current=dateKey(calendar.data);
+  baseVersionRef.current=calendar.data.version;
+  setDate(current);setWeek(calendar.data.published_week??1);
   setAutomatic(calendar.data.auto_advance);
-  if(!eventDate)setEventDate(dateKey(calendar.data));
+  setEventDate(previous=>previous||current);
  },[calendar.data?.version]);
  const reset=()=>{setEditId(null);setEditVersion(null);setEventDate(date||'1522-01-01');setTitle('');setDescription('');};
  async function saveEvent(deleted=false,override?:DraftEvent){
@@ -51,22 +56,34 @@ export function NarratorCalendar(){
  }
  async function publish(){
   if(!calendar.data||busy)return;
-  if(!date||week<1||!Number.isInteger(week)){setMessage('Informe uma data e semana válidas.');return;}
-  if(!window.confirm('Publicar a data, semana e eventos do calendário para todas as casas?'))return;
-  setBusy(true);setMessage('');
+  if(!parseDate(date)||week<1||!Number.isInteger(week)){setSaveError(true);setMessage('Informe uma data de Harptos e semana válidas.');return;}
+  if(!window.confirm(`Publicar ${formatDate(date)} · Semana ${week} para todas as casas?`))return;
+  setBusy(true);setSaveError(false);setMessage('');
   try{
    const {error}=await supabase.rpc('publish_campaign_schedule',{
-    p_version:calendar.data.version,p_date:date,p_auto:automatic,p_week:week
+    p_version:baseVersionRef.current??calendar.data.version,
+    p_date:date,p_auto:automatic,p_week:week
    });
    if(error)throw error;
+   // Confirm the same global state used by the player-house calendar.
+   const verified=await supabase.rpc('get_campaign_calendar');
+   if(verified.error)throw verified.error;
+   const saved=verified.data as unknown as CalendarState|null;
+   if(!saved||dateKey(saved)!==date||saved.published_week!==week||
+      saved.auto_advance!==automatic)
+    throw new Error('A publicação não foi confirmada pelo banco. Atualize o calendário e tente novamente.');
+   editedRef.current=false;
+   baseVersionRef.current=saved.version;
+   setDate(dateKey(saved));setWeek(saved.published_week??week);
+   setAutomatic(saved.auto_advance);
    await Promise.all([
     qc.invalidateQueries({queryKey:['campaign-calendar']}),
     qc.invalidateQueries({queryKey:['campaign-schedule-drafts']}),
     qc.invalidateQueries({queryKey:['calendar-schedule-events']}),
     qc.invalidateQueries({queryKey:['noble-house']})
    ]);
-   setMessage('Calendário publicado. As fichas dos jogadores consultarão esta versão automaticamente.');
-  }catch(err){setMessage(err instanceof Error?err.message:'Não foi possível publicar o calendário.');}
+   setMessage(`Calendário publicado e confirmado: ${formatDate(date)} · Semana ${week}. As fichas serão atualizadas.`);
+  }catch(err){setSaveError(true);setMessage(err instanceof Error?err.message:'Não foi possível publicar o calendário.');}
   finally{setBusy(false);}
  }
  if(calendar.isPending||drafts.isPending)return <p role="status">Carregando calendário do Narrador…</p>;
@@ -77,12 +94,13 @@ export function NarratorCalendar(){
   <div className="narrator-calendar-panel">
    <h3>Data e semana da campanha</h3>
    <div className="narrator-calendar-settings">
-    <CampaignDatePicker value={date} onChange={setDate}/>
+    <CampaignDatePicker value={date} onChange={next=>{editedRef.current=true;setDate(next);setMessage('');}}/>
     <label>Semana atual do jogo
-     <input type="number" min={1} step={1} value={week} onChange={e=>setWeek(Number(e.target.value))}/>
+     <input type="number" min={1} step={1} value={week} onChange={e=>{editedRef.current=true;setWeek(Number(e.target.value));setMessage('');}}/>
     </label>
    </div>
-   <label className="narrator-calendar-check"><input type="checkbox" checked={automatic} onChange={e=>setAutomatic(e.target.checked)}/>Avançar uma désdia ao abrir nova rodada</label>
+   <label className="narrator-calendar-check"><input type="checkbox" checked={automatic} onChange={e=>{editedRef.current=true;setAutomatic(e.target.checked);setMessage('');}}/>Avançar uma désdia ao abrir nova rodada</label>
+   <p className="narrator-calendar-selection">Data selecionada para publicação: <strong>{formatDate(date)}</strong> · <strong>Semana {week}</strong></p>
    <p className="text-sm text-muted-foreground">Avançar um mês pode concluir projetos das casas; retroceder a data não desfaz essas conclusões. A semana exibida é global para todas as fichas.</p>
   </div>
   <div className="narrator-calendar-panel">
@@ -118,7 +136,7 @@ export function NarratorCalendar(){
    <div><strong>Publicação global</strong><p>Publica as alterações para todas as casas ao mesmo tempo. Os eventos em rascunho permanecem privados até aqui.</p></div>
    <Button type="button" disabled={busy||!date||week<1} onClick={()=>void publish()}>{busy?'Publicando…':'Publicar calendário'}</Button>
   </div>
-  <p role="status">{message}</p>
+  <p role={saveError?'alert':'status'}>{message}</p>
   <div className="narrator-calendar-preview"><h3>Calendário publicado · visão dos jogadores</h3><CampaignCalendar/></div>
  </section>;
 }
