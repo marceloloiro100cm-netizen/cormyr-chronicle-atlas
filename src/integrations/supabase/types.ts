@@ -1554,6 +1554,10 @@ export type Database = {
         Args: { p_version: number; p_date: string; p_auto: boolean; p_week: number }
         Returns: undefined
       }
+      publish_campaign_schedule_confirmed: {
+        Args: { p_version: number; p_date: string; p_auto: boolean; p_week: number }
+        Returns: Json
+      }
       in_campaign_house: {
         Args: { edit_required?: boolean; h: string }
         Returns: boolean
