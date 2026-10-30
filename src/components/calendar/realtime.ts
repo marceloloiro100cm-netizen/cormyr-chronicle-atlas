@@ -1,4 +1,4 @@
-import {useEffect} from 'react';
+import {useEffect,useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
 
@@ -15,6 +15,7 @@ let nextSubscriptionId=0;
  */
 export function useCampaignCalendarRealtime(){
  const qc=useQueryClient();
+ const [status,setStatus]=useState<'connecting'|'live'|'fallback'>('connecting');
  useEffect(()=>{
   const channel=supabase.channel('cormyr-calendar-'+(++nextSubscriptionId));
   const recheck=()=>{
@@ -28,8 +29,10 @@ export function useCampaignCalendarRealtime(){
    },recheck)
    .subscribe(status=>{
     // A lost subscription may have missed a publication; always fetch again.
-    if(status==='SUBSCRIBED')recheck();
+    if(status==='SUBSCRIBED'){setStatus('live');recheck();}
+    else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED')setStatus('fallback');
    });
   return ()=>{void supabase.removeChannel(channel);};
  },[qc]);
+ return status;
 }
