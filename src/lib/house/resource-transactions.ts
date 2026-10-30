@@ -11,7 +11,7 @@ export function pendingIntrigueBonuses(state:HouseState):number {
 export function depositGold(state:HouseState,coins:number):HouseState {
  if(!Number.isSafeInteger(coins)||coins<=0||coins>1_000_000)throw new Error('Quantia inválida para lançamento de ouro.');
  const next=structuredClone(state);
- next.treasury+=coins;
+ next.treasury=(state.treasury??0)+coins;
  if(!Number.isSafeInteger(next.treasury))throw new Error('Saldo de ouro inválido.');
  return next;
 }
@@ -20,7 +20,7 @@ export function donateGold(state:HouseState,points:number):HouseState {
  const cost=points*200;
  if((state.treasury??0)<cost)throw new Error('Cofre sem moedas suficientes para doar 200 DO por ponto de Riqueza.');
  const next=structuredClone(state);
- next.treasury-=cost;
+ next.treasury=(state.treasury??0)-cost;
  next.permanent.wealth+=points;
  return next;
 }
