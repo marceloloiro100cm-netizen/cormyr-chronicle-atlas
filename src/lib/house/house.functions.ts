@@ -47,7 +47,11 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
     const s = sheet.data.state as unknown as HouseState;
     let fallbackKey = Object.keys(LEGACY_HOUSE_SEEDS).find(k => house.data?.name?.toLowerCase().includes(k.toLowerCase()));
 
-    if ((s.domains?.length ?? 0) === 0 && (s.holdings?.length ?? 0) === 0 && fallbackKey && LEGACY_HOUSE_SEEDS[fallbackKey]) {
+    if ((s.domains?.length ?? 0) === 0 && (s.holdings?.length ?? 0) === 0
+      && (sheet.data.version??0)===0 && !s.importSources?.length && !s.identity?.crestPath
+      && s.creationStep===0 && !s.creationHistory && !s.creationBonuses?.length
+      && RESOURCE_KEYS.every(r=>s.base[r]===0&&s.permanent[r]===0)
+      && fallbackKey && LEGACY_HOUSE_SEEDS[fallbackKey]) {
       finalState = { ...LEGACY_HOUSE_SEEDS[fallbackKey], houseId: data.houseId };
     } else {
       finalState = s;
@@ -295,7 +299,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     next=prior;rule='Cormyr · desfazer em pilha de rascunhos, histórico preservado';
   }
   validateResources(next.base);validateResources(next.permanent);
-  if(RESOURCE_KEYS.some(r=>balances(next).available[r]<0)&&!['correct','fortune','survivors','return_to_draft','clear_pending','court','unit_state','vassal_domain'].includes(data.action))throw new Error('Saldo insuficiente; nenhuma alteração foi gravada.');
+  if(RESOURCE_KEYS.some(r=>balances(next).available[r]<0)&&!['admin_edit','correct','fortune','survivors','return_to_draft','clear_pending','court','unit_state','vassal_domain'].includes(data.action))throw new Error('Saldo insuficiente; nenhuma alteração foi gravada.');
   const result=await db.rpc('commit_noble_house_operation',{p_actor:context.userId,p_house:data.houseId,p_version:data.version,p_key:data.key,p_action:data.action,p_state:JSON.parse(JSON.stringify(next)),p_explanation:data.explanation,p_rule:rule});
   if(result.error)throw new Error(result.error.message);
   return result.data as unknown as {state:HouseState;version:number;duplicate:boolean};
