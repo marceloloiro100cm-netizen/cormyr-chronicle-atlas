@@ -12,7 +12,14 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "max_community",
+        "values": [
+          "hamlet"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -66,7 +73,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "mitigation",
+        "resource": "population",
+        "amount": 2,
         "description": "M População +2."
       }
     ],
@@ -114,7 +123,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 2,
         "description": "G Riqueza +2."
       }
     ],
@@ -206,24 +217,29 @@
     ],
     "requirements": [
       {
-        "kind": "terrain",
-        "values": [
-          "grasslands",
-          "grasslands-light"
+        "kind": "any_of",
+        "alternatives": [
+          {
+            "kind": "feature",
+            "values": [
+              "grassland",
+              "woods-light",
+              "woods-dense"
+            ]
+          }
         ]
       },
       {
-        "kind": "feature",
+        "kind": "max_community",
         "values": [
-          "woods-dense",
-          "woods-light"
-        ]
-      },
-      {
-        "kind": "community",
-        "values": [
-          "",
           "hamlet"
+        ]
+      },
+      {
+        "kind": "forbidden_season",
+        "values": [
+          "autumn",
+          "winter"
         ]
       }
     ],
@@ -231,7 +247,12 @@
       {
         "kind": "fortune",
         "amount": 1,
-        "description": "SF +1."
+        "description": "SF +1.",
+        "seasons": [
+          "spring",
+          "summer",
+          "autumn"
+        ]
       }
     ],
     "duration": {
@@ -436,7 +457,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
         "description": "G Riqueza +1."
       },
       {
@@ -489,7 +512,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 2,
         "description": "G Riqueza +2."
       }
     ],
@@ -904,12 +929,24 @@
         ]
       },
       {
-        "kind": "water"
+        "kind": "feature",
+        "values": [
+          "coast",
+          "island"
+        ]
       }
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "influence",
+        "amount": 1,
+        "description": "G Influência +1, Riqueza +1."
+      },
+      {
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
         "description": "G Influência +1, Riqueza +1."
       }
     ],
@@ -957,13 +994,22 @@
         ]
       },
       {
-        "kind": "water"
+        "kind": "feature",
+        "values": [
+          "coast"
+        ]
       }
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "population",
+        "amount": 2,
         "description": "G População +2; M População +1, Riqueza +1."
+      },
+      {
+        "kind": "action",
+        "description": "M População +1, Riqueza +1."
       }
     ],
     "duration": {
@@ -1007,24 +1053,27 @@
         "kind": "terrain",
         "values": [
           "plains",
-          "plains-light",
-          "hills",
-          "hills-light",
-          "hills-dense"
+          "hills"
         ]
       },
       {
-        "kind": "feature",
+        "kind": "forbidden_feature",
         "values": [
-          "woods-dense",
-          "woods-light"
+          "woods-light",
+          "woods-dense"
         ]
       },
       {
-        "kind": "community",
+        "kind": "max_community",
         "values": [
-          "",
           "hamlet"
+        ]
+      },
+      {
+        "kind": "forbidden_season",
+        "values": [
+          "autumn",
+          "winter"
         ]
       }
     ],
@@ -1032,11 +1081,38 @@
       {
         "kind": "fortune",
         "amount": 1,
-        "description": "SF +1; G População +1, Poder +1."
+        "description": "SF +1; G População +1, Poder +1.",
+        "seasons": [
+          "spring",
+          "summer",
+          "autumn"
+        ]
       },
       {
         "kind": "action",
         "description": "Benefícios aplicam-se apenas na primavera, verão e outono."
+      },
+      {
+        "kind": "gain",
+        "resource": "population",
+        "amount": 1,
+        "seasons": [
+          "spring",
+          "summer",
+          "autumn"
+        ],
+        "description": "SF +1; G População +1, Poder +1 (primavera, verão e outono)."
+      },
+      {
+        "kind": "gain",
+        "resource": "power",
+        "amount": 1,
+        "seasons": [
+          "spring",
+          "summer",
+          "autumn"
+        ],
+        "description": "SF +1; G População +1, Poder +1 (primavera, verão e outono)."
       }
     ],
     "duration": {
@@ -1083,7 +1159,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
         "description": "G Riqueza +1."
       }
     ],
@@ -1132,7 +1210,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "mitigation",
+        "resource": "population",
+        "amount": 1,
         "description": "M População +1."
       }
     ],
@@ -1180,7 +1260,15 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "population",
+        "amount": 1,
+        "description": "G População +1, Riqueza +1."
+      },
+      {
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
         "description": "G População +1, Riqueza +1."
       }
     ],
@@ -1220,10 +1308,9 @@
     ],
     "requirements": [
       {
-        "kind": "community",
+        "kind": "max_community",
         "values": [
-          "",
-          "hamlet"
+          ""
         ]
       }
     ],
@@ -1277,7 +1364,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 2,
         "description": "G Riqueza +2."
       }
     ],
@@ -1368,24 +1457,27 @@
         "kind": "terrain",
         "values": [
           "plains",
-          "plains-light",
-          "hills",
-          "hills-light",
-          "hills-dense"
+          "hills"
         ]
       },
       {
-        "kind": "feature",
+        "kind": "forbidden_feature",
         "values": [
-          "woods-dense",
-          "woods-light"
+          "woods-light",
+          "woods-dense"
         ]
       },
       {
-        "kind": "community",
+        "kind": "max_community",
         "values": [
-          "",
           "hamlet"
+        ]
+      },
+      {
+        "kind": "forbidden_season",
+        "values": [
+          "autumn",
+          "winter"
         ]
       }
     ],
@@ -1393,7 +1485,12 @@
       {
         "kind": "fortune",
         "amount": 1,
-        "description": "SF +1."
+        "description": "SF +1.",
+        "seasons": [
+          "spring",
+          "summer",
+          "autumn"
+        ]
       }
     ],
     "duration": {
@@ -1439,7 +1536,15 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "mitigation",
+        "resource": "influence",
+        "amount": 1,
+        "description": "M Influência +1, Riqueza +1."
+      },
+      {
+        "kind": "mitigation",
+        "resource": "wealth",
+        "amount": 1,
         "description": "M Influência +1, Riqueza +1."
       }
     ],
@@ -1487,7 +1592,15 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "population",
+        "amount": 1,
+        "description": "G População +1, Riqueza +1."
+      },
+      {
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
         "description": "G População +1, Riqueza +1."
       }
     ],
@@ -1529,14 +1642,19 @@
       {
         "kind": "terrain",
         "values": [
-          "grasslands",
-          "grasslands-light"
+          "plains",
+          "hills"
         ]
       },
       {
-        "kind": "community",
+        "kind": "feature",
         "values": [
-          "",
+          "grassland"
+        ]
+      },
+      {
+        "kind": "max_community",
+        "values": [
           "hamlet"
         ]
       }
@@ -1714,8 +1832,14 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "influence",
+        "amount": 1,
         "description": "G Influência +1; M Riqueza +1."
+      },
+      {
+        "kind": "action",
+        "description": "M Riqueza +1."
       }
     ],
     "duration": {
@@ -1921,7 +2045,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "population",
+        "amount": 1,
         "description": "G População +1."
       },
       {
@@ -2085,7 +2211,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "population",
+        "amount": 1,
         "description": "G População +1."
       },
       {
@@ -2130,7 +2258,10 @@
     ],
     "requirements": [
       {
-        "kind": "water"
+        "kind": "feature",
+        "values": [
+          "coast"
+        ]
       }
     ],
     "effects": [
@@ -2178,24 +2309,27 @@
         "kind": "terrain",
         "values": [
           "plains",
-          "plains-light",
-          "hills",
-          "hills-light",
-          "hills-dense"
+          "hills"
         ]
       },
       {
-        "kind": "feature",
+        "kind": "forbidden_feature",
         "values": [
-          "woods-dense",
-          "woods-light"
+          "woods-light",
+          "woods-dense"
         ]
       },
       {
-        "kind": "community",
+        "kind": "max_community",
         "values": [
-          "",
           "hamlet"
+        ]
+      },
+      {
+        "kind": "forbidden_season",
+        "values": [
+          "autumn",
+          "winter"
         ]
       }
     ],
@@ -2203,7 +2337,12 @@
       {
         "kind": "fortune",
         "amount": 1,
-        "description": "SF +1."
+        "description": "SF +1.",
+        "seasons": [
+          "spring",
+          "summer",
+          "autumn"
+        ]
       }
     ],
     "duration": {
@@ -2249,7 +2388,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 2,
         "description": "G Riqueza +2."
       }
     ],
@@ -2353,6 +2494,12 @@
           "",
           "hamlet"
         ]
+      },
+      {
+        "kind": "max_community",
+        "values": [
+          "hamlet"
+        ]
       }
     ],
     "effects": [
@@ -2448,6 +2595,13 @@
         "kind": "parent",
         "values": [
           "pros-timber"
+        ]
+      },
+      {
+        "kind": "holding",
+        "values": [
+          "pros-port",
+          "pros-timber--lumber-mill"
         ]
       }
     ],
@@ -2950,11 +3104,25 @@
           "small-castle",
           "superior-castle"
         ]
+      },
+      {
+        "kind": "forbidden_season",
+        "values": [
+          "winter"
+        ]
       }
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "mitigation",
+        "resource": "influence",
+        "amount": 1,
+        "description": "M Influência +1, Riqueza +1."
+      },
+      {
+        "kind": "mitigation",
+        "resource": "wealth",
+        "amount": 1,
         "description": "M Influência +1, Riqueza +1."
       }
     ],
@@ -3001,7 +3169,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
         "description": "G Riqueza +1."
       }
     ],
@@ -3050,7 +3220,13 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "fortune",
+        "amount": 1,
+        "seasons": [
+          "spring",
+          "summer",
+          "autumn"
+        ],
         "description": "SF +1 apenas na primavera, verão e outono."
       }
     ],
@@ -3443,7 +3619,15 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "castle",
+          "superior-castle"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "mitigation",
@@ -3500,10 +3684,31 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "fortification",
+        "values": [
+          "superior-castle"
+        ]
+      }
+    ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "mitigation",
+        "resource": "influence",
+        "amount": 1,
+        "description": "M Influência +1, Lei +1, Riqueza +1."
+      },
+      {
+        "kind": "mitigation",
+        "resource": "law",
+        "amount": 1,
+        "description": "M Influência +1, Lei +1, Riqueza +1."
+      },
+      {
+        "kind": "mitigation",
+        "resource": "wealth",
+        "amount": 1,
         "description": "M Influência +1, Lei +1, Riqueza +1."
       },
       {
@@ -3554,7 +3759,6 @@
       {
         "kind": "parent",
         "values": [
-          "pros-moderate-library",
           "pros-large-library",
           "pros-lordly-library",
           "pros-kingly-library"
@@ -3563,7 +3767,15 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "influence",
+        "amount": 1,
+        "description": "G Influência +1, Riqueza +1."
+      },
+      {
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
         "description": "G Influência +1, Riqueza +1."
       }
     ],
@@ -3675,21 +3887,26 @@
     ],
     "requirements": [
       {
-        "kind": "fortification",
-        "values": [
-          "hall",
-          "castle",
-          "small-castle",
-          "superior-castle"
-        ]
-      },
-      {
-        "kind": "community",
-        "values": [
-          "small-town",
-          "large-town",
-          "small-city",
-          "large-city"
+        "kind": "any_of",
+        "alternatives": [
+          {
+            "kind": "fortification",
+            "values": [
+              "hall",
+              "small-castle",
+              "castle",
+              "superior-castle"
+            ]
+          },
+          {
+            "kind": "community",
+            "values": [
+              "small-town",
+              "large-town",
+              "small-city",
+              "large-city"
+            ]
+          }
         ]
       }
     ],
@@ -4358,21 +4575,26 @@
     ],
     "requirements": [
       {
-        "kind": "fortification",
-        "values": [
-          "hall",
-          "castle",
-          "small-castle",
-          "superior-castle"
-        ]
-      },
-      {
-        "kind": "community",
-        "values": [
-          "small-town",
-          "large-town",
-          "small-city",
-          "large-city"
+        "kind": "any_of",
+        "alternatives": [
+          {
+            "kind": "fortification",
+            "values": [
+              "hall",
+              "small-castle",
+              "castle",
+              "superior-castle"
+            ]
+          },
+          {
+            "kind": "community",
+            "values": [
+              "small-town",
+              "large-town",
+              "small-city",
+              "large-city"
+            ]
+          }
         ]
       }
     ],
@@ -4426,7 +4648,14 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "holding",
+        "values": [
+          "pros-port"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -4499,7 +4728,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
         "description": "G Riqueza +1."
       },
       {
@@ -4691,7 +4922,18 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "community",
+        "values": [
+          "hamlet",
+          "small-town",
+          "large-town",
+          "small-city",
+          "large-city"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "action",
@@ -4954,7 +5196,21 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "max_resource",
+        "resource": "law",
+        "maximum": 29
+      },
+      {
+        "kind": "holding",
+        "values": [
+          "pros-brothels",
+          "pros-gambling-dens",
+          "pros-street-gangs"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "mitigation",
@@ -5256,7 +5512,13 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "resource",
+        "resource": "power",
+        "minimum": 31
+      }
+    ],
     "effects": [
       {
         "kind": "action",
@@ -5606,7 +5868,15 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "holding",
+        "values": [
+          "pros-temple",
+          "pros-chapel"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "fortune",
@@ -6653,6 +6923,18 @@
       {
         "kind": "action",
         "description": "Não consome espaço normal de Settlement."
+      },
+      {
+        "kind": "gain",
+        "resource": "influence",
+        "amount": 1,
+        "description": "SF +1; G Influência +1, População +1."
+      },
+      {
+        "kind": "gain",
+        "resource": "population",
+        "amount": 1,
+        "description": "SF +1; G Influência +1, População +1."
       }
     ],
     "duration": {
@@ -6751,7 +7033,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
         "description": "G Riqueza +1."
       },
       {
@@ -6804,7 +7088,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "mitigation",
+        "resource": "population",
+        "amount": 1,
         "description": "M População +1."
       },
       {
@@ -6847,7 +7133,13 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "max_resource",
+        "resource": "law",
+        "maximum": 30
+      }
+    ],
     "effects": [
       {
         "kind": "gain",
@@ -7027,7 +7319,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "influence",
+        "amount": 1,
         "description": "G Influência +1."
       },
       {
@@ -7084,7 +7378,15 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "power",
+        "amount": 1,
+        "description": "G Poder +1, Riqueza +1."
+      },
+      {
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
         "description": "G Poder +1, Riqueza +1."
       },
       {
@@ -7184,7 +7486,15 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "influence",
+        "amount": 1,
+        "description": "G Influência +1, Riqueza +1."
+      },
+      {
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
         "description": "G Influência +1, Riqueza +1."
       }
     ],
@@ -7287,7 +7597,15 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "influence",
+        "amount": 1,
+        "description": "G Influência +1, Lei +1."
+      },
+      {
+        "kind": "gain",
+        "resource": "law",
+        "amount": 1,
         "description": "G Influência +1, Lei +1."
       },
       {
@@ -7402,6 +7720,18 @@
         "resource": "wealth",
         "amount": 1,
         "description": "Ganho por Sorte: +1 Riqueza."
+      },
+      {
+        "kind": "gain",
+        "resource": "population",
+        "amount": 1,
+        "description": "SF +1; G População +1, Riqueza +1."
+      },
+      {
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
+        "description": "SF +1; G População +1, Riqueza +1."
       }
     ],
     "duration": {
@@ -7597,11 +7927,35 @@
         "values": [
           "pros-marketplace"
         ]
+      },
+      {
+        "kind": "holding",
+        "values": [
+          "pros-animal-husbandry",
+          "pros-apiary",
+          "pros-charcoal",
+          "pros-dog-kennels",
+          "pros-fishery",
+          "pros-food-agriculture",
+          "pros-fur-trade",
+          "pros-herb-fields",
+          "pros-horse-husbandry",
+          "pros-basic-mine",
+          "pros-valuable-mine",
+          "pros-rich-mine",
+          "pros-basic-quarry",
+          "pros-valuable-quarry",
+          "pros-salt-works",
+          "pros-textile-agriculture",
+          "pros-timber"
+        ]
       }
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "mitigation",
+        "resource": "population",
+        "amount": 1,
         "description": "M População +1."
       }
     ],
@@ -7919,20 +8273,25 @@
     ],
     "requirements": [
       {
-        "kind": "fortification",
-        "values": [
-          "castle",
-          "small-castle",
-          "superior-castle"
-        ]
-      },
-      {
-        "kind": "community",
-        "values": [
-          "small-town",
-          "large-town",
-          "small-city",
-          "large-city"
+        "kind": "any_of",
+        "alternatives": [
+          {
+            "kind": "fortification",
+            "values": [
+              "small-castle",
+              "castle",
+              "superior-castle"
+            ]
+          },
+          {
+            "kind": "community",
+            "values": [
+              "small-town",
+              "large-town",
+              "small-city",
+              "large-city"
+            ]
+          }
         ]
       }
     ],
@@ -7995,7 +8354,9 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "influence",
+        "amount": 1,
         "description": "G Influência +1."
       }
     ],
@@ -8204,8 +8565,14 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
         "description": "G Riqueza +1; M Riqueza +1."
+      },
+      {
+        "kind": "action",
+        "description": "M Riqueza +1."
       }
     ],
     "duration": {
@@ -8343,12 +8710,23 @@
         "values": [
           "pros-salvage-operation"
         ]
+      },
+      {
+        "kind": "max_resource",
+        "resource": "law",
+        "maximum": 31
       }
     ],
     "effects": [
       {
-        "kind": "action",
-        "description": "G Riqueza +1; deixa de funcionar se Lei >31."
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
+        "description": "G Riqueza +1; deixa de funcionar se Lei >31.",
+        "maxResource": {
+          "resource": "law",
+          "maximum": 31
+        }
       }
     ],
     "duration": {
@@ -8408,6 +8786,12 @@
       {
         "kind": "action",
         "description": "Penalidades de SF por População alta reduzidas em 2."
+      },
+      {
+        "kind": "mitigation",
+        "resource": "population",
+        "amount": 1,
+        "description": "G População +2; M População +1."
       }
     ],
     "duration": {
@@ -8492,7 +8876,14 @@
         "mode": "allocation"
       }
     ],
-    "requirements": [],
+    "requirements": [
+      {
+        "kind": "holding",
+        "values": [
+          "pros-marketplace"
+        ]
+      }
+    ],
     "effects": [
       {
         "kind": "action",
@@ -8702,6 +9093,18 @@
         "kind": "fortune",
         "amount": 1,
         "description": "SF +1; G Lei +1, População +1."
+      },
+      {
+        "kind": "gain",
+        "resource": "law",
+        "amount": 1,
+        "description": "SF +1; G Lei +1, População +1."
+      },
+      {
+        "kind": "gain",
+        "resource": "population",
+        "amount": 1,
+        "description": "SF +1; G Lei +1, População +1."
       }
     ],
     "duration": {
@@ -8748,7 +9151,15 @@
     ],
     "effects": [
       {
-        "kind": "action",
+        "kind": "gain",
+        "resource": "law",
+        "amount": 1,
+        "description": "G Lei +1, Riqueza +1."
+      },
+      {
+        "kind": "gain",
+        "resource": "wealth",
+        "amount": 1,
         "description": "G Lei +1, Riqueza +1."
       },
       {
@@ -8897,6 +9308,12 @@
         "kind": "parent",
         "values": [
           "pros-tournament-field"
+        ]
+      },
+      {
+        "kind": "holding",
+        "values": [
+          "pros-tournament-master"
         ]
       }
     ],
