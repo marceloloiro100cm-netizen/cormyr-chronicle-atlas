@@ -48,11 +48,11 @@ describe('interface de missivas',()=>{
 });
 
 describe('novos destinatários e vínculos',()=>{
- it('envia para dois jogadores com corte e unidade opcionais selecionadas',async()=>{
+ it('envia para uma casa sem mostrar jogadores individuais e preserva vínculos opcionais',async()=>{
   mount(data());
-  fireEvent.click(await screen.findByLabelText(/Destinatário B/));
-  fireEvent.click(screen.getByLabelText(/Destinatário C/));
+  fireEvent.click(screen.getByRole('checkbox',{name:'Outra'}));
   fireEvent.click(screen.getByLabelText('Narrador'));
+  await waitFor(()=>expect(screen.getByLabelText('Membro da corte (opcional)').querySelector('option[value="c1"]')).toBeInTheDocument());
   fireEvent.change(screen.getByLabelText('Membro da corte (opcional)'),{target:{value:'c1'}});
   fireEvent.change(screen.getByLabelText('Unidade militar (opcional)'),{target:{value:'u1'}});
   fireEvent.change(screen.getByLabelText('Assunto'),{target:{value:'Marcha'}});
@@ -60,10 +60,10 @@ describe('novos destinatários e vínculos',()=>{
   fireEvent.click(screen.getByText('Selecionar dia no calendário'));
   fireEvent.click(screen.getByRole('button',{name:'1 de Hammer, 1522',hidden:true}));
   fireEvent.click(screen.getByRole('button',{name:'Enviar missiva'}));
-  await waitFor(()=>expect(rpc).toHaveBeenCalledWith('dated_mail_action',expect.objectContaining({p_action:'send_linked_mail',p_date:'1522-01-01',p_args:expect.objectContaining({p_targets:['p:other-player','p:third-player'],p_origin:'home',p_court:'c1',p_unit:'u1',p_role:'executor',p_draft:false})})));
+  await waitFor(()=>expect(rpc).toHaveBeenCalledWith('dated_mail_action',expect.objectContaining({p_action:'send_linked_mail',p_date:'1522-01-01',p_args:expect.objectContaining({p_targets:['h:other'],p_origin:'home',p_court:'c1',p_unit:'u1',p_role:'executor',p_draft:false})})));
  });
  it('mostra ambos os novos filtros e os envia ao servidor',async()=>{
-  mount(data());await screen.findByLabelText(/Destinatário B/);
+  mount(data());await waitFor(()=>expect(screen.getByLabelText('Membro da corte (opcional)').querySelector('option[value="c1"]')).toBeInTheDocument());
   fireEvent.change(screen.getByLabelText('Membro da corte'),{target:{value:'home:c1'}});
   fireEvent.change(screen.getByLabelText('Unidade militar'),{target:{value:'home:u1'}});
   await waitFor(()=>expect(rpc).toHaveBeenCalledWith('mail_page',expect.objectContaining({p_filters:expect.objectContaining({court:'home:c1',unit:'home:u1'})})));
