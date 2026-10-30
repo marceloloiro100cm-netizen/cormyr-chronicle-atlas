@@ -226,6 +226,8 @@ export type Database = {
           administrative_actor: string | null
           batch_key: string | null
           campaign_date: string | null
+          historical_recipient_name: string | null
+          historical_source: string | null
           content: string
           conversation_id: string | null
           court_assignment: string | null
@@ -259,6 +261,8 @@ export type Database = {
           administrative_actor?: string | null
           batch_key?: string | null
           campaign_date?: string | null
+          historical_recipient_name?: string | null
+          historical_source?: string | null
           content: string
           conversation_id?: string | null
           court_assignment?: string | null
@@ -292,6 +296,8 @@ export type Database = {
           administrative_actor?: string | null
           batch_key?: string | null
           campaign_date?: string | null
+          historical_recipient_name?: string | null
+          historical_source?: string | null
           content?: string
           conversation_id?: string | null
           court_assignment?: string | null
@@ -1569,6 +1575,8 @@ export type Database = {
       }
       mail_compose_options: { Args: never; Returns: Json }
       mail_insights: { Args: never; Returns: Json }
+      mail_insights_grouped: { Args: { p_house_ids: string[] }; Returns: Json }
+      mail_overview_grouped: { Args: { p_house_ids: string[] }; Returns: Json }
       mail_page: {
         Args: { p_filters?: Json; p_page?: number; p_size?: number }
         Returns: Json
