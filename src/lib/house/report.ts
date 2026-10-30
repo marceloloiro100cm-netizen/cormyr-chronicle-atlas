@@ -1,4 +1,5 @@
-import { balances, unitStats, TRAINING, UNIT_TYPES } from './engine';
+import { balances, unitStats, TRAINING, UNIT_TYPES, maxHouseStatus } from './engine';
+import { legacyCatalogEffects } from './holding-accounting';
 import { campaignMonth } from './regions';
 import { RESOURCE_KEYS, RESOURCE_NAMES, SKILLS, SKILL_NAMES, type HouseState, type CatalogItem } from './types';
 
@@ -10,11 +11,11 @@ export function houseReport(state:HouseState,name:string,catalog:CatalogItem[]=[
  const local=(id:string)=>state.domains.find(d=>d.id===id)?.name??'Sem domínio';
  const costs=(entries:HouseState['holdings'][number]['costs'])=>entries.map(c=>`${c.amount} ${RESOURCE_NAMES[c.resource]} (${c.mode==='allocation'?'alocação':'permanente'})`).join('; ');
  return [
-  {title:'Identidade',headers:['Campo','Valor'],rows:[['Casa',name],['Calendário',campaignMonth(state.month)],['Estado',statusNames[state.phase]??state.phase],['Região',state.identity.region],['Lema',state.identity.motto],['Fundação CV',state.identity.foundation??'Não informada'],['Método',state.method],['Orçamento autorizado',state.budget??'Não definido']]},
+  {title:'Identidade',headers:['Campo','Valor'],rows:[['Casa',name],['Calendário',campaignMonth(state.month)],['Estado',statusNames[state.phase]??state.phase],['Região',state.identity.region],['Lema',state.identity.motto],['Fundação CV',state.identity.foundation??'Não informada'],['Método',state.method],['Orçamento autorizado',state.budget??'Não definido'],['Status máximo do Lorde (Tabela 6-5)',maxHouseStatus(b.total.influence)]]},
   {title:'Recursos',headers:['Recurso','Total','Alocado','Em obras','Disponível','Ganhos/perdas permanentes'],rows:RESOURCE_KEYS.map(r=>[RESOURCE_NAMES[r],b.total[r],b.allocated[r],b.committed[r],b.available[r],b.permanent[r]])},
   {title:'Domínios',headers:['Nome','Terreno','Características','Comunidade','Notas'],rows:state.domains.map(d=>[d.name,label(d.terrain),d.features.map(label).join(', '),label(d.community??''),d.notes])},
   {title:'Posses',headers:['Nome','Domínio','Estado','Custos finais','Custos originais','Descontos','Fonte / versão'],rows:state.holdings.map(h=>[h.name,local(h.domainId),statusNames[h.status]??h.status,costs(h.costs),h.originalCosts?costs(h.originalCosts):'Não registrado na versão anterior',(h.discounts??[]).map(d=>`${d.source}: ${d.amount} ${RESOURCE_NAMES[d.resource]}`).join('; '),h.source+' / '+h.ruleVersion])},
-  {title:'Benefícios',headers:['Posse','Estado','Benefício'],rows:state.holdings.flatMap(h=>h.effects.map(e=>[h.name,statusNames[h.status]??h.status,e.description]))},
+  {title:'Benefícios',headers:['Posse','Estado','Benefício'],rows:state.holdings.flatMap(h=>legacyCatalogEffects(h).map(e=>[h.name,statusNames[h.status]??h.status,e.description]))},
   {title:'Tropas',headers:['Nome','Tipos','Treinamento','Efetivo atual / máximo','Baixas','Saúde atual / máxima','Defesa','Disciplina','XP disponível','Local','Situação'],rows:state.units.map(u=>[u.name,u.types.map(id=>UNIT_TYPES.find(t=>t.id===id)?.name??id).join(' / '),TRAINING[u.training as keyof typeof TRAINING]?.name??u.training,`${Math.max(0,u.strength-u.casualties)} / ${u.strength}`,u.casualties,`${u.health} / ${unitStats(u).maxHealth}`,unitStats(u).defense,unitStats(u).discipline,u.xp,local(u.domainId),u.situation])},
   {title:'Habilidades militares',headers:['Unidade',...SKILLS.map(s=>SKILL_NAMES[s])],rows:state.units.map(u=>[u.name,...SKILLS.map(s=>u.skills[s])])},
   {title:'Projetos',headers:['Nome','Início','Duração meses','Previsão','Estado','Dados','Modificador'],rows:state.projects.map(p=>[p.name,campaignMonth(p.start),p.duration,campaignMonth(p.start+p.duration+p.modifier),statusNames[p.status]??p.status,p.dice.join(', '),p.modifier])},

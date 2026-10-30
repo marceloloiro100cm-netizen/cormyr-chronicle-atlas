@@ -1,6 +1,7 @@
 import {isNarrativeNpc} from './narrative-npc';
 import {attachVassal,createVassal,vassalState} from './vassals';
 import { createServerFn } from '@tanstack/react-start';
+import { changeHoldingCondition, legacyEffectCandidates, legacyCatalogEffects } from './holding-accounting';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { operationSchema, resourcesSchema, catalogSchema, unitSchema } from './schemas';
@@ -70,7 +71,7 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
   const admin=Boolean(role.data);if(!admin&&!membership.data)throw new Error('Edição desta casa não autorizada.');
-  if(['admin_edit','approve','advance','import','correct','fortune','survivors','vassal_approve','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
+  if(['admin_edit','restore_legacy_effects','approve','advance','import','correct','fortune','survivors','vassal_approve','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   const duplicate=await db.from('noble_house_ledger').select('after_state,version,actor,action').eq('house_id',data.houseId).eq('operation_key',data.key).maybeSingle();
   if(duplicate.error)throw new Error('Não foi possível conferir a operação.');
@@ -93,7 +94,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     !state.importSources.length&&state.holdings.length===0&&state.units.length===0&&
     RESOURCE_KEYS.every(r=>state.base[r]===0);
 
-  if(state.phase==='review'&&!['admin_edit','crest_import','approve','correct','return_to_draft','clear_pending'].includes(data.action))throw new Error('Criação em revisão; aguarde aprovação ou correção do Narrador.');
+  if(state.phase==='review'&&!['admin_edit','restore_legacy_effects','crest_import','approve','correct','return_to_draft','clear_pending'].includes(data.action))throw new Error('Criação em revisão; aguarde aprovação ou correção do Narrador.');
   if(data.action==='draft') {
     if(state.phase!=='draft')throw new Error('Ficha em revisão ou ativa exige edição auditada do Narrador.');
     const values=resourcesSchema.parse(args['base']);validateResources(values);
@@ -225,7 +226,27 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   if(data.action==='approve'){if(state.phase!=='review')throw new Error('Envie a criação para revisão primeiro.');if(state.pending.length)throw new Error('Resolva as pendências de conciliação.');next.phase='active';}
   if(data.action==='advance')next=advance(state,z.number().int().parse(args['month']));
   if(data.action==='alternative'){if(state.phase!=='active')throw new Error('A casa precisa estar ativa.');next=alternativeFortune(state,z.enum(RESOURCE_KEYS).parse(args['resource']) as Resource);}
-  if(data.action==='condition'){if(!admin&&state.phase==='active')throw new Error('A baixa em campanha exige decisão do Narrador.');const input=z.object({id:z.string(),status:z.enum(['destroyed','abandoned','sold','cancelled'])}).parse(args);const holding=next.holdings.find(h=>h.id===input.id);if(!holding)throw new Error('Posse não encontrada.');if(state.phase==='active'&&['sold','cancelled'].includes(input.status))throw new Error('Restituição exige correção auditada do Narrador; não é automática.');holding.status=input.status;}
+  if(data.action==='condition'){
+    if(!admin&&state.phase==='active')throw new Error('A baixa em campanha exige decisão do Narrador.');
+    const input=z.object({id:z.string(),status:z.enum(['destroyed','abandoned','sold','cancelled'])}).parse(args);
+    if(state.phase==='active'&&data.explanation.trim().length<10)
+      throw new Error('O Narrador deve justificar a baixa em campanha.');
+    next=changeHoldingCondition(state,input.id,input.status);
+    rule=input.status==='destroyed'?
+      'Livro básico · perda permanente do investimento na posse destruída (sem restituição)':
+      'Livro básico · liberação da alocação por baixa auditada, sem reembolsar custos permanentes';
+  }
+  if(data.action==='restore_legacy_effects'){
+    if(!admin)throw new Error('A restauração dos benefícios legados exige o Narrador.');
+    if(data.explanation.trim().length<10)throw new Error('Justifique a conciliação dos benefícios legados.');
+    const ids=z.array(z.string().min(1)).min(1).max(500).parse(args['holdingIds']);
+    if(new Set(ids).size!==ids.length)throw new Error('Posse repetida na conciliação.');
+    const candidates=legacyEffectCandidates(state);
+    if(ids.some(id=>!candidates.some(h=>h.id===id)))
+      throw new Error('Posse sem correspondência segura no catálogo: nenhuma ficha foi alterada.');
+    next.holdings=state.holdings.map(h=>ids.includes(h.id)?{...h,effects:structuredClone(legacyCatalogEffects(h))}:h);
+    rule='Conciliação de benefícios importados · correspondência explícita de itemId com catálogo versionado da aplicação';
+  }
   if(data.action==='fortune'){const input=z.object({status:z.number().int(),testDice:z.array(z.number().int()),bonusDice:z.array(z.number().int()),modifier:z.number(),resource:z.enum(RESOURCE_KEYS),changes:resourcesSchema,fortuneStackDice:z.array(z.number().int().min(1).max(6)).optional(),resourceStackDice:z.record(z.enum(RESOURCE_KEYS),z.array(z.number().int().min(1).max(6))).optional(),justification:z.string().min(1)}).parse(args);next=confirmFortune(state,input);rule='Livro básico · tabela 6-18';}
   if(data.action==='convert'){const input=z.object({from:z.enum(RESOURCE_KEYS),to:z.enum(RESOURCE_KEYS),amount:z.number().positive(),rushed:z.boolean(),rate:z.number().positive().optional()}).parse(args);if(state.phase!=='active')throw new Error('Casa não ativa.');next=convertResources(state,input.from,input.to,input.amount,input.rushed,input.rate);rule='Livro básico · tabela 6-19';}
   if(data.action==='action'){if(state.phase!=='active')throw new Error('Casa não ativa.');const input=z.object({type:z.string().min(1).max(100),notes:z.string().min(1).max(4000)}).parse(args);if(state.actions.some(a=>a.month===state.month&&!a.type.startsWith('convert:')))throw new Error('A ação mensal já foi registrada.');next.actions.push({month:state.month,...input});}
