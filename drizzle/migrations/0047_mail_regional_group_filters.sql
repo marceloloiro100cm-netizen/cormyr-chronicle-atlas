@@ -41,8 +41,7 @@ BEGIN
  SELECT jsonb_build_object('total',(SELECT count(*) FROM visible),'letters',coalesce((SELECT jsonb_agg(to_jsonb(p)||jsonb_build_object('recipient_read',public.mail_recipient_read(p.id)) ORDER BY p.created_at DESC,p.id DESC) FROM page_rows p),'[]'::jsonb),
  'replies',coalesce((SELECT jsonb_agg(to_jsonb(r) ORDER BY r.created_at,r.id) FROM letter_replies r WHERE r.letter_id IN (SELECT id FROM page_rows)),'[]'::jsonb)) INTO result;
  RETURN result;
-END $function$
-
+END $function$;
 CREATE OR REPLACE FUNCTION public.mail_overview_grouped(p_house_ids text[])
 RETURNS jsonb LANGUAGE sql STABLE SET search_path=public AS $$
  SELECT jsonb_build_object(
