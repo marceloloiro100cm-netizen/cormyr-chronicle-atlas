@@ -12,6 +12,7 @@ import { deliveredReply, hasDeliveredAnswer, groupReceivedLetters, isLetterRead,
 import { date, syncLabel } from './shared';
 import type { Panel } from './panel-data';
 import {MailComposer,replaceMailDraft,MailLinkFields,useMailOptions,type MailLinks,type MailOptions} from './mail-compose';
+import {NARRATION_GROUPS,narrationHouseIds} from '@/lib/mail-groups';
 
 
 function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Responder'}:{letterId:string;replyId?:string|undefined;recipientId:string;roundRevision:string;onSave:()=>unknown;label?:string}){
@@ -23,7 +24,7 @@ function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Res
 }
 
 export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void;onManage?:(house:string)=>void;groupHouseIds?:string[]}){
-  const empty={number:'',kind:'',answered:'',house:'',read:'',text:'',box:'',origin:'',court:'',unit:''};
+  const empty={number:'',kind:'',answered:'',house:'',read:'',text:'',box:'',origin:'',court:'',unit:'',group:''};
   const [filters,setFilters]=useState(empty);
   const [compose,setCompose]=useState(false);
   const [expanded,setExpanded]=useState<Set<string>>(new Set());
@@ -33,8 +34,9 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   const open=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
   const nextRound=nextCampaignRound(data.rounds);
   const roundRevision=data.rounds.map(r=>`${r.number}:${r.status}`).sort().join('|');
-  const allowed=new Set(groupHouseIds??[]);
-  const groupActive=data.admin&&groupHouseIds!==undefined;
+  const groupChoices=filters.group?narrationHouseIds(filters.group,data.houses.map(h=>h.id)):data.houses.map(h=>h.id);
+  const allowed=new Set(groupHouseIds?groupChoices.filter(id=>groupHouseIds.includes(id)):groupChoices);
+  const groupActive=data.admin&&(groupHouseIds!==undefined||filters.group!=='');
   const matchesGroup=(letter:Pick<LetterRow,'origin_house_id'|'recipient_house_id'|'sender_player_id'|'recipient_player_id'|'sender_user_id'>)=>allowed.has(letter.origin_house_id??'')||
     allowed.has(letter.recipient_house_id??'')||
     data.players.some(p=>(p.id===letter.sender_player_id||p.id===letter.recipient_player_id||p.user_id===letter.sender_user_id)&&
@@ -46,12 +48,12 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   const client=useQueryClient();
   const {data:options}=useMailOptions();
   const saved=()=>{client.invalidateQueries({queryKey:['calendar-events']});client.invalidateQueries({queryKey:['campaign-calendar']});client.invalidateQueries({queryKey:['noble-house']});client.invalidateQueries({queryKey:['mail-page']});client.invalidateQueries({queryKey:['mail-insights']});client.invalidateQueries({queryKey:['mail-overview-grouped']});client.invalidateQueries({queryKey:['mail-options']});onSave();};
-  const groupKey=groupHouseIds?.join('|')??'all';
+  const groupKey=[...(groupHouseIds??[]),filters.group].join('|')||'all';
   useEffect(()=>{setPage(0);},[filters,groupKey]);
   useEffect(()=>{client.invalidateQueries({queryKey:['mail-page']});client.invalidateQueries({queryKey:['mail-insights']});},[data,client]);
   const [search,setSearch]=useState('');
   useEffect(()=>{const timer=setTimeout(()=>setSearch(filters.text),250);return()=>clearTimeout(timer);},[filters.text]);
-  const requestFilters={...filters,text:search,...(groupActive?{group_house_ids:groupHouseIds}: {})};
+  const requestFilters={...filters,text:search,...(groupActive?{group_house_ids:[...allowed]}: {})};
   const listing=useQuery({queryKey:['mail-page',data.user.id,requestFilters,page],queryFn:async()=>{const r=await supabase.rpc('mail_page',{p_filters:requestFilters,p_page:page,p_size:20});if(r.error)throw r.error;return r.data as unknown as {total:number;letters:LetterRow[];replies:Panel['replies'];kpis?:{delivered:number;awaiting_house:number;awaiting_narrator:number;scheduled_replies_next:number;drafts:number}};}});
   const allLetters=listing.data?.letters??[];
   const letters=allLetters;
@@ -173,6 +175,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
       <p className="campaign-eyebrow">FILTROS</p>
       <label>Buscar<input type="search" value={filters.text} onChange={e=>setFilters({...filters,text:e.target.value})} placeholder="Assunto, resposta, autor ou casa…"/></label>
       {sel('Caixa','box',[['','Todas'],['recebidas','Recebidas'],['enviadas','Enviadas'],['programadas','Programadas'],['rascunhos','Rascunhos'],['historico','Histórico por semana'],...(data.admin?[['excluidas','Excluídas']] as [string,string][]:[])])}
+      {data.admin&&sel('Grupo de narração','group',[['','Todos os grupos'],...NARRATION_GROUPS.map(g=>[g.id,g.label] as [string,string])])}
       {data.admin&&sel('Casa destinatária / legado','house',[['','Todas as casas'],...data.houses.filter(h=>h.active&&h.season===2&&(!groupActive||allowed.has(h.id))).map(h=>[h.id,h.name] as [string,string])])}
       {sel('Casa remetente','origin',[['','Todas as casas'],['none','Sem vínculo / legado'],...data.houses.filter(h=>!groupActive||allowed.has(h.id)).map(h=>[h.id,h.name] as [string,string])])}
       {sel('Membro da corte','court',linkOptions('court'))}
@@ -187,7 +190,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
       {!data.admin&&open!==null&&<Button onClick={()=>{setDraft({key:Date.now(),subject:'',content:''});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Escrever missiva</Button>}
     </aside>
     <div>
-      <MailInsights options={options} houseName={houseName} groupHouseIds={groupActive?groupHouseIds:undefined} onSelect={row=>setFilters({...empty,origin:row.origin_house_id??'none',court:row.court_member_id?row.origin_house_id+':'+row.court_member_id:'none',unit:row.military_unit_id?row.origin_house_id+':'+row.military_unit_id:'none'})}/>
+      <MailInsights options={options} houseName={houseName} groupHouseIds={groupActive?[...allowed]:undefined} onSelect={row=>setFilters({...empty,origin:row.origin_house_id??'none',court:row.court_member_id?row.origin_house_id+':'+row.court_member_id:'none',unit:row.military_unit_id?row.origin_house_id+':'+row.military_unit_id:'none'})}/>
       {listing.isPending&&<p role="status">Carregando missivas…</p>}
       {listing.error&&<p role="alert">Não foi possível carregar as missivas. <Button onClick={()=>listing.refetch()}>Tentar novamente</Button></p>}
       <nav className="campaign-actions" aria-label="Páginas de missivas"><Button disabled={page===0||listing.isFetching} onClick={()=>setPage(p=>p-1)}>Anterior</Button><span>Página {page+1} · {listing.data?.total??0} entregas encontradas</span><Button disabled={listing.isFetching||(page+1)*20>=(listing.data?.total??0)} onClick={()=>setPage(p=>p+1)}>Próxima</Button></nav>
