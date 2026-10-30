@@ -450,3 +450,51 @@
   font-size: 0.75rem;
   line-height: 1;
 }
+
+/* Compact mail composition: keep checkboxes independent of full-width input defaults. */
+.mail-compose-panel{margin:14px 0 22px;padding:16px 18px;background:var(--campaign-paper);border:1px solid var(--border);border-top:3px solid var(--campaign-gold);border-radius:9px}
+.mail-compose-panel h2{margin:0;font-size:24px}
+.mail-compose-intro{font-size:13px;color:var(--muted-foreground);margin:6px 0 10px}
+.mail-compose-form,.mail-compose-body{width:100%;max-width:none;display:grid;gap:12px;margin:8px 0}
+.mail-compose-body{padding:0;border:0;min-width:0}
+.mail-compose-body>legend{font-weight:700;font-size:13px;margin-bottom:4px}
+.mail-compose-panel .campaign-form label{gap:4px;font-size:13px}
+.mail-compose-panel .campaign-theme input,.mail-compose-panel input:not([type=checkbox]),.mail-compose-panel select{min-height:36px;padding:7px 10px}
+.mail-compose-panel .campaign-form button{min-height:36px}
+.mail-compose-panel textarea{min-height:175px;line-height:1.5;padding:9px 11px}
+.mail-compose-panel .campaign-actions{margin:6px 0}
+.mail-compose-panel .campaign-actions button{min-height:38px}
+.mail-recipient-picker{min-width:0;margin:0;border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.mail-recipient-picker>legend{font-size:14px;font-weight:700;padding:0 6px}
+.mail-recipient-toolbar{display:flex;align-items:end;gap:12px;justify-content:space-between;margin-bottom:9px;flex-wrap:wrap}
+.mail-recipient-search{flex:1;min-width:200px}
+.mail-recipient-search input{width:100%}
+.mail-recipient-regions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:start}
+.mail-recipient-region{border:1px solid var(--border);border-radius:7px;background:var(--background);padding:10px;min-width:0}
+.mail-recipient-other{grid-column:1/-1}
+.mail-recipient-region-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.mail-recipient-region-head h3{margin:0;font:700 15px/1.4 system-ui,sans-serif;color:var(--primary)}
+.mail-recipient-count{font-size:11px;font-weight:500;color:var(--muted-foreground)}
+.mail-compose-panel .mail-recipient-region-action{margin:5px 0 8px;min-height:29px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);font-size:11px;line-height:1.35;background:var(--campaign-paper);color:var(--primary);cursor:pointer}
+.mail-recipient-region-action:hover,.mail-recipient-region-action[aria-pressed="true"]{background:var(--campaign-light);border-color:var(--campaign-gold)}
+.mail-recipient-scroll{max-height:250px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.mail-recipient-house{padding:5px 0;border-top:1px solid var(--border)}
+.mail-recipient-house:first-child{border-top:0}
+.mail-compose-panel .mail-recipient-option{display:flex;flex-direction:row;align-items:center;gap:7px;min-height:29px;padding:3px 5px;border-radius:4px;font-size:12px;line-height:1.3;font-weight:500;cursor:pointer;text-align:left}
+.mail-recipient-option:hover{background:var(--campaign-light)}
+.mail-recipient-option span{min-width:0;overflow-wrap:anywhere}
+.mail-recipient-house-label{font-weight:700!important}
+.mail-recipient-house-label small{margin-left:auto;font-size:10px;font-weight:500;color:var(--muted-foreground);white-space:nowrap}
+.mail-recipient-person{padding-left:16px!important}
+.mail-compose-panel .mail-recipient-option input[type="checkbox"]{display:inline-block!important;flex:0 0 16px!important;width:16px!important;height:16px!important;min-height:16px!important;min-width:16px!important;margin:0!important;padding:0!important;accent-color:var(--primary);cursor:pointer}
+.mail-recipient-narrator{margin-bottom:2px}
+.mail-recipient-empty,.mail-recipient-help{margin:6px 0 0;font-size:11px;color:var(--muted-foreground)}
+.mail-compose-meta{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,.4fr);align-items:start;gap:10px}
+.mail-compose-meta>.harptos-picker{min-width:0;margin:0}
+.mail-link-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0;border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin:0}
+.mail-link-fields>legend{padding:0 5px;font-weight:700}
+.mail-link-fields>.mail-link-note,.mail-link-fields>div[role="status"]{grid-column:1/-1}
+.mail-link-note summary{font-size:12px;cursor:pointer}
+.mail-link-note p{margin:4px 0}
+@media(max-width:800px){.mail-recipient-regions{grid-template-columns:1fr}.mail-recipient-other{grid-column:auto}.mail-compose-meta{grid-template-columns:1fr}.mail-link-fields{grid-template-columns:1fr}}
+@media(max-width:600px){.mail-compose-panel{padding:12px 10px}.mail-recipient-picker{padding:8px}.mail-recipient-scroll{max-height:220px}.mail-recipient-search{min-width:100%}}
