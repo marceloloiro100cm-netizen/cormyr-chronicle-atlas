@@ -1,5 +1,6 @@
 export type LetterRow = {
   campaign_date?:string|null;
+  historical_recipient_name?:string|null;historical_source?:string|null;
  origin_house_id?:string|null;court_member_id?:string|null;court_assignment?:string|null;military_unit_id?:string|null;house_sheet_version?:number|null;batch_key?:string|null;recipient_read?:boolean;
   id: string;
   sender_user_id: string;
@@ -22,6 +23,19 @@ export type LetterRow = {
   deleted_at?: string | null;
   delivered_at?: string | null;
 };
+
+/** Missing playable-house registration must not turn an external historical
+ * letter into a fictitious message to the Narrador. */
+export function mailRecipientLabel(
+ letter:Pick<LetterRow,'historical_recipient_name'|'recipient_house_id'|'recipient_player_id'>,
+ houseName:(id:string)=>string|undefined,
+ playerName:(id:string)=>string|undefined,
+):string {
+ if(letter.historical_recipient_name)return letter.historical_recipient_name;
+ if(letter.recipient_house_id)return 'Casa '+(houseName(letter.recipient_house_id)??letter.recipient_house_id);
+ if(letter.recipient_player_id)return playerName(letter.recipient_player_id)??'Jogador';
+ return 'Narrador';
+}
 
 export type LetterGroup = {
   number: number | null;

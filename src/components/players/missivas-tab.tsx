@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { CampaignContent, ImagePicker, uploadImages, type PendingImage } from '@/components/campaign-content';
-import { hasDeliveredAnswer, groupReceivedLetters, isLetterRead, nextLetterNumber, pendingRoundHouses, sentLetters, type LetterRow } from '@/lib/letters';
+import { hasDeliveredAnswer, groupReceivedLetters, isLetterRead, nextLetterNumber, pendingRoundHouses, sentLetters, mailRecipientLabel, type LetterRow } from '@/lib/letters';
 import { date, syncLabel } from './shared';
 import type { Panel } from './panel-data';
 import {MailComposer,replaceMailDraft,MailLinkFields,useMailOptions,type MailLinks,type MailOptions} from './mail-compose';
@@ -21,7 +21,7 @@ function ReplyForm({letterId,replyId,recipientId,onSave}:{letterId:string;replyI
   return open?<form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(content,images,key.current);}catch(err){setMessage(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const draft=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';const {error}=draft?await datedMail('save_weekly_reply_draft',{p_id:key.current,p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent},campaignDate):await datedMail('reply_weekly_message',{p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent,p_key:key.current,p_draft:false},campaignDate);if(error)setMessage(error.message);else{key.current=null;setContent('');setImages([]);setOpen(false);onSave();}setBusy(false);}}><p role="status">{deliveryWeek?`Previsão de entrega: Semana ${deliveryWeek}. O envio confirma a semana disponível no servidor.`:"Sem semana aberta."}</p><CampaignDatePicker value={campaignDate} onChange={setCampaignDate}/><label>Resposta<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label><ImagePicker images={images} onChange={setImages} disabled={busy}/><div className="campaign-actions"><Button name="action" value="draft" variant="outline" disabled={busy}>Salvar rascunho</Button><Button disabled={busy||deliveryWeek===null}>{busy?'Salvando…':'Enviar resposta'}</Button></div><p role="status">{message}</p></form>:<Button onClick={()=>setOpen(true)}>Responder</Button>;
 }
 
-export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void;onManage?:(house:string)=>void}){
+export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void;onManage?:(house:string)=>void;groupHouseIds?:string[]}){
   const empty={number:'',kind:'',answered:'',house:'',read:'',text:'',box:'',origin:'',court:'',unit:''};
   const [filters,setFilters]=useState(empty);
   const [compose,setCompose]=useState(false);
@@ -30,16 +30,25 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
   const [draft,setDraft]=useState<{key:number;subject:string;content:string}|null>(null);
   const [roundNumber,setRoundNumber]=useState('');
   const open=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
-  const pendingHouses=data.admin?pendingRoundHouses(open,data.houses,data.players,data.members,data.letters as LetterRow[],data.replies):[];
+  const allowed=new Set(groupHouseIds??[]);
+  const groupActive=data.admin&&groupHouseIds!==undefined;
+  const matchesGroup=(letter:Pick<LetterRow,'origin_house_id'|'recipient_house_id'|'sender_player_id'|'recipient_player_id'>)=>allowed.has(letter.origin_house_id??'')||
+    allowed.has(letter.recipient_house_id??'')||
+    data.players.some(p=>p.id===letter.sender_player_id&&allowed.has(p.roster_house_id??''))||
+    data.players.some(p=>p.id===letter.recipient_player_id&&allowed.has(p.roster_house_id??''));
+  const pendingHouses=data.admin?pendingRoundHouses(
+    open,data.houses.filter(h=>!groupActive||allowed.has(h.id)),data.players,data.members,
+    (data.letters as LetterRow[]).filter(l=>!groupActive||matchesGroup(l)),data.replies):[];
   const [page,setPage]=useState(0);
   const client=useQueryClient();
   const {data:options}=useMailOptions();
-  const saved=()=>{client.invalidateQueries({queryKey:['calendar-events']});client.invalidateQueries({queryKey:['campaign-calendar']});client.invalidateQueries({queryKey:['noble-house']});client.invalidateQueries({queryKey:['mail-page']});client.invalidateQueries({queryKey:['mail-insights']});client.invalidateQueries({queryKey:['mail-options']});onSave();};
-  useEffect(()=>{setPage(0);},[filters]);
+  const saved=()=>{client.invalidateQueries({queryKey:['calendar-events']});client.invalidateQueries({queryKey:['campaign-calendar']});client.invalidateQueries({queryKey:['noble-house']});client.invalidateQueries({queryKey:['mail-page']});client.invalidateQueries({queryKey:['mail-insights']});client.invalidateQueries({queryKey:['mail-overview-grouped']});client.invalidateQueries({queryKey:['mail-options']});onSave();};
+  const groupKey=groupHouseIds?.join('|')??'all';
+  useEffect(()=>{setPage(0);},[filters,groupKey]);
   useEffect(()=>{client.invalidateQueries({queryKey:['mail-page']});client.invalidateQueries({queryKey:['mail-insights']});},[data,client]);
   const [search,setSearch]=useState('');
   useEffect(()=>{const timer=setTimeout(()=>setSearch(filters.text),250);return()=>clearTimeout(timer);},[filters.text]);
-  const requestFilters={...filters,text:search};
+  const requestFilters={...filters,text:search,...(groupActive?{group_house_ids:groupHouseIds}: {})};
   const listing=useQuery({queryKey:['mail-page',data.user.id,requestFilters,page],queryFn:async()=>{const r=await supabase.rpc('mail_page',{p_filters:requestFilters,p_page:page,p_size:20});if(r.error)throw r.error;return r.data as unknown as {total:number;letters:LetterRow[];replies:Panel['replies']};}});
   const allLetters=listing.data?.letters??[];
   const letters=allLetters;
@@ -58,8 +67,8 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
   };
   const linkOptions=(kind:'court'|'unit'):[string,string][]=>{
     const values=new Map<string,string>();
-    for(const h of options?.houses??[])for(const item of kind==='court'?h.court:h.units)values.set(h.id+':'+item.id,h.name+' — '+item.name);
-    for(const l of data.letters){const id=kind==='court'?l.court_member_id:l.military_unit_id;if(id&&l.origin_house_id){const k=l.origin_house_id+':'+id;if(!values.has(k))values.set(k,(houseName(l.origin_house_id)??l.origin_house_id)+' — '+linkName(kind,l.origin_house_id,id));}}
+    for(const h of (options?.houses??[]).filter(h=>!groupActive||allowed.has(h.id)))for(const item of kind==='court'?h.court:h.units)values.set(h.id+':'+item.id,h.name+' — '+item.name);
+    for(const l of data.letters.filter(l=>!groupActive||matchesGroup(l as LetterRow))){const id=kind==='court'?l.court_member_id:l.military_unit_id;if(id&&l.origin_house_id){const k=l.origin_house_id+':'+id;if(!values.has(k))values.set(k,(houseName(l.origin_house_id)??l.origin_house_id)+' — '+linkName(kind,l.origin_house_id,id));}}
     return [['','Todos'],['none','Sem vínculo'],...[...values].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'))];
   };
   const card=(letter:LetterRow&{deleted_at?:string|null;publication_state?:string;delivery_week?:number|null},canAnswer:boolean)=>{
@@ -69,7 +78,7 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
     const isOpen=expanded.has(letter.id);
     const threadLetters=letter.conversation_id?allLetters.filter(o=>o.conversation_id===letter.conversation_id&&o.id!==letter.id).sort((a,b)=>a.created_at.localeCompare(b.created_at)):[];
     const threadOpen=threads.has(letter.id);
-    const to=letter.recipient_house_id?'Casa '+(houseName(letter.recipient_house_id)??letter.recipient_house_id):letter.recipient_player_id?(options?.players?.find(p=>p.id===letter.recipient_player_id)?.name??'Jogador'):'Narrador';
+    const to=mailRecipientLabel(letter,houseName,id=>options?.players?.find(p=>p.id===id)?.name);
     const fromHouse=houseName(letter.origin_house_id??null)??(letter.sender_player_id?houseName(data.players.find(p=>p.id===letter.sender_player_id)?.roster_house_id??null):null);
     const canDelete=!letter.deleted_at&&(data.admin||letter.sender_user_id===data.user.id);
     return <article className={'campaign-letter'+(isOpen?'':' recolhida')} key={letter.id} id={'missiva-'+letter.id}>
@@ -77,10 +86,13 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
         <ChevronDown size={18} className={isOpen?'rotate-180 transition-transform':'transition-transform'}/>
         <span className="campaign-eyebrow">{letter.letter_number?`Missiva ${letter.letter_number} · `:''}{letter.letter_kind==='geral'?'Geral':'Reservada'} · {hasDeliveredAnswer(letter,answers)?'Respondida · ':''}{read?'Lida':'Não lida'}{letter.publication_state==='draft'?' · Rascunho':letter.publication_state==='scheduled'?` · Aguardando abertura da Semana ${letter.delivery_week}`:''}{letter.deleted_at?' · Excluída':''}</span>
         <strong className="campaign-letter-subject">{letter.subject}</strong>
-        <span className="text-muted-foreground text-sm">De: {letter.sender_name}{fromHouse?` (${fromHouse})`:''} · Para: {to} · {date(letter.created_at)}{answers.length?` · ${answers.length} resposta(s)`:''}</span>
+        <span className="text-muted-foreground text-sm">De: {letter.sender_name}{fromHouse?` (${fromHouse})`:''} · Para: {to} · {letter.historical_source&&letter.campaign_date?formatDate(letter.campaign_date):date(letter.created_at)}{letter.historical_source?' · Arquivo histórico':''}{answers.length?` · ${answers.length} resposta(s)`:''}</span>
       </button>
       {isOpen&&<div className="campaign-letter-body">
-        <p>{formatDate(letter.campaign_date)}</p><CampaignContent content={letter.content}/>
+        <p>{formatDate(letter.campaign_date)}</p>
+        {letter.historical_source&&<p className="text-muted-foreground text-sm">Correspondência histórica importada de {letter.historical_source} · não representa um novo envio pelo site.</p>}
+        {data.admin&&letter.historical_source&&<p className="text-muted-foreground text-sm">{letter.historical_recipient_name?.includes('(NPC, Narrador)')?'Recebida pelo Narrador na qualidade de gestor da casa NPC.':letter.recipient_house_id?'Entregue à casa jogadora. O Narrador pode acompanhar administrativamente, mas não recebeu cópia da missiva.':'Correspondência arquivada.'}</p>}
+        <CampaignContent content={letter.content}/>
         {(letter.court_member_id||letter.military_unit_id)&&<div className="campaign-eyebrow">{letter.court_member_id&&<p>Corte: {linkName('court',letter.origin_house_id,letter.court_member_id)} · {letter.court_assignment==='order_recipient'?'Destinatário da ordem':'Executor'}</p>}{letter.military_unit_id&&<p>Unidade: {linkName('unit',letter.origin_house_id,letter.military_unit_id)}</p>}</div>}
         {letter.sender_user_id===data.user.id&&letter.publication_state==='delivered'&&<p>Destinatário: {letter.recipient_read?'leitura registrada':'sem leitura registrada'} · {hasDeliveredAnswer(letter,answers)?'resposta recebida':'aguardando resposta'}</p>}
         {data.admin&&letter.sender_user_id===data.user.id&&<details><summary>Leituras registradas pelos destinatários</summary>{data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).length===0?<p>Nenhuma leitura registrada.</p>:data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).map(r=><p key={r.user_id}>{data.players.find(p=>p.user_id===r.user_id)?.name??'Destinatário autorizado'} · {date(r.read_at)}{isLetterRead(letter.id,r,answers)?'':' · Há respostas posteriores'}</p>)}</details>}
@@ -99,15 +111,17 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
     </article>;
   };
   const sel=(label:string,key:keyof typeof empty,opts:[string,string][])=><label>{label}<select value={filters[key]} onChange={e=>setFilters({...filters,[key]:e.target.value})}>{opts.map(([v,t])=><option key={v} value={v}>{t}</option>)}</select></label>;
-  const numbers=[...new Set([...data.letters.map(l=>l.letter_number),...data.replies.map(r=>r.delivery_week)].filter((n):n is number=>n!==null))].sort((a,b)=>b-a);
+  const numbers=[...new Set([...data.letters.filter(l=>!groupActive||matchesGroup(l)).map(l=>l.letter_number),
+   ...data.replies.filter(r=>!groupActive||data.letters.some(l=>l.id===r.letter_id&&matchesGroup(l as LetterRow))).map(r=>r.delivery_week)]
+   .filter((n):n is number=>n!==null))].sort((a,b)=>b-a);
   const visibleIds=[...groups.flatMap(g=>g.letters),...mine].map(l=>l.id);
   return <div className="campaign-mail-layout">
     <aside className="campaign-mail-side" aria-label="Filtros das missivas">
       <p className="campaign-eyebrow">FILTROS</p>
       <label>Buscar<input type="search" value={filters.text} onChange={e=>setFilters({...filters,text:e.target.value})} placeholder="Assunto, texto ou remetente…"/></label>
       {sel('Caixa','box',[['','Todas'],['recebidas','Recebidas'],['enviadas','Enviadas'],['programadas','Programadas'],['rascunhos','Rascunhos'],['historico','Histórico por semana'],...(data.admin?[['excluidas','Excluídas']] as [string,string][]:[])])}
-      {data.admin&&sel('Casa destinatária / legado','house',[['','Todas as casas'],...data.houses.filter(h=>h.active&&h.season===2).map(h=>[h.id,h.name] as [string,string])])}
-      {sel('Casa remetente','origin',[['','Todas as casas'],['none','Sem vínculo / legado'],...data.houses.map(h=>[h.id,h.name] as [string,string])])}
+      {data.admin&&sel('Casa destinatária / legado','house',[['','Todas as casas'],...data.houses.filter(h=>h.active&&h.season===2&&(!groupActive||allowed.has(h.id))).map(h=>[h.id,h.name] as [string,string])])}
+      {sel('Casa remetente','origin',[['','Todas as casas'],['none','Sem vínculo / legado'],...data.houses.filter(h=>!groupActive||allowed.has(h.id)).map(h=>[h.id,h.name] as [string,string])])}
       {sel('Membro da corte','court',linkOptions('court'))}
       {sel('Unidade militar','unit',linkOptions('unit'))}
       {sel('Semana','number',[['','Todas as semanas'],...numbers.map(n=>[String(n),'Semana '+n] as [string,string])])}
@@ -120,7 +134,7 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
       {!data.admin&&open!==null&&<Button onClick={()=>{setDraft({key:Date.now(),subject:'',content:''});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Escrever missiva</Button>}
     </aside>
     <div>
-      <MailInsights options={options} houseName={houseName} onSelect={row=>setFilters({...empty,origin:row.origin_house_id??'none',court:row.court_member_id?row.origin_house_id+':'+row.court_member_id:'none',unit:row.military_unit_id?row.origin_house_id+':'+row.military_unit_id:'none'})}/>
+      <MailInsights options={options} houseName={houseName} groupHouseIds={groupActive?groupHouseIds:undefined} onSelect={row=>setFilters({...empty,origin:row.origin_house_id??'none',court:row.court_member_id?row.origin_house_id+':'+row.court_member_id:'none',unit:row.military_unit_id?row.origin_house_id+':'+row.military_unit_id:'none'})}/>
       {listing.isPending&&<p role="status">Carregando missivas…</p>}
       {listing.error&&<p role="alert">Não foi possível carregar as missivas. <Button onClick={()=>listing.refetch()}>Tentar novamente</Button></p>}
       <nav className="campaign-actions" aria-label="Páginas de missivas"><Button disabled={page===0||listing.isFetching} onClick={()=>setPage(p=>p-1)}>Anterior</Button><span>Página {page+1} · {listing.data?.total??0} entregas encontradas</span><Button disabled={listing.isFetching||(page+1)*20>=(listing.data?.total??0)} onClick={()=>setPage(p=>p+1)}>Próxima</Button></nav>
@@ -133,7 +147,7 @@ export function MissivasTab({data,me,onSave,onError,onManage}:{data:Panel;me:Pan
         <p>Nesta página: {allLetters.length} missivas · {allLetters.filter(l=>!hasDeliveredAnswer(l,viewReplies)).length} não respondidas</p>
         <div className="campaign-actions">{open!==null&&<Button variant="outline" onClick={async()=>{if(!confirm(`Fechar a Missiva ${open}? Os jogadores não poderão mais responder nem escrever.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:open,p_closed:true});if(error)onError(error.message);else saved();}}>Fechar Missiva {open}</Button>}<input type="number" min={1} style={{width:140}} value={roundNumber} onChange={e=>setRoundNumber(e.target.value)} placeholder={`Nº (ex.: ${(numbers[0]??0)+1})`} aria-label="Número da missiva a abrir"/><Button variant="outline" onClick={async()=>{const n=Number(roundNumber||(numbers[0]??0)+1);const preview=data.letters.filter(l=>l.delivery_week===n&&l.publication_state==='scheduled');const responses=data.replies.filter(r=>r.delivery_week===n&&r.publication_state==='scheduled');if(!confirm(`Abrir Semana ${n}? ${preview.length} mensagens e ${responses.length} respostas serão liberadas. Destinatários: ${preview.map(l=>houseName(l.recipient_house_id)||'Jogador autorizado').join(', ')||'Nenhuma nova mensagem'}. A semana anterior será encerrada.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:n,p_closed:false});if(error)onError(error.message);else{setRoundNumber('');saved();}}}>Abrir missiva</Button></div>
         {compose&&<MailComposer data={data} me={me} onSave={saved} onManage={onManage}/>}</>}
-      {filters.box!=='enviadas'&&<><div className="campaign-heading"><h2>{filters.box==='excluidas'?'Missivas excluídas':'Missivas recebidas'}</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
+      {filters.box!=='enviadas'&&<><div className="campaign-heading"><h2>{filters.box==='excluidas'?'Missivas excluídas':data.admin&&filters.box!=='recebidas'?'Correspondência acompanhada':'Missivas recebidas'}</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
       {groups.length===0&&<p className="campaign-empty">Nenhuma missiva encontrada.</p>}
       {groups.map(group=><section key={group.number??'sem-numero'} id={group.number!==null?'grupo-missiva-'+group.number:undefined} className="campaign-mail-group">{group.number!==null&&<h3 className="campaign-letter-number">Missiva {group.number}{data.rounds.find(r=>r.number===group.number)?.closed?' · fechada':''}</h3>}{group.letters.map(letter=>card(letter,isRecipient(letter)||data.admin))}</section>)}</>}
       {filters.box!=='recebidas'&&<><div className="campaign-heading"><h2>Missivas enviadas por você</h2><span>{mine.length} missivas</span></div>
@@ -163,8 +177,8 @@ function ReplyDraftEdit({answer,onSave}:{answer:Panel['replies'][number];onSave:
 }
 
 type Insight={origin_house_id:string|null;court_member_id:string|null;court_assignment:string|null;military_unit_id:string|null;messages:number;deliveries:number;delivered:number;answered:number};
-function MailInsights({options,houseName,onSelect}:{options:MailOptions|undefined;houseName:(id:string|null)=>string|undefined;onSelect:(r:Insight)=>void}){
+function MailInsights({options,houseName,onSelect,groupHouseIds}:{options:MailOptions|undefined;houseName:(id:string|null)=>string|undefined;onSelect:(r:Insight)=>void;groupHouseIds?:string[]|undefined}){
  const [open,setOpen]=useState(false);
- const result=useQuery({queryKey:['mail-insights'],enabled:open,queryFn:async()=>{const r=await supabase.rpc('mail_insights');if(r.error)throw r.error;return r.data as unknown as Insight[];}});
+ const result=useQuery({queryKey:['mail-insights',groupHouseIds?.join('|')??'all'],enabled:open,queryFn:async()=>{const r=groupHouseIds?await supabase.rpc('mail_insights_grouped',{p_house_ids:groupHouseIds}):await supabase.rpc('mail_insights');if(r.error)throw r.error;return r.data as unknown as Insight[];}});
  return <details onToggle={e=>setOpen(e.currentTarget.open)}><summary>Análise por casa e responsáveis</summary><p>Contagem das entregas visíveis para você. Uma missiva enviada a três pessoas conta como uma mensagem e três entregas. Resposta recebida não comprova execução da ordem.</p>{result.isPending&&<p>Carregando análise…</p>}{result.error&&<p role="alert">Não foi possível carregar a análise.</p>}{result.data&&<div style={{overflowX:'auto'}}><table><thead><tr><th>Casa</th><th>Corte / responsabilidade</th><th>Unidade</th><th>Mensagens</th><th>Entregas</th><th>Entregues</th><th>Respondidas</th><th>Pendentes de resposta</th><th>Consultar</th></tr></thead><tbody>{result.data.map((row,i)=>{const h=options?.houses?.find(h=>h.id===row.origin_house_id);return <tr key={i}><td>{houseName(row.origin_house_id)??'Sem vínculo / legado'}</td><td>{row.court_member_id?(h?.court.find(c=>c.id===row.court_member_id)?.name??'Vínculo histórico ou restrito'):'Sem vínculo'}{row.court_member_id&&(row.court_assignment==='order_recipient'?' — Destinatário da ordem':' — Executor')}</td><td>{row.military_unit_id?(h?.units.find(u=>u.id===row.military_unit_id)?.name??'Vínculo histórico ou restrito'):'Sem vínculo'}</td><td>{row.messages}</td><td>{row.deliveries}</td><td>{row.delivered}</td><td>{row.answered}</td><td>{row.delivered-row.answered}</td><td><Button variant="ghost" onClick={()=>onSelect(row)}>Ver missivas</Button></td></tr>;})}</tbody></table></div>}</details>;
 }
