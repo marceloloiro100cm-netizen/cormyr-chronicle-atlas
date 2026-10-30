@@ -47,6 +47,38 @@ describe('interface de missivas',()=>{
  });
 });
 
+describe('apresentação de fios de respostas',()=>{
+ it('termina a missiva original na assinatura de Mara e mostra Genevieve num cartão de resposta separado',async()=>{
+  const panel={...data([{
+   id:'reply-harcourt',letter_id:'letter',reply_to_id:'letter',
+   author_user_id:'harcourt-user',author_name:'Lady Genevieve Harcourt',
+   content:'Mara\n\nSeu irmão voltou depois de dez anos e encontrou uma oficina funcionando.',
+   publication_state:'delivered',created_at:'2026-10-30',campaign_date:null,sync_state:'synced',
+  }]),letters:[{...letter,subject:'O filho que ficou',sender_name:'Mara, Carpinteira de Goldsun',
+   content:'Lady Genevieve,\n\nA oficina ainda leva o nome dele na porta.\n\nMara, Carpinteira de Goldsun'}]} as unknown as Panel;
+  mount(panel);
+  fireEvent.click(await screen.findByRole('button',{name:/O filho que ficou/}));
+  const original=screen.getByRole('region',{name:'Texto da missiva original'});
+  const thread=screen.getByRole('region',{name:'Fio de respostas: O filho que ficou'});
+  const reply=screen.getByRole('article',{name:'Resposta de Lady Genevieve Harcourt'});
+  expect(original).toHaveTextContent('Mara, Carpinteira de Goldsun');
+  expect(original).not.toHaveTextContent('Seu irmão voltou depois de dez anos');
+  expect(original.nextElementSibling).toBe(thread);
+  expect(thread).toHaveTextContent('Fio de respostas');
+  expect(thread).toHaveTextContent('1 resposta');
+  expect(reply).toHaveClass('campaign-reply-card');
+  expect(reply).toHaveTextContent('Lady Genevieve Harcourt');
+  expect(reply).toHaveTextContent('Seu irmão voltou depois de dez anos');
+  expect(reply).toHaveTextContent('Sem data histórica informada');
+ });
+ it('não cria fio de resposta quando só existe a missiva original',async()=>{
+  mount(data());
+  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  expect(screen.getByRole('region',{name:'Texto da missiva original'})).toHaveTextContent('Original');
+  expect(screen.queryByRole('region',{name:/Fio de respostas:/})).not.toBeInTheDocument();
+ });
+});
+
 describe('novos destinatários e vínculos',()=>{
  it('envia para uma casa sem mostrar jogadores individuais e preserva vínculos opcionais',async()=>{
   mount(data());
