@@ -11,3 +11,11 @@ export function assignCourt(state:HouseState,input:{id:string;npcId:string;role:
 export function validateCourtRecord(houseId:string,record:{house_id:string|null;kind:string}|null) {
  if(!record||record.house_id!==houseId||record.kind!=='character')throw new Error('Integrante da Corte não pertence a esta casa ou não está acessível.');
 }
+
+/** Remove only the court appointment; never delete the character record or military unit. */
+export function removeCourtAssignment(state:HouseState,id:string):HouseState {
+ if(!state.court.some(member=>member.id===id))throw new Error('Vínculo da Corte não encontrado.');
+ const next=structuredClone(state);
+ next.court=next.court.filter(member=>member.id!==id);
+ return next;
+}
