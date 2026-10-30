@@ -1,28 +1,38 @@
 import { RESOURCE_KEYS, SKILLS, zeroResources, type CatalogItem, type Cost, type Domain, type HouseState, type Ledger, type Resources, type Resource, type Unit } from './types';
 import { regionBonus } from './regions';
 import { historyAdjustments, memberBonusAdjustments } from './creation-history';
+import { holdingAllocation, legacyCatalogEffects, legacyDestroyedLosses } from './holding-accounting';
 export type Balance = { total: Resources; allocated: Resources; committed: Resources; available: Resources; permanent: Resources };
+/** Livro básico, Tabela 6-5: maximum status permitted by the HOUSE'S TOTAL Influence. */
+export function maxHouseStatus(influence:number):number {
+ if(!Number.isFinite(influence))throw new Error('Influência inválida.');
+ if(influence<=10)return 2;
+ if(influence<=20)return 3;
+ if(influence<=40)return 4;
+ if(influence<=50)return 5;
+ if(influence<=60)return 6;
+ if(influence<=70)return 7;
+ return 8;
+}
+export function heirHouseStatus(influence:number,order:number):number {
+ if(!Number.isInteger(order)||order<1)throw new Error('Ordem do herdeiro inválida.');
+ return Math.max(0,maxHouseStatus(influence)-Math.min(3,order));
+}
 export function balances(state: HouseState): Balance {
   const regional = state.regionalApplied && state.method !== 'import' ? regionBonus(state.identity.region) : zeroResources();
   const total = zeroResources(), allocated = zeroResources(), committed = zeroResources(), available = zeroResources();
   const historic = historyAdjustments(state),personal=memberBonusAdjustments(state);
+  const legacyLosses=legacyDestroyedLosses(state);
+  const effectivePermanent=zeroResources();
   for (const r of RESOURCE_KEYS) {
-    total[r] = state.base[r] + state.permanent[r] + regional[r] + historic[r] + personal[r];
+    effectivePermanent[r]=state.permanent[r]-legacyLosses[r];
+    total[r] = state.base[r] + effectivePermanent[r] + regional[r] + historic[r] + personal[r];
   }
-  const holdings = state.holdings;
-  for (const holding of holdings) {
-    // A condition change never authorizes reimbursement; an audited correction must do that.
-    const isBuilding = holding.status === 'building';
-    const target = isBuilding ? committed : allocated;
-    const ac = holding.allocatedCosts;
-    if (ac) {
-      for (const r of RESOURCE_KEYS) target[r] += ac[r] ?? 0;
-    } else {
-      const costs = holding.costs;
-      for (const cost of costs) {
-        if (cost.mode === 'allocation') target[cost.resource] += cost.amount;
-      }
-    }
+  for (const holding of state.holdings) {
+    if(holding.status!=='active'&&holding.status!=='building')continue;
+    const target=holding.status==='building'?committed:allocated;
+    const ac=holdingAllocation(holding);
+    for(const r of RESOURCE_KEYS)target[r]+=ac[r];
   }
   for (const unit of state.units) {
     if (unit.destroyed) continue;
@@ -39,12 +49,12 @@ export function balances(state: HouseState): Balance {
   for (const r of RESOURCE_KEYS) {
     available[r] = total[r] - allocated[r] - committed[r];
   }
-  return {total, allocated, committed, available, permanent: state.permanent};
+  return {total, allocated, committed, available, permanent: effectivePermanent};
 }
 export function validateResources(values: Resources) { for (const r of RESOURCE_KEYS) if (!Number.isFinite(values[r]) || Math.abs(values[r]) > 100000) throw new Error('Valor de recurso inválido.'); }
 export function activeHoldings(state:HouseState) {
  const enabled=(id:string,seen:Set<string>):boolean=>{if(seen.has(id))return false;const h=state.holdings.find(h=>h.id===id);if(!h||h.status!=='active')return false;if(!h.parentId)return true;return enabled(h.parentId,new Set([...seen,id]));};
- return state.holdings.filter(h=>enabled(h.id,new Set()));
+ return state.holdings.filter(h=>enabled(h.id,new Set())).map(h=>h.effects.length? h : {...h,effects:legacyCatalogEffects(h)});
 }
 export function settlementCapacity(state:HouseState,domainId:string,supportId?:string):{capacity:number;used:number;error?:string} {
  const domain=state.domains.find(d=>d.id===domainId);
