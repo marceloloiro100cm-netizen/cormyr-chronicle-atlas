@@ -25,12 +25,26 @@ describe('casas com respostas pendentes na rodada aberta',()=>{
   const reply=(over={})=>({letter_id:'letter',author_user_id:'ashkar-user',author_player_id:'a' as string|null,house_id:'ashkar',publication_state:'delivered',delivery_week:2,created_at:'2026-10-24T11:00:00Z',...over});
   const pending=(letters:LetterRow[]=[letter],replies:ReturnType<typeof reply>[]=[],week:number|null=2)=>pendingRoundHouses(week,houses,players,members,letters,replies);
   it('lista uma casa uma vez e conta as missivas pendentes da Semana 2',()=>{expect(pending([letter,{...letter,id:'second'}])).toEqual([{id:'ashkar',name:'Ashkar',letterIds:['letter','second']}]);});
-  it('não lista casas que não receberam missivas na rodada atual',()=>{expect(pending([{...letter,delivery_week:1,letter_number:1}])).toEqual([]);});
+  it('mantém como pendente uma missiva de semana anterior sem resposta',()=>{expect(pending([{...letter,delivery_week:1,letter_number:1}])).toEqual([{id:'ashkar',name:'Ashkar',letterIds:['letter']}]);});
   it('uma resposta de qualquer jogador autorizado da casa resolve a pendência',()=>{expect(pending([letter],[reply({author_user_id:'ashkar-user-2',author_player_id:'a2'})])).toEqual([]);});
-  it('respostas antigas, de outra casa ou programadas não resolvem a pendência',()=>{expect(pending([letter],[reply({delivery_week:1}),reply({author_user_id:'grantass-user',author_player_id:'g'}),reply({publication_state:'scheduled'})])).toHaveLength(1);});
+  it('respostas anteriores ao último envio, de outra casa ou programadas não resolvem a pendência',()=>{expect(pending([letter],[reply({delivery_week:1,created_at:'2026-10-23T11:00:00Z'}),reply({author_user_id:'grantass-user',author_player_id:'g'}),reply({publication_state:'scheduled'})])).toHaveLength(1);});
   it('resposta do Narrador entregue na Semana 2 reabre pendência de fio da Semana 1',()=>{const old={...letter,letter_number:1,delivery_week:1};expect(pending([old],[reply({delivery_week:1}),reply({author_user_id:'narrador',author_player_id:null})])).toHaveLength(1);});
   it('resposta posterior da casa resolve a nova narrativa do fio antigo',()=>{const old={...letter,letter_number:1,delivery_week:1};expect(pending([old],[reply({author_user_id:'narrador',author_player_id:null}),reply({created_at:'2026-10-24T12:00:00Z'})])).toEqual([]);});
   it('não conta narrativas excluídas, futuras ou rascunhos',()=>{expect(pending([{...letter,deleted_at:'2026-10-24T12:00:00Z'},{...letter,publication_state:'scheduled'},{...letter,publication_state:'draft'}])).toEqual([]);});
+  it('resposta da casa na rodada seguinte encerra pendência antiga',()=>{
+    const old={...letter,delivery_week:1,letter_number:1};
+    expect(pending([old],[reply({delivery_week:2,created_at:'2026-10-24T12:00:00Z'})],2)).toEqual([]);
+  });
+  it('novo retorno do Narrador abre pendência novamente, inclusive em rodada posterior',()=>{
+    const old={...letter,delivery_week:1,letter_number:1};
+    const prior=reply({delivery_week:2,created_at:'2026-10-24T12:00:00Z'});
+    const followup=reply({author_user_id:'narrador',author_player_id:null,delivery_week:3,created_at:'2026-10-25T12:00:00Z'});
+    expect(pending([old],[prior,followup],3)).toHaveLength(1);
+    expect(pending([old],[prior,followup,reply({delivery_week:3,created_at:'2026-10-26T12:00:00Z'})],3)).toEqual([]);
+  });
+  it('não contabiliza narrativas com entrega em semana futura',()=>{
+    expect(pending([{...letter,delivery_week:3,letter_number:3}],[],2)).toEqual([]);
+  });
   it('não mostra pendências sem rodada aberta',()=>{expect(pending([letter],[],null)).toEqual([]);});
   it('não conta jogador sem vínculo autorizado ou inativo',()=>{expect(pendingRoundHouses(2,houses,[{id:'a',user_id:'ashkar-user',active:false}],members,[letter],[])).toEqual([]);expect(pendingRoundHouses(2,houses,players,[],[letter],[])).toEqual([]);});
   it('não considera missiva de outro jogador como cobrança do Narrador',()=>{expect(pending([{...letter,sender_player_id:'g',sender_user_id:'grantass-user'}])).toEqual([]);});
@@ -87,6 +101,27 @@ describe('Narrator management filters',()=>{
   it('filters outgoing conversations using the viewer receipt',()=>{const a=row({id:'a'}),b=row({id:'b'});const ctx={...context,receipts:[{letter_id:'a',user_id:'narrador'},{letter_id:'b',user_id:'jogador'}]};expect(filterLetters([a,b],[],{number:'',kind:'',answered:'',read:'no'},ctx)).toEqual([b]);});
   it('filters unread incoming letters using the narrator receipt',()=>{const a=row({id:'a',sender_user_id:'jogador'}),b=row({id:'b',sender_user_id:'jogador'});const ctx={...context,receipts:[{letter_id:'a',user_id:'jogador'},{letter_id:'b',user_id:'narrador'}]};expect(filterLetters([a,b],[],{number:'',kind:'',answered:'',read:'no'},ctx)).toEqual([a]);});
   it('combines house, number, reserved type and unanswered filters',()=>{const a=row({id:'a',letter_kind:'reservada',letter_number:2});const b=row({id:'b',letter_kind:'reservada',letter_number:2});expect(filterLetters([a,b,row({})],[{letter_id:'b'}],{house:'erdenor',number:'2',kind:'reservada',answered:'no'},context)).toEqual([a]);});
+});
+
+describe('filtro de casas por vínculos ativos de jogadores',()=>{
+  const context={userId:'narrador',admin:true,
+    players:[{id:'p1',user_id:'user-one',roster_house_id:null},{id:'p2',user_id:'user-two',roster_house_id:'other'}],
+    members:[{player_id:'p1',house_id:'ashkar'},{player_id:'p2',house_id:'grantass'}],receipts:[]};
+  const filter=(house:string)=>({number:'',kind:'',answered:'',house});
+  it('localiza missiva dirigida individualmente a jogador cujo vínculo não está no roster',()=>{
+    const letter=row({recipient_house_id:null,recipient_player_id:'p1',sender_user_id:'narrador'});
+    expect(filterLetters([letter],[],filter('ashkar'),context)).toEqual([letter]);
+  });
+  it('encontra o vínculo do remetente em cartas endereçadas ao Narrador',()=>{
+    const letter=row({sender_user_id:'user-one',sender_player_id:'p1',recipient_house_id:null});
+    expect(filterLetters([letter],[],filter('ashkar'),context)).toEqual([letter]);
+    expect(filterLetters([letter],[],filter('grantass'),context)).toEqual([]);
+  });
+  it('uma carta pode ser filtrada pela casa da origem ou do destinatário, sem duplicação',()=>{
+    const letter=row({sender_user_id:'user-two',sender_player_id:'p2',recipient_house_id:'ashkar'});
+    expect(filterLetters([letter],[],filter('ashkar'),context)).toEqual([letter]);
+    expect(filterLetters([letter],[],filter('grantass'),context)).toEqual([letter]);
+  });
 });
 
 describe('leitura com respostas novas',()=>{
