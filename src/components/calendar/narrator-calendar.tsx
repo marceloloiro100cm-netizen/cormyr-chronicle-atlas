@@ -121,9 +121,12 @@ export function NarratorCalendar(){
    <h3>Data e semana da campanha</h3>
    <div className="narrator-calendar-settings">
     <CampaignDatePicker value={date} updateOnNavigation onChange={next=>{editedRef.current=true;setDate(next);setMessage('');}}/>
-    <label>Semana atual do jogo
-     <input type="number" min={1} step={1} value={week} onChange={e=>{editedRef.current=true;setWeek(Number(e.target.value));setMessage('');}}/>
-    </label>
+    <div className="narrator-calendar-week-controls">
+     <label>Semana atual do jogo
+      <input type="number" min={1} step={1} value={week} onChange={e=>{editedRef.current=true;setWeek(Number(e.target.value));setMessage('');}}/>
+     </label>
+     <Button type="button" className="narrator-calendar-publish-button" disabled={busy||!date||week<1} onClick={()=>void publish()}>{busy?'Publicando…':'Publicar calendário'}</Button>
+    </div>
    </div>
    <label className="narrator-calendar-check"><input type="checkbox" checked={automatic} onChange={e=>{editedRef.current=true;setAutomatic(e.target.checked);setMessage('');}}/>Avançar uma désdia ao abrir nova rodada</label>
    <p className="narrator-calendar-selection" aria-live="polite">Data selecionada para publicação: <strong>{formatDate(date)}</strong> · <strong>Semana {week}</strong></p>
@@ -158,10 +161,7 @@ export function NarratorCalendar(){
     </article>)}
    </div>
   </div>
-  <div className="narrator-calendar-publish">
-   <div><strong>Publicação global</strong><p>Publica as alterações para todas as casas ao mesmo tempo. Os eventos em rascunho permanecem privados até aqui.</p></div>
-   <Button type="button" disabled={busy||!date||week<1} onClick={()=>void publish()}>{busy?'Publicando…':'Publicar calendário'}</Button>
-  </div>
+
   <p role={saveError?'alert':'status'}>{message}</p>
   {needsVersionRefresh&&<Button type="button" variant="outline" disabled={busy} onClick={()=>void reloadVersion()}>Atualizar versão sem perder data selecionada</Button>}
   <p className="text-xs text-muted-foreground">Calendário · correção de publicação 2026.10.30-b · Versão do registro: {calendar.data.version}</p>

@@ -38,6 +38,19 @@ beforeEach(()=>{
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
 
 describe('publicação da data global de Harptos',()=>{
+ it('mantém um único botão de publicação abaixo da semana, no painel de data',async()=>{
+  setup();
+  const button=await screen.findByRole('button',{name:'Publicar calendário'});
+  expect(screen.getAllByRole('button',{name:'Publicar calendário'})).toHaveLength(1);
+  const weekControls=button.closest('.narrator-calendar-week-controls');
+  expect(weekControls).not.toBeNull();
+  expect(weekControls?.querySelector('input[type="number"]')).toHaveValue(2);
+  expect(button.closest('.narrator-calendar-panel')?.querySelector('h3')).toHaveTextContent('Data e semana da campanha');
+  fireEvent.click(button);
+  await waitFor(()=>expect(mock.rpc).toHaveBeenCalledWith('publish_campaign_schedule_confirmed',expect.objectContaining({
+   p_date:'1522-01-01',p_week:2
+  })));
+ });
  it('altera o mês selecionado, publica e confirma o novo valor lido do banco',async()=>{
   setup();
   const picker=await screen.findByText(/Data selecionada para publicação/);
