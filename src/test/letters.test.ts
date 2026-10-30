@@ -183,6 +183,23 @@ describe('lote 3: caixa de entrada e turnos do Narrador',()=>{
   const peer=row({id:'peer',sender_user_id:'house-a',recipient_house_id:'grantass',publication_state:'delivered'});
   expect(narratorThreadStage(peer,[{letter_id:'peer',author_user_id:'house-b',publication_state:'delivered',created_at:'2026-10-25T10:00:00Z'}],narrator)).toBeNull();
  });
+ it('filtro local de semana encontra resposta entregue em rodada posterior, inclusive registros históricos',()=>{
+  const original=row({id:'old-letter',letter_number:1,delivery_week:1,publication_state:'delivered'});
+  const responses=[{letter_id:'old-letter',author_user_id:'ashkar-user',creation_week:2,delivery_week:3,publication_state:'delivered'}];
+  const filters={number:'3',kind:'',answered:''};
+  expect(filterLetters([original],responses,filters)).toEqual([original]);
+  expect(filterLetters([original],[{...responses[0]!,delivery_week:null}],{...filters,number:'2'})).toEqual([original]);
+  expect(filterLetters([original],responses,{...filters,number:'4'})).toEqual([]);
+ });
+ it('filtros de situação do Narrador seguem o último turno entregue',()=>{
+  const context={admin:true,userId:narrator,players:[],receipts:[]};
+  const query=(answered:string,replies:typeof houseReply[])=>filterLetters([gmLetter],replies,{number:'',kind:'',answered},context);
+  expect(query('awaiting-house',[])).toHaveLength(1);
+  expect(query('awaiting-narrator',[houseReply])).toHaveLength(1);
+  expect(query('no-delivered',[])).toHaveLength(1);
+  expect(query('no-delivered',[houseReply])).toHaveLength(0);
+  expect(query('pending-outgoing',[{...houseReply,author_user_id:narrator,publication_state:'draft'}])).toHaveLength(1);
+ });
  it('rascunhos e respostas agendadas continuam dentro de sua caixa, sem falsa entrega',()=>{
   const scheduled={...houseReply,publication_state:'scheduled'};
   const draft={...houseReply,publication_state:'draft'};
