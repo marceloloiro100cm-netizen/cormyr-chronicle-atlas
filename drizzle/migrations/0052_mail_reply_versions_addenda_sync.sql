@@ -45,7 +45,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
         (r.recipient_user_id=viewer OR (r.house_id IS NOT NULL AND EXISTS(
           SELECT 1 FROM house_memberships m WHERE m.player_id=p.id AND m.house_id=r.house_id)))))))
  END);
-$;
+$$;
 CREATE OR REPLACE FUNCTION public.can_export_mail(p_type text,p_id uuid,p_viewer uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
  SELECT CASE WHEN p_type='letter' THEN EXISTS(
@@ -220,7 +220,7 @@ END
 $function$;
 CREATE OR REPLACE FUNCTION public.weekly_message_defaults() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE n integer; BEGIN n:=public.open_letter_round(); IF TG_TABLE_NAME='campaign_letters' THEN NEW.conversation_id:=coalesce(NEW.conversation_id,NEW.id); NEW.creation_week:=coalesce(NEW.creation_week,n,NEW.letter_number); NEW.delivery_week:=coalesce(NEW.delivery_week,NEW.letter_number,n); NEW.letter_number:=NEW.delivery_week; END IF; IF NEW.publication_state NOT IN ('draft','scheduled','delivered') THEN RAISE EXCEPTION 'Situação inválida'; END IF; IF NEW.publication_state='scheduled' AND NEW.delivery_week=n THEN NEW.publication_state:='delivered'; NEW.delivered_at:=now(); END IF; RETURN NEW; END $$;
 
-CREATE OR REPLACE FUNCTION public.save_weekly_reply_draft(p_id uuid,p_letter uuid,p_reply uuid,p_content text) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+CREATE OR REPLACE FUNCTION public.save_weekly_reply_draft(p_id uuid,p_letter uuid,p_reply uuid,p_content text) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE r letter_replies; l campaign_letters;
 BEGIN
  IF NOT public.campaign_access_active() THEN RAISE EXCEPTION 'Jogador não autorizado'; END IF;
@@ -232,7 +232,7 @@ BEGIN
  UPDATE letter_replies SET content=p_content,version=version+1,updated_at=clock_timestamp() WHERE id=r.id AND content IS DISTINCT FROM p_content; RETURN r.id;
  END IF;
  RETURN public.reply_weekly_message(p_letter,p_reply,p_content,p_id,true);
-END $;
+END $$;
 
 -- A atualização gera uma versão auditável e uma fila dedicada ao novo conteúdo.
 CREATE OR REPLACE FUNCTION public.audit_reply_edit() RETURNS trigger
