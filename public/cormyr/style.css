@@ -221,3 +221,13 @@
   font-size: 0.75rem;
   line-height: 1;
 }
+
+/* Public language flags mirror the player council selector. */
+.workspace-bar-right{display:flex;align-items:center;justify-content:flex-end;gap:20px;min-width:0}
+.public-language-switcher{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.public-language-button{display:flex;align-items:center;justify-content:center;width:26px;height:22px;padding:1px;border:1.5px solid transparent;border-radius:4px;background:transparent;opacity:.65;cursor:pointer;transition:opacity .15s ease,box-shadow .15s ease,transform .15s ease}
+.public-language-button:hover,.public-language-button:focus-visible{opacity:1}
+.public-language-button[aria-pressed="true"]{border-color:#d6b265;box-shadow:0 0 8px #d6b26573;opacity:1;transform:scale(1.06)}
+.public-language-button svg{display:block;border-radius:2px;overflow:hidden;flex:none}
+@media(max-width:600px){.workspace-bar-right{gap:8px}.workspace-bar-right>span{display:none}.public-language-switcher{gap:5px}.public-language-button{width:28px;height:27px}}
+@media(prefers-reduced-motion:reduce){.public-language-button{transition:none}}
