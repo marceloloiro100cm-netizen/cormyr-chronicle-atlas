@@ -128,6 +128,14 @@ DELETE FROM public.sync_outbox o
 
 -- Date-only changes do not invoke the content audit trigger; enqueue them
 -- explicitly so the external archive receives the latest individual date.
+UPDATE public.campaign_letters l SET version=l.version+1, updated_at=now(), sync_state='pending'
+FROM _restore_letter_dates t WHERE t.id=l.id AND t.original_content=t.expected_erroneous_content
+AND t.target_date IS DISTINCT FROM '1522-10-05';
+INSERT INTO public.letter_versions(letter_id,version,snapshot,author)
+SELECT l.id,l.version,to_jsonb(l),(SELECT user_id FROM public.user_roles WHERE role='admin' ORDER BY user_id LIMIT 1)
+FROM public.campaign_letters l JOIN _restore_letter_dates t USING(id)
+WHERE t.original_content=t.expected_erroneous_content AND t.target_date IS DISTINCT FROM '1522-10-05';
+
 INSERT INTO public.sync_outbox(entity_type,entity_id,version,payload)
 SELECT 'letter',l.id,l.version,to_jsonb(l)
 FROM public.campaign_letters l JOIN _restore_letter_dates t USING(id)
@@ -135,7 +143,7 @@ WHERE t.original_content=t.expected_erroneous_content
  AND t.target_date IS DISTINCT FROM '1522-10-05';
 
 INSERT INTO public.sync_outbox(entity_type,entity_id,version,payload)
-SELECT 'reply',r.id,1,to_jsonb(r)
+SELECT 'reply',r.id,(SELECT coalesce(max(o.version),0)+1 FROM public.sync_outbox o WHERE o.entity_type='reply' AND o.entity_id=r.id),to_jsonb(r)
 FROM public.letter_replies r JOIN _restore_reply_dates t USING(id)
 WHERE t.target_date IS DISTINCT FROM '1522-10-05';
 
