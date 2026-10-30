@@ -23,6 +23,25 @@ export const HISTORY_TABLE: Readonly<Record<number, string>> = {
   11:'Infraestrutura', 12:'Ascensão', 13:'Favorecimento', 14:'Vitória',
   15:'Vilão', 16:'Glória', 17:'Conquista', 18:'Ventura',
 };
+/** Tabela 6-4: aplicação por recurso conforme o relatório da auditoria. */
+export const HISTORY_EFFECTS: Readonly<Record<number,string>> = {
+ 3:'−2d6 em todos os sete recursos.',
+ 4:'−1d6 em Defesa, Influência, Poder, População, Riqueza e Terras.',
+ 5:'−1d6 em Lei, Poder, População e Riqueza.',
+ 6:'+6 −2d6 em todos os sete recursos.',
+ 7:'−2d6 em Lei; −1d6 em Poder, População e Riqueza.',
+ 8:'−1d6 em Influência, Poder, Riqueza e Terras.',
+ 9:'−1d6 em Influência e Lei; +1d6 em Poder.',
+ 10:'−1d6 em Influência, Poder, Riqueza e Terras.',
+ 11:'+1d6 em dois recursos diferentes escolhidos pelo jogador.',
+ 12:'+1d6 em Influência, Terras, Poder e Riqueza.',
+ 13:'+1d6 em Influência, Terras, Lei e Poder.',
+ 14:'+1d6 em Defesa, Influência e Poder.',
+ 15:'+1d6 em Influência e Poder; −1d6 em Lei e População.',
+ 16:'+1d6 em Defesa, Influência, Lei e Poder.',
+ 17:'−1d6 em Influência, Lei e População; +1d6 em Defesa, Terras, Poder e Riqueza.',
+ 18:'+2d6 em Riqueza; +1d6 em Defesa, Influência, Terras, Lei e População.',
+};
 const all=[...RESOURCE_KEYS];
 const minus:Partial<Record<number, Resource[]>>={
   4:['defense','influence','power','population','wealth','lands'],
