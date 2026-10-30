@@ -33,7 +33,7 @@ describe('Executor validation — simulated isolated folders only',()=>{
   f.tables['campaign_players']?.push({id:player,user_id:user});
   const letter={id:crypto.randomUUID(),recipient_player_id:player,recipient_house_id:null,sender_user_id:master.owner_user_id,sender_name:'Fixture master',subject:'Private fixture',content:'Private letter',created_at:'2026-10-23'};
   f.tables['campaign_letters']?.push(letter);
-  const reply={id:crypto.randomUUID(),letter_id:letter.id,author_user_id:user,author_player_id:player,recipient_user_id:master.owner_user_id,author_name:'Fixture player',content:'Private reply',created_at:'2026-10-23',sync_state:'pending'};
+  const reply={id:crypto.randomUUID(),letter_id:letter.id,author_user_id:user,author_player_id:player,recipient_user_id:master.owner_user_id,author_name:'Fixture player',content:'Private reply',created_at:'2026-10-23',version:1,sync_state:'pending'};
   f.tables['letter_replies']?.push(reply);const q=f.enqueue(reply,'reply');
   await runDriveSync(f.db,f.adapter);
   q['next_attempt_at']='2026-01-01';await runDriveSync(f.db,f.adapter);
@@ -74,7 +74,7 @@ describe('Executor validation — simulated isolated folders only',()=>{
  it('keeps a reply pending when its authorized recipient folder is missing',async()=>{
   const f=fixture(),player=crypto.randomUUID(),user=crypto.randomUUID();f.binding('player',{player_id:player,owner_user_id:user});
   f.tables['campaign_players']?.push({id:player,user_id:user});const letter={id:crypto.randomUUID(),recipient_player_id:player,recipient_house_id:null};f.tables['campaign_letters']?.push(letter);
-  const reply={id:crypto.randomUUID(),letter_id:letter.id,author_user_id:user,recipient_user_id:crypto.randomUUID(),author_name:'Fixture',content:'Response',created_at:'2026-10-23',sync_state:'pending'};
+  const reply={id:crypto.randomUUID(),letter_id:letter.id,author_user_id:user,recipient_user_id:crypto.randomUUID(),author_name:'Fixture',content:'Response',created_at:'2026-10-23',version:1,sync_state:'pending'};
   f.tables['letter_replies']?.push(reply);f.enqueue(reply,'reply');await runDriveSync(f.db,f.adapter);
   expect(f.remote.size).toBe(1);expect(reply.sync_state).toBe('pending');expect(f.tables['sync_outbox']?.[0]?.['state']).toBe('pending');
  });
