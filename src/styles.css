@@ -536,3 +536,11 @@
  .narrator-mail-hub-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
  .narrator-mail-hub .campaign-mail-side{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Narrator mail regions: two combinable compact filters, never one radio group. */
+.narrator-mail-region-picker{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--campaign-paper)}
+.narrator-mail-region-picker legend{font-size:14px;font-weight:700;padding:0 5px}
+.narrator-mail-region-picker label{display:flex;align-items:center;gap:7px;font-size:13px;line-height:1.4;font-weight:600;cursor:pointer}
+.narrator-mail-region-picker input[type=checkbox]{width:17px!important;min-width:17px!important;height:17px!important;min-height:17px!important;flex:none;margin:0;padding:0}
+.narrator-mail-region-picker small{font-size:11px;font-weight:400;color:var(--muted-foreground)}
+.narrator-mail-region-picker p{flex:1 0 100%;margin:0;font-size:12px;color:var(--muted-foreground)}
