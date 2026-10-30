@@ -8,7 +8,7 @@ import {rollPreview,fortuneLawModifier,fortunePopulationModifier,fortuneModifier
 
 describe('item 16 — conciliação seletiva, versionada e sem preços inventados',()=>{
  it('Silversky: mina troca 10 Terras por 10 Riqueza, não altera base ou outras posses',()=>{
-  const original=LEGACY_HOUSE_SEEDS.silversky!,before=JSON.stringify(original);
+  const original=LEGACY_HOUSE_SEEDS['silversky']!,before=JSON.stringify(original);
   const preview=previewLegacyCostReconciliation(original,'Casa Silversky');
   expect(preview.issues.map(i=>i.id)).toEqual(['hold-silversky-mine']);
   const result=reconcileLegacyCosts(original,'Casa Silversky',preview.issues.map(i=>i.id));
@@ -19,7 +19,7 @@ describe('item 16 — conciliação seletiva, versionada e sem preços inventado
   expect(legacyCostIssues(result,'Silversky')).toHaveLength(0);
  });
  it('Everlost: salão 20 Defesa; equipamento 6 Riqueza como gasto permanente sem herdar bônus de armeiro',()=>{
-  const s=LEGACY_HOUSE_SEEDS.everlost!,before=JSON.stringify(s);
+  const s=LEGACY_HOUSE_SEEDS['everlost']!,before=JSON.stringify(s);
   const issues=legacyCostIssues(s,'Everlost');expect(issues.map(i=>i.id)).toEqual(['hold-everlost-hall','hold-everlost-weapons']);
   const next=reconcileLegacyCosts(s,'Everlost',issues.map(i=>i.id));
   expect(next.holdings.find(h=>h.id==='hold-everlost-hall')?.costs[0]).toMatchObject({resource:'defense',amount:20});
@@ -33,7 +33,7 @@ describe('item 16 — conciliação seletiva, versionada e sem preços inventado
   expect(JSON.stringify(s)).toBe(before);
  });
  it('Fewmerry: custos 7 e 5 de Poder; Ashkar Apoio 5, sem mexer nos pontos iniciais',()=>{
-  const f=LEGACY_HOUSE_SEEDS.fewmerry!,a=LEGACY_HOUSE_SEEDS.ashkar!;
+  const f=LEGACY_HOUSE_SEEDS['fewmerry']!,a=LEGACY_HOUSE_SEEDS['ashkar']!;
   const fixed=reconcileLegacyCosts(f,'Fewmerry',legacyCostIssues(f,'Fewmerry').map(i=>i.id));
   expect(fixed.units.find(u=>u.id==='unit-fewmerry-2')?.costs[0]?.amount).toBe(7);
   expect(fixed.units.find(u=>u.id==='unit-fewmerry-3')?.costs[0]?.amount).toBe(5);
@@ -44,7 +44,7 @@ describe('item 16 — conciliação seletiva, versionada e sem preços inventado
   expect(balances(ashkar).available.power).toBe(balances(a).available.power+2);
  });
  it('identificadores não pertencentes à Casa e tentativas de corrigir duas vezes são recusados',()=>{
-  const s=LEGACY_HOUSE_SEEDS.ashkar!;
+  const s=LEGACY_HOUSE_SEEDS['ashkar']!;
   expect(()=>reconcileLegacyCosts(s,'Ashkar',['hold-silversky-mine'])).toThrow('não corresponde');
   expect(()=>reconcileLegacyCosts(s,'Silversky',['unit-ashkar-1'])).toThrow('não corresponde');
   const fixed=reconcileLegacyCosts(s,'Ashkar',['unit-ashkar-1']);
