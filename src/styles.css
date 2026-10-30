@@ -498,3 +498,21 @@
 .mail-link-note p{margin:4px 0}
 @media(max-width:800px){.mail-recipient-regions{grid-template-columns:1fr}.mail-recipient-other{grid-column:auto}.mail-compose-meta{grid-template-columns:1fr}.mail-link-fields{grid-template-columns:1fr}}
 @media(max-width:600px){.mail-compose-panel{padding:12px 10px}.mail-recipient-picker{padding:8px}.mail-recipient-scroll{max-height:220px}.mail-recipient-search{min-width:100%}}
+
+/* Mail recipient rows are one compact line (higher specificity than .campaign-form label). */
+.mail-compose-panel .campaign-form .mail-recipient-option{
+  display:flex;flex-direction:row;align-items:center;gap:8px;
+  width:100%;min-height:30px;padding:5px 7px;
+  font-size:13px;line-height:1.4;font-weight:500;
+}
+.mail-compose-panel .campaign-form .mail-recipient-house-label{font-weight:600!important}
+.mail-compose-panel .campaign-form .mail-recipient-select-all{
+  background:var(--campaign-light);border:1px solid var(--border);
+  border-radius:5px;margin:8px 0 7px;font-size:12px;font-weight:700;
+}
+.mail-recipient-select-all span{flex:1}
+.mail-recipient-legacy{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  margin:4px 0 10px;padding:8px;font-size:12px;border:1px solid var(--campaign-gold);
+  border-radius:5px;background:var(--campaign-light)}
+.mail-recipient-legacy button{padding:5px 8px;min-height:28px!important;
+  border:1px solid var(--campaign-gold);border-radius:4px}
