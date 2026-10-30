@@ -8,6 +8,7 @@ import {Button} from '@/components/ui/button';
 import {ImagePicker,uploadImages,type PendingImage} from '@/components/campaign-content';
 import type {Panel} from './panel-data';
 import {MailRecipientPicker} from './mail-recipients';
+import {MailPeriodNotice} from './mail-period-notice';
 
 export type MailLinks={origin:string;court:string;unit:string;role:string};
 export type MailOptions={players:{id:string;name:string;houses:string[]}[];houses:{id:string;name:string;version:number|null;court:{id:string;name:string;role:string}[];units:{id:string;name:string;available:boolean}[]}[]};
@@ -66,6 +67,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  {draft.targets.length===0&&<p role="status" className="text-muted-foreground text-sm">Nenhum destinatário selecionado. Escolha uma casa ou o Narrador antes de salvar ou enviar.</p>}
  <div className="mail-compose-meta">
  <CampaignDatePicker value={draft.campaignDate} onChange={campaignDate=>change({...draft,campaignDate})}/>
+ {data.admin&&<MailPeriodNotice date={draft.campaignDate}/>}
  {data.admin&&<label>Semana de entrega<input type="number" min={1} value={draft.week} placeholder={String(suggested)} onChange={e=>change({...draft,week:e.target.value})}/></label>}
  </div>
  <label className="mail-compose-subject">Assunto<input required value={draft.subject} onChange={e=>change({...draft,subject:e.target.value})}/></label>
