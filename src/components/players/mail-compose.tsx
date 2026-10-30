@@ -1,5 +1,6 @@
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {datedMail} from '@/lib/calendar/mail';
+import {suggestNextLetterWeek} from '@/lib/weekly-delivery';
 import {useEffect,useRef,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
@@ -38,7 +39,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  useEffect(()=>{const house=options?.houses?.[0];if(options?.houses?.length===1&&house&&!draft.links.origin)change({...draft,links:{...draft.links,origin:house.id}});},[options]);
  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{const d=drafts.get(scope);if(d?.content||d?.subject){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[scope]);
  const current=data.rounds.find(r=>r.status==='open')?.number??null;
- const suggested=(current??Math.max(0,...data.rounds.map(r=>r.number)))+1;
+ const suggested=suggestNextLetterWeek(data.rounds);
  const legacyIndividuals=draft.targets.some(t=>t.startsWith('p:'));
  return <section id="nova-missiva" className="mail-compose-panel"><h2>Escrever missiva</h2>
  <p className="mail-compose-intro">Selecione as casas destinatárias e escreva a missiva. Cada entrega tem leitura e resposta privadas.</p>
