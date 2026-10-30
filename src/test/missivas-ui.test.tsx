@@ -101,3 +101,31 @@ describe('novos destinatários e vínculos',()=>{
   await waitFor(()=>expect(rpc).toHaveBeenCalledWith('mail_page',expect.objectContaining({p_filters:expect.objectContaining({court:'home:c1',unit:'home:u1'})})));
  });
 });
+
+describe('lote 2: destinatários e semanas',()=>{
+ it('Narrador não consegue salvar ou enviar missiva sem destinatários',async()=>{
+   const panel={...data(),user:{id:'narrator-no-recipient'},admin:true} as unknown as Panel;
+   mount(panel);
+   fireEvent.click(screen.getByRole('button',{name:'Escrever missiva'}));
+   await waitFor(()=>expect(screen.getByText(/Nenhum destinatário selecionado/)).toBeInTheDocument());
+   expect(screen.getByRole('button',{name:'Salvar rascunho'})).toBeDisabled();
+   expect(screen.getByRole('button',{name:'Programar entrega'})).toBeDisabled();
+ });
+ it('distingue a semana de envio da semana de recebimento no cartão',async()=>{
+   const panel={...data(),letters:[{...letter,creation_week:1,delivery_week:2,letter_number:2}]} as unknown as Panel;
+   mount(panel);
+   await waitFor(()=>expect(screen.getByRole('button',{name:/Ordem enviada/})).toHaveTextContent('Enviada na Semana 1 · Recebida na Semana 2'));
+   fireEvent.click(screen.getByRole('button',{name:/Ordem enviada/}));
+   expect(screen.getAllByText('Enviada na Semana 1 · Recebida na Semana 2').length).toBeGreaterThanOrEqual(1);
+ });
+ it('bloqueia tentativa de abrir uma semana com salto pelo painel',async()=>{
+   const panel={...data(),user:{id:'narrator-test-week'},admin:true,rounds:[{number:1,status:'closed'},{number:2,status:'open'}]} as unknown as Panel;
+   const error=vi.fn();
+   currentPanel=panel;
+   render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><MissivasTab data={panel} me={panel.players[0]} onSave={vi.fn()} onError={error}/></QueryClientProvider>);
+   fireEvent.change(screen.getByRole('spinbutton',{name:'Número da missiva a abrir'}),{target:{value:'9'}});
+   fireEvent.click(screen.getByRole('button',{name:'Abrir missiva'}));
+   expect(error).toHaveBeenCalledWith(expect.stringContaining('A próxima semana permitida é 3'));
+   expect(rpc).not.toHaveBeenCalledWith('set_letter_round',expect.anything());
+ });
+});
