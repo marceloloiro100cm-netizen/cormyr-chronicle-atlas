@@ -5,13 +5,19 @@ import {CampaignCalendar} from '@/components/calendar/calendar';
 import {formatCampaignPeriod} from '@/lib/calendar/harptos';
 
 const mock=vi.hoisted(()=>({
- rpc:vi.fn(),
+ rpc:vi.fn(),channel:vi.fn(),on:vi.fn(),subscribe:vi.fn(),removeChannel:vi.fn(),
  current:{year:1522,month:0,day:11,festival:null as string|null,auto_advance:true,version:1,published_week:2}
 }));
-vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:(...args:unknown[])=>mock.rpc(args[0])}}));
+vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:(...args:unknown[])=>mock.rpc(args[0]),channel:mock.channel,removeChannel:mock.removeChannel}}));
 beforeEach(()=>{
  mock.current={year:1522,month:0,day:11,festival:null,auto_advance:true,version:1,published_week:2};
  mock.rpc.mockReset();
+ for(const fn of [mock.channel,mock.on,mock.subscribe,mock.removeChannel])fn.mockReset();
+ const channel={on:mock.on,subscribe:mock.subscribe};
+ mock.channel.mockReturnValue(channel);
+ mock.on.mockReturnValue(channel);
+ mock.subscribe.mockReturnValue(channel);
+ mock.removeChannel.mockResolvedValue('ok');
  mock.rpc.mockImplementation(async(name:string)=>name==='get_campaign_calendar'
   ?{data:{...mock.current},error:null}
   :name==='calendar_mail_events'
@@ -58,6 +64,36 @@ it('mantém a consulta histórica se o jogador navega, mas atualiza a désdia gl
  expect(screen.getByRole('heading',{name:'Alturiak · A Garra do Inverno'})).toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Data atual'}));
  expect(screen.getByRole('heading',{name:'Ches · A Garra dos Sóis Poentes'})).toBeInTheDocument();
+});
+
+it('notificação do Supabase Realtime atualiza o dia oficial sem recarregar a página',async()=>{
+ const qc=mount();
+ await screen.findByText('2ª désdia · Hammer · 1522 CV');
+ expect(mock.channel).toHaveBeenCalledTimes(1);
+ expect(mock.on).toHaveBeenCalledWith('postgres_changes',
+  expect.objectContaining({event:'UPDATE',schema:'public',table:'campaign_calendar'}),
+  expect.any(Function));
+ mock.current={...mock.current,day:21,version:2,published_week:3};
+ const notify=mock.on.mock.calls[0]?.[2] as (()=>void)|undefined;
+ expect(notify).toBeTypeOf('function');
+ await act(async()=>{notify?.();await qc.refetchQueries({queryKey:['campaign-calendar']});});
+ expect(await screen.findByText('3ª désdia · Hammer · 1522 CV')).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:/^21 de Hammer/})).toHaveAttribute('aria-current','date');
+});
+
+it('reconexão Realtime busca alterações perdidas e limpa inscrição quando desmontado',async()=>{
+ const qc=mount();
+ await screen.findByText('2ª désdia · Hammer · 1522 CV');
+ const onStatus=mock.subscribe.mock.calls[0]?.[0] as ((status:string)=>void)|undefined;
+ expect(onStatus).toBeTypeOf('function');
+ mock.current={...mock.current,day:21,version:2};
+ await act(async()=>{onStatus?.('SUBSCRIBED');await qc.refetchQueries({queryKey:['campaign-calendar']});});
+ expect(await screen.findByText('3ª désdia · Hammer · 1522 CV')).toBeInTheDocument();
+ expect(screen.getByText('Sincronização em tempo real ativa')).toBeInTheDocument();
+ act(()=>onStatus?.('CHANNEL_ERROR'));
+ expect(screen.getByText(/atualização automática a cada 15 segundos/)).toBeInTheDocument();
+ cleanup();
+ expect(mock.removeChannel).toHaveBeenCalledTimes(1);
 });
 
 it('formata corretamente cada uma das três désdias, ignorando o número da rodada',()=>{
