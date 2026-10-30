@@ -1,6 +1,7 @@
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {datedMail} from '@/lib/calendar/mail';
 import {formatDate} from '@/lib/calendar/harptos';
+import {mailWeekTimeline,nextCampaignRound} from '@/lib/weekly-delivery';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +31,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   const [draft,setDraft]=useState<{key:number;subject:string;content:string}|null>(null);
   const [roundNumber,setRoundNumber]=useState('');
   const open=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
+  const nextRound=nextCampaignRound(data.rounds);
   const roundRevision=data.rounds.map(r=>`${r.number}:${r.status}`).sort().join('|');
   const allowed=new Set(groupHouseIds??[]);
   const groupActive=data.admin&&groupHouseIds!==undefined;
@@ -87,12 +89,11 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
         <ChevronDown size={18} className={isOpen?'rotate-180 transition-transform':'transition-transform'}/>
         <span className="campaign-eyebrow">{letter.letter_number?`Missiva ${letter.letter_number} · `:''}{letter.letter_kind==='geral'?'Geral':'Reservada'} · {hasDeliveredAnswer(letter,answers)?'Respondida · ':''}{read?'Lida':'Não lida'}{letter.publication_state==='draft'?' · Rascunho':letter.publication_state==='scheduled'?` · Aguardando abertura da Semana ${letter.delivery_week}`:''}{letter.deleted_at?' · Excluída':''}</span>
         <strong className="campaign-letter-subject">{letter.subject}</strong>
-        <span className="text-muted-foreground text-sm">De: {letter.sender_name}{fromHouse?` (${fromHouse})`:''} · Para: {to} · {letter.campaign_date?formatDate(letter.campaign_date):date(letter.created_at)}{letter.historical_source?' · Arquivo histórico':''}{answers.length?` · ${answers.length} resposta(s)`:''}</span>
+        <span className="text-muted-foreground text-sm">De: {letter.sender_name}{fromHouse?` (${fromHouse})`:''} · Para: {to} · {letter.campaign_date?formatDate(letter.campaign_date):date(letter.created_at)}{letter.historical_source?' · Arquivo histórico':''} · {mailWeekTimeline(letter.creation_week,letter.delivery_week,letter.publication_state)}{answers.length?` · ${answers.length} resposta(s)`:''}</span>
       </button>
       {isOpen&&<div className="campaign-letter-body">
         <p>{formatDate(letter.campaign_date)}</p>
-        {letter.creation_week&&letter.delivery_week&&letter.creation_week!==letter.delivery_week&&
-          <p className="text-sm font-semibold" role="status">Enviada na Semana {letter.creation_week} · Recebida na Semana {letter.delivery_week}</p>}
+        <p className="text-sm font-semibold" role="status">{mailWeekTimeline(letter.creation_week,letter.delivery_week,letter.publication_state)}</p>
         {letter.historical_source&&<p className="text-muted-foreground text-sm">Correspondência histórica importada de {letter.historical_source} · não representa um novo envio pelo site.</p>}
         {data.admin&&letter.historical_source&&<p className="text-muted-foreground text-sm">{letter.historical_recipient_name?.includes('(NPC, Narrador)')?'Recebida pelo Narrador na qualidade de gestor da casa NPC.':letter.recipient_house_id?'Entregue à casa jogadora. O Narrador pode acompanhar administrativamente, mas não recebeu cópia da missiva.':'Correspondência arquivada.'}</p>}
         <section className="campaign-letter-original" aria-label="Texto da missiva original">
@@ -107,7 +108,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
           {answers.map((answer,index)=><article className="campaign-reply-card" key={answer.id} aria-label={`Resposta de ${answer.author_name}`}>
             <header className="campaign-reply-header">
               <div>
-                <span className="campaign-eyebrow">Resposta {index+1} · Missiva {answer.creation_week??answer.delivery_week??letter.letter_number??'?'}</span>
+                <span className="campaign-eyebrow">Resposta {index+1} · {mailWeekTimeline(answer.creation_week,answer.delivery_week,answer.publication_state)}</span>
                 <strong>{answer.author_name}</strong>
               </div>
               <small>{answer.campaign_date?formatDate(answer.campaign_date):'Sem data histórica informada'} · {syncLabel(answer.sync_state)}</small>
@@ -172,7 +173,8 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
           {open===null?<p className="text-muted-foreground">Nenhuma rodada aberta.</p>:<><p>{pendingHouses.length} casa{pendingHouses.length===1?'':'s'} aguardando resposta</p>{pendingHouses.length===0?<p className="text-muted-foreground">Nenhuma resposta pendente às missivas entregues nesta rodada.</p>:<ul>{pendingHouses.map(h=><li key={h.id}><div><strong>{h.name}</strong><span className="text-muted-foreground text-sm">{h.letterIds.length} missiva{h.letterIds.length===1?'':'s'} pendente{h.letterIds.length===1?'':'s'}</span></div><Button size="sm" variant="outline" onClick={()=>{setFilters({...empty,house:h.id});setExpanded(new Set(h.letterIds));}}>Ver missivas</Button></li>)}</ul>}</>}
         </section>
         <p>Nesta página: {allLetters.length} missivas · {allLetters.filter(l=>!hasDeliveredAnswer(l,viewReplies)).length} não respondidas</p>
-        <div className="campaign-actions">{open!==null&&<Button variant="outline" onClick={async()=>{if(!confirm(`Fechar a Missiva ${open}? Os jogadores não poderão mais responder nem escrever.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:open,p_closed:true});if(error)onError(error.message);else saved();}}>Fechar Missiva {open}</Button>}<input type="number" min={1} style={{width:140}} value={roundNumber} onChange={e=>setRoundNumber(e.target.value)} placeholder={`Nº (ex.: ${(numbers[0]??0)+1})`} aria-label="Número da missiva a abrir"/><Button variant="outline" onClick={async()=>{const n=Number(roundNumber||(numbers[0]??0)+1);const preview=data.letters.filter(l=>l.delivery_week===n&&l.publication_state==='scheduled');const responses=data.replies.filter(r=>r.delivery_week===n&&r.publication_state==='scheduled');if(!confirm(`Abrir Semana ${n}? ${preview.length} mensagens e ${responses.length} respostas serão liberadas. Destinatários: ${preview.map(l=>houseName(l.recipient_house_id)||'Jogador autorizado').join(', ')||'Nenhuma nova mensagem'}. A semana anterior será encerrada.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:n,p_closed:false});if(error)onError(error.message);else{setRoundNumber('');saved();}}}>Abrir missiva</Button></div>
+        <p className="text-muted-foreground text-sm">Próxima semana permitida: <strong>{nextRound}</strong>. Abrir uma nova semana encerra a anterior; semanas encerradas não podem ser reabertas.</p>
+        <div className="campaign-actions">{open!==null&&<Button variant="outline" onClick={async()=>{if(!confirm(`Fechar a Missiva ${open}? Os jogadores não poderão mais responder nem escrever.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:open,p_closed:true});if(error)onError(error.message);else saved();}}>Fechar Missiva {open}</Button>}<input type="number" min={nextRound} style={{width:140}} value={roundNumber} onChange={e=>setRoundNumber(e.target.value)} placeholder={`Próxima: ${nextRound}`} aria-label="Número da missiva a abrir"/><Button variant="outline" onClick={async()=>{const n=roundNumber?Number(roundNumber):nextRound;if(!Number.isInteger(n)||n!==nextRound){onError(`A próxima semana permitida é ${nextRound}. Não é possível pular ou retroceder.`);return;}const preview=data.letters.filter(l=>l.delivery_week===n&&l.publication_state==='scheduled');const responses=data.replies.filter(r=>r.delivery_week===n&&r.publication_state==='scheduled');if(!confirm(`Abrir Semana ${n}? ${preview.length} mensagens e ${responses.length} respostas serão liberadas. Destinatários: ${preview.map(l=>houseName(l.recipient_house_id)||'Jogador autorizado').join(', ')||'Nenhuma nova mensagem'}. A semana anterior será encerrada.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:n,p_closed:false});if(error)onError(error.message);else{setRoundNumber('');saved();}}}>Abrir missiva</Button></div>
         {compose&&<MailComposer data={data} me={me} onSave={saved} onManage={onManage}/>}</>}
       {filters.box!=='enviadas'&&<><div className="campaign-heading"><h2>{filters.box==='excluidas'?'Missivas excluídas':data.admin&&filters.box!=='recebidas'?'Correspondência acompanhada':'Missivas recebidas'}</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
       {groups.length===0&&<p className="campaign-empty">Nenhuma missiva encontrada.</p>}

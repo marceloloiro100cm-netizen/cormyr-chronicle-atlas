@@ -46,6 +46,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  {error&&<p role="alert">Não foi possível carregar os cadastros. <Button type="button" variant="outline" onClick={()=>refetch()}>Tentar novamente</Button></p>}
  <form className="campaign-form mail-compose-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);setMessage('');key.current??=crypto.randomUUID();try{
  if(!draft.campaignDate)throw new Error('Selecione a data da campanha antes de salvar ou enviar a missiva.');
+ if(!draft.targets.length)throw new Error('Selecione ao menos um destinatário antes de anexar imagens ou enviar.');
  if(legacyIndividuals)throw new Error('Remova os destinatários individuais antigos antes de salvar ou enviar.');
  const content=await uploadImages(draft.content,draft.images,key.current);
  const saving=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';
@@ -57,6 +58,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  }catch(err){setMessage(err instanceof Error?err.message:typeof err==='object'&&err&&'message'in err?String(err.message):'Não foi possível salvar. Seu texto foi preservado.');}finally{setBusy(false);}}}>
  <fieldset disabled={busy} className="campaign-form mail-compose-body"><legend>Composição da missiva</legend>
  <MailRecipientPicker data={data} me={me} targets={draft.targets} onChange={targets=>change({...draft,targets})}/>
+ {draft.targets.length===0&&<p role="status" className="text-muted-foreground text-sm">Nenhum destinatário selecionado. Escolha uma casa ou o Narrador antes de salvar ou enviar.</p>}
  <div className="mail-compose-meta">
  <CampaignDatePicker value={draft.campaignDate} onChange={campaignDate=>change({...draft,campaignDate})}/>
  {data.admin&&<label>Semana de entrega<input type="number" min={1} value={draft.week} placeholder={String(suggested)} onChange={e=>change({...draft,week:e.target.value})}/></label>}
