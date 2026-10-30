@@ -84,14 +84,22 @@ export function rollHistoricalEvent(roll:()=>number,choices:[Resource,Resource],
   return {id,dice,result,name:HISTORY_TABLE[result]??'Desconhecido',changes,modifierDice};
 }
 
+/** Each linked player can contribute a single audited 1d6 to one resource. */
+export function memberBonusAdjustments(state:HouseState):Resources {
+  const result=zeroResources();
+  if(state.creationBonusesApplied||state.method==='import'||state.importSources.length)return result;
+  for(const bonus of state.creationBonuses??[])result[bonus.resource]+=bonus.die;
+  return result;
+}
 /** Compute historic modifiers in order, applying the zero floor after each event.
  * Never mutate original rolls, historical imports, or permanent resources here. */
 export function historyAdjustments(state:HouseState):Resources {
   const result=zeroResources(),history=state.creationHistory;
   if(!history||history.applied||state.method==='import'||state.importSources.length)return result;
   const regional=state.regionalApplied?regionBonus(state.identity.region):zeroResources();
+  const memberBonus=memberBonusAdjustments(state);
   const current=zeroResources();
-  for(const resource of RESOURCE_KEYS)current[resource]=state.base[resource]+state.permanent[resource]+regional[resource];
+  for(const resource of RESOURCE_KEYS)current[resource]=state.base[resource]+state.permanent[resource]+regional[resource]+memberBonus[resource];
   for(const event of history.events){
     for(const resource of RESOURCE_KEYS){
       const previous=current[resource],change=event.changes[resource]??0;
