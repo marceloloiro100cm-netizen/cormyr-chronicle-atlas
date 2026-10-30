@@ -22,8 +22,8 @@ const setupRpc=()=>{
   if(name==='get_campaign_schedule_drafts'||name==='calendar_mail_events'||name==='get_campaign_schedule_events')
    return {data:[],error:null};
   if(name==='publish_campaign_schedule'){
-   const [year,month,day]=(args?.p_date as string).split('-').map(Number);
-   mock.current={...mock.current,year:year!,month:month!-1,day:day!,auto_advance:Boolean(args?.p_auto),published_week:Number(args?.p_week),version:mock.current.version+1};
+   const [year,month,day]=(args?.['p_date'] as string).split('-').map(Number);
+   mock.current={...mock.current,year:year!,month:month!-1,day:day!,auto_advance:Boolean(args?.['p_auto']),published_week:Number(args?.['p_week']),version:mock.current.version+1};
    return {data:null,error:null};
   }
   return {data:null,error:{message:'RPC inesperada: '+name}};
