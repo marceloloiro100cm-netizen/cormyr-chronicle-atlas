@@ -11,7 +11,7 @@ function data(replies:unknown[]=[]){return {user:{id:'me'},admin:false,players:[
 let currentPanel:Panel;
 const options={players:[{id:'player',name:'Autor',houses:['home']},{id:'other-player',name:'Destinatário B',houses:['other']},{id:'third-player',name:'Destinatário C',houses:[]}],houses:[{id:'home',name:'Casa',version:1,court:[{id:'c1',name:'Administrador',role:'Administrador'}],units:[{id:'u1',name:'Guarda',available:true}]}]};
 beforeEach(()=>rpc.mockImplementation(async(name:string)=>{
- if(name==='mail_page')return {data:{total:currentPanel.letters.length,letters:currentPanel.letters,replies:currentPanel.replies},error:null};
+ if(name==='mail_page')return {data:{total:currentPanel.letters.length,letters:currentPanel.letters,replies:currentPanel.replies,kpis:{delivered:7,awaiting_house:3,awaiting_narrator:2,scheduled_replies_next:4,drafts:1}},error:null};
  if(name==='mail_compose_options')return {data:options,error:null};
  if(name==='mail_insights')return {data:[],error:null};
  if(name==='dated_mail_action')return {data:{ids:['a','b'],state:'delivered',week:1},error:null};
@@ -175,5 +175,23 @@ describe('lote 3: gestão e leitura do Narrador',()=>{
   fireEvent.change(screen.getByLabelText('Caixa'),{target:{value:'programadas'}});
   fireEvent.change(screen.getByLabelText('Semana'),{target:{value:'3'}});
   await waitFor(()=>expect(rpc).toHaveBeenCalledWith('mail_page',expect.objectContaining({p_filters:expect.objectContaining({box:'programadas',number:'3'})})));
+ });
+});
+
+describe('lote 4: métricas completas do Narrador',()=>{
+ it('mostra KPIs retornados pelo servidor sem confundir paginação com resultado filtrado',async()=>{
+   const panel={...data(),admin:true} as unknown as Panel;
+   mount(panel);
+   const stats=await screen.findByRole('region',{name:'Indicadores da gestão de missivas'});
+   await waitFor(()=>expect(stats).toHaveTextContent('7Entregues'));
+   expect(stats).toHaveTextContent('3Aguardando Jogador');
+   expect(stats).toHaveTextContent('2Aguardando Narrador');
+   expect(stats).toHaveTextContent('4Respostas programadas (próx. semana)');
+   expect(stats).toHaveTextContent('1Rascunhos do Narrador');
+   expect(screen.getByText(/Indicadores de todos os resultados dos filtros ativos/)).toBeInTheDocument();
+   fireEvent.change(screen.getByLabelText('Resposta'),{target:{value:'awaiting-house'}});
+   await waitFor(()=>expect(rpc).toHaveBeenCalledWith('mail_page',expect.objectContaining({
+     p_filters:expect.objectContaining({answered:'awaiting-house'})
+   })));
  });
 });

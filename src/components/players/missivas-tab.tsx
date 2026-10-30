@@ -35,10 +35,10 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   const roundRevision=data.rounds.map(r=>`${r.number}:${r.status}`).sort().join('|');
   const allowed=new Set(groupHouseIds??[]);
   const groupActive=data.admin&&groupHouseIds!==undefined;
-  const matchesGroup=(letter:Pick<LetterRow,'origin_house_id'|'recipient_house_id'|'sender_player_id'|'recipient_player_id'>)=>allowed.has(letter.origin_house_id??'')||
+  const matchesGroup=(letter:Pick<LetterRow,'origin_house_id'|'recipient_house_id'|'sender_player_id'|'recipient_player_id'|'sender_user_id'>)=>allowed.has(letter.origin_house_id??'')||
     allowed.has(letter.recipient_house_id??'')||
-    data.players.some(p=>p.id===letter.sender_player_id&&allowed.has(p.roster_house_id??''))||
-    data.players.some(p=>p.id===letter.recipient_player_id&&allowed.has(p.roster_house_id??''));
+    data.players.some(p=>(p.id===letter.sender_player_id||p.id===letter.recipient_player_id||p.user_id===letter.sender_user_id)&&
+      (allowed.has(p.roster_house_id??'')||data.members.some(m=>m.player_id===p.id&&allowed.has(m.house_id))));
   const pendingHouses=data.admin?pendingRoundHouses(
     open,data.houses.filter(h=>!groupActive||allowed.has(h.id)),data.players,data.members,
     (data.letters as LetterRow[]).filter(l=>!groupActive||matchesGroup(l)),data.replies):[];
@@ -52,7 +52,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   const [search,setSearch]=useState('');
   useEffect(()=>{const timer=setTimeout(()=>setSearch(filters.text),250);return()=>clearTimeout(timer);},[filters.text]);
   const requestFilters={...filters,text:search,...(groupActive?{group_house_ids:groupHouseIds}: {})};
-  const listing=useQuery({queryKey:['mail-page',data.user.id,requestFilters,page],queryFn:async()=>{const r=await supabase.rpc('mail_page',{p_filters:requestFilters,p_page:page,p_size:20});if(r.error)throw r.error;return r.data as unknown as {total:number;letters:LetterRow[];replies:Panel['replies']};}});
+  const listing=useQuery({queryKey:['mail-page',data.user.id,requestFilters,page],queryFn:async()=>{const r=await supabase.rpc('mail_page',{p_filters:requestFilters,p_page:page,p_size:20});if(r.error)throw r.error;return r.data as unknown as {total:number;letters:LetterRow[];replies:Panel['replies'];kpis?:{delivered:number;awaiting_house:number;awaiting_narrator:number;scheduled_replies_next:number;drafts:number}};}});
   const allLetters=listing.data?.letters??[];
   const letters=allLetters;
   const viewReplies=listing.data?.replies??[];
@@ -156,7 +156,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   return <div className="campaign-mail-layout">
     <aside className="campaign-mail-side" aria-label="Filtros das missivas">
       <p className="campaign-eyebrow">FILTROS</p>
-      <label>Buscar<input type="search" value={filters.text} onChange={e=>setFilters({...filters,text:e.target.value})} placeholder="Assunto, texto ou remetente…"/></label>
+      <label>Buscar<input type="search" value={filters.text} onChange={e=>setFilters({...filters,text:e.target.value})} placeholder="Assunto, resposta, autor ou casa…"/></label>
       {sel('Caixa','box',[['','Todas'],['recebidas','Recebidas'],['enviadas','Enviadas'],['programadas','Programadas'],['rascunhos','Rascunhos'],['historico','Histórico por semana'],...(data.admin?[['excluidas','Excluídas']] as [string,string][]:[])])}
       {data.admin&&sel('Casa destinatária / legado','house',[['','Todas as casas'],...data.houses.filter(h=>h.active&&h.season===2&&(!groupActive||allowed.has(h.id))).map(h=>[h.id,h.name] as [string,string])])}
       {sel('Casa remetente','origin',[['','Todas as casas'],['none','Sem vínculo / legado'],...data.houses.filter(h=>!groupActive||allowed.has(h.id)).map(h=>[h.id,h.name] as [string,string])])}
@@ -182,7 +182,14 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
           <h3>{open===null?'Respostas da rodada':`Missiva ${open} · Casas com respostas pendentes`}</h3>
           {open===null?<p className="text-muted-foreground">Nenhuma rodada aberta.</p>:<><p>{pendingHouses.length} casa{pendingHouses.length===1?'':'s'} aguardando resposta</p>{pendingHouses.length===0?<p className="text-muted-foreground">Nenhuma resposta pendente às missivas entregues nesta rodada.</p>:<ul>{pendingHouses.map(h=><li key={h.id}><div><strong>{h.name}</strong><span className="text-muted-foreground text-sm">{h.letterIds.length} missiva{h.letterIds.length===1?'':'s'} pendente{h.letterIds.length===1?'':'s'}</span></div><Button size="sm" variant="outline" onClick={()=>{setFilters({...empty,house:h.id});setExpanded(new Set(h.letterIds));}}>Ver missivas</Button></li>)}</ul>}</>}
         </section>
-        <p>Nesta página: {allLetters.length} missivas · {allLetters.filter(l=>!hasDeliveredAnswer(l,viewReplies)).length} não respondidas</p>
+        <section aria-label="Indicadores da gestão de missivas" className="narrator-mail-hub-overview">
+          <div><strong>{listing.data?.kpis?.delivered??0}</strong><span>Entregues</span></div>
+          <div><strong>{listing.data?.kpis?.awaiting_house??0}</strong><span>Aguardando Jogador</span></div>
+          <div><strong>{listing.data?.kpis?.awaiting_narrator??0}</strong><span>Aguardando Narrador</span></div>
+          <div><strong>{listing.data?.kpis?.scheduled_replies_next??0}</strong><span>Respostas programadas (próx. semana)</span></div>
+          <div><strong>{listing.data?.kpis?.drafts??0}</strong><span>Rascunhos do Narrador</span></div>
+        </section>
+        <p className="text-muted-foreground text-sm">Indicadores de todos os resultados dos filtros ativos (sem limitar à página atual). Nesta página: {allLetters.length} missivas.</p>
         <p className="text-muted-foreground text-sm">Próxima semana permitida: <strong>{nextRound}</strong>. Abrir uma nova semana encerra a anterior; semanas encerradas não podem ser reabertas.</p>
         <div className="campaign-actions">{open!==null&&<Button variant="outline" onClick={async()=>{if(!confirm(`Fechar a Missiva ${open}? Os jogadores não poderão mais responder nem escrever.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:open,p_closed:true});if(error)onError(error.message);else saved();}}>Fechar Missiva {open}</Button>}<input type="number" min={nextRound} style={{width:140}} value={roundNumber} onChange={e=>setRoundNumber(e.target.value)} placeholder={`Próxima: ${nextRound}`} aria-label="Número da missiva a abrir"/><Button variant="outline" onClick={async()=>{const n=roundNumber?Number(roundNumber):nextRound;if(!Number.isInteger(n)||n!==nextRound){onError(`A próxima semana permitida é ${nextRound}. Não é possível pular ou retroceder.`);return;}const preview=data.letters.filter(l=>l.delivery_week===n&&l.publication_state==='scheduled');const responses=data.replies.filter(r=>r.delivery_week===n&&r.publication_state==='scheduled');if(!confirm(`Abrir Semana ${n}? ${preview.length} mensagens e ${responses.length} respostas serão liberadas. Destinatários: ${preview.map(l=>houseName(l.recipient_house_id)||'Jogador autorizado').join(', ')||'Nenhuma nova mensagem'}. A semana anterior será encerrada.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:n,p_closed:false});if(error)onError(error.message);else{setRoundNumber('');saved();}}}>Abrir missiva</Button></div>
         {compose&&<MailComposer data={data} me={me} onSave={saved} onManage={onManage}/>}</>}
