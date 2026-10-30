@@ -6,6 +6,11 @@ import {CampaignDatePicker} from './date-picker';
 import {CampaignCalendar,type CalendarState} from './calendar';
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 
+function calendarErrorMessage(error:unknown):string{
+ if(error&&typeof error==='object'&&'message' in error)return String(error.message);
+ return error instanceof Error?error.message:'Não foi possível concluir a operação.';
+}
+
 type DraftEvent={
  id:string;date:string;title:string;description:string;deleted:boolean;
  version:number;published:boolean;
@@ -51,7 +56,7 @@ export function NarratorCalendar(){
    await qc.invalidateQueries({queryKey:['campaign-schedule-drafts']});
    setMessage(deleted?'Exclusão marcada. Publique o calendário para aplicá-la a todos os jogadores.':'Evento salvo como rascunho. Publique para torná-lo visível nas fichas.');
    reset();
-  }catch(err){setMessage(err instanceof Error?err.message:'Falha ao salvar evento.');}
+  }catch(err){setMessage(calendarErrorMessage(err));}
   finally{setBusy(false);}
  }
  async function publish(){
@@ -83,7 +88,7 @@ export function NarratorCalendar(){
     qc.invalidateQueries({queryKey:['noble-house']})
    ]);
    setMessage(`Calendário publicado e confirmado: ${formatDate(date)} · Semana ${week}. As fichas serão atualizadas.`);
-  }catch(err){setSaveError(true);setMessage(err instanceof Error?err.message:'Não foi possível publicar o calendário.');}
+  }catch(err){setSaveError(true);setMessage(calendarErrorMessage(err));}
   finally{setBusy(false);}
  }
  if(calendar.isPending||drafts.isPending)return <p role="status">Carregando calendário do Narrador…</p>;
