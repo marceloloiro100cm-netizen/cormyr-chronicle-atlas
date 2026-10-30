@@ -243,7 +243,7 @@ export function pendingRoundHouses(week: number | null, houses: {id:string;name:
       if (!eligible.length) continue;
       let answered = false;
       for (const r of answers) {
-        if ((r.delivery_week ?? 0) <= week && (r.delivered_at ?? r.created_at ?? '') >= lastNarrative) {
+        if ((r.delivery_week ?? 0) <= week && (r.delivered_at ?? r.created_at ?? '') > lastNarrative) {
           if (eligible.some(p => p.id === r.author_player_id || p.user_id === r.author_user_id)) {
             answered = true;
             break;
