@@ -94,13 +94,13 @@ export function NarratorCalendar(){
   <div className="narrator-calendar-panel">
    <h3>Data e semana da campanha</h3>
    <div className="narrator-calendar-settings">
-    <CampaignDatePicker value={date} onChange={next=>{editedRef.current=true;setDate(next);setMessage('');}}/>
+    <CampaignDatePicker value={date} updateOnNavigation onChange={next=>{editedRef.current=true;setDate(next);setMessage('');}}/>
     <label>Semana atual do jogo
      <input type="number" min={1} step={1} value={week} onChange={e=>{editedRef.current=true;setWeek(Number(e.target.value));setMessage('');}}/>
     </label>
    </div>
    <label className="narrator-calendar-check"><input type="checkbox" checked={automatic} onChange={e=>{editedRef.current=true;setAutomatic(e.target.checked);setMessage('');}}/>Avançar uma désdia ao abrir nova rodada</label>
-   <p className="narrator-calendar-selection">Data selecionada para publicação: <strong>{formatDate(date)}</strong> · <strong>Semana {week}</strong></p>
+   <p className="narrator-calendar-selection" aria-live="polite">Data selecionada para publicação: <strong>{formatDate(date)}</strong> · <strong>Semana {week}</strong></p>
    <p className="text-sm text-muted-foreground">Avançar um mês pode concluir projetos das casas; retroceder a data não desfaz essas conclusões. A semana exibida é global para todas as fichas.</p>
   </div>
   <div className="narrator-calendar-panel">
