@@ -249,7 +249,7 @@ export function PurchaseDrawer({
                       <span key={i}>{c.amount} {RESOURCE_NAMES[c.resource]} · {c.mode === 'allocation' ? 'alocação' : 'permanente'}</span>
                     ))}
                   </div>
-                  {item.pending && <p className="house-warning">Decisão necessária: {item.pending}</p>}
+                  {item.pending && <p className="house-warning">Nota da fonte (não bloqueia por si só): {item.pending}</p>}
                   <label className="campaign-check">
                     <input
                       type="checkbox"
