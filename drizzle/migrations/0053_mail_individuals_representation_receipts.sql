@@ -73,19 +73,20 @@ PERFORM set_config('request.jwt.claims',coalesce(claims,''),true); IF p_action<>
 -- Versions remain auditor-visible even after their parent reply is soft-deleted.
 -- The helper is SECURITY DEFINER so RLS on letter_replies cannot hide the
 -- historical snapshot row from the very audit policy that authorizes it.
-CREATE OR REPLACE FUNCTION public.can_read_reply_version(p_reply uuid,p_viewer uuid)
+CREATE OR REPLACE FUNCTION public.can_read_reply_version(p_reply uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
  SELECT EXISTS (
   SELECT 1 FROM letter_replies r JOIN campaign_letters l ON l.id=r.letter_id
-  WHERE r.id=p_reply AND l.deleted_at IS NULL AND public.can_read_letter_as(l,p_viewer)
-   AND (r.author_user_id=p_viewer OR
+  WHERE r.id=p_reply AND l.deleted_at IS NULL AND public.can_read_letter_as(l,auth.uid())
+   AND (r.author_user_id=auth.uid() OR
      (r.publication_state<>'draft' AND EXISTS (
-       SELECT 1 FROM user_roles u WHERE u.user_id=p_viewer AND u.role='admin')))
+       SELECT 1 FROM user_roles u WHERE u.user_id=auth.uid() AND u.role='admin')))
  );
 $$;
-REVOKE ALL ON FUNCTION public.can_read_reply_version(uuid,uuid) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.can_read_reply_version(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.can_read_reply_version(uuid) TO authenticated;
 DROP POLICY IF EXISTS reply_versions_read ON public.letter_reply_versions;
 CREATE POLICY reply_versions_read ON public.letter_reply_versions
- FOR SELECT TO authenticated USING(public.can_read_reply_version(reply_id,auth.uid()));
+ FOR SELECT TO authenticated USING(public.can_read_reply_version(reply_id));
 
 COMMIT;
