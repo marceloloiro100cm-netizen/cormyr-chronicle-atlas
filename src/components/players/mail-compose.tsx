@@ -40,20 +40,19 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{const d=drafts.get(scope);if(d?.content||d?.subject){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[scope]);
  const current=data.rounds.find(r=>r.status==='open')?.number??null;
  const suggested=suggestNextLetterWeek(data.rounds);
- const legacyIndividuals=draft.targets.some(t=>t.startsWith('p:'));
+ const legacyIndividuals=false;
  return <section id="nova-missiva" className="mail-compose-panel"><h2>Escrever missiva</h2>
  <p className="mail-compose-intro">Selecione as casas destinatárias e escreva a missiva. Cada entrega tem leitura e resposta privadas.</p>
  {error&&<p role="alert">Não foi possível carregar os cadastros. <Button type="button" variant="outline" onClick={()=>refetch()}>Tentar novamente</Button></p>}
  <form className="campaign-form mail-compose-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);setMessage('');key.current??=crypto.randomUUID();try{
  if(!draft.campaignDate)throw new Error('Selecione a data da campanha antes de salvar ou enviar a missiva.');
  if(!draft.targets.length)throw new Error('Selecione ao menos um destinatário antes de anexar imagens ou enviar.');
- if(legacyIndividuals)throw new Error('Remova os destinatários individuais antigos antes de salvar ou enviar.');
  const content=await uploadImages(draft.content,draft.images,key.current);
  const saving=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';
  const r=await datedMail('send_linked_mail',{p_key:key.current,p_origin:draft.links.origin||null,p_targets:draft.targets,p_subject:draft.subject,p_content:content,p_court:draft.links.court||null,p_unit:draft.links.unit||null,p_role:draft.links.court?draft.links.role:null,p_draft:saving,p_week:data.admin?Number(draft.week||suggested):null},draft.campaignDate);
  if(r.error)throw r.error;
  const result=r.data as unknown as {ids:string[];state:string;week:number|null;duplicate:boolean};
- setMessage(result.duplicate?'Envio já registrado; nenhuma cópia duplicada.':result.state==='draft'?'Rascunhos salvos.':result.state==='delivered'?`Missiva entregue a ${result.ids.length} destinatário(s).`:`Entrega programada para a Semana ${result.week}.`);
+ setMessage(result.duplicate?'Envio já registrado; nenhuma cópia duplicada.':result.state==='draft'?`Rascunho salvo para ${result.ids.length} destinatário(s).`:result.state==='delivered'?``Missiva entregue imediatamente na Semana ${result.week} (aberta) para ${result.ids.length} destinatário(s).`:`Missiva programada para a Semana ${result.week}, para ${result.ids.length} destinatário(s).`);
  key.current=null;drafts.delete(scope);setDraft({...draft,subject:'',content:'',images:[]});onSave();
  }catch(err){setMessage(err instanceof Error?err.message:typeof err==='object'&&err&&'message'in err?String(err.message):'Não foi possível salvar. Seu texto foi preservado.');}finally{setBusy(false);}}}>
  <fieldset disabled={busy} className="campaign-form mail-compose-body"><legend>Composição da missiva</legend>
