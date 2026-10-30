@@ -36,6 +36,8 @@ BEGIN
          WHERE target.id=l.recipient_player_id AND target.roster_house_id=g.house_id)
    )
  )
+ AND (NOT public.is_campaign_admin() OR coalesce(p_filters->>'box','')<>'recebidas'
+      OR (l.recipient_house_id IS NULL AND l.recipient_player_id IS NULL))
  AND (coalesce(p_filters->>'text','')='' OR strpos(lower(l.subject||' '||l.content||' '||l.sender_name),lower(p_filters->>'text'))>0 OR EXISTS(SELECT 1 FROM letter_replies r WHERE r.letter_id=l.id AND strpos(lower(r.content),lower(p_filters->>'text'))>0))
  ), page_rows AS (SELECT * FROM visible ORDER BY created_at DESC,id DESC LIMIT p_size OFFSET p_page*p_size)
  SELECT jsonb_build_object('total',(SELECT count(*) FROM visible),'letters',coalesce((SELECT jsonb_agg(to_jsonb(p)||jsonb_build_object('recipient_read',public.mail_recipient_read(p.id)) ORDER BY p.created_at DESC,p.id DESC) FROM page_rows p),'[]'::jsonb),
