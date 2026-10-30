@@ -93,7 +93,22 @@ export function filterLetters(letters:LetterRow[], replies:ReplyRef[], filters:{
     const house=l.recipient_house_id??player?.roster_house_id;
     const receipt=context?.receipts.find(r=>r.letter_id===l.id&&r.user_id===context.userId);
     const read=isLetterRead(l.id,receipt,replies);
-    return (!filters.number||String(l.letter_number)===filters.number)&&(!filters.kind||l.letter_kind===filters.kind)&&(!filters.answered||(hasDeliveredAnswer(l,replies)?'yes':'no')===filters.answered)&&(!filters.house||house===filters.house)&&(!filters.read||(read?'yes':'no')===filters.read);
+    const weekMatches=!filters.number||String(l.delivery_week??l.letter_number)===filters.number||
+      replies.some(r=>r.letter_id===l.id&&String(r.delivery_week??r.creation_week)===filters.number);
+    const narratorStage=context?.admin?narratorThreadStage(l,replies,context.userId):null;
+    const hasDeliveredReply=replies.some(r=>r.letter_id===l.id&&deliveredReply(r));
+    const pendingOutgoing=(l.sender_user_id===context?.userId&&['draft','scheduled'].includes(l.publication_state??''))||
+      replies.some(r=>r.letter_id===l.id&&(r.publication_state==='scheduled'||
+        (r.publication_state==='draft'&&r.author_user_id===context?.userId)));
+    const answeredMatches=!filters.answered||(
+      filters.answered==='yes'?hasDeliveredAnswer(l,replies):
+      filters.answered==='no'?!hasDeliveredAnswer(l,replies):
+      Boolean(context?.admin)&&(
+        filters.answered==='no-delivered'?!hasDeliveredReply:
+        filters.answered==='awaiting-house'?narratorStage==='awaiting-house':
+        filters.answered==='awaiting-narrator'?narratorStage==='awaiting-narrator':
+        filters.answered==='pending-outgoing'?pendingOutgoing:false));
+    return weekMatches&&(!filters.kind||l.letter_kind===filters.kind)&&answeredMatches&&(!filters.house||house===filters.house)&&(!filters.read||(read?'yes':'no')===filters.read);
   });
 }
 
