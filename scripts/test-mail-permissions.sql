@@ -100,5 +100,63 @@ VALUES('00000000-0000-0000-0000-000000000100','00000000-0000-0000-0000-000000000
 SELECT pg_temp.assert((SELECT creation_week=1 FROM public.letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000209'),'trigger preserves explicit creation week');
 SET LOCAL ROLE authenticated;
 
+
+-- Lote 2 (item 07 EXCLUÍDO): testamos exclusivamente número sequencial,
+-- carimbos de encerramento, idempotência e destinatário obrigatório.
+DO $ BEGIN
+  BEGIN
+    PERFORM public.set_letter_round(4,false);
+    RAISE EXCEPTION 'skip accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM='skip accepted' OR SQLERRM NOT LIKE 'As semanas devem avançar em sequência%' THEN RAISE; END IF;
+  END;
+  BEGIN
+    PERFORM public.set_letter_round(99,true);
+    RAISE EXCEPTION 'fake close accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM='fake close accepted' OR SQLERRM NOT LIKE 'Só é possível encerrar a semana%' THEN RAISE; END IF;
+  END;
+  BEGIN
+    PERFORM public.set_letter_round(1,false);
+    RAISE EXCEPTION 'historic reopen accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM='historic reopen accepted' OR SQLERRM NOT LIKE 'Semana histórica encerrada%' THEN RAISE; END IF;
+  END;
+  BEGIN
+    PERFORM public.send_linked_mail(
+      p_key=>'00000000-0000-0000-0000-000000000299',p_origin=>NULL,
+      p_targets=>ARRAY[]::text[],p_subject=>'Sem destinatário',p_content=>'Não enviar');
+    RAISE EXCEPTION 'recipientless accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM='recipientless accepted' OR SQLERRM NOT LIKE 'Escolha entre 1 e 50 destinatários%' THEN RAISE; END IF;
+  END;
+  BEGIN
+    PERFORM public.save_letter_batch_drafts('geral',NULL,'Sem destinatário','Não enviar',ARRAY[]::text[],'00000000-0000-0000-0000-000000000298');
+    RAISE EXCEPTION 'recipientless draft accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM='recipientless draft accepted' OR SQLERRM NOT LIKE 'Destinatários inválidos%' THEN RAISE; END IF;
+  END;
+END $;
+SELECT public.set_letter_round(3,false);
+SELECT pg_temp.assert((SELECT status='closed' AND closed_at IS NOT NULL FROM public.letter_rounds WHERE number=2),'opening next week closes former with timestamp');
+SELECT pg_temp.assert((SELECT status='open' AND opened_at IS NOT NULL FROM public.letter_rounds WHERE number=3),'new week receives opening timestamp');
+SELECT set_config('test.round_queue_count',(SELECT count(*)::text FROM public.sync_outbox),true);
+SELECT set_config('test.round_opened_at',(SELECT opened_at::text FROM public.letter_rounds WHERE number=3),true);
+SELECT public.set_letter_round(3,false);
+SELECT pg_temp.assert((SELECT count(*) FROM public.sync_outbox)=current_setting('test.round_queue_count')::integer,'opening same week twice never requeues');
+SELECT pg_temp.assert((SELECT opened_at::text=current_setting('test.round_opened_at') FROM public.letter_rounds WHERE number=3),'opening same week twice preserves original timestamp');
+SELECT public.set_letter_round(3,true);
+SELECT set_config('test.round_closed_at',(SELECT closed_at::text FROM public.letter_rounds WHERE number=3),true);
+SELECT public.set_letter_round(3,true);
+SELECT pg_temp.assert((SELECT closed_at::text=current_setting('test.round_closed_at') FROM public.letter_rounds WHERE number=3),'repeating close never overwrites audit timestamp');
+DO $ BEGIN
+  BEGIN
+    PERFORM public.set_letter_round(5,false);
+    RAISE EXCEPTION 'skip after closing accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM='skip after closing accepted' OR SQLERRM NOT LIKE 'As semanas devem avançar em sequência%' THEN RAISE; END IF;
+  END;
+END $;
+
 SELECT pg_temp.assert(NOT has_function_privilege('authenticated','public.can_export_mail(text,uuid,uuid)','EXECUTE'),'export authorization is service only');
 ROLLBACK;
