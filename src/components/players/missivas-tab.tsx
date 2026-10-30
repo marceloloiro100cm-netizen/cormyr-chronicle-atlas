@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { CampaignContent, ImagePicker, uploadImages, type PendingImage } from '@/components/campaign-content';
-import { hasDeliveredAnswer, groupReceivedLetters, isLetterRead, nextLetterNumber, pendingRoundHouses, sentLetters, mailRecipientLabel, type LetterRow } from '@/lib/letters';
+import { deliveredReply, hasDeliveredAnswer, groupReceivedLetters, isLetterRead, narratorThreadStage, nextLetterNumber, pendingRoundHouses, sentLetters, mailRecipientLabel, type LetterRow } from '@/lib/letters';
 import { date, syncLabel } from './shared';
 import type { Panel } from './panel-data';
 import {MailComposer,replaceMailDraft,MailLinkFields,useMailOptions,type MailLinks,type MailOptions} from './mail-compose';
@@ -78,6 +78,12 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
     const answers=viewReplies.filter(r=>r.letter_id===letter.id);
     const receipt=data.receipts.find(r=>r.letter_id===letter.id&&r.user_id===data.user.id);
     const read=isLetterRead(letter.id,receipt,answers);
+    const incomingReplies=answers.filter(r=>deliveredReply(r)&&r.author_user_id!==data.user.id);
+    const narratorStage=data.admin?narratorThreadStage(letter,answers,data.user.id):null;
+    const pendingReply=answers.some(r=>r.publication_state==='scheduled'||(r.publication_state==='draft'&&r.author_user_id===data.user.id));
+    const readStatus=letter.sender_user_id===data.user.id
+      ?incomingReplies.length===0?'Aguardando resposta':read?'Resposta lida':'Resposta não lida'
+      :read?'Lida':'Não lida';
     const isOpen=expanded.has(letter.id);
     const threadLetters=letter.conversation_id?allLetters.filter(o=>o.conversation_id===letter.conversation_id&&o.id!==letter.id).sort((a,b)=>a.created_at.localeCompare(b.created_at)):[];
     const threadOpen=threads.has(letter.id);
@@ -87,7 +93,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
     return <article className={'campaign-letter'+(isOpen?'':' recolhida')} key={letter.id} id={'missiva-'+letter.id}>
       <button type="button" className="campaign-letter-toggle" aria-expanded={isOpen} onClick={()=>toggle(letter.id)}>
         <ChevronDown size={18} className={isOpen?'rotate-180 transition-transform':'transition-transform'}/>
-        <span className="campaign-eyebrow">{letter.letter_number?`Missiva ${letter.letter_number} · `:''}{letter.letter_kind==='geral'?'Geral':'Reservada'} · {hasDeliveredAnswer(letter,answers)?'Respondida · ':''}{read?'Lida':'Não lida'}{letter.publication_state==='draft'?' · Rascunho':letter.publication_state==='scheduled'?` · Aguardando abertura da Semana ${letter.delivery_week}`:''}{letter.deleted_at?' · Excluída':''}</span>
+        <span className="campaign-eyebrow">{letter.letter_number?`Missiva ${letter.letter_number} · `:''}{letter.letter_kind==='geral'?'Geral':'Reservada'} · {narratorStage==='awaiting-house'?'Aguardando resposta da Casa · ':narratorStage==='awaiting-narrator'?'Aguardando resposta do Narrador · ':hasDeliveredAnswer(letter,answers)?'Respondida · ':''}{readStatus}{data.admin&&pendingReply?' · Há resposta em rascunho/programada':''}{letter.publication_state==='draft'?' · Rascunho':letter.publication_state==='scheduled'?` · Aguardando abertura da Semana ${letter.delivery_week}`:''}{letter.deleted_at?' · Excluída':''}</span>
         <strong className="campaign-letter-subject">{letter.subject}</strong>
         <span className="text-muted-foreground text-sm">De: {letter.sender_name}{fromHouse?` (${fromHouse})`:''} · Para: {to} · {letter.campaign_date?formatDate(letter.campaign_date):date(letter.created_at)}{letter.historical_source?' · Arquivo histórico':''} · {mailWeekTimeline(letter.creation_week,letter.delivery_week,letter.publication_state)}{answers.length?` · ${answers.length} resposta(s)`:''}</span>
       </button>
@@ -123,12 +129,16 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
           </article>)}
         </section>}
         {(letter.court_member_id||letter.military_unit_id)&&<div className="campaign-eyebrow">{letter.court_member_id&&<p>Corte: {linkName('court',letter.origin_house_id,letter.court_member_id)} · {letter.court_assignment==='order_recipient'?'Destinatário da ordem':'Executor'}</p>}{letter.military_unit_id&&<p>Unidade: {linkName('unit',letter.origin_house_id,letter.military_unit_id)}</p>}</div>}
-        {letter.sender_user_id===data.user.id&&letter.publication_state==='delivered'&&<p>Destinatário: {letter.recipient_read?'leitura registrada':'sem leitura registrada'} · {hasDeliveredAnswer(letter,answers)?'resposta recebida':'aguardando resposta'}</p>}
+        {letter.sender_user_id===data.user.id&&letter.publication_state==='delivered'&&!data.admin&&<p>Destinatário: {letter.recipient_read?'leitura registrada':'sem leitura registrada'} · {hasDeliveredAnswer(letter,answers)?'resposta recebida':'aguardando resposta'}</p>}
+        {data.admin&&letter.sender_user_id===data.user.id&&letter.publication_state==='delivered'&&<section className="campaign-letter-read-status" aria-label="Indicadores de leitura separados">
+          <p><strong>Leitura da Casa:</strong> {letter.recipient_read?'Leitura registrada':'Sem registro de leitura atual'}</p>
+          <p><strong>Leitura do Narrador:</strong> {incomingReplies.length===0?'Nenhuma resposta entregue':read?'Respostas conferidas':'Nova resposta não lida'}</p>
+        </section>}
         {data.admin&&letter.sender_user_id===data.user.id&&<details><summary>Leituras registradas pelos destinatários</summary>{data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).length===0?<p>Nenhuma leitura registrada.</p>:data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).map(r=><p key={r.user_id}>{data.players.find(p=>p.user_id===r.user_id)?.name??'Destinatário autorizado'} · {date(r.read_at)}{isLetterRead(letter.id,r,answers)?'':' · Há respostas posteriores'}</p>)}</details>}
         <p className="text-muted-foreground text-sm">{syncLabel(letter.sync_state)} · {letter.last_synced_at?date(letter.last_synced_at):'Ainda não sincronizada'}</p>
         {threadLetters.length>0&&<div className="campaign-thread"><Button size="sm" variant="ghost" aria-expanded={threadOpen} onClick={()=>toggleThread(letter.id)}>{threadOpen?'Ocultar fio da conversa':`Ver relacionadas nesta página (${threadLetters.length} missiva(s) relacionada(s))`}</Button>{threadOpen&&threadLetters.map(other=>{const otherAnswers=viewReplies.filter(r=>r.letter_id===other.id);return <div key={other.id} className="campaign-thread-item"><span className="campaign-eyebrow">{other.letter_number?`Missiva ${other.letter_number} · `:''}{other.letter_kind==='geral'?'Geral':'Reservada'}</span><strong>{other.subject}</strong><small> · De: {other.sender_name} · {other.campaign_date?formatDate(other.campaign_date):date(other.created_at)}</small><CampaignContent content={other.content}/>{otherAnswers.map(a=><div key={a.id} className="campaign-replies"><span className="campaign-eyebrow">Resposta · {mailWeekTimeline(a.creation_week,a.delivery_week,a.publication_state)}</span><br/><strong>{a.author_name}</strong><small> · {date(a.created_at)}</small><CampaignContent content={a.content}/></div>)}</div>;})}</div>}
         {!letter.deleted_at&&<div className="campaign-actions">
-          {!read&&letter.publication_state==='delivered'&&<Button variant="outline" onClick={async()=>{const {error}=await supabase.rpc('mark_letter_read',{p_id:letter.id});if(error&&error.code!=='23505')onError(error.message);else saved();}}>Marcar como lida</Button>}
+          {!read&&letter.publication_state==='delivered'&&(letter.sender_user_id!==data.user.id||incomingReplies.length>0)&&<Button variant="outline" onClick={async()=>{const {error}=await supabase.rpc('mark_letter_read',{p_id:letter.id});if(error&&error.code!=='23505')onError(error.message);else saved();}}>Marcar como lida</Button>}
           {open!==null&&!data.admin&&<Button variant="outline" onClick={()=>{if(!replaceMailDraft(data.user.id))return;setDraft({key:Date.now(),subject:'Enc: '+letter.subject,content:`— Missiva encaminhada —\nDe: ${letter.sender_name} · ${date(letter.created_at)}\nAssunto: ${letter.subject}\n\n${letter.content}`});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Encaminhar</Button>}
           {canDelete&&<Button variant="outline" onClick={async()=>{if(!confirm('Excluir esta missiva? Ela deixará de aparecer para os jogadores.'))return;const {error}=await supabase.rpc('delete_campaign_letter',{p_id:letter.id});if(error)onError(error.message);else saved();}}>Excluir</Button>}
         </div>}
@@ -154,7 +164,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
       {sel('Unidade militar','unit',linkOptions('unit'))}
       {sel('Semana','number',[['','Todas as semanas'],...numbers.map(n=>[String(n),'Semana '+n] as [string,string])])}
       {sel('Tipo','kind',[['','Todos os tipos'],['geral','Geral'],['reservada','Reservada']])}
-      {sel('Resposta','answered',[['','Todas'],['yes','Respondidas'],['no','Não respondidas']])}
+      {sel('Resposta','answered',data.admin?[['','Todas'],['no-delivered','Sem resposta entregue'],['awaiting-house','Aguardando resposta da Casa'],['awaiting-narrator','Aguardando resposta do Narrador'],['pending-outgoing','Com resposta programada/rascunho']]:[['','Todas'],['yes','Respondidas'],['no','Não respondidas']])}
       {sel('Minha leitura','read',[['','Todas'],['no','Não lidas'],['yes','Lidas']])}
       {groups.some(g=>g.number!==null)&&<nav className="campaign-mail-jump" aria-label="Ir para uma semana de missiva">{groups.filter(g=>g.number!==null).map(g=><button key={g.number} type="button" onClick={()=>document.getElementById('grupo-missiva-'+g.number)?.scrollIntoView({behavior:'smooth',block:'start'})}>Missiva {g.number}</button>)}</nav>}
       <Button variant="outline" onClick={()=>setFilters(empty)}>Limpar filtros</Button>
