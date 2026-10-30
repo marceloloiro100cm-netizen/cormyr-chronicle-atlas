@@ -332,8 +332,7 @@ DO $denied_note$ BEGIN
    VALUES('letter:00000000-0000-0000-0000-000000000200','00000000-0000-0000-0000-000000000200',
     '{"conhecimento":"Fraude"}','00000000-0000-0000-0000-000000000002');
   RAISE EXCEPTION 'player wrote hidden Narrator Register';
- EXCEPTION WHEN raise_exception THEN
-  IF SQLERRM='player wrote hidden Narrator Register' THEN RAISE; END IF;
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
  END;
 END $denied_note$;
 ROLLBACK;
