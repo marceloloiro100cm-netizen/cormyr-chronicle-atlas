@@ -51,6 +51,14 @@ describe('publicação da data global de Harptos',()=>{
   expect(await screen.findByText(/Calendário publicado e confirmado: 1 de Alturiak/)).toBeInTheDocument();
   expect(mock.current.month).toBe(1);
  });
+ it('alterar o ano atualiza a data global sem exigir clique em outro dia',async()=>{
+  setup();
+  await screen.findByText(/Data selecionada para publicação/);
+  fireEvent.change(screen.getAllByRole('spinbutton',{name:'Ano',hidden:true})[0]!,{target:{value:'1523'}});
+  expect(screen.getByText(/Data selecionada para publicação/).parentElement).toHaveTextContent('1 de Hammer · 1523 CV');
+  fireEvent.click(screen.getByRole('button',{name:'Publicar calendário'}));
+  await waitFor(()=>expect(mock.rpc).toHaveBeenCalledWith('publish_campaign_schedule',expect.objectContaining({p_date:'1523-01-01'})));
+ });
  it('seleciona um dia e impede que uma atualização externa silenciosa apague a escolha',async()=>{
   const qc=setup();
   await screen.findByText(/Data selecionada para publicação/);
