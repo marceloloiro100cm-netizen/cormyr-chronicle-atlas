@@ -1,4 +1,5 @@
 import type { CreationHistory } from './creation-history';
+import type { InfluenceBenefit } from './resource-transactions';
 export const RESOURCE_KEYS = ['defense', 'influence', 'lands', 'law', 'population', 'power', 'wealth'] as const;
 export type Resource = typeof RESOURCE_KEYS[number];
 export type Resources = Record<Resource, number>;
@@ -37,6 +38,7 @@ export type HouseState = {
   creationHistory?: CreationHistory | undefined;
   creationBonuses?: { playerId: string; resource: Resource; die: number }[] | undefined;
   creationBonusesApplied?: boolean | undefined;
+  influenceBenefits?: InfluenceBenefit[] | undefined;
 };
 export type Ledger = { id: string; action: string; explanation: string; campaignMonth: number; before: Resources; after: Resources; rule: string; key: string; createdAt?: string | undefined; actor?: string | undefined };
 export type HouseDocument = { state: HouseState; version: number; ledger: Ledger[]; syncState: string };
