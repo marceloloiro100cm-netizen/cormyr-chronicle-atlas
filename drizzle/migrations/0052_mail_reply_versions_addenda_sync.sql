@@ -228,7 +228,7 @@ BEGIN
  IF NOT FOUND OR l.deleted_at IS NOT NULL OR NOT public.can_read_letter(l) THEN RAISE EXCEPTION 'Missiva indisponível'; END IF;
  SELECT * INTO r FROM letter_replies WHERE id=p_id OR (author_user_id=auth.uid() AND idempotency_key=p_id) FOR UPDATE;
  IF FOUND THEN
- IF r.author_user_id<>auth.uid() OR r.publication_state<>'draft' OR r.letter_id<>p_letter OR r.reply_to_id IS DISTINCT FROM coalesce(p_reply,p_letter) THEN RAISE EXCEPTION 'Rascunho indisponível'; END IF;
+ IF r.deleted_at IS NOT NULL OR r.author_user_id<>auth.uid() OR r.publication_state<>'draft' OR r.letter_id<>p_letter OR r.reply_to_id IS DISTINCT FROM coalesce(p_reply,p_letter) THEN RAISE EXCEPTION 'Rascunho indisponível'; END IF;
  UPDATE letter_replies SET content=p_content,version=version+1,updated_at=clock_timestamp() WHERE id=r.id AND content IS DISTINCT FROM p_content; RETURN r.id;
  END IF;
  RETURN public.reply_weekly_message(p_letter,p_reply,p_content,p_id,true);
@@ -264,6 +264,8 @@ BEGIN
     SELECT 1 FROM public.campaign_letters l WHERE l.id=r.letter_id
       AND l.deleted_at IS NULL AND public.can_read_letter(l))
  THEN RAISE EXCEPTION 'Resposta indisponível'; END IF;
+ IF r.publication_state='draft' AND r.author_user_id<>auth.uid() THEN
+   RAISE EXCEPTION 'Rascunho privado de outro jogador'; END IF;
  IF NOT public.is_campaign_admin() AND NOT (r.author_user_id=auth.uid() AND r.publication_state='draft')
  THEN RAISE EXCEPTION 'Somente o Narrador pode editar respostas publicadas'; END IF;
  IF r.version<>p_version THEN RAISE EXCEPTION 'Conflito de versão; atualize a resposta antes de salvar'; END IF;
@@ -288,6 +290,8 @@ BEGIN
     SELECT 1 FROM public.campaign_letters l WHERE l.id=r.letter_id
       AND l.deleted_at IS NULL AND public.can_read_letter(l))
  THEN RAISE EXCEPTION 'Resposta indisponível'; END IF;
+ IF r.publication_state='draft' AND r.author_user_id<>auth.uid() THEN
+   RAISE EXCEPTION 'Rascunho privado de outro jogador'; END IF;
  IF NOT public.is_campaign_admin() AND NOT (r.author_user_id=auth.uid() AND r.publication_state='draft')
  THEN RAISE EXCEPTION 'Somente o Narrador pode excluir respostas publicadas'; END IF;
  IF r.version<>p_version THEN RAISE EXCEPTION 'Conflito de versão; atualize a resposta antes de excluir'; END IF;
