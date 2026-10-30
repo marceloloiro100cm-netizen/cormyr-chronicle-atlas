@@ -1,0 +1,4064 @@
+{
+  "ashkar": {
+    "file": "Casa Ashkar.xlsx",
+    "sha256": "1e78eb1f7133115398e70df812bc5da3cf6543738622a778e9faf92846f2a7f6",
+    "totalRow": 19,
+    "cells": [
+      {
+        "cell": "A1",
+        "value": "Ficha de Casa",
+        "formula": null
+      },
+      {
+        "cell": "A2",
+        "value": "Nome",
+        "formula": null
+      },
+      {
+        "cell": "B2",
+        "value": "Ashkar",
+        "formula": null
+      },
+      {
+        "cell": "C2",
+        "value": "Susserano",
+        "formula": null
+      },
+      {
+        "cell": "D2",
+        "value": "Grandragon",
+        "formula": null
+      },
+      {
+        "cell": "E2",
+        "value": "Região",
+        "formula": null
+      },
+      {
+        "cell": "F2",
+        "value": "Dragoncoast",
+        "formula": null
+      },
+      {
+        "cell": "G2",
+        "value": "Lorde",
+        "formula": null
+      },
+      {
+        "cell": "H2",
+        "value": "Kael Ashkar",
+        "formula": null
+      },
+      {
+        "cell": "A3",
+        "value": "Lema",
+        "formula": null
+      },
+      {
+        "cell": "B3",
+        "value": "We Will Come Back",
+        "formula": null
+      },
+      {
+        "cell": "C3",
+        "value": "Fundação",
+        "formula": null
+      },
+      {
+        "cell": "D3",
+        "value": 1000,
+        "formula": null
+      },
+      {
+        "cell": "E3",
+        "value": "Arma",
+        "formula": null
+      },
+      {
+        "cell": "F3",
+        "value": "Phoinix",
+        "formula": null
+      },
+      {
+        "cell": "G3",
+        "value": "Herdeiro",
+        "formula": null
+      },
+      {
+        "cell": "H3",
+        "value": "Darian Ashkar",
+        "formula": null
+      },
+      {
+        "cell": "A4",
+        "value": "Fortaleza",
+        "formula": null
+      },
+      {
+        "cell": "B4",
+        "value": "Cinzaria",
+        "formula": null
+      },
+      {
+        "cell": "A6",
+        "value": "Atributos da Casa",
+        "formula": null
+      },
+      {
+        "cell": "A7",
+        "value": "Bonus Inicial",
+        "formula": null
+      },
+      {
+        "cell": "B7",
+        "value": "Defesa",
+        "formula": null
+      },
+      {
+        "cell": "C7",
+        "value": "Influencia",
+        "formula": null
+      },
+      {
+        "cell": "D7",
+        "value": "Terras",
+        "formula": null
+      },
+      {
+        "cell": "E7",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "F7",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "G7",
+        "value": "Poder",
+        "formula": null
+      },
+      {
+        "cell": "H7",
+        "value": "Riqueza",
+        "formula": null
+      },
+      {
+        "cell": "A8",
+        "value": "Modificador",
+        "formula": null
+      },
+      {
+        "cell": "B8",
+        "value": 50,
+        "formula": null
+      },
+      {
+        "cell": "C8",
+        "value": 50,
+        "formula": null
+      },
+      {
+        "cell": "D8",
+        "value": 20,
+        "formula": null
+      },
+      {
+        "cell": "E8",
+        "value": 30,
+        "formula": null
+      },
+      {
+        "cell": "F8",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "G8",
+        "value": 50,
+        "formula": null
+      },
+      {
+        "cell": "H8",
+        "value": 40,
+        "formula": null
+      },
+      {
+        "cell": "A9",
+        "value": "Bonus Inicial",
+        "formula": null
+      },
+      {
+        "cell": "E9",
+        "value": " ",
+        "formula": null
+      },
+      {
+        "cell": "A10",
+        "value": "Eventos Historicos",
+        "formula": null
+      },
+      {
+        "cell": "A11",
+        "value": "Traição",
+        "formula": null
+      },
+      {
+        "cell": "A12",
+        "value": "Infraestrutura",
+        "formula": null
+      },
+      {
+        "cell": "A13",
+        "value": "Vitória",
+        "formula": null
+      },
+      {
+        "cell": "A14",
+        "value": "Favorecimento",
+        "formula": null
+      },
+      {
+        "cell": "A15",
+        "value": "Ascensão",
+        "formula": null
+      },
+      {
+        "cell": "A16",
+        "value": "Traição",
+        "formula": null
+      },
+      {
+        "cell": "A17",
+        "value": "Traição",
+        "formula": null
+      },
+      {
+        "cell": "A18",
+        "value": "Bonus",
+        "formula": null
+      },
+      {
+        "cell": "A19",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B19",
+        "value": 50,
+        "formula": "=SUM(B8:B18)"
+      },
+      {
+        "cell": "C19",
+        "value": 50,
+        "formula": "=SUM(C8:C18)"
+      },
+      {
+        "cell": "D19",
+        "value": 20,
+        "formula": "=SUM(D8:D18)"
+      },
+      {
+        "cell": "E19",
+        "value": 30,
+        "formula": "=SUM(E8:E18)"
+      },
+      {
+        "cell": "F19",
+        "value": 10,
+        "formula": "=SUM(F8:F18)"
+      },
+      {
+        "cell": "G19",
+        "value": 50,
+        "formula": "=SUM(G8:G18)"
+      },
+      {
+        "cell": "H19",
+        "value": 40,
+        "formula": "=SUM(H8:H18)"
+      },
+      {
+        "cell": "A20",
+        "value": "Bens da casa",
+        "formula": null
+      },
+      {
+        "cell": "A21",
+        "value": "Defesa",
+        "formula": null
+      },
+      {
+        "cell": "D21",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "G21",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "A22",
+        "value": "Castelo Superior",
+        "formula": null
+      },
+      {
+        "cell": "B22",
+        "value": -50,
+        "formula": null
+      },
+      {
+        "cell": "D22",
+        "value": "Sorte da Casa",
+        "formula": null
+      },
+      {
+        "cell": "E22",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "G22",
+        "value": "Sorte da Casa",
+        "formula": null
+      },
+      {
+        "cell": "H22",
+        "value": -2,
+        "formula": null
+      },
+      {
+        "cell": "A24",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B24",
+        "value": 0,
+        "formula": "=B19+B22+B23"
+      },
+      {
+        "cell": "D24",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E24",
+        "value": 5,
+        "formula": "=F19+E22+E23"
+      },
+      {
+        "cell": "G24",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "H24",
+        "value": 30,
+        "formula": "=E19"
+      },
+      {
+        "cell": "A25",
+        "value": "Poder",
+        "formula": null
+      },
+      {
+        "cell": "D25",
+        "value": "Terras",
+        "formula": null
+      },
+      {
+        "cell": "G25",
+        "value": "Influencia",
+        "formula": null
+      },
+      {
+        "cell": "A26",
+        "value": "Casa Vassala",
+        "formula": null
+      },
+      {
+        "cell": "C26",
+        "value": -20,
+        "formula": null
+      },
+      {
+        "cell": "D26",
+        "value": "Montanha",
+        "formula": null
+      },
+      {
+        "cell": "E26",
+        "value": -9,
+        "formula": null
+      },
+      {
+        "cell": "G26",
+        "value": "Primogenito",
+        "formula": null
+      },
+      {
+        "cell": "H26",
+        "value": -20,
+        "formula": null
+      },
+      {
+        "cell": "A27",
+        "value": "Apoio",
+        "formula": null
+      },
+      {
+        "cell": "B27",
+        "value": "Treinada",
+        "formula": null
+      },
+      {
+        "cell": "C27",
+        "value": -7,
+        "formula": null
+      },
+      {
+        "cell": "D27",
+        "value": "Ruina",
+        "formula": null
+      },
+      {
+        "cell": "E27",
+        "value": -3,
+        "formula": null
+      },
+      {
+        "cell": "A28",
+        "value": "Cavalaria",
+        "formula": null
+      },
+      {
+        "cell": "B28",
+        "value": "Elite",
+        "formula": null
+      },
+      {
+        "cell": "C28",
+        "value": -12,
+        "formula": null
+      },
+      {
+        "cell": "D28",
+        "value": "Pasto",
+        "formula": null
+      },
+      {
+        "cell": "E28",
+        "value": -1,
+        "formula": null
+      },
+      {
+        "cell": "A29",
+        "value": "Infantaria",
+        "formula": null
+      },
+      {
+        "cell": "B29",
+        "value": "Elite",
+        "formula": null
+      },
+      {
+        "cell": "C29",
+        "value": -11,
+        "formula": null
+      },
+      {
+        "cell": "D29",
+        "value": "Lago Pequeno",
+        "formula": null
+      },
+      {
+        "cell": "E29",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D30",
+        "value": "Corrego",
+        "formula": null
+      },
+      {
+        "cell": "E30",
+        "value": -1,
+        "formula": null
+      },
+      {
+        "cell": "A35",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B35",
+        "value": 0,
+        "formula": "=G19+C26+C27+C28+C29+C30+C31+C32"
+      },
+      {
+        "cell": "D35",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E35",
+        "value": 1,
+        "formula": "=D19+E26+E27+E28+E29+E30+E31+E33+E36+E32"
+      },
+      {
+        "cell": "G35",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "H35",
+        "value": 30,
+        "formula": "=C19+SUM(H26:H34)"
+      },
+      {
+        "cell": "A36",
+        "value": "Riqueza",
+        "formula": null
+      },
+      {
+        "cell": "A37",
+        "value": "Rede de Espião",
+        "formula": null
+      },
+      {
+        "cell": "B37",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "D37",
+        "value": "Sorte da casa*",
+        "formula": null
+      },
+      {
+        "cell": "A38",
+        "value": "Rede expandida",
+        "formula": null
+      },
+      {
+        "cell": "B38",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D38",
+        "value": "Cavalos",
+        "formula": null
+      },
+      {
+        "cell": "E38",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "A39",
+        "value": "Mestre de Armas",
+        "formula": null
+      },
+      {
+        "cell": "B39",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "D39",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "E39",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "A40",
+        "value": "Criação de Cavalo",
+        "formula": null
+      },
+      {
+        "cell": "B40",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "D40",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "E40",
+        "value": -2,
+        "formula": null
+      },
+      {
+        "cell": "A41",
+        "value": "Bonus",
+        "formula": null
+      },
+      {
+        "cell": "B41",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "A42",
+        "value": "Linhagem de cavalos",
+        "formula": null
+      },
+      {
+        "cell": "B42",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "A44",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B44",
+        "value": 1,
+        "formula": "=H19+sum(B37:B42)"
+      },
+      {
+        "cell": "D44",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E44",
+        "value": -6,
+        "formula": "=SUM(E38:E42)"
+      }
+    ]
+  },
+  "grantass": {
+    "file": "Casa Grantass.xlsx",
+    "sha256": "c00bffcb4f17aee3a23c0ab35220f0b0f6980a2afdb55ebee8c5b46bebed6a82",
+    "totalRow": 18,
+    "cells": [
+      {
+        "cell": "A1",
+        "value": "Ficha de Casa",
+        "formula": null
+      },
+      {
+        "cell": "A2",
+        "value": "Nome",
+        "formula": null
+      },
+      {
+        "cell": "B2",
+        "value": "Grantass ",
+        "formula": null
+      },
+      {
+        "cell": "C2",
+        "value": "Susserano",
+        "formula": null
+      },
+      {
+        "cell": "D2",
+        "value": "Grandragon",
+        "formula": null
+      },
+      {
+        "cell": "E2",
+        "value": "Região",
+        "formula": null
+      },
+      {
+        "cell": "F2",
+        "value": "Dragoncoast",
+        "formula": null
+      },
+      {
+        "cell": "G2",
+        "value": "Lorde",
+        "formula": null
+      },
+      {
+        "cell": "H2",
+        "value": "Lady Rawena",
+        "formula": null
+      },
+      {
+        "cell": "A3",
+        "value": "Lema",
+        "formula": null
+      },
+      {
+        "cell": "B3",
+        "value": "We pour ",
+        "formula": null
+      },
+      {
+        "cell": "C3",
+        "value": "Fundação",
+        "formula": null
+      },
+      {
+        "cell": "D3",
+        "value": "322 D.R.",
+        "formula": null
+      },
+      {
+        "cell": "E3",
+        "value": "Arma",
+        "formula": null
+      },
+      {
+        "cell": "F3",
+        "value": "Cálice ",
+        "formula": null
+      },
+      {
+        "cell": "G3",
+        "value": "Herdeiro",
+        "formula": null
+      },
+      {
+        "cell": "H3",
+        "value": "Lord Sven Grantass",
+        "formula": null
+      },
+      {
+        "cell": "A4",
+        "value": "Fortaleza",
+        "formula": null
+      },
+      {
+        "cell": "B4",
+        "value": "A Torre sem escadas",
+        "formula": null
+      },
+      {
+        "cell": "A6",
+        "value": "Atributos da Casa",
+        "formula": null
+      },
+      {
+        "cell": "A7",
+        "value": "Bonus Inicial",
+        "formula": null
+      },
+      {
+        "cell": "B7",
+        "value": "Defesa",
+        "formula": null
+      },
+      {
+        "cell": "C7",
+        "value": "Influencia",
+        "formula": null
+      },
+      {
+        "cell": "D7",
+        "value": "Terras",
+        "formula": null
+      },
+      {
+        "cell": "E7",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "F7",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "G7",
+        "value": "Poder",
+        "formula": null
+      },
+      {
+        "cell": "H7",
+        "value": "Riqueza",
+        "formula": null
+      },
+      {
+        "cell": "A8",
+        "value": "Modificador",
+        "formula": null
+      },
+      {
+        "cell": "B8",
+        "value": 27,
+        "formula": null
+      },
+      {
+        "cell": "C8",
+        "value": 23,
+        "formula": null
+      },
+      {
+        "cell": "D8",
+        "value": 21,
+        "formula": null
+      },
+      {
+        "cell": "E8",
+        "value": 16,
+        "formula": null
+      },
+      {
+        "cell": "F8",
+        "value": 20,
+        "formula": null
+      },
+      {
+        "cell": "G8",
+        "value": 27,
+        "formula": null
+      },
+      {
+        "cell": "H8",
+        "value": 26,
+        "formula": null
+      },
+      {
+        "cell": "A9",
+        "value": "Bonus Inicial",
+        "formula": null
+      },
+      {
+        "cell": "B9",
+        "value": 5,
+        "formula": null
+      },
+      {
+        "cell": "C9",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "D9",
+        "value": 15,
+        "formula": null
+      },
+      {
+        "cell": "E9",
+        "value": 0,
+        "formula": null
+      },
+      {
+        "cell": "F9",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "G9",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "H9",
+        "value": 20,
+        "formula": null
+      },
+      {
+        "cell": "A10",
+        "value": "Eventos Historicos",
+        "formula": null
+      },
+      {
+        "cell": "A11",
+        "value": "Catastrofe",
+        "formula": null
+      },
+      {
+        "cell": "E11",
+        "value": -1,
+        "formula": null
+      },
+      {
+        "cell": "F11",
+        "value": -4,
+        "formula": null
+      },
+      {
+        "cell": "G11",
+        "value": -4,
+        "formula": null
+      },
+      {
+        "cell": "H11",
+        "value": -6,
+        "formula": null
+      },
+      {
+        "cell": "A12",
+        "value": "Declinio",
+        "formula": null
+      },
+      {
+        "cell": "C12",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D12",
+        "value": -6,
+        "formula": null
+      },
+      {
+        "cell": "G12",
+        "value": -3,
+        "formula": null
+      },
+      {
+        "cell": "H12",
+        "value": -2,
+        "formula": null
+      },
+      {
+        "cell": "A13",
+        "value": "Invasão/Revolta",
+        "formula": null
+      },
+      {
+        "cell": "E13",
+        "value": -8,
+        "formula": null
+      },
+      {
+        "cell": "F13",
+        "value": -2,
+        "formula": null
+      },
+      {
+        "cell": "G13",
+        "value": -4,
+        "formula": null
+      },
+      {
+        "cell": "H13",
+        "value": -6,
+        "formula": null
+      },
+      {
+        "cell": "A14",
+        "value": "Invasão/Revolta",
+        "formula": null
+      },
+      {
+        "cell": "E14",
+        "value": -7,
+        "formula": null
+      },
+      {
+        "cell": "F14",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "G14",
+        "value": -2,
+        "formula": null
+      },
+      {
+        "cell": "H14",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "A15",
+        "value": "Gloria",
+        "formula": null
+      },
+      {
+        "cell": "B15",
+        "value": 2,
+        "formula": null
+      },
+      {
+        "cell": "C15",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "E15",
+        "value": 5,
+        "formula": null
+      },
+      {
+        "cell": "G15",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "A16",
+        "value": "Invasão/Revolta",
+        "formula": null
+      },
+      {
+        "cell": "E16",
+        "value": -3,
+        "formula": null
+      },
+      {
+        "cell": "F16",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "G16",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "H16",
+        "value": -4,
+        "formula": null
+      },
+      {
+        "cell": "A17",
+        "value": "Bonus",
+        "formula": null
+      },
+      {
+        "cell": "A18",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B18",
+        "value": 34,
+        "formula": "=SUM(B8:B17)"
+      },
+      {
+        "cell": "C18",
+        "value": 29,
+        "formula": "=SUM(C8:C17)"
+      },
+      {
+        "cell": "D18",
+        "value": 30,
+        "formula": "=SUM(D8:D17)"
+      },
+      {
+        "cell": "E18",
+        "value": 2,
+        "formula": "=SUM(E8:E17)"
+      },
+      {
+        "cell": "F18",
+        "value": 14,
+        "formula": "=SUM(F8:F17)"
+      },
+      {
+        "cell": "G18",
+        "value": 20,
+        "formula": "=SUM(G8:G17)"
+      },
+      {
+        "cell": "H18",
+        "value": 23,
+        "formula": "=SUM(H8:H17)"
+      },
+      {
+        "cell": "A19",
+        "value": "Bens da casa",
+        "formula": null
+      },
+      {
+        "cell": "A20",
+        "value": "Defesa",
+        "formula": null
+      },
+      {
+        "cell": "D20",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "E20",
+        "value": 1,
+        "formula": "=1"
+      },
+      {
+        "cell": "F20",
+        "value": "(Espaço de cura)",
+        "formula": null
+      },
+      {
+        "cell": "G20",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "A21",
+        "value": "Torre",
+        "formula": null
+      },
+      {
+        "cell": "B21",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "D21",
+        "value": "Sorte da Casa",
+        "formula": null
+      },
+      {
+        "cell": "E21",
+        "value": 0,
+        "formula": null
+      },
+      {
+        "cell": "G21",
+        "value": "Sorte da Casa",
+        "formula": null
+      },
+      {
+        "cell": "H21",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "A22",
+        "value": "Salão",
+        "formula": null
+      },
+      {
+        "cell": "B22",
+        "value": -20,
+        "formula": null
+      },
+      {
+        "cell": "A23",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B23",
+        "value": 4,
+        "formula": "=B18+B21+B22"
+      },
+      {
+        "cell": "D23",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E23",
+        "value": 15,
+        "formula": "=F18+E21+E22+E20"
+      },
+      {
+        "cell": "G23",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "H23",
+        "value": 2,
+        "formula": "=E18"
+      },
+      {
+        "cell": "A24",
+        "value": "Poder",
+        "formula": null
+      },
+      {
+        "cell": "B24",
+        "value": "Treinamento",
+        "formula": null
+      },
+      {
+        "cell": "C24",
+        "value": "Custo",
+        "formula": null
+      },
+      {
+        "cell": "D24",
+        "value": "Terras",
+        "formula": null
+      },
+      {
+        "cell": "G24",
+        "value": "Influencia",
+        "formula": null
+      },
+      {
+        "cell": "A25",
+        "value": "Engenheiros ",
+        "formula": null
+      },
+      {
+        "cell": "B25",
+        "value": "Treinado",
+        "formula": null
+      },
+      {
+        "cell": "C25",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D25",
+        "value": "Terra alagada",
+        "formula": null
+      },
+      {
+        "cell": "E25",
+        "value": 3,
+        "formula": null
+      },
+      {
+        "cell": "G25",
+        "value": "Filho",
+        "formula": null
+      },
+      {
+        "cell": "H25",
+        "value": -20,
+        "formula": null
+      },
+      {
+        "cell": "A26",
+        "value": "Apoio ",
+        "formula": null
+      },
+      {
+        "cell": "B26",
+        "value": "Verde",
+        "formula": null
+      },
+      {
+        "cell": "C26",
+        "value": -3,
+        "formula": null
+      },
+      {
+        "cell": "D26",
+        "value": "Córrego",
+        "formula": null
+      },
+      {
+        "cell": "E26",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "A27",
+        "value": "Guarnição ",
+        "formula": null
+      },
+      {
+        "cell": "B27",
+        "value": "Verde",
+        "formula": null
+      },
+      {
+        "cell": "C27",
+        "value": -3,
+        "formula": null
+      },
+      {
+        "cell": "D27",
+        "value": "Povoado",
+        "formula": null
+      },
+      {
+        "cell": "E27",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "A28",
+        "value": "Arqueiros",
+        "formula": null
+      },
+      {
+        "cell": "B28",
+        "value": "Veterano",
+        "formula": null
+      },
+      {
+        "cell": "C28",
+        "value": -8,
+        "formula": null
+      },
+      {
+        "cell": "D28",
+        "value": "Pasto",
+        "formula": null
+      },
+      {
+        "cell": "E28",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "D29",
+        "value": "Montanha ",
+        "formula": null
+      },
+      {
+        "cell": "E29",
+        "value": 9,
+        "formula": null
+      },
+      {
+        "cell": "D30",
+        "value": "Ruína",
+        "formula": null
+      },
+      {
+        "cell": "E30",
+        "value": 3,
+        "formula": null
+      },
+      {
+        "cell": "D31",
+        "value": "Floresta Esparsa",
+        "formula": null
+      },
+      {
+        "cell": "E31",
+        "value": 3,
+        "formula": null
+      },
+      {
+        "cell": "A34",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B34",
+        "value": 1,
+        "formula": "=G18+C25+C26+C27+C28+C29+C30+C31"
+      },
+      {
+        "cell": "D34",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E34",
+        "value": 0,
+        "formula": "=SUM(E24:E33)-(D18)"
+      },
+      {
+        "cell": "G34",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "H34",
+        "value": 9,
+        "formula": "=C18+SUM(H25:H33)"
+      },
+      {
+        "cell": "A35",
+        "value": "Riqueza",
+        "formula": null
+      },
+      {
+        "cell": "A36",
+        "value": "Campos de Ervas",
+        "formula": null
+      },
+      {
+        "cell": "B36",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D36",
+        "value": "Sorte da casa*",
+        "formula": null
+      },
+      {
+        "cell": "A37",
+        "value": "Apiário",
+        "formula": null
+      },
+      {
+        "cell": "B37",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D37",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "E37",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "A38",
+        "value": "Espaço de cura",
+        "formula": null
+      },
+      {
+        "cell": "B38",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "D38",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "E38",
+        "value": 0,
+        "formula": null
+      },
+      {
+        "cell": "A39",
+        "value": "Artefato de cura real*",
+        "formula": null
+      },
+      {
+        "cell": "B39",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "D39",
+        "value": "Campos de erva",
+        "formula": null
+      },
+      {
+        "cell": "E39",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "D40",
+        "value": "Apiário ",
+        "formula": null
+      },
+      {
+        "cell": "E40",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "D41",
+        "value": "Espaço de cura",
+        "formula": null
+      },
+      {
+        "cell": "E41",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "A43",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B43",
+        "value": 4,
+        "formula": "=H18+sum(B36:B41)"
+      },
+      {
+        "cell": "D43",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E43",
+        "value": -7,
+        "formula": "=SUM(E37:E41)"
+      }
+    ]
+  },
+  "silversky": {
+    "file": "Casa Silversky.xlsx",
+    "sha256": "2e344f17a0e54afbbaa655b9fdc2e1035b7d242d0f90254563f9a53d86619250",
+    "totalRow": 13,
+    "cells": [
+      {
+        "cell": "A1",
+        "value": "Ficha de Casa",
+        "formula": null
+      },
+      {
+        "cell": "A2",
+        "value": "Nome",
+        "formula": null
+      },
+      {
+        "cell": "B2",
+        "value": "SIlversky",
+        "formula": null
+      },
+      {
+        "cell": "C2",
+        "value": "Susserano",
+        "formula": null
+      },
+      {
+        "cell": "D2",
+        "value": "Mantlepard",
+        "formula": null
+      },
+      {
+        "cell": "E2",
+        "value": "Região",
+        "formula": null
+      },
+      {
+        "cell": "F2",
+        "value": "Horselands",
+        "formula": null
+      },
+      {
+        "cell": "G2",
+        "value": "Lorde",
+        "formula": null
+      },
+      {
+        "cell": "H2",
+        "value": "Ashladd Silversky",
+        "formula": null
+      },
+      {
+        "cell": "A3",
+        "value": "Lema",
+        "formula": null
+      },
+      {
+        "cell": "B3",
+        "value": "Ever High",
+        "formula": null
+      },
+      {
+        "cell": "C3",
+        "value": "Fundação",
+        "formula": null
+      },
+      {
+        "cell": "D3",
+        "value": 1512,
+        "formula": null
+      },
+      {
+        "cell": "E3",
+        "value": "Arma",
+        "formula": null
+      },
+      {
+        "cell": "F3",
+        "value": "Lança",
+        "formula": null
+      },
+      {
+        "cell": "G3",
+        "value": "Herdeiro",
+        "formula": null
+      },
+      {
+        "cell": "A4",
+        "value": "Fortaleza",
+        "formula": null
+      },
+      {
+        "cell": "A6",
+        "value": "Atributos da Casa",
+        "formula": null
+      },
+      {
+        "cell": "A7",
+        "value": "Bonus Inicial",
+        "formula": null
+      },
+      {
+        "cell": "B7",
+        "value": "Defesa",
+        "formula": null
+      },
+      {
+        "cell": "C7",
+        "value": "Influencia",
+        "formula": null
+      },
+      {
+        "cell": "D7",
+        "value": "Terras",
+        "formula": null
+      },
+      {
+        "cell": "E7",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "F7",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "G7",
+        "value": "Poder",
+        "formula": null
+      },
+      {
+        "cell": "H7",
+        "value": "Riqueza",
+        "formula": null
+      },
+      {
+        "cell": "A8",
+        "value": "Modificador",
+        "formula": null
+      },
+      {
+        "cell": "B8",
+        "value": 0,
+        "formula": null
+      },
+      {
+        "cell": "C8",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "D8",
+        "value": 20,
+        "formula": null
+      },
+      {
+        "cell": "E8",
+        "value": 5,
+        "formula": null
+      },
+      {
+        "cell": "F8",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "G8",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "H8",
+        "value": 15,
+        "formula": null
+      },
+      {
+        "cell": "A9",
+        "value": "Bonus Inicial",
+        "formula": null
+      },
+      {
+        "cell": "B9",
+        "value": 19,
+        "formula": null
+      },
+      {
+        "cell": "C9",
+        "value": 28,
+        "formula": null
+      },
+      {
+        "cell": "D9",
+        "value": 24,
+        "formula": null
+      },
+      {
+        "cell": "E9",
+        "value": 22,
+        "formula": null
+      },
+      {
+        "cell": "F9",
+        "value": 30,
+        "formula": null
+      },
+      {
+        "cell": "G9",
+        "value": 13,
+        "formula": null
+      },
+      {
+        "cell": "H9",
+        "value": 26,
+        "formula": null
+      },
+      {
+        "cell": "A10",
+        "value": "Eventos Historicos",
+        "formula": null
+      },
+      {
+        "cell": "A11",
+        "value": "Declinio",
+        "formula": null
+      },
+      {
+        "cell": "C11",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D11",
+        "value": -2,
+        "formula": null
+      },
+      {
+        "cell": "G11",
+        "value": -4,
+        "formula": null
+      },
+      {
+        "cell": "H11",
+        "value": -4,
+        "formula": null
+      },
+      {
+        "cell": "A12",
+        "value": "Bonus",
+        "formula": null
+      },
+      {
+        "cell": "B12",
+        "value": 2,
+        "formula": null
+      },
+      {
+        "cell": "G12",
+        "value": 2,
+        "formula": null
+      },
+      {
+        "cell": "A13",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B13",
+        "value": 21,
+        "formula": null
+      },
+      {
+        "cell": "C13",
+        "value": 33,
+        "formula": "=SUM(C8:C12)"
+      },
+      {
+        "cell": "D13",
+        "value": 42,
+        "formula": "=SUM(D8:D12)"
+      },
+      {
+        "cell": "E13",
+        "value": 27,
+        "formula": "=SUM(E8:E12)"
+      },
+      {
+        "cell": "F13",
+        "value": 40,
+        "formula": "=SUM(F8:F12)"
+      },
+      {
+        "cell": "G13",
+        "value": 21,
+        "formula": "=SUM(G8:G12)"
+      },
+      {
+        "cell": "H13",
+        "value": 37,
+        "formula": "=SUM(H8:H12)"
+      },
+      {
+        "cell": "A14",
+        "value": "Bens da casa",
+        "formula": null
+      },
+      {
+        "cell": "A15",
+        "value": "Defesa",
+        "formula": null
+      },
+      {
+        "cell": "D15",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "G15",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "A16",
+        "value": "Torre",
+        "formula": null
+      },
+      {
+        "cell": "B16",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "A18",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B18",
+        "value": 11,
+        "formula": "=B13+B16"
+      },
+      {
+        "cell": "D18",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E18",
+        "value": 40,
+        "formula": "=F13+E16+E17"
+      },
+      {
+        "cell": "G18",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "H18",
+        "value": 27,
+        "formula": "=E13"
+      },
+      {
+        "cell": "A19",
+        "value": "Poder",
+        "formula": null
+      },
+      {
+        "cell": "D19",
+        "value": "Terras",
+        "formula": null
+      },
+      {
+        "cell": "G19",
+        "value": "Influencia",
+        "formula": null
+      },
+      {
+        "cell": "A20",
+        "value": "GuarniçãoTreinada",
+        "formula": null
+      },
+      {
+        "cell": "B20",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D20",
+        "value": "Planícies",
+        "formula": null
+      },
+      {
+        "cell": "E20",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "A21",
+        "value": "Infantaria Treinada",
+        "formula": null
+      },
+      {
+        "cell": "B21",
+        "value": -7,
+        "formula": null
+      },
+      {
+        "cell": "D21",
+        "value": "Mina",
+        "formula": null
+      },
+      {
+        "cell": "E21",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "A22",
+        "value": "Arqueiros Veteranos",
+        "formula": null
+      },
+      {
+        "cell": "B22",
+        "value": -8,
+        "formula": null
+      },
+      {
+        "cell": "D22",
+        "value": "Povoado",
+        "formula": null
+      },
+      {
+        "cell": "E22",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "D23",
+        "value": "Rio",
+        "formula": null
+      },
+      {
+        "cell": "E23",
+        "value": -3,
+        "formula": null
+      },
+      {
+        "cell": "D24",
+        "value": "Colinas",
+        "formula": null
+      },
+      {
+        "cell": "E24",
+        "value": -7,
+        "formula": null
+      },
+      {
+        "cell": "A29",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B29",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "D29",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E29",
+        "value": 7,
+        "formula": "=D13+E20+E21+E22+E23+E24+E25+E26+E27"
+      },
+      {
+        "cell": "G29",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "H29",
+        "value": 33,
+        "formula": "=C13+H21"
+      },
+      {
+        "cell": "A30",
+        "value": "Riqueza",
+        "formula": null
+      },
+      {
+        "cell": "D31",
+        "value": "Sorte da casa*",
+        "formula": null
+      },
+      {
+        "cell": "A38",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B38",
+        "value": 37,
+        "formula": "=H13+sum(B31:B36)"
+      },
+      {
+        "cell": "D38",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E38",
+        "value": 0,
+        "formula": "=SUM(E33:E36)"
+      }
+    ]
+  },
+  "everlost": {
+    "file": "Casa Everlost.xlsx",
+    "sha256": "fe4e22257d026d60f561ad517b17a2837631916b32a2a1dba1f43f4802801bd2",
+    "totalRow": 14,
+    "cells": [
+      {
+        "cell": "A1",
+        "value": "Ficha de Casa",
+        "formula": null
+      },
+      {
+        "cell": "A2",
+        "value": "Nome",
+        "formula": null
+      },
+      {
+        "cell": "B2",
+        "value": "Everlost",
+        "formula": null
+      },
+      {
+        "cell": "C2",
+        "value": "Susserano",
+        "formula": null
+      },
+      {
+        "cell": "D2",
+        "value": "Mantlepard",
+        "formula": null
+      },
+      {
+        "cell": "E2",
+        "value": "Região",
+        "formula": null
+      },
+      {
+        "cell": "F2",
+        "value": "Horselands",
+        "formula": null
+      },
+      {
+        "cell": "G2",
+        "value": "Lorde",
+        "formula": null
+      },
+      {
+        "cell": "H2",
+        "value": "Barão Odnot Everlost",
+        "formula": null
+      },
+      {
+        "cell": "A3",
+        "value": "Lema",
+        "formula": null
+      },
+      {
+        "cell": "B3",
+        "value": "Nós sempre lembramos",
+        "formula": null
+      },
+      {
+        "cell": "C3",
+        "value": "Fundação",
+        "formula": null
+      },
+      {
+        "cell": "D3",
+        "value": "1000 DR",
+        "formula": null
+      },
+      {
+        "cell": "E3",
+        "value": "Arma",
+        "formula": null
+      },
+      {
+        "cell": "F3",
+        "value": "N/A",
+        "formula": null
+      },
+      {
+        "cell": "G3",
+        "value": "Herdeiro",
+        "formula": null
+      },
+      {
+        "cell": "H3",
+        "value": "John Everlost",
+        "formula": null
+      },
+      {
+        "cell": "A4",
+        "value": "Fortaleza",
+        "formula": null
+      },
+      {
+        "cell": "B4",
+        "value": "Wind Springs",
+        "formula": null
+      },
+      {
+        "cell": "C4",
+        "value": "Vassalo",
+        "formula": null
+      },
+      {
+        "cell": "D4",
+        "value": "Everet",
+        "formula": null
+      },
+      {
+        "cell": "G4",
+        "value": "Herdeiro",
+        "formula": null
+      },
+      {
+        "cell": "A6",
+        "value": "Atributos da Casa",
+        "formula": null
+      },
+      {
+        "cell": "A7",
+        "value": "Bonus Inicial",
+        "formula": null
+      },
+      {
+        "cell": "B7",
+        "value": "Defesa",
+        "formula": null
+      },
+      {
+        "cell": "C7",
+        "value": "Influencia",
+        "formula": null
+      },
+      {
+        "cell": "D7",
+        "value": "Terras",
+        "formula": null
+      },
+      {
+        "cell": "E7",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "F7",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "G7",
+        "value": "Poder",
+        "formula": null
+      },
+      {
+        "cell": "H7",
+        "value": "Riqueza",
+        "formula": null
+      },
+      {
+        "cell": "A8",
+        "value": "Modificador",
+        "formula": null
+      },
+      {
+        "cell": "B8",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "C8",
+        "value": 20,
+        "formula": null
+      },
+      {
+        "cell": "D8",
+        "value": 20,
+        "formula": null
+      },
+      {
+        "cell": "E8",
+        "value": 40,
+        "formula": null
+      },
+      {
+        "cell": "F8",
+        "value": 29,
+        "formula": null
+      },
+      {
+        "cell": "G8",
+        "value": 80,
+        "formula": null
+      },
+      {
+        "cell": "H8",
+        "value": 51,
+        "formula": null
+      },
+      {
+        "cell": "A9",
+        "value": "Bonus Inicial",
+        "formula": null
+      },
+      {
+        "cell": "A10",
+        "value": "Eventos Historicos",
+        "formula": null
+      },
+      {
+        "cell": "A13",
+        "value": "Bonus",
+        "formula": null
+      },
+      {
+        "cell": "A14",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B14",
+        "value": 10,
+        "formula": "=SUM(B8:B13)"
+      },
+      {
+        "cell": "C14",
+        "value": 20,
+        "formula": "=SUM(C8:C13)"
+      },
+      {
+        "cell": "D14",
+        "value": 20,
+        "formula": "=SUM(D8:D13)"
+      },
+      {
+        "cell": "E14",
+        "value": 40,
+        "formula": "=SUM(E8:E13)"
+      },
+      {
+        "cell": "F14",
+        "value": 29,
+        "formula": "=SUM(F8:F13)"
+      },
+      {
+        "cell": "G14",
+        "value": 80,
+        "formula": "=SUM(G8:G13)"
+      },
+      {
+        "cell": "H14",
+        "value": 51,
+        "formula": "=SUM(H8:H13)"
+      },
+      {
+        "cell": "A15",
+        "value": "Bens da casa",
+        "formula": null
+      },
+      {
+        "cell": "A16",
+        "value": "Defesa",
+        "formula": null
+      },
+      {
+        "cell": "D16",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "G16",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "A17",
+        "value": "Hall",
+        "formula": null
+      },
+      {
+        "cell": "B17",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "A19",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B19",
+        "value": 0,
+        "formula": "=B14+B17"
+      },
+      {
+        "cell": "D19",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E19",
+        "value": 29,
+        "formula": "=F14+E17+E18"
+      },
+      {
+        "cell": "G19",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "H19",
+        "value": 40,
+        "formula": "=E14"
+      },
+      {
+        "cell": "A20",
+        "value": "Poder",
+        "formula": null
+      },
+      {
+        "cell": "B20",
+        "value": "Treinamento",
+        "formula": null
+      },
+      {
+        "cell": "D20",
+        "value": "Terras",
+        "formula": null
+      },
+      {
+        "cell": "G20",
+        "value": "Influencia",
+        "formula": null
+      },
+      {
+        "cell": "A21",
+        "value": "Infantaria",
+        "formula": null
+      },
+      {
+        "cell": "B21",
+        "value": "Veterano",
+        "formula": null
+      },
+      {
+        "cell": "C21",
+        "value": -9,
+        "formula": null
+      },
+      {
+        "cell": "D21",
+        "value": "Colina",
+        "formula": null
+      },
+      {
+        "cell": "E21",
+        "value": -7,
+        "formula": null
+      },
+      {
+        "cell": "G21",
+        "value": "Primogenito",
+        "formula": null
+      },
+      {
+        "cell": "H21",
+        "value": -20,
+        "formula": null
+      },
+      {
+        "cell": "A22",
+        "value": "Infantaria",
+        "formula": null
+      },
+      {
+        "cell": "B22",
+        "value": "Veterano",
+        "formula": null
+      },
+      {
+        "cell": "C22",
+        "value": -9,
+        "formula": null
+      },
+      {
+        "cell": "D22",
+        "value": "Povoado",
+        "formula": null
+      },
+      {
+        "cell": "E22",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "A23",
+        "value": "Infantaria",
+        "formula": null
+      },
+      {
+        "cell": "B23",
+        "value": "Veterano",
+        "formula": null
+      },
+      {
+        "cell": "C23",
+        "value": -9,
+        "formula": null
+      },
+      {
+        "cell": "D23",
+        "value": "Floresta rasa",
+        "formula": null
+      },
+      {
+        "cell": "E23",
+        "value": -3,
+        "formula": null
+      },
+      {
+        "cell": "A24",
+        "value": "Arqueiro",
+        "formula": null
+      },
+      {
+        "cell": "B24",
+        "value": "Veterano",
+        "formula": null
+      },
+      {
+        "cell": "C24",
+        "value": -8,
+        "formula": null
+      },
+      {
+        "cell": "A25",
+        "value": "Cavalaria",
+        "formula": null
+      },
+      {
+        "cell": "B25",
+        "value": "Veterano",
+        "formula": null
+      },
+      {
+        "cell": "C25",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "A26",
+        "value": "Cavalaria",
+        "formula": null
+      },
+      {
+        "cell": "B26",
+        "value": "Veterano",
+        "formula": null
+      },
+      {
+        "cell": "C26",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "A27",
+        "value": "Vassalo",
+        "formula": null
+      },
+      {
+        "cell": "C27",
+        "value": -20,
+        "formula": null
+      },
+      {
+        "cell": "A28",
+        "value": "Academia Militar",
+        "formula": null
+      },
+      {
+        "cell": "C28",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "A30",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B30",
+        "value": 0,
+        "formula": "=G14+C21+C22+C23+C24+C25+C26+C27+C28"
+      },
+      {
+        "cell": "D30",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E30",
+        "value": 0,
+        "formula": "=D14+E21+E22+E23+E24+E25+E26+E27+E28"
+      },
+      {
+        "cell": "G30",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "H30",
+        "value": 0,
+        "formula": "=C14+H21"
+      },
+      {
+        "cell": "A31",
+        "value": "Riqueza",
+        "formula": null
+      },
+      {
+        "cell": "A32",
+        "value": "Mestre de Armas",
+        "formula": null
+      },
+      {
+        "cell": "B32",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "D32",
+        "value": "Sorte da casa*",
+        "formula": null
+      },
+      {
+        "cell": "A33",
+        "value": "Academia Militar",
+        "formula": null
+      },
+      {
+        "cell": "B33",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "A34",
+        "value": "Broad",
+        "formula": null
+      },
+      {
+        "cell": "B34",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "A35",
+        "value": "Melhoria de Armas",
+        "formula": null
+      },
+      {
+        "cell": "B35",
+        "value": -6,
+        "formula": null
+      },
+      {
+        "cell": "A36",
+        "value": "Canil",
+        "formula": null
+      },
+      {
+        "cell": "B36",
+        "value": -20,
+        "formula": null
+      },
+      {
+        "cell": "A39",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B39",
+        "value": 0,
+        "formula": "=H14+sum(B32:B37)"
+      },
+      {
+        "cell": "D39",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E39",
+        "value": 0,
+        "formula": "=SUM(E34:E37)"
+      }
+    ]
+  },
+  "erdenor": {
+    "file": "Casa Erdenor.xlsx",
+    "sha256": "395232cf179dcc18a365407ddc695177b625421575472ba2f06f46aaf5b24eff",
+    "totalRow": 14,
+    "cells": [
+      {
+        "cell": "A1",
+        "value": "Ficha de Casa",
+        "formula": null
+      },
+      {
+        "cell": "A2",
+        "value": "Nome",
+        "formula": null
+      },
+      {
+        "cell": "B2",
+        "value": "Erdenor",
+        "formula": null
+      },
+      {
+        "cell": "C2",
+        "value": "Susserano",
+        "formula": null
+      },
+      {
+        "cell": "D2",
+        "value": "Yallander",
+        "formula": null
+      },
+      {
+        "cell": "E2",
+        "value": "Região",
+        "formula": null
+      },
+      {
+        "cell": "F2",
+        "value": "Horselands",
+        "formula": null
+      },
+      {
+        "cell": "G2",
+        "value": "Lorde",
+        "formula": null
+      },
+      {
+        "cell": "A3",
+        "value": "Lema",
+        "formula": null
+      },
+      {
+        "cell": "B3",
+        "value": "We Grow",
+        "formula": null
+      },
+      {
+        "cell": "C3",
+        "value": "Fundação",
+        "formula": null
+      },
+      {
+        "cell": "D3",
+        "value": 1513,
+        "formula": null
+      },
+      {
+        "cell": "E3",
+        "value": "Arma",
+        "formula": null
+      },
+      {
+        "cell": "G3",
+        "value": "Herdeiro",
+        "formula": null
+      },
+      {
+        "cell": "H3",
+        "value": "Corvaen Erdenor",
+        "formula": null
+      },
+      {
+        "cell": "A4",
+        "value": "Fortaleza",
+        "formula": null
+      },
+      {
+        "cell": "B4",
+        "value": "Goldenbull tower",
+        "formula": null
+      },
+      {
+        "cell": "A6",
+        "value": "Atributos da Casa",
+        "formula": null
+      },
+      {
+        "cell": "A7",
+        "value": "Bonus Inicial",
+        "formula": null
+      },
+      {
+        "cell": "B7",
+        "value": "Defesa",
+        "formula": null
+      },
+      {
+        "cell": "C7",
+        "value": "Influencia",
+        "formula": null
+      },
+      {
+        "cell": "D7",
+        "value": "Terras",
+        "formula": null
+      },
+      {
+        "cell": "E7",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "F7",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "G7",
+        "value": "Poder",
+        "formula": null
+      },
+      {
+        "cell": "H7",
+        "value": "Riqueza",
+        "formula": null
+      },
+      {
+        "cell": "A8",
+        "value": "Modificador",
+        "formula": null
+      },
+      {
+        "cell": "B8",
+        "value": 19,
+        "formula": null
+      },
+      {
+        "cell": "C8",
+        "value": 22,
+        "formula": null
+      },
+      {
+        "cell": "D8",
+        "value": 21,
+        "formula": null
+      },
+      {
+        "cell": "E8",
+        "value": 27,
+        "formula": null
+      },
+      {
+        "cell": "F8",
+        "value": 33,
+        "formula": null
+      },
+      {
+        "cell": "G8",
+        "value": 20,
+        "formula": null
+      },
+      {
+        "cell": "H8",
+        "value": 37,
+        "formula": null
+      },
+      {
+        "cell": "A9",
+        "value": "Bonus Inicial",
+        "formula": null
+      },
+      {
+        "cell": "B9",
+        "value": 0,
+        "formula": null
+      },
+      {
+        "cell": "C9",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "D9",
+        "value": 20,
+        "formula": null
+      },
+      {
+        "cell": "E9",
+        "value": 5,
+        "formula": null
+      },
+      {
+        "cell": "F9",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "G9",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "H9",
+        "value": 15,
+        "formula": null
+      },
+      {
+        "cell": "A10",
+        "value": "Eventos Historicos",
+        "formula": null
+      },
+      {
+        "cell": "A11",
+        "value": "Vilão",
+        "formula": null
+      },
+      {
+        "cell": "C11",
+        "value": 2,
+        "formula": null
+      },
+      {
+        "cell": "E11",
+        "value": -2,
+        "formula": null
+      },
+      {
+        "cell": "F11",
+        "value": -1,
+        "formula": null
+      },
+      {
+        "cell": "G11",
+        "value": 5,
+        "formula": null
+      },
+      {
+        "cell": "A12",
+        "value": "Escândalo",
+        "formula": null
+      },
+      {
+        "cell": "C12",
+        "value": -4,
+        "formula": null
+      },
+      {
+        "cell": "D12",
+        "value": -1,
+        "formula": null
+      },
+      {
+        "cell": "G12",
+        "value": -6,
+        "formula": null
+      },
+      {
+        "cell": "H12",
+        "value": -2,
+        "formula": null
+      },
+      {
+        "cell": "A13",
+        "value": "Bonus",
+        "formula": null
+      },
+      {
+        "cell": "G13",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "H13",
+        "value": 5,
+        "formula": null
+      },
+      {
+        "cell": "A14",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B14",
+        "value": 19,
+        "formula": "=SUM(B8:B13)"
+      },
+      {
+        "cell": "C14",
+        "value": 30,
+        "formula": "=SUM(C8:C13)"
+      },
+      {
+        "cell": "D14",
+        "value": 40,
+        "formula": "=SUM(D8:D13)"
+      },
+      {
+        "cell": "E14",
+        "value": 30,
+        "formula": "=SUM(E8:E13)"
+      },
+      {
+        "cell": "F14",
+        "value": 42,
+        "formula": "=SUM(F8:F13)"
+      },
+      {
+        "cell": "G14",
+        "value": 30,
+        "formula": "=SUM(G8:G13)"
+      },
+      {
+        "cell": "H14",
+        "value": 55,
+        "formula": "=SUM(H8:H13)"
+      },
+      {
+        "cell": "A15",
+        "value": "Bens da casa",
+        "formula": null
+      },
+      {
+        "cell": "A16",
+        "value": "Defesa",
+        "formula": null
+      },
+      {
+        "cell": "D16",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "G16",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "A17",
+        "value": "Torre",
+        "formula": null
+      },
+      {
+        "cell": "B17",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "D17",
+        "value": "Abadia",
+        "formula": null
+      },
+      {
+        "cell": "E17",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "D18",
+        "value": "Granary",
+        "formula": null
+      },
+      {
+        "cell": "E18",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "A19",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B19",
+        "value": 9,
+        "formula": "=B14+B17"
+      },
+      {
+        "cell": "D19",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E19",
+        "value": 44,
+        "formula": "=F14+E17+E18"
+      },
+      {
+        "cell": "G19",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "H19",
+        "value": 30,
+        "formula": "=E14"
+      },
+      {
+        "cell": "A20",
+        "value": "Poder",
+        "formula": null
+      },
+      {
+        "cell": "B20",
+        "value": "Treinamento",
+        "formula": null
+      },
+      {
+        "cell": "C20",
+        "value": "Custo",
+        "formula": null
+      },
+      {
+        "cell": "D20",
+        "value": "Terras",
+        "formula": null
+      },
+      {
+        "cell": "G20",
+        "value": "Influencia",
+        "formula": null
+      },
+      {
+        "cell": "A21",
+        "value": "Saqueadores",
+        "formula": null
+      },
+      {
+        "cell": "B21",
+        "value": "Veteranos",
+        "formula": null
+      },
+      {
+        "cell": "C21",
+        "value": -8,
+        "formula": null
+      },
+      {
+        "cell": "D21",
+        "value": "Planície ",
+        "formula": null
+      },
+      {
+        "cell": "E21",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "G21",
+        "value": "Herdeiros",
+        "formula": null
+      },
+      {
+        "cell": "H21",
+        "value": 0,
+        "formula": null
+      },
+      {
+        "cell": "A22",
+        "value": "Criminosos",
+        "formula": null
+      },
+      {
+        "cell": "B22",
+        "value": "Veteranos",
+        "formula": null
+      },
+      {
+        "cell": "C22",
+        "value": -6,
+        "formula": null
+      },
+      {
+        "cell": "D22",
+        "value": "Rio",
+        "formula": null
+      },
+      {
+        "cell": "E22",
+        "value": -3,
+        "formula": null
+      },
+      {
+        "cell": "G22",
+        "value": "Abadia",
+        "formula": null
+      },
+      {
+        "cell": "H22",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "D23",
+        "value": "Estrada",
+        "formula": null
+      },
+      {
+        "cell": "E23",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "G23",
+        "value": "Primogênito",
+        "formula": null
+      },
+      {
+        "cell": "H23",
+        "value": -20,
+        "formula": null
+      },
+      {
+        "cell": "D24",
+        "value": "Pasto",
+        "formula": null
+      },
+      {
+        "cell": "E24",
+        "value": -1,
+        "formula": null
+      },
+      {
+        "cell": "G24",
+        "value": "Segundo filho",
+        "formula": null
+      },
+      {
+        "cell": "H24",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "D25",
+        "value": "Ruína",
+        "formula": null
+      },
+      {
+        "cell": "E25",
+        "value": -3,
+        "formula": null
+      },
+      {
+        "cell": "D26",
+        "value": "Povoado",
+        "formula": null
+      },
+      {
+        "cell": "E26",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "D27",
+        "value": "Planície",
+        "formula": null
+      },
+      {
+        "cell": "E27",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D28",
+        "value": "Estrada",
+        "formula": null
+      },
+      {
+        "cell": "E28",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D29",
+        "value": "Pasto",
+        "formula": null
+      },
+      {
+        "cell": "E29",
+        "value": -1,
+        "formula": null
+      },
+      {
+        "cell": "A30",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B30",
+        "value": 16,
+        "formula": "=G14+C21+C22+C23+C24+C25+C26+C27"
+      },
+      {
+        "cell": "D30",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E30",
+        "value": 3,
+        "formula": "=D14+E21+E22+E23+E24+E25+E26+E27+E28"
+      },
+      {
+        "cell": "G30",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "H30",
+        "value": 1,
+        "formula": "=C14+sum(H22:H29)"
+      },
+      {
+        "cell": "A31",
+        "value": "Riqueza",
+        "formula": null
+      },
+      {
+        "cell": "A32",
+        "value": "Mercado Clandestino",
+        "formula": null
+      },
+      {
+        "cell": "B32",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "D32",
+        "value": "Sorte da casa*",
+        "formula": null
+      },
+      {
+        "cell": "A33",
+        "value": "Mercado Clandestino",
+        "formula": null
+      },
+      {
+        "cell": "B33",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "A34",
+        "value": "Rede de espiões",
+        "formula": null
+      },
+      {
+        "cell": "B34",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "D34",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "E34",
+        "value": -2,
+        "formula": null
+      },
+      {
+        "cell": "A35",
+        "value": "Abadia",
+        "formula": null
+      },
+      {
+        "cell": "B35",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "D35",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "E35",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "A36",
+        "value": "Agricultura",
+        "formula": null
+      },
+      {
+        "cell": "B36",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D36",
+        "value": "Agricultura",
+        "formula": null
+      },
+      {
+        "cell": "E36",
+        "value": 1,
+        "formula": null
+      },
+      {
+        "cell": "A37",
+        "value": "Granary",
+        "formula": null
+      },
+      {
+        "cell": "B37",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "A39",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B39",
+        "value": 16,
+        "formula": "=H14+sum(B32:B37)"
+      },
+      {
+        "cell": "D39",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E39",
+        "value": 0,
+        "formula": "=SUM(E34:E37)"
+      }
+    ]
+  },
+  "fewmerry": {
+    "file": "Casa Fewmerry.xlsx",
+    "sha256": "1cd5f91fae9fd4bad0c9fe3db56a519c755ac617bf991742aed901b8ece269d9",
+    "totalRow": 14,
+    "cells": [
+      {
+        "cell": "A1",
+        "value": "Ficha de Casa",
+        "formula": null
+      },
+      {
+        "cell": "A2",
+        "value": "Nome",
+        "formula": null
+      },
+      {
+        "cell": "B2",
+        "value": "Fewmerry",
+        "formula": null
+      },
+      {
+        "cell": "C2",
+        "value": "Susserano",
+        "formula": null
+      },
+      {
+        "cell": "E2",
+        "value": "Região",
+        "formula": null
+      },
+      {
+        "cell": "F2",
+        "value": "Dragoncoast",
+        "formula": null
+      },
+      {
+        "cell": "G2",
+        "value": "Lorde",
+        "formula": null
+      },
+      {
+        "cell": "A3",
+        "value": "Lema",
+        "formula": null
+      },
+      {
+        "cell": "B3",
+        "value": "Forward - Adiante",
+        "formula": null
+      },
+      {
+        "cell": "C3",
+        "value": "Fundação",
+        "formula": null
+      },
+      {
+        "cell": "D3",
+        "value": 1372,
+        "formula": null
+      },
+      {
+        "cell": "E3",
+        "value": "Arma",
+        "formula": null
+      },
+      {
+        "cell": "G3",
+        "value": "Herdeiro",
+        "formula": null
+      },
+      {
+        "cell": "A4",
+        "value": "Fortaleza",
+        "formula": null
+      },
+      {
+        "cell": "A6",
+        "value": "Atributos da Casa",
+        "formula": null
+      },
+      {
+        "cell": "A7",
+        "value": "Bonus Inicial",
+        "formula": null
+      },
+      {
+        "cell": "B7",
+        "value": "Defesa",
+        "formula": null
+      },
+      {
+        "cell": "C7",
+        "value": "Influencia",
+        "formula": null
+      },
+      {
+        "cell": "D7",
+        "value": "Terras",
+        "formula": null
+      },
+      {
+        "cell": "E7",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "F7",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "G7",
+        "value": "Poder",
+        "formula": null
+      },
+      {
+        "cell": "H7",
+        "value": "Riqueza",
+        "formula": null
+      },
+      {
+        "cell": "A8",
+        "value": "Modificador",
+        "formula": null
+      },
+      {
+        "cell": "B8",
+        "value": 24,
+        "formula": null
+      },
+      {
+        "cell": "C8",
+        "value": 26,
+        "formula": null
+      },
+      {
+        "cell": "D8",
+        "value": 12,
+        "formula": null
+      },
+      {
+        "cell": "E8",
+        "value": 29,
+        "formula": null
+      },
+      {
+        "cell": "F8",
+        "value": 27,
+        "formula": null
+      },
+      {
+        "cell": "G8",
+        "value": 22,
+        "formula": null
+      },
+      {
+        "cell": "H8",
+        "value": 30,
+        "formula": null
+      },
+      {
+        "cell": "A9",
+        "value": "Bonus Inicial",
+        "formula": null
+      },
+      {
+        "cell": "B9",
+        "value": 5,
+        "formula": null
+      },
+      {
+        "cell": "C9",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "D9",
+        "value": 15,
+        "formula": null
+      },
+      {
+        "cell": "E9",
+        "value": 0,
+        "formula": null
+      },
+      {
+        "cell": "F9",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "G9",
+        "value": 10,
+        "formula": null
+      },
+      {
+        "cell": "H9",
+        "value": 20,
+        "formula": null
+      },
+      {
+        "cell": "A10",
+        "value": "Eventos Historicos",
+        "formula": null
+      },
+      {
+        "cell": "A11",
+        "value": "Vitoria",
+        "formula": null
+      },
+      {
+        "cell": "B11",
+        "value": 2,
+        "formula": null
+      },
+      {
+        "cell": "C11",
+        "value": 6,
+        "formula": null
+      },
+      {
+        "cell": "G11",
+        "value": 4,
+        "formula": null
+      },
+      {
+        "cell": "A12",
+        "value": "Invasão",
+        "formula": null
+      },
+      {
+        "cell": "E12",
+        "value": -7,
+        "formula": null
+      },
+      {
+        "cell": "F12",
+        "value": -2,
+        "formula": null
+      },
+      {
+        "cell": "G12",
+        "value": -4,
+        "formula": null
+      },
+      {
+        "cell": "H12",
+        "value": -2,
+        "formula": null
+      },
+      {
+        "cell": "A13",
+        "value": "Bonus",
+        "formula": null
+      },
+      {
+        "cell": "C13",
+        "value": 6,
+        "formula": null
+      },
+      {
+        "cell": "H13",
+        "value": 3,
+        "formula": null
+      },
+      {
+        "cell": "A14",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B14",
+        "value": 31,
+        "formula": "=SUM(B8:B13)"
+      },
+      {
+        "cell": "C14",
+        "value": 48,
+        "formula": "=SUM(C8:C13)"
+      },
+      {
+        "cell": "D14",
+        "value": 27,
+        "formula": "=SUM(D8:D13)"
+      },
+      {
+        "cell": "E14",
+        "value": 22,
+        "formula": "=SUM(E8:E13)"
+      },
+      {
+        "cell": "F14",
+        "value": 35,
+        "formula": "=SUM(F8:F13)"
+      },
+      {
+        "cell": "G14",
+        "value": 32,
+        "formula": "=SUM(G8:G13)"
+      },
+      {
+        "cell": "H14",
+        "value": 51,
+        "formula": "=SUM(H8:H13)"
+      },
+      {
+        "cell": "A15",
+        "value": "Bens da casa",
+        "formula": null
+      },
+      {
+        "cell": "A16",
+        "value": "Defesa",
+        "formula": null
+      },
+      {
+        "cell": "D16",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "G16",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "A17",
+        "value": "Salão Pequeno",
+        "formula": null
+      },
+      {
+        "cell": "B17",
+        "value": -20,
+        "formula": null
+      },
+      {
+        "cell": "D17",
+        "value": "Sorte da Casa",
+        "formula": null
+      },
+      {
+        "cell": "E17",
+        "value": 3,
+        "formula": "=3"
+      },
+      {
+        "cell": "G17",
+        "value": "Sorte da Casa",
+        "formula": null
+      },
+      {
+        "cell": "H17",
+        "value": -2,
+        "formula": null
+      },
+      {
+        "cell": "A18",
+        "value": "Torre",
+        "formula": null
+      },
+      {
+        "cell": "B18",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "A19",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B19",
+        "value": 1,
+        "formula": "=B14+B17+B18"
+      },
+      {
+        "cell": "D19",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E19",
+        "value": 38,
+        "formula": "=F14+E17+E18"
+      },
+      {
+        "cell": "G19",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "H19",
+        "value": 22,
+        "formula": "=E14"
+      },
+      {
+        "cell": "A20",
+        "value": "Poder",
+        "formula": null
+      },
+      {
+        "cell": "B20",
+        "value": "Treinamento",
+        "formula": null
+      },
+      {
+        "cell": "D20",
+        "value": "Terras",
+        "formula": null
+      },
+      {
+        "cell": "G20",
+        "value": "Influencia",
+        "formula": null
+      },
+      {
+        "cell": "A21",
+        "value": "Batedores",
+        "formula": null
+      },
+      {
+        "cell": "B21",
+        "value": "Treinada",
+        "formula": null
+      },
+      {
+        "cell": "C21",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D21",
+        "value": "Planicie",
+        "formula": null
+      },
+      {
+        "cell": "E21",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "G21",
+        "value": "Primogenito",
+        "formula": null
+      },
+      {
+        "cell": "H21",
+        "value": -20,
+        "formula": null
+      },
+      {
+        "cell": "A22",
+        "value": "Infantaria",
+        "formula": null
+      },
+      {
+        "cell": "B22",
+        "value": "treinada",
+        "formula": null
+      },
+      {
+        "cell": "C22",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D22",
+        "value": "Povoado",
+        "formula": null
+      },
+      {
+        "cell": "E22",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "G22",
+        "value": "Segundo filho",
+        "formula": null
+      },
+      {
+        "cell": "H22",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "A23",
+        "value": "Apoio",
+        "formula": null
+      },
+      {
+        "cell": "B23",
+        "value": "Treinada",
+        "formula": null
+      },
+      {
+        "cell": "C23",
+        "value": -7,
+        "formula": null
+      },
+      {
+        "cell": "D23",
+        "value": "Rio",
+        "formula": null
+      },
+      {
+        "cell": "E23",
+        "value": -3,
+        "formula": null
+      },
+      {
+        "cell": "G23",
+        "value": "Terceiro filho",
+        "formula": null
+      },
+      {
+        "cell": "H23",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "A24",
+        "value": "Marinheiros",
+        "formula": null
+      },
+      {
+        "cell": "B24",
+        "value": "Treinada",
+        "formula": null
+      },
+      {
+        "cell": "C24",
+        "value": -7,
+        "formula": null
+      },
+      {
+        "cell": "D24",
+        "value": "Estrada",
+        "formula": null
+      },
+      {
+        "cell": "E24",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "A25",
+        "value": "Navio de guerra",
+        "formula": null
+      },
+      {
+        "cell": "B25",
+        "value": "Verde",
+        "formula": null
+      },
+      {
+        "cell": "C25",
+        "value": -8,
+        "formula": null
+      },
+      {
+        "cell": "D25",
+        "value": "Floresta esparsa",
+        "formula": null
+      },
+      {
+        "cell": "E25",
+        "value": -3,
+        "formula": null
+      },
+      {
+        "cell": "D26",
+        "value": "Pasto",
+        "formula": null
+      },
+      {
+        "cell": "E26",
+        "value": -1,
+        "formula": null
+      },
+      {
+        "cell": "A30",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B30",
+        "value": 0,
+        "formula": "=G14+C21+C22+C23+C24+C25+C26+C27"
+      },
+      {
+        "cell": "D30",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E30",
+        "value": 0,
+        "formula": "=D14+E21+E22+E23+E24+E25+E26+E27+E28"
+      },
+      {
+        "cell": "G30",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "H30",
+        "value": 13,
+        "formula": "=C14+SUM(H21:H29)"
+      },
+      {
+        "cell": "A31",
+        "value": "Riqueza",
+        "formula": null
+      },
+      {
+        "cell": "A32",
+        "value": "corte",
+        "formula": null
+      },
+      {
+        "cell": "B32",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D32",
+        "value": "Sorte da casa*",
+        "formula": null
+      },
+      {
+        "cell": "A33",
+        "value": "festival (seasonall)",
+        "formula": null
+      },
+      {
+        "cell": "B33",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "D33",
+        "value": "Lei",
+        "formula": null
+      },
+      {
+        "cell": "E33",
+        "value": -2,
+        "formula": null
+      },
+      {
+        "cell": "A34",
+        "value": "standart of life (entourage)",
+        "formula": null
+      },
+      {
+        "cell": "B34",
+        "value": -6,
+        "formula": null
+      },
+      {
+        "cell": "D34",
+        "value": "População",
+        "formula": null
+      },
+      {
+        "cell": "E34",
+        "value": 3,
+        "formula": null
+      },
+      {
+        "cell": "A35",
+        "value": "timber (lumber mill)",
+        "formula": null
+      },
+      {
+        "cell": "B35",
+        "value": -10,
+        "formula": null
+      },
+      {
+        "cell": "A36",
+        "value": "trading inn (growth)",
+        "formula": null
+      },
+      {
+        "cell": "B36",
+        "value": -15,
+        "formula": null
+      },
+      {
+        "cell": "A37",
+        "value": "toll",
+        "formula": null
+      },
+      {
+        "cell": "B37",
+        "value": -5,
+        "formula": null
+      },
+      {
+        "cell": "A39",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "B39",
+        "value": 5,
+        "formula": "=H14+sum(B32:B37)"
+      },
+      {
+        "cell": "D39",
+        "value": "Total",
+        "formula": null
+      },
+      {
+        "cell": "E39",
+        "value": 1,
+        "formula": "=SUM(E33:E37)"
+      }
+    ]
+  }
+}

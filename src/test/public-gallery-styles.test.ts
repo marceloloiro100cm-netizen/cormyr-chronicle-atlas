@@ -13,7 +13,7 @@ describe('public noble gallery stylesheet', () => {
       const rule = (selector: string) => {
         const matches = rules.filter(r => r.selectorText?.split(',').map(s => s.trim()).includes(selector));
         expect(matches, selector).toHaveLength(1);
-        return matches[0].style;
+        return matches[0]!.style;
       };
       expect(rule('.castle-art-gallery-grid').getPropertyValue('display')).toBe('grid');
       expect(rule('.castle-art-gallery-grid').getPropertyValue('grid-template-columns')).toContain('min(100%, 240px)');
