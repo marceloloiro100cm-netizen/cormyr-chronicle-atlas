@@ -12,7 +12,7 @@ import { improveEquipment } from './equipment';
 import { buySiege } from './siege';
 import { equipUnit, resolveSurvivors, changeUnitState, proposeVassal, approveVassal, SURVIVOR_CONDITIONS } from './military';
 import { linkVassalNpcs, validateVassalNpcs } from './vassal-links';
-import { assignCourt, validateCourtRecord } from './court';
+import { assignCourt, removeCourtAssignment, validateCourtRecord } from './court';
 const npcIdsSchema=z.array(z.string().uuid()).max(100);
 export const readCourtMember=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({houseId:z.string(),id:z.string().uuid()})).handler(async({data,context})=>{
  const r=await context.supabase.from('campaign_records').select('id,house_id,kind,title,content').eq('house_id',data.houseId).eq('id',data.id).single();
@@ -116,6 +116,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     rule='Mini-ficha da vassala · recursos independentes da suserana';
   }
   if(data.action==='court') {const member=z.object({id:z.string().uuid(),npcId:z.string().uuid(),role:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args);const record=await context.supabase.from('campaign_records').select('house_id,kind,title,content,visibility').eq('id',member.npcId).single();if(record.error)throw new Error('Integrante da Corte indisponível.');validateCourtRecord(data.houseId,record.data);if(!isNarrativeNpc(record.data))throw new Error('Selecione um NPC narrativo, não uma ficha técnica.');next=assignCourt(state,{...member,name:record.data.visibility==='house'?record.data.title:'Integrante restrito'});rule='Corte · cargo ligado a registro existente, sem copiar personagem';}
+  if(data.action==='court_remove'){const {id}=z.object({id:z.string().uuid()}).parse(args);next=removeCourtAssignment(state,id);rule='Corte · vínculo removido; personagem e histórico preservados';}
   if(data.action==='return_to_draft'){if(state.phase!=='review')throw new Error('A criação não está em revisão.');if(data.explanation.trim().length<5)throw new Error('Registre o motivo da devolução.');next.phase='draft';}
   if(data.action==='clear_pending'){const {indices}=z.object({indices:z.array(z.number().int().nonnegative()).min(1)}).parse(args);if(data.explanation.trim().length<10)throw new Error('Registre como as pendências foram resolvidas.');if(indices.some(i=>i>=state.pending.length))throw new Error('Pendência indisponível.');data.explanation+=' · Resolvidas: '+indices.map(i=>state.pending[i]).join('; ');next.pending=state.pending.filter((_,i)=>!indices.includes(i));}
   if(data.action==='submit'){if(state.phase!=='draft')throw new Error('Criação já enviada.');if(!state.domains.length)throw new Error('Adicione ao menos um domínio.');if(!state.regionalApplied&&state.method!=='import')throw new Error('Revise os recursos.');next.phase='review';}
