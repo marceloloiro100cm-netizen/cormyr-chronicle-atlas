@@ -14,14 +14,17 @@ import type { Panel } from './panel-data';
 import {MailComposer,replaceMailDraft,MailLinkFields,useMailOptions,type MailLinks,type MailOptions} from './mail-compose';
 import {NARRATION_GROUPS,narrationHouseIds} from '@/lib/mail-groups';
 import {NarratorMailNotes} from './narrator-mail-notes';
+import {MailPeriodNotice} from './mail-period-notice';
+import {dateKey} from '@/lib/calendar/harptos';
 
 
-function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Responder'}:{letterId:string;replyId?:string|undefined;recipientId:string;roundRevision:string;onSave:()=>unknown;label?:string}){
+function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Responder',isAdmin=false}:{letterId:string;replyId?:string|undefined;recipientId:string;roundRevision:string;onSave:()=>unknown;label?:string;isAdmin?:boolean}){
   const {data:deliveryWeek=null}=useQuery({queryKey:['reply-delivery',recipientId,roundRevision],queryFn:async()=>{const r=await supabase.rpc('reply_delivery_week',{p_recipient:recipientId});if(r.error)throw r.error;return r.data;},refetchInterval:15000});
   const [open,setOpen]=useState(false),[content,setContent]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);const key=useRef<string|null>(null);
   const [images,setImages]=useState<PendingImage[]>([]);
+  const [signedBy,setSignedBy]=useState('');
   const [campaignDate,setCampaignDate]=useState('');
-  return open?<form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(content,images,key.current);}catch(err){setMessage(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const draft=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';const {error}=draft?await datedMail('save_weekly_reply_draft',{p_id:key.current,p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent},campaignDate):await datedMail('reply_weekly_message',{p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent,p_key:key.current,p_draft:false},campaignDate);if(error)setMessage(error.message);else{key.current=null;setContent('');setImages([]);setOpen(false);onSave();}setBusy(false);}}><p role="status">{deliveryWeek?`Previsão de entrega: Semana ${deliveryWeek}. O envio confirma a semana disponível no servidor.`:"Sem semana aberta."}</p><CampaignDatePicker value={campaignDate} onChange={setCampaignDate}/><label>Resposta<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label><ImagePicker images={images} onChange={setImages} disabled={busy}/><div className="campaign-actions"><Button name="action" value="draft" variant="outline" disabled={busy}>Salvar rascunho</Button><Button disabled={busy||deliveryWeek===null}>{busy?'Salvando…':'Enviar resposta'}</Button></div><p role="status">{message}</p></form>:<Button onClick={()=>setOpen(true)}>{label}</Button>;
+  return open?<form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(content,images,key.current);}catch(err){setMessage(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const draft=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';const {error}=draft?await datedMail('save_weekly_reply_draft',{p_id:key.current,p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent,p_signed_by:isAdmin?signedBy.trim():null},campaignDate):await datedMail('reply_weekly_message',{p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent,p_key:key.current,p_draft:false,p_signed_by:isAdmin?signedBy.trim():null},campaignDate);if(error)setMessage(error.message);else{key.current=null;setContent('');setImages([]);setOpen(false);onSave();}setBusy(false);}}><p role="status">{deliveryWeek?`Previsão de entrega: Semana ${deliveryWeek}. O envio confirma a semana disponível no servidor.`:"Sem semana aberta."}</p><CampaignDatePicker value={campaignDate} onChange={setCampaignDate}/><label>Resposta<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label>{isAdmin&&<label>Assinado por (NPC / cargo)<input maxLength={120} value={signedBy} onChange={e=>setSignedBy(e.target.value)} placeholder="Ex.: Intendente da Casa"/></label>}<ImagePicker images={images} onChange={setImages} disabled={busy}/><div className="campaign-actions"><Button name="action" value="draft" variant="outline" disabled={busy}>Salvar rascunho</Button><Button disabled={busy||deliveryWeek===null}>{busy?'Salvando…':'Enviar resposta'}</Button></div><p role="status">{message}</p></form>:<Button onClick={()=>setOpen(true)}>{label}</Button>;
 }
 
 export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void;onManage?:(house:string)=>void;groupHouseIds?:string[]}){
@@ -48,6 +51,11 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   const [page,setPage]=useState(0);
   const client=useQueryClient();
   const {data:options}=useMailOptions();
+  const {data:calendar}=useQuery({queryKey:['campaign-calendar-period'],enabled:data.admin,queryFn:async()=>{
+   const r=await supabase.from('campaign_calendar').select('year,month,day,festival').limit(1).maybeSingle();
+   if(r.error)throw r.error;return r.data;
+  }});
+  const periodDate=calendar?dateKey({year:calendar.year,month:calendar.month,day:calendar.day,festival:calendar.festival}):'';
   const saved=()=>{client.invalidateQueries({queryKey:['calendar-events']});client.invalidateQueries({queryKey:['campaign-calendar']});client.invalidateQueries({queryKey:['noble-house']});client.invalidateQueries({queryKey:['mail-page']});client.invalidateQueries({queryKey:['mail-insights']});client.invalidateQueries({queryKey:['mail-overview-grouped']});client.invalidateQueries({queryKey:['mail-options']});onSave();};
   const groupKey=[...(groupHouseIds??[]),filters.group].join('|')||'all';
   useEffect(()=>{setPage(0);},[filters,groupKey]);
@@ -141,7 +149,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
                  const r=await supabase.rpc('delete_letter_reply',{p_id:answer.id,p_version:answer.version??1});
                  if(r.error)onError(r.error.message);else saved();}}>Excluir resposta</Button>
              </div>}
-            {!letter.deleted_at&&answer.author_user_id!==data.user.id&&answer.publication_state==='delivered'&&<ReplyForm letterId={letter.id} replyId={answer.id} recipientId={answer.author_user_id} roundRevision={roundRevision} onSave={saved}/>}
+            {!letter.deleted_at&&answer.author_user_id!==data.user.id&&answer.publication_state==='delivered'&&<ReplyForm letterId={letter.id} replyId={answer.id} recipientId={answer.author_user_id} roundRevision={roundRevision} onSave={saved} isAdmin={data.admin}/>}
           </article>)}
         </section>}
         {(letter.court_member_id||letter.military_unit_id)&&<div className="campaign-eyebrow">{letter.court_member_id&&<p>Corte: {linkName('court',letter.origin_house_id,letter.court_member_id)} · {letter.court_assignment==='order_recipient'?'Destinatário da ordem':'Executor'}</p>}{letter.military_unit_id&&<p>Unidade: {linkName('unit',letter.origin_house_id,letter.military_unit_id)}</p>}</div>}
@@ -162,7 +170,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
         {!letter.deleted_at&&letter.publication_state==='draft'&&letter.sender_user_id===data.user.id&&<Button variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const result=await supabase.rpc('schedule_letter_draft',{p_id:letter.id,p_week:letter.delivery_week??open??nextLetterNumber(data.letters)});if(result.error)onError(result.error.message);else saved();}}>Programar entrega</Button>}{!letter.deleted_at&&((data.admin&&letter.publication_state!=='draft')||(letter.publication_state==='draft'&&letter.sender_user_id===data.user.id))&&<LetterEdit letter={letter} onSave={saved}/>}
         {!letter.deleted_at&&letter.publication_state==='delivered'&&canAnswer&&replyTarget&&<ReplyForm
           letterId={letter.id} replyId={letter.sender_user_id===data.user.id?lastPlayerReply?.id:undefined}
-          recipientId={replyTarget} roundRevision={roundRevision} onSave={saved}
+          recipientId={replyTarget} roundRevision={roundRevision} onSave={saved} isAdmin={data.admin}
           label={letter.sender_user_id===data.user.id?(lastPlayerReply?'Responder à Casa':'Adicionar complemento'):'Responder'}/>}
         <Button variant="ghost" size="sm" onClick={()=>{toggle(letter.id);document.getElementById('missiva-'+letter.id)?.scrollIntoView({block:'nearest'});}}>Recolher</Button>
       </div>}
@@ -212,6 +220,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
         </section>
         <p className="text-muted-foreground text-sm">Indicadores de todos os resultados dos filtros ativos (sem limitar à página atual). Nesta página: {allLetters.length} missivas.</p>
         <p className="text-muted-foreground text-sm">Próxima semana permitida: <strong>{nextRound}</strong>. Abrir uma nova semana encerra a anterior; semanas encerradas não podem ser reabertas.</p>
+        <MailPeriodNotice date={periodDate}/>
         <div className="campaign-actions">{open!==null&&<Button variant="outline" onClick={async()=>{if(!confirm(`Fechar a Missiva ${open}? Os jogadores não poderão mais responder nem escrever.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:open,p_closed:true});if(error)onError(error.message);else saved();}}>Fechar Missiva {open}</Button>}<input type="number" min={nextRound} style={{width:140}} value={roundNumber} onChange={e=>setRoundNumber(e.target.value)} placeholder={`Próxima: ${nextRound}`} aria-label="Número da missiva a abrir"/><Button variant="outline" onClick={async()=>{const n=roundNumber?Number(roundNumber):nextRound;if(!Number.isInteger(n)||n!==nextRound){onError(`A próxima semana permitida é ${nextRound}. Não é possível pular ou retroceder.`);return;}const preview=data.letters.filter(l=>l.delivery_week===n&&l.publication_state==='scheduled');const responses=data.replies.filter(r=>r.delivery_week===n&&r.publication_state==='scheduled');if(!confirm(`Abrir Semana ${n}? ${preview.length} mensagens e ${responses.length} respostas serão liberadas. Destinatários: ${preview.map(l=>houseName(l.recipient_house_id)||'Jogador autorizado').join(', ')||'Nenhuma nova mensagem'}. A semana anterior será encerrada.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:n,p_closed:false});if(error)onError(error.message);else{setRoundNumber('');saved();}}}>Abrir missiva</Button></div>
         {compose&&<MailComposer key={draft?.key??0} data={data} me={me} initial={draft} onSave={()=>{setDraft(null);saved();}} onManage={onManage}/>}</>}
       {filters.box!=='enviadas'&&<><div className="campaign-heading"><h2>{filters.box==='excluidas'?'Missivas excluídas':data.admin&&filters.box!=='recebidas'?'Correspondência acompanhada':'Missivas recebidas'}</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
