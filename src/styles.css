@@ -516,3 +516,23 @@
   border-radius:5px;background:var(--campaign-light)}
 .mail-recipient-legacy button{padding:5px 8px;min-height:28px!important;
   border:1px solid var(--campaign-gold);border-radius:4px}
+
+/* Narrator's all-house missive hub: compact overview beside the nested filters. */
+.campaign-layout>div{min-width:0}
+.narrator-mail-hub{min-width:0;display:grid;gap:16px}
+.narrator-mail-hub-heading h2{font:normal 30px/1.15 Georgia,serif;margin:4px 0 8px}
+.narrator-mail-hub-heading p:last-child{margin:0;color:var(--muted-foreground);font-size:14px;line-height:1.5}
+.narrator-mail-hub-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.narrator-mail-hub-overview>div{display:flex;flex-direction:column;gap:4px;min-width:0;background:var(--campaign-paper);border:1px solid var(--border);border-radius:7px;padding:12px}
+.narrator-mail-hub-overview strong{font:normal 24px/1.1 Georgia,serif;color:var(--primary)}
+.narrator-mail-hub-overview span{font-size:12px;color:var(--muted-foreground)}
+@media(max-width:1360px){
+ .narrator-mail-hub .campaign-mail-layout{grid-template-columns:minmax(0,1fr);gap:18px}
+ .narrator-mail-hub .campaign-mail-side{position:static;max-height:none;overflow:visible;grid-template-columns:repeat(3,minmax(0,1fr))}
+ .narrator-mail-hub .campaign-mail-side>.campaign-eyebrow{grid-column:1/-1}
+}
+@media(max-width:850px){.narrator-mail-hub .campaign-mail-side{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){
+ .narrator-mail-hub-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .narrator-mail-hub .campaign-mail-side{grid-template-columns:minmax(0,1fr)}
+}
