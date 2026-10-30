@@ -35,6 +35,8 @@ export type HouseState = {
   month: number; treasury: number; fortunes: Fortune[]; actions: { month: number; type: string; notes: string }[];
   pending: string[]; importSources: string[]; vassals?:Vassal[]|undefined;
   creationHistory?: CreationHistory | undefined;
+  creationBonuses?: { playerId: string; resource: Resource; die: number }[] | undefined;
+  creationBonusesApplied?: boolean | undefined;
 };
 export type Ledger = { id: string; action: string; explanation: string; campaignMonth: number; before: Resources; after: Resources; rule: string; key: string; createdAt?: string | undefined; actor?: string | undefined };
 export type HouseDocument = { state: HouseState; version: number; ledger: Ledger[]; syncState: string };
