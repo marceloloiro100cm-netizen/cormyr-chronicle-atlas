@@ -66,3 +66,9 @@ As células extraídas e seus valores/fórmulas estão em src/test/fixtures/hous
 ## Verificação automatizada
 
 Testes conferem as somas das linhas de origem, saldos das seis casas, Pasto omitido de Erdenor, custos históricos e distinção entre Lei e Sorte. PostgreSQL testa IDs textuais, snapshots 0036/0041, preservação de ficha editada, nomes ambíguos, auditoria, repetição após compras e privacidade. O teste da galeria verifica que as regras CSS podem ser lidas no nível correto e preservam a imagem completa.
+
+## Execução confirmada
+
+Após a aprovação dos testes e merge do PR #62, a migração foi aplicada ao banco do projeto. A leitura posterior retornou applied para as seis casas: Ashkar v5, Erdenor v4, Everlost v2, Fewmerry v2, Grantass v2 e Silversky v2. Foram conferidos os 80 registros de posses, 23 unidades e todos os saldos da tabela. Os quatro vínculos da Corte de Ashkar/Erdenor e a aprovação de Qazir foram comparados aos estados anteriores e preservados.
+
+Validação: 298 testes passaram, 7 testes condicionais pulados; 6 testes do acervo, TypeScript, build e testes PostgreSQL aprovados. A publicação foi solicitada na hospedagem; o CSS servido pelo site público respondeu HTTP 200 e contém o bloco único de galeria, imagens completas, colunas responsivas e dimensionamento do link interno. Essa verificação não substitui uma inspeção visual autenticada de todas as fichas.
