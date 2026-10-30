@@ -183,7 +183,7 @@ describe('lote 4: métricas completas do Narrador',()=>{
    const panel={...data(),admin:true} as unknown as Panel;
    mount(panel);
    const stats=await screen.findByRole('region',{name:'Indicadores da gestão de missivas'});
-   expect(stats).toHaveTextContent('7Entregues');
+   await waitFor(()=>expect(stats).toHaveTextContent('7Entregues'));
    expect(stats).toHaveTextContent('3Aguardando Jogador');
    expect(stats).toHaveTextContent('2Aguardando Narrador');
    expect(stats).toHaveTextContent('4Respostas programadas (próx. semana)');
