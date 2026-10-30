@@ -48,6 +48,18 @@ describe('destinatários por região e seleção individual reservada',()=>{
   for(const person of ['Carlos Castellan','Cla Vasconcellos','Douglas Tondo','Gabriel Chiomento'])
    expect(screen.queryByText(person)).not.toBeInTheDocument();
  });
+ it('seleção rápida do Grupo 1 nunca inclui o Grupo 2',()=>{
+  render(<Example/>);
+  fireEvent.click(screen.getByRole('button',{name:'Selecionar Grupo 1'}));
+  expect(chosen().split(',').sort()).toEqual(['h:erdenor','h:everlost','h:harcourt','h:silversky'].sort());
+  expect(chosen()).not.toContain('fewmerry');
+ });
+ it('Grupo 2 substitui o Grupo 1 para evitar envio geral regional acidental',()=>{
+  render(<Example/>);
+  fireEvent.click(screen.getByRole('button',{name:'Selecionar Grupo 1'}));
+  fireEvent.click(screen.getByRole('button',{name:'Selecionar Grupo 2'}));
+  expect(chosen()).toBe('h:fewmerry,h:grantass');
+ });
  it('permite selecionar todas as casas de Dragon Coast pelo flag e depois desmarcar',()=>{
   render(<Example/>);
   const coast=screen.getByRole('region',{name:'Destinatários de Dragon Coast'});
