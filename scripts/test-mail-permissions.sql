@@ -43,8 +43,8 @@ SELECT public.save_weekly_reply_draft('00000000-0000-0000-0000-000000000201','00
 SELECT pg_temp.assert((SELECT count(*)=1 FROM public.letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000201'),'draft author can see own reply');
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
 SELECT pg_temp.assert((SELECT count(*)=0 FROM public.letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000201'),'narrator cannot read a player private draft');
-SELECT pg_temp.assert((SELECT count(*)=0 FROM jsonb_array_elements(public.mail_page('{"box":"rascunhos"}')->'replies') r
- WHERE r->>'idempotency_key'='00000000-0000-0000-0000-000000000201'),'narrator paged inbox cannot leak draft');
+SELECT pg_temp.assert((SELECT count(*)=0 FROM jsonb_array_elements(public.mail_page('{"box":"rascunhos"}')->'replies') AS replies(value)
+ WHERE replies.value->>'idempotency_key'='00000000-0000-0000-0000-000000000201'),'narrator paged inbox cannot leak draft');
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',true);
 SELECT pg_temp.assert((SELECT count(*)=0 FROM public.letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000201'),'third party cannot see private player draft');
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
