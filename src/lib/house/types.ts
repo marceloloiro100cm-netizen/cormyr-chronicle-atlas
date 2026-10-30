@@ -6,8 +6,14 @@ export type Resources = Record<Resource, number>;
 export const RESOURCE_NAMES: Record<Resource, string> = { defense: 'Defesa', influence: 'Influência', lands: 'Terras', law: 'Lei', population: 'População', power: 'Poder', wealth: 'Riqueza' };
 export const zeroResources = (): Resources => ({ defense: 0, influence: 0, lands: 0, law: 0, population: 0, power: 0, wealth: 0 });
 export type Cost = { resource: Resource; amount: number; mode: 'allocation' | 'permanent' };
-export type Requirement = { kind: 'terrain' | 'feature' | 'community' | 'parent' | 'resource' | 'water' | 'fortification'; values?: string[] | undefined; minimum?: number | undefined; resource?: Resource | undefined };
-export type Effect = { kind: 'fortune' | 'gain' | 'mitigation' | 'discount' | 'defensive' | 'action' | 'conversion'; amount?: number | undefined; resource?: Resource | undefined; target?: string | undefined; description: string };
+export type Requirement = {
+ kind: 'terrain' | 'feature' | 'community' | 'parent' | 'resource' | 'water' | 'fortification'
+  | 'max_community' | 'max_resource' | 'forbidden_feature' | 'holding' | 'forbidden_season' | 'any_of';
+ values?: string[] | undefined; minimum?: number | undefined; maximum?: number | undefined;
+ resource?: Resource | undefined;
+ alternatives?: {kind:'terrain'|'feature'|'community'|'fortification'|'holding'|'water';values?:string[]|undefined}[] | undefined;
+};
+export type Effect = { kind: 'fortune' | 'gain' | 'mitigation' | 'discount' | 'defensive' | 'action' | 'conversion'; amount?: number | undefined; resource?: Resource | undefined; target?: string | undefined; description: string; seasons?: string[] | undefined; maxResource?: {resource:Resource;maximum:number}|undefined };
 export type CatalogItem = {
   id: string; name: string; original: string; category: 'terrain' | 'feature' | 'community' | 'fortification' | 'estate' | 'lifestyle' | 'personage' | 'settlement' | 'improvement' | 'equipment' | 'vassal';
   description: string; costs: Cost[]; requirements: Requirement[]; effects: Effect[];
