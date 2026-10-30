@@ -206,6 +206,10 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   if(data.action==='clear_pending'){const {indices}=z.object({indices:z.array(z.number().int().nonnegative()).min(1)}).parse(args);if(data.explanation.trim().length<10)throw new Error('Registre como as pendências foram resolvidas.');if(indices.some(i=>i>=state.pending.length))throw new Error('Pendência indisponível.');data.explanation+=' · Resolvidas: '+indices.map(i=>state.pending[i]).join('; ');next.pending=state.pending.filter((_,i)=>!indices.includes(i));}
   if(data.action==='submit'){
     if(state.phase!=='draft')throw new Error('Criação já enviada.');
+    if(state.method==='budget'&&state.budget===null)
+      throw new Error('Escolha o método tradicional (7d6) ou obtenha autorização para point buy.');
+    if(state.method==='roll'&&state.rolls.length!==RESOURCE_KEYS.length)
+      throw new Error('Registre todas as sete rolagens iniciais da Casa.');
     if(!state.domains.length)throw new Error('Adicione ao menos um domínio.');
     if(!state.regionalApplied&&state.method!=='import')throw new Error('Revise os recursos.');
     if(state.creationHistory&&!state.creationHistory.applied&&state.creationHistory.events.length!==state.creationHistory.limit)
