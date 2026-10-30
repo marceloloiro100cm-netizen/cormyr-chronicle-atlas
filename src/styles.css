@@ -544,3 +544,18 @@
 .narrator-mail-region-picker input[type=checkbox]{width:17px!important;min-width:17px!important;height:17px!important;min-height:17px!important;flex:none;margin:0;padding:0}
 .narrator-mail-region-picker small{font-size:11px;font-weight:400;color:var(--muted-foreground)}
 .narrator-mail-region-picker p{flex:1 0 100%;margin:0;font-size:12px;color:var(--muted-foreground)}
+
+/* A missiva original termina na assinatura; respostas são mensagens separadas,
+   visualmente conectadas no mesmo fio (inclusive para mensagens legadas). */
+.campaign-letter-original{padding:12px 0 22px;border-bottom:1px solid var(--border)}
+.campaign-replies.campaign-reply-thread{margin:28px 0 22px;padding:18px;border:1px solid var(--border);border-top:3px solid var(--campaign-gold);border-left:1px solid var(--border);background:var(--campaign-light);border-radius:8px}
+.campaign-reply-thread>.campaign-reply-thread-heading{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;padding:0;border:0}
+.campaign-reply-thread-heading h4{margin:0;font:600 18px/1.3 Georgia,serif;color:var(--primary)}
+.campaign-reply-thread-arrow{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--campaign-purple);color:var(--campaign-gold);font-size:20px}
+.campaign-reply-thread-count{font-size:12px;color:var(--muted-foreground)}
+.campaign-replies .campaign-reply-card{margin:10px 0 0;padding:20px;border:1px solid var(--border);border-left:4px solid var(--campaign-gold);border-radius:7px;background:var(--campaign-paper);overflow-wrap:anywhere}
+.campaign-letter .campaign-reply-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px 20px;flex-wrap:wrap;margin:0 0 20px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.campaign-reply-header strong{display:block;margin-top:5px;font:600 17px/1.4 Georgia,serif;color:var(--foreground)}
+.campaign-reply-header small{font-size:12px;color:var(--muted-foreground)}
+.campaign-reply-text{line-height:1.65;min-width:0}
+@media(max-width:700px){.campaign-replies.campaign-reply-thread{padding:12px}.campaign-replies .campaign-reply-card{padding:14px}}

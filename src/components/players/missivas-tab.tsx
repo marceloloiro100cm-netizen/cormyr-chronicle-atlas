@@ -94,12 +94,36 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
           <p className="text-sm font-semibold" role="status">Enviada na Semana {letter.creation_week} · Recebida na Semana {letter.delivery_week}</p>}
         {letter.historical_source&&<p className="text-muted-foreground text-sm">Correspondência histórica importada de {letter.historical_source} · não representa um novo envio pelo site.</p>}
         {data.admin&&letter.historical_source&&<p className="text-muted-foreground text-sm">{letter.historical_recipient_name?.includes('(NPC, Narrador)')?'Recebida pelo Narrador na qualidade de gestor da casa NPC.':letter.recipient_house_id?'Entregue à casa jogadora. O Narrador pode acompanhar administrativamente, mas não recebeu cópia da missiva.':'Correspondência arquivada.'}</p>}
-        <CampaignContent content={letter.content}/>
+        <section className="campaign-letter-original" aria-label="Texto da missiva original">
+          <CampaignContent content={letter.content}/>
+        </section>
+        {answers.length>0&&<section className="campaign-replies campaign-reply-thread" aria-label={`Fio de respostas: ${letter.subject}`}>
+          <div className="campaign-reply-thread-heading">
+            <span className="campaign-reply-thread-arrow" aria-hidden="true">↳</span>
+            <h4>Fio de respostas</h4>
+            <span className="campaign-reply-thread-count">{answers.length} {answers.length===1?'resposta':'respostas'}</span>
+          </div>
+          {answers.map((answer,index)=><article className="campaign-reply-card" key={answer.id} aria-label={`Resposta de ${answer.author_name}`}>
+            <header className="campaign-reply-header">
+              <div>
+                <span className="campaign-eyebrow">Resposta {index+1} · Missiva {answer.creation_week??answer.delivery_week??letter.letter_number??'?'}</span>
+                <strong>{answer.author_name}</strong>
+              </div>
+              <small>{answer.campaign_date?formatDate(answer.campaign_date):'Sem data histórica informada'} · {syncLabel(answer.sync_state)}</small>
+            </header>
+            {answer.publication_state==='draft'&&<div>Rascunho
+              {answer.author_user_id===data.user.id&&!letter.deleted_at&&<ReplyDraftEdit answer={answer} onSave={saved}/>}
+              {answer.author_user_id===data.user.id&&!letter.deleted_at&&<Button size="sm" variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const r=await supabase.rpc('schedule_weekly_reply_draft',{p_id:answer.id});if(r.error)onError(r.error.message);else saved();}}>Programar entrega</Button>}
+            </div>}
+            {answer.publication_state==='scheduled'&&<p>Aguardando abertura da Semana {answer.delivery_week}</p>}
+            <div className="campaign-reply-text"><CampaignContent content={answer.content}/></div>
+            {!letter.deleted_at&&answer.author_user_id!==data.user.id&&answer.publication_state==='delivered'&&<ReplyForm letterId={letter.id} replyId={answer.id} recipientId={answer.author_user_id} onSave={saved}/>}
+          </article>)}
+        </section>}
         {(letter.court_member_id||letter.military_unit_id)&&<div className="campaign-eyebrow">{letter.court_member_id&&<p>Corte: {linkName('court',letter.origin_house_id,letter.court_member_id)} · {letter.court_assignment==='order_recipient'?'Destinatário da ordem':'Executor'}</p>}{letter.military_unit_id&&<p>Unidade: {linkName('unit',letter.origin_house_id,letter.military_unit_id)}</p>}</div>}
         {letter.sender_user_id===data.user.id&&letter.publication_state==='delivered'&&<p>Destinatário: {letter.recipient_read?'leitura registrada':'sem leitura registrada'} · {hasDeliveredAnswer(letter,answers)?'resposta recebida':'aguardando resposta'}</p>}
         {data.admin&&letter.sender_user_id===data.user.id&&<details><summary>Leituras registradas pelos destinatários</summary>{data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).length===0?<p>Nenhuma leitura registrada.</p>:data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).map(r=><p key={r.user_id}>{data.players.find(p=>p.user_id===r.user_id)?.name??'Destinatário autorizado'} · {date(r.read_at)}{isLetterRead(letter.id,r,answers)?'':' · Há respostas posteriores'}</p>)}</details>}
         <p className="text-muted-foreground text-sm">{syncLabel(letter.sync_state)} · {letter.last_synced_at?date(letter.last_synced_at):'Ainda não sincronizada'}</p>
-        {answers.length>0&&<div className="campaign-replies">{answers.map(answer=><div key={answer.id}><span className="campaign-eyebrow">Missiva {answer.creation_week??answer.delivery_week??letter.letter_number??'?'} · Resposta</span><br/><strong>{answer.author_name}</strong>{answer.publication_state==='draft'?<div>Rascunho{answer.author_user_id===data.user.id&&!letter.deleted_at&&<ReplyDraftEdit answer={answer} onSave={saved}/>}{answer.author_user_id===data.user.id&&!letter.deleted_at&&<Button size="sm" variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const r=await supabase.rpc('schedule_weekly_reply_draft',{p_id:answer.id});if(r.error)onError(r.error.message);else saved();}}>Programar entrega</Button>}</div>:answer.publication_state==='scheduled'&&<p>Aguardando abertura da Semana {answer.delivery_week}</p>}<small> · {date(answer.created_at)} · {syncLabel(answer.sync_state)}</small><p>{formatDate(answer.campaign_date)}</p><CampaignContent content={answer.content}/>{!letter.deleted_at&&answer.author_user_id!==data.user.id&&answer.publication_state==='delivered'&&<ReplyForm letterId={letter.id} replyId={answer.id} recipientId={answer.author_user_id} onSave={saved}/>}</div>)}</div>}
         {threadLetters.length>0&&<div className="campaign-thread"><Button size="sm" variant="ghost" aria-expanded={threadOpen} onClick={()=>toggleThread(letter.id)}>{threadOpen?'Ocultar fio da conversa':`Ver relacionadas nesta página (${threadLetters.length} missiva(s) relacionada(s))`}</Button>{threadOpen&&threadLetters.map(other=>{const otherAnswers=viewReplies.filter(r=>r.letter_id===other.id);return <div key={other.id} className="campaign-thread-item"><span className="campaign-eyebrow">{other.letter_number?`Missiva ${other.letter_number} · `:''}{other.letter_kind==='geral'?'Geral':'Reservada'}</span><strong>{other.subject}</strong><small> · De: {other.sender_name} · {other.campaign_date?formatDate(other.campaign_date):date(other.created_at)}</small><CampaignContent content={other.content}/>{otherAnswers.map(a=><div key={a.id} className="campaign-replies"><span className="campaign-eyebrow">Missiva {a.creation_week??a.delivery_week??'?'} · Resposta</span><br/><strong>{a.author_name}</strong><small> · {date(a.created_at)}</small><CampaignContent content={a.content}/></div>)}</div>;})}</div>}
         {!letter.deleted_at&&<div className="campaign-actions">
           {!read&&letter.publication_state==='delivered'&&<Button variant="outline" onClick={async()=>{const {error}=await supabase.rpc('mark_letter_read',{p_id:letter.id});if(error&&error.code!=='23505')onError(error.message);else saved();}}>Marcar como lida</Button>}
