@@ -74,7 +74,7 @@ describe('item 17 — moeda, Glória e benefícios por Influência',()=>{
  });
  it('Sorte exige casa ativa, 5 Influência disponíveis e não permite compra após resolver o mês',()=>{
   const s=newHouseState('h');s.phase='active';s.base.influence=20;
-  expect(()=>spendInfluence(newHouseState('h'),'fortune','unique')).toThrow('ativa');
+  expect(()=>spendInfluence(newHouseState('h'),'fortune','unique')).toThrow('em campanha');
   const next=spendInfluence(s,'fortune','f1');
   expect(next.permanent.influence).toBe(-5);
   expect(balances(next).available.influence).toBe(15);
