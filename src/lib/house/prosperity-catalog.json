@@ -1008,7 +1008,15 @@
         "description": "G População +2; M População +1, Riqueza +1."
       },
       {
-        "kind": "action",
+        "kind": "mitigation",
+        "resource": "population",
+        "amount": 1,
+        "description": "M População +1, Riqueza +1."
+      },
+      {
+        "kind": "mitigation",
+        "resource": "wealth",
+        "amount": 1,
         "description": "M População +1, Riqueza +1."
       }
     ],
@@ -1838,7 +1846,9 @@
         "description": "G Influência +1; M Riqueza +1."
       },
       {
-        "kind": "action",
+        "kind": "mitigation",
+        "resource": "wealth",
+        "amount": 1,
         "description": "M Riqueza +1."
       }
     ],
@@ -2600,7 +2610,12 @@
       {
         "kind": "holding",
         "values": [
-          "pros-port",
+          "pros-port"
+        ]
+      },
+      {
+        "kind": "holding",
+        "values": [
           "pros-timber--lumber-mill"
         ]
       }
@@ -8571,7 +8586,9 @@
         "description": "G Riqueza +1; M Riqueza +1."
       },
       {
-        "kind": "action",
+        "kind": "mitigation",
+        "resource": "wealth",
+        "amount": 1,
         "description": "M Riqueza +1."
       }
     ],
