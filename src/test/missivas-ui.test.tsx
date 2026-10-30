@@ -219,6 +219,7 @@ describe('lote 5: complementos e manutenção do fio',()=>{
   fireEvent.change(screen.getByRole('textbox',{name:'Resposta'}),{target:{value:'O Narrador respondeu'}});
   fireEvent.click(screen.getByText('Selecionar dia no calendário'));
   fireEvent.click(screen.getByRole('button',{name:'1 de Hammer, 1522',hidden:true}));
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Enviar resposta'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button',{name:'Enviar resposta'}));
   await waitFor(()=>expect(rpc).toHaveBeenCalledWith('dated_mail_action',expect.objectContaining({
     p_action:'reply_weekly_message',
