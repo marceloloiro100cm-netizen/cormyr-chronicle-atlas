@@ -43,5 +43,6 @@ SELECT save_campaign_schedule_event(jsonb_build_object('id',(get_campaign_schedu
 SELECT pg_temp.assert(jsonb_array_length(get_campaign_schedule_events(1522,0))=1,'pending deletion still published');
 SELECT publish_campaign_schedule((get_campaign_calendar()->>'version')::int,'1522-01-11',true,8);
 SELECT pg_temp.assert(jsonb_array_length(get_campaign_schedule_events(1522,0))=0,'deletion takes effect only when published');
+RESET ROLE;
 SELECT pg_temp.assert((SELECT count(*)>=3 FROM campaign_schedule_event_audit),'event audit preserved');
 ROLLBACK;
