@@ -272,9 +272,11 @@ SELECT public.campaign_representation_action('reply',jsonb_build_object(
  'content','Tréplica preservada como rascunho',
  'key','00000000-0000-0000-0000-000000000371',
  'draft',true));
+RESET ROLE;
 SELECT pg_temp.assert((SELECT publication_state='draft' AND administrative_actor='00000000-0000-0000-0000-000000000001'::uuid
  FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000371'),
  'representation can author a private reply draft with audit actor');
+SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert((SELECT count(*)=2 FROM letter_receipts WHERE letter_id='00000000-0000-0000-0000-000000000200'),
  'representation draft does not change real receipts');
 SELECT public.stop_campaign_representation();
