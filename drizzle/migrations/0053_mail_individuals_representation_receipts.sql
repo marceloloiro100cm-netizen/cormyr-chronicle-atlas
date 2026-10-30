@@ -74,7 +74,7 @@ PERFORM set_config('request.jwt.claims',coalesce(claims,''),true); IF p_action<>
 -- The helper is SECURITY DEFINER so RLS on letter_replies cannot hide the
 -- historical snapshot row from the very audit policy that authorizes it.
 CREATE OR REPLACE FUNCTION public.can_read_reply_version(p_reply uuid,p_viewer uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
  SELECT EXISTS (
   SELECT 1 FROM letter_replies r JOIN campaign_letters l ON l.id=r.letter_id
   WHERE r.id=p_reply AND l.deleted_at IS NULL AND public.can_read_letter_as(l,p_viewer)
@@ -82,7 +82,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
      (r.publication_state<>'draft' AND EXISTS (
        SELECT 1 FROM user_roles u WHERE u.user_id=p_viewer AND u.role='admin')))
  );
-$;
+$$;
 REVOKE ALL ON FUNCTION public.can_read_reply_version(uuid,uuid) FROM PUBLIC,anon,authenticated;
 DROP POLICY IF EXISTS reply_versions_read ON public.letter_reply_versions;
 CREATE POLICY reply_versions_read ON public.letter_reply_versions
