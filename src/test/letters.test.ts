@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterLetters, hasDeliveredAnswer, matchesLetterBox, groupReceivedLetters, isLetterRead, nextLetterNumber, pendingRoundHouses, sentLetters, unreadReceivedCount, type LetterRow } from '@/lib/letters';
+import { filterLetters, hasDeliveredAnswer, matchesLetterBox, groupReceivedLetters, isLetterRead, narratorThreadStage, nextLetterNumber, pendingRoundHouses, sentLetters, unreadReceivedCount, type LetterRow } from '@/lib/letters';
 
 const row = (over: Partial<LetterRow>): LetterRow => ({
   id: crypto.randomUUID(),
@@ -152,5 +152,59 @@ describe('regressões de entrega e caixas',()=>{
   expect(matchesLetterBox(letter,[{...reply,publication_state:'draft'}],'rascunhos')).toBe(true);
   expect(matchesLetterBox(letter,[{...reply,publication_state:'scheduled'}],'programadas')).toBe(true);
   expect(matchesLetterBox({...letter,deleted_at:'now'},[reply],'historico')).toBe(false);
+ });
+});
+
+describe('lote 3: caixa de entrada e turnos do Narrador',()=>{
+ const narrator='narrador';
+ const gmLetter=row({id:'gm-letter',sender_user_id:narrator,recipient_house_id:'ashkar',publication_state:'delivered',delivered_at:'2026-10-24T10:00:00Z'});
+ const houseReply={id:'answer',letter_id:'gm-letter',author_user_id:'ashkar-user',publication_state:'delivered',created_at:'2026-10-24T12:00:00Z'};
+ it('conta apenas correspondências pessoais e respostas recebidas pelo Narrador',()=>{
+  const peer=row({id:'peer',sender_user_id:'ashkar-user',recipient_house_id:'grantass',publication_state:'delivered'});
+  const toNarrator=row({id:'to-gm',sender_user_id:'ashkar-user',recipient_house_id:null,recipient_player_id:null,publication_state:'delivered'});
+  expect(unreadReceivedCount([gmLetter,peer,toNarrator],[houseReply],[],narrator,true)).toBe(2);
+  expect(unreadReceivedCount([gmLetter,peer,toNarrator],[{...houseReply,publication_state:'scheduled'}],[],narrator,true)).toBe(1);
+  expect(unreadReceivedCount([gmLetter,peer,toNarrator],[{...houseReply,publication_state:'draft'}],[],narrator,true)).toBe(1);
+ });
+ it('não conta como nova uma resposta do próprio Narrador nem uma já lida',()=>{
+  const receipts=[{letter_id:'gm-letter',user_id:narrator,read_at:'2026-10-24T13:00:00Z'}];
+  const self={...houseReply,author_user_id:narrator};
+  expect(unreadReceivedCount([gmLetter],[self],[],narrator,true)).toBe(0);
+  expect(unreadReceivedCount([gmLetter],[houseReply],receipts,narrator,true)).toBe(0);
+  expect(unreadReceivedCount([gmLetter],[houseReply],[{...receipts[0]!,read_at:'2026-10-24T11:00:00Z'}],narrator,true)).toBe(1);
+ });
+ it('identifica se a próxima resposta cabe à Casa ou ao Narrador, ignorando rascunhos',()=>{
+  expect(narratorThreadStage(gmLetter,[],narrator)).toBe('awaiting-house');
+  expect(narratorThreadStage(gmLetter,[houseReply],narrator)).toBe('awaiting-narrator');
+  expect(narratorThreadStage(gmLetter,[houseReply,{...houseReply,id:'draft',author_user_id:narrator,publication_state:'draft',created_at:'2026-10-25T10:00:00Z'}],narrator)).toBe('awaiting-narrator');
+  expect(narratorThreadStage(gmLetter,[houseReply,{...houseReply,id:'return',author_user_id:narrator,created_at:'2026-10-25T10:00:00Z'}],narrator)).toBe('awaiting-house');
+ });
+ it('não atribui ao Narrador obrigação de responder conversa privada entre casas',()=>{
+  const peer=row({id:'peer',sender_user_id:'house-a',recipient_house_id:'grantass',publication_state:'delivered'});
+  expect(narratorThreadStage(peer,[{letter_id:'peer',author_user_id:'house-b',publication_state:'delivered',created_at:'2026-10-25T10:00:00Z'}],narrator)).toBeNull();
+ });
+ it('filtro local de semana encontra resposta entregue em rodada posterior, inclusive registros históricos',()=>{
+  const original=row({id:'old-letter',letter_number:1,delivery_week:1,publication_state:'delivered'});
+  const responses=[{letter_id:'old-letter',author_user_id:'ashkar-user',creation_week:2,delivery_week:3,publication_state:'delivered'}];
+  const filters={number:'3',kind:'',answered:''};
+  expect(filterLetters([original],responses,filters)).toEqual([original]);
+  expect(filterLetters([original],[{...responses[0]!,delivery_week:null}],{...filters,number:'2'})).toEqual([original]);
+  expect(filterLetters([original],responses,{...filters,number:'4'})).toEqual([]);
+ });
+ it('filtros de situação do Narrador seguem o último turno entregue',()=>{
+  const context={admin:true,userId:narrator,players:[],receipts:[]};
+  const query=(answered:string,replies:typeof houseReply[])=>filterLetters([gmLetter],replies,{number:'',kind:'',answered},context);
+  expect(query('awaiting-house',[])).toHaveLength(1);
+  expect(query('awaiting-narrator',[houseReply])).toHaveLength(1);
+  expect(query('no-delivered',[])).toHaveLength(1);
+  expect(query('no-delivered',[houseReply])).toHaveLength(0);
+  expect(query('pending-outgoing',[{...houseReply,author_user_id:narrator,publication_state:'draft'}])).toHaveLength(1);
+ });
+ it('rascunhos e respostas agendadas continuam dentro de sua caixa, sem falsa entrega',()=>{
+  const scheduled={...houseReply,publication_state:'scheduled'};
+  const draft={...houseReply,publication_state:'draft'};
+  expect(matchesLetterBox(gmLetter,[scheduled],'programadas')).toBe(true);
+  expect(matchesLetterBox(gmLetter,[draft],'rascunhos')).toBe(true);
+  expect(hasDeliveredAnswer(gmLetter,[draft,scheduled])).toBe(false);
  });
 });
