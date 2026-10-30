@@ -14,7 +14,7 @@ import type { Panel } from './panel-data';
 import {MailComposer,replaceMailDraft,MailLinkFields,useMailOptions,type MailLinks,type MailOptions} from './mail-compose';
 
 
-function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Responder'}:{letterId:string;replyId?:string;recipientId:string;roundRevision:string;onSave:()=>unknown;label?:string}){
+function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Responder'}:{letterId:string;replyId?:string|undefined;recipientId:string;roundRevision:string;onSave:()=>unknown;label?:string}){
   const {data:deliveryWeek=null}=useQuery({queryKey:['reply-delivery',recipientId,roundRevision],queryFn:async()=>{const r=await supabase.rpc('reply_delivery_week',{p_recipient:recipientId});if(r.error)throw r.error;return r.data;},refetchInterval:15000});
   const [open,setOpen]=useState(false),[content,setContent]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);const key=useRef<string|null>(null);
   const [images,setImages]=useState<PendingImage[]>([]);
@@ -244,7 +244,7 @@ function ReplyEdit({answer,onSave}:{answer:Panel['replies'][number];onSave:()=>v
   }}><label>Texto da resposta<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label>
     <div className="campaign-actions"><Button disabled={busy}>Salvar resposta revisada</Button><Button type="button" variant="outline" onClick={()=>setEditing(false)}>Cancelar</Button></div>
     <details><summary>Histórico de versões da resposta</summary>{versions.map(v=><div key={v.id}>
-      <strong>Versão {v.version}</strong><CampaignContent content={typeof v.snapshot==='object'&&v.snapshot&&'content' in v.snapshot?String(v.snapshot.content):''}/>
+      <strong>Versão {v.version}</strong><CampaignContent content={typeof v.snapshot==='object'&&v.snapshot&&'content' in v.snapshot?String(v.snapshot['content']):''}/>
     </div>)}</details><p role="status">{error}</p>
   </form>;
 }
