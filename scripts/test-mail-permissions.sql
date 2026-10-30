@@ -294,10 +294,10 @@ SELECT pg_temp.assert(public.send_campaign_letter(NULL,'test-b','Envio legado co
  'legacy retry returns original letter');
 RESET ROLE;
 UPDATE campaign_letters SET deleted_at=clock_timestamp() WHERE id='00000000-0000-0000-0000-000000000100';
-SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert(NOT public.can_read_reply_as(
  (SELECT r FROM letter_replies r WHERE r.id='00000000-0000-0000-0000-000000000102'),
  '00000000-0000-0000-0000-000000000001'), 'admin cannot read reply of deleted parent');
+SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert((SELECT count(*)=0 FROM letter_replies WHERE letter_id='00000000-0000-0000-0000-000000000100'),
  'deleted parent hides replies from narrator RLS');
 RESET ROLE;
