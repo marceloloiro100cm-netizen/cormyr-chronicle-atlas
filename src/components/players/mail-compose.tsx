@@ -40,7 +40,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  const current=data.rounds.find(r=>r.status==='open')?.number??null;
  const suggested=(current??Math.max(0,...data.rounds.map(r=>r.number)))+1;
  return <section id="nova-missiva" className="mail-compose-panel"><h2>Escrever missiva</h2>
- <p className="mail-compose-intro">Selecione as casas ou pessoas destinatárias e escreva a missiva. Cada entrega tem leitura e resposta privadas.</p>
+ <p className="mail-compose-intro">Selecione as casas destinatárias e escreva a missiva. Cada entrega tem leitura e resposta privadas.</p>
  {error&&<p role="alert">Não foi possível carregar os cadastros. <Button type="button" variant="outline" onClick={()=>refetch()}>Tentar novamente</Button></p>}
  <form className="campaign-form mail-compose-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);setMessage('');key.current??=crypto.randomUUID();try{
  if(!draft.campaignDate)throw new Error('Selecione a data da campanha antes de salvar ou enviar a missiva.');
@@ -53,7 +53,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  key.current=null;drafts.delete(scope);setDraft({...draft,subject:'',content:'',images:[]});onSave();
  }catch(err){setMessage(err instanceof Error?err.message:typeof err==='object'&&err&&'message'in err?String(err.message):'Não foi possível salvar. Seu texto foi preservado.');}finally{setBusy(false);}}}>
  <fieldset disabled={busy} className="campaign-form mail-compose-body"><legend>Composição da missiva</legend>
- <MailRecipientPicker data={data} me={me} options={options} targets={draft.targets} onChange={targets=>change({...draft,targets})}/>
+ <MailRecipientPicker data={data} me={me} targets={draft.targets} onChange={targets=>change({...draft,targets})}/>
  <div className="mail-compose-meta">
  <CampaignDatePicker value={draft.campaignDate} onChange={campaignDate=>change({...draft,campaignDate})}/>
  {data.admin&&<label>Semana de entrega<input type="number" min={1} value={draft.week} placeholder={String(suggested)} onChange={e=>change({...draft,week:e.target.value})}/></label>}
