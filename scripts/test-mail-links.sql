@@ -74,5 +74,31 @@ SELECT pg_temp.assert((public.mail_page('{"text":"Specific reply"}')->>'total'):
 SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000005',true);
 SELECT pg_temp.assert((public.mail_page()->>'total')::int=0,'same-house nonrecipient page empty');
 SELECT pg_temp.assert(public.mail_insights()='[]'::jsonb,'same-house nonrecipient analytics empty');
+-- Lote 3: respostas entre casas não criam pendências do Mestre.
+SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',true);
+SELECT pg_temp.assert((public.mail_page('{"answered":"awaiting-narrator","text":"Specific reply"}')->>'total')::int=0,'peer-to-peer letter is not awaiting the narrator');
+SELECT pg_temp.assert((public.mail_page('{"answered":"no-delivered","text":"Specific reply"}')->>'total')::int=0,'delivered peer reply counts as delivered');
+-- A carta do Mestre fica programada e aparece na caixa de respostas pendentes de envio.
+SELECT public.send_linked_mail('10000000-0000-0000-0000-000000000120',NULL,ARRAY['h:mail-b'],'Narrator Batch3 letter','Awaiting the house',NULL,NULL,NULL,false,3);
+SELECT id AS gm_batch3_id FROM campaign_letters WHERE batch_key='10000000-0000-0000-0000-000000000120' \gset
+SELECT pg_temp.assert((public.mail_page('{"box":"programadas","number":"3","text":"Narrator Batch3"}')->>'total')::int=1,'narrator scheduled root appears in planned week');
+SELECT pg_temp.assert((public.mail_page('{"answered":"pending-outgoing","text":"Narrator Batch3"}')->>'total')::int=1,'pending narrator outgoing filter includes scheduled root');
+SELECT public.set_letter_round(3,false);
+SELECT pg_temp.assert((public.mail_page('{"answered":"awaiting-house","text":"Narrator Batch3"}')->>'total')::int=1,'GM delivered turn awaits house');
+SELECT pg_temp.assert((public.mail_page('{"answered":"no-delivered","text":"Narrator Batch3"}')->>'total')::int=1,'no delivered reply while awaiting house');
+SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000003',true);
+SELECT public.reply_weekly_message(:'gm_batch3_id',NULL,'House responds Batch3','10000000-0000-0000-0000-000000000121',false);
+SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',true);
+SELECT pg_temp.assert((public.mail_page('{"answered":"awaiting-narrator","text":"Narrator Batch3"}')->>'total')::int=1,'house delivered turn awaits narrator');
+SELECT pg_temp.assert((public.mail_page('{"answered":"awaiting-house","text":"Narrator Batch3"}')->>'total')::int=0,'house reply ends awaiting-house stage');
+SELECT pg_temp.assert((public.mail_page('{"answered":"no-delivered","text":"Narrator Batch3"}')->>'total')::int=0,'house delivered response clears no-delivered filter');
+SELECT pg_temp.assert((public.mail_page('{"number":"3","text":"House responds Batch3"}')->>'total')::int=1,'old letter appears under response delivery week');
+-- Respostas próprias em rascunho são visíveis na caixa correspondente, sem parecer entregues.
+SELECT public.save_weekly_reply_draft('10000000-0000-0000-0000-000000000122',:'gm_batch3_id',(SELECT id FROM letter_replies WHERE idempotency_key='10000000-0000-0000-0000-000000000121'),'Mestre prepara retorno Batch3');
+SELECT pg_temp.assert((public.mail_page('{"box":"rascunhos","text":"Narrator Batch3"}')->>'total')::int=1,'delivered root with narrator draft appears in drafts box');
+SELECT pg_temp.assert((public.mail_page('{"answered":"pending-outgoing","text":"Narrator Batch3"}')->>'total')::int=1,'narrator draft appears in pending outgoing');
+SELECT pg_temp.assert((public.mail_page('{"answered":"awaiting-narrator","text":"Narrator Batch3"}')->>'total')::int=1,'draft does not alter active delivered turn');
+SELECT public.mark_letter_read(:'gm_batch3_id');
+SELECT pg_temp.assert((public.mail_page('{"read":"yes","text":"Narrator Batch3"}')->>'total')::int=1,'GM read receipt makes returned letter read independently');
 SELECT pg_temp.assert(NOT has_function_privilege('anon','public.send_linked_mail(uuid,text,text[],text,text,text,text,text,boolean,integer)','EXECUTE'),'anonymous send denied');
 ROLLBACK;
