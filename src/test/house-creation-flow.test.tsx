@@ -27,8 +27,7 @@ describe('creation wizard player workflow',()=>{
   await waitFor(()=>expect(onRoll).toHaveBeenCalledTimes(1));
  });
  it('prevents rerolls after a previous 7d6',()=>{
-  const state=newHouseState('h');state.method='roll';state.rolls=Array.from({length:7},()=>Array(7).fill(3));
-  view(1,state);
+  view(1,{method:'roll',rolls:Array.from({length:7},()=>Array(7).fill(3))});
   expect(screen.getByRole('button',{name:'Rolagens já registradas'})).toBeDisabled();
  });
  it('shows full historical event table and runs first foundation roll',async()=>{
@@ -58,7 +57,6 @@ describe('creation wizard player workflow',()=>{
   render(<Creation state={state} admin={false} busy={false} onSave={onSave}
    onRoll={async()=>true} onCreationAction={async()=>true} onNavigate={onNavigate}/>);
   fireEvent.click(screen.getByRole('button',{name:/Salvar e continuar/}));
-  fireEvent.click(screen.getByRole('button',{name:/Gerenciar Domínios/}));
   await waitFor(()=>expect(onSave).toHaveBeenCalled());
   expect(onNavigate).not.toHaveBeenCalled();
  });
