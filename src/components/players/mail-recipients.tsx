@@ -1,5 +1,6 @@
 import {useState} from 'react';
 import type {Panel} from './panel-data';
+import {NARRATION_GROUPS,narrationHouseIds} from '@/lib/mail-groups';
 
 type Props={
   data:Panel;
@@ -73,6 +74,14 @@ export function MailRecipientPicker({data,me,targets,onChange}:Props){
         <span>{p.name}</span>
       </label>)}
     </section>}
+    {data.admin&&<div className="campaign-actions" aria-label="Seleção rápida dos grupos de narração">
+      {NARRATION_GROUPS.map(group=><button type="button" key={group.id}
+        onClick={()=>onChange(narrationHouseIds(group.id,eligibleHouses.map(h=>h.id)).map(id=>'h:'+id))}>
+        Selecionar {group.label}
+      </button>)}
+      <button type="button" onClick={()=>onChange(eligibleHouses.map(h=>'h:'+h.id))}>Selecionar todas as casas</button>
+      <button type="button" onClick={()=>onChange([])}>Limpar seleção</button>
+    </div>}
     <div className="mail-recipient-regions">
       {GROUPS.map(group=>{
         const houses=eligibleHouses.filter(h=>recipientHouseRegion(h)===group.id)

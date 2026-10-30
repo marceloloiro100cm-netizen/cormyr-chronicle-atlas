@@ -281,4 +281,58 @@ SELECT pg_temp.assert((SELECT count(*)=2 FROM letter_receipts WHERE letter_id='0
  'representation draft does not change real receipts');
 SELECT public.stop_campaign_representation();
 SELECT pg_temp.assert(NOT has_function_privilege('authenticated','public.can_export_mail(text,uuid,uuid)','EXECUTE'),'export authorization is service only');
+-- Lote 7: legacy API and reply audience strictly follow the parent letter.
+RESET ROLE;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+SET LOCAL ROLE authenticated;
+SELECT public.send_campaign_letter(NULL,'test-b','Envio legado correto','Corpo legado','00000000-0000-0000-0000-000000000390');
+SELECT pg_temp.assert((SELECT count(*)=1 FROM campaign_letters WHERE batch_key='00000000-0000-0000-0000-000000000390'
+  AND letter_kind='reservada' AND letter_number=4 AND delivery_week=4 AND recipient_house_id='test-b'),
+ 'legacy send uses current round and batch idempotency');
+SELECT pg_temp.assert(public.send_campaign_letter(NULL,'test-b','Envio legado correto','Corpo legado','00000000-0000-0000-0000-000000000390')
+ =(SELECT id FROM campaign_letters WHERE batch_key='00000000-0000-0000-0000-000000000390'),
+ 'legacy retry returns original letter');
+RESET ROLE;
+UPDATE campaign_letters SET deleted_at=clock_timestamp() WHERE id='00000000-0000-0000-0000-000000000100';
+SELECT pg_temp.assert(NOT public.can_read_reply_as(
+ (SELECT r FROM letter_replies r WHERE r.id='00000000-0000-0000-0000-000000000102'),
+ '00000000-0000-0000-0000-000000000001'), 'admin cannot read reply of deleted parent');
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.assert((SELECT count(*)=0 FROM letter_replies WHERE letter_id='00000000-0000-0000-0000-000000000100'),
+ 'deleted parent hides replies from narrator RLS');
+RESET ROLE;
+UPDATE campaign_letters SET deleted_at=NULL,recipient_player_id='00000000-0000-0000-0000-000000000012'
+ WHERE id='00000000-0000-0000-0000-000000000100';
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000005',true);
+SELECT pg_temp.assert((SELECT count(*)=0 FROM letter_replies WHERE letter_id='00000000-0000-0000-0000-000000000100'),
+ 'other members cannot read private player replies from house_id');
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
+SELECT pg_temp.assert((SELECT count(*)>=1 FROM campaign_letters WHERE id='00000000-0000-0000-0000-000000000100'),
+ 'original individual recipient retains access');
+-- Lote 7: Registro do Mestre stored outside regular mail payloads.
+RESET ROLE;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+SET LOCAL ROLE authenticated;
+INSERT INTO public.narrator_mail_notes(id,letter_id,notes,updated_by)
+VALUES('letter:00000000-0000-0000-0000-000000000100','00000000-0000-0000-0000-000000000100',
+ '{"ordem_recebida":"Ordem privada","execucao":"Rolagem oculta","resultado":"Resultado do Narrador","conhecimento":"Segredo","pendencia":"Acompanhar"}',
+ '00000000-0000-0000-0000-000000000001');
+INSERT INTO public.narrator_mail_notes(id,reply_id,notes,updated_by)
+VALUES('reply:00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000101',
+ '{"pendencia":"Avaliar próxima rodada"}','00000000-0000-0000-0000-000000000001');
+SELECT pg_temp.assert((SELECT count(*)=2 FROM public.narrator_mail_notes),
+ 'Narrator sees notes on root and reply');
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
+SELECT pg_temp.assert((SELECT count(*)=0 FROM public.narrator_mail_notes),
+ 'player cannot read any Narrator Register');
+DO $denied_note$ BEGIN
+ BEGIN
+  INSERT INTO public.narrator_mail_notes(id,letter_id,notes,updated_by)
+   VALUES('letter:00000000-0000-0000-0000-000000000200','00000000-0000-0000-0000-000000000200',
+    '{"conhecimento":"Fraude"}','00000000-0000-0000-0000-000000000002');
+  RAISE EXCEPTION 'player wrote hidden Narrator Register';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END $denied_note$;
 ROLLBACK;

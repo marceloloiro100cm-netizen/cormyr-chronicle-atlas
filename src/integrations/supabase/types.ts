@@ -1075,6 +1075,33 @@ export type Database = {
           },
         ]
       }
+      narrator_mail_notes: {
+        Row: {
+          id: string
+          letter_id: string | null
+          reply_id: string | null
+          notes: Json
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          id: string
+          letter_id?: string | null
+          reply_id?: string | null
+          notes?: Json
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          id?: string
+          letter_id?: string | null
+          reply_id?: string | null
+          notes?: Json
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: []
+      }
       noble_house_gm_notes: {
         Row: {
           house_id: string
