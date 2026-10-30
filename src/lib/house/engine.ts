@@ -1,4 +1,4 @@
-import { RESOURCE_KEYS, SKILLS, zeroResources, type CatalogItem, type Cost, type Domain, type HouseState, type Ledger, type Resources, type Resource, type Unit } from './types';
+import { RESOURCE_KEYS, SKILLS, zeroResources, type CatalogItem, type Cost, type Domain, type HouseState, type Ledger, type Resources, type Resource, type Unit, type Requirement, type Effect } from './types';
 import { regionBonus } from './regions';
 import { historyAdjustments, memberBonusAdjustments } from './creation-history';
 import { holdingAllocation, legacyCatalogEffects, legacyDestroyedLosses } from './holding-accounting';
@@ -52,9 +52,23 @@ export function balances(state: HouseState): Balance {
   return {total, allocated, committed, available, permanent: effectivePermanent};
 }
 export function validateResources(values: Resources) { for (const r of RESOURCE_KEYS) if (!Number.isFinite(values[r]) || Math.abs(values[r]) > 100000) throw new Error('Valor de recurso inválido.'); }
+/** Harptos calendar: Hammer/Alturiak/Nightal winter; Ches–Mirtul spring;
+ * Kythorn–Eleasis summer; Eleint–Uktar autumn. */
+export function houseSeason(month:number):'winter'|'spring'|'summer'|'autumn' {
+ const m=((month%12)+12)%12;
+ return m===11||m<2?'winter':m<5?'spring':m<8?'summer':'autumn';
+}
+export function effectActiveForMonth(effect:Effect,state:HouseState):boolean {
+ if(effect.seasons?.length&&!effect.seasons.includes(houseSeason(state.month)))return false;
+ if(effect.maxResource&&balances(state).total[effect.maxResource.resource]>effect.maxResource.maximum)return false;
+ return true;
+}
 export function activeHoldings(state:HouseState) {
  const enabled=(id:string,seen:Set<string>):boolean=>{if(seen.has(id))return false;const h=state.holdings.find(h=>h.id===id);if(!h||h.status!=='active')return false;if(!h.parentId)return true;return enabled(h.parentId,new Set([...seen,id]));};
- return state.holdings.filter(h=>enabled(h.id,new Set())).map(h=>h.effects.length? h : {...h,effects:legacyCatalogEffects(h)});
+ return state.holdings.filter(h=>enabled(h.id,new Set())).map(h=>{
+   const effects=h.effects.length?h.effects:legacyCatalogEffects(h);
+   return {...h,effects:effects.filter(e=>effectActiveForMonth(e,state))};
+ });
 }
 export function settlementCapacity(state:HouseState,domainId:string,supportId?:string):{capacity:number;used:number;error?:string} {
  const domain=state.domains.find(d=>d.id===domainId);
@@ -91,6 +105,21 @@ export function requirements(item: CatalogItem, state: HouseState, domain?: Doma
       if(order.indexOf(item.id) <= order.indexOf(existing.itemId)) errors.push('A nova fortificação deve ser maior que a existente.');
     }
   }
+  const communityOrder=['','hamlet','small-town','large-town','small-city','large-city'];
+  const hasHolding=(values:string[]|undefined)=>(values?.length??0)>0&&state.holdings.some(h=>
+    h.domainId===domain?.id&&h.status==='active'&&values?.includes(h.itemId));
+  const hasFortification=(values:string[]|undefined)=>(values?.length??0)>0&&state.holdings.some(h=>
+    h.domainId===domain?.id&&h.status==='active'&&values?.includes(h.itemId));
+  const matchAlternative=(alternative:NonNullable<Requirement['alternatives']>[number]):boolean=>{
+    if(!domain)return false;
+    if(alternative.kind==='terrain')return Boolean(domain.terrain&&alternative.values?.includes(domain.terrain));
+    if(alternative.kind==='feature')return Boolean(alternative.values?.some(v=>domain.features.includes(v)));
+    if(alternative.kind==='community')return Boolean(alternative.values?.includes(domain.community??''));
+    if(alternative.kind==='holding')return hasHolding(alternative.values);
+    if(alternative.kind==='fortification')return hasFortification(alternative.values);
+    if(alternative.kind==='water')return domain.features.some(f=>['coast','river','stream','lake-small','lake-large','pond','island'].includes(f));
+    return false;
+  };
   for (const req of item.requirements) {
     if (req.kind==='terrain' && (!domain?.terrain || (req.values?.length && !req.values.includes(domain.terrain)))) errors.push('Terreno necessário: '+(req.values?.join(', ') || 'um terreno principal adquirido'));
     if (req.kind==='feature' && !req.values?.some(v=>domain?.features.includes(v))) errors.push('Característica necessária: '+req.values?.join(', '));
@@ -99,6 +128,21 @@ export function requirements(item: CatalogItem, state: HouseState, domain?: Doma
     if (req.kind==='resource' && req.resource && balances(state).total[req.resource] < (req.minimum ?? 0)) errors.push('Recurso mínimo não atingido.');
     if (req.kind==='community' && !req.values?.includes(domain?.community??'')) errors.push('Comunidade exigida: '+req.values?.join(', '));
     if (req.kind==='fortification' && !state.holdings.some(h=>h.domainId===domain?.id&&h.status==='active'&&req.values?.includes(h.itemId))) errors.push('Fortificação compatível ativa necessária.');
+    if(req.kind==='max_community' && (!domain||communityOrder.indexOf(domain.community??'')<0||
+      communityOrder.indexOf(domain.community??'')>communityOrder.indexOf(req.values?.[0]??'')))
+      errors.push('Comunidade maior que o limite permitido: '+(req.values?.[0]??'nenhuma')+'.');
+    if(req.kind==='max_resource'&&req.resource&&balances(state).total[req.resource]>(req.maximum??Infinity))
+      errors.push('Recurso acima do máximo permitido: '+req.resource+' '+(req.maximum??'')+'.');
+    if(req.kind==='forbidden_feature'&&domain?.features.some(f=>req.values?.includes(f)))
+      errors.push('O domínio possui característica proibida: '+(req.values?.join(', ')??'')+'.');
+    if(req.kind==='holding'&&!hasHolding(req.values))
+      errors.push('Exige posse ativa no mesmo domínio: '+(req.values?.join(', ')??'')+'.');
+    // Starting a historical house at character creation is not a calendar-bound construction order.
+    if(req.kind==='forbidden_season'&&state.phase==='active'&&req.values?.includes(houseSeason(state.month)))
+      errors.push('Esta posse não pode ser iniciada nesta estação: '+houseSeason(state.month)+'.');
+    if(req.kind==='any_of'&&(!req.alternatives?.length||!req.alternatives.some(matchAlternative)))
+      errors.push('Exige ao menos uma das alternativas de local ou posse indicadas na ficha.');
+
   }
   return errors;
 }
