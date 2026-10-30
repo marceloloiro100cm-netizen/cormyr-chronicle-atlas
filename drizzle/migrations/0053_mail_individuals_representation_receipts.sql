@@ -70,4 +70,22 @@ ELSIF p_action='delete' THEN PERFORM public.delete_campaign_letter((p_args->>'id
 ELSE RAISE EXCEPTION 'Action non autorisée'; END IF;
 PERFORM set_config('request.jwt.claims',coalesce(claims,''),true); IF p_action<>'read' THEN INSERT INTO public.campaign_admin_audit(actor,target_player,action,details) VALUES(actor_id,p.id,'representation_'||p_action,jsonb_build_object('entity',coalesce(p_args->>'id',p_args->>'letter',result->>'id'))); END IF; RETURN result; END $$;
 
+-- Versions remain auditor-visible even after their parent reply is soft-deleted.
+-- The helper is SECURITY DEFINER so RLS on letter_replies cannot hide the
+-- historical snapshot row from the very audit policy that authorizes it.
+CREATE OR REPLACE FUNCTION public.can_read_reply_version(p_reply uuid,p_viewer uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
+ SELECT EXISTS (
+  SELECT 1 FROM letter_replies r JOIN campaign_letters l ON l.id=r.letter_id
+  WHERE r.id=p_reply AND l.deleted_at IS NULL AND public.can_read_letter_as(l,p_viewer)
+   AND (r.author_user_id=p_viewer OR
+     (r.publication_state<>'draft' AND EXISTS (
+       SELECT 1 FROM user_roles u WHERE u.user_id=p_viewer AND u.role='admin')))
+ );
+$;
+REVOKE ALL ON FUNCTION public.can_read_reply_version(uuid,uuid) FROM PUBLIC,anon,authenticated;
+DROP POLICY IF EXISTS reply_versions_read ON public.letter_reply_versions;
+CREATE POLICY reply_versions_read ON public.letter_reply_versions
+ FOR SELECT TO authenticated USING(public.can_read_reply_version(reply_id,auth.uid()));
+
 COMMIT;
