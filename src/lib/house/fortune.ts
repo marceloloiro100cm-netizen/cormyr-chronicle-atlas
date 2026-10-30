@@ -5,7 +5,9 @@ import { purchasedFortuneDice } from './resource-transactions';
 export const FORTUNE_TABLE:[number,number,string][]=[[-Infinity,2,'Desastre'],[3,3,'Maldição'],[4,4,'Declínio'],[5,5,'Desastre'],[6,6,'Crescimento'],[7,7,'Declínio'],[8,8,'Crescimento'],[9,9,'Maldição'],[10,10,'Declínio'],[11,11,'Crescimento'],[12,12,'Dádiva'],[13,13,'Declínio'],[14,14,'Bênção'],[15,15,'Crescimento'],[16,16,'Maldição'],[17,17,'Declínio'],[18,18,'Bênção'],[19,19,'Maldição'],[20,20,'Bênção'],[21,22,'Crescimento'],[23,23,'Maldição'],[24,25,'Crescimento'],[26,27,'Bênção'],[28,28,'Dádiva'],[29,29,'Maldição'],[30,30,'Bênção'],[31,34,'Crescimento'],[35,35,'Bênção'],[36,36,'Dádiva'],[37,41,'Crescimento'],[42,Infinity,'Dádiva']];
 const LAW:[number,number][]=[[0,-20],[10,-10],[20,-5],[30,-2],[40,-1],[50,0],[60,1],[70,2],[Infinity,5]];
 const POP:[number,number][]=[[0,-10],[10,-5],[20,0],[30,1],[40,3],[50,1],[60,0],[70,-5],[Infinity,-10]];
-export function fortuneModifier(law:number,population:number) {return (LAW.find(([max])=>law<=max)?.[1]??0)+(POP.find(([max])=>population<=max)?.[1]??0);}
+export function fortuneLawModifier(law:number) {return LAW.find(([max])=>law<=max)?.[1]??0;}
+export function fortunePopulationModifier(population:number) {return POP.find(([max])=>population<=max)?.[1]??0;}
+export function fortuneModifier(law:number,population:number) {return fortuneLawModifier(law)+fortunePopulationModifier(population);}
 export function fortuneOutcome(total:number){return FORTUNE_TABLE.find(([min,max])=>total>=min&&total<=max)?.[2]??'Resultado pendente';}
 export function rollPreview(state:HouseState,args:{status:number;testDice:number[];bonusDice:number[];modifier:number;fortuneStackDice?:number[]|undefined}) {
   if(!Number.isInteger(args.status)||args.status<1||args.status>10)throw new Error('Status inválido.');
