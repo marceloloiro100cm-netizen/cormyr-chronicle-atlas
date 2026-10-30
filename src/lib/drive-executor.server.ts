@@ -32,8 +32,8 @@ async function siteEnvelope(db:DB,type:string,id:string,b:Binding):Promise<Envel
     playerId=b.scope==='player'?b.player_id:null;
     houseId=b.scope==='player'?b.house_id:null;
   }
-  const version=type==='reply'?1:Number(r['version']??1);
-  const e=envelopeSchema.parse({schema:'cormyr-record-v1',entityType:type,id,houseId,playerId,visibility,version,baseVersion:Math.max(version-1,0),title:text(r,type==='record'?'title':type==='letter'?'subject':'author_name'),content:text(r,'content'),...(type==='record'?{kind:r['kind']}:{}),...(type==='reply'?{letterId:r['letter_id']}:{}),...(type==='letter'&&r['origin_house_id']?{mailLinks:{originHouseId:r['origin_house_id']??null,courtMemberId:r['court_member_id']??null,courtAssignment:r['court_assignment']??null,militaryUnitId:r['military_unit_id']??null,sheetVersion:r['house_sheet_version']??null,deliveryWeek:r['delivery_week']??null}}:{}),createdAt:text(r,'created_at'),updatedAt:text(r,'updated_at')||text(r,'created_at'),authorName:text(r,type==='letter'?'sender_name':'author_name'),mutationId:id,origin:'site'});
+  const version=Number(r['version']??1);
+  const e=envelopeSchema.parse({schema:'cormyr-record-v1',entityType:type,id,houseId,playerId,visibility,version,baseVersion:Math.max(version-1,0),title:text(r,type==='record'?'title':type==='letter'?'subject':'author_name'),content:type==='reply'&&r['deleted_at']?'[Resposta excluída pelo Narrador]':text(r,'content'),...(type==='record'?{kind:r['kind']}:{}),...(type==='reply'?{letterId:r['letter_id']}:{}),...(type==='letter'&&r['origin_house_id']?{mailLinks:{originHouseId:r['origin_house_id']??null,courtMemberId:r['court_member_id']??null,courtAssignment:r['court_assignment']??null,militaryUnitId:r['military_unit_id']??null,sheetVersion:r['house_sheet_version']??null,deliveryWeek:r['delivery_week']??null}}:{}),createdAt:text(r,'created_at'),updatedAt:text(r,'updated_at')||text(r,'created_at'),authorName:text(r,type==='letter'?'sender_name':'author_name'),mutationId:id,origin:'site'});
   return allowed(b,e)?e:null;
 }
 async function stage(db:DB,b:Binding,file:string,etag:string,remote:Envelope,site:Envelope|null,conflict:boolean){
@@ -123,11 +123,11 @@ export async function runDriveSync(db:DB,adapter:DriveAdapter=createDriveAdapter
             }
           }else{
             const reply=check(await db.from('letter_replies').select('author_user_id,recipient_user_id').eq('id',e.id).single()).data;
-            const copies=check(await db.from('drive_sync_files').select('binding_id').eq('entity_type','reply').eq('entity_id',e.id)).data??[];
-            const delivered=(user:string)=>bindings.some(target=>target.owner_user_id===user&&(target.scope==='player'||target.scope==='master')&&copies.some(copy=>copy.binding_id===target.id));
+            const copies=check(await db.from('drive_sync_files').select('binding_id,base_snapshot').eq('entity_type','reply').eq('entity_id',e.id)).data??[];
+            const delivered=(user:string)=>bindings.some(target=>target.owner_user_id===user&&(target.scope==='player'||target.scope==='master')&&copies.some(copy=>copy.binding_id===target.id&&envelopeSchema.parse(copy.base_snapshot).version===e.version));
             if(reply&&delivered(reply.author_user_id)&&delivered(reply.recipient_user_id)){
-              check(await db.from('letter_replies').update({sync_state:'synced',last_synced_at:new Date().toISOString()}).eq('id',e.id));
-              check(await db.from('sync_outbox').update({state:'synced',error:null}).eq('entity_id',e.id));
+              check(await db.from('letter_replies').update({sync_state:'synced',last_synced_at:new Date().toISOString()}).eq('id',e.id).eq('version',e.version));
+              check(await db.from('sync_outbox').update({state:'synced',error:null}).eq('entity_id',e.id).lte('version',e.version));
             }
           }
           synced++;
