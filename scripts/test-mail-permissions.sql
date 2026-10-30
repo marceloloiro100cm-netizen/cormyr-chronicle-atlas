@@ -92,10 +92,13 @@ SELECT pg_temp.assert((SELECT creation_week=2 AND delivery_week=3 FROM letter_re
 SELECT public.save_weekly_reply_draft('00000000-0000-0000-0000-000000000208','00000000-0000-0000-0000-000000000100','00000000-0000-0000-0000-000000000101','Between rounds draft');
 SELECT public.schedule_weekly_reply_draft((SELECT id FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000208'));
 SELECT pg_temp.assert((SELECT creation_week=2 AND delivery_week=3 FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000208'),'closed round 2: draft has same creation and delivery weeks');
--- If a caller explicitly supplies creation_week, the trigger must not override it.
+-- If a privileged importer explicitly supplies creation_week, the trigger must not override it.
+-- Direct INSERT is intentionally forbidden to authenticated clients: use postgres in this rolled-back fixture.
+RESET ROLE;
 INSERT INTO public.letter_replies (letter_id,author_user_id,author_name,recipient_user_id,content,idempotency_key,creation_week,publication_state)
 VALUES('00000000-0000-0000-0000-000000000100','00000000-0000-0000-0000-000000000001','Mestre','00000000-0000-0000-0000-000000000002','Explicit creation week','00000000-0000-0000-0000-000000000209',1,'draft');
 SELECT pg_temp.assert((SELECT creation_week=1 FROM public.letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000209'),'trigger preserves explicit creation week');
+SET LOCAL ROLE authenticated;
 
 SELECT pg_temp.assert(NOT has_function_privilege('authenticated','public.can_export_mail(text,uuid,uuid)','EXECUTE'),'export authorization is service only');
 ROLLBACK;
