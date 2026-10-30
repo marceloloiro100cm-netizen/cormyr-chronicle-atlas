@@ -3,7 +3,7 @@ import {useQuery} from '@tanstack/react-query';
 import {Shield,Flame,Leaf} from 'lucide-react';
 import {supabase} from '@/integrations/supabase/client';
 import {Button} from '@/components/ui/button';
-import {MONTHS,MONTH_DETAILS,FESTIVALS,annualEvents,dateKey,formatDate,formatCampaignWeek,type CalendarEvent} from '@/lib/calendar/harptos';
+import {MONTHS,MONTH_DETAILS,FESTIVALS,annualEvents,dateKey,formatDate,formatCampaignPeriod,type CalendarEvent} from '@/lib/calendar/harptos';
 import './harptos.css';
 
 export type CalendarState={year:number;month:number;day:number;festival:string|null;auto_advance:boolean;version:number;published_week?:number;published_at?:string|null};
@@ -26,7 +26,7 @@ export function CampaignCalendar(){
  const chooseMonth=(m:number)=>{setFollowCurrent(false);const y=m<0?year-1:m>11?year+1:year;if(y<1||y>9999)return;const next=(m+12)%12;setYear(y);setMonth(next);setSelected(dateKey({year:y,month:next,day:1,festival:null}));};
  const cell=(key:string,label:string)=>{const items=onDay(key);return <button type="button" key={key} aria-current={calendar.data&&dateKey(calendar.data)===key?'date':undefined} aria-pressed={selected===key} aria-describedby={selected===key?'harptos-events':undefined} aria-label={`${formatDate(key)}: ${items.length} evento(s)`} title={items.map(e=>e.title).join('\n')||'Nenhum evento visível neste dia'} onMouseEnter={()=>setSelected(key)} onFocus={()=>setSelected(key)} onClick={()=>setSelected(key)}><span>{label}</span><span className="harptos-symbols">{(['kingdom','mail','season'] as const).filter(kind=>items.some(e=>e.kind===kind)).map(kind=><Symbol key={kind} kind={kind}/>)}</span></button>;};
  return <section className="harptos"><h2>Calendário de Harptos</h2>
- {calendar.data&&<p className="harptos-week" role="status" aria-live="polite">{formatCampaignWeek(calendar.data)}</p>}
+ {calendar.data&&<p className="harptos-week" role="status" aria-live="polite">{formatCampaignPeriod(calendar.data)}</p>}
  <details><summary>Os doze meses de Harptos</summary><div className="harptos-months">{MONTHS.map((name,i)=><button type="button" key={name} aria-pressed={month===i} onClick={()=>chooseMonth(i)}><strong>{i+1}. {name}</strong><small>{MONTH_DETAILS[i]![0]} · {MONTH_DETAILS[i]![1]}</small></button>)}</div></details><p>Três désdias de dez dias por mês. Os festivais são dias intercalares.</p>
  <svg className="harptos-compass" viewBox="0 0 160 160" role="img" aria-label="Rosa dos ventos"><circle cx="80" cy="80" r="52" fill="none" stroke="currentColor" opacity=".4"/><path d="M80 15 91 69 145 80 91 91 80 145 69 91 15 80 69 69Z" fill="none" stroke="currentColor"/><path d="M80 15 80 80 91 69ZM145 80 80 80 91 91ZM80 145 80 80 69 91ZM15 80 80 80 69 69Z" fill="currentColor" opacity=".65"/><circle cx="80" cy="80" r="4" fill="currentColor"/><text x="80" y="11" textAnchor="middle" fill="currentColor" fontSize="10">N</text></svg>
  <div className="harptos-legend"><span><Symbol kind="kingdom"/>Cormyr · festas e eventos</span><span><Symbol kind="mail"/>Missivas entregues</span><span><Symbol kind="season"/>Estações</span></div>
