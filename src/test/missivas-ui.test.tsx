@@ -143,3 +143,37 @@ describe('lote 2: destinatários e semanas',()=>{
    expect(rpc).not.toHaveBeenCalledWith('set_letter_round',expect.anything());
  });
 });
+
+describe('lote 3: gestão e leitura do Narrador',()=>{
+ it('separa recibo de leitura da Casa do recebimento de respostas pelo Mestre',async()=>{
+  const panel={...data([{
+    id:'house-reply',letter_id:'letter',author_user_id:'house-user',author_name:'Casa destinatária',
+    content:'Resposta nova',publication_state:'delivered',created_at:'2026-10-29T13:00:00Z',
+  }]),admin:true,letters:[{...letter,recipient_read:true}]} as unknown as Panel;
+  mount(panel);
+  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  const indicators=screen.getByRole('region',{name:'Indicadores de leitura separados'});
+  expect(indicators).toHaveTextContent('Leitura da Casa: Leitura registrada');
+  expect(indicators).toHaveTextContent('Leitura do Narrador: Nova resposta não lida');
+  expect(screen.getByRole('button',{name:/Ordem enviada/})).toHaveTextContent('Aguardando resposta do Narrador');
+  fireEvent.click(screen.getByRole('button',{name:'Marcar como lida'}));
+  expect(rpc).toHaveBeenCalledWith('mark_letter_read',{p_id:'letter'});
+ });
+ it('não oferece marcar como lida quando o Mestre apenas aguarda resposta da Casa',async()=>{
+  const panel={...data(),admin:true} as unknown as Panel;
+  mount(panel);
+  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  expect(screen.getByRole('button',{name:/Ordem enviada/})).toHaveTextContent('Aguardando resposta da Casa');
+  expect(screen.getByRole('region',{name:'Indicadores de leitura separados'})).toHaveTextContent('Nenhuma resposta entregue');
+  expect(screen.queryByRole('button',{name:'Marcar como lida'})).not.toBeInTheDocument();
+ });
+ it('envia ao servidor filtros de turno e de respostas programadas na semana do retorno',async()=>{
+  const panel={...data([{id:'programmed',letter_id:'letter',author_user_id:'me',author_name:'Mestre',content:'Programada',publication_state:'scheduled',delivery_week:3,creation_week:2}]),admin:true} as unknown as Panel;
+  mount(panel);
+  fireEvent.change(screen.getByLabelText('Resposta'),{target:{value:'pending-outgoing'}});
+  await waitFor(()=>expect(rpc).toHaveBeenCalledWith('mail_page',expect.objectContaining({p_filters:expect.objectContaining({answered:'pending-outgoing'})})));
+  fireEvent.change(screen.getByLabelText('Caixa'),{target:{value:'programadas'}});
+  fireEvent.change(screen.getByLabelText('Semana'),{target:{value:'3'}});
+  await waitFor(()=>expect(rpc).toHaveBeenCalledWith('mail_page',expect.objectContaining({p_filters:expect.objectContaining({box:'programadas',number:'3'})})));
+ });
+});
