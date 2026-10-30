@@ -42,7 +42,7 @@ export type LetterGroup = {
   letters: LetterRow[];
 };
 
-export type ReplyRef = {letter_id:string;created_at?:string;delivered_at?:string|null;publication_state?:string;author_user_id?:string;recipient_user_id?:string;delivery_week?:number|null};
+export type ReplyRef = {id?:string;letter_id:string;created_at?:string;delivered_at?:string|null;publication_state?:string;author_user_id?:string;recipient_user_id?:string;delivery_week?:number|null;creation_week?:number|null};
 export const deliveredReply = (r:ReplyRef) => !r.publication_state || r.publication_state==='delivered';
 export const hasDeliveredAnswer = (l:LetterRow,replies:ReplyRef[]) => replies.some(r=>r.letter_id===l.id&&deliveredReply(r)&&r.author_user_id!==l.sender_user_id);
 export function matchesLetterBox(l:LetterRow,replies:ReplyRef[],box:string){
@@ -60,6 +60,24 @@ export function lastReplyActivity(letterId:string, replies:ReplyRef[], userId?:s
     const t=r.delivered_at??r.created_at??'';
     return t>latest?t:latest;
   },'');
+}
+
+/** Qual participante deve responder ao último turno já entregue?
+ * Rascunhos e mensagens programadas não mudam o turno ativo. */
+export function narratorThreadStage(letter:LetterRow,replies:ReplyRef[],narratorId:string):'awaiting-house'|'awaiting-narrator'|null {
+  const turns:{author:string;time:string;rank:number;id:string}[]=[];
+  if(!letter.deleted_at&&(!letter.publication_state||letter.publication_state==='delivered'))
+    turns.push({author:letter.sender_user_id,time:letter.delivered_at??letter.created_at,rank:0,id:letter.id});
+  for(const reply of replies)if(reply.letter_id===letter.id&&deliveredReply(reply)&&reply.author_user_id)
+    turns.push({author:reply.author_user_id,time:reply.delivered_at??reply.created_at??'',rank:1,id:reply.id??''});
+  turns.sort((a,b)=>b.time.localeCompare(a.time)||b.rank-a.rank||b.id.localeCompare(a.id));
+  const last=turns[0];
+  if(!last)return null;
+  if(last.author===narratorId)return 'awaiting-house';
+  const involved=letter.sender_user_id===narratorId||
+    (letter.recipient_house_id===null&&letter.recipient_player_id===null)||
+    replies.some(r=>r.letter_id===letter.id&&deliveredReply(r)&&r.author_user_id===narratorId);
+  return involved?'awaiting-narrator':null;
 }
 
 /** Uma missiva lida volta a ser não lida quando chega resposta mais nova que a leitura. */
@@ -114,8 +132,13 @@ export function nextLetterNumber(letters: {letter_number:number|null}[]): number
  * não excluídas, já entregues, sem registro de leitura — ou lidas antes de uma resposta mais nova.
  * Segue exatamente a mesma regra do rótulo "Não lida" e do filtro de leitura da lista.
  */
-export function unreadReceivedCount(letters: LetterRow[], replies: ReplyRef[], receipts: ReceiptRef[], userId: string): number {
+export function unreadReceivedCount(letters: LetterRow[], replies: ReplyRef[], receipts: ReceiptRef[], userId: string, isNarrator=false): number {
   return letters.filter((l) => {
+    // Administradores acompanham cartas entre casas, mas elas não são
+    // notificações pessoais do Narrador (salvo quando ele participou do fio).
+    if(isNarrator&&l.sender_user_id!==userId&&
+       (l.recipient_house_id!==null||l.recipient_player_id!==null)&&
+       !replies.some(r=>r.letter_id===l.id&&deliveredReply(r)&&r.author_user_id===userId))return false;
     if (l.sender_user_id === userId && !replies.some(r=>r.letter_id===l.id&&deliveredReply(r)&&r.author_user_id!==userId)) return false;
     if (l.deleted_at) return false;
     if (l.publication_state && l.publication_state !== 'delivered') return false;
