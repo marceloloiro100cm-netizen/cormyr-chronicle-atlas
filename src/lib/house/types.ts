@@ -1,3 +1,4 @@
+import type { CreationHistory } from './creation-history';
 export const RESOURCE_KEYS = ['defense', 'influence', 'lands', 'law', 'population', 'power', 'wealth'] as const;
 export type Resource = typeof RESOURCE_KEYS[number];
 export type Resources = Record<Resource, number>;
@@ -33,6 +34,7 @@ export type HouseState = {
   regionalApplied: boolean; rolls: number[][]; domains: Domain[]; holdings: Holding[]; units: Unit[]; projects: Project[]; court: CourtMember[];
   month: number; treasury: number; fortunes: Fortune[]; actions: { month: number; type: string; notes: string }[];
   pending: string[]; importSources: string[]; vassals?:Vassal[]|undefined;
+  creationHistory?: CreationHistory | undefined;
 };
 export type Ledger = { id: string; action: string; explanation: string; campaignMonth: number; before: Resources; after: Resources; rule: string; key: string; createdAt?: string | undefined; actor?: string | undefined };
 export type HouseDocument = { state: HouseState; version: number; ledger: Ledger[]; syncState: string };
