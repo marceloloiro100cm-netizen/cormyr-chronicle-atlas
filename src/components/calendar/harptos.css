@@ -26,3 +26,6 @@
 .narrator-calendar-event .campaign-actions{margin:0;gap:6px}
 .narrator-calendar-preview{border-top:2px solid var(--campaign-gold);padding-top:16px}
 @media(max-width:750px){.narrator-calendar-settings{grid-template-columns:1fr}.narrator-calendar-event{flex-direction:column}}
+
+/* Subtle Realtime health; a disconnected socket never hides the 15 s polling fallback. */
+.harptos-sync-status{margin:2px 0 8px;font-size:12px;color:var(--muted-foreground)}
