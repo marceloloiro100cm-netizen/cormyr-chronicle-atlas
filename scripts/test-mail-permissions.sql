@@ -310,4 +310,30 @@ SELECT pg_temp.assert((SELECT count(*)=0 FROM letter_replies WHERE letter_id='00
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
 SELECT pg_temp.assert((SELECT count(*)>=1 FROM campaign_letters WHERE id='00000000-0000-0000-0000-000000000100'),
  'original individual recipient retains access');
+-- Lote 7: Registro do Mestre stored outside regular mail payloads.
+RESET ROLE;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+SET LOCAL ROLE authenticated;
+INSERT INTO public.narrator_mail_notes(id,letter_id,notes,updated_by)
+VALUES('letter:00000000-0000-0000-0000-000000000100','00000000-0000-0000-0000-000000000100',
+ '{"ordem_recebida":"Ordem privada","execucao":"Rolagem oculta","resultado":"Resultado do Narrador","conhecimento":"Segredo","pendencia":"Acompanhar"}',
+ '00000000-0000-0000-0000-000000000001');
+INSERT INTO public.narrator_mail_notes(id,reply_id,notes,updated_by)
+VALUES('reply:00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000101',
+ '{"pendencia":"Avaliar próxima rodada"}','00000000-0000-0000-0000-000000000001');
+SELECT pg_temp.assert((SELECT count(*)=2 FROM public.narrator_mail_notes),
+ 'Narrator sees notes on root and reply');
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true);
+SELECT pg_temp.assert((SELECT count(*)=0 FROM public.narrator_mail_notes),
+ 'player cannot read any Narrator Register');
+DO $denied_note$ BEGIN
+ BEGIN
+  INSERT INTO public.narrator_mail_notes(id,letter_id,notes,updated_by)
+   VALUES('letter:00000000-0000-0000-0000-000000000200','00000000-0000-0000-0000-000000000200',
+    '{"conhecimento":"Fraude"}','00000000-0000-0000-0000-000000000002');
+  RAISE EXCEPTION 'player wrote hidden Narrator Register';
+ EXCEPTION WHEN raise_exception THEN
+  IF SQLERRM='player wrote hidden Narrator Register' THEN RAISE; END IF;
+ END;
+END $denied_note$;
 ROLLBACK;
