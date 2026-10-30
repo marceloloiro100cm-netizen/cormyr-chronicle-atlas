@@ -56,7 +56,7 @@ describe('creation wizard player workflow',()=>{
   const onSave=vi.fn(async()=>true);
   render(<Creation state={state} admin={false} canEditAttributes busy={false}
    onSave={onSave} onRoll={async()=>true} onCreationAction={async()=>true} onNavigate={()=>{}}/>);
-  expect(screen.getByText(/Point buy/)).toBeInTheDocument();
+  expect(screen.getByText(/point buy/i)).toBeInTheDocument();
   const defense=screen.getByRole('spinbutton',{name:'Defesa'});
   expect(defense).toBeEnabled();
   fireEvent.change(defense,{target:{value:'50'}});
