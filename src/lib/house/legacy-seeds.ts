@@ -498,7 +498,7 @@ export const LEGACY_HOUSE_SEEDS: Record<string, HouseState> = {
       ],
       "notes": "Suserano: Grandragon · Lady: Lady Rawena · Herdeiro: Lord Sven Grantass · Fortaleza: A Torre sem escadas · Arma: Cálice"
     },
-    "method": "roll",
+    "method": "import",
     "budget": null,
     "base": {
       "defense": 34,
@@ -518,7 +518,7 @@ export const LEGACY_HOUSE_SEEDS: Record<string, HouseState> = {
       "power": 0,
       "wealth": 1
     },
-    "regionalApplied": true,
+    "regionalApplied": false,
     "rolls": [],
     "domains": [
       {
@@ -1016,7 +1016,7 @@ export const LEGACY_HOUSE_SEEDS: Record<string, HouseState> = {
       ],
       "notes": "Suserano: Yallander · Lorde: Ashladd Silversky · Fortaleza: Torre de Silversky"
     },
-    "method": "roll",
+    "method": "import",
     "budget": null,
     "base": {
       "defense": 21,
@@ -1036,7 +1036,7 @@ export const LEGACY_HOUSE_SEEDS: Record<string, HouseState> = {
       "power": 0,
       "wealth": 0
     },
-    "regionalApplied": true,
+    "regionalApplied": false,
     "rolls": [],
     "domains": [
       {
@@ -1906,7 +1906,7 @@ export const LEGACY_HOUSE_SEEDS: Record<string, HouseState> = {
       ],
       "notes": "Suserano: Yallander · Herdeiro: Corvaen Erdenor · Fortaleza: Goldenbull Tower"
     },
-    "method": "roll",
+    "method": "import",
     "budget": null,
     "base": {
       "defense": 19,
@@ -1926,7 +1926,7 @@ export const LEGACY_HOUSE_SEEDS: Record<string, HouseState> = {
       "power": 0,
       "wealth": 1
     },
-    "regionalApplied": true,
+    "regionalApplied": false,
     "rolls": [],
     "domains": [
       {
@@ -2388,7 +2388,7 @@ export const LEGACY_HOUSE_SEEDS: Record<string, HouseState> = {
       ],
       "notes": "Região: Dragon Coast · Fundação: 1372 CV"
     },
-    "method": "roll",
+    "method": "import",
     "budget": null,
     "base": {
       "defense": 31,
@@ -2408,7 +2408,7 @@ export const LEGACY_HOUSE_SEEDS: Record<string, HouseState> = {
       "power": 0,
       "wealth": 0
     },
-    "regionalApplied": true,
+    "regionalApplied": false,
     "rolls": [],
     "domains": [
       {
