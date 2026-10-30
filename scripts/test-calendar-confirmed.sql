@@ -35,6 +35,9 @@ DO $$ BEGIN
   IF SQLERRM='non-narrator published calendar' THEN RAISE; END IF;
  END;
 END $$;
+-- This user has no house membership, so normal read is intentionally RLS-filtered.
+-- Verify the denied publish by switching back to the authorized narrator.
+SELECT set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000041',true);
 SELECT pg_temp.assert(public.get_campaign_calendar()->>'day'='11',
  'non-narrator cannot change global date');
 RESET ROLE;
