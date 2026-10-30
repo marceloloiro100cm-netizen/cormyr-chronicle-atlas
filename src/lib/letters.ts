@@ -87,10 +87,16 @@ export function isLetterRead(letterId:string, receipt:ReceiptRef|undefined, repl
   return !lastReply||!receipt.read_at||receipt.read_at>=lastReply;
 }
 
-export function filterLetters(letters:LetterRow[], replies:ReplyRef[], filters:{number:string;kind:string;answered:string;house?:string;read?:string}, context?:{players:{id:string;user_id:string|null;roster_house_id:string|null}[];receipts:ReceiptRef[];userId:string;admin:boolean}) {
+export function filterLetters(letters:LetterRow[], replies:ReplyRef[], filters:{number:string;kind:string;answered:string;house?:string;read?:string}, context?:{players:{id:string;user_id:string|null;roster_house_id:string|null}[];members?:{player_id:string;house_id:string}[];receipts:ReceiptRef[];userId:string;admin:boolean}) {
   return letters.filter(l=>{
-    const player=context?.players.find(p=>p.id===l.sender_player_id||p.id===l.recipient_player_id||p.user_id===l.sender_user_id);
-    const house=l.recipient_house_id??player?.roster_house_id;
+    const relevantPlayers=context?.players.filter(p=>
+      p.id===l.sender_player_id||p.id===l.recipient_player_id||
+      p.user_id===l.sender_user_id)??[];
+    const matchedHouses=new Set([l.recipient_house_id,l.origin_house_id].filter((h):h is string=>Boolean(h)));
+    for(const player of relevantPlayers){
+      if(player.roster_house_id)matchedHouses.add(player.roster_house_id);
+      for(const membership of context?.members??[])if(membership.player_id===player.id)matchedHouses.add(membership.house_id);
+    }
     const receipt=context?.receipts.find(r=>r.letter_id===l.id&&r.user_id===context.userId);
     const read=isLetterRead(l.id,receipt,replies);
     const weekMatches=!filters.number||String(l.delivery_week??l.letter_number)===filters.number||
@@ -108,7 +114,7 @@ export function filterLetters(letters:LetterRow[], replies:ReplyRef[], filters:{
         filters.answered==='awaiting-house'?narratorStage==='awaiting-house':
         filters.answered==='awaiting-narrator'?narratorStage==='awaiting-narrator':
         filters.answered==='pending-outgoing'?pendingOutgoing:false));
-    return weekMatches&&(!filters.kind||l.letter_kind===filters.kind)&&answeredMatches&&(!filters.house||house===filters.house)&&(!filters.read||(read?'yes':'no')===filters.read);
+    return weekMatches&&(!filters.kind||l.letter_kind===filters.kind)&&answeredMatches&&(!filters.house||matchedHouses.has(filters.house))&&(!filters.read||(read?'yes':'no')===filters.read);
   });
 }
 
@@ -165,7 +171,9 @@ export function unreadReceivedCount(letters: LetterRow[], replies: ReplyRef[], r
 type RoundReply = ReplyRef & { author_user_id: string; author_player_id: string | null; house_id: string | null; publication_state: string; delivery_week: number | null };
 type RoundPlayer = { id: string; user_id: string | null; active: boolean };
 
-/** Pendências por casa: somente narrativa entregue na semana aberta, sem resposta posterior da casa. */
+/** Pendências da rodada: mantém todas as cobranças já entregues, inclusive semanas
+ * anteriores. Uma resposta entregue depois da última fala do Narrador encerra a
+ * pendência; rascunhos e entregas futuras jamais contam como resposta. */
 export function pendingRoundHouses(week: number | null, houses: {id:string;name:string;active:boolean;season:number}[], players: RoundPlayer[], members: {house_id:string;player_id:string}[], letters: LetterRow[], replies: RoundReply[]) {
   if (week === null) return [];
   const activePlayers = players.filter(p => p.active && p.user_id);
@@ -222,11 +230,11 @@ export function pendingRoundHouses(week: number | null, houses: {id:string;name:
         latest.set(id, time > prev ? time : prev);
       }
     };
-    if (!letter.sender_player_id && !playerFor(null,letter.sender_user_id) && (letter.delivery_week ?? letter.letter_number) === week) {
+    if (!letter.sender_player_id && !playerFor(null,letter.sender_user_id) && (letter.delivery_week ?? letter.letter_number ?? 0) <= week) {
       add(letter.recipient_house_id ? [letter.recipient_house_id] : housesFor(playerFor(letter.recipient_player_id)),letter.delivered_at ?? letter.created_at);
     }
     for (const reply of answers) {
-      if (reply.author_player_id || playerFor(null,reply.author_user_id) || reply.delivery_week !== week) continue;
+      if (reply.author_player_id || playerFor(null,reply.author_user_id) || (reply.delivery_week ?? 0) > week) continue;
       const targets = reply.house_id ? [reply.house_id] : letter.recipient_house_id ? [letter.recipient_house_id] : housesFor(playerFor(letter.recipient_player_id ?? letter.sender_player_id,letter.sender_user_id));
       add(targets,reply.delivered_at ?? reply.created_at ?? '');
     }
@@ -235,7 +243,7 @@ export function pendingRoundHouses(week: number | null, houses: {id:string;name:
       if (!eligible.length) continue;
       let answered = false;
       for (const r of answers) {
-        if (r.delivery_week === week && (r.delivered_at ?? r.created_at ?? '') >= lastNarrative) {
+        if ((r.delivery_week ?? 0) <= week && (r.delivered_at ?? r.created_at ?? '') >= lastNarrative) {
           if (eligible.some(p => p.id === r.author_player_id || p.user_id === r.author_user_id)) {
             answered = true;
             break;
