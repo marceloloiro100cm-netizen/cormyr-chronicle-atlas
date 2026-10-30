@@ -810,6 +810,9 @@ export type Database = {
           content: string
           conversation_id: string | null
           created_at: string
+          deleted_at: string | null
+          updated_at: string
+          version: number
           creation_week: number | null
           delivered_at: string | null
           delivery_week: number | null
@@ -832,6 +835,9 @@ export type Database = {
           content: string
           conversation_id?: string | null
           created_at?: string
+          deleted_at?: string | null
+          updated_at?: string
+          version?: number
           creation_week?: number | null
           delivered_at?: string | null
           delivery_week?: number | null
@@ -854,6 +860,9 @@ export type Database = {
           content?: string
           conversation_id?: string | null
           created_at?: string
+          deleted_at?: string | null
+          updated_at?: string
+          version?: number
           creation_week?: number | null
           delivered_at?: string | null
           delivery_week?: number | null
@@ -889,6 +898,41 @@ export type Database = {
             referencedRelation: "campaign_letters"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      letter_reply_versions: {
+        Row: {
+          id: string
+          reply_id: string
+          version: number
+          snapshot: Json
+          author: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          reply_id: string
+          version: number
+          snapshot: Json
+          author: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          reply_id?: string
+          version?: number
+          snapshot?: Json
+          author?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "letter_reply_versions_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "letter_replies"
+            referencedColumns: ["id"]
+          }
         ]
       }
       letter_rounds: {
@@ -1582,6 +1626,14 @@ export type Database = {
         Returns: Json
       }
       mail_recipient_read: { Args: { p_id: string }; Returns: boolean }
+      edit_letter_reply: {
+        Args: { p_id: string; p_version: number; p_content: string }
+        Returns: Json
+      }
+      delete_letter_reply: {
+        Args: { p_id: string; p_version: number }
+        Returns: undefined
+      }
       mark_letter_read: { Args: { p_id: string }; Returns: undefined }
       my_player_id: { Args: never; Returns: string }
       open_letter_round: { Args: never; Returns: number }
