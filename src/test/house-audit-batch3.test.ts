@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import {newHouseState,RESOURCE_KEYS,type Holding} from '@/lib/house/types';
+import {newHouseState,type Holding} from '@/lib/house/types';
 import {balances, maxHouseStatus, heirHouseStatus, activeHoldings} from '@/lib/house/engine';
 import {CORE_CATALOG} from '@/lib/house/catalog';
 import {holdingAllocation,legacyCatalogEffects,legacyEffectCandidates,changeHoldingCondition} from '@/lib/house/holding-accounting';
 import {houseReport} from '@/lib/house/report';
-import {rollPreview} from '@/lib/house/fortune';
 
 const make=()=>{
  const s=newHouseState('isolated-house');s.base.defense=50;s.base.influence=55;
@@ -18,9 +17,9 @@ const holding=(overrides:Partial<Holding>={}):Holding=>({
 
 describe('Lote 3 — influência e sucessão (itens 11–13)',()=>{
  it('Tabela 6-5 calcula exatamente todos os limites e mudanças de faixa',()=>{
-  const examples:[[number,number],...(number[])[]]=[[0,2],[10,2],[11,3],[20,3],[21,4],[40,4],[41,5],[50,5],[51,6],[60,6],[61,7],[70,7],[71,8],[100,8]];
+  const examples:[number,number][]=[[0,2],[10,2],[11,3],[20,3],[21,4],[40,4],[41,5],[50,5],[51,6],[60,6],[61,7],[70,7],[71,8],[100,8]];
   for(const [influence,status] of examples)expect(maxHouseStatus(influence)).toBe(status);
-  expect(maxHouseStatus(NaN)).toThrow;
+  expect(()=>maxHouseStatus(NaN)).toThrow('Influência');
  });
  it('Status para três ordens de herdeiros segue máximo menos 1,2,3',()=>{
   expect([1,2,3,4].map(n=>heirHouseStatus(55,n))).toEqual([5,4,3,3]);
