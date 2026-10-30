@@ -53,13 +53,19 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
     }
   }
 
+  const myMembership=admin.data?null:await db.from('house_memberships')
+    .select('can_edit,can_edit_attributes,player_id,campaign_players!inner(user_id,active,require_password_change)')
+    .eq('house_id',data.houseId).eq('campaign_players.user_id',context.userId)
+    .eq('campaign_players.active',true).eq('campaign_players.require_password_change',false)
+    .maybeSingle();
+  if(myMembership?.error)throw new Error('Permissões da Casa indisponíveis.');
   const initial=newHouseState(data.houseId,house.data.region??'');if(!finalState){const c=await db.rpc('get_campaign_calendar');const value=c.data as {year?:number;month?:number}|null;if(value?.year&&value.month!==undefined)initial.month=value.year*12+value.month;}
-  return {state:finalState ?? initial,version:sheet.data?.version??0,catalog,houses:[...merged.values()].sort((a,b)=>a.name.localeCompare(b.name)),ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(admin.data)};
+  return {state:finalState ?? initial,version:sheet.data?.version??0,catalog,houses:[...merged.values()].sort((a,b)=>a.name.localeCompare(b.name)),ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(admin.data),canEditAttributes:Boolean(admin.data||myMembership?.data?.can_edit_attributes)};
 });
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
   const admin=Boolean(role.data);if(!admin&&!membership.data)throw new Error('Edição desta casa não autorizada.');
-  if(['approve','advance','import','correct','fortune','survivors','vassal_approve','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
+  if(['admin_edit','approve','advance','import','correct','fortune','survivors','vassal_approve','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   const duplicate=await db.from('noble_house_ledger').select('after_state,version,actor,action').eq('house_id',data.houseId).eq('operation_key',data.key).maybeSingle();
   if(duplicate.error)throw new Error('Não foi possível conferir a operação.');
@@ -71,26 +77,88 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   if(!current.data){const c=await context.supabase.rpc('get_campaign_calendar');const value=c.data as {year?:number;month?:number}|null;if(value?.year&&value.month!==undefined)state.month=value.year*12+value.month;}
   if((current.data?.version??0)!==data.version)throw new Error('A ficha mudou. Recarregue para conciliar as versões.');
   let next=structuredClone(state),rule='Cormyr · gestão auditada';const args=data.args;
-  if(state.phase==='review'&&!['approve','correct','return_to_draft','clear_pending'].includes(data.action))throw new Error('Criação em revisão; aguarde aprovação ou correção do Narrador.');
+  const editGrants=admin?true:(await context.supabase.from('house_memberships')
+    .select('can_edit_attributes,player_id,campaign_players!inner(user_id,active,require_password_change)')
+    .eq('house_id',data.houseId).eq('campaign_players.user_id',context.userId)
+    .eq('campaign_players.active',true).eq('campaign_players.require_password_change',false)
+    .maybeSingle());
+  if(!admin&&editGrants.error)throw new Error('Permissões de atributos indisponíveis.');
+  const mayBuyAttributes=admin||Boolean(!admin&&editGrants.data?.can_edit_attributes);
+  const pristine=state.phase==='draft'&&state.rolls.length===0&&
+    !state.importSources.length&&state.holdings.length===0&&state.units.length===0&&
+    RESOURCE_KEYS.every(r=>state.base[r]===0);
+
+  if(state.phase==='review'&&!['admin_edit','crest_import','approve','correct','return_to_draft','clear_pending'].includes(data.action))throw new Error('Criação em revisão; aguarde aprovação ou correção do Narrador.');
   if(data.action==='draft') {
-    if(state.phase==='active'||state.phase==='review')throw new Error('Criação aprovada ou em revisão não permite redistribuição livre.');
+    if(state.phase!=='draft')throw new Error('Ficha em revisão ou ativa exige edição auditada do Narrador.');
     const values=resourcesSchema.parse(args['base']);validateResources(values);
-    const identity=z.object({region:z.string(),motto:z.string().max(500),foundation:z.number().int().optional(),history:z.array(z.string()).max(100),notes:z.string().max(10000)}).parse(args['identity']);
-    const baseChanged=RESOURCE_KEYS.some(r=>values[r]!==state.base[r]);
-    // Identity and the current wizard step are always editable in draft.
-    // Resources remain locked without a Narrator-authorized budget.
-    if(!admin&&baseChanged&&(state.method!=='budget'||state.budget===null))
-      throw new Error('A distribuição dos recursos exige orçamento autorizado do Narrador.');
-    if(!admin&&state.method!=='budget'&&baseChanged)
-      throw new Error('Valores de rolagens ou importação são imutáveis.');
-    next.base=state.method==='budget'?(admin||state.budget!==null?values:state.base):state.base;
-    next.identity=identity;next.creationStep=z.number().int().min(0).max(10).parse(args['creationStep']);
-    if(admin){next.method=z.enum(['budget','roll','import']).parse(args['method']);next.budget=z.number().nonnegative().nullable().parse(args['budget']);}
-    // Never reapply a regional bonus to legacy/imported source totals.
+    const identity=z.object({region:z.string(),motto:z.string().max(500),
+      foundation:z.number().int().optional(),history:z.array(z.string()).max(100),
+      notes:z.string().max(10000),crestPath:z.string().max(600).optional()}).parse(args['identity']);
+    if(identity.crestPath!==state.identity.crestPath)
+      throw new Error('Importe a imagem do brasão pela ferramenta segura, não pela edição de identidade.');
+    const method=z.enum(['budget','roll','import']).parse(args['method']);
+    if(admin){
+      // Only the Narrator can change the overall creation configuration freely.
+      next.method=method;next.budget=z.number().finite().nonnegative().nullable().parse(args['budget']);
+    }else if(method!==state.method){
+      if(!pristine||method==='import'||(method==='budget'&&!mayBuyAttributes))
+        throw new Error('A escolha do método não está autorizada para esta Casa.');
+      next.method=method;next.budget=method==='budget'?210:null;
+    }else if(method==='budget'&&mayBuyAttributes&&state.budget===null&&pristine){
+      next.budget=210;
+    }
+    const changed=RESOURCE_KEYS.some(r=>state.base[r]!==values[r]);
+    if(changed){
+      if(!admin){
+        if(next.method!=='budget'||!mayBuyAttributes)
+          throw new Error('Compra de atributos bloqueada pelo Narrador.');
+        if(state.rolls.length||state.importSources.length)
+          throw new Error('Atributos rolados ou importados não podem ser redistribuídos.');
+      }
+      next.base=values;
+    }
+    next.identity=identity;
+    next.creationStep=z.number().int().min(0).max(9).parse(args['creationStep']);
     next.regionalApplied=next.method!=='import'&&next.importSources.length===0;
-    if(next.method==='budget'&&next.budget!==null&&RESOURCE_KEYS.reduce((n,r)=>n+next.base[r],0)>next.budget)
-      throw new Error('Os recursos excedem o orçamento autorizado.');
-    rule='Cormyr · bônus substitutivos; criação';
+    if(next.method==='budget'){
+      if(next.budget===null&&!admin&&changed)throw new Error('Orçamento não autorizado.');
+      if(next.budget!==null&&RESOURCE_KEYS.reduce((n,r)=>n+next.base[r],0)>next.budget)
+        throw new Error('Pontos-base excedem a reserva de point buy autorizada.');
+    }
+    rule='Cormyr · criação tradicional/point buy · autorização de atributos conferida';
+  }
+  if(data.action==='admin_edit'){
+    if(!admin)throw new Error('Somente o Narrador pode editar fichas sem restrições de fase.');
+    if(data.explanation.trim().length<10)throw new Error('Justifique a edição administrativa (mínimo 10 caracteres).');
+    const input=z.object({base:resourcesSchema,permanent:resourcesSchema,
+      identity:z.object({region:z.string().max(120),motto:z.string().max(500),
+      foundation:z.number().int().optional(),history:z.array(z.string()).max(100),
+      notes:z.string().max(10000)})}).parse(args);
+    validateResources(input.base);validateResources(input.permanent);
+    // Preserve imported regionalApplied flag, dice, purchases, characters, troops and history.
+    next.base=input.base;next.permanent=input.permanent;
+    next.identity={...state.identity,...input.identity};
+    rule='Cormyr · edição administrativa de ficha, auditoria e justificativa obrigatórias';
+  }
+  if(data.action==='crest_import'){
+    const input=z.object({base64:z.string().min(16).max(3_000_000),
+      mime:z.enum(['image/png','image/jpeg','image/webp'])}).parse(args);
+    if(state.phase!=='draft'&&!admin)throw new Error('Brasão de casa ativa exige edição do Narrador.');
+    if(!admin&&state.importSources.length)throw new Error('Brasão de ficha importada exige revisão do Narrador.');
+    const bytes=Buffer.from(input.base64,'base64');
+    if(bytes.length>2*1024*1024||bytes.length<32||bytes.toString('base64')!==input.base64)
+      throw new Error('Imagem inválida: tamanho máximo 2 MB.');
+    const signature=(input.mime==='image/png'&&bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))||
+      (input.mime==='image/jpeg'&&bytes[0]===255&&bytes[1]===216&&bytes[2]===255)||
+      (input.mime==='image/webp'&&bytes.toString('ascii',0,4)==='RIFF'&&bytes.toString('ascii',8,12)==='WEBP');
+    if(!signature)throw new Error('Formato da imagem não corresponde ao arquivo informado.');
+    const ext={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[input.mime];
+    const path='house-crests/'+data.houseId+'/'+crypto.randomUUID()+'.'+ext;
+    const uploaded=await db.storage.from('campaign-images').upload(path,bytes,{upsert:false,contentType:input.mime,cacheControl:'3600'});
+    if(uploaded.error)throw new Error('Não foi possível guardar o brasão privado.');
+    next.identity={...state.identity,crestPath:path};
+    rule='Cormyr · importação de imagem de brasão (privada, vinculada à ficha e auditada)';
   }
   if(data.action==='domain') {const domain=z.object({id:z.string().uuid(),name:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args);next.domains.push({...domain,terrain:'',features:[]});}
   if(data.action==='purchase') {
