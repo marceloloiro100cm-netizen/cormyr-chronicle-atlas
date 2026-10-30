@@ -68,7 +68,7 @@ describe('menu e grupos do Narrador',()=>{
   expect(all).toHaveAttribute('data-groups','ashkar,grantass');
   fireEvent.click(dragon);
   expect(all).toHaveAttribute('data-groups','');
-  expect(await screen.findByText('0',{selector:'strong'})).toBeInTheDocument();
+  await waitFor(()=>expect(screen.getByText('Entregas dos grupos').previousElementSibling).toHaveTextContent('0'));
   fireEvent.click(screen.getByRole('button',{name:'Abrir ficha da casa'}));
   expect(onManage).toHaveBeenCalledWith('everlost');
  });
