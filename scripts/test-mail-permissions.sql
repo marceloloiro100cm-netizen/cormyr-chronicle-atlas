@@ -168,5 +168,58 @@ DO $round_validation2$ BEGIN
   END;
 END $round_validation2$;
 
+-- Lote 5: versionamento, permissões, adendo do Mestre, audit e entrega Drive.
+SELECT pg_temp.assert((SELECT version=2 FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000201'),'editing a saved draft increments reply revision');
+SELECT pg_temp.assert((SELECT count(*)=2 FROM letter_reply_versions WHERE reply_id=(SELECT id FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000201')),'draft preserves both revisions');
+SELECT pg_temp.assert((SELECT count(*)>=1 FROM sync_outbox WHERE entity_type='reply'
+ AND entity_id=(SELECT id FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000201') AND version=2),'published edited draft enqueues its current version');
+DO $privacy_check$ BEGIN
+ BEGIN
+  PERFORM public.edit_letter_reply('00000000-0000-0000-0000-000000000202',1,'Mestre tentando ler/alterar rascunho');
+  RAISE EXCEPTION 'narrator edited private player draft';
+ EXCEPTION WHEN raise_exception THEN
+  IF SQLERRM='narrator edited private player draft' OR SQLERRM NOT LIKE 'Rascunho privado de outro jogador%' THEN RAISE; END IF;
+ END;
+ BEGIN
+  PERFORM public.delete_letter_reply('00000000-0000-0000-0000-000000000202',1);
+  RAISE EXCEPTION 'narrator deleted private player draft';
+ EXCEPTION WHEN raise_exception THEN
+  IF SQLERRM='narrator deleted private player draft' OR SQLERRM NOT LIKE 'Rascunho privado de outro jogador%' THEN RAISE; END IF;
+ END;
+END $privacy_check$;
+-- O próprio Narrador pode responder ao original sem precisar de resposta prévia do jogador.
+SELECT public.reply_weekly_message('00000000-0000-0000-0000-000000000100',NULL,
+ 'Complemento do Mestre','00000000-0000-0000-0000-000000000310',false);
+SELECT pg_temp.assert((SELECT recipient_user_id='00000000-0000-0000-0000-000000000002'::uuid
+ AND reply_to_id='00000000-0000-0000-0000-000000000100'::uuid AND delivery_week=4
+ FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000310'),'narrator addendum addresses active house member and next week');
+SELECT public.save_weekly_reply_draft('00000000-0000-0000-0000-000000000311','00000000-0000-0000-0000-000000000100',NULL,'Adendo em rascunho');
+SELECT public.schedule_weekly_reply_draft((SELECT id FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000311'));
+SELECT pg_temp.assert((SELECT publication_state='scheduled' AND delivery_week=4
+ FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000311'),'narrator addendum draft can be scheduled');
+SELECT public.edit_letter_reply('00000000-0000-0000-0000-000000000101',1,'Texto editorial revisado');
+SELECT pg_temp.assert((SELECT version=2 FROM letter_replies WHERE id='00000000-0000-0000-0000-000000000101'),'delivered reply is versioned');
+SELECT pg_temp.assert((SELECT count(*)=2 FROM letter_reply_versions WHERE reply_id='00000000-0000-0000-0000-000000000101'),'delivered reply retains revision history');
+SELECT pg_temp.assert((SELECT payload->>'content'='Texto editorial revisado'
+ FROM sync_outbox WHERE entity_type='reply' AND entity_id='00000000-0000-0000-0000-000000000101' AND version=2),'updated reply exports revised payload');
+DO $reply_version_check$ BEGIN
+ BEGIN
+  PERFORM public.edit_letter_reply('00000000-0000-0000-0000-000000000101',1,'Versão antiga');
+  RAISE EXCEPTION 'stale reply accepted';
+ EXCEPTION WHEN raise_exception THEN
+  IF SQLERRM='stale reply accepted' OR SQLERRM NOT LIKE 'Conflito de versão%' THEN RAISE; END IF;
+ END;
+END $reply_version_check$;
+SELECT public.edit_campaign_letter('00000000-0000-0000-0000-000000000100',1,'Missiva revisada','Texto revisado pelo Mestre');
+SELECT pg_temp.assert((SELECT version=2 FROM campaign_letters WHERE id='00000000-0000-0000-0000-000000000100'),'letter edit creates version');
+SELECT pg_temp.assert((SELECT payload->>'content'='Texto revisado pelo Mestre'
+ FROM sync_outbox WHERE entity_type='letter' AND entity_id='00000000-0000-0000-0000-000000000100' AND version=2),'letter editing queues latest content for Drive');
+SELECT public.delete_letter_reply('00000000-0000-0000-0000-000000000101',2);
+SELECT pg_temp.assert((SELECT count(*)=3 FROM letter_reply_versions WHERE reply_id='00000000-0000-0000-0000-000000000101'),'soft delete is auditable');
+SELECT pg_temp.assert((SELECT count(*)=0 FROM letter_replies WHERE id='00000000-0000-0000-0000-000000000101'),'deleted reply hidden from narrator RLS');
+SELECT pg_temp.assert(public.can_export_mail('reply','00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000001'),'Drive service can publish tombstone for authorized narrator');
+SELECT pg_temp.assert(NOT public.can_export_mail('reply','00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000004'),'deleted reply tombstone still restricted to original audience');
+SELECT pg_temp.assert((SELECT payload->>'deleted_at' IS NOT NULL FROM sync_outbox WHERE entity_type='reply'
+ AND entity_id='00000000-0000-0000-0000-000000000101' AND version=3),'soft deletion queues tombstone for Drive');
 SELECT pg_temp.assert(NOT has_function_privilege('authenticated','public.can_export_mail(text,uuid,uuid)','EXECUTE'),'export authorization is service only');
 ROLLBACK;
