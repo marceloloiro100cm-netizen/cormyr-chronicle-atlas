@@ -13,6 +13,7 @@ import { date, syncLabel } from './shared';
 import type { Panel } from './panel-data';
 import {MailComposer,replaceMailDraft,MailLinkFields,useMailOptions,type MailLinks,type MailOptions} from './mail-compose';
 import {NARRATION_GROUPS,narrationHouseIds} from '@/lib/mail-groups';
+import {NarratorMailNotes} from './narrator-mail-notes';
 
 
 function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Responder'}:{letterId:string;replyId?:string|undefined;recipientId:string;roundRevision:string;onSave:()=>unknown;label?:string}){
@@ -133,6 +134,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
             </div>}
             {answer.publication_state==='scheduled'&&<p>Aguardando abertura da Semana {answer.delivery_week}</p>}
             <div className="campaign-reply-text"><CampaignContent content={answer.content}/></div>
+            {data.admin&&<NarratorMailNotes replyId={answer.id} userId={data.user.id}/>}
              {!letter.deleted_at&&((data.admin)||(answer.publication_state==='draft'&&answer.author_user_id===data.user.id))&&<div className="campaign-actions">
                {data.admin&&answer.publication_state!=='draft'&&<ReplyEdit answer={answer} onSave={saved}/>}
                <Button size="sm" variant="outline" onClick={async()=>{if(!confirm('Excluir esta resposta? O texto sairá do fio, mas a operação ficará registrada no histórico de auditoria.'))return;
@@ -149,6 +151,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
           <p><strong>Leitura do Narrador:</strong> {incomingReplies.length===0?'Nenhuma resposta entregue':read?'Respostas conferidas':'Nova resposta não lida'}</p>
         </section>}
         {data.admin&&letter.sender_user_id===data.user.id&&<details><summary>Leituras registradas pelos destinatários</summary>{data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).length===0?<p>Nenhuma leitura registrada.</p>:data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).map(r=><p key={r.user_id}>{data.players.find(p=>p.user_id===r.user_id)?.name??'Destinatário autorizado'} · {date(r.read_at)}{isLetterRead(letter.id,r,answers)?'':' · Há respostas posteriores'}</p>)}</details>}
+        {data.admin&&<NarratorMailNotes letterId={letter.id} userId={data.user.id}/>}
         <p className="text-muted-foreground text-sm">{syncLabel(letter.sync_state)} · {letter.last_synced_at?date(letter.last_synced_at):'Ainda não sincronizada'}</p>
         {threadLetters.length>0&&<div className="campaign-thread"><Button size="sm" variant="ghost" aria-expanded={threadOpen} onClick={()=>toggleThread(letter.id)}>{threadOpen?'Ocultar fio da conversa':`Ver relacionadas nesta página (${threadLetters.length} missiva(s) relacionada(s))`}</Button>{threadOpen&&threadLetters.map(other=>{const otherAnswers=viewReplies.filter(r=>r.letter_id===other.id);return <div key={other.id} className="campaign-thread-item"><span className="campaign-eyebrow">{other.letter_number?`Missiva ${other.letter_number} · `:''}{other.letter_kind==='geral'?'Geral':'Reservada'}</span><strong>{other.subject}</strong><small> · De: {other.sender_name} · {other.campaign_date?formatDate(other.campaign_date):date(other.created_at)}</small><CampaignContent content={other.content}/>{otherAnswers.map(a=><div key={a.id} className="campaign-replies"><span className="campaign-eyebrow">Resposta · {mailWeekTimeline(a.creation_week,a.delivery_week,a.publication_state)}</span><br/><strong>{a.author_name}</strong><small> · {date(a.created_at)}</small><CampaignContent content={a.content}/></div>)}</div>;})}</div>}
         {!letter.deleted_at&&<div className="campaign-actions">
