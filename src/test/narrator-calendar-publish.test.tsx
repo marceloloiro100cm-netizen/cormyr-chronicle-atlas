@@ -21,10 +21,10 @@ const setupRpc=()=>{
   if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
   if(name==='get_campaign_schedule_drafts'||name==='calendar_mail_events'||name==='get_campaign_schedule_events')
    return {data:[],error:null};
-  if(name==='publish_campaign_schedule'){
+  if(name==='publish_campaign_schedule_confirmed'){
    const [year,month,day]=(args?.['p_date'] as string).split('-').map(Number);
    mock.current={...mock.current,year:year!,month:month!-1,day:day!,auto_advance:Boolean(args?.['p_auto']),published_week:Number(args?.['p_week']),version:mock.current.version+1};
-   return {data:null,error:null};
+   return {data:{...mock.current},error:null};
   }
   return {data:null,error:{message:'RPC inesperada: '+name}};
  });
@@ -45,10 +45,10 @@ describe('publicação da data global de Harptos',()=>{
   fireEvent.change(screen.getAllByRole('combobox',{name:'Mês',hidden:true})[0]!,{target:{value:'1'}});
   expect(picker.parentElement).toHaveTextContent('1 de Alturiak');
   fireEvent.click(screen.getByRole('button',{name:'Publicar calendário'}));
-  await waitFor(()=>expect(mock.rpc).toHaveBeenCalledWith('publish_campaign_schedule',expect.objectContaining({
+  await waitFor(()=>expect(mock.rpc).toHaveBeenCalledWith('publish_campaign_schedule_confirmed',expect.objectContaining({
    p_version:1,p_date:'1522-02-01',p_week:2,p_auto:true
   })));
-  expect(await screen.findByText(/Calendário publicado e confirmado: 1 de Alturiak/)).toBeInTheDocument();
+  expect(await screen.findByText(/Calendário gravado e confirmado: 1 de Alturiak/)).toBeInTheDocument();
   expect(mock.current.month).toBe(1);
  });
  it('alterar o ano atualiza a data global sem exigir clique em outro dia',async()=>{
@@ -57,7 +57,7 @@ describe('publicação da data global de Harptos',()=>{
   fireEvent.change(screen.getAllByRole('spinbutton',{name:'Ano',hidden:true})[0]!,{target:{value:'1523'}});
   expect(screen.getByText(/Data selecionada para publicação/).parentElement).toHaveTextContent('1 de Hammer · 1523 CV');
   fireEvent.click(screen.getByRole('button',{name:'Publicar calendário'}));
-  await waitFor(()=>expect(mock.rpc).toHaveBeenCalledWith('publish_campaign_schedule',expect.objectContaining({p_date:'1523-01-01'})));
+  await waitFor(()=>expect(mock.rpc).toHaveBeenCalledWith('publish_campaign_schedule_confirmed',expect.objectContaining({p_date:'1523-01-01'})));
  });
  it('seleciona um dia e impede que uma atualização externa silenciosa apague a escolha',async()=>{
   const qc=setup();
@@ -67,10 +67,54 @@ describe('publicação da data global de Harptos',()=>{
   qc.setQueryData(['campaign-calendar'],{...mock.current,day:6,version:2});
   expect(screen.getByText(/Data selecionada para publicação/).parentElement).toHaveTextContent('12 de Hammer');
   fireEvent.click(screen.getByRole('button',{name:'Publicar calendário'}));
-  await waitFor(()=>expect(mock.rpc).toHaveBeenCalledWith('publish_campaign_schedule',expect.objectContaining({
+  await waitFor(()=>expect(mock.rpc).toHaveBeenCalledWith('publish_campaign_schedule_confirmed',expect.objectContaining({
    p_date:'1522-01-12',p_version:1
   })));
  });
+ it('preserva a data e mostra mensagem original do Supabase quando ocorre falha de permissão',async()=>{
+  mock.rpc.mockImplementation(async(name:string)=>{
+   if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
+   if(name==='get_campaign_schedule_drafts'||name==='calendar_mail_events'||name==='get_campaign_schedule_events')return {data:[],error:null};
+   return {data:null,error:{code:'42501',message:'permission denied'}};
+  });
+  setup();
+  await screen.findByText(/Data selecionada para publicação/);
+  fireEvent.click(screen.getAllByRole('button',{name:'11 de Hammer, 1522',hidden:true})[0]!);
+  fireEvent.click(screen.getByRole('button',{name:'Publicar calendário'}));
+  expect(await screen.findByRole('alert')).toHaveTextContent('não tem permissão de Narrador');
+  expect(screen.getByText(/Data selecionada para publicação/).parentElement).toHaveTextContent('11 de Hammer');
+ });
+
+ it('detecta conflito e recupera versão mantendo a data editada',async()=>{
+  mock.rpc.mockImplementation(async(name:string)=>{
+   if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
+   if(name==='get_campaign_schedule_drafts'||name==='calendar_mail_events'||name==='get_campaign_schedule_events')return {data:[],error:null};
+   return {data:null,error:{code:'P0001',message:'Calendário alterado; recarregue antes de salvar'}};
+  });
+  setup();
+  await screen.findByText(/Data selecionada para publicação/);
+  fireEvent.click(screen.getAllByRole('button',{name:'11 de Hammer, 1522',hidden:true})[0]!);
+  fireEvent.click(screen.getByRole('button',{name:'Publicar calendário'}));
+  expect(await screen.findByRole('alert')).toHaveTextContent('outra sessão');
+  mock.current={...mock.current,version:2,day:3};
+  fireEvent.click(screen.getByRole('button',{name:/Atualizar versão sem perder data selecionada/}));
+  expect(await screen.findByText(/Versão atualizada. Sua data e rodada selecionadas/)).toBeInTheDocument();
+  expect(screen.getByText(/Data selecionada para publicação/).parentElement).toHaveTextContent('11 de Hammer');
+ });
+
+ it('não confirma uma RPC com resultado inconsistente com o que foi solicitado',async()=>{
+  mock.rpc.mockImplementation(async(name:string)=>{
+   if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
+   if(name==='get_campaign_schedule_drafts'||name==='calendar_mail_events'||name==='get_campaign_schedule_events')return {data:[],error:null};
+   return {data:{...mock.current},error:null};
+  });
+  setup();
+  await screen.findByText(/Data selecionada para publicação/);
+  fireEvent.click(screen.getAllByRole('button',{name:'11 de Hammer, 1522',hidden:true})[0]!);
+  fireEvent.click(screen.getByRole('button',{name:'Publicar calendário'}));
+  expect(await screen.findByRole('alert')).toHaveTextContent('não retornou a data, rodada e versão esperadas');
+ });
+
  it('não declara sucesso quando a RPC falha',async()=>{
   mock.rpc.mockImplementation(async(name:string)=>{
    if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
@@ -81,7 +125,7 @@ describe('publicação da data global de Harptos',()=>{
   await screen.findByText(/Data selecionada para publicação/);
   fireEvent.click(screen.getByRole('button',{name:'Publicar calendário'}));
   expect(await screen.findByRole('alert')).toHaveTextContent('Falha no banco ao publicar');
-  expect(screen.queryByText(/Calendário publicado e confirmado/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Calendário gravado e confirmado/)).not.toBeInTheDocument();
  });
 });
 
