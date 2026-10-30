@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterLetters, hasDeliveredAnswer, matchesLetterBox, groupReceivedLetters, isLetterRead, narratorThreadStage, nextLetterNumber, pendingRoundHouses, sentLetters, unreadReceivedCount, type LetterRow } from '@/lib/letters';
+import { filterLetters, hasDeliveredAnswer, matchesLetterBox, relatedConversationLetters, groupReceivedLetters, isLetterRead, narratorThreadStage, nextLetterNumber, pendingRoundHouses, sentLetters, unreadReceivedCount, type LetterRow } from '@/lib/letters';
 
 const row = (over: Partial<LetterRow>): LetterRow => ({
   id: crypto.randomUUID(),
@@ -241,5 +241,25 @@ describe('lote 3: caixa de entrada e turnos do Narrador',()=>{
   expect(matchesLetterBox(gmLetter,[scheduled],'programadas')).toBe(true);
   expect(matchesLetterBox(gmLetter,[draft],'rascunhos')).toBe(true);
   expect(hasDeliveredAnswer(gmLetter,[draft,scheduled])).toBe(false);
+ });
+});
+
+describe('lote 5: privacidade de destinatários e respostas excluídas',()=>{
+ it('não mistura duas cópias de um mesmo envio em lote no fio de respostas',()=>{
+  const first=row({id:'first',batch_key:'same-send',conversation_id:'shared-legacy'});
+  const second=row({id:'second',batch_key:'same-send',conversation_id:'shared-legacy'});
+  expect(relatedConversationLetters(first,[first,second])).toEqual([]);
+ });
+ it('mantém cartas intencionalmente relacionadas quando não compartilham o lote',()=>{
+  const first=row({id:'first',batch_key:'send-a',conversation_id:'shared-legacy'});
+  const second=row({id:'second',batch_key:'send-b',conversation_id:'shared-legacy'});
+  expect(relatedConversationLetters(first,[first,second])).toEqual([second]);
+ });
+ it('resposta excluída não muda status de leitura, resposta ou a próxima pessoa a responder',()=>{
+  const letter=row({id:'letter',sender_user_id:'narrador',publication_state:'delivered',delivered_at:'2026-10-24T10:00:00Z'});
+  const reply={letter_id:'letter',author_user_id:'player',publication_state:'delivered',delivered_at:'2026-10-25T10:00:00Z',deleted_at:'2026-10-26T10:00:00Z'};
+  expect(hasDeliveredAnswer(letter,[reply])).toBe(false);
+  expect(narratorThreadStage(letter,[reply],'narrador')).toBe('awaiting-house');
+  expect(unreadReceivedCount([letter],[reply],[],'narrador',true)).toBe(0);
  });
 });
