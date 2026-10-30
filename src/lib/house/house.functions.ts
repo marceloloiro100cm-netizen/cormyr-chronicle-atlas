@@ -120,6 +120,8 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
           throw new Error('Compra de atributos bloqueada pelo Narrador.');
         if(state.rolls.length||state.importSources.length)
           throw new Error('Atributos rolados ou importados não podem ser redistribuídos.');
+        if(RESOURCE_KEYS.some(r=>!Number.isInteger(values[r])||values[r]<0))
+          throw new Error('Point buy exige valores inteiros não negativos por atributo.');
       }
       next.base=values;
     }
