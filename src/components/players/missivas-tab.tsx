@@ -91,6 +91,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
       {isOpen&&<div className="campaign-letter-body">
         <p>{formatDate(letter.campaign_date)}</p>
         {letter.historical_source&&<p className="text-muted-foreground text-sm">Correspondência histórica importada de {letter.historical_source} · não representa um novo envio pelo site.</p>}
+        {data.admin&&letter.historical_source&&<p className="text-muted-foreground text-sm">{letter.historical_recipient_name?.includes('(NPC, Narrador)')?'Recebida pelo Narrador na qualidade de gestor da casa NPC.':letter.recipient_house_id?'Entregue à casa jogadora. O Narrador pode acompanhar administrativamente, mas não recebeu cópia da missiva.':'Correspondência arquivada.'}</p>}
         <CampaignContent content={letter.content}/>
         {(letter.court_member_id||letter.military_unit_id)&&<div className="campaign-eyebrow">{letter.court_member_id&&<p>Corte: {linkName('court',letter.origin_house_id,letter.court_member_id)} · {letter.court_assignment==='order_recipient'?'Destinatário da ordem':'Executor'}</p>}{letter.military_unit_id&&<p>Unidade: {linkName('unit',letter.origin_house_id,letter.military_unit_id)}</p>}</div>}
         {letter.sender_user_id===data.user.id&&letter.publication_state==='delivered'&&<p>Destinatário: {letter.recipient_read?'leitura registrada':'sem leitura registrada'} · {hasDeliveredAnswer(letter,answers)?'resposta recebida':'aguardando resposta'}</p>}
