@@ -39,11 +39,13 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{const d=drafts.get(scope);if(d?.content||d?.subject){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[scope]);
  const current=data.rounds.find(r=>r.status==='open')?.number??null;
  const suggested=(current??Math.max(0,...data.rounds.map(r=>r.number)))+1;
+ const legacyIndividuals=draft.targets.some(t=>t.startsWith('p:'));
  return <section id="nova-missiva" className="mail-compose-panel"><h2>Escrever missiva</h2>
- <p className="mail-compose-intro">Selecione as casas ou pessoas destinatárias e escreva a missiva. Cada entrega tem leitura e resposta privadas.</p>
+ <p className="mail-compose-intro">Selecione as casas destinatárias e escreva a missiva. Cada entrega tem leitura e resposta privadas.</p>
  {error&&<p role="alert">Não foi possível carregar os cadastros. <Button type="button" variant="outline" onClick={()=>refetch()}>Tentar novamente</Button></p>}
  <form className="campaign-form mail-compose-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);setMessage('');key.current??=crypto.randomUUID();try{
  if(!draft.campaignDate)throw new Error('Selecione a data da campanha antes de salvar ou enviar a missiva.');
+ if(legacyIndividuals)throw new Error('Remova os destinatários individuais antigos antes de salvar ou enviar.');
  const content=await uploadImages(draft.content,draft.images,key.current);
  const saving=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';
  const r=await datedMail('send_linked_mail',{p_key:key.current,p_origin:draft.links.origin||null,p_targets:draft.targets,p_subject:draft.subject,p_content:content,p_court:draft.links.court||null,p_unit:draft.links.unit||null,p_role:draft.links.court?draft.links.role:null,p_draft:saving,p_week:data.admin?Number(draft.week||suggested):null},draft.campaignDate);
@@ -53,7 +55,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  key.current=null;drafts.delete(scope);setDraft({...draft,subject:'',content:'',images:[]});onSave();
  }catch(err){setMessage(err instanceof Error?err.message:typeof err==='object'&&err&&'message'in err?String(err.message):'Não foi possível salvar. Seu texto foi preservado.');}finally{setBusy(false);}}}>
  <fieldset disabled={busy} className="campaign-form mail-compose-body"><legend>Composição da missiva</legend>
- <MailRecipientPicker data={data} me={me} options={options} targets={draft.targets} onChange={targets=>change({...draft,targets})}/>
+ <MailRecipientPicker data={data} me={me} targets={draft.targets} onChange={targets=>change({...draft,targets})}/>
  <div className="mail-compose-meta">
  <CampaignDatePicker value={draft.campaignDate} onChange={campaignDate=>change({...draft,campaignDate})}/>
  {data.admin&&<label>Semana de entrega<input type="number" min={1} value={draft.week} placeholder={String(suggested)} onChange={e=>change({...draft,week:e.target.value})}/></label>}
@@ -63,6 +65,6 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  <MailLinkFields value={draft.links} onChange={links=>change({...draft,links})} options={options??{players:[],houses:[]}} onManage={onManage}/>
  <ImagePicker images={draft.images} onChange={images=>change({...draft,images})} disabled={busy}/>
  <p>{data.admin?`Entrega prevista: Semana ${draft.week||suggested}.`:current?`Entrega na Semana ${current}.`:'Sem semana aberta. Você pode salvar rascunhos.'}</p>
- <div className="campaign-actions"><Button value="draft" variant="outline" disabled={busy||!draft.campaignDate||!draft.targets.length||(!data.admin&&!draft.links.origin)}>Salvar rascunho</Button><Button disabled={busy||!draft.campaignDate||!draft.targets.length||(!data.admin&&(!draft.links.origin||current===null))}>{busy?'Salvando…':data.admin?'Programar entrega':'Enviar missiva'}</Button></div>
+ <div className="campaign-actions"><Button value="draft" variant="outline" disabled={busy||legacyIndividuals||!draft.campaignDate||!draft.targets.length||(!data.admin&&!draft.links.origin)}>Salvar rascunho</Button><Button disabled={busy||legacyIndividuals||!draft.campaignDate||!draft.targets.length||(!data.admin&&(!draft.links.origin||current===null))}>{busy?'Salvando…':data.admin?'Programar entrega':'Enviar missiva'}</Button></div>
  </fieldset></form><p role="status">{message}</p></section>;
 }
