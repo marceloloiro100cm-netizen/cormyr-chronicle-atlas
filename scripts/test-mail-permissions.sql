@@ -103,7 +103,7 @@ SET LOCAL ROLE authenticated;
 
 -- Lote 2 (item 07 EXCLUÍDO): testamos exclusivamente número sequencial,
 -- carimbos de encerramento, idempotência e destinatário obrigatório.
-DO $ BEGIN
+DO $round_validation$ BEGIN
   BEGIN
     PERFORM public.set_letter_round(4,false);
     RAISE EXCEPTION 'skip accepted';
@@ -136,7 +136,7 @@ DO $ BEGIN
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM='recipientless draft accepted' OR SQLERRM NOT LIKE 'Destinatários inválidos%' THEN RAISE; END IF;
   END;
-END $;
+END $round_validation$;
 SELECT public.set_letter_round(3,false);
 SELECT pg_temp.assert((SELECT status='closed' AND closed_at IS NOT NULL FROM public.letter_rounds WHERE number=2),'opening next week closes former with timestamp');
 SELECT pg_temp.assert((SELECT status='open' AND opened_at IS NOT NULL FROM public.letter_rounds WHERE number=3),'new week receives opening timestamp');
@@ -149,14 +149,14 @@ SELECT public.set_letter_round(3,true);
 SELECT set_config('test.round_closed_at',(SELECT closed_at::text FROM public.letter_rounds WHERE number=3),true);
 SELECT public.set_letter_round(3,true);
 SELECT pg_temp.assert((SELECT closed_at::text=current_setting('test.round_closed_at') FROM public.letter_rounds WHERE number=3),'repeating close never overwrites audit timestamp');
-DO $ BEGIN
+DO $round_validation2$ BEGIN
   BEGIN
     PERFORM public.set_letter_round(5,false);
     RAISE EXCEPTION 'skip after closing accepted';
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM='skip after closing accepted' OR SQLERRM NOT LIKE 'As semanas devem avançar em sequência%' THEN RAISE; END IF;
   END;
-END $;
+END $round_validation2$;
 
 SELECT pg_temp.assert(NOT has_function_privilege('authenticated','public.can_export_mail(text,uuid,uuid)','EXECUTE'),'export authorization is service only');
 ROLLBACK;
