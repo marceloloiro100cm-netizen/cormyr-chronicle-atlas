@@ -248,6 +248,9 @@ BEGIN
  END IF;
  RETURN NEW;
 END $$;
+-- Novas respostas precisam de snapshot inicial antes da primeira edição.
+CREATE TRIGGER reply_version_created AFTER INSERT ON public.letter_replies
+ FOR EACH ROW EXECUTE FUNCTION public.audit_reply_edit();
 CREATE TRIGGER reply_version_audit AFTER UPDATE OF content,deleted_at
  ON public.letter_replies FOR EACH ROW
  WHEN (OLD.content IS DISTINCT FROM NEW.content OR OLD.deleted_at IS DISTINCT FROM NEW.deleted_at)
