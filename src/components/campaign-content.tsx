@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus, X, UserRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { contentParts, imageToken, validateImage } from "@/lib/campaign-content";
@@ -22,7 +22,7 @@ export function CampaignContent({ content }: { content: string }) {
     </div>
   );
 }
-export function PrivateImage({ path, caption }: { path: string; caption: string }) {
+export function PrivateImage({ path, caption, thumbnail = false }: { path: string; caption: string; thumbnail?: boolean }) {
   const { data, error } = useQuery({
     queryKey: ["private-image", path],
     queryFn: async () => {
@@ -39,6 +39,9 @@ export function PrivateImage({ path, caption }: { path: string; caption: string 
     return () => URL.revokeObjectURL(objectUrl);
   }, [data]);
   const cleanCaption = cleanGalleryTitle(caption);
+  if (thumbnail) return url ? (
+    <img src={url} alt={cleanCaption || "Retrato do integrante"} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block", borderRadius: "inherit" }} />
+  ) : <span role="img" aria-label={error ? "Retrato indisponível" : "Carregando retrato"}><UserRound size={28} aria-hidden="true" /></span>;
   return (
     <figure
       className="castle-gallery-artwork flex flex-col items-center w-full min-w-0 max-w-full m-0"

@@ -26,7 +26,7 @@ export function NpcHub({ records, houseId, playerId, admin, canEdit, onSave, ren
     {canEdit && <NpcForm houseId={houseId} playerId={playerId} admin={admin} onSave={onSave} />}
     {npcs.length === 0 ? <p className="campaign-empty">Nenhum integrante da Corte cadastrado.</p> : <ul className="campaign-npc-list">{npcs.map(n => <li key={n.row.id} className={aberto === n.row.id ? 'aberto' : ''}>
       <div className="campaign-npc-row">
-        <span className="campaign-npc-photo">{n.foto ? <PrivateImage path={n.foto} caption={n.nome} /> : <UserRound size={28} aria-hidden="true" />}</span>
+        <span className="campaign-npc-photo">{n.foto ? <PrivateImage path={n.foto} caption={n.nome} thumbnail /> : <UserRound size={28} aria-hidden="true" />}</span>
         <button type="button" className="campaign-npc-toggle" aria-expanded={aberto === n.row.id} onClick={() => setAberto(aberto === n.row.id ? null : n.row.id)}>
           <span className="campaign-npc-name"><strong>{n.nome}</strong>{n.cargo && <span>Cargo: {n.cargo}</span>}</span>
           <ChevronDown size={18} className="campaign-npc-chevron" aria-hidden="true" />
