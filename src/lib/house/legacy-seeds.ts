@@ -440,20 +440,7 @@ export const LEGACY_HOUSE_SEEDS: Record<string, HouseState> = {
       }
     ],
     "projects": [],
-    "court": [
-      {
-        "id": "court-ashkar-1",
-        "name": "Kael Ashkar",
-        "role": "Lorde / Lady",
-        "notes": "Lorde de Cinzaria, Aquele Que Queima"
-      },
-      {
-        "id": "court-ashkar-2",
-        "name": "Darian Ashkar",
-        "role": "Herdeiro (Primogênito)",
-        "notes": "Herdeiro da Casa Ashkar"
-      }
-    ],
+    "court": [],
     "month": 18264,
     "treasury": 0,
     "fortunes": [],
@@ -973,20 +960,7 @@ export const LEGACY_HOUSE_SEEDS: Record<string, HouseState> = {
       }
     ],
     "projects": [],
-    "court": [
-      {
-        "id": "court-grantass-1",
-        "name": "Lady Rawena",
-        "role": "Lorde / Lady",
-        "notes": ""
-      },
-      {
-        "id": "court-grantass-2",
-        "name": "Lord Sven Grantass",
-        "role": "Herdeiro (Primogênito)",
-        "notes": ""
-      }
-    ],
+    "court": [],
     "month": 18264,
     "treasury": 0,
     "fortunes": [],
@@ -1299,14 +1273,7 @@ export const LEGACY_HOUSE_SEEDS: Record<string, HouseState> = {
       }
     ],
     "projects": [],
-    "court": [
-      {
-        "id": "court-silversky-1",
-        "name": "Ashladd Silversky",
-        "role": "Lorde / Lady",
-        "notes": ""
-      }
-    ],
+    "court": [],
     "month": 18264,
     "treasury": 0,
     "fortunes": [],
@@ -1853,20 +1820,7 @@ export const LEGACY_HOUSE_SEEDS: Record<string, HouseState> = {
       }
     ],
     "projects": [],
-    "court": [
-      {
-        "id": "court-everlost-1",
-        "name": "Barão Odnot Everlost",
-        "role": "Lorde / Lady",
-        "notes": ""
-      },
-      {
-        "id": "court-everlost-2",
-        "name": "John Everlost",
-        "role": "Herdeiro (Primogênito)",
-        "notes": ""
-      }
-    ],
+    "court": [],
     "month": 18264,
     "treasury": 0,
     "fortunes": [],
@@ -2351,14 +2305,7 @@ export const LEGACY_HOUSE_SEEDS: Record<string, HouseState> = {
       }
     ],
     "projects": [],
-    "court": [
-      {
-        "id": "court-erdenor-1",
-        "name": "Corvaen Erdenor",
-        "role": "Herdeiro (Primogênito)",
-        "notes": ""
-      }
-    ],
+    "court": [],
     "month": 18264,
     "treasury": 0,
     "fortunes": [],

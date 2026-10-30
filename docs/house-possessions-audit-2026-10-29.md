@@ -34,7 +34,7 @@ O cadastro contém 80 posses e 23 unidades nas seis casas. Desdobramentos já ex
 
 ## Migração protegida
 
-0042 usa nomes exatos normalizados, IDs textuais e bloqueio transacional. Importa somente fichas ausentes ou estados integralmente iguais aos snapshots legados 0036/0041. Estados editados recebem status needs_review; nomes ambíguos não são escolhidos. Cada alteração incrementa a versão, guarda antes/depois completos no ledger e usa chave idempotente. Uma repetição não desfaz compras posteriores.
+0042 usa nomes exatos normalizados, IDs textuais e bloqueio transacional. Importa somente fichas ausentes ou estados integralmente iguais aos snapshots legados 0036/0041. As seis fichas de produção também foram revisadas com seus ledgers: eram totais vinculados, com membros da Corte em Ashkar/Erdenor e aprovação de Qazir em Ashkar. Esses estados são aceitos somente com ID, versão e hash exatamente iguais aos conferidos; a Corte e os IDs de Qazir são preservados e seu custo de 20 Poder não se duplica. Demais estados editados recebem status needs_review; nomes ambíguos não são escolhidos. Cada alteração incrementa a versão, guarda antes/depois completos no ledger e usa chave idempotente. Uma repetição não desfaz compras posteriores.
 
 O ator UUID zero representa a migração de sistema, não um usuário. O relatório de execução fica em noble_house_workbook_imports, visível somente ao narrador/admin e ao serviço. Nenhuma permissão de jogador foi alterada.
 

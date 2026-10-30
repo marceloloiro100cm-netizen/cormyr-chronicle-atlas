@@ -35,10 +35,10 @@ describe('workbook reconciliation 2026-10-29', () => {
   const source = sources.erdenor.cells;
   expect(source.find(c => c.cell === 'E29')?.value).toBe(-1);
   expect(source.find(c => c.cell === 'E30')?.value).toBe(3);
-  expect(balances(LEGACY_HOUSE_SEEDS.erdenor!).available.lands).toBe(2);
+  expect(balances(LEGACY_HOUSE_SEEDS['erdenor']!).available.lands).toBe(2);
  });
  it('preserves historical military costs and flags incomplete military sources', () => {
-  const state = LEGACY_HOUSE_SEEDS.fewmerry!;
+  const state = LEGACY_HOUSE_SEEDS['fewmerry']!;
   expect(state.units.find(u => u.types.includes('infantry'))?.costs[0]?.amount).toBe(5);
   expect(state.units.find(u => u.types.includes('support'))?.costs[0]?.amount).toBe(7);
   expect(state.units.every(u => u.notes.includes('não confirmados'))).toBe(true);

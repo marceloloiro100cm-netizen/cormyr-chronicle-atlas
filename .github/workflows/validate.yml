@@ -69,3 +69,4 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f scripts/test-calendar.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-management.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-workbook-import.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-house-linked-workbooks.sql
