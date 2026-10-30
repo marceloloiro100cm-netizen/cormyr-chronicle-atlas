@@ -1547,6 +1547,13 @@ export type Database = {
         Returns: Json
       }
       get_campaign_calendar: { Args: never; Returns: Json }
+      get_campaign_schedule_drafts: { Args: never; Returns: Json }
+      get_campaign_schedule_events: { Args: { p_year: number; p_month: number }; Returns: Json }
+      save_campaign_schedule_event: { Args: { p_payload: Json }; Returns: Json }
+      publish_campaign_schedule: {
+        Args: { p_version: number; p_date: string; p_auto: boolean; p_week: number }
+        Returns: undefined
+      }
       in_campaign_house: {
         Args: { edit_required?: boolean; h: string }
         Returns: boolean
