@@ -8,6 +8,7 @@ import { CORE_CATALOG } from './catalog';
 import { newHouseState, RESOURCE_KEYS, type HouseState, type CatalogItem, type Unit, type Resource, type CourtMember } from './types';
 import { advance, alternativeFortune, balances, createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
 import { confirmFortune, convertResources } from './fortune';
+import { historyAdjustments, memberBonusAdjustments, historicalFoundationYear, rollFoundation, rollHistoricalEvent } from './creation-history';
 import { improveEquipment } from './equipment';
 import { buySiege } from './siege';
 import { equipUnit, resolveSurvivors, changeUnitState, proposeVassal, approveVassal, SURVIVOR_CONDITIONS } from './military';
@@ -58,7 +59,7 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
   const admin=Boolean(role.data);if(!admin&&!membership.data)throw new Error('Edição desta casa não autorizada.');
-  if(['approve','advance','import','correct','fortune','roll','survivors','vassal_approve','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
+  if(['approve','advance','import','correct','fortune','survivors','vassal_approve','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   const duplicate=await db.from('noble_house_ledger').select('after_state,version,actor,action').eq('house_id',data.houseId).eq('operation_key',data.key).maybeSingle();
   if(duplicate.error)throw new Error('Não foi possível conferir a operação.');
@@ -75,11 +76,20 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     if(state.phase==='active'||state.phase==='review')throw new Error('Criação aprovada ou em revisão não permite redistribuição livre.');
     const values=resourcesSchema.parse(args['base']);validateResources(values);
     const identity=z.object({region:z.string(),motto:z.string().max(500),foundation:z.number().int().optional(),history:z.array(z.string()).max(100),notes:z.string().max(10000)}).parse(args['identity']);
-    next.base=state.method!=="budget"?state.base:values;next.identity=identity;next.creationStep=z.number().int().min(0).max(10).parse(args['creationStep']);
-    if(!admin&&(state.method!=='budget'||state.budget===null))throw new Error('O Narrador precisa autorizar o método e orçamento antes de distribuir recursos.');
+    const baseChanged=RESOURCE_KEYS.some(r=>values[r]!==state.base[r]);
+    // Identity and the current wizard step are always editable in draft.
+    // Resources remain locked without a Narrator-authorized budget.
+    if(!admin&&baseChanged&&(state.method!=='budget'||state.budget===null))
+      throw new Error('A distribuição dos recursos exige orçamento autorizado do Narrador.');
+    if(!admin&&state.method!=='budget'&&baseChanged)
+      throw new Error('Valores de rolagens ou importação são imutáveis.');
+    next.base=state.method==='budget'?(admin||state.budget!==null?values:state.base):state.base;
+    next.identity=identity;next.creationStep=z.number().int().min(0).max(10).parse(args['creationStep']);
     if(admin){next.method=z.enum(['budget','roll','import']).parse(args['method']);next.budget=z.number().nonnegative().nullable().parse(args['budget']);}
-    next.regionalApplied=next.method!=='import';
-    if(next.budget!==null&&RESOURCE_KEYS.reduce((n,r)=>n+next.base[r],0)>next.budget)throw new Error('Os recursos excedem o orçamento autorizado.');
+    // Never reapply a regional bonus to legacy/imported source totals.
+    next.regionalApplied=next.method!=='import'&&next.importSources.length===0;
+    if(next.method==='budget'&&next.budget!==null&&RESOURCE_KEYS.reduce((n,r)=>n+next.base[r],0)>next.budget)
+      throw new Error('Os recursos excedem o orçamento autorizado.');
     rule='Cormyr · bônus substitutivos; criação';
   }
   if(data.action==='domain') {const domain=z.object({id:z.string().uuid(),name:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args);next.domains.push({...domain,terrain:'',features:[]});}
@@ -119,7 +129,20 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   if(data.action==='court_remove'){const {id}=z.object({id:z.string().uuid()}).parse(args);next=removeCourtAssignment(state,id);rule='Corte · vínculo removido; personagem e histórico preservados';}
   if(data.action==='return_to_draft'){if(state.phase!=='review')throw new Error('A criação não está em revisão.');if(data.explanation.trim().length<5)throw new Error('Registre o motivo da devolução.');next.phase='draft';}
   if(data.action==='clear_pending'){const {indices}=z.object({indices:z.array(z.number().int().nonnegative()).min(1)}).parse(args);if(data.explanation.trim().length<10)throw new Error('Registre como as pendências foram resolvidas.');if(indices.some(i=>i>=state.pending.length))throw new Error('Pendência indisponível.');data.explanation+=' · Resolvidas: '+indices.map(i=>state.pending[i]).join('; ');next.pending=state.pending.filter((_,i)=>!indices.includes(i));}
-  if(data.action==='submit'){if(state.phase!=='draft')throw new Error('Criação já enviada.');if(!state.domains.length)throw new Error('Adicione ao menos um domínio.');if(!state.regionalApplied&&state.method!=='import')throw new Error('Revise os recursos.');next.phase='review';}
+  if(data.action==='submit'){
+    if(state.phase!=='draft')throw new Error('Criação já enviada.');
+    if(!state.domains.length)throw new Error('Adicione ao menos um domínio.');
+    if(!state.regionalApplied&&state.method!=='import')throw new Error('Revise os recursos.');
+    if(state.creationHistory&&!state.creationHistory.applied&&state.creationHistory.events.length!==state.creationHistory.limit)
+      throw new Error('Registre todos os eventos históricos previstos antes de enviar.');
+    if(!state.creationHistory?.applied||!state.creationBonusesApplied){
+      const history=historyAdjustments(state),bonuses=memberBonusAdjustments(state);
+      for(const r of RESOURCE_KEYS)next.permanent[r]+=history[r]+bonuses[r];
+      if(state.creationHistory)next.creationHistory={...state.creationHistory,applied:true};
+      next.creationBonusesApplied=true;
+    }
+    next.phase='review';
+  }
   if(data.action==='approve'){if(state.phase!=='review')throw new Error('Envie a criação para revisão primeiro.');if(state.pending.length)throw new Error('Resolva as pendências de conciliação.');next.phase='active';}
   if(data.action==='advance')next=advance(state,z.number().int().parse(args['month']));
   if(data.action==='alternative'){if(state.phase!=='active')throw new Error('A casa precisa estar ativa.');next=alternativeFortune(state,z.enum(RESOURCE_KEYS).parse(args['resource']) as Resource);}
@@ -127,7 +150,57 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   if(data.action==='fortune'){const input=z.object({status:z.number().int(),testDice:z.array(z.number().int()),bonusDice:z.array(z.number().int()),modifier:z.number(),resource:z.enum(RESOURCE_KEYS),changes:resourcesSchema,fortuneStackDice:z.array(z.number().int().min(1).max(6)).optional(),resourceStackDice:z.record(z.enum(RESOURCE_KEYS),z.array(z.number().int().min(1).max(6))).optional(),justification:z.string().min(1)}).parse(args);next=confirmFortune(state,input);rule='Livro básico · tabela 6-18';}
   if(data.action==='convert'){const input=z.object({from:z.enum(RESOURCE_KEYS),to:z.enum(RESOURCE_KEYS),amount:z.number().positive(),rushed:z.boolean(),rate:z.number().positive().optional()}).parse(args);if(state.phase!=='active')throw new Error('Casa não ativa.');next=convertResources(state,input.from,input.to,input.amount,input.rushed,input.rate);rule='Livro básico · tabela 6-19';}
   if(data.action==='action'){if(state.phase!=='active')throw new Error('Casa não ativa.');const input=z.object({type:z.string().min(1).max(100),notes:z.string().min(1).max(4000)}).parse(args);if(state.actions.some(a=>a.month===state.month&&!a.type.startsWith('convert:')))throw new Error('A ação mensal já foi registrada.');next.actions.push({month:state.month,...input});}
-  if(data.action==='roll'){if(state.phase!=='draft'||state.rolls.length)throw new Error('Rolagens já registradas ou criação encerrada.');next.method='roll';next.rolls=RESOURCE_KEYS.map(()=>Array.from({length:7},()=>(crypto.getRandomValues(new Uint32Array(1))[0]??0)%6+1));RESOURCE_KEYS.forEach((r,i)=>{next.base[r]=(next.rolls[i]??[]).reduce((a,b)=>a+b,0);});next.regionalApplied=true;rule='Livro básico · 7d6 por recurso, p. 126';}
+  if(data.action==='roll'){
+    if(state.phase!=='draft'||state.rolls.length||state.method==='import'||state.importSources.length)
+      throw new Error('Rolagens já registradas, importadas ou criação encerrada.');
+    if(!admin&&!(state.method==='roll'||(state.method==='budget'&&state.budget===null&&
+       RESOURCE_KEYS.every(r=>state.base[r]===0)&&!state.holdings.length&&!state.units.length)))
+      throw new Error('Método por orçamento autorizado; somente o Narrador pode alterá-lo.');
+    const {randomInt}=await import('node:crypto');
+    next.method='roll';next.budget=null;
+    next.rolls=RESOURCE_KEYS.map(()=>Array.from({length:7},()=>randomInt(1,7)));
+    RESOURCE_KEYS.forEach((r,i)=>{next.base[r]=(next.rolls[i]??[]).reduce((a,b)=>a+b,0);});
+    next.regionalApplied=true;rule='Livro básico · 7d6 por recurso, p. 126 · rolagem imutável';
+  }
+  if(data.action==='foundation_roll'){
+    if(state.phase!=='draft'||state.method==='import'||state.importSources.length||state.creationHistory)
+      throw new Error('Fundação já registrada, importada ou criação encerrada.');
+    const {randomInt}=await import('node:crypto');
+    const history=rollFoundation(()=>randomInt(1,7));
+    next.creationHistory=history;
+    if(next.identity.foundation===undefined)next.identity.foundation=historicalFoundationYear(history.foundationRoll);
+    rule='Livro básico · tabela 6-3 · fundação e número de eventos registrados';
+  }
+  if(data.action==='history_roll'){
+    const history=state.creationHistory;
+    if(state.phase!=='draft'||state.method==='import'||state.importSources.length||
+       !history||history.applied||history.events.length>=history.limit)
+      throw new Error('Rolagem de evento indisponível, completa ou criação importada.');
+    const input=z.object({infrastructure:z.tuple([z.enum(RESOURCE_KEYS),z.enum(RESOURCE_KEYS)])}).parse(args);
+    if(input.infrastructure[0]===input.infrastructure[1])throw new Error('Escolha dois recursos distintos para Infraestrutura.');
+    const {randomInt}=await import('node:crypto');
+    const result=rollHistoricalEvent(()=>randomInt(1,7),input.infrastructure,crypto.randomUUID());
+    next.creationHistory={...history,events:[...history.events,result]};
+    rule='Livro básico · tabela 6-4 · 3d6 e modificadores por recurso (piso zero)';
+  }
+  if(data.action==='member_bonus'){
+    if(state.phase!=='draft'||state.method==='import'||state.importSources.length||
+       state.creationBonusesApplied)
+      throw new Error('Bônus pessoal disponível apenas durante a criação não importada.');
+    const input=z.object({resource:z.enum(RESOURCE_KEYS)}).parse(args);
+    const member=await db.from('campaign_players').select('id').eq('user_id',context.userId)
+      .eq('active',true).eq('require_password_change',false).maybeSingle();
+    if(member.error||!member.data)throw new Error('Somente um jogador cadastrado pode contribuir com o bônus.');
+    const playerId=member.data.id;
+    const authorized=await db.from('house_memberships').select('player_id').eq('player_id',playerId)
+      .eq('house_id',data.houseId).maybeSingle();
+    if(authorized.error||!authorized.data)throw new Error('Jogador não pertence a esta casa.');
+    if((state.creationBonuses??[]).some(b=>b.playerId===playerId))
+      throw new Error('Cada jogador pode aplicar seu bônus apenas uma vez.');
+    const {randomInt}=await import('node:crypto');
+    next.creationBonuses=[...(state.creationBonuses??[]),{playerId,resource:input.resource,die:randomInt(1,7)}];
+    rule='Livro básico · ajuste inicial de jogador vinculado, +1d6 auditado';
+  }
   if(data.action==='equipment'){const input=z.object({unitId:z.string(),category:z.enum(['armor','fighting','marksmanship'])}).parse(args);next=improveEquipment(state,input.unitId,input.category);rule='Livro básico · tabelas10-1/10-2; 1 Riqueza permanente por categoria, limite uma';}
   if(data.action==='correct') {if(!data.explanation.trim())throw new Error('Registre a justificativa.');const changes=resourcesSchema.parse(args['changes']);for(const r of RESOURCE_KEYS)next.permanent[r]+=changes[r];}
   if(data.action==='import') {
