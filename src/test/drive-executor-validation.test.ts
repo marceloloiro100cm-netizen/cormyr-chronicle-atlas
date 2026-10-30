@@ -52,7 +52,7 @@ describe('Executor validation — simulated isolated folders only',()=>{
   f.tables['campaign_letters']?.push(letter);
   const reply={id:crypto.randomUUID(),letter_id:letter.id,author_user_id:user,author_player_id:player,
     recipient_user_id:master.owner_user_id,author_name:'Jogadora',content:'Versão original',
-    publication_state:'delivered',created_at:'2026-10-23',version:1,sync_state:'pending'};
+    publication_state:'delivered',created_at:'2026-10-23',version:1,deleted_at:null as string|null,sync_state:'pending'};
   f.tables['letter_replies']?.push(reply);
   f.enqueue(reply,'reply');
   await runDriveSync(f.db,f.adapter);await runDriveSync(f.db,f.adapter);

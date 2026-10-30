@@ -175,13 +175,13 @@ SELECT pg_temp.assert((SELECT count(*)>=1 FROM sync_outbox WHERE entity_type='re
  AND entity_id=(SELECT id FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000201') AND version=2),'published edited draft enqueues its current version');
 DO $privacy_check$ BEGIN
  BEGIN
-  PERFORM public.edit_letter_reply('00000000-0000-0000-0000-000000000202',1,'Mestre tentando ler/alterar rascunho');
+  PERFORM public.edit_letter_reply(current_setting('test.stale_draft')::uuid,1,'Mestre tentando ler/alterar rascunho');
   RAISE EXCEPTION 'narrator edited private player draft';
  EXCEPTION WHEN raise_exception THEN
   IF SQLERRM='narrator edited private player draft' OR SQLERRM NOT LIKE 'Rascunho privado de outro jogador%' THEN RAISE; END IF;
  END;
  BEGIN
-  PERFORM public.delete_letter_reply('00000000-0000-0000-0000-000000000202',1);
+  PERFORM public.delete_letter_reply(current_setting('test.stale_draft')::uuid,1);
   RAISE EXCEPTION 'narrator deleted private player draft';
  EXCEPTION WHEN raise_exception THEN
   IF SQLERRM='narrator deleted private player draft' OR SQLERRM NOT LIKE 'Rascunho privado de outro jogador%' THEN RAISE; END IF;
@@ -217,9 +217,68 @@ SELECT pg_temp.assert((SELECT payload->>'content'='Texto revisado pelo Mestre'
 SELECT public.delete_letter_reply('00000000-0000-0000-0000-000000000101',2);
 SELECT pg_temp.assert((SELECT count(*)=3 FROM letter_reply_versions WHERE reply_id='00000000-0000-0000-0000-000000000101'),'soft delete is auditable');
 SELECT pg_temp.assert((SELECT count(*)=0 FROM letter_replies WHERE id='00000000-0000-0000-0000-000000000101'),'deleted reply hidden from narrator RLS');
+RESET ROLE;
 SELECT pg_temp.assert(public.can_export_mail('reply','00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000001'),'Drive service can publish tombstone for authorized narrator');
 SELECT pg_temp.assert(NOT public.can_export_mail('reply','00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000004'),'deleted reply tombstone still restricted to original audience');
 SELECT pg_temp.assert((SELECT payload->>'deleted_at' IS NOT NULL FROM sync_outbox WHERE entity_type='reply'
  AND entity_id='00000000-0000-0000-0000-000000000101' AND version=3),'soft deletion queues tombstone for Drive');
+SET LOCAL ROLE authenticated;
+-- Lote 6: rascunho individual e representação sem colaterais nos recibos.
+SELECT public.save_letter_batch_drafts('reservada',4,'Segredo individual','Somente o jogador',
+ ARRAY['p:00000000-0000-0000-0000-000000000012'],'00000000-0000-0000-0000-000000000330');
+SELECT pg_temp.assert((SELECT recipient_player_id='00000000-0000-0000-0000-000000000012'::uuid
+ AND recipient_house_id IS NULL AND publication_state='draft'
+ FROM campaign_letters WHERE batch_key='00000000-0000-0000-0000-000000000330'),
+ 'personal draft is not published to the entire house');
+SELECT pg_temp.assert(public.save_letter_batch_drafts('reservada',4,'Segredo individual','Somente o jogador',
+ ARRAY['p:00000000-0000-0000-0000-000000000012'],'00000000-0000-0000-0000-000000000330')=0,
+ 'individual draft retries do not create a duplicate');
+RESET ROLE;
+INSERT INTO public.letter_replies(id,letter_id,author_user_id,author_name,recipient_user_id,
+ content,idempotency_key,publication_state,delivery_week,reply_to_id)
+VALUES('00000000-0000-0000-0000-000000000360','00000000-0000-0000-0000-000000000200',
+ '00000000-0000-0000-0000-000000000001','Mestre','00000000-0000-0000-0000-000000000002',
+ 'Resposta do Narrador à missiva enviada pelo jogador',
+ '00000000-0000-0000-0000-000000000361','delivered',3,
+ '00000000-0000-0000-0000-000000000200');
+INSERT INTO public.letter_receipts(letter_id,user_id,read_at)
+VALUES('00000000-0000-0000-0000-000000000200','00000000-0000-0000-0000-000000000001','2026-10-01 10:00:00+00'),
+      ('00000000-0000-0000-0000-000000000200','00000000-0000-0000-0000-000000000002','2026-10-01 11:00:00+00')
+ON CONFLICT(letter_id,user_id) DO UPDATE SET read_at=excluded.read_at;
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+SELECT public.set_letter_round(4,false);
+SELECT public.start_campaign_representation('00000000-0000-0000-0000-000000000012');
+SELECT public.campaign_representation_action('reply',jsonb_build_object(
+ 'letter','00000000-0000-0000-0000-000000000200',
+ 'reply','00000000-0000-0000-0000-000000000360',
+ 'content','Tréplica em representação',
+ 'key','00000000-0000-0000-0000-000000000370',
+ 'draft',false));
+SELECT pg_temp.assert((SELECT author_user_id='00000000-0000-0000-0000-000000000002'::uuid
+ AND recipient_user_id='00000000-0000-0000-0000-000000000001'::uuid
+ AND reply_to_id='00000000-0000-0000-0000-000000000360'::uuid
+ AND publication_state='delivered'
+ FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000370'),
+ 'representation answers the narrator reply rather than its own root');
+SELECT pg_temp.assert((SELECT count(*)=2 FROM letter_receipts
+ WHERE letter_id='00000000-0000-0000-0000-000000000200' AND
+ ((user_id='00000000-0000-0000-0000-000000000001' AND read_at='2026-10-01 10:00:00+00'::timestamptz)
+ OR (user_id='00000000-0000-0000-0000-000000000002' AND read_at='2026-10-01 11:00:00+00'::timestamptz))),
+ 'representative delivered reply keeps both real read receipts intact');
+SELECT public.campaign_representation_action('reply',jsonb_build_object(
+ 'letter','00000000-0000-0000-0000-000000000200',
+ 'reply','00000000-0000-0000-0000-000000000360',
+ 'content','Tréplica preservada como rascunho',
+ 'key','00000000-0000-0000-0000-000000000371',
+ 'draft',true));
+RESET ROLE;
+SELECT pg_temp.assert((SELECT publication_state='draft' AND administrative_actor='00000000-0000-0000-0000-000000000001'::uuid
+ FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000371'),
+ 'representation can author a private reply draft with audit actor');
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.assert((SELECT count(*)=2 FROM letter_receipts WHERE letter_id='00000000-0000-0000-0000-000000000200'),
+ 'representation draft does not change real receipts');
+SELECT public.stop_campaign_representation();
 SELECT pg_temp.assert(NOT has_function_privilege('authenticated','public.can_export_mail(text,uuid,uuid)','EXECUTE'),'export authorization is service only');
 ROLLBACK;
