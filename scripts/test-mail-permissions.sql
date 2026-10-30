@@ -175,13 +175,13 @@ SELECT pg_temp.assert((SELECT count(*)>=1 FROM sync_outbox WHERE entity_type='re
  AND entity_id=(SELECT id FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000201') AND version=2),'published edited draft enqueues its current version');
 DO $privacy_check$ BEGIN
  BEGIN
-  PERFORM public.edit_letter_reply('00000000-0000-0000-0000-000000000202',1,'Mestre tentando ler/alterar rascunho');
+  PERFORM public.edit_letter_reply(current_setting('test.stale_draft')::uuid,1,'Mestre tentando ler/alterar rascunho');
   RAISE EXCEPTION 'narrator edited private player draft';
  EXCEPTION WHEN raise_exception THEN
   IF SQLERRM='narrator edited private player draft' OR SQLERRM NOT LIKE 'Rascunho privado de outro jogador%' THEN RAISE; END IF;
  END;
  BEGIN
-  PERFORM public.delete_letter_reply('00000000-0000-0000-0000-000000000202',1);
+  PERFORM public.delete_letter_reply(current_setting('test.stale_draft')::uuid,1);
   RAISE EXCEPTION 'narrator deleted private player draft';
  EXCEPTION WHEN raise_exception THEN
   IF SQLERRM='narrator deleted private player draft' OR SQLERRM NOT LIKE 'Rascunho privado de outro jogador%' THEN RAISE; END IF;
