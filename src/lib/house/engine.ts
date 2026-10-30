@@ -1,11 +1,13 @@
 import { RESOURCE_KEYS, SKILLS, zeroResources, type CatalogItem, type Cost, type Domain, type HouseState, type Ledger, type Resources, type Resource, type Unit } from './types';
 import { regionBonus } from './regions';
+import { historyAdjustments } from './creation-history';
 export type Balance = { total: Resources; allocated: Resources; committed: Resources; available: Resources; permanent: Resources };
 export function balances(state: HouseState): Balance {
   const regional = state.regionalApplied && state.method !== 'import' ? regionBonus(state.identity.region) : zeroResources();
   const total = zeroResources(), allocated = zeroResources(), committed = zeroResources(), available = zeroResources();
+  const historic = historyAdjustments(state);
   for (const r of RESOURCE_KEYS) {
-    total[r] = state.base[r] + state.permanent[r] + regional[r];
+    total[r] = state.base[r] + state.permanent[r] + regional[r] + historic[r];
   }
   const holdings = state.holdings;
   for (const holding of holdings) {
