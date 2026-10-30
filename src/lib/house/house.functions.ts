@@ -13,6 +13,7 @@ import { improveEquipment } from './equipment';
 import { buySiege } from './siege';
 import { equipUnit, resolveSurvivors, changeUnitState, proposeVassal, approveVassal, SURVIVOR_CONDITIONS } from './military';
 import { linkVassalNpcs, validateVassalNpcs } from './vassal-links';
+import { selectUndoSnapshot } from './undo';
 import { assignCourt, removeCourtAssignment, validateCourtRecord } from './court';
 const npcIdsSchema=z.array(z.string().uuid()).max(100);
 export const readCourtMember=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({houseId:z.string(),id:z.string().uuid()})).handler(async({data,context})=>{
@@ -77,13 +78,13 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   if(!current.data){const c=await context.supabase.rpc('get_campaign_calendar');const value=c.data as {year?:number;month?:number}|null;if(value?.year&&value.month!==undefined)state.month=value.year*12+value.month;}
   if((current.data?.version??0)!==data.version)throw new Error('A ficha mudou. Recarregue para conciliar as versões.');
   let next=structuredClone(state),rule='Cormyr · gestão auditada';const args=data.args;
-  const editGrants=admin?true:(await context.supabase.from('house_memberships')
+  const editGrants=admin?null:(await context.supabase.from('house_memberships')
     .select('can_edit_attributes,player_id,campaign_players!inner(user_id,active,require_password_change)')
     .eq('house_id',data.houseId).eq('campaign_players.user_id',context.userId)
     .eq('campaign_players.active',true).eq('campaign_players.require_password_change',false)
     .maybeSingle());
-  if(!admin&&editGrants.error)throw new Error('Permissões de atributos indisponíveis.');
-  const mayBuyAttributes=admin||Boolean(!admin&&editGrants.data?.can_edit_attributes);
+  if(editGrants?.error)throw new Error('Permissões de atributos indisponíveis.');
+  const mayBuyAttributes=admin||Boolean(editGrants?.data?.can_edit_attributes);
   const pristine=state.phase==='draft'&&state.rolls.length===0&&
     !state.importSources.length&&state.holdings.length===0&&state.units.length===0&&
     RESOURCE_KEYS.every(r=>state.base[r]===0);
@@ -283,7 +284,16 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     rule='Snapshot legado conciliado · '+input.source+' · originais preservados no lançamento';
     data.explanation=input.decisions+'\nFontes: '+input.source+'\nAbas originais: '+JSON.stringify(input.original);
   }
-  if(data.action==='undo'){if(state.phase!=='draft')throw new Error('Somente rascunhos podem ser desfeitos.');const last=await db.from('noble_house_ledger').select('before_state,action').eq('house_id',data.houseId).order('version',{ascending:false}).limit(1).single();if(last.error||!last.data.before_state||last.data.action==='undo')throw new Error('Nada para desfazer.');const prior=last.data.before_state as unknown as HouseState;next=prior.schemaVersion===1?prior:newHouseState(data.houseId,official.data.region??'');}
+  if(data.action==='undo'){
+    if(state.phase!=='draft')throw new Error('Somente rascunhos podem ser desfeitos.');
+    const recent=await db.from('noble_house_ledger').select('before_state,action')
+      .eq('house_id',data.houseId).order('version',{ascending:false}).limit(500);
+    if(recent.error)throw new Error('Não foi possível consultar o histórico.');
+    const target=selectUndoSnapshot(recent.data??[]);
+    const prior=target.before_state as unknown as HouseState;
+    if(prior.schemaVersion!==1)throw new Error('Versão histórica incompatível, sem alteração.');
+    next=prior;rule='Cormyr · desfazer em pilha de rascunhos, histórico preservado';
+  }
   validateResources(next.base);validateResources(next.permanent);
   if(RESOURCE_KEYS.some(r=>balances(next).available[r]<0)&&!['correct','fortune','survivors','return_to_draft','clear_pending','court','unit_state','vassal_domain'].includes(data.action))throw new Error('Saldo insuficiente; nenhuma alteração foi gravada.');
   const result=await db.rpc('commit_noble_house_operation',{p_actor:context.userId,p_house:data.houseId,p_version:data.version,p_key:data.key,p_action:data.action,p_state:JSON.parse(JSON.stringify(next)),p_explanation:data.explanation,p_rule:rule});
