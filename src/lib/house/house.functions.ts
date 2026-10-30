@@ -8,7 +8,7 @@ import { CORE_CATALOG } from './catalog';
 import { newHouseState, RESOURCE_KEYS, type HouseState, type CatalogItem, type Unit, type Resource, type CourtMember } from './types';
 import { advance, alternativeFortune, balances, createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
 import { confirmFortune, convertResources } from './fortune';
-import { historyAdjustments, historicalFoundationYear, rollFoundation, rollHistoricalEvent } from './creation-history';
+import { historyAdjustments, memberBonusAdjustments, historicalFoundationYear, rollFoundation, rollHistoricalEvent } from './creation-history';
 import { improveEquipment } from './equipment';
 import { buySiege } from './siege';
 import { equipUnit, resolveSurvivors, changeUnitState, proposeVassal, approveVassal, SURVIVOR_CONDITIONS } from './military';
@@ -133,12 +133,13 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     if(state.phase!=='draft')throw new Error('Criação já enviada.');
     if(!state.domains.length)throw new Error('Adicione ao menos um domínio.');
     if(!state.regionalApplied&&state.method!=='import')throw new Error('Revise os recursos.');
-    if(state.creationHistory&&!state.creationHistory.applied){
-      if(state.creationHistory.events.length!==state.creationHistory.limit)
-        throw new Error('Registre todos os eventos históricos previstos antes de enviar.');
-      const modifier=historyAdjustments(state);
-      for(const r of RESOURCE_KEYS)next.permanent[r]+=modifier[r];
-      next.creationHistory={...state.creationHistory,applied:true};
+    if(state.creationHistory&&!state.creationHistory.applied&&state.creationHistory.events.length!==state.creationHistory.limit)
+      throw new Error('Registre todos os eventos históricos previstos antes de enviar.');
+    if(!state.creationHistory?.applied||!state.creationBonusesApplied){
+      const history=historyAdjustments(state),bonuses=memberBonusAdjustments(state);
+      for(const r of RESOURCE_KEYS)next.permanent[r]+=history[r]+bonuses[r];
+      if(state.creationHistory)next.creationHistory={...state.creationHistory,applied:true};
+      next.creationBonusesApplied=true;
     }
     next.phase='review';
   }
@@ -181,6 +182,23 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     const result=rollHistoricalEvent(()=>randomInt(1,7),input.infrastructure,crypto.randomUUID());
     next.creationHistory={...history,events:[...history.events,result]};
     rule='Livro básico · tabela 6-4 · 3d6 e modificadores por recurso (piso zero)';
+  }
+  if(data.action==='member_bonus'){
+    if(state.phase!=='draft'||state.method==='import'||state.importSources.length||
+       state.creationBonusesApplied)
+      throw new Error('Bônus pessoal disponível apenas durante a criação não importada.');
+    const input=z.object({resource:z.enum(RESOURCE_KEYS)}).parse(args);
+    const member=await db.from('campaign_players').select('id').eq('user_id',context.userId)
+      .eq('active',true).eq('require_password_change',false).maybeSingle();
+    if(member.error||!member.data)throw new Error('Somente um jogador cadastrado pode contribuir com o bônus.');
+    const authorized=await db.from('house_memberships').select('player_id').eq('player_id',member.data.id)
+      .eq('house_id',data.houseId).maybeSingle();
+    if(authorized.error||!authorized.data)throw new Error('Jogador não pertence a esta casa.');
+    if((state.creationBonuses??[]).some(b=>b.playerId===member.data.id))
+      throw new Error('Cada jogador pode aplicar seu bônus apenas uma vez.');
+    const {randomInt}=await import('node:crypto');
+    next.creationBonuses=[...(state.creationBonuses??[]),{playerId:member.data.id,resource:input.resource,die:randomInt(1,7)}];
+    rule='Livro básico · ajuste inicial de jogador vinculado, +1d6 auditado';
   }
   if(data.action==='equipment'){const input=z.object({unitId:z.string(),category:z.enum(['armor','fighting','marksmanship'])}).parse(args);next=improveEquipment(state,input.unitId,input.category);rule='Livro básico · tabelas10-1/10-2; 1 Riqueza permanente por categoria, limite uma';}
   if(data.action==='correct') {if(!data.explanation.trim())throw new Error('Registre a justificativa.');const changes=resourcesSchema.parse(args['changes']);for(const r of RESOURCE_KEYS)next.permanent[r]+=changes[r];}
