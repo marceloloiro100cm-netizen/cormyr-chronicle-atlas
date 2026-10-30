@@ -118,6 +118,20 @@ describe('lote 2: destinatários e semanas',()=>{
    fireEvent.click(screen.getByRole('button',{name:/Ordem enviada/}));
    expect(screen.getAllByText('Enviada na Semana 1 · Recebida na Semana 2').length).toBeGreaterThanOrEqual(1);
  });
+ it('mostra semana de criação e entrega nas respostas de missivas relacionadas',async()=>{
+   const panel={...data([{
+     id:'reply-related',letter_id:'related',author_user_id:'another',
+     author_name:'Lady da Corte',content:'Resposta relacionada',
+     creation_week:2,delivery_week:3,publication_state:'delivered',created_at:'2026-10-29',
+   }]),letters:[
+     {...letter,conversation_id:'thread-one'},
+     {...letter,id:'related',subject:'Carta relacionada',conversation_id:'thread-one',created_at:'2026-10-29'},
+   ]} as unknown as Panel;
+   mount(panel);
+   fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+   fireEvent.click(screen.getByRole('button',{name:/Ver relacionadas nesta página/}));
+   expect(screen.getByText('Resposta · Enviada na Semana 2 · Recebida na Semana 3')).toBeInTheDocument();
+ });
  it('bloqueia tentativa de abrir uma semana com salto pelo painel',async()=>{
    const panel={...data(),user:{id:'narrator-test-week'},admin:true,rounds:[{number:1,status:'closed'},{number:2,status:'open'}]} as unknown as Panel;
    const error=vi.fn();
