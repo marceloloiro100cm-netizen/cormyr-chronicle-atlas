@@ -10,6 +10,10 @@
 .narrator-calendar-panel h3{font-size:19px;margin:0 0 12px}
 .narrator-calendar-settings{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(140px,.7fr);gap:16px;align-items:start}
 .narrator-calendar-settings>label,.narrator-event-form>label{display:grid;gap:6px;font-size:14px;font-weight:600}
+.narrator-calendar-week-controls{display:flex;flex-direction:column;gap:12px;min-width:0;align-items:stretch}
+.narrator-calendar-week-controls>label{display:grid;gap:6px;font-size:14px;font-weight:600}
+.narrator-calendar-week-controls .narrator-calendar-publish-button{width:100%;max-width:240px;min-height:42px;align-self:flex-start}
+
 .narrator-calendar-settings input[type=number]{max-width:180px}
 .narrator-calendar-check{display:flex;align-items:center;gap:8px;margin:10px 0;font-weight:500}
 .narrator-calendar-check input[type=checkbox]{width:17px!important;min-width:17px!important;height:17px!important;min-height:17px!important;flex:0 0 17px;margin:0}
@@ -20,7 +24,5 @@
 .narrator-calendar-event span{display:block;color:var(--muted-foreground);font-size:12px}
 .narrator-calendar-event p{margin:5px 0;font-size:13px;white-space:pre-wrap}
 .narrator-calendar-event .campaign-actions{margin:0;gap:6px}
-.narrator-calendar-publish{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px;border:1px solid var(--campaign-gold);border-radius:8px;background:var(--campaign-light)}
-.narrator-calendar-publish p{margin:5px 0;font-size:13px}
 .narrator-calendar-preview{border-top:2px solid var(--campaign-gold);padding-top:16px}
-@media(max-width:750px){.narrator-calendar-settings{grid-template-columns:1fr}.narrator-calendar-event{flex-direction:column}.narrator-calendar-publish{flex-direction:column;align-items:stretch}}
+@media(max-width:750px){.narrator-calendar-settings{grid-template-columns:1fr}.narrator-calendar-event{flex-direction:column}}
