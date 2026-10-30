@@ -74,5 +74,31 @@ SELECT pg_temp.assert((SELECT delivery_week=2 FROM letter_replies WHERE idempote
 SELECT public.save_weekly_reply_draft('00000000-0000-0000-0000-000000000204','00000000-0000-0000-0000-000000000100','00000000-0000-0000-0000-000000000101','Next round draft');
 SELECT public.schedule_weekly_reply_draft((SELECT id FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000204'));
 SELECT pg_temp.assert((SELECT delivery_week=2 FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000204'),'draft matches direct reply');
+
+-- Lote 1: direct, draft and preview use a single delivery-week calculation.
+SELECT pg_temp.assert((SELECT creation_week=1 FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000203'),'closed round 1: direct response created in round 1');
+SELECT pg_temp.assert((SELECT creation_week=1 FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000204'),'closed round 1: draft response created in round 1');
+SELECT public.set_letter_round(2,false);
+SELECT pg_temp.assert(public.reply_delivery_week('00000000-0000-0000-0000-000000000002')=3,'open round 2: GM preview targets 3');
+SELECT public.reply_weekly_message('00000000-0000-0000-0000-000000000100','00000000-0000-0000-0000-000000000101','Round 2 direct','00000000-0000-0000-0000-000000000205',false);
+SELECT pg_temp.assert((SELECT creation_week=2 AND delivery_week=3 FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000205'),'open round 2: direct created in 2, scheduled for 3');
+SELECT public.save_weekly_reply_draft('00000000-0000-0000-0000-000000000206','00000000-0000-0000-0000-000000000100','00000000-0000-0000-0000-000000000101','Round 2 draft');
+SELECT public.schedule_weekly_reply_draft((SELECT id FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000206'));
+SELECT pg_temp.assert((SELECT creation_week=2 AND delivery_week=3 FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000206'),'open round 2: approved draft created in 2, scheduled for 3');
+SELECT public.set_letter_round(2,true);
+SELECT pg_temp.assert(public.reply_delivery_week('00000000-0000-0000-0000-000000000002')=3,'closed round 2: GM preview stays on 3, not 4');
+SELECT public.reply_weekly_message('00000000-0000-0000-0000-000000000100','00000000-0000-0000-0000-000000000101','Between rounds direct','00000000-0000-0000-0000-000000000207',false);
+SELECT pg_temp.assert((SELECT creation_week=2 AND delivery_week=3 FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000207'),'closed round 2: direct has creation 2 and delivery 3, no double increment');
+SELECT public.save_weekly_reply_draft('00000000-0000-0000-0000-000000000208','00000000-0000-0000-0000-000000000100','00000000-0000-0000-0000-000000000101','Between rounds draft');
+SELECT public.schedule_weekly_reply_draft((SELECT id FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000208'));
+SELECT pg_temp.assert((SELECT creation_week=2 AND delivery_week=3 FROM letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000208'),'closed round 2: draft has same creation and delivery weeks');
+-- If a privileged importer explicitly supplies creation_week, the trigger must not override it.
+-- Direct INSERT is intentionally forbidden to authenticated clients: use postgres in this rolled-back fixture.
+RESET ROLE;
+INSERT INTO public.letter_replies (letter_id,author_user_id,author_name,recipient_user_id,content,idempotency_key,creation_week,publication_state)
+VALUES('00000000-0000-0000-0000-000000000100','00000000-0000-0000-0000-000000000001','Mestre','00000000-0000-0000-0000-000000000002','Explicit creation week','00000000-0000-0000-0000-000000000209',1,'draft');
+SELECT pg_temp.assert((SELECT creation_week=1 FROM public.letter_replies WHERE idempotency_key='00000000-0000-0000-0000-000000000209'),'trigger preserves explicit creation week');
+SET LOCAL ROLE authenticated;
+
 SELECT pg_temp.assert(NOT has_function_privilege('authenticated','public.can_export_mail(text,uuid,uuid)','EXECUTE'),'export authorization is service only');
 ROLLBACK;
