@@ -1,10 +1,14 @@
-import {useId,useState} from 'react';
+import {useEffect,useId,useState} from 'react';
 import {MONTHS,FESTIVALS,dateKey,parseDate,formatDate} from '@/lib/calendar/harptos';
 import './harptos.css';
 
 export function CampaignDatePicker({value,onChange,name='campaign_date'}:{value:string;onChange:(value:string)=>void;name?:string}){
   const id=useId(),selected=parseDate(value);
   const [year,setYear]=useState(selected?.year??1522),[month,setMonth]=useState(selected?.month??0);
+  // The value arrives asynchronously from the shared campaign calendar.
+  // Keep the visible month/year in sync with the selected date after loading
+  // or publication; otherwise the picker appears stuck in Hammer 1522.
+  useEffect(()=>{const next=parseDate(value);if(next){setYear(next.year);setMonth(next.month);}},[value]);
   return <fieldset className="harptos-picker"><legend>Data da campanha (obrigatória)</legend>
     <details><summary>{value?formatDate(value):'Selecionar dia no calendário'}</summary>
       <div className="harptos-controls"><label>Ano<input type="number" min={1} max={9999} value={year} onChange={e=>{const n=Number(e.target.value);if(n>=1&&n<=9999)setYear(n);}}/></label><label>Mês<select value={month} onChange={e=>setMonth(Number(e.target.value))}>{MONTHS.map((m,i)=><option key={m} value={i}>{m}</option>)}</select></label></div>
