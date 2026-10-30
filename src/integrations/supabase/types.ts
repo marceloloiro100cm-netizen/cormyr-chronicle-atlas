@@ -740,6 +740,7 @@ export type Database = {
           authorized_at: string
           authorized_by: string
           can_edit: boolean
+          can_edit_attributes: boolean
           house_id: string
           player_id: string
         }
@@ -747,6 +748,7 @@ export type Database = {
           authorized_at?: string
           authorized_by?: string
           can_edit?: boolean
+          can_edit_attributes?: boolean
           house_id: string
           player_id: string
         }
@@ -754,6 +756,7 @@ export type Database = {
           authorized_at?: string
           authorized_by?: string
           can_edit?: boolean
+          can_edit_attributes?: boolean
           house_id?: string
           player_id?: string
         }
