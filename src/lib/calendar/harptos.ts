@@ -21,6 +21,16 @@ export function parseDate(value:string|null|undefined):CampaignDate|null {
 export function formatDate(value:string|null|undefined):string {
   const d=parseDate(value);return d?`${d.festival?FESTIVALS.find(f=>f.id===d.festival)!.name:`${d.day} de ${MONTHS[d.month]}`} · ${d.year} CV`:'Sem data de campanha';
 }
+/** Label shown to players from the published shared Harptos date and campaign week. */
+export function formatCampaignWeek(d:CampaignDate & {published_week?:number|null}):string {
+  const period=d.festival
+    ?(FESTIVALS.find(f=>f.id===d.festival)?.name??'Festival')
+    :`${Math.floor((d.day-1)/10)+1}ª désdia`;
+  const week=Number.isInteger(d.published_week)&&Number(d.published_week)>0
+    ?`Semana ${d.published_week} · `:'';
+  return `${week}${period} · ${MONTHS[d.month]} · ${d.year} CV`;
+}
+
 export type CalendarEvent={id:string;date:string;title:string;kind:'kingdom'|'season'|'mail';description?:string};
 const WAUKEEN = [[15,'Cold Counting'],[1,"Grandmasster’s March"],[10,'Great Weave'],[4,'High Coin'],[8,'Springsheen'],[14,'Coinswarm'],[12,'Goldensun'],[17,'Bountiful Harvest'],[21,'Brightbuckle'],[10,"Coin’s Rest"],[25,'Darkcoin'],[29,'Audit']] as const;
 export function annualEvents(year:number):CalendarEvent[]{
