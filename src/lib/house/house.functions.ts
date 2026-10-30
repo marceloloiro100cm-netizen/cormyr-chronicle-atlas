@@ -15,6 +15,8 @@ import { buySiege } from './siege';
 import { equipUnit, resolveSurvivors, changeUnitState, proposeVassal, approveVassal, SURVIVOR_CONDITIONS } from './military';
 import { linkVassalNpcs, validateVassalNpcs } from './vassal-links';
 import { selectUndoSnapshot } from './undo';
+import { legacyCostIssues, reconcileLegacyCosts } from './legacy-cost-reconciliation';
+import { depositGold, donateGold, donateGlory, spendInfluence, redeemIntrigueBonus } from './resource-transactions';
 import { assignCourt, removeCourtAssignment, validateCourtRecord } from './court';
 const npcIdsSchema=z.array(z.string().uuid()).max(100);
 export const readCourtMember=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({houseId:z.string(),id:z.string().uuid()})).handler(async({data,context})=>{
@@ -71,13 +73,13 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
   const admin=Boolean(role.data);if(!admin&&!membership.data)throw new Error('Edição desta casa não autorizada.');
-  if(['admin_edit','restore_legacy_effects','approve','advance','import','correct','fortune','survivors','vassal_approve','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
+  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','vassal_approve','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   const duplicate=await db.from('noble_house_ledger').select('after_state,version,actor,action').eq('house_id',data.houseId).eq('operation_key',data.key).maybeSingle();
   if(duplicate.error)throw new Error('Não foi possível conferir a operação.');
   if(duplicate.data){if(duplicate.data.actor!==context.userId||duplicate.data.action!==data.action)throw new Error('Chave já utilizada.');return {state:duplicate.data.after_state as unknown as HouseState,version:duplicate.data.version,duplicate:true};}
   const current=await db.from('noble_house_sheets').select('*').eq('house_id',data.houseId).maybeSingle();
-  const official=await context.supabase.from('campaign_houses').select('region').eq('id',data.houseId).single();
+  const official=await context.supabase.from('campaign_houses').select('region,name').eq('id',data.houseId).single();
   if(current.error||official.error)throw new Error('Casa não encontrada.');
   const state=(current.data?.state??newHouseState(data.houseId,official.data.region??'')) as unknown as HouseState;
   if(!current.data){const c=await context.supabase.rpc('get_campaign_calendar');const value=c.data as {year?:number;month?:number}|null;if(value?.year&&value.month!==undefined)state.month=value.year*12+value.month;}
@@ -94,7 +96,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     !state.importSources.length&&state.holdings.length===0&&state.units.length===0&&
     RESOURCE_KEYS.every(r=>state.base[r]===0);
 
-  if(state.phase==='review'&&!['admin_edit','restore_legacy_effects','crest_import','approve','correct','return_to_draft','clear_pending'].includes(data.action))throw new Error('Criação em revisão; aguarde aprovação ou correção do Narrador.');
+  if(state.phase==='review'&&!['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_gold','donate_glory','spend_influence','redeem_intrigue','crest_import','approve','correct','return_to_draft','clear_pending'].includes(data.action))throw new Error('Criação em revisão; aguarde aprovação ou correção do Narrador.');
   if(data.action==='draft') {
     if(state.phase!=='draft')throw new Error('Ficha em revisão ou ativa exige edição auditada do Narrador.');
     const values=resourcesSchema.parse(args['base']);validateResources(values);
@@ -302,7 +304,59 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     rule='Livro básico · ajuste inicial de jogador vinculado, +1d6 auditado';
   }
   if(data.action==='equipment'){const input=z.object({unitId:z.string(),category:z.enum(['armor','fighting','marksmanship'])}).parse(args);next=improveEquipment(state,input.unitId,input.category);rule='Livro básico · tabelas10-1/10-2; 1 Riqueza permanente por categoria, limite uma';}
-  if(data.action==='correct') {if(!data.explanation.trim())throw new Error('Registre a justificativa.');const changes=resourcesSchema.parse(args['changes']);for(const r of RESOURCE_KEYS)next.permanent[r]+=changes[r];}
+  if(data.action==='correct') {
+    if(!admin)throw new Error('Correção de recursos exclusiva do Narrador.');
+    if(data.explanation.trim().length<10)throw new Error('Justificativa auditada exige pelo menos dez caracteres.');
+    const changes=resourcesSchema.parse(args['changes']);
+    if(RESOURCE_KEYS.every(r=>changes[r]===0))throw new Error('Indique ao menos uma alteração.');
+    for(const r of RESOURCE_KEYS)next.permanent[r]+=changes[r];
+    rule='Correção ou estorno de recursos auditado pelo Narrador · variação: '+JSON.stringify(changes);
+  }
+  if(data.action==='reconcile_legacy_costs') {
+    if(!admin)throw new Error('Conciliação legada exclusiva do Narrador.');
+    if(data.explanation.trim().length<10)throw new Error('Justifique a conferência da fonte histórica.');
+    const ids=z.array(z.string().min(1)).min(1).max(6).parse(args['ids']);
+    const candidates=legacyCostIssues(state,official.data.name);
+    if(ids.some(id=>!candidates.some(row=>row.id===id)))
+      throw new Error('Divergência entre a ficha e a fonte legada. Nada foi alterado.');
+    next=reconcileLegacyCosts(state,official.data.name,ids);
+    rule='Conciliação pontual da auditoria 16; itens '+ids.join(', ')+
+      '; antes '+JSON.stringify(balances(state))+'; depois '+JSON.stringify(balances(next));
+  }
+  if(data.action==='treasury_deposit') {
+    if(!admin)throw new Error('Somente o Narrador credita ouro no cofre.');
+    const input=z.object({coins:z.number().int().positive().max(1_000_000),source:z.string().trim().min(6).max(500)}).parse(args);
+    if(data.explanation.trim().length<10)throw new Error('Registre a origem das moedas e a aprovação.');
+    next=depositGold(state,input.coins);
+    rule='Cofre da Casa · '+input.coins+' DO creditados com comprovação '+input.source;
+  }
+  if(data.action==='donate_gold') {
+    if(state.phase!=='active')throw new Error('Doações em campanha exigem Casa ativa.');
+    const input=z.object({points:z.number().int().min(1).max(10000)}).parse(args);
+    next=donateGold(state,input.points);
+    rule='Livro básico p. 153 · '+(input.points*200)+' DO gastos do cofre = +'+input.points+' Riqueza permanente';
+  }
+  if(data.action==='donate_glory') {
+    if(!admin)throw new Error('Glória individual exige verificação e aprovação do Narrador.');
+    if(state.phase!=='active')throw new Error('Doações em campanha exigem Casa ativa.');
+    const input=z.object({resource:z.enum(RESOURCE_KEYS),points:z.number().int().min(1).max(100),
+      character:z.string().trim().min(2).max(160),source:z.string().trim().min(8).max(500)}).parse(args);
+    if(data.explanation.trim().length<10)throw new Error('Documente o gasto de Glória pelo personagem.');
+    next=donateGlory(state,input.resource,input.points);
+    rule='Livro básico p. 153 · '+input.points+' Glória de '+input.character+' ('+input.source+') = +'+input.points+' '+input.resource+' permanente; consumo individual deve constar na ficha do personagem';
+  }
+  if(data.action==='spend_influence') {
+    const input=z.object({kind:z.enum(['fortune','intrigue'])}).parse(args);
+    next=spendInfluence(state,input.kind,data.key);
+    rule=input.kind==='fortune'?'Livro básico p. 134 · 5 Influência permanentes por +1D no teste da Sorte do mês':
+      'Livro básico p. 134 · 2 Influência permanentes por 1B em um teste de Intriga; vale pendente de uso';
+  }
+  if(data.action==='redeem_intrigue') {
+    const input=z.object({benefitId:z.string().uuid()}).parse(args);
+    if(data.explanation.trim().length<10)throw new Error('Registre qual Intriga utilizou o dado de bônus.');
+    next=redeemIntrigueBonus(state,input.benefitId);
+    rule='Livro básico p. 134 · 1B de Intriga resgatado, sem novo custo';
+  }
   if(data.action==='import') {
     if(state.phase!=='draft'||state.holdings.length||state.units.length)throw new Error('Importação sobre ficha com compras exige conciliação específica; nada foi sobrescrito.');
     const input=z.object({source:z.string().min(1).max(500),sourceHouse:z.string().min(1),resources:resourcesSchema,issues:z.array(z.string()).max(200),decisions:z.string().min(10).max(10000),events:z.array(z.string()).max(100),original:z.array(z.object({name:z.string(),rows:z.array(z.array(z.object({address:z.string(),value:z.unknown(),formula:z.string().optional()})))})).max(20)}).parse(args);
@@ -326,7 +380,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     next=prior;rule='Cormyr · desfazer em pilha de rascunhos, histórico preservado';
   }
   validateResources(next.base);validateResources(next.permanent);
-  if(RESOURCE_KEYS.some(r=>balances(next).available[r]<0)&&!['admin_edit','correct','fortune','survivors','return_to_draft','clear_pending','court','unit_state','vassal_domain'].includes(data.action))throw new Error('Saldo insuficiente; nenhuma alteração foi gravada.');
+  if(RESOURCE_KEYS.some(r=>balances(next).available[r]<0)&&!['admin_edit','correct','fortune','survivors','return_to_draft','clear_pending','court','unit_state','vassal_domain','reconcile_legacy_costs','donate_gold','donate_glory','spend_influence','redeem_intrigue','treasury_deposit'].includes(data.action))throw new Error('Saldo insuficiente; nenhuma alteração foi gravada.');
   const result=await db.rpc('commit_noble_house_operation',{p_actor:context.userId,p_house:data.houseId,p_version:data.version,p_key:data.key,p_action:data.action,p_state:JSON.parse(JSON.stringify(next)),p_explanation:data.explanation,p_rule:rule});
   if(result.error)throw new Error(result.error.message);
   return result.data as unknown as {state:HouseState;version:number;duplicate:boolean};
