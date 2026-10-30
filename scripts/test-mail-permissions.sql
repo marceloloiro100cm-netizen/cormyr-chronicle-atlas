@@ -217,10 +217,12 @@ SELECT pg_temp.assert((SELECT payload->>'content'='Texto revisado pelo Mestre'
 SELECT public.delete_letter_reply('00000000-0000-0000-0000-000000000101',2);
 SELECT pg_temp.assert((SELECT count(*)=3 FROM letter_reply_versions WHERE reply_id='00000000-0000-0000-0000-000000000101'),'soft delete is auditable');
 SELECT pg_temp.assert((SELECT count(*)=0 FROM letter_replies WHERE id='00000000-0000-0000-0000-000000000101'),'deleted reply hidden from narrator RLS');
+RESET ROLE;
 SELECT pg_temp.assert(public.can_export_mail('reply','00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000001'),'Drive service can publish tombstone for authorized narrator');
 SELECT pg_temp.assert(NOT public.can_export_mail('reply','00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000004'),'deleted reply tombstone still restricted to original audience');
 SELECT pg_temp.assert((SELECT payload->>'deleted_at' IS NOT NULL FROM sync_outbox WHERE entity_type='reply'
  AND entity_id='00000000-0000-0000-0000-000000000101' AND version=3),'soft deletion queues tombstone for Drive');
+SET LOCAL ROLE authenticated;
 -- Lote 6: rascunho individual e representação sem colaterais nos recibos.
 SELECT public.save_letter_batch_drafts('reservada',4,'Segredo individual','Somente o jogador',
  ARRAY['p:00000000-0000-0000-0000-000000000012'],'00000000-0000-0000-0000-000000000330');
