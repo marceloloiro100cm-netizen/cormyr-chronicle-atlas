@@ -4,16 +4,13 @@ import { useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PlayerAccountForm } from '@/components/player-account-form';
 import { Button } from '@/components/ui/button';
-import { registerPlayer, retryFolderSync, organizeDriveFiles } from '@/lib/campaign.functions';
-import { DriveSyncAdmin } from '@/components/drive-sync-admin';
-import { date } from './shared';
+import { registerPlayer } from '@/lib/campaign.functions';
 import type { Panel } from './panel-data';
 import { upsertTranslationsBatch } from '@/lib/i18n/i18n.functions';
 
 export function AdminPanel({data,onSave}:{data:Panel;onSave:()=>unknown}){
-  const register=useServerFn(registerPlayer),retry=useServerFn(retryFolderSync),organize=useServerFn(organizeDriveFiles),upsertTranslations=useServerFn(upsertTranslationsBatch);
+  const register=useServerFn(registerPlayer),upsertTranslations=useServerFn(upsertTranslationsBatch);
   const [message,setMessage]=useState(''),[busy,setBusy]=useState(false);const mailKey=useRef<string|null>(null);
-  const {data:queue=[]}=useQuery({queryKey:['sync-queue'],queryFn:async()=>{const {data,error}=await supabase.from('sync_outbox').select('id,entity_type,state,error,created_at,attempts').order('created_at',{ascending:false});if(error)throw error;return data??[];}});
   const {data:profiles=[]}=useQuery({queryKey:['admin-profiles'],queryFn:async()=>{const {data,error}=await supabase.from('profiles').select('*');if(error)throw error;return data??[];}});
   async function action(fn:()=>Promise<unknown>){setBusy(true);setMessage('');try{await fn();onSave();setMessage('Salvo no site.');}catch(e){setMessage(e instanceof Error?e.message:'Não foi possível salvar.');}finally{setBusy(false);}}
   return <section><h2>Administração da temporada</h2><p>{data.players.length} jogadores cadastrados · {data.houses.filter(h=>h.active&&h.season===2).length} casas ativas</p><p className="text-muted-foreground">Lista oficial cadastrada sem criar contas ou permissões. Grafias oficiais confirmadas: Silversky e Harcourt, já vinculadas ao acervo. Everlost permanece sem lorde.</p>
@@ -41,6 +38,6 @@ export function AdminPanel({data,onSave}:{data:Panel;onSave:()=>unknown}){
         <p className="house-caption">Envie um JSON contendo uma lista de objetos com `entity_type`, `entity_id`, `field_name`, `locale` e `translated_text`.</p>
       </form>
     </details>
-    <h3>Sincronização e falhas</h3><Button variant="outline" disabled={busy} onClick={()=>{if(confirm('Organizar somente arquivos técnicos confirmados, preservando documentos pessoais e narrativos?'))action(async()=>{const result=await organize();setMessage(result.message);});}}>Organizar arquivos técnicos</Button><p>Somente pastas confirmadas, revisadas e autorizadas são processadas. Novos arquivos exigem revisão; segredos do mestre permanecem no site.</p><Button disabled={busy} variant="outline" onClick={async()=>{setBusy(true);try{const result=await retry();setMessage(result.message);onSave();}catch(e){setMessage(e instanceof Error?e.message:'Falha na execução.');}finally{setBusy(false);}}}>Executar / retentar pastas autorizadas</Button><DriveSyncAdmin/><div className="campaign-queue">{queue.length===0?<p>Fila vazia.</p>:queue.map(q=><div key={q.id}><strong>{q.entity_type}</strong> · {q.state} · {q.attempts} tentativas · {date(q.created_at)}{q.error&&<p>{q.error}</p>}</div>)}</div><p><a href="/cormyr/player-sync-format.md" target="_blank" rel="noopener">Formato de arquivos e requisitos de conexão</a></p><p role="status">{message}</p>
+    <p role="status">{message}</p>
   </section>;
 }
