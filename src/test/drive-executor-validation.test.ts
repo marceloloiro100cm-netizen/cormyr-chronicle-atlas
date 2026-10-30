@@ -41,6 +41,36 @@ describe('Executor validation — simulated isolated folders only',()=>{
   expect([...f.remote.values()].map(r=>r.folder).sort()).toEqual([master.folder_id,privateFolder.folder_id].sort());
   const count=f.calls.filter(c=>c.method==='write').length;await runDriveSync(f.db,f.adapter);expect(f.calls.filter(c=>c.method==='write')).toHaveLength(count);
  });
+ it('exports corrected reply versions and publishes a redacted deletion notice to both private folders',async()=>{
+  const f=fixture(),player=crypto.randomUUID(),user=crypto.randomUUID();
+  const master=f.binding('master');
+  const privateFolder=f.binding('player',{player_id:player,owner_user_id:user});
+  f.tables['campaign_players']?.push({id:player,user_id:user});
+  const letter={id:crypto.randomUUID(),recipient_player_id:player,recipient_house_id:null,
+    sender_user_id:master.owner_user_id,sender_name:'Narrador',subject:'Fio',content:'Texto',
+    publication_state:'delivered',created_at:'2026-10-23'};
+  f.tables['campaign_letters']?.push(letter);
+  const reply={id:crypto.randomUUID(),letter_id:letter.id,author_user_id:user,author_player_id:player,
+    recipient_user_id:master.owner_user_id,author_name:'Jogadora',content:'Versão original',
+    publication_state:'delivered',created_at:'2026-10-23',version:1,sync_state:'pending'};
+  f.tables['letter_replies']?.push(reply);
+  f.enqueue(reply,'reply');
+  await runDriveSync(f.db,f.adapter);await runDriveSync(f.db,f.adapter);
+  expect(reply.sync_state).toBe('synced');
+  reply.version=2;reply.content='Versão revisada';reply.sync_state='pending';
+  f.enqueue(reply,'reply');
+  await runDriveSync(f.db,f.adapter);await runDriveSync(f.db,f.adapter);
+  expect(reply.sync_state).toBe('synced');
+  expect([...f.remote.values()].map(v=>v.doc.version)).toEqual([2,2]);
+  expect([...f.remote.values()].map(v=>v.doc.content)).toEqual(['Versão revisada','Versão revisada']);
+  reply.version=3;reply.deleted_at='2026-10-30T10:00:00Z';reply.sync_state='pending';
+  f.enqueue(reply,'reply');
+  await runDriveSync(f.db,f.adapter);await runDriveSync(f.db,f.adapter);
+  expect(reply.sync_state).toBe('synced');
+  expect([...f.remote.values()].map(v=>v.doc.version)).toEqual([3,3]);
+  expect([...f.remote.values()].every(v=>v.doc.content==='[Resposta excluída pelo Narrador]')).toBe(true);
+  expect([...f.remote.values()].map(v=>v.folder).sort()).toEqual([master.folder_id,privateFolder.folder_id].sort());
+ });
  it('keeps a reply pending when its authorized recipient folder is missing',async()=>{
   const f=fixture(),player=crypto.randomUUID(),user=crypto.randomUUID();f.binding('player',{player_id:player,owner_user_id:user});
   f.tables['campaign_players']?.push({id:player,user_id:user});const letter={id:crypto.randomUUID(),recipient_player_id:player,recipient_house_id:null};f.tables['campaign_letters']?.push(letter);
