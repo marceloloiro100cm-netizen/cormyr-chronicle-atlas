@@ -8,18 +8,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { CampaignContent, ImagePicker, uploadImages, type PendingImage } from '@/components/campaign-content';
-import { deliveredReply, hasDeliveredAnswer, groupReceivedLetters, isLetterRead, narratorThreadStage, nextLetterNumber, pendingRoundHouses, sentLetters, mailRecipientLabel, type LetterRow } from '@/lib/letters';
+import { deliveredReply, hasDeliveredAnswer, groupReceivedLetters, isLetterRead, narratorThreadStage, nextLetterNumber, pendingRoundHouses, sentLetters, mailRecipientLabel, relatedConversationLetters, type LetterRow } from '@/lib/letters';
 import { date, syncLabel } from './shared';
 import type { Panel } from './panel-data';
 import {MailComposer,replaceMailDraft,MailLinkFields,useMailOptions,type MailLinks,type MailOptions} from './mail-compose';
 
 
-function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave}:{letterId:string;replyId?:string;recipientId:string;roundRevision:string;onSave:()=>unknown}){
+function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Responder'}:{letterId:string;replyId?:string;recipientId:string;roundRevision:string;onSave:()=>unknown;label?:string}){
   const {data:deliveryWeek=null}=useQuery({queryKey:['reply-delivery',recipientId,roundRevision],queryFn:async()=>{const r=await supabase.rpc('reply_delivery_week',{p_recipient:recipientId});if(r.error)throw r.error;return r.data;},refetchInterval:15000});
   const [open,setOpen]=useState(false),[content,setContent]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);const key=useRef<string|null>(null);
   const [images,setImages]=useState<PendingImage[]>([]);
   const [campaignDate,setCampaignDate]=useState('');
-  return open?<form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(content,images,key.current);}catch(err){setMessage(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const draft=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';const {error}=draft?await datedMail('save_weekly_reply_draft',{p_id:key.current,p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent},campaignDate):await datedMail('reply_weekly_message',{p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent,p_key:key.current,p_draft:false},campaignDate);if(error)setMessage(error.message);else{key.current=null;setContent('');setImages([]);setOpen(false);onSave();}setBusy(false);}}><p role="status">{deliveryWeek?`Previsão de entrega: Semana ${deliveryWeek}. O envio confirma a semana disponível no servidor.`:"Sem semana aberta."}</p><CampaignDatePicker value={campaignDate} onChange={setCampaignDate}/><label>Resposta<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label><ImagePicker images={images} onChange={setImages} disabled={busy}/><div className="campaign-actions"><Button name="action" value="draft" variant="outline" disabled={busy}>Salvar rascunho</Button><Button disabled={busy||deliveryWeek===null}>{busy?'Salvando…':'Enviar resposta'}</Button></div><p role="status">{message}</p></form>:<Button onClick={()=>setOpen(true)}>Responder</Button>;
+  return open?<form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(content,images,key.current);}catch(err){setMessage(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const draft=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';const {error}=draft?await datedMail('save_weekly_reply_draft',{p_id:key.current,p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent},campaignDate):await datedMail('reply_weekly_message',{p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent,p_key:key.current,p_draft:false},campaignDate);if(error)setMessage(error.message);else{key.current=null;setContent('');setImages([]);setOpen(false);onSave();}setBusy(false);}}><p role="status">{deliveryWeek?`Previsão de entrega: Semana ${deliveryWeek}. O envio confirma a semana disponível no servidor.`:"Sem semana aberta."}</p><CampaignDatePicker value={campaignDate} onChange={setCampaignDate}/><label>Resposta<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label><ImagePicker images={images} onChange={setImages} disabled={busy}/><div className="campaign-actions"><Button name="action" value="draft" variant="outline" disabled={busy}>Salvar rascunho</Button><Button disabled={busy||deliveryWeek===null}>{busy?'Salvando…':'Enviar resposta'}</Button></div><p role="status">{message}</p></form>:<Button onClick={()=>setOpen(true)}>{label}</Button>;
 }
 
 export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void;onManage?:(house:string)=>void;groupHouseIds?:string[]}){
@@ -75,7 +75,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
     return [['','Todos'],['none','Sem vínculo'],...[...values].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'))];
   };
   const card=(letter:LetterRow&{deleted_at?:string|null;publication_state?:string;delivery_week?:number|null},canAnswer:boolean)=>{
-    const answers=viewReplies.filter(r=>r.letter_id===letter.id);
+    const answers=viewReplies.filter(r=>r.letter_id===letter.id&&!r.deleted_at);
     const receipt=data.receipts.find(r=>r.letter_id===letter.id&&r.user_id===data.user.id);
     const read=isLetterRead(letter.id,receipt,answers);
     const incomingReplies=answers.filter(r=>deliveredReply(r)&&r.author_user_id!==data.user.id);
@@ -85,11 +85,17 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
       ?incomingReplies.length===0?'Aguardando resposta':read?'Resposta lida':'Resposta não lida'
       :read?'Lida':'Não lida';
     const isOpen=expanded.has(letter.id);
-    const threadLetters=letter.conversation_id?allLetters.filter(o=>o.conversation_id===letter.conversation_id&&o.id!==letter.id).sort((a,b)=>a.created_at.localeCompare(b.created_at)):[];
+    const threadLetters=relatedConversationLetters(letter,allLetters);
     const threadOpen=threads.has(letter.id);
     const to=mailRecipientLabel(letter,houseName,id=>options?.players?.find(p=>p.id===id)?.name);
     const fromHouse=houseName(letter.origin_house_id??null)??(letter.sender_player_id?houseName(data.players.find(p=>p.id===letter.sender_player_id)?.roster_house_id??null):null);
     const canDelete=!letter.deleted_at&&(data.admin||letter.sender_user_id===data.user.id);
+    const lastPlayerReply=answers.filter(a=>a.publication_state==='delivered'&&a.author_user_id!==data.user.id)
+      .sort((a,b)=>(b.delivered_at??b.created_at).localeCompare(a.delivered_at??a.created_at))[0];
+    const housePlayer=data.players.find(p=>p.active&&!p.require_password_change&&p.user_id!==data.user.id&&
+      (p.id===letter.recipient_player_id||data.members.some(m=>m.player_id===p.id&&m.house_id===letter.recipient_house_id)));
+    const replyTarget=letter.sender_user_id===data.user.id
+      ?lastPlayerReply?.author_user_id??housePlayer?.user_id??null:letter.sender_user_id;
     return <article className={'campaign-letter'+(isOpen?'':' recolhida')} key={letter.id} id={'missiva-'+letter.id}>
       <button type="button" className="campaign-letter-toggle" aria-expanded={isOpen} onClick={()=>toggle(letter.id)}>
         <ChevronDown size={18} className={isOpen?'rotate-180 transition-transform':'transition-transform'}/>
@@ -125,6 +131,12 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
             </div>}
             {answer.publication_state==='scheduled'&&<p>Aguardando abertura da Semana {answer.delivery_week}</p>}
             <div className="campaign-reply-text"><CampaignContent content={answer.content}/></div>
+             {!letter.deleted_at&&((data.admin)||(answer.publication_state==='draft'&&answer.author_user_id===data.user.id))&&<div className="campaign-actions">
+               {data.admin&&answer.publication_state!=='draft'&&<ReplyEdit answer={answer} onSave={saved}/>}
+               <Button size="sm" variant="outline" onClick={async()=>{if(!confirm('Excluir esta resposta? O texto sairá do fio, mas a operação ficará registrada no histórico de auditoria.'))return;
+                 const r=await supabase.rpc('delete_letter_reply',{p_id:answer.id,p_version:answer.version??1});
+                 if(r.error)onError(r.error.message);else saved();}}>Excluir resposta</Button>
+             </div>}
             {!letter.deleted_at&&answer.author_user_id!==data.user.id&&answer.publication_state==='delivered'&&<ReplyForm letterId={letter.id} replyId={answer.id} recipientId={answer.author_user_id} roundRevision={roundRevision} onSave={saved}/>}
           </article>)}
         </section>}
@@ -143,7 +155,10 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
           {canDelete&&<Button variant="outline" onClick={async()=>{if(!confirm('Excluir esta missiva? Ela deixará de aparecer para os jogadores.'))return;const {error}=await supabase.rpc('delete_campaign_letter',{p_id:letter.id});if(error)onError(error.message);else saved();}}>Excluir</Button>}
         </div>}
         {!letter.deleted_at&&letter.publication_state==='draft'&&letter.sender_user_id===data.user.id&&<Button variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const result=await supabase.rpc('schedule_letter_draft',{p_id:letter.id,p_week:letter.delivery_week??open??nextLetterNumber(data.letters)});if(result.error)onError(result.error.message);else saved();}}>Programar entrega</Button>}{!letter.deleted_at&&((data.admin&&letter.publication_state!=='draft')||(letter.publication_state==='draft'&&letter.sender_user_id===data.user.id))&&<LetterEdit letter={letter} onSave={saved}/>}
-        {!letter.deleted_at&&letter.publication_state==='delivered'&&letter.sender_user_id!==data.user.id&&canAnswer&&<ReplyForm letterId={letter.id} recipientId={letter.sender_user_id} roundRevision={roundRevision} onSave={saved}/>}
+        {!letter.deleted_at&&letter.publication_state==='delivered'&&canAnswer&&replyTarget&&<ReplyForm
+          letterId={letter.id} replyId={letter.sender_user_id===data.user.id?lastPlayerReply?.id:undefined}
+          recipientId={replyTarget} roundRevision={roundRevision} onSave={saved}
+          label={letter.sender_user_id===data.user.id?(lastPlayerReply?'Responder à Casa':'Adicionar complemento'):'Responder'}/>}
         <Button variant="ghost" size="sm" onClick={()=>{toggle(letter.id);document.getElementById('missiva-'+letter.id)?.scrollIntoView({block:'nearest'});}}>Recolher</Button>
       </div>}
     </article>;
@@ -213,6 +228,25 @@ function LetterEdit({letter,onSave}:{letter:LetterRow;onSave:()=>void}){
   const {data:versions=[]}=useQuery({queryKey:['letter-versions',letter.id,letter.version],enabled:open,queryFn:async()=>{const r=await supabase.from('letter_versions').select('*').eq('letter_id',letter.id).order('version',{ascending:false});if(r.error)throw r.error;return r.data??[];}});
   if(!open)return <Button variant="outline" onClick={()=>{setSubject(letter.subject);setContent(letter.content);setOpen(true);}}>Editar missiva</Button>;
   return <form className="campaign-form" onSubmit={async e=>{e.preventDefault();setBusy(true);try{const rich=await uploadImages(content,images,crypto.randomUUID());const result=letter.publication_state==='draft'?await datedMail('edit_linked_mail_draft',{p_id:letter.id,p_version:letter.version??1,p_subject:subject,p_content:rich,p_origin:links.origin||null,p_court:links.court||null,p_unit:links.unit||null,p_role:links.court?links.role:null},campaignDate):await datedMail('edit_campaign_letter',{p_id:letter.id,p_version:letter.version??1,p_subject:subject,p_content:rich},campaignDate);if(result.error)throw result.error;setOpen(false);setImages([]);onSave();}catch(err){setMessage(err instanceof Error?err.message:'Não foi possível salvar.');}finally{setBusy(false);}}}>{letter.publication_state==='draft'&&<MailLinkFields value={links} onChange={setLinks} options={options??{players:[],houses:[]}}/>}<CampaignDatePicker value={campaignDate} onChange={setCampaignDate}/><label>Assunto<input required value={subject} onChange={e=>setSubject(e.target.value)}/></label><label>Missiva<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label><ImagePicker images={images} onChange={setImages} disabled={busy}/><div className="campaign-actions"><Button disabled={busy}>Salvar nova versão</Button><Button type="button" variant="outline" onClick={()=>setOpen(false)}>Cancelar</Button></div><details><summary>Histórico de versões</summary>{versions.map(v=><div key={v.id}><strong>Versão {v.version}</strong><CampaignContent content={typeof v.snapshot==='object'&&v.snapshot&&'content' in v.snapshot?String(v.snapshot['content']):''}/></div>)}</details><p role="status">{message}</p></form>;
+}
+
+function ReplyEdit({answer,onSave}:{answer:Panel['replies'][number];onSave:()=>void}){
+  const [editing,setEditing]=useState(false);
+  const [content,setContent]=useState(answer.content),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  const {data:versions=[]}=useQuery({queryKey:['reply-versions',answer.id,answer.version],
+    enabled:editing,queryFn:async()=>{const result=await supabase.from('letter_reply_versions')
+      .select('*').eq('reply_id',answer.id).order('version',{ascending:false});
+      if(result.error)throw result.error;return result.data??[];}});
+  if(!editing)return <Button size="sm" variant="outline" onClick={()=>{setContent(answer.content);setError('');setEditing(true);}}>Editar resposta</Button>;
+  return <form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);
+    const r=await supabase.rpc('edit_letter_reply',{p_id:answer.id,p_version:answer.version??1,p_content:content});
+    setBusy(false);if(r.error)setError(r.error.message);else{setEditing(false);onSave();}
+  }}><label>Texto da resposta<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label>
+    <div className="campaign-actions"><Button disabled={busy}>Salvar resposta revisada</Button><Button type="button" variant="outline" onClick={()=>setEditing(false)}>Cancelar</Button></div>
+    <details><summary>Histórico de versões da resposta</summary>{versions.map(v=><div key={v.id}>
+      <strong>Versão {v.version}</strong><CampaignContent content={typeof v.snapshot==='object'&&v.snapshot&&'content' in v.snapshot?String(v.snapshot.content):''}/>
+    </div>)}</details><p role="status">{error}</p>
+  </form>;
 }
 
 function ReplyDraftEdit({answer,onSave}:{answer:Panel['replies'][number];onSave:()=>void}){

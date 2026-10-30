@@ -195,3 +195,62 @@ describe('lote 4: métricas completas do Narrador',()=>{
    })));
  });
 });
+
+describe('lote 5: complementos e manutenção do fio',()=>{
+ it('Narrador pode adicionar complemento na própria carta antes de receber resposta',async()=>{
+  const panel={...data(),admin:true,
+    players:[{id:'player',user_id:'me',name:'Narrador',active:true},
+      {id:'recipient',user_id:'house-member',name:'Destinatária',active:true,require_password_change:false}],
+    members:[{player_id:'recipient',house_id:'other'}]} as unknown as Panel;
+  mount(panel);
+  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  fireEvent.click(screen.getByRole('button',{name:'Adicionar complemento'}));
+  expect(screen.getByRole('textbox',{name:'Resposta'})).toBeInTheDocument();
+  await waitFor(()=>expect(rpc).toHaveBeenCalledWith('reply_delivery_week',{p_recipient:'house-member'}));
+ });
+ it('Narrador recebe botão de resposta ao último comentário de jogador na carta que ele iniciou',async()=>{
+  const panel={...data([{id:'house-answer',letter_id:'letter',author_user_id:'house-member',
+    author_name:'Destinatária',content:'Recebido',created_at:'2026-10-30T10:00:00Z',publication_state:'delivered'}]),
+    admin:true,players:[{id:'recipient',user_id:'house-member',name:'Destinatária',active:true,require_password_change:false}],
+    members:[{player_id:'recipient',house_id:'other'}]} as unknown as Panel;
+  mount(panel);
+  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  fireEvent.click(screen.getByRole('button',{name:'Responder à Casa'}));
+  fireEvent.change(screen.getByRole('textbox',{name:'Resposta'}),{target:{value:'O Narrador respondeu'}});
+  fireEvent.click(screen.getByText('Selecionar dia no calendário'));
+  fireEvent.click(screen.getByRole('button',{name:'1 de Hammer, 1522',hidden:true}));
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Enviar resposta'})).toBeEnabled());
+  fireEvent.click(screen.getByRole('button',{name:'Enviar resposta'}));
+  await waitFor(()=>expect(rpc).toHaveBeenCalledWith('dated_mail_action',expect.objectContaining({
+    p_action:'reply_weekly_message',
+    p_args:expect.objectContaining({p_letter:'letter',p_reply:'house-answer',p_content:'O Narrador respondeu'})
+  })));
+ });
+ it('administrador edita versão entregue e exclui resposta por exclusão lógica',async()=>{
+  const panel={...data([{id:'reply-edited',letter_id:'letter',author_user_id:'house-member',author_name:'Destinatária',
+    content:'Texto original',publication_state:'delivered',created_at:'2026-10-29T10:00:00Z',version:3}]),admin:true} as unknown as Panel;
+  mount(panel);
+  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  fireEvent.click(screen.getByRole('button',{name:'Editar resposta'}));
+  fireEvent.change(screen.getByRole('textbox',{name:'Texto da resposta'}),{target:{value:'Versão corrigida'}});
+  fireEvent.click(screen.getByRole('button',{name:'Salvar resposta revisada'}));
+  await waitFor(()=>expect(rpc).toHaveBeenCalledWith('edit_letter_reply',{p_id:'reply-edited',p_version:3,p_content:'Versão corrigida'}));
+  const originalConfirm=globalThis.confirm;
+  vi.stubGlobal('confirm',()=>true);
+  try{
+   fireEvent.click(screen.getByRole('button',{name:'Excluir resposta'}));
+   await waitFor(()=>expect(rpc).toHaveBeenCalledWith('delete_letter_reply',{p_id:'reply-edited',p_version:3}));
+  }finally{vi.stubGlobal('confirm',originalConfirm);}
+ });
+ it('cartas irmãs do mesmo lote nunca exibem as respostas privadas como fio relacionado',async()=>{
+  const panel={...data([{id:'secret-reply',letter_id:'other-letter',author_user_id:'another',
+    author_name:'Segredo particular',content:'Mensagem confidencial',publication_state:'delivered',created_at:'2026-10-29'}]),
+    admin:true,letters:[
+      {...letter,id:'letter',batch_key:'batch',conversation_id:'shared-legacy'},
+      {...letter,id:'other-letter',batch_key:'batch',conversation_id:'shared-legacy',created_at:'2026-10-29'},
+    ]} as unknown as Panel;
+  mount(panel);
+  fireEvent.click((await screen.findAllByRole('button',{name:/Ordem enviada/}))[0]!);
+  expect(screen.queryByRole('button',{name:/Ver relacionadas nesta página/})).not.toBeInTheDocument();
+ });
+});

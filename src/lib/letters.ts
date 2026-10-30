@@ -42,14 +42,22 @@ export type LetterGroup = {
   letters: LetterRow[];
 };
 
-export type ReplyRef = {id?:string;letter_id:string;created_at?:string;delivered_at?:string|null;publication_state?:string;author_user_id?:string;recipient_user_id?:string;delivery_week?:number|null;creation_week?:number|null};
-export const deliveredReply = (r:ReplyRef) => !r.publication_state || r.publication_state==='delivered';
+export type ReplyRef = {id?:string;letter_id:string;created_at?:string;delivered_at?:string|null;publication_state?:string;author_user_id?:string;recipient_user_id?:string;delivery_week?:number|null;creation_week?:number|null;deleted_at?:string|null};
+export const deliveredReply = (r:ReplyRef) => !r.deleted_at && (!r.publication_state || r.publication_state==='delivered');
 export const hasDeliveredAnswer = (l:LetterRow,replies:ReplyRef[]) => replies.some(r=>r.letter_id===l.id&&deliveredReply(r)&&r.author_user_id!==l.sender_user_id);
 export function matchesLetterBox(l:LetterRow,replies:ReplyRef[],box:string){
  if(box==='excluidas')return Boolean(l.deleted_at);
  if(l.deleted_at)return false;
  const state=box==='rascunhos'?'draft':box==='programadas'?'scheduled':box==='historico'?'delivered':null;
  return !state||l.publication_state===state||replies.some(r=>r.letter_id===l.id&&r.publication_state===state);
+}
+/** Cartas de um mesmo envio em lote são entregas independentes. O batch_key
+ * agrupa o envio administrativo, nunca as respostas privadas dos destinatários. */
+export function relatedConversationLetters(letter:LetterRow,letters:LetterRow[]):LetterRow[]{
+ if(!letter.conversation_id)return [];
+ return letters.filter(other=>other.id!==letter.id&&other.conversation_id===letter.conversation_id
+   &&(!letter.batch_key||other.batch_key!==letter.batch_key))
+   .sort((a,b)=>a.created_at.localeCompare(b.created_at));
 }
 export type ReceiptRef = {letter_id:string;user_id:string;read_at?:string};
 
