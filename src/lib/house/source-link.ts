@@ -22,10 +22,17 @@ export function confirmedSourceTotals(record:ReconciliationRecord,houseName:stri
 }
 export function linkSourceTotals(state:HouseState,totals:Resources,source:string):HouseState {
  if(state.importSources.some(s=>s.startsWith('record:')))throw new Error('Casa já vinculada a uma fonte.');
- const next=structuredClone(state),b=balances(state);
- for(const k of RESOURCE_KEYS){if(!Number.isFinite(totals[k])||totals[k]<0||totals[k]>100000)throw new Error('Total inválido.');next.permanent[k]+=totals[k]-b.total[k];}
- if(RESOURCE_KEYS.some(k=>balances(next).available[k]<0))throw new Error('Totais não cobrem compras atuais; conciliação necessária.');
+ const next=structuredClone(state);
+ // Source totals are already final: never include the regional bonus twice.
+ // Account for the whole current sheet including historic events and player bonuses.
  next.importSources.push(source);
+ next.method='import';next.regionalApplied=false;
+ for(const k of RESOURCE_KEYS){
+  if(!Number.isFinite(totals[k])||totals[k]<0||totals[k]>100000)throw new Error('Total inválido.');
+  // After import, historical dice and member bonuses no longer apply. Keep exact confirmed totals.
+  next.permanent[k]=totals[k]-next.base[k];
+ }
+ if(RESOURCE_KEYS.some(k=>balances(next).available[k]<0))throw new Error('Totais não cobrem compras atuais; conciliação necessária.');
  next.pending=[...new Set([...next.pending,'Fonte vinculada: totais conferidos; posses, tropas, equipamentos e eventos legados ainda não conciliados.'])];
  return next;
 }

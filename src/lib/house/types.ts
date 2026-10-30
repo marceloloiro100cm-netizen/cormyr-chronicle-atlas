@@ -29,7 +29,7 @@ export type CourtMember = { id: string; npcId?: string | undefined; name: string
 export type Fortune = { month: number; mode: 'roll' | 'alternative'; dice: number[]; bonusDice: number[]; modifier: number; result: number; outcome: string; resource: Resource; changes: Partial<Resources>; source: string };
 export type HouseState = {
   schemaVersion: 1; houseId: string; phase: 'draft' | 'review' | 'active'; creationStep: number;
-  identity: { region: string; motto: string; foundation?: number | undefined; history: string[]; notes: string };
+  identity: { region: string; motto: string; foundation?: number | undefined; history: string[]; notes: string; crestPath?: string | undefined };
   method: 'budget' | 'roll' | 'import'; budget: number | null; base: Resources; permanent: Resources;
   regionalApplied: boolean; rolls: number[][]; domains: Domain[]; holdings: Holding[]; units: Unit[]; projects: Project[]; court: CourtMember[];
   month: number; treasury: number; fortunes: Fortune[]; actions: { month: number; type: string; notes: string }[];
