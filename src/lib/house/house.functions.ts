@@ -191,13 +191,14 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     const member=await db.from('campaign_players').select('id').eq('user_id',context.userId)
       .eq('active',true).eq('require_password_change',false).maybeSingle();
     if(member.error||!member.data)throw new Error('Somente um jogador cadastrado pode contribuir com o bônus.');
-    const authorized=await db.from('house_memberships').select('player_id').eq('player_id',member.data.id)
+    const playerId=member.data.id;
+    const authorized=await db.from('house_memberships').select('player_id').eq('player_id',playerId)
       .eq('house_id',data.houseId).maybeSingle();
     if(authorized.error||!authorized.data)throw new Error('Jogador não pertence a esta casa.');
-    if((state.creationBonuses??[]).some(b=>b.playerId===member.data.id))
+    if((state.creationBonuses??[]).some(b=>b.playerId===playerId))
       throw new Error('Cada jogador pode aplicar seu bônus apenas uma vez.');
     const {randomInt}=await import('node:crypto');
-    next.creationBonuses=[...(state.creationBonuses??[]),{playerId:member.data.id,resource:input.resource,die:randomInt(1,7)}];
+    next.creationBonuses=[...(state.creationBonuses??[]),{playerId,resource:input.resource,die:randomInt(1,7)}];
     rule='Livro básico · ajuste inicial de jogador vinculado, +1d6 auditado';
   }
   if(data.action==='equipment'){const input=z.object({unitId:z.string(),category:z.enum(['armor','fighting','marksmanship'])}).parse(args);next=improveEquipment(state,input.unitId,input.category);rule='Livro básico · tabelas10-1/10-2; 1 Riqueza permanente por categoria, limite uma';}
