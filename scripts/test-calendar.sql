@@ -16,6 +16,7 @@ SELECT pg_temp.assert(NOT valid_campaign_date('1522-F-shieldmeet') AND valid_cam
 SELECT pg_temp.assert(NOT valid_campaign_date(NULL) AND NOT valid_campaign_date('1522-13-01'),'invalid dates');
 SELECT set_campaign_calendar((get_campaign_calendar()->>'version')::int,'1522-01-21',true);
 SELECT set_letter_round(1,false);
+SELECT pg_temp.assert((SELECT harptos_period='1522-01:désdia-3' FROM letter_rounds WHERE number=1),'round remembers Harptos period at opening');
 SELECT pg_temp.assert(get_campaign_calendar()->>'day'='21','first round establishes baseline');
 SELECT set_letter_round(2,false);
 SELECT pg_temp.assert(get_campaign_calendar()->>'month'='1' AND get_campaign_calendar()->>'day'='1','third desdia advances month');
@@ -52,4 +53,40 @@ SELECT set_letter_round(4,false);
 SELECT pg_temp.assert(jsonb_array_length(calendar_mail_events(1522,1))=2,'delivered reply becomes calendar event');
 SELECT delete_campaign_letter((SELECT id FROM campaign_letters WHERE batch_key='10000000-0000-0000-0000-000000000901'));
 SELECT pg_temp.assert(jsonb_array_length(calendar_mail_events(1522,1))=0,'deleted thread removes calendar events');
+-- Lote 8: sender character labels and date reference remain separate from auth.
+SELECT dated_mail_action('send_linked_mail',jsonb_build_object(
+ 'p_key','10000000-0000-0000-0000-000000000931',
+ 'p_targets',jsonb_build_array('p:10000000-0000-0000-0000-000000000013'),
+ 'p_subject','Edito real','p_content','Por ordem da Coroa',
+ 'p_week',4,'p_signed_by','Rei Musgrave Phelles'),'1522-02-04');
+SELECT pg_temp.assert((SELECT sender_name='Rei Musgrave Phelles' AND sender_user_id='10000000-0000-0000-0000-000000000001'::uuid
+ FROM campaign_letters WHERE batch_key='10000000-0000-0000-0000-000000000931'),
+ 'narrator NPC signature does not replace authenticated author');
+SELECT dated_mail_action('reply_weekly_message',jsonb_build_object(
+ 'p_letter',(SELECT id FROM campaign_letters WHERE batch_key='10000000-0000-0000-0000-000000000931'),
+ 'p_key','10000000-0000-0000-0000-000000000932',
+ 'p_content','Complemento do Intendente','p_signed_by','Intendente Régio'),
+ '1522-02-04');
+SELECT pg_temp.assert((SELECT author_name='Intendente Régio'
+ AND author_user_id='10000000-0000-0000-0000-000000000001'::uuid
+ FROM letter_replies WHERE idempotency_key='10000000-0000-0000-0000-000000000932'),
+ 'narrator addendum bears supplied NPC signature');
+SELECT pg_temp.assert(coalesce(current_setting('cormyr.mail_signature',true),'')='',
+ 'signature context restored after dated action');
+SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000002',true);
+DO $spoof$ BEGIN
+ BEGIN
+  PERFORM dated_mail_action('send_linked_mail',jsonb_build_object(
+    'p_key','10000000-0000-0000-0000-000000000933',
+    'p_origin','mail-a','p_targets',jsonb_build_array('narrator'),
+    'p_subject','Falso decreto','p_content','Não autorizado',
+    'p_signed_by','Rei Phelles'),'1522-02-04');
+  RAISE EXCEPTION 'player forged NPC signature';
+ EXCEPTION WHEN raise_exception THEN
+  IF SQLERRM='player forged NPC signature' OR SQLERRM NOT LIKE 'Somente o Narrador escolhe%' THEN RAISE; END IF;
+ END;
+END $spoof$;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',true);
+SELECT pg_temp.assert((SELECT harptos_period IS NOT NULL FROM letter_rounds WHERE number=4),
+ 'open round has Harptos period recorded');
 ROLLBACK;
