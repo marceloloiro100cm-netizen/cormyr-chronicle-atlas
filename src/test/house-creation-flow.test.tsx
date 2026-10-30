@@ -51,6 +51,27 @@ describe('creation wizard player workflow',()=>{
   fireEvent.click(screen.getByRole('button',{name:/Aplicar meu bônus/}));
   await waitFor(()=>expect(onCreationAction).toHaveBeenCalledWith('member_bonus',{resource:'influence'}));
  });
+ it('exibe point buy de 210 pontos quando o Narrador liberou a compra',async()=>{
+  const state=newHouseState('new-house');state.creationStep=3;
+  const onSave=vi.fn(async()=>true);
+  render(<Creation state={state} admin={false} canEditAttributes busy={false}
+   onSave={onSave} onRoll={async()=>true} onCreationAction={async()=>true} onNavigate={()=>{}}/>);
+  expect(screen.getByText(/Point buy/)).toBeInTheDocument();
+  const defense=screen.getByRole('spinbutton',{name:'Defesa'});
+  expect(defense).toBeEnabled();
+  fireEvent.change(defense,{target:{value:'50'}});
+  fireEvent.click(screen.getByRole('button',{name:/Salvar e continuar/}));
+  await waitFor(()=>expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+    base:expect.objectContaining({defense:50}),
+  })));
+ });
+ it('bloqueia compra de atributos sem permissão, preservando acesso ao modo tradicional',()=>{
+  view(3);
+  expect(screen.getByRole('spinbutton',{name:'Defesa'})).toBeDisabled();
+  cleanup();
+  view(1);
+  expect(screen.getByRole('button',{name:/Rolar recursos da Casa/})).toBeEnabled();
+ });
  it('does not navigate away if autosave rejects changes',async()=>{
   const state=newHouseState('h');state.creationStep=4;
   const onSave=vi.fn(async()=>false),onNavigate=vi.fn();
