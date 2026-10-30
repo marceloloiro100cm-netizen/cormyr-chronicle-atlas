@@ -40,7 +40,7 @@ afterEach(()=>{cleanup();vi.restoreAllMocks();});
 describe('publicação da data global de Harptos',()=>{
  it('altera o mês selecionado, publica e confirma o novo valor lido do banco',async()=>{
   setup();
-  const picker=await screen.findByText('Data selecionada para publicação:');
+  const picker=await screen.findByText(/Data selecionada para publicação/);
   expect(picker.parentElement).toHaveTextContent('1 de Hammer');
   fireEvent.change(screen.getAllByRole('combobox',{name:'Mês',hidden:true})[0]!,{target:{value:'1'}});
   expect(picker.parentElement).toHaveTextContent('1 de Alturiak');
@@ -53,11 +53,11 @@ describe('publicação da data global de Harptos',()=>{
  });
  it('seleciona um dia e impede que uma atualização externa silenciosa apague a escolha',async()=>{
   const qc=setup();
-  await screen.findByText('Data selecionada para publicação:');
+  await screen.findByText(/Data selecionada para publicação/);
   fireEvent.click(screen.getAllByRole('button',{name:'12 de Hammer, 1522',hidden:true})[0]!);
-  await waitFor(()=>expect(screen.getByText('Data selecionada para publicação:').parentElement).toHaveTextContent('12 de Hammer'));
+  await waitFor(()=>expect(screen.getByText(/Data selecionada para publicação/).parentElement).toHaveTextContent('12 de Hammer'));
   qc.setQueryData(['campaign-calendar'],{...mock.current,day:6,version:2});
-  expect(screen.getByText('Data selecionada para publicação:').parentElement).toHaveTextContent('12 de Hammer');
+  expect(screen.getByText(/Data selecionada para publicação/).parentElement).toHaveTextContent('12 de Hammer');
   fireEvent.click(screen.getByRole('button',{name:'Publicar calendário'}));
   await waitFor(()=>expect(mock.rpc).toHaveBeenCalledWith('publish_campaign_schedule',expect.objectContaining({
    p_date:'1522-01-12',p_version:1
@@ -70,7 +70,7 @@ describe('publicação da data global de Harptos',()=>{
    return {data:null,error:{message:'Falha no banco ao publicar'}};
   });
   setup();
-  await screen.findByText('Data selecionada para publicação:');
+  await screen.findByText(/Data selecionada para publicação/);
   fireEvent.click(screen.getByRole('button',{name:'Publicar calendário'}));
   expect(await screen.findByRole('alert')).toHaveTextContent('Falha no banco ao publicar');
   expect(screen.queryByText(/Calendário publicado e confirmado/)).not.toBeInTheDocument();
