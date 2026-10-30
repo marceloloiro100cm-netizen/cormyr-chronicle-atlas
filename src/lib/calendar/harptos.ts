@@ -21,14 +21,15 @@ export function parseDate(value:string|null|undefined):CampaignDate|null {
 export function formatDate(value:string|null|undefined):string {
   const d=parseDate(value);return d?`${d.festival?FESTIVALS.find(f=>f.id===d.festival)!.name:`${d.day} de ${MONTHS[d.month]}`} · ${d.year} CV`:'Sem data de campanha';
 }
-/** Label shown to players from the published shared Harptos date and campaign week. */
-export function formatCampaignWeek(d:CampaignDate & {published_week?:number|null}):string {
+/** Visible campaign period derives from Harptos day, never the game-round number.
+ * Days 1–10 = 1ª désdia, 11–20 = 2ª, 21–30 = 3ª.
+ * Intercalary festivals keep their own names instead of claiming a désdia.
+ */
+export function formatCampaignPeriod(d:CampaignDate):string {
   const period=d.festival
     ?(FESTIVALS.find(f=>f.id===d.festival)?.name??'Festival')
     :`${Math.floor((d.day-1)/10)+1}ª désdia`;
-  const week=Number.isInteger(d.published_week)&&Number(d.published_week)>0
-    ?`Semana ${d.published_week} · `:'';
-  return `${week}${period} · ${MONTHS[d.month]} · ${d.year} CV`;
+  return `${period} · ${MONTHS[d.month]} · ${d.year} CV`;
 }
 
 export type CalendarEvent={id:string;date:string;title:string;kind:'kingdom'|'season'|'mail';description?:string};

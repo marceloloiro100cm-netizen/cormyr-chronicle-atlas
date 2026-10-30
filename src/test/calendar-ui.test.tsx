@@ -2,7 +2,7 @@ import {afterEach,beforeEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor,cleanup,act} from '@testing-library/react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {CampaignCalendar} from '@/components/calendar/calendar';
-import {formatCampaignWeek} from '@/lib/calendar/harptos';
+import {formatCampaignPeriod} from '@/lib/calendar/harptos';
 
 const mock=vi.hoisted(()=>({
  rpc:vi.fn(),
@@ -25,9 +25,9 @@ function mount(){
  return qc;
 }
 
-it('mostra semana, désdia, mês e ano somente dentro do calendário, preservando privacidade',async()=>{
+it('mostra somente désdia, mês e ano no calendário, preservando privacidade',async()=>{
  mount();
- expect(await screen.findByText('Semana 2 · 2ª désdia · Hammer · 1522 CV')).toBeInTheDocument();
+ expect(await screen.findByText('2ª désdia · Hammer · 1522 CV')).toBeInTheDocument();
  const day=await screen.findByRole('button',{name:/^2 de Hammer.*1 evento/});
  fireEvent.mouseEnter(day);expect(screen.getByText('Convocação da corte')).toBeInTheDocument();
  fireEvent.focus(screen.getByRole('button',{name:/^3 de Hammer/}));
@@ -39,32 +39,33 @@ it('mostra semana, désdia, mês e ano somente dentro do calendário, preservand
 
 it('recebe a nova data publicada do Narrador e abre automaticamente o novo mês para jogadores',async()=>{
  const qc=mount();
- await screen.findByText('Semana 2 · 2ª désdia · Hammer · 1522 CV');
+ await screen.findByText('2ª désdia · Hammer · 1522 CV');
  mock.current={year:1522,month:1,day:21,festival:null,auto_advance:true,version:2,published_week:4};
  await act(async()=>{await qc.refetchQueries({queryKey:['campaign-calendar']});});
- expect(await screen.findByText('Semana 4 · 3ª désdia · Alturiak · 1522 CV')).toBeInTheDocument();
+ expect(await screen.findByText('3ª désdia · Alturiak · 1522 CV')).toBeInTheDocument();
  expect(screen.getByRole('heading',{name:'Alturiak · A Garra do Inverno'})).toBeInTheDocument();
  await waitFor(()=>expect(screen.getByRole('button',{name:/^21 de Alturiak/})).toHaveAttribute('aria-current','date'));
 });
 
-it('mantém a consulta histórica se o jogador navega, mas atualiza o indicador da semana global',async()=>{
+it('mantém a consulta histórica se o jogador navega, mas atualiza a désdia global',async()=>{
  const qc=mount();
- await screen.findByText('Semana 2 · 2ª désdia · Hammer · 1522 CV');
+ await screen.findByText('2ª désdia · Hammer · 1522 CV');
  fireEvent.click(screen.getByRole('button',{name:'Próximo'}));
  expect(screen.getByRole('heading',{name:'Alturiak · A Garra do Inverno'})).toBeInTheDocument();
  mock.current={year:1522,month:2,day:7,festival:null,auto_advance:false,version:2,published_week:5};
  await act(async()=>{await qc.refetchQueries({queryKey:['campaign-calendar']});});
- expect(await screen.findByText('Semana 5 · 1ª désdia · Ches · 1522 CV')).toBeInTheDocument();
+ expect(await screen.findByText('1ª désdia · Ches · 1522 CV')).toBeInTheDocument();
  expect(screen.getByRole('heading',{name:'Alturiak · A Garra do Inverno'})).toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Data atual'}));
  expect(screen.getByRole('heading',{name:'Ches · A Garra dos Sóis Poentes'})).toBeInTheDocument();
 });
 
-it('formata as três désdias e intercalares sem inventar dia de festival',()=>{
- const base={year:1522,month:0,day:1,festival:null,published_week:2};
- expect(formatCampaignWeek(base)).toBe('Semana 2 · 1ª désdia · Hammer · 1522 CV');
- expect(formatCampaignWeek({...base,day:10})).toContain('1ª désdia');
- expect(formatCampaignWeek({...base,day:11})).toContain('2ª désdia');
- expect(formatCampaignWeek({...base,day:21})).toContain('3ª désdia');
- expect(formatCampaignWeek({...base,festival:'midwinter'})).toContain('Midwinter');
+it('formata corretamente cada uma das três désdias, ignorando o número da rodada',()=>{
+ const base={year:1522,month:0,day:1,festival:null,published_week:25};
+ for(const day of [1,2,10])expect(formatCampaignPeriod({...base,day})).toBe('1ª désdia · Hammer · 1522 CV');
+ for(const day of [11,12,20])expect(formatCampaignPeriod({...base,day})).toBe('2ª désdia · Hammer · 1522 CV');
+ for(const day of [21,22,30])expect(formatCampaignPeriod({...base,day})).toBe('3ª désdia · Hammer · 1522 CV');
+ expect(formatCampaignPeriod({...base,month:1,day:11})).toBe('2ª désdia · Alturiak · 1522 CV');
+ expect(formatCampaignPeriod({...base,year:1523,day:21})).toBe('3ª désdia · Hammer · 1523 CV');
+ expect(formatCampaignPeriod({...base,festival:'midwinter'})).toBe('Midwinter · Meio do Inverno · Hammer · 1522 CV');
 });
