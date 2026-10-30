@@ -8,7 +8,7 @@ afterEach(()=>cleanup());
 function view(step:number,overrides:Partial<ReturnType<typeof newHouseState>>={}){
  const state=newHouseState('new-house');state.creationStep=step;Object.assign(state,overrides);
  const onSave=vi.fn(async()=>true),onRoll=vi.fn(async()=>true),onCreationAction=vi.fn(async()=>true),onNavigate=vi.fn();
- render(<Creation state={state} admin={false} busy={false} onSave={onSave} onRoll={onRoll}
+ render(<Creation state={state} admin={false} canEditAttributes={false} busy={false} onSave={onSave} onRoll={onRoll}
   onCreationAction={onCreationAction} onNavigate={onNavigate}/>);
  return {onSave,onRoll,onCreationAction,onNavigate};
 }
@@ -54,7 +54,7 @@ describe('creation wizard player workflow',()=>{
  it('does not navigate away if autosave rejects changes',async()=>{
   const state=newHouseState('h');state.creationStep=4;
   const onSave=vi.fn(async()=>false),onNavigate=vi.fn();
-  render(<Creation state={state} admin={false} busy={false} onSave={onSave}
+  render(<Creation state={state} admin={false} canEditAttributes={false} busy={false} onSave={onSave}
    onRoll={async()=>true} onCreationAction={async()=>true} onNavigate={onNavigate}/>);
   fireEvent.click(screen.getByRole('button',{name:/Salvar e continuar/}));
   await waitFor(()=>expect(onSave).toHaveBeenCalled());
