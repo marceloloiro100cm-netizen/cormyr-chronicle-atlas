@@ -3,7 +3,7 @@ import {Anchor,Castle,ChevronDown,Coins,GraduationCap,Hammer,PenTool,ShieldCheck
 import {Button} from '@/components/ui/button';
 import {CORE_CATALOG} from '@/lib/house/catalog';
 import {activeHoldings,quote} from '@/lib/house/engine';
-import {MILITARY_HOLDINGS} from '@/lib/house/unit-progression';
+import {MILITARY_HOLDINGS,MILITARY_HOLDING_BENEFITS} from '@/lib/house/unit-progression';
 import {RESOURCE_NAMES,type CatalogItem,type HouseState,type Holding,type Requirement} from '@/lib/house/types';
 
 const militaryItems=CORE_CATALOG.filter(item=>MILITARY_HOLDINGS.includes(item.id));
@@ -79,6 +79,7 @@ function MilitaryAssetCard({item,holdings,state,canEdit,busy,onRename,onBuy}:{
  const mayBuy=!acquired||item.repeatable;
  const readiness=mayBuy?militaryPurchaseReadiness(item,state):'requirements';
  const prerequisites=militaryItems.filter(other=>other.requirements.some(r=>r.kind==='parent'&&r.values?.includes(item.id)));
+ const civilianParents=item.requirements.filter(r=>r.kind==='parent').flatMap(r=>r.values??[]).filter(id=>!militaryItemIds.has(id));
  const status=owned.length?owned.map(h=>h.name).join(' · '):
   building.length?'Em construção: '+building.map(h=>h.name).join(' · '):item.id==='pros-military-academy'?'Não adquirida':'Não adquirido';
  const buttonLabel=readiness==='money'?'Sem recursos':
@@ -88,15 +89,17 @@ function MilitaryAssetCard({item,holdings,state,canEdit,busy,onRename,onBuy}:{
   <summary className="military-asset-summary">
    <span className="military-asset-icon"><AssetIcon item={item}/></span>
    <span className="military-asset-details"><small>{item.name}</small><strong>{status}</strong>
-    <span className="military-asset-short">{item.description}</span></span>
+    <span className="military-asset-short">{MILITARY_HOLDING_BENEFITS[item.id]}</span></span>
    <ChevronDown size={17} className="military-asset-chevron" aria-hidden/>
   </summary>
   <div className="military-asset-expanded">
    <h5>Descrição</h5><p>{item.description}</p>
-   <h5>Habilidade e bônus</h5>
+   <h5>Efeito militar</h5><p className="military-positive">{MILITARY_HOLDING_BENEFITS[item.id]}</p>
+   <h5>Demais efeitos e regras da fonte</h5>
    {item.effects.length?item.effects.map((effect,i)=><p key={i}>{effect.description}</p>):
     <p>Esta posse é necessária para adquirir ou melhorar instalações militares associadas.</p>}
    {prerequisites.length>0&&<p>Desbloqueia: {prerequisites.map(x=>x.name).join(', ')}.</p>}
+   {civilianParents.length>0&&<p className="house-caption">Pré-requisito civil: {civilianParents.map(id=>CORE_CATALOG.find(x=>x.id===id)?.name??id).join(', ')}. Adquira-o em Economia e investimentos; não aparece entre as posses militares.</p>}
    <h5>Custo e regras de compra</h5>
    <p>{item.costs.length?item.costs.map(c=>c.amount+' '+RESOURCE_NAMES[c.resource]+' ('+COST_TYPE[c.mode]+')').join(' + '):'Custo não definido.'}</p>
    <p>Prazo: {item.duration.months} meses{item.duration.dice?' + '+item.duration.dice+'d'+item.duration.sides:''}. {state.phase==='active'?'O bônus só fica ativo após a conclusão da obra.':'Na criação, a posse é registrada como preexistente.'}</p>
@@ -129,7 +132,7 @@ export function MilitaryAssets({state,canEdit,busy,onRename,onBuy}:{
    </Button>
   </div>
   {expanded&&<div id="military-assets-list">
-   <p className="house-caption">{activeIds.size} tipo(s) ativo(s) · {militaryItems.length} construções e posses com benefícios militares ou pré-requisitos associados. Selecione um card para consultar seus detalhes.</p>
+   <p className="house-caption">{activeIds.size} tipo(s) ativo(s) · {militaryItems.length} construções, especialistas e melhorias com efeito militar direto. Selecione um card para consultar seus detalhes.</p>
    <div className="military-assets-grid">{militaryItems.map(item=>
     <MilitaryAssetCard key={item.id} item={item} holdings={holdings.filter(h=>h.itemId===item.id)}
      state={state} canEdit={canEdit} busy={busy} onRename={onRename} onBuy={onBuy}/>)}</div>
