@@ -19,7 +19,9 @@ export function CampaignChronology({year,month,anchorId}:{year:number;month:numb
   },
   refetchInterval:30000,
  });
- const rows=query.data?.events??[];
+ // After an access error, never render previous-user or previous-RLS cached events.
+ const visible=query.isError?null:query.data;
+ const rows=visible?.events??[];
  const grouped=new Map<string,typeof rows>();
  for(const event of rows){
   const current=grouped.get(event.date)??[];
@@ -31,7 +33,7 @@ export function CampaignChronology({year,month,anchorId}:{year:number;month:numb
   {!valid&&<p role="alert">Selecione um mês e ano válidos de Harptos.</p>}
   {query.isPending&&valid&&<p role="status">Consultando a cronologia autorizada…</p>}
   {query.error&&<p role="alert">Cronologia indisponível; nenhum acontecimento foi presumido. <Button type="button" variant="outline" onClick={()=>void query.refetch()}>Recarregar</Button></p>}
-  {query.data&&<>
+  {visible&&<>
    {rows.length===0?<p>Não há eventos oficiais ou correspondências entregues com data confirmada neste mês.</p>:
     <ol className="harptos-chronology-items">
      {[...grouped].map(([key,events])=><li key={key}>
@@ -42,13 +44,13 @@ export function CampaignChronology({year,month,anchorId}:{year:number;month:numb
       </li>)}</ul>
      </li>)}
     </ol>}
-   <details><summary>Rodadas de correspondência vinculadas ao período ({query.data.rounds.length})</summary>
+   <details><summary>Rodadas de correspondência vinculadas ao período ({visible.rounds.length})</summary>
     <p className="house-caption">O período registrado é uma fotografia da abertura da rodada. Não é a data de cada carta nem muda quando o Narrador avança o calendário.</p>
-    {query.data.rounds.length===0&&<p>Sem rodada vinculada explicitamente a este período.</p>}
-    {query.data.rounds.map(round=><p key={round.number}>
+    {visible.rounds.length===0&&<p>Sem rodada vinculada explicitamente a este período.</p>}
+    {visible.rounds.map(round=><p key={round.number}>
      <strong>Semana {round.number}</strong> · {round.status==='open'?'Aberta':round.status==='closed'?'Encerrada':'Preparada'} · {formatRoundHarptosReference(round.harptos_period)}
     </p>)}
-    {query.data.unassigned_round_count>0&&<p className="house-caption">{query.data.unassigned_round_count} rodada(s) histórica(s) sem referência Harptos registrada. Nenhuma data foi inventada para elas.</p>}
+    {visible.unassigned_round_count>0&&<p className="house-caption">{visible.unassigned_round_count} rodada(s) histórica(s) sem referência Harptos registrada. Nenhuma data foi inventada para elas.</p>}
    </details>
   </>}
  </section>;
