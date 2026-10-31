@@ -82,6 +82,11 @@
       "pr": 142,
       "head": "audit/hub-temporal-lote-16-ensaio-replay-isolado",
       "base": "audit/hub-temporal-lote-15-reconciliacao-por-arquivo"
+    },
+    {
+      "pr": 143,
+      "head": "audit/hub-temporal-lote-17-plano-ordenado-bloqueado",
+      "base": "audit/hub-temporal-lote-16-ensaio-replay-isolado"
     }
   ]
 }
