@@ -236,7 +236,7 @@ BEGIN
            jsonb_build_object('desdias',p_desdias,'days',p_desdias*10,'to',next_date,'version',saved.version));
  FOR m IN SELECT value FROM jsonb_array_elements(impact->'crossed_months') LOOP
    INSERT INTO public.campaign_time_outbox(operation_key,kind,event_key,payload)
-   VALUES(p_key,'campaign.month.changed',m->>'year'||'-'||m->>'month',m);
+   VALUES(p_key,'campaign.month.changed',(m->>'year')||'-'||(m->>'month'),m);
  END LOOP;
  FOR y IN SELECT value FROM jsonb_array_elements(impact->'crossed_years') LOOP
    INSERT INTO public.campaign_time_outbox(operation_key,kind,event_key,payload)
@@ -244,7 +244,7 @@ BEGIN
  END LOOP;
  FOR s IN SELECT value FROM jsonb_array_elements(impact->'crossed_seasons') LOOP
    INSERT INTO public.campaign_time_outbox(operation_key,kind,event_key,payload)
-   VALUES(p_key,'campaign.season.changed',s->>'year'||'-'||s->>'month',s);
+   VALUES(p_key,'campaign.season.changed',(s->>'year')||'-'||(s->>'month'),s);
  END LOOP;
  FOR f IN SELECT value FROM jsonb_array_elements(impact->'crossed_festivals') LOOP
    INSERT INTO public.campaign_time_outbox(operation_key,kind,event_key,payload)
