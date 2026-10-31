@@ -76,6 +76,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f scripts/test-annual-character-ages.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-mail-chronology.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-temporal-months.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-consumers.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-management.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-workbook-import.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-linked-workbooks.sql
