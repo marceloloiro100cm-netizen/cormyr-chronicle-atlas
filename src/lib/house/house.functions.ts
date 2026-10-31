@@ -11,8 +11,8 @@ import { advance, alternativeFortune, balances, createUnit, purchase, UNIT_TYPES
 import { confirmFortune, convertResources } from './fortune';
 import { historyAdjustments, memberBonusAdjustments, historicalFoundationYear, rollFoundation, rollHistoricalEvent } from './creation-history';
 import { improveEquipment } from './equipment';
-import { buySiege } from './siege';
-import { equipUnit, resolveSurvivors, changeUnitState, proposeVassal, approveVassal, SURVIVOR_CONDITIONS } from './military';
+import { buySiege, changeSiegeAssignment } from './siege';
+import { equipUnit, resolveSurvivors, changeUnitState, trainUnit, proposeVassal, approveVassal, SURVIVOR_CONDITIONS } from './military';
 import { linkVassalNpcs, validateVassalNpcs } from './vassal-links';
 import { selectUndoSnapshot } from './undo';
 import { legacyCostIssues, reconcileLegacyCosts } from './legacy-cost-reconciliation';
@@ -73,7 +73,7 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
   const admin=Boolean(role.data);if(!admin&&!membership.data)throw new Error('Edição desta casa não autorizada.');
-  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','vassal_approve','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
+  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','train_unit','vassal_approve','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   const duplicate=await db.from('noble_house_ledger').select('after_state,version,actor,action').eq('house_id',data.houseId).eq('operation_key',data.key).maybeSingle();
   if(duplicate.error)throw new Error('Não foi possível conferir a operação.');
@@ -194,7 +194,20 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   }
   if(data.action==='unit') {const parsed=unitSchema.parse(args['unit']);if(parsed.types.length>1&&!admin)throw new Error('O Narrador precisa confirmar a adaptação dos tipos mistos.');const unit=equipUnit({...parsed,costs:[],xp:0,equipment:[]});next=createUnit(state,unit,UNIT_TYPES);if(parsed.commanderName&&!next.court.some(c=>c.name===parsed.commanderName))next.court.push({id:crypto.randomUUID(),name:parsed.commanderName,role:'Comandante de Exército',notes:'Comandante gerado na tropa'});rule='Livro básico · Tipos mistos e tabelas10-1/10-2';}
   if(data.action==='siege'){next=buySiege(state,z.object({id:z.string().uuid(),itemId:z.string(),engineerId:z.string(),carrierId:z.string(),domainId:z.string(),name:z.string().max(160)}).parse(args));rule='Livro básico · Cerco e operadores,pp.223–230';}
-  if(data.action==='unit_state'){const input=z.object({unitId:z.string(),mounted:z.boolean(),atHome:z.boolean(),health:z.number(),casualties:z.number().int(),situation:z.string().max(1000),commanderName:z.string().trim().max(160).optional()}).parse(args);next=changeUnitState(state,input);if(input.commanderName&&!next.court.some(c=>c.name===input.commanderName))next.court.push({id:crypto.randomUUID(),name:input.commanderName,role:'Comandante de Exército',notes:'Comandante gerado na tropa'});rule='Livro básico · Condição, cavalaria e guarnição';}
+  if(data.action==='siege_state'){
+    if(!admin)throw new Error('Reatribuição e baixa de equipamento de cerco requerem o Narrador.');
+    if(data.explanation.trim().length<10)throw new Error('Registre a decisão de cerco.');
+    const input=z.object({id:z.string(),engineerId:z.string(),carrierId:z.string(),destroyed:z.boolean()}).parse(args);
+    next=changeSiegeAssignment(state,input);rule='Cerco: '+(input.destroyed?'destruição permanente':'mudança de operadores')+' auditada';
+  }
+  if(data.action==='unit_state'){const input=z.object({unitId:z.string(),mounted:z.boolean(),atHome:z.boolean(),health:z.number(),casualties:z.number().int(),situation:z.string().max(1000),commanderName:z.string().trim().max(160).optional(),domainId:z.string().optional(),disband:z.boolean().optional()}).parse(args);next=changeUnitState(state,input);if(input.commanderName&&!next.court.some(c=>c.name===input.commanderName))next.court.push({id:crypto.randomUUID(),name:input.commanderName,role:'Comandante de Exército',notes:'Comandante gerado na tropa'});rule='Livro básico · Condição, cavalaria e guarnição';}
+  if(data.action==='train_unit'){
+    if(!admin)throw new Error('Treinamento fora de batalha exige autorização do Narrador.');
+    if(state.phase!=='active')throw new Error('Treinamento exige campanha ativa.');
+    if(data.explanation.trim().length<10)throw new Error('Justifique o treinamento.');
+    const {unitId}=z.object({unitId:z.string()}).parse(args);
+    next=trainUnit(state,unitId);rule='Treinamento auditado da unidade; Poder adicional alocado';
+  }
   if(data.action==='survivors'){const input=z.object({id:z.string().uuid(),unitId:z.string(),roll:z.number().int(),condition:z.enum(SURVIVOR_CONDITIONS),disorganizations:z.number().int().nonnegative(),skills:unitSchema.shape.skills,justification:z.string().min(1)}).parse(args);next=resolveSurvivors(state,input);rule='Livro básico · tabela10-6 Sobreviventes';}
   if(['vassal','vassal_approve','vassal_npcs'].includes(data.action)){
     const ids=npcIdsSchema.parse(args['npcIds']??(data.action==='vassal_approve'?state.vassals?.find(v=>v.id===args['id'])?.npcIds??[]:[]));

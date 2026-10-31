@@ -2630,6 +2630,13 @@
       {
         "kind": "action",
         "description": "Unidades Ships: custo -2."
+      },
+      {
+        "kind": "discount",
+        "resource": "power",
+        "target": "unit:warships",
+        "amount": 2,
+        "description": "Desconto de 2 pontos em unit:warships conforme Prosperidade."
       }
     ],
     "duration": {
@@ -6731,6 +6738,13 @@
       {
         "kind": "action",
         "description": "Custo de Peasant Levy -2."
+      },
+      {
+        "kind": "discount",
+        "resource": "population",
+        "target": "unit:levies",
+        "amount": 2,
+        "description": "Desconto de 2 pontos em unit:levies conforme Prosperidade."
       }
     ],
     "duration": {
@@ -7601,6 +7615,20 @@
       {
         "kind": "action",
         "description": "Em Warfare funciona como Hall."
+      },
+      {
+        "kind": "discount",
+        "resource": "power",
+        "target": "unit:criminals",
+        "amount": 2,
+        "description": "Desconto de 2 pontos em unit:criminals conforme Prosperidade."
+      },
+      {
+        "kind": "discount",
+        "resource": "power",
+        "target": "unit:garrison",
+        "amount": 2,
+        "description": "Desconto de 2 pontos em unit:garrison conforme Prosperidade."
       }
     ],
     "duration": {
