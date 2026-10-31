@@ -35,7 +35,7 @@ export function houseEffectLedger(state:HouseState):HouseEffectLedger{
    if(effect.kind==='mitigation'&&effect.resource)raw.mitigation[effect.resource]+=amount;
   });
  }
- const unreconciled=holdings.filter(h=>h.effects.length===0&&
+ const unreconciled=holdings.filter(h=>state.holdings.find(source=>source.id===h.id)?.effects.length===0&&h.effects.length===0&&
   CORE_CATALOG.some(item=>item.id===h.itemId&&item.effects.some(e=>['fortune','gain','mitigation'].includes(e.kind))))
   .map(h=>({holdingId:h.id,itemId:h.itemId,name:h.name}));
  return {sources,raw,
