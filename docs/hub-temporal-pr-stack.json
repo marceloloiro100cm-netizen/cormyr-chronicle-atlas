@@ -112,6 +112,11 @@
       "pr": 148,
       "head": "audit/hub-temporal-lote-22-integracoes-site",
       "base": "test/hub-temporal-lote-21-economia-militar-multianos"
+    },
+    {
+      "pr": 149,
+      "head": "fix/hub-temporal-lote-23-operacoes-mensais",
+      "base": "audit/hub-temporal-lote-22-integracoes-site"
     }
   ]
 }
