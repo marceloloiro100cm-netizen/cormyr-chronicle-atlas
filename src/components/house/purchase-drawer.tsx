@@ -13,6 +13,7 @@ export function PurchaseDrawer({
   busy,
   onConfirm,
   initialCategory = '',
+  onCreateDomain,
 }: {
   open: boolean;
   onClose: () => void;
@@ -21,6 +22,7 @@ export function PurchaseDrawer({
   busy: boolean;
   onConfirm: (args: Record<string, unknown>) => Promise<boolean>;
   initialCategory?: string;
+  onCreateDomain?: (name:string)=>Promise<boolean>;
 }) {
   const [step, setStep] = useState(0);
   const [query, setQuery] = useState('');
@@ -301,12 +303,14 @@ export function PurchaseDrawer({
                 ))}
               </select>
             </label>
-            {selected.category === 'fortification' && state.holdings.some(h => h.domainId === domainId && ['tower', 'hall', 'small-castle', 'castle', 'superior-castle'].includes(h.itemId) && ['active', 'building'].includes(h.status)) && (
+            {onCreateDomain&&state.domains.length===0&&<form className="campaign-form" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);if(await onCreateDomain(String(f.get('newDomain'))))setDomain('');}}>
+<label>Criar domínio antes da compra<input required name="newDomain" placeholder="Nome da localidade"/></label><Button disabled={busy}>Criar domínio</Button></form>}
+            {(selected.category === 'fortification'||selected.category==='community') && state.holdings.some(h => h.domainId === domainId && (selected.category==='community'?h.category==='community':['tower', 'hall', 'small-castle', 'castle', 'superior-castle'].includes(h.itemId)) && ['active', 'building'].includes(h.status)) && (
               <label>
                 Evolução (Upgrade)
                 <select value={replaceId} onChange={e => setReplaceId(e.target.value)}>
-                  <option value="">Selecione a fortificação para evoluir</option>
-                  {state.holdings.filter(h => h.domainId === domainId && ['tower', 'hall', 'small-castle', 'castle', 'superior-castle'].includes(h.itemId) && ['active', 'building'].includes(h.status)).map(h => (
+                  <option value="">Selecione uma posse para evoluir (ou compra independente)</option>
+                  {state.holdings.filter(h => h.domainId === domainId && (selected.category==='community'?h.category==='community':['tower', 'hall', 'small-castle', 'castle', 'superior-castle'].includes(h.itemId)) && ['active', 'building'].includes(h.status)).map(h => (
                     <option key={h.id} value={h.id}>Evoluir {h.name}</option>
                   ))}
                 </select>
