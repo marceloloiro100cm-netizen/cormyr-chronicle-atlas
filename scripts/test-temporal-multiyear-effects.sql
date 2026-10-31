@@ -196,11 +196,11 @@ SELECT pg_temp.assert(
  (SELECT count(*)=10 FROM public.noble_house_ledger WHERE action='calendar_advance'),
  'new destination appends one ledger per active House only');
 SELECT pg_temp.assert(
- (SELECT count(*)=5 FROM jsonb_array_elements(
+ (SELECT count(*)=6 FROM jsonb_array_elements(
  public.get_temporal_consumer_dashboard(100)->'deliveries') d
  WHERE d->>'consumer_code'='army-units' AND d->>'direction'='forward'
  AND d->>'status'='informational'),
- 'historical corrections do not duplicate army combat bonuses');
+ 'six forward operations can notify Army, but none applies a combat bonus');
 
 RESET ROLE;
 SELECT pg_temp.assert(
