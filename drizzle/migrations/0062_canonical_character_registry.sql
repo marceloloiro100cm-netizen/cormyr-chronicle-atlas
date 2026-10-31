@@ -374,7 +374,7 @@ GRANT EXECUTE ON FUNCTION public.get_character_registry_hub(integer) TO authenti
 
 CREATE OR REPLACE FUNCTION public.save_character_relation(
  p_from uuid,p_to uuid,p_relation text,p_note text,p_reason text
-) RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=public AS $
+) RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=public AS $relation$
 DECLARE actor_id uuid; relation_id uuid; already_path boolean;
 BEGIN
  IF NOT public.is_campaign_admin() THEN RAISE EXCEPTION 'Genealogia restrita ao Narrador'; END IF;
@@ -410,7 +410,7 @@ BEGIN
  VALUES(actor_id,'relation_create',p_from,
   jsonb_build_object('id',relation_id,'to',p_to,'relation',p_relation),p_reason);
  RETURN jsonb_build_object('id',relation_id,'from',p_from,'to',p_to,'relation',p_relation);
-END $;
+END $relation$;
 REVOKE ALL ON FUNCTION public.save_character_relation(uuid,uuid,text,text,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.save_character_relation(uuid,uuid,text,text,text) TO authenticated;
 
