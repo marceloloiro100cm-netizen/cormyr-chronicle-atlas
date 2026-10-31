@@ -49,7 +49,8 @@ BEGIN
   'status',CASE WHEN p_character.alive_status='deceased'
    AND p_year>=p_character.death_year THEN 'deceased' ELSE 'ok' END,
   'age',age_value,'as_of_year',p_year,'birth_year',b,
-  'life',p_character.alive_status,'death_year',p_character.death_year,
+  'life',CASE WHEN p_character.alive_status='deceased' AND p_year<p_character.death_year
+   THEN 'alive' ELSE p_character.alive_status END,'death_year',p_character.death_year,
   'reason',CASE WHEN p_character.alive_status='deceased'
    AND p_year>=p_character.death_year THEN 'Idade conservada no falecimento'
    ELSE 'Idade cronológica calculada por ano de Harptos' END);
@@ -66,7 +67,7 @@ BEGIN
  IF NOT public.is_campaign_admin() THEN RAISE EXCEPTION 'Idades e genealogias restritas ao Narrador'; END IF;
  SELECT year INTO year_now FROM public.campaign_calendar WHERE id=true;
  year_now:=coalesce(p_year,year_now);
- year_target:=coalesce(p_target_year,year_now+1);
+ year_target:=coalesce(p_target_year,least(year_now+1,9999));
  IF year_now NOT BETWEEN 1 AND 9999 OR year_target NOT BETWEEN 1 AND 9999
   OR p_limit NOT BETWEEN 1 AND 2000 THEN
   RAISE EXCEPTION 'Ano ou limite de prévia inválido'; END IF;
@@ -84,10 +85,14 @@ BEGIN
    count(*) FILTER(WHERE alive_status='deceased')::integer deceased,
    count(*) FILTER(WHERE before_age->>'status'='conflict'
      OR after_age->>'status'='conflict')::integer conflicts,
-   count(*) FILTER(WHERE before_age->>'status' NOT IN ('ok','deceased')
-     OR after_age->>'status' NOT IN ('ok','deceased'))::integer pending,
-   count(*) FILTER(WHERE (before_age->>'age') IS NULL
-     OR (after_age->>'age') IS NULL)::integer unknown,
+   count(*) FILTER(WHERE before_age->>'status' NOT IN ('ok','deceased','not_born')
+     OR after_age->>'status' NOT IN ('ok','deceased','not_born'))::integer pending,
+   count(*) FILTER(WHERE before_age->>'status'='not_born'
+     OR after_age->>'status'='not_born')::integer not_born,
+   count(*) FILTER(WHERE ((before_age->>'age') IS NULL
+       AND before_age->>'status'<>'not_born')
+     OR ((after_age->>'age') IS NULL
+       AND after_age->>'status'<>'not_born'))::integer unknown,
    count(*) FILTER(WHERE is_noble AND alive_status='alive'
      AND before_age->>'status'='ok' AND after_age->>'status'='ok'
      AND (after_age->>'age')::integer>(before_age->>'age')::integer)::integer aged_nobles
