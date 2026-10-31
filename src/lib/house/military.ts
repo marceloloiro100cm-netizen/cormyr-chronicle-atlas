@@ -34,9 +34,10 @@ export function resolveSurvivors(state:HouseState,input:{id:string;unitId:string
   next.permanent.power-=invested;unit.destroyed=true;unit.health=0;unit.situation='Destruída';
  } else {
   const training=levels[Math.min(3,target)];if(!training)throw new Error('Treinamento inválido.');
+  // Normalize the existing spendable pool BEFORE modifying the training/ranks.
+  const old=syncUnitXp(unit);
   const previousRanks=unit.bonusRanks??0;
   // Never auto-spend or erase a skill rank after a battle. Deficits remain visible.
-  const old=syncUnitXp(unit);
   const extra=previousRanks+Math.max(0,target-3);
   unit.bonusRanks=extra;
   const delta=TRAINING[training].xp-TRAINING[before as keyof typeof TRAINING].xp+(extra-previousRanks)*20;
