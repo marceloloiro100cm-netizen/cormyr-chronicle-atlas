@@ -6741,10 +6741,10 @@
       },
       {
         "kind": "discount",
-        "resource": "population",
+        "resource": "power",
         "target": "unit:levies",
         "amount": 2,
-        "description": "Desconto de 2 pontos em unit:levies conforme Prosperidade."
+        "description": "Desconto de 2 Poder no recrutamento de Plebeus, sem reduzir o custo permanente de População."
       }
     ],
     "duration": {
