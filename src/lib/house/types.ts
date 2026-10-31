@@ -37,7 +37,7 @@ export const UNIT_SKILL_NAMES:Record<UnitSkill,string>={
  ...SKILL_NAMES,brawling:'Briga',knowledge:'Conhecimento',deception:'Enganação',
  language:'Idioma',thievery:'Ladinagem',persuasion:'Persuasão',status:'Status',will:'Vontade'
 };
-export type ExtraUnitSkills=Partial<Record<ExtraUnitSkill,number>>;
+export type ExtraUnitSkills=Partial<Record<ExtraUnitSkill,number|undefined>>;
 export type MountProfile={name:string;athletics:number;endurance:number;source:string};
 export type MixedRule={allowedSkills:UnitSkill[];disciplineModifier:number;justification:string};
 export type Unit = { id: string; name: string; types: string[]; training: string; commanderId?: string | undefined; commanderName?:string|undefined; origin: string; domainId: string; skills: Record<Skill, number>; extraSkills?:ExtraUnitSkills|undefined; xp: number; costs: Cost[]; armor: number; armorPenalty: number; health: number; casualties: number; strength: number; disciplineModifier: number; equipment: string[]; situation: string; notes: string; bulk?:number|undefined; equipmentTypeId?:string|undefined; mount?:MountProfile|undefined; mounted?:boolean|undefined; atHome?:boolean|undefined; destroyed?:boolean|undefined; evolution?:{id:string;month:number;roll:number;condition:string;disorganizations:number;steps:number;before:string;after:string;justification:string}[]|undefined; bonusRanks?:number|undefined; bonusXp?:number|undefined; xpEvents?:{id:string;month:number;delta:number;reason:string;kind:'award'|'training'}[]|undefined; mixedRule?:MixedRule|undefined; allocatedCosts?: Partial<Record<Resource, number>> | undefined };
