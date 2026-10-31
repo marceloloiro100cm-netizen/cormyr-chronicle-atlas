@@ -109,6 +109,14 @@ psql -X -q -v ON_ERROR_STOP=1 -d "$restore_db" \
     echo "BLOQUEADO: contratos RLS/RPC falharam na cópia restaurada." >&2
     exit 2
   }
+# As consultas que serão usadas em cópias autorizadas precisam passar
+# também na fixture restaurada: apenas COUNT(*) e data pública.
+psql -X -q -v ON_ERROR_STOP=1 -d "$restore_db" \
+  -f scripts/test-temporal-restored-metrics.sql > "$tmp/metrics.stdout" \
+  2> "$tmp/metrics.stderr" || {
+    echo "BLOQUEADO: métricas de homologação inválidas na cópia." >&2
+    exit 2
+  }
 season_fix="$(psql -XAtq -v ON_ERROR_STOP=1 -d "$restore_db" \
   -c "SELECT strpos(pg_get_functiondef(
    'public.enqueue_campaign_temporal_consumers()'::regprocedure),
