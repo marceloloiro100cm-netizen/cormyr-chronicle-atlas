@@ -122,6 +122,10 @@ SELECT public.publish_campaign_time_change(
 SELECT pg_temp.assert(
  (SELECT count(*)=4 FROM public.noble_house_ledger WHERE action='calendar_advance'),
  're-forward to already processed month does not duplicate it');
+SELECT pg_temp.assert(
+ (public.preview_house_time_impacts(
+  (public.get_campaign_calendar()->>'version')::int,'1522-06-01')->>'eligible')::int=2,
+ 'previously ahead Houses become eligible when the Kingdom moves beyond them');
 SELECT public.publish_campaign_time_change(
  (public.get_campaign_calendar()->>'version')::int,
  '30000000-0000-4000-8000-000000000497','set','1522-06-01',0,
