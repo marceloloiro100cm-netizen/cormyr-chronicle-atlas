@@ -1,6 +1,6 @@
 import {useQuery} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
-import {formatDate,MONTHS,formatCampaignPeriod,parseDate} from '@/lib/calendar/harptos';
+import {formatDate,MONTHS} from '@/lib/calendar/harptos';
 import {formatRoundHarptosReference,validateCampaignChronology} from '@/lib/calendar/chronology';
 import {Button} from '@/components/ui/button';
 
