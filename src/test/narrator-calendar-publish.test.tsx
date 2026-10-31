@@ -40,6 +40,7 @@ function setupRpc(){
     target_month:month,total:0,eligible:0,ahead:0,drafts:0,invalid:0,
     aligned_or_historical:0,project_candidates:0,backdated:false,houses:[]},error:null};
   }
+  if(name==='get_temporal_consumer_dashboard')return {data:{consumers:[],deliveries:[],pending_total:0},error:null};
   if(name==='get_character_age_dashboard')return {data:{
    current_year:args?.['p_year'],target_year:args?.['p_target_year'],
    totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
@@ -115,6 +116,7 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
     target_month:month,total:0,eligible:0,ahead:0,drafts:0,invalid:0,
     aligned_or_historical:0,project_candidates:0,backdated:false,houses:[]},error:null};
   }
+  if(name==='get_temporal_consumer_dashboard')return {data:{consumers:[],deliveries:[],pending_total:0},error:null};
   if(name==='get_character_age_dashboard')return {data:{
    current_year:args?.['p_year'],target_year:args?.['p_target_year'],
    totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
@@ -176,6 +178,7 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
     target_month:month,total:0,eligible:0,ahead:0,drafts:0,invalid:0,
     aligned_or_historical:0,project_candidates:0,backdated:false,houses:[]},error:null};
   }
+  if(name==='get_temporal_consumer_dashboard')return {data:{consumers:[],deliveries:[],pending_total:0},error:null};
   if(name==='get_character_age_dashboard')return {data:{
    current_year:args?.['p_year'],target_year:args?.['p_target_year'],
    totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
@@ -235,6 +238,7 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
     target_month:month,total:0,eligible:0,ahead:0,drafts:0,invalid:0,
     aligned_or_historical:0,project_candidates:0,backdated:false,houses:[]},error:null};
   }
+  if(name==='get_temporal_consumer_dashboard')return {data:{consumers:[],deliveries:[],pending_total:0},error:null};
   if(name==='get_character_age_dashboard')return {data:{
    current_year:args?.['p_year'],target_year:args?.['p_target_year'],
    totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
