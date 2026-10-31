@@ -59,3 +59,15 @@
 .character-registry-review label,.character-registry>label{display:grid;gap:4px}
 .character-registry textarea{width:100%;min-width:0}
 @media(max-width:650px){.character-registry-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.character-registry-entry{flex-wrap:wrap;align-items:flex-start}}
+
+/* Lote 7: prévia de idades por ano CV, com dados exclusivos do Narrador. */
+.character-age-panel{display:grid;gap:12px}
+.character-age-panel .character-registry-summary{grid-template-columns:repeat(4,minmax(0,1fr))}
+.character-age-panel .character-registry-entry[role=row]{display:grid;grid-template-columns:2fr .8fr 1.1fr;gap:12px;align-items:center}
+.character-age-panel .character-registry-entry[role=row] [role=cell]{overflow-wrap:anywhere}
+.character-age-panel .character-registry-entry small{line-height:1.35}
+#temporal-idades{scroll-margin-top:24px}
+@media(max-width:700px){
+ .character-age-panel .character-registry-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .character-age-panel .character-registry-entry[role=row]{grid-template-columns:1.5fr .75fr 1fr;font-size:12px}
+}
