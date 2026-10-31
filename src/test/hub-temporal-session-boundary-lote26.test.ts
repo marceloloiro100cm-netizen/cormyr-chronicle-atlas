@@ -3,7 +3,7 @@ import {QueryClient} from '@tanstack/react-query';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {
- decideSessionBoundary,clearSessionQueryCache,
+ decideSessionBoundary,clearSessionQueryCache,clearRepresentationQueryCache,
 } from '@/lib/auth/session-boundary';
 
 const A='30000000-0000-0000-0000-000000002601';
@@ -94,6 +94,20 @@ describe('Lote 26 · isolamento de cache na troca de identidade',()=>{
   await pending;
   expect(qc.getQueryData(['mail-page',A])).toBeUndefined();
   expect(qc.getQueryCache().getAll()).toHaveLength(0);
+ });
+ it('representação administrativa preserva o painel-base e descarta cache de outras Casas',()=>{
+  const qc=clientWithPrivateCache();
+  clearRepresentationQueryCache(qc);
+  expect(qc.getQueryData(['campaign-panel'])).toMatchObject({admin:true});
+  expect(qc.getQueryData(['noble-house','evenhand'])).toBeUndefined();
+  expect(qc.getQueryData(['mail-page',A,'drafts',0])).toBeUndefined();
+  expect(qc.getQueryData(['campaign-calendar'])).toBeUndefined();
+  qc.setQueryData(['mail-page',B],{letters:['correspondência da representação B']});
+  clearRepresentationQueryCache(qc);
+  expect(qc.getQueryData(['mail-page',B])).toBeUndefined();
+  const players=readFileSync(resolve(process.cwd(),'src/routes/_authenticated/jogadores.tsx'),'utf8');
+  expect(players).toContain('clearRepresentationQueryCache(qc);setRepresenting(true)');
+  expect(players).toContain('clearRepresentationQueryCache(qc);setRepresenting(false)');
  });
  it('o shell aplica a transição, limpa a seleção de Casa e desmonta telas privadas',()=>{
   const root=readFileSync(resolve(process.cwd(),'src/routes/__root.tsx'),'utf8');
