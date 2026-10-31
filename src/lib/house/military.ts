@@ -100,7 +100,7 @@ export function trainUnit(state:HouseState,id:string):HouseState {
  if(!cost)throw new Error('Alocação militar antiga precisa de conciliação.');
  cost.amount+=delta;
  unit.allocatedCosts??={};unit.allocatedCosts.power=unit.costs.filter(c=>c.resource==='power'&&c.mode==='allocation').reduce((n,c)=>n+c.amount,0);
- const before=unit.training;unit.training=target;
+ const before=unit.training;
  changeUnitTrainingXp(unit,target,state.month,'Treinamento de unidade aprovado pelo Narrador; custo adicional de '+delta+' Poder.');
  unit.evolution??=[];
  unit.evolution.push({id:crypto.randomUUID(),month:state.month,roll:0,condition:'training',disorganizations:0,steps:1,before,after:target,justification:'Treinamento em campanha autorizado pelo Narrador; custo de Poder +'+delta});
