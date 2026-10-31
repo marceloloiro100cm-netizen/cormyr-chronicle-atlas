@@ -45,7 +45,7 @@ const CRITICAL_QUERY_KEYS=[
  'campaign-chronology','noble-house','house-realm-dashboard',
  'house-time-impact','temporal-consumer-dashboard',
  'temporal-release-preflight','character-age-dashboard',
- 'mail-page','mail-insights','mail-overview-grouped','reply-delivery',
+ 'campaign-panel','mail-page','mail-insights','mail-overview-grouped','reply-delivery',
 ];
 const dateSources=[
  {code:'INDEPENDENT_CAMPAIGN_YEAR',regex:/\b(?:currentYear|campaignYear|officialYear|realmYear|currentCampaignYear)\s*=\s*(?:new Date\(\)\.getFullYear\(\)|(?:15|16)\d\d\b)/g},
