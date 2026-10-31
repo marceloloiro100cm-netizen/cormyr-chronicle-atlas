@@ -32,6 +32,8 @@ jobs:
         run: |
           node scripts/temporal-migration-audit.mjs --report > "$RUNNER_TEMP/temporal-migration-audit.json"
           node --input-type=module -e 'import {readFileSync} from "node:fs"; const r=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-migration-audit.json","utf8")); const s=r.summary; const report="### Hub Temporal — inventário de migrações (somente leitura)\\nSQL: "+s.sql_files+" | Drizzle journal: "+s.journal_entries+" | SQL sem journal: "+s.unjournaled+" | Prefixos duplicados: "+s.repeated_sql_ordinals+"\\nDeploy liberado: **"+(r.ready_for_deploy?"sim":"não")+"**. Este job não aplica nem reconcilia migrações.\\n"; process.stdout.write(report); const fs=await import("node:fs"); fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,report.replaceAll("\\\\n","\\n"));'
+      - name: Check temporal PR dependency manifest (read only)
+        run: node scripts/temporal-stack-audit.mjs --report
       - name: Unit and component tests
         run: bun run test
       - name: TypeScript verification
@@ -82,6 +84,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-temporal-months.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-consumers.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-release-preflight.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-homologation-contracts.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-management.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-workbook-import.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-linked-workbooks.sql
