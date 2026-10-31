@@ -20,6 +20,8 @@ beforeEach(()=>{
  mock.removeChannel.mockResolvedValue('ok');
  mock.rpc.mockImplementation(async(name:string)=>name==='get_campaign_calendar'
   ?{data:{...mock.current},error:null}
+  :name==='get_campaign_chronology'
+   ?{data:{year:1522,month:0,events:[{id:'letter:one',date:'1522-01-02',title:'Convocação da corte',kind:'mail'}],rounds:[],unassigned_round_count:0},error:null}
   :name==='calendar_mail_events'
    ?{data:[{id:'one',date:'1522-01-02',title:'Convocação da corte',kind:'mail'}],error:null}
    :{data:[],error:null});
