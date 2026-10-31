@@ -38,7 +38,7 @@ export async function exportHouseVersion(adapter: HouseExportAdapter, folder: st
     if (remoteHash === hash) return { fileId: head.fileId, hash, version: document.version, etag: remote.etag };
     if (remoteHash !== head.hash) throw new Error('Arquivo alterado no Drive; revisão necessária. Compras no site preservadas.');
     if (remote.document.version > document.version) throw new Error('Versão remota mais recente; revisão necessária.');
-    etag = remote.etag;
+    etag = remote.etag ?? `sha256:${remoteHash}`;
   }
   const result = await adapter.write(folder, document, head?.fileId, etag);
   if (await houseExportHash(result.document) !== hash) throw new Error('Leitura de retorno divergiu.');
