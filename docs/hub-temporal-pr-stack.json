@@ -172,6 +172,11 @@
       "pr": 160,
       "head": "fix/hub-temporal-lote-34-bloqueio-global-revogacao",
       "base": "fix/hub-temporal-lote-33-cache-admin-revogado"
+    },
+    {
+      "pr": 161,
+      "head": "fix/hub-temporal-lote-35-revogacao-consultas-privadas",
+      "base": "fix/hub-temporal-lote-34-bloqueio-global-revogacao"
     }
   ]
 }
