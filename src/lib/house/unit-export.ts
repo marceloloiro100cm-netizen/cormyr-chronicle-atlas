@@ -1,5 +1,6 @@
 import {TRAINING,UNIT_TYPES,unitStats} from './engine';
-import {UNIT_EQUIPMENT,houseWeaponBonuses} from './equipment';
+import {UNIT_EQUIPMENT} from './equipment';
+import {unitMilitaryBonuses} from './military-bonuses';
 import {unitXpSummary} from './unit-progression';
 import {UNIT_SKILLS,UNIT_SKILL_NAMES,type HouseState,type Unit} from './types';
 
@@ -7,7 +8,7 @@ import {UNIT_SKILLS,UNIT_SKILL_NAMES,type HouseState,type Unit} from './types';
 export async function exportUnitPdf(unit:Unit,state:HouseState,houseName:string){
  const [{jsPDF},{default:autoTable}]=await Promise.all([import('jspdf'),import('jspdf-autotable')]);
  const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
- const xp=unitXpSummary(unit),stats=unitStats(unit);
+ const xp=unitXpSummary(unit),stats=unitStats(unit,state),bonuses=unitMilitaryBonuses(state,unit);
  const docWidth=210,pad=15;
  const shieldColor:[number,number,number]=[75,43,91];
  const gold:[number,number,number]=[183,141,75];
@@ -24,7 +25,7 @@ export async function exportUnitPdf(unit:Unit,state:HouseState,houseName:string)
  const statRows=[
  ['Defesa',stats.defense,'Saúde',stats.health+' / '+stats.maxHealth],
  ['Disciplina',stats.discipline,'Movimento',stats.movement+' m'],
- ['Armadura',unit.armor,'Efetivo',Math.max(0,unit.strength-unit.casualties)+' / '+unit.strength],
+ ['Armadura',stats.armorRating,'Efetivo',Math.max(0,unit.strength-unit.casualties)+' / '+unit.strength],
  ['Comandante',unit.commanderName||'Sem comandante','Origem',unit.origin||'Não informada'],
  ['Treinamento',xp.training+' XP','XP livre',xp.available],
  ['XP bônus / histórico',xp.bonus,'XP investido',xp.spent],
@@ -36,7 +37,7 @@ export async function exportUnitPdf(unit:Unit,state:HouseState,houseName:string)
  y+=6;section('Habilidades (graduacões de 1 a 12)',y);
  const skills=UNIT_SKILLS.map(key=>[
   UNIT_SKILL_NAMES[key],
-  key in unit.skills ? String(unit.skills[key as keyof typeof unit.skills]):String(unit.extraSkills?.[key as keyof NonNullable<Unit['extraSkills']>]??2),
+  key in unit.skills ? String(unit.skills[key as keyof typeof unit.skills]+(bonuses.skillBonuses[key as keyof typeof unit.skills]??0)):String(unit.extraSkills?.[key as keyof NonNullable<Unit['extraSkills']>]??2),
  ]);
  autoTable(pdf,{startY:y+10,head:[['Habilidade','Graduação','Habilidade','Graduação']],body:Array.from({length:10},(_,i)=>[
   ...skills[i*2]!,...skills[i*2+1]!
@@ -46,14 +47,13 @@ export async function exportUnitPdf(unit:Unit,state:HouseState,houseName:string)
  if(y>235){pdf.addPage();y=17;}else y+=6;
  section('Armas, armaduras e modificadores',y);
  const gear=UNIT_EQUIPMENT.find(item=>item.id===(unit.equipmentTypeId??unit.types[0]));
- const bonuses=houseWeaponBonuses(state);
  const gearRows=gear?[
   ['Armadura',unit.equipment.includes('armor')?gear.improved.armor:gear.initial.armor],
   ['Penalidade',unit.equipment.includes('armor')?gear.improved.penalty:gear.initial.penalty],
   ['Volume',unit.equipment.includes('armor')?gear.improved.bulk:gear.initial.bulk],
   ['Armas de Luta',unit.equipment.includes('fighting')?gear.improved.fighting:gear.initial.fighting],
   ['Armas de Pontaria',unit.equipment.includes('marksmanship')?gear.improved.marksmanship:gear.initial.marksmanship],
-  ['Bônus da Casa (Luta/Pontaria)',bonuses.fighting+' / '+bonuses.marksmanship],
+  ['Dano da Casa (Luta/Pontaria)',bonuses.fightingDamage+' / '+bonuses.marksmanshipDamage],
  ]:[['Conjunto não definido','Revisão necessária']];
  autoTable(pdf,{startY:y+10,body:gearRows.map(r=>r.map(safe)),theme:'grid',margin:{left:pad,right:pad},
  styles:{fontSize:8,font:'helvetica',cellPadding:2},columnStyles:{0:{fontStyle:'bold',cellWidth:75}}});
@@ -62,6 +62,9 @@ export async function exportUnitPdf(unit:Unit,state:HouseState,houseName:string)
  section('Situação e observações',y);
  pdf.setTextColor(48,38,52);pdf.setFont('helvetica','normal');pdf.setFontSize(9);
  pdf.text(line('Situação: '+(unit.situation||'Não informada')+'\n'+(unit.notes||'Sem observações adicionais')),pad,y+12);
+ y+=29;
+ if(bonuses.entries.length){if(y>245){pdf.addPage();y=15;}section('Bônus recebidos de instalações da Casa',y);const rows=bonuses.entries.map(b=>[b.source,b.description]);autoTable(pdf,{startY:y+11,body:rows.map(r=>r.map(safe)),theme:'grid',margin:{left:pad,right:pad},styles:{font:'helvetica',fontSize:8,cellPadding:2},columnStyles:{0:{fontStyle:'bold',cellWidth:52}}});}
+
  const pages=pdf.getNumberOfPages();
  for(let n=1;n<=pages;n++){pdf.setPage(n);pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(100,87,95);pdf.text('Cormyr Chronicle · Casa '+safe(houseName)+' · '+n+' / '+pages,pad,289);}
  const fileName=(safe(houseName)+'-'+safe(unit.name)).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9-]+/g,'-').replace(/^-|-$/g,'').slice(0,95);
