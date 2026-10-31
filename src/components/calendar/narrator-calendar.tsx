@@ -8,6 +8,7 @@ import {campaignTimeView,useCampaignTime} from '@/lib/calendar/campaign-time';
 import {useCampaignCalendarRealtime} from './realtime';
 import {NarratorCharacterRegistry} from './narrator-character-registry';
 import {NarratorCharacterAges} from './narrator-character-ages';
+import {CampaignChronology} from './chronology';
 import {validateAgeDashboard} from '@/lib/calendar/character-ages';
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {calendarPublicationError} from '@/lib/calendar/publication';
@@ -149,6 +150,7 @@ export function NarratorCalendar(){
     qc.invalidateQueries({queryKey:['character-age-dashboard']}),
     qc.invalidateQueries({queryKey:['character-year-transitions']}),
     qc.invalidateQueries({queryKey:['character-age-impact']}),
+    qc.invalidateQueries({queryKey:['campaign-chronology']}),
    ]);
    const delayed=results.some(r=>r.status==='rejected');
    setMessage('Calendário gravado e confirmado: '+formatDate(dateKey(saved!))+
@@ -187,6 +189,7 @@ export function NarratorCalendar(){
   <nav className="temporal-hub-navigation" aria-label="Seções do Hub Temporal">
    <a href="#temporal-comando">Comando e prévia</a>
    <a href="#temporal-eventos">Eventos oficiais</a>
+   <a href="#temporal-cronologia">Cronologia</a>
    <a href="#temporal-genealogias">Nobres e genealogias</a>
    <a href="#temporal-idades">Idades anuais</a>
    <a href="#temporal-historico">Histórico</a>
@@ -227,6 +230,7 @@ export function NarratorCalendar(){
    <Button type="button" className="narrator-calendar-publish-button" disabled={busy||isStale||needsVersionRefresh||!preview.data||preview.isFetching||annualChangeNeedsPreview||(preview.data.backdated&&(!allowBackdate||reason.trim().length<10))} onClick={()=>void publish()}>{busy?'Publicando…':mode==='advance'?'Confirmar avanço de désdia':mode==='set'?'Confirmar data oficial':'Publicar eventos'}</Button>
    <p className="text-sm text-muted-foreground">A publicação é atômica, versionada e protegida por chave de operação. Abrir uma rodada de missivas não altera a data. Alterações no ano serão consumidas pelo registro de personagens em lote posterior.</p>
   </div>
+  <CampaignChronology year={calendar.data.year} month={calendar.data.month} anchorId="temporal-cronologia"/>
   <NarratorCharacterRegistry/>
   <NarratorCharacterAges targetYear={annualChange?projectedYear:undefined}/>
   <div className="narrator-calendar-panel" id="temporal-eventos">
