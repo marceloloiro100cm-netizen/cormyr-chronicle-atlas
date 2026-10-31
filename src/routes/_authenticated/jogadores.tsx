@@ -2,7 +2,7 @@ import {CampaignCalendar} from '@/components/calendar/calendar';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PlayerRepresentation } from '@/components/player-representation';
 import { ChangePassword, ChangePasswordButton } from '@/components/change-password';
@@ -19,6 +19,7 @@ import { syncPlayerFolder } from '@/lib/player-sync.functions';
 import { refreshPublicArchive } from '@/lib/campaign.functions';
 import { unreadReceivedCount, type LetterRow } from '@/lib/letters';
 import {clearRepresentationQueryCache} from '@/lib/auth/session-boundary';
+import {CAMPAIGN_ACCESS_SCOPE_KEY,CAMPAIGN_ACCESS_SCOPE_POLL_MS,loadCampaignAccessScope,clearRevokedAccessCache} from '@/lib/auth/campaign-access-scope';
 import { loadPanel } from '@/components/players/panel-data';
 import { RecordList, RecordEditor, RecordForm } from '@/components/players/records';
 import { FichaTab } from '@/components/players/ficha-tab';
@@ -28,7 +29,51 @@ import { NarratorMissivasHub, NARRATOR_MENU } from '@/components/players/narrato
 
 export const Route=createFileRoute('/_authenticated/jogadores')({head:()=>({meta:[{title:'Conselho dos jogadores — Cormyr Chronicle'},{name:'description',content:'Casas, personagens, documentos e missivas da segunda temporada.'},{property:'og:title',content:'Conselho dos jogadores — Cormyr Chronicle'},{property:'og:description',content:'Painel reservado aos jogadores autorizados da campanha.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary'}]}),component:Players});
 
+/** Access can be revoked without any Supabase auth event. The live route
+ * must first prove the CURRENT memberships before showing cached private data.
+ * Refetch on focus/reconnect, plus a 15s fallback for missed RLS Realtime.
+ */
 function Players(){
+  const qc=useQueryClient();
+  const scope=useQuery({
+    queryKey:CAMPAIGN_ACCESS_SCOPE_KEY,
+    queryFn:loadCampaignAccessScope,
+    refetchInterval:CAMPAIGN_ACCESS_SCOPE_POLL_MS,
+    refetchOnWindowFocus:'always',
+    refetchOnReconnect:'always',
+    retry:false,
+    staleTime:0,
+  });
+  const previous=useRef<string|null>(null);
+  const [approved,setApproved]=useState<string|null>(null);
+  useEffect(()=>{
+    if(scope.isError){
+      clearRevokedAccessCache(qc);
+      previous.current=null;
+      setApproved(null);
+      return;
+    }
+    const next=scope.data?.fingerprint;
+    if(!next||next===previous.current)return;
+    if(previous.current!==null){
+      // Revoke stale letters, administrative controls, and House forms before
+      // mounting the newly authorized workspace. Server RLS remains mandatory.
+      clearRevokedAccessCache(qc);
+      sessionStorage.removeItem('campaign-selected-house');
+    }
+    previous.current=next;
+    setApproved(next);
+  },[qc,scope.data?.fingerprint,scope.isError]);
+  if(scope.isError)return <section role="alert">
+    Não foi possível confirmar seus vínculos e permissões. O acervo reservado está bloqueado.
+    <Button onClick={()=>void scope.refetch()}>Verificar novamente</Button>
+  </section>;
+  if(!scope.data||approved!==scope.data.fingerprint)return <p role="status">
+    Verificando permissões atuais da campanha…
+  </p>;
+  return <PlayersWorkspace key={approved} expectedUserId={scope.data.userId}/>;
+}
+function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
   const navigate=useNavigate(), qc=useQueryClient();
   const {data,error,isPending}=useQuery({queryKey:['campaign-panel'],queryFn:loadPanel});
   const [tab,setTab]=useState('missivas'),[house,setHouse]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[section,setSection]=useState('painel'),[representing,setRepresenting]=useState(false);
@@ -42,6 +87,7 @@ function Players(){
       .on('postgres_changes',{event:'*',schema:'public'},()=>{
         if(debounce)clearTimeout(debounce);
         debounce=setTimeout(()=>{
+          void qc.invalidateQueries({queryKey:CAMPAIGN_ACCESS_SCOPE_KEY});
           void qc.invalidateQueries({queryKey:['campaign-panel']});
           void qc.invalidateQueries({queryKey:['sync-queue']});
           debounce=null;
@@ -50,6 +96,7 @@ function Players(){
     return()=>{if(debounce)clearTimeout(debounce);void supabase.removeChannel(channel);};
   },[qc]);
   if(isPending)return <CampaignShell><h1>Conselho dos jogadores</h1><p role="status">Consultando seu acervo…</p></CampaignShell>;
+  if(data&&data.user.id!==expectedUserId)return <p role="status">Revalidando a identidade do acervo…</p>;
   if(error||!data)return <CampaignShell><h1>Não foi possível consultar seu acervo</h1><p role="alert">{error?.message}</p><Button onClick={()=>refresh()}>Tentar novamente</Button></CampaignShell>;
   const me=data.players.find(p=>p.user_id===data.user.id);
   if(me&&!data.admin&&(!me.active||me.require_password_change))return <CampaignShell><h1>{me.active?'Altere sua senha para continuar':'Acesso à campanha inativo'}</h1>{me.require_password_change&&<ChangePassword/>}<Button variant="outline" onClick={signout}>Sair</Button></CampaignShell>;
