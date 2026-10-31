@@ -39,6 +39,17 @@ describe('Lote 16 · ensaio seguro de migrações em banco de CI descartável',(
   assert.ok(!shell.includes('psql -d mail_test -f'));
   assert.ok(!shell.includes('drizzle-kit migrate'));
  });
+ it('assinala downgrade real se a migração 0066 for reaplicada depois da 0067',()=>{
+  const old=readFileSync(resolve(root,
+   'drizzle/migrations/0066_temporal_consumer_outbox.sql'),'utf8');
+  const current=readFileSync(resolve(root,
+   'drizzle/migrations/0067_temporal_release_preflight.sql'),'utf8');
+  assert.match(old,/WHEN 'season' THEN from_season<>to_season/);
+  assert.match(current,/WHEN 'season' THEN season_crossings>0/);
+  assert.match(shell,/season_fix_state\(\)/);
+  assert.match(shell,/season_fix_state mail_test/);
+  assert.match(shell,/season_fix_regressed_in_copy/);
+ });
  it('indica resultados como diagnóstico e nunca certifica replay produtivo',()=>{
   assert.match(shell,/'production_replay_safe': None/);
   assert.match(shell,/'ready_for_deploy': False/);
