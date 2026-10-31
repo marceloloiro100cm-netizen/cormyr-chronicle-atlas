@@ -18,7 +18,7 @@ INSERT INTO public.noble_house_sheets(house_id,state,version,updated_by) VALUES
  'fortunes','[]'::jsonb,'actions','[]'::jsonb,
  'holdings','[{"id":"parent","status":"building"},{"id":"child","parentId":"parent","status":"building"}]'::jsonb,
  'projects',jsonb_build_array(
-  jsonb_build_object('id','c','holdingId','child','status','building','start',1522*12,'duration',2,'modifier',0),
+  jsonb_build_object('id','c','holdingId','child','status','building','start',1522*12,'duration',2),
   jsonb_build_object('id','p','holdingId','parent','status','building','start',1522*12,'duration',1,'modifier',0))
  ),1,'30000000-0000-0000-0000-000000000491'),
  ('time-house-9b',jsonb_build_object(
