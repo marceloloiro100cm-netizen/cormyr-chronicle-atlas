@@ -11,6 +11,7 @@ function data(replies:unknown[]=[]){return {user:{id:'me'},admin:false,players:[
 let currentPanel:Panel;
 const options={players:[{id:'player',name:'Autor',houses:['home']},{id:'other-player',name:'Destinatário B',houses:['other']},{id:'third-player',name:'Destinatário C',houses:[]}],houses:[{id:'home',name:'Casa',version:1,court:[{id:'c1',name:'Administrador',role:'Administrador'}],units:[{id:'u1',name:'Guarda',available:true}]}]};
 beforeEach(()=>rpc.mockImplementation(async(name:string)=>{
+ if(name==='get_campaign_calendar')return {data:{year:1522,month:0,day:1,festival:null,auto_advance:true,version:1,published_week:1},error:null};
  if(name==='mail_page')return {data:{total:currentPanel.letters.length,letters:currentPanel.letters,replies:currentPanel.replies,kpis:{delivered:7,awaiting_house:3,awaiting_narrator:2,scheduled_replies_next:4,drafts:1}},error:null};
  if(name==='mail_compose_options')return {data:options,error:null};
  if(name==='mail_insights')return {data:[],error:null};
@@ -33,7 +34,7 @@ describe('interface de missivas',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Editar rascunho'}));
   fireEvent.change(screen.getByRole('textbox',{name:'Resposta'}),{target:{value:'Texto atualizado'}});
   fireEvent.click(screen.getAllByText('Selecionar dia no calendário')[0]!);
-  fireEvent.click(screen.getAllByRole('button',{name:'1 de Hammer, 1522',hidden:true})[0]!);
+  fireEvent.click((await screen.findAllByRole('button',{name:'1 de Hammer, 1522',hidden:true}))[0]!);
   fireEvent.click(screen.getAllByRole('button',{name:'Salvar rascunho'})[0]!);
   await waitFor(()=>expect(rpc).toHaveBeenCalledWith('dated_mail_action',{p_action:'save_weekly_reply_draft',p_date:'1522-01-01',p_args:{p_id:'draft',p_letter:'letter',p_reply:'reply',p_content:'Texto atualizado'}}));
  });
@@ -90,7 +91,7 @@ describe('novos destinatários e vínculos',()=>{
   fireEvent.change(screen.getByLabelText('Assunto'),{target:{value:'Marcha'}});
   fireEvent.change(screen.getByLabelText('Missiva'),{target:{value:'Acompanhar a coluna'}});
   fireEvent.click(screen.getByText('Selecionar dia no calendário'));
-  fireEvent.click(screen.getByRole('button',{name:'1 de Hammer, 1522',hidden:true}));
+  fireEvent.click(await screen.findByRole('button',{name:'1 de Hammer, 1522',hidden:true}));
   fireEvent.click(screen.getByRole('button',{name:'Enviar missiva'}));
   await waitFor(()=>expect(rpc).toHaveBeenCalledWith('dated_mail_action',expect.objectContaining({p_action:'send_linked_mail',p_date:'1522-01-01',p_args:expect.objectContaining({p_targets:['h:other'],p_origin:'home',p_court:'c1',p_unit:'u1',p_role:'executor',p_draft:false})})));
  });
@@ -218,7 +219,7 @@ describe('lote 5: complementos e manutenção do fio',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Responder à Casa'}));
   fireEvent.change(screen.getByRole('textbox',{name:'Resposta'}),{target:{value:'O Narrador respondeu'}});
   fireEvent.click(screen.getByText('Selecionar dia no calendário'));
-  fireEvent.click(screen.getByRole('button',{name:'1 de Hammer, 1522',hidden:true}));
+  fireEvent.click(await screen.findByRole('button',{name:'1 de Hammer, 1522',hidden:true}));
   await waitFor(()=>expect(screen.getByRole('button',{name:'Enviar resposta'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button',{name:'Enviar resposta'}));
   await waitFor(()=>expect(rpc).toHaveBeenCalledWith('dated_mail_action',expect.objectContaining({
