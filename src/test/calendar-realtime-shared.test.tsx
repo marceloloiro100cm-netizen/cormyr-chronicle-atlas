@@ -74,3 +74,31 @@ it('revalida missivas, nobres, fichas, exército e calendário pela mesma assina
  expect(mock.channel).toHaveBeenCalledTimes(1);
  view.unmount();
 });
+
+it('polling da versão oficial sincroniza todos os caches mesmo com Realtime em fallback',async()=>{
+ const qc=new QueryClient({defaultOptions:{queries:{retry:false}}});
+ const spy=vi.spyOn(qc,'invalidateQueries');
+ const view=render(<QueryClientProvider client={qc}><SyncStatus id="ponte"/></QueryClientProvider>);
+ const onStatus=mock.subscribe.mock.calls[0]?.[0] as (status:string)=>void;
+ await act(async()=>{onStatus('CHANNEL_ERROR');});
+ expect(screen.getByLabelText('ponte')).toHaveTextContent('fallback');
+ const clock={year:1522,month:0,day:1,festival:null,version:1,auto_advance:false};
+ await act(async()=>{qc.setQueryData(['campaign-calendar'],clock);});
+ let refreshes=spy.mock.calls.map(([input])=>JSON.stringify(input.queryKey));
+ expect(refreshes).toContain(JSON.stringify(['mail-page']));
+ expect(refreshes).toContain(JSON.stringify(['noble-house']));
+ expect(refreshes).toContain(JSON.stringify(['character-age-dashboard']));
+ expect(refreshes).not.toContain(JSON.stringify(['campaign-calendar']));
+ spy.mockClear();
+ await act(async()=>{qc.setQueryData(['campaign-calendar'],{...clock});});
+ expect(spy).not.toHaveBeenCalled();
+ await act(async()=>{qc.setQueryData(['campaign-calendar'],{...clock,year:1523,version:2});});
+ refreshes=spy.mock.calls.map(([input])=>JSON.stringify(input.queryKey));
+ expect(refreshes).toContain(JSON.stringify(['house-time-impact']));
+ expect(refreshes).toContain(JSON.stringify(['mail-overview-grouped']));
+ expect(refreshes).toContain(JSON.stringify(['character-age-impact']));
+ view.unmount();
+ spy.mockClear();
+ qc.setQueryData(['campaign-calendar'],{...clock,version:3});
+ expect(spy).not.toHaveBeenCalled();
+});
