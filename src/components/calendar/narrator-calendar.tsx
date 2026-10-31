@@ -16,6 +16,7 @@ import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {calendarPublicationError} from '@/lib/calendar/publication';
 import {campaignTimeRpcArguments,matchesPublishedTime,validateCampaignTimePreview,type CampaignTimeMode,type CampaignTimePreview} from '@/lib/calendar/temporal-publication';
 import {temporalQueryKeysForInvalidation} from '@/lib/calendar/time-connections';
+import {requireFreshNarratorAccess} from '@/lib/auth/campaign-access-scope';
 
 function calendarErrorMessage(error:unknown):string{
  if(error&&typeof error==='object'&&'message' in error)return String(error.message);
@@ -112,6 +113,7 @@ export function NarratorCalendar(){
    const payload=override
     ?{id:override.id,version:override.version,date:override.date,title:override.title,description:override.description,deleted}
     :{id:editId,version:editVersion,date:eventDate,title,description,deleted};
+   await requireFreshNarratorAccess();
    const {error}=await supabase.rpc('save_campaign_schedule_event',{p_payload:payload});
    if(error)throw error;
    await qc.invalidateQueries({queryKey:['campaign-schedule-drafts']});
@@ -149,6 +151,7 @@ export function NarratorCalendar(){
   const key=retry.current.key;
   setBusy(true);setSaveError(false);setMessage('Publicando mudança temporal em uma transação…');
   try{
+   await requireFreshNarratorAccess();
    const args=campaignTimeRpcArguments(mode,date,count,expectedVersion,key,reason.trim(),allowBackdate);
    const {data:snapshot,error}=await supabase.rpc('publish_campaign_time_change',args);
    if(error)throw error;
