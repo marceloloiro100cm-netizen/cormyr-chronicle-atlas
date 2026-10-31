@@ -116,7 +116,7 @@ it('Lote 25: não mostra data oficial do cache quando o RPC falha após uma reti
   ?{data:null,error:{message:'Sessão do calendário revogada'}}
   :{data:[],error:null});
  await act(async()=>{await qc.refetchQueries({queryKey:['campaign-calendar']});});
- expect(screen.getByRole('alert')).toHaveTextContent('Calendário oficial indisponível');
+ await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('Calendário oficial indisponível'));
  expect(screen.queryByText('2ª désdia · Hammer · 1522 CV')).not.toBeInTheDocument();
  expect(screen.queryByRole('button',{name:/^11 de Hammer/})).not.toBeInTheDocument();
 });
@@ -139,9 +139,9 @@ it('Lote 25: correspondência cacheada é ocultada se o acesso histórico foi re
   await qc.refetchQueries({queryKey:['calendar-events']});
   await qc.refetchQueries({queryKey:['campaign-chronology']});
  });
- expect(within(details).queryByText('Convocação da corte')).not.toBeInTheDocument();
+ await waitFor(()=>expect(within(details).queryByText('Convocação da corte')).not.toBeInTheDocument());
  const timeline=screen.getByRole('region',{name:'Cronologia oficial dos eventos e missivas'});
- expect(within(timeline).queryByText('Convocação da corte')).not.toBeInTheDocument();
+ await waitFor(()=>expect(within(timeline).queryByText('Convocação da corte')).not.toBeInTheDocument());
  expect(screen.getAllByRole('alert').some(element=>
   element.textContent?.includes('Cronologia indisponível'))).toBe(true);
  // Public annual observances still render; no private cached letter is reused.
