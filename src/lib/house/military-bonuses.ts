@@ -36,10 +36,12 @@ export function quoteMilitaryUnit(state:HouseState,types:string[],training:keyof
  }
  return {base,costs,discounts};
 }
-export function quoteMilitarySiege(state:HouseState,resource:Resource,base:number){
- const h=resource==='wealth'?active(state,'pros-engineer--siege-engineer')[0]:undefined;
- const amount=h?Math.min(1,Math.max(0,base-1)):0;
- return {cost:base-amount,discounts:h&&amount?[{source:h.name,amount}]:[]};
+export function quoteMilitarySiege(state:HouseState,resource:Resource,base:number,itemId=''){
+ const eligible=['siege-tower','small-catapult','medium-catapult','large-catapult','fire-spitter','scorpion','mangonel','trebuchet'].includes(itemId);
+ const h=eligible&&resource==='wealth'?active(state,'pros-engineer--siege-engineer')[0]:undefined;
+ const quantity=h&&base===1?2:1;
+ const amount=h?1:0;
+ return {cost:h?Math.max(1,base-1):base,quantity,discounts:h&&amount?[{source:h.name,amount}]:[]};
 }
 export function militaryConstructionDuration(state:HouseState,itemId:string,category:string,duration:number){
  const fort=['tower','hall','small-castle','castle','superior-castle'].includes(itemId);
