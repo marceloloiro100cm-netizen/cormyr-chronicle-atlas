@@ -49,7 +49,12 @@ BEGIN
    IF row_value.state->>'phase'='active' AND EXISTS(
     SELECT 1 FROM jsonb_array_elements(row_value.state->'projects') e(p)
     WHERE e.p->>'status'='building'
-      AND (coalesce(e.p->>'start','') !~ '^[0-9]{1,6}
+      AND (coalesce(e.p->>'start','') !~ '^[0-9]{1,6}$'
+        OR coalesce(e.p->>'duration','') !~ '^[0-9]{1,6}$'
+        OR coalesce(e.p->>'modifier','') !~ '^-?[0-9]{1,6}$'
+        OR e.p->>'holdingId' IS NULL)) THEN
+     disposition:='invalid';invalid_count:=invalid_count+1;
+   ELSIF row_value.state->>'phase' IS DISTINCT FROM 'active' THEN
     disposition:='draft';draft_count:=draft_count+1;
    ELSIF target_month<=base_month THEN
     disposition:='historical';synced_count:=synced_count+1;
