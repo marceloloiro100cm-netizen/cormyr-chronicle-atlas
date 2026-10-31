@@ -9,6 +9,7 @@ import {useCampaignCalendarRealtime} from './realtime';
 import {NarratorCharacterRegistry} from './narrator-character-registry';
 import {NarratorCharacterAges} from './narrator-character-ages';
 import {CampaignChronology} from './chronology';
+import {TemporalConsumerHub} from './temporal-consumer-hub';
 import {validateAgeDashboard} from '@/lib/calendar/character-ages';
 import {monthFromHarptosDate,validateHouseTimeImpact} from '@/lib/calendar/house-time-impact';
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
@@ -166,6 +167,7 @@ export function NarratorCalendar(){
     qc.invalidateQueries({queryKey:['noble-house']}),
     qc.invalidateQueries({queryKey:['house-realm-dashboard']}),
     qc.invalidateQueries({queryKey:['house-time-impact']}),
+    qc.invalidateQueries({queryKey:['temporal-consumer-dashboard']}),
     qc.invalidateQueries({queryKey:['house-character-ages']}),
     qc.invalidateQueries({queryKey:['character-age-dashboard']}),
     qc.invalidateQueries({queryKey:['character-year-transitions']}),
@@ -210,6 +212,7 @@ export function NarratorCalendar(){
    <a href="#temporal-comando">Comando e prévia</a>
    <a href="#temporal-eventos">Eventos oficiais</a>
    <a href="#temporal-posses">Posses e projetos</a>
+   <a href="#temporal-conexoes">Conexões temporais</a>
    <a href="#temporal-cronologia">Cronologia</a>
    <a href="#temporal-genealogias">Nobres e genealogias</a>
    <a href="#temporal-idades">Idades anuais</a>
@@ -252,7 +255,7 @@ export function NarratorCalendar(){
     </>:null}
    </div>
    <Button type="button" className="narrator-calendar-publish-button" disabled={busy||isStale||needsVersionRefresh||!preview.data||preview.isFetching||annualChangeNeedsPreview||(preview.data.month_delta>0&&(!houseImpact.data||houseImpact.isFetching||houseImpact.data.invalid>0))||(preview.data.backdated&&(!allowBackdate||reason.trim().length<10))} onClick={()=>void publish()}>{busy?'Publicando…':mode==='advance'?'Confirmar avanço de désdia':mode==='set'?'Confirmar data oficial':'Publicar eventos'}</Button>
-   <p className="text-sm text-muted-foreground">A publicação é atômica, versionada e protegida por chave de operação. Abrir uma rodada de missivas não altera a data. Alterações no ano serão consumidas pelo registro de personagens em lote posterior.</p>
+   <p className="text-sm text-muted-foreground">A publicação é atômica, versionada e protegida por chave de operação. Abrir uma rodada de missivas não altera a data. Viradas anuais já atualizam as projeções etárias; o Lote 10 emite notificações sem executar efeitos automáticos não definidos.</p>
   </div>
   <section id="temporal-posses" className="narrator-calendar-panel" aria-label="Processamento temporal de posses e obras">
    <h3>Posses, construções e projetos</h3>
@@ -265,6 +268,7 @@ export function NarratorCalendar(){
      </p>)}
     </details>:<p className="house-caption">Selecione um avanço de mês para consultar o impacto exato em todas as Casas.</p>}
   </section>
+  <TemporalConsumerHub/>
   <CampaignChronology year={calendar.data.year} month={calendar.data.month} anchorId="temporal-cronologia"/>
   <NarratorCharacterRegistry/>
   <NarratorCharacterAges targetYear={annualChange?projectedYear:undefined}/>
