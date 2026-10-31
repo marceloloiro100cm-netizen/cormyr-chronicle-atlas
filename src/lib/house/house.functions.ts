@@ -209,7 +209,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     next=trainUnit(state,unitId);rule='Treinamento auditado da unidade; Poder adicional alocado';
   }
   if(data.action==='survivors'){const input=z.object({id:z.string().uuid(),unitId:z.string(),roll:z.number().int(),condition:z.enum(SURVIVOR_CONDITIONS),disorganizations:z.number().int().nonnegative(),skills:unitSchema.shape.skills,justification:z.string().min(1)}).parse(args);next=resolveSurvivors(state,input);rule='Livro básico · tabela10-6 Sobreviventes';}
-  if(['vassal','vassal_approve','vassal_end','vassal_npcs'].includes(data.action)){
+  if(['vassal','vassal_approve','vassal_npcs'].includes(data.action)){
     const ids=npcIdsSchema.parse(args['npcIds']??(data.action==='vassal_approve'?state.vassals?.find(v=>v.id===args['id'])?.npcIds??[]:[]));
     const records=ids.length?await context.supabase.from('campaign_records').select('id,house_id,kind,title,content').eq('house_id',data.houseId).in('id',ids):{data:[],error:null};
     if(records.error)throw new Error('Não foi possível conferir os NPCs.');
