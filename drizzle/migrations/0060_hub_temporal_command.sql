@@ -294,17 +294,17 @@ END $$;
 CREATE OR REPLACE FUNCTION public.set_campaign_calendar(
  p_version integer,p_date text,p_auto boolean
 ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
-DECLARE c public.campaign_calendar; current_date text;
+DECLARE c public.campaign_calendar; existing_date text;
 BEGIN
  IF NOT public.is_campaign_admin() THEN RAISE EXCEPTION 'Somente o Narrador ajusta o calendário'; END IF;
  IF NOT public.valid_campaign_date(p_date) OR p_auto IS NULL THEN RAISE EXCEPTION 'Data inválida'; END IF;
  PERFORM pg_advisory_xact_lock(184522);
  SELECT * INTO STRICT c FROM public.campaign_calendar WHERE id=true FOR UPDATE;
  IF c.version IS DISTINCT FROM p_version THEN RAISE EXCEPTION 'Calendário alterado; recarregue antes de salvar'; END IF;
- current_date:=lpad(c.year::text,4,'0')||'-'||CASE WHEN c.festival IS NOT NULL
+ existing_date:=lpad(c.year::text,4,'0')||'-'||CASE WHEN c.festival IS NOT NULL
    THEN 'F-'||c.festival
    ELSE lpad((c.month+1)::text,2,'0')||'-'||lpad(c.day::text,2,'0') END;
- IF p_date IS DISTINCT FROM current_date THEN
+ IF p_date IS DISTINCT FROM existing_date THEN
    RAISE EXCEPTION 'Para alterar a data oficial utilize o comando de avanço de désdias';
  END IF;
  UPDATE public.campaign_calendar SET auto_advance=p_auto,version=version+1,
