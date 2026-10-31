@@ -17,7 +17,7 @@ describe('Lote 32 · verificação de privilégios antes de comandos de calendá
   spy.admin=false;
   await expect(requireFreshNarratorAccess()).rejects.toThrow('Permissão de Narrador revogada');
   spy.error=true;
-  await expect(requireFreshNarratorAccess()).rejects.toThrow('Permissão de Narrador revogada');
+  await expect(requireFreshNarratorAccess()).rejects.toThrow('Permissões do Narrador indisponíveis');
   expect(spy.rpc.mock.calls.every(([name])=>name==='is_campaign_admin')).toBe(true);
  });
  it('revalida antes de salvar rascunho, publicar e decidir/reproduzir entregas',()=>{
