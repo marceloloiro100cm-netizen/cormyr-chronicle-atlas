@@ -95,7 +95,7 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
   expect(await screen.findByText(/Calendário gravado e confirmado: 11 de Hammer/)).toBeInTheDocument();
  });
  it('não permite publicação se a prévia oficial estiver inacessível',async()=>{
-  mock.rpc.mockImplementation(async(name:string)=>{
+  mock.rpc.mockImplementation(async(name:string,args?:Record<string,unknown>)=>{
    if(name==='get_character_age_dashboard')return {data:{
    current_year:args?.['p_year'],target_year:args?.['p_target_year'],
    totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
