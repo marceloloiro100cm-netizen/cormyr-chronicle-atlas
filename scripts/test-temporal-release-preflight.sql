@@ -7,9 +7,6 @@ INSERT INTO auth.users(id) VALUES
  ('30000000-0000-0000-0000-000000000b11');
 INSERT INTO public.user_roles(user_id,role)
  VALUES('30000000-0000-0000-0000-000000000b10','admin');
-SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000b10',true);
-
 SELECT pg_temp.assert(public.temporal_season_crossings('1522-01-01','1523-01-01')=4,
  '12 months crosses four seasons although start/end are both winter');
 SELECT pg_temp.assert(public.temporal_season_crossings('1523-01-01','1522-01-01')=4,
@@ -32,6 +29,8 @@ BEGIN
  END;
 END $negative$;
 
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000b10',true);
 SELECT pg_temp.assert(
  (public.get_temporal_release_preflight()->>'calendar_version')::integer=1,
  'read-only preflight reads official calendar version');
