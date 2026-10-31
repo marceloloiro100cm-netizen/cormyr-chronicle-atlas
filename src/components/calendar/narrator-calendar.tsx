@@ -168,6 +168,7 @@ export function NarratorCalendar(){
     qc.invalidateQueries({queryKey:['house-realm-dashboard']}),
     qc.invalidateQueries({queryKey:['house-time-impact']}),
     qc.invalidateQueries({queryKey:['temporal-consumer-dashboard']}),
+    qc.invalidateQueries({queryKey:['temporal-release-preflight']}),
     qc.invalidateQueries({queryKey:['house-character-ages']}),
     qc.invalidateQueries({queryKey:['character-age-dashboard']}),
     qc.invalidateQueries({queryKey:['character-year-transitions']}),
