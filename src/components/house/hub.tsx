@@ -2,6 +2,7 @@ import type {ReactNode} from 'react';
 import {balances} from '@/lib/house/engine';
 import {calendarDrift,calendarMonthIndex,type CalendarReference} from '@/lib/house/calendar-consistency';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
+import {projectTemporalNotice} from '@/lib/calendar/house-time-impact';
 import { legacyCatalogEffects, legacyEffectCandidates } from '@/lib/house/holding-accounting';
 import {CampaignCalendar} from '@/components/calendar/calendar';
 import { useCallback, useRef, useState } from 'react';
