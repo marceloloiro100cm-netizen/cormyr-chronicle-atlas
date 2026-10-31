@@ -82,6 +82,28 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
   const map=region.map;
   return `<section class="region-map panel" aria-labelledby="region-map-title"><div class="region-map-heading"><h3 id="region-map-title">Mapa</h3>${map?`<a class="quiet map-download" href="${esc(map.src)}" download="${esc(map.filename)}" aria-label="Baixar mapa de ${esc(region.name)}">Baixar Mapa</a>`:''}</div>${map?`<figure class="region-map-figure"><a href="${esc(map.src)}" target="_blank" rel="noopener" aria-label="Ampliar mapa de ${esc(region.name)} em nova aba"><img src="${esc(map.src)}" alt="${esc(map.alt)}" width="${map.width}" height="${map.height}" loading="lazy" decoding="async"></a><figcaption>Mapa de ${esc(region.name)} · Selecione a imagem para ampliar.${map.note?`<br>${esc(map.note)}`:''}</figcaption></figure>`:'<p class="region-map-empty">Mapa ainda não disponível.</p>'}</section>`;
  }
+ function isRegionHeading(line){
+  const text=line.trim();
+  return text.length>=5&&text.length<=110&&!/^(?:[-*•]|\d+[.)])\s/.test(text)
+   &&/[A-ZÀ-Ý]/.test(text)&&text===text.toUpperCase()
+   &&!/[.!?;:]$/.test(text);
+ }
+ function renderRegionText(fullText){
+  const parts=fullText.split(/\r?\n/).map(t=>t.trim()).filter(Boolean);
+  const heads=[],body=[];let list=[];
+  const flush=()=>{if(list.length){body.push('<ul>'+list.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>');list=[];}};
+  for(const text of parts){
+   if(isRegionHeading(text)){
+    flush();const id='region-topic-'+heads.length;heads.push({id,text});
+    body.push('<h4 id="'+id+'">'+esc(text)+'</h4>');
+   }else if(/^(?:[-*•]|\d+[.)])\s+/.test(text)){
+    list.push(text.replace(/^(?:[-*•]|\d+[.)])\s+/,''));
+   }else{flush();body.push('<p>'+esc(text)+'</p>');}
+  }
+  flush();
+  const toc=heads.length>1?'<nav class="region-text-toc" aria-label="Índice do texto regional"><strong>Neste registro</strong><ul>'+heads.map(h=>'<li><a href="#'+h.id+'">'+esc(h.text)+'</a></li>').join('')+'</ul></nav>':'';
+  return toc+body.join('');
+ }
  function renderRegion(){const region=data.regions.find(x=>x.name===state.region);const overview=state.regionView==='hierarchy'?regionAtEra(region,state.hierarchyEra):region;const major=overview.houses.find(h=>normalize(h.name)===normalize(overview.major));const past=overview.era==='before';
  {const t=document.querySelector('.region-view-toolbar'),home=document.querySelector('.atlas-controls');if(t&&home&&!home.contains(t))home.append(t);}
  $('region-content').innerHTML=`<div class="region-overview">${major.crest?`<img class="region-banner" src="${esc(major.crest)}" alt="Brasão da Casa ${esc(overview.major)}" width="134" height="190">`:`<div class="crest-missing">${esc(overview.major)}<small>Brasão não localizado</small></div>`}<div><div class="region-title"><h3>${esc(region.name)}</h3></div><p class="region-meta">${esc(region.subtitle)} · ${region.major===ROYAL_HOUSE?'Royal House':'Major House'}: <strong>${esc(overview.major)}</strong></p><p class="region-description">${esc(region.description)}</p><p class="politics"><strong>${past?'Antes de 1522.':'Quadro de 1522.'}</strong> ${past?esc(region.name==='Elfhold'?'Elfhold sob a autoridade régia de Aelar Drauthglas, antes da reintegração ao reino.':'Helmlands sob a Casa Marliir, antes de sua destituição.'):esc(region.politics)}</p>${musicLinks(region.music,'Música da região')}${region.fullText||region.fullTextPath?`<div id="region-full-text" class="region-full-text" hidden><p class="small">Texto integral do acervo regional. Os registros históricos podem descrever períodos anteriores ao quadro de 1522.</p></div><div class="region-read-actions"><button type="button" id="region-read-more" class="quiet" aria-expanded="false" aria-controls="region-full-text">Ler mais</button></div>`:''}</div></div>${regionMap(region)}<div class="region-download-bar"><button type="button" id="download-region-png" class="quiet region-download">Baixar casas da Região</button><span id="download-region-status" class="download-status" role="status" aria-live="polite"></span></div><div id="region-hierarchy-view"${state.regionView==='hierarchy'?'':' hidden'}>${hierarchyMap(region,state.hierarchyEra)}</div><div id="region-houses-view"${state.regionView==='houses'?'':' hidden'}><div class="house-heading"><h3>Casas de ${esc(region.name)}</h3><p>${region.houses.length} casas no acervo</p></div><div class="house-search"><label for="house-search">Buscar casa nesta região<input id="house-search" type="search" placeholder="Nome, cidade ou castelo…" value="${esc(state.houseQuery)}"></label><button type="button" id="house-search-clear" class="quiet">Limpar filtros</button></div><p id="house-search-result" class="small" role="status" aria-live="polite"></p><div class="houses-grid">${region.houses.map((h,index)=>`<button type="button" class="house-card${PLAYER_HOUSES.has(h.nobleId)?' player-house':''}${h.name===ROYAL_HOUSE?' royal-house':!PLAYER_HOUSES.has(h.nobleId)&&(h.catalogClassification==='major'||h.name===region.major)?' major-house':''}" data-house="${index}" aria-label="Abrir ficha da Casa ${esc(h.name)}"><div class="crest-frame">${h.crest?`<img src="${esc(h.crest)}" alt="Brasão da Casa ${esc(h.name)}" loading="lazy" decoding="async" width="160" height="232">`:`<div class="crest-missing">${esc(h.name)}<small>Brasão não localizado no acervo</small></div>`}</div><div class="house-caption"><strong>${esc(h.name)}</strong><span class="${h.name===ROYAL_HOUSE?'royal':h.name===region.major?'major':''}">${h.name===ROYAL_HOUSE?'ROYAL HOUSE':h.name===region.major?'MAJOR HOUSE':'CASA NOBRE'}</span>${PLAYER_HOUSES.has(h.nobleId)?'<span class="player-tag">Casa de Jogador</span>':''}</div></button>`).join('')}</div><section id="cross-region-results" class="cross-region-results" hidden></section><p class="archive-note">Selecione um brasão para consultar a ficha e suas fontes. As casas históricas também estão listadas; a presença no acervo não confirma a manutenção de títulos em 1522.</p></div>`;
@@ -101,7 +123,7 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
     region.fullText=document.text;
    }
    if(!readMore.isConnected)return;
-   target.innerHTML='<p class="small">Texto integral do acervo regional. Os registros históricos podem descrever períodos anteriores ao quadro de 1522.</p>'+region.fullText.split(/\r?\n/).filter(t=>t.trim()).map(t=>t.length<110&&t===t.toUpperCase()&&/[A-ZÀ-Ý]/.test(t)?'<h4>'+esc(t)+'</h4>':'<p>'+esc(t)+'</p>').join('');
+   target.innerHTML='<p class="small">Texto integral do acervo regional. Os registros históricos podem descrever períodos anteriores ao quadro de 1522.</p>'+renderRegionText(region.fullText);
    target.hidden=false;readMore.setAttribute('aria-expanded','true');readMore.textContent='Ler menos';
   }catch{
    if(!readMore.isConnected)return;
