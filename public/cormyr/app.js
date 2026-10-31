@@ -7,8 +7,9 @@
  const PLAYER_HOUSES=new Set();
  const ROYAL_HOUSE='Phelles';
  const imageViewer=document.createElement('script');imageViewer.src='image-viewer.js';document.body.append(imageViewer);
-const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'post',kind:'mundanos',query:'',theme:'',eventPage:1,houseQuery:'',adventure:'pacto-varzea',noble:{region:'',name:'',leader:'',castle:'',city:'',page:1,house:''}};
- const regionSelect=$('region-select');
+const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'post',kind:'mundanos',query:'',theme:'',eventPage:1,houseQuery:'',adventure:'pacto-varzea',houseHistory:[],noble:{region:'',name:'',leader:'',castle:'',city:'',page:1,house:''}};
+ const lawState={query:'',topic:'',page:1,article:null};
+  const regionSelect=$('region-select');
  $('kingdom-music').innerHTML=musicLinks(data.kingdomMusic,'Música do reino');
  regionSelect.innerHTML=data.regions.map(r=>`<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');
  regionSelect.value=state.region;
@@ -17,7 +18,7 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
   if(state.view==='aventura')return '#aventura-'+state.adventure;
   if(state.view==='eventos'){const params=new URLSearchParams({tipo:state.kind});if(state.query)params.set('busca',state.query);if(state.theme)params.set('tema',state.theme);if(state.eventPage>1)params.set('pagina',String(state.eventPage));return '#eventos?'+params;}
   if(state.view==='nobreza'){const params=new URLSearchParams();for(const [key,value] of Object.entries(state.noble))if(value&&!(key==='page'&&value===1))params.set(key,String(value));return '#nobreza'+(params.size?'?'+params:'');}
-  if(state.view==='constituicao')return '#constituicao';
+  if(state.view==='constituicao'){const p=new URLSearchParams();if(lawState.query)p.set('busca',lawState.query);if(lawState.topic)p.set('tema',lawState.topic);if(lawState.page>1)p.set('pagina',String(lawState.page));if(lawState.article)p.set('artigo',String(lawState.article));return '#constituicao'+(p.size?'?'+p:'');}
   if(state.view==='musicas')return '#musicas';
   return '#notebook-lm';
  }
@@ -26,7 +27,10 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
   if(!h){state.view='reino';state.regionView='houses';}
   else if(h==='nobreza'){state.view='nobreza';state.noble={region:params.get('region')||'',name:params.get('name')||'',leader:params.get('leader')||'',castle:params.get('castle')||'',city:params.get('city')||'',page:Math.max(1,parseInt(params.get('page'),10)||1),house:params.get('house')||''};}
   else if(h==='eventos'){state.view='eventos';state.kind=params.get('tipo')==='misticos'?'misticos':'mundanos';state.query=params.get('busca')||'';state.theme=params.get('tema')||'';state.eventPage=Math.max(1,parseInt(params.get('pagina'),10)||1);}
-  else if(h==='aventura'||h==='notebook-lm'||h==='constituicao'||h==='musicas')state.view=h;
+  else if(h==='aventura'||h==='notebook-lm'||h==='constituicao'||h==='musicas'){state.view=h;
+    if(h==='constituicao'){lawState.query=params.get('busca')||'';lawState.topic=params.get('tema')||'';
+     lawState.page=Math.max(1,parseInt(params.get('pagina'),10)||1);lawState.article=parseInt(params.get('artigo'),10)||null;}}
+   else if(h.startsWith('adv-sec-')){state.view='aventura';}
   else if(h==='pacto'){state.view='aventura';state.adventure='pacto-varzea';}
   else if(h.startsWith('aventura-')){const a=data.adventures.find(x=>x.id===h.slice(9));if(a)state.adventure=a.id;state.view='aventura';}
   else if(h.startsWith('regiao-')){const r=data.regions.find(x=>normalize(x.name).replace(/\s+/g,'-')===h.slice(7));if(r)state.region=r.name;state.regionView=params.get('visao')==='hierarquia'?'hierarchy':'houses';state.hierarchyEra=params.get('epoca')==='antes-1522'?'before':'post';state.view='reino';}
@@ -228,7 +232,6 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
  $('noble-back').addEventListener('click',()=>{state.noble.house='';renderNobility();writeRoute(true);$('nobility-title').focus();});
  function noblePage(delta){state.noble.page+=delta;renderNobility();writeRoute();$('noble-count').scrollIntoView({block:'start',behavior:'instant'});}
  $('noble-prev').addEventListener('click',()=>noblePage(-1));$('noble-next').addEventListener('click',()=>noblePage(1));
- const lawState={query:'',topic:'',page:1};
  const law=data.constitution;
  $('law-topic').innerHTML='<option value="">Todos os temas</option>'+[...new Set(law.entries.map(e=>e.topic))].map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
  $('law-intro').textContent=law.intro;
