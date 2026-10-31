@@ -7,6 +7,9 @@
   const add=(kind,label,songs)=>{const list=(songs||[]).filter(s=>s&&s.url&&!seen.has(s.url+label));list.forEach(s=>seen.add(s.url+label));if(list.length)groups.push({kind:kind||'outra',label,songs:list});};
   add('reino','Tema do reino',data.kingdomMusic);
   (function walk(o,parent){if(!o||typeof o!=='object')return;if(Array.isArray(o)){o.forEach(x=>walk(x,parent));return;}if(o!==data&&Array.isArray(o.music))add(o.musicKind||(o.houses?'regiao':'casa'),(o.name||''),o.music);for(const k in o)if(k!=='music'&&k!=='kingdomMusic')walk(o[k],o);})(data);
+  // User-supplied soundtrack metadata supplements the existing YouTube playlist.
+  for(const t of data.soundtrack||[])if(t.url)add(t.category,t.region||t.house||'Cancioneiro',[t]);
+  const lyricsOnly=(data.soundtrack||[]).filter(t=>t.lyrics&&!t.url);
   const box=document.getElementById('music-all');
   if(box){
     const chips=document.getElementById('music-kinds');
@@ -22,7 +25,12 @@
     const render=()=>{
       const list=groups.filter(g=>(kind==='todas'||g.kind===kind)&&(item===''||String(groups.indexOf(g))===item));
       const songs=list.reduce((a,g)=>a+g.songs.length,0);
-      box.innerHTML=list.length?list.map(g=>`<section class="music-links panel"><div><p class="eyebrow">${esc(kindLabel(g.kind))}</p><h4>${esc(g.label)}</h4></div><div class="music-actions">${g.songs.map(s=>`<a class="music-button" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">▶</span><span>${esc(s.title)}<small>Ouvir no YouTube ↗</small></span></a>`).join('')}</div></section>`).join(''):'<p class="empty">Nenhuma música encontrada. Limpe os filtros para ver todas.</p>';
+      box.innerHTML=list.length?list.map(g=>`<section class="music-links panel"><div><p class="eyebrow">${esc(kindLabel(g.kind))}</p><h4>${esc(g.label)}</h4></div><div class="music-actions">${g.songs.map(s=>`<a class="music-button" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">▶</span><span>${esc(s.title)}<small>${s.url.includes('drive.google.com')?'Ouvir ou ver no Drive':'Ouvir no YouTube'}</small></span></a>`).join('')}</div></section>`).join(''):'<p class="empty">Nenhuma música encontrada. Limpe os filtros para ver todas.</p>';
+      if((kind==='todas'||kind==='cancioneiro')&&item===''){
+       for(const t of lyricsOnly){const detail=document.createElement('details');detail.className='panel music-lyrics-entry';
+        const summary=document.createElement('summary');summary.textContent=t.title+' · Letra';detail.append(summary);
+        const pre=document.createElement('pre');pre.textContent=t.lyrics;detail.append(pre);box.append(detail);}
+      }
       if(status)status.textContent=`${songs} ${songs===1?'música':'músicas'} em ${list.length} ${list.length===1?'grupo':'grupos'}.`;
     };
     const setKind=k=>{kind=k;item='';if(chips)chips.querySelectorAll('[data-music-kind]').forEach(b=>{const on=b.dataset.musicKind===k;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});fillSelect();render();};
