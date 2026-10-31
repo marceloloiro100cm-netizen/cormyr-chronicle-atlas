@@ -33,36 +33,36 @@ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * Falha fechada em status, datas, ids e contagens incoerentes.
  */
 export function validateTemporalConsumerDashboard(value:unknown):TemporalConsumerDashboard{
- if(!object(value)||!Array.isArray(value.consumers)||!Array.isArray(value.deliveries)||
-  !number(value.pending_total))throw new Error('Fila de consumidores temporais inválida.');
+ if(!object(value)||!Array.isArray(value['consumers'])||!Array.isArray(value['deliveries'])||
+  !number(value['pending_total']))throw new Error('Fila de consumidores temporais inválida.');
  const seen=new Set<string>();
- for(const c of value.consumers){
-  if(!object(c)||typeof c.code!=='string'||seen.has(c.code)||
-   typeof c.title!=='string'||typeof c.description!=='string'||
-   !boundaries.has(c.boundary as TemporalBoundary)||
-   !modes.has(c.mode as TemporalConsumerMode)||
-   typeof c.enabled!=='boolean'||!number(c.pending)||!number(c.total)||c.pending>c.total)
+ for(const c of value['consumers']){
+  if(!object(c)||typeof c['code']!=='string'||seen.has(c['code'])||
+   typeof c['title']!=='string'||typeof c['description']!=='string'||
+   !boundaries.has(c['boundary'] as TemporalBoundary)||
+   !modes.has(c['mode'] as TemporalConsumerMode)||
+   typeof c['enabled']!=='boolean'||!number(c['pending'])||!number(c['total'])||Number(c['pending'])>Number(c['total']))
    throw new Error('Cadastro temporal inconsistente.');
-  seen.add(c.code);
+  seen.add(c['code']);
  }
  const ids=new Set<string>();
- for(const d of value.deliveries){
-  if(!object(d)||typeof d.id!=='string'||!uuid.test(d.id)||ids.has(d.id)||
-   typeof d.operation_id!=='string'||!uuid.test(d.operation_id)||
-   typeof d.consumer_code!=='string'||!seen.has(d.consumer_code)||
-   !number(d.calendar_version)||d.calendar_version===0||
-   typeof d.from_date!=='string'||!parseDate(d.from_date)||
-   typeof d.to_date!=='string'||!parseDate(d.to_date)||
-   !directions.has(d.direction as string)||!boundaries.has(d.boundary as TemporalBoundary)||
-   !modes.has(d.mode as TemporalConsumerMode)||
-   !statuses.has(d.status as TemporalConsumerStatus)||
-   (d.mode==='projection'&&d.status!=='informational')||
-   (d.mode==='manual_review'&&d.status==='informational')||
-   (d.review_note!==null&&typeof d.review_note!=='string')||
-   (d.reviewed_at!==null&&typeof d.reviewed_at!=='string')||
-   typeof d.created_at!=='string')
+ for(const d of value['deliveries']){
+  if(!object(d)||typeof d['id']!=='string'||!uuid.test(d['id'])||ids.has(d['id'])||
+   typeof d['operation_id']!=='string'||!uuid.test(d['operation_id'])||
+   typeof d['consumer_code']!=='string'||!seen.has(d['consumer_code'])||
+   !number(d['calendar_version'])||d['calendar_version']===0||
+   typeof d['from_date']!=='string'||!parseDate(d['from_date'])||
+   typeof d['to_date']!=='string'||!parseDate(d['to_date'])||
+   !directions.has(d['direction'] as string)||!boundaries.has(d['boundary'] as TemporalBoundary)||
+   !modes.has(d['mode'] as TemporalConsumerMode)||
+   !statuses.has(d['status'] as TemporalConsumerStatus)||
+   (d['mode']==='projection'&&d['status']!=='informational')||
+   (d['mode']==='manual_review'&&d['status']==='informational')||
+   (d['review_note']!==null&&typeof d['review_note']!=='string')||
+   (d['reviewed_at']!==null&&typeof d['reviewed_at']!=='string')||
+   typeof d['created_at']!=='string')
    throw new Error('Entrega temporal inconsistente.');
-  ids.add(d.id);
+  ids.add(d['id']);
  }
  return value as unknown as TemporalConsumerDashboard;
 }
@@ -111,23 +111,23 @@ export type TemporalReleasePreflight={
 };
 /** Diagnóstico operacional não substitui aprovação de segurança nem backup. */
 export function validateTemporalReleasePreflight(value:unknown):TemporalReleasePreflight{
- if(!object(value)||typeof value.official_date!=='string'||!parseDate(value.official_date)||
-  typeof value.month_processing_preflight_ok!=='boolean'||
-  value.requires_production_backup!==true||value.requires_homologation!==true||
-  value.automatic_economic_effects_enabled!==false)
+ if(!object(value)||typeof value['official_date']!=='string'||!parseDate(value['official_date'])||
+  typeof value['month_processing_preflight_ok']!=='boolean'||
+  value['requires_production_backup']!==true||value['requires_homologation']!==true||
+  value['automatic_economic_effects_enabled']!==false)
   throw new Error('Pré-implantação temporal inválida.');
  for(const key of ['calendar_version','official_month','house_sheets','active_houses',
   'draft_houses','invalid_houses','lagging_houses','ahead_houses',
   'operations','deliveries','manual_reviews_pending']){
   if(!number(value[key]))throw new Error('Contagem inválida na pré-implantação temporal.');
  }
- if(value.calendar_version===0||
-  Number(value.active_houses)+Number(value.draft_houses)+Number(value.invalid_houses)!==value.house_sheets||
-  value.month_processing_preflight_ok!==(value.invalid_houses===0)||
-  Number(value.lagging_houses)+Number(value.ahead_houses)>Number(value.active_houses))
+ if(value['calendar_version']===0||
+  Number(value['active_houses'])+Number(value['draft_houses'])+Number(value['invalid_houses'])!==value['house_sheets']||
+  value['month_processing_preflight_ok']!==(value['invalid_houses']===0)||
+  Number(value['lagging_houses'])+Number(value['ahead_houses'])>Number(value['active_houses']))
   throw new Error('Contagens inconsistentes na pré-implantação temporal.');
- const parsed=parseDate(value.official_date)!;
- if(value.official_month!==parsed.year*12+parsed.month)
+ const parsed=parseDate(value['official_date'])!;
+ if(value['official_month']!==parsed.year*12+parsed.month)
   throw new Error('Mês da pré-implantação diverge de Harptos.');
  return value as TemporalReleasePreflight;
 }
