@@ -112,7 +112,7 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
   <Button disabled={busy} variant="outline" onClick={()=>run('restore_legacy_effects',{holdingIds:legacyEffectCandidates(state).map(h=>h.id)},'Conciliação de benefícios das posses legadas pela identificação exata com o catálogo vigente.')}>Registrar benefícios legados na ficha</Button>
  </div>}
  {admin&&<RuleEditor catalog={catalog}/>}</>}
-    </main></div><PurchaseDrawer open={buy} onClose={()=>{setBuy(false);setPurchaseItemId('');}} state={state} catalog={catalog} busy={busy} onConfirm={args=>run('purchase',args)} initialCategory={section==='overview'?'':categories.join(',')} initialItemId={section==='army'?purchaseItemId:''} onCreateDomain={name=>run('domain',{id:crypto.randomUUID(),name,notes:''},'Domínio criado durante a compra de uma posse.')}/>
+    </main></div><PurchaseDrawer open={buy} onClose={()=>{setBuy(false);setPurchaseItemId('');}} state={state} catalog={catalog} busy={busy} onConfirm={args=>run('purchase',args)} initialCategory={section==='overview'||(section==='army'&&purchaseItemId)?'':categories.join(',')} initialItemId={section==='army'?purchaseItemId:''} onCreateDomain={name=>run('domain',{id:crypto.randomUUID(),name,notes:''},'Domínio criado durante a compra de uma posse.')}/>
   </div>;
 }
 function RuleEditor({catalog}:{catalog:CatalogItem[]}) {
