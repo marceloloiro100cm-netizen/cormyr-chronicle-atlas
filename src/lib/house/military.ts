@@ -95,3 +95,15 @@ export function trainUnit(state:HouseState,id:string):HouseState {
  unit.evolution.push({id:crypto.randomUUID(),month:state.month,roll:0,condition:'training',disorganizations:0,steps:1,before,after:target,justification:'Treinamento em campanha autorizado pelo Narrador; custo de Poder +'+delta});
  return next;
 }
+
+/** End fealty, preserving the source and returning the Power allocation. */
+export function endVassal(state:HouseState,id:string,reason:string):HouseState {
+ if(reason.trim().length<10)throw new Error('Registre a justificativa do rompimento.');
+ const next=structuredClone(state),v=next.vassals?.find(v=>v.id===id);
+ if(!v||v.status!=='approved')throw new Error('Vassalagem não está ativa.');
+ const holding=next.holdings.find(h=>h.id===v.id&&h.category==='vassal'&&h.status==='active');
+ if(!holding)throw new Error('Vínculo não conciliado com a posse de Poder.');
+ v.status='ended';v.notes+='\nEncerramento: '+reason.trim();
+ holding.status='abandoned';
+ return next;
+}

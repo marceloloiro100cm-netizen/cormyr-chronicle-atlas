@@ -12,7 +12,7 @@ import { confirmFortune, convertResources } from './fortune';
 import { historyAdjustments, memberBonusAdjustments, historicalFoundationYear, rollFoundation, rollHistoricalEvent } from './creation-history';
 import { improveEquipment } from './equipment';
 import { buySiege, changeSiegeAssignment } from './siege';
-import { equipUnit, resolveSurvivors, changeUnitState, trainUnit, proposeVassal, approveVassal, SURVIVOR_CONDITIONS } from './military';
+import { equipUnit, resolveSurvivors, changeUnitState, trainUnit, proposeVassal, approveVassal, endVassal, SURVIVOR_CONDITIONS } from './military';
 import { linkVassalNpcs, validateVassalNpcs } from './vassal-links';
 import { selectUndoSnapshot } from './undo';
 import { legacyCostIssues, reconcileLegacyCosts } from './legacy-cost-reconciliation';
@@ -73,7 +73,7 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
   const admin=Boolean(role.data);if(!admin&&!membership.data)throw new Error('Edição desta casa não autorizada.');
-  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','train_unit','vassal_approve','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
+  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','train_unit','vassal_approve','vassal_end','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   const duplicate=await db.from('noble_house_ledger').select('after_state,version,actor,action').eq('house_id',data.houseId).eq('operation_key',data.key).maybeSingle();
   if(duplicate.error)throw new Error('Não foi possível conferir a operação.');
@@ -217,6 +217,13 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     if(data.action==='vassal'){const input=z.object({id:z.string().uuid(),houseId:z.string(),notes:z.string().min(1).max(4000)}).parse(args);const h=await context.supabase.from('campaign_houses').select('name').eq('id',input.houseId).maybeSingle();const catalogHouse=h.data?null:await context.supabase.from('house_catalog').select('name').eq('id',input.houseId).maybeSingle();const name=h.data?.name??catalogHouse?.data?.name;if(!name)throw new Error('Casa oficial não encontrada.');next=attachVassal(state,{...input,name,npcIds});rule='Vassalagem imediata · 20/10/5 Poder; sem acesso à ficha da outra casa';}
     else if(data.action==='vassal_approve'){const input=z.object({id:z.string(),influencePenalty:z.number().int().nonnegative()}).parse(args);if(!data.explanation.trim())throw new Error('Registre a decisão de vínculo e Influência.');next=linkVassalNpcs(approveVassal(state,input.id,input.influencePenalty),input.id,npcIds);const v=next.vassals?.find(v=>v.id===input.id);if(v){v.approvalNote=data.explanation;v.approvedBy=context.userId;}rule='Livro básico · Brasões vassalos20/10/5Poder; decisão e NPCs confirmados pelo Narrador';}
     else{const id=z.string().parse(args['id']);if(!data.explanation.trim())throw new Error('Registre a decisão de alteração dos NPCs.');next=linkVassalNpcs(state,id,npcIds);rule='Referências a NPCs existentes alteradas pelo Narrador; sem duplicação ou novo custo';}
+  }
+  if(data.action==='vassal_end'){
+    if(!admin)throw new Error('Encerrar a vassalagem exige decisão do Narrador.');
+    if(data.explanation.trim().length<10)throw new Error('Justificativa de rompimento necessária.');
+    const {id}=z.object({id:z.string()}).parse(args);
+    next=endVassal(state,id,data.explanation);
+    rule='Rompimento auditado: liberação de Poder e término da penalidade de Influência';
   }
   if(data.action==='vassal_create'){
     const input=z.object({id:z.string().uuid(),name:z.string().trim().min(1).max(160),region:z.string().min(1).max(100),motto:z.string().max(500),lordName:z.string().max(160)}).parse(args);

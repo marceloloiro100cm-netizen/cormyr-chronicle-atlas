@@ -46,6 +46,8 @@ export function balances(state: HouseState): Balance {
       }
     }
   }
+  const vassalPenalty=(state.vassals??[]).filter(v=>v.status==='approved').reduce((n,v)=>n+(v.influencePenalty??0),0);
+  total.influence-=vassalPenalty;
   for (const r of RESOURCE_KEYS) {
     available[r] = total[r] - allocated[r] - committed[r];
   }

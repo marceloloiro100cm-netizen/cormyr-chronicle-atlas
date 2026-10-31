@@ -55,6 +55,7 @@ export function Vassals({
   canEdit,
   onPropose,
   onApprove,
+  onEnd,
   onLink,
 }: {
   catalog: CatalogItem[];
@@ -69,6 +70,7 @@ export function Vassals({
   canEdit: boolean;
   onPropose: (args: Record<string, unknown>) => Promise<boolean>;
   onApprove: (args: Record<string, unknown>, note: string) => Promise<boolean>;
+  onEnd: (args:Record<string,unknown>, note:string)=>Promise<boolean>;
   onLink: (args: Record<string, unknown>, note: string) => Promise<boolean>;
 }) {
   const [region, setRegion] = useState("");
@@ -148,8 +150,7 @@ export function Vassals({
                   <summary>Decisão do Narrador</summary>
                   <p>{v.approvalNote}</p>
                   <p>
-                    Ajuste de Influência registrado: {v.influencePenalty} (não aplicado
-                    automaticamente).
+                    Penalidade de Influência vigente: {v.status==='approved'?v.influencePenalty:0} (aplicada nos recursos da suserana).
                   </p>
                 </details>
               )}
@@ -196,6 +197,15 @@ export function Vassals({
               ) : (
                 <p className="house-caption">Sem integrante da Corte associado.</p>
               )}
+              {admin && v.status === "approved" && <details>
+                <summary>Encerrar vassalagem</summary>
+                <form className="campaign-form" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);
+                  await onEnd({id:v.id},String(f.get('reason')));}}>
+                  <label>Justificativa do Narrador<textarea name="reason" minLength={10} required/></label>
+                  <p>O Poder alocado retorna ao disponível; a penalidade de Influência cessa. A mini-ficha e o histórico são preservados.</p>
+                  <Button disabled={busy} variant="outline">Encerrar vínculo</Button>
+                </form>
+              </details>}
               {admin && v.status !== "ended" && (
                 <details>
                   <summary>
