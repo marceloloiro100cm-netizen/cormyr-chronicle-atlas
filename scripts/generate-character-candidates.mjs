@@ -49,13 +49,25 @@ export function gatherCharacterCandidates(dir=atlas){
  }
  const folder=join(dir,'histories');
  for(const file of readdirSync(folder).filter(f=>/^[a-z0-9_-]+\.json$/.test(f)).sort()){
-  const payload=JSON.parse(readFileSync(join(folder,file),'utf8'));
-  const parsed=extractHeaderCandidate(payload.text);
+  const raw=readFileSync(join(folder,file),'utf8');
+  let text='',malformed=false;
+  try{text=String(JSON.parse(raw).text??'');}
+  catch{
+   // O acervo inclui alguns JSON legados malformados. Não bloquear as fontes
+   // saudáveis e NÃO tentar corrigir o texto original de forma silenciosa.
+   malformed=true;
+   text=raw.slice(0,5000).replace(/\\r\\n/g,'\n').replace(/\\n/g,'\n').replace(/\\\"/g,'"');
+  }
+  const parsed=extractHeaderCandidate(text);
   if(!parsed.proposed_name)continue; // Não adivinhar pessoa em genealogias narrativas.
   append({source_kind:'archive_history',source_key:basename(file,'.json'),
-   ...parsed,house_id:null,claimed_age_year:null,
+   proposed_name:parsed.proposed_name,
+   claimed_birth_year:malformed?null:parsed.claimed_birth_year,
+   claimed_age:malformed?null:parsed.claimed_age,
+   house_id:null,claimed_age_year:null,
    evidence:{source:'public/cormyr/histories/'+file,
-    field:'Nome/Idade/Nascimento',age_reference:'unknown',review_required:true}});
+    field:'Nome/Idade/Nascimento',age_reference:'unknown',
+    malformed_source:malformed,review_required:true}});
  }
  return candidates.sort((a,b)=>a.source_kind.localeCompare(b.source_kind)||
   a.source_key.localeCompare(b.source_key));
