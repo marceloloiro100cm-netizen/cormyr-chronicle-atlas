@@ -59,6 +59,25 @@ Os campos são propriedades do ensaio **no job de banco efêmero**. Não há ace
 - \`.github/workflows/validate.yml\`: adiciona uma etapa **após** toda a regressão SQL anterior, exclusivamente no job \`mail-database\`.
 - A suíte completa de Node, Vitest, TypeScript e build do Atlas permanece no job \`validate\`.
 
+## 2.1 Evidência real do CI em oito clones
+
+O primeiro ensaio completo, após normalização de tokens aleatórios do cliente \`pg_dump\`, detectou **6 execuções SQL sem erro**, **2 falhas de reaplicação**, **1 diferença de esquema** e **0 diferenças de dados** em oito bancos clonados. O fingerprint de esquema/dados da fonte permaneceu igual.
+
+| Script | Replay em clone já migrado | Alteração de esquema detectada |
+| --- | --- | --- |
+| \`0060_hub_temporal_atomic_publication.sql\` | Sem erro | Não |
+| \`0061_public_campaign_time_projection.sql\` | Sem erro | Não |
+| \`0062_canonical_character_registry.sql\` | **Falhou** (não reentrante nesta fixture) | Não |
+| \`0063_annual_character_ages.sql\` | **Falhou** (não reentrante nesta fixture) | Não |
+| \`0064_mail_chronology_integration.sql\` | Sem erro | Não |
+| \`0065_house_temporal_months.sql\` | Sem erro | Não |
+| \`0066_temporal_consumer_outbox.sql\` | Sem erro | **Sim** |
+| \`0067_temporal_release_preflight.sql\` | Sem erro | Não |
+
+**Risco específico relevante:** a migração 0066 define o gatilho da outbox com \`WHEN 'season' THEN from_season<>to_season\`. A 0067 corrige a regra para \`WHEN 'season' THEN season_crossings>0\`, contemplando travessias anuais que começam e terminam na mesma estação. Se 0066 for reaplicada **depois** da 0067, a função poderá ser substituída pela lógica antiga sem erro SQL. O ensaio passa a consultar o conteúdo da função efetivamente instalada para detectar esse downgrade explicitamente.
+
+As falhas 0062 e 0063 mostram que tentar aplicar indiscriminadamente todo o SQL em banco já migrado interromperia o procedimento. O resultado da 0066 mostra que **sucesso SQL não significa ausência de regressão funcional**. Todos esses achados exigem preservar a sequência real de migrações, reconciliar com o banco de destino e validar dependências antes de qualquer execução.
+
 ## 3. Restrições de operação
 
 **Esta ferramenta é um teste de CI, não um runner de migrações.**
