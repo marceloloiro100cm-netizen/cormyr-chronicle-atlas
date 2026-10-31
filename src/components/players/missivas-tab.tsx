@@ -16,6 +16,7 @@ import {NARRATION_GROUPS,narrationHouseIds} from '@/lib/mail-groups';
 import {NarratorMailNotes} from './narrator-mail-notes';
 import {MailPeriodNotice} from './mail-period-notice';
 import {dateKey} from '@/lib/calendar/harptos';
+import {formatRoundHarptosReference} from '@/lib/calendar/chronology';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 
 
@@ -39,7 +40,8 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   const [roundNumber,setRoundNumber]=useState('');
   const open=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
   const nextRound=nextCampaignRound(data.rounds);
-  const roundRevision=data.rounds.map(r=>`${r.number}:${r.status}`).sort().join('|');
+  const activeRound=data.rounds.find(r=>r.number===open&&r.status==='open')??null;
+  const roundRevision=data.rounds.map(r=>`${r.number}:${r.status}:${r.harptos_period??'sem-referencia'}`).sort().join('|');
   const groupChoices=filters.group?narrationHouseIds(filters.group,data.houses.map(h=>h.id)):data.houses.map(h=>h.id);
   const allowed=new Set(groupHouseIds?groupChoices.filter(id=>groupHouseIds.includes(id)):groupChoices);
   const groupActive=data.admin&&(groupHouseIds!==undefined||filters.group!=='');
@@ -204,7 +206,8 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
       {listing.isPending&&<p role="status">Carregando missivas…</p>}
       {listing.error&&<p role="alert">Não foi possível carregar as missivas. <Button onClick={()=>listing.refetch()}>Tentar novamente</Button></p>}
       <nav className="campaign-actions" aria-label="Páginas de missivas"><Button disabled={page===0||listing.isFetching} onClick={()=>setPage(p=>p-1)}>Anterior</Button><span>Página {page+1} · {listing.data?.total??0} entregas encontradas</span><Button disabled={listing.isFetching||(page+1)*20>=(listing.data?.total??0)} onClick={()=>setPage(p=>p+1)}>Próxima</Button></nav>
-      <div className={'campaign-round '+(open===null?'fechada':'')} role="status">{open===null?'Missivas fechadas, aguarde o narrador abrir a próxima semana.':`Missiva ${open} aberta — respostas, novas missivas e encaminhamentos liberados.`}</div>
+      <div className={'campaign-round '+(open===null?'fechada':'')} role="status">{open===null?'Missivas fechadas, aguarde o narrador abrir a próxima semana.':`Missiva ${open} aberta — respostas, novas missivas e encaminhamentos liberados.`}
+       {activeRound&&<p className="house-caption">Referência histórica da abertura: <strong>{formatRoundHarptosReference(activeRound.harptos_period)}</strong>. O número da rodada não altera a désdia vigente.</p>}</div>
       {data.admin&&<><div className="campaign-heading"><h2>Gestão de missivas</h2><Button onClick={()=>setCompose(v=>!v)}>{compose?'Fechar escrita':'Escrever missiva'}</Button></div>
         <section className="campaign-round-pending" aria-label="Casas com respostas pendentes">
           <h3>{open===null?'Respostas da rodada':`Missiva ${open} · Casas com respostas pendentes`}</h3>
@@ -219,12 +222,12 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
         </section>
         <p className="text-muted-foreground text-sm">Indicadores de todos os resultados dos filtros ativos (sem limitar à página atual). Nesta página: {allLetters.length} missivas.</p>
         <p className="text-muted-foreground text-sm">Próxima semana permitida: <strong>{nextRound}</strong>. Abrir uma nova semana encerra a anterior; semanas encerradas não podem ser reabertas.</p>
-        <MailPeriodNotice date={periodDate}/>
-        <div className="campaign-actions">{open!==null&&<Button variant="outline" onClick={async()=>{if(!confirm(`Fechar a Missiva ${open}? Os jogadores não poderão mais responder nem escrever.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:open,p_closed:true});if(error)onError(error.message);else saved();}}>Fechar Missiva {open}</Button>}<input type="number" min={nextRound} style={{width:140}} value={roundNumber} onChange={e=>setRoundNumber(e.target.value)} placeholder={`Próxima: ${nextRound}`} aria-label="Número da missiva a abrir"/><Button variant="outline" onClick={async()=>{const n=roundNumber?Number(roundNumber):nextRound;if(!Number.isInteger(n)||n!==nextRound){onError(`A próxima semana permitida é ${nextRound}. Não é possível pular ou retroceder.`);return;}const preview=data.letters.filter(l=>l.delivery_week===n&&l.publication_state==='scheduled');const responses=data.replies.filter(r=>r.delivery_week===n&&r.publication_state==='scheduled');if(!confirm(`Abrir Semana ${n}? ${preview.length} mensagens e ${responses.length} respostas serão liberadas. Destinatários: ${preview.map(l=>houseName(l.recipient_house_id)||'Jogador autorizado').join(', ')||'Nenhuma nova mensagem'}. A semana anterior será encerrada.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:n,p_closed:false});if(error)onError(error.message);else{setRoundNumber('');saved();}}}>Abrir missiva</Button></div>
+        <MailPeriodNotice date={periodDate} round={activeRound}/>
+        <div className="campaign-actions">{open!==null&&<Button variant="outline" onClick={async()=>{if(!confirm(`Fechar a Missiva ${open}? Os jogadores não poderão mais responder nem escrever.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:open,p_closed:true});if(error)onError(error.message);else saved();}}>Fechar Missiva {open}</Button>}<input type="number" min={nextRound} style={{width:140}} value={roundNumber} onChange={e=>setRoundNumber(e.target.value)} placeholder={`Próxima: ${nextRound}`} aria-label="Número da missiva a abrir"/><Button variant="outline" onClick={async()=>{const n=roundNumber?Number(roundNumber):nextRound;if(!Number.isInteger(n)||n!==nextRound){onError(`A próxima semana permitida é ${nextRound}. Não é possível pular ou retroceder.`);return;}const preview=data.letters.filter(l=>l.delivery_week===n&&l.publication_state==='scheduled');const responses=data.replies.filter(r=>r.delivery_week===n&&r.publication_state==='scheduled');if(!confirm(`Abrir Semana ${n}? ${preview.length} mensagens e ${responses.length} respostas serão liberadas. Destinatários: ${preview.map(l=>houseName(l.recipient_house_id)||'Jogador autorizado').join(', ')||'Nenhuma nova mensagem'}. A semana anterior será encerrada. A data oficial de Harptos não será avançada pela abertura da semana.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:n,p_closed:false});if(error)onError(error.message);else{setRoundNumber('');saved();}}}>Abrir missiva</Button></div>
         {compose&&<MailComposer key={draft?.key??0} data={data} me={me} initial={draft} onSave={()=>{setDraft(null);saved();}} onManage={onManage}/>}</>}
       {filters.box!=='enviadas'&&<><div className="campaign-heading"><h2>{filters.box==='excluidas'?'Missivas excluídas':data.admin&&filters.box!=='recebidas'?'Correspondência acompanhada':'Missivas recebidas'}</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
       {groups.length===0&&<p className="campaign-empty">Nenhuma missiva encontrada.</p>}
-      {groups.map(group=><section key={group.number??'sem-numero'} id={group.number!==null?'grupo-missiva-'+group.number:undefined} className="campaign-mail-group">{group.number!==null&&<h3 className="campaign-letter-number">Missiva {group.number}{data.rounds.find(r=>r.number===group.number)?.closed?' · fechada':''}</h3>}{group.letters.map(letter=>card(letter,isRecipient(letter)||data.admin))}</section>)}</>}
+      {groups.map(group=><section key={group.number??'sem-numero'} id={group.number!==null?'grupo-missiva-'+group.number:undefined} className="campaign-mail-group">{group.number!==null&&<h3 className="campaign-letter-number">Missiva {group.number}{data.rounds.find(r=>r.number===group.number)?.closed?' · fechada':''}</h3>{data.rounds.find(r=>r.number===group.number)&&<p className="house-caption">Período registrado na abertura: {formatRoundHarptosReference(data.rounds.find(r=>r.number===group.number)?.harptos_period)}</p>}}{group.letters.map(letter=>card(letter,isRecipient(letter)||data.admin))}</section>)}</>}
       {filters.box!=='recebidas'&&<><div className="campaign-heading"><h2>Missivas enviadas por você</h2><span>{mine.length} missivas</span></div>
       {mine.length===0&&<p className="campaign-empty">Nenhuma missiva enviada encontrada.</p>}
       {mine.map(letter=>card(letter,data.admin))}</>}
