@@ -4,7 +4,8 @@ import {supabase} from '@/integrations/supabase/client';
 import {Button} from '@/components/ui/button';
 import {CampaignDatePicker} from './date-picker';
 import {CampaignCalendar,type CalendarState} from './calendar';
-import {useCampaignTime} from '@/lib/calendar/campaign-time';
+import {campaignTimeView,useCampaignTime} from '@/lib/calendar/campaign-time';
+import {useCampaignCalendarRealtime} from './realtime';
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {calendarPublicationError} from '@/lib/calendar/publication';
 import {campaignTimeRpcArguments,matchesPublishedTime,validateCampaignTimePreview,type CampaignTimeMode,type CampaignTimePreview} from '@/lib/calendar/temporal-publication';
@@ -22,6 +23,7 @@ type DraftEvent={
 export function NarratorCalendar(){
  const qc=useQueryClient();
  const calendar=useCampaignTime();
+ const realtime=useCampaignCalendarRealtime();
  const drafts=useQuery({queryKey:['campaign-schedule-drafts'],queryFn:async()=>{
   const {data,error}=await supabase.rpc('get_campaign_schedule_drafts');
   if(error)throw error;
@@ -145,10 +147,26 @@ export function NarratorCalendar(){
  }
  if(calendar.isPending||drafts.isPending)return <p role="status">Carregando calendário do Narrador…</p>;
  if(calendar.error||drafts.error||!calendar.data)return <p role="alert">Não foi possível carregar o calendário. {calendar.error?.message??drafts.error?.message} <Button type="button" onClick={()=>{calendar.refetch();drafts.refetch();}}>Tentar novamente</Button></p>;
- return <section className="narrator-calendar">
-  <div className="campaign-heading"><div><p className="campaign-eyebrow">NARRADOR · CAMPANHA</p><h2>Calendário da campanha</h2></div></div>
+ const clock=campaignTimeView(calendar.data);
+ const isStale=expectedVersion!==null&&expectedVersion!==calendar.data.version;
+ const seasonNames={winter:'Inverno',spring:'Primavera',summer:'Verão',autumn:'Outono'} as const;
+ return <section className="narrator-calendar" aria-label="Central Temporal do Narrador">
+  <div className="campaign-heading"><div><p className="campaign-eyebrow">NARRADOR · HUB TEMPORAL</p><h2>Calendário da campanha</h2></div></div>
+  <div className="temporal-hub-dashboard" role="region" aria-label="Resumo temporal oficial">
+   <div><span>Data oficial</span><strong>{clock.label}</strong></div>
+   <div><span>Período atual</span><strong>{clock.desdia===null?'Festival intercalar':clock.desdia+'ª désdia'}</strong></div>
+   <div><span>Estação</span><strong>{seasonNames[clock.season]}</strong></div>
+   <div><span>Estado do relógio</span><strong>{realtime==='live'?'Tempo real conectado':realtime==='fallback'?'Atualização automática (15 s)':'Conectando…'}</strong><small>Versão {clock.version}</small></div>
+  </div>
+  <nav className="temporal-hub-navigation" aria-label="Seções do Hub Temporal">
+   <a href="#temporal-comando">Comando e prévia</a>
+   <a href="#temporal-eventos">Eventos oficiais</a>
+   <a href="#temporal-historico">Histórico</a>
+   <a href="#temporal-jogadores">Visão dos jogadores</a>
+  </nav>
+  {isStale&&<p role="alert" className="temporal-hub-stale">O calendário foi alterado em outra sessão. Recarregue a versão antes de confirmar qualquer operação.</p>}
   <p>O calendário oficial é a referência de todas as Casas. Escolha avançar désdias, corrigir a data ou publicar apenas eventos. A numeração das missivas permanece independente do relógio.</p>
-  <div className="narrator-calendar-panel">
+  <div className="narrator-calendar-panel" id="temporal-comando">
    <h3>Comando central de tempo</h3>
    <div className="narrator-calendar-settings">
     <label>Ação temporal
@@ -176,10 +194,10 @@ export function NarratorCalendar(){
      {preview.data.backdated&&<p role="alert" className="house-warning">Retrocesso histórico: registros e obras concluídas não serão desfeitos. Exige autorização e justificativa.</p>}
     </>:null}
    </div>
-   <Button type="button" className="narrator-calendar-publish-button" disabled={busy||needsVersionRefresh||!preview.data||preview.isFetching||(preview.data.backdated&&(!allowBackdate||reason.trim().length<10))} onClick={()=>void publish()}>{busy?'Publicando…':mode==='advance'?'Confirmar avanço de désdia':mode==='set'?'Confirmar data oficial':'Publicar eventos'}</Button>
+   <Button type="button" className="narrator-calendar-publish-button" disabled={busy||isStale||needsVersionRefresh||!preview.data||preview.isFetching||(preview.data.backdated&&(!allowBackdate||reason.trim().length<10))} onClick={()=>void publish()}>{busy?'Publicando…':mode==='advance'?'Confirmar avanço de désdia':mode==='set'?'Confirmar data oficial':'Publicar eventos'}</Button>
    <p className="text-sm text-muted-foreground">A publicação é atômica, versionada e protegida por chave de operação. Abrir uma rodada de missivas não altera a data. Alterações no ano serão consumidas pelo registro de personagens em lote posterior.</p>
   </div>
-  <div className="narrator-calendar-panel">
+  <div className="narrator-calendar-panel" id="temporal-eventos">
    <h3>{editId?'Editar evento':'Criar evento em uma data'}</h3>
    <form className="campaign-form narrator-event-form" onSubmit={e=>{e.preventDefault();void saveEvent();}}>
     <CampaignDatePicker value={eventDate} onChange={next=>{eventDateEditedRef.current=true;setEventDate(next);}}/>
@@ -210,9 +228,9 @@ export function NarratorCalendar(){
   </div>
 
   <p role={saveError?'alert':'status'}>{message}</p>
-  {needsVersionRefresh&&<Button type="button" variant="outline" disabled={busy} onClick={()=>void reloadVersion()}>Atualizar versão sem perder data selecionada</Button>}
+  {(needsVersionRefresh||isStale)&&<Button type="button" variant="outline" disabled={busy} onClick={()=>void reloadVersion()}>Atualizar versão sem perder data selecionada</Button>}
   <p className="text-xs text-muted-foreground">Hub Temporal · Lote 4 · Versão do registro: {calendar.data.version}</p>
-  <details><summary>Histórico de mudanças temporais</summary>{history.error&&<p role="alert">Histórico indisponível.</p>}{history.data?.length===0&&<p>Nenhum avanço registrado pelo Hub.</p>}{history.data?.map(entry=><p key={entry.id}>{formatDate(entry.from)} → {formatDate(entry.to)} · {entry.mode} · {entry.reason||'Sem observação'}</p>)}</details>
-  <div className="narrator-calendar-preview"><h3>Calendário publicado · visão dos jogadores</h3><CampaignCalendar/></div>
+  <details id="temporal-historico" open><summary>Histórico de mudanças temporais</summary>{history.error&&<p role="alert">Histórico indisponível.</p>}{history.data?.length===0&&<p>Nenhum avanço registrado pelo Hub.</p>}{history.data?.map(entry=><p key={entry.id}>{formatDate(entry.from)} → {formatDate(entry.to)} · {entry.mode} · {entry.reason||'Sem observação'}</p>)}</details>
+  <div className="narrator-calendar-preview" id="temporal-jogadores"><h3>Calendário publicado · visão dos jogadores</h3><CampaignCalendar/></div>
  </section>;
 }
