@@ -8,7 +8,7 @@ INSERT INTO house_memberships(player_id,house_id,authorized_by) VALUES('10000000
 INSERT INTO campaign_records(id,house_id,visibility,kind,title,content,created_by,updated_by)
 VALUES('10000000-0000-0000-0000-000000000050','mail-a','house','character','Court source','Private biography','10000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000002');
 INSERT INTO noble_house_sheets(house_id,updated_by,state) VALUES('mail-a','10000000-0000-0000-0000-000000000002','{"court":[{"id":"court-1","npcId":"10000000-0000-0000-0000-000000000050","role":"Administrador","name":""}],"units":[{"id":"unit-1","name":"Guard","destroyed":false},{"id":"unit-dead","name":"Destroyed","destroyed":true}]}');
-UPDATE noble_house_sheets SET state='{"schemaVersion":1,"houseId":"mail-a","month":18264,"projects":[{"id":"p","holdingId":"h","start":18264,"duration":1,"modifier":0,"status":"building"}],"holdings":[{"id":"h","status":"building"}]}' WHERE house_id='mail-a';
+UPDATE noble_house_sheets SET state='{"schemaVersion":1,"houseId":"mail-a","phase":"active","month":18264,"projects":[{"id":"p","holdingId":"h","start":18264,"duration":1,"modifier":0,"status":"building"}],"holdings":[{"id":"h","status":"building"}]}' WHERE house_id='mail-a';
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',true);
 SELECT pg_temp.assert(valid_campaign_date('1522-02-30'),'February has 30 days');
