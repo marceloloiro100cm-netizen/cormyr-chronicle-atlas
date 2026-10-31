@@ -59,7 +59,7 @@ SELECT pg_temp.assert(
  (SELECT count(*)=2 FROM public.letter_rounds WHERE harptos_period IS NOT NULL),
  'reopening same active week does not re-stamp period');
 
--- Send a confidential delivered letter using the existing permission-checked API,
+-- Schedule a confidential letter using the existing permission-checked API,
 -- deliberately dated in the PAST. Current campaign time must not change.
 SELECT public.dated_mail_action('send_linked_mail',
  '{"p_key":"30000000-0000-0000-0000-000000000393",
@@ -74,18 +74,6 @@ SELECT pg_temp.assert(
 SELECT pg_temp.assert(
  (public.get_campaign_calendar()->>'festival')='greengrass',
  'historical letter date never replaces campaign present');
-SELECT pg_temp.assert(
- jsonb_array_length(public.calendar_mail_events(1522,0))=1,
- 'Midwinter letter is shown in Hammer only (count='||
- jsonb_array_length(public.calendar_mail_events(1522,0))::text||'; row='||
- coalesce((SELECT jsonb_agg(jsonb_build_object('state',publication_state,'date',campaign_date,'week',delivery_week))::text
- FROM public.campaign_letters WHERE batch_key='30000000-0000-0000-0000-000000000393'),'none')||')');
-SELECT pg_temp.assert(
- jsonb_array_length(public.calendar_mail_events(1522,1))=0,
- 'festival letter is not copied to all other months');
-SELECT pg_temp.assert(
- jsonb_array_length(public.calendar_mail_events(1522,3))=0,
- 'Midwinter letter is not placed in Greengrass month');
 
 SELECT public.dated_mail_action('send_linked_mail',
  '{"p_key":"30000000-0000-0000-0000-000000000394",
@@ -93,6 +81,24 @@ SELECT public.dated_mail_action('send_linked_mail',
  "p_targets":["p:30000000-0000-0000-0000-000000000384"],
  "p_subject":"Carta de Greengrass","p_content":"Correspondência do mês"}'::jsonb,
  '1522-F-greengrass');
+SELECT pg_temp.assert(
+ jsonb_array_length(public.calendar_mail_events(1522,0))=0
+ AND jsonb_array_length(public.calendar_mail_events(1522,3))=0,
+ 'scheduled festival missives are invisible before delivery');
+SELECT public.set_letter_round(3,false);
+SELECT pg_temp.assert(
+ (public.get_campaign_calendar()->>'festival')='greengrass',
+ 'delivering next correspondence week cannot advance Harptos');
+SELECT pg_temp.assert(
+ jsonb_array_length(public.calendar_mail_events(1522,0))=1,
+ 'Midwinter letter is shown in Hammer only after delivery');
+SELECT pg_temp.assert(
+ jsonb_array_length(public.calendar_mail_events(1522,1))=0,
+ 'festival letter is not copied to all other months');
+SELECT pg_temp.assert(
+ jsonb_array_length(public.calendar_mail_events(1522,3))=0,
+ 'Midwinter letter is not placed in Greengrass month');
+
 SELECT pg_temp.assert(
  jsonb_array_length(public.calendar_mail_events(1522,3))=1,
  'Greengrass letter belongs exclusively to Tarsakh');
@@ -129,14 +135,14 @@ SELECT pg_temp.assert(
 
 -- Legacy completed round without stored Harptos period must remain unassigned.
 RESET ROLE;
-INSERT INTO public.letter_rounds(number,status,closed) VALUES (3,'closed',true);
+INSERT INTO public.letter_rounds(number,status,closed) VALUES (4,'closed',true);
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000381',true);
 SELECT pg_temp.assert(
  (public.get_campaign_chronology(1522,3)->>'unassigned_round_count')::integer=1,
  'legacy missing reference reported without fabricated date');
 SELECT pg_temp.assert(
- (SELECT harptos_period IS NULL FROM public.letter_rounds WHERE number=3),
+ (SELECT harptos_period IS NULL FROM public.letter_rounds WHERE number=4),
  'legacy missing round reference stays null');
 
 -- A later year must not rewrite dates, delivery weeks, or the original round reference.
