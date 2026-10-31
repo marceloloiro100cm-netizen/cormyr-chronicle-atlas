@@ -1,4 +1,4 @@
-import { RESOURCE_KEYS, SKILLS, EXTRA_UNIT_SKILLS, UNIT_SKILLS, zeroResources, type CatalogItem, type Cost, type Domain, type HouseState, type Ledger, type Resources, type Resource, type Unit, type Requirement, type Effect } from './types';
+import { RESOURCE_KEYS, SKILLS, EXTRA_UNIT_SKILLS, UNIT_SKILLS, zeroResources, type CatalogItem, type Cost, type Domain, type HouseState, type Ledger, type Resources, type Resource, type Unit, type Skill, type Requirement, type Effect } from './types';
 import { regionBonus } from './regions';
 import { historyAdjustments, memberBonusAdjustments } from './creation-history';
 import { holdingAllocation, legacyCatalogEffects, legacyDestroyedLosses } from './holding-accounting';
