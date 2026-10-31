@@ -107,6 +107,11 @@
       "pr": 147,
       "head": "test/hub-temporal-lote-21-economia-militar-multianos",
       "base": "test/hub-temporal-lote-20-fluxos-integrados"
+    },
+    {
+      "pr": 148,
+      "head": "audit/hub-temporal-lote-22-integracoes-site",
+      "base": "test/hub-temporal-lote-21-economia-militar-multianos"
     }
   ]
 }
