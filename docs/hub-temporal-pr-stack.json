@@ -142,6 +142,11 @@
       "pr": 154,
       "head": "fix/hub-temporal-lote-28-operacoes-em-voo",
       "base": "fix/hub-temporal-lote-27-revogacao-vinculos"
+    },
+    {
+      "pr": 155,
+      "head": "fix/hub-temporal-lote-29-respostas-tardias",
+      "base": "fix/hub-temporal-lote-28-operacoes-em-voo"
     }
   ]
 }
