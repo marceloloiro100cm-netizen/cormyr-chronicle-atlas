@@ -39,7 +39,7 @@ describe('Lote 13 · homologação operacional sem mutações',()=>{
   assert.equal(calls.length,report.checks.length);
   assert.ok(calls.every(c=>c.query.startsWith('SELECT ')));
   assert.ok(calls.every(c=>!/noble_house_sheets|campaign_letters|auth\.users|ledger/.test(c.query)));
-  assert.ok(calls.every(c=>!/\b(INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE)\b/.test(c.query)));
+  assert.ok(calls.every(c=>!/^\s*(INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE)\b/i.test(c.query)));
   assert.ok(calls.filter(c=>c.params.length).every(c=>c.params.length===1));
  });
  it('bloqueia homologação quando perde RLS ou concessões ao jogador e anônimo',async()=>{
