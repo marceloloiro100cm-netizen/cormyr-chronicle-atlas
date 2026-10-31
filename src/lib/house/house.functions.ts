@@ -88,7 +88,7 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
   const admin=Boolean(role.data);if(!admin&&!membership.data)throw new Error('Edição desta casa não autorizada.');
-  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','train_unit','grant_unit_xp','vassal_approve','vassal_end','vassal_loyalty','vassal_npcs','sync_calendar','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
+  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','grant_unit_xp','vassal_approve','vassal_end','vassal_loyalty','vassal_npcs','sync_calendar','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   const duplicate=await db.from('noble_house_ledger').select('after_state,version,actor,action').eq('house_id',data.houseId).eq('operation_key',data.key).maybeSingle();
   if(duplicate.error)throw new Error('Não foi possível conferir a operação.');
@@ -243,7 +243,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     rule='Cormyr · nome de instalação militar sem alteração de custo, efeitos ou alocações';
   }
   if(data.action==='train_unit'){
-    if(!admin)throw new Error('Treinamento fora de batalha exige autorização do Narrador.');
+    // Players with house editing rights may invest their own Power in training; the Narrator grants independent XP.
     if(state.phase!=='active')throw new Error('Treinamento exige campanha ativa.');
     if(data.explanation.trim().length<10)throw new Error('Justifique o treinamento.');
     const {unitId}=z.object({unitId:z.string()}).parse(args);
