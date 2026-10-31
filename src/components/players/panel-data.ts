@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import {loadCampaignAccessScope} from '@/lib/auth/campaign-access-scope';
+import {loadCampaignAccessScope,assertUnchangedAccessScope} from '@/lib/auth/campaign-access-scope';
 
 async function allRows<T>(query:(from:number,to:number)=>PromiseLike<{data:T[]|null;error:unknown}>):Promise<T[]>{
  const rows:T[]=[];
@@ -20,8 +20,7 @@ export async function loadPanel(){
   // Results may arrive after membership revocation or an auth switch. Never
   // publish mixed-authority rows to React Query without a fresh scope check.
   const after=await loadCampaignAccessScope();
-  if(after.userId!==user.id||after.fingerprint!==before.fingerprint)
-    throw new Error('Vínculos alterados durante a consulta. Recarregue o acervo.');
+  assertUnchangedAccessScope(before,after);
   return {user,catalog:catalog.data??[],admin:Boolean(admin),houses:houses.data??[],players:players.data??[],members:members.data??[],records:records.data??[],letters:letters.data??[],receipts:receipts.data??[],replies:replies.data??[],rounds:rounds.data??[]};
 }
 
