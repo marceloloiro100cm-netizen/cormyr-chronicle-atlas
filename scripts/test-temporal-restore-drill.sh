@@ -16,6 +16,12 @@ if [[ "$GITHUB_ACTIONS" != "true" ||
   exit 2
 fi
 [[ -n "$RUNNER_TEMP" && -n "$GITHUB_STEP_SUMMARY" ]] || exit 2
+# Variáveis libpq podem redirecionar a conexão mesmo com PGHOST definido.
+if [[ -n "${PGHOSTADDR:-}" || -n "${PGSERVICE:-}" || -n "${PGSERVICEFILE:-}" ||
+      -n "${PGOPTIONS:-}" ]]; then
+  echo "BLOQUEADO: configuração externa do libpq detectada." >&2
+  exit 2
+fi
 
 fixture="$(psql -XAtq -v ON_ERROR_STOP=1 -d mail_test \
   -c "SELECT current_database()||':'||current_user||':'||
@@ -31,9 +37,12 @@ fi
 
 restore_db="cormyr_temporal_restore_18"
 tmp="$(mktemp -d "$RUNNER_TEMP/temporal-restore.XXXXXXXX")"
+created_by_test=false
 cleanup() {
-  psql -X -q -v ON_ERROR_STOP=1 -d postgres \
-    -c "DROP DATABASE IF EXISTS $restore_db WITH (FORCE)" >/dev/null 2>&1 || true
+  if [[ "$created_by_test" == "true" ]]; then
+    psql -X -q -v ON_ERROR_STOP=1 -d postgres \
+      -c "DROP DATABASE IF EXISTS $restore_db WITH (FORCE)" >/dev/null 2>&1 || true
+  fi
   rm -rf "$tmp"
 }
 trap cleanup EXIT
@@ -65,6 +74,7 @@ if [[ ! -s "$tmp/fixture.backup" || ! -s "$tmp/manifest.txt" ]]; then
 fi
 
 createdb --template=template0 "$restore_db"
+created_by_test=true
 pg_restore --exit-on-error --single-transaction --no-owner \
   --dbname="$restore_db" "$tmp/fixture.backup" \
   > "$tmp/restore.stdout" 2> "$tmp/restore.stderr" || {
