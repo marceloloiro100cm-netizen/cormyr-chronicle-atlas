@@ -67,6 +67,21 @@
       "pr": 139,
       "head": "audit/hub-temporal-lote-13-homologacao-contratos",
       "base": "audit/hub-temporal-lote-12-migration-reconciliation"
+    },
+    {
+      "pr": 140,
+      "head": "audit/hub-temporal-lote-14-gate-release",
+      "base": "audit/hub-temporal-lote-13-homologacao-contratos"
+    },
+    {
+      "pr": 141,
+      "head": "audit/hub-temporal-lote-15-reconciliacao-por-arquivo",
+      "base": "audit/hub-temporal-lote-14-gate-release"
+    },
+    {
+      "pr": 142,
+      "head": "audit/hub-temporal-lote-16-ensaio-replay-isolado",
+      "base": "audit/hub-temporal-lote-15-reconciliacao-por-arquivo"
     }
   ]
 }
