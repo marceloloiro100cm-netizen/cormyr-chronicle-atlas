@@ -102,6 +102,11 @@
       "pr": 146,
       "head": "test/hub-temporal-lote-20-fluxos-integrados",
       "base": "audit/hub-temporal-lote-19-baseline-restaurado"
+    },
+    {
+      "pr": 147,
+      "head": "test/hub-temporal-lote-21-economia-militar-multianos",
+      "base": "test/hub-temporal-lote-20-fluxos-integrados"
     }
   ]
 }
