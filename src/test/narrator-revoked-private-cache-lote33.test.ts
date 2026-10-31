@@ -28,7 +28,9 @@ describe('Lote 33 · ocultação administrativa após perda de privilégios',()=
   purgeRevokedNarratorCache(qc);
   expect(qc.getQueryData(['campaign-access-scope'])).toMatchObject({admin:false});
   for(const k of keys)expect(qc.getQueryData(k)).toBeUndefined();
-  expect(qc.getQueryCache().getAll().length).toBe(1);
+  // Lote 34 keeps a nonprivate route-wide lock until a NEW scope read succeeds.
+  expect(qc.getQueryData(['narrator-access-revoked'])).toMatchObject({revokedAt:expect.any(Number)});
+  expect(qc.getQueryCache().getAll().length).toBe(2);
  });
  it('ambos os painéis bloqueiam renderização e limpam cache na recusa do RPC',()=>{
   const calendar=readFileSync(resolve(process.cwd(),'src/components/calendar/narrator-calendar.tsx'),'utf8');
