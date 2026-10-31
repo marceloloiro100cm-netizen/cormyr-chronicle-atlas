@@ -9,6 +9,7 @@ import { CORE_CATALOG } from './catalog';
 import { newHouseState, RESOURCE_KEYS, type HouseState, type CatalogItem, type Unit, type Resource, type CourtMember } from './types';
 import { alternativeFortune, balances, activeHoldings,createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
 import { calendarMonthIndex, requireCalendarAlignment, reconcileHouseCalendar } from './calendar-consistency';
+import { isMonthSensitiveHouseAction } from './monthly-operation-policy';
 import { confirmFortune, convertResources, runTournament } from './fortune';
 import { historyAdjustments, memberBonusAdjustments, historicalFoundationYear, rollFoundation, rollHistoricalEvent } from './creation-history';
 import { improveEquipment } from './equipment';
@@ -120,7 +121,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     RESOURCE_KEYS.every(r=>state.base[r]===0);
 
   if(data.action==='advance')throw new Error('Avanço individual desativado: publique a data no Calendário global do Narrador.');
-  if(state.phase==='active'&&['fortune','alternative','convert','action','spend_influence','purchase','vassal_purchase'].includes(data.action)){
+  if(state.phase==='active'&&isMonthSensitiveHouseAction(data.action)){
     const response=await context.supabase.rpc('get_campaign_calendar');
     if(response.error||!response.data)throw new Error('Calendário global indisponível; nenhuma operação mensal foi gravada.');
     requireCalendarAlignment(state,response.data as {year:number;month:number});
