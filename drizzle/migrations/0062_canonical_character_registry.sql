@@ -351,7 +351,7 @@ GRANT EXECUTE ON FUNCTION public.save_campaign_character(uuid,integer,jsonb,text
 
 CREATE OR REPLACE FUNCTION public.get_character_registry_hub(p_limit integer DEFAULT 150)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $$
-DECLARE people jsonb;queue jsonb;relations jsonb;pending_total bigint;
+DECLARE people jsonb;queue jsonb;relations jsonb;links jsonb;pending_total bigint;
 BEGIN
  IF NOT public.is_campaign_admin() THEN RAISE EXCEPTION 'Registro canônico restrito ao Narrador'; END IF;
  IF p_limit NOT BETWEEN 1 AND 500 THEN RAISE EXCEPTION 'Limite inválido'; END IF;
@@ -362,10 +362,12 @@ BEGIN
  ORDER BY created_at,source_key LIMIT p_limit) q;
  SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY relation,from_character,to_character),'[]'::jsonb)
  INTO relations FROM public.character_relations r;
+ SELECT coalesce(jsonb_agg(to_jsonb(l) ORDER BY source_kind,source_key),'[]'::jsonb)
+ INTO links FROM public.character_source_links l;
  SELECT count(*) INTO pending_total FROM public.character_review_queue
   WHERE status IN ('pending','conflict');
  RETURN jsonb_build_object('characters',people,'pending',queue,'pending_total',pending_total,
-  'relations',relations,'count',(SELECT count(*) FROM public.campaign_characters));
+  'relations',relations,'links',links,'count',(SELECT count(*) FROM public.campaign_characters));
 END $$;
 REVOKE ALL ON FUNCTION public.get_character_registry_hub(integer) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.get_character_registry_hub(integer) TO authenticated;
