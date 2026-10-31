@@ -11,7 +11,7 @@ O ensaio acrescentado ao CI segue a validação já existente das migrações, d
 1. Exige exclusivamente a conexão de fixture do CI (GITHUB_ACTIONS, TEMPORAL_DISPOSABLE_POSTGRES, host localhost, banco mail_test, usuário postgres e senha de teste). Rejeita variáveis libpq que redirecionam a conexão.
 2. Exige que a fixture contenha os objetos do Hub Temporal. Confere se o banco de destino cormyr_temporal_restore_18 ainda não existe; a limpeza somente remove um banco criado pelo próprio script.
 3. Calcula hashes SHA-256 do esquema e dados da fonte e obtém a projeção pública do calendário, sem divulgar seus valores.
-4. Gera arquivo custom via pg_dump -Fc num diretório temporário do runner, verifica seu catálogo e restaura uma cópia nova, com pg_restore --single-transaction --exit-on-error.
+4. Gera arquivo custom via pg_dump -Fc num diretório temporário do runner, verifica seu catálogo e restaura uma cópia nova, com pg_restore --single-transaction --exit-on-error. As ferramentas pg_dump/pg_restore são executadas com o **cliente PostgreSQL 16 oficial no contêiner postgres:16**, pois o cliente mais recente pré-instalado no runner pode produzir opções incompatíveis com o servidor da fixture.
 5. Compara hashes e data pública entre origem e destino; qualquer divergência interrompe o job.
 6. Executa scripts/test-temporal-homologation-contracts.sql **na restauração**, em transação revertida, para verificar RLS, acesso do jogador comum, RPCs administrativas e relógio público.
 7. Confere que a função sazonal contém a correção season_crossings da migração 0067. Essa checagem é importante porque o Lote 16 comprovou que reaplicar 0066 pode substituí-la por lógica antiga sem erro.
