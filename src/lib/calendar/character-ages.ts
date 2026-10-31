@@ -15,7 +15,7 @@ export type CharacterAgeEntry={
 export type CharacterAgeDashboard={
  current_year:number;target_year:number;
  totals:{total:number;nobles:number;alive:number;deceased:number;pending:number;
-  conflicts:number;unknown:number;aged_nobles:number};
+  conflicts:number;unknown:number;not_born:number;aged_nobles:number};
  characters:CharacterAgeEntry[];truncated:boolean;
 };
 const statuses=new Set<CharacterAgeStatus>(['ok','deceased','not_born','conflict',
@@ -35,7 +35,7 @@ export function validateAgeDashboard(value:unknown,year:number,target:number):Ch
  if(!isObject(value)||value.current_year!==year||value.target_year!==target||
   !isObject(value.totals)||!Array.isArray(value.characters)||typeof value.truncated!=='boolean')
   throw new Error('Prévia anual ausente ou de outro ano.');
- for(const key of ['total','nobles','alive','deceased','pending','conflicts','unknown','aged_nobles']){
+ for(const key of ['total','nobles','alive','deceased','pending','conflicts','unknown','not_born','aged_nobles']){
   if(!positiveInteger(value.totals[key]))throw new Error('Contagem de idades inválida.');
  }
  const seen=new Set<string>();
