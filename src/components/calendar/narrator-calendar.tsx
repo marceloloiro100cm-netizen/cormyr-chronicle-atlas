@@ -6,6 +6,7 @@ import {CampaignDatePicker} from './date-picker';
 import {CampaignCalendar,type CalendarState} from './calendar';
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {calendarPublicationError,samePublishedCalendar} from '@/lib/calendar/publication';
+import {calendarMonthIndex} from '@/lib/house/calendar-consistency';
 
 function calendarErrorMessage(error:unknown):string{
  if(error&&typeof error==='object'&&'message' in error)return String(error.message);
@@ -68,6 +69,10 @@ export function NarratorCalendar(){
   if(!parseDate(date)||week<1||!Number.isInteger(week)){setSaveError(true);setMessage('Informe uma data de Harptos e uma semana válidas.');return;}
   if(needsVersionRefresh){setSaveError(true);setMessage('Atualize a versão do calendário antes de tentar novamente. Sua escolha foi preservada.');return;}
   const expected={date,week,automatic};
+  const selected=parseDate(expected.date);
+  if(selected&&calendarMonthIndex(selected)<calendarMonthIndex(calendar.data)){
+   if(!window.confirm('A data selecionada recua para um mês anterior. Obras concluídas e lançamentos históricos das Casas NÃO serão revertidos automaticamente. Isso poderá deixar fichas adiantadas, exigindo revisão individual. Deseja continuar mesmo assim?'))return;
+  }
   if(!window.confirm(`Publicar ${formatDate(expected.date)} · Rodada ${expected.week} para todas as casas?`))return;
   setBusy(true);setSaveError(false);setMessage('Publicando e confirmando os dados no Supabase…');
   try{
