@@ -207,7 +207,7 @@ export function purchase(state:HouseState,item:CatalogItem,args:{
  const q=quote(item,state,args.domainId,args.parentId,args.supportId,args.replaceId,args.extraAreas??0);
  if(q.errors.length)throw new Error(q.errors.join(' '));
  const next=structuredClone(state),old=args.replaceId?next.holdings.find(h=>h.id===args.replaceId):undefined;
- const upgrading=Boolean(old),building=state.phase==='active'&&(item.duration.months>0||Boolean(item.duration.dice));
+ const upgrading=Boolean(old),building=state.phase==='active'&&(upgrading||item.duration.months>0||Boolean(item.duration.dice));
  const expected=building?(item.duration.dice??0):0;
  if(args.dice.length!==expected||args.dice.some(v=>!Number.isInteger(v)||v<1||v>(item.duration.sides??6)))
   throw new Error('Dados de duração inválidos.');
