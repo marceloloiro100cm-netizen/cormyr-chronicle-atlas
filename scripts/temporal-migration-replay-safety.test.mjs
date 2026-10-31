@@ -28,6 +28,8 @@ describe('Lote 16 · ensaio seguro de migrações em banco de CI descartável',(
   assert.match(shell,/CREATE DATABASE \$active_clone TEMPLATE mail_test/);
   assert.match(shell,/DROP DATABASE \$active_clone WITH \(FORCE\)/);
   assert.match(shell,/trap cleanup EXIT INT TERM/);
+  assert.match(shell,/dump_hash\(\)/);
+  assert.match(shell,/un\)\?restrict/);
   assert.match(shell,/source_schema_before=/);
   assert.match(shell,/source_schema_after=/);
   assert.match(shell,/source_data_before=/);
