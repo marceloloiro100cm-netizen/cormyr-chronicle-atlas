@@ -12,7 +12,7 @@ import { confirmFortune, convertResources, runTournament } from './fortune';
 import { historyAdjustments, memberBonusAdjustments, historicalFoundationYear, rollFoundation, rollHistoricalEvent } from './creation-history';
 import { improveEquipment } from './equipment';
 import { buySiege, changeSiegeAssignment } from './siege';
-import { equipUnit, resolveSurvivors, changeUnitState, trainUnit, proposeVassal, approveVassal, endVassal, SURVIVOR_CONDITIONS } from './military';
+import { equipUnit, resolveSurvivors, changeUnitState, trainUnit, proposeVassal, approveVassal, endVassal, setVassalLoyalty, SURVIVOR_CONDITIONS } from './military';
 import { linkVassalNpcs, validateVassalNpcs } from './vassal-links';
 import { selectUndoSnapshot } from './undo';
 import { legacyCostIssues, reconcileLegacyCosts } from './legacy-cost-reconciliation';
@@ -86,7 +86,7 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
   const admin=Boolean(role.data);if(!admin&&!membership.data)throw new Error('Edição desta casa não autorizada.');
-  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','train_unit','vassal_approve','vassal_end','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
+  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','train_unit','vassal_approve','vassal_end','vassal_loyalty','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   const duplicate=await db.from('noble_house_ledger').select('after_state,version,actor,action').eq('house_id',data.houseId).eq('operation_key',data.key).maybeSingle();
   if(duplicate.error)throw new Error('Não foi possível conferir a operação.');
@@ -234,9 +234,15 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   if(data.action==='vassal_end'){
     if(!admin)throw new Error('Encerrar a vassalagem exige decisão do Narrador.');
     if(data.explanation.trim().length<10)throw new Error('Justificativa de rompimento necessária.');
-    const {id}=z.object({id:z.string()}).parse(args);
-    next=endVassal(state,id,data.explanation);
-    rule='Rompimento auditado: liberação de Poder e término da penalidade de Influência';
+    const {id,forfeitPower}=z.object({id:z.string(),forfeitPower:z.boolean().default(false)}).parse(args);
+    next=endVassal(state,id,data.explanation,forfeitPower);
+    rule='Rompimento auditado: '+(forfeitPower?'perda permanente':'liberação')+' de Poder e término da penalidade de Influência';
+  }
+  if(data.action==='vassal_loyalty'){
+    if(!admin)throw new Error('Somente o Narrador determina lealdade.');
+    const input=z.object({id:z.string(),loyalty:z.enum(['loyal','neutral','rebellious'])}).parse(args);
+    next=setVassalLoyalty(state,input.id,input.loyalty,data.explanation);
+    rule='Lealdade da vassala: '+input.loyalty+'; decisão narrativa auditada';
   }
   if(data.action==='vassal_create'){
     const input=z.object({id:z.string().uuid(),name:z.string().trim().min(1).max(160),region:z.string().min(1).max(100),motto:z.string().max(500),lordName:z.string().max(160)}).parse(args);

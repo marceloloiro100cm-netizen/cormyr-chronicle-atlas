@@ -56,6 +56,7 @@ export function Vassals({
   onPropose,
   onApprove,
   onEnd,
+  onLoyalty,
   onLink,
 }: {
   catalog: CatalogItem[];
@@ -71,6 +72,7 @@ export function Vassals({
   onPropose: (args: Record<string, unknown>) => Promise<boolean>;
   onApprove: (args: Record<string, unknown>, note: string) => Promise<boolean>;
   onEnd: (args:Record<string,unknown>, note:string)=>Promise<boolean>;
+  onLoyalty: (args:Record<string,unknown>, note:string)=>Promise<boolean>;
   onLink: (args: Record<string, unknown>, note: string) => Promise<boolean>;
 }) {
   const [region, setRegion] = useState("");
@@ -197,12 +199,17 @@ export function Vassals({
               ) : (
                 <p className="house-caption">Sem integrante da Corte associado.</p>
               )}
+              {admin && v.status === 'approved' && <details><summary>Alterar lealdade</summary>
+              <form className="campaign-form" onSubmit={async e=>{e.preventDefault();const form=new FormData(e.currentTarget);await onLoyalty({id:v.id,loyalty:String(form.get('loyalty'))},String(form.get('reason')));}}>
+              <label>Postura<select name="loyalty" defaultValue={v.loyalty??'loyal'}>
+                <option value="loyal">Leal</option><option value="neutral">Neutra</option><option value="rebellious">Rebelde</option>
+              </select></label><label>Decisão do Narrador<textarea name="reason" required minLength={10}/></label><Button disabled={busy}>Registrar lealdade</Button></form></details>}
               {admin && v.status === "approved" && <details>
-                <summary>Encerrar vassalagem</summary>
+                <summary>Encerrar vassalagem · Lealdade: {v.loyalty??'não definida'}</summary>
                 <form className="campaign-form" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);
-                  await onEnd({id:v.id},String(f.get('reason')));}}>
+                  await onEnd({id:v.id,forfeitPower:f.get('forfeitPower')==='on'},String(f.get('reason')));}}>
                   <label>Justificativa do Narrador<textarea name="reason" minLength={10} required/></label>
-                  <p>O Poder alocado retorna ao disponível; a penalidade de Influência cessa. A mini-ficha e o histórico são preservados.</p>
+                  <label className="campaign-check"><input name="forfeitPower" type="checkbox"/>Perder permanentemente o Poder investido (guerra, confisco ou rebelião), sem reembolso</label><p>Sem marcação, o Poder alocado retorna ao disponível. A penalidade de Influência cessa nos dois casos; a mini-ficha e o histórico são preservados.</p>
                   <Button disabled={busy} variant="outline">Encerrar vínculo</Button>
                 </form>
               </details>}

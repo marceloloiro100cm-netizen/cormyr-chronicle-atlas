@@ -69,7 +69,7 @@ export function approveVassal(state:HouseState,id:string,influencePenalty:number
  if(!Number.isInteger(influencePenalty)||influencePenalty<0)throw new Error('Ajuste de Influência inválido.');
  const count=(state.vassals??[]).filter(v=>v.status==='approved').length,cost=count===0?20:count===1?10:5;
  if(balances(state).available.power<cost)throw new Error('Poder insuficiente.');
- v.status='approved';v.cost=cost;v.influencePenalty=influencePenalty;v.approvedMonth=state.month;
+ v.status='approved';v.loyalty='loyal';v.cost=cost;v.influencePenalty=influencePenalty;v.approvedMonth=state.month;
  next.holdings.push({id:v.id,itemId:'vassal-'+Math.min(3,count+1),category:'vassal',name:v.name,domainId:'',costs:[{resource:'power',amount:cost,mode:'allocation'}],effects:[],source:'Livro básico · Brasões vassalos; aprovação narrativa',ruleVersion:'2026-10-24',status:'active'});
  return next;
 }
@@ -97,13 +97,22 @@ export function trainUnit(state:HouseState,id:string):HouseState {
 }
 
 /** End fealty, preserving the source and returning the Power allocation. */
-export function endVassal(state:HouseState,id:string,reason:string):HouseState {
+export function endVassal(state:HouseState,id:string,reason:string,forfeitPower=false):HouseState {
  if(reason.trim().length<10)throw new Error('Registre a justificativa do rompimento.');
  const next=structuredClone(state),v=next.vassals?.find(v=>v.id===id);
  if(!v||v.status!=='approved')throw new Error('Vassalagem não está ativa.');
  const holding=next.holdings.find(h=>h.id===v.id&&h.category==='vassal'&&h.status==='active');
  if(!holding)throw new Error('Vínculo não conciliado com a posse de Poder.');
- v.status='ended';v.notes+='\nEncerramento: '+reason.trim();
+ if(forfeitPower){const invested=holding.costs.filter(c=>c.resource==='power'&&c.mode==='allocation').reduce((sum,c)=>sum+c.amount,0);next.permanent.power-=invested;}
+ v.status='ended';v.loyalty='broken';v.notes+='\nEncerramento: '+reason.trim()+(forfeitPower?' · Poder perdido permanentemente':' · Poder alocado liberado');
  holding.status='abandoned';
  return next;
+}
+
+/** Loyalty is a narrator decision, never a random unapproved status. */
+export function setVassalLoyalty(state:HouseState,id:string,loyalty:'loyal'|'neutral'|'rebellious',note:string):HouseState {
+ if(note.trim().length<10)throw new Error('Justifique a alteração de lealdade.');
+ const next=structuredClone(state),v=next.vassals?.find(v=>v.id===id&&v.status==='approved');
+ if(!v)throw new Error('Vassalagem não está ativa.');
+ v.loyalty=loyalty;v.notes+='\\nLealdade: '+loyalty+' — '+note.trim();return next;
 }
