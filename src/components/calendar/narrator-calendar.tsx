@@ -4,6 +4,7 @@ import {supabase} from '@/integrations/supabase/client';
 import {Button} from '@/components/ui/button';
 import {CampaignDatePicker} from './date-picker';
 import {CampaignCalendar,type CalendarState} from './calendar';
+import {TemporalAdvancePanel} from './temporal-advance-panel';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {calendarPublicationError,samePublishedCalendar} from '@/lib/calendar/publication';
@@ -66,6 +67,9 @@ export function NarratorCalendar(){
   if(!parseDate(date)||week<1||!Number.isInteger(week)){setSaveError(true);setMessage('Informe uma data de Harptos e uma semana válidas.');return;}
   if(needsVersionRefresh){setSaveError(true);setMessage('Atualize a versão do calendário antes de tentar novamente. Sua escolha foi preservada.');return;}
   const expected={date,week,automatic};
+  if(date!==dateKey(calendar.data)){
+   setSaveError(true);setMessage('A data do Reino só pode mudar pelo Hub Temporal. Use Prévia do avanço e Confirmar avanço de désdia.');return;
+  }
   const selected=parseDate(expected.date);
   if(selected&&calendarMonthIndex(selected)<calendarMonthIndex(calendar.data)){
    if(!window.confirm('A data selecionada recua para um mês anterior. Obras concluídas e lançamentos históricos das Casas NÃO serão revertidos automaticamente. Isso poderá deixar fichas adiantadas, exigindo revisão individual. Deseja continuar mesmo assim?'))return;
@@ -118,9 +122,10 @@ export function NarratorCalendar(){
  if(calendar.error||drafts.error||!calendar.data)return <p role="alert">Não foi possível carregar o calendário. {calendar.error?.message??drafts.error?.message} <Button type="button" onClick={()=>{calendar.refetch();drafts.refetch();}}>Tentar novamente</Button></p>;
  return <section className="narrator-calendar">
   <div className="campaign-heading"><div><p className="campaign-eyebrow">NARRADOR · CAMPANHA</p><h2>Calendário da campanha</h2></div></div>
-  <p>Defina a semana atual, a data de Harptos e os eventos do reino. Apenas eventos publicados aparecem nas fichas das casas. As missivas privadas continuam restritas aos respectivos destinatários.</p>
+  <p>Gerencie a data pelo Hub Temporal; esta área abaixo publica os eventos e o número de semana de correspondência. As missivas privadas continuam restritas aos destinatários.</p>
+  <TemporalAdvancePanel/>
   <div className="narrator-calendar-panel">
-   <h3>Data e semana da campanha</h3>
+   <h3>Publicação da agenda e semana das missivas</h3>
    <div className="narrator-calendar-settings">
     <CampaignDatePicker value={date} updateOnNavigation onChange={next=>{editedRef.current=true;setDate(next);setMessage('');}}/>
     <div className="narrator-calendar-week-controls">
@@ -130,9 +135,9 @@ export function NarratorCalendar(){
      <Button type="button" className="narrator-calendar-publish-button" disabled={busy||!date||week<1} onClick={()=>void publish()}>{busy?'Publicando…':'Publicar calendário'}</Button>
     </div>
    </div>
-   <label className="narrator-calendar-check"><input type="checkbox" checked={automatic} onChange={e=>{editedRef.current=true;setAutomatic(e.target.checked);setMessage('');}}/>Avançar uma désdia ao abrir nova rodada</label>
+   <label className="narrator-calendar-check"><input type="checkbox" checked={automatic} onChange={e=>{editedRef.current=true;setAutomatic(e.target.checked);setMessage('');}}/>Preferência legada de avanço automático (não modifica a data ao abrir missivas)</label>
    <p className="narrator-calendar-selection" aria-live="polite">Data selecionada para publicação: <strong>{formatDate(date)}</strong> · <strong>Semana {week}</strong></p>
-   <p className="text-sm text-muted-foreground">Avançar um mês pode concluir projetos das casas; retroceder a data não desfaz essas conclusões. A rodada é interna; os jogadores veem a désdia calculada pelo dia.</p>
+   <p className="text-sm text-muted-foreground">Este formulário publica eventos e a semana de entrega. A data oficial só avança pelo painel Hub Temporal acima. Uma seleção manual de data diferente será recusada.</p>
   </div>
   <div className="narrator-calendar-panel">
    <h3>{editId?'Editar evento':'Criar evento em uma data'}</h3>
