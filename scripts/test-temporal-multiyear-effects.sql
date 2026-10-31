@@ -150,7 +150,7 @@ SELECT pg_temp.assert(
 -- Retrying with same operation must never duplicate ledger, delivery or money.
 SELECT pg_temp.assert(
  public.publish_campaign_time_change(
-  (public.get_campaign_calendar()->>'version')::int,
+  4, -- original pre-publication version, not the current clock version
   '30000000-0000-4000-8000-000000000d14','set','1525-01-01',0,
   'Lote 21 salto anual 1525',false)->>'duplicate'='true',
  'last jump replay idempotent');
