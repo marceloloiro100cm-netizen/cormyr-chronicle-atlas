@@ -145,6 +145,10 @@ export function NarratorCalendar(){
     qc.invalidateQueries({queryKey:['calendar-schedule-events']}),
     qc.invalidateQueries({queryKey:['noble-house']}),
     qc.invalidateQueries({queryKey:['house-realm-dashboard']}),
+    qc.invalidateQueries({queryKey:['house-character-ages']}),
+    qc.invalidateQueries({queryKey:['character-age-dashboard']}),
+    qc.invalidateQueries({queryKey:['character-year-transitions']}),
+    qc.invalidateQueries({queryKey:['character-age-impact']}),
    ]);
    const delayed=results.some(r=>r.status==='rejected');
    setMessage('Calendário gravado e confirmado: '+formatDate(dateKey(saved!))+
@@ -224,7 +228,7 @@ export function NarratorCalendar(){
    <p className="text-sm text-muted-foreground">A publicação é atômica, versionada e protegida por chave de operação. Abrir uma rodada de missivas não altera a data. Alterações no ano serão consumidas pelo registro de personagens em lote posterior.</p>
   </div>
   <NarratorCharacterRegistry/>
-  <NarratorCharacterAges targetYear={preview.data?parseDate(preview.data.to)?.year:undefined}/>
+  <NarratorCharacterAges targetYear={annualChange?projectedYear:undefined}/>
   <div className="narrator-calendar-panel" id="temporal-eventos">
    <h3>{editId?'Editar evento':'Criar evento em uma data'}</h3>
    <form className="campaign-form narrator-event-form" onSubmit={e=>{e.preventDefault();void saveEvent();}}>
