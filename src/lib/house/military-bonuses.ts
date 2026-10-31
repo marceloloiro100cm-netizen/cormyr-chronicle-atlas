@@ -57,7 +57,8 @@ export function unitMilitaryBonuses(state:HouseState,unit:Unit){
  let defense=0,armorRating=0,fightingDamage=0,marksmanshipDamage=0,meleeBonusDice=0,trackingBonusDice=0,discipline=0,warshipCasualtyMitigation=0;
  const stationed=unit.atHome!==false;
  const shields:{holding:Holding;value:number}[]=[];
- if(stationed)for(const h of state.holdings.filter(h=>h.status==='active'&&h.domainId===unit.domainId)){
+ // Use activeHoldings to respect a parent's condition and other effect availability rules.
+ if(stationed)for(const h of activeHoldings(state).filter(h=>h.domainId===unit.domainId)){
   const fort:Record<string,number>={tower:3,hall:4,'small-castle':6,castle:8,'superior-castle':12,'pros-gaol':4};
   const points=fort[h.itemId]??(
    (h.itemId==='pros-abbey--warrior-brotherhood'||h.itemId==='pros-trading-inn')&&h.militaryUnitId===unit.id?2:0
