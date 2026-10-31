@@ -70,7 +70,7 @@ export function UnitSheet({unit,state,houseName,canEdit,admin,busy,onEdit,onGran
     {[...(unit.xpEvents??[])].reverse().slice(0,20).map(e=><p key={e.id} className={e.delta<0?'military-xp-loss':''}>{e.delta>0?'+':''}{e.delta} XP · {e.kind==='award'?'Recompensa':'Treinamento'} · {e.reason}</p>)}
    </details>}
   </section>
-  {canEdit&&!unit.destroyed&&<Button type="button" variant="outline" onClick={()=>setEditing(v=>!v)}>{editing?'Cancelar edição':'Editar ficha e habilidades'}</Button>}
+  {canEdit&&!unit.destroyed&&<Button type="button" className="military-sheet-edit" variant="outline" onClick={()=>setEditing(v=>!v)}>{editing?'Cancelar edição':'Editar ficha e habilidades'}</Button>}
   {editing&&canEdit&&<div className="military-sheet-form">
    <div className="house-input-grid">
     <label>Nome da unidade<input maxLength={160} required value={name} onChange={e=>setName(e.target.value)}/></label>
