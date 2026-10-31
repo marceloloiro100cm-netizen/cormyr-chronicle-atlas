@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {useQueryClient,type QueryClient} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
+import {temporalQueryKeysForInvalidation} from '@/lib/calendar/time-connections';
 
 type CalendarRealtimeStatus='connecting'|'live'|'fallback';
 type Subscriber=(status:CalendarRealtimeStatus)=>void;
@@ -27,15 +28,8 @@ function connect(qc:QueryClient):RealtimeEntry{
  const entry:RealtimeEntry={channel,watchers:new Set(),status:'connecting'};
  connections.set(qc,entry);
  const refresh=()=>{
-  for(const prefix of [
-   ['campaign-calendar'],['calendar-schedule-events'],
-   ['campaign-schedule-drafts'],['campaign-time-history'],
-   ['campaign-chronology'],['calendar-events'],
-   ['noble-house'],['house-realm-dashboard'],
-   ['house-time-impact'],['temporal-consumer-dashboard'],['temporal-release-preflight'],
-   ['house-character-ages'],['character-age-dashboard'],
-   ['character-age-impact'],['character-year-transitions'],
-  ])void qc.invalidateQueries({queryKey:prefix});
+  for(const prefix of temporalQueryKeysForInvalidation())
+   void qc.invalidateQueries({queryKey:prefix});
  };
  channel.on('postgres_changes',{
   event:'UPDATE',schema:'public',table:'campaign_calendar',
