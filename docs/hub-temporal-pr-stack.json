@@ -177,6 +177,11 @@
       "pr": 161,
       "head": "fix/hub-temporal-lote-35-revogacao-consultas-privadas",
       "base": "fix/hub-temporal-lote-34-bloqueio-global-revogacao"
+    },
+    {
+      "pr": 162,
+      "head": "fix/hub-temporal-lote-36-falha-verificacao-cargo",
+      "base": "fix/hub-temporal-lote-35-revogacao-consultas-privadas"
     }
   ]
 }
