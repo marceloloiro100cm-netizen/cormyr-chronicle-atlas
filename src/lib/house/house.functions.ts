@@ -15,7 +15,7 @@ import { improveEquipment } from './equipment';
 import { buySiege, changeSiegeAssignment } from './siege';
 import { equipUnit, resolveSurvivors, changeUnitState, trainUnit, proposeVassal, approveVassal, endVassal, setVassalLoyalty, SURVIVOR_CONDITIONS } from './military';
 import { linkVassalNpcs, validateVassalNpcs } from './vassal-links';
-import { editUnitProfile,grantUnitXp,renameMilitaryHolding } from './unit-progression';
+import { editUnitProfile,grantUnitXp,renameMilitaryHolding,unitAllowedSkills } from './unit-progression';
 import { selectUndoSnapshot } from './undo';
 import { legacyCostIssues, reconcileLegacyCosts } from './legacy-cost-reconciliation';
 import { depositGold, donateGold, donateGlory, spendInfluence, redeemIntrigueBonus } from './resource-transactions';
@@ -236,6 +236,46 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     next=grantUnitXp(state,input);
     data.explanation=input.reason;
     rule='Cormyr · prêmio de experiência livre pelo Narrador, sem alterar treinamento nem habilidades';
+  }
+  if(data.action==='military_config'){
+    const input=z.object({holdingId:z.string(),kind:z.enum(['skill','unit','type']),value:z.string().max(160)}).parse(args);
+    const h=next.holdings.find(h=>h.id===input.holdingId&&h.status==='active');
+    if(!h)throw new Error('Posse militar ativa não encontrada.');
+    if(input.kind==='skill'){
+      if(h.itemId!=='pros-military-academy--core-training')throw new Error('Esta posse não permite selecionar habilidade.');
+      h.militarySkill=z.enum(['agility','athletics','awareness','endurance','fighting','marksmanship','stealth','cunning','healing','animalHandling','warfare','survival']).parse(input.value);
+    }else if(input.kind==='type'){
+      if(h.itemId!=='pros-master-of-arms--field-master')throw new Error('Especialidade inválida para esta posse.');
+      if(!UNIT_TYPES.some(t=>t.id===input.value))throw new Error('Tipo de unidade não encontrado.');
+      h.militaryTypeId=input.value;
+    }else{
+      if(!['pros-trading-inn','pros-abbey--warrior-brotherhood'].includes(h.itemId))throw new Error('A posse não permite designar uma unidade.');
+      if(input.value&&!next.units.some(u=>u.id===input.value&&!u.destroyed&&u.domainId===h.domainId))throw new Error('Unidade não pertence ao domínio da posse.');
+      h.militaryUnitId=input.value||undefined;
+    }
+    rule='Configuração auditada de bônus militar: '+h.name+' · '+input.kind+' '+input.value;
+  }
+  if(data.action==='war_hounds'){
+    const input=z.object({unitId:z.string(),holdingId:z.string()}).parse(args);
+    const unit=next.units.find(u=>u.id===input.unitId&&!u.destroyed);
+    const h=next.holdings.find(h=>h.id===input.holdingId&&h.itemId==='pros-dog-kennels--war-hounds'&&h.status==='active');
+    if(!unit||!h)throw new Error('Unidade ou Cães de Guerra indisponíveis.');
+    if(unit.types.includes('warships')||(unit.types.includes('cavalry')&&unit.mounted!==false))throw new Error('Cães de Guerra exigem unidade não montada e não naval.');
+    if(unit.warHoundsHoldingId)throw new Error('Unidade já equipada com cães de guerra.');
+    if(balances(state).available.wealth<2)throw new Error('Sem recursos: exigem 2 Riqueza para equipar os cães.');
+    unit.warHoundsHoldingId=h.id;unit.costs.push({resource:'wealth',amount:2,mode:'permanent'});
+    next.permanent.wealth-=2;
+    rule='Cães de Guerra equipados na unidade por 2 Riqueza permanente · '+h.name;
+  }
+  if(data.action==='broad_training'){
+    const input=z.object({unitId:z.string(),skill:z.enum(['agility','athletics','awareness','endurance','fighting','marksmanship','stealth','cunning','healing','animalHandling','warfare','survival'])}).parse(args);
+    if(!next.holdings.some(h=>h.itemId==='pros-military-academy--broad-training'&&h.status==='active'))throw new Error('Treinamento Amplo não está ativo.');
+    const unit=next.units.find(u=>u.id===input.unitId&&!u.destroyed);
+    if(!unit||unit.broadTrainingSkill)throw new Error('Unidade indisponível ou já treinada.');
+    if(unitAllowedSkills(unit).has(input.skill))throw new Error('Escolha a quarta habilidade fora das disponíveis originalmente.');
+    unit.broadTrainingSkill=input.skill;
+    next.actions.push({month:state.month,type:'broad_training',notes:unit.name+' · Treinamento Amplo: '+input.skill});
+    rule='Ação da Casa: Treinamento Amplo concede quarta habilidade elegível à unidade';
   }
   if(data.action==='military_rename'){
     const input=z.object({holdingId:z.string(),name:z.string().min(2).max(160)}).parse(args);
