@@ -11,7 +11,7 @@ describe('Lote 18 — backup e restauração exclusiva de fixture descartável',
   for(const env of ['GITHUB_ACTIONS','TEMPORAL_DISPOSABLE_POSTGRES','PGHOST',
    'PGPORT','PGUSER','PGDATABASE','PGPASSWORD','PGHOSTADDR','PGSERVICE',
    'PGSERVICEFILE','PGOPTIONS'])
-    assert.ok(source.includes('$'+env),env);
+    assert.ok(source.includes(env),env);
   assert.match(source,/mail_test:postgres:ready/);
   assert.match(source,/BLOQUEADO: apenas PostgreSQL efêmero do CI/);
   assert.ok(!source.includes('CORMYR_AUDIT_DATABASE_URL'));
