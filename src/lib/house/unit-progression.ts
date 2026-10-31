@@ -60,7 +60,7 @@ export function editUnitProfile(state:HouseState,input:{unitId:string;name:strin
  }
  u.name=input.name.trim();u.origin=input.origin.trim();u.notes=input.notes.trim();u.situation=input.situation.trim();
  u.bonusXp=old.bonus;u.skills=input.skills;u.extraSkills=nextExtra;u.xp=old.total-newSpent;
- u.health=Math.min(u.health,unitStats(u).maxHealth);
+ u.health=Math.min(u.health,unitStats(u,next).maxHealth);
  return next;
 }
 export function grantUnitXp(state:HouseState,input:{unitId:string;amount:number;reason:string}):HouseState{
