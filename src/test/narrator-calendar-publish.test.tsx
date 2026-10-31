@@ -256,7 +256,8 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
    events:[],rounds:[],unassigned_round_count:0,
   },error:null};
   if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
-   if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
+   if(name==='is_campaign_admin')return {data:true,error:null};
+  if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
    if(name==='get_campaign_schedule_drafts'||name==='get_campaign_time_history')return {data:[],error:null};
    if(name==='preview_campaign_time_change')return {data:previewFor(args!),error:null};
    if(name==='publish_campaign_time_change')return {data:{...mock.current},error:null};
