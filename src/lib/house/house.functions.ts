@@ -7,7 +7,8 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { operationSchema, resourcesSchema, catalogSchema, unitSchema } from './schemas';
 import { CORE_CATALOG } from './catalog';
 import { newHouseState, RESOURCE_KEYS, type HouseState, type CatalogItem, type Unit, type Resource, type CourtMember } from './types';
-import { advance, alternativeFortune, balances, createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
+import { alternativeFortune, balances, createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
+import { calendarMonthIndex, requireCalendarAlignment, reconcileHouseCalendar } from './calendar-consistency';
 import { confirmFortune, convertResources, runTournament } from './fortune';
 import { historyAdjustments, memberBonusAdjustments, historicalFoundationYear, rollFoundation, rollHistoricalEvent } from './creation-history';
 import { improveEquipment } from './equipment';
@@ -86,7 +87,7 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
   const admin=Boolean(role.data);if(!admin&&!membership.data)throw new Error('Edição desta casa não autorizada.');
-  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','train_unit','vassal_approve','vassal_end','vassal_loyalty','vassal_npcs','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
+  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','train_unit','vassal_approve','vassal_end','vassal_loyalty','vassal_npcs','sync_calendar','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   const duplicate=await db.from('noble_house_ledger').select('after_state,version,actor,action').eq('house_id',data.houseId).eq('operation_key',data.key).maybeSingle();
   if(duplicate.error)throw new Error('Não foi possível conferir a operação.');
@@ -109,6 +110,12 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     !state.importSources.length&&state.holdings.length===0&&state.units.length===0&&
     RESOURCE_KEYS.every(r=>state.base[r]===0);
 
+  if(data.action==='advance')throw new Error('Avanço individual desativado: publique a data no Calendário global do Narrador.');
+  if(state.phase==='active'&&['fortune','alternative','convert','action','spend_influence','purchase','vassal_purchase'].includes(data.action)){
+    const response=await context.supabase.rpc('get_campaign_calendar');
+    if(response.error||!response.data)throw new Error('Calendário global indisponível; nenhuma operação mensal foi gravada.');
+    requireCalendarAlignment(state,response.data as {year:number;month:number});
+  }
   if(state.phase==='review'&&!['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_gold','donate_glory','spend_influence','redeem_intrigue','crest_import','approve','correct','return_to_draft','clear_pending'].includes(data.action))throw new Error('Criação em revisão; aguarde aprovação ou correção do Narrador.');
   if(data.action==='draft') {
     if(state.phase!=='draft')throw new Error('Ficha em revisão ou ativa exige edição auditada do Narrador.');
@@ -278,7 +285,14 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     next.phase='review';
   }
   if(data.action==='approve'){if(state.phase!=='review')throw new Error('Envie a criação para revisão primeiro.');if(state.pending.length)throw new Error('Resolva as pendências de conciliação.');next.phase='active';}
-  if(data.action==='advance')next=advance(state,z.number().int().parse(args['month']));
+  if(data.action==='sync_calendar'){
+    if(!admin)throw new Error('Somente o Narrador pode conciliar o calendário de uma Casa.');
+    const response=await context.supabase.rpc('get_campaign_calendar');
+    if(response.error||!response.data)throw new Error('Calendário global indisponível; conciliação cancelada.');
+    const calendar=response.data as {year:number;month:number};
+    next=reconcileHouseCalendar(state,calendar,data.explanation);
+    rule='Conciliação auditada com o mês global de Harptos '+calendarMonthIndex(calendar)+'; obras conferidas; sem retrocesso';
+  }
   if(data.action==='alternative'){if(state.phase!=='active')throw new Error('A casa precisa estar ativa.');next=alternativeFortune(state,z.enum(RESOURCE_KEYS).parse(args['resource']) as Resource);}
   if(data.action==='condition'){
     if(!admin&&state.phase==='active')throw new Error('A baixa em campanha exige decisão do Narrador.');
