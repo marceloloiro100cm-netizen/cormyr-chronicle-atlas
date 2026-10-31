@@ -152,6 +152,11 @@
       "pr": 156,
       "head": "audit/hub-temporal-lote-30-gate-seguranca",
       "base": "fix/hub-temporal-lote-29-respostas-tardias"
+    },
+    {
+      "pr": 157,
+      "head": "fix/hub-temporal-lote-31-identidade-escopo-atomico",
+      "base": "audit/hub-temporal-lote-30-gate-seguranca"
     }
   ]
 }
