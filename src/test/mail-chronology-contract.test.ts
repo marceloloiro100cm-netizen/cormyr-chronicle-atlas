@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {
- formatRoundHarptosReference,roundPeriodMatchesCurrent,
+ formatRoundHarptosReference,roundPeriodMatchesCurrent,roundReferenceBelongsToMonth,
  validateCampaignChronology,
 } from '@/lib/calendar/chronology';
 
@@ -39,5 +39,36 @@ describe('Hub Temporal · Lote 8 · distinção entre rodada e désdia',()=>{
   expect(()=>validateCampaignChronology({...value,events:[
    {id:'letter:1',date:'1524-F-midwinter',title:'Mês errado',kind:'mail'},
   ]},1524,6)).toThrow();
+ });
+});
+
+describe('Lote 25 · referência histórica não acompanha retificação da data atual',()=>{
+ const source={
+  year:1524,month:6,unassigned_round_count:1,
+  events:[{id:'letter:festival',date:'1524-F-shieldmeet',
+   title:'Correspondência entregue',kind:'mail'}],
+  rounds:[{number:3,status:'closed',harptos_period:'1524-F-shieldmeet'}],
+ };
+ it('festivais e désdias pertencem apenas a seus próprios mês e ano',()=>{
+  expect(roundReferenceBelongsToMonth('1524-F-shieldmeet',1524,6)).toBe(true);
+  expect(roundReferenceBelongsToMonth('1524-F-shieldmeet',1524,0)).toBe(false);
+  expect(roundReferenceBelongsToMonth('1523-F-shieldmeet',1523,6)).toBe(false);
+  expect(roundReferenceBelongsToMonth('1524-07:désdia-2',1524,6)).toBe(true);
+  expect(roundReferenceBelongsToMonth('1524-08:désdia-2',1524,6)).toBe(false);
+  expect(roundReferenceBelongsToMonth('1523-07:désdia-2',1524,6)).toBe(false);
+  expect(roundReferenceBelongsToMonth(null,1524,6)).toBe(false);
+ });
+ it('refusa rodada externa, sem data, duplicada ou inventada pela data atual',()=>{
+  expect(validateCampaignChronology(source,1524,6).rounds[0]?.harptos_period)
+   .toBe('1524-F-shieldmeet');
+  const change=(period:string|null)=>({
+   ...source,rounds:[{number:3,status:'closed',harptos_period:period}],
+  });
+  for(const period of [null,'1523-07:désdia-1','1524-08:désdia-2',
+   '1524-F-midwinter','1523-F-shieldmeet','1524-07-12'])
+   expect(()=>validateCampaignChronology(change(period),1524,6)).toThrow();
+  expect(()=>validateCampaignChronology({
+   ...source,rounds:[...source.rounds,{...source.rounds[0]}],
+  },1524,6)).toThrow();
  });
 });
