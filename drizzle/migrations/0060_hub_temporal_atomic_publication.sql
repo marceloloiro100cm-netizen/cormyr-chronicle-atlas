@@ -161,10 +161,10 @@ BEGIN
  SELECT coalesce(jsonb_agg(y ORDER BY
   CASE WHEN end_ordinal>=start_ordinal THEN y ELSE -y END),'[]'::jsonb)
  INTO year_crossings
- FROM generate_series(least(c.year,left(end_date,4)::integer)+1,
+ FROM generate_series(least(c.year,left(end_date,4)::integer),
   greatest(c.year,left(end_date,4)::integer)) as y
  WHERE (end_ordinal>start_ordinal AND y>c.year)
-    OR (end_ordinal<start_ordinal AND y<=c.year);
+    OR (end_ordinal<start_ordinal AND y<c.year);
  SELECT count(*)::integer INTO house_count FROM public.noble_house_sheets
  WHERE state->>'schemaVersion'='1' AND state ? 'month';
  RETURN jsonb_build_object(
