@@ -137,13 +137,13 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
    if(name==='publish_campaign_time_change')return {data:null,error:{message:'Calendário alterado; recarregue antes de salvar'}};
    return {data:[],error:null};
   });
-  await waitFor(()=>expect(screen.getByRole('button',{name:'Confirmar data oficial'})).toBeEnabled());
-  fireEvent.click(screen.getByRole('button',{name:'Confirmar data oficial'}));
-  expect(await screen.findByRole('alert')).toHaveTextContent('outra sessão');
-  expect(screen.getByRole('button',{name:'Confirmar data oficial'})).toBeDisabled();
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Confirmar data oficial'})).toBeDisabled());
+  expect(await screen.findByText(/O calendário foi alterado em outra sessão/)).toBeInTheDocument();
+  expect(mock.rpc).not.toHaveBeenCalledWith('publish_campaign_time_change',expect.anything());
   mock.current={...mock.current,version:2,day:6};
   fireEvent.click(screen.getByRole('button',{name:/Atualizar versão sem perder data selecionada/}));
   expect(await screen.findByText(/Versão atualizada. Sua seleção foi preservada/)).toBeInTheDocument();
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Confirmar data oficial'})).toBeEnabled());
  });
  it('retrocesso exige confirmação expressa e justificativa antes de habilitar o botão',async()=>{
   mock.current={...mock.current,month:1,day:1};
