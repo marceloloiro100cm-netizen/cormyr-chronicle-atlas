@@ -80,7 +80,7 @@ function MilitaryAssetCard({item,holdings,state,canEdit,busy,onRename,onBuy}:{
  const readiness=mayBuy?militaryPurchaseReadiness(item,state):'requirements';
  const prerequisites=militaryItems.filter(other=>other.requirements.some(r=>r.kind==='parent'&&r.values?.includes(item.id)));
  const status=owned.length?owned.map(h=>h.name).join(' · '):
-  building.length?'Em construção: '+building.map(h=>h.name).join(' · '):'Não adquirido';
+  building.length?'Em construção: '+building.map(h=>h.name).join(' · '):item.id==='pros-military-academy'?'Não adquirida':'Não adquirido';
  const buttonLabel=readiness==='money'?'Sem recursos':
   readiness==='domain'?'Defina um domínio':
   readiness==='requirements'?'Pré-requisitos pendentes':'Comprar';
