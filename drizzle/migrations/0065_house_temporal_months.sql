@@ -123,9 +123,8 @@ BEGIN
   start_month:=(s.state->>'month')::integer;
   -- Uma Casa adiantada (ex.: retificacao historica) nao pode ser revertida.
   IF start_month>=target_month THEN CONTINUE; END IF;
-  IF start_month>c.year*12+c.month THEN
-   RAISE EXCEPTION 'Casa % adiantada frente ao Reino; concilie antes do avancar',s.house_id;
-  END IF;
+  -- Retificacoes historicas podem deixar a Casa adiantada em relacao ao
+  -- periodo anterior do Reino: avance apenas a diferenca ainda nao processada.
   -- Protecao contra uma ficha que foi artificialmente retrocedida e cujo
   -- periodo de destino ja foi efetivamente processado no livro-razão.
   IF EXISTS(SELECT 1 FROM public.noble_house_ledger l
