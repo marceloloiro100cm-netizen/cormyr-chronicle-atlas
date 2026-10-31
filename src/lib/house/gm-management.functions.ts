@@ -1,10 +1,12 @@
 import {createServerFn} from '@tanstack/react-start';
+import type {SupabaseClient} from '@supabase/supabase-js';
+import type {Database} from '@/integrations/supabase/types';
 import {z} from 'zod';
 import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
 import {balances,maxHouseStatus} from './engine';
 import type {HouseState} from './types';
 
-const onlyAdmin=async(db: {rpc:(name:'is_campaign_admin')=>PromiseLike<{data:boolean|null;error:unknown}>})=>{
+const onlyAdmin=async(db:SupabaseClient<Database>)=>{
  const r=await db.rpc('is_campaign_admin');
  if(r.error||!r.data)throw new Error('Somente o Narrador pode consultar este painel.');
 };
