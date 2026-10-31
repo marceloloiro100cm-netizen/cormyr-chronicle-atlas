@@ -38,6 +38,7 @@ export function PurchaseDrawer({
   const [supportId, setSupport] = useState('');
   const [replaceId, setReplaceId] = useState('');
   const [name, setName] = useState('');
+  const [weaponSpecialty,setWeaponSpecialty] = useState<'fighting'|'marksmanship'|''>('');
   const [compare, setCompare] = useState<string[]>([]);
 
   const purchaseId = useRef<string | null>(null);
@@ -54,6 +55,7 @@ export function PurchaseDrawer({
       setAvailable(false);
       setItem('');
       setName('');
+      setWeaponSpecialty('');
       setCompare([]);
     }
   }, [open, initialCategory]);
@@ -238,7 +240,7 @@ export function PurchaseDrawer({
             <div className="house-catalog-list">
               {visible.map(item => (
                 <article className={itemId === item.id ? 'selected' : ''} key={item.id}>
-                  <Button variant="ghost" className="house-item-select" onClick={() => { purchaseId.current = null; setItem(item.id); setName(item.name); }}>
+                  <Button variant="ghost" className="house-item-select" onClick={() => { purchaseId.current = null; setItem(item.id); setName(item.name); setWeaponSpecialty(''); }}>
                     <span>
                       <strong>{item.name}</strong>
                       <small>{item.original} · {labels[item.category] ?? item.category}</small>
@@ -294,6 +296,13 @@ export function PurchaseDrawer({
               Nome da posse
               <input value={name} onChange={e => setName(e.target.value)} />
             </label>
+            {selected.id==='pros-bowyer-fletcher-or-weaponsmith'&&<label>Especialização (define o bônus de dano)
+              <select required value={weaponSpecialty} onChange={e=>setWeaponSpecialty(e.target.value as 'fighting'|'marksmanship'|'')}>
+                <option value="">Escolha uma especialização</option>
+                <option value="fighting">Armeiro · +1 de Dano em Luta</option>
+                <option value="marksmanship">Arqueiro/Flecheiro · +1 de Dano em Pontaria</option>
+              </select>
+            </label>}
             <label>
               <span><MapPin size={16} /> Domínio</span>
               <select value={domainId} onChange={e => { setDomain(e.target.value); setSupport(''); setParent(''); setReplaceId(''); }}>
@@ -375,9 +384,9 @@ export function PurchaseDrawer({
             {q.errors.map((error, i) => <p className="house-warning" key={i}>{error}</p>)}
             <div className="campaign-actions">
               <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
-              <Button disabled={busy || q.errors.length > 0} onClick={async () => {
+              <Button disabled={busy || q.errors.length > 0 || (selected.id==='pros-bowyer-fletcher-or-weaponsmith'&&!weaponSpecialty)} onClick={async () => {
                 purchaseId.current ??= crypto.randomUUID();
-                if (await onConfirm({ id: purchaseId.current, itemId: selected.id, domainId, parentId: parentId || undefined, supportId: supportId || undefined, replaceId: replaceId || undefined, name })) {
+                if (await onConfirm({ id: purchaseId.current, itemId: selected.id, domainId, parentId: parentId || undefined, supportId: supportId || undefined, replaceId: replaceId || undefined, name, weaponSpecialty: selected.id==='pros-bowyer-fletcher-or-weaponsmith'?weaponSpecialty:undefined })) {
                   purchaseId.current = null;
                   setStep(0);
                   setItem('');

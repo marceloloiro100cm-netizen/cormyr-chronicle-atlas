@@ -203,7 +203,8 @@ export function quote(item: CatalogItem, state: HouseState, domainId: string, pa
   for (const r of RESOURCE_KEYS) if (after[r]<0) errors.push(`Saldo insuficiente: ${r}.`);
   return {before:before.available,after,costs,original:item.costs,discounts,errors,replacedCosts};
 }
-export function purchase(state: HouseState, item: CatalogItem, args: {id:string;domainId:string;name:string;parentId?:string | undefined;supportId?:string|undefined;dice:number[];replaceId?:string|undefined}): HouseState {
+export function purchase(state: HouseState, item: CatalogItem, args: {id:string;domainId:string;name:string;parentId?:string | undefined;supportId?:string|undefined;dice:number[];replaceId?:string|undefined;weaponSpecialty?:'fighting'|'marksmanship'|undefined}): HouseState {
+  if(item.id==='pros-bowyer-fletcher-or-weaponsmith'&&!args.weaponSpecialty)throw new Error('Escolha Armeiro (Luta) ou Arqueiro/Flecheiro (Pontaria).');
   const q = quote(item,state,args.domainId,args.parentId,args.supportId,args.replaceId); if(q.errors.length) throw new Error(q.errors.join(' '));
   const next = structuredClone(state), building = state.phase==='active' && (item.duration.months>0||Boolean(item.duration.dice));
   const expected = building ? (item.duration.dice??0) : 0;
@@ -222,7 +223,7 @@ export function purchase(state: HouseState, item: CatalogItem, args: {id:string;
 
   const allocatedCosts: Partial<Record<Resource, number>> = {};
   for(const c of q.costs) if(c.mode === 'allocation') allocatedCosts[c.resource] = (allocatedCosts[c.resource] || 0) + c.amount;
-  next.holdings.push({id:args.id,itemId:item.id,name:args.name||item.name,domainId:args.domainId,parentId:args.parentId,supportId:args.supportId,coexists:item.coexists,costs:q.costs,originalCosts:structuredClone(item.costs),discounts:q.discounts,category:item.category,effects:structuredClone(item.effects),ruleVersion:item.version,source:item.source+' · '+item.section,status:building?'building':'active',allocatedCosts});
+  next.holdings.push({id:args.id,itemId:item.id,name:args.name||item.name,domainId:args.domainId,parentId:args.parentId,supportId:args.supportId,coexists:item.coexists,costs:q.costs,originalCosts:structuredClone(item.costs),discounts:q.discounts,category:item.category,weaponSpecialty:item.id==='pros-bowyer-fletcher-or-weaponsmith'?args.weaponSpecialty:undefined,effects:structuredClone(item.effects),ruleVersion:item.version,source:item.source+' · '+item.section,status:building?'building':'active',allocatedCosts});
   for(const cost of q.costs) if(cost.mode==='permanent') next.permanent[cost.resource]-=cost.amount;
   const domain = next.domains.find(d=>d.id===args.domainId);
   if(domain) { if(item.category==='terrain') domain.terrain=item.id; if(item.category==='feature') domain.features.push(item.id); if(item.category==='community') domain.community=item.id; }
@@ -281,7 +282,7 @@ export function createUnit(state: HouseState, unit: Unit, types: UnitType[]): Ho
   const costs:Cost[]=[{resource:'power',amount:training.power+selected.reduce((n,t)=>n+(t?.cost??0),0),mode:'allocation'}];
   if(unit.types.includes('levies')) costs.push({resource:'population',amount:2,mode:'permanent'});
   if(unit.types.includes('mercenaries')) costs.push({resource:'wealth',amount:({green:1,trained:3,veteran:6,elite:9})[unit.training as keyof typeof TRAINING],mode:'permanent'});
-  for(const cost of costs){const discounts=activeHoldings(state).flatMap(h=>h.effects.filter(e=>e.kind==='discount'&&e.resource===cost.resource&&unit.types.some(t=>e.target==='unit:'+t)));const sum=discounts.reduce((a,b)=>a+(b.amount??0),0);cost.amount=Math.max(cost.amount>0?1:0,cost.amount-sum);}
+  for(const cost of costs){const discounts=activeHoldings(state).flatMap(h=>h.effects.filter(e=>e.kind==='discount'&&e.resource===cost.resource&&unit.types.some(t=>e.target==='unit:'+t)));const sum=discounts.reduce((a,b)=>a+(b.amount??0),0);cost.amount=Math.max(cost.resource==='population'&&unit.types.includes('levies')?0:(cost.amount>0?1:0),cost.amount-sum);}
   const available = balances(state).available;
   for(const cost of costs) {available[cost.resource]-=cost.amount;if(available[cost.resource]<0)throw new Error('Saldo insuficiente para a unidade.');}
   if(state.units.some(u=>u.id===unit.id))throw new Error('Identificador da unidade já utilizado.');
