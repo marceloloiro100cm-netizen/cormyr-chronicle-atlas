@@ -1,4 +1,4 @@
-import { RESOURCE_KEYS, SKILLS, zeroResources, type CatalogItem, type Cost, type Domain, type HouseState, type Ledger, type Resources, type Resource, type Unit, type Requirement, type Effect } from './types';
+import { RESOURCE_KEYS, SKILLS, EXTRA_UNIT_SKILLS, UNIT_SKILLS, zeroResources, type CatalogItem, type Cost, type Domain, type HouseState, type Ledger, type Resources, type Resource, type Unit, type Requirement, type Effect } from './types';
 import { regionBonus } from './regions';
 import { historyAdjustments, memberBonusAdjustments } from './creation-history';
 import { holdingAllocation, legacyCatalogEffects, legacyDestroyedLosses } from './holding-accounting';
@@ -260,7 +260,7 @@ export function unitStats(unit: Unit) {
   const endurance=mounted&&unit.mount?unit.mount.endurance:unit.skills.endurance,athletics=mounted&&unit.mount?unit.mount.athletics:unit.skills.athletics;
   const movement=Math.max(0,(unit.types.includes('warships')?60:mounted?80:40)-(unit.bulk??0)*10);
   const garrisonAway=unit.types.includes('garrison')&&unit.atHome===false?6:0;
-  return { movement,maxHealth:endurance*3, health:Math.max(0,Math.min(unit.health,endurance*3)), defense:unit.skills.agility+athletics+unit.skills.awareness-unit.armorPenalty, discipline:Math.max(0,training.discipline+unit.disciplineModifier+garrisonAway), xpSpent:SKILLS.reduce((sum,key)=>sum+Math.max(0,unit.skills[key]-2)*20,0) };
+  return { movement,maxHealth:endurance*3, health:Math.max(0,Math.min(unit.health,endurance*3)), defense:unit.skills.agility+athletics+unit.skills.awareness-unit.armorPenalty, discipline:Math.max(0,training.discipline+unit.disciplineModifier+garrisonAway), xpSpent:SKILLS.reduce((sum,key)=>sum+Math.max(0,unit.skills[key]-2)*20,0)+EXTRA_UNIT_SKILLS.reduce((sum,key)=>sum+Math.max(0,(unit.extraSkills?.[key]??2)-2)*20,0) };
 }
 export function validateUnit(unit: Unit, state: HouseState, types: UnitType[]) {
   const training = TRAINING[unit.training as keyof typeof TRAINING]; if(!training)throw new Error('Treinamento inválido.');
@@ -271,11 +271,12 @@ export function validateUnit(unit: Unit, state: HouseState, types: UnitType[]) {
   if(unit.types.length>1&&!unit.types.includes(unit.equipmentTypeId??''))throw new Error('Escolha um conjunto completo de equipamento entre os tipos da unidade.');
   if(!state.domains.some(d=>d.id===unit.domainId))throw new Error('Domínio da unidade não encontrado.');
   if(unit.types.length>1&&!unit.mixedRule?.justification.trim())throw new Error('Tipos mistos exigem decisão explícita do Narrador sobre habilidades e Disciplina.');
-  if(unit.mixedRule&&(!unit.mixedRule.allowedSkills.length||unit.mixedRule.allowedSkills.some(s=>!SKILLS.includes(s))||!Number.isInteger(unit.mixedRule.disciplineModifier)||Math.abs(unit.mixedRule.disciplineModifier)>30))throw new Error('Adaptação militar inválida.');
-  const allowed = new Set(unit.types.length>1?unit.mixedRule?.allowedSkills:selected.flatMap(t=>t?.skills??[]));
+  if(unit.mixedRule&&(!unit.mixedRule.allowedSkills.length||unit.mixedRule.allowedSkills.some(s=>!UNIT_SKILLS.includes(s))||!Number.isInteger(unit.mixedRule.disciplineModifier)||Math.abs(unit.mixedRule.disciplineModifier)>30))throw new Error('Adaptação militar inválida.');
+  const allowed = new Set(unit.types.length>1?unit.mixedRule?.allowedSkills:[...selected.flatMap(t=>t?.skills??[]),...(unit.types.includes('special')?EXTRA_UNIT_SKILLS:[])]);
   for(const s of SKILLS) { if(!Number.isInteger(unit.skills[s])||unit.skills[s]<2)throw new Error('Habilidade começa em 2.'); if(unit.skills[s]>2&&!allowed.has(s))throw new Error('Habilidade fora das opções deste tipo.'); }
-  const spent = unitStats(unit).xpSpent; if(spent>training.xp) throw new Error('XP insuficiente.');
-  if(unit.types.includes('special')&&SKILLS.filter(s=>unit.skills[s]>2).length>3)throw new Error('Unidade especial escolhe somente três habilidades.');
+  for(const skill of EXTRA_UNIT_SKILLS){const value=unit.extraSkills?.[skill]??2;if(!Number.isInteger(value)||value<2||value>12)throw new Error('Graduação estendida inválida.');if(value>2&&!allowed.has(skill))throw new Error('Habilidade fora das opções deste tipo.');}
+   const spent = unitStats(unit).xpSpent; if(spent>training.xp) throw new Error('XP insuficiente.');
+  if(unit.types.includes('special')&&(SKILLS.filter(s=>unit.skills[s]>2).length+EXTRA_UNIT_SKILLS.filter(s=>(unit.extraSkills?.[s]??2)>2).length)>3)throw new Error('Unidade especial escolhe somente três habilidades.');
   if(unit.types.includes('warships')&&!state.domains.find(d=>d.id===unit.domainId)?.features.some(f=>['coast','river','lake-small','lake-large','island'].includes(f))) throw new Error('Navios exigem água navegável.');
   return selected;
 }

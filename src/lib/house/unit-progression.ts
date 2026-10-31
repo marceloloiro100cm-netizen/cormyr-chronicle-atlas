@@ -1,5 +1,5 @@
 import { TRAINING, UNIT_TYPES, unitStats } from './engine';
-import { SKILLS, type HouseState, type Skill, type Unit } from './types';
+import { SKILLS, EXTRA_UNIT_SKILLS, type HouseState, type Unit, type UnitSkill, type ExtraUnitSkills } from './types';
 
 export const XP_PER_RANK=20;
 const level=(unit:Unit)=>TRAINING[unit.training as keyof typeof TRAINING];
@@ -19,11 +19,14 @@ export function syncUnitXp(unit:Unit){
  unit.xp=summary.total-summary.spent;
  return summary;
 }
-export function unitAllowedSkills(unit:Unit):Set<Skill>{
- const skills=unit.mixedRule?.allowedSkills??unit.types.flatMap(id=>UNIT_TYPES.find(x=>x.id===id)?.skills??[]);
- return new Set(skills as Skill[]);
+export function unitAllowedSkills(unit:Unit):Set<UnitSkill>{
+ const skills=unit.mixedRule?.allowedSkills??[
+  ...unit.types.flatMap(id=>UNIT_TYPES.find(x=>x.id===id)?.skills??[]),
+  ...(unit.types.includes('special')?EXTRA_UNIT_SKILLS:[])
+ ];
+ return new Set(skills as UnitSkill[]);
 }
-export function validateUnitSkills(unit:Unit,skills:Unit['skills']){
+export function validateUnitSkills(unit:Unit,skills:Unit['skills'],extraSkills:ExtraUnitSkills={}){
  const allowed=unitAllowedSkills(unit);
  for(const s of SKILLS){
   const value=skills[s];
@@ -31,16 +34,23 @@ export function validateUnitSkills(unit:Unit,skills:Unit['skills']){
   // Legacy imports with unavailable specializations may be reduced, never raised.
   if(value>2&&!allowed.has(s)&&value>(unit.skills[s]??2))throw new Error('Habilidade não permitida para este tipo de unidade.');
  }
- if(unit.types.includes('special')&&SKILLS.filter(s=>skills[s]>2).length>3)
+ for(const s of EXTRA_UNIT_SKILLS){
+  const value=extraSkills[s]??2,original=unit.extraSkills?.[s]??2;
+  if(!Number.isInteger(value)||value<2||value>12)throw new Error('Graduação inválida em '+s+'.');
+  if(value>2&&!allowed.has(s)&&value>original)throw new Error('Habilidade não permitida para este tipo de unidade.');
+ }
+ if(unit.types.includes('special')&&SKILLS.filter(s=>skills[s]>2).length+EXTRA_UNIT_SKILLS.filter(s=>(extraSkills[s]??2)>2).length>3)
   throw new Error('Unidade especial escolhe no máximo três habilidades.');
 }
-export function editUnitProfile(state:HouseState,input:{unitId:string;name:string;origin:string;notes:string;skills:Unit['skills'];situation:string;mount?:Unit['mount']}):HouseState{
+export function editUnitProfile(state:HouseState,input:{unitId:string;name:string;origin:string;notes:string;skills:Unit['skills'];extraSkills?:ExtraUnitSkills|undefined;situation:string;mount?:Unit['mount']}):HouseState{
  const next=structuredClone(state),u=next.units.find(x=>x.id===input.unitId&&!x.destroyed);
  if(!u)throw new Error('Unidade indisponível.');
  if(!input.name.trim()||input.name.length>160||input.origin.length>160||input.notes.length>4000||input.situation.length>1000)
   throw new Error('Campos de unidade inválidos.');
- validateUnitSkills(u,input.skills);
- const old=unitXpSummary(u),newSpent=SKILLS.reduce((sum,s)=>sum+Math.max(0,input.skills[s]-2)*XP_PER_RANK,0);
+ const nextExtra=input.extraSkills??u.extraSkills??{};
+ validateUnitSkills(u,input.skills,nextExtra);
+ const old=unitXpSummary(u),newSpent=SKILLS.reduce((sum,s)=>sum+Math.max(0,input.skills[s]-2)*XP_PER_RANK,0)+
+   EXTRA_UNIT_SKILLS.reduce((sum,s)=>sum+Math.max(0,(nextExtra[s]??2)-2)*XP_PER_RANK,0);
  if(newSpent>old.total&&newSpent>=old.spent)throw new Error('XP insuficiente; reduza atributos antes de novas melhorias.');
  if(u.types.includes('cavalry')){
   if(!input.mount||!input.mount.name.trim()||!input.mount.source.trim()||
@@ -48,7 +58,7 @@ export function editUnitProfile(state:HouseState,input:{unitId:string;name:strin
   u.mount=input.mount;
  }
  u.name=input.name.trim();u.origin=input.origin.trim();u.notes=input.notes.trim();u.situation=input.situation.trim();
- u.bonusXp=old.bonus;u.skills=input.skills;u.xp=old.total-newSpent;
+ u.bonusXp=old.bonus;u.skills=input.skills;u.extraSkills=nextExtra;u.xp=old.total-newSpent;
  u.health=Math.min(u.health,unitStats(u).maxHealth);
  return next;
 }

@@ -1,30 +1,32 @@
 import {useEffect,useState} from 'react';
-import {BookOpen,Shield,Coins,Swords,GraduationCap,AlertTriangle} from 'lucide-react';
+import {BookOpen,Download,Coins,Swords,GraduationCap,AlertTriangle} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle} from '@/components/ui/dialog';
 import {TRAINING,UNIT_TYPES,unitStats,activeHoldings} from '@/lib/house/engine';
 import {UNIT_EQUIPMENT,houseWeaponBonuses} from '@/lib/house/equipment';
 import {unitAllowedSkills,unitXpSummary,XP_PER_RANK} from '@/lib/house/unit-progression';
-import {SKILLS,SKILL_NAMES,type Unit,type HouseState,type Skill} from '@/lib/house/types';
+import {SKILLS,EXTRA_UNIT_SKILLS,UNIT_SKILLS,UNIT_SKILL_NAMES,type Unit,type HouseState,type ExtraUnitSkill,type UnitSkill,type Skill} from '@/lib/house/types';
+import {MilitaryUnitSymbol,unitSymbolType} from './military-unit-symbol';
+import {exportUnitPdf} from '@/lib/house/unit-export';
 
-type Actions={unit:Unit;state:HouseState;canEdit:boolean;admin:boolean;busy:boolean;
+type Actions={unit:Unit;state:HouseState;houseName:string;canEdit:boolean;admin:boolean;busy:boolean;
  onEdit:(args:Record<string,unknown>)=>Promise<boolean>;
  onGrant:(args:Record<string,unknown>,reason:string)=>Promise<boolean>;
  onEquipment:(args:Record<string,unknown>)=>Promise<boolean>};
-export function UnitSheet({unit,state,canEdit,admin,busy,onEdit,onGrant,onEquipment}:Actions){
+export function UnitSheet({unit,state,houseName,canEdit,admin,busy,onEdit,onGrant,onEquipment}:Actions){
  const [open,setOpen]=useState(false),[editing,setEditing]=useState(false);
  const [name,setName]=useState(unit.name),[origin,setOrigin]=useState(unit.origin),[situation,setSituation]=useState(unit.situation),[notes,setNotes]=useState(unit.notes);
- const [skills,setSkills]=useState(unit.skills),[mount,setMount]=useState(unit.mount);
+ const [skills,setSkills]=useState(unit.skills),[extraSkills,setExtraSkills]=useState(unit.extraSkills??{}),[mount,setMount]=useState(unit.mount);
  const [xpGift,setXpGift]=useState(20),[xpReason,setXpReason]=useState('');
- useEffect(()=>{setSkills(unit.skills);setName(unit.name);setOrigin(unit.origin);setSituation(unit.situation);setNotes(unit.notes);setMount(unit.mount);},[unit]);
+ useEffect(()=>{setSkills(unit.skills);setExtraSkills(unit.extraSkills??{});setName(unit.name);setOrigin(unit.origin);setSituation(unit.situation);setNotes(unit.notes);setMount(unit.mount);},[unit]);
  const current=unitXpSummary(unit),allowed=unitAllowedSkills(unit);
- const spent=SKILLS.reduce((sum,k)=>sum+Math.max(0,skills[k]-2)*XP_PER_RANK,0);
+ const spent=SKILLS.reduce((sum,k)=>sum+Math.max(0,skills[k]-2)*XP_PER_RANK,0)+EXTRA_UNIT_SKILLS.reduce((sum,k)=>sum+Math.max(0,(extraSkills[k]??2)-2)*XP_PER_RANK,0);
  const future=current.total-spent,stats=unitStats(unit),preview=unitStats({...unit,skills,mount});
  const bonuses=houseWeaponBonuses(state),row=UNIT_EQUIPMENT.find(r=>r.id===(unit.equipmentTypeId??unit.types[0]));
  const master=activeHoldings(state).some(h=>h.itemId==='pros-master-of-arms');
  const lastLoss=[...(unit.xpEvents??[])].reverse().find(e=>e.delta<0);
  async function save(){
-  const ok=await onEdit({unitId:unit.id,name,origin,situation,notes,skills,mount});
+  const ok=await onEdit({unitId:unit.id,name,origin,situation,notes,skills,extraSkills,mount});
   if(ok)setEditing(false);
  }
  return <>
@@ -32,11 +34,17 @@ export function UnitSheet({unit,state,canEdit,admin,busy,onEdit,onGrant,onEquipm
  <Dialog open={open} onOpenChange={setOpen}>
  <DialogContent className="military-sheet max-w-5xl max-h-[92vh] overflow-y-auto p-5 sm:p-8">
   <DialogHeader>
-   <div className="military-sheet-heading"><div className="military-sheet-emblem"><Shield size={38}/></div><div>
-    <p className="campaign-eyebrow">CORMYR · FICHA DE UNIDADE</p>
-    <DialogTitle className="text-3xl font-serif">{unit.name}</DialogTitle>
-    <DialogDescription>{unit.types.map(id=>UNIT_TYPES.find(t=>t.id===id)?.name??id).join(' / ')} · {TRAINING[unit.training as keyof typeof TRAINING]?.name} · {unit.commanderName||'Sem comandante'}</DialogDescription>
-   </div></div>
+   <div className="military-sheet-heading">
+    <MilitaryUnitSymbol typeId={unitSymbolType(unit.types,unit.equipmentTypeId)} />
+    <div className="military-sheet-header-title">
+     <p className="campaign-eyebrow">CASA {houseName.toLocaleUpperCase('pt-BR')} · FICHA DE UNIDADE</p>
+     <DialogTitle className="text-3xl font-serif">{unit.name}</DialogTitle>
+     <DialogDescription>{unit.types.map(id=>UNIT_TYPES.find(t=>t.id===id)?.name??id).join(' / ')} · {TRAINING[unit.training as keyof typeof TRAINING]?.name} · {unit.commanderName||'Sem comandante'}</DialogDescription>
+    </div>
+    <Button className="military-sheet-download" type="button" variant="outline" title={'Baixar PDF da unidade '+unit.name} onClick={()=>void exportUnitPdf(unit,state,houseName)}>
+     <Download size={17}/> Baixar ficha (PDF)
+    </Button>
+   </div>
   </DialogHeader>
   <div className="military-sheet-stats">
    <div><span>Defesa</span><strong>{editing?preview.defense:stats.defense}</strong></div>
@@ -79,17 +87,24 @@ export function UnitSheet({unit,state,canEdit,admin,busy,onEdit,onGrant,onEquipm
   </div>}
   <section><h3 className="font-serif text-xl mb-2">Habilidades · 20 XP por graduação</h3>
    <p className="text-sm text-muted-foreground mb-3">Todas as habilidades aparecem na ficha. Aumentos estão disponíveis somente nas habilidades permitidas pelo tipo da unidade (ou adaptação aprovada para tipos mistos).</p>
-   <div className="military-skills">{SKILLS.map(skill=>{
-    const original=unit.skills[skill],value=editing?skills[skill]:original;
+   <div className="military-skills">{UNIT_SKILLS.map(skill=>{
+    const extended=EXTRA_UNIT_SKILLS.includes(skill as ExtraUnitSkill);
+    const original=extended?(unit.extraSkills?.[skill as ExtraUnitSkill]??2):unit.skills[skill as Skill];
+    const value=editing?(extended?(extraSkills[skill as ExtraUnitSkill]??2):skills[skill as Skill]):original;
     const permitted=allowed.has(skill),canIncrease=permitted&&value<12;
-    const choose=(n:number)=>{if(n>original&&!permitted)return;setSkills(prev=>({...prev,[skill]:n}));};
+    const choose=(n:number)=>{
+     if(n<2)return;
+     if(n>original&&!permitted)return;
+     if(extended)setExtraSkills(prev=>({...prev,[skill]:n}));
+     else setSkills(prev=>({...prev,[skill]:n}));
+    };
     return <div key={skill} className="military-skill">
-     <div className="military-skill-head"><strong>{SKILL_NAMES[skill]}</strong><span>{value}{!permitted&&<small> · sem especialização</small>}</span></div>
-     <div className="military-skill-pips" aria-label={SKILL_NAMES[skill]+': graduação '+value}>
-      {Array.from({length:11},(_,i)=>i+2).map(rank=>editing?<button type="button" key={rank}
-       aria-label={SKILL_NAMES[skill]+' graduação '+rank} aria-pressed={rank<=value}
-       disabled={busy||(rank>original&&!canIncrease)} className={'military-pip '+(rank<=value?'filled':'')}
-       onClick={()=>choose(rank)} title={SKILL_NAMES[skill]+' '+rank}/>:<span key={rank} aria-hidden="true" className={'military-pip '+(rank<=value?'filled':'')}/>)}
+     <div className="military-skill-head"><strong>{UNIT_SKILL_NAMES[skill as UnitSkill]}</strong><span>{value}{!permitted&&<small> · sem especialização</small>}</span></div>
+     <div className="military-skill-pips" aria-label={UNIT_SKILL_NAMES[skill as UnitSkill]+': graduação '+value}>
+      {Array.from({length:12},(_,i)=>i+1).map(rank=>editing?<button type="button" key={rank}
+       aria-label={UNIT_SKILL_NAMES[skill as UnitSkill]+' graduação '+rank} aria-pressed={rank<=value}
+       disabled={busy||rank===1||(rank>original&&!canIncrease)} className={'military-pip '+(rank<=value?'filled':'')}
+       onClick={()=>choose(rank)} title={UNIT_SKILL_NAMES[skill as UnitSkill]+' '+rank}/>:<span key={rank} aria-hidden="true" className={'military-pip '+(rank<=value?'filled':'')}/>)}
      </div>
     </div>;
    })}</div>

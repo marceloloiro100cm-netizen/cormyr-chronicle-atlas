@@ -225,7 +225,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   if(data.action==='unit_edit'){
     const input=z.object({unitId:z.string(),name:z.string().trim().min(1).max(160),origin:z.string().max(160),
       situation:z.string().max(1000),notes:z.string().max(4000),skills:unitSchema.shape.skills,
-      mount:unitSchema.shape.mount.optional()}).parse(args);
+      extraSkills:unitSchema.shape.extraSkills, mount:unitSchema.shape.mount.optional()}).parse(args);
     next=editUnitProfile(state,input);
     rule='Guerra dos Tronos RPG · edição de unidade e habilidades, 20 XP por graduação e déficit registrado';
   }
