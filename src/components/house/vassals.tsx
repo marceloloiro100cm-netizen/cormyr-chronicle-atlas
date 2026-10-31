@@ -198,11 +198,11 @@ export function Vassals({
                 <p className="house-caption">Sem integrante da Corte associado.</p>
               )}
               {admin && v.status === "approved" && <details>
-                <summary>Encerrar vassalagem</summary>
+                <summary>Encerrar vassalagem · Lealdade: {v.loyalty??'não definida'}</summary>
                 <form className="campaign-form" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);
-                  await onEnd({id:v.id},String(f.get('reason')));}}>
+                  await onEnd({id:v.id,forfeitPower:f.get('forfeitPower')==='on'},String(f.get('reason')));}}>
                   <label>Justificativa do Narrador<textarea name="reason" minLength={10} required/></label>
-                  <p>O Poder alocado retorna ao disponível; a penalidade de Influência cessa. A mini-ficha e o histórico são preservados.</p>
+                  <label className="campaign-check"><input name="forfeitPower" type="checkbox"/>Perder permanentemente o Poder investido (guerra, confisco ou rebelião), sem reembolso</label><p>Sem marcação, o Poder alocado retorna ao disponível. A penalidade de Influência cessa nos dois casos; a mini-ficha e o histórico são preservados.</p>
                   <Button disabled={busy} variant="outline">Encerrar vínculo</Button>
                 </form>
               </details>}
