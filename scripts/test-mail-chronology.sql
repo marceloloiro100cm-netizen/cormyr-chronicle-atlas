@@ -96,10 +96,6 @@ SELECT pg_temp.assert(
  jsonb_array_length(public.calendar_mail_events(1522,1))=0,
  'festival letter is not copied to all other months');
 SELECT pg_temp.assert(
- jsonb_array_length(public.calendar_mail_events(1522,3))=0,
- 'Midwinter letter is not placed in Greengrass month');
-
-SELECT pg_temp.assert(
  jsonb_array_length(public.calendar_mail_events(1522,3))=1,
  'Greengrass letter belongs exclusively to Tarsakh');
 SELECT pg_temp.assert(
