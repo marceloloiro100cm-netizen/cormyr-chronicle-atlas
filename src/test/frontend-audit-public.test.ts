@@ -6,7 +6,7 @@ import {campaignMediaParts} from '@/lib/campaign-content';
 const publicFile=(name:string)=>readFileSync(resolve(process.cwd(),'public/cormyr',name),'utf8');
 describe('Public Cormyr frontend implementation package',()=>{
  it('all public runtime scripts are valid JavaScript',()=>{
-  for(const file of ['app.js','extras.js','search.js','soundtrack.js','music-player.js','reading-mode.js']){
+  for(const file of ['app.js','extras.js','search.js','soundtrack.js','music-player.js','reading-mode.js','notebook-link.js']){
    expect(()=>new Function(publicFile(file)),file).not.toThrow();
   }
  });
@@ -26,11 +26,27 @@ describe('Public Cormyr frontend implementation package',()=>{
   expect(html).toContain('music-player.js');
   expect(html).toContain('bard-player');
   expect(html).toContain('house-history-back');
+  expect(html).toContain('https://www.youtube.com/playlist?list=PLNkPwXjMDaCw');
+  expect(html).toContain('https://notebook.google.com/notebook/378d59d2-9775-42b5-8c35-26da188e7305');
+  expect(html).toContain('copy-notebook-link');
   // Main-menu navigation must forget the previous noble house, without breaking explicit house deep links.
   const script=publicFile('app.js');
   expect(script).toContain("if(b.dataset.view==='nobreza'){");
   expect(script).toMatch(/state\.noble\.house='';\s*state\.houseHistory=\[\];\s*renderNobility\(\);/);
   expect(script).toContain("params.get('house')||''");
+ });
+});
+describe('Link safety and music playback fallback',()=>{
+ it('opens the Google Drive file in the native viewer instead of a fragile embedded preview',()=>{
+  const player=publicFile('music-player.js');
+  expect(player).not.toContain("'/preview'");
+  expect(player).toContain("if(host==='drive.google.com')return null;");
+  expect(player).toContain("if(!embed){");
+  expect(player).toContain("if(new URL(url).hostname==='drive.google.com')stop();");
+ });
+ it('preserves external Gemini Notebook link and displays a permissions explanation',()=>{
+  const html=publicFile('index.html');
+  expect(html).toContain('o acesso requer login')
  });
 });
 describe('Safe narrator media token parsing',()=>{
