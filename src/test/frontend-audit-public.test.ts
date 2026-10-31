@@ -22,6 +22,9 @@ describe('Public Cormyr frontend implementation package',()=>{
  it('maps content by public route, not private files',()=>{
   const html=publicFile('index.html');
   expect(html).toContain('global-search-modal');
+  expect(html).toMatch(/<button\s+id="global-search-open"[^>]*\bhidden(?:\s|>)/);
+  expect(html).toMatch(/<button\s+id="parchment-toggle"[^>]*\bhidden(?:\s|>)/);
+
   expect(html).toContain('soundtrack.js');
   expect(html).toContain('music-player.js');
   expect(html).toContain('bard-player');
