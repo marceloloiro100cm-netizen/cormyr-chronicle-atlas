@@ -12,6 +12,7 @@ export function PurchaseDrawer({
   catalog,
   busy,
   onConfirm,
+  onCreateDomain,
   initialCategory = '',
 }: {
   open: boolean;
@@ -20,6 +21,7 @@ export function PurchaseDrawer({
   catalog: CatalogItem[];
   busy: boolean;
   onConfirm: (args: Record<string, unknown>) => Promise<boolean>;
+  onCreateDomain: (args: Record<string, unknown>) => Promise<boolean>;
   initialCategory?: string;
 }) {
   const [step, setStep] = useState(0);
@@ -35,6 +37,8 @@ export function PurchaseDrawer({
   const [parentId, setParent] = useState('');
   const [supportId, setSupport] = useState('');
   const [replaceId, setReplaceId] = useState('');
+  const [extraAreas,setExtraAreas]=useState(0);
+  const [newDomainName,setNewDomainName]=useState('');
   const [name, setName] = useState('');
   const [compare, setCompare] = useState<string[]>([]);
 
@@ -52,12 +56,14 @@ export function PurchaseDrawer({
       setAvailable(false);
       setItem('');
       setName('');
+      setExtraAreas(0);
+      setNewDomainName('');
       setCompare([]);
     }
   }, [open, initialCategory]);
 
   const selected = catalog.find(i => i.id === itemId);
-  const q = selected ? quote(selected, state, domainId, parentId || undefined, supportId || undefined, replaceId || undefined) : null;
+  const q = selected ? quote(selected, state, domainId, parentId || undefined, supportId || undefined, replaceId || undefined, extraAreas) : null;
   const categories = [...new Set(catalog.map(c => c.category))];
   const labels: Record<string, string> = {
     terrain: 'Terrenos',
@@ -236,7 +242,7 @@ export function PurchaseDrawer({
             <div className="house-catalog-list">
               {visible.map(item => (
                 <article className={itemId === item.id ? 'selected' : ''} key={item.id}>
-                  <Button variant="ghost" className="house-item-select" onClick={() => { purchaseId.current = null; setItem(item.id); setName(item.name); }}>
+                  <Button variant="ghost" className="house-item-select" onClick={() => { purchaseId.current = null; setItem(item.id); setName(item.name);setExtraAreas(0);setReplaceId(''); }}>
                     <span>
                       <strong>{item.name}</strong>
                       <small>{item.original} · {labels[item.category] ?? item.category}</small>
@@ -301,6 +307,15 @@ export function PurchaseDrawer({
                 ))}
               </select>
             </label>
+            {!state.domains.length&&<p className="house-warning">Crie primeiro um domínio para localizar a posse.</p>}
+            <form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(!newDomainName.trim())return;
+              const id=crypto.randomUUID();
+              if(await onCreateDomain({id,name:newDomainName.trim(),notes:''})){setDomain(id);setNewDomainName('');}
+            }}>
+              <label>Novo domínio sem sair da compra<input value={newDomainName} maxLength={160}
+                placeholder="Nome do domínio" onChange={e=>setNewDomainName(e.target.value)}/></label>
+              <Button disabled={busy||!newDomainName.trim()}>Criar e selecionar domínio</Button>
+            </form>
             {selected.category === 'fortification' && state.holdings.some(h => h.domainId === domainId && ['tower', 'hall', 'small-castle', 'castle', 'superior-castle'].includes(h.itemId) && ['active', 'building'].includes(h.status)) && (
               <label>
                 Evolução (Upgrade)
@@ -311,6 +326,18 @@ export function PurchaseDrawer({
                   ))}
                 </select>
               </label>
+            )}
+            {selected.category === 'community' && state.domains.some(d=>d.id===domainId&&d.community)&&(
+             <label>Melhorar comunidade<select value={replaceId} onChange={e=>setReplaceId(e.target.value)}>
+               <option value="">Selecione a comunidade a evoluir</option>
+               {state.holdings.filter(h=>h.domainId===domainId&&h.category==='community'&&h.status==='active').map(h=>
+                 <option key={h.id} value={h.id}>Evoluir {h.name}</option>)}
+             </select></label>
+            )}
+            {selected.id==='pros-minstrel-s-seat--speakers-listeners'&&(
+             <label>Áreas adicionais (+2 Riqueza cada)
+               <input type="number" min={0} max={20} step={1} value={extraAreas} onChange={e=>setExtraAreas(Number(e.target.value))}/>
+             </label>
             )}
             {selected.category === 'settlement' && !['pros-abbey', 'pros-tolls', 'pros-trading-inn'].includes(selected.id) && (
               <label>
@@ -358,8 +385,8 @@ export function PurchaseDrawer({
             {q.discounts.map((d, i) => (
               <p key={i}>Desconto {d.amount}: {d.source}</p>
             ))}
-            {replaceId && q.replacedCosts && Object.keys(q.replacedCosts).length > 0 && (
-              <p>Upgrade: Custo reduzido pelo valor da fortificação substituída.</p>
+            {replaceId && Object.keys(q.replacedCosts).length > 0 && (
+              <p>Upgrade: alocação adicional apenas da diferença. A posse antiga permanece ativa até a conclusão da obra.</p>
             )}
             <p>{state.phase === 'active' ? `Prazo: ${selected.duration.months} meses${selected.duration.dice ? ` + ${selected.duration.dice}d${selected.duration.sides}` : ''}. Benefícios após conclusão.` : 'Posse preexistente na criação; sem obra em andamento.'}</p>
             {selected.effects.map((e, i) => <p key={i}>{e.description}</p>)}
@@ -373,7 +400,7 @@ export function PurchaseDrawer({
               <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
               <Button disabled={busy || q.errors.length > 0} onClick={async () => {
                 purchaseId.current ??= crypto.randomUUID();
-                if (await onConfirm({ id: purchaseId.current, itemId: selected.id, domainId, parentId: parentId || undefined, supportId: supportId || undefined, replaceId: replaceId || undefined, name })) {
+                if (await onConfirm({ id: purchaseId.current, itemId: selected.id, domainId, parentId: parentId || undefined, supportId: supportId || undefined, replaceId: replaceId || undefined,extraAreas, name })) {
                   purchaseId.current = null;
                   setStep(0);
                   setItem('');
