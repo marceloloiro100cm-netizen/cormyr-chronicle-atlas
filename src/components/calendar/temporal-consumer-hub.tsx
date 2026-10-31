@@ -2,7 +2,7 @@ import {useRef,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {Button} from '@/components/ui/button';
 import {supabase} from '@/integrations/supabase/client';
-import {validateTemporalConsumerDashboard,type TemporalDelivery} from '@/lib/calendar/temporal-consumers';
+import {validateTemporalConsumerDashboard,validateTemporalReleasePreflight,type TemporalDelivery} from '@/lib/calendar/temporal-consumers';
 
 const names:Record<string,string>={
  informational:'Projeção / sem execução',
@@ -23,6 +23,15 @@ export function TemporalConsumerHub(){
    const {data,error}=await supabase.rpc('get_temporal_consumer_dashboard',{p_limit:80});
    if(error)throw error;
    return validateTemporalConsumerDashboard(data);
+  },
+  refetchInterval:30000,
+ });
+ const preflight=useQuery({
+  queryKey:['temporal-release-preflight'],
+  queryFn:async()=>{
+   const {data,error}=await supabase.rpc('get_temporal_release_preflight');
+   if(error)throw error;
+   return validateTemporalReleasePreflight(data);
   },
   refetchInterval:30000,
  });
@@ -71,6 +80,21 @@ export function TemporalConsumerHub(){
  return <section id="temporal-conexoes" className="narrator-calendar-panel" aria-label="Pontos de conexão temporal">
   <h3>Pontos de conexão e entregas temporais</h3>
   <p>O calendário publica uma notificação transacional por consumidor habilitado. Exércitos, posses, idades e missivas recalculam suas projeções a partir das fontes oficiais. Economia, serviços, estações e vassalagem exigem análise das regras antes de qualquer ação.</p>
+  <div className="house-caption" aria-label="Diagnóstico pré-implantação temporal">
+   <strong>Diagnóstico de integridade do calendário</strong>
+   {preflight.isPending?<p>Verificando o estado das fichas no servidor…</p>:
+    preflight.error?<p role="alert">Diagnóstico indisponível: {errorText(preflight.error)}</p>:
+    preflight.data?<div>
+     <p>Versão {preflight.data.calendar_version} · {preflight.data.official_date} ·
+      {preflight.data.active_houses} Casa(s) ativa(s) · {preflight.data.draft_houses} rascunho(s).</p>
+     <p>{preflight.data.invalid_houses} ficha(s) inválida(s) ·
+      {preflight.data.lagging_houses} atrasada(s) · {preflight.data.ahead_houses} adiantada(s) ·
+      {preflight.data.manual_reviews_pending} revisão(ões) temporais pendente(s).</p>
+     {preflight.data.month_processing_preflight_ok?
+      <p>Fichas válidas para avaliação mensal. A implantação ainda exige backup, homologação e aprovação.</p>:
+      <p role="alert">Existem fichas inválidas: não avançar meses até corrigir os registros.</p>}
+    </div>:null}
+  </div>
   {dashboard.isPending?<p role="status">Consultando consumidores e pendências…</p>:
    dashboard.error?<p role="alert">Não foi possível consultar as entregas: {errorText(dashboard.error)} <Button type="button" onClick={()=>void dashboard.refetch()}>Tentar novamente</Button></p>:
    dashboard.data?<div>
