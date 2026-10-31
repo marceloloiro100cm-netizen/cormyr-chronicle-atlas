@@ -96,6 +96,7 @@ export function assertUnchangedAccessScope(
  * authorize the mutation and cannot grant access to private rows.
  */
 export async function requireFreshNarratorAccess():Promise<void>{
- const scope=await loadCampaignAccessScope();
- if(!scope.admin)throw new Error('Permissão de Narrador revogada. Recarregue as autorizações.');
+ const {data,error}=await supabase.rpc('is_campaign_admin');
+ if(error||data!==true)
+  throw new Error('Permissão de Narrador revogada. Recarregue as autorizações.');
 }
