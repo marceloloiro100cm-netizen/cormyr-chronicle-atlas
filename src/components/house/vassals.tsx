@@ -56,6 +56,7 @@ export function Vassals({
   onPropose,
   onApprove,
   onEnd,
+  onLoyalty,
   onLink,
 }: {
   catalog: CatalogItem[];
@@ -71,6 +72,7 @@ export function Vassals({
   onPropose: (args: Record<string, unknown>) => Promise<boolean>;
   onApprove: (args: Record<string, unknown>, note: string) => Promise<boolean>;
   onEnd: (args:Record<string,unknown>, note:string)=>Promise<boolean>;
+  onLoyalty: (args:Record<string,unknown>, note:string)=>Promise<boolean>;
   onLink: (args: Record<string, unknown>, note: string) => Promise<boolean>;
 }) {
   const [region, setRegion] = useState("");
@@ -197,6 +199,11 @@ export function Vassals({
               ) : (
                 <p className="house-caption">Sem integrante da Corte associado.</p>
               )}
+              {admin && v.status === 'approved' && <details><summary>Alterar lealdade</summary>
+              <form className="campaign-form" onSubmit={async e=>{e.preventDefault();const form=new FormData(e.currentTarget);await onLoyalty({id:v.id,loyalty:String(form.get('loyalty'))},String(form.get('reason')));}}>
+              <label>Postura<select name="loyalty" defaultValue={v.loyalty??'loyal'}>
+                <option value="loyal">Leal</option><option value="neutral">Neutra</option><option value="rebellious">Rebelde</option>
+              </select></label><label>Decisão do Narrador<textarea name="reason" required minLength={10}/></label><Button disabled={busy}>Registrar lealdade</Button></form></details>}
               {admin && v.status === "approved" && <details>
                 <summary>Encerrar vassalagem · Lealdade: {v.loyalty??'não definida'}</summary>
                 <form className="campaign-form" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);
