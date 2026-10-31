@@ -1,4 +1,6 @@
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
+import {useCampaignTime} from '@/lib/calendar/campaign-time';
+import {dateKey} from '@/lib/calendar/harptos';
 import {datedMail} from '@/lib/calendar/mail';
 import {useEffect,useRef,useState} from 'react';
 import {supabase} from '@/integrations/supabase/client';
@@ -34,4 +36,4 @@ export function PlayerRepresentation({onReturn}:{onReturn:()=>void}){
  </form></details>)}<h2>Nova missiva</h2><form className="campaign-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action((e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft'?'draft':'send',{subject:String(f.get('subject')),content:String(f.get('content')),house:String(f.get('house')),key:crypto.randomUUID()},String(f.get('campaign_date')));}}><RepresentationDate/><label>Casa destinatária<input name="house" placeholder="ID da casa ou vazio para Narrador"/></label><label>Assunto<input name="subject" required/></label><label>Texto<textarea name="content" required/></label><div className="campaign-actions"><Button variant="outline" name="action" value="draft" disabled={busy}>Salvar rascunho</Button><Button disabled={busy||panel.week===null}>Enviar como jogador</Button></div></form><h2>Documentos autorizados</h2>{panel.records.map(record=><details className="campaign-add" key={record.id}><summary>{record.title}</summary><CampaignContent content={record.content}/><form className="campaign-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action('save_record',{id:record.id,version:record.version,title:String(f.get('title')),content:String(f.get('content'))});}}><label>Título<input name="title" defaultValue={record.title} required/></label><label>Texto<textarea name="content" defaultValue={record.content} required/></label><Button disabled={busy}>Salvar como jogador</Button></form></details>)}</>}</section>;
 }
 
-function RepresentationDate(){const [date,setDate]=useState('');return <CampaignDatePicker value={date} onChange={setDate}/>;}
+function RepresentationDate(){const [date,setDate]=useState('');const {data:currentTime}=useCampaignTime();return <CampaignDatePicker value={date} referenceDate={currentTime?dateKey(currentTime):undefined} onChange={setDate}/>;}
