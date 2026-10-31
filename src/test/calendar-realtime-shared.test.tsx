@@ -65,7 +65,7 @@ it('revalida missivas, nobres, fichas, exército e calendário pela mesma assina
  expect(seen).toEqual(expected);
  for(const name of ['campaign-calendar','calendar-schedule-events',
   'campaign-chronology','calendar-events','mail-page','mail-insights',
-  'mail-overview-grouped','reply-delivery','noble-house',
+  'mail-overview-grouped','reply-delivery','campaign-panel','noble-house',
   'house-realm-dashboard','house-time-impact','character-age-dashboard',
   'temporal-consumer-dashboard','temporal-release-preflight'])
   expect(seen).toContain(JSON.stringify([name]));
