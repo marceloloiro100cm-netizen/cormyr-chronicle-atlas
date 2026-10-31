@@ -122,9 +122,9 @@ export function validateTemporalReleasePreflight(value:unknown):TemporalReleaseP
   if(!number(value[key]))throw new Error('Contagem inválida na pré-implantação temporal.');
  }
  if(value.calendar_version===0||
-  value.active_houses+value.draft_houses+value.invalid_houses!==value.house_sheets||
+  Number(value.active_houses)+Number(value.draft_houses)+Number(value.invalid_houses)!==value.house_sheets||
   value.month_processing_preflight_ok!==(value.invalid_houses===0)||
-  value.lagging_houses+value.ahead_houses>value.active_houses)
+  Number(value.lagging_houses)+Number(value.ahead_houses)>Number(value.active_houses))
   throw new Error('Contagens inconsistentes na pré-implantação temporal.');
  const parsed=parseDate(value.official_date)!;
  if(value.official_month!==parsed.year*12+parsed.month)
