@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { isNarrativeNpc } from "@/lib/house/narrative-npc";
 import { useState } from "react";
 import {useQuery} from '@tanstack/react-query';
+import {supabase} from '@/integrations/supabase/client';
 import {useServerFn} from '@tanstack/react-start';
 import {loadHouseHub} from '@/lib/house/house.functions';
 import {balances,maxHouseStatus} from '@/lib/house/engine';
@@ -36,6 +37,28 @@ export function FichaTab({
   const load=useServerFn(loadHouseHub);
   const {data:sheetData}=useQuery({queryKey:['noble-house',current.id],enabled:view==='character',queryFn:()=>load({data:{houseId:current.id}})});
   const statusCap=sheetData?maxHouseStatus(balances(sheetData.state).total.influence):10;
+  const {data:ages}=useQuery({
+   queryKey:['house-character-ages',current.id],
+   enabled:view==='character',
+   queryFn:async()=>{
+    const {data,error}=await supabase.rpc('get_house_character_ages',{p_house:current.id});
+    if(error)throw error;
+    if(!Array.isArray(data))throw new Error('Resposta de idades da Casa inválida.');
+    return data as {record_id:string;character_id:string;age:number|null;
+     as_of_year:number;status:string;death_year:number|null}[];
+   },refetchInterval:15000
+  });
+  const ageByRecord=new Map((ages??[]).map(a=>[a.record_id,a]));
+  const ageLine=(id:string)=>{
+   const age=ageByRecord.get(id);
+   if(!age)return null;
+   return <p className="house-caption" aria-label="Idade canônica do personagem">
+    {age.age!==null?age.status==='deceased'
+      ?'Falecido aos '+age.age+' anos'
+      :'Idade cronológica: '+age.age+' anos'
+     :'Idade: a conferir ('+age.status+')'} · referência: {age.as_of_year} CV
+   </p>;
+  };
   const structured=records.map(row=>({row,sheet:parseChronicleSheet(row.content)})).filter((x):x is {row:RecordRow;sheet:NonNullable<typeof x.sheet>}=>x.sheet!==null);
   const fichaCasa = records.find((r) => isFichaCasa(r.title, r.content));
   const fichaLorde = records.find((r) => isFichaPersonagem(r.title, r.content)&&!parseChronicleSheet(r.content));
@@ -129,10 +152,11 @@ export function FichaTab({
         <>
           <h2>Fichas dos personagens · Lordes e Herdeiros</h2>
           {canEdit&&<ChronicleCharacterEditor key={'new-'+current.id} houseId={current.id} houseName={current.name} playerId={playerId} canEdit={canEdit} statusCap={statusCap} onSave={onSave}/>}
-          {structured.map(({row,sheet})=><ChronicleCharacterEditor key={row.id+'-'+row.version} row={row} initial={sheet} houseId={current.id} houseName={current.name} playerId={playerId} canEdit={canEdit} statusCap={statusCap} onSave={onSave}/>)}
+          {structured.map(({row,sheet})=><div key={row.id+'-'+row.version}>{ageLine(row.id)}<ChronicleCharacterEditor row={row} initial={sheet} houseId={current.id} houseName={current.name} playerId={playerId} canEdit={canEdit} statusCap={statusCap} onSave={onSave}/></div>)}
           <h2>Ficha do Lorde importada (legado)</h2>
           {fichaLorde ? (
             <>
+              {ageLine(fichaLorde.id)}
               <FichaPersonagemCard
                 content={fichaLorde.content}
                 portrait={retratoDo(fichaLordeParsed?.nome ?? current.lord_name)}
@@ -165,6 +189,7 @@ export function FichaTab({
           {npcs.map((r) => (
             <details className="campaign-add" key={r.id}>
               <summary>{r.title}</summary>
+              {ageLine(r.id)}
               <CampaignContent content={r.content} />
               {canEdit && <RecordEditor row={r} canEdit={canEdit} onSave={onSave} />}
             </details>
