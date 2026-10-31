@@ -63,7 +63,7 @@ describe('Lote 23 · segurança temporal das operações da Casa',()=>{
  });
  it('o painel impede submissões com data ausente e aplica a política nos botões militares',()=>{
   const file=readFileSync(resolve(process.cwd(),'src/components/house/hub.tsx'),'utf8');
-  expect(file).toContain('houseMonthlyOperationReadiness(query.data.state,globalCalendar.data??null)');
+  expect(file).toContain('houseMonthlyOperationReadiness(query.data.state,globalCalendar.isError?null:globalCalendar.data??null)');
   expect(file).toContain('if(isMonthSensitiveHouseAction(action))');
   expect(file).toContain('canEdit={monthlyCanEdit}');
   expect(file).toContain('open={buy&&monthlyCanEdit}');
