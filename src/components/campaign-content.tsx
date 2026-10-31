@@ -1,26 +1,33 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ImagePlus, X, UserRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { contentParts, imageToken, validateImage } from "@/lib/campaign-content";
+import { contentParts, campaignMediaParts, imageToken, validateImage } from "@/lib/campaign-content";
 import { ImageViewer } from "@/components/image-viewer";
 import { cleanGalleryTitle } from "@/lib/gallery";
 
 export function CampaignContent({ content }: { content: string }) {
-  return (
-    <div className="campaign-prose">
-      {contentParts(content).map((part, i) =>
-        "text" in part ? (
-          <p className="campaign-preserve" key={i}>
-            {part.text}
-          </p>
-        ) : (
-          <PrivateImage key={i} path={part.path} caption={part.caption} />
-        ),
-      )}
-    </div>
-  );
+ return <div className="campaign-prose">{campaignMediaParts(content).map((part,i)=>
+  'text' in part
+   ? <Fragment key={i}>{contentParts(part.text).map((piece,j)=>
+      'text' in piece
+       ? <p className="campaign-preserve" key={j}>{piece.text}</p>
+       : <PrivateImage key={j} path={piece.path} caption={piece.caption}/>)}</Fragment>
+   : <CampaignMedia key={i} kind={part.kind} id={part.id} title={part.title}/>
+ )}</div>;
+}
+function CampaignMedia({kind,id,title}:{kind:'youtube'|'drive';id:string;title:string}){
+ const [opened,setOpened]=useState(false);
+ const youtube=kind==='youtube';
+ const embed=youtube?'https://www.youtube-nocookie.com/embed/'+id:'https://drive.google.com/file/d/'+id+'/preview';
+ const original=youtube?'https://www.youtube.com/watch?v='+id:'https://drive.google.com/file/d/'+id+'/view';
+ return <figure className="campaign-media-embed">
+  <figcaption><strong>{title}</strong><span> · {youtube?'Vídeo do YouTube':'Mídia do Google Drive'}</span></figcaption>
+  {opened?<iframe title={title} src={embed} loading="lazy" allow="encrypted-media; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" style={{width:'100%',aspectRatio:'16 / 9',border:0}}/>:
+   <Button type="button" variant="outline" onClick={()=>setOpened(true)}>Carregar mídia</Button>}
+  <p><a href={original} target="_blank" rel="noopener noreferrer">Abrir na origem</a> · A visualização depende das permissões do arquivo.</p>
+ </figure>;
 }
 export function PrivateImage({ path, caption, thumbnail = false }: { path: string; caption: string; thumbnail?: boolean }) {
   const { data, error } = useQuery({
