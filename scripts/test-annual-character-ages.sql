@@ -1,7 +1,13 @@
 -- Lote 7 · motor anual testado em banco efêmero com rollback.
 BEGIN;
 CREATE FUNCTION pg_temp.assert(ok boolean,label text) RETURNS void LANGUAGE plpgsql AS $$
-BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'Assertion failed: %',label;END IF;END $$;
+BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'Assertion failed: %',label;END IF;END $;
+-- Wrapper exists only in this rolled-back test transaction, never in production.
+CREATE FUNCTION pg_temp.age_check(p_id uuid,p_year integer)
+RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
+ SELECT public.character_age_state(c,p_year) FROM public.campaign_characters c
+ WHERE c.id=p_id
+$;
 
 INSERT INTO auth.users(id) VALUES
  ('30000000-0000-0000-0000-000000000271'),
@@ -90,47 +96,47 @@ SELECT pg_temp.assert(
  (public.get_character_age_dashboard(1522,1523,100)->'totals'->>'aged_nobles')::int=3,
  'exactly Percival, baseline and secret living noble age in one year');
 SELECT pg_temp.assert(
- (SELECT public.character_age_state(c,1522)->>'age'='30'
+ (SELECT pg_temp.age_check(c.id,1522)->>'age'='30'
   FROM public.campaign_characters c WHERE c.display_name='Percival Evenhand'),
  'Percival born 1492 is 30 in year 1522');
 SELECT pg_temp.assert(
- (SELECT public.character_age_state(c,1523)->>'age'='31'
+ (SELECT pg_temp.age_check(c.id,1523)->>'age'='31'
   FROM public.campaign_characters c WHERE c.display_name='Percival Evenhand'),
  'Percival advances exactly one year');
 SELECT pg_temp.assert(
- (SELECT public.character_age_state(c,1525)->>'age'='33'
+ (SELECT pg_temp.age_check(c.id,1525)->>'age'='33'
   FROM public.campaign_characters c WHERE c.display_name='Percival Evenhand'),
  'multi-year leap calculates three years, not two or four');
 SELECT pg_temp.assert(
- (SELECT public.character_age_state(c,1525)->>'age'='74'
+ (SELECT pg_temp.age_check(c.id,1525)->>'age'='74'
   FROM public.campaign_characters c WHERE c.display_name='Planchar Stonecastle'),
  'deceased character freezes at age on death year');
 SELECT pg_temp.assert(
- (SELECT public.character_age_state(c,1523)->>'status'='not_born'
+ (SELECT pg_temp.age_check(c.id,1523)->>'status'='not_born'
   FROM public.campaign_characters c WHERE c.display_name='Bebê Evenhand'),
  'unborn person is excluded before 1524');
 SELECT pg_temp.assert(
- (SELECT public.character_age_state(c,1524)->>'age'='0'
+ (SELECT pg_temp.age_check(c.id,1524)->>'age'='0'
   FROM public.campaign_characters c WHERE c.display_name='Bebê Evenhand'),
  'newborn age zero in birth year');
 SELECT pg_temp.assert(
- (SELECT public.character_age_state(c,1525)->>'age'='1'
+ (SELECT pg_temp.age_check(c.id,1525)->>'age'='1'
   FROM public.campaign_characters c WHERE c.display_name='Bebê Evenhand'),
  'newborn ages on next Harptos year transition');
 SELECT pg_temp.assert(
- (SELECT public.character_age_state(c,1523)->>'age'='31'
+ (SELECT pg_temp.age_check(c.id,1523)->>'age'='31'
   FROM public.campaign_characters c WHERE c.display_name='Idade de referência'),
  'baseline-age-only fallback uses confirmed reference year');
 SELECT pg_temp.assert(
- (SELECT public.character_age_state(c,1523)->>'status'='conflict'
+ (SELECT pg_temp.age_check(c.id,1523)->>'status'='conflict'
   FROM public.campaign_characters c WHERE c.display_name='Tomenn Staghunt'),
  'unreconciled birth/baseline conflict never invents a corrected age');
 SELECT pg_temp.assert(
- (SELECT public.character_age_state(c,1523)->>'status'='manual_exception'
+ (SELECT pg_temp.age_check(c.id,1523)->>'status'='manual_exception'
   FROM public.campaign_characters c WHERE c.display_name='Elfo em estase'),
  'approved exceptional age policy never guesses a special mechanic');
 SELECT pg_temp.assert(
- (SELECT public.character_age_state(c,1523)->>'status'='pending_source'
+ (SELECT pg_temp.age_check(c.id,1523)->>'status'='pending_source'
   FROM public.campaign_characters c WHERE c.display_name='Sem qualquer fonte'),
  'source-free record is blocked from claimed age');
 
