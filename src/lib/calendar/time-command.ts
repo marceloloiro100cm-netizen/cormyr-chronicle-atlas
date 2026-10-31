@@ -23,14 +23,14 @@ function isRecord(v:unknown):v is Record<string,unknown>{return typeof v==='obje
 function validateImpact(value:unknown,current:CampaignTimeSnapshot,count:number):CampaignTimeImpact {
  if(!isRecord(value))throw new Error('Prévia temporal indisponível.');
  const local=previewHarptosDesdia(current,count);
- if(value.from!==dateKey(current) || value.to!==local.nextDateKey ||
-    value.desdias!==count || value.ordinary_days!==count*10 ||
-    value.expected_version!==current.version ||
-    typeof value.months_delta!=='number'||!Number.isInteger(value.months_delta)||
-    !Array.isArray(value.crossed_months)||!Array.isArray(value.crossed_years)||
-    !Array.isArray(value.crossed_seasons)||!Array.isArray(value.crossed_festivals)||
-    typeof value.projects_maturing!=='number'||typeof value.houses_drifted!=='number'||
-    typeof value.can_publish!=='boolean'){
+ if(value['from']!==dateKey(current) || value['to']!==local.nextDateKey ||
+    value['desdias']!==count || value['ordinary_days']!==count*10 ||
+    value['expected_version']!==current.version ||
+    typeof value['months_delta']!=='number'||!Number.isInteger(value['months_delta'])||
+    !Array.isArray(value['crossed_months'])||!Array.isArray(value['crossed_years'])||
+    !Array.isArray(value['crossed_seasons'])||!Array.isArray(value['crossed_festivals'])||
+    typeof value['projects_maturing']!=='number'||typeof value['houses_drifted']!=='number'||
+    typeof value['can_publish']!=='boolean'){
   throw new Error('A prévia do servidor diverge do motor de Harptos. Nenhum avanço foi publicado.');
  }
  return value as CampaignTimeImpact;
@@ -56,14 +56,14 @@ export async function publishCampaignTimeChange(
   p_key:key,p_expected_version:current.version,p_desdias:impact.desdias,p_reason:reason.trim(),
  });
  if(error)throw error;
- if(!isRecord(data)||!isRecord(data.snapshot)||!isRecord(data.change)||
-    typeof data.duplicate!=='boolean')throw new Error('Confirmação de avanço incompleta.');
- const saved=data.snapshot as CampaignTimeSnapshot;
- if(!data.duplicate && (dateKey(saved)!==impact.to || saved.version!==current.version+1||
-   data.change.to!==impact.to)){
+ if(!isRecord(data)||!isRecord(data['snapshot'])||!isRecord(data['change'])||
+    typeof data['duplicate']!=='boolean')throw new Error('Confirmação de avanço incompleta.');
+ const saved=data['snapshot'] as CampaignTimeSnapshot;
+ if(!data['duplicate'] && (dateKey(saved)!==impact.to || saved.version!==current.version+1||
+   (data['change'] as Record<string,unknown>)['to']!==impact.to)){
   throw new Error('O banco não confirmou a nova data e versão; atualize o calendário.');
  }
- return data as CampaignTimeCommit;
+ return data as unknown as CampaignTimeCommit;
 }
 
 export type CampaignTimeHistoryItem={
