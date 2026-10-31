@@ -44,7 +44,18 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
  }).catch(()=>{});
 
  function showView(view,updateHash=true){state.view=view;document.querySelectorAll('.view').forEach(x=>x.hidden=x.id!==`view-${view}`);document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});document.title=({reino:'Reino e regiões',eventos:'Eventos',aventura:'Aventuras','notebook-lm':'Notebook LM',constituicao:'Constituição de Cormyr',nobreza:'Nobreza',musicas:'Músicas'}[view]||'Cormyr')+' · Cormyr Web';if(updateHash)writeRoute(true);}
- document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{showView(b.dataset.view);const h=document.querySelector('#view-'+state.view+' h1');h?.focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});}));
+ document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
+  // Choosing Nobreza in the main menu always opens the catalogue, never the previous noble sheet.
+  // Direct #nobreza?house=... links and deliberate suzerain navigation still open an individual house.
+  if(b.dataset.view==='nobreza'){
+   state.noble.house='';
+   state.houseHistory=[];
+   renderNobility();
+  }
+  showView(b.dataset.view);
+  const h=document.querySelector('#view-'+state.view+' h1');h?.focus({preventScroll:true});
+  window.scrollTo({top:0,behavior:'instant'});
+ }));
  function regionAtEra(region,era='post'){
   if(!['Elfhold','Helmlands'].includes(region.name))return region;
   const oldMajor=region.name==='Elfhold'?'Drauthglas':'Marliir';
