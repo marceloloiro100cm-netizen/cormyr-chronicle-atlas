@@ -183,23 +183,38 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
   try{
    const crown=data.regions.flatMap(r=>r.houses).find(h=>h.name==='Phelles');
    const needed=[...region.houses,...(mode==='hierarchy'&&!before&&region.major!=='Phelles'?[crown]:[])];
-   const images=new Map(await Promise.all(needed.map(h=>new Promise((resolve,reject)=>{const img=new Image();const timer=setTimeout(()=>reject(new Error('Não foi possível carregar o brasão de '+h.name+'.')),20000);img.onload=()=>{clearTimeout(timer);resolve([h.name,img]);};img.onerror=()=>{clearTimeout(timer);reject(new Error('Não foi possível carregar o brasão de '+h.name+'.'));};img.src=h.crest;}))));
+   const images=new Map(await Promise.all(needed.filter(h=>h?.crest).map(h=>new Promise((resolve,reject)=>{const img=new Image();const timer=setTimeout(()=>reject(new Error('Não foi possível carregar o brasão de '+h.name+'.')),20000);img.onload=()=>{clearTimeout(timer);resolve([h.name,img]);};img.onerror=()=>{clearTimeout(timer);reject(new Error('Não foi possível carregar o brasão de '+h.name+'.'));};img.src=h.crest;}))));
    const width=1600,rows=[],links=[];let y=250,unplacedY=null;
    if(mode==='hierarchy'){
     const linked=h=>['documented','regional'].includes(h.hierarchy?.kind);
     const byName=new Map(region.houses.map(h=>[h.name,h]));
-    function visit(h,depth,parent=null){const row={h,x:70+depth*130,y,w:Math.min(1000,width-140-depth*130),height:108};rows.push(row);if(parent)links.push({parent,row});y+=132;for(const child of region.houses.filter(c=>c.name!==region.major&&linked(c)&&c.hierarchy.parent===h.name))visit(child,depth+1,row);return row;}
+    const visited=new Set();
+    function visit(h,depth,parent=null){
+     if(!h||visited.has(h.name))return null;
+     visited.add(h.name);
+     const row={h,x:70+depth*130,y,w:Math.min(1000,width-140-depth*130),height:108};
+     rows.push(row);if(parent)links.push({parent,row});y+=132;
+     if(!(region.hierarchyGroups?.length&&h.name===region.major))
+      for(const child of region.houses.filter(c=>c.name!==region.major&&linked(c)&&c.hierarchy.parent===h.name))visit(child,depth+1,row);
+     return row;
+    }
     let parent=null,depth=0;
     if(!before&&region.major!=='Phelles'){parent={h:crown,x:70,y,w:1000,height:108};rows.push(parent);y+=132;depth=1;}
-    visit(byName.get(region.major),depth,parent);
-    const roots=region.houses.filter(h=>h.name!==region.major&&(!linked(h)||!byName.has(h.hierarchy.parent)));
+    const main=visit(byName.get(region.major),depth,parent);
+     if(region.hierarchyGroups?.length){
+      for(const group of region.hierarchyGroups){
+       rows.push({groupTitle:'Ramo '+group.name,y});y+=80;
+       for(const name of group.houses){const house=byName.get(name);if(house)visit(house,depth+1,main);}
+      }
+     }
+    const roots=region.houses.filter(h=>h.name!==region.major&&!visited.has(h.name));
     if(roots.length){unplacedY=y+20;y+=105;for(const h of roots)visit(h,0);}
    }
    const height=mode==='houses'?280+Math.ceil(region.houses.length/5)*385+90:y+95;
    const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Seu navegador não disponibilizou a exportação da imagem.');
    ctx.fillStyle='#f7f3eb';ctx.fillRect(0,0,width,height);ctx.fillStyle='#301641';ctx.fillRect(0,0,width,190);ctx.fillStyle='#dac28f';ctx.font='bold 20px sans-serif';ctx.fillText('CORMYR WEB · CRÔNICAS DO REINO',65,45);ctx.fillStyle='#ffffff';ctx.font='48px Georgia, serif';ctx.fillText(region.name,65,108);ctx.font='24px sans-serif';ctx.fillStyle='#e1d5e6';ctx.fillText((mode==='houses'?'Todas as casas':'Hierarquia e vassalagem')+' · '+(temporal?(before?'Antes de 1522':'Pós-1522'):'1522 CV'),65,150);ctx.fillStyle='#b58e4e';ctx.fillRect(0,190,width,5);
    function textFit(text,x,top,max,size=27,color='#301641'){ctx.fillStyle=color;do{ctx.font=size+'px Georgia, serif';if(ctx.measureText(text).width<=max)break;size--;}while(size>15);ctx.fillText(text,x,top);}
-   function crest(h,x,top,w,hgt){const img=images.get(h.name),scale=Math.min(w/img.naturalWidth,hgt/img.naturalHeight);const iw=img.naturalWidth*scale,ih=img.naturalHeight*scale;ctx.drawImage(img,x+(w-iw)/2,top+(hgt-ih)/2,iw,ih);}
+   function crest(h,x,top,w,hgt){const img=images.get(h.name);if(!img){ctx.fillStyle='#e3d8e5';ctx.fillRect(x,top,w,hgt);textFit('Sem brasão',x+6,top+hgt/2,w-12,16);return;}const scale=Math.min(w/img.naturalWidth,hgt/img.naturalHeight);const iw=img.naturalWidth*scale,ih=img.naturalHeight*scale;ctx.drawImage(img,x+(w-iw)/2,top+(hgt-ih)/2,iw,ih);}
    function badge(h){const q=h.hierarchy||{};if(h.name===ROYAL_HOUSE)return 'Royal House';if(h.name===region.major)return 'Casa principal';if(h.clanRank)return 'Clã '+h.clanRank+' · '+h.clanBranch;return {crown:'Royal House',regional:'Major House',documented:'Vínculo documentado',historical:'Registro anterior',unknown:'Suserano a confirmar',review:'Vínculo a conferir'}[q.kind]||'Casa nobre';}
    if(mode==='houses'){
     region.houses.forEach((h,i)=>{const x=65+(i%5)*298,top=245+Math.floor(i/5)*385;ctx.fillStyle=h.name===ROYAL_HOUSE?'#fbf5e6':'#fffefa';ctx.fillRect(x,top,278,357);ctx.strokeStyle=h.name===ROYAL_HOUSE?'#8a6524':h.name===region.major?'#b58e4e':'#d2c6d6';ctx.lineWidth=2;ctx.strokeRect(x,top,278,357);if(h.name===ROYAL_HOUSE){ctx.strokeStyle='#d9b871';ctx.lineWidth=5;ctx.strokeRect(x+4,top+4,270,349);ctx.strokeStyle='#f0dfae';ctx.lineWidth=1;ctx.strokeRect(x+8,top+8,262,341);}ctx.fillStyle='#271b2d';ctx.fillRect(x+1,top+1,276,265);crest(h,x+18,top+12,242,240);textFit(h.name,x+15,top+305,248,27);ctx.font='16px sans-serif';ctx.fillStyle='#786681';ctx.fillText(h.name===ROYAL_HOUSE?'ROYAL HOUSE':h.name===region.major?'CASA PRINCIPAL':h.status||'CASA NOBRE',x+15,top+337,248);});
@@ -207,7 +222,8 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
     ctx.strokeStyle='#9d829f';ctx.lineWidth=3;
     for(const {parent,row} of links){ctx.beginPath();ctx.moveTo(parent.x+28,parent.y+parent.height);ctx.lineTo(parent.x+28,row.y+54);ctx.lineTo(row.x,row.y+54);ctx.stroke();}
     if(unplacedY!==null){textFit('Ramos com ligação superior a confirmar',70,unplacedY,1460,28);ctx.font='18px sans-serif';ctx.fillStyle='#6d5f70';ctx.fillText('Vínculos internos preservados; a posição na região não comprova vassalagem direta à casa principal.',70,unplacedY+32);}
-    for(const row of rows){const {h,x,y:top,w,height:rh}=row;ctx.fillStyle=h.name===region.major?'#f0e4cc':'#fffefa';ctx.fillRect(x,top,w,rh);ctx.strokeStyle='#c5b3cd';ctx.lineWidth=2;ctx.setLineDash(h.hierarchy?.kind==='historical'?[7,5]:[]);ctx.strokeRect(x,top,w,rh);ctx.setLineDash([]);crest(h,x+14,top+9,62,90);textFit(h.name,x+96,top+44,w-112,30);ctx.fillStyle='#75637b';ctx.font='18px sans-serif';ctx.fillText(badge(h),x+96,top+78,w-112);}
+    for(const row of rows){if(row.groupTitle){ctx.fillStyle='#e7d7b7';ctx.fillRect(70,row.y,1450,60);textFit(row.groupTitle,90,row.y+39,1390,30);continue;}
+      const {h,x,y:top,w,height:rh}=row;ctx.fillStyle=h.name===region.major?'#f0e4cc':'#fffefa';ctx.fillRect(x,top,w,rh);ctx.strokeStyle='#c5b3cd';ctx.lineWidth=2;ctx.setLineDash(h.hierarchy?.kind==='historical'?[7,5]:[]);ctx.strokeRect(x,top,w,rh);ctx.setLineDash([]);crest(h,x+14,top+9,62,90);textFit(h.name,x+96,top+44,w-112,30);ctx.fillStyle='#75637b';ctx.font='18px sans-serif';ctx.fillText(badge(h),x+96,top+78,w-112);}
    }
    ctx.fillStyle='#75637b';ctx.font='18px sans-serif';ctx.fillText(region.houses.length+' casas · Acervo da campanha · '+(mode==='hierarchy'?'Linhas: vínculos documentados; registros pendentes sinalizados.':'Casas históricas podem constar no acervo.'),65,height-38,width-130);
    const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Não foi possível gerar o PNG.')),'image/png'));
