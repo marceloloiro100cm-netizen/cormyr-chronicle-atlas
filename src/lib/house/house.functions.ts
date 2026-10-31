@@ -35,11 +35,11 @@ const houseInput=z.object({houseId:z.string().min(1).max(100)});
 export const loadHouseLedger=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({houseId:z.string().min(1).max(100)})).handler(async({data,context})=>{
  const [admin,member]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:false})]);
  if(admin.error||member.error||(!admin.data&&!member.data))throw new Error('Histórico não autorizado.');
- const rows:{id:string;action:string;explanation:string;rule:string;created_at:string;campaign_month:number|null;actor:string|null;version:number}[]=[];
+ const rows:{id:string;action:string;explanation:string;rule:string;created_at:string;campaign_month?:number;actor?:string;version:number}[]=[];
  for(let start=0;start<=10000;start+=500){
   const result=await context.supabase.from('noble_house_ledger').select('id,action,explanation,rule,campaign_month,created_at,actor,version').eq('house_id',data.houseId).order('version',{ascending:true}).range(start,start+499);
   if(result.error)throw new Error('Falha ao carregar histórico para exportação.');
-  rows.push(...(result.data??[]));
+  rows.push(...(result.data??[]).map(row=>({...row,campaign_month:row.campaign_month??undefined,actor:row.actor??undefined})));
   if((result.data??[]).length<500)return rows;
  }
  throw new Error('Histórico excedeu dez mil lançamentos; exportação interrompida sem truncar.');
