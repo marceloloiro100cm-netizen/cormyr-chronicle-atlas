@@ -115,8 +115,9 @@ SELECT pg_temp.assert(
  WHERE house_id='lote20-a' AND action='calendar_advance'),
  'one House monthly ledger entry for three-month jump');
 SELECT pg_temp.assert(
- (SELECT count(*)=1 FROM public.campaign_temporal_deliveries
- WHERE consumer_code='army-units' AND status='informational'),
+ (SELECT count(*)=1 FROM jsonb_array_elements(
+ public.get_temporal_consumer_dashboard(80)->'deliveries') d
+ WHERE d->>'consumer_code'='army-units' AND d->>'status'='informational'),
  'army receives one informational projection notice, not a new troop');
 
 -- Replaying same command is idempotent across all four domains.
@@ -130,8 +131,9 @@ SELECT pg_temp.assert(
  WHERE house_id='lote20-a' AND action='calendar_advance'),
  'idempotent retry cannot complete/bill a project twice');
 SELECT pg_temp.assert(
- (SELECT count(*)=1 FROM public.campaign_temporal_deliveries
- WHERE consumer_code='army-units'),
+ (SELECT count(*)=1 FROM jsonb_array_elements(
+ public.get_temporal_consumer_dashboard(80)->'deliveries') d
+ WHERE d->>'consumer_code'='army-units'),
  'idempotent retry cannot duplicate army integration notice');
 
 -- Year boundary: age derives from source once; don't mutate genealogy/units/mail.
