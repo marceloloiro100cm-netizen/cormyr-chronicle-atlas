@@ -9,16 +9,17 @@ INSERT INTO public.user_roles(user_id,role) VALUES
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000041',true);
 SELECT pg_temp.assert(
-  public.publish_campaign_schedule_confirmed(
-    (public.get_campaign_calendar()->>'version')::integer,'1522-01-11',true,2
+  public.publish_campaign_time_change(
+    (public.get_campaign_calendar()->>'version')::integer,'30000000-0000-4000-8000-000000000141',
+    'set','1522-01-11',0,'Publicação confirmada',false
   )->>'day'='11','atomic RPC returns saved day 11');
 SELECT pg_temp.assert(public.get_campaign_calendar()->>'day'='11',
  'published day available through normal player read');
-SELECT pg_temp.assert(public.get_campaign_calendar()->>'published_week'='2',
- 'published week preserved');
+SELECT pg_temp.assert(public.get_campaign_calendar()->>'published_week'='1',
+ 'week numbering remains independent of the time publication');
 DO $$ BEGIN
  BEGIN
-  PERFORM public.publish_campaign_schedule_confirmed(1,'1522-01-21',true,3);
+  PERFORM public.publish_campaign_time_change(1,'30000000-0000-4000-8000-000000000142','set','1522-01-21',0,'Versão defasada',false);
   RAISE EXCEPTION 'stale version incorrectly accepted';
  EXCEPTION WHEN raise_exception THEN
   IF SQLERRM='stale version incorrectly accepted' THEN RAISE; END IF;
@@ -29,7 +30,7 @@ SELECT pg_temp.assert(public.get_campaign_calendar()->>'day'='11',
 SELECT set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000042',true);
 DO $$ BEGIN
  BEGIN
-  PERFORM public.publish_campaign_schedule_confirmed(2,'1522-01-21',true,3);
+  PERFORM public.publish_campaign_time_change(2,'30000000-0000-4000-8000-000000000143','set','1522-01-21',0,'Permissão negada',false);
   RAISE EXCEPTION 'non-narrator published calendar';
  EXCEPTION WHEN raise_exception THEN
   IF SQLERRM='non-narrator published calendar' THEN RAISE; END IF;
