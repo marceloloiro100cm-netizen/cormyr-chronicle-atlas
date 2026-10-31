@@ -81,9 +81,28 @@ export function changeUnitTrainingXp(unit:Unit,target:keyof typeof TRAINING,mont
  return delta;
 }
 export const MILITARY_HOLDINGS=[
+ // Fortificações que aumentam diretamente a Defesa de unidades estacionadas.
+ 'tower','hall','small-castle','castle','superior-castle',
+ // Posses de suporte e melhorias militares; incluir a posse principal permite comprá-la pelos próprios cards.
+ 'pros-charcoal','pros-charcoal--tar-works',
+ 'pros-dog-kennels','pros-dog-kennels--scouting-hounds','pros-dog-kennels--war-hounds','pros-dog-kennels--guard-dogs',
+ 'pros-fur-trade','pros-fur-trade--trappers',
+ 'pros-horse-husbandry','pros-horse-husbandry--war-horse-herds',
+ 'pros-timber','pros-timber--ship-yards',
+ 'pros-annual-festivals','pros-seasonal-festivals','pros-monthly-festivals','pros-festivals--martial-festivals',
+ 'pros-bowyer-fletcher-or-weaponsmith','pros-stonemason','pros-shipwright',
+ 'pros-bailiffs','pros-bailiffs--military-training','pros-bailiffs--investigative-training',
+ 'pros-engineer','pros-engineer--siege-engineer','pros-engineer--engineer-commander',
  'pros-master-of-arms','pros-master-of-arms--field-master','pros-master-of-arms--prepared-for-siege',
+ 'pros-magistrate',
+ 'pros-abbey','pros-abbey--warrior-brotherhood',
+ 'pros-gambling-dens','pros-gambling-dens--bloodsports',
+ 'pros-gaol','pros-gaol--jailors',
  'pros-military-academy','pros-military-academy--broad-training','pros-military-academy--core-training',
- 'pros-bailiffs--military-training','pros-abbey--warrior-brotherhood','pros-bowyer-fletcher-or-weaponsmith'
+ 'pros-port','pros-port--drydocks',
+ 'pros-marketplace','pros-slave-market','pros-slave-market--soldier-slaves',
+ 'pros-street-gangs','pros-street-gangs--thugs-at-the-ready',
+ 'pros-trading-inn',
 ];
 export function renameMilitaryHolding(state:HouseState,input:{holdingId:string;name:string}):HouseState{
  const next=structuredClone(state),h=next.holdings.find(x=>x.id===input.holdingId&&x.status==='active');
