@@ -33,7 +33,7 @@ export type HarptosDesdiaPreview = HarptosInterval & {
   desdiasAdvanced: number;
   nextDate: CampaignDate;
   nextDateKey: string;
-  nextDesdia: 1 | 2 | 3;
+  nextDesdia: 1 | 2 | 3 | null;
 };
 
 const DAYS_PER_MONTH = 30;
@@ -235,6 +235,6 @@ export function previewHarptosDesdia(start: HarptosDateInput, count = 1): Harpto
     desdiasAdvanced: count,
     nextDate,
     nextDateKey: dateKey(nextDate),
-    nextDesdia: getHarptosDesdia(nextDate)!,
+    nextDesdia: getHarptosDesdia(nextDate),
   };
 }
