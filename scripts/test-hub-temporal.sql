@@ -39,7 +39,7 @@ SELECT pg_temp.assert(public.publish_campaign_time_change(
   (public.get_campaign_calendar()->>'version')::int,
   '30000000-0000-4000-8000-000000000171','set','1522-01-21',0,'Baseline autorizado',false
  )->>'day'='21','set succeeds');
-SELECT pg_temp.assert((SELECT count(*)=1 FROM public.campaign_time_operations),
+SELECT pg_temp.assert(jsonb_array_length(public.get_campaign_time_history(100))=1,
  'baseline has one operation');
 
 SELECT pg_temp.assert(
@@ -71,7 +71,7 @@ SELECT pg_temp.assert(
  public.publish_campaign_time_change(2,'30000000-0000-4000-8000-000000000172',
    'advance',NULL,1,'Avanço de teste',false)->>'duplicate'='true',
  'replayed operation is returned instead of executed again');
-SELECT pg_temp.assert((SELECT count(*)=2 FROM public.campaign_time_operations),
+SELECT pg_temp.assert(jsonb_array_length(public.get_campaign_time_history(100))=2,
  'replay does not create another operation');
 SELECT pg_temp.assert((SELECT count(*)=2 FROM public.campaign_calendar_audit),
  'replay does not create another calendar audit');
@@ -91,7 +91,7 @@ DO $test$ BEGIN
   IF SQLERRM='stale version accepted' OR SQLERRM NOT LIKE 'Calendário alterado%' THEN RAISE; END IF;
  END;
 END $test$;
-SELECT pg_temp.assert((SELECT count(*)=2 FROM public.campaign_time_operations),
+SELECT pg_temp.assert(jsonb_array_length(public.get_campaign_time_history(100))=2,
  'rejected operations leave no trace');
 
 -- Mail round opening must not update day/month/year/version or published week.
@@ -141,7 +141,7 @@ DO $test$ BEGIN
   IF SQLERRM='backdate accepted without authorization' OR SQLERRM NOT LIKE 'Retrocesso exige%' THEN RAISE; END IF;
  END;
 END $test$;
-SELECT pg_temp.assert((SELECT count(*)=6 FROM public.campaign_time_operations),
+SELECT pg_temp.assert(jsonb_array_length(public.get_campaign_time_history(100))=6,
  'unauthorized backdate did not mutate history');
 SELECT public.publish_campaign_time_change((public.get_campaign_calendar()->>'version')::int,
  '30000000-0000-4000-8000-000000000179','set','1524-12-21',0,
