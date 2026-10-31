@@ -27,6 +27,19 @@ export const REQUIRED_SURFACES=Object.freeze({
  'src/components/calendar/chronology.tsx':['p_year:year','p_month:month'],
  'src/lib/calendar/house-time-impact.ts':['monthFromHarptosDate','year*12+date.month'],
 });
+/**
+ * Authorized on-demand server guards read the SAME official RPC.
+ * They must not depend on the browser query cache when applying a purchase:
+ * that would create a TOCTOU window between display and authoritative write.
+ * Frozen call count: any new server reader requires explicit audit review.
+ */
+export const AUTHORIZED_SERVER_CLOCK_GUARDS=Object.freeze({
+ 'src/lib/house/house.functions.ts':{
+  maxCalls:4,
+  required:['createServerFn','requireSupabaseAuth','requireCalendarAlignment',
+   'calendarMonthIndex','reconcileHouseCalendar'],
+ },
+});
 const CRITICAL_QUERY_KEYS=[
  'campaign-calendar','calendar-events','calendar-schedule-events',
  'campaign-chronology','noble-house','house-realm-dashboard',
@@ -89,7 +102,16 @@ export function auditTemporalSite(files){
    path.startsWith('src/lib/house/')?'house-lib':'other-runtime';
   domains[category]=(domains[category]??0)+1;
   if(path!==CANONICAL){
-   for(const line of matchLines(source,/\.rpc\(\s*['"]get_campaign_calendar['"]/g))
+   const rpcLines=matchLines(source,/\\.rpc\\(\\s*['"]get_campaign_calendar['"]/g);
+   const guard=AUTHORIZED_SERVER_CLOCK_GUARDS[path];
+   if(guard){
+    for(const marker of guard.required)
+     if(!source.includes(marker))
+      errors.push({code:'MISSING_SERVER_CLOCK_GUARD',path,marker});
+    if(rpcLines.length!==guard.maxCalls)
+     errors.push({code:'SERVER_CLOCK_READS_CHANGED',path,
+      expected:guard.maxCalls,actual:rpcLines.length});
+   }else for(const line of rpcLines)
     errors.push({code:'SECOND_CANONICAL_CLOCK_FETCH',path,line});
   }
   for(const line of matchLines(source,/\.from\(\s*['"]campaign_calendar['"]/g))
@@ -114,6 +136,7 @@ export function auditTemporalSite(files){
   required_surfaces:Object.keys(REQUIRED_SURFACES).length,
   registered_invalidation_prefixes:parsedConnections.length,
   canonical_rpc:CANONICAL,
+  approved_server_guards:Object.keys(AUTHORIZED_SERVER_CLOCK_GUARDS).length,
   errors,
   review_candidates:warnings,
   static_contract_ok:errors.length===0,
