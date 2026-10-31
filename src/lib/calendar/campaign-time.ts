@@ -14,7 +14,7 @@ export const CAMPAIGN_TIME_REFRESH_MS = 15_000;
 export type CampaignTimeSnapshot = CampaignDate & {
  auto_advance: boolean;
  version: number;
- published_week?: number | undefined;
+ published_week?: number;
  last_round?: number | null | undefined;
  published_at?: string | null | undefined;
  updated_at?: string | null | undefined;
