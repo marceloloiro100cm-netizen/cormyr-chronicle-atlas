@@ -8,7 +8,7 @@ import { operationSchema, resourcesSchema, catalogSchema, unitSchema } from './s
 import { CORE_CATALOG } from './catalog';
 import { newHouseState, RESOURCE_KEYS, type HouseState, type CatalogItem, type Unit, type Resource, type CourtMember } from './types';
 import { advance, alternativeFortune, balances, createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
-import { confirmFortune, convertResources } from './fortune';
+import { confirmFortune, convertResources, runTournament } from './fortune';
 import { historyAdjustments, memberBonusAdjustments, historicalFoundationYear, rollFoundation, rollHistoricalEvent } from './creation-history';
 import { improveEquipment } from './equipment';
 import { buySiege, changeSiegeAssignment } from './siege';
@@ -296,8 +296,20 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     rule='Conciliação de benefícios importados · correspondência explícita de itemId com catálogo versionado da aplicação';
   }
   if(data.action==='fortune'){const input=z.object({status:z.number().int(),testDice:z.array(z.number().int()),bonusDice:z.array(z.number().int()),modifier:z.number(),resource:z.enum(RESOURCE_KEYS),changes:resourcesSchema,fortuneStackDice:z.array(z.number().int().min(1).max(6)).optional(),resourceStackDice:z.record(z.enum(RESOURCE_KEYS),z.array(z.number().int().min(1).max(6))).optional(),justification:z.string().min(1)}).parse(args);next=confirmFortune(state,input);rule='Livro básico · tabela 6-18';}
-  if(data.action==='convert'){const input=z.object({from:z.enum(RESOURCE_KEYS),to:z.enum(RESOURCE_KEYS),amount:z.number().positive(),rushed:z.boolean(),rate:z.number().positive().optional()}).parse(args);if(state.phase!=='active')throw new Error('Casa não ativa.');next=convertResources(state,input.from,input.to,input.amount,input.rushed,input.rate);rule='Livro básico · tabela 6-19';}
-  if(data.action==='action'){if(state.phase!=='active')throw new Error('Casa não ativa.');const input=z.object({type:z.string().min(1).max(100),notes:z.string().min(1).max(4000)}).parse(args);if(state.actions.some(a=>a.month===state.month&&!a.type.startsWith('convert:')))throw new Error('A ação mensal já foi registrada.');next.actions.push({month:state.month,...input});}
+  if(data.action==='convert'){const input=z.object({from:z.enum(RESOURCE_KEYS),to:z.enum(RESOURCE_KEYS),amount:z.number().int().positive(),rushed:z.boolean(),rate:z.number().positive().optional()}).parse(args);if(state.phase!=='active')throw new Error('Casa não ativa.');next=convertResources(state,input.from,input.to,input.amount,input.rushed,input.rate);rule='Livro básico · tabela 6-19; ação mensal compartilhada';}
+  if(data.action==='action'){
+    if(state.phase!=='active')throw new Error('Casa não ativa.');
+    const input=z.object({type:z.string().min(1).max(100),notes:z.string().min(1).max(4000),scale:z.enum(['local','regional','grand']).optional(),competitions:z.number().int().min(1).max(30).optional()}).parse(args);
+    if(state.actions.some(a=>a.month===state.month))throw new Error('A Casa já utilizou sua ação mensal (inclusive conversões).');
+    if(input.type==='Torneio'){
+      if(!input.scale||!input.competitions)throw new Error('Informe porte e competições do torneio.');
+      const {randomInt}=await import('node:crypto');
+      const sides=input.scale==='local'?1:input.scale==='regional'?3:6;
+      const roll=randomInt(1,sides+1);
+      next=runTournament(state,input.scale,input.competitions,roll,input.notes);
+      rule='Livro básico pp. 155–156 · torneio '+input.scale+'; Influência rolada '+roll;
+    } else {next.actions.push({month:state.month,type:input.type,notes:input.notes});rule='Livro básico p. 153 · ação mensal auditada';}
+  }
   if(data.action==='roll'){
     if(state.phase!=='draft'||state.rolls.length||state.method==='import'||state.importSources.length)
       throw new Error('Rolagens já registradas, importadas ou criação encerrada.');
