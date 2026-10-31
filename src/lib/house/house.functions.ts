@@ -31,6 +31,19 @@ export const readVassalNpc=createServerFn({method:'POST'}).middleware([requireSu
   return {id:records.data.id,title:records.data.title,content:records.data.content};
 });
 const houseInput=z.object({houseId:z.string().min(1).max(100)});
+/** Full history is fetched only for a requested export after read-access verification. */
+export const loadHouseLedger=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({houseId:z.string().min(1).max(100)})).handler(async({data,context})=>{
+ const [admin,member]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:false})]);
+ if(admin.error||member.error||(!admin.data&&!member.data))throw new Error('Histórico não autorizado.');
+ const rows:{id:string;action:string;explanation:string;rule:string;created_at:string;campaign_month:number|null;actor:string|null;version:number}[]=[];
+ for(let start=0;start<=10000;start+=500){
+  const result=await context.supabase.from('noble_house_ledger').select('id,action,explanation,rule,campaign_month,created_at,actor,version').eq('house_id',data.houseId).order('version',{ascending:true}).range(start,start+499);
+  if(result.error)throw new Error('Falha ao carregar histórico para exportação.');
+  rows.push(...(result.data??[]));
+  if((result.data??[]).length<500)return rows;
+ }
+ throw new Error('Histórico excedeu dez mil lançamentos; exportação interrompida sem truncar.');
+});
 export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(houseInput).handler(async({data,context})=>{
   const db=context.supabase;
   const [house,sheet,rules,ledger,admin]=await Promise.all([db.from('campaign_houses').select('id,name,region').eq('id',data.houseId).maybeSingle(),db.from('noble_house_sheets').select('*').eq('house_id',data.houseId).maybeSingle(),db.from('noble_house_rule_overrides').select('*'),db.from('noble_house_ledger').select('id,action,explanation,rule,campaign_month,created_at,actor,version,operation_key').eq('house_id',data.houseId).order('version',{ascending:false}).limit(100),db.rpc('is_campaign_admin')]);
