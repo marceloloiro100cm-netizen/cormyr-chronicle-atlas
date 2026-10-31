@@ -4,6 +4,7 @@ import {supabase} from '@/integrations/supabase/client';
 import {Button} from '@/components/ui/button';
 import {CampaignDatePicker} from './date-picker';
 import {CampaignCalendar,type CalendarState} from './calendar';
+import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {calendarPublicationError,samePublishedCalendar} from '@/lib/calendar/publication';
 import {calendarMonthIndex} from '@/lib/house/calendar-consistency';
@@ -20,11 +21,7 @@ type DraftEvent={
 
 export function NarratorCalendar(){
  const qc=useQueryClient();
- const calendar=useQuery({queryKey:['campaign-calendar'],queryFn:async()=>{
-  const {data,error}=await supabase.rpc('get_campaign_calendar');
-  if(error)throw error;
-  return data as unknown as CalendarState;
- },refetchInterval:15000});
+ const calendar=useCampaignTime();
  const drafts=useQuery({queryKey:['campaign-schedule-drafts'],queryFn:async()=>{
   const {data,error}=await supabase.rpc('get_campaign_schedule_drafts');
   if(error)throw error;
@@ -47,7 +44,7 @@ export function NarratorCalendar(){
   setAutomatic(calendar.data.auto_advance);
   setEventDate(previous=>eventDateEditedRef.current?previous:current);
  },[calendar.data?.version]);
- const reset=()=>{setEditId(null);setEditVersion(null);eventDateEditedRef.current=false;setEventDate(date||'1522-01-01');setTitle('');setDescription('');};
+ const reset=()=>{setEditId(null);setEditVersion(null);eventDateEditedRef.current=false;setEventDate(date);setTitle('');setDescription('');};
  useEffect(()=>{if(date&&!eventDateEditedRef.current&&!editId)setEventDate(date);},[date,editId]);
  async function saveEvent(deleted=false,override?:DraftEvent){
   if(busy)return;
