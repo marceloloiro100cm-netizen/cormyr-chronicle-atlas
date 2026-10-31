@@ -27,6 +27,16 @@ export function roundPeriodMatchesCurrent(period:string|null|undefined,currentDa
  if(d.festival)return period===currentDate;
  return period===`${String(d.year).padStart(4,'0')}-${String(d.month+1).padStart(2,'0')}:désdia-${Math.floor((d.day-1)/10)+1}`;
 }
+/** Period of a correspondence round is historical and must belong to
+ * the exact month queried. Never assign an undated round to today's désdia. */
+export function roundReferenceBelongsToMonth(value:string|null|undefined,year:number,month:number):boolean{
+ if(!value||!Number.isInteger(year)||year<1||year>9999||
+    !Number.isInteger(month)||month<0||month>11)return false;
+ const festival=parseDate(value);
+ if(festival?.festival)return festival.year===year&&festival.month===month;
+ const match=/^(\d{4})-(\d{2}):désdia-([123])$/.exec(value);
+ return Boolean(match&&Number(match[1])===year&&Number(match[2])===month+1);
+}
 export function monthOfCampaignDate(date:string):number|null{
  const d=parseDate(date);
  return d?.month??null;
@@ -48,12 +58,14 @@ export function validateCampaignChronology(input:unknown,year:number,month:numbe
   if(!d||d.year!==year||d.month!==month)throw new Error('Evento fora do mês consultado.');
   eventKeys.add(e['id']);
  }
+ const roundNumbers=new Set<number>();
  for(const r of input['rounds']){
   if(!isRecord(r)||!Number.isInteger(r['number'])||Number(r['number'])<1||
-   typeof r['status']!=='string'||
-   (r['harptos_period']!==null&&typeof r['harptos_period']!=='string')||
-   formatRoundHarptosReference(r['harptos_period'] as string|null).includes('inválida'))
-    throw new Error('Referência histórica de rodada inválida.');
+   roundNumbers.has(Number(r['number']))||typeof r['status']!=='string'||
+   typeof r['harptos_period']!=='string'||
+   !roundReferenceBelongsToMonth(r['harptos_period'],year,month))
+    throw new Error('Referência histórica de rodada inválida ou de outro mês.');
+  roundNumbers.add(Number(r['number']));
  }
  return input as unknown as CampaignChronology;
 }
