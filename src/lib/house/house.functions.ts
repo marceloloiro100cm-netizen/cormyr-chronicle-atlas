@@ -15,6 +15,7 @@ import { buySiege } from './siege';
 import { equipUnit, resolveSurvivors, changeUnitState, proposeVassal, approveVassal, SURVIVOR_CONDITIONS } from './military';
 import { linkVassalNpcs, validateVassalNpcs } from './vassal-links';
 import { selectUndoSnapshot } from './undo';
+import { editDomain, deleteEmptyDomain } from './domain-management';
 import { legacyCostIssues, reconcileLegacyCosts } from './legacy-cost-reconciliation';
 import { depositGold, donateGold, donateGlory, spendInfluence, redeemIntrigueBonus } from './resource-transactions';
 import { assignCourt, removeCourtAssignment, validateCourtRecord } from './court';
@@ -170,9 +171,23 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     next.identity={...state.identity,crestPath:path};
     rule='Cormyr · importação de imagem de brasão (privada, vinculada à ficha e auditada)';
   }
-  if(data.action==='domain') {const domain=z.object({id:z.string().uuid(),name:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args);next.domains.push({...domain,terrain:'',features:[]});}
+  if(data.action==='domain') {
+    const domain=z.object({id:z.string().uuid(),name:z.string().trim().min(1).max(160),notes:z.string().max(4000)}).parse(args);
+    if(next.domains.some(d=>d.id===domain.id))throw new Error('Identificador de domínio já registrado.');
+    next.domains.push({...domain,terrain:'',features:[]});
+  }
+  if(data.action==='domain_edit') {
+    const input=z.object({id:z.string(),name:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args);
+    next=editDomain(state,input.id,input.name,input.notes);
+    rule='Gestão territorial · alteração auditada do nome ou das notas do domínio';
+  }
+  if(data.action==='domain_delete') {
+    const input=z.object({id:z.string()}).parse(args);
+    next=deleteEmptyDomain(state,input.id);
+    rule='Gestão territorial · remoção de domínio vazio somente em rascunho';
+  }
   if(data.action==='purchase') {
-    const purchaseArgs=z.object({id:z.string().uuid(),itemId:z.string(),domainId:z.string(),name:z.string().max(160),parentId:z.string().optional(),supportId:z.string().optional()}).parse(args);
+    const purchaseArgs=z.object({id:z.string().uuid(),itemId:z.string(),domainId:z.string(),name:z.string().max(160),parentId:z.string().optional(),supportId:z.string().optional(),replaceId:z.string().optional(),extraAreas:z.number().int().min(0).max(20).optional()}).parse(args);
     const overrides=await db.from('noble_house_rule_overrides').select('definition');if(overrides.error)throw new Error('Regras indisponíveis.');
     const item=overrides.data.map(r=>catalogSchema.parse(r.definition)).find(i=>i.id===purchaseArgs.itemId)??CORE_CATALOG.find(i=>i.id===purchaseArgs.itemId);
     if(!item)throw new Error('Posse não encontrada.');
