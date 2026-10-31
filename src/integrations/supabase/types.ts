@@ -1654,6 +1654,12 @@ export type Database = {
       stage_campaign_character_sources: { Args: never; Returns: Json }
       import_character_source_candidates: { Args: { p_candidates: Json }; Returns: number }
       get_character_registry_hub: { Args: { p_limit?: number }; Returns: Json }
+      get_character_age_dashboard: {
+        Args: { p_year?: number | null; p_target_year?: number | null; p_limit?: number }
+        Returns: Json
+      }
+      get_house_character_ages: { Args: { p_house: string }; Returns: Json }
+      get_character_year_transitions: { Args: { p_limit?: number }; Returns: Json }
       save_campaign_character: {
         Args: {
           p_id: string | null
