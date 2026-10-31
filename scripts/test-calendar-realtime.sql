@@ -37,9 +37,9 @@ SELECT pg_temp.assert(public.get_campaign_calendar() IS NOT NULL,
  'narrator can query authoritative calendar');
 SELECT pg_temp.assert(
  public.publish_campaign_schedule_confirmed(
- (public.get_campaign_calendar()->>'version')::integer,'1522-01-11',true,2
- )->>'day'='11','narrator publish returns saved date');
-SELECT pg_temp.assert(public.get_campaign_calendar()->>'day'='11',
+ (public.get_campaign_calendar()->>'version')::integer,'1522-01-01',true,2
+ )->>'day'='1','narrator publishes events without changing official date');
+SELECT pg_temp.assert(public.get_campaign_calendar()->>'day'='1',
  'calendar subscription reads changed source row');
 SELECT set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000052',true);
 SELECT pg_temp.assert(public.get_campaign_calendar() IS NULL,
