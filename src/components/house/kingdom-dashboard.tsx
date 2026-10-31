@@ -1,17 +1,15 @@
 import {useQuery} from '@tanstack/react-query';
+import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {supabase} from '@/integrations/supabase/client';
 import {NarratorCalendar} from '@/components/calendar/narrator-calendar';
-import {calendarDrift,type CalendarReference} from '@/lib/house/calendar-consistency';
+import {calendarDrift} from '@/lib/house/calendar-consistency';
 import {campaignMonth} from '@/lib/house/regions';
 import {balances,maxHouseStatus} from '@/lib/house/engine';
 import {RESOURCE_KEYS,RESOURCE_NAMES,type HouseState} from '@/lib/house/types';
 
 type RealmHouse={id:string;name:string;state:HouseState|null;version:number|null};
 export function KingdomDashboard(){
- const calendar=useQuery({queryKey:['campaign-calendar'],queryFn:async()=>{
-  const r=await supabase.rpc('get_campaign_calendar');if(r.error||!r.data)throw new Error('Calendário indisponível.');
-  return r.data as unknown as CalendarReference;
- },refetchInterval:15000});
+ const calendar=useCampaignTime();
  const query=useQuery({queryKey:['house-realm-dashboard'],queryFn:async()=>{
   const role=await supabase.rpc('is_campaign_admin');
   if(role.error||!role.data)throw new Error('Painel do Reino exclusivo do Narrador.');
