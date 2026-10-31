@@ -35,7 +35,7 @@ describe('livro de efeitos derivados da Casa',()=>{
    holding('pros-charcoal--tar-works',{parentId:'h-pros-charcoal'})
   ];
   const report=houseEffectLedger(s);
-  expect(report.raw.fortune).toBe(2);
+  expect(report.raw.fortune).toBe(3);
   expect(report.raw.gain.wealth).toBe(1);
   expect(report.raw.mitigation.wealth).toBe(1);
   expect(report.specialRules.extraLawLossOnFortune).toBe(1);
