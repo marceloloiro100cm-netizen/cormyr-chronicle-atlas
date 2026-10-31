@@ -569,3 +569,52 @@
 .house-segment-allocated{background:#415d85}
 .house-segment-building{background:repeating-linear-gradient(135deg,#c89d58,#c89d58 5px,#9e7842 5px,#9e7842 10px)}
 .house-segment-free{background:#529681}
+
+
+/* Cormyr military unit codex — graphical sheet, pips and active military assets */
+.military-unit-title{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap}
+.military-unit-title h4{min-width:0;overflow-wrap:anywhere}
+.military-sheet{background:linear-gradient(160deg,#fffdf7,#f9f5ea 65%,#faf7ee);color:#282031}
+.military-sheet-heading{display:flex;gap:1rem;align-items:center;text-align:left}
+.military-sheet-emblem{border:2px solid #ad884e;border-radius:50%;height:70px;width:70px;flex-shrink:0;display:grid;place-items:center;color:#6b4a22;background:#eee1bd}
+.military-sheet-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;margin:1rem 0}
+.military-sheet-stats>div{border:1px solid #ccb992;background:#fffef9;border-radius:.5rem;padding:.7rem;text-align:center;min-width:0;overflow-wrap:anywhere}
+.military-sheet-stats span{display:block;font-size:.75rem;color:#655b52}
+.military-sheet-stats strong{display:block;font-size:1.3rem;font-weight:700;font-variant-numeric:tabular-nums}
+.military-sheet-stats .military-attack{font-size:.9rem;line-height:1.5}
+.military-sheet-xp{border:1px solid #ad946a;border-radius:.6rem;padding:1rem;background:#f5efdc}
+.military-sheet-xp>div:first-child{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.military-sheet-xp p{font-size:.86rem;margin:.5rem 0}
+.military-xp-available,.military-positive{color:#236746;font-weight:700}
+.military-xp-loss{color:#b12535!important;font-weight:700}
+.military-sheet-xp .military-xp-loss{display:flex;align-items:center;gap:.35rem}
+.military-xp-grant{display:grid;grid-template-columns:105px minmax(0,1fr) auto;align-items:end;gap:.75rem;margin:.9rem 0}
+.military-xp-grant label,.military-sheet-form label,.military-rename label{font-size:.8rem;font-weight:600;display:grid;gap:.2rem}
+.military-xp-grant input,.military-sheet-form input,.military-sheet-form textarea,.military-rename input{width:100%;border:1px solid #baa98d;border-radius:.35rem;padding:.55rem;background:white}
+.military-sheet-form{display:grid;gap:.8rem;border:1px solid #d0bd99;background:white;padding:1rem;border-radius:.5rem}
+.military-skills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}
+.military-skill{border:1px solid #d8cbb4;background:#fffcf5;border-radius:.5rem;padding:.75rem;min-width:0}
+.military-skill-head{display:flex;align-items:center;justify-content:space-between;gap:.25rem;font-size:.82rem}
+.military-skill-head small{font-size:.65rem;color:#746b65}
+.military-skill-pips{display:flex;gap:.24rem;flex-wrap:wrap;margin-top:.6rem}
+.military-pip{flex:0 0 17px;width:17px;height:17px;border-radius:50%;border:1.5px solid #8f739e;background:#fff;display:inline-flex;align-items:center;justify-content:center;padding:0;appearance:none}
+.military-pip.filled{background:#623b78;border-color:#5d396d;box-shadow:inset 0 0 0 2px #eee1f2}
+button.military-pip{cursor:pointer}
+button.military-pip:hover,button.military-pip:focus-visible{outline:2px solid #d29a3b;outline-offset:2px}
+button.military-pip:disabled{opacity:.35;cursor:not-allowed}
+.military-sheet-spend{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;background:#f4edde;padding:1rem;border-radius:.45rem;margin-top:1rem}
+.military-equipment{border-top:2px solid #c5ab82;padding-top:1rem}
+.military-equipment h3{display:flex;gap:.5rem;align-items:center}
+.military-equip-buttons{display:flex;flex-wrap:wrap;gap:.5rem;margin:.8rem 0}
+.military-assets{margin:1rem 0 1.25rem}
+.military-assets-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:.75rem}
+.military-asset-card{display:flex;align-items:flex-start;gap:.7rem;border:1px solid #bead91;border-radius:.5rem;padding:1rem;background:linear-gradient(135deg,#fcf7ed,#efe8dc);color:#342537}
+.military-asset-inactive{opacity:.75;border-style:dashed;background:#f7f5f7}
+.military-asset-icon{color:#8b652e;margin-top:.15rem}
+.military-asset-details{flex:1;min-width:0;overflow-wrap:anywhere}
+.military-asset-details small{display:block;text-transform:uppercase;letter-spacing:.07em;color:#786949;font-weight:700;font-size:.65rem}
+.military-asset-details strong{display:block;font:600 1.15rem Georgia,serif;margin:.15rem 0}
+.military-asset-details p{font-size:.82rem;line-height:1.55;margin:.45rem 0}
+.military-rename{display:flex;flex-wrap:wrap;align-items:end;gap:.5rem}
+.military-rename label{flex:1 1 140px}
+@media(max-width:680px){.military-skills{grid-template-columns:1fr}.military-sheet-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.military-xp-grant{grid-template-columns:1fr}.military-sheet-heading{align-items:flex-start}.military-sheet-emblem{width:48px;height:48px}.military-sheet-stats strong{font-size:1rem}}

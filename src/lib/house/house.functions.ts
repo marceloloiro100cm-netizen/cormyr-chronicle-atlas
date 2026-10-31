@@ -15,6 +15,7 @@ import { improveEquipment } from './equipment';
 import { buySiege, changeSiegeAssignment } from './siege';
 import { equipUnit, resolveSurvivors, changeUnitState, trainUnit, proposeVassal, approveVassal, endVassal, setVassalLoyalty, SURVIVOR_CONDITIONS } from './military';
 import { linkVassalNpcs, validateVassalNpcs } from './vassal-links';
+import { editUnitProfile,grantUnitXp,renameMilitaryHolding } from './unit-progression';
 import { selectUndoSnapshot } from './undo';
 import { legacyCostIssues, reconcileLegacyCosts } from './legacy-cost-reconciliation';
 import { depositGold, donateGold, donateGlory, spendInfluence, redeemIntrigueBonus } from './resource-transactions';
@@ -87,7 +88,7 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
   const admin=Boolean(role.data);if(!admin&&!membership.data)throw new Error('Edição desta casa não autorizada.');
-  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','train_unit','vassal_approve','vassal_end','vassal_loyalty','vassal_npcs','sync_calendar','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
+  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','grant_unit_xp','vassal_approve','vassal_end','vassal_loyalty','vassal_npcs','sync_calendar','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   const duplicate=await db.from('noble_house_ledger').select('after_state,version,actor,action').eq('house_id',data.houseId).eq('operation_key',data.key).maybeSingle();
   if(duplicate.error)throw new Error('Não foi possível conferir a operação.');
@@ -221,8 +222,28 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     next=changeSiegeAssignment(state,input);rule='Cerco: '+(input.destroyed?'destruição permanente':'mudança de operadores')+' auditada';
   }
   if(data.action==='unit_state'){const input=z.object({unitId:z.string(),mounted:z.boolean(),atHome:z.boolean(),health:z.number(),casualties:z.number().int(),situation:z.string().max(1000),commanderName:z.string().trim().max(160).optional(),domainId:z.string().optional(),disband:z.boolean().optional()}).parse(args);next=changeUnitState(state,input);if(input.commanderName&&!next.court.some(c=>c.name===input.commanderName))next.court.push({id:crypto.randomUUID(),name:input.commanderName,role:'Comandante de Exército',notes:'Comandante gerado na tropa'});rule='Livro básico · Condição, cavalaria e guarnição';}
+  if(data.action==='unit_edit'){
+    const input=z.object({unitId:z.string(),name:z.string().trim().min(1).max(160),origin:z.string().max(160),
+      situation:z.string().max(1000),notes:z.string().max(4000),skills:unitSchema.shape.skills,
+      mount:unitSchema.shape.mount.optional()}).parse(args);
+    next=editUnitProfile(state,input);
+    rule='Guerra dos Tronos RPG · edição de unidade e habilidades, 20 XP por graduação e déficit registrado';
+  }
+  if(data.action==='grant_unit_xp'){
+    if(!admin)throw new Error('Somente o Narrador concede XP às unidades.');
+    const input=z.object({unitId:z.string(),amount:z.number().int().min(1).max(1000),
+      reason:z.string().trim().min(10).max(1000)}).parse(args);
+    next=grantUnitXp(state,input);
+    data.explanation=input.reason;
+    rule='Cormyr · prêmio de experiência livre pelo Narrador, sem alterar treinamento nem habilidades';
+  }
+  if(data.action==='military_rename'){
+    const input=z.object({holdingId:z.string(),name:z.string().min(2).max(160)}).parse(args);
+    next=renameMilitaryHolding(state,input);
+    rule='Cormyr · nome de instalação militar sem alteração de custo, efeitos ou alocações';
+  }
   if(data.action==='train_unit'){
-    if(!admin)throw new Error('Treinamento fora de batalha exige autorização do Narrador.');
+    // Players with house editing rights may invest their own Power in training; the Narrator grants independent XP.
     if(state.phase!=='active')throw new Error('Treinamento exige campanha ativa.');
     if(data.explanation.trim().length<10)throw new Error('Justifique o treinamento.');
     const {unitId}=z.object({unitId:z.string()}).parse(args);

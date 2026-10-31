@@ -58,10 +58,12 @@ describe('Lote 7: descontos militares e treinamento',()=>{
   expect(result.units[0]?.evolution?.[0]?.justification).toContain('Mestre de Armas +1');
   expect(survivorResult(4,'unharmed',0,1).adjusted).toBe(5);
  });
- it('Elite não pode investir pontos adicionais em habilidade proibida',()=>{
+ it('Sobreviventes nunca alteram habilidades sem redistribuição pelo jogador',()=>{
   const s=make();const u=unit();u.training='elite';u.xp=140;s.units=[u];
   const skills={...u.skills,marksmanship:9};
-  expect(()=>resolveSurvivors(s,{id:'ev',unitId:'u',roll:6,condition:'unharmed',disorganizations:0,skills,justification:'Tentativa proibida'})).toThrow('Habilidade não permitida');
+  const result=resolveSurvivors(s,{id:'ev',unitId:'u',roll:6,condition:'unharmed',disorganizations:0,skills,justification:'Tentativa proibida'});
+  expect(result.units[0]?.skills.marksmanship).toBe(u.skills.marksmanship);
+  expect(result.units[0]?.training).toBe('elite');
  });
  it('reconcilia custos de Poder em treino de sobreviventes e conserva histórico',()=>{
   const s=make();s.units=[{...unit(),costs:[{resource:'power',amount:12,mode:'allocation'}],allocatedCosts:{power:12}}];
