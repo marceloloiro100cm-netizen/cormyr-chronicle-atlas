@@ -3,6 +3,7 @@ import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {Button} from '@/components/ui/button';
 import {supabase} from '@/integrations/supabase/client';
 import {requireFreshNarratorAccess} from '@/lib/auth/campaign-access-scope';
+import {isNarratorAccessRevoked,purgeRevokedNarratorCache} from '@/lib/auth/narrator-revocation';
 import {validateTemporalConsumerDashboard,validateTemporalReleasePreflight,type TemporalDelivery} from '@/lib/calendar/temporal-consumers';
 
 const names:Record<string,string>={
@@ -39,6 +40,7 @@ export function TemporalConsumerHub(){
  const [notes,setNotes]=useState<Record<string,string>>({});
  const [message,setMessage]=useState('');
  const [busy,setBusy]=useState<string|null>(null);
+ const [accessRevoked,setAccessRevoked]=useState(false);
  const retry=useRef<{signature:string;key:string}|null>(null);
 
  async function decide(d:TemporalDelivery,status:'reviewed'|'skipped'){
@@ -61,7 +63,7 @@ export function TemporalConsumerHub(){
    setMessage(status==='reviewed'
     ?'Pendência conferida. Nenhum bônus, recurso ou ação foi executado.'
     :'Pendência dispensada com justificativa; nenhuma regra foi aplicada.');
-  }catch(error){setMessage(errorText(error));}
+  }catch(error){if(isNarratorAccessRevoked(error)){purgeRevokedNarratorCache(qc);setAccessRevoked(true);}setMessage(errorText(error));}
   finally{setBusy(null);}
  }
 
@@ -76,10 +78,11 @@ export function TemporalConsumerHub(){
    if(!item||item.id!==d.id||item.replay_read_only!==true)
     throw new Error('Replay não confirmado em modo somente leitura.');
    setMessage('Replay de leitura confirmado: '+d.consumer_code+' · '+String(item.status)+'. Nenhuma transação de jogo foi executada.');
-  }catch(error){setMessage(errorText(error));}
+  }catch(error){if(isNarratorAccessRevoked(error)){purgeRevokedNarratorCache(qc);setAccessRevoked(true);}setMessage(errorText(error));}
   finally{setBusy(null);}
  }
 
+ if(accessRevoked)return <section role="alert">Permissão de Narrador revogada. Os dados privados foram ocultados. Atualize suas autorizações para continuar.</section>;
  return <section id="temporal-conexoes" className="narrator-calendar-panel" aria-label="Pontos de conexão temporal">
   <h3>Pontos de conexão e entregas temporais</h3>
   <p>O calendário publica uma notificação transacional por consumidor habilitado. Exércitos, posses, idades e missivas recalculam suas projeções a partir das fontes oficiais. Economia, serviços, estações e vassalagem exigem análise das regras antes de qualquer ação.</p>
