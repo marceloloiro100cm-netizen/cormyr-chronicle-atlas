@@ -13,6 +13,7 @@ export function PurchaseDrawer({
   busy,
   onConfirm,
   initialCategory = '',
+  initialItemId = '',
   onCreateDomain,
 }: {
   open: boolean;
@@ -22,6 +23,7 @@ export function PurchaseDrawer({
   busy: boolean;
   onConfirm: (args: Record<string, unknown>) => Promise<boolean>;
   initialCategory?: string;
+  initialItemId?: string;
   onCreateDomain?: (name:string)=>Promise<boolean>;
 }) {
   const [step, setStep] = useState(0);
@@ -45,7 +47,7 @@ export function PurchaseDrawer({
 
   useEffect(() => {
     if (open) {
-      setStep(0);
+      setStep(initialItemId ? 1 : 0);
       setCategory(initialCategory);
       setQuery('');
       setResourceFilter('');
@@ -53,12 +55,19 @@ export function PurchaseDrawer({
       setDurationFilter('all');
       setRepeatableFilter('all');
       setAvailable(false);
-      setItem('');
-      setName('');
+      setItem(initialItemId);
+      setName(catalog.find(i=>i.id===initialItemId)?.name??'');
+      const onlyDomain=initialItemId&&state.domains.length===1?state.domains[0]?.id??'':'';
+      const selectedForOpen=catalog.find(i=>i.id===initialItemId);
+      const matchingParents=state.holdings.filter(h=>h.status==='active'&&h.domainId===onlyDomain&&selectedForOpen?.requirements.some(r=>r.kind==='parent'&&r.values?.includes(h.itemId)));
+      setDomain(onlyDomain);
+      setParent(matchingParents.length===1?matchingParents[0]!.id:'');
+      setSupport('');
+      setReplaceId('');
       setWeaponSpecialty('');
       setCompare([]);
     }
-  }, [open, initialCategory]);
+  }, [open, initialCategory, initialItemId]);
 
   const selected = catalog.find(i => i.id === itemId);
   const q = selected ? quote(selected, state, domainId, parentId || undefined, supportId || undefined, replaceId || undefined) : null;
