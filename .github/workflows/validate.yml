@@ -107,3 +107,7 @@ jobs:
         env:
           TEMPORAL_DISPOSABLE_POSTGRES: 'true'
         run: bash scripts/test-temporal-migration-replay.sh
+      - name: Restore fixture backup and validate temporal contracts (isolated)
+        env:
+          TEMPORAL_DISPOSABLE_POSTGRES: 'true'
+        run: bash scripts/test-temporal-restore-drill.sh
