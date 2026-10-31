@@ -52,7 +52,7 @@ export function resolveSurvivors(state:HouseState,input:{id:string;unitId:string
     unit.allocatedCosts??={};
     unit.allocatedCosts.power=unit.costs.filter(c=>c.resource==='power'&&c.mode==='allocation').reduce((n,c)=>n+c.amount,0);
   }
-  unit.health=result.steps===0?unitStats(unit).maxHealth:Math.min(unit.health,unitStats(unit).maxHealth);
+  unit.health=result.steps===0?unitStats(unit,next).maxHealth:Math.min(unit.health,unitStats(unit,next).maxHealth);
   unit.situation='Sobrevivente';
   if(unit.xp<0)unit.situation+=' · Déficit de '+Math.abs(unit.xp)+' XP: reduzir habilidades';
  }
@@ -67,7 +67,7 @@ export function changeUnitState(state:HouseState,input:{unitId:string;mounted:bo
  if(input.commanderName!==undefined){u.commanderName=input.commanderName.trim();if(!u.commanderName)delete u.commanderId;}
  if(input.disband){u.destroyed=true;u.situation='Desmobilizada; custos permanentes não são restituídos';return next;}
  u.mounted=input.mounted;u.atHome=input.atHome;u.casualties=input.casualties;u.situation=input.situation;
- if(input.health>unitStats(u).maxHealth)throw new Error('Saúde excede o máximo na condição selecionada.');u.health=input.health;return next;
+ if(input.health>unitStats(u,next).maxHealth)throw new Error('Saúde excede o máximo na condição selecionada.');u.health=input.health;return next;
 }
 export function proposeVassal(state:HouseState,input:{id:string;houseId:string;name:string;notes:string;npcIds?:string[]}):HouseState {
  if(input.houseId===state.houseId)throw new Error('Uma casa não pode ser vassala de si mesma.');

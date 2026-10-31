@@ -290,7 +290,7 @@ export function createUnit(state: HouseState, unit: Unit, types: UnitType[]): Ho
   const available = balances(state).available;
   for(const cost of costs) {available[cost.resource]-=cost.amount;if(available[cost.resource]<0)throw new Error('Saldo insuficiente para a unidade.');}
   if(state.units.some(u=>u.id===unit.id))throw new Error('Identificador da unidade já utilizado.');
-  const next=structuredClone(state), maxHealth=unitStats(unit).maxHealth;
+  const next=structuredClone(state), maxHealth=unitStats(unit,state).maxHealth;
   const allocatedCosts: Partial<Record<Resource, number>> = {};
   for(const c of costs) if(c.mode === 'allocation') allocatedCosts[c.resource] = (allocatedCosts[c.resource] || 0) + c.amount;
   const festival=unit.types.includes('levies')?activeHoldings(state).find(h=>h.itemId==='pros-festivals--martial-festivals'):undefined;
