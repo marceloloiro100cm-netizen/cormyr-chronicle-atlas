@@ -157,6 +157,11 @@
       "pr": 157,
       "head": "fix/hub-temporal-lote-31-identidade-escopo-atomico",
       "base": "audit/hub-temporal-lote-30-gate-seguranca"
+    },
+    {
+      "pr": 158,
+      "head": "fix/hub-temporal-lote-32-autorizacao-comandos-narrador",
+      "base": "fix/hub-temporal-lote-31-identidade-escopo-atomico"
     }
   ]
 }
