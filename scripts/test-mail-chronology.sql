@@ -76,7 +76,10 @@ SELECT pg_temp.assert(
  'historical letter date never replaces campaign present');
 SELECT pg_temp.assert(
  jsonb_array_length(public.calendar_mail_events(1522,0))=1,
- 'Midwinter letter is shown in Hammer only');
+ 'Midwinter letter is shown in Hammer only (count='||
+ jsonb_array_length(public.calendar_mail_events(1522,0))::text||'; row='||
+ coalesce((SELECT jsonb_agg(jsonb_build_object('state',publication_state,'date',campaign_date,'week',delivery_week))::text
+ FROM public.campaign_letters WHERE batch_key='30000000-0000-0000-0000-000000000393'),'none')||')');
 SELECT pg_temp.assert(
  jsonb_array_length(public.calendar_mail_events(1522,1))=0,
  'festival letter is not copied to all other months');
