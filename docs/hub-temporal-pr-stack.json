@@ -127,6 +127,11 @@
       "pr": 151,
       "head": "fix/hub-temporal-lote-25-cronologia-retroativa",
       "base": "test/hub-temporal-lote-24-permissoes-narrador"
+    },
+    {
+      "pr": 152,
+      "head": "fix/hub-temporal-lote-26-isolamento-de-sessao",
+      "base": "fix/hub-temporal-lote-25-cronologia-retroativa"
     }
   ]
 }
