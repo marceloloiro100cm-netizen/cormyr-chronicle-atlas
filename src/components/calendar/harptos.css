@@ -71,3 +71,15 @@
  .character-age-panel .character-registry-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
  .character-age-panel .character-registry-entry[role=row]{grid-template-columns:1.5fr .75fr 1fr;font-size:12px}
 }
+
+/* Lote 8 · cronologia de missivas e eventos com datas históricas. */
+.harptos-chronology{display:grid;gap:12px;margin-top:16px;padding:16px;border:1px solid var(--border);border-radius:9px;min-width:0}
+.harptos-chronology h3{margin:0}
+.harptos-chronology-items{list-style:none;display:grid;gap:12px;padding:0;margin:0}
+.harptos-chronology-items>li{border-left:3px solid var(--campaign-gold,#bc9b56);padding:4px 0 4px 13px}
+.harptos-chronology-items h4{margin:0 0 5px;font-size:15px}
+.harptos-chronology-items ul{display:grid;gap:8px;margin:0;padding-left:18px}
+.harptos-chronology-items li{overflow-wrap:anywhere}
+.harptos-chronology-items small{font-size:12px;color:var(--muted-foreground)}
+.harptos-chronology>details>summary{cursor:pointer;font-weight:650}
+#temporal-cronologia{scroll-margin-top:24px}
