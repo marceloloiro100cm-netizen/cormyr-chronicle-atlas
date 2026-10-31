@@ -7,8 +7,9 @@
  const PLAYER_HOUSES=new Set();
  const ROYAL_HOUSE='Phelles';
  const imageViewer=document.createElement('script');imageViewer.src='image-viewer.js';document.body.append(imageViewer);
-const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'post',kind:'mundanos',query:'',theme:'',eventPage:1,houseQuery:'',adventure:'pacto-varzea',noble:{region:'',name:'',leader:'',castle:'',city:'',page:1,house:''}};
- const regionSelect=$('region-select');
+const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'post',kind:'mundanos',query:'',theme:'',eventPage:1,houseQuery:'',adventure:'pacto-varzea',houseHistory:[],noble:{region:'',name:'',leader:'',castle:'',city:'',page:1,house:''}};
+ const lawState={query:'',topic:'',page:1,article:null};
+  const regionSelect=$('region-select');
  $('kingdom-music').innerHTML=musicLinks(data.kingdomMusic,'Música do reino');
  regionSelect.innerHTML=data.regions.map(r=>`<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');
  regionSelect.value=state.region;
@@ -17,7 +18,7 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
   if(state.view==='aventura')return '#aventura-'+state.adventure;
   if(state.view==='eventos'){const params=new URLSearchParams({tipo:state.kind});if(state.query)params.set('busca',state.query);if(state.theme)params.set('tema',state.theme);if(state.eventPage>1)params.set('pagina',String(state.eventPage));return '#eventos?'+params;}
   if(state.view==='nobreza'){const params=new URLSearchParams();for(const [key,value] of Object.entries(state.noble))if(value&&!(key==='page'&&value===1))params.set(key,String(value));return '#nobreza'+(params.size?'?'+params:'');}
-  if(state.view==='constituicao')return '#constituicao';
+  if(state.view==='constituicao'){const p=new URLSearchParams();if(lawState.query)p.set('busca',lawState.query);if(lawState.topic)p.set('tema',lawState.topic);if(lawState.page>1)p.set('pagina',String(lawState.page));if(lawState.article)p.set('artigo',String(lawState.article));return '#constituicao'+(p.size?'?'+p:'');}
   if(state.view==='musicas')return '#musicas';
   return '#notebook-lm';
  }
@@ -26,7 +27,10 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
   if(!h){state.view='reino';state.regionView='houses';}
   else if(h==='nobreza'){state.view='nobreza';state.noble={region:params.get('region')||'',name:params.get('name')||'',leader:params.get('leader')||'',castle:params.get('castle')||'',city:params.get('city')||'',page:Math.max(1,parseInt(params.get('page'),10)||1),house:params.get('house')||''};}
   else if(h==='eventos'){state.view='eventos';state.kind=params.get('tipo')==='misticos'?'misticos':'mundanos';state.query=params.get('busca')||'';state.theme=params.get('tema')||'';state.eventPage=Math.max(1,parseInt(params.get('pagina'),10)||1);}
-  else if(h==='aventura'||h==='notebook-lm'||h==='constituicao'||h==='musicas')state.view=h;
+  else if(h==='aventura'||h==='notebook-lm'||h==='constituicao'||h==='musicas'){state.view=h;
+    if(h==='constituicao'){lawState.query=params.get('busca')||'';lawState.topic=params.get('tema')||'';
+     lawState.page=Math.max(1,parseInt(params.get('pagina'),10)||1);lawState.article=parseInt(params.get('artigo'),10)||null;}}
+   else if(h.startsWith('adv-sec-')){state.view='aventura';}
   else if(h==='pacto'){state.view='aventura';state.adventure='pacto-varzea';}
   else if(h.startsWith('aventura-')){const a=data.adventures.find(x=>x.id===h.slice(9));if(a)state.adventure=a.id;state.view='aventura';}
   else if(h.startsWith('regiao-')){const r=data.regions.find(x=>normalize(x.name).replace(/\s+/g,'-')===h.slice(7));if(r)state.region=r.name;state.regionView=params.get('visao')==='hierarquia'?'hierarchy':'houses';state.hierarchyEra=params.get('epoca')==='antes-1522'?'before':'post';state.view='reino';}
@@ -40,7 +44,18 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
  }).catch(()=>{});
 
  function showView(view,updateHash=true){state.view=view;document.querySelectorAll('.view').forEach(x=>x.hidden=x.id!==`view-${view}`);document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});document.title=({reino:'Reino e regiões',eventos:'Eventos',aventura:'Aventuras','notebook-lm':'Notebook LM',constituicao:'Constituição de Cormyr',nobreza:'Nobreza',musicas:'Músicas'}[view]||'Cormyr')+' · Cormyr Web';if(updateHash)writeRoute(true);}
- document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{showView(b.dataset.view);const h=document.querySelector('#view-'+state.view+' h1');h?.focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});}));
+ document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
+  // Choosing Nobreza in the main menu always opens the catalogue, never the previous noble sheet.
+  // Direct #nobreza?house=... links and deliberate suzerain navigation still open an individual house.
+  if(b.dataset.view==='nobreza'){
+   state.noble.house='';
+   state.houseHistory=[];
+   renderNobility();
+  }
+  showView(b.dataset.view);
+  const h=document.querySelector('#view-'+state.view+' h1');h?.focus({preventScroll:true});
+  window.scrollTo({top:0,behavior:'instant'});
+ }));
  function regionAtEra(region,era='post'){
   if(!['Elfhold','Helmlands'].includes(region.name))return region;
   const oldMajor=region.name==='Elfhold'?'Drauthglas':'Marliir';
@@ -78,9 +93,31 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
   const map=region.map;
   return `<section class="region-map panel" aria-labelledby="region-map-title"><div class="region-map-heading"><h3 id="region-map-title">Mapa</h3>${map?`<a class="quiet map-download" href="${esc(map.src)}" download="${esc(map.filename)}" aria-label="Baixar mapa de ${esc(region.name)}">Baixar Mapa</a>`:''}</div>${map?`<figure class="region-map-figure"><a href="${esc(map.src)}" target="_blank" rel="noopener" aria-label="Ampliar mapa de ${esc(region.name)} em nova aba"><img src="${esc(map.src)}" alt="${esc(map.alt)}" width="${map.width}" height="${map.height}" loading="lazy" decoding="async"></a><figcaption>Mapa de ${esc(region.name)} · Selecione a imagem para ampliar.${map.note?`<br>${esc(map.note)}`:''}</figcaption></figure>`:'<p class="region-map-empty">Mapa ainda não disponível.</p>'}</section>`;
  }
+ function isRegionHeading(line){
+  const text=line.trim();
+  return text.length>=5&&text.length<=110&&!/^(?:[-*•]|\d+[.)])\s/.test(text)
+   &&/[A-ZÀ-Ý]/.test(text)&&text===text.toUpperCase()
+   &&!/[.!?;:]$/.test(text);
+ }
+ function renderRegionText(fullText){
+  const parts=fullText.split(/\r?\n/).map(t=>t.trim()).filter(Boolean);
+  const heads=[],body=[];let list=[];
+  const flush=()=>{if(list.length){body.push('<ul>'+list.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>');list=[];}};
+  for(const text of parts){
+   if(isRegionHeading(text)){
+    flush();const id='region-topic-'+heads.length;heads.push({id,text});
+    body.push('<h4 id="'+id+'">'+esc(text)+'</h4>');
+   }else if(/^(?:[-*•]|\d+[.)])\s+/.test(text)){
+    list.push(text.replace(/^(?:[-*•]|\d+[.)])\s+/,''));
+   }else{flush();body.push('<p>'+esc(text)+'</p>');}
+  }
+  flush();
+  const toc=heads.length>1?'<nav class="region-text-toc" aria-label="Índice do texto regional"><strong>Neste registro</strong><ul>'+heads.map(h=>'<li><a href="#'+h.id+'">'+esc(h.text)+'</a></li>').join('')+'</ul></nav>':'';
+  return toc+body.join('');
+ }
  function renderRegion(){const region=data.regions.find(x=>x.name===state.region);const overview=state.regionView==='hierarchy'?regionAtEra(region,state.hierarchyEra):region;const major=overview.houses.find(h=>normalize(h.name)===normalize(overview.major));const past=overview.era==='before';
  {const t=document.querySelector('.region-view-toolbar'),home=document.querySelector('.atlas-controls');if(t&&home&&!home.contains(t))home.append(t);}
- $('region-content').innerHTML=`<div class="region-overview">${major.crest?`<img class="region-banner" src="${esc(major.crest)}" alt="Brasão da Casa ${esc(overview.major)}" width="134" height="190">`:`<div class="crest-missing">${esc(overview.major)}<small>Brasão não localizado</small></div>`}<div><div class="region-title"><h3>${esc(region.name)}</h3></div><p class="region-meta">${esc(region.subtitle)} · ${region.major===ROYAL_HOUSE?'Royal House':'Major House'}: <strong>${esc(overview.major)}</strong></p><p class="region-description">${esc(region.description)}</p><p class="politics"><strong>${past?'Antes de 1522.':'Quadro de 1522.'}</strong> ${past?esc(region.name==='Elfhold'?'Elfhold sob a autoridade régia de Aelar Drauthglas, antes da reintegração ao reino.':'Helmlands sob a Casa Marliir, antes de sua destituição.'):esc(region.politics)}</p>${musicLinks(region.music,'Música da região')}${region.fullText||region.fullTextPath?`<div id="region-full-text" class="region-full-text" hidden><p class="small">Texto integral do acervo regional. Os registros históricos podem descrever períodos anteriores ao quadro de 1522.</p></div><div class="region-read-actions"><button type="button" id="region-read-more" class="quiet" aria-expanded="false" aria-controls="region-full-text">Ler mais</button></div>`:''}</div></div>${regionMap(region)}<div class="region-download-bar"><button type="button" id="download-region-png" class="quiet region-download">Baixar casas da Região</button><span id="download-region-status" class="download-status" role="status" aria-live="polite"></span></div><div id="region-hierarchy-view"${state.regionView==='hierarchy'?'':' hidden'}>${hierarchyMap(region,state.hierarchyEra)}</div><div id="region-houses-view"${state.regionView==='houses'?'':' hidden'}><div class="house-heading"><h3>Casas de ${esc(region.name)}</h3><p>${region.houses.length} casas no acervo</p></div><div class="house-search"><label for="house-search">Buscar casa nesta região<input id="house-search" type="search" placeholder="Nome, cidade ou castelo…" value="${esc(state.houseQuery)}"></label><button type="button" id="house-search-clear" class="quiet">Limpar filtros</button></div><p id="house-search-result" class="small" role="status" aria-live="polite"></p><div class="houses-grid">${region.houses.map((h,index)=>`<button type="button" class="house-card${PLAYER_HOUSES.has(h.nobleId)?' player-house':''}${h.name===ROYAL_HOUSE?' royal-house':!PLAYER_HOUSES.has(h.nobleId)&&(h.catalogClassification==='major'||h.name===region.major)?' major-house':''}" data-house="${index}" aria-label="Abrir ficha da Casa ${esc(h.name)}"><div class="crest-frame">${h.crest?`<img src="${esc(h.crest)}" alt="Brasão da Casa ${esc(h.name)}" loading="lazy" decoding="async" width="160" height="232">`:`<div class="crest-missing">${esc(h.name)}<small>Brasão não localizado no acervo</small></div>`}</div><div class="house-caption"><strong>${esc(h.name)}</strong><span class="${h.name===ROYAL_HOUSE?'royal':h.name===region.major?'major':''}">${h.name===ROYAL_HOUSE?'ROYAL HOUSE':h.name===region.major?'MAJOR HOUSE':'CASA NOBRE'}</span>${PLAYER_HOUSES.has(h.nobleId)?'<span class="player-tag">Casa de Jogador</span>':''}</div></button>`).join('')}</div><p class="archive-note">Selecione um brasão para consultar a ficha e suas fontes. As casas históricas também estão listadas; a presença no acervo não confirma a manutenção de títulos em 1522.</p></div>`;
+ $('region-content').innerHTML=`<div class="region-overview">${major.crest?`<img class="region-banner" src="${esc(major.crest)}" alt="Brasão da Casa ${esc(overview.major)}" width="134" height="190">`:`<div class="crest-missing">${esc(overview.major)}<small>Brasão não localizado</small></div>`}<div><div class="region-title"><h3>${esc(region.name)}</h3></div><p class="region-meta">${esc(region.subtitle)} · ${region.major===ROYAL_HOUSE?'Royal House':'Major House'}: <strong>${esc(overview.major)}</strong></p><p class="region-description">${esc(region.description)}</p><p class="politics"><strong>${past?'Antes de 1522.':'Quadro de 1522.'}</strong> ${past?esc(region.name==='Elfhold'?'Elfhold sob a autoridade régia de Aelar Drauthglas, antes da reintegração ao reino.':'Helmlands sob a Casa Marliir, antes de sua destituição.'):esc(region.politics)}</p>${musicLinks(region.music,'Música da região')}${region.fullText||region.fullTextPath?`<div id="region-full-text" class="region-full-text" hidden><p class="small">Texto integral do acervo regional. Os registros históricos podem descrever períodos anteriores ao quadro de 1522.</p></div><div class="region-read-actions"><button type="button" id="region-read-more" class="quiet" aria-expanded="false" aria-controls="region-full-text">Ler mais</button></div>`:''}</div></div>${regionMap(region)}<div class="region-download-bar"><button type="button" id="download-region-png" class="quiet region-download">Baixar casas da Região</button><span id="download-region-status" class="download-status" role="status" aria-live="polite"></span></div><div id="region-hierarchy-view"${state.regionView==='hierarchy'?'':' hidden'}>${hierarchyMap(region,state.hierarchyEra)}</div><div id="region-houses-view"${state.regionView==='houses'?'':' hidden'}><div class="house-heading"><h3>Casas de ${esc(region.name)}</h3><p>${region.houses.length} casas no acervo</p></div><div class="house-search"><label for="house-search">Buscar casa nesta região<input id="house-search" type="search" placeholder="Nome, cidade ou castelo…" value="${esc(state.houseQuery)}"></label><button type="button" id="house-search-clear" class="quiet">Limpar filtros</button></div><p id="house-search-result" class="small" role="status" aria-live="polite"></p><div class="houses-grid">${region.houses.map((h,index)=>`<button type="button" class="house-card${PLAYER_HOUSES.has(h.nobleId)?' player-house':''}${h.name===ROYAL_HOUSE?' royal-house':!PLAYER_HOUSES.has(h.nobleId)&&(h.catalogClassification==='major'||h.name===region.major)?' major-house':''}" data-house="${index}" aria-label="Abrir ficha da Casa ${esc(h.name)}"><div class="crest-frame">${h.crest?`<img src="${esc(h.crest)}" alt="Brasão da Casa ${esc(h.name)}" loading="lazy" decoding="async" width="160" height="232">`:`<div class="crest-missing">${esc(h.name)}<small>Brasão não localizado no acervo</small></div>`}</div><div class="house-caption"><strong>${esc(h.name)}</strong><span class="${h.name===ROYAL_HOUSE?'royal':h.name===region.major?'major':''}">${h.name===ROYAL_HOUSE?'ROYAL HOUSE':h.name===region.major?'MAJOR HOUSE':'CASA NOBRE'}</span>${PLAYER_HOUSES.has(h.nobleId)?'<span class="player-tag">Casa de Jogador</span>':''}</div></button>`).join('')}</div><section id="cross-region-results" class="cross-region-results" hidden></section><p class="archive-note">Selecione um brasão para consultar a ficha e suas fontes. As casas históricas também estão listadas; a presença no acervo não confirma a manutenção de títulos em 1522.</p></div>`;
  const controls=document.querySelector('.region-view-toolbar');if(controls)document.getElementById('region-hierarchy-view').before(controls);
  const readMore=document.getElementById('region-read-more');
  if(readMore)readMore.addEventListener('click',async()=>{
@@ -97,7 +134,7 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
     region.fullText=document.text;
    }
    if(!readMore.isConnected)return;
-   target.innerHTML='<p class="small">Texto integral do acervo regional. Os registros históricos podem descrever períodos anteriores ao quadro de 1522.</p>'+region.fullText.split(/\r?\n/).filter(t=>t.trim()).map(t=>t.length<110&&t===t.toUpperCase()&&/[A-ZÀ-Ý]/.test(t)?'<h4>'+esc(t)+'</h4>':'<p>'+esc(t)+'</p>').join('');
+   target.innerHTML='<p class="small">Texto integral do acervo regional. Os registros históricos podem descrever períodos anteriores ao quadro de 1522.</p>'+renderRegionText(region.fullText);
    target.hidden=false;readMore.setAttribute('aria-expanded','true');readMore.textContent='Ler menos';
   }catch{
    if(!readMore.isConnected)return;
@@ -108,17 +145,49 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
  $('region-content').querySelectorAll('[data-hierarchy-era]').forEach(b=>b.addEventListener('click',()=>{state.hierarchyEra=b.dataset.hierarchyEra;renderRegion();writeRoute();document.querySelector(`[data-hierarchy-era="${state.hierarchyEra}"]`).focus({preventScroll:true});}));
  $('region-content').querySelectorAll('[data-house]').forEach(b=>b.addEventListener('click',()=>openHouse(region.houses[+b.dataset.house])));
  const houseSearch=document.getElementById('house-search');
- function filterHouses(){const q=normalize(state.houseQuery.trim());let count=0;document.querySelectorAll('[data-house]').forEach(b=>{const h=region.houses[+b.dataset.house];const match=!q||normalize([h.name,h.city,h.castle,...(h.aliases||[])].join(' ')).includes(q);b.hidden=!match;if(match)count++;});const result=document.getElementById('house-search-result');result.textContent=q?(count?`${count} de ${region.houses.length} casas encontradas.`:'Nenhuma casa encontrada. Tente outro termo.') :'';}
+ function filterHouses(){
+  const q=normalize(state.houseQuery.trim());let count=0;
+  document.querySelectorAll('[data-house]').forEach(b=>{
+   const h=region.houses[+b.dataset.house];
+   const match=!q||normalize([h.name,h.city,h.castle,h.leader,h.motto,...(h.aliases||[])].join(' ')).includes(q);
+   b.hidden=!match;if(match)count++;
+  });
+  const result=document.getElementById('house-search-result');
+  result.textContent=q?(count?`${count} de ${region.houses.length} casas encontradas nesta região.`:'Nenhuma casa nesta região; veja outras regiões abaixo.'):'';
+  const across=document.getElementById('cross-region-results');
+  const others=q.length>=2?data.regions.filter(r=>r.name!==region.name).flatMap(r=>r.houses.filter(h=>normalize([h.name,h.city,h.castle,h.leader,h.motto,...(h.aliases||[])].join(' ')).includes(q)).map(h=>({h,r}))):[];
+  across.hidden=!others.length;
+  across.innerHTML=others.length?`<h4>Encontradas em outras regiões de Cormyr (${others.length})</h4>`+
+   others.slice(0,30).map(({h,r})=>`<button type="button" data-other-noble="${esc(h.nobleId)}">${esc(h.name)} <small>· ${esc(r.name)}${h.city?' · '+esc(h.city):''}</small></button>`).join(''):'';
+ }
+ document.getElementById('cross-region-results').addEventListener('click',e=>{
+  const b=e.target.closest('[data-other-noble]');
+  if(!b)return;
+  const target=data.regions.flatMap(r=>r.houses).find(h=>h.nobleId===b.dataset.otherNoble);
+  if(target)openHouse(target);
+ });
  houseSearch.addEventListener('input',()=>{state.houseQuery=houseSearch.value;filterHouses();});document.getElementById('house-search-clear').addEventListener('click',()=>{state.houseQuery='';houseSearch.value='';filterHouses();houseSearch.focus();});filterHouses();
  document.querySelectorAll('[data-region-view]').forEach(b=>{const active=b.dataset.regionView===state.regionView;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
 
  }
- function openHouse(h){state.noble.house=h.nobleId;renderNobility();showView('nobreza');$('noble-detail').scrollIntoView({block:'start',behavior:'instant'});document.getElementById('house-title')?.focus({preventScroll:true});}
- function renderHouse(h){const q=h.hierarchy||{};const hierarchyLabel='Suserano';const fields=[['Região',h.region],[hierarchyLabel,q.parent|| (q.kind==='crown'?'Coroa reinante':'Não definido no acervo')],['Lorde / Lady',h.leader],['Ramo',h.clanBranch],['Precedência',h.clanRank?'Clã '+h.clanRank:null],['Regência',h.regent],['Idade',h.age],['Raça',h.race],['Títulos e epítetos',h.titles],['Fundação e investiduras',h.founding],['Condição',h.status],['Cores',h.colors],['Símbolo',h.symbol],['Lema',h.motto],['Cidade',h.city],['Castelo',h.castle]].filter(x=>x[1]);
- $('house-details').innerHTML=`<div class="house-detail-grid">${h.crest?`<img src="${esc(h.crest)}" alt="Brasão da Casa ${esc(h.name)}" width="230" height="350">`:'<div class="crest-missing" style="background:var(--purple)">Brasão não localizado no acervo</div>'}<div><p class="eyebrow">${esc(h.region)}</p><h2 id="house-title" tabindex="-1">Casa ${esc(h.name)}</h2>${h.description?`<p>${esc(h.description)}</p>`:''}<dl class="house-data">${fields.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div></div>`;
+ function openHouse(h){
+  if(!h)return;
+  const previous=nobleHouses.find(x=>x.nobleId===state.noble.house);
+  if(previous&&previous.nobleId!==h.nobleId)state.houseHistory.push(previous.nobleId);
+  state.noble.house=h.nobleId;renderNobility();showView('nobreza');$('noble-detail').scrollIntoView({block:'start',behavior:'instant'});document.getElementById('house-title')?.focus({preventScroll:true});
+ }
+ $('house-history-back')?.addEventListener('click',()=>{
+  const previous=state.houseHistory.pop(),target=nobleHouses.find(x=>x.nobleId===previous);
+  if(target){state.noble.house=target.nobleId;renderNobility();writeRoute(true);}
+ });
+ function renderHouse(h){const q=h.hierarchy||{};const parent=nobleHouses.find(x=>normalize(x.name)===normalize(q.parent||''));const back=state.houseHistory.length?nobleHouses.find(x=>x.nobleId===state.houseHistory.at(-1)):null;
+  const backButton=$('house-history-back');if(backButton){backButton.hidden=!back;backButton.textContent=back?'← Voltar à Casa '+back.name:'← Voltar à casa anterior';}
+  const hierarchyLabel='Suserano';const fields=[['Região',h.region],[hierarchyLabel,q.parent|| (q.kind==='crown'?'Coroa reinante':'Não definido no acervo')],['Lorde / Lady',h.leader],['Ramo',h.clanBranch],['Precedência',h.clanRank?'Clã '+h.clanRank:null],['Regência',h.regent],['Idade',h.age],['Raça',h.race],['Títulos e epítetos',h.titles],['Fundação e investiduras',h.founding],['Condição',h.status],['Cores',h.colors],['Símbolo',h.symbol],['Lema',h.motto],['Cidade',h.city],['Castelo',h.castle]].filter(x=>x[1]);
+ $('house-details').innerHTML=`<div class="house-detail-grid">${h.crest?`<img src="${esc(h.crest)}" alt="Brasão da Casa ${esc(h.name)}" width="230" height="350">`:'<div class="crest-missing" style="background:var(--purple)">Brasão não localizado no acervo</div>'}<div><p class="eyebrow">${esc(h.region)}</p><h2 id="house-title" tabindex="-1">Casa ${esc(h.name)}</h2>${h.description?`<p>${esc(h.description)}</p>`:''}<dl class="house-data">${fields.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${k===hierarchyLabel&&parent&&parent.nobleId!==h.nobleId?`<button type="button" class="house-parent-link" data-parent-noble="${esc(parent.nobleId)}">${esc(v)} · Ver ficha</button>`:esc(v)}</dd>`).join('')}</dl></div></div>`;
  $('noble-media').innerHTML=`${musicLinks(h.music,'Música da casa')}<div class="noble-downloads"><a class="quiet" href="${esc(h.crest)}" download="Brasao-${esc(h.nobleId)}.webp">Baixar brasão</a>${h.portrait?`<a class="quiet" href="${esc(h.portrait)}" download="Retrato-${esc(h.nobleId)}.jpg">Baixar imagem do lorde / lady</a>`:''}</div>${h.portrait?`<figure class="noble-portrait"><img src="${esc(h.portrait)}" alt="Imagem de ${esc(h.leader||h.name)}" loading="lazy"><figcaption>${esc(h.leader)}</figcaption></figure>`:'<p class="small">Retrato do lorde ou lady ainda não localizado no acervo.</p>'}`;
  function cleanGalleryTitle(rawName){return !rawName?'':String(rawName).trim().replace(/\.(png|jpe?g|webp|gif|avif|svg)$/i,'').trim();}
  let gallery=document.getElementById('house-gallery');if(!gallery){gallery=document.createElement('section');gallery.id='house-gallery';gallery.className='house-gallery';document.getElementById('noble-detail').append(gallery);}gallery.innerHTML=(h.gallery && h.gallery.length>0)?'<h3>Galeria</h3><div class="castle-art-gallery-grid">'+(h.gallery||[]).map(image=>{const url='/api/public/gallery-image?path='+encodeURIComponent(image.path);const cleanCaption=cleanGalleryTitle(image.name);return `<figure class="castle-gallery-artwork"><div class="castle-gallery-frame"><div class="castle-gallery-mat"><div class="castle-gallery-canvas"><a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="${esc(cleanCaption)}" loading="lazy"></a></div></div><span class="castle-frame-corner corner-tl" aria-hidden="true"></span><span class="castle-frame-corner corner-tr" aria-hidden="true"></span><span class="castle-frame-corner corner-bl" aria-hidden="true"></span><span class="castle-frame-corner corner-br" aria-hidden="true"></span></div>${cleanCaption?`<figcaption class="castle-gallery-plaque"><span class="plaque-rivet" aria-hidden="true">•</span><span class="plaque-title">${esc(cleanCaption)}</span><span class="plaque-rivet" aria-hidden="true">•</span></figcaption>`:''}<div style="margin-top: 10px; z-index: 2;"><a class="quiet" href="${url}&download=1&name=${encodeURIComponent(image.name)}" download>Baixar Imagem</a></div></figure>`;}).join('')+'</div>':'';gallery.style.display=(h.gallery && h.gallery.length>0)?'block':'none';
+ $('house-details').querySelector('[data-parent-noble]')?.addEventListener('click',()=>{if(parent)openHouse(parent);});
  loadHouseHistory(h);
  }
  document.querySelectorAll('[data-region-view]').forEach(button=>button.addEventListener('click',()=>{state.regionView=button.dataset.regionView;renderRegion();writeRoute();}));
@@ -147,23 +216,38 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
   try{
    const crown=data.regions.flatMap(r=>r.houses).find(h=>h.name==='Phelles');
    const needed=[...region.houses,...(mode==='hierarchy'&&!before&&region.major!=='Phelles'?[crown]:[])];
-   const images=new Map(await Promise.all(needed.map(h=>new Promise((resolve,reject)=>{const img=new Image();const timer=setTimeout(()=>reject(new Error('Não foi possível carregar o brasão de '+h.name+'.')),20000);img.onload=()=>{clearTimeout(timer);resolve([h.name,img]);};img.onerror=()=>{clearTimeout(timer);reject(new Error('Não foi possível carregar o brasão de '+h.name+'.'));};img.src=h.crest;}))));
+   const images=new Map(await Promise.all(needed.filter(h=>h?.crest).map(h=>new Promise((resolve,reject)=>{const img=new Image();const timer=setTimeout(()=>reject(new Error('Não foi possível carregar o brasão de '+h.name+'.')),20000);img.onload=()=>{clearTimeout(timer);resolve([h.name,img]);};img.onerror=()=>{clearTimeout(timer);reject(new Error('Não foi possível carregar o brasão de '+h.name+'.'));};img.src=h.crest;}))));
    const width=1600,rows=[],links=[];let y=250,unplacedY=null;
    if(mode==='hierarchy'){
     const linked=h=>['documented','regional'].includes(h.hierarchy?.kind);
     const byName=new Map(region.houses.map(h=>[h.name,h]));
-    function visit(h,depth,parent=null){const row={h,x:70+depth*130,y,w:Math.min(1000,width-140-depth*130),height:108};rows.push(row);if(parent)links.push({parent,row});y+=132;for(const child of region.houses.filter(c=>c.name!==region.major&&linked(c)&&c.hierarchy.parent===h.name))visit(child,depth+1,row);return row;}
+    const visited=new Set();
+    function visit(h,depth,parent=null){
+     if(!h||visited.has(h.name))return null;
+     visited.add(h.name);
+     const row={h,x:70+depth*130,y,w:Math.min(1000,width-140-depth*130),height:108};
+     rows.push(row);if(parent)links.push({parent,row});y+=132;
+     if(!(region.hierarchyGroups?.length&&h.name===region.major))
+      for(const child of region.houses.filter(c=>c.name!==region.major&&linked(c)&&c.hierarchy.parent===h.name))visit(child,depth+1,row);
+     return row;
+    }
     let parent=null,depth=0;
     if(!before&&region.major!=='Phelles'){parent={h:crown,x:70,y,w:1000,height:108};rows.push(parent);y+=132;depth=1;}
-    visit(byName.get(region.major),depth,parent);
-    const roots=region.houses.filter(h=>h.name!==region.major&&(!linked(h)||!byName.has(h.hierarchy.parent)));
+    const main=visit(byName.get(region.major),depth,parent);
+     if(region.hierarchyGroups?.length){
+      for(const group of region.hierarchyGroups){
+       rows.push({groupTitle:'Ramo '+group.name,y});y+=80;
+       for(const name of group.houses){const house=byName.get(name);if(house)visit(house,depth+1,main);}
+      }
+     }
+    const roots=region.houses.filter(h=>h.name!==region.major&&!visited.has(h.name));
     if(roots.length){unplacedY=y+20;y+=105;for(const h of roots)visit(h,0);}
    }
    const height=mode==='houses'?280+Math.ceil(region.houses.length/5)*385+90:y+95;
    const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Seu navegador não disponibilizou a exportação da imagem.');
    ctx.fillStyle='#f7f3eb';ctx.fillRect(0,0,width,height);ctx.fillStyle='#301641';ctx.fillRect(0,0,width,190);ctx.fillStyle='#dac28f';ctx.font='bold 20px sans-serif';ctx.fillText('CORMYR WEB · CRÔNICAS DO REINO',65,45);ctx.fillStyle='#ffffff';ctx.font='48px Georgia, serif';ctx.fillText(region.name,65,108);ctx.font='24px sans-serif';ctx.fillStyle='#e1d5e6';ctx.fillText((mode==='houses'?'Todas as casas':'Hierarquia e vassalagem')+' · '+(temporal?(before?'Antes de 1522':'Pós-1522'):'1522 CV'),65,150);ctx.fillStyle='#b58e4e';ctx.fillRect(0,190,width,5);
    function textFit(text,x,top,max,size=27,color='#301641'){ctx.fillStyle=color;do{ctx.font=size+'px Georgia, serif';if(ctx.measureText(text).width<=max)break;size--;}while(size>15);ctx.fillText(text,x,top);}
-   function crest(h,x,top,w,hgt){const img=images.get(h.name),scale=Math.min(w/img.naturalWidth,hgt/img.naturalHeight);const iw=img.naturalWidth*scale,ih=img.naturalHeight*scale;ctx.drawImage(img,x+(w-iw)/2,top+(hgt-ih)/2,iw,ih);}
+   function crest(h,x,top,w,hgt){const img=images.get(h.name);if(!img){ctx.fillStyle='#e3d8e5';ctx.fillRect(x,top,w,hgt);textFit('Sem brasão',x+6,top+hgt/2,w-12,16);return;}const scale=Math.min(w/img.naturalWidth,hgt/img.naturalHeight);const iw=img.naturalWidth*scale,ih=img.naturalHeight*scale;ctx.drawImage(img,x+(w-iw)/2,top+(hgt-ih)/2,iw,ih);}
    function badge(h){const q=h.hierarchy||{};if(h.name===ROYAL_HOUSE)return 'Royal House';if(h.name===region.major)return 'Casa principal';if(h.clanRank)return 'Clã '+h.clanRank+' · '+h.clanBranch;return {crown:'Royal House',regional:'Major House',documented:'Vínculo documentado',historical:'Registro anterior',unknown:'Suserano a confirmar',review:'Vínculo a conferir'}[q.kind]||'Casa nobre';}
    if(mode==='houses'){
     region.houses.forEach((h,i)=>{const x=65+(i%5)*298,top=245+Math.floor(i/5)*385;ctx.fillStyle=h.name===ROYAL_HOUSE?'#fbf5e6':'#fffefa';ctx.fillRect(x,top,278,357);ctx.strokeStyle=h.name===ROYAL_HOUSE?'#8a6524':h.name===region.major?'#b58e4e':'#d2c6d6';ctx.lineWidth=2;ctx.strokeRect(x,top,278,357);if(h.name===ROYAL_HOUSE){ctx.strokeStyle='#d9b871';ctx.lineWidth=5;ctx.strokeRect(x+4,top+4,270,349);ctx.strokeStyle='#f0dfae';ctx.lineWidth=1;ctx.strokeRect(x+8,top+8,262,341);}ctx.fillStyle='#271b2d';ctx.fillRect(x+1,top+1,276,265);crest(h,x+18,top+12,242,240);textFit(h.name,x+15,top+305,248,27);ctx.font='16px sans-serif';ctx.fillStyle='#786681';ctx.fillText(h.name===ROYAL_HOUSE?'ROYAL HOUSE':h.name===region.major?'CASA PRINCIPAL':h.status||'CASA NOBRE',x+15,top+337,248);});
@@ -171,7 +255,8 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
     ctx.strokeStyle='#9d829f';ctx.lineWidth=3;
     for(const {parent,row} of links){ctx.beginPath();ctx.moveTo(parent.x+28,parent.y+parent.height);ctx.lineTo(parent.x+28,row.y+54);ctx.lineTo(row.x,row.y+54);ctx.stroke();}
     if(unplacedY!==null){textFit('Ramos com ligação superior a confirmar',70,unplacedY,1460,28);ctx.font='18px sans-serif';ctx.fillStyle='#6d5f70';ctx.fillText('Vínculos internos preservados; a posição na região não comprova vassalagem direta à casa principal.',70,unplacedY+32);}
-    for(const row of rows){const {h,x,y:top,w,height:rh}=row;ctx.fillStyle=h.name===region.major?'#f0e4cc':'#fffefa';ctx.fillRect(x,top,w,rh);ctx.strokeStyle='#c5b3cd';ctx.lineWidth=2;ctx.setLineDash(h.hierarchy?.kind==='historical'?[7,5]:[]);ctx.strokeRect(x,top,w,rh);ctx.setLineDash([]);crest(h,x+14,top+9,62,90);textFit(h.name,x+96,top+44,w-112,30);ctx.fillStyle='#75637b';ctx.font='18px sans-serif';ctx.fillText(badge(h),x+96,top+78,w-112);}
+    for(const row of rows){if(row.groupTitle){ctx.fillStyle='#e7d7b7';ctx.fillRect(70,row.y,1450,60);textFit(row.groupTitle,90,row.y+39,1390,30);continue;}
+      const {h,x,y:top,w,height:rh}=row;ctx.fillStyle=h.name===region.major?'#f0e4cc':'#fffefa';ctx.fillRect(x,top,w,rh);ctx.strokeStyle='#c5b3cd';ctx.lineWidth=2;ctx.setLineDash(h.hierarchy?.kind==='historical'?[7,5]:[]);ctx.strokeRect(x,top,w,rh);ctx.setLineDash([]);crest(h,x+14,top+9,62,90);textFit(h.name,x+96,top+44,w-112,30);ctx.fillStyle='#75637b';ctx.font='18px sans-serif';ctx.fillText(badge(h),x+96,top+78,w-112);}
    }
    ctx.fillStyle='#75637b';ctx.font='18px sans-serif';ctx.fillText(region.houses.length+' casas · Acervo da campanha · '+(mode==='hierarchy'?'Linhas: vínculos documentados; registros pendentes sinalizados.':'Casas históricas podem constar no acervo.'),65,height-38,width-130);
    const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Não foi possível gerar o PNG.')),'image/png'));
@@ -225,42 +310,79 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
  }
  for(const key of ['region','name','leader','castle','city'])document.getElementById('noble-'+key).addEventListener(key==='region'?'change':'input',e=>{state.noble[key]=e.target.value;state.noble.page=1;renderNobility();writeRoute();});
  $('noble-reset').addEventListener('click',()=>{Object.assign(state.noble,{region:'',name:'',leader:'',castle:'',city:'',page:1,house:''});renderNobility();writeRoute();$('noble-name').focus();});
- $('noble-back').addEventListener('click',()=>{state.noble.house='';renderNobility();writeRoute(true);$('nobility-title').focus();});
+ $('noble-back').addEventListener('click',()=>{state.houseHistory=[];state.noble.house='';renderNobility();writeRoute(true);$('nobility-title').focus();});
  function noblePage(delta){state.noble.page+=delta;renderNobility();writeRoute();$('noble-count').scrollIntoView({block:'start',behavior:'instant'});}
  $('noble-prev').addEventListener('click',()=>noblePage(-1));$('noble-next').addEventListener('click',()=>noblePage(1));
- const lawState={query:'',topic:'',page:1};
  const law=data.constitution;
  $('law-topic').innerHTML='<option value="">Todos os temas</option>'+[...new Set(law.entries.map(e=>e.topic))].map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
  $('law-intro').textContent=law.intro;
  $('law-numbering').textContent=law.numberingNote;
+ function lawNumberQuery(query){
+  const match=normalize(query.trim()).match(/^(?:(?:artigo|art\.|art|lei|#)\s*)?(\d{1,3})$/i);
+  return match?Number(match[1]):null;
+ }
  function lawMatches(){
-  const q=normalize(lawState.query.trim()),number=q.match(/^(?:(?:artigo|art\.?)\s*)?(\d+)$/);
+  const q=normalize(lawState.query.trim()),number=lawNumberQuery(lawState.query)??lawState.article;
   const words=q.split(/\s+/).filter(Boolean);
-  return law.entries.filter(e=>(!lawState.topic||e.topic===lawState.topic)&&(number?e.number===Number(number[1]):words.every(w=>normalize([e.title,e.topic,...e.paragraphs].join(' ')).includes(w))));
+  return law.entries.filter(e=>{
+   if(lawState.topic&&e.topic!==lawState.topic)return false;
+   if(number!==null)return e.number===number||e.paragraphs.some(p=>new RegExp('\\bArtigo\\s+'+number+'\\b','i').test(p));
+   return words.every(w=>normalize([e.title,e.topic,...e.paragraphs].join(' ')).includes(w));
+  });
+ }
+ /** Normalized letters retain original UTF-16 indices, so accents never shift highlights. */
+ function foldedText(text){
+  let value='',positions=[],offset=0;
+  for(const char of text){const folded=normalize(char);for(const unit of folded){value+=unit;positions.push([offset,offset+char.length]);}offset+=char.length;}
+  return {value,positions};
  }
  function lawHighlight(text){
-  const words=normalize(lawState.query.trim()).split(/\s+/).filter(Boolean),normal=normalize(text),ranges=[];
-  for(const word of words){let from=0,index;while((index=normal.indexOf(word,from))!==-1){ranges.push([index,index+word.length]);from=index+word.length;}}
-  ranges.sort((a,b)=>a[0]-b[0]);const merged=[];for(const range of ranges){const last=merged.at(-1);if(last&&range[0]<=last[1])last[1]=Math.max(last[1],range[1]);else merged.push([...range]);}
-  let html='',position=0;for(const [start,end] of merged){html+=esc(text.slice(position,start))+'<mark>'+esc(text.slice(start,end))+'</mark>';position=end;}return html+esc(text.slice(position));
+  const words=normalize(lawState.query.trim()).split(/\s+/).filter(Boolean);
+  if(!words.length)return esc(text);
+  const {value,positions}=foldedText(text),ranges=[];
+  for(const word of words){
+   let from=0,at;
+   while((at=value.indexOf(word,from))!==-1){
+    ranges.push([positions[at][0],positions[at+word.length-1][1]]);from=at+word.length;
+   }
+  }
+  ranges.sort((a,b)=>a[0]-b[0]);const merged=[];
+  for(const range of ranges){const last=merged.at(-1);if(last&&range[0]<=last[1])last[1]=Math.max(last[1],range[1]);else merged.push([...range]);}
+  let html='',pos=0;for(const [a,b] of merged){html+=esc(text.slice(pos,a))+'<mark>'+esc(text.slice(a,b))+'</mark>';pos=b;}
+  return html+esc(text.slice(pos));
  }
  function lawExcerpt(entry){
-  const words=normalize(lawState.query.trim()).split(/\s+/).filter(Boolean),text=entry.paragraphs.join(' '),normal=normalize(text);
-  const matches=words.map(w=>normal.indexOf(w)).filter(n=>n>=0);const start=matches.length?Math.max(0,Math.min(...matches)-75):0;
-  return (start?'…':'')+text.slice(start,start+270)+(start+270<text.length?'…':'');
+  const text=entry.paragraphs.join(' '),words=normalize(lawState.query.trim()).split(/\s+/).filter(Boolean);
+  const folded=foldedText(text);
+  const found=words.map(w=>folded.value.indexOf(w)).filter(x=>x>=0);
+  const nearest=found.length?folded.positions[Math.min(...found)][0]:0;
+  let from=Math.max(0,nearest-80);
+  if(from>0){const boundary=text.indexOf(' ',from);if(boundary>0&&boundary<from+30)from=boundary+1;}
+  let to=Math.min(text.length,from+300);
+  if(to<text.length){const boundary=text.lastIndexOf(' ',to);if(boundary>from+180)to=boundary;}
+  return (from?'…':'')+text.slice(from,to)+(to<text.length?'…':'');
  }
  function renderLaws(){
   const found=lawMatches(),pages=Math.max(1,Math.ceil(found.length/12));lawState.page=Math.min(lawState.page,pages);const visible=found.slice((lawState.page-1)*12,lawState.page*12);
   $('law-count').textContent=`${found.length} disposições encontradas · ${visible.length} nesta página`;
-  $('law-results').innerHTML=visible.map(e=>`<article class="law-card panel"><p class="eyebrow">${esc(e.topic)}</p><h3>${lawHighlight(e.title)}</h3><p class="law-excerpt">${lawHighlight(lawExcerpt(e))}</p><details><summary>Ler texto integral</summary><div class="law-full">${e.paragraphs.map(t=>/^(?:[IVX]+\. )?Inciso \d+/.test(t)?`<h4>${lawHighlight(t)}</h4>`:`<p>${lawHighlight(t)}</p>`).join('')}</div></details></article>`).join('');
+  $('law-results').innerHTML=visible.map(e=>`<article class="law-card panel"><p class="eyebrow">${esc(e.topic)}</p><h3>${lawHighlight(e.title)}</h3><p class="law-excerpt">${lawHighlight(lawExcerpt(e))}</p><details><summary>Ler texto integral</summary><div class="law-full">${e.paragraphs.map(t=>/^(?:[IVX]+\. )?Inciso \d+|^Preâmbulo|^Emenda/i.test(t)?`<h4>${lawHighlight(t)}</h4>`:`<p>${lawHighlight(t)}</p>`).join('')}</div></details><button class="quiet law-cite" type="button" data-law-cite="${esc(e.id)}">📋 Copiar citação</button></article>`).join('');
   $('law-empty').hidden=found.length>0;$('law-pagination').hidden=found.length<=12;$('law-prev').disabled=lawState.page<=1;$('law-next').disabled=lawState.page>=pages;$('law-page').textContent=`Página ${lawState.page} de ${pages}`;
  }
- $('law-search').addEventListener('input',()=>{lawState.query=$('law-search').value;lawState.page=1;renderLaws();});
- $('law-topic').addEventListener('change',()=>{lawState.topic=$('law-topic').value;lawState.page=1;renderLaws();});
- $('law-reset').addEventListener('click',()=>{Object.assign(lawState,{query:'',topic:'',page:1});$('law-search').value='';$('law-topic').value='';renderLaws();$('law-search').focus();});
- function moveLawPage(delta){lawState.page+=delta;renderLaws();$('law-results-title').scrollIntoView({block:'start',behavior:'instant'});$('law-results-title').focus({preventScroll:true});}
+ $('law-results').addEventListener('click',async event=>{
+  const button=event.target.closest('[data-law-cite]');if(!button)return;
+  const item=law.entries.find(x=>x.id===button.dataset.lawCite);if(!item)return;
+  const citation='Constituição Real de Cormyr — Lex Castle. '+item.title+'\n'+item.paragraphs.join('\n');
+  try{await navigator.clipboard.writeText(citation);button.textContent='Citação copiada';}
+  catch{button.textContent='Não foi possível copiar; confira as permissões do navegador.';}
+ });
+ $('law-search').addEventListener('input',()=>{lawState.query=$('law-search').value;lawState.article=null;lawState.page=1;renderLaws();writeRoute();});
+ $('law-topic').addEventListener('change',()=>{lawState.topic=$('law-topic').value;lawState.page=1;renderLaws();writeRoute();});
+ $('law-reset').addEventListener('click',()=>{Object.assign(lawState,{query:'',topic:'',page:1,article:null});$('law-search').value='';$('law-topic').value='';renderLaws();writeRoute();$('law-search').focus();});
+ function moveLawPage(delta){lawState.page+=delta;renderLaws();writeRoute();$('law-results-title').scrollIntoView({block:'start',behavior:'instant'});$('law-results-title').focus({preventScroll:true});}
  $('law-prev').addEventListener('click',()=>moveLawPage(-1));$('law-next').addEventListener('click',()=>moveLawPage(1));renderLaws();
- function restoreRoute(){state.houseQuery='';readHash();renderNobility();regionSelect.value=state.region;$('search').value=state.query;renderAdventure();renderRegion();chooseKind(state.kind);showView(state.view,false);if(state.deepEvent)revealEvent(state.deepEvent,false);}
+ function restoreRoute(){state.houseQuery='';readHash();
+  $('law-search').value=lawState.query;$('law-topic').value=lawState.topic;renderLaws();
+  renderNobility();regionSelect.value=state.region;$('search').value=state.query;renderAdventure();renderRegion();chooseKind(state.kind);showView(state.view,false);if(state.deepEvent)revealEvent(state.deepEvent,false);}
  restoreRoute();
  window.addEventListener('hashchange',restoreRoute);
 })();

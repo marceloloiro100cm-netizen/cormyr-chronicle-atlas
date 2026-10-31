@@ -31,3 +31,20 @@ export function namedCharacters(contents:string[]) {
 export function narrativeText(content:string) {
   return contentParts(content).flatMap(part=>'text' in part?[part.text]:[]).join('\n').trim();
 }
+/** Embedded media tokens are untrusted document text. Accept IDs, never arbitrary URLs or HTML. */
+export type CampaignMediaPart={text:string}|{kind:'youtube'|'drive';id:string;title:string};
+export function campaignMediaParts(content:string):CampaignMediaPart[]{
+ const parts:CampaignMediaPart[]=[];
+ const token=/\[cormyr-(youtube|drive):([A-Za-z0-9_-]{11,100})\|([^\]\r\n]{1,150})\]/g;
+ let cursor=0;
+ for(const match of content.matchAll(token)){
+  const kind=match[1] as 'youtube'|'drive',id=match[2]??'';
+  if((kind==='youtube'&&id.length!==11)||(kind==='drive'&&id.length<15))continue;
+  const at=match.index??0;
+  if(at>cursor)parts.push({text:content.slice(cursor,at)});
+  parts.push({kind,id,title:match[3]??''});
+  cursor=at+match[0].length;
+ }
+ if(cursor<content.length)parts.push({text:content.slice(cursor)});
+ return parts;
+}
