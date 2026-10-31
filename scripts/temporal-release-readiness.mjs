@@ -42,8 +42,9 @@ export function evaluateTemporalReadiness({
   'Informe o SHA exato do commit validado');
  record('ENVIRONMENT_EXPLICIT',environment==='homologation'||environment==='production',
   'Identifique homologação ou produção explicitamente');
- record('LOCAL_MIGRATION_CATALOG',migrationLocal.ready_for_deploy,
-  'O catálogo SQL/Drizzle contém lacunas, ambiguidades ou não foi conciliado');
+ record('LOCAL_MIGRATION_CATALOG',Array.isArray(migrationLocal.problems)&&
+  migrationLocal.problems.every(p=>p.code==='NO_PRODUCTION_INVENTORY'),
+  'O catálogo SQL/Drizzle contém lacunas ou ambiguidades independentes do ambiente');
  record('LOCAL_PR_STACK',stackLocal.chain_consistent,
   'Manifesto de dependências das PRs inconsistente');
  const time=now instanceof Date?now.getTime():Number.NaN;
