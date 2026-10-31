@@ -97,6 +97,13 @@ export function assertUnchangedAccessScope(
  */
 export async function requireFreshNarratorAccess():Promise<void>{
  const {data,error}=await supabase.rpc('is_campaign_admin');
- if(error||data!==true)
+ if(error){
+  // A timeout or outage is NOT evidence of demotion. Fail the command
+  // closed without claiming the user's role was revoked.
+  if(error.code==='42501'||/Somente o Narrador|Apenas o Narrador|Permissão de Narrador revogada/i.test(error.message))
+   throw new Error('Permissão de Narrador revogada. Recarregue as autorizações.');
+  throw new Error('Permissões do Narrador indisponíveis. A operação foi bloqueada; tente novamente.');
+ }
+ if(data!==true)
   throw new Error('Permissão de Narrador revogada. Recarregue as autorizações.');
 }
