@@ -102,7 +102,7 @@ export function auditTemporalSite(files){
    path.startsWith('src/lib/house/')?'house-lib':'other-runtime';
   domains[category]=(domains[category]??0)+1;
   if(path!==CANONICAL){
-   const rpcLines=matchLines(source,/\\.rpc\\(\\s*['"]get_campaign_calendar['"]/g);
+   const rpcLines=matchLines(source,/\.rpc\(\s*['"]get_campaign_calendar['"]/g);
    const guard=AUTHORIZED_SERVER_CLOCK_GUARDS[path];
    if(guard){
     for(const marker of guard.required)
