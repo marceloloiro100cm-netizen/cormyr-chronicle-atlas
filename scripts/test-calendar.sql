@@ -14,12 +14,14 @@ SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001'
 SELECT pg_temp.assert(valid_campaign_date('1522-02-30'),'February has 30 days');
 SELECT pg_temp.assert(NOT valid_campaign_date('1522-F-shieldmeet') AND valid_campaign_date('1524-F-shieldmeet'),'leap festival');
 SELECT pg_temp.assert(NOT valid_campaign_date(NULL) AND NOT valid_campaign_date('1522-13-01'),'invalid dates');
-SELECT set_campaign_calendar((get_campaign_calendar()->>'version')::int,'1522-01-21',true);
+SELECT publish_campaign_time_change('10000000-0000-0000-0000-000000000e01', (get_campaign_calendar()->>'version')::int,2,'Preparar calendário para a terceira désdia');
 SELECT set_letter_round(1,false);
 SELECT pg_temp.assert((SELECT harptos_period='1522-01:désdia-3' FROM letter_rounds WHERE number=1),'round remembers Harptos period at opening');
 SELECT pg_temp.assert(get_campaign_calendar()->>'day'='21','first round establishes baseline');
 SELECT set_letter_round(2,false);
-SELECT pg_temp.assert(get_campaign_calendar()->>'month'='1' AND get_campaign_calendar()->>'day'='1','third desdia advances month');
+SELECT pg_temp.assert(get_campaign_calendar()->>'month'='0' AND get_campaign_calendar()->>'day'='21','opening round must not advance official time');
+SELECT publish_campaign_time_change('10000000-0000-0000-0000-000000000e02',(get_campaign_calendar()->>'version')::int,1,'Avançar oficialmente ao mês seguinte');
+SELECT pg_temp.assert(get_campaign_calendar()->>'month'='1' AND get_campaign_calendar()->>'day'='1','central command advances month');
 SELECT pg_temp.assert((SELECT state->'projects'->0->>'status'='completed' FROM noble_house_sheets WHERE house_id='mail-a'),'global month completes project');
 SELECT pg_temp.assert((SELECT count(*)=1 FROM noble_house_ledger WHERE house_id='mail-a' AND action='calendar_advance'),'advance audited once');
 SELECT set_letter_round(2,false);
