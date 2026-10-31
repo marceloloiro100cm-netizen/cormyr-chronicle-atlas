@@ -5,8 +5,13 @@ import {Button} from '@/components/ui/button';
 import type {Json} from '@/integrations/supabase/types';
 
 type Person={id:string;display_name:string;house_id:string|null;is_noble:boolean;
- birth_year:number|null;baseline_age:number|null;baseline_year:number|null;
- alive_status:string;death_year:number|null;review_status:string;version:number};
+ birth_year:number|null;birth_date?:string|null;
+ baseline_age:number|null;baseline_year:number|null;
+ alive_status:string;death_year:number|null;death_date?:string|null;
+ aliases?:string[];noble_roles?:string[];race?:string|null;
+ age_policy?:string;age_exception_note?:string|null;apparent_age?:string|null;
+ visibility?:string;owner_user_id?:string|null;confidence?:string;review_note?:string;
+ review_status:string;version:number};
 type Candidate={id:string;source_kind:string;source_key:string;proposed_name:string;
  house_id:string|null;claimed_birth_year:number|null;claimed_age:number|null;status:string};
 type Relation={id:string;from_character:string;to_character:string;relation:string};
@@ -26,6 +31,12 @@ export function NarratorCharacterRegistry(){
  const [birth,setBirth]=useState(''),[baseAge,setBaseAge]=useState('');
  const [baseYear,setBaseYear]=useState(''),[death,setDeath]=useState('');
  const [alive,setAlive]=useState('unknown'),[isNoble,setIsNoble]=useState(true);
+ const [aliases,setAliases]=useState(''),[roles,setRoles]=useState(''),[race,setRace]=useState('');
+ const [birthDate,setBirthDate]=useState(''),[deathDate,setDeathDate]=useState('');
+ const [agePolicy,setAgePolicy]=useState('year_turn'),[exceptionNote,setExceptionNote]=useState('');
+ const [apparentAge,setApparentAge]=useState(''),[visibility,setVisibility]=useState('gm');
+ const [ownerId,setOwnerId]=useState(''),[confidence,setConfidence]=useState('unverified');
+ const [reviewStatus,setReviewStatus]=useState('pending'),[reviewNote,setReviewNote]=useState('');
  const [personId,setPersonId]=useState<string|null>(null);
  const [candidate,setCandidate]=useState<Candidate|null>(null);
  const [target,setTarget]=useState(''),[action,setAction]=useState('link');
@@ -45,10 +56,20 @@ export function NarratorCharacterRegistry(){
   setBirth(String(p.birth_year??''));setBaseAge(String(p.baseline_age??''));
   setBaseYear(String(p.baseline_year??''));setDeath(String(p.death_year??''));
   setAlive(p.alive_status);setIsNoble(p.is_noble);
+  setAliases((p.aliases??[]).join(', '));setRoles((p.noble_roles??[]).join(', '));setRace(p.race??'');
+  setBirthDate(p.birth_date??'');setDeathDate(p.death_date??'');
+  setAgePolicy(p.age_policy??'year_turn');setExceptionNote(p.age_exception_note??'');
+  setApparentAge(p.apparent_age??'');setVisibility(p.visibility??'gm');
+  setOwnerId(p.owner_user_id??'');setConfidence(p.confidence??'unverified');
+  setReviewStatus(p.review_status);setReviewNote(p.review_note??'');
  };
  const newPerson=()=>{setPersonId(null);setTarget('');setName('');setHouse('');
   setBirth('');setBaseAge('');setBaseYear('');setDeath('');
-  setAlive('unknown');setIsNoble(true);};
+  setAlive('unknown');setIsNoble(true);setCandidate(null);
+  setAliases('');setRoles('');setRace('');setBirthDate('');setDeathDate('');
+  setAgePolicy('year_turn');setExceptionNote('');setApparentAge('');
+  setVisibility('gm');setOwnerId('');setConfidence('unverified');
+  setReviewStatus('pending');setReviewNote('');};
  if(registry.isPending)return <section id="temporal-genealogias" className="narrator-calendar-panel"><h3>Nobres e genealogias</h3><p role="status">Carregando registro canônico…</p></section>;
  if(!data||registry.error)return <section id="temporal-genealogias" className="narrator-calendar-panel"><h3>Nobres e genealogias</h3><p role="alert">Registro indisponível: {errMsg(registry.error)}</p><Button onClick={()=>void registry.refetch()}>Tentar novamente</Button></section>;
  const people=data.characters.filter(p=>(p.display_name+' '+(p.house_id??'')).toLowerCase().includes(filter.toLowerCase()));
@@ -123,13 +144,18 @@ export function NarratorCharacterRegistry(){
    <form className="campaign-form" onSubmit={e=>{e.preventDefault();void submit(async()=>{
     if((baseAge==='')!==(baseYear===''))throw new Error('Idade-base e ano de referência devem ser informados juntos.');
     const payload={
+     ...(selectedPerson??{}),
      display_name:name.trim(),house_id:house.trim()||null,
-     aliases:[],noble_roles:[],race:null,is_noble:isNoble,
-     birth_year:optNumber(birth),birth_date:null,baseline_age:optNumber(baseAge),
-     baseline_year:optNumber(baseYear),age_policy:'year_turn',age_exception_note:null,
-     apparent_age:null,alive_status:alive,death_year:optNumber(death),
-     death_date:null,visibility:'gm',owner_user_id:null,confidence:'unverified',
-     review_status:'pending',review_note:'',
+     aliases:aliases.split(',').map(s=>s.trim()).filter(Boolean),
+     noble_roles:roles.split(',').map(s=>s.trim()).filter(Boolean),
+     race:race.trim()||null,is_noble:isNoble,
+     birth_year:optNumber(birth),birth_date:birthDate.trim()||null,
+     baseline_age:optNumber(baseAge),baseline_year:optNumber(baseYear),
+     age_policy:agePolicy,age_exception_note:exceptionNote.trim()||null,
+     apparent_age:apparentAge.trim()||null,
+     alive_status:alive,death_year:optNumber(death),death_date:deathDate.trim()||null,
+     visibility,owner_user_id:ownerId.trim()||null,confidence,
+     review_status:reviewStatus,review_note:reviewNote,
     };
     const r=await supabase.rpc('save_campaign_character',{
      p_id:personId,p_version:selectedPerson?.version??null,p_payload:payload,p_reason:reason.trim(),
@@ -142,11 +168,24 @@ export function NarratorCharacterRegistry(){
      <label>Nome canônico<input required value={name} onChange={e=>setName(e.target.value)}/></label>
      <label>ID da Casa oficial<input value={house} onChange={e=>setHouse(e.target.value)} placeholder="Ex.: harcourt"/></label>
      <label>Nascimento confirmado (CV)<input type="number" min={1} max={9999} value={birth} onChange={e=>setBirth(e.target.value)}/></label>
+     <label>Data de nascimento Harptos<input value={birthDate} onChange={e=>setBirthDate(e.target.value)} placeholder="1492-01-01"/></label>
      <label>Idade-base confirmada<input type="number" min={0} value={baseAge} onChange={e=>setBaseAge(e.target.value)}/></label>
      <label>Ano da idade-base (CV)<input type="number" min={1} max={9999} value={baseYear} onChange={e=>setBaseYear(e.target.value)}/></label>
      <label>Estado vital<select value={alive} onChange={e=>setAlive(e.target.value)}><option value="unknown">A conferir</option><option value="alive">Vivo</option><option value="deceased">Falecido</option></select></label>
      <label>Ano do falecimento<input type="number" min={1} max={9999} value={death} onChange={e=>setDeath(e.target.value)}/></label>
+     <label>Data da morte Harptos<input value={deathDate} onChange={e=>setDeathDate(e.target.value)} placeholder="1522-09-03"/></label>
+     <label>Apelidos, separados por vírgula<input value={aliases} onChange={e=>setAliases(e.target.value)}/></label>
+     <label>Funções nobiliárquicas, separadas por vírgula<input value={roles} onChange={e=>setRoles(e.target.value)}/></label>
+     <label>Raça, se documentada<input value={race} onChange={e=>setRace(e.target.value)}/></label>
+     <label>Idade aparente (texto narrativo)<input value={apparentAge} onChange={e=>setApparentAge(e.target.value)}/></label>
+     <label>Política de idade<select value={agePolicy} onChange={e=>setAgePolicy(e.target.value)}><option value="year_turn">Ano civil de Harptos</option><option value="manual_exception">Exceção excepcional aprovada</option></select></label>
+     <label>Visibilidade pretendida<select value={visibility} onChange={e=>setVisibility(e.target.value)}><option value="gm">Segredo do Narrador</option><option value="house">Membros da Casa (projeção futura)</option><option value="player">Jogador proprietário (projeção futura)</option></select></label>
+     {visibility==='player'&&<label>ID de conta proprietária<input value={ownerId} onChange={e=>setOwnerId(e.target.value)}/></label>}
+     <label>Confiança da fonte<select value={confidence} onChange={e=>setConfidence(e.target.value)}><option value="unverified">Não verificada</option><option value="supported">Documentada</option><option value="confirmed">Confirmada</option></select></label>
+     <label>Estado da revisão<select value={reviewStatus} onChange={e=>setReviewStatus(e.target.value)}><option value="pending">Pendente</option><option value="reviewed">Revisado</option><option value="conflict">Inconsistente</option></select></label>
     </div>
+    {agePolicy==='manual_exception'&&<label>Motivo documentado da exceção<textarea minLength={10} required value={exceptionNote} onChange={e=>setExceptionNote(e.target.value)}/></label>}
+    <label>Observações do processo de revisão<textarea value={reviewNote} onChange={e=>setReviewNote(e.target.value)}/></label>
     <label className="narrator-calendar-check"><input type="checkbox" checked={isNoble} onChange={e=>setIsNoble(e.target.checked)}/>Pessoa de linhagem nobre</label>
     <p className="house-caption">A idade cronológica será calculada no Lote 7. Não há incremento de idade gravado aqui. Campos adicionais e exceções são preservados no cadastro canônico.</p>
     <Button disabled={busy||!rationale||!name.trim()||(baseAge==='')!==(baseYear==='')}>{selectedPerson?'Atualizar pessoa':'Criar pessoa'}</Button>
