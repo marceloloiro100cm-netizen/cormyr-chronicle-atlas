@@ -1,6 +1,7 @@
 import { TRAINING, UNIT_TYPES, unitStats, balances, activeHoldings } from './engine';
 import { UNIT_EQUIPMENT } from './equipment';
-import { SKILLS, type HouseState, type Unit } from './types';
+import { type HouseState, type Unit } from './types';
+import { syncUnitXp, changeUnitTrainingXp } from './unit-progression';
 
 export function equipUnit(unit:Unit):Unit {
  const id=unit.equipmentTypeId??unit.types[0],row=UNIT_EQUIPMENT.find(r=>r.id===id);
@@ -23,30 +24,39 @@ export function resolveSurvivors(state:HouseState,input:{id:string;unitId:string
  if(unit.evolution?.some(e=>e.id===input.id))return state;
  if(!input.justification.trim())throw new Error('Registre o conflito e a decisão.');
  const bonus=activeHoldings(state).some(h=>h.itemId==='pros-master-of-arms')?1:0;
- const result=survivorResult(input.roll,input.condition,input.disorganizations,bonus),levels=Object.keys(TRAINING) as (keyof typeof TRAINING)[],before=unit.training,index=levels.indexOf(before as keyof typeof TRAINING);
+ const result=survivorResult(input.roll,input.condition,input.disorganizations,bonus);
+ const levels=Object.keys(TRAINING) as (keyof typeof TRAINING)[];
+ const before=unit.training,index=levels.indexOf(before as keyof typeof TRAINING);
  if(index<0)throw new Error('Treinamento inválido.');
  const target=result.steps==='destroyed'?-1:index+result.steps;
- if(target<0){const invested=unit.costs.filter(c=>c.resource==='power'&&c.mode==='allocation').reduce((n,c)=>n+c.amount,0);next.permanent.power-=invested;unit.destroyed=true;unit.health=0;unit.situation='Destruída';}
- else {
+ if(target<0){
+  const invested=unit.costs.filter(c=>c.resource==='power'&&c.mode==='allocation').reduce((n,c)=>n+c.amount,0);
+  next.permanent.power-=invested;unit.destroyed=true;unit.health=0;unit.situation='Destruída';
+ } else {
   const training=levels[Math.min(3,target)];if(!training)throw new Error('Treinamento inválido.');
-  const extra=(unit.bonusRanks??0)+Math.max(0,target-3);
-  const allowed=new Set(unit.mixedRule?.allowedSkills??unit.types.flatMap(id=>UNIT_TYPES.find(t=>t.id===id)?.skills??[]));
-  for(const skill of SKILLS){const value=input.skills[skill];if(!Number.isInteger(value)||value<2||value>12)throw new Error('Graduação inválida.');if(value>2&&!allowed.has(skill))throw new Error('Habilidade não permitida para esta unidade.');}
-  const spent=SKILLS.reduce((n,s)=>n+(input.skills[s]-2)*20,0),budget=TRAINING[training].xp+extra*20;
-  if(spent>budget)throw new Error('Redistribua habilidades: XP excede o treinamento resultante.');
-  const delta=TRAINING[training].power-TRAINING[before as keyof typeof TRAINING].power;
-  if(delta!==0){
+  const previousRanks=unit.bonusRanks??0;
+  // Never auto-spend or erase a skill rank after a battle. Deficits remain visible.
+  const old=syncUnitXp(unit);
+  const extra=previousRanks+Math.max(0,target-3);
+  unit.bonusRanks=extra;
+  const delta=TRAINING[training].xp-TRAINING[before as keyof typeof TRAINING].xp+(extra-previousRanks)*20;
+  unit.training=training;unit.xp=old.total+delta-old.spent;
+  unit.xpEvents??=[];
+  if(delta!==0)unit.xpEvents.push({id:input.id,month:state.month,delta,kind:'training',reason:'Sobreviventes: '+input.justification});
+  const powerDelta=TRAINING[training].power-TRAINING[before as keyof typeof TRAINING].power;
+  if(powerDelta!==0){
     const cost=unit.costs.find(c=>c.resource==='power'&&c.mode==='allocation');
-    if(cost)cost.amount=Math.max(0,cost.amount+delta);
-    else if(delta>0)unit.costs.push({resource:'power',amount:delta,mode:'allocation'});
-    const updated=unit.costs.filter(c=>c.resource==='power'&&c.mode==='allocation').reduce((n,c)=>n+c.amount,0);
-    unit.allocatedCosts??={};unit.allocatedCosts.power=updated;
+    if(cost)cost.amount=Math.max(0,cost.amount+powerDelta);
+    else if(powerDelta>0)unit.costs.push({resource:'power',amount:powerDelta,mode:'allocation'});
+    unit.allocatedCosts??={};
+    unit.allocatedCosts.power=unit.costs.filter(c=>c.resource==='power'&&c.mode==='allocation').reduce((n,c)=>n+c.amount,0);
   }
-  unit.training=training;unit.skills=input.skills;unit.xp=budget-spent;unit.bonusRanks=extra;
-  // Intact result explicitly heals damage; numeric casualty count is retained, not recreated.
-  unit.health=result.steps===0?unitStats(unit).maxHealth:Math.min(unit.health,unitStats(unit).maxHealth);unit.situation='Sobrevivente';
+  unit.health=result.steps===0?unitStats(unit).maxHealth:Math.min(unit.health,unitStats(unit).maxHealth);
+  unit.situation='Sobrevivente';
+  if(unit.xp<0)unit.situation+=' · Déficit de '+Math.abs(unit.xp)+' XP: reduzir habilidades';
  }
- unit.evolution??=[];unit.evolution.push({id:input.id,month:state.month,roll:input.roll,condition:input.condition,disorganizations:input.disorganizations,steps:result.steps==='destroyed'?-99:result.steps,before,after:unit.destroyed?'destroyed':unit.training,justification:input.justification+(bonus?' · Mestre de Armas +1 na tabela 10-6':'')});
+ unit.evolution??=[];
+ unit.evolution.push({id:input.id,month:state.month,roll:input.roll,condition:input.condition,disorganizations:input.disorganizations,steps:result.steps==='destroyed'?-99:result.steps,before,after:unit.destroyed?'destroyed':unit.training,justification:input.justification+(bonus?' · Mestre de Armas +1 na tabela 10-6':'')});
  return next;
 }
 export function changeUnitState(state:HouseState,input:{unitId:string;mounted:boolean;atHome:boolean;health:number;casualties:number;situation:string;commanderName?:string|undefined;domainId?:string|undefined;disband?:boolean|undefined}):HouseState {
@@ -90,7 +100,7 @@ export function trainUnit(state:HouseState,id:string):HouseState {
  cost.amount+=delta;
  unit.allocatedCosts??={};unit.allocatedCosts.power=unit.costs.filter(c=>c.resource==='power'&&c.mode==='allocation').reduce((n,c)=>n+c.amount,0);
  const before=unit.training;unit.training=target;
- unit.xp+=TRAINING[target].xp-TRAINING[before as keyof typeof TRAINING].xp;
+ changeUnitTrainingXp(unit,target,state.month,'Treinamento de unidade aprovado pelo Narrador; custo adicional de '+delta+' Poder.');
  unit.evolution??=[];
  unit.evolution.push({id:crypto.randomUUID(),month:state.month,roll:0,condition:'training',disorganizations:0,steps:1,before,after:target,justification:'Treinamento em campanha autorizado pelo Narrador; custo de Poder +'+delta});
  return next;
