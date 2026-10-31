@@ -1,40 +1,138 @@
 import {useState} from 'react';
-import {Castle,ShieldCheck,GraduationCap,PenTool} from 'lucide-react';
+import {Anchor,Castle,ChevronDown,Coins,GraduationCap,Hammer,PenTool,ShieldCheck,Swords} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {CORE_CATALOG} from '@/lib/house/catalog';
-import {activeHoldings} from '@/lib/house/engine';
+import {activeHoldings,quote} from '@/lib/house/engine';
 import {MILITARY_HOLDINGS} from '@/lib/house/unit-progression';
-import type {HouseState,Holding} from '@/lib/house/types';
+import {RESOURCE_NAMES,type CatalogItem,type HouseState,type Holding,type Requirement} from '@/lib/house/types';
 
-function NamedAsset({holding,canEdit,busy,onRename}:{holding:Holding;canEdit:boolean;busy:boolean;
- onRename:(args:Record<string,unknown>)=>Promise<boolean>}){
- const [editing,setEditing]=useState(false),[name,setName]=useState(holding.name);
- const info=CORE_CATALOG.find(x=>x.id===holding.itemId);
- return <article className="military-asset-card">
-  <div className="military-asset-icon">{holding.itemId.includes('academy')?<GraduationCap/>:holding.itemId.includes('master')?<ShieldCheck/>:<Castle/>}</div>
-  <div className="military-asset-details"><small>{info?.name??'Estrutura militar'}</small><strong>{holding.name}</strong>
-   <p>{info?.description||'Benefício militar adquirido pela Casa.'}</p>
-   {holding.itemId==='pros-master-of-arms'&&<p className="military-positive">Primeira melhoria de equipamento gratuita por unidade; +1 em Sobreviventes, calculado automaticamente.</p>}
-   {holding.itemId==='pros-military-academy'&&<p>Conversão Riqueza → Poder 1:1; redução de perdas de habilidades por dano de Guerra conforme decisão de combate.</p>}
-   {holding.itemId==='pros-military-academy--core-training'&&<p className="house-warning">Escolha a habilidade beneficiada na fonte/decisão do Narrador antes de aplicá-la às fichas. Não criar bônus arbitrário.</p>}
-   {editing&&<form className="military-rename" onSubmit={async e=>{e.preventDefault();if(await onRename({holdingId:holding.id,name}))setEditing(false);}}>
-      <label>Nome do cargo ou da construção<input required minLength={2} maxLength={160} value={name} onChange={e=>setName(e.target.value)}/></label>
-      <Button disabled={busy||!name.trim()} size="sm">Salvar nome</Button>
-      <Button type="button" variant="outline" size="sm" onClick={()=>setEditing(false)}>Cancelar</Button>
-    </form>}
-   {canEdit&&!editing&&<Button type="button" size="sm" variant="ghost" onClick={()=>{setName(holding.name);setEditing(true);}}><PenTool size={14}/>Dar nome</Button>}
-  </div>
- </article>;
+const militaryItems=CORE_CATALOG.filter(item=>MILITARY_HOLDINGS.includes(item.id));
+const militaryItemIds=new Set(MILITARY_HOLDINGS);
+
+const COST_TYPE={allocation:'alocação',permanent:'permanente'} as const;
+const REQUIREMENTS:Record<Requirement['kind'],string>={
+ terrain:'Terreno',feature:'Característica',community:'Comunidade',parent:'Posse principal',
+ resource:'Recurso mínimo',water:'Acesso à água',fortification:'Fortificação',
+ max_community:'Comunidade máxima',max_resource:'Limite de recurso',
+ forbidden_feature:'Característica proibida',holding:'Posse necessária',
+ forbidden_season:'Estação proibida',any_of:'Uma das alternativas',
+};
+function requirementDescription(rule:Requirement){
+ const values=rule.values?.map(id=>CORE_CATALOG.find(x=>x.id===id)?.name??id).join(', ');
+ const resource=rule.resource?RESOURCE_NAMES[rule.resource]:'';
+ const limit=rule.minimum!==undefined?'mínimo '+rule.minimum:rule.maximum!==undefined?'máximo '+rule.maximum:'';
+ return [REQUIREMENTS[rule.kind],values,resource,limit].filter(Boolean).join(' · ');
 }
-export function MilitaryAssets({state,canEdit,busy,onRename}:{state:HouseState;canEdit:boolean;busy:boolean;
- onRename:(args:Record<string,unknown>)=>Promise<boolean>}){
- const assets=activeHoldings(state).filter(h=>MILITARY_HOLDINGS.includes(h.itemId));
+function purchaseOptions(item:CatalogItem,state:HouseState){
+ return state.domains.flatMap(domain=>{
+  const parents=item.requirements.filter(r=>r.kind==='parent').flatMap(r=>
+   state.holdings.filter(h=>h.domainId===domain.id&&h.status==='active'&&r.values?.includes(h.itemId)).map(h=>h.id));
+  const parentIds=item.category==='improvement'?(parents.length?parents:[undefined]):[undefined];
+  const supportIds=item.category==='settlement'?
+   [undefined,...state.holdings.filter(h=>h.domainId===domain.id&&h.status==='active'&&
+    ['tower','hall','castle','small-castle','superior-castle','pros-trading-inn'].includes(h.itemId)).map(h=>h.id)]:[undefined];
+  const upgradeIds=item.category==='fortification'?
+   [undefined,...state.holdings.filter(h=>h.domainId===domain.id&&['active','building'].includes(h.status)&&
+    ['tower','hall','small-castle','castle','superior-castle'].includes(h.itemId)).map(h=>h.id)]:[undefined];
+  return parentIds.flatMap(parentId=>supportIds.flatMap(supportId=>upgradeIds.map(replaceId=>
+   quote(item,state,domain.id,parentId,supportId,replaceId))));
+ });
+}
+export function militaryPurchaseReadiness(item:CatalogItem,state:HouseState):'ready'|'money'|'requirements'|'domain'{
+ if(!state.domains.length)return 'domain';
+ const offers=purchaseOptions(item,state);
+ if(offers.some(q=>q.errors.length===0))return 'ready';
+ if(offers.length&&!offers.some(q=>q.errors.every(e=>!e.startsWith('Saldo insuficiente:'))))return 'money';
+ return 'requirements';
+}
+function AssetIcon({item}:{item:CatalogItem}){
+ if(item.id.includes('academy'))return <GraduationCap/>;
+ if(item.id.includes('master-of-arms'))return <ShieldCheck/>;
+ if(item.id.includes('port')||item.id.includes('ship')||item.id.includes('dock'))return <Anchor/>;
+ if(item.category==='fortification')return <Castle/>;
+ if(item.id.includes('engineer')||item.id.includes('stonemason'))return <Hammer/>;
+ if(item.id.includes('dog')||item.id.includes('war')||item.id.includes('military'))return <Swords/>;
+ if(item.category==='improvement')return <Coins/>;
+ return <Castle/>;
+}
+function RenameAsset({holding,busy,onRename}:{holding:Holding;busy:boolean;onRename:(args:Record<string,unknown>)=>Promise<boolean>}){
+ const [editing,setEditing]=useState(false),[name,setName]=useState(holding.name);
+ if(!editing)return <Button type="button" size="sm" variant="ghost" disabled={busy}
+   onClick={()=>{setName(holding.name);setEditing(true);}}><PenTool size={14}/>Dar nome</Button>;
+ return <form className="military-rename" onSubmit={async e=>{
+  e.preventDefault();if(await onRename({holdingId:holding.id,name}))setEditing(false);
+ }}>
+  <label>Nome do cargo ou da construção<input required minLength={2} maxLength={160}
+   value={name} onChange={e=>setName(e.target.value)}/></label>
+  <Button disabled={busy||!name.trim()} size="sm">Salvar nome</Button>
+  <Button type="button" variant="outline" size="sm" onClick={()=>setEditing(false)}>Cancelar</Button>
+ </form>;
+}
+function MilitaryAssetCard({item,holdings,state,canEdit,busy,onRename,onBuy}:{
+ item:CatalogItem;holdings:Holding[];state:HouseState;canEdit:boolean;busy:boolean;
+ onRename:(args:Record<string,unknown>)=>Promise<boolean>;
+ onBuy:(itemId:string)=>void;
+}){
+ const owned=holdings.filter(h=>h.status==='active');
+ const building=holdings.filter(h=>h.status==='building');
+ const acquired=owned.length+building.length>0;
+ const mayBuy=!acquired||item.repeatable;
+ const readiness=mayBuy?militaryPurchaseReadiness(item,state):'requirements';
+ const prerequisites=militaryItems.filter(other=>other.requirements.some(r=>r.kind==='parent'&&r.values?.includes(item.id)));
+ const status=owned.length?owned.map(h=>h.name).join(' · '):
+  building.length?'Em construção: '+building.map(h=>h.name).join(' · '):'Não adquirido';
+ const buttonLabel=readiness==='money'?'Sem recursos':
+  readiness==='domain'?'Defina um domínio':
+  readiness==='requirements'?'Pré-requisitos pendentes':'Comprar';
+ return <details className={'military-asset-card'+(!acquired?' military-asset-inactive':'')}>
+  <summary className="military-asset-summary">
+   <span className="military-asset-icon"><AssetIcon item={item}/></span>
+   <span className="military-asset-details"><small>{item.name}</small><strong>{status}</strong>
+    <span className="military-asset-short">{item.description}</span></span>
+   <ChevronDown size={17} className="military-asset-chevron" aria-hidden/>
+  </summary>
+  <div className="military-asset-expanded">
+   <h5>Descrição</h5><p>{item.description}</p>
+   <h5>Habilidade e bônus</h5>
+   {item.effects.length?item.effects.map((effect,i)=><p key={i}>{effect.description}</p>):
+    <p>Esta posse é necessária para adquirir ou melhorar instalações militares associadas.</p>}
+   {prerequisites.length>0&&<p>Desbloqueia: {prerequisites.map(x=>x.name).join(', ')}.</p>}
+   <h5>Custo e regras de compra</h5>
+   <p>{item.costs.length?item.costs.map(c=>c.amount+' '+RESOURCE_NAMES[c.resource]+' ('+COST_TYPE[c.mode]+')').join(' + '):'Custo não definido.'}</p>
+   <p>Prazo: {item.duration.months} meses{item.duration.dice?' + '+item.duration.dice+'d'+item.duration.sides:''}. {state.phase==='active'?'O bônus só fica ativo após a conclusão da obra.':'Na criação, a posse é registrada como preexistente.'}</p>
+   <p>{item.repeatable?'Compra repetível conforme as regras locais.':'Uma compra por local ou posse principal, conforme as regras.'}</p>
+   {item.requirements.length>0&&<ul>{item.requirements.map((r,i)=><li key={i}>{requirementDescription(r)}</li>)}</ul>}
+   <p className="house-caption">{item.source} · {item.section}</p>
+   {item.pending&&<p className="house-warning">Observação da fonte: {item.pending}</p>}
+   {building.map(h=><p className="house-caption" key={h.id}>{h.name}: em construção; bônus ainda não ativo.</p>)}
+   {canEdit&&owned.map(h=><RenameAsset key={h.id} holding={h} busy={busy} onRename={onRename}/>)}
+   {canEdit&&mayBuy&&<Button size="sm" type="button" disabled={busy||readiness!=='ready'}
+     onClick={()=>onBuy(item.id)}>{buttonLabel}</Button>}
+  </div>
+ </details>;
+}
+export function MilitaryAssets({state,canEdit,busy,onRename,onBuy}:{
+ state:HouseState;canEdit:boolean;busy:boolean;
+ onRename:(args:Record<string,unknown>)=>Promise<boolean>;
+ onBuy:(itemId:string)=>void;
+}){
+ const [expanded,setExpanded]=useState(true);
+ const holdings=state.holdings.filter(h=>militaryItemIds.has(h.itemId)&&['active','building'].includes(h.status));
+ const activeIds=new Set(activeHoldings(state).filter(h=>militaryItemIds.has(h.itemId)).map(h=>h.itemId));
  return <section className="military-assets">
-  <div className="house-section-heading"><div><p className="campaign-eyebrow">BÔNUS E INSTALAÇÕES</p><h3>Gestão militar da Casa</h3></div></div>
-  {assets.length?<div className="military-assets-grid">{assets.map(h=><NamedAsset key={h.id} holding={h} canEdit={canEdit} busy={busy} onRename={onRename}/>)}</div>:
-   <div className="military-assets-grid">
-    <article className="military-asset-card military-asset-inactive"><div className="military-asset-icon"><ShieldCheck/></div><div className="military-asset-details"><small>Mestre de Armas</small><strong>Não adquirido</strong><p>Adquira no patrimônio para liberar a primeira melhoria gratuita por unidade e o bônus de sobrevivência.</p></div></article>
-    <article className="military-asset-card military-asset-inactive"><div className="military-asset-icon"><GraduationCap/></div><div className="military-asset-details"><small>Academia Militar</small><strong>Não adquirida</strong><p>Benefícios de treinamento só se aplicam após compra e conciliação das especializações.</p></div></article>
-   </div>}
+  <div className="house-section-heading military-assets-heading">
+   <div><p className="campaign-eyebrow">BÔNUS E INSTALAÇÕES</p><h3>Gestão militar da Casa</h3></div>
+   <Button type="button" variant="outline" size="sm" aria-expanded={expanded}
+    aria-controls="military-assets-list" onClick={()=>setExpanded(v=>!v)}>
+    <ChevronDown size={17} className={expanded?'military-asset-chevron-open':''}/>
+    {expanded?'Minimizar':'Expandir'}
+   </Button>
+  </div>
+  {expanded&&<div id="military-assets-list">
+   <p className="house-caption">{activeIds.size} tipo(s) ativo(s) · {militaryItems.length} construções e posses com benefícios militares ou pré-requisitos associados. Selecione um card para consultar seus detalhes.</p>
+   <div className="military-assets-grid">{militaryItems.map(item=>
+    <MilitaryAssetCard key={item.id} item={item} holdings={holdings.filter(h=>h.itemId===item.id)}
+     state={state} canEdit={canEdit} busy={busy} onRename={onRename} onBuy={onBuy}/>)}</div>
+  </div>}
  </section>;
 }
