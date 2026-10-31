@@ -28,7 +28,10 @@ describe('Lote 18 — backup e restauração exclusiva de fixture descartável',
   assert.ok(!source.includes('DROP DATABASE mail_test'));
  });
  it('gera arquivo temporário e restaura transacionalmente o mesmo dump',()=>{
-  assert.match(source,/pg_dump -d mail_test -Fc --file=/);
+  assert.match(source,/pg16_client pg_dump -d mail_test -Fc/);
+  assert.match(source,/pg16_client pg_restore --list/);
+  assert.match(source,/docker run --rm -i --network host/);
+  assert.match(source,/postgres:16 "\$@"/);
   assert.match(source,/pg_restore --list/);
   assert.match(source,/pg_restore --exit-on-error --single-transaction --no-owner/);
   assert.match(source,/pg_restore.*--dbname="\$restore_db"/s);
