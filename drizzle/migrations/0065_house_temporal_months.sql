@@ -51,7 +51,7 @@ BEGIN
     WHERE e.p->>'status'='building'
       AND (coalesce(e.p->>'start','') !~ '^[0-9]{1,6}$'
         OR coalesce(e.p->>'duration','') !~ '^[0-9]{1,6}$'
-        OR coalesce(e.p->>'modifier','') !~ '^-?[0-9]{1,6}$'
+        OR coalesce(e.p->>'modifier','0') !~ '^-?[0-9]{1,6}$'
         OR e.p->>'holdingId' IS NULL)) THEN
      disposition:='invalid';invalid_count:=invalid_count+1;
    ELSIF row_value.state->>'phase' IS DISTINCT FROM 'active' THEN
@@ -71,10 +71,10 @@ BEGIN
      WHERE entry.project->>'status'='building'
        AND (entry.project->>'start') ~ '^[0-9]{1,6}$'
        AND (entry.project->>'duration') ~ '^[0-9]{1,6}$'
-       AND (entry.project->>'modifier') ~ '^-?[0-9]{1,6}$'
+       AND coalesce(entry.project->>'modifier','0') ~ '^-?[0-9]{1,6}$'
        AND (entry.project->>'start')::integer+
            (entry.project->>'duration')::integer+
-           (entry.project->>'modifier')::integer <= target_month;
+           coalesce((entry.project->>'modifier')::integer,0) <= target_month;
     project_total:=project_total+due_count;
    END IF;
   END IF;
@@ -154,12 +154,12 @@ BEGIN
     IF p->>'status'='building' THEN
      IF coalesce(p->>'start','') !~ '^[0-9]{1,6}$'
       OR coalesce(p->>'duration','') !~ '^[0-9]{1,6}$'
-      OR coalesce(p->>'modifier','') !~ '^-?[0-9]{1,6}$'
+      OR coalesce(p->>'modifier','0') !~ '^-?[0-9]{1,6}$'
       OR p->>'holdingId' IS NULL THEN
       RAISE EXCEPTION 'Projeto de % sem duracao/inicio valido; revisao necessaria',s.house_id;
      END IF;
      effective_deadline:=(p->>'start')::integer+(p->>'duration')::integer+
-       (p->>'modifier')::integer;
+       coalesce((p->>'modifier')::integer,0);
      IF effective_deadline<=target_month THEN
       holding_id:=p->>'holdingId';
       SELECT value INTO h FROM jsonb_array_elements(holdings)
@@ -229,10 +229,10 @@ COMMIT;
      WHERE entry.project->>'status'='building'
        AND (entry.project->>'start') ~ '^[0-9]{1,6}$'
        AND (entry.project->>'duration') ~ '^[0-9]{1,6}$'
-       AND (entry.project->>'modifier') ~ '^-?[0-9]{1,6}$'
+       AND coalesce(entry.project->>'modifier','0') ~ '^-?[0-9]{1,6}$'
        AND (entry.project->>'start')::integer+
            (entry.project->>'duration')::integer+
-           (entry.project->>'modifier')::integer <= target_month;
+           coalesce((entry.project->>'modifier')::integer,0) <= target_month;
     project_total:=project_total+due_count;
    END IF;
   END IF;
@@ -312,12 +312,12 @@ BEGIN
     IF p->>'status'='building' THEN
      IF coalesce(p->>'start','') !~ '^[0-9]{1,6}$'
       OR coalesce(p->>'duration','') !~ '^[0-9]{1,6}$'
-      OR coalesce(p->>'modifier','') !~ '^-?[0-9]{1,6}$'
+      OR coalesce(p->>'modifier','0') !~ '^-?[0-9]{1,6}$'
       OR p->>'holdingId' IS NULL THEN
       RAISE EXCEPTION 'Projeto de % sem duracao/inicio valido; revisao necessaria',s.house_id;
      END IF;
      effective_deadline:=(p->>'start')::integer+(p->>'duration')::integer+
-       (p->>'modifier')::integer;
+       coalesce((p->>'modifier')::integer,0);
      IF effective_deadline<=target_month THEN
       holding_id:=p->>'holdingId';
       SELECT value INTO h FROM jsonb_array_elements(holdings)
@@ -370,7 +370,7 @@ END $apply$;
 REVOKE ALL ON FUNCTION public.apply_calendar_months(integer) FROM PUBLIC,anon,authenticated;
 COMMIT;
 
-        OR coalesce(e.p->>'modifier','') !~ '^-?[0-9]{1,6}
+        OR coalesce(e.p->>'modifier','0') !~ '^-?[0-9]{1,6}
     disposition:='draft';draft_count:=draft_count+1;
    ELSIF target_month<=base_month THEN
     disposition:='historical';synced_count:=synced_count+1;
@@ -387,10 +387,10 @@ COMMIT;
      WHERE entry.project->>'status'='building'
        AND (entry.project->>'start') ~ '^[0-9]{1,6}$'
        AND (entry.project->>'duration') ~ '^[0-9]{1,6}$'
-       AND (entry.project->>'modifier') ~ '^-?[0-9]{1,6}$'
+       AND coalesce(entry.project->>'modifier','0') ~ '^-?[0-9]{1,6}$'
        AND (entry.project->>'start')::integer+
            (entry.project->>'duration')::integer+
-           (entry.project->>'modifier')::integer <= target_month;
+           coalesce((entry.project->>'modifier')::integer,0) <= target_month;
     project_total:=project_total+due_count;
    END IF;
   END IF;
@@ -470,12 +470,12 @@ BEGIN
     IF p->>'status'='building' THEN
      IF coalesce(p->>'start','') !~ '^[0-9]{1,6}$'
       OR coalesce(p->>'duration','') !~ '^[0-9]{1,6}$'
-      OR coalesce(p->>'modifier','') !~ '^-?[0-9]{1,6}$'
+      OR coalesce(p->>'modifier','0') !~ '^-?[0-9]{1,6}$'
       OR p->>'holdingId' IS NULL THEN
       RAISE EXCEPTION 'Projeto de % sem duracao/inicio valido; revisao necessaria',s.house_id;
      END IF;
      effective_deadline:=(p->>'start')::integer+(p->>'duration')::integer+
-       (p->>'modifier')::integer;
+       coalesce((p->>'modifier')::integer,0);
      IF effective_deadline<=target_month THEN
       holding_id:=p->>'holdingId';
       SELECT value INTO h FROM jsonb_array_elements(holdings)
@@ -547,10 +547,10 @@ COMMIT;
      WHERE entry.project->>'status'='building'
        AND (entry.project->>'start') ~ '^[0-9]{1,6}$'
        AND (entry.project->>'duration') ~ '^[0-9]{1,6}$'
-       AND (entry.project->>'modifier') ~ '^-?[0-9]{1,6}$'
+       AND coalesce(entry.project->>'modifier','0') ~ '^-?[0-9]{1,6}$'
        AND (entry.project->>'start')::integer+
            (entry.project->>'duration')::integer+
-           (entry.project->>'modifier')::integer <= target_month;
+           coalesce((entry.project->>'modifier')::integer,0) <= target_month;
     project_total:=project_total+due_count;
    END IF;
   END IF;
@@ -630,12 +630,12 @@ BEGIN
     IF p->>'status'='building' THEN
      IF coalesce(p->>'start','') !~ '^[0-9]{1,6}$'
       OR coalesce(p->>'duration','') !~ '^[0-9]{1,6}$'
-      OR coalesce(p->>'modifier','') !~ '^-?[0-9]{1,6}$'
+      OR coalesce(p->>'modifier','0') !~ '^-?[0-9]{1,6}$'
       OR p->>'holdingId' IS NULL THEN
       RAISE EXCEPTION 'Projeto de % sem duracao/inicio valido; revisao necessaria',s.house_id;
      END IF;
      effective_deadline:=(p->>'start')::integer+(p->>'duration')::integer+
-       (p->>'modifier')::integer;
+       coalesce((p->>'modifier')::integer,0);
      IF effective_deadline<=target_month THEN
       holding_id:=p->>'holdingId';
       SELECT value INTO h FROM jsonb_array_elements(holdings)
