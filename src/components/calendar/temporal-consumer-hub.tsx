@@ -2,6 +2,7 @@ import {useRef,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {Button} from '@/components/ui/button';
 import {supabase} from '@/integrations/supabase/client';
+import {requireFreshNarratorAccess} from '@/lib/auth/campaign-access-scope';
 import {validateTemporalConsumerDashboard,validateTemporalReleasePreflight,type TemporalDelivery} from '@/lib/calendar/temporal-consumers';
 
 const names:Record<string,string>={
@@ -48,6 +49,7 @@ export function TemporalConsumerHub(){
   if(retry.current?.signature!==signature)retry.current={signature,key:crypto.randomUUID()};
   setBusy(d.id);setMessage('');
   try{
+   await requireFreshNarratorAccess();
    const {data,error}=await supabase.rpc('resolve_temporal_delivery',{
     p_id:d.id,p_request_key:retry.current.key,p_status:status,p_note:note,
    });
@@ -67,6 +69,7 @@ export function TemporalConsumerHub(){
   if(busy)return;
   setBusy(d.id);setMessage('');
   try{
+   await requireFreshNarratorAccess();
    const {data,error}=await supabase.rpc('replay_temporal_delivery',{p_id:d.id});
    if(error)throw error;
    const item=data as {id?:unknown;replay_read_only?:unknown;status?:unknown}|null;
