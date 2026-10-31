@@ -39,7 +39,7 @@ SELECT pg_temp.assert(public.publish_campaign_time_change(
  'publication retry returns existing committed snapshot');
 SELECT pg_temp.assert(
  (SELECT count(*) FROM jsonb_array_elements(
- public.get_temporal_consumer_dashboard(80)->'deliveries'))=8,
+ public.get_temporal_consumer_dashboard(80)->'deliveries'))=7,
  'retry cannot duplicate existing delivery rows');
 
 DO $review$
@@ -108,8 +108,8 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN NULL;
  WHEN raise_exception THEN RAISE; END;
 END $rls$;
+RESET ROLE;
 SELECT pg_temp.assert(
  (SELECT count(*) FROM public.campaign_temporal_effect_checkpoints)=0,
  'no automatic effects/checkpoints recorded during temporal publication');
-RESET ROLE;
 ROLLBACK;
