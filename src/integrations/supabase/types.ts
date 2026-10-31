@@ -1650,6 +1650,7 @@ export type Database = {
         Returns: Json
       }
       get_campaign_time_history: { Args: { p_limit?: number }; Returns: Json }
+      get_public_campaign_time: { Args: never; Returns: Json }
       get_campaign_schedule_drafts: { Args: never; Returns: Json }
       get_campaign_schedule_events: { Args: { p_year: number; p_month: number }; Returns: Json }
       save_campaign_schedule_event: { Args: { p_payload: Json }; Returns: Json }
