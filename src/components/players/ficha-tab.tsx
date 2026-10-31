@@ -26,7 +26,7 @@ export function FichaTab({
   playerId,
 }: {
   npcManager?: ReactNode;
-  playerId?:string;
+  playerId?:string|undefined;
   current: Panel["houses"][number];
   records: RecordRow[];
   canEdit: boolean;
