@@ -268,34 +268,72 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
  $('law-topic').innerHTML='<option value="">Todos os temas</option>'+[...new Set(law.entries.map(e=>e.topic))].map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
  $('law-intro').textContent=law.intro;
  $('law-numbering').textContent=law.numberingNote;
+ function lawNumberQuery(query){
+  const match=normalize(query.trim()).match(/^(?:(?:artigo|art\.|art|lei|#)\s*)?(\d{1,3})$/i);
+  return match?Number(match[1]):null;
+ }
  function lawMatches(){
-  const q=normalize(lawState.query.trim()),number=q.match(/^(?:(?:artigo|art\.?)\s*)?(\d+)$/);
+  const q=normalize(lawState.query.trim()),number=lawNumberQuery(lawState.query)??lawState.article;
   const words=q.split(/\s+/).filter(Boolean);
-  return law.entries.filter(e=>(!lawState.topic||e.topic===lawState.topic)&&(number?e.number===Number(number[1]):words.every(w=>normalize([e.title,e.topic,...e.paragraphs].join(' ')).includes(w))));
+  return law.entries.filter(e=>{
+   if(lawState.topic&&e.topic!==lawState.topic)return false;
+   if(number!==null)return e.number===number||e.paragraphs.some(p=>new RegExp('\\bArtigo\\s+'+number+'\\b','i').test(p));
+   return words.every(w=>normalize([e.title,e.topic,...e.paragraphs].join(' ')).includes(w));
+  });
+ }
+ /** Normalized letters retain original UTF-16 indices, so accents never shift highlights. */
+ function foldedText(text){
+  let value='',positions=[],offset=0;
+  for(const char of text){const folded=normalize(char);for(const unit of folded){value+=unit;positions.push([offset,offset+char.length]);}offset+=char.length;}
+  return {value,positions};
  }
  function lawHighlight(text){
-  const words=normalize(lawState.query.trim()).split(/\s+/).filter(Boolean),normal=normalize(text),ranges=[];
-  for(const word of words){let from=0,index;while((index=normal.indexOf(word,from))!==-1){ranges.push([index,index+word.length]);from=index+word.length;}}
-  ranges.sort((a,b)=>a[0]-b[0]);const merged=[];for(const range of ranges){const last=merged.at(-1);if(last&&range[0]<=last[1])last[1]=Math.max(last[1],range[1]);else merged.push([...range]);}
-  let html='',position=0;for(const [start,end] of merged){html+=esc(text.slice(position,start))+'<mark>'+esc(text.slice(start,end))+'</mark>';position=end;}return html+esc(text.slice(position));
+  const words=normalize(lawState.query.trim()).split(/\s+/).filter(Boolean);
+  if(!words.length)return esc(text);
+  const {value,positions}=foldedText(text),ranges=[];
+  for(const word of words){
+   let from=0,at;
+   while((at=value.indexOf(word,from))!==-1){
+    ranges.push([positions[at][0],positions[at+word.length-1][1]]);from=at+word.length;
+   }
+  }
+  ranges.sort((a,b)=>a[0]-b[0]);const merged=[];
+  for(const range of ranges){const last=merged.at(-1);if(last&&range[0]<=last[1])last[1]=Math.max(last[1],range[1]);else merged.push([...range]);}
+  let html='',pos=0;for(const [a,b] of merged){html+=esc(text.slice(pos,a))+'<mark>'+esc(text.slice(a,b))+'</mark>';pos=b;}
+  return html+esc(text.slice(pos));
  }
  function lawExcerpt(entry){
-  const words=normalize(lawState.query.trim()).split(/\s+/).filter(Boolean),text=entry.paragraphs.join(' '),normal=normalize(text);
-  const matches=words.map(w=>normal.indexOf(w)).filter(n=>n>=0);const start=matches.length?Math.max(0,Math.min(...matches)-75):0;
-  return (start?'…':'')+text.slice(start,start+270)+(start+270<text.length?'…':'');
+  const text=entry.paragraphs.join(' '),words=normalize(lawState.query.trim()).split(/\s+/).filter(Boolean);
+  const folded=foldedText(text);
+  const found=words.map(w=>folded.value.indexOf(w)).filter(x=>x>=0);
+  const nearest=found.length?folded.positions[Math.min(...found)][0]:0;
+  let from=Math.max(0,nearest-80);
+  if(from>0){const boundary=text.indexOf(' ',from);if(boundary>0&&boundary<from+30)from=boundary+1;}
+  let to=Math.min(text.length,from+300);
+  if(to<text.length){const boundary=text.lastIndexOf(' ',to);if(boundary>from+180)to=boundary;}
+  return (from?'…':'')+text.slice(from,to)+(to<text.length?'…':'');
  }
  function renderLaws(){
   const found=lawMatches(),pages=Math.max(1,Math.ceil(found.length/12));lawState.page=Math.min(lawState.page,pages);const visible=found.slice((lawState.page-1)*12,lawState.page*12);
   $('law-count').textContent=`${found.length} disposições encontradas · ${visible.length} nesta página`;
-  $('law-results').innerHTML=visible.map(e=>`<article class="law-card panel"><p class="eyebrow">${esc(e.topic)}</p><h3>${lawHighlight(e.title)}</h3><p class="law-excerpt">${lawHighlight(lawExcerpt(e))}</p><details><summary>Ler texto integral</summary><div class="law-full">${e.paragraphs.map(t=>/^(?:[IVX]+\. )?Inciso \d+/.test(t)?`<h4>${lawHighlight(t)}</h4>`:`<p>${lawHighlight(t)}</p>`).join('')}</div></details></article>`).join('');
+  $('law-results').innerHTML=visible.map(e=>`<article class="law-card panel"><p class="eyebrow">${esc(e.topic)}</p><h3>${lawHighlight(e.title)}</h3><p class="law-excerpt">${lawHighlight(lawExcerpt(e))}</p><details><summary>Ler texto integral</summary><div class="law-full">${e.paragraphs.map(t=>/^(?:[IVX]+\. )?Inciso \d+|^Preâmbulo|^Emenda/i.test(t)?`<h4>${lawHighlight(t)}</h4>`:`<p>${lawHighlight(t)}</p>`).join('')}</div></details><button class="quiet law-cite" type="button" data-law-cite="${esc(e.id)}">📋 Copiar citação</button></article>`).join('');
   $('law-empty').hidden=found.length>0;$('law-pagination').hidden=found.length<=12;$('law-prev').disabled=lawState.page<=1;$('law-next').disabled=lawState.page>=pages;$('law-page').textContent=`Página ${lawState.page} de ${pages}`;
  }
- $('law-search').addEventListener('input',()=>{lawState.query=$('law-search').value;lawState.page=1;renderLaws();});
- $('law-topic').addEventListener('change',()=>{lawState.topic=$('law-topic').value;lawState.page=1;renderLaws();});
- $('law-reset').addEventListener('click',()=>{Object.assign(lawState,{query:'',topic:'',page:1});$('law-search').value='';$('law-topic').value='';renderLaws();$('law-search').focus();});
- function moveLawPage(delta){lawState.page+=delta;renderLaws();$('law-results-title').scrollIntoView({block:'start',behavior:'instant'});$('law-results-title').focus({preventScroll:true});}
+ $('law-results').addEventListener('click',async event=>{
+  const button=event.target.closest('[data-law-cite]');if(!button)return;
+  const item=law.entries.find(x=>x.id===button.dataset.lawCite);if(!item)return;
+  const citation='Constituição Real de Cormyr — Lex Castle. '+item.title+'\n'+item.paragraphs.join('\n');
+  try{await navigator.clipboard.writeText(citation);button.textContent='Citação copiada';}
+  catch{button.textContent='Não foi possível copiar; confira as permissões do navegador.';}
+ });
+ $('law-search').addEventListener('input',()=>{lawState.query=$('law-search').value;lawState.article=null;lawState.page=1;renderLaws();writeRoute();});
+ $('law-topic').addEventListener('change',()=>{lawState.topic=$('law-topic').value;lawState.page=1;renderLaws();writeRoute();});
+ $('law-reset').addEventListener('click',()=>{Object.assign(lawState,{query:'',topic:'',page:1,article:null});$('law-search').value='';$('law-topic').value='';renderLaws();writeRoute();$('law-search').focus();});
+ function moveLawPage(delta){lawState.page+=delta;renderLaws();writeRoute();$('law-results-title').scrollIntoView({block:'start',behavior:'instant'});$('law-results-title').focus({preventScroll:true});}
  $('law-prev').addEventListener('click',()=>moveLawPage(-1));$('law-next').addEventListener('click',()=>moveLawPage(1));renderLaws();
- function restoreRoute(){state.houseQuery='';readHash();renderNobility();regionSelect.value=state.region;$('search').value=state.query;renderAdventure();renderRegion();chooseKind(state.kind);showView(state.view,false);if(state.deepEvent)revealEvent(state.deepEvent,false);}
+ function restoreRoute(){state.houseQuery='';readHash();
+  $('law-search').value=lawState.query;$('law-topic').value=lawState.topic;renderLaws();
+  renderNobility();regionSelect.value=state.region;$('search').value=state.query;renderAdventure();renderRegion();chooseKind(state.kind);showView(state.view,false);if(state.deepEvent)revealEvent(state.deepEvent,false);}
  restoreRoute();
  window.addEventListener('hashchange',restoreRoute);
 })();
