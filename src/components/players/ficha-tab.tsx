@@ -1,6 +1,12 @@
 import type { ReactNode } from "react";
 import { isNarrativeNpc } from "@/lib/house/narrative-npc";
 import { useState } from "react";
+import {useQuery} from '@tanstack/react-query';
+import {useServerFn} from '@tanstack/react-start';
+import {loadHouseHub} from '@/lib/house/house.functions';
+import {balances,maxHouseStatus} from '@/lib/house/engine';
+import {parseChronicleSheet} from '@/lib/house/character-sheet';
+import {ChronicleCharacterEditor} from '@/components/house/character-editor';
 import { NobleHouseHub } from "@/components/house/hub";
 import { Button } from "@/components/ui/button";
 import { CampaignContent, PrivateImage } from "@/components/campaign-content";
@@ -17,16 +23,22 @@ export function FichaTab({
   canEdit,
   onSave,
   npcManager,
+  playerId,
 }: {
   npcManager?: ReactNode;
+  playerId?:string|undefined;
   current: Panel["houses"][number];
   records: RecordRow[];
   canEdit: boolean;
   onSave: () => unknown;
 }) {
   const [view, setView] = useState<"house" | "character" | "legacy">("house");
+  const load=useServerFn(loadHouseHub);
+  const {data:sheetData}=useQuery({queryKey:['noble-house',current.id],enabled:view==='character',queryFn:()=>load({data:{houseId:current.id}})});
+  const statusCap=sheetData?maxHouseStatus(balances(sheetData.state).total.influence):10;
+  const structured=records.map(row=>({row,sheet:parseChronicleSheet(row.content)})).filter((x):x is {row:RecordRow;sheet:NonNullable<typeof x.sheet>}=>x.sheet!==null);
   const fichaCasa = records.find((r) => isFichaCasa(r.title, r.content));
-  const fichaLorde = records.find((r) => isFichaPersonagem(r.title, r.content));
+  const fichaLorde = records.find((r) => isFichaPersonagem(r.title, r.content)&&!parseChronicleSheet(r.content));
   const retratos = records
     .map((r) => ({ titulo: r.title, path: portraitPath(r.content) }))
     .filter((r): r is { titulo: string; path: string } => Boolean(r.path));
@@ -115,7 +127,10 @@ export function FichaTab({
       )}
       {view === "character" && (
         <>
-          <h2>Ficha do lorde</h2>
+          <h2>Fichas dos personagens · Lordes e Herdeiros</h2>
+          {canEdit&&<ChronicleCharacterEditor key={'new-'+current.id} houseId={current.id} houseName={current.name} playerId={playerId} canEdit={canEdit} statusCap={statusCap} onSave={onSave}/>}
+          {structured.map(({row,sheet})=><ChronicleCharacterEditor key={row.id+'-'+row.version} row={row} initial={sheet} houseId={current.id} houseName={current.name} playerId={playerId} canEdit={canEdit} statusCap={statusCap} onSave={onSave}/>)}
+          <h2>Ficha do Lorde importada (legado)</h2>
           {fichaLorde ? (
             <>
               <FichaPersonagemCard
@@ -139,7 +154,7 @@ export function FichaTab({
               )}
             </>
           ) : (
-            <p className="campaign-empty">A ficha do lorde ainda não foi encontrada na pasta.</p>
+            <p className="campaign-empty">Nenhuma ficha legada localizada. É possível criar uma ficha estruturada acima.</p>
           )}
           <h2>Corte</h2>
           {npcs.length === 0 && (
