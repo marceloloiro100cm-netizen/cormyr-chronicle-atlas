@@ -1,7 +1,7 @@
 import type {ReactNode} from 'react';
 import {balances} from '@/lib/house/engine';
-import {calendarDrift,type CalendarReference} from '@/lib/house/calendar-consistency';
-import {supabase} from '@/integrations/supabase/client';
+import {calendarDrift,calendarMonthIndex,type CalendarReference} from '@/lib/house/calendar-consistency';
+import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import { legacyCatalogEffects, legacyEffectCandidates } from '@/lib/house/holding-accounting';
 import {CampaignCalendar} from '@/components/calendar/calendar';
 import { useCallback, useRef, useState } from 'react';
@@ -37,11 +37,7 @@ type Props={npcManager?:ReactNode;representationMode?:boolean|undefined;house:{i
 export function NobleHouseHub(props:Props) {
   const load=useServerFn(loadHouseHub),fetchFull=useServerFn(loadHouseLedger),operation=useServerFn(houseOperation),qc=useQueryClient();
   const query=useQuery({queryKey:['noble-house',props.house.id],queryFn:()=>load({data:{houseId:props.house.id}})});
-  const globalCalendar=useQuery({queryKey:['campaign-calendar'],queryFn:async()=>{
-    const result=await supabase.rpc('get_campaign_calendar');
-    if(result.error||!result.data)throw new Error('Calendário da campanha indisponível.');
-    return result.data as unknown as CalendarReference;
-  },refetchInterval:15000});
+  const globalCalendar=useCampaignTime();
   const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState(false);
   const lock=useRef(false),retry=useRef<{payload:string;key:string}|null>(null);
   const run=useCallback(async(action:Parameters<typeof operation>[0]['data']['action'],args:Record<string,unknown>={},explanation='')=>{if(props.representationMode||lock.current||!query.data)return false;lock.current=true;setBusy(true);setError(false);const payload=JSON.stringify({houseId:props.house.id,action,args,explanation});if(retry.current?.payload!==payload)retry.current={payload,key:crypto.randomUUID()};const key=retry.current.key;try{await operation({data:{houseId:props.house.id,version:query.data.version,key,action,args,explanation}});retry.current=null;await qc.invalidateQueries({queryKey:['noble-house',props.house.id]});setMessage('Salvo no site. Histórico preservado.');return true;}catch(e){setMessage(e instanceof Error?e.message:'Não foi possível salvar.');setError(true);return false;}finally{lock.current=false;setBusy(false);}},[query.data,operation,props.house.id,props.representationMode,qc]);
@@ -58,7 +54,7 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
   const drift=globalCalendar?calendarDrift(state.month,globalCalendar):null;
   const saveDraft=useCallback((args:Record<string,unknown>)=>run('draft',args),[run]);
   const categories=section==='fortifications'?['fortification']:section==='domains'?['terrain','feature','community']:['estate','lifestyle','personage','settlement','improvement','equipment','vassal'];
-  return <div className="house-hub"><header className="house-header">{state.identity.crestPath?<div style={{width:100,height:100}}><PrivateImage path={state.identity.crestPath} caption={`Brasão da Casa ${house.name}`} thumbnail/></div>:house.crest&&<ImageViewer src={house.crest} caption={`Brasão da Casa ${house.name}`}/>}<div><p className="campaign-eyebrow">REGISTRO DA CASA · {state.phase==='active'?'EM CAMPANHA':state.phase==='review'?'AGUARDANDO APROVAÇÃO':'RASCUNHO'}</p><h2>Casa {house.name}</h2><p>{house.lord_name??'Governante não informado'} · {house.castle??'Sede não informada'} · {campaignMonth(state.month)}</p></div><div className="house-header-actions"><Button variant="outline" aria-pressed={graphical} onClick={()=>setGraphical(v=>!v)}><LayoutDashboard size={16}/>Trocar Visão</Button><span className="house-version">v{version}</span></div></header>{graphical?<ResourceChart state={state}/>:<ResourceSummary state={state}/>}
+  return <div className="house-hub"><header className="house-header">{state.identity.crestPath?<div style={{width:100,height:100}}><PrivateImage path={state.identity.crestPath} caption={`Brasão da Casa ${house.name}`} thumbnail/></div>:house.crest&&<ImageViewer src={house.crest} caption={`Brasão da Casa ${house.name}`}/>}<div><p className="campaign-eyebrow">REGISTRO DA CASA · {state.phase==='active'?'EM CAMPANHA':state.phase==='review'?'AGUARDANDO APROVAÇÃO':'RASCUNHO'}</p><h2>Casa {house.name}</h2><p>{house.lord_name??'Governante não informado'} · {house.castle??'Sede não informada'} · {globalCalendar?campaignMonth(calendarMonthIndex(globalCalendar)):'Data oficial indisponível'}</p></div><div className="house-header-actions"><Button variant="outline" aria-pressed={graphical} onClick={()=>setGraphical(v=>!v)}><LayoutDashboard size={16}/>Trocar Visão</Button><span className="house-version">v{version}</span></div></header>{graphical?<ResourceChart state={state}/>:<ResourceSummary state={state}/>}
     {representationMode&&<p role="note" className="house-caption">Representação do jogador: visualização somente de leitura. Operações ficam desativadas e dependem de autorização específica.</p>}<div className="house-layout"><aside className="house-sidebar"><nav aria-label="Gerenciamento da casa">{NAV.filter(([id])=>admin||!['reconciliation','coverage','kingdom'].includes(id)).map(([id,label,Icon])=><Button variant={section===id?'default':'ghost'} aria-current={section===id?'page':undefined} key={id} onClick={()=>setSection(id)}><Icon size={17}/>{label}</Button>)}</nav><div className="house-sidebar-bottom"><ShieldCheck size={16}/><span>Ficha privada da casa</span></div></aside><main className="house-content">
       <p role={error?'alert':'status'} className={error?'house-warning':'house-save-status'}>{busy?'Salvando…':message||'Nenhuma alteração nas fichas anteriores.'}</p>
       {calendarError&&<p role="alert" className="house-warning">Não foi possível confirmar o período global. Operações mensais dependem do Calendário do Narrador.</p>}
