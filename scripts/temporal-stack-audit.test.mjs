@@ -17,7 +17,7 @@ describe('Lote 13 · ordem da pilha GitHub e alternativa #129',()=>{
   assert.equal(out.release_authorized,false);
   assert.ok(m.sequence.length>=11);
   assert.equal(m.sequence[0].pr,127);
-  assert.equal(m.sequence.at(-1).pr,139);
+  assert.equal(m.sequence.at(-1).pr,142);
   assert.ok(m.excluded_alternative_prs.includes(129));
  });
  it('bloqueia ordem quebrada, duplicidade ou inclusão da PR concorrente',()=>{
