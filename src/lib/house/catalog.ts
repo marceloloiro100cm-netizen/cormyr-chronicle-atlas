@@ -2,6 +2,12 @@ import type { CatalogItem, Resource } from './types';
 import prosperityCatalog from './prosperity-catalog.json';
 const base = (id: string, name: string, original: string, category: CatalogItem['category'], amount: number, resource: Resource, description: string): CatalogItem => ({ id, name, original, category, costs: [{resource, amount, mode:'allocation'}], description, requirements: [], effects: [], duration: {months:0}, source:'Guerra dos Tronos RPG', section:'Capítulo 6 · Casas e terras', version:'2026-10-24', repeatable:true });
 export const CORE_CATALOG: CatalogItem[] = [
+  { ...base('godswood','Bosque Sagrado / Santuário Consagrado','Godswood','lifestyle',5,'wealth',
+    'Bosque consagrado dos antigos deuses. Acrescenta 2d6−6 ao teste de Sorte da Casa, com rolagem registrada separadamente; exige 24+2d6 meses para consagração.'),
+    repeatable:false,source:'Guerra dos Tronos RPG · Livro Básico e Prosperidade',section:'Bosque Divino / Godswood · p. 139',
+    duration:{months:24,dice:2,sides:6},
+    effects:[{kind:'fortune',amount:0,description:'Modificador variável de Sorte +2d6−6 (registrar os dois dados).',fortuneDice:{count:2,sides:6,offset:-6}}],
+  },
   ...prosperityCatalog as CatalogItem[],
   ...([['plains','Planície','Plains',5],['hills','Colina','Hills',7],['mountains','Montanha','Mountains',9],['wetlands','Pantanal','Wetlands',3]] as const).map(([id,name,original,cost])=>base(id,name,original,'terrain',cost,'lands',`Terreno principal do domínio. Aloca ${cost} pontos de Terras; escolha apenas um terreno principal.`)),
   ...([['stream','Córrego','Stream',1],['river','Rio','River',3],['lake-small','Lago pequeno','Small lake',5],['lake-large','Lago grande','Large lake',7],['coast','Costa','Coast',3],['road','Estrada','Road',5],['woods-light','Floresta esparsa','Light woods',3],['woods-dense','Floresta densa','Dense woods',5],['island','Ilha','Island',10],['grassland','Pasto','Grassland',1],['ruin','Ruína','Ruin',3]] as const).map(([id,name,original,cost])=>({...base(id,name,original,'feature',cost,'lands',`Característica do domínio. Soma ${cost} pontos ao custo do terreno principal; não substitui o terreno.`),requirements:[{kind:'terrain' as const}],repeatable:false,section:'Tabela 6-7 · p. 135'})),
