@@ -79,6 +79,7 @@ pg_restore --exit-on-error --single-transaction --no-owner \
   --dbname="$restore_db" "$tmp/fixture.backup" \
   > "$tmp/restore.stdout" 2> "$tmp/restore.stderr" || {
     echo "BLOQUEADO: pg_restore falhou em clone efêmero." >&2
+    grep -E -m 8 "pg_restore: error:|ERROR:|FATAL:" "$tmp/restore.stderr" | cut -c1-180 >&2 || true
     exit 2
   }
 
