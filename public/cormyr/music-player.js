@@ -30,19 +30,17 @@
  function stop(){container.replaceChildren();player.hidden=true;lyrics.hidden=true;lyrics.textContent='';}
  close.addEventListener('click',stop);
  document.addEventListener('click',event=>{
-  const link=event.target.closest('a.music-button[href]');
-  if(!link)return;
-  const url=link.href,embed=media(url);
-  if(!embed){
-   // For Drive (and unsupported media), preserve target="_blank" and the original source URL.
-   // Stop any previous embedded video so two unrelated tracks never play simultaneously.
-   if(new URL(url).hostname==='drive.google.com')stop();
-   return;
-  }
+  // The ordinary song link always opens the original provider.
+  // An explicit "Prévia aqui" button is the only control that loads an iframe.
+  const button=event.target.closest('button[data-bard-preview]');
+  if(!button)return;
+  const url=button.dataset.bardPreview,embed=url?media(url):null;
+  if(!embed)return;
   event.preventDefault();
   stop();
   const track=(window.CORMYR_DATA?.soundtrack||[]).find(t=>t.url===url);
-  title.textContent=track?.title||link.querySelector('span:nth-child(2)')?.childNodes[0]?.textContent?.trim()||'Música de Cormyr';
+  const original=button.closest('.music-actions')?.querySelector('a.music-button[href]');
+  title.textContent=track?.title||original?.querySelector('span:nth-child(2)')?.childNodes[0]?.textContent?.trim()||'Música de Cormyr';
   source.href=url;source.hidden=false;
   if(track?.lyrics){lyrics.textContent=track.lyrics;lyrics.hidden=false;}
   const frame=document.createElement('iframe');frame.src=embed;frame.title='Reprodução solicitada: '+title.textContent;
