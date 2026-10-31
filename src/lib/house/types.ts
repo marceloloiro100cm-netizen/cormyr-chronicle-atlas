@@ -59,6 +59,9 @@ export type HouseState = {
 };
 export type Ledger = { id: string; action: string; explanation: string; campaignMonth: number; before: Resources; after: Resources; rule: string; key: string; createdAt?: string | undefined; actor?: string | undefined };
 export type HouseDocument = { state: HouseState; version: number; ledger: Ledger[]; syncState: string };
-export function newHouseState(houseId: string, region = ''): HouseState {
-  return { schemaVersion: 1, houseId, phase: 'draft', creationStep: 0, identity: { region, motto: '', history: [], notes: '' }, method: 'budget', budget: null, base: zeroResources(), permanent: zeroResources(), regionalApplied: false, rolls: [], domains: [], holdings: [], units: [], projects: [], court: [], month: 1522 * 12, treasury: 0, fortunes: [], actions: [], pending: [], importSources: [] };
+/** Mês 0 é sentinela de rascunho não sincronizado, nunca o presente.
+ * O servidor deve exigir o calendário oficial antes de disponibilizar uma ficha nova.
+ */
+export function newHouseState(houseId: string, region = '', initialMonth = 0): HouseState {
+  return { schemaVersion: 1, houseId, phase: 'draft', creationStep: 0, identity: { region, motto: '', history: [], notes: '' }, method: 'budget', budget: null, base: zeroResources(), permanent: zeroResources(), regionalApplied: false, rolls: [], domains: [], holdings: [], units: [], projects: [], court: [], month: initialMonth, treasury: 0, fortunes: [], actions: [], pending: [], importSources: [] };
 }
