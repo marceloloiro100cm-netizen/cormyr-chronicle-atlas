@@ -8,7 +8,13 @@
   add('reino','Tema do reino',data.kingdomMusic);
   (function walk(o,parent){if(!o||typeof o!=='object')return;if(Array.isArray(o)){o.forEach(x=>walk(x,parent));return;}if(o!==data&&Array.isArray(o.music))add(o.musicKind||(o.houses?'regiao':'casa'),(o.name||''),o.music);for(const k in o)if(k!=='music'&&k!=='kingdomMusic')walk(o[k],o);})(data);
   // User-supplied soundtrack metadata supplements the existing YouTube playlist.
-  for(const t of data.soundtrack||[])if(t.url)add(t.category,t.region||t.house||'Cancioneiro',[t]);
+  // Prefer the regional/house YouTube video already listed above, rather than
+  // displaying the same track twice in the music catalogue.
+  const existingUrls=new Set(groups.flatMap(g=>g.songs.map(song=>song.url)));
+  for(const t of data.soundtrack||[]){
+    if(!t.url||(t.youtubeUrl&&existingUrls.has(t.youtubeUrl)))continue;
+    add(t.category,t.region||t.house||'Cancioneiro',[t]);
+  }
   const lyricsOnly=(data.soundtrack||[]).filter(t=>t.lyrics&&!t.url);
   const box=document.getElementById('music-all');
   if(box){
@@ -25,7 +31,7 @@
     const render=()=>{
       const list=groups.filter(g=>(kind==='todas'||g.kind===kind)&&(item===''||String(groups.indexOf(g))===item));
       const songs=list.reduce((a,g)=>a+g.songs.length,0);
-      box.innerHTML=list.length?list.map(g=>`<section class="music-links panel"><div><p class="eyebrow">${esc(kindLabel(g.kind))}</p><h4>${esc(g.label)}</h4></div><div class="music-actions">${g.songs.map(s=>`<a class="music-button" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">▶</span><span>${esc(s.title)}<small>${s.url.includes('drive.google.com')?'Ouvir ou ver no Drive':'Ouvir no YouTube'}</small></span></a>${/^https:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//.test(s.url)?`<button type="button" class="quiet bard-preview-button" data-bard-preview="${esc(s.url)}">▶ Prévia aqui</button>`:''}`).join('')}</div></section>`).join(''):'<p class="empty">Nenhuma música encontrada. Limpe os filtros para ver todas.</p>';
+      box.innerHTML=list.length?list.map(g=>`<section class="music-links panel"><div><p class="eyebrow">${esc(kindLabel(g.kind))}</p><h4>${esc(g.label)}</h4></div><div class="music-actions">${g.songs.map(s=>`<a class="music-button" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">▶</span><span>${esc(s.title)}<small>${s.url.includes('drive.google.com')?'Arquivo original no Drive · vídeo da playlist não localizado':'Ouvir o vídeo correspondente no YouTube'}</small></span></a>${s.driveUrl&&s.driveUrl!==s.url?`<a class="quiet" href="${esc(s.driveUrl)}" target="_blank" rel="noopener noreferrer">Arquivo original no Drive ↗</a>`:''}${/^https:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//.test(s.url)?`<button type="button" class="quiet bard-preview-button" data-bard-preview="${esc(s.url)}">▶ Prévia aqui</button>`:''}`).join('')}</div></section>`).join(''):'<p class="empty">Nenhuma música encontrada. Limpe os filtros para ver todas.</p>';
       if((kind==='todas'||kind==='cancioneiro')&&item===''){
        for(const t of lyricsOnly){const detail=document.createElement('details');detail.className='panel music-lyrics-entry';
         const summary=document.createElement('summary');summary.textContent=t.title+' · Letra';detail.append(summary);

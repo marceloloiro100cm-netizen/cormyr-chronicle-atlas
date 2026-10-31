@@ -64,3 +64,56 @@ describe('Safe narrator media token parsing',()=>{
   expect(campaignMediaParts('Texto normal sem mídia.')).toEqual([{text:'Texto normal sem mídia.'}]);
  });
 });
+
+
+describe('YouTube playlist per-track links',()=>{
+ const data=()=>{
+  const raw=publicFile('data.js').replace(/^window\.CORMYR_DATA\s*=\s*/,'').replace(/;\s*$/,'');
+  const archive=JSON.parse(raw);
+  const context:{CORMYR_DATA:typeof archive}={CORMYR_DATA:archive};
+  new Function('window',publicFile('soundtrack.js'))(context);
+  return archive;
+ };
+ it('maps each available regional and house recording to its catalogued YouTube video',()=>{
+  const archive=data();
+  const recordings=archive.soundtrack.filter((t:{driveId?:string})=>t.driveId);
+  expect(recordings).toHaveLength(20);
+  expect(recordings.filter((t:{youtubeUrl?:string})=>Boolean(t.youtubeUrl))).toHaveLength(14);
+  for(const t of recordings){
+   expect(new URL(t.driveUrl).hostname).toBe('drive.google.com');
+   expect(new URL(t.driveUrl).pathname.startsWith('/file/d/')).toBe(true);
+   if(t.youtubeUrl){
+    const u=new URL(t.youtubeUrl);
+    expect(u.searchParams.get('list')).toBe('PLNkPwXjMDaCw');
+    expect(u.searchParams.get('v')).toMatch(/^[A-Za-z0-9_-]{11}$/);
+    expect(t.url).toBe(t.youtubeUrl);
+   }else{
+    expect(t.url).toBe(t.driveUrl);
+    expect(t.linkStatus).toBe('drive-only');
+   }
+  }
+ });
+ it('uses the explicitly supplied Fewmerry video instead of a generic playlist destination',()=>{
+  const archive=data();
+  const fewmerry=archive.soundtrack.find((t:{region:string})=>t.region==='Fewmerry');
+  expect(fewmerry.url).toBe('https://www.youtube.com/watch?v=kfq0BeCse98&list=PLNkPwXjMDaCw');
+  const known=archive.soundtrack.filter((t:{youtubeUrl?:string})=>t.youtubeUrl).map((t:{youtubeUrl:string})=>t.youtubeUrl);
+  expect(new Set(known).size).toBe(14);
+ });
+ it('keeps the six uncatalogued recordings on their original Drive URLs, never assigning another track by guesswork',()=>{
+  const archive=data();
+  const unresolved=archive.soundtrack.filter((t:{driveId?:string;youtubeUrl?:string})=>t.driveId&&!t.youtubeUrl)
+   .map((t:{title:string})=>t.title);
+  expect(unresolved).toEqual([
+   'O Nó de Sangue — A Balada da Escota Vermelha',
+   'A Força Vem do Povo',
+   'A Milonga das Vozes que Ficam',
+   'Essa Coroa',
+   'Vou-me Embora pra Sossal',
+   'Música dos Dragões Azuis'
+  ]);
+  const extras=publicFile('extras.js');
+  expect(extras).toContain('s.driveUrl&&s.driveUrl!==s.url');
+  expect(extras).toContain('existingUrls.has(t.youtubeUrl)');
+ });
+});

@@ -30,8 +30,40 @@
   ['Badalos Elementais','Veilstone','Badalando nas colinas no vale eu vou\nMeu rumo eu vou seguir'],
   ['Cante uma Canção a Elturel','Horselands','Cante uma canção a Elturel\nDe água, bosques e colinas']
  ];
+ // The public catalogue already has per-song video IDs in the requested playlist.
+ // Reuse only exact region/house entries. Do not guess a video ID for other songs.
+ const PLAYLIST='PLNkPwXjMDaCw';
+ const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+ const sources=new Map();
+ function register(kind,name,songs){
+  if(!Array.isArray(songs)||songs.length!==1)return;
+  const song=songs[0];if(!song?.url)return;
+  try{
+   const url=new URL(song.url);
+   if(!['www.youtube.com','youtube.com','m.youtube.com'].includes(url.hostname))return;
+   if(!/^[\w-]{11}$/.test(url.searchParams.get('v')||''))return;
+   if(url.searchParams.get('list')!==PLAYLIST)return;
+   sources.set(kind+'|'+norm(name),song);
+  }catch{/* Unrecognized links are not assigned by approximation. */}
+ }
+ register('regiao','Crownlands',data.kingdomMusic);
+ for(const region of data.regions||[]){
+  register('regiao',region.name,region.music);
+  for(const house of region.houses||[])register('casa',house.name,house.music);
+ }
  data.soundtrack=[
-  ...tracks.map(([title,category,region,driveId],i)=>({id:'track-'+i,title,category,region,driveId,url:'https://drive.google.com/file/d/'+driveId+'/view'})),
+  ...tracks.map(([title,category,region,driveId],i)=>{
+   const driveUrl='https://drive.google.com/file/d/'+driveId+'/view';
+   const original=sources.get(category+'|'+norm(region));
+   // Attach an explicit recording fallback to the existing regional/house song.
+   if(original){original.driveUrl=driveUrl;original.driveTitle=title;}
+   return {
+    id:'track-'+i,title,category,region,driveId,driveUrl,
+    youtubeUrl:original?.url||null,
+    url:original?.url||driveUrl,
+    linkStatus:original?'catalogued-playlist-video':'drive-only'
+   };
+  }),
   ...lyrics.map(([title,region,lyrics],i)=>({id:'lyrics-'+i,title,category:'cancioneiro',region,lyrics,url:''}))
  ];
 })();
