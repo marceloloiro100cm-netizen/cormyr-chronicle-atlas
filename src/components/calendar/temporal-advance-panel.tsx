@@ -6,6 +6,10 @@ import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {getCampaignTimeChangeHistory,previewCampaignTimeChange,publishCampaignTimeChange,
  type CampaignTimeImpact} from '@/lib/calendar/time-command';
 
+function timeErrorMessage(err:unknown,fallback:string):string {
+ return err&&typeof err==='object'&&'message' in err?String(err.message):err instanceof Error?err.message:fallback;
+}
+
 export function TemporalAdvancePanel(){
  const clock=useCampaignTime();
  const qc=useQueryClient();
@@ -30,7 +34,7 @@ export function TemporalAdvancePanel(){
    const impact=await previewCampaignTimeChange(clock.data,desdias);
    setPrepared({version:clock.data.version,impact});
    key.current=crypto.randomUUID();
-  }catch(err){setPrepared(null);setFailure(true);setMessage(err instanceof Error?err.message:'Falha na prévia temporal.');}
+  }catch(err){setPrepared(null);setFailure(true);setMessage(timeErrorMessage(err,'Falha na prévia temporal.'));}
   finally{setBusy(false);}
  }
  async function confirm(){
@@ -52,7 +56,7 @@ export function TemporalAdvancePanel(){
    setMessage(saved.duplicate?'Avanço já confirmado anteriormente; nenhum efeito duplicado.':
     `Avanço confirmado: ${formatDate(prepared.impact.to)}. Versão ${saved.snapshot.version}.`);
    setPrepared(null);key.current=null;
-  }catch(err){setFailure(true);setMessage(err instanceof Error?err.message:'Não foi possível confirmar o avanço.');}
+  }catch(err){setFailure(true);setMessage(timeErrorMessage(err,'Não foi possível confirmar o avanço.'));}
   finally{setBusy(false);}
  }
  return <section className="narrator-calendar-panel" aria-label="Hub temporal · avanço de désdia">
