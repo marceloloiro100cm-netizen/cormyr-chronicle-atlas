@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS public.letter_reply_versions(
 GRANT SELECT ON public.letter_reply_versions TO authenticated;
 GRANT ALL ON public.letter_reply_versions TO service_role;
 ALTER TABLE public.letter_reply_versions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS reply_versions_read ON public.letter_reply_versions;
 CREATE POLICY reply_versions_read ON public.letter_reply_versions FOR SELECT TO authenticated USING(
  EXISTS(SELECT 1 FROM public.letter_replies r
  JOIN public.campaign_letters l ON l.id=r.letter_id
