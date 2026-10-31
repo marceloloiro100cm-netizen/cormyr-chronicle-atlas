@@ -87,6 +87,11 @@
       "pr": 143,
       "head": "audit/hub-temporal-lote-17-plano-ordenado-bloqueado",
       "base": "audit/hub-temporal-lote-16-ensaio-replay-isolado"
+    },
+    {
+      "pr": 144,
+      "head": "audit/hub-temporal-lote-18-restauracao-isolada",
+      "base": "audit/hub-temporal-lote-17-plano-ordenado-bloqueado"
     }
   ]
 }
