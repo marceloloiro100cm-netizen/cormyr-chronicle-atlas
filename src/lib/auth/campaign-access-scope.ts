@@ -46,6 +46,12 @@ export async function loadCampaignAccessScope():Promise<CampaignAccessScope>{
    .eq('player_id',player.id)
   :{data:[],error:null};
  if(memberError)throw new Error('Vínculos com Casas indisponíveis.');
+ // Auth may switch while the three authorized RLS reads are in flight.
+ // A second getUser verifies the same identity before exporting any snapshot
+ // to React Query; a failed check never reuses old permissions.
+ const {data:{user:confirmedUser},error:confirmationError}=await supabase.auth.getUser();
+ if(confirmationError||!confirmedUser||confirmedUser.id!==user.id)
+  throw new Error('Identidade alterada durante a verificação dos vínculos.');
  const scope={
   userId:user.id,
   admin,
