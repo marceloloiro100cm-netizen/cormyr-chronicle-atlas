@@ -1663,6 +1663,7 @@ export type Database = {
         Args: { p_year?: number | null; p_target_year?: number | null; p_limit?: number }
         Returns: Json
       }
+      preview_house_time_impacts: { Args: { p_version: number; p_target_date: string }; Returns: Json }
       get_house_character_ages: { Args: { p_house: string }; Returns: Json }
       get_character_year_transitions: { Args: { p_limit?: number }; Returns: Json }
       save_campaign_character: {
