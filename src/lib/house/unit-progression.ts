@@ -22,7 +22,8 @@ export function syncUnitXp(unit:Unit){
 export function unitAllowedSkills(unit:Unit):Set<UnitSkill>{
  const skills=unit.mixedRule?.allowedSkills??[
   ...unit.types.flatMap(id=>UNIT_TYPES.find(x=>x.id===id)?.skills??[]),
-  ...(unit.types.includes('special')?EXTRA_UNIT_SKILLS:[])
+  ...(unit.types.includes('special')?EXTRA_UNIT_SKILLS:[]),
+  ...(unit.broadTrainingSkill?[unit.broadTrainingSkill]:[])
  ];
  return new Set(skills as UnitSkill[]);
 }
