@@ -15,6 +15,7 @@ import {monthFromHarptosDate,validateHouseTimeImpact} from '@/lib/calendar/house
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {calendarPublicationError} from '@/lib/calendar/publication';
 import {campaignTimeRpcArguments,matchesPublishedTime,validateCampaignTimePreview,type CampaignTimeMode,type CampaignTimePreview} from '@/lib/calendar/temporal-publication';
+import {temporalQueryKeysForInvalidation} from '@/lib/calendar/time-connections';
 
 function calendarErrorMessage(error:unknown):string{
  if(error&&typeof error==='object'&&'message' in error)return String(error.message);
@@ -158,23 +159,12 @@ export function NarratorCalendar(){
    setExpectedVersion(saved!.version);
    setDate(dateKey(saved!));setNeedsVersionRefresh(false);setAllowBackdate(false);
    qc.setQueryData(['campaign-calendar'],saved);
-   const results=await Promise.allSettled([
-    qc.invalidateQueries({queryKey:['campaign-calendar']}),
-    qc.invalidateQueries({queryKey:['campaign-time-preview']}),
-    qc.invalidateQueries({queryKey:['campaign-time-history']}),
-    qc.invalidateQueries({queryKey:['campaign-schedule-drafts']}),
-    qc.invalidateQueries({queryKey:['calendar-schedule-events']}),
-    qc.invalidateQueries({queryKey:['noble-house']}),
-    qc.invalidateQueries({queryKey:['house-realm-dashboard']}),
-    qc.invalidateQueries({queryKey:['house-time-impact']}),
-    qc.invalidateQueries({queryKey:['temporal-consumer-dashboard']}),
-    qc.invalidateQueries({queryKey:['temporal-release-preflight']}),
-    qc.invalidateQueries({queryKey:['house-character-ages']}),
-    qc.invalidateQueries({queryKey:['character-age-dashboard']}),
-    qc.invalidateQueries({queryKey:['character-year-transitions']}),
-    qc.invalidateQueries({queryKey:['character-age-impact']}),
-    qc.invalidateQueries({queryKey:['campaign-chronology']}),
-   ]);
+   // Narrator, Realtime and polling share one canonical invalidation matrix.
+   // In particular, correspondence and character registries stay fresh.
+   const invalidations=[...temporalQueryKeysForInvalidation(),['campaign-time-preview']];
+   const results=await Promise.allSettled(invalidations.map(queryKey=>
+    qc.invalidateQueries({queryKey})
+   ));
    const delayed=results.some(r=>r.status==='rejected');
    setMessage('Calendário gravado e confirmado: '+formatDate(dateKey(saved!))+
     '. Versão '+saved!.version+'.'+(delayed?' Algumas consultas precisam ser atualizadas.':''));
