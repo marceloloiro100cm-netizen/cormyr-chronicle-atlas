@@ -10,6 +10,7 @@ import {NarratorCharacterRegistry} from './narrator-character-registry';
 import {NarratorCharacterAges} from './narrator-character-ages';
 import {CampaignChronology} from './chronology';
 import {validateAgeDashboard} from '@/lib/calendar/character-ages';
+import {monthFromHarptosDate,validateHouseTimeImpact} from '@/lib/calendar/house-time-impact';
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {calendarPublicationError} from '@/lib/calendar/publication';
 import {campaignTimeRpcArguments,matchesPublishedTime,validateCampaignTimePreview,type CampaignTimeMode,type CampaignTimePreview} from '@/lib/calendar/temporal-publication';
@@ -57,6 +58,20 @@ export function NarratorCalendar(){
   },
  });
  const projectedYear=preview.data?parseDate(preview.data.to)?.year:undefined;
+ const houseImpact=useQuery({
+  queryKey:['house-time-impact',expectedVersion,preview.data?.to],
+  enabled:expectedVersion!==null&&Boolean(preview.data&&preview.data.month_delta>0),
+  queryFn:async()=>{
+   const target=preview.data!.to;
+   const day=parseDate(target);
+   if(!day)throw new Error('Data de impacto das Casas inválida.');
+   const {data,error}=await supabase.rpc('preview_house_time_impacts',{
+    p_version:expectedVersion!,p_target_date:target,
+   });
+   if(error)throw error;
+   return validateHouseTimeImpact(data,expectedVersion!,monthFromHarptosDate(day));
+  },
+ });
  const annualChange=calendar.data!==undefined&&projectedYear!==undefined&&projectedYear!==calendar.data.year;
  const ageImpact=useQuery({
   queryKey:['character-age-impact',calendar.data?.year,projectedYear,calendar.data?.version],
@@ -116,13 +131,17 @@ export function NarratorCalendar(){
   const params={mode,date:mode==='set'?date:null,count:mode==='advance'?count:0,expectedVersion,reason:reason.trim(),allowBackdate:mode==='set'&&allowBackdate};
   const signature=JSON.stringify(params);
   const annual=ageImpact.data;
+  const impact=houseImpact.data;
+  if(planned.month_delta>0&&(!impact||houseImpact.isFetching||impact.invalid>0)){
+   setSaveError(true);setMessage('Prévia de posses indisponível, em atualização ou com Casas inválidas. Verifique as fichas antes de publicar o mês.');return;
+  }
   if(parseDate(planned.to)?.year!==calendar.data.year&&(!annual||ageImpact.isFetching)){
    setSaveError(true);setMessage('Prévia de envelhecimento do servidor ainda indisponível. Consulte a lista antes de publicar o ano.');return;
   }
   const confirmText='Confirmar '+planned.from+' → '+planned.to+' ('+planned.month_delta+
    ' mês(es), '+planned.crossed_years.length+' virada(s) de ano, '+planned.crossed_festivals.length+
    ' festival(is))? '+planned.house_sheets_to_check+
-   ' ficha(s) de Casa serão conferidas no avanço. '+(annual?'Nobres com idade alterada: '+annual.totals.aged_nobles+'; pendências: '+annual.totals.pending+'. ':'')+'Missivas não avançarão automaticamente.';
+   ' ficha(s) de Casa serão conferidas no avanço. '+(impact?'Casas a processar: '+impact.eligible+'; obras candidatas: '+impact.project_candidates+'. ':'')+(annual?'Nobres com idade alterada: '+annual.totals.aged_nobles+'; pendências: '+annual.totals.pending+'. ':'')+'Missivas não avançarão automaticamente.';
   if(!window.confirm(confirmText))return;
   if(retry.current?.payload!==signature)retry.current={payload:signature,key:crypto.randomUUID()};
   const key=retry.current.key;
@@ -146,6 +165,7 @@ export function NarratorCalendar(){
     qc.invalidateQueries({queryKey:['calendar-schedule-events']}),
     qc.invalidateQueries({queryKey:['noble-house']}),
     qc.invalidateQueries({queryKey:['house-realm-dashboard']}),
+    qc.invalidateQueries({queryKey:['house-time-impact']}),
     qc.invalidateQueries({queryKey:['house-character-ages']}),
     qc.invalidateQueries({queryKey:['character-age-dashboard']}),
     qc.invalidateQueries({queryKey:['character-year-transitions']}),
@@ -189,6 +209,7 @@ export function NarratorCalendar(){
   <nav className="temporal-hub-navigation" aria-label="Seções do Hub Temporal">
    <a href="#temporal-comando">Comando e prévia</a>
    <a href="#temporal-eventos">Eventos oficiais</a>
+   <a href="#temporal-posses">Posses e projetos</a>
    <a href="#temporal-cronologia">Cronologia</a>
    <a href="#temporal-genealogias">Nobres e genealogias</a>
    <a href="#temporal-idades">Idades anuais</a>
@@ -222,14 +243,28 @@ export function NarratorCalendar(){
      <strong>Prévia:</strong> {formatDate(preview.data.from)} → <strong>{formatDate(preview.data.to)}</strong> · {preview.data.ordinary_days} dias ordinários · {preview.data.calendar_days} dias cronológicos · {preview.data.month_delta} mês(es) · {preview.data.crossed_years.length} virada(s) de ano · {preview.data.crossed_festivals.length} festival(is).
      {preview.data.crossed_festivals.length>0&&<p>Festivais: {preview.data.crossed_festivals.map(formatDate).join(' · ')}</p>}
      {preview.data.month_delta>0&&<p>{preview.data.house_sheets_to_check} ficha(s) serão conferidas para processamento mensal na transação.</p>}
+     {preview.data.month_delta>0&&(houseImpact.isPending||houseImpact.isFetching)&&<p role="status">Conferindo posses e obras no servidor…</p>}
+     {preview.data.month_delta>0&&houseImpact.error&&<p role="alert">Não foi possível conferir as posses. A publicação do mês ficará bloqueada.</p>}
+     {preview.data.month_delta>0&&houseImpact.data&&<p><strong>Posses:</strong> {houseImpact.data.eligible} Casa(s) serão processadas, {houseImpact.data.project_candidates} obra(s) candidata(s) a conclusão; {houseImpact.data.drafts} rascunho(s), {houseImpact.data.ahead} adiantada(s), {houseImpact.data.invalid} registro(s) inválido(s).</p>}
      {preview.data.backdated&&<p role="alert" className="house-warning">Retrocesso histórico: registros e obras concluídas não serão desfeitos. Exige autorização e justificativa.</p>}
      {ageImpact.data&&<p><strong>Prévia anual:</strong> {ageImpact.data.totals.aged_nobles} nobre(s) muda(m) de idade; {ageImpact.data.totals.pending} registro(s) exigem revisão, sem bloquear o relógio.</p>}
      {ageImpact.error&&<p role="alert">Impacto etário indisponível: não publique uma virada de ano até conferir a prévia do Narrador.</p>}
     </>:null}
    </div>
-   <Button type="button" className="narrator-calendar-publish-button" disabled={busy||isStale||needsVersionRefresh||!preview.data||preview.isFetching||annualChangeNeedsPreview||(preview.data.backdated&&(!allowBackdate||reason.trim().length<10))} onClick={()=>void publish()}>{busy?'Publicando…':mode==='advance'?'Confirmar avanço de désdia':mode==='set'?'Confirmar data oficial':'Publicar eventos'}</Button>
+   <Button type="button" className="narrator-calendar-publish-button" disabled={busy||isStale||needsVersionRefresh||!preview.data||preview.isFetching||annualChangeNeedsPreview||(preview.data.month_delta>0&&(!houseImpact.data||houseImpact.isFetching||houseImpact.data.invalid>0))||(preview.data.backdated&&(!allowBackdate||reason.trim().length<10))} onClick={()=>void publish()}>{busy?'Publicando…':mode==='advance'?'Confirmar avanço de désdia':mode==='set'?'Confirmar data oficial':'Publicar eventos'}</Button>
    <p className="text-sm text-muted-foreground">A publicação é atômica, versionada e protegida por chave de operação. Abrir uma rodada de missivas não altera a data. Alterações no ano serão consumidas pelo registro de personagens em lote posterior.</p>
   </div>
+  <section id="temporal-posses" className="narrator-calendar-panel" aria-label="Processamento temporal de posses e obras">
+   <h3>Posses, construções e projetos</h3>
+   <p>O Reino define o mês absoluto. Apenas Casas ativas e elegíveis recebem uma atualização; uma Casa atrasada alcança o mês de destino, e uma Casa já processada não recebe a mesma obra novamente.</p>
+   <p>Construções com prazo vencido são conferidas em conjunto com seus pré-requisitos. Uma obra dependente não fica ativa sem a posse de suporte. Sorte, rendimentos, despesas e ações mensais não são geradas automaticamente sem regras próprias.</p>
+   {houseImpact.data?<details><summary>Inspecionar situação das Casas ({houseImpact.data.total})</summary>
+     {houseImpact.data.houses.map(h=><p key={h.house_id}>
+      <strong>{h.house_id}</strong> · {h.status==='advance'?'Processamento previsto':h.status==='draft'?'Rascunho preservado':h.status==='ahead'?'Casa adiantada':h.status==='invalid'?'Ficha inválida — revisar':'Nenhuma atualização necessária'}
+      {h.month!==null?' · mês registrado '+h.month:''} · {h.project_candidates} projeto(s) candidato(s)
+     </p>)}
+    </details>:<p className="house-caption">Selecione um avanço de mês para consultar o impacto exato em todas as Casas.</p>}
+  </section>
   <CampaignChronology year={calendar.data.year} month={calendar.data.month} anchorId="temporal-cronologia"/>
   <NarratorCharacterRegistry/>
   <NarratorCharacterAges targetYear={annualChange?projectedYear:undefined}/>
