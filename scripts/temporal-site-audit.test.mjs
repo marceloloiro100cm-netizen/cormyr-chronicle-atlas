@@ -18,6 +18,17 @@ describe('Lote 22 · contrato de data canônica através do site',()=>{
   assert.equal(report.production_release_authorized,false);
   assert.equal(runTemporalSiteAudit(['--gate']).exitCode,0);
  });
+ it('guardas servidoras usam o mesmo RPC, mas uma quinta leitura exige auditoria',()=>{
+  const path='src/lib/house/house.functions.ts';
+  assert.equal(auditTemporalSite(sources).errors.filter(x=>
+   x.path===path&&x.code==='SECOND_CANONICAL_CLOCK_FETCH').length,0);
+  const mutated={...sources,[path]:
+   sources[path]+"\nconst extra=await context.supabase.rpc('get_campaign_calendar');"};
+  assert.ok(codes(auditTemporalSite(mutated)).includes('SERVER_CLOCK_READS_CHANGED'));
+  const withoutGuard={...sources,[path]:
+   sources[path].replaceAll('requireCalendarAlignment','disabledAlignment')};
+  assert.ok(codes(auditTemporalSite(withoutGuard)).includes('MISSING_SERVER_CLOCK_GUARD'));
+ });
  it('rejeita uma segunda consulta direta ao relógio, evitando cache paralelo',()=>{
   const x={...sources,'src/components/house/fake-time.ts':
    "const {data}=await supabase.rpc('get_campaign_calendar');"};
