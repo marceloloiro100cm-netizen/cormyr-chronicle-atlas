@@ -10,7 +10,7 @@ import {advanceHarptosDesdia,listCrossedHarptosPeriods} from '@/lib/calendar/tem
 const mock=vi.hoisted(()=>({
  rpc:vi.fn(),channel:vi.fn(),on:vi.fn(),subscribe:vi.fn(),removeChannel:vi.fn(),
  current:{year:1522,month:0,day:1,festival:null as string|null,auto_advance:true,version:1,published_week:2},
- failOnce:false,
+ failOnce:false,admin:true,
  keys:[] as string[],
 }));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:mock.rpc,channel:mock.channel,removeChannel:mock.removeChannel}}));
@@ -33,6 +33,7 @@ function previewFor(args:Record<string,unknown>){
 }
 function setupRpc(){
  mock.rpc.mockImplementation(async(name:string,args?:Record<string,unknown>)=>{
+  if(name==='is_campaign_admin')return {data:mock.admin,error:null};
   if(name==='preview_house_time_impacts'){
    const target=parseDate(String(args?.['p_target_date']??'1522-01-01'))!;
    const month=target.year*12+target.month;
@@ -72,7 +73,7 @@ function setupRpc(){
 }
 beforeEach(()=>{
  mock.current={year:1522,month:0,day:1,festival:null,auto_advance:true,version:1,published_week:2};
- mock.failOnce=false;mock.keys=[];
+ mock.failOnce=false;mock.admin=true;mock.keys=[];
  mock.rpc.mockReset();
  for(const fn of [mock.channel,mock.on,mock.subscribe,mock.removeChannel])fn.mockReset();
  const channel={on:mock.on,subscribe:mock.subscribe};
@@ -295,5 +296,21 @@ describe('Lote 24 · publicação administrativa revalida todos os módulos',()=
    'temporal-consumer-dashboard','temporal-release-preflight'])
    expect(keys).toContain(JSON.stringify([prefix]));
   expect(mock.current.version).toBe(2);
+ });
+});
+
+
+describe('Lote 32 · revalidação do cargo do Narrador antes de publicar',()=>{
+ it('cargo revogado impede publicação apesar de prévia válida em cache',async()=>{
+  setup();
+  const button=await screen.findByRole('button',{name:'Confirmar avanço de désdia'});
+  await waitFor(()=>expect(button).toBeEnabled());
+  mock.admin=false;
+  fireEvent.click(button);
+  await waitFor(()=>expect(screen.getByText(/Permissão de Narrador revogada/))
+   .toBeInTheDocument());
+  expect(mock.rpc.mock.calls.filter(([name])=>name==='publish_campaign_time_change'))
+   .toHaveLength(0);
+  expect(mock.current.version).toBe(1);
  });
 });
