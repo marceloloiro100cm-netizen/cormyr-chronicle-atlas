@@ -18,7 +18,9 @@ export function rollPreview(state:HouseState,args:{status:number;testDice:number
   const kept=[...args.testDice,...args.bonusDice].sort((a,b)=>b-a).slice(0,args.testDice.length);
   const holdings=activeHoldings(state).flatMap(h=>h.effects).filter(e=>e.kind==='fortune');
   const holdingBonus=stackingBonus(holdings.reduce((n,e)=>n+(e.amount??0),0),args.fortuneStackDice??[]);
-  const b=balances(state),modifier=fortuneModifier(b.total.law,b.total.population)+args.modifier+holdingBonus;
+  const b=balances(state),sewers=activeHoldings(state).some(h=>h.itemId==='pros-sewer');
+  const populationPenalty=fortunePopulationModifier(b.total.population);
+  const modifier=fortuneLawModifier(b.total.law)+(sewers&&populationPenalty<0?Math.min(0,populationPenalty+2):populationPenalty)+args.modifier+holdingBonus;
   const total=kept.reduce((n,d)=>n+d,0)+modifier;
   return {kept,total,modifier,outcome:fortuneOutcome(total)};
 }
@@ -34,13 +36,51 @@ export function confirmFortune(state:HouseState,args:{status:number;testDice:num
   next.fortunes.push({month:state.month,mode:'roll',dice:args.testDice,bonusDice:args.bonusDice,modifier:p.modifier,result:p.total,outcome:p.outcome,resource:args.resource,changes:finalChanges,source:'Guerra dos Tronos RPG · tabela6-18; Prosperidade · Stacking Bonuses · '+args.justification+' · dados de efeitos: '+JSON.stringify({fortune:args.fortuneStackDice??[],resources:args.resourceStackDice??{}})});return next;
 }
 export const CONVERSIONS:Partial<Record<Resource,Resource[]>>={influence:['law'],lands:['defense'],population:['power'],power:['influence','law','population'],wealth:[...RESOURCE_KEYS].filter(r=>r!=='wealth')};
+/** Routes and costs are derived exclusively from active Prosperity investments. */
+export function availableConversions(state:HouseState):Partial<Record<Resource,Resource[]>> {
+ const routes:Partial<Record<Resource,Resource[]>>=Object.fromEntries(Object.entries(CONVERSIONS).map(([from,targets])=>[from,[...(targets??[])]]));
+ const own=(id:string)=>activeHoldings(state).some(h=>h.itemId===id);
+ const add=(from:Resource,to:Resource)=>{const list=routes[from]??=[];if(!list.includes(to))list.push(to);routes[from]=list;};
+ if(own('pros-black-market'))add('law','wealth');
+ if(own('pros-gaol'))add('population','law');
+ if(own('pros-slave-market')){add('wealth','population');add('population','wealth');add('wealth','power');add('power','wealth');}
+ return routes;
+}
+export function conversionRate(state:HouseState,from:Resource,to:Resource,rushed:boolean):number {
+ if(!availableConversions(state)[from]?.includes(to))throw new Error('Conversão não permitida para esta Casa.');
+ const own=(id:string)=>activeHoldings(state).some(h=>h.itemId===id);
+ if(from==='wealth'&&to==='power'&&own('pros-military-academy'))return rushed?2:1;
+ if(from==='law'&&to==='wealth'&&own('pros-black-market'))return 1;
+ if(from==='population'&&to==='law'&&own('pros-gaol'))return rushed?2:1;
+ if(own('pros-slave-market')&&((from==='wealth'&&(to==='population'||to==='power'))||((from==='population'||from==='power')&&to==='wealth')))return rushed?2:1;
+ return from==='wealth'?(rushed?3:2):(rushed?2:1);
+}
 export function convertResources(state:HouseState,from:Resource,to:Resource,amount:number,rushed:boolean,rate?:number):HouseState {
-  if(!CONVERSIONS[from]?.includes(to))throw new Error('Conversão não permitida na tabela 6-19.');
-  if(!Number.isFinite(amount)||amount<=0)throw new Error('Quantidade inválida.');
-  const actions=state.actions.filter(a=>a.month===state.month&&a.type.startsWith('convert:'));
-  if(actions.length>=2||actions.length===1&&!rushed)throw new Error('A segunda conversão deve ser apressada; máximo duas por mês.');
-  if(rate!==undefined&&!activeHoldings(state).flatMap(h=>h.effects).some(e=>e.kind==='conversion'))throw new Error('Taxa especial exige posse ativa com efeito de conversão.');
-  const ratio=rate??(from==='wealth'?(rushed?3:2):(rushed?2:1)),cost=Math.floor(amount*ratio);
-  if(balances(state).available[from]<cost)throw new Error('Saldo insuficiente para conversão.');
-  const next=structuredClone(state);next.permanent[from]-=cost;next.permanent[to]+=amount;next.actions.push({month:state.month,type:`convert:${from}:${to}`,notes:`Tabela 6-19 · ${cost}:${amount}${rushed?' · apressada':''}`});return next;
+ const ratio=conversionRate(state,from,to,rushed);
+ if(rate!==undefined&&rate!==ratio)throw new Error('Taxa de conversão divergente da regra da Casa.');
+ if(!Number.isInteger(amount)||amount<=0)throw new Error('Quantidade de pontos inválida.');
+ const actions=state.actions.filter(a=>a.month===state.month);
+ if(actions.some(a=>!a.type.startsWith('convert:')))throw new Error('A Casa já realizou outra ação mensal.');
+ if(actions.length>=2)throw new Error('Limite de duas conversões por mês.');
+ if((actions.length===0&&rushed)||(actions.length===1&&(!rushed||actions[0]?.notes.includes('apressada'))))throw new Error('Faça primeiro uma conversão normal e, depois, uma apressada.');
+ const cost=amount*ratio;
+ if(balances(state).available[from]<cost)throw new Error('Saldo insuficiente para conversão.');
+ const next=structuredClone(state);next.permanent[from]-=cost;next.permanent[to]+=amount;
+ next.actions.push({month:state.month,type:`convert:${from}:${to}`,notes:`Tabela 6-19 · ${cost}:${amount}${rushed?' · apressada':''}`});return next;
+}
+/** The Narrator records an auditable tournament with a server-rolled prize. */
+export function runTournament(state:HouseState,scale:'local'|'regional'|'grand',competitions:number,roll:number,notes:string):HouseState {
+ if(state.phase!=='active'||state.actions.some(a=>a.month===state.month))throw new Error('Ação mensal indisponível.');
+ if(!Number.isInteger(competitions)||competitions<1||competitions>30||!notes.trim())throw new Error('Número de competições ou relato inválido.');
+ const sides=scale==='local'?1:scale==='regional'?3:6;
+ if(!Number.isInteger(roll)||roll<1||roll>sides)throw new Error('Dado de Influência inválido.');
+ const base=scale==='local'?2:scale==='regional'?5:10,each=scale==='local'?1:scale==='regional'?2:5;
+ const own=(id:string)=>activeHoldings(state).some(h=>h.itemId===id);
+ const rebate=Number(own('pros-tournament-field'))+Number(own('pros-tournament-master'));
+ const wealth=Math.max(0,base+each*competitions-rebate);
+ const influence=roll+(own('pros-tournament-master')?2:0)+(own('pros-tournament-field--competition-culture')?3:0);
+ if(balances(state).available.wealth<wealth)throw new Error('Riqueza insuficiente para realizar o torneio.');
+ const next=structuredClone(state);next.permanent.wealth-=wealth;next.permanent.influence+=influence;
+ next.actions.push({month:state.month,type:'Torneio',notes:`${notes.trim()} · ${scale}; ${competitions} competições; −${wealth} Riqueza; +${influence} Influência (d${sides}=${roll}; descontos ${rebate}).`});
+ return next;
 }
