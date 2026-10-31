@@ -1,4 +1,5 @@
 import {readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
 import {describe,expect,it} from 'vitest';
 import {newHouseState} from '@/lib/house/types';
 import {houseMonthlyOperationReadiness,isMonthSensitiveHouseAction,
@@ -48,7 +49,7 @@ describe('Lote 23 · segurança temporal das operações da Casa',()=>{
  });
  it('as verificações financeiras e militares são feitas novamente no servidor',()=>{
   // Source contract: backend cannot rely only on React state to approve purchases.
-  const file=readFileSync(new URL('../lib/house/house.functions.ts',import.meta.url),'utf8');
+  const file=readFileSync(resolve(process.cwd(),'src/lib/house/house.functions.ts'),'utf8');
   const guarded=file.indexOf("if(state.phase==='active'&&isMonthSensitiveHouseAction(data.action))");
   const rpc=file.indexOf("rpc('get_campaign_calendar')",guarded);
   const alignment=file.indexOf('requireCalendarAlignment(state,response.data',rpc);
@@ -61,7 +62,7 @@ describe('Lote 23 · segurança temporal das operações da Casa',()=>{
   expect(equipment).toBeGreaterThan(unit);
  });
  it('o painel impede submissões com data ausente e aplica a política nos botões militares',()=>{
-  const file=readFileSync(new URL('../components/house/hub.tsx',import.meta.url),'utf8');
+  const file=readFileSync(resolve(process.cwd(),'src/components/house/hub.tsx'),'utf8');
   expect(file).toContain('houseMonthlyOperationReadiness(query.data.state,globalCalendar.data??null)');
   expect(file).toContain('if(isMonthSensitiveHouseAction(action))');
   expect(file).toContain('canEdit={monthlyCanEdit}');
