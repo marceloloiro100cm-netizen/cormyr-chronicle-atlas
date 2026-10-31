@@ -6,6 +6,7 @@ import {CampaignDatePicker} from './date-picker';
 import {CampaignCalendar,type CalendarState} from './calendar';
 import {campaignTimeView,useCampaignTime} from '@/lib/calendar/campaign-time';
 import {useCampaignCalendarRealtime} from './realtime';
+import {NarratorCharacterRegistry} from './narrator-character-registry';
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {calendarPublicationError} from '@/lib/calendar/publication';
 import {campaignTimeRpcArguments,matchesPublishedTime,validateCampaignTimePreview,type CampaignTimeMode,type CampaignTimePreview} from '@/lib/calendar/temporal-publication';
@@ -161,6 +162,7 @@ export function NarratorCalendar(){
   <nav className="temporal-hub-navigation" aria-label="Seções do Hub Temporal">
    <a href="#temporal-comando">Comando e prévia</a>
    <a href="#temporal-eventos">Eventos oficiais</a>
+   <a href="#temporal-genealogias">Nobres e genealogias</a>
    <a href="#temporal-historico">Histórico</a>
    <a href="#temporal-jogadores">Visão dos jogadores</a>
   </nav>
@@ -197,6 +199,7 @@ export function NarratorCalendar(){
    <Button type="button" className="narrator-calendar-publish-button" disabled={busy||isStale||needsVersionRefresh||!preview.data||preview.isFetching||(preview.data.backdated&&(!allowBackdate||reason.trim().length<10))} onClick={()=>void publish()}>{busy?'Publicando…':mode==='advance'?'Confirmar avanço de désdia':mode==='set'?'Confirmar data oficial':'Publicar eventos'}</Button>
    <p className="text-sm text-muted-foreground">A publicação é atômica, versionada e protegida por chave de operação. Abrir uma rodada de missivas não altera a data. Alterações no ano serão consumidas pelo registro de personagens em lote posterior.</p>
   </div>
+  <NarratorCharacterRegistry/>
   <div className="narrator-calendar-panel" id="temporal-eventos">
    <h3>{editId?'Editar evento':'Criar evento em uma data'}</h3>
    <form className="campaign-form narrator-event-form" onSubmit={e=>{e.preventDefault();void saveEvent();}}>
