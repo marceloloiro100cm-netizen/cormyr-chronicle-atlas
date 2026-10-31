@@ -30,9 +30,9 @@ beforeEach(()=>{
    return {data:[],error:null};
   if(name==='preview_campaign_time_change'){
    if(mock.previewError)return {data:null,error:{message:mock.previewError}};
-   const days=Number(args?.p_desdias)*10;
+   const days=Number(args?.['p_desdias'])*10;
    return {data:{from:'1522-01-01',to:days===10?'1522-01-11':'1522-01-21',
-    expected_version:mock.current.version,desdias:Number(args?.p_desdias),ordinary_days:days,
+    expected_version:mock.current.version,desdias:Number(args?.['p_desdias']),ordinary_days:days,
     months_delta:0,crossed_months:[],crossed_years:[],crossed_seasons:[],
     crossed_festivals:[],houses_drifted:0,projects_maturing:0,can_publish:true},error:null};
   }
@@ -46,7 +46,7 @@ beforeEach(()=>{
   }
   if(name==='publish_campaign_schedule_confirmed'){
    if(mock.publicationError)return {data:null,error:{message:mock.publicationError}};
-   mock.current={...mock.current,auto_advance:Boolean(args?.p_auto),published_week:Number(args?.p_week),
+   mock.current={...mock.current,auto_advance:Boolean(args?.['p_auto']),published_week:Number(args?.['p_week']),
     version:mock.current.version+1};
    return {data:mock.wrongSnapshot?{...mock.current,day:29}:{...mock.current},error:null};
   }
