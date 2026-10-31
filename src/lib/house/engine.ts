@@ -223,7 +223,7 @@ export function purchase(state:HouseState,item:CatalogItem,args:{
  }
  next.holdings.push({id:args.id,itemId:item.id,name:args.name||item.name,domainId:args.domainId,
  parentId:args.parentId,supportId:args.supportId,replacesId:holdOld?args.replaceId:undefined,
- coexists:item.coexists,costs:currentCosts,originalCosts:structuredClone(q.costs),discounts:q.discounts,
+ coexists:item.coexists,costs:currentCosts,originalCosts:structuredClone(item.costs),discounts:q.discounts,
  category:item.category,effects:structuredClone(item.effects),ruleVersion:item.version,source:item.source+' · '+item.section,
  status:building?'building':'active',allocatedCosts});
  for(const cost of currentCosts)if(cost.mode==='permanent')next.permanent[cost.resource]-=cost.amount;
