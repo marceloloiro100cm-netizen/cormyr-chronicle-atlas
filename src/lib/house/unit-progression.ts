@@ -87,7 +87,7 @@ export function changeUnitTrainingXp(unit:Unit,target:keyof typeof TRAINING,mont
  * mas NÃO passa a ser militar apenas por desbloquear uma melhoria.
  * Ver docs/military-assets-audit-2026-10-31.md para a matriz de inclusão/exclusão.
  */
-export const MILITARY_HOLDING_BENEFITS:ReadOnly<Record<string,string>>={
+export const MILITARY_HOLDING_BENEFITS:Readonly<Record<string,string>>={
  'tower':"+3 de Defesa para unidades estacionadas.",
  'hall':"+4 de Defesa para unidades estacionadas.",
  'small-castle':"+6 de Defesa para unidades estacionadas.",
