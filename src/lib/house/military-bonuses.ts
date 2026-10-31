@@ -15,7 +15,7 @@ export function quoteMilitaryUnit(state:HouseState,types:string[],training:keyof
  const candidates:MilitaryDiscount[]=[];
  const add=(id:string,type:string,amount:number,description:string)=>{
   if(!types.includes(type))return;
-  for(const h of active(state,id))candidates.push({source:h.name,holdingId:h.id,resource:'power',amount,description});
+  for(const h of active(state,id))if(!candidates.some(d=>d.holdingId===h.id))candidates.push({source:h.name,holdingId:h.id,resource:'power',amount,description});
  };
  add('pros-charcoal--tar-works','warships',1,'Unidade naval: custo −1 Poder');
  add('pros-fur-trade--trappers','guerrillas',2,'Guerrilheiros: custo −2 Poder');
