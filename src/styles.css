@@ -606,17 +606,33 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 .military-equipment{border-top:2px solid #c5ab82;padding-top:1rem}
 .military-equipment h3{display:flex;gap:.5rem;align-items:center}
 .military-equip-buttons{display:flex;flex-wrap:wrap;gap:.5rem;margin:.8rem 0}
-.military-assets{margin:1rem 0 1.25rem}
-.military-assets-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:.75rem}
-.military-asset-card{display:flex;align-items:flex-start;gap:.7rem;border:1px solid #bead91;border-radius:.5rem;padding:1rem;background:linear-gradient(135deg,#fcf7ed,#efe8dc);color:#342537}
-.military-asset-inactive{opacity:.75;border-style:dashed;background:#f7f5f7}
-.military-asset-icon{color:#8b652e;margin-top:.15rem}
+.military-assets{margin:2rem 0 1.25rem;padding-top:1.25rem;border-top:1px solid #d6c4ab}
+.military-assets-heading{align-items:center;gap:1rem}
+.military-assets-heading h3{margin-bottom:0}
+.military-assets-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:.75rem}
+.military-asset-card{display:block;min-width:0;border:1px solid #bead91;border-radius:.5rem;background:linear-gradient(135deg,#fcf7ed,#efe8dc);color:#342537;overflow:hidden}
+.military-asset-inactive{border-style:dashed;background:#f7f5f7}
+.military-asset-summary{display:flex;align-items:flex-start;gap:.7rem;padding:1rem;cursor:pointer;list-style:none}
+.military-asset-summary::-webkit-details-marker{display:none}
+.military-asset-summary::marker{content:""}
+.military-asset-summary:focus-visible{outline:2px solid #815a9c;outline-offset:-3px}
+.military-asset-summary:hover{background:#e2d5bc25}
+.military-asset-icon{color:#8b652e;margin-top:.15rem;flex:none}
 .military-asset-details{flex:1;min-width:0;overflow-wrap:anywhere}
 .military-asset-details small{display:block;text-transform:uppercase;letter-spacing:.07em;color:#786949;font-weight:700;font-size:.65rem}
 .military-asset-details strong{display:block;font:600 1.15rem Georgia,serif;margin:.15rem 0}
-.military-asset-details p{font-size:.82rem;line-height:1.55;margin:.45rem 0}
+.military-asset-short{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;line-clamp:3;overflow:hidden;font-size:.82rem;line-height:1.55;margin:.45rem 0;color:#635968}
+.military-asset-chevron{color:#8b652e;flex:none;margin-top:.2rem;transition:transform .2s ease}
+.military-asset-card[open] .military-asset-chevron{transform:rotate(180deg)}
+.military-asset-chevron-open{transform:rotate(180deg)}
+.military-asset-expanded{padding:.85rem 1rem 1.1rem;border-top:1px solid #c9b79d}
+.military-asset-expanded h5{font-weight:700;color:#503e56;margin:.8rem 0 .3rem;font-size:.85rem}
+.military-asset-expanded p,.military-asset-expanded li{font-size:.82rem;line-height:1.55;margin:.45rem 0;overflow-wrap:anywhere}
+.military-asset-expanded ul{margin:.35rem 0;padding-left:1.1rem}
+.military-asset-expanded button{margin-top:.45rem}
 .military-rename{display:flex;flex-wrap:wrap;align-items:end;gap:.5rem}
 .military-rename label{flex:1 1 140px}
+@media(max-width:680px){.military-assets-grid{grid-template-columns:1fr}.military-assets-heading{align-items:flex-start}.military-assets-heading button{flex:none}}
 @media(max-width:680px){.military-skills{grid-template-columns:1fr}.military-sheet-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.military-xp-grant{grid-template-columns:1fr}.military-sheet-heading{align-items:flex-start}.military-sheet-emblem{width:48px;height:48px}.military-sheet-stats strong{font-size:1rem}}
 
 
