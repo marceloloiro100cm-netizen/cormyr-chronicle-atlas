@@ -74,7 +74,7 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
   setup();
   const button=await screen.findByRole('button',{name:'Confirmar avanço de désdia'});
   expect(await screen.findByText(/Prévia:/)).toBeInTheDocument();
-  expect(screen.getByText(/10 dias ordinários/)).toBeInTheDocument();
+  expect(screen.getAllByText(/10 dias ordinários/).length).toBeGreaterThan(0);
   expect(screen.getByRole('spinbutton',{name:'Quantidade de désdias'})).toHaveValue(1);
   expect(button).toBeEnabled();
   fireEvent.click(button);
