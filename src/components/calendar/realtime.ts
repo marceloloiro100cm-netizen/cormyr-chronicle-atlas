@@ -32,7 +32,7 @@ function connect(qc:QueryClient):RealtimeEntry{
    ['campaign-schedule-drafts'],['campaign-time-history'],
    ['campaign-chronology'],['calendar-events'],
    ['noble-house'],['house-realm-dashboard'],
-   ['house-time-impact'],['temporal-consumer-dashboard'],
+   ['house-time-impact'],['temporal-consumer-dashboard'],['temporal-release-preflight'],
    ['house-character-ages'],['character-age-dashboard'],
    ['character-age-impact'],['character-year-transitions'],
   ])void qc.invalidateQueries({queryKey:prefix});
