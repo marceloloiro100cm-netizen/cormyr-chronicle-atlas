@@ -33,6 +33,7 @@ function previewFor(args:Record<string,unknown>){
 }
 function setupRpc(){
  mock.rpc.mockImplementation(async(name:string,args?:Record<string,unknown>)=>{
+  if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
   if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
   if(name==='get_campaign_schedule_drafts'||name==='calendar_mail_events'||
    name==='get_campaign_schedule_events'||name==='get_campaign_time_history')return {data:[],error:null};
