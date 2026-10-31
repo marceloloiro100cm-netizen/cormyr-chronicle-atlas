@@ -4,7 +4,7 @@ import {equipUnit} from '@/lib/house/military';
 import {quoteMilitaryUnit,quoteMilitarySiege,militaryConstructionDuration,unitMilitaryBonuses} from '@/lib/house/military-bonuses';
 import {newHouseState,SKILLS,type Holding,type Unit} from '@/lib/house/types';
 
-const begin=()=>{const s=newHouseState('isolated-military');s.base.power=100;s.base.wealth=100;s.base.lands=10;
+const begin=()=>{const s=newHouseState('isolated-military');s.base.power=100;s.base.wealth=100;s.base.population=20;s.base.lands=10;
  s.domains=[{id:'d',name:'Vale',terrain:'hills',features:['river'],notes:''}];return s;};
 const holding=(id:string,domainId='d'):Holding=>({id:'h-'+id,itemId:id,name:id,domainId,status:'active',costs:[],effects:[],ruleVersion:'isolated',source:'test'});
 const recruit=(type='infantry'):Unit=>({
@@ -20,8 +20,8 @@ describe('automação de descontos na fonte da compra',()=>{
   const q=quoteMilitaryUnit(s,['levies'],'trained');
   expect(q.base.find(c=>c.resource==='power')?.amount).toBe(3);
   expect(q.costs.find(c=>c.resource==='power')?.amount).toBe(1);
-  expect(q.costs.find(c=>c.resource==='population')?.amount).toBe(2);
-  expect(q.discounts.reduce((n,d)=>n+d.amount,0)).toBe(2);
+  expect(q.costs.find(c=>c.resource==='population')?.amount).toBe(0);
+  expect(q.discounts.reduce((n,d)=>n+d.amount,0)).toBe(4);
   const old=begin();expect(quoteMilitaryUnit(old,['levies'],'trained').costs.find(c=>c.resource==='power')?.amount).toBe(3);
  });
  it('concede descontos navais, de cavalaria, engenharia e guerrilha pela posse ativa, sem descontos de obra em construção',()=>{
@@ -63,7 +63,7 @@ describe('automação de descontos na fonte da compra',()=>{
   const s=begin();
   expect(quoteMilitarySiege(s,'wealth',2,'small-catapult').cost).toBe(2);
   s.holdings=[holding('pros-engineer--siege-engineer'),holding('pros-engineer'),holding('pros-stonemason')];
-  expect(quoteMilitarySiege(s,'wealth',2).cost).toBe(1);
+  expect(quoteMilitarySiege(s,'wealth',2,'small-catapult').cost).toBe(1);
   expect(militaryConstructionDuration(s,'castle','fortification',100).months).toBe(70);
   expect(militaryConstructionDuration(s,'pros-master-of-arms','personage',100).months).toBe(100);
  });
