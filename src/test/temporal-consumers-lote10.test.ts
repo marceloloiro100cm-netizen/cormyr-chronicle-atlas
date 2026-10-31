@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {
- temporalBoundaryPreview,temporalConsumerIdentity,validateTemporalConsumerDashboard,
+ temporalBoundaryPreview,temporalConsumerIdentity,validateTemporalConsumerDashboard,validateTemporalReleasePreflight,
  validatedTemporalDate,
 } from '@/lib/calendar/temporal-consumers';
 import type {CampaignTimePreview} from '@/lib/calendar/temporal-publication';
@@ -57,5 +57,28 @@ describe('Hub Temporal · Lote 10 · integrações e replay seguro',()=>{
   expect(()=>temporalConsumerIdentity('economy',-1)).toThrow();
   expect(validatedTemporalDate('1524-F-shieldmeet')).toBe('1524-F-shieldmeet');
   expect(()=>validatedTemporalDate('2026-10-31')).toThrow();
+ });
+});
+
+
+describe('Hub Temporal · Lote 11 · gate de integridade de produção',()=>{
+ const valid=()=>({
+  calendar_version:7,official_date:'1524-F-shieldmeet',official_month:1524*12+6,
+  house_sheets:2,active_houses:1,draft_houses:1,invalid_houses:0,
+  lagging_houses:0,ahead_houses:1,operations:3,deliveries:12,
+  manual_reviews_pending:4,month_processing_preflight_ok:true,
+  requires_production_backup:true,requires_homologation:true,
+  automatic_economic_effects_enabled:false,
+ });
+ it('concorda com o mês de festival e exige backup/homologação sem declarar deploy liberado',()=>{
+  expect(validateTemporalReleasePreflight(valid()).official_month).toBe(1524*12+6);
+  expect(()=>validateTemporalReleasePreflight({...valid(),requires_production_backup:false})).toThrow();
+  expect(()=>validateTemporalReleasePreflight({...valid(),automatic_economic_effects_enabled:true})).toThrow();
+ });
+ it('falha em contagem inconsistente, data falsa, calendário obsoleto e promessa indevida',()=>{
+  expect(()=>validateTemporalReleasePreflight({...valid(),official_month:1524*12+7})).toThrow();
+  expect(()=>validateTemporalReleasePreflight({...valid(),house_sheets:3})).toThrow();
+  expect(()=>validateTemporalReleasePreflight({...valid(),calendar_version:-1})).toThrow();
+  expect(()=>validateTemporalReleasePreflight({...valid(),month_processing_preflight_ok:false})).toThrow();
  });
 });
