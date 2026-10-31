@@ -28,7 +28,7 @@ export function quoteMilitaryUnit(state:HouseState,types:string[],training:keyof
  add('pros-street-gangs','levies',2,'Plebeus recrutados: custo −2 Poder');
  add('pros-gaol','criminals',2,'Criminosos: custo −2 Poder');
  add('pros-gaol','garrison',2,'Guarnição: custo −2 Poder');
- // Mestre de Campo needs a documented choice of military specialty.
+ for(const h of active(state,'pros-master-of-arms--field-master'))if(h.militaryTypeId&&types.includes(h.militaryTypeId))candidates.push({source:h.name,holdingId:h.id,resource:'power',amount:1,description:'Mestre de Campo: especialidade '+h.militaryTypeId+' −1 Poder'});
  const costs=base.map(c=>({...c}));const discounts:MilitaryDiscount[]=[];
  for(const cost of costs)for(const d of candidates.filter(d=>d.resource===cost.resource)){
   const amount=Math.min(d.amount,Math.max(0,cost.amount-(cost.resource==='power'?1:0)));
@@ -68,7 +68,7 @@ export function unitMilitaryBonuses(state:HouseState,unit:Unit){
  if(unit.types.includes('scouts'))for(const h of active(state,'pros-dog-kennels--scouting-hounds').slice(0,1)){
   fightingDamage+=1;trackingBonusDice+=2;add(h,'Rastreamento +2B e dano corpo a corpo +1');
  }
- if(unit.warHoundsHoldingId&&unit.mounted!==true&&!unit.types.includes('warships')){
+ if(unit.warHoundsHoldingId&&!(unit.types.includes('cavalry')&&unit.mounted!==false)&&!unit.types.includes('warships')){
   const h=active(state,'pros-dog-kennels--war-hounds').find(h=>h.id===unit.warHoundsHoldingId);
   if(h){fightingDamage+=2;meleeBonusDice+=1;add(h,'Cães de Guerra equipados: ataque corpo a corpo +1B, dano +2');}
  }
@@ -89,8 +89,8 @@ export function unitMilitaryBonuses(state:HouseState,unit:Unit){
  for(const benefit of unit.recruitmentBenefits??[])add({id:benefit.holdingId,name:benefit.source} as Holding,benefit.description,'recruitment');
  for(const d of unit.recruitmentDiscounts??[])add({id:d.holdingId,name:d.source} as Holding,
   'Recrutamento: −'+d.amount+' '+(d.resource==='power'?'Poder':d.resource==='wealth'?'Riqueza':'População')+' (já aplicado)','recruitment');
- for(const h of active(state,'pros-military-academy--broad-training'))if(!unit.broadTrainingSkill)pending(h,'Treinamento Amplo exige ação da Casa e escolha de habilidade para a unidade.');
- for(const h of active(state,'pros-master-of-arms--field-master'))pending(h,'Mestre de Campo exige especialização do tipo de unidade.');
+ for(const h of active(state,'pros-military-academy--broad-training')){if(unit.broadTrainingSkill)add(h,'Quarta habilidade liberada: '+unit.broadTrainingSkill,'battle');else pending(h,'Treinamento Amplo exige ação da Casa e escolha de habilidade para a unidade.');}
+ for(const h of active(state,'pros-master-of-arms--field-master'))if(!h.militaryTypeId)pending(h,'Mestre de Campo exige especialização do tipo de unidade.');
  for(const h of active(state,'pros-military-academy').slice(0,1))add(h,'Reduz em 1 a perda de graduação por dano de Guerra, quando aplicável','battle');
  return {defense,armorRating,fightingDamage,marksmanshipDamage,meleeBonusDice,trackingBonusDice,discipline,
   skillBonuses,warshipCasualtyMitigation,entries,conditional};
