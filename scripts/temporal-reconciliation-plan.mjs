@@ -13,7 +13,7 @@
  * Evidência é uma DECLARAÇÃO humana, jamais prova criptográfica de execução.
  * "evidence_complete" não implica "ready_for_deploy".
  */
-import {readFileSync} from 'node:fs';
+import {readFileSync,readdirSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {loadMigrationCatalog} from './temporal-migration-audit.mjs';
@@ -67,6 +67,8 @@ export function buildReconciliationTemplate(catalog,{sourceSha,environment}){
 
 export function reconcileMigrationEvidence(catalog,evidence=null,options={}){
  const root=options.root??ROOT,now=options.now??new Date();
+ const snapshots=readdirSync(join(root,'drizzle/migrations/meta'))
+  .filter(name=>/^\d{4}_snapshot\.json$/.test(name)).sort();
  const journalTags=new Set(catalog.journal.entries.map(e=>e.tag));
  const candidates=catalog.migrations.filter(m=>!journalTags.has(m.tag));
  const numbers=new Map();
@@ -135,6 +137,8 @@ export function reconcileMigrationEvidence(catalog,evidence=null,options={}){
   environment:options.environment??null,
   total_sql:catalog.migrations.length,
   journal_entries:catalog.journal.entries.length,
+  snapshot_count:snapshots.length,
+  latest_snapshot_file:snapshots.at(-1)??null,
   unjournaled_total:candidates.length,
   evidenced_total:reviewed,
   awaiting_evidence_total:unresolved,
