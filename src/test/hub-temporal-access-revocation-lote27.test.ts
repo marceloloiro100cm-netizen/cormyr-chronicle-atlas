@@ -11,11 +11,11 @@ const mock=vi.hoisted(()=>({
  userId:'player-a',admin:false,playerId:'player-record',active:true,
  passwordChangeRequired:false,
  members:[{house_id:'evenhand',can_edit:true,can_edit_attributes:false}],
- failRole:false,failMembers:false,fetches:[] as string[],
+ failRole:false,failMembers:false,authReads:0,switchAfterFirstRead:false,fetches:[] as string[],
 }));
 vi.mock('@/integrations/supabase/client',()=>({
  supabase:{
-  auth:{getUser:async()=>({data:{user:{id:mock.userId}},error:null})},
+  auth:{getUser:async()=>{mock.authReads++;return {data:{user:{id:mock.switchAfterFirstRead&&mock.authReads>1?'player-b':mock.userId}},error:null};}},
   rpc:async(name:string)=>{
    mock.fetches.push(name);
    return {data:mock.admin,error:mock.failRole?{message:'role unavailable'}:null};
@@ -39,7 +39,8 @@ beforeEach(()=>{
  mock.userId='player-a';mock.admin=false;mock.playerId='player-record';
  mock.active=true;mock.passwordChangeRequired=false;
  mock.members=[{house_id:'evenhand',can_edit:true,can_edit_attributes:false}];
- mock.failRole=false;mock.failMembers=false;mock.fetches.length=0;
+ mock.failRole=false;mock.failMembers=false;mock.authReads=0;
+ mock.switchAfterFirstRead=false;mock.fetches.length=0;
 });
 
 describe('Lote 27 · revogação e alteração de escopo durante sessão',()=>{
@@ -84,6 +85,11 @@ describe('Lote 27 · revogação e alteração de escopo durante sessão',()=>{
   expect(inactive.fingerprint).not.toBe(demoted.fingerprint);
   mock.passwordChangeRequired=true;
   expect((await loadCampaignAccessScope()).fingerprint).not.toBe(inactive.fingerprint);
+ });
+ it('rejeita resultado se a conta for alterada entre as leituras da permissão',async()=>{
+  mock.switchAfterFirstRead=true;
+  await expect(loadCampaignAccessScope()).rejects.toThrow('Identidade alterada');
+  expect(mock.authReads).toBe(2);
  });
  it('falha fechada se RPC da função, vínculo ou autorização não responder',async()=>{
   mock.failRole=true;
