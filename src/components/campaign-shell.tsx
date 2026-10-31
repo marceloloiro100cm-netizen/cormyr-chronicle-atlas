@@ -13,7 +13,7 @@ export function CampaignShell({ children }: { children: ReactNode }) {
 
   return <div className="campaign-theme min-h-screen bg-background text-foreground">
     <header className="campaign-top">
-      <a href="/cormyr/index.html" className="campaign-brand"><img src="/cormyr/assets/cormyr.jpg" alt="Brasão de Cormyr" /><span>Cormyr <em>Chronicle</em><small aria-live="polite">{clock.data?`Crônicas do Reino · ${campaignTimeView(clock.data).period}`:clock.isError?'Data oficial indisponível':'Consultando data oficial…'}</small></span></a>
+      <a href="/cormyr/index.html" className="campaign-brand"><img src="/cormyr/assets/cormyr.jpg" alt="Brasão de Cormyr" /><span>Cormyr <em>Chronicle</em><small aria-live="polite">{clock.data&&!clock.isError?`Crônicas do Reino · ${campaignTimeView(clock.data).period}`:clock.isError?'Data oficial indisponível':'Consultando data oficial…'}</small></span></a>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginLeft: 'auto' }}>
         <nav><a href="/cormyr/index.html">{t('nav.kingdomAndRegions')}</a><Link to="/jogadores">{t('nav.playerCouncil')}</Link></nav>
         <LanguageSwitcher />
