@@ -1486,6 +1486,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_campaign_time_change_history: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      preview_campaign_time_change: {
+        Args: { p_version: number; p_desdias: number }
+        Returns: Json
+      }
+      publish_campaign_time_change: {
+        Args: { p_key: string; p_expected_version: number; p_desdias: number; p_reason: string }
+        Returns: Json
+      }
+      harptos_add_desdias: {
+        Args: { p_from: string; p_desdias: number }
+        Returns: string
+      }
       admin_save_player_account: {
         Args: {
           p_active: boolean
