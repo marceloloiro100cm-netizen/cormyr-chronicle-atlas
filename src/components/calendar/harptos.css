@@ -29,3 +29,17 @@
 
 /* Subtle Realtime health; a disconnected socket never hides the 15 s polling fallback. */
 .harptos-sync-status{margin:2px 0 8px;font-size:12px;color:var(--muted-foreground)}
+
+/* Lote 5 · central temporal, resumo compacto e navegação responsiva. */
+.temporal-hub-dashboard{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.temporal-hub-dashboard>div{display:grid;align-content:start;gap:4px;padding:15px;border:1px solid var(--border);border-radius:10px;background:var(--campaign-paper);min-width:0}
+.temporal-hub-dashboard span{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-foreground)}
+.temporal-hub-dashboard strong{font-size:16px;line-height:1.4;overflow-wrap:anywhere}
+.temporal-hub-dashboard small{color:var(--muted-foreground)}
+.temporal-hub-navigation{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.temporal-hub-navigation a{display:inline-flex;align-items:center;min-height:40px;padding:8px 13px;border:1px solid var(--border);border-radius:6px;color:var(--foreground);font-size:13px;text-decoration:none}
+.temporal-hub-navigation a:hover,.temporal-hub-navigation a:focus-visible{border-color:var(--campaign-gold);text-decoration:underline}
+.temporal-hub-stale{border-left:3px solid #c49a4f;padding:10px;background:var(--campaign-paper)}
+#temporal-comando,#temporal-eventos,#temporal-historico,#temporal-jogadores{scroll-margin-top:20px}
+@media(max-width:850px){.temporal-hub-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:450px){.temporal-hub-dashboard{grid-template-columns:1fr}.temporal-hub-navigation a{flex:1 1 45%;justify-content:center;text-align:center}}
