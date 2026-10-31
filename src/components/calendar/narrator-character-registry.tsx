@@ -24,7 +24,11 @@ export function NarratorCharacterRegistry(){
  const qc=useQueryClient();
  const registry=useQuery({queryKey:['noble-character-registry'],queryFn:async()=>{
   const r=await supabase.rpc('get_character_registry_hub',{p_limit:300});
-  if(r.error)throw r.error;return r.data as unknown as Registry;
+  if(r.error)throw r.error;
+  const value=r.data as unknown as Registry|null;
+  if(!value||!Array.isArray(value.characters)||!Array.isArray(value.pending)||
+   !Array.isArray(value.relations)||!Array.isArray(value.links))throw new Error('Registro canônico com resposta inválida.');
+  return value;
  },refetchInterval:30000});
  const [filter,setFilter]=useState(''),[reason,setReason]=useState('');
  const [name,setName]=useState(''),[house,setHouse]=useState('');
