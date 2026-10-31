@@ -130,6 +130,14 @@ summary = (
     f'{schema} alterações de esquema e {data} alterações de dados detectadas '
     'nas cópias. **Não autoriza reaplicação ou deploy.**\n'
 )
+summary += '\n| Migração | Replay no clone | Esquema alterado | Dados alterados |\n'
+summary += '|---|---|---|---|\n'
+for probe in out['probes']:
+    name = probe['migration'].rsplit('/', 1)[-1]
+    status = 'Sem erro' if probe['replay_succeeded_on_scratch_copy'] else 'Falhou'
+    schema_status = 'Sim' if probe['schema_changed_in_copy'] else 'Não'
+    data_status = 'Sim' if probe['data_changed_in_copy'] else 'Não'
+    summary += f'| ' + name + f' | {status} | {schema_status} | {data_status} |\n'
 with open(sys.argv[3], 'a', encoding='utf8') as f:
     f.write(summary)
 print(summary.strip())
