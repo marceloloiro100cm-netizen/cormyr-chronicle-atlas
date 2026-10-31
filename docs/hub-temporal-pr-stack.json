@@ -182,6 +182,11 @@
       "pr": 162,
       "head": "fix/hub-temporal-lote-36-falha-verificacao-cargo",
       "base": "fix/hub-temporal-lote-35-revogacao-consultas-privadas"
+    },
+    {
+      "pr": 163,
+      "head": "audit/hub-temporal-lote-37-aceite-final",
+      "base": "fix/hub-temporal-lote-36-falha-verificacao-cargo"
     }
   ]
 }
