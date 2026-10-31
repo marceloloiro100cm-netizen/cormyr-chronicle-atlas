@@ -27,6 +27,16 @@ export function createHouseExportAdapter(request: typeof fetch = fetch): HouseEx
       if (fileId && etag && !etag.startsWith('sha256:')) {
         valid(fileId);
         await call(`/upload/drive/v3/files/${fileId}?uploadType=media&supportsAllDrives=true`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'If-Match': etag }, body: bodyText });
+      } else if(fileId && etag && /^sha256:[a-f0-9]{64}$/.test(etag)) {
+        // The caller verified this exact remote hash against the last exported DB version.
+        // Re-read immediately before a no-ETag update; never use the synthetic hash as If-Match.
+        const remote=await adapter.read(fileId,folder);
+        if(await houseExportHash(remote.document)!==etag.slice(7))
+          throw new Error('Arquivo alterado no Drive; revisão necessária. Nenhuma versão substituída.');
+        if(remote.document.version>document.version)
+          throw new Error('Drive possui versão mais recente; revisão necessária.');
+        await call(`/upload/drive/v3/files/${valid(fileId)}?uploadType=media&supportsAllDrives=true`,
+          {method:'PATCH',headers:{'Content-Type':'application/json'},body:bodyText});
       } else {
         // Initial stable identity; subsequent versions append if no real provider ETag exists.
         const name = fileId ? houseExportName(document.houseId).replace('.json', `-v${document.version}-${await houseExportHash(document)}.json`) : houseExportName(document.houseId);
