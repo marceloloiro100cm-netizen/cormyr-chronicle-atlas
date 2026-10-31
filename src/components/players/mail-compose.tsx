@@ -1,4 +1,6 @@
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
+import {useCampaignTime} from '@/lib/calendar/campaign-time';
+import {dateKey} from '@/lib/calendar/harptos';
 import {datedMail} from '@/lib/calendar/mail';
 import {suggestNextLetterWeek} from '@/lib/weekly-delivery';
 import {useEffect,useRef,useState} from 'react';
@@ -38,6 +40,7 @@ const drafts=new Map<string,Draft>();
 export function replaceMailDraft(userId:string){const current=drafts.get(userId+':mail-compose');return !current||(!current.subject&&!current.content)||window.confirm('Substituir o texto da missiva ainda não enviada?');}
 export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Panel['players'][number]|undefined;initial?:{subject:string;content:string}|null;onSave:()=>void;onManage?:((house:string)=>void)|undefined}){
  const {data:options,error,refetch}=useMailOptions();
+ const {data:campaignTime}=useCampaignTime();
  const scope=data.user.id+':mail-compose';
  const [draft,setDraft]=useState<Draft>(()=>initial?{subject:initial.subject,content:initial.content,targets:data.admin?[]:['narrator'],links:{...emptyLinks},week:'',campaignDate:'',signedBy:'',images:[]}:drafts.get(scope)??{subject:'',content:'',targets:data.admin?[]:['narrator'],links:{...emptyLinks},week:'',campaignDate:'',signedBy:'',images:[]});
  const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
@@ -66,7 +69,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  <MailRecipientPicker data={data} me={me} targets={draft.targets} onChange={targets=>change({...draft,targets})}/>
  {draft.targets.length===0&&<p role="status" className="text-muted-foreground text-sm">Nenhum destinatário selecionado. Escolha uma casa ou o Narrador antes de salvar ou enviar.</p>}
  <div className="mail-compose-meta">
- <CampaignDatePicker value={draft.campaignDate} onChange={campaignDate=>change({...draft,campaignDate})}/>
+ <CampaignDatePicker value={draft.campaignDate} referenceDate={campaignTime?dateKey(campaignTime):undefined} onChange={campaignDate=>change({...draft,campaignDate})}/>
  {data.admin&&<MailPeriodNotice date={draft.campaignDate}/>}
  {data.admin&&<label>Semana de entrega<input type="number" min={1} value={draft.week} placeholder={String(suggested)} onChange={e=>change({...draft,week:e.target.value})}/></label>}
  </div>
