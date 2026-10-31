@@ -27,6 +27,10 @@ if [[ "$bootstrap_check" != "mail_test:postgres:seeded" ]]; then
   exit 2
 fi
 
+# Assinaturas agregadas para demonstrar que a base-fonte não mudou.
+source_schema_before="$(pg_dump -d mail_test --schema-only --no-owner --no-acl | sha256sum | cut -d ' ' -f 1)"
+source_data_before="$(pg_dump -d mail_test --data-only --no-owner --no-acl | sha256sum | cut -d ' ' -f 1)"
+
 work="$(mktemp -d "$RUNNER_TEMP/cormyr-replay.XXXXXXXX")"
 active_clone=""
 cleanup() {
@@ -76,6 +80,13 @@ for prefix in 0060 0061 0062 0063 0064 0065 0066 0067; do
 done
 
 [[ "$count" == 8 ]] || { echo "BLOQUEADO: ensaio incompleto." >&2; exit 2; }
+source_schema_after="$(pg_dump -d mail_test --schema-only --no-owner --no-acl | sha256sum | cut -d ' ' -f 1)"
+source_data_after="$(pg_dump -d mail_test --data-only --no-owner --no-acl | sha256sum | cut -d ' ' -f 1)"
+if [[ "$source_schema_before" != "$source_schema_after" ||
+      "$source_data_before" != "$source_data_after" ]]; then
+  echo "BLOQUEADO: a base-fonte mudou durante o ensaio." >&2
+  exit 2
+fi
 
 python3 - "$results" "$RUNNER_TEMP/cormyr-replay-report.json" "$GITHUB_STEP_SUMMARY" <<'PY'
 import csv, json, sys
