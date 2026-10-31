@@ -13,7 +13,7 @@ export type Requirement = {
  resource?: Resource | undefined;
  alternatives?: {kind:'terrain'|'feature'|'community'|'fortification'|'holding'|'water';values?:string[]|undefined}[] | undefined;
 };
-export type Effect = { kind: 'fortune' | 'gain' | 'mitigation' | 'discount' | 'defensive' | 'action' | 'conversion'; amount?: number | undefined; resource?: Resource | undefined; target?: string | undefined; description: string; seasons?: ('spring' | 'summer' | 'autumn' | 'winter')[] | undefined; maxResource?: {resource:Resource;maximum:number}|undefined };
+export type Effect = { kind: 'fortune' | 'gain' | 'mitigation' | 'discount' | 'defensive' | 'action' | 'conversion'; amount?: number | undefined; resource?: Resource | undefined; target?: string | undefined; description: string; seasons?: ('spring' | 'summer' | 'autumn' | 'winter')[] | undefined; maxResource?: {resource:Resource;maximum:number}|undefined; fortuneDice?:{count:number;sides:number;offset:number}|undefined };
 export type CatalogItem = {
   id: string; name: string; original: string; category: 'terrain' | 'feature' | 'community' | 'fortification' | 'estate' | 'lifestyle' | 'personage' | 'settlement' | 'improvement' | 'equipment' | 'vassal';
   description: string; costs: Cost[]; requirements: Requirement[]; effects: Effect[];
