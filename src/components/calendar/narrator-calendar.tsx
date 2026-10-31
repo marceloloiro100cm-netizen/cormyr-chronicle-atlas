@@ -7,6 +7,8 @@ import {CampaignCalendar,type CalendarState} from './calendar';
 import {campaignTimeView,useCampaignTime} from '@/lib/calendar/campaign-time';
 import {useCampaignCalendarRealtime} from './realtime';
 import {NarratorCharacterRegistry} from './narrator-character-registry';
+import {NarratorCharacterAges} from './narrator-character-ages';
+import {validateAgeDashboard} from '@/lib/calendar/character-ages';
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {calendarPublicationError} from '@/lib/calendar/publication';
 import {campaignTimeRpcArguments,matchesPublishedTime,validateCampaignTimePreview,type CampaignTimeMode,type CampaignTimePreview} from '@/lib/calendar/temporal-publication';
@@ -53,6 +55,21 @@ export function NarratorCalendar(){
    return validateCampaignTimePreview(data,version,mode);
   },
  });
+ const projectedYear=preview.data?parseDate(preview.data.to)?.year:undefined;
+ const annualChange=calendar.data!==undefined&&projectedYear!==undefined&&projectedYear!==calendar.data.year;
+ const ageImpact=useQuery({
+  queryKey:['character-age-impact',calendar.data?.year,projectedYear,calendar.data?.version],
+  enabled:Boolean(annualChange),
+  queryFn:async()=>{
+   const from=calendar.data!.year,to=projectedYear!;
+   const {data,error}=await supabase.rpc('get_character_age_dashboard',{
+    p_year:from,p_target_year:to,p_limit:2000,
+   });
+   if(error)throw error;
+   return validateAgeDashboard(data,from,to);
+  },
+ });
+ const annualChangeNeedsPreview=Boolean(annualChange)&&(!ageImpact.data||ageImpact.isFetching);
  const history=useQuery({queryKey:['campaign-time-history'],queryFn:async()=>{
   const {data,error}=await supabase.rpc('get_campaign_time_history',{p_limit:15});
   if(error)throw error;
@@ -97,10 +114,14 @@ export function NarratorCalendar(){
   }
   const params={mode,date:mode==='set'?date:null,count:mode==='advance'?count:0,expectedVersion,reason:reason.trim(),allowBackdate:mode==='set'&&allowBackdate};
   const signature=JSON.stringify(params);
+  const annual=ageImpact.data;
+  if(parseDate(planned.to)?.year!==calendar.data.year&&(!annual||ageImpact.isFetching)){
+   setSaveError(true);setMessage('Prévia de envelhecimento do servidor ainda indisponível. Consulte a lista antes de publicar o ano.');return;
+  }
   const confirmText='Confirmar '+planned.from+' → '+planned.to+' ('+planned.month_delta+
    ' mês(es), '+planned.crossed_years.length+' virada(s) de ano, '+planned.crossed_festivals.length+
    ' festival(is))? '+planned.house_sheets_to_check+
-   ' ficha(s) de Casa serão conferidas no avanço. Missivas não avançarão automaticamente.';
+   ' ficha(s) de Casa serão conferidas no avanço. '+(annual?'Nobres com idade alterada: '+annual.totals.aged_nobles+'; pendências: '+annual.totals.pending+'. ':'')+'Missivas não avançarão automaticamente.';
   if(!window.confirm(confirmText))return;
   if(retry.current?.payload!==signature)retry.current={payload:signature,key:crypto.randomUUID()};
   const key=retry.current.key;
@@ -163,6 +184,7 @@ export function NarratorCalendar(){
    <a href="#temporal-comando">Comando e prévia</a>
    <a href="#temporal-eventos">Eventos oficiais</a>
    <a href="#temporal-genealogias">Nobres e genealogias</a>
+   <a href="#temporal-idades">Idades anuais</a>
    <a href="#temporal-historico">Histórico</a>
    <a href="#temporal-jogadores">Visão dos jogadores</a>
   </nav>
@@ -194,12 +216,15 @@ export function NarratorCalendar(){
      {preview.data.crossed_festivals.length>0&&<p>Festivais: {preview.data.crossed_festivals.map(formatDate).join(' · ')}</p>}
      {preview.data.month_delta>0&&<p>{preview.data.house_sheets_to_check} ficha(s) serão conferidas para processamento mensal na transação.</p>}
      {preview.data.backdated&&<p role="alert" className="house-warning">Retrocesso histórico: registros e obras concluídas não serão desfeitos. Exige autorização e justificativa.</p>}
+     {ageImpact.data&&<p><strong>Prévia anual:</strong> {ageImpact.data.totals.aged_nobles} nobre(s) muda(m) de idade; {ageImpact.data.totals.pending} registro(s) exigem revisão, sem bloquear o relógio.</p>}
+     {ageImpact.error&&<p role="alert">Impacto etário indisponível: não publique uma virada de ano até conferir a prévia do Narrador.</p>}
     </>:null}
    </div>
-   <Button type="button" className="narrator-calendar-publish-button" disabled={busy||isStale||needsVersionRefresh||!preview.data||preview.isFetching||(preview.data.backdated&&(!allowBackdate||reason.trim().length<10))} onClick={()=>void publish()}>{busy?'Publicando…':mode==='advance'?'Confirmar avanço de désdia':mode==='set'?'Confirmar data oficial':'Publicar eventos'}</Button>
+   <Button type="button" className="narrator-calendar-publish-button" disabled={busy||isStale||needsVersionRefresh||!preview.data||preview.isFetching||annualChangeNeedsPreview||(preview.data.backdated&&(!allowBackdate||reason.trim().length<10))} onClick={()=>void publish()}>{busy?'Publicando…':mode==='advance'?'Confirmar avanço de désdia':mode==='set'?'Confirmar data oficial':'Publicar eventos'}</Button>
    <p className="text-sm text-muted-foreground">A publicação é atômica, versionada e protegida por chave de operação. Abrir uma rodada de missivas não altera a data. Alterações no ano serão consumidas pelo registro de personagens em lote posterior.</p>
   </div>
   <NarratorCharacterRegistry/>
+  <NarratorCharacterAges targetYear={preview.data?parseDate(preview.data.to)?.year:undefined}/>
   <div className="narrator-calendar-panel" id="temporal-eventos">
    <h3>{editId?'Editar evento':'Criar evento em uma data'}</h3>
    <form className="campaign-form narrator-event-form" onSubmit={e=>{e.preventDefault();void saveEvent();}}>
