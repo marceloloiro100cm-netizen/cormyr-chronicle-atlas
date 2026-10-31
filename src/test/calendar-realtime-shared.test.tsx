@@ -60,7 +60,7 @@ it('revalida missivas, nobres, fichas, exército e calendário pela mesma assina
  expect(callback).toBeTypeOf('function');
  await act(async()=>{callback!();});
  const seen=spy.mock.calls.map(([argument])=>
-  JSON.stringify(argument.queryKey));
+  JSON.stringify(argument?.queryKey));
  const expected=temporalQueryKeysForInvalidation().map(key=>JSON.stringify(key));
  expect(seen).toEqual(expected);
  for(const name of ['campaign-calendar','calendar-schedule-events',
