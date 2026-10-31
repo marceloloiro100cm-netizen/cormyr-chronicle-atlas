@@ -41,7 +41,7 @@ export function quoteMilitarySiege(state:HouseState,resource:Resource,base:numbe
  const amount=h?Math.min(1,Math.max(0,base-1)):0;
  return {cost:base-amount,discounts:h&&amount?[{source:h.name,amount}]:[]};
 }
-export function militaryConstructionDuration(state:HouseState,itemId:string,duration:number){
+export function militaryConstructionDuration(state:HouseState,itemId:string,category:string,duration:number){
  const fort=['tower','hall','small-castle','castle','superior-castle'].includes(itemId);
  const engineer=active(state,'pros-engineer').length?0.2:0;
  const mason=fort&&active(state,'pros-stonemason').length?0.1:0;
