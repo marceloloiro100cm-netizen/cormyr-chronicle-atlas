@@ -41,13 +41,15 @@ export function ChronicleCharacterEditor({row,initial,houseId,houseName,playerId
  return <article className="house-panel">
  <div className="house-section-heading"><h3>{row?sheet.name||row.title:'Novo personagem de '+houseName}</h3>{row&&canEdit&&<Button variant="outline" onClick={()=>setEditing(e=>!e)}>{editing?'Fechar editor':'Editar personagem'}</Button>}</div>
  <p role="status">{message}</p>
- <p>{sheet.role} · Pontos de Destino: {sheet.destiny-sheet.spentDestiny} disponíveis de {sheet.destiny} · XP gasto informado: {sheet.xpSpent}</p>
+ <p>{sheet.birthYear?'Nascimento declarado: '+sheet.birthYear+' CV (requer conciliação no Hub) · ':''}{sheet.role} · Pontos de Destino: {sheet.destiny-sheet.spentDestiny} disponíveis de {sheet.destiny} · XP gasto informado: {sheet.xpSpent}</p>
  <dl className="house-grid"><div><dt>Defesa de Intriga</dt><dd>{stats.intrigueDefense}</dd></div><div><dt>Compostura</dt><dd>{stats.composure}</dd></div><div><dt>Defesa de Combate</dt><dd>{stats.combatDefense}</dd></div><div><dt>Saúde</dt><dd>{stats.health}</dd></div><div><dt>Movimento declarado</dt><dd>{stats.movement} m</dd></div></dl>
  {sheet.skills['Status']>statusCap&&<p role="alert" className="house-warning">O Status da personagem excede o teto {statusCap} autorizado pela Influência da Casa.</p>}
  {editing&&canEdit&&<form className="campaign-form" onSubmit={e=>{e.preventDefault();void save();}}>
  <div className="house-input-grid">
   <label>Nome do personagem<input required maxLength={160} value={sheet.name} onChange={e=>set({name:e.target.value})}/></label>
   <label>Função na Casa<input maxLength={160} value={sheet.role} onChange={e=>set({role:e.target.value})}/></label>
+  <label>Ano de nascimento declarado (CV)<input type="number" min={1} max={9999} value={sheet.birthYear??''} onChange={e=>set({birthYear:e.target.value===''?null:Number(e.target.value)})}/></label>
+  <label>Data Harptos do nascimento (quando conhecida)<input value={sheet.birthDate??''} placeholder="1492-03-17" onChange={e=>set({birthDate:e.target.value})}/></label>
  </div>
  {!row&&playerId&&<label className="campaign-check"><input type="checkbox" checked={privateSheet} onChange={e=>setPrivateSheet(e.target.checked)}/>Ficha privada deste jogador</label>}
  <h4>Habilidades · Chronicle System</h4><div className="house-input-grid">{CHARACTER_SKILLS.map(key=><label key={key}>{key}
