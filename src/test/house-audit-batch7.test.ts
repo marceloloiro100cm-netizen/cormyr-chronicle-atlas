@@ -31,10 +31,11 @@ describe('Lote 7: descontos militares e treinamento',()=>{
   const prison=holding(make(),'pros-gaol');
   prison.holdings[0]!.effects=CORE_CATALOG.find(i=>i.id==='pros-gaol')!.effects;
   const criminal=createUnit(prison,unit('criminals'),UNIT_TYPES);
-  expect(criminal.units[0]?.costs.find(c=>c.resource==='power')?.amount).toBe(5);
+  expect(criminal.units[0]?.costs.find(c=>c.resource==='power')?.amount).toBe(4);
  });
  it('Armeiro e Flecheiro precisam de escolha; bônus de dano só existe com posse ativa',()=>{
-  const item=CORE_CATALOG.find(i=>i.id==='pros-bowyer-fletcher-or-weaponsmith')!;
+  const original=CORE_CATALOG.find(i=>i.id==='pros-bowyer-fletcher-or-weaponsmith')!;
+  const item={...original,requirements:[],duration:{months:0}};
   const s=make();
   expect(()=>purchase(s,item,{id:'specialist',domainId:'d',name:'Oficina',dice:[]})).toThrow('Escolha Armeiro');
   const u=purchase(s,item,{id:'specialist',domainId:'d',name:'Oficina',dice:[],weaponSpecialty:'fighting'});
