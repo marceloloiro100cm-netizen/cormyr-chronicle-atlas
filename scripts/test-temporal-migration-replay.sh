@@ -28,8 +28,16 @@ if [[ "$bootstrap_check" != "mail_test:postgres:seeded" ]]; then
 fi
 
 # Assinaturas agregadas para demonstrar que a base-fonte não mudou.
-source_schema_before="$(pg_dump -d mail_test --schema-only --no-owner --no-acl | sha256sum | cut -d ' ' -f 1)"
-source_data_before="$(pg_dump -d mail_test --data-only --no-owner --no-acl | sha256sum | cut -d ' ' -f 1)"
+# O cliente pg_dump recente usa tokens aleatórios em \restrict/\unrestrict;
+# normalizá-los evita falsos alarmes na comparação sem remover dados SQL.
+dump_hash() {
+  pg_dump -d "$1" "$2" --no-owner --no-acl |
+    sed -E '/^\\(un)?restrict [[:alnum:]]+$/d' |
+    sha256sum | cut -d ' ' -f 1
+}
+
+source_schema_before="$(dump_hash mail_test --schema-only)"
+source_data_before="$(dump_hash mail_test --data-only)"
 
 work="$(mktemp -d "$RUNNER_TEMP/cormyr-replay.XXXXXXXX")"
 active_clone=""
@@ -56,16 +64,16 @@ for prefix in 0060 0061 0062 0063 0064 0065 0066 0067; do
   psql -X -q -v ON_ERROR_STOP=1 -d postgres \
     -c "CREATE DATABASE $active_clone TEMPLATE mail_test" >/dev/null
 
-  schema_before="$(pg_dump -d "$active_clone" --schema-only --no-owner --no-acl | sha256sum | cut -d ' ' -f 1)"
-  data_before="$(pg_dump -d "$active_clone" --data-only --no-owner --no-acl | sha256sum | cut -d ' ' -f 1)"
+  schema_before="$(dump_hash "$active_clone" --schema-only)"
+  data_before="$(dump_hash "$active_clone" --data-only)"
 
   replay_exit=0
   if ! psql -X -q -v ON_ERROR_STOP=1 -d "$active_clone" -f "$file" \
     > "$work/$prefix.stdout" 2> "$work/$prefix.stderr"; then
     replay_exit=1
   fi
-  schema_after="$(pg_dump -d "$active_clone" --schema-only --no-owner --no-acl | sha256sum | cut -d ' ' -f 1)"
-  data_after="$(pg_dump -d "$active_clone" --data-only --no-owner --no-acl | sha256sum | cut -d ' ' -f 1)"
+  schema_after="$(dump_hash "$active_clone" --schema-only)"
+  data_after="$(dump_hash "$active_clone" --data-only)"
 
   schema_changed=false
   data_changed=false
@@ -80,8 +88,8 @@ for prefix in 0060 0061 0062 0063 0064 0065 0066 0067; do
 done
 
 [[ "$count" == 8 ]] || { echo "BLOQUEADO: ensaio incompleto." >&2; exit 2; }
-source_schema_after="$(pg_dump -d mail_test --schema-only --no-owner --no-acl | sha256sum | cut -d ' ' -f 1)"
-source_data_after="$(pg_dump -d mail_test --data-only --no-owner --no-acl | sha256sum | cut -d ' ' -f 1)"
+source_schema_after="$(dump_hash mail_test --schema-only)"
+source_data_after="$(dump_hash mail_test --data-only)"
 if [[ "$source_schema_before" != "$source_schema_after" ||
       "$source_data_before" != "$source_data_after" ]]; then
   echo "BLOQUEADO: a base-fonte mudou durante o ensaio." >&2
