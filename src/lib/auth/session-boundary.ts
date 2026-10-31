@@ -73,3 +73,16 @@ export function clearSessionQueryCache(
 ):void{
  cache.clear();
 }
+
+
+/**
+ * Narrator representation is a change of permission scope, not a new Supabase
+ * login. Preserve only the active top-level admin panel query (its owner is
+ * unchanged); remove all House/letter/clock/outbox queries before entering or
+ * exiting another player's view. GM permissions are always rechecked in RPCs.
+ */
+export function clearRepresentationQueryCache(
+ cache:Pick<import('@tanstack/react-query').QueryClient,'removeQueries'>,
+):void{
+ cache.removeQueries({predicate:query=>query.queryKey[0]!=='campaign-panel'});
+}
