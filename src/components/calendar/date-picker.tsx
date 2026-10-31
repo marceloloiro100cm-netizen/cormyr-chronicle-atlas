@@ -2,7 +2,7 @@ import {useEffect,useId,useState} from 'react';
 import {MONTHS,FESTIVALS,dateKey,parseDate,formatDate} from '@/lib/calendar/harptos';
 import './harptos.css';
 
-export function CampaignDatePicker({value,onChange,name='campaign_date',updateOnNavigation=false,referenceDate}:{value:string;onChange:(value:string)=>void;name?:string;updateOnNavigation?:boolean;referenceDate?:string}){
+export function CampaignDatePicker({value,onChange,name='campaign_date',updateOnNavigation=false,referenceDate}:{value:string;onChange:(value:string)=>void;name?:string;updateOnNavigation?:boolean;referenceDate?:string|undefined}){
   const id=useId(),selected=parseDate(value),reference=parseDate(referenceDate);
   const [year,setYear]=useState(selected?.year??reference?.year??0),[month,setMonth]=useState(selected?.month??reference?.month??0);
   // A data selecionada é histórica ou autoral; referenceDate serve apenas para
