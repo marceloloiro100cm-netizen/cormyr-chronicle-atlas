@@ -99,3 +99,7 @@ jobs:
           # Re-applying our reconciliation must be safe and must not erase history.
           psql -v ON_ERROR_STOP=1 --single-transaction -f drizzle/migrations/0059_reconcile_production_schema.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-production-reconciliation.sql
+      - name: Probe migration replay in isolated disposable PostgreSQL clones
+        env:
+          TEMPORAL_DISPOSABLE_POSTGRES: 'true'
+        run: bash scripts/test-temporal-migration-replay.sh
