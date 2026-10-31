@@ -1651,6 +1651,37 @@ export type Database = {
       }
       get_campaign_time_history: { Args: { p_limit?: number }; Returns: Json }
       get_public_campaign_time: { Args: never; Returns: Json }
+      stage_campaign_character_sources: { Args: never; Returns: Json }
+      import_character_source_candidates: { Args: { p_candidates: Json }; Returns: number }
+      get_character_registry_hub: { Args: { p_limit?: number }; Returns: Json }
+      save_campaign_character: {
+        Args: {
+          p_id: string | null
+          p_version: number | null
+          p_payload: Json
+          p_reason: string
+        }
+        Returns: Json
+      }
+      review_character_source: {
+        Args: {
+          p_queue_id: string
+          p_action: string
+          p_character_id?: string | null
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      save_character_relation: {
+        Args: {
+          p_from: string
+          p_to: string
+          p_relation: string
+          p_note: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       get_campaign_schedule_drafts: { Args: never; Returns: Json }
       get_campaign_schedule_events: { Args: { p_year: number; p_month: number }; Returns: Json }
       save_campaign_schedule_event: { Args: { p_payload: Json }; Returns: Json }
