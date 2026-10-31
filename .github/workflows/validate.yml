@@ -102,6 +102,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-release-preflight.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-integrated-scenario.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-multiyear-effects.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-narrator-authority.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-homologation-contracts.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-management.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-workbook-import.sql
