@@ -122,6 +122,11 @@
       "pr": 150,
       "head": "test/hub-temporal-lote-24-permissoes-narrador",
       "base": "fix/hub-temporal-lote-23-operacoes-mensais"
+    },
+    {
+      "pr": 151,
+      "head": "fix/hub-temporal-lote-25-cronologia-retroativa",
+      "base": "test/hub-temporal-lote-24-permissoes-narrador"
     }
   ]
 }
