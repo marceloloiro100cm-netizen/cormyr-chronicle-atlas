@@ -27,6 +27,19 @@ if [[ "$bootstrap_check" != "mail_test:postgres:seeded" ]]; then
   exit 2
 fi
 
+# A versão 0067 corrige as travessias sazonais; a 0066 antiga redefine
+# a função. Testamos explicitamente se o replay REGRIDE esse contrato.
+season_fix_state() {
+  psql -XAtq -v ON_ERROR_STOP=1 -d "$1" -c \
+    "SELECT strpos(pg_get_functiondef(
+      'public.enqueue_campaign_temporal_consumers()'::regprocedure),
+      'season_crossings:=')>0"
+}
+if [[ "$(season_fix_state mail_test)" != "t" ]]; then
+  echo "BLOQUEADO: fixture temporal não contém a correção sazonal 0067." >&2
+  exit 2
+fi
+
 # Assinaturas agregadas para demonstrar que a base-fonte não mudou.
 # O cliente pg_dump recente usa tokens aleatórios em \restrict/\unrestrict;
 # normalizá-los evita falsos alarmes na comparação sem remover dados SQL.
@@ -51,7 +64,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 results="$work/results.tsv"
-printf "migration\treplay_exit\tschema_changed\tdata_changed\n" > "$results"
+printf "migration\treplay_exit\tschema_changed\tdata_changed\tseason_fix_regressed\n" > "$results"
 count=0
 for prefix in 0060 0061 0062 0063 0064 0065 0066 0067; do
   set -- drizzle/migrations/"$prefix"_*.sql
@@ -79,7 +92,11 @@ for prefix in 0060 0061 0062 0063 0064 0065 0066 0067; do
   data_changed=false
   [[ "$schema_before" == "$schema_after" ]] || schema_changed=true
   [[ "$data_before" == "$data_after" ]] || data_changed=true
-  printf "%s\t%s\t%s\t%s\n" "$file" "$replay_exit" "$schema_changed" "$data_changed" >> "$results"
+  season_fix_regressed=false
+  if [[ "$prefix" == "0066" && "$(season_fix_state "$active_clone")" != "t" ]]; then
+    season_fix_regressed=true
+  fi
+  printf "%s\t%s\t%s\t%s\t%s\n" "$file" "$replay_exit" "$schema_changed" "$data_changed" "$season_fix_regressed" >> "$results"
 
   psql -X -q -v ON_ERROR_STOP=1 -d postgres \
     -c "DROP DATABASE $active_clone WITH (FORCE)" >/dev/null
@@ -116,6 +133,7 @@ out = {
             'replay_succeeded_on_scratch_copy': x['replay_exit'] == '0',
             'schema_changed_in_copy': x['schema_changed'] == 'true',
             'data_changed_in_copy': x['data_changed'] == 'true',
+            'season_fix_regressed_in_copy': x['season_fix_regressed'] == 'true',
         } for x in items
     ],
 }
@@ -124,20 +142,23 @@ with open(sys.argv[2], 'w', encoding='utf8') as f:
 succeeded = sum(p['replay_succeeded_on_scratch_copy'] for p in out['probes'])
 schema = sum(p['schema_changed_in_copy'] for p in out['probes'])
 data = sum(p['data_changed_in_copy'] for p in out['probes'])
+season = sum(p['season_fix_regressed_in_copy'] for p in out['probes'])
 summary = (
     '\n### Hub Temporal — ensaio isolado de reaplicação\n'
     f'8 clones descartáveis; {succeeded} reaplicações sem erro; '
     f'{schema} alterações de esquema e {data} alterações de dados detectadas '
-    'nas cópias. **Não autoriza reaplicação ou deploy.**\n'
+    f'nas cópias; {season} regressão(ões) da correção sazonal. '
+    '**Não autoriza reaplicação ou deploy.**\n'
 )
-summary += '\n| Migração | Replay no clone | Esquema alterado | Dados alterados |\n'
-summary += '|---|---|---|---|\n'
+summary += '\n| Migração | Replay no clone | Esquema alterado | Dados alterados | Correção sazonal revertida |\n'
+summary += '|---|---|---|---|---|\n'
 for probe in out['probes']:
     name = probe['migration'].rsplit('/', 1)[-1]
     status = 'Sem erro' if probe['replay_succeeded_on_scratch_copy'] else 'Falhou'
     schema_status = 'Sim' if probe['schema_changed_in_copy'] else 'Não'
     data_status = 'Sim' if probe['data_changed_in_copy'] else 'Não'
-    summary += f'| ' + name + f' | {status} | {schema_status} | {data_status} |\n'
+    season_status = 'SIM — RISCO' if probe['season_fix_regressed_in_copy'] else 'Não'
+    summary += f'| ' + name + f' | {status} | {schema_status} | {data_status} | {season_status} |\n'
 with open(sys.argv[3], 'a', encoding='utf8') as f:
     f.write(summary)
 print(summary.strip())
