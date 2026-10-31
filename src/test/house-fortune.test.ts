@@ -8,9 +8,11 @@ describe('Sorte e conversões do livro',()=>{
  it('uma confirmação de Sorte por mês',()=>{const s=newHouseState('isolated');s.base.law=50;s.base.population=20;const args={status:1,testDice:[6],bonusDice:[],modifier:0,resource:'wealth' as const,changes:{...zeroResources(),wealth:1},justification:'Decisão isolada'};const n=confirmFortune(s,args);expect(n.permanent.wealth).toBe(1);expect(()=>confirmFortune(n,args)).toThrow('já');});
  it('Defesa não tem conversão universal',()=>{expect(()=>convertResources(newHouseState('isolated'),'defense','wealth',1,false)).toThrow('não permitida');});
  it('Riqueza2 para Defesa1 normal',()=>{const s=newHouseState('isolated');s.base.wealth=10;const n=convertResources(s,'wealth','defense',1,false);expect(n.permanent.wealth).toBe(-2);expect(n.permanent.defense).toBe(1);});
- it('segunda conversão apressada e máximo2',()=>{const s=newHouseState('isolated');s.base.wealth=10;const n=convertResources(s,'wealth','defense',1,false);expect(()=>convertResources(n,'wealth','defense',1,false)).toThrow('segunda');const m=convertResources(n,'wealth','defense',1,true);expect(m.permanent.wealth).toBe(-5);expect(()=>convertResources(m,'wealth','defense',1,true)).toThrow('máximo');});
+ it('segunda conversão apressada e máximo2',()=>{const s=newHouseState('isolated');s.base.wealth=10;const n=convertResources(s,'wealth','defense',1,false);expect(()=>convertResources(n,'wealth','defense',1,false)).toThrow('conversão normal');const m=convertResources(n,'wealth','defense',1,true);expect(m.permanent.wealth).toBe(-5);expect(()=>convertResources(m,'wealth','defense',1,true)).toThrow('máximo');});
 });
 describe('auditoria de sorte, conversões e torneio',()=>{
+ const make=()=>{const s=newHouseState('isolated');s.phase='active';s.base.wealth=100;s.base.power=100;s.base.law=50;s.base.population=20;return s;};
+ const holding=(s:ReturnType<typeof make>,id:string)=>{const next=structuredClone(s);next.holdings.push({id,itemId:id,name:id,domainId:'',effects:[],costs:[],status:'active',ruleVersion:'test',source:'test'});return next;};
  it('acumulação 2–3 usa arredondamento para cima e mantém limite 12',async()=>{
    const {stackingBonus}=await import('@/lib/house/stacking');
    expect(stackingBonus(2,[1])).toBe(1);expect(stackingBonus(2,[3])).toBe(2);expect(stackingBonus(3,[6])).toBe(3);
