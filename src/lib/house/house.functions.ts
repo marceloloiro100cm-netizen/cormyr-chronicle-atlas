@@ -43,7 +43,16 @@ export const loadHouseLedger=createServerFn({method:'POST'}).middleware([require
   const result=await context.supabase.from('noble_house_ledger').select('id,action,explanation,rule,campaign_month,created_at,actor,version').eq('house_id',data.houseId).order('version',{ascending:true}).range(start,start+499);
   if(result.error)throw new Error('Falha ao carregar histórico para exportação.');
   rows.push(...(result.data??[]).map(row=>({...row,campaign_month:row.campaign_month??undefined,actor:row.actor??undefined})));
-  if((result.data??[]).length<500)return rows;
+  if((result.data??[]).length<500){
+   const [roleNow,memberNow]=await Promise.all([
+    context.supabase.rpc('is_campaign_admin'),
+    context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:false}),
+   ]);
+   if(roleNow.error||memberNow.error||(!roleNow.data&&!memberNow.data)||
+      (admin.data&&!roleNow.data))
+     throw new Error('Histórico não autorizado após atualização dos vínculos.');
+   return rows;
+  }
  }
  throw new Error('Histórico excedeu dez mil lançamentos; exportação interrompida sem truncar.');
 });
@@ -88,7 +97,21 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
     if(c.error||!c.data)throw new Error('Calendário global indisponível: nova Casa exige período oficial.');
     initial.month=calendarMonthIndex(c.data as {year:number;month:number});
   }
-  return {state:finalState ?? initial,version:sheet.data?.version??0,catalog,houses:[...merged.values()].sort((a,b)=>a.name.localeCompare(b.name)),ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(admin.data),canEditAttributes:Boolean(admin.data||myMembership?.data?.can_edit_attributes)};
+  const [adminNow,memberNow]=await Promise.all([
+   db.rpc('is_campaign_admin'),
+   db.rpc('in_campaign_house',{h:data.houseId,edit_required:false}),
+  ]);
+  if(adminNow.error||memberNow.error||(!adminNow.data&&!memberNow.data)||
+     (admin.data&&!adminNow.data))
+   throw new Error('Permissão de Casa revogada durante o carregamento.');
+  const editNow=adminNow.data?null:await db.from('house_memberships')
+   .select('can_edit_attributes,player_id,campaign_players!inner(user_id,active,require_password_change)')
+   .eq('house_id',data.houseId).eq('campaign_players.user_id',context.userId)
+   .eq('campaign_players.active',true).eq('campaign_players.require_password_change',false)
+   .maybeSingle();
+  if(editNow?.error||(!adminNow.data&&!editNow?.data))
+   throw new Error('Permissões de atributos alteradas durante o carregamento.');
+  return {state:finalState ?? initial,version:sheet.data?.version??0,catalog,houses:[...merged.values()].sort((a,b)=>a.name.localeCompare(b.name)),ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(adminNow.data),canEditAttributes:Boolean(adminNow.data||editNow?.data?.can_edit_attributes)};
 });
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
