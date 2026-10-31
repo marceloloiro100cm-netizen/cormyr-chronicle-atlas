@@ -20,7 +20,7 @@ import { refreshPublicArchive } from '@/lib/campaign.functions';
 import { unreadReceivedCount, type LetterRow } from '@/lib/letters';
 import {clearRepresentationQueryCache} from '@/lib/auth/session-boundary';
 import {CAMPAIGN_ACCESS_SCOPE_KEY,CAMPAIGN_ACCESS_SCOPE_POLL_MS,loadCampaignAccessScope,clearRevokedAccessCache} from '@/lib/auth/campaign-access-scope';
-import {NARRATOR_ACCESS_REVOKED_KEY,canReleaseNarratorLock,type NarratorRevocationMarker} from '@/lib/auth/narrator-revocation';
+import {NARRATOR_ACCESS_REVOKED_KEY,canReleaseNarratorLock,watchNarratorPrivateReadRevocations,type NarratorRevocationMarker} from '@/lib/auth/narrator-revocation';
 import { loadPanel } from '@/components/players/panel-data';
 import { RecordList, RecordEditor, RecordForm } from '@/components/players/records';
 import { FichaTab } from '@/components/players/ficha-tab';
@@ -62,6 +62,12 @@ function Players(){
       isFetching:scope.isFetching,
     }))qc.setQueryData(NARRATOR_ACCESS_REVOKED_KEY,null);
   },[qc,revoked.data?.revokedAt,scope.dataUpdatedAt,scope.data?.fingerprint,scope.isError,scope.isFetching]);
+  // Scope is the only source of admin authority; a failed private temporal
+  // read still removes private QueryCache data and locks the entire workspace.
+  useEffect(()=>{
+    if(!scope.data?.admin||revoked.data)return;
+    return watchNarratorPrivateReadRevocations(qc);
+  },[qc,scope.data?.admin,revoked.data?.revokedAt]);
   const previous=useRef<string|null>(null);
   const [approved,setApproved]=useState<string|null>(null);
   useEffect(()=>{
