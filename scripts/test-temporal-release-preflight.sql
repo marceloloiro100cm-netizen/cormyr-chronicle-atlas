@@ -46,16 +46,21 @@ SELECT public.publish_campaign_time_change(
  '30000000-0000-4000-8000-000000000b12','set','1523-01-01',0,
  'Teste de travessia anual completa de estacoes',false);
 SELECT pg_temp.assert(
- (SELECT count(*) FROM public.campaign_temporal_deliveries
- WHERE consumer_code='seasons' AND direction='forward')=1,
+ (SELECT count(*) FROM jsonb_array_elements(
+  public.get_temporal_consumer_dashboard(80)->'deliveries') x(d)
+  WHERE d->>'consumer_code'='seasons' AND d->>'direction'='forward')=1,
  'long year shift emits one season review even when starting and ending in winter');
 SELECT pg_temp.assert(
- (SELECT payload->>'season_crossings'='4' FROM public.campaign_temporal_deliveries
- WHERE consumer_code='seasons'),
+ (public.replay_temporal_delivery((
+  SELECT (d->>'id')::uuid FROM jsonb_array_elements(
+   public.get_temporal_consumer_dashboard(80)->'deliveries') x(d)
+  WHERE d->>'consumer_code'='seasons' LIMIT 1
+ ))->'payload'->>'season_crossings')='4',
  'outbox records the exact number of crossed season boundaries');
 SELECT pg_temp.assert(
- (SELECT count(*) FROM public.campaign_temporal_deliveries
- WHERE consumer_code='noble-ages')=1,
+ (SELECT count(*) FROM jsonb_array_elements(
+  public.get_temporal_consumer_dashboard(80)->'deliveries') x(d)
+  WHERE d->>'consumer_code'='noble-ages')=1,
  'year transition produces one age projection');
 SELECT pg_temp.assert(
  (public.get_temporal_release_preflight()->>'manual_reviews_pending')::int>=4,
@@ -67,12 +72,14 @@ SELECT public.publish_campaign_time_change(
  '30000000-0000-4000-8000-000000000b13','set','1522-12-01',0,
  'Retificacao de fim de ano explicitamente autorizada',true);
 SELECT pg_temp.assert(
- (SELECT count(*) FROM public.campaign_temporal_deliveries
- WHERE consumer_code='seasons')=1,
+ (SELECT count(*) FROM jsonb_array_elements(
+  public.get_temporal_consumer_dashboard(80)->'deliveries') x(d)
+  WHERE d->>'consumer_code'='seasons')=1,
  'December-to-January historical correction within winter has no season event');
 SELECT pg_temp.assert(
- (SELECT count(*) FROM public.campaign_temporal_deliveries
- WHERE consumer_code='economy' AND direction='backward')=1,
+ (SELECT count(*) FROM jsonb_array_elements(
+  public.get_temporal_consumer_dashboard(80)->'deliveries') x(d)
+  WHERE d->>'consumer_code'='economy' AND d->>'direction'='backward')=1,
  'month correction requests review, not automatically reversed resources');
 
 RESET ROLE;
