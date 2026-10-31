@@ -48,7 +48,8 @@ describe('complete unit character sheet',()=>{
   expect(screen.getByText('CASA EVENHAND · FICHA DE UNIDADE')).toBeInTheDocument();
   expect(screen.getByRole('button',{name:/Baixar ficha \(PDF\)/})).toBeInTheDocument();
   expect(screen.getByRole('img',{name:/Símbolo militar: Especial/})).toBeInTheDocument();
-  for(const skill of UNIT_SKILLS)expect(screen.getByText(UNIT_SKILL_NAMES[skill])).toBeInTheDocument();
+  const displayedSkills=[...container.ownerDocument.querySelectorAll('.military-skill-head strong')].map(node=>node.textContent);
+  for(const skill of UNIT_SKILLS)expect(displayedSkills).toContain(UNIT_SKILL_NAMES[skill]);
   expect(UNIT_SKILLS).toHaveLength(20);
   const fighting=container.querySelector('[aria-label="Luta: graduação 5"]');
   const awareness=container.querySelector('[aria-label="Percepção: graduação 2"]');
