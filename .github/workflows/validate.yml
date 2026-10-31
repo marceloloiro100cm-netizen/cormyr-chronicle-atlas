@@ -54,6 +54,10 @@ jobs:
         run: |
           node scripts/temporal-access-release-audit.mjs --gate > "$RUNNER_TEMP/temporal-access-release.json"
           node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const x=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-access-release.json","utf8")); if(!x.static_contract_ok||x.go_no_go!=="NO_GO"||x.production_release_authorized!==false||x.execute_migrations!==false||x.authorize_merge!==false) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\n### Hub Temporal — segurança das sessões\n"+x.guard_checks+" guardas e "+x.regression_tests+" regressões obrigatórias confirmadas; **NO_GO** para produção.\n");'
+      - name: Hub Temporal final acceptance contract (NO_GO, offline)
+        run: |
+          node scripts/temporal-final-acceptance.mjs --gate > "$RUNNER_TEMP/temporal-final-acceptance.json"
+          node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const a=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-final-acceptance.json","utf8")); if(!a.static_contract_ok||a.production_release_authorized!==false||a.go_no_go!=="NO_GO"||a.sql_executed!==false) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\\n### Aceite final do Hub Temporal\\n"+a.inspected_surfaces+" superfícies e "+a.required_regressions+" testes obrigatórios inspecionados. **NO_GO** até comprovação externa das migrações e backup.\\n");'
       - name: Unit and component tests
         run: bun run test
       - name: TypeScript verification
