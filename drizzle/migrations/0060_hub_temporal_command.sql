@@ -150,7 +150,7 @@ BEGIN
      festival_key:=lpad((CASE WHEN curr_m=0 THEN curr_y-1 ELSE curr_y END)::text,4,'0')||
        '-F-'||festival_id;
      -- Festival of origin is excluded from impact; this boundary follows it.
-     IF original<>festival_key THEN
+     IF original<>festival_key AND NOT (prior_m=6 AND original LIKE '%F-shieldmeet') THEN
        festivals:=festivals||jsonb_build_array(jsonb_build_object('date',festival_key,'id',festival_id));
      END IF;
      IF prior_m=6 AND (CASE WHEN curr_m=0 THEN curr_y-1 ELSE curr_y END)%4=0 THEN
