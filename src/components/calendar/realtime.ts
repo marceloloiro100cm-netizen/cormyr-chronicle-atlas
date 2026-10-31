@@ -27,7 +27,7 @@ function notify(entry:RealtimeEntry,status:CalendarRealtimeStatus){
 
 function clockFingerprint(value:unknown):string|null{
  if(!value||typeof value!=='object')return null;
- const v=value as Record<string,unknown>;
+ const v=value as {version?:unknown;year?:unknown;month?:unknown;day?:unknown;festival?:unknown};
  if(!Number.isSafeInteger(v.version)||!Number.isSafeInteger(v.year)||
     !Number.isSafeInteger(v.month)||!Number.isSafeInteger(v.day)||
     (v.festival!==null&&typeof v.festival!=='string'))return null;
