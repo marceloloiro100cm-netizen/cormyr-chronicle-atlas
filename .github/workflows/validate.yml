@@ -50,6 +50,10 @@ jobs:
         run: |
           node scripts/temporal-site-audit.mjs --gate > "$RUNNER_TEMP/temporal-site-audit.json"
           node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const x=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-site-audit.json","utf8")); if(!x.static_contract_ok||x.all_site_behaviour_verified!==false||x.production_release_authorized!==false) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\n### Hub Temporal — conexões do site\n"+x.files_inspected+" fontes inspecionadas, "+x.required_surfaces+" contratos, "+x.registered_invalidation_prefixes+" prefixos de cache, "+x.review_candidates.length+" itens para revisão contextual. **Sem autorização de produção.**\n");'
+      - name: Hub Temporal active-session permission acceptance gate
+        run: |
+          node scripts/temporal-access-release-audit.mjs --gate > "$RUNNER_TEMP/temporal-access-release.json"
+          node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const x=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-access-release.json","utf8")); if(!x.static_contract_ok||x.go_no_go!=="NO_GO"||x.production_release_authorized!==false||x.execute_migrations!==false||x.authorize_merge!==false) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\n### Hub Temporal — segurança das sessões\n"+x.guard_checks+" guardas e "+x.regression_tests+" regressões obrigatórias confirmadas; **NO_GO** para produção.\n");'
       - name: Unit and component tests
         run: bun run test
       - name: TypeScript verification
