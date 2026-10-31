@@ -618,3 +618,22 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 .military-rename{display:flex;flex-wrap:wrap;align-items:end;gap:.5rem}
 .military-rename label{flex:1 1 140px}
 @media(max-width:680px){.military-skills{grid-template-columns:1fr}.military-sheet-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.military-xp-grant{grid-template-columns:1fr}.military-sheet-heading{align-items:flex-start}.military-sheet-emblem{width:48px;height:48px}.military-sheet-stats strong{font-size:1rem}}
+
+
+/* Distinct unit emblems are independent of the family's heraldry. */
+.military-unit-symbol{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:none;border-radius:50%;border:2px solid #b28a4f;box-shadow:inset 0 0 0 3px #f3dfb1,0 1px 3px #3a293a44;color:#f3dbab;isolation:isolate}
+.military-unit-symbol--large{width:86px;height:86px}
+.military-unit-symbol--small{width:44px;height:44px}
+.military-unit-banner{position:absolute;inset:5%;width:90%;height:90%;pointer-events:none}
+.military-unit-pictogram{position:relative;z-index:1;width:43%;height:43%;color:#f3dbab;stroke:#f3dbab;filter:drop-shadow(0 2px 1px #0006)}
+.military-unit-horse{width:60%;height:60%}
+.military-card-badge{display:flex;align-items:center;justify-content:flex-start;margin-bottom:.4rem}
+.military-sheet-heading{display:flex;gap:1rem;align-items:center;text-align:left;flex-wrap:wrap;padding-right:1.4rem}
+.military-sheet-header-title{flex:1 1 260px;min-width:0;overflow-wrap:anywhere}
+.military-sheet-download{margin-left:auto;display:inline-flex;align-items:center;gap:.45rem;white-space:nowrap!important;background:#eee9e0!important;color:#382c41!important;border:1px solid #bcae9e!important;font-weight:700}
+.military-sheet-download:hover{background:#ddd5ca!important;color:#251b2d!important}
+.military-sheet .military-equip-buttons button{background:#e9e7e8!important;color:#342d3d!important;border:1px solid #a9a3ac!important;opacity:1!important;font-weight:600}
+.military-sheet .military-equip-buttons button:hover:not(:disabled){background:#d3d0d5!important;color:#241d2c!important}
+.military-sheet .military-equip-buttons button:disabled{background:#ecebed!important;color:#777180!important;border-color:#c8c5ca!important;opacity:.8!important}
+.military-sheet .military-equip-buttons button:focus-visible,.military-sheet-download:focus-visible{outline:3px solid #a36b34;outline-offset:2px}
+@media(max-width:680px){.military-unit-symbol--large{width:60px;height:60px}.military-sheet-download{margin-left:0}.military-sheet-header-title{flex-basis:calc(100% - 80px)}}
