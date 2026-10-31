@@ -61,7 +61,7 @@ export function convertResources(state:HouseState,from:Resource,to:Resource,amou
  if(!Number.isInteger(amount)||amount<=0)throw new Error('Quantidade de pontos inválida.');
  const actions=state.actions.filter(a=>a.month===state.month);
  if(actions.some(a=>!a.type.startsWith('convert:')))throw new Error('A Casa já realizou outra ação mensal.');
- if(actions.length>=2)throw new Error('Limite de duas conversões por mês.');
+ if(actions.length>=2)throw new Error('Limite máximo de duas conversões por mês.');
  if((actions.length===0&&rushed)||(actions.length===1&&(!rushed||actions[0]?.notes.includes('apressada'))))throw new Error('Faça primeiro uma conversão normal e, depois, uma apressada.');
  const cost=amount*ratio;
  if(balances(state).available[from]<cost)throw new Error('Saldo insuficiente para conversão.');
