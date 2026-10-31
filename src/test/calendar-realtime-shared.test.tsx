@@ -84,7 +84,7 @@ it('polling da versão oficial sincroniza todos os caches mesmo com Realtime em 
  expect(screen.getByLabelText('ponte')).toHaveTextContent('fallback');
  const clock={year:1522,month:0,day:1,festival:null,version:1,auto_advance:false};
  await act(async()=>{qc.setQueryData(['campaign-calendar'],clock);});
- let refreshes=spy.mock.calls.map(([input])=>JSON.stringify(input.queryKey));
+ let refreshes=spy.mock.calls.map(([input])=>JSON.stringify(input?.queryKey));
  expect(refreshes).toContain(JSON.stringify(['mail-page']));
  expect(refreshes).toContain(JSON.stringify(['noble-house']));
  expect(refreshes).toContain(JSON.stringify(['character-age-dashboard']));
@@ -93,7 +93,7 @@ it('polling da versão oficial sincroniza todos os caches mesmo com Realtime em 
  await act(async()=>{qc.setQueryData(['campaign-calendar'],{...clock});});
  expect(spy).not.toHaveBeenCalled();
  await act(async()=>{qc.setQueryData(['campaign-calendar'],{...clock,year:1523,version:2});});
- refreshes=spy.mock.calls.map(([input])=>JSON.stringify(input.queryKey));
+ refreshes=spy.mock.calls.map(([input])=>JSON.stringify(input?.queryKey));
  expect(refreshes).toContain(JSON.stringify(['house-time-impact']));
  expect(refreshes).toContain(JSON.stringify(['mail-overview-grouped']));
  expect(refreshes).toContain(JSON.stringify(['character-age-impact']));
