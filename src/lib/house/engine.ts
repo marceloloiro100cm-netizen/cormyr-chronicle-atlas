@@ -230,7 +230,7 @@ export function purchase(state: HouseState, item: CatalogItem, args: {id:string;
   for(const cost of q.costs) if(cost.mode==='permanent') next.permanent[cost.resource]-=cost.amount;
   const domain = next.domains.find(d=>d.id===args.domainId);
   if(domain) { if(item.category==='terrain') domain.terrain=item.id; if(item.category==='feature') domain.features.push(item.id); if(item.category==='community') domain.community=item.id; }
-  if(building){const projectDuration=militaryConstructionDuration(state,item.id,item.duration.months+args.dice.reduce((a,b)=>a+b,0));next.projects.push({id:args.id,holdingId:args.id,name:args.name||item.name,start:state.month,duration:projectDuration.months,dice:args.dice,status:'building',modifier:0});}
+  if(building){const projectDuration=militaryConstructionDuration(state,item.id,item.category,item.duration.months+args.dice.reduce((a,b)=>a+b,0));next.projects.push({id:args.id,holdingId:args.id,name:args.name||item.name,start:state.month,duration:projectDuration.months,dice:args.dice,status:'building',modifier:0});}
   return next;
 }
 export const TRAINING = { green:{name:'Verde',power:1,xp:20,discipline:9}, trained:{name:'Treinada',power:3,xp:60,discipline:6}, veteran:{name:'Veterana',power:5,xp:100,discipline:3}, elite:{name:'Elite',power:7,xp:140,discipline:0} };
