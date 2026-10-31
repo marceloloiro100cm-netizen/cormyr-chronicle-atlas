@@ -10,7 +10,7 @@ export function DomainEditor({domain,state,busy,onEdit,onDelete}:{
  const empty=!domain.terrain&&!domain.community&&!domain.features.length
    &&!state.holdings.some(h=>h.domainId===domain.id)
    &&!state.units.some(u=>u.domainId===domain.id)
-   &&!(state.vassals??[]).some(v=>v.domainId===domain.id);
+;
  return <details className="house-ledger"><summary>Editar domínio</summary>
   <form className="campaign-form" onSubmit={async e=>{e.preventDefault();await onEdit({id:domain.id,name,notes});}}>
    <label>Nome<input required maxLength={160} value={name} onChange={e=>setName(e.target.value)}/></label>
