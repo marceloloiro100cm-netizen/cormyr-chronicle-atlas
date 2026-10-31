@@ -1,0 +1,67 @@
+{
+  "format_version": 1,
+  "repository": "marceloloiro100cm-netizen/cormyr-chronicle-atlas",
+  "purpose": "ordem de revisão, não autorização para merge automático",
+  "release_authorized": false,
+  "excluded_alternative_prs": [
+    129
+  ],
+  "baseline_reference_pr": 126,
+  "sequence": [
+    {
+      "pr": 127,
+      "head": "feat/hub-temporal-lote-2-harptos",
+      "base": "main"
+    },
+    {
+      "pr": 128,
+      "head": "feat/hub-temporal-lote-3-fonte-unica",
+      "base": "feat/hub-temporal-lote-2-harptos"
+    },
+    {
+      "pr": 130,
+      "head": "feat/hub-temporal-lote-4-publicacao-transacional",
+      "base": "feat/hub-temporal-lote-3-fonte-unica"
+    },
+    {
+      "pr": 131,
+      "head": "feat/hub-temporal-lote-5-ui-publica-sincronizacao",
+      "base": "feat/hub-temporal-lote-4-publicacao-transacional"
+    },
+    {
+      "pr": 132,
+      "head": "feat/hub-temporal-lote-6-registro-nobres",
+      "base": "feat/hub-temporal-lote-5-ui-publica-sincronizacao"
+    },
+    {
+      "pr": 133,
+      "head": "feat/hub-temporal-lote-7-idades-anuais",
+      "base": "feat/hub-temporal-lote-6-registro-nobres"
+    },
+    {
+      "pr": 134,
+      "head": "feat/hub-temporal-lote-8-missivas-cronologia",
+      "base": "feat/hub-temporal-lote-7-idades-anuais"
+    },
+    {
+      "pr": 135,
+      "head": "feat/hub-temporal-lote-9-posses-projetos",
+      "base": "feat/hub-temporal-lote-8-missivas-cronologia"
+    },
+    {
+      "pr": 136,
+      "head": "feat/hub-temporal-lote-10-consumidores-outbox",
+      "base": "feat/hub-temporal-lote-9-posses-projetos"
+    },
+    {
+      "pr": 137,
+      "head": "audit/hub-temporal-lote-11-integracao-deploy",
+      "base": "feat/hub-temporal-lote-10-consumidores-outbox"
+    },
+    {
+      "pr": 138,
+      "head": "audit/hub-temporal-lote-12-migration-reconciliation",
+      "base": "audit/hub-temporal-lote-11-integracao-deploy"
+    }
+  ]
+}
