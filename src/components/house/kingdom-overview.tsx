@@ -14,7 +14,7 @@ export function KingdomHouseOverview(){
     <th>Tropas</th><th>Posses</th><th>Pendências</th></tr></thead>
    <tbody>{query.data?.map(h=><tr key={h.id}><td><strong>{h.name}</strong><small> · {h.region}</small></td>
      <td>{h.phase}</td><td>{h.status??'—'}</td>
-     {RESOURCE_KEYS.map(r=><td key={r}>{h.available?.[r]??'—'} / {h.phase==='not_configured'?'—':'—'}</td>)}
+     {RESOURCE_KEYS.map(r=><td key={r}>{h.available?.[r]??'—'} / {h.total?.[r]??'—'}</td>)}
      <td>{h.units}</td><td>{h.holdings}</td><td>{h.pending}</td>
    </tr>)}</tbody>
   </table></div>}
