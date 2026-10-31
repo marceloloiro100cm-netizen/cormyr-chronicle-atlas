@@ -89,3 +89,13 @@ export function assertUnchangedAccessScope(
  if(before.userId!==after.userId||before.fingerprint!==after.fingerprint)
   throw new Error('Vínculos alterados durante a consulta. Recarregue o acervo.');
 }
+
+
+/** UI preflight for a privileged action. The PostgreSQL RPC MUST independently
+ * check is_campaign_admin inside its own transaction; this check does not
+ * authorize the mutation and cannot grant access to private rows.
+ */
+export async function requireFreshNarratorAccess():Promise<void>{
+ const scope=await loadCampaignAccessScope();
+ if(!scope.admin)throw new Error('Permissão de Narrador revogada. Recarregue as autorizações.');
+}
