@@ -36,7 +36,7 @@ describe('cards militares e compra vinculada ao patrimônio',()=>{
   expect(cardFor('Docas Secas')).toBeInTheDocument();
   expect(cardFor('Castelo')).toBeInTheDocument();
   expect(within(cardFor('Mestre de Armas')).getByText('Não adquirido')).toBeInTheDocument();
-  expect(within(cardFor('Mestre de Armas')).getByText(MILITARY_HOLDING_BENEFITS['pros-master-of-arms']!)).toBeInTheDocument();
+  expect(within(cardFor('Mestre de Armas')).getByText(MILITARY_HOLDING_BENEFITS['pros-master-of-arms']!,{selector:'.military-asset-short'})).toBeInTheDocument();
   expect(cardFor('Produção de Alcatrão')).toBeInTheDocument();
   expect(cardFor('Gangues de Rua')).toBeInTheDocument();
  });
