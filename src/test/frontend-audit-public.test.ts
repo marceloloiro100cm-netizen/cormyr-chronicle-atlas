@@ -68,7 +68,7 @@ describe('Safe narrator media token parsing',()=>{
 
 describe('YouTube playlist per-track links',()=>{
  const data=()=>{
-  const raw=publicFile('data.js').replace(/^window\\.CORMYR_DATA\\s*=\\s*/,'').replace(/;\\s*$/,'');
+  const raw=publicFile('data.js').replace(/^window\.CORMYR_DATA\s*=\s*/,'').replace(/;\s*$/,'');
   const archive=JSON.parse(raw);
   const context:{CORMYR_DATA:typeof archive}={CORMYR_DATA:archive};
   new Function('window',publicFile('soundtrack.js'))(context);
