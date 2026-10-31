@@ -89,7 +89,7 @@ export function requirements(item: CatalogItem, state: HouseState, domain?: Doma
   // Pending source notes are warnings; concrete requirements still apply.
   if (['terrain','feature','community','fortification','estate','settlement'].includes(item.category) && !domain) errors.push('Escolha um domínio.');
   if (item.category === 'terrain' && domain?.terrain) errors.push('O domínio já possui terreno principal.');
-  if (item.category === 'community' && domain?.community) errors.push('O domínio já possui uma comunidade.');
+  if (item.category === 'community' && domain?.community && !replaceId) errors.push('A comunidade existente exige evolução explícita.');
   const parent=state.holdings.find(h=>h.id===parentId);
   if(item.category==='improvement'&&parent&&parent.domainId!==(domain?.id??'')) errors.push('A melhoria deve ficar no mesmo domínio da posse principal.');
   if (!item.repeatable && state.holdings.some(h=>h.itemId===item.id && (item.category==='improvement'?h.parentId===parentId:h.domainId === (domain?.id ?? '')) && ['active','building'].includes(h.status))) errors.push('Esta posse já existe neste local.');
@@ -97,13 +97,21 @@ export function requirements(item: CatalogItem, state: HouseState, domain?: Doma
   if(item.category==='settlement'&&!['pros-abbey','pros-tolls','pros-trading-inn'].includes(item.id)){const c=settlementCapacity(state,domain?.id??'',supportId);if(c.error)errors.push(c.error);else if(c.used>=c.capacity)errors.push(`Sem espaço no suporte: ${c.used} de ${c.capacity} ocupado(s).`);}
   if(item.category==='improvement'&&!item.coexists&&!item.repeatable&&state.holdings.some(h=>h.parentId===parentId&&!h.coexists&&['active','building'].includes(h.status)))errors.push('Esta melhoria não pode ser combinada com outra melhoria exclusiva.');
   if(item.category==='fortification') {
-    const existing = state.holdings.find(h=>h.domainId===domain?.id&&['tower','hall','small-castle','castle','superior-castle'].includes(h.itemId)&&['active','building'].includes(h.status));
-    if(existing && existing.id !== replaceId) errors.push('Fortificação existente: upgrade precisa de regra explícita.');
-    else if (replaceId && !existing) errors.push('Fortificação a evoluir não encontrada.');
-    else if (replaceId && existing) {
-      const order = ['tower','hall','small-castle','castle','superior-castle'];
-      if(order.indexOf(item.id) <= order.indexOf(existing.itemId)) errors.push('A nova fortificação deve ser maior que a existente.');
-    }
+    const existing=state.holdings.filter(h=>h.domainId===domain?.id&&['tower','hall','small-castle','castle','superior-castle'].includes(h.itemId)&&['active','building'].includes(h.status));
+    const old=existing.find(h=>h.id===replaceId);
+    const primary=existing.filter(h=>h.itemId!=='tower');
+    if(replaceId){
+      if(!old)errors.push('Fortificação a evoluir não encontrada no domínio.');
+      else if(['tower','hall','small-castle','castle','superior-castle'].indexOf(item.id)<=
+        ['tower','hall','small-castle','castle','superior-castle'].indexOf(old.itemId))
+        errors.push('A nova fortificação deve ser maior que a existente.');
+      if(primary.some(h=>h.id!==replaceId))errors.push('Há uma fortificação principal no domínio; não é possível substituir uma torre secundária por outro castelo.');
+    }else if(item.id!=='tower'&&primary.length)errors.push('Evolua a fortificação principal existente; uma torre secundária pode coexistir.');
+  }
+  if(item.category==='community'&&replaceId) {
+    const old=state.holdings.find(h=>h.id===replaceId&&h.domainId===domain?.id&&h.category==='community'&&['active','building'].includes(h.status));
+    const levels=['hamlet','small-town','large-town','small-city','large-city'];
+    if(!old||levels.indexOf(item.id)<=levels.indexOf(old.itemId))errors.push('Evolução de comunidade inválida: selecione a comunidade existente e uma categoria maior.');
   }
   const communityOrder=['','hamlet','small-town','large-town','small-city','large-city'];
   const hasHolding=(values:string[]|undefined)=>(values?.length??0)>0&&state.holdings.some(h=>
@@ -148,7 +156,20 @@ export function requirements(item: CatalogItem, state: HouseState, domain?: Doma
 }
 export function quote(item: CatalogItem, state: HouseState, domainId: string, parentId?: string,supportId?:string,replaceId?:string) {
   const before = balances(state), costs = item.costs.map(c=>({...c}));
+  if(item.id==='pros-poor'&&costs.length===0)costs.push({resource:'wealth',amount:0,mode:'allocation'});
+  if(item.id==='pros-standard-of-living--entourage'){
+    const parent=state.holdings.find(h=>h.id===parentId&&h.status==='active');
+    const amount=parent?.itemId==='pros-comfortable'?5:parent?.itemId==='pros-rich'?10:parent?.itemId==='pros-lavish'?20:undefined;
+    if(amount!==undefined)costs.splice(0,costs.length,{resource:'wealth',amount,mode:'allocation'});
+  }
+  if(item.id==='pros-townhouse'){
+    const town=state.domains.find(d=>d.id===domainId)?.community;
+    const amount=town==='small-city'?10:town==='large-city'?15:5;
+    costs.splice(0,costs.length,{resource:'wealth',amount,mode:'allocation'});
+  }
   const errors = requirements(item, state, state.domains.find(d=>d.id===domainId), parentId,supportId,replaceId);
+  if(item.id==='pros-standard-of-living--entourage'&&!costs.length)errors.push('Selecione o Padrão de Vida Confortável, Rico ou Luxuoso ativo como posse principal.');
+  if(item.id==='pros-poor')errors.push('Custo de padrão de vida Pobre não confirmado pela fonte; requer adaptação explícita do Narrador.');
   const discounts: { source: string; resource: Resource; amount: number }[] = [];
   for (const cost of costs) {
     const discountEffects = activeHoldings(state).flatMap(h=>h.effects.filter(e=>e.kind==='discount'&&e.target===item.id&&e.resource===cost.resource).map(e=>({source:h.name, amount:e.amount??0, resource:cost.resource})));
@@ -193,6 +214,8 @@ export function purchase(state: HouseState, item: CatalogItem, args: {id:string;
     const existingIndex = next.holdings.findIndex(h => h.id === args.replaceId);
     if (existingIndex !== -1) {
       for (const h of next.holdings) if (h.supportId === args.replaceId) h.supportId = args.id;
+      const old=next.holdings[existingIndex]!;
+      if(old.status==='building')next.projects=next.projects.filter(p=>p.holdingId!==old.id);
       next.holdings.splice(existingIndex, 1);
     }
   }
