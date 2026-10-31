@@ -947,10 +947,12 @@ export type Database = {
           opened_at: string | null
           opened_by: string | null
           status: string
+          harptos_period: string | null
           updated_at: string
         }
         Insert: {
           closed?: boolean
+          harptos_period?: string | null
           closed_at?: string | null
           closed_by?: string | null
           number: number
@@ -967,6 +969,7 @@ export type Database = {
           opened_at?: string | null
           opened_by?: string | null
           status?: string
+          harptos_period?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1511,6 +1514,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_campaign_chronology: { Args: { p_year: number; p_month: number }; Returns: Json }
+      campaign_date_in_month: { Args: { p_date: string; p_year: number; p_month: number }; Returns: boolean }
       calendar_mail_events: {
         Args: { p_month: number; p_year: number }
         Returns: Json
