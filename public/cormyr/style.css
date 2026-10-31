@@ -257,3 +257,16 @@
 .law-cite{margin-top:12px;min-height:36px}
 @media(max-width:1024px){.global-search-open kbd{display:none}.workspace-bar{flex-wrap:wrap;gap:7px}.global-search-open{white-space:normal}#noble-detail{min-width:0;max-width:100%}#house-details{overflow-wrap:anywhere}}
 @media print{.sidebar,.workspace-bar,.nav,.region-view-toolbar,.pagination,.global-search-modal,.bard-player,.law-cite{display:none!important}.workspace,.view,.panel{width:100%!important;max-width:none!important;background:white!important;color:black!important;box-shadow:none!important}.view[hidden]{display:none!important}details{break-inside:avoid}.law-card,.house-card{break-inside:avoid}}
+
+
+/* Bardo da Corte – stays mounted while the reader navigates between views. */
+.bard-player{position:fixed;z-index:80;right:18px;bottom:18px;width:min(390px,calc(100vw - 28px));padding:14px;border:1px solid #c29f63;border-radius:12px;background:#21172a;color:#f8efd9;box-shadow:0 14px 50px #120819aa}
+.bard-player[hidden],.bard-lyrics[hidden]{display:none!important}
+.bard-head{display:flex;align-items:start;justify-content:space-between;gap:12px}.bard-head strong{display:block;margin-top:4px;font:18px/1.3 Georgia,serif}.bard-head small{color:#d7ba7d;letter-spacing:.08em}.bard-head button{color:#fbedd4;border-color:#9a856e}
+.bard-player-media{margin:12px 0;aspect-ratio:16/9;background:#09050d;border-radius:6px;overflow:hidden}
+.bard-player-media iframe{width:100%;height:100%;border:0;display:block}
+.bard-player>a{display:inline-flex;margin:5px 0;color:#f8df99}
+.bard-player .small{color:#e1d4e8;font-size:11px;margin:5px 0 0}
+.bard-lyrics,.music-lyrics-entry pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.6 Georgia,serif;max-height:180px;overflow-y:auto}
+.music-lyrics-entry{margin-top:10px;padding:15px}.music-lyrics-entry summary{cursor:pointer}
+@media (max-width:600px){.bard-player{left:10px;right:10px;bottom:8px;width:auto}.bard-player-media{max-height:210px}}
