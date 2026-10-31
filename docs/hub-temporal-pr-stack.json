@@ -162,6 +162,16 @@
       "pr": 158,
       "head": "fix/hub-temporal-lote-32-autorizacao-comandos-narrador",
       "base": "fix/hub-temporal-lote-31-identidade-escopo-atomico"
+    },
+    {
+      "pr": 159,
+      "head": "fix/hub-temporal-lote-33-cache-admin-revogado",
+      "base": "fix/hub-temporal-lote-32-autorizacao-comandos-narrador"
+    },
+    {
+      "pr": 160,
+      "head": "fix/hub-temporal-lote-34-bloqueio-global-revogacao",
+      "base": "fix/hub-temporal-lote-33-cache-admin-revogado"
     }
   ]
 }
