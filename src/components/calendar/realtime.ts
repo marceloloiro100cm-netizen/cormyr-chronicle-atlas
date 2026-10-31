@@ -30,6 +30,7 @@ function connect(qc:QueryClient):RealtimeEntry{
   for(const prefix of [
    ['campaign-calendar'],['calendar-schedule-events'],
    ['campaign-schedule-drafts'],['campaign-time-history'],
+   ['campaign-chronology'],['calendar-events'],
    ['noble-house'],['house-realm-dashboard'],
    ['house-character-ages'],['character-age-dashboard'],
    ['character-age-impact'],['character-year-transitions'],
