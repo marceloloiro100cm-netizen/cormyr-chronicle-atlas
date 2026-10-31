@@ -39,6 +39,11 @@ function setupRpc(){
     unknown:0,not_born:0,aged_nobles:0},characters:[],truncated:false,
   },error:null};
   if(name==='get_character_year_transitions')return {data:[],error:null};
+  if(name==='get_campaign_chronology')return {data:{
+   year:Number(args?.['p_year']??mock.current.year),
+   month:Number(args?.['p_month']??mock.current.month),
+   events:[],rounds:[],unassigned_round_count:0,
+  },error:null};
   if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
   if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
   if(name==='get_campaign_schedule_drafts'||name==='calendar_mail_events'||
@@ -102,6 +107,11 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
     unknown:0,not_born:0,aged_nobles:0},characters:[],truncated:false,
   },error:null};
   if(name==='get_character_year_transitions')return {data:[],error:null};
+  if(name==='get_campaign_chronology')return {data:{
+   year:Number(args?.['p_year']??mock.current.year),
+   month:Number(args?.['p_month']??mock.current.month),
+   events:[],rounds:[],unassigned_round_count:0,
+  },error:null};
   if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
    if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
    if(name==='get_campaign_schedule_drafts'||name==='get_campaign_time_history')return {data:[],error:null};
@@ -151,6 +161,11 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
     unknown:0,not_born:0,aged_nobles:0},characters:[],truncated:false,
   },error:null};
   if(name==='get_character_year_transitions')return {data:[],error:null};
+  if(name==='get_campaign_chronology')return {data:{
+   year:Number(args?.['p_year']??mock.current.year),
+   month:Number(args?.['p_month']??mock.current.month),
+   events:[],rounds:[],unassigned_round_count:0,
+  },error:null};
   if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
    if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
    if(name==='get_campaign_schedule_drafts'||name==='get_campaign_time_history')return {data:[],error:null};
@@ -198,6 +213,11 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
     unknown:0,not_born:0,aged_nobles:0},characters:[],truncated:false,
   },error:null};
   if(name==='get_character_year_transitions')return {data:[],error:null};
+  if(name==='get_campaign_chronology')return {data:{
+   year:Number(args?.['p_year']??mock.current.year),
+   month:Number(args?.['p_month']??mock.current.month),
+   events:[],rounds:[],unassigned_round_count:0,
+  },error:null};
   if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
    if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
    if(name==='get_campaign_schedule_drafts'||name==='get_campaign_time_history')return {data:[],error:null};
