@@ -15,6 +15,7 @@
  * positivas e logs de clones descartáveis.
  */
 import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {resolve,dirname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {loadMigrationCatalog,analyzeMigrationCatalog} from './temporal-migration-audit.mjs';
@@ -70,6 +71,10 @@ export function buildTemporalStatusTemplate(catalog,{sourceSha,environment}){
  };
 }
 
+function gitBlobHash(tag){
+ const file=readFileSync(join(root,'drizzle/migrations',tag+'.sql'));
+ return createHash('sha1').update('blob '+file.length+'\0').update(file).digest('hex');
+}
 function checkReplayObservations(temporal,manifest){
  const blockers=[];
  if(!manifest||manifest.format_version!==1||
@@ -84,7 +89,7 @@ function checkReplayObservations(temporal,manifest){
  }
  for(const row of temporal){
   const r=byTag.get(row.tag);
-  if(!r||r.file_sha256!==row.sha256||
+  if(!r||r.file_git_blob_sha!==gitBlobHash(row.tag)||
    typeof r.replay_succeeded_on_clone!=='boolean'||
    typeof r.schema_changed_in_clone!=='boolean'||
    typeof r.data_changed_in_clone!=='boolean'||
