@@ -17,6 +17,7 @@ import {calendarPublicationError} from '@/lib/calendar/publication';
 import {campaignTimeRpcArguments,matchesPublishedTime,validateCampaignTimePreview,type CampaignTimeMode,type CampaignTimePreview} from '@/lib/calendar/temporal-publication';
 import {temporalQueryKeysForInvalidation} from '@/lib/calendar/time-connections';
 import {requireFreshNarratorAccess} from '@/lib/auth/campaign-access-scope';
+import {isNarratorAccessRevoked,purgeRevokedNarratorCache} from '@/lib/auth/narrator-revocation';
 
 function calendarErrorMessage(error:unknown):string{
  if(error&&typeof error==='object'&&'message' in error)return String(error.message);
@@ -44,6 +45,7 @@ export function NarratorCalendar(){
  const [editId,setEditId]=useState<string|null>(null),[editVersion,setEditVersion]=useState<number|null>(null);
  const [eventDate,setEventDate]=useState(''),[title,setTitle]=useState(''),[description,setDescription]=useState('');
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[saveError,setSaveError]=useState(false);
+ const [accessRevoked,setAccessRevoked]=useState(false);
  const editedRef=useRef(false),baseVersionRef=useRef<number|null>(null);
  const eventDateEditedRef=useRef(false);
  const [needsVersionRefresh,setNeedsVersionRefresh]=useState(false);
@@ -119,7 +121,7 @@ export function NarratorCalendar(){
    await qc.invalidateQueries({queryKey:['campaign-schedule-drafts']});
    setMessage(deleted?'Exclusão marcada. Publique o calendário para aplicá-la a todos os jogadores.':'Evento salvo como rascunho. Publique para torná-lo visível nas fichas.');
    reset();
-  }catch(err){setMessage(calendarErrorMessage(err));}
+  }catch(err){if(isNarratorAccessRevoked(err)){purgeRevokedNarratorCache(qc);setAccessRevoked(true);}setMessage(calendarErrorMessage(err));}
   finally{setBusy(false);}
  }
  async function publish(){
@@ -172,6 +174,7 @@ export function NarratorCalendar(){
    setMessage('Calendário gravado e confirmado: '+formatDate(dateKey(saved!))+
     '. Versão '+saved!.version+'.'+(delayed?' Algumas consultas precisam ser atualizadas.':''));
   }catch(err){
+   if(isNarratorAccessRevoked(err)){purgeRevokedNarratorCache(qc);setAccessRevoked(true);}
    const errorMessage=calendarPublicationError(err);
    setNeedsVersionRefresh(/outra sessão|Calendário alterado|conflito/i.test(errorMessage));
    setSaveError(true);setMessage(errorMessage);
@@ -190,6 +193,7 @@ export function NarratorCalendar(){
   setMessage('Versão atualizada. Sua seleção foi preservada; confira a nova prévia antes de publicar.');
  }
  if(calendar.isPending||drafts.isPending)return <p role="status">Carregando calendário do Narrador…</p>;
+ if(accessRevoked)return <section role="alert">Permissão de Narrador revogada. Os dados privados foram ocultados. Atualize suas autorizações para continuar.</section>;
  if(calendar.error||drafts.error||!calendar.data)return <p role="alert">Não foi possível carregar o calendário. {calendar.error?.message??drafts.error?.message} <Button type="button" onClick={()=>{calendar.refetch();drafts.refetch();}}>Tentar novamente</Button></p>;
  const clock=campaignTimeView(calendar.data);
  const isStale=expectedVersion!==null&&expectedVersion!==calendar.data.version;
