@@ -1,6 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {createUnit,unitStats,balances,UNIT_TYPES} from '@/lib/house/engine';
 import {equipUnit} from '@/lib/house/military';
+import {buySiege} from '@/lib/house/siege';
 import {quoteMilitaryUnit,quoteMilitarySiege,militaryConstructionDuration,unitMilitaryBonuses} from '@/lib/house/military-bonuses';
 import {newHouseState,SKILLS,type Holding,type Unit} from '@/lib/house/types';
 
@@ -58,6 +59,17 @@ describe('automação de descontos na fonte da compra',()=>{
   master.militaryTypeId='archers';s.holdings=[master];
   expect(quoteMilitaryUnit(s,['archers'],'trained').discounts[0]?.amount).toBe(1);
   expect(quoteMilitaryUnit(s,['infantry'],'trained').discounts).toHaveLength(0);
+ });
+ it('registra duas máquinas de cerco por um ponto de Riqueza sem ultrapassar o limite de operadores',()=>{
+  const s=begin();s.holdings=[holding('pros-engineer--siege-engineer')];
+  s.units=[equipUnit(recruit('engineers'))];
+  const after=buySiege(s,{id:'maquina-1',itemId:'small-catapult',engineerId:'u-engineers',carrierId:'',domainId:'d',name:'Escorpião isolado'});
+  const machines=after.holdings.filter(h=>h.itemId==='small-catapult');
+  expect(machines).toHaveLength(2);
+  expect(machines[0]?.costs[0]?.amount).toBe(1);
+  expect(machines[1]?.costs[0]?.amount).toBe(0);
+  expect(after.permanent.wealth).toBe(-1);
+  expect(s.holdings).toHaveLength(1);
  });
  it('não inventa descontos de cerco nem aplica descontos de prazo a personagens',()=>{
   const s=begin();
