@@ -41,6 +41,7 @@ function setupRpc(){
     aligned_or_historical:0,project_candidates:0,backdated:false,houses:[]},error:null};
   }
   if(name==='get_temporal_consumer_dashboard')return {data:{consumers:[],deliveries:[],pending_total:0},error:null};
+  if(name==='get_temporal_release_preflight')return {data:{calendar_version:mock.current.version,official_date:dateKey(mock.current),official_month:mock.current.year*12+mock.current.month,house_sheets:0,active_houses:0,draft_houses:0,invalid_houses:0,lagging_houses:0,ahead_houses:0,operations:0,deliveries:0,manual_reviews_pending:0,month_processing_preflight_ok:true,requires_production_backup:true,requires_homologation:true,automatic_economic_effects_enabled:false},error:null};
   if(name==='get_character_age_dashboard')return {data:{
    current_year:args?.['p_year'],target_year:args?.['p_target_year'],
    totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
@@ -117,6 +118,7 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
     aligned_or_historical:0,project_candidates:0,backdated:false,houses:[]},error:null};
   }
   if(name==='get_temporal_consumer_dashboard')return {data:{consumers:[],deliveries:[],pending_total:0},error:null};
+  if(name==='get_temporal_release_preflight')return {data:{calendar_version:mock.current.version,official_date:dateKey(mock.current),official_month:mock.current.year*12+mock.current.month,house_sheets:0,active_houses:0,draft_houses:0,invalid_houses:0,lagging_houses:0,ahead_houses:0,operations:0,deliveries:0,manual_reviews_pending:0,month_processing_preflight_ok:true,requires_production_backup:true,requires_homologation:true,automatic_economic_effects_enabled:false},error:null};
   if(name==='get_character_age_dashboard')return {data:{
    current_year:args?.['p_year'],target_year:args?.['p_target_year'],
    totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
@@ -179,6 +181,7 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
     aligned_or_historical:0,project_candidates:0,backdated:false,houses:[]},error:null};
   }
   if(name==='get_temporal_consumer_dashboard')return {data:{consumers:[],deliveries:[],pending_total:0},error:null};
+  if(name==='get_temporal_release_preflight')return {data:{calendar_version:mock.current.version,official_date:dateKey(mock.current),official_month:mock.current.year*12+mock.current.month,house_sheets:0,active_houses:0,draft_houses:0,invalid_houses:0,lagging_houses:0,ahead_houses:0,operations:0,deliveries:0,manual_reviews_pending:0,month_processing_preflight_ok:true,requires_production_backup:true,requires_homologation:true,automatic_economic_effects_enabled:false},error:null};
   if(name==='get_character_age_dashboard')return {data:{
    current_year:args?.['p_year'],target_year:args?.['p_target_year'],
    totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
@@ -239,6 +242,7 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
     aligned_or_historical:0,project_candidates:0,backdated:false,houses:[]},error:null};
   }
   if(name==='get_temporal_consumer_dashboard')return {data:{consumers:[],deliveries:[],pending_total:0},error:null};
+  if(name==='get_temporal_release_preflight')return {data:{calendar_version:mock.current.version,official_date:dateKey(mock.current),official_month:mock.current.year*12+mock.current.month,house_sheets:0,active_houses:0,draft_houses:0,invalid_houses:0,lagging_houses:0,ahead_houses:0,operations:0,deliveries:0,manual_reviews_pending:0,month_processing_preflight_ok:true,requires_production_backup:true,requires_homologation:true,automatic_economic_effects_enabled:false},error:null};
   if(name==='get_character_age_dashboard')return {data:{
    current_year:args?.['p_year'],target_year:args?.['p_target_year'],
    totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
