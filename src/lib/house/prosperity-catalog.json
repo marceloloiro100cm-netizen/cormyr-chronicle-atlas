@@ -32,7 +32,9 @@
       }
     ],
     "duration": {
-      "months": 0
+      "months": 6,
+      "dice": 1,
+      "sides": 6
     },
     "source": "Prosperidade · Out of Strife, Prosperity",
     "section": "Estate Wealth Holdings > Animal Husbandry",
@@ -48,7 +50,7 @@
       ],
       "uncertainty": "Prazo e eventual restrição sazonal desapareceram do cabeçalho; não atribuídos a partir da coluna vizinha."
     },
-    "pending": "Prazo e eventual restrição sazonal desapareceram do cabeçalho; não atribuídos a partir da coluna vizinha. Prazo não recuperável na fonte. Requisitos adicionais precisam de validação narrativa: Nenhuma comunidade maior que Hamlet."
+    "pending": "Prazo e eventual restrição sazonal desapareceram do cabeçalho; não atribuídos a partir da coluna vizinha. Prazo reconstruído conforme auditoria do suplemento; conferir exemplares impressos. Requisitos adicionais precisam de validação narrativa: Nenhuma comunidade maior que Hamlet."
   },
   {
     "id": "pros-animal-husbandry--shambles",
@@ -4268,12 +4270,17 @@
     "original": "Entourage",
     "category": "improvement",
     "description": "Mantém o padrão de vida em viagem. Viagem considerada Heavy Burden. Riqueza investida é liberada ao regressar.",
-    "costs": [],
+    "costs": [
+      {
+        "resource": "wealth",
+        "amount": 5,
+        "mode": "allocation"
+      }
+    ],
     "requirements": [
       {
         "kind": "parent",
         "values": [
-          "pros-poor",
           "pros-comfortable",
           "pros-rich",
           "pros-lavish"
@@ -4324,7 +4331,13 @@
     "original": "Townhouse",
     "category": "lifestyle",
     "description": "Alojamento próprio relativamente seguro fora do domínio; sem bônus mecânico normal.",
-    "costs": [],
+    "costs": [
+      {
+        "resource": "wealth",
+        "amount": 5,
+        "mode": "allocation"
+      }
+    ],
     "requirements": [
       {
         "kind": "community",
@@ -5545,7 +5558,9 @@
       }
     ],
     "duration": {
-      "months": 0
+      "months": 0,
+      "dice": 2,
+      "sides": 6
     },
     "source": "Prosperidade · Out of Strife, Prosperity",
     "section": "Personage Wealth Holdings > Master of Arms",
@@ -5561,7 +5576,7 @@
       ],
       "uncertainty": "Prazo perdido no cabeçalho."
     },
-    "pending": "Prazo perdido no cabeçalho. Prazo não recuperável na fonte. Requisitos adicionais precisam de validação narrativa: Poder 31+, conforme resumo."
+    "pending": "Prazo perdido no cabeçalho. Prazo reconstruído conforme auditoria do suplemento; conferir exemplares impressos. Requisitos adicionais precisam de validação narrativa: Poder 31+, conforme resumo."
   },
   {
     "id": "pros-master-of-arms--field-master",
@@ -6177,7 +6192,7 @@
     "name": "Polícia Secreta",
     "original": "Secret Police",
     "category": "personage",
-    "description": "Investimento cuja descrição precisa ser conciliada.",
+    "description": "G Lei +1 e mitigação de perdas de Lei +2. Perdas de Influência e População por Sorte aumentam em 1.",
     "costs": [
       {
         "resource": "power",
@@ -6201,9 +6216,28 @@
         ]
       }
     ],
-    "effects": [],
+    "effects": [
+      {
+        "kind": "gain",
+        "resource": "law",
+        "amount": 1,
+        "description": "G Lei +1"
+      },
+      {
+        "kind": "mitigation",
+        "resource": "law",
+        "amount": 2,
+        "description": "M Lei +2"
+      },
+      {
+        "kind": "action",
+        "description": "Perdas de Influência e População por Sorte da Casa aumentam em 1; resultado resolvido pelo Narrador."
+      }
+    ],
     "duration": {
-      "months": 0
+      "months": 12,
+      "dice": 2,
+      "sides": 6
     },
     "source": "Prosperidade · Out of Strife, Prosperity",
     "section": "Personage Wealth Holdings > Secret Police",
@@ -6216,7 +6250,7 @@
       "effects": [],
       "uncertainty": "Prazo e regras básicas não recuperáveis no OCR. O prazo 12+2d6 entre cabeçalhos não foi atribuído por suposição."
     },
-    "pending": "Prazo e regras básicas não recuperáveis no OCR. O prazo 12+2d6 entre cabeçalhos não foi atribuído por suposição. Prazo não recuperável na fonte. Requisitos adicionais precisam de validação narrativa: Small Town ou comunidade maior."
+    "pending": "Prazo e regras básicas não recuperáveis no OCR. O prazo 12+2d6 entre cabeçalhos não foi atribuído por suposição. Prazo reconstruído conforme auditoria do suplemento; conferir exemplares impressos. Requisitos adicionais precisam de validação narrativa: Small Town ou comunidade maior."
   },
   {
     "id": "pros-secret-police--special-detachment",
@@ -6350,7 +6384,9 @@
       }
     ],
     "duration": {
-      "months": 0
+      "months": 12,
+      "dice": 2,
+      "sides": 6
     },
     "source": "Prosperidade · Out of Strife, Prosperity",
     "section": "Personage Wealth Holdings > Spy Network",
@@ -6367,7 +6403,7 @@
       ],
       "uncertainty": "Cabeçalho e início das regras perdidos: prazo, número inicial de células, distribuição, frequência e responsável pelo teste de descoberta não recuperáveis. A frase seguinte diz que dois graus de sucesso revelam o mestre da célula, apesar de a anterior associar fracasso à perda; não harmonizado."
     },
-    "pending": "Cabeçalho e início das regras perdidos: prazo, número inicial de células, distribuição, frequência e responsável pelo teste de descoberta não recuperáveis. A frase seguinte diz que dois graus de sucesso revelam o mestre da célula, apesar de a anterior associar fracasso à perda; não harmonizado. Prazo não recuperável na fonte. Requisitos adicionais precisam de validação narrativa: Nenhum, conforme resumo."
+    "pending": "Cabeçalho e início das regras perdidos: prazo, número inicial de células, distribuição, frequência e responsável pelo teste de descoberta não recuperáveis. A frase seguinte diz que dois graus de sucesso revelam o mestre da célula, apesar de a anterior associar fracasso à perda; não harmonizado. Prazo reconstruído conforme auditoria do suplemento; conferir exemplares impressos. Requisitos adicionais precisam de validação narrativa: Nenhum, conforme resumo."
   },
   {
     "id": "pros-spy-network--expanded-network",
@@ -8461,7 +8497,13 @@
     "original": "Speakers & Listeners",
     "category": "improvement",
     "description": "Connections em uma área, mais uma por 2 Riqueza adicionais.",
-    "costs": [],
+    "costs": [
+      {
+        "resource": "wealth",
+        "amount": 3,
+        "mode": "allocation"
+      }
+    ],
     "requirements": [
       {
         "kind": "parent",
