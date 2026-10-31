@@ -170,9 +170,22 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     next.identity={...state.identity,crestPath:path};
     rule='Cormyr · importação de imagem de brasão (privada, vinculada à ficha e auditada)';
   }
-  if(data.action==='domain') {const domain=z.object({id:z.string().uuid(),name:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args);next.domains.push({...domain,terrain:'',features:[]});}
+  if(data.action==='domain') {const domain=z.object({id:z.string().uuid(),name:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args);if(state.domains.some(d=>d.id===domain.id))throw new Error('Domínio já cadastrado.');next.domains.push({...domain,terrain:'',features:[]});}
+  if(data.action==='domain_edit'){
+    const input=z.object({id:z.string(),name:z.string().trim().min(1).max(160),notes:z.string().max(4000)}).parse(args);
+    const d=next.domains.find(d=>d.id===input.id);if(!d)throw new Error('Domínio não encontrado.');
+    d.name=input.name;d.notes=input.notes;rule='Correção de nome e notas do domínio, sem alterar posses';
+  }
+  if(data.action==='domain_delete'){
+    const {id}=z.object({id:z.string()}).parse(args);
+    if(state.phase!=='draft')throw new Error('A exclusão de domínio só é permitida na criação; em campanha exige conciliação auditada.');
+    const d=state.domains.find(d=>d.id===id);if(!d)throw new Error('Domínio não encontrado.');
+    if(state.holdings.some(h=>h.domainId===id)||state.units.some(u=>u.domainId===id))
+      throw new Error('O domínio possui bens ou tropas; não pode ser excluído.');
+    next.domains=next.domains.filter(d=>d.id!==id);rule='Exclusão de domínio vazio na criação';
+  }
   if(data.action==='purchase') {
-    const purchaseArgs=z.object({id:z.string().uuid(),itemId:z.string(),domainId:z.string(),name:z.string().max(160),parentId:z.string().optional(),supportId:z.string().optional()}).parse(args);
+    const purchaseArgs=z.object({id:z.string().uuid(),itemId:z.string(),domainId:z.string(),name:z.string().max(160),parentId:z.string().optional(),supportId:z.string().optional(),replaceId:z.string().optional()}).parse(args);
     const overrides=await db.from('noble_house_rule_overrides').select('definition');if(overrides.error)throw new Error('Regras indisponíveis.');
     const item=overrides.data.map(r=>catalogSchema.parse(r.definition)).find(i=>i.id===purchaseArgs.itemId)??CORE_CATALOG.find(i=>i.id===purchaseArgs.itemId);
     if(!item)throw new Error('Posse não encontrada.');
