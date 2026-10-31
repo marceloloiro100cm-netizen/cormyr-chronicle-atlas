@@ -1,8 +1,8 @@
 import {describe,it,expect} from 'vitest';
-import {createUnit,unitStats,balances,TRAINING,UNIT_TYPES} from '@/lib/house/engine';
+import {createUnit,unitStats,balances,UNIT_TYPES} from '@/lib/house/engine';
 import {equipUnit} from '@/lib/house/military';
 import {quoteMilitaryUnit,quoteMilitarySiege,militaryConstructionDuration,unitMilitaryBonuses} from '@/lib/house/military-bonuses';
-import {newHouseState,SKILLS,type HouseState,type Holding,type Unit} from '@/lib/house/types';
+import {newHouseState,SKILLS,type Holding,type Unit} from '@/lib/house/types';
 
 const begin=()=>{const s=newHouseState('isolated-military');s.base.power=100;s.base.wealth=100;s.base.lands=10;
  s.domains=[{id:'d',name:'Vale',terrain:'hills',features:['river'],notes:''}];return s;};
@@ -61,7 +61,7 @@ describe('automação de descontos na fonte da compra',()=>{
  });
  it('não inventa descontos de cerco nem aplica descontos de prazo a personagens',()=>{
   const s=begin();
-  expect(quoteMilitarySiege(s,'wealth',2).cost).toBe(2);
+  expect(quoteMilitarySiege(s,'wealth',2,'small-catapult').cost).toBe(2);
   s.holdings=[holding('pros-engineer--siege-engineer'),holding('pros-engineer'),holding('pros-stonemason')];
   expect(quoteMilitarySiege(s,'wealth',2).cost).toBe(1);
   expect(militaryConstructionDuration(s,'castle','fortification',100).months).toBe(70);
