@@ -231,3 +231,29 @@
 .public-language-button svg{display:block;border-radius:2px;overflow:hidden;flex:none}
 @media(max-width:600px){.workspace-bar-right{gap:8px}.workspace-bar-right>span{display:none}.public-language-switcher{gap:5px}.public-language-button{width:28px;height:27px}}
 @media(prefers-reduced-motion:reduce){.public-language-button{transition:none}}
+
+
+/* Frontend audit: accessible global search and light parchment reading */
+.global-search-open kbd{font:11px var(--sans,Arial);border:1px solid currentColor;border-radius:3px;padding:2px 5px;margin-left:5px;opacity:.75}
+.global-search-modal{border:1px solid #9e8253;border-radius:12px;width:min(680px,calc(100vw - 24px));max-height:min(80vh,800px);padding:24px;background:#fffaf1;color:#2f2535;box-shadow:0 24px 80px #100a1a80}
+.global-search-modal::backdrop{background:#130b1fbb}
+.global-search-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:16px}
+.global-search-head h2{margin:0;font-family:Georgia,serif}
+.global-search-modal label{display:block;font-weight:600;margin-bottom:7px}
+.global-search-modal input{width:100%;min-height:46px;font-size:17px;padding:10px;background:white;color:#231b29;border:2px solid #9d829f;border-radius:6px}
+.global-search-results{margin-top:14px;max-height:50vh;overflow-y:auto;display:grid;gap:6px}
+.global-search-status{margin:0;padding:6px;color:#564861;font-size:13px}
+.global-search-result{background:#fffcf6;text-align:left;color:#271b2d;padding:11px 14px;border:1px solid #e3d7c4;border-radius:6px;display:grid;gap:3px;cursor:pointer}
+.global-search-result:hover,.global-search-result:focus-visible{border-color:#8b642f;background:#f8ebd0;outline-offset:2px}
+.global-search-kind{color:#654886;text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:.08em}
+.global-search-result strong{font-size:17px}.global-search-result small{color:#655b6d}
+.cross-region-results{margin:18px 0;padding:16px;border:1px solid #b6a2c0;border-radius:7px;background:#fbf9fc}
+.cross-region-results h4{margin:0 0 9px}.cross-region-results button{display:block;width:100%;text-align:left;margin:5px 0;padding:9px;border:1px solid #d5cbd9;border-radius:5px;background:white}
+.house-parent-link{border:0;background:transparent;color:#5a3479;text-decoration:underline;text-underline-offset:2px;cursor:pointer;padding:0;text-align:left;font:inherit}
+.house-parent-link:focus-visible{outline:2px solid #5a3479}
+#house-history-back:not([hidden]){display:block;margin-bottom:12px}
+.parchment-reading #view-reino .panel,.parchment-reading #view-constituicao .panel,.parchment-reading #view-constituicao .law-card,.parchment-reading .region-full-text,.parchment-reading .law-full{background:#fff7e6!important;color:#302318!important}
+.parchment-reading #view-constituicao p,.parchment-reading #view-reino .region-description{line-height:1.85}
+.law-cite{margin-top:12px;min-height:36px}
+@media(max-width:1024px){.global-search-open kbd{display:none}.workspace-bar{flex-wrap:wrap;gap:7px}.global-search-open{white-space:normal}#noble-detail{min-width:0;max-width:100%}#house-details{overflow-wrap:anywhere}}
+@media print{.sidebar,.workspace-bar,.nav,.region-view-toolbar,.pagination,.global-search-modal,.bard-player,.law-cite{display:none!important}.workspace,.view,.panel{width:100%!important;max-width:none!important;background:white!important;color:black!important;box-shadow:none!important}.view[hidden]{display:none!important}details{break-inside:avoid}.law-card,.house-card{break-inside:avoid}}
