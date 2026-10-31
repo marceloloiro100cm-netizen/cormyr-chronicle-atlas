@@ -222,7 +222,7 @@ export function purchase(state:HouseState,item:CatalogItem,args:{
   next.holdings=next.holdings.filter(h=>h.id!==args.replaceId);
  }
  next.holdings.push({id:args.id,itemId:item.id,name:args.name||item.name,domainId:args.domainId,
- parentId:args.parentId,supportId:args.supportId,replacesId:holdOld?args.replaceId:undefined,
+ parentId:args.parentId,supportId:args.supportId,replacesId:holdOld?args.replaceId:undefined,upgradeFinalCosts:holdOld?q.costs:undefined,
  coexists:item.coexists,costs:currentCosts,originalCosts:structuredClone(item.costs),discounts:q.discounts,
  category:item.category,effects:structuredClone(item.effects),ruleVersion:item.version,source:item.source+' · '+item.section,
  status:building?'building':'active',allocatedCosts});
@@ -310,7 +310,8 @@ export function advance(state:HouseState,target:number):HouseState { if(!Number.
    if(!old||old.status!=='active'){p.status='cancelled';h.status='cancelled';continue;}
    const oldAlloc=holdingAllocation(old);
    for(const r of RESOURCE_KEYS)h.allocatedCosts={...h.allocatedCosts,[r]:(h.allocatedCosts?.[r]??0)+oldAlloc[r]};
-   h.costs=h.originalCosts??h.costs;
+   h.costs=h.upgradeFinalCosts??h.costs;
+   delete h.upgradeFinalCosts;
    for(const dependent of next.holdings)if(dependent.supportId===old.id)dependent.supportId=h.id;
    const domain=next.domains.find(d=>d.id===h.domainId);
    if(domain&&h.category==='community')domain.community=h.itemId;
