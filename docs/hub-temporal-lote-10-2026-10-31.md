@@ -37,7 +37,7 @@ Preparar o calendário oficial como fonte única de acontecimentos temporais par
 | vassalage | mudança de mês | revisão manual | examinar obrigações dependentes de tempo |
 | seasons | mudança de estação | revisão manual | examinar regras sazonais aprovadas caso a caso |
 
-Um salto que muda **ano** sem mudar a estação emite uma notificação anual e mensal, mas nenhuma pendência de estação. Uma publicação sem mudança da data notifica apenas os consumidores \`always\`. Um retrocesso pode gerar novas pendências de revisão, porém **não desfaz operações nem reexecuta regras históricas**.
+Na versão do Lote 11, as transições de estação são contadas pelas **fronteiras efetivamente atravessadas**. Um salto de doze meses do inverno para outro inverno atravessa quatro estações e gera uma pendência de revisão, mesmo com a estação inicial e final iguais. Uma publicação sem mudança da data notifica apenas os consumidores \`always\`. Um retrocesso pode gerar novas pendências de revisão, porém **não desfaz operações nem reexecuta regras históricas**.
 
 ## Garantias
 
