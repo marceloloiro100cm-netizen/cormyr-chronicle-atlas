@@ -20,10 +20,10 @@
     const id=parsed.pathname.slice(1);
     if(/^[A-Za-z0-9_-]{11}$/.test(id))return 'https://www.youtube-nocookie.com/embed/'+id;
    }
-   if(host==='drive.google.com'){
-    const m=parsed.pathname.match(/^\/file\/d\/([A-Za-z0-9_-]{15,})\/view\/?$/);
-    if(m)return 'https://drive.google.com/file/d/'+m[1]+'/preview';
-   }
+   // Google Drive /preview is not a reliable embedded video player:
+   // MP4, MP3 and MPEG files may fail due to cookies, codecs or viewer restrictions.
+   // Direct Drive links must open in a fresh tab instead of being intercepted.
+   if(host==='drive.google.com')return null;
   }catch{/* invalid URL never becomes an iframe */}
   return null;
  }
@@ -33,7 +33,12 @@
   const link=event.target.closest('a.music-button[href]');
   if(!link)return;
   const url=link.href,embed=media(url);
-  if(!embed)return;
+  if(!embed){
+   // For Drive (and unsupported media), preserve target="_blank" and the original source URL.
+   // Stop any previous embedded video so two unrelated tracks never play simultaneously.
+   if(new URL(url).hostname==='drive.google.com')stop();
+   return;
+  }
   event.preventDefault();
   stop();
   const track=(window.CORMYR_DATA?.soundtrack||[]).find(t=>t.url===url);
