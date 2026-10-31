@@ -80,30 +80,50 @@ export function changeUnitTrainingXp(unit:Unit,target:keyof typeof TRAINING,mont
  unit.xpEvents??=[];unit.xpEvents.push({id:crypto.randomUUID(),month,delta,reason,kind:'training'});
  return delta;
 }
-export const MILITARY_HOLDINGS=[
- // Fortificações que aumentam diretamente a Defesa de unidades estacionadas.
- 'tower','hall','small-castle','castle','superior-castle',
- // Posses de suporte e melhorias militares; incluir a posse principal permite comprá-la pelos próprios cards.
- 'pros-charcoal','pros-charcoal--tar-works',
- 'pros-dog-kennels','pros-dog-kennels--scouting-hounds','pros-dog-kennels--war-hounds','pros-dog-kennels--guard-dogs',
- 'pros-fur-trade','pros-fur-trade--trappers',
- 'pros-horse-husbandry','pros-horse-husbandry--war-horse-herds',
- 'pros-timber','pros-timber--ship-yards',
- 'pros-annual-festivals','pros-seasonal-festivals','pros-monthly-festivals','pros-festivals--martial-festivals',
- 'pros-bowyer-fletcher-or-weaponsmith','pros-stonemason','pros-shipwright',
- 'pros-bailiffs','pros-bailiffs--military-training','pros-bailiffs--investigative-training',
- 'pros-engineer','pros-engineer--siege-engineer','pros-engineer--engineer-commander',
- 'pros-master-of-arms','pros-master-of-arms--field-master','pros-master-of-arms--prepared-for-siege',
- 'pros-magistrate',
- 'pros-abbey','pros-abbey--warrior-brotherhood',
- 'pros-gambling-dens','pros-gambling-dens--bloodsports',
- 'pros-gaol','pros-gaol--jailors',
- 'pros-military-academy','pros-military-academy--broad-training','pros-military-academy--core-training',
- 'pros-port','pros-port--drydocks',
- 'pros-marketplace','pros-slave-market','pros-slave-market--soldier-slaves',
- 'pros-street-gangs','pros-street-gangs--thugs-at-the-ready',
- 'pros-trading-inn',
-];
+/**
+ * Apenas investimentos com efeito militar PRÓPRIO comprovado no catálogo:
+ * Defesa/combate/cerco, habilidades das tropas ou custos/mobilização de unidades.
+ * A posse civil exigida como pré-requisito continua acessível em Patrimônio,
+ * mas NÃO passa a ser militar apenas por desbloquear uma melhoria.
+ * Ver docs/military-assets-audit-2026-10-31.md para a matriz de inclusão/exclusão.
+ */
+export const MILITARY_HOLDING_BENEFITS:ReadOnly<Record<string,string>>={
+ 'tower':"+3 de Defesa para unidades estacionadas.",
+ 'hall':"+4 de Defesa para unidades estacionadas.",
+ 'small-castle':"+6 de Defesa para unidades estacionadas.",
+ 'castle':"+8 de Defesa para unidades estacionadas.",
+ 'superior-castle':"+12 de Defesa para unidades estacionadas.",
+ 'pros-charcoal--tar-works':"Reduz em 1 o custo de unidades navais Ships.",
+ 'pros-dog-kennels--scouting-hounds':"Batedores: +2B em Sobrevivência (Rastreamento) e +1 de dano corpo a corpo.",
+ 'pros-dog-kennels--war-hounds':"Unidades elegíveis equipadas com cães: +1B no ataque corpo a corpo e +2 de dano.",
+ 'pros-fur-trade--trappers':"Reduz em 2 o custo de unidades Guerrilheiras.",
+ 'pros-horse-husbandry--war-horse-herds':"Reduz em 2 o custo de Cavalaria.",
+ 'pros-timber--ship-yards':"Reduz em 2 o custo de unidades navais Ships.",
+ 'pros-festivals--martial-festivals':"Plebeus recrutados começam com −3 de Disciplina.",
+ 'pros-bowyer-fletcher-or-weaponsmith':"Unidades recebem +1 de dano em Pontaria (Arqueiro) ou Luta (Armeiro).",
+ 'pros-stonemason':"+1 em Guerra ligado às comunidades e fortificações da Casa; reduz o prazo das fortificações.",
+ 'pros-shipwright':"Reduz em 2 o custo de Navios de Guerra.",
+ 'pros-bailiffs--military-training':"Oficiais atuam como Guarnição Treinada na área designada, consumindo 1 Lei.",
+ 'pros-engineer':"+1 de Defesa para unidades em fortificações da Casa; reduz prazos de construções militares.",
+ 'pros-engineer--siege-engineer':"Reduz em 1 Riqueza o custo de máquinas e torres de cerco.",
+ 'pros-engineer--engineer-commander':"Subcomandante de Engenheiros com Guerra 4; custo de Engenheiros −1.",
+ 'pros-master-of-arms':"Primeira melhoria de 1 Riqueza gratuita para cada unidade e +1 na rolagem de sobreviventes.",
+ 'pros-master-of-arms--field-master':"Subcomandante com Guerra 4 e −1 no custo de seu tipo de unidade especializado.",
+ 'pros-master-of-arms--prepared-for-siege':"Unidades estacionadas recebem +1 de Absorção de Armadura e suprimentos para seis meses de cerco.",
+ 'pros-abbey--warrior-brotherhood':"Reduz em 1 o custo de Cruzados; a Abadia concede +2 de Defesa a uma unidade.",
+ 'pros-gambling-dens--bloodsports':"Reduz em 2 Poder o custo de Plebeus recrutados.",
+ 'pros-gaol':"Reduz em 2 o custo de Criminosos ou Guarnição; em guerra funciona como Salão.",
+ 'pros-gaol--jailors':"Carcereiros atuam como Guarnição Treinada, com Percepção e Astúcia +1.",
+ 'pros-military-academy':"Reduz em 1 a perda de habilidades das unidades causada por dano de Guerra.",
+ 'pros-military-academy--broad-training':"Uma ação da Casa acrescenta uma quarta habilidade disponível a uma unidade.",
+ 'pros-military-academy--core-training':"Todas as unidades recebem +1 na habilidade escolhida conforme decisão do Narrador.",
+ 'pros-port--drydocks':"Navios de Guerra ignoram até 2 pontos de penalidade em Unidades e Baixas.",
+ 'pros-street-gangs':"Reduz em 2 o custo de Plebeus recrutados.",
+ 'pros-street-gangs--thugs-at-the-ready':"Mobiliza uma unidade de Criminosos Treinados em 1d6 horas para conflitos de grande escala.",
+ 'pros-trading-inn':"Na defesa, funciona como fortificação e concede +2 de Defesa a uma unidade.",
+};
+export const MILITARY_HOLDINGS=Object.keys(MILITARY_HOLDING_BENEFITS);
+
 export function renameMilitaryHolding(state:HouseState,input:{holdingId:string;name:string}):HouseState{
  const next=structuredClone(state),h=next.holdings.find(x=>x.id===input.holdingId&&x.status==='active');
  if(!h||!MILITARY_HOLDINGS.includes(h.itemId))throw new Error('Estrutura militar indisponível.');
