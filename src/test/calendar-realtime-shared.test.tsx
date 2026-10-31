@@ -2,6 +2,7 @@ import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {act,cleanup,render,screen,waitFor} from '@testing-library/react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {useCampaignCalendarRealtime} from '@/components/calendar/realtime';
+import {TEMPORAL_QUERY_CONNECTIONS,temporalQueryKeysForInvalidation} from '@/lib/calendar/time-connections';
 
 const mock=vi.hoisted(()=>({
  channel:vi.fn(),on:vi.fn(),subscribe:vi.fn(),removeChannel:vi.fn(),
@@ -49,4 +50,27 @@ it('o último consumidor desmontado libera o canal sem afetar outros QueryClient
  expect(mock.channel).toHaveBeenCalledTimes(2);
  view.unmount();
  expect(mock.removeChannel).toHaveBeenCalledTimes(2);
+});
+
+it('revalida missivas, nobres, fichas, exército e calendário pela mesma assinatura',async()=>{
+ const qc=new QueryClient({defaultOptions:{queries:{retry:false}}});
+ const spy=vi.spyOn(qc,'invalidateQueries');
+ const view=render(<QueryClientProvider client={qc}><SyncStatus id="hub"/></QueryClientProvider>);
+ const callback=mock.on.mock.calls[0]?.[2] as (()=>void)|undefined;
+ expect(callback).toBeTypeOf('function');
+ await act(async()=>{callback!();});
+ const seen=spy.mock.calls.map(([argument])=>
+  JSON.stringify(argument.queryKey));
+ const expected=temporalQueryKeysForInvalidation().map(key=>JSON.stringify(key));
+ expect(seen).toEqual(expected);
+ for(const name of ['campaign-calendar','calendar-schedule-events',
+  'campaign-chronology','calendar-events','mail-page','mail-insights',
+  'mail-overview-grouped','reply-delivery','noble-house',
+  'house-realm-dashboard','house-time-impact','character-age-dashboard',
+  'temporal-consumer-dashboard','temporal-release-preflight'])
+  expect(seen).toContain(JSON.stringify([name]));
+ expect(new Set(TEMPORAL_QUERY_CONNECTIONS.map(x=>x.prefix)).size)
+  .toBe(TEMPORAL_QUERY_CONNECTIONS.length);
+ expect(mock.channel).toHaveBeenCalledTimes(1);
+ view.unmount();
 });
