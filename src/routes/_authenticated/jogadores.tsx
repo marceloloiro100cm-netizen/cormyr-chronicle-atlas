@@ -20,6 +20,7 @@ import { refreshPublicArchive } from '@/lib/campaign.functions';
 import { unreadReceivedCount, type LetterRow } from '@/lib/letters';
 import {clearRepresentationQueryCache} from '@/lib/auth/session-boundary';
 import {CAMPAIGN_ACCESS_SCOPE_KEY,CAMPAIGN_ACCESS_SCOPE_POLL_MS,loadCampaignAccessScope,clearRevokedAccessCache} from '@/lib/auth/campaign-access-scope';
+import {NARRATOR_ACCESS_REVOKED_KEY,canReleaseNarratorLock,type NarratorRevocationMarker} from '@/lib/auth/narrator-revocation';
 import { loadPanel } from '@/components/players/panel-data';
 import { RecordList, RecordEditor, RecordForm } from '@/components/players/records';
 import { FichaTab } from '@/components/players/ficha-tab';
@@ -44,6 +45,23 @@ function Players(){
     retry:false,
     staleTime:0,
   });
+  // An administrative RPC denial locks the ENTIRE workspace immediately, not
+  // just the calendar tab. Never trust the old role while the new RPC is pending.
+  const revoked=useQuery({
+    queryKey:NARRATOR_ACCESS_REVOKED_KEY,
+    queryFn:async()=>null as NarratorRevocationMarker|null,
+    enabled:false,
+    initialData:null as NarratorRevocationMarker|null,
+  });
+  useEffect(()=>{
+    if(!revoked.data)return;
+    if(canReleaseNarratorLock(revoked.data,{
+      dataUpdatedAt:scope.dataUpdatedAt,
+      hasData:Boolean(scope.data),
+      isError:scope.isError,
+      isFetching:scope.isFetching,
+    }))qc.setQueryData(NARRATOR_ACCESS_REVOKED_KEY,null);
+  },[qc,revoked.data?.revokedAt,scope.dataUpdatedAt,scope.data?.fingerprint,scope.isError,scope.isFetching]);
   const previous=useRef<string|null>(null);
   const [approved,setApproved]=useState<string|null>(null);
   useEffect(()=>{
@@ -64,6 +82,10 @@ function Players(){
     previous.current=next;
     setApproved(next);
   },[qc,scope.data?.fingerprint,scope.isError]);
+  if(revoked.data)return <section role="alert">
+    O acesso administrativo foi bloqueado após revogação. Aguardando uma nova confirmação das permissões.
+    <Button onClick={()=>void scope.refetch()}>Verificar permissões novamente</Button>
+  </section>;
   if(scope.isError)return <section role="alert">
     Não foi possível confirmar seus vínculos e permissões. O acervo reservado está bloqueado.
     <Button onClick={()=>void scope.refetch()}>Verificar novamente</Button>
