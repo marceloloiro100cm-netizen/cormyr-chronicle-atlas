@@ -2,6 +2,7 @@ import { RESOURCE_KEYS, SKILLS, EXTRA_UNIT_SKILLS, UNIT_SKILLS, zeroResources, t
 import { regionBonus } from './regions';
 import { historyAdjustments, memberBonusAdjustments } from './creation-history';
 import { holdingAllocation, legacyCatalogEffects, legacyDestroyedLosses } from './holding-accounting';
+import {quoteMilitaryUnit,militaryConstructionDuration,unitMilitaryBonuses} from './military-bonuses';
 export type Balance = { total: Resources; allocated: Resources; committed: Resources; available: Resources; permanent: Resources };
 /** Livro básico, Tabela 6-5: maximum status permitted by the HOUSE'S TOTAL Influence. */
 export function maxHouseStatus(influence:number):number {
@@ -229,7 +230,7 @@ export function purchase(state: HouseState, item: CatalogItem, args: {id:string;
   for(const cost of q.costs) if(cost.mode==='permanent') next.permanent[cost.resource]-=cost.amount;
   const domain = next.domains.find(d=>d.id===args.domainId);
   if(domain) { if(item.category==='terrain') domain.terrain=item.id; if(item.category==='feature') domain.features.push(item.id); if(item.category==='community') domain.community=item.id; }
-  if(building) next.projects.push({id:args.id,holdingId:args.id,name:args.name||item.name,start:state.month,duration:item.duration.months+args.dice.reduce((a,b)=>a+b,0),dice:args.dice,status:'building',modifier:0});
+  if(building){const projectDuration=militaryConstructionDuration(state,item.id,item.duration.months+args.dice.reduce((a,b)=>a+b,0));next.projects.push({id:args.id,holdingId:args.id,name:args.name||item.name,start:state.month,duration:projectDuration.months,dice:args.dice,status:'building',modifier:0});}
   return next;
 }
 export const TRAINING = { green:{name:'Verde',power:1,xp:20,discipline:9}, trained:{name:'Treinada',power:3,xp:60,discipline:6}, veteran:{name:'Veterana',power:5,xp:100,discipline:3}, elite:{name:'Elite',power:7,xp:140,discipline:0} };
@@ -253,14 +254,16 @@ export const UNIT_TYPES: UnitType[] = ([
   ['levies','Plebeus recrutados',0,6,['animalHandling','awareness','survival'],0,0],
   ['raiders','Saqueadores',3,3,['agility','fighting','endurance'],2,1],
 ] as const).map(([id,name,cost,discipline,skills,armor,penalty])=>({id,name,cost,discipline,skills:[...skills],armor,penalty,strength:id==='cavalry'?20:id==='warships'?5:100,description:id==='garrison'?'Disciplina −3 em seu lar, +3 fora dele.':id==='cavalry'?'20 cavaleiros e montarias; Atletismo e Vigor das montarias.':id==='mercenaries'?'Contrato com custo adicional de Riqueza segundo treinamento, sem manutenção mensal presumida.':id==='warships'?'Cinco navios; exige água e transporta uma unidade.':'100 soldados; custo do tipo soma ao treinamento.',source:'Guerra dos Tronos RPG · tabela 6-8, pp. 136–139; tabela 10-1, p. 219'}));
-export function unitStats(unit: Unit) {
+export function unitStats(unit: Unit,state?:HouseState) {
   const training = TRAINING[unit.training as keyof typeof TRAINING];
   if(!training) throw new Error('Treinamento inválido.');
   const mounted=unit.types.includes('cavalry')&&unit.mounted!==false;
-  const endurance=mounted&&unit.mount?unit.mount.endurance:unit.skills.endurance,athletics=mounted&&unit.mount?unit.mount.athletics:unit.skills.athletics;
+  const military=state?unitMilitaryBonuses(state,unit):null;
+  const effective=(skill:Skill)=>unit.skills[skill]+(military?.skillBonuses[skill]??0);
+  const endurance=mounted&&unit.mount?unit.mount.endurance:effective('endurance'),athletics=mounted&&unit.mount?unit.mount.athletics:effective('athletics');
   const movement=Math.max(0,(unit.types.includes('warships')?60:mounted?80:40)-(unit.bulk??0)*10);
   const garrisonAway=unit.types.includes('garrison')&&unit.atHome===false?6:0;
-  return { movement,maxHealth:endurance*3, health:Math.max(0,Math.min(unit.health,endurance*3)), defense:unit.skills.agility+athletics+unit.skills.awareness-unit.armorPenalty, discipline:Math.max(0,training.discipline+unit.disciplineModifier+garrisonAway), xpSpent:SKILLS.reduce((sum,key)=>sum+Math.max(0,unit.skills[key]-2)*20,0)+EXTRA_UNIT_SKILLS.reduce((sum,key)=>sum+Math.max(0,(unit.extraSkills?.[key]??2)-2)*20,0) };
+  return { movement,maxHealth:endurance*3, health:Math.max(0,Math.min(unit.health,endurance*3)), defense:effective('agility')+athletics+effective('awareness')-unit.armorPenalty+(military?.defense??0), armorRating:unit.armor+(military?.armorRating??0),discipline:Math.max(0,training.discipline+unit.disciplineModifier+garrisonAway+(military?.discipline??0)), xpSpent:SKILLS.reduce((sum,key)=>sum+Math.max(0,unit.skills[key]-2)*20,0)+EXTRA_UNIT_SKILLS.reduce((sum,key)=>sum+Math.max(0,(unit.extraSkills?.[key]??2)-2)*20,0) };
 }
 export function validateUnit(unit: Unit, state: HouseState, types: UnitType[]) {
   const training = TRAINING[unit.training as keyof typeof TRAINING]; if(!training)throw new Error('Treinamento inválido.');
@@ -282,17 +285,17 @@ export function validateUnit(unit: Unit, state: HouseState, types: UnitType[]) {
 }
 export function createUnit(state: HouseState, unit: Unit, types: UnitType[]): HouseState {
   const selected = validateUnit(unit,state,types), training = TRAINING[unit.training as keyof typeof TRAINING];
-  const costs:Cost[]=[{resource:'power',amount:training.power+selected.reduce((n,t)=>n+(t?.cost??0),0),mode:'allocation'}];
-  if(unit.types.includes('levies')) costs.push({resource:'population',amount:2,mode:'permanent'});
-  if(unit.types.includes('mercenaries')) costs.push({resource:'wealth',amount:({green:1,trained:3,veteran:6,elite:9})[unit.training as keyof typeof TRAINING],mode:'permanent'});
-  for(const cost of costs){const discounts=activeHoldings(state).flatMap(h=>h.effects.filter(e=>e.kind==='discount'&&e.resource===cost.resource&&unit.types.some(t=>e.target==='unit:'+t)));const sum=discounts.reduce((a,b)=>a+(b.amount??0),0);cost.amount=Math.max(cost.resource==='population'&&unit.types.includes('levies')?0:(cost.amount>0?1:0),cost.amount-sum);}
+  const purchaseQuote=quoteMilitaryUnit(state,unit.types,unit.training as keyof typeof TRAINING);
+  const costs:Cost[]=purchaseQuote.costs;
   const available = balances(state).available;
   for(const cost of costs) {available[cost.resource]-=cost.amount;if(available[cost.resource]<0)throw new Error('Saldo insuficiente para a unidade.');}
   if(state.units.some(u=>u.id===unit.id))throw new Error('Identificador da unidade já utilizado.');
   const next=structuredClone(state), maxHealth=unitStats(unit).maxHealth;
   const allocatedCosts: Partial<Record<Resource, number>> = {};
   for(const c of costs) if(c.mode === 'allocation') allocatedCosts[c.resource] = (allocatedCosts[c.resource] || 0) + c.amount;
-  next.units.push({...unit,costs,xp:training.xp-unitStats(unit).xpSpent,health:maxHealth,casualties:0,disciplineModifier:unit.types.length>1?(unit.mixedRule?.disciplineModifier??0):(selected[0]?.discipline??0),allocatedCosts});
+  const festival=unit.types.includes('levies')?activeHoldings(state).find(h=>h.itemId==='pros-festivals--martial-festivals'):undefined;
+  const disciplineModifier=(unit.types.length>1?(unit.mixedRule?.disciplineModifier??0):(selected[0]?.discipline??0))+(festival?-3:0);
+  next.units.push({...unit,costs,recruitmentDiscounts:purchaseQuote.discounts,recruitmentBaseCosts:purchaseQuote.base,recruitmentBenefits:festival?[{holdingId:festival.id,source:festival.name,description:'Disciplina −3 ao recrutar Plebeus'}]:[],xp:training.xp-unitStats(unit).xpSpent,health:maxHealth,casualties:0,disciplineModifier,allocatedCosts});
   for(const c of costs)if(c.mode==='permanent')next.permanent[c.resource]-=c.amount;
   return next;
 }
