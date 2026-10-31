@@ -26,6 +26,11 @@ describe('Public Cormyr frontend implementation package',()=>{
   expect(html).toContain('music-player.js');
   expect(html).toContain('bard-player');
   expect(html).toContain('house-history-back');
+  // Main-menu navigation must forget the previous noble house, without breaking explicit house deep links.
+  const script=publicFile('app.js');
+  expect(script).toContain("if(b.dataset.view==='nobreza'){");
+  expect(script).toMatch(/state\.noble\.house='';\s*state\.houseHistory=\[\];\s*renderNobility\(\);/);
+  expect(script).toContain("params.get('house')||''");
  });
 });
 describe('Safe narrator media token parsing',()=>{
