@@ -137,6 +137,11 @@
       "pr": 153,
       "head": "fix/hub-temporal-lote-27-revogacao-vinculos",
       "base": "fix/hub-temporal-lote-26-isolamento-de-sessao"
+    },
+    {
+      "pr": 154,
+      "head": "fix/hub-temporal-lote-28-operacoes-em-voo",
+      "base": "fix/hub-temporal-lote-27-revogacao-vinculos"
     }
   ]
 }
