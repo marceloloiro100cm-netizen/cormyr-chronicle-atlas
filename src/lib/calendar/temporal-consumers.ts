@@ -99,3 +99,35 @@ export function validatedTemporalDate(key:string){
  if(!d)throw new Error('Data do consumidor temporal inválida.');
  return dateKey(d);
 }
+
+
+export type TemporalReleasePreflight={
+ calendar_version:number;official_date:string;official_month:number;
+ house_sheets:number;active_houses:number;draft_houses:number;invalid_houses:number;
+ lagging_houses:number;ahead_houses:number;operations:number;deliveries:number;
+ manual_reviews_pending:number;month_processing_preflight_ok:boolean;
+ requires_production_backup:true;requires_homologation:true;
+ automatic_economic_effects_enabled:false;
+};
+/** Diagnóstico operacional não substitui aprovação de segurança nem backup. */
+export function validateTemporalReleasePreflight(value:unknown):TemporalReleasePreflight{
+ if(!object(value)||typeof value.official_date!=='string'||!parseDate(value.official_date)||
+  typeof value.month_processing_preflight_ok!=='boolean'||
+  value.requires_production_backup!==true||value.requires_homologation!==true||
+  value.automatic_economic_effects_enabled!==false)
+  throw new Error('Pré-implantação temporal inválida.');
+ for(const key of ['calendar_version','official_month','house_sheets','active_houses',
+  'draft_houses','invalid_houses','lagging_houses','ahead_houses',
+  'operations','deliveries','manual_reviews_pending']){
+  if(!number(value[key]))throw new Error('Contagem inválida na pré-implantação temporal.');
+ }
+ if(value.calendar_version===0||
+  value.active_houses+value.draft_houses+value.invalid_houses!==value.house_sheets||
+  value.month_processing_preflight_ok!==(value.invalid_houses===0)||
+  value.lagging_houses+value.ahead_houses>value.active_houses)
+  throw new Error('Contagens inconsistentes na pré-implantação temporal.');
+ const parsed=parseDate(value.official_date)!;
+ if(value.official_month!==parsed.year*12+parsed.month)
+  throw new Error('Mês da pré-implantação diverge de Harptos.');
+ return value as TemporalReleasePreflight;
+}
