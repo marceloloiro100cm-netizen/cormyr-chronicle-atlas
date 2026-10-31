@@ -1,13 +1,13 @@
 -- Lote 7 · motor anual testado em banco efêmero com rollback.
 BEGIN;
-CREATE FUNCTION pg_temp.assert(ok boolean,label text) RETURNS void LANGUAGE plpgsql AS $$
-BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'Assertion failed: %',label;END IF;END $;
+CREATE FUNCTION pg_temp.assert(ok boolean,label text) RETURNS void LANGUAGE plpgsql AS $assert$
+BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'Assertion failed: %',label;END IF;END $assert$;
 -- Wrapper exists only in this rolled-back test transaction, never in production.
 CREATE FUNCTION pg_temp.age_check(p_id uuid,p_year integer)
-RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
+RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $test_age$
  SELECT public.character_age_state(c,p_year) FROM public.campaign_characters c
  WHERE c.id=p_id
-$;
+$test_age$;
 
 INSERT INTO auth.users(id) VALUES
  ('30000000-0000-0000-0000-000000000271'),
