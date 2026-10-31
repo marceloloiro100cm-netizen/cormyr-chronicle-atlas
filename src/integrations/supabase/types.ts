@@ -1516,6 +1516,7 @@ export type Database = {
       }
       get_campaign_chronology: { Args: { p_year: number; p_month: number }; Returns: Json }
       get_temporal_consumer_dashboard: { Args: { p_limit?: number }; Returns: Json }
+      get_temporal_release_preflight: { Args: never; Returns: Json }
       resolve_temporal_delivery: {
         Args: { p_id: string; p_request_key: string; p_status: string; p_note: string }
         Returns: Json
