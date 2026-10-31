@@ -27,9 +27,20 @@ export type Project = { id: string; holdingId: string; name: string; start: numb
 export const SKILLS = ['agility', 'athletics', 'awareness', 'endurance', 'fighting', 'marksmanship', 'stealth', 'cunning', 'healing', 'animalHandling', 'warfare', 'survival'] as const;
 export type Skill = typeof SKILLS[number];
 export const SKILL_NAMES: Record<Skill, string> = { agility: 'Agilidade', athletics: 'Atletismo', awareness: 'Percepção', endurance: 'Vigor', fighting: 'Luta', marksmanship: 'Pontaria', stealth: 'Furtividade', cunning: 'Astúcia', healing:'Cura',animalHandling:'Lidar com animais',warfare:'Guerra',survival:'Sobrevivência' };
+/** The army used the 12 mass-combat abilities; preserve them in legacy saves
+ * and expose the other eight Chronicle abilities as optional extended stats. */
+export const EXTRA_UNIT_SKILLS=['brawling','knowledge','deception','language','thievery','persuasion','status','will'] as const;
+export type ExtraUnitSkill=typeof EXTRA_UNIT_SKILLS[number];
+export const UNIT_SKILLS=[...SKILLS,...EXTRA_UNIT_SKILLS] as const;
+export type UnitSkill=typeof UNIT_SKILLS[number];
+export const UNIT_SKILL_NAMES:Record<UnitSkill,string>={
+ ...SKILL_NAMES,brawling:'Briga',knowledge:'Conhecimento',deception:'Enganação',
+ language:'Idioma',thievery:'Ladinagem',persuasion:'Persuasão',status:'Status',will:'Vontade'
+};
+export type ExtraUnitSkills=Partial<Record<ExtraUnitSkill,number>>;
 export type MountProfile={name:string;athletics:number;endurance:number;source:string};
-export type MixedRule={allowedSkills:Skill[];disciplineModifier:number;justification:string};
-export type Unit = { id: string; name: string; types: string[]; training: string; commanderId?: string | undefined; commanderName?:string|undefined; origin: string; domainId: string; skills: Record<Skill, number>; xp: number; costs: Cost[]; armor: number; armorPenalty: number; health: number; casualties: number; strength: number; disciplineModifier: number; equipment: string[]; situation: string; notes: string; bulk?:number|undefined; equipmentTypeId?:string|undefined; mount?:MountProfile|undefined; mounted?:boolean|undefined; atHome?:boolean|undefined; destroyed?:boolean|undefined; evolution?:{id:string;month:number;roll:number;condition:string;disorganizations:number;steps:number;before:string;after:string;justification:string}[]|undefined; bonusRanks?:number|undefined; bonusXp?:number|undefined; xpEvents?:{id:string;month:number;delta:number;reason:string;kind:'award'|'training'}[]|undefined; mixedRule?:MixedRule|undefined; allocatedCosts?: Partial<Record<Resource, number>> | undefined };
+export type MixedRule={allowedSkills:UnitSkill[];disciplineModifier:number;justification:string};
+export type Unit = { id: string; name: string; types: string[]; training: string; commanderId?: string | undefined; commanderName?:string|undefined; origin: string; domainId: string; skills: Record<Skill, number>; extraSkills?:ExtraUnitSkills|undefined; xp: number; costs: Cost[]; armor: number; armorPenalty: number; health: number; casualties: number; strength: number; disciplineModifier: number; equipment: string[]; situation: string; notes: string; bulk?:number|undefined; equipmentTypeId?:string|undefined; mount?:MountProfile|undefined; mounted?:boolean|undefined; atHome?:boolean|undefined; destroyed?:boolean|undefined; evolution?:{id:string;month:number;roll:number;condition:string;disorganizations:number;steps:number;before:string;after:string;justification:string}[]|undefined; bonusRanks?:number|undefined; bonusXp?:number|undefined; xpEvents?:{id:string;month:number;delta:number;reason:string;kind:'award'|'training'}[]|undefined; mixedRule?:MixedRule|undefined; allocatedCosts?: Partial<Record<Resource, number>> | undefined };
 export type VassalSheet={region:string;motto?:string|undefined;lordName?:string|undefined;rolls:Record<Resource,number[]>;base:Resources;permanent:Resources;holdings:Holding[];domains:Domain[]};
 export type Vassal={sheet?:VassalSheet|undefined;id:string;houseId:string;name:string;status:'proposed'|'approved'|'ended';loyalty?:'loyal'|'neutral'|'rebellious'|'broken'|undefined;cost:number;influencePenalty:number;notes:string;approvedMonth?:number|undefined;npcIds?:string[]|undefined;approvalNote?:string|undefined;approvedBy?:string|undefined};
 export type CourtMember = { id: string; npcId?: string | undefined; name: string; role: string; notes: string };
