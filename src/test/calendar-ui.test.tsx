@@ -1,5 +1,5 @@
 import {afterEach,beforeEach,it,expect,vi} from 'vitest';
-import {render,screen,fireEvent,waitFor,cleanup,act} from '@testing-library/react';
+import {render,screen,within,fireEvent,waitFor,cleanup,act} from '@testing-library/react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {CampaignCalendar} from '@/components/calendar/calendar';
 import {formatCampaignPeriod} from '@/lib/calendar/harptos';
@@ -37,10 +37,11 @@ it('mostra somente désdia, mês e ano no calendário, preservando privacidade',
  mount();
  expect(await screen.findByText('2ª désdia · Hammer · 1522 CV')).toBeInTheDocument();
  const day=await screen.findByRole('button',{name:/^2 de Hammer.*1 evento/});
- fireEvent.mouseEnter(day);expect(screen.getByText('Convocação da corte')).toBeInTheDocument();
+ const details=document.getElementById('harptos-events')!;
+ fireEvent.mouseEnter(day);expect(within(details).getByText('Convocação da corte')).toBeInTheDocument();
  fireEvent.focus(screen.getByRole('button',{name:/^3 de Hammer/}));
- expect(screen.queryByText('Convocação da corte')).not.toBeInTheDocument();
- fireEvent.click(day);expect(screen.getByText('Convocação da corte')).toBeInTheDocument();
+ expect(within(details).queryByText('Convocação da corte')).not.toBeInTheDocument();
+ fireEvent.click(day);expect(within(details).getByText('Convocação da corte')).toBeInTheDocument();
  expect(screen.queryByText('Ajustar calendário da campanha')).not.toBeInTheDocument();
  await waitFor(()=>expect(screen.getByRole('button',{name:/^11 de Hammer/})).toHaveAttribute('aria-current','date'));
 });
