@@ -24,11 +24,13 @@ import { Vassals } from './vassals';
 import { FortunePanel } from './fortune-panel';
 import { HouseCoverage } from './coverage';
 import { HouseCodex } from './codex';
+import { GmHouseNotes } from './gm-notes';
+import { KingdomDashboard } from './kingdom-dashboard';
 import { Court } from './court';
 import { HouseReconciliation } from './reconciliation';
 import { HouseDriveStatus } from './drive-status';
 import type { ReconciliationRecord } from '@/lib/house/reconciliation';
-const NAV=[['overview','Visão geral',LayoutDashboard],['creation','Criação',Feather],['domains','Terras e domínios',Mountain],['fortifications','Fortificações',Castle],['economy','Economia',Coins],['army','Exército',Swords],['court','Corte',Users],['vassals','Vassalos',Users],['projects','Projetos',CalendarDays],['calendar','Calendário',CalendarDays],['fortune','Sorte e ações',Dice5],['history','Histórico e documentos',ScrollText],['rules','Regras e Tabelas',ScrollText],['reconciliation','Prévia de conciliação',ScrollText],['coverage','Cobertura e pendências',AlertTriangle]] as const;
+const NAV=[['kingdom','Reino · Narrador',LayoutDashboard],['overview','Visão geral',LayoutDashboard],['creation','Criação',Feather],['domains','Terras e domínios',Mountain],['fortifications','Fortificações',Castle],['economy','Economia',Coins],['army','Exército',Swords],['court','Corte',Users],['vassals','Vassalos',Users],['projects','Projetos',CalendarDays],['calendar','Calendário',CalendarDays],['fortune','Sorte e ações',Dice5],['history','Histórico e documentos',ScrollText],['rules','Regras e Tabelas',ScrollText],['reconciliation','Prévia de conciliação',ScrollText],['coverage','Cobertura e pendências',AlertTriangle]] as const;
 type Props={npcManager?:ReactNode;house:{id:string;name:string;region:string|null;crest:string|null;lord_name:string|null;castle:string|null};canEdit:boolean;npcs:{id:string;title:string}[];courtMembers:{id:string;title:string}[];records?:ReconciliationRecord[]};
 export function NobleHouseHub(props:Props) {
   const load=useServerFn(loadHouseHub),fetchFull=useServerFn(loadHouseLedger),operation=useServerFn(houseOperation),qc=useQueryClient();
@@ -49,7 +51,7 @@ function HouseWorkspace({npcManager,house,canEdit:playerCanEdit,npcs,courtMember
   const saveDraft=useCallback((args:Record<string,unknown>)=>run('draft',args),[run]);
   const categories=section==='fortifications'?['fortification']:section==='domains'?['terrain','feature','community']:['estate','lifestyle','personage','settlement','improvement','equipment','vassal'];
   return <div className="house-hub"><header className="house-header">{state.identity.crestPath?<div style={{width:100,height:100}}><PrivateImage path={state.identity.crestPath} caption={`Brasão da Casa ${house.name}`} thumbnail/></div>:house.crest&&<ImageViewer src={house.crest} caption={`Brasão da Casa ${house.name}`}/>}<div><p className="campaign-eyebrow">REGISTRO DA CASA · {state.phase==='active'?'EM CAMPANHA':state.phase==='review'?'AGUARDANDO APROVAÇÃO':'RASCUNHO'}</p><h2>Casa {house.name}</h2><p>{house.lord_name??'Governante não informado'} · {house.castle??'Sede não informada'} · {campaignMonth(state.month)}</p></div><div className="house-header-actions"><Button variant="outline" aria-pressed={graphical} onClick={()=>setGraphical(v=>!v)}><LayoutDashboard size={16}/>Trocar Visão</Button><span className="house-version">v{version}</span></div></header>{graphical?<ResourceChart state={state}/>:<ResourceSummary state={state}/>}
-    <div className="house-layout"><aside className="house-sidebar"><nav aria-label="Gerenciamento da casa">{NAV.filter(([id])=>admin||!['reconciliation','coverage'].includes(id)).map(([id,label,Icon])=><Button variant={section===id?'default':'ghost'} aria-current={section===id?'page':undefined} key={id} onClick={()=>setSection(id)}><Icon size={17}/>{label}</Button>)}</nav><div className="house-sidebar-bottom"><ShieldCheck size={16}/><span>Ficha privada da casa</span></div></aside><main className="house-content">
+    <div className="house-layout"><aside className="house-sidebar"><nav aria-label="Gerenciamento da casa">{NAV.filter(([id])=>admin||!['reconciliation','coverage','kingdom'].includes(id)).map(([id,label,Icon])=><Button variant={section===id?'default':'ghost'} aria-current={section===id?'page':undefined} key={id} onClick={()=>setSection(id)}><Icon size={17}/>{label}</Button>)}</nav><div className="house-sidebar-bottom"><ShieldCheck size={16}/><span>Ficha privada da casa</span></div></aside><main className="house-content">
       <p role={error?'alert':'status'} className={error?'house-warning':'house-save-status'}>{busy?'Salvando…':message||'Nenhuma alteração nas fichas anteriores.'}</p>
       {section==='overview'&&<>{admin&&<AdminHouseEditor key={version} state={state} busy={busy}
        onSave={(args,reason)=>run('admin_edit',args,reason)}/>}
@@ -75,9 +77,11 @@ function HouseWorkspace({npcManager,house,canEdit:playerCanEdit,npcs,courtMember
       {section==='calendar'&&<CampaignCalendar/>}
       {section==='projects'&&<><h3>Projetos e calendário</h3><p>{campaignMonth(state.month)}</p>{state.projects.map(p=><article className="house-project" key={p.id}><h4>{p.name}</h4><p>{p.status==='completed'?'Concluído':'Em andamento'} · duração {p.duration} meses · previsão {campaignMonth(p.start+p.duration+p.modifier)}</p><details><summary>Dados e início</summary><p>{campaignMonth(p.start)} · dados: {p.dice.join(', ')||'Sem dados'} · modificador {p.modifier}</p></details></article>)}{admin&&<form className="campaign-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);run('advance',{month:state.month+Number(f.get('months'))});}}><label>Ajustar meses somente desta ficha<input name="months" type="number" min={1} max={120} defaultValue={1}/></label><Button disabled={busy}>Confirmar ajuste desta ficha</Button><p className="house-caption">Ajuste individual auditado. Para avançar a campanha inteira, use Calendário. Não cobra renda mensal.</p></form>}</>}
       {section==='fortune'&&<FortunePanel state={state} admin={admin} canEdit={canEdit} busy={busy} run={run}/>}
-      {section==='rules'&&<HouseCodex/>}
+      {admin&&section==='kingdom'&&<KingdomDashboard/>}
+       {section==='rules'&&<HouseCodex/>}
        {admin&&section==='reconciliation'&&<HouseReconciliation houses={[house]} records={records} admin={admin}/>}
       {admin&&section==='coverage'&&<HouseCoverage/>}
+       {admin&&section==='history'&&<GmHouseNotes houseId={house.id}/>}
       {section==='history'&&<>
        {admin&&<AdminResourceCorrection busy={busy} run={run}/>}
        {admin&&<AdminLegacyCostReconciliation key={version} state={state} houseName={house.name} busy={busy} run={run}/>}
