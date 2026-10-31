@@ -42,7 +42,7 @@ export function validateUnitSkills(unit:Unit,skills:Unit['skills'],extraSkills:E
  if(unit.types.includes('special')&&SKILLS.filter(s=>skills[s]>2).length+EXTRA_UNIT_SKILLS.filter(s=>(extraSkills[s]??2)>2).length>3)
   throw new Error('Unidade especial escolhe no máximo três habilidades.');
 }
-export function editUnitProfile(state:HouseState,input:{unitId:string;name:string;origin:string;notes:string;skills:Unit['skills'];extraSkills?:ExtraUnitSkills;situation:string;mount?:Unit['mount']}):HouseState{
+export function editUnitProfile(state:HouseState,input:{unitId:string;name:string;origin:string;notes:string;skills:Unit['skills'];extraSkills?:ExtraUnitSkills|undefined;situation:string;mount?:Unit['mount']}):HouseState{
  const next=structuredClone(state),u=next.units.find(x=>x.id===input.unitId&&!x.destroyed);
  if(!u)throw new Error('Unidade indisponível.');
  if(!input.name.trim()||input.name.length>160||input.origin.length>160||input.notes.length>4000||input.situation.length>1000)
