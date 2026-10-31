@@ -22,6 +22,10 @@ A investigação identificou uma fonte canônica no cliente, src/lib/calendar/ca
 
 A versão atual do site já diferencia **semana/rodada de missivas**, **mês absoluto processado de uma Casa** e **data oficial corrente**. Nenhuma dessas referências deve sobrescrever a data oficial.
 
+### Leituras oficiais de segurança no servidor
+
+A primeira execução de auditoria identificou quatro consultas diretas ao **mesmo** RPC oficial em `src/lib/house/house.functions.ts`. Essas chamadas são deliberadas e necessárias: na criação da Casa, numa operação de compra/recursos e na conciliação administrativa, o **servidor** precisa conferir o mês canônico no momento da gravação. Substituí-las pelo cache do navegador permitiria ações com relógio desatualizado. O auditor mantém uma lista fechada de **quatro guardas** com obrigatoriedade de `requireCalendarAlignment`, `calendarMonthIndex` e `reconcileHouseCalendar`. Uma quinta consulta ou remoção de qualquer proteção passa a falhar no CI. Consultas duplicadas **no cliente** continuam bloqueadas.
+
 ### Correção implementada: conexão central dos caches
 
 O novo arquivo src/lib/calendar/time-connections.ts centraliza prefixos de React Query relacionados ao calendário, missivas, nobres, Casas, outbox e pré-voo administrativo.
