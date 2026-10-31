@@ -14,6 +14,7 @@ export const TEMPORAL_QUERY_CONNECTIONS=[
  {domain:'calendar',prefix:'campaign-time-history',reason:'histórico da data oficial'},
  {domain:'chronology',prefix:'campaign-chronology',reason:'linha do tempo vinculada ao mês'},
  {domain:'missives',prefix:'calendar-events',reason:'missivas visíveis no calendário'},
+ {domain:'missives',prefix:'campaign-panel',reason:'Conselho de jogadores, mensagens, rodadas e avisos'},
  {domain:'missives',prefix:'mail-page',reason:'páginas de missivas e seus estados'},
  {domain:'missives',prefix:'mail-insights',reason:'indicadores da correspondência'},
  {domain:'missives',prefix:'mail-overview-grouped',reason:'resumo da central do Narrador'},
