@@ -76,8 +76,8 @@ export function unitMilitaryBonuses(state:HouseState,unit:Unit){
  }
  const equipment=UNIT_EQUIPMENT.find(e=>e.id===(unit.equipmentTypeId??unit.types[0]));
  for(const h of active(state,'pros-bowyer-fletcher-or-weaponsmith')){
-  if(h.weaponSpecialty==='fighting'){fightingDamage+=1;add(h,'Armas de Luta: dano +1');}
-  else if(h.weaponSpecialty==='marksmanship'&&equipment?.initial.marksmanship!=='—'){marksmanshipDamage+=1;add(h,'Armas de Pontaria: dano +1');}
+  if(h.weaponSpecialty==='fighting'&&fightingDamage===0){fightingDamage=1;add(h,'Armas de Luta: dano +1');}
+  else if(h.weaponSpecialty==='marksmanship'&&equipment&&equipment.initial.marksmanship!=='—'&&marksmanshipDamage===0){marksmanshipDamage=1;add(h,'Armas de Pontaria: dano +1');}
   else if(!h.weaponSpecialty)pending(h,'Especialização não cadastrada; definir Luta ou Pontaria.');
  }
  for(const h of active(state,'pros-military-academy--core-training')){
