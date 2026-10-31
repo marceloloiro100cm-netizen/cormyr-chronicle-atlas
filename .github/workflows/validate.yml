@@ -34,6 +34,10 @@ jobs:
           node --input-type=module -e 'import {readFileSync} from "node:fs"; const r=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-migration-audit.json","utf8")); const s=r.summary; const report="### Hub Temporal — inventário de migrações (somente leitura)\\nSQL: "+s.sql_files+" | Drizzle journal: "+s.journal_entries+" | SQL sem journal: "+s.unjournaled+" | Prefixos duplicados: "+s.repeated_sql_ordinals+"\\nDeploy liberado: **"+(r.ready_for_deploy?"sim":"não")+"**. Este job não aplica nem reconcilia migrações.\\n"; process.stdout.write(report); const fs=await import("node:fs"); fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,report.replaceAll("\\\\n","\\n"));'
       - name: Check temporal PR dependency manifest (read only)
         run: node scripts/temporal-stack-audit.mjs --report
+      - name: Temporal release readiness (diagnostic only; NO_GO expected)
+        run: |
+          node scripts/temporal-release-readiness.mjs --report > "$RUNNER_TEMP/temporal-release-readiness.json"
+          node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const a=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-release-readiness.json","utf8")); if(a.production_release_authorized!==false||a.merge_authorized!==false||a.migration_execution_authorized!==false) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\n### Hub Temporal — liberação\n**"+a.go_no_go+"**; "+a.blockers.length+" bloqueios. Nenhum deploy/merge autorizado por esta rotina.\n");'
       - name: Unit and component tests
         run: bun run test
       - name: TypeScript verification
