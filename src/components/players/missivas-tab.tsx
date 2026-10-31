@@ -16,6 +16,7 @@ import {NARRATION_GROUPS,narrationHouseIds} from '@/lib/mail-groups';
 import {NarratorMailNotes} from './narrator-mail-notes';
 import {MailPeriodNotice} from './mail-period-notice';
 import {dateKey} from '@/lib/calendar/harptos';
+import {useCampaignTime} from '@/lib/calendar/campaign-time';
 
 
 function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Responder',isAdmin=false}:{letterId:string;replyId?:string|undefined;recipientId:string;roundRevision:string;onSave:()=>unknown;label?:string;isAdmin?:boolean}){
@@ -51,11 +52,8 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   const [page,setPage]=useState(0);
   const client=useQueryClient();
   const {data:options}=useMailOptions();
-  const {data:calendar}=useQuery({queryKey:['campaign-calendar-period'],enabled:data.admin,queryFn:async()=>{
-   const r=await supabase.from('campaign_calendar').select('year,month,day,festival').limit(1).maybeSingle();
-   if(r.error)throw r.error;return r.data;
-  }});
-  const periodDate=calendar?dateKey({year:calendar.year,month:calendar.month,day:calendar.day,festival:calendar.festival}):'';
+  const {data:calendar}=useCampaignTime();
+  const periodDate=data.admin&&calendar?dateKey(calendar):'';
   const saved=()=>{client.invalidateQueries({queryKey:['calendar-events']});client.invalidateQueries({queryKey:['campaign-calendar']});client.invalidateQueries({queryKey:['noble-house']});client.invalidateQueries({queryKey:['mail-page']});client.invalidateQueries({queryKey:['mail-insights']});client.invalidateQueries({queryKey:['mail-overview-grouped']});client.invalidateQueries({queryKey:['mail-options']});onSave();};
   const groupKey=[...(groupHouseIds??[]),filters.group].join('|')||'all';
   useEffect(()=>{setPage(0);},[filters,groupKey]);
