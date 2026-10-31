@@ -12,7 +12,7 @@ export const houseExportName = (houseId: string) => {
   if (!/^[a-z0-9-]+$/.test(houseId)) throw new Error('Identidade de casa inválida.');
   return `cormyr-house-${houseId}.json`;
 };
-const fields = ['schemaVersion','houseId','phase','creationStep','identity','method','budget','base','permanent','regionalApplied','rolls','domains','holdings','units','projects','court','month','treasury','fortunes','actions','pending','importSources','vassals'] as const;
+const fields = ['schemaVersion','houseId','phase','creationStep','identity','method','budget','base','permanent','regionalApplied','rolls','domains','holdings','units','projects','court','month','treasury','fortunes','actions','pending','importSources','vassals','creationHistory','creationBonuses','creationBonusesApplied','influenceBenefits'] as const;
 export function buildHouseExport(houseId: string, version: number, updatedAt: string, state: HouseState, ledger: HouseExport['ledger']): HouseExport {
   if (state.houseId !== houseId || state.schemaVersion !== 1) throw new Error('Ficha divergente da casa.');
   // A separate explicit projection: never include narrator notes or campaign records.
