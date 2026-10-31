@@ -1,9 +1,11 @@
 import {describe,it,expect} from 'vitest';
 import {newHouseState,SKILLS,type Unit} from '@/lib/house/types';
 import {balances,createUnit,UNIT_TYPES,unitStats} from '@/lib/house/engine';
-import {improveEquipment} from '@/lib/house/equipment';
+import {improveEquipment,houseWeaponBonuses} from '@/lib/house/equipment';
 import {resolveSurvivors,changeUnitState,trainUnit,survivorResult} from '@/lib/house/military';
 import {SIEGE,buySiege,changeSiegeAssignment} from '@/lib/house/siege';
+import {CORE_CATALOG} from '@/lib/house/catalog';
+import {purchase} from '@/lib/house/engine';
 const make=()=>{
  const s=newHouseState('military');s.phase='active';s.base.power=90;s.base.wealth=60;s.base.population=50;s.base.lands=50;
  s.domains=[{id:'d',name:'Domínio A',terrain:'hills',features:['river'],notes:''},{id:'e',name:'Domínio B',terrain:'plains',features:[],notes:''}];return s;
@@ -13,6 +15,36 @@ const unit=(type='infantry'):Unit=>({id:'u',name:'Unidade',types:[type],training
  health:6,casualties:0,strength:100,disciplineModifier:0,equipment:[],situation:'No domínio',notes:''});
 const holding=(s:ReturnType<typeof make>,id:string)=>{s.holdings.push({id,itemId:id,name:id,domainId:'d',source:'Teste',ruleVersion:'1',status:'active',effects:[],costs:[]});return s;};
 describe('Lote 7: descontos militares e treinamento',()=>{
+ it('Gangues de Rua elimina o custo de População dos plebeus sem reduzir abaixo de zero',()=>{
+  const s=holding(make(),'pros-street-gangs');
+  s.holdings[0]!.effects=CORE_CATALOG.find(i=>i.id==='pros-street-gangs')!.effects;
+  const n=createUnit(s,unit('levies'),UNIT_TYPES);
+  expect(n.units[0]?.costs.find(c=>c.resource==='population')?.amount).toBe(0);
+  expect(n.permanent.population).toBe(0);
+  expect(balances(n).total.population).toBe(s.base.population);
+ });
+ it('Estaleiro e Prisão aplicam descontos de Poder sem zerar investimento da tropa',()=>{
+  const ship=holding(make(),'pros-timber--ship-yards');
+  ship.holdings[0]!.effects=CORE_CATALOG.find(i=>i.id==='pros-timber--ship-yards')!.effects;
+  const navy=createUnit(ship,unit('warships'),UNIT_TYPES);
+  expect(navy.units[0]?.costs.find(c=>c.resource==='power')?.amount).toBe(10);
+  const prison=holding(make(),'pros-gaol');
+  prison.holdings[0]!.effects=CORE_CATALOG.find(i=>i.id==='pros-gaol')!.effects;
+  const criminal=createUnit(prison,unit('criminals'),UNIT_TYPES);
+  expect(criminal.units[0]?.costs.find(c=>c.resource==='power')?.amount).toBe(4);
+ });
+ it('Armeiro e Flecheiro precisam de escolha; bônus de dano só existe com posse ativa',()=>{
+  const original=CORE_CATALOG.find(i=>i.id==='pros-bowyer-fletcher-or-weaponsmith')!;
+  const item={...original,requirements:[],duration:{months:0}};
+  const s=make();
+  expect(()=>purchase(s,item,{id:'specialist',domainId:'d',name:'Oficina',dice:[]})).toThrow('Escolha Armeiro');
+  const u=purchase(s,item,{id:'specialist',domainId:'d',name:'Oficina',dice:[],weaponSpecialty:'fighting'});
+  expect(houseWeaponBonuses(u)).toMatchObject({fighting:1,marksmanship:0,unconfigured:false});
+  const b=structuredClone(u);b.holdings[0]!.status='destroyed';
+  expect(houseWeaponBonuses(b).fighting).toBe(0);
+  const legacy=holding(make(),'pros-bowyer-fletcher-or-weaponsmith');
+  expect(houseWeaponBonuses(legacy).unconfigured).toBe(true);
+ });
  it('Mestre de Armas torna a primeira melhoria grátis, seguintes custam Riqueza',()=>{
   const s=holding(make(),'pros-master-of-arms');const trained=createUnit(s,unit(),UNIT_TYPES);
   const free=improveEquipment(trained,'u','armor');
