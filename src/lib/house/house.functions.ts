@@ -7,7 +7,7 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { operationSchema, resourcesSchema, catalogSchema, unitSchema } from './schemas';
 import { CORE_CATALOG } from './catalog';
 import { newHouseState, RESOURCE_KEYS, type HouseState, type CatalogItem, type Unit, type Resource, type CourtMember } from './types';
-import { alternativeFortune, balances, createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
+import { alternativeFortune, balances, activeHoldings,createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
 import { calendarMonthIndex, requireCalendarAlignment, reconcileHouseCalendar } from './calendar-consistency';
 import { confirmFortune, convertResources, runTournament } from './fortune';
 import { historyAdjustments, memberBonusAdjustments, historicalFoundationYear, rollFoundation, rollHistoricalEvent } from './creation-history';
@@ -240,13 +240,16 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   if(data.action==='military_config'){
     const input=z.object({holdingId:z.string(),kind:z.enum(['skill','unit','type']),value:z.string().max(160)}).parse(args);
     const h=next.holdings.find(h=>h.id===input.holdingId&&h.status==='active');
-    if(!h)throw new Error('Posse militar ativa não encontrada.');
+    if(!h||!activeHoldings(state).some(x=>x.id===h.id))throw new Error('Posse militar ativa não encontrada.');
     if(input.kind==='skill'){
       if(h.itemId!=='pros-military-academy--core-training')throw new Error('Esta posse não permite selecionar habilidade.');
-      h.militarySkill=z.enum(['agility','athletics','awareness','endurance','fighting','marksmanship','stealth','cunning','healing','animalHandling','warfare','survival']).parse(input.value);
+      const newSkill=z.enum(['agility','athletics','awareness','endurance','fighting','marksmanship','stealth','cunning','healing','animalHandling','warfare','survival']).parse(input.value);
+      if(h.militarySkill&&h.militarySkill!==newSkill&&!admin)throw new Error('Somente o Narrador pode mudar a habilidade já designada.');
+      h.militarySkill=newSkill;
     }else if(input.kind==='type'){
       if(h.itemId!=='pros-master-of-arms--field-master')throw new Error('Especialidade inválida para esta posse.');
       if(!UNIT_TYPES.some(t=>t.id===input.value))throw new Error('Tipo de unidade não encontrado.');
+      if(h.militaryTypeId&&h.militaryTypeId!==input.value&&!admin)throw new Error('Somente o Narrador pode trocar a especialização de Mestre de Campo.');
       h.militaryTypeId=input.value;
     }else{
       if(!['pros-trading-inn','pros-abbey--warrior-brotherhood'].includes(h.itemId))throw new Error('A posse não permite designar uma unidade.');
@@ -258,7 +261,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   if(data.action==='war_hounds'){
     const input=z.object({unitId:z.string(),holdingId:z.string()}).parse(args);
     const unit=next.units.find(u=>u.id===input.unitId&&!u.destroyed);
-    const h=next.holdings.find(h=>h.id===input.holdingId&&h.itemId==='pros-dog-kennels--war-hounds'&&h.status==='active');
+    const h=activeHoldings(state).find(h=>h.id===input.holdingId&&h.itemId==='pros-dog-kennels--war-hounds');
     if(!unit||!h)throw new Error('Unidade ou Cães de Guerra indisponíveis.');
     if(unit.types.includes('warships')||(unit.types.includes('cavalry')&&unit.mounted!==false))throw new Error('Cães de Guerra exigem unidade não montada e não naval.');
     if(unit.warHoundsHoldingId)throw new Error('Unidade já equipada com cães de guerra.');
@@ -269,7 +272,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   }
   if(data.action==='broad_training'){
     const input=z.object({unitId:z.string(),skill:z.enum(['agility','athletics','awareness','endurance','fighting','marksmanship','stealth','cunning','healing','animalHandling','warfare','survival'])}).parse(args);
-    if(!next.holdings.some(h=>h.itemId==='pros-military-academy--broad-training'&&h.status==='active'))throw new Error('Treinamento Amplo não está ativo.');
+    if(!activeHoldings(state).some(h=>h.itemId==='pros-military-academy--broad-training'))throw new Error('Treinamento Amplo não está ativo.');
     const unit=next.units.find(u=>u.id===input.unitId&&!u.destroyed);
     if(!unit||unit.broadTrainingSkill)throw new Error('Unidade indisponível ou já treinada.');
     if(unitAllowedSkills(unit).has(input.skill))throw new Error('Escolha a quarta habilidade fora das disponíveis originalmente.');
