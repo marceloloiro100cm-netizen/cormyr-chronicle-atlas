@@ -16,7 +16,7 @@ describe('lote 11: ficha estruturada do personagem Chronicle',()=>{
   const s=blankChronicleSheet();s.name='Herdeira Evenhand';s.specialties='Luta: espadas +1B';s.destiny=4;s.spentDestiny=1;
   const text=serializeChronicleSheet(s),decoded=parseChronicleSheet(text);
   expect(decoded?.name).toBe(s.name);expect(decoded?.specialties).toBe(s.specialties);
-  expect(decoded?.destiny-decoded!.spentDestiny).toBe(3);expect(parseChronicleSheet('Texto antigo')).toBeNull();
+  expect((decoded?.destiny??0)-(decoded?.spentDestiny??0)).toBe(3);expect(parseChronicleSheet('Texto antigo')).toBeNull();
  });
  it('rejeita ficha sem nome e gastos de Destino incoerentes',()=>{
   const s=blankChronicleSheet();expect(()=>serializeChronicleSheet(s)).toThrow();
