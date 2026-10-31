@@ -21,7 +21,7 @@ export function validateHouseTimeImpact(v:unknown,version:number,target:number):
   if(!positiveInt(v[key]))throw new Error('Contagens de posses inconsistentes.');
  }
  if(v['houses'].length!==v['total']||
-   v['eligible']+v['ahead']+v['drafts']+v['invalid']+v['aligned_or_historical']!==v['total'])
+   Number(v['eligible'])+Number(v['ahead'])+Number(v['drafts'])+Number(v['invalid'])+Number(v['aligned_or_historical'])!==v['total'])
    throw new Error('O resumo de posses não corresponde à lista.');
  const seen=new Set<string>();let candidateSum=0;
  for(const item of v['houses']){
