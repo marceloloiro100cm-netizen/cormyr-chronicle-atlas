@@ -62,6 +62,11 @@
       "pr": 138,
       "head": "audit/hub-temporal-lote-12-migration-reconciliation",
       "base": "audit/hub-temporal-lote-11-integracao-deploy"
+    },
+    {
+      "pr": 139,
+      "head": "audit/hub-temporal-lote-13-homologacao-contratos",
+      "base": "audit/hub-temporal-lote-12-migration-reconciliation"
     }
   ]
 }
