@@ -278,3 +278,22 @@ it('seletor acompanha uma data histórica recebida após o carregamento',async()
  await waitFor(()=>expect(screen.getByRole('spinbutton',{name:'Ano'})).toHaveValue(1523));
  expect(screen.getByRole('combobox',{name:'Mês'})).toHaveValue('3');
 });
+
+describe('Lote 24 · publicação administrativa revalida todos os módulos',()=>{
+ it('atualiza o calendário e invalida missivas, Casas, idades e painel de jogadores',async()=>{
+  const qc=setup();
+  const invalidate=vi.spyOn(qc,'invalidateQueries');
+  const button=await screen.findByRole('button',{name:'Confirmar avanço de désdia'});
+  await waitFor(()=>expect(button).toBeEnabled());
+  fireEvent.click(button);
+  await waitFor(()=>expect(screen.getByText(/Calendário gravado e confirmado:/))
+   .toBeInTheDocument());
+  const keys=invalidate.mock.calls.map(([filters])=>JSON.stringify(filters?.queryKey));
+  for(const prefix of ['campaign-calendar','campaign-time-preview','mail-page',
+   'mail-insights','mail-overview-grouped','campaign-panel',
+   'noble-house','house-time-impact','character-age-dashboard',
+   'temporal-consumer-dashboard','temporal-release-preflight'])
+   expect(keys).toContain(JSON.stringify([prefix]));
+  expect(mock.current.version).toBe(2);
+ });
+});
