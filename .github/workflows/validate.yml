@@ -46,6 +46,10 @@ jobs:
         run: |
           node scripts/temporal-migration-sequence.mjs --report > "$RUNNER_TEMP/temporal-sql-sequence.json"
           node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const x=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-sql-sequence.json","utf8")); if(x.go_no_go!=="NO_GO"||x.execute_migrations!==false||x.production_release_authorized!==false||x.reviewed_candidate_suffix.length!==0) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\n### Hub Temporal — planejamento de migrações\n**"+x.candidate_status+"**; "+x.blockers.length+" bloqueios; "+x.chronological_temporal_order.length+" scripts na ordem contratual. Não executa SQL.\n");'
+      - name: Hub Temporal cross-site canonical clock gate
+        run: |
+          node scripts/temporal-site-audit.mjs --gate > "$RUNNER_TEMP/temporal-site-audit.json"
+          node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const x=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-site-audit.json","utf8")); if(!x.static_contract_ok||x.all_site_behaviour_verified!==false||x.production_release_authorized!==false) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\n### Hub Temporal — conexões do site\n"+x.files_inspected+" fontes inspecionadas, "+x.required_surfaces+" contratos, "+x.registered_invalidation_prefixes+" prefixos de cache, "+x.review_candidates.length+" itens para revisão contextual. **Sem autorização de produção.**\n");'
       - name: Unit and component tests
         run: bun run test
       - name: TypeScript verification
