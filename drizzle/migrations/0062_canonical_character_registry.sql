@@ -38,8 +38,8 @@ CREATE TABLE public.campaign_characters(
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(),
  CHECK((baseline_age IS NULL)=(baseline_year IS NULL)),
- CHECK(birth_date IS NULL OR birth_year=substring(birth_date,1,4)::integer),
- CHECK(death_date IS NULL OR death_year=substring(death_date,1,4)::integer),
+ CHECK(birth_date IS NULL OR (birth_year IS NOT NULL AND birth_year=substring(birth_date,1,4)::integer)),
+ CHECK(death_date IS NULL OR (death_year IS NOT NULL AND death_year=substring(death_date,1,4)::integer)),
  CHECK(death_year IS NULL OR birth_year IS NULL OR death_year>=birth_year),
  CHECK(visibility<>'house' OR house_id IS NOT NULL),
  CHECK(visibility<>'player' OR owner_user_id IS NOT NULL),
@@ -350,7 +350,7 @@ GRANT EXECUTE ON FUNCTION public.save_campaign_character(uuid,integer,jsonb,text
 
 CREATE OR REPLACE FUNCTION public.get_character_registry_hub(p_limit integer DEFAULT 150)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $$
-DECLARE people jsonb;queue jsonb;pending_total bigint;
+DECLARE people jsonb;queue jsonb;relations jsonb;pending_total bigint;
 BEGIN
  IF NOT public.is_campaign_admin() THEN RAISE EXCEPTION 'Registro canônico restrito ao Narrador'; END IF;
  IF p_limit NOT BETWEEN 1 AND 500 THEN RAISE EXCEPTION 'Limite inválido'; END IF;
@@ -359,12 +359,56 @@ BEGIN
  SELECT coalesce(jsonb_agg(to_jsonb(q) ORDER BY created_at,source_key),'[]'::jsonb) INTO queue
  FROM (SELECT * FROM public.character_review_queue WHERE status IN ('pending','conflict')
  ORDER BY created_at,source_key LIMIT p_limit) q;
+ SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY relation,from_character,to_character),'[]'::jsonb)
+ INTO relations FROM public.character_relations r;
  SELECT count(*) INTO pending_total FROM public.character_review_queue
   WHERE status IN ('pending','conflict');
  RETURN jsonb_build_object('characters',people,'pending',queue,'pending_total',pending_total,
-  'count',(SELECT count(*) FROM public.campaign_characters));
+  'relations',relations,'count',(SELECT count(*) FROM public.campaign_characters));
 END $$;
 REVOKE ALL ON FUNCTION public.get_character_registry_hub(integer) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.get_character_registry_hub(integer) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.save_character_relation(
+ p_from uuid,p_to uuid,p_relation text,p_note text,p_reason text
+) RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=public AS $
+DECLARE actor_id uuid; relation_id uuid; already_path boolean;
+BEGIN
+ IF NOT public.is_campaign_admin() THEN RAISE EXCEPTION 'Genealogia restrita ao Narrador'; END IF;
+ IF p_from IS NULL OR p_to IS NULL OR p_from=p_to OR
+    p_relation NOT IN ('parent','spouse','sibling','guardian','other') THEN
+  RAISE EXCEPTION 'Relação genealógica inválida'; END IF;
+ IF length(btrim(coalesce(p_reason,'')))<10 THEN RAISE EXCEPTION 'Justificativa obrigatória'; END IF;
+ actor_id:=auth.uid();
+ IF NOT EXISTS(SELECT 1 FROM public.campaign_characters WHERE id=p_from) OR
+    NOT EXISTS(SELECT 1 FROM public.campaign_characters WHERE id=p_to) THEN
+  RAISE EXCEPTION 'Personagens canônicos não encontrados'; END IF;
+ IF p_relation='parent' THEN
+  -- Reject cycles in the directed parent -> child graph.
+  WITH RECURSIVE descendants(id) AS (
+   SELECT p_to
+   UNION
+   SELECT r.to_character FROM public.character_relations r
+   JOIN descendants d ON d.id=r.from_character WHERE r.relation='parent'
+  )
+  SELECT EXISTS(SELECT 1 FROM descendants WHERE id=p_from) INTO already_path;
+  IF already_path THEN RAISE EXCEPTION 'Ciclo genealógico não permitido'; END IF;
+ ELSIF p_relation IN ('spouse','sibling') THEN
+  IF EXISTS(SELECT 1 FROM public.character_relations
+   WHERE relation=p_relation AND from_character=p_to AND to_character=p_from) THEN
+   RAISE EXCEPTION 'Vínculo simétrico já cadastrado'; END IF;
+ END IF;
+ INSERT INTO public.character_relations(from_character,to_character,relation,note,approved_by)
+ VALUES(p_from,p_to,p_relation,left(coalesce(p_note,''),1000),actor_id)
+ ON CONFLICT(from_character,to_character,relation) DO NOTHING
+ RETURNING id INTO relation_id;
+ IF relation_id IS NULL THEN RAISE EXCEPTION 'Relação genealógica já cadastrada'; END IF;
+ INSERT INTO public.character_registry_audit(actor,action,character_id,after_state,reason)
+ VALUES(actor_id,'relation_create',p_from,
+  jsonb_build_object('id',relation_id,'to',p_to,'relation',p_relation),p_reason);
+ RETURN jsonb_build_object('id',relation_id,'from',p_from,'to',p_to,'relation',p_relation);
+END $;
+REVOKE ALL ON FUNCTION public.save_character_relation(uuid,uuid,text,text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.save_character_relation(uuid,uuid,text,text,text) TO authenticated;
 
 COMMIT;
