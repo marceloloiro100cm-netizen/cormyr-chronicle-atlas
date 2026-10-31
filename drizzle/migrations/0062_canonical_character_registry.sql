@@ -50,10 +50,11 @@ CREATE INDEX campaign_characters_review_idx ON public.campaign_characters(review
 ALTER TABLE public.campaign_characters ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.campaign_characters FROM PUBLIC,anon,authenticated;
 GRANT SELECT ON public.campaign_characters TO authenticated;
+-- Lote 6 conservador: review_note e evidências podem conter segredos;
+-- nenhuma coluna do registro canônico é visível a jogadores diretamente.
+-- A projeção de idade filtrada por Casa será adicionada no Lote 7.
 CREATE POLICY campaign_characters_read ON public.campaign_characters FOR SELECT TO authenticated
- USING(public.is_campaign_admin() OR
-  (visibility='house' AND public.in_campaign_house(house_id,false)) OR
-  (visibility='player' AND owner_user_id=auth.uid()));
+ USING(public.is_campaign_admin());
 
 CREATE TABLE public.character_source_links(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
