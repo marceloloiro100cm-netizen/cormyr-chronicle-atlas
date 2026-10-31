@@ -31,6 +31,8 @@ function connect(qc:QueryClient):RealtimeEntry{
    ['campaign-calendar'],['calendar-schedule-events'],
    ['campaign-schedule-drafts'],['campaign-time-history'],
    ['noble-house'],['house-realm-dashboard'],
+   ['house-character-ages'],['character-age-dashboard'],
+   ['character-age-impact'],['character-year-transitions'],
   ])void qc.invalidateQueries({queryKey:prefix});
  };
  channel.on('postgres_changes',{
