@@ -51,9 +51,9 @@ describe('complete unit character sheet',()=>{
   const displayedSkills=[...container.ownerDocument.querySelectorAll('.military-skill-head strong')].map(node=>node.textContent);
   for(const skill of UNIT_SKILLS)expect(displayedSkills).toContain(UNIT_SKILL_NAMES[skill]);
   expect(UNIT_SKILLS).toHaveLength(20);
-  const fighting=container.querySelector('[aria-label="Luta: graduação 5"]');
-  const awareness=container.querySelector('[aria-label="Percepção: graduação 2"]');
-  const knowledge=container.querySelector('[aria-label="Conhecimento: graduação 4"]');
+  const fighting=container.ownerDocument.querySelector('[aria-label="Luta: graduação 5"]');
+  const awareness=container.ownerDocument.querySelector('[aria-label="Percepção: graduação 2"]');
+  const knowledge=container.ownerDocument.querySelector('[aria-label="Conhecimento: graduação 4"]');
   expect(fighting?.querySelectorAll('.military-pip')).toHaveLength(12);
   expect(fighting?.querySelectorAll('.military-pip.filled')).toHaveLength(5);
   expect(awareness?.querySelectorAll('.military-pip.filled')).toHaveLength(2);
