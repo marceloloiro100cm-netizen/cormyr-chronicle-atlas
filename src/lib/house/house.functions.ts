@@ -82,7 +82,11 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
     .eq('campaign_players.active',true).eq('campaign_players.require_password_change',false)
     .maybeSingle();
   if(myMembership?.error)throw new Error('Permissões da Casa indisponíveis.');
-  const initial=newHouseState(data.houseId,house.data.region??'');if(!finalState){const c=await db.rpc('get_campaign_calendar');const value=c.data as {year?:number;month?:number}|null;if(value?.year&&value.month!==undefined)initial.month=value.year*12+value.month;}
+  const initial=newHouseState(data.houseId,house.data.region??'');if(!finalState){
+    const c=await db.rpc('get_campaign_calendar');
+    if(c.error||!c.data)throw new Error('Calendário global indisponível: nova Casa exige período oficial.');
+    initial.month=calendarMonthIndex(c.data as {year:number;month:number});
+  }
   return {state:finalState ?? initial,version:sheet.data?.version??0,catalog,houses:[...merged.values()].sort((a,b)=>a.name.localeCompare(b.name)),ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(admin.data),canEditAttributes:Boolean(admin.data||myMembership?.data?.can_edit_attributes)};
 });
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
@@ -97,7 +101,11 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   const official=await context.supabase.from('campaign_houses').select('region,name').eq('id',data.houseId).single();
   if(current.error||official.error)throw new Error('Casa não encontrada.');
   const state=(current.data?.state??newHouseState(data.houseId,official.data.region??'')) as unknown as HouseState;
-  if(!current.data){const c=await context.supabase.rpc('get_campaign_calendar');const value=c.data as {year?:number;month?:number}|null;if(value?.year&&value.month!==undefined)state.month=value.year*12+value.month;}
+  if(!current.data){
+    const c=await context.supabase.rpc('get_campaign_calendar');
+    if(c.error||!c.data)throw new Error('Calendário global indisponível: nenhuma Casa nova será gravada com data presumida.');
+    state.month=calendarMonthIndex(c.data as {year:number;month:number});
+  }
   if((current.data?.version??0)!==data.version)throw new Error('A ficha mudou. Recarregue para conciliar as versões.');
   let next=structuredClone(state),rule='Cormyr · gestão auditada';const args=data.args;
   const editGrants=admin?null:(await context.supabase.from('house_memberships')
