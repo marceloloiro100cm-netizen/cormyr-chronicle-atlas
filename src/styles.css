@@ -652,4 +652,10 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 .military-sheet .military-equip-buttons button:hover:not(:disabled){background:#d3d0d5!important;color:#241d2c!important}
 .military-sheet .military-equip-buttons button:disabled{background:#ecebed!important;color:#777180!important;border-color:#c8c5ca!important;opacity:.8!important}
 .military-sheet .military-equip-buttons button:focus-visible,.military-sheet-download:focus-visible{outline:3px solid #a36b34;outline-offset:2px}
+/* Keep the unit-sheet editor action consistent with other gray military controls. */
+.military-sheet .military-sheet-edit{background:#e9e7e8!important;color:#342d3d!important;border:1px solid #a9a3ac!important;opacity:1!important;font-weight:600}
+.military-sheet .military-sheet-edit:hover:not(:disabled){background:#d3d0d5!important;color:#241d2c!important}
+.military-sheet .military-sheet-edit:disabled{background:#ecebed!important;color:#777180!important;border-color:#c8c5ca!important}
+.military-sheet .military-sheet-edit:focus-visible{outline:3px solid #a36b34;outline-offset:2px}
+
 @media(max-width:680px){.military-unit-symbol--large{width:60px;height:60px}.military-sheet-download{margin-left:0}.military-sheet-header-title{flex-basis:calc(100% - 80px)}}
