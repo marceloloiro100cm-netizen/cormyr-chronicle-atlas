@@ -299,7 +299,33 @@ export function createUnit(state: HouseState, unit: Unit, types: UnitType[]): Ho
   for(const c of costs)if(c.mode==='permanent')next.permanent[c.resource]-=c.amount;
   return next;
 }
-export function advance(state:HouseState,target:number):HouseState { if(!Number.isInteger(target)||target<state.month||target>state.month+120)throw new Error('Período inválido.');const next=structuredClone(state);next.month=target;for(const p of next.projects)if(p.status==='building'&&p.start+p.duration+p.modifier<=target){const h=next.holdings.find(h=>h.id===p.holdingId);if(!h||h.status!=='building'){p.status='cancelled';continue;}const parent=h.parentId?next.holdings.find(parent=>parent.id===h.parentId):undefined;if(h.parentId&&parent?.status!=='active')continue;p.status='completed';h.status='active';}return next; }
+/** Modelo local de conciliação do tempo para revisão auditada pelo Narrador.
+ * Mesmas regras do SQL: obras com pais dependentes não sofrem com ordem de array.
+ * Nunca credita recursos, não rola Sorte e não cria ações mensais automaticamente.
+ */
+export function advance(state:HouseState,target:number):HouseState {
+ if(!Number.isInteger(target)||target<state.month||target>state.month+120)
+  throw new Error('Período inválido.');
+ const next=structuredClone(state);next.month=target;
+ for(let pass=0;pass<=next.projects.length;pass++){
+  let changed=false;
+  for(const p of next.projects){
+   if(p.status!=='building'||p.start+p.duration+p.modifier>target)continue;
+   const holding=next.holdings.find(h=>h.id===p.holdingId);
+   if(!holding||!['building','active'].includes(holding.status)){
+    p.status='cancelled';changed=true;continue;
+   }
+   if(holding.status==='active'){
+    p.status='completed';changed=true;continue;
+   }
+   if(holding.parentId&&!next.holdings.some(h=>h.id===holding.parentId&&h.status==='active'))
+    continue;
+   p.status='completed';holding.status='active';changed=true;
+  }
+  if(!changed)break;
+ }
+ return next;
+}
 export function alternativeFortune(state:HouseState,resource:Resource):HouseState {if(state.fortunes.some(f=>f.month===state.month))throw new Error('A Sorte deste mês já foi resolvida.');const lastRoll=[...state.fortunes].reverse().find(f=>f.mode==='roll');const first=state.fortunes[0];if((lastRoll&&state.month-lastRoll.month>=3)||(!lastRoll&&first&&state.month-first.month>=2))throw new Error('É necessário rolar Sorte ao menos uma vez a cada três meses.');const next=structuredClone(state);next.permanent[resource]+=1;next.fortunes.push({month:state.month,mode:'alternative',dice:[],bonusDice:[],modifier:0,result:0,outcome:'+1 recurso sem rolagem',resource,changes:{[resource]:1},source:'Livro básico · Sorte da casa; Prosperidade · Resource Gain Bonus'});return next; }
 export function gainFromFortune(state:HouseState,resource:Resource,amount:number,rolled:boolean) { if(!rolled||amount<=0)return amount;const effects=activeHoldings(state).flatMap(h=>h.effects).filter(e=>e.kind==='gain'&&e.resource===resource);if(effects.length>1)throw new Error('Empilhamento exige dados registrados; não some bônus fixos.');return amount+(effects[0]?.amount??0); }
 export function ledgerEntry(before:HouseState,after:HouseState,action:string,key:string,explanation:string,rule:string):Ledger {return {id:key,key,action,explanation,rule,campaignMonth:after.month,before:balances(before).total,after:balances(after).total};}
