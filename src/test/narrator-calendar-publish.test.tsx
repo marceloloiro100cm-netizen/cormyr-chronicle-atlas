@@ -89,6 +89,7 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
  });
  it('não permite publicação se a prévia oficial estiver inacessível',async()=>{
   mock.rpc.mockImplementation(async(name:string)=>{
+   if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
    if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
    if(name==='get_campaign_schedule_drafts'||name==='get_campaign_time_history')return {data:[],error:null};
    if(name==='preview_campaign_time_change')return {data:null,error:{code:'42501',message:'Somente o Narrador'}};
@@ -131,6 +132,7 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
   fireEvent.click(screen.getAllByRole('button',{name:'12 de Hammer, 1522',hidden:true})[0]!);
   qc.setQueryData(['campaign-calendar'],{...mock.current,version:2,day:6});
   mock.rpc.mockImplementation(async(name:string,args?:Record<string,unknown>)=>{
+   if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
    if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
    if(name==='get_campaign_schedule_drafts'||name==='get_campaign_time_history')return {data:[],error:null};
    if(name==='preview_campaign_time_change')return {data:previewFor(args!),error:null};
@@ -171,6 +173,7 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
  });
  it('não declara sucesso quando o snapshot retornado diverge da prévia',async()=>{
   mock.rpc.mockImplementation(async(name:string,args?:Record<string,unknown>)=>{
+   if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
    if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
    if(name==='get_campaign_schedule_drafts'||name==='get_campaign_time_history')return {data:[],error:null};
    if(name==='preview_campaign_time_change')return {data:previewFor(args!),error:null};
