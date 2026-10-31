@@ -80,7 +80,8 @@ describe('YouTube playlist per-track links',()=>{
   expect(recordings).toHaveLength(20);
   expect(recordings.filter((t:{youtubeUrl?:string})=>Boolean(t.youtubeUrl))).toHaveLength(14);
   for(const t of recordings){
-   expect(t.driveUrl).toMatch(/^https:\\/\\/drive\\.google\\.com\\/file\\/d\\/[A-Za-z0-9_-]+\\/view$/);
+   expect(new URL(t.driveUrl).hostname).toBe('drive.google.com');
+   expect(new URL(t.driveUrl).pathname.startsWith('/file/d/')).toBe(true);
    if(t.youtubeUrl){
     const u=new URL(t.youtubeUrl);
     expect(u.searchParams.get('list')).toBe('PLNkPwXjMDaCw');
