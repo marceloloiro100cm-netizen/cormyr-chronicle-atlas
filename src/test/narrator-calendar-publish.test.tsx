@@ -33,6 +33,13 @@ function previewFor(args:Record<string,unknown>){
 }
 function setupRpc(){
  mock.rpc.mockImplementation(async(name:string,args?:Record<string,unknown>)=>{
+  if(name==='preview_house_time_impacts'){
+   const target=parseDate(String(args?.['p_target_date']??'1522-01-01'))!;
+   const month=target.year*12+target.month;
+   return {data:{calendar_version:args?.['p_version'],base_month:mock.current.year*12+mock.current.month,
+    target_month:month,total:0,eligible:0,ahead:0,drafts:0,invalid:0,
+    aligned_or_historical:0,project_candidates:0,backdated:false,houses:[]},error:null};
+  }
   if(name==='get_character_age_dashboard')return {data:{
    current_year:args?.['p_year'],target_year:args?.['p_target_year'],
    totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
@@ -101,7 +108,14 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
  });
  it('não permite publicação se a prévia oficial estiver inacessível',async()=>{
   mock.rpc.mockImplementation(async(name:string,args?:Record<string,unknown>)=>{
-   if(name==='get_character_age_dashboard')return {data:{
+   if(name==='preview_house_time_impacts'){
+   const target=parseDate(String(args?.['p_target_date']??'1522-01-01'))!;
+   const month=target.year*12+target.month;
+   return {data:{calendar_version:args?.['p_version'],base_month:mock.current.year*12+mock.current.month,
+    target_month:month,total:0,eligible:0,ahead:0,drafts:0,invalid:0,
+    aligned_or_historical:0,project_candidates:0,backdated:false,houses:[]},error:null};
+  }
+  if(name==='get_character_age_dashboard')return {data:{
    current_year:args?.['p_year'],target_year:args?.['p_target_year'],
    totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
     unknown:0,not_born:0,aged_nobles:0},characters:[],truncated:false,
@@ -155,7 +169,14 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
   fireEvent.click(screen.getAllByRole('button',{name:'12 de Hammer, 1522',hidden:true})[0]!);
   qc.setQueryData(['campaign-calendar'],{...mock.current,version:2,day:6});
   mock.rpc.mockImplementation(async(name:string,args?:Record<string,unknown>)=>{
-   if(name==='get_character_age_dashboard')return {data:{
+   if(name==='preview_house_time_impacts'){
+   const target=parseDate(String(args?.['p_target_date']??'1522-01-01'))!;
+   const month=target.year*12+target.month;
+   return {data:{calendar_version:args?.['p_version'],base_month:mock.current.year*12+mock.current.month,
+    target_month:month,total:0,eligible:0,ahead:0,drafts:0,invalid:0,
+    aligned_or_historical:0,project_candidates:0,backdated:false,houses:[]},error:null};
+  }
+  if(name==='get_character_age_dashboard')return {data:{
    current_year:args?.['p_year'],target_year:args?.['p_target_year'],
    totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
     unknown:0,not_born:0,aged_nobles:0},characters:[],truncated:false,
@@ -207,7 +228,14 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
  });
  it('não declara sucesso quando o snapshot retornado diverge da prévia',async()=>{
   mock.rpc.mockImplementation(async(name:string,args?:Record<string,unknown>)=>{
-   if(name==='get_character_age_dashboard')return {data:{
+   if(name==='preview_house_time_impacts'){
+   const target=parseDate(String(args?.['p_target_date']??'1522-01-01'))!;
+   const month=target.year*12+target.month;
+   return {data:{calendar_version:args?.['p_version'],base_month:mock.current.year*12+mock.current.month,
+    target_month:month,total:0,eligible:0,ahead:0,drafts:0,invalid:0,
+    aligned_or_historical:0,project_candidates:0,backdated:false,houses:[]},error:null};
+  }
+  if(name==='get_character_age_dashboard')return {data:{
    current_year:args?.['p_year'],target_year:args?.['p_target_year'],
    totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
     unknown:0,not_born:0,aged_nobles:0},characters:[],truncated:false,
