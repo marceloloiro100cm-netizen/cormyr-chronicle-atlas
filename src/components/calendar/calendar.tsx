@@ -14,6 +14,8 @@ export function CampaignCalendar(){
  const realtimeStatus=useCampaignCalendarRealtime();
  const calendar=useCampaignTime();
  const [year,setYear]=useState(1),[month,setMonth]=useState(0),[selected,setSelected]=useState(''),[followCurrent,setFollowCurrent]=useState(true);
+ // Não renderizar/fazer buscas de um ano provisório enquanto o snapshot publicado chega.
+ const viewReady=Boolean(calendar.data&&(!followCurrent||(year===calendar.data.year&&month===calendar.data.month)));
  // Update the open player calendar when the Narrator publishes a different date,
  // but preserve a month intentionally browsed by the player.
  const publishedDate=calendar.data?dateKey(calendar.data):null;
@@ -22,12 +24,12 @@ export function CampaignCalendar(){
    setYear(calendar.data.year);setMonth(calendar.data.month);setSelected(dateKey(calendar.data));
   }
  },[publishedDate,followCurrent]);
- const mail=useQuery({queryKey:['calendar-events',year,month],enabled:Boolean(calendar.data),queryFn:async()=>{const r=await supabase.rpc('calendar_mail_events',{p_year:year,p_month:month});if(r.error)throw r.error;return r.data as unknown as CalendarEvent[];},refetchInterval:30000});
- const published=useQuery({queryKey:['calendar-schedule-events',year,month],enabled:Boolean(calendar.data),queryFn:async()=>{const r=await supabase.rpc('get_campaign_schedule_events',{p_year:year,p_month:month});if(r.error)throw r.error;return r.data as unknown as CalendarEvent[];},refetchInterval:15000});
+ const mail=useQuery({queryKey:['calendar-events',year,month],enabled:viewReady,queryFn:async()=>{const r=await supabase.rpc('calendar_mail_events',{p_year:year,p_month:month});if(r.error)throw r.error;return r.data as unknown as CalendarEvent[];},refetchInterval:30000});
+ const published=useQuery({queryKey:['calendar-schedule-events',year,month],enabled:viewReady,queryFn:async()=>{const r=await supabase.rpc('get_campaign_schedule_events',{p_year:year,p_month:month});if(r.error)throw r.error;return r.data as unknown as CalendarEvent[];},refetchInterval:15000});
  const events=[...annualEvents(year),...(mail.data??[]),...(published.data??[])],onDay=(key:string)=>events.filter(e=>e.date===key);
  const chooseMonth=(m:number)=>{setFollowCurrent(false);const y=m<0?year-1:m>11?year+1:year;if(y<1||y>9999)return;const next=(m+12)%12;setYear(y);setMonth(next);setSelected(dateKey({year:y,month:next,day:1,festival:null}));};
  const cell=(key:string,label:string)=>{const items=onDay(key);return <button type="button" key={key} aria-current={calendar.data&&dateKey(calendar.data)===key?'date':undefined} aria-pressed={selected===key} aria-describedby={selected===key?'harptos-events':undefined} aria-label={`${formatDate(key)}: ${items.length} evento(s)`} title={items.map(e=>e.title).join('\n')||'Nenhum evento visível neste dia'} onMouseEnter={()=>setSelected(key)} onFocus={()=>setSelected(key)} onClick={()=>setSelected(key)}><span>{label}</span><span className="harptos-symbols">{(['kingdom','mail','season'] as const).filter(kind=>items.some(e=>e.kind===kind)).map(kind=><Symbol key={kind} kind={kind}/>)}</span></button>;};
- if(!calendar.data)return <section className="harptos"><h2>Calendário de Harptos</h2><p role={calendar.error?'alert':'status'}>{calendar.error?'Calendário oficial indisponível; nenhuma data foi presumida.':'Carregando data oficial da campanha…'}</p></section>;
+ if(!viewReady)return <section className="harptos"><h2>Calendário de Harptos</h2><p role={calendar.error?'alert':'status'}>{calendar.error?'Calendário oficial indisponível; nenhuma data foi presumida.':'Sincronizando data oficial da campanha…'}</p></section>;
  return <section className="harptos"><h2>Calendário de Harptos</h2>
  <p className="harptos-sync-status" role="status">{realtimeStatus==='live'?'Sincronização em tempo real ativa':realtimeStatus==='fallback'?'Conexão em tempo real indisponível · atualização automática a cada 15 segundos':'Conectando calendário em tempo real · atualização automática ativa'}</p>
  {calendar.data&&<p className="harptos-week" role="status" aria-live="polite">{formatCampaignPeriod(calendar.data)}</p>}
