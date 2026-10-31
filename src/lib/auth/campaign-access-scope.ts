@@ -71,3 +71,15 @@ export function clearRevokedAccessCache(
  client.removeQueries({predicate:query=>
   query.queryKey[0]!==CAMPAIGN_ACCESS_SCOPE_KEY[0]});
 }
+
+
+/** Reject a response assembled across two different permission snapshots.
+ * Caller must perform a FRESH server read after all async page requests.
+ */
+export function assertUnchangedAccessScope(
+ before:Pick<CampaignAccessScope,'userId'|'fingerprint'>,
+ after:Pick<CampaignAccessScope,'userId'|'fingerprint'>,
+):void{
+ if(before.userId!==after.userId||before.fingerprint!==after.fingerprint)
+  throw new Error('Vínculos alterados durante a consulta. Recarregue o acervo.');
+}
