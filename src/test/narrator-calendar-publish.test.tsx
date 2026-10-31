@@ -33,6 +33,12 @@ function previewFor(args:Record<string,unknown>){
 }
 function setupRpc(){
  mock.rpc.mockImplementation(async(name:string,args?:Record<string,unknown>)=>{
+  if(name==='get_character_age_dashboard')return {data:{
+   current_year:args?.['p_year'],target_year:args?.['p_target_year'],
+   totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
+    unknown:0,not_born:0,aged_nobles:0},characters:[],truncated:false,
+  },error:null};
+  if(name==='get_character_year_transitions')return {data:[],error:null};
   if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
   if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
   if(name==='get_campaign_schedule_drafts'||name==='calendar_mail_events'||
@@ -90,7 +96,13 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
  });
  it('não permite publicação se a prévia oficial estiver inacessível',async()=>{
   mock.rpc.mockImplementation(async(name:string)=>{
-   if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
+   if(name==='get_character_age_dashboard')return {data:{
+   current_year:args?.['p_year'],target_year:args?.['p_target_year'],
+   totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
+    unknown:0,not_born:0,aged_nobles:0},characters:[],truncated:false,
+  },error:null};
+  if(name==='get_character_year_transitions')return {data:[],error:null};
+  if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
    if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
    if(name==='get_campaign_schedule_drafts'||name==='get_campaign_time_history')return {data:[],error:null};
    if(name==='preview_campaign_time_change')return {data:null,error:{code:'42501',message:'Somente o Narrador'}};
@@ -133,7 +145,13 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
   fireEvent.click(screen.getAllByRole('button',{name:'12 de Hammer, 1522',hidden:true})[0]!);
   qc.setQueryData(['campaign-calendar'],{...mock.current,version:2,day:6});
   mock.rpc.mockImplementation(async(name:string,args?:Record<string,unknown>)=>{
-   if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
+   if(name==='get_character_age_dashboard')return {data:{
+   current_year:args?.['p_year'],target_year:args?.['p_target_year'],
+   totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
+    unknown:0,not_born:0,aged_nobles:0},characters:[],truncated:false,
+  },error:null};
+  if(name==='get_character_year_transitions')return {data:[],error:null};
+  if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
    if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
    if(name==='get_campaign_schedule_drafts'||name==='get_campaign_time_history')return {data:[],error:null};
    if(name==='preview_campaign_time_change')return {data:previewFor(args!),error:null};
@@ -174,7 +192,13 @@ describe('Lote 4 · comando central temporal do Narrador',()=>{
  });
  it('não declara sucesso quando o snapshot retornado diverge da prévia',async()=>{
   mock.rpc.mockImplementation(async(name:string,args?:Record<string,unknown>)=>{
-   if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
+   if(name==='get_character_age_dashboard')return {data:{
+   current_year:args?.['p_year'],target_year:args?.['p_target_year'],
+   totals:{total:0,nobles:0,alive:0,deceased:0,pending:0,conflicts:0,
+    unknown:0,not_born:0,aged_nobles:0},characters:[],truncated:false,
+  },error:null};
+  if(name==='get_character_year_transitions')return {data:[],error:null};
+  if(name==='get_character_registry_hub')return {data:{characters:[],pending:[],pending_total:0,count:0,relations:[],links:[]},error:null};
    if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
    if(name==='get_campaign_schedule_drafts'||name==='get_campaign_time_history')return {data:[],error:null};
    if(name==='preview_campaign_time_change')return {data:previewFor(args!),error:null};
