@@ -41,8 +41,9 @@ describe('Link safety and music playback fallback',()=>{
   const player=publicFile('music-player.js');
   expect(player).not.toContain("'/preview'");
   expect(player).toContain("if(host==='drive.google.com')return null;");
-  expect(player).toContain("if(!embed){");
-  expect(player).toContain("if(new URL(url).hostname==='drive.google.com')stop();");
+  expect(player).toContain("button[data-bard-preview]");
+  expect(player).not.toContain("a.music-button[href]');\n  if(!link)");
+  expect(publicFile('extras.js')).toContain('data-bard-preview');
  });
  it('preserves external Gemini Notebook link and displays a permissions explanation',()=>{
   const html=publicFile('index.html');
