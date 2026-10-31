@@ -20,6 +20,14 @@ describe('lote 8 — Corte e vassalagem',()=>{
   expect(ended.holdings.find(h=>h.id==='v1')?.status).toBe('abandoned');
   expect(ended.vassals?.[0]?.notes).toContain('Rompimento');
   expect(()=>endVassal(ended,'v1','Tentativa repetida e inválida.')).toThrow('não está ativa');
+  expect(ended.vassals?.[0]?.loyalty).toBe('broken');
+ });
+ it('Narrador pode perder Poder permanentemente ao romper o vínculo',()=>{
+  const s=newHouseState('main');s.base.power=50;s.base.influence=20;
+  const approved=approveVassal(proposeVassal(s,{id:'v2',houseId:'other',name:'Vassala',notes:''}),'v2',2);
+  const ended=endVassal(approved,'v2','Rebelião narrada e aprovada pelo Narrador.',true);
+  expect(balances(ended).total.power).toBe(30);expect(balances(ended).available.power).toBe(30);
+  expect(balances(ended).total.influence).toBe(20);
  });
  it('minificha de vassala usa cinco dados por recurso e mantém rolagens',()=>{
   const s=newHouseState('main');s.base.power=100;
