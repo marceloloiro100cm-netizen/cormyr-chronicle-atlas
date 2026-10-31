@@ -66,8 +66,16 @@ data_before="$(hash_dump mail_test --data-only)"
 clock_before="$(psql -XAtq -v ON_ERROR_STOP=1 -d mail_test \
   -c "SELECT public.get_public_campaign_time()::text")"
 
-pg_dump -d mail_test -Fc --file="$tmp/fixture.backup"
-pg_restore --list "$tmp/fixture.backup" > "$tmp/manifest.txt"
+# GitHub runner possui cliente pg_dump/pg_restore mais novo que PG16.
+# Usar ferramenta oficial postgres:16 compatível com o servidor PostgreSQL 16.
+# --network host conecta exclusivamente ao localhost da fixture do job.
+pg16_client() {
+  docker run --rm -i --network host \
+    -e PGHOST=localhost -e PGPORT=5432 -e PGUSER=postgres \
+    -e PGPASSWORD=isolated postgres:16 "$@"
+}
+pg16_client pg_dump -d mail_test -Fc > "$tmp/fixture.backup"
+pg16_client pg_restore --list < "$tmp/fixture.backup" > "$tmp/manifest.txt"
 if [[ ! -s "$tmp/fixture.backup" || ! -s "$tmp/manifest.txt" ]]; then
   echo "BLOQUEADO: arquivo de backup inválido" >&2
   exit 2
@@ -75,8 +83,8 @@ fi
 
 createdb --template=template0 "$restore_db"
 created_by_test=true
-pg_restore --exit-on-error --single-transaction --no-owner \
-  --dbname="$restore_db" "$tmp/fixture.backup" \
+pg16_client pg_restore --exit-on-error --single-transaction --no-owner \
+  --dbname="$restore_db" < "$tmp/fixture.backup" \
   > "$tmp/restore.stdout" 2> "$tmp/restore.stderr" || {
     echo "BLOQUEADO: pg_restore falhou em clone efêmero." >&2
     grep -E -m 8 "pg_restore: error:|ERROR:|FATAL:" "$tmp/restore.stderr" | cut -c1-180 >&2 || true
