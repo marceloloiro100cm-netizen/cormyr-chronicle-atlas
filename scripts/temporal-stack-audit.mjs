@@ -82,7 +82,7 @@ export async function fetchTemporalStackLive(manifest,fetcher=fetch,token=''){
   const value=await result.json();
   map.set(pr,{
    head:value.head?.ref,base:value.base?.ref,
-   state:value.state,merged:value.merged===true||value.merged_at!==null,
+   state:value.state,merged:value.merged===true||value.merged_at!=null,
    mergeable:value.mergeable!==false,
   });
  }
