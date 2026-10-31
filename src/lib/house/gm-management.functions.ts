@@ -44,7 +44,7 @@ export const loadKingdomHouseOverview=createServerFn({method:'POST'}).middleware
      phase:state?.phase??'not_configured',version:sheet?.version??0,
      month:state?.month??null,influence:totals?.total.influence??null,
      status:totals?maxHouseStatus(totals.total.influence):null,
-     available:totals?.available??null,
+     available:totals?.available??null,total:totals?.total??null,
      units:state?.units.filter(u=>!u.destroyed).length??0,
      holdings:state?.holdings.filter(h=>h.status==='active').length??0,
      pending:state?.pending.length??0
