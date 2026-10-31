@@ -6741,10 +6741,10 @@
       },
       {
         "kind": "discount",
-        "resource": "power",
+        "resource": "population",
         "target": "unit:levies",
         "amount": 2,
-        "description": "Desconto de 2 Poder no recrutamento de Plebeus, sem reduzir o custo permanente de População."
+        "description": "Desconto de 2 População no custo de recrutamento dos Plebeus, conforme regra de Gangues de Rua."
       }
     ],
     "duration": {
