@@ -2,6 +2,9 @@ import {describe,it,expect} from 'vitest';
 import {CORE_CATALOG} from '@/lib/house/catalog';
 import {houseEffectLedger,resolveHouseNumericBonus} from '@/lib/house/house-effect-ledger';
 import {confirmFortune} from '@/lib/house/fortune';
+import {createUnit,UNIT_TYPES,unitStats} from '@/lib/house/engine';
+import {changeUnitState} from '@/lib/house/military';
+import {editUnitProfile} from '@/lib/house/unit-progression';
 import {unitMilitaryBonuses} from '@/lib/house/military-bonuses';
 import {newHouseState,SKILLS,type Holding,type Unit} from '@/lib/house/types';
 
@@ -74,6 +77,19 @@ describe('livro de efeitos derivados da Casa',()=>{
   expect(after.permanent.law).toBe(-2);
   expect(after.fortunes[0]?.changes.law).toBe(-2);
   expect(s.permanent.law).toBe(0);
+ });
+ it('aplica Vigor do Treinamento Fundamental à saúde inicial, à cura e à edição da unidade',()=>{
+  const s=makeState();
+  const academy=holding('pros-military-academy');
+  const core=holding('pros-military-academy--core-training',{parentId:academy.id,militarySkill:'endurance'});
+  s.holdings=[academy,core];
+  const recruited=createUnit(s,unit(),UNIT_TYPES);
+  expect(recruited.units[0]?.health).toBe(9);
+  expect(unitStats(recruited.units[0]!,recruited).maxHealth).toBe(9);
+  const healed=changeUnitState(recruited,{unitId:'u',mounted:false,atHome:true,health:9,casualties:0,situation:'Curada'});
+  expect(healed.units[0]?.health).toBe(9);
+  const edited=editUnitProfile(healed,{unitId:'u',name:'Infantaria',origin:'',notes:'',situation:'',skills:healed.units[0]!.skills});
+  expect(edited.units[0]?.health).toBe(9);
  });
  it('não aplica +2 de Defesa da Irmandade quando sua Abadia está inativa',()=>{
   const s=makeState();
