@@ -147,6 +147,11 @@
       "pr": 155,
       "head": "fix/hub-temporal-lote-29-respostas-tardias",
       "base": "fix/hub-temporal-lote-28-operacoes-em-voo"
+    },
+    {
+      "pr": 156,
+      "head": "audit/hub-temporal-lote-30-gate-seguranca",
+      "base": "fix/hub-temporal-lote-29-respostas-tardias"
     }
   ]
 }
