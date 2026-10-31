@@ -5,7 +5,7 @@ import {blankChronicleSheet,chronicleStats,serializeChronicleSheet,CHARACTER_SKI
 import type {RecordRow} from '@/components/players/shared';
 
 export function ChronicleCharacterEditor({row,initial,houseId,houseName,playerId,canEdit,statusCap,onSave}:{
- row?:RecordRow;initial?:ChronicleSheet;houseId:string;houseName:string;playerId?:string;
+ row?:RecordRow;initial?:ChronicleSheet;houseId:string;houseName:string;playerId?:string|undefined;
  canEdit:boolean;statusCap:number;onSave:()=>unknown;
 }){
  const [sheet,setSheet]=useState<ChronicleSheet>(()=>initial??{...blankChronicleSheet(),role:'Lorde / Herdeiro'});
