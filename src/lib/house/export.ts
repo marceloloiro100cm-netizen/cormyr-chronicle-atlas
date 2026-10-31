@@ -6,7 +6,8 @@ export async function exportHouseExcel(state:HouseState,name:string,catalog:Cata
  const XLSX=await import('xlsx'),wb=XLSX.utils.book_new();
  for(const section of houseReport(state,name,catalog,ledger)) {
   const rows=[section.headers,...section.rows],ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=section.headers.map((header,i)=>({wch:Math.min(55,Math.max(16,header.length+2,...section.rows.map(row=>String(row[i]??'').length)))}));
+  if(section.title==='Recursos')section.rows.forEach((row,i)=>{const number=i+2;ws['E'+number]={t:'n',f:`B${number}-C${number}-D${number}`,v:Number(row[4]??0)};});
+   ws['!cols']=section.headers.map((header,i)=>({wch:Math.min(55,Math.max(16,header.length+2,...section.rows.map(row=>String(row[i]??'').length)))}));
   ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(0,rows.length-1),c:section.headers.length-1}})};
   XLSX.utils.book_append_sheet(wb,ws,section.title.slice(0,31));
  }
@@ -22,7 +23,7 @@ export async function exportHousePdf(state:HouseState,name:string,catalog:Catalo
  for(const section of houseReport(state,name,catalog,ledger)) {
   if(y>170){pdf.addPage();y=16;}
   pdf.setFont('times','bold');pdf.setFontSize(14);pdf.text(section.title,14,y);y+=4;
-  autoTable(pdf,{startY:y,head:[section.headers],body:section.rows.length?section.rows:[['Nenhum registro']],theme:'grid',styles:{font:'helvetica',fontSize:8,overflow:'linebreak',cellPadding:2},margin:{top:14,bottom:16,left:14,right:14},didDrawPage:()=>{y=14;},didDrawCell:ctx=>{y=Math.max(y,ctx.cell.y+ctx.cell.height+12);}});
+  autoTable(pdf,{startY:y,head:[section.headers],body:section.rows.length?section.rows:[['Nenhum registro']],theme:'grid',styles:{font:'helvetica',fontSize:8,overflow:'linebreak',cellPadding:2},margin:{top:14,bottom:16,left:14,right:14}});y=((pdf as typeof pdf & {lastAutoTable?:{finalY:number}}).lastAutoTable?.finalY??y)+12;
  }
  const pages=pdf.getNumberOfPages();
  for(let n=1;n<=pages;n++){pdf.setPage(n);pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.text(`Cormyr | Casa ${name} | ${n} / ${pages}`,14,202);}

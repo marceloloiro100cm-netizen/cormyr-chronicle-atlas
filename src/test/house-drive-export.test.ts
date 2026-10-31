@@ -37,6 +37,20 @@ describe('exportação da casa preserva compras',()=>{
   });
   try {await createHouseExportAdapter(request).write('technical',d,'stable','sha256:fake');expect(calls.some(c=>c.method==='PATCH')).toBe(false);expect(calls.find(c=>c.method==='POST')?.body).toContain('cormyr-house-ashkar-v2-');}finally{vi.unstubAllEnvs();}
  });
+ it('atualiza arquivo estável sem ETag por PATCH, sem criar duplicatas',async()=>{
+  vi.stubEnv('GOOGLE_DRIVE_API_KEY','test');vi.stubEnv('LOVABLE_API_KEY','test');
+  const d=document(2);const calls:{path:string;method:string;headers:Headers}[]=[];
+  const request=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+   const path=String(input);calls.push({path,method:init?.method??'GET',headers:new Headers(init?.headers)});
+   if(path.includes('/files/stable?fields'))return Response.json({parents:['technical'],mimeType:'application/json'});
+   if(path.includes('alt=media'))return Response.json(d);
+   return Response.json({});
+  });
+  try {const result=await createHouseExportAdapter(request).write('technical',d,'stable',null);expect(result.fileId).toBe('stable');
+   expect(calls.filter(c=>c.method==='PATCH')).toHaveLength(1);expect(calls.some(c=>c.method==='POST')).toBe(false);
+   expect(calls.find(c=>c.method==='PATCH')?.headers.get('If-Match')).toBeNull();
+  }finally{vi.unstubAllEnvs();}
+ });
  it('bloqueia arquivo fora da pasta técnica autorizada',async()=>{
   vi.stubEnv('GOOGLE_DRIVE_API_KEY','test');vi.stubEnv('LOVABLE_API_KEY','test');
   try {const a=createHouseExportAdapter(async()=>Response.json({parents:['other'],mimeType:'application/json'}));await expect(a.read('file','technical')).rejects.toThrow('fora da pasta');}finally{vi.unstubAllEnvs();}

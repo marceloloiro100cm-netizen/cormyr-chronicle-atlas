@@ -24,11 +24,11 @@ export function createHouseExportAdapter(request: typeof fetch = fetch): HouseEx
       valid(folder);
       const bodyText = serializeHouseExport(document);
       if (bodyText.length > 2_000_000) throw new Error('Ficha excede o limite da exportação.');
-      if (fileId && etag && !etag.startsWith('sha256:')) {
+      if (fileId && (!etag || !etag.startsWith('sha256:'))) {
         valid(fileId);
-        await call(`/upload/drive/v3/files/${fileId}?uploadType=media&supportsAllDrives=true`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'If-Match': etag }, body: bodyText });
+        await call(`/upload/drive/v3/files/${fileId}?uploadType=media&supportsAllDrives=true`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...(etag ? { 'If-Match': etag } : {}) }, body: bodyText });
       } else {
-        // Initial stable identity; subsequent versions append if no real provider ETag exists.
+        // A missing provider ETag is not a reason to create duplicates; this branch is for missing identity or a synthetic tag.
         const name = fileId ? houseExportName(document.houseId).replace('.json', `-v${document.version}-${await houseExportHash(document)}.json`) : houseExportName(document.houseId);
         const q = new URLSearchParams({ q: `'${folder}' in parents and trashed=false and name='${name}'`, fields: 'files(id)', pageSize: '10' });
         const found = await (await call('/drive/v3/files?' + q)).json() as { files: { id: string }[] };
