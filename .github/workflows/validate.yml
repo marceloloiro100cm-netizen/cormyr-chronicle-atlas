@@ -38,6 +38,10 @@ jobs:
         run: |
           node scripts/temporal-release-readiness.mjs --report > "$RUNNER_TEMP/temporal-release-readiness.json"
           node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const a=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-release-readiness.json","utf8")); if(a.production_release_authorized!==false||a.merge_authorized!==false||a.migration_execution_authorized!==false) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\n### Hub Temporal — liberação\n**"+a.go_no_go+"**; "+a.blockers.length+" bloqueios. Nenhum deploy/merge autorizado por esta rotina.\n");'
+      - name: Migration-by-file reconciliation worklist (report only)
+        run: |
+          node scripts/temporal-reconciliation-plan.mjs --report --sha "$GITHUB_SHA" --environment homologation > "$RUNNER_TEMP/temporal-reconciliation.json"
+          node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const r=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-reconciliation.json","utf8")); if(r.ready_for_deploy!==false||r.journal_modified!==false||r.migrations_applied_by_this_tool!==0) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\\n### Reconciliação temporal por arquivo (não executa SQL)\\n"+r.unjournaled_total+" arquivos fora do Drizzle journal; "+r.snapshot_count+" snapshots presentes; revisões comprovadas: "+r.evidenced_total+". **Implantação bloqueada.**\\n");'
       - name: Unit and component tests
         run: bun run test
       - name: TypeScript verification
