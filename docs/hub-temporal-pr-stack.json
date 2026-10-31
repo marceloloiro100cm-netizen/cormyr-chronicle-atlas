@@ -92,6 +92,11 @@
       "pr": 144,
       "head": "audit/hub-temporal-lote-18-restauracao-isolada",
       "base": "audit/hub-temporal-lote-17-plano-ordenado-bloqueado"
+    },
+    {
+      "pr": 145,
+      "head": "audit/hub-temporal-lote-19-baseline-restaurado",
+      "base": "audit/hub-temporal-lote-18-restauracao-isolada"
     }
   ]
 }
