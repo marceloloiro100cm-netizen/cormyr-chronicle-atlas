@@ -13,9 +13,9 @@ export function quoteMilitaryUnit(state:HouseState,types:string[],training:keyof
  if(types.includes('levies'))base.push({resource:'population',amount:2,mode:'permanent'});
  if(types.includes('mercenaries'))base.push({resource:'wealth',amount:({green:1,trained:3,veteran:6,elite:9})[training],mode:'permanent'});
  const candidates:MilitaryDiscount[]=[];
- const add=(id:string,type:string,amount:number,description:string)=>{
+ const add=(id:string,type:string,amount:number,description:string,resource:Resource='power')=>{
   if(!types.includes(type))return;
-  for(const h of active(state,id))if(!candidates.some(d=>d.holdingId===h.id))candidates.push({source:h.name,holdingId:h.id,resource:'power',amount,description});
+  for(const h of active(state,id))if(!candidates.some(d=>d.holdingId===h.id))candidates.push({source:h.name,holdingId:h.id,resource,amount,description});
  };
  add('pros-charcoal--tar-works','warships',1,'Unidade naval: custo −1 Poder');
  add('pros-fur-trade--trappers','guerrillas',2,'Guerrilheiros: custo −2 Poder');
@@ -25,7 +25,7 @@ export function quoteMilitaryUnit(state:HouseState,types:string[],training:keyof
  add('pros-engineer--engineer-commander','engineers',1,'Engenheiros: custo −1 Poder');
  add('pros-abbey--warrior-brotherhood','crusaders',1,'Cruzados: custo −1 Poder');
  add('pros-gambling-dens--bloodsports','levies',2,'Plebeus recrutados: custo −2 Poder');
- add('pros-street-gangs','levies',2,'Plebeus recrutados: custo −2 Poder');
+ add('pros-street-gangs','levies',2,'Plebeus recrutados: custo permanente −2 População','population');
  add('pros-gaol','criminals',2,'Criminosos: custo −2 Poder');
  add('pros-gaol','garrison',2,'Guarnição: custo −2 Poder');
  for(const h of active(state,'pros-master-of-arms--field-master'))if(h.militaryTypeId&&types.includes(h.militaryTypeId))candidates.push({source:h.name,holdingId:h.id,resource:'power',amount:1,description:'Mestre de Campo: especialidade '+h.militaryTypeId+' −1 Poder'});
