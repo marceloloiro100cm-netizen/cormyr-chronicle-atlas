@@ -2,9 +2,9 @@ import {useState} from 'react';
 import {Anchor,Castle,ChevronDown,Coins,GraduationCap,Hammer,PenTool,ShieldCheck,Swords} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {CORE_CATALOG} from '@/lib/house/catalog';
-import {activeHoldings,quote} from '@/lib/house/engine';
+import {activeHoldings,quote,UNIT_TYPES} from '@/lib/house/engine';
 import {MILITARY_HOLDINGS,MILITARY_HOLDING_BENEFITS} from '@/lib/house/unit-progression';
-import {RESOURCE_NAMES,type CatalogItem,type HouseState,type Holding,type Requirement} from '@/lib/house/types';
+import {RESOURCE_NAMES,SKILLS,SKILL_NAMES,type CatalogItem,type HouseState,type Holding,type Requirement} from '@/lib/house/types';
 
 const militaryItems=CORE_CATALOG.filter(item=>MILITARY_HOLDINGS.includes(item.id));
 const militaryItemIds=new Set(MILITARY_HOLDINGS);
@@ -68,10 +68,10 @@ function RenameAsset({holding,busy,onRename}:{holding:Holding;busy:boolean;onRen
   <Button type="button" variant="outline" size="sm" onClick={()=>setEditing(false)}>Cancelar</Button>
  </form>;
 }
-function MilitaryAssetCard({item,holdings,state,canEdit,busy,onRename,onBuy}:{
+function MilitaryAssetCard({item,holdings,state,canEdit,busy,onRename,onBuy,onConfigure}:{
  item:CatalogItem;holdings:Holding[];state:HouseState;canEdit:boolean;busy:boolean;
  onRename:(args:Record<string,unknown>)=>Promise<boolean>;
- onBuy:(itemId:string)=>void;
+ onBuy:(itemId:string)=>void;onConfigure:(args:Record<string,unknown>)=>Promise<boolean>;
 }){
  const owned=holdings.filter(h=>h.status==='active');
  const building=holdings.filter(h=>h.status==='building');
@@ -109,15 +109,18 @@ function MilitaryAssetCard({item,holdings,state,canEdit,busy,onRename,onBuy}:{
    {item.pending&&<p className="house-warning">Observação da fonte: {item.pending}</p>}
    {building.map(h=><p className="house-caption" key={h.id}>{h.name}: em construção; bônus ainda não ativo.</p>)}
    {canEdit&&owned.map(h=><RenameAsset key={h.id} holding={h} busy={busy} onRename={onRename}/>)}
+   {canEdit&&owned.map(h=>h.itemId==='pros-military-academy--core-training'?<form className="campaign-form" key={'skill-'+h.id} onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void onConfigure({holdingId:h.id,kind:'skill',value:String(f.get('skill'))});}}><label>Habilidade concedida a todas as unidades<select name="skill" defaultValue={h.militarySkill??''} required><option value="">Escolha uma habilidade</option>{SKILLS.map(id=><option key={id} value={id}>{SKILL_NAMES[id]} +1</option>)}</select></label><Button disabled={busy} size="sm">Aplicar treinamento fundamental</Button></form>:null)}
+   {canEdit&&owned.map(h=>h.itemId==='pros-master-of-arms--field-master'?<form className="campaign-form" key={'type-'+h.id} onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void onConfigure({holdingId:h.id,kind:'type',value:String(f.get('type'))});}}><label>Especialidade do Mestre de Campo<select name="type" defaultValue={h.militaryTypeId??''} required><option value="">Escolha tipo de unidade</option>{UNIT_TYPES.map(t=><option key={t.id} value={t.id}>{t.name} (−1 Poder ao recrutar)</option>)}</select></label><Button disabled={busy} size="sm">Definir especialidade</Button></form>:null)}
+   {canEdit&&owned.filter(h=>['pros-abbey--warrior-brotherhood','pros-trading-inn'].includes(h.itemId)).map(h=><form className="campaign-form" key={'unit-'+h.id} onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void onConfigure({holdingId:h.id,kind:'unit',value:String(f.get('unit'))});}}><label>Unidade protegida por esta instalação (+2 Defesa)<select name="unit" defaultValue={h.militaryUnitId??''}><option value="">Nenhuma unidade</option>{state.units.filter(u=>!u.destroyed&&u.domainId===h.domainId).map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></label><Button disabled={busy} size="sm">Vincular defesa</Button></form>)}
    {canEdit&&mayBuy&&<Button size="sm" type="button" disabled={busy||readiness!=='ready'}
      onClick={()=>onBuy(item.id)}>{buttonLabel}</Button>}
   </div>
  </details>;
 }
-export function MilitaryAssets({state,canEdit,busy,onRename,onBuy}:{
+export function MilitaryAssets({state,canEdit,busy,onRename,onBuy,onConfigure=async()=>false}:{
  state:HouseState;canEdit:boolean;busy:boolean;
  onRename:(args:Record<string,unknown>)=>Promise<boolean>;
- onBuy:(itemId:string)=>void;
+ onBuy:(itemId:string)=>void;onConfigure?:(args:Record<string,unknown>)=>Promise<boolean>;
 }){
  const [expanded,setExpanded]=useState(true);
  const holdings=state.holdings.filter(h=>militaryItemIds.has(h.itemId)&&['active','building'].includes(h.status));
@@ -135,7 +138,7 @@ export function MilitaryAssets({state,canEdit,busy,onRename,onBuy}:{
    <p className="house-caption">{activeIds.size} tipo(s) ativo(s) · {militaryItems.length} construções, especialistas e melhorias com efeito militar direto. Selecione um card para consultar seus detalhes.</p>
    <div className="military-assets-grid">{militaryItems.map(item=>
     <MilitaryAssetCard key={item.id} item={item} holdings={holdings.filter(h=>h.itemId===item.id)}
-     state={state} canEdit={canEdit} busy={busy} onRename={onRename} onBuy={onBuy}/>)}</div>
+     state={state} canEdit={canEdit} busy={busy} onRename={onRename} onBuy={onBuy} onConfigure={onConfigure}/>)}</div>
   </div>}
  </section>;
 }

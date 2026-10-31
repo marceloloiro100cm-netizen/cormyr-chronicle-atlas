@@ -3,26 +3,29 @@ import {BookOpen,Download,Coins,Swords,GraduationCap,AlertTriangle} from 'lucide
 import {Button} from '@/components/ui/button';
 import {Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle} from '@/components/ui/dialog';
 import {TRAINING,UNIT_TYPES,unitStats,activeHoldings} from '@/lib/house/engine';
-import {UNIT_EQUIPMENT,houseWeaponBonuses} from '@/lib/house/equipment';
+import {UNIT_EQUIPMENT} from '@/lib/house/equipment';
+import {unitMilitaryBonuses} from '@/lib/house/military-bonuses';
 import {unitAllowedSkills,unitXpSummary,XP_PER_RANK} from '@/lib/house/unit-progression';
-import {SKILLS,EXTRA_UNIT_SKILLS,UNIT_SKILLS,UNIT_SKILL_NAMES,type Unit,type HouseState,type ExtraUnitSkill,type UnitSkill,type Skill} from '@/lib/house/types';
+import {SKILLS,SKILL_NAMES,EXTRA_UNIT_SKILLS,UNIT_SKILLS,UNIT_SKILL_NAMES,type Unit,type HouseState,type ExtraUnitSkill,type UnitSkill,type Skill} from '@/lib/house/types';
 import {MilitaryUnitSymbol,unitSymbolType} from './military-unit-symbol';
 import {exportUnitPdf} from '@/lib/house/unit-export';
 
 type Actions={unit:Unit;state:HouseState;houseName:string;canEdit:boolean;admin:boolean;busy:boolean;
  onEdit:(args:Record<string,unknown>)=>Promise<boolean>;
  onGrant:(args:Record<string,unknown>,reason:string)=>Promise<boolean>;
- onEquipment:(args:Record<string,unknown>)=>Promise<boolean>};
-export function UnitSheet({unit,state,houseName,canEdit,admin,busy,onEdit,onGrant,onEquipment}:Actions){
+ onEquipment:(args:Record<string,unknown>)=>Promise<boolean>;
+ onWarHounds?:(args:Record<string,unknown>)=>Promise<boolean>;
+ onBroadTraining?:(args:Record<string,unknown>)=>Promise<boolean>;};
+export function UnitSheet({unit,state,houseName,canEdit,admin,busy,onEdit,onGrant,onEquipment,onWarHounds,onBroadTraining}:Actions){
  const [open,setOpen]=useState(false),[editing,setEditing]=useState(false);
  const [name,setName]=useState(unit.name),[origin,setOrigin]=useState(unit.origin),[situation,setSituation]=useState(unit.situation),[notes,setNotes]=useState(unit.notes);
  const [skills,setSkills]=useState(unit.skills),[extraSkills,setExtraSkills]=useState(unit.extraSkills??{}),[mount,setMount]=useState(unit.mount);
- const [xpGift,setXpGift]=useState(20),[xpReason,setXpReason]=useState('');
+ const [xpGift,setXpGift]=useState(20),[xpReason,setXpReason]=useState(''),[broadSkill,setBroadSkill]=useState<Skill>('warfare');
  useEffect(()=>{setSkills(unit.skills);setExtraSkills(unit.extraSkills??{});setName(unit.name);setOrigin(unit.origin);setSituation(unit.situation);setNotes(unit.notes);setMount(unit.mount);},[unit]);
  const current=unitXpSummary(unit),allowed=unitAllowedSkills(unit);
  const spent=SKILLS.reduce((sum,k)=>sum+Math.max(0,skills[k]-2)*XP_PER_RANK,0)+EXTRA_UNIT_SKILLS.reduce((sum,k)=>sum+Math.max(0,(extraSkills[k]??2)-2)*XP_PER_RANK,0);
- const future=current.total-spent,stats=unitStats(unit),preview=unitStats({...unit,skills,mount});
- const bonuses=houseWeaponBonuses(state),row=UNIT_EQUIPMENT.find(r=>r.id===(unit.equipmentTypeId??unit.types[0]));
+ const future=current.total-spent,stats=unitStats(unit,state),preview=unitStats({...unit,skills,mount},state);
+ const military=unitMilitaryBonuses(state,unit),row=UNIT_EQUIPMENT.find(r=>r.id===(unit.equipmentTypeId??unit.types[0]));
  const master=activeHoldings(state).some(h=>h.itemId==='pros-master-of-arms');
  const lastLoss=[...(unit.xpEvents??[])].reverse().find(e=>e.delta<0);
  async function save(){
@@ -51,7 +54,7 @@ export function UnitSheet({unit,state,houseName,canEdit,admin,busy,onEdit,onGran
    <div><span>Saúde</span><strong>{stats.health}/{editing?preview.maxHealth:stats.maxHealth}</strong></div>
    <div><span>Disciplina</span><strong>{stats.discipline}</strong></div>
    <div><span>Movimento</span><strong>{stats.movement} m</strong></div>
-   <div><span>Armadura</span><strong>{unit.armor}</strong></div>
+   <div><span>Armadura</span><strong>{stats.armorRating}</strong></div>
    <div><span>Efetivo</span><strong>{Math.max(0,unit.strength-unit.casualties)}/{unit.strength}</strong></div>
   </div>
   <section className="military-sheet-xp">
@@ -90,7 +93,7 @@ export function UnitSheet({unit,state,houseName,canEdit,admin,busy,onEdit,onGran
    <div className="military-skills">{UNIT_SKILLS.map(skill=>{
     const extended=EXTRA_UNIT_SKILLS.includes(skill as ExtraUnitSkill);
     const original=extended?(unit.extraSkills?.[skill as ExtraUnitSkill]??2):unit.skills[skill as Skill];
-    const value=editing?(extended?(extraSkills[skill as ExtraUnitSkill]??2):skills[skill as Skill]):original;
+    const value=editing?(extended?(extraSkills[skill as ExtraUnitSkill]??2):skills[skill as Skill]):original+(!extended?(military.skillBonuses[skill as Skill]??0):0);
     const permitted=allowed.has(skill),canIncrease=permitted&&value<12;
     const choose=(n:number)=>{
      if(n<2)return;
@@ -123,7 +126,7 @@ export function UnitSheet({unit,state,houseName,canEdit,admin,busy,onEdit,onGran
     <div><span>Luta</span><strong className="military-attack">{unit.equipment.includes('fighting')?row.improved.fighting:row.initial.fighting}</strong></div>
     <div><span>Pontaria</span><strong className="military-attack">{unit.equipment.includes('marksmanship')?row.improved.marksmanship:row.initial.marksmanship}</strong></div>
    </div>:<p>Conjunto de equipamento sem tabela; revisão necessária.</p>}
-   {(bonuses.fighting>0||bonuses.marksmanship>0)&&<p className="military-positive">Bônus da Casa: +{bonuses.fighting} Luta / +{bonuses.marksmanship} Pontaria.</p>}
+   {(military.fightingDamage>0||military.marksmanshipDamage>0)&&<p className="military-positive">Dano da Casa: Luta +{military.fightingDamage} / Pontaria +{military.marksmanshipDamage}.</p>}
    {master&&!unit.equipment.length&&<p className="military-positive">Mestre de Armas: primeira melhoria gratuita para esta unidade. Escolha o equipamento abaixo.</p>}
    {master&&unit.equipment.length>0&&<p>Mestre de Armas ativo: bônus de sobrevivência +1 é aplicado automaticamente.</p>}
    {canEdit&&!unit.destroyed&&<div className="military-equip-buttons">{(['armor','fighting','marksmanship'] as const).map(category=><Button key={category} type="button" size="sm" variant="outline"
@@ -132,12 +135,34 @@ export function UnitSheet({unit,state,houseName,canEdit,admin,busy,onEdit,onGran
     {unit.equipment.includes(category)?'✓ ':''}Melhorar {category==='armor'?'Armadura':category==='fighting'?'Armas de Luta':'Armas de Pontaria'} · {master&&!unit.equipment.length?'Grátis':'1 Riqueza'}
    </Button>)}</div>}
   </section>
+  {canEdit&&!unit.destroyed&&!unit.warHoundsHoldingId&&!unit.types.includes('warships')&&
+    !(unit.types.includes('cavalry')&&unit.mounted!==false)&&
+    state.holdings.filter(h=>h.status==='active'&&h.itemId==='pros-dog-kennels--war-hounds').map(h=>
+     <Button type="button" key={h.id} size="sm" variant="outline" disabled={busy||!onWarHounds}
+      onClick={()=>void onWarHounds?.({unitId:unit.id,holdingId:h.id})}>
+      Equipar Cães de Guerra · 2 Riqueza
+     </Button>)}
+  {canEdit&&!unit.destroyed&&!unit.broadTrainingSkill&&onBroadTraining&&
+   state.holdings.some(h=>h.status==='active'&&h.itemId==='pros-military-academy--broad-training')&&
+   <form className="campaign-form" onSubmit={e=>{e.preventDefault();void onBroadTraining({unitId:unit.id,skill:broadSkill});}}>
+    <label>Treinamento Amplo — quarta habilidade da unidade
+     <select value={broadSkill} onChange={e=>setBroadSkill(e.target.value as Skill)}>
+      {SKILLS.filter(id=>!allowed.has(id)).map(id=><option key={id} value={id}>{SKILL_NAMES[id]}</option>)}
+     </select>
+    </label>
+    <Button disabled={busy||allowed.has(broadSkill)}>Aplicar ação da Casa</Button>
+   </form>}
   <section><h3 className="font-serif text-xl">História e condição</h3>
    <p>Origem: {unit.origin||'Não identificada'} · Situação: {unit.situation||'Não informada'}</p>
    <p>Comandante: {unit.commanderName||'Não designado'} · Baixas: {unit.casualties} · Domínio: {state.domains.find(d=>d.id===unit.domainId)?.name||'Não localizado'}</p>
    {unit.notes&&<p>{unit.notes}</p>}
    {unit.mount&&<p>Montaria: {unit.mount.name} · Atletismo {unit.mount.athletics} · Vigor {unit.mount.endurance}</p>}
   </section>
+  {(military.entries.length>0||military.conditional.length>0)&&<section className="military-unit-bonuses">
+   <h3 className="font-serif text-xl">Bônus de construções e posses militares</h3>
+   {military.entries.map((entry,i)=><p key={entry.holdingId+'-'+i}><strong>{entry.source}:</strong> {entry.description}</p>)}
+   {military.conditional.length>0&&<details><summary>Benefícios que exigem escolha ou condição</summary>{military.conditional.map((entry,i)=><p key={entry.holdingId+'-'+i}>{entry.source}: {entry.description}</p>)}</details>}
+  </section>}
  </DialogContent>
  </Dialog>
  </>;

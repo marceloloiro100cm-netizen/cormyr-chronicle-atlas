@@ -1,4 +1,5 @@
 import { balances } from './engine';
+import {quoteMilitarySiege} from './military-bonuses';
 import type { HouseState, Resource } from './types';
 export type SiegeItem={id:string;name:string;cost:number;resource:Resource;engineer:boolean;carrier:boolean;excludesMounted:boolean;description:string;health?:number;armor?:number;damage?:number;range?:number;movement?:number};
 export const SIEGE:SiegeItem[]=[
@@ -25,9 +26,14 @@ export function buySiege(state:HouseState,args:{id:string;itemId:string;engineer
  if(item.engineer&&item.carrier&&engineer?.id===carrier?.id)throw new Error('Exige outra unidade além dos engenheiros.');
  if(item.excludesMounted&&carrier&&(carrier.types.includes('cavalry')||carrier.types.includes('warships')))throw new Error('Portadora não pode ser cavalaria ou navios.');
  if(item.engineer&&!item.carrier&&state.holdings.filter(h=>h.status==='active'&&h.supportId===args.engineerId&&SIEGE.some(i=>i.id===h.itemId&&i.engineer&&!i.carrier)).length>=4)throw new Error('Engenheiros controlam no máximo quatro armas de cerco.');
- if(balances(state).available[item.resource]<item.cost)throw new Error('Saldo insuficiente para cerco.');
- const next=structuredClone(state);next.permanent[item.resource]-=item.cost;
- next.holdings.push({id:args.id,itemId:item.id,name:args.name||item.name,domainId:domain.id,supportId:args.engineerId||args.carrierId,costs:[{resource:item.resource,amount:item.cost,mode:'permanent'}],category:'equipment',source:'Livro básico · Equipamento especial e cerco,pp.223–230',ruleVersion:'2026-10-24',effects:[{kind:'action',description:item.description+' Operadora: '+(engineer?.name??carrier?.name??'')+'; portadora: '+(carrier?.name??'não se aplica')}],status:'active'});return next;
+ const militaryQuote=quoteMilitarySiege(state,item.resource,item.cost,item.id);
+ if(item.engineer&&!item.carrier&&state.holdings.filter(h=>h.status==='active'&&h.supportId===args.engineerId&&SIEGE.some(i=>i.id===h.itemId&&i.engineer&&!i.carrier)).length+militaryQuote.quantity>4)throw new Error('Engenheiros controlam no máximo quatro máquinas de cerco.');
+ if(balances(state).available[item.resource]<militaryQuote.cost)throw new Error('Saldo insuficiente para cerco.');
+ const next=structuredClone(state);next.permanent[item.resource]-=militaryQuote.cost;
+ for(let n=0;n<militaryQuote.quantity;n++){
+  const primary=n===0;
+  next.holdings.push({id:primary?args.id:crypto.randomUUID(),itemId:item.id,name:(args.name||item.name)+(primary?'':' · extra do Engenheiro de Cerco'),domainId:domain.id,supportId:args.engineerId||args.carrierId,costs:[{resource:item.resource,amount:primary?militaryQuote.cost:0,mode:'permanent'}],category:'equipment',source:'Livro básico · Equipamento especial e cerco,pp.223–230',ruleVersion:'2026-10-24',discounts:primary?militaryQuote.discounts.map(x=>({source:x.source,resource:item.resource,amount:x.amount})):[],effects:[{kind:'action',description:item.description+' Operadora: '+(engineer?.name??carrier?.name??'')+'; portadora: '+(carrier?.name??'não se aplica')+(militaryQuote.quantity===2?' · regra de duas máquinas por 1 Riqueza':'')}],status:'active'});
+ };return next;
 }
 /** Rearrange operators without buying or refunding siege machines. */
 export function changeSiegeAssignment(state:HouseState,input:{id:string;engineerId:string;carrierId:string;destroyed:boolean}):HouseState {
