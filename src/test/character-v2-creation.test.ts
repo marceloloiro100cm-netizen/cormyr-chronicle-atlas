@@ -1,10 +1,10 @@
 import {describe,it,expect} from 'vitest';
 import {AGE_RULES,quoteCharacterCreation,skillCreationCost,
- SPECIALTY_REGISTRY,validateCharacterCreation} from '@/lib/character-v2/creation';
+ SPECIALTY_REGISTRY,validateCharacterCreation,type CreationInput} from '@/lib/character-v2/creation';
 import {CHARACTER_SKILL_IDS,emptyCharacterSkillRanks} from '@/lib/character-v2/schema';
 
 describe('Ficha V2 — lote 04: criação com custos do livro',()=>{
- const base=()=>({ageGroup:'adult' as const,statusCap:4,
+ const base=():CreationInput=>({ageGroup:'adult',statusCap:4,
   skillRanks:emptyCharacterSkillRanks(),specialties:[],benefitCount:0});
  it('usa orçamentos por 8 faixas etárias sem cobrar 20 XP militares',()=>{
   expect(Object.keys(AGE_RULES)).toHaveLength(8);
