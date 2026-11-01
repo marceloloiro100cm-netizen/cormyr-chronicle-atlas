@@ -14,39 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      campaign_translations: {
-        Row: {
-          id: string
-          entity_type: string
-          entity_id: string
-          field_name: string
-          locale: string
-          translated_text: string
-          updated_by: string | null
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          entity_type: string
-          entity_id: string
-          field_name: string
-          locale: string
-          translated_text: string
-          updated_by?: string | null
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          entity_type?: string
-          entity_id?: string
-          field_name?: string
-          locale?: string
-          translated_text?: string
-          updated_by?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       archive_source_review: {
         Row: {
           created_at: string
@@ -115,6 +82,8 @@ export type Database = {
           id: boolean
           last_round: number | null
           month: number
+          published_at: string | null
+          published_week: number
           updated_at: string
           updated_by: string | null
           version: number
@@ -127,6 +96,8 @@ export type Database = {
           id?: boolean
           last_round?: number | null
           month?: number
+          published_at?: string | null
+          published_week?: number
           updated_at?: string
           updated_by?: string | null
           version?: number
@@ -139,6 +110,8 @@ export type Database = {
           id?: boolean
           last_round?: number | null
           month?: number
+          published_at?: string | null
+          published_week?: number
           updated_at?: string
           updated_by?: string | null
           version?: number
@@ -226,8 +199,6 @@ export type Database = {
           administrative_actor: string | null
           batch_key: string | null
           campaign_date: string | null
-          historical_recipient_name: string | null
-          historical_source: string | null
           content: string
           conversation_id: string | null
           court_assignment: string | null
@@ -238,6 +209,8 @@ export type Database = {
           deleted_by: string | null
           delivered_at: string | null
           delivery_week: number | null
+          historical_recipient_name: string | null
+          historical_source: string | null
           house_sheet_version: number | null
           id: string
           last_synced_at: string | null
@@ -261,8 +234,6 @@ export type Database = {
           administrative_actor?: string | null
           batch_key?: string | null
           campaign_date?: string | null
-          historical_recipient_name?: string | null
-          historical_source?: string | null
           content: string
           conversation_id?: string | null
           court_assignment?: string | null
@@ -273,6 +244,8 @@ export type Database = {
           deleted_by?: string | null
           delivered_at?: string | null
           delivery_week?: number | null
+          historical_recipient_name?: string | null
+          historical_source?: string | null
           house_sheet_version?: number | null
           id?: string
           last_synced_at?: string | null
@@ -296,8 +269,6 @@ export type Database = {
           administrative_actor?: string | null
           batch_key?: string | null
           campaign_date?: string | null
-          historical_recipient_name?: string | null
-          historical_source?: string | null
           content?: string
           conversation_id?: string | null
           court_assignment?: string | null
@@ -308,6 +279,8 @@ export type Database = {
           deleted_by?: string | null
           delivered_at?: string | null
           delivery_week?: number | null
+          historical_recipient_name?: string | null
+          historical_source?: string | null
           house_sheet_version?: number | null
           id?: string
           last_synced_at?: string | null
@@ -529,6 +502,111 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      campaign_schedule_event_audit: {
+        Row: {
+          actor: string | null
+          after_state: Json | null
+          before_state: Json | null
+          changed_at: string
+          event_id: string
+          id: string
+          reason: string
+        }
+        Insert: {
+          actor?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          changed_at?: string
+          event_id: string
+          id?: string
+          reason: string
+        }
+        Update: {
+          actor?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          changed_at?: string
+          event_id?: string
+          id?: string
+          reason?: string
+        }
+        Relationships: []
+      }
+      campaign_schedule_events: {
+        Row: {
+          draft_date: string
+          draft_deleted: boolean
+          draft_description: string
+          draft_title: string
+          id: string
+          published_date: string | null
+          published_description: string | null
+          published_title: string | null
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          draft_date: string
+          draft_deleted?: boolean
+          draft_description?: string
+          draft_title: string
+          id?: string
+          published_date?: string | null
+          published_description?: string | null
+          published_title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          draft_date?: string
+          draft_deleted?: boolean
+          draft_description?: string
+          draft_title?: string
+          id?: string
+          published_date?: string | null
+          published_description?: string | null
+          published_title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
+      campaign_translations: {
+        Row: {
+          entity_id: string
+          entity_type: string
+          field_name: string
+          id: string
+          locale: string
+          translated_text: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          entity_id: string
+          entity_type: string
+          field_name: string
+          id?: string
+          locale: string
+          translated_text: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          entity_id?: string
+          entity_type?: string
+          field_name?: string
+          id?: string
+          locale?: string
+          translated_text?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       drive_sync_bindings: {
         Row: {
@@ -813,10 +891,8 @@ export type Database = {
           content: string
           conversation_id: string | null
           created_at: string
-          deleted_at: string | null
-          updated_at: string
-          version: number
           creation_week: number | null
+          deleted_at: string | null
           delivered_at: string | null
           delivery_week: number | null
           house_id: string | null
@@ -828,6 +904,8 @@ export type Database = {
           recipient_user_id: string
           reply_to_id: string | null
           sync_state: string
+          updated_at: string
+          version: number
         }
         Insert: {
           administrative_actor?: string | null
@@ -838,10 +916,8 @@ export type Database = {
           content: string
           conversation_id?: string | null
           created_at?: string
-          deleted_at?: string | null
-          updated_at?: string
-          version?: number
           creation_week?: number | null
+          deleted_at?: string | null
           delivered_at?: string | null
           delivery_week?: number | null
           house_id?: string | null
@@ -853,6 +929,8 @@ export type Database = {
           recipient_user_id: string
           reply_to_id?: string | null
           sync_state?: string
+          updated_at?: string
+          version?: number
         }
         Update: {
           administrative_actor?: string | null
@@ -863,10 +941,8 @@ export type Database = {
           content?: string
           conversation_id?: string | null
           created_at?: string
-          deleted_at?: string | null
-          updated_at?: string
-          version?: number
           creation_week?: number | null
+          deleted_at?: string | null
           delivered_at?: string | null
           delivery_week?: number | null
           house_id?: string | null
@@ -878,6 +954,8 @@ export type Database = {
           recipient_user_id?: string
           reply_to_id?: string | null
           sync_state?: string
+          updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -905,28 +983,28 @@ export type Database = {
       }
       letter_reply_versions: {
         Row: {
-          id: string
-          reply_id: string
-          version: number
-          snapshot: Json
           author: string
           created_at: string
+          id: string
+          reply_id: string
+          snapshot: Json
+          version: number
         }
         Insert: {
-          id?: string
-          reply_id: string
-          version: number
-          snapshot: Json
           author: string
           created_at?: string
+          id?: string
+          reply_id: string
+          snapshot: Json
+          version: number
         }
         Update: {
-          id?: string
-          reply_id?: string
-          version?: number
-          snapshot?: Json
           author?: string
           created_at?: string
+          id?: string
+          reply_id?: string
+          snapshot?: Json
+          version?: number
         }
         Relationships: [
           {
@@ -935,7 +1013,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "letter_replies"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       letter_rounds: {
@@ -943,6 +1021,7 @@ export type Database = {
           closed: boolean
           closed_at: string | null
           closed_by: string | null
+          harptos_period: string | null
           number: number
           opened_at: string | null
           opened_by: string | null
@@ -953,6 +1032,7 @@ export type Database = {
           closed?: boolean
           closed_at?: string | null
           closed_by?: string | null
+          harptos_period?: string | null
           number: number
           opened_at?: string | null
           opened_by?: string | null
@@ -963,6 +1043,7 @@ export type Database = {
           closed?: boolean
           closed_at?: string | null
           closed_by?: string | null
+          harptos_period?: string | null
           number?: number
           opened_at?: string | null
           opened_by?: string | null
@@ -1027,6 +1108,48 @@ export type Database = {
         }
         Relationships: []
       }
+      narrator_mail_notes: {
+        Row: {
+          id: string
+          letter_id: string | null
+          notes: Json
+          reply_id: string | null
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          id: string
+          letter_id?: string | null
+          notes?: Json
+          reply_id?: string | null
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          id?: string
+          letter_id?: string | null
+          notes?: Json
+          reply_id?: string | null
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "narrator_mail_notes_letter_id_fkey"
+            columns: ["letter_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_letters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "narrator_mail_notes_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "letter_replies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       noble_house_drive_exports: {
         Row: {
           binding_id: string
@@ -1077,33 +1200,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      narrator_mail_notes: {
-        Row: {
-          id: string
-          letter_id: string | null
-          reply_id: string | null
-          notes: Json
-          updated_at: string
-          updated_by: string
-        }
-        Insert: {
-          id: string
-          letter_id?: string | null
-          reply_id?: string | null
-          notes?: Json
-          updated_at?: string
-          updated_by: string
-        }
-        Update: {
-          id?: string
-          letter_id?: string | null
-          reply_id?: string | null
-          notes?: Json
-          updated_at?: string
-          updated_by?: string
-        }
-        Relationships: []
       }
       noble_house_gm_notes: {
         Row: {
@@ -1302,6 +1398,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      noble_house_workbook_imports: {
+        Row: {
+          batch: string
+          checked_at: string
+          detail: string
+          house_id: string | null
+          house_key: string
+          status: string
+        }
+        Insert: {
+          batch: string
+          checked_at?: string
+          detail: string
+          house_id?: string | null
+          house_key: string
+          status: string
+        }
+        Update: {
+          batch?: string
+          checked_at?: string
+          detail?: string
+          house_id?: string | null
+          house_key?: string
+          status?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -1558,6 +1681,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_read_reply_version: { Args: { p_reply: string }; Returns: boolean }
       claim_drive_binding: {
         Args: { p_id: string; p_token: string }
         Returns: boolean
@@ -1595,6 +1719,10 @@ export type Database = {
         Returns: Json
       }
       delete_campaign_letter: { Args: { p_id: string }; Returns: undefined }
+      delete_letter_reply: {
+        Args: { p_id: string; p_version: number }
+        Returns: undefined
+      }
       edit_campaign_letter: {
         Args: {
           p_content: string
@@ -1613,6 +1741,10 @@ export type Database = {
         }
         Returns: Json
       }
+      edit_letter_reply: {
+        Args: { p_content: string; p_id: string; p_version: number }
+        Returns: Json
+      }
       edit_linked_mail_draft: {
         Args: {
           p_content: string
@@ -1628,14 +1760,8 @@ export type Database = {
       }
       get_campaign_calendar: { Args: never; Returns: Json }
       get_campaign_schedule_drafts: { Args: never; Returns: Json }
-      get_campaign_schedule_events: { Args: { p_year: number; p_month: number }; Returns: Json }
-      save_campaign_schedule_event: { Args: { p_payload: Json }; Returns: Json }
-      publish_campaign_schedule: {
-        Args: { p_version: number; p_date: string; p_auto: boolean; p_week: number }
-        Returns: undefined
-      }
-      publish_campaign_schedule_confirmed: {
-        Args: { p_version: number; p_date: string; p_auto: boolean; p_week: number }
+      get_campaign_schedule_events: {
+        Args: { p_month: number; p_year: number }
         Returns: Json
       }
       in_campaign_house: {
@@ -1656,14 +1782,6 @@ export type Database = {
         Returns: Json
       }
       mail_recipient_read: { Args: { p_id: string }; Returns: boolean }
-      edit_letter_reply: {
-        Args: { p_id: string; p_version: number; p_content: string }
-        Returns: Json
-      }
-      delete_letter_reply: {
-        Args: { p_id: string; p_version: number }
-        Returns: undefined
-      }
       mark_letter_read: { Args: { p_id: string }; Returns: undefined }
       my_player_id: { Args: never; Returns: string }
       open_letter_round: { Args: never; Returns: number }
@@ -1686,6 +1804,24 @@ export type Database = {
         Returns: {
           house_id: string
         }[]
+      }
+      publish_campaign_schedule: {
+        Args: {
+          p_auto: boolean
+          p_date: string
+          p_version: number
+          p_week: number
+        }
+        Returns: undefined
+      }
+      publish_campaign_schedule_confirmed: {
+        Args: {
+          p_auto: boolean
+          p_date: string
+          p_version: number
+          p_week: number
+        }
+        Returns: Json
       }
       reply_campaign_letter: {
         Args: { p_content: string; p_key: string; p_letter: string }
@@ -1715,6 +1851,7 @@ export type Database = {
         }
         Returns: Json
       }
+      save_campaign_schedule_event: { Args: { p_payload: Json }; Returns: Json }
       save_imported_source: {
         Args: { p_content: string; p_id: string; p_modified: string }
         Returns: undefined
