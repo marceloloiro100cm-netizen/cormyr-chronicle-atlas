@@ -30,12 +30,12 @@ function oneUntracked(tag='0067_temporal_release_preflight'){
 }
 
 describe('Lote 15 · reconciliação por SQL com prova individual',()=>{
- it('mostra 27 arquivos ausentes, colisão 0041 e status de execução desconhecido',()=>{
+ it('mostra 28 arquivos ausentes, colisão 0041 e status de execução desconhecido',()=>{
   const report=reconcileMigrationEvidence(catalog,null,OPTIONS);
-  assert.equal(report.total_sql,69);
+  assert.equal(report.total_sql,70);
   assert.equal(report.journal_entries,42);
-  assert.equal(report.unjournaled_total,27);
-  assert.equal(report.awaiting_evidence_total,27);
+  assert.equal(report.unjournaled_total,28);
+  assert.equal(report.awaiting_evidence_total,28);
   assert.equal(report.evidenced_total,0);
   assert.deepEqual(report.duplicate_ordinals,['0041']);
   assert.equal(report.ready_for_deploy,false);
@@ -51,7 +51,7 @@ describe('Lote 15 · reconciliação por SQL com prova individual',()=>{
  });
  it('gera folha com tags e SHA-256 exatos sem assumir status aplicado',()=>{
   const form=buildReconciliationTemplate(catalog,OPTIONS);
-  assert.equal(form.files.length,27);
+  assert.equal(form.files.length,28);
   assert.equal(form.files[0].disposition,'unknown');
   assert.ok(form.files.every(x=>/^[a-f0-9]{64}$/.test(x.file_sha256)));
   assert.ok(form.files.every(x=>x.operator===null&&x.reviewer===null));
