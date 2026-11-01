@@ -140,10 +140,8 @@ it('Lote 25: correspondência cacheada é ocultada se o acesso histórico foi re
   await qc.refetchQueries({queryKey:['campaign-chronology']});
  });
  await waitFor(()=>expect(within(details).queryByText('Convocação da corte')).not.toBeInTheDocument());
- const timeline=screen.getByRole('region',{name:'Cronologia oficial dos eventos e missivas'});
- await waitFor(()=>expect(within(timeline).queryByText('Convocação da corte')).not.toBeInTheDocument());
- expect(screen.getAllByRole('alert').some(element=>
-  element.textContent?.includes('Cronologia indisponível'))).toBe(true);
+ expect(screen.queryByRole('region',{name:'Cronologia oficial dos eventos e missivas'})).not.toBeInTheDocument();
+ expect(mock.rpc.mock.calls.some(call=>call[0]==='get_campaign_chronology')).toBe(false);
  // Public annual observances still render; no private cached letter is reused.
  expect(screen.getByRole('button',{name:/^1 de Hammer/})).toBeInTheDocument();
 });
