@@ -45,13 +45,17 @@ export type VassalSheet={region:string;motto?:string|undefined;lordName?:string|
 export type Vassal={sheet?:VassalSheet|undefined;id:string;houseId:string;name:string;status:'proposed'|'approved'|'ended';loyalty?:'loyal'|'neutral'|'rebellious'|'broken'|undefined;cost:number;influencePenalty:number;notes:string;approvedMonth?:number|undefined;npcIds?:string[]|undefined;approvalNote?:string|undefined;approvedBy?:string|undefined};
 export type CourtMember = { id: string; npcId?: string | undefined; name: string; role: string; notes: string };
 export type Fortune = { month: number; mode: 'roll' | 'alternative'; dice: number[]; bonusDice: number[]; modifier: number; result: number; outcome: string; resource: Resource; changes: Partial<Resources>; source: string };
+/** Narrator-authored missive impact: deductions consume allocation, gains increase event totals. */
+export type MailConsequence = {
+ id: string; letterId: string; changes: Partial<Resources>; active: boolean; createdAt: string;
+};
 export type HouseState = {
   schemaVersion: 1; houseId: string; phase: 'draft' | 'review' | 'active'; creationStep: number;
   identity: { region: string; motto: string; foundation?: number | undefined; history: string[]; notes: string; crestPath?: string | undefined };
   method: 'budget' | 'roll' | 'import'; budget: number | null; base: Resources; permanent: Resources;
   regionalApplied: boolean; rolls: number[][]; domains: Domain[]; holdings: Holding[]; units: Unit[]; projects: Project[]; court: CourtMember[];
   month: number; treasury: number; fortunes: Fortune[]; actions: { month: number; type: string; notes: string }[];
-  pending: string[]; importSources: string[]; vassals?:Vassal[]|undefined;
+  pending: string[]; importSources: string[]; mailConsequences?: MailConsequence[] | undefined; vassals?:Vassal[]|undefined;
   creationHistory?: CreationHistory | undefined;
   creationBonuses?: { playerId: string; resource: Resource; die: number }[] | undefined;
   creationBonusesApplied?: boolean | undefined;
