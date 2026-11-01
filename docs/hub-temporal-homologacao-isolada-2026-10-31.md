@@ -52,3 +52,27 @@ O responsável pelo projeto precisa:
 - Produção migrada ou nova versão publicada: **NÃO**.
 
 **Decisão: NO_GO de produção.** Esse documento registra operações realmente executadas; não deve ser interpretado como comprovação de recuperação integral nem como autorização de mudança destrutiva.
+
+
+## Retomada da implantação — 7/8 migrações no clone
+
+**Execução posterior nesta conversa:** a cota de operações de banco voltou a permitir consultas por um período, e o projeto de homologação `41028f68-4fe7-4ed0-b123-c820522a0a3b` pôde receber mais mudanças. **Não houve nenhuma gravação no banco de produção.**
+
+| Migração | Dry run BEGIN/ROLLBACK | Aplicação real no clone |
+|---|---|---|
+| 0060 | Aprovado anteriormente | Aplicada anteriormente |
+| 0061 | Aprovado anteriormente | Aplicada anteriormente |
+| 0062 | Aprovado anteriormente | Aplicada anteriormente |
+| 0063_annual_character_ages | **PASSOU** | **PASSOU** (FK com `auth.users` aceitou no SQL direto) |
+| 0064_mail_chronology_integration | **PASSOU** | **PASSOU** |
+| 0065_house_temporal_months | **PASSOU** | **PASSOU** |
+| 0066_temporal_consumer_outbox | **PASSOU** | **PASSOU** |
+| 0067_temporal_release_preflight | **PASSOU** | **NÃO EXECUTADA: quota do Lovable novamente esgotada** |
+
+O resultado `This query wasn't executed` foi retornado explicitamente pelo Lovable no momento da aplicação 0067. **Não afirmar que ela foi instalada.** Toda migração é uma transação com COMMIT próprio; a versão `COMMIT→ROLLBACK` foi testada antes de cada aplicação. As migrações 0060–0066 foram executadas diretamente, mas **o Drizzle journal do clone não foi atualizado**; conciliar seu histórico antes de rodar o migrador, sem repetir DDL e registros já existentes.
+
+**Frontend:** a cópia Lovable ainda contém código anterior ao Hub; em inspeção, não possuía `src/lib/calendar/campaign-time.ts` nem os novos consumidores de calendário. O workspace `Cormyr` de homologação não tem conector GitHub conectado. O catálogo oferece o conector GitHub API, mas o usuário precisa concluir OAuth/token no dashboard em `https://lovable.dev/dashboard?connectors`; a API não instala credenciais por si. Os arquivos completos e testados do frontend estão na branch desta PR, **não na cópia Lovable**. Não copiar por recomposição aproximada e não publicar o frontend contra backend ausente.
+
+**CI:** o commit `4ff0068e393aaea02bba316cd614790106e675f6` da branch cumulativa passou pelos dois workflows, incluindo testes isolados de PostgreSQL, TypeScript e build (runs `41256346780` e `41256345209`). Isto não valida o esquema produtivo.
+
+**Pendências impeditivas:** (a) aplicação 0067 no clone quando quota permitir; (b) conector GitHub no Lovable e sincronização fiel do frontend com teste de navegação e papéis; (c) restauração real de backup de produção em cópia separada (clone atual está vazio); (d) reconciliação do diário Drizzle com os 27 SQL fora dele e importações 0042 já aplicadas; (e) aceite de produção do calendário, Casas, nobres e missivas. **NO_GO para produção**.
