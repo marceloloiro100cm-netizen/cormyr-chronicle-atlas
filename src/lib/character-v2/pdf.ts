@@ -4,7 +4,10 @@ import type {CharacterV2} from './schema';
 
 /** Lote 10: mesmo report model usado na prévia e no arquivo, sem o texto privado V1. */
 export function exportCharacterV2Pdf(character:CharacterV2,gear:readonly VerifiedGear[]=[]):Uint8Array{
- const report=buildCharacterResolvedReport(character,gear);
+ return exportCharacterV2ReportPdf(buildCharacterResolvedReport(character,gear));
+}
+/** A prévia do Narrador recebe somente o relatório filtrado, nunca o snapshot privado original. */
+export function exportCharacterV2ReportPdf(report:ReturnType<typeof buildCharacterResolvedReport>):Uint8Array{
  const pdf=new jsPDF({unit:'mm',format:'a4'});
  const margin=17;
  let y=19;
