@@ -4,15 +4,18 @@ import {Button} from '@/components/ui/button';
 import {loadCharacterV2MigrationPreview} from '@/lib/character-v2/migration.functions';
 import {exportCharacterV2ReportPdf} from '@/lib/character-v2/pdf';
 import type {MigrationReview} from '@/lib/character-v2/migration-review';
+import {summarizeCharacterV2Sources} from '@/lib/character-v2/readiness';
 
 /** Não é exibido para jogadores. Todo fetch executa autenticação do Narrador e RLS. */
 export function CharacterV2NarratorReview({houseId,records}:{
- houseId:string;records:readonly {id:string;title:string;kind:string}[];
+ houseId:string;records:readonly {id:string;title:string;kind:string;content:string}[];
 }){
  const load=useServerFn(loadCharacterV2MigrationPreview);
  const [item,setItem]=useState<MigrationReview|null>(null);
  const [loading,setLoading]=useState(false),[error,setError]=useState('');
- const candidates=records.filter(r=>r.kind==='character');
+ const inventory=summarizeCharacterV2Sources(records);
+ const approvedIds=new Set(inventory.classified.filter(x=>x.inspectable).map(x=>x.recordId));
+ const candidates=records.filter(r=>approvedIds.has(r.id));
  const handle=(id:string)=>{
   setLoading(true);setError('');setItem(null);
   void load({data:{recordId:id,houseId}}).then(result=>setItem(result as MigrationReview))
@@ -38,11 +41,19 @@ export function CharacterV2NarratorReview({houseId,records}:{
     Original preservado. Nenhuma migração é executada neste painel.
     A liberação para jogadores permanece bloqueada até homologação.
    </p>
-   {candidates.length===0?<p>Nenhuma ficha do tipo personagem foi encontrada nesta Casa.</p>:
+   <p role="status" className="text-sm">{inventory.total} registros classificados como personagens nesta Casa;{' '}
+    {inventory.inspectable} fichas identificadas para conferência ({inventory.legacy} legadas,{' '}
+    {inventory.structured} estruturadas). {inventory.excluded} registros ilustrativos ou incompletos{' '}
+    não serão confundidos com fichas.</p>
+   {candidates.length===0?<p>Nenhuma ficha reconhecível foi encontrada nesta Casa.</p>:
     <div className="flex flex-wrap gap-2 my-3">
      {candidates.map(r=><Button key={r.id} type="button" variant="outline"
        disabled={loading} onClick={()=>handle(r.id)}>Comparar {r.title}</Button>)}
     </div>}
+   <p className="text-sm">Para vincular uma identidade, acesse o calendário do Narrador,{' '}
+     <strong>Nobres e genealogias</strong>, use <strong>Importar fontes internas</strong>,{' '}
+     confirme a pessoa canônica e vincule a ficha original. Vínculos não são criados por nome parecido.
+   </p>
    {loading&&<p role="status">Conferindo identidade canônica e dados autorizados…</p>}
    {error&&<p role="alert">{error}</p>}
    {item&&<>
