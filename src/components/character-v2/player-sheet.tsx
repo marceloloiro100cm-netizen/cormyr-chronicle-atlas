@@ -96,12 +96,12 @@ export function CharacterV2PlayerSheet({record,houseId}:{
   </p>
   <section className="character-v2-section" aria-label="Indicadores derivados da ficha">
    <h4>Indicadores</h4>
-   <div className="character-v2-stats">
+   <dl className="character-v2-stats">
     {stats.map(stat=><div key={stat.key} title={stat.reason}>
       <dt>{stat.label}</dt>
       <dd>{stat.value===null?'A conferir':stat.value}</dd>
     </div>)}
-   </div>
+   </dl>
    <p className="text-xs">Os números disponíveis são apenas cálculos básicos. Armaduras, escudos,
     ferimentos, bônus e defeitos ainda exigem homologação.</p>
   </section>
