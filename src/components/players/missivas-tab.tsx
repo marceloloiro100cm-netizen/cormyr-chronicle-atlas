@@ -3,12 +3,13 @@ import {datedMail} from '@/lib/calendar/mail';
 import {formatDate} from '@/lib/calendar/harptos';
 import {mailWeekTimeline,nextCampaignRound} from '@/lib/weekly-delivery';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {createPortal} from 'react-dom';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { CampaignContent, ImagePicker, uploadImages, type PendingImage } from '@/components/campaign-content';
-import { deliveredReply, hasDeliveredAnswer, groupReceivedLetters, isLetterRead, narratorThreadStage, nextLetterNumber, pendingRoundHouses, sentLetters, mailRecipientLabel, relatedConversationLetters, type LetterRow } from '@/lib/letters';
+import { deliveredReply, hasDeliveredAnswer, groupReceivedLetters, isLetterRead, narratorThreadStage, nextLetterNumber, sentLetters, mailRecipientLabel, relatedConversationLetters, type LetterRow } from '@/lib/letters';
 import { date, syncLabel } from './shared';
 import type { Panel } from './panel-data';
 import {MailComposer,replaceMailDraft,MailLinkFields,useMailOptions,type MailLinks,type MailOptions} from './mail-compose';
@@ -31,7 +32,7 @@ function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Res
   return open?<form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(content,images,key.current);}catch(err){setMessage(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const draft=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';const {error}=draft?await datedMail('save_weekly_reply_draft',{p_id:key.current,p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent,p_signed_by:isAdmin?signedBy.trim():null},campaignDate):await datedMail('reply_weekly_message',{p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent,p_key:key.current,p_draft:false,p_signed_by:isAdmin?signedBy.trim():null},campaignDate);if(error)setMessage(error.message);else{key.current=null;setContent('');setImages([]);setOpen(false);onSave();}setBusy(false);}}><p role="status">{deliveryWeek?`Previsão de entrega: Semana ${deliveryWeek}. O envio confirma a semana disponível no servidor.`:"Sem semana aberta."}</p><CampaignDatePicker value={campaignDate} referenceDate={currentTime?dateKey(currentTime):undefined} onChange={setCampaignDate}/><label>Resposta<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label>{isAdmin&&<label>Assinado por (NPC / cargo)<input maxLength={120} value={signedBy} onChange={e=>setSignedBy(e.target.value)} placeholder="Ex.: Intendente da Casa"/></label>}<ImagePicker images={images} onChange={setImages} disabled={busy}/><div className="campaign-actions"><Button name="action" value="draft" variant="outline" disabled={busy}>Salvar rascunho</Button><Button disabled={busy||deliveryWeek===null}>{busy?'Salvando…':'Enviar resposta'}</Button></div><p role="status">{message}</p></form>:<Button onClick={()=>setOpen(true)}>{label}</Button>;
 }
 
-export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void;onManage?:(house:string)=>void;groupHouseIds?:string[]}){
+export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filterHost}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void;onManage?:(house:string)=>void;groupHouseIds?:string[];filterHost?:HTMLElement|null}){
   const empty={number:'',kind:'',answered:'',house:'',read:'',text:'',box:'',origin:'',court:'',unit:'',group:''};
   const [filters,setFilters]=useState(empty);
   const trashMode=filters.box==='lixeira';
@@ -51,9 +52,6 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
     allowed.has(letter.recipient_house_id??'')||
     data.players.some(p=>(p.id===letter.sender_player_id||p.id===letter.recipient_player_id||p.user_id===letter.sender_user_id)&&
       (allowed.has(p.roster_house_id??'')||data.members.some(m=>m.player_id===p.id&&allowed.has(m.house_id))));
-  const pendingHouses=data.admin?pendingRoundHouses(
-    open,data.houses.filter(h=>!groupActive||allowed.has(h.id)),data.players,data.members,
-    (data.letters as LetterRow[]).filter(l=>!groupActive||matchesGroup(l)),data.replies):[];
   const [page,setPage]=useState(0);
   const client=useQueryClient();
   const {data:options}=useMailOptions();
@@ -206,8 +204,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
    ...data.replies.filter(r=>!groupActive||data.letters.some(l=>l.id===r.letter_id&&matchesGroup(l as LetterRow))).map(r=>r.delivery_week)]
    .filter((n):n is number=>n!==null))].sort((a,b)=>b-a);
   const visibleIds=[...groups.flatMap(g=>g.letters),...mine].map(l=>l.id);
-  return <div className="campaign-mail-layout">
-    <aside className="campaign-mail-side" aria-label="Filtros das missivas">
+  const filterPanel=<aside className="campaign-mail-side" aria-label="Filtros das missivas">
       <p className="campaign-eyebrow">FILTROS</p>
       <label>Buscar<input type="search" value={filters.text} onChange={e=>setFilters({...filters,text:e.target.value})} placeholder="Assunto, resposta, autor ou casa…"/></label>
       {sel('Caixa','box',[['','Todas'],['recebidas','Recebidas'],['enviadas','Enviadas'],['programadas','Programadas'],['rascunhos','Rascunhos'],['historico','Histórico por semana'],['lixeira','Lixeira']])}
@@ -224,7 +221,9 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
       <Button variant="outline" onClick={()=>setFilters(empty)}>Limpar filtros</Button>
       <div className="campaign-actions"><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set(visibleIds))}>Expandir todas</Button><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set())}>Recolher todas</Button></div>
       {!trashMode&&!data.admin&&open!==null&&<Button onClick={()=>{setDraft({key:Date.now(),subject:'',content:''});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Escrever missiva</Button>}
-    </aside>
+    </aside>;
+  return <div className={'campaign-mail-layout'+(data.admin?' campaign-mail-layout--narrator':'')}>
+    {filterHost?createPortal(filterPanel,filterHost):filterPanel}
     <div>
       {!trashMode&&<MailInsights options={options} houseName={houseName} groupHouseIds={groupActive?[...allowed]:undefined} onSelect={row=>setFilters({...empty,origin:row.origin_house_id??'none',court:row.court_member_id?row.origin_house_id+':'+row.court_member_id:'none',unit:row.military_unit_id?row.origin_house_id+':'+row.military_unit_id:'none'})}/>}
       {listing.isPending&&<p role="status">Carregando missivas…</p>}
@@ -233,10 +232,6 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
       {!trashMode&&<div className={'campaign-round '+(open===null?'fechada':'')} role="status">{open===null?'Missivas fechadas, aguarde o narrador abrir a próxima semana.':`Missiva ${open} aberta — respostas, novas missivas e encaminhamentos liberados.`}
        {activeRound&&<p className="house-caption">Referência histórica da abertura: <strong>{formatRoundHarptosReference(activeRound.harptos_period)}</strong>. O número da rodada não altera a désdia vigente.</p>}</div>}
       {!trashMode&&data.admin&&<><div className="campaign-heading"><h2>Gestão de missivas</h2><Button onClick={()=>setCompose(v=>!v)}>{compose?'Fechar escrita':'Escrever missiva'}</Button></div>
-        <section className="campaign-round-pending" aria-label="Casas com respostas pendentes">
-          <h3>{open===null?'Respostas da rodada':`Missiva ${open} · Casas com respostas pendentes`}</h3>
-          {open===null?<p className="text-muted-foreground">Nenhuma rodada aberta.</p>:<><p>{pendingHouses.length} casa{pendingHouses.length===1?'':'s'} aguardando resposta</p>{pendingHouses.length===0?<p className="text-muted-foreground">Nenhuma resposta pendente às missivas entregues nesta rodada.</p>:<ul>{pendingHouses.map(h=><li key={h.id}><div><strong>{h.name}</strong><span className="text-muted-foreground text-sm">{h.letterIds.length} missiva{h.letterIds.length===1?'':'s'} pendente{h.letterIds.length===1?'':'s'}</span></div><Button size="sm" variant="outline" onClick={()=>{setFilters({...empty,house:h.id});setExpanded(new Set(h.letterIds));}}>Ver missivas</Button></li>)}</ul>}</>}
-        </section>
         <section aria-label="Indicadores da gestão de missivas" className="narrator-mail-hub-overview">
           <div><strong>{listing.data?.kpis?.delivered??0}</strong><span>Entregues</span></div>
           <div><strong>{listing.data?.kpis?.awaiting_house??0}</strong><span>Aguardando Jogador</span></div>
