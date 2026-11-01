@@ -44,7 +44,7 @@ const verified:Readonly<Record<string,RuleSpec>>={
  atraente:spec('attractive_reroll','Permite rerrolar resultados 1 em Persuasão.'),
  carismatico:spec('charismatic_result','+2 ao resultado de Persuasão.',[
   {skill:'persuasion',minimumRank:3}]),
- traiçoeiro:spec('deceptive_result','Soma graduações de Astúcia ao resultado de Enganação.'),
+ traicoeiro:spec('deceptive_result','Soma graduações de Astúcia ao resultado de Enganação.'),
  'favorito-da-nobreza':spec('noble_favorite_bonus','+1B Persuasão contra Status 4 ou maior.'),
  'favorito-da-plebe':spec('common_favorite_bonus','+1B Persuasão contra Status 3 ou menor.'),
  preciso:spec('precision_dice','+1D Pontaria quando o alvo tem cobertura.',[
@@ -77,7 +77,7 @@ const MANUAL= new Set<string>([
 /** Cada uma das entradas possui uma decisão de aplicação, nunca um +N genérico. */
 export const CHARACTER_TRAIT_RULES:readonly TraitRule[]=Object.freeze(CHARACTER_TRAITS.map(trait=>{
  const v=verified[trait.id];
- const effective=v&&trait.sourceQuality!=='visual_review_required';
+ const effective=v&&(trait.sourceQuality!=='visual_review_required'||trait.id==='defeito-habilidade-parametrizada');
  return Object.freeze({
   trait,
   effect:effective?v.effect:null,
