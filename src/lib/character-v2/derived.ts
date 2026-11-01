@@ -33,6 +33,7 @@ export type CharacterEquipmentSnapshot=Readonly<{
 export type DerivedContext=Readonly<{
  equipment?:CharacterEquipmentSnapshot|undefined;
  modifiers?:readonly MechanicalModifier[]|undefined;
+ runningMultiplier?:Readonly<{value:4|5;sourceId:string;approved:boolean}>|undefined;
 }>;
 export type CharacterDerived=Readonly<{
  version:typeof CHARACTER_DERIVED_VERSION;
@@ -131,9 +132,12 @@ export function resolveCharacterDerived(character:CharacterV2,ctx:DerivedContext
  ];
  add('movement','4 + floor(Correr B / 2) − floor(Volume / 2) + modificadores',
   ['specialty.correr','equipment.bulk'],moveLines,{min:0});
- add('running','4 × Movimento − Volume + modificadores',
+ const multiplier=ctx.runningMultiplier?.approved===true?ctx.runningMultiplier.value:4;
+ if(multiplier!==4&&multiplier!==5)throw new Error('Multiplicador de Corrida inválido.');
+ add('running',String(multiplier)+' × Movimento − Volume + modificadores',
   ['derived.movement','equipment.bulk'],[
-   line('derived.movement','Quatro vezes Movimento',4*values.movement,'rule'),
+   line('derived.movement',String(multiplier)+' vezes Movimento',multiplier*values.movement,'rule'),
+   ...(multiplier===4?[]:[line(ctx.runningMultiplier!.sourceId,'Rápido: multiplicador 5× homologado',0,'rule')]),
    equipment('bulkRunning','Redução adicional por Volume',-eq.bulk),
    ...activeModifiers('running',ctx,warnings)],{min:0});
  const current=(value:number|null,max:number,name:string)=>{

@@ -1,6 +1,8 @@
 import type {CharacterV2,CharacterSkillId} from '@/lib/character-v2/schema';
 import {CHARACTER_SKILL_IDS,CHARACTER_SKILL_LABELS} from '@/lib/character-v2/schema';
 import {findCharacterTrait,type CharacterTrait} from '@/lib/character-v2/catalog';
+import {getCharacterTraitRule} from '@/lib/character-v2/trait-rules';
+import {resolveCharacterWithTraits} from '@/lib/character-v2/trait-engine';
 import './character-sheet-parts.css';
 
 type PipsProps={
@@ -51,8 +53,9 @@ export function TraitCard({trait,status='imported_unverified',tier}:{
       martial:'Marcial',social:'Social'}[trait.category]}</p>
    {tier!==undefined&&tier!==null&&
      <Pips label={'Grau de '+trait.label} value={tier} max={3} disabled/>}
-   <small>{status==='approved'?'Aprovado (efeitos aguardam motor de regras)':
-     status==='inactive'?'Inativo':status==='proposed'?'Pendente de aprovação':
+   <small>{status==='inactive'?'Inativo':status==='proposed'?'Pendente de aprovação':
+     status==='approved'?(getCharacterTraitRule(trait.id)?.status==='verified'?
+     'Regra implementada — somente na ficha homologada':'Aprovado; efeito depende de revisão ou cena'):
      'Importado — pendente de conciliação'}</small>
  </article>;
 }
@@ -70,14 +73,25 @@ export function CharacterStatus({name,role,reviewStatus,stats}:{
    <small>{reviewStatus==='approved'?'Verificado':'Prévia — requer conferência'}</small></header>
   <dl className="character-v2-stats">{cells.map(([label,value])=><div key={label}>
     <dt>{label}</dt><dd>{value===null||value===undefined?'—':value}</dd></div>)}</dl>
-  <p className="character-v2-disclaimer">Cálculos e modificadores serão ativados após validação do motor de regras; nenhum bônus é presumido nesta prévia.</p>
+  <p className="character-v2-disclaimer">{stats?'Prévia com fórmulas conferidas e efeitos aprovados; não substitui a ficha oficial até homologação.':'Cálculos e modificadores serão ativados após validação do motor de regras; nenhum bônus é presumido nesta prévia.'}</p>
  </section>;
 }
 /** Lote 03: composição apenas de LEITURA. Não substituir a ficha atual antes do lote 12. */
 export function CharacterV2Preview({character}: {character:CharacterV2}){
+ const resolved=resolveCharacterWithTraits(character);
+ const values=resolved.derived.values;
+ const stats={combatDefense:values.combatDefense,intrigueDefense:values.intrigueDefense,
+   health:values.maxHealth,composure:values.maxComposure,movement:values.movement,running:values.running};
  return <div className="character-v2-preview">
   <CharacterStatus name={character.displayName} role={character.role}
-    reviewStatus={character.review.status}/>
+    reviewStatus={character.review.status} stats={stats}/>
+  <details className="character-v2-section"><summary>Origem dos cálculos e bônus</summary>
+   {resolved.derived.order.map(key=><div key={key} className="character-v2-source">
+    <strong>{key}: {resolved.derived.values[key]}</strong>
+    <ul>{resolved.derived.nodes[key].lines.map(line=><li key={line.sourceId}>
+     {line.description}: {line.amount>=0?'+':''}{line.amount}
+    </li>)}</ul></div>)}
+  </details>
   <section aria-label="Habilidades V2" className="character-v2-section">
    <h4>Habilidades</h4>
    <div className="character-v2-skills">{CHARACTER_SKILL_IDS.map(id=>
@@ -98,8 +112,9 @@ export function CharacterV2Preview({character}: {character:CharacterV2}){
      <p key={t.id}>Entrada não reconhecida: {t.traitId} (não aplicada)</p>;
    })}</div>
   </section>}
-  {character.review.warnings.length>0&&<section aria-label="Pendências de conciliação"
+  {(character.review.warnings.length>0||resolved.traits.pending.length>0||resolved.traits.warnings.length>0)&&<section aria-label="Pendências de conciliação"
     className="character-v2-section character-v2-warnings"><h4>Pendências de conciliação</h4>
-    <ul>{character.review.warnings.map((w,i)=><li key={i}>{w}</li>)}</ul></section>}
+    <ul>{[...character.review.warnings,...resolved.traits.pending,...resolved.traits.warnings]
+      .map((w,i)=><li key={i}>{w}</li>)}</ul></section>}
  </div>;
 }
