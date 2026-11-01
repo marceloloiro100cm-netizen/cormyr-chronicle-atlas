@@ -97,13 +97,6 @@ export function FichaTab({
         >
           Ficha do Personagem
         </Button>
-        <Button
-          variant={view === "legacy" ? "default" : "ghost"}
-          aria-pressed={view === "legacy"}
-          onClick={() => setView("legacy")}
-        >
-          Ficha anterior preservada
-        </Button>
       </nav>
       {view === "house" && (
         <NobleHouseHub
