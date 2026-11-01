@@ -76,3 +76,14 @@ O resultado `This query wasn't executed` foi retornado explicitamente pelo Lovab
 **CI:** o commit `4ff0068e393aaea02bba316cd614790106e675f6` da branch cumulativa passou pelos dois workflows, incluindo testes isolados de PostgreSQL, TypeScript e build (runs `41256346780` e `41256345209`). Isto não valida o esquema produtivo.
 
 **Pendências impeditivas:** (a) aplicação 0067 no clone quando quota permitir; (b) conector GitHub no Lovable e sincronização fiel do frontend com teste de navegação e papéis; (c) restauração real de backup de produção em cópia separada (clone atual está vazio); (d) reconciliação do diário Drizzle com os 27 SQL fora dele e importações 0042 já aplicadas; (e) aceite de produção do calendário, Casas, nobres e missivas. **NO_GO para produção**.
+
+
+## Resultado suplementar — migração 0067 e limite de créditos do frontend
+
+**A migração `0067_temporal_release_preflight.sql` foi posteriormente APLICADA no clone** `41028f68-4fe7-4ed0-b123-c820522a0a3b` pelo agente do Lovable. O agente informou que a ferramenta de migração exigiu remover os delimitadores externos `BEGIN;` / `COMMIT;`, processando o conteúdo no mecanismo transacional da plataforma; confirmou em consulta de catálogo que `public.get_temporal_release_preflight` existe. O ensaio anterior com rollback havia sido aprovado. Assim, **0060–0067 (8/8) estão instaladas no clone**.
+
+**Limites da verificação:** a leitura SQL direta via API MCP continuou bloqueada pelo limite temporário, portanto a constatação de 0067 se baseia na confirmação/consulta do agente Lovable, não em inspeção independente posterior. O migrador Lovable também atualizou definições de tipos e criou um arquivo da migration no projeto; a instalação direta 0060–0066 ainda não consta como lançamentos no diário Drizzle inicialmente vazio do clone. **Não rodar novamente migrations por inferência.**
+
+**Frontend não instalado no clone:** tentei transportar nove arquivos runtime do Hub na íntegra do GitHub por meio do agente Lovable; o agente respondeu que **nenhum** dos nove foi escrito por falta de tempo. No próximo pedido para copiar dois arquivos, o Lovable recusou com `Your workspace is out of credits` e orientou adicionar créditos em https://lovable.dev/settings/billing. Confirmado previamente que não há conector GitHub API conectado no workspace `Cormyr`. O frontend completo continua presente e validado na branch `audit/hub-temporal-lote-37-aceite-final` / PR #164, **mas não sincronizado no projeto Lovable**. Sem créditos e sem integração não é possível completar o espelhamento pelo agente nesta sessão.
+
+**Gate de produção permanece NO_GO:** backup de dados reais não restaurado, 27 SQL pendentes de reconciliação do diário e importações 0042 existentes fora do registro; não há homologação de identidade, permissões RLS, Casas reais e missivas, nem frontend sincronizado. `main` e o site publicado não foram alterados.
