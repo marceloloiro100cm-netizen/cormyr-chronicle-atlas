@@ -8,15 +8,17 @@ import {unitMilitaryBonuses} from '@/lib/house/military-bonuses';
 import {unitAllowedSkills,unitXpSummary,XP_PER_RANK} from '@/lib/house/unit-progression';
 import {SKILLS,SKILL_NAMES,EXTRA_UNIT_SKILLS,UNIT_SKILLS,UNIT_SKILL_NAMES,type Unit,type HouseState,type ExtraUnitSkill,type UnitSkill,type Skill} from '@/lib/house/types';
 import {MilitaryUnitSymbol,unitSymbolType} from './military-unit-symbol';
+import {UnitCommanderAssignment} from './unit-commander-assignment';
 import {exportUnitPdf} from '@/lib/house/unit-export';
 
-type Actions={unit:Unit;state:HouseState;houseName:string;canEdit:boolean;admin:boolean;busy:boolean;
+type Actions={unit:Unit;state:HouseState;houseName:string;canEdit:boolean;admin:boolean;busy:boolean;commanders:{id:string;title:string}[];
+  onCommander:(args:Record<string,unknown>)=>Promise<boolean>;
  onEdit:(args:Record<string,unknown>)=>Promise<boolean>;
  onGrant:(args:Record<string,unknown>,reason:string)=>Promise<boolean>;
  onEquipment:(args:Record<string,unknown>)=>Promise<boolean>;
  onWarHounds?:(args:Record<string,unknown>)=>Promise<boolean>;
  onBroadTraining?:(args:Record<string,unknown>)=>Promise<boolean>;};
-export function UnitSheet({unit,state,houseName,canEdit,admin,busy,onEdit,onGrant,onEquipment,onWarHounds,onBroadTraining}:Actions){
+export function UnitSheet({unit,state,houseName,commanders,canEdit,admin,busy,onCommander,onEdit,onGrant,onEquipment,onWarHounds,onBroadTraining}:Actions){
  const [open,setOpen]=useState(false),[editing,setEditing]=useState(false);
  const [name,setName]=useState(unit.name),[origin,setOrigin]=useState(unit.origin),[situation,setSituation]=useState(unit.situation),[notes,setNotes]=useState(unit.notes);
  const [skills,setSkills]=useState(unit.skills),[extraSkills,setExtraSkills]=useState(unit.extraSkills??{}),[mount,setMount]=useState(unit.mount);
@@ -42,7 +44,10 @@ export function UnitSheet({unit,state,houseName,canEdit,admin,busy,onEdit,onGran
     <div className="military-sheet-header-title">
      <p className="campaign-eyebrow">CASA {houseName.toLocaleUpperCase('pt-BR')} · FICHA DE UNIDADE</p>
      <DialogTitle className="text-3xl font-serif">{unit.name}</DialogTitle>
-     <DialogDescription>{unit.types.map(id=>UNIT_TYPES.find(t=>t.id===id)?.name??id).join(' / ')} · {TRAINING[unit.training as keyof typeof TRAINING]?.name} · {unit.commanderName||'Sem comandante'}</DialogDescription>
+     <div className="military-sheet-subline">
+  <DialogDescription>{unit.types.map(id=>UNIT_TYPES.find(t=>t.id===id)?.name??id).join(' / ')} · {TRAINING[unit.training as keyof typeof TRAINING]?.name} · </DialogDescription>
+  <UnitCommanderAssignment unit={unit} court={state.court} commanders={commanders} canEdit={canEdit} busy={busy} onAssign={onCommander}/>
+ </div>
     </div>
     <Button className="military-sheet-download" type="button" variant="outline" title={'Baixar PDF da unidade '+unit.name} onClick={()=>void exportUnitPdf(unit,state,houseName)}>
      <Download size={17}/> Baixar ficha (PDF)
