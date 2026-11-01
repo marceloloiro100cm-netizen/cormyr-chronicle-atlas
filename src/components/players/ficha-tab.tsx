@@ -3,21 +3,16 @@ import { isNarrativeNpc } from "@/lib/house/narrative-npc";
 import { useState } from "react";
 import {useQuery} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
-import {useServerFn} from '@tanstack/react-start';
-import {loadHouseHub} from '@/lib/house/house.functions';
-import {balances,maxHouseStatus} from '@/lib/house/engine';
 import {parseChronicleSheet} from '@/lib/house/character-sheet';
-import {ChronicleCharacterEditor} from '@/components/house/character-editor';
 import { NobleHouseHub } from "@/components/house/hub";
 import { Button } from "@/components/ui/button";
 import { CampaignContent, PrivateImage } from "@/components/campaign-content";
-import { FichaCasaCard, FichaPersonagemCard, portraitPath } from "@/components/ficha";
-import { isFichaCasa, isFichaPersonagem, parseFichaPersonagem, parseFichaCasa } from "@/lib/ficha";
+import { FichaCasaCard, portraitPath } from "@/components/ficha";
+import { isFichaCasa, isFichaPersonagem, parseFichaCasa } from "@/lib/ficha";
 import type { RecordRow } from "./shared";
 import type { Panel } from "./panel-data";
 import { RecordEditor } from "./records";
 import { FichaCasaForm } from "./ficha-form";
-import {CharacterV2NarratorReview} from '@/components/character-v2/narrator-review';
 import {CharacterV2PlayerSheet} from '@/components/character-v2/player-sheet';
 
 export function FichaTab({
@@ -26,8 +21,6 @@ export function FichaTab({
   canEdit,
   onSave,
   npcManager,
-  playerId,
-  admin=false,
 }: {
   npcManager?: ReactNode;
   playerId?:string|undefined;
@@ -38,9 +31,6 @@ export function FichaTab({
   onSave: () => unknown;
 }) {
   const [view, setView] = useState<"house" | "character" | "legacy">("house");
-  const load=useServerFn(loadHouseHub);
-  const {data:sheetData}=useQuery({queryKey:['noble-house',current.id],enabled:view==='character',queryFn:()=>load({data:{houseId:current.id}})});
-  const statusCap=sheetData?maxHouseStatus(balances(sheetData.state).total.influence):10;
   const {data:ages}=useQuery({
    queryKey:['house-character-ages',current.id],
    enabled:view==='character',
@@ -69,21 +59,10 @@ export function FichaTab({
   const retratos = records
     .map((r) => ({ titulo: r.title, path: portraitPath(r.content) }))
     .filter((r): r is { titulo: string; path: string } => Boolean(r.path));
-  const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
-  const retratoDo = (nome: string | null) =>
-    nome
-      ? (retratos.find(
-          (r) =>
-            norm(r.titulo) === norm(nome) ||
-            norm(r.titulo).includes(norm(nome)) ||
-            norm(nome).includes(norm(r.titulo)),
-        )?.path ?? null)
-      : null;
   const npcs = records.filter(
     (r) =>
       r.kind === "character" && !isFichaPersonagem(r.title, r.content) && !portraitPath(r.content),
   );
-  const fichaLordeParsed = fichaLorde ? parseFichaPersonagem(fichaLorde.content) : null;
   return (
     <section>
       <nav className="campaign-tabs" aria-label="Tipo de ficha">
@@ -148,30 +127,15 @@ export function FichaTab({
       {view === "character" && (
         <>
           <h2>Fichas dos personagens · Lordes e Herdeiros</h2>
-          {admin&&<CharacterV2NarratorReview key={current.id} houseId={current.id} records={records}/> }
-          {admin&&canEdit&&<details className="campaign-add"><summary>Manutenção do Narrador · criar ficha estruturada</summary>
-            <ChronicleCharacterEditor key={'new-'+current.id} houseId={current.id} houseName={current.name} playerId={playerId} canEdit={canEdit} statusCap={statusCap} onSave={onSave}/>
-          </details>}
-          {structured.map(({row,sheet})=><div key={row.id+'-'+row.version}>
+          {structured.map(({row})=><div key={row.id+'-'+row.version}>
             {ageLine(row.id)}
             <CharacterV2PlayerSheet record={row} houseId={current.id}/>
-            {admin&&<details className="campaign-add"><summary>Manutenção do Narrador · ficha estruturada anterior</summary>
-              <ChronicleCharacterEditor row={row} initial={sheet} houseId={current.id} houseName={current.name} playerId={playerId} canEdit={canEdit} statusCap={statusCap} onSave={onSave}/>
-            </details>}
           </div>)}
           {fichaLorde&&<h2>Ficha do Lorde</h2>}
           {fichaLorde ? (
             <>
               {ageLine(fichaLorde.id)}
               <CharacterV2PlayerSheet record={fichaLorde} houseId={current.id}/>
-              {admin&&<details className="campaign-add"><summary>Manutenção do Narrador · consultar fonte anterior</summary>
-                <FichaPersonagemCard
-                  content={fichaLorde.content}
-                  portrait={retratoDo(fichaLordeParsed?.nome ?? current.lord_name)}
-                  titulo={fichaLorde.title}
-                />
-                <p className="text-sm">Documento legado preservado em modo de leitura. O editor antigo não é usado porque descartaria colunas não mapeadas, incluindo Qualidades e Defeitos.</p>
-              </details>}
             </>
           ) : (
             structured.length===0&&<p className="campaign-empty">Nenhuma ficha de personagem reconhecida. O Narrador pode cadastrar uma fonte na área de manutenção.</p>
