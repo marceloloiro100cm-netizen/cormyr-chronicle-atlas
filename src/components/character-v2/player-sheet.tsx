@@ -98,8 +98,8 @@ export function CharacterV2PlayerSheet({record,houseId}:{
    <p className="text-sm">Versão importada {preview.sourceVersion} · consulta sem edição automática</p>
   </header>
   <p className="character-v2-disclaimer">
-   Apresentação nova com bolinhas. A ficha anterior permanece como documento original e
-   fonte de edição. Nenhum ponto de XP, Destino, qualidade ou atributo ausente é concedido nesta visualização.
+   Apresentação com bolinhas. O documento anterior permanece preservado nos registros,
+   sem aparecer nesta tela. Nenhum ponto de XP, Destino, qualidade ou atributo ausente é concedido nesta visualização.
   </p>
   <section className="character-v2-section" aria-label="Indicadores derivados da ficha">
    <h4>Indicadores</h4>
