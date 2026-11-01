@@ -111,7 +111,7 @@ export function CharacterV2PlayerSheet({record,houseId,canEdit=false,onEdit}:{
     pdf.text(lines,17,y);y+=lines.length*5+2;
    };
    write(character.displayName,true);
-   write('Casa: '+houseId+' · Ficha V2 de consulta · origem v'+preview.sourceVersion);
+   write('Casa: '+houseId+' · Ficha V2 de consulta · origem v'+sourceVersion);
    write('Indicadores',true);
    stats.forEach(st=>write(st.label+': '+(st.value===null?'A conferir':st.value)));
    write('Habilidades',true);
