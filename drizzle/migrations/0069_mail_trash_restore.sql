@@ -14,6 +14,9 @@ BEGIN
   SELECT 1 FROM public.campaign_letters l
   WHERE l.id=v_reply.letter_id AND l.deleted_at IS NULL AND public.can_read_letter(l))
  THEN RAISE EXCEPTION 'Resposta indisponível'; END IF;
+ IF v_reply.publication_state='draft' AND v_reply.author_user_id<>auth.uid() THEN
+  RAISE EXCEPTION 'Rascunho privado de outro jogador' USING ERRCODE='42501';
+ END IF;
  IF NOT (public.is_campaign_admin() OR v_reply.author_user_id=auth.uid()) THEN
   RAISE EXCEPTION 'Somente o autor ou o Narrador pode excluir esta resposta' USING ERRCODE='42501';
  END IF;
@@ -69,6 +72,9 @@ BEGIN
  IF NOT FOUND OR v_reply.deleted_at IS NULL THEN
   RAISE EXCEPTION 'Resposta não encontrada na lixeira';
  END IF;
+ IF v_reply.publication_state='draft' AND v_reply.author_user_id<>v_actor THEN
+  RAISE EXCEPTION 'Rascunho privado de outro jogador' USING ERRCODE='42501';
+ END IF;
  IF NOT (public.is_campaign_admin() OR v_reply.author_user_id=v_actor) THEN
   RAISE EXCEPTION 'Somente o autor ou o Narrador pode recuperar esta resposta' USING ERRCODE='42501';
  END IF;
@@ -111,6 +117,7 @@ BEGIN
     (l.deleted_at IS NOT NULL AND (v_admin OR l.sender_user_id=v_actor)) AS letter_eligible,
     EXISTS(SELECT 1 FROM public.letter_replies d
       WHERE d.letter_id=l.id AND d.deleted_at IS NOT NULL
+        AND (d.publication_state<>'draft' OR d.author_user_id=v_actor)
         AND (v_admin OR (
           d.author_user_id=v_actor
           AND (
@@ -151,6 +158,7 @@ BEGIN
       OR strpos(lower(c.subject||' '||c.sender_name||' '||c.content),lower(p_filters->>'text'))>0
       OR EXISTS (SELECT 1 FROM public.letter_replies rr
         WHERE rr.letter_id=c.id AND rr.deleted_at IS NOT NULL
+        AND (rr.publication_state<>'draft' OR rr.author_user_id=v_actor)
         AND (v_admin OR rr.author_user_id=v_actor)
         AND strpos(lower(rr.content||' '||rr.author_name),lower(p_filters->>'text'))>0))
  ),
@@ -171,7 +179,9 @@ BEGIN
   'replies',coalesce((SELECT jsonb_agg(to_jsonb(d) ORDER BY d.deleted_at DESC,d.id)
      FROM public.letter_replies d
      WHERE d.letter_id IN(SELECT id FROM page_rows)
-       AND d.deleted_at IS NOT NULL AND (v_admin OR d.author_user_id=v_actor)
+       AND d.deleted_at IS NOT NULL
+       AND (d.publication_state<>'draft' OR d.author_user_id=v_actor)
+       AND (v_admin OR d.author_user_id=v_actor)
     ),'[]'::jsonb)
  ) INTO v_out;
  RETURN v_out;
