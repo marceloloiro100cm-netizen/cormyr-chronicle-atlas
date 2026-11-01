@@ -660,3 +660,22 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 .military-sheet .military-sheet-edit:focus-visible{outline:3px solid #a36b34;outline-offset:2px}
 
 @media(max-width:680px){.military-unit-symbol--large{width:60px;height:60px}.military-sheet-download{margin-left:0}.military-sheet-header-title{flex-basis:calc(100% - 80px)}}
+
+
+/* Narrator-only missive consequences; player view is a read-only burnt-gold strip. */
+.campaign-letter-consequences{margin:14px 0}
+.campaign-consequence-band{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin:10px 0;padding:12px 16px;border-left:5px solid #96621a;border-radius:6px;background:#e3b969;color:#33230d;font-size:14px}
+.campaign-consequence-band strong{font-weight:800}
+.campaign-consequence-band small{opacity:.85}
+.campaign-consequence-band button{margin-left:auto;border-color:#835719;color:#39270e;background:#f8e5b9}
+.campaign-consequence-history{color:var(--muted-foreground);font-size:12px;margin:8px 0}
+.campaign-consequence-button{background:#a76a17!important;color:#fff9eb!important;border:1px solid #794a12!important;font-weight:700}
+.campaign-consequence-button:hover{background:#87540e!important}
+.campaign-consequence-form{display:grid;gap:14px;max-width:760px;padding:18px;margin:12px 0 18px;border:1px solid #bc8c40;border-radius:8px;background:color-mix(in srgb,var(--campaign-paper) 92%,#dba956 8%)}
+.campaign-consequence-form>label,.campaign-consequence-reverse label,.campaign-consequence-grid label{display:grid;gap:6px;font-size:13px;font-weight:650}
+.campaign-consequence-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.campaign-consequence-grid input{min-width:0}
+.campaign-consequence-preview{font-size:13px;color:var(--foreground)}
+.campaign-consequence-reverse{display:flex;align-items:end;flex-wrap:wrap;gap:8px;width:100%;padding-top:10px;border-top:1px solid #b4863c}
+.campaign-consequence-reverse label{min-width:min(320px,100%);flex:1}
+@media(max-width:700px){.campaign-consequence-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.campaign-consequence-form{padding:12px}}

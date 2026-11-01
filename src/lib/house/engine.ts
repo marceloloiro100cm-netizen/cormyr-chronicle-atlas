@@ -29,6 +29,17 @@ export function balances(state: HouseState): Balance {
     effectivePermanent[r]=state.permanent[r]-legacyLosses[r];
     total[r] = state.base[r] + effectivePermanent[r] + regional[r] + historic[r] + personal[r];
   }
+  // Narrative losses are allocated (never deducted from base/permanent);
+  // rewards are temporary-to-source event points in total, fully reversible.
+  for(const event of state.mailConsequences??[]){
+    if(!event.active)continue;
+    for(const resource of RESOURCE_KEYS){
+      const change=event.changes[resource]??0;
+      if(!Number.isInteger(change)||Math.abs(change)>100)throw new Error('Consequência de missiva inválida.');
+      if(change<0)allocated[resource]+=-change;
+      else total[resource]+=change;
+    }
+  }
   for (const holding of state.holdings) {
     if(holding.status!=='active'&&holding.status!=='building')continue;
     const target=holding.status==='building'?committed:allocated;

@@ -14,6 +14,7 @@ import type { Panel } from './panel-data';
 import {MailComposer,replaceMailDraft,MailLinkFields,useMailOptions,type MailLinks,type MailOptions} from './mail-compose';
 import {NARRATION_GROUPS,narrationHouseIds} from '@/lib/mail-groups';
 import {NarratorMailNotes} from './narrator-mail-notes';
+import {LetterConsequences,type LetterConsequenceRow} from './letter-consequences';
 import {MailPeriodNotice} from './mail-period-notice';
 import {dateKey} from '@/lib/calendar/harptos';
 import {formatRoundHarptosReference} from '@/lib/calendar/chronology';
@@ -66,6 +67,18 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   const requestFilters={...filters,text:search,...(groupActive?{group_house_ids:[...allowed]}: {})};
   const listing=useQuery({queryKey:['mail-page',data.user.id,requestFilters,page],queryFn:async()=>{const r=await supabase.rpc('mail_page',{p_filters:requestFilters,p_page:page,p_size:20});if(r.error)throw r.error;return r.data as unknown as {total:number;letters:LetterRow[];replies:Panel['replies'];kpis?:{delivered:number;awaiting_house:number;awaiting_narrator:number;scheduled_replies_next:number;drafts:number}};}});
   const allLetters=listing.data?.letters??[];
+  const consequenceIds=allLetters.map(letter=>letter.id);
+  const consequences=useQuery({
+    queryKey:['letter-consequences',data.user.id,consequenceIds.join('|')],
+    enabled:consequenceIds.length>0,
+    queryFn:async()=>{
+      const result=await supabase.from('campaign_letter_consequences')
+        .select('id,letter_id,house_id,changes,active,created_at')
+        .in('letter_id',consequenceIds);
+      if(result.error)throw result.error;
+      return (result.data??[]) as LetterConsequenceRow[];
+    }
+  });
   const letters=allLetters;
   const viewReplies=listing.data?.replies??[];
   const groups=filters.box==='enviadas'?[]:groupReceivedLetters(letters,data.user.id);
@@ -161,6 +174,12 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
         </section>}
         {data.admin&&letter.sender_user_id===data.user.id&&<details><summary>Leituras registradas pelos destinatários</summary>{data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).length===0?<p>Nenhuma leitura registrada.</p>:data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).map(r=><p key={r.user_id}>{data.players.find(p=>p.user_id===r.user_id)?.name??'Destinatário autorizado'} · {date(r.read_at)}{isLetterRead(letter.id,r,answers)?'':' · Há respostas posteriores'}</p>)}</details>}
         {data.admin&&<NarratorMailNotes letterId={letter.id} userId={data.user.id}/>}
+        <LetterConsequences
+          letterId={letter.id} admin={data.admin} disabled={Boolean(letter.deleted_at)}
+          houses={data.houses.filter(h=>h.active).map(h=>({id:h.id,name:h.name}))}
+          suggestedHouse={letter.origin_house_id??data.players.find(p=>p.id===letter.sender_player_id)?.roster_house_id??letter.recipient_house_id??''}
+          items={(consequences.data??[]).filter(item=>item.letter_id===letter.id)}
+          onSaved={saved} onError={onError}/>
         <p className="text-muted-foreground text-sm">{syncLabel(letter.sync_state)} · {letter.last_synced_at?date(letter.last_synced_at):'Ainda não sincronizada'}</p>
         {threadLetters.length>0&&<div className="campaign-thread"><Button size="sm" variant="ghost" aria-expanded={threadOpen} onClick={()=>toggleThread(letter.id)}>{threadOpen?'Ocultar fio da conversa':`Ver relacionadas nesta página (${threadLetters.length} missiva(s) relacionada(s))`}</Button>{threadOpen&&threadLetters.map(other=>{const otherAnswers=viewReplies.filter(r=>r.letter_id===other.id);return <div key={other.id} className="campaign-thread-item"><span className="campaign-eyebrow">{other.letter_number?`Missiva ${other.letter_number} · `:''}{other.letter_kind==='geral'?'Geral':'Reservada'}</span><strong>{other.subject}</strong><small> · De: {other.sender_name} · {other.campaign_date?formatDate(other.campaign_date):date(other.created_at)}</small><CampaignContent content={other.content}/>{otherAnswers.map(a=><div key={a.id} className="campaign-replies"><span className="campaign-eyebrow">Resposta · {mailWeekTimeline(a.creation_week,a.delivery_week,a.publication_state)}</span><br/><strong>{a.author_name}</strong><small> · {date(a.created_at)}</small><CampaignContent content={a.content}/></div>)}</div>;})}</div>}
         {!letter.deleted_at&&<div className="campaign-actions">
