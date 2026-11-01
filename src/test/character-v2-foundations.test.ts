@@ -48,7 +48,9 @@ describe('Character V2 — lotes 01 e 02',()=>{
   expect(ch.skillRanks).not.toHaveProperty('brawling');
   expect(ch.source.unparsedFields['brawlingRank']).toBe('3');
   expect(ch.source.unparsedFields['destiny']).toBe('4');
-  expect(ch.traits).toHaveLength(0);
+  expect(ch.traits).toHaveLength(2);
+  expect(ch.traits.map(t=>t.traitId)).toEqual(['rapido','manco']);
+  expect(ch.traits.every(t=>t.status==='imported_unverified')).toBe(true);
   expect(ch.specialties).toHaveLength(0);
   expect(preview.warnings.some(w=>w.includes('Briga'))).toBe(true);
   expect(restoreOriginalCharacterSource(ch)).toEqual({

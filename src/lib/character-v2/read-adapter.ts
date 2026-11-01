@@ -1,5 +1,6 @@
 import {parseChronicleSheet} from '@/lib/house/character-sheet';
 import {parseFichaPersonagem} from '@/lib/ficha';
+import {readLegacyTraitColumns,readStructuredTraitText,importTraitSelections,importedTraitIssues} from './legacy-traits';
 import {CharacterV2Schema,CHARACTER_SKILL_IDS,CHARACTER_SKILL_LABELS,emptyCharacterSkillRanks,
   type CharacterSkillId,type CharacterV2} from './schema';
 
@@ -20,12 +21,12 @@ export function sourceFingerprint(text:string):string{
 }
 function makePreview(record:AuthorizedCharacterSource,format:'chronicle-v1'|'legacy-text',
   name:string,role:string,skills:Record<CharacterSkillId,number>,warnings:string[],
-  unparsedFields:Record<string,string>):ReadResult {
+  unparsedFields:Record<string,string>,importedTraits:ReturnType<typeof importTraitSelections>=[]):ReadResult {
   const item={
     schemaVersion:2,id:record.id,houseId:record.houseId,playerId:record.playerId??null,
     displayName:name,role,portraitRef:record.portraitRef??null,
     sourceRecordIds:[record.id],canonicalAgeRef:null,version:0,
-    skillRanks:skills,specialties:[],traits:[],equipment:[],
+    skillRanks:skills,specialties:[],traits:importedTraits,equipment:[],
     state:{healthCurrent:null,composureCurrent:null,injuries:[],wounds:[],conditions:[]},
     source:{format,recordId:record.id,recordVersion:record.version,
       sourceFingerprint:sourceFingerprint(record.content),originalContent:record.content,
@@ -45,7 +46,8 @@ function makePreview(record:AuthorizedCharacterSource,format:'chronicle-v1'|'leg
 export function readCharacterV2(record:AuthorizedCharacterSource):ReadResult{
   const v1=parseChronicleSheet(record.content);
   if(v1){
-    const warnings:string[]=[];
+    const imported=readStructuredTraitText(v1.qualities,v1.flaws);
+    const warnings:string[]=[...importedTraitIssues(imported)];
     const ranks=emptyCharacterSkillRanks();
     for(const id of CHARACTER_SKILL_IDS){
       if(id==='cunning') {ranks.cunning=v1.cunning;continue;}
@@ -56,7 +58,7 @@ export function readCharacterV2(record:AuthorizedCharacterSource):ReadResult{
     if(unusedBrawl!==undefined&&unusedBrawl!==2)
       warnings.push('Briga V1 não é habilidade autônoma: graduação preservada, conciliar com especialidade de Luta.');
     if(v1.specialties.trim())warnings.push('Especialidades em texto aguardam conciliação por habilidade/bonusDice.');
-    if(v1.qualities.trim()||v1.flaws.trim())warnings.push('Qualidades e defeitos em texto aguardam mapeamento de catálogo.');
+    if(v1.qualities.trim()||v1.flaws.trim())warnings.push('Qualidades e defeitos V1 aguardam aprovação individual para qualquer efeito.');
     warnings.push('XP, Destino, idade canônica e equipamento não são migrados automaticamente.');
     return makePreview(record,'chronicle-v1',v1.name,v1.role,ranks,warnings,{
       specialties:v1.specialties,qualities:v1.qualities,flaws:v1.flaws,
@@ -66,13 +68,14 @@ export function readCharacterV2(record:AuthorizedCharacterSource):ReadResult{
       birthYear:String(v1.birthYear??''),birthDate:v1.birthDate??'',
       shield:String(v1.shield),armorPenalty:String(v1.armorPenalty),
       movement:String(v1.movement),
-    });
+    },importTraitSelections(imported));
   }
   const legacy=parseFichaPersonagem(record.content);
   const name=legacy.nome?.trim();
   if(!name||(!legacy.habilidades.length&&!record.content.includes('Nome do Personagem')))
     return{character:null,warnings:['Registro não identificado como ficha de personagem V1 ou legado.']};
-  const warnings:string[]=[];
+  const imported=readLegacyTraitColumns(record.content);
+  const warnings:string[]=[...importedTraitIssues(imported)];
   const ranks=emptyCharacterSkillRanks(),unparsed:Record<string,string>={};
   const recognized=new Set<CharacterSkillId>();
   for(const h of legacy.habilidades){
@@ -99,9 +102,14 @@ export function readCharacterV2(record:AuthorizedCharacterSource):ReadResult{
     defesaIntriga:legacy.defesaIntriga,compostura:legacy.compostura,
     movimento:legacy.movimento,corrida:legacy.corrida
   }))if(value)unparsed[name]=value;
+  if(imported.length){
+    unparsed['qualities']=imported.filter(x=>x.kind==='quality').map(x=>x.original).join('\n');
+    unparsed['flaws']=imported.filter(x=>x.kind==='flaw').map(x=>x.original).join('\n');
+  }
   warnings.push('Valores derivados declarados (inclusive Corrida) não são aceitos como cálculos canônicos.');
   warnings.push('Importação legada somente leitura: graduação, especialidades e identidade requerem confirmação.');
-  return makePreview(record,'legacy-text',name,'Personagem legado',ranks,warnings,unparsed);
+  return makePreview(record,'legacy-text',name,'Personagem legado',ranks,warnings,unparsed,
+    importTraitSelections(imported));
 }
 /** Round-trip reversível por identidade e conteúdo: nenhuma mutação histórica ocorre. */
 export function restoreOriginalCharacterSource(preview:CharacterV2):{
