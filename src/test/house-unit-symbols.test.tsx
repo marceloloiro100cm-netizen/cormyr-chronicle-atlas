@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {render,screen,fireEvent,within} from '@testing-library/react';
-import {MilitaryUnitSymbol,MILITARY_SYMBOL_TYPES,missingMilitarySymbols,unitSymbolType} from '@/components/house/military-unit-symbol';
+import {MilitaryUnitSymbol,MILITARY_SYMBOL_TYPES,missingMilitarySymbols,unitSymbolType,militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import {UnitSheet} from '@/components/house/unit-sheet';
 import {UNIT_TYPES} from '@/lib/house/engine';
 import {newHouseState,UNIT_SKILLS,UNIT_SKILL_NAMES,SKILLS,type Unit} from '@/lib/house/types';
@@ -20,8 +20,12 @@ describe('17 military heraldic emblems',()=>{
    const badge=container.querySelector('[role="img"]');
    expect(badge?.getAttribute('aria-label')).toContain(type.name);
    expect(badge?.getAttribute('style')).toContain('background-color');
+   const asset=militaryUnitSymbolSrc(type.id);
+   expect(asset).toMatch(/^\/assets\/military-units\/\d{2}_[a-z_]+\.jpg$/);
+   expect(badge?.querySelector('img')?.getAttribute('src')).toBe(asset);
    unmount();
   }
+  expect(new Set(UNIT_TYPES.map(type=>militaryUnitSymbolSrc(type.id))).size).toBe(17);
   expect(unitSymbolType(['infantry','archers'],'archers')).toBe('archers');
   expect(unitSymbolType(['cavalry','archers'],'unknown')).toBe('cavalry');
  });
