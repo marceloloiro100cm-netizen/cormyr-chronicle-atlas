@@ -194,6 +194,69 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_letter_consequences: {
+        Row: {
+          id: string
+          letter_id: string
+          house_id: string
+          changes: Json
+          explanation: string
+          operation_key: string
+          created_by: string
+          created_at: string
+          active: boolean
+          reversed_by: string | null
+          reversed_at: string | null
+          reversal_key: string | null
+          reversal_reason: string | null
+        }
+        Insert: {
+          id?: string
+          letter_id: string
+          house_id: string
+          changes: Json
+          explanation: string
+          operation_key: string
+          created_by: string
+          created_at?: string
+          active?: boolean
+          reversed_by?: string | null
+          reversed_at?: string | null
+          reversal_key?: string | null
+          reversal_reason?: string | null
+        }
+        Update: {
+          id?: string
+          letter_id?: string
+          house_id?: string
+          changes?: Json
+          explanation?: string
+          operation_key?: string
+          created_by?: string
+          created_at?: string
+          active?: boolean
+          reversed_by?: string | null
+          reversed_at?: string | null
+          reversal_key?: string | null
+          reversal_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_letter_consequences_letter_id_fkey"
+            columns: ["letter_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_letters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_letter_consequences_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_letters: {
         Row: {
           administrative_actor: string | null
@@ -1609,6 +1672,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_letter_consequence: {
+        Args: {
+          p_letter: string
+          p_house: string
+          p_changes: Json
+          p_explanation: string
+          p_key: string
+          p_expected_version: number
+        }
+        Returns: Json
+      }
+      reverse_letter_consequence: {
+        Args: {
+          p_id: string
+          p_key: string
+          p_expected_version: number
+          p_reason: string
+        }
+        Returns: Json
+      }
+
       admin_save_player_account: {
         Args: {
           p_active: boolean
