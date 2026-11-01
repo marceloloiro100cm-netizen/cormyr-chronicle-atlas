@@ -74,11 +74,23 @@ export function readCharacterV2(record:AuthorizedCharacterSource):ReadResult{
     return{character:null,warnings:['Registro não identificado como ficha de personagem V1 ou legado.']};
   const warnings:string[]=[];
   const ranks=emptyCharacterSkillRanks(),unparsed:Record<string,string>={};
+  const recognized=new Set<CharacterSkillId>();
   for(const h of legacy.habilidades){
     const id=skillByLabel.get(norm(h.nome));
-    if(id){ranks[id]=h.graduacao;}
-    else{unparsed['skill:'+h.nome]=String(h.graduacao);warnings.push('Habilidade não reconhecida: '+h.nome);}
+    if(id){
+      if(recognized.has(id))warnings.push('Graduação duplicada no legado: '+h.nome+'; exige conciliação.');
+      recognized.add(id);
+      ranks[id]=h.graduacao;
+    }else{
+      unparsed['skill:'+h.nome]=String(h.graduacao);
+      warnings.push('Habilidade não reconhecida: '+h.nome);
+    }
     if(h.especializacao)unparsed['specialty:'+h.nome]=h.especializacao;
+  }
+  const missing=CHARACTER_SKILL_IDS.filter(id=>!recognized.has(id));
+  if(missing.length){
+    unparsed['missingSkills']=missing.map(id=>CHARACTER_SKILL_LABELS[id]).join(', ');
+    warnings.push('Graduações não encontradas no legado: '+missing.map(id=>CHARACTER_SKILL_LABELS[id]).join(', ')+'. Valor 2 é provisório, não é compra aprovada.');
   }
   if(legacy.habilidades.some(h=>norm(h.nome)==='briga'))
     warnings.push('Briga no legado exige conciliação como especialidade, sem ganho automático de Luta.');
