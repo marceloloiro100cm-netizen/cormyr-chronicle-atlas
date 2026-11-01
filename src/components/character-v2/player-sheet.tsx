@@ -3,7 +3,9 @@ import {readCharacterV2} from '@/lib/character-v2/read-adapter';
 import {classifyCharacterV2Source} from '@/lib/character-v2/readiness';
 import {CHARACTER_SKILL_IDS,CHARACTER_SKILL_LABELS,type CharacterSkillId} from '@/lib/character-v2/schema';
 import {resolveCharacterDerived,type DerivedKey} from '@/lib/character-v2/derived';
-import {SkillPips} from './character-sheet-parts';
+import {SkillPips,TraitCard} from './character-sheet-parts';
+import {findCharacterTrait} from '@/lib/character-v2/catalog';
+import {getCharacterTraitRule} from '@/lib/character-v2/trait-rules';
 
 type CharacterRecord={
  id:string;title:string;kind:string;content:string;version:number;
@@ -71,10 +73,15 @@ export function buildCharacterPlayerPreview(record:CharacterRecord,houseId:strin
  const specializations=Object.entries(character.source.unparsedFields)
   .filter(([key,value])=>key.startsWith('specialty:')&&value.trim())
   .map(([key,value])=>({label:key.slice('specialty:'.length),value}));
- const traitNotes=['qualities','flaws'].flatMap(key=>{
-  const value=character.source.unparsedFields[key];
-  return value?.trim()?[{label:key==='qualities'?'Qualidades':'Defeitos',value}]:[];
- });
+ const traitNotes=character.traits.map(item=>({
+  id:item.id,kind:item.params['kind']==='flaw'?'flaw' as const:'quality' as const,
+  original:item.params['original']??item.traitId,
+  detail:item.params['detail']??null,
+  catalog:findCharacterTrait(item.traitId)??null,
+  rule:getCharacterTraitRule(item.traitId)??null,
+  status:item.status,
+  tier:item.tier,
+ }));
  return{character,known,stats,allPending,specializations,traitNotes,
   sourceVersion:record.version};
 }
@@ -119,15 +126,36 @@ export function CharacterV2PlayerSheet({record,houseId}:{
     </div>)}
    </div>
   </section>
-  {(specializations.length>0||traitNotes.length>0)&&
-   <section className="character-v2-section" aria-label="Especialidades e características ainda não homologadas">
-    <h4>Características importadas — revisão necessária</h4>
+  {specializations.length>0&&
+   <section className="character-v2-section" aria-label="Especialidades ainda não homologadas">
+    <h4>Especialidades importadas</h4>
     {specializations.map(x=><p className="text-sm" key={x.label}>
      <strong>{x.label}:</strong> {x.value}</p>)}
-    {traitNotes.map(x=><p className="text-sm" key={x.label}>
-     <strong>{x.label}:</strong> {x.value}</p>)}
-    <p className="text-xs">Esses textos não aplicam bônus até serem associados ao catálogo e aprovados.</p>
+    <p className="text-xs">Dados de bônus das especialidades exigem conferência antes do uso.</p>
    </section>}
+  <section className="character-v2-section" aria-label="Qualidades e defeitos da ficha">
+   <h4>Qualidades e defeitos</h4>
+   <p className="text-xs">Características preservadas da ficha importada. Sem aprovação individual,
+    nenhuma característica concede bônus ou aplica penalidades automaticamente.</p>
+   {(['quality','flaw'] as const).map(kind=><div key={kind} className="mt-3">
+    <h5 className="font-semibold mb-2">{kind==='quality'?'Qualidades':'Defeitos'} ({traitNotes.filter(t=>t.kind===kind).length})</h5>
+    <div className="character-v2-traits">
+     {traitNotes.filter(t=>t.kind===kind).map(item=><div key={item.id} className="min-w-0">
+      {item.catalog?<TraitCard trait={item.catalog} status={item.status} tier={item.tier}/>:
+       <article className="character-v2-trait" aria-label={item.original+' — sem correspondência'}>
+        <strong>{item.original}</strong><p>Sem correspondência confirmada no catálogo</p>
+       </article>}
+      {item.catalog?.label!==item.original&&<p className="text-sm mt-1">Registro original: {item.original}</p>}
+      <p className="text-xs mt-1">{item.rule?.status==='verified'
+       ?'Regra catalogada; bônus bloqueado até homologação do Narrador.'
+       :item.rule?.status==='narrative_manual'
+       ?'Efeito narrativo: depende de avaliação do Narrador.'
+       :'Regra ainda sem confirmação; nenhum efeito aplicado.'}</p>
+     </div>)}
+     {!traitNotes.some(t=>t.kind===kind)&&<p className="text-sm">Nenhum registro encontrado na fonte.</p>}
+    </div>
+   </div>)}
+  </section>
   <details className="character-v2-section">
    <summary>Conferência e pendências da importação ({allPending.length})</summary>
    <ul className="list-disc pl-6 text-sm">
