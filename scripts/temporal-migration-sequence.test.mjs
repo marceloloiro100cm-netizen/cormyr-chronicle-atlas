@@ -40,7 +40,7 @@ describe('Lote 17 · planejamento bloqueado por estado e ordem de migration',()=
   assert.equal(r.go_no_go,'NO_GO');
   assert.equal(r.candidate_status,'BLOCKED');
   assert.equal(r.reviewed_candidate_suffix.length,0);
-  assert.equal(r.historical_sql_without_journal,28);
+  assert.equal(r.historical_sql_without_journal,29);
   assert.equal(r.chronological_temporal_order.length,8);
   assert.ok(codes(r).includes('LOCAL_CATALOG_UNJOURNALED_SQL'));
   assert.ok(codes(r).includes('LOCAL_CATALOG_AMBIGUOUS_SQL_ORDINAL'));
