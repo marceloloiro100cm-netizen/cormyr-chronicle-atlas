@@ -4,8 +4,8 @@ import {findCharacterTrait,type CharacterTrait} from '@/lib/character-v2/catalog
 import './character-sheet-parts.css';
 
 type PipsProps={
- label:string;value:number;max?:number;min?:number;disabled?:boolean;
- onValueChange?:(value:number)=>void;
+ label:string;value:number;max?:number;min?:number;disabled?:boolean|undefined;
+ onValueChange?:((value:number)=>void)|undefined;
 };
 function Pips({label,value,max=7,min=1,disabled=false,onValueChange}:PipsProps){
  const editable=Boolean(onValueChange)&&!disabled;
@@ -22,13 +22,13 @@ function Pips({label,value,max=7,min=1,disabled=false,onValueChange}:PipsProps){
  </div>;
 }
 export function SkillPips({skillId,value,max=7,onValueChange,disabled}:{
- skillId:CharacterSkillId;value:number;max?:number;disabled?:boolean;onValueChange?:(value:number)=>void;
+ skillId:CharacterSkillId;value:number;max?:number;disabled?:boolean|undefined;onValueChange?:((value:number)=>void)|undefined;
 }){
  return <Pips label={CHARACTER_SKILL_LABELS[skillId]} value={value} max={max} min={1}
    disabled={disabled} onValueChange={onValueChange}/>;
 }
 export function SpecialtyPips({label,bonusDice,max=5,onValueChange,disabled}:{
- label:string;bonusDice:number;max?:number;disabled?:boolean;onValueChange?:(value:number)=>void;
+ label:string;bonusDice:number;max?:number;disabled?:boolean|undefined;onValueChange?:((value:number)=>void)|undefined;
 }){
  return <div className="character-v2-specialty">
    <span>{label} <small>({bonusDice}B)</small></span>
