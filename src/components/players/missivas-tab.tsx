@@ -34,6 +34,7 @@ function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Res
 export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void;onManage?:(house:string)=>void;groupHouseIds?:string[]}){
   const empty={number:'',kind:'',answered:'',house:'',read:'',text:'',box:'',origin:'',court:'',unit:'',group:''};
   const [filters,setFilters]=useState(empty);
+  const trashMode=filters.box==='lixeira';
   const [compose,setCompose]=useState(false);
   const [expanded,setExpanded]=useState<Set<string>>(new Set());
   const [threads,setThreads]=useState<Set<string>>(new Set());
@@ -58,14 +59,14 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   const {data:options}=useMailOptions();
   const {data:calendar}=useCampaignTime();
   const periodDate=data.admin&&calendar?dateKey(calendar):'';
-  const saved=()=>{client.invalidateQueries({queryKey:['campaign-chronology']});client.invalidateQueries({queryKey:['calendar-events']});client.invalidateQueries({queryKey:['campaign-calendar']});client.invalidateQueries({queryKey:['noble-house']});client.invalidateQueries({queryKey:['mail-page']});client.invalidateQueries({queryKey:['mail-insights']});client.invalidateQueries({queryKey:['mail-overview-grouped']});client.invalidateQueries({queryKey:['mail-options']});onSave();};
+  const saved=()=>{client.invalidateQueries({queryKey:['campaign-chronology']});client.invalidateQueries({queryKey:['calendar-events']});client.invalidateQueries({queryKey:['campaign-calendar']});client.invalidateQueries({queryKey:['noble-house']});client.invalidateQueries({queryKey:['mail-page']});client.invalidateQueries({queryKey:['mail-trash-page']});client.invalidateQueries({queryKey:['mail-insights']});client.invalidateQueries({queryKey:['mail-overview-grouped']});client.invalidateQueries({queryKey:['mail-options']});onSave();};
   const groupKey=[...(groupHouseIds??[]),filters.group].join('|')||'all';
   useEffect(()=>{setPage(0);},[filters,groupKey]);
   useEffect(()=>{client.invalidateQueries({queryKey:['mail-page']});client.invalidateQueries({queryKey:['mail-insights']});},[data,client]);
   const [search,setSearch]=useState('');
   useEffect(()=>{const timer=setTimeout(()=>setSearch(filters.text),250);return()=>clearTimeout(timer);},[filters.text]);
   const requestFilters={...filters,text:search,...(groupActive?{group_house_ids:[...allowed]}: {})};
-  const listing=useQuery({queryKey:['mail-page',data.user.id,requestFilters,page],queryFn:async()=>{const r=await supabase.rpc('mail_page',{p_filters:requestFilters,p_page:page,p_size:20});if(r.error)throw r.error;return r.data as unknown as {total:number;letters:LetterRow[];replies:Panel['replies'];kpis?:{delivered:number;awaiting_house:number;awaiting_narrator:number;scheduled_replies_next:number;drafts:number}};}});
+  const listing=useQuery({queryKey:[trashMode?'mail-trash-page':'mail-page',data.user.id,requestFilters,page],queryFn:async()=>{const args={p_filters:requestFilters,p_page:page,p_size:20};const r=trashMode?await supabase.rpc('mail_trash_page',args):await supabase.rpc('mail_page',args);if(r.error)throw r.error;return r.data as unknown as {total:number;letters:LetterRow[];replies:Panel['replies'];kpis?:{delivered:number;awaiting_house:number;awaiting_narrator:number;scheduled_replies_next:number;drafts:number}};}});
   const allLetters=listing.data?.letters??[];
   const consequenceIds=allLetters.map(letter=>letter.id);
   const consequences=useQuery({
@@ -81,8 +82,8 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   });
   const letters=allLetters;
   const viewReplies=listing.data?.replies??[];
-  const groups=filters.box==='enviadas'?[]:groupReceivedLetters(letters,data.user.id);
-  const mine=filters.box==='recebidas'?[]:sentLetters(letters,data.user.id);
+  const groups=trashMode||filters.box==='enviadas'?[]:groupReceivedLetters(letters,data.user.id);
+  const mine=trashMode||filters.box==='recebidas'?[]:sentLetters(letters,data.user.id);
   const myHouses=data.members.filter(m=>m.player_id===me?.id).map(m=>m.house_id);
   const isRecipient=(letter:LetterRow)=>letter.recipient_player_id===me?.id||(letter.recipient_player_id===null&&myHouses.includes(letter.recipient_house_id??''));
   const toggle=(id:string)=>setExpanded(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
@@ -100,7 +101,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
     return [['','Todos'],['none','Sem vínculo'],...[...values].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'))];
   };
   const card=(letter:LetterRow&{deleted_at?:string|null;publication_state?:string;delivery_week?:number|null},canAnswer:boolean)=>{
-    const answers=viewReplies.filter(r=>r.letter_id===letter.id&&!r.deleted_at);
+    const answers=viewReplies.filter(r=>r.letter_id===letter.id&&(trashMode?Boolean(r.deleted_at):!r.deleted_at));
     const receipt=data.receipts.find(r=>r.letter_id===letter.id&&r.user_id===data.user.id);
     const read=isLetterRead(letter.id,receipt,answers);
     const incomingReplies=answers.filter(r=>deliveredReply(r)&&r.author_user_id!==data.user.id);
@@ -114,7 +115,8 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
     const threadOpen=threads.has(letter.id);
     const to=mailRecipientLabel(letter,houseName,id=>options?.players?.find(p=>p.id===id)?.name);
     const fromHouse=houseName(letter.origin_house_id??null)??(letter.sender_player_id?houseName(data.players.find(p=>p.id===letter.sender_player_id)?.roster_house_id??null):null);
-    const canDelete=!letter.deleted_at&&(data.admin||letter.sender_user_id===data.user.id);
+    const canDelete=!trashMode&&!letter.deleted_at&&(data.admin||letter.sender_user_id===data.user.id);
+    const canRestoreLetter=trashMode&&Boolean(letter.deleted_at)&&(data.admin||letter.sender_user_id===data.user.id);
     const lastPlayerReply=answers.filter(a=>a.publication_state==='delivered'&&a.author_user_id!==data.user.id)
       .sort((a,b)=>(b.delivered_at??b.created_at).localeCompare(a.delivered_at??a.created_at))[0];
     const housePlayer=data.players.find(p=>p.active&&!p.require_password_change&&p.user_id!==data.user.id&&
