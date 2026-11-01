@@ -90,7 +90,7 @@ export function CharacterV2PlayerSheet({record,houseId}:{
 }){
  const preview=buildCharacterPlayerPreview(record,houseId);
  if(!preview)return null;
- const {character,known,stats,allPending,specializations,traitNotes}=preview;
+ const {character,known,stats,specializations,traitNotes}=preview;
  return <section className="character-v2-preview" aria-label={'Nova apresentação da ficha de '+character.displayName}>
   <header className="character-v2-status">
    <p className="text-xs font-semibold tracking-wide">FICHA DE PERSONAGEM · VISUALIZAÇÃO V2</p>
@@ -98,8 +98,8 @@ export function CharacterV2PlayerSheet({record,houseId}:{
    <p className="text-sm">Versão importada {preview.sourceVersion} · consulta sem edição automática</p>
   </header>
   <p className="character-v2-disclaimer">
-   Apresentação nova com bolinhas. A ficha anterior permanece como documento original e
-   fonte de edição. Nenhum ponto de XP, Destino, qualidade ou atributo ausente é concedido nesta visualização.
+   Apresentação com bolinhas. O documento anterior permanece preservado nos registros,
+   sem aparecer nesta tela. Nenhum ponto de XP, Destino, qualidade ou atributo ausente é concedido nesta visualização.
   </p>
   <section className="character-v2-section" aria-label="Indicadores derivados da ficha">
    <h4>Indicadores</h4>
@@ -156,11 +156,5 @@ export function CharacterV2PlayerSheet({record,houseId}:{
     </div>
    </div>)}
   </section>
-  <details className="character-v2-section">
-   <summary>Conferência e pendências da importação ({allPending.length})</summary>
-   <ul className="list-disc pl-6 text-sm">
-    {allPending.map((warning,i)=><li key={i}>{warning}</li>)}
-   </ul>
-  </details>
  </section>;
 }
