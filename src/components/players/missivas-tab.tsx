@@ -35,6 +35,7 @@ function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Res
 export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filterHost}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void;onManage?:(house:string)=>void;groupHouseIds?:string[];filterHost?:HTMLElement|null}){
   const empty={number:'',kind:'',answered:'',house:'',read:'',text:'',box:'',origin:'',court:'',unit:'',group:''};
   const [filters,setFilters]=useState(empty);
+  const [filtersVisible,setFiltersVisible]=useState(true);
   const trashMode=filters.box==='lixeira';
   const [compose,setCompose]=useState(false);
   const [expanded,setExpanded]=useState<Set<string>>(new Set());
@@ -205,7 +206,8 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
    .filter((n):n is number=>n!==null))].sort((a,b)=>b-a);
   const visibleIds=[...groups.flatMap(g=>g.letters),...mine].map(l=>l.id);
   const filterPanel=<aside className="campaign-mail-side" aria-label="Filtros das missivas">
-      <p className="campaign-eyebrow">FILTROS</p>
+      <button className="campaign-mail-filter-toggle" type="button" aria-expanded={filtersVisible} aria-controls="campaign-mail-filter-fields" onClick={()=>setFiltersVisible(v=>!v)}><span>FILTROS</span><span>{filtersVisible?'Recolher':'Expandir'}</span></button>
+      {filtersVisible&&<div className="campaign-mail-filter-fields" id="campaign-mail-filter-fields">
       <label>Buscar<input type="search" value={filters.text} onChange={e=>setFilters({...filters,text:e.target.value})} placeholder="Assunto, resposta, autor ou casa…"/></label>
       {sel('Caixa','box',[['','Todas'],['recebidas','Recebidas'],['enviadas','Enviadas'],['programadas','Programadas'],['rascunhos','Rascunhos'],['historico','Histórico por semana'],['lixeira','Lixeira']])}
       {data.admin&&sel('Grupo de narração','group',[['','Todos os grupos'],...NARRATION_GROUPS.map(g=>[g.id,g.label] as [string,string])])}
@@ -221,6 +223,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
       <Button variant="outline" onClick={()=>setFilters(empty)}>Limpar filtros</Button>
       <div className="campaign-actions"><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set(visibleIds))}>Expandir todas</Button><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set())}>Recolher todas</Button></div>
       {!trashMode&&!data.admin&&open!==null&&<Button onClick={()=>{setDraft({key:Date.now(),subject:'',content:''});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Escrever missiva</Button>}
+      </div>}
     </aside>;
   return <div className={'campaign-mail-layout'+(data.admin?' campaign-mail-layout--narrator':'')}>
     {filterHost?createPortal(filterPanel,filterHost):filterPanel}
