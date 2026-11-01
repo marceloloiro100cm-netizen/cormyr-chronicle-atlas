@@ -3,6 +3,7 @@ import {supabase} from '@/integrations/supabase/client';
 import {Button} from '@/components/ui/button';
 import {blankChronicleSheet,chronicleStats,serializeChronicleSheet,CHARACTER_SKILLS,type ChronicleSheet} from '@/lib/house/character-sheet';
 import type {RecordRow} from '@/components/players/shared';
+import {TraitCatalogPicker} from '@/components/character-v2/trait-catalog-picker';
 
 export function ChronicleCharacterEditor({row,initial,houseId,houseName,playerId,canEdit,statusCap,onSave}:{
  row?:RecordRow;initial?:ChronicleSheet;houseId:string;houseName:string;playerId?:string|undefined;
@@ -66,8 +67,10 @@ export function ChronicleCharacterEditor({row,initial,houseId,houseName,playerId
   <label>Destino gasto<input type="number" min={0} value={sheet.spentDestiny} onChange={e=>set({spentDestiny:Number(e.target.value)})}/></label>
   <label>XP gasto (conforme aprovações)<input type="number" min={0} value={sheet.xpSpent} onChange={e=>set({xpSpent:Number(e.target.value)})}/></label>
  </div>
- <label>Qualidades<textarea value={sheet.qualities} onChange={e=>set({qualities:e.target.value})}/></label>
- <label>Defeitos<textarea value={sheet.flaws} onChange={e=>set({flaws:e.target.value})}/></label>
+ <h4>Qualidades e defeitos · catálogo do livro</h4>
+ <p className="house-caption">Escolhas registradas na ficha; efeitos automáticos e custos de Destino dependem da homologação do Narrador.</p>
+ <TraitCatalogPicker kind="benefit" value={sheet.qualities} onChange={qualities=>set({qualities})}/>
+ <TraitCatalogPicker kind="flaw" value={sheet.flaws} onChange={flaws=>set({flaws})}/>
  <p className="house-caption">Saúde, Compostura e Defesas são recalculadas automaticamente. XP investido, Movimento e especialidades dependem dos custos e decisões registrados pelo Narrador; não são presumidos.</p>
  <Button disabled={busy||sheet.skills['Status']>statusCap||!sheet.name.trim()}>{busy?'Salvando…':'Salvar ficha estruturada'}</Button>
  </form>}
