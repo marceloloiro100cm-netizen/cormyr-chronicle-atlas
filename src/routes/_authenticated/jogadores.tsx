@@ -2,7 +2,7 @@ import {CampaignCalendar} from '@/components/calendar/calendar';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PlayerRepresentation } from '@/components/player-representation';
 import { ChangePassword, ChangePasswordButton } from '@/components/change-password';
@@ -18,6 +18,9 @@ import { GmEventos, GmAventuras } from '@/components/gm-panels';
 import { syncPlayerFolder } from '@/lib/player-sync.functions';
 import { refreshPublicArchive } from '@/lib/campaign.functions';
 import { unreadReceivedCount, type LetterRow } from '@/lib/letters';
+import {clearRepresentationQueryCache} from '@/lib/auth/session-boundary';
+import {CAMPAIGN_ACCESS_SCOPE_KEY,CAMPAIGN_ACCESS_SCOPE_POLL_MS,loadCampaignAccessScope,clearRevokedAccessCache} from '@/lib/auth/campaign-access-scope';
+import {NARRATOR_ACCESS_REVOKED_KEY,canReleaseNarratorLock,watchNarratorPrivateReadRevocations,type NarratorRevocationMarker} from '@/lib/auth/narrator-revocation';
 import { loadPanel } from '@/components/players/panel-data';
 import { RecordList, RecordEditor, RecordForm } from '@/components/players/records';
 import { FichaTab } from '@/components/players/ficha-tab';
@@ -27,7 +30,78 @@ import { NarratorMissivasHub, NARRATOR_MENU } from '@/components/players/narrato
 
 export const Route=createFileRoute('/_authenticated/jogadores')({head:()=>({meta:[{title:'Conselho dos jogadores — Cormyr Chronicle'},{name:'description',content:'Casas, personagens, documentos e missivas da segunda temporada.'},{property:'og:title',content:'Conselho dos jogadores — Cormyr Chronicle'},{property:'og:description',content:'Painel reservado aos jogadores autorizados da campanha.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary'}]}),component:Players});
 
+/** Access can be revoked without any Supabase auth event. The live route
+ * must first prove the CURRENT memberships before showing cached private data.
+ * Refetch on focus/reconnect, plus a 15s fallback for missed RLS Realtime.
+ */
 function Players(){
+  const qc=useQueryClient();
+  const scope=useQuery({
+    queryKey:CAMPAIGN_ACCESS_SCOPE_KEY,
+    queryFn:loadCampaignAccessScope,
+    refetchInterval:CAMPAIGN_ACCESS_SCOPE_POLL_MS,
+    refetchOnWindowFocus:'always',
+    refetchOnReconnect:'always',
+    retry:false,
+    staleTime:0,
+  });
+  // An administrative RPC denial locks the ENTIRE workspace immediately, not
+  // just the calendar tab. Never trust the old role while the new RPC is pending.
+  const revoked=useQuery({
+    queryKey:NARRATOR_ACCESS_REVOKED_KEY,
+    queryFn:async()=>null as NarratorRevocationMarker|null,
+    enabled:false,
+    initialData:null as NarratorRevocationMarker|null,
+  });
+  useEffect(()=>{
+    if(!revoked.data)return;
+    if(canReleaseNarratorLock(revoked.data,{
+      dataUpdatedAt:scope.dataUpdatedAt,
+      hasData:Boolean(scope.data),
+      isError:scope.isError,
+      isFetching:scope.isFetching,
+    }))qc.setQueryData(NARRATOR_ACCESS_REVOKED_KEY,null);
+  },[qc,revoked.data?.revokedAt,scope.dataUpdatedAt,scope.data?.fingerprint,scope.isError,scope.isFetching]);
+  // Scope is the only source of admin authority; a failed private temporal
+  // read still removes private QueryCache data and locks the entire workspace.
+  useEffect(()=>{
+    if(!scope.data?.admin||revoked.data)return;
+    return watchNarratorPrivateReadRevocations(qc);
+  },[qc,scope.data?.admin,revoked.data?.revokedAt]);
+  const previous=useRef<string|null>(null);
+  const [approved,setApproved]=useState<string|null>(null);
+  useEffect(()=>{
+    if(scope.isError){
+      clearRevokedAccessCache(qc);
+      previous.current=null;
+      setApproved(null);
+      return;
+    }
+    const next=scope.data?.fingerprint;
+    if(!next||next===previous.current)return;
+    if(previous.current!==null){
+      // Revoke stale letters, administrative controls, and House forms before
+      // mounting the newly authorized workspace. Server RLS remains mandatory.
+      clearRevokedAccessCache(qc);
+      sessionStorage.removeItem('campaign-selected-house');
+    }
+    previous.current=next;
+    setApproved(next);
+  },[qc,scope.data?.fingerprint,scope.isError]);
+  if(revoked.data)return <section role="alert">
+    O acesso administrativo foi bloqueado após revogação. Aguardando uma nova confirmação das permissões.
+    <Button onClick={()=>void scope.refetch()}>Verificar permissões novamente</Button>
+  </section>;
+  if(scope.isError)return <section role="alert">
+    Não foi possível confirmar seus vínculos e permissões. O acervo reservado está bloqueado.
+    <Button onClick={()=>void scope.refetch()}>Verificar novamente</Button>
+  </section>;
+  if(!scope.data||approved!==scope.data.fingerprint)return <p role="status">
+    Verificando permissões atuais da campanha…
+  </p>;
+  return <PlayersWorkspace key={approved} expectedUserId={scope.data.userId}/>;
+}
+function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
   const navigate=useNavigate(), qc=useQueryClient();
   const {data,error,isPending}=useQuery({queryKey:['campaign-panel'],queryFn:loadPanel});
   const [tab,setTab]=useState('missivas'),[house,setHouse]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[section,setSection]=useState('painel'),[representing,setRepresenting]=useState(false);
@@ -41,6 +115,7 @@ function Players(){
       .on('postgres_changes',{event:'*',schema:'public'},()=>{
         if(debounce)clearTimeout(debounce);
         debounce=setTimeout(()=>{
+          void qc.invalidateQueries({queryKey:CAMPAIGN_ACCESS_SCOPE_KEY});
           void qc.invalidateQueries({queryKey:['campaign-panel']});
           void qc.invalidateQueries({queryKey:['sync-queue']});
           debounce=null;
@@ -49,6 +124,7 @@ function Players(){
     return()=>{if(debounce)clearTimeout(debounce);void supabase.removeChannel(channel);};
   },[qc]);
   if(isPending)return <CampaignShell><h1>Conselho dos jogadores</h1><p role="status">Consultando seu acervo…</p></CampaignShell>;
+  if(data&&data.user.id!==expectedUserId)return <p role="status">Revalidando a identidade do acervo…</p>;
   if(error||!data)return <CampaignShell><h1>Não foi possível consultar seu acervo</h1><p role="alert">{error?.message}</p><Button onClick={()=>refresh()}>Tentar novamente</Button></CampaignShell>;
   const me=data.players.find(p=>p.user_id===data.user.id);
   if(me&&!data.admin&&(!me.active||me.require_password_change))return <CampaignShell><h1>{me.active?'Altere sua senha para continuar':'Acesso à campanha inativo'}</h1>{me.require_password_change&&<ChangePassword/>}<Button variant="outline" onClick={signout}>Sair</Button></CampaignShell>;
@@ -68,8 +144,8 @@ function Players(){
     {tab==='missivas'&&!data.admin&&<MissivasTab data={data} me={me} onSave={afterSave} onError={setMessage} onManage={id=>{setHouse(id);sessionStorage.setItem('campaign-selected-house',id);setTab('ficha');}}/>}
     {tab==='admin'&&data.admin&&<AdminPanel data={data} onSave={afterSave}/>}
     </>;
-  if(data.admin&&representing)return <CampaignShell><PlayerRepresentation onReturn={()=>{setRepresenting(false);refresh();}}/></CampaignShell>;
-  return <CampaignShell><div className="campaign-heading"><div><p className="campaign-eyebrow">SEGUNDA TEMPORADA · CONSELHO</p><h1>{me?.name??(data.admin?'Conselho do mestre':'Área dos jogadores')}</h1><p className="text-muted-foreground">{data.user.email}</p></div><div className="campaign-actions"><>{data.admin&&<><select aria-label="Acessar como jogador" defaultValue="" onChange={async e=>{if(!e.target.value)return;const r=await supabase.rpc('start_campaign_representation',{p_player:e.target.value});if(r.error)setMessage(r.error.message);else setRepresenting(true);}}><option value="">Acessar como jogador…</option>{data.players.filter(p=>p.active&&p.user_id!==data.user.id&&p.user_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select><Button variant="outline" disabled={busy} onClick={async()=>{setBusy(true);try{const result=await refreshArchive();setMessage(result.message+' '+result.errors.join('; '));await refresh();}catch(error){setMessage(error instanceof Error?error.message:'Falha na atualização.');}finally{setBusy(false);}}}>Atualizar acervo público</Button></>}</><Button variant="outline" disabled={busy||!current} onClick={async()=>{if(!current)return;setBusy(true);try{const result=await sync({data:{houseId:current.id,importFiles:true}});setMessage(result.message);await refresh();}catch(e){setMessage(e instanceof Error?e.message:"Não foi possível atualizar a pasta.");}finally{setBusy(false);}}}><RefreshCw size={16} className={busy?"animate-spin":""}/>Atualizar</Button><ChangePasswordButton/><Button variant="outline" onClick={signout}>Sair</Button></div></div>
+  if(data.admin&&representing)return <CampaignShell><PlayerRepresentation onReturn={()=>{clearRepresentationQueryCache(qc);setRepresenting(false);void refresh();}}/></CampaignShell>;
+  return <CampaignShell><div className="campaign-heading"><div><p className="campaign-eyebrow">SEGUNDA TEMPORADA · CONSELHO</p><h1>{me?.name??(data.admin?'Conselho do mestre':'Área dos jogadores')}</h1><p className="text-muted-foreground">{data.user.email}</p></div><div className="campaign-actions"><>{data.admin&&<><select aria-label="Acessar como jogador" defaultValue="" onChange={async e=>{if(!e.target.value)return;const r=await supabase.rpc('start_campaign_representation',{p_player:e.target.value});if(r.error)setMessage(r.error.message);else {clearRepresentationQueryCache(qc);setRepresenting(true);}}}><option value="">Acessar como jogador…</option>{data.players.filter(p=>p.active&&p.user_id!==data.user.id&&p.user_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select><Button variant="outline" disabled={busy} onClick={async()=>{setBusy(true);try{const result=await refreshArchive();setMessage(result.message+' '+result.errors.join('; '));await refresh();}catch(error){setMessage(error instanceof Error?error.message:'Falha na atualização.');}finally{setBusy(false);}}}>Atualizar acervo público</Button></>}</><Button variant="outline" disabled={busy||!current} onClick={async()=>{if(!current)return;setBusy(true);try{const result=await sync({data:{houseId:current.id,importFiles:true}});setMessage(result.message);await refresh();}catch(e){setMessage(e instanceof Error?e.message:"Não foi possível atualizar a pasta.");}finally{setBusy(false);}}}><RefreshCw size={16} className={busy?"animate-spin":""}/>Atualizar</Button><ChangePasswordButton/><Button variant="outline" onClick={signout}>Sair</Button></div></div>
     {(message||busy)&&<div className="campaign-status-banner" role="status" aria-live="polite">{message||'Salvando…'}</div>}
     {data.admin?<div className="campaign-layout"><aside className="campaign-side" aria-label="Menu do Narrador"><p className="campaign-eyebrow">NARRADOR</p>{NARRATOR_MENU.map(([id,label])=><button key={id} type="button" className={section===id?'ativo':''} aria-pressed={section===id} aria-label={id==='missivas'&&unread>0?`${label}: ${unread} conversa${unread===1?'':'s'} com correspondência não lida`:undefined} onClick={()=>setSection(id??'painel')}>{label}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}</button>)}</aside><div>{section==='missivas'?<NarratorMissivasHub data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={id=>{setHouse(id);setTab('ficha');setSection('painel');}}/>:section==='calendario'?<NarratorCalendar/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:conselho}</div></div>:conselho}
   </CampaignShell>;

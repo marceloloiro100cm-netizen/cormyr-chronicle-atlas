@@ -9,6 +9,7 @@ import { CORE_CATALOG } from './catalog';
 import { newHouseState, RESOURCE_KEYS, type HouseState, type CatalogItem, type Unit, type Resource, type CourtMember } from './types';
 import { alternativeFortune, balances, activeHoldings,createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
 import { calendarMonthIndex, requireCalendarAlignment, reconcileHouseCalendar } from './calendar-consistency';
+import { isMonthSensitiveHouseAction } from './monthly-operation-policy';
 import { confirmFortune, convertResources, runTournament } from './fortune';
 import { historyAdjustments, memberBonusAdjustments, historicalFoundationYear, rollFoundation, rollHistoricalEvent } from './creation-history';
 import { improveEquipment } from './equipment';
@@ -42,7 +43,16 @@ export const loadHouseLedger=createServerFn({method:'POST'}).middleware([require
   const result=await context.supabase.from('noble_house_ledger').select('id,action,explanation,rule,campaign_month,created_at,actor,version').eq('house_id',data.houseId).order('version',{ascending:true}).range(start,start+499);
   if(result.error)throw new Error('Falha ao carregar histórico para exportação.');
   rows.push(...(result.data??[]).map(row=>({...row,campaign_month:row.campaign_month??undefined,actor:row.actor??undefined})));
-  if((result.data??[]).length<500)return rows;
+  if((result.data??[]).length<500){
+   const [roleNow,memberNow]=await Promise.all([
+    context.supabase.rpc('is_campaign_admin'),
+    context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:false}),
+   ]);
+   if(roleNow.error||memberNow.error||(!roleNow.data&&!memberNow.data)||
+      (admin.data&&!roleNow.data))
+     throw new Error('Histórico não autorizado após atualização dos vínculos.');
+   return rows;
+  }
  }
  throw new Error('Histórico excedeu dez mil lançamentos; exportação interrompida sem truncar.');
 });
@@ -82,8 +92,26 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
     .eq('campaign_players.active',true).eq('campaign_players.require_password_change',false)
     .maybeSingle();
   if(myMembership?.error)throw new Error('Permissões da Casa indisponíveis.');
-  const initial=newHouseState(data.houseId,house.data.region??'');if(!finalState){const c=await db.rpc('get_campaign_calendar');const value=c.data as {year?:number;month?:number}|null;if(value?.year&&value.month!==undefined)initial.month=value.year*12+value.month;}
-  return {state:finalState ?? initial,version:sheet.data?.version??0,catalog,houses:[...merged.values()].sort((a,b)=>a.name.localeCompare(b.name)),ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(admin.data),canEditAttributes:Boolean(admin.data||myMembership?.data?.can_edit_attributes)};
+  const initial=newHouseState(data.houseId,house.data.region??'');if(!finalState){
+    const c=await db.rpc('get_campaign_calendar');
+    if(c.error||!c.data)throw new Error('Calendário global indisponível: nova Casa exige período oficial.');
+    initial.month=calendarMonthIndex(c.data as {year:number;month:number});
+  }
+  const [adminNow,memberNow]=await Promise.all([
+   db.rpc('is_campaign_admin'),
+   db.rpc('in_campaign_house',{h:data.houseId,edit_required:false}),
+  ]);
+  if(adminNow.error||memberNow.error||(!adminNow.data&&!memberNow.data)||
+     (admin.data&&!adminNow.data))
+   throw new Error('Permissão de Casa revogada durante o carregamento.');
+  const editNow=adminNow.data?null:await db.from('house_memberships')
+   .select('can_edit_attributes,player_id,campaign_players!inner(user_id,active,require_password_change)')
+   .eq('house_id',data.houseId).eq('campaign_players.user_id',context.userId)
+   .eq('campaign_players.active',true).eq('campaign_players.require_password_change',false)
+   .maybeSingle();
+  if(editNow?.error||(!adminNow.data&&!editNow?.data))
+   throw new Error('Permissões de atributos alteradas durante o carregamento.');
+  return {state:finalState ?? initial,version:sheet.data?.version??0,catalog,houses:[...merged.values()].sort((a,b)=>a.name.localeCompare(b.name)),ledger:ledger.data??[],syncState:sheet.data?.sync_state??'not_configured',admin:Boolean(adminNow.data),canEditAttributes:Boolean(adminNow.data||editNow?.data?.can_edit_attributes)};
 });
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
@@ -97,7 +125,11 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   const official=await context.supabase.from('campaign_houses').select('region,name').eq('id',data.houseId).single();
   if(current.error||official.error)throw new Error('Casa não encontrada.');
   const state=(current.data?.state??newHouseState(data.houseId,official.data.region??'')) as unknown as HouseState;
-  if(!current.data){const c=await context.supabase.rpc('get_campaign_calendar');const value=c.data as {year?:number;month?:number}|null;if(value?.year&&value.month!==undefined)state.month=value.year*12+value.month;}
+  if(!current.data){
+    const c=await context.supabase.rpc('get_campaign_calendar');
+    if(c.error||!c.data)throw new Error('Calendário global indisponível: nenhuma Casa nova será gravada com data presumida.');
+    state.month=calendarMonthIndex(c.data as {year:number;month:number});
+  }
   if((current.data?.version??0)!==data.version)throw new Error('A ficha mudou. Recarregue para conciliar as versões.');
   let next=structuredClone(state),rule='Cormyr · gestão auditada';const args=data.args;
   const editGrants=admin?null:(await context.supabase.from('house_memberships')
@@ -112,7 +144,7 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     RESOURCE_KEYS.every(r=>state.base[r]===0);
 
   if(data.action==='advance')throw new Error('Avanço individual desativado: publique a data no Calendário global do Narrador.');
-  if(state.phase==='active'&&['fortune','alternative','convert','action','spend_influence','purchase','vassal_purchase'].includes(data.action)){
+  if(state.phase==='active'&&isMonthSensitiveHouseAction(data.action)){
     const response=await context.supabase.rpc('get_campaign_calendar');
     if(response.error||!response.data)throw new Error('Calendário global indisponível; nenhuma operação mensal foi gravada.');
     requireCalendarAlignment(state,response.data as {year:number;month:number});
@@ -523,6 +555,19 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
   }
   validateResources(next.base);validateResources(next.permanent);
   if(RESOURCE_KEYS.some(r=>balances(next).available[r]<0)&&!['admin_edit','correct','fortune','survivors','return_to_draft','clear_pending','court','unit_state','vassal_domain','sync_calendar','reconcile_legacy_costs','donate_gold','donate_glory','spend_influence','redeem_intrigue','treasury_deposit'].includes(data.action))throw new Error('Saldo insuficiente; nenhuma alteração foi gravada.');
+  // A long-running edit may cross a revocation of its owner's rights.
+  // Re-check against the CURRENT JWT before submitting. The commit RPC
+  // independently verifies current membership under its own transaction.
+  const [finalRole,finalMembership]=await Promise.all([
+    context.supabase.rpc('is_campaign_admin'),
+    context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true}),
+  ]);
+  if(finalRole.error||finalMembership.error)
+    throw new Error('Permissões indisponíveis. Operação não registrada.');
+  if(!finalRole.data&&!finalMembership.data)
+    throw new Error('Vínculo com a Casa revogado. Operação não registrada.');
+  if(admin&&!finalRole.data)
+    throw new Error('Poder do Narrador revogado. Recarregue antes de confirmar.');
   const result=await db.rpc('commit_noble_house_operation',{p_actor:context.userId,p_house:data.houseId,p_version:data.version,p_key:data.key,p_action:data.action,p_state:JSON.parse(JSON.stringify(next)),p_explanation:data.explanation,p_rule:rule});
   if(result.error)throw new Error(result.error.message);
   return result.data as unknown as {state:HouseState;version:number;duplicate:boolean};

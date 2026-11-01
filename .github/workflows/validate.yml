@@ -28,6 +28,36 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Validate public archive
         run: node --test scripts/*.test.mjs
+      - name: Migration ledger audit (report only, never deploy)
+        run: |
+          node scripts/temporal-migration-audit.mjs --report > "$RUNNER_TEMP/temporal-migration-audit.json"
+          node --input-type=module -e 'import {readFileSync} from "node:fs"; const r=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-migration-audit.json","utf8")); const s=r.summary; const report="### Hub Temporal — inventário de migrações (somente leitura)\\nSQL: "+s.sql_files+" | Drizzle journal: "+s.journal_entries+" | SQL sem journal: "+s.unjournaled+" | Prefixos duplicados: "+s.repeated_sql_ordinals+"\\nDeploy liberado: **"+(r.ready_for_deploy?"sim":"não")+"**. Este job não aplica nem reconcilia migrações.\\n"; process.stdout.write(report); const fs=await import("node:fs"); fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,report.replaceAll("\\\\n","\\n"));'
+      - name: Check temporal PR dependency manifest (read only)
+        run: node scripts/temporal-stack-audit.mjs --report
+      - name: Temporal release readiness (diagnostic only; NO_GO expected)
+        run: |
+          node scripts/temporal-release-readiness.mjs --report > "$RUNNER_TEMP/temporal-release-readiness.json"
+          node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const a=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-release-readiness.json","utf8")); if(a.production_release_authorized!==false||a.merge_authorized!==false||a.migration_execution_authorized!==false) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\n### Hub Temporal — liberação\n**"+a.go_no_go+"**; "+a.blockers.length+" bloqueios. Nenhum deploy/merge autorizado por esta rotina.\n");'
+      - name: Migration-by-file reconciliation worklist (report only)
+        run: |
+          node scripts/temporal-reconciliation-plan.mjs --report --sha "$GITHUB_SHA" --environment homologation > "$RUNNER_TEMP/temporal-reconciliation.json"
+          node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const r=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-reconciliation.json","utf8")); if(r.ready_for_deploy!==false||r.journal_modified!==false||r.migrations_applied_by_this_tool!==0) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\\n### Reconciliação temporal por arquivo (não executa SQL)\\n"+r.unjournaled_total+" arquivos fora do Drizzle journal; "+r.snapshot_count+" snapshots presentes; revisões comprovadas: "+r.evidenced_total+". **Implantação bloqueada.**\\n");'
+      - name: Temporal SQL dependency sequencing (NO_GO diagnostic)
+        run: |
+          node scripts/temporal-migration-sequence.mjs --report > "$RUNNER_TEMP/temporal-sql-sequence.json"
+          node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const x=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-sql-sequence.json","utf8")); if(x.go_no_go!=="NO_GO"||x.execute_migrations!==false||x.production_release_authorized!==false||x.reviewed_candidate_suffix.length!==0) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\n### Hub Temporal — planejamento de migrações\n**"+x.candidate_status+"**; "+x.blockers.length+" bloqueios; "+x.chronological_temporal_order.length+" scripts na ordem contratual. Não executa SQL.\n");'
+      - name: Hub Temporal cross-site canonical clock gate
+        run: |
+          node scripts/temporal-site-audit.mjs --gate > "$RUNNER_TEMP/temporal-site-audit.json"
+          node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const x=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-site-audit.json","utf8")); if(!x.static_contract_ok||x.all_site_behaviour_verified!==false||x.production_release_authorized!==false) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\n### Hub Temporal — conexões do site\n"+x.files_inspected+" fontes inspecionadas, "+x.required_surfaces+" contratos, "+x.registered_invalidation_prefixes+" prefixos de cache, "+x.review_candidates.length+" itens para revisão contextual. **Sem autorização de produção.**\n");'
+      - name: Hub Temporal active-session permission acceptance gate
+        run: |
+          node scripts/temporal-access-release-audit.mjs --gate > "$RUNNER_TEMP/temporal-access-release.json"
+          node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const x=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-access-release.json","utf8")); if(!x.static_contract_ok||x.go_no_go!=="NO_GO"||x.production_release_authorized!==false||x.execute_migrations!==false||x.authorize_merge!==false) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\n### Hub Temporal — segurança das sessões\n"+x.guard_checks+" guardas e "+x.regression_tests+" regressões obrigatórias confirmadas; **NO_GO** para produção.\n");'
+      - name: Hub Temporal final acceptance contract (NO_GO, offline)
+        run: |
+          node scripts/temporal-final-acceptance.mjs --gate > "$RUNNER_TEMP/temporal-final-acceptance.json"
+          node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const a=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-final-acceptance.json","utf8")); if(!a.static_contract_ok||a.production_release_authorized!==false||a.go_no_go!=="NO_GO"||a.sql_executed!==false) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\\n### Aceite final do Hub Temporal\\n"+a.inspected_surfaces+" superfícies e "+a.required_regressions+" testes obrigatórios inspecionados. **NO_GO** até comprovação externa das migrações e backup.\\n");'
       - name: Unit and component tests
         run: bun run test
       - name: TypeScript verification
@@ -70,9 +100,33 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f scripts/test-narrator-calendar.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-calendar-confirmed.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-calendar-realtime.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-hub-temporal.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-public-campaign-time.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-canonical-characters.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-annual-character-ages.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-mail-chronology.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-house-temporal-months.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-consumers.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-release-preflight.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-integrated-scenario.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-multiyear-effects.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-narrator-authority.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-historical-consistency.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-session-isolation.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-membership-revocation.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-inflight-revocation.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-homologation-contracts.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-management.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-workbook-import.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-linked-workbooks.sql
           # Re-applying our reconciliation must be safe and must not erase history.
           psql -v ON_ERROR_STOP=1 --single-transaction -f drizzle/migrations/0059_reconcile_production_schema.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-production-reconciliation.sql
+      - name: Probe migration replay in isolated disposable PostgreSQL clones
+        env:
+          TEMPORAL_DISPOSABLE_POSTGRES: 'true'
+        run: bash scripts/test-temporal-migration-replay.sh
+      - name: Restore fixture backup and validate temporal contracts (isolated)
+        env:
+          TEMPORAL_DISPOSABLE_POSTGRES: 'true'
+        run: bash scripts/test-temporal-restore-drill.sh

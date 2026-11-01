@@ -18,6 +18,17 @@ describe('lote 11: ficha estruturada do personagem Chronicle',()=>{
   expect(decoded?.name).toBe(s.name);expect(decoded?.specialties).toBe(s.specialties);
   expect((decoded?.destiny??0)-(decoded?.spentDestiny??0)).toBe(3);expect(parseChronicleSheet('Texto antigo')).toBeNull();
  });
+ it('aceita nascimento declarado sem modificar a idade canônica e preserva fichas antigas',()=>{
+  const raw=blankChronicleSheet();raw.name='Lady Evenhand';raw.birthYear=1492;raw.birthDate='1492-03-17';
+  const saved=serializeChronicleSheet(raw);
+  expect(parseChronicleSheet(saved)?.birthYear).toBe(1492);
+  expect(parseChronicleSheet(saved)?.birthDate).toBe('1492-03-17');
+  raw.birthDate='1522-03-17';
+  expect(()=>serializeChronicleSheet(raw)).toThrow('incompatíveis');
+  raw.birthDate='';
+  raw.birthYear=null;
+  expect(parseChronicleSheet(serializeChronicleSheet(raw))?.birthYear).toBeNull();
+ });
  it('rejeita ficha sem nome e gastos de Destino incoerentes',()=>{
   const s=blankChronicleSheet();expect(()=>serializeChronicleSheet(s)).toThrow();
   s.name='Nobre';s.destiny=1;s.spentDestiny=2;expect(()=>serializeChronicleSheet(s)).toThrow('Destino');

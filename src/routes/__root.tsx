@@ -8,13 +8,14 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from '@/integrations/supabase/client';
 import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { I18nProvider } from '@/lib/i18n/context';
+import {decideSessionBoundary,clearSessionQueryCache} from '@/lib/auth/session-boundary';
 
 function NotFoundComponent() {
   return (
@@ -121,14 +122,27 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+  const knownUserId=useRef<string|null|undefined>(undefined);
+  const [sessionEpoch,setSessionEpoch]=useState(0);
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(event => {
-      if (!['SIGNED_IN', 'SIGNED_OUT', 'USER_UPDATED'].includes(event)) return;
-      router.invalidate();
-      if (event !== 'SIGNED_OUT') queryClient.invalidateQueries();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event,session) => {
+      const decision=decideSessionBoundary(knownUserId.current,event,session?.user?.id);
+      if(decision.reason==='ignored')return;
+      knownUserId.current=decision.userId;
+      if(decision.clearPrivateCache){
+        // Invalidation retains old letters/house sheets on screen; clear also
+        // cancels old requests before a different identity can render them.
+        clearSessionQueryCache(queryClient);
+        setSessionEpoch(epoch=>epoch+1);
+      }
+      if(decision.clearSelectedHouse){
+        sessionStorage.removeItem('campaign-selected-house');
+        sessionStorage.removeItem('campaign-oauth-next');
+      }
+      if(decision.recheckRoute)void router.invalidate();
       if(event==='SIGNED_IN'){
         const next=sessionStorage.getItem('campaign-oauth-next');
-        if(next){sessionStorage.removeItem('campaign-oauth-next');router.navigate({to:oauthReturnPath(next)});}
+        if(next){sessionStorage.removeItem('campaign-oauth-next');void router.navigate({to:oauthReturnPath(next)});}
       }
     });
     return () => subscription.unsubscribe();
@@ -138,7 +152,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
+        <Outlet key={sessionEpoch} />
       </I18nProvider>
     </QueryClientProvider>
   );

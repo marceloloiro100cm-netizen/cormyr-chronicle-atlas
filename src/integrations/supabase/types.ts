@@ -1962,6 +1962,77 @@ export type Database = {
         }
         Returns: number
       }
+      get_campaign_chronology: { Args: { p_year: number; p_month: number }; Returns: Json }
+      get_temporal_consumer_dashboard: { Args: { p_limit?: number }; Returns: Json }
+      get_temporal_release_preflight: { Args: never; Returns: Json }
+      resolve_temporal_delivery: {
+        Args: { p_id: string; p_request_key: string; p_status: string; p_note: string }
+        Returns: Json
+      }
+      replay_temporal_delivery: { Args: { p_id: string }; Returns: Json }
+      campaign_date_in_month: { Args: { p_date: string; p_year: number; p_month: number }; Returns: boolean }
+      preview_campaign_time_change: {
+        Args: {
+          p_version: number
+          p_mode: string
+          p_date?: string | null
+          p_count?: number
+          p_allow_backdate?: boolean
+        }
+        Returns: Json
+      }
+      publish_campaign_time_change: {
+        Args: {
+          p_version: number
+          p_key: string
+          p_mode: string
+          p_date?: string | null
+          p_count?: number
+          p_reason?: string
+          p_allow_backdate?: boolean
+        }
+        Returns: Json
+      }
+      get_campaign_time_history: { Args: { p_limit?: number }; Returns: Json }
+      get_public_campaign_time: { Args: never; Returns: Json }
+      stage_campaign_character_sources: { Args: never; Returns: Json }
+      import_character_source_candidates: { Args: { p_candidates: Json }; Returns: number }
+      get_character_registry_hub: { Args: { p_limit?: number }; Returns: Json }
+      get_character_age_dashboard: {
+        Args: { p_year?: number | null; p_target_year?: number | null; p_limit?: number }
+        Returns: Json
+      }
+      preview_house_time_impacts: { Args: { p_version: number; p_target_date: string }; Returns: Json }
+      get_house_character_ages: { Args: { p_house: string }; Returns: Json }
+      get_character_year_transitions: { Args: { p_limit?: number }; Returns: Json }
+      save_campaign_character: {
+        Args: {
+          p_id: string | null
+          p_version: number | null
+          p_payload: Json
+          p_reason: string
+        }
+        Returns: Json
+      }
+      review_character_source: {
+        Args: {
+          p_queue_id: string
+          p_action: string
+          p_character_id?: string | null
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      save_character_relation: {
+        Args: {
+          p_from: string
+          p_to: string
+          p_relation: string
+          p_note: string
+          p_reason: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

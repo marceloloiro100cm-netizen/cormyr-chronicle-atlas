@@ -4,9 +4,20 @@ import {supabase} from '@/integrations/supabase/client';
 import {Button} from '@/components/ui/button';
 import {CampaignDatePicker} from './date-picker';
 import {CampaignCalendar,type CalendarState} from './calendar';
+import {campaignTimeView,useCampaignTime} from '@/lib/calendar/campaign-time';
+import {useCampaignCalendarRealtime} from './realtime';
+import {NarratorCharacterRegistry} from './narrator-character-registry';
+import {NarratorCharacterAges} from './narrator-character-ages';
+import {CampaignChronology} from './chronology';
+import {TemporalConsumerHub} from './temporal-consumer-hub';
+import {validateAgeDashboard} from '@/lib/calendar/character-ages';
+import {monthFromHarptosDate,validateHouseTimeImpact} from '@/lib/calendar/house-time-impact';
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
-import {calendarPublicationError,samePublishedCalendar} from '@/lib/calendar/publication';
-import {calendarMonthIndex} from '@/lib/house/calendar-consistency';
+import {calendarPublicationError} from '@/lib/calendar/publication';
+import {campaignTimeRpcArguments,matchesPublishedTime,validateCampaignTimePreview,type CampaignTimeMode,type CampaignTimePreview} from '@/lib/calendar/temporal-publication';
+import {temporalQueryKeysForInvalidation} from '@/lib/calendar/time-connections';
+import {requireFreshNarratorAccess} from '@/lib/auth/campaign-access-scope';
+import {isNarratorAccessRevoked,purgeRevokedNarratorCache} from '@/lib/auth/narrator-revocation';
 
 function calendarErrorMessage(error:unknown):string{
  if(error&&typeof error==='object'&&'message' in error)return String(error.message);
@@ -20,34 +31,82 @@ type DraftEvent={
 
 export function NarratorCalendar(){
  const qc=useQueryClient();
- const calendar=useQuery({queryKey:['campaign-calendar'],queryFn:async()=>{
-  const {data,error}=await supabase.rpc('get_campaign_calendar');
-  if(error)throw error;
-  return data as unknown as CalendarState;
- },refetchInterval:15000});
+ const calendar=useCampaignTime();
+ const realtime=useCampaignCalendarRealtime();
  const drafts=useQuery({queryKey:['campaign-schedule-drafts'],queryFn:async()=>{
   const {data,error}=await supabase.rpc('get_campaign_schedule_drafts');
   if(error)throw error;
   return data as unknown as DraftEvent[];
  },refetchInterval:30000});
- const [date,setDate]=useState(''),[week,setWeek]=useState(1),[automatic,setAutomatic]=useState(true);
+ const [date,setDate]=useState(''),[mode,setMode]=useState<CampaignTimeMode>('advance'),[count,setCount]=useState(1);
+ const [reason,setReason]=useState(''),[allowBackdate,setAllowBackdate]=useState(false);
+ const [expectedVersion,setExpectedVersion]=useState<number|null>(null);
+ const retry=useRef<{payload:string;key:string}|null>(null);
  const [editId,setEditId]=useState<string|null>(null),[editVersion,setEditVersion]=useState<number|null>(null);
  const [eventDate,setEventDate]=useState(''),[title,setTitle]=useState(''),[description,setDescription]=useState('');
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[saveError,setSaveError]=useState(false);
+ const [accessRevoked,setAccessRevoked]=useState(false);
  const editedRef=useRef(false),baseVersionRef=useRef<number|null>(null);
  const eventDateEditedRef=useRef(false);
  const [needsVersionRefresh,setNeedsVersionRefresh]=useState(false);
+ const preview=useQuery({
+  queryKey:['campaign-time-preview',expectedVersion,mode,date,count,allowBackdate],
+  enabled:expectedVersion!==null&&!needsVersionRefresh&&(mode!=='set'||Boolean(parseDate(date))),
+  queryFn:async()=>{
+   const version=expectedVersion!;
+   const {data,error}=await supabase.rpc('preview_campaign_time_change',{
+    p_version:version,p_mode:mode,p_date:mode==='set'?date:null,
+    p_count:mode==='advance'?count:0,p_allow_backdate:mode==='set'&&allowBackdate,
+   });
+   if(error)throw error;
+   return validateCampaignTimePreview(data,version,mode);
+  },
+ });
+ const projectedYear=preview.data?parseDate(preview.data.to)?.year:undefined;
+ const houseImpact=useQuery({
+  queryKey:['house-time-impact',expectedVersion,preview.data?.to],
+  enabled:expectedVersion!==null&&Boolean(preview.data&&preview.data.month_delta>0),
+  queryFn:async()=>{
+   const target=preview.data!.to;
+   const day=parseDate(target);
+   if(!day)throw new Error('Data de impacto das Casas inválida.');
+   const {data,error}=await supabase.rpc('preview_house_time_impacts',{
+    p_version:expectedVersion!,p_target_date:target,
+   });
+   if(error)throw error;
+   return validateHouseTimeImpact(data,expectedVersion!,monthFromHarptosDate(day));
+  },
+ });
+ const annualChange=calendar.data!==undefined&&projectedYear!==undefined&&projectedYear!==calendar.data.year;
+ const ageImpact=useQuery({
+  queryKey:['character-age-impact',calendar.data?.year,projectedYear,calendar.data?.version],
+  enabled:Boolean(annualChange),
+  queryFn:async()=>{
+   const from=calendar.data!.year,to=projectedYear!;
+   const {data,error}=await supabase.rpc('get_character_age_dashboard',{
+    p_year:from,p_target_year:to,p_limit:2000,
+   });
+   if(error)throw error;
+   return validateAgeDashboard(data,from,to);
+  },
+ });
+ const annualChangeNeedsPreview=Boolean(annualChange)&&(!ageImpact.data||ageImpact.isFetching);
+ const history=useQuery({queryKey:['campaign-time-history'],queryFn:async()=>{
+  const {data,error}=await supabase.rpc('get_campaign_time_history',{p_limit:15});
+  if(error)throw error;
+  return data as unknown as {id:string;from:string;to:string;mode:string;reason:string;created_at:string}[];
+ },refetchInterval:30000});
  useEffect(()=>{
   if(!calendar.data)return;
   // Polling must not silently replace a date/round edited by the Narrador.
   if(editedRef.current)return;
   const current=dateKey(calendar.data);
   baseVersionRef.current=calendar.data.version;
-  setDate(current);setWeek(calendar.data.published_week??1);
-  setAutomatic(calendar.data.auto_advance);
+  setDate(current);
+  setExpectedVersion(calendar.data.version);
   setEventDate(previous=>eventDateEditedRef.current?previous:current);
  },[calendar.data?.version]);
- const reset=()=>{setEditId(null);setEditVersion(null);eventDateEditedRef.current=false;setEventDate(date||'1522-01-01');setTitle('');setDescription('');};
+ const reset=()=>{setEditId(null);setEditVersion(null);eventDateEditedRef.current=false;setEventDate(date);setTitle('');setDescription('');};
  useEffect(()=>{if(date&&!eventDateEditedRef.current&&!editId)setEventDate(date);},[date,editId]);
  async function saveEvent(deleted=false,override?:DraftEvent){
   if(busy)return;
@@ -56,57 +115,71 @@ export function NarratorCalendar(){
    const payload=override
     ?{id:override.id,version:override.version,date:override.date,title:override.title,description:override.description,deleted}
     :{id:editId,version:editVersion,date:eventDate,title,description,deleted};
+   await requireFreshNarratorAccess();
    const {error}=await supabase.rpc('save_campaign_schedule_event',{p_payload:payload});
    if(error)throw error;
    await qc.invalidateQueries({queryKey:['campaign-schedule-drafts']});
    setMessage(deleted?'Exclusão marcada. Publique o calendário para aplicá-la a todos os jogadores.':'Evento salvo como rascunho. Publique para torná-lo visível nas fichas.');
    reset();
-  }catch(err){setMessage(calendarErrorMessage(err));}
+  }catch(err){if(isNarratorAccessRevoked(err)){purgeRevokedNarratorCache(qc);setAccessRevoked(true);}setMessage(calendarErrorMessage(err));}
   finally{setBusy(false);}
  }
  async function publish(){
-  if(!calendar.data||busy)return;
-  if(!parseDate(date)||week<1||!Number.isInteger(week)){setSaveError(true);setMessage('Informe uma data de Harptos e uma semana válidas.');return;}
-  if(needsVersionRefresh){setSaveError(true);setMessage('Atualize a versão do calendário antes de tentar novamente. Sua escolha foi preservada.');return;}
-  const expected={date,week,automatic};
-  const selected=parseDate(expected.date);
-  if(selected&&calendarMonthIndex(selected)<calendarMonthIndex(calendar.data)){
-   if(!window.confirm('A data selecionada recua para um mês anterior. Obras concluídas e lançamentos históricos das Casas NÃO serão revertidos automaticamente. Isso poderá deixar fichas adiantadas, exigindo revisão individual. Deseja continuar mesmo assim?'))return;
+  if(!calendar.data||busy||expectedVersion===null)return;
+  if(mode==='set'&&!parseDate(date)){setSaveError(true);setMessage('Selecione uma data válida.');return;}
+  if(mode==='advance'&&(!Number.isInteger(count)||count<1||count>120)){setSaveError(true);setMessage('Informe entre uma e 120 désdias.');return;}
+  if(needsVersionRefresh){setSaveError(true);setMessage('Atualize a versão do calendário antes de tentar novamente.');return;}
+  const planned=preview.data as CampaignTimePreview|undefined;
+  if(!planned||preview.isError||planned.version!==expectedVersion){setSaveError(true);setMessage('Prévia oficial indisponível ou desatualizada. Não foi possível confirmar.');return;}
+  if(planned.backdated&&(!allowBackdate||reason.trim().length<10)){
+   setSaveError(true);setMessage('Retrocesso exige autorização expressa e justificativa de pelo menos dez caracteres.');return;
   }
-  if(!window.confirm(`Publicar ${formatDate(expected.date)} · Rodada ${expected.week} para todas as casas?`))return;
-  setBusy(true);setSaveError(false);setMessage('Publicando e confirmando os dados no Supabase…');
+  const params={mode,date:mode==='set'?date:null,count:mode==='advance'?count:0,expectedVersion,reason:reason.trim(),allowBackdate:mode==='set'&&allowBackdate};
+  const signature=JSON.stringify(params);
+  const annual=ageImpact.data;
+  const impact=houseImpact.data;
+  if(planned.month_delta>0&&(!impact||houseImpact.isFetching||impact.invalid>0)){
+   setSaveError(true);setMessage('Prévia de posses indisponível, em atualização ou com Casas inválidas. Verifique as fichas antes de publicar o mês.');return;
+  }
+  if(parseDate(planned.to)?.year!==calendar.data.year&&(!annual||ageImpact.isFetching)){
+   setSaveError(true);setMessage('Prévia de envelhecimento do servidor ainda indisponível. Consulte a lista antes de publicar o ano.');return;
+  }
+  const confirmText='Confirmar '+planned.from+' → '+planned.to+' ('+planned.month_delta+
+   ' mês(es), '+planned.crossed_years.length+' virada(s) de ano, '+planned.crossed_festivals.length+
+   ' festival(is))? '+planned.house_sheets_to_check+
+   ' ficha(s) de Casa serão conferidas no avanço. '+(impact?'Casas a processar: '+impact.eligible+'; obras candidatas: '+impact.project_candidates+'. ':'')+(annual?'Nobres com idade alterada: '+annual.totals.aged_nobles+'; pendências: '+annual.totals.pending+'. ':'')+'Missivas não avançarão automaticamente.';
+  if(!window.confirm(confirmText))return;
+  if(retry.current?.payload!==signature)retry.current={payload:signature,key:crypto.randomUUID()};
+  const key=retry.current.key;
+  setBusy(true);setSaveError(false);setMessage('Publicando mudança temporal em uma transação…');
   try{
-   const {data:snapshot,error}=await supabase.rpc('publish_campaign_schedule_confirmed',{
-    p_version:baseVersionRef.current??calendar.data.version,
-    p_date:expected.date,p_auto:expected.automatic,p_week:expected.week
-   });
+   await requireFreshNarratorAccess();
+   const args=campaignTimeRpcArguments(mode,date,count,expectedVersion,key,reason.trim(),allowBackdate);
+   const {data:snapshot,error}=await supabase.rpc('publish_campaign_time_change',args);
    if(error)throw error;
    const saved=snapshot as unknown as CalendarState|null;
-   if(!samePublishedCalendar(saved,expected.date,expected.week,expected.automatic)||
-      !saved||!Number.isInteger(saved.version))
-    throw new Error('O banco não retornou a data, rodada e versão esperadas. Não foi possível confirmar a publicação.');
-   editedRef.current=false;
-   baseVersionRef.current=saved.version;
-   setDate(dateKey(saved));setWeek(saved.published_week??expected.week);
-   setAutomatic(saved.auto_advance);
-   setNeedsVersionRefresh(false);
-   // Update every calendar using the same shared query, immediately.
+   if(!matchesPublishedTime(saved,planned,expectedVersion))throw new Error('O banco não retornou a data e versão esperadas; confirme o estado no servidor antes de tentar novamente.');
+   retry.current=null;editedRef.current=false;
+   baseVersionRef.current=saved!.version;
+   setExpectedVersion(saved!.version);
+   setDate(dateKey(saved!));setNeedsVersionRefresh(false);setAllowBackdate(false);
    qc.setQueryData(['campaign-calendar'],saved);
-   const updates=await Promise.allSettled([
-    qc.invalidateQueries({queryKey:['campaign-calendar']}),
-    qc.invalidateQueries({queryKey:['campaign-schedule-drafts']}),
-    qc.invalidateQueries({queryKey:['calendar-schedule-events']}),
-    qc.invalidateQueries({queryKey:['noble-house']})
-   ]);
-   const pending=updates.some(result=>result.status==='rejected');
-   setMessage(`Calendário gravado e confirmado: ${formatDate(expected.date)} · Rodada ${expected.week}.${pending?' Algumas consultas não atualizaram; recarregue as fichas.':' As fichas receberão a nova data.'}`);
+   // Narrator, Realtime and polling share one canonical invalidation matrix.
+   // In particular, correspondence and character registries stay fresh.
+   const invalidations=[...temporalQueryKeysForInvalidation(),['campaign-time-preview']];
+   const results=await Promise.allSettled(invalidations.map(queryKey=>
+    qc.invalidateQueries({queryKey})
+   ));
+   const delayed=results.some(r=>r.status==='rejected');
+   setMessage('Calendário gravado e confirmado: '+formatDate(dateKey(saved!))+
+    '. Versão '+saved!.version+'.'+(delayed?' Algumas consultas precisam ser atualizadas.':''));
   }catch(err){
-   // Keep the locally selected date and week if anything failed.
+   if(isNarratorAccessRevoked(err)){purgeRevokedNarratorCache(qc);setAccessRevoked(true);}
    const errorMessage=calendarPublicationError(err);
    setNeedsVersionRefresh(/outra sessão|Calendário alterado|conflito/i.test(errorMessage));
    setSaveError(true);setMessage(errorMessage);
    const code=err&&typeof err==='object'&&'code' in err?String(err.code):'unknown';
-   console.warn('[Cormyr calendar publish]',{code,phase:'publish',version:baseVersionRef.current});
+   console.warn('[Cormyr temporal publish]',{code,mode,version:expectedVersion});
   }finally{setBusy(false);}
  }
  async function reloadVersion(){
@@ -114,30 +187,90 @@ export function NarratorCalendar(){
   const result=await calendar.refetch();
   if(result.error||!result.data){setSaveError(true);setMessage('Não foi possível buscar a versão atual. Verifique sua conexão.');return;}
   baseVersionRef.current=result.data.version;
+  setExpectedVersion(result.data.version);
   setNeedsVersionRefresh(false);setSaveError(false);
-  setMessage('Versão atualizada. Sua data e rodada selecionadas foram preservadas; confirme novamente a publicação.');
+  void qc.invalidateQueries({queryKey:['campaign-time-preview']});
+  setMessage('Versão atualizada. Sua seleção foi preservada; confira a nova prévia antes de publicar.');
  }
  if(calendar.isPending||drafts.isPending)return <p role="status">Carregando calendário do Narrador…</p>;
+ if(accessRevoked)return <section role="alert">Permissão de Narrador revogada. Os dados privados foram ocultados. Atualize suas autorizações para continuar.</section>;
  if(calendar.error||drafts.error||!calendar.data)return <p role="alert">Não foi possível carregar o calendário. {calendar.error?.message??drafts.error?.message} <Button type="button" onClick={()=>{calendar.refetch();drafts.refetch();}}>Tentar novamente</Button></p>;
- return <section className="narrator-calendar">
-  <div className="campaign-heading"><div><p className="campaign-eyebrow">NARRADOR · CAMPANHA</p><h2>Calendário da campanha</h2></div></div>
-  <p>Defina a semana atual, a data de Harptos e os eventos do reino. Apenas eventos publicados aparecem nas fichas das casas. As missivas privadas continuam restritas aos respectivos destinatários.</p>
-  <div className="narrator-calendar-panel">
-   <h3>Data e semana da campanha</h3>
-   <div className="narrator-calendar-settings">
-    <CampaignDatePicker value={date} updateOnNavigation onChange={next=>{editedRef.current=true;setDate(next);setMessage('');}}/>
-    <div className="narrator-calendar-week-controls">
-     <label>Semana atual do jogo
-      <input type="number" min={1} step={1} value={week} onChange={e=>{editedRef.current=true;setWeek(Number(e.target.value));setMessage('');}}/>
-     </label>
-     <Button type="button" className="narrator-calendar-publish-button" disabled={busy||!date||week<1} onClick={()=>void publish()}>{busy?'Publicando…':'Publicar calendário'}</Button>
-    </div>
-   </div>
-   <label className="narrator-calendar-check"><input type="checkbox" checked={automatic} onChange={e=>{editedRef.current=true;setAutomatic(e.target.checked);setMessage('');}}/>Avançar uma désdia ao abrir nova rodada</label>
-   <p className="narrator-calendar-selection" aria-live="polite">Data selecionada para publicação: <strong>{formatDate(date)}</strong> · <strong>Semana {week}</strong></p>
-   <p className="text-sm text-muted-foreground">Avançar um mês pode concluir projetos das casas; retroceder a data não desfaz essas conclusões. A rodada é interna; os jogadores veem a désdia calculada pelo dia.</p>
+ const clock=campaignTimeView(calendar.data);
+ const isStale=expectedVersion!==null&&expectedVersion!==calendar.data.version;
+ const seasonNames={winter:'Inverno',spring:'Primavera',summer:'Verão',autumn:'Outono'} as const;
+ return <section className="narrator-calendar" aria-label="Central Temporal do Narrador">
+  <div className="campaign-heading"><div><p className="campaign-eyebrow">NARRADOR · HUB TEMPORAL</p><h2>Calendário da campanha</h2></div></div>
+  <div className="temporal-hub-dashboard" role="region" aria-label="Resumo temporal oficial">
+   <div><span>Data oficial</span><strong>{clock.label}</strong></div>
+   <div><span>Período atual</span><strong>{clock.desdia===null?'Festival intercalar':clock.desdia+'ª désdia'}</strong></div>
+   <div><span>Estação</span><strong>{seasonNames[clock.season]}</strong></div>
+   <div><span>Estado do relógio</span><strong>{realtime==='live'?'Tempo real conectado':realtime==='fallback'?'Atualização automática (15 s)':'Conectando…'}</strong><small>Versão {clock.version}</small></div>
   </div>
-  <div className="narrator-calendar-panel">
+  <nav className="temporal-hub-navigation" aria-label="Seções do Hub Temporal">
+   <a href="#temporal-comando">Comando e prévia</a>
+   <a href="#temporal-eventos">Eventos oficiais</a>
+   <a href="#temporal-posses">Posses e projetos</a>
+   <a href="#temporal-conexoes">Conexões temporais</a>
+   <a href="#temporal-cronologia">Cronologia</a>
+   <a href="#temporal-genealogias">Nobres e genealogias</a>
+   <a href="#temporal-idades">Idades anuais</a>
+   <a href="#temporal-historico">Histórico</a>
+   <a href="#temporal-jogadores">Visão dos jogadores</a>
+  </nav>
+  {isStale&&<p role="alert" className="temporal-hub-stale">O calendário foi alterado em outra sessão. Recarregue a versão antes de confirmar qualquer operação.</p>}
+  <p>O calendário oficial é a referência de todas as Casas. Escolha avançar désdias, corrigir a data ou publicar apenas eventos. A numeração das missivas permanece independente do relógio.</p>
+  <div className="narrator-calendar-panel" id="temporal-comando">
+   <h3>Comando central de tempo</h3>
+   <div className="narrator-calendar-settings">
+    <label>Ação temporal
+     <select value={mode} aria-label="Ação temporal" onChange={e=>{setMode(e.target.value as CampaignTimeMode);setMessage('');}}>
+      <option value="advance">Avançar désdias (10 dias ordinários)</option>
+      <option value="set">Corrigir / escolher data de Harptos</option>
+      <option value="publish">Publicar eventos sem alterar o dia</option>
+     </select>
+    </label>
+    {mode==='advance'&&<label>Quantidade de désdias
+     <input type="number" aria-label="Quantidade de désdias" min={1} max={120} value={count} onChange={e=>setCount(Number(e.target.value))}/>
+    </label>}
+    {mode==='set'&&<CampaignDatePicker value={date} updateOnNavigation onChange={next=>{editedRef.current=true;setDate(next);setMessage('');}}/>}
+    {mode==='set'&&<label className="narrator-calendar-check"><input type="checkbox" checked={allowBackdate} onChange={e=>setAllowBackdate(e.target.checked)}/>Autorizar retrocesso histórico (não reverte obras ou ações já concluídas)</label>}
+    <label>Justificativa administrativa (obrigatória no retrocesso)
+     <textarea aria-label="Justificativa temporal" rows={2} maxLength={500} value={reason} onChange={e=>setReason(e.target.value)}/>
+    </label>
+   </div>
+   <p className="narrator-calendar-selection">Data oficial: <strong>{formatDate(dateKey(calendar.data))}</strong> · Versão <strong>{calendar.data.version}</strong>. Semana legada de missivas: <strong>{calendar.data.published_week??'não informada'}</strong> (não avança o Reino).</p>
+   <div role="status" aria-live="polite" className="house-caption">
+    {preview.isPending||preview.isFetching?'Calculando prévia no servidor…':preview.error?'Prévia indisponível: '+calendarErrorMessage(preview.error):preview.data?<>
+     <strong>Prévia:</strong> {formatDate(preview.data.from)} → <strong>{formatDate(preview.data.to)}</strong> · {preview.data.ordinary_days} dias ordinários · {preview.data.calendar_days} dias cronológicos · {preview.data.month_delta} mês(es) · {preview.data.crossed_years.length} virada(s) de ano · {preview.data.crossed_festivals.length} festival(is).
+     {preview.data.crossed_festivals.length>0&&<p>Festivais: {preview.data.crossed_festivals.map(formatDate).join(' · ')}</p>}
+     {preview.data.month_delta>0&&<p>{preview.data.house_sheets_to_check} ficha(s) serão conferidas para processamento mensal na transação.</p>}
+     {preview.data.month_delta>0&&(houseImpact.isPending||houseImpact.isFetching)&&<p role="status">Conferindo posses e obras no servidor…</p>}
+     {preview.data.month_delta>0&&houseImpact.error&&<p role="alert">Não foi possível conferir as posses. A publicação do mês ficará bloqueada.</p>}
+     {preview.data.month_delta>0&&houseImpact.data&&<p><strong>Posses:</strong> {houseImpact.data.eligible} Casa(s) serão processadas, {houseImpact.data.project_candidates} obra(s) candidata(s) a conclusão; {houseImpact.data.drafts} rascunho(s), {houseImpact.data.ahead} adiantada(s), {houseImpact.data.invalid} registro(s) inválido(s).</p>}
+     {preview.data.backdated&&<p role="alert" className="house-warning">Retrocesso histórico: registros e obras concluídas não serão desfeitos. Exige autorização e justificativa.</p>}
+     {ageImpact.data&&<p><strong>Prévia anual:</strong> {ageImpact.data.totals.aged_nobles} nobre(s) muda(m) de idade; {ageImpact.data.totals.pending} registro(s) exigem revisão, sem bloquear o relógio.</p>}
+     {ageImpact.error&&<p role="alert">Impacto etário indisponível: não publique uma virada de ano até conferir a prévia do Narrador.</p>}
+    </>:null}
+   </div>
+   <Button type="button" className="narrator-calendar-publish-button" disabled={busy||isStale||needsVersionRefresh||!preview.data||preview.isFetching||annualChangeNeedsPreview||(preview.data.month_delta>0&&(!houseImpact.data||houseImpact.isFetching||houseImpact.data.invalid>0))||(preview.data.backdated&&(!allowBackdate||reason.trim().length<10))} onClick={()=>void publish()}>{busy?'Publicando…':mode==='advance'?'Confirmar avanço de désdia':mode==='set'?'Confirmar data oficial':'Publicar eventos'}</Button>
+   <p className="text-sm text-muted-foreground">A publicação é atômica, versionada e protegida por chave de operação. Abrir uma rodada de missivas não altera a data. Viradas anuais já atualizam as projeções etárias; o Lote 10 emite notificações sem executar efeitos automáticos não definidos.</p>
+  </div>
+  <section id="temporal-posses" className="narrator-calendar-panel" aria-label="Processamento temporal de posses e obras">
+   <h3>Posses, construções e projetos</h3>
+   <p>O Reino define o mês absoluto. Apenas Casas ativas e elegíveis recebem uma atualização; uma Casa atrasada alcança o mês de destino, e uma Casa já processada não recebe a mesma obra novamente.</p>
+   <p>Construções com prazo vencido são conferidas em conjunto com seus pré-requisitos. Uma obra dependente não fica ativa sem a posse de suporte. Sorte, rendimentos, despesas e ações mensais não são geradas automaticamente sem regras próprias.</p>
+   {houseImpact.data?<details><summary>Inspecionar situação das Casas ({houseImpact.data.total})</summary>
+     {houseImpact.data.houses.map(h=><p key={h.house_id}>
+      <strong>{h.house_id}</strong> · {h.status==='advance'?'Processamento previsto':h.status==='draft'?'Rascunho preservado':h.status==='ahead'?'Casa adiantada':h.status==='invalid'?'Ficha inválida — revisar':'Nenhuma atualização necessária'}
+      {h.month!==null?' · mês registrado '+h.month:''} · {h.project_candidates} projeto(s) candidato(s)
+     </p>)}
+    </details>:<p className="house-caption">Selecione um avanço de mês para consultar o impacto exato em todas as Casas.</p>}
+  </section>
+  <TemporalConsumerHub/>
+  <CampaignChronology year={calendar.data.year} month={calendar.data.month} anchorId="temporal-cronologia"/>
+  <NarratorCharacterRegistry/>
+  <NarratorCharacterAges targetYear={annualChange?projectedYear:undefined}/>
+  <div className="narrator-calendar-panel" id="temporal-eventos">
    <h3>{editId?'Editar evento':'Criar evento em uma data'}</h3>
    <form className="campaign-form narrator-event-form" onSubmit={e=>{e.preventDefault();void saveEvent();}}>
     <CampaignDatePicker value={eventDate} onChange={next=>{eventDateEditedRef.current=true;setEventDate(next);}}/>
@@ -168,8 +301,9 @@ export function NarratorCalendar(){
   </div>
 
   <p role={saveError?'alert':'status'}>{message}</p>
-  {needsVersionRefresh&&<Button type="button" variant="outline" disabled={busy} onClick={()=>void reloadVersion()}>Atualizar versão sem perder data selecionada</Button>}
-  <p className="text-xs text-muted-foreground">Calendário · correção de publicação 2026.10.30-b · Versão do registro: {calendar.data.version}</p>
-  <div className="narrator-calendar-preview"><h3>Calendário publicado · visão dos jogadores</h3><CampaignCalendar/></div>
+  {(needsVersionRefresh||isStale)&&<Button type="button" variant="outline" disabled={busy} onClick={()=>void reloadVersion()}>Atualizar versão sem perder data selecionada</Button>}
+  <p className="text-xs text-muted-foreground">Hub Temporal · Lote 4 · Versão do registro: {calendar.data.version}</p>
+  <details id="temporal-historico" open><summary>Histórico de mudanças temporais</summary>{history.error&&<p role="alert">Histórico indisponível.</p>}{history.data?.length===0&&<p>Nenhum avanço registrado pelo Hub.</p>}{history.data?.map(entry=><p key={entry.id}>{formatDate(entry.from)} → {formatDate(entry.to)} · {entry.mode} · {entry.reason||'Sem observação'}</p>)}</details>
+  <div className="narrator-calendar-preview" id="temporal-jogadores"><h3>Calendário publicado · visão dos jogadores</h3><CampaignCalendar/></div>
  </section>;
 }

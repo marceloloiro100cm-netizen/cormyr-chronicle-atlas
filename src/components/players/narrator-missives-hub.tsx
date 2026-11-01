@@ -7,7 +7,7 @@ import type {Panel} from './panel-data';
 export const NARRATOR_MENU=[
  ['painel','Conselho das casas'],
  ['missivas','Missivas'],
- ['calendario','Calendário'],
+ ['calendario','Hub Temporal'],
  ['eventos','Eventos'],
  ['aventuras','Aventuras'],
 ] as const;

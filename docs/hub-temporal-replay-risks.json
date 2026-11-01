@@ -1,0 +1,78 @@
+{
+  "format_version": 1,
+  "title": "Observações de replay: oito migrações temporais",
+  "source": {
+    "commit_sha": "7c564a18e611179a2302d4f4a04e1c907192e76b",
+    "ci_run_id": 41241607317,
+    "type": "GitHub Actions PostgreSQL 16 efêmero",
+    "result": "success",
+    "meaning": "Reexecução individual em clone após 0067; não descreve a produção"
+  },
+  "production_replay_safe": null,
+  "results": [
+    {
+      "tag": "0060_hub_temporal_atomic_publication",
+      "file_git_blob_sha": "f0741710886950267727f5b1744310aedaf47005",
+      "replay_succeeded_on_clone": true,
+      "schema_changed_in_clone": false,
+      "data_changed_in_clone": false,
+      "season_fix_regressed_in_clone": false
+    },
+    {
+      "tag": "0061_public_campaign_time_projection",
+      "file_git_blob_sha": "5d1f650732044b0707d0b6cce40f98922bb62d7f",
+      "replay_succeeded_on_clone": true,
+      "schema_changed_in_clone": false,
+      "data_changed_in_clone": false,
+      "season_fix_regressed_in_clone": false
+    },
+    {
+      "tag": "0062_canonical_character_registry",
+      "file_git_blob_sha": "e989bc397d7ccefb42ca694c229d827e7a144756",
+      "replay_succeeded_on_clone": false,
+      "schema_changed_in_clone": false,
+      "data_changed_in_clone": false,
+      "season_fix_regressed_in_clone": false
+    },
+    {
+      "tag": "0063_annual_character_ages",
+      "file_git_blob_sha": "8d9ea5bcf699b0506ca21b60cc94a9edfa01f37d",
+      "replay_succeeded_on_clone": false,
+      "schema_changed_in_clone": false,
+      "data_changed_in_clone": false,
+      "season_fix_regressed_in_clone": false
+    },
+    {
+      "tag": "0064_mail_chronology_integration",
+      "file_git_blob_sha": "980f4752b7a6fd00448c800a29efb06d89a02249",
+      "replay_succeeded_on_clone": true,
+      "schema_changed_in_clone": false,
+      "data_changed_in_clone": false,
+      "season_fix_regressed_in_clone": false
+    },
+    {
+      "tag": "0065_house_temporal_months",
+      "file_git_blob_sha": "45edf432cbf771b27c07bdc0ba67344395f59d55",
+      "replay_succeeded_on_clone": true,
+      "schema_changed_in_clone": false,
+      "data_changed_in_clone": false,
+      "season_fix_regressed_in_clone": false
+    },
+    {
+      "tag": "0066_temporal_consumer_outbox",
+      "file_git_blob_sha": "35ea81e0f911e5901615ecfefbca37ce433c204a",
+      "replay_succeeded_on_clone": true,
+      "schema_changed_in_clone": true,
+      "data_changed_in_clone": false,
+      "season_fix_regressed_in_clone": true
+    },
+    {
+      "tag": "0067_temporal_release_preflight",
+      "file_git_blob_sha": "fcea06d87d7d7b23532116dacfb6fef653cb9d5b",
+      "replay_succeeded_on_clone": true,
+      "schema_changed_in_clone": false,
+      "data_changed_in_clone": false,
+      "season_fix_regressed_in_clone": false
+    }
+  ]
+}

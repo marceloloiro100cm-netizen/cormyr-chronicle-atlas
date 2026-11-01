@@ -6,9 +6,9 @@ vi.mock('@/integrations/supabase/auth-middleware',()=>({requireSupabaseAuth:{}})
 function from(table:string){const chain={select:()=>chain,eq:()=>chain,in:async()=>({data:mock.rows.get(table)??[],error:null}),order:()=>chain,limit:()=>chain,maybeSingle:async()=>({data:mock.rows.get(table)??null,error:null}),single:async()=>({data:mock.rows.get(table)??null,error:null})};return chain;}
 vi.mock('@/integrations/supabase/client.server',()=>({supabaseAdmin:{from:(table:string)=>from(table),rpc:(name:string,args:unknown)=>mock.commit(name,args)}}));
 import { houseOperation } from '@/lib/house/house.functions';
-type Call=(input:{data:Record<string,unknown>;context:{supabase:{rpc:(name:string)=>Promise<{data:boolean;error:null}>;from:typeof from};userId:string}})=>Promise<unknown>;
+type Call=(input:{data:Record<string,unknown>;context:{supabase:{rpc:(name:string)=>Promise<{data:boolean|{year:number;month:number};error:null}>;from:typeof from};userId:string}})=>Promise<unknown>;
 const execute=houseOperation as unknown as Call;
-const context={userId:'actor',supabase:{rpc:async(name:string)=>({data:name==='is_campaign_admin'?mock.admin:mock.member,error:null}),from}};
+const context={userId:'actor',supabase:{rpc:async(name:string)=>({data:name==='get_campaign_calendar'?{year:1522,month:0}:name==='is_campaign_admin'?mock.admin:mock.member,error:null}),from}};
 const input=(action='domain',args:Record<string,unknown>={id:'00000000-0000-4000-8000-000000000002',name:'Domínio isolado',notes:''})=>({data:{houseId:'isolated',version:0,key:'00000000-0000-4000-8000-000000000001',action,args,explanation:''},context});
 beforeEach(()=>{mock.admin=false;mock.member=false;mock.rows.clear();mock.rows.set('campaign_houses',{region:'helmlands'});mock.commit.mockReset().mockResolvedValue({data:{state:newHouseState('isolated'),version:1,duplicate:false},error:null});});
 describe('fronteira autenticada da ficha',()=>{

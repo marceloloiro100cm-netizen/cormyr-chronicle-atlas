@@ -1,5 +1,5 @@
 import {afterEach,beforeEach,it,expect,vi} from 'vitest';
-import {render,screen,fireEvent,waitFor,cleanup,act} from '@testing-library/react';
+import {render,screen,within,fireEvent,waitFor,cleanup,act} from '@testing-library/react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {CampaignCalendar} from '@/components/calendar/calendar';
 import {formatCampaignPeriod} from '@/lib/calendar/harptos';
@@ -20,6 +20,8 @@ beforeEach(()=>{
  mock.removeChannel.mockResolvedValue('ok');
  mock.rpc.mockImplementation(async(name:string)=>name==='get_campaign_calendar'
   ?{data:{...mock.current},error:null}
+  :name==='get_campaign_chronology'
+   ?{data:{year:1522,month:0,events:[{id:'letter:one',date:'1522-01-02',title:'Convocação da corte',kind:'mail'}],rounds:[],unassigned_round_count:0},error:null}
   :name==='calendar_mail_events'
    ?{data:[{id:'one',date:'1522-01-02',title:'Convocação da corte',kind:'mail'}],error:null}
    :{data:[],error:null});
@@ -35,10 +37,11 @@ it('mostra somente désdia, mês e ano no calendário, preservando privacidade',
  mount();
  expect(await screen.findByText('2ª désdia · Hammer · 1522 CV')).toBeInTheDocument();
  const day=await screen.findByRole('button',{name:/^2 de Hammer.*1 evento/});
- fireEvent.mouseEnter(day);expect(screen.getByText('Convocação da corte')).toBeInTheDocument();
+ const details=document.getElementById('harptos-events')!;
+ fireEvent.mouseEnter(day);expect(within(details).getByText('Convocação da corte')).toBeInTheDocument();
  fireEvent.focus(screen.getByRole('button',{name:/^3 de Hammer/}));
- expect(screen.queryByText('Convocação da corte')).not.toBeInTheDocument();
- fireEvent.click(day);expect(screen.getByText('Convocação da corte')).toBeInTheDocument();
+ expect(within(details).queryByText('Convocação da corte')).not.toBeInTheDocument();
+ fireEvent.click(day);expect(within(details).getByText('Convocação da corte')).toBeInTheDocument();
  expect(screen.queryByText('Ajustar calendário da campanha')).not.toBeInTheDocument();
  await waitFor(()=>expect(screen.getByRole('button',{name:/^11 de Hammer/})).toHaveAttribute('aria-current','date'));
 });
@@ -104,4 +107,43 @@ it('formata corretamente cada uma das três désdias, ignorando o número da rod
  expect(formatCampaignPeriod({...base,month:1,day:11})).toBe('2ª désdia · Alturiak · 1522 CV');
  expect(formatCampaignPeriod({...base,year:1523,day:21})).toBe('3ª désdia · Hammer · 1523 CV');
  expect(formatCampaignPeriod({...base,festival:'midwinter'})).toBe('Midwinter · Meio do Inverno · Hammer · 1522 CV');
+});
+
+it('Lote 25: não mostra data oficial do cache quando o RPC falha após uma retificação',async()=>{
+ const qc=mount();
+ await screen.findByText('2ª désdia · Hammer · 1522 CV');
+ mock.rpc.mockImplementation(async(name:string)=>name==='get_campaign_calendar'
+  ?{data:null,error:{message:'Sessão do calendário revogada'}}
+  :{data:[],error:null});
+ await act(async()=>{await qc.refetchQueries({queryKey:['campaign-calendar']});});
+ await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('Calendário oficial indisponível'));
+ expect(screen.queryByText('2ª désdia · Hammer · 1522 CV')).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:/^11 de Hammer/})).not.toBeInTheDocument();
+});
+
+it('Lote 25: correspondência cacheada é ocultada se o acesso histórico foi revogado',async()=>{
+ const qc=mount();
+ await screen.findByText('2ª désdia · Hammer · 1522 CV');
+ const day=await screen.findByRole('button',{name:/^2 de Hammer.*1 evento/});
+ fireEvent.click(day);
+ const details=document.getElementById('harptos-events')!;
+ expect(within(details).getByText('Convocação da corte')).toBeInTheDocument();
+ // Simulate an access error after the previous query had already cached the letter.
+ mock.rpc.mockImplementation(async(name:string)=>{
+  if(name==='get_campaign_calendar')return {data:{...mock.current},error:null};
+  if(name==='calendar_mail_events'||name==='get_campaign_chronology')
+   return {data:null,error:{message:'Acesso à correspondência revogado'}};
+  return {data:[],error:null};
+ });
+ await act(async()=>{
+  await qc.refetchQueries({queryKey:['calendar-events']});
+  await qc.refetchQueries({queryKey:['campaign-chronology']});
+ });
+ await waitFor(()=>expect(within(details).queryByText('Convocação da corte')).not.toBeInTheDocument());
+ const timeline=screen.getByRole('region',{name:'Cronologia oficial dos eventos e missivas'});
+ await waitFor(()=>expect(within(timeline).queryByText('Convocação da corte')).not.toBeInTheDocument());
+ expect(screen.getAllByRole('alert').some(element=>
+  element.textContent?.includes('Cronologia indisponível'))).toBe(true);
+ // Public annual observances still render; no private cached letter is reused.
+ expect(screen.getByRole('button',{name:/^1 de Hammer/})).toBeInTheDocument();
 });

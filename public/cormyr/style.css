@@ -270,3 +270,7 @@
 .bard-lyrics,.music-lyrics-entry pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.6 Georgia,serif;max-height:180px;overflow-y:auto}
 .music-lyrics-entry{margin-top:10px;padding:15px}.music-lyrics-entry summary{cursor:pointer}
 @media (max-width:600px){.bard-player{left:10px;right:10px;bottom:8px;width:auto}.bard-player-media{max-height:210px}}
+
+/* Lote 5 · data corrente consultada de forma pública, sem credenciais. */
+#public-campaign-current-time{display:block;overflow-wrap:anywhere;font-size:17px;line-height:1.4;color:#f1dbad}
+#public-campaign-time-detail{overflow-wrap:anywhere;font-size:12px;line-height:1.5}

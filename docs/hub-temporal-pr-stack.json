@@ -1,0 +1,192 @@
+{
+  "format_version": 1,
+  "repository": "marceloloiro100cm-netizen/cormyr-chronicle-atlas",
+  "purpose": "ordem de revisão, não autorização para merge automático",
+  "release_authorized": false,
+  "excluded_alternative_prs": [
+    129
+  ],
+  "baseline_reference_pr": 126,
+  "sequence": [
+    {
+      "pr": 127,
+      "head": "feat/hub-temporal-lote-2-harptos",
+      "base": "main"
+    },
+    {
+      "pr": 128,
+      "head": "feat/hub-temporal-lote-3-fonte-unica",
+      "base": "feat/hub-temporal-lote-2-harptos"
+    },
+    {
+      "pr": 130,
+      "head": "feat/hub-temporal-lote-4-publicacao-transacional",
+      "base": "feat/hub-temporal-lote-3-fonte-unica"
+    },
+    {
+      "pr": 131,
+      "head": "feat/hub-temporal-lote-5-ui-publica-sincronizacao",
+      "base": "feat/hub-temporal-lote-4-publicacao-transacional"
+    },
+    {
+      "pr": 132,
+      "head": "feat/hub-temporal-lote-6-registro-nobres",
+      "base": "feat/hub-temporal-lote-5-ui-publica-sincronizacao"
+    },
+    {
+      "pr": 133,
+      "head": "feat/hub-temporal-lote-7-idades-anuais",
+      "base": "feat/hub-temporal-lote-6-registro-nobres"
+    },
+    {
+      "pr": 134,
+      "head": "feat/hub-temporal-lote-8-missivas-cronologia",
+      "base": "feat/hub-temporal-lote-7-idades-anuais"
+    },
+    {
+      "pr": 135,
+      "head": "feat/hub-temporal-lote-9-posses-projetos",
+      "base": "feat/hub-temporal-lote-8-missivas-cronologia"
+    },
+    {
+      "pr": 136,
+      "head": "feat/hub-temporal-lote-10-consumidores-outbox",
+      "base": "feat/hub-temporal-lote-9-posses-projetos"
+    },
+    {
+      "pr": 137,
+      "head": "audit/hub-temporal-lote-11-integracao-deploy",
+      "base": "feat/hub-temporal-lote-10-consumidores-outbox"
+    },
+    {
+      "pr": 138,
+      "head": "audit/hub-temporal-lote-12-migration-reconciliation",
+      "base": "audit/hub-temporal-lote-11-integracao-deploy"
+    },
+    {
+      "pr": 139,
+      "head": "audit/hub-temporal-lote-13-homologacao-contratos",
+      "base": "audit/hub-temporal-lote-12-migration-reconciliation"
+    },
+    {
+      "pr": 140,
+      "head": "audit/hub-temporal-lote-14-gate-release",
+      "base": "audit/hub-temporal-lote-13-homologacao-contratos"
+    },
+    {
+      "pr": 141,
+      "head": "audit/hub-temporal-lote-15-reconciliacao-por-arquivo",
+      "base": "audit/hub-temporal-lote-14-gate-release"
+    },
+    {
+      "pr": 142,
+      "head": "audit/hub-temporal-lote-16-ensaio-replay-isolado",
+      "base": "audit/hub-temporal-lote-15-reconciliacao-por-arquivo"
+    },
+    {
+      "pr": 143,
+      "head": "audit/hub-temporal-lote-17-plano-ordenado-bloqueado",
+      "base": "audit/hub-temporal-lote-16-ensaio-replay-isolado"
+    },
+    {
+      "pr": 144,
+      "head": "audit/hub-temporal-lote-18-restauracao-isolada",
+      "base": "audit/hub-temporal-lote-17-plano-ordenado-bloqueado"
+    },
+    {
+      "pr": 145,
+      "head": "audit/hub-temporal-lote-19-baseline-restaurado",
+      "base": "audit/hub-temporal-lote-18-restauracao-isolada"
+    },
+    {
+      "pr": 146,
+      "head": "test/hub-temporal-lote-20-fluxos-integrados",
+      "base": "audit/hub-temporal-lote-19-baseline-restaurado"
+    },
+    {
+      "pr": 147,
+      "head": "test/hub-temporal-lote-21-economia-militar-multianos",
+      "base": "test/hub-temporal-lote-20-fluxos-integrados"
+    },
+    {
+      "pr": 148,
+      "head": "audit/hub-temporal-lote-22-integracoes-site",
+      "base": "test/hub-temporal-lote-21-economia-militar-multianos"
+    },
+    {
+      "pr": 149,
+      "head": "fix/hub-temporal-lote-23-operacoes-mensais",
+      "base": "audit/hub-temporal-lote-22-integracoes-site"
+    },
+    {
+      "pr": 150,
+      "head": "test/hub-temporal-lote-24-permissoes-narrador",
+      "base": "fix/hub-temporal-lote-23-operacoes-mensais"
+    },
+    {
+      "pr": 151,
+      "head": "fix/hub-temporal-lote-25-cronologia-retroativa",
+      "base": "test/hub-temporal-lote-24-permissoes-narrador"
+    },
+    {
+      "pr": 152,
+      "head": "fix/hub-temporal-lote-26-isolamento-de-sessao",
+      "base": "fix/hub-temporal-lote-25-cronologia-retroativa"
+    },
+    {
+      "pr": 153,
+      "head": "fix/hub-temporal-lote-27-revogacao-vinculos",
+      "base": "fix/hub-temporal-lote-26-isolamento-de-sessao"
+    },
+    {
+      "pr": 154,
+      "head": "fix/hub-temporal-lote-28-operacoes-em-voo",
+      "base": "fix/hub-temporal-lote-27-revogacao-vinculos"
+    },
+    {
+      "pr": 155,
+      "head": "fix/hub-temporal-lote-29-respostas-tardias",
+      "base": "fix/hub-temporal-lote-28-operacoes-em-voo"
+    },
+    {
+      "pr": 156,
+      "head": "audit/hub-temporal-lote-30-gate-seguranca",
+      "base": "fix/hub-temporal-lote-29-respostas-tardias"
+    },
+    {
+      "pr": 157,
+      "head": "fix/hub-temporal-lote-31-identidade-escopo-atomico",
+      "base": "audit/hub-temporal-lote-30-gate-seguranca"
+    },
+    {
+      "pr": 158,
+      "head": "fix/hub-temporal-lote-32-autorizacao-comandos-narrador",
+      "base": "fix/hub-temporal-lote-31-identidade-escopo-atomico"
+    },
+    {
+      "pr": 159,
+      "head": "fix/hub-temporal-lote-33-cache-admin-revogado",
+      "base": "fix/hub-temporal-lote-32-autorizacao-comandos-narrador"
+    },
+    {
+      "pr": 160,
+      "head": "fix/hub-temporal-lote-34-bloqueio-global-revogacao",
+      "base": "fix/hub-temporal-lote-33-cache-admin-revogado"
+    },
+    {
+      "pr": 161,
+      "head": "fix/hub-temporal-lote-35-revogacao-consultas-privadas",
+      "base": "fix/hub-temporal-lote-34-bloqueio-global-revogacao"
+    },
+    {
+      "pr": 162,
+      "head": "fix/hub-temporal-lote-36-falha-verificacao-cargo",
+      "base": "fix/hub-temporal-lote-35-revogacao-consultas-privadas"
+    },
+    {
+      "pr": 163,
+      "head": "audit/hub-temporal-lote-37-aceite-final",
+      "base": "fix/hub-temporal-lote-36-falha-verificacao-cargo"
+    }
+  ]
+}
