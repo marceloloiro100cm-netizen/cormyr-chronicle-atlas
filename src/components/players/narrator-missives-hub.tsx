@@ -24,9 +24,9 @@ export function mailHouseRegion(value:string|null|undefined):Region|null {
 }
 
 export function NarratorMissivasHub({
- data,me,onSave,onError,onManage,
+ data,me,onSave,onError,onManage,filterHost,
 }:{
- data:Panel;me:Panel['players'][number]|undefined;
+ data:Panel;me:Panel['players'][number]|undefined;filterHost?:HTMLElement|null;
  onSave:()=>void;onError:(message:string)=>void;onManage:(houseId:string)=>void;
 }){
  const [regions,setRegions]=useState<Region[]>(['dragon-coast','horselands']);
@@ -70,6 +70,6 @@ export function NarratorMissivasHub({
    <div><strong>{openRound===null?'Fechada':openRound}</strong><span>Rodada atual (global)</span></div>
   </div>
   {statsError&&<p role="alert">Não foi possível atualizar os indicadores dos grupos.</p>}
-  <MissivasTab data={data} me={me} groupHouseIds={houseIds} onSave={onSave} onError={onError} onManage={onManage}/>
+  <MissivasTab data={data} me={me} groupHouseIds={houseIds} filterHost={filterHost??null} onSave={onSave} onError={onError} onManage={onManage}/>
  </section>;
 }
