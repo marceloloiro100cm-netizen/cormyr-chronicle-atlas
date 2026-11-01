@@ -722,3 +722,27 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
  .campaign-side-column .campaign-side{position:static}
  .narrator-mail-filter-slot .campaign-mail-side{max-height:none}
 }
+
+
+/* O nome da unidade fica ao lado do estandarte, inclusive em cards estreitos. */
+.military-unit-card-heading{display:flex;align-items:flex-start;gap:12px;min-width:0;width:100%}
+.military-unit-card-heading .military-card-badge{flex:none;margin:0}
+.military-unit-card-heading h4{flex:1;min-width:0;margin:0;font-size:clamp(17px,1.5vw,22px);line-height:1.18;overflow-wrap:anywhere}
+.military-unit-title .military-unit-card-heading{flex-basis:100%}
+.military-commander-row{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px;margin:10px 0;font-size:13px}
+.military-sheet-subline{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px;color:var(--muted-foreground)}
+.military-sheet-subline p{margin:0}
+.military-commander-control{display:inline-flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;max-width:100%;vertical-align:baseline}
+.military-commander-trigger{border:0;background:transparent;padding:0;color:var(--primary);text-align:left;cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
+.military-commander-trigger strong,.military-commander-readonly{font-weight:800}
+.military-commander-trigger:hover{text-decoration-style:solid}
+.military-commander-trigger:focus-visible{outline:2px solid var(--house-rule);outline-offset:4px;border-radius:2px}
+.military-commander-trigger:disabled{cursor:default;opacity:.6}
+.military-commander-editor{display:grid;gap:12px;width:min(330px,calc(100vw - 64px));max-width:100%;padding:14px;border:1px solid var(--house-rule);border-radius:8px;background:var(--house-surface);box-shadow:0 3px 12px #26183221;color:var(--foreground);font-size:13px}
+.military-commander-editor label{display:grid;gap:5px;font-weight:600}
+.military-commander-editor select,.military-commander-editor input{width:100%;min-width:0}
+.military-commander-editor small{font-size:12px;font-weight:400;color:var(--muted-foreground)}
+.military-commander-modes{display:flex;gap:6px;flex-wrap:wrap}
+.military-commander-editor .campaign-actions{display:flex;gap:6px;flex-wrap:wrap}
+.military-sheet-subline .military-commander-editor{width:min(370px,calc(100vw - 80px))}
+@media(max-width:620px){.military-unit-card-heading h4{font-size:18px}.military-commander-editor{width:min(100%,330px)}}
