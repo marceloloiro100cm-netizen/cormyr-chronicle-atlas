@@ -16,7 +16,7 @@ import { isFichaCasa, isFichaPersonagem, parseFichaPersonagem, parseFichaCasa } 
 import type { RecordRow } from "./shared";
 import type { Panel } from "./panel-data";
 import { RecordEditor } from "./records";
-import { FichaPersonagemForm, FichaCasaForm } from "./ficha-form";
+import { FichaCasaForm } from "./ficha-form";
 import {CharacterV2NarratorReview} from '@/components/character-v2/narrator-review';
 import {CharacterV2PlayerSheet} from '@/components/character-v2/player-sheet';
 
@@ -149,43 +149,32 @@ export function FichaTab({
         <>
           <h2>Fichas dos personagens · Lordes e Herdeiros</h2>
           {admin&&<CharacterV2NarratorReview key={current.id} houseId={current.id} records={records}/> }
-          {canEdit&&<ChronicleCharacterEditor key={'new-'+current.id} houseId={current.id} houseName={current.name} playerId={playerId} canEdit={canEdit} statusCap={statusCap} onSave={onSave}/>}
+          {admin&&canEdit&&<details className="campaign-add"><summary>Manutenção do Narrador · criar ficha estruturada</summary>
+            <ChronicleCharacterEditor key={'new-'+current.id} houseId={current.id} houseName={current.name} playerId={playerId} canEdit={canEdit} statusCap={statusCap} onSave={onSave}/>
+          </details>}
           {structured.map(({row,sheet})=><div key={row.id+'-'+row.version}>
             {ageLine(row.id)}
             <CharacterV2PlayerSheet record={row} houseId={current.id}/>
-            <details className="campaign-add"><summary>Consultar e editar ficha estruturada original</summary>
+            {admin&&<details className="campaign-add"><summary>Manutenção do Narrador · ficha estruturada anterior</summary>
               <ChronicleCharacterEditor row={row} initial={sheet} houseId={current.id} houseName={current.name} playerId={playerId} canEdit={canEdit} statusCap={statusCap} onSave={onSave}/>
-            </details>
+            </details>}
           </div>)}
-          <h2>Ficha do Lorde · novo formato de consulta</h2>
+          {fichaLorde&&<h2>Ficha do Lorde</h2>}
           {fichaLorde ? (
             <>
               {ageLine(fichaLorde.id)}
               <CharacterV2PlayerSheet record={fichaLorde} houseId={current.id}/>
-              <details className="campaign-add"><summary>Consultar documento original</summary>
-              <FichaPersonagemCard
-                content={fichaLorde.content}
-                portrait={retratoDo(fichaLordeParsed?.nome ?? current.lord_name)}
-                titulo={fichaLorde.title}
-              />
-              </details>
-              {canEdit && (
-                <details className="campaign-add">
-                  <summary>Editar ficha do lorde</summary>
-                  <FichaPersonagemForm
-                    initialData={parseFichaPersonagem(fichaLorde.content)}
-                    row={fichaLorde}
-                    onSave={(newContent) => {
-                      fichaLorde.content = newContent;
-                      onSave();
-                    }}
-                    onCancel={() => {}}
-                  />
-                </details>
-              )}
+              {admin&&<details className="campaign-add"><summary>Manutenção do Narrador · consultar fonte anterior</summary>
+                <FichaPersonagemCard
+                  content={fichaLorde.content}
+                  portrait={retratoDo(fichaLordeParsed?.nome ?? current.lord_name)}
+                  titulo={fichaLorde.title}
+                />
+                <p className="text-sm">Documento legado preservado em modo de leitura. O editor antigo não é usado porque descartaria colunas não mapeadas, incluindo Qualidades e Defeitos.</p>
+              </details>}
             </>
           ) : (
-            <p className="campaign-empty">Nenhuma ficha legada localizada. É possível criar uma ficha estruturada acima.</p>
+            structured.length===0&&<p className="campaign-empty">Nenhuma ficha de personagem reconhecida. O Narrador pode cadastrar uma fonte na área de manutenção.</p>
           )}
           <h2>Corte</h2>
           {npcs.length === 0 && (
