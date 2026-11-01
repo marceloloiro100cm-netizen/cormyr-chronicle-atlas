@@ -63,7 +63,7 @@ function entries(names:string[],category:CharacterTraitCategory):CharacterTrait[
     const id=slug(label),tierMatch=label.match(/ (I|II|III)$/);
     const tier=tierMatch?(tierMatch[1]==='I'?1:tierMatch[1]==='II'?2:3):null;
     const base=tier?label.replace(/ (I|II|III)$/,''):null;
-    return Object.freeze({
+    const entry:CharacterTrait=Object.freeze({
       id,label,category,kind:category==='flaw'?'flaw':'benefit',
       source:category==='flaw'?CHARACTER_CATALOG_SOURCE.flaws:CHARACTER_CATALOG_SOURCE.benefits,
       catalogVersion:CHARACTER_CATALOG_VERSION,
@@ -73,6 +73,7 @@ function entries(names:string[],category:CharacterTraitCategory):CharacterTrait[
       parameterized:category==='flaw'&&label.startsWith('Defeito ('),
       aliases:aliases[id]??[],
     });
+    return entry;
   });
 }
 /** Catálogo integral de nomes revisados na auditoria, sem efeitos habilitados. */
