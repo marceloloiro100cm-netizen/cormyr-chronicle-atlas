@@ -46,7 +46,7 @@ describe('complete unit character sheet',()=>{
  it('shows house owner and all 20 abilities with the matching number of filled pips',()=>{
   const {state,unit}=subject();
   const {container}=render(<UnitSheet houseName="Evenhand" state={state} unit={unit}
-   canEdit={true} admin={false} busy={false} onEdit={async()=>true}
+   canEdit={true} admin={false} busy={false} commanders={[]} onCommander={async()=>true} onEdit={async()=>true}
    onGrant={async()=>true} onEquipment={async()=>true}/>);
   fireEvent.click(screen.getByRole('button',{name:'Ver ficha gráfica de Cavalaria de Cinzaria'}));
   expect(screen.getByText('CASA EVENHAND · FICHA DE UNIDADE')).toBeInTheDocument();
@@ -68,7 +68,7 @@ describe('complete unit character sheet',()=>{
  it('never inserts a fictional house name when the real owner is passed in',()=>{
   const {state,unit}=subject();
   render(<UnitSheet houseName="Goldfin" state={state} unit={unit} canEdit={false}
-   admin={false} busy={false} onEdit={async()=>false} onGrant={async()=>false} onEquipment={async()=>false}/>);
+   admin={false} busy={false} commanders={[]} onCommander={async()=>false} onEdit={async()=>false} onGrant={async()=>false} onEquipment={async()=>false}/>);
   fireEvent.click(screen.getByRole('button',{name:'Ver ficha gráfica de Cavalaria de Cinzaria'}));
   expect(screen.getByText('CASA GOLDFIN · FICHA DE UNIDADE')).toBeInTheDocument();
  });
