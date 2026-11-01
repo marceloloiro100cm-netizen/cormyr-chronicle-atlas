@@ -63,11 +63,11 @@ describe('Ficha V2 — lote 05: DAG de estatísticas calculadas',()=>{
  it('respeita modificação aprovada, deduplica fontes e rejeita não aprovadas',()=>{
   const result=resolveCharacterDerived(char(),{modifiers:[
    {sourceId:'staff',description:'Regra teste',target:'intrigueDefense',amount:2,
-    approved:true,active:true,stackKey:'staff'},
+    approved:true,active:true,stackKey:'staff',kind:'rule'},
    {sourceId:'duplicate',description:'Regra duplicada',target:'intrigueDefense',amount:2,
-    approved:true,active:true,stackKey:'staff'},
+    approved:true,active:true,stackKey:'staff',kind:'rule'},
    {sourceId:'unknown',description:'Não aprovado',target:'intrigueDefense',amount:99,
-    approved:false,active:true,stackKey:null},
+    approved:false,active:true,stackKey:null,kind:'rule'},
   ]});
   expect(result.values.intrigueDefense).toBe(13);
   expect(result.warnings.some(w=>w.includes('duplicado'))).toBe(true);
