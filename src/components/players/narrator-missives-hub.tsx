@@ -70,6 +70,6 @@ export function NarratorMissivasHub({
    <div><strong>{openRound===null?'Fechada':openRound}</strong><span>Rodada atual (global)</span></div>
   </div>
   {statsError&&<p role="alert">Não foi possível atualizar os indicadores dos grupos.</p>}
-  <MissivasTab data={data} me={me} groupHouseIds={houseIds} filterHost={filterHost} onSave={onSave} onError={onError} onManage={onManage}/>
+  <MissivasTab data={data} me={me} groupHouseIds={houseIds} filterHost={filterHost??null} onSave={onSave} onError={onError} onManage={onManage}/>
  </section>;
 }
