@@ -1,4 +1,4 @@
-import {useId,useState} from 'react';
+import {useId,useState,type FormEvent} from 'react';
 import {Button} from '@/components/ui/button';
 import type {HouseState,Unit} from '@/lib/house/types';
 
@@ -35,7 +35,7 @@ export function UnitCommanderAssignment({unit,court,commanders,canEdit,busy,onAs
  const target=mode==='court'?candidates.find(p=>p.id===selected)?.name??'':newName.trim();
  const valid=target.length>0&&target.length<=160&&target!==unit.commanderName;
 
- async function assign(event:React.FormEvent<HTMLFormElement>){
+ async function assign(event:FormEvent<HTMLFormElement>){
   event.preventDefault();
   if(!valid||saving||!allowed)return;
   setError('');setSaving(true);
@@ -56,7 +56,7 @@ export function UnitCommanderAssignment({unit,court,commanders,canEdit,busy,onAs
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível atribuir o comandante.');}
   finally{setSaving(false);}
  }
- return <span className="military-commander-control">
+ return <div className="military-commander-control">
   {canEdit&&!unit.destroyed?
    <button type="button" className="military-commander-trigger"
     aria-controls={formId} aria-expanded={open} disabled={busy||saving}
@@ -91,5 +91,5 @@ export function UnitCommanderAssignment({unit,court,commanders,canEdit,busy,onAs
     <Button type="button" size="sm" variant="outline" onClick={()=>{setOpen(false);setError('');}}>Cancelar</Button>
    </div>
   </form>}
- </span>;
+ </div>;
 }
