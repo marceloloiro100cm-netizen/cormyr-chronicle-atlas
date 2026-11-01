@@ -10,7 +10,7 @@
 
 ## Lote 11: vínculo canônico, segurança e persistência de rascunhos
 - `migration.functions.ts`: leitura única por registro e Casa, `requireSupabaseAuth`, verificação de Narrador ativo antes e depois da consulta, RLS do registro e vínculos de fontes.
-- `drizzle/migrations/0070_character_v2_assisted_drafts.sql`: **migration preparada, não executada**. Acrescenta rascunhos privados e diário imutável de operações. Apenas Narrador ativo lê; RLS revoga SELECT de jogadores; writes acontecem por RPC `stage_character_v2_draft` / `review_character_v2_draft` depois de vincular explicitamente pessoa canônica e origem.
+- `docs/sql-drafts/0070_character_v2_assisted_drafts.sql`: **minuta SQL isolada do catálogo ativo, não executada**. Acrescenta rascunhos privados e diário imutável de operações. Apenas Narrador ativo lê; RLS revoga SELECT de jogadores; writes acontecem por RPC `stage_character_v2_draft` / `review_character_v2_draft` depois de vincular explicitamente pessoa canônica e origem.
 - Critérios: ID da fonte + versão + MD5 do conteúdo no momento da operação, Casa consistente, personagem revisado, vínculo em `character_source_links`, lock transacional, ID de operação e justificativa. A fonte original de `campaign_records` **nunca é editada** por essas RPCs.
 - A migration depende da existência e aplicação de 0062/0063 e das funções de acesso; **NÃO executá-la sem inventário das migrations em produção e backup testado**.
 - A edição de V2 e XP/Destino por jogadores **não foi habilitada**. RPC de compra com saldo canônico e controle de autorização na gravação exige homologação funcional e testes de conflito em banco isolado; não confiar no motor de cliente.
@@ -26,7 +26,7 @@
 ## Critérios de saída e pendências de produção
 1. CI com testes de unidades, TypeScript e build — necessário para integrar código.
 2. Inventário live do Supabase (migrations, RLS e dados) e backup restaurado em ambiente isolado — **pendente**.
-3. Aplicação de migration 0070, ensaio de funções em staging e auditoria contra acesso indevido — **pendente**.
+3. Revisão e posterior promoção controlada da minuta 0070 ao catálogo de migrations (somente após preflight), seguida da aplicação, ensaio de funções em staging e auditoria contra acesso indevido — **pendente**.
 4. Conferência editorial de regras de armamento, ferimentos, benefícios e defeitos ainda narrativos — **pendente**.
 5. Migração e aceite explícito de Aldaeric e amostra de outras Casas, com controle de alterações posteriores — **pendente**.
 6. RPC servidor para compras reais de XP/Destino e tratamentos de concorrência — **pendente**.
