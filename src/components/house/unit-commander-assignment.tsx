@@ -9,6 +9,7 @@ type Props={
  commanders:CommanderRecord[];
  canEdit:boolean;
  busy:boolean;
+ emptyLabel?:string;
  onAssign:(args:Record<string,unknown>)=>Promise<boolean>;
 };
 
@@ -17,7 +18,7 @@ type Props={
  * The existing unit_state operation commits the change and atomically creates
  * a house-visible NPC + Court link if the entered commander does not exist.
  */
-export function UnitCommanderAssignment({unit,court,commanders,canEdit,busy,onAssign}:Props){
+export function UnitCommanderAssignment({unit,court,commanders,canEdit,busy,emptyLabel='Sem comandante',onAssign}:Props){
  const formId=useId();
  const candidates=court.flatMap(member=>{
   const existing=member.npcId?commanders.find(n=>n.id===member.npcId):undefined;
@@ -31,7 +32,7 @@ export function UnitCommanderAssignment({unit,court,commanders,canEdit,busy,onAs
  const [error,setError]=useState('');
  const [saving,setSaving]=useState(false);
  const allowed=canEdit&&!busy&&!unit.destroyed;
- const label=unit.commanderName?.trim()||'Sem comandante';
+ const label=unit.commanderName?.trim()||emptyLabel;
  const target=mode==='court'?candidates.find(p=>p.id===selected)?.name??'':newName.trim();
  const valid=target.length>0&&target.length<=160&&target!==unit.commanderName;
 
