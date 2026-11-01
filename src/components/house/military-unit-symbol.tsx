@@ -1,61 +1,59 @@
-import {
- Anchor, Castle, Coins, Compass, Cross, Crosshair, Crown, Flame,
- Footprints, KeyRound, Leaf, PawPrint, Pickaxe, Shield, Ship, Swords, Tent, Wheat,
- type LucideIcon
-} from 'lucide-react';
-import { UNIT_TYPES } from '@/lib/house/engine';
+import {Shield} from 'lucide-react';
+import {UNIT_TYPES} from '@/lib/house/engine';
 
 /**
- * Original heraldic pictograms for the 17 unit types of Cormyr.
- * These are military role badges, not the noble family's coat of arms.
- * Keys match UNIT_TYPES.id, never translated labels or an image URL.
+ * Official military unit banners, provided by the Cormyr narrator in Google Drive.
+ * One asset per canonical unit type, independent of noble-house heraldry.
+ * Files are committed locally to keep them available without Google Drive login.
  */
-const SYMBOLS:Record<string,{icon:LucideIcon|null;field:string;name:string}>={
- support:{icon:Tent,field:'#304a61',name:'Apoio · tenda de campanha'},
- archers:{icon:Crosshair,field:'#2b4d36',name:'Arqueiros · alvo de flechas'},
- scouts:{icon:PawPrint,field:'#62482f',name:'Batedores · rastro de animal'},
- cavalry:{icon:null,field:'#74382e',name:'Cavalaria · cavalo de guerra'},
- criminals:{icon:KeyRound,field:'#282b33',name:'Criminosos · chave clandestina'},
- crusaders:{icon:Cross,field:'#796341',name:'Cruzados · cruz de campanha'},
- engineers:{icon:Pickaxe,field:'#584063',name:'Engenheiros · ferramenta de cerco'},
- special:{icon:Compass,field:'#344b63',name:'Especial · estrela dos caminhos'},
- 'personal-guard':{icon:Crown,field:'#947029',name:'Guarda pessoal · coroa protegida'},
- garrison:{icon:Castle,field:'#4f4c4e',name:'Guarnição · fortaleza'},
- guerrillas:{icon:Leaf,field:'#365241',name:'Guerrilheiros · folha das matas'},
- infantry:{icon:Swords,field:'#752d31',name:'Infantaria · armas cruzadas'},
- sailors:{icon:Anchor,field:'#25576b',name:'Marinheiros · âncora'},
- mercenaries:{icon:Coins,field:'#60482f',name:'Mercenários · moedas'},
- warships:{icon:Ship,field:'#273f5b',name:'Navios de guerra · navio à vela'},
- levies:{icon:Wheat,field:'#846a45',name:'Plebeus recrutados · trigo das aldeias'},
- raiders:{icon:Flame,field:'#a34c24',name:'Saqueadores · tocha de ataque'},
+const SYMBOLS:Record<string,{file:string;field:string;name:string}>={
+ support:{file:'01_apoio.jpg',field:'#304a61',name:'Apoio · tenda de campanha'},
+ archers:{file:'02_arqueiros.jpg',field:'#2b4d36',name:'Arqueiros · arco e flecha'},
+ scouts:{file:'03_batedores.jpg',field:'#62482f',name:'Batedores · exploração'},
+ cavalry:{file:'04_cavalaria.jpg',field:'#74382e',name:'Cavalaria · cavalo de guerra'},
+ criminals:{file:'05_criminosos.jpg',field:'#282b33',name:'Criminosos · clandestinidade'},
+ crusaders:{file:'06_cruzados.jpg',field:'#796341',name:'Cruzados · cruz de campanha'},
+ engineers:{file:'07_engenheiros.jpg',field:'#584063',name:'Engenheiros · ferramentas de cerco'},
+ special:{file:'08_especial.jpg',field:'#344b63',name:'Especial · estrela dos caminhos'},
+ 'personal-guard':{file:'09_guarda_pessoal.jpg',field:'#947029',name:'Guarda pessoal · coroa protegida'},
+ garrison:{file:'10_guarnicao.jpg',field:'#4f4c4e',name:'Guarnição · torre defensiva'},
+ guerrillas:{file:'11_guerrilheiros.jpg',field:'#365241',name:'Guerrilheiros · serpente'},
+ infantry:{file:'12_infantaria.jpg',field:'#752d31',name:'Infantaria · armas cruzadas'},
+ sailors:{file:'13_marinheiros.jpg',field:'#25576b',name:'Marinheiros · âncora'},
+ mercenaries:{file:'14_mercenarios.jpg',field:'#60482f',name:'Mercenários · moedas'},
+ warships:{file:'15_navios_de_guerra.jpg',field:'#273f5b',name:'Navios de guerra · navio à vela'},
+ levies:{file:'16_plebeus_recrutados.jpg',field:'#846a45',name:'Plebeus recrutados · serviço comum'},
+ raiders:{file:'17_saqueadores.jpg',field:'#a34c24',name:'Saqueadores · tocha de ataque'},
 };
+
+const ASSET_ROOT='/assets/military-units/';
 export const MILITARY_SYMBOL_TYPES=Object.freeze(Object.keys(SYMBOLS));
+
+/** The equipment choice determines the emblem of a mixed unit. */
 export function unitSymbolType(types:string[],equipmentTypeId?:string){
  return types.includes(equipmentTypeId??'')&&SYMBOLS[equipmentTypeId??'']
   ? equipmentTypeId! : types.find(type=>SYMBOLS[type])??'';
 }
+
+export function militaryUnitSymbolSrc(typeId?:string):string|undefined {
+ const file=SYMBOLS[typeId??'']?.file;
+ return file?ASSET_ROOT+file:undefined;
+}
+
 export function MilitaryUnitSymbol({typeId,size='large'}:{typeId?:string;size?:'large'|'small'}){
  const mark=SYMBOLS[typeId??''];
- const Icon=mark?.icon??Shield;
- const description=mark?.name??'Unidade militar de tipo não identificado';
- return <div role="img" aria-label={'Símbolo militar: '+description}
+ const src=militaryUnitSymbolSrc(typeId);
+ return <div role="img" aria-label={'Símbolo militar: '+(mark?.name??'Unidade militar de tipo não identificado')}
   className={'military-unit-symbol military-unit-symbol--'+size}
   style={{backgroundColor:mark?.field??'#66566a'}}>
-  <svg viewBox="0 0 80 92" className="military-unit-banner" aria-hidden="true">
-   <path d="M5 5H75V57Q74 69 40 87Q6 69 5 57Z" fill="none" stroke="#d7b67b" strokeWidth="3"/>
-   <path d="M10 10H70V55Q70 65 40 81Q10 65 10 55Z" fill="none" stroke="#f0dcb0" strokeWidth="1" opacity=".6"/>
-  </svg>
-  {typeId==='cavalry'
-   ? <svg viewBox="0 0 64 64" className="military-unit-pictogram military-unit-horse" aria-hidden="true">
-      <path d="M16 47L20 38L18 27L25 16L37 11L44 16L42 25L49 31L46 41L38 40L37 48Z" fill="#ecd3a0" stroke="#f4dfba" strokeWidth="2" strokeLinejoin="round"/>
-      <path d="M28 17L25 9L21 17M38 17L39 9L43 17" fill="#ecd3a0" stroke="#f4dfba" strokeWidth="2"/>
-      <path d="M39 29L44 29M22 36L27 39" stroke="#533b36" strokeWidth="3" strokeLinecap="round"/>
-      <path d="M13 51H51" stroke="#f4dfba" strokeWidth="3" strokeLinecap="round"/>
-     </svg>
-   : <Icon className="military-unit-pictogram" aria-hidden="true" strokeWidth={2.2}/>}
+  {src
+   ? <img src={src} alt="" className="military-unit-artwork"
+      loading={size==='small'?'lazy':'eager'} decoding="async"/>
+   : <Shield className="military-unit-pictogram" aria-hidden="true"/>}
  </div>;
 }
-/** Used by tests so an unmapped catalog type cannot silently show the generic shield. */
+
+/** Fails CI when a catalog type lacks its own official image. */
 export function missingMilitarySymbols(){
  return UNIT_TYPES.filter(type=>!SYMBOLS[type.id]).map(type=>type.id);
 }
