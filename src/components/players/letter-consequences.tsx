@@ -1,4 +1,4 @@
-import {useRef,useState} from 'react';
+import {useRef,useState,type FormEvent} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
 import {Button} from '@/components/ui/button';
@@ -17,7 +17,7 @@ function safeChanges(value:unknown):Partial<Record<Resource,number>>{
 export function consequenceLabel(changes:unknown){
  const values=safeChanges(changes);
  return RESOURCE_KEYS.filter(resource=>values[resource]!==undefined&&values[resource]!==0)
-  .map(resource=>RESOURCE_NAMES[resource]+' '+(values[resource]!>0?'+':'')+values[resource]).join('; ');
+  .map(resource=>RESOURCE_NAMES[resource]+' '+((values[resource]??0)>0?'+':'')+values[resource]).join('; ');
 }
 
 type Props={
@@ -47,7 +47,7 @@ export function LetterConsequences({letterId,houses,suggestedHouse,admin,items,d
   if(r.error||!r.data)throw new Error('Ficha não encontrada ou sem permissão de leitura.');
   return r.data.version;
  }
- async function apply(e:React.FormEvent<HTMLFormElement>){
+ async function apply(e:FormEvent<HTMLFormElement>){
   e.preventDefault();if(busy)return;
   if(!house){onError('Selecione a Casa que sofrerá a consequência.');return;}
   const effective=Object.fromEntries(RESOURCE_KEYS.filter(k=>changes[k]!==0).map(k=>[k,changes[k]]));
