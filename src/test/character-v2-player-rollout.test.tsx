@@ -41,6 +41,9 @@ describe('Implantação de consulta V2 — fichas reais legadas',()=>{
   expect(screen.getByText('Lógica (2)')).toBeInTheDocument();
   expect(screen.getByText(/Nenhum ponto de XP, Destino, qualidade ou atributo ausente/)).toBeInTheDocument();
   expect(screen.queryByRole('button',{name:/comprar|subir|adquirir/i})).not.toBeInTheDocument();
+  // Avisos internos continuam no diagnóstico, mas não aparecem no layout.
+  expect(screen.queryByText(/Conferência e pendências da importação/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Graus extraídos de planilha legada/)).not.toBeInTheDocument();
  });
  it('deriva somente dados com todas as dependências, nunca inventa Movimento/Corrida',()=>{
   const result=buildCharacterPlayerPreview(record,'erdenor')!;
