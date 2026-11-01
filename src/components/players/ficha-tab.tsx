@@ -17,6 +17,7 @@ import type { RecordRow } from "./shared";
 import type { Panel } from "./panel-data";
 import { RecordEditor } from "./records";
 import { FichaPersonagemForm, FichaCasaForm } from "./ficha-form";
+import {CharacterV2NarratorReview} from '@/components/character-v2/narrator-review';
 
 export function FichaTab({
   current,
@@ -25,9 +26,11 @@ export function FichaTab({
   onSave,
   npcManager,
   playerId,
+  admin=false,
 }: {
   npcManager?: ReactNode;
   playerId?:string|undefined;
+  admin?:boolean;
   current: Panel["houses"][number];
   records: RecordRow[];
   canEdit: boolean;
@@ -144,6 +147,7 @@ export function FichaTab({
       {view === "character" && (
         <>
           <h2>Fichas dos personagens · Lordes e Herdeiros</h2>
+          {admin&&<CharacterV2NarratorReview key={current.id} houseId={current.id} records={records}/> }
           {canEdit&&<ChronicleCharacterEditor key={'new-'+current.id} houseId={current.id} houseName={current.name} playerId={playerId} canEdit={canEdit} statusCap={statusCap} onSave={onSave}/>}
           {structured.map(({row,sheet})=><div key={row.id+'-'+row.version}>{ageLine(row.id)}<ChronicleCharacterEditor row={row} initial={sheet} houseId={current.id} houseName={current.name} playerId={playerId} canEdit={canEdit} statusCap={statusCap} onSave={onSave}/></div>)}
           <h2>Ficha do Lorde importada (legado)</h2>
