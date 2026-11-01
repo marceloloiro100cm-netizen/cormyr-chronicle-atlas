@@ -95,6 +95,7 @@ export function CharacterV2PlayerSheet({record,houseId,canEdit=false,onEdit}:{
  const preview=buildCharacterPlayerPreview(record,houseId);
  if(!preview)return null;
  const {character,known,stats,specializations,traitNotes}=preview;
+ const sourceVersion=preview.sourceVersion;
  async function download(){
   if(downloading)return;
   setDownloading(true);
