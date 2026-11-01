@@ -686,3 +686,28 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 .campaign-trash-notice{margin:10px 0 14px;padding:10px 14px;border-left:4px solid #a56e28;background:#e0bc76;color:#3b2b15;border-radius:4px;font-size:14px}
 .campaign-trash .campaign-letter{border-left:3px solid #a56e28}
 .campaign-trash .campaign-reply-card{border-left-color:#a56e28}
+
+
+/* Missivas do Narrador: filters live under the purple navigation, never above the letters. */
+.campaign-side-column{position:sticky;top:24px;align-self:start;min-width:0}
+.campaign-side-column .campaign-side{position:static}
+.campaign-layout--mail{grid-template-columns:minmax(248px,284px) minmax(0,1fr);gap:24px}
+.campaign-layout--mail>.campaign-side-column{top:16px;display:grid;gap:14px;align-content:start;max-height:calc(100vh - 32px);overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
+.narrator-mail-filter-slot:empty{display:none}
+.narrator-mail-filter-slot .campaign-mail-side{position:static;max-height:none;overflow:visible;display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding:14px}
+.narrator-mail-filter-slot .campaign-mail-filter-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.narrator-mail-filter-slot .campaign-mail-side label{min-width:0}
+.narrator-mail-filter-slot .campaign-mail-side select,
+.narrator-mail-filter-slot .campaign-mail-side input{width:100%;min-width:0}
+.narrator-mail-filter-slot .campaign-mail-side .campaign-actions{flex-wrap:wrap;gap:4px}
+.narrator-mail-hub .campaign-mail-layout--narrator{grid-template-columns:minmax(0,1fr);min-width:0}
+.campaign-mail-filter-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:4px 0;text-align:left;color:var(--foreground);font-size:12px;font-weight:800;letter-spacing:.04em;background:none;border:0;cursor:pointer}
+.campaign-mail-filter-toggle span:last-child{font-size:11px;font-weight:600;letter-spacing:0;color:var(--muted-foreground)}
+.campaign-mail-filter-toggle:focus-visible{outline:2px solid var(--campaign-gold);outline-offset:4px}
+.campaign-mail-filter-fields{display:grid;gap:12px}
+@media(max-width:900px){
+ .campaign-side-column,.campaign-layout--mail>.campaign-side-column{position:static;top:auto;max-height:none;overflow:visible}
+ .campaign-layout--mail{grid-template-columns:minmax(0,1fr)}
+ .campaign-side-column .campaign-side{position:static}
+ .narrator-mail-filter-slot .campaign-mail-side{max-height:none}
+}
