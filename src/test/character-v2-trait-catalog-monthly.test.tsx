@@ -36,7 +36,7 @@ describe('Biblioteca de qualidades e defeitos — livro básico',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Adicionar qualidade'}));
   expect(value).toBe('Abastado');
   rerender(<TraitCatalogPicker kind="benefit" value={value} onChange={v=>{value=v;}}/>);
-  expect(screen.getByText('Abastado')).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Remover Abastado'})).toBeInTheDocument();
   expect(readStructuredTraitText(value,'')).toEqual(expect.arrayContaining([
    expect.objectContaining({kind:'quality',catalogTrait:expect.objectContaining({id:'abastado'}),status:'imported_unverified'})
   ]));
