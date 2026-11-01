@@ -8,7 +8,6 @@ import {campaignTimeView,useCampaignTime} from '@/lib/calendar/campaign-time';
 import {useCampaignCalendarRealtime} from './realtime';
 import {NarratorCharacterRegistry} from './narrator-character-registry';
 import {NarratorCharacterAges} from './narrator-character-ages';
-import {CampaignChronology} from './chronology';
 import {TemporalConsumerHub} from './temporal-consumer-hub';
 import {validateAgeDashboard} from '@/lib/calendar/character-ages';
 import {monthFromHarptosDate,validateHouseTimeImpact} from '@/lib/calendar/house-time-impact';
@@ -211,7 +210,6 @@ export function NarratorCalendar(){
    <a href="#temporal-eventos">Eventos oficiais</a>
    <a href="#temporal-posses">Posses e projetos</a>
    <a href="#temporal-conexoes">Conexões temporais</a>
-   <a href="#temporal-cronologia">Cronologia</a>
    <a href="#temporal-genealogias">Nobres e genealogias</a>
    <a href="#temporal-idades">Idades anuais</a>
    <a href="#temporal-historico">Histórico</a>
@@ -267,7 +265,6 @@ export function NarratorCalendar(){
     </details>:<p className="house-caption">Selecione um avanço de mês para consultar o impacto exato em todas as Casas.</p>}
   </section>
   <TemporalConsumerHub/>
-  <CampaignChronology year={calendar.data.year} month={calendar.data.month} anchorId="temporal-cronologia"/>
   <NarratorCharacterRegistry/>
   <NarratorCharacterAges targetYear={annualChange?projectedYear:undefined}/>
   <div className="narrator-calendar-panel" id="temporal-eventos">

@@ -7,7 +7,6 @@ import {Button} from '@/components/ui/button';
 import {MONTHS,MONTH_DETAILS,FESTIVALS,annualEvents,dateKey,formatDate,formatCampaignPeriod,type CalendarEvent} from '@/lib/calendar/harptos';
 import {useCampaignCalendarRealtime} from './realtime';
 import './harptos.css';
-import {CampaignChronology} from './chronology';
 
 export type CalendarState=CampaignTimeSnapshot;
 function Symbol({kind}:{kind:CalendarEvent['kind']}){const Icon=kind==='mail'?Flame:kind==='season'?Leaf:Shield;return <Icon size={16} className={'harptos-'+kind} aria-hidden="true"/>;}
@@ -43,7 +42,6 @@ export function CampaignCalendar(){
  {[0,1,2].map(row=><div key={row} className={calendar.data&&calendar.data.year===year&&calendar.data.month===month&&!calendar.data.festival&&Math.floor((calendar.data.day-1)/10)===row?'harptos-current-desdia':undefined}><p className="harptos-day-label">{row+1}ª désdia</p><div className="harptos-days">{Array.from({length:10},(_,i)=>{const day=row*10+i+1;return cell(dateKey({year,month,day,festival:null}),String(day));})}</div></div>)}
  <div className="harptos-festivals">{FESTIVALS.filter(f=>f.month===month&&(f.id!=='shieldmeet'||year%4===0)).map(f=>cell(dateKey({year,month,day:30,festival:f.id}),f.name))}</div>
  <div id="harptos-events" className="harptos-events" aria-live="polite"><h4>{formatDate(selected)}</h4>{onDay(selected).length?onDay(selected).map(e=><div className="harptos-event" key={e.id}><Symbol kind={e.kind}/><div><strong>{e.title}</strong>{e.description&&<p>{e.description}</p>}</div></div>):<p>Nenhum evento visível neste dia.</p>}</div>
- <CampaignChronology year={year} month={month}/>
  <p className="text-sm text-muted-foreground">Passe o mouse, use o teclado ou toque em um dia. O calendário respeita o acesso de cada jogador. Missivas antigas sem data não recebem uma data presumida.</p>
  {(calendar.error||mail.error||published.error)&&<p role="alert">Não foi possível carregar {calendar.error?'a data global':published.error?'os eventos publicados':'as missivas'}. As festas continuam disponíveis para consulta. Verifique a migração 0038 e tente novamente. <Button onClick={()=>{calendar.refetch();mail.refetch();published.refetch();}}>Recarregar</Button></p>}
 
