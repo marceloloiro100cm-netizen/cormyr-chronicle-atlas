@@ -90,7 +90,7 @@ export function CharacterV2PlayerSheet({record,houseId}:{
 }){
  const preview=buildCharacterPlayerPreview(record,houseId);
  if(!preview)return null;
- const {character,known,stats,allPending,specializations,traitNotes}=preview;
+ const {character,known,stats,specializations,traitNotes}=preview;
  return <section className="character-v2-preview" aria-label={'Nova apresentação da ficha de '+character.displayName}>
   <header className="character-v2-status">
    <p className="text-xs font-semibold tracking-wide">FICHA DE PERSONAGEM · VISUALIZAÇÃO V2</p>
@@ -156,11 +156,5 @@ export function CharacterV2PlayerSheet({record,houseId}:{
     </div>
    </div>)}
   </section>
-  <details className="character-v2-section">
-   <summary>Conferência e pendências da importação ({allPending.length})</summary>
-   <ul className="list-disc pl-6 text-sm">
-    {allPending.map((warning,i)=><li key={i}>{warning}</li>)}
-   </ul>
-  </details>
  </section>;
 }
