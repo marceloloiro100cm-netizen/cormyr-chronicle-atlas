@@ -522,7 +522,7 @@
 .narrator-mail-hub{min-width:0;display:grid;gap:16px}
 .narrator-mail-hub-heading h2{font:normal 30px/1.15 Georgia,serif;margin:4px 0 8px}
 .narrator-mail-hub-heading p:last-child{margin:0;color:var(--muted-foreground);font-size:14px;line-height:1.5}
-.narrator-mail-hub-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.narrator-mail-hub-overview{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
 .narrator-mail-hub-overview>div{display:flex;flex-direction:column;gap:4px;min-width:0;background:var(--campaign-paper);border:1px solid var(--border);border-radius:7px;padding:12px}
 .narrator-mail-hub-overview strong{font:normal 24px/1.1 Georgia,serif;color:var(--primary)}
 .narrator-mail-hub-overview span{font-size:12px;color:var(--muted-foreground)}
@@ -535,6 +535,17 @@
 @media(max-width:600px){
  .narrator-mail-hub-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
  .narrator-mail-hub .campaign-mail-side{grid-template-columns:minmax(0,1fr)}
+}
+
+/* Cards fit in a single row on desktop, then adapt to narrower viewports. */
+@media(max-width:1100px){
+ .narrator-mail-hub-overview{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:750px){
+ .narrator-mail-hub-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:520px){
+ .narrator-mail-hub-overview{grid-template-columns:minmax(0,1fr)}
 }
 
 /* Narrator mail regions: two combinable compact filters, never one radio group. */
