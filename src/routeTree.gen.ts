@@ -18,9 +18,9 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as AuthenticatedJogadoresRouteImport } from './routes/_authenticated/jogadores'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicCatalogRouteImport } from './routes/api/public/catalog'
-import { Route as ApiPublicTranslationsRouteImport } from './routes/api/public/translations'
 import { Route as ApiPublicGalleryImageRouteImport } from './routes/api/public/gallery-image'
 import { Route as ApiPublicGmContentRouteImport } from './routes/api/public/gm-content'
+import { Route as ApiPublicTranslationsRouteImport } from './routes/api/public/translations'
 import { Route as ApiPublicJobsDriveSyncRouteImport } from './routes/api/public/jobs/drive-sync'
 
 const IndexRoute = IndexRouteImport.update({
@@ -68,11 +68,6 @@ const ApiPublicCatalogRoute = ApiPublicCatalogRouteImport.update({
   path: '/api/public/catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicTranslationsRoute = ApiPublicTranslationsRouteImport.update({
-  id: '/api/public/translations',
-  path: '/api/public/translations',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicGalleryImageRoute = ApiPublicGalleryImageRouteImport.update({
   id: '/api/public/gallery-image',
   path: '/api/public/gallery-image',
@@ -81,6 +76,11 @@ const ApiPublicGalleryImageRoute = ApiPublicGalleryImageRouteImport.update({
 const ApiPublicGmContentRoute = ApiPublicGmContentRouteImport.update({
   id: '/api/public/gm-content',
   path: '/api/public/gm-content',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicTranslationsRoute = ApiPublicTranslationsRouteImport.update({
+  id: '/api/public/translations',
+  path: '/api/public/translations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicJobsDriveSyncRoute = ApiPublicJobsDriveSyncRouteImport.update({
@@ -98,9 +98,9 @@ export interface FileRoutesByFullPath {
   '/jogadores': typeof AuthenticatedJogadoresRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/catalog': typeof ApiPublicCatalogRoute
-  '/api/public/translations': typeof ApiPublicTranslationsRoute
   '/api/public/gallery-image': typeof ApiPublicGalleryImageRoute
   '/api/public/gm-content': typeof ApiPublicGmContentRoute
+  '/api/public/translations': typeof ApiPublicTranslationsRoute
   '/api/public/jobs/drive-sync': typeof ApiPublicJobsDriveSyncRoute
 }
 export interface FileRoutesByTo {
@@ -112,9 +112,9 @@ export interface FileRoutesByTo {
   '/jogadores': typeof AuthenticatedJogadoresRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/catalog': typeof ApiPublicCatalogRoute
-  '/api/public/translations': typeof ApiPublicTranslationsRoute
   '/api/public/gallery-image': typeof ApiPublicGalleryImageRoute
   '/api/public/gm-content': typeof ApiPublicGmContentRoute
+  '/api/public/translations': typeof ApiPublicTranslationsRoute
   '/api/public/jobs/drive-sync': typeof ApiPublicJobsDriveSyncRoute
 }
 export interface FileRoutesById {
@@ -128,9 +128,9 @@ export interface FileRoutesById {
   '/_authenticated/jogadores': typeof AuthenticatedJogadoresRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/catalog': typeof ApiPublicCatalogRoute
-  '/api/public/translations': typeof ApiPublicTranslationsRoute
   '/api/public/gallery-image': typeof ApiPublicGalleryImageRoute
   '/api/public/gm-content': typeof ApiPublicGmContentRoute
+  '/api/public/translations': typeof ApiPublicTranslationsRoute
   '/api/public/jobs/drive-sync': typeof ApiPublicJobsDriveSyncRoute
 }
 export interface FileRouteTypes {
@@ -144,9 +144,9 @@ export interface FileRouteTypes {
     | '/jogadores'
     | '/.lovable/oauth/consent'
     | '/api/public/catalog'
-    | '/api/public/translations'
     | '/api/public/gallery-image'
     | '/api/public/gm-content'
+    | '/api/public/translations'
     | '/api/public/jobs/drive-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -158,9 +158,9 @@ export interface FileRouteTypes {
     | '/jogadores'
     | '/.lovable/oauth/consent'
     | '/api/public/catalog'
-    | '/api/public/translations'
     | '/api/public/gallery-image'
     | '/api/public/gm-content'
+    | '/api/public/translations'
     | '/api/public/jobs/drive-sync'
   id:
     | '__root__'
@@ -173,9 +173,9 @@ export interface FileRouteTypes {
     | '/_authenticated/jogadores'
     | '/.lovable/oauth/consent'
     | '/api/public/catalog'
-    | '/api/public/translations'
     | '/api/public/gallery-image'
     | '/api/public/gm-content'
+    | '/api/public/translations'
     | '/api/public/jobs/drive-sync'
   fileRoutesById: FileRoutesById
 }
@@ -188,9 +188,9 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiPublicCatalogRoute: typeof ApiPublicCatalogRoute
-  ApiPublicTranslationsRoute: typeof ApiPublicTranslationsRoute
   ApiPublicGalleryImageRoute: typeof ApiPublicGalleryImageRoute
   ApiPublicGmContentRoute: typeof ApiPublicGmContentRoute
+  ApiPublicTranslationsRoute: typeof ApiPublicTranslationsRoute
   ApiPublicJobsDriveSyncRoute: typeof ApiPublicJobsDriveSyncRoute
 }
 
@@ -259,13 +259,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/translations': {
-      id: '/api/public/translations'
-      path: '/api/public/translations'
-      fullPath: '/api/public/translations'
-      preLoaderRoute: typeof ApiPublicTranslationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/gallery-image': {
       id: '/api/public/gallery-image'
       path: '/api/public/gallery-image'
@@ -278,6 +271,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/gm-content'
       fullPath: '/api/public/gm-content'
       preLoaderRoute: typeof ApiPublicGmContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/translations': {
+      id: '/api/public/translations'
+      path: '/api/public/translations'
+      fullPath: '/api/public/translations'
+      preLoaderRoute: typeof ApiPublicTranslationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/jobs/drive-sync': {
@@ -311,9 +311,9 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiPublicCatalogRoute: ApiPublicCatalogRoute,
-  ApiPublicTranslationsRoute: ApiPublicTranslationsRoute,
   ApiPublicGalleryImageRoute: ApiPublicGalleryImageRoute,
   ApiPublicGmContentRoute: ApiPublicGmContentRoute,
+  ApiPublicTranslationsRoute: ApiPublicTranslationsRoute,
   ApiPublicJobsDriveSyncRoute: ApiPublicJobsDriveSyncRoute,
 }
 export const routeTree = rootRouteImport
