@@ -24,7 +24,17 @@ function scoreBand(value:number){
  return '71 ou mais';
 }
 const signed=(n:number)=>n>0?'+'+n:String(n);
-export function ResourceSummary({state}:{state:HouseState}) {const b=balances(state);return <div className="house-resource-bar" aria-label="Resumo dos recursos">{RESOURCE_KEYS.map(r=>{const Icon=ICONS[r];return <div key={r} className="house-resource"><div><Icon size={16}/><span>{RESOURCE_NAMES[r]}</span></div><strong>{b.total[r].toLocaleString('pt-BR')}<small>Total</small></strong>{r==='influence'&&<p className="house-caption">Status Máx. do Lorde: <strong>{maxHouseStatus(b.total.influence)}</strong></p>}<details><summary>{b.available[r]} disponível</summary><dl><dt>Alocado</dt><dd>{b.allocated[r]}</dd><dt>Em obras</dt><dd>{b.committed[r]}</dd><dt>Ganhos / perdas</dt><dd>{b.permanent[r]}</dd></dl>
+export function ResourceSummary({state}:{state:HouseState}) {
+ const b=balances(state);
+ const effects=Object.fromEntries(RESOURCE_KEYS.map(resource=>[resource,{
+   allocated:(state.mailConsequences??[]).filter(event=>event.active).reduce((sum,event)=>sum+Math.max(0,-(event.changes[resource]??0)),0),
+   bonus:(state.mailConsequences??[]).filter(event=>event.active).reduce((sum,event)=>sum+Math.max(0,event.changes[resource]??0),0),
+ }])) as Record<typeof RESOURCE_KEYS[number],{allocated:number;bonus:number}>;
+ return <div className="house-resource-bar" aria-label="Resumo dos recursos">{RESOURCE_KEYS.map(r=>{const Icon=ICONS[r];return <div key={r} className="house-resource"><div><Icon size={16}/><span>{RESOURCE_NAMES[r]}</span></div><strong>{b.total[r].toLocaleString('pt-BR')}<small>Total</small></strong>{r==='influence'&&<p className="house-caption">Status Máx. do Lorde: <strong>{maxHouseStatus(b.total.influence)}</strong></p>}<details><summary>{b.available[r]} disponível</summary><dl><dt>Alocado</dt><dd>{b.allocated[r]}</dd><dt>Em obras</dt><dd>{b.committed[r]}</dd><dt>Ganhos / perdas</dt><dd>{b.permanent[r]}</dd>
+{(effects[r].allocated>0||effects[r].bonus>0)&&<>
+ <dt>Missivas · eventos</dt>
+ <dd>{effects[r].allocated>0?`${effects[r].allocated} alocado`:''}{effects[r].allocated>0&&effects[r].bonus>0?' · ':''}{effects[r].bonus>0?`+${effects[r].bonus} bônus`:''}</dd>
+</>}</dl>
 <p className="house-caption">Faixa da pontuação: {scoreBand(b.total[r])} · {DESCRIPTIONS[r]}.</p>
 {r==='law'&&<p className="house-caption">Modificador de Lei na Sorte da Casa: <strong>{signed(fortuneLawModifier(b.total.law))}</strong></p>}
 {r==='population'&&<p className="house-caption">Modificador de População na Sorte da Casa: <strong>{signed(fortunePopulationModifier(b.total.population))}</strong></p>}
