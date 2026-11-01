@@ -216,10 +216,10 @@
               "description": "Data de Harptos obrigatória: AAAA-MM-DD, dias 01–30, ou AAAA-F-midwinter/greengrass/midsummer/shieldmeet/highharvestide/feast-moon. Shieldmeet apenas em anos divisíveis por 4."
             },
             "chave_envio": {
+              "description": "UUID opcional para uma nova operação; se ausente a ferramenta deriva uma chave determinística, segura para retentativas.",
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
-              "description": "UUID estável da operação; reutilizar somente para repetir o mesmo envio."
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             },
             "casa_remetente": {
               "type": "string"
@@ -262,6 +262,11 @@
                 "order_recipient"
               ]
             },
+            "assinado_por": {
+              "description": "NPC ou cargo diegético, disponível somente ao Narrador.",
+              "type": "string",
+              "maxLength": 120
+            },
             "rascunho": {
               "type": "boolean"
             },
@@ -274,7 +279,6 @@
           },
           "required": [
             "data_campanha",
-            "chave_envio",
             "assunto",
             "conteudo"
           ],
@@ -311,10 +315,18 @@
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             },
             "chave_envio": {
+              "description": "Chave de envio opcional para retentativas.",
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
-              "description": "UUID estável da operação."
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "rascunho": {
+              "type": "boolean"
+            },
+            "assinado_por": {
+              "description": "Nome do NPC remetente, somente Narrador.",
+              "type": "string",
+              "maxLength": 120
             },
             "conteudo": {
               "type": "string",
@@ -324,7 +336,6 @@
           "required": [
             "data_campanha",
             "missiva_id",
-            "chave_envio",
             "conteudo"
           ],
           "additionalProperties": false
