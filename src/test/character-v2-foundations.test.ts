@@ -46,8 +46,8 @@ describe('Character V2 — lotes 01 e 02',()=>{
   expect(ch.skillRanks.cunning).toBe(4);
   expect(ch.skillRanks.fighting).toBe(5);
   expect(ch.skillRanks).not.toHaveProperty('brawling');
-  expect(ch.source.unparsedFields.brawlingRank).toBe('3');
-  expect(ch.source.unparsedFields.destiny).toBe('4');
+  expect(ch.source.unparsedFields['brawlingRank']).toBe('3');
+  expect(ch.source.unparsedFields['destiny']).toBe('4');
   expect(ch.traits).toHaveLength(0);
   expect(ch.specialties).toHaveLength(0);
   expect(preview.warnings.some(w=>w.includes('Briga'))).toBe(true);
@@ -66,8 +66,8 @@ describe('Character V2 — lotes 01 e 02',()=>{
   const a=readCharacterV2(record(raw));
   expect(a.character?.skillRanks.cunning).toBe(4);
   expect(a.character?.skillRanks.fighting).toBe(5);
-  expect(a.character?.source.unparsedFields.corrida).toBe('0');
-  expect(a.character?.source.unparsedFields.movimento).toBe('4m+1m /28 em corrida');
+  expect(a.character?.source.unparsedFields['corrida']).toBe('0');
+  expect(a.character?.source.unparsedFields['movimento']).toBe('4m+1m /28 em corrida');
   expect(a.character?.source.unparsedFields['skill:Briga']).toBe('3');
   expect(a.character?.source.unparsedFields['specialty:Astúcia']).toBe('Lógica (2)');
   expect(a.character?.review.status).toBe('needs_review');
