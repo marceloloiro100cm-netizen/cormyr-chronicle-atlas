@@ -179,7 +179,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
         {data.admin&&letter.sender_user_id===data.user.id&&<details><summary>Leituras registradas pelos destinatários</summary>{data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).length===0?<p>Nenhuma leitura registrada.</p>:data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).map(r=><p key={r.user_id}>{data.players.find(p=>p.user_id===r.user_id)?.name??'Destinatário autorizado'} · {date(r.read_at)}{isLetterRead(letter.id,r,answers)?'':' · Há respostas posteriores'}</p>)}</details>}
         {!trashMode&&data.admin&&<NarratorMailNotes letterId={letter.id} userId={data.user.id}/>}
         <LetterConsequences
-          letterId={letter.id} admin={data.admin} disabled={Boolean(letter.deleted_at)}
+          letterId={letter.id} admin={data.admin} disabled={trashMode||Boolean(letter.deleted_at)}
           houses={data.houses.filter(h=>h.active).map(h=>({id:h.id,name:h.name}))}
           suggestedHouse={letter.origin_house_id??data.players.find(p=>p.id===letter.sender_player_id)?.roster_house_id??letter.recipient_house_id??''}
           items={(consequences.data??[]).filter(item=>item.letter_id===letter.id)}
