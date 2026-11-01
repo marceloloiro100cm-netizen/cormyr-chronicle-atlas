@@ -1,4 +1,5 @@
 import {createServerFn} from '@tanstack/react-start';
+import type {SupabaseClient} from '@supabase/supabase-js';
 import {z} from 'zod';
 import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
 import {reviewCharacterMigration,type CanonicalEvidence} from './migration-review';
@@ -20,13 +21,16 @@ export const loadCharacterV2MigrationPreview=createServerFn({method:'POST'})
    .select('id,house_id,player_id,kind,title,content,version,visibility')
    .eq('id',data.recordId).eq('house_id',data.houseId).eq('kind','character').maybeSingle();
   if(source.error||!source.data)throw new Error('Ficha original inacessível.');
-  const link=await context.supabase.from('character_source_links')
+  // The generated Database types do not yet include migration 0062 tables.
+  // A runtime-validated RLS client reads them without any service-role bypass.
+  const registryDb=context.supabase as unknown as SupabaseClient;
+  const link=await registryDb.from('character_source_links')
    .select('character_id,source_key')
    .eq('source_kind','campaign_record').eq('source_key',data.recordId).maybeSingle();
   if(link.error)throw new Error('Vínculo canônico não autorizado.');
   let canonical:CanonicalEvidence|null=null;
   if(link.data){
-   const person=await context.supabase.from('campaign_characters')
+   const person=await registryDb.from('campaign_characters')
     .select('id,house_id,review_status,confidence')
     .eq('id',link.data.character_id).maybeSingle();
    if(person.error)throw new Error('Identidade canônica indisponível.');
