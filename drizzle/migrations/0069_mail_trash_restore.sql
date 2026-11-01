@@ -15,7 +15,7 @@ BEGIN
   WHERE l.id=v_reply.letter_id AND l.deleted_at IS NULL AND public.can_read_letter(l))
  THEN RAISE EXCEPTION 'Resposta indisponível'; END IF;
  IF v_reply.publication_state='draft' AND v_reply.author_user_id<>auth.uid() THEN
-  RAISE EXCEPTION 'Rascunho privado de outro jogador' USING ERRCODE='42501';
+  RAISE EXCEPTION 'Rascunho privado de outro jogador';
  END IF;
  IF NOT (public.is_campaign_admin() OR v_reply.author_user_id=auth.uid()) THEN
   RAISE EXCEPTION 'Somente o autor ou o Narrador pode excluir esta resposta' USING ERRCODE='42501';
@@ -73,7 +73,7 @@ BEGIN
   RAISE EXCEPTION 'Resposta não encontrada na lixeira';
  END IF;
  IF v_reply.publication_state='draft' AND v_reply.author_user_id<>v_actor THEN
-  RAISE EXCEPTION 'Rascunho privado de outro jogador' USING ERRCODE='42501';
+  RAISE EXCEPTION 'Rascunho privado de outro jogador';
  END IF;
  IF NOT (public.is_campaign_admin() OR v_reply.author_user_id=v_actor) THEN
   RAISE EXCEPTION 'Somente o autor ou o Narrador pode recuperar esta resposta' USING ERRCODE='42501';
