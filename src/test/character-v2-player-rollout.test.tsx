@@ -39,7 +39,10 @@ describe('Implantação de consulta V2 — fichas reais legadas',()=>{
   expect(within(cunning).queryAllByRole('button')).toHaveLength(0);
   expect(screen.getByLabelText('Lidar com Animais: graduação pendente')).toBeInTheDocument();
   expect(screen.getByText('Lógica (2)')).toBeInTheDocument();
-  expect(screen.getByText(/Nenhum ponto de XP, Destino, qualidade ou atributo ausente/)).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Baixar ficha'})).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Editar ficha'})).toBeDisabled();
+  expect(screen.queryByText(/FICHA DE PERSONAGEM · VISUALIZAÇÃO V2/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Versão importada.*consulta sem edição automática/)).not.toBeInTheDocument();
   expect(screen.queryByRole('button',{name:/comprar|subir|adquirir/i})).not.toBeInTheDocument();
   // Avisos internos continuam no diagnóstico, mas não aparecem no layout.
   expect(screen.queryByText(/Conferência e pendências da importação/)).not.toBeInTheDocument();
