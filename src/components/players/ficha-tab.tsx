@@ -138,7 +138,7 @@ export function FichaTab({
               <CharacterV2PlayerSheet record={fichaLorde} houseId={current.id}/>
             </>
           ) : (
-            structured.length===0&&<p className="campaign-empty">Nenhuma ficha de personagem reconhecida. O Narrador pode cadastrar uma fonte na área de manutenção.</p>
+            structured.length===0&&<p className="campaign-empty">Nenhuma ficha de personagem reconhecida nesta Casa.</p>
           )}
           <h2>Corte</h2>
           {npcs.length === 0 && (
