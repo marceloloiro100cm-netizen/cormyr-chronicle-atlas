@@ -1672,6 +1672,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      mail_trash_page: {
+        Args: { p_filters?: Json; p_page?: number; p_size?: number }
+        Returns: Json
+      }
+      restore_campaign_letter: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
+      restore_letter_reply: {
+        Args: { p_id: string; p_version: number }
+        Returns: undefined
+      }
       apply_letter_consequence: {
         Args: {
           p_letter: string

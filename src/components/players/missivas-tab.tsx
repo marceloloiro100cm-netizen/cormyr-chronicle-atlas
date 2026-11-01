@@ -34,6 +34,7 @@ function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Res
 export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void;onManage?:(house:string)=>void;groupHouseIds?:string[]}){
   const empty={number:'',kind:'',answered:'',house:'',read:'',text:'',box:'',origin:'',court:'',unit:'',group:''};
   const [filters,setFilters]=useState(empty);
+  const trashMode=filters.box==='lixeira';
   const [compose,setCompose]=useState(false);
   const [expanded,setExpanded]=useState<Set<string>>(new Set());
   const [threads,setThreads]=useState<Set<string>>(new Set());
@@ -58,14 +59,14 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   const {data:options}=useMailOptions();
   const {data:calendar}=useCampaignTime();
   const periodDate=data.admin&&calendar?dateKey(calendar):'';
-  const saved=()=>{client.invalidateQueries({queryKey:['campaign-chronology']});client.invalidateQueries({queryKey:['calendar-events']});client.invalidateQueries({queryKey:['campaign-calendar']});client.invalidateQueries({queryKey:['noble-house']});client.invalidateQueries({queryKey:['mail-page']});client.invalidateQueries({queryKey:['mail-insights']});client.invalidateQueries({queryKey:['mail-overview-grouped']});client.invalidateQueries({queryKey:['mail-options']});onSave();};
+  const saved=()=>{client.invalidateQueries({queryKey:['campaign-chronology']});client.invalidateQueries({queryKey:['calendar-events']});client.invalidateQueries({queryKey:['campaign-calendar']});client.invalidateQueries({queryKey:['noble-house']});client.invalidateQueries({queryKey:['mail-page']});client.invalidateQueries({queryKey:['mail-trash-page']});client.invalidateQueries({queryKey:['mail-insights']});client.invalidateQueries({queryKey:['mail-overview-grouped']});client.invalidateQueries({queryKey:['mail-options']});onSave();};
   const groupKey=[...(groupHouseIds??[]),filters.group].join('|')||'all';
   useEffect(()=>{setPage(0);},[filters,groupKey]);
   useEffect(()=>{client.invalidateQueries({queryKey:['mail-page']});client.invalidateQueries({queryKey:['mail-insights']});},[data,client]);
   const [search,setSearch]=useState('');
   useEffect(()=>{const timer=setTimeout(()=>setSearch(filters.text),250);return()=>clearTimeout(timer);},[filters.text]);
   const requestFilters={...filters,text:search,...(groupActive?{group_house_ids:[...allowed]}: {})};
-  const listing=useQuery({queryKey:['mail-page',data.user.id,requestFilters,page],queryFn:async()=>{const r=await supabase.rpc('mail_page',{p_filters:requestFilters,p_page:page,p_size:20});if(r.error)throw r.error;return r.data as unknown as {total:number;letters:LetterRow[];replies:Panel['replies'];kpis?:{delivered:number;awaiting_house:number;awaiting_narrator:number;scheduled_replies_next:number;drafts:number}};}});
+  const listing=useQuery({queryKey:[trashMode?'mail-trash-page':'mail-page',data.user.id,requestFilters,page],queryFn:async()=>{const args={p_filters:requestFilters,p_page:page,p_size:20};const r=trashMode?await supabase.rpc('mail_trash_page',args):await supabase.rpc('mail_page',args);if(r.error)throw r.error;return r.data as unknown as {total:number;letters:LetterRow[];replies:Panel['replies'];kpis?:{delivered:number;awaiting_house:number;awaiting_narrator:number;scheduled_replies_next:number;drafts:number}};}});
   const allLetters=listing.data?.letters??[];
   const consequenceIds=allLetters.map(letter=>letter.id);
   const consequences=useQuery({
@@ -81,8 +82,8 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
   });
   const letters=allLetters;
   const viewReplies=listing.data?.replies??[];
-  const groups=filters.box==='enviadas'?[]:groupReceivedLetters(letters,data.user.id);
-  const mine=filters.box==='recebidas'?[]:sentLetters(letters,data.user.id);
+  const groups=trashMode||filters.box==='enviadas'?[]:groupReceivedLetters(letters,data.user.id);
+  const mine=trashMode||filters.box==='recebidas'?[]:sentLetters(letters,data.user.id);
   const myHouses=data.members.filter(m=>m.player_id===me?.id).map(m=>m.house_id);
   const isRecipient=(letter:LetterRow)=>letter.recipient_player_id===me?.id||(letter.recipient_player_id===null&&myHouses.includes(letter.recipient_house_id??''));
   const toggle=(id:string)=>setExpanded(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
@@ -100,7 +101,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
     return [['','Todos'],['none','Sem vínculo'],...[...values].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'))];
   };
   const card=(letter:LetterRow&{deleted_at?:string|null;publication_state?:string;delivery_week?:number|null},canAnswer:boolean)=>{
-    const answers=viewReplies.filter(r=>r.letter_id===letter.id&&!r.deleted_at);
+    const answers=viewReplies.filter(r=>r.letter_id===letter.id&&(trashMode?Boolean(r.deleted_at):!r.deleted_at));
     const receipt=data.receipts.find(r=>r.letter_id===letter.id&&r.user_id===data.user.id);
     const read=isLetterRead(letter.id,receipt,answers);
     const incomingReplies=answers.filter(r=>deliveredReply(r)&&r.author_user_id!==data.user.id);
@@ -114,7 +115,8 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
     const threadOpen=threads.has(letter.id);
     const to=mailRecipientLabel(letter,houseName,id=>options?.players?.find(p=>p.id===id)?.name);
     const fromHouse=houseName(letter.origin_house_id??null)??(letter.sender_player_id?houseName(data.players.find(p=>p.id===letter.sender_player_id)?.roster_house_id??null):null);
-    const canDelete=!letter.deleted_at&&(data.admin||letter.sender_user_id===data.user.id);
+    const canDelete=!trashMode&&!letter.deleted_at&&(data.admin||letter.sender_user_id===data.user.id);
+    const canRestoreLetter=trashMode&&Boolean(letter.deleted_at)&&(data.admin||letter.sender_user_id===data.user.id);
     const lastPlayerReply=answers.filter(a=>a.publication_state==='delivered'&&a.author_user_id!==data.user.id)
       .sort((a,b)=>(b.delivered_at??b.created_at).localeCompare(a.delivered_at??a.created_at))[0];
     const housePlayer=data.players.find(p=>p.active&&!p.require_password_change&&p.user_id!==data.user.id&&
@@ -124,12 +126,13 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
     return <article className={'campaign-letter'+(isOpen?'':' recolhida')} key={letter.id} id={'missiva-'+letter.id}>
       <button type="button" className="campaign-letter-toggle" aria-expanded={isOpen} onClick={()=>toggle(letter.id)}>
         <ChevronDown size={18} className={isOpen?'rotate-180 transition-transform':'transition-transform'}/>
-        <span className="campaign-eyebrow">{letter.letter_number?`Missiva ${letter.letter_number} · `:''}{letter.letter_kind==='geral'?'Geral':'Reservada'} · {narratorStage==='awaiting-house'?'Aguardando resposta da Casa · ':narratorStage==='awaiting-narrator'?'Aguardando resposta do Narrador · ':hasDeliveredAnswer(letter,answers)?'Respondida · ':''}{readStatus}{data.admin&&pendingReply?' · Há resposta em rascunho/programada':''}{letter.publication_state==='draft'?' · Rascunho':letter.publication_state==='scheduled'?` · Aguardando abertura da Semana ${letter.delivery_week}`:''}{letter.deleted_at?' · Excluída':''}</span>
+        <span className="campaign-eyebrow">{letter.letter_number?`Missiva ${letter.letter_number} · `:''}{letter.letter_kind==='geral'?'Geral':'Reservada'} · {narratorStage==='awaiting-house'?'Aguardando resposta da Casa · ':narratorStage==='awaiting-narrator'?'Aguardando resposta do Narrador · ':hasDeliveredAnswer(letter,answers)?'Respondida · ':''}{readStatus}{data.admin&&pendingReply?' · Há resposta em rascunho/programada':''}{letter.publication_state==='draft'?' · Rascunho':letter.publication_state==='scheduled'?` · Aguardando abertura da Semana ${letter.delivery_week}`:''}{letter.deleted_at?' · Excluída':trashMode?' · Resposta excluída':''}</span>
         <strong className="campaign-letter-subject">{letter.subject}</strong>
         <span className="text-muted-foreground text-sm">De: {letter.sender_name}{fromHouse?` (${fromHouse})`:''} · Para: {to} · {letter.campaign_date?formatDate(letter.campaign_date):date(letter.created_at)}{letter.historical_source?' · Arquivo histórico':''} · {mailWeekTimeline(letter.creation_week,letter.delivery_week,letter.publication_state)}{answers.length?` · ${answers.length} resposta(s)`:''}</span>
       </button>
       {isOpen&&<div className="campaign-letter-body">
         <p>{formatDate(letter.campaign_date)}</p>
+        {trashMode&&<p className="campaign-trash-notice" role="status">{letter.deleted_at?`Missiva excluída em ${date(letter.deleted_at)}. A conversa original foi preservada.`:'Uma ou mais respostas foram excluídas. A missiva original continua ativa.'}</p>}
         <p className="text-sm font-semibold" role="status">{mailWeekTimeline(letter.creation_week,letter.delivery_week,letter.publication_state)}</p>
         {letter.historical_source&&<p className="text-muted-foreground text-sm">Correspondência histórica importada de {letter.historical_source} · não representa um novo envio pelo site.</p>}
         {data.admin&&letter.historical_source&&<p className="text-muted-foreground text-sm">{letter.historical_recipient_name?.includes('(NPC, Narrador)')?'Recebida pelo Narrador na qualidade de gestor da casa NPC.':letter.recipient_house_id?'Entregue à casa jogadora. O Narrador pode acompanhar administrativamente, mas não recebeu cópia da missiva.':'Correspondência arquivada.'}</p>}
@@ -145,25 +148,26 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
           {answers.map((answer,index)=><article className="campaign-reply-card" key={answer.id} aria-label={`Resposta de ${answer.author_name}`}>
             <header className="campaign-reply-header">
               <div>
-                <span className="campaign-eyebrow">Resposta {index+1} · {mailWeekTimeline(answer.creation_week,answer.delivery_week,answer.publication_state)}</span>
+                <span className="campaign-eyebrow">{trashMode?'Resposta excluída':`Resposta ${index+1}`} · {mailWeekTimeline(answer.creation_week,answer.delivery_week,answer.publication_state)}</span>
                 <strong>{answer.author_name}</strong>
               </div>
               <small>{answer.campaign_date?formatDate(answer.campaign_date):'Sem data histórica informada'} · {syncLabel(answer.sync_state)}</small>
             </header>
-            {answer.publication_state==='draft'&&<div>Rascunho
+            {!trashMode&&answer.publication_state==='draft'&&<div>Rascunho
               {answer.author_user_id===data.user.id&&!letter.deleted_at&&<ReplyDraftEdit answer={answer} onSave={saved}/>}
               {answer.author_user_id===data.user.id&&!letter.deleted_at&&<Button size="sm" variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const r=await supabase.rpc('schedule_weekly_reply_draft',{p_id:answer.id});if(r.error)onError(r.error.message);else saved();}}>Programar entrega</Button>}
             </div>}
-            {answer.publication_state==='scheduled'&&<p>Aguardando abertura da Semana {answer.delivery_week}</p>}
+            {!trashMode&&answer.publication_state==='scheduled'&&<p>Aguardando abertura da Semana {answer.delivery_week}</p>}
             <div className="campaign-reply-text"><CampaignContent content={answer.content}/></div>
-            {data.admin&&<NarratorMailNotes replyId={answer.id} userId={data.user.id}/>}
-             {!letter.deleted_at&&((data.admin)||(answer.publication_state==='draft'&&answer.author_user_id===data.user.id))&&<div className="campaign-actions">
+            {!trashMode&&data.admin&&<NarratorMailNotes replyId={answer.id} userId={data.user.id}/>}
+             {!trashMode&&!letter.deleted_at&&(data.admin||answer.author_user_id===data.user.id)&&<div className="campaign-actions">
                {data.admin&&answer.publication_state!=='draft'&&<ReplyEdit answer={answer} onSave={saved}/>}
                <Button size="sm" variant="outline" onClick={async()=>{if(!confirm('Excluir esta resposta? O texto sairá do fio, mas a operação ficará registrada no histórico de auditoria.'))return;
                  const r=await supabase.rpc('delete_letter_reply',{p_id:answer.id,p_version:answer.version??1});
                  if(r.error)onError(r.error.message);else saved();}}>Excluir resposta</Button>
              </div>}
-            {!letter.deleted_at&&answer.author_user_id!==data.user.id&&answer.publication_state==='delivered'&&<ReplyForm letterId={letter.id} replyId={answer.id} recipientId={answer.author_user_id} roundRevision={roundRevision} onSave={saved} isAdmin={data.admin}/>}
+            {trashMode&&(data.admin||answer.author_user_id===data.user.id)&&<div className="campaign-actions"><Button size="sm" variant="outline" disabled={Boolean(letter.deleted_at)} title={letter.deleted_at?'Restaure primeiro a missiva original':undefined} onClick={async()=>{if(!confirm('Restaurar esta resposta ao fio da missiva?'))return;const r=await supabase.rpc('restore_letter_reply',{p_id:answer.id,p_version:answer.version??1});if(r.error)onError(r.error.message);else saved();}}>Restaurar resposta</Button>{letter.deleted_at&&<small>Restaure primeiro a missiva original.</small>}</div>}
+            {!trashMode&&!letter.deleted_at&&answer.author_user_id!==data.user.id&&answer.publication_state==='delivered'&&<ReplyForm letterId={letter.id} replyId={answer.id} recipientId={answer.author_user_id} roundRevision={roundRevision} onSave={saved} isAdmin={data.admin}/>}
           </article>)}
         </section>}
         {(letter.court_member_id||letter.military_unit_id)&&<div className="campaign-eyebrow">{letter.court_member_id&&<p>Corte: {linkName('court',letter.origin_house_id,letter.court_member_id)} · {letter.court_assignment==='order_recipient'?'Destinatário da ordem':'Executor'}</p>}{letter.military_unit_id&&<p>Unidade: {linkName('unit',letter.origin_house_id,letter.military_unit_id)}</p>}</div>}
@@ -173,25 +177,26 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
           <p><strong>Leitura do Narrador:</strong> {incomingReplies.length===0?'Nenhuma resposta entregue':read?'Respostas conferidas':'Nova resposta não lida'}</p>
         </section>}
         {data.admin&&letter.sender_user_id===data.user.id&&<details><summary>Leituras registradas pelos destinatários</summary>{data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).length===0?<p>Nenhuma leitura registrada.</p>:data.receipts.filter(r=>r.letter_id===letter.id&&r.user_id!==data.user.id).map(r=><p key={r.user_id}>{data.players.find(p=>p.user_id===r.user_id)?.name??'Destinatário autorizado'} · {date(r.read_at)}{isLetterRead(letter.id,r,answers)?'':' · Há respostas posteriores'}</p>)}</details>}
-        {data.admin&&<NarratorMailNotes letterId={letter.id} userId={data.user.id}/>}
+        {!trashMode&&data.admin&&<NarratorMailNotes letterId={letter.id} userId={data.user.id}/>}
         <LetterConsequences
-          letterId={letter.id} admin={data.admin} disabled={Boolean(letter.deleted_at)}
+          letterId={letter.id} admin={data.admin} disabled={trashMode||Boolean(letter.deleted_at)}
           houses={data.houses.filter(h=>h.active).map(h=>({id:h.id,name:h.name}))}
           suggestedHouse={letter.origin_house_id??data.players.find(p=>p.id===letter.sender_player_id)?.roster_house_id??letter.recipient_house_id??''}
           items={(consequences.data??[]).filter(item=>item.letter_id===letter.id)}
           onSaved={saved} onError={onError}/>
         <p className="text-muted-foreground text-sm">{syncLabel(letter.sync_state)} · {letter.last_synced_at?date(letter.last_synced_at):'Ainda não sincronizada'}</p>
-        {threadLetters.length>0&&<div className="campaign-thread"><Button size="sm" variant="ghost" aria-expanded={threadOpen} onClick={()=>toggleThread(letter.id)}>{threadOpen?'Ocultar fio da conversa':`Ver relacionadas nesta página (${threadLetters.length} missiva(s) relacionada(s))`}</Button>{threadOpen&&threadLetters.map(other=>{const otherAnswers=viewReplies.filter(r=>r.letter_id===other.id);return <div key={other.id} className="campaign-thread-item"><span className="campaign-eyebrow">{other.letter_number?`Missiva ${other.letter_number} · `:''}{other.letter_kind==='geral'?'Geral':'Reservada'}</span><strong>{other.subject}</strong><small> · De: {other.sender_name} · {other.campaign_date?formatDate(other.campaign_date):date(other.created_at)}</small><CampaignContent content={other.content}/>{otherAnswers.map(a=><div key={a.id} className="campaign-replies"><span className="campaign-eyebrow">Resposta · {mailWeekTimeline(a.creation_week,a.delivery_week,a.publication_state)}</span><br/><strong>{a.author_name}</strong><small> · {date(a.created_at)}</small><CampaignContent content={a.content}/></div>)}</div>;})}</div>}
-        {!letter.deleted_at&&<div className="campaign-actions">
+        {!trashMode&&threadLetters.length>0&&<div className="campaign-thread"><Button size="sm" variant="ghost" aria-expanded={threadOpen} onClick={()=>toggleThread(letter.id)}>{threadOpen?'Ocultar fio da conversa':`Ver relacionadas nesta página (${threadLetters.length} missiva(s) relacionada(s))`}</Button>{threadOpen&&threadLetters.map(other=>{const otherAnswers=viewReplies.filter(r=>r.letter_id===other.id);return <div key={other.id} className="campaign-thread-item"><span className="campaign-eyebrow">{other.letter_number?`Missiva ${other.letter_number} · `:''}{other.letter_kind==='geral'?'Geral':'Reservada'}</span><strong>{other.subject}</strong><small> · De: {other.sender_name} · {other.campaign_date?formatDate(other.campaign_date):date(other.created_at)}</small><CampaignContent content={other.content}/>{otherAnswers.map(a=><div key={a.id} className="campaign-replies"><span className="campaign-eyebrow">Resposta · {mailWeekTimeline(a.creation_week,a.delivery_week,a.publication_state)}</span><br/><strong>{a.author_name}</strong><small> · {date(a.created_at)}</small><CampaignContent content={a.content}/></div>)}</div>;})}</div>}
+        {!trashMode&&!letter.deleted_at&&<div className="campaign-actions">
           {!read&&letter.publication_state==='delivered'&&(letter.sender_user_id!==data.user.id||incomingReplies.length>0)&&<Button variant="outline" onClick={async()=>{const {error}=await supabase.rpc('mark_letter_read',{p_id:letter.id});if(error&&error.code!=='23505')onError(error.message);else saved();}}>Marcar como lida</Button>}
           {(open!==null||data.admin)&&<Button variant="outline" onClick={()=>{if(!replaceMailDraft(data.user.id))return;setCompose(true);setDraft({key:Date.now(),subject:'Enc: '+letter.subject,content:`— Missiva encaminhada —\nDe: ${letter.sender_name} · ${date(letter.created_at)}\nAssunto: ${letter.subject}\n\n${letter.content}`});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Encaminhar</Button>}
           {canDelete&&<Button variant="outline" onClick={async()=>{if(!confirm('Excluir esta missiva? Ela deixará de aparecer para os jogadores.'))return;const {error}=await supabase.rpc('delete_campaign_letter',{p_id:letter.id});if(error)onError(error.message);else saved();}}>Excluir</Button>}
         </div>}
-        {!letter.deleted_at&&letter.publication_state==='draft'&&letter.sender_user_id===data.user.id&&<Button variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const result=await supabase.rpc('schedule_letter_draft',{p_id:letter.id,p_week:letter.delivery_week??open??nextLetterNumber(data.letters)});if(result.error)onError(result.error.message);else saved();}}>Programar entrega</Button>}{!letter.deleted_at&&((data.admin&&letter.publication_state!=='draft')||(letter.publication_state==='draft'&&letter.sender_user_id===data.user.id))&&<LetterEdit letter={letter} onSave={saved}/>}
-        {!letter.deleted_at&&letter.publication_state==='delivered'&&canAnswer&&replyTarget&&<ReplyForm
+        {!trashMode&&!letter.deleted_at&&letter.publication_state==='draft'&&letter.sender_user_id===data.user.id&&<Button variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const result=await supabase.rpc('schedule_letter_draft',{p_id:letter.id,p_week:letter.delivery_week??open??nextLetterNumber(data.letters)});if(result.error)onError(result.error.message);else saved();}}>Programar entrega</Button>}{!trashMode&&!letter.deleted_at&&((data.admin&&letter.publication_state!=='draft')||(letter.publication_state==='draft'&&letter.sender_user_id===data.user.id))&&<LetterEdit letter={letter} onSave={saved}/>}
+        {!trashMode&&!letter.deleted_at&&letter.publication_state==='delivered'&&canAnswer&&replyTarget&&<ReplyForm
           letterId={letter.id} replyId={letter.sender_user_id===data.user.id?lastPlayerReply?.id:undefined}
           recipientId={replyTarget} roundRevision={roundRevision} onSave={saved} isAdmin={data.admin}
           label={letter.sender_user_id===data.user.id?(lastPlayerReply?'Responder à Casa':'Adicionar complemento'):'Responder'}/>}
+        {canRestoreLetter&&<div className="campaign-actions"><Button variant="outline" onClick={async()=>{if(!confirm('Restaurar esta missiva e seu fio original?'))return;const r=await supabase.rpc('restore_campaign_letter',{p_id:letter.id});if(r.error)onError(r.error.message);else saved();}}>Restaurar missiva</Button></div>}
         <Button variant="ghost" size="sm" onClick={()=>{toggle(letter.id);document.getElementById('missiva-'+letter.id)?.scrollIntoView({block:'nearest'});}}>Recolher</Button>
       </div>}
     </article>;
@@ -205,7 +210,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
     <aside className="campaign-mail-side" aria-label="Filtros das missivas">
       <p className="campaign-eyebrow">FILTROS</p>
       <label>Buscar<input type="search" value={filters.text} onChange={e=>setFilters({...filters,text:e.target.value})} placeholder="Assunto, resposta, autor ou casa…"/></label>
-      {sel('Caixa','box',[['','Todas'],['recebidas','Recebidas'],['enviadas','Enviadas'],['programadas','Programadas'],['rascunhos','Rascunhos'],['historico','Histórico por semana'],...(data.admin?[['excluidas','Excluídas']] as [string,string][]:[])])}
+      {sel('Caixa','box',[['','Todas'],['recebidas','Recebidas'],['enviadas','Enviadas'],['programadas','Programadas'],['rascunhos','Rascunhos'],['historico','Histórico por semana'],['lixeira','Lixeira']])}
       {data.admin&&sel('Grupo de narração','group',[['','Todos os grupos'],...NARRATION_GROUPS.map(g=>[g.id,g.label] as [string,string])])}
       {data.admin&&sel('Casa destinatária / legado','house',[['','Todas as casas'],...data.houses.filter(h=>h.active&&h.season===2&&(!groupActive||allowed.has(h.id))).map(h=>[h.id,h.name] as [string,string])])}
       {sel('Casa remetente','origin',[['','Todas as casas'],['none','Sem vínculo / legado'],...data.houses.filter(h=>!groupActive||allowed.has(h.id)).map(h=>[h.id,h.name] as [string,string])])}
@@ -218,16 +223,16 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
       {groups.some(g=>g.number!==null)&&<nav className="campaign-mail-jump" aria-label="Ir para uma semana de missiva">{groups.filter(g=>g.number!==null).map(g=><button key={g.number} type="button" onClick={()=>document.getElementById('grupo-missiva-'+g.number)?.scrollIntoView({behavior:'smooth',block:'start'})}>Missiva {g.number}</button>)}</nav>}
       <Button variant="outline" onClick={()=>setFilters(empty)}>Limpar filtros</Button>
       <div className="campaign-actions"><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set(visibleIds))}>Expandir todas</Button><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set())}>Recolher todas</Button></div>
-      {!data.admin&&open!==null&&<Button onClick={()=>{setDraft({key:Date.now(),subject:'',content:''});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Escrever missiva</Button>}
+      {!trashMode&&!data.admin&&open!==null&&<Button onClick={()=>{setDraft({key:Date.now(),subject:'',content:''});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Escrever missiva</Button>}
     </aside>
     <div>
-      <MailInsights options={options} houseName={houseName} groupHouseIds={groupActive?[...allowed]:undefined} onSelect={row=>setFilters({...empty,origin:row.origin_house_id??'none',court:row.court_member_id?row.origin_house_id+':'+row.court_member_id:'none',unit:row.military_unit_id?row.origin_house_id+':'+row.military_unit_id:'none'})}/>
+      {!trashMode&&<MailInsights options={options} houseName={houseName} groupHouseIds={groupActive?[...allowed]:undefined} onSelect={row=>setFilters({...empty,origin:row.origin_house_id??'none',court:row.court_member_id?row.origin_house_id+':'+row.court_member_id:'none',unit:row.military_unit_id?row.origin_house_id+':'+row.military_unit_id:'none'})}/>}
       {listing.isPending&&<p role="status">Carregando missivas…</p>}
       {listing.error&&<p role="alert">Não foi possível carregar as missivas. <Button onClick={()=>listing.refetch()}>Tentar novamente</Button></p>}
-      <nav className="campaign-actions" aria-label="Páginas de missivas"><Button disabled={page===0||listing.isFetching} onClick={()=>setPage(p=>p-1)}>Anterior</Button><span>Página {page+1} · {listing.data?.total??0} entregas encontradas</span><Button disabled={listing.isFetching||(page+1)*20>=(listing.data?.total??0)} onClick={()=>setPage(p=>p+1)}>Próxima</Button></nav>
-      <div className={'campaign-round '+(open===null?'fechada':'')} role="status">{open===null?'Missivas fechadas, aguarde o narrador abrir a próxima semana.':`Missiva ${open} aberta — respostas, novas missivas e encaminhamentos liberados.`}
-       {activeRound&&<p className="house-caption">Referência histórica da abertura: <strong>{formatRoundHarptosReference(activeRound.harptos_period)}</strong>. O número da rodada não altera a désdia vigente.</p>}</div>
-      {data.admin&&<><div className="campaign-heading"><h2>Gestão de missivas</h2><Button onClick={()=>setCompose(v=>!v)}>{compose?'Fechar escrita':'Escrever missiva'}</Button></div>
+      <nav className="campaign-actions" aria-label="Páginas de missivas"><Button disabled={page===0||listing.isFetching} onClick={()=>setPage(p=>p-1)}>Anterior</Button><span>Página {page+1} · {listing.data?.total??0} {trashMode?'conversas na lixeira':'entregas encontradas'}</span><Button disabled={listing.isFetching||(page+1)*20>=(listing.data?.total??0)} onClick={()=>setPage(p=>p+1)}>Próxima</Button></nav>
+      {!trashMode&&<div className={'campaign-round '+(open===null?'fechada':'')} role="status">{open===null?'Missivas fechadas, aguarde o narrador abrir a próxima semana.':`Missiva ${open} aberta — respostas, novas missivas e encaminhamentos liberados.`}
+       {activeRound&&<p className="house-caption">Referência histórica da abertura: <strong>{formatRoundHarptosReference(activeRound.harptos_period)}</strong>. O número da rodada não altera a désdia vigente.</p>}</div>}
+      {!trashMode&&data.admin&&<><div className="campaign-heading"><h2>Gestão de missivas</h2><Button onClick={()=>setCompose(v=>!v)}>{compose?'Fechar escrita':'Escrever missiva'}</Button></div>
         <section className="campaign-round-pending" aria-label="Casas com respostas pendentes">
           <h3>{open===null?'Respostas da rodada':`Missiva ${open} · Casas com respostas pendentes`}</h3>
           {open===null?<p className="text-muted-foreground">Nenhuma rodada aberta.</p>:<><p>{pendingHouses.length} casa{pendingHouses.length===1?'':'s'} aguardando resposta</p>{pendingHouses.length===0?<p className="text-muted-foreground">Nenhuma resposta pendente às missivas entregues nesta rodada.</p>:<ul>{pendingHouses.map(h=><li key={h.id}><div><strong>{h.name}</strong><span className="text-muted-foreground text-sm">{h.letterIds.length} missiva{h.letterIds.length===1?'':'s'} pendente{h.letterIds.length===1?'':'s'}</span></div><Button size="sm" variant="outline" onClick={()=>{setFilters({...empty,house:h.id});setExpanded(new Set(h.letterIds));}}>Ver missivas</Button></li>)}</ul>}</>}
@@ -244,13 +249,14 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds}:{dat
         <MailPeriodNotice date={periodDate} round={activeRound}/>
         <div className="campaign-actions">{open!==null&&<Button variant="outline" onClick={async()=>{if(!confirm(`Fechar a Missiva ${open}? Os jogadores não poderão mais responder nem escrever.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:open,p_closed:true});if(error)onError(error.message);else saved();}}>Fechar Missiva {open}</Button>}<input type="number" min={nextRound} style={{width:140}} value={roundNumber} onChange={e=>setRoundNumber(e.target.value)} placeholder={`Próxima: ${nextRound}`} aria-label="Número da missiva a abrir"/><Button variant="outline" onClick={async()=>{const n=roundNumber?Number(roundNumber):nextRound;if(!Number.isInteger(n)||n!==nextRound){onError(`A próxima semana permitida é ${nextRound}. Não é possível pular ou retroceder.`);return;}const preview=data.letters.filter(l=>l.delivery_week===n&&l.publication_state==='scheduled');const responses=data.replies.filter(r=>r.delivery_week===n&&r.publication_state==='scheduled');if(!confirm(`Abrir Semana ${n}? ${preview.length} mensagens e ${responses.length} respostas serão liberadas. Destinatários: ${preview.map(l=>houseName(l.recipient_house_id)||'Jogador autorizado').join(', ')||'Nenhuma nova mensagem'}. A semana anterior será encerrada. A data oficial de Harptos não será avançada pela abertura da semana.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:n,p_closed:false});if(error)onError(error.message);else{setRoundNumber('');saved();}}}>Abrir missiva</Button></div>
         {compose&&<MailComposer key={draft?.key??0} data={data} me={me} initial={draft} onSave={()=>{setDraft(null);saved();}} onManage={onManage}/>}</>}
-      {filters.box!=='enviadas'&&<><div className="campaign-heading"><h2>{filters.box==='excluidas'?'Missivas excluídas':data.admin&&filters.box!=='recebidas'?'Correspondência acompanhada':'Missivas recebidas'}</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
+      {trashMode&&<section className="campaign-trash" aria-label="Lixeira das missivas"><div className="campaign-heading"><h2>Lixeira</h2><span>{listing.data?.total??0} conversa(s)</span></div><p className="text-sm text-muted-foreground">Missivas e respostas excluídas permanecem arquivadas. Você pode restaurar somente suas próprias mensagens; o Narrador pode recuperar correspondências da campanha.</p>{!listing.isPending&&letters.length===0&&<p className="campaign-empty">Nenhuma missiva ou resposta excluída encontrada.</p>}{letters.map(letter=>card(letter,false))}</section>}
+      {!trashMode&&filters.box!=='enviadas'&&<><div className="campaign-heading"><h2>{filters.box==='excluidas'?'Missivas excluídas':data.admin&&filters.box!=='recebidas'?'Correspondência acompanhada':'Missivas recebidas'}</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
       {groups.length===0&&<p className="campaign-empty">Nenhuma missiva encontrada.</p>}
       {groups.map(group=><section key={group.number??'sem-numero'} id={group.number!==null?'grupo-missiva-'+group.number:undefined} className="campaign-mail-group">{group.number!==null&&<h3 className="campaign-letter-number">Missiva {group.number}{data.rounds.find(r=>r.number===group.number)?.closed?' · fechada':''}</h3>}{data.rounds.find(r=>r.number===group.number)&&<p className="house-caption">Período registrado na abertura: {formatRoundHarptosReference(data.rounds.find(r=>r.number===group.number)?.harptos_period)}</p>}{group.letters.map(letter=>card(letter,isRecipient(letter)||data.admin))}</section>)}</>}
-      {filters.box!=='recebidas'&&<><div className="campaign-heading"><h2>Missivas enviadas por você</h2><span>{mine.length} missivas</span></div>
+      {!trashMode&&filters.box!=='recebidas'&&<><div className="campaign-heading"><h2>Missivas enviadas por você</h2><span>{mine.length} missivas</span></div>
       {mine.length===0&&<p className="campaign-empty">Nenhuma missiva enviada encontrada.</p>}
       {mine.map(letter=>card(letter,data.admin))}</>}
-      {!data.admin&&<MailComposer key={draft?.key??0} data={data} me={me} initial={draft} onSave={()=>{setDraft(null);saved();}} onManage={onManage}/>}
+      {!trashMode&&!data.admin&&<MailComposer key={draft?.key??0} data={data} me={me} initial={draft} onSave={()=>{setDraft(null);saved();}} onManage={onManage}/>}
     </div>
   </div>;
 }
