@@ -2,6 +2,7 @@ import type {CharacterV2,CharacterSkillId} from '@/lib/character-v2/schema';
 import {CHARACTER_SKILL_IDS,CHARACTER_SKILL_LABELS} from '@/lib/character-v2/schema';
 import {findCharacterTrait,type CharacterTrait} from '@/lib/character-v2/catalog';
 import {getCharacterTraitRule} from '@/lib/character-v2/trait-rules';
+import {describeCharacterTrait} from '@/lib/character-v2/trait-descriptions';
 import {resolveCharacterWithTraits} from '@/lib/character-v2/trait-engine';
 import './character-sheet-parts.css';
 
@@ -44,19 +45,35 @@ export function SpecialtyPips({label,bonusDice,max=5,onValueChange,disabled}:{
 export function TraitCard({trait,status='imported_unverified',tier}:{
  trait:CharacterTrait;status?:'imported_unverified'|'proposed'|'approved'|'inactive';tier?:number|null;
 }){
+ const detail=describeCharacterTrait(trait.id);
  return <article className={'character-v2-trait '+(trait.kind==='flaw'?'is-flaw':'is-benefit')}
    aria-label={trait.label+' — '+(trait.kind==='flaw'?'Desvantagem':'Benefício')}>
-   <div className="character-v2-trait-heading"><strong>{trait.label}</strong>
-     <span>{trait.kind==='flaw'?'Desvantagem':'Benefício'}</span></div>
-   <p>{trait.category==='flaw'?'Defeito':{
+   <details className="character-v2-trait-details">
+    <summary aria-label={'Ler efeito de '+trait.label}>
+     <span className="character-v2-trait-heading"><strong>{trait.label}</strong>
+      <span>{trait.kind==='flaw'?'Desvantagem':'Benefício'}</span></span>
+     <span className="character-v2-trait-category">{trait.category==='flaw'?'Defeito':{
       fortune:'Fortuna',heritage:'Herança',ability:'Habilidade',
-      martial:'Marcial',social:'Social'}[trait.category]}</p>
-   {tier!==undefined&&tier!==null&&
-     <Pips label={'Grau de '+trait.label} value={tier} max={3} disabled/>}
-   <small>{status==='inactive'?'Inativo':status==='proposed'?'Pendente de aprovação':
-     status==='approved'?(getCharacterTraitRule(trait.id)?.status==='verified'?
-     'Regra implementada — somente na ficha homologada':'Aprovado; efeito depende de revisão ou cena'):
-     'Importado — pendente de conciliação'}</small>
+      martial:'Marcial',social:'Social'}[trait.category]}</span>
+     {tier!==undefined&&tier!==null&&<span>Grau {tier}</span>}
+     <span className="character-v2-trait-status">{status==='inactive'?'Inativo':status==='proposed'?'Pendente de aprovação':
+      status==='approved'?(getCharacterTraitRule(trait.id)?.status==='verified'?
+      'Regra implementada — somente na ficha homologada':'Aprovado; efeito depende de revisão ou cena'):
+      'Importado — pendente de conciliação'}</span>
+    </summary>
+    <div className="character-v2-trait-explanation">
+     <strong>Efeito e bônus</strong>
+     <p>{detail?.effectDescription??'Efeito a conferir no livro.'}</p>
+     <strong>Exigências</strong><p>{detail?.prerequisiteDescription??'A conferir'}</p>
+     {detail?.cadence&&<p>{detail.cadence}</p>}
+     <small>{detail?.sourceCoverage==='pending_transcription'
+      ?'Transcrição incompleta: confira a descrição do livro com o Narrador.'
+      :detail?.automationStatus==='verified'
+      ?'Regra conferida; aplicação depende da ficha e seleção aprovadas.'
+      :'Resumo do livro; aplicação automática ainda não homologada.'}</small>
+     <small>{detail?.bookReference}</small>
+    </div>
+   </details>
  </article>;
 }
 export function CharacterStatus({name,role,reviewStatus,stats}:{

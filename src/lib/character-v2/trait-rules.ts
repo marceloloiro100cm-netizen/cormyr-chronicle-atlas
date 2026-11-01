@@ -9,7 +9,7 @@ import {type CharacterSkillId} from './schema';
  */
 export const CHARACTER_TRAIT_RULESET_VERSION='got-pt-traits-cormyr-2026-11-01-v1' as const;
 export type TraitEffectCode=
- |'fast_movement'|'hardy_health'|'stubborn_composure'
+ |'monthly_wealth'|'fast_movement'|'hardy_health'|'stubborn_composure'
  |'agile_reroll'|'attractive_reroll'|'charismatic_result'|'deceptive_result'
  |'animal_friend_dice'|'precision_dice'|'noble_favorite_bonus'|'common_favorite_bonus'
  |'limp_movement'|'short_movement_and_social'|'childhood_illness_health'
@@ -32,6 +32,7 @@ type RuleSpec=Readonly<{effect:TraitEffectCode;prerequisites?:readonly TraitPrer
 const spec=(effect:TraitEffectCode,notes:string,
  prerequisites:readonly TraitPrerequisite[]=[]):RuleSpec=>({effect,notes,prerequisites});
 const verified:Readonly<Record<string,RuleSpec>>={
+ abastado:spec('monthly_wealth','No início de cada mês: Astúcia ou Status Fácil (3); 10 dragões de ouro por grau de sucesso. Crédito exige lançamento autorizado e único por mês.'),
  // L07: fórmulas passivas e rolagens de habilidades.
  rapido:spec('fast_movement','+1 m de Movimento; Corrida usa 5 × Movimento.'),
  durao:spec('hardy_health','Soma B de Resistência à Saúde.',[

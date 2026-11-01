@@ -6,6 +6,9 @@ import {resolveCharacterDerived,type DerivedKey} from '@/lib/character-v2/derive
 import {SkillPips,TraitCard} from './character-sheet-parts';
 import {findCharacterTrait} from '@/lib/character-v2/catalog';
 import {getCharacterTraitRule} from '@/lib/character-v2/trait-rules';
+import {Button} from '@/components/ui/button';
+import {useState} from 'react';
+import {describeCharacterTrait} from '@/lib/character-v2/trait-descriptions';
 
 type CharacterRecord={
  id:string;title:string;kind:string;content:string;version:number;
@@ -85,22 +88,57 @@ export function buildCharacterPlayerPreview(record:CharacterRecord,houseId:strin
  return{character,known,stats,allPending,specializations,traitNotes,
   sourceVersion:record.version};
 }
-export function CharacterV2PlayerSheet({record,houseId}:{
- record:CharacterRecord;houseId:string;
+export function CharacterV2PlayerSheet({record,houseId,canEdit=false,onEdit}:{
+ record:CharacterRecord;houseId:string;canEdit?:boolean;onEdit?:()=>void;
 }){
+ const [downloading,setDownloading]=useState(false);
  const preview=buildCharacterPlayerPreview(record,houseId);
  if(!preview)return null;
  const {character,known,stats,specializations,traitNotes}=preview;
+ const sourceVersion=preview.sourceVersion;
+ async function download(){
+  if(downloading)return;
+  setDownloading(true);
+  try{
+   const {default:jsPDF}=await import('jspdf');
+   const pdf=new jsPDF({unit:'mm',format:'a4'});
+   let y=20;
+   const write=(txt:string,bold=false)=>{
+    pdf.setFont('helvetica',bold?'bold':'normal');
+    pdf.setFontSize(bold?12:9);
+    const lines=pdf.splitTextToSize(txt,174) as string[];
+    if(y+lines.length*5>280){pdf.addPage();y=20;}
+    pdf.text(lines,17,y);y+=lines.length*5+2;
+   };
+   write(character.displayName,true);
+   write('Casa: '+houseId+' · Ficha V2 de consulta · origem v'+sourceVersion);
+   write('Indicadores',true);
+   stats.forEach(st=>write(st.label+': '+(st.value===null?'A conferir':st.value)));
+   write('Habilidades',true);
+   CHARACTER_SKILL_IDS.forEach(id=>write(CHARACTER_SKILL_LABELS[id]+': '+(known.has(id)?character.skillRanks[id]:'A conferir')));
+   write('Qualidades e defeitos',true);
+   traitNotes.forEach(t=>{
+    const detail=describeCharacterTrait(t.catalog?.id??t.original);
+    write((t.kind==='flaw'?'Defeito: ':'Qualidade: ')+t.original);
+    write('Efeito informado: '+(detail?.effectDescription??'A conferir')+' (aplicação não homologada)');
+   });
+   const bytes=pdf.output('arraybuffer');
+   const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+   const link=document.createElement('a');link.href=url;
+   link.download='ficha-'+character.displayName.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,'-')+'.pdf';
+   link.click();URL.revokeObjectURL(url);
+  }finally{setDownloading(false);}
+ }
  return <section className="character-v2-preview" aria-label={'Nova apresentação da ficha de '+character.displayName}>
-  <header className="character-v2-status">
-   <p className="text-xs font-semibold tracking-wide">FICHA DE PERSONAGEM · VISUALIZAÇÃO V2</p>
+  <header className="character-v2-header">
    <h3 className="text-2xl font-semibold">{character.displayName}</h3>
-   <p className="text-sm">Versão importada {preview.sourceVersion} · consulta sem edição automática</p>
+   <div className="character-v2-action-bar">
+    <Button variant="outline" type="button" onClick={onEdit} disabled={!canEdit||!onEdit}>Editar ficha</Button>
+    <Button variant="outline" type="button" onClick={()=>void download()} disabled={downloading}>
+     {downloading?'Preparando PDF…':'Baixar ficha'}
+    </Button>
+   </div>
   </header>
-  <p className="character-v2-disclaimer">
-   Apresentação com bolinhas. O documento anterior permanece preservado nos registros,
-   sem aparecer nesta tela. Nenhum ponto de XP, Destino, qualidade ou atributo ausente é concedido nesta visualização.
-  </p>
   <section className="character-v2-section" aria-label="Indicadores derivados da ficha">
    <h4>Indicadores</h4>
    <dl className="character-v2-stats">

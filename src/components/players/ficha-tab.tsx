@@ -2,6 +2,10 @@ import type { ReactNode } from "react";
 import { isNarrativeNpc } from "@/lib/house/narrative-npc";
 import { useState } from "react";
 import {useQuery} from '@tanstack/react-query';
+import {useServerFn} from '@tanstack/react-start';
+import {loadHouseHub} from '@/lib/house/house.functions';
+import {balances,maxHouseStatus} from '@/lib/house/engine';
+import {ChronicleCharacterEditor} from '@/components/house/character-editor';
 import {supabase} from '@/integrations/supabase/client';
 import {parseChronicleSheet} from '@/lib/house/character-sheet';
 import { NobleHouseHub } from "@/components/house/hub";
@@ -21,6 +25,7 @@ export function FichaTab({
   canEdit,
   onSave,
   npcManager,
+  playerId,
 }: {
   npcManager?: ReactNode;
   playerId?:string|undefined;
@@ -31,6 +36,11 @@ export function FichaTab({
   onSave: () => unknown;
 }) {
   const [view, setView] = useState<"house" | "character" | "legacy">("house");
+  const [editingId,setEditingId]=useState<string|null>(null);
+  const [creating,setCreating]=useState(false);
+  const load=useServerFn(loadHouseHub);
+  const {data:sheetData}=useQuery({queryKey:['noble-house',current.id],enabled:view==='character'&&canEdit,queryFn:()=>load({data:{houseId:current.id}})});
+  const statusCap=sheetData?maxHouseStatus(balances(sheetData.state).total.influence):10;
   const {data:ages}=useQuery({
    queryKey:['house-character-ages',current.id],
    enabled:view==='character',
@@ -127,15 +137,36 @@ export function FichaTab({
       {view === "character" && (
         <>
           <h2>Fichas dos personagens · Lordes e Herdeiros</h2>
-          {structured.map(({row})=><div key={row.id+'-'+row.version}>
+          {canEdit&&<div className="campaign-actions">
+            <Button type="button" variant="outline" onClick={()=>setCreating(v=>!v)}>
+              {creating?'Fechar criação':'Criar personagem'}
+            </Button>
+          </div>}
+          {canEdit&&creating&&<ChronicleCharacterEditor key={'create-'+current.id}
+            houseId={current.id} houseName={current.name} playerId={playerId}
+            canEdit={canEdit} statusCap={statusCap} onSave={()=>{setCreating(false);onSave();}}/>}
+          {structured.map(({row,sheet})=><div key={row.id+'-'+row.version}>
             {ageLine(row.id)}
-            <CharacterV2PlayerSheet record={row} houseId={current.id}/>
+            <CharacterV2PlayerSheet record={row} houseId={current.id} canEdit={canEdit}
+              onEdit={()=>setEditingId(id=>id===row.id?null:row.id)}/>
+            {canEdit&&editingId===row.id&&<div className="character-v2-editor">
+              <ChronicleCharacterEditor key={'edit-'+row.id} row={row} initial={sheet}
+                houseId={current.id} houseName={current.name} playerId={playerId}
+                canEdit={canEdit} startEditing statusCap={statusCap}
+                onSave={()=>{setEditingId(null);onSave();}}/>
+            </div>}
           </div>)}
           {fichaLorde&&<h2>Ficha do Lorde</h2>}
           {fichaLorde ? (
             <>
               {ageLine(fichaLorde.id)}
-              <CharacterV2PlayerSheet record={fichaLorde} houseId={current.id}/>
+              <CharacterV2PlayerSheet record={fichaLorde} houseId={current.id}
+                canEdit={canEdit} onEdit={()=>setEditingId(id=>id===fichaLorde.id?null:fichaLorde.id)}/>
+              {canEdit&&editingId===fichaLorde.id&&<div className="character-v2-editor">
+                <p className="text-sm">A ficha legada é editada como texto integral para preservar todas as colunas e dados não mapeados. Cada gravação cria uma nova versão.</p>
+                <RecordEditor key={'edit-'+fichaLorde.id} row={fichaLorde}
+                  canEdit={canEdit} initiallyEditing onSave={()=>{setEditingId(null);onSave();}}/>
+              </div>}
             </>
           ) : (
             structured.length===0&&<p className="campaign-empty">Nenhuma ficha de personagem reconhecida nesta Casa.</p>
