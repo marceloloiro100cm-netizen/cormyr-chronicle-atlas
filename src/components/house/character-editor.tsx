@@ -5,12 +5,12 @@ import {blankChronicleSheet,chronicleStats,serializeChronicleSheet,CHARACTER_SKI
 import type {RecordRow} from '@/components/players/shared';
 import {TraitCatalogPicker} from '@/components/character-v2/trait-catalog-picker';
 
-export function ChronicleCharacterEditor({row,initial,houseId,houseName,playerId,canEdit,statusCap,onSave}:{
+export function ChronicleCharacterEditor({row,initial,houseId,houseName,playerId,canEdit,statusCap,onSave,startEditing=false}:{
  row?:RecordRow;initial?:ChronicleSheet;houseId:string;houseName:string;playerId?:string|undefined;
- canEdit:boolean;statusCap:number;onSave:()=>unknown;
+ canEdit:boolean;statusCap:number;onSave:()=>unknown;startEditing?:boolean;
 }){
  const [sheet,setSheet]=useState<ChronicleSheet>(()=>initial??{...blankChronicleSheet(),role:'Lorde / Herdeiro'});
- const [editing,setEditing]=useState(!row),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ const [editing,setEditing]=useState(!row||startEditing),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
  const [privateSheet,setPrivateSheet]=useState(Boolean(playerId)&&!row);
  const stats=chronicleStats(sheet);
  const set=(patch:Partial<ChronicleSheet>)=>setSheet(s=>({...s,...patch}));
