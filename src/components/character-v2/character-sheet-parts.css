@@ -1,0 +1,50 @@
+/* Lote 03 — componentes isolados da prévia V2; não alteram fichas V1. */
+.character-v2-preview{--cv2-ink:#241b35;--cv2-gold:#b8945c;--cv2-paper:#fffdfa;
+  color:var(--cv2-ink);background:var(--cv2-paper);border:1px solid #d2c2a9;
+  border-radius:.8rem;padding:clamp(.8rem,2vw,1.5rem);min-width:0}
+.character-v2-status header{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap}
+.character-v2-status header p{font-size:.68rem;font-weight:700;letter-spacing:.08em}
+.character-v2-status h3{font-family:Georgia,serif;font-size:clamp(1.4rem,4vw,2rem);line-height:1.2}
+.character-v2-status header small{padding:.35rem .55rem;border:1px solid #c1aa83;border-radius:.4rem}
+.character-v2-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;margin:1rem 0}
+.character-v2-stats>div{min-width:0;border:1px solid #d4c6b1;border-radius:.5rem;padding:.6rem;background:#f9f5ee}
+.character-v2-stats dt{font-size:.76rem}.character-v2-stats dd{font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums}
+.character-v2-disclaimer{font-size:.75rem;color:#665b68}
+.character-v2-section{border-top:1px solid #d4c6b1;padding-top:1rem;margin-top:1rem}
+.character-v2-section h4{font-family:Georgia,serif;font-size:1.15rem;margin-bottom:.75rem}
+.character-v2-skills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
+.character-v2-skill{min-width:0;display:flex;align-items:center;justify-content:space-between;gap:.5rem;
+ border:1px solid #e0d5c4;border-radius:.45rem;padding:.6rem}
+.character-v2-skill>strong{font-size:.81rem;overflow-wrap:anywhere}
+.character-v2-pips{display:flex;align-items:center;gap:.23rem;flex-wrap:wrap;min-width:0}
+.character-v2-pip{display:inline-block;flex:0 0 16px;width:16px;height:16px;border-radius:50%;
+ border:2px solid #4b345a;background:#fff;appearance:none;padding:0}
+.character-v2-pip.is-filled{background:var(--cv2-gold);border-color:var(--cv2-gold)}
+button.character-v2-pip{cursor:pointer}
+button.character-v2-pip:hover{box-shadow:0 0 0 2px #d7b98f}
+button.character-v2-pip:focus-visible,.character-v2-clear:focus-visible{outline:3px solid #7456ad;outline-offset:3px}
+button.character-v2-pip:disabled{opacity:.45;cursor:not-allowed}
+.character-v2-pip-value{font-weight:700;font-size:.78rem;margin-left:.2rem;min-width:1ch}
+.character-v2-specialty{display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap;padding:.45rem 0}
+.character-v2-specialty small{color:#5a5264}
+.character-v2-clear{border:1px solid #b7a5c0;border-radius:.35rem;padding:.2rem .5rem;cursor:pointer}
+.character-v2-traits{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+.character-v2-trait{border:1px solid #cdb98e;border-left:4px solid #aa8645;border-radius:.4rem;padding:.75rem;min-width:0}
+.character-v2-trait.is-flaw{border-left-color:#8c5661}
+.character-v2-trait-heading{display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap}
+.character-v2-trait-heading span,.character-v2-trait>p,.character-v2-trait>small{font-size:.74rem}
+.character-v2-trait>small{display:block;margin-top:.4rem;color:#645a60}
+.character-v2-warnings{background:#fbf6ee;padding:.85rem;border-radius:.4rem}
+.character-v2-warnings ul{margin-left:1.2rem;list-style:disc;font-size:.8rem}
+@media(max-width:640px){
+ .character-v2-skills,.character-v2-traits{grid-template-columns:1fr}
+ .character-v2-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .character-v2-skill{align-items:flex-start}
+}
+@media(max-width:390px){
+ .character-v2-status header small{max-width:100%}
+ .character-v2-pip{width:15px;height:15px;flex-basis:15px}
+ .character-v2-skill{flex-direction:column;align-items:stretch}
+ .character-v2-skills{gap:.4rem}
+}
+@media(prefers-reduced-motion:reduce){.character-v2-preview *{scroll-behavior:auto;transition:none}}
