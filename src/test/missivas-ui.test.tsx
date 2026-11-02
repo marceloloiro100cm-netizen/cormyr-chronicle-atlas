@@ -265,7 +265,7 @@ describe('lote 5: complementos e manutenção do fio',()=>{
       {...letter,id:'other-letter',batch_key:'batch',conversation_id:'shared-legacy',created_at:'2026-10-29'},
     ]} as unknown as Panel;
   mount(panel);
-  await findSentSubject(/Ordem enviada/);
+  fireEvent.change(screen.getByLabelText('Caixa'),{target:{value:'enviadas'}});
   fireEvent.click((await screen.findAllByRole('button',{name:/Ordem enviada/}))[0]!);
   expect(screen.queryByRole('button',{name:/Ver relacionadas nesta página/})).not.toBeInTheDocument();
  });
