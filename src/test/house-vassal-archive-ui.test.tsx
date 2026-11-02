@@ -9,6 +9,7 @@ vi.mock('@tanstack/react-start',()=>({
  useServerFn:()=>async()=>{throw new Error('Casa oficial não encontrada.');},
 }));
 vi.mock('@/lib/house/house.functions',()=>({loadHouseHub:vi.fn(),loadHouseLedger:vi.fn()}));
+vi.mock('@/lib/house/vassal-workbook.functions',()=>({loadQazirVassalWorkbook:vi.fn()}));
 vi.mock('@/integrations/supabase/client',()=>({
  supabase:{from:(table:string)=>{
   if(table!=='house_catalog')throw new Error('Unexpected private table read');
@@ -29,11 +30,14 @@ describe('ficha histórica pública de vassalo anexado',()=>{
     officialHouse={{id:'qazir',name:'Qazir',crest:'assets/dragoncoast-qazir.webp',region:'Dragon Coast'}}
     catalog={[]}/>
   </QueryClientProvider>);
+  // Download is visible at the right side, without expanding the mini-sheet.
+  const button=screen.getByRole('button',{name:'Baixar ficha completa da Casa Qazir'});
+  expect(button).toBeEnabled();
   fireEvent.click(screen.getByRole('button',{name:'Ficha resumida · Casa Qazir'}));
   await waitFor(()=>expect(screen.getByText('Rashid Qazir')).toBeInTheDocument());
   expect(screen.getByText('Alcácer da Vigília')).toBeInTheDocument();
   expect(screen.getAllByText('Não cadastrado')).toHaveLength(7);
-  expect(screen.getByRole('button',{name:/Baixar ficha completa/})).toBeEnabled();
+  expect(screen.getAllByRole('button',{name:'Baixar ficha completa da Casa Qazir'})).toHaveLength(1);
   expect(screen.queryByText(/não está acessível com as permissões atuais/)).not.toBeInTheDocument();
  });
 });
