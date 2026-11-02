@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "module": "CCA-ESP-MVP-001",
+  "state": "NO_GO",
+  "environment": "production",
+  "reviewedCommit": null,
+  "narratorApproval": {
+    "approved": false,
+    "reviewerId": null,
+    "approvalRecordedAt": null,
+    "approvalDocumentUrl": null
+  },
+  "requiredEvidence": {
+    "reconciledMigrationJournal": null,
+    "verifiedFullBackupId": null,
+    "successfulRestoreDrillId": null,
+    "stagingDatabaseUrl": null,
+    "stagingRlsCrossHouseReportUrl": null,
+    "stagingFullIntegrationRunUrl": null,
+    "temporalHubGoDecisionUrl": null,
+    "allNarratorScenariosSignedUrl": null,
+    "rollbackVerificationUrl": null,
+    "productionDiffApprovedUrl": null
+  },
+  "safeToMigrate": false,
+  "safeToMerge": false,
+  "safeToPublish": false,
+  "notes": [
+    "SQL 0075/0076 são REVIEW_ONLY e não pertencem ao journal Drizzle",
+    "O projeto mantém pendências anteriores de migrações, Hub Temporal e CI geral",
+    "Não existe homologação real do Narrador nem backup restaurado neste marco"
+  ]
+}
