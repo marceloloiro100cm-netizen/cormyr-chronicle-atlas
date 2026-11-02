@@ -1,8 +1,8 @@
 /** CCA-ESP-MVP-001 — Lote 4: projeções puras baseadas SOMENTE no calendário publicado. */
 import {dateKey} from '../calendar/harptos';
 import {getHarptosOrdinal,fromHarptosOrdinal} from '../calendar/temporal-engine';
-import {spyTravelSegmentSchema,type SpyTravelSegment,type SpyTravelEdge} from './contracts';
-import {findSpyRoute,type SpyRouteRegistry,type SpyTravelMode} from './routes';
+import {spyTravelSegmentSchema,type SpyTravelSegment} from './contracts';
+import {findSpyRoute,type SpyRouteRegistry,type SpyTravelMode,type SpyRouteResult} from './routes';
 import {spyIdSchema} from './contracts';
 
 export type SpyItineraryRequest={
@@ -18,7 +18,7 @@ export function planSpyItinerary(registry:SpyRouteRegistry,request:SpyItineraryR
  if(request.waypoints.length<2||request.waypoints.length>30)throw new Error('É preciso informar origem e destino (até 30 paradas).');
  if(!request.allowedModes.length)throw new Error('Informe pelo menos um modal aprovado.');
  let ordinal=getHarptosOrdinal(request.officialDateKey);
- const legs:ReturnType<typeof findSpyRoute> extends infer T ? T[] :never=[];
+ const legs:SpyRouteResult[]=[];
  for(let i=1;i<request.waypoints.length;i++){
   const from=request.waypoints[i-1]!,to=request.waypoints[i]!;
   const route=findSpyRoute(registry,from,to,request.allowedModes);
