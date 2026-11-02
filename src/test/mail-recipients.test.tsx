@@ -27,7 +27,7 @@ function Example({source=panel,initial=[]}:{source?:Panel;initial?:string[]}){
 const chosen=()=>screen.getByTestId('targets').textContent??'';
 afterEach(cleanup);
 
-describe('destinatários por região e seleção individual reservada',()=>{
+describe('destinatários somente por casas nobres',()=>{
  it('classifica as quatro casas confirmadas na Dragon Coast mesmo com região ausente ou incorreta',()=>{
   for(const id of ['ashkar','fewmerry','goldfin','grantass'])
    expect(recipientHouseRegion({id,region:null})).toBe('dragon-coast');
@@ -38,9 +38,9 @@ describe('destinatários por região e seleção individual reservada',()=>{
   render(<Example/>);
   const regions=screen.getAllByRole('region');
   expect(regions.map(r=>r.getAttribute('aria-label'))).toEqual([
-   'Destinatários individuais','Destinatários de Dragon Coast','Destinatários de Horselands'
+   'Destinatários de Dragon Coast','Destinatários de Horselands'
   ]);
-  const coast=regions[1]!,horse=regions[2]!;
+  const coast=regions[0]!,horse=regions[1]!;
   for(const house of ['Ashkar','Fewmerry','Goldfin','Grantass'])
    expect(within(coast).getByRole('checkbox',{name:house})).toBeInTheDocument();
   for(const house of ['Erdenor','Everlost','Harcourt','Silversky'])
@@ -51,14 +51,14 @@ describe('destinatários por região e seleção individual reservada',()=>{
  it('seleção rápida do Grupo 1 nunca inclui o Grupo 2',()=>{
   render(<Example/>);
   fireEvent.click(screen.getByRole('button',{name:'Selecionar Grupo 1'}));
-  expect(chosen().split(',').sort()).toEqual(['h:erdenor','h:everlost','h:harcourt','h:silversky'].sort());
+  expect(chosen().split(',').sort()).toEqual(['h:erdenor','h:everlost','h:silversky'].sort());
   expect(chosen()).not.toContain('fewmerry');
  });
  it('Grupo 2 substitui o Grupo 1 para evitar envio geral regional acidental',()=>{
   render(<Example/>);
   fireEvent.click(screen.getByRole('button',{name:'Selecionar Grupo 1'}));
   fireEvent.click(screen.getByRole('button',{name:'Selecionar Grupo 2'}));
-  expect(chosen()).toBe('h:fewmerry,h:grantass');
+  expect(chosen()).toBe('h:fewmerry,h:grantass,h:harcourt');
  });
  it('permite selecionar todas as casas de Dragon Coast pelo flag e depois desmarcar',()=>{
   render(<Example/>);
@@ -96,26 +96,20 @@ describe('destinatários por região e seleção individual reservada',()=>{
   render(<Example source={source}/>);
   expect(screen.getByRole('region',{name:'Destinatários de Outras regiões (verificar cadastro)'})).toBeInTheDocument();
  });
- it('permite escolher apenas um jogador e não selecionar sua casa inteira',()=>{
-  const source={...panel,players:[{id:'p-carlos',user_id:'login-carlos',name:'Carlos Castellan',
-   active:true,require_password_change:false,roster_house_id:'harcourt'},
-   {id:'p-anon',user_id:null,name:'Sem conta',active:true,require_password_change:false}]} as Panel;
+ it('não mostra pessoas nem Narrador como destinatário, mesmo ao Narrador',()=>{
+  const source={...panel,players:[{id:'p-carlos',user_id:'login-carlos',name:'Carlos Castellan',active:true,require_password_change:false,roster_house_id:'harcourt'}]} as Panel;
   render(<Example source={source}/>);
-  fireEvent.click(within(screen.getByRole('region',{name:'Destinatários individuais'}))
-    .getByRole('checkbox',{name:'Carlos Castellan'}));
-  expect(chosen()).toBe('p:p-carlos');
-  expect(chosen()).not.toContain('h:harcourt');
-  expect(screen.queryByRole('checkbox',{name:'Sem conta'})).not.toBeInTheDocument();
+  expect(screen.queryByText('Carlos Castellan')).not.toBeInTheDocument();
+  expect(screen.queryByRole('region',{name:'Destinatários individuais'})).not.toBeInTheDocument();
+  expect(screen.queryByRole('checkbox',{name:'Narrador'})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('checkbox',{name:'Harcourt'}));
+  expect(chosen()).toBe('h:harcourt');
  });
- it('jogadores não recebem acesso ao seletor de pessoas individuais',()=>{
+ it('jogadores também só conseguem escolher casas destinatárias',()=>{
   const source={...panel,admin:false,players:[{id:'p-carlos',user_id:'login-carlos',name:'Carlos Castellan',active:true,require_password_change:false}]} as Panel;
   render(<Example source={source}/>);
-  expect(screen.queryByRole('region',{name:'Destinatários individuais'})).not.toBeInTheDocument();
- });
- it('preserva destinos individuais de rascunhos anteriores no controle do Narrador',()=>{
-  const source={...panel,players:[{id:'p-carlos',user_id:'login-carlos',name:'Carlos Castellan',active:true,require_password_change:false}]} as Panel;
-  render(<Example source={source} initial={['p:p-carlos','h:ashkar']}/>);
-  expect(chosen()).toBe('p:p-carlos,h:ashkar');
-  expect(screen.getByRole('checkbox',{name:'Carlos Castellan'})).toBeChecked();
+  expect(screen.queryByRole('checkbox',{name:'Narrador'})).not.toBeInTheDocument();
+  expect(screen.queryByText('Carlos Castellan')).not.toBeInTheDocument();
+  expect(screen.getByRole('checkbox',{name:'Harcourt'})).toBeInTheDocument();
  });
 });
