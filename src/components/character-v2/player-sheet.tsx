@@ -7,12 +7,14 @@ import {SkillPips,TraitCard} from './character-sheet-parts';
 import {findCharacterTrait} from '@/lib/character-v2/catalog';
 import {getCharacterTraitRule} from '@/lib/character-v2/trait-rules';
 import {Button} from '@/components/ui/button';
+import {CharacterCoinWallet} from './coin-wallet';
 import {useState} from 'react';
 import {describeCharacterTrait} from '@/lib/character-v2/trait-descriptions';
 
 type CharacterRecord={
  id:string;title:string;kind:string;content:string;version:number;
  player_id?:string|null|undefined;
+ visibility?:string;
 };
 export type CharacterPreviewStat=Readonly<{
  key:DerivedKey;label:string;value:number|null;reason:string;
@@ -150,6 +152,10 @@ export function CharacterV2PlayerSheet({record,houseId,canEdit=false,onEdit}:{
    <p className="text-xs">Os números disponíveis são apenas cálculos básicos. Armaduras, escudos,
     ferimentos, bônus e defeitos ainda exigem homologação.</p>
   </section>
+  {(record.visibility==='house'||record.visibility==='player'||record.visibility==='gm')&&
+   <CharacterCoinWallet source={{id:record.id,title:record.title,
+    visibility:record.visibility,player_id:record.player_id??null}}
+    houseId={houseId} canEdit={canEdit}/>}
   <section className="character-v2-section" aria-label="Graduações em bolinhas">
    <h4>Habilidades</h4>
    <div className="character-v2-skills">
@@ -173,8 +179,6 @@ export function CharacterV2PlayerSheet({record,houseId,canEdit=false,onEdit}:{
    </section>}
   <section className="character-v2-section" aria-label="Qualidades e defeitos da ficha">
    <h4>Qualidades e defeitos</h4>
-   <p className="text-xs">Características preservadas da ficha importada. Sem aprovação individual,
-    nenhuma característica concede bônus ou aplica penalidades automaticamente.</p>
    {(['quality','flaw'] as const).map(kind=><div key={kind} className="mt-3">
     <h5 className="font-semibold mb-2">{kind==='quality'?'Qualidades':'Defeitos'} ({traitNotes.filter(t=>t.kind===kind).length})</h5>
     <div className="character-v2-traits">

@@ -63,11 +63,6 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
     {representationMode&&<p role="note" className="house-caption">Representação do jogador: visualização somente de leitura. Operações ficam desativadas e dependem de autorização específica.</p>}<div className="house-layout"><aside className="house-sidebar"><nav aria-label="Gerenciamento da casa">{NAV.filter(([id])=>!['reconciliation','coverage','kingdom','history','rules'].includes(id)).map(([id,label,Icon])=><Button variant={section===id?'default':'ghost'} aria-current={section===id?'page':undefined} key={id} onClick={()=>setSection(id)}><Icon size={17}/>{label}</Button>)}</nav></aside><main className="house-content">
       {(busy||message)&&<p role={error?'alert':'status'} className={error?'house-warning':'house-save-status'}>{busy?'Salvando…':message}</p>}
       {calendarError&&<p role="alert" className="house-warning">Não foi possível confirmar o período global. Operações mensais dependem do Calendário do Narrador.</p>}
-      {canEdit&&!monthly.allowed&&<p role="alert" className="house-warning" data-testid="house-monthly-lock">{monthly.message}</p>}
-      {drift&&drift.delta!==0&&<div role="alert" className="house-warning">
-        <strong>Calendário divergente:</strong> esta Casa está em {campaignMonth(state.month)}, enquanto o Reino está em {campaignMonth(drift.current)}.
-        {drift.delta>0?' A Casa está atrasada; novas ações mensais devem aguardar conciliação.':' A Casa está adiantada; não é possível retroceder obras e resultados automaticamente.'}
-      </div>}
       {admin&&state.phase==='active'&&drift&&drift.delta>0&&drift.delta<=120&&<details className="house-ledger">
         <summary>Conciliar {drift.delta} mês(es) desta Casa com o calendário global</summary>
         <form className="campaign-form" onSubmit={e=>{e.preventDefault();const form=new FormData(e.currentTarget);void run('sync_calendar',{},String(form.get('justification')));}}>

@@ -127,8 +127,8 @@ export function filterLetters(letters:LetterRow[], replies:ReplyRef[], filters:{
 }
 
 /** Missivas recebidas do narrador, agrupadas por número (mais recente primeiro). */
-export function groupReceivedLetters(letters: LetterRow[], userId: string): LetterGroup[] {
-  const received = letters.filter((l) => l.sender_user_id !== userId);
+export function groupReceivedLetters(letters: LetterRow[], userId: string, includeOutgoing = false): LetterGroup[] {
+  const received = includeOutgoing ? letters : letters.filter((l) => l.sender_user_id !== userId);
   const byNumber = new Map<number | null, LetterRow[]>();
   for (const letter of received) {
     const key = letter.letter_number;

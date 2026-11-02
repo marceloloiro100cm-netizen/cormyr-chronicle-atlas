@@ -81,8 +81,14 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
   });
   const letters=allLetters;
   const viewReplies=listing.data?.replies??[];
-  const groups=trashMode||filters.box==='enviadas'?[]:groupReceivedLetters(letters,data.user.id);
-  const mine=trashMode||filters.box==='recebidas'?[]:sentLetters(letters,data.user.id);
+  const outgoingView=filters.box==='enviadas';
+  // Cartas enviadas não aparecem na listagem padrão, mas continuam consultáveis
+  // por filtros específicos para preservar respostas, rascunhos e recibos de leitura.
+  const groups=trashMode?[]:groupReceivedLetters(
+    outgoingView?sentLetters(letters,data.user.id):letters,
+    data.user.id,
+    ['enviadas','rascunhos','programadas','historico'].includes(filters.box),
+  );
   const myHouses=data.members.filter(m=>m.player_id===me?.id).map(m=>m.house_id);
   const isRecipient=(letter:LetterRow)=>letter.recipient_player_id===me?.id||(letter.recipient_player_id===null&&myHouses.includes(letter.recipient_house_id??''));
   const toggle=(id:string)=>setExpanded(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
@@ -204,7 +210,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
   const numbers=[...new Set([...data.letters.filter(l=>!groupActive||matchesGroup(l)).map(l=>l.letter_number),
    ...data.replies.filter(r=>!groupActive||data.letters.some(l=>l.id===r.letter_id&&matchesGroup(l as LetterRow))).map(r=>r.delivery_week)]
    .filter((n):n is number=>n!==null))].sort((a,b)=>b-a);
-  const visibleIds=[...groups.flatMap(g=>g.letters),...mine].map(l=>l.id);
+  const visibleIds=groups.flatMap(g=>g.letters).map(l=>l.id);
   const filterPanel=<aside className="campaign-mail-side" aria-label="Filtros das missivas">
       <button className="campaign-mail-filter-toggle" type="button" aria-expanded={filtersVisible} aria-controls="campaign-mail-filter-fields" onClick={()=>setFiltersVisible(v=>!v)}><span>FILTROS</span><span>{filtersVisible?'Recolher':'Expandir'}</span></button>
       {filtersVisible&&<div className="campaign-mail-filter-fields" id="campaign-mail-filter-fields">
@@ -242,18 +248,14 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
           <div><strong>{listing.data?.kpis?.scheduled_replies_next??0}</strong><span>Respostas programadas (próx. semana)</span></div>
           <div><strong>{listing.data?.kpis?.drafts??0}</strong><span>Rascunhos do Narrador</span></div>
         </section>
-        <p className="text-muted-foreground text-sm">Indicadores de todos os resultados dos filtros ativos (sem limitar à página atual). Nesta página: {allLetters.length} missivas.</p>
-        <p className="text-muted-foreground text-sm">Próxima semana permitida: <strong>{nextRound}</strong>. Abrir uma nova semana encerra a anterior; semanas encerradas não podem ser reabertas.</p>
         <MailPeriodNotice date={periodDate} round={activeRound}/>
         <div className="campaign-actions">{open!==null&&<Button variant="outline" onClick={async()=>{if(!confirm(`Fechar a Missiva ${open}? Os jogadores não poderão mais responder nem escrever.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:open,p_closed:true});if(error)onError(error.message);else saved();}}>Fechar Missiva {open}</Button>}<input type="number" min={nextRound} style={{width:140}} value={roundNumber} onChange={e=>setRoundNumber(e.target.value)} placeholder={`Próxima: ${nextRound}`} aria-label="Número da missiva a abrir"/><Button variant="outline" onClick={async()=>{const n=roundNumber?Number(roundNumber):nextRound;if(!Number.isInteger(n)||n!==nextRound){onError(`A próxima semana permitida é ${nextRound}. Não é possível pular ou retroceder.`);return;}const preview=data.letters.filter(l=>l.delivery_week===n&&l.publication_state==='scheduled');const responses=data.replies.filter(r=>r.delivery_week===n&&r.publication_state==='scheduled');if(!confirm(`Abrir Semana ${n}? ${preview.length} mensagens e ${responses.length} respostas serão liberadas. Destinatários: ${preview.map(l=>houseName(l.recipient_house_id)||'Jogador autorizado').join(', ')||'Nenhuma nova mensagem'}. A semana anterior será encerrada. A data oficial de Harptos não será avançada pela abertura da semana.`))return;const {error}=await supabase.rpc('set_letter_round',{p_number:n,p_closed:false});if(error)onError(error.message);else{setRoundNumber('');saved();}}}>Abrir missiva</Button></div>
         {compose&&<MailComposer key={draft?.key??0} data={data} me={me} initial={draft} onSave={()=>{setDraft(null);saved();}} onManage={onManage}/>}</>}
       {trashMode&&<section className="campaign-trash" aria-label="Lixeira das missivas"><div className="campaign-heading"><h2>Lixeira</h2><span>{listing.data?.total??0} conversa(s)</span></div><p className="text-sm text-muted-foreground">Missivas e respostas excluídas permanecem arquivadas. Você pode restaurar somente suas próprias mensagens; o Narrador pode recuperar correspondências da campanha.</p>{!listing.isPending&&letters.length===0&&<p className="campaign-empty">Nenhuma missiva ou resposta excluída encontrada.</p>}{letters.map(letter=>card(letter,false))}</section>}
-      {!trashMode&&filters.box!=='enviadas'&&<><div className="campaign-heading"><h2>{filters.box==='excluidas'?'Missivas excluídas':data.admin&&filters.box!=='recebidas'?'Correspondência acompanhada':'Missivas recebidas'}</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
+      {!trashMode&&<><div className="campaign-heading"><h2>{filters.box==='excluidas'?'Missivas excluídas':outgoingView?'Missivas enviadas':data.admin&&filters.box!=='recebidas'?'Correspondência acompanhada':'Missivas recebidas'}</h2><span>{groups.reduce((n,g)=>n+g.letters.length,0)} missivas</span></div>
       {groups.length===0&&<p className="campaign-empty">Nenhuma missiva encontrada.</p>}
-      {groups.map(group=><section key={group.number??'sem-numero'} id={group.number!==null?'grupo-missiva-'+group.number:undefined} className="campaign-mail-group">{group.number!==null&&<h3 className="campaign-letter-number">Missiva {group.number}{data.rounds.find(r=>r.number===group.number)?.closed?' · fechada':''}</h3>}{data.rounds.find(r=>r.number===group.number)&&<p className="house-caption">Período registrado na abertura: {formatRoundHarptosReference(data.rounds.find(r=>r.number===group.number)?.harptos_period)}</p>}{group.letters.map(letter=>card(letter,isRecipient(letter)||data.admin))}</section>)}</>}
-      {!trashMode&&filters.box!=='recebidas'&&<><div className="campaign-heading"><h2>Missivas enviadas por você</h2><span>{mine.length} missivas</span></div>
-      {mine.length===0&&<p className="campaign-empty">Nenhuma missiva enviada encontrada.</p>}
-      {mine.map(letter=>card(letter,data.admin))}</>}
+      {groups.map(group=><section key={group.number??'sem-numero'} id={group.number!==null?'grupo-missiva-'+group.number:undefined} className="campaign-mail-group">{group.number!==null&&<h3 className="campaign-letter-number">Missiva {group.number}{data.rounds.find(r=>r.number===group.number)?.closed?' · fechada':''}</h3>}{group.letters.map(letter=>card(letter,isRecipient(letter)||data.admin))}</section>)}</>}
+
       {!trashMode&&!data.admin&&<MailComposer key={draft?.key??0} data={data} me={me} initial={draft} onSave={()=>{setDraft(null);saved();}} onManage={onManage}/>}
     </div>
   </div>;

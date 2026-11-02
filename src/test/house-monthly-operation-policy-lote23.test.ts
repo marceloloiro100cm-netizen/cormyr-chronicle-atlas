@@ -67,7 +67,9 @@ describe('Lote 23 · segurança temporal das operações da Casa',()=>{
   expect(file).toContain('if(isMonthSensitiveHouseAction(action))');
   expect(file).toContain('canEdit={monthlyCanEdit}');
   expect(file).toContain('open={buy&&monthlyCanEdit}');
-  expect(file).toContain('data-testid="house-monthly-lock"');
+  // A advertência visual foi oculta; a política temporal continua no handler e nos botões.
+  expect(file).not.toContain('data-testid="house-monthly-lock"');
+  expect(file).not.toContain('<strong>Calendário divergente:</strong>');
   expect(file.match(/disabled={!monthly.allowed\|\|busy}/g)?.length).toBeGreaterThanOrEqual(3);
  });
 });
