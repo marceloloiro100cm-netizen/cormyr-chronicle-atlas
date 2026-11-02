@@ -8,6 +8,7 @@ import { proposeVassal,approveVassal } from '@/lib/house/military';
 import { linkVassalNpcs } from '@/lib/house/vassal-links';
 vi.mock('@tanstack/react-start',()=>({useServerFn:()=>async()=>({state:{...newHouseState('target'),base:{defense:10,influence:10,lands:10,law:10,population:10,power:10,wealth:10}},catalog:[]})}));
 vi.mock('@/lib/house/house.functions',()=>({loadHouseHub:vi.fn(),loadHouseLedger:vi.fn()}));
+vi.mock('@/lib/house/vassal-workbook.functions',()=>({loadQazirVassalWorkbook:vi.fn()}));
 function Harness({withCrest=false}:{withCrest?:boolean}){const [state,setState]=useState(()=>{const s=newHouseState('isolated');s.base.power=100;return withCrest?approveVassal(proposeVassal(s,{id:'v-crest',houseId:'target',name:'Casa isolada',notes:''}),'v-crest',0):s;});return <Vassals catalog={[]} onCreate={async()=>true} onPurchase={async()=>true} onDomain={async()=>true} state={state} houses={[{id:'target',name:'Casa isolada',crest:withCrest?'/retrato-inexistente-vassalo.png':null}]} npcs={[{id:'npc',title:'NPC original'}]} admin canEdit busy={false} onPropose={async args=>{setState(proposeVassal(state,args as Parameters<typeof proposeVassal>[1]));return true;}} onApprove={async args=>{setState(linkVassalNpcs(approveVassal(state,String(args['id']),0),String(args['id']),args['npcIds'] as string[]));return true;}} onEnd={async()=>true} onLoyalty={async()=>true}/>;}
 describe('fluxo isolado de vassalos',()=>{
  it('substitui brasão inválido da casa filha por símbolo neutro sem reutilizar brasão da suserana',()=>{
