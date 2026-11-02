@@ -163,9 +163,10 @@ export function nextLetterNumber(letters: {letter_number:number|null}[]): number
  */
 export function unreadReceivedCount(letters: LetterRow[], replies: ReplyRef[], receipts: ReceiptRef[], userId: string, isNarrator=false): number {
   return letters.filter((l) => {
-    // Administradores acompanham cartas entre casas, mas elas não são
-    // notificações pessoais do Narrador (salvo quando ele participou do fio).
-    if(isNarrator&&l.sender_user_id!==userId&&
+    // Narrador recebe uma notificação virtual de mediação por missiva entregue
+    // entre casas. Não cria outra campaign_letter nem altera a privacidade dos jogadores.
+    const mediatedHouseMail=isNarrator&&l.sender_player_id!=null&&l.recipient_house_id!=null;
+    if(isNarrator&&!mediatedHouseMail&&l.sender_user_id!==userId&&
        (l.recipient_house_id!==null||l.recipient_player_id!==null)&&
        !replies.some(r=>r.letter_id===l.id&&deliveredReply(r)&&r.author_user_id===userId))return false;
     if (l.sender_user_id === userId && !replies.some(r=>r.letter_id===l.id&&deliveredReply(r)&&r.author_user_id!==userId)) return false;
