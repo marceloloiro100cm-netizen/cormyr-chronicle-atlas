@@ -42,7 +42,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  const {data:options,error,refetch}=useMailOptions();
  const {data:campaignTime}=useCampaignTime();
  const scope=data.user.id+':mail-compose';
- const [draft,setDraft]=useState<Draft>(()=>initial?{subject:initial.subject,content:initial.content,targets:[],links:{...emptyLinks},week:'',campaignDate:'',signedBy:'',images:[]}:drafts.get(scope)??{subject:'',content:'',targets:[],links:{...emptyLinks},week:'',campaignDate:'',signedBy:'',images:[]});
+ const [draft,setDraft]=useState<Draft>(()=>{const seed=initial?{subject:initial.subject,content:initial.content,targets:[],links:{...emptyLinks},week:'',campaignDate:'',signedBy:'',images:[]}:drafts.get(scope)??{subject:'',content:'',targets:[],links:{...emptyLinks},week:'',campaignDate:'',signedBy:'',images:[]};return {...seed,targets:seed.targets.filter(target=>target.startsWith('h:'))};});
  const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
  const key=useRef<string|null>(null);
  const change=(next:Draft)=>{setDraft(next);drafts.set(scope,next);};
