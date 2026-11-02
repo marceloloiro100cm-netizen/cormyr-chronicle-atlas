@@ -102,7 +102,6 @@ describe('novos destinatários e vínculos',()=>{
  it('envia para uma casa sem mostrar jogadores individuais e preserva vínculos opcionais',async()=>{
   mount(data());
   fireEvent.click(screen.getByRole('checkbox',{name:'Outra'}));
-  fireEvent.click(screen.getByLabelText('Narrador'));
   await waitFor(()=>expect(screen.getByLabelText('Membro da corte (opcional)').querySelector('option[value="c1"]')).toBeInTheDocument());
   fireEvent.change(screen.getByLabelText('Membro da corte (opcional)'),{target:{value:'c1'}});
   fireEvent.change(screen.getByLabelText('Unidade militar (opcional)'),{target:{value:'u1'}});
@@ -126,7 +125,7 @@ describe('lote 2: destinatários e semanas',()=>{
    const panel={...data(),user:{id:'narrator-no-recipient'},admin:true} as unknown as Panel;
    mount(panel);
    fireEvent.click(screen.getByRole('button',{name:'Escrever missiva'}));
-   await waitFor(()=>expect(screen.getByText(/Nenhum destinatário selecionado/)).toBeInTheDocument());
+   await waitFor(()=>expect(screen.getByText(/Nenhuma casa selecionada/)).toBeInTheDocument());
    expect(screen.getByRole('button',{name:'Salvar rascunho'})).toBeDisabled();
    expect(screen.getByRole('button',{name:'Programar entrega'})).toBeDisabled();
  });
