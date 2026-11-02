@@ -37,10 +37,10 @@ describe('Espionagem · Lote 2 economia e capacidades',()=>{
   expect(q.wealthAvailableBefore).toBe(50);
   expect(q.wealthAvailableAfter).toBe(45);
   expect(()=>quoteSpyContractor(s,[{} as never])).toThrow('não podem reservar');
-  s.holdings.push(holding(a,'pros-spy-contract-batch','active'));
+  s.holdings.push({...holding(a,'pros-spy-contract-batch','active'),costs:[{resource:'wealth',amount:5,mode:'allocation'}]});
   expect(quoteSpyContractor(s).wealthAvailableBefore).toBe(45);
   expect(quoteSpyContractor(s).confirmedContractAgents).toBe(2);
-  s.holdings.push(holding(b,'pros-spy-contract-batch','active'));
+  s.holdings.push({...holding(b,'pros-spy-contract-batch','active'),costs:[{resource:'wealth',amount:5,mode:'allocation'}]});
   expect(quoteSpyContractor(s).confirmedContractAgents).toBe(4);
   expect(s.base.wealth).toBe(50);
 
