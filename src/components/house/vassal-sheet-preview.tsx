@@ -45,7 +45,8 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
  const house=embedded?vassalState(parent,vassal):linked.data?.state;
  const itemCatalog=embedded?catalog:linked.data?.catalog??catalog;
  const summary=house?vassalHouseOverview(house,itemCatalog):null;
- const name=officialHouse?.name??vassal.name;
+ const rawName=officialHouse?.name??vassal.name;
+ const name=rawName.replace(/^Casa\s+/i,'')||rawName;
  async function download(){
   if(!house||downloading)return;
   setDownloading(true);setError('');
