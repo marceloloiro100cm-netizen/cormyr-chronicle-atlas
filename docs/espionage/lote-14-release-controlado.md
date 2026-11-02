@@ -13,7 +13,7 @@ Esta é uma **entrega de código e evidência em PRs de rascunho**, não um depl
 - Lote 14: `docs/espionage/release-evidence.json` e `scripts/espionage-release-gate.mjs` com evidência faltante = **NO_GO**.
 
 ## Dependências antes de executar qualquer SQL no projeto real
-1. Verificar as versões finais e o histórico de branches Lovable/GitHub; resolver todos os PRs empilhados na ordem 194 → 214, sem force push/rebase de histórico publicado.
+1. Verificar as versões finais e o histórico de branches Lovable/GitHub; resolver todos os PRs empilhados na ordem 194 → 209, sem force push/rebase de histórico publicado.
 2. Reconciliação de `drizzle/meta/_journal.json` e estado do banco; prefixo 0041 duplicado, histórico temporal incompleto e testes de Missivas pendentes precisam ser saneados.
 3. Backup físico/restaurável de produção e ensaio de restauração documentado num banco isolado contendo fichas, missivas, personagens e ledger; conferir RLS com identidades autenticadas e revogação de vínculos.
 4. Revisão dos arquivos `0075`/`0076` como migrações **únicas** numeradas depois do journal reconciliado. Não promover por renomeação automática nem aplicar SQL manual sem registrar a transação Drizzle correspondente.
