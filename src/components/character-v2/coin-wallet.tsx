@@ -1,4 +1,4 @@
-import {useRef,useState} from 'react';
+import {useRef,useState,type FormEvent} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
 import {Button} from '@/components/ui/button';
@@ -26,7 +26,7 @@ export function CharacterCoinWallet({source,houseId,canEdit=false}:{
   queryKey:['character-wallet',source.id,houseId],
   queryFn:async()=>{
    const response=await supabase.from('campaign_records')
-    .select('id,title,content,version,house_id,player_id,visibility')
+    .select('id,title,content,version,house_id,player_id,visibility,kind')
     .eq('id',key).maybeSingle();
    if(response.error)throw response.error;
    const row=response.data;
@@ -48,7 +48,7 @@ export function CharacterCoinWallet({source,houseId,canEdit=false}:{
   note.trim().length>=3&&note.trim().length<=250;
  const converted=Number.isSafeInteger(calcEntered)&&calcEntered>=0&&calcEntered<=1_000_000?
   coinEquivalent(calcEntered,calcFrom,calcTo):null;
- async function submit(event:React.FormEvent){
+ async function submit(event:FormEvent){
   event.preventDefault();
   if(!canRecord)return;
   setBusy(true);setMessage('');
