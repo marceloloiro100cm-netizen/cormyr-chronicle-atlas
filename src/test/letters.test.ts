@@ -201,6 +201,12 @@ describe('lote 3: caixa de entrada e turnos do Narrador',()=>{
   expect(unreadReceivedCount([gmLetter,peer,toNarrator],[{...houseReply,publication_state:'scheduled'}],[],narrator,true)).toBe(1);
   expect(unreadReceivedCount([gmLetter,peer,toNarrator],[{...houseReply,publication_state:'draft'}],[],narrator,true)).toBe(1);
  });
+ it('notifica o Narrador com uma cópia virtual das cartas entre casas',()=>{
+  const mediated=row({id:'mediation-house-mail',sender_user_id:'harcourt-user',sender_player_id:'harcourt-player',recipient_house_id:'everlost',publication_state:'delivered'});
+  const read=[{letter_id:mediated.id,user_id:narrator,read_at:'2026-11-02T19:00:00Z'}];
+  expect(unreadReceivedCount([mediated],[],[],narrator,true)).toBe(1);
+  expect(unreadReceivedCount([mediated],[],read,narrator,true)).toBe(0);
+ });
  it('não conta como nova uma resposta do próprio Narrador nem uma já lida',()=>{
   const receipts=[{letter_id:'gm-letter',user_id:narrator,read_at:'2026-10-24T13:00:00Z'}];
   const self={...houseReply,author_user_id:narrator};
