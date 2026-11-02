@@ -65,7 +65,7 @@ export function deriveSpyCapacity(state:HouseState){
  * Sem prazo ou manutenção automática: o Narrador não definiu esses parâmetros.
  */
 export const spyContractBatchSchema=z.object({
- id:spyIdSchema,ownerHouseId:z.string().min(1).max(100),sourceDomainId:spyIdSchema,
+ id:spyIdSchema,ownerHouseId:z.string().min(1).max(100),sourceDomainId:z.string().min(1).max(200),
  operationKey:spyIdSchema,version:z.number().int().min(1),rulesVersion:z.string().min(1),
  status:z.enum(['active','ended']),
  cost:z.object({resource:z.literal('wealth'),amount:z.literal(5),mode:z.literal('allocation')}).strict(),
