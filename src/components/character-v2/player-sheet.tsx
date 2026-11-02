@@ -179,8 +179,6 @@ export function CharacterV2PlayerSheet({record,houseId,canEdit=false,onEdit}:{
    </section>}
   <section className="character-v2-section" aria-label="Qualidades e defeitos da ficha">
    <h4>Qualidades e defeitos</h4>
-   <p className="text-xs">Características preservadas da ficha importada. Sem aprovação individual,
-    nenhuma característica concede bônus ou aplica penalidades automaticamente.</p>
    {(['quality','flaw'] as const).map(kind=><div key={kind} className="mt-3">
     <h5 className="font-semibold mb-2">{kind==='quality'?'Qualidades':'Defeitos'} ({traitNotes.filter(t=>t.kind===kind).length})</h5>
     <div className="character-v2-traits">
