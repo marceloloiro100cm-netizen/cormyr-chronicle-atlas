@@ -77,7 +77,7 @@ export function SpyPlayerPanel({houseName,state,catalog,houses,canEdit,onOpenPur
   {(tab==='overview'||tab==='agents')&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(190px, 1fr))',gap:12}}>
    <div style={cardStyle}><small>Agentes de Rede habilitados</small><h3>{cap.confirmedNetworkCells}</h3><p>{cap.confirmedBaseCells} da Rede + {cap.confirmedExpandedCells} de melhorias ativas</p></div>
    <div style={cardStyle}><small>Riqueza da Casa</small><h3>{bal.available.wealth} disponível</h3><p>{bal.allocated.wealth} alocada · {bal.total.wealth} total</p></div>
-   <div style={cardStyle}><small>Contratação avulsa</small><h3>5 Riqueza / 2 agentes</h3><p>Repetível · {contractor.status==='preview_only'?'saldo preliminar suficiente':'sem saldo preliminar'} · compra ainda indisponível</p></div>
+   <div style={cardStyle}><small>Contratação avulsa</small><h3>5 Riqueza / 2 agentes</h3><p>Repetível · {contractor.status==='preview_only'?'compra pelo cadastro':'sem recursos ou domínio'} · {cap.confirmedContractAgents} contratados em posses ativas</p></div>
    <div style={cardStyle}><small>Registro operacional</small><h3>Conciliação necessária</h3><p>As vagas habilitadas não são agentes designáveis até a confirmação de IDs e localidades.</p></div>
   </div>}
   {tab==='agents'&&<div style={{marginTop:16}}>
@@ -183,8 +183,9 @@ export function SpyPlayerPanel({houseName,state,catalog,houses,canEdit,onOpenPur
     <p>Utilize o cadastro de posses da Casa para selecionar uma Rede principal ativa.</p>
    </div>
    <div style={{...cardStyle,maxWidth:680}}><strong>Contratação avulsa</strong><p>5 Riqueza alocada · 2 agentes · compra repetível</p>
-    <Button disabled>Contratar (aguardando transação segura)</Button>
-    <p>Não há cobrança, contratação ou reserva até a implementação do Lote 10.</p>
+    <Button disabled={!canEdit||!contractor.canHire}
+     onClick={()=>onOpenPurchase('pros-spy-contract-batch')}>Comprar lote pela Casa</Button>
+    <p>A compra registra 5 Riqueza no ledger existente da Casa. A ativação dos dois agentes operacionais requer cadastro seguro e conciliação.</p>
    </div>
   </div>}
  </section>;
