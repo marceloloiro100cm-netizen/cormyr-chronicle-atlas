@@ -92,8 +92,13 @@ jobs:
           for migration in drizzle/migrations/*.sql; do
             psql -v ON_ERROR_STOP=1 --single-transaction -f "$migration"
           done
-      - name: Validate mail lifecycle and RLS
+      - name: Validate house-only recipient guard
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-mail-house-only.sql
+      - name: Validate mail lifecycle and RLS (historical recipient fixtures)
         run: |
+          # Old tests cover historical individual/Narrator mail RLS.
+          # Only the disposable CI fixture disables the NEW-INSERT guard.
+          psql -v ON_ERROR_STOP=1 -c "ALTER TABLE public.campaign_letters DISABLE TRIGGER zz_house_only_mail_recipient"
           psql -v ON_ERROR_STOP=1 -f scripts/test-mail-permissions.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-mail-links.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-calendar.sql
@@ -122,6 +127,7 @@ jobs:
           # Re-applying our reconciliation must be safe and must not erase history.
           psql -v ON_ERROR_STOP=1 --single-transaction -f drizzle/migrations/0059_reconcile_production_schema.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-production-reconciliation.sql
+          psql -v ON_ERROR_STOP=1 -c "ALTER TABLE public.campaign_letters ENABLE TRIGGER zz_house_only_mail_recipient"
       - name: Probe migration replay in isolated disposable PostgreSQL clones
         env:
           TEMPORAL_DISPOSABLE_POSTGRES: 'true'
