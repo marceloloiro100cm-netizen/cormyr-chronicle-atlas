@@ -34,7 +34,7 @@ const action = audit.acoes.find((item) => item.original === 'Spy Cell Infiltrati
 assert.ok(action, 'Ação de infiltração não encontrada na auditoria');
 assert.match(action.regra, /Status \(Steward\).*dificuldade 9/i);
 assert.equal(matrix.rules.spyCellInfiltration.difficulty, 9);
-const sourceNetwork = audit.catalogo.find((item) => item.original === 'Spy Network');
+const sourceNetwork = audit.catalogo.Personage.find((item) => item.original === 'Spy Network');
 assert.ok(sourceNetwork && sourceNetwork.tempo === null && sourceNetwork.incerteza);
 assert.equal(matrix.holdings.find((item) => item.id === 'pros-spy-network').durationAuthority, 'reconstructed_unverified');
 console.log('Lote 0 OK: 12 posses, 11 regiões, fontes conciliadas; sem células, tarifa, Lei ou rotas inventadas.');
