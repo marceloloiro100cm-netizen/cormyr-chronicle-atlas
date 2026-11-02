@@ -3,7 +3,7 @@ import {dateKey} from '@/lib/calendar/harptos';
 import {fromHarptosOrdinal,getHarptosOrdinal} from '@/lib/calendar/temporal-engine';
 import {emptySpyRouteRegistry,upsertSpyLocation,upsertSpyTravelEdge} from '@/lib/espionage/routes';
 import {planSpyItinerary,getTravelTransitionsUntilPublishedDate,replanSpyItinerary} from '@/lib/espionage/travel';
-const ids=Array.from({length:12},(_,i)=>String(i+1).repeat(8)+'-'+String(i+1).repeat(4)+'-4'+String(i+1).repeat(3)+'-8'+String(i+1).repeat(3)+'-'+String(i+1).repeat(12));
+const ids=Array.from({length:12},(_,i)=>{const h=(i+1).toString(16);return h.repeat(8)+'-'+h.repeat(4)+'-4'+h.repeat(3)+'-8'+h.repeat(3)+'-'+h.repeat(12);});
 const gm={isNarrator:true as const,actorId:'gm',justification:'Trajeto aprovado no mapa da campanha'};
 const location=(i:number)=>({id:ids[i]!,kind:'region' as const,refId:'r'+i,name:'R'+i,regionId:'r'+i,visibility:'public' as const,approved:true,version:1,source:'Mapa do Narrador'});
 function registry(){
