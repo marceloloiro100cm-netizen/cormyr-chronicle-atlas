@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/lib/espionage/**/*.ts",
+    "src/test/espionage-*.test.ts"
+  ]
+}
