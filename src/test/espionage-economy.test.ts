@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {newHouseState,type Holding} from '@/lib/house/types';
-import {deriveSpyCapacity,quoteSpyPurchase,quoteSpyContractor,spyContractBatchSchema} from '@/lib/espionage/economy';
+import {deriveSpyCapacity,quoteSpyPurchase,quoteSpyContractor} from '@/lib/espionage/economy';
 const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222',d='33333333-3333-4333-8333-333333333333';
 const state=()=>{
  const s=newHouseState('evenhand','helmlands');
@@ -29,22 +29,20 @@ describe('Espionagem · Lote 2 economia e capacidades',()=>{
   expect(s.base.wealth).toBe(50);
   expect(()=>quoteSpyPurchase(s,{itemId:'pros-unknown' as never,domainId:d})).toThrow();
  });
- it('contratação avulsa custa 5 Riqueza por dois agentes e é repetível sem débito na prévia',()=>{
+ it('contratação só contabiliza uma vez no catálogo, sem ledger paralelo',()=>{
   const s=state();
-  expect(quoteSpyContractor(s).agentsPerPurchase).toBe(2);
-  expect(quoteSpyContractor(s).cost).toEqual({resource:'wealth',amount:5,mode:'allocation'});
-  const batch=(id:string,operationKey:string)=>({
-   id,ownerHouseId:s.houseId,sourceDomainId:d,operationKey,version:1,
-   rulesVersion:'CCA-ESP-MVP-001:v1',status:'active' as const,
-   cost:{resource:'wealth' as const,amount:5 as const,mode:'allocation' as const},
-  });
-  expect(spyContractBatchSchema.safeParse(batch(a,b)).success).toBe(true);
-  const batches=Array.from({length:10},(_,i)=>batch(
-    (i+1).toString(16).repeat(8)+'-1111-4111-8111-111111111111',
-    (i+1).toString(16).repeat(8)+'-2222-4222-8222-222222222222'));
-  expect(quoteSpyContractor(s,batches).canHire).toBe(false);
-  expect(quoteSpyContractor(s,batches).confirmedContractAgents).toBe(20);
-  expect(quoteSpyContractor(s).contractDurationDays).toBe(null);
+  const q=quoteSpyContractor(s);
+  expect(q.canHire).toBe(true);
+  expect(q.cost).toEqual({resource:'wealth',amount:5,mode:'allocation'});
+  expect(q.wealthAvailableBefore).toBe(50);
+  expect(q.wealthAvailableAfter).toBe(45);
+  expect(()=>quoteSpyContractor(s,[{} as never])).toThrow('não podem reservar');
+  s.holdings.push(holding(a,'pros-spy-contract-batch','active'));
+  expect(quoteSpyContractor(s).wealthAvailableBefore).toBe(45);
+  expect(quoteSpyContractor(s).confirmedContractAgents).toBe(2);
+  s.holdings.push(holding(b,'pros-spy-contract-batch','active'));
+  expect(quoteSpyContractor(s).confirmedContractAgents).toBe(4);
   expect(s.base.wealth).toBe(50);
+
  });
 });
