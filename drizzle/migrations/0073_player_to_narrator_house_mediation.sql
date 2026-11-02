@@ -66,6 +66,5 @@ BEGIN
  END LOOP;
  SELECT jsonb_agg(id ORDER BY id) INTO ids FROM campaign_letters WHERE batch_key=p_key AND sender_user_id=auth.uid();
  RETURN jsonb_build_object('ids',ids,'duplicate',false,'week',delivery,'state',CASE WHEN p_draft THEN 'draft' WHEN delivery=n THEN 'delivered' ELSE 'scheduled' END);
-END $function$
-
+END $function$;
 COMMIT;
