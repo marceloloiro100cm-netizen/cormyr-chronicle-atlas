@@ -43,7 +43,7 @@ describe('Espionagem · Lote 4 calendário',()=>{
   expect(dateKey(fromHarptosOrdinal(getHarptosOrdinal('1524-F-shieldmeet')))).toBe('1524-F-shieldmeet');
  });
  it('trecho não cadastrado impede previsão inteira',()=>{
-  const p=planSpyItinerary(registry(),{operationId:ids[6]!,waypoints:[ids[1]!,ids[0]!],allowedModes:['horse'],
+  const p=planSpyItinerary(registry(),{operationId:ids[6]!,waypoints:[ids[1]!,ids[0]!],allowedModes:['ship'],
    officialDateKey:'1522-01-01',calendarVersion:1,segmentIds:[]});
   expect(p.status).toBe('route_not_registered');
  });
