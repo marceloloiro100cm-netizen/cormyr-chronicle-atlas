@@ -161,7 +161,7 @@ BEGIN
      ||current_ref||':'||slot::text;
    INSERT INTO public.spy_assets(owner_house_id,kind,codename,source_holding_id,
     source_ref,current_location_id,status,rules_version)
-    VALUES(p_house,kind,'Agente '+(slot+1)::text,current_ref,
+    VALUES(p_house,kind,'Agente '||(slot+1)::text,current_ref,
       source_ref,loc_id,'available','CCA-ESP-MVP-001:2026-11-02')
     ON CONFLICT(owner_house_id,source_ref) DO NOTHING;
    IF FOUND THEN n:=n+1; END IF;
