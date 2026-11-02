@@ -1,6 +1,6 @@
 /** CCA-ESP-MVP-001 — Lote 5: cadastro e conciliação PUROS, sem gravação/autorização remota. */
 import {spyAssetSchema,spyIdSchema,type SpyAsset,type SpyOperation,type SpyLocation} from './contracts';
-import {deriveSpyCapacity,quoteSpyContractor,type SpyContractorTariff} from './economy';
+import {deriveSpyCapacity,quoteSpyContractor,spyContractBatchSchema,type SpyContractBatch} from './economy';
 import {activeHoldings} from '../house/engine';
 import type {HouseState} from '../house/types';
 
@@ -11,7 +11,7 @@ function guardReview(review:SpyAssetReview){
  if(review.isNarrator!==true||!review.actorId?.trim()||(review.reason?.trim().length??0)<10)
   throw new Error('Conciliação exige Narrador e justificativa.');
 }
-function slotKey(holdingId:string,slot:number){return 'expanded:'+holdingId+':'+slot;}
+function slotKey(kind:'base'|'expanded',holdingId:string,slot:number){return kind+':'+holdingId+':'+slot;}
 export function emptySpyAssetRegistry(ownerHouseId:string):SpyAssetRegistry{
  if(!ownerHouseId.trim())throw new Error('Casa proprietária obrigatória.');
  return {ownerHouseId,assets:[],version:1};
@@ -19,7 +19,7 @@ export function emptySpyAssetRegistry(ownerHouseId:string):SpyAssetRegistry{
 export type SpyAssetsReconciliation={
  created:SpyAsset[];pendingSlots:string[];unverifiedAssets:string[];next:SpyAssetRegistry;
 };
-/** Os IDs são fornecidos pelo chamador transacional. Não criar ativos a partir da Rede básica ou notas livres. */
+/** IDs devem vir de compra/posse comprovada pela futura RPC. Rede base ativa gera 1; notas livres nunca criam ativos. */
 export function reconcileNetworkCells(input:{
  state:HouseState;registry:SpyAssetRegistry;locations:readonly SpyLocation[];
  proposedIds:Record<string,string>;review:SpyAssetReview;expectedVersion:number;
@@ -29,7 +29,7 @@ export function reconcileNetworkCells(input:{
  if(state.houseId!==registry.ownerHouseId)throw new Error('Casa de origem divergente.');
  if(expectedVersion!==registry.version)throw new Error('Versão de agentes desatualizada.');
  const slots=deriveSpyCapacity(state).slots;
- const allowedKeys=new Set(slots.map(s=>slotKey(s.sourceHoldingId,s.slot)));
+ const allowedKeys=new Set(slots.map(s=>slotKey(s.sourceKind,s.sourceHoldingId,s.slot)));
  const duplicates=new Set(registry.assets.map(a=>a.sourceRef));
  if(duplicates.size!==registry.assets.length)throw new Error('Ativos duplicados por origem; revisão manual obrigatória.');
  const activeIds=new Set(registry.assets.map(a=>a.id));
@@ -37,7 +37,7 @@ export function reconcileNetworkCells(input:{
  const domains=new Map(locations.filter(l=>l.approved&&l.kind==='domain').map(l=>[l.refId,l.id]));
  const created:SpyAsset[]=[],pendingSlots:string[]=[];
  for(const slot of slots){
-  const key=slotKey(slot.sourceHoldingId,slot.slot);
+  const key=slotKey(slot.sourceKind,slot.sourceHoldingId,slot.slot);
   if(duplicates.has(key))continue;
   const id=proposedIds[key];
   const locationId=domains.get(slot.domainId);
@@ -47,7 +47,7 @@ export function reconcileNetworkCells(input:{
   freshIds.add(id);
   created.push(spyAssetSchema.parse({
    id,ownerHouseId:state.houseId,kind:'network_cell',
-   label:'Célula '+(slot.slot+1)+' · '+slot.sourceHoldingId.slice(0,8),
+   label:(slot.sourceKind==='base'?'Agente inicial':'Agente adicional '+(slot.slot+1))+' · '+slot.sourceHoldingId.slice(0,8),
    sourceHoldingId:slot.sourceHoldingId,sourcePurchaseId:slot.sourcePurchaseId,sourceRef:key,
    currentLocationId:locationId,status:'available',rulesVersion:'CCA-ESP-MVP-001:v1',version:1,
   }));
@@ -74,10 +74,54 @@ export function registerSpyLocalContact(input:{
   currentLocationId:location.id,status:'available',rulesVersion:'CCA-ESP-MVP-001:v1',version:1});
  return {...registry,version:registry.version+1,assets:[...registry.assets,asset]};
 }
-/** Só produz uma INTENÇÃO para transação financeira futura, nunca cria contratado por cotação. */
-export function previewSpyContractorEnrollment(state:HouseState,tariff:SpyContractorTariff|null){
- const quote=quoteSpyContractor(state,tariff);
+/** A cotação não realiza compra, nem cria agentes. */
+export function previewSpyContractorEnrollment(state:HouseState,batches:readonly SpyContractBatch[]=[]){
+ const quote=quoteSpyContractor(state,batches);
  return {quote,assetCreated:false as const,requiresLedgerTransaction:true as const};
+}
+/** Registrar dois agentes por lote comprovadamente adquirido e ativo. O ledger autoritativo
+ * é verificado NO SERVIDOR antes de chamar esta função; o cliente nunca pode aprovar compras.
+ */
+export function reconcileContractedAgents(input:{
+ state:HouseState;registry:SpyAssetRegistry;batches:readonly SpyContractBatch[];
+ verifiedOperationKeys:readonly string[];locations:readonly SpyLocation[];
+ proposedIds:Record<string,string>;review:SpyAssetReview;expectedVersion:number;
+}):SpyAssetsReconciliation{
+ const {state,registry,locations,proposedIds,review}=input;
+ guardReview(review);
+ if(state.houseId!==registry.ownerHouseId||input.expectedVersion!==registry.version)
+  throw new Error('Casa ou versão inválida para contratação.');
+ const batches=input.batches.map(b=>spyContractBatchSchema.parse(b));
+ const verified=new Set(input.verifiedOperationKeys);
+ const known=new Set(registry.assets.map(a=>a.sourceRef));
+ if(known.size!==registry.assets.length)throw new Error('Origens duplicadas no cadastro.');
+ const ids=new Set(registry.assets.map(a=>a.id));
+ const created:SpyAsset[]=[],pendingSlots:string[]=[];
+ const domains=new Map(locations.filter(l=>l.approved&&l.kind==='domain').map(l=>[l.refId,l.id]));
+ for(const batch of batches){
+  if(batch.ownerHouseId!==state.houseId)throw new Error('Compra pertence a outra Casa.');
+  if(batch.status!=='active')continue;
+  if(!verified.has(batch.operationKey))throw new Error('Lote avulso sem registro financeiro verificado.');
+  for(let slot=0;slot<2;slot++){
+   const key='contractor:'+batch.id+':'+slot;
+   if(known.has(key))continue;
+   const id=proposedIds[key],locationId=domains.get(batch.sourceDomainId);
+   if(!id||!locationId){pendingSlots.push(key);continue;}
+   spyIdSchema.parse(id);
+   if(ids.has(id))throw new Error('Identificador de agente repetido.');
+   ids.add(id);
+   created.push(spyAssetSchema.parse({
+    id,ownerHouseId:state.houseId,kind:'contractor',
+    label:'Contratado '+(slot+1)+' · '+batch.id.slice(0,8),
+    sourcePurchaseId:batch.id,sourceRef:key,currentLocationId:locationId,
+    status:'available',rulesVersion:batch.rulesVersion,version:1,
+   }));
+  }
+ }
+ const activeRefs=new Set(batches.filter(b=>b.status==='active').flatMap(b=>[0,1].map(n=>'contractor:'+b.id+':'+n)));
+ return {created,pendingSlots,
+  unverifiedAssets:registry.assets.filter(a=>a.kind==='contractor'&&!activeRefs.has(a.sourceRef)).map(a=>a.id),
+  next:{...registry,version:registry.version+(created.length?1:0),assets:[...registry.assets,...created]}};
 }
 export function validateSpyAssignment(asset:SpyAsset,operations:readonly SpyOperation[],ownerHouseId:string){
  const reasons:string[]=[];
