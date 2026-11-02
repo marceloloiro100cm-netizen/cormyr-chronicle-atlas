@@ -6,7 +6,7 @@ import type {HouseState,CatalogItem} from '../house/types';
 import {spyIdSchema,SPY_RULES_VERSION} from './contracts';
 
 export const SPY_HOLDING_IDS=[
- 'pros-spy-network','pros-spy-network--expanded-network',
+ 'pros-spy-network','pros-spy-network--expanded-network','pros-spy-contract-batch',
  'pros-spy-network--expert-spies','pros-spy-network--plausible-deniability',
  'pros-dog-kennels--guard-dogs','pros-bailiffs--investigative-training',
  'pros-secret-police','pros-secret-police--special-detachment',
@@ -15,7 +15,7 @@ export const SPY_HOLDING_IDS=[
 ] as const;
 export type SpyHoldingId=(typeof SPY_HOLDING_IDS)[number];
 const allowed=new Set<string>(SPY_HOLDING_IDS);
-const networkId='pros-spy-network',expandedId='pros-spy-network--expanded-network';
+const networkId='pros-spy-network',expandedId='pros-spy-network--expanded-network',contractId='pros-spy-contract-batch';
 export const SPY_BASE_AGENTS_PER_NETWORK=1;
 export const SPY_AGENTS_PER_EXPANDED_NETWORK=2;
 export const SPY_AGENTS_PER_CONTRACT_BATCH=2;
@@ -45,6 +45,7 @@ export function deriveSpyCapacity(state:HouseState){
  const networks=active.filter(h=>h.itemId===networkId);
  const networkIds=new Set(networks.map(h=>h.id));
  const expanded=active.filter(h=>h.itemId===expandedId&&h.parentId&&networkIds.has(h.parentId));
+ const contracts=active.filter(h=>h.itemId===contractId);
  const baseSlots:SpyCapacitySlot[]=networks.map(h=>({
   sourceHoldingId:h.id,sourcePurchaseId:h.id,slot:0,domainId:h.domainId,
   sourceNetworkId:h.id,sourceKind:'base',
@@ -53,9 +54,11 @@ export function deriveSpyCapacity(state:HouseState){
   sourceHoldingId:h.id,sourcePurchaseId:h.id,slot,domainId:h.domainId,
   sourceNetworkId:h.parentId!,sourceKind:'expanded' as const,
  })));
+ const contractorSlots=contracts.flatMap(h=>[0,1].map(slot=>({sourceHoldingId:h.id,sourcePurchaseId:h.id,slot,domainId:h.domainId,sourceKind:'contractor' as const})));
  return {activeNetworks:networks.length,confirmedBaseCells:baseSlots.length,
   confirmedExpandedCells:expandedSlots.length,confirmedNetworkCells:baseSlots.length+expandedSlots.length,
-  initialCellsUnresolved:false as const,slots:[...baseSlots,...expandedSlots]};
+  initialCellsUnresolved:false as const,slots:[...baseSlots,...expandedSlots],
+  confirmedContractAgents:contractorSlots.length,contractorSlots};
 }
 
 /** Lote 10 fará alocação de 5 Riqueza e inserção atômica com o ledger: nenhum valor aqui é débito.
@@ -69,23 +72,25 @@ export const spyContractBatchSchema=z.object({
 }).strict();
 export type SpyContractBatch=z.infer<typeof spyContractBatchSchema>;
 
-export function quoteSpyContractor(state:HouseState,batches:readonly SpyContractBatch[]=[]){
- const verified=batches.map(batch=>spyContractBatchSchema.parse(batch));
- if(verified.some(batch=>batch.ownerHouseId!==state.houseId))
-  throw new Error('Contrato de outra Casa não pode afetar o saldo.');
- const ids=new Set(verified.map(b=>b.id)),keys=new Set(verified.map(b=>b.operationKey));
- if(ids.size!==verified.length||keys.size!==verified.length)throw new Error('Contrato duplicado detectado.');
- const active=verified.filter(batch=>batch.status==='active');
- // Reservas avulsas são separadas do catálogo para NÃO alterar o JSON da ficha antiga.
- // Em produção, esta soma deve vir do mesmo ledger transacional e nunca ser subtraída duas vezes.
- const allocated=active.length*SPY_CONTRACT_BATCH_WEALTH;
- const available=balances(state).available.wealth-allocated;
- return {status:available>=SPY_CONTRACT_BATCH_WEALTH?'preview_only' as const:'insufficient_wealth' as const,
-  canHire:available>=SPY_CONTRACT_BATCH_WEALTH,wealthAvailableBefore:available,
-  wealthAvailableAfter:available-SPY_CONTRACT_BATCH_WEALTH,
-  batchesActive:active.length,confirmedContractAgents:active.length*SPY_AGENTS_PER_CONTRACT_BATCH,
-  cost:{resource:'wealth' as const,amount:SPY_CONTRACT_BATCH_WEALTH,mode:SPY_CONTRACT_COST_MODE},
-  agentsPerPurchase:SPY_AGENTS_PER_CONTRACT_BATCH,repeatable:true,
-  contractDurationDays:null,maintenanceWealth:null,automaticExpiry:false,
-  rulesVersion:SPY_RULES_VERSION,requiresTransactionalLedger:true as const};
+/** Fonte única: HouseState.holdings e balances(). Não subtrair de novo
+ * `spy_contract_batches` que tenha sido lançado como posse em houseOperation.
+ */
+export function quoteSpyContractor(state:HouseState,_batches:readonly SpyContractBatch[]=[]){
+ if(_batches.length)throw new Error('Contratos externos não podem reservar Riqueza duas vezes. Use a posse canônica.');
+ const domainId=state.domains[0]?.id;
+ const capacity=deriveSpyCapacity(state);
+ if(!domainId)return {status:'missing_domain' as const,canHire:false as const,
+  wealthAvailableBefore:balances(state).available.wealth,confirmedContractAgents:capacity.confirmedContractAgents,
+  cost:{resource:'wealth' as const,amount:5,mode:'allocation' as const},
+  agentsPerPurchase:2,repeatable:true,requiresTransactionalLedger:true as const};
+ const item=CORE_CATALOG.find(i=>i.id===contractId);
+ if(!item)throw new Error('Lote avulso ausente do catálogo.');
+ const q=quote(item,state,domainId);
+ return {status:q.errors.length?'blocked' as const:'preview_only' as const,
+  canHire:q.errors.length===0,errors:q.errors,wealthAvailableBefore:q.before.wealth,
+  wealthAvailableAfter:q.after.wealth,confirmedContractAgents:capacity.confirmedContractAgents,
+  cost:{resource:'wealth' as const,amount:5,mode:'allocation' as const},
+  agentsPerPurchase:2,repeatable:true,contractDurationDays:null,
+  maintenanceWealth:null,automaticExpiry:false,rulesVersion:SPY_RULES_VERSION,
+  requiresTransactionalLedger:true as const};
 }
