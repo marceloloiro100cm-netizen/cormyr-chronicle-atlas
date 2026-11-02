@@ -46,7 +46,7 @@ function locationsFor(item:CatalogItem,state:HouseState,holdings:Holding[]):stri
   item.category==='feature'&&d.features.includes(item.id)||
   item.category==='community'&&d.community===item.id
  )).map(d=>d.name);
- const held=holdings.map(h=>state.domains.find(d=>d.id===h.domainId)?.name??h.name);
+ const held=holdings.map(h=>h.name);
  return [...new Set([...direct,...held])];
 }
 function CatalogAssetCard({item,state,catalog,canEdit,busy,onBuy,onCondition}:{item:CatalogItem;
