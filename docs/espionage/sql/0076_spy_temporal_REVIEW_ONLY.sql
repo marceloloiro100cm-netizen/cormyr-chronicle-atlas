@@ -10,7 +10,7 @@ ON CONFLICT(code) DO NOTHING;
 CREATE OR REPLACE FUNCTION public.spy_process_published_movements(
  p_expected_calendar_version integer,p_request_key uuid,p_reason text)
 RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=public,pg_temp AS $spy$
-DECLARE cal record; latest_date text; op record; seg record; n integer:=0; checked boolean;
+DECLARE cal record; latest_date text; seg record; n integer:=0; pass_count integer; checked boolean;
 BEGIN
  IF auth.uid() IS NULL OR NOT public.is_campaign_admin() OR NOT public.campaign_access_active() THEN
   RAISE EXCEPTION 'Somente o Narrador pode processar movimentos'; END IF;
@@ -18,6 +18,9 @@ BEGIN
   RAISE EXCEPTION 'Chave e justificativa obrigatórias'; END IF;
  IF p_expected_calendar_version<1 THEN RAISE EXCEPTION 'Versão temporal inválida'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('spy-movements',0));
+ IF EXISTS(SELECT 1 FROM public.spy_operation_events WHERE request_key=p_request_key) THEN
+  RAISE EXCEPTION 'Chave de movimento já usada: reexecução com nova chave e versão obrigatória';
+ END IF;
  SELECT * INTO cal FROM public.campaign_calendar WHERE id=true FOR SHARE;
  IF NOT FOUND OR cal.version<>p_expected_calendar_version THEN
   RAISE EXCEPTION 'Versão do calendário mudou'; END IF;
@@ -25,7 +28,9 @@ BEGIN
   WHERE (cto.after_state->>'version')::integer=cal.version) INTO checked;
  IF NOT checked THEN RAISE EXCEPTION 'Publicação oficial ainda não confirmada'; END IF;
  latest_date:=public.harptos_time_key(cal.year,cal.month,cal.day,cal.festival);
- -- Backdates não apagam chegadas. Apenas segmentos ainda em trânsito são elegíveis.
+ -- Retrocessos não desfazem chegadas. Repetir a busca para saltos com múltiplos trechos.
+ LOOP
+ pass_count:=n;
  FOR seg IN SELECT s.* FROM public.spy_operation_segments s
   JOIN public.spy_operations o ON o.id=s.operation_id
   WHERE s.status IN ('planned','traveling')
@@ -45,6 +50,8 @@ BEGIN
   UPDATE public.spy_assets SET current_location_id=seg.to_location_id,version=version+1
    WHERE id=(SELECT asset_id FROM public.spy_operations WHERE id=seg.operation_id);
   n:=n+1;
+ END LOOP;
+ EXIT WHEN n=pass_count;
  END LOOP;
  INSERT INTO public.spy_operation_events(request_key,actor,event_type,reason,calendar_version)
  VALUES(p_request_key,auth.uid(),'movement_batch_reviewed',p_reason,cal.version)
