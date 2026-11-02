@@ -1,0 +1,308 @@
+{
+  "schemaVersion": 1,
+  "report": "CCA-ESP-MVP-001 v1.0",
+  "verifiedAt": "2026-11-02",
+  "baselineCommit": "e9d551b39226fea0033aca93f408af40dc167ba3",
+  "lifecycle": "diagnostico_pendente_aprovacao_narrador",
+  "verifiedCatalogSource": "src/lib/house/prosperity-catalog.json",
+  "auditedSource": "src/lib/house/source-audit.json",
+  "holdings": [
+    {
+      "id": "pros-spy-network",
+      "costs": [
+        {
+          "resource": "wealth",
+          "amount": 10,
+          "mode": "allocation"
+        }
+      ],
+      "durationInCatalog": {
+        "months": 12,
+        "dice": 2,
+        "sides": 6
+      },
+      "durationAuthority": "reconstructed_unverified",
+      "repeatable": false,
+      "capability": "unlock_spy_cell_infiltration",
+      "initialCells": null
+    },
+    {
+      "id": "pros-spy-network--expanded-network",
+      "costs": [
+        {
+          "resource": "wealth",
+          "amount": 5,
+          "mode": "allocation"
+        }
+      ],
+      "durationInCatalog": {
+        "months": 0,
+        "dice": 1,
+        "sides": 6
+      },
+      "durationAuthority": "source_audit",
+      "repeatable": true,
+      "operationalCellsPerActivePurchase": 2,
+      "requiresActiveParent": "pros-spy-network"
+    },
+    {
+      "id": "pros-spy-network--expert-spies",
+      "costs": [
+        {
+          "resource": "wealth",
+          "amount": 5,
+          "mode": "allocation"
+        }
+      ],
+      "durationInCatalog": {
+        "months": 0,
+        "dice": 1,
+        "sides": 6
+      },
+      "durationAuthority": "source_audit",
+      "repeatable": false
+    },
+    {
+      "id": "pros-spy-network--plausible-deniability",
+      "costs": [
+        {
+          "resource": "wealth",
+          "amount": 5,
+          "mode": "allocation"
+        }
+      ],
+      "durationInCatalog": {
+        "months": 0,
+        "dice": 1,
+        "sides": 6
+      },
+      "durationAuthority": "source_audit",
+      "repeatable": false
+    },
+    {
+      "id": "pros-dog-kennels--guard-dogs",
+      "costs": [
+        {
+          "resource": "wealth",
+          "amount": 5,
+          "mode": "allocation"
+        }
+      ],
+      "durationInCatalog": {
+        "months": 0,
+        "dice": 1,
+        "sides": 6
+      },
+      "durationAuthority": "source_audit",
+      "repeatable": false
+    },
+    {
+      "id": "pros-bailiffs--investigative-training",
+      "costs": [
+        {
+          "resource": "wealth",
+          "amount": 5,
+          "mode": "allocation"
+        }
+      ],
+      "durationInCatalog": {
+        "months": 0,
+        "dice": 1,
+        "sides": 6
+      },
+      "durationAuthority": "source_audit",
+      "repeatable": false
+    },
+    {
+      "id": "pros-secret-police",
+      "costs": [
+        {
+          "resource": "power",
+          "amount": 3,
+          "mode": "allocation"
+        },
+        {
+          "resource": "wealth",
+          "amount": 10,
+          "mode": "allocation"
+        }
+      ],
+      "durationInCatalog": {
+        "months": 12,
+        "dice": 2,
+        "sides": 6
+      },
+      "durationAuthority": "reconstructed_unverified",
+      "repeatable": false
+    },
+    {
+      "id": "pros-secret-police--special-detachment",
+      "costs": [
+        {
+          "resource": "wealth",
+          "amount": 5,
+          "mode": "allocation"
+        }
+      ],
+      "durationInCatalog": {
+        "months": 0,
+        "dice": 1,
+        "sides": 6
+      },
+      "durationAuthority": "source_audit",
+      "repeatable": false
+    },
+    {
+      "id": "pros-street-gangs--eyes-everywhere",
+      "costs": [
+        {
+          "resource": "wealth",
+          "amount": 5,
+          "mode": "allocation"
+        }
+      ],
+      "durationInCatalog": {
+        "months": 0,
+        "dice": 2,
+        "sides": 6
+      },
+      "durationAuthority": "source_audit",
+      "repeatable": false
+    },
+    {
+      "id": "pros-tournament-master--herald",
+      "costs": [
+        {
+          "resource": "wealth",
+          "amount": 5,
+          "mode": "allocation"
+        }
+      ],
+      "durationInCatalog": {
+        "months": 0,
+        "dice": 1,
+        "sides": 6
+      },
+      "durationAuthority": "source_audit",
+      "repeatable": false
+    },
+    {
+      "id": "pros-minstrel-s-seat",
+      "costs": [
+        {
+          "resource": "wealth",
+          "amount": 10,
+          "mode": "allocation"
+        }
+      ],
+      "durationInCatalog": {
+        "months": 0,
+        "dice": 2,
+        "sides": 6
+      },
+      "durationAuthority": "source_audit",
+      "repeatable": false
+    },
+    {
+      "id": "pros-sewer--secret-tunnels",
+      "costs": [
+        {
+          "resource": "wealth",
+          "amount": 5,
+          "mode": "allocation"
+        }
+      ],
+      "durationInCatalog": {
+        "months": 0,
+        "dice": 1,
+        "sides": 6
+      },
+      "durationAuthority": "source_audit",
+      "repeatable": false
+    }
+  ],
+  "rules": {
+    "spyCellInfiltration": {
+      "source": "src/lib/house/source-audit.json > acoes",
+      "requires": "pros-spy-network",
+      "test": "Status (Steward)",
+      "difficulty": 9,
+      "duration": "one_full_campaign_month",
+      "success": "one_cell_per_degree_of_success",
+      "failure": "loss_of_cell_requires_adjudication",
+      "equivalentToOrdinaryTravel": false
+    },
+    "discoveryFragment": {
+      "lawAtMost30Difficulty": 6,
+      "incrementDifficultyPer5LawAbove30": 3,
+      "automatable": false,
+      "reason": "missing_test_actor_and_inconsistent_outcome"
+    },
+    "baseSpyNetworkInitialCells": null,
+    "contractor": {
+      "hiringCost": null,
+      "maintenanceCost": null,
+      "contractDuration": null,
+      "operationalCost": null,
+      "enabled": false
+    },
+    "countermeasuresStacking": null,
+    "genericMissionDifficulty": null,
+    "genericCaptureOnFailure": false,
+    "activeOnly": true,
+    "legacyGmNoteCellsAutomaticallyOperational": false
+  },
+  "law": {
+    "player": {
+      "proposal": "balances(targetState).total.law",
+      "approved": false,
+      "rawDataVisibleToAttacker": false
+    },
+    "npc": {
+      "source": "narrator_approved_versioned_npc_sheet",
+      "verifiedDataset": false
+    },
+    "region": {
+      "source": "narrator_approved_region_security_rule",
+      "verifiedDataset": false
+    },
+    "regionalCreationBonusIsEffectiveLaw": false,
+    "missingLawBehavior": "pending_narrator_review"
+  },
+  "geography": {
+    "regions": [
+      "crownlands",
+      "veilstone",
+      "shieldmark",
+      "helmlands",
+      "horselands",
+      "dragoncoast",
+      "swordmark",
+      "ferlin",
+      "stonelands",
+      "elfhold",
+      "volkumburgh"
+    ],
+    "source": "src/lib/house/regions.ts",
+    "canonicalRouteEdges": [],
+    "travelDays": "unresolved",
+    "missingRouteBehavior": "route_not_registered",
+    "calendarFunctions": [
+      "getHarptosOrdinal",
+      "fromHarptosOrdinal"
+    ]
+  },
+  "approvalsRequired": [
+    "base_spy_network_initial_cells_and_deployment",
+    "contractor_rates_accounting_term_limits",
+    "player_law_effective_total_or_domain",
+    "npc_law_sources_and_roster",
+    "region_security_values",
+    "difficulty_by_information_class",
+    "countermeasure_stacking",
+    "approved_route_nodes_edges_and_durations",
+    "early_report_delivery",
+    "eligible_family_information_fields",
+    "temporal_outbox_production_homologation"
+  ]
+}
