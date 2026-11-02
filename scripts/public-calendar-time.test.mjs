@@ -11,7 +11,7 @@ test('Atlas público possui referência viva e não fixa em 1522 CV',()=>{
  assert.match(html,/id="public-campaign-current-time"/);
  assert.match(html,/src="campaign-time.js" defer/);
  assert.doesNotMatch(html,/<strong>1522 CV<\/strong>/);
- assert.match(html,/<strong>1522<\/strong>/); // contexto histórico permanece intacto
+ assert.doesNotMatch(html,/<strong>1522<\/strong>/); // não exibir ano fixo no lugar da data oficial
 });
 test('Atlas usa apenas endpoint público, sem token persistido e sem credenciais',()=>{
  assert.match(script,/fetch\('\/api\/public\/time'/);
