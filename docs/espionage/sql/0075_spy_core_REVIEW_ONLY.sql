@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS public.spy_assets(
  owner_house_id text NOT NULL REFERENCES public.campaign_houses(id),
  kind text NOT NULL CHECK(kind IN ('network_cell','contractor','local_contact')),
  codename text NOT NULL,
- source_holding_id uuid,source_ref text NOT NULL,
+ source_holding_id text,source_ref text NOT NULL,
  current_location_id uuid REFERENCES public.spy_locations(id),
  status text NOT NULL DEFAULT 'pending_review' CHECK(status IN (
   'available','assigned','traveling','operating','returning','missing',
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS public.spy_temporal_deliveries(
  UNIQUE(segment_id,transition)
 );
 CREATE TABLE IF NOT EXISTS public.spy_contract_receipts(
- holding_id uuid PRIMARY KEY,
+ holding_id text PRIMARY KEY,
  owner_house_id text NOT NULL REFERENCES public.campaign_houses(id),
  operation_key uuid NOT NULL,
  created_at timestamptz NOT NULL DEFAULT now(),
