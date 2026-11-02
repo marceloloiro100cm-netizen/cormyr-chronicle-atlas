@@ -1,5 +1,6 @@
 import { houseReport, type ReportLedger, type ReportSection } from './report';
 import {vassalArchiveReport,type VassalArchiveProfile} from './vassal-archive';
+import {vassalWorkbookReport,type VassalWorkbook} from './vassal-workbook';
 import { campaignMonth } from './regions';
 import type { HouseState, CatalogItem } from './types';
 
@@ -24,6 +25,13 @@ export async function exportHousePdf(state:HouseState,name:string,catalog:Catalo
 export async function exportVassalArchivePdf(profile:VassalArchiveProfile){
  return renderHousePdf(vassalArchiveReport(profile),profile.name,'Acervo público de Cormyr | Dados mecânicos ainda não cadastrados');
 }
+/** Full PDF with exactly the workbook values; this read-only import does not
+ * create transactions or assign unknown troop costs. */
+export async function exportVassalWorkbookPdf(sheet:VassalWorkbook){
+ return renderHousePdf(vassalWorkbookReport(sheet),sheet.name,
+  'Importação da planilha da vassala · dados de consulta, não conciliados no livro-caixa');
+}
+
 async function renderHousePdf(sections:ReportSection[],name:string,subtitle:string){
  const [{jsPDF},{default:autoTable}]=await Promise.all([import('jspdf'),import('jspdf-autotable')]);
  const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
