@@ -4,6 +4,8 @@ on:
     paths:
       - 'docs/espionage/sql/**'
       - 'scripts/test-espionage-sql*'
+      - 'scripts/espionage-release-gate*'
+      - 'docs/espionage/release-evidence.json'
       - '.github/workflows/espionage-marco-c.yml'
   workflow_dispatch:
 permissions:
@@ -34,6 +36,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install psql client
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Assert release gate remains NO_GO without production evidence
+        run: |
+          node --test scripts/espionage-release-gate.test.mjs
+          node scripts/espionage-release-gate.mjs
       - name: Bootstrap independent campaign security fixture
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-bootstrap.sql
       - name: Apply candidate schema to DISPOSABLE database only
