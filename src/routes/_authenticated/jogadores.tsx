@@ -10,13 +10,11 @@ import { NpcHub, CollapsibleText } from '@/components/npc-hub';
 import { NarratorCalendar } from '@/components/calendar/narrator-calendar';
 import { CampaignShell } from '@/components/campaign-shell';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
 import { CampaignContent } from '@/components/campaign-content';
 import { narrativeText } from '@/lib/campaign-content';
 import { isFichaCasa, isFichaPersonagem } from '@/lib/ficha';
 import { GmEventos, GmAventuras } from '@/components/gm-panels';
 import { syncPlayerFolder } from '@/lib/player-sync.functions';
-import { refreshPublicArchive } from '@/lib/campaign.functions';
 import { unreadReceivedCount, type LetterRow } from '@/lib/letters';
 import {clearRepresentationQueryCache} from '@/lib/auth/session-boundary';
 import {CAMPAIGN_ACCESS_SCOPE_KEY,CAMPAIGN_ACCESS_SCOPE_POLL_MS,loadCampaignAccessScope,clearRevokedAccessCache} from '@/lib/auth/campaign-access-scope';
@@ -104,9 +102,9 @@ function Players(){
 function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
   const navigate=useNavigate(), qc=useQueryClient();
   const {data,error,isPending}=useQuery({queryKey:['campaign-panel'],queryFn:loadPanel});
-  const [tab,setTab]=useState('missivas'),[house,setHouse]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[section,setSection]=useState('painel'),[representing,setRepresenting]=useState(false);
+  const [tab,setTab]=useState('missivas'),[house,setHouse]=useState(''),[message,setMessage]=useState(''),[section,setSection]=useState('painel'),[representing,setRepresenting]=useState(false);
   const [mailFilterHost,setMailFilterHost]=useState<HTMLDivElement|null>(null);
-  const sync=useServerFn(syncPlayerFolder),refreshArchive=useServerFn(refreshPublicArchive);
+  const sync=useServerFn(syncPlayerFolder);
   const refresh=async()=>{await qc.invalidateQueries({queryKey:['campaign-panel']});};
   useEffect(()=>{if(data?.admin)setTab(previous=>previous==='missivas'?'casa':previous);},[data?.admin]);
   useEffect(()=>{
@@ -146,8 +144,8 @@ function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
     {tab==='admin'&&data.admin&&<AdminPanel data={data} onSave={afterSave}/>}
     </>;
   if(data.admin&&representing)return <CampaignShell><PlayerRepresentation onReturn={()=>{clearRepresentationQueryCache(qc);setRepresenting(false);void refresh();}}/></CampaignShell>;
-  return <CampaignShell><div className="campaign-heading"><div><p className="campaign-eyebrow">SEGUNDA TEMPORADA · CONSELHO</p><h1>{me?.name??(data.admin?'Conselho do mestre':'Área dos jogadores')}</h1><p className="text-muted-foreground">{data.user.email}</p></div><div className="campaign-actions"><>{data.admin&&<><select aria-label="Acessar como jogador" defaultValue="" onChange={async e=>{if(!e.target.value)return;const r=await supabase.rpc('start_campaign_representation',{p_player:e.target.value});if(r.error)setMessage(r.error.message);else {clearRepresentationQueryCache(qc);setRepresenting(true);}}}><option value="">Acessar como jogador…</option>{data.players.filter(p=>p.active&&p.user_id!==data.user.id&&p.user_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select><Button variant="outline" disabled={busy} onClick={async()=>{setBusy(true);try{const result=await refreshArchive();setMessage(result.message+' '+result.errors.join('; '));await refresh();}catch(error){setMessage(error instanceof Error?error.message:'Falha na atualização.');}finally{setBusy(false);}}}>Atualizar acervo público</Button></>}</><Button variant="outline" disabled={busy||!current} onClick={async()=>{if(!current)return;setBusy(true);try{const result=await sync({data:{houseId:current.id,importFiles:true}});setMessage(result.message);await refresh();}catch(e){setMessage(e instanceof Error?e.message:"Não foi possível atualizar a pasta.");}finally{setBusy(false);}}}><RefreshCw size={16} className={busy?"animate-spin":""}/>Atualizar</Button><ChangePasswordButton/><Button variant="outline" onClick={signout}>Sair</Button></div></div>
-    {(message||busy)&&<div className="campaign-status-banner" role="status" aria-live="polite">{message||'Salvando…'}</div>}
+  return <CampaignShell><div className="campaign-heading"><div><p className="campaign-eyebrow">SEGUNDA TEMPORADA · CONSELHO</p><h1>{me?.name??(data.admin?'Conselho do mestre':'Área dos jogadores')}</h1></div><div className="campaign-actions">{data.admin&&<select aria-label="Acessar como jogador" defaultValue="" onChange={async e=>{if(!e.target.value)return;const r=await supabase.rpc('start_campaign_representation',{p_player:e.target.value});if(r.error)setMessage(r.error.message);else {clearRepresentationQueryCache(qc);setRepresenting(true);}}}><option value="">Acessar como jogador…</option>{data.players.filter(p=>p.active&&p.user_id!==data.user.id&&p.user_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>}<ChangePasswordButton/><Button variant="outline" onClick={signout}>Sair</Button></div></div>
+    {message&&<div className="campaign-status-banner" role="status" aria-live="polite">{message}</div>}
     {data.admin?<div className={'campaign-layout'+(section==='missivas'?' campaign-layout--mail':'')}><div className="campaign-side-column"><aside className="campaign-side" aria-label="Menu do Narrador"><p className="campaign-eyebrow">NARRADOR</p>{NARRATOR_MENU.map(([id,label])=><button key={id} type="button" className={section===id?'ativo':''} aria-pressed={section===id} aria-label={id==='missivas'&&unread>0?`${label}: ${unread} conversa${unread===1?'':'s'} com correspondência não lida`:undefined} onClick={()=>setSection(id??'painel')}>{label}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}</button>)}</aside>{section==='missivas'&&<div className="narrator-mail-filter-slot" id="narrator-mail-filter-slot" ref={setMailFilterHost}/>}</div><div>{section==='missivas'?<NarratorMissivasHub filterHost={mailFilterHost} data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={id=>{setHouse(id);setTab('ficha');setSection('painel');}}/>:section==='calendario'?<NarratorCalendar/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:conselho}</div></div>:conselho}
   </CampaignShell>;
 }
