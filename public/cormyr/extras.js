@@ -22,7 +22,7 @@
     const countOf=k=>groups.filter(g=>k==='todas'||g.kind===k).reduce((a,g)=>a+g.songs.length,0);
     const songMarkup=s=>s.linkStatus==='youtube-pending'
       ?`<div class="music-unavailable" role="note"><strong>${esc(s.title)}</strong><small>Sem vídeo cadastrado no YouTube. Aguarda publicação ou vínculo pelo narrador.</small></div>`
-      :`<a class="music-button" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">▶</span><span>${esc(s.title)}<small>Ouvir no YouTube</small></span></a><button type="button" class="quiet bard-preview-button" data-bard-preview="${esc(s.url)}">▶ Ouvir aqui</button>`;
+      :`<a class="music-button" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">▶</span><span>${esc(s.title)}<small>Ouvir no YouTube</small></span></a><button type="button" class="quiet bard-preview-button" data-bard-title="${esc(s.title)}" data-bard-preview="${esc(s.url)}">▶ Ouvir aqui</button>`;
     if(chips)chips.innerHTML=[['todas','Todas as músicas']].concat(kinds.map(k=>[k,kindLabel(k)])).map(([k,l])=>`<button type="button" class="region-view-button${k==='todas'?' active':''}" data-music-kind="${esc(k)}" aria-pressed="${k==='todas'}"><span>${esc(l)}</span><b>${countOf(k)}</b></button>`).join('');
     const fillSelect=()=>{if(!select)return;const list=groups.filter(g=>kind==='todas'||g.kind===kind);select.innerHTML='<option value="">Todas as músicas</option>'+list.map(g=>`<option value="${groups.indexOf(g)}">${esc(g.label)} · ${esc(kindLabel(g.kind))}</option>`).join('');select.value=item;};
     const render=()=>{
