@@ -9,16 +9,18 @@ export type VassalWorkbookAsset={
 };
 export type VassalWorkbookUnit={
  name:string;city:string;type:string;training:string;commander:string;
- fighting:number;marksmanship:number;agility:number;athletics:number;
- stealth:number;cunning:number;endurance:number;damage:string;
- health:number;defense:number;armorPenalty:number;armor:number;
+ fighting?:number;marksmanship?:number;agility?:number;athletics?:number;
+ stealth?:number;cunning?:number;endurance?:number;damage:string;
+ health?:number;defense?:number;armorPenalty?:number;armor?:number;
+ cost?:number;attack?:string;armorText?:string;discipline?:string;tacticalRole?:string;
 };
 export type VassalWorkbook={
  houseId:string;name:string;suzerainId:string;region:string;lord:string;heir:string;
  motto:string;foundation:number;castle:string;city:string;source:string;
  resources:Resources;assets:VassalWorkbookAsset[];
  people:{name:string;role:string}[];units:VassalWorkbookUnit[];
- history:string[];fortune:{law:number;population:number;maester:number};
+ history:string[];fortune?:{law:number;population:number;maester:number};
+ reviewNotes?:string[];
 };
 
 export function vassalWorkbookBalances(sheet:VassalWorkbook){
@@ -38,13 +40,15 @@ export function vassalWorkbookReport(sheet:VassalWorkbook):ReportSection[]{
   title:group,headers:['Bem ou investimento','Custo','Recurso','Observação'],
   rows:listed(group).map(x=>[x.name,x.cost,RESOURCE_NAMES[x.resource],x.detail??'']),
  });
- const fortune=sheet.fortune.law+sheet.fortune.population+sheet.fortune.maester;
+ const fortune=sheet.fortune?
+  sheet.fortune.law+sheet.fortune.population+sheet.fortune.maester:null;
+ const missing='Não informado';
  return [
   {title:'Identidade',headers:['Campo','Valor'],rows:[
    ['Casa',sheet.name],['Suserana',sheet.suzerainId],['Região',sheet.region],
-   ['Lorde',sheet.lord],['Herdeiro',sheet.heir],['Fortaleza',sheet.castle],
-   ['Cidade de origem',sheet.city],['Lema',sheet.motto],
-   ['Fundação CV',sheet.foundation],['Fonte',sheet.source],
+   ['Lorde',sheet.lord||missing],['Herdeiro',sheet.heir||missing],
+   ['Fortaleza',sheet.castle||missing],['Cidade de origem',sheet.city||missing],
+   ['Lema',sheet.motto||missing],['Fundação CV',sheet.foundation||missing],['Fonte',sheet.source],
    ['Natureza da importação','Planilha histórica; consulta sem lançamento no livro-caixa'],
   ]},
   {title:'Recursos',headers:['Recurso','Total','Alocado','Disponível'],rows:
@@ -54,21 +58,27 @@ export function vassalWorkbookReport(sheet:VassalWorkbook):ReportSection[]{
   assets('Fortificações'),
   assets('Economia'),
   assets('Exército'),
-  {title:'Sorte da Casa',headers:['Fonte','Modificador'],rows:[
+  {title:'Sorte da Casa',headers:['Fonte','Modificador'],rows:sheet.fortune?[
    ['Lei',sheet.fortune.law],['População',sheet.fortune.population],
-   ['Meistre',sheet.fortune.maester],['Total',fortune],
-  ]},
-  {title:'Tropas',headers:['Companhia','Tipo','Treinamento','Capitão','Cidade','Vida','Defesa','Penalidade de armadura','Armadura','Dano informado'],rows:
-   sheet.units.map(u=>[u.name,u.type,u.training,u.commander,u.city,u.health,u.defense,
-    u.armorPenalty,u.armor,u.damage])},
+   ['Meistre',sheet.fortune.maester],['Total',fortune??missing],
+  ]:[['Modificadores de Sorte',missing]]},
+  {title:'Tropas',headers:['Companhia','Tipo','Treinamento','Capitão','Cidade','Custo Poder','Ataque informado','Dano','Armadura','Saúde','Defesa','Disciplina','Função tática'],rows:
+   sheet.units.map(u=>[u.name,u.type,u.training,u.commander||missing,u.city||missing,
+    u.cost??missing,u.attack??missing,u.damage,
+    u.armorText??u.armor??missing,u.health??missing,u.defense??missing,
+    u.discipline??missing,u.tacticalRole??missing])},
   {title:'Habilidades militares',headers:['Unidade','Luta','Pontaria','Agilidade','Atletismo','Furtividade','Astúcia','Vigor'],rows:
-   sheet.units.map(u=>[u.name,u.fighting,u.marksmanship,u.agility,u.athletics,u.stealth,u.cunning,u.endurance])},
+   sheet.units.map(u=>[u.name,u.fighting??missing,u.marksmanship??missing,
+    u.agility??missing,u.athletics??missing,u.stealth??missing,
+    u.cunning??missing,u.endurance??missing])},
   {title:'Família e corte',headers:['Nome','Função'],rows:sheet.people.map(p=>[p.name,p.role])},
   {title:'História da casa',headers:['Evento'],rows:sheet.history.map(s=>[s])},
-  {title:'Pendências de conciliação',headers:['Campo','Situação'],rows:[
-   ['Domínios','A planilha não relaciona terrenos, características e povoados a domínios individuais.'],
-   ['Exército','Três companhias constam na aba Exército; apenas Apoio treinada (-7 Poder) consta dos custos. Não atribuir custo adicional por inferência.'],
-   ['Persistência','Somente consulta da fonte; não gera saldo, tropas ou bens transacionais na Casa Ashkar.'],
-  ]},
+  {title:'Pendências de conciliação',headers:['Campo','Situação'],rows:
+   (sheet.reviewNotes??[
+    'A planilha não relaciona terrenos, características e povoados a domínios individuais.',
+    'Três companhias constam na aba Exército; apenas Apoio treinada (-7 Poder) consta dos custos.',
+   ]).map((note,i)=>['Pendência '+(i+1),note]).concat([
+    ['Persistência','Consulta da planilha: não gera transações na suserana '+sheet.suzerainId+'.'],
+   ])},
  ];
 }
