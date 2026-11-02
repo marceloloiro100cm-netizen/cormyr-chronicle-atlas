@@ -31,6 +31,7 @@ import { HouseCoverage } from './coverage';
 import { HouseCodex } from './codex';
 import { GmHouseNotes } from './gm-notes';
 import { SpyPlayerPanel } from './espionage/spy-player-panel';
+import { SpyNarratorPanel } from './espionage/spy-narrator-panel';
 import { KingdomDashboard } from './kingdom-dashboard';
 import { Court } from './court';
 import { HouseReconciliation } from './reconciliation';
@@ -153,6 +154,7 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
       {section==='vassals'&&<><Vassals catalog={catalog} onCreate={args=>run('vassal_create',args)} onPurchase={args=>run('vassal_purchase',args)} onDomain={args=>run('vassal_domain',args)} state={state} houses={houses} npcs={npcs} admin={admin} canEdit={canEdit} busy={busy} onPropose={args=>run('vassal',args)} onApprove={(args,note)=>run('vassal_approve',args,note)} onEnd={(args,note)=>run('vassal_end',args,note)} onLoyalty={(args,note)=>run('vassal_loyalty',args,note)}/></>}
       {section==='spy'&&<SpyPlayerPanel houseName={house.name} state={state} catalog={catalog} houses={houses}
         canEdit={monthlyCanEdit} onOpenPurchase={id=>{setPurchaseItemId(id);setBuy(true);}}/>}
+      {section==='spy'&&admin&&<SpyNarratorPanel houseName={house.name} houseId={house.id}/>}
       {section==='court'&&<>{npcManager}<p>Titular: {house.lord_name??'Não informado'}</p><Court state={state} members={courtMembers} canEdit={canEdit} busy={busy} onAssign={args=>run('court',args)} onRemove={id=>run('court_remove',{id},'Remoção de vínculo da Corte solicitada pelo gestor da casa.')}/></>}
       {section==='projects'&&<><h3>Projetos e calendário</h3><p>{campaignMonth(state.month)}</p>{state.projects.map(p=><article className="house-project" key={p.id}><h4>{p.name}</h4><p>{p.status==='completed'?'Concluído':p.status==='cancelled'?'Cancelado':'Em andamento'} · duração {p.duration} meses · previsão {campaignMonth(p.start+p.duration+p.modifier)}</p>
      {projectTemporalNotice(p,state.month,drift?.current??state.month)==='due_for_review'&&
