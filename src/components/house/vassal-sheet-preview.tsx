@@ -4,7 +4,10 @@ import {useServerFn} from '@tanstack/react-start';
 import {ChevronDown,Download} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {loadHouseHub,loadHouseLedger} from '@/lib/house/house.functions';
-import {exportHousePdf} from '@/lib/house/export';
+import {exportHousePdf,exportVassalArchivePdf} from '@/lib/house/export';
+import {readVassalArchiveProfile} from '@/lib/house/vassal-archive';
+import {supabase} from '@/integrations/supabase/client';
+import {RESOURCE_KEYS} from '@/lib/house/types';
 import {RESOURCE_NAMES,type CatalogItem,type HouseState,type Vassal} from '@/lib/house/types';
 import {UNIT_TYPES,TRAINING} from '@/lib/house/engine';
 import {vassalState} from '@/lib/house/vassals';
@@ -42,17 +45,37 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
    return await load({data:{houseId:officialId}});
   },
  });
+ const archival=useQuery({
+  queryKey:['vassal-public-archive',officialId],
+  enabled:expanded&&officialId!==null,
+  retry:false,
+  queryFn:async()=>{
+   if(!officialId)return null;
+   // Public, reviewed catalogue data only. The suzerain's access does not
+   // grant permission to another player's private mechanical house sheet.
+   const result=await supabase.from('house_catalog')
+    .select('id,name,region,public_reviewed,archive_data')
+    .eq('id',officialId).eq('public_reviewed',true).maybeSingle();
+   if(result.error)throw result.error;
+   return readVassalArchiveProfile(result.data);
+  },
+ });
+ const archive=archival.data??null;
  const house=embedded?vassalState(parent,vassal):linked.data?.state;
  const itemCatalog=embedded?catalog:linked.data?.catalog??catalog;
  const summary=house?vassalHouseOverview(house,itemCatalog):null;
  const rawName=officialHouse?.name??vassal.name;
  const name=rawName.replace(/^Casa\s+/i,'')||rawName;
  async function download(){
-  if(!house||downloading)return;
+  if((!house&&!archive)||downloading)return;
   setDownloading(true);setError('');
   try{
-   const ledger=officialId?await loadLedger({data:{houseId:officialId}}):[];
-   await exportHousePdf(house,name,itemCatalog,ledger);
+   if(house){
+    const ledger=officialId?await loadLedger({data:{houseId:officialId}}):[];
+    await exportHousePdf(house,name,itemCatalog,ledger);
+   }else if(archive){
+    await exportVassalArchivePdf(archive);
+   }
   }catch(e){
    setError(e instanceof Error?e.message:'Não foi possível exportar a ficha completa.');
   }finally{setDownloading(false);}
@@ -63,9 +86,41 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
    <span>Ficha resumida · Casa {name}</span><ChevronDown size={18} className={expanded?'rotate-180':''}/>
   </Button>
   {expanded&&<div id={contentId} className="mt-3 space-y-3">
-   {officialId&&linked.isPending&&<p role="status">Consultando ficha autorizada da casa vassala…</p>}
-   {officialId&&linked.isError&&<p role="alert">A ficha completa desta Casa não está acessível com as permissões atuais. {linked.error instanceof Error?linked.error.message:''}</p>}
-   {!embedded&&!officialId&&<p className="house-caption">Não foi encontrada uma ficha oficial vinculada a este brasão. Os dados não serão presumidos.</p>}
+   {officialId&&(linked.isPending||archival.isPending)&&<p role="status">Consultando os dados disponíveis da casa vassala…</p>}
+   {officialId&&linked.isError&&!archive&&archival.isSuccess&&<p className="house-caption">Não há ficha mecânica acessível nem registro histórico público aprovado para esta Casa.</p>}
+   {archival.isError&&!house&&<p role="alert">Não foi possível consultar o catálogo histórico da Casa. Tente novamente.</p>}
+   {!embedded&&!officialId&&<p className="house-caption">Não foi encontrada uma Casa vinculada a este brasão. Os dados não serão presumidos.</p>}
+   {!house&&archive&&<div className="space-y-3" aria-label={`Ficha histórica da Casa ${archive.name}`}>
+    <p className="house-caption">Ficha histórica disponível. Os atributos, as tropas e as posses mecânicas ainda não foram cadastrados; nenhum valor foi presumido.</p>
+    <div className="grid gap-2 sm:grid-cols-2">
+     {[
+      ['Lorde ou Lady',archive.lordName],['Região',archive.region],
+      ['Fortaleza',archive.castle],['Cidade',archive.city],
+      ['Lema',archive.motto],['Fundação',archive.founding],
+      ['Título',archive.title],['Brasão',archive.symbol],
+     ].map(([label,value])=><div key={label} className="rounded border p-2">
+      <span className="block text-xs">{label}</span><strong>{value||'Não informado'}</strong>
+     </div>)}
+    </div>
+    {archive.description&&<p className="text-sm">{archive.description}</p>}
+    <h5 className="font-semibold">Atributos e recursos</h5>
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+     {RESOURCE_KEYS.map(key=><div key={key} className="rounded border p-2">
+      <span className="block text-xs">{RESOURCE_NAMES[key]}</span>
+      <strong>Não cadastrado</strong>
+     </div>)}
+    </div>
+    <div className="grid gap-3 lg:grid-cols-2">
+     <CompactItems title="Unidades militares" items={[]} empty="Não cadastradas na ficha mecânica"/>
+     <CompactItems title="Terras e domínios" items={[]} empty="Não cadastrados na ficha mecânica"/>
+     <CompactItems title="Fortificações" items={[]} empty="Não cadastradas na ficha mecânica"/>
+     <CompactItems title="Economia e posses" items={[]} empty="Não cadastradas na ficha mecânica"/>
+    </div>
+    <Button type="button" variant="outline" disabled={downloading} onClick={()=>void download()}>
+     <Download size={16}/>{downloading?'Preparando ficha…':'Baixar ficha completa (PDF)'}
+    </Button>
+    <p className="house-caption">PDF no padrão das Casas jogadoras, com todos os dados disponíveis e campos mecânicos identificados como não cadastrados.</p>
+   </div>}
    {summary&&house&&<>
     <p className="house-caption">{vassal.sheet?.lordName??officialHouse?.lord_name??'Titular não informado'} · {officialHouse?.region??vassal.sheet?.region??'Região não informada'}
      {officialHouse?.castle?' · '+officialHouse.castle:''}</p>
