@@ -58,3 +58,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0078_spy_mission_routes_REVIEW_ONLY.sql
       - name: Verify immutable route duration, Harptos days and idempotence
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-mission-routes.sql
+      - name: Apply active-source guard only in disposable database
+        run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0079_spy_active_source_guard_REVIEW_ONLY.sql
+      - name: Deny mission creation after network, expanded holding or contractor deactivation
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-source-guard.sql
