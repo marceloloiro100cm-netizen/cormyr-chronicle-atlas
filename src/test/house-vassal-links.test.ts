@@ -1,8 +1,19 @@
 import { describe,it,expect } from 'vitest';
 import { newHouseState } from '@/lib/house/types';
 import { proposeVassal,approveVassal } from '@/lib/house/military';
-import { linkVassalNpcs,validateVassalNpcs,mergeOfficialHouse } from '@/lib/house/vassal-links';
+import { linkVassalNpcs,validateVassalNpcs,mergeOfficialHouse,vassalCrestUrl } from '@/lib/house/vassal-links';
 const record={id:'npc-existing',house_id:'source',kind:'character',title:'NPC existente',content:'Descrição original'};
+describe('endereço público do brasão de Qazir',()=>{
+ it('resolve o caminho real do acervo para o asset da Casa Qazir',()=>{
+  expect(vassalCrestUrl('assets/dragoncoast-qazir.webp')).toBe('/cormyr/assets/dragoncoast-qazir.webp');
+  expect(vassalCrestUrl('public/cormyr/assets/dragoncoast-qazir.webp')).toBe('/cormyr/assets/dragoncoast-qazir.webp');
+ });
+ it('não reescreve imagem externa, upload absoluto ou ausência de brasão',()=>{
+  expect(vassalCrestUrl('/uploads/heraldry.png')).toBe('/uploads/heraldry.png');
+  expect(vassalCrestUrl('https://example.org/heraldry.png')).toBe('https://example.org/heraldry.png');
+  expect(vassalCrestUrl(null)).toBeNull();
+ });
+});
 describe('precedência de imagem do brasão vassalo',()=>{
  it('recupera arte do arquivo histórico quando a casa oficial está sem imagem',()=>{
   const archive={id:'vassal',name:'Casa Vassala',crest:'/cormyr/heraldry/vassal.png',region:'Cormyr',castle:'Torre do Vale'};
