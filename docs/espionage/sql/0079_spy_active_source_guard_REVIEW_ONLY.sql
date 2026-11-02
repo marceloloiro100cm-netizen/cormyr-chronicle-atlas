@@ -21,7 +21,7 @@ BEGIN
   RAISE EXCEPTION 'Posse de origem indisponível'; END IF;
  kind:=h->>'itemId';
  IF asset.kind='network_cell' AND
-  ((kind='pros-spy-network' AND asset.source_ref='base:'||h->>'id'||':0')
+  ((kind='pros-spy-network' AND asset.source_ref='base:'||(h->>'id')||':0')
    OR
    (kind='pros-spy-network--expanded-network' AND
     asset.source_ref IN ('expanded:'||(h->>'id')||':0','expanded:'||(h->>'id')||':1')))
