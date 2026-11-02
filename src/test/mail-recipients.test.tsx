@@ -105,11 +105,19 @@ describe('destinatários somente por casas nobres',()=>{
   fireEvent.click(screen.getByRole('checkbox',{name:'Harcourt'}));
   expect(chosen()).toBe('h:harcourt');
  });
- it('jogadores também só conseguem escolher casas destinatárias',()=>{
+ it('jogador pode enviar somente ao Narrador para NPCs, sem destinatário individual',()=>{
   const source={...panel,admin:false,players:[{id:'p-carlos',user_id:'login-carlos',name:'Carlos Castellan',active:true,require_password_change:false}]} as Panel;
   render(<Example source={source}/>);
-  expect(screen.queryByRole('checkbox',{name:'Narrador'})).not.toBeInTheDocument();
   expect(screen.queryByText('Carlos Castellan')).not.toBeInTheDocument();
-  expect(screen.getByRole('checkbox',{name:'Harcourt'})).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('checkbox',{name:'Narrador (NPCs e assuntos da campanha)'}));
+  expect(chosen()).toBe('narrator');
+  fireEvent.click(screen.getByRole('checkbox',{name:'Harcourt'}));
+  expect(chosen()).toBe('h:harcourt');
+  fireEvent.click(screen.getByRole('checkbox',{name:'Narrador (NPCs e assuntos da campanha)'}));
+  expect(chosen()).toBe('narrator');
+ });
+ it('Narrador continua sem ser destinatário do próprio envio',()=>{
+  render(<Example/>);
+  expect(screen.queryByRole('checkbox',{name:'Narrador (NPCs e assuntos da campanha)'})).not.toBeInTheDocument();
  });
 });
