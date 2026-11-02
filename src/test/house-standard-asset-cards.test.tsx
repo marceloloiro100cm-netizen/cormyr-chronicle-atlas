@@ -60,6 +60,7 @@ describe('Padrão reutilizável de quadros da Casa',()=>{
  it('Economia: mostra posse adquirida pelo nome, benefícios e navegação do catálogo',()=>{
   const s=state();s.holdings=[holding('godswood','Bosque da Família')];
   renderCatalog('economy',s);
+  fireEvent.change(screen.getByLabelText('Buscar quadro'),{target:{value:'bosque sagrado'}});
   const card=screen.getByTestId('house-catalog-asset-godswood');
   expect(within(card).getByText('Bosque da Família')).toBeInTheDocument();
   fireEvent.click(within(card).getByText('Bosque Sagrado / Santuário Ancestral',{selector:'small'}));
