@@ -129,7 +129,7 @@ export function Vassals({
                 {v.cost} Poder alocado
                 {v.approvedMonth !== undefined ? ` · ${campaignMonth(v.approvedMonth)}` : ""}
               </p>
-              <p>{v.notes}</p>
+              {v.notes&&!/^link\s*:\s*dados da casa\b/i.test(v.notes.trim())&&<p>{v.notes}</p>}
               {v.approvalNote && (
                 <details>
                   <summary>Decisão do Narrador</summary>
