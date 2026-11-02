@@ -5,5 +5,12 @@
     "src/test/espionage-*.test.ts",
     "src/components/house/espionage/**/*.tsx",
     "src/test/espionage-*.test.tsx"
-  ]
+  ],
+  "compilerOptions": {
+    "types": [
+      "vite/client",
+      "vitest/globals",
+      "node"
+    ]
+  }
 }
