@@ -1,6 +1,7 @@
 import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
 import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
+import type {VassalWorkbook} from './vassal-workbook';
 
 /** A vassal's imported workbook may be viewed through its specifically
  * approved parent link, but that link never grants access to a private sheet.
@@ -12,7 +13,7 @@ const allowedPair=z.union([
 export const loadVassalWorkbook=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(allowedPair)
- .handler(async({data,context})=>{
+ .handler(async({data,context}):Promise<VassalWorkbook>=>{
   const db=context.supabase;
   const checkAccess=async()=>{
    const [admin,member]=await Promise.all([
