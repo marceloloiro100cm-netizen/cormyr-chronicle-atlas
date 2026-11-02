@@ -7,7 +7,7 @@
  const PLAYER_HOUSES=new Set();
  const ROYAL_HOUSE='Phelles';
  const imageViewer=document.createElement('script');imageViewer.src='image-viewer.js';document.body.append(imageViewer);
-const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'post',kind:'mundanos',query:'',theme:'',eventPage:1,houseQuery:'',adventure:'pacto-varzea',houseHistory:[],noble:{region:'',name:'',leader:'',castle:'',city:'',page:1,house:''}};
+const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'post',kind:'mundanos',query:'',theme:'',eventPage:1,houseQuery:'',adventure:'pacto-varzea',houseHistory:[],noble:{region:'',name:'',leader:'',castle:'',city:'',page:1,house:''}};
  const lawState={query:'',topic:'',page:1,article:null};
   const regionSelect=$('region-select');
  $('kingdom-music').innerHTML=musicLinks(data.kingdomMusic,'Música do reino');
@@ -51,6 +51,16 @@ const state={view:'reino',region:'Horselands',regionView:'houses',hierarchyEra:'
    state.noble.house='';
    state.houseHistory=[];
    renderNobility();
+  }
+  // Opening Reino e Regiões from the main menu starts on Terras da Coroa.
+  // Explicit #regiao-... URLs and dropdown changes still select other regions.
+  if(b.dataset.view==='reino'){
+   state.region='Crownlands';
+   state.regionView='houses';
+   state.hierarchyEra='post';
+   state.houseQuery='';
+   regionSelect.value=state.region;
+   renderRegion();
   }
   showView(b.dataset.view);
   const h=document.querySelector('#view-'+state.view+' h1');h?.focus({preventScroll:true});
