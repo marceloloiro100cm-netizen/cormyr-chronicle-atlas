@@ -18,8 +18,8 @@ export const spyLawSnapshotSchema=z.object({
 export type SpyLawSnapshot=z.infer<typeof spyLawSnapshotSchema>;
 export const spyDifficultyRuleSchema=z.object({
  id:spyIdSchema,version:z.number().int().min(1),approvedByNarratorId:z.string().min(1),
- source:z.string().trim().min(5),baseByMission:z.record(z.enum(SPY_MISSION_KINDS),
-  z.number().int().min(0).max(100)).partial(),
+ source:z.string().trim().min(5),baseByMission:z.partialRecord(z.enum(SPY_MISSION_KINDS),
+  z.number().int().min(0).max(100)),
  lawRanges:z.array(z.object({min:z.number().int().min(0),max:z.number().int().min(0),
    modifier:z.number().int().min(-100).max(100)}).strict()).max(200),
  stacking:z.enum(['highest','sum','narrator_review']),
@@ -57,7 +57,8 @@ export function resolveSpyDifficulty(input:{
  const rules=spyDifficultyRuleSchema.parse(input.rules);
  const base=rules.baseByMission[mission.missionKind];
  if(base===undefined)return {status:'pending_narrator_rule',value:null,publicLabel:'Sob avaliação'};
- const lawBands=rules.lawRanges.filter(b=>law.law!>=b.min&&law.law!<=b.max);
+ const lawValue=law.law;
+ const lawBands=rules.lawRanges.filter(b=>lawValue>=b.min&&lawValue<=b.max);
  if(lawBands.length!==1)return {status:'pending_narrator_rule',value:null,publicLabel:'Sob avaliação'};
  const candidates=input.security.map(s=>spySecurityEffectSchema.parse(s))
   .filter(s=>s.appliedToArea&&s.appliesToMission);
@@ -71,7 +72,7 @@ export function resolveSpyDifficulty(input:{
  if(!Number.isInteger(adj)||Math.abs(adj)>100)throw new Error('Ajuste narratorial inválido.');
  const result=base+lawBands[0]!.modifier+securityModifier+adj;
  return {status:'resolved',value:Math.max(0,result),publicLabel:'Definida pelo Narrador',
-  narratorOnly:{law:law.law,lawSource:law.sourceRef,lawSourceVersion:law.sourceVersion,
+  narratorOnly:{law:lawValue,lawSource:law.sourceRef,lawSourceVersion:law.sourceVersion,
    base,lawModifier:lawBands[0]!.modifier,securityModifier,adjustment:adj,
    rulesVersion:rules.version,sources:candidates.map(s=>s.sourceId)}};
 }
