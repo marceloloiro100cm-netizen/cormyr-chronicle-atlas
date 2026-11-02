@@ -14,7 +14,7 @@ import {describeCharacterTrait} from '@/lib/character-v2/trait-descriptions';
 type CharacterRecord={
  id:string;title:string;kind:string;content:string;version:number;
  player_id?:string|null|undefined;
- visibility?:'house'|'player'|'gm';
+ visibility?:string;
 };
 export type CharacterPreviewStat=Readonly<{
  key:DerivedKey;label:string;value:number|null;reason:string;
@@ -152,7 +152,8 @@ export function CharacterV2PlayerSheet({record,houseId,canEdit=false,onEdit}:{
    <p className="text-xs">Os números disponíveis são apenas cálculos básicos. Armaduras, escudos,
     ferimentos, bônus e defeitos ainda exigem homologação.</p>
   </section>
-  {record.visibility&&<CharacterCoinWallet source={{id:record.id,title:record.title,
+  {(record.visibility==='house'||record.visibility==='player'||record.visibility==='gm')&&
+   <CharacterCoinWallet source={{id:record.id,title:record.title,
     visibility:record.visibility,player_id:record.player_id??null}}
     houseId={houseId} canEdit={canEdit}/>}
   <section className="character-v2-section" aria-label="Graduações em bolinhas">
