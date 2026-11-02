@@ -26,7 +26,20 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Lote 0 source audit
         run: node scripts/espionage-lote0-audit.mjs
-      - name: Vitest espionage contracts, economy, routes, travel and assets
-        run: bunx vitest run src/test/espionage-contracts.test.ts src/test/espionage-economy.test.ts src/test/espionage-routes.test.ts src/test/espionage-travel.test.ts src/test/espionage-assets.test.ts
+      - name: Vitest Lote 1 — contracts
+        run: bunx vitest run src/test/espionage-contracts.test.ts
+      - name: Vitest Lote 2 — economy
+        if: ${{ always() }}
+        run: bunx vitest run src/test/espionage-economy.test.ts
+      - name: Vitest Lote 3 — routes
+        if: ${{ always() }}
+        run: bunx vitest run src/test/espionage-routes.test.ts
+      - name: Vitest Lote 4 — travel
+        if: ${{ always() }}
+        run: bunx vitest run src/test/espionage-travel.test.ts
+      - name: Vitest Lote 5 — assets
+        if: ${{ always() }}
+        run: bunx vitest run src/test/espionage-assets.test.ts
       - name: TypeScript integrity
+        if: ${{ always() }}
         run: bunx tsc --noEmit
