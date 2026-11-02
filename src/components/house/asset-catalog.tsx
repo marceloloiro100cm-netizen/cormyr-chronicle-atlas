@@ -111,12 +111,20 @@ export function HouseAssetCatalog({section,state,catalog,canEdit,busy,onBuy,onCo
 }){
  const [search,setSearch]=useState('');
  const [category,setCategory]=useState('');
+ const [acquisition,setAcquisition]=useState<'all'|'acquired'|'unacquired'>('all');
  const [limit,setLimit]=useState(24);
  const choices=CATEGORY_BY_SECTION[section];
  const items=catalog.filter(item=>choices.includes(item.category));
- const visible=items.filter(item=>(!category||item.category===category)&&
-  [item.name,item.description,item.original].join(' ').toLocaleLowerCase('pt-BR')
-   .includes(search.toLocaleLowerCase('pt-BR')));
+ const visible=items.filter(item=>{
+  // Construction already commits this asset to the House, but does not grant benefits yet.
+  const acquired=state.holdings.some(h=>h.itemId===item.id&&
+   (h.status==='active'||h.status==='building'));
+  return (!category||item.category===category)&&
+   (section!=='economy'||acquisition==='all'||
+    (acquisition==='acquired'?acquired:!acquired))&&
+   [item.name,item.description,item.original].join(' ').toLocaleLowerCase('pt-BR')
+    .includes(search.toLocaleLowerCase('pt-BR'));
+ });
  const acquired=items.filter(item=>locationsFor(item,state,
   state.holdings.filter(h=>h.itemId===item.id&&h.status==='active')).length>0).length;
  return <section className="military-assets house-assets" aria-label={'Catálogo de '+(
@@ -135,6 +143,12 @@ export function HouseAssetCatalog({section,state,catalog,canEdit,busy,onBuy,onCo
     <option value="">Todas as categorias</option>
     {choices.map(c=><option key={c} value={c}>{LABELS[c]}</option>)}
    </select></label>
+   {section==='economy'&&<label>Aquisição<select value={acquisition}
+    onChange={e=>{setAcquisition(e.target.value as 'all'|'acquired'|'unacquired');setLimit(24);}}>
+    <option value="all">Todos</option>
+    <option value="acquired">Adquiridos</option>
+    <option value="unacquired">Não adquiridos</option>
+   </select></label>}
   </div>
   {visible.length===0?<p className="campaign-empty">Nenhuma posse encontrada para estes filtros.</p>:
    <HouseAssetGrid>{visible.slice(0,limit).map(item=><CatalogAssetCard key={item.id}
