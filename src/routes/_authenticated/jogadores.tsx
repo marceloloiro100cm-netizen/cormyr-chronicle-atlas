@@ -129,7 +129,7 @@ function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
   const me=data.players.find(p=>p.user_id===data.user.id);
   if(me&&!data.admin&&(!me.active||me.require_password_change))return <CampaignShell><h1>{me.active?'Altere sua senha para continuar':'Acesso à campanha inativo'}</h1>{me.require_password_change&&<ChangePassword/>}<Button variant="outline" onClick={signout}>Sair</Button></CampaignShell>;
   const authorized=data.admin?data.houses.filter(h=>h.active&&h.season===2):data.houses.filter(h=>data.members.some(m=>m.house_id===h.id&&m.player_id===me?.id));
-  const current=authorized.find(h=>h.id===house)??authorized[0];
+  const current=data.admin?(authorized.find(h=>h.id===house)??authorized[0]):(authorized.find(h=>h.id===me?.roster_house_id)??authorized[0]);
   const canEdit=data.admin||data.members.some(m=>m.player_id===me?.id&&m.house_id===current?.id&&m.can_edit);
   const unread=unreadReceivedCount(data.letters as LetterRow[],data.replies,data.receipts,data.user.id,data.admin);
   const afterSave=async()=>{await refresh();if(!current)return;try{const result=await sync({data:{houseId:data.admin?'':current.id,importFiles:false}});setMessage(result.message);await refresh();}catch(e){setMessage('Salvo no site · pasta pendente: '+(e instanceof Error?e.message:'Falha no Drive.'));}};
