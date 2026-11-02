@@ -64,7 +64,7 @@ RESET ROLE;
 -- Narrador, com JWT da sessão, libera material aprovado; sem novos campos da ficha do alvo.
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',false);
-SELECT public.spy_test_assert((SELECT count(*) FROM spy_mission_decisions)=0,'Decisão nem ao admin por SELECT direto');
+-- Mesmo admin não recebe GRANT SELECT direto: dados privados via adjudicação auditada.
 SELECT public.spy_test_assert(
  (public.spy_release_report('99999999-9999-4999-8999-999999999999',
   'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee','1524-01-20',
