@@ -123,6 +123,40 @@ export function reconcileContractedAgents(input:{
   unverifiedAssets:registry.assets.filter(a=>a.kind==='contractor'&&!activeRefs.has(a.sourceRef)).map(a=>a.id),
   next:{...registry,version:registry.version+(created.length?1:0),assets:[...registry.assets,...created]}};
 }
+/** Canonical contractor reconciliation after houseOperation.purchase has committed the
+ * repeatable 5-Wealth possession. This never creates units before purchase settles.
+ */
+export function reconcileContractorHoldings(input:{
+ state:HouseState;registry:SpyAssetRegistry;locations:readonly SpyLocation[];
+ proposedIds:Record<string,string>;review:SpyAssetReview;expectedVersion:number;
+}):SpyAssetsReconciliation{
+ const {state,registry,locations,proposedIds,review,expectedVersion}=input;
+ guardReview(review);
+ if(state.houseId!==registry.ownerHouseId||expectedVersion!==registry.version)
+  throw new Error('Casa ou versão inválida.');
+ const slots=deriveSpyCapacity(state).contractorSlots;
+ const allowed=new Set(slots.map(s=>'contractor:'+s.sourceHoldingId+':'+s.slot));
+ const existingRefs=new Set(registry.assets.map(a=>a.sourceRef));
+ const ids=new Set(registry.assets.map(a=>a.id));
+ const domains=new Map(locations.filter(l=>l.approved&&l.kind==='domain').map(l=>[l.refId,l.id]));
+ const created:SpyAsset[]=[],pendingSlots:string[]=[];
+ for(const slot of slots){
+  const key='contractor:'+slot.sourceHoldingId+':'+slot.slot;
+  if(existingRefs.has(key))continue;
+  const id=proposedIds[key],location=domains.get(slot.domainId);
+  if(!id||!location){pendingSlots.push(key);continue;}
+  spyIdSchema.parse(id);
+  if(ids.has(id))throw new Error('ID duplicado na conciliação de contratados.');
+  ids.add(id);
+  created.push(spyAssetSchema.parse({id,ownerHouseId:state.houseId,kind:'contractor',
+   label:'Contratado '+(slot.slot+1),sourceHoldingId:slot.sourceHoldingId,
+   sourcePurchaseId:slot.sourcePurchaseId,sourceRef:key,currentLocationId:location,
+   status:'available',rulesVersion:'CCA-ESP-MVP-001:2026-11-02',version:1}));
+ }
+ return {created,pendingSlots,
+  unverifiedAssets:registry.assets.filter(a=>a.kind==='contractor'&&!allowed.has(a.sourceRef)).map(a=>a.id),
+  next:{...registry,version:registry.version+(created.length?1:0),assets:[...registry.assets,...created]}};
+}
 export function validateSpyAssignment(asset:SpyAsset,operations:readonly SpyOperation[],ownerHouseId:string){
  const reasons:string[]=[];
  if(asset.ownerHouseId!==ownerHouseId)reasons.push('Agente pertence a outra Casa.');
