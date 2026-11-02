@@ -1,15 +1,19 @@
 import {useState} from 'react';
+import {useCampaignTime} from '@/lib/calendar/campaign-time';
+import {dateKey} from '@/lib/calendar/harptos';
 import {Button} from '@/components/ui/button';
 import {SPY_MISSIONS} from '@/lib/espionage/missions';
 import {SPY_REQUEST_FIELDS,type SpyOperation,type SpyIntelFact} from '@/lib/espionage/contracts';
 import {sealSpyReport,releaseSpyReport,playerSpyReport,formatIntelLetter,type SpyReport} from '@/lib/espionage/dossier';
 import {spyDateKeySchema} from '@/lib/espionage/contracts';
-type Props={houseName:string;houseId:string;officialDateKey:string|null};
+type Props={houseName:string;houseId:string};
 
 /** Mesa narratorial do Marco B. Todas as ações abaixo são DEMONSTRAÇÕES LOCAIS:
  * no Lote 10 uma API com is_campaign_admin, RLS e ledger versionado substituirá o estado local.
  */
-export function SpyNarratorPanel({houseName,houseId,officialDateKey}:Props){
+export function SpyNarratorPanel({houseName,houseId}:Props){
+ const clock=useCampaignTime();
+ const officialDateKey=clock.data?dateKey(clock.data):null;
  const [kind,setKind]=useState<SpyOperation['missionKind']>('regional_recon');
  const [field,setField]=useState<string>('regional_roads');
  const [narrative,setNarrative]=useState('Ponto observado, ainda não divulgado.');
