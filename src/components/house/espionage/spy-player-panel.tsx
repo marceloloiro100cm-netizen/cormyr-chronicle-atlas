@@ -29,6 +29,7 @@ export function SpyPlayerPanel({houseName,state,catalog,houses,canEdit,onOpenPur
  const [requested,setRequested]=useState<string[]>([]);
  const [draftMessage,setDraftMessage]=useState('');
  const [origin,setOrigin]=useState('');
+ const [initialOrigin,setInitialOrigin]=useState('');
  const [destination,setDestination]=useState('');
  const [mode,setMode]=useState<Mode>('horse');
  const [stops,setStops]=useState<string[]>([]);
@@ -119,7 +120,7 @@ export function SpyPlayerPanel({houseName,state,catalog,houses,canEdit,onOpenPur
   {tab==='routes'&&<div style={{display:'grid',gap:12,maxWidth:720}}>
    <h4>Planejador de rotas</h4>
    <p>Escolha origem e destino. O tempo somente será exibido quando o Narrador cadastrar uma ligação homologada.</p>
-   <label>Origem <select value={origin} onChange={e=>{setOrigin(e.target.value);setRouteMessage('');}}>
+   <label>Origem <select value={origin} onChange={e=>{setOrigin(e.target.value);setInitialOrigin(e.target.value);setStops([]);setRouteMessage('');}}>
     <option value="">Selecione</option>
     {domains.map(d=><option key={d.id} value={d.id}>{d.name} · Domínio</option>)}
     {regions.map(x=><option key={x.id} value={x.id}>{x.name} · Região</option>)}
@@ -136,7 +137,7 @@ export function SpyPlayerPanel({houseName,state,catalog,houses,canEdit,onOpenPur
     <Button type="button" size="sm" variant="outline" disabled={!stops.length} onClick={()=>{
      setStops(prev=>prev.slice(0,-1));setRouteMessage('');
     }}>Remover última etapa</Button>
-    <Button type="button" size="sm" variant="outline" disabled={!origin} onClick={()=>setDestination(origin)}>Planejar retorno</Button>
+    <Button type="button" size="sm" variant="outline" disabled={!initialOrigin} onClick={()=>setDestination(initialOrigin)}>Planejar retorno</Button>
    </div>
    {stops.length>0&&<p role="status">Etapas previstas (sem dias homologados): {stops.map(id=>
     [...regions,...domains].find(x=>x.id===id)?.name??id).join(' → ')}.</p>}
