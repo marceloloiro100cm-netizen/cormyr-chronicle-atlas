@@ -22,6 +22,11 @@ export function SpyNarratorPanel({houseName,houseId}:Props){
  const [routeDestination,setRouteDestination]=useState('');
  const [routeDays,setRouteDays]=useState('');
  const [routeReview,setRouteReview]=useState('');
+ const [difficultyBase,setDifficultyBase]=useState('');
+ const [lawDraft,setLawDraft]=useState('');
+ const [securityDraft,setSecurityDraft]=useState('');
+ const [difficultyReason,setDifficultyReason]=useState('');
+ const [difficultyPreview,setDifficultyPreview]=useState('');
  const [report,setReport]=useState<SpyReport|null>(null);
  const [message,setMessage]=useState('');
  const reportDate=officialDateKey&&spyDateKeySchema.safeParse(officialDateKey).success?officialDateKey:null;
@@ -74,6 +79,28 @@ export function SpyNarratorPanel({houseName,houseId}:Props){
     <label>Justificativa <textarea value={routeReview} onChange={e=>setRouteReview(e.target.value)} placeholder="Fonte e validação da rota"/></label>
     <Button disabled={!routeOrigin||!routeDestination||routeOrigin===routeDestination||!Number.isInteger(Number(routeDays))||Number(routeDays)<=0||routeReview.trim().length<10}
       onClick={()=>setMessage('Rota preparada para revisão, sem gravação. IDs, fonte e permissão deverão ser validados pelo servidor.')}>Validar rascunho de rota</Button>
+   </div>
+  </details>
+  <details className="house-ledger"><summary>Prévia de dificuldade e Lei local (somente Narrador)</summary>
+   <div style={{display:'grid',gap:8,maxWidth:620}}>
+    <p>Todos os valores a seguir são apenas anotados nesta sessão de demonstração. O cálculo final exige tabela de Lei e regra de contramedidas homologadas.</p>
+    <label>Dificuldade base aprovada <input type="number" min={0} max={100} value={difficultyBase}
+     onChange={e=>{setDifficultyBase(e.target.value);setDifficultyPreview('');}}/></label>
+    <label>Lei local validada pela fonte <input type="number" min={0} max={100000} value={lawDraft}
+     onChange={e=>{setLawDraft(e.target.value);setDifficultyPreview('');}}/></label>
+    <label>Contramedidas consideradas <select value={securityDraft} onChange={e=>setSecurityDraft(e.target.value)}>
+     <option value="">Pendente de avaliação</option>
+     <option value="none">Nenhuma verificada</option>
+     <option value="guard-dogs">Cães de Guarda (contexto a conferir)</option>
+     <option value="bailiffs">Treinamento Investigativo (contexto a conferir)</option>
+     <option value="both">Ambas (acumulação pendente)</option>
+    </select></label>
+    <label>Justificativa narratorial <textarea value={difficultyReason} onChange={e=>setDifficultyReason(e.target.value)}/></label>
+    <Button type="button" disabled={!difficultyBase||!lawDraft||difficultyReason.trim().length<10}
+     onClick={()=>setDifficultyPreview('Prévia local: base '+difficultyBase+', Lei '+lawDraft+
+      ', contramedidas '+(securityDraft||'pendentes')+'. Sem cálculo final, sem envio e sem gravação.')}>
+     Preparar decisão de dificuldade</Button>
+    {difficultyPreview&&<p role="status">{difficultyPreview}</p>}
    </div>
   </details>
   <details open className="house-ledger"><summary>Adjudicação e carta — cenário fictício</summary>
