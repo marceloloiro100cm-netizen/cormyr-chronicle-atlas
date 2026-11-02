@@ -79,3 +79,48 @@ test('player registers video errors and keeps a direct source option',()=>{
  assert.match(app,/data-bard-preview/);
  assert.match(extras,/data-bard-preview/);
 });
+
+test('a YouTube playback error is shown and the direct video link remains available',async()=>{
+ const base=setup();
+ let click,closed=false,handlers;
+ const elements={
+  'bard-player':{hidden:true},
+  'bard-player-media':{children:[],replaceChildren(...nodes){this.children=nodes;}},
+  'bard-title':{textContent:''},
+  'bard-open-source':{hidden:true,href:'',removeAttribute(){this.href='';}},
+  'bard-close':{addEventListener(type,fn){if(type==='click')this.close=fn;}},
+  'bard-lyrics':{hidden:true,textContent:''},
+  'bard-status':{textContent:''}
+ };
+ const window={
+  CORMYR_YOUTUBE:base.CORMYR_YOUTUBE,
+  location:{origin:'https://cormyr.example.test'},
+  addEventListener(){},
+  YT:{Player:class{
+   constructor(frame,config){handlers=config.events;this.frame=frame;}
+   destroy(){closed=true;}
+  }}
+ };
+ const document={
+  getElementById:id=>elements[id],
+  addEventListener(type,fn){if(type==='click')click=fn;},
+  createElement:tag=>({tagName:tag}),
+  head:{append(){}}
+ };
+ runInNewContext(read('music-player.js'),{window,document,URLSearchParams});
+ const button={
+  dataset:{bardPreview:'https://www.youtube.com/watch?v=G0HNr8qE8bM&list=PLNkPwXjMDaCw',bardTitle:'O Trono do Dragão'},
+  closest(){return null;}
+ };
+ await click({target:{closest:()=>button},preventDefault(){}});
+ assert.equal(elements['bard-player'].hidden,false);
+ assert.equal(elements['bard-open-source'].href,'https://www.youtube.com/watch?v=G0HNr8qE8bM');
+ assert.equal(elements['bard-player-media'].children.length,1);
+ assert.equal(elements['bard-player-media'].children[0].referrerPolicy,'strict-origin-when-cross-origin');
+ handlers.onError({data:153});
+ assert.match(elements['bard-status'].textContent,/origem|YouTube/i);
+ elements['bard-close'].close();
+ assert.equal(elements['bard-player'].hidden,true);
+ assert.equal(elements['bard-player-media'].children.length,0);
+ assert.equal(closed,true);
+});
