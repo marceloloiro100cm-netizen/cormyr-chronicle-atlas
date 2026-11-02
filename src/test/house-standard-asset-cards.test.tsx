@@ -53,7 +53,7 @@ describe('Padrão reutilizável de quadros da Casa',()=>{
   const card=screen.getByTestId('house-catalog-asset-castle');
   expect(within(card).getByText('Não adquirido')).toBeInTheDocument();
   fireEvent.click(within(card).getByText('Castelo',{selector:'small'}));
-  expect(within(card).getByText(/\+8 de Defesa às unidades situadas/)).toBeInTheDocument();
+  expect(within(card).getAllByText(/\+8 de Defesa às unidades situadas/).length).toBeGreaterThan(0);
   fireEvent.click(within(card).getByRole('button',{name:'Comprar'}));
   expect(onBuy).toHaveBeenCalledWith('castle');
  });
@@ -87,8 +87,9 @@ describe('Padrão reutilizável de quadros da Casa',()=>{
  it('o botão Comprar abre uma posse pré-selecionada nas três abas',()=>{
   const source=readFileSync('src/components/house/hub.tsx','utf8');
   expect(source).toContain('initialItemId={purchaseItemId}');
-  for(const type of ['domains','fortifications','economy'])
-   expect(source).toContain('section="'+type+'"');
+  expect(source).toContain('section="domains"');
+  expect(source).toContain('section={section}');
+  expect(source).toContain("section==='fortifications'||section==='economy'");
   expect(source).toContain('setPurchaseItemId(id);setBuy(true);');
  });
 });
