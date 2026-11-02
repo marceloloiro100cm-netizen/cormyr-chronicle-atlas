@@ -131,7 +131,8 @@ export function CharacterV2PlayerSheet({record,houseId,canEdit=false,onEdit}:{
    link.click();URL.revokeObjectURL(url);
   }finally{setDownloading(false);}
  }
- return <section className="character-v2-preview" aria-label={'Nova apresentação da ficha de '+character.displayName}>
+ return <>
+ <section className="character-v2-preview" aria-label={'Nova apresentação da ficha de '+character.displayName}>
   <header className="character-v2-header">
    <h3 className="text-2xl font-semibold">{character.displayName}</h3>
    <div className="character-v2-action-bar">
@@ -152,10 +153,6 @@ export function CharacterV2PlayerSheet({record,houseId,canEdit=false,onEdit}:{
    <p className="text-xs">Os números disponíveis são apenas cálculos básicos. Armaduras, escudos,
     ferimentos, bônus e defeitos ainda exigem homologação.</p>
   </section>
-  {(record.visibility==='house'||record.visibility==='player'||record.visibility==='gm')&&
-   <CharacterCoinWallet source={{id:record.id,title:record.title,
-    visibility:record.visibility,player_id:record.player_id??null}}
-    houseId={houseId} canEdit={canEdit}/>}
   <section className="character-v2-section" aria-label="Graduações em bolinhas">
    <h4>Habilidades</h4>
    <div className="character-v2-skills">
@@ -198,5 +195,13 @@ export function CharacterV2PlayerSheet({record,houseId,canEdit=false,onEdit}:{
     </div>
    </div>)}
   </section>
- </section>;
+ </section>
+ {(record.visibility==='house'||record.visibility==='player'||record.visibility==='gm')&&
+  <section className="character-v2-preview character-v2-wallet mt-4"
+   aria-label={'Moedas e conversão de '+character.displayName}>
+   <CharacterCoinWallet source={{id:record.id,title:record.title,
+    visibility:record.visibility,player_id:record.player_id??null}}
+    houseId={houseId} canEdit={canEdit}/>
+  </section>}
+ </>;
 }
