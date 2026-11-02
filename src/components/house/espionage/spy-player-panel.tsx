@@ -31,6 +31,8 @@ export function SpyPlayerPanel({houseName,state,catalog,houses,canEdit,onOpenPur
  const [origin,setOrigin]=useState('');
  const [destination,setDestination]=useState('');
  const [mode,setMode]=useState<Mode>('horse');
+ const [stops,setStops]=useState<string[]>([]);
+ const [showSampleLetter,setShowSampleLetter]=useState(false);
  const [routeMessage,setRouteMessage]=useState('');
  const cap=deriveSpyCapacity(state);
  const bal=balances(state);
@@ -109,7 +111,10 @@ export function SpyPlayerPanel({houseName,state,catalog,houses,canEdit,onOpenPur
     </label>)}</div>
    </fieldset>
    <Button type="button" onClick={missionPreview}>Visualizar rascunho</Button>
-   {draftMessage&&<p role="status" className="house-caption">{draftMessage}</p>}
+   {draftMessage&&<><p role="status" className="house-caption">{draftMessage}</p>
+    <ol aria-label="Fases da missão" style={{display:'flex',flexWrap:'wrap',gap:18}}>
+     {['Rascunho','Viagem pendente','Investigação','Revisão do Narrador','Retorno','Carta autorizada'].map(t=><li key={t}>{t}</li>)}
+    </ol></>}
   </div>}
   {tab==='routes'&&<div style={{display:'grid',gap:12,maxWidth:720}}>
    <h4>Planejador de rotas</h4>
@@ -124,6 +129,17 @@ export function SpyPlayerPanel({houseName,state,catalog,houses,canEdit,onOpenPur
     {regions.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
     {domains.map(d=><option key={d.id} value={d.id}>{d.name} · Retorno</option>)}
    </select></label>
+   <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+    <Button type="button" size="sm" variant="outline" disabled={!destination} onClick={()=>{
+     setStops(prev=>[...prev,destination]);setOrigin(destination);setDestination('');setRouteMessage('');
+    }}>Adicionar etapa</Button>
+    <Button type="button" size="sm" variant="outline" disabled={!stops.length} onClick={()=>{
+     setStops(prev=>prev.slice(0,-1));setRouteMessage('');
+    }}>Remover última etapa</Button>
+    <Button type="button" size="sm" variant="outline" disabled={!origin} onClick={()=>setDestination(origin)}>Planejar retorno</Button>
+   </div>
+   {stops.length>0&&<p role="status">Etapas previstas (sem dias homologados): {stops.map(id=>
+    [...regions,...domains].find(x=>x.id===id)?.name??id).join(' → ')}.</p>}
    <label>Meio de transporte <select value={mode} onChange={e=>setMode(e.target.value as Mode)}>
     <option value="foot">A pé</option><option value="horse">A cavalo</option>
     <option value="caravan">Caravana</option><option value="ship">Navio</option>
@@ -134,10 +150,27 @@ export function SpyPlayerPanel({houseName,state,catalog,houses,canEdit,onOpenPur
    {routeMessage&&<p role="status" className="house-warning">{routeMessage}</p>}
   </div>}
   {tab==='dossiers'&&<div><h4>Dossiês reservados</h4>
-   <p>O Lote 7 já possui motor de fatos e cobertura. A lista privada será disponibilizada após as tabelas e políticas de acesso do Lote 10. Nenhum dado de outra Casa é consultado nesta prévia.</p>
+   <p>O Lote 7 já possui motor de fatos e cobertura. Os registros reais dependem das tabelas e políticas de acesso do Lote 10. Nenhuma ficha adversária é consultada.</p>
+   <div style={{...cardStyle,maxWidth:560}}><p className="campaign-eyebrow">EXEMPLO FICTÍCIO · NÃO É DADO DA CAMPANHA</p>
+    <strong>Casa de Demonstração</strong>
+    <p>Cobertura do objetivo: 4 de 8 campos (50%).</p>
+    <progress value={4} max={8} aria-label="Cobertura demonstrativa: quatro de oito campos"/>
+    <p>Confiabilidade: parcial. Rumores e informações antigas permanecem identificados.</p>
+   </div>
   </div>}
   {tab==='reports'&&<div><h4>Cartas de inteligência</h4>
-   <p>Relatórios selados não são exibidos ao jogador. Cartas liberadas ou arquivadas serão consultadas somente por vínculo autorizado no Lote 10.</p>
+   <p>Relatórios selados não aparecem a jogadores. Cartas reais só serão consultadas após a implementação do Lote 10.</p>
+   <div style={{...cardStyle,maxWidth:640}}><p className="campaign-eyebrow">CARTA FICTÍCIA DE DEMONSTRAÇÃO</p>
+    <strong>ES-DEMO · Relatório exemplificativo</strong>
+    <p>4/8 tópicos autorizados · Cobertura 50% · Confiabilidade parcial.</p>
+    <Button type="button" variant="outline" onClick={()=>setShowSampleLetter(value=>!value)}
+     aria-expanded={showSampleLetter}>{showSampleLetter?'Ocultar exemplo':'Ler exemplo de carta'}</Button>
+    {showSampleLetter&&<div style={{padding:14,marginTop:12,border:'1px solid var(--border, #9996)',borderRadius:10}}>
+     <p>À Casa remetente — Selo de demonstração.</p>
+     <p>Foram examinados oito tópicos autorizáveis. Quatro receberam observações nesta simulação; os demais continuam desconhecidos.</p>
+     <p>Os fatos reais e a identidade de um alvo não são carregados aqui. O conteúdo exibido é ilustrativo.</p>
+    </div>}
+   </div>
   </div>}
   {tab==='holdings'&&<div style={{display:'grid',gap:12}}>
    <h4>Estruturas e contratações</h4>
