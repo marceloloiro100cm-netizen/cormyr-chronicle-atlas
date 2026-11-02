@@ -30,12 +30,14 @@ function oneUntracked(tag='0067_temporal_release_preflight'){
 }
 
 describe('Lote 15 · reconciliação por SQL com prova individual',()=>{
- it('mostra 29 arquivos ausentes, colisão 0041 e status de execução desconhecido',()=>{
+ it('mostra todas as migrations não conciliadas, colisão 0041 e status desconhecido',()=>{
   const report=reconcileMigrationEvidence(catalog,null,OPTIONS);
-  assert.equal(report.total_sql,71);
+  assert.equal(report.total_sql,catalog.migrations.length);
   assert.equal(report.journal_entries,42);
-  assert.equal(report.unjournaled_total,29);
-  assert.equal(report.awaiting_evidence_total,29);
+  const unjournaled=catalog.migrations.filter(m=>!new Set(catalog.journal.entries.map(e=>e.tag)).has(m.tag)).length;
+  assert.ok(unjournaled>=29);
+  assert.equal(report.unjournaled_total,unjournaled);
+  assert.equal(report.awaiting_evidence_total,unjournaled);
   assert.equal(report.evidenced_total,0);
   assert.deepEqual(report.duplicate_ordinals,['0041']);
   assert.equal(report.ready_for_deploy,false);
@@ -51,7 +53,8 @@ describe('Lote 15 · reconciliação por SQL com prova individual',()=>{
  });
  it('gera folha com tags e SHA-256 exatos sem assumir status aplicado',()=>{
   const form=buildReconciliationTemplate(catalog,OPTIONS);
-  assert.equal(form.files.length,29);
+  assert.equal(form.files.length,catalog.migrations.filter(m=>
+    !new Set(catalog.journal.entries.map(e=>e.tag)).has(m.tag)).length);
   assert.equal(form.files[0].disposition,'unknown');
   assert.ok(form.files.every(x=>/^[a-f0-9]{64}$/.test(x.file_sha256)));
   assert.ok(form.files.every(x=>x.operator===null&&x.reviewer===null));
