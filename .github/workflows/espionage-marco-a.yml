@@ -1,9 +1,11 @@
-name: Espionagem Marco A (isolated)
+name: Espionagem Marcos A e B (isolated)
 on:
   pull_request:
     paths:
       - 'src/lib/espionage/**'
-      - 'src/test/espionage-*.test.ts'
+      - 'src/test/espionage-*'
+      - 'src/components/house/espionage/**'
+      - 'src/components/house/hub.tsx'
       - 'scripts/espionage-lote0-audit*'
       - 'docs/espionage/**'
       - 'tsconfig.espionage.json'
@@ -44,6 +46,19 @@ jobs:
       - name: Marco A integrated two-agent scenario
         if: ${{ always() }}
         run: bunx vitest run src/test/espionage-marco-a.test.ts
-      - name: TypeScript integrity (Marco A only)
+      - name: Vitest Lote 6 — missões e dificuldades
+        if: ${{ always() }}
+        run: bunx vitest run src/test/espionage-missions.test.ts
+      - name: Vitest Lote 7 — dossiês e relatórios
+        if: ${{ always() }}
+        run: bunx vitest run src/test/espionage-dossier.test.ts
+      - name: Vitest Lote 8 — UI jogador
+        if: ${{ always() }}
+        run: bunx vitest run src/test/espionage-player-ui.test.tsx
+      - name: Vitest Lote 9 — UI Narrador
+        if: ${{ always() }}
+        run: bunx vitest run src/test/espionage-narrator-ui.test.tsx
+      - name: TypeScript integrity (Marcos A e B)
+
         if: ${{ always() }}
         run: bunx tsc --project tsconfig.espionage.json --noEmit
