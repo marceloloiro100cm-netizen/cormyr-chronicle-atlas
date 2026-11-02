@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import DOMPurify from 'dompurify';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { drawRandomEvent } from '@/lib/events/random';
 
 type GmEvent = { id: number; kind: string; theme: string; title: string; hook: string; a: string; b: string; clue: string; scale?: string };
 type GmAdventure = { id: string; title: string; season: string; status: string; summary: string; content: string };
@@ -28,24 +29,47 @@ export function GmEventos() {
   const [kind, setKind] = useState('mundanos');
   const [theme, setTheme] = useState('');
   const [query, setQuery] = useState('');
+  const [selectedRandomId, setSelectedRandomId] = useState<number | null>(null);
   if (isPending) return <p role="status">Carregando os eventos do Narrador…</p>;
   if (error || !data) return <p role="alert">{error?.message ?? 'Falha ao carregar.'}</p>;
   const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const themes = [...new Set(data.events.filter((e) => e.kind === kind).map((e) => e.theme))];
-  const visible = data.events.filter((e) => e.kind === kind && (!theme || e.theme === theme) && (!query || norm([e.id, e.title, e.hook, e.theme].join(' ')).includes(norm(query))));
+  const visible = data.events.filter((e) => e.kind === kind &&
+    (selectedRandomId === null || e.id === selectedRandomId) &&
+    (!theme || e.theme === theme) &&
+    (!query || norm([e.id, e.title, e.hook, e.theme].join(' ')).includes(norm(query))));
+  const selectedRandom = selectedRandomId === null ? null :
+    data.events.find(e => e.kind === kind && e.id === selectedRandomId) ?? null;
+  function clearFilters() {
+    setKind('mundanos'); setTheme(''); setQuery(''); setSelectedRandomId(null);
+  }
+  function pickRandom() {
+    // Sortear entre os 100 registros do tipo selecionado, não apenas entre os filtros.
+    const chosen = drawRandomEvent(data.events, kind, selectedRandomId);
+    if (!chosen) return;
+    setTheme(''); setQuery(''); setSelectedRandomId(chosen.id);
+  }
   return (
     <section>
       <h2>Eventos do Narrador</h2>
       <p className="text-muted-foreground">Acervo reservado: {data.events.length} eventos entre mundanos e místicos.</p>
       <div className="campaign-mail-filters">
-        <label>Tipo<select value={kind} onChange={(e) => { setKind(e.target.value); setTheme(''); }}><option value="mundanos">Mundanos</option><option value="misticos">Místicos</option></select></label>
-        <label>Tema<select value={theme} onChange={(e) => setTheme(e.target.value)}><option value="">Todos os temas</option>{themes.map((t) => <option key={t} value={t}>{t}</option>)}</select></label>
-        <label>Buscar<input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Nome, número ou assunto…" /></label>
-        <Button variant="outline" onClick={() => { setKind('mundanos'); setTheme(''); setQuery(''); }}>Limpar filtros</Button>
+        <label>Tipo<select value={kind} onChange={(e) => { setKind(e.target.value); setTheme(''); setSelectedRandomId(null); }}><option value="mundanos">Mundanos</option><option value="misticos">Místicos</option></select></label>
+        <label>Tema<select value={theme} onChange={(e) => { setTheme(e.target.value); setSelectedRandomId(null); }}><option value="">Todos os temas</option>{themes.map((t) => <option key={t} value={t}>{t}</option>)}</select></label>
+        <label>Buscar<input type="search" value={query} onChange={(e) => { setQuery(e.target.value); setSelectedRandomId(null); }} placeholder="Nome, número ou assunto…" /></label>
+        <Button type="button" onClick={pickRandom}
+          disabled={!data.events.some(e => e.kind === kind)}>Evento Aleatório</Button>
+        <Button variant="outline" type="button" onClick={clearFilters}>Limpar filtros</Button>
       </div>
-      <p role="status" className="text-muted-foreground">{visible.length} eventos encontrados</p>
+      <p role="status" aria-live="polite" className="text-muted-foreground">
+        {selectedRandom
+          ? `Evento sorteado: ${selectedRandom.kind === 'misticos' ? 'Místico' : 'Mundano'} nº ${String(selectedRandom.id).padStart(3, '0')} — ${selectedRandom.title}`
+          : `${visible.length} eventos encontrados`}
+      </p>
       {visible.map((e) => (
-        <article className="campaign-record" key={`${e.kind}-${e.id}`}>
+        <article className={`campaign-record${selectedRandom?.id === e.id ? ' ring-2 ring-primary' : ''}`}
+          aria-label={selectedRandom?.id === e.id ? 'Evento sorteado: '+e.title : undefined}
+          key={`${e.kind}-${e.id}`}>
           <header><span className="campaign-eyebrow">{e.kind === 'misticos' ? 'MÍSTICO' : 'MUNDANO'} {String(e.id).padStart(3, '0')}</span><span className="text-sm text-muted-foreground">{e.scale || e.theme}</span></header>
           <h3>{e.title}</h3>
           <p>{e.hook}</p>
