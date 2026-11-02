@@ -54,3 +54,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0077_spy_operational_rpcs_REVIEW_ONLY.sql
       - name: Verify narrator-only registry, paid contractor receipts and immutable route versions
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-operations.sql
+      - name: Apply approved-route planner in disposable database only
+        run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0078_spy_mission_routes_REVIEW_ONLY.sql
+      - name: Verify immutable route duration, Harptos days and idempotence
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-mission-routes.sql
