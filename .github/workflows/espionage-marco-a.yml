@@ -1,0 +1,32 @@
+name: Espionagem Marco A (isolated)
+on:
+  pull_request:
+    paths:
+      - 'src/lib/espionage/**'
+      - 'src/test/espionage-*.test.ts'
+      - 'scripts/espionage-lote0-audit*'
+      - 'docs/espionage/**'
+      - '.github/workflows/espionage-marco-a.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  espionage-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.3'
+      - name: Locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Lote 0 source audit
+        run: node scripts/espionage-lote0-audit.mjs
+      - name: Vitest espionage contracts, economy, routes, travel and assets
+        run: bunx vitest run src/test/espionage-contracts.test.ts src/test/espionage-economy.test.ts src/test/espionage-routes.test.ts src/test/espionage-travel.test.ts src/test/espionage-assets.test.ts
+      - name: TypeScript integrity
+        run: bunx tsc --noEmit
