@@ -28,5 +28,10 @@ describe('Limpeza da interface solicitada, sem remover relógio ou rotas',()=>{
   expect(time).toContain("fetch('/api/public/time'");
   expect(time).not.toContain('public-campaign-time-detail');
   expect(html).toContain('id="random" class="solid" type="button">Evento Aleatório</button>');
+  expect(html).not.toContain('O que é Cormyr?</summary>');
+  expect(html).not.toContain('<footer>');
+  expect(html).not.toContain('CORMYR WEB · V2');
+  const regionSource=source('public/cormyr/app.js');
+  expect(regionSource).not.toContain('Selecione um brasão para consultar a ficha e suas fontes. As casas históricas');
  });
 });
