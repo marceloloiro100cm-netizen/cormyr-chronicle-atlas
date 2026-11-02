@@ -11,6 +11,11 @@ import { campaignMonth } from "@/lib/house/regions";
 import type { HouseState } from "@/lib/house/types";
 import {vassalCrestUrl,type VassalHouse} from "@/lib/house/vassal-links";
 
+/** Presentation only: retain the stored note, but hide internal archive-link metadata. */
+export function vassalDisplayNote(value:string){
+ return value.split(/\r?\n/).filter(line=>!/^\s*link\s*:\s*dados da casa\b/i.test(line))
+  .join('\n').trim();
+}
 type NpcOption = { id: string; title: string };
 function VassalCrest({house}:{house?:VassalHouse|undefined}){
  const [broken,setBroken]=useState<string|null>(null);
@@ -110,6 +115,7 @@ export function Vassals({
       <div className="house-grid">
         {(state.vassals ?? []).map((v) => {
           const h = houses.find((h) => h.id === v.houseId);
+          const displayNote=vassalDisplayNote(v.notes);
           return (
             <article className="house-card" key={v.id}>
               <header className="flex items-center gap-3">
@@ -129,7 +135,7 @@ export function Vassals({
                 {v.cost} Poder alocado
                 {v.approvedMonth !== undefined ? ` · ${campaignMonth(v.approvedMonth)}` : ""}
               </p>
-              <p>{v.notes}</p>
+              {displayNote&&<p className="whitespace-pre-line">{displayNote}</p>}
               {v.approvalNote && (
                 <details>
                   <summary>Decisão do Narrador</summary>

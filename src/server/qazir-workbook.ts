@@ -4,7 +4,7 @@ import type {VassalWorkbook} from '@/lib/house/vassal-workbook';
  * Ficha da Casa Qazir.xlsx enviado pelo Narrador. Server-only.
  * Não é um snapshot oficial do livro-caixa nem autoriza movimentações.
  */
-export const QAZIR_WORKBOOK:VassalWorkbook={
+export const QAZIR_WORKBOOK={
  houseId:'qazir',name:'Qazir',suzerainId:'ashkar',region:'Dragon Coast',
  lord:'Rashid Qazir',heir:'Farid Qazir',motto:'Fire Finds a Way',
  foundation:1115,castle:'Alcácer da Vigília',city:'Safraya',
@@ -50,4 +50,4 @@ export const QAZIR_WORKBOOK:VassalWorkbook={
   'Casamento de Samira Qazir com Kael Ashkar — aliança entre as casas',
   'Abertura da Estrada da Lamparina — data não registrada',
  ],
-};
+} satisfies VassalWorkbook;

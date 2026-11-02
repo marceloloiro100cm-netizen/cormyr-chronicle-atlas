@@ -1,16 +1,19 @@
 import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
 import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
+import type {VassalWorkbook} from './vassal-workbook';
 
-/** A approved vassal link permits the Ashkar reader to inspect this particular
- * imported Qazir workbook. It never grants membership of Qazir itself. */
-export const loadQazirVassalWorkbook=createServerFn({method:'POST'})
+/** A vassal's imported workbook may be viewed through its specifically
+ * approved parent link, but that link never grants access to a private sheet.
+ * Pairing is checked both here and in the source selector. */
+const allowedPair=z.union([
+ z.object({parentHouseId:z.literal('ashkar'),vassalHouseId:z.literal('qazir')}),
+ z.object({parentHouseId:z.literal('everlost'),vassalHouseId:z.literal('everet')}),
+]);
+export const loadVassalWorkbook=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
- .inputValidator(z.object({
-  parentHouseId:z.literal('ashkar'),
-  vassalHouseId:z.literal('qazir'),
- }))
- .handler(async({data,context})=>{
+ .inputValidator(allowedPair)
+ .handler(async({data,context}):Promise<VassalWorkbook>=>{
   const db=context.supabase;
   const checkAccess=async()=>{
    const [admin,member]=await Promise.all([
@@ -22,7 +25,6 @@ export const loadQazirVassalWorkbook=createServerFn({method:'POST'})
    return Boolean(admin.data);
   };
   const wasAdmin=await checkAccess();
-  // Only the current approved link in the authoritative parent sheet counts.
   const row=await db.from('noble_house_sheets')
    .select('state').eq('house_id',data.parentHouseId).maybeSingle();
   if(row.error||!row.data)
@@ -31,11 +33,17 @@ export const loadQazirVassalWorkbook=createServerFn({method:'POST'})
   const approved=Array.isArray(state?.vassals)&&state.vassals.some(v=>
    v.houseId===data.vassalHouseId&&v.status==='approved');
   if(!approved)
-   throw new Error('Vínculo Qazir–Ashkar ausente ou não aprovado.');
+   throw new Error('O vínculo de vassalagem está ausente ou não foi aprovado.');
   const isAdminNow=await checkAccess();
   if(wasAdmin&&!isAdminNow)
    throw new Error('Permissão de Narrador alterada durante a consulta.');
-  // Never import this module in a browser component: source stays on server.
-  const {QAZIR_WORKBOOK}=await import('@/server/qazir-workbook');
-  return QAZIR_WORKBOOK;
+  if(data.parentHouseId==='ashkar'&&data.vassalHouseId==='qazir'){
+   const {QAZIR_WORKBOOK}=await import('@/server/qazir-workbook');
+   return QAZIR_WORKBOOK;
+  }
+  if(data.parentHouseId==='everlost'&&data.vassalHouseId==='everet'){
+   const {EVERET_WORKBOOK}=await import('@/server/everet-workbook');
+   return EVERET_WORKBOOK;
+  }
+  throw new Error('Vínculo de vassalagem não suportado.');
  });

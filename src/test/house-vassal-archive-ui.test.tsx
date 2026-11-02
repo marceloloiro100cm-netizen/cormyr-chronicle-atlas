@@ -9,7 +9,7 @@ vi.mock('@tanstack/react-start',()=>({
  useServerFn:()=>async()=>{throw new Error('Casa oficial não encontrada.');},
 }));
 vi.mock('@/lib/house/house.functions',()=>({loadHouseHub:vi.fn(),loadHouseLedger:vi.fn()}));
-vi.mock('@/lib/house/vassal-workbook.functions',()=>({loadQazirVassalWorkbook:vi.fn()}));
+vi.mock('@/lib/house/vassal-workbook.functions',()=>({loadVassalWorkbook:vi.fn()}));
 vi.mock('@/integrations/supabase/client',()=>({
  supabase:{from:(table:string)=>{
   if(table!=='house_catalog')throw new Error('Unexpected private table read');
