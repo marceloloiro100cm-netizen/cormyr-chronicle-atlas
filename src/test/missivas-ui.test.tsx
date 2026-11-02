@@ -20,17 +20,30 @@ beforeEach(()=>rpc.mockImplementation(async(name:string)=>{
 }));
 function mount(panel:Panel){currentPanel=panel;return render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><MissivasTab data={panel} me={panel.players[0]} onSave={vi.fn()} onError={vi.fn()}/></QueryClientProvider>);}
 afterEach(()=>{cleanup();rpc.mockClear();});
+async function findSentSubject(name:RegExp){
+ const displayed=screen.queryByRole('button',{name});
+ if(displayed)return displayed;
+ fireEvent.change(screen.getByLabelText('Caixa'),{target:{value:'enviadas'}});
+ return await screen.findByRole('button',{name});
+}
 describe('interface de missivas',()=>{
+ it('mantém a listagem de enviadas oculta por padrão e permite recuperá-la pelo filtro',async()=>{
+  mount(data());
+  await waitFor(()=>expect(screen.getByText('Nenhuma missiva encontrada.')).toBeInTheDocument());
+  expect(screen.queryByRole('button',{name:/Ordem enviada/})).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Caixa'),{target:{value:'enviadas'}});
+  expect(await screen.findByRole('button',{name:/Ordem enviada/})).toBeInTheDocument();
+ });
  it('permite marcar como lida uma resposta em missiva enviada',async()=>{
   mount(data([{id:'reply',letter_id:'letter',author_user_id:'other',author_name:'Outro',content:'Resposta recebida',publication_state:'delivered',created_at:'2026-10-28'}]));
-  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  fireEvent.click(await findSentSubject(/Ordem enviada/));
   fireEvent.click(screen.getByRole('button',{name:'Marcar como lida'}));
   expect(rpc).toHaveBeenCalledWith('mark_letter_read',{p_id:'letter'});
  });
  it('mostra e permite editar resposta em rascunho dentro de conversa entregue',async()=>{
   mount(data([{id:'draft',letter_id:'letter',reply_to_id:'reply',author_user_id:'me',author_name:'Autor',content:'Texto salvo',publication_state:'draft',created_at:'2026-10-28'}]));
   fireEvent.change(screen.getByLabelText('Caixa'),{target:{value:'rascunhos'}});
-  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  fireEvent.click(await findSentSubject(/Ordem enviada/));
   fireEvent.click(screen.getByRole('button',{name:'Editar rascunho'}));
   fireEvent.change(screen.getByRole('textbox',{name:'Resposta'}),{target:{value:'Texto atualizado'}});
   fireEvent.click(screen.getAllByText('Selecionar dia no calendário')[0]!);
@@ -58,7 +71,7 @@ describe('apresentação de fios de respostas',()=>{
   }]),letters:[{...letter,subject:'O filho que ficou',sender_name:'Mara, Carpinteira de Goldsun',
    content:'Lady Genevieve,\n\nA oficina ainda leva o nome dele na porta.\n\nMara, Carpinteira de Goldsun'}]} as unknown as Panel;
   mount(panel);
-  fireEvent.click(await screen.findByRole('button',{name:/O filho que ficou/}));
+  fireEvent.click(await findSentSubject(/O filho que ficou/));
   const original=screen.getByRole('region',{name:'Texto da missiva original'});
   const thread=screen.getByRole('region',{name:'Fio de respostas: O filho que ficou'});
   const reply=screen.getByRole('article',{name:'Resposta de Lady Genevieve Harcourt'});
@@ -74,7 +87,7 @@ describe('apresentação de fios de respostas',()=>{
  });
  it('não cria fio de resposta quando só existe a missiva original',async()=>{
   mount(data());
-  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  fireEvent.click(await findSentSubject(/Ordem enviada/));
   expect(screen.getByRole('region',{name:'Texto da missiva original'})).toHaveTextContent('Original');
   expect(screen.queryByRole('region',{name:/Fio de respostas:/})).not.toBeInTheDocument();
  });
@@ -115,6 +128,7 @@ describe('lote 2: destinatários e semanas',()=>{
  it('distingue a semana de envio da semana de recebimento no cartão',async()=>{
    const panel={...data(),letters:[{...letter,creation_week:1,delivery_week:2,letter_number:2}]} as unknown as Panel;
    mount(panel);
+   await findSentSubject(/Ordem enviada/);
    await waitFor(()=>expect(screen.getByRole('button',{name:/Ordem enviada/})).toHaveTextContent('Enviada na Semana 1 · Recebida na Semana 2'));
    fireEvent.click(screen.getByRole('button',{name:/Ordem enviada/}));
    expect(screen.getAllByText('Enviada na Semana 1 · Recebida na Semana 2').length).toBeGreaterThanOrEqual(1);
@@ -129,7 +143,7 @@ describe('lote 2: destinatários e semanas',()=>{
      {...letter,id:'related',subject:'Carta relacionada',conversation_id:'thread-one',created_at:'2026-10-29'},
    ]} as unknown as Panel;
    mount(panel);
-   fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+   fireEvent.click(await findSentSubject(/Ordem enviada/));
    fireEvent.click(screen.getByRole('button',{name:/Ver relacionadas nesta página/}));
    expect(screen.getByText('Resposta · Enviada na Semana 2 · Recebida na Semana 3')).toBeInTheDocument();
  });
@@ -152,7 +166,7 @@ describe('lote 3: gestão e leitura do Narrador',()=>{
     content:'Resposta nova',publication_state:'delivered',created_at:'2026-10-29T13:00:00Z',
   }]),admin:true,letters:[{...letter,recipient_read:true}]} as unknown as Panel;
   mount(panel);
-  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  fireEvent.click(await findSentSubject(/Ordem enviada/));
   const indicators=screen.getByRole('region',{name:'Indicadores de leitura separados'});
   expect(indicators).toHaveTextContent('Leitura da Casa: Leitura registrada');
   expect(indicators).toHaveTextContent('Leitura do Narrador: Nova resposta não lida');
@@ -163,7 +177,7 @@ describe('lote 3: gestão e leitura do Narrador',()=>{
  it('não oferece marcar como lida quando o Mestre apenas aguarda resposta da Casa',async()=>{
   const panel={...data(),admin:true} as unknown as Panel;
   mount(panel);
-  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  fireEvent.click(await findSentSubject(/Ordem enviada/));
   expect(screen.getByRole('button',{name:/Ordem enviada/})).toHaveTextContent('Aguardando resposta da Casa');
   expect(screen.getByRole('region',{name:'Indicadores de leitura separados'})).toHaveTextContent('Nenhuma resposta entregue');
   expect(screen.queryByRole('button',{name:'Marcar como lida'})).not.toBeInTheDocument();
@@ -189,7 +203,7 @@ describe('lote 4: métricas completas do Narrador',()=>{
    expect(stats).toHaveTextContent('2Aguardando Narrador');
    expect(stats).toHaveTextContent('4Respostas programadas (próx. semana)');
    expect(stats).toHaveTextContent('1Rascunhos do Narrador');
-   expect(screen.getByText(/Indicadores de todos os resultados dos filtros ativos/)).toBeInTheDocument();
+   expect(screen.queryByText(/Indicadores de todos os resultados dos filtros ativos/)).not.toBeInTheDocument();
    fireEvent.change(screen.getByLabelText('Resposta'),{target:{value:'awaiting-house'}});
    await waitFor(()=>expect(rpc).toHaveBeenCalledWith('mail_page',expect.objectContaining({
      p_filters:expect.objectContaining({answered:'awaiting-house'})
@@ -204,7 +218,7 @@ describe('lote 5: complementos e manutenção do fio',()=>{
       {id:'recipient',user_id:'house-member',name:'Destinatária',active:true,require_password_change:false}],
     members:[{player_id:'recipient',house_id:'other'}]} as unknown as Panel;
   mount(panel);
-  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  fireEvent.click(await findSentSubject(/Ordem enviada/));
   fireEvent.click(screen.getByRole('button',{name:'Adicionar complemento'}));
   expect(screen.getByRole('textbox',{name:'Resposta'})).toBeInTheDocument();
   await waitFor(()=>expect(rpc).toHaveBeenCalledWith('reply_delivery_week',{p_recipient:'house-member'}));
@@ -215,7 +229,7 @@ describe('lote 5: complementos e manutenção do fio',()=>{
     admin:true,players:[{id:'recipient',user_id:'house-member',name:'Destinatária',active:true,require_password_change:false}],
     members:[{player_id:'recipient',house_id:'other'}]} as unknown as Panel;
   mount(panel);
-  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  fireEvent.click(await findSentSubject(/Ordem enviada/));
   fireEvent.click(screen.getByRole('button',{name:'Responder à Casa'}));
   fireEvent.change(screen.getByRole('textbox',{name:'Resposta'}),{target:{value:'O Narrador respondeu'}});
   fireEvent.click(screen.getByText('Selecionar dia no calendário'));
@@ -231,7 +245,7 @@ describe('lote 5: complementos e manutenção do fio',()=>{
   const panel={...data([{id:'reply-edited',letter_id:'letter',author_user_id:'house-member',author_name:'Destinatária',
     content:'Texto original',publication_state:'delivered',created_at:'2026-10-29T10:00:00Z',version:3}]),admin:true} as unknown as Panel;
   mount(panel);
-  fireEvent.click(await screen.findByRole('button',{name:/Ordem enviada/}));
+  fireEvent.click(await findSentSubject(/Ordem enviada/));
   fireEvent.click(screen.getByRole('button',{name:'Editar resposta'}));
   fireEvent.change(screen.getByRole('textbox',{name:'Texto da resposta'}),{target:{value:'Versão corrigida'}});
   fireEvent.click(screen.getByRole('button',{name:'Salvar resposta revisada'}));
@@ -251,6 +265,7 @@ describe('lote 5: complementos e manutenção do fio',()=>{
       {...letter,id:'other-letter',batch_key:'batch',conversation_id:'shared-legacy',created_at:'2026-10-29'},
     ]} as unknown as Panel;
   mount(panel);
+  await findSentSubject(/Ordem enviada/);
   fireEvent.click((await screen.findAllByRole('button',{name:/Ordem enviada/}))[0]!);
   expect(screen.queryByRole('button',{name:/Ver relacionadas nesta página/})).not.toBeInTheDocument();
  });
