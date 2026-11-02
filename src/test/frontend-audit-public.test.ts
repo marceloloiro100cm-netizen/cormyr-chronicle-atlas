@@ -6,7 +6,7 @@ import {campaignMediaParts} from '@/lib/campaign-content';
 const publicFile=(name:string)=>readFileSync(resolve(process.cwd(),'public/cormyr',name),'utf8');
 describe('Public Cormyr frontend implementation package',()=>{
  it('all public runtime scripts are valid JavaScript',()=>{
-  for(const file of ['app.js','extras.js','search.js','soundtrack.js','music-player.js','reading-mode.js','notebook-link.js']){
+  for(const file of ['app.js','extras.js','search.js','youtube-media.js','soundtrack.js','music-player.js','reading-mode.js','notebook-link.js']){
    expect(()=>new Function(publicFile(file)),file).not.toThrow();
   }
  });
@@ -40,17 +40,26 @@ describe('Public Cormyr frontend implementation package',()=>{
  });
 });
 describe('Link safety and music playback fallback',()=>{
- it('opens the Google Drive file in the native viewer instead of a fragile embedded preview',()=>{
+ it('uses only YouTube in the public music interface with explicit error handling',()=>{
   const player=publicFile('music-player.js');
-  expect(player).not.toContain("'/preview'");
-  expect(player).toContain("if(host==='drive.google.com')return null;");
-  expect(player).toContain("button[data-bard-preview]");
-  expect(player).not.toContain("a.music-button[href]');\n  if(!link)");
+  expect(player).toContain('button[data-bard-preview]');
+  expect(player).toContain('onError');
+  expect(player).toContain('onAutoplayBlocked');
+  expect(player).toContain('strict-origin-when-cross-origin');
+  expect(player).toContain('video.watchUrl');
+  for(const file of ['youtube-media.js','soundtrack.js','extras.js','music-player.js']){
+   expect(publicFile(file)).not.toMatch(/drive\.google\.com|driveUrl|driveId|driveTitle|Google Drive/);
+  }
+  const html=publicFile('index.html');
+  expect(html).toContain('youtube-media.js');
+  expect(html).toContain('id="bard-status"');
+  const music=html.slice(html.indexOf('<section id="view-musicas"'),html.indexOf('</main>'));
+  expect(music).not.toContain('Google Drive');
   expect(publicFile('extras.js')).toContain('data-bard-preview');
  });
  it('preserves external Gemini Notebook link and displays a permissions explanation',()=>{
   const html=publicFile('index.html');
-  expect(html).toContain('o acesso requer login')
+  expect(html).toContain('o acesso requer login');
  });
 });
 describe('Safe narrator media token parsing',()=>{
@@ -69,45 +78,37 @@ describe('Safe narrator media token parsing',()=>{
 });
 
 
-describe('YouTube playlist per-track links',()=>{
+describe('YouTube catalogue and pending recordings',()=>{
  const data=()=>{
   const raw=publicFile('data.js').replace(/^window\.CORMYR_DATA\s*=\s*/,'').replace(/;\s*$/,'');
   const archive=JSON.parse(raw);
-  const context:{CORMYR_DATA:typeof archive}={CORMYR_DATA:archive};
+  const context:{CORMYR_DATA:typeof archive;CORMYR_YOUTUBE?:unknown}={CORMYR_DATA:archive};
+  new Function('window',publicFile('youtube-media.js'))(context);
   new Function('window',publicFile('soundtrack.js'))(context);
   return archive;
  };
- it('maps each available regional and house recording to its catalogued YouTube video',()=>{
+ it('normalizes all 15 region, house and royal video URLs to a direct YouTube link',()=>{
   const archive=data();
-  const recordings=archive.soundtrack.filter((t:{driveId?:string})=>t.driveId);
-  expect(recordings).toHaveLength(20);
-  expect(recordings.filter((t:{youtubeUrl?:string})=>Boolean(t.youtubeUrl))).toHaveLength(14);
-  for(const t of recordings){
-   expect(new URL(t.driveUrl).hostname).toBe('drive.google.com');
-   expect(new URL(t.driveUrl).pathname.startsWith('/file/d/')).toBe(true);
-   if(t.youtubeUrl){
-    const u=new URL(t.youtubeUrl);
-    expect(u.searchParams.get('list')).toBe('PLNkPwXjMDaCw');
-    expect(u.searchParams.get('v')).toMatch(/^[A-Za-z0-9_-]{11}$/);
-    expect(t.url).toBe(t.youtubeUrl);
-   }else{
-    expect(t.url).toBe(t.driveUrl);
-    expect(t.linkStatus).toBe('drive-only');
-   }
+  const tracks=[...archive.kingdomMusic];
+  for(const region of archive.regions){
+   tracks.push(...(region.music||[]));
+   for(const house of region.houses)tracks.push(...(house.music||[]));
+  }
+  expect(tracks).toHaveLength(15);
+  for(const track of tracks){
+   expect(track.url).toMatch(/^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/);
+   expect(track.videoId).toMatch(/^[A-Za-z0-9_-]{11}$/);
   }
  });
- it('uses the explicitly supplied Fewmerry video instead of a generic playlist destination',()=>{
+ it('keeps the explicitly supplied Fewmerry video, without a playlist dependency',()=>{
   const archive=data();
-  const fewmerry=archive.soundtrack.find((t:{region:string})=>t.region==='Fewmerry');
-  expect(fewmerry.url).toBe('https://www.youtube.com/watch?v=kfq0BeCse98&list=PLNkPwXjMDaCw');
-  const known=archive.soundtrack.filter((t:{youtubeUrl?:string})=>t.youtubeUrl).map((t:{youtubeUrl:string})=>t.youtubeUrl);
-  expect(new Set(known).size).toBe(14);
+  const fewmerry=archive.regions.flatMap((r:{houses:{name:string;music:{url:string}[]}[]})=>r.houses).find((h:{name:string})=>h.name==='Fewmerry');
+  expect(fewmerry?.music[0].url).toBe('https://www.youtube.com/watch?v=kfq0BeCse98');
  });
- it('keeps the six uncatalogued recordings on their original Drive URLs, never assigning another track by guesswork',()=>{
+ it('preserves six unmapped titles without pretending they have playable sources',()=>{
   const archive=data();
-  const unresolved=archive.soundtrack.filter((t:{driveId?:string;youtubeUrl?:string})=>t.driveId&&!t.youtubeUrl)
-   .map((t:{title:string})=>t.title);
-  expect(unresolved).toEqual([
+  const pending=archive.soundtrack.filter((t:{linkStatus?:string})=>t.linkStatus==='youtube-pending');
+  expect(pending.map((t:{title:string})=>t.title)).toEqual([
    'O Nó de Sangue — A Balada da Escota Vermelha',
    'A Força Vem do Povo',
    'A Milonga das Vozes que Ficam',
@@ -115,8 +116,7 @@ describe('YouTube playlist per-track links',()=>{
    'Vou-me Embora pra Sossal',
    'Música dos Dragões Azuis'
   ]);
-  const extras=publicFile('extras.js');
-  expect(extras).toContain('s.driveUrl&&s.driveUrl!==s.url');
-  expect(extras).toContain('existingUrls.has(t.youtubeUrl)');
+  expect(pending.every((t:{url:string})=>!t.url)).toBe(true);
+  expect(publicFile('extras.js')).toContain('youtube-pending');
  });
 });
