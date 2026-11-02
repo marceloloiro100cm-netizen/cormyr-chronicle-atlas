@@ -66,7 +66,7 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
   const overrides=(rules.data??[]).map(r=>catalogSchema.parse(r.definition));
   const catalog=[...CORE_CATALOG.filter(i=>!overrides.some(o=>o.id===i.id)),...overrides];
   const [houses,archive]=await Promise.all([db.from('campaign_houses').select('id,name,region,crest,castle,lord_name'),(async()=>{const rows=[];for(let from=0;;from+=500){const page=await db.from('house_catalog').select('id,name,region,archive_data').order('id').range(from,from+499);if(page.error)return {data:null,error:page.error};rows.push(...(page.data??[]));if((page.data?.length??0)<500)return {data:rows,error:null};}})()]);if(houses.error||archive.error)throw new Error('Não foi possível consultar os brasões oficiais.');
-  const merged=new Map<string,VassalHouse>((archive.data??[]).map(h=>{const a=(h.archive_data??{}) as Record<string,unknown>;return [h.id,{id:h.id,name:h.name,region:h.region,crest:typeof a['crest']==='string'?a['crest']:null,castle:typeof a['castle']==='string'?a['castle']:null,lord_name:typeof a['lord_name']==='string'?a['lord_name']:null}];}));for(const h of houses.data??[])merged.set(h.id,mergeOfficialHouse(merged.get(h.id),h));
+  const merged=new Map<string,VassalHouse>((archive.data??[]).map(h=>{const a=(h.archive_data??{}) as Record<string,unknown>;return [h.id,{id:h.id,name:h.name,region:h.region,crest:typeof a['crest']==='string'?a['crest']:null,castle:typeof a['castle']==='string'?a['castle']:null,lord_name:typeof a['lord_name']==='string'?a['lord_name']:null}] as const;}));for(const h of houses.data??[])merged.set(h.id,mergeOfficialHouse(merged.get(h.id),h));
 
   const { LEGACY_HOUSE_SEEDS } = await import('./legacy-seeds');
   let finalState: HouseState | undefined;
