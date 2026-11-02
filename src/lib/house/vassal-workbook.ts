@@ -17,6 +17,7 @@ export type VassalWorkbookUnit={
 export type VassalWorkbook={
  houseId:string;name:string;suzerainId:string;region:string;lord:string;heir:string;
  motto:string;foundation:number;castle:string;city:string;source:string;
+ title?:string;territorialGrantYear?:number;crestDescription?:string;
  resources:Resources;assets:VassalWorkbookAsset[];
  people:{name:string;role:string}[];units:VassalWorkbookUnit[];
  history:string[];fortune?:{law:number;population:number;maester:number};
@@ -48,7 +49,11 @@ export function vassalWorkbookReport(sheet:VassalWorkbook):ReportSection[]{
    ['Casa',sheet.name],['Suserana',sheet.suzerainId],['Região',sheet.region],
    ['Lorde',sheet.lord||missing],['Herdeiro',sheet.heir||missing],
    ['Fortaleza',sheet.castle||missing],['Cidade de origem',sheet.city||missing],
-   ['Lema',sheet.motto||missing],['Fundação CV',sheet.foundation||missing],['Fonte',sheet.source],
+   ['Lema',sheet.motto||missing],['Fundação CV',sheet.foundation||missing],
+   ...(sheet.territorialGrantYear?[['Concessão territorial CV',sheet.territorialGrantYear]]:[]),
+   ...(sheet.title?[['Título',sheet.title]]:[]),
+   ...(sheet.crestDescription?[['Brasão',sheet.crestDescription]]:[]),
+   ['Fonte',sheet.source],
    ['Natureza da importação','Planilha histórica; consulta sem lançamento no livro-caixa'],
   ]},
   {title:'Recursos',headers:['Recurso','Total','Alocado','Disponível'],rows:
