@@ -3,6 +3,7 @@ import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {NARRATOR_MENU,NarratorMissivasHub,mailHouseRegion} from '@/components/players/narrator-missives-hub';
 import type {Panel} from '@/components/players/panel-data';
+import {narrationHouseIds} from '@/lib/mail-groups';
 
 const mock=vi.hoisted(()=>({rpc:vi.fn()}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:mock.rpc}}));
@@ -48,6 +49,10 @@ describe('menu e grupos do Narrador',()=>{
   expect(mailHouseRegion('Dragon Coast')).toBe('dragon-coast');
   expect(mailHouseRegion('Horse Lands')).toBe('horselands');
   expect(mailHouseRegion('Horselands')).toBe('horselands');
+ });
+ it('classifica Harcourt somente em Horselands nos filtros internos',()=>{
+  expect(narrationHouseIds('1',['harcourt','everlost'])).toEqual(['everlost']);
+  expect(narrationHouseIds('2',['harcourt','everlost'])).toEqual(['harcourt']);
  });
  it('permite selecionar os dois grupos simultaneamente, atualizando indicadores e consulta',async()=>{
   const onManage=mount();
