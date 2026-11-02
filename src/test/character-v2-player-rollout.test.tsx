@@ -1,7 +1,16 @@
-import {describe,it,expect} from 'vitest';
+import {describe,it,expect,vi} from 'vitest';
 import {render,screen,within} from '@testing-library/react';
 import {buildCharacterPlayerPreview,CharacterV2PlayerSheet} from '@/components/character-v2/player-sheet';
 import {blankChronicleSheet,serializeChronicleSheet} from '@/lib/house/character-sheet';
+
+// Isolate the network-backed wallet: this suite verifies composition and placement.
+vi.mock('@/components/character-v2/coin-wallet',()=>({
+ CharacterCoinWallet:({source,houseId}:{source:{id:string};houseId:string})=>
+  <section aria-label="Carteira de moedas do personagem">
+   <h4>Moedas e valores</h4><h5>Calculadora de conversão</h5>
+   <span>{source.id} · {houseId}</span>
+  </section>,
+}));
 
 const ID='00000000-0000-4000-8000-000000000088';
 const skills=[
@@ -47,6 +56,21 @@ describe('Implantação de consulta V2 — fichas reais legadas',()=>{
   // Avisos internos continuam no diagnóstico, mas não aparecem no layout.
   expect(screen.queryByText(/Conferência e pendências da importação/)).not.toBeInTheDocument();
   expect(screen.queryByText(/Graus extraídos de planilha legada/)).not.toBeInTheDocument();
+ });
+ it('exibe carteira e calculadora juntas abaixo da ficha completa, não entre habilidades e indicadores',()=>{
+  render(<CharacterV2PlayerSheet record={{...record,visibility:'house'}} houseId="erdenor"/>);
+  const sheet=screen.getByRole('region',{name:'Nova apresentação da ficha de Aldaeric Erdenor'});
+  const wallet=screen.getByRole('region',{name:'Moedas e conversão de Aldaeric Erdenor'});
+  expect(sheet).toContainElement(screen.getByRole('region',{name:'Qualidades e defeitos da ficha'}));
+  expect(sheet).not.toContainElement(wallet);
+  expect(sheet.nextElementSibling).toBe(wallet);
+  expect(within(wallet).getByRole('region',{name:'Carteira de moedas do personagem'})).toBeInTheDocument();
+  expect(within(wallet).getByText('Moedas e valores')).toBeInTheDocument();
+  expect(within(wallet).getByText('Calculadora de conversão')).toBeInTheDocument();
+ });
+ it('não exibe carteira para registros sem visibilidade autorizada',()=>{
+  render(<CharacterV2PlayerSheet record={record} houseId="erdenor"/>);
+  expect(screen.queryByRole('region',{name:/Moedas e conversão de/})).not.toBeInTheDocument();
  });
  it('deriva somente dados com todas as dependências, nunca inventa Movimento/Corrida',()=>{
   const result=buildCharacterPlayerPreview(record,'erdenor')!;
