@@ -70,6 +70,36 @@ describe('Padrão reutilizável de quadros da Casa',()=>{
   expect(screen.getByTestId('house-catalog-asset-pros-charcoal')).toBeInTheDocument();
   expect(screen.queryByTestId('house-catalog-asset-godswood')).not.toBeInTheDocument();
  });
+ it('Economia: filtros de adquiridos e não adquiridos combinam com busca e categoria',()=>{
+  const s=state();
+  s.holdings=[holding('godswood','Bosque da Família'),
+   {...holding('pros-charcoal','Carvoaria em obras'),status:'building'}];
+  renderCatalog('economy',s);
+  const acquisition=screen.getByLabelText('Aquisição');
+  fireEvent.change(acquisition,{target:{value:'acquired'}});
+  expect(screen.getByTestId('house-catalog-asset-godswood')).toBeInTheDocument();
+  expect(screen.getByTestId('house-catalog-asset-pros-charcoal')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Buscar quadro'),{target:{value:'carvoaria'}});
+  expect(screen.getByTestId('house-catalog-asset-pros-charcoal')).toBeInTheDocument();
+  expect(screen.queryByTestId('house-catalog-asset-godswood')).not.toBeInTheDocument();
+  fireEvent.change(acquisition,{target:{value:'unacquired'}});
+  expect(screen.queryByTestId('house-catalog-asset-pros-charcoal')).not.toBeInTheDocument();
+  expect(screen.getByText('Nenhuma posse encontrada para estes filtros.')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Buscar quadro'),{target:{value:''}});
+  expect(screen.queryByTestId('house-catalog-asset-godswood')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('house-catalog-asset-pros-charcoal')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Categoria'),{target:{value:'estate'}});
+  expect(screen.queryByTestId('house-catalog-asset-godswood')).not.toBeInTheDocument();
+  fireEvent.change(acquisition,{target:{value:'all'}});
+  expect(screen.getByLabelText('Aquisição')).toHaveValue('all');
+ });
+ it('não mostra filtro de aquisição em Terras ou Fortificações',()=>{
+  const view=renderCatalog('domains');
+  expect(screen.queryByLabelText('Aquisição')).not.toBeInTheDocument();
+  view.unmount();
+  renderCatalog('fortifications');
+  expect(screen.queryByLabelText('Aquisição')).not.toBeInTheDocument();
+ });
  it('não oferece compra quando não há saldo ou permissão; não altera estado',()=>{
   const s=state();s.base.defense=0;
   render(<HouseAssetCatalog section="fortifications" state={s} catalog={CORE_CATALOG}
