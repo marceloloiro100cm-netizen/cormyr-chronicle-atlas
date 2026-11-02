@@ -19,7 +19,7 @@ function boot(initialLocale) {
   w.fetch = async url => {
     if (String(url).startsWith('/api/public/translations?locale=en')) {
       return { ok: true, json: async () => ({
-        translations: {'region:Horselands:description':'The fertile lands of Horselands.'},
+        translations: {'region:Crownlands:description':'The Crownlands of Cormyr.'},
       }) };
     }
     return { ok:true, json:async () => ({houses:[],playerHouses:[]}) };
@@ -41,7 +41,7 @@ test('public flags appear in the archive header and share locale with player are
     assert.equal(d.documentElement.lang, 'en');
     assert.equal(d.querySelector('[data-view="reino"]').textContent, 'Kingdom and regions');
     assert.equal(d.querySelector('#public-language-switcher button[data-locale="en"]').getAttribute('aria-pressed'), 'true');
-    assert.equal(d.querySelector('#region-content .region-description').textContent, 'The fertile lands of Horselands.');
+    assert.equal(d.querySelector('#region-content .region-description').textContent, 'The Crownlands of Cormyr.');
     d.querySelector('#public-language-switcher button[data-locale="es"]').click();
     await settle();
     assert.equal(d.documentElement.lang, 'es');
@@ -51,7 +51,7 @@ test('public flags appear in the archive header and share locale with player are
     await settle();
     assert.equal(d.documentElement.lang, 'pt-BR');
     assert.equal(d.querySelector('[data-view="reino"]').textContent, 'Reino e regiões');
-    assert.notEqual(d.querySelector('#region-content .region-description').textContent, 'The fertile lands of Horselands.');
+    assert.notEqual(d.querySelector('#region-content .region-description').textContent, 'The Crownlands of Cormyr.');
   } finally { dom.window.close(); }
 });
 
@@ -62,7 +62,7 @@ test('newly rendered public region views keep interface locale', async () => {
   try {
     const d=dom.window.document;
     const select=d.getElementById('region-select');
-    select.value='Crownlands';
+    select.value='Horselands';
     select.dispatchEvent(new dom.window.Event('change'));
     await settle();
     assert.equal(d.querySelector('[data-view="reino"]').textContent, 'Königreich und Regionen');
