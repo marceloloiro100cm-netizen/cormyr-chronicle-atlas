@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {Anchor,Castle,ChevronDown,Coins,GraduationCap,Hammer,PenTool,ShieldCheck,Swords} from 'lucide-react';
 import {Button} from '@/components/ui/button';
+import {HouseAssetCard,HouseAssetGrid} from './asset-card';
 import {CORE_CATALOG} from '@/lib/house/catalog';
 import {activeHoldings,quote,UNIT_TYPES} from '@/lib/house/engine';
 import {MILITARY_HOLDINGS,MILITARY_HOLDING_BENEFITS} from '@/lib/house/unit-progression';
@@ -85,14 +86,9 @@ function MilitaryAssetCard({item,holdings,state,canEdit,busy,onRename,onBuy,onCo
  const buttonLabel=readiness==='money'?'Sem recursos':
   readiness==='domain'?'Defina um domínio':
   readiness==='requirements'?'Pré-requisitos pendentes':'Comprar';
- return <details className={'military-asset-card'+(!acquired?' military-asset-inactive':'')}>
-  <summary className="military-asset-summary">
-   <span className="military-asset-icon"><AssetIcon item={item}/></span>
-   <span className="military-asset-details"><small>{item.name}</small><strong>{status}</strong>
-    <span className="military-asset-short">{MILITARY_HOLDING_BENEFITS[item.id]}</span></span>
-   <ChevronDown size={17} className="military-asset-chevron" aria-hidden/>
-  </summary>
-  <div className="military-asset-expanded">
+ return <HouseAssetCard title={item.name} status={status}
+  description={MILITARY_HOLDING_BENEFITS[item.id]??item.description}
+  icon={<AssetIcon item={item}/>} inactive={!acquired}>
    <h5>Descrição</h5><p>{item.description}</p>
    <h5>Efeito militar</h5><p className="military-positive">{MILITARY_HOLDING_BENEFITS[item.id]}</p>
    <h5>Demais efeitos e regras da fonte</h5>
@@ -114,8 +110,7 @@ function MilitaryAssetCard({item,holdings,state,canEdit,busy,onRename,onBuy,onCo
    {canEdit&&owned.filter(h=>['pros-abbey--warrior-brotherhood','pros-trading-inn'].includes(h.itemId)).map(h=><form className="campaign-form" key={'unit-'+h.id} onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void onConfigure({holdingId:h.id,kind:'unit',value:String(f.get('unit'))});}}><label>Unidade protegida por esta instalação (+2 Defesa)<select name="unit" defaultValue={h.militaryUnitId??''}><option value="">Nenhuma unidade</option>{state.units.filter(u=>!u.destroyed&&u.domainId===h.domainId).map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></label><Button disabled={busy} size="sm">Vincular defesa</Button></form>)}
    {canEdit&&mayBuy&&<Button size="sm" type="button" disabled={busy||readiness!=='ready'}
      onClick={()=>onBuy(item.id)}>{buttonLabel}</Button>}
-  </div>
- </details>;
+ </HouseAssetCard>;
 }
 export function MilitaryAssets({state,canEdit,busy,onRename,onBuy,onConfigure=async()=>false}:{
  state:HouseState;canEdit:boolean;busy:boolean;
@@ -136,9 +131,9 @@ export function MilitaryAssets({state,canEdit,busy,onRename,onBuy,onConfigure=as
   </div>
   {expanded&&<div id="military-assets-list">
    <p className="house-caption">{activeIds.size} tipo(s) ativo(s) · {militaryItems.length} construções, especialistas e melhorias com efeito militar direto. Selecione um card para consultar seus detalhes.</p>
-   <div className="military-assets-grid">{militaryItems.map(item=>
+   <HouseAssetGrid>{militaryItems.map(item=>
     <MilitaryAssetCard key={item.id} item={item} holdings={holdings.filter(h=>h.itemId===item.id)}
-     state={state} canEdit={canEdit} busy={busy} onRename={onRename} onBuy={onBuy} onConfigure={onConfigure}/>)}</div>
+     state={state} canEdit={canEdit} busy={busy} onRename={onRename} onBuy={onBuy} onConfigure={onConfigure}/>)}</HouseAssetGrid>
   </div>}
  </section>;
 }
