@@ -32,6 +32,8 @@ export function GmEventos() {
   const [selectedRandomId, setSelectedRandomId] = useState<number | null>(null);
   if (isPending) return <p role="status">Carregando os eventos do Narrador…</p>;
   if (error || !data) return <p role="alert">{error?.message ?? 'Falha ao carregar.'}</p>;
+  // Narrow once for event handlers, which run after render.
+  const sourceEvents = data.events;
   const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const themes = [...new Set(data.events.filter((e) => e.kind === kind).map((e) => e.theme))];
   const visible = data.events.filter((e) => e.kind === kind &&
@@ -45,7 +47,7 @@ export function GmEventos() {
   }
   function pickRandom() {
     // Sortear entre os 100 registros do tipo selecionado, não apenas entre os filtros.
-    const chosen = drawRandomEvent(data.events, kind, selectedRandomId);
+    const chosen = drawRandomEvent(sourceEvents, kind, selectedRandomId);
     if (!chosen) return;
     setTheme(''); setQuery(''); setSelectedRandomId(chosen.id);
   }
