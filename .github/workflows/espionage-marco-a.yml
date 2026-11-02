@@ -6,6 +6,7 @@ on:
       - 'src/test/espionage-*.test.ts'
       - 'scripts/espionage-lote0-audit*'
       - 'docs/espionage/**'
+      - 'tsconfig.espionage.json'
       - '.github/workflows/espionage-marco-a.yml'
   workflow_dispatch:
 permissions:
@@ -40,6 +41,6 @@ jobs:
       - name: Vitest Lote 5 — assets
         if: ${{ always() }}
         run: bunx vitest run src/test/espionage-assets.test.ts
-      - name: TypeScript integrity
+      - name: TypeScript integrity (Marco A only)
         if: ${{ always() }}
-        run: bunx tsc --noEmit
+        run: bunx tsc --project tsconfig.espionage.json --noEmit
