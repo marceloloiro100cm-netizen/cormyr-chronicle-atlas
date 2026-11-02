@@ -1,4 +1,4 @@
--- Disposable PostgreSQL only: confirm the house-only guard rejects direct recipients.
+-- Disposable PostgreSQL only: verify current contract: houses OR player-to-Narrator; individual player recipient never allowed.
 BEGIN;
 DO $checks$
 BEGIN
@@ -12,14 +12,14 @@ BEGIN
   VALUES(gen_random_uuid(),'Teste',gen_random_uuid(),'Direct player forbidden','Body','draft');
   RAISE EXCEPTION 'Player-addressed correspondence was accepted';
  EXCEPTION WHEN check_violation THEN
-  IF SQLERRM NOT LIKE 'Destinatario invalido:%' THEN RAISE; END IF;
+  IF SQLERRM NOT LIKE 'Destinatario individual desativado:%' THEN RAISE; END IF;
  END;
  BEGIN
   INSERT INTO public.campaign_letters(sender_user_id,sender_name,subject,content,publication_state)
-  VALUES(gen_random_uuid(),'Teste','Narrator-only forbidden','Body','draft');
+  VALUES(gen_random_uuid(),'Teste','Unverified narrator sender forbidden','Body','draft');
   RAISE EXCEPTION 'Narrator-only correspondence was accepted';
  EXCEPTION WHEN check_violation THEN
-  IF SQLERRM NOT LIKE 'Destinatario invalido:%' THEN RAISE; END IF;
+  IF SQLERRM NOT LIKE 'Destinatario invalido: Narrador somente para missivas de jogadores%' THEN RAISE; END IF;
  END;
 END $checks$;
 ROLLBACK;
