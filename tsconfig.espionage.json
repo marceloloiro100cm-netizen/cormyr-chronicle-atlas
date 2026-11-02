@@ -2,6 +2,8 @@
   "extends": "./tsconfig.json",
   "include": [
     "src/lib/espionage/**/*.ts",
-    "src/test/espionage-*.test.ts"
+    "src/test/espionage-*.test.ts",
+    "src/components/house/espionage/**/*.tsx",
+    "src/test/espionage-*.test.tsx"
   ]
 }
