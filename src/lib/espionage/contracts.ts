@@ -43,7 +43,7 @@ export type SpyTravelEdge = z.infer<typeof spyTravelEdgeSchema>;
 export const spyAssetSchema = z.object({
  id:spyIdSchema,ownerHouseId:houseIdSchema,kind:z.enum(SPY_ASSET_KINDS),
  label:z.string().trim().min(1).max(160),
- sourceHoldingId:spyIdSchema.optional(),sourcePurchaseId:spyIdSchema.optional(),
+ sourceHoldingId:z.string().min(1).max(200).optional(),sourcePurchaseId:z.string().min(1).max(200).optional(),
  sourceRef:z.string().min(1).max(200),
  currentLocationId:spyIdSchema.nullable(),status:z.enum(SPY_ASSET_STATUSES),
  rulesVersion:z.string().min(1),version:versionSchema,
