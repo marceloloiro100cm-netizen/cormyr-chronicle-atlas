@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Link } from '@tanstack/react-router';
 import { LanguageSwitcher } from './language-switcher';
 import { useTranslation } from '@/lib/i18n/context';
 import {campaignTimeView,useCampaignTime} from '@/lib/calendar/campaign-time';
@@ -15,7 +14,7 @@ export function CampaignShell({ children }: { children: ReactNode }) {
     <header className="campaign-top">
       <a href="/cormyr/index.html" className="campaign-brand"><img src="/cormyr/assets/cormyr.jpg" alt="Brasão de Cormyr" /><span>Cormyr <em>Chronicle</em><small aria-live="polite">{clock.data&&!clock.isError?`Crônicas do Reino · ${campaignTimeView(clock.data).period}`:clock.isError?'Data oficial indisponível':'Consultando data oficial…'}</small></span></a>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginLeft: 'auto' }}>
-        <nav><a href="/cormyr/index.html">{t('nav.kingdomAndRegions')}</a><Link to="/jogadores">{t('nav.playerCouncil')}</Link></nav>
+        <nav><a href="/cormyr/index.html">{t('nav.kingdomAndRegions')}</a></nav>
         <LanguageSwitcher />
       </div>
     </header>
