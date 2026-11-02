@@ -4,7 +4,7 @@ import {calendarDrift,calendarMonthIndex,type CalendarReference} from '@/lib/hou
 import {houseMonthlyOperationReadiness,isMonthSensitiveHouseAction} from '@/lib/house/monthly-operation-policy';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {projectTemporalNotice} from '@/lib/calendar/house-time-impact';
-import { legacyCatalogEffects, legacyEffectCandidates } from '@/lib/house/holding-accounting';
+import { legacyEffectCandidates } from '@/lib/house/holding-accounting';
 import { useCallback, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
@@ -21,6 +21,8 @@ import { readWorkbook, type ImportPreview } from '@/lib/house/import';
 import { exportHouseExcel, exportHousePdf } from '@/lib/house/export';
 import { ResourceSummary, ResourceChart } from './resource-summary';
 import { PurchaseDrawer } from './purchase-drawer';
+import { HouseAssetCard,HouseAssetGrid } from './asset-card';
+import { HouseAssetCatalog } from './asset-catalog';
 import { Creation } from './creation';
 import { Army } from './army';
 import { Vassals } from './vassals';
@@ -84,14 +86,73 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
        {admin&&<AdminHouseEditor key={version} state={state} busy={busy}
         onSave={(args,reason)=>run('admin_edit',args,reason)}/>}
        <div className="campaign-actions">{state.phase==='draft'&&canEdit&&<><Button disabled={busy} onClick={()=>run('submit')}>Enviar para aprovação<Check size={16}/></Button><Button variant="outline" disabled={busy} onClick={()=>run('undo')}><Undo2 size={16}/>Desfazer último rascunho</Button></>}{admin&&state.phase==='review'&&<><Button onClick={()=>run('approve')}>Aprovar criação</Button><Button variant="outline" onClick={()=>{const note=prompt('Motivo da devolução para ajustes');if(note)run('return_to_draft',{},note);}}>Devolver para rascunho</Button></>}{admin&&state.pending.length>0&&<form className="campaign-form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);run('clear_pending',{indices:f.getAll('pending').map(Number)},String(f.get('note')));}}>{state.pending.map((p,i)=><label key={i}><input type="checkbox" name="pending" value={i}/>{p}</label>)}<label>Resolução<textarea name="note" required minLength={10}/></label><Button disabled={busy}>Resolver pendências selecionadas</Button></form>}</div></>}
-      {section==='domains'&&<><div className="house-section-heading"><h3>Terras e domínios</h3>{canEdit&&<Button disabled={!monthly.allowed||busy} onClick={()=>setBuy(true)}><Plus size={16}/>Comprar terreno</Button>}</div><div className="house-grid">{state.domains.map(d=><article className="house-card" key={d.id}><Mountain size={24}/><h4>{d.name}</h4><p>{catalog.find(i=>i.id===d.terrain)?.name??'Terreno a definir'}</p><p>{d.features.map(f=>catalog.find(i=>i.id===f)?.name??f).join(' · ')||'Sem características adquiridas'}</p><p>{catalog.find(i=>i.id===d.community)?.name??'Sem comunidade'}</p><details><summary>Posses e notas</summary>{state.holdings.filter(h=>h.domainId===d.id).map(h=><p key={h.id}>{h.name} · {h.status}</p>)}<p>{d.notes}</p></details>
-{canEdit&&<details><summary>Editar domínio</summary><form className="campaign-form" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await run('domain_edit',{id:d.id,name:String(f.get('name')),notes:String(f.get('notes'))},'Atualização do nome e das notas do domínio.');}}>
-<label>Nome<input name="name" required defaultValue={d.name}/></label><label>Notas<textarea name="notes" defaultValue={d.notes}/></label><Button disabled={busy}>Salvar domínio</Button></form>
-{state.phase==='draft'&&!state.holdings.some(h=>h.domainId===d.id)&&!state.units.some(u=>u.domainId===d.id)&&<Button variant="outline" disabled={busy} onClick={()=>run('domain_delete',{id:d.id},'Exclusão de domínio vazio na criação.')}>Excluir domínio vazio</Button>}
-</details>}</article>)}</div>{canEdit&&<form className="campaign-form" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget),form=e.currentTarget;if(await run('domain',{id:crypto.randomUUID(),name:String(f.get('name')),notes:String(f.get('notes'))}))form.reset();}}><h4>Nomear um domínio</h4><label>Nome<input name="name" required placeholder="Nome oficial da localidade"/></label><label>Notas<input name="notes"/></label><Button disabled={busy}>Criar domínio</Button></form>}</>}
+      {section==='domains'&&<>
+       <div className="house-section-heading">
+        <h3>Terras e domínios</h3>
+        {canEdit&&<Button disabled={!monthly.allowed||busy}
+         onClick={()=>{setPurchaseItemId('');setBuy(true);}}><Plus size={16}/>Comprar terreno</Button>}
+       </div>
+       <h4>Domínios da Casa</h4>
+       <HouseAssetGrid>{state.domains.map(d=>{
+        const terrain=catalog.find(item=>item.id===d.terrain)?.name??'Terreno a definir';
+        const community=catalog.find(item=>item.id===d.community)?.name??'Sem comunidade';
+        const features=d.features.map(id=>catalog.find(item=>item.id===id)?.name??id);
+        return <HouseAssetCard key={d.id} title="Domínio" icon={<Mountain/>}
+         status={d.name} description={[terrain,community,...features].join(' · ')}
+         testId={'house-domain-'+d.id}>
+         <h5>Descrição do domínio</h5>
+         <p>Terreno: {terrain}</p><p>Comunidade: {community}</p>
+         <p>Características: {features.join(', ')||'Não adquiridas'}</p>
+         <h5>Posses e notas</h5>
+         {state.holdings.filter(h=>h.domainId===d.id).map(h=>
+          <p key={h.id}>{h.name} · {h.status}</p>)}
+         <p>{d.notes||'Nenhuma nota registrada.'}</p>
+         {canEdit&&<details className="house-asset-conditions">
+          <summary>Editar domínio</summary>
+          <form className="campaign-form" onSubmit={async e=>{
+           e.preventDefault();const form=new FormData(e.currentTarget);
+           await run('domain_edit',{id:d.id,name:String(form.get('name')),
+            notes:String(form.get('notes'))},'Atualização do nome e das notas do domínio.');
+          }}>
+           <label>Nome<input name="name" required defaultValue={d.name}/></label>
+           <label>Notas<textarea name="notes" defaultValue={d.notes}/></label>
+           <Button disabled={busy}>Salvar domínio</Button>
+          </form>
+          {state.phase==='draft'&&!state.holdings.some(h=>h.domainId===d.id)&&
+           !state.units.some(u=>u.domainId===d.id)&&
+           <Button variant="outline" disabled={busy} onClick={()=>void run('domain_delete',
+            {id:d.id},'Exclusão de domínio vazio na criação.')}>Excluir domínio vazio</Button>}
+         </details>}
+        </HouseAssetCard>;
+       })}</HouseAssetGrid>
+       {canEdit&&<form className="campaign-form" onSubmit={async e=>{
+        e.preventDefault();const form=new FormData(e.currentTarget),target=e.currentTarget;
+        if(await run('domain',{id:crypto.randomUUID(),name:String(form.get('name')),
+         notes:String(form.get('notes'))}))target.reset();
+       }}>
+        <h4>Nomear um domínio</h4>
+        <label>Nome<input name="name" required placeholder="Nome oficial da localidade"/></label>
+        <label>Notas<input name="notes"/></label>
+        <Button disabled={busy}>Criar domínio</Button>
+       </form>}
+       <HouseAssetCatalog section="domains" state={state} catalog={catalog}
+        canEdit={monthlyCanEdit} busy={busy}
+        onBuy={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}}
+        onCondition={(args,reason)=>run('condition',args,reason)}/>
+      </>}
       {(section==='fortifications'||section==='economy')&&<>
-       {section==='economy'&&<HouseEconomyActions state={state} admin={admin} canEdit={monthlyCanEdit} busy={busy} run={run}/>}
-       <div className="house-section-heading"><h3>{section==='economy'?'Economia e investimentos':'Fortificações'}</h3>{canEdit&&<Button disabled={!monthly.allowed||busy} onClick={()=>setBuy(true)}><Plus size={16}/>Comprar posse</Button>}</div><p className="house-caption">{catalog.filter(i=>categories.includes(i.category)).length} opções no catálogo · {state.holdings.filter(h=>categories.includes(h.category??catalog.find(i=>i.id===h.itemId)?.category??'')).length} adquiridas</p><div className="house-grid">{state.holdings.filter(h=>categories.includes(h.category??catalog.find(i=>i.id===h.itemId)?.category??'')).map(h=><article className="house-card" key={h.id}>{section==='economy'?<Coins size={24}/>:<Castle size={24}/>}<h4>{h.name}</h4><p>{h.status==='building'?'Em construção':h.status==='active'?'Ativa':h.status}</p>{legacyCatalogEffects(h).map((e,i)=><p key={i}>{e.description}</p>)}<details><summary>Custos e regra</summary>{h.costs.map((c,i)=><p key={i}>{c.amount} {RESOURCE_NAMES[c.resource]} · {c.mode==='allocation'?'Alocado':'Permanente'}</p>)}<p>{h.source} · {h.ruleVersion}</p></details>{canEdit&&<details><summary>Condição da posse</summary><Button variant="outline" disabled={busy} onClick={()=>run('condition',{id:h.id,status:'destroyed'},'Destruição registrada; sem restituição automática.')}>Registrar destruição</Button><Button variant="ghost" disabled={busy} onClick={()=>run('condition',{id:h.id,status:'abandoned'},'Abandono registrado; sem restituição automática.')}>Abandonar</Button></details>}</article>)}</div>{!state.holdings.length&&<p className="campaign-empty">Escolha uma posse para comparar custo, prazo e benefício antes de confirmar.</p>}</>}
+       {section==='economy'&&<HouseEconomyActions state={state} admin={admin}
+        canEdit={monthlyCanEdit} busy={busy} run={run}/>}
+       <div className="house-section-heading">
+        <h3>{section==='economy'?'Economia e investimentos':'Fortificações'}</h3>
+        {canEdit&&<Button disabled={!monthly.allowed||busy}
+         onClick={()=>{setPurchaseItemId('');setBuy(true);}}><Plus size={16}/>Comprar posse</Button>}
+       </div>
+       <HouseAssetCatalog key={section} section={section} state={state}
+        catalog={catalog} canEdit={monthlyCanEdit} busy={busy}
+        onBuy={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}}
+        onCondition={(args,reason)=>run('condition',args,reason)}/>
+      </>}
       {section==='army'&&<Army commanders={courtMembers} state={state} houseName={house.name} onSiege={args=>run('siege',args)} onSiegeState={(args,reason)=>run('siege_state',args,reason)} admin={admin} onState={args=>run('unit_state',args)} onSurvivors={args=>run('survivors',args)} onTrain={(args,reason)=>run('train_unit',args,reason)} onEdit={args=>run('unit_edit',args)} onGrant={(args,reason)=>run('grant_unit_xp',args,reason)} onRename={args=>run('military_rename',args)} onConfigure={args=>run('military_config',args)} onWarHounds={args=>run('war_hounds',args)} onBroadTraining={args=>run('broad_training',args)} onBuyMilitary={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}} canEdit={monthlyCanEdit} busy={busy} onCreate={args=>run('unit',args)} onEquipment={args=>run('equipment',args)}/>}
       {section==='vassals'&&<><Vassals catalog={catalog} onCreate={args=>run('vassal_create',args)} onPurchase={args=>run('vassal_purchase',args)} onDomain={args=>run('vassal_domain',args)} state={state} houses={houses} npcs={npcs} onLink={(args,note)=>run('vassal_npcs',args,note)} admin={admin} canEdit={canEdit} busy={busy} onPropose={args=>run('vassal',args)} onApprove={(args,note)=>run('vassal_approve',args,note)} onEnd={(args,note)=>run('vassal_end',args,note)} onLoyalty={(args,note)=>run('vassal_loyalty',args,note)}/></>}
       {section==='court'&&<>{npcManager}<p>Titular: {house.lord_name??'Não informado'}</p><Court state={state} members={courtMembers} canEdit={canEdit} busy={busy} onAssign={args=>run('court',args)} onRemove={id=>run('court_remove',{id},'Remoção de vínculo da Corte solicitada pelo gestor da casa.')}/></>}
@@ -113,7 +174,7 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
   <Button disabled={busy} variant="outline" onClick={()=>run('restore_legacy_effects',{holdingIds:legacyEffectCandidates(state).map(h=>h.id)},'Conciliação de benefícios das posses legadas pela identificação exata com o catálogo vigente.')}>Registrar benefícios legados na ficha</Button>
  </div>}
  {admin&&<RuleEditor catalog={catalog}/>}</>}
-    </main></div><PurchaseDrawer key={`${state.month}-${globalCalendar?.year??'none'}-${globalCalendar?.month??'none'}`} open={buy&&monthlyCanEdit} onClose={()=>{setBuy(false);setPurchaseItemId('');}} state={state} catalog={catalog} busy={busy} onConfirm={args=>run('purchase',args)} initialCategory={section==='overview'||(section==='army'&&purchaseItemId)?'':categories.join(',')} initialItemId={section==='army'?purchaseItemId:''} onCreateDomain={name=>run('domain',{id:crypto.randomUUID(),name,notes:''},'Domínio criado durante a compra de uma posse.')}/>
+    </main></div><PurchaseDrawer key={`${state.month}-${globalCalendar?.year??'none'}-${globalCalendar?.month??'none'}`} open={buy&&monthlyCanEdit} onClose={()=>{setBuy(false);setPurchaseItemId('');}} state={state} catalog={catalog} busy={busy} onConfirm={args=>run('purchase',args)} initialCategory={section==='overview'||(section==='army'&&purchaseItemId)?'':categories.join(',')} initialItemId={purchaseItemId} onCreateDomain={name=>run('domain',{id:crypto.randomUUID(),name,notes:''},'Domínio criado durante a compra de uma posse.')}/>
   </div>;
 }
 function RuleEditor({catalog}:{catalog:CatalogItem[]}) {

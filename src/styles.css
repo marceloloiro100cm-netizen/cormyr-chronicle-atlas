@@ -746,3 +746,16 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 .military-commander-editor .campaign-actions{display:flex;gap:6px;flex-wrap:wrap}
 .military-sheet-subline .military-commander-editor{width:min(370px,calc(100vw - 80px))}
 @media(max-width:620px){.military-unit-card-heading h4{font-size:18px}.military-commander-editor{width:min(100%,330px)}}
+
+/* Standard House asset cards. Keep these wrappers on every future group of
+   Terras / Fortificações / Economia / Exército cards; the shared component
+   deliberately reuses the military visual primitives for consistency. */
+.house-asset-grid{margin:.8rem 0 1.25rem}
+.house-asset-filters{margin:.8rem 0 1rem}
+.house-asset-filters label{display:grid;gap:.35rem;font-size:.85rem}
+.house-asset-filters input,.house-asset-filters select{min-width:0}
+.house-asset-conditions{margin-top:.75rem;padding-top:.65rem;border-top:1px solid #c9b79d}
+.house-asset-conditions summary{cursor:pointer;font-size:.85rem;font-weight:700}
+.house-asset-conditions .campaign-form{margin-top:.65rem}
+.house-assets>.house-section-heading{margin-bottom:.35rem}
+@media(max-width:680px){.house-asset-filters{grid-template-columns:1fr}}
