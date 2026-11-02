@@ -41,6 +41,9 @@ jobs:
       - name: Vitest Lote 5 — assets
         if: ${{ always() }}
         run: bunx vitest run src/test/espionage-assets.test.ts
+      - name: Marco A integrated two-agent scenario
+        if: ${{ always() }}
+        run: bunx vitest run src/test/espionage-marco-a.test.ts
       - name: TypeScript integrity (Marco A only)
         if: ${{ always() }}
         run: bunx tsc --project tsconfig.espionage.json --noEmit
