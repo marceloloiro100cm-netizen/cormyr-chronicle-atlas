@@ -13,5 +13,5 @@ export function vassalState(parent:HouseState,vassal:Vassal):HouseState{
  const s=vassal.sheet;if(!s)throw new Error('Esta vassala não possui mini-ficha.');
  const result=newHouseState(vassal.houseId,s.region);
  // Initial vassal holdings use creation costs; no regional bonus or fortune is added.
- return {...result,method:'import',regionalApplied:false,base:s.base,permanent:s.permanent,holdings:s.holdings,domains:s.domains,month:parent.month};
+ return {...result,method:'import',regionalApplied:false,identity:{...result.identity,motto:s.motto??'',notes:s.lordName?`Titular: ${s.lordName}`:''},base:s.base,permanent:s.permanent,holdings:s.holdings,domains:s.domains,month:parent.month};
 }
