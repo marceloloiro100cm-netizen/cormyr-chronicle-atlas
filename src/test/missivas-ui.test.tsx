@@ -39,6 +39,26 @@ describe('interface de missivas',()=>{
   mount(panel);
   expect(await screen.findByRole('button',{name:/Ordem enviada/})).toBeInTheDocument();
  });
+ it('Narrador tem caixa de cópias para mediação sem duplicar registros',async()=>{
+  const panel={...data(),admin:true} as unknown as Panel;
+  mount(panel);
+  fireEvent.change(screen.getByLabelText('Caixa'),{target:{value:'copias'}});
+  await waitFor(()=>expect(rpc).toHaveBeenCalledWith('mail_page',expect.objectContaining({p_filters:expect.objectContaining({box:'copias'})})));
+  expect(screen.getByRole('heading',{name:'Cópias para mediação'})).toBeInTheDocument();
+ });
+ it('jogador consegue escrever ao Narrador sem selecionar uma casa destinatária',async()=>{
+  mount(data());
+  fireEvent.click(screen.getByRole('checkbox',{name:'Narrador (NPCs e assuntos da campanha)'}));
+  fireEvent.change(screen.getByLabelText('Assunto'),{target:{value:'Assunto reservado ao NPC'}});
+  fireEvent.change(screen.getByLabelText('Missiva'),{target:{value:'Solicitação ao conselho'}});
+  fireEvent.click(screen.getByText('Selecionar dia no calendário'));
+  fireEvent.click(await screen.findByRole('button',{name:'1 de Hammer, 1522',hidden:true}));
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Enviar missiva'})).toBeEnabled());
+  fireEvent.click(screen.getByRole('button',{name:'Enviar missiva'}));
+  await waitFor(()=>expect(rpc).toHaveBeenCalledWith('dated_mail_action',expect.objectContaining({
+    p_action:'send_linked_mail',p_args:expect.objectContaining({p_targets:['narrator']})
+  })));
+ });
  it('permite marcar como lida uma resposta em missiva enviada',async()=>{
   mount(data([{id:'reply',letter_id:'letter',author_user_id:'other',author_name:'Outro',content:'Resposta recebida',publication_state:'delivered',created_at:'2026-10-28'}]));
   fireEvent.click(await findSentSubject(/Ordem enviada/));
