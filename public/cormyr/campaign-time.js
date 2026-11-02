@@ -2,8 +2,7 @@
 'use strict';
 (function(){
  const current=document.getElementById('public-campaign-current-time');
- const detail=document.getElementById('public-campaign-time-detail');
- if(!current||!detail)return;
+ if(!current)return;
  let lastVersion=-1;
  const FALLBACK='Calendário oficial indisponível';
  function render(data){
@@ -13,7 +12,6 @@
   if(data.version<lastVersion)return; // Resposta atrasada nunca rebaixa o painel.
   lastVersion=data.version;
   current.textContent=data.period;
-  detail.textContent='Data oficial: '+data.label;
   current.dataset.version=String(data.version);
  }
  async function sync(){
@@ -24,7 +22,7 @@
    render(body);
   }catch{
    // Nunca inventar 1522 nem exibir um dado persistido indefinidamente.
-   current.textContent=FALLBACK;detail.textContent='Não foi possível consultar a data publicada.';
+   current.textContent=FALLBACK;
    delete current.dataset.version;
    lastVersion=-1;
   }
