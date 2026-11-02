@@ -4,7 +4,7 @@ import {useServerFn} from '@tanstack/react-start';
 import {ChevronDown,Download} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {loadHouseHub,loadHouseLedger} from '@/lib/house/house.functions';
-import {loadQazirVassalWorkbook} from '@/lib/house/vassal-workbook.functions';
+import {loadVassalWorkbook} from '@/lib/house/vassal-workbook.functions';
 import {exportHousePdf,exportVassalArchivePdf,exportVassalWorkbookPdf} from '@/lib/house/export';
 import {readVassalArchiveProfile} from '@/lib/house/vassal-archive';
 import {vassalWorkbookBalances} from '@/lib/house/vassal-workbook';
@@ -36,10 +36,14 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
  const [expanded,setExpanded]=useState(false),[downloading,setDownloading]=useState(false),[error,setError]=useState('');
  const contentId=useId();
  const load=useServerFn(loadHouseHub),loadLedger=useServerFn(loadHouseLedger);
- const loadWorkbook=useServerFn(loadQazirVassalWorkbook);
+ const loadWorkbook=useServerFn(loadVassalWorkbook);
  const embedded=Boolean(vassal.sheet);
  const officialId=!embedded&&officialHouse?.id===vassal.houseId?vassal.houseId:null;
- const isQazirWorkbook=parent.houseId==='ashkar'&&officialId==='qazir'&&vassal.status==='approved';
+ const workbookPair=parent.houseId==='ashkar'&&officialId==='qazir'?
+  {parentHouseId:'ashkar' as const,vassalHouseId:'qazir' as const}:
+  parent.houseId==='everlost'&&officialId==='everet'?
+  {parentHouseId:'everlost' as const,vassalHouseId:'everet' as const}:null;
+ const isImportedWorkbook=Boolean(workbookPair&&vassal.status==='approved');
  const linked=useQuery({
   queryKey:['vassal-house-sheet',parent.houseId,officialId],
   enabled:expanded&&officialId!==null,
@@ -59,9 +63,9 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
  }
  const imported=useQuery({
   queryKey:['vassal-workbook',parent.houseId,officialId],
-  enabled:expanded&&isQazirWorkbook,
+  enabled:expanded&&isImportedWorkbook,
   retry:false,
-  queryFn:()=>loadWorkbook({data:{parentHouseId:'ashkar',vassalHouseId:'qazir'}}),
+  queryFn:()=>{if(!workbookPair)throw new Error('Vassalagem não suportada.');return loadWorkbook({data:workbookPair});},
  });
  const archival=useQuery({
   queryKey:['vassal-public-archive',officialId],
@@ -91,8 +95,8 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
     await exportHousePdf(selectedHouse,name,itemCatalog,ledger);
    }else{
     let selectedWorkbook=workbook;
-    if(!selectedWorkbook&&parent.houseId==='ashkar'&&officialId==='qazir'&&vassal.status==='approved'){
-     try{selectedWorkbook=await loadWorkbook({data:{parentHouseId:'ashkar',vassalHouseId:'qazir'}});}
+    if(!selectedWorkbook&&isImportedWorkbook&&workbookPair){
+     try{selectedWorkbook=await loadWorkbook({data:workbookPair});}
      catch{ /* The historical archive remains available, but private data does not leak. */ }
     }
     if(selectedWorkbook)await exportVassalWorkbookPdf(selectedWorkbook);
@@ -119,16 +123,20 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
    </Button>
   </div>
   {expanded&&<div id={contentId} className="mt-3 space-y-3">
-   {officialId&&(linked.isPending||archival.isPending||(isQazirWorkbook&&imported.isPending))&&<p role="status">Consultando os dados disponíveis da casa vassala…</p>}
-   {officialId&&linked.isError&&!archive&&!workbook&&(!isQazirWorkbook||!imported.isPending)&&archival.isSuccess&&<p className="house-caption">Não há ficha mecânica acessível nem registro histórico público aprovado para esta Casa.</p>}
+   {officialId&&(linked.isPending||archival.isPending||(isImportedWorkbook&&imported.isPending))&&<p role="status">Consultando os dados disponíveis da casa vassala…</p>}
+   {officialId&&linked.isError&&!archive&&!workbook&&(!isImportedWorkbook||!imported.isPending)&&archival.isSuccess&&<p className="house-caption">Não há ficha mecânica acessível nem registro histórico público aprovado para esta Casa.</p>}
    {archival.isError&&!house&&!workbook&&<p role="alert">Não foi possível consultar o catálogo histórico da Casa. Tente novamente.</p>}
    {!embedded&&!officialId&&<p className="house-caption">Não foi encontrada uma Casa vinculada a este brasão. Os dados não serão presumidos.</p>}
    {!house&&workbook&&workbookBalances&&<div className="space-y-3"
     aria-label={'Ficha importada da Casa '+workbook.name}>
-    <p className="house-caption">Ficha da planilha Qazir · consulta protegida da vassala de Ashkar.
+    <p className="house-caption">Ficha da planilha {workbook.name} · consulta protegida da vassala de {workbook.suzerainId}.
      Valores ainda não conciliados no livro-caixa da campanha.</p>
-    <p className="house-caption"><strong>{workbook.lord}</strong> · {workbook.castle} · {workbook.city}
-     {' · '}fundação {workbook.foundation} CV · {workbook.motto}</p>
+    <p className="house-caption"><strong>{workbook.lord||'Titular não informado'}</strong>
+     {' · '}{workbook.castle||'Fortaleza não informada'} · {workbook.city||'Cidade não informada'}
+     {' · '}fundação {workbook.foundation?workbook.foundation+' CV':'não informada'}
+     {' · '}{workbook.motto||'Lema não informado'}
+     {workbook.title?' · '+workbook.title:''}
+     {workbook.territorialGrantYear?' · concessão '+workbook.territorialGrantYear+' CV':''}</p>
     <h5 className="font-semibold">Atributos e recursos</h5>
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
      {RESOURCE_KEYS.map(key=><div className="rounded border p-2" key={key}>
@@ -139,7 +147,8 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
     </div>
     <div className="grid gap-3 lg:grid-cols-2">
      <CompactItems title="Unidades militares" items={workbook.units.map(u=>({
-      id:u.name,name:u.name,detail:u.type+' · '+u.training+' · '+u.commander
+      id:u.name,name:u.name,detail:u.type+' · '+u.training+
+       (u.cost!==undefined?' · '+u.cost+' Poder':'')+(u.commander?' · '+u.commander:'')
      }))}/>
      <CompactItems title="Terras e domínios" items={workbook.assets.filter(a=>a.group==='Terras')
       .map(a=>({id:a.name,name:a.name,detail:a.cost+' Terras alocados'}))}/>
@@ -151,12 +160,14 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
       id:p.name,name:p.name,detail:p.role
      }))} max={6}/>
     </div>
-    <p className="house-caption">Sorte da Casa: {workbook.fortune.law+workbook.fortune.population+workbook.fortune.maester}.
-     Os domínios e os custos próprios de cada companhia exigem conciliação, sem deduções presumidas.</p>
+    <p className="house-caption">Sorte da Casa: {workbook.fortune?
+      workbook.fortune.law+workbook.fortune.population+workbook.fortune.maester:
+      'a conferir na fonte'}.
+     Os registros sem divisão por domínio ou sem custo confirmado precisam de conciliação.</p>
     <p className="house-caption">Use Baixar ficha, à direita do cabeçalho, para obter o PDF completo
      com os atributos, bens, companhias, personagens e história.</p>
    </div>}
-   {!house&&!workbook&&(!isQazirWorkbook||!imported.isPending)&&archive&&<div className="space-y-3" aria-label={`Ficha histórica da Casa ${archive.name}`}>
+   {!house&&!workbook&&(!isImportedWorkbook||!imported.isPending)&&archive&&<div className="space-y-3" aria-label={`Ficha histórica da Casa ${archive.name}`}>
     <p className="house-caption">Ficha histórica disponível. Os atributos, as tropas e as posses mecânicas ainda não foram cadastrados; nenhum valor foi presumido.</p>
     <div className="grid gap-2 sm:grid-cols-2">
      {[
