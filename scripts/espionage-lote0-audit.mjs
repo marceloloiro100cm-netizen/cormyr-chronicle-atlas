@@ -10,7 +10,7 @@ const catalog = JSON.parse(read('src/lib/house/prosperity-catalog.json'));
 const audit = JSON.parse(read('src/lib/house/source-audit.json'));
 const regions = read('src/lib/house/regions.ts');
 assert.equal(matrix.schemaVersion, 1);
-assert.equal(matrix.lifecycle, 'diagnostico_pendente_aprovacao_narrador');
+assert.equal(matrix.lifecycle, 'narrator_rules_amended_2026-11-02');
 assert.equal(matrix.holdings.length, 12);
 for (const frozen of matrix.holdings) {
   const original = catalog.find((item) => item.id === frozen.id);
@@ -24,9 +24,11 @@ for (const regionId of matrix.geography.regions) {
   assert.match(regions, new RegExp('^\\s*' + regionId + ':\\s*\\{', 'm'));
 }
 assert.deepEqual(matrix.geography.canonicalRouteEdges, [], 'Lote 0 não autoriza arestas sem fonte');
-assert.equal(matrix.rules.baseSpyNetworkInitialCells, null);
-assert.equal(matrix.rules.contractor.enabled, false);
-assert.equal(matrix.rules.contractor.hiringCost, null);
+assert.equal(matrix.rules.baseSpyNetworkInitialCells, 1);
+assert.equal(matrix.rules.contractor.enabledForQuote, true);
+assert.equal(matrix.rules.contractor.hiringCostWealth, 5);
+assert.equal(matrix.rules.contractor.agentsPerPurchase, 2);
+assert.equal(matrix.rules.contractor.repeatable, true);
 assert.equal(matrix.law.regionalCreationBonusIsEffectiveLaw, false);
 assert.equal(matrix.law.player.approved, false);
 assert.ok(matrix.approvalsRequired.length >= 10);
