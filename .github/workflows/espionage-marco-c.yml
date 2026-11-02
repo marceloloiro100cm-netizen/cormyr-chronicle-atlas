@@ -50,3 +50,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0076_spy_temporal_REVIEW_ONLY.sql
       - name: Verify two-leg replay and backward calendar
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-temporal.sql
+      - name: Apply operational RPCs in disposable database only
+        run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0077_spy_operational_rpcs_REVIEW_ONLY.sql
+      - name: Verify narrator-only registry, paid contractor receipts and immutable route versions
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-operations.sql
