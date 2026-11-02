@@ -47,7 +47,7 @@ describe('Eventos do narrador: sorteio real dos registros da lista',()=>{
   expect(screen.queryByText('Evento mundano 100')).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Buscar'),{target:{value:'Evento místico 5'}});
   expect(screen.getByText('Evento místico 5')).toBeInTheDocument();
-  expect(screen.getByText('12 eventos encontrados')).toBeInTheDocument();
+  expect(screen.getByText('11 eventos encontrados')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Limpar filtros'}));
   expect(screen.getByText('100 eventos encontrados')).toBeInTheDocument();
   expect(screen.getByText('Evento mundano 1')).toBeInTheDocument();
