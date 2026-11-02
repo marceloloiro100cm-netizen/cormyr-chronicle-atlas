@@ -3,7 +3,7 @@
   "report": "CCA-ESP-MVP-001 v1.0",
   "verifiedAt": "2026-11-02",
   "baselineCommit": "e9d551b39226fea0033aca93f408af40dc167ba3",
-  "lifecycle": "diagnostico_pendente_aprovacao_narrador",
+  "lifecycle": "narrator_rules_amended_2026-11-02",
   "verifiedCatalogSource": "src/lib/house/prosperity-catalog.json",
   "auditedSource": "src/lib/house/source-audit.json",
   "holdings": [
@@ -238,19 +238,25 @@
       "automatable": false,
       "reason": "missing_test_actor_and_inconsistent_outcome"
     },
-    "baseSpyNetworkInitialCells": null,
+    "baseSpyNetworkInitialCells": 1,
     "contractor": {
-      "hiringCost": null,
+      "hiringCostWealth": 5,
+      "hiringMode": "allocation",
+      "agentsPerPurchase": 2,
+      "repeatable": true,
       "maintenanceCost": null,
       "contractDuration": null,
-      "operationalCost": null,
-      "enabled": false
+      "enabledForQuote": true,
+      "requiresTransactionalLedger": true,
+      "decisionSource": "Narrador, 2026-11-02; equiparado a Rede Ampliada para custo/modo"
     },
     "countermeasuresStacking": null,
     "genericMissionDifficulty": null,
     "genericCaptureOnFailure": false,
     "activeOnly": true,
-    "legacyGmNoteCellsAutomaticallyOperational": false
+    "legacyGmNoteCellsAutomaticallyOperational": false,
+    "initialCellSource": "narrator_override_2026-11-02_not_original_catalog",
+    "baseSpyNetworkInitialCellsConfirmedByNarrator": true
   },
   "law": {
     "player": {
@@ -293,8 +299,6 @@
     ]
   },
   "approvalsRequired": [
-    "base_spy_network_initial_cells_and_deployment",
-    "contractor_rates_accounting_term_limits",
     "player_law_effective_total_or_domain",
     "npc_law_sources_and_roster",
     "region_security_values",
@@ -303,6 +307,7 @@
     "approved_route_nodes_edges_and_durations",
     "early_report_delivery",
     "eligible_family_information_fields",
-    "temporal_outbox_production_homologation"
+    "temporal_outbox_production_homologation",
+    "contractor_optional_duration_maintenance_if_future"
   ]
 }
