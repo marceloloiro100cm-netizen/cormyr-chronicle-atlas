@@ -6,8 +6,13 @@ import type {VassalWorkbook} from '@/lib/house/vassal-workbook';
  * Sem transações nem criação de NPCs/posses/companhias em produção. */
 export const EVERET_WORKBOOK:VassalWorkbook={
  houseId:'everet',name:'Everet',suzerainId:'everlost',region:'Horselands',
- lord:'',heir:'',motto:'',foundation:0,castle:'',city:'',
- source:'Casa Everet.xlsx · everet / NPCs da Casa',
+ lord:'Afonso Everet',heir:'Ser Duarte Everet',
+ motto:'Riding to the End — Cavalgando Até o Fim',foundation:426,
+ castle:'Lastward Keep (em construção)',city:'Zorastryl (em construção)',
+ title:'Senhores de Zorastryl, Guardiões do Último Caminho',
+ territorialGrantYear:1513,
+ crestDescription:'Cavaleiro de prata com escudo e lança com flâmula, a galope, em campo azul-escuro',
+ source:'Casa Everet.xlsx (atributos/bens/tropas) + Atlas histórico Everet (identidade/família)',
  resources:{defense:10,influence:20,lands:15,law:15,population:15,power:75,wealth:50},
  assets:[
   {name:'Salão (Hall)',group:'Fortificações',resource:'defense',cost:10},
@@ -28,7 +33,16 @@ export const EVERET_WORKBOOK:VassalWorkbook={
   {name:'Melhorias de Armamento de Unidade',group:'Exército',resource:'wealth',cost:20,
    detail:'4 unidades de linha de frente recebem Armadura de Placa/Malha Fina (+1 VA) e Aço Personalizado (+1 Dano). A fonte não identifica nominalmente as quatro unidades.'},
  ],
- people:[],
+ people:[
+  {name:'Afonso Everet',role:'Lorde, senhor da Casa (nascido em 1472 CV)'},
+  {name:'Lady Leonor Torith',role:'Consorte; administra cartas de assentamento (1475 CV)'},
+  {name:'Ser Duarte Everet',role:'Herdeiro; responsável pelas escoltas e patrulhas (1495 CV)'},
+  {name:'Lady Amália Everet',role:'Supervisora das medições e projetos (1498 CV)'},
+  {name:'Gaspar Everet',role:'Cavaleiro em formação (1502 CV)'},
+  {name:'Beatriz Everet',role:'Filha caçula (1507 CV)'},
+  {name:'Ser Martim Everet',role:'Primo de Afonso; capitão da guarnição (1466 CV)'},
+  {name:'Lady Alda Everet',role:'Mãe de Afonso (1447 CV)'},
+ ],
  units:[
   {name:"Vanguard Destriers",city:'',type:"Cavalaria de Choque",training:"Elite",commander:'',
    cost:11,attack:"Luta 5D+2B",damage:"7 (Carga: +2)",armorText:"7 (Placa Bardeada)",
@@ -55,16 +69,20 @@ export const EVERET_WORKBOOK:VassalWorkbook={
    cost:6,attack:"Guerra 4D+1B",damage:"Por Arma de Cerco",armorText:"3 (Couro)",
    health:9,discipline:"Fácil (3)",tacticalRole:"Operação de Catapultas e Ariete"},
  ],
- history:[],
+ history:[
+  '426 CV — Ser Aldren Everet recebe reconhecimento de nobreza hereditária após resgatar trabalhadores e feridos durante um ataque.',
+  '1513 CV — Concessão de direitos territoriais nas Horselands; a família passa a estabelecer Zorastryl e Lastward Keep.',
+  '1522 CV (histórico de referência) — Lastward Keep e Zorastryl continuam em construção; Afonso Everet governa o assentamento.',
+ ],
  reviewNotes:[
-  'A aba de identificação não preenche lorde, herdeiro, lema, fundação, fortaleza ou cidade. Esses campos são desconhecidos nesta fonte.',
-  'A aba NPCs da Casa não possui personagens preenchidos; nenhuma pessoa é cadastrada automaticamente.',
+  'A planilha não preenche a identidade; lorde, herdeiro, lema, fundação, fortaleza, cidade e pessoas provêm do histórico público da Casa Everet no Atlas (public/cormyr/histories/everet.json).',
+  'A aba NPCs da Casa está vazia. Os oito familiares acima são personagens narrativos identificados no histórico do Atlas, não fichas mecânicas nem registros novos de NPC no banco.',
   'Terras: anotação de planície e rio, mas não há compra, custo ou divisão por domínio registrados.',
   'Influência: anotação de lorde com Status 4, sem pessoa vinculada; não cria nobre automaticamente.',
   'Eventos históricos: etiquetas Favorecimento, Vilão, Ascensão (duas), Declínio, Favorecimento e Traição, sem detalhes ou resultados preenchidos.',
   'Exército: os custos individuais somam 73 Poder; saldos da Everet não devem ser lançados na Everlost.',
   'Riqueza: Mestre Armeiro 10, Haras 10, Maquinário de Cerco 10 (catapultas 8 + aríete 2) e Melhorias de Armamento 20; total 50.',
-  'O acervo histórico público menciona Mantlepard como suserana; esta campanha definiu Everlost. O histórico não será sobrescrito.',
+  'O acervo histórico menciona Mantlepard como suserana em 1513 CV; a campanha atual vincula Everet à Everlost por decisão do Narrador. O arquivo histórico permanece intacto.',
   'A alocação das quatro melhorias de armamento às unidades precisa ser conferida antes de aplicar bônus.',
  ],
 };
