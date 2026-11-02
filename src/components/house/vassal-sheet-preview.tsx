@@ -78,7 +78,7 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
     <div className="grid gap-3 lg:grid-cols-2">
      <CompactItems title="Unidades militares"
       items={summary.units.map(u=>({id:u.id,name:u.name,detail:`${u.types.map(t=>UNIT_TYPES.find(x=>x.id===t)?.name??t).join(' / ')} · ${TRAINING[u.training as keyof typeof TRAINING]?.name??u.training} · efetivo ${Math.max(0,u.strength-u.casualties)}`}))}/>
-     <CompactItems title="Terras e domínios" items={summary.domains.map(d=>({id:d.id,name:d.name,detail:itemCatalog.find(i=>i.id===d.terrain)?.name??d.terrain||'Terreno não informado'}))}/>
+     <CompactItems title="Terras e domínios" items={summary.domains.map(d=>({id:d.id,name:d.name,detail:itemCatalog.find(i=>i.id===d.terrain)?.name??(d.terrain||'Terreno não informado')}))}/>
      <CompactItems title="Fortificações" items={summary.fortifications.map(h=>({id:h.id,name:h.name,detail:house.domains.find(d=>d.id===h.domainId)?.name??'Domínio não informado'}))}/>
      <CompactItems title="Economia e posses" items={[...summary.economy,...summary.otherHoldings].map(h=>({id:h.id,name:h.name,detail:house.domains.find(d=>d.id===h.domainId)?.name??'Sem domínio'}))}/>
     </div>
