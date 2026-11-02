@@ -34,6 +34,11 @@ describe('interface de missivas',()=>{
   fireEvent.change(screen.getByLabelText('Caixa'),{target:{value:'enviadas'}});
   expect(await screen.findByRole('button',{name:/Ordem enviada/})).toBeInTheDocument();
  });
+ it('exibe missivas enviadas pelo Narrador quando a caixa está em Todas',async()=>{
+  const panel={...data(),admin:true} as unknown as Panel;
+  mount(panel);
+  expect(await screen.findByRole('button',{name:/Ordem enviada/})).toBeInTheDocument();
+ });
  it('permite marcar como lida uma resposta em missiva enviada',async()=>{
   mount(data([{id:'reply',letter_id:'letter',author_user_id:'other',author_name:'Outro',content:'Resposta recebida',publication_state:'delivered',created_at:'2026-10-28'}]));
   fireEvent.click(await findSentSubject(/Ordem enviada/));
