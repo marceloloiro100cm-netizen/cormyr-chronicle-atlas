@@ -87,7 +87,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
   const groups=trashMode?[]:groupReceivedLetters(
     outgoingView?sentLetters(letters,data.user.id):letters,
     data.user.id,
-    ['enviadas','rascunhos','programadas','historico'].includes(filters.box),
+    data.admin || ['enviadas','rascunhos','programadas','historico'].includes(filters.box),
   );
   const myHouses=data.members.filter(m=>m.player_id===me?.id).map(m=>m.house_id);
   const isRecipient=(letter:LetterRow)=>letter.recipient_player_id===me?.id||(letter.recipient_player_id===null&&myHouses.includes(letter.recipient_house_id??''));
