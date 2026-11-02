@@ -82,6 +82,15 @@ export const SPY_REQUEST_FIELDS = [
  {code:'noble_family',kind:'person',classification:'restricted'},
  {code:'regional_roads',kind:'region',classification:'public'},
  {code:'regional_rumors',kind:'region',classification:'restricted'},
+ {code:'regional_communities',kind:'region',classification:'restricted'},
+ {code:'regional_risks',kind:'region',classification:'restricted'},
+ {code:'house_trade',kind:'house',classification:'restricted'},
+ {code:'house_fortifications',kind:'house',classification:'restricted'},
+ {code:'house_troop_movements',kind:'house',classification:'secret'},
+ {code:'house_family_succession',kind:'house',classification:'restricted'},
+ {code:'house_rumors',kind:'house',classification:'restricted'},
+ {code:'house_legal_environment',kind:'house',classification:'restricted'},
+ {code:'dossier_update',kind:'house',classification:'restricted'},
 ] as const;
 export const spyRequestedFieldSchema=z.enum(SPY_REQUEST_FIELDS.map(f=>f.code) as [typeof SPY_REQUEST_FIELDS[number]['code'],...typeof SPY_REQUEST_FIELDS[number]['code'][]]);
 export const spyRequestFieldsSchema=z.array(spyRequestedFieldSchema).min(1).max(SPY_REQUEST_FIELDS.length)
