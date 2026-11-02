@@ -3,6 +3,14 @@ import prosperityCatalog from './prosperity-catalog.json';
 const base = (id: string, name: string, original: string, category: CatalogItem['category'], amount: number, resource: Resource, description: string): CatalogItem => ({ id, name, original, category, costs: [{resource, amount, mode:'allocation'}], description, requirements: [], effects: [], duration: {months:0}, source:'Guerra dos Tronos RPG', section:'Capítulo 6 · Casas e terras', version:'2026-10-24', repeatable:true });
 export const CORE_CATALOG: CatalogItem[] = [
   ...prosperityCatalog as CatalogItem[],
+  // Cormyr · adaptação autorizada pelo Narrador, 02/11/2026. A compra
+  // usa o MESMO houseOperation('purchase') e ledger da Casa; nunca uma
+  // segunda conta de Riqueza. Cada posse ativa concede dois contratados.
+  {...base('pros-spy-contract-batch','Contratar dois agentes','Cormyr narrator-approved contractor batch',
+    'personage',5,'wealth','Lote avulso repetível: 5 Riqueza alocados concedem 2 agentes após conciliação.'),
+   duration:{months:0},repeatable:true,version:'CCA-ESP-MVP-001:2026-11-02',
+   section:'Adaptação explícita do Narrador · Espionagem',effects:[]},
+
   {id:'godswood',name:'Bosque Sagrado / Santuário Ancestral',original:'Godswood',category:'lifestyle',
    description:'Bosque consagrado. Sorte da Casa +2d6 −6, com dados próprios auditados em cada mês.',
    costs:[{resource:'wealth',amount:5,mode:'allocation'}],requirements:[],
