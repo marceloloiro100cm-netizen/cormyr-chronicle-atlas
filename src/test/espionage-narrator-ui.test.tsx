@@ -19,6 +19,18 @@ describe('Espionagem · Lote 9 mesa de demonstração do Narrador',()=>{
   expect(screen.getByText(/Liberação SIMULADA/)).toBeTruthy();
   expect(screen.getByText(/COBERTURA DO OBJETIVO/i).textContent??'').not.toContain('HouseState');
  });
+ it('prepara dificuldade privada sem gerar chance ou aplicar decisão automaticamente',()=>{
+  render(<SpyNarratorPanel houseName="Evenhand" houseId="house-evenhand"/>);
+  fireEvent.click(screen.getByText('Prévia de dificuldade e Lei local (somente Narrador)'));
+  fireEvent.change(screen.getByLabelText('Dificuldade base aprovada'),{target:{value:'12'}});
+  fireEvent.change(screen.getByLabelText('Lei local validada pela fonte'),{target:{value:'43'}});
+  fireEvent.change(screen.getByLabelText('Justificativa narratorial'),{
+   target:{value:'Fonte narrativa verificada e documentada pelo Narrador'},
+  });
+  fireEvent.click(screen.getByRole('button',{name:'Preparar decisão de dificuldade'}));
+  expect(screen.getByText(/Prévia local: base 12, Lei 43/)).toBeTruthy();
+  expect(screen.getByText(/Sem cálculo final, sem envio e sem gravação/)).toBeTruthy();
+ });
  it('não habilita publicação e conclusão real',()=>{
   render(<SpyNarratorPanel houseName="Evenhand" houseId="house-evenhand"/>);
   expect((screen.getByRole('button',{name:'Publicar carta real (exige RLS e auditoria)'} ) as HTMLButtonElement).disabled).toBe(true);
