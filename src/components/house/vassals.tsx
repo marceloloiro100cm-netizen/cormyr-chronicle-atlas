@@ -9,15 +9,12 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ImageViewer } from "@/components/image-viewer";
 import { campaignMonth } from "@/lib/house/regions";
 import type { HouseState } from "@/lib/house/types";
-import type { VassalHouse } from "@/lib/house/vassal-links";
+import {vassalCrestUrl,type VassalHouse} from "@/lib/house/vassal-links";
 
 type NpcOption = { id: string; title: string };
 function VassalCrest({house}:{house?:VassalHouse|undefined}){
  const [broken,setBroken]=useState<string|null>(null);
- const raw=house?.crest?.trim()??'';
- // Official artwork may be stored as a public/ path rather than a rooted URL.
- const src=raw.startsWith('public/')?'/'+raw.slice('public/'.length):
-   raw&&!/^(?:https?:|data:|blob:|\/)/i.test(raw)?'/'+raw.replace(/^\.\//,''):raw;
+ const src=vassalCrestUrl(house?.crest);
  const alt=`Brasão da Casa ${house?.name??'vassala'}`;
  return <div className="h-20 w-16 shrink-0 overflow-hidden [&_img]:h-20 [&_img]:w-16 [&_img]:object-contain">
   {src&&broken!==src?
