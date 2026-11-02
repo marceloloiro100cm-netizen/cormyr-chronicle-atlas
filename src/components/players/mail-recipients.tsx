@@ -32,30 +32,34 @@ export function recipientHouseRegion(house:Pick<House,'id'|'region'>):GroupId {
   return 'other';
 }
 
-/** Only noble houses may receive new correspondence. */
+/** Narrator is a direct recipient only for players; peer correspondence uses house IDs. */
 export function MailRecipientPicker({data,me,targets,onChange}:Props){
   const selected=new Set(targets);
   const [query,setQuery]=useState('');
   const eligibleHouses=data.houses.filter(h=>h.active&&h.season===2&&
     (data.admin||!data.members.some(m=>m.player_id===me?.id&&m.house_id===h.id)));
   const selectedCount=targets.filter(t=>t.startsWith('h:')).length;
+  const toNarrator=selected.has('narrator');
   const cleanQuery=query.trim().toLocaleLowerCase('pt-BR');
   function toggleHouse(id:string){
     const token='h:'+id;
-    onChange(selected.has(token)?targets.filter(t=>t!==token):[...targets,token]);
+    onChange(selected.has(token)?targets.filter(t=>t!==token):[...targets.filter(t=>t!=='narrator'),token]);
   }
   function toggleAll(houses:House[]){
     const allSelected=houses.every(h=>selected.has('h:'+h.id));
     const tokens=new Set(houses.map(h=>'h:'+h.id));
-    onChange(allSelected?targets.filter(t=>!tokens.has(t)):[...new Set([...targets,...tokens])]);
+    onChange(allSelected?targets.filter(t=>!tokens.has(t)):[...new Set([...targets.filter(t=>t!=='narrator'),...tokens])]);
   }
   return <fieldset className="mail-recipient-picker">
-    <legend>Destinatários <span className="mail-recipient-count">{selectedCount} casa(s) selecionada(s)</span></legend>
+    <legend>Destinatários <span className="mail-recipient-count">{toNarrator?'Narrador selecionado':`${selectedCount} casa(s) selecionada(s)`}</span></legend>
     <div className="mail-recipient-toolbar">
       <label className="mail-recipient-search">Buscar casa
         <input type="search" value={query} placeholder="Nome da casa" onChange={e=>setQuery(e.target.value)}/>
       </label>
-
+      {!data.admin&&<label className="mail-recipient-option mail-recipient-narrator">
+        <input type="checkbox" checked={toNarrator} onChange={()=>onChange(toNarrator?[]:['narrator'])}/>
+        <span>Narrador (NPCs e assuntos da campanha)</span>
+      </label>}
     </div>
 
     {data.admin&&<div className="campaign-actions" aria-label="Seleção rápida dos grupos de narração">
@@ -98,6 +102,6 @@ export function MailRecipientPicker({data,me,targets,onChange}:Props){
         </section>;
       })}
     </div>
-    <p className="mail-recipient-help">Marque uma região inteira ou escolha somente as casas desejadas. A seleção regional inclui todas as casas elegíveis mesmo com a busca ativa. Cada entrega continua privada.</p>
+    <p className="mail-recipient-help">Jogadores podem escrever diretamente ao Narrador ou escolher casas nobres. Ao enviar para outra casa, o Narrador acompanha automaticamente a correspondência, sem uma segunda entrega à casa.</p>
   </fieldset>;
 }
