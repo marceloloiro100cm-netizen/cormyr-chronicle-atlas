@@ -96,7 +96,7 @@ CREATE OR REPLACE FUNCTION public.spy_reconcile_house_agents(
  p_house text,p_key uuid,p_reason text
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $spy$
 DECLARE sheet public.noble_house_sheets; holding jsonb; domain jsonb;
- current_ref text; source_ref text; kind text; loc_id uuid;
+ current_ref text; slot_ref text; kind text; loc_id uuid;
  item text; purchase_proven boolean; parent_valid boolean;
  n integer:=0; pending integer:=0; slot integer; slots integer;
  official_version integer;
@@ -156,13 +156,13 @@ BEGIN
   IF loc_id IS NULL THEN pending:=pending+slots; CONTINUE; END IF;
   kind:=CASE WHEN item='pros-spy-contract-batch' THEN 'contractor' ELSE 'network_cell' END;
   FOR slot IN 0..slots-1 LOOP
-   source_ref:=(CASE item WHEN 'pros-spy-network' THEN 'base:'
+   slot_ref:=(CASE item WHEN 'pros-spy-network' THEN 'base:'
     WHEN 'pros-spy-network--expanded-network' THEN 'expanded:' ELSE 'contractor:' END)
      ||current_ref||':'||slot::text;
    INSERT INTO public.spy_assets(owner_house_id,kind,codename,source_holding_id,
     source_ref,current_location_id,status,rules_version)
     VALUES(p_house,kind,'Agente '||(slot+1)::text,current_ref,
-      source_ref,loc_id,'available','CCA-ESP-MVP-001:2026-11-02')
+      slot_ref,loc_id,'available','CCA-ESP-MVP-001:2026-11-02')
     ON CONFLICT(owner_house_id,source_ref) DO NOTHING;
    IF FOUND THEN n:=n+1; END IF;
   END LOOP;
