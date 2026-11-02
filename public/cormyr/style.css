@@ -274,3 +274,11 @@
 /* Lote 5 · data corrente consultada de forma pública, sem credenciais. */
 #public-campaign-current-time{display:block;overflow-wrap:anywhere;font-size:17px;line-height:1.4;color:#f1dbad}
 #public-campaign-time-detail{overflow-wrap:anywhere;font-size:12px;line-height:1.5}
+
+/* Bardo da Corte: the YouTube embed must remain at least 200px tall. */
+.bard-player-media{min-height:200px;height:clamp(200px,56vw,210px);aspect-ratio:auto}
+.bard-status{margin:5px 0 9px;color:#f4dfac;font-size:13px;line-height:1.4}
+.bard-status:empty{display:none}
+.music-unavailable{padding:12px 15px;border:1px dashed #a397ac;border-radius:6px;color:var(--purple);background:#f6f1e8}
+.music-unavailable strong,.music-unavailable small{display:block}
+.music-unavailable small{margin-top:5px;font-size:12px}
