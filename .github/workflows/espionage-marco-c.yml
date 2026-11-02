@@ -1,0 +1,46 @@
+name: Espionagem Marco C — PostgreSQL descartável
+on:
+  pull_request:
+    paths:
+      - 'docs/espionage/sql/**'
+      - 'scripts/test-espionage-sql*'
+      - '.github/workflows/espionage-marco-c.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres-espionage-isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: espionage_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d espionage_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: espionage_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install psql client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Bootstrap independent campaign security fixture
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-bootstrap.sql
+      - name: Apply candidate schema to DISPOSABLE database only
+        run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0075_spy_core_REVIEW_ONLY.sql
+      - name: Verify privacy, role revocation and report release
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql.sql
+      - name: Apply DISABLED temporal consumer candidate
+        run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0076_spy_temporal_REVIEW_ONLY.sql
+      - name: Verify two-leg replay and backward calendar
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-temporal.sql
