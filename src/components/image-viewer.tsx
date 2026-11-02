@@ -8,12 +8,14 @@ export function ImageViewer({
   triggerClassName,
   imageClassName,
   imageStyle,
+  onImageError,
 }: {
   src: string;
   caption: string;
   triggerClassName?: string;
   imageClassName?: string;
   imageStyle?: React.CSSProperties;
+  onImageError?: () => void;
 }) {
   const [zoom, setZoom] = useState(1);
   return (
@@ -26,6 +28,7 @@ export function ImageViewer({
         >
           <img
             src={src}
+            onError={onImageError}
             alt={caption}
             loading="lazy"
             className={imageClassName}

@@ -1,19 +1,31 @@
 import { VassalMini } from "./vassal-mini";
+import { VassalSheetPreview } from "./vassal-sheet-preview";
 import { REGIONS } from "@/lib/house/regions";
 import type { CatalogItem } from "@/lib/house/types";
 import { useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { Shield, UserRound } from "lucide-react";
+import { Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ImageViewer } from "@/components/image-viewer";
-import { CampaignContent } from "@/components/campaign-content";
-import { readVassalNpc } from "@/lib/house/house.functions";
 import { campaignMonth } from "@/lib/house/regions";
 import type { HouseState } from "@/lib/house/types";
-import type { VassalHouse, VassalNpc } from "@/lib/house/vassal-links";
+import type { VassalHouse } from "@/lib/house/vassal-links";
 
 type NpcOption = { id: string; title: string };
+function VassalCrest({house}:{house?:VassalHouse|undefined}){
+ const [broken,setBroken]=useState<string|null>(null);
+ const raw=house?.crest?.trim()??'';
+ // Official artwork may be stored as a public/ path rather than a rooted URL.
+ const src=raw.startsWith('public/')?'/'+raw.slice('public/'.length):
+   raw&&!/^(?:https?:|data:|blob:|\/)/i.test(raw)?'/'+raw.replace(/^\.\//,''):raw;
+ const alt=`Brasão da Casa ${house?.name??'vassala'}`;
+ return <div className="h-20 w-16 shrink-0 overflow-hidden [&_img]:h-20 [&_img]:w-16 [&_img]:object-contain">
+  {src&&broken!==src?
+   <ImageViewer src={src} caption={alt} onImageError={()=>setBroken(src)}/>:
+   <Shield className="h-16 w-12 text-muted-foreground" aria-label={alt+' não disponível'}/>}
+ </div>;
+}
+
 function NpcChoices({
   npcs,
   selected = [],
@@ -57,7 +69,6 @@ export function Vassals({
   onApprove,
   onEnd,
   onLoyalty,
-  onLink,
 }: {
   catalog: CatalogItem[];
   onCreate: (args: Record<string, unknown>) => Promise<boolean>;
@@ -73,44 +84,19 @@ export function Vassals({
   onApprove: (args: Record<string, unknown>, note: string) => Promise<boolean>;
   onEnd: (args:Record<string,unknown>, note:string)=>Promise<boolean>;
   onLoyalty: (args:Record<string,unknown>, note:string)=>Promise<boolean>;
-  onLink: (args: Record<string, unknown>, note: string) => Promise<boolean>;
 }) {
   const [region, setRegion] = useState("");
   const [search, setSearch] = useState(""),
     [selectedHouse, setSelectedHouse] = useState(""),
-    [npc, setNpc] = useState<VassalNpc | null>(null),
-    [npcError, setNpcError] = useState(""),
-    [npcBusy, setNpcBusy] = useState(false),
     [openAttach, setOpenAttach] = useState(false),
     [openCreate, setOpenCreate] = useState(false);
-  const read = useServerFn(readVassalNpc),
-    approved = (state.vassals ?? []).filter((v) => v.status === "approved").length;
-  const openNpc = async (id: string) => {
-    setNpcError("");
-    setNpcBusy(true);
-    try {
-      setNpc(await read({ data: { houseId: state.houseId, id } }));
-    } catch {
-      setNpcError("Integrante da Corte indisponível para este acesso.");
-    } finally {
-      setNpcBusy(false);
-    }
-  };
+  const approved = (state.vassals ?? []).filter(v=>v.status==="approved").length;
   const available = houses.filter(
     (h) =>
       h.id !== state.houseId &&
       !(state.vassals ?? []).some((v) => v.houseId === h.id && v.status !== "ended"),
   );
   const selected = available.find((h) => h.id === selectedHouse);
-  const crest = (h: VassalHouse | undefined) => (
-    <div className="h-20 w-16 shrink-0 overflow-hidden [&_img]:h-20 [&_img]:w-16 [&_img]:object-contain">
-      {h?.crest ? (
-        <ImageViewer src={h.crest} caption={`Brasão da Casa ${h.name}`} />
-      ) : (
-        <Shield className="h-16 w-12 text-muted-foreground" aria-label="Brasão não disponível" />
-      )}
-    </div>
-  );
   return (
     <section>
       <h3>Brasões vassalos</h3>
@@ -130,7 +116,7 @@ export function Vassals({
           return (
             <article className="house-card" key={v.id}>
               <header className="flex items-center gap-3">
-                {crest(h)}
+                <VassalCrest house={h}/>
                 <div className="min-w-0">
                   <h4>{h?.name ?? v.name}</h4>
                   <p>
@@ -159,46 +145,11 @@ export function Vassals({
               <p>
                 {h?.region ?? v.sheet?.region} {h?.castle ? " · " + h.castle : ""}
               </p>
-              {v.sheet && (
-                <VassalMini
-                  state={state}
-                  vassal={v}
-                  catalog={catalog}
-                  busy={busy}
-                  canEdit={canEdit}
-                  onPurchase={onPurchase}
-                  onDomain={onDomain}
-                />
-              )}
-              <h4>Corte associada</h4>
-              {v.npcIds?.length ? (
-                <ul className="house-plain-list">
-                  {v.npcIds.map((id) => {
-                    const n = npcs.find((n) => n.id === id);
-                    return (
-                      <li key={id}>
-                        {n ? (
-                          <Button
-                            variant="ghost"
-                            className="h-auto whitespace-normal text-left"
-                            disabled={npcBusy}
-                            onClick={() => openNpc(id)}
-                          >
-                            <UserRound size={16} />
-                            {n.title}
-                          </Button>
-                        ) : (
-                          <span className="house-caption">
-                            Integrante da Corte indisponível para este acesso
-                          </span>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="house-caption">Sem integrante da Corte associado.</p>
-              )}
+              <VassalSheetPreview parent={state} vassal={v} officialHouse={h} catalog={catalog}/>
+              {v.sheet&&<VassalMini
+                state={state} vassal={v} catalog={catalog} busy={busy}
+                canEdit={canEdit} onPurchase={onPurchase} onDomain={onDomain}
+              />}
               {admin && v.status === 'approved' && <details><summary>Alterar lealdade</summary>
               <form className="campaign-form" onSubmit={async e=>{e.preventDefault();const form=new FormData(e.currentTarget);await onLoyalty({id:v.id,loyalty:String(form.get('loyalty'))},String(form.get('reason')));}}>
               <label>Postura<select name="loyalty" defaultValue={v.loyalty??'loyal'}>
@@ -213,13 +164,9 @@ export function Vassals({
                   <Button disabled={busy} variant="outline">Encerrar vínculo</Button>
                 </form>
               </details>}
-              {admin && v.status !== "ended" && (
+              {admin && v.status === "proposed" && (
                 <details>
-                  <summary>
-                    {v.status === "proposed"
-                      ? "Revisar e aprovar vínculo"
-                      : "Alterar Corte associada"}
-                  </summary>
+                  <summary>Revisar e aprovar vínculo</summary>
                   <form
                     key={`${v.id}-${(v.npcIds ?? []).join(",")}`}
                     className="campaign-form"
@@ -228,30 +175,19 @@ export function Vassals({
                       const f = new FormData(e.currentTarget),
                         ids = f.getAll("npc").map(String),
                         note = String(f.get("note"));
-                      if (v.status === "proposed")
-                        await onApprove(
-                          { id: v.id, influencePenalty: Number(f.get("penalty")), npcIds: ids },
-                          note,
-                        );
-                      else await onLink({ id: v.id, npcIds: ids }, note);
+                      await onApprove({ id: v.id, influencePenalty: Number(f.get("penalty")), npcIds: ids }, note);
                     }}
                   >
                     <NpcChoices npcs={npcs} selected={v.npcIds} />
-                    {v.status === "proposed" && (
-                      <label>
-                        Adaptação de Influência registrada (não aplicada automaticamente)
-                        <input name="penalty" type="number" min={0} defaultValue={0} />
-                      </label>
-                    )}
+                    <label>
+                      Adaptação de Influência registrada (não aplicada automaticamente)
+                      <input name="penalty" type="number" min={0} defaultValue={0} />
+                    </label>
                     <label>
                       Decisão do Narrador
                       <textarea name="note" required />
                     </label>
-                    <Button disabled={busy}>
-                      {v.status === "proposed"
-                        ? "Aprovar vínculo e investimento"
-                        : "Salvar ligação à Corte"}
-                    </Button>
+                    <Button disabled={busy}>Aprovar vínculo e investimento</Button>
                   </form>
                 </details>
               )}
@@ -259,11 +195,6 @@ export function Vassals({
           );
         })}
       </div>
-      {npcError && (
-        <p role="alert" className="house-warning">
-          {npcError}
-        </p>
-      )}
       {canEdit && (
         <Dialog open={openAttach} onOpenChange={setOpenAttach}>
           <DialogContent className="campaign-theme max-h-[85vh] overflow-y-auto">
@@ -332,7 +263,7 @@ export function Vassals({
               </label>
               {selected && (
                 <div className="flex items-center gap-3">
-                  {crest(selected)}
+                  <VassalCrest house={selected}/>
                   <strong>{selected.name}</strong>
                 </div>
               )}
@@ -409,28 +340,6 @@ export function Vassals({
           </DialogContent>
         </Dialog>
       )}
-      <details>
-        <summary>Regra de criação e Sorte</summary>
-        <p>
-          Vassalas usam 5d6 por recurso, no mesmo reino; As rolagens brutas ficam preservadas;
-          ajustes de Influência devem ser registrados pelo Narrador. Não rolam Sorte
-          independentemente. Cada brasão aprovado fornece um dado de teste de Status à Sorte da
-          suserana. Novas vassalas possuem recursos e compras independentes; casas anexadas mantêm
-          sua ficha original e suas permissões.
-        </p>
-        <small>Livro básico · Criando Brasões Vassalos</small>
-      </details>
-      <Dialog
-        open={Boolean(npc)}
-        onOpenChange={(open) => {
-          if (!open) setNpc(null);
-        }}
-      >
-        <DialogContent className="campaign-theme max-h-[85vh] overflow-y-auto">
-          <DialogTitle>{npc?.title ?? "NPC existente"}</DialogTitle>
-          {npc && <CampaignContent content={npc.content} />}
-        </DialogContent>
-      </Dialog>
     </section>
   );
 }
