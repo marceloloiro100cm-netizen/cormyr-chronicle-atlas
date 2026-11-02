@@ -12,6 +12,33 @@ function house(){
 }
 const location={id:ids[4]!,kind:'domain' as const,refId:ids[3]!,name:'Arabel',regionId:'helmlands',visibility:'narrator' as const,approved:true,version:1,source:'Domínio confirmado pelo Narrador'};
 describe('Espionagem · Lote 5 ativos',()=>{
+ it('reconcilia posses e domínios legados com IDs textuais sem reescrever a ficha',()=>{
+  const s=newHouseState('ashkar','dragoncoast');
+  s.domains=[{id:'dom-ashkar-1',name:'Cinzaria',terrain:'mountains',features:[],notes:''}];
+  s.holdings=[
+   {id:'hold-ashkar-spy',itemId:'pros-spy-network',name:'Rede de Espiões',
+    domainId:'dom-ashkar-1',costs:[{resource:'wealth',amount:10,mode:'allocation'}],
+    effects:[],ruleVersion:'Legacy',source:'Planilha',status:'active'},
+   {id:'hold-ashkar-spy-exp',itemId:'pros-spy-network--expanded-network',
+    parentId:'hold-ashkar-spy',name:'Rede Ampliada',domainId:'dom-ashkar-1',
+    costs:[{resource:'wealth',amount:5,mode:'allocation'}],
+    effects:[],ruleVersion:'Legacy',source:'Planilha',status:'active'},
+  ];
+  const before=JSON.stringify(s);
+  const loc={...location,refId:'dom-ashkar-1'};
+  const props={
+   ['base:hold-ashkar-spy:0']:ids[0]!,
+   ['expanded:hold-ashkar-spy-exp:0']:ids[1]!,
+   ['expanded:hold-ashkar-spy-exp:1']:ids[2]!,
+  };
+  const first=reconcileNetworkCells({state:s,registry:emptySpyAssetRegistry('ashkar'),
+   locations:[loc],proposedIds:props,review:gm,expectedVersion:1});
+  expect(first.created).toHaveLength(3);
+  expect(first.created[0]?.sourceHoldingId).toBe('hold-ashkar-spy');
+  expect(first.created[1]?.sourceHoldingId).toBe('hold-ashkar-spy-exp');
+  expect(JSON.stringify(s)).toBe(before);
+ });
+
  it('contratados do catálogo criam dois agentes por posse ativa sem duplicar',()=>{
   const s=house();const registry=emptySpyAssetRegistry(s.houseId);
   s.holdings.push({id:ids[2]!,itemId:'pros-spy-contract-batch',name:'Contrato',
