@@ -39,6 +39,7 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
  const loadWorkbook=useServerFn(loadQazirVassalWorkbook);
  const embedded=Boolean(vassal.sheet);
  const officialId=!embedded&&officialHouse?.id===vassal.houseId?vassal.houseId:null;
+ const isQazirWorkbook=parent.houseId==='ashkar'&&officialId==='qazir'&&vassal.status==='approved';
  const linked=useQuery({
   queryKey:['vassal-house-sheet',parent.houseId,officialId],
   enabled:expanded&&officialId!==null,
@@ -58,7 +59,7 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
  }
  const imported=useQuery({
   queryKey:['vassal-workbook',parent.houseId,officialId],
-  enabled:expanded&&parent.houseId==='ashkar'&&officialId==='qazir'&&vassal.status==='approved',
+  enabled:expanded&&isQazirWorkbook,
   retry:false,
   queryFn:()=>loadWorkbook({data:{parentHouseId:'ashkar',vassalHouseId:'qazir'}}),
  });
@@ -118,8 +119,8 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
    </Button>
   </div>
   {expanded&&<div id={contentId} className="mt-3 space-y-3">
-   {officialId&&(linked.isPending||archival.isPending||imported.isPending)&&<p role="status">Consultando os dados disponíveis da casa vassala…</p>}
-   {officialId&&linked.isError&&!archive&&!workbook&&!imported.isPending&&archival.isSuccess&&<p className="house-caption">Não há ficha mecânica acessível nem registro histórico público aprovado para esta Casa.</p>}
+   {officialId&&(linked.isPending||archival.isPending||(isQazirWorkbook&&imported.isPending))&&<p role="status">Consultando os dados disponíveis da casa vassala…</p>}
+   {officialId&&linked.isError&&!archive&&!workbook&&(!isQazirWorkbook||!imported.isPending)&&archival.isSuccess&&<p className="house-caption">Não há ficha mecânica acessível nem registro histórico público aprovado para esta Casa.</p>}
    {archival.isError&&!house&&!workbook&&<p role="alert">Não foi possível consultar o catálogo histórico da Casa. Tente novamente.</p>}
    {!embedded&&!officialId&&<p className="house-caption">Não foi encontrada uma Casa vinculada a este brasão. Os dados não serão presumidos.</p>}
    {!house&&workbook&&workbookBalances&&<div className="space-y-3"
@@ -155,7 +156,7 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
     <p className="house-caption">Use Baixar ficha, à direita do cabeçalho, para obter o PDF completo
      com os atributos, bens, companhias, personagens e história.</p>
    </div>}
-   {!house&&!workbook&&!imported.isPending&&archive&&<div className="space-y-3" aria-label={`Ficha histórica da Casa ${archive.name}`}>
+   {!house&&!workbook&&(!isQazirWorkbook||!imported.isPending)&&archive&&<div className="space-y-3" aria-label={`Ficha histórica da Casa ${archive.name}`}>
     <p className="house-caption">Ficha histórica disponível. Os atributos, as tropas e as posses mecânicas ainda não foram cadastrados; nenhum valor foi presumido.</p>
     <div className="grid gap-2 sm:grid-cols-2">
      {[
