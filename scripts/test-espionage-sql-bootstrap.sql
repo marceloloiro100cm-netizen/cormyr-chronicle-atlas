@@ -9,7 +9,12 @@ CREATE TABLE public.campaign_calendar(
  id boolean PRIMARY KEY DEFAULT true,year int,month int,day int,festival text,version int);
 CREATE TABLE public.noble_house_ledger(
  house_id text NOT NULL,operation_key uuid NOT NULL,
+ action text NOT NULL DEFAULT 'purchase',
+ before_state jsonb NOT NULL DEFAULT '{}'::jsonb,after_state jsonb NOT NULL DEFAULT '{}'::jsonb,
  PRIMARY KEY(house_id,operation_key));
+CREATE TABLE public.noble_house_sheets(
+ house_id text PRIMARY KEY REFERENCES public.campaign_houses(id),
+ state jsonb NOT NULL,version integer NOT NULL DEFAULT 1);
 CREATE TABLE public.test_roles(user_id uuid PRIMARY KEY,is_admin boolean NOT NULL DEFAULT false);
 CREATE TABLE public.test_memberships(user_id uuid,house_id text,can_edit boolean NOT NULL,PRIMARY KEY(user_id,house_id));
 CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
