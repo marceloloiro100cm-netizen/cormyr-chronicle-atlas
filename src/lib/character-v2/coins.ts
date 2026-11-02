@@ -88,9 +88,9 @@ export function parseCharacterWallet(text:string,sourceId:string,houseId:string)
  try{raw=JSON.parse(text.slice(WALLET_PREFIX.length));}catch{throw new Error('Carteira corrompida.');}
  if(!raw||typeof raw!=='object')throw new Error('Carteira inválida.');
  const x=raw as Record<string,unknown>;
- if(x.schemaVersion!==1||x.sourceRecordId!==sourceId||x.houseId!==houseId||!Array.isArray(x.entries))
+ if(x['schemaVersion']!==1||x['sourceRecordId']!==sourceId||x['houseId']!==houseId||!Array.isArray(x['entries']))
   throw new Error('Carteira pertence a outra Casa ou personagem.');
- const wallet={schemaVersion:1 as const,sourceRecordId:sourceId,houseId,entries:x.entries as CoinEntry[]};
+ const wallet={schemaVersion:1 as const,sourceRecordId:sourceId,houseId,entries:x['entries'] as CoinEntry[]};
  walletBalance(wallet);
  return wallet;
 }
