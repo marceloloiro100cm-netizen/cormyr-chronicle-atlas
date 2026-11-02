@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {newHouseState,type Holding} from '@/lib/house/types';
-import {emptySpyAssetRegistry,reconcileNetworkCells,reconcileContractedAgents,registerSpyLocalContact,validateSpyAssignment,assignSpyAsset,previewLegacySpyNotes,previewSpyContractorEnrollment} from '@/lib/espionage/assets';
+import {emptySpyAssetRegistry,reconcileNetworkCells,reconcileContractedAgents,reconcileContractorHoldings,registerSpyLocalContact,validateSpyAssignment,assignSpyAsset,previewLegacySpyNotes,previewSpyContractorEnrollment} from '@/lib/espionage/assets';
 const ids=['11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222','33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444','55555555-5555-4555-8555-555555555555','66666666-6666-4666-8666-666666666666'];
 const gm={isNarrator:true as const,actorId:'gm',reason:'Conciliação de posse e domínio aprovada'};
 function house(){
@@ -12,6 +12,18 @@ function house(){
 }
 const location={id:ids[4]!,kind:'domain' as const,refId:ids[3]!,name:'Arabel',regionId:'helmlands',visibility:'narrator' as const,approved:true,version:1,source:'Domínio confirmado pelo Narrador'};
 describe('Espionagem · Lote 5 ativos',()=>{
+ it('contratados do catálogo criam dois agentes por posse ativa sem duplicar',()=>{
+  const s=house();const registry=emptySpyAssetRegistry(s.houseId);
+  s.holdings.push({id:ids[2]!,itemId:'pros-spy-contract-batch',name:'Contrato',
+   domainId:ids[3]!,costs:[{resource:'wealth',amount:5,mode:'allocation'}],
+   effects:[],ruleVersion:'CCA-ESP-MVP-001',source:'narrador',status:'active'});
+  const proposedIds={['contractor:'+ids[2]+':0']:ids[4]!,['contractor:'+ids[2]+':1']:ids[5]!};
+  const first=reconcileContractorHoldings({state:s,registry,locations:[location],proposedIds,review:gm,expectedVersion:1});
+  expect(first.created).toHaveLength(2);
+  const again=reconcileContractorHoldings({state:s,registry:first.next,locations:[location],
+   proposedIds,review:gm,expectedVersion:first.next.version});
+  expect(again.created).toHaveLength(0);
+ });
  it('rede base e contratação avulsa geram capacidade só com compra comprovada',()=>{
   const s=house();const registry=emptySpyAssetRegistry(s.houseId);
   const base=reconcileNetworkCells({state:s,registry,locations:[location],proposedIds:{
