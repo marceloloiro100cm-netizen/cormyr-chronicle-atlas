@@ -5,8 +5,8 @@ import { JSDOM } from 'jsdom';
 
 const read = name => readFileSync('public/cormyr/' + name, 'utf8');
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-function boot(fetchRegion) {
-  const dom = new JSDOM(read('index.html'), { url: 'https://example.test/cormyr/index.html', runScripts: 'outside-only' });
+function boot(fetchRegion, hash='') {
+  const dom = new JSDOM(read('index.html'), { url: 'https://example.test/cormyr/index.html'+hash, runScripts: 'outside-only' });
   const w = dom.window;
   w.matchMedia = () => ({ matches: false });
   w.HTMLElement.prototype.scrollIntoView = () => {};
@@ -61,11 +61,55 @@ test('a late response never replaces the newly selected region', async () => {
     const d = dom.window.document;
     d.getElementById('region-read-more').click();
     const selector = d.getElementById('region-select');
-    selector.value = 'Crownlands';
+    selector.value = 'Horselands';
     selector.dispatchEvent(new dom.window.Event('change'));
     finish({ ok: true, json: async () => ({ text: 'Resposta antiga.' }) });
     await settle();
     assert.equal(d.getElementById('region-read-more').getAttribute('aria-expanded'), 'false');
     assert.ok(!d.getElementById('region-full-text').textContent.includes('Resposta antiga.'));
+  } finally { dom.window.close(); }
+});
+
+
+test('Reino e Regiões inicia em Crownlands (Terras da Coroa) sem link específico', async () => {
+  const dom = boot(async () => ({ok:true,json:async()=>({text:'Texto de Crownlands'})}));
+  try {
+    await settle();
+    const d=dom.window.document;
+    assert.equal(d.getElementById('region-select').value,'Crownlands');
+    assert.match(d.getElementById('region-content').textContent,/Crownlands/);
+    assert.match(d.getElementById('region-content').textContent,/Phelles/);
+  } finally { dom.window.close(); }
+});
+
+test('menu Reino e Regiões volta às Terras da Coroa; seletor ainda permite outras regiões', async () => {
+  const dom=boot(async()=>({ok:true,json:async()=>({text:'Outro texto'})}));
+  try {
+    await settle();
+    const w=dom.window,d=w.document,select=d.getElementById('region-select');
+    select.value='Horselands';
+    select.dispatchEvent(new w.Event('change'));
+    assert.equal(select.value,'Horselands');
+    assert.match(w.location.hash,/regiao-horselands/);
+    d.querySelector('[data-view="nobreza"]').click();
+    d.querySelector('[data-view="reino"]').click();
+    assert.equal(select.value,'Crownlands');
+    assert.match(w.location.hash,/regiao-crownlands/);
+    assert.match(d.getElementById('region-content').textContent,/Phelles/);
+    select.value='Horselands';
+    select.dispatchEvent(new w.Event('change'));
+    assert.equal(select.value,'Horselands');
+    assert.match(d.getElementById('region-content').textContent,/Horselands/);
+  } finally { dom.window.close(); }
+});
+
+test('link direto para Horselands continua sendo respeitado', async () => {
+  const dom=boot(async()=>({ok:true,json:async()=>({text:'Outro texto'})}), '#regiao-horselands');
+  try {
+    await settle();
+    const d=dom.window.document;
+    assert.equal(d.getElementById('region-select').value,'Horselands');
+    assert.match(d.getElementById('region-content').textContent,/Horselands/);
+    assert.equal(dom.window.location.hash,'#regiao-horselands');
   } finally { dom.window.close(); }
 });
