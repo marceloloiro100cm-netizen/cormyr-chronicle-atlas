@@ -9,7 +9,7 @@ const location=(i:number)=>({id:ids[i]!,kind:'region' as const,refId:'r'+i,name:
 function registry(){
  let g=emptySpyRouteRegistry();
  for(let i=0;i<3;i++)g=upsertSpyLocation(g,location(i),gm,g.version);
- for(const [i,a,b,days] of [[3,0,1,1],[4,1,2,2],[5,2,0,1]]){
+ for(const [i,a,b,days] of ([[3,0,1,1],[4,1,2,2],[5,2,0,1]] as const)){
   g=upsertSpyTravelEdge(g,{id:ids[i]!,fromLocationId:ids[a]!,toLocationId:ids[b]!,baseDays:days,mode:'horse',
    bidirectional:false,blocked:false,approved:true,version:1,source:'Mapa do Narrador',
    approvedByNarratorId:'gm',approvalReason:'Duração aprovada pelo Narrador'},gm,g.version);
