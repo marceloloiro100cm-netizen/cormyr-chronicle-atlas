@@ -32,18 +32,13 @@ export function recipientHouseRegion(house:Pick<House,'id'|'region'>):GroupId {
   return 'other';
 }
 
-/** The narrator may select either whole houses or individual players.
- * Individual p:<player id> tokens restrict delivery to the chosen player's account.
- * Other players still see only house-level options.
- */
+/** Only noble houses may receive new correspondence. */
 export function MailRecipientPicker({data,me,targets,onChange}:Props){
   const selected=new Set(targets);
   const [query,setQuery]=useState('');
   const eligibleHouses=data.houses.filter(h=>h.active&&h.season===2&&
     (data.admin||!data.members.some(m=>m.player_id===me?.id&&m.house_id===h.id)));
   const selectedCount=targets.filter(t=>t.startsWith('h:')).length;
-  const selectedPlayers=targets.filter(t=>t.startsWith('p:')).length;
-  const eligiblePlayers=data.admin?data.players.filter(p=>p.active&&p.user_id&&!p.require_password_change):[];
   const cleanQuery=query.trim().toLocaleLowerCase('pt-BR');
   function toggleHouse(id:string){
     const token='h:'+id;
@@ -55,25 +50,14 @@ export function MailRecipientPicker({data,me,targets,onChange}:Props){
     onChange(allSelected?targets.filter(t=>!tokens.has(t)):[...new Set([...targets,...tokens])]);
   }
   return <fieldset className="mail-recipient-picker">
-    <legend>Destinatários <span className="mail-recipient-count">{selectedCount} casa(s) e {selectedPlayers} jogador(es) selecionado(s)</span></legend>
+    <legend>Destinatários <span className="mail-recipient-count">{selectedCount} casa(s) selecionada(s)</span></legend>
     <div className="mail-recipient-toolbar">
       <label className="mail-recipient-search">Buscar casa
         <input type="search" value={query} placeholder="Nome da casa" onChange={e=>setQuery(e.target.value)}/>
       </label>
-      {!data.admin&&<label className="mail-recipient-option mail-recipient-narrator">
-        <input type="checkbox" checked={selected.has('narrator')} onChange={()=>onChange(selected.has('narrator')?targets.filter(t=>t!=='narrator'):[...targets,'narrator'])}/>
-        <span>Narrador</span>
-      </label>}
+
     </div>
-    {data.admin&&<section aria-label="Destinatários individuais" className="mail-recipient-individuals">
-      <h3>Jogadores individuais (entrega reservada)</h3>
-      <p className="text-muted-foreground text-sm">Marque apenas a pessoa que deve receber a informação. Outros membros da mesma Casa não recebem cópia.</p>
-      {eligiblePlayers.filter(p=>!cleanQuery||p.name.toLocaleLowerCase('pt-BR').includes(cleanQuery)).map(p=><label key={p.id} className="mail-recipient-option">
-        <input type="checkbox" checked={selected.has('p:'+p.id)}
-          onChange={()=>{const token='p:'+p.id;onChange(selected.has(token)?targets.filter(t=>t!==token):[...targets,token]);}}/>
-        <span>{p.name}</span>
-      </label>)}
-    </section>}
+
     {data.admin&&<div className="campaign-actions" aria-label="Seleção rápida dos grupos de narração">
       {NARRATION_GROUPS.map(group=><button type="button" key={group.id}
         onClick={()=>onChange(narrationHouseIds(group.id,eligibleHouses.map(h=>h.id)).map(id=>'h:'+id))}>
