@@ -12,7 +12,9 @@ import {loadSpyHouseManagement,renameSpyAgent,type SpyManagement} from '@/lib/es
 import type {HouseState} from '@/lib/house/types';
 import {REGIONS} from '@/lib/house/regions';
 import {SpyAgentUpgrades} from './spy-agent-upgrades';
-import {SpyAgentRecruitment,SpyAgentHistory} from './spy-agent-recruitment-history';
+import {SpyAgentHistory} from './spy-agent-recruitment-history';
+import {SpyCreateAgentDialog} from './spy-create-agent-dialog';
+import {SpyAgentPortraitControl} from './spy-agent-portrait-control';
 import {SpyNarratorResolutionPanel} from './spy-narrator-resolution';
 
 const missionKinds:Record<string,string>={
@@ -78,27 +80,12 @@ export function SpyDefensePanel({state}:{state:HouseState}){
    a cada 5 pontos completos acima de 30, +3 de dificuldade.
    Acrescente apenas as proteções ativas aplicáveis ao local. Não somamos Lei de outra região.</p>
   <div className="house-input-grid" style={{margin:'12px 0'}}>
-   <div className="house-ledger"><strong>Lei efetiva da Casa</strong><h3>{defense.law}</h3>
-    <small>Calculada pela ficha, não pela Lei basal da região.</small></div>
-   <div className="house-ledger"><strong>Defesa geral de Espionagem</strong><h3>{general}</h3>
-    <small>Dificuldade-base {defense.baseDifficulty} (gerada pela Lei {defense.law})
-     + proteção geral {defense.globalBonuses}</small></div>
+   <div className="house-ledger"><strong>Lei efetiva da Casa</strong><h3>{defense.law}</h3></div>
+   <div className="house-ledger"><strong>Defesa geral de Espionagem</strong><h3>{general}</h3></div>
   </div>
   {defense.globalSources.length>0&&<ul>
    {defense.globalSources.map(v=><li key={v.holdingId}>{v.name}: +{v.bonus} — {v.description}</li>)}
   </ul>}
-  <div style={{overflowX:'auto'}}>
-   <table><thead><tr><th scope="col">Domínio</th><th scope="col">Dificuldade-base</th>
-    <th scope="col">Bônus das construções</th><th scope="col">Dificuldade total</th></tr></thead>
-    <tbody>{defense.domains.map(row=><tr key={row.domainId}>
-     <td>{row.name}{row.sources.length>0&&<ul>{row.sources.map(source=>
-      <li key={source.holdingId}>{source.name}: +{source.bonus}</li>)}</ul>}</td>
-     <td>{defense.baseDifficulty}</td><td>+{defense.globalBonuses+row.localBonuses}</td>
-     <td><strong>{row.difficulty}</strong></td>
-    </tr>)}</tbody>
-   </table>
-  </div>
-  {defense.domains.length===0&&<p className="house-caption">Nenhum domínio na ficha. A defesa geral continua visível.</p>}
   {defense.otherEffects.length>0&&<details className="house-ledger"><summary>Proteções e efeitos especiais (sem bônus numérico de dificuldade)</summary>
    <ul>{defense.otherEffects.map((e,i)=><li key={i}>{e.name}: {e.description}</li>)}</ul>
   </details>}
@@ -122,15 +109,12 @@ export function SpyDefensePanel({state}:{state:HouseState}){
     Lei 105–109 gera dificuldade 51, Lei 110–114 gera 54, e assim por diante,
     sem teto de dificuldade. Os bônus de construções são acrescentados depois.</p>
   </details>
-  <small>A dificuldade de espionagem é calculada a partir da Lei mais os bônus
-   pertinentes. A probabilidade de sucesso depende da Astúcia do agente,
-   das condições da missão e da avaliação final do Narrador.</small>
  </section>;
 }
 
-function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,availableWealth}:{agent:SpyManagement['agents'][number];
+function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,availableWealth,portraits}:{agent:SpyManagement['agents'][number];
  operation:Mission|null;houseId:string;canEdit:boolean;officialDate:string|null;
- houseVersion:number;availableWealth:number|null}){
+ houseVersion:number;availableWealth:number|null;portraits:SpyManagement['portraits']}){
  const [editing,setEditing]=useState(false),[name,setName]=useState(agent.codename);
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const rename=useServerFn(renameSpyAgent);
@@ -154,7 +138,9 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
   }finally{setBusy(false);}
  };
  return <tr>
-  <td><strong>{agent.codename}</strong>
+  <td><SpyAgentPortraitControl houseId={houseId} agent={agent}
+   portraits={portraits} canEdit={canEdit}/>
+   <strong>{agent.codename}</strong>
    <small style={{display:'block'}}>{agent.currentRegion?
     REGIONS[agent.currentRegion]?.name??agent.currentRegion:'Localização não confirmada'}</small>
    {canEdit&&!editing&&<Button type="button" size="sm" variant="ghost"
@@ -203,33 +189,28 @@ export function SpyAgentManagement({houseId,canEdit,admin=false}:{houseId:string
  return <section className="house-panel" aria-label="Gerenciamento de Agentes">
   <div className="house-section-heading"><div><p className="campaign-eyebrow">GERENCIAMENTO DE AGENTES</p>
    <h3><Eye size={20} style={{display:'inline-block',verticalAlign:'middle'}}/> Agentes e Missões</h3></div>
-   <Button type="button" variant="outline" onClick={()=>void refetch()}>Atualizar</Button>
+   <div className="campaign-actions" style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+    <SpyCreateAgentDialog houseId={houseId} data={data??null} canEdit={canEdit}/>
+    <Button type="button" variant="outline" onClick={()=>void refetch()}>Atualizar</Button>
+   </div>
   </div>
-  <p>Consulte os agentes de sua Casa, a missão registrada, a viagem e o prazo previsto.
-   Dar nome ao agente altera seu cadastro, mas não cria nem inicia uma missão.</p>
   {isPending&&<p role="status">Consultando os agentes da Casa…</p>}
-  {isError&&<p role="alert">A tabela protegida de agentes ainda não está instalada ou não foi autorizada para esta Casa.</p>}
+  {isError&&<div role="alert" className="house-ledger" style={{padding:10}}>
+   <p style={{margin:0}}>Não foi possível carregar os agentes desta Casa.</p>
+   <small>Confirme o acesso à Casa ou atualize o cadastro.</small>
+  </div>}
   {data&&<div style={{overflowX:'auto'}}>
    <table><thead><tr><th scope="col">Agente</th><th scope="col">Nível / Astúcia</th><th scope="col">Situação</th>
     <th scope="col">Missão</th><th scope="col">Tempo de viagem</th><th scope="col">Até terminar a missão</th><th scope="col">Equipamentos de espionagem</th></tr></thead>
     <tbody>{data.agents.map(agent=><AgentRow key={agent.id}
      houseId={houseId} agent={agent} canEdit={canEdit} officialDate={officialDate}
      houseVersion={data.houseVersion} availableWealth={data.availableWealth}
+     portraits={data.portraits}
      operation={pendingMission(data.operations,agent.id)}/>)}</tbody>
    </table>
    {!data.agents.length&&<p>Esta Casa ainda não possui agentes conciliados.</p>}
   </div>}
-  {data&&<p className="house-caption">Riqueza disponível: <strong>
-   {data.availableWealth===null?'não conciliada':data.availableWealth}</strong>.
-   Cada melhoria custa 1 ponto de Riqueza, uma única vez por agente.
-   As compras continuam vinculadas à ficha da Casa e ao histórico econômico.</p>}
-  {data&&<SpyAgentRecruitment houseId={houseId}
-   recruitment={data.recruitment} canEdit={canEdit}/>}
   {data&&<SpyAgentHistory data={data}/>}
   {data&&admin&&<SpyNarratorResolutionPanel data={data}/>}
-  <p className="house-caption">Prazo restante usa a data oficial do Hub Temporal.
-   Quando o banco possuir data de chegada, a tabela prevê mais 1 désdia de investigação.
-   O prazo é estimado, não uma conclusão automática: o Narrador precisa registrar a resolução.
-   Sem rota ou data homologada, o prazo fica pendente.</p>
  </section>;
 }
