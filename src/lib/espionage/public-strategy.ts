@@ -15,7 +15,7 @@ export function spyRegionalBaseline(region:string){
 }
 export function allSpyRegionalBaselines(){
  return Object.keys(REGIONS).map(id=>spyRegionalBaseline(id)!).sort(
-  (a,b)=>b.basalDifficulty-a.basalDifficulty||a.regionName.localeCompare(b.regionName));
+  (a,b)=>b.regionalLaw-a.regionalLaw||a.regionName.localeCompare(b.regionName));
 }
 export const publicSpyGraphSchema=z.object({
  locations:z.array(z.object({
