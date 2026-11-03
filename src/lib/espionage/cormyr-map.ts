@@ -4,6 +4,8 @@
  * rotas de estrada ou evidência de portos. NÃO atribuir atalhos marítimos aqui.
  *
  * Em modo de visualização, cruzar UMA fronteira por terra custa UMA désdia.
+ * Exceção expressamente aprovada pelo Narrador: Dragon Coast–Crownlands
+ * por mar (Dragonmere) também custa UMA désdia.
  * A criação de missões continua bloqueada e exige as RPCs de aprovação.
  */
 import type {SpyRegionalConnection} from './region-turns';
@@ -70,12 +72,25 @@ export const CORMYR_CARTOGRAPHIC_LAND_LINKS:readonly SpyRegionalConnection[]=
   fromRegion,toRegion,passage:'land_neighbor' as const,bidirectional:true,version:1,
  }));
 
-/** Preview combines the map's explicitly evidenced shared land borders with
- * the user's RLS-filtered approved links (notably SEA). No maritime edge is
- * invented. Actual operations MUST revalidate on the server separately.
+/** Confirmada diretamente pelo Narrador em 03/11/2026:
+ * Dragon Coast ↔ Crownlands cruza o Dragonmere em UMA désdia de viagem.
+ * A ligação é bidirecional para PREVISÃO e é utilizada apenas quando o
+ * jogador seleciona "considerar mar". Missão real ainda exige registro/RPC
+ * de aprovação e validação de infraestrutura portuária, se aplicável.
+ */
+export const CORMYR_NARRATOR_APPROVED_SEA_LINKS:readonly SpyRegionalConnection[]=[{
+ id:'99d28001-318a-477b-813e-4b6b7e263c31',
+ fromRegion:'dragoncoast',toRegion:'crownlands',
+ passage:'sea_passage',bidirectional:true,version:1,
+}];
+
+/** Preview combines borders from the picture, the Narrator-confirmed
+ * Dragonmere crossing and the owner's RLS-filtered approved links.
+ * No additional maritime edge is inferred from coastline proximity.
+ * Actual operations MUST revalidate on the server separately.
  */
 export function cormyrPreviewLinks(approved:readonly SpyRegionalConnection[]=[]):SpyRegionalConnection[]{
- const answer=[...CORMYR_CARTOGRAPHIC_LAND_LINKS];
+ const answer=[...CORMYR_CARTOGRAPHIC_LAND_LINKS,...CORMYR_NARRATOR_APPROVED_SEA_LINKS];
  for(const link of approved){
   const matching=answer.findIndex(a=>a.passage===link.passage&&
    ((a.fromRegion===link.fromRegion&&a.toRegion===link.toRegion)||
