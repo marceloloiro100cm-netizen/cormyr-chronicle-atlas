@@ -8,6 +8,23 @@ import type {SpyManagement} from '@/lib/espionage/spy-management.functions';
 
 type Op=SpyManagement['operations'][number];
 type Agent=SpyManagement['agents'][number];
+const missionLabels:Record<string,string>={
+ regional_recon:'Reconhecimento da região',
+ house_recon:'Espionar uma Casa nobre',
+ economy:'Levantar informações econômicas',
+ military:'Levantar informações militares',
+ family:'Investigar a família nobre',
+ law:'Investigar a Lei local',
+ rumors:'Investigar rumores',dossier_refresh:'Atualizar informações antigas',
+};
+const outcomeLabels:Record<string,string>={
+ mission_success:'Missão concluída com sucesso',
+ mission_failure:'Missão fracassada sem descoberta',
+ escaped:'Espião descoberto e conseguiu fugir',
+ captured:'Espião descoberto e preso',
+ dead:'Espião morto durante a missão',
+ available:'Agente disponível',completed:'Missão concluída',
+};
 function NarratorDecision({houseId,operation,agent}:{
  houseId:string;operation:Op;agent:Agent;
 }){
@@ -33,8 +50,8 @@ function NarratorDecision({houseId,operation,agent}:{
     expectedAgentVersion:agent.version,
     requestKey:crypto.randomUUID(),reason,
    }});
-   setOutcome('Resultado: '+(response.outcome??response.status)+
-    ' · '+response.rank+' ('+response.cunning+'D6)'+
+   setOutcome('Resultado: '+(outcomeLabels[response.outcome??response.status]??'Missão resolvida')+
+    ' · '+response.rank+' (Astúcia '+response.cunning+'; '+response.cunning+' dados de seis faces)'+
     (response.promoted?' · promovido automaticamente':''));
    await Promise.all([
     queryClient.invalidateQueries({queryKey:['spy-house-management',houseId]}),
@@ -45,8 +62,8 @@ function NarratorDecision({houseId,operation,agent}:{
  };
  return <form className="house-ledger" onSubmit={e=>void submit(e)}
   style={{padding:12,display:'grid',gap:9}}>
-  <strong>{agent.codename} · {agent.rank} · {agent.cunning}D6</strong>
-  <small>Missão: {operation.missionKind} · {operation.targetId}</small>
+  <strong>{agent.codename} · {agent.rank} · Astúcia {agent.cunning} ({agent.cunning} dados de seis faces)</strong>
+  <small>Objetivo: {missionLabels[operation.missionKind]??'Missão de espionagem'} · Alvo: {operation.targetId}</small>
   <div style={{display:'flex',flexWrap:'wrap',gap:12}}>
    <label>Resultado dos dados
     <input type="number" min={agent.cunning} max={agent.cunning*6}
