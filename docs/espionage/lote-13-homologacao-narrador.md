@@ -35,6 +35,8 @@
 | H19 | Revogação de vínculo durante operação | transação rejeitada / dados desaparecem | sessão real revogada | PENDENTE |
 | H20 | Retorno e dossiê histórico | conteúdo persistente, versões anteriores preservadas | comparação de snapshots | PENDENTE |
 
+**Controle atualizado:** os cenários H01–H20 possuem fichas estruturadas em `docs/espionage/homologation-signoff.json`, inicialmente `PENDING`. A auditoria `docs/espionage/homologation-readiness-2026-11-02.md` distingue provas isoladas de aceite com banco RESTAURADO; a regra 1 rodada = 1 désdia (10 dias) requer integração durável no consumidor temporal antes de homologar H06/H14. Cada aceite real exige evidência única, commit e assinatura do Narrador. O script `scripts/espionage-release-gate.mjs --enforce` deve retornar `NO_GO` enquanto qualquer requisito estiver pendente.
+
 **Evidência já disponível:** testes unitários e PostgreSQL descartável são *provas de contrato*, nunca homologação de produção. Arquivo `docs/espionage/release-evidence.json` permanece `NO_GO` até evidência real revisada.
 
 ## Aprovação do Narrador
