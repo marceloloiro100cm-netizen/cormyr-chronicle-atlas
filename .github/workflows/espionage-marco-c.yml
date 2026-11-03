@@ -62,3 +62,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0079_spy_active_source_guard_REVIEW_ONLY.sql
       - name: Deny mission creation after network, expanded holding or contractor deactivation
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-source-guard.sql
+      - name: Apply mission adjudication and materialized report RPCs in disposable database
+        run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0080_spy_adjudication_reports_REVIEW_ONLY.sql
+      - name: Verify mission scope, sealed snapshots, idempotency and cross-House confidentiality
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-adjudication.sql
