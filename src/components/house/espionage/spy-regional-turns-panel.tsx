@@ -128,7 +128,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
   {currentOrigin&&<details className="house-ledger" open style={{marginTop:14}}>
    <summary>Todas as regiões · viagem a partir de {name(currentOrigin)} (11 destinos)</summary>
    <p>Estimativa terrestre baseada no mapa e acrescida das passagens marítimas aprovadas, quando habilitadas.
-    A missão de investigação dura mais 1 désdia em qualquer destino.</p>
+    Se escolher reconhecimento regional depois da viagem, a investigação acrescenta 1 désdia; deslocamento simples não acrescenta investigação.</p>
    <div style={{overflowX:'auto'}}>
     <table><thead><tr>
      <th scope="col">Destino</th><th scope="col">Viagem</th>
@@ -179,7 +179,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      onChange={e=>{setDestination(e.target.value);setTargetHouseId('');}}>
      <option value="">Selecione uma região</option>
      {regions.map(region=><option key={region.regionId} value={region.regionId}>
-      {region.regionName} · Lei basal {region.basalDifficulty}
+      {region.regionName}{targetMode==='region'?' · Lei basal '+region.basalDifficulty:''}
      </option>)}
     </select>
    </label>
@@ -227,7 +227,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
     {(travelOnly||houseMode&&!canTargetHouse)
       ?<p><strong>Primeira etapa — deslocamento regional:</strong>
        {plan.travelRounds} désdia(s) de viagem ({plan.travelRounds*10} dias ordinários).
-       {travelOnly?'Este deslocamento não inclui investigação.':'A investigação da Casa dependerá de chegada registrada e escolha do alvo.'}</p>
+       {travelOnly?'Este deslocamento não inclui investigação.':houseStage==='select_house'?'O agente já está aqui: selecione uma Casa antes de planejar a investigação.':'A investigação da Casa dependerá de chegada registrada e escolha do alvo.'}</p>
       :<p><strong>{plan.travelRounds}</strong> désdia(s) de viagem + <strong>1</strong>
        de investigação = <strong>{plan.totalRounds} désdia(s)</strong> na prévia
        ({plan.totalRounds*10} dias ordinários).</p>}
@@ -268,7 +268,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      {!travelOnly&&returnToStart&&(forecast.returnArrivalDateKey
       ?<p>Retorno à região inicial: <strong>{formatDate(forecast.returnArrivalDateKey)}</strong> — {forecast.ordinaryDaysWithReturn} dias ordinários incluindo investigação.</p>
       :<p>Sem data de retorno: rota de volta ainda não homologada.</p>)}
-     {forecast.crossedFestivalsUntilConclusion.length>0&&<p>Festivais intercalares atravessados: {forecast.crossedFestivalsUntilConclusion.map(f=>f.name).join(', ')}. Eles não consomem dias de désdia.</p>}
+     {!travelOnly&&forecast.crossedFestivalsUntilConclusion.length>0&&<p>Festivais intercalares atravessados: {forecast.crossedFestivalsUntilConclusion.map(f=>f.name).join(', ')}. Eles não consomem dias de désdia.</p>}
     </div>:<p role="note">O Hub Temporal oficial não está disponível; os valores em rodadas continuam válidos, mas não há datas de chegada confirmáveis.</p>}
     <small>Prévia estratégica, não uma missão registrada. O avanço e a publicação do tempo permanecem exclusivos do Narrador.</small>
    </div>:plan&&<p role="status" className="house-caption">{message[plan.status]}</p>}
