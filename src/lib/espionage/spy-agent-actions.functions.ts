@@ -31,14 +31,9 @@ export const buySpyAgentUpgrade=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(purchaseInput)
  .handler(async({data,context})=>{
-  const sheet=await context.supabase.from('noble_house_sheets')
-   .select('state,version').eq('house_id',data.houseId).maybeSingle();
-  if(sheet.error||!sheet.data||sheet.data.version!==data.expectedHouseVersion)
-   throw new Error('Ficha desatualizada ou não autorizada; recarregue antes de comprar.');
-  const {balances}=await import('@/lib/house/engine');
-  const state=sheet.data.state as unknown as import('@/lib/house/types').HouseState;
-  if(balances(state).available.wealth<1)
-   throw new Error('Sem recursos: cada extra custa 1 ponto de Riqueza disponível.');
+  // The database function authorizes the House, verifies balance and version
+  // under a transaction lock, and writes the ledger. An auxiliary direct
+  // sheet read could be blocked by RLS and incorrectly hide the roster.
   const rpc=context.supabase.rpc as unknown as Rpc;
   const result=await rpc('spy_buy_agent_upgrade',{
    p_house:data.houseId,p_agent:data.agentId,p_code:data.code,
@@ -65,6 +60,70 @@ export const recruitSpyAgent=createServerFn({method:'POST'})
   const parsed=recruitResult.safeParse(result.data);
   if(!parsed.success)throw new Error('Novo agente não pôde ser confirmado.');
   return parsed.data;
+ });
+
+
+const createSpyInput=z.object({
+ houseId:z.string().min(1).max(100),
+ sourceHoldingId:z.string().min(1).max(160),
+ codename:z.string().trim().min(2).max(80).refine(x=>!/[\x00-\x1f\x7f]/.test(x)),
+ portraitId:z.string().min(1).max(80).nullable(),
+ upgrades:z.array(z.enum(['forged_documents','ace_in_the_hole'])).max(2)
+  .refine(x=>new Set(x).size===x.length,'Melhoria repetida'),
+ requestKey:z.string().uuid(),
+}).strict();
+const createSpyResult=z.object({
+ id:z.string().uuid(),codename:z.string().min(2),
+ rank:z.literal('Verde'),cunning:z.literal(3),
+ status:z.literal('available'),missionSuccesses:z.literal(0),
+ portraitId:z.string().nullable(),version:z.number().int().positive(),
+ upgrades:z.array(z.enum(['forged_documents','ace_in_the_hole'])).max(2),
+ alreadyApplied:z.boolean(),
+}).strict();
+/** Single PostgreSQL transaction: creates the agent, reserves its portrait,
+ * purchases upgrades and records all wealth debits. Any failure rolls back
+ * the agent and BOTH upgrades together.
+ */
+export const createSpyAgent=createServerFn({method:'POST'})
+ .middleware([requireSupabaseAuth])
+ .inputValidator(createSpyInput)
+ .handler(async({data,context})=>{
+  const rpc=context.supabase.rpc as unknown as Rpc;
+  const result=await rpc('spy_create_agent',{
+   p_house:data.houseId,p_source_holding:data.sourceHoldingId,
+   p_codename:data.codename,p_portrait:data.portraitId,
+   p_upgrades:data.upgrades,p_request_key:data.requestKey,
+  });
+  if(result.error)throw new Error('Não foi possível criar o espião. Confira a vaga, o retrato selecionado e a Riqueza da Casa.');
+  const validated=createSpyResult.safeParse(result.data);
+  if(!validated.success||validated.data.codename!==data.codename||
+    validated.data.upgrades.length!==data.upgrades.length)
+   throw new Error('Criação de espião não confirmada pelo servidor.');
+  return validated.data;
+ });
+
+const portraitInput=z.object({
+ houseId:z.string().min(1).max(100),
+ agentId:z.string().uuid(),portraitId:z.string().min(1).max(80),
+ expectedVersion:z.number().int().positive(),
+}).strict();
+export const assignSpyPortrait=createServerFn({method:'POST'})
+ .middleware([requireSupabaseAuth])
+ .inputValidator(portraitInput)
+ .handler(async({data,context})=>{
+  const rpc=context.supabase.rpc as unknown as Rpc;
+  const result=await rpc('spy_assign_agent_portrait',{
+   p_house:data.houseId,p_agent:data.agentId,p_portrait:data.portraitId,
+   p_expected_version:data.expectedVersion,
+  });
+  if(result.error)throw new Error('Não foi possível escolher esta foto. Ela pode ter sido reservada por outro agente.');
+  const validated=z.object({
+   agentId:z.string().uuid(),portraitId:z.string(),version:z.number().int().positive(),
+  }).strict().safeParse(result.data);
+  if(!validated.success||validated.data.agentId!==data.agentId||
+   validated.data.portraitId!==data.portraitId)
+   throw new Error('Retrato não confirmado pelo servidor.');
+  return validated.data;
  });
 
 const resolveInput=z.object({

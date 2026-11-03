@@ -4,7 +4,6 @@ import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
 const input=z.object({houseId:z.string().trim().min(1).max(100)}).strict();
 const status=z.enum(['available','assigned','traveling','operating','returning',
  'missing','captured','retired','lost','dead','pending_review']);
-const upgradeCode=z.enum(['forged_documents','ace_in_the_hole']);
 export const agentRowSchema=z.object({
  id:z.string().uuid(),codename:z.string().min(1).max(160),
  status,version:z.number().int().positive(),currentRegion:z.string().nullable(),
@@ -12,9 +11,9 @@ export const agentRowSchema=z.object({
  rank:z.enum(['Verde','Treinada','Veterana','Elite']),
  cunning:z.number().int().min(3).max(6),
  toNextRank:z.number().int().min(0).max(3),
- sourceHoldingId:z.string().nullable(),
- forgedDocuments:z.boolean().default(false),
- aceInTheHole:z.boolean().default(false),
+ sourceHoldingId:z.string().nullable(),portraitId:z.string().nullable(),
+ forgedDocuments:z.boolean(),
+ aceInTheHole:z.boolean(),
 }).strict();
 const operationRowSchema=z.object({
  id:z.string().uuid(),assetId:z.string().uuid(),missionKind:z.string().min(1),
@@ -46,9 +45,15 @@ export const spyManagementSchema=z.object({
  operations:z.array(operationRowSchema).max(5000),
  history:z.array(historySchema).max(15000),
  recruitment:z.array(recruitmentSchema).max(100),
+ houseVersion:z.number().int().nonnegative(),
+ portraits:z.array(z.object({
+  id:z.string().min(1).max(80),label:z.string().min(1).max(100),
+  imageUrl:z.string().url().startsWith('https://'),
+  assignedAgentId:z.string().uuid().nullable(),
+ }).strict()).max(1000),
 }).strict();
 export type SpyManagement=z.infer<typeof spyManagementSchema> & {
- houseVersion:number; availableWealth:number|null;
+availableWealth:number|null;
 };
 type RpcResult={data:unknown;error:{message:string}|null};
 type Rpc=(name:string,args:Record<string,unknown>)=>Promise<RpcResult>;
@@ -62,47 +67,31 @@ export const loadSpyHouseManagement=createServerFn({method:'POST'})
  .handler(async({data,context})=>{
   const rpc=context.supabase.rpc as unknown as Rpc;
   const result=await rpc('spy_house_management',{p_house:data.houseId});
-  if(result.error)throw new Error('Gerenciamento de agentes indisponível ou não autorizado.');
+  if(result.error){
+   const denied=/não autorizado|nao autorizado|permission|unauthorized|JWT/i.test(result.error.message);
+   throw new Error(denied
+    ?'Seu acesso aos agentes desta Casa não está autorizado.'
+    :'Não foi possível consultar os agentes. Atualize a tela e tente novamente.');
+  }
   const parsed=spyManagementSchema.safeParse(result.data);
   if(!parsed.success||parsed.data.houseId!==data.houseId)
    throw new Error('Dados de espionagem inconsistentes para esta Casa.');
 
   const sheet=await context.supabase.from('noble_house_sheets')
    .select('state,version').eq('house_id',data.houseId).maybeSingle();
-  if(sheet.error)throw new Error('Não foi possível conferir a Riqueza disponível da Casa.');
+  // Wealth is supplementary: a sheet-RLS denial or pending migration must
+  // never erase an already authorized agent roster. Protected SQL enforces
+  // affordability at purchase time regardless of this UI estimate.
   let availableWealth:number|null=null;
-  if(sheet.data?.state){
-   const state=sheet.data.state as unknown as import('@/lib/house/types').HouseState;
-   const {balances}=await import('@/lib/house/engine');
-   const amount=balances(state).available.wealth;
-   availableWealth=Number.isSafeInteger(amount)?amount:null;
+  if(!sheet.error&&sheet.data?.state){
+   try{
+    const state=sheet.data.state as unknown as import('@/lib/house/types').HouseState;
+    const {balances}=await import('@/lib/house/engine');
+    const amount=balances(state).available.wealth;
+    availableWealth=Number.isSafeInteger(amount)?amount:null;
+   }catch{availableWealth=null;}
   }
-  const ids=parsed.data.agents.map(a=>a.id);
-  type UpgradeRow={agent_id:string;upgrade_code:string};
-  type UpgradeResponse={data:UpgradeRow[]|null;error:{message:string}|null};
-  type UpgradeTable={
-   select:(columns:string)=>{in:(field:string,ids:string[])=>Promise<UpgradeResponse>};
-  };
-  const db=context.supabase as unknown as {from:(table:string)=>UpgradeTable};
-  const purchased=ids.length?await db.from('spy_agent_upgrades')
-   .select('agent_id,upgrade_code').in('agent_id',ids):{data:[],error:null};
-  if(purchased.error)throw new Error('Não foi possível consultar as compras dos agentes.');
-  const upgradesByAgent=new Map<string,Set<string>>();
-  for(const raw of purchased.data??[]){
-   const item=z.object({agent_id:z.string().uuid(),upgrade_code:upgradeCode}).safeParse(raw);
-   if(!item.success||!ids.includes(item.data.agent_id))
-    throw new Error('Equipamento retornou identidade de agente inválida.');
-   const set=upgradesByAgent.get(item.data.agent_id)??new Set<string>();
-   set.add(item.data.upgrade_code);upgradesByAgent.set(item.data.agent_id,set);
-  }
-  return {
-   ...parsed.data,
-   agents:parsed.data.agents.map(a=>({
-    ...a,forgedDocuments:upgradesByAgent.get(a.id)?.has('forged_documents')??false,
-    aceInTheHole:upgradesByAgent.get(a.id)?.has('ace_in_the_hole')??false,
-   })),
-   houseVersion:sheet.data?.version??0,availableWealth,
-  };
+  return {...parsed.data,availableWealth};
  });
 const renameSchema=input.extend({
  agentId:z.string().uuid(),expectedVersion:z.number().int().positive(),
