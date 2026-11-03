@@ -39,7 +39,14 @@ export const previewSpyMissionOdds=createServerFn({method:'POST'})
    source.data.agentId!==data.agentId||source.data.targetHouseId!==data.targetHouseId||
    !regionId(source.data.targetRegionId))
    throw new Error('Resposta de espionagem inconsistente; nenhum percentual foi calculado.');
-  const perks=await context.supabase.from('spy_agent_upgrades')
+  type GearRow={upgrade_code:string};
+  type GearResponse={data:GearRow[]|null;error:{message:string}|null};
+  type GearSelect={
+   eq:(column:string,value:string)=>GearSelect&Promise<GearResponse>;
+  };
+  type GearTable={select:(columns:string)=>GearSelect};
+  const db=context.supabase as unknown as {from:(table:string)=>GearTable};
+  const perks=await db.from('spy_agent_upgrades')
    .select('upgrade_code').eq('owner_house_id',data.houseId).eq('agent_id',data.agentId);
   if(perks.error)throw new Error('Os equipamentos do agente não puderam ser verificados.');
   const codes=new Set((perks.data??[]).map(v=>v.upgrade_code));
