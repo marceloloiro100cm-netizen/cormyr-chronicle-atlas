@@ -76,7 +76,7 @@ describe('Mapa político narratorial · 11 regiões e deslocamento em désdias',
    passage:'sea_passage',bidirectional:true,version:1,
   });
   expect(cormyrPreviewLinks([])).toHaveLength(20);
-  for(const [from,to] of [['dragoncoast','crownlands'],['crownlands','dragoncoast']]){
+  for(const [from,to] of [['dragoncoast','crownlands'],['crownlands','dragoncoast']] as const){
    const landOnly=travel(from,to,[],false);
    const withSea=travel(from,to,[],true);
    if(landOnly.status!=='ready'||withSea.status!=='ready')throw new Error('Map route missing');
