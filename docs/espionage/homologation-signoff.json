@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "module": "CCA-ESP-MVP-001",
+  "environment": "restored-production-staging",
+  "status": "PENDING",
+  "stagingProjectId": null,
+  "reviewedCommit": null,
+  "narratorReviewerId": null,
+  "narratorSignedAt": null,
+  "backupRestoreEvidenceUrl": null,
+  "instructions": "Só marcar accepted após execução real na cópia RESTAURADA de produção, com JWT de duas Casas e Narrador; testes CI descartáveis NÃO são aceite.",
+  "scenarios": [
+    {
+      "id": "H01",
+      "description": "Rede base: 10 Riqueza alocada e 1 agente",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H02",
+      "description": "Rede Ampliada repetível: dois lotes geram 4 agentes",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H03",
+      "description": "Contratação avulsa: 5 Riqueza por 2 agentes, duas compras",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H04",
+      "description": "Sem Riqueza: compra rejeitada sem mutação do ledger",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H05",
+      "description": "Dois agentes em destinos distintos sem sobreposição",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H06",
+      "description": "Três trechos e retorno com 10 dias por désdia",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H07",
+      "description": "Sem rota ou Lei NPC: nenhuma previsão inventada",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H08",
+      "description": "Casa A não acessa ficha privada da Casa B",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H09",
+      "description": "Lei e contramedidas do alvo homologadas pelo Narrador",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H10",
+      "description": "Carta 4/8 com cobertura de 50% e fatos aprovados",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H11",
+      "description": "Carta selada invisível; liberada apenas após condição",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H12",
+      "description": "Casa B não abre carta ou dossiê de A por ID",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H13",
+      "description": "Conclusão excepcional justificada sem alterar calendário",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H14",
+      "description": "Saltos de 1/3 désdias e replay não duplicam chegadas",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H15",
+      "description": "Retrocesso temporal preserva eventos e reconciliação",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H16",
+      "description": "Captura explícita, perdas e ledger sem inconsistência",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H17",
+      "description": "Busca, exportação, logs sem fatos selados e Lei privada",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H18",
+      "description": "Responsividade mobile, teclado e acessibilidade",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H19",
+      "description": "Revogação de vínculo impede acesso e mutações posteriores",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    },
+    {
+      "id": "H20",
+      "description": "Retorno aprovado e versões históricas do dossiê preservadas",
+      "status": "PENDING",
+      "evidenceUrl": null,
+      "reviewerId": null,
+      "reviewedCommit": null,
+      "executedAt": null
+    }
+  ]
+}
