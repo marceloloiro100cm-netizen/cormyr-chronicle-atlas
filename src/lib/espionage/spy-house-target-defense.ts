@@ -2,9 +2,11 @@
  *
  * Rules approved by the Narrator (2026-11-03):
  *   - sheet exists -> effective Law of that house + applicable active holdings;
- *   - no sheet exists -> official region's Law bonus + fixed 10 NPC baseline;
+ *   - no operational sheet but a 03/11/2026 authoritative import -> imported Law;
+ *   - neither source exists -> regional Law +10 as a LAST RESORT;
  *   - a simple regional recon -> region Law alone (public-strategy.ts).
  *
+ * The presence of an imported authoritative record must be checked by a narrator-only RPC.
  * "No sheet" must be established by an authorized server-side existence query.
  * NEVER convert permission errors, malformed sheets or draft/review phases into
  * NPC fallback. This module does NOT return defense to an attacking player.
@@ -17,10 +19,11 @@ export const UNFICHED_NOBLE_HOUSE_LAW_BONUS=10;
 
 export type SpyHouseDefenseRequest=
  |{kind:'with_sheet';state:HouseState;region:string;domainId?:string}
+ |{kind:'with_imported_stats';region:string;importedLaw:number;sourceRow:number}
  |{kind:'without_sheet';region:string};
 
 export type SpyHouseDefenseResolution={
- source:'own_house_sheet'|'regional_npc_fallback';
+ source:'own_house_sheet'|'imported_noble_sheet'|'regional_npc_fallback';
  law:number;
  regionalLaw:number|null;
  baseDifficulty:number;
@@ -33,6 +36,14 @@ export type SpyHouseDefenseResolution={
 export function resolveSpyHouseDefense(input:SpyHouseDefenseRequest):SpyHouseDefenseResolution{
  const id=regionId(input.region);
  if(!id)throw new Error('A Casa não tem região oficial reconhecida. O Narrador deve revisar o cadastro.');
+ if(input.kind==='with_imported_stats'){
+  if(!Number.isSafeInteger(input.importedLaw)||input.importedLaw<0||
+     input.importedLaw>100000||!Number.isInteger(input.sourceRow)||input.sourceRow<2)
+   throw new Error('Lei importada inválida ou sem proveniência de linha da planilha.');
+  return {source:'imported_noble_sheet',law:input.importedLaw,
+   regionalLaw:null,baseDifficulty:input.importedLaw,constructionBonus:0,
+   difficulty:input.importedLaw,domainId:null,sources:[]};
+ }
  if(input.kind==='without_sheet'){
   const regionalLaw=regionBonus(id).law;
   if(!Number.isFinite(regionalLaw)||regionalLaw<0)
