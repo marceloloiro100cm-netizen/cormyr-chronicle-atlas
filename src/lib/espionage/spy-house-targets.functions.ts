@@ -4,7 +4,7 @@ import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
 import {regionId} from '@/lib/house/regions';
 
 const rowSchema=z.object({id:z.string().min(1).max(100),
- name:z.string().min(1).max(200),region:z.string().min(1).max(100)}).passthrough();
+ name:z.string().min(1).max(200),region:z.string().min(1).max(100)}).strict();
 export const spyHouseTargetSchema=z.object({
  id:z.string().min(1).max(100),name:z.string().min(1).max(200),
  regionId:z.string().min(1),
@@ -17,14 +17,15 @@ export const listSpyHouseTargets=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(z.object({}).strict())
  .handler(async({context})=>{
-  const active=await context.supabase.rpc('campaign_access_active');
-  if(active.error||active.data!==true)throw new Error('Campanha indisponível para este acesso.');
-  const response=await context.supabase.from('campaign_houses')
-   .select('id,name,region')
-   .eq('active',true).order('name').limit(500);
-  if(response.error)throw new Error('Não foi possível consultar o cadastro público de Casas.');
+  // House catalogue includes the 164 reviewed NPCs without sheets. Its
+  // raw archival JSON is private: this SECURITY DEFINER RPC returns ONLY
+  // id/name/region for all 172 reviewed Houses, and checks active JWT.
+  const response=await context.supabase.rpc('spy_public_house_targets');
+  if(response.error)throw new Error('Catálogo público de Casas ainda não homologado para espionagem.');
+  const safeRows=z.array(rowSchema).max(500).safeParse(response.data);
+  if(!safeRows.success)throw new Error('Catálogo de Casas retornou dados inesperados.');
   const targets: z.infer<typeof spyHouseTargetSchema>[]=[];
-  for(const raw of response.data??[]){
+  for(const raw of safeRows.data){
    const parsed=rowSchema.safeParse(raw);
    if(!parsed.success)continue;
    const region=regionId(parsed.data.region);
