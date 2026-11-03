@@ -113,7 +113,9 @@ BEGIN
  WHERE c.active=true;
  RETURN jsonb_build_object(
   'houseId',p_house,'agents',v_agents,'operations',v_operations,
-  'history',v_history,'recruitment',v_recruitment,'portraits',v_portraits);
+  'history',v_history,'recruitment',v_recruitment,'portraits',v_portraits,
+  'houseVersion',(SELECT n.version FROM public.noble_house_sheets n
+    WHERE n.house_id=p_house));
 END $body$;
 -- Evitar consultas diretas adicionais a posse/privilegio do jogador:
 -- Dados de equipamento e catálogo de retratos vêm somente da leitura
