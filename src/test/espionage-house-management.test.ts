@@ -3,6 +3,7 @@ import {newHouseState,type Holding} from '@/lib/house/types';
 import {calculateSpyDefense,spyDiscoveryBaseDifficulty,SPY_HOLDING_ID_SET} from '@/lib/espionage/spy-defense';
 import {spyMissionProgress} from '@/components/house/espionage/spy-house-management';
 import {spyHouseTargetStage} from '@/lib/espionage/spy-target-stages';
+import type {SpyRegionalAgent} from '@/lib/espionage/region-turns';
 import {spyRegionalBaseline} from '@/lib/espionage/public-strategy';
 import {resolveSpyHouseDefense} from '@/lib/espionage/spy-house-target-defense';
 function holding(itemId:string,domainId='d1',status:'active'|'building'|'destroyed'='active',parentId?:string):Holding{
@@ -73,7 +74,7 @@ describe('Defesa de Espionagem · Lei e construções reais',()=>{
 });
 type Operation=Parameters<typeof spyMissionProgress>[0];
 describe('Duas etapas de espionagem: região primeiro, Casa depois',()=>{
- const agent={id:'11111111-1111-4111-8111-111111111111',
+ const agent:SpyRegionalAgent={id:'11111111-1111-4111-8111-111111111111',
   codename:'Agente da Rede',status:'available' as const,currentRegion:'dragoncoast'};
  const houses=[
   {id:'ashkar',name:'Ashkar',regionId:'dragoncoast'},
