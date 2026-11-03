@@ -64,8 +64,10 @@ BEGIN
   OR EXISTS(SELECT 1 FROM public.noble_house_ledger l
     WHERE l.house_id=p_house AND l.operation_key=p_key)
  THEN RAISE EXCEPTION 'Chave já utilizada em outra compra'; END IF;
- IF v_a.status IN('dead','captured','lost','retired')
- THEN RAISE EXCEPTION 'Não é possível equipar um agente fora de serviço'; END IF;
+ IF v_a.status<>'available' OR EXISTS(
+  SELECT 1 FROM public.spy_operations o WHERE o.asset_id=p_agent
+    AND o.status NOT IN('completed','cancelled'))
+ THEN RAISE EXCEPTION 'Equipe o agente somente antes de uma missão, quando disponível'; END IF;
  IF v_a.version<>p_expected_agent_version OR v_h.version<>p_expected_house_version
  THEN RAISE EXCEPTION 'Ficha alterada. Recarregue antes de comprar'; END IF;
  IF EXISTS(SELECT 1 FROM public.spy_agent_upgrades x
