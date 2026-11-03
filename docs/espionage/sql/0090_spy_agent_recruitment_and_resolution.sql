@@ -101,6 +101,7 @@ DECLARE
  v_new_rank integer;v_old_rank integer;v_guard boolean;v_prison boolean;
  v_region text;v_region_law integer;v_source text;v_calendar record;
  v_day text;v_old_event record;v_num integer;v_cunning integer;v_detail text;
+ v_forged boolean;v_ace boolean;v_effective_degrees integer;
 BEGIN
  IF auth.uid() IS NULL OR NOT public.campaign_access_active() OR
     NOT public.is_campaign_admin()
@@ -221,11 +222,18 @@ BEGIN
  v_dc:=6+3*least(5,v_defense/20);
  v_total:=p_roll+p_modifier;
  v_degrees:=ceil(greatest(0,v_dc-v_total)/5.0)::integer;
+ SELECT EXISTS(SELECT 1 FROM public.spy_agent_upgrades x
+    WHERE x.agent_id=v_agent.id AND x.upgrade_code='forged_documents'),
+        EXISTS(SELECT 1 FROM public.spy_agent_upgrades x
+    WHERE x.agent_id=v_agent.id AND x.upgrade_code='ace_in_the_hole')
+ INTO v_forged,v_ace;
+ v_effective_degrees:=greatest(1,v_degrees-CASE WHEN v_forged THEN 1 ELSE 0 END);
  IF v_total>=v_dc THEN v_outcome:='mission_success';
  ELSIF NOT p_discovered THEN v_outcome:='mission_failure';
- ELSIF v_degrees<=1 THEN v_outcome:='escaped';
- ELSIF v_degrees>=3 AND v_law>=30 AND v_guard THEN v_outcome:='dead';
- ELSIF v_degrees>=2 AND v_law>=15 AND v_guard AND v_prison
+ ELSIF v_effective_degrees<=1 THEN v_outcome:='escaped';
+ ELSIF v_effective_degrees>=3 AND v_law>=30 AND v_guard THEN
+  v_outcome:=CASE WHEN v_ace THEN 'captured' ELSE 'dead' END;
+ ELSIF v_effective_degrees>=2 AND v_law>=15 AND v_guard AND v_prison
   THEN v_outcome:='captured';
  ELSE v_outcome:='escaped';
  END IF;
@@ -299,6 +307,8 @@ BEGIN
    jsonb_build_object('roll',p_roll,'cunning',v_cunning,
      'modifier',p_modifier,'discovered',p_discovered,'degrees',v_degrees,
      'guardPresent',v_guard,'prisonPresent',v_prison,
+     'forgedDocuments',v_forged,'aceInTheHole',v_ace,
+     'effectiveFailureDegrees',v_effective_degrees,
      'outcome',v_outcome,'provenance',v_source),
    CASE v_outcome WHEN 'mission_success' THEN 'success'
     WHEN 'mission_failure' THEN 'failure' ELSE v_outcome END,
@@ -318,7 +328,8 @@ BEGIN
   'cunning',3+v_new_rank,'missionSuccesses',v_new_successes,
   'promoted',v_new_rank>v_old_rank,'status',v_new_status,
   'dateKey',v_day,'targetName',v_target.name,
-  'failureDegrees',v_degrees,'difficulty',v_dc);
+  'failureDegrees',v_degrees,'effectiveFailureDegrees',v_effective_degrees,
+  'forgedDocuments',v_forged,'aceInTheHole',v_ace,'difficulty',v_dc);
 END $body$;
 
 REVOKE ALL ON FUNCTION public.spy_recruit_agent(text,text,text,uuid) FROM PUBLIC,anon;
