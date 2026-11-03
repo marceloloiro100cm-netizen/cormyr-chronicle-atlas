@@ -181,5 +181,23 @@ export function HouseAssetCatalog({section,state,catalog,canEdit,busy,onBuy,onCo
   {visible.length>limit&&<Button type="button" variant="outline"
    onClick={()=>setLimit(n=>n+24)}>Mostrar mais ({visible.length-limit} restantes)
    <ChevronDown size={16}/></Button>}
+  {section==='spy'&&<details className="house-ledger" style={{marginTop:14,padding:12}}>
+   <summary>Entenda os termos usados nas construções de espionagem</summary>
+   <p><strong>Astúcia:</strong> habilidade do espião usada nos testes. Os níveis
+    Verde, Treinada, Veterana e Elite determinam quantos dados ele utiliza.</p>
+   <p><strong>Contatos:</strong> rede de conhecidos e informantes que ajuda a obter
+    informações. Um bônus de Contatos não equivale a um bônus de Astúcia.</p>
+   <p><strong>Sorte da Casa:</strong> rolagem para determinar acontecimentos
+    econômicos e políticos da Casa. Bônus de Sorte não são bônus de espionagem.</p>
+   <p><strong>Mitigação:</strong> redução de uma perda de recurso quando ocorre
+    a situação especificada na regra.</p>
+   <p><strong>Recurso alocado:</strong> pontos reservados para manter uma posse.
+    <strong> Gasto permanente:</strong> redução definitiva do recurso.</p>
+   <p><strong>Dados de seis faces:</strong> quando a regra exige rolar dados para
+    o tempo de construção, a quantidade de meses sorteada é adicionada ao prazo fixo.</p>
+   <p><strong>Bônus local:</strong> funciona somente no domínio ou comunidade
+    protegida. <strong>Bônus geral:</strong> funciona em todos os domínios da Casa,
+    quando a construção estiver ativa.</p>
+  </details>}
  </section>;
 }
