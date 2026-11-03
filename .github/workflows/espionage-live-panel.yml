@@ -28,7 +28,7 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
       - name: Regional routing and narrator approval schemas
-        run: bunx vitest run src/test/espionage-region-turns.test.ts src/test/espionage-region-review.test.ts src/test/espionage-cormyr-map.test.tsx src/test/espionage-house-management.test.ts
+        run: bunx vitest run src/test/espionage-region-turns.test.ts src/test/espionage-region-review.test.ts src/test/espionage-cormyr-map.test.tsx src/test/espionage-house-management.test.ts src/test/espionage-npc-defense.test.ts
       - name: Harptos desdia time projections
         run: bunx vitest run src/test/espionage-desdia-temporal.test.ts
       - name: Scoped TypeScript verification (spy module and integration)
