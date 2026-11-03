@@ -78,12 +78,18 @@ export const loadSpyHouseManagement=createServerFn({method:'POST'})
    availableWealth=Number.isSafeInteger(amount)?amount:null;
   }
   const ids=parsed.data.agents.map(a=>a.id);
-  const purchased=ids.length?await context.supabase.from('spy_agent_upgrades')
+  type UpgradeRow={agent_id:string;upgrade_code:string};
+  type UpgradeResponse={data:UpgradeRow[]|null;error:{message:string}|null};
+  type UpgradeTable={
+   select:(columns:string)=>{in:(field:string,ids:string[])=>Promise<UpgradeResponse>};
+  };
+  const db=context.supabase as unknown as {from:(table:string)=>UpgradeTable};
+  const purchased=ids.length?await db.from('spy_agent_upgrades')
    .select('agent_id,upgrade_code').in('agent_id',ids):{data:[],error:null};
   if(purchased.error)throw new Error('Não foi possível consultar as compras dos agentes.');
   const upgradesByAgent=new Map<string,Set<string>>();
   for(const raw of purchased.data??[]){
-   const item=z.object({agent_id:z.string().uuid(),upgrade_code}).safeParse(raw);
+   const item=z.object({agent_id:z.string().uuid(),upgrade_code:upgradeCode}).safeParse(raw);
    if(!item.success||!ids.includes(item.data.agent_id))
     throw new Error('Equipamento retornou identidade de agente inválida.');
    const set=upgradesByAgent.get(item.data.agent_id)??new Set<string>();
