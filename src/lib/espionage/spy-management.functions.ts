@@ -45,6 +45,7 @@ export const spyManagementSchema=z.object({
  operations:z.array(operationRowSchema).max(5000),
  history:z.array(historySchema).max(15000),
  recruitment:z.array(recruitmentSchema).max(100),
+ houseVersion:z.number().int().nonnegative(),
  portraits:z.array(z.object({
   id:z.string().min(1).max(80),label:z.string().min(1).max(100),
   imageUrl:z.string().url().startsWith('https://'),
@@ -52,7 +53,7 @@ export const spyManagementSchema=z.object({
  }).strict()).max(1000),
 }).strict();
 export type SpyManagement=z.infer<typeof spyManagementSchema> & {
- houseVersion:number; availableWealth:number|null;
+availableWealth:number|null;
 };
 type RpcResult={data:unknown;error:{message:string}|null};
 type Rpc=(name:string,args:Record<string,unknown>)=>Promise<RpcResult>;
@@ -90,7 +91,7 @@ export const loadSpyHouseManagement=createServerFn({method:'POST'})
     availableWealth=Number.isSafeInteger(amount)?amount:null;
    }catch{availableWealth=null;}
   }
-  return {...parsed.data,houseVersion:sheet.data?.version??0,availableWealth};
+  return {...parsed.data,availableWealth};
  });
 const renameSchema=input.extend({
  agentId:z.string().uuid(),expectedVersion:z.number().int().positive(),
