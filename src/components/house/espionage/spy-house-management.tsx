@@ -7,6 +7,7 @@ import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {advanceHarptosDesdia,listCrossedHarptosPeriods} from '@/lib/calendar/temporal-engine';
 import {calculateSpyDefense} from '@/lib/espionage/spy-defense';
+import {spyLawDifficultyTable} from '@/lib/espionage/spy-law-difficulty';
 import {loadSpyHouseManagement,renameSpyAgent,type SpyManagement} from '@/lib/espionage/spy-management.functions';
 import type {HouseState} from '@/lib/house/types';
 import {REGIONS} from '@/lib/house/regions';
@@ -66,6 +67,7 @@ export function spyMissionProgress(operation:Mission|null,officialDate:string|nu
 export function SpyDefensePanel({state}:{state:HouseState}){
  const defense=calculateSpyDefense(state);
  const general=defense.baseDifficulty+defense.globalBonuses;
+ const difficultyTable=spyLawDifficultyTable();
  return <section className="house-panel" aria-label="Defesa de Espionagem">
   <div className="house-section-heading"><div>
    <p className="campaign-eyebrow">CONTRAESPIONAGEM</p>
@@ -100,11 +102,25 @@ export function SpyDefensePanel({state}:{state:HouseState}){
   {defense.otherEffects.length>0&&<details className="house-ledger"><summary>Proteções e efeitos especiais (sem bônus numérico de dificuldade)</summary>
    <ul>{defense.otherEffects.map((e,i)=><li key={i}>{e.name}: {e.description}</li>)}</ul>
   </details>}
-  <details className="house-ledger"><summary>Entenda a conversão da Lei</summary>
-   <p>A Lei {defense.law} desta Casa corresponde à dificuldade-base
-    <strong> {defense.spyCellDiscoveryDifficulty}</strong>.
-    É essa dificuldade, e não o valor bruto de Lei, que recebe os bônus
-    específicos de contraespionagem dos domínios.</p>
+  <details className="house-ledger">
+   <summary>Consultar tabela Lei × Dificuldade (inclusive acima de 59)</summary>
+   <p className="house-caption">A Lei {defense.law} desta Casa gera dificuldade-base
+    <strong> {defense.spyCellDiscoveryDifficulty}</strong>, antes das construções.
+    As faixas acima de 59 continuam a mesma progressão de +3 a cada 5 pontos,
+    como regra estendida de Cormyr.</p>
+   <div style={{overflowX:'auto'}}>
+    <table><thead><tr><th scope="col">Lei da Casa</th>
+     <th scope="col">Dificuldade-base</th><th scope="col">Origem</th></tr></thead>
+     <tbody>{difficultyTable.map(band=><tr key={band.lawMin}>
+      <td>{band.lawMin}–{band.lawMax}</td>
+      <td><strong>{band.difficulty}</strong></td>
+      <td>{band.source==='livro'?'Livro':'Extensão de Cormyr'}</td>
+     </tr>)}</tbody>
+    </table>
+   </div>
+   <p className="house-caption">A tabela exibe até Lei 104, mas o cálculo não termina aí.
+    Lei 105–109 gera dificuldade 51, Lei 110–114 gera 54, e assim por diante,
+    sem teto de dificuldade. Os bônus de construções são acrescentados depois.</p>
   </details>
   <small>A dificuldade de espionagem é calculada a partir da Lei mais os bônus
    pertinentes. A probabilidade de sucesso depende da Astúcia do agente,
