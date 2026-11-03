@@ -2,6 +2,8 @@ import {describe,it,expect} from 'vitest';
 import {newHouseState,type Holding} from '@/lib/house/types';
 import {calculateSpyDefense,spyDiscoveryBaseDifficulty,SPY_HOLDING_ID_SET} from '@/lib/espionage/spy-defense';
 import {spyMissionProgress} from '@/components/house/espionage/spy-house-management';
+import {spyHouseTargetStage} from '@/lib/espionage/spy-target-stages';
+import {spyRegionalBaseline} from '@/lib/espionage/public-strategy';
 function holding(itemId:string,domainId='d1',status:'active'|'building'|'destroyed'='active',parentId?:string):Holding{
  return {id:'id-'+itemId+'-'+domainId,itemId,domainId,
   name:itemId,source:'Guerra dos Tronos RPG',status,
@@ -23,8 +25,9 @@ describe('Defesa de Espionagem · Lei e construções reais',()=>{
  });
  it('usa Lei efetiva da ficha importada, sem somar Lei regional duas vezes',()=>{
   const s=house();const d=calculateSpyDefense(s);
-  expect(d.law).toBe(35);expect(d.baseDifficulty).toBe(9);
-  expect(d.domains.map(row=>row.difficulty)).toEqual([9,9]);
+  expect(d.law).toBe(35);expect(d.baseDifficulty).toBe(35);
+  expect(d.spyCellDiscoveryDifficulty).toBe(9);
+  expect(d.domains.map(row=>row.difficulty)).toEqual([35,35]);
  });
  it('bônus locais de cães e oficiais investigativos somam apenas no domínio designado',()=>{
   const s=house();
@@ -34,7 +37,7 @@ describe('Defesa de Espionagem · Lei e construções reais',()=>{
   const training=holding('pros-bailiffs--investigative-training','d1','active',officers.id);
   s.holdings=[kennels,dogs,officers,training];
   const d=calculateSpyDefense(s);
-  expect(d.domains.map(v=>v.difficulty)).toEqual([15,9]);
+  expect(d.domains.map(v=>v.difficulty)).toEqual([41,35]);
   expect(d.domains[0]?.localBonuses).toBe(6);
   expect(d.globalBonuses).toBe(0);
  });
@@ -43,7 +46,7 @@ describe('Defesa de Espionagem · Lei e construções reais',()=>{
   s.holdings=[base,holding('pros-black-market--ear-in-the-underworld','d1','active',base.id)];
   const d=calculateSpyDefense(s);
   expect(d.globalBonuses).toBe(3);
-  expect(d.domains.map(v=>v.difficulty)).toEqual([12,12]);
+  expect(d.domains.map(v=>v.difficulty)).toEqual([38,38]);
  });
  it('destruir o pai, construir uma melhoria ou repeti-la não cria defesa falsa',()=>{
   const s=house();const base=holding('pros-bailiffs','d1','destroyed');
@@ -51,7 +54,7 @@ describe('Defesa de Espionagem · Lei e construções reais',()=>{
    base,holding('pros-bailiffs--investigative-training','d1','active',base.id),
    holding('pros-dog-kennels--guard-dogs','d2','building'),
   ];
-  expect(calculateSpyDefense(s).domains.map(v=>v.difficulty)).toEqual([9,9]);
+  expect(calculateSpyDefense(s).domains.map(v=>v.difficulty)).toEqual([35,35]);
  });
  it('bônus de Defesa de Intriga e proteção da própria rede não viram +3 de contraespionagem',()=>{
   const s=house();s.holdings=[holding('pros-rich'),holding('pros-spy-network--expert-spies')];
@@ -68,6 +71,40 @@ describe('Defesa de Espionagem · Lei e construções reais',()=>{
  });
 });
 type Operation=Parameters<typeof spyMissionProgress>[0];
+describe('Duas etapas de espionagem: região primeiro, Casa depois',()=>{
+ const agent={id:'11111111-1111-4111-8111-111111111111',
+  codename:'Agente da Rede',status:'available' as const,currentRegion:'dragoncoast'};
+ const houses=[
+  {id:'ashkar',name:'Ashkar',regionId:'dragoncoast'},
+  {id:'erdenor',name:'Erdenor',regionId:'horselands'},
+ ];
+ const choice=(agentOverride=agent,region='dragoncoast',target='ashkar',simulation=false)=>
+  spyHouseTargetStage({agent:agentOverride,selectedRegion:region,targetHouseId:target,
+   houseTargets:houses,simulation});
+ it('Casa na mesma região pode ser investigada quando agente está disponível',()=>{
+  expect(choice()).toBe('ready_for_house_planning');
+ });
+ it('exige uma viagem real antes de poder selecionar Casa em outra região',()=>{
+  expect(choice(agent,'horselands','erdenor')).toBe('requires_region_arrival');
+ });
+ it('origem simulada não autoriza atingir Casas fora da região real',()=>{
+  expect(choice(agent,'horselands','erdenor',true)).toBe('select_agent');
+ });
+ it('uma Casa de outra região não pode ser escolhida, nem por seleção manipulada',()=>{
+  expect(choice(agent,'dragoncoast','erdenor')).toBe('house_not_in_region');
+ });
+ it('um espião em operação não recebe uma nova missão contra Casa',()=>{
+  expect(choice({...agent,status:'operating'})).toBe('agent_unavailable');
+ });
+ it('base pública regional não se soma à Lei própria da Casa',()=>{
+  const s=house();const d=calculateSpyDefense(s);
+  expect(d.baseDifficulty).toBe(35);
+  expect(spyRegionalBaseline('dragoncoast')?.basalDifficulty).toBe(0);
+  expect(spyRegionalBaseline('crownlands')?.basalDifficulty).toBe(20);
+  expect(d.baseDifficulty).not.toBe(spyRegionalBaseline('crownlands')?.basalDifficulty);
+ });
+});
+
 describe('Tabela de gerenciamento · missão e prazos',()=>{
  const operation:NonNullable<Operation>={
   id:'11111111-1111-4111-8111-111111111111',
