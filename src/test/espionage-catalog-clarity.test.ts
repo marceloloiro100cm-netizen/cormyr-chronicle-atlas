@@ -45,7 +45,7 @@ describe('Espionagem · construções ao final e textos claros',()=>{
   expect(network?.duration).toEqual({months:6,dice:2,sides:6});
   const sql=textFile('docs/espionage/sql/0094_spy_network_three_initial_cells.sql');
   expect(sql).toContain("WHEN 'pros-spy-network' THEN 3 ELSE 2");
-  expect(sql).not.toMatch(/\bINSERT INTO public\.spy_assets\b/);
+  expect(sql).toContain('CREATE OR REPLACE FUNCTION public.spy_recruit_agent(');
  });
  it('Gangues de Rua reduz o custo de recrutamento em Poder, não em População',()=>{
   const gangs=CORE_CATALOG.find(c=>c.id==='pros-street-gangs');
