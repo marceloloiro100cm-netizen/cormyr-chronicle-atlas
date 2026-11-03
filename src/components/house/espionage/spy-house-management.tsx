@@ -68,15 +68,14 @@ export function SpyDefensePanel({state}:{state:HouseState}){
    <p className="campaign-eyebrow">CONTRAESPIONAGEM</p>
    <h3><ShieldCheck size={20} style={{display:'inline-block',verticalAlign:'middle'}}/> Defesa de Espionagem</h3>
   </div></div>
-  <p className="house-caption">Dificuldade para agentes hostis investigarem esta Casa.
-   Base conforme a Rede de Espiões do catálogo: Lei até 30 = dificuldade 6;
-   a cada 5 pontos <strong>completos</strong> de Lei acima de 30, +3.
-   As proteções ativas acrescentam bônus onde a fonte determina.</p>
+  <p className="house-caption">A Defesa de Espionagem usa a <strong>Lei efetiva desta Casa</strong>
+   e os bônus de suas construções ativas. Nenhum bônus basal regional é incluído.
+   A dificuldade basal de região só se aplica a reconhecimento regional sem Casa-alvo.</p>
   <div className="house-input-grid" style={{margin:'12px 0'}}>
    <div className="house-ledger"><strong>Lei efetiva da Casa</strong><h3>{defense.law}</h3>
     <small>Calculada pela ficha, não pela Lei basal da região.</small></div>
    <div className="house-ledger"><strong>Defesa geral de Espionagem</strong><h3>{general}</h3>
-    <small>Base {defense.baseDifficulty} + proteção geral {defense.globalBonuses}</small></div>
+    <small>Lei própria {defense.law} + proteção geral {defense.globalBonuses}</small></div>
   </div>
   {defense.globalSources.length>0&&<ul>
    {defense.globalSources.map(v=><li key={v.holdingId}>{v.name}: +{v.bonus} — {v.description}</li>)}
@@ -96,6 +95,12 @@ export function SpyDefensePanel({state}:{state:HouseState}){
   {defense.otherEffects.length>0&&<details className="house-ledger"><summary>Proteções e efeitos especiais (sem bônus numérico de dificuldade)</summary>
    <ul>{defense.otherEffects.map((e,i)=><li key={i}>{e.name}: {e.description}</li>)}</ul>
   </details>}
+  <details className="house-ledger"><summary>Teste separado · descoberta de célula de espionagem</summary>
+   <p>No teste específico de descoberta de células da Rede de Espiões, o livro traz dificuldade 6
+    para Lei até 30, acrescida de 3 a cada 5 pontos completos acima de 30.
+    Para esta Casa, a dificuldade desse teste é <strong>{defense.spyCellDiscoveryDifficulty}</strong>.
+    Isso não substitui a Defesa de Espionagem baseada na Lei efetiva.</p>
+  </details>
   <small>Não há porcentagem automática de sucesso nem bônus fictício por fortificações que defendem unidades.
    O Narrador continua responsável por julgar as ações.</small>
  </section>;
