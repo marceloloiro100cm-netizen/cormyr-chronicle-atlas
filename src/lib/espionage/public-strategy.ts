@@ -1,18 +1,21 @@
-/** Regras públicas do Narrador: bônus de Lei regional é o piso estratégico
- * da resistência à espionagem. Não é probabilidade, nem a Lei privada da Casa.
+/** Regional reconnaissance uses a public Law value converted to actual DC.
+ * House-targeted espionage always uses the House's OWN effective Law instead.
  */
 import {z} from 'zod';
 import {REGIONS,regionBonus,regionId} from '@/lib/house/regions';
+import {spyLawDifficulty} from './spy-law-difficulty';
 
 export function spyRegionalBaseline(region:string){
  const id=regionId(region);
  if(!id)return null;
+ const regionalLaw=regionBonus(id).law;
  return {regionId:id,regionName:REGIONS[id]!.name,
-  basalDifficulty:regionBonus(id).law,source:'regional_law_bonus' as const};
+  regionalLaw,basalDifficulty:spyLawDifficulty(regionalLaw),
+  source:'regional_law_bonus' as const};
 }
 export function allSpyRegionalBaselines(){
  return Object.keys(REGIONS).map(id=>spyRegionalBaseline(id)!).sort(
-  (a,b)=>b.basalDifficulty-a.basalDifficulty||a.regionName.localeCompare(b.regionName));
+  (a,b)=>b.regionalLaw-a.regionalLaw||a.regionName.localeCompare(b.regionName));
 }
 export const publicSpyGraphSchema=z.object({
  locations:z.array(z.object({

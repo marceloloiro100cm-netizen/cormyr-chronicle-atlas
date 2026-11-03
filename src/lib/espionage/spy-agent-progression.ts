@@ -59,6 +59,6 @@ export function spyDiscoveryConsequence(ctx:SpyFateContext):
  return {outcome:'escaped',degrees};
 }
 export function spyActiveCellCapacity(itemId:string){
- return itemId==='pros-spy-network'?1:
+ return itemId==='pros-spy-network'?3:
   itemId==='pros-spy-network--expanded-network'?2:0;
 }

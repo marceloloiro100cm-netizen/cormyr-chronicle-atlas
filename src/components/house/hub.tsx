@@ -152,13 +152,13 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
       </>}
       {section==='army'&&<Army commanders={courtMembers} state={state} houseName={house.name} onSiege={args=>run('siege',args)} onSiegeState={(args,reason)=>run('siege_state',args,reason)} admin={admin} onState={args=>run('unit_state',args)} onSurvivors={args=>run('survivors',args)} onTrain={(args,reason)=>run('train_unit',args,reason)} onEdit={args=>run('unit_edit',args)} onGrant={(args,reason)=>run('grant_unit_xp',args,reason)} onRename={args=>run('military_rename',args)} onConfigure={args=>run('military_config',args)} onWarHounds={args=>run('war_hounds',args)} onBroadTraining={args=>run('broad_training',args)} onBuyMilitary={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}} canEdit={monthlyCanEdit} busy={busy} onCreate={args=>run('unit',args)} onEquipment={args=>run('equipment',args)}/>}
       {section==='spy'&&<>
+       <SpyDefensePanel state={state}/>
+       <SpyAgentManagement houseId={house.id} canEdit={canEdit} admin={admin}/>
+       <SpyRegionalTurnsPanel houseId={house.id} admin={admin}/>
        <HouseAssetCatalog section="spy" state={state} catalog={catalog}
         canEdit={monthlyCanEdit} busy={busy}
         onBuy={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}}
         onCondition={(args,reason)=>run('condition',args,reason)}/>
-       <SpyDefensePanel state={state}/>
-       <SpyAgentManagement houseId={house.id} canEdit={canEdit} admin={admin}/>
-       <SpyRegionalTurnsPanel houseId={house.id} admin={admin}/>
       </>}
       {section==='vassals'&&<><Vassals catalog={catalog} onCreate={args=>run('vassal_create',args)} onPurchase={args=>run('vassal_purchase',args)} onDomain={args=>run('vassal_domain',args)} state={state} houses={houses} npcs={npcs} admin={admin} canEdit={canEdit} busy={busy} onPropose={args=>run('vassal',args)} onApprove={(args,note)=>run('vassal_approve',args,note)} onEnd={(args,note)=>run('vassal_end',args,note)} onLoyalty={(args,note)=>run('vassal_loyalty',args,note)}/></>}
       {section==='court'&&<>{npcManager}<p>Titular: {house.lord_name??'Não informado'}</p><Court state={state} members={courtMembers} canEdit={canEdit} busy={busy} onAssign={args=>run('court',args)} onRemove={id=>run('court_remove',{id},'Remoção de vínculo da Corte solicitada pelo gestor da casa.')}/></>}

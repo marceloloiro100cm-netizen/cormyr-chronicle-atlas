@@ -112,9 +112,10 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    <p>Esses valores são usados <strong>somente em investigações regionais</strong>.
      A defesa de uma Casa usa a Lei efetiva e as construções da própria Casa,
      sem somar a Lei regional; a prévia exibe apenas a resistência agregada, não a ficha completa do alvo.</p>
-   <table><thead><tr><th scope="col">Região</th><th scope="col">Lei basal</th></tr></thead>
+   <table><thead><tr><th scope="col">Região</th><th scope="col">Lei regional</th>
+    <th scope="col">Dificuldade do teste</th></tr></thead>
     <tbody>{regions.map(x=><tr key={x.regionId}><td>{x.regionName}</td>
-     <td>{x.basalDifficulty}</td></tr>)}</tbody>
+     <td>{x.regionalLaw}</td><td>{x.basalDifficulty}</td></tr>)}</tbody>
    </table>
   </details>
   <div className="house-ledger" style={{margin:'14px 0',display:'grid',gap:10}}>
@@ -160,7 +161,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      onChange={e=>{setDestination(e.target.value);setTargetHouseId('');}}>
      <option value="">Selecione uma região</option>
      {regions.map(region=><option key={region.regionId} value={region.regionId}>
-      {region.regionName}{targetMode==='region'?' · Lei basal '+region.basalDifficulty:''}
+      {region.regionName}{targetMode==='region'?' · dificuldade '+region.basalDifficulty:''}
      </option>)}
     </select>
    </label>
@@ -231,7 +232,8 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
        da Casa. {canTargetHouse
         ?'A dificuldade e a chance estimada aparecem no cartão acima; a resolução final cabe ao Narrador.'
         :'Aguarde a chegada regional antes de planejar a investigação da Casa.'}</p>
-      :<p>Dificuldade basal de reconhecimento regional: <strong>{plan.basalDifficulty} (Lei regional)</strong>.</p>}
+      :<p>Dificuldade de reconhecimento regional: <strong>{plan.basalDifficulty}</strong>
+       {' '}(convertida a partir da Lei da região, sem usar o número de Lei como dificuldade).</p>}
     {plan.legs.length===0?<p>{travelOnly?'O agente já está na região selecionada.':'A investigação ocorre na região atual do espião.'}</p>:
      <ol>{plan.legs.map((leg,i)=><li key={leg.connectionId+':'+i}>
       {name(leg.fromRegion)} → {name(leg.toRegion)} · 1 rodada
@@ -242,7 +244,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      :'Retorno: '+plan.returnRounds+' rodada(s). Total com missão e retorno: '+plan.totalWithReturnRounds+' rodada(s).'}</p>}
     {forecast?<div className="house-ledger" style={{marginTop:12}}>
      <h4>Datas previstas pelo Hub Temporal</h4>
-     <p>Partida a partir da data oficial: <strong>{formatDate(forecast.officialDateKey)}</strong> ({formatCampaignPeriod(campaignTime.data!)} · v{forecast.calendarVersion}).</p>
+     <p>Partida a partir da data oficial: <strong>{formatDate(forecast.officialDateKey)}</strong> ({formatCampaignPeriod(campaignTime.data!)} · versão {forecast.calendarVersion} do calendário).</p>
      <p>Chegada à região investigada: <strong>{formatDate(forecast.arrivesAtTargetDateKey)}</strong>.</p>
      {(!travelOnly&&(!houseMode||canTargetHouse))&&<p>Investigação de 1 désdia:
        <strong>{formatDate(forecast.investigationStartsDateKey)}</strong> até

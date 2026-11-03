@@ -67,13 +67,13 @@ export function SpyMissionOddsCard(props:Props){
     <div style={{flex:1,minWidth:210,display:'grid',gap:8}}>
      <div style={{display:'flex',gap:10,alignItems:'center'}}>
       <Shield size={20} color={accent}/>
-      <div><strong>Dificuldade estratégica: {data.houseDefense}</strong>
-       <small style={{display:'block'}}>Resistência da Casa (não é o alvo dos dados)</small></div>
+      <div><strong>Dificuldade de espionagem: {data.houseDefense}</strong>
+       <small style={{display:'block'}}>Gerada pela Lei da Casa + bônus gerais aplicáveis</small></div>
      </div>
      <div style={{display:'flex',gap:10,alignItems:'center'}}>
       <Eye size={20} color={accent}/>
-      <div><strong>Teste {data.testDifficulty} · {data.difficultyLabel}</strong>
-       <small style={{display:'block'}}>{data.agentRank} · Astúcia {data.testDice}D6</small></div>
+      <div><strong>Astúcia contra dificuldade {data.testDifficulty} · {data.difficultyLabel}</strong>
+       <small style={{display:'block'}}>{data.agentRank} · Astúcia {data.testDice} ({data.testDice} dados de seis faces)</small></div>
      </div>
      <div style={{display:'flex',gap:10,alignItems:'center'}}>
       <ChartNoAxesCombined size={20} color={accent}/>
@@ -106,11 +106,12 @@ export function SpyMissionOddsCard(props:Props){
    <details>
     <summary>Como calculamos essa chance?</summary>
     <p className="house-caption">
-     Fonte da resistência: {sourceLabel}. A resistência é convertida em um teste
-     de 6 a 21, aumentando 3 pontos a cada faixa de 20 de resistência.
+     Fonte da dificuldade: {sourceLabel}. A Lei gera dificuldade 6 até Lei 30,
+     acrescida de 3 a cada 5 pontos completos acima de 30; só depois
+     entram os bônus de construções gerais aplicáveis.
      A chance é a proporção exata de combinações de {data.testDice} dados de seis faces
      cuja soma seja maior ou igual a {data.testDifficulty}.
-     A graduação real do agente é {data.agentRank} (Astúcia {data.testDice}D6).
+     A graduação do agente é {data.agentRank}, com Astúcia {data.testDice} (rolagem de {data.testDice} dados de seis faces).
      Não são adicionados dados fictícios de outras posses.
     </p>
    </details>

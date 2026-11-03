@@ -1,9 +1,9 @@
 /** Resolves the defense of a noble HOUSE, not a region.
  *
  * Rules approved by the Narrator (2026-11-03):
- *   - sheet exists -> effective Law of that house + applicable active holdings;
- *   - no operational sheet but a 03/11/2026 authoritative import -> imported Law;
- *   - neither source exists -> regional Law +10 as a LAST RESORT;
+ *   - sheet exists -> convert effective Law to test DC + applicable active holdings;
+ *   - no operational sheet -> convert imported official Law to test DC;
+ *   - neither source -> regional Law +10 (fallback attribute), THEN convert to DC;
  *   - a simple regional recon -> region Law alone (public-strategy.ts).
  *
  * The presence of an imported authoritative record must be checked by a narrator-only RPC.
@@ -14,6 +14,7 @@
 import {regionBonus,regionId} from '@/lib/house/regions';
 import type {HouseState} from '@/lib/house/types';
 import {calculateSpyDefense} from './spy-defense';
+import {spyLawDifficulty} from './spy-law-difficulty';
 
 export const UNFICHED_NOBLE_HOUSE_LAW_BONUS=10;
 
@@ -41,8 +42,8 @@ export function resolveSpyHouseDefense(input:SpyHouseDefenseRequest):SpyHouseDef
      input.importedLaw>100000||!Number.isInteger(input.sourceRow)||input.sourceRow<2)
    throw new Error('Lei importada inválida ou sem proveniência de linha da planilha.');
   return {source:'imported_noble_sheet',law:input.importedLaw,
-   regionalLaw:null,baseDifficulty:input.importedLaw,constructionBonus:0,
-   difficulty:input.importedLaw,domainId:null,sources:[]};
+   regionalLaw:null,baseDifficulty:spyLawDifficulty(input.importedLaw),constructionBonus:0,
+   difficulty:spyLawDifficulty(input.importedLaw),domainId:null,sources:[]};
  }
  if(input.kind==='without_sheet'){
   const regionalLaw=regionBonus(id).law;
@@ -50,7 +51,7 @@ export function resolveSpyHouseDefense(input:SpyHouseDefenseRequest):SpyHouseDef
    throw new Error('Lei regional ausente ou inválida.');
   const law=regionalLaw+UNFICHED_NOBLE_HOUSE_LAW_BONUS;
   return {source:'regional_npc_fallback',law,regionalLaw,
-   baseDifficulty:law,constructionBonus:0,difficulty:law,
+   baseDifficulty:spyLawDifficulty(law),constructionBonus:0,difficulty:spyLawDifficulty(law),
    domainId:null,sources:[]};
  }
  if(!input.state||typeof input.state!=='object')
@@ -64,7 +65,7 @@ export function resolveSpyHouseDefense(input:SpyHouseDefenseRequest):SpyHouseDef
  }));
  const constructionBonus=profile.globalBonuses+(local?.localBonuses??0);
  return {source:'own_house_sheet',law:profile.law,regionalLaw:null,
-  baseDifficulty:profile.law,constructionBonus,
-  difficulty:profile.law+constructionBonus,
+  baseDifficulty:profile.baseDifficulty,constructionBonus,
+  difficulty:profile.baseDifficulty+constructionBonus,
   domainId:input.domainId??null,sources};
 }

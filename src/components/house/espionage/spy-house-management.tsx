@@ -7,6 +7,7 @@ import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {advanceHarptosDesdia,listCrossedHarptosPeriods} from '@/lib/calendar/temporal-engine';
 import {calculateSpyDefense} from '@/lib/espionage/spy-defense';
+import {spyLawDifficultyTable} from '@/lib/espionage/spy-law-difficulty';
 import {loadSpyHouseManagement,renameSpyAgent,type SpyManagement} from '@/lib/espionage/spy-management.functions';
 import type {HouseState} from '@/lib/house/types';
 import {REGIONS} from '@/lib/house/regions';
@@ -66,26 +67,29 @@ export function spyMissionProgress(operation:Mission|null,officialDate:string|nu
 export function SpyDefensePanel({state}:{state:HouseState}){
  const defense=calculateSpyDefense(state);
  const general=defense.baseDifficulty+defense.globalBonuses;
+ const difficultyTable=spyLawDifficultyTable();
  return <section className="house-panel" aria-label="Defesa de Espionagem">
   <div className="house-section-heading"><div>
    <p className="campaign-eyebrow">CONTRAESPIONAGEM</p>
    <h3><ShieldCheck size={20} style={{display:'inline-block',verticalAlign:'middle'}}/> Defesa de Espionagem</h3>
   </div></div>
-  <p className="house-caption">A Defesa de Espionagem usa a <strong>Lei efetiva desta Casa</strong>
-   e os bônus de suas construções ativas. Nenhum bônus basal regional é incluído.
-   A dificuldade basal de região só se aplica a reconhecimento regional sem Casa-alvo.</p>
+  <p className="house-caption">A Lei da Casa <strong>determina a dificuldade-base do teste</strong>,
+   mas não é o número da dificuldade. Pelo livro: Lei até 30 → dificuldade 6;
+   a cada 5 pontos completos acima de 30, +3 de dificuldade.
+   Acrescente apenas as proteções ativas aplicáveis ao local. Não somamos Lei de outra região.</p>
   <div className="house-input-grid" style={{margin:'12px 0'}}>
    <div className="house-ledger"><strong>Lei efetiva da Casa</strong><h3>{defense.law}</h3>
     <small>Calculada pela ficha, não pela Lei basal da região.</small></div>
    <div className="house-ledger"><strong>Defesa geral de Espionagem</strong><h3>{general}</h3>
-    <small>Lei própria {defense.law} + proteção geral {defense.globalBonuses}</small></div>
+    <small>Dificuldade-base {defense.baseDifficulty} (gerada pela Lei {defense.law})
+     + proteção geral {defense.globalBonuses}</small></div>
   </div>
   {defense.globalSources.length>0&&<ul>
    {defense.globalSources.map(v=><li key={v.holdingId}>{v.name}: +{v.bonus} — {v.description}</li>)}
   </ul>}
   <div style={{overflowX:'auto'}}>
-   <table><thead><tr><th scope="col">Domínio</th><th scope="col">Lei/base</th>
-    <th scope="col">Bônus local</th><th scope="col">Dificuldade total</th></tr></thead>
+   <table><thead><tr><th scope="col">Domínio</th><th scope="col">Dificuldade-base</th>
+    <th scope="col">Bônus das construções</th><th scope="col">Dificuldade total</th></tr></thead>
     <tbody>{defense.domains.map(row=><tr key={row.domainId}>
      <td>{row.name}{row.sources.length>0&&<ul>{row.sources.map(source=>
       <li key={source.holdingId}>{source.name}: +{source.bonus}</li>)}</ul>}</td>
@@ -98,14 +102,29 @@ export function SpyDefensePanel({state}:{state:HouseState}){
   {defense.otherEffects.length>0&&<details className="house-ledger"><summary>Proteções e efeitos especiais (sem bônus numérico de dificuldade)</summary>
    <ul>{defense.otherEffects.map((e,i)=><li key={i}>{e.name}: {e.description}</li>)}</ul>
   </details>}
-  <details className="house-ledger"><summary>Teste separado · descoberta de célula de espionagem</summary>
-   <p>No teste específico de descoberta de células da Rede de Espiões, o livro traz dificuldade 6
-    para Lei até 30, acrescida de 3 a cada 5 pontos completos acima de 30.
-    Para esta Casa, a dificuldade desse teste é <strong>{defense.spyCellDiscoveryDifficulty}</strong>.
-    Isso não substitui a Defesa de Espionagem baseada na Lei efetiva.</p>
+  <details className="house-ledger">
+   <summary>Consultar tabela Lei × Dificuldade (inclusive acima de 59)</summary>
+   <p className="house-caption">A Lei {defense.law} desta Casa gera dificuldade-base
+    <strong> {defense.spyCellDiscoveryDifficulty}</strong>, antes das construções.
+    As faixas acima de 59 continuam a mesma progressão de +3 a cada 5 pontos,
+    como regra estendida de Cormyr.</p>
+   <div style={{overflowX:'auto'}}>
+    <table><thead><tr><th scope="col">Lei da Casa</th>
+     <th scope="col">Dificuldade-base</th><th scope="col">Origem</th></tr></thead>
+     <tbody>{difficultyTable.map(band=><tr key={band.lawMin}>
+      <td>{band.lawMin}–{band.lawMax}</td>
+      <td><strong>{band.difficulty}</strong></td>
+      <td>{band.source==='livro'?'Livro':'Extensão de Cormyr'}</td>
+     </tr>)}</tbody>
+    </table>
+   </div>
+   <p className="house-caption">A tabela exibe até Lei 104, mas o cálculo não termina aí.
+    Lei 105–109 gera dificuldade 51, Lei 110–114 gera 54, e assim por diante,
+    sem teto de dificuldade. Os bônus de construções são acrescentados depois.</p>
   </details>
-  <small>Não há porcentagem automática de sucesso nem bônus fictício por fortificações que defendem unidades.
-   O Narrador continua responsável por julgar as ações.</small>
+  <small>A dificuldade de espionagem é calculada a partir da Lei mais os bônus
+   pertinentes. A probabilidade de sucesso depende da Astúcia do agente,
+   das condições da missão e da avaliação final do Narrador.</small>
  </section>;
 }
 

@@ -40,7 +40,8 @@ export function SpyNobleDefenseAdmin({houses}:{houses:readonly SpyTargetHouse[]}
   {result&&label&&<div className="house-ledger" style={{marginTop:10}}>
    <h4>{result.houseName} · Defesa de Espionagem</h4>
    <p><strong>{result.difficulty}</strong> de dificuldade geral
-    = Lei {result.baseDifficulty} + bônus de construção {result.constructionBonus}.</p>
+    = dificuldade-base {result.baseDifficulty} (convertida da Lei {result.law})
+    + bônus de construção {result.constructionBonus}.</p>
    <p className="house-caption">Fonte: {result.source==='own_house_sheet'
     ?'Ficha operacional atual da Casa':result.source==='imported_noble_sheet'
     ?'Planilha oficial de atributos nobres'+(result.sourceSpreadsheetRow
