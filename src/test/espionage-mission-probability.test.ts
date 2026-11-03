@@ -4,9 +4,10 @@ import {resolve} from 'node:path';
 import {spyDiceSuccessPercent,spyMissionOdds,spyTestDifficulty} from '@/lib/espionage/spy-mission-probability';
 
 describe('Espionagem · chance matemática demonstrativa de missão',()=>{
- it('converte a Lei/defesa estratégica à escala de dificuldade d6 em passos de 3',()=>{
-  expect([0,19,20,39,40,59,60,79,80,99,100,105]
-   .map(spyTestDifficulty)).toEqual([6,6,9,9,12,12,15,15,18,18,21,21]);
+ it('recebe a dificuldade já convertida, inclusive DC acima de 21, sem novo cálculo',()=>{
+  expect([6,9,12,21,24,27,30,36,48,51].map(spyTestDifficulty))
+   .toEqual([6,9,12,21,24,27,30,36,48,51]);
+  expect(()=>spyTestDifficulty(0)).toThrow();
  });
  it('enumera exatamente os 216 resultados equiprováveis de 3D6',()=>{
   expect(spyDiceSuccessPercent(3,6)).toBe(95.4);
@@ -21,10 +22,13 @@ describe('Espionagem · chance matemática demonstrativa de missão',()=>{
   expect(spyDiceSuccessPercent(1,6)).toBe(16.7);
   expect(spyDiceSuccessPercent(1,7)).toBe(0);
  });
- it('Law 30 gera teste 9 com chance de 74,1%, mas não inventa habilidade do agente',()=>{
-  expect(spyMissionOdds(30)).toMatchObject({
-   houseDefense:30,testDifficulty:9,successPercent:74.1,
+ it('Lei 30 já convertida em DC 6 gera chance correta com 3D6',()=>{
+  expect(spyMissionOdds(6)).toMatchObject({
+   houseDefense:6,testDifficulty:6,successPercent:95.4,
    testDice:3,provisional:true,
+  });
+  expect(spyMissionOdds(24,6)).toMatchObject({
+   houseDefense:24,testDifficulty:24,testDice:6,
   });
  });
  it('recusa dados e resistências inválidas',()=>{
@@ -34,7 +38,7 @@ describe('Espionagem · chance matemática demonstrativa de missão',()=>{
   expect(()=>spyDiceSuccessPercent(8,9)).toThrow();
  });
  it('um alvo mais defendido não pode ganhar maior chance de sucesso',()=>{
-  const chances=[...Array(101)].map((_,n)=>spyMissionOdds(n).successPercent);
+  const chances=Array.from({length:95},(_,n)=>spyMissionOdds(n+6).successPercent);
   for(let i=1;i<chances.length;i++)expect(chances[i]).toBeLessThanOrEqual(chances[i-1]!);
  });
  it('consulta somente uma Casa com JWT e jamais transmite fichas integrais ao browser',()=>{
