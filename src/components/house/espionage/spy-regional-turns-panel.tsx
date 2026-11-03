@@ -161,7 +161,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      onChange={e=>{setDestination(e.target.value);setTargetHouseId('');}}>
      <option value="">Selecione uma região</option>
      {regions.map(region=><option key={region.regionId} value={region.regionId}>
-      {region.regionName}{targetMode==='region'?' · DC '+region.basalDifficulty:''}
+      {region.regionName}{targetMode==='region'?' · dificuldade '+region.basalDifficulty:''}
      </option>)}
     </select>
    </label>
@@ -244,7 +244,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      :'Retorno: '+plan.returnRounds+' rodada(s). Total com missão e retorno: '+plan.totalWithReturnRounds+' rodada(s).'}</p>}
     {forecast?<div className="house-ledger" style={{marginTop:12}}>
      <h4>Datas previstas pelo Hub Temporal</h4>
-     <p>Partida a partir da data oficial: <strong>{formatDate(forecast.officialDateKey)}</strong> ({formatCampaignPeriod(campaignTime.data!)} · v{forecast.calendarVersion}).</p>
+     <p>Partida a partir da data oficial: <strong>{formatDate(forecast.officialDateKey)}</strong> ({formatCampaignPeriod(campaignTime.data!)} · versão {forecast.calendarVersion} do calendário).</p>
      <p>Chegada à região investigada: <strong>{formatDate(forecast.arrivesAtTargetDateKey)}</strong>.</p>
      {(!travelOnly&&(!houseMode||canTargetHouse))&&<p>Investigação de 1 désdia:
        <strong>{formatDate(forecast.investigationStartsDateKey)}</strong> até
