@@ -1,6 +1,7 @@
 /** Estratégia de espionagem por rodadas de campanha.
- * A rodada NÃO é convertida automaticamente em dias do Hub Temporal:
- * o Narrador precisa definir a correspondência oficial.
+ * Regra aprovada pelo Narrador: 1 rodada = 1 désdia (10 dias ordinários).
+ * A projeção de datas fica em round-calendar.ts e usa o Hub Temporal oficial.
+ * Nenhum cálculo de prévia pode publicar ou avançar o calendário.
  * Regiões vizinhas homologadas: 1 rodada de deslocamento;
  * uma passagem marítima homologada entre regiões: 1 rodada, mesmo não contíguas.
  * Dentro da mesma região: 0 rodadas de deslocamento.
