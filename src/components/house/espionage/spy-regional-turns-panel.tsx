@@ -6,13 +6,17 @@ import {loadSpyRegionalStrategy} from '@/lib/espionage/region-turns.functions';
 import {planSpyRegionalMission} from '@/lib/espionage/region-turns';
 import {allSpyRegionalBaselines} from '@/lib/espionage/public-strategy';
 import {REGIONS} from '@/lib/house/regions';
+import {useCampaignTime} from '@/lib/calendar/campaign-time';
+import {formatDate,formatCampaignPeriod} from '@/lib/calendar/harptos';
+import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
 
-/** Strategic panel: read-only preview, never starts a mission or advances date.
- * All distances are in RODADAS, independent of wall-clock days until the
- * Narrator confirms their relation to published Harptos désdias.
+/** Strategy only: 1 espionage round = one 10-ordinary-day Harptos désdia.
+ * The existing published Hub Temporal is the ONLY start date.
+ * Neither this preview nor client-side interaction may advance that clock.
  */
 export function SpyRegionalTurnsPanel({houseId}:{houseId:string}){
  const load=useServerFn(loadSpyRegionalStrategy);
+ const campaignTime=useCampaignTime();
  const {data,isPending,isError,refetch}=useQuery({
   queryKey:['espionage-regional-strategy',houseId],
   queryFn:()=>load({data:{houseId}}),staleTime:30_000,retry:false,
@@ -27,6 +31,10 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string}){
   agent:selected,destinationRegion:destination,links:data.links,
   seaAllowed:allowSea,includeReturn:returnToStart,
  }):null;
+ const forecast=plan?.status==='ready'&&campaignTime.data&&!campaignTime.isError
+  ?projectSpyHarptosSchedule({plan,officialDate:campaignTime.data,
+    calendarVersion:campaignTime.data.version})
+  :null;
  const name=(id:string)=>REGIONS[id]?.name??id;
  const message={
   unknown_destination:'Selecione uma região conhecida.',
@@ -43,6 +51,7 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string}){
   <p>Para investigar dentro da região atual, a missão leva <strong>1 rodada</strong>.
    Cada região atravessada custa <strong>1 rodada de viagem</strong>, além da investigação.
    Uma passagem marítima homologada liga duas regiões em apenas <strong>1 rodada</strong>.
+   <strong> Cada rodada equivale a 1 désdia (10 dias ordinários) do Hub Temporal.</strong>
   </p>
   <p className="house-caption">A origem sempre é a região em que o <strong>agente selecionado</strong> está localizado.
    Não é a sede da Casa. O cálculo não avança o calendário nem envia uma missão.</p>
@@ -99,7 +108,23 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string}){
     {returnToStart&&<p>{plan.returnRounds===null
      ?'Retorno não homologado: não existe caminho de volta aprovado.'
      :'Retorno: '+plan.returnRounds+' rodada(s). Total com missão e retorno: '+plan.totalWithReturnRounds+' rodada(s).'}</p>}
-    <small>Rodadas de campanha; a equivalência com dias de Harptos requer confirmação do Narrador.</small>
+    {forecast?<div className="house-ledger" style={{marginTop:12}}>
+     <h4>Datas previstas pelo Hub Temporal</h4>
+     <p>Partida a partir da data oficial: <strong>{formatDate(forecast.officialDateKey)}</strong> ({formatCampaignPeriod(campaignTime.data!)} · v{forecast.calendarVersion}).</p>
+     <p>Chegada à região investigada: <strong>{formatDate(forecast.arrivesAtTargetDateKey)}</strong>.</p>
+     <p>Investigação de 1 désdia: <strong>{formatDate(forecast.investigationStartsDateKey)}</strong> até <strong>{formatDate(forecast.investigationEndsDateKey)}</strong>.</p>
+     <p>Conclusão prevista: <strong>{formatDate(forecast.investigationEndsDateKey)}</strong> — {forecast.ordinaryDaysToConclusion} dias ordinários após a data oficial.</p>
+     {forecast.travelLegs.length>1&&<details><summary>Datas de chegada de cada trecho</summary><ol>
+      {forecast.travelLegs.map((leg,i)=><li key={leg.edgeId+':'+i}>
+       {name(leg.fromRegion)} → {name(leg.toRegion)}: {formatDate(leg.arrivalDateKey)}
+      </li>)}
+     </ol></details>}
+     {returnToStart&&(forecast.returnArrivalDateKey
+      ?<p>Retorno à região inicial: <strong>{formatDate(forecast.returnArrivalDateKey)}</strong> — {forecast.ordinaryDaysWithReturn} dias ordinários incluindo investigação.</p>
+      :<p>Sem data de retorno: rota de volta ainda não homologada.</p>)}
+     {forecast.crossedFestivalsUntilConclusion.length>0&&<p>Festivais intercalares atravessados: {forecast.crossedFestivalsUntilConclusion.map(f=>f.name).join(', ')}. Eles não consomem dias de désdia.</p>}
+    </div>:<p role="note">O Hub Temporal oficial não está disponível; os valores em rodadas continuam válidos, mas não há datas de chegada confirmáveis.</p>}
+    <small>Prévia estratégica, não uma missão registrada. O avanço e a publicação do tempo permanecem exclusivos do Narrador.</small>
    </div>:plan&&<p role="status" className="house-caption">{message[plan.status]}</p>}
    {!data.agents.length&&<p role="note">Sem agentes cadastrados. Após conciliação da Rede ou contratação, o cálculo passará a usar a posição própria de cada agente.</p>}
   </div>}
