@@ -222,10 +222,21 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    </label>
    {plan?.status==='ready'?<div className="house-panel" role="status">
     <h4>{name(plan.startRegion)} → {plan.regionName}</h4>
-    <p><strong>{plan.travelRounds}</strong> désdia(s) de viagem + <strong>1</strong> de investigação = <strong>{plan.totalRounds} désdia(s)</strong> na prévia ({plan.totalRounds*10} dias ordinários).</p>
+    {houseMode&&!canTargetHouse
+      ?<p><strong>Primeira etapa — deslocamento regional:</strong>
+       {plan.travelRounds} désdia(s) de viagem ({plan.travelRounds*10} dias ordinários).
+       A investigação da Casa dependerá de chegada registrada e escolha do alvo.</p>
+      :<p><strong>{plan.travelRounds}</strong> désdia(s) de viagem + <strong>1</strong>
+       de investigação = <strong>{plan.totalRounds} désdia(s)</strong> na prévia
+       ({plan.totalRounds*10} dias ordinários).</p>}
     <p className="house-caption">Estimativa cartográfica. As fronteiras do desenho não substituem
      homologação de rotas operacionais; {simulated?'a origem é hipotética':'o agente tem a posição informada pelo banco'}.</p>
-    <p>Dificuldade basal de espionagem no destino: <strong>{plan.basalDifficulty} (Lei)</strong>.</p>
+    {houseMode
+      ?<p>Alvo: <strong>Casa nobre.</strong> A Lei basal regional não determina a defesa
+       da Casa. {canTargetHouse
+        ?'A defesa usa a Lei e as construções da própria Casa-alvo, reservadas ao Narrador.'
+        :'Aguarde a chegada regional antes de planejar a investigação da Casa.'}</p>
+      :<p>Dificuldade basal de reconhecimento regional: <strong>{plan.basalDifficulty} (Lei regional)</strong>.</p>}
     {plan.legs.length===0?<p>A investigação ocorre na região atual do espião.</p>:
      <ol>{plan.legs.map((leg,i)=><li key={leg.connectionId+':'+i}>
       {name(leg.fromRegion)} → {name(leg.toRegion)} · 1 rodada
@@ -238,8 +249,14 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      <h4>Datas previstas pelo Hub Temporal</h4>
      <p>Partida a partir da data oficial: <strong>{formatDate(forecast.officialDateKey)}</strong> ({formatCampaignPeriod(campaignTime.data!)} · v{forecast.calendarVersion}).</p>
      <p>Chegada à região investigada: <strong>{formatDate(forecast.arrivesAtTargetDateKey)}</strong>.</p>
-     <p>Investigação de 1 désdia: <strong>{formatDate(forecast.investigationStartsDateKey)}</strong> até <strong>{formatDate(forecast.investigationEndsDateKey)}</strong>.</p>
-     <p>Conclusão prevista: <strong>{formatDate(forecast.investigationEndsDateKey)}</strong> — {forecast.ordinaryDaysToConclusion} dias ordinários após a data oficial.</p>
+     {(!houseMode||canTargetHouse)&&<p>Investigação de 1 désdia:
+       <strong>{formatDate(forecast.investigationStartsDateKey)}</strong> até
+       <strong>{formatDate(forecast.investigationEndsDateKey)}</strong>.</p>}
+     {(!houseMode||canTargetHouse)
+       ?<p>Conclusão prevista: <strong>{formatDate(forecast.investigationEndsDateKey)}</strong>
+        — {forecast.ordinaryDaysToConclusion} dias ordinários após a data oficial.</p>
+       :<p>Chegada regional prevista: <strong>{formatDate(forecast.arrivesAtTargetDateKey)}</strong>.
+        A investigação da Casa ainda não possui data de conclusão autorizada.</p>}
      {forecast.travelLegs.length>1&&<details><summary>Datas de chegada de cada trecho</summary><ol>
       {forecast.travelLegs.map((leg,i)=><li key={leg.edgeId+':'+i}>
        {name(leg.fromRegion)} → {name(leg.toRegion)}: {formatDate(leg.arrivalDateKey)}
