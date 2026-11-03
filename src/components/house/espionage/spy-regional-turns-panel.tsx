@@ -218,43 +218,44 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
     <input type="checkbox" checked={allowSea} onChange={e=>setAllowSea(e.target.checked)}/>
     Considerar travessias marítimas autorizadas (incluindo Dragonmere)
    </label>
-   <label style={{display:'flex',gap:8,alignItems:'center'}}>
+   {!travelOnly&&<label style={{display:'flex',gap:8,alignItems:'center'}}>
     <input type="checkbox" checked={returnToStart} onChange={e=>setReturnToStart(e.target.checked)}/>
     Incluir viagem de retorno após a investigação
-   </label>
+   </label>}
    {plan?.status==='ready'?<div className="house-panel" role="status">
     <h4>{name(plan.startRegion)} → {plan.regionName}</h4>
-    {houseMode&&!canTargetHouse
+    {(travelOnly||houseMode&&!canTargetHouse)
       ?<p><strong>Primeira etapa — deslocamento regional:</strong>
        {plan.travelRounds} désdia(s) de viagem ({plan.travelRounds*10} dias ordinários).
-       A investigação da Casa dependerá de chegada registrada e escolha do alvo.</p>
+       {travelOnly?'Este deslocamento não inclui investigação.':'A investigação da Casa dependerá de chegada registrada e escolha do alvo.'}</p>
       :<p><strong>{plan.travelRounds}</strong> désdia(s) de viagem + <strong>1</strong>
        de investigação = <strong>{plan.totalRounds} désdia(s)</strong> na prévia
        ({plan.totalRounds*10} dias ordinários).</p>}
     <p className="house-caption">Estimativa cartográfica. As fronteiras do desenho não substituem
      homologação de rotas operacionais; {simulated?'a origem é hipotética':'o agente tem a posição informada pelo banco'}.</p>
-    {houseMode
+    {travelOnly?<p><strong>Somente deslocamento.</strong> Nenhum teste de investigação regional ou contra Casa ocorre nesta etapa.</p>
+     :houseMode
       ?<p>Alvo: <strong>Casa nobre.</strong> A Lei basal regional não determina a defesa
        da Casa. {canTargetHouse
         ?'A defesa usa a Lei e as construções da própria Casa-alvo, reservadas ao Narrador.'
         :'Aguarde a chegada regional antes de planejar a investigação da Casa.'}</p>
       :<p>Dificuldade basal de reconhecimento regional: <strong>{plan.basalDifficulty} (Lei regional)</strong>.</p>}
-    {plan.legs.length===0?<p>A investigação ocorre na região atual do espião.</p>:
+    {plan.legs.length===0?<p>{travelOnly?'O agente já está na região selecionada.':'A investigação ocorre na região atual do espião.'}</p>:
      <ol>{plan.legs.map((leg,i)=><li key={leg.connectionId+':'+i}>
       {name(leg.fromRegion)} → {name(leg.toRegion)} · 1 rodada
       {leg.passage==='sea_passage'?(new Set(['dragoncoast','crownlands','shieldmark']).has(leg.fromRegion)&&new Set(['dragoncoast','crownlands','shieldmark']).has(leg.toRegion)?' · via Dragonmere':' · via marítima'):' · fronteira terrestre'}
      </li>)}</ol>}
-    {returnToStart&&<p>{plan.returnRounds===null
+    {!travelOnly&&returnToStart&&<p>{plan.returnRounds===null
      ?'Retorno não homologado: não existe caminho de volta aprovado.'
      :'Retorno: '+plan.returnRounds+' rodada(s). Total com missão e retorno: '+plan.totalWithReturnRounds+' rodada(s).'}</p>}
     {forecast?<div className="house-ledger" style={{marginTop:12}}>
      <h4>Datas previstas pelo Hub Temporal</h4>
      <p>Partida a partir da data oficial: <strong>{formatDate(forecast.officialDateKey)}</strong> ({formatCampaignPeriod(campaignTime.data!)} · v{forecast.calendarVersion}).</p>
      <p>Chegada à região investigada: <strong>{formatDate(forecast.arrivesAtTargetDateKey)}</strong>.</p>
-     {(!houseMode||canTargetHouse)&&<p>Investigação de 1 désdia:
+     {(!travelOnly&&(!houseMode||canTargetHouse))&&<p>Investigação de 1 désdia:
        <strong>{formatDate(forecast.investigationStartsDateKey)}</strong> até
        <strong>{formatDate(forecast.investigationEndsDateKey)}</strong>.</p>}
-     {(!houseMode||canTargetHouse)
+     {(!travelOnly&&(!houseMode||canTargetHouse))
        ?<p>Conclusão prevista: <strong>{formatDate(forecast.investigationEndsDateKey)}</strong>
         — {forecast.ordinaryDaysToConclusion} dias ordinários após a data oficial.</p>
        :<p>Chegada regional prevista: <strong>{formatDate(forecast.arrivesAtTargetDateKey)}</strong>.
@@ -264,7 +265,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
        {name(leg.fromRegion)} → {name(leg.toRegion)}: {formatDate(leg.arrivalDateKey)}
       </li>)}
      </ol></details>}
-     {returnToStart&&(forecast.returnArrivalDateKey
+     {!travelOnly&&returnToStart&&(forecast.returnArrivalDateKey
       ?<p>Retorno à região inicial: <strong>{formatDate(forecast.returnArrivalDateKey)}</strong> — {forecast.ordinaryDaysWithReturn} dias ordinários incluindo investigação.</p>
       :<p>Sem data de retorno: rota de volta ainda não homologada.</p>)}
      {forecast.crossedFestivalsUntilConclusion.length>0&&<p>Festivais intercalares atravessados: {forecast.crossedFestivalsUntilConclusion.map(f=>f.name).join(', ')}. Eles não consomem dias de désdia.</p>}
