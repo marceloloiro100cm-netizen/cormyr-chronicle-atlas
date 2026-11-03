@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useRef,useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {Plus,Coins,UserRound} from 'lucide-react';
@@ -17,6 +17,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
  houseId:string;data:SpyManagement|null;canEdit:boolean;
 }){
  const [open,setOpen]=useState(false);
+ const requestKey=useRef<string|null>(null);
  const [name,setName]=useState('');
  const [sourceId,setSourceId]=useState('');
  const [portraitId,setPortraitId]=useState<string|null>(null);
@@ -36,9 +37,10 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
   portraits.some(p=>p.id===portraitId&&!p.assignedAgentId));
  const valid=Boolean(data&&source&&name.trim().length>=2&&
   name.trim().length<=80&&pictureOk&&enoughWealth&&!busy);
- const reset=()=>{setName('');setSourceId('');setPortraitId(null);setUpgrades([]);
+ const reset=()=>{requestKey.current=null;setName('');setSourceId('');setPortraitId(null);setUpgrades([]);
   setError('');};
  const toggle=(code:SpyAgentUpgrade,checked:boolean)=>{
+  requestKey.current=null;
   setUpgrades(old=>checked?[...old.filter(x=>x!==code),code]:old.filter(x=>x!==code));
  };
  const submit=async(e:React.FormEvent)=>{
@@ -46,10 +48,12 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
   if(!valid||!source)return;
   setBusy(true);setError('');
   try{
+   const key=requestKey.current??crypto.randomUUID();
+   requestKey.current=key;
    const result=await create({data:{
     houseId,sourceHoldingId:source.sourceHoldingId,codename:name.trim(),
     portraitId:portraits.length?portraitId:null,upgrades,
-    requestKey:crypto.randomUUID(),
+    requestKey:key,
    }});
    setSuccess('Espião '+result.codename+' criado como Verde (Astúcia 3).');
    reset();setOpen(false);
@@ -80,11 +84,11 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
      <label style={{display:'grid',gap:5}}>Nome do espião <span aria-hidden>*</span>
       <input required autoFocus minLength={2} maxLength={80}
        placeholder="Ex.: O Corvo" value={name}
-       onChange={e=>setName(e.target.value)}/>
+       onChange={e=>{requestKey.current=null;setName(e.target.value);}}/>
      </label>
      <label style={{display:'grid',gap:5}}>Vaga da Rede de Espiões
       <select value={source?.sourceHoldingId??''} required
-       onChange={e=>setSourceId(e.target.value)} disabled={!slots.length}>
+       onChange={e=>{requestKey.current=null;setSourceId(e.target.value);}} disabled={!slots.length}>
        {!slots.length&&<option value="">Nenhuma vaga disponível</option>}
        {slots.map(s=><option key={s.sourceHoldingId} value={s.sourceHoldingId}>
         {s.name} · {s.vacancies} {s.vacancies===1?'vaga':'vagas'}
@@ -115,7 +119,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
       {!enoughWealth&&<small role="alert">Riqueza insuficiente para as melhorias escolhidas.</small>}
      </div>
      <SpyPortraitPicker portraits={portraits} selected={portraitId}
-      onChange={setPortraitId}/>
+      onChange={id=>{requestKey.current=null;setPortraitId(id);}}/>
      {portraits.length>0&&!pictureOk&&<small role="status">
       Escolha uma das fotos disponíveis. As imagens em cinza já estão ocupadas.</small>}
      <p className="house-caption">O recrutamento, a reserva da foto e o desconto
