@@ -31,7 +31,7 @@ describe('Defesa de Espionagem · Lei e construções reais',()=>{
   expect(d.spyCellDiscoveryDifficulty).toBe(9);
   expect(d.domains.map(row=>row.difficulty)).toEqual([9,9]);
  });
- it('bônus locais de cães e oficiais investigativos somam apenas no domínio designado',()=>{
+ it('Cães de Guarda protegem toda a Casa; Treinamento Investigativo somente o domínio designado',()=>{
   const s=house();
   const kennels=holding('pros-dog-kennels','d1');
   const dogs=holding('pros-dog-kennels--guard-dogs','d1','active',kennels.id);
@@ -39,9 +39,21 @@ describe('Defesa de Espionagem · Lei e construções reais',()=>{
   const training=holding('pros-bailiffs--investigative-training','d1','active',officers.id);
   s.holdings=[kennels,dogs,officers,training];
   const d=calculateSpyDefense(s);
-  expect(d.domains.map(v=>v.difficulty)).toEqual([15,9]);
-  expect(d.domains[0]?.localBonuses).toBe(6);
-  expect(d.globalBonuses).toBe(0);
+  expect(d.domains.map(v=>v.difficulty)).toEqual([15,12]);
+  expect(d.domains[0]?.localBonuses).toBe(3);
+  expect(d.globalBonuses).toBe(3);
+ });
+ it('Polícia Secreta adiciona 6 à dificuldade, acumulável aos bônus gerais aplicáveis',()=>{
+  const s=house();const police=holding('pros-secret-police','d1');
+  const kennels=holding('pros-dog-kennels','d1');
+  const dogs=holding('pros-dog-kennels--guard-dogs','d1','active',kennels.id);
+  s.holdings=[police,kennels,dogs];
+  const defense=calculateSpyDefense(s);
+  expect(defense.law).toBe(35);
+  expect(defense.baseDifficulty).toBe(9);
+  expect(defense.globalBonuses).toBe(9);
+  expect(defense.domains.map(d=>d.difficulty)).toEqual([18,18]);
+  expect(defense.globalSources.map(s=>s.bonus).sort()).toEqual([3,6]);
  });
  it('Ouvido no Submundo aplica bônus +3 contra agentes subversivos à Casa',()=>{
   const s=house();const base=holding('pros-black-market','d1');
