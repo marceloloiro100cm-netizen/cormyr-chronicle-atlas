@@ -17,13 +17,13 @@ export const listSpyHouseTargets=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(z.object({}).strict())
  .handler(async({context})=>{
-  // House catalogue includes the 164 reviewed NPCs without sheets. Its
+  // All 172 reviewed houses are listed; 170 carry imported official stats. Its
   // raw archival JSON is private: this SECURITY DEFINER RPC returns ONLY
   // id/name/region for all 172 reviewed Houses, and checks active JWT.
   type RpcResult={data:unknown;error:{message:string}|null};
   const rpc=context.supabase.rpc as unknown as
    (name:string,args?:Record<string,never>)=>Promise<RpcResult>;
-  const response=await rpc('spy_public_house_targets');
+  const response=await rpc('spy_public_noble_targets');
   if(response.error)throw new Error('Catálogo público de Casas ainda não homologado para espionagem.');
   const safeRows=z.array(rowSchema).max(500).safeParse(response.data);
   if(!safeRows.success)throw new Error('Catálogo de Casas retornou dados inesperados.');
@@ -31,7 +31,8 @@ export const listSpyHouseTargets=createServerFn({method:'POST'})
   for(const raw of safeRows.data){
    const parsed=rowSchema.safeParse(raw);
    if(!parsed.success)continue;
-   const region=regionId(parsed.data.region);
+   const region=parsed.data.region.trim().toLowerCase()==='crownland'
+    ?'crownlands':regionId(parsed.data.region);
    if(!region)continue;
    targets.push({id:parsed.data.id,name:parsed.data.name,regionId:region});
   }
