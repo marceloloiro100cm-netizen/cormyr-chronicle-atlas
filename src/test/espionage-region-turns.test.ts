@@ -75,6 +75,8 @@ describe('Espionagem · rodadas de deslocamento da posição atual do agente',()
  });
  it('agente capturado ou não localizado não pode ser agendado',()=>{
   expect(query({agent:{...agent,status:'captured'}}).status).toBe('agent_unavailable');
+  expect(query({agent:{...agent,status:'assigned'}}).status).toBe('agent_unavailable');
+  expect(query({agent:{...agent,status:'operating'}}).status).toBe('agent_unavailable');
   expect(query({agent:{...agent,currentRegion:null}}).status).toBe('unknown_agent_location');
  });
 });
