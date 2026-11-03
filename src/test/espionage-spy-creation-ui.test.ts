@@ -31,7 +31,7 @@ describe('Espionagem · criação com foto exclusiva, melhorias e campos ocultos
   const sql=file('docs/espionage/sql/0095_spy_portraits_atomic_creation.sql');
   expect(sql).toContain('ON public.spy_assets(owner_house_id,portrait_id)');
   expect(sql).toContain('WHERE portrait_id IS NOT NULL');
-  expect(sql).toContain('WHERE a.portrait_id=c.id AND a.owner_house_id=p_house');
+  expect(sql).toContain('LEFT JOIN public.spy_assets a ON a.portrait_id=c.id AND a.owner_house_id=p_house');
  });
  it('formulário exige nome, vagas, foto se há catálogo e oferece as duas compras',()=>{
   const s=file('src/components/house/espionage/spy-create-agent-dialog.tsx');
