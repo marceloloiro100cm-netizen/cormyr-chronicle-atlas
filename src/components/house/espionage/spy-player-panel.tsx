@@ -118,8 +118,8 @@ export function SpyPlayerPanel({houseName,state,catalog,houses,canEdit,onOpenPur
     </ol></>}
   </div>}
   {tab==='routes'&&<div style={{display:'grid',gap:12,maxWidth:720}}>
-   <h4>Planejador de rotas</h4>
-   <p>Escolha origem e destino. O tempo somente será exibido quando o Narrador cadastrar uma ligação homologada.</p>
+   <h4>Rascunho livre de paradas (sem cálculo de rodadas)</h4>
+   <p>O prazo oficial agora é calculado no painel <strong>Dificuldade regional e tempo de viagem</strong>, acima, a partir da posição atual do agente. Este quadro antigo serve apenas para anotar paradas por domínio; não calcula duração nem envia missões.</p>
    <label>Origem <select value={origin} onChange={e=>{setOrigin(e.target.value);setInitialOrigin(e.target.value);setStops([]);setRouteMessage('');}}>
     <option value="">Selecione</option>
     {domains.map(d=><option key={d.id} value={d.id}>{d.name} · Domínio</option>)}
