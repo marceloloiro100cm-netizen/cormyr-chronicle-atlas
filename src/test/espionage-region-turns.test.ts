@@ -1,5 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {REGIONS,regionBonus} from '@/lib/house/regions';
+import {spyLawDifficulty} from '@/lib/espionage/spy-law-difficulty';
 import {allSpyRegionalBaselines} from '@/lib/espionage/public-strategy';
 import {planSpyRegionalMission,type SpyRegionalAgent,type SpyRegionalConnection} from '@/lib/espionage/region-turns';
 
@@ -21,9 +22,12 @@ describe('Espionagem · rodadas de deslocamento da posição atual do agente',()
  it('deriva as 11 dificuldades basais do bônus de Lei regional canônico, sem inventar chance',()=>{
   const values=allSpyRegionalBaselines();
   expect(values).toHaveLength(Object.keys(REGIONS).length);
-  for(const value of values)expect(value.basalDifficulty).toBe(regionBonus(value.regionId).law);
-  expect(values.find(x=>x.regionId==='crownlands')?.basalDifficulty).toBe(20);
-  expect(values.find(x=>x.regionId==='dragoncoast')?.basalDifficulty).toBe(0);
+  for(const value of values){
+   expect(value.regionalLaw).toBe(regionBonus(value.regionId).law);
+   expect(value.basalDifficulty).toBe(spyLawDifficulty(value.regionalLaw));
+  }
+  expect(values.find(x=>x.regionId==='crownlands')?.basalDifficulty).toBe(6);
+  expect(values.find(x=>x.regionId==='dragoncoast')?.basalDifficulty).toBe(6);
  });
  it('na própria região não há deslocamento, mas a missão leva 1 rodada',()=>{
   const r=query({destinationRegion:'helmlands',links:[]});
