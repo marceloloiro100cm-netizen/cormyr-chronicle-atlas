@@ -29,7 +29,7 @@ export function spyDiceSuccessPercent(dice:number,difficulty:number):number{
  for(let n=0;n<dice;n++){
   const next=new Array(6*dice+1).fill(0) as number[];
   for(let sum=0;sum<totals.length;sum++)if(totals[sum]){
-   for(let side=1;side<=6;side++)next[sum+side]+=totals[sum]!;
+   for(let side=1;side<=6;side++)next[sum+side]=(next[sum+side]??0)+(totals[sum]??0);
   }
   totals=next;
  }
