@@ -5,6 +5,7 @@ import {REGIONS} from '@/lib/house/regions';
 import {
  CORMYR_MAPPED_REGIONS,CORMYR_CARTOGRAPHIC_BORDERS,
  CORMYR_CARTOGRAPHIC_LAND_LINKS,CORMYR_NARRATOR_APPROVED_SEA_LINKS,
+ CORMYR_DRAGONMERE_COASTAL_REGIONS,
  cormyrPreviewLinks,CORMYR_MAP_SOURCE,
 } from '@/lib/espionage/cormyr-map';
 import {planSpyRegionalMission,type SpyRegionalConnection} from '@/lib/espionage/region-turns';
@@ -69,27 +70,32 @@ describe('Mapa político narratorial · 11 regiões e deslocamento em désdias',
    expect(moved.travelRounds).toBe(1);
   }
  });
- it('Dragonmere homologado: Dragon Coast ↔ Crownlands = 1 désdia de viagem pelo mar',()=>{
-  expect(CORMYR_NARRATOR_APPROVED_SEA_LINKS).toHaveLength(1);
+ it('Dragonmere homologado: qualquer par de regiões litorâneas = 1 désdia por mar',()=>{
+  expect(CORMYR_NARRATOR_APPROVED_SEA_LINKS).toHaveLength(3);
+  expect(CORMYR_DRAGONMERE_COASTAL_REGIONS).toEqual(['crownlands','shieldmark','dragoncoast']);
   expect(CORMYR_NARRATOR_APPROVED_SEA_LINKS[0]).toMatchObject({
    fromRegion:'dragoncoast',toRegion:'crownlands',
    passage:'sea_passage',bidirectional:true,version:1,
   });
-  expect(cormyrPreviewLinks([])).toHaveLength(20);
-  for(const [from,to] of [['dragoncoast','crownlands'],['crownlands','dragoncoast']] as const){
+  expect(cormyrPreviewLinks([])).toHaveLength(22);
+  const coastal=CORMYR_DRAGONMERE_COASTAL_REGIONS;
+  for(const from of coastal)for(const to of coastal){
+   if(from===to)continue;
    const landOnly=travel(from,to,[],false);
    const withSea=travel(from,to,[],true);
    if(landOnly.status!=='ready'||withSea.status!=='ready')throw new Error('Map route missing');
-   expect(landOnly.travelRounds).toBe(3);
+   if(new Set([from,to]).has('dragoncoast'))
+    expect(landOnly.travelRounds).toBeGreaterThan(1);
    expect(withSea.travelRounds).toBe(1);
    expect(withSea.totalRounds).toBe(2);
    expect(withSea.totalRounds*10).toBe(20);
-   expect(withSea.legs[0]?.passage).toBe('sea_passage');
+   if(new Set([from,to]).has('dragoncoast'))
+    expect(withSea.legs[0]?.passage).toBe('sea_passage');
   }
  });
  it('o atalho de Dragonmere encurta também rotas a partir de Dragon Coast',()=>{
   for(const [dest,rounds] of Object.entries({
-   crownlands:1,helmlands:2,shieldmark:2,volkumburgh:3,
+   crownlands:1,shieldmark:1,helmlands:2,elfhold:2,volkumburgh:2,
   })){
    const plan=travel('dragoncoast',dest,[],true);
    expect(plan.status).toBe('ready');
@@ -97,7 +103,7 @@ describe('Mapa político narratorial · 11 regiões e deslocamento em désdias',
   }
  });
  it('não inventa outras passagens marítimas; novas ligações precisam de homologação',()=>{
-  expect(cormyrPreviewLinks([]).filter(x=>x.passage==='sea_passage')).toHaveLength(1);
+  expect(cormyrPreviewLinks([]).filter(x=>x.passage==='sea_passage')).toHaveLength(3);
   const approved:SpyRegionalConnection={
    id:'33333333-3333-4333-8333-333333333333',fromRegion:'dragoncoast',
    toRegion:'volkumburgh',passage:'sea_passage',bidirectional:true,version:1,
@@ -105,7 +111,7 @@ describe('Mapa político narratorial · 11 regiões e deslocamento em désdias',
   const without=travel('dragoncoast','volkumburgh',[],true);
   const withAnotherApproved=travel('dragoncoast','volkumburgh',[approved],true);
   if(without.status==='ready'&&withAnotherApproved.status==='ready'){
-   expect(without.travelRounds).toBe(3);
+   expect(without.travelRounds).toBe(2);
    expect(withAnotherApproved.travelRounds).toBe(1);
   }else throw new Error('Fixture route not found');
  });
