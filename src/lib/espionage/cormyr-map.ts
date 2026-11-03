@@ -1,11 +1,12 @@
 /** Cartografia fornecida pelo Narrador em 03/11/2026.
  * A imagem original contém 11 regiões jogáveis. Os contornos abaixo foram
  * simplificados da silhueta colorida dessa imagem (1628×888), e não são GPS,
- * rotas de estrada ou evidência de portos. NÃO atribuir atalhos marítimos aqui.
+ * rotas de estrada ou evidência de portos.
  *
  * Em modo de visualização, cruzar UMA fronteira por terra custa UMA désdia.
- * Exceção expressamente aprovada pelo Narrador: Dragon Coast–Crownlands
- * por mar (Dragonmere) também custa UMA désdia.
+ * As TRÊS regiões costeiras do Dragonmere (Crownlands, Shieldmark e
+ * Dragon Coast) possuem uma ligação marítima direta entre cada par,
+ * com UMA désdia de viagem por autorização expressa do Narrador.
  * A criação de missões continua bloqueada e exige as RPCs de aprovação.
  */
 import type {SpyRegionalConnection} from './region-turns';
