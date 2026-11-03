@@ -6,8 +6,9 @@
  *  Law <=30: DC 6; +3 per five COMPLETE Law above 30.
  *  THEN add applicable holdings. Law points are NEVER the DC itself.
  *  Do not add regional Law bonuses to a House with its own sheet.
- *  Guard Dogs: +3 in their domain
+ *  Guard Dogs: +3 against infiltrators across the House's domains
  *  Bailiffs Investigative Training: +3 in their designated domain
+ *  Secret Police: +6 across the House's territory
  *  Ear in the Underworld: +3 vs subversive agents against the House
  *
  * These are check difficulties, NOT %-success, intrigue defense, or an
@@ -47,10 +48,13 @@ export type SpyDefenseProfile={
 
 const bonusRules:Record<string,{bonus:number;description:string;scope:'house'|'domain'}>={
  'pros-dog-kennels--guard-dogs':{
-  bonus:3,description:'Cães de Guarda: dificuldade de Astúcia de espiões +3',scope:'domain',
+  bonus:3,description:'Cães de Guarda: dificuldade de Astúcia de espiões +3 em todos os domínios',scope:'house',
  },
  'pros-bailiffs--investigative-training':{
   bonus:3,description:'Treinamento Investigativo: dificuldade de Astúcia de agentes inimigos +3 na área',scope:'domain',
+ },
+ 'pros-secret-police':{
+  bonus:6,description:'Polícia Secreta: dificuldade de Astúcia de agentes hostis +6 nos domínios da Casa',scope:'house',
  },
  'pros-black-market--ear-in-the-underworld':{
   bonus:3,description:'Ouvido no Submundo: dificuldade de Astúcia de agentes subversivos +3 contra a Casa',scope:'house',
@@ -59,7 +63,7 @@ const bonusRules:Record<string,{bonus:number;description:string;scope:'house'|'d
 const otherEffects={
  'pros-spy-network--expert-spies':'-1D em testes de Astúcia de inimigos para detectar os espiões da Casa; não aumenta a dificuldade de infiltrar esta Casa.',
  'pros-spy-network--plausible-deniability':'Falha de seus agentes não expõe a Casa nem reduz Influência; não modifica a dificuldade de espioná-la.',
- 'pros-secret-police':'Os ganhos/mitigações de Lei seguem suas próprias regras do sistema; não acrescentar o bônus novamente à Lei efetiva.',
+ 'pros-secret-police':'Além do bônus de dificuldade +6 já contado, concede Contatos em todos os domínios da Casa e reduz em 1 a penalidade de Sorte da Casa causada por População muito alta ou baixa. Não aumenta o atributo Lei.',
 } as const;
 
 /** Historical name retained for existing consumers of the discovery test. */
