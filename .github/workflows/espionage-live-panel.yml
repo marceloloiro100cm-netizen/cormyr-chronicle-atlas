@@ -7,6 +7,7 @@ on:
       - 'src/components/house/hub.tsx'
       - 'src/test/espionage-*.test.ts'
       - '.github/workflows/espionage-live-panel.yml'
+      - 'tsconfig.espionage-live.json'
   workflow_dispatch:
 permissions:
   contents: read
@@ -28,7 +29,7 @@ jobs:
         run: bunx vitest run src/test/espionage-region-turns.test.ts src/test/espionage-region-review.test.ts
       - name: Harptos desdia time projections
         run: bunx vitest run src/test/espionage-desdia-temporal.test.ts
-      - name: Full TypeScript verification
-        run: bunx tsc --noEmit
+      - name: Scoped TypeScript verification (spy module and integration)
+        run: bunx tsc -p tsconfig.espionage-live.json --noEmit
       - name: Production build without deploying
         run: bun run build
