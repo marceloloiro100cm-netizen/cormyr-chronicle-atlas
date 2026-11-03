@@ -66,3 +66,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0080_spy_adjudication_reports_REVIEW_ONLY.sql
       - name: Verify mission scope, sealed snapshots, idempotency and cross-House confidentiality
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-adjudication.sql
+      - name: Apply narrator-reviewed reader projection in disposable PostgreSQL
+        run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0081_spy_authorized_dashboard_REVIEW_ONLY.sql
+      - name: Verify owner-only dashboard and absence of sealed report/private Law leaks
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-dashboard.sql
