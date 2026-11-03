@@ -39,7 +39,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
  const portraits=options?.portraits??[];
  const cost=upgrades.length;
  const enoughWealth=cost===0||data?.availableWealth===null||
-  (data?.availableWealth??0)>=cost;
+  data?.availableWealth===undefined||(data.availableWealth>=cost);
  const pictureOk=portraits.length===0||Boolean(portraitId&&
   portraits.some(p=>p.id===portraitId&&!p.assignedAgentId));
  const valid=Boolean(options&&!loadingOptions&&!optionsError&&source&&name.trim().length>=2&&
