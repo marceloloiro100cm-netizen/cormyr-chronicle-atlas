@@ -24,9 +24,15 @@ export function spyFailureDegrees(difficulty:number,result:number){
  return Math.ceil(Math.max(0,difficulty-result)/5);
 }
 export type SpyDiscoveryFate='escaped'|'captured'|'dead';
+export const SPY_AGENT_UPGRADES={
+ forged_documents:{name:'Documentos falsificados',cost:1,description:'Diminui em um grau a gravidade da falha descoberta, aumentando a possibilidade de fuga.'},
+ ace_in_the_hole:{name:'Uma carta na manga',cost:1,description:'O agente não pode morrer por descoberta; qualquer resultado de morte se converte em prisão.'},
+} as const;
+export type SpyAgentUpgrade=keyof typeof SPY_AGENT_UPGRADES;
 export type SpyFateContext={
  difficulty:number;result:number;
  law:number;guardPresent:boolean;prisonPresent:boolean;discovered:boolean;
+ forgedDocuments?:boolean;aceInTheHole?:boolean;
 };
 /** "Um grau" = até 5 pontos abaixo da dificuldade (regra adaptada).
  * Primeiro grau sempre foge. Dois graus exigem aparato de captura.
@@ -42,10 +48,13 @@ export function spyDiscoveryConsequence(ctx:SpyFateContext):
  const degrees=spyFailureDegrees(ctx.difficulty,ctx.result);
  if(degrees===0)return {outcome:'success',degrees};
  if(!ctx.discovered)return {outcome:'failed_undetected',degrees};
- if(degrees===1)return {outcome:'escaped',degrees};
- if(degrees>=3&&ctx.law>=30&&ctx.guardPresent)
-  return {outcome:'dead',degrees};
- if(degrees>=2&&ctx.law>=15&&ctx.guardPresent&&ctx.prisonPresent)
+ // Documents are a +1 degree escape improvement. Keep original
+ // failure degrees for the archive, and only adapt the consequence.
+ const effectiveDegrees=Math.max(1,degrees-(ctx.forgedDocuments?1:0));
+ if(effectiveDegrees===1)return {outcome:'escaped',degrees};
+ if(effectiveDegrees>=3&&ctx.law>=30&&ctx.guardPresent)
+  return {outcome:ctx.aceInTheHole?'captured':'dead',degrees};
+ if(effectiveDegrees>=2&&ctx.law>=15&&ctx.guardPresent&&ctx.prisonPresent)
   return {outcome:'captured',degrees};
  return {outcome:'escaped',degrees};
 }
