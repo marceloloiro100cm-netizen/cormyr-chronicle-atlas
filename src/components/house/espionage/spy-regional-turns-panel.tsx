@@ -3,12 +3,15 @@ import {useQuery} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
 import {loadSpyRegionalStrategy} from '@/lib/espionage/region-turns.functions';
+import {listSpyHouseTargets} from '@/lib/espionage/spy-house-targets.functions';
+import {spyHouseTargetStage} from '@/lib/espionage/spy-target-stages';
 import {planSpyRegionalMission,type SpyRegionalAgent} from '@/lib/espionage/region-turns';
 import {cormyrPreviewLinks,CORMYR_MAP_SOURCE} from '@/lib/espionage/cormyr-map';
 import {CormyrInteractiveMap} from './cormyr-interactive-map';
 import {allSpyRegionalBaselines} from '@/lib/espionage/public-strategy';
 import {REGIONS} from '@/lib/house/regions';
 import {SpyRegionRouteAdmin} from './spy-region-route-admin';
+import {SpyNobleDefenseAdmin} from './spy-noble-defense-admin';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {formatDate,formatCampaignPeriod} from '@/lib/calendar/harptos';
 import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
@@ -19,16 +22,23 @@ import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
  */
 export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admin?:boolean}){
  const load=useServerFn(loadSpyRegionalStrategy);
+ const loadTargets=useServerFn(listSpyHouseTargets);
  const campaignTime=useCampaignTime();
  const {data,isPending,isError,refetch}=useQuery({
   queryKey:['espionage-regional-strategy',houseId],
   queryFn:()=>load({data:{houseId}}),staleTime:30_000,retry:false,
+ });
+ const targetsQuery=useQuery({
+  queryKey:['spy-house-public-targets'],
+  queryFn:()=>loadTargets({data:{}}),staleTime:120_000,retry:false,
  });
  const [assetId,setAssetId]=useState('');
  const [destination,setDestination]=useState('');
  const [allowSea,setAllowSea]=useState(true);
  const [returnToStart,setReturnToStart]=useState(false);
  const [originOverride,setOriginOverride]=useState('');
+ const [targetMode,setTargetMode]=useState<'travel'|'region'|'house'>('travel');
+ const [targetHouseId,setTargetHouseId]=useState('');
  const regions=allSpyRegionalBaselines();
  const selected=data?.agents.find(a=>a.id===(assetId||data.agents[0]?.id));
  // The GM-supplied map is a source for strategic previews. It DOES NOT
@@ -36,6 +46,15 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
  const previewLinks=cormyrPreviewLinks(data?.links??[]);
  const currentOrigin=originOverride||(selected?.currentRegion??null);
  const simulated=Boolean(originOverride||!selected);
+ const houseMode=targetMode==='house';
+ const travelOnly=targetMode==='travel';
+ const houseChoices=(targetsQuery.data??[]).filter(h=>h.regionId===destination&&h.id!==houseId);
+ const selectedTargetHouse=houseChoices.find(h=>h.id===targetHouseId);
+ const houseStage=spyHouseTargetStage({
+  agent:selected??null,selectedRegion:destination,targetHouseId,
+  houseTargets:houseChoices,simulation:simulated,
+ });
+ const canTargetHouse=houseMode&&houseStage==='ready_for_house_planning';
  const hypotheticalAgent:SpyRegionalAgent={
   id:'11111111-1111-4111-8111-111111111111',
   codename:'Simulação geográfica',status:'available',currentRegion:currentOrigin,
@@ -43,7 +62,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
  const planningAgent=simulated?hypotheticalAgent:selected;
  const plan=planningAgent&&destination?planSpyRegionalMission({
   agent:planningAgent,destinationRegion:destination,links:previewLinks,
-  seaAllowed:allowSea,includeReturn:returnToStart,
+  seaAllowed:allowSea,includeReturn:returnToStart&&!travelOnly,
  }):null;
  const comparisons=currentOrigin?regions.map(region=>({
   ...region,
@@ -55,6 +74,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
     calendarVersion:campaignTime.data.version})
   :null;
  const name=(id:string)=>REGIONS[id]?.name??id;
+ const chooseRegion=(id:string)=>{setDestination(id);setTargetHouseId('');};
  const message={
   unknown_destination:'Selecione uma região conhecida.',
   unknown_agent_location:'A posição atual do espião não foi homologada. Não é possível calcular a viagem.',
@@ -67,7 +87,10 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    <p className="campaign-eyebrow">ESTRATÉGIA DE INTELIGÊNCIA</p>
    <h3>Dificuldade regional e tempo de viagem</h3>
   </div></div>
-  <p>Para investigar dentro da região atual, a missão leva <strong>1 rodada</strong>.
+  <p><strong>Etapa 1:</strong> escolha o agente e a região. Após sua chegada
+    registrada, será possível reconhecer a região ou
+    <strong> Etapa 2:</strong> escolher uma Casa nobre localizada ali.
+    Para investigar dentro da região atual, a missão leva <strong>1 rodada</strong>.
    Cada região atravessada custa <strong>1 rodada de viagem</strong>, além da investigação.
    Uma passagem marítima homologada liga duas regiões em apenas <strong>1 rodada</strong>.
    <strong> Cada rodada equivale a 1 désdia (10 dias ordinários) do Hub Temporal.</strong>
@@ -79,7 +102,9 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    cálculos envia missão ou altera o Hub Temporal.</p>
   <details className="house-ledger">
    <summary>Consultar dificuldade basal de todas as regiões</summary>
-   <p>Valores públicos derivados da Lei regional. A dificuldade específica de uma Casa poderá sofrer modificações posteriores.</p>
+   <p>Esses valores são usados <strong>somente em investigações regionais</strong>.
+     A defesa de uma Casa usa a Lei efetiva e as construções da própria Casa,
+     sem incluir a Lei basal regional nem expor os dados privados da Casa-alvo.</p>
    <table><thead><tr><th scope="col">Região</th><th scope="col">Lei basal</th></tr></thead>
     <tbody>{regions.map(x=><tr key={x.regionId}><td>{x.regionName}</td>
      <td>{x.basalDifficulty}</td></tr>)}</tbody>
@@ -100,11 +125,11 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
   <CormyrInteractiveMap
    selectedRegion={destination} originRegion={currentOrigin}
    plan={plan?.status==='ready'?plan:null}
-   onSelect={setDestination}/>
+   onSelect={chooseRegion}/>
   {currentOrigin&&<details className="house-ledger" open style={{marginTop:14}}>
    <summary>Todas as regiões · viagem a partir de {name(currentOrigin)} (11 destinos)</summary>
    <p>Estimativa terrestre baseada no mapa e acrescida das passagens marítimas aprovadas, quando habilitadas.
-    A missão de investigação dura mais 1 désdia em qualquer destino.</p>
+    Se escolher reconhecimento regional depois da viagem, a investigação acrescenta 1 désdia; deslocamento simples não acrescenta investigação.</p>
    <div style={{overflowX:'auto'}}>
     <table><thead><tr>
      <th scope="col">Destino</th><th scope="col">Viagem</th>
@@ -112,7 +137,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
     </tr></thead><tbody>
      {comparisons.map(row=><tr key={row.regionId}
       style={destination===row.regionId?{background:'rgba(174,194,224,.25)'}:undefined}>
-      <td><button type="button" onClick={()=>setDestination(row.regionId)}
+      <td><button type="button" onClick={()=>chooseRegion(row.regionId)}
        style={{background:'none',border:0,textDecoration:'underline',color:'inherit',cursor:'pointer',textAlign:'left'}}>
        {row.regionName}</button></td>
       {row.estimate.status==='ready'?<>
@@ -142,57 +167,115 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      </option>)}
     </select>
    </label>
-   <label>Região a espionar
+   <label>Objetivo da espionagem
+     <select aria-label="Tipo de alvo da espionagem" value={targetMode}
+      onChange={e=>{setTargetMode(e.target.value as 'travel'|'region'|'house');setTargetHouseId('');}}>
+      <option value="travel">Deslocar agente até uma região (sem investigar)</option>
+       <option value="region">Investigar uma região</option>
+      <option value="house">Espionar uma Casa nobre da região</option>
+     </select>
+    </label>
+    <label>Região de destino
     <select aria-label="Região de destino" value={destination}
-     onChange={e=>setDestination(e.target.value)}>
+     onChange={e=>{setDestination(e.target.value);setTargetHouseId('');}}>
      <option value="">Selecione uma região</option>
      {regions.map(region=><option key={region.regionId} value={region.regionId}>
-      {region.regionName} · Lei basal {region.basalDifficulty}
+      {region.regionName}{targetMode==='region'?' · Lei basal '+region.basalDifficulty:''}
      </option>)}
     </select>
    </label>
+   {houseMode&&<div className="house-ledger" style={{display:'grid',gap:8}}>
+    <h4>Etapa 2 · Escolher a Casa nobre</h4>
+    <p className="house-caption">O agente deve estar <strong>fisicamente</strong> na região
+     e disponível. A posição simulada não concede acesso a uma Casa.</p>
+    {houseStage==='requires_region_arrival'&&<p role="status">
+     Etapa 1: deslocar o agente até {destination?name(destination):'a região selecionada'}.
+     Só após a chegada registrada no Hub Temporal será possível selecionar uma Casa.</p>}
+    {houseStage==='select_agent'&&<p role="status">Selecione um agente real
+     e desative a simulação para escolher a Casa.</p>}
+    {houseStage==='select_region'&&<p>Escolha primeiro uma região no mapa.</p>}
+    {houseStage==='agent_unavailable'&&<p role="status">O agente está indisponível.</p>}
+    {houseStage==='unknown_agent_location'&&<p role="status">A localização real do agente não está confirmada.</p>}
+    {targetsQuery.isError&&<p role="alert">A lista pública de Casas está indisponível.</p>}
+    <label>Casa nobre na região
+     <select aria-label="Casa nobre alvo"
+      value={houseChoices.some(h=>h.id===targetHouseId)?targetHouseId:''}
+      onChange={e=>setTargetHouseId(e.target.value)}
+      disabled={!['select_house','ready_for_house_planning','house_not_in_region'].includes(houseStage)||
+       targetsQuery.isError}>
+      <option value="">Selecione a Casa</option>
+      {houseChoices.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+     </select>
+    </label>
+    {destination&&!targetsQuery.isPending&&!houseChoices.length&&
+     <p className="house-caption">Não há outra Casa no cadastro público dessa região.
+      Casas NPC exigem cadastro e homologação pelo Narrador.</p>}
+    {canTargetHouse&&<p role="status">Agente presente na região de {name(destination)}:
+     Casa {selectedTargetHouse?.name} selecionada. Investigação local prevista:
+     1 désdia. A defesa dessa Casa depende da Lei e das construções próprias,
+     sem revelar seus valores privados.</p>}
+   </div>}
    <label style={{display:'flex',gap:8,alignItems:'center'}}>
     <input type="checkbox" checked={allowSea} onChange={e=>setAllowSea(e.target.checked)}/>
     Considerar travessias marítimas autorizadas (incluindo Dragonmere)
    </label>
-   <label style={{display:'flex',gap:8,alignItems:'center'}}>
+   {!travelOnly&&<label style={{display:'flex',gap:8,alignItems:'center'}}>
     <input type="checkbox" checked={returnToStart} onChange={e=>setReturnToStart(e.target.checked)}/>
     Incluir viagem de retorno após a investigação
-   </label>
+   </label>}
    {plan?.status==='ready'?<div className="house-panel" role="status">
     <h4>{name(plan.startRegion)} → {plan.regionName}</h4>
-    <p><strong>{plan.travelRounds}</strong> désdia(s) de viagem + <strong>1</strong> de investigação = <strong>{plan.totalRounds} désdia(s)</strong> na prévia ({plan.totalRounds*10} dias ordinários).</p>
+    {(travelOnly||houseMode&&!canTargetHouse)
+      ?<p><strong>Primeira etapa — deslocamento regional:</strong>
+       {plan.travelRounds} désdia(s) de viagem ({plan.travelRounds*10} dias ordinários).
+       {travelOnly?'Este deslocamento não inclui investigação.':houseStage==='select_house'?'O agente já está aqui: selecione uma Casa antes de planejar a investigação.':'A investigação da Casa dependerá de chegada registrada e escolha do alvo.'}</p>
+      :<p><strong>{plan.travelRounds}</strong> désdia(s) de viagem + <strong>1</strong>
+       de investigação = <strong>{plan.totalRounds} désdia(s)</strong> na prévia
+       ({plan.totalRounds*10} dias ordinários).</p>}
     <p className="house-caption">Estimativa cartográfica. As fronteiras do desenho não substituem
      homologação de rotas operacionais; {simulated?'a origem é hipotética':'o agente tem a posição informada pelo banco'}.</p>
-    <p>Dificuldade basal de espionagem no destino: <strong>{plan.basalDifficulty} (Lei)</strong>.</p>
-    {plan.legs.length===0?<p>A investigação ocorre na região atual do espião.</p>:
+    {travelOnly?<p><strong>Somente deslocamento.</strong> Nenhum teste de investigação regional ou contra Casa ocorre nesta etapa.</p>
+     :houseMode
+      ?<p>Alvo: <strong>Casa nobre.</strong> A Lei basal regional não determina a defesa
+       da Casa. {canTargetHouse
+        ?'A defesa usa a Lei e as construções da própria Casa-alvo, reservadas ao Narrador.'
+        :'Aguarde a chegada regional antes de planejar a investigação da Casa.'}</p>
+      :<p>Dificuldade basal de reconhecimento regional: <strong>{plan.basalDifficulty} (Lei regional)</strong>.</p>}
+    {plan.legs.length===0?<p>{travelOnly?'O agente já está na região selecionada.':'A investigação ocorre na região atual do espião.'}</p>:
      <ol>{plan.legs.map((leg,i)=><li key={leg.connectionId+':'+i}>
       {name(leg.fromRegion)} → {name(leg.toRegion)} · 1 rodada
       {leg.passage==='sea_passage'?(new Set(['dragoncoast','crownlands','shieldmark']).has(leg.fromRegion)&&new Set(['dragoncoast','crownlands','shieldmark']).has(leg.toRegion)?' · via Dragonmere':' · via marítima'):' · fronteira terrestre'}
      </li>)}</ol>}
-    {returnToStart&&<p>{plan.returnRounds===null
+    {!travelOnly&&returnToStart&&<p>{plan.returnRounds===null
      ?'Retorno não homologado: não existe caminho de volta aprovado.'
      :'Retorno: '+plan.returnRounds+' rodada(s). Total com missão e retorno: '+plan.totalWithReturnRounds+' rodada(s).'}</p>}
     {forecast?<div className="house-ledger" style={{marginTop:12}}>
      <h4>Datas previstas pelo Hub Temporal</h4>
      <p>Partida a partir da data oficial: <strong>{formatDate(forecast.officialDateKey)}</strong> ({formatCampaignPeriod(campaignTime.data!)} · v{forecast.calendarVersion}).</p>
      <p>Chegada à região investigada: <strong>{formatDate(forecast.arrivesAtTargetDateKey)}</strong>.</p>
-     <p>Investigação de 1 désdia: <strong>{formatDate(forecast.investigationStartsDateKey)}</strong> até <strong>{formatDate(forecast.investigationEndsDateKey)}</strong>.</p>
-     <p>Conclusão prevista: <strong>{formatDate(forecast.investigationEndsDateKey)}</strong> — {forecast.ordinaryDaysToConclusion} dias ordinários após a data oficial.</p>
+     {(!travelOnly&&(!houseMode||canTargetHouse))&&<p>Investigação de 1 désdia:
+       <strong>{formatDate(forecast.investigationStartsDateKey)}</strong> até
+       <strong>{formatDate(forecast.investigationEndsDateKey)}</strong>.</p>}
+     {(!travelOnly&&(!houseMode||canTargetHouse))
+       ?<p>Conclusão prevista: <strong>{formatDate(forecast.investigationEndsDateKey)}</strong>
+        — {forecast.ordinaryDaysToConclusion} dias ordinários após a data oficial.</p>
+       :<p>Chegada regional prevista: <strong>{formatDate(forecast.arrivesAtTargetDateKey)}</strong>.
+        A investigação da Casa ainda não possui data de conclusão autorizada.</p>}
      {forecast.travelLegs.length>1&&<details><summary>Datas de chegada de cada trecho</summary><ol>
       {forecast.travelLegs.map((leg,i)=><li key={leg.edgeId+':'+i}>
        {name(leg.fromRegion)} → {name(leg.toRegion)}: {formatDate(leg.arrivalDateKey)}
       </li>)}
      </ol></details>}
-     {returnToStart&&(forecast.returnArrivalDateKey
+     {!travelOnly&&returnToStart&&(forecast.returnArrivalDateKey
       ?<p>Retorno à região inicial: <strong>{formatDate(forecast.returnArrivalDateKey)}</strong> — {forecast.ordinaryDaysWithReturn} dias ordinários incluindo investigação.</p>
       :<p>Sem data de retorno: rota de volta ainda não homologada.</p>)}
-     {forecast.crossedFestivalsUntilConclusion.length>0&&<p>Festivais intercalares atravessados: {forecast.crossedFestivalsUntilConclusion.map(f=>f.name).join(', ')}. Eles não consomem dias de désdia.</p>}
+     {!travelOnly&&forecast.crossedFestivalsUntilConclusion.length>0&&<p>Festivais intercalares atravessados: {forecast.crossedFestivalsUntilConclusion.map(f=>f.name).join(', ')}. Eles não consomem dias de désdia.</p>}
     </div>:<p role="note">O Hub Temporal oficial não está disponível; os valores em rodadas continuam válidos, mas não há datas de chegada confirmáveis.</p>}
     <small>Prévia estratégica, não uma missão registrada. O avanço e a publicação do tempo permanecem exclusivos do Narrador.</small>
    </div>:plan&&<p role="status" className="house-caption">{message[plan.status]}</p>}
    {!data.agents.length&&<p role="note">Sem agentes cadastrados. Após conciliação da Rede ou contratação, o cálculo passará a usar a posição própria de cada agente.</p>}
   </div>}
+  {admin&&<SpyNobleDefenseAdmin houses={targetsQuery.data??[]}/>}
   {admin&&<SpyRegionRouteAdmin houseId={houseId}/>}
  </section>;
 }

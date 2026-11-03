@@ -26,6 +26,7 @@ import { HouseAssetCatalog } from './asset-catalog';
 import { Creation } from './creation';
 import { Army } from './army';
 import { SpyRegionalTurnsPanel } from './espionage/spy-regional-turns-panel';
+import {SpyDefensePanel,SpyAgentManagement} from './espionage/spy-house-management';
 import { Vassals } from './vassals';
 import { FortunePanel } from './fortune-panel';
 import { HouseCoverage } from './coverage';
@@ -150,7 +151,15 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
         onCondition={(args,reason)=>run('condition',args,reason)}/>
       </>}
       {section==='army'&&<Army commanders={courtMembers} state={state} houseName={house.name} onSiege={args=>run('siege',args)} onSiegeState={(args,reason)=>run('siege_state',args,reason)} admin={admin} onState={args=>run('unit_state',args)} onSurvivors={args=>run('survivors',args)} onTrain={(args,reason)=>run('train_unit',args,reason)} onEdit={args=>run('unit_edit',args)} onGrant={(args,reason)=>run('grant_unit_xp',args,reason)} onRename={args=>run('military_rename',args)} onConfigure={args=>run('military_config',args)} onWarHounds={args=>run('war_hounds',args)} onBroadTraining={args=>run('broad_training',args)} onBuyMilitary={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}} canEdit={monthlyCanEdit} busy={busy} onCreate={args=>run('unit',args)} onEquipment={args=>run('equipment',args)}/>}
-      {section==='spy'&&<SpyRegionalTurnsPanel houseId={house.id} admin={admin}/>}
+      {section==='spy'&&<>
+       <HouseAssetCatalog section="spy" state={state} catalog={catalog}
+        canEdit={monthlyCanEdit} busy={busy}
+        onBuy={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}}
+        onCondition={(args,reason)=>run('condition',args,reason)}/>
+       <SpyDefensePanel state={state}/>
+       <SpyAgentManagement houseId={house.id} canEdit={canEdit}/>
+       <SpyRegionalTurnsPanel houseId={house.id} admin={admin}/>
+      </>}
       {section==='vassals'&&<><Vassals catalog={catalog} onCreate={args=>run('vassal_create',args)} onPurchase={args=>run('vassal_purchase',args)} onDomain={args=>run('vassal_domain',args)} state={state} houses={houses} npcs={npcs} admin={admin} canEdit={canEdit} busy={busy} onPropose={args=>run('vassal',args)} onApprove={(args,note)=>run('vassal_approve',args,note)} onEnd={(args,note)=>run('vassal_end',args,note)} onLoyalty={(args,note)=>run('vassal_loyalty',args,note)}/></>}
       {section==='court'&&<>{npcManager}<p>Titular: {house.lord_name??'Não informado'}</p><Court state={state} members={courtMembers} canEdit={canEdit} busy={busy} onAssign={args=>run('court',args)} onRemove={id=>run('court_remove',{id},'Remoção de vínculo da Corte solicitada pelo gestor da casa.')}/></>}
       {section==='projects'&&<><h3>Projetos e calendário</h3><p>{campaignMonth(state.month)}</p>{state.projects.map(p=><article className="house-project" key={p.id}><h4>{p.name}</h4><p>{p.status==='completed'?'Concluído':p.status==='cancelled'?'Cancelado':'Em andamento'} · duração {p.duration} meses · previsão {campaignMonth(p.start+p.duration+p.modifier)}</p>
@@ -171,7 +180,7 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
   <Button disabled={busy} variant="outline" onClick={()=>run('restore_legacy_effects',{holdingIds:legacyEffectCandidates(state).map(h=>h.id)},'Conciliação de benefícios das posses legadas pela identificação exata com o catálogo vigente.')}>Registrar benefícios legados na ficha</Button>
  </div>}
  {admin&&<RuleEditor catalog={catalog}/>}</>}
-    </main></div><PurchaseDrawer key={`${state.month}-${globalCalendar?.year??'none'}-${globalCalendar?.month??'none'}`} open={buy&&monthlyCanEdit} onClose={()=>{setBuy(false);setPurchaseItemId('');}} state={state} catalog={catalog} busy={busy} onConfirm={args=>run('purchase',args)} initialCategory={section==='overview'||(section==='army'&&purchaseItemId)?'':categories.join(',')} initialItemId={purchaseItemId} onCreateDomain={name=>run('domain',{id:crypto.randomUUID(),name,notes:''},'Domínio criado durante a compra de uma posse.')}/>
+    </main></div><PurchaseDrawer key={`${state.month}-${globalCalendar?.year??'none'}-${globalCalendar?.month??'none'}`} open={buy&&monthlyCanEdit} onClose={()=>{setBuy(false);setPurchaseItemId('');}} state={state} catalog={catalog} busy={busy} onConfirm={args=>run('purchase',args)} initialCategory={section==='overview'||(section==='army'&&purchaseItemId)||(section==='spy'&&purchaseItemId)?'':categories.join(',')} initialItemId={purchaseItemId} onCreateDomain={name=>run('domain',{id:crypto.randomUUID(),name,notes:''},'Domínio criado durante a compra de uma posse.')}/>
   </div>;
 }
 function RuleEditor({catalog}:{catalog:CatalogItem[]}) {

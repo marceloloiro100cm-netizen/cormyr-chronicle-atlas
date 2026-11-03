@@ -6,6 +6,8 @@ on:
       - 'src/components/house/espionage/**'
       - 'src/components/house/hub.tsx'
       - 'src/test/espionage-*.test.ts'
+      - 'src/test/espionage-*.test.tsx'
+      - 'src/components/house/asset-catalog.tsx'
       - '.github/workflows/espionage-live-panel.yml'
       - 'tsconfig.espionage-live.json'
   workflow_dispatch:
@@ -26,7 +28,7 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
       - name: Regional routing and narrator approval schemas
-        run: bunx vitest run src/test/espionage-region-turns.test.ts src/test/espionage-region-review.test.ts src/test/espionage-cormyr-map.test.tsx
+        run: bunx vitest run src/test/espionage-region-turns.test.ts src/test/espionage-region-review.test.ts src/test/espionage-cormyr-map.test.tsx src/test/espionage-house-management.test.ts src/test/espionage-npc-defense.test.ts
       - name: Harptos desdia time projections
         run: bunx vitest run src/test/espionage-desdia-temporal.test.ts
       - name: Scoped TypeScript verification (spy module and integration)
