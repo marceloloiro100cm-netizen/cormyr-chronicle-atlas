@@ -6199,7 +6199,7 @@
     "name": "Polícia Secreta",
     "original": "Secret Police",
     "category": "personage",
-    "description": "G Lei +1 e mitigação de perdas de Lei +2. Perdas de Influência e População por Sorte aumentam em 1.",
+    "description": "Polícia Secreta: agentes hostis sofrem +6 na dificuldade de Astúcia nos domínios da Casa. Membros da Casa obtêm Contatos em seus domínios; penalidades da Sorte da Casa por População alta ou baixa são reduzidas em 1.",
     "costs": [
       {
         "resource": "power",
@@ -6225,20 +6225,16 @@
     ],
     "effects": [
       {
-        "kind": "gain",
-        "resource": "law",
-        "amount": 1,
-        "description": "G Lei +1"
-      },
-      {
-        "kind": "mitigation",
-        "resource": "law",
-        "amount": 2,
-        "description": "M Lei +2"
+        "kind": "action",
+        "description": "Agentes inimigos que atuam nos domínios da Casa sofrem +6 na dificuldade de seus testes de Astúcia."
       },
       {
         "kind": "action",
-        "description": "Perdas de Influência e População por Sorte da Casa aumentam em 1; resultado resolvido pelo Narrador."
+        "description": "Membros da Casa recebem o benefício de Contatos em todos os seus domínios."
+      },
+      {
+        "kind": "action",
+        "description": "Reduz em 1 a penalidade da rolagem de Sorte da Casa decorrente de População excessiva ou insuficiente."
       }
     ],
     "duration": {
@@ -6248,16 +6244,20 @@
     },
     "source": "Prosperidade · Out of Strife, Prosperity",
     "section": "Personage Wealth Holdings > Secret Police",
-    "version": "2026-10-24",
+    "version": "2026-11-03-verificado-livro",
     "repeatable": false,
     "ruleText": {
       "requirements": "Small Town ou comunidade maior.",
       "duration": null,
-      "rules": [],
-      "effects": [],
+      "rules": [
+        "Espiões, assassinos, sabotadores e outros agentes hostis: dificuldade dos testes de Astúcia +6.",
+        "Contatos para membros da Casa em todos os seus domínios."
+      ],
+      "effects": [
+        "Penalidade da Sorte da Casa causada por População muito alta ou baixa reduzida em 1."
+      ],
       "uncertainty": "Prazo e regras básicas não recuperáveis no OCR. O prazo 12+2d6 entre cabeçalhos não foi atribuído por suposição."
-    },
-    "pending": "Prazo e regras básicas não recuperáveis no OCR. O prazo 12+2d6 entre cabeçalhos não foi atribuído por suposição. Prazo reconstruído conforme auditoria do suplemento; conferir exemplares impressos. Requisitos adicionais precisam de validação narrativa: Small Town ou comunidade maior."
+    }
   },
   {
     "id": "pros-secret-police--special-detachment",
@@ -6367,7 +6367,7 @@
     "name": "Rede de Espiões",
     "original": "Spy Network",
     "category": "personage",
-    "description": "Desbloqueia Spy Cell Infiltration. Texto preservado descreve teste relacionado à descoberta com dificuldade 6 para Lei ≤30, +3 por 5 pontos acima de 30; fracasso compromete e perde a célula. Revelação pública da rede custa 1d3+3 Influência.",
+    "description": "Rede de Espiões: concede até três células iniciais; células extras no mesmo domínio dão +3 por célula adicional aos testes de Contatos para informações. A descoberta das células depende de teste de Astúcia, com dificuldade convertida da Lei do alvo.",
     "costs": [
       {
         "resource": "wealth",
@@ -6379,38 +6379,45 @@
     "effects": [
       {
         "kind": "action",
-        "description": "Desbloqueia Spy Cell Infiltration."
+        "description": "Concede acesso inicial a até três células de espionagem e à ação de Casa de deslocamento de células."
       },
       {
         "kind": "action",
-        "description": "Texto preservado descreve teste relacionado à descoberta com dificuldade 6 para Lei ≤30, +3 por 5 pontos acima de 30; fracasso compromete e perde a célula."
+        "description": "Cada célula adicional no mesmo domínio concede +3 aos testes de Contatos para descobrir informações."
       },
       {
         "kind": "action",
-        "description": "Revelação pública da rede custa 1d3+3 Influência."
+        "description": "Descoberta da célula: dificuldade 6 para Lei até 34; +3 a cada 5 pontos completos de Lei acima de 30. Fracasso pode comprometer e perder a célula."
+      },
+      {
+        "kind": "action",
+        "description": "Exposição pública da rede pode causar perda de 1 dado de três faces +3 pontos de Influência."
       }
     ],
     "duration": {
-      "months": 12,
+      "months": 6,
       "dice": 2,
       "sides": 6
     },
     "source": "Prosperidade · Out of Strife, Prosperity",
     "section": "Personage Wealth Holdings > Spy Network",
-    "version": "2026-10-24",
+    "version": "2026-11-03-verificado-livro",
     "repeatable": false,
     "ruleText": {
       "requirements": "Nenhum, conforme resumo.",
-      "duration": null,
-      "rules": [],
+      "duration": "6 meses mais 2 dados de seis faces.",
+      "rules": [
+        "Até três células iniciais.",
+        "Cada célula adicional no mesmo domínio: +3 em Contatos para informações.",
+        "Mover células entre domínios exige teste de Status (Administração) contra dificuldade 9, levando um mês no livro."
+      ],
       "effects": [
         "Desbloqueia Spy Cell Infiltration.",
         "Texto preservado descreve teste relacionado à descoberta com dificuldade 6 para Lei ≤30, +3 por 5 pontos acima de 30; fracasso compromete e perde a célula.",
         "Revelação pública da rede custa 1d3+3 Influência."
       ],
       "uncertainty": "Cabeçalho e início das regras perdidos: prazo, número inicial de células, distribuição, frequência e responsável pelo teste de descoberta não recuperáveis. A frase seguinte diz que dois graus de sucesso revelam o mestre da célula, apesar de a anterior associar fracasso à perda; não harmonizado."
-    },
-    "pending": "Cabeçalho e início das regras perdidos: prazo, número inicial de células, distribuição, frequência e responsável pelo teste de descoberta não recuperáveis. A frase seguinte diz que dois graus de sucesso revelam o mestre da célula, apesar de a anterior associar fracasso à perda; não harmonizado. Prazo reconstruído conforme auditoria do suplemento; conferir exemplares impressos. Requisitos adicionais precisam de validação narrativa: Nenhum, conforme resumo."
+    }
   },
   {
     "id": "pros-spy-network--expanded-network",
@@ -6705,7 +6712,7 @@
     "name": "Gangues de Rua",
     "original": "Street Gangs",
     "category": "personage",
-    "description": "Mitigação de perda de Riqueza +1. Perdas de Lei por Bônus na rolagem de Sorte aumentam em 1. Custo de Peasant Levy -2.",
+    "description": "Gangues de Rua: reduzem em 1 perdas de Riqueza, aumentam em 1 perdas de Lei decorrentes da Sorte da Casa e reduzem em 2 pontos de Poder o custo de recrutar Recrutas Camponeses.",
     "costs": [
       {
         "resource": "wealth",
@@ -6729,22 +6736,22 @@
         "kind": "mitigation",
         "resource": "wealth",
         "amount": 1,
-        "description": "M Riqueza +1."
+        "description": "Reduz em 1 as perdas de Riqueza, quando a mitigação puder ser aplicada."
       },
       {
         "kind": "action",
-        "description": "Perdas de Lei por SF aumentam em 1."
+        "description": "Aumenta em 1 as perdas de Lei causadas pelos resultados da Sorte da Casa."
       },
       {
         "kind": "action",
-        "description": "Custo de Peasant Levy -2."
+        "description": "Reduz em 2 pontos de Poder o custo para recrutar a unidade Recrutas Camponeses."
       },
       {
         "kind": "discount",
-        "resource": "population",
+        "resource": "power",
         "target": "unit:levies",
         "amount": 2,
-        "description": "Desconto de 2 População no custo de recrutamento dos Plebeus, conforme regra de Gangues de Rua."
+        "description": "Desconto de 2 pontos de Poder ao recrutar Recrutas Camponeses."
       }
     ],
     "duration": {
@@ -6754,7 +6761,7 @@
     },
     "source": "Prosperidade · Out of Strife, Prosperity",
     "section": "Personage Wealth Holdings > Street Gangs",
-    "version": "2026-10-24",
+    "version": "2026-11-03-verificado-livro",
     "repeatable": false,
     "ruleText": {
       "requirements": "Small Town ou comunidade maior.",
