@@ -28,7 +28,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
  const create=useServerFn(createSpyAgent);
  const qc=useQueryClient();
  const slots=data?.recruitment.filter(r=>r.vacancies>0)??[];
- const source=slots.find(r=>r.sourceHoldingId===sourceId)??slots[0];
+ const source=sourceId?slots.find(r=>r.sourceHoldingId===sourceId):slots[0];
  const portraits=data?.portraits??[];
  const cost=upgrades.length;
  const enoughWealth=cost===0||data?.availableWealth===null||
