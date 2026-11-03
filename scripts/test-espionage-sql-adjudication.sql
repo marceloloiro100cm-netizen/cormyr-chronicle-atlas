@@ -60,9 +60,8 @@ BEGIN
   'O agente observou a ponte, mas não confirmou toda a informação',2);
  PERFORM public.spy_test_assert((out->>'outcome_recorded')='true',
   'Narrator records explicit mission outcome');
- PERFORM public.spy_test_assert(
-  (SELECT target_law IS NULL AND difficulty IS NULL FROM public.spy_mission_decisions
-    WHERE operation_id=operation),'No fabricated Law or difficulty');
+ PERFORM public.spy_test_assert((out->>'difficulty')='awaiting_approved_rules',
+  'No invented difficulty is presented to any player');
  PERFORM public.spy_test_assert(
   (SELECT status FROM public.spy_assets WHERE id=agent)='operating',
   'Partial discovery does not auto-capture agent');
@@ -103,6 +102,13 @@ BEGIN
  END;
 END $check$;
 RESET ROLE;
+-- Deliberate admin fixture check bypasses normal client role; this is never a player query.
+SELECT public.spy_test_assert(
+ (SELECT count(*) FROM public.spy_mission_decisions
+  WHERE target_law IS NULL AND difficulty IS NULL
+   AND operation_id IN (SELECT id FROM public.spy_operations WHERE owner_house_id='house-c')
+   AND resolution='partial')=1,
+ 'No private target Law or success chance was invented');
 -- A member of C cannot read sealed reports at all, nor approve/release them.
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','44444444-4444-4444-8444-444444444444',false);
