@@ -118,6 +118,6 @@ export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}
     aria-pressed={selectedRegion===id}
     onClick={()=>navigate(id)}>{region.name}</button>)}
   </div>
-  <p className="cormyr-map-source">{CORMYR_MAP_SOURCE}. Contornos simplificados para seleção regional; cidades, estradas e portos não foram vetorizados. Dragon Coast–Crownlands via Dragonmere: 1 désdia de viagem por confirmação do Narrador. Outras passagens marítimas exigem homologação.</p>
+  <p className="cormyr-map-source">{CORMYR_MAP_SOURCE}. Contornos simplificados para seleção regional; cidades, estradas e portos não foram vetorizados. Crownlands, Shieldmark e Dragon Coast: qualquer travessia direta entre essas regiões pelo Dragonmere dura 1 désdia, por confirmação do Narrador. Outras passagens marítimas exigem homologação.</p>
  </section>;
 }
