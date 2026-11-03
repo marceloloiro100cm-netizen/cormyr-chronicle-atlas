@@ -39,7 +39,8 @@ describe('Balanceamento de Casas NPC sem ficha',()=>{
    expect(result.difficulty).toBe(spyLawDifficulty(law+10));
    expect(result.constructionBonus).toBe(0);
    expect(result.source).toBe('regional_npc_fallback');
-   expect(spyRegionalBaseline(region)?.basalDifficulty).toBe(law);
+   expect(spyRegionalBaseline(region)?.regionalLaw).toBe(law);
+   expect(spyRegionalBaseline(region)?.basalDifficulty).toBe(spyLawDifficulty(law));
   }
  });
  it('Lei-base regional ainda é preservada, mas todos geram DC 6',()=>{
