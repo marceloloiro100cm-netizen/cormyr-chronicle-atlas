@@ -111,7 +111,7 @@ CREATE OR REPLACE FUNCTION public.spy_seal_intel_report(
 ) RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=public,pg_temp AS $spy$
 DECLARE op public.spy_operations; a public.spy_assets; cal public.campaign_calendar;
  f jsonb; clean_facts jsonb:='[]'::jsonb; field_code text; date_key text; conf text;
- disclosed jsonb; fact_id uuid; seen_ids uuid[]:=ARRAY[]::uuid[]; n integer;
+ disclosed jsonb; fact_id uuid; previous_report uuid; seen_ids uuid[]:=ARRAY[]::uuid[];
 BEGIN
  IF auth.uid() IS NULL OR NOT public.campaign_access_active() OR NOT public.is_campaign_admin()
   THEN RAISE EXCEPTION 'Narrador obrigatório para selar relatório'; END IF;
@@ -125,7 +125,12 @@ BEGIN
  PERFORM pg_advisory_xact_lock(hashtextextended('spy:report:'||p_operation::text,0));
  IF EXISTS(SELECT 1 FROM public.spy_operation_events WHERE request_key=p_key
   AND event_type='report_sealed' AND operation_id=p_operation) THEN
-  RETURN jsonb_build_object('report_id',p_report,'duplicate',true); END IF;
+  SELECT id INTO previous_report FROM public.spy_intel_reports
+   WHERE operation_id=p_operation ORDER BY created_at DESC,id DESC LIMIT 1;
+  IF previous_report IS DISTINCT FROM p_report THEN
+   RAISE EXCEPTION 'Chave idempotente não corresponde ao relatório originalmente selado';
+  END IF;
+  RETURN jsonb_build_object('report_id',previous_report,'duplicate',true); END IF;
  IF EXISTS(SELECT 1 FROM public.spy_operation_events WHERE request_key=p_key)
   THEN RAISE EXCEPTION 'Chave já utilizada'; END IF;
  SELECT * INTO op FROM public.spy_operations WHERE id=p_operation FOR SHARE;
