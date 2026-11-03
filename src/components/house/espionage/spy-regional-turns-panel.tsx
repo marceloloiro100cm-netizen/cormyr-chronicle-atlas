@@ -3,7 +3,9 @@ import {useQuery} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
 import {loadSpyRegionalStrategy} from '@/lib/espionage/region-turns.functions';
-import {planSpyRegionalMission} from '@/lib/espionage/region-turns';
+import {planSpyRegionalMission,type SpyRegionalAgent} from '@/lib/espionage/region-turns';
+import {cormyrPreviewLinks,CORMYR_MAP_SOURCE} from '@/lib/espionage/cormyr-map';
+import {CormyrInteractiveMap} from './cormyr-interactive-map';
 import {allSpyRegionalBaselines} from '@/lib/espionage/public-strategy';
 import {REGIONS} from '@/lib/house/regions';
 import {SpyRegionRouteAdmin} from './spy-region-route-admin';
@@ -26,12 +28,28 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
  const [destination,setDestination]=useState('');
  const [allowSea,setAllowSea]=useState(true);
  const [returnToStart,setReturnToStart]=useState(false);
+ const [originOverride,setOriginOverride]=useState('');
  const regions=allSpyRegionalBaselines();
  const selected=data?.agents.find(a=>a.id===(assetId||data.agents[0]?.id));
- const plan=selected&&destination&&data?planSpyRegionalMission({
-  agent:selected,destinationRegion:destination,links:data.links,
+ // The GM-supplied map is a source for strategic previews. It DOES NOT
+ // certify routes for an actual operation; that requires server-side review.
+ const previewLinks=cormyrPreviewLinks(data?.links??[]);
+ const currentOrigin=originOverride||(selected?.currentRegion??null);
+ const simulated=Boolean(originOverride||!selected);
+ const hypotheticalAgent:SpyRegionalAgent={
+  id:'11111111-1111-4111-8111-111111111111',
+  codename:'Simulação geográfica',status:'available',currentRegion:currentOrigin,
+ };
+ const planningAgent=simulated?hypotheticalAgent:selected;
+ const plan=planningAgent&&destination?planSpyRegionalMission({
+  agent:planningAgent,destinationRegion:destination,links:previewLinks,
   seaAllowed:allowSea,includeReturn:returnToStart,
  }):null;
+ const comparisons=currentOrigin?regions.map(region=>({
+  ...region,
+  estimate:planSpyRegionalMission({agent:hypotheticalAgent,
+   destinationRegion:region.regionId,links:previewLinks,seaAllowed:allowSea}),
+ })):[];
  const forecast=plan?.status==='ready'&&campaignTime.data&&!campaignTime.isError
   ?projectSpyHarptosSchedule({plan,officialDate:campaignTime.data,
     calendarVersion:campaignTime.data.version})
@@ -54,8 +72,11 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    Uma passagem marítima homologada liga duas regiões em apenas <strong>1 rodada</strong>.
    <strong> Cada rodada equivale a 1 désdia (10 dias ordinários) do Hub Temporal.</strong>
   </p>
-  <p className="house-caption">A origem sempre é a região em que o <strong>agente selecionado</strong> está localizado.
-   Não é a sede da Casa. O cálculo não avança o calendário nem envia uma missão.</p>
+  <p className="house-caption">A posição do espião selecionado é a origem padrão, nunca a sede da Casa.
+   Você também pode escolher uma origem <strong>somente para simulação</strong>. O mapa usa
+   as fronteiras terrestres visíveis no documento enviado pelo Narrador;
+   atalhos marítimos só podem ser usados quando homologados no servidor. Nenhum desses
+   cálculos envia missão ou altera o Hub Temporal.</p>
   <details className="house-ledger">
    <summary>Consultar dificuldade basal de todas as regiões</summary>
    <p>Valores públicos derivados da Lei regional. A dificuldade específica de uma Casa poderá sofrer modificações posteriores.</p>
@@ -64,10 +85,51 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      <td>{x.basalDifficulty}</td></tr>)}</tbody>
    </table>
   </details>
-  {isPending&&<p role="status">Consultando posições dos agentes e fronteiras homologadas…</p>}
+  <div className="house-ledger" style={{margin:'14px 0',display:'grid',gap:10}}>
+   <label>Origem do cálculo
+    <select aria-label="Região de origem para simulação" value={originOverride}
+     onChange={e=>setOriginOverride(e.target.value)}>
+     <option value="">Posição atual do espião {selected?.currentRegion?'· '+name(selected.currentRegion):'(se disponível)'}</option>
+     {regions.map(region=><option key={region.regionId} value={region.regionId}>
+      Simular partida em {region.regionName}
+     </option>)}
+    </select>
+   </label>
+   {originOverride&&<p role="note" className="house-caption">Esta origem é uma simulação do mapa e não move o espião nem modifica sua localização oficial.</p>}
+  </div>
+  <CormyrInteractiveMap
+   selectedRegion={destination} originRegion={currentOrigin}
+   plan={plan?.status==='ready'?plan:null}
+   onSelect={setDestination}/>
+  {currentOrigin&&<details className="house-ledger" open style={{marginTop:14}}>
+   <summary>Todas as regiões · viagem a partir de {name(currentOrigin)} (11 destinos)</summary>
+   <p>Estimativa terrestre baseada no mapa e acrescida das passagens marítimas aprovadas, quando habilitadas.
+    A missão de investigação dura mais 1 désdia em qualquer destino.</p>
+   <div style={{overflowX:'auto'}}>
+    <table><thead><tr>
+     <th scope="col">Destino</th><th scope="col">Viagem</th>
+     <th scope="col">Investigação</th><th scope="col">Total</th><th scope="col">Dias ordinários</th>
+    </tr></thead><tbody>
+     {comparisons.map(row=><tr key={row.regionId}
+      style={destination===row.regionId?{background:'rgba(174,194,224,.25)'}:undefined}>
+      <td><button type="button" onClick={()=>setDestination(row.regionId)}
+       style={{background:'none',border:0,textDecoration:'underline',color:'inherit',cursor:'pointer',textAlign:'left'}}>
+       {row.regionName}</button></td>
+      {row.estimate.status==='ready'?<>
+       <td>{row.estimate.travelRounds} désdia(s)</td><td>1 désdia</td>
+       <td><strong>{row.estimate.totalRounds} désdia(s)</strong></td>
+       <td>{row.estimate.totalRounds*10}</td>
+      </>:<td colSpan={4}>Rota pendente de validação</td>}
+     </tr>)}
+    </tbody></table>
+   </div>
+   <small>Fonte terrestre: {CORMYR_MAP_SOURCE}. Os caminhos desta tabela são estimativas cartográficas;
+    para executar uma missão será exigida uma rota autorizada pelo servidor.</small>
+  </details>}
+  {isPending&&<p role="status">Consultando posições dos agentes e travessias marítimas homologadas…</p>}
   {isError&&<div role="note">
-   <p>O cadastro operacional de agentes e ligações regionais ainda não está publicado.
-    As dificuldades basais acima permanecem disponíveis, mas não há prazo de viagem confirmado.</p>
+   <p>O cadastro operacional da Casa não pôde ser consultado. O mapa e a simulação de fronteiras
+    ainda funcionam, mas o ponto de partida de um espião real precisa ser confirmado.</p>
    <Button type="button" variant="outline" onClick={()=>{void refetch();}}>Consultar novamente</Button>
   </div>}
   {data&&<div style={{display:'grid',gap:12,maxWidth:750,marginTop:16}}>
@@ -99,7 +161,9 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    </label>
    {plan?.status==='ready'?<div className="house-panel" role="status">
     <h4>{name(plan.startRegion)} → {plan.regionName}</h4>
-    <p><strong>{plan.travelRounds}</strong> rodada(s) de deslocamento + <strong>1</strong> de investigação = <strong>{plan.totalRounds} rodada(s)</strong> até concluir a missão.</p>
+    <p><strong>{plan.travelRounds}</strong> désdia(s) de viagem + <strong>1</strong> de investigação = <strong>{plan.totalRounds} désdia(s)</strong> na prévia ({plan.totalRounds*10} dias ordinários).</p>
+    <p className="house-caption">Estimativa cartográfica. As fronteiras do desenho não substituem
+     homologação de rotas operacionais; {simulated?'a origem é hipotética':'o agente tem a posição informada pelo banco'}.</p>
     <p>Dificuldade basal de espionagem no destino: <strong>{plan.basalDifficulty} (Lei)</strong>.</p>
     {plan.legs.length===0?<p>A investigação ocorre na região atual do espião.</p>:
      <ol>{plan.legs.map((leg,i)=><li key={leg.connectionId+':'+i}>
