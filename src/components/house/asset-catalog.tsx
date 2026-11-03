@@ -2,11 +2,12 @@ import {useState} from 'react';
 import {Castle,Coins,Hammer,Landmark,Mountain,Trees,Users,ChevronDown} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {militaryPurchaseReadiness} from './military-assets';
+import {SPY_HOLDING_ID_SET} from '@/lib/espionage/spy-defense';
 import {HouseAssetCard,HouseAssetGrid} from './asset-card';
 import {legacyCatalogEffects} from '@/lib/house/holding-accounting';
 import {RESOURCE_NAMES,type CatalogItem,type HouseState,type Holding,type Requirement} from '@/lib/house/types';
 
-type Section='domains'|'fortifications'|'economy';
+type Section='domains'|'fortifications'|'economy'|'spy';
 type Run=(action:'condition'|'domain_edit'|'domain_delete',args:Record<string,unknown>,reason:string)=>Promise<boolean>;
 const LABELS:Record<CatalogItem['category'],string>={
  terrain:'Terrenos',feature:'Características',community:'Comunidades',
@@ -17,6 +18,7 @@ const LABELS:Record<CatalogItem['category'],string>={
 const CATEGORY_BY_SECTION:Record<Section,readonly CatalogItem['category'][]>={
  domains:['terrain','feature','community'],fortifications:['fortification'],
  economy:['estate','lifestyle','personage','settlement','improvement','equipment','vassal'],
+ spy:['estate','personage','improvement','settlement'],
 };
 const COST_TYPE={allocation:'alocação',permanent:'permanente'} as const;
 const REQUIREMENT_LABELS:Record<Requirement['kind'],string>={
@@ -114,13 +116,14 @@ export function HouseAssetCatalog({section,state,catalog,canEdit,busy,onBuy,onCo
  const [acquisition,setAcquisition]=useState<'all'|'acquired'|'unacquired'>('all');
  const [limit,setLimit]=useState(24);
  const choices=CATEGORY_BY_SECTION[section];
- const items=catalog.filter(item=>choices.includes(item.category));
+ const items=catalog.filter(item=>choices.includes(item.category)&&
+  (section!=='spy'||SPY_HOLDING_ID_SET.has(item.id)));
  const visible=items.filter(item=>{
   // Construction already commits this asset to the House, but does not grant benefits yet.
   const acquired=state.holdings.some(h=>h.itemId===item.id&&
    (h.status==='active'||h.status==='building'));
   return (!category||item.category===category)&&
-   (section!=='economy'||acquisition==='all'||
+   (!['economy','spy'].includes(section)||acquisition==='all'||
     (acquisition==='acquired'?acquired:!acquired))&&
    [item.name,item.description,item.original].join(' ').toLocaleLowerCase('pt-BR')
     .includes(search.toLocaleLowerCase('pt-BR'));
@@ -128,11 +131,11 @@ export function HouseAssetCatalog({section,state,catalog,canEdit,busy,onBuy,onCo
  const acquired=items.filter(item=>locationsFor(item,state,
   state.holdings.filter(h=>h.itemId===item.id&&h.status==='active')).length>0).length;
  return <section className="military-assets house-assets" aria-label={'Catálogo de '+(
-  section==='domains'?'Terras':section==='economy'?'Economia':'Fortificações')}>
+  section==='domains'?'Terras':section==='economy'?'Economia':section==='spy'?'Espionagem':'Fortificações')}>
   <div className="house-section-heading">
    <div><p className="campaign-eyebrow">POSSES E CONSTRUÇÕES</p>
     <h3>{section==='domains'?'Terrenos, características e comunidades':
-     section==='economy'?'Economia e investimentos':'Fortificações e defesa'}</h3></div>
+     section==='economy'?'Economia e investimentos':section==='spy'?'Posses de Espionagem':'Fortificações e defesa'}</h3></div>
   </div>
   <p className="house-caption">{acquired} tipo(s) adquirido(s) · {items.length} opções.
    Selecione um quadro para consultar descrição, bônus, custo e condições.</p>
@@ -143,7 +146,7 @@ export function HouseAssetCatalog({section,state,catalog,canEdit,busy,onBuy,onCo
     <option value="">Todas as categorias</option>
     {choices.map(c=><option key={c} value={c}>{LABELS[c]}</option>)}
    </select></label>
-   {section==='economy'&&<label>Aquisição<select value={acquisition}
+   {(section==='economy'||section==='spy')&&<label>Aquisição<select value={acquisition}
     onChange={e=>{setAcquisition(e.target.value as 'all'|'acquired'|'unacquired');setLimit(24);}}>
     <option value="all">Todos</option>
     <option value="acquired">Adquiridos</option>
