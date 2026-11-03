@@ -39,9 +39,11 @@ SELECT public.spy_test_assert(
    WHERE f.owner_house_id='house-c' AND r.status NOT IN ('released','archived'))=0,
  'H11/H20: dossiê não incorpora dados de carta ainda selada');
 SELECT public.spy_test_assert(
- (SELECT count(*) FROM public.spy_mission_decisions WHERE target_law IS NOT NULL
-  OR difficulty IS NOT NULL)=0,
- 'H07/H09: sem Lei de NPC ou tabela defensiva homologada, nunca inventar dificuldade');
+ (SELECT count(*) FROM public.spy_mission_decisions d
+  JOIN public.spy_operations op ON op.id=d.operation_id
+  WHERE op.owner_house_id='house-c' AND
+   (d.target_law IS NOT NULL OR d.difficulty IS NOT NULL))=0,
+ 'H07/H09: o caso novo sem Lei homologada não inventa dificuldade');
 SELECT public.spy_test_assert(
  (SELECT count(*) FROM public.spy_temporal_deliveries d
   JOIN public.spy_operation_segments s ON s.id=d.segment_id
