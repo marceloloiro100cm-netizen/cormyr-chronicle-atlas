@@ -1,8 +1,7 @@
 import {describe,it,expect} from 'vitest';
-import {newHouseState,type Holding,type HouseState} from '@/lib/house/types';
+import {newHouseState,type Holding} from '@/lib/house/types';
 import {calculateSpyDefense,spyDiscoveryBaseDifficulty,SPY_HOLDING_ID_SET} from '@/lib/espionage/spy-defense';
 import {spyMissionProgress} from '@/components/house/espionage/spy-house-management';
-type H=Pick<Holding,'id'|'itemId'|'domainId'|'parentId'|'status'>;
 function holding(itemId:string,domainId='d1',status:'active'|'building'|'destroyed'='active',parentId?:string):Holding{
  return {id:'id-'+itemId+'-'+domainId,itemId,domainId,
   name:itemId,source:'Guerra dos Tronos RPG',status,
