@@ -6,6 +6,7 @@ import {loadSpyRegionalStrategy} from '@/lib/espionage/region-turns.functions';
 import {planSpyRegionalMission} from '@/lib/espionage/region-turns';
 import {allSpyRegionalBaselines} from '@/lib/espionage/public-strategy';
 import {REGIONS} from '@/lib/house/regions';
+import {SpyRegionRouteAdmin} from './spy-region-route-admin';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {formatDate,formatCampaignPeriod} from '@/lib/calendar/harptos';
 import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
@@ -14,7 +15,7 @@ import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
  * The existing published Hub Temporal is the ONLY start date.
  * Neither this preview nor client-side interaction may advance that clock.
  */
-export function SpyRegionalTurnsPanel({houseId}:{houseId:string}){
+export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admin?:boolean}){
  const load=useServerFn(loadSpyRegionalStrategy);
  const campaignTime=useCampaignTime();
  const {data,isPending,isError,refetch}=useQuery({
@@ -128,5 +129,6 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string}){
    </div>:plan&&<p role="status" className="house-caption">{message[plan.status]}</p>}
    {!data.agents.length&&<p role="note">Sem agentes cadastrados. Após conciliação da Rede ou contratação, o cálculo passará a usar a posição própria de cada agente.</p>}
   </div>}
+  {admin&&<SpyRegionRouteAdmin houseId={houseId}/>}
  </section>;
 }
