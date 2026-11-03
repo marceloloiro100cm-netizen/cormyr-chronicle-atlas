@@ -21,8 +21,9 @@ describe('automação de descontos na fonte da compra',()=>{
   const q=quoteMilitaryUnit(s,['levies'],'trained');
   expect(q.base.find(c=>c.resource==='power')?.amount).toBe(3);
   expect(q.costs.find(c=>c.resource==='power')?.amount).toBe(1);
-  expect(q.costs.find(c=>c.resource==='population')?.amount).toBe(0);
-  expect(q.discounts.reduce((n,d)=>n+d.amount,0)).toBe(4);
+  expect(q.costs.find(c=>c.resource==='population')?.amount).toBe(2);
+  expect(q.discounts.reduce((n,d)=>n+d.amount,0)).toBe(2);
+  expect(q.discounts.every(d=>d.resource==='power')).toBe(true);
   const old=begin();expect(quoteMilitaryUnit(old,['levies'],'trained').costs.find(c=>c.resource==='power')?.amount).toBe(3);
  });
  it('concede descontos navais, de cavalaria, engenharia e guerrilha pela posse ativa, sem descontos de obra em construção',()=>{
