@@ -13,6 +13,8 @@ const previewSource=z.object({
  houseId:z.string(),agentId:z.string().uuid(),targetHouseId:z.string(),
  houseName:z.string().min(1),targetRegionId:z.string().min(1),
  houseDefense:z.number().int().min(0).max(100000),
+ agentRank:z.enum(['Verde','Treinada','Veterana','Elite']),
+ agentCunning:z.number().int().min(3).max(6),
  source:z.enum(['operational_sheet','official_spreadsheet','regional_fallback']),
  provisional:z.literal(true),
 }).strict();
@@ -37,11 +39,26 @@ export const previewSpyMissionOdds=createServerFn({method:'POST'})
    source.data.agentId!==data.agentId||source.data.targetHouseId!==data.targetHouseId||
    !regionId(source.data.targetRegionId))
    throw new Error('Resposta de espionagem inconsistente; nenhum percentual foi calculado.');
-  const odds=spyMissionOdds(source.data.houseDefense);
+  type GearRow={upgrade_code:string};
+  type GearResponse={data:GearRow[]|null;error:{message:string}|null};
+  type GearSelect={
+   eq:(column:string,value:string)=>GearSelect&Promise<GearResponse>;
+  };
+  type GearTable={select:(columns:string)=>GearSelect};
+  const db=context.supabase as unknown as {from:(table:string)=>GearTable};
+  const perks=await db.from('spy_agent_upgrades')
+   .select('upgrade_code').eq('owner_house_id',data.houseId).eq('agent_id',data.agentId);
+  if(perks.error)throw new Error('Os equipamentos do agente não puderam ser verificados.');
+  const codes=new Set((perks.data??[]).map(v=>v.upgrade_code));
+  if([...codes].some(c=>!['forged_documents','ace_in_the_hole'].includes(c)))
+   throw new Error('Equipamento inválido no cadastro da Casa.');
+  const odds=spyMissionOdds(source.data.houseDefense,source.data.agentCunning);
   return {
    houseId:source.data.houseId,agentId:source.data.agentId,
    targetHouseId:source.data.targetHouseId,
    houseName:source.data.houseName,targetRegionId:regionId(source.data.targetRegionId),
-   source:source.data.source,...odds,
+   source:source.data.source,agentRank:source.data.agentRank,
+   forgedDocuments:codes.has('forged_documents'),
+   aceInTheHole:codes.has('ace_in_the_hole'),...odds,
   };
  });

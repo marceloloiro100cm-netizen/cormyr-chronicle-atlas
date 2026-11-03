@@ -10,6 +10,9 @@ import {calculateSpyDefense} from '@/lib/espionage/spy-defense';
 import {loadSpyHouseManagement,renameSpyAgent,type SpyManagement} from '@/lib/espionage/spy-management.functions';
 import type {HouseState} from '@/lib/house/types';
 import {REGIONS} from '@/lib/house/regions';
+import {SpyAgentUpgrades} from './spy-agent-upgrades';
+import {SpyAgentRecruitment,SpyAgentHistory} from './spy-agent-recruitment-history';
+import {SpyNarratorResolutionPanel} from './spy-narrator-resolution';
 
 const missionKinds:Record<string,string>={
  regional_recon:'Reconhecimento regional',house_recon:'Espionar Casa',
@@ -20,7 +23,7 @@ const missionKinds:Record<string,string>={
 const agentStatuses:Record<string,string>={
  available:'Disponível',assigned:'Designado',traveling:'Em viagem',
  operating:'Investigando',returning:'Retornando',
- missing:'Desaparecido',captured:'Capturado',retired:'Retirado',
+ missing:'Desaparecido',captured:'Capturado',dead:'Morto em operação',retired:'Retirado',
  lost:'Perdido',pending_review:'Em análise',
 };
 const missionStatuses:Record<string,string>={
@@ -106,8 +109,9 @@ export function SpyDefensePanel({state}:{state:HouseState}){
  </section>;
 }
 
-function AgentRow({agent,operation,houseId,canEdit,officialDate}:{agent:SpyManagement['agents'][number];
- operation:Mission|null;houseId:string;canEdit:boolean;officialDate:string|null}){
+function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,availableWealth}:{agent:SpyManagement['agents'][number];
+ operation:Mission|null;houseId:string;canEdit:boolean;officialDate:string|null;
+ houseVersion:number;availableWealth:number|null}){
  const [editing,setEditing]=useState(false),[name,setName]=useState(agent.codename);
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const rename=useServerFn(renameSpyAgent);
@@ -146,14 +150,30 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate}:{agent:SpyManag
    </form>}
    {error&&<small role="alert">{error}</small>}
   </td>
+  <td>
+   <strong>{agent.rank} · Astúcia {agent.cunning}D6</strong>
+   <small style={{display:'block'}}>{agent.missionSuccesses} missões bem-sucedidas ·
+    {agent.toNextRank===0?' nível máximo':agent.toNextRank+' para a próxima promoção'}
+   </small>
+   <div role="progressbar" aria-label={'Progresso de '+agent.codename}
+    aria-valuenow={agent.toNextRank===0?3:3-agent.toNextRank}
+    aria-valuemin={0} aria-valuemax={3}
+    style={{marginTop:5,height:7,borderRadius:99,
+     background:'rgba(150,161,181,.25)',overflow:'hidden'}}>
+    <div style={{width:(agent.toNextRank===0?100:(3-agent.toNextRank)/3*100)+'%',
+     height:'100%',borderRadius:99,background:'#a98b54'}}/>
+   </div>
+  </td>
   <td>{agentStatuses[agent.status]??agent.status}</td>
   <td>{progress.mission}<small style={{display:'block'}}>{operation?missionStatuses[operation.status]??operation.status:''}</small></td>
   <td>{progress.travel}</td>
   <td>{progress.remaining}{progress.end&&<small style={{display:'block'}}>{formatDate(progress.end)}</small>}</td>
+  <td><SpyAgentUpgrades houseId={houseId} agent={agent}
+   houseVersion={houseVersion} wealth={availableWealth} canEdit={canEdit}/></td>
  </tr>;
 }
 
-export function SpyAgentManagement({houseId,canEdit}:{houseId:string;canEdit:boolean}){
+export function SpyAgentManagement({houseId,canEdit,admin=false}:{houseId:string;canEdit:boolean;admin?:boolean}){
  const queryFn=useServerFn(loadSpyHouseManagement);
  const {data,isPending,isError,refetch}=useQuery({
   queryKey:['spy-house-management',houseId],
@@ -171,14 +191,23 @@ export function SpyAgentManagement({houseId,canEdit}:{houseId:string;canEdit:boo
   {isPending&&<p role="status">Consultando os agentes da Casa…</p>}
   {isError&&<p role="alert">A tabela protegida de agentes ainda não está instalada ou não foi autorizada para esta Casa.</p>}
   {data&&<div style={{overflowX:'auto'}}>
-   <table><thead><tr><th scope="col">Agente</th><th scope="col">Situação</th>
-    <th scope="col">Missão</th><th scope="col">Tempo de viagem</th><th scope="col">Até terminar a missão</th></tr></thead>
+   <table><thead><tr><th scope="col">Agente</th><th scope="col">Nível / Astúcia</th><th scope="col">Situação</th>
+    <th scope="col">Missão</th><th scope="col">Tempo de viagem</th><th scope="col">Até terminar a missão</th><th scope="col">Equipamentos de espionagem</th></tr></thead>
     <tbody>{data.agents.map(agent=><AgentRow key={agent.id}
      houseId={houseId} agent={agent} canEdit={canEdit} officialDate={officialDate}
+     houseVersion={data.houseVersion} availableWealth={data.availableWealth}
      operation={pendingMission(data.operations,agent.id)}/>)}</tbody>
    </table>
    {!data.agents.length&&<p>Esta Casa ainda não possui agentes conciliados.</p>}
   </div>}
+  {data&&<p className="house-caption">Riqueza disponível: <strong>
+   {data.availableWealth===null?'não conciliada':data.availableWealth}</strong>.
+   Cada melhoria custa 1 ponto de Riqueza, uma única vez por agente.
+   As compras continuam vinculadas à ficha da Casa e ao histórico econômico.</p>}
+  {data&&<SpyAgentRecruitment houseId={houseId}
+   recruitment={data.recruitment} canEdit={canEdit}/>}
+  {data&&<SpyAgentHistory data={data}/>}
+  {data&&admin&&<SpyNarratorResolutionPanel data={data}/>}
   <p className="house-caption">Prazo restante usa a data oficial do Hub Temporal.
    Quando o banco possuir data de chegada, a tabela prevê mais 1 désdia de investigação.
    O prazo é estimado, não uma conclusão automática: o Narrador precisa registrar a resolução.

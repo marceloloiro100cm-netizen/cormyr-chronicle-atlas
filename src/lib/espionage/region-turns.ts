@@ -27,7 +27,7 @@ export type SpyRegionalConnection=z.infer<typeof spyRegionalConnectionSchema>;
 export const spyRegionalAgentSchema=z.object({
  id:z.string().uuid(),codename:z.string().min(1),
  status:z.enum(['available','assigned','traveling','operating','returning','missing',
-  'captured','retired','lost','pending_review']),
+  'captured','retired','lost','dead','pending_review']),
  currentRegion:z.string().nullable(),
 }).strict();
 export type SpyRegionalAgent=z.infer<typeof spyRegionalAgentSchema>;

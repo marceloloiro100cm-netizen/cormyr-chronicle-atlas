@@ -36,7 +36,7 @@ export function spyDiceSuccessPercent(dice:number,difficulty:number):number{
  const wins=totals.reduce((n,count,sum)=>n+(sum>=difficulty?count:0),0);
  return Math.round(1000*wins/(6**dice))/10;
 }
-export function spyMissionOdds(houseDefense:number,dice=SPY_BASELINE_TEST_DICE){
+export function spyMissionOdds(houseDefense:number,dice:number=SPY_BASELINE_TEST_DICE){
  const testDifficulty=spyTestDifficulty(houseDefense);
  return {
   houseDefense,testDifficulty,
