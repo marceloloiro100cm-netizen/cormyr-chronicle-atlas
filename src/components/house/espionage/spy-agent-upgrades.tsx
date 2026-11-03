@@ -35,7 +35,7 @@ export function SpyAgentUpgrades({houseId,agent,houseVersion,wealth,canEdit}:{
  const ownership:Record<SpyAgentUpgrade,boolean>={
   forged_documents:agent.forgedDocuments,ace_in_the_hole:agent.aceInTheHole,
  };
- const canBuy=canEdit&&agent.status==='available'&&wealth!==null&&wealth>=1;
+ const canBuy=canEdit&&agent.status==='available'&&(wealth===null||wealth>=1);
  return <section style={{display:'grid',gap:8,minWidth:200}} aria-label={'Compras do agente '+agent.codename}>
   {(Object.keys(SPY_AGENT_UPGRADES) as SpyAgentUpgrade[]).map(code=>{
    const owned=ownership[code],item=SPY_AGENT_UPGRADES[code];
@@ -53,7 +53,7 @@ export function SpyAgentUpgrades({houseId,agent,houseVersion,wealth,canEdit}:{
       canEdit?<Button type="button" size="sm" variant="outline"
        disabled={!canBuy||busy!==null} onClick={()=>void buy(code)}>
        <Coins size={13}/>{busy===code?'Comprando…':
-        wealth===null||wealth<1?'Sem recursos':'Comprar · 1 Riqueza'}
+        wealth!==null&&wealth<1?'Sem recursos':'Comprar · 1 Riqueza'}
       </Button>:
       <small>Não adquirido · 1 Riqueza</small>}
    </div>;
