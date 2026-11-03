@@ -6,6 +6,7 @@ import {SPY_HOLDING_ID_SET} from '@/lib/espionage/spy-defense';
 import {spyCatalogExplanation} from '@/lib/espionage/spy-catalog-copy';
 import {HouseAssetCard,HouseAssetGrid} from './asset-card';
 import {legacyCatalogEffects} from '@/lib/house/holding-accounting';
+import {acquiredFirst} from '@/lib/house/acquired-first';
 import {RESOURCE_NAMES,type CatalogItem,type HouseState,type Holding,type Requirement} from '@/lib/house/types';
 
 type Section='domains'|'fortifications'|'economy'|'spy';
@@ -134,16 +135,18 @@ export function HouseAssetCatalog({section,state,catalog,canEdit,busy,onBuy,onCo
  const choices=CATEGORY_BY_SECTION[section];
  const items=catalog.filter(item=>choices.includes(item.category)&&
   (section!=='spy'||SPY_HOLDING_ID_SET.has(item.id)));
+ const acquiredIds=new Set(state.holdings.filter(h=>h.status==='active'||h.status==='building').map(h=>h.itemId));
  const visible=items.filter(item=>{
-  // Construction already commits this asset to the House, but does not grant benefits yet.
-  const acquired=state.holdings.some(h=>h.itemId===item.id&&
-   (h.status==='active'||h.status==='building'));
+  // Building projects count as already purchased even if bonuses are pending.
+  const acquired=acquiredIds.has(item.id);
   return (!category||item.category===category)&&
    (!['economy','spy'].includes(section)||acquisition==='all'||
     (acquisition==='acquired'?acquired:!acquired))&&
    [item.name,item.description,item.original,section==='spy'?spyCatalogExplanation(item.id)?.summary??'':''].join(' ').toLocaleLowerCase('pt-BR')
     .includes(search.toLocaleLowerCase('pt-BR'));
  });
+ const orderedVisible=['economy','spy'].includes(section)
+  ?acquiredFirst(visible,acquiredIds):visible;
  const acquired=items.filter(item=>locationsFor(item,state,
   state.holdings.filter(h=>h.itemId===item.id&&h.status==='active')).length>0).length;
  return <section className="military-assets house-assets" aria-label={'Catálogo de '+(
@@ -175,7 +178,7 @@ export function HouseAssetCatalog({section,state,catalog,canEdit,busy,onBuy,onCo
    </select></label>}
   </div>
   {visible.length===0?<p className="campaign-empty">Nenhuma posse encontrada para estes filtros.</p>:
-   <HouseAssetGrid>{visible.slice(0,limit).map(item=><CatalogAssetCard key={item.id}
+   <HouseAssetGrid>{orderedVisible.slice(0,limit).map(item=><CatalogAssetCard key={item.id}
     item={item} state={state} catalog={catalog} canEdit={canEdit} busy={busy}
     spyMode={section==='spy'} onBuy={onBuy} onCondition={onCondition}/>)}</HouseAssetGrid>}
   {visible.length>limit&&<Button type="button" variant="outline"
