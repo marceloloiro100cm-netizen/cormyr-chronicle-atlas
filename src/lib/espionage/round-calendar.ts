@@ -51,7 +51,7 @@ export function projectSpyHarptosSchedule(
   cursor=dateKey(advanceHarptosDesdia(cursor,leg.rounds));
   return {fromRegion:leg.fromRegion,toRegion:leg.toRegion,
    passage:leg.passage,edgeId:leg.connectionId,edgeVersion:leg.version,
-   rounds:1,ordinaryDays:SPY_DAYS_PER_ROUND,
+   rounds:1 as const,ordinaryDays:SPY_DAYS_PER_ROUND,
    departureDateKey,arrivalDateKey:cursor};
  });
  if(travelLegs.length!==plan.travelRounds||plan.totalRounds!==plan.travelRounds+1)
@@ -65,7 +65,7 @@ export function projectSpyHarptosSchedule(
   cursor=dateKey(advanceHarptosDesdia(cursor,leg.rounds));
   return {fromRegion:leg.fromRegion,toRegion:leg.toRegion,
    passage:leg.passage,edgeId:leg.connectionId,edgeVersion:leg.version,
-   rounds:1,ordinaryDays:SPY_DAYS_PER_ROUND,
+   rounds:1 as const,ordinaryDays:SPY_DAYS_PER_ROUND,
    departureDateKey,arrivalDateKey:cursor};
  })??null;
  if((returnLegs?.length??null)!==plan.returnRounds||
