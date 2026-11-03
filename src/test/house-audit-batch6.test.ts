@@ -42,8 +42,10 @@ describe('lote 6 · upgrades, descontos e custos variáveis',()=>{
  it('Godswood e prazos especiais do suplemento estão no catálogo',()=>{
   expect(item('godswood').costs[0]).toMatchObject({resource:'wealth',amount:5});
   expect(item('godswood').duration).toMatchObject({months:24,dice:2,sides:6});
-  for(const [id,months,dice] of [['pros-animal-husbandry',6,1],['pros-master-of-arms',0,2],['pros-secret-police',12,2],['pros-spy-network',12,2]] as const)
+  for(const [id,months,dice] of [['pros-animal-husbandry',6,1],['pros-master-of-arms',0,2],['pros-secret-police',12,2],['pros-spy-network',6,2]] as const)
    expect(item(id).duration).toMatchObject({months,dice});
-  expect(item('pros-secret-police').effects).toEqual(expect.arrayContaining([expect.objectContaining({kind:'gain',resource:'law',amount:1}),expect.objectContaining({kind:'mitigation',resource:'law',amount:2})]));
+  expect(item('pros-secret-police').effects.some(e=>e.kind==='action'&&e.description.includes('+6'))).toBe(true);
+  expect(item('pros-secret-police').effects.some(e=>e.resource==='law'&&
+   (e.kind==='gain'||e.kind==='mitigation'))).toBe(false);
  });
 });
