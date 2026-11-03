@@ -70,3 +70,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0081_spy_authorized_dashboard_REVIEW_ONLY.sql
       - name: Verify owner-only dashboard and absence of sealed report/private Law leaks
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-dashboard.sql
+      - name: Apply PUBLIC regional neighbor and maritime link registration in disposable DB
+        run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0082_spy_regional_rounds_REVIEW_ONLY.sql
+      - name: Verify Narrator-approved region links and owner-scoped live spy origin
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-regional-rounds.sql
