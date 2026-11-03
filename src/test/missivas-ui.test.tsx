@@ -145,7 +145,7 @@ describe('lote 2: destinatários e semanas',()=>{
    const panel={...data(),user:{id:'narrator-no-recipient'},admin:true} as unknown as Panel;
    mount(panel);
    fireEvent.click(screen.getByRole('button',{name:'Escrever missiva'}));
-   await waitFor(()=>expect(screen.getByText(/Nenhuma casa selecionada/)).toBeInTheDocument());
+   await waitFor(()=>expect(screen.getByText(/Nenhum destinatário selecionado/)).toBeInTheDocument());
    expect(screen.getByRole('button',{name:'Salvar rascunho'})).toBeDisabled();
    expect(screen.getByRole('button',{name:'Programar entrega'})).toBeDisabled();
  });
