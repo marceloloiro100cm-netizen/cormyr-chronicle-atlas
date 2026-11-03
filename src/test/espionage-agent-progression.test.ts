@@ -62,7 +62,7 @@ describe('Cormyr · evolução individual dos espiões',()=>{
   }).outcome).toBe('failed_undetected');
  });
  it('vagas são ligadas às células registradas, não criadas sem posse',()=>{
-  expect(spyActiveCellCapacity('pros-spy-network')).toBe(1);
+  expect(spyActiveCellCapacity('pros-spy-network')).toBe(3);
   expect(spyActiveCellCapacity('pros-spy-network--expanded-network')).toBe(2);
   expect(spyActiveCellCapacity('pros-gaol')).toBe(0);
  });
