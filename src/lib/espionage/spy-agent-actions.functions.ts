@@ -31,6 +31,14 @@ export const buySpyAgentUpgrade=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(purchaseInput)
  .handler(async({data,context})=>{
+  const sheet=await context.supabase.from('noble_house_sheets')
+   .select('state,version').eq('house_id',data.houseId).maybeSingle();
+  if(sheet.error||!sheet.data||sheet.data.version!==data.expectedHouseVersion)
+   throw new Error('Ficha desatualizada ou não autorizada; recarregue antes de comprar.');
+  const {balances}=await import('@/lib/house/engine');
+  const state=sheet.data.state as unknown as import('@/lib/house/types').HouseState;
+  if(balances(state).available.wealth<1)
+   throw new Error('Sem recursos: cada extra custa 1 ponto de Riqueza disponível.');
   const rpc=context.supabase.rpc as unknown as Rpc;
   const result=await rpc('spy_buy_agent_upgrade',{
    p_house:data.houseId,p_agent:data.agentId,p_code:data.code,
