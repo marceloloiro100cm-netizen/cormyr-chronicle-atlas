@@ -2,10 +2,10 @@
  * Defensive difficulty for hostile infiltration/detection, as quoted by the
  * authoritative Prosperity catalog's Spy Network.
  *
- *  House defense: OWN House's effective Law total, plus applicable defensive holdings.
- *  The sourcebook's separate Spy Cell discovery check is Law<=30: 6,
- *  then +3 per complete five Law above 30; it must NOT replace the
- *  House's Law as the defensive base, and must NOT use regional bonuses.
+ *  House espionage difficulty: convert OWN effective Law into a test DC.
+ *  Law <=30: DC 6; +3 per five COMPLETE Law above 30.
+ *  THEN add applicable holdings. Law points are NEVER the DC itself.
+ *  Do not add regional Law bonuses to a House with its own sheet.
  *  Guard Dogs: +3 in their domain
  *  Bailiffs Investigative Training: +3 in their designated domain
  *  Ear in the Underworld: +3 vs subversive agents against the House
@@ -16,6 +16,7 @@
  */
 import {balances,activeHoldings} from '@/lib/house/engine';
 import type {HouseState,Holding} from '@/lib/house/types';
+import {spyLawDifficulty} from './spy-law-difficulty';
 
 export const SPY_HOLDING_IDS=[
  'pros-spy-network','pros-spy-network--expanded-network',
@@ -61,10 +62,9 @@ const otherEffects={
  'pros-secret-police':'Os ganhos/mitigações de Lei seguem suas próprias regras do sistema; não acrescentar o bônus novamente à Lei efetiva.',
 } as const;
 
+/** Historical name retained for existing consumers of the discovery test. */
 export function spyDiscoveryBaseDifficulty(law:number):number{
- if(!Number.isFinite(law))throw new Error('Valor de Lei inválido.');
- // Separate Spy Cell discovery test only; never a generic House defense.
- return 6+3*Math.floor(Math.max(0,law-30)/5);
+ return spyLawDifficulty(law);
 }
 
 function defenseSources(holdings:Holding[]){
@@ -86,9 +86,9 @@ function defenseSources(holdings:Holding[]){
  */
 export function calculateSpyDefense(state:HouseState):SpyDefenseProfile{
  const law=balances(state).total.law;
- // The target House uses its OWN Law. Regional baselines apply ONLY to
- // recon of a region without a noble-house target.
- const baseDifficulty=law;
+ // Convert the target's own Law into the book's test DC before bonuses.
+ // Regional Law is only applicable to regional reconnaissance without a House.
+ const baseDifficulty=spyLawDifficulty(law);
  const active=activeHoldings(state);
  const sources=defenseSources(active);
  const globalSources=sources.filter(source=>source.domainId===null);
