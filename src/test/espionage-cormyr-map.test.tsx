@@ -89,8 +89,9 @@ describe('Mapa político narratorial · 11 regiões e deslocamento em désdias',
    expect(withSea.travelRounds).toBe(1);
    expect(withSea.totalRounds).toBe(2);
    expect(withSea.totalRounds*10).toBe(20);
-   if(new Set([from,to]).has('dragoncoast'))
-    expect(withSea.legs[0]?.passage).toBe('sea_passage');
+   expect(withSea.legs[0]?.passage).toBe('sea_passage');
+   if(from==='crownlands'&&to==='shieldmark')
+    expect(landOnly.legs[0]?.passage).toBe('land_neighbor');
   }
  });
  it('o atalho de Dragonmere encurta também rotas a partir de Dragon Coast',()=>{
