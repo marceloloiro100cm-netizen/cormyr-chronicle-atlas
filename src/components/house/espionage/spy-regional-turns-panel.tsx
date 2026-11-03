@@ -72,6 +72,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
     calendarVersion:campaignTime.data.version})
   :null;
  const name=(id:string)=>REGIONS[id]?.name??id;
+ const chooseRegion=(id:string)=>{setDestination(id);setTargetHouseId('');};
  const message={
   unknown_destination:'Selecione uma região conhecida.',
   unknown_agent_location:'A posição atual do espião não foi homologada. Não é possível calcular a viagem.',
@@ -122,7 +123,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
   <CormyrInteractiveMap
    selectedRegion={destination} originRegion={currentOrigin}
    plan={plan?.status==='ready'?plan:null}
-   onSelect={setDestination}/>
+   onSelect={chooseRegion}/>
   {currentOrigin&&<details className="house-ledger" open style={{marginTop:14}}>
    <summary>Todas as regiões · viagem a partir de {name(currentOrigin)} (11 destinos)</summary>
    <p>Estimativa terrestre baseada no mapa e acrescida das passagens marítimas aprovadas, quando habilitadas.
@@ -134,7 +135,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
     </tr></thead><tbody>
      {comparisons.map(row=><tr key={row.regionId}
       style={destination===row.regionId?{background:'rgba(174,194,224,.25)'}:undefined}>
-      <td><button type="button" onClick={()=>setDestination(row.regionId)}
+      <td><button type="button" onClick={()=>chooseRegion(row.regionId)}
        style={{background:'none',border:0,textDecoration:'underline',color:'inherit',cursor:'pointer',textAlign:'left'}}>
        {row.regionName}</button></td>
       {row.estimate.status==='ready'?<>
@@ -180,6 +181,37 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      </option>)}
     </select>
    </label>
+   {houseMode&&<div className="house-ledger" style={{display:'grid',gap:8}}>
+    <h4>Etapa 2 · Escolher a Casa nobre</h4>
+    <p className="house-caption">O agente deve estar <strong>fisicamente</strong> na região
+     e disponível. A posição simulada não concede acesso a uma Casa.</p>
+    {houseStage==='requires_region_arrival'&&<p role="status">
+     Etapa 1: deslocar o agente até {destination?name(destination):'a região selecionada'}.
+     Só após a chegada registrada no Hub Temporal será possível selecionar uma Casa.</p>}
+    {houseStage==='select_agent'&&<p role="status">Selecione um agente real
+     e desative a simulação para escolher a Casa.</p>}
+    {houseStage==='select_region'&&<p>Escolha primeiro uma região no mapa.</p>}
+    {houseStage==='agent_unavailable'&&<p role="status">O agente está indisponível.</p>}
+    {houseStage==='unknown_agent_location'&&<p role="status">A localização real do agente não está confirmada.</p>}
+    {targetsQuery.isError&&<p role="alert">A lista pública de Casas está indisponível.</p>}
+    <label>Casa nobre na região
+     <select aria-label="Casa nobre alvo"
+      value={houseChoices.some(h=>h.id===targetHouseId)?targetHouseId:''}
+      onChange={e=>setTargetHouseId(e.target.value)}
+      disabled={!['select_house','ready_for_house_planning','house_not_in_region'].includes(houseStage)||
+       targetsQuery.isError}>
+      <option value="">Selecione a Casa</option>
+      {houseChoices.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+     </select>
+    </label>
+    {destination&&!targetsQuery.isPending&&!houseChoices.length&&
+     <p className="house-caption">Não há outra Casa no cadastro público dessa região.
+      Casas NPC exigem cadastro e homologação pelo Narrador.</p>}
+    {canTargetHouse&&<p role="status">Agente presente na região de {name(destination)}:
+     Casa {selectedTargetHouse?.name} selecionada. Investigação local prevista:
+     1 désdia. A defesa dessa Casa depende da Lei e das construções próprias,
+     sem revelar seus valores privados.</p>}
+   </div>}
    <label style={{display:'flex',gap:8,alignItems:'center'}}>
     <input type="checkbox" checked={allowSea} onChange={e=>setAllowSea(e.target.checked)}/>
     Considerar travessias marítimas autorizadas (incluindo Dragonmere)
