@@ -1,0 +1,111 @@
+import {describe,it,expect,vi} from 'vitest';
+import {render,screen,fireEvent,cleanup} from '@testing-library/react';
+import {afterEach} from 'vitest';
+import {REGIONS} from '@/lib/house/regions';
+import {
+ CORMYR_MAPPED_REGIONS,CORMYR_CARTOGRAPHIC_BORDERS,
+ CORMYR_CARTOGRAPHIC_LAND_LINKS,cormyrPreviewLinks,CORMYR_MAP_SOURCE,
+} from '@/lib/espionage/cormyr-map';
+import {planSpyRegionalMission,type SpyRegionalConnection} from '@/lib/espionage/region-turns';
+import {CormyrInteractiveMap} from '@/components/house/espionage/cormyr-interactive-map';
+
+const agent={id:'11111111-1111-4111-8111-111111111111',
+ codename:'Agente',status:'available' as const,currentRegion:'dragoncoast'};
+const travel=(from:string,to:string,extra:SpyRegionalConnection[]=[],seaAllowed=false)=>
+ planSpyRegionalMission({agent:{...agent,currentRegion:from},destinationRegion:to,
+  links:cormyrPreviewLinks(extra),seaAllowed});
+
+describe('Mapa político narratorial · 11 regiões e deslocamento em désdias',()=>{
+ it('digitaliza exatamente as onze regiões do catálogo, com áreas e pontos de seleção',()=>{
+  expect(Object.keys(CORMYR_MAPPED_REGIONS).sort()).toEqual(Object.keys(REGIONS).sort());
+  for(const item of Object.values(CORMYR_MAPPED_REGIONS)){
+   expect(item.path.startsWith('M')).toBe(true);
+   expect(item.path.includes('Z')).toBe(true);
+   expect(item.centerX).toBeGreaterThan(0);
+   expect(item.centerY).toBeGreaterThan(0);
+  }
+  expect(CORMYR_MAP_SOURCE).toContain('Narrador');
+ });
+ it('declara 19 fronteiras terrestres distintas, sem inventar atalhos marítimos',()=>{
+  expect(CORMYR_CARTOGRAPHIC_BORDERS).toHaveLength(19);
+  expect(CORMYR_CARTOGRAPHIC_LAND_LINKS).toHaveLength(19);
+  expect(CORMYR_CARTOGRAPHIC_LAND_LINKS.every(x=>
+   x.passage==='land_neighbor'&&x.bidirectional&&x.version===1)).toBe(true);
+  const pairs=CORMYR_CARTOGRAPHIC_BORDERS.map(p=>p.slice().sort().join('/'));
+  expect(new Set(pairs).size).toBe(19);
+  for(const [a,b] of CORMYR_CARTOGRAPHIC_BORDERS){
+   expect(REGIONS[a]).toBeTruthy();expect(REGIONS[b]).toBeTruthy();expect(a).not.toBe(b);
+  }
+ });
+ it('todos os 121 pares ordenados são alcançáveis sem conexões por mar',()=>{
+  for(const from of Object.keys(REGIONS))for(const to of Object.keys(REGIONS)){
+   const s=travel(from,to);
+   expect(s.status,`${from}->${to}`).toBe('ready');
+   if(s.status==='ready'){
+    expect(s.travelRounds).toBe(s.legs.length);
+    expect(s.totalRounds).toBe(s.travelRounds+1);
+    expect(s.totalRounds*10).toBe((s.travelRounds+1)*10);
+   }
+  }
+ });
+ it('Dragon Coast: Horselands=1, Ferlin=2, Swordmarch=2, Crownlands=3 deslocamentos',()=>{
+  for(const [dest,count] of Object.entries({
+   dragoncoast:0,horselands:1,ferlin:2,swordmark:2,crownlands:3,
+   helmlands:3,shieldmark:4,volkumburgh:5,
+  })){
+   const result=travel('dragoncoast',dest);
+   expect(result.status).toBe('ready');
+   if(result.status==='ready')expect(result.travelRounds,dest).toBe(count);
+  }
+ });
+ it('espia que saiu de Dragon Coast muda prazo conforme sua posição corrente',()=>{
+  const fromHouse=travel('dragoncoast','volkumburgh');
+  const moved=travel('elfhold','volkumburgh');
+  expect(fromHouse.status).toBe('ready');
+  expect(moved.status).toBe('ready');
+  if(fromHouse.status==='ready'&&moved.status==='ready'){
+   expect(fromHouse.travelRounds).toBe(5);
+   expect(moved.travelRounds).toBe(1);
+  }
+ });
+ it('mar não reduz percurso até haver ligação autorizada explicitamente',()=>{
+  const without=travel('dragoncoast','crownlands',[],true);
+  expect(without.status).toBe('ready');
+  if(without.status==='ready')expect(without.travelRounds).toBe(3);
+  const approved:SpyRegionalConnection={
+   id:'33333333-3333-4333-8333-333333333333',fromRegion:'dragoncoast',
+   toRegion:'crownlands',passage:'sea_passage',bidirectional:true,version:1,
+  };
+  const landOnly=travel('dragoncoast','crownlands',[approved],false);
+  const withSea=travel('dragoncoast','crownlands',[approved],true);
+  if(landOnly.status==='ready'&&withSea.status==='ready'){
+   expect(landOnly.travelRounds).toBe(3);
+   expect(withSea.travelRounds).toBe(1);
+   expect(withSea.totalRounds*10).toBe(20);
+   expect(withSea.legs[0]?.passage).toBe('sea_passage');
+  }else throw new Error('Approved fixture path absent');
+ });
+});
+
+afterEach(cleanup);
+describe('Seleção acessível em mapa de Cormyr',()=>{
+ it('clica uma região vetorial, seleciona destino e permite teclado',()=>{
+  const onSelect=vi.fn();
+  render(<CormyrInteractiveMap selectedRegion="" originRegion="dragoncoast"
+   plan={null} onSelect={onSelect}/>);
+  const elf=screen.getByRole('button',{name:/Elfhold; selecionar região/});
+  fireEvent.click(elf);expect(onSelect).toHaveBeenCalledWith('elfhold');
+  const ferlin=screen.getByRole('button',{name:/Ferlin; selecionar região/});
+  fireEvent.keyDown(ferlin,{key:'Enter'});expect(onSelect).toHaveBeenCalledWith('ferlin');
+  fireEvent.keyDown(ferlin,{key:' '});expect(onSelect).toHaveBeenCalledTimes(3);
+ });
+ it('oferece seleção alternativa no celular e região com aria-pressed',()=>{
+  const onSelect=vi.fn();
+  render(<CormyrInteractiveMap selectedRegion="crownlands" originRegion="helmlands"
+   plan={null} onSelect={onSelect}/>);
+  const item=screen.getByRole('button',{name:/Crownlands; selecionar região/});
+  expect(item).toHaveAttribute('aria-pressed','true');
+  fireEvent.click(screen.getByRole('button',{name:'Volkumburgh'}));
+  expect(onSelect).toHaveBeenCalledWith('volkumburgh');
+ });
+});
