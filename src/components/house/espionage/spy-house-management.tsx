@@ -12,6 +12,7 @@ import type {HouseState} from '@/lib/house/types';
 import {REGIONS} from '@/lib/house/regions';
 import {SpyAgentUpgrades} from './spy-agent-upgrades';
 import {SpyAgentRecruitment,SpyAgentHistory} from './spy-agent-recruitment-history';
+import {SpyNarratorResolutionPanel} from './spy-narrator-resolution';
 
 const missionKinds:Record<string,string>={
  regional_recon:'Reconhecimento regional',house_recon:'Espionar Casa',
@@ -172,7 +173,7 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
  </tr>;
 }
 
-export function SpyAgentManagement({houseId,canEdit}:{houseId:string;canEdit:boolean}){
+export function SpyAgentManagement({houseId,canEdit,admin=false}:{houseId:string;canEdit:boolean;admin?:boolean}){
  const queryFn=useServerFn(loadSpyHouseManagement);
  const {data,isPending,isError,refetch}=useQuery({
   queryKey:['spy-house-management',houseId],
@@ -206,6 +207,7 @@ export function SpyAgentManagement({houseId,canEdit}:{houseId:string;canEdit:boo
   {data&&<SpyAgentRecruitment houseId={houseId}
    recruitment={data.recruitment} canEdit={canEdit}/>}
   {data&&<SpyAgentHistory data={data}/>}
+  {data&&admin&&<SpyNarratorResolutionPanel data={data}/>}
   <p className="house-caption">Prazo restante usa a data oficial do Hub Temporal.
    Quando o banco possuir data de chegada, a tabela prevê mais 1 désdia de investigação.
    O prazo é estimado, não uma conclusão automática: o Narrador precisa registrar a resolução.
