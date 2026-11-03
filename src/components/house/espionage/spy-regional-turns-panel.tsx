@@ -111,7 +111,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    <summary>Consultar dificuldade basal de todas as regiões</summary>
    <p>Esses valores são usados <strong>somente em investigações regionais</strong>.
      A defesa de uma Casa usa a Lei efetiva e as construções da própria Casa,
-     sem incluir a Lei basal regional nem expor os dados privados da Casa-alvo.</p>
+     sem somar a Lei regional; a prévia exibe apenas a resistência agregada, não a ficha completa do alvo.</p>
    <table><thead><tr><th scope="col">Região</th><th scope="col">Lei basal</th></tr></thead>
     <tbody>{regions.map(x=><tr key={x.regionId}><td>{x.regionName}</td>
      <td>{x.basalDifficulty}</td></tr>)}</tbody>
@@ -258,7 +258,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      :houseMode
       ?<p>Alvo: <strong>Casa nobre.</strong> A Lei basal regional não determina a defesa
        da Casa. {canTargetHouse
-        ?'A defesa usa a Lei e as construções da própria Casa-alvo, reservadas ao Narrador.'
+        ?'A dificuldade e a chance estimada aparecem no cartão acima; a resolução final cabe ao Narrador.'
         :'Aguarde a chegada regional antes de planejar a investigação da Casa.'}</p>
       :<p>Dificuldade basal de reconhecimento regional: <strong>{plan.basalDifficulty} (Lei regional)</strong>.</p>}
     {plan.legs.length===0?<p>{travelOnly?'O agente já está na região selecionada.':'A investigação ocorre na região atual do espião.'}</p>:
