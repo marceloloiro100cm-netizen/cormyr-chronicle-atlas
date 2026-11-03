@@ -18,7 +18,8 @@ function schedule(opts:{destination?:string;officialDate?:string;sea?:boolean;in
  }]:opts.links??links;
  const plan=planSpyRegionalMission({agent:opts.source??spy,
   destinationRegion:opts.destination??'horselands',
-  links:graph,seaAllowed:opts.sea??false,includeReturn:opts.includeReturn});
+  links:graph,seaAllowed:opts.sea??false,
+  ...(opts.includeReturn===undefined?{}:{includeReturn:opts.includeReturn})});
  if(plan.status!=='ready')throw new Error('Expected approved fixture route');
  return projectSpyHarptosSchedule({plan,
   officialDate:opts.officialDate??'1522-01-01',calendarVersion:7});
