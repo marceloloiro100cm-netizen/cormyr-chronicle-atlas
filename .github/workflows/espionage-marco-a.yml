@@ -61,6 +61,9 @@ jobs:
       - name: "Strategy - regional rounds, sea and live spy position"
         if: ${{ always() }}
         run: bunx vitest run src/test/espionage-region-turns.test.ts
+      - name: Vitest - 10-day Harptos desdia forecast
+        if: ${{ always() }}
+        run: bunx vitest run src/test/espionage-desdia-temporal.test.ts
       - name: TypeScript integrity (Marcos A e B)
 
         if: ${{ always() }}
