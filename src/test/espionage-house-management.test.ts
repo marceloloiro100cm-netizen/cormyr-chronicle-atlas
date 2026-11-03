@@ -101,9 +101,9 @@ describe('Duas etapas de espionagem: região primeiro, Casa depois',()=>{
  it('base pública regional não se soma à Lei própria da Casa',()=>{
   const s=house();const d=calculateSpyDefense(s);
   expect(d.baseDifficulty).toBe(9);
-  expect(spyRegionalBaseline('dragoncoast')?.basalDifficulty).toBe(0);
-  expect(spyRegionalBaseline('crownlands')?.basalDifficulty).toBe(20);
-  expect(d.baseDifficulty).not.toBe(spyRegionalBaseline('crownlands')?.basalDifficulty);
+  expect(spyRegionalBaseline('dragoncoast')?.regionalLaw).toBe(0);
+  expect(spyRegionalBaseline('crownlands')?.regionalLaw).toBe(20);
+  expect(d.baseDifficulty).not.toBe(spyRegionalBaseline('crownlands')?.regionalLaw);
  });
 });
 
