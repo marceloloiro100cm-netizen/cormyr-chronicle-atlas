@@ -58,6 +58,9 @@ jobs:
       - name: Vitest Lote 9 — UI Narrador
         if: ${{ always() }}
         run: bunx vitest run src/test/espionage-narrator-ui.test.tsx
+      - name: Strategy: regional rounds, sea and live spy position
+        if: ${{ always() }}
+        run: bunx vitest run src/test/espionage-region-turns.test.ts
       - name: TypeScript integrity (Marcos A e B)
 
         if: ${{ always() }}
