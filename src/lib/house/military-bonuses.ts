@@ -25,7 +25,7 @@ export function quoteMilitaryUnit(state:HouseState,types:string[],training:keyof
  add('pros-engineer--engineer-commander','engineers',1,'Engenheiros: custo −1 Poder');
  add('pros-abbey--warrior-brotherhood','crusaders',1,'Cruzados: custo −1 Poder');
  add('pros-gambling-dens--bloodsports','levies',2,'Plebeus recrutados: custo −2 Poder');
- add('pros-street-gangs','levies',2,'Plebeus recrutados: custo permanente −2 População','population');
+ add('pros-street-gangs','levies',2,'Recrutas Camponeses: custo −2 Poder');
  add('pros-gaol','criminals',2,'Criminosos: custo −2 Poder');
  add('pros-gaol','garrison',2,'Guarnição: custo −2 Poder');
  for(const h of active(state,'pros-master-of-arms--field-master'))if(h.militaryTypeId&&types.includes(h.militaryTypeId))candidates.push({source:h.name,holdingId:h.id,resource:'power',amount:1,description:'Mestre de Campo: especialidade '+h.militaryTypeId+' −1 Poder'});
