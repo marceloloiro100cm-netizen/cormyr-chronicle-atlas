@@ -8,7 +8,7 @@ import { legacyEffectCandidates } from '@/lib/house/holding-accounting';
 import { useCallback, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { LayoutDashboard, Feather, Mountain, Castle, Coins, Swords, Users, CalendarDays, Dice5, ScrollText, Plus, Undo2, Download, Check, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Feather, Mountain, Castle, Coins, Swords, Eye, Users, CalendarDays, Dice5, ScrollText, Plus, Undo2, Download, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageViewer } from '@/components/image-viewer';
 import { PrivateImage } from '@/components/campaign-content';
@@ -25,6 +25,7 @@ import { HouseAssetCard,HouseAssetGrid } from './asset-card';
 import { HouseAssetCatalog } from './asset-catalog';
 import { Creation } from './creation';
 import { Army } from './army';
+import { SpyRegionalTurnsPanel } from './espionage/spy-regional-turns-panel';
 import { Vassals } from './vassals';
 import { FortunePanel } from './fortune-panel';
 import { HouseCoverage } from './coverage';
@@ -35,7 +36,7 @@ import { Court } from './court';
 import { HouseReconciliation } from './reconciliation';
 import { HouseDriveStatus } from './drive-status';
 import type { ReconciliationRecord } from '@/lib/house/reconciliation';
-const NAV=[['kingdom','Reino · Narrador',LayoutDashboard],['overview','Visão geral',LayoutDashboard],['creation','Criação',Feather],['domains','Terras e domínios',Mountain],['fortifications','Fortificações',Castle],['economy','Economia',Coins],['army','Exército',Swords],['court','Corte',Users],['vassals','Vassalos',Users],['projects','Projetos',CalendarDays],['fortune','Sorte e ações',Dice5],['history','Histórico e documentos',ScrollText],['rules','Regras e Tabelas',ScrollText],['reconciliation','Prévia de conciliação',ScrollText],['coverage','Cobertura e pendências',AlertTriangle]] as const;
+const NAV=[['kingdom','Reino · Narrador',LayoutDashboard],['overview','Visão geral',LayoutDashboard],['creation','Criação',Feather],['domains','Terras e domínios',Mountain],['fortifications','Fortificações',Castle],['economy','Economia',Coins],['army','Exército',Swords],['spy','Espionagem',Eye],['court','Corte',Users],['vassals','Vassalos',Users],['projects','Projetos',CalendarDays],['fortune','Sorte e ações',Dice5],['history','Histórico e documentos',ScrollText],['rules','Regras e Tabelas',ScrollText],['reconciliation','Prévia de conciliação',ScrollText],['coverage','Cobertura e pendências',AlertTriangle]] as const;
 type Props={npcManager?:ReactNode;representationMode?:boolean|undefined;house:{id:string;name:string;region:string|null;crest:string|null;lord_name:string|null;castle:string|null};canEdit:boolean;npcs:{id:string;title:string}[];courtMembers:{id:string;title:string}[];records?:ReconciliationRecord[]};
 export function NobleHouseHub(props:Props) {
   const load=useServerFn(loadHouseHub),fetchFull=useServerFn(loadHouseLedger),operation=useServerFn(houseOperation),qc=useQueryClient();
@@ -149,6 +150,7 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
         onCondition={(args,reason)=>run('condition',args,reason)}/>
       </>}
       {section==='army'&&<Army commanders={courtMembers} state={state} houseName={house.name} onSiege={args=>run('siege',args)} onSiegeState={(args,reason)=>run('siege_state',args,reason)} admin={admin} onState={args=>run('unit_state',args)} onSurvivors={args=>run('survivors',args)} onTrain={(args,reason)=>run('train_unit',args,reason)} onEdit={args=>run('unit_edit',args)} onGrant={(args,reason)=>run('grant_unit_xp',args,reason)} onRename={args=>run('military_rename',args)} onConfigure={args=>run('military_config',args)} onWarHounds={args=>run('war_hounds',args)} onBroadTraining={args=>run('broad_training',args)} onBuyMilitary={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}} canEdit={monthlyCanEdit} busy={busy} onCreate={args=>run('unit',args)} onEquipment={args=>run('equipment',args)}/>}
+      {section==='spy'&&<SpyRegionalTurnsPanel houseId={house.id}/>}
       {section==='vassals'&&<><Vassals catalog={catalog} onCreate={args=>run('vassal_create',args)} onPurchase={args=>run('vassal_purchase',args)} onDomain={args=>run('vassal_domain',args)} state={state} houses={houses} npcs={npcs} admin={admin} canEdit={canEdit} busy={busy} onPropose={args=>run('vassal',args)} onApprove={(args,note)=>run('vassal_approve',args,note)} onEnd={(args,note)=>run('vassal_end',args,note)} onLoyalty={(args,note)=>run('vassal_loyalty',args,note)}/></>}
       {section==='court'&&<>{npcManager}<p>Titular: {house.lord_name??'Não informado'}</p><Court state={state} members={courtMembers} canEdit={canEdit} busy={busy} onAssign={args=>run('court',args)} onRemove={id=>run('court_remove',{id},'Remoção de vínculo da Corte solicitada pelo gestor da casa.')}/></>}
       {section==='projects'&&<><h3>Projetos e calendário</h3><p>{campaignMonth(state.month)}</p>{state.projects.map(p=><article className="house-project" key={p.id}><h4>{p.name}</h4><p>{p.status==='completed'?'Concluído':p.status==='cancelled'?'Cancelado':'Em andamento'} · duração {p.duration} meses · previsão {campaignMonth(p.start+p.duration+p.modifier)}</p>
