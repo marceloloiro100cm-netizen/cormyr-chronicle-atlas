@@ -33,7 +33,7 @@ SET search_path=public,pg_temp AS $body$
 DECLARE
  v_a record; v_h record;v_prev jsonb;v_next jsonb;v_calendar record;
  v_used integer;v_available integer;v_total integer;v_region_wealth integer:=0;
- v_allocated integer;v_units integer;v_consequences integer;
+ v_allocated integer;v_units integer;v_consequences integer;v_destroyed integer;
  v_old_perm integer;v_holding integer;v_name text;v_date text;
 BEGIN
  IF auth.uid() IS NULL OR NOT public.campaign_access_active() OR
@@ -120,9 +120,23 @@ BEGIN
    THEN v_prev->'units' ELSE '[]'::jsonb END) u
  WHERE coalesce(u->>'destroyed','false')<>'true';
 
+ SELECT coalesce(sum(
+  CASE WHEN jsonb_typeof(h->'allocatedCosts')='object' AND
+    h->'allocatedCosts' ? 'wealth' THEN (h->'allocatedCosts'->>'wealth')::integer
+  ELSE (SELECT coalesce(sum((c->>'amount')::integer),0)
+    FROM jsonb_array_elements(CASE WHEN jsonb_typeof(h->'costs')='array'
+     THEN h->'costs' ELSE '[]'::jsonb END) c
+    WHERE c->>'resource'='wealth' AND c->>'mode'='allocation')
+  END),0)::integer
+ INTO v_destroyed FROM jsonb_array_elements(
+  CASE WHEN jsonb_typeof(v_prev->'holdings')='array'
+   THEN v_prev->'holdings' ELSE '[]'::jsonb END) h
+ WHERE h->>'status'='destroyed'
+   AND coalesce(h->>'lostAllocation','false')<>'true';
+
  v_total:=coalesce((v_prev#>>'{base,wealth}')::integer,0)+v_old_perm+
    v_region_wealth+v_consequences;
- v_available:=v_total-v_allocated-v_units;
+ v_available:=v_total-v_allocated-v_units-v_destroyed;
  IF v_available<1 THEN RAISE EXCEPTION 'Sem recursos: exige 1 ponto de Riqueza disponível'; END IF;
 
  v_next:=jsonb_set(v_prev,'{permanent,wealth}',to_jsonb(v_old_perm-1),false);
