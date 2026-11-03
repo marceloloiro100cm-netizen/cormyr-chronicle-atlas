@@ -2,7 +2,10 @@
  * Defensive difficulty for hostile infiltration/detection, as quoted by the
  * authoritative Prosperity catalog's Spy Network.
  *
- *  Law <=30: difficulty 6; each COMPLETE 5 Law above 30: +3.
+ *  House defense: OWN House's effective Law total, plus applicable defensive holdings.
+ *  The sourcebook's separate Spy Cell discovery check is Law<=30: 6,
+ *  then +3 per complete five Law above 30; it must NOT replace the
+ *  House's Law as the defensive base, and must NOT use regional bonuses.
  *  Guard Dogs: +3 in their domain
  *  Bailiffs Investigative Training: +3 in their designated domain
  *  Ear in the Underworld: +3 vs subversive agents against the House
@@ -35,6 +38,7 @@ export type SpyDefenseDomain={
 };
 export type SpyDefenseProfile={
  law:number;baseDifficulty:number;globalBonuses:number;
+ spyCellDiscoveryDifficulty:number;
  globalSources:SpyDefenseSource[];
  domains:SpyDefenseDomain[];
  otherEffects:{name:string;description:string}[];
@@ -59,7 +63,7 @@ const otherEffects={
 
 export function spyDiscoveryBaseDifficulty(law:number):number{
  if(!Number.isFinite(law))throw new Error('Valor de Lei inválido.');
- // A source says +3 per 5 Law above 30: use FULL groups, not a fraction.
+ // Separate Spy Cell discovery test only; never a generic House defense.
  return 6+3*Math.floor(Math.max(0,law-30)/5);
 }
 
@@ -82,7 +86,9 @@ function defenseSources(holdings:Holding[]){
  */
 export function calculateSpyDefense(state:HouseState):SpyDefenseProfile{
  const law=balances(state).total.law;
- const baseDifficulty=spyDiscoveryBaseDifficulty(law);
+ // The target House uses its OWN Law. Regional baselines apply ONLY to
+ // recon of a region without a noble-house target.
+ const baseDifficulty=law;
  const active=activeHoldings(state);
  const sources=defenseSources(active);
  const globalSources=sources.filter(source=>source.domainId===null);
@@ -99,5 +105,6 @@ export function calculateSpyDefense(state:HouseState):SpyDefenseProfile{
   name:h.name,description:otherEffects[h.itemId as keyof typeof otherEffects],
  }));
  return {law,baseDifficulty,globalBonuses,globalSources,
+  spyCellDiscoveryDifficulty:spyDiscoveryBaseDifficulty(law),
   domains,otherEffects:other};
 }
