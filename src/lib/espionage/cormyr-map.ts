@@ -72,20 +72,35 @@ export const CORMYR_CARTOGRAPHIC_LAND_LINKS:readonly SpyRegionalConnection[]=
   fromRegion,toRegion,passage:'land_neighbor' as const,bidirectional:true,version:1,
  }));
 
-/** Confirmada diretamente pelo Narrador em 03/11/2026:
- * Dragon Coast ↔ Crownlands cruza o Dragonmere em UMA désdia de viagem.
- * A ligação é bidirecional para PREVISÃO e é utilizada apenas quando o
- * jogador seleciona "considerar mar". Missão real ainda exige registro/RPC
- * de aprovação e validação de infraestrutura portuária, se aplicável.
+/** Regra confirmada pelo Narrador em 03/11/2026:
+ * TODAS as regiões com COSTA CONTÍNUA no Dragonmere compartilham uma
+ * passagem marítima direta de UMA désdia, em ambos os sentidos.
+ *
+ * Inspeção da imagem política original: Crownlands (norte/oeste),
+ * Shieldmark (nordeste) e Dragon Coast (sul) fazem margem ao lago.
+ * Horselands e Swordmarch chegam perto da ponta oeste, mas não possuem
+ * uma frente costeira contínua no mapa; não são incluídas por um
+ * encontro de limites num único ponto. Sembia é externa ao jogo.
+ *
+ * Cada par é incluído UMA vez, totalizando três conexões possíveis.
+ * Os links abaixo são homologação CARTOGRÁFICA de prévia; para executar
+ * missões reais, a RPC protegida precisa registrar/validar a rota.
  */
-export const CORMYR_NARRATOR_APPROVED_SEA_LINKS:readonly SpyRegionalConnection[]=[{
- id:'99d28001-318a-477b-813e-4b6b7e263c31',
- fromRegion:'dragoncoast',toRegion:'crownlands',
- passage:'sea_passage',bidirectional:true,version:1,
-}];
+export const CORMYR_DRAGONMERE_COASTAL_REGIONS=[
+ 'crownlands','shieldmark','dragoncoast',
+] as const;
+
+export const CORMYR_NARRATOR_APPROVED_SEA_LINKS:readonly SpyRegionalConnection[]=[
+ {id:'99d28001-318a-477b-813e-4b6b7e263c31',fromRegion:'dragoncoast',
+  toRegion:'crownlands',passage:'sea_passage',bidirectional:true,version:1},
+ {id:'c603627b-6413-42f6-833a-650df479d118',fromRegion:'dragoncoast',
+  toRegion:'shieldmark',passage:'sea_passage',bidirectional:true,version:1},
+ {id:'07effb30-0d2b-4e16-88e5-ae1b51969881',fromRegion:'crownlands',
+  toRegion:'shieldmark',passage:'sea_passage',bidirectional:true,version:1},
+];
 
 /** Preview combines borders from the picture, the Narrator-confirmed
- * Dragonmere crossing and the owner's RLS-filtered approved links.
+ * three Dragonmere coastal crossings and the owner's RLS-filtered approved links.
  * No additional maritime edge is inferred from coastline proximity.
  * Actual operations MUST revalidate on the server separately.
  */
