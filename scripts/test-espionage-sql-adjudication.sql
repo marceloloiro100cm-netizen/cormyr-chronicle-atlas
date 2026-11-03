@@ -93,6 +93,14 @@ BEGIN
    '1524-01-22',facts,'Repetição idempotente do mesmo selamento')->>'duplicate')='true',
   'Report sealing is idempotent');
  BEGIN
+  PERFORM public.spy_seal_intel_report(operation,gen_random_uuid(),
+   'bbbbbbbb-cccc-4bbb-8bbb-aaaaaaaaaaaa','ES-C-02','Dom D',
+   '1524-01-22',facts,'Repetir chave com outro relatório deve falhar');
+  RAISE EXCEPTION 'Different report ID was accepted on the same operation key';
+ EXCEPTION WHEN raise_exception THEN
+  IF SQLERRM NOT LIKE '%não corresponde ao relatório%' THEN RAISE; END IF;
+ END;
+ BEGIN
   PERFORM public.spy_release_report(report_id,
    'bbbbbbbb-dddd-4bbb-8bbb-aaaaaaaaaaaa','1524-01-22',
    'O agente ainda não retornou à origem','returned');
