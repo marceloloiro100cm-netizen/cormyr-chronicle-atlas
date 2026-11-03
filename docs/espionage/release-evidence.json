@@ -26,8 +26,11 @@
   "safeToMerge": false,
   "safeToPublish": false,
   "notes": [
-    "SQL 0075/0076 são REVIEW_ONLY e não pertencem ao journal Drizzle",
-    "O projeto mantém pendências anteriores de migrações, Hub Temporal e CI geral",
-    "Não existe homologação real do Narrador nem backup restaurado neste marco"
+    "Os três workflows do PR #217 estavam verdes no commit f0aebd679e6021fccf9ad14c07a6da0be4ab7397 (CI descartável não constitui homologação).",
+    "Os scripts SQL 0075–0083 continuam REVIEW_ONLY, fora do journal Drizzle e não aplicados à produção.",
+    "Backup integral e restauração comprovada não foram fornecidos; a antiga cópia de staging estava vazia.",
+    "Os 20 cenários H01–H20 em docs/espionage/homologation-signoff.json seguem sem aceite real do Narrador.",
+    "Milestones em 1 désdia estão calculadas na prévia, mas ainda dependem de consumidor durável integrado antes do GO.",
+    "Não habilitar consumidor de espionagem, migrar, fazer merge nem publicar até todas as evidências e rollback aprovado."
   ]
 }
