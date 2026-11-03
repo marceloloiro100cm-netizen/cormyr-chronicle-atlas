@@ -114,11 +114,28 @@ BEGIN
         OR lower(coalesce(u->>'type','')) ~ '(guard|garrison)')
    ) INTO v_guard;
   END IF;
-  SELECT CASE WHEN EXISTS(
-     SELECT 1 FROM jsonb_array_elements(v_holdings) h
+  -- General counterespionage bonuses from ACTIVE holdings. Parent improvements
+  -- only count when the parent holding is also active. Local Investigative
+  -- Training needs a specific domain and is not assumed for a House-wide target.
+  SELECT
+    (CASE WHEN EXISTS(SELECT 1 FROM jsonb_array_elements(v_holdings) h
+     WHERE h->>'status'='active'
+       AND h->>'itemId'='pros-secret-police') THEN 6 ELSE 0 END)
+    +(CASE WHEN EXISTS(SELECT 1 FROM jsonb_array_elements(v_holdings) h
+     WHERE h->>'status'='active'
+       AND h->>'itemId'='pros-dog-kennels--guard-dogs'
+       AND (nullif(h->>'parentId','') IS NULL OR EXISTS(
+        SELECT 1 FROM jsonb_array_elements(v_holdings) p
+        WHERE p->>'id'=h->>'parentId' AND p->>'status'='active')))
+     THEN 3 ELSE 0 END)
+    +(CASE WHEN EXISTS(SELECT 1 FROM jsonb_array_elements(v_holdings) h
      WHERE h->>'status'='active'
        AND h->>'itemId'='pros-black-market--ear-in-the-underworld'
-   ) THEN 3 ELSE 0 END INTO v_num;
+       AND (nullif(h->>'parentId','') IS NULL OR EXISTS(
+        SELECT 1 FROM jsonb_array_elements(v_holdings) p
+        WHERE p->>'id'=h->>'parentId' AND p->>'status'='active')))
+     THEN 3 ELSE 0 END)
+    INTO v_num;
   v_defense:=v_law+v_num;
   v_source:='operational_sheet';
  ELSE
@@ -319,14 +336,25 @@ BEGIN
     THEN v_state->'holdings' ELSE '[]'::jsonb END;
   -- Somente proteção GERAL aplicável. Bônus locais exigem domínio e ficam
   -- reservados para a adjudicação oficial do Narrador.
-  SELECT CASE WHEN EXISTS(
-    SELECT 1 FROM jsonb_array_elements(v_holdings) h
-    WHERE h->>'itemId'='pros-black-market--ear-in-the-underworld'
-      AND h->>'status'='active'
-      AND (nullif(h->>'parentId','') IS NULL OR EXISTS(
+  SELECT
+    (CASE WHEN EXISTS(SELECT 1 FROM jsonb_array_elements(v_holdings) h
+     WHERE h->>'itemId'='pros-secret-police' AND h->>'status'='active')
+     THEN 6 ELSE 0 END)
+    +(CASE WHEN EXISTS(SELECT 1 FROM jsonb_array_elements(v_holdings) h
+     WHERE h->>'itemId'='pros-dog-kennels--guard-dogs'
+       AND h->>'status'='active'
+       AND (nullif(h->>'parentId','') IS NULL OR EXISTS(
         SELECT 1 FROM jsonb_array_elements(v_holdings) parent
-        WHERE parent->>'id'=h->>'parentId' AND parent->>'status'='active'))
-  ) THEN 3 ELSE 0 END INTO v_global_bonus;
+        WHERE parent->>'id'=h->>'parentId' AND parent->>'status'='active')))
+     THEN 3 ELSE 0 END)
+    +(CASE WHEN EXISTS(SELECT 1 FROM jsonb_array_elements(v_holdings) h
+     WHERE h->>'itemId'='pros-black-market--ear-in-the-underworld'
+       AND h->>'status'='active'
+       AND (nullif(h->>'parentId','') IS NULL OR EXISTS(
+        SELECT 1 FROM jsonb_array_elements(v_holdings) parent
+        WHERE parent->>'id'=h->>'parentId' AND parent->>'status'='active')))
+     THEN 3 ELSE 0 END)
+    INTO v_global_bonus;
   v_source:='operational_sheet';
  ELSIF v_target.imported_law IS NOT NULL THEN
   v_law:=v_target.imported_law;
