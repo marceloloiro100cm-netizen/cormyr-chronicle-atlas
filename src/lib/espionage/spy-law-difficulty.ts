@@ -11,3 +11,18 @@ export function spyLawDifficulty(law:number):number{
   throw new Error('Lei da Casa inválida para dificuldade de espionagem.');
  return 6+3*Math.floor(Math.max(0,law-30)/5);
 }
+
+/** Reference bands through Lei 104; the formula above keeps going beyond it.
+ * Source labels distinguish the supplement's stated range (through 59) from
+ * Cormyr's agreed continuation at Law >= 60.
+ */
+export function spyLawDifficultyTable(){
+ const first={lawMin:0,lawMax:34,difficulty:6,source:'livro' as const};
+ const extended=Array.from({length:14},(_,i)=>{
+  const lawMin=35+i*5;
+  return {lawMin,lawMax:lawMin+4,
+   difficulty:spyLawDifficulty(lawMin),
+   source:(lawMin>=60?'cormyr':'livro') as 'livro'|'cormyr'};
+ });
+ return [first,...extended];
+}
