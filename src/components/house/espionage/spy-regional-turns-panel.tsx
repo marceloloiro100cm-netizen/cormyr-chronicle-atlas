@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
@@ -12,6 +12,7 @@ import {allSpyRegionalBaselines} from '@/lib/espionage/public-strategy';
 import {REGIONS} from '@/lib/house/regions';
 import {SpyRegionRouteAdmin} from './spy-region-route-admin';
 import {SpyNobleDefenseAdmin} from './spy-noble-defense-admin';
+import {SpyMissionOddsCard} from './spy-mission-odds-card';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {formatDate,formatCampaignPeriod} from '@/lib/calendar/harptos';
 import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
@@ -37,7 +38,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
  const [allowSea,setAllowSea]=useState(true);
  const [returnToStart,setReturnToStart]=useState(false);
  const [originOverride,setOriginOverride]=useState('');
- const [targetMode,setTargetMode]=useState<'travel'|'region'|'house'>('travel');
+ const [targetMode,setTargetMode]=useState<'travel'|'region'|'house'>('house');
  const [targetHouseId,setTargetHouseId]=useState('');
  const regions=allSpyRegionalBaselines();
  const selected=data?.agents.find(a=>a.id===(assetId||data.agents[0]?.id));
@@ -54,7 +55,12 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
   agent:selected??null,selectedRegion:destination,targetHouseId,
   houseTargets:houseChoices,simulation:simulated,
  });
- const canTargetHouse=houseMode&&houseStage==='ready_for_house_planning';
+ // Preview may be planned before travel; operational authorization is unchanged.
+ const canTargetHouse=houseMode&&Boolean(selectedTargetHouse)&&
+  Boolean(selected)&&selected?.status==='available'&&!simulated;
+ useEffect(()=>{
+  if(!destination&&selected?.currentRegion)setDestination(selected.currentRegion);
+ },[destination,selected?.currentRegion]);
  const hypotheticalAgent:SpyRegionalAgent={
   id:'11111111-1111-4111-8111-111111111111',
   codename:'Simulação geográfica',status:'available',currentRegion:currentOrigin,
@@ -85,11 +91,12 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
  return <section className="house-panel" aria-label="Estratégia regional e rodadas de espionagem">
   <div className="house-section-heading"><div>
    <p className="campaign-eyebrow">ESTRATÉGIA DE INTELIGÊNCIA</p>
-   <h3>Dificuldade regional e tempo de viagem</h3>
+   <h3>Planejador visual de missões de espionagem</h3>
   </div></div>
-  <p><strong>Etapa 1:</strong> escolha o agente e a região. Após sua chegada
-    registrada, será possível reconhecer a região ou
-    <strong> Etapa 2:</strong> escolher uma Casa nobre localizada ali.
+  <p><strong>Etapa 1:</strong> escolha um agente e a região onde ele está
+    ou para onde viajará. <strong>Etapa 2:</strong> selecione uma Casa nobre da região
+    para ver sua dificuldade e chance estimada de sucesso. É possível
+    planejar antes da viagem, mas só executar a investigação após a chegada registrada.
     Para investigar dentro da região atual, a missão leva <strong>1 rodada</strong>.
    Cada região atravessada custa <strong>1 rodada de viagem</strong>, além da investigação.
    Uma passagem marítima homologada liga duas regiões em apenas <strong>1 rodada</strong>.
@@ -159,8 +166,10 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
   </div>}
   {data&&<div style={{display:'grid',gap:12,maxWidth:750,marginTop:16}}>
    <label>Agente e localização atual
-    <select aria-label="Agente em deslocamento" value={selected?.id??''}
-     onChange={e=>setAssetId(e.target.value)}>
+    <select aria-label="Agente da missão" value={selected?.id??''}
+     onChange={e=>{setAssetId(e.target.value);
+      setDestination(data.agents.find(a=>a.id===e.target.value)?.currentRegion??'');
+      setTargetHouseId('');}}>
      {data.agents.length===0&&<option value="">Nenhum agente conciliado</option>}
      {data.agents.map(a=><option key={a.id} value={a.id}>
       {a.codename} · {a.currentRegion?name(a.currentRegion):'localização pendente'} · {a.status}
@@ -186,11 +195,13 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    </label>
    {houseMode&&<div className="house-ledger" style={{display:'grid',gap:8}}>
     <h4>Etapa 2 · Escolher a Casa nobre</h4>
-    <p className="house-caption">O agente deve estar <strong>fisicamente</strong> na região
-     e disponível. A posição simulada não concede acesso a uma Casa.</p>
+    <p className="house-caption">Escolha a Casa agora para consultar o risco e a chance
+     estimada. O agente precisa estar <strong>fisicamente</strong> na região
+     para executar a investigação. Uma origem simulada não autoriza uma missão.</p>
     {houseStage==='requires_region_arrival'&&<p role="status">
-     Etapa 1: deslocar o agente até {destination?name(destination):'a região selecionada'}.
-     Só após a chegada registrada no Hub Temporal será possível selecionar uma Casa.</p>}
+     Viagem necessária até {destination?name(destination):'a região selecionada'}.
+     Você já pode selecionar uma Casa e simular sua dificuldade, mas a execução
+     depende da chegada registrada no Hub Temporal.</p>}
     {houseStage==='select_agent'&&<p role="status">Selecione um agente real
      e desative a simulação para escolher a Casa.</p>}
     {houseStage==='select_region'&&<p>Escolha primeiro uma região no mapa.</p>}
@@ -201,7 +212,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      <select aria-label="Casa nobre alvo"
       value={houseChoices.some(h=>h.id===targetHouseId)?targetHouseId:''}
       onChange={e=>setTargetHouseId(e.target.value)}
-      disabled={!['select_house','ready_for_house_planning','house_not_in_region'].includes(houseStage)||
+      disabled={!destination||!selected||selected.status!=='available'||simulated||
        targetsQuery.isError}>
       <option value="">Selecione a Casa</option>
       {houseChoices.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
@@ -210,10 +221,19 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
     {destination&&!targetsQuery.isPending&&!houseChoices.length&&
      <p className="house-caption">Não há outra Casa no cadastro público dessa região.
       Casas NPC exigem cadastro e homologação pelo Narrador.</p>}
-    {canTargetHouse&&<p role="status">Agente presente na região de {name(destination)}:
-     Casa {selectedTargetHouse?.name} selecionada. Investigação local prevista:
-     1 désdia. A defesa dessa Casa depende da Lei e das construções próprias,
-     sem revelar seus valores privados.</p>}
+    {canTargetHouse&&<p role="status">
+     Casa {selectedTargetHouse?.name} selecionada. A avaliação já pode ser consultada.
+     {selected?.currentRegion===destination
+      ?' O agente está na região; investigação local estimada em 1 désdia.'
+      :' A viagem deverá ser concluída antes de iniciar a investigação.'}
+    </p>}
+    <SpyMissionOddsCard
+     houseId={houseId} agentId={selected?.id??''}
+     targetHouseId={targetHouseId} agentName={selected?.codename??'Agente'}
+     agentAvailable={selected?.status==='available'} simulation={simulated}
+     destinationRegion={destination}
+     travelRounds={plan?.status==='ready'?plan.travelRounds:null}
+     originRegion={selected?.currentRegion??null}/>
    </div>}
    <label style={{display:'flex',gap:8,alignItems:'center'}}>
     <input type="checkbox" checked={allowSea} onChange={e=>setAllowSea(e.target.checked)}/>
