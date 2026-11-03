@@ -36,7 +36,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
  const [allowSea,setAllowSea]=useState(true);
  const [returnToStart,setReturnToStart]=useState(false);
  const [originOverride,setOriginOverride]=useState('');
- const [targetMode,setTargetMode]=useState<'region'|'house'>('region');
+ const [targetMode,setTargetMode]=useState<'travel'|'region'|'house'>('travel');
  const [targetHouseId,setTargetHouseId]=useState('');
  const regions=allSpyRegionalBaselines();
  const selected=data?.agents.find(a=>a.id===(assetId||data.agents[0]?.id));
@@ -46,6 +46,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
  const currentOrigin=originOverride||(selected?.currentRegion??null);
  const simulated=Boolean(originOverride||!selected);
  const houseMode=targetMode==='house';
+ const travelOnly=targetMode==='travel';
  const houseChoices=(targetsQuery.data??[]).filter(h=>h.regionId===destination&&h.id!==houseId);
  const selectedTargetHouse=houseChoices.find(h=>h.id===targetHouseId);
  const houseStage=spyHouseTargetStage({
@@ -60,7 +61,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
  const planningAgent=simulated?hypotheticalAgent:selected;
  const plan=planningAgent&&destination?planSpyRegionalMission({
   agent:planningAgent,destinationRegion:destination,links:previewLinks,
-  seaAllowed:allowSea,includeReturn:returnToStart,
+  seaAllowed:allowSea,includeReturn:returnToStart&&!travelOnly,
  }):null;
  const comparisons=currentOrigin?regions.map(region=>({
   ...region,
@@ -167,8 +168,9 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    </label>
    <label>Objetivo da espionagem
      <select aria-label="Tipo de alvo da espionagem" value={targetMode}
-      onChange={e=>{setTargetMode(e.target.value as 'region'|'house');setTargetHouseId('');}}>
-      <option value="region">Reconhecimento de região</option>
+      onChange={e=>{setTargetMode(e.target.value as 'travel'|'region'|'house');setTargetHouseId('');}}>
+      <option value="travel">Deslocar agente até uma região (sem investigar)</option>
+       <option value="region">Investigar uma região</option>
       <option value="house">Espionar uma Casa nobre da região</option>
      </select>
     </label>
