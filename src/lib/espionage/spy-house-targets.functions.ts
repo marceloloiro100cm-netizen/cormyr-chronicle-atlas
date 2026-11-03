@@ -20,7 +20,10 @@ export const listSpyHouseTargets=createServerFn({method:'POST'})
   // House catalogue includes the 164 reviewed NPCs without sheets. Its
   // raw archival JSON is private: this SECURITY DEFINER RPC returns ONLY
   // id/name/region for all 172 reviewed Houses, and checks active JWT.
-  const response=await context.supabase.rpc('spy_public_house_targets');
+  type RpcResult={data:unknown;error:{message:string}|null};
+  const rpc=context.supabase.rpc as unknown as
+   (name:string,args?:Record<string,never>)=>Promise<RpcResult>;
+  const response=await rpc('spy_public_house_targets');
   if(response.error)throw new Error('Catálogo público de Casas ainda não homologado para espionagem.');
   const safeRows=z.array(rowSchema).max(500).safeParse(response.data);
   if(!safeRows.success)throw new Error('Catálogo de Casas retornou dados inesperados.');
