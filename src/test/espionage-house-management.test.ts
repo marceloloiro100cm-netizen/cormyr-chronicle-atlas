@@ -4,6 +4,7 @@ import {calculateSpyDefense,spyDiscoveryBaseDifficulty,SPY_HOLDING_ID_SET} from 
 import {spyMissionProgress} from '@/components/house/espionage/spy-house-management';
 import {spyHouseTargetStage} from '@/lib/espionage/spy-target-stages';
 import {spyRegionalBaseline} from '@/lib/espionage/public-strategy';
+import {resolveSpyHouseDefense} from '@/lib/espionage/spy-house-target-defense';
 function holding(itemId:string,domainId='d1',status:'active'|'building'|'destroyed'='active',parentId?:string):Holding{
  return {id:'id-'+itemId+'-'+domainId,itemId,domainId,
   name:itemId,source:'Guerra dos Tronos RPG',status,
@@ -102,6 +103,42 @@ describe('Duas etapas de espionagem: região primeiro, Casa depois',()=>{
   expect(spyRegionalBaseline('dragoncoast')?.basalDifficulty).toBe(0);
   expect(spyRegionalBaseline('crownlands')?.basalDifficulty).toBe(20);
   expect(d.baseDifficulty).not.toBe(spyRegionalBaseline('crownlands')?.basalDifficulty);
+ });
+});
+
+describe('Fontes reais da defesa dos alvos · 170 registros importados',()=>{
+ it('ficha operacional da Casa tem prioridade e conserva bônus de construções',()=>{
+  const s=house();const d=resolveSpyHouseDefense({
+   kind:'with_sheet',region:'dragoncoast',state:s,
+  });
+  expect(d.source).toBe('own_house_sheet');
+  expect(d.law).toBe(35);expect(d.difficulty).toBe(35);
+ });
+ it('Casa sem ficha operacional usa a Lei exata da planilha sem +10 regional',()=>{
+  const d=resolveSpyHouseDefense({
+   kind:'with_imported_stats',region:'crownlands',importedLaw:41,sourceRow:4,
+  });
+  expect(d.source).toBe('imported_noble_sheet');
+  expect(d.law).toBe(41);expect(d.regionalLaw).toBeNull();
+  expect(d.constructionBonus).toBe(0);expect(d.difficulty).toBe(41);
+ });
+ it('ausente das duas fontes: somente então usa Lei regional +10',()=>{
+  const c=resolveSpyHouseDefense({kind:'without_sheet',region:'crownlands'});
+  expect(c.source).toBe('regional_npc_fallback');expect(c.difficulty).toBe(30);
+  const h=resolveSpyHouseDefense({kind:'without_sheet',region:'helmlands'});
+  expect(h.difficulty).toBe(20);
+ });
+ it('sem região conhecida ou lei importada válida não inventa dificuldade',()=>{
+  expect(()=>resolveSpyHouseDefense({
+   kind:'with_imported_stats',region:'crownlands',importedLaw:Number.NaN,sourceRow:4,
+  })).toThrow();
+  expect(()=>resolveSpyHouseDefense({kind:'without_sheet',region:'regiao-desconhecida'})).toThrow();
+ });
+ it('nenhuma simulação de construção vira bônus de espionagem sem posse ativa',()=>{
+  const d=resolveSpyHouseDefense({
+   kind:'with_imported_stats',region:'elfhold',importedLaw:36,sourceRow:53,
+  });
+  expect(d.difficulty).toBe(36);expect(d.sources).toEqual([]);
  });
 });
 
