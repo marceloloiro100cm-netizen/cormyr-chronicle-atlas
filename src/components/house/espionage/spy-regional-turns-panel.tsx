@@ -75,7 +75,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
   <p className="house-caption">A posição do espião selecionado é a origem padrão, nunca a sede da Casa.
    Você também pode escolher uma origem <strong>somente para simulação</strong>. O mapa usa
    as fronteiras terrestres visíveis no documento enviado pelo Narrador;
-   o atalho Dragon Coast ↔ Crownlands via Dragonmere foi confirmado pelo Narrador e dura 1 désdia. Outras travessias marítimas exigem homologação no servidor. Nenhum desses
+   as três regiões costeiras do Dragonmere — Crownlands, Shieldmark e Dragon Coast — podem navegar diretamente entre si em 1 désdia. Outras travessias marítimas exigem homologação no servidor. Nenhum desses
    cálculos envia missão ou altera o Hub Temporal.</p>
   <details className="house-ledger">
    <summary>Consultar dificuldade basal de todas as regiões</summary>
@@ -123,7 +123,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      </tr>)}
     </tbody></table>
    </div>
-   <small>Fonte terrestre: {CORMYR_MAP_SOURCE}. A travessia Dragon Coast–Crownlands via Dragonmere (1 désdia) foi confirmada pelo Narrador. Os caminhos desta tabela são estimativas cartográficas;
+   <small>Fonte terrestre: {CORMYR_MAP_SOURCE}. Crownlands, Shieldmark e Dragon Coast: cada travessia direta via Dragonmere custa 1 désdia, conforme regra do Narrador. Os caminhos desta tabela são estimativas cartográficas;
     para executar uma missão será exigida uma rota autorizada pelo servidor.</small>
   </details>}
   {isPending&&<p role="status">Consultando posições dos agentes e travessias marítimas homologadas…</p>}
@@ -168,7 +168,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
     {plan.legs.length===0?<p>A investigação ocorre na região atual do espião.</p>:
      <ol>{plan.legs.map((leg,i)=><li key={leg.connectionId+':'+i}>
       {name(leg.fromRegion)} → {name(leg.toRegion)} · 1 rodada
-      {leg.passage==='sea_passage'?(new Set([leg.fromRegion,leg.toRegion]).has('dragoncoast')&&new Set([leg.fromRegion,leg.toRegion]).has('crownlands')?' · via Dragonmere':' · via marítima'):' · fronteira terrestre'}
+      {leg.passage==='sea_passage'?(new Set(['dragoncoast','crownlands','shieldmark']).has(leg.fromRegion)&&new Set(['dragoncoast','crownlands','shieldmark']).has(leg.toRegion)?' · via Dragonmere':' · via marítima'):' · fronteira terrestre'}
      </li>)}</ol>}
     {returnToStart&&<p>{plan.returnRounds===null
      ?'Retorno não homologado: não existe caminho de volta aprovado.'
