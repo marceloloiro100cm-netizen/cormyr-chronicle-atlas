@@ -10,10 +10,10 @@ const optionsSchema=z.object({
   id:z.string().min(1),name:z.string().min(1),
   version:z.number().nullable().default(null),
   court:z.array(z.object({
-   id:z.string(),name:z.string(),role:z.string(),
+   id:z.string(),name:z.string(),role:z.string().nullable(),
   })).default([]),
   units:z.array(z.object({
-   id:z.string(),name:z.string(),available:z.boolean(),
+   id:z.string(),name:z.string().nullable(),available:z.boolean(),
   })).default([]),
  })),
 });
