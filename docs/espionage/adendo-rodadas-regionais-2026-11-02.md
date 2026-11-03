@@ -9,7 +9,7 @@
 5. A missão de reconhecimento exige **uma rodada separada**, somada à viagem de ida. O retorno é opcional e seu custo é calculado partindo da região investigada, respeitando sentidos únicos. Se não houver retorno homologado, o prazo não é inventado.
 6. Se o agente estiver `traveling`/`returning`, `missing` ou `captured`, não é mostrada uma nova chegada como se ele estivesse disponível. Sem localização atual ou ligação aprovada, mostrar **tempo não homologado**.
 7. A **dificuldade basal pública regional** é o valor de bônus de `law` de `src/lib/house/regions.ts`: Crownlands 20, Elfhold 15, Shieldmark/Helmlands/Swordmarch/Ferlin 10, Veilstone/Horselands/Volkumburgh 5, Dragon Coast/Stonelands 0. A dificuldade específica da Casa pode ser avaliada depois, sem expor os atributos privados.
-8. A estratégia mostra **rodadas**, não porcentagens de sucesso nem dias inventados. O vínculo de uma rodada à désdia de 10 dias ou à rodada de missivas **ainda requer definição do Narrador**; portanto não adiantar o Hub Temporal por aproximação.
+8. **Regra confirmada pelo Narrador:** 1 rodada de espionagem = **1 désdia de 10 dias ordinários de Harptos**. O cálculo deriva da **data oficial publicada** no Hub Temporal. Festivais intercalares (incluindo Shieldmeet) não consomem esses dez dias. O contador de rodadas de missivas `published_week` **não** substitui a désdia. A prévia não publica calendário nem conclui missões; essas transições exigem o consumidor durável.
 
 ## Exemplos ilustrativos de regra, não de fronteiras reais
 
