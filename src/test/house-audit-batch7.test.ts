@@ -15,13 +15,14 @@ const unit=(type='infantry'):Unit=>({id:'u',name:'Unidade',types:[type],training
  health:6,casualties:0,strength:100,disciplineModifier:0,equipment:[],situation:'No domínio',notes:''});
 const holding=(s:ReturnType<typeof make>,id:string)=>{s.holdings.push({id,itemId:id,name:id,domainId:'d',source:'Teste',ruleVersion:'1',status:'active',effects:[],costs:[]});return s;};
 describe('Lote 7: descontos militares e treinamento',()=>{
- it('Gangues de Rua elimina o custo de População dos plebeus sem reduzir abaixo de zero',()=>{
+ it('Gangues de Rua reduz Poder, mas preserva o custo de População dos Recrutas Camponeses',()=>{
   const s=holding(make(),'pros-street-gangs');
   s.holdings[0]!.effects=CORE_CATALOG.find(i=>i.id==='pros-street-gangs')!.effects;
   const n=createUnit(s,unit('levies'),UNIT_TYPES);
-  expect(n.units[0]?.costs.find(c=>c.resource==='population')?.amount).toBe(0);
-  expect(n.permanent.population).toBe(0);
-  expect(balances(n).total.population).toBe(s.base.population);
+  expect(n.units[0]?.costs.find(c=>c.resource==='population')?.amount).toBe(2);
+  expect(n.permanent.population).toBe(-2);
+  expect(balances(n).total.population).toBe(s.base.population-2);
+  expect(n.units[0]?.recruitmentDiscounts?.some(d=>d.resource==='power'&&d.amount===2)).toBe(true);
  });
  it('Estaleiro e Prisão aplicam descontos de Poder sem zerar investimento da tropa',()=>{
   const ship=holding(make(),'pros-timber--ship-yards');
