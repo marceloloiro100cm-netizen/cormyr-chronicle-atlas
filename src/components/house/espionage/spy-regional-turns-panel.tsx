@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
@@ -12,6 +12,7 @@ import {allSpyRegionalBaselines} from '@/lib/espionage/public-strategy';
 import {REGIONS} from '@/lib/house/regions';
 import {SpyRegionRouteAdmin} from './spy-region-route-admin';
 import {SpyNobleDefenseAdmin} from './spy-noble-defense-admin';
+import {SpyMissionOddsCard} from './spy-mission-odds-card';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {formatDate,formatCampaignPeriod} from '@/lib/calendar/harptos';
 import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
@@ -37,7 +38,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
  const [allowSea,setAllowSea]=useState(true);
  const [returnToStart,setReturnToStart]=useState(false);
  const [originOverride,setOriginOverride]=useState('');
- const [targetMode,setTargetMode]=useState<'travel'|'region'|'house'>('travel');
+ const [targetMode,setTargetMode]=useState<'travel'|'region'|'house'>('house');
  const [targetHouseId,setTargetHouseId]=useState('');
  const regions=allSpyRegionalBaselines();
  const selected=data?.agents.find(a=>a.id===(assetId||data.agents[0]?.id));
@@ -54,7 +55,12 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
   agent:selected??null,selectedRegion:destination,targetHouseId,
   houseTargets:houseChoices,simulation:simulated,
  });
- const canTargetHouse=houseMode&&houseStage==='ready_for_house_planning';
+ // Preview may be planned before travel; operational authorization is unchanged.
+ const canTargetHouse=houseMode&&Boolean(selectedTargetHouse)&&
+  Boolean(selected)&&selected?.status==='available'&&!simulated;
+ useEffect(()=>{
+  if(!destination&&selected?.currentRegion)setDestination(selected.currentRegion);
+ },[destination,selected?.currentRegion]);
  const hypotheticalAgent:SpyRegionalAgent={
   id:'11111111-1111-4111-8111-111111111111',
   codename:'Simulação geográfica',status:'available',currentRegion:currentOrigin,
@@ -85,11 +91,12 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
  return <section className="house-panel" aria-label="Estratégia regional e rodadas de espionagem">
   <div className="house-section-heading"><div>
    <p className="campaign-eyebrow">ESTRATÉGIA DE INTELIGÊNCIA</p>
-   <h3>Dificuldade regional e tempo de viagem</h3>
+   <h3>Planejador visual de missões de espionagem</h3>
   </div></div>
-  <p><strong>Etapa 1:</strong> escolha o agente e a região. Após sua chegada
-    registrada, será possível reconhecer a região ou
-    <strong> Etapa 2:</strong> escolher uma Casa nobre localizada ali.
+  <p><strong>Etapa 1:</strong> escolha um agente e a região onde ele está
+    ou para onde viajará. <strong>Etapa 2:</strong> selecione uma Casa nobre da região
+    para ver sua dificuldade e chance estimada de sucesso. É possível
+    planejar antes da viagem, mas só executar a investigação após a chegada registrada.
     Para investigar dentro da região atual, a missão leva <strong>1 rodada</strong>.
    Cada região atravessada custa <strong>1 rodada de viagem</strong>, além da investigação.
    Uma passagem marítima homologada liga duas regiões em apenas <strong>1 rodada</strong>.
@@ -104,7 +111,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    <summary>Consultar dificuldade basal de todas as regiões</summary>
    <p>Esses valores são usados <strong>somente em investigações regionais</strong>.
      A defesa de uma Casa usa a Lei efetiva e as construções da própria Casa,
-     sem incluir a Lei basal regional nem expor os dados privados da Casa-alvo.</p>
+     sem somar a Lei regional; a prévia exibe apenas a resistência agregada, não a ficha completa do alvo.</p>
    <table><thead><tr><th scope="col">Região</th><th scope="col">Lei basal</th></tr></thead>
     <tbody>{regions.map(x=><tr key={x.regionId}><td>{x.regionName}</td>
      <td>{x.basalDifficulty}</td></tr>)}</tbody>
@@ -122,35 +129,6 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    </label>
    {originOverride&&<p role="note" className="house-caption">Esta origem é uma simulação do mapa e não move o espião nem modifica sua localização oficial.</p>}
   </div>
-  <CormyrInteractiveMap
-   selectedRegion={destination} originRegion={currentOrigin}
-   plan={plan?.status==='ready'?plan:null}
-   onSelect={chooseRegion}/>
-  {currentOrigin&&<details className="house-ledger" open style={{marginTop:14}}>
-   <summary>Todas as regiões · viagem a partir de {name(currentOrigin)} (11 destinos)</summary>
-   <p>Estimativa terrestre baseada no mapa e acrescida das passagens marítimas aprovadas, quando habilitadas.
-    Se escolher reconhecimento regional depois da viagem, a investigação acrescenta 1 désdia; deslocamento simples não acrescenta investigação.</p>
-   <div style={{overflowX:'auto'}}>
-    <table><thead><tr>
-     <th scope="col">Destino</th><th scope="col">Viagem</th>
-     <th scope="col">Investigação</th><th scope="col">Total</th><th scope="col">Dias ordinários</th>
-    </tr></thead><tbody>
-     {comparisons.map(row=><tr key={row.regionId}
-      style={destination===row.regionId?{background:'rgba(174,194,224,.25)'}:undefined}>
-      <td><button type="button" onClick={()=>chooseRegion(row.regionId)}
-       style={{background:'none',border:0,textDecoration:'underline',color:'inherit',cursor:'pointer',textAlign:'left'}}>
-       {row.regionName}</button></td>
-      {row.estimate.status==='ready'?<>
-       <td>{row.estimate.travelRounds} désdia(s)</td><td>1 désdia</td>
-       <td><strong>{row.estimate.totalRounds} désdia(s)</strong></td>
-       <td>{row.estimate.totalRounds*10}</td>
-      </>:<td colSpan={4}>Rota pendente de validação</td>}
-     </tr>)}
-    </tbody></table>
-   </div>
-   <small>Fonte terrestre: {CORMYR_MAP_SOURCE}. Crownlands, Shieldmark e Dragon Coast: cada travessia direta via Dragonmere custa 1 désdia, conforme regra do Narrador. Os caminhos desta tabela são estimativas cartográficas;
-    para executar uma missão será exigida uma rota autorizada pelo servidor.</small>
-  </details>}
   {isPending&&<p role="status">Consultando posições dos agentes e travessias marítimas homologadas…</p>}
   {isError&&<div role="note">
    <p>O cadastro operacional da Casa não pôde ser consultado. O mapa e a simulação de fronteiras
@@ -159,8 +137,10 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
   </div>}
   {data&&<div style={{display:'grid',gap:12,maxWidth:750,marginTop:16}}>
    <label>Agente e localização atual
-    <select aria-label="Agente em deslocamento" value={selected?.id??''}
-     onChange={e=>setAssetId(e.target.value)}>
+    <select aria-label="Agente da missão" value={selected?.id??''}
+     onChange={e=>{setAssetId(e.target.value);
+      setDestination(data.agents.find(a=>a.id===e.target.value)?.currentRegion??'');
+      setTargetHouseId('');}}>
      {data.agents.length===0&&<option value="">Nenhum agente conciliado</option>}
      {data.agents.map(a=><option key={a.id} value={a.id}>
       {a.codename} · {a.currentRegion?name(a.currentRegion):'localização pendente'} · {a.status}
@@ -186,11 +166,13 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    </label>
    {houseMode&&<div className="house-ledger" style={{display:'grid',gap:8}}>
     <h4>Etapa 2 · Escolher a Casa nobre</h4>
-    <p className="house-caption">O agente deve estar <strong>fisicamente</strong> na região
-     e disponível. A posição simulada não concede acesso a uma Casa.</p>
+    <p className="house-caption">Escolha a Casa agora para consultar o risco e a chance
+     estimada. O agente precisa estar <strong>fisicamente</strong> na região
+     para executar a investigação. Uma origem simulada não autoriza uma missão.</p>
     {houseStage==='requires_region_arrival'&&<p role="status">
-     Etapa 1: deslocar o agente até {destination?name(destination):'a região selecionada'}.
-     Só após a chegada registrada no Hub Temporal será possível selecionar uma Casa.</p>}
+     Viagem necessária até {destination?name(destination):'a região selecionada'}.
+     Você já pode selecionar uma Casa e simular sua dificuldade, mas a execução
+     depende da chegada registrada no Hub Temporal.</p>}
     {houseStage==='select_agent'&&<p role="status">Selecione um agente real
      e desative a simulação para escolher a Casa.</p>}
     {houseStage==='select_region'&&<p>Escolha primeiro uma região no mapa.</p>}
@@ -201,7 +183,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      <select aria-label="Casa nobre alvo"
       value={houseChoices.some(h=>h.id===targetHouseId)?targetHouseId:''}
       onChange={e=>setTargetHouseId(e.target.value)}
-      disabled={!['select_house','ready_for_house_planning','house_not_in_region'].includes(houseStage)||
+      disabled={!destination||!selected||selected.status!=='available'||simulated||
        targetsQuery.isError}>
       <option value="">Selecione a Casa</option>
       {houseChoices.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
@@ -210,10 +192,19 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
     {destination&&!targetsQuery.isPending&&!houseChoices.length&&
      <p className="house-caption">Não há outra Casa no cadastro público dessa região.
       Casas NPC exigem cadastro e homologação pelo Narrador.</p>}
-    {canTargetHouse&&<p role="status">Agente presente na região de {name(destination)}:
-     Casa {selectedTargetHouse?.name} selecionada. Investigação local prevista:
-     1 désdia. A defesa dessa Casa depende da Lei e das construções próprias,
-     sem revelar seus valores privados.</p>}
+    {canTargetHouse&&<p role="status">
+     Casa {selectedTargetHouse?.name} selecionada. A avaliação já pode ser consultada.
+     {selected?.currentRegion===destination
+      ?' O agente está na região; investigação local estimada em 1 désdia.'
+      :' A viagem deverá ser concluída antes de iniciar a investigação.'}
+    </p>}
+    <SpyMissionOddsCard
+     houseId={houseId} agentId={selected?.id??''}
+     targetHouseId={targetHouseId} agentName={selected?.codename??'Agente'}
+     agentAvailable={selected?.status==='available'} simulation={simulated}
+     destinationRegion={destination}
+     travelRounds={plan?.status==='ready'?plan.travelRounds:null}
+     originRegion={selected?.currentRegion??null}/>
    </div>}
    <label style={{display:'flex',gap:8,alignItems:'center'}}>
     <input type="checkbox" checked={allowSea} onChange={e=>setAllowSea(e.target.checked)}/>
@@ -238,7 +229,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      :houseMode
       ?<p>Alvo: <strong>Casa nobre.</strong> A Lei basal regional não determina a defesa
        da Casa. {canTargetHouse
-        ?'A defesa usa a Lei e as construções da própria Casa-alvo, reservadas ao Narrador.'
+        ?'A dificuldade e a chance estimada aparecem no cartão acima; a resolução final cabe ao Narrador.'
         :'Aguarde a chegada regional antes de planejar a investigação da Casa.'}</p>
       :<p>Dificuldade basal de reconhecimento regional: <strong>{plan.basalDifficulty} (Lei regional)</strong>.</p>}
     {plan.legs.length===0?<p>{travelOnly?'O agente já está na região selecionada.':'A investigação ocorre na região atual do espião.'}</p>:
@@ -275,6 +266,35 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    </div>:plan&&<p role="status" className="house-caption">{message[plan.status]}</p>}
    {!data.agents.length&&<p role="note">Sem agentes cadastrados. Após conciliação da Rede ou contratação, o cálculo passará a usar a posição própria de cada agente.</p>}
   </div>}
+  <CormyrInteractiveMap
+   selectedRegion={destination} originRegion={currentOrigin}
+   plan={plan?.status==='ready'?plan:null}
+   onSelect={chooseRegion}/>
+  {currentOrigin&&<details className="house-ledger" open style={{marginTop:14}}>
+   <summary>Todas as regiões · viagem a partir de {name(currentOrigin)} (11 destinos)</summary>
+   <p>Estimativa terrestre baseada no mapa e acrescida das passagens marítimas aprovadas, quando habilitadas.
+    Se escolher reconhecimento regional depois da viagem, a investigação acrescenta 1 désdia; deslocamento simples não acrescenta investigação.</p>
+   <div style={{overflowX:'auto'}}>
+    <table><thead><tr>
+     <th scope="col">Destino</th><th scope="col">Viagem</th>
+     <th scope="col">Investigação</th><th scope="col">Total</th><th scope="col">Dias ordinários</th>
+    </tr></thead><tbody>
+     {comparisons.map(row=><tr key={row.regionId}
+      style={destination===row.regionId?{background:'rgba(174,194,224,.25)'}:undefined}>
+      <td><button type="button" onClick={()=>chooseRegion(row.regionId)}
+       style={{background:'none',border:0,textDecoration:'underline',color:'inherit',cursor:'pointer',textAlign:'left'}}>
+       {row.regionName}</button></td>
+      {row.estimate.status==='ready'?<>
+       <td>{row.estimate.travelRounds} désdia(s)</td><td>1 désdia</td>
+       <td><strong>{row.estimate.totalRounds} désdia(s)</strong></td>
+       <td>{row.estimate.totalRounds*10}</td>
+      </>:<td colSpan={4}>Rota pendente de validação</td>}
+     </tr>)}
+    </tbody></table>
+   </div>
+   <small>Fonte terrestre: {CORMYR_MAP_SOURCE}. Crownlands, Shieldmark e Dragon Coast: cada travessia direta via Dragonmere custa 1 désdia, conforme regra do Narrador. Os caminhos desta tabela são estimativas cartográficas;
+    para executar uma missão será exigida uma rota autorizada pelo servidor.</small>
+  </details>}
   {admin&&<SpyNobleDefenseAdmin houses={targetsQuery.data??[]}/>}
   {admin&&<SpyRegionRouteAdmin houseId={houseId}/>}
  </section>;
