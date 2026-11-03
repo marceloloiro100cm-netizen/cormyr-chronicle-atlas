@@ -2,7 +2,7 @@ import {useEffect,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
-import {loadSpyRegionalStrategy} from '@/lib/espionage/region-turns.functions';
+import {readSpyRegionalStrategyBrowser} from '@/lib/espionage/spy-browser-client';
 import {listSpyHouseTargets} from '@/lib/espionage/spy-house-targets.functions';
 import {spyHouseTargetStage} from '@/lib/espionage/spy-target-stages';
 import {planSpyRegionalMission,type SpyRegionalAgent} from '@/lib/espionage/region-turns';
@@ -22,12 +22,11 @@ import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
  * Neither this preview nor client-side interaction may advance that clock.
  */
 export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admin?:boolean}){
- const load=useServerFn(loadSpyRegionalStrategy);
  const loadTargets=useServerFn(listSpyHouseTargets);
  const campaignTime=useCampaignTime();
  const {data,isPending,isError,refetch}=useQuery({
   queryKey:['espionage-regional-strategy',houseId],
-  queryFn:()=>load({data:{houseId}}),staleTime:30_000,retry:false,
+  queryFn:()=>readSpyRegionalStrategyBrowser(houseId),staleTime:30_000,retry:false,
  });
  const targetsQuery=useQuery({
   queryKey:['spy-house-public-targets'],
