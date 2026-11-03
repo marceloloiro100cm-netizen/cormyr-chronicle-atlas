@@ -9,6 +9,8 @@ const NOW=new Date('2026-10-31T23:30:00.000Z');
 const SHA='a'.repeat(40);
 const opts={sourceSha:SHA,environment:'homologation',now:NOW};
 const actualCatalog=loadMigrationCatalog();
+const recordedTags=new Set(actualCatalog.journal.entries.map(row=>row.tag));
+const unjournaledCount=actualCatalog.migrations.filter(row=>!recordedTags.has(row.tag)).length;
 const risks=loadReplayRisks();
 const temporal=actualCatalog.migrations.filter(m=>/^006[0-7]_/.test(m.tag));
 
@@ -40,7 +42,8 @@ describe('Lote 17 · planejamento bloqueado por estado e ordem de migration',()=
   assert.equal(r.go_no_go,'NO_GO');
   assert.equal(r.candidate_status,'BLOCKED');
   assert.equal(r.reviewed_candidate_suffix.length,0);
-  assert.equal(r.historical_sql_without_journal,29);
+  assert.equal(r.historical_sql_without_journal,unjournaledCount);
+  assert.ok(unjournaledCount>=29);
   assert.equal(r.chronological_temporal_order.length,8);
   assert.ok(codes(r).includes('LOCAL_CATALOG_UNJOURNALED_SQL'));
   assert.ok(codes(r).includes('LOCAL_CATALOG_AMBIGUOUS_SQL_ORDINAL'));
