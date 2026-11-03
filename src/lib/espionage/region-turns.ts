@@ -89,8 +89,8 @@ export function planSpyRegionalMission(
   legs:[],returnLegs:null,
  });
  if(!destination)return fail('unknown_destination');
- if(['captured','missing','lost','retired','pending_review'].includes(agent.status))return fail('agent_unavailable');
  if(agent.status==='traveling'||agent.status==='returning')return fail('agent_in_transit');
+ if(agent.status!=='available')return fail('agent_unavailable');
  const start=regionId(agent.currentRegion??'');
  if(!start)return fail('unknown_agent_location');
  const legs=shortest(input.links,start,destination.regionId,input.seaAllowed);
