@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/lib/espionage/**/*.ts",
+    "src/components/house/espionage/**/*.tsx",
+    "src/components/house/hub.tsx",
+    "src/test/espionage-region-turns.test.ts",
+    "src/test/espionage-desdia-temporal.test.ts",
+    "src/test/espionage-region-review.test.ts"
+  ],
+  "compilerOptions": {
+    "types": [
+      "vite/client",
+      "vitest/globals",
+      "node"
+    ]
+  }
+}
