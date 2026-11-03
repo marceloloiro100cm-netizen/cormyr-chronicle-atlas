@@ -3,6 +3,8 @@ import {useQuery} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
 import {loadSpyRegionalStrategy} from '@/lib/espionage/region-turns.functions';
+import {listSpyHouseTargets} from '@/lib/espionage/spy-house-targets.functions';
+import {spyHouseTargetStage} from '@/lib/espionage/spy-target-stages';
 import {planSpyRegionalMission,type SpyRegionalAgent} from '@/lib/espionage/region-turns';
 import {cormyrPreviewLinks,CORMYR_MAP_SOURCE} from '@/lib/espionage/cormyr-map';
 import {CormyrInteractiveMap} from './cormyr-interactive-map';
@@ -19,16 +21,23 @@ import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
  */
 export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admin?:boolean}){
  const load=useServerFn(loadSpyRegionalStrategy);
+ const loadTargets=useServerFn(listSpyHouseTargets);
  const campaignTime=useCampaignTime();
  const {data,isPending,isError,refetch}=useQuery({
   queryKey:['espionage-regional-strategy',houseId],
   queryFn:()=>load({data:{houseId}}),staleTime:30_000,retry:false,
+ });
+ const targetsQuery=useQuery({
+  queryKey:['spy-house-public-targets'],
+  queryFn:()=>loadTargets({data:{}}),staleTime:120_000,retry:false,
  });
  const [assetId,setAssetId]=useState('');
  const [destination,setDestination]=useState('');
  const [allowSea,setAllowSea]=useState(true);
  const [returnToStart,setReturnToStart]=useState(false);
  const [originOverride,setOriginOverride]=useState('');
+ const [targetMode,setTargetMode]=useState<'region'|'house'>('region');
+ const [targetHouseId,setTargetHouseId]=useState('');
  const regions=allSpyRegionalBaselines();
  const selected=data?.agents.find(a=>a.id===(assetId||data.agents[0]?.id));
  // The GM-supplied map is a source for strategic previews. It DOES NOT
@@ -36,6 +45,14 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
  const previewLinks=cormyrPreviewLinks(data?.links??[]);
  const currentOrigin=originOverride||(selected?.currentRegion??null);
  const simulated=Boolean(originOverride||!selected);
+ const houseMode=targetMode==='house';
+ const houseChoices=(targetsQuery.data??[]).filter(h=>h.regionId===destination&&h.id!==houseId);
+ const selectedTargetHouse=houseChoices.find(h=>h.id===targetHouseId);
+ const houseStage=spyHouseTargetStage({
+  agent:selected??null,selectedRegion:destination,targetHouseId,
+  houseTargets:houseChoices,simulation:simulated,
+ });
+ const canTargetHouse=houseMode&&houseStage==='ready_for_house_planning';
  const hypotheticalAgent:SpyRegionalAgent={
   id:'11111111-1111-4111-8111-111111111111',
   codename:'Simulação geográfica',status:'available',currentRegion:currentOrigin,
@@ -67,7 +84,10 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    <p className="campaign-eyebrow">ESTRATÉGIA DE INTELIGÊNCIA</p>
    <h3>Dificuldade regional e tempo de viagem</h3>
   </div></div>
-  <p>Para investigar dentro da região atual, a missão leva <strong>1 rodada</strong>.
+  <p><strong>Etapa 1:</strong> escolha o agente e a região. Após sua chegada
+    registrada, será possível reconhecer a região ou
+    <strong> Etapa 2:</strong> escolher uma Casa nobre localizada ali.
+    Para investigar dentro da região atual, a missão leva <strong>1 rodada</strong>.
    Cada região atravessada custa <strong>1 rodada de viagem</strong>, além da investigação.
    Uma passagem marítima homologada liga duas regiões em apenas <strong>1 rodada</strong>.
    <strong> Cada rodada equivale a 1 désdia (10 dias ordinários) do Hub Temporal.</strong>
@@ -79,7 +99,9 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    cálculos envia missão ou altera o Hub Temporal.</p>
   <details className="house-ledger">
    <summary>Consultar dificuldade basal de todas as regiões</summary>
-   <p>Valores públicos derivados da Lei regional. A dificuldade específica de uma Casa poderá sofrer modificações posteriores.</p>
+   <p>Esses valores são usados <strong>somente em investigações regionais</strong>.
+     A defesa de uma Casa usa a Lei efetiva e as construções da própria Casa,
+     sem incluir a Lei basal regional nem expor os dados privados da Casa-alvo.</p>
    <table><thead><tr><th scope="col">Região</th><th scope="col">Lei basal</th></tr></thead>
     <tbody>{regions.map(x=><tr key={x.regionId}><td>{x.regionName}</td>
      <td>{x.basalDifficulty}</td></tr>)}</tbody>
@@ -142,9 +164,16 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
      </option>)}
     </select>
    </label>
-   <label>Região a espionar
+   <label>Objetivo da espionagem
+     <select aria-label="Tipo de alvo da espionagem" value={targetMode}
+      onChange={e=>{setTargetMode(e.target.value as 'region'|'house');setTargetHouseId('');}}>
+      <option value="region">Reconhecimento de região</option>
+      <option value="house">Espionar uma Casa nobre da região</option>
+     </select>
+    </label>
+    <label>Região de destino
     <select aria-label="Região de destino" value={destination}
-     onChange={e=>setDestination(e.target.value)}>
+     onChange={e=>{setDestination(e.target.value);setTargetHouseId('');}}>
      <option value="">Selecione uma região</option>
      {regions.map(region=><option key={region.regionId} value={region.regionId}>
       {region.regionName} · Lei basal {region.basalDifficulty}
