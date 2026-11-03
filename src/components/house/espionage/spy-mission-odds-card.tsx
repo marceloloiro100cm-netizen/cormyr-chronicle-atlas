@@ -73,7 +73,7 @@ export function SpyMissionOddsCard(props:Props){
      <div style={{display:'flex',gap:10,alignItems:'center'}}>
       <Eye size={20} color={accent}/>
       <div><strong>Astúcia contra dificuldade {data.testDifficulty} · {data.difficultyLabel}</strong>
-       <small style={{display:'block'}}>{data.agentRank} · Astúcia {data.testDice}D6</small></div>
+       <small style={{display:'block'}}>{data.agentRank} · Astúcia {data.testDice} ({data.testDice} dados de seis faces)</small></div>
      </div>
      <div style={{display:'flex',gap:10,alignItems:'center'}}>
       <ChartNoAxesCombined size={20} color={accent}/>
@@ -111,7 +111,7 @@ export function SpyMissionOddsCard(props:Props){
      entram os bônus de construções gerais aplicáveis.
      A chance é a proporção exata de combinações de {data.testDice} dados de seis faces
      cuja soma seja maior ou igual a {data.testDifficulty}.
-     A graduação real do agente é {data.agentRank} (Astúcia {data.testDice}D6).
+     A graduação do agente é {data.agentRank}, com Astúcia {data.testDice} (rolagem de {data.testDice} dados de seis faces).
      Não são adicionados dados fictícios de outras posses.
     </p>
    </details>
