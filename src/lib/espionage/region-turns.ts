@@ -61,7 +61,13 @@ function shortest(links:readonly SpyRegionalConnection[],from:string,to:string,s
  const queue=[from],seen=new Set<string>([from]),parent=new Map<string,Leg>();
  for(let i=0;i<queue.length;i++){
   const current=queue[i]!;
-  const edges=(adj.get(current)??[]).sort((a,b)=>a.toRegion.localeCompare(b.toRegion)||a.connectionId.localeCompare(b.connectionId));
+  // Sea and land each cost one round. When sea is enabled and both directly
+  // reach the same neighbour, prefer the maritime leg, so the map highlights
+  // the approved Dragonmere passage. Disabling sea restores the land route.
+  const edges=(adj.get(current)??[]).sort((a,b)=>
+   a.toRegion.localeCompare(b.toRegion)||
+   (a.passage===b.passage?0:a.passage==='sea_passage'?-1:1)||
+   a.connectionId.localeCompare(b.connectionId));
   for(const leg of edges){
    if(seen.has(leg.toRegion))continue;
    seen.add(leg.toRegion);parent.set(leg.toRegion,leg);queue.push(leg.toRegion);
