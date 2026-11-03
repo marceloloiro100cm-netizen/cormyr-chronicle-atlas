@@ -69,14 +69,23 @@ describe('Balanceamento de Casas NPC sem ficha',()=>{
   expect(result.baseDifficulty).toBe(12);
   expect(result.regionalLaw).toBeNull();
  });
- it('proteções específicas entram apenas no domínio da Casa com ficha',()=>{
+ it('Cães de Guarda concedem bônus geral à Casa, mesmo fora do domínio dos Canis',()=>{
   const state=withSheet();
   const base=holding('pros-dog-kennels');
   state.holdings=[base,holding('pros-dog-kennels--guard-dogs','d1',base.id)];
   const local=resolveSpyHouseDefense({kind:'with_sheet',state,region:'dragoncoast',domainId:'d1'});
   const house=resolveSpyHouseDefense({kind:'with_sheet',state,region:'dragoncoast'});
   expect(local.difficulty).toBe(9);expect(local.constructionBonus).toBe(3);
-  expect(house.difficulty).toBe(6);expect(house.constructionBonus).toBe(0);
+  expect(house.difficulty).toBe(9);expect(house.constructionBonus).toBe(3);
+ });
+ it('Treinamento Investigativo é local; não vira bônus geral sem o domínio investigado',()=>{
+  const state=withSheet();
+  const base=holding('pros-bailiffs','d1');
+  state.holdings=[base,holding('pros-bailiffs--investigative-training','d1',base.id)];
+  const local=resolveSpyHouseDefense({kind:'with_sheet',state,region:'dragoncoast',domainId:'d1'});
+  const general=resolveSpyHouseDefense({kind:'with_sheet',state,region:'dragoncoast'});
+  expect(local.difficulty).toBe(9);
+  expect(general.difficulty).toBe(6);
  });
  it('nunca substitui ficha não carregada por NPC ou região desconhecida por zero',()=>{
   expect(()=>resolveSpyHouseDefense({kind:'with_sheet',region:'crownlands',state:null as never})).toThrow();
