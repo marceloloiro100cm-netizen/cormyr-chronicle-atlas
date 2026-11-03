@@ -43,6 +43,10 @@
 - O frontend dos jogadores **não recebe a Lei nem a defesa da Casa-alvo**. O Narrador pode consultar a origem e o cálculo de defesa.
 - Nenhuma das 8 fichas operacionais foi substituída; nenhum lançamento econômico, missiva, construção ou calendário foi modificado.
 
+### Gerenciamento dos agentes (adição sem efeito imediato)
+
+As RPCs `spy_house_management(text)` e `spy_rename_agent(text,uuid,text,integer,uuid)`, do roteiro `0086_spy_house_management_REVIEW_ONLY.sql`, foram validadas num ensaio com transação revertida e depois instaladas em produção, a pedido anterior do Narrador. A primeira permite à Casa consultar seus próprios agentes; a segunda permite nomear o agente com versão de concorrência, autorização de edição e trilha de auditoria. Nenhuma renomeação, missão ou alteração de recursos foi executada na instalação. `anon` não possui permissão de EXECUTE nas funções.
+
 ### Pendências de produto
 
-A importação foi concluída no Supabase, mas o código da nova interface e o gerenciamento de agentes do PR #223 precisam de validação e incorporação antes de serem mostrados na aplicação pública. A criação e o processamento automático de missões permanecem desativados. Falta comprovação de backup restaurável para homologar o módulo transacional completo.
+A importação e as funções privadas de gerenciamento foram instaladas no Supabase, mas o código da nova interface do PR #223 precisa de validação e incorporação antes de serem mostrados na aplicação pública. A criação e o processamento automático de missões permanecem desativados. Falta comprovação de backup restaurável para homologar o módulo transacional completo.
