@@ -157,7 +157,7 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
         onBuy={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}}
         onCondition={(args,reason)=>run('condition',args,reason)}/>
        <SpyDefensePanel state={state}/>
-       <SpyAgentManagement houseId={house.id} canEdit={canEdit}/>
+       <SpyAgentManagement houseId={house.id} canEdit={canEdit} admin={admin}/>
        <SpyRegionalTurnsPanel houseId={house.id} admin={admin}/>
       </>}
       {section==='vassals'&&<><Vassals catalog={catalog} onCreate={args=>run('vassal_create',args)} onPurchase={args=>run('vassal_purchase',args)} onDomain={args=>run('vassal_domain',args)} state={state} houses={houses} npcs={npcs} admin={admin} canEdit={canEdit} busy={busy} onPropose={args=>run('vassal',args)} onApprove={(args,note)=>run('vassal_approve',args,note)} onEnd={(args,note)=>run('vassal_end',args,note)} onLoyalty={(args,note)=>run('vassal_loyalty',args,note)}/></>}
