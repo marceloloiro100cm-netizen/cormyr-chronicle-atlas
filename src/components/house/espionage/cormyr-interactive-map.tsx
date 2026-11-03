@@ -75,7 +75,8 @@ export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}
      <path d="M645 649 Q745 592 838 630 Q936 649 997 661 Q1094 653 1164 692 Q1206 708 1288 717 Q1442 719 1590 724 L1628 724 1628 818 Q1500 747 1368 778 Q1194 794 1102 770 Q1036 743 929 766 Q775 697 709 744 Q648 727 645 649Z"
       fill="url(#cormyr-lake-gradient)" fillOpacity=".93"
       stroke="#638bb8" strokeWidth="3"/>
-     <text x="910" y="709" className="cormyr-lake-text">Lago dos Dragões</text>
+     <text x="910" y="697" className="cormyr-lake-text">Lago dos Dragões</text>
+     <text x="910" y="720" className="cormyr-lake-subtitle">DRAGONMERE</text>
      <path d="M885 719Q928 714 978 729" fill="none" stroke="#d5e5f2" strokeWidth="2"/>
      <text x="1540" y="70" className="cormyr-compass">N</text>
      <path d="M1540 78l-11 34 11-8 11 8Z" fill="#7389a3"/>
@@ -117,6 +118,6 @@ export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}
     aria-pressed={selectedRegion===id}
     onClick={()=>navigate(id)}>{region.name}</button>)}
   </div>
-  <p className="cormyr-map-source">{CORMYR_MAP_SOURCE}. Contornos simplificados para seleção regional; cidades, estradas e portos não foram vetorizados. Travessias marítimas só entram no cálculo quando homologadas.</p>
+  <p className="cormyr-map-source">{CORMYR_MAP_SOURCE}. Contornos simplificados para seleção regional; cidades, estradas e portos não foram vetorizados. Dragon Coast–Crownlands via Dragonmere: 1 désdia de viagem por confirmação do Narrador. Outras passagens marítimas exigem homologação.</p>
  </section>;
 }
