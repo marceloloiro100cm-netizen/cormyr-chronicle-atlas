@@ -129,35 +129,6 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    </label>
    {originOverride&&<p role="note" className="house-caption">Esta origem é uma simulação do mapa e não move o espião nem modifica sua localização oficial.</p>}
   </div>
-  <CormyrInteractiveMap
-   selectedRegion={destination} originRegion={currentOrigin}
-   plan={plan?.status==='ready'?plan:null}
-   onSelect={chooseRegion}/>
-  {currentOrigin&&<details className="house-ledger" open style={{marginTop:14}}>
-   <summary>Todas as regiões · viagem a partir de {name(currentOrigin)} (11 destinos)</summary>
-   <p>Estimativa terrestre baseada no mapa e acrescida das passagens marítimas aprovadas, quando habilitadas.
-    Se escolher reconhecimento regional depois da viagem, a investigação acrescenta 1 désdia; deslocamento simples não acrescenta investigação.</p>
-   <div style={{overflowX:'auto'}}>
-    <table><thead><tr>
-     <th scope="col">Destino</th><th scope="col">Viagem</th>
-     <th scope="col">Investigação</th><th scope="col">Total</th><th scope="col">Dias ordinários</th>
-    </tr></thead><tbody>
-     {comparisons.map(row=><tr key={row.regionId}
-      style={destination===row.regionId?{background:'rgba(174,194,224,.25)'}:undefined}>
-      <td><button type="button" onClick={()=>chooseRegion(row.regionId)}
-       style={{background:'none',border:0,textDecoration:'underline',color:'inherit',cursor:'pointer',textAlign:'left'}}>
-       {row.regionName}</button></td>
-      {row.estimate.status==='ready'?<>
-       <td>{row.estimate.travelRounds} désdia(s)</td><td>1 désdia</td>
-       <td><strong>{row.estimate.totalRounds} désdia(s)</strong></td>
-       <td>{row.estimate.totalRounds*10}</td>
-      </>:<td colSpan={4}>Rota pendente de validação</td>}
-     </tr>)}
-    </tbody></table>
-   </div>
-   <small>Fonte terrestre: {CORMYR_MAP_SOURCE}. Crownlands, Shieldmark e Dragon Coast: cada travessia direta via Dragonmere custa 1 désdia, conforme regra do Narrador. Os caminhos desta tabela são estimativas cartográficas;
-    para executar uma missão será exigida uma rota autorizada pelo servidor.</small>
-  </details>}
   {isPending&&<p role="status">Consultando posições dos agentes e travessias marítimas homologadas…</p>}
   {isError&&<div role="note">
    <p>O cadastro operacional da Casa não pôde ser consultado. O mapa e a simulação de fronteiras
@@ -295,6 +266,35 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    </div>:plan&&<p role="status" className="house-caption">{message[plan.status]}</p>}
    {!data.agents.length&&<p role="note">Sem agentes cadastrados. Após conciliação da Rede ou contratação, o cálculo passará a usar a posição própria de cada agente.</p>}
   </div>}
+  <CormyrInteractiveMap
+   selectedRegion={destination} originRegion={currentOrigin}
+   plan={plan?.status==='ready'?plan:null}
+   onSelect={chooseRegion}/>
+  {currentOrigin&&<details className="house-ledger" open style={{marginTop:14}}>
+   <summary>Todas as regiões · viagem a partir de {name(currentOrigin)} (11 destinos)</summary>
+   <p>Estimativa terrestre baseada no mapa e acrescida das passagens marítimas aprovadas, quando habilitadas.
+    Se escolher reconhecimento regional depois da viagem, a investigação acrescenta 1 désdia; deslocamento simples não acrescenta investigação.</p>
+   <div style={{overflowX:'auto'}}>
+    <table><thead><tr>
+     <th scope="col">Destino</th><th scope="col">Viagem</th>
+     <th scope="col">Investigação</th><th scope="col">Total</th><th scope="col">Dias ordinários</th>
+    </tr></thead><tbody>
+     {comparisons.map(row=><tr key={row.regionId}
+      style={destination===row.regionId?{background:'rgba(174,194,224,.25)'}:undefined}>
+      <td><button type="button" onClick={()=>chooseRegion(row.regionId)}
+       style={{background:'none',border:0,textDecoration:'underline',color:'inherit',cursor:'pointer',textAlign:'left'}}>
+       {row.regionName}</button></td>
+      {row.estimate.status==='ready'?<>
+       <td>{row.estimate.travelRounds} désdia(s)</td><td>1 désdia</td>
+       <td><strong>{row.estimate.totalRounds} désdia(s)</strong></td>
+       <td>{row.estimate.totalRounds*10}</td>
+      </>:<td colSpan={4}>Rota pendente de validação</td>}
+     </tr>)}
+    </tbody></table>
+   </div>
+   <small>Fonte terrestre: {CORMYR_MAP_SOURCE}. Crownlands, Shieldmark e Dragon Coast: cada travessia direta via Dragonmere custa 1 désdia, conforme regra do Narrador. Os caminhos desta tabela são estimativas cartográficas;
+    para executar uma missão será exigida uma rota autorizada pelo servidor.</small>
+  </details>}
   {admin&&<SpyNobleDefenseAdmin houses={targetsQuery.data??[]}/>}
   {admin&&<SpyRegionRouteAdmin houseId={houseId}/>}
  </section>;
