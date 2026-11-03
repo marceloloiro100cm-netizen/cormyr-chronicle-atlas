@@ -1,16 +1,18 @@
-/** Cormyr strategic preview, NOT a published SIFRP house-action rule.
- * Law (+ verified defenses) is on a 0-100 resource scale, not a d6 target.
- * Convert to a table-compatible test difficulty (6..21, increments of 3).
- * Exact probabilities enumerate independent fair d6 pools; no dice are rolled.
- * Until agent skills are saved, the preview explicitly uses a provisional 3D6.
+/** Strategic preview: PostgreSQL returns the actual House test DC, NOT raw Law.
+ * A separate law->DC calculation occurs once, before construction bonuses.
+ * NEVER convert an already-converted DC into another DC.
+ * Exact probabilities enumerate all N-d6 outcomes with no simulated roll.
+ * This mission success odds model is a Cormyr adaptation; the Law->DC rule
+ * itself follows the adopted Prosperidade cell discovery difficulty.
  */
 export const SPY_BASELINE_TEST_DICE=3 as const;
-export const SPY_ODDS_RULE_VERSION='cormyr-spy-preview-v1' as const;
+export const SPY_ODDS_RULE_VERSION='cormyr-spy-law-dc-v2' as const;
 
+/** Defensive number already represents a difficulty, including holdings. */
 export function spyTestDifficulty(houseDefense:number):number{
- if(!Number.isSafeInteger(houseDefense)||houseDefense<0||houseDefense>100000)
-  throw new Error('Defesa da Casa inválida.');
- return 6+3*Math.min(5,Math.floor(houseDefense/20));
+ if(!Number.isSafeInteger(houseDefense)||houseDefense<6||houseDefense>100000)
+  throw new Error('Dificuldade de espionagem inválida.');
+ return houseDefense;
 }
 export function spyTestLabel(difficulty:number){
  const names:Record<number,string>={
