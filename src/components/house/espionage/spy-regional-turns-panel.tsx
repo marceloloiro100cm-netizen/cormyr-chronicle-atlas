@@ -11,6 +11,7 @@ import {CormyrInteractiveMap} from './cormyr-interactive-map';
 import {allSpyRegionalBaselines} from '@/lib/espionage/public-strategy';
 import {REGIONS} from '@/lib/house/regions';
 import {SpyRegionRouteAdmin} from './spy-region-route-admin';
+import {SpyNobleDefenseAdmin} from './spy-noble-defense-admin';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {formatDate,formatCampaignPeriod} from '@/lib/calendar/harptos';
 import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
@@ -274,6 +275,7 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    </div>:plan&&<p role="status" className="house-caption">{message[plan.status]}</p>}
    {!data.agents.length&&<p role="note">Sem agentes cadastrados. Após conciliação da Rede ou contratação, o cálculo passará a usar a posição própria de cada agente.</p>}
   </div>}
+  {admin&&<SpyNobleDefenseAdmin houses={targetsQuery.data??[]}/>}
   {admin&&<SpyRegionRouteAdmin houseId={houseId}/>}
  </section>;
 }
