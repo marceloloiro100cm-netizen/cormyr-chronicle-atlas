@@ -91,7 +91,7 @@ function CatalogAssetCard({item,state,catalog,canEdit,busy,onBuy,onCondition,spy
   <h5>Custo e regras de compra</h5>
   <p>{item.costs.length?item.costs.map(c=>
    c.amount+' '+RESOURCE_NAMES[c.resource]+' ('+
-   (spyMode?(c.mode==='allocation'?'pontos comprometidos enquanto a posse existir':
+   (spyMode?(c.mode==='allocation'?'pontos investidos, sem devolução automática em caso de destruição':
     'gasto definitivo do recurso'):COST_TYPE[c.mode])+')').join(' + '):'Custo não definido.'}</p>
   <p>Prazo: {spyMode&&item.duration.months===0&&item.duration.dice
    ?item.duration.dice+(item.duration.dice===1?' dado':' dados')+
@@ -105,7 +105,7 @@ function CatalogAssetCard({item,state,catalog,canEdit,busy,onBuy,onCondition,spy
    'Aquisição com restrição de repetição; a compra valida o domínio e os requisitos.'}</p>
   {item.requirements.length>0&&<ul>{item.requirements.map((r,i)=>
    <li key={i}>{formatRequirement(r,catalog)}</li>)}</ul>}
-  <p className="house-caption">{item.source} · {item.section}</p>
+  <p className="house-caption">{spyMode?'Referência: suplemento Prosperidade · posses e melhorias de espionagem':item.source+' · '+item.section}</p>
   {item.pending&&!spyCopy&&<p className="house-warning">Observação da fonte: {item.pending}</p>}
   {building.map(h=><p className="house-caption" key={h.id}>
    {h.name}: em construção; efeito não ativo.</p>)}
