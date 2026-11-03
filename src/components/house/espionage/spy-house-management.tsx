@@ -8,7 +8,8 @@ import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {advanceHarptosDesdia,listCrossedHarptosPeriods} from '@/lib/calendar/temporal-engine';
 import {calculateSpyDefense} from '@/lib/espionage/spy-defense';
 import {spyLawDifficultyTable} from '@/lib/espionage/spy-law-difficulty';
-import {loadSpyHouseManagement,renameSpyAgent,type SpyManagement} from '@/lib/espionage/spy-management.functions';
+import {renameSpyAgent,type SpyManagement} from '@/lib/espionage/spy-management.functions';
+import {readSpyHouseManagementBrowser} from '@/lib/espionage/spy-browser-client';
 import type {HouseState} from '@/lib/house/types';
 import {REGIONS} from '@/lib/house/regions';
 import {SpyAgentUpgrades} from './spy-agent-upgrades';
@@ -179,10 +180,9 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
 }
 
 export function SpyAgentManagement({houseId,canEdit,admin=false}:{houseId:string;canEdit:boolean;admin?:boolean}){
- const queryFn=useServerFn(loadSpyHouseManagement);
  const {data,isPending,isError,refetch}=useQuery({
   queryKey:['spy-house-management',houseId],
-  queryFn:()=>queryFn({data:{houseId}}),retry:false,staleTime:15_000,
+  queryFn:()=>readSpyHouseManagementBrowser(houseId),retry:false,staleTime:15_000,
  });
  const time=useCampaignTime();
  const officialDate=time.data&&!time.isError?dateKey(time.data):null;
@@ -208,7 +208,7 @@ export function SpyAgentManagement({houseId,canEdit,admin=false}:{houseId:string
      portraits={data.portraits}
      operation={pendingMission(data.operations,agent.id)}/>)}</tbody>
    </table>
-   {!data.agents.length&&<p>Esta Casa ainda não possui agentes conciliados.</p>}
+   {!data.agents.length&&<p>Esta Casa ainda não criou espiões. Utilize <strong>Criar espião</strong> para ocupar as vagas liberadas pelas construções.</p>}
   </div>}
   {data&&<SpyAgentHistory data={data}/>}
   {data&&admin&&<SpyNarratorResolutionPanel data={data}/>}
