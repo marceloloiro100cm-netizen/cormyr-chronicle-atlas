@@ -6,6 +6,7 @@ on:
       - 'scripts/test-espionage-sql*'
       - 'scripts/espionage-release-gate*'
       - 'docs/espionage/release-evidence.json'
+      - 'docs/espionage/homologation-signoff.json'
       - '.github/workflows/espionage-marco-c.yml'
   workflow_dispatch:
 permissions:
@@ -40,6 +41,12 @@ jobs:
         run: |
           node --test scripts/espionage-release-gate.test.mjs
           node scripts/espionage-release-gate.mjs
+          if node scripts/espionage-release-gate.mjs --enforce > /tmp/spies-release-gate.txt 2>&1; then
+            echo "::error::Publication gate improperly accepted incomplete restoration and narrator signoff"
+            cat /tmp/spies-release-gate.txt
+            exit 1
+          fi
+          echo "Expected NO_GO: no release authorization without full restored-staging signoff"
       - name: Bootstrap independent campaign security fixture
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-bootstrap.sql
       - name: Apply candidate schema to DISPOSABLE database only
@@ -78,3 +85,5 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0083_spy_harptos_desdia_REVIEW_ONLY.sql
       - name: Verify 10 ordinary days and Shieldmeet rollover in database
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-desdia.sql
+      - name: Verify RLS, no double charge, temporal replay and membership revocation
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-homologation.sql
