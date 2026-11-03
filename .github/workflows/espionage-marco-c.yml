@@ -74,3 +74,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0082_spy_regional_rounds_REVIEW_ONLY.sql
       - name: Verify Narrator-approved region links and owner-scoped live spy origin
         run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-regional-rounds.sql
+      - name: Apply DESDIA time math only in disposable PostgreSQL
+        run: psql -v ON_ERROR_STOP=1 -f docs/espionage/sql/0083_spy_harptos_desdia_REVIEW_ONLY.sql
+      - name: Verify 10 ordinary days and Shieldmeet rollover in database
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-espionage-sql-desdia.sql
