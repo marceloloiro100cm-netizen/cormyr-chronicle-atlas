@@ -1,12 +1,10 @@
 import {useRef,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
-import {useServerFn} from '@tanstack/react-start';
 import {Plus,Coins,UserRound} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle}
  from '@/components/ui/dialog';
-import {createSpyAgent} from '@/lib/espionage/spy-agent-actions.functions';
-import {loadSpyRecruitmentOptions} from '@/lib/espionage/spy-recruitment.functions';
+import {createSpyAgentBrowser,readSpyRecruitmentOptionsBrowser} from '@/lib/espionage/spy-browser-client';
 import {SPY_AGENT_UPGRADES,type SpyAgentUpgrade} from '@/lib/espionage/spy-agent-progression';
 import type {SpyManagement} from '@/lib/espionage/spy-management.functions';
 import {SpyPortraitPicker} from './spy-portrait-picker';
@@ -26,12 +24,10 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  const [success,setSuccess]=useState('');
- const create=useServerFn(createSpyAgent);
- const loadOptions=useServerFn(loadSpyRecruitmentOptions);
  const qc=useQueryClient();
  const {data:options,isPending:loadingOptions,isError:optionsError,refetch}=useQuery({
   queryKey:['spy-recruitment-options',houseId],
-  queryFn:()=>loadOptions({data:{houseId}}),
+  queryFn:()=>readSpyRecruitmentOptionsBrowser(houseId),
   enabled:open,staleTime:0,retry:1,
  });
  const slots=options?.recruitment.filter(r=>r.vacancies>0)??[];
@@ -57,11 +53,11 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
   try{
    const key=requestKey.current??crypto.randomUUID();
    requestKey.current=key;
-   const result=await create({data:{
+   const result=await createSpyAgentBrowser({
     houseId,sourceHoldingId:source.sourceHoldingId,codename:name.trim(),
     portraitId:portraits.length?portraitId:null,upgrades,
     requestKey:key,
-   }});
+   });
    setSuccess('Espião '+result.codename+' criado como Verde (Astúcia 3).');
    reset();setOpen(false);
    await Promise.all([
