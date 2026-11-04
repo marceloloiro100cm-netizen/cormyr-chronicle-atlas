@@ -159,8 +159,9 @@ export function HouseAssetCatalog({section,state,catalog,canEdit,busy,onBuy,onCo
   return (!category||item.category===category)&&
    (!['economy','spy'].includes(section)||acquisition==='all'||
     (acquisition==='acquired'?acquired:!acquired))&&
-   [item.name,item.description,item.original,section==='spy'?spyCatalogExplanation(item.id)?.summary??'':''].join(' ').toLocaleLowerCase('pt-BR')
-    .includes(search.toLocaleLowerCase('pt-BR'));
+   [item.name,item.description,item.original,section==='spy'?spyCatalogExplanation(item.id)?.summary??'':'',
+    ...state.holdings.filter(h=>h.itemId===item.id).flatMap(h=>[h.name,...h.effects.map(e=>e.description)])]
+    .join(' ').toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR'));
  });
  // One stable order across Terras, Fortificações, Economia and Espionagem.
  const orderedVisible=acquiredFirst(visible,acquiredIds);
