@@ -16,17 +16,25 @@ export function SpyAgentPortraitControl({houseId,agent,portraits,canEdit}:{
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const action=useServerFn(assignSpyPortrait);const qc=useQueryClient();
  const own=portraits.find(p=>p.id===agent.portraitId);
- const available=portraits.filter(p=>!p.assignedAgentId||p.assignedAgentId===agent.id);
+ const available=portraits.filter(p=>
+  (!p.occupied&&!p.assignedAgentId)||p.assignedAgentId===agent.id);
  const save=async()=>{
   if(!selected||busy)return;
   setBusy(true);setError('');
   try{
    await action({data:{houseId,agentId:agent.id,portraitId:selected,
     expectedVersion:agent.version}});
-   await qc.invalidateQueries({queryKey:['spy-house-management',houseId]});
+   await Promise.all([
+    qc.invalidateQueries({queryKey:['spy-house-management',houseId]}),
+    qc.invalidateQueries({queryKey:['spy-recruitment-options',houseId]}),
+   ]);
    setOpen(false);
   }catch{
-   setError('Esta foto já está ocupada ou o registro do agente foi atualizado. Recarregue os agentes.');
+   await Promise.allSettled([
+    qc.invalidateQueries({queryKey:['spy-house-management',houseId]}),
+    qc.invalidateQueries({queryKey:['spy-recruitment-options',houseId]}),
+   ]);
+   setError('Esta foto já está reservada por outro agente ou a ficha mudou. Atualize a galeria e escolha outra imagem.');
   }finally{setBusy(false);}
  };
  return <div style={{display:'flex',alignItems:'center',gap:8}}>
@@ -47,7 +55,8 @@ export function SpyAgentPortraitControl({houseId,agent,portraits,canEdit}:{
   </Dialog>
   {canEdit&&portraits.length>0&&agent.status!=='dead'&&
    <Button type="button" variant="ghost" size="sm" disabled={!available.length}
-    onClick={()=>{setSelected(agent.portraitId);setError('');setOpen(true);}}>
+    onClick={()=>{setSelected(agent.portraitId);setError('');setOpen(true);
+     void qc.invalidateQueries({queryKey:['spy-house-management',houseId]});}}>
     {agent.portraitId?'Alterar foto':'Escolher foto'}
    </Button>}
   <Dialog open={open} onOpenChange={next=>{if(busy)return;setOpen(next);}}>
