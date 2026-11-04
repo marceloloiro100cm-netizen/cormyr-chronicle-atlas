@@ -185,6 +185,7 @@ CREATE OR REPLACE FUNCTION public.spy_advance_active_missions()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=public,pg_temp AS $clocktrigger$
 DECLARE v_now text;v_old text;v_item record;v_stage text;v_agent_stage text;
+ v_changed integer;
 BEGIN
  v_now:=public.spy_official_date_key();
  v_old:=lpad(OLD.year::text,4,'0')||'-'||
@@ -211,19 +212,25 @@ BEGIN
    CONTINUE;
   END IF;
   IF v_stage<>v_item.status THEN
+   -- Starting/cancelling missions lock the same agent key first.
+   PERFORM pg_advisory_xact_lock(
+    hashtextextended('spy-agent:'||v_item.agent_id::text,0));
    UPDATE public.spy_operations SET status=v_stage,version=version+1
     WHERE id=v_item.operation_id AND status IN('traveling','operating');
-   UPDATE public.spy_assets SET status=v_agent_stage,version=version+1,
-    current_location_id=v_item.destination_location_id
-    WHERE id=v_item.agent_id AND owner_house_id=v_item.owner_house_id
-      AND status IN('traveling','operating');
-   INSERT INTO public.spy_operation_events(
-    operation_id,request_key,actor,event_type,old_state,new_state,
-    reason,calendar_version
-   ) VALUES(v_item.operation_id,gen_random_uuid(),NEW.updated_by,
-    'mission_clock_progressed',v_item.status,v_stage,
-    'Missão avançada automaticamente pelo Hub Temporal em '||v_now,
-    NEW.version);
+   GET DIAGNOSTICS v_changed=ROW_COUNT;
+   IF v_changed>0 THEN
+    UPDATE public.spy_assets SET status=v_agent_stage,version=version+1,
+     current_location_id=v_item.destination_location_id
+     WHERE id=v_item.agent_id AND owner_house_id=v_item.owner_house_id
+       AND status IN('traveling','operating');
+    INSERT INTO public.spy_operation_events(
+     operation_id,request_key,actor,event_type,old_state,new_state,
+     reason,calendar_version
+    ) VALUES(v_item.operation_id,gen_random_uuid(),NEW.updated_by,
+     'mission_clock_progressed',v_item.status,v_stage,
+     'Missão avançada automaticamente pelo Hub Temporal em '||v_now,
+     NEW.version);
+   END IF;
   END IF;
  END LOOP;
  RETURN NEW;
@@ -275,9 +282,17 @@ BEGIN
   IF v_old.asset_id<>p_agent OR v_old.target_id<>p_target
    OR v_old.target_type<>'house'
   THEN RAISE EXCEPTION 'Chave da missão já utilizada'; END IF;
-  RETURN jsonb_build_object('operationId',v_old.id,'agentId',p_agent,
-   'targetHouseId',p_target,'status',v_old.status,'alreadyApplied',true,
-   'calendarVersion',v_old.source_calendar_version);
+  IF v_old.status IN('cancelled','completed')
+  THEN RAISE EXCEPTION 'Esta missão já foi encerrada'; END IF;
+  RETURN (
+   SELECT jsonb_build_object(
+    'operationId',v_old.id,'agentId',p_agent,'targetHouseId',p_target,
+    'status',v_old.status,'alreadyApplied',true,
+    'calendarVersion',v_old.source_calendar_version,
+    'departureKey',t.departure_key,'arrivalKey',t.arrival_key,
+    'investigationEndsKey',t.investigation_end_key,'travelDays',t.travel_days)
+   FROM public.spy_mission_timeline t WHERE t.operation_id=v_old.id
+  );
  END IF;
  IF EXISTS(SELECT 1 FROM public.spy_operation_events
   WHERE request_key=p_request_key)
@@ -415,6 +430,8 @@ BEGIN
  THEN RAISE EXCEPTION 'Esta missão não pode ser cancelada'; END IF;
  IF v_op.version<>p_expected_version
  THEN RAISE EXCEPTION 'Missão atualizada. Recarregue antes de cancelar'; END IF;
+ IF v_agent.status NOT IN('assigned','traveling','operating','pending_review')
+ THEN RAISE EXCEPTION 'Situação do agente incompatível com o cancelamento'; END IF;
  SELECT version INTO v_calendar FROM public.campaign_calendar WHERE id=true;
  UPDATE public.spy_operations SET status='cancelled',version=version+1
   WHERE id=p_operation;
