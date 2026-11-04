@@ -11,11 +11,11 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
  it('preserva os três arquivos e as dimensões originais do Narrador',()=>{
   expect(Object.keys(SPY_NOBLE_DETAIL_MAPS).sort()).toEqual(
    ['dragoncoast','horselands','volkumburgh']);
-  expect(SPY_NOBLE_DETAIL_MAPS.dragoncoast).toMatchObject({
+  expect(SPY_NOBLE_DETAIL_MAPS['dragoncoast']).toMatchObject({
    width:1709,height:920,src:'/maps/espionage/dragoncoast.webp'});
-  expect(SPY_NOBLE_DETAIL_MAPS.horselands).toMatchObject({
+  expect(SPY_NOBLE_DETAIL_MAPS['horselands']).toMatchObject({
    width:1024,height:1536,src:'/maps/espionage/horselands.webp'});
-  expect(SPY_NOBLE_DETAIL_MAPS.volkumburgh).toMatchObject({
+  expect(SPY_NOBLE_DETAIL_MAPS['volkumburgh']).toMatchObject({
    width:1536,height:1024,src:'/maps/espionage/volkumburgh.webp'});
  });
  it('resolve Casas nomeadas e grafias equivalentes, sem inventar posições',()=>{
