@@ -201,8 +201,10 @@ describe('Tabela de gerenciamento · missão e prazos',()=>{
   expect(spyMissionProgress({...operation,arrivalKey:null},'1524-08-20')
    .remaining).toBe('Atualize a ficha');
  });
- it('missão cancelada ou encerrada tem estado explícito',()=>{
-  expect(spyMissionProgress({...operation,status:'cancelled'},'1524-08-20').remaining).toBe('Cancelada');
-  expect(spyMissionProgress({...operation,status:'completed'},'1524-08-20').remaining).toContain('concluída');
+ it('missão cancelada não mostra destino, viagem ou prazo de operação',()=>{
+  const p=spyMissionProgress({...operation,status:'cancelled'},'1524-08-20');
+  expect(p).toEqual({mission:'Sem missão registrada',travel:'—',remaining:'—'});
+  expect(spyMissionProgress({...operation,status:'completed'},'1524-08-20')
+   .remaining).toContain('concluída');
  });
 });
