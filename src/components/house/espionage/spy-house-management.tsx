@@ -35,7 +35,7 @@ const agentStatuses:Record<string,string>={
 const missionStatuses:Record<string,string>={
  draft:'Rascunho',planned:'Planejada',traveling:'Em deslocamento',
  operating:'Investigando',pending_narrator_review:'Aguardando Narrador',
- returning:'Retornando',completed:'Concluída',cancelled:'Cancelada',
+ returning:'Retornando',completed:'Concluída',
 };
 type Mission=SpyManagement['operations'][number];
 /** Only active operations belong on the spy card. Cancelled/completed
@@ -56,7 +56,8 @@ type SpyMissionProgress={
 export function spyMissionProgress(
  operation:Mission|null,officialDate:string|null
 ):SpyMissionProgress{
- if(!operation)return {mission:'Sem missão registrada',travel:'—',remaining:'—'};
+ if(!operation||operation.status==='cancelled')return {
+  mission:'Sem missão registrada',travel:'—',remaining:'—'};
  const mission=missionKinds[operation.missionKind]??operation.missionKind;
  const target=operation.targetHouseName??(
   operation.targetType==='region'
@@ -64,8 +65,6 @@ export function spyMissionProgress(
  const title=mission+' · '+target;
  if(operation.status==='completed')return {
   mission:title,travel:'Viagem concluída',remaining:'Missão concluída'};
- if(operation.status==='cancelled')return {
-  mission:title,travel:'Cancelada',remaining:'Cancelada'};
  if(operation.status==='planned')return {
   mission:title,travel:'Sem cronograma de viagem',remaining:'Aguardando atualização da missão'};
  const travelDays=operation.travelDays;
