@@ -42,7 +42,7 @@ describe('Espionagem operacional · deslocar, contar, cancelar',()=>{
    'spy_mission_hub_advance','public.spy_campaign_ordinal(v_now)',
    "v_stage:='operating'", "v_stage:='pending_narrator_review'",
    "v_agent_stage:='pending_review'",
-   "status='traveling'", // offered in the PHP? deliberate ensure SQL contains
+   "v_start_status:=CASE WHEN v_rounds=0 THEN 'operating' ELSE 'traveling' END",
    'public.spy_add_desdias(v_arrive,1)',
   ])expect(sql).toContain(term);
   expect(sql).not.toContain('INSERT INTO public.spy_mission_decisions');
