@@ -37,8 +37,11 @@ export function SpyPortraitPicker({portraits,selected,onChange,currentAgentId=nu
    {portraits.map(p=>{
     // Global reservation: another House occupies the portrait without
     // exposing its spy's identity to this player.
-    const used=Boolean((p.occupied||p.assignedAgentId)&&
-     p.assignedAgentId!==currentAgentId);
+    // A global reservation can hide its agentId (other Houses).
+    // Null assignment does NOT mean free when occupied is true.
+    const used=p.assignedAgentId
+     ?p.assignedAgentId!==currentAgentId
+     :Boolean(p.occupied);
     const chosen=selected===p.id;
     return <button key={p.id} type="button" title={used
      ?p.label+' — já reservada por outro agente':p.label}
