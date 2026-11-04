@@ -23,7 +23,7 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
  const [open,setOpen]=useState(false);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
- const [receipt,setReceipt]=useState<{id:string;status:'traveling'|'operating'}|null>(null);
+ const [receipt,setReceipt]=useState<{id:string;status:'traveling'|'operating'|'pending_narrator_review'}|null>(null);
  const requestKey=useRef<string|null>(null);
  const agentVersion=useRef<number|null>(null);
  const ready=canSubmit&&calendarVersion!==null&&!receipt&&!busy;
