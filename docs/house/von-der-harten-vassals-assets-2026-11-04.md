@@ -34,8 +34,13 @@ arte visualmente correspondente à Casa indicada:
 
 `house_catalog.archive_data.crest` utiliza o caminho relativo `assets/...`;
 `vassalCrestUrl` normaliza esses caminhos, sem copiar ou substituir os arquivos.
-Pontos ainda pendentes nas fontes: catálogo indica Thomas Immerdusk, mas narrativa
-cita Bron Immerdusk. Não alterar o titular silenciosamente.
+Pontos ainda pendentes nas fontes:
+- Catálogo indica Thomas Immerdusk, mas a narrativa cita Bron Immerdusk:
+  não alterar o titular silenciosamente.
+- A ilustração oficial de Wyvernspur mostra cauda de escorpião sob um sol,
+  coincidente com o símbolo cadastrado, mas a narrativa da Casa descreve
+  um wyvern vermelho sobre dourado. Preservar o arquivo correto já publicado
+  e solicitar confirmação heráldica antes de substituir a imagem.
 
 ## Exército e contraespionagem
 - Unidade `Guarnição Verde de Lex Castle`, tipo `garrison`,
