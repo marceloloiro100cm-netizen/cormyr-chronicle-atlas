@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ImagePlus, X, UserRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +30,23 @@ function CampaignMedia({kind,id,title}:{kind:'youtube'|'drive';id:string;title:s
  </figure>;
 }
 export function PrivateImage({ path, caption, thumbnail = false }: { path: string; caption: string; thumbnail?: boolean }) {
+  const [nearViewport,setNearViewport]=useState(false);
+  const observerTarget=useRef<HTMLElement|null>(null);
+  useEffect(()=>{
+    const target=observerTarget.current;
+    if(!target)return;
+    // Defer private storage downloads until a portrait is near the viewport.
+    // Older browsers and test environments without this API load normally.
+    if(typeof IntersectionObserver==='undefined'){setNearViewport(true);return;}
+    const observer=new IntersectionObserver(entries=>{
+      if(entries.some(entry=>entry.isIntersecting)){
+        setNearViewport(true);
+        observer.disconnect();
+      }
+    },{rootMargin:'300px'});
+    observer.observe(target);
+    return ()=>observer.disconnect();
+  },[path,thumbnail]);
   const { data, error } = useQuery({
     queryKey: ["private-image", path],
     queryFn: async () => {
@@ -37,6 +54,8 @@ export function PrivateImage({ path, caption, thumbnail = false }: { path: strin
       if (result.error) throw result.error;
       return result.data;
     },
+    enabled:nearViewport,
+    staleTime:60_000,
   });
   const [url, setUrl] = useState("");
   useEffect(() => {
@@ -48,9 +67,10 @@ export function PrivateImage({ path, caption, thumbnail = false }: { path: strin
   const cleanCaption = cleanGalleryTitle(caption);
   if (thumbnail) return url ? (
     <img src={url} alt={cleanCaption || "Retrato do integrante"} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block", borderRadius: "inherit" }} />
-  ) : <span role="img" aria-label={error ? "Retrato indisponível" : "Carregando retrato"}><UserRound size={28} aria-hidden="true" /></span>;
+  ) : <span ref={observerTarget} role="img" aria-label={error ? "Retrato indisponível" : "Carregando retrato"}><UserRound size={28} aria-hidden="true" /></span>;
   return (
     <figure
+      ref={observerTarget}
       className="castle-gallery-artwork flex flex-col items-center w-full min-w-0 max-w-full m-0"
       style={{ boxSizing: "border-box" }}
     >
