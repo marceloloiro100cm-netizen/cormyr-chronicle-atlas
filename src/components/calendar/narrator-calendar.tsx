@@ -43,9 +43,8 @@ export function NarratorCalendar(){
   const field=reasonInputRef.current;
   if(!field)return;
   field.style.height='42px';
-  const measured=field.scrollHeight;
-  field.style.height=Math.max(42,Math.min(measured,180))+'px';
-  field.style.overflowY=measured>180?'auto':'hidden';
+  field.style.height=Math.max(42,Math.min(field.scrollHeight,180))+'px';
+  field.style.overflowY=field.scrollHeight>180?'auto':'hidden';
  },[reason]);
  const [expectedVersion,setExpectedVersion]=useState<number|null>(null);
  const retry=useRef<{payload:string;key:string}|null>(null);
@@ -244,8 +243,8 @@ export function NarratorCalendar(){
     <label className="narrator-calendar-reason-label">
      Justificativa administrativa (obrigatória no retrocesso)
      <textarea className="narrator-calendar-reason-input"
-      ref={reasonInputRef} aria-label="Justificativa temporal" rows={1}
-      maxLength={500} value={reason}
+      aria-label="Justificativa temporal" rows={1}
+      maxLength={500} value={reason} ref={reasonInputRef}
       onChange={e=>setReason(e.target.value)}/>
     </label>
     <Button type="button" className="narrator-calendar-publish-button" disabled={busy||isStale||needsVersionRefresh||!preview.data||preview.isFetching||annualChangeNeedsPreview||(preview.data.month_delta>0&&(!houseImpact.data||houseImpact.isFetching||houseImpact.data.invalid>0))||(preview.data.backdated&&(!allowBackdate||reason.trim().length<10))} onClick={()=>void publish()}>{busy?'Publicando…':mode==='advance'?'Confirmar avanço de désdia':mode==='set'?'Confirmar data oficial':'Publicar eventos'}</Button>
