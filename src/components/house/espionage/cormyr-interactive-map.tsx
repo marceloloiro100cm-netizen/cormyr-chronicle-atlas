@@ -52,8 +52,7 @@ export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}
     <span className="cormyr-legend-sea"/> Travessia marítima
    </p>
   </div>
-  <div className="cormyr-map-scroll" tabIndex={0}
-   aria-label="Mapa regional deslocável horizontalmente em telas pequenas">
+  <div className="cormyr-map-scroll">
    <svg className="cormyr-map-svg" viewBox="0 0 1443 1090" role="group"
     aria-labelledby={titleId} xmlns="http://www.w3.org/2000/svg"
     preserveAspectRatio="xMidYMid meet">
