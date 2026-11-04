@@ -39,6 +39,7 @@ const spyMissionTimelineSchema=z.array(z.object({
  investigationEndKey:z.string().min(1),
  originRegion:z.string().min(1),destinationRegion:z.string().min(1),
  travelDays:z.number().int().nonnegative(),targetHouseName:z.string().nullable(),
+ objective:z.enum(['house_resources','army','possessions']),
 }).strict()).max(5000);
 
 export async function readSpyHouseManagementBrowser(houseId:string):Promise<SpyManagement>{
@@ -71,6 +72,7 @@ export async function readSpyHouseManagementBrowser(houseId:string):Promise<SpyM
    departureKey:t.departureKey,investigationEndKey:t.investigationEndKey,
    originRegion:t.originRegion,destinationRegion:t.destinationRegion,
    targetHouseName:t.targetHouseName,version:t.operationVersion,
+   objective:t.objective,
   }:op;
  });
  const portraits=parsed.data.portraits.map(p=>({
