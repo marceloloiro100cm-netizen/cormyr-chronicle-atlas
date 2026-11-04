@@ -42,7 +42,7 @@
 .spy-noble-local-selection{padding:9px 16px;margin:0;
  border-top:1px solid #d4b88a;background:#fcf4df;color:#604523;
  font-size:12px;line-height:1.5}
-.spy-noble-local-footnote,.spy-noble-local-note{padding:10px 16px;margin:0;
+.spy-noble-local-note{padding:10px 16px;margin:0;
  font-size:12px;line-height:1.55;background:#fff9ee;color:#5c4635}
 .spy-noble-local-note{background:#f9edda;border-top:1px solid #cfb17c}
 .spy-noble-local-fallback>p{margin:0;padding:12px 16px;background:#fff8eb;color:#533b24}
