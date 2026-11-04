@@ -35,10 +35,13 @@ export function SpyPortraitPicker({portraits,selected,onChange,currentAgentId=nu
   <legend style={{marginBottom:8,fontWeight:600}}>Escolha uma foto para o espião</legend>
   <div style={{display:'flex',flexWrap:'wrap',gap:12,alignItems:'center'}}>
    {portraits.map(p=>{
-    const used=Boolean(p.assignedAgentId&&p.assignedAgentId!==currentAgentId);
+    // Global reservation: another House occupies the portrait without
+    // exposing its spy's identity to this player.
+    const used=Boolean((p.occupied||p.assignedAgentId)&&
+     p.assignedAgentId!==currentAgentId);
     const chosen=selected===p.id;
     return <button key={p.id} type="button" title={used
-     ?p.label+' — já utilizada por outro agente desta Casa':p.label}
+     ?p.label+' — já reservada por outro agente':p.label}
      aria-label={used?p.label+' — indisponível':p.label}
      aria-pressed={chosen}
      disabled={used}
