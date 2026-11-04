@@ -38,7 +38,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
  const enoughWealth=cost===0||data?.availableWealth===null||
   data?.availableWealth===undefined||(data.availableWealth>=cost);
  const pictureOk=portraits.length===0||Boolean(portraitId&&
-  portraits.some(p=>p.id===portraitId&&!p.assignedAgentId));
+  portraits.some(p=>p.id===portraitId&&!p.occupied&&!p.assignedAgentId));
  const valid=Boolean(options&&!loadingOptions&&!optionsError&&source&&name.trim().length>=2&&
   name.trim().length<=80&&pictureOk&&enoughWealth&&!busy);
  const reset=()=>{requestKey.current=null;setName('');setPortraitId(null);setUpgrades([]);
@@ -69,12 +69,19 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
     qc.invalidateQueries({queryKey:['spy-mission-odds',houseId]}),
    ]);
   }catch{
-   setError('Não foi possível criar o espião. Verifique as vagas disponíveis, a foto e a Riqueza da Casa.');
+   requestKey.current=null;
+   await Promise.allSettled([
+    qc.invalidateQueries({queryKey:['spy-recruitment-options',houseId]}),
+    qc.invalidateQueries({queryKey:['spy-house-management',houseId]}),
+   ]);
+   setError('Não foi possível criar o espião. A foto pode ter sido reservada por outro jogador; consulte a galeria atualizada e escolha outra. Confira também vagas e Riqueza.');
   }finally{setBusy(false);}
  };
  if(!canEdit)return null;
  return <>
-  <Button type="button" onClick={()=>setOpen(true)}><Plus size={16}/>Criar espião</Button>
+  <Button type="button" onClick={()=>{setOpen(true);
+   void qc.invalidateQueries({queryKey:['spy-recruitment-options',houseId]});}}>
+   <Plus size={16}/>Criar espião</Button>
   {success&&<span role="status" className="house-caption">{success}</span>}
   <Dialog open={open} onOpenChange={next=>{if(busy)return;setOpen(next);
     if(!next)reset();}}>
@@ -136,7 +143,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
        onChange={id=>{requestKey.current=null;setPortraitId(id);}}/>
      </div>
      {portraits.length>0&&!pictureOk&&<small role="status">
-      Escolha uma das fotos disponíveis. As imagens em cinza já estão ocupadas.</small>}
+      Escolha uma foto disponível. As imagens em cinza já estão reservadas por outro agente da campanha.</small>}
 
      {error&&<p role="alert" className="house-warning">{error}</p>}
      <DialogFooter className="cormyr-creation-footer">
