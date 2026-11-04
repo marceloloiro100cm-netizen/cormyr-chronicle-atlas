@@ -77,6 +77,7 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
     calendarVersion:campaignTime.data.version})
   :null;
  const name=(id:string)=>REGIONS[id]?.name??id;
+ const formatRounds=(amount:number)=>amount+' '+(amount===1?'désdia':'désdias');
  const chooseRegion=(id:string)=>{setDestination(id);setTargetHouseId('');};
  const message={
   unknown_destination:'Selecione uma região conhecida.',
