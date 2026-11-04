@@ -14,7 +14,7 @@ describe('Espionagem · Executar missão registra ordem real, não simulação',
   expect(btn).toContain('onClick={()=>void send()}');
   expect(btn).toContain("regionId(agent.currentRegion??'')!==originRegion");
   expect(btn).toContain('readSpyHouseManagementBrowser(houseId)');
-  expect(btn).toContain('setSubmitted');
+  expect(panel).toContain('setSubmitted');
  });
  it('usa o backend autenticado com idempotência e versão do agente e calendário',()=>{
   const frontend=read('src/lib/espionage/spy-browser-client.ts');
