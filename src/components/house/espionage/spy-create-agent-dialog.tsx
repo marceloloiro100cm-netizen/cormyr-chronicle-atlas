@@ -29,6 +29,8 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
   queryKey:['spy-recruitment-options',houseId],
   queryFn:()=>readSpyRecruitmentOptionsBrowser(houseId),
   enabled:open,staleTime:0,retry:1,
+  // A portrait claimed by another House becomes unavailable while open.
+  refetchInterval:open?10_000:false,refetchIntervalInBackground:false,
  });
  const slots=options?.recruitment.filter(r=>r.vacancies>0)??[];
  const source=slots[0];
