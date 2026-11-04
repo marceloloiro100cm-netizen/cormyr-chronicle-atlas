@@ -18,9 +18,16 @@ export function rollPreview(state:HouseState,args:{status:number;testDice:number
   const kept=[...args.testDice,...args.bonusDice].sort((a,b)=>b-a).slice(0,args.testDice.length);
   const ledger=houseEffectLedger(state);
   const holdingBonus=resolveHouseNumericBonus(ledger,'fortune',undefined,args.fortuneStackDice??[]);
-  const b=balances(state),sewers=activeHoldings(state).some(h=>h.itemId==='pros-sewer');
+  const b=balances(state),active=activeHoldings(state);
+  const sewers=active.some(h=>h.itemId==='pros-sewer');
+  const secretPolice=active.some(h=>h.itemId==='pros-secret-police');
   const populationPenalty=fortunePopulationModifier(b.total.population);
-  const modifier=fortuneLawModifier(b.total.law)+(sewers&&populationPenalty<0?Math.min(0,populationPenalty+2):populationPenalty)+args.modifier+holdingBonus;
+  // Both holdings mitigate only a NEGATIVE Population modifier. They must
+  // never convert a penalty into a positive bonus or modify House Population.
+  const populationMitigation=(sewers?2:0)+(secretPolice?1:0);
+  const effectivePopulationModifier=populationPenalty<0
+   ?Math.min(0,populationPenalty+populationMitigation):populationPenalty;
+  const modifier=fortuneLawModifier(b.total.law)+effectivePopulationModifier+args.modifier+holdingBonus;
   const total=kept.reduce((n,d)=>n+d,0)+modifier;
   return {kept,total,modifier,outcome:fortuneOutcome(total)};
 }
