@@ -2,7 +2,7 @@ import {contentParts} from '@/lib/campaign-content';
 import {isNarrativeNpc} from '@/lib/house/narrative-npc';
 
 export type GalleryRecord={
- id:string;house_id:string;kind:string;title:string;content:string;
+ id:string;house_id:string|null;kind:string;title:string;content:string;
 };
 export type GalleryRecordImage={
  id:string;path:string;caption:string;recordTitle:string;topic:'images'|'npcs';
