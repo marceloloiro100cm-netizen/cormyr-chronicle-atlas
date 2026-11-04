@@ -280,11 +280,11 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
      <span className="spy-region-comparison-title">{row.regionName}</span>
      {row.estimate.status==='ready'?<>
       <span className="spy-region-comparison-metrics">
-       <span><small>Viagem</small><strong>{row.estimate.travelRounds} désdia(s)</strong></span>
+       <span><small>Viagem</small><strong>{formatRounds(row.estimate.travelRounds)}</strong></span>
        <span><small>Investigação</small><strong>1 désdia</strong></span>
       </span>
       <span className="spy-region-comparison-total">
-       <span><small>Total com investigação</small><strong>{row.estimate.totalRounds} désdia(s)</strong></span>
+       <span><small>Total com investigação</small><strong>{formatRounds(row.estimate.totalRounds)}</strong></span>
        <span><small>Dias ordinários</small><strong>{row.estimate.totalRounds*10}</strong></span>
       </span>
      </>:<span className="house-caption">Rota pendente de validação</span>}
