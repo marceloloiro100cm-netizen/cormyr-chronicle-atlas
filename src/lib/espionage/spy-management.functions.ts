@@ -22,6 +22,11 @@ const operationRowSchema=z.object({
  status:z.enum(['draft','planned','traveling','operating','pending_narrator_review',
   'returning','completed','cancelled']),
  travelDays:z.number().int().nonnegative().nullable(),arrivalKey:z.string().nullable(),
+ departureKey:z.string().nullable().optional(),
+ investigationEndKey:z.string().nullable().optional(),
+ originRegion:z.string().nullable().optional(),destinationRegion:z.string().nullable().optional(),
+ targetHouseName:z.string().nullable().optional(),
+ version:z.number().int().positive().optional(),
  createdAt:z.string(),
 }).strict();
 const historySchema=z.object({
