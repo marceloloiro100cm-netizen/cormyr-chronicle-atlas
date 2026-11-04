@@ -23,15 +23,38 @@ describe('Espionagem · criação com foto exclusiva, melhorias e campos ocultos
   expect(migration).toContain('CREATE TABLE IF NOT EXISTS public.spy_portrait_catalog');
   expect(migration).not.toMatch(/INSERT INTO public.spy_portrait_catalog/);
  });
- it('fotos cinzentas e desabilitadas pertencem a outro agente da mesma Casa',()=>{
-  const code=file('src/components/house/espionage/spy-portrait-picker.tsx');
-  expect(code).toContain('p.assignedAgentId!==currentAgentId');
-  expect(code).toContain("filter:used?'grayscale(100%)':'none'");
-  expect(code).toContain('disabled={used}');
-  const sql=file('docs/espionage/sql/0095_spy_portraits_atomic_creation.sql');
-  expect(sql).toContain('ON public.spy_assets(owner_house_id,portrait_id)');
-  expect(sql).toContain('WHERE portrait_id IS NOT NULL');
-  expect(sql).toContain('LEFT JOIN public.spy_assets a ON a.portrait_id=c.id AND a.owner_house_id=p_house');
+ it('retrato reservado por qualquer Casa fica indisponível sem revelar o outro agente',()=>{
+  const picker=file('src/components/house/espionage/spy-portrait-picker.tsx');
+  expect(picker).toContain('(p.occupied||p.assignedAgentId)');
+  expect(picker).toContain('p.assignedAgentId!==currentAgentId');
+  expect(picker).toContain("filter:used?'grayscale(100%)':'none'");
+  expect(picker).toContain('disabled={used}');
+  expect(picker).toContain('já reservada por outro agente');
+  const sql=file('docs/espionage/sql/0103_spy_portrait_campaign_global_uniqueness.sql');
+  expect(sql).toContain('CREATE UNIQUE INDEX IF NOT EXISTS spy_agent_portrait_campaign_unique');
+  expect(sql).toContain('ON public.spy_assets(portrait_id) WHERE portrait_id IS NOT NULL');
+  expect(sql.match(/'occupied',EXISTS/g)).toHaveLength(2);
+  expect(sql).toContain('WHERE claimed.portrait_id=c.id');
+  expect(sql).toContain('a.portrait_id=c.id AND a.owner_house_id=p_house');
+  expect(sql).not.toContain('DELETE FROM public.spy_assets');
+  expect(sql).not.toContain('UPDATE public.spy_assets SET portrait_id=NULL');
+ });
+ it('ao trocar de retrato ou criar espião, consulta novamente a disponibilidade global',()=>{
+  const control=file('src/components/house/espionage/spy-agent-portrait-control.tsx');
+  const create=file('src/components/house/espionage/spy-create-agent-dialog.tsx');
+  expect(control).toContain('!p.occupied&&!p.assignedAgentId');
+  expect(control).toContain("['spy-recruitment-options',houseId]");
+  expect(create).toContain('!p.occupied&&!p.assignedAgentId');
+  expect(create).toContain('foto pode ter sido reservada por outro jogador');
+  expect(create).toContain("['spy-recruitment-options',houseId]");
+  const removal=file('docs/espionage/sql/0100_spy_agent_removal_refund.sql');
+  expect(removal).toContain("UPDATE public.spy_assets SET status='retired',portrait_id=NULL");
+ });
+ it('oculta a legenda técnica abaixo dos mapas locais',()=>{
+  const map=file('src/components/house/espionage/spy-local-house-map.tsx');
+  expect(map).not.toContain('Linha ilustrativa entre bandeiras');
+  expect(map).not.toContain('O cálculo da missão continua seguindo as regras vigentes.');
+  expect(map).not.toContain('spy-noble-local-footnote');
  });
  it('formulário exige nome, vagas, foto se há catálogo e oferece as duas compras',()=>{
   const s=file('src/components/house/espionage/spy-create-agent-dialog.tsx');
