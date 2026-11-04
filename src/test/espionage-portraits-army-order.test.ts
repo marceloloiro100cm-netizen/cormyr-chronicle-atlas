@@ -14,11 +14,14 @@ describe('Galeria do Drive, criação de unidades e construções adquiridas pri
   expect(acquiredFirst(items,new Set(items.map(x=>x.id))).map(x=>x.id))
    .toEqual(['a','b','c','d','e']);
  });
- it('aplica a mesma ordenação à Economia, Espionagem e instalações militares',()=>{
+ it('aplica a mesma ordenação a todos os catálogos e instalações militares',()=>{
   const catalog=src('src/components/house/asset-catalog.tsx');
   const military=src('src/components/house/military-assets.tsx');
-  expect(catalog).toContain("['economy','spy'].includes(section)");
   expect(catalog).toContain('acquiredFirst(visible,acquiredIds)');
+  expect(catalog).toContain('for(const domain of state.domains)');
+  expect(catalog).toContain('acquiredIds.add(domain.terrain)');
+  expect(catalog).toContain('acquiredIds.add(domain.community)');
+  expect(catalog).toContain('acquiredIds.add(feature)');
   expect(military).toContain('acquiredFirst(militaryItems,acquiredIds)');
   expect(military).toContain('orderedItems.map(item');
  });
