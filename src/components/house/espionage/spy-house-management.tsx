@@ -46,7 +46,13 @@ function pendingMission(operations:Mission[],assetId:string){
  * official Harptos dates; the countdown follows the campaign date, never the
  * player's real clock. The Narrator still resolves success or failure.
  */
-export function spyMissionProgress(operation:Mission|null,officialDate:string|null){
+type SpyMissionProgress={
+ mission:string;travel:string;remaining:string;
+ arrival?:string;departure?:string;end?:string;
+};
+export function spyMissionProgress(
+ operation:Mission|null,officialDate:string|null
+):SpyMissionProgress{
  if(!operation)return {mission:'Sem missão registrada',travel:'—',remaining:'—'};
  const mission=missionKinds[operation.missionKind]??operation.missionKind;
  const target=operation.targetHouseName??(
