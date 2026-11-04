@@ -1,28 +1,31 @@
-import {useEffect,useState} from 'react';
+import {useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {Button} from '@/components/ui/button';
 import {readSpyRegionalStrategyBrowser} from '@/lib/espionage/spy-browser-client';
 import {readSpyNobleHouseTargetsBrowser} from '@/lib/espionage/spy-target-browser';
 import {spyHouseTargetStage} from '@/lib/espionage/spy-target-stages';
-import {planSpyRegionalMission,type SpyRegionalAgent} from '@/lib/espionage/region-turns';
-import {cormyrPreviewLinks,CORMYR_MAP_SOURCE} from '@/lib/espionage/cormyr-map';
-import {CormyrInteractiveMap} from './cormyr-interactive-map';
+import {planSpyRegionalMission} from '@/lib/espionage/region-turns';
+import {cormyrPreviewLinks} from '@/lib/espionage/cormyr-map';
 import {allSpyRegionalBaselines} from '@/lib/espionage/public-strategy';
 import {REGIONS} from '@/lib/house/regions';
-import {SpyMissionOddsCard} from './spy-mission-odds-card';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
-import {formatDate,formatCampaignPeriod} from '@/lib/calendar/harptos';
+import {formatDate} from '@/lib/calendar/harptos';
 import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
+import {CormyrInteractiveMap} from './cormyr-interactive-map';
+import {SpyMissionOddsCard} from './spy-mission-odds-card';
+import './spy-mission-planner.css';
 
-/** Strategy only: 1 espionage round = one 10-ordinary-day Harptos désdia.
- * The existing published Hub Temporal is the ONLY start date.
- * Neither this preview nor client-side interaction may advance that clock.
+/** Fluxo único de prévia: espião REAL -> região -> Casa -> resumo e mapa.
+ * A região inicial vem exclusivamente da posição homologada do agente.
+ * Criar uma prévia não desloca o espião nem publica datas no Hub Temporal.
+ * A execução continua dependendo das regras protegidas do servidor.
  */
 export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean}){
  const campaignTime=useCampaignTime();
  const {data,isPending,isError,refetch}=useQuery({
   queryKey:['espionage-regional-strategy',houseId],
-  queryFn:()=>readSpyRegionalStrategyBrowser(houseId),staleTime:30_000,retry:false,
+  queryFn:()=>readSpyRegionalStrategyBrowser(houseId),
+  staleTime:30_000,retry:1,
  });
  const targetsQuery=useQuery({
   queryKey:['spy-house-public-targets'],
@@ -30,275 +33,156 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
  });
  const [assetId,setAssetId]=useState('');
  const [destination,setDestination]=useState('');
- const [allowSea,setAllowSea]=useState(true);
- const [returnToStart,setReturnToStart]=useState(false);
- const [originOverride,setOriginOverride]=useState('');
- const [targetMode,setTargetMode]=useState<'travel'|'region'|'house'>('house');
  const [targetHouseId,setTargetHouseId]=useState('');
+
+ const agents=data?.agents??[];
+ const selected=agents.find(a=>a.id===assetId);
+ const originRegion=selected?.currentRegion??null;
+ const agentAvailable=selected?.status==='available';
  const regions=allSpyRegionalBaselines();
- const selected=data?.agents.find(a=>a.id===(assetId||data.agents[0]?.id));
- // The GM-supplied map is a source for strategic previews. It DOES NOT
- // certify routes for an actual operation; that requires server-side review.
- const previewLinks=cormyrPreviewLinks(data?.links??[]);
- const currentOrigin=originOverride||(selected?.currentRegion??null);
- const simulated=Boolean(originOverride||!selected);
- const houseMode=targetMode==='house';
- const travelOnly=targetMode==='travel';
- const houseChoices=(targetsQuery.data??[]).filter(h=>h.regionId===destination&&h.id!==houseId);
+ const houseChoices=(targetsQuery.data??[]).filter(
+  h=>h.regionId===destination&&h.id!==houseId);
  const selectedTargetHouse=houseChoices.find(h=>h.id===targetHouseId);
- const houseStage=spyHouseTargetStage({
-  agent:selected??null,selectedRegion:destination,targetHouseId,
-  houseTargets:houseChoices,simulation:simulated,
- });
- // Preview may be planned before travel; operational authorization is unchanged.
- const canTargetHouse=houseMode&&Boolean(selectedTargetHouse)&&
-  Boolean(selected)&&selected?.status==='available'&&!simulated;
- useEffect(()=>{
-  if(!destination&&selected?.currentRegion)setDestination(selected.currentRegion);
- },[destination,selected?.currentRegion]);
- const hypotheticalAgent:SpyRegionalAgent={
-  id:'11111111-1111-4111-8111-111111111111',
-  codename:'Simulação geográfica',status:'available',currentRegion:currentOrigin,
- };
- const planningAgent=simulated?hypotheticalAgent:selected;
- const plan=planningAgent&&destination?planSpyRegionalMission({
-  agent:planningAgent,destinationRegion:destination,links:previewLinks,
-  seaAllowed:allowSea,includeReturn:returnToStart&&!travelOnly,
+ const plan=selected&&destination?planSpyRegionalMission({
+  agent:selected,destinationRegion:destination,
+  links:cormyrPreviewLinks(data?.links??[]),
+  seaAllowed:true,includeReturn:false,
  }):null;
- const comparisons=currentOrigin?regions.map(region=>({
-  ...region,
-  estimate:planSpyRegionalMission({agent:hypotheticalAgent,
-   destinationRegion:region.regionId,links:previewLinks,seaAllowed:allowSea}),
- })):[];
- const forecast=plan?.status==='ready'&&campaignTime.data&&!campaignTime.isError
-  ?projectSpyHarptosSchedule({plan,officialDate:campaignTime.data,
-    calendarVersion:campaignTime.data.version})
-  :null;
+ const ready=plan?.status==='ready';
+ const houseStage=spyHouseTargetStage({
+  agent:selected??null,selectedRegion:destination,
+  targetHouseId,houseTargets:houseChoices,simulation:false,
+ });
+ const forecast=ready&&selectedTargetHouse&&campaignTime.data&&!campaignTime.isError
+  ?projectSpyHarptosSchedule({
+   plan,officialDate:campaignTime.data,
+   calendarVersion:campaignTime.data.version,
+  }):null;
  const name=(id:string)=>REGIONS[id]?.name??id;
- const formatRounds=(amount:number)=>amount+' '+(amount===1?'désdia':'désdias');
- const chooseRegion=(id:string)=>{setDestination(id);setTargetHouseId('');};
- const message={
-  unknown_destination:'Selecione uma região conhecida.',
-  unknown_agent_location:'A posição atual do espião não foi homologada. Não é possível calcular a viagem.',
-  agent_in_transit:'Agente em trânsito: aguarde a próxima chegada confirmada antes de projetar outra viagem.',
-  agent_unavailable:'Este agente está indisponível para novas missões.',
-  route_not_approved:'Sem ligação regional homologada entre a posição atual e o destino. Prazo pendente do Narrador.',
+ const chooseRegion=(id:string)=>{
+  setDestination(id);
+  setTargetHouseId('');
  };
- return <section className="house-panel" aria-label="Estratégia regional e rodadas de espionagem">
-  <div className="house-section-heading"><div>
+ const routeError={
+  unknown_destination:'A região de destino não está cadastrada.',
+  unknown_agent_location:'A posição real deste espião precisa ser confirmada antes de calcular a viagem.',
+  agent_in_transit:'O espião já está em viagem. Aguarde sua chegada confirmada.',
+  agent_unavailable:'Este agente não está disponível para novas missões.',
+  route_not_approved:'Ainda não há uma rota regional conhecida para este trajeto. O prazo depende do Narrador.',
+ };
+ const allSelected=Boolean(selected&&destination&&selectedTargetHouse);
+ const originName=originRegion?name(originRegion):'Localização não confirmada';
+
+ return <section className="house-panel spy-mission-planner"
+  aria-label="Planejador de missão de espionagem">
+  <header className="spy-planner-heading">
    <p className="campaign-eyebrow">ESTRATÉGIA DE INTELIGÊNCIA</p>
-   <h3>Planejador visual de missões de espionagem</h3>
-  </div></div>
-  <p><strong>Etapa 1:</strong> escolha um agente e a região onde ele está
-    ou para onde viajará. <strong>Etapa 2:</strong> selecione uma Casa nobre da região
-    para ver sua dificuldade e chance estimada de sucesso. É possível
-    planejar antes da viagem, mas só executar a investigação após a chegada registrada.
-    Para investigar dentro da região atual, a missão leva <strong>1 rodada</strong>.
-   Cada região atravessada custa <strong>1 rodada de viagem</strong>, além da investigação.
-   Uma passagem marítima homologada liga duas regiões em apenas <strong>1 rodada</strong>.
-   <strong> Cada rodada equivale a 1 désdia (10 dias ordinários) do Hub Temporal.</strong>
-  </p>
-  <p className="house-caption">A posição do espião selecionado é a origem padrão, nunca a sede da Casa.
-   Você também pode escolher uma origem <strong>somente para simulação</strong>. O mapa usa
-   as fronteiras terrestres visíveis no documento enviado pelo Narrador;
-   as três regiões costeiras do Dragonmere — Crownlands, Shieldmark e Dragon Coast — podem navegar diretamente entre si em 1 désdia. Outras travessias marítimas exigem homologação no servidor. Nenhum desses
-   cálculos envia missão ou altera o Hub Temporal.</p>
-  <details className="house-ledger">
-   <summary>Consultar dificuldade basal de todas as regiões</summary>
-   <p>Esses valores são usados <strong>somente em investigações regionais</strong>.
-     A defesa de uma Casa usa a Lei efetiva e as construções da própria Casa,
-     sem somar a Lei regional; a prévia exibe apenas a resistência agregada, não a ficha completa do alvo.</p>
-   <table><thead><tr><th scope="col">Região</th><th scope="col">Lei regional</th>
-    <th scope="col">Dificuldade do teste</th></tr></thead>
-    <tbody>{regions.map(x=><tr key={x.regionId}><td>{x.regionName}</td>
-     <td>{x.regionalLaw}</td><td>{x.basalDifficulty}</td></tr>)}</tbody>
-   </table>
-  </details>
-  <div className="house-ledger" style={{margin:'14px 0',display:'grid',gap:10}}>
-   <label>Origem do cálculo
-    <select aria-label="Região de origem para simulação" value={originOverride}
-     onChange={e=>setOriginOverride(e.target.value)}>
-     <option value="">Posição atual do espião {selected?.currentRegion?'· '+name(selected.currentRegion):'(se disponível)'}</option>
-     {regions.map(region=><option key={region.regionId} value={region.regionId}>
-      Simular partida em {region.regionName}
-     </option>)}
-    </select>
-   </label>
-   {originOverride&&<p role="note" className="house-caption">Esta origem é uma simulação do mapa e não move o espião nem modifica sua localização oficial.</p>}
-  </div>
-  {isPending&&<p role="status">Consultando posições dos agentes e travessias marítimas homologadas…</p>}
-  {isError&&<div role="note">
-   <p>O cadastro operacional da Casa não pôde ser consultado. O mapa e a simulação de fronteiras
-    ainda funcionam, mas o ponto de partida de um espião real precisa ser confirmado.</p>
-   <Button type="button" variant="outline" onClick={()=>{void refetch();}}>Consultar novamente</Button>
+   <h3>Planejador de missão de espionagem</h3>
+   <p>Escolha seu espião, a região de destino e a Casa que deseja investigar.
+    O tempo, a chance de sucesso e o caminho aparecem abaixo.</p>
+  </header>
+
+  {isPending&&<p role="status" className="spy-planner-feedback">
+   Consultando seus espiões e as rotas regionais…</p>}
+  {isError&&<div role="alert" className="spy-planner-feedback">
+   <p>Não foi possível carregar os espiões desta Casa.</p>
+   <Button type="button" size="sm" variant="outline"
+    onClick={()=>void refetch()}>Consultar novamente</Button>
   </div>}
-  {data&&<div style={{display:'grid',gap:12,maxWidth:750,marginTop:16}}>
-   <label>Agente e localização atual
-    <select aria-label="Agente da missão" value={selected?.id??''}
-     onChange={e=>{setAssetId(e.target.value);
-      setDestination(data.agents.find(a=>a.id===e.target.value)?.currentRegion??'');
-      setTargetHouseId('');}}>
-     {data.agents.length===0&&<option value="">Nenhum agente conciliado</option>}
-     {data.agents.map(a=><option key={a.id} value={a.id}>
-      {a.codename} · {a.currentRegion?name(a.currentRegion):'localização pendente'} · {a.status}
+
+  {data&&<div className="spy-planner-steps">
+   <label className="spy-planner-step">
+    <span className="spy-planner-step-title"><b>1</b> Espião</span>
+    <select aria-label="Agente da missão" value={assetId}
+     onChange={e=>{setAssetId(e.target.value);setDestination('');setTargetHouseId('');}}>
+     <option value="">Selecione um espião</option>
+     {agents.filter(a=>a.status!=='retired').map(a=><option
+      key={a.id} value={a.id} disabled={a.status!=='available'}>
+      {a.codename} · {a.currentRegion?name(a.currentRegion):'posição pendente'}
+      {a.status==='available'?' · disponível':' · indisponível'}
      </option>)}
     </select>
+    <small>{selected
+     ?'Origem atual: '+originName+' · definida automaticamente pela ficha do agente'
+     :'A origem é a posição atual registrada do espião.'}</small>
    </label>
-   <label>Objetivo da espionagem
-     <select aria-label="Tipo de alvo da espionagem" value={targetMode}
-      onChange={e=>{setTargetMode(e.target.value as 'travel'|'region'|'house');setTargetHouseId('');}}>
-      <option value="travel">Deslocar agente até uma região (sem investigar)</option>
-       <option value="region">Investigar uma região</option>
-      <option value="house">Espionar uma Casa nobre da região</option>
-     </select>
-    </label>
-    <label>Região de destino
+   <label className="spy-planner-step">
+    <span className="spy-planner-step-title"><b>2</b> Região de destino</span>
     <select aria-label="Região de destino" value={destination}
-     onChange={e=>{setDestination(e.target.value);setTargetHouseId('');}}>
+     disabled={!agentAvailable||!originRegion}
+     onChange={e=>chooseRegion(e.target.value)}>
      <option value="">Selecione uma região</option>
-     {regions.map(region=><option key={region.regionId} value={region.regionId}>
-      {region.regionName}{targetMode==='region'?' · dificuldade '+region.basalDifficulty:''}
-     </option>)}
+     {regions.map(region=><option key={region.regionId}
+      value={region.regionId}>{region.regionName}</option>)}
     </select>
+    <small>{!assetId?'Primeiro escolha um espião.':
+     !originRegion?'Localização real pendente de confirmação.':
+     destination?'Partida: '+originName+' · Chegada: '+name(destination):
+     'Pode ser a mesma região em que o espião está.'}</small>
    </label>
-   {houseMode&&<div className="house-ledger" style={{display:'grid',gap:8}}>
-    <h4>Etapa 2 · Escolher a Casa nobre</h4>
-    <p className="house-caption">Escolha a Casa agora para consultar o risco e a chance
-     estimada. O agente precisa estar <strong>fisicamente</strong> na região
-     para executar a investigação. Uma origem simulada não autoriza uma missão.</p>
-    {houseStage==='requires_region_arrival'&&<p role="status">
-     Viagem necessária até {destination?name(destination):'a região selecionada'}.
-     Você já pode selecionar uma Casa e simular sua dificuldade, mas a execução
-     depende da chegada registrada no Hub Temporal.</p>}
-    {houseStage==='select_agent'&&<p role="status">Selecione um agente real
-     e desative a simulação para escolher a Casa.</p>}
-    {houseStage==='select_region'&&<p>Escolha primeiro uma região no mapa.</p>}
-    {houseStage==='agent_unavailable'&&<p role="status">O agente está indisponível.</p>}
-    {houseStage==='unknown_agent_location'&&<p role="status">A localização real do agente não está confirmada.</p>}
-    {targetsQuery.isPending&&<p role="status">Carregando as Casas nobres oficiais…</p>}
-    {targetsQuery.isError&&<div role="alert">
-     <p>Não foi possível carregar a lista de Casas desta sessão.</p>
-     <Button type="button" variant="outline" size="sm"
-      onClick={()=>void targetsQuery.refetch()}>Consultar Casas novamente</Button>
-    </div>}
-    <label>Casa nobre na região
-     <select aria-label="Casa nobre alvo"
-      value={houseChoices.some(h=>h.id===targetHouseId)?targetHouseId:''}
-      onChange={e=>setTargetHouseId(e.target.value)}
-      disabled={!destination||targetsQuery.isPending||targetsQuery.isError}>
-      <option value="">Selecione a Casa</option>
-      {houseChoices.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
-     </select>
-    </label>
-    {destination&&targetsQuery.isSuccess&&!houseChoices.length&&
-     <p className="house-caption">Não há outra Casa nobre homologada para esta região no catálogo oficial.</p>}
-    {selectedTargetHouse&&<p role="status">
-     Casa {selectedTargetHouse?.name} selecionada.
-     {!selected||selected.status!=='available'
-      ?' Selecione um agente disponível para consultar a chance.'
-      :simulated?' Prévia simulada: a posição real e a chegada precisam ser confirmadas antes da execução.'
-      :selected.currentRegion===destination
-       ?' Agente na região: investigação estimada em 1 désdia.'
-       :' A viagem deverá ser concluída antes de iniciar a investigação.'}
-    </p>}
-    <SpyMissionOddsCard
-     houseId={houseId} agentId={selected?.id??''}
-     targetHouseId={targetHouseId} agentName={selected?.codename??'Agente'}
-     agentAvailable={selected?.status==='available'} simulation={simulated}
-     destinationRegion={destination}
-     travelRounds={plan?.status==='ready'?plan.travelRounds:null}
-     originRegion={selected?.currentRegion??null}
-     includeReturn={returnToStart}
-     returnRounds={plan?.status==='ready'?plan.returnRounds:null}/>
-   </div>}
-   <label style={{display:'flex',gap:8,alignItems:'center'}}>
-    <input type="checkbox" checked={allowSea} onChange={e=>setAllowSea(e.target.checked)}/>
-    Considerar travessias marítimas autorizadas (incluindo Dragonmere)
+   <label className="spy-planner-step">
+    <span className="spy-planner-step-title"><b>3</b> Casa a investigar</span>
+    <select aria-label="Casa nobre alvo"
+     value={houseChoices.some(h=>h.id===targetHouseId)?targetHouseId:''}
+     disabled={!destination||targetsQuery.isPending||targetsQuery.isError}
+     onChange={e=>setTargetHouseId(e.target.value)}>
+     <option value="">Selecione a Casa</option>
+     {houseChoices.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+    </select>
+    <small>{!destination?'Escolha a região para ver as Casas.':
+     targetsQuery.isPending?'Carregando Casas da região…':
+     targetsQuery.isError?'Lista indisponível.':
+     houseChoices.length===0?'Nenhuma outra Casa homologada nessa região.':
+     houseChoices.length+' Casas nobres disponíveis nesta região.'}</small>
    </label>
-   {!travelOnly&&<label style={{display:'flex',gap:8,alignItems:'center'}}>
-    <input type="checkbox" checked={returnToStart} onChange={e=>setReturnToStart(e.target.checked)}/>
-    Incluir viagem de retorno após a investigação
-   </label>}
-   {plan?.status==='ready'?<div className="house-panel" role="status">
-    <h4>{name(plan.startRegion)} → {plan.regionName}</h4>
-    {(travelOnly||houseMode&&!canTargetHouse)
-      ?<p><strong>Primeira etapa — deslocamento regional:</strong>
-       {plan.travelRounds} désdia(s) de viagem ({plan.travelRounds*10} dias ordinários).
-       {travelOnly?'Este deslocamento não inclui investigação.':houseStage==='select_house'?'O agente já está aqui: selecione uma Casa antes de planejar a investigação.':'A investigação da Casa dependerá de chegada registrada e escolha do alvo.'}</p>
-      :<p><strong>{plan.travelRounds}</strong> désdia(s) de viagem + <strong>1</strong>
-       de investigação = <strong>{plan.totalRounds} désdia(s)</strong> na prévia
-       ({plan.totalRounds*10} dias ordinários).</p>}
-    <p className="house-caption">Estimativa cartográfica. As fronteiras do desenho não substituem
-     homologação de rotas operacionais; {simulated?'a origem é hipotética':'o agente tem a posição informada pelo banco'}.</p>
-    {travelOnly?<p><strong>Somente deslocamento.</strong> Nenhum teste de investigação regional ou contra Casa ocorre nesta etapa.</p>
-     :houseMode
-      ?<p>Alvo: <strong>Casa nobre.</strong> A Lei basal regional não determina a defesa
-       da Casa. {canTargetHouse
-        ?'A dificuldade e a chance estimada aparecem no cartão acima; a resolução final cabe ao Narrador.'
-        :'Aguarde a chegada regional antes de planejar a investigação da Casa.'}</p>
-      :<p>Dificuldade de reconhecimento regional: <strong>{plan.basalDifficulty}</strong>
-       {' '}(convertida a partir da Lei da região, sem usar o número de Lei como dificuldade).</p>}
-    {plan.legs.length===0?<p>{travelOnly?'O agente já está na região selecionada.':'A investigação ocorre na região atual do espião.'}</p>:
-     <ol>{plan.legs.map((leg,i)=><li key={leg.connectionId+':'+i}>
-      {name(leg.fromRegion)} → {name(leg.toRegion)} · 1 rodada
-      {leg.passage==='sea_passage'?(new Set(['dragoncoast','crownlands','shieldmark']).has(leg.fromRegion)&&new Set(['dragoncoast','crownlands','shieldmark']).has(leg.toRegion)?' · via Dragonmere':' · via marítima'):' · fronteira terrestre'}
-     </li>)}</ol>}
-    {!travelOnly&&returnToStart&&<p>{plan.returnRounds===null
-     ?'Retorno não homologado: não existe caminho de volta aprovado.'
-     :'Retorno: '+plan.returnRounds+' rodada(s). Total com missão e retorno: '+plan.totalWithReturnRounds+' rodada(s).'}</p>}
-    {forecast?<div className="house-ledger" style={{marginTop:12}}>
-     <h4>Datas previstas pelo Hub Temporal</h4>
-     <p>Partida a partir da data oficial: <strong>{formatDate(forecast.officialDateKey)}</strong> ({formatCampaignPeriod(campaignTime.data!)} · versão {forecast.calendarVersion} do calendário).</p>
-     <p>Chegada à região investigada: <strong>{formatDate(forecast.arrivesAtTargetDateKey)}</strong>.</p>
-     {(!travelOnly&&(!houseMode||canTargetHouse))&&<p>Investigação de 1 désdia:
-       <strong>{formatDate(forecast.investigationStartsDateKey)}</strong> até
-       <strong>{formatDate(forecast.investigationEndsDateKey)}</strong>.</p>}
-     {(!travelOnly&&(!houseMode||canTargetHouse))
-       ?<p>Conclusão prevista: <strong>{formatDate(forecast.investigationEndsDateKey)}</strong>
-        — {forecast.ordinaryDaysToConclusion} dias ordinários após a data oficial.</p>
-       :<p>Chegada regional prevista: <strong>{formatDate(forecast.arrivesAtTargetDateKey)}</strong>.
-        A investigação da Casa ainda não possui data de conclusão autorizada.</p>}
-     {forecast.travelLegs.length>1&&<details><summary>Datas de chegada de cada trecho</summary><ol>
-      {forecast.travelLegs.map((leg,i)=><li key={leg.edgeId+':'+i}>
-       {name(leg.fromRegion)} → {name(leg.toRegion)}: {formatDate(leg.arrivalDateKey)}
-      </li>)}
-     </ol></details>}
-     {!travelOnly&&returnToStart&&(forecast.returnArrivalDateKey
-      ?<p>Retorno à região inicial: <strong>{formatDate(forecast.returnArrivalDateKey)}</strong> — {forecast.ordinaryDaysWithReturn} dias ordinários incluindo investigação.</p>
-      :<p>Sem data de retorno: rota de volta ainda não homologada.</p>)}
-     {!travelOnly&&forecast.crossedFestivalsUntilConclusion.length>0&&<p>Festivais intercalares atravessados: {forecast.crossedFestivalsUntilConclusion.map(f=>f.name).join(', ')}. Eles não consomem dias de désdia.</p>}
-    </div>:<p role="note">O Hub Temporal oficial não está disponível; os valores em rodadas continuam válidos, mas não há datas de chegada confirmáveis.</p>}
-    <small>Prévia estratégica, não uma missão registrada. O avanço e a publicação do tempo permanecem exclusivos do Narrador.</small>
-   </div>:plan&&<p role="status" className="house-caption">{message[plan.status]}</p>}
-   {!data.agents.length&&<p role="note">Sem agentes cadastrados. Após conciliação da Rede ou contratação, o cálculo passará a usar a posição própria de cada agente.</p>}
   </div>}
-  <CormyrInteractiveMap
-   selectedRegion={destination} originRegion={currentOrigin}
-   plan={plan?.status==='ready'?plan:null}
-   onSelect={chooseRegion}/>
-  {currentOrigin&&<details className="house-ledger" open style={{marginTop:14}}>
-   <summary>Todas as regiões · viagem a partir de {name(currentOrigin)} (11 destinos)</summary>
-   <p>Estimativa terrestre baseada no mapa e acrescida das passagens marítimas aprovadas, quando habilitadas.
-    Se escolher reconhecimento regional depois da viagem, a investigação acrescenta 1 désdia; deslocamento simples não acrescenta investigação.</p>
-   <div className="spy-region-comparison-grid" role="group" aria-label="Comparação de viagens entre as 11 regiões">
-    {comparisons.map(row=><button type="button" key={row.regionId}
-     className="spy-region-comparison-card" aria-pressed={destination===row.regionId}
-     onClick={()=>chooseRegion(row.regionId)}>
-     <span className="spy-region-comparison-title">{row.regionName}</span>
-     {row.estimate.status==='ready'?<>
-      <span className="spy-region-comparison-metrics">
-       <span><small>Viagem</small><strong>{formatRounds(row.estimate.travelRounds)}</strong></span>
-       <span><small>Investigação</small><strong>1 désdia</strong></span>
-      </span>
-      <span className="spy-region-comparison-total">
-       <span><small>Total com investigação</small><strong>{formatRounds(row.estimate.totalRounds)}</strong></span>
-       <span><small>Dias ordinários</small><strong>{row.estimate.totalRounds*10}</strong></span>
-      </span>
-     </>:<span className="house-caption">Rota pendente de validação</span>}
-    </button>)}
+
+  {data&&targetsQuery.isError&&<div className="spy-planner-feedback" role="alert">
+   A lista oficial de Casas está indisponível nesta sessão.
+   <Button type="button" variant="outline" size="sm"
+    onClick={()=>void targetsQuery.refetch()}>Consultar Casas novamente</Button>
+  </div>}
+  {data&&!agents.some(a=>a.status==='available')&&
+   <p className="spy-planner-feedback" role="status">
+    Nenhum espião disponível. Crie um agente ou aguarde a conclusão de suas missões.</p>}
+
+  {allSelected&&selected&&selectedTargetHouse&&<div className="spy-planner-result">
+   <SpyMissionOddsCard
+    houseId={houseId} agentId={selected.id}
+    targetHouseId={selectedTargetHouse.id} agentName={selected.codename}
+    agentAvailable={agentAvailable} simulation={false}
+    destinationRegion={destination}
+    travelRounds={ready?plan.travelRounds:null}
+    originRegion={originRegion}
+    includeReturn={false} returnRounds={null}/>
+   {houseStage==='requires_region_arrival'&&<p className="spy-planner-feedback" role="note">
+    O espião poderá investigar {selectedTargetHouse.name} somente após chegar
+    fisicamente a {name(destination)}. Este planejamento não o desloca automaticamente.
+   </p>}
+   {plan&&!ready&&<p className="spy-planner-feedback" role="status">
+    {routeError[plan.status]}
+   </p>}
+   <div className="spy-planner-map-wrap">
+    <div className="spy-planner-route-caption">
+     <strong>Trajeto da missão</strong>
+     <span>{originName} → {name(destination)}</span>
+    </div>
+    <CormyrInteractiveMap selectedRegion={destination}
+     originRegion={originRegion} plan={ready?plan:null}
+     onSelect={chooseRegion}/>
    </div>
-   <small>Fonte terrestre: {CORMYR_MAP_SOURCE}. Crownlands, Shieldmark e Dragon Coast: cada travessia direta via Dragonmere custa 1 désdia, conforme regra do Narrador. Os caminhos desta tabela são estimativas cartográficas;
-    para executar uma missão será exigida uma rota autorizada pelo servidor.</small>
-  </details>}
+   {forecast&&<details className="spy-planner-calendar-details">
+    <summary>Datas previstas pelo Hub Temporal</summary>
+    <p>Partida: <strong>{formatDate(forecast.officialDateKey)}</strong></p>
+    <p>Chegada: <strong>{formatDate(forecast.arrivesAtTargetDateKey)}</strong></p>
+    <p>Conclusão estimada: <strong>{formatDate(forecast.investigationEndsDateKey)}</strong></p>
+    <small>A estimativa não avança o calendário e não envia a missão.</small>
+   </details>}
+  </div>}
+
+  {!allSelected&&data&&agentAvailable&&destination&&
+   <p className="spy-planner-feedback" role="status">
+    Selecione a Casa nobre para visualizar o tempo, a chance e o trajeto da missão.
+   </p>}
  </section>;
 }

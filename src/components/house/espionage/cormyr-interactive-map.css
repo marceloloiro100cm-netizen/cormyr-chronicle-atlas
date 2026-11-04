@@ -6,19 +6,19 @@
 .cormyr-map-heading p{margin:0;font-size:.86rem;line-height:1.4}
 .cormyr-map-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .cormyr-legend-start,.cormyr-legend-target{display:inline-block;width:10px;height:10px;border-radius:50%;border:3px solid}
-.cormyr-legend-start{background:#c5ebff;border-color:#1765a8}
-.cormyr-legend-target{background:#ffe2a3;border-color:#b05623}
+.cormyr-legend-start{background:#f7e0a2;border-color:#996b28}
+.cormyr-legend-target{background:#efbac1;border-color:#753449}
 .cormyr-legend-sea{display:inline-block;width:22px;border-top:3px dashed #087f9e}
 .cormyr-map-scroll{width:100%;min-width:0;overflow:hidden;background:#e9c78e}
 .cormyr-map-svg{display:block;width:100%;min-width:0;max-width:100%;height:auto;aspect-ratio:1443 / 1090}
 .cormyr-region{cursor:pointer;outline:0}
 .cormyr-region-hotspot{fill:transparent;stroke:transparent;stroke-width:3;transition:fill .12s ease,stroke .12s ease}
 .cormyr-region:hover .cormyr-region-hotspot,.cormyr-region:focus .cormyr-region-hotspot{fill:rgba(252,224,140,.19);stroke:rgba(66,43,23,.82);stroke-dasharray:9 6}
-.cormyr-region.is-selected .cormyr-region-hotspot{stroke:#b65027;stroke-width:4;stroke-dasharray:8 5}
+.cormyr-region.is-selected .cormyr-region-hotspot{stroke:#753449;stroke-width:4;stroke-dasharray:8 5}
 .cormyr-region:focus-visible .cormyr-region-hotspot{stroke:#1765a8;stroke-width:5;stroke-dasharray:none}
 .cormyr-focus-halo{fill:none;stroke:#dfb851;stroke-width:3;opacity:.92}
-.cormyr-origin-pin{fill:#c5ebff;stroke:#1765a8;stroke-width:6}
-.cormyr-target-pin{fill:#ffe2a3;stroke:#b05623;stroke-width:5}
+.cormyr-origin-pin{fill:#f7e0a2;stroke:#996b28;stroke-width:6}
+.cormyr-target-pin{fill:#efbac1;stroke:#753449;stroke-width:5}
 .cormyr-map-source{margin:0!important;padding:10px 18px;font-size:.77rem;line-height:1.4;color:#604a33;border-top:1px solid #d5b68c}
 .cormyr-map-mobile-regions{display:none;padding:10px;gap:6px;flex-wrap:wrap;background:#f5ebd8}
 .cormyr-map-mobile-regions button{border:1px solid #bca078;border-radius:7px;padding:5px 9px;background:#fff9ee;color:#55300a;font-size:.81rem}
