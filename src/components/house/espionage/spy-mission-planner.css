@@ -61,3 +61,31 @@
 .spy-planner-execution-details small{color:#735a40;line-height:1.5}
 .spy-mission-confirm-dialog button:focus-visible{outline:2px solid #b68c50;outline-offset:2px}
 @media(max-width:680px){.spy-planner-execution-button{width:100%}}
+
+/* A ação começa somente abaixo do mapa, na faixa imediatamente
+   anterior às datas do Hub Temporal, sem competir com a prévia. */
+.spy-planner-start-row{
+ min-width:0;
+ padding:10px 13px;
+ background:#fffaf0;
+ border:1px solid #cfb17c;
+ border-radius:10px;
+}
+.spy-planner-start-row .spy-planner-execution{
+ width:100%;
+ margin:0;
+ padding:0;
+ border:0;
+ border-radius:0;
+ background:transparent;
+}
+.spy-planner-start-row .spy-planner-execution-button{
+ width:100%;
+ min-height:46px;
+ justify-content:center;
+ font-weight:700;
+ text-align:center;
+}
+.spy-planner-start-row .spy-planner-execution-confirmed{
+ width:100%;
+}
