@@ -81,7 +81,7 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
    Selecione um espião disponível, uma Casa e aguarde o carregamento do calendário.
   </small>}
   <Dialog open={open} onOpenChange={next=>{if(!busy)setOpen(next);}}>
-   <DialogContent className="sm:max-w-lg">
+   <DialogContent className="spy-mission-confirm-dialog sm:max-w-lg">
     <DialogHeader>
      <DialogTitle>Confirmar execução da missão</DialogTitle>
      <DialogDescription>
