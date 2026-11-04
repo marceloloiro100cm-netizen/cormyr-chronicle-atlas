@@ -1,15 +1,14 @@
-/** The 20 professional portrait choices from the Narrator's Drive folder.
- * The reference image is intentionally excluded. Fifteen photos are hosted
- * as versioned site assets, while five oversized originals use public Drive
- * thumbnails with a safe image fallback (see SpyPortraitPicker).
+/** Twenty professional portraits from the Narrator's Drive folder.
+ * All are now optimized and hosted as versioned site assets. The reference
+ * image was deliberately excluded; custom portraits keep their URLs.
  */
 export const spyPortraitManifest=[
   {
     "id": "espiao-tillet",
     "label": "Tillet",
-    "src": "https://drive.google.com/thumbnail?id=17SXFn87QQIvsjauiFYRWWIVdk4IiXkcQ&sz=w400",
+    "src": "https://cormyr-chronicle-atlas.lovable.app/spy-portraits/tillet.jpg",
     "sort": 1,
-    "kind": "drive-thumbnail"
+    "kind": "local"
   },
   {
     "id": "espiao-estivadora",
@@ -21,16 +20,16 @@ export const spyPortraitManifest=[
   {
     "id": "espiao-cortesa",
     "label": "Cortesã",
-    "src": "https://drive.google.com/thumbnail?id=15jcdLz8R1bkofUK_X8uvIR4cSOPBl2ng&sz=w400",
+    "src": "https://cormyr-chronicle-atlas.lovable.app/spy-portraits/cortesa.jpg",
     "sort": 3,
-    "kind": "drive-thumbnail"
+    "kind": "local"
   },
   {
     "id": "espiao-vigia",
     "label": "Vigia",
-    "src": "https://drive.google.com/thumbnail?id=1roVx_sdr7BCchzPs_CleJvwH2iVZvLNK&sz=w400",
+    "src": "https://cormyr-chronicle-atlas.lovable.app/spy-portraits/vigia.jpg",
     "sort": 4,
-    "kind": "drive-thumbnail"
+    "kind": "local"
   },
   {
     "id": "espiao-ladina",
@@ -133,15 +132,22 @@ export const spyPortraitManifest=[
   {
     "id": "espiao-guarda",
     "label": "Guarda",
-    "src": "https://drive.google.com/thumbnail?id=1wM1JWqE8w_tjxwre1QtHS_-7SEEVVwWs&sz=w400",
+    "src": "https://cormyr-chronicle-atlas.lovable.app/spy-portraits/guarda.jpg",
     "sort": 19,
-    "kind": "drive-thumbnail"
+    "kind": "local"
   },
   {
     "id": "espiao-ladrao",
     "label": "Ladrão",
-    "src": "https://drive.google.com/thumbnail?id=1dwtaJHBRq8t4RGuVr3-CWVUDtopxmz9j&sz=w400",
+    "src": "https://cormyr-chronicle-atlas.lovable.app/spy-portraits/ladrao.jpg",
     "sort": 20,
-    "kind": "drive-thumbnail"
+    "kind": "local"
   }
 ] as const;
+
+/** Present local URLs immediately, even if the SQL migration has not yet run.
+ * IDs outside the official twenty retain the database URL without change.
+ */
+export function resolveSpyPortraitImageUrl(id:string,sourceUrl:string):string{
+ return spyPortraitManifest.find(p=>p.id===id)?.src??sourceUrl;
+}
