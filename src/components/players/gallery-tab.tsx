@@ -48,8 +48,8 @@ export function GalleryTab({houseId,houseName,records}:{
  const mail=useQuery({
   queryKey:['house-gallery-mail-images',houseId],
   queryFn:()=>loadHouseMailImages(houseId),
-  enabled:topic==='missives',staleTime:30_000,
-  refetchOnWindowFocus:'always',retry:1,
+  enabled:topic==='missives',staleTime:0,
+  refetchOnMount:'always',refetchOnWindowFocus:'always',retry:1,
  });
  const mailImages=(mail.data??[]).filter(item=>direction==='all'||item.direction===direction);
  const collection=topic==='images'?images:topic==='npcs'?npcs:mailImages;
