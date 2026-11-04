@@ -122,16 +122,6 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
          </details>}
         </HouseAssetCard>;
        })}</HouseAssetGrid>
-       {canEdit&&<form className="campaign-form" onSubmit={async e=>{
-        e.preventDefault();const form=new FormData(e.currentTarget),target=e.currentTarget;
-        if(await run('domain',{id:crypto.randomUUID(),name:String(form.get('name')),
-         notes:String(form.get('notes'))}))target.reset();
-       }}>
-        <h4>Nomear um domínio</h4>
-        <label>Nome<input name="name" required placeholder="Nome oficial da localidade"/></label>
-        <label>Notas<input name="notes"/></label>
-        <Button disabled={busy}>Criar domínio</Button>
-       </form>}
        <HouseAssetCatalog section="domains" state={state} catalog={catalog}
         canEdit={monthlyCanEdit} busy={busy}
         onBuy={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}}
