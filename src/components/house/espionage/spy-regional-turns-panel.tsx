@@ -10,8 +10,6 @@ import {cormyrPreviewLinks,CORMYR_MAP_SOURCE} from '@/lib/espionage/cormyr-map';
 import {CormyrInteractiveMap} from './cormyr-interactive-map';
 import {allSpyRegionalBaselines} from '@/lib/espionage/public-strategy';
 import {REGIONS} from '@/lib/house/regions';
-import {SpyRegionRouteAdmin} from './spy-region-route-admin';
-import {SpyNobleDefenseAdmin} from './spy-noble-defense-admin';
 import {SpyMissionOddsCard} from './spy-mission-odds-card';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {formatDate,formatCampaignPeriod} from '@/lib/calendar/harptos';
@@ -275,28 +273,25 @@ export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admi
    <summary>Todas as regiões · viagem a partir de {name(currentOrigin)} (11 destinos)</summary>
    <p>Estimativa terrestre baseada no mapa e acrescida das passagens marítimas aprovadas, quando habilitadas.
     Se escolher reconhecimento regional depois da viagem, a investigação acrescenta 1 désdia; deslocamento simples não acrescenta investigação.</p>
-   <div style={{overflowX:'auto'}}>
-    <table><thead><tr>
-     <th scope="col">Destino</th><th scope="col">Viagem</th>
-     <th scope="col">Investigação</th><th scope="col">Total</th><th scope="col">Dias ordinários</th>
-    </tr></thead><tbody>
-     {comparisons.map(row=><tr key={row.regionId}
-      style={destination===row.regionId?{background:'rgba(174,194,224,.25)'}:undefined}>
-      <td><button type="button" onClick={()=>chooseRegion(row.regionId)}
-       style={{background:'none',border:0,textDecoration:'underline',color:'inherit',cursor:'pointer',textAlign:'left'}}>
-       {row.regionName}</button></td>
-      {row.estimate.status==='ready'?<>
-       <td>{row.estimate.travelRounds} désdia(s)</td><td>1 désdia</td>
-       <td><strong>{row.estimate.totalRounds} désdia(s)</strong></td>
-       <td>{row.estimate.totalRounds*10}</td>
-      </>:<td colSpan={4}>Rota pendente de validação</td>}
-     </tr>)}
-    </tbody></table>
+   <div className="spy-region-comparison-grid" role="group" aria-label="Comparação de viagens entre as 11 regiões">
+    {comparisons.map(row=><button type="button" key={row.regionId}
+     className="spy-region-comparison-card" aria-pressed={destination===row.regionId}
+     onClick={()=>chooseRegion(row.regionId)}>
+     <span className="spy-region-comparison-title">{row.regionName}</span>
+     {row.estimate.status==='ready'?<>
+      <span className="spy-region-comparison-metrics">
+       <span><small>Viagem</small><strong>{row.estimate.travelRounds} désdia(s)</strong></span>
+       <span><small>Investigação</small><strong>1 désdia</strong></span>
+      </span>
+      <span className="spy-region-comparison-total">
+       <span><small>Total com investigação</small><strong>{row.estimate.totalRounds} désdia(s)</strong></span>
+       <span><small>Dias ordinários</small><strong>{row.estimate.totalRounds*10}</strong></span>
+      </span>
+     </>:<span className="house-caption">Rota pendente de validação</span>}
+    </button>)}
    </div>
    <small>Fonte terrestre: {CORMYR_MAP_SOURCE}. Crownlands, Shieldmark e Dragon Coast: cada travessia direta via Dragonmere custa 1 désdia, conforme regra do Narrador. Os caminhos desta tabela são estimativas cartográficas;
     para executar uma missão será exigida uma rota autorizada pelo servidor.</small>
   </details>}
-  {admin&&<SpyNobleDefenseAdmin houses={targetsQuery.data??[]}/>}
-  {admin&&<SpyRegionRouteAdmin houseId={houseId}/>}
  </section>;
 }
