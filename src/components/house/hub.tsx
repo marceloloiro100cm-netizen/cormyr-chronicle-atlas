@@ -28,6 +28,7 @@ import { Army } from './army';
 import { SpyRegionalTurnsPanel } from './espionage/spy-regional-turns-panel';
 import {SpyDefensePanel,SpyAgentManagement} from './espionage/spy-house-management';
 import {SpyPlayerDossiers} from './espionage/spy-dossier-panel';
+import {SpyPlayerDossiers} from './espionage/spy-dossier-panel';
 import { Vassals } from './vassals';
 import { FortunePanel } from './fortune-panel';
 import { HouseCoverage } from './coverage';
@@ -161,6 +162,7 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
        {spyView==='operations'?<>
         <SpyDefensePanel state={state}/>
         <SpyAgentManagement houseId={house.id} canEdit={canEdit} admin={admin}/>
+       <SpyPlayerDossiers houseId={house.id}/>
         <SpyRegionalTurnsPanel houseId={house.id} admin={admin}/>
         <HouseAssetCatalog section="spy" state={state} catalog={catalog}
          canEdit={monthlyCanEdit} busy={busy}
