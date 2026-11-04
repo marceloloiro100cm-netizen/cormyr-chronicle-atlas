@@ -68,6 +68,8 @@ describe('Galeria do Drive, criação de unidades e construções adquiridas pri
   }
   expect(resolveSpyPortraitImageUrl('espiao-personalizado',legacy)).toBe(legacy);
   const server=src('src/lib/espionage/spy-management.functions.ts');
+  const browser=src('src/lib/espionage/spy-browser-client.ts');
   expect(server).toContain('imageUrl:resolveSpyPortraitImageUrl(p.id,p.imageUrl)');
+  expect(browser).toContain('imageUrl:resolveSpyPortraitImageUrl(p.id,p.imageUrl)');
  });
 });
