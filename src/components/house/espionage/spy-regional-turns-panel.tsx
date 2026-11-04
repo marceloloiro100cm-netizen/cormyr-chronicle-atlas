@@ -148,13 +148,16 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
   </div>}
   {data&&!agents.some(a=>a.status==='available')&&
    <p className="spy-planner-feedback" role="status">
-    Nenhum espião disponível. Crie um agente ou aguarde a conclusão de suas missões.</p>}
+    {agents.length===0
+     ?'Esta Casa ainda não tem espiões. Crie um agente para iniciar uma missão.'
+     :'Todos os espiões estão em missão ou indisponíveis. Acompanhe ou cancele a missão em Agentes e Missões.'}
+   </p>}
 
   {submitted&&<p className="spy-planner-feedback spy-planner-submitted"
    role="status">
-   <strong>Missão registrada:</strong> {submitted.agentName} foi designado
-   para investigar {submitted.targetName}. O Narrador precisa homologar
-   a rota antes que o espião se desloque e inicie a investigação.
+   <strong>Missão iniciada:</strong> {submitted.agentName} está em missão
+   contra {submitted.targetName}. O deslocamento e a investigação são
+   contabilizados pelo Hub Temporal.
   </p>}
 
   {allSelected&&selected&&selectedTargetHouse&&<div className="spy-planner-result">
