@@ -1,0 +1,36 @@
+name: Importar mapa regional anexado (execucao unica)
+on:
+  push:
+    branches:
+      - ui/ocultacoes-vagas-mapa-regional-20261103
+    paths:
+      - .github/workflows/import-regional-map-once.yml
+permissions:
+  contents: write
+jobs:
+  import-map:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Importar arquivo WebP fornecido pelo Narrador
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public/maps
+          curl --fail --location --silent --show-error --retry 3 --connect-timeout 20 --max-time 120 \
+            "https://drive.google.com/uc?export=download&id=18ne3D8Qx4gFYZipMr2Xb9B31P7JfebFK" \
+            -o public/maps/cormyr-regioes.webp
+          mime="$(file -b --mime-type public/maps/cormyr-regioes.webp)"
+          size="$(stat -c%s public/maps/cormyr-regioes.webp)"
+          test "$mime" = "image/webp"
+          test "$size" -gt 200000
+          test "$size" -lt 1200000
+          echo "Mapa verificado: $size bytes ($mime)"
+      - name: Versionar imagem no repositorio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/maps/cormyr-regioes.webp
+          git diff --cached --quiet || (git commit -m "asset(map): adicionar mapa regional fornecido pelo Narrador" && git push origin HEAD:ui/ocultacoes-vagas-mapa-regional-20261103)
