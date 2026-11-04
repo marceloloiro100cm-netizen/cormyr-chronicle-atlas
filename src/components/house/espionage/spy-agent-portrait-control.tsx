@@ -1,10 +1,11 @@
 import {useState} from 'react';
-import {useQueryClient} from '@tanstack/react-query';
+import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogFooter}
  from '@/components/ui/dialog';
 import {assignSpyPortrait} from '@/lib/espionage/spy-agent-actions.functions';
+import {readSpyRecruitmentOptionsBrowser} from '@/lib/espionage/spy-browser-client';
 import type {SpyManagement} from '@/lib/espionage/spy-management.functions';
 import {SpyAvatar,SpyPortraitPicker} from './spy-portrait-picker';
 type Agent=SpyManagement['agents'][number];
@@ -16,7 +17,16 @@ export function SpyAgentPortraitControl({houseId,agent,portraits,canEdit}:{
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const action=useServerFn(assignSpyPortrait);const qc=useQueryClient();
  const own=portraits.find(p=>p.id===agent.portraitId);
- const available=portraits.filter(p=>
+ // Only the opened picker polls the global catalogue. Other agent cards
+ // do not create background requests or expose foreign House identities.
+ const options=useQuery({
+  queryKey:['spy-recruitment-options',houseId],
+  queryFn:()=>readSpyRecruitmentOptionsBrowser(houseId),
+  enabled:open,staleTime:0,retry:1,
+  refetchInterval:open?10_000:false,refetchIntervalInBackground:false,
+ });
+ const currentPortraits=open&&options.data?options.data.portraits:portraits;
+ const available=currentPortraits.filter(p=>
   (!p.occupied&&!p.assignedAgentId)||p.assignedAgentId===agent.id);
  const save=async()=>{
   if(!selected||busy)return;
@@ -62,7 +72,7 @@ export function SpyAgentPortraitControl({houseId,agent,portraits,canEdit}:{
   <Dialog open={open} onOpenChange={next=>{if(busy)return;setOpen(next);}}>
    <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
     <DialogHeader><DialogTitle>Retrato de {agent.codename}</DialogTitle></DialogHeader>
-    <SpyPortraitPicker portraits={portraits} selected={selected}
+    <SpyPortraitPicker portraits={currentPortraits} selected={selected}
      onChange={setSelected} currentAgentId={agent.id}/>
     {error&&<p className="house-warning" role="alert">{error}</p>}
     <DialogFooter>
