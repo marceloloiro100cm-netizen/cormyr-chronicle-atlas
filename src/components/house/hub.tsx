@@ -27,6 +27,7 @@ import { Creation } from './creation';
 import { Army } from './army';
 import { SpyRegionalTurnsPanel } from './espionage/spy-regional-turns-panel';
 import {SpyDefensePanel,SpyAgentManagement} from './espionage/spy-house-management';
+import {SpyPlayerDossiers} from './espionage/spy-dossier-panel';
 import { Vassals } from './vassals';
 import { FortunePanel } from './fortune-panel';
 import { HouseCoverage } from './coverage';
@@ -54,6 +55,7 @@ type Run=(action:Parameters<ReturnType<typeof useServerFn<typeof houseOperation>
 function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEdit,npcs,courtMembers,records=[],state,catalog,houses,admin,canEditAttributes,version,ledger,globalCalendar,calendarError,fetchFullLedger,busy,message,error,run}:Props&{state:HouseState;catalog:CatalogItem[];houses:{id:string;name:string;crest:string|null}[];admin:boolean;canEditAttributes:boolean;version:number;ledger:{id:string;action:string;explanation:string;rule:string;created_at:string}[];globalCalendar:CalendarReference|null;calendarError:boolean;fetchFullLedger:()=>Promise<import('@/lib/house/report').ReportLedger[]>;busy:boolean;message:string;error:boolean;run:Run}) {
   const canEdit=admin||playerCanEdit;
   const [graphical,setGraphical]=useState(false);
+  const [spyView,setSpyView]=useState<'operations'|'dossiers'>('operations');
   const [section,setSection]=useState('overview'),[buy,setBuy]=useState(false),[purchaseItemId,setPurchaseItemId]=useState(''),[importPreview,setImport]=useState<ImportPreview|null>(null),[resource,setResource]=useState<typeof RESOURCE_KEYS[number]>('wealth'),[importDecision,setImportDecision]=useState('');
   const active=state.holdings.filter(h=>h.status==='active'),projects=state.projects.filter(p=>p.status==='building');
   const drift=globalCalendar?calendarDrift(state.month,globalCalendar):null;
@@ -148,13 +150,23 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
       </>}
       {section==='army'&&<Army commanders={courtMembers} state={state} houseName={house.name} onSiege={args=>run('siege',args)} onSiegeState={(args,reason)=>run('siege_state',args,reason)} admin={admin} onState={args=>run('unit_state',args)} onSurvivors={args=>run('survivors',args)} onTrain={(args,reason)=>run('train_unit',args,reason)} onEdit={args=>run('unit_edit',args)} onGrant={(args,reason)=>run('grant_unit_xp',args,reason)} onRename={args=>run('military_rename',args)} onConfigure={args=>run('military_config',args)} onWarHounds={args=>run('war_hounds',args)} onBroadTraining={args=>run('broad_training',args)} onBuyMilitary={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}} canEdit={monthlyCanEdit} busy={busy} onCreate={args=>run('unit',args)} onEquipment={args=>run('equipment',args)}/>}
       {section==='spy'&&<>
-       <SpyDefensePanel state={state}/>
-       <SpyAgentManagement houseId={house.id} canEdit={canEdit} admin={admin}/>
-       <SpyRegionalTurnsPanel houseId={house.id} admin={admin}/>
-       <HouseAssetCatalog section="spy" state={state} catalog={catalog}
-        canEdit={monthlyCanEdit} busy={busy}
-        onBuy={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}}
-        onCondition={(args,reason)=>run('condition',args,reason)}/>
+       <div className="campaign-tabs" role="group" aria-label="Seções de Espionagem">
+        <Button type="button" variant={spyView==='operations'?'default':'outline'}
+         aria-pressed={spyView==='operations'} onClick={()=>setSpyView('operations')}>
+         <Eye size={16}/>Agentes e Missões</Button>
+        <Button type="button" variant={spyView==='dossiers'?'default':'outline'}
+         aria-pressed={spyView==='dossiers'} onClick={()=>setSpyView('dossiers')}>
+         <ScrollText size={16}/>Dossiê</Button>
+       </div>
+       {spyView==='operations'?<>
+        <SpyDefensePanel state={state}/>
+        <SpyAgentManagement houseId={house.id} canEdit={canEdit} admin={admin}/>
+        <SpyRegionalTurnsPanel houseId={house.id} admin={admin}/>
+        <HouseAssetCatalog section="spy" state={state} catalog={catalog}
+         canEdit={monthlyCanEdit} busy={busy}
+         onBuy={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}}
+         onCondition={(args,reason)=>run('condition',args,reason)}/>
+       </>:<SpyPlayerDossiers houseId={house.id}/>}
       </>}
       {section==='vassals'&&<><Vassals catalog={catalog} onCreate={args=>run('vassal_create',args)} onPurchase={args=>run('vassal_purchase',args)} onDomain={args=>run('vassal_domain',args)} state={state} houses={houses} npcs={npcs} admin={admin} canEdit={canEdit} busy={busy} onPropose={args=>run('vassal',args)} onApprove={(args,note)=>run('vassal_approve',args,note)} onEnd={(args,note)=>run('vassal_end',args,note)} onLoyalty={(args,note)=>run('vassal_loyalty',args,note)}/></>}
       {section==='court'&&<>{npcManager}<p>Titular: {house.lord_name??'Não informado'}</p><Court state={state} members={courtMembers} canEdit={canEdit} busy={busy} onAssign={args=>run('court',args)} onRemove={id=>run('court_remove',{id},'Remoção de vínculo da Corte solicitada pelo gestor da casa.')}/></>}

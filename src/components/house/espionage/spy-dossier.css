@@ -1,0 +1,31 @@
+.spy-dossier-panel{display:grid;gap:16px}
+.spy-dossier-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.spy-dossier-filters label,.spy-dossier-owner-filter,.spy-dossier-admin-form label{display:grid;gap:5px;font-size:.85rem}
+.spy-dossier-filters input,.spy-dossier-filters select,.spy-dossier-owner-filter select,.spy-dossier-admin-form select,.spy-dossier-admin-form textarea{width:100%;min-width:0}
+.spy-dossier-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px}
+.spy-dossier-card{display:grid;gap:5px;text-align:left;border:1px solid color-mix(in srgb,var(--border) 80%,#9e804e);background:var(--card);color:var(--card-foreground);padding:13px;border-radius:9px;cursor:pointer}
+.spy-dossier-card:hover,.spy-dossier-card.is-selected{border-color:#ba9961;box-shadow:inset 0 0 0 1px #ba9961}
+.spy-dossier-card strong{font-size:.96rem}
+.spy-dossier-card span{font-size:.82rem}
+.spy-dossier-card small{color:var(--muted-foreground)}
+.spy-dossier-sheet{border:1px solid #987e58;border-radius:10px;padding:15px;background:color-mix(in srgb,var(--card) 94%,#b49b71 6%);display:grid;gap:15px;min-width:0}
+.spy-dossier-sheet-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.spy-dossier-sheet-header h3{margin:4px 0}
+.spy-dossier-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.spy-dossier-tabs button{flex:1 1 110px}
+.spy-dossier-sheet-body{display:grid;gap:12px}
+.spy-dossier-progress{display:flex;gap:3px;max-width:300px}
+.spy-dossier-progress span{height:7px;flex:1;border-radius:4px;background:var(--muted)}
+.spy-dossier-progress span.known{background:#b79459}
+.spy-dossier-resource-grid,.spy-dossier-discoveries{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.spy-dossier-item{min-width:0;display:grid;gap:4px;padding:10px;border:1px solid var(--border);border-radius:7px;background:color-mix(in srgb,var(--card) 92%,#aa915e 8%);font-size:.87rem}
+.spy-dossier-item strong{overflow-wrap:anywhere}
+.spy-dossier-item small{color:var(--muted-foreground);font-size:.76rem}
+.spy-dossier-unknown{color:var(--muted-foreground);display:flex;align-items:center;gap:5px}
+.spy-dossier-history{max-height:250px;overflow:auto}
+.spy-dossier-admin-table-wrap{overflow-x:auto}
+.spy-dossier-admin-table{width:100%;border-collapse:collapse;text-align:left;font-size:.83rem}
+.spy-dossier-admin-table th,.spy-dossier-admin-table td{padding:9px 8px;border-bottom:1px solid var(--border)}
+.spy-dossier-admin-form{display:grid;gap:12px;padding:14px}
+.spy-dossier-pending{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;border-bottom:1px solid var(--border);padding:8px 0;flex-wrap:wrap}
+@media(max-width:700px){.spy-dossier-filters{grid-template-columns:1fr}.spy-dossier-resource-grid,.spy-dossier-discoveries{grid-template-columns:1fr}.spy-dossier-sheet{padding:11px}.spy-dossier-card{padding:10px}}
