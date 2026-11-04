@@ -52,8 +52,7 @@ export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}
     <span className="cormyr-legend-sea"/> Travessia marítima
    </p>
   </div>
-  <div className="cormyr-map-scroll" tabIndex={0}
-   aria-label="Mapa regional deslocável horizontalmente em telas pequenas">
+  <div className="cormyr-map-scroll">
    <svg className="cormyr-map-svg" viewBox="0 0 1443 1090" role="group"
     aria-labelledby={titleId} xmlns="http://www.w3.org/2000/svg"
     preserveAspectRatio="xMidYMid meet">
@@ -111,7 +110,7 @@ export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}
     {CORMYR_MAPPED_REGIONS[id]?.name??id}
    </button>)}
   </div>
-  <p className="cormyr-map-source">
+  <p className="cormyr-map-source" hidden aria-hidden="true">
    Mapa Regional de Cormyr fornecido pelo Narrador. As áreas clicáveis indicam os
    nomes das regiões, não fronteiras homologadas. O planejador usa as regras de
    deslocamento já aprovadas; missões operacionais exigem validação no servidor.
