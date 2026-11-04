@@ -80,7 +80,7 @@ export function SpyLocalHouseMap({
      onKeyDown={e=>markerKeys(e,'origin')}>
      <title>{'Sua Casa: '+originHouseName}</title>
      <circle className="spy-noble-local-pin-halo"
-      cx={source.x} cy={source.y} r={map.width/67}/>
+      cx={source.x} cy={source.y} r={map.width/58}/>
      <circle className="spy-noble-local-pin-center"
       cx={source.x} cy={source.y} r={map.width/280}/>
      <circle className="spy-noble-local-hit"
@@ -94,7 +94,7 @@ export function SpyLocalHouseMap({
      onKeyDown={e=>markerKeys(e,'target')}>
      <title>{'Casa-alvo: '+destinationHouseName}</title>
      <circle className="spy-noble-local-pin-halo"
-      cx={target.x} cy={target.y} r={map.width/67}/>
+      cx={target.x} cy={target.y} r={map.width/58}/>
      <circle className="spy-noble-local-pin-center"
       cx={target.x} cy={target.y} r={map.width/280}/>
      <circle className="spy-noble-local-hit"
