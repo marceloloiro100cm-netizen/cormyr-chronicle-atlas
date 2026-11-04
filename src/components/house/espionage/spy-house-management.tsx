@@ -38,9 +38,12 @@ const missionStatuses:Record<string,string>={
  returning:'Retornando',completed:'Concluída',cancelled:'Cancelada',
 };
 type Mission=SpyManagement['operations'][number];
-function pendingMission(operations:Mission[],assetId:string){
- const items=operations.filter(o=>o.assetId===assetId);
- return items.find(o=>!['completed','cancelled'].includes(o.status))??items[0]??null;
+/** Only active operations belong on the spy card. Cancelled/completed
+ * missions remain accessible in history, but are not a "current mission".
+ */
+export function pendingMission(operations:Mission[],assetId:string):Mission|null{
+ return operations.find(o=>o.assetId===assetId&&
+  !['completed','cancelled'].includes(o.status))??null;
 }
 /** The operation timeline is saved by the secured RPC in the Hub's
  * official Harptos dates; the countdown follows the campaign date, never the
@@ -184,10 +187,10 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
     <span style={{width:(agent.toNextRank===0?100:(3-agent.toNextRank)/3*100)+'%'}}/>
    </div>
   </div>
-  <section className="spy-agent-mission">
+  {operation&&<section className="spy-agent-mission">
    <h5>Missão atual</h5>
    <strong>{progress.mission}</strong>
-   {operation&&<small>{missionStatuses[operation.status]??operation.status}</small>}
+   <small>{missionStatuses[operation.status]??operation.status}</small>
    <dl>
     <dt>Tempo de viagem</dt><dd>{progress.travel}</dd>
     {progress.departure&&<><dt>Partida</dt>
@@ -197,7 +200,7 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
     <dt>Conclusão prevista</dt>
     <dd>{progress.remaining}{progress.end&&<small>{formatDate(progress.end)}</small>}</dd>
    </dl>
-  </section>
+  </section>}
   <details className="spy-agent-equipment">
    <summary>Equipamentos e melhorias
     <small>{Number(agent.forgedDocuments)+Number(agent.aceInTheHole)} de 2 adquiridos</small>

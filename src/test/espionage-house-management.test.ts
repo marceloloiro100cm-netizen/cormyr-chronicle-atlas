@@ -1,7 +1,8 @@
 import {describe,it,expect} from 'vitest';
+import {readFileSync} from 'node:fs';
 import {newHouseState,type Holding} from '@/lib/house/types';
 import {calculateSpyDefense,spyDiscoveryBaseDifficulty,SPY_HOLDING_ID_SET} from '@/lib/espionage/spy-defense';
-import {spyMissionProgress} from '@/components/house/espionage/spy-house-management';
+import {spyMissionProgress,pendingMission} from '@/components/house/espionage/spy-house-management';
 import {spyHouseTargetStage} from '@/lib/espionage/spy-target-stages';
 import type {SpyRegionalAgent} from '@/lib/espionage/region-turns';
 import {spyRegionalBaseline} from '@/lib/espionage/public-strategy';
@@ -163,6 +164,24 @@ describe('Tabela de gerenciamento · missão e prazos',()=>{
   missionKind:'regional_recon',status:'traveling',
   travelDays:10,arrivalKey:'1524-08-10',createdAt:'2026-11-03T00:00:00+00:00',
  };
+ it('missão cancelada não aparece como atual e agente permanece livre',()=>{
+  const ended={...operation,status:'cancelled' as const};
+  expect(pendingMission([ended],ended.assetId)).toBeNull();
+  expect(pendingMission([{...ended,status:'completed'}],ended.assetId)).toBeNull();
+ });
+ it('com histórico cancelado e nova missão ativa, exibe apenas a nova missão',()=>{
+  const ended={...operation,status:'cancelled' as const};
+  const active={...operation,id:'33333333-3333-4333-8333-333333333333',
+   status:'traveling' as const};
+  expect(pendingMission([ended,active],operation.assetId)?.id).toBe(active.id);
+  expect(pendingMission([ended], '44444444-4444-4444-8444-444444444444')).toBeNull();
+ });
+ it('a ficha só renderiza o quadro Missão atual quando existe operação ativa',()=>{
+  const src=readFileSync('src/components/house/espionage/spy-house-management.tsx','utf8');
+  expect(src).toContain('{operation&&<section className="spy-agent-mission">');
+  expect(src).toContain('operation={pendingMission(data.operations,agent.id)}');
+  expect(src).toContain('<SpyAgentHistory data={data}/>');
+ });
  it('sem missão não inventa destino nem prazo',()=>{
   const p=spyMissionProgress(null,'1524-07-30');
   expect(p.mission).toContain('Sem missão');expect(p.remaining).toBe('—');
