@@ -2,7 +2,7 @@ import {describe,it,expect} from 'vitest';
 import {existsSync,readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {acquiredFirst} from '@/lib/house/acquired-first';
-import {spyPortraitManifest} from '@/lib/espionage/spy-portrait-manifest';
+import {spyPortraitManifest,resolveSpyPortraitImageUrl} from '@/lib/espionage/spy-portrait-manifest';
 const src=(name:string)=>readFileSync(resolve(name),'utf8');
 describe('Galeria do Drive, criação de unidades e construções adquiridas primeiro',()=>{
  it('mantém ordem original entre adquiridas e não adquiridas',()=>{
@@ -48,17 +48,28 @@ describe('Galeria do Drive, criação de unidades e construções adquiridas pri
    expect(sql).toContain(p.src);
   }
  });
- it('hospeda 15 retratos no próprio site e protege imagens indisponíveis',()=>{
+ it('hospeda os vinte retratos no próprio site e preserva a seleção por Casa',()=>{
   const local=spyPortraitManifest.filter(p=>p.kind==='local');
-  const drive=spyPortraitManifest.filter(p=>p.kind==='drive-thumbnail');
-  expect(local).toHaveLength(15);
-  expect(drive).toHaveLength(5);
+  expect(local).toHaveLength(20);
+  expect(local.some(p=>p.src.includes('drive.google.com'))).toBe(false);
   for(const p of local){
+   expect(p.src).toBe('https://cormyr-chronicle-atlas.lovable.app/spy-portraits/'+p.id.slice('espiao-'.length)+'.jpg');
    expect(existsSync(resolve('public/spy-portraits/'+p.id.slice('espiao-'.length)+'.jpg'))).toBe(true);
   }
   const picker=src('src/components/house/espionage/spy-portrait-picker.tsx');
   expect(picker).toContain("onError={()=>setAttempt");
   expect(picker).toContain("if(!source)return <UserRound");
   expect(picker).toContain("disabled={used}");
+ });
+ it('substitui os cinco links legados pelo arquivo local sem mexer nos retratos personalizados',()=>{
+  const legacy='https://drive.google.com/thumbnail?id=legacy&sz=w400';
+  for(const id of ['espiao-tillet','espiao-cortesa','espiao-vigia','espiao-guarda','espiao-ladrao']){
+   expect(resolveSpyPortraitImageUrl(id,legacy)).toBe(spyPortraitManifest.find(p=>p.id===id)?.src);
+  }
+  expect(resolveSpyPortraitImageUrl('espiao-personalizado',legacy)).toBe(legacy);
+  const server=src('src/lib/espionage/spy-management.functions.ts');
+  const browser=src('src/lib/espionage/spy-browser-client.ts');
+  expect(server).toContain('imageUrl:resolveSpyPortraitImageUrl(p.id,p.imageUrl)');
+  expect(browser).toContain('imageUrl:resolveSpyPortraitImageUrl(p.id,p.imageUrl)');
  });
 });

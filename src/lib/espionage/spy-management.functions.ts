@@ -1,6 +1,7 @@
 import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
 import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
+import {resolveSpyPortraitImageUrl} from '@/lib/espionage/spy-portrait-manifest';
 const input=z.object({houseId:z.string().trim().min(1).max(100)}).strict();
 const status=z.enum(['available','assigned','traveling','operating','returning',
  'missing','captured','retired','lost','dead','pending_review']);
@@ -91,7 +92,13 @@ export const loadSpyHouseManagement=createServerFn({method:'POST'})
     availableWealth=Number.isSafeInteger(amount)?amount:null;
    }catch{availableWealth=null;}
   }
-  return {...parsed.data,availableWealth};
+  // Preserve RLS-scoped availability/assignments from PostgreSQL, but serve
+  // official portrait images from the local website even while older database
+  // rows still hold public Drive thumbnails. This changes no saved assignments.
+  const portraits=parsed.data.portraits.map(p=>({
+   ...p,imageUrl:resolveSpyPortraitImageUrl(p.id,p.imageUrl),
+  }));
+  return {...parsed.data,portraits,availableWealth};
  });
 const renameSchema=input.extend({
  agentId:z.string().uuid(),expectedVersion:z.number().int().positive(),
