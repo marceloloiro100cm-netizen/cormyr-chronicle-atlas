@@ -42,7 +42,8 @@ export function SpyRemoveAgentButton({houseId,agent,houseVersion,canEdit,hasActi
    ]);
    setOpen(false);key.current=null;
    toast.success('Espião excluído: '+result.refundedWealth+
-    ' Riqueza devolvida. Vaga e retrato liberados.');
+    ' Riqueza devolvida, vaga liberada'+
+    (result.portraitReleased?' e retrato disponível.':'.'));
   }catch{
    setError('Não foi possível concluir a exclusão. Confirme que a ficha está atualizada e não há missão pendente. Nenhuma devolução parcial é aplicada.');
   }finally{setBusy(false);}
