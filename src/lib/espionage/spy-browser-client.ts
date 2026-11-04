@@ -7,6 +7,7 @@ import {resolveSpyPortraitImageUrl} from './spy-portrait-manifest';
 import {spyRecruitmentOptionsSchema,type SpyRecruitmentOptions} from './spy-recruitment.functions';
 import {spyRegionalStrategySchema} from './region-turns';
 import type {SpyAgentUpgrade} from './spy-agent-progression';
+import type {SpyIntelligenceObjective} from './spy-intelligence-rules';
 
 type RpcResponse={data:unknown;error:{message:string;code?:string}|null};
 type BrowserRpc=(name:string,args:Record<string,unknown>)=>Promise<RpcResponse>;
@@ -151,6 +152,7 @@ const submittedMissionSchema=z.object({
  departureKey:z.string().min(1),arrivalKey:z.string().min(1),
  investigationEndsKey:z.string().min(1),
  travelDays:z.number().int().nonnegative(),
+ objective:z.enum(['house_resources','army','possessions']),
 }).strict();
 
 /** Starts the operation immediately on the official Harptos date.
@@ -159,19 +161,21 @@ const submittedMissionSchema=z.object({
  */
 export async function submitSpyHouseMissionBrowser(input:{
  houseId:string;agentId:string;targetHouseId:string;
- destinationRegion:string;expectedAgentVersion:number;
+ destinationRegion:string;objective:SpyIntelligenceObjective;
+ expectedAgentVersion:number;
  expectedCalendarVersion:number;requestKey:string;
 }){
  const data=await houseRpc('spy_submit_house_mission',input.houseId,{
   p_agent:input.agentId,p_target:input.targetHouseId,
-  p_destination:input.destinationRegion,
+  p_destination:input.destinationRegion,p_objective:input.objective,
   p_expected_agent_version:input.expectedAgentVersion,
   p_expected_calendar_version:input.expectedCalendarVersion,
   p_request_key:input.requestKey,
  });
  const parsed=submittedMissionSchema.safeParse(data);
  if(!parsed.success||parsed.data.agentId!==input.agentId||
-  parsed.data.targetHouseId!==input.targetHouseId)
+  parsed.data.targetHouseId!==input.targetHouseId||
+  parsed.data.objective!==input.objective)
   throw new Error('A ordem não foi confirmada pelo servidor.');
  return parsed.data;
 }
