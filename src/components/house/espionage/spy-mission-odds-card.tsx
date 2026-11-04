@@ -1,31 +1,36 @@
 import {useQuery} from '@tanstack/react-query';
-import {useServerFn} from '@tanstack/react-start';
 import {Eye,Shield,Target,ChartNoAxesCombined} from 'lucide-react';
-import {previewSpyMissionOdds} from '@/lib/espionage/spy-mission-preview.functions';
+import {readSpyMissionOddsBrowser} from '@/lib/espionage/spy-target-browser';
 import {REGIONS} from '@/lib/house/regions';
+import './spy-mission-odds-card.css';
 
 type Props={
  houseId:string;agentId:string;targetHouseId:string;
  agentName:string;agentAvailable:boolean;simulation:boolean;
  destinationRegion:string;travelRounds:number|null;originRegion:string|null;
+ includeReturn:boolean;returnRounds:number|null;
 };
 
 /** Graph is deliberately based only on the authenticated server's single-target
  * summary. Never fetch a rival's raw sheet or build a full-target odds catalogue.
  */
 export function SpyMissionOddsCard(props:Props){
- const request=useServerFn(previewSpyMissionOdds);
- const enabled=Boolean(props.agentId&&props.targetHouseId&&props.agentAvailable&&!props.simulation);
+ const enabled=Boolean(props.agentId&&props.targetHouseId&&props.agentAvailable);
  const query=useQuery({
   queryKey:['spy-mission-odds',props.houseId,props.agentId,props.targetHouseId],
-  queryFn:()=>request({data:{
+  queryFn:()=>readSpyMissionOddsBrowser({
    houseId:props.houseId,agentId:props.agentId,targetHouseId:props.targetHouseId,
-  }}),
+  }),
   enabled,retry:false,staleTime:30_000,
  });
  if(!props.targetHouseId)return null;
  const data=query.data;
  const success=data?.successPercent??0;
+ // A missão termina após a viagem de ida mais 1 désdia de investigação.
+ // Retorno, quando solicitado, é exibido separadamente e não muda a chance.
+ const missionRounds=props.travelRounds===null?null:props.travelRounds+1;
+ const returnTotal=missionRounds!==null&&props.returnRounds!==null
+  ?missionRounds+props.returnRounds:null;
  const accent=success>=65?'#138b72':success>=30?'#b98726':'#b65045';
  const regionName=REGIONS[props.destinationRegion]?.name??props.destinationRegion;
  const sourceLabel=data?.source==='operational_sheet'?'Ficha operacional atual'
@@ -43,8 +48,27 @@ export function SpyMissionOddsCard(props:Props){
    <span style={{borderRadius:999,padding:'5px 10px',fontSize:12,
     border:'1px solid rgba(149,161,182,.5)'}}>Simulação de planejamento</span>
   </div>
+  <div className="spy-mission-key-metrics" aria-label="Tempo e chance da missão">
+   <div className="spy-mission-key-metric">
+    <small>Tempo para executar a missão</small>
+    <strong>{missionRounds===null?'Rota pendente':
+     missionRounds+' '+(missionRounds===1?'désdia':'désdias')}</strong>
+    <span>{missionRounds===null?'Aguardando trajeto autorizado':
+     missionRounds*10+' dias ordinários · '+props.travelRounds+' de viagem + 1 de investigação'}</span>
+    {props.includeReturn&&<span>{returnTotal===null?
+     'Retorno ainda sem rota calculada':
+     'Com retorno: '+returnTotal+' désdias · '+returnTotal*10+' dias ordinários'}</span>}
+   </div>
+   <div className="spy-mission-key-metric">
+    <small>Chance estimada de sucesso</small>
+    <strong aria-live="polite">{!enabled?'Selecione um agente':
+     query.isPending?'Calculando…':query.isError?'Indisponível':
+     data?success.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%':'Indisponível'}</strong>
+    <span>Astúcia do agente × dificuldade da Casa nobre</span>
+   </div>
+  </div>
   {!enabled&&<p role="status" style={{marginTop:12}}>
-   Escolha um agente real disponível e desative a origem simulada para calcular a chance.
+   Selecione um espião disponível para calcular a chance oficial da Casa.
   </p>}
   {enabled&&query.isPending&&<p role="status">Calculando a resistência oficial e a chance de sucesso…</p>}
   {enabled&&query.isError&&<p role="alert">A resistência desta Casa não pôde ser consultada.
