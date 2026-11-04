@@ -1,31 +1,28 @@
-.cormyr-map-section{background:linear-gradient(180deg,#f8fbfd,#f0f5fa);border:1px solid #a8bacd;border-radius:12px;overflow:hidden;color:#253d59}
+/* Mapa regional ilustrado: cores e fundo vêm do arquivo do Narrador.
+   Sobreposição somente para interação, sem redesenhar fronteiras. */
+.cormyr-map-section{background:#f6e9d0;border:1px solid #b48e53;border-radius:12px;overflow:hidden;color:#392314}
 .cormyr-map-heading{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px}
 .cormyr-map-heading h4{font:600 1.08rem/1.25 Georgia,serif;margin:0 0 5px}
 .cormyr-map-heading p{margin:0;font-size:.86rem;line-height:1.4}
-.cormyr-map-legend{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.cormyr-map-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .cormyr-legend-start,.cormyr-legend-target{display:inline-block;width:10px;height:10px;border-radius:50%;border:3px solid}
 .cormyr-legend-start{background:#c5ebff;border-color:#1765a8}
 .cormyr-legend-target{background:#ffe2a3;border-color:#b05623}
 .cormyr-legend-sea{display:inline-block;width:22px;border-top:3px dashed #087f9e}
-.cormyr-map-scroll{width:100%;overflow-x:auto;overflow-y:hidden;background:#eaf2f7;outline-offset:-2px}
+.cormyr-map-scroll{width:100%;overflow-x:auto;overflow-y:hidden;background:#e9c78e;outline-offset:-2px}
 .cormyr-map-scroll:focus-visible{outline:3px solid #1765a8}
-.cormyr-map-svg{display:block;width:100%;min-width:860px;height:auto;aspect-ratio:1628/888}
+.cormyr-map-svg{display:block;width:100%;min-width:860px;height:auto;aspect-ratio:1443 / 1090}
 .cormyr-region{cursor:pointer;outline:0}
-.cormyr-region-footprint{transition:filter .14s ease,fill .14s ease,stroke .14s ease}
-.cormyr-region:hover .cormyr-region-footprint,.cormyr-region:focus .cormyr-region-footprint{filter:brightness(1.09) saturate(1.17);stroke:#2f6184;stroke-width:5px}
-.cormyr-region.is-selected .cormyr-region-footprint{stroke:#a34a26;stroke-width:7px;filter:saturate(1.17)}
-.cormyr-region.is-origin .cormyr-region-footprint{filter:saturate(1.17)}
-.cormyr-region.is-origin.is-selected .cormyr-region-footprint{stroke:#a34a26}
-.cormyr-region-name{text-anchor:middle;fill:#2a3654;stroke:#f5f5ed;stroke-width:3.5px;stroke-linejoin:round;paint-order:stroke;letter-spacing:1.2px;font-family:Georgia,serif;font-weight:700}
-.cormyr-region-name.is-highlighted{fill:#923b18;stroke-width:4px}
-.cormyr-lake-text{text-anchor:middle;font:italic 30px Georgia,serif;fill:#194770;stroke:#d7e8f6;stroke-width:2px;paint-order:stroke}
-.cormyr-lake-subtitle{text-anchor:middle;font:600 18px Georgia,serif;fill:#194770;letter-spacing:3px;stroke:#d7e8f6;stroke-width:2px;paint-order:stroke}
-.cormyr-compass{text-anchor:middle;font:600 26px Georgia,serif;fill:#546c8a}
-.cormyr-origin-pin{fill:#c5ebff;stroke:#1765a8;stroke-width:6px}
-.cormyr-target-pin{fill:#ffe2a3;stroke:#b05623;stroke-width:5px}
-.cormyr-map-source{margin:0!important;padding:10px 18px;font-size:.77rem;line-height:1.4;color:#4a617b;border-top:1px solid #b9c9d8}
-.cormyr-map-mobile-regions{display:none;padding:10px;gap:6px;flex-wrap:wrap;background:#f0f5fa}
-.cormyr-map-mobile-regions button{border:1px solid #91aac6;border-radius:7px;padding:5px 9px;background:#fff;color:#29496d;font-size:.81rem}
+.cormyr-region-hotspot{fill:transparent;stroke:transparent;stroke-width:3;transition:fill .12s ease,stroke .12s ease}
+.cormyr-region:hover .cormyr-region-hotspot,.cormyr-region:focus .cormyr-region-hotspot{fill:rgba(252,224,140,.19);stroke:rgba(66,43,23,.82);stroke-dasharray:9 6}
+.cormyr-region.is-selected .cormyr-region-hotspot{stroke:#b65027;stroke-width:4;stroke-dasharray:8 5}
+.cormyr-region:focus-visible .cormyr-region-hotspot{stroke:#1765a8;stroke-width:5;stroke-dasharray:none}
+.cormyr-focus-halo{fill:none;stroke:#dfb851;stroke-width:3;opacity:.92}
+.cormyr-origin-pin{fill:#c5ebff;stroke:#1765a8;stroke-width:6}
+.cormyr-target-pin{fill:#ffe2a3;stroke:#b05623;stroke-width:5}
+.cormyr-map-source{margin:0!important;padding:10px 18px;font-size:.77rem;line-height:1.4;color:#604a33;border-top:1px solid #d5b68c}
+.cormyr-map-mobile-regions{display:none;padding:10px;gap:6px;flex-wrap:wrap;background:#f5ebd8}
+.cormyr-map-mobile-regions button{border:1px solid #bca078;border-radius:7px;padding:5px 9px;background:#fff9ee;color:#55300a;font-size:.81rem}
 .cormyr-map-mobile-regions button[aria-pressed=true]{border-color:#9c421c;background:#fce4cf;color:#70300b;font-weight:700}
 @media(max-width:790px){.cormyr-map-mobile-regions{display:flex}.cormyr-map-heading{padding:12px}.cormyr-map-heading h4{font-size:.98rem}}
-@media(prefers-reduced-motion:reduce){.cormyr-region-footprint{transition:none}}
+@media(prefers-reduced-motion:reduce){.cormyr-region-hotspot{transition:none}}
