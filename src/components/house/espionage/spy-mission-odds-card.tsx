@@ -2,6 +2,7 @@ import {useQuery} from '@tanstack/react-query';
 import {Eye,Shield,Target,ChartNoAxesCombined} from 'lucide-react';
 import {readSpyMissionOddsBrowser} from '@/lib/espionage/spy-target-browser';
 import {REGIONS} from '@/lib/house/regions';
+import './spy-mission-odds-card.css';
 
 type Props={
  houseId:string;agentId:string;targetHouseId:string;
