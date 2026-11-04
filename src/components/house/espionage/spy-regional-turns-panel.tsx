@@ -13,6 +13,7 @@ import {formatDate} from '@/lib/calendar/harptos';
 import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
 import {CormyrInteractiveMap} from './cormyr-interactive-map';
 import {SpyMissionOddsCard} from './spy-mission-odds-card';
+import {SpySubmitHouseMission} from './spy-submit-house-mission';
 import './spy-mission-planner.css';
 
 /** Fluxo único de prévia: espião REAL -> região -> Casa -> resumo e mapa.
@@ -34,6 +35,9 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
  const [assetId,setAssetId]=useState('');
  const [destination,setDestination]=useState('');
  const [targetHouseId,setTargetHouseId]=useState('');
+ const [submitted,setSubmitted]=useState<{
+  operationId:string;agentName:string;targetName:string;
+ }|null>(null);
 
  const agents=data?.agents??[];
  const selected=agents.find(a=>a.id===assetId);
@@ -146,6 +150,13 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
    <p className="spy-planner-feedback" role="status">
     Nenhum espião disponível. Crie um agente ou aguarde a conclusão de suas missões.</p>}
 
+  {submitted&&<p className="spy-planner-feedback spy-planner-submitted"
+   role="status">
+   <strong>Missão registrada:</strong> {submitted.agentName} foi designado
+   para investigar {submitted.targetName}. O Narrador precisa homologar
+   a rota antes que o espião se desloque e inicie a investigação.
+  </p>}
+
   {allSelected&&selected&&selectedTargetHouse&&<div className="spy-planner-result">
    <SpyMissionOddsCard
     houseId={houseId} agentId={selected.id}
@@ -155,6 +166,24 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
     travelRounds={ready?plan.travelRounds:null}
     originRegion={originRegion}
     includeReturn={false} returnRounds={null}/>
+   {ready&&agentAvailable&&originRegion&&
+    <SpySubmitHouseMission
+     key={selected.id+':'+selectedTargetHouse.id+':'+destination}
+     houseId={houseId} agentId={selected.id} agentName={selected.codename}
+     originRegion={originRegion}
+     destinationRegion={destination} destinationName={name(destination)}
+     targetHouseId={selectedTargetHouse.id}
+     targetHouseName={selectedTargetHouse.name}
+     travelRounds={plan.travelRounds}
+     calendarVersion={campaignTime.data?.version??null}
+     canSubmit={agentAvailable}
+     onSubmitted={operationId=>{
+      setSubmitted({
+       operationId,agentName:selected.codename,targetName:selectedTargetHouse.name,
+      });
+      setAssetId('');setDestination('');setTargetHouseId('');
+     }}/>
+   }
    {houseStage==='requires_region_arrival'&&<p className="spy-planner-feedback" role="note">
     O espião poderá investigar {selectedTargetHouse.name} somente após chegar
     fisicamente a {name(destination)}. Este planejamento não o desloca automaticamente.
