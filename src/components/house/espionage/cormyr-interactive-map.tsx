@@ -76,7 +76,7 @@ export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}
      const selected=id===selectedRegion;
      const origin=id===originRegion;
      return <g key={id} role="button" tabIndex={0}
-      aria-label={regionName+' · selecionar destino'+(origin?' · região de partida':'')}
+      aria-label={regionName+'; selecionar região; '+(origin?'localização de partida; ':'')+(selected?'destino escolhido':'')}
       aria-pressed={selected}
       className={'cormyr-region'+(selected?' is-selected':'')+(origin?' is-origin':'')}
       onClick={()=>navigate(id)}
