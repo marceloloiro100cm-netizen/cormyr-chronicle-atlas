@@ -60,9 +60,7 @@ export function SpyPortraitPicker({portraits,selected,onChange,currentAgentId=nu
     </button>;
    })}
   </div>
-  <p className="house-caption">Cada imagem pode ser usada por apenas um
-   espião de cada Casa. Fotos em cinza já pertencem a outro agente desta Casa.
-   Outras Casas podem usar as mesmas imagens.</p>
+
  </fieldset>;
 }
 
