@@ -67,7 +67,9 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
    <ShieldCheck size={18} aria-hidden="true"/>
    <span>{receipt.status==='traveling'
     ?'Missão iniciada. O espião está em viagem; a contagem acompanha o Hub Temporal.'
-    :'Missão iniciada. O espião já está investigando a Casa na região atual.'}</span>
+    :receipt.status==='operating'
+     ?'Missão iniciada. O espião já está investigando a Casa.'
+     :'Missão em andamento: o prazo terminou e o resultado aguarda o Narrador.'}</span>
   </div>:<Button type="button" className="spy-planner-execution-button"
    disabled={!ready} onClick={()=>{setError('');setOpen(true);}}>
    <Send size={16} aria-hidden="true"/> Iniciar missão
