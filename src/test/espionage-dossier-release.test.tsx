@@ -45,7 +45,7 @@ describe('Dossiês · contrato visual do jogador e ausência de inventário tota
   state.read.mockResolvedValue([dossier]);mount();
   expect((await screen.findAllByText('Casa Harcourt')).length).toBeGreaterThan(0);
   expect(state.read).toHaveBeenCalledWith('goldfin');
-  expect(screen.getByText('3/7')).toBeInTheDocument();
+  expect(screen.getByText('Recursos: 3/7')).toBeInTheDocument();
   expect(screen.getAllByText('Desconhecido')).toHaveLength(4);
   expect(screen.getByText('35')).toBeInTheDocument();
   expect(screen.queryByText('500')).toBeNull();
