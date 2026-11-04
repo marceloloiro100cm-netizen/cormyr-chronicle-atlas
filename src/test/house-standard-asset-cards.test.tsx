@@ -63,13 +63,34 @@ describe('Padrão reutilizável de quadros da Casa',()=>{
   renderCatalog('economy',s);
   fireEvent.change(screen.getByLabelText('Buscar quadro'),{target:{value:'bosque sagrado'}});
   const card=screen.getByTestId('house-catalog-asset-godswood');
-  expect(within(card).getByText('Bosque da Família')).toBeInTheDocument();
-  fireEvent.click(within(card).getByText('Bosque Sagrado / Santuário Ancestral',{selector:'small'}));
+  expect(within(card).getAllByText('Bosque da Família').length).toBeGreaterThan(0);
+  fireEvent.click(within(card).getByText('Bosque da Família',{selector:'small'}));
   expect(within(card).getByText('Bônus, efeitos e habilidades')).toBeVisible();
   expect(within(card).getByText('Custo e regras de compra')).toBeVisible();
   fireEvent.change(screen.getByLabelText('Buscar quadro'),{target:{value:'carvoaria'}});
   expect(screen.getByTestId('house-catalog-asset-pros-charcoal')).toBeInTheDocument();
   expect(screen.queryByTestId('house-catalog-asset-godswood')).not.toBeInTheDocument();
+ });
+ it('posses já adquiridas exibem descrição em português e custo histórico da ficha',()=>{
+  const s=state();
+  s.holdings=[{
+   ...holding('pros-large-library','Grande Biblioteca de Lex Castle'),
+   costs:[{resource:'wealth',amount:5,mode:'allocation'}],
+   effects:[
+    {kind:'action',description:'Dois dados de bônus de Conhecimento (Pesquisa) disponíveis na biblioteca.'},
+    {kind:'action',description:'Erudito contratado com desconto de 2 pontos de Riqueza.'},
+   ],
+  }];
+  renderCatalog('economy',s);
+  fireEvent.change(screen.getByLabelText('Buscar quadro'),{target:{value:'biblioteca grande'}});
+  const card=screen.getByTestId('house-catalog-asset-pros-large-library');
+  expect(within(card).getByText('Grande Biblioteca de Lex Castle',{selector:'small'})).toBeInTheDocument();
+  expect(within(card).getAllByText(/Dois dados de bônus de Conhecimento/).length).toBeGreaterThan(0);
+  fireEvent.click(within(card).getByText('Grande Biblioteca de Lex Castle',{selector:'small'}));
+  expect(within(card).getAllByText(/Erudito contratado com desconto de 2 pontos/).length).toBeGreaterThan(0);
+  expect(within(card).getByText(/5 Riqueza/)).toBeInTheDocument();
+  expect(within(card).getByText(/Custo histórico da Casa já contabilizado/)).toBeInTheDocument();
+  expect(within(card).queryByText(/2 Defesa \(/)).not.toBeInTheDocument();
  });
  it('Economia: filtros de adquiridos e não adquiridos combinam com busca e categoria',()=>{
   const s=state();
