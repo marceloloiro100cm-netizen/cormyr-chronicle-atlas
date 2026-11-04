@@ -25,7 +25,8 @@ describe('Espionagem · criação com foto exclusiva, melhorias e campos ocultos
  });
  it('retrato reservado por qualquer Casa fica indisponível sem revelar o outro agente',()=>{
   const picker=file('src/components/house/espionage/spy-portrait-picker.tsx');
-  expect(picker).toContain('(p.occupied||p.assignedAgentId)');
+  expect(picker).toContain('const used=p.assignedAgentId');
+  expect(picker).toContain(':Boolean(p.occupied)');
   expect(picker).toContain('p.assignedAgentId!==currentAgentId');
   expect(picker).toContain("filter:used?'grayscale(100%)':'none'");
   expect(picker).toContain('disabled={used}');
