@@ -64,18 +64,13 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
   }finally{setBusy(false);}
  };
  return <div className="spy-planner-execution">
-  <div>
-   <strong>Enviar a missão para execução</strong>
-   <p>Uma ordem real ficará registrada para o Narrador autorizar o deslocamento
-    e a investigação. Nenhum resultado será sorteado agora.</p>
-  </div>
   {receipt?<div className="spy-planner-execution-confirmed" role="status">
    <ShieldCheck size={18} aria-hidden="true"/>
    <span>Ordem registrada. O espião foi designado à missão e aguarda
     a homologação da rota pelo Narrador.</span>
   </div>:<Button type="button" className="spy-planner-execution-button"
    disabled={!ready} onClick={()=>{setError('');setOpen(true);}}>
-   <Send size={16} aria-hidden="true"/> Executar missão
+   <Send size={16} aria-hidden="true"/> Iniciar missão
   </Button>}
   {!receipt&&!ready&&<small role="status">
    Selecione um espião disponível, uma Casa e aguarde o carregamento do calendário.
@@ -83,9 +78,9 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
   <Dialog open={open} onOpenChange={next=>{if(!busy)setOpen(next);}}>
    <DialogContent className="spy-mission-confirm-dialog sm:max-w-lg">
     <DialogHeader>
-     <DialogTitle>Confirmar execução da missão</DialogTitle>
+     <DialogTitle>Confirmar início da missão</DialogTitle>
      <DialogDescription>
-      Esta ação registrará uma ordem real de espionagem e reservará o agente
+      Ao confirmar, uma ordem de espionagem será registrada e o agente ficará reservado
       até a homologação do Narrador.
      </DialogDescription>
     </DialogHeader>
@@ -104,7 +99,7 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
       onClick={()=>setOpen(false)}>Cancelar</Button>
      <Button type="button" disabled={!ready} onClick={()=>void send()}>
       <Send size={15} aria-hidden="true"/>
-      {busy?'Registrando missão…':'Confirmar execução'}
+      {busy?'Registrando missão…':'Confirmar início'}
      </Button>
     </DialogFooter>
    </DialogContent>
