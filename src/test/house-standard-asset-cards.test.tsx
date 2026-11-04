@@ -96,11 +96,11 @@ describe('Padrão reutilizável de quadros da Casa',()=>{
  });
  it('prioriza os adquiridos nas quatro abas, inclusive terrenos registrados diretamente e obras',()=>{
   const cases=[
-   {section:'domains' as const, accepts:(category:string,id:string)=>
+   {section:'domains' as const, accepts:(category:string,_id:string)=>
     ['terrain','feature','community'].includes(category)},
-   {section:'fortifications' as const,accepts:(category:string,id:string)=>
+   {section:'fortifications' as const,accepts:(category:string,_id:string)=>
     category==='fortification'},
-   {section:'economy' as const,accepts:(category:string,id:string)=>
+   {section:'economy' as const,accepts:(category:string,_id:string)=>
     ['estate','lifestyle','personage','settlement','improvement','equipment','vassal'].includes(category)},
    {section:'spy' as const,accepts:(category:string,id:string)=>
     ['estate','personage','improvement','settlement'].includes(category)&&SPY_HOLDING_ID_SET.has(id)},
