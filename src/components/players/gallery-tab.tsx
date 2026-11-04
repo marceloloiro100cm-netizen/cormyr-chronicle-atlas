@@ -20,7 +20,11 @@ const mailImageSchema=z.object({
 type MailImage=z.infer<typeof mailImageSchema>;
 
 async function loadHouseMailImages(houseId:string):Promise<MailImage[]>{
- const {data,error}=await supabase.rpc('house_gallery_mail_images',{p_house:houseId});
+ // The new SQL RPC is versioned separately from generated Supabase types.
+ const rpc=(supabase as unknown as {rpc:(
+  name:string,args:{p_house:string}
+ )=>Promise<{data:unknown;error:{message:string}|null}>}).rpc;
+ const {data,error}=await rpc.call(supabase,'house_gallery_mail_images',{p_house:houseId});
  if(error)throw new Error('Não foi possível consultar as imagens das missivas desta Casa.');
  const parsed=z.array(mailImageSchema).max(500).safeParse(data);
  if(!parsed.success)throw new Error('A galeria de missivas retornou dados inesperados.');
