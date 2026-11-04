@@ -192,7 +192,8 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
       originHouseId={houseId} originHouseName={originHouse?.name??houseId}
       destinationHouseId={selectedTargetHouse.id}
       destinationHouseName={selectedTargetHouse.name}
-      plan={ready?plan:null} onSelectRegion={chooseRegion}/>:
+      plan={ready?plan:null} onSelectRegion={chooseRegion}
+      onSelectHouse={setTargetHouseId}/>:
      <CormyrInteractiveMap selectedRegion={destination}
       originRegion={originRegion} plan={ready?plan:null}
       onSelect={chooseRegion}/>}
