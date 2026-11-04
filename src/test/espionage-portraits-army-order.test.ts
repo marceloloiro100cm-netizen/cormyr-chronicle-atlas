@@ -28,7 +28,7 @@ describe('Galeria do Drive, criação de unidades e construções adquiridas pri
  it('Criar unidade abre modal centralizado sem formulário no final da página',()=>{
   const army=src('src/components/house/army.tsx');
   expect(army).toContain('<Dialog open={open}');
-  expect(army).toContain('<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">');
+  expect(army).toContain('<DialogContent className="cormyr-creation-dialog cormyr-creation-dialog--military max-h-[90vh] overflow-y-auto sm:max-w-3xl">');
   expect(army).toContain('<DialogTitle>Criar unidade</DialogTitle>');
   expect(army).toContain('<Button onClick={()=>setOpen(true)}>');
   expect(army).toContain('onSubmit={async e=>{e.preventDefault();const first=UNIT_TYPES');
