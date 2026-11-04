@@ -166,24 +166,6 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
     travelRounds={ready?plan.travelRounds:null}
     originRegion={originRegion}
     includeReturn={false} returnRounds={null}/>
-   {ready&&agentAvailable&&originRegion&&
-    <SpySubmitHouseMission
-     key={selected.id+':'+selectedTargetHouse.id+':'+destination}
-     houseId={houseId} agentId={selected.id} agentName={selected.codename}
-     originRegion={originRegion}
-     destinationRegion={destination} destinationName={name(destination)}
-     targetHouseId={selectedTargetHouse.id}
-     targetHouseName={selectedTargetHouse.name}
-     travelRounds={plan.travelRounds}
-     calendarVersion={campaignTime.data?.version??null}
-     canSubmit={agentAvailable}
-     onSubmitted={operationId=>{
-      setSubmitted({
-       operationId,agentName:selected.codename,targetName:selectedTargetHouse.name,
-      });
-      setAssetId('');setDestination('');setTargetHouseId('');
-     }}/>
-   }
    {houseStage==='requires_region_arrival'&&<p className="spy-planner-feedback" role="note">
     O espião poderá investigar {selectedTargetHouse.name} somente após chegar
     fisicamente a {name(destination)}. Este planejamento não o desloca automaticamente.
@@ -200,6 +182,26 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
      originRegion={originRegion} plan={ready?plan:null}
      onSelect={chooseRegion}/>
    </div>
+   {ready&&agentAvailable&&originRegion&&
+    <div className="spy-planner-start-row">
+     <SpySubmitHouseMission
+      key={selected.id+':'+selectedTargetHouse.id+':'+destination}
+      houseId={houseId} agentId={selected.id} agentName={selected.codename}
+      originRegion={originRegion}
+      destinationRegion={destination} destinationName={name(destination)}
+      targetHouseId={selectedTargetHouse.id}
+      targetHouseName={selectedTargetHouse.name}
+      travelRounds={plan.travelRounds}
+      calendarVersion={campaignTime.data?.version??null}
+      canSubmit={agentAvailable}
+      onSubmitted={operationId=>{
+       setSubmitted({
+        operationId,agentName:selected.codename,targetName:selectedTargetHouse.name,
+       });
+       setAssetId('');setDestination('');setTargetHouseId('');
+      }}/>
+    </div>
+   }
    {forecast&&<details className="spy-planner-calendar-details">
     <summary>Datas previstas pelo Hub Temporal</summary>
     <p>Partida: <strong>{formatDate(forecast.officialDateKey)}</strong></p>
