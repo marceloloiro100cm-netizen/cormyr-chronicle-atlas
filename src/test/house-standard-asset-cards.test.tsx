@@ -5,6 +5,7 @@ import {HouseAssetCard} from '@/components/house/asset-card';
 import {HouseAssetCatalog} from '@/components/house/asset-catalog';
 import {MilitaryAssets} from '@/components/house/military-assets';
 import {CORE_CATALOG} from '@/lib/house/catalog';
+import {SPY_HOLDING_ID_SET} from '@/lib/espionage/spy-defense';
 import {newHouseState,type HouseState,type Holding} from '@/lib/house/types';
 
 function state():HouseState{
@@ -19,7 +20,7 @@ const holding=(id:string,name:string):Holding=>({
 });
 const common={canEdit:true,busy:false,onBuy:vi.fn(),
  onCondition:vi.fn().mockResolvedValue(true)};
-function renderCatalog(section:'domains'|'fortifications'|'economy',data=state()){
+function renderCatalog(section:'domains'|'fortifications'|'economy'|'spy',data=state()){
  return render(<HouseAssetCatalog section={section} state={data} catalog={CORE_CATALOG}
   {...common}/>);
 }
@@ -92,6 +93,55 @@ describe('Padrão reutilizável de quadros da Casa',()=>{
   expect(screen.queryByTestId('house-catalog-asset-godswood')).not.toBeInTheDocument();
   fireEvent.change(acquisition,{target:{value:'all'}});
   expect(screen.getByLabelText('Aquisição')).toHaveValue('all');
+ });
+ it('prioriza os adquiridos nas quatro abas, inclusive terrenos registrados diretamente e obras',()=>{
+  const cases=[
+   {section:'domains' as const, accepts:(category:string,_id:string)=>
+    ['terrain','feature','community'].includes(category)},
+   {section:'fortifications' as const,accepts:(category:string,_id:string)=>
+    category==='fortification'},
+   {section:'economy' as const,accepts:(category:string,_id:string)=>
+    ['estate','lifestyle','personage','settlement','improvement','equipment','vassal'].includes(category)},
+   {section:'spy' as const,accepts:(category:string,id:string)=>
+    ['estate','personage','improvement','settlement'].includes(category)&&SPY_HOLDING_ID_SET.has(id)},
+  ];
+  for(const {section,accepts} of cases){
+   const eligible=CORE_CATALOG.filter(item=>accepts(item.category,item.id));
+   expect(eligible.length).toBeGreaterThan(1);
+   const purchased=section==='domains'
+    ?eligible.filter(item=>item.category==='terrain').slice(-1)[0]!
+    :eligible[eligible.length-1]!;
+   const s=state();
+   if(section==='domains'){
+    // Main terrain, feature and community are owned by the domain even
+    // without a matching entry in the holdings ledger.
+    if(purchased.category==='terrain')s.domains[0]!.terrain=purchased.id;
+    else if(purchased.category==='feature')s.domains[0]!.features=[purchased.id];
+    else s.domains[0]!.community=purchased.id;
+   }else{
+    s.holdings=[{...holding(purchased.id,'Obra comprada'),status:'building'}];
+   }
+   const view=renderCatalog(section,s);
+   const cards=screen.getAllByTestId(/^house-catalog-asset-/);
+   expect(cards[0]).toHaveAttribute('data-testid','house-catalog-asset-'+purchased.id);
+   expect(cards[0]).not.toHaveClass('military-asset-inactive');
+   expect(cards.slice(1).some(card=>card.classList.contains('military-asset-inactive'))).toBe(true);
+   view.unmount();
+  }
+ });
+ it('identifica características e comunidades ligadas ao domínio como adquiridas',()=>{
+  const s=state();
+  const feature=CORE_CATALOG.filter(item=>item.category==='feature').slice(-1)[0]!;
+  const community=CORE_CATALOG.filter(item=>item.category==='community').slice(-1)[0]!;
+  s.domains[0]!.features=[feature.id];
+  s.domains[0]!.community=community.id;
+  renderCatalog('domains',s);
+  const acquired=new Set(['hills',feature.id,community.id]);
+  const visible=screen.getAllByTestId(/^house-catalog-asset-/);
+  const firstThree=visible.slice(0,3).map(card=>card.getAttribute('data-testid')?.replace('house-catalog-asset-',''));
+  expect(new Set(firstThree)).toEqual(acquired);
+  expect(visible.slice(0,3).every(card=>!card.classList.contains('military-asset-inactive'))).toBe(true);
+  expect(visible[3]).toHaveClass('military-asset-inactive');
  });
  it('não mostra filtro de aquisição em Terras ou Fortificações',()=>{
   const view=renderCatalog('domains');

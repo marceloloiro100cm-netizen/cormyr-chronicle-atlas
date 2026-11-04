@@ -135,7 +135,15 @@ export function HouseAssetCatalog({section,state,catalog,canEdit,busy,onBuy,onCo
  const choices=CATEGORY_BY_SECTION[section];
  const items=catalog.filter(item=>choices.includes(item.category)&&
   (section!=='spy'||SPY_HOLDING_ID_SET.has(item.id)));
- const acquiredIds=new Set(state.holdings.filter(h=>h.status==='active'||h.status==='building').map(h=>h.itemId));
+ // Include purchases currently in construction and assets registered directly on
+ // domains (terrain, features and community), not just holding records.
+ const acquiredIds=new Set<string>(state.holdings.filter(h=>
+  h.status==='active'||h.status==='building').map(h=>h.itemId));
+ for(const domain of state.domains){
+  if(domain.terrain)acquiredIds.add(domain.terrain);
+  if(domain.community)acquiredIds.add(domain.community);
+  for(const feature of domain.features)acquiredIds.add(feature);
+ }
  const visible=items.filter(item=>{
   // Building projects count as already purchased even if bonuses are pending.
   const acquired=acquiredIds.has(item.id);
@@ -145,8 +153,8 @@ export function HouseAssetCatalog({section,state,catalog,canEdit,busy,onBuy,onCo
    [item.name,item.description,item.original,section==='spy'?spyCatalogExplanation(item.id)?.summary??'':''].join(' ').toLocaleLowerCase('pt-BR')
     .includes(search.toLocaleLowerCase('pt-BR'));
  });
- const orderedVisible=['economy','spy'].includes(section)
-  ?acquiredFirst(visible,acquiredIds):visible;
+ // One stable order across Terras, Fortificações, Economia and Espionagem.
+ const orderedVisible=acquiredFirst(visible,acquiredIds);
  const acquired=items.filter(item=>locationsFor(item,state,
   state.holdings.filter(h=>h.itemId===item.id&&h.status==='active')).length>0).length;
  return <section className="military-assets house-assets" aria-label={'Catálogo de '+(
