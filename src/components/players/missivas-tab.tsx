@@ -23,9 +23,11 @@ import {useCampaignTime} from '@/lib/calendar/campaign-time';
 
 
 function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Responder',isAdmin=false}:{letterId:string;replyId?:string|undefined;recipientId:string;roundRevision:string;onSave:()=>unknown;label?:string;isAdmin?:boolean}){
-  const {data:currentTime}=useCampaignTime();
-  const {data:deliveryWeek=null}=useQuery({queryKey:['reply-delivery',recipientId,roundRevision],queryFn:async()=>{const r=await supabase.rpc('reply_delivery_week',{p_recipient:recipientId});if(r.error)throw r.error;return r.data;},refetchInterval:15000});
   const [open,setOpen]=useState(false),[content,setContent]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);const key=useRef<string|null>(null);
+  const {data:currentTime}=useCampaignTime();
+  // Reply cards can be numerous; do not poll delivery RPCs for closed forms.
+  // Opening a form activates the live, permission-checked delivery query.
+  const {data:deliveryWeek=null}=useQuery({queryKey:['reply-delivery',recipientId,roundRevision],enabled:open,queryFn:async()=>{const r=await supabase.rpc('reply_delivery_week',{p_recipient:recipientId});if(r.error)throw r.error;return r.data;},refetchInterval:15000});
   const [images,setImages]=useState<PendingImage[]>([]);
   const [signedBy,setSignedBy]=useState('');
   const [campaignDate,setCampaignDate]=useState('');
