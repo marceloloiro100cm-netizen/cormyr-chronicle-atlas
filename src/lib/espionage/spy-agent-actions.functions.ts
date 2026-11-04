@@ -1,6 +1,7 @@
 import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
 import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
+import {finishSpyIntelligence} from './spy-dossier.functions';
 
 const base=z.object({houseId:z.string().min(1).max(100),
  agentId:z.string().uuid(),expectedAgentVersion:z.number().int().positive(),
@@ -170,5 +171,17 @@ export const resolveSpyAgentMission=createServerFn({method:'POST'})
   const parsed=resolveResult.safeParse(result.data);
   if(!parsed.success||parsed.data.operationId!==data.operationId)
    throw new Error('Resultado de missão inconsistente.');
-  return parsed.data;
+  // Adjudication is authoritative. Materialization may be safely retried from
+  // the Narrator's Dossier panel if its official source is temporarily absent.
+  let intelligenceStatus:'complete'|'waiting_catalog'|'no_success_award'|'retry_required'='retry_required';
+  if(parsed.data.outcome==='mission_success'||parsed.data.alreadyApplied){
+   try{
+    intelligenceStatus=await finishSpyIntelligence(
+     context.supabase as unknown as Parameters<typeof finishSpyIntelligence>[0],
+     data.operationId);
+   }catch(error){
+    console.error('Mission adjudicated; dossier retry required',error);
+   }
+  }else intelligenceStatus='no_success_award';
+  return {...parsed.data,intelligenceStatus};
  });
