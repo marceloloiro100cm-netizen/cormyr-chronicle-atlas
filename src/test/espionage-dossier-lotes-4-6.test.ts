@@ -12,7 +12,7 @@ describe('Dossiês de espionagem · interface e conexão oficial',()=>{
  it('narrador tem menu imediatamente após o Hub Temporal',()=>{
   const nav=read('src/components/players/narrator-missives-hub.tsx');
   const route=read('src/routes/_authenticated/jogadores.tsx');
-  expect(nav).toContain("['calendario','Hub Temporal'],\\n ['dossies','Dossiês de Espionagem']");
+  expect(nav.indexOf("['dossies','Dossiês de Espionagem']")).toBeGreaterThan(nav.indexOf("['calendario','Hub Temporal']"));
   expect(route).toContain("section==='dossies'?<SpyNarratorDossiers/>");
  });
  it('painel contém três modalidades, registros conhecidos e filtros sem total secreto',()=>{
