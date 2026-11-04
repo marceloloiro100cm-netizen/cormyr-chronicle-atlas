@@ -13,11 +13,12 @@ import {regionId} from '@/lib/house/regions';
  */
 export function SpySubmitHouseMission({houseId,agentId,agentName,
  originRegion,destinationRegion,destinationName,targetHouseId,targetHouseName,
- travelRounds,calendarVersion,canSubmit}:{
+ travelRounds,calendarVersion,canSubmit,onSubmitted}:{
  houseId:string;agentId:string;agentName:string;
  originRegion:string;destinationRegion:string;destinationName:string;
  targetHouseId:string;targetHouseName:string;travelRounds:number;
  calendarVersion:number|null;canSubmit:boolean;
+ onSubmitted?:(operationId:string)=>void;
 }){
  const qc=useQueryClient();
  const [open,setOpen]=useState(false);
@@ -47,11 +48,12 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
    });
    setReceipt(result.operationId);
    setOpen(false);
-   await Promise.all([
+   await Promise.allSettled([
     qc.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
     qc.invalidateQueries({queryKey:['spy-house-management',houseId]}),
     qc.invalidateQueries({queryKey:['spy-mission-odds',houseId]}),
    ]);
+   onSubmitted?.(result.operationId);
   }catch(e){
    setError(e instanceof Error?e.message:
     'Não foi possível registrar a ordem. Atualize a ficha e tente novamente.');
