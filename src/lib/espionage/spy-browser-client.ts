@@ -3,6 +3,7 @@ import {supabase} from '@/integrations/supabase/client';
 import {balances} from '@/lib/house/engine';
 import type {HouseState} from '@/lib/house/types';
 import {spyManagementSchema,type SpyManagement} from './spy-management.functions';
+import {resolveSpyPortraitImageUrl} from './spy-portrait-manifest';
 import {spyRecruitmentOptionsSchema,type SpyRecruitmentOptions} from './spy-recruitment.functions';
 import {spyRegionalStrategySchema} from './region-turns';
 import type {SpyAgentUpgrade} from './spy-agent-progression';
@@ -46,7 +47,13 @@ export async function readSpyHouseManagementBrowser(houseId:string):Promise<SpyM
    if(Number.isSafeInteger(total))availableWealth=total;
   }
  }catch{/* The roster is valid even if an auxiliary balance read fails. */}
- return {...parsed.data,availableWealth};
+ // This UI reads PostgreSQL directly; map official catalog IDs to local
+ // assets even before the idempotent SQL URL reconciliation is executed.
+ // Assignments and per-house availability stay as supplied by the RPC.
+ const portraits=parsed.data.portraits.map(p=>({
+  ...p,imageUrl:resolveSpyPortraitImageUrl(p.id,p.imageUrl),
+ }));
+ return {...parsed.data,portraits,availableWealth};
 }
 
 export async function readSpyRecruitmentOptionsBrowser(houseId:string):Promise<SpyRecruitmentOptions>{
