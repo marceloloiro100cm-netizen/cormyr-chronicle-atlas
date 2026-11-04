@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useState} from 'react';
+import {useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {Eye,ScrollText,Shield,Swords,Castle,LockKeyhole,RefreshCw} from 'lucide-react';
@@ -135,7 +135,7 @@ export function SpyPlayerDossiers({houseId}:{houseId:string}){
 
 export function SpyNarratorDossiers(){
  const qc=useQueryClient();
- const [owner,setOwner]=useState(''),[selected,setSelected]=useState(''),
+ const [owner,setOwner]=useState(''),[target,setTarget]=useState(''),[region,setRegion]=useState(''),[selected,setSelected]=useState(''),
   [objective,setObjective]=useState<SpyIntelligenceObjective>('house_resources'),
   [subject,setSubject]=useState(''),[action,setAction]=useState<'reveal'|'revalidate'|'revoke'>('reveal'),
   [reason,setReason]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
@@ -146,7 +146,12 @@ export function SpyNarratorDossiers(){
  const adjust=useServerFn(adjustSpyIntelligence);
  const retry=useServerFn(retrySpyIntelligence);
  const owners=[...new Map((query.data??[]).map(d=>[d.ownerHouseId,d.ownerHouseName])).entries()];
- const filtered=(query.data??[]).filter(d=>!owner||d.ownerHouseId===owner);
+ const regions=[...new Set((query.data??[]).map(d=>d.targetRegion).filter(
+  (value):value is string=>Boolean(value)))].sort();
+ const filtered=(query.data??[]).filter(d=>(!owner||d.ownerHouseId===owner)
+  &&(!target||d.targetHouseName.toLocaleLowerCase('pt-BR')
+   .includes(target.toLocaleLowerCase('pt-BR')))
+  &&(!region||d.targetRegion===region));
  const active=filtered.find(d=>d.id===selected)??filtered[0];
  const options=useQuery({queryKey:['spy-dossiers','options',active?.id],
   enabled:!!active,queryFn:()=>readSpyIntelligenceOptionsBrowser(active!.id),retry:false});
@@ -185,12 +190,21 @@ export function SpyNarratorDossiers(){
   </div><Button variant="outline" onClick={()=>void refresh()}><RefreshCw size={16}/>Atualizar</Button></div>
   {query.isPending&&<p role="status">Consultando informações de inteligência…</p>}
   {query.isError&&<p role="alert">Não foi possível consultar os dossiês. Verifique suas permissões.</p>}
-  <label className="spy-dossier-owner-filter">Casa investigadora
-   <select value={owner} onChange={e=>{setOwner(e.target.value);setSelected('');}}>
+  <div className="spy-dossier-filters">
+   <label>Casa investigadora<select value={owner}
+    onChange={e=>{setOwner(e.target.value);setSelected('');}}>
     <option value="">Todas as Casas</option>
     {owners.map(([id,name])=><option value={id} key={id}>{name}</option>)}
-   </select>
-  </label>
+   </select></label>
+   <label>Casa-alvo<input value={target}
+    onChange={e=>{setTarget(e.target.value);setSelected('');}}
+    placeholder="Pesquisar casa nobre"/></label>
+   <label>Região<select value={region}
+    onChange={e=>{setRegion(e.target.value);setSelected('');}}>
+    <option value="">Todas</option>
+    {regions.map(value=><option value={value} key={value}>{value}</option>)}
+   </select></label>
+  </div>
   <div className="spy-dossier-admin-table-wrap"><table className="spy-dossier-admin-table">
    <thead><tr><th>Investigadora</th><th>Casa-alvo</th>
     <th>Recursos</th><th>Exército</th><th>Posses</th><th>Ação</th></tr></thead>
