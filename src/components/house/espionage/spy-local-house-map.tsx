@@ -114,9 +114,5 @@ export function SpyLocalHouseMap({
    {' '}O mapa permanece visível, mas não desenhamos uma rota sobre
    localizações desconhecidas.
   </p>}
-  <p className="spy-noble-local-footnote">
-   Linha ilustrativa entre bandeiras, não uma estrada oficial.
-   O cálculo da missão continua seguindo as regras vigentes.
-  </p>
  </section>;
 }
