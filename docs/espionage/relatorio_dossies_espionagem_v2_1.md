@@ -3,8 +3,9 @@
 
 **Escopo:** espionagem entre Casas nobres, usando os agentes, o calendário,
 a dificuldade, a rolagem e a resolução homologada do site.
-**Estado do desenvolvimento:** código dos lotes 1–3 preparado na PR #247;
-migração SQL ainda exige homologação/aplicação; lotes 4–7 não implementados.
+**Estado do desenvolvimento:** lotes 1–3 integrados à `main` pela PR #247;
+migração SQL 0104 aplicada no Supabase do projeto ativo após teste transacional;
+lotes 4–7 não implementados, e a publicação visual no Lovable ainda não está confirmada.
 
 ### 1. Objetivos e princípios
 A informação pertence à Casa investigadora, não ao espião. Para cada par
@@ -198,12 +199,14 @@ concorrência, regresso da missão, dados históricos, CI e layout.
 - [x] RPC recebe e grava a modalidade com chave idempotente.
 - [x] SQL mantém dossiê por par de Casas e descobertas sem duplicatas.
 - [x] SQL suporta capacidade de 3–7 derivada da decisão do Narrador.
-- [ ] Migração aplicada e homologada no Supabase de produção.
+- [x] Migração aplicada no Supabase do projeto ativo, com RLS e gatilho conferidos.
 - [ ] Dados reais de Exército e Posses integrados (lote 4).
 - [ ] Ficha operacional atual integrada ao snapshot completo (lote 4).
 - [ ] Interfaces do jogador e narrador publicadas (lotes 5–6).
 - [ ] Validação integral, publicação e testes reais (lote 7).
 
-**Não publicar somente o frontend sem antes aplicar a migração 0104.**
-A branch de desenvolvimento e a PR #247 isolam as alterações até a
-homologação segura do banco.
+**Migração 0104 já aplicada antes da integração do frontend.**
+A PR #247 foi incorporada à `main`. O CI específico de dossiês passou; a
+validação global teve duas falhas preexistentes em testes de mapas/retratos,
+que deverão ser tratadas separadamente. A publicação visual via Lovable
+permanece dependente de sincronização e validação.
