@@ -8,6 +8,7 @@ import {createSpyAgentBrowser,readSpyRecruitmentOptionsBrowser} from '@/lib/espi
 import {SPY_AGENT_UPGRADES,type SpyAgentUpgrade} from '@/lib/espionage/spy-agent-progression';
 import type {SpyManagement} from '@/lib/espionage/spy-management.functions';
 import {SpyPortraitPicker} from './spy-portrait-picker';
+import '../creation-dialog-theme.css';
 
 /** Unified creation transaction. Do not call recruit and purchase separately:
  * that would leave half-created agents when the House runs out of Wealth.
@@ -77,14 +78,14 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
   {success&&<span role="status" className="house-caption">{success}</span>}
   <Dialog open={open} onOpenChange={next=>{if(busy)return;setOpen(next);
     if(!next)reset();}}>
-   <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+   <DialogContent className="cormyr-creation-dialog cormyr-creation-dialog--spy max-h-[90vh] overflow-y-auto sm:max-w-xl">
     <DialogHeader>
      <DialogTitle><UserRound size={20} style={{display:'inline',verticalAlign:'middle'}}/>
       {' '}Criar espião</DialogTitle>
      <DialogDescription>O novo agente começa no nível Verde, com Astúcia 3.
       As melhorias e o retrato são definidos antes de confirmar sua criação.</DialogDescription>
     </DialogHeader>
-    <form onSubmit={e=>void submit(e)} style={{display:'grid',gap:16}}>
+    <form className="cormyr-creation-form cormyr-creation-form--spy" onSubmit={e=>void submit(e)}>
      {loadingOptions&&<p className="house-caption" role="status">
       Consultando as vagas da Rede de Espiões desta Casa…</p>}
      {optionsError&&<div role="alert" className="house-warning">
@@ -93,12 +94,12 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
       <Button type="button" variant="outline" size="sm"
        onClick={()=>void refetch()}>Tentar novamente</Button>
      </div>}
-     <label style={{display:'grid',gap:5}}>Nome do espião <span aria-hidden>*</span>
+     <label className="cormyr-creation-section">Nome do espião <span aria-hidden>*</span>
       <input required autoFocus minLength={2} maxLength={80}
        placeholder="Ex.: O Corvo" value={name}
        onChange={e=>{requestKey.current=null;setName(e.target.value);}}/>
      </label>
-     <div className="house-ledger" role="status" aria-label="Vagas disponíveis para criar espiões">
+     <div className="house-ledger cormyr-creation-summary" role="status" aria-label="Vagas disponíveis para criar espiões">
       <strong>Vagas de espionagem da Casa</strong>
       <p style={{margin:'6px 0'}}><strong>{totalVacancies}</strong> {totalVacancies===1?'vaga livre':'vagas livres'} para novos agentes.</p>
       {options?.recruitment.map(slot=><small key={slot.sourceHoldingId}
@@ -111,20 +112,19 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
      {Boolean(options)&&!loadingOptions&&!optionsError&&!slots.length&&<p className="house-caption" role="status">
       Não há vaga livre nesta Casa. É necessário possuir uma Rede de Espiões
       ativa ou construir uma Rede Ampliada para liberar novos agentes.</p>}
-     <div style={{display:'grid',gap:7}}>
+     <div className="cormyr-creation-section">
       <strong>Melhorias individuais (opcionais)</strong>
       {(Object.keys(SPY_AGENT_UPGRADES) as SpyAgentUpgrade[]).map(code=>{
        const u=SPY_AGENT_UPGRADES[code];
-       return <label key={code} style={{display:'flex',alignItems:'flex-start',
-        gap:10,padding:10,border:'1px solid rgba(140,150,170,.35)',borderRadius:9}}>
-        <input type="checkbox" style={{marginTop:4}}
+       return <label key={code} className="cormyr-creation-choice">
+        <input type="checkbox"
          checked={upgrades.includes(code)}
          onChange={e=>toggle(code,e.target.checked)}/>
         <span><strong>{u.name} — 1 Riqueza</strong>
          <small style={{display:'block'}}>{u.description}</small></span>
        </label>;
       })}
-      <span style={{display:'flex',alignItems:'center',gap:6}}>
+      <span className="cormyr-creation-cost">
        <Coins size={16}/> Custo selecionado: <strong>{cost} Riqueza</strong>
        {data?.availableWealth!==null&&data?.availableWealth!==undefined&&
         <small>· disponível: {data.availableWealth}</small>}
@@ -137,10 +137,10 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
       Escolha uma das fotos disponíveis. As imagens em cinza já estão ocupadas.</small>}
 
      {error&&<p role="alert" className="house-warning">{error}</p>}
-     <DialogFooter>
+     <DialogFooter className="cormyr-creation-footer">
       <Button type="button" variant="outline" disabled={busy}
        onClick={()=>{setOpen(false);reset();}}>Cancelar</Button>
-      <Button type="submit" disabled={!valid}>
+      <Button type="submit" className="cormyr-creation-primary" disabled={!valid}>
        {busy?'Criando…':'Confirmar criação'}
       </Button>
      </DialogFooter>
