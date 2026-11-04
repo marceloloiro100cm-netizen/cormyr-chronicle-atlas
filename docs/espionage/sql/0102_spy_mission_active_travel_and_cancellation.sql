@@ -364,6 +364,7 @@ BEGIN
  THEN RAISE EXCEPTION 'Consulta de viagens não autorizada'; END IF;
  SELECT coalesce(jsonb_agg(jsonb_build_object(
   'operationId',t.operation_id,'agentId',t.agent_id,
+  'operationVersion',o.version,
   'departureKey',t.departure_key,'arrivalKey',t.arrival_key,
   'investigationEndKey',t.investigation_end_key,
   'originRegion',t.origin_region,'destinationRegion',t.destination_region,
