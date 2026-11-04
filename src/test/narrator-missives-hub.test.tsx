@@ -42,7 +42,7 @@ function mount(){
 
 describe('menu e grupos do Narrador',()=>{
  it('ordena Missivas acima de Calendário',()=>{
-  expect(NARRATOR_MENU.map(([id])=>id)).toEqual(['painel','missivas','calendario','eventos','aventuras']);
+  expect(NARRATOR_MENU.map(([id])=>id)).toEqual(['painel','missivas','calendario','dossies','eventos','aventuras']);
  });
  it('interpreta Dragon Coast e Horselands mesmo com grafias diferentes',()=>{
   expect(mailHouseRegion('Dragoncoast')).toBe('dragon-coast');
