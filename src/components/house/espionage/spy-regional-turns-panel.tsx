@@ -12,6 +12,8 @@ import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {formatDate} from '@/lib/calendar/harptos';
 import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
 import {CormyrInteractiveMap} from './cormyr-interactive-map';
+import {SpyLocalHouseMap} from './spy-local-house-map';
+import {SPY_NOBLE_DETAIL_MAPS} from '@/lib/espionage/spy-noble-detail-maps';
 import {SpyMissionOddsCard} from './spy-mission-odds-card';
 import {SpySubmitHouseMission} from './spy-submit-house-mission';
 import './spy-mission-planner.css';
@@ -47,6 +49,10 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
  const houseChoices=(targetsQuery.data??[]).filter(
   h=>h.regionId===destination&&h.id!==houseId);
  const selectedTargetHouse=houseChoices.find(h=>h.id===targetHouseId);
+ const originHouse=(targetsQuery.data??[]).find(h=>h.id===houseId);
+ const useLocalHouseMap=Boolean(originRegion&&destination===originRegion&&
+  (!originHouse||originHouse.regionId===destination)&&
+  SPY_NOBLE_DETAIL_MAPS[destination]);
  const plan=selected&&destination?planSpyRegionalMission({
   agent:selected,destinationRegion:destination,
   links:cormyrPreviewLinks(data?.links??[]),
@@ -181,9 +187,15 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
      <strong>Trajeto da missão</strong>
      <span>{originName} → {name(destination)}</span>
     </div>
-    <CormyrInteractiveMap selectedRegion={destination}
-     originRegion={originRegion} plan={ready?plan:null}
-     onSelect={chooseRegion}/>
+    {useLocalHouseMap&&selectedTargetHouse?
+     <SpyLocalHouseMap regionId={destination}
+      originHouseId={houseId} originHouseName={originHouse?.name??houseId}
+      destinationHouseId={selectedTargetHouse.id}
+      destinationHouseName={selectedTargetHouse.name}
+      plan={ready?plan:null} onSelectRegion={chooseRegion}/>:
+     <CormyrInteractiveMap selectedRegion={destination}
+      originRegion={originRegion} plan={ready?plan:null}
+      onSelect={chooseRegion}/>}
    </div>
    {ready&&agentAvailable&&originRegion&&
     <div className="spy-planner-start-row">
