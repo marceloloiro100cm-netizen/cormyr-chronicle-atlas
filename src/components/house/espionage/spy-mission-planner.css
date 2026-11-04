@@ -1,0 +1,38 @@
+/* Planejador enxuto em três etapas: sem origem simulada ou controles técnicos. */
+.spy-mission-planner{--spy-planner-gold:#ba9658;--spy-planner-ink:#352b28;
+ --spy-planner-border:#dbc79e;--spy-planner-paper:#fffdf8;
+ --spy-planner-cream:#f8f1e2;display:grid;gap:16px;min-width:0}
+.spy-planner-heading{max-width:860px}
+.spy-planner-heading h3{font:600 clamp(23px,3vw,30px)/1.2 Georgia,serif;margin:5px 0 10px;color:var(--foreground)}
+.spy-planner-heading>p:last-child{font-size:14px;line-height:1.55;color:var(--muted-foreground);margin:0}
+.spy-planner-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.spy-planner-step{display:grid;align-content:start;gap:9px;min-width:0;min-height:155px;
+ padding:15px;border:1px solid var(--spy-planner-border);border-radius:12px;
+ background:var(--spy-planner-paper);color:var(--spy-planner-ink)}
+.spy-planner-step-title{display:flex;align-items:center;gap:9px;font-weight:700;font-size:14px}
+.spy-planner-step-title b{flex:none;display:grid;place-items:center;width:27px;height:27px;
+ border-radius:50%;background:#f1e0bd;color:#62452a;border:1px solid #c9aa75;font:700 14px Georgia,serif}
+.spy-planner-step select{box-sizing:border-box;width:100%;min-width:0;min-height:44px;
+ border:1px solid #c6ad7d;border-radius:8px;background:#fffefa;color:#362a26;
+ color-scheme:light;font:inherit;font-size:13px;padding:9px 10px}
+.spy-planner-step select option{background:#fffefa;color:#362a26}
+.spy-planner-step select:focus-visible{outline:2px solid #a78140;outline-offset:2px}
+.spy-planner-step select:disabled{background:#eee9df;color:#7e7467;cursor:not-allowed}
+.spy-planner-step small{display:block;font-size:11px;line-height:1.5;color:#706054}
+.spy-planner-feedback{margin:0;padding:10px 14px;border-left:3px solid var(--spy-planner-gold);
+ background:#faf1df;color:#5b4836;border-radius:5px;font-size:13px;line-height:1.5}
+.spy-planner-feedback p{margin:0 0 8px}
+.spy-planner-feedback button{margin-top:6px}
+.spy-planner-result{display:grid;gap:15px;min-width:0}
+.spy-planner-map-wrap{min-width:0;border:1px solid #cfb17c;border-radius:12px;overflow:hidden;background:#f9edda}
+.spy-planner-route-caption{display:flex;align-items:center;justify-content:space-between;
+ gap:10px;flex-wrap:wrap;padding:12px 16px;color:#473328;background:#fffaf0;
+ border-bottom:1px solid #cfb17c;font-size:13px}
+.spy-planner-route-caption strong{font:700 18px Georgia,serif}
+.spy-planner-route-caption span{font-size:12px;color:#6c5742}
+.spy-planner-calendar-details{padding:14px;border:1px solid var(--spy-planner-border);
+ border-radius:10px;background:var(--spy-planner-paper);font-size:13px;color:var(--spy-planner-ink)}
+.spy-planner-calendar-details summary{cursor:pointer;font-weight:700}
+.spy-planner-calendar-details p{margin:10px 0 0}
+.spy-planner-calendar-details small{display:block;margin-top:10px;color:#66584b}
+@media(max-width:940px){.spy-planner-steps{grid-template-columns:1fr}.spy-planner-step{min-height:0}}
