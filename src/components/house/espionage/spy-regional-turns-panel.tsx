@@ -1,9 +1,8 @@
 import {useEffect,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
-import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
 import {readSpyRegionalStrategyBrowser} from '@/lib/espionage/spy-browser-client';
-import {listSpyHouseTargets} from '@/lib/espionage/spy-house-targets.functions';
+import {readSpyNobleHouseTargetsBrowser} from '@/lib/espionage/spy-target-browser';
 import {spyHouseTargetStage} from '@/lib/espionage/spy-target-stages';
 import {planSpyRegionalMission,type SpyRegionalAgent} from '@/lib/espionage/region-turns';
 import {cormyrPreviewLinks,CORMYR_MAP_SOURCE} from '@/lib/espionage/cormyr-map';
@@ -20,7 +19,6 @@ import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
  * Neither this preview nor client-side interaction may advance that clock.
  */
 export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean}){
- const loadTargets=useServerFn(listSpyHouseTargets);
  const campaignTime=useCampaignTime();
  const {data,isPending,isError,refetch}=useQuery({
   queryKey:['espionage-regional-strategy',houseId],
@@ -28,7 +26,7 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
  });
  const targetsQuery=useQuery({
   queryKey:['spy-house-public-targets'],
-  queryFn:()=>loadTargets({data:{}}),staleTime:120_000,retry:false,
+  queryFn:readSpyNobleHouseTargetsBrowser,staleTime:120_000,retry:1,
  });
  const [assetId,setAssetId]=useState('');
  const [destination,setDestination]=useState('');
@@ -177,25 +175,31 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
     {houseStage==='select_region'&&<p>Escolha primeiro uma região no mapa.</p>}
     {houseStage==='agent_unavailable'&&<p role="status">O agente está indisponível.</p>}
     {houseStage==='unknown_agent_location'&&<p role="status">A localização real do agente não está confirmada.</p>}
-    {targetsQuery.isError&&<p role="alert">A lista pública de Casas está indisponível.</p>}
+    {targetsQuery.isPending&&<p role="status">Carregando as Casas nobres oficiais…</p>}
+    {targetsQuery.isError&&<div role="alert">
+     <p>Não foi possível carregar a lista de Casas desta sessão.</p>
+     <Button type="button" variant="outline" size="sm"
+      onClick={()=>void targetsQuery.refetch()}>Consultar Casas novamente</Button>
+    </div>}
     <label>Casa nobre na região
      <select aria-label="Casa nobre alvo"
       value={houseChoices.some(h=>h.id===targetHouseId)?targetHouseId:''}
       onChange={e=>setTargetHouseId(e.target.value)}
-      disabled={!destination||!selected||selected.status!=='available'||simulated||
-       targetsQuery.isError}>
+      disabled={!destination||targetsQuery.isPending||targetsQuery.isError}>
       <option value="">Selecione a Casa</option>
       {houseChoices.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
      </select>
     </label>
-    {destination&&!targetsQuery.isPending&&!houseChoices.length&&
-     <p className="house-caption">Não há outra Casa no cadastro público dessa região.
-      Casas NPC exigem cadastro e homologação pelo Narrador.</p>}
-    {canTargetHouse&&<p role="status">
-     Casa {selectedTargetHouse?.name} selecionada. A avaliação já pode ser consultada.
-     {selected?.currentRegion===destination
-      ?' O agente está na região; investigação local estimada em 1 désdia.'
-      :' A viagem deverá ser concluída antes de iniciar a investigação.'}
+    {destination&&targetsQuery.isSuccess&&!houseChoices.length&&
+     <p className="house-caption">Não há outra Casa nobre homologada para esta região no catálogo oficial.</p>}
+    {selectedTargetHouse&&<p role="status">
+     Casa {selectedTargetHouse?.name} selecionada.
+     {!selected||selected.status!=='available'
+      ?' Selecione um agente disponível para consultar a chance.'
+      :simulated?' Prévia simulada: a posição real e a chegada precisam ser confirmadas antes da execução.'
+      :selected.currentRegion===destination
+       ?' Agente na região: investigação estimada em 1 désdia.'
+       :' A viagem deverá ser concluída antes de iniciar a investigação.'}
     </p>}
     <SpyMissionOddsCard
      houseId={houseId} agentId={selected?.id??''}
@@ -203,7 +207,9 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
      agentAvailable={selected?.status==='available'} simulation={simulated}
      destinationRegion={destination}
      travelRounds={plan?.status==='ready'?plan.travelRounds:null}
-     originRegion={selected?.currentRegion??null}/>
+     originRegion={selected?.currentRegion??null}
+     includeReturn={returnToStart}
+     returnRounds={plan?.status==='ready'?plan.returnRounds:null}/>
    </div>}
    <label style={{display:'flex',gap:8,alignItems:'center'}}>
     <input type="checkbox" checked={allowSea} onChange={e=>setAllowSea(e.target.checked)}/>
