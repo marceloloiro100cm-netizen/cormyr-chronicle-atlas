@@ -9,9 +9,8 @@
 .cormyr-legend-start{background:#c5ebff;border-color:#1765a8}
 .cormyr-legend-target{background:#ffe2a3;border-color:#b05623}
 .cormyr-legend-sea{display:inline-block;width:22px;border-top:3px dashed #087f9e}
-.cormyr-map-scroll{width:100%;overflow-x:auto;overflow-y:hidden;background:#e9c78e;outline-offset:-2px}
-.cormyr-map-scroll:focus-visible{outline:3px solid #1765a8}
-.cormyr-map-svg{display:block;width:100%;min-width:860px;height:auto;aspect-ratio:1443 / 1090}
+.cormyr-map-scroll{width:100%;min-width:0;overflow:hidden;background:#e9c78e}
+.cormyr-map-svg{display:block;width:100%;min-width:0;max-width:100%;height:auto;aspect-ratio:1443 / 1090}
 .cormyr-region{cursor:pointer;outline:0}
 .cormyr-region-hotspot{fill:transparent;stroke:transparent;stroke-width:3;transition:fill .12s ease,stroke .12s ease}
 .cormyr-region:hover .cormyr-region-hotspot,.cormyr-region:focus .cormyr-region-hotspot{fill:rgba(252,224,140,.19);stroke:rgba(66,43,23,.82);stroke-dasharray:9 6}
