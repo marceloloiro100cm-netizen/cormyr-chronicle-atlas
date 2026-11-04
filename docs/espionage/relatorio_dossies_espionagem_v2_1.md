@@ -1,11 +1,11 @@
 # CORMYR — Dossiês de Espionagem
-## Relatório técnico-funcional, versão 2.1 (com protótipo)
+## Relatório técnico-funcional, versão 2.2 (protótipo e implementação)
 
 **Escopo:** espionagem entre Casas nobres, usando os agentes, o calendário,
 a dificuldade, a rolagem e a resolução homologada do site.
-**Estado do desenvolvimento:** lotes 1–3 integrados à `main` pela PR #247;
-migração SQL 0104 aplicada no Supabase do projeto ativo após teste transacional;
-lotes 4–7 não implementados, e a publicação visual no Lovable ainda não está confirmada.
+**Estado do desenvolvimento:** lotes 1–6 integrados à `main` pelas PRs #247 e #248;
+migrações SQL 0104 e 0105 aplicadas no Supabase do projeto ativo; lote 7 de
+homologação/publicação integral ainda pendente.
 
 ### 1. Objetivos e princípios
 A informação pertence à Casa investigadora, não ao espião. Para cada par
@@ -200,9 +200,10 @@ concorrência, regresso da missão, dados históricos, CI e layout.
 - [x] SQL mantém dossiê por par de Casas e descobertas sem duplicatas.
 - [x] SQL suporta capacidade de 3–7 derivada da decisão do Narrador.
 - [x] Migração aplicada no Supabase do projeto ativo, com RLS e gatilho conferidos.
-- [ ] Dados reais de Exército e Posses integrados (lote 4).
-- [ ] Ficha operacional atual integrada ao snapshot completo (lote 4).
-- [ ] Interfaces do jogador e narrador publicadas (lotes 5–6).
+- [x] Fontes oficiais de Exército e Posses integradas para fichas operacionais (lote 4).
+- [x] Recursos de ficha operacional integrados usando `balances(state).total` (lote 4).
+- [x] Interfaces de jogador e narrador integradas ao código da `main` (lotes 5–6).
+- [ ] Publicação visual via Lovable validada em produção.
 - [ ] Validação integral, publicação e testes reais (lote 7).
 
 **Migração 0104 já aplicada antes da integração do frontend.**
@@ -210,3 +211,22 @@ A PR #247 foi incorporada à `main`. O CI específico de dossiês passou; a
 validação global teve duas falhas preexistentes em testes de mapas/retratos,
 que deverão ser tratadas separadamente. A publicação visual via Lovable
 permanece dependente de sincronização e validação.
+
+
+### 9. Resultado de execução — lotes 4 a 6
+- **Código:** PR #248 integrada à branch principal, com UI do jogador
+  e painel do Narrador. O menu do Narrador coloca Dossiês logo abaixo do HUB Temporal.
+- **Banco:** migração 0105 instalada, com fonte de unidades não destruídas,
+  posses ativas e domínios e recursos operacionais apurados pelo motor oficial.
+- **Segurança:** cinco tabelas de inteligência com RLS; usuários autenticados
+  não têm SELECT direto nos segredos e não podem consultar inventário real
+  pela RPC de catálogo. A leitura por Casa devolve somente descobertas.
+- **Narrador:** filtros de Casa investigadora, Casa-alvo e região; pode conceder,
+  atualizar e revogar descobertas com justificativa auditada. Missões pendentes
+  podem ser reprocessadas se a fonte oficial passar a existir.
+- **Histórico:** valores registrados por missão não acompanham automaticamente
+  alterações futuras na ficha do alvo.
+- **Limitação real:** casas NPC sem inventário cadastrado não recebem exércitos
+  nem posses inventados; missões aguardam fonte homologada.
+- **Qualidade:** compilação TypeScript e build da execução isolada da espionagem
+  aprovados. Validação visual/publicação completa pertence ao lote 7.
