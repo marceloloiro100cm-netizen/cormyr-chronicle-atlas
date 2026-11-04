@@ -50,6 +50,23 @@ describe('Galeria da Casa · acervo privado separado por tópicos',()=>{
   const old=file('src/components/players/ficha-tab.tsx');
   expect(old).not.toContain('<h2>Retratos e imagens</h2>');
  });
+ it('mostra a imagem Silversky programada só ao remetente, sem antecipar a entrega',()=>{
+  const sql=file('docs/gallery/sql/0105_house_gallery_own_scheduled_images.sql');
+  const gallery=file('src/components/players/gallery-tab.tsx');
+  // As imagens programadas do autor não aparecem na Casa destinatária.
+  expect(sql).toContain("r.publication_state='scheduled'");
+  expect(sql).toContain("r.house_id=p_house");
+  expect(sql).toContain("(r.author_user_id=auth.uid() OR public.is_campaign_admin())");
+  expect(sql).toContain("author_player.user_id=r.author_user_id");
+  expect(sql).toContain("author_player.roster_house_id=p_house");
+  expect(sql).toContain('public.can_read_reply_as(r,auth.uid())');
+  expect(sql).toContain('public.can_read_letter_as(l,auth.uid())');
+  expect(sql).toContain("r.deleted_at IS NULL");
+  expect(sql).toContain("'publicationState',g.publication_state");
+  expect(gallery).toContain("publicationState:z.enum(['delivered','scheduled'])");
+  expect(gallery).toContain("'Programada · ainda não entregue'");
+  expect(gallery).toContain("['sent','Enviadas'],['received','Recebidas']");
+ });
  it('SQL valida vinculação da Casa e RLS da missiva e de cada resposta',()=>{
   const sql=file('docs/gallery/sql/0104_house_gallery_mail_images.sql');
   expect(sql).toContain('public.in_campaign_house(p_house,false)');
