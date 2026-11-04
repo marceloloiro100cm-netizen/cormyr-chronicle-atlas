@@ -47,6 +47,9 @@ describe('Espionagem · criação com foto exclusiva, melhorias e campos ocultos
   expect(create).toContain('!p.occupied&&!p.assignedAgentId');
   expect(create).toContain('foto pode ter sido reservada por outro jogador');
   expect(create).toContain("['spy-recruitment-options',houseId]");
+  expect(create).toContain('refetchInterval:open?10_000:false');
+  expect(control).toContain('refetchInterval:open?10_000:false');
+  expect(control).toContain('portraits={currentPortraits}');
   const removal=file('docs/espionage/sql/0100_spy_agent_removal_refund.sql');
   expect(removal).toContain("UPDATE public.spy_assets SET status='retired',portrait_id=NULL");
  });
