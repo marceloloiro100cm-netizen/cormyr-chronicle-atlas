@@ -123,6 +123,34 @@ REVOKE ALL ON FUNCTION public.spy_submit_house_mission(
 GRANT EXECUTE ON FUNCTION public.spy_submit_house_mission(
  text,uuid,text,text,integer,integer,uuid,text) TO authenticated;
 
+-- A gestão da missão informa ao Narrador o objetivo efetivamente registrado,
+-- sem expor dados da Casa-alvo aos outros jogadores.
+CREATE OR REPLACE FUNCTION public.spy_house_mission_timeline(p_house text)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path=public,pg_temp AS $timeline$
+DECLARE v_rows jsonb;
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.campaign_access_active() OR
+  NOT (public.is_campaign_admin() OR public.in_campaign_house(p_house,false))
+ THEN RAISE EXCEPTION 'Consulta de viagens não autorizada'; END IF;
+ SELECT coalesce(jsonb_agg(jsonb_build_object(
+  'operationId',t.operation_id,'agentId',t.agent_id,
+  'operationVersion',o.version,
+  'departureKey',t.departure_key,'arrivalKey',t.arrival_key,
+  'investigationEndKey',t.investigation_end_key,
+  'originRegion',t.origin_region,'destinationRegion',t.destination_region,
+  'travelDays',t.travel_days,'targetHouseName',c.name,
+  'objective',CASE WHEN o.requested_fields[1] IN
+   ('house_resources','army','possessions') THEN o.requested_fields[1]
+   ELSE 'house_resources' END
+ ) ORDER BY t.created_at DESC),'[]'::jsonb)
+ INTO v_rows FROM public.spy_mission_timeline t
+ JOIN public.spy_operations o ON o.id=t.operation_id
+ LEFT JOIN public.house_catalog c ON c.id=o.target_id
+ WHERE t.owner_house_id=p_house;
+ RETURN v_rows;
+END $timeline$;
+
 -- Cada grau adicional é obtido da margem POSITIVA da mesma rolagem
 -- homologada pelo Narrador (um grau a cada 5 acima da dificuldade).
 CREATE OR REPLACE FUNCTION public.spy_intelligence_capacity(p_margin integer)
