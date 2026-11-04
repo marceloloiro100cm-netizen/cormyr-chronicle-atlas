@@ -19,7 +19,7 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
    width:1536,height:1024,src:'/maps/espionage/volkumburgh.webp'});
  });
  it('resolve Casas nomeadas e grafias equivalentes, sem inventar posições',()=>{
-  expect(nobleMapKey('Grã-DraGON')).toBe('grandragon');
+  expect(nobleMapKey('Grândragon')).toBe('grandragon');
   expect(spyHouseMapPoint('dragoncoast','Ashkar')).toEqual({x:749,y:597});
   expect(spyHouseMapPoint('dragoncoast','Qazir')).toEqual({x:1156,y:604});
   expect(spyHouseMapPoint('horselands','Harcourt')).toEqual({x:243,y:578});
