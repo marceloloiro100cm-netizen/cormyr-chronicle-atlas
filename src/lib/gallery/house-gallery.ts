@@ -19,14 +19,23 @@ export function houseRecordGalleryImages(
  for(const record of records){
   // Defense in depth: even an admin-wide Panel cannot mix another House in.
   if(record.house_id!==houseId)continue;
-  const topic=isNarrativeNpc(record)?'npcs':'images';
-  for(const part of contentParts(record.content)){
-   if(!('path' in part)||!part.path)continue;
+  const parts=contentParts(record.content);
+  const imageParts=parts.filter((part):part is {path:string;caption:string}=>
+   'path' in part&&Boolean(part.path));
+  const onlyPortrait=imageParts.length===1&&parts.every(part=>
+   'path' in part||!part.text.trim());
+  // Preserve every standalone portrait shown by the old character-sheet
+  // gallery, even when the record is also classified as a narrative NPC.
+  const topics:('images'|'npcs')[]=[
+   ...(onlyPortrait||!isNarrativeNpc(record)?['images' as const]:[]),
+   ...(isNarrativeNpc(record)?['npcs' as const]:[]),
+  ];
+  for(const part of imageParts)for(const topic of topics){
    const key=topic+':'+part.path;
    if(seen.has(key))continue;
    seen.add(key);
    output.push({
-    id:record.id+':'+part.path,path:part.path,
+    id:topic+':'+record.id+':'+part.path,path:part.path,
     caption:part.caption.trim()||record.title,recordTitle:record.title,topic,
    });
   }
