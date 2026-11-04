@@ -6,7 +6,6 @@ import {CampaignDatePicker} from './date-picker';
 import {CampaignCalendar,type CalendarState} from './calendar';
 import {campaignTimeView,useCampaignTime} from '@/lib/calendar/campaign-time';
 import {useCampaignCalendarRealtime} from './realtime';
-import {NarratorCharacterRegistry} from './narrator-character-registry';
 import {NarratorCharacterAges} from './narrator-character-ages';
 import {TemporalConsumerHub} from './temporal-consumer-hub';
 import {validateAgeDashboard} from '@/lib/calendar/character-ages';
@@ -210,7 +209,6 @@ export function NarratorCalendar(){
    <a href="#temporal-eventos">Eventos oficiais</a>
    <a href="#temporal-posses">Posses e projetos</a>
    <a href="#temporal-conexoes">Conexões temporais</a>
-   <a href="#temporal-genealogias">Nobres e genealogias</a>
    <a href="#temporal-idades">Idades anuais</a>
    <a href="#temporal-historico">Histórico</a>
    <a href="#temporal-jogadores">Visão dos jogadores</a>
@@ -232,9 +230,21 @@ export function NarratorCalendar(){
     </label>}
     {mode==='set'&&<CampaignDatePicker value={date} updateOnNavigation onChange={next=>{editedRef.current=true;setDate(next);setMessage('');}}/>}
     {mode==='set'&&<label className="narrator-calendar-check"><input type="checkbox" checked={allowBackdate} onChange={e=>setAllowBackdate(e.target.checked)}/>Autorizar retrocesso histórico (não reverte obras ou ações já concluídas)</label>}
-    <label>Justificativa administrativa (obrigatória no retrocesso)
-     <textarea aria-label="Justificativa temporal" rows={2} maxLength={500} value={reason} onChange={e=>setReason(e.target.value)}/>
+   </div>
+   <div className="narrator-calendar-justification-row">
+    <label className="narrator-calendar-reason-label">
+     Justificativa administrativa (obrigatória no retrocesso)
+     <textarea className="narrator-calendar-reason-input"
+      aria-label="Justificativa temporal" rows={1} maxLength={500} value={reason}
+      onChange={e=>setReason(e.target.value)}
+      onInput={e=>{
+       const field=e.currentTarget;
+       field.style.height='auto';
+       field.style.height=Math.min(field.scrollHeight,180)+'px';
+       field.style.overflowY=field.scrollHeight>180?'auto':'hidden';
+      }}/>
     </label>
+    <Button type="button" className="narrator-calendar-publish-button" disabled={busy||isStale||needsVersionRefresh||!preview.data||preview.isFetching||annualChangeNeedsPreview||(preview.data.month_delta>0&&(!houseImpact.data||houseImpact.isFetching||houseImpact.data.invalid>0))||(preview.data.backdated&&(!allowBackdate||reason.trim().length<10))} onClick={()=>void publish()}>{busy?'Publicando…':mode==='advance'?'Confirmar avanço de désdia':mode==='set'?'Confirmar data oficial':'Publicar eventos'}</Button>
    </div>
    <p className="narrator-calendar-selection">Data oficial: <strong>{formatDate(dateKey(calendar.data))}</strong> · Versão <strong>{calendar.data.version}</strong>. Semana legada de missivas: <strong>{calendar.data.published_week??'não informada'}</strong> (não avança o Reino).</p>
    <div role="status" aria-live="polite" className="house-caption">
@@ -250,7 +260,6 @@ export function NarratorCalendar(){
      {ageImpact.error&&<p role="alert">Impacto etário indisponível: não publique uma virada de ano até conferir a prévia do Narrador.</p>}
     </>:null}
    </div>
-   <Button type="button" className="narrator-calendar-publish-button" disabled={busy||isStale||needsVersionRefresh||!preview.data||preview.isFetching||annualChangeNeedsPreview||(preview.data.month_delta>0&&(!houseImpact.data||houseImpact.isFetching||houseImpact.data.invalid>0))||(preview.data.backdated&&(!allowBackdate||reason.trim().length<10))} onClick={()=>void publish()}>{busy?'Publicando…':mode==='advance'?'Confirmar avanço de désdia':mode==='set'?'Confirmar data oficial':'Publicar eventos'}</Button>
    <p className="text-sm text-muted-foreground">A publicação é atômica, versionada e protegida por chave de operação. Abrir uma rodada de missivas não altera a data. Viradas anuais já atualizam as projeções etárias; o Lote 10 emite notificações sem executar efeitos automáticos não definidos.</p>
   </div>
   <section id="temporal-posses" className="narrator-calendar-panel" aria-label="Processamento temporal de posses e obras">
@@ -265,7 +274,6 @@ export function NarratorCalendar(){
     </details>:<p className="house-caption">Selecione um avanço de mês para consultar o impacto exato em todas as Casas.</p>}
   </section>
   <TemporalConsumerHub/>
-  <NarratorCharacterRegistry/>
   <NarratorCharacterAges targetYear={annualChange?projectedYear:undefined}/>
   <div className="narrator-calendar-panel" id="temporal-eventos">
    <h3>{editId?'Editar evento':'Criar evento em uma data'}</h3>
