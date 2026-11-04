@@ -37,6 +37,7 @@ export const REGIONAL_MAP_LABEL_HOTSPOTS:Record<string,{
 export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}:Props){
  const [hovered,setHovered]=useState('');
  const titleId=useId();
+ const arrowId=useId();
  const regions=Object.entries(REGIONAL_MAP_LABEL_HOTSPOTS);
  const navigate=(id:string)=>onSelect(id);
  const focus=hovered||selectedRegion;
@@ -44,7 +45,10 @@ export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}
   <div className="cormyr-map-heading">
    <div>
     <h4>Mapa regional de Cormyr</h4>
-    <p>Selecione o nome de uma região no mapa para definir o destino da espionagem.</p>
+    <p>{originRegion&&selectedRegion
+     ?'Partida: '+(CORMYR_MAPPED_REGIONS[originRegion]?.name??originRegion)+
+       ' · Destino: '+(CORMYR_MAPPED_REGIONS[selectedRegion]?.name??selectedRegion)
+     :'Selecione a região de destino para visualizar o percurso.'}</p>
    </div>
    <p className="cormyr-map-legend">
     <span className="cormyr-legend-start"/> Partida
@@ -57,6 +61,10 @@ export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}
     aria-labelledby={titleId} xmlns="http://www.w3.org/2000/svg"
     preserveAspectRatio="xMidYMid meet">
     <title id={titleId}>Mapa regional ilustrado de Cormyr com onze regiões selecionáveis</title>
+    <defs><marker id={arrowId} markerWidth="13" markerHeight="13" refX="9"
+     refY="5" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 10 10">
+     <path d="M0,0 L10,5 L0,10 Z" fill="#703b2e"/>
+    </marker></defs>
     <image href="/maps/cormyr-regioes.webp" x="0" y="0" width="1443" height="1090"
      preserveAspectRatio="xMidYMid meet" aria-hidden="true"/>
     {plan&&<g className="cormyr-route" aria-hidden="true" pointerEvents="none">
@@ -67,7 +75,8 @@ export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}
        x1={a.pinX} y1={a.pinY} x2={end.pinX} y2={end.pinY}
        stroke={leg.passage==='sea_passage'?'#29b9ed':'#65351a'}
        strokeWidth="6" strokeDasharray={leg.passage==='sea_passage'?'14 10':undefined}
-       strokeLinecap="round" opacity=".88"/>:null;
+       strokeLinecap="round" opacity=".92" markerEnd={i===plan.legs.length-1?
+        'url(#'+arrowId+')':undefined}/>:null;
      })}
     </g>}
     {regions.map(([id,spot])=>{
@@ -102,13 +111,6 @@ export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}
       cx={REGIONAL_MAP_LABEL_HOTSPOTS[focus].pinX}
       cy={REGIONAL_MAP_LABEL_HOTSPOTS[focus].pinY} r="20"/>}
    </svg>
-  </div>
-  <div className="cormyr-map-mobile-regions"
-   aria-label="Seleção acessível de regiões">
-   {regions.map(([id])=><button key={id} type="button"
-    aria-pressed={selectedRegion===id} onClick={()=>navigate(id)}>
-    {CORMYR_MAPPED_REGIONS[id]?.name??id}
-   </button>)}
   </div>
   <p className="cormyr-map-source" hidden aria-hidden="true">
    Mapa Regional de Cormyr fornecido pelo Narrador. As áreas clicáveis indicam os
