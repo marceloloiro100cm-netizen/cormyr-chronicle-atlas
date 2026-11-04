@@ -11,7 +11,8 @@ type Agent=SpyManagement['agents'][number];
 export function SpyAgentPortraitControl({houseId,agent,portraits,canEdit}:{
  houseId:string;agent:Agent;portraits:SpyManagement['portraits'];canEdit:boolean;
 }){
- const [open,setOpen]=useState(false),[selected,setSelected]=useState(agent.portraitId);
+ const [open,setOpen]=useState(false),[previewOpen,setPreviewOpen]=useState(false),
+  [selected,setSelected]=useState(agent.portraitId);
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const action=useServerFn(assignSpyPortrait);const qc=useQueryClient();
  const own=portraits.find(p=>p.id===agent.portraitId);
@@ -29,7 +30,21 @@ export function SpyAgentPortraitControl({houseId,agent,portraits,canEdit}:{
   }finally{setBusy(false);}
  };
  return <div style={{display:'flex',alignItems:'center',gap:8}}>
-  <SpyAvatar name={agent.codename} url={own?.imageUrl??null}/>
+  {own?.imageUrl?<button type="button" className="spy-agent-portrait-zoom"
+    aria-label={'Ampliar retrato de '+agent.codename}
+    title="Ampliar retrato" onClick={()=>setPreviewOpen(true)}>
+   <SpyAvatar name={agent.codename} url={own.imageUrl} size={62}/>
+  </button>:<SpyAvatar name={agent.codename} url={null} size={62}/>}
+  <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+   <DialogContent className="sm:max-w-xl">
+    <DialogHeader><DialogTitle>Retrato de {agent.codename}</DialogTitle></DialogHeader>
+    <div className="spy-agent-portrait-large">
+     {own?.imageUrl?<img src={own.imageUrl} alt={'Retrato ampliado de '+agent.codename}
+      loading="lazy" style={{width:'100%',maxHeight:'70vh',objectFit:'contain'}}/>:
+      <SpyAvatar name={agent.codename} url={null} size={120}/>}
+    </div>
+   </DialogContent>
+  </Dialog>
   {canEdit&&portraits.length>0&&agent.status!=='dead'&&
    <Button type="button" variant="ghost" size="sm" disabled={!available.length}
     onClick={()=>{setSelected(agent.portraitId);setError('');setOpen(true);}}>
