@@ -36,3 +36,56 @@
 .spy-planner-calendar-details p{margin:10px 0 0}
 .spy-planner-calendar-details small{display:block;margin-top:10px;color:#66584b}
 @media(max-width:940px){.spy-planner-steps{grid-template-columns:1fr}.spy-planner-step{min-height:0}}
+
+/* Envio real da ordem — destacado e separado da simulação de percurso. */
+.spy-planner-execution{display:flex;flex-wrap:wrap;align-items:center;
+ justify-content:space-between;gap:14px;background:#fffaf0;
+ border:1px solid #c9a668;border-radius:11px;padding:15px 18px;color:#483529}
+.spy-planner-execution>div:first-child{flex:1 1 260px;min-width:0}
+.spy-planner-execution>div:first-child strong{font:700 17px/1.3 Georgia,serif}
+.spy-planner-execution p{margin:5px 0 0;font-size:12px;line-height:1.55;color:#705a46}
+.spy-planner-execution-button{min-height:44px;white-space:normal;
+ background:#643c52!important;color:#fffaf2!important;border:1px solid #643c52!important}
+.spy-planner-execution-button:hover:not(:disabled){background:#4b2e40!important}
+.spy-planner-execution-confirmed{display:flex;align-items:center;gap:9px;color:#35613f;
+ font-size:13px;font-weight:600;flex:1 1 100%}
+.spy-planner-execution>small{font-size:12px;color:#806e5b;flex:1 1 100%}
+.spy-planner-submitted{border-left-color:#598460;background:#eef7ed}
+.spy-mission-confirm-dialog{background:#fffcf5!important;color:#382d28!important;
+ border:1px solid #bb985b!important;color-scheme:light}
+.spy-mission-confirm-dialog [data-slot="dialog-title"],
+.spy-mission-confirm-dialog [data-slot="dialog-description"]{color:#47352d!important}
+.spy-planner-execution-details{display:grid;gap:6px;padding:14px;
+ background:#f8efdf;border:1px solid #dbc49b;border-radius:9px;font-size:13px}
+.spy-planner-execution-details p{margin:0;line-height:1.55}
+.spy-planner-execution-details small{color:#735a40;line-height:1.5}
+.spy-mission-confirm-dialog button:focus-visible{outline:2px solid #b68c50;outline-offset:2px}
+@media(max-width:680px){.spy-planner-execution-button{width:100%}}
+
+/* A ação começa somente abaixo do mapa, na faixa imediatamente
+   anterior às datas do Hub Temporal, sem competir com a prévia. */
+.spy-planner-start-row{
+ min-width:0;
+ padding:10px 13px;
+ background:#fffaf0;
+ border:1px solid #cfb17c;
+ border-radius:10px;
+}
+.spy-planner-start-row .spy-planner-execution{
+ width:100%;
+ margin:0;
+ padding:0;
+ border:0;
+ border-radius:0;
+ background:transparent;
+}
+.spy-planner-start-row .spy-planner-execution-button{
+ width:100%;
+ min-height:46px;
+ justify-content:center;
+ font-weight:700;
+ text-align:center;
+}
+.spy-planner-start-row .spy-planner-execution-confirmed{
+ width:100%;
+}
