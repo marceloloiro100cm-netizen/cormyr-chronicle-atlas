@@ -1,30 +1,97 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState, type FormEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { lovable } from '@/integrations/lovable';
 import { Button } from '@/components/ui/button';
 import { CampaignShell } from '@/components/campaign-shell';
 import { oauthReturnPath } from '@/lib/oauth-return-path';
-import { useQuery } from '@tanstack/react-query';
-import '@lovable.dev/cloud-auth-js/styles.css';
 
-export const Route = createFileRoute('/auth')({ validateSearch: (search: Record<string, unknown>) => ({ next: oauthReturnPath(search['next']) }), head: () => ({ meta: [{ title: 'Entrar — Cormyr Chronicle' },{name:'description',content:'Entrada segura para jogadores da segunda temporada de Cormyr.'},{property:'og:title',content:'Entrar — Cormyr Chronicle'},{property:'og:description',content:'Área reservada às casas e jogadores autorizados.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary'}] }), component: Auth });
-
-
+export const Route = createFileRoute('/auth')({
+ validateSearch: (search: Record<string, unknown>) => ({
+  next: oauthReturnPath(search['next']),
+ }),
+ head: () => ({meta: [
+  {title: 'Entrar — Cormyr Chronicle'},
+  {name: 'description', content: 'Entrada segura para jogadores da segunda temporada de Cormyr.'},
+  {property: 'og:title', content: 'Entrar — Cormyr Chronicle'},
+  {property: 'og:description', content: 'Área reservada às casas e jogadores autorizados.'},
+  {property: 'og:type', content: 'website'},
+  {name: 'twitter:card', content: 'summary'},
+ ]}),
+ component: Auth,
+});
 
 function Auth() {
-  const navigate = useNavigate();
-  const { next } = Route.useSearch();
-  const destino = next === '/' ? '/jogadores' : next;
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => { if (data.user) navigate({ to: destino }); });
-  }, [navigate, destino]);
-  const [signup,setSignup] = useState(false), [email,setEmail] = useState(''), [password,setPassword] = useState(''), [name,setName] = useState(''), [house,setHouse] = useState(''), [message,setMessage] = useState(''), [busy,setBusy] = useState(false);
-  const {data:houses=[]} = useQuery({queryKey:['season-houses'],queryFn:async()=>{const [houses,players]=await Promise.all([supabase.from('campaign_houses').select('id,name').eq('active',true).eq('season',2).order('name'),supabase.rpc('public_player_houses')]);if(houses.error)throw houses.error;if(players.error)throw players.error;const ids=new Set(players.data.map(p=>p.house_id));return houses.data.filter(h=>ids.has(h.id));}});
-  async function submit(event:FormEvent) {event.preventDefault();setBusy(true);setMessage('');try {
-    if(signup){const {error}=await supabase.auth.signUp({email,password,options:{data:{display_name:name},emailRedirectTo:new URL(destino,window.location.origin).href}});if(error)throw error;setMessage('Confira seu email para confirmar a conta. O administrador deverá autorizar seu vínculo com a casa.');}
-    else {const {error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error;sessionStorage.setItem('campaign-selected-house',house==='narrador'?'':house);await navigate({to:destino});}
-  }catch(e){setMessage(e instanceof Error?e.message:'Não foi possível entrar.');}finally{setBusy(false);}}
-  async function social(provider:'google'|'lovable'){setBusy(true);sessionStorage.setItem('campaign-selected-house',house);sessionStorage.setItem('campaign-oauth-next',destino);const result=await lovable.auth.signInWithOAuth(provider,{redirect_uri:window.location.origin});if(result.error)setMessage(String(result.error));else if(!result.redirected)await navigate({to:destino});setBusy(false);}
-  return <CampaignShell><p className="campaign-eyebrow">SEGUNDA TEMPORADA · CORMYR</p><h1>Área dos jogadores</h1><div className="campaign-auth-layout"><section className="campaign-auth"><h2>{signup?'Criar conta':'Entrar no conselho'}</h2><form onSubmit={submit} className="campaign-form"><label>Casa ou Narrador<select value={house} onChange={e=>{setHouse(e.target.value);}}><option value="">Escolha sua casa</option><option value="narrador">Narrador</option>{houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label>{signup&&<label>Nome do jogador<input required value={name} onChange={e=>setName(e.target.value)}/></label>}<label>Email<input type="email" required autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Senha<input type="password" minLength={6} required autoComplete={signup?'new-password':'current-password'} value={password} onChange={e=>setPassword(e.target.value)}/></label><Button disabled={busy} type="submit">{busy?'Aguarde…':signup?'Criar conta':'Entrar'}</Button></form><p className="text-muted-foreground text-sm">A seleção da casa não concede acesso. O vínculo depende da autorização do administrador.</p><div className="campaign-actions"><Button variant="outline" disabled={busy} onClick={()=>social('google')}>Entrar com Google</Button><Button className="lovable-auth-button" disabled={busy} onClick={()=>social('lovable')}>Continue with Lovable</Button></div><div className="campaign-actions"><Button variant="link" onClick={()=>setSignup(!signup)}>{signup?'Já tenho conta':'Criar conta'}</Button><Button variant="link" disabled={busy||!email} onClick={async()=>{const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'/reset-password'});setMessage(error?.message??'Confira seu email para redefinir a senha.');}}>Esqueci minha senha</Button></div><p role="status">{message}</p></section><section><h2>Casas da segunda temporada</h2><p>Oito casas da lista oficial da campanha.</p><ul className="campaign-roster">{houses.map(h=><li key={h.id}>{h.name}</li>)}</ul><p className="text-muted-foreground">Os oito jogadores oficiais estão cadastrados. O acesso a cada casa depende de identidade autenticada e autorização administrativa.</p></section></div></CampaignShell>;
+ const navigate = useNavigate();
+ const { next } = Route.useSearch();
+ const destino = next === '/' ? '/jogadores' : next;
+ const [email,setEmail] = useState('');
+ const [password,setPassword] = useState('');
+ const [house,setHouse] = useState('');
+ const [message,setMessage] = useState('');
+ const [busy,setBusy] = useState(false);
+ useEffect(() => {
+  void supabase.auth.getUser().then(({data})=>{
+   if(data.user)void navigate({to:destino});
+  });
+ },[navigate,destino]);
+ const {data:houses=[]} = useQuery({
+  queryKey:['season-houses'],
+  queryFn:async()=>{
+   const [result,players]=await Promise.all([
+    supabase.from('campaign_houses').select('id,name').eq('active',true).eq('season',2).order('name'),
+    supabase.rpc('public_player_houses'),
+   ]);
+   if(result.error)throw result.error;
+   if(players.error)throw players.error;
+   const ids=new Set(players.data.map(p=>p.house_id));
+   return result.data.filter(h=>ids.has(h.id));
+  },
+ });
+ async function submit(event:FormEvent) {
+  event.preventDefault();
+  setBusy(true);setMessage('');
+  try{
+   const {error}=await supabase.auth.signInWithPassword({email,password});
+   if(error)throw error;
+   // House selection is only a preference, never authorization.
+   sessionStorage.setItem('campaign-selected-house',house==='narrador'?'':house);
+   await navigate({to:destino});
+  }catch(e){
+   setMessage(e instanceof Error?e.message:'Não foi possível entrar.');
+  }finally{setBusy(false);}
+ }
+ return <CampaignShell>
+  <p className="campaign-eyebrow">SEGUNDA TEMPORADA · CORMYR</p>
+  <h1>Área dos jogadores</h1>
+  <div className="campaign-auth-layout">
+   <section className="campaign-auth">
+    <h2>Entrar no conselho</h2>
+    <form onSubmit={submit} className="campaign-form">
+     <label>Casa ou Narrador
+      <select value={house} onChange={e=>setHouse(e.target.value)}>
+       <option value="">Escolha sua casa</option>
+       <option value="narrador">Narrador</option>
+       {houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+      </select>
+     </label>
+     <label>Email
+      <input type="email" required autoComplete="email" value={email}
+       onChange={e=>setEmail(e.target.value)}/>
+     </label>
+     <label>Senha
+      <input type="password" minLength={6} required autoComplete="current-password"
+       value={password} onChange={e=>setPassword(e.target.value)}/>
+     </label>
+     <Button disabled={busy} type="submit">{busy?'Aguarde…':'Entrar'}</Button>
+    </form>
+    {message&&<p role="status">{message}</p>}
+   </section>
+   <section>
+    <h2>Casas da segunda temporada</h2>
+    <p>Oito casas da lista oficial da campanha.</p>
+    <ul className="campaign-roster">{houses.map(h=><li key={h.id}>{h.name}</li>)}</ul>
+   </section>
+  </div>
+ </CampaignShell>;
 }
