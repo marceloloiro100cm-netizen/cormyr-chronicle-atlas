@@ -210,3 +210,12 @@ A PR #247 foi incorporada à `main`. O CI específico de dossiês passou; a
 validação global teve duas falhas preexistentes em testes de mapas/retratos,
 que deverão ser tratadas separadamente. A publicação visual via Lovable
 permanece dependente de sincronização e validação.
+
+
+## Atualização de execução — lotes 4, 5 e 6 (04/11/2026)
+
+- **Lote 4:** o projeto ativo dispõe de funções PostgreSQL `spy_intelligence_source_items` e `spy_intelligence_finalize`, que usam os dados reais de unidades e posses da ficha operacional e a função `balances(state).total` para recursos quando existe ficha. Permanecem fotografias históricas, sem atualização automática do jogador.
+- **Lote 5:** painel `SpyPlayerDossiers` ligado à seção Espionagem da ficha de cada Casa, com cards por alvo e abas Recursos, Exército e Posses. A leitura passa pela RPC autorizada `spy_intelligence_read(p_house)`; nenhum dado desconhecido ou inventário completo é enviado.
+- **Lote 6:** o menu do Narrador já contém Dossiês de Espionagem imediatamente abaixo do HUB Temporal. Inclui filtros, tabela por casa investigadora/alvo, consulta detalhada, registros pendentes e ferramentas auditadas de adicionar, revalidar e revogar.
+
+**Nota de integridade:** não substituir funções já implantadas no banco por variantes incompletas. A conexão visual para o jogador foi concluída e os contratos de interface foram adicionados aos testes. A implantação final da nova versão visual e a aprovação de todos os testes de regressão dependem da validação do pipeline.
