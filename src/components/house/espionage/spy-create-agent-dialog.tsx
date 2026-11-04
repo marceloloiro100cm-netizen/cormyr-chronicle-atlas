@@ -18,7 +18,6 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
  const [open,setOpen]=useState(false);
  const requestKey=useRef<string|null>(null);
  const [name,setName]=useState('');
- const [sourceId,setSourceId]=useState('');
  const [portraitId,setPortraitId]=useState<string|null>(null);
  const [upgrades,setUpgrades]=useState<SpyAgentUpgrade[]>([]);
  const [busy,setBusy]=useState(false);
@@ -31,7 +30,8 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
   enabled:open,staleTime:0,retry:1,
  });
  const slots=options?.recruitment.filter(r=>r.vacancies>0)??[];
- const source=sourceId?slots.find(r=>r.sourceHoldingId===sourceId):slots[0];
+ const source=slots[0];
+ const totalVacancies=options?.recruitment.reduce((sum,r)=>sum+r.vacancies,0)??0;
  const portraits=options?.portraits??[];
  const cost=upgrades.length;
  const enoughWealth=cost===0||data?.availableWealth===null||
@@ -40,7 +40,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
   portraits.some(p=>p.id===portraitId&&!p.assignedAgentId));
  const valid=Boolean(options&&!loadingOptions&&!optionsError&&source&&name.trim().length>=2&&
   name.trim().length<=80&&pictureOk&&enoughWealth&&!busy);
- const reset=()=>{requestKey.current=null;setName('');setSourceId('');setPortraitId(null);setUpgrades([]);
+ const reset=()=>{requestKey.current=null;setName('');setPortraitId(null);setUpgrades([]);
   setError('');};
  const toggle=(code:SpyAgentUpgrade,checked:boolean)=>{
   requestKey.current=null;
@@ -98,17 +98,16 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
        placeholder="Ex.: O Corvo" value={name}
        onChange={e=>{requestKey.current=null;setName(e.target.value);}}/>
      </label>
-     <label style={{display:'grid',gap:5}}>Vaga da Rede de Espiões
-      <select value={source?.sourceHoldingId??''} required
-       onChange={e=>{requestKey.current=null;setSourceId(e.target.value);}} disabled={!slots.length}>
-       {loadingOptions&&<option value="">Consultando vagas…</option>}
-       {optionsError&&<option value="">Vagas não carregadas</option>}
-       {!loadingOptions&&!optionsError&&!slots.length&&<option value="">Nenhuma vaga disponível</option>}
-       {slots.map(s=><option key={s.sourceHoldingId} value={s.sourceHoldingId}>
-        {s.name} · {s.vacancies} {s.vacancies===1?'vaga':'vagas'}
-       </option>)}
-      </select>
-     </label>
+     <div className="house-ledger" role="status" aria-label="Vagas disponíveis para criar espiões">
+      <strong>Vagas de espionagem da Casa</strong>
+      <p style={{margin:'6px 0'}}><strong>{totalVacancies}</strong> {totalVacancies===1?'vaga livre':'vagas livres'} para novos agentes.</p>
+      {options?.recruitment.map(slot=><small key={slot.sourceHoldingId}
+       style={{display:'block',marginTop:3}}>
+       {slot.name}: {slot.vacancies} de {slot.capacity} {slot.capacity===1?'vaga':'vagas'} disponíveis.
+      </small>)}
+      <small className="house-caption">Ao confirmar um agente, uma vaga da rede com espaço
+       é ocupada automaticamente. A disponibilidade é recalculada pelo servidor para a próxima criação.</small>
+     </div>
      {Boolean(options)&&!loadingOptions&&!optionsError&&!slots.length&&<p className="house-caption" role="status">
       Não há vaga livre nesta Casa. É necessário possuir uma Rede de Espiões
       ativa ou construir uma Rede Ampliada para liberar novos agentes.</p>}
@@ -136,9 +135,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
       onChange={id=>{requestKey.current=null;setPortraitId(id);}}/>
      {portraits.length>0&&!pictureOk&&<small role="status">
       Escolha uma das fotos disponíveis. As imagens em cinza já estão ocupadas.</small>}
-     <p className="house-caption">O recrutamento, a reserva da foto e o desconto
-      de Riqueza das melhorias serão confirmados juntos. Se qualquer etapa
-      falhar, nenhuma delas será aplicada.</p>
+
      {error&&<p role="alert" className="house-warning">{error}</p>}
      <DialogFooter>
       <Button type="button" variant="outline" disabled={busy}
