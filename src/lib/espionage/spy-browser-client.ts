@@ -146,7 +146,7 @@ export async function removeSpyAgentBrowser(input:{
 
 const submittedMissionSchema=z.object({
  operationId:z.string().uuid(),agentId:z.string().uuid(),
- targetHouseId:z.string().min(1),status:z.enum(['traveling','operating']),
+ targetHouseId:z.string().min(1),status:z.enum(['traveling','operating','pending_narrator_review']),
  alreadyApplied:z.boolean(),calendarVersion:z.number().int().positive(),
  departureKey:z.string().min(1),arrivalKey:z.string().min(1),
  investigationEndsKey:z.string().min(1),
