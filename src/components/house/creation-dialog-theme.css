@@ -208,6 +208,25 @@
   color:#803f35!important;
   line-height:1.5;
 }
+.cormyr-creation-form .cormyr-creation-cost{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:6px;
+  padding:10px 12px;
+  border-radius:8px;
+  background:#f9efdc;
+  color:#4a3526;
+  line-height:1.5;
+}
+.cormyr-creation-form .cormyr-creation-cost svg{color:#a07831}
+.cormyr-creation-form .cormyr-creation-choice span{min-width:0}
+.cormyr-creation-form .cormyr-creation-choice small{
+  display:block;
+  font-weight:400;
+  color:#6d5b4d;
+  line-height:1.5;
+}
 .cormyr-creation-form .military-positive{color:#365d3c!important}
 .cormyr-creation-form details:not(.house-ledger){
   min-width:0;
