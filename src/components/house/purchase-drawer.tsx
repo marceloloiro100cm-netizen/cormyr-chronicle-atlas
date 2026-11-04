@@ -321,20 +321,8 @@ export function PurchaseDrawer({
                 ))}
               </select>
             </label>
-            {onCreateDomain&&<details className="house-ledger">
-              <summary>{state.domains.length===0?'Cadastrar o primeiro domínio':'Cadastrar outro domínio'}</summary>
-              <form className="campaign-form" onSubmit={async e=>{
-                e.preventDefault();
-                const form=new FormData(e.currentTarget);
-                if(await onCreateDomain(String(form.get('newDomain')))){
-                  e.currentTarget.reset();
-                  setDomain('');
-                }
-              }}>
-                <label>Nome do domínio<input required name="newDomain" placeholder="Nome oficial da localidade"/></label>
-                <Button disabled={busy}>Criar domínio</Button>
-              </form>
-            </details>}
+            {onCreateDomain&&state.domains.length===0&&<form className="campaign-form" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);if(await onCreateDomain(String(f.get('newDomain'))))setDomain('');}}>
+<label>Criar domínio antes da compra<input required name="newDomain" placeholder="Nome da localidade"/></label><Button disabled={busy}>Criar domínio</Button></form>}
             {(selected.category === 'fortification'||selected.category==='community') && state.holdings.some(h => h.domainId === domainId && (selected.category==='community'?h.category==='community':['tower', 'hall', 'small-castle', 'castle', 'superior-castle'].includes(h.itemId)) && ['active', 'building'].includes(h.status)) && (
               <label>
                 Evolução (Upgrade)
