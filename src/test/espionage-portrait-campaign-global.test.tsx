@@ -24,7 +24,8 @@ describe('Galeria de espiões · exclusividade entre Casas',()=>{
   fireEvent.click(occupied);
   expect(onChange).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button',{name:'Caçador'}));
-  expect(onChange).toHaveBeenCalledExactlyOnceWith('free');
+  expect(onChange).toHaveBeenCalledTimes(1);
+  expect(onChange).toHaveBeenCalledWith('free');
  });
  it('permite ao agente manter sua própria imagem reservada',()=>{
   const onChange=vi.fn();
