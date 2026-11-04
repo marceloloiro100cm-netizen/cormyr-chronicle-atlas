@@ -15,6 +15,7 @@ const mailImageSchema=z.object({
  caption:z.string(),subject:z.string(),
  sourceKind:z.enum(['letter','reply']),
  direction:z.enum(['sent','received']),
+ publicationState:z.enum(['delivered','scheduled']),
  occurredAt:z.string(),
 }).strict();
 type MailImage=z.infer<typeof mailImageSchema>;
@@ -99,7 +100,9 @@ export function GalleryTab({houseId,houseName,records}:{
        <article key={item.id} className="campaign-gallery-item">
         <PrivateImage path={item.path} caption={item.caption||item.subject}/>
         <p className="campaign-gallery-meta">
-         <strong>{item.direction==='sent'?'Enviada':'Recebida'}</strong>
+         <strong>{item.publicationState==='scheduled'
+          ?'Programada · ainda não entregue'
+          :item.direction==='sent'?'Enviada':'Recebida'}</strong>
          {' · '}{item.sourceKind==='reply'?'Resposta':'Missiva'}
          {' · '}{item.subject}
         </p>
