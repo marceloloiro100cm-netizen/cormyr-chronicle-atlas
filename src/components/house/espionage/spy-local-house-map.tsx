@@ -38,7 +38,7 @@ export function SpyLocalHouseMap({
  return <section className="spy-noble-local-map"
   aria-label={'Mapa de espionagem local · '+map.name}>
   <div className="spy-noble-local-legend">
-   <strong>{originHouseName} → {destinationHouseName}</strong>
+   <strong>Região: {map.name} · {originHouseName} → {destinationHouseName}</strong>
    <span><i className="spy-local-origin-key"/> Sua Casa</span>
    <span><i className="spy-local-target-key"/> Casa-alvo</span>
   </div>
