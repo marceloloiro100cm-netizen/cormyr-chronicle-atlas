@@ -56,7 +56,8 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
   fireEvent.keyDown(target,{key:'Enter'});
   expect(target).toHaveAttribute('aria-pressed','true');
   expect(screen.getByRole('status')).toHaveTextContent('Casa selecionada: Erdenor');
-  expect(onSelectHouse).toHaveBeenCalledTimes(1);\n  expect(onSelectHouse).toHaveBeenCalledWith('erdenor');
+  expect(onSelectHouse).toHaveBeenCalledTimes(1);
+  expect(onSelectHouse).toHaveBeenCalledWith('erdenor');
   fireEvent.keyDown(origin,{key:' '});
   expect(origin).toHaveAttribute('aria-pressed','true');
   expect(onSelectHouse).toHaveBeenCalledTimes(1);
