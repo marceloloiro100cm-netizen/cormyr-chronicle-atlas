@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState,type KeyboardEvent} from 'react';
 import type {SpyRegionalPlan} from '@/lib/espionage/region-turns';
 import {SPY_NOBLE_DETAIL_MAPS,spyHouseMapPoint}
  from '@/lib/espionage/spy-noble-detail-maps';
@@ -33,7 +33,7 @@ export function SpyLocalHouseMap({
   // Clicking the destination also keeps the mission target in sync.
   if(marker==='target')onSelectHouse?.(destinationHouseId);
  };
- const markerKeys=(event:React.KeyboardEvent<SVGGElement>,marker:Marker)=>{
+ const markerKeys=(event:KeyboardEvent<SVGGElement>,marker:Marker)=>{
   if(event.key==='Enter'||event.key===' '){
    event.preventDefault();
    selectMarker(marker);
