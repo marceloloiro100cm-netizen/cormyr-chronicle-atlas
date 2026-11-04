@@ -26,6 +26,7 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
  const [error,setError]=useState('');
  const [receipt,setReceipt]=useState<string|null>(null);
  const requestKey=useRef<string|null>(null);
+ const agentVersion=useRef<number|null>(null);
  const ready=canSubmit&&calendarVersion!==null&&!receipt&&!busy;
  const total=travelRounds+1;
  const send=async()=>{
@@ -36,15 +37,18 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
    requestKey.current=key;
    // Obtain the version from the authoritative agent roster instead of using
    // the preview's unversioned strategic copy.
-   const roster=await readSpyHouseManagementBrowser(houseId);
-   const agent=roster.agents.find(a=>a.id===agentId);
-   if(!agent||agent.status!=='available'||
-      regionId(agent.currentRegion??'')!==originRegion)
-    throw new Error('A posição ou a situação do espião mudou.');
+   if(agentVersion.current===null){
+    const roster=await readSpyHouseManagementBrowser(houseId);
+    const agent=roster.agents.find(a=>a.id===agentId);
+    if(!agent||agent.status!=='available'||
+       regionId(agent.currentRegion??'')!==originRegion)
+     throw new Error('A posição ou a situação do espião mudou.');
+    agentVersion.current=agent.version;
+   }
    const result=await submitSpyHouseMissionBrowser({
     houseId,agentId,targetHouseId,destinationRegion,
-    expectedAgentVersion:agent.version,expectedCalendarVersion:calendarVersion,
-    requestKey:key,
+    expectedAgentVersion:agentVersion.current,
+    expectedCalendarVersion:calendarVersion,requestKey:key,
    });
    setReceipt(result.operationId);
    setOpen(false);
@@ -70,7 +74,7 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
    <span>Ordem registrada. O espião foi designado à missão e aguarda
     a homologação da rota pelo Narrador.</span>
   </div>:<Button type="button" className="spy-planner-execution-button"
-   disabled={!ready} onClick={()=>{requestKey.current=null;setError('');setOpen(true);}}>
+   disabled={!ready} onClick={()=>{setError('');setOpen(true);}}>
    <Send size={16} aria-hidden="true"/> Executar missão
   </Button>}
   {!receipt&&!ready&&<small role="status">
