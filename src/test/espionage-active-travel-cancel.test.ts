@@ -73,6 +73,11 @@ describe('Espionagem operacional · deslocar, contar, cancelar',()=>{
   expect(btn).toContain('Confirmar cancelamento');
   expect(btn).toContain('onClick={()=>void cancel()}');
   expect(btn).toContain('cancelSpyMissionBrowser');
+  expect(btn).toContain("qc.setQueryData<SpyManagement>(['spy-house-management',houseId]");
+  expect(btn).toContain("status:'available' as const");
+  expect(btn).toContain("status:'cancelled' as const");
+  expect(btn).not.toContain('spy-agent-cancelled');
+  expect(btn).not.toContain('Missão cancelada</span>');
   expect(client).toContain("houseRpc('spy_cancel_house_mission',input.houseId");
   expect(client).toContain("houseRpc('spy_house_mission_timeline',houseId)");
   expect(client).not.toContain('service_role');
