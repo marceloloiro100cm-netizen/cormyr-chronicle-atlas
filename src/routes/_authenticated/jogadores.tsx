@@ -111,13 +111,25 @@ function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
   useEffect(()=>{
     setHouse(sessionStorage.getItem('campaign-selected-house')??'');
     let debounce:ReturnType<typeof setTimeout>|null=null;
+    // Only these tables contribute to loadPanel(). Other database activity
+    // must not repeatedly refetch the full roster and correspondence index.
+    // Access scope still revalidates on every Realtime event and on its
+    // independent 15-second safety poll, including administrative revocations.
+    const panelTables=new Set(['campaign_houses','campaign_players','house_memberships',
+      'campaign_records','campaign_letters','letter_receipts','house_catalog',
+      'letter_replies','letter_rounds']);
+    let pendingPanel=false;
     const channel=supabase.channel('campaign-'+crypto.randomUUID())
-      .on('postgres_changes',{event:'*',schema:'public'},()=>{
+      .on('postgres_changes',{event:'*',schema:'public'},payload=>{
+        pendingPanel ||= panelTables.has(payload.table);
         if(debounce)clearTimeout(debounce);
         debounce=setTimeout(()=>{
           void qc.invalidateQueries({queryKey:CAMPAIGN_ACCESS_SCOPE_KEY});
-          void qc.invalidateQueries({queryKey:['campaign-panel']});
-          void qc.invalidateQueries({queryKey:['sync-queue']});
+          if(pendingPanel){
+            void qc.invalidateQueries({queryKey:['campaign-panel']});
+            void qc.invalidateQueries({queryKey:['sync-queue']});
+          }
+          pendingPanel=false;
           debounce=null;
         },400);
       }).subscribe();
@@ -132,7 +144,7 @@ function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
   const current=data.admin?(authorized.find(h=>h.id===house)??authorized[0]):(authorized.find(h=>h.id===me?.roster_house_id)??authorized[0]);
   const canEdit=data.admin||data.members.some(m=>m.player_id===me?.id&&m.house_id===current?.id&&m.can_edit);
   const unread=unreadReceivedCount(data.letters as LetterRow[],data.replies,data.receipts,data.user.id,data.admin);
-  const afterSave=async()=>{await refresh();if(!current)return;try{const result=await sync({data:{houseId:data.admin?'':current.id,importFiles:false}});setMessage(result.message);await refresh();}catch(e){setMessage('Salvo no site · pasta pendente: '+(e instanceof Error?e.message:'Falha no Drive.'));}};
+  const afterSave=async()=>{if(!current){await refresh();return;}try{const result=await sync({data:{houseId:data.admin?'':current.id,importFiles:false}});setMessage(result.message);}catch(e){setMessage('Salvo no site · pasta pendente: '+(e instanceof Error?e.message:'Falha no Drive.'));}finally{await refresh();}};
   async function signout(){await qc.cancelQueries();qc.clear();await supabase.auth.signOut();await navigate({to:'/auth',search:{next:'/'},replace:true});}
   const conselho=!current&&!data.admin?<section><h2>Vínculo aguardando autorização</h2><p>Sua identidade foi autenticada, mas nenhuma casa foi autorizada para esta conta. O administrador precisa cadastrar seu jogador e aprovar o vínculo.</p><p>Identificador da conta: <code>{data.user.id}</code></p><p>Não há acesso a documentos, personagens ou missivas de outras casas.</p></section>:<>
     <div className="campaign-toolbar">
