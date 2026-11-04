@@ -751,13 +751,35 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
    Terras / Fortificações / Economia / Exército cards; the shared component
    deliberately reuses the military visual primitives for consistency. */
 .house-asset-grid{margin:.8rem 0 1.25rem}
-.house-asset-filters{margin:.8rem 0 1rem}
+.house-asset-filters{margin:.8rem 0 1rem;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end}
 .house-asset-filters label{display:grid;gap:.35rem;font-size:.85rem}
 .house-asset-filters input,.house-asset-filters select{min-width:0}
 .house-asset-conditions{margin-top:.75rem;padding-top:.65rem;border-top:1px solid #c9b79d}
 .house-asset-conditions summary{cursor:pointer;font-size:.85rem;font-weight:700}
 .house-asset-conditions .campaign-form{margin-top:.65rem}
 .house-assets>.house-section-heading{margin-bottom:.35rem}
+
+/* Espionagem: comparações por destino com a mesma linguagem dos quadros da Casa.
+   Os valores permanecem derivados da prévia estratégica, sem alterar cálculos. */
+.spy-region-comparison-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));gap:12px;margin:14px 0}
+.spy-region-comparison-card{min-width:0;display:grid;align-content:start;gap:12px;padding:14px;text-align:left;cursor:pointer;border:1px solid var(--border);border-radius:8px;background:var(--house-surface);color:var(--foreground);font:inherit;transition:border-color .15s ease,box-shadow .15s ease}
+.spy-region-comparison-card:hover{border-color:var(--primary)}
+.spy-region-comparison-card:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.spy-region-comparison-card[aria-pressed="true"]{border-color:var(--primary);box-shadow:inset 3px 0 var(--primary);background:var(--accent)}
+.spy-region-comparison-title{font:700 16px Georgia,serif;overflow-wrap:anywhere;color:var(--foreground)}
+.spy-region-comparison-metrics,.spy-region-comparison-total{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.spy-region-comparison-metrics>span,.spy-region-comparison-total>span{min-width:0;display:grid;gap:3px}
+.spy-region-comparison-card small{font-size:11px;color:var(--muted-foreground)}
+.spy-region-comparison-card strong{font-size:13px;line-height:1.4;overflow-wrap:anywhere;color:var(--foreground)}
+.spy-region-comparison-total{padding-top:10px;border-top:1px solid var(--border)}
+.spy-region-comparison-total strong{font-size:17px;color:var(--primary)}
+
+/* Fichas das vassalas reproduzem o padrão de atributos da Casa principal,
+   sem transformar o bloco interno em uma barra fixa sobre o restante da tela. */
+.house-resource-bar.house-resource-bar--vassal{position:static;top:auto;z-index:auto;max-width:100%;grid-template-columns:repeat(7,minmax(100px,1fr));overflow-x:auto;margin:10px 0 16px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:12px 0}
+.house-resource-bar--vassal .house-resource>div{flex-direction:row;align-items:center}
+.house-resource-bar--vassal .house-resource>strong{font-size:23px}
+@media(max-width:780px){.house-asset-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:680px){.house-asset-filters{grid-template-columns:1fr}}
 
 /* Identidade visual fixa da casa no painel dos jogadores: brasão sem distorção. */

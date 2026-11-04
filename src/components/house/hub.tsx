@@ -63,7 +63,7 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
   const categories=section==='fortifications'?['fortification']:section==='domains'?['terrain','feature','community']:['estate','lifestyle','personage','settlement','improvement','equipment','vassal'];
   return <div className="house-hub"><header className="house-header">{state.identity.crestPath?<div style={{width:100,height:100}}><PrivateImage path={state.identity.crestPath} caption={`Brasão da Casa ${house.name}`} thumbnail/></div>:house.crest&&<ImageViewer src={house.crest} caption={`Brasão da Casa ${house.name}`}/>}<div><p className="campaign-eyebrow">REGISTRO DA CASA · {state.phase==='active'?'EM CAMPANHA':state.phase==='review'?'AGUARDANDO APROVAÇÃO':'RASCUNHO'}</p><h2>Casa {house.name}</h2><p>{house.lord_name??'Governante não informado'} · {house.castle??'Sede não informada'} · {globalCalendar?campaignMonth(calendarMonthIndex(globalCalendar)):'Data oficial indisponível'}</p></div><div className="house-header-actions"><Button variant="outline" aria-pressed={graphical} onClick={()=>setGraphical(v=>!v)}><LayoutDashboard size={16}/>Trocar Visão</Button><span className="house-version">v{version}</span></div></header>{graphical?<ResourceChart state={state}/>:<ResourceSummary state={state}/>}
     {representationMode&&<p role="note" className="house-caption">Representação do jogador: visualização somente de leitura. Operações ficam desativadas e dependem de autorização específica.</p>}<div className="house-layout"><aside className="house-sidebar"><nav aria-label="Gerenciamento da casa">{NAV.filter(([id])=>!['reconciliation','coverage','kingdom','history','rules'].includes(id)).map(([id,label,Icon])=><Button variant={section===id?'default':'ghost'} aria-current={section===id?'page':undefined} key={id} onClick={()=>setSection(id)}><Icon size={17}/>{label}</Button>)}</nav></aside><main className="house-content">
-      {(busy||message)&&<p role={error?'alert':'status'} className={error?'house-warning':'house-save-status'}>{busy?'Salvando…':message}</p>}
+      {(busy||(error&&message))&&<p role={error?'alert':'status'} className={error?'house-warning':'house-save-status'}>{busy?'Salvando…':message}</p>}
       {calendarError&&<p role="alert" className="house-warning">Não foi possível confirmar o período global. Operações mensais dependem do Calendário do Narrador.</p>}
       {admin&&state.phase==='active'&&drift&&drift.delta>0&&drift.delta<=120&&<details className="house-ledger">
         <summary>Conciliar {drift.delta} mês(es) desta Casa com o calendário global</summary>
@@ -122,16 +122,6 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
          </details>}
         </HouseAssetCard>;
        })}</HouseAssetGrid>
-       {canEdit&&<form className="campaign-form" onSubmit={async e=>{
-        e.preventDefault();const form=new FormData(e.currentTarget),target=e.currentTarget;
-        if(await run('domain',{id:crypto.randomUUID(),name:String(form.get('name')),
-         notes:String(form.get('notes'))}))target.reset();
-       }}>
-        <h4>Nomear um domínio</h4>
-        <label>Nome<input name="name" required placeholder="Nome oficial da localidade"/></label>
-        <label>Notas<input name="notes"/></label>
-        <Button disabled={busy}>Criar domínio</Button>
-       </form>}
        <HouseAssetCatalog section="domains" state={state} catalog={catalog}
         canEdit={monthlyCanEdit} busy={busy}
         onBuy={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}}

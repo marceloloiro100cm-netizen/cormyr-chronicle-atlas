@@ -156,10 +156,6 @@ export function HouseAssetCatalog({section,state,catalog,canEdit,busy,onBuy,onCo
   <p className="house-caption">{acquired} tipo(s) adquirido(s) · {items.length} opções.
    Selecione um quadro para consultar o que a posse faz, quais bônus concede,
    onde se aplica, custo, tempo de construção e condições.</p>
-  {section==='spy'&&<p className="house-caption">
-   Essas construções ficam ao final da página. Os bônus só são aplicados quando
-   a posse e suas construções pré-requisito estão ativas. Um efeito de espionagem
-   não é automaticamente um aumento no atributo Lei.</p>}
   <div className="house-input-grid house-asset-filters">
    <label>Buscar quadro<input type="search" value={search} placeholder="Nome, benefício ou descrição"
     onChange={e=>{setSearch(e.target.value);setLimit(24);}}/></label>

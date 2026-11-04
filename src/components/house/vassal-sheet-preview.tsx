@@ -9,7 +9,7 @@ import {exportHousePdf,exportVassalArchivePdf,exportVassalWorkbookPdf} from '@/l
 import {readVassalArchiveProfile} from '@/lib/house/vassal-archive';
 import {vassalWorkbookBalances} from '@/lib/house/vassal-workbook';
 import {supabase} from '@/integrations/supabase/client';
-import {RESOURCE_KEYS} from '@/lib/house/types';
+import {ResourceSummary,ResourceSnapshotBar} from './resource-summary';
 import {RESOURCE_NAMES,type CatalogItem,type HouseState,type Vassal} from '@/lib/house/types';
 import {UNIT_TYPES,TRAINING} from '@/lib/house/engine';
 import {vassalState} from '@/lib/house/vassals';
@@ -138,13 +138,7 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
      {workbook.title?' · '+workbook.title:''}
      {workbook.territorialGrantYear?' · concessão '+workbook.territorialGrantYear+' CV':''}</p>
     <h5 className="font-semibold">Atributos e recursos</h5>
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-     {RESOURCE_KEYS.map(key=><div className="rounded border p-2" key={key}>
-      <span className="block text-xs">{RESOURCE_NAMES[key]}</span>
-      <strong>{workbookBalances.total[key]}</strong>
-      <small className="block">{workbookBalances.available[key]} disponível · {workbookBalances.allocated[key]} alocado</small>
-     </div>)}
-    </div>
+    <ResourceSnapshotBar total={workbookBalances.total} available={workbookBalances.available} allocated={workbookBalances.allocated}/>
     <div className="grid gap-3 lg:grid-cols-2">
      <CompactItems title="Unidades militares" items={workbook.units.map(u=>({
       id:u.name,name:u.name,detail:u.type+' · '+u.training+
@@ -181,12 +175,7 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
     </div>
     {archive.description&&<p className="text-sm">{archive.description}</p>}
     <h5 className="font-semibold">Atributos e recursos</h5>
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-     {RESOURCE_KEYS.map(key=><div key={key} className="rounded border p-2">
-      <span className="block text-xs">{RESOURCE_NAMES[key]}</span>
-      <strong>Não cadastrado</strong>
-     </div>)}
-    </div>
+    <ResourceSnapshotBar/>
     <div className="grid gap-3 lg:grid-cols-2">
      <CompactItems title="Unidades militares" items={[]} empty="Não cadastradas na ficha mecânica"/>
      <CompactItems title="Terras e domínios" items={[]} empty="Não cadastrados na ficha mecânica"/>
@@ -199,12 +188,7 @@ export function VassalSheetPreview({parent,vassal,officialHouse,catalog}:{
     <p className="house-caption">{vassal.sheet?.lordName??officialHouse?.lord_name??'Titular não informado'} · {officialHouse?.region??vassal.sheet?.region??'Região não informada'}
      {officialHouse?.castle?' · '+officialHouse.castle:''}</p>
     <h5 className="font-semibold">Atributos e recursos</h5>
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-     {summary.resources.map(r=><div className="rounded border p-2" key={r.key}>
-      <span className="block text-xs">{RESOURCE_NAMES[r.key]}</span>
-      <strong>{r.total}</strong><small className="block">{r.available} disponível</small>
-     </div>)}
-    </div>
+    <ResourceSummary state={house} compact/>
     <div className="grid gap-3 lg:grid-cols-2">
      <CompactItems title="Unidades militares"
       items={summary.units.map(u=>({id:u.id,name:u.name,detail:`${u.types.map(t=>UNIT_TYPES.find(x=>x.id===t)?.name??t).join(' / ')} · ${TRAINING[u.training as keyof typeof TRAINING]?.name??u.training} · efetivo ${Math.max(0,u.strength-u.casualties)}`}))}/>
