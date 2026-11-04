@@ -41,7 +41,7 @@ describe('Espionagem · Iniciar missão registra ordem real, não simulação',(
   expect(btn).not.toContain("onClick={()=>{requestKey.current=null");
  });
  it('trava dupla missão e valida casa-alvo, região, localização e autorização no SQL',()=>{
-  const sql=read('docs/espionage/sql/0101_spy_submit_house_mission.sql');
+  const sql=read('docs/espionage/sql/0102_spy_mission_active_travel_and_cancellation.sql');
   for(const text of [
    'BEGIN;','COMMIT;','public.campaign_access_active()',
    'public.in_campaign_house(p_house,true)',
@@ -52,32 +52,34 @@ describe('Espionagem · Iniciar missão registra ordem real, não simulação',(
    "v_agent.location_approved IS DISTINCT FROM true",
    "o.status NOT IN('completed','cancelled')",
    "c.public_reviewed=true",
-   "v_destination<>lower(regexp_replace(p_destination",
+   "v_destination<>public.spy_cormyr_normalize_region(p_destination)",
    "v_calendar.version<>p_expected_calendar_version",
    "mission_kind,requested_fields,status,source_calendar_version",
-   "ARRAY['house_overview']::text[],'planned'",
-   "status='assigned',version=version+1",
-   "'house_mission_submitted'",
+   "v_start_status:=CASE WHEN v_rounds=0 THEN 'operating' ELSE 'traveling' END",
+   "UPDATE public.spy_assets SET status=v_start_status,version=version+1",
+   "'mission_started'",
    "REVOKE ALL ON FUNCTION public.spy_submit_house_mission(",
    'TO authenticated;',
   ])expect(sql).toContain(text);
  });
- it('não cria chegada fictícia nem resoluções automáticas de missão',()=>{
-  const sql=read('docs/espionage/sql/0101_spy_submit_house_mission.sql');
-  expect(sql).not.toContain('INSERT INTO public.spy_operation_segments');
-  expect(sql).not.toContain('INSERT INTO public.spy_temporal_deliveries');
+ it('inicia viagem imediatamente, registra prazos e mantém o resultado sob julgamento',()=>{
+  const sql=read('docs/espionage/sql/0102_spy_mission_active_travel_and_cancellation.sql');
+  expect(sql).toContain('public.spy_add_desdias(v_depart,v_rounds)');
+  expect(sql).toContain('public.spy_add_desdias(v_arrive,1)');
+  expect(sql).toContain('INSERT INTO public.spy_mission_timeline(');
+  expect(sql).toContain('CREATE TRIGGER spy_mission_hub_advance');
+  expect(sql).toContain("'pending_narrator_review'");
   expect(sql).not.toContain('INSERT INTO public.spy_mission_decisions');
   expect(sql).not.toContain('spy_resolve_agent_mission(');
-  expect(sql).not.toContain("status='traveling'");
-  expect(sql).not.toContain("status='completed'");
   const btn=read('src/components/house/espionage/spy-submit-house-mission.tsx');
-  expect(btn).toContain('O envio não move');
-  expect(btn).toContain('rota pelo Narrador');
+  expect(btn).toContain('Missão iniciada. O espião está em viagem');
+  expect(btn).toContain('A missão começa imediatamente');
+  expect(btn).not.toContain('homologação da rota pelo Narrador');
  });
  it('após confirmação registra comprovante e recarrega elenco e rota',()=>{
   const panel=read('src/components/house/espionage/spy-regional-turns-panel.tsx');
   const btn=read('src/components/house/espionage/spy-submit-house-mission.tsx');
-  expect(panel).toContain('Missão registrada:');
+  expect(panel).toContain('Missão iniciada:');
   expect(panel).toContain("setAssetId('');setDestination('');setTargetHouseId('')");
   expect(btn).toContain("['spy-house-management',houseId]");
   expect(btn).toContain("['espionage-regional-strategy',houseId]");

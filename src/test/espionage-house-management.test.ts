@@ -169,21 +169,21 @@ describe('Tabela de gerenciamento · missão e prazos',()=>{
  });
  it('previsão usa 1 désdia adicional depois da viagem e não conta festivais como dias ordinários',()=>{
   const p=spyMissionProgress(operation,'1524-07-30');
-  expect(p.travel).toContain('10 dias');
-  expect(p.travel).toContain('faltam 10 dias ordinários');
+  expect(p.travel).toContain('Em viagem');
+  expect(p.travel).toContain('10 dias ordinários restantes');
   expect(p.remaining).toContain('20 dias ordinários');
   expect(p.end).toBe('1524-08-20');
  });
  it('prazo atingido não conclui missão sem resolução do Narrador',()=>{
   const p=spyMissionProgress(operation,'1524-08-21');
-  expect(p.remaining).toContain('aguarda Narrador');
+  expect(p.remaining).toContain('Prazo de investigação atingido');
  });
  it('sem chegada registrada, não inventa término',()=>{
   expect(spyMissionProgress({...operation,arrivalKey:null},'1524-08-20')
-   .remaining).toBe('Sem término homologado');
+   .remaining).toBe('Atualize a ficha');
  });
  it('missão cancelada ou encerrada tem estado explícito',()=>{
   expect(spyMissionProgress({...operation,status:'cancelled'},'1524-08-20').remaining).toBe('Cancelada');
-  expect(spyMissionProgress({...operation,status:'completed'},'1524-08-20').remaining).toContain('Concluída');
+  expect(spyMissionProgress({...operation,status:'completed'},'1524-08-20').remaining).toContain('concluída');
  });
 });

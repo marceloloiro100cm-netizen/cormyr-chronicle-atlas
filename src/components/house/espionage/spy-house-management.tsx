@@ -16,6 +16,7 @@ import {SpyAgentHistory} from './spy-agent-recruitment-history';
 import {SpyCreateAgentDialog} from './spy-create-agent-dialog';
 import {SpyAgentPortraitControl} from './spy-agent-portrait-control';
 import {SpyRemoveAgentButton} from './spy-remove-agent-button';
+import {SpyCancelMissionButton} from './spy-cancel-mission-button';
 import './spy-agent-cards.css';
 import {SpyNarratorResolutionPanel} from './spy-narrator-resolution';
 
@@ -41,31 +42,51 @@ function pendingMission(operations:Mission[],assetId:string){
  const items=operations.filter(o=>o.assetId===assetId);
  return items.find(o=>!['completed','cancelled'].includes(o.status))??items[0]??null;
 }
-/** Calendar projections are estimates. No persisted operation end date yet
- * exists; a pending narrator review never counts as a completed operation.
+/** The operation timeline is saved by the secured RPC in the Hub's
+ * official Harptos dates; the countdown follows the campaign date, never the
+ * player's real clock. The Narrator still resolves success or failure.
  */
-export function spyMissionProgress(operation:Mission|null,officialDate:string|null){
- if(!operation)return {
-  mission:'Sem missão registrada',travel:'—',remaining:'—',
- };
+type SpyMissionProgress={
+ mission:string;travel:string;remaining:string;
+ arrival?:string;departure?:string;end?:string;
+};
+export function spyMissionProgress(
+ operation:Mission|null,officialDate:string|null
+):SpyMissionProgress{
+ if(!operation)return {mission:'Sem missão registrada',travel:'—',remaining:'—'};
  const mission=missionKinds[operation.missionKind]??operation.missionKind;
- const target=operation.targetType==='region'
-  ?REGIONS[operation.targetId]?.name??operation.targetId:operation.targetId;
+ const target=operation.targetHouseName??(
+  operation.targetType==='region'
+   ?REGIONS[operation.targetId]?.name??operation.targetId:operation.targetId);
  const title=mission+' · '+target;
- if(operation.status==='completed')return {mission:title,travel:operation.travelDays===null?'—':operation.travelDays+' dias programados',remaining:'Concluída pelo Narrador'};
- if(operation.status==='cancelled')return {mission:title,travel:'Cancelada',remaining:'Cancelada'};
- const travel=operation.travelDays===null?'Viagem sem prazo registrado':operation.travelDays+' dias de viagem previstos';
- if(!operation.arrivalKey||!parseDate(operation.arrivalKey))
-  return {mission:title,travel,remaining:'Sem término homologado'};
- const end=dateKey(advanceHarptosDesdia(operation.arrivalKey,1));
- if(!officialDate||!parseDate(officialDate))
-  return {mission:title,travel,remaining:'Previsão: '+formatDate(end)+' (sem data oficial)'};
- const travelRemaining=Math.max(0,listCrossedHarptosPeriods(officialDate,operation.arrivalKey).ordinaryDaysElapsed);
- const remaining=Math.max(0,listCrossedHarptosPeriods(officialDate,end).ordinaryDaysElapsed);
- return {mission:title,travel:travel+' · faltam '+travelRemaining+' dias ordinários',
-  remaining:remaining?remaining+' dias ordinários (previsão)': 'Prazo previsto atingido · aguarda Narrador',
-  end,
- };
+ if(operation.status==='completed')return {
+  mission:title,travel:'Viagem concluída',remaining:'Missão concluída'};
+ if(operation.status==='cancelled')return {
+  mission:title,travel:'Cancelada',remaining:'Cancelada'};
+ if(operation.status==='planned')return {
+  mission:title,travel:'Sem cronograma de viagem',remaining:'Aguardando atualização da missão'};
+ const travelDays=operation.travelDays;
+ const arrival=operation.arrivalKey;
+ const end=operation.investigationEndKey??
+  (arrival&&parseDate(arrival)?dateKey(advanceHarptosDesdia(arrival,1)):null);
+ if(!arrival||!parseDate(arrival)||!end||!parseDate(end))return {
+  mission:title,travel:'Dados de viagem indisponíveis',remaining:'Atualize a ficha'};
+ const daysUntil=(key:string)=>officialDate&&parseDate(officialDate)
+  ?Math.max(0,listCrossedHarptosPeriods(officialDate,key).ordinaryDaysElapsed)
+  :null;
+ const travelLeft=daysUntil(arrival),missionLeft=daysUntil(end);
+ const travel=operation.status==='traveling'
+  ?'Em viagem · '+(travelLeft===null?'prazo não carregado':
+    travelLeft+' dias ordinários restantes')+
+    (travelDays!==null?' de '+travelDays+' previstos':'')
+  :travelDays===0?'Investigação na região de origem':
+   'Viagem concluída · chegada '+formatDate(arrival);
+ const remaining=operation.status==='pending_narrator_review'
+  ?'Investigação concluída · aguardando resultado do Narrador'
+  :missionLeft===null?'Conclusão prevista: '+formatDate(end)
+  :missionLeft>0?missionLeft+' dias ordinários restantes':
+   'Prazo de investigação atingido';
+ return {mission:title,travel,remaining,end,arrival,...(operation.departureKey?{departure:operation.departureKey}:{})};
 }
 
 export function SpyDefensePanel({state}:{state:HouseState}){
@@ -169,6 +190,10 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
    {operation&&<small>{missionStatuses[operation.status]??operation.status}</small>}
    <dl>
     <dt>Tempo de viagem</dt><dd>{progress.travel}</dd>
+    {progress.departure&&<><dt>Partida</dt>
+     <dd>{formatDate(progress.departure)}</dd></>}
+    {progress.arrival&&<><dt>Chegada prevista</dt>
+     <dd>{formatDate(progress.arrival)}</dd></>}
     <dt>Conclusão prevista</dt>
     <dd>{progress.remaining}{progress.end&&<small>{formatDate(progress.end)}</small>}</dd>
    </dl>
@@ -181,6 +206,8 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
     houseVersion={houseVersion} wealth={availableWealth} canEdit={canEdit}/>
   </details>
   <footer className="spy-agent-card-footer">
+   {operation&&<SpyCancelMissionButton houseId={houseId}
+    operation={operation} agentName={agent.codename} canEdit={canEdit}/>}
    <SpyRemoveAgentButton houseId={houseId} agent={agent}
     houseVersion={houseVersion} canEdit={canEdit}
     hasActiveMission={hasActiveMission}/>

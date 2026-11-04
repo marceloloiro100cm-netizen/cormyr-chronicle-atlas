@@ -31,6 +31,15 @@ async function houseRpc(name:string,houseId:string,extra:Record<string,unknown>=
  return result.data;
 }
 
+const spyMissionTimelineSchema=z.array(z.object({
+ operationId:z.string().uuid(),agentId:z.string().uuid(),
+ operationVersion:z.number().int().positive(),
+ departureKey:z.string().min(1),arrivalKey:z.string().min(1),
+ investigationEndKey:z.string().min(1),
+ originRegion:z.string().min(1),destinationRegion:z.string().min(1),
+ travelDays:z.number().int().nonnegative(),targetHouseName:z.string().nullable(),
+}).strict()).max(5000);
+
 export async function readSpyHouseManagementBrowser(houseId:string):Promise<SpyManagement>{
  const result=await houseRpc('spy_house_management',houseId);
  const parsed=spyManagementSchema.safeParse(result);
@@ -50,10 +59,23 @@ export async function readSpyHouseManagementBrowser(houseId:string):Promise<SpyM
  // This UI reads PostgreSQL directly; map official catalog IDs to local
  // assets even before the idempotent SQL URL reconciliation is executed.
  // Assignments and per-house availability stay as supplied by the RPC.
+ const timelines=spyMissionTimelineSchema.safeParse(
+  await houseRpc('spy_house_mission_timeline',houseId));
+ if(!timelines.success)throw new Error('Cronograma de missões inconsistente.');
+ const byOperation=new Map(timelines.data.map(t=>[t.operationId,t]));
+ const operations=parsed.data.operations.map(op=>{
+  const t=byOperation.get(op.id);
+  return t?{
+   ...op,travelDays:t.travelDays,arrivalKey:t.arrivalKey,
+   departureKey:t.departureKey,investigationEndKey:t.investigationEndKey,
+   originRegion:t.originRegion,destinationRegion:t.destinationRegion,
+   targetHouseName:t.targetHouseName,version:t.operationVersion,
+  }:op;
+ });
  const portraits=parsed.data.portraits.map(p=>({
   ...p,imageUrl:resolveSpyPortraitImageUrl(p.id,p.imageUrl),
  }));
- return {...parsed.data,portraits,availableWealth};
+ return {...parsed.data,operations,portraits,availableWealth};
 }
 
 export async function readSpyRecruitmentOptionsBrowser(houseId:string):Promise<SpyRecruitmentOptions>{
@@ -124,14 +146,16 @@ export async function removeSpyAgentBrowser(input:{
 
 const submittedMissionSchema=z.object({
  operationId:z.string().uuid(),agentId:z.string().uuid(),
- targetHouseId:z.string().min(1),status:z.literal('planned'),
+ targetHouseId:z.string().min(1),status:z.enum(['traveling','operating','pending_narrator_review']),
  alreadyApplied:z.boolean(),calendarVersion:z.number().int().positive(),
+ departureKey:z.string().min(1),arrivalKey:z.string().min(1),
+ investigationEndsKey:z.string().min(1),
+ travelDays:z.number().int().nonnegative(),
 }).strict();
 
-/** Persists an actual order (not a visualization). The operation is PLANNED
- * pending narrator route approval. Never claims arrival or mission outcome.
- * PostgreSQL independently checks owner, target, agent version, calendar,
- * availability and duplicate requests under a transaction lock.
+/** Starts the operation immediately on the official Harptos date.
+ * PostgreSQL computes its own canonical route and arrival deadline.
+ * The Narrator only adjudicates mission results, not travel authorization.
  */
 export async function submitSpyHouseMissionBrowser(input:{
  houseId:string;agentId:string;targetHouseId:string;
@@ -149,5 +173,26 @@ export async function submitSpyHouseMissionBrowser(input:{
  if(!parsed.success||parsed.data.agentId!==input.agentId||
   parsed.data.targetHouseId!==input.targetHouseId)
   throw new Error('A ordem não foi confirmada pelo servidor.');
+ return parsed.data;
+}
+
+const cancelledMissionSchema=z.object({
+ operationId:z.string().uuid(),agentId:z.string().uuid(),
+ status:z.literal('cancelled'),alreadyApplied:z.boolean(),
+}).strict();
+
+/** Atomic, idempotent cancellation preserving the registered timeline,
+ * operation audit trail and the spy's last confirmed location.
+ */
+export async function cancelSpyMissionBrowser(input:{
+ houseId:string;operationId:string;expectedVersion:number;requestKey:string;
+}){
+ const data=await houseRpc('spy_cancel_house_mission',input.houseId,{
+  p_operation:input.operationId,p_expected_version:input.expectedVersion,
+  p_request_key:input.requestKey,
+ });
+ const parsed=cancelledMissionSchema.safeParse(data);
+ if(!parsed.success||parsed.data.operationId!==input.operationId)
+  throw new Error('O cancelamento não foi confirmado pelo servidor.');
  return parsed.data;
 }
