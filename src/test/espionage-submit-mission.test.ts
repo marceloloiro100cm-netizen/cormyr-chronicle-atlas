@@ -2,15 +2,28 @@ import {describe,it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
 const read=(path:string)=>readFileSync(path,'utf8');
 
-describe('Espionagem · Executar missão registra ordem real, não simulação',()=>{
+describe('Espionagem · Iniciar missão registra ordem real, não simulação',()=>{
  it('mostra ação de execução somente após escolher espião, destino e Casa',()=>{
   const panel=read('src/components/house/espionage/spy-regional-turns-panel.tsx');
   const btn=read('src/components/house/espionage/spy-submit-house-mission.tsx');
   expect(panel).toContain('{allSelected&&selected&&selectedTargetHouse');
   expect(panel).toContain('{ready&&agentAvailable&&originRegion&&');
   expect(panel).toContain('<SpySubmitHouseMission');
-  expect(btn).toContain('Executar missão');
-  expect(btn).toContain('Confirmar execução');
+  const previewEnd=panel.indexOf('<SpyMissionOddsCard');
+  const mapEnd=panel.indexOf('<CormyrInteractiveMap');
+  const button=panel.indexOf('<SpySubmitHouseMission');
+  const dates=panel.indexOf('Datas previstas pelo Hub Temporal');
+  expect(previewEnd).toBeGreaterThan(0);
+  expect(mapEnd).toBeGreaterThan(previewEnd);
+  expect(button).toBeGreaterThan(mapEnd);
+  expect(dates).toBeGreaterThan(button);
+  expect(panel).toContain('className="spy-planner-start-row"');
+  const css=read('src/components/house/espionage/spy-mission-planner.css');
+  expect(css).toContain('.spy-planner-start-row .spy-planner-execution-button');
+  expect(css).toContain('width:100%');
+
+  expect(btn).toContain('Iniciar missão');
+  expect(btn).toContain('Confirmar início');
   expect(btn).toContain('onClick={()=>void send()}');
   expect(btn).toContain("regionId(agent.currentRegion??'')!==originRegion");
   expect(btn).toContain('readSpyHouseManagementBrowser(houseId)');
