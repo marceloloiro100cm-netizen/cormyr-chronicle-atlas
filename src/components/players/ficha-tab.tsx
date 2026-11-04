@@ -10,7 +10,7 @@ import {supabase} from '@/integrations/supabase/client';
 import {parseChronicleSheet} from '@/lib/house/character-sheet';
 import { NobleHouseHub } from "@/components/house/hub";
 import { Button } from "@/components/ui/button";
-import { CampaignContent, PrivateImage } from "@/components/campaign-content";
+import { CampaignContent } from "@/components/campaign-content";
 import { FichaCasaCard, portraitPath } from "@/components/ficha";
 import { isFichaCasa, isFichaPersonagem, parseFichaCasa } from "@/lib/ficha";
 import type { RecordRow } from "./shared";
@@ -66,9 +66,6 @@ export function FichaTab({
   const structured=records.map(row=>({row,sheet:parseChronicleSheet(row.content)})).filter((x):x is {row:RecordRow;sheet:NonNullable<typeof x.sheet>}=>x.sheet!==null);
   const fichaCasa = records.find((r) => isFichaCasa(r.title, r.content));
   const fichaLorde = records.find((r) => isFichaPersonagem(r.title, r.content)&&!parseChronicleSheet(r.content));
-  const retratos = records
-    .map((r) => ({ titulo: r.title, path: portraitPath(r.content) }))
-    .filter((r): r is { titulo: string; path: string } => Boolean(r.path));
   const npcs = records.filter(
     (r) =>
       r.kind === "character" && !isFichaPersonagem(r.title, r.content) && !portraitPath(r.content),
@@ -185,25 +182,7 @@ export function FichaTab({
               {canEdit && <RecordEditor row={r} canEdit={canEdit} onSave={onSave} />}
             </details>
           ))}
-          {retratos.length > 0 && (
-            <>
-              <h2>Retratos e imagens</h2>
-              <div
-                className="castle-art-gallery-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-6 rounded-xl"
-                style={{
-                  background: "linear-gradient(180deg, #1e1329 0%, #140c1c 100%)",
-                  border: "1px solid rgba(189, 148, 84, 0.4)",
-                  boxShadow: "inset 0 0 32px rgba(0, 0, 0, 0.65)",
-                  width: "100%",
-                  boxSizing: "border-box",
-                }}
-              >
-                {retratos.map((r) => (
-                  <PrivateImage key={r.path} path={r.path} caption={r.titulo} />
-                ))}
-              </div>
-            </>
-          )}
+
         </>
       )}
     </section>
