@@ -30,7 +30,7 @@ describe('Galeria de espiões · exclusividade entre Casas',()=>{
  it('permite ao agente manter sua própria imagem reservada',()=>{
   const onChange=vi.fn();
   render(<SpyPortraitPicker portraits={[{
-   ...portraits[0],assignedAgentId:agentId
+   ...portraits[0]!,assignedAgentId:agentId
   }]} selected="occupied" onChange={onChange} currentAgentId={agentId}/>);
   const own=screen.getByRole('button',{name:'Tillet'});
   expect(own).not.toBeDisabled();
@@ -40,7 +40,7 @@ describe('Galeria de espiões · exclusividade entre Casas',()=>{
  });
  it('bloqueia também o vínculo antigo com outro agente da própria Casa',()=>{
   render(<SpyPortraitPicker portraits={[{
-   ...portraits[0],assignedAgentId:agentId,occupied:false
+   ...portraits[0]!,assignedAgentId:agentId,occupied:false
   }]} selected={null} currentAgentId="4e27c90b-0814-48c7-aa62-e8ed62ed0481"
    onChange={vi.fn()}/>);
   expect(screen.getByRole('button',{name:'Tillet — indisponível'})).toBeDisabled();
