@@ -19,7 +19,7 @@ import {projectSpyHarptosSchedule} from '@/lib/espionage/round-calendar';
  * The existing published Hub Temporal is the ONLY start date.
  * Neither this preview nor client-side interaction may advance that clock.
  */
-export function SpyRegionalTurnsPanel({houseId,admin=false}:{houseId:string;admin?:boolean}){
+export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean}){
  const loadTargets=useServerFn(listSpyHouseTargets);
  const campaignTime=useCampaignTime();
  const {data,isPending,isError,refetch}=useQuery({
