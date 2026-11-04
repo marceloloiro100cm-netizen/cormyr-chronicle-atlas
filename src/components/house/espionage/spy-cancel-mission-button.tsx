@@ -15,14 +15,13 @@ export function SpyCancelMissionButton({houseId,operation,agentName,canEdit}:{
  const [open,setOpen]=useState(false);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
- const [receipt,setReceipt]=useState(false);
  const key=useRef<string|null>(null);
  const qc=useQueryClient();
  const cancellable=['traveling','operating','pending_narrator_review','planned']
   .includes(operation.status)&&Boolean(operation.version);
  if(!canEdit||!cancellable)return null;
  const cancel=async()=>{
-  if(busy||receipt||!operation.version)return;
+  if(busy||!operation.version)return;
   setBusy(true);setError('');
   try{
    const requestKey=key.current??crypto.randomUUID();
@@ -31,7 +30,18 @@ export function SpyCancelMissionButton({houseId,operation,agentName,canEdit}:{
     houseId,operationId:operation.id,
     expectedVersion:operation.version,requestKey,
    });
-   setReceipt(true);setOpen(false);
+   // The database has already released the agent. Reflect that immediately in
+   // the current card, without showing a cancelled receipt or stale mission.
+   // The subsequent refetch reconciles versions and location with PostgreSQL.
+   qc.setQueryData<SpyManagement>(['spy-house-management',houseId],current=>
+    current?{
+     ...current,
+     agents:current.agents.map(agent=>agent.id===operation.assetId
+      ?{...agent,status:'available' as const,version:agent.version+1}:agent),
+     operations:current.operations.map(item=>item.id===operation.id
+      ?{...item,status:'cancelled' as const,version:(item.version??operation.version!)+1}:item),
+    }:current);
+   setOpen(false);
    await Promise.allSettled([
     qc.invalidateQueries({queryKey:['spy-house-management',houseId]}),
     qc.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
@@ -43,11 +53,10 @@ export function SpyCancelMissionButton({houseId,operation,agentName,canEdit}:{
   }finally{setBusy(false);}
  };
  return <>
-  {receipt?<span className="spy-agent-cancelled" role="status">Missão cancelada</span>:
-   <Button type="button" variant="outline" size="sm"
-    className="spy-agent-cancel-mission" onClick={()=>{setError('');setOpen(true);}}>
-    <Ban size={15} aria-hidden="true"/> Cancelar missão
-   </Button>}
+  <Button type="button" variant="outline" size="sm"
+   className="spy-agent-cancel-mission" onClick={()=>{setError('');setOpen(true);}}>
+   <Ban size={15} aria-hidden="true"/> Cancelar missão
+  </Button>
   <Dialog open={open} onOpenChange={next=>{if(!busy)setOpen(next);}}>
    <DialogContent className="spy-mission-confirm-dialog sm:max-w-lg">
     <DialogHeader>
