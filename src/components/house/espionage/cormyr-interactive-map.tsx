@@ -110,7 +110,7 @@ export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}
     {CORMYR_MAPPED_REGIONS[id]?.name??id}
    </button>)}
   </div>
-  <p className="cormyr-map-source">
+  <p className="cormyr-map-source" hidden aria-hidden="true">
    Mapa Regional de Cormyr fornecido pelo Narrador. As áreas clicáveis indicam os
    nomes das regiões, não fronteiras homologadas. O planejador usa as regras de
    deslocamento já aprovadas; missões operacionais exigem validação no servidor.
