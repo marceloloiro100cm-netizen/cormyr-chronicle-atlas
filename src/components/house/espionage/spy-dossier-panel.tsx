@@ -46,7 +46,7 @@ function DossierView({dossier}:{dossier:SpyDossier}){
       const row=found.find(f=>f.key===key);
       return <div className="spy-dossier-item" key={key}>
        <strong>{RESOURCE_NAMES[key]}</strong>
-       {row?<span>{String(row.snapshot.value??'—')}</span>:
+       {row?<span>{String(row.snapshot['value']??'—')}</span>:
         <span className="spy-dossier-unknown"><LockKeyhole size={13}/>Desconhecido</span>}
        {row&&<small>Confirmado: {safeDate(row.verifiedDate)}</small>}
       </div>;
@@ -54,11 +54,11 @@ function DossierView({dossier}:{dossier:SpyDossier}){
     </div>
    </>:found.length?<div className="spy-dossier-discoveries">
     {found.map(f=><article className="spy-dossier-item" key={f.id}>
-     <strong>{String(f.snapshot.name??f.key)}</strong>
-     <span>{String(f.snapshot.category??
-      (Array.isArray(f.snapshot.types)?f.snapshot.types.join(', '):'Unidade militar'))}</span>
-     {tab==='army'&&typeof f.snapshot.strength==='number'&&
-      <small>Força registrada: {f.snapshot.strength}</small>}
+     <strong>{String(f.snapshot['name']??f.key)}</strong>
+     <span>{String(f.snapshot['category']??
+      (Array.isArray(f.snapshot['types'])?f.snapshot['types'].join(', '):'Unidade militar'))}</span>
+     {tab==='army'&&typeof f.snapshot['strength']==='number'&&
+      <small>Força registrada: {f.snapshot['strength']}</small>}
      <small>Última confirmação: {safeDate(f.verifiedDate)}</small>
     </article>)}
    </div>:<p className="house-caption">Nenhuma informação desta categoria foi descoberta.</p>}
