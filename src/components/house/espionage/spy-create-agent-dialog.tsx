@@ -94,7 +94,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
       <Button type="button" variant="outline" size="sm"
        onClick={()=>void refetch()}>Tentar novamente</Button>
      </div>}
-     <label className="cormyr-creation-section">Nome do espião <span aria-hidden>*</span>
+     <label className="cormyr-creation-section"><span>Nome do espião <span aria-hidden>*</span></span>
       <input required autoFocus minLength={2} maxLength={80}
        placeholder="Ex.: O Corvo" value={name}
        onChange={e=>{requestKey.current=null;setName(e.target.value);}}/>
@@ -131,8 +131,10 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
       </span>
       {!enoughWealth&&<small role="alert">Riqueza insuficiente para as melhorias escolhidas.</small>}
      </div>
-     <SpyPortraitPicker portraits={portraits} selected={portraitId}
-      onChange={id=>{requestKey.current=null;setPortraitId(id);}}/>
+     <div className="cormyr-creation-section cormyr-creation-portraits">
+      <SpyPortraitPicker portraits={portraits} selected={portraitId}
+       onChange={id=>{requestKey.current=null;setPortraitId(id);}}/>
+     </div>
      {portraits.length>0&&!pictureOk&&<small role="status">
       Escolha uma das fotos disponíveis. As imagens em cinza já estão ocupadas.</small>}
 
