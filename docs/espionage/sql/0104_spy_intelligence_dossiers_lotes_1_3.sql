@@ -172,8 +172,16 @@ BEGIN
  -- Na ausência de fonte oficial, não estimar nem inventar valores.
  -- A conexão às fichas operacionais e aos inventários é parte do lote 4.
  IF v_objective='house_resources' THEN
-  SELECT to_jsonb(s) INTO v_stats FROM public.spy_noble_house_stats s
-   WHERE s.house_id=v_op.target_id;
+  -- Uma ficha operacional ativa pode conter bônus, missivas e construções
+  -- posteriores à planilha; não substituir o valor atual por dado antigo.
+  -- A conexão exata com balances(state) será feita no lote 4.
+  IF NOT EXISTS(
+   SELECT 1 FROM public.noble_house_sheets n
+   WHERE n.house_id=v_op.target_id AND n.state IS NOT NULL
+  ) THEN
+   SELECT to_jsonb(s) INTO v_stats FROM public.spy_noble_house_stats s
+    WHERE s.house_id=v_op.target_id;
+  END IF;
  END IF;
  IF v_stats IS NULL THEN
   INSERT INTO public.spy_intelligence_mission_awards(
