@@ -52,6 +52,18 @@ describe('Von der Harten — vassalagem, guarnição e contraespionagem',()=>{
   expect(b.allocated.power).toBe(36);
   expect(b.available.power).toBe(0);
  });
+ it('os dois vínculos aprovados concedem dois dados de Sorte sem gastar Poder outra vez',()=>{
+  const h=sampleHouse();
+  h.vassals=[
+   {id:'banner-1',houseId:'wyvernspur',name:'Wyvernspur',
+    status:'approved',cost:20,influencePenalty:0,notes:''},
+   {id:'banner-2',houseId:'immerdusk',name:'Immerdusk',
+    status:'approved',cost:10,influencePenalty:0,notes:''},
+  ];
+  const args={status:2,testDice:[4,4,4,4],bonusDice:[],modifier:0};
+  expect(rollPreview(h,args).kept).toHaveLength(4);
+  expect(balances(h).available.power).toBe(0);
+ });
  it('distingue defesa do castelo, disciplina e saúde da Guarnição Verde',()=>{
   const h=sampleHouse(),stats=unitStats(h.units[0]!,h);
   expect(stats.defense).toBe(10); // 2+2+2−2+6 pelo castelo
