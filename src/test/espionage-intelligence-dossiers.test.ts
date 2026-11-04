@@ -25,7 +25,7 @@ describe('Dossiês de espionagem · primeiros 3 lotes',()=>{
    .toEqual([3,3,4,4,5,5,6,6,7,7]);
   expect(()=>spyIntelligenceCapacity(-1)).toThrow();
   expect(SPY_INTELLIGENCE_RESOURCE_KEYS).toHaveLength(7);
-  expect(migration()).toContain('v_margin:=(NEW.modifiers->>\\'roll\\')::integer+');
+  expect(migration()).toContain("v_margin:=(NEW.modifiers->>'roll')::integer+");
   expect(migration()).toContain('p_margin::numeric/5');
  });
  it('revela primeiro itens ainda desconhecidos, sem duplicação',()=>{
@@ -48,7 +48,7 @@ describe('Dossiês de espionagem · primeiros 3 lotes',()=>{
   expect(sql).toContain('operation_id uuid PRIMARY KEY REFERENCES public.spy_operations(id)');
   expect(sql).toContain('ALTER TABLE public.spy_intelligence_findings ENABLE ROW LEVEL SECURITY');
   expect(sql).toContain('REVOKE ALL ON public.spy_intelligence_findings FROM PUBLIC,anon,authenticated');
-  expect(sql).toContain('v_objective NOT IN(\\'house_resources\\',\\'army\\',\\'possessions\\')');
+  expect(sql).toContain("v_objective NOT IN('house_resources','army','possessions')");
   expect(sql).toContain('AFTER INSERT ON public.spy_mission_decisions');
   expect(sql).toContain("NEW.resolution<>'success'");
   expect(sql).toContain('waiting_catalog');
