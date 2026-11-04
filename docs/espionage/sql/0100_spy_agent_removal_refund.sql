@@ -143,6 +143,38 @@ BEGIN
   'alreadyApplied',false,'houseVersion',v_h.version+1);
 END $body$;
 
+-- Bloquear reatribuição de retratos de agentes já arquivados, inclusive
+-- por chamadas antigas à RPC que não passam pela interface nova.
+CREATE OR REPLACE FUNCTION public.spy_assign_agent_portrait(
+ p_house text,p_agent uuid,p_portrait text,p_expected_version integer
+) RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER
+SET search_path=public,pg_temp AS $portrait$
+DECLARE v_agent record;
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.campaign_access_active() OR
+  NOT(public.is_campaign_admin() OR public.in_campaign_house(p_house,true))
+ THEN RAISE EXCEPTION 'Retrato não autorizado para a Casa'; END IF;
+ IF p_portrait IS NULL OR p_expected_version IS NULL
+ THEN RAISE EXCEPTION 'Seleção de retrato incompleta'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.spy_portrait_catalog c
+   WHERE c.id=p_portrait AND c.active=true)
+ THEN RAISE EXCEPTION 'Retrato não faz parte da galeria disponível'; END IF;
+ SELECT * INTO v_agent FROM public.spy_assets a
+  WHERE a.owner_house_id=p_house AND a.id=p_agent FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Agente não pertence à Casa'; END IF;
+ IF v_agent.status='retired' THEN
+  RAISE EXCEPTION 'Agente excluído não pode reservar retrato'; END IF;
+ IF v_agent.version<>p_expected_version THEN
+  RAISE EXCEPTION 'Ficha alterada; recarregue antes de escolher retrato'; END IF;
+ IF v_agent.portrait_id IS DISTINCT FROM p_portrait THEN
+  UPDATE public.spy_assets SET portrait_id=p_portrait,version=version+1
+   WHERE id=p_agent;
+ END IF;
+ RETURN jsonb_build_object('agentId',p_agent,'portraitId',p_portrait,
+  'version',CASE WHEN v_agent.portrait_id IS DISTINCT FROM p_portrait
+   THEN v_agent.version+1 ELSE v_agent.version END);
+END $portrait$;
+
 REVOKE ALL ON FUNCTION public.spy_remove_agent(text,uuid,integer,integer,uuid)
  FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.spy_remove_agent(text,uuid,integer,integer,uuid)
