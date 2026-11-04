@@ -37,11 +37,30 @@ it('mostra somente désdia, mês e ano no calendário, preservando privacidade',
  mount();
  expect(await screen.findByText('2ª désdia · Hammer · 1522 CV')).toBeInTheDocument();
  const day=await screen.findByRole('button',{name:/^2 de Hammer.*1 evento/});
+ const third=screen.getByRole('button',{name:/^3 de Hammer/});
+ const official=screen.getByRole('button',{name:/^11 de Hammer/});
  const details=document.getElementById('harptos-events')!;
- fireEvent.mouseEnter(day);expect(within(details).getByText('Convocação da corte')).toBeInTheDocument();
- fireEvent.focus(screen.getByRole('button',{name:/^3 de Hammer/}));
+ expect(official).toHaveAttribute('aria-pressed','true');
+ expect(day).toHaveAttribute('aria-pressed','false');
  expect(within(details).queryByText('Convocação da corte')).not.toBeInTheDocument();
- fireEvent.click(day);expect(within(details).getByText('Convocação da corte')).toBeInTheDocument();
+ // Hover e foco não selecionam um dia nem modificam os eventos exibidos.
+ fireEvent.mouseEnter(day);
+ expect(official).toHaveAttribute('aria-pressed','true');
+ expect(day).toHaveAttribute('aria-pressed','false');
+ expect(within(details).queryByText('Convocação da corte')).not.toBeInTheDocument();
+ fireEvent.focus(day);
+ fireEvent.focus(third);
+ expect(official).toHaveAttribute('aria-pressed','true');
+ expect(third).toHaveAttribute('aria-pressed','false');
+ expect(within(details).queryByText('Convocação da corte')).not.toBeInTheDocument();
+ // O clique (também disparado pelo navegador via Enter/Espaço) altera a seleção.
+ fireEvent.click(day);
+ expect(day).toHaveAttribute('aria-pressed','true');
+ expect(within(details).getByText('Convocação da corte')).toBeInTheDocument();
+ fireEvent.mouseEnter(third);
+ fireEvent.focus(third);
+ expect(day).toHaveAttribute('aria-pressed','true');
+ expect(within(details).getByText('Convocação da corte')).toBeInTheDocument();
  expect(screen.queryByText('Ajustar calendário da campanha')).not.toBeInTheDocument();
  await waitFor(()=>expect(screen.getByRole('button',{name:/^11 de Hammer/})).toHaveAttribute('aria-current','date'));
 });
