@@ -112,6 +112,12 @@ export function CormyrInteractiveMap({selectedRegion,originRegion,plan,onSelect}
       cy={REGIONAL_MAP_LABEL_HOTSPOTS[focus].pinY} r="20"/>}
    </svg>
   </div>
+  <div className="cormyr-map-mobile-regions" aria-label="Regiões de destino no celular">
+   {regions.map(([id])=><button key={id} type="button"
+    aria-pressed={selectedRegion===id} onClick={()=>navigate(id)}>
+    {CORMYR_MAPPED_REGIONS[id]?.name??id}
+   </button>)}
+  </div>
   <p className="cormyr-map-source" hidden aria-hidden="true">
    Mapa Regional de Cormyr fornecido pelo Narrador. As áreas clicáveis indicam os
    nomes das regiões, não fronteiras homologadas. O planejador usa as regras de
