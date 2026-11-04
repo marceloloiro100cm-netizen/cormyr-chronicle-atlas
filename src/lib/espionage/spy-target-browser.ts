@@ -6,7 +6,10 @@ import {spyHouseTargetSchema} from './spy-house-targets.functions';
 
 type RpcResponse={data:unknown;error:{message:string}|null};
 type BrowserRpc=(name:string,args?:Record<string,unknown>)=>Promise<RpcResponse>;
-const rpc=supabase.rpc as unknown as BrowserRpc;
+// Preserve the SupabaseClient receiver: rpc() accesses its internal REST client.
+ // Extracting supabase.rpc as a bare function causes the official House list
+ // and per-target mission odds to fail even for valid authenticated users.
+const browserDb=supabase as unknown as {rpc:BrowserRpc};
 
 const publicRow=z.object({
  id:z.string().min(1).max(100),
@@ -39,7 +42,7 @@ async function ensureSession(){
  */
 export async function readSpyNobleHouseTargetsBrowser(){
  await ensureSession();
- const response=await rpc('spy_public_noble_targets');
+ const response=await browserDb.rpc('spy_public_noble_targets');
  if(response.error)throw new Error('A lista de Casas não pôde ser carregada. Atualize a sessão.');
  const parsed=z.array(publicRow).max(500).safeParse(response.data);
  if(!parsed.success)throw new Error('Formato inesperado da lista oficial de Casas.');
@@ -64,7 +67,7 @@ export async function readSpyMissionOddsBrowser(input:{
  houseId:string;agentId:string;targetHouseId:string;
 }){
  await ensureSession();
- const response=await rpc('spy_player_mission_preview',{
+ const response=await browserDb.rpc('spy_player_mission_preview',{
   p_house:input.houseId,p_agent:input.agentId,p_target:input.targetHouseId,
  });
  if(response.error)throw new Error('Não foi possível avaliar esta Casa. Confira o agente e o alvo.');
