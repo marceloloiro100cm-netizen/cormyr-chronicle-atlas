@@ -108,7 +108,9 @@ describe('Padrão reutilizável de quadros da Casa',()=>{
   for(const {section,accepts} of cases){
    const eligible=CORE_CATALOG.filter(item=>accepts(item.category,item.id));
    expect(eligible.length).toBeGreaterThan(1);
-   const purchased=eligible[eligible.length-1]!;
+   const purchased=section==='domains'
+    ?eligible.filter(item=>item.category==='terrain').slice(-1)[0]!
+    :eligible[eligible.length-1]!;
    const s=state();
    if(section==='domains'){
     // Main terrain, feature and community are owned by the domain even
@@ -126,6 +128,20 @@ describe('Padrão reutilizável de quadros da Casa',()=>{
    expect(cards.slice(1).some(card=>card.classList.contains('military-asset-inactive'))).toBe(true);
    view.unmount();
   }
+ });
+ it('identifica características e comunidades ligadas ao domínio como adquiridas',()=>{
+  const s=state();
+  const feature=CORE_CATALOG.filter(item=>item.category==='feature').slice(-1)[0]!;
+  const community=CORE_CATALOG.filter(item=>item.category==='community').slice(-1)[0]!;
+  s.domains[0]!.features=[feature.id];
+  s.domains[0]!.community=community.id;
+  renderCatalog('domains',s);
+  const acquired=new Set(['hills',feature.id,community.id]);
+  const visible=screen.getAllByTestId(/^house-catalog-asset-/);
+  const firstThree=visible.slice(0,3).map(card=>card.getAttribute('data-testid')?.replace('house-catalog-asset-',''));
+  expect(new Set(firstThree)).toEqual(acquired);
+  expect(visible.slice(0,3).every(card=>!card.classList.contains('military-asset-inactive'))).toBe(true);
+  expect(visible[3]).toHaveClass('military-asset-inactive');
  });
  it('não mostra filtro de aquisição em Terras ou Fortificações',()=>{
   const view=renderCatalog('domains');
