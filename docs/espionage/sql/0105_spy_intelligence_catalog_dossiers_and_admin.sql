@@ -163,16 +163,19 @@ BEGIN
  IF v_version IS NULL THEN RAISE EXCEPTION 'HUB Temporal indisponível'; END IF;
  -- Dados omitidos e duplicações no inventário não geram segredos adicionais.
  FOR v_row IN
-  SELECT DISTINCT ON(j.value->>'key')
-   j.value->>'key' AS item_key,j.value->'snapshot' AS item_snapshot
-  FROM jsonb_array_elements(v_catalog) AS j(value)
-  WHERE nullif(j.value->>'key','') IS NOT NULL
-   AND jsonb_typeof(j.value->'snapshot')='object'
-   AND NOT EXISTS(
-    SELECT 1 FROM public.spy_intelligence_findings f
-    WHERE f.dossier_id=v_award.dossier_id AND f.objective=v_award.objective
-     AND f.subject_key=j.value->>'key')
-  ORDER BY j.value->>'key'
+  SELECT item_key,item_snapshot FROM (
+   SELECT DISTINCT ON(j.value->>'key')
+    j.value->>'key' AS item_key,j.value->'snapshot' AS item_snapshot
+   FROM jsonb_array_elements(v_catalog) AS j(value)
+   WHERE nullif(j.value->>'key','') IS NOT NULL
+    AND jsonb_typeof(j.value->'snapshot')='object'
+    AND NOT EXISTS(
+     SELECT 1 FROM public.spy_intelligence_findings f
+     WHERE f.dossier_id=v_award.dossier_id AND f.objective=v_award.objective
+      AND f.subject_key=j.value->>'key')
+   ORDER BY j.value->>'key'
+  ) unknown_items
+  ORDER BY md5(p_operation::text||':'||item_key)
  LOOP
   EXIT WHEN v_new>=v_award.reveal_capacity;
   INSERT INTO public.spy_intelligence_findings(
