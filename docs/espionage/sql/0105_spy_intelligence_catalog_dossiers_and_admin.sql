@@ -372,6 +372,17 @@ BEGIN
    FROM jsonb_array_elements(v_catalog) j(value);
   END IF;
  END LOOP;
+ -- Posses destruídas/unidades dissolvidas podem continuar conhecidas
+ -- historicamente. A revogação deve continuar acessível ao Narrador.
+ SELECT v_items||coalesce(jsonb_agg(jsonb_build_object(
+  'objective',f.objective,'key',f.subject_key,
+  'name',coalesce(f.value_snapshot->>'name',f.subject_key))
+  ORDER BY f.objective,f.subject_key),'[]'::jsonb) INTO v_items
+ FROM public.spy_intelligence_findings f
+ WHERE f.dossier_id=p_dossier AND NOT EXISTS(
+  SELECT 1 FROM jsonb_array_elements(v_items) j(value)
+  WHERE j.value->>'objective'=f.objective
+   AND j.value->>'key'=f.subject_key);
  RETURN v_items;
 END $options$;
 
