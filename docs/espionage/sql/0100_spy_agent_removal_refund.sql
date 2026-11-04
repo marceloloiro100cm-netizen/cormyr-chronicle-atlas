@@ -88,6 +88,9 @@ BEGIN
  IF v_refund<0 OR v_refund>2 THEN
   RAISE EXCEPTION 'Custos de espião inconsistentes: revisão necessária'; END IF;
  v_prev:=v_h.state;
+ IF jsonb_typeof(v_prev->'permanent')<>'object'
+  OR NOT (v_prev->'permanent' ? 'wealth')
+ THEN RAISE EXCEPTION 'Ficha sem saldo permanente de Riqueza validado'; END IF;
  v_old_permanent:=coalesce((v_prev#>>'{permanent,wealth}')::integer,0);
  v_next:=jsonb_set(v_prev,'{permanent,wealth}',
   to_jsonb(v_old_permanent+v_refund),false);
