@@ -26,6 +26,7 @@ const operationRowSchema=z.object({
  investigationEndKey:z.string().nullable().optional(),
  originRegion:z.string().nullable().optional(),destinationRegion:z.string().nullable().optional(),
  targetHouseName:z.string().nullable().optional(),
+ objective:z.enum(['house_resources','army','possessions']).optional(),
  version:z.number().int().positive().optional(),
  createdAt:z.string(),
 }).strict();

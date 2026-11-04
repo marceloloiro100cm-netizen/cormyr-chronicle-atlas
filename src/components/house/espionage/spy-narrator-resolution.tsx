@@ -5,6 +5,7 @@ import {Gavel} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {resolveSpyAgentMission} from '@/lib/espionage/spy-agent-actions.functions';
 import type {SpyManagement} from '@/lib/espionage/spy-management.functions';
+import {SPY_INTELLIGENCE_OBJECTIVES} from '@/lib/espionage/spy-intelligence-rules';
 
 type Op=SpyManagement['operations'][number];
 type Agent=SpyManagement['agents'][number];
@@ -63,7 +64,8 @@ function NarratorDecision({houseId,operation,agent}:{
  return <form className="house-ledger" onSubmit={e=>void submit(e)}
   style={{padding:12,display:'grid',gap:9}}>
   <strong>{agent.codename} · {agent.rank} · Astúcia {agent.cunning} ({agent.cunning} dados de seis faces)</strong>
-  <small>Objetivo: {missionLabels[operation.missionKind]??'Missão de espionagem'} · Alvo: {operation.targetId}</small>
+  <small>Objetivo: {SPY_INTELLIGENCE_OBJECTIVES.find(item=>item.id===operation.objective)?.label
+   ??missionLabels[operation.missionKind]??'Missão de espionagem'} · Alvo: {operation.targetId}</small>
   <div style={{display:'flex',flexWrap:'wrap',gap:12}}>
    <label>Resultado dos dados
     <input type="number" min={agent.cunning} max={agent.cunning*6}

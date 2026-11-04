@@ -7,6 +7,8 @@ import {Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogT
 import {readSpyHouseManagementBrowser,submitSpyHouseMissionBrowser}
  from '@/lib/espionage/spy-browser-client';
 import {regionId} from '@/lib/house/regions';
+import {SPY_INTELLIGENCE_OBJECTIVES,type SpyIntelligenceObjective}
+ from '@/lib/espionage/spy-intelligence-rules';
 
 /** Confirmation starts the mission immediately. Database validates route and
  * calendar; the Hub controls progression, and the Narrator handles outcomes. */
@@ -21,6 +23,7 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
 }){
  const qc=useQueryClient();
  const [open,setOpen]=useState(false);
+ const [objective,setObjective]=useState<SpyIntelligenceObjective>('house_resources');
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  const [receipt,setReceipt]=useState<{id:string;status:'traveling'|'operating'|'pending_narrator_review'}|null>(null);
@@ -45,7 +48,7 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
     agentVersion.current=agent.version;
    }
    const result=await submitSpyHouseMissionBrowser({
-    houseId,agentId,targetHouseId,destinationRegion,
+    houseId,agentId,targetHouseId,destinationRegion,objective,
     expectedAgentVersion:agentVersion.current,
     expectedCalendarVersion:calendarVersion,requestKey:key,
    });
@@ -90,8 +93,19 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
      <p><strong>Espião:</strong> {agentName}</p>
      <p><strong>Casa-alvo:</strong> {targetHouseName}</p>
      <p><strong>Região:</strong> {destinationName}</p>
+     <label htmlFor="spy-mission-objective"><strong>Objetivo da espionagem</strong></label>
+     <select id="spy-mission-objective" aria-label="Objetivo da espionagem"
+      className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground"
+      value={objective} disabled={busy}
+      onChange={event=>setObjective(event.target.value as SpyIntelligenceObjective)}>
+      {SPY_INTELLIGENCE_OBJECTIVES.map(item=><option key={item.id} value={item.id}>
+       {item.label} — {item.description}
+      </option>)}
+     </select>
      <p><strong>Viagem estimada:</strong> {travelRounds} désdia(s) · {travelRounds*10} dias</p>
      <p><strong>Missão estimada:</strong> {total} désdia(s) · {total*10} dias</p>
+     <small>Uma missão revela apenas informações da modalidade escolhida.
+      O conhecimento anterior da sua Casa é preservado.</small>
      <small>O servidor valida a região, a rota e o prazo antes de iniciar.
       O resultado da espionagem será definido ao término da investigação.</small>
     </div>
