@@ -3,6 +3,7 @@ import {Anchor,Castle,ChevronDown,Coins,GraduationCap,Hammer,PenTool,ShieldCheck
 import {Button} from '@/components/ui/button';
 import {HouseAssetCard,HouseAssetGrid} from './asset-card';
 import {CORE_CATALOG} from '@/lib/house/catalog';
+import {acquiredFirst} from '@/lib/house/acquired-first';
 import {activeHoldings,quote,UNIT_TYPES} from '@/lib/house/engine';
 import {MILITARY_HOLDINGS,MILITARY_HOLDING_BENEFITS} from '@/lib/house/unit-progression';
 import {RESOURCE_NAMES,SKILLS,SKILL_NAMES,type CatalogItem,type HouseState,type Holding,type Requirement} from '@/lib/house/types';
@@ -120,6 +121,8 @@ export function MilitaryAssets({state,canEdit,busy,onRename,onBuy,onConfigure=as
  const [expanded,setExpanded]=useState(true);
  const holdings=state.holdings.filter(h=>militaryItemIds.has(h.itemId)&&['active','building'].includes(h.status));
  const activeIds=new Set(activeHoldings(state).filter(h=>militaryItemIds.has(h.itemId)).map(h=>h.itemId));
+ const acquiredIds=new Set(holdings.map(h=>h.itemId));
+ const orderedItems=acquiredFirst(militaryItems,acquiredIds);
  return <section className="military-assets">
   <div className="house-section-heading military-assets-heading">
    <div><p className="campaign-eyebrow">BÔNUS E INSTALAÇÕES</p><h3>Gestão militar da Casa</h3></div>
@@ -131,7 +134,7 @@ export function MilitaryAssets({state,canEdit,busy,onRename,onBuy,onConfigure=as
   </div>
   {expanded&&<div id="military-assets-list">
    <p className="house-caption">{activeIds.size} tipo(s) ativo(s) · {militaryItems.length} construções, especialistas e melhorias com efeito militar direto. Selecione um card para consultar seus detalhes.</p>
-   <HouseAssetGrid>{militaryItems.map(item=>
+   <HouseAssetGrid>{orderedItems.map(item=>
     <MilitaryAssetCard key={item.id} item={item} holdings={holdings.filter(h=>h.itemId===item.id)}
      state={state} canEdit={canEdit} busy={busy} onRename={onRename} onBuy={onBuy} onConfigure={onConfigure}/>)}</HouseAssetGrid>
   </div>}

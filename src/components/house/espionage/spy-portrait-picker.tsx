@@ -1,6 +1,22 @@
+import {useState} from 'react';
 import {Check,UserRound} from 'lucide-react';
 import type {SpyManagement} from '@/lib/espionage/spy-management.functions';
 type Portrait=SpyManagement['portraits'][number];
+
+/** Never render a broken image glyph: retry the public Google thumbnail
+ * through Google's image host, then display a neutral silhouette. Site-hosted
+ * portraits are preferred and have no Google Drive runtime dependency.
+ */
+function SafeSpyPortraitImage({url,label,size=32}:{url:string;label:string;size?:number}){
+ const [attempt,setAttempt]=useState(0);
+ const driveId=url.match(/^https:\/\/drive\.google\.com\/thumbnail\?id=([A-Za-z0-9_-]+)/)?.[1];
+ const source=attempt===0?url:attempt===1&&driveId
+  ?'https://lh3.googleusercontent.com/d/'+driveId+'=w400':null;
+ if(!source)return <UserRound size={size} aria-label={'Retrato indisponível: '+label}/>;
+ return <img src={source} alt={label} loading="lazy"
+  onError={()=>setAttempt(driveId?Math.min(attempt+1,2):2)}
+  style={{width:'100%',height:'100%',objectFit:'cover'}}/>;
+}
 
 /** Only trusted server-provided HTTPS image URLs appear in this gallery.
  * Unique selection is enforced by PostgreSQL, not just by disabled buttons.
@@ -33,8 +49,7 @@ export function SpyPortraitPicker({portraits,selected,onChange,currentAgentId=nu
      <span style={{width:60,height:60,borderRadius:'50%',overflow:'hidden',
       display:'block',position:'relative',
       border:chosen?'3px solid #b99550':'2px solid rgba(160,159,159,.45)'}}>
-      <img src={p.imageUrl} alt={p.label}
-       loading="lazy" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+      <SafeSpyPortraitImage key={p.imageUrl} url={p.imageUrl} label={p.label} size={30}/>
       {chosen&&<span style={{position:'absolute',inset:0,
        background:'rgba(16,44,26,.35)',display:'grid',placeItems:'center'}}>
        <Check color="white" size={22}/>
@@ -56,7 +71,7 @@ export function SpyAvatar({name,url,size=42}:{name:string;url:string|null;size?:
   width:size,height:size,flexShrink:0,overflow:'hidden',borderRadius:'50%',
   border:'2px solid rgba(160,159,159,.45)',display:'inline-grid',
   placeItems:'center',background:'rgba(150,158,172,.12)'}}>
-  {url?<img src={url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:
+  {url?<SafeSpyPortraitImage key={url} url={url} label={name} size={Math.round(size*0.58)}/>:
    <UserRound size={Math.round(size*0.58)} aria-hidden/>}
  </span>;
 }
