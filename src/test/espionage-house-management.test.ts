@@ -1,4 +1,5 @@
 import {describe,it,expect} from 'vitest';
+import {readFileSync} from 'node:fs';
 import {newHouseState,type Holding} from '@/lib/house/types';
 import {calculateSpyDefense,spyDiscoveryBaseDifficulty,SPY_HOLDING_ID_SET} from '@/lib/espionage/spy-defense';
 import {spyMissionProgress,pendingMission} from '@/components/house/espionage/spy-house-management';
@@ -176,8 +177,7 @@ describe('Tabela de gerenciamento · missão e prazos',()=>{
   expect(pendingMission([ended], '44444444-4444-4444-8444-444444444444')).toBeNull();
  });
  it('a ficha só renderiza o quadro Missão atual quando existe operação ativa',()=>{
-  const fs=require('node:fs') as typeof import('node:fs');
-  const src=fs.readFileSync('src/components/house/espionage/spy-house-management.tsx','utf8');
+  const src=readFileSync('src/components/house/espionage/spy-house-management.tsx','utf8');
   expect(src).toContain('{operation&&<section className="spy-agent-mission">');
   expect(src).toContain('operation={pendingMission(data.operations,agent.id)}');
   expect(src).toContain('<SpyAgentHistory data={data}/>');
