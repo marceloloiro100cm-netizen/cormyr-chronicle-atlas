@@ -121,3 +121,33 @@ export async function removeSpyAgentBrowser(input:{
   throw new Error('Baixa do agente não confirmada pelo banco.');
  return parsed.data;
 }
+
+const submittedMissionSchema=z.object({
+ operationId:z.string().uuid(),agentId:z.string().uuid(),
+ targetHouseId:z.string().min(1),status:z.literal('planned'),
+ alreadyApplied:z.boolean(),calendarVersion:z.number().int().positive(),
+}).strict();
+
+/** Persists an actual order (not a visualization). The operation is PLANNED
+ * pending narrator route approval. Never claims arrival or mission outcome.
+ * PostgreSQL independently checks owner, target, agent version, calendar,
+ * availability and duplicate requests under a transaction lock.
+ */
+export async function submitSpyHouseMissionBrowser(input:{
+ houseId:string;agentId:string;targetHouseId:string;
+ destinationRegion:string;expectedAgentVersion:number;
+ expectedCalendarVersion:number;requestKey:string;
+}){
+ const data=await houseRpc('spy_submit_house_mission',input.houseId,{
+  p_agent:input.agentId,p_target:input.targetHouseId,
+  p_destination:input.destinationRegion,
+  p_expected_agent_version:input.expectedAgentVersion,
+  p_expected_calendar_version:input.expectedCalendarVersion,
+  p_request_key:input.requestKey,
+ });
+ const parsed=submittedMissionSchema.safeParse(data);
+ if(!parsed.success||parsed.data.agentId!==input.agentId||
+  parsed.data.targetHouseId!==input.targetHouseId)
+  throw new Error('A ordem não foi confirmada pelo servidor.');
+ return parsed.data;
+}
