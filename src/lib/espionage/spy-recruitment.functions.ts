@@ -16,6 +16,9 @@ export const spyRecruitmentOptionsSchema=z.object({
   id:z.string().min(1).max(80),label:z.string().min(1).max(100),
   imageUrl:z.string().url().startsWith('https://'),
   assignedAgentId:z.string().uuid().nullable(),
+  // Optional during staged deployment: PostgreSQL returns a global occupancy
+  // flag without leaking the agent ID or identity of other Houses.
+  occupied:z.boolean().optional(),
  }).strict()).max(1000),
 }).strict();
 export type SpyRecruitmentOptions=z.infer<typeof spyRecruitmentOptionsSchema>;
