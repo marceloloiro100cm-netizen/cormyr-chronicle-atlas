@@ -8,9 +8,8 @@ import {readSpyHouseManagementBrowser,submitSpyHouseMissionBrowser}
  from '@/lib/espionage/spy-browser-client';
 import {regionId} from '@/lib/house/regions';
 
-/** Execution requires confirmation and registers a durable mission order.
- * No map preview is accepted as a validated travel or investigation event.
- */
+/** Confirmation starts the mission immediately. Database validates route and
+ * calendar; the Hub controls progression, and the Narrator handles outcomes. */
 export function SpySubmitHouseMission({houseId,agentId,agentName,
  originRegion,destinationRegion,destinationName,targetHouseId,targetHouseName,
  travelRounds,calendarVersion,canSubmit,onSubmitted}:{
@@ -24,7 +23,7 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
  const [open,setOpen]=useState(false);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
- const [receipt,setReceipt]=useState<string|null>(null);
+ const [receipt,setReceipt]=useState<{id:string;status:'traveling'|'operating'}|null>(null);
  const requestKey=useRef<string|null>(null);
  const agentVersion=useRef<number|null>(null);
  const ready=canSubmit&&calendarVersion!==null&&!receipt&&!busy;
@@ -50,7 +49,7 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
     expectedAgentVersion:agentVersion.current,
     expectedCalendarVersion:calendarVersion,requestKey:key,
    });
-   setReceipt(result.operationId);
+   setReceipt({id:result.operationId,status:result.status});
    setOpen(false);
    await Promise.allSettled([
     qc.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
@@ -66,8 +65,9 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
  return <div className="spy-planner-execution">
   {receipt?<div className="spy-planner-execution-confirmed" role="status">
    <ShieldCheck size={18} aria-hidden="true"/>
-   <span>Ordem registrada. O espião foi designado à missão e aguarda
-    a homologação da rota pelo Narrador.</span>
+   <span>{receipt.status==='traveling'
+    ?'Missão iniciada. O espião está em viagem; a contagem acompanha o Hub Temporal.'
+    :'Missão iniciada. O espião já está investigando a Casa na região atual.'}</span>
   </div>:<Button type="button" className="spy-planner-execution-button"
    disabled={!ready} onClick={()=>{setError('');setOpen(true);}}>
    <Send size={16} aria-hidden="true"/> Iniciar missão
@@ -80,8 +80,8 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
     <DialogHeader>
      <DialogTitle>Confirmar início da missão</DialogTitle>
      <DialogDescription>
-      Ao confirmar, uma ordem de espionagem será registrada e o agente ficará reservado
-      até a homologação do Narrador.
+      A missão começa imediatamente após a confirmação. A viagem e a
+      investigação seguem os prazos do Hub Temporal, sem autorização adicional.
      </DialogDescription>
     </DialogHeader>
     <div className="spy-planner-execution-details">
@@ -90,8 +90,8 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
      <p><strong>Região:</strong> {destinationName}</p>
      <p><strong>Viagem estimada:</strong> {travelRounds} désdia(s) · {travelRounds*10} dias</p>
      <p><strong>Missão estimada:</strong> {total} désdia(s) · {total*10} dias</p>
-     <small>A rota mostrada no mapa é apenas uma prévia. O envio não move
-      imediatamente o espião nem concede informações sobre a Casa investigada.</small>
+     <small>O servidor valida a região, a rota e o prazo antes de iniciar.
+      O resultado da espionagem será definido ao término da investigação.</small>
     </div>
     {error&&<p className="house-warning" role="alert">{error}</p>}
     <DialogFooter>
@@ -99,7 +99,7 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
       onClick={()=>setOpen(false)}>Cancelar</Button>
      <Button type="button" disabled={!ready} onClick={()=>void send()}>
       <Send size={15} aria-hidden="true"/>
-      {busy?'Registrando missão…':'Confirmar início'}
+      {busy?'Iniciando missão…':'Confirmar início'}
      </Button>
     </DialogFooter>
    </DialogContent>
