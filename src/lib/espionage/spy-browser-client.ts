@@ -95,3 +95,29 @@ export async function readSpyRegionalStrategyBrowser(houseId:string){
   throw new Error('As posições dos agentes não puderam ser validadas.');
  return parsed.data;
 }
+
+const spyRemovalSchema=z.object({
+ agentId:z.string().uuid(),
+ refundedWealth:z.number().int().min(0).max(2),
+ freedSlot:z.literal(true),
+ portraitReleased:z.boolean(),
+ alreadyApplied:z.boolean(),
+ houseVersion:z.number().int().nonnegative(),
+}).strict();
+
+/** Secure PostgreSQL transaction. Archives the agent, frees its slot and
+ * portrait and refunds only equipment costs actually recorded on the House. */
+export async function removeSpyAgentBrowser(input:{
+ houseId:string;agentId:string;expectedAgentVersion:number;
+ expectedHouseVersion:number;requestKey:string;
+}){
+ const data=await houseRpc('spy_remove_agent',input.houseId,{
+  p_agent:input.agentId,p_expected_agent_version:input.expectedAgentVersion,
+  p_expected_house_version:input.expectedHouseVersion,
+  p_request_key:input.requestKey,
+ });
+ const parsed=spyRemovalSchema.safeParse(data);
+ if(!parsed.success||parsed.data.agentId!==input.agentId)
+  throw new Error('Baixa do agente não confirmada pelo banco.');
+ return parsed.data;
+}

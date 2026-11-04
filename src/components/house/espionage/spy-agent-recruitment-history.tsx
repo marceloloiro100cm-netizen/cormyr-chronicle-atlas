@@ -86,7 +86,7 @@ export function SpyAgentHistory({data}:{data:SpyManagement}){
       recruited:'Recrutamento',mission_success:'Missão bem-sucedida',
       mission_failure:'Missão fracassada',escaped:'Fuga',captured:'Prisão',
       dead:'Morte em operação',promoted:'Promoção',
-      upgrade_purchased:'Compra de equipamento',
+      upgrade_purchased:'Compra de equipamento',retired:'Agente excluído',
      } as Record<string,string>)[v.eventType]??v.eventType}</td>
      <td>{v.rank} · {v.cunning}D6</td>
      <td>{v.detail}{v.targetRegion&&<small style={{display:'block'}}>{v.targetRegion}</small>}</td>

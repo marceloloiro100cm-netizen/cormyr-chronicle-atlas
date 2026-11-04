@@ -15,6 +15,8 @@ import {SpyAgentUpgrades} from './spy-agent-upgrades';
 import {SpyAgentHistory} from './spy-agent-recruitment-history';
 import {SpyCreateAgentDialog} from './spy-create-agent-dialog';
 import {SpyAgentPortraitControl} from './spy-agent-portrait-control';
+import {SpyRemoveAgentButton} from './spy-remove-agent-button';
+import './spy-agent-cards.css';
 import {SpyNarratorResolutionPanel} from './spy-narrator-resolution';
 
 const missionKinds:Record<string,string>={
@@ -116,45 +118,74 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
    setError('Não foi possível salvar o nome. Recarregue o cadastro e confirme as permissões.');
   }finally{setBusy(false);}
  };
- return <tr>
-  <td><SpyAgentPortraitControl houseId={houseId} agent={agent}
-   portraits={portraits} canEdit={canEdit}/>
-   <strong>{agent.codename}</strong>
-   <small style={{display:'block'}}>{agent.currentRegion?
-    REGIONS[agent.currentRegion]?.name??agent.currentRegion:'Localização não confirmada'}</small>
-   {canEdit&&!editing&&<Button type="button" size="sm" variant="ghost"
-    onClick={()=>{setName(agent.codename);setEditing(true);}}><Pencil size={14}/>Dar nome</Button>}
-   {canEdit&&editing&&<form onSubmit={e=>void save(e)}>
-    <label>Nome do agente<input value={name} onChange={e=>setName(e.target.value)}
-     autoFocus required minLength={2} maxLength={80}/></label>
+ const status=agentStatuses[agent.status]??agent.status;
+ const hasActiveMission=Boolean(operation&&!['completed','cancelled'].includes(operation.status));
+ return <article className="house-card spy-agent-card">
+  <header className="spy-agent-card-heading">
+   <div className="spy-agent-identity">
+    <SpyAgentPortraitControl houseId={houseId} agent={agent}
+     portraits={portraits} canEdit={canEdit}/>
+    <div className="spy-agent-identity-text">
+     <p className="campaign-eyebrow">AGENTE DE ESPIONAGEM</p>
+     <h4>{agent.codename}</h4>
+     <small>{agent.currentRegion?REGIONS[agent.currentRegion]?.name??agent.currentRegion:
+      'Localização não confirmada'}</small>
+    </div>
+   </div>
+   <span className="spy-agent-state">{status}</span>
+  </header>
+  {canEdit&&!editing&&<Button type="button" size="sm" variant="outline"
+   className="spy-agent-rename" onClick={()=>{setName(agent.codename);setEditing(true);}}>
+   <Pencil size={14}/> Alterar nome
+  </Button>}
+  {canEdit&&editing&&<form className="spy-agent-name-form" onSubmit={e=>void save(e)}>
+   <label>Codinome do agente<input value={name} onChange={e=>setName(e.target.value)}
+    autoFocus required minLength={2} maxLength={80}/></label>
+   <div className="campaign-actions">
     <Button type="submit" size="sm" disabled={busy||name.trim().length<2||name.trim().length>80}>
      <Check size={14}/>Salvar</Button>
     <Button type="button" size="sm" variant="ghost" disabled={busy}
      onClick={()=>setEditing(false)}><X size={14}/>Cancelar</Button>
-   </form>}
-   {error&&<small role="alert">{error}</small>}
-  </td>
-  <td>
-   <strong>{agent.rank} · Astúcia {agent.cunning}D6</strong>
-   <small style={{display:'block'}}>{agent.missionSuccesses} missões bem-sucedidas ·
-    {agent.toNextRank===0?' nível máximo':agent.toNextRank+' para a próxima promoção'}
-   </small>
+   </div>
+  </form>}
+  {error&&<small role="alert" className="house-warning">{error}</small>}
+  <div className="spy-agent-stat-grid" aria-label={'Atributos do espião '+agent.codename}>
+   <div><small>Graduação</small><strong>{agent.rank}</strong></div>
+   <div><small>Astúcia</small><strong>{agent.cunning}D6</strong></div>
+   <div><small>Missões bem-sucedidas</small><strong>{agent.missionSuccesses}</strong></div>
+  </div>
+  <div className="spy-agent-progress">
+   <small>{agent.toNextRank===0?'Graduação máxima alcançada':
+    agent.toNextRank+' sucesso(s) até a próxima promoção'}</small>
    <div role="progressbar" aria-label={'Progresso de '+agent.codename}
     aria-valuenow={agent.toNextRank===0?3:3-agent.toNextRank}
-    aria-valuemin={0} aria-valuemax={3}
-    style={{marginTop:5,height:7,borderRadius:99,
-     background:'rgba(150,161,181,.25)',overflow:'hidden'}}>
-    <div style={{width:(agent.toNextRank===0?100:(3-agent.toNextRank)/3*100)+'%',
-     height:'100%',borderRadius:99,background:'#a98b54'}}/>
+    aria-valuemin={0} aria-valuemax={3}>
+    <span style={{width:(agent.toNextRank===0?100:(3-agent.toNextRank)/3*100)+'%'}}/>
    </div>
-  </td>
-  <td>{agentStatuses[agent.status]??agent.status}</td>
-  <td>{progress.mission}<small style={{display:'block'}}>{operation?missionStatuses[operation.status]??operation.status:''}</small></td>
-  <td>{progress.travel}</td>
-  <td>{progress.remaining}{progress.end&&<small style={{display:'block'}}>{formatDate(progress.end)}</small>}</td>
-  <td><SpyAgentUpgrades houseId={houseId} agent={agent}
-   houseVersion={houseVersion} wealth={availableWealth} canEdit={canEdit}/></td>
- </tr>;
+  </div>
+  <section className="spy-agent-mission">
+   <h5>Missão atual</h5>
+   <strong>{progress.mission}</strong>
+   {operation&&<small>{missionStatuses[operation.status]??operation.status}</small>}
+   <dl>
+    <dt>Tempo de viagem</dt><dd>{progress.travel}</dd>
+    <dt>Conclusão prevista</dt>
+    <dd>{progress.remaining}{progress.end&&<small>{formatDate(progress.end)}</small>}</dd>
+   </dl>
+  </section>
+  <details className="spy-agent-equipment">
+   <summary>Equipamentos e melhorias
+    <small>{Number(agent.forgedDocuments)+Number(agent.aceInTheHole)} de 2 adquiridos</small>
+   </summary>
+   <SpyAgentUpgrades houseId={houseId} agent={agent}
+    houseVersion={houseVersion} wealth={availableWealth} canEdit={canEdit}/>
+  </details>
+  <footer className="spy-agent-card-footer">
+   <SpyRemoveAgentButton houseId={houseId} agent={agent}
+    houseVersion={houseVersion} canEdit={canEdit}
+    hasActiveMission={hasActiveMission}/>
+  </footer>
+ </article>
 }
 
 export function SpyAgentManagement({houseId,canEdit,admin=false}:{houseId:string;canEdit:boolean;admin?:boolean}){
@@ -177,17 +208,17 @@ export function SpyAgentManagement({houseId,canEdit,admin=false}:{houseId:string
    <p style={{margin:0}}>Não foi possível carregar os agentes desta Casa.</p>
    <small>Confirme o acesso à Casa ou atualize o cadastro.</small>
   </div>}
-  {data&&<div style={{overflowX:'auto'}}>
-   <table><thead><tr><th scope="col">Agente</th><th scope="col">Nível / Astúcia</th><th scope="col">Situação</th>
-    <th scope="col">Missão</th><th scope="col">Tempo de viagem</th><th scope="col">Até terminar a missão</th><th scope="col">Equipamentos de espionagem</th></tr></thead>
-    <tbody>{data.agents.map(agent=><AgentRow key={agent.id}
-     houseId={houseId} agent={agent} canEdit={canEdit} officialDate={officialDate}
+  {data&&<div className="spy-agent-grid">
+   {data.agents.filter(agent=>agent.status!=='retired').map(agent=>
+    <AgentRow key={agent.id} houseId={houseId} agent={agent}
+     canEdit={canEdit} officialDate={officialDate}
      houseVersion={data.houseVersion} availableWealth={data.availableWealth}
      portraits={data.portraits}
-     operation={pendingMission(data.operations,agent.id)}/>)}</tbody>
-   </table>
-   {!data.agents.length&&<p>Esta Casa ainda não criou espiões. Utilize <strong>Criar espião</strong> para ocupar as vagas liberadas pelas construções.</p>}
+     operation={pendingMission(data.operations,agent.id)}/>)}
   </div>}
+  {data&&!data.agents.some(agent=>agent.status!=='retired')&&
+   <p className="house-caption">Esta Casa ainda não possui espiões ativos.
+    Use <strong>Criar espião</strong> para ocupar vagas disponíveis.</p>}
   {data&&<SpyAgentHistory data={data}/>}
   {data&&admin&&<SpyNarratorResolutionPanel data={data}/>}
  </section>;

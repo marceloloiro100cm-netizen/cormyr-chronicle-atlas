@@ -27,7 +27,7 @@ const operationRowSchema=z.object({
 const historySchema=z.object({
  id:z.string().uuid(),agentId:z.string().uuid(),
  eventType:z.enum(['recruited','mission_success','mission_failure','escaped',
-  'captured','dead','promoted','upgrade_purchased']),
+  'captured','dead','promoted','upgrade_purchased','retired']),
  dateKey:z.string().min(1),targetName:z.string().nullable(),
  targetRegion:z.string().nullable(),detail:z.string(),
  rank:z.enum(['Verde','Treinada','Veterana','Elite']),
