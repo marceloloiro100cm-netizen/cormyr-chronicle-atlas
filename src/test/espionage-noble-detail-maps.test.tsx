@@ -39,6 +39,42 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
   expect(container.querySelector('.spy-noble-map-stage')).toBeTruthy();
   expect(container.querySelector('button')).toBeNull();
  });
+ it('bolinhas semitransparentes são selecionáveis por clique e teclado',()=>{
+  const onSelectHouse=vi.fn();
+  const {container}=render(<SpyLocalHouseMap regionId="horselands"
+   originHouseId="harcourt" originHouseName="Harcourt"
+   destinationHouseId="erdenor" destinationHouseName="Erdenor"
+   plan={null} onSelectRegion={vi.fn()} onSelectHouse={onSelectHouse}/>);
+  const origin=screen.getByRole('button',{name:'Selecionar Casa de origem: Harcourt'});
+  const target=screen.getByRole('button',{name:'Selecionar Casa-alvo: Erdenor'});
+  expect(origin).toHaveAttribute('aria-pressed','false');
+  expect(target).toHaveAttribute('aria-pressed','false');
+  fireEvent.click(origin);
+  expect(origin).toHaveAttribute('aria-pressed','true');
+  expect(screen.getByRole('status')).toHaveTextContent('Casa selecionada: Harcourt');
+  expect(onSelectHouse).not.toHaveBeenCalled();
+  fireEvent.keyDown(target,{key:'Enter'});
+  expect(target).toHaveAttribute('aria-pressed','true');
+  expect(screen.getByRole('status')).toHaveTextContent('Casa selecionada: Erdenor');
+  expect(onSelectHouse).toHaveBeenCalledExactlyOnceWith('erdenor');
+  fireEvent.keyDown(origin,{key:' '});
+  expect(origin).toHaveAttribute('aria-pressed','true');
+  expect(onSelectHouse).toHaveBeenCalledTimes(1);
+  expect(container.querySelector('.spy-noble-local-route-outline')).toBeTruthy();
+  expect(container.querySelector('.spy-noble-local-route')).not.toHaveAttribute('marker-end');
+ });
+ it('usa linha fina, marfim e dourado, sem seta vermelha',()=>{
+  const css=readFileSync('src/components/house/espionage/spy-local-house-map.css','utf8');
+  const src=readFileSync('src/components/house/espionage/spy-local-house-map.tsx','utf8');
+  expect(src).not.toContain('markerEnd');
+  expect(src).not.toContain('arrowId');
+  expect(css).toContain('stroke:#fff0c8');
+  expect(css).toContain('stroke:#765c35');
+  expect(css).toContain('fill:rgba(255,249,226,.42)');
+  expect(css).toContain('fill:rgba(218,183,103,.32)');
+  expect(css).toContain('pointer-events:auto');
+  expect(css).toContain('pointer-events:all');
+ });
  it('mostra o mapa, mas não inventa uma linha quando a posição é desconhecida',()=>{
   const {container}=render(<SpyLocalHouseMap regionId="volkumburgh"
    originHouseId="major" originHouseName="Major"
