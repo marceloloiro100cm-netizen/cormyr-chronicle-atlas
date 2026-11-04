@@ -190,7 +190,7 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
   {operation&&<section className="spy-agent-mission">
    <h5>Missão atual</h5>
    <strong>{progress.mission}</strong>
-   {operation&&<small>{missionStatuses[operation.status]??operation.status}</small>}
+   <small>{missionStatuses[operation.status]??operation.status}</small>
    <dl>
     <dt>Tempo de viagem</dt><dd>{progress.travel}</dd>
     {progress.departure&&<><dt>Partida</dt>
