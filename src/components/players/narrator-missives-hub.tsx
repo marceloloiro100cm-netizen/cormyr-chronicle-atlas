@@ -8,6 +8,7 @@ export const NARRATOR_MENU=[
  ['painel','Conselho das casas'],
  ['missivas','Missivas'],
  ['calendario','Hub Temporal'],
+ ['dossies','Dossiês de Espionagem'],
  ['eventos','Eventos'],
  ['aventuras','Aventuras'],
 ] as const;
