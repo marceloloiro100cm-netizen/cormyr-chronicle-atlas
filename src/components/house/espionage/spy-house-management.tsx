@@ -86,7 +86,7 @@ export function spyMissionProgress(
   :missionLeft===null?'Conclusão prevista: '+formatDate(end)
   :missionLeft>0?missionLeft+' dias ordinários restantes':
    'Prazo de investigação atingido';
- return {mission:title,travel,remaining,end,arrival,departure:operation.departureKey??undefined};
+ return {mission:title,travel,remaining,end,arrival,...(operation.departureKey?{departure:operation.departureKey}:{})};
 }
 
 export function SpyDefensePanel({state}:{state:HouseState}){
