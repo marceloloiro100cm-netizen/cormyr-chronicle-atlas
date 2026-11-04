@@ -65,23 +65,31 @@ function CatalogAssetCard({item,state,catalog,canEdit,busy,onBuy,onCondition,spy
  const status=locations.length?locations.join(' · '):
   building.length?'Em construção: '+building.map(h=>h.name).join(' · '):'Não adquirido';
  const spyCopy=spyMode?spyCatalogExplanation(item.id):null;
- const benefits=spyCopy?[...spyCopy.effects]:item.effects.map(e=>e.description).filter(Boolean);
- const summary=spyCopy?.summary??benefits[0]??item.description;
+ // Purchased holdings have verified house-specific effects and historical
+ // prices. Do not replace them with abbreviated catalogue-wide text.
+ const verifiedBenefits=[...new Set(owned.flatMap(h=>legacyCatalogEffects(h))
+  .map(e=>e.description).filter(Boolean))];
+ const benefits=verifiedBenefits.length?verifiedBenefits:
+  spyCopy?[...spyCopy.effects]:item.effects.map(e=>e.description).filter(Boolean);
+ const summary=benefits[0]??spyCopy?.summary??item.description;
+ const displayName=owned[0]?.name??item.name;
+ const description=verifiedBenefits.length?verifiedBenefits[0]:
+  spyCopy?.purpose??item.description;
+ const actualCosts=owned.length?owned.flatMap(h=>h.costs):item.costs;
+ const historicalCost=owned.length>0&&JSON.stringify(actualCosts)!==JSON.stringify(item.costs);
  const readiness=militaryPurchaseReadiness(item,state);
  const buttonText=readiness==='money'?'Sem recursos':
   readiness==='domain'?'Defina um domínio':
   readiness==='requirements'?'Pré-requisitos pendentes':'Comprar';
- return <HouseAssetCard title={item.name} icon={<AssetIcon item={item}/>}
+ return <HouseAssetCard title={displayName} icon={<AssetIcon item={item}/>}
    status={status} description={summary} inactive={!acquired}
    testId={'house-catalog-asset-'+item.id}>
   <h5>{spyCopy?'Para que serve':'Descrição'}</h5>
-  <p>{spyCopy?.purpose??item.description}</p>
+  <p>{description}</p>
   {spyCopy&&<p className="house-caption"><strong>Onde funciona:</strong> {spyCopy.reach}</p>}
   <h5>Bônus, efeitos e habilidades</h5>
   {benefits.length?benefits.map((effect,i)=><p className="military-positive" key={i}>{effect}</p>):
    <p>Esta posse pode servir como pré-requisito de outras construções ou características.</p>}
-  {!spyCopy&&owned.flatMap(h=>legacyCatalogEffects(h)).map((e,i)=>
-   <p key={i}>{e.description}</p>)}
   {spyCopy?.note&&<p className="house-caption">{spyCopy.note}</p>}
   {spyMode&&item.id==='pros-secret-police'&&owned.some(h=>h.effects.some(e=>
    (e.kind==='gain'&&e.resource==='law')||
@@ -90,11 +98,12 @@ function CatalogAssetCard({item,state,catalog,canEdit,busy,onBuy,onCondition,spy
     diferem da regra confirmada no livro. O Narrador deve conciliar esses registros;
     nenhum valor histórico foi alterado automaticamente.</p>}
   <h5>Custo e regras de compra</h5>
-  <p>{item.costs.length?item.costs.map(c=>
+  <p>{actualCosts.length?actualCosts.map(c=>
    c.amount+' '+RESOURCE_NAMES[c.resource]+' ('+
    (spyMode?(c.mode==='allocation'?'pontos investidos, sem devolução automática em caso de destruição':
     'gasto definitivo do recurso'):COST_TYPE[c.mode])+')').join(' + '):'Custo não definido.'}</p>
-  <p>Prazo: {spyMode&&item.duration.months===0&&item.duration.dice
+  {historicalCost&&<p className="house-caption">Custo histórico da Casa já contabilizado; diferenças do catálogo atual não geram nova cobrança.</p>}
+  <p>{owned.length?'Prazo de referência do catálogo: ':'Prazo: '}{spyMode&&item.duration.months===0&&item.duration.dice
    ?item.duration.dice+(item.duration.dice===1?' dado':' dados')+
     ' de '+item.duration.sides+' faces, em meses'
    :item.duration.months+' meses'+(item.duration.dice?
