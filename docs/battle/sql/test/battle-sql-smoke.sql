@@ -16,8 +16,11 @@ SET ROLE anon;
 SET request.jwt.claim.sub='22222222-2222-4222-8222-222222222222';
 SET app.campaign_active='on';
 DO $$ BEGIN
- IF (SELECT count(*) FROM public.battle_sim_sessions)<>0
- THEN RAISE EXCEPTION 'B-033: anonymous RLS failed'; END IF;
+ BEGIN
+  PERFORM count(*) FROM public.battle_sim_sessions;
+  RAISE EXCEPTION 'B-033: anonymous SELECT unexpectedly permitted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
 END $$;
 RESET ROLE;
 
