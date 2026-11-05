@@ -1,4 +1,6 @@
 import {useEffect,useState} from 'react';
+import {BattleV34Creator} from './BattleV34Creator';
+import {BATTLE_V34_SYNC_UI_ENABLED} from '@/lib/battle/feature-flag';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
 import {listBattleSourceHouses} from '@/lib/battle/adapters/readonly-source.functions';
@@ -103,5 +105,6 @@ export function BattleV3InvitationCreator({onBack}:{onBack:()=>void}){
      <Button size="sm" variant="outline" disabled={busy} onClick={()=>void close(i.id)}>Encerrar convocação</Button>
     </article>)}
   </div>
+  {BATTLE_V34_SYNC_UI_ENABLED&&<BattleV34Creator houses={houses} invitations={invitations}/>}
  </section>;
 }

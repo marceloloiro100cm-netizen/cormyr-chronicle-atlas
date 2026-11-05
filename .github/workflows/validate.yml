@@ -179,3 +179,9 @@ jobs:
         run: bash docs/battle/sql/test/battle-cas-race.sh
       - name: RLS, CAS, idempotency, rollback and revocation acceptance
         run: psql -v ON_ERROR_STOP=1 -f docs/battle/sql/test/battle-sql-smoke.sql
+      - name: V3.4 remote battle — two accounts, CAS, RLS and revocation (disposable only)
+        run: |
+          psql -v ON_ERROR_STOP=1 -f docs/battle/sql/test/battle-v34-bootstrap.sql
+          psql -v ON_ERROR_STOP=1 -f docs/battle/sql/0077_battle_v3_invitations.sql
+          psql -v ON_ERROR_STOP=1 -f docs/battle/sql/0078_battle_v34_synced_sessions.sql
+          psql -v ON_ERROR_STOP=1 -f docs/battle/sql/test/battle-v34-smoke.sql

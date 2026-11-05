@@ -8,3 +8,6 @@ export const BATTLE_MODULE_ENABLED = import.meta.env['VITE_ENABLE_BATTLE_MODULE'
  */
 export const BATTLE_PERSISTENCE_UI_ENABLED=import.meta.env['VITE_ENABLE_BATTLE_PERSISTENCE']!=='false';
 export const BATTLE_RULES_VERSION = 'PTE-2.0' as const;
+
+/** Dueloss sincronizados entre dois jogadores exigem migração V3.4 e aceite com JWT real. */
+export const BATTLE_V34_SYNC_UI_ENABLED=import.meta.env['VITE_ENABLE_BATTLE_V34_SYNC']==='true';

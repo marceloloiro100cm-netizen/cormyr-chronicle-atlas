@@ -219,3 +219,15 @@
  .crusade-strategy-node{width:18%;min-height:55px;padding:3px;font-size:9px}
  .crusade-strategy-node span{font-size:9px}
 }
+
+/* V3.4 — painel de sincronização com indicação do hash, versão e posse do turno. */
+.crusade-v34-status{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
+ margin:10px 0;padding:9px;border-radius:7px;border:1px solid #97825d;background:#292b27;color:#f4dfb5}
+.crusade-v34-status code{font-size:11px;max-width:100%;overflow-wrap:anywhere;color:#c2dac3}
+.crusade-v34-status button{min-height:38px}
+.crusade-mode .crusade-combat-grid .crusade-left,
+.crusade-mode .crusade-combat-grid .crusade-right,
+.crusade-mode .crusade-combat-grid .crusade-map{min-width:0}
+.crusade-mode .crusade-combat-grid .crusade-map{overflow:hidden}
+.crusade-mode .crusade-left .crusade-troop:focus-visible,
+.crusade-mode .crusade-right button:focus-visible{outline:3px solid #f7d389;outline-offset:2px}

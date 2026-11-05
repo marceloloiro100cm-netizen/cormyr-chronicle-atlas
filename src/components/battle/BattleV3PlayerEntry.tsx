@@ -4,6 +4,8 @@ import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
 import {listV3Invitations,type BattleV3Invitation} from '@/lib/battle/v3/invitations.functions';
 import {BattleV3Game} from './BattleV3Game';
+import {BattleV34PlayerButton,BattleV34PlayerLobby} from './BattleV34Remote';
+import {BATTLE_V34_SYNC_UI_ENABLED} from '@/lib/battle/feature-flag';
 import type {V3ScenarioOptions} from '@/lib/battle/v3/engine';
 import type {CommanderId} from '@/lib/battle/v3/commanders';
 
@@ -29,9 +31,11 @@ export function BattleV3PlayerEntry({houseId}:{houseId:string}){
   retry:false,
  });
  const invites=data.filter(i=>i.target_house_id===houseId&&i.status==='open');
- const [mode,setMode]=useState<'choose'|'training'|'invitations'|'playing'>('choose');
+ const [mode,setMode]=useState<'choose'|'training'|'invitations'|'playing'|'remote'>('choose');
  const [selected,setSelected]=useState<BattleV3Invitation|null>(null);
  if(mode==='training')return <BattleV3Game onBack={()=>setMode('choose')}/>;
+ if(mode==='remote'&&BATTLE_V34_SYNC_UI_ENABLED)return <BattleV34PlayerLobby houseId={houseId}
+  onBack={()=>setMode('choose')}/>;
  if(mode==='playing'&&selected)return <BattleV3Game key={selected.id}
   initialOptions={invitationOptions(selected)} locked invitationName={selected.title}
   onBack={()=>{setSelected(null);setMode('choose');}}/>;
@@ -43,6 +47,8 @@ export function BattleV3PlayerEntry({houseId}:{houseId:string}){
   <div className="battle-surface">
    <div className="battle-home-actions">
     <Button onClick={()=>setMode('training')}>Batalhar</Button>
+    {BATTLE_V34_SYNC_UI_ENABLED&&<BattleV34PlayerButton houseId={houseId}
+     onOpen={()=>setMode('remote')}/>}
     {invites.length>0&&<Button variant="outline" onClick={()=>setMode('invitations')}>
      Batalha convocada ({invites.length})
     </Button>}
