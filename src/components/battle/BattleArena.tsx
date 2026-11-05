@@ -68,11 +68,13 @@ function BattleResult({state,initial,sideNames,onRestart,onExit,persistenceEnabl
    <p className="battle-note">Replay verificável PTE-2.0. O salvamento usa registro tático independente e não altera fichas da campanha.</p>
  </section>;
 }
-export function BattleArena({initial,sideNames,onExit,persistenceEnabled=false}:{
- initial:BattleState;sideNames:Record<Side,string>;onExit:()=>void;
+export function BattleArena({initial,resume,sideNames,onExit,persistenceEnabled=false}:{
+ initial:BattleState;resume?:BattleState;sideNames:Record<Side,string>;onExit:()=>void;
  persistenceEnabled?:boolean;
 }){
- const [battle,setBattle]=useState<BattleState>(()=>startBattle(initial));
+ // Uma batalha retomada foi reconstruída por replay SHA-256 no servidor e no navegador.
+ // A edição é local; o salvamento posterior cria uma nova cópia, sem sobrescrever a origem.
+ const [battle,setBattle]=useState<BattleState>(()=>resume??startBattle(initial));
  const [history,setHistory]=useState<BattleState[]>([]);
  const [selected,setSelected]=useState<string|null>(battle.activeUnitId);
  const [mode,setMode]=useState<'inspect'|'move'|'attack'>('inspect');
@@ -165,7 +167,7 @@ export function BattleArena({initial,sideNames,onExit,persistenceEnabled=false}:
           setNotice('Batalha salva: '+saved.sessionId);
         }catch(e){setNotice(e instanceof Error?e.message:'Falha no salvamento.');}
         finally{setSavingProgress(false);}
-      }}>Salvar progresso</Button>}
+      }}>Salvar cópia da batalha</Button>}
     <Button size="sm" variant="outline" onClick={()=>setShowHelp(x=>!x)}>Regras</Button>
     <Button size="sm" variant="outline" onClick={onExit}>Sair</Button>
    </div>
