@@ -88,6 +88,172 @@ BEGIN
     approved_at=now(),updated_at=now() WHERE id=p_case;
  RETURN true;
 END;$v35$;
+-- Defence in depth: even trusted server parameters may change ONLY casualties/notes.
+-- The transaction rejects any altered XP, Power, health, buildings, roster or calendar.
+CREATE OR REPLACE FUNCTION public.battle_v35_losses_only(p_before jsonb,p_after jsonb)
+RETURNS boolean LANGUAGE plpgsql IMMUTABLE SET search_path=pg_catalog,public AS $v35$
+DECLARE n integer;i integer;oldunit jsonb;newunit jsonb;before_count integer;after_count integer;
+BEGIN
+ IF jsonb_typeof(p_before)<>'object' OR jsonb_typeof(p_after)<>'object'
+    OR jsonb_typeof(p_before->'units')<>'array'
+    OR jsonb_typeof(p_after->'units')<>'array'
+    OR (p_before-'units')<>(p_after-'units')
+ THEN RETURN false; END IF;
+ n:=jsonb_array_length(p_before->'units');
+ IF n<>jsonb_array_length(p_after->'units') THEN RETURN false; END IF;
+ FOR i IN 0..n-1 LOOP
+  oldunit:=p_before->'units'->i;newunit:=p_after->'units'->i;
+  IF jsonb_typeof(oldunit)<>'object' OR jsonb_typeof(newunit)<>'object' OR
+     (oldunit-'casualties'-'notes')<>(newunit-'casualties'-'notes') OR
+     jsonb_typeof(oldunit->'casualties')<>'number' OR
+     jsonb_typeof(newunit->'casualties')<>'number' OR
+     (oldunit->>'casualties') !~ '^[0-9]+
+ p_actor uuid,p_case uuid,p_operation uuid,p_plan_hash text,
+ p_before_a jsonb,p_before_b jsonb,p_after_a jsonb,p_after_b jsonb,
+ p_version_a integer,p_version_b integer,p_new_hash_a text,p_new_hash_b text
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+ SET search_path=pg_catalog,public AS $v35$
+DECLARE v public.battle_v35_cases%ROWTYPE;
+        a public.noble_house_sheets%ROWTYPE;
+        b public.noble_house_sheets%ROWTYPE;
+BEGIN
+ PERFORM set_config('request.jwt.claim.sub',p_actor::text,true);
+ IF NOT public.is_campaign_admin() OR NOT public.campaign_access_active()
+ THEN RAISE EXCEPTION 'NARRATOR_REVOKED'; END IF;
+ SELECT * INTO v FROM public.battle_v35_cases WHERE id=p_case FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'REVIEW_NOT_FOUND'; END IF;
+ IF v.status='applied' THEN
+  IF v.apply_id=p_operation THEN
+   RETURN jsonb_build_object('duplicate',true,'caseId',p_case); END IF;
+  RAISE EXCEPTION 'ALREADY_APPLIED';
+ END IF;
+ IF v.status<>'approved' OR v.approved_by IS NULL OR v.plan_hash<>p_plan_hash OR
+   v.expected_version_a<>p_version_a OR v.expected_version_b<>p_version_b OR
+   p_new_hash_a !~ '^[0-9a-f]{64}$' OR p_new_hash_b !~ '^[0-9a-f]{64}$'
+ THEN RAISE EXCEPTION 'REVIEW_NOT_APPROVED_OR_OUTDATED'; END IF;
+ -- Deadlock-safe ordem determinística antes da atualização das DUAS fichas.
+ PERFORM 1 FROM public.noble_house_sheets
+  WHERE house_id IN (v.house_a_id,v.house_b_id)
+  ORDER BY house_id FOR UPDATE;
+ SELECT * INTO a FROM public.noble_house_sheets WHERE house_id=v.house_a_id;
+ SELECT * INTO b FROM public.noble_house_sheets WHERE house_id=v.house_b_id;
+ IF a.house_id IS NULL OR b.house_id IS NULL OR
+    a.version<>p_version_a OR b.version<>p_version_b OR
+    a.state::jsonb<>p_before_a OR b.state::jsonb<>p_before_b THEN
+  RAISE EXCEPTION 'SOURCE_VERSION_OR_SNAPSHOT_CHANGED';
+ END IF;
+ IF jsonb_typeof(p_after_a)<>'object' OR jsonb_typeof(p_after_b)<>'object' OR
+    p_after_a->>'houseId'<>v.house_a_id OR p_after_b->>'houseId'<>v.house_b_id THEN
+  RAISE EXCEPTION 'RESULT_STATE_INVALID';
+ END IF;
+ IF NOT public.battle_v35_losses_only(p_before_a,p_after_a) OR
+    NOT public.battle_v35_losses_only(p_before_b,p_after_b)
+ THEN RAISE EXCEPTION 'NON_CASUALTY_MUTATION_FORBIDDEN'; END IF;
+ UPDATE public.noble_house_sheets SET state=p_after_a,version=version+1
+  WHERE house_id=v.house_a_id;
+ UPDATE public.noble_house_sheets SET state=p_after_b,version=version+1
+  WHERE house_id=v.house_b_id;
+ INSERT INTO public.battle_v35_receipts(case_id,apply_id,actor_id,plan_hash,
+   previous_hash_a,previous_hash_b,new_hash_a,new_hash_b,decisions_json)
+ VALUES(p_case,p_operation,p_actor,p_plan_hash,
+   v.source_hash_a,v.source_hash_b,p_new_hash_a,p_new_hash_b,v.decisions_json);
+ UPDATE public.battle_v35_cases SET status='applied',
+    applied_by=p_actor,applied_at=now(),apply_id=p_operation,
+    updated_at=now() WHERE id=p_case;
+ RETURN jsonb_build_object('duplicate',false,'caseId',p_case,
+  'houseA',v.house_a_id,'houseB',v.house_b_id);
+END;$v35$;
+REVOKE ALL ON FUNCTION public.battle_v35_save_plan(uuid,uuid,integer,jsonb,text)
+ FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.battle_v35_approve_plan(uuid,uuid,integer,text)
+ FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.battle_v35_apply(uuid,uuid,uuid,text,jsonb,jsonb,jsonb,jsonb,
+ integer,integer,text,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.battle_v35_save_plan(uuid,uuid,integer,jsonb,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.battle_v35_approve_plan(uuid,uuid,integer,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.battle_v35_apply(uuid,uuid,uuid,text,jsonb,jsonb,jsonb,jsonb,
+ integer,integer,text,text) TO service_role;
+COMMENT ON TABLE public.battle_v35_cases IS
+ 'Revisão oficial de PTE-2.0 com perdas manuais. Somente aprovação e aplicação explícitas do Narrador mudam as duas casas.';
+COMMIT;
+ OR
+     (newunit->>'casualties') !~ '^[0-9]+
+ p_actor uuid,p_case uuid,p_operation uuid,p_plan_hash text,
+ p_before_a jsonb,p_before_b jsonb,p_after_a jsonb,p_after_b jsonb,
+ p_version_a integer,p_version_b integer,p_new_hash_a text,p_new_hash_b text
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+ SET search_path=pg_catalog,public AS $v35$
+DECLARE v public.battle_v35_cases%ROWTYPE;
+        a public.noble_house_sheets%ROWTYPE;
+        b public.noble_house_sheets%ROWTYPE;
+BEGIN
+ PERFORM set_config('request.jwt.claim.sub',p_actor::text,true);
+ IF NOT public.is_campaign_admin() OR NOT public.campaign_access_active()
+ THEN RAISE EXCEPTION 'NARRATOR_REVOKED'; END IF;
+ SELECT * INTO v FROM public.battle_v35_cases WHERE id=p_case FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'REVIEW_NOT_FOUND'; END IF;
+ IF v.status='applied' THEN
+  IF v.apply_id=p_operation THEN
+   RETURN jsonb_build_object('duplicate',true,'caseId',p_case); END IF;
+  RAISE EXCEPTION 'ALREADY_APPLIED';
+ END IF;
+ IF v.status<>'approved' OR v.approved_by IS NULL OR v.plan_hash<>p_plan_hash OR
+   v.expected_version_a<>p_version_a OR v.expected_version_b<>p_version_b OR
+   p_new_hash_a !~ '^[0-9a-f]{64}$' OR p_new_hash_b !~ '^[0-9a-f]{64}$'
+ THEN RAISE EXCEPTION 'REVIEW_NOT_APPROVED_OR_OUTDATED'; END IF;
+ -- Deadlock-safe ordem determinística antes da atualização das DUAS fichas.
+ PERFORM 1 FROM public.noble_house_sheets
+  WHERE house_id IN (v.house_a_id,v.house_b_id)
+  ORDER BY house_id FOR UPDATE;
+ SELECT * INTO a FROM public.noble_house_sheets WHERE house_id=v.house_a_id;
+ SELECT * INTO b FROM public.noble_house_sheets WHERE house_id=v.house_b_id;
+ IF a.house_id IS NULL OR b.house_id IS NULL OR
+    a.version<>p_version_a OR b.version<>p_version_b OR
+    a.state::jsonb<>p_before_a OR b.state::jsonb<>p_before_b THEN
+  RAISE EXCEPTION 'SOURCE_VERSION_OR_SNAPSHOT_CHANGED';
+ END IF;
+ IF jsonb_typeof(p_after_a)<>'object' OR jsonb_typeof(p_after_b)<>'object' OR
+    p_after_a->>'houseId'<>v.house_a_id OR p_after_b->>'houseId'<>v.house_b_id THEN
+  RAISE EXCEPTION 'RESULT_STATE_INVALID';
+ END IF;
+ UPDATE public.noble_house_sheets SET state=p_after_a,version=version+1
+  WHERE house_id=v.house_a_id;
+ UPDATE public.noble_house_sheets SET state=p_after_b,version=version+1
+  WHERE house_id=v.house_b_id;
+ INSERT INTO public.battle_v35_receipts(case_id,apply_id,actor_id,plan_hash,
+   previous_hash_a,previous_hash_b,new_hash_a,new_hash_b,decisions_json)
+ VALUES(p_case,p_operation,p_actor,p_plan_hash,
+   v.source_hash_a,v.source_hash_b,p_new_hash_a,p_new_hash_b,v.decisions_json);
+ UPDATE public.battle_v35_cases SET status='applied',
+    applied_by=p_actor,applied_at=now(),apply_id=p_operation,
+    updated_at=now() WHERE id=p_case;
+ RETURN jsonb_build_object('duplicate',false,'caseId',p_case,
+  'houseA',v.house_a_id,'houseB',v.house_b_id);
+END;$v35$;
+REVOKE ALL ON FUNCTION public.battle_v35_save_plan(uuid,uuid,integer,jsonb,text)
+ FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.battle_v35_approve_plan(uuid,uuid,integer,text)
+ FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.battle_v35_apply(uuid,uuid,uuid,text,jsonb,jsonb,jsonb,jsonb,
+ integer,integer,text,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.battle_v35_save_plan(uuid,uuid,integer,jsonb,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.battle_v35_approve_plan(uuid,uuid,integer,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.battle_v35_apply(uuid,uuid,uuid,text,jsonb,jsonb,jsonb,jsonb,
+ integer,integer,text,text) TO service_role;
+COMMENT ON TABLE public.battle_v35_cases IS
+ 'Revisão oficial de PTE-2.0 com perdas manuais. Somente aprovação e aplicação explícitas do Narrador mudam as duas casas.';
+COMMIT;
+
+  THEN RETURN false; END IF;
+  before_count:=(oldunit->>'casualties')::integer;
+  after_count:=(newunit->>'casualties')::integer;
+  IF after_count<before_count OR after_count>(newunit->>'strength')::integer
+  THEN RETURN false; END IF;
+ END LOOP;
+ RETURN true;
+END;$v35$;
+REVOKE ALL ON FUNCTION public.battle_v35_losses_only(jsonb,jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.battle_v35_losses_only(jsonb,jsonb) TO service_role;
 CREATE OR REPLACE FUNCTION public.battle_v35_apply(
  p_actor uuid,p_case uuid,p_operation uuid,p_plan_hash text,
  p_before_a jsonb,p_before_b jsonb,p_after_a jsonb,p_after_b jsonb,
