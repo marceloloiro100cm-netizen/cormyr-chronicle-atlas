@@ -41,8 +41,7 @@ export function BattleV34Creator({houses,invitations}:{
   <p>O convite tradicional continua como treino local. Para convidar duas contas, escolha uma
    convocação ativa e uma segunda casa. Nenhuma baixa ou despesa será lançada.</p>
   {invitations.map(invitation=>{
-   const existing=sessions.find(s=>s.attacker_house_id===invitation.target_house_id&&
-    s.title===invitation.title&&s.status!=='closed');
+   const existing=sessions.find(s=>s.invitation_id===invitation.id);
    return <div key={invitation.id} className="battle-result-card">
     <strong>{invitation.title}</strong>
     {existing?<p>Partida existente: {existing.status}, versão {existing.state_version}</p>:<>
