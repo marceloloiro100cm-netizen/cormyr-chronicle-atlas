@@ -62,8 +62,9 @@ describe('Cruzada V3.2 — academia original de comandantes',()=>{
   expect(v3CommanderPowerLimit('tillet',improved)).toBe(2);
   const bad={...improved,selectedTalents:['tillet:signature','noble:signature'] as const};
   expect(v3ProgressValid('tillet',bad)).toBe(false);
+  const upgradedKnight=v3ChooseCommanderTalent('knight',xp,'knight:signature');
   const game=createV3Game({...options,progressions:{
-   attacker:improved,defender:v3NewCommanderProgress(),
+   attacker:improved,defender:upgradedKnight,
   }});
   const active=game.battle.stacks.find(s=>s.id===game.battle.activeUnitId)!;
   const side=active.side;
