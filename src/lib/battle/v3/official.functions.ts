@@ -6,7 +6,7 @@ import {battleReport} from '../domain/report';
 import type {BattleState} from '../domain/types';
 import type {HouseState} from '@/lib/house/types';
 import {v35OfficialSources,v35ManualOutcome,v35ApplyManualLosses,
- v35DecisionsSchema,V35_POLICY_VERSION,type V35Decision,
+ v35DecisionsSchema,V35_POLICY_VERSION,
  type V35HouseSnapshot} from './official-adjudication';
 
 type Db={rpc:(name:string,args?:Record<string,unknown>)=>
