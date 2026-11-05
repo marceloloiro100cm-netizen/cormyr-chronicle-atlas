@@ -25,6 +25,7 @@ export function BattleSetup({onStart,onBack}:{
  const [name,setName]=useState('Batalha experimental');
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Exército atacante',defender:'Exército defensor'});
  const [seed,setSeed]=useState('lab-pte2-2026');
+ const [controls,setControls]=useState<Record<Side,'human'|'ai'>>({attacker:'human',defender:'human'});
  const [map,setMap]=useState<BattleMap>(()=>createScenario('plain-open'));
  const [units,setUnits]=useState<PreparedUnit[]>(DEFAULTS);
  const [selected,setSelected]=useState('attacker-1');
@@ -70,7 +71,7 @@ export function BattleSetup({onStart,onBack}:{
        training:u.training,count:u.count,position:u.position});
    });
    const state=makeBattleSetup({id:'lab-'+seed,name,seed,map,
-     controls:{attacker:'human',defender:'human'},stacks});
+     controls,stacks});
    if(!sideNames.attacker.trim()||!sideNames.defender.trim())throw new Error('Nomeie os dois exércitos.');
    onStart(state,sideNames);
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível preparar a batalha.');}
@@ -86,7 +87,14 @@ export function BattleSetup({onStart,onBack}:{
      <label>Nome da batalha<input aria-label="Nome da batalha" maxLength={120} value={name} onChange={e=>setName(e.target.value)}/></label>
      <label>Semente de simulação<input aria-label="Semente de simulação" maxLength={128} value={seed} onChange={e=>setSeed(e.target.value)}/></label>
     </div>
-    <p className="battle-note">Controle: Narrador nos dois lados. Oponente IA será habilitado no lote 8. Regras PTE-2.0 experimentais.</p>
+    <div className="battle-form-row">{(['attacker','defender'] as const).map(side=><label key={side}>
+      Controle de {SIDE_LABEL[side]}
+      <select aria-label={'Controle de '+SIDE_LABEL[side]} value={controls[side]}
+        onChange={e=>setControls(x=>({...x,[side]:e.target.value as 'human'|'ai'}))}>
+        <option value="human">Narrador</option><option value="ai">Inteligência artificial</option>
+      </select>
+     </label>)}</div>
+    <p className="battle-note">IA heurística determinística, sem dados externos. Regras PTE-2.0 experimentais.</p>
   </section>
   <section className="battle-surface" aria-label="Exércitos fictícios">
    <h3>2. Exércitos</h3>
