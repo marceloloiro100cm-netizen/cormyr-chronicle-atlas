@@ -10,6 +10,14 @@ const sideSchema=z.enum(['attacker','defender']);
 const terrainSchema=z.enum(['plain','forest','hill','rock']);
 const trainingSchema=z.enum(['green','trained','veteran','elite']);
 const sourceSchema=z.object({kind:z.literal('fictional')}).strict();
+const officialSourceSchema=z.object({
+ kind:z.literal('house-readonly'),
+ houseId:z.string().min(1).max(100),unitId:z.string().min(1).max(90),
+ sourceVersion:z.number().int().min(0),
+ sourceCapturedAt:z.string().datetime(),
+ officialHealth:z.number().int().min(0),officialMaxHealth:z.number().int().min(1),
+ warnings:z.array(z.string().max(600)).max(35),
+}).strict();
 const tileSchema=hexSchema.extend({terrain:terrainSchema});
 export const battleMapSchema=z.object({
   id:z.string().min(1).max(80),schemaVersion:z.literal(2),width:z.union([z.literal(11),z.literal(15)]),
@@ -32,12 +40,19 @@ export const fictionalStackSchema=z.object({
   waitedThisRound:z.literal(false),defenseGuard:z.literal(false),retaliationUsedRound:z.null(),
   appliedEffectIds:z.array(z.string()).length(0),
 }).strict();
+export const officialStackSchema=fictionalStackSchema
+ .omit({source:true,originalTypeIds:true,appliedEffectIds:true})
+ .extend({
+  source:officialSourceSchema,originalTypeIds:z.array(z.string()).min(1).max(17),
+  appliedEffectIds:z.array(z.string()).max(100),
+  profileDecisionReason:z.string().max(500).optional(),
+ }).strict();
 export const battleDraftSchema=z.object({
   id:z.string().min(1).max(80),name:z.string().trim().min(1).max(120),schemaVersion:z.literal(2),
   rulesVersion:z.literal('PTE-2.0'),seed:z.string().min(1).max(128),
   map:battleMapSchema,
   controls:z.object({attacker:z.enum(['human','ai']),defender:z.enum(['human','ai'])}).strict(),
-  stacks:z.array(fictionalStackSchema).min(2).max(10),
+  stacks:z.array(z.union([fictionalStackSchema,officialStackSchema])).min(2).max(10),
 }).strict();
 export type BattleDraft = z.infer<typeof battleDraftSchema>;
 
@@ -72,19 +87,31 @@ export function validateBattleDraft(draft:unknown):BattleDraft {
     const army=result.stacks.filter(s=>s.side===side);
     if(army.length<1||army.length>BATTLE_RULES.maxStacksPerSide)throw new Error('Cada exército deve ter entre 1 e 5 agrupamentos.');
   }
+  const origin=new Set<string>();
   for(const s of result.stacks){
     if(ids.has(s.id))throw new Error('IDs de agrupamento duplicados.');
     ids.add(s.id);
     const pos=hexKey(s.position);if(positions.has(pos))throw new Error('Agrupamentos não podem sobrepor hexágonos.');
     positions.add(pos);
     const profile=tacticalProfile(s.primaryTypeId);
-    if(s.originalTypeIds[0]!==profile.id)throw new Error('Perfil e tipos incompatíveis.');
-    if(s.hpPerSoldier!==profile.hpPerSoldier||s.damagePerSoldier!==profile.damagePerSoldier||
+    if(!s.originalTypeIds.includes(profile.id))throw new Error('Perfil e tipos incompatíveis.');
+    if(s.source.kind==='house-readonly'){
+      const sourceKey=s.source.houseId+':'+s.source.unitId;
+      if(origin.has(sourceKey))throw new Error('A mesma unidade oficial não pode integrar duas forças.');
+      origin.add(sourceKey);
+      if(s.originalTypeIds.length>1&&(!s.profileDecisionReason||s.profileDecisionReason.trim().length<12))
+        throw new Error('Tipo misto exige justificativa de perfil.');
+      if(s.initialCount*s.hpPerSoldier!==s.currentHp||s.hpPerSoldier!==profile.hpPerSoldier||
+        s.damagePerSoldier!==profile.damagePerSoldier||s.rangeHex!==profile.rangeHex||
+        s.moraleTypeModifier!==profile.moraleModifier||s.attack>15||s.defense>15)
+        throw new Error('Snapshot importado com atributos inconsistentes.');
+    }
+    if(s.source.kind==='fictional'&&(s.hpPerSoldier!==profile.hpPerSoldier||s.damagePerSoldier!==profile.damagePerSoldier||
        s.initialCount*profile.hpPerSoldier!==s.currentHp||
        s.attack!==profile.attackBase+TRAINING_BONUS[s.training]||
        s.defense!==profile.defenseBase+TRAINING_BONUS[s.training]||
        s.armor!==profile.armorBase||s.movementHex!==profile.movementHex||
-       s.rangeHex!==profile.rangeHex||s.moraleTypeModifier!==profile.moraleModifier)
+       s.rangeHex!==profile.rangeHex||s.moraleTypeModifier!==profile.moraleModifier))
       throw new Error('Atributos fictícios incompatíveis com PTE-2.0.');
     const zone=result.map.deployment[s.side].some(h=>hexKey(h)===pos);
     if(!zone)throw new Error('Unidade fora da sua zona de implantação.');
