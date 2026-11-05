@@ -3,7 +3,7 @@ import {useQuery} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
 import {getLegalActions} from '@/lib/battle/domain/turns';
-import {hexKey,hexDistance} from '@/lib/battle/geometry/hex';
+import {hexKey} from '@/lib/battle/geometry/hex';
 import type {BattleCommand,Hex} from '@/lib/battle/domain/types';
 import {livingCount} from '@/lib/battle/domain/morale';
 import {commander} from '@/lib/battle/v3/commanders';
