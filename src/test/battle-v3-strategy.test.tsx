@@ -57,6 +57,16 @@ describe('Crusada V3.3 — mapa estratégico isolado',()=>{
   expect(s.position.defender).toBe('watch');
   expect(s.phase).toBe('active');
  });
+ it('não cria soldados quando a última tropa é eliminada no combate abstrato',()=>{
+  let s=v3StartStrategy(1,400,'human');
+  s=v3StrategyOrder(s,{type:'MARCH',to:'crossroads'});
+  s=v3StrategyOrder(s,{type:'MARCH',to:'watch'});
+  s=v3StrategyOrder(s,{type:'MARCH',to:'bridge'});
+  s=v3StrategyOrder(s,{type:'MARCH',to:'bridge'});
+  expect(s.troops.attacker).toBe(0);
+  expect(s.phase).toBe('completed');
+  expect(s.winner).toBe('defender');
+ });
  it('declara vitória após controlar os três marcos ao fim do dia',()=>{
   let s=v3StartStrategy(400,300,'human');
   for(const move of ['crossroads','bridge','watch','bridge','market'] as const){
