@@ -136,3 +136,31 @@
  .crusade-right{grid-column:auto}.crusade-action-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}
  .crusade-model-roster{grid-template-columns:1fr}.crusade-turn-banner{flex-wrap:wrap}}
 @media(max-width:420px){.crusade-left{grid-template-columns:1fr}}
+
+
+/* Quartel V3.1: editor isolado, responsivo e acessível por teclado/toque. */
+.crusade-barracks{padding-top:12px;margin:12px 0;border-top:1px solid #7b6349}
+.crusade-barracks h4{font-family:Georgia,serif;font-size:16px;color:#e9cb8d;margin:2px 0 5px}
+.crusade-barracks-ledger{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0}
+.crusade-barracks-ledger span{flex:1 1 110px;border:1px solid #706147;
+ border-radius:6px;padding:6px;font-size:11px;color:#e6d9bd}
+.crusade-barracks-ledger strong{display:block;font-size:13px;color:#f7dc9c}
+.crusade-barracks-roster{display:grid;gap:8px}
+.crusade-barracks-unit{min-width:0;padding:10px;border:1px solid #6b614d;
+ background:rgba(20,22,19,.24);border-radius:8px}
+.crusade-barracks-head{display:flex;flex-wrap:wrap;align-items:baseline;
+ justify-content:space-between;gap:5px;margin:0 0 7px}
+.crusade-barracks-head strong{font-size:13px;color:#f5d6a2}
+.crusade-barracks-head small{font-size:11px;color:#d1c2a4}
+.crusade-barracks-unit label{font-size:11px}
+.crusade-barracks-unit input{max-width:125px}
+.crusade-barracks-actions{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0 0}
+.crusade-barracks-actions button{font-size:11px;white-space:normal;min-height:34px}
+.crusade-barracks-recruit{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);
+ gap:8px;align-items:end;margin-top:12px}
+.crusade-barracks-recruit label{font-size:11px}
+.crusade-barracks-recruit button{min-height:38px}
+.crusade-barracks button:focus-visible,.crusade-barracks input:focus-visible,
+.crusade-barracks select:focus-visible{outline:3px solid #f7d389;outline-offset:2px}
+@media(max-width:750px){.crusade-barracks-recruit{grid-template-columns:minmax(0,1fr)}
+ .crusade-barracks-actions button{flex:1 1 42%}}
