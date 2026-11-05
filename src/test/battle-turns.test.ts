@@ -55,7 +55,7 @@ describe('Batalha V2 — lote 3, turnos determinísticos',()=>{
  });
  it('ataque legal adjacente é placeholder sem dano e encerra ativação',()=>{
   const base=initial();
-  const adjacent={...base,stacks:base.stacks.map(s=>s.id==='b'?{...s,position:offsetToAxial(1,1)}:s)};
+  const adjacent={...base,stacks:base.stacks.map(s=>s.id==='b'?{...s,position:offsetToAxial(1,0)}:s)};
   expect(getLegalActions(adjacent).some(c=>c.type==='ATTACK')).toBe(true);
   const result=applyBattleCommand(adjacent,{type:'ATTACK',unitId:'a',targetId:'b'});
   expect(result.stacks.find(s=>s.id==='b')!.currentHp).toBe(1000);
