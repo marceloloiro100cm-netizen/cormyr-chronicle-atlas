@@ -11,6 +11,7 @@ INSERT INTO public.battle_v35_cases(
  'house-v34-a','house-v34-b',7,8,repeat('a',64),repeat('b',64),repeat('c',64),
  '[{"unitId":"a"},{"unitId":"b"}]'::jsonb,'{"rounds":4}'::jsonb)
  RETURNING id AS caseid \gset
+SELECT set_config('test.v35_case',:'caseid',false);
 RESET ROLE;
 SET ROLE authenticated;
 SET request.jwt.claim.sub='22222222-2222-4222-8222-222222222222';
