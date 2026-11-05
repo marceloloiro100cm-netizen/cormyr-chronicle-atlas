@@ -61,6 +61,14 @@ CREATE POLICY battle_v34_receipt_read ON public.battle_v34_receipts
      OR public.in_campaign_house(s.defender_house_id,false))));
 REVOKE ALL ON TABLE public.battle_v34_sessions,public.battle_v34_receipts FROM PUBLIC,anon,authenticated;
 GRANT SELECT ON TABLE public.battle_v34_sessions,public.battle_v34_receipts TO authenticated;
+-- Wrapper de permissão vinculado ao JWT real; não recebe user_id arbitrário.
+CREATE OR REPLACE FUNCTION public.battle_v34_can_control(p_house text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public,pg_temp AS $
+ SELECT public.campaign_access_active()
+   AND public.in_campaign_house(p_house,false)
+$;
+REVOKE ALL ON FUNCTION public.battle_v34_can_control(text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.battle_v34_can_control(text) TO authenticated;
 -- Escrever requer Supabase service_role no servidor APÓS revalidar JWT, acesso e lado.
 CREATE OR REPLACE FUNCTION public.battle_v34_join_seat(
  p_session uuid,p_actor uuid,p_side text
