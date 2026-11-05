@@ -64,19 +64,19 @@ createdb -T template0 "$RESTORE_DB"
 pg_restore --exit-on-error --no-owner -d "$RESTORE_DB" "$BACKUP_DIR/battle_test.backup"
 PGDATABASE="$RESTORE_DB" psql -X -v ON_ERROR_STOP=1 <<'SQL'
 DO $assert$
-DECLARE session_id uuid;
+DECLARE v_session uuid;
 BEGIN
  IF (SELECT count(*) FROM public.battle_sim_sessions)<>1
    OR (SELECT count(*) FROM public.battle_sim_events)<>1
    OR (SELECT count(*) FROM public.battle_sim_scenarios)<>0
  THEN RAISE EXCEPTION 'Restored rows diverge'; END IF;
- SELECT id INTO session_id FROM public.battle_sim_sessions
+ SELECT id INTO v_session FROM public.battle_sim_sessions
  WHERE name='Battle-backup-restore-CI-fixture'
    AND state_version=1
    AND state_hash=repeat('b',64)
    AND initial_state_hash=repeat('a',64);
- IF session_id IS NULL THEN RAISE EXCEPTION 'Restored session hash or version diverges'; END IF;
- IF NOT EXISTS(SELECT 1 FROM public.battle_sim_events WHERE session_id= session_id
+ IF v_session IS NULL THEN RAISE EXCEPTION 'Restored session hash or version diverges'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.battle_sim_events WHERE e.session_id=v_session
   AND seq=1 AND prev_hash=repeat('a',64) AND state_hash=repeat('b',64))
  THEN RAISE EXCEPTION 'Restored receipt chain diverges'; END IF;
  IF EXISTS(SELECT 1 FROM pg_class WHERE oid IN(
