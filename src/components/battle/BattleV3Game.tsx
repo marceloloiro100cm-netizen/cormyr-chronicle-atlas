@@ -10,6 +10,7 @@ import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
 import {BattleV3Barracks} from './BattleV3Barracks';
 import {BattleV3CommanderHall} from './BattleV3CommanderHall';
+import {BattleV3StrategyBoard} from './BattleV3StrategyBoard';
 import {v3BarracksBySide,v3BarracksFromHouse,v3BarracksDeploy,
  type V3BarracksArmy} from '@/lib/battle/v3/barracks';
 import {V3_COMMANDERS,commander,type CommanderId} from '@/lib/battle/v3/commanders';
@@ -57,6 +58,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const [status,setStatus]=useState('');
  const [showManual,setShowManual]=useState(false);
  const [showDetails,setShowDetails]=useState(false);
+ const [showStrategy,setShowStrategy]=useState(false);
  const update=(patch:Partial<V3ScenarioOptions>)=>setOptions(x=>({...x,...patch}));
  const begin=()=>{
   try{
@@ -68,7 +70,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     defender:progressions[options.defenderCommander]};
    const created=createV3Game({...options,...(rosters?{rosters}:{}),
     ...(trained?{progressions:trained}:{})});
-   setGame(created);setSelected(created.battle.activeUnitId);setMode('inspect');
+   setGame(created);setShowStrategy(false);setSelected(created.battle.activeUnitId);setMode('inspect');
    setStatus('Encontro iniciado. Cada token representa um agrupamento completo.');
   }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível criar o cenário-modelo.');}
  };
@@ -185,6 +187,19 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      </article>;
     })}
    </div>
+   {!locked&&<div className="battle-home-actions">
+    <Button variant="outline" onClick={()=>{
+     if(showStrategy){setShowStrategy(false);return;}
+     try{
+      v3BarracksDeploy(armies.attacker);v3BarracksDeploy(armies.defender);
+      setShowStrategy(true);setStatus('Mapa operacional de treino aberto.');
+     }catch(e){setStatus(e instanceof Error?e.message:'Configure o quartel primeiro.');}
+    }}>{showStrategy?'Ocultar mapa estratégico':'Planejar Cruzada · Mapa estratégico'}</Button>
+   </div>}
+   {showStrategy&&!locked&&<BattleV3StrategyBoard
+    attackerCount={armies.attacker.filter(s=>s.placement==='field').reduce((t,s)=>t+s.count,0)}
+    defenderCount={armies.defender.filter(s=>s.placement==='field').reduce((t,s)=>t+s.count,0)}
+    opponent={options.opponent} onClose={()=>setShowStrategy(false)}/>}
    <div className="battle-form-row">
     <label>Cenário<select value={options.scenario} aria-label="Cenário da Cruzada" disabled={locked}
      onChange={e=>update({scenario:e.target.value as BattleScenarioId})}>
