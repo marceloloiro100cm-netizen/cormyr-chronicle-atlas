@@ -1,6 +1,7 @@
 -- Testes V3.4 em PostgreSQL descartável: RLS, CAS, idempotência e revogação.
 \set ON_ERROR_STOP on
 SET app.campaign_active='on';
+GRANT SELECT,INSERT ON TABLE public.battle_v3_invitations TO service_role;
 SET ROLE service_role;
 INSERT INTO public.battle_v3_invitations(
  title,target_house_id,created_by,scenario,attacker_model_id,defender_model_id,
@@ -16,6 +17,7 @@ INSERT INTO public.battle_v34_sessions(
  '{"scenario":"plain-open"}'::jsonb,'{"mode":"PTE-3.0-SANDBOX"}'::jsonb,
  '{"mode":"PTE-3.0-SANDBOX"}'::jsonb,repeat('a',64),repeat('a',64))
 RETURNING id AS sid \gset
+SELECT set_config('test.v34_sid',:'sid',false);
 RESET ROLE;
 SET ROLE authenticated;
 SET request.jwt.claim.sub='44444444-4444-4444-8444-444444444444';
@@ -68,7 +70,7 @@ SELECT public.battle_v34_commit_step(:'sid'::uuid,
  '{"mode":"PTE-3.0-SANDBOX","battle":{"phase":"active"}}'::jsonb,
  repeat('a',64),repeat('b',64));
 DO $v34$
-DECLARE v uuid:=:'sid'::uuid;
+DECLARE v uuid:=current_setting('test.v34_sid')::uuid;
 BEGIN
  IF (SELECT state_version FROM public.battle_v34_sessions WHERE id=v)<>1 OR
   (SELECT count(*) FROM public.battle_v34_receipts WHERE session_id=v)<>1 THEN
@@ -107,7 +109,7 @@ END $v34$;
 RESET ROLE;
 SET ROLE service_role;
 DO $v34$
-DECLARE v uuid:=:'sid'::uuid;
+DECLARE v uuid:=current_setting('test.v34_sid')::uuid;
 BEGIN
  BEGIN
   PERFORM public.battle_v34_commit_step(v,
