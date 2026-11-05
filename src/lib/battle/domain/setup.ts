@@ -95,7 +95,8 @@ export function parseBattleDraftJson(json:string):BattleDraft {
   if(json.length>250_000)throw new Error('Arquivo de simulação excede 250 KB.');
   return validateBattleDraft(JSON.parse(json) as unknown);
 }
-export function serializeBattleDraft(draft:BattleDraft):string {
+export type BattleDraftInput = Readonly<Pick<BattleState, 'id' | 'name' | 'schemaVersion' | 'rulesVersion' | 'seed' | 'map' | 'controls' | 'stacks'>>;
+export function serializeBattleDraft(draft:BattleDraftInput):string {
   return JSON.stringify(validateBattleDraft(draft));
 }
 export function makeBattleSetup(input:{id:string;name:string;seed:string;map:BattleMap;controls:Record<Side,Control>;stacks:BattleStack[]}):BattleState {
