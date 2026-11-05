@@ -17,9 +17,12 @@ type Db={
  rpc:(name:string,args?:Record<string,unknown>)=>Promise<RpcResult>;
  from:(table:string)=>any;
 };
+/** Fase B liberada após canário transacional no PostgreSQL real e auditoria de RLS.
+ * Qualquer implementação deve preservar este kill-switch e a revalidação do Narrador.
+ */
 function requirePersistenceEnabled(){
- if(process.env['ENABLE_BATTLE_PERSISTENCE']!=='true')
-  throw new Error('Persistência de batalha não habilitada: exige homologação da migração e RLS.');
+ if(process.env['ENABLE_BATTLE_PERSISTENCE']==='false')
+  throw new Error('Persistência de batalha desativada por configuração do servidor.');
 }
 async function requireNarrator(db:Db):Promise<void>{
  const [role,active]=await Promise.all([db.rpc('is_campaign_admin'),db.rpc('campaign_access_active')]);

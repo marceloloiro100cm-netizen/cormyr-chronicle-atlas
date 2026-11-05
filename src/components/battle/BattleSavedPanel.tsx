@@ -5,9 +5,11 @@ import {listSavedBattles,readSavedBattle} from '@/lib/battle/battle-session.func
 import {parseReplayJson} from '@/lib/battle/domain/replay';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleReplay} from './BattleReplay';
+import type {BattleState} from '@/lib/battle/domain/types';
 type Saved=Awaited<ReturnType<typeof listSavedBattles>>[number];
 type Loaded=ReturnType<typeof parseReplayJson>;
-export function BattleSavedPanel({onClose}:{onClose:()=>void}){
+export function BattleSavedPanel({onClose,onResume}:{onClose:()=>void;
+ onResume:(initial:BattleState,current:BattleState)=>void}){
  const list=useServerFn(listSavedBattles),read=useServerFn(readSavedBattle);
  const [rows,setRows]=useState<Saved[]>([]);
  const [loaded,setLoaded]=useState<Loaded|null>(null),[message,setMessage]=useState('');
@@ -25,8 +27,8 @@ export function BattleSavedPanel({onClose}:{onClose:()=>void}){
   finally{setBusy(false);}
  };
  return <section className="battle-surface" aria-label="Batalhas salvas">
-  <h2>Batalhas salvas · banco isolado</h2>
-  <p>Disponível somente após liberação da migração e das duas flags de persistência. Somente leitura no visualizador.</p>
+  <h2>Batalhas salvas · histórico tático independente</h2>
+  <p>Replays verificados por SHA-256. Retomar cria uma nova cópia ao salvar, preservando o registro original.</p>
   <div className="battle-form-row">
    <Button variant="outline" onClick={()=>void refresh()} disabled={busy}>Atualizar lista</Button>
    <Button variant="outline" onClick={onClose}>Voltar</Button>
@@ -38,6 +40,10 @@ export function BattleSavedPanel({onClose}:{onClose:()=>void}){
     <Button size="sm" variant="outline" disabled={busy} onClick={()=>void open(s.id)}>Consultar</Button>
    </li>)}</ul>}
   {loaded&&<div>
+   {loaded.state.phase==='active'&&<Button variant="outline"
+      onClick={()=>onResume(loaded.file.initial,loaded.state)}>
+      Retomar batalha (salvar nova cópia)
+   </Button>}
    <Button variant="outline" onClick={()=>downloadBattleJson('batalha-salva-verificada.json',JSON.stringify(loaded.file,null,2))}>
     Exportar replay verificado
    </Button>

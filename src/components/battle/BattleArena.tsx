@@ -55,7 +55,7 @@ function BattleResult({state,initial,sideNames,onRestart,onExit}:{
    <div className="battle-form-row">
     <Button variant="outline" onClick={()=>downloadBattleJson('resultado-batalha.json',JSON.stringify(report,null,2))}>Exportar resultado JSON</Button>
     {BATTLE_PERSISTENCE_UI_ENABLED&&<Button disabled={saving} variant="outline" onClick={()=>void persist()}>
-      Salvar batalha no banco isolado
+      Salvar resultado no histórico
     </Button>}
     <Button variant="outline" onClick={()=>{try{downloadBattleJson('batalha-replay-verificado.json',exportReplayJson(initial,state));}
       catch(e){window.alert(e instanceof Error?e.message:'Replay inválido.');}}}>Exportar batalha completa JSON</Button>
@@ -65,13 +65,15 @@ function BattleResult({state,initial,sideNames,onRestart,onExit}:{
    </div>
    {savedMessage&&<p role="status">{savedMessage}</p>}
    {replayVisible&&<BattleReplay initial={initial} state={state}/>}
-   <p className="battle-note">Replay verificável PTE-2.0. O salvamento isolado requer banco de homologação e aprovação da migração.</p>
+   <p className="battle-note">Replay verificável PTE-2.0. Salvamento em histórico independente da campanha; sem aplicação de baixas oficiais.</p>
  </section>;
 }
-export function BattleArena({initial,sideNames,onExit}:{
- initial:BattleState;sideNames:Record<Side,string>;onExit:()=>void;
+export function BattleArena({initial,resume,sideNames,onExit}:{
+ initial:BattleState;resume?:BattleState;sideNames:Record<Side,string>;onExit:()=>void;
 }){
- const [battle,setBattle]=useState<BattleState>(()=>startBattle(initial));
+ // Somente BattleSavedPanel entrega resume, já reconstruído e verificado por SHA-256.
+ // A continuação é local: "Salvar cópia" grava novo snapshot, não modifica o original.
+ const [battle,setBattle]=useState<BattleState>(()=>resume??startBattle(initial));
  const [history,setHistory]=useState<BattleState[]>([]);
  const [selected,setSelected]=useState<string|null>(battle.activeUnitId);
  const [mode,setMode]=useState<'inspect'|'move'|'attack'>('inspect');
@@ -164,7 +166,7 @@ export function BattleArena({initial,sideNames,onExit}:{
           setNotice('Batalha salva no banco isolado: '+saved.sessionId);
         }catch(e){setNotice(e instanceof Error?e.message:'Falha no salvamento.');}
         finally{setSavingProgress(false);}
-      }}>Salvar progresso</Button>}
+      }}>Salvar cópia da batalha</Button>}
     <Button size="sm" variant="outline" onClick={()=>setShowHelp(x=>!x)}>Regras</Button>
     <Button size="sm" variant="outline" onClick={onExit}>Sair</Button>
    </div>
