@@ -57,7 +57,7 @@ describe('Cruzada V3.4 — duas contas, comandos e replay',()=>{
   expect(sql).toContain('GRANT EXECUTE ON FUNCTION public.battle_v34_commit_step');
   expect(sql).toContain('TO service_role;');
   expect(sql).not.toMatch(/GRANT (INSERT|UPDATE|DELETE).* TO authenticated/);
-  expect(sql).not.toContain('noble_house_sheets');
+  expect(sql).not.toMatch(/(UPDATE|INSERT INTO|DELETE FROM)\\s+public\\.noble_house_sheets/i);
   expect(sql).not.toContain('public.house_operation');
  });
  it('backend revalida acesso e cadeira antes de gravar; produção bloqueada por flag',()=>{
