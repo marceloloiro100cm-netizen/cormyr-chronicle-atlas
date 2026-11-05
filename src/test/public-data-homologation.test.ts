@@ -28,7 +28,10 @@ describe('Homologação · catálogo e traduções públicos com privilégio mí
   expect(fn).not.toContain(".eq('locale', data.locale);");
   expect(fn).toContain("createClient<Database>(url,key");
   expect(fn).toContain("auth:{persistSession:false,autoRefreshToken:false}");
-  expect(fn).not.toContain("supabaseAdmin");
+  const anonymousReader=fn.slice(fn.indexOf('export const loadDynamicTranslations'),
+   fn.indexOf('export const upsertTranslationsBatch'));
+  expect(anonymousReader).not.toContain("supabaseAdmin");
+  expect(fn).toContain("supabaseAdmin"); // legitimate narrator-only upsert
   expect(fn).toContain("cache:'no-store'");
  });
  it('mantém a leitura da ficha autenticada do vassalo, mas tira archive_data do papel anon',()=>{
