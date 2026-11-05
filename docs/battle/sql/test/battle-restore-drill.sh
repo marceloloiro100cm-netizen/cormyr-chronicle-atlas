@@ -81,7 +81,7 @@ BEGIN
    AND state_hash=repeat('b',64)
    AND initial_state_hash=repeat('a',64);
  IF v_session IS NULL THEN RAISE EXCEPTION 'Restored session hash or version diverges'; END IF;
- IF NOT EXISTS(SELECT 1 FROM public.battle_sim_events WHERE e.session_id=v_session
+ IF NOT EXISTS(SELECT 1 FROM public.battle_sim_events e WHERE e.session_id=v_session
   AND seq=1 AND prev_hash=repeat('a',64) AND state_hash=repeat('b',64))
  THEN RAISE EXCEPTION 'Restored receipt chain diverges'; END IF;
  IF EXISTS(SELECT 1 FROM pg_class WHERE oid IN(
