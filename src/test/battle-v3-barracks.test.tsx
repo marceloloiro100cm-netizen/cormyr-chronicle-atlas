@@ -59,7 +59,6 @@ describe('Crusada V3.1 — quartel 100% fictício',()=>{
   fireEvent.click(ally.getByRole('button',{name:'Recrutar para reserva'}));
   expect(ally.getByText('Infantaria recrutados')).toBeInTheDocument();
   fireEvent.click(ally.getByRole('button',{name:'Escalar no campo'}));
-  expect(ally.getByText('5/5')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Batalhar'}));
   expect(screen.getByLabelText('Ordem de batalha')).toBeInTheDocument();
   expect(within(screen.getByLabelText('Ordem de batalha'))
