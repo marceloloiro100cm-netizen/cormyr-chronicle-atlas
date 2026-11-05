@@ -20,7 +20,7 @@
       {
         "name": "opcoes_missivas",
         "title": "Cadastros para missivas",
-        "description": "Lista jogadores destinatários e casas autorizadas com membros da corte e unidades militares. Não expõe e-mails, fichas completas ou personagens privados de outras casas.",
+        "description": "Lista as casas destinatárias. Jogadores também podem escolher narrador=true na ferramenta escrever_missiva para NPCs; a consulta nunca oferece destinatários individuais.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -200,7 +200,7 @@
       {
         "name": "escrever_missiva",
         "title": "Escrever missiva",
-        "description": "Envia entregas privadas individuais para jogadores, casas ou Narrador, com vínculos opcionais da ficha. Consulte opcoes_missivas para IDs válidos. Repita a mesma chave e o mesmo conteúdo em caso de falha de rede.",
+        "description": "Envia missivas para casas nobres ou, quando remetente é jogador, diretamente ao Narrador para contato com NPCs. Cartas entre casas ficam visíveis ao Narrador sem cópia duplicada.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -224,14 +224,6 @@
             "casa_remetente": {
               "type": "string"
             },
-            "jogadores": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              }
-            },
             "casas": {
               "type": "array",
               "items": {
@@ -239,6 +231,7 @@
               }
             },
             "narrador": {
+              "description": "Apenas jogadores: envia exclusivamente ao Narrador; não combine com casas.",
               "type": "boolean"
             },
             "assunto": {
