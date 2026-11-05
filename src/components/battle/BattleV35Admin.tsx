@@ -31,7 +31,8 @@ export function BattleV35Admin({onBack}:{onBack:()=>void}){
  const open=async(id:string)=>{
   setBusy(true);setStatus('');
   try{
-   const c=await read({data:{caseId:id}});
+   const response=await read({data:{caseId:id}});
+   const c=JSON.parse(response.caseJson) as V35CaseRow;
    setCurrent(c);operationId.current=null;
    const sources=c.sources_json as V35Source[];
    const known=Array.isArray(c.decisions_json)?c.decisions_json as V35Decision[]:[];
