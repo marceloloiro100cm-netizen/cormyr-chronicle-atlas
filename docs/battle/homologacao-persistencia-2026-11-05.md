@@ -41,10 +41,12 @@ As três tabelas estão com RLS ativa. Leitura é concedida ao papel `authentica
 | Erro injetado após `INSERT` desfaz evento e estado | **PASSOU** | Trigger de falha em transação de teste |
 | Reversão de DDL e restauração via `ROLLBACK` | **PASSOU** | DROP de funções/tabelas dentro de transação abortada |
 | Integridade de dados reais da campanha | **PASSOU neste escopo** | Zero usuários, fichas e eventos de teste remanescentes; banco de produção intocado |
-| Corrida verdadeira entre duas sessões simultâneas | **NÃO COMPROVADA** | Execução concorrente solicitada, mas a ferramenta bloqueou a operação; CAS defasado testado |
+| Corrida verdadeira entre duas sessões simultâneas | **PASSOU no CI isolado; PENDENTE no Lovable de homologação** | [GitHub Actions #42090897370](https://github.com/marceloloiro100cm-netizen/cormyr-chronicle-atlas/actions/runs/42090897370): 2 conexões PostgreSQL independentes, 1 commit + 1 conflito `40001`, versão/evento = 1. A ferramenta bloqueou a tentativa equivalente no Supabase Lovable. |
 | Fluxo E2E com JWT real no frontend da homologação | **PENDENTE** | Ambiente não tem contas de teste, e código da aplicação de homologação está defasado |
 | Replay SHA-256 completo gravado, lido e reconstruído pela API | **PENDENTE no ambiente** | Já coberto por Vitest/Chromium sintético; requer credenciais e ambiente de app pareados |
 | Backup e restauração real de clone da campanha | **PENDENTE** | Rollback transacional não substitui restauração de backup |
+
+**CI de concorrência:** `docs/battle/sql/test/battle-cas-race.sh` tem guards `CI=true`, `BATTLE_DISPOSABLE_POSTGRES=true`, `PGHOST=localhost`, `PGDATABASE=battle_test` e foi aprovado no job `battle-database` do workflow #42090897370. Não reutilizar esse script em banco real.
 
 **Limpeza:** todos os dados sintéticos foram criados dentro de transações e revertidos. Ao final: zero sessões, eventos, cenários, usuários de teste e papéis sintéticos. A **estrutura SQL de homologação foi mantida** para testes operacionais futuros.
 
