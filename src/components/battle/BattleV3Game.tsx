@@ -34,10 +34,11 @@ function Troop({unit,selected,active,onSelect}:{unit:BattleStack;selected:boolea
 }
 /** Interface original de Cormyr: ritmo de turnos e leitura de pilhas inspirados no
  * gênero de batalhas de Cruzada, sem reutilizar arte, ícones ou UI proprietária. */
-export function BattleV3Game({narrator=false,onBack}:{
+export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,invitationName}:{
  narrator?:boolean;onBack?:()=>void;
+ initialOptions?:V3ScenarioOptions;locked?:boolean;invitationName?:string;
 }){
- const [options,setOptions]=useState<V3ScenarioOptions>(defaults);
+ const [options,setOptions]=useState<V3ScenarioOptions>(initialOptions??defaults);
  const [game,setGame]=useState<V3Game|null>(null);
  const [selected,setSelected]=useState<string|null>(null);
  const [mode,setMode]=useState<Mode>('inspect');
@@ -106,8 +107,9 @@ export function BattleV3Game({narrator=false,onBack}:{
  if(!game)return <main className="battle-module crusade-mode" aria-label="Jogo de batalha V3">
   <header className="battle-header crusade-masthead">
    <p className="battle-eyebrow">CORMYR · CRUSADA TÁTICA</p>
-   <h1>Batalhar</h1>
-   <p>Escolha exércitos-modelo, generais e um terreno para jogar uma batalha por agrupamentos.</p>
+   <h1>{invitationName?'Batalha convocada':'Batalhar'}</h1>
+   <p>{invitationName?'Convocação do Narrador: '+invitationName:
+     'Escolha exércitos-modelo, generais e um terreno para jogar uma batalha por agrupamentos.'}</p>
    <p><strong>Modo de teste V3: nenhuma ação modifica casas, soldados, economia ou calendário.</strong></p>
   </header>
   <section className="battle-surface">
@@ -120,7 +122,7 @@ export function BattleV3Game({narrator=false,onBack}:{
      const leader=commander(options[ckey]);
      return <article className="crusade-side-card" key={s.id}>
       <p className="battle-eyebrow">{s.label==='Aliado'?'SEU EXÉRCITO':'EXÉRCITO ADVERSÁRIO'}</p>
-      <label>Casa modelo<select aria-label={'Casa modelo '+s.label} value={options[key]}
+      <label>Casa modelo<select aria-label={'Casa modelo '+s.label} value={options[key]} disabled={locked}
        onChange={e=>update({[key]:e.target.value})}>
        {MODEL_HOUSES.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
       </select></label>
@@ -128,7 +130,7 @@ export function BattleV3Game({narrator=false,onBack}:{
       <div className="crusade-model-roster">
        {chosen.units.map(u=><span key={u.name}>{u.name} <b>×{u.count}</b></span>)}
       </div>
-      <label>Comandante<select aria-label={'Comandante '+s.label} value={leader.id}
+      <label>Comandante<select aria-label={'Comandante '+s.label} value={leader.id} disabled={locked}
        onChange={e=>update({[ckey]:e.target.value as CommanderId})}>
        {V3_COMMANDERS.map(c=><option key={c.id} value={c.id}>{c.name} · {c.style}</option>)}
       </select></label>
@@ -140,11 +142,11 @@ export function BattleV3Game({narrator=false,onBack}:{
     })}
    </div>
    <div className="battle-form-row">
-    <label>Cenário<select value={options.scenario} aria-label="Cenário da Cruzada"
+    <label>Cenário<select value={options.scenario} aria-label="Cenário da Cruzada" disabled={locked}
      onChange={e=>update({scenario:e.target.value as BattleScenarioId})}>
       {Object.entries(SCENARIOS).map(([id,name])=><option key={id} value={id}>{name}</option>)}
     </select></label>
-    <label>Controle adversário<select value={options.opponent} aria-label="Controle do adversário"
+    <label>Controle adversário<select value={options.opponent} aria-label="Controle do adversário" disabled={locked}
      onChange={e=>update({opponent:e.target.value as 'ai'|'human'})}>
       <option value="ai">Inteligência artificial</option><option value="human">Dois comandantes no mesmo dispositivo</option>
     </select></label>
