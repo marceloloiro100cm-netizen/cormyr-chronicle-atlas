@@ -1,5 +1,7 @@
 # Módulo de batalha — baseline e fronteira de segurança
 
+> **Nota histórica:** este README registrou o baseline dos lotes 0–3. A implementação da V2 (lotes 0–11) foi integrada na `main` pelos PRs #258/#259. A fase A está liberada somente ao Narrador, sem persistência. Em 05/11/2026 o SQL da fase B foi aplicado **somente em Supabase de homologação separado**, com testes de segurança aprovados. O GO para produção e os testes E2E com JWT real seguem pendentes: veja `docs/battle/homologacao-persistencia-2026-11-05.md`. As frases abaixo devem ser lidas no contexto histórico dos lotes iniciais.
+
 **Referência:** CCA-BATTLE-V2-2026-11-05, perfil **PTE-2.0 EXPERIMENTAL**.  
 **SHA inspecionado:** `5f38db5cb2dcd4d16a83025f4cd9c398c5f455df` (`main`).  
 **Lotes nesta branch:** 0–3, sem tela pública, sem conexão com SQL.
