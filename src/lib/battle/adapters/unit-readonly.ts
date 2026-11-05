@@ -60,7 +60,7 @@ export function adaptOfficialUnit(state:HouseState,unit:Unit,input:ReadonlySourc
   rangeHex:profile.rangeHex,moraleTypeModifier:profile.moraleModifier,
   moraleState:'steady',position:input.position,
   movedThisActivation:false,attackedThisActivation:false,waitedThisRound:false,
-  defenseGuard:false,retaliationUsedRound:null,profileDecisionReason:input.profileDecisionReason?.trim(),
+  defenseGuard:false,retaliationUsedRound:null,...(input.profileDecisionReason?.trim()?{profileDecisionReason:input.profileDecisionReason.trim()}:{}),
   appliedEffectIds:[...mapped].sort(),
  };
  return stack;
