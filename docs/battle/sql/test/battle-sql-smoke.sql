@@ -1,6 +1,7 @@
 -- Disposable DB acceptance: RLS, CAS, idempotency, rollback, admin revocation.
 -- Must be executed ONLY after battle-test-bootstrap.sql + isolated candidate migration.
 \set ON_ERROR_STOP on
+GRANT SELECT ON public.battle_sim_sessions, public.battle_sim_events TO service_role;
 SET ROLE service_role;
 SELECT public.battle_sim_commit_replay(
  '11111111-1111-4111-8111-111111111111','Batalha de teste',
