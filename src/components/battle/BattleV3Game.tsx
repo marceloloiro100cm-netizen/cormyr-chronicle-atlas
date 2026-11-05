@@ -8,6 +8,9 @@ import {battleReport} from '@/lib/battle/domain/report';
 import {SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixtures';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
+import {BattleV3Barracks} from './BattleV3Barracks';
+import {v3BarracksBySide,v3BarracksFromHouse,v3BarracksDeploy,
+ type V3BarracksArmy} from '@/lib/battle/v3/barracks';
 import {V3_COMMANDERS,commander,type CommanderId} from '@/lib/battle/v3/commanders';
 import {MODEL_HOUSES,modelHouse} from '@/lib/battle/v3/model-houses';
 import {createV3Game,v3PlayCommand,v3LegalSkills,v3SkillName,v3UseUnitSkill,
@@ -39,6 +42,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  initialOptions?:V3ScenarioOptions;locked?:boolean;invitationName?:string;
 }){
  const [options,setOptions]=useState<V3ScenarioOptions>(initialOptions??defaults);
+ const [armies,setArmies]=useState<Record<Side,V3BarracksArmy>>(()=>v3BarracksBySide(
+  (initialOptions??defaults).attackerHouseId,(initialOptions??defaults).defenderHouseId));
  const [game,setGame]=useState<V3Game|null>(null);
  const [selected,setSelected]=useState<string|null>(null);
  const [mode,setMode]=useState<Mode>('inspect');
@@ -49,7 +54,11 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const update=(patch:Partial<V3ScenarioOptions>)=>setOptions(x=>({...x,...patch}));
  const begin=()=>{
   try{
-   const created=createV3Game(options);
+   const rosters=locked?undefined:{
+    attacker:v3BarracksDeploy(armies.attacker),
+    defender:v3BarracksDeploy(armies.defender),
+   };
+   const created=createV3Game({...options,rosters});
    setGame(created);setSelected(created.battle.activeUnitId);setMode('inspect');
    setStatus('Encontro iniciado. Cada token representa um agrupamento completo.');
   }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível criar o cenário-modelo.');}
@@ -123,13 +132,17 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      return <article className="crusade-side-card" key={s.id}>
       <p className="battle-eyebrow">{s.label==='Aliado'?'SEU EXÉRCITO':'EXÉRCITO ADVERSÁRIO'}</p>
       <label>Casa modelo<select aria-label={'Casa modelo '+s.label} value={options[key]} disabled={locked}
-       onChange={e=>update({[key]:e.target.value})}>
+       onChange={e=>{
+        update({[key]:e.target.value});
+        setArmies(prev=>({...prev,[s.id]:v3BarracksFromHouse(e.target.value)}));
+       }}>
        {MODEL_HOUSES.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
       </select></label>
       <h3>{chosen.subtitle}</h3><p>{chosen.description}</p>
-      <div className="crusade-model-roster">
+      {locked?<div className="crusade-model-roster">
        {chosen.units.map(u=><span key={u.name}>{u.name} <b>×{u.count}</b></span>)}
-      </div>
+      </div>:<BattleV3Barracks label={s.label} army={armies[s.id]}
+       onChange={army=>setArmies(prev=>({...prev,[s.id]:army}))}/>}
       <label>Comandante<select aria-label={'Comandante '+s.label} value={leader.id} disabled={locked}
        onChange={e=>update({[ckey]:e.target.value as CommanderId})}>
        {V3_COMMANDERS.map(c=><option key={c.id} value={c.id}>{c.name} · {c.style}</option>)}
