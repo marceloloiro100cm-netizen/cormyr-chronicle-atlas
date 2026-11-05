@@ -1,5 +1,5 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
-import {cleanup,fireEvent,render,screen} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {SpyPlayerDossiers} from '@/components/house/espionage/spy-dossier-panel';
 
@@ -61,6 +61,14 @@ describe('Dossiês · contrato visual do jogador e ausência de inventário tota
   expect(screen.getByText('Castelo de Harcourt')).toBeInTheDocument();
   expect(screen.queryByText('Guarda de Harcourt')).toBeNull();
   expect(screen.getByText(/quantidade real de posses/)).toBeInTheDocument();
+ });
+ it('permite atualizar os dossiês após uma decisão oficial sem trocar de Casa',async()=>{
+  state.read.mockResolvedValue([dossier]);mount();
+  await screen.findByRole('button',{name:'Atualizar dossiês'});
+  expect(state.read).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button',{name:'Atualizar dossiês'}));
+  await waitFor(()=>expect(state.read).toHaveBeenCalledTimes(2));
+  expect(state.read).toHaveBeenLastCalledWith('goldfin');
  });
  it('não apresenta dossiês que a RPC não retornou',async()=>{
   state.read.mockResolvedValue([]);mount('ashkar');

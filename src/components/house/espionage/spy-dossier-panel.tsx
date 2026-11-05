@@ -11,6 +11,7 @@ import {SPY_INTELLIGENCE_OBJECTIVES,
 import {readSpyDossiersBrowser,readSpyIntelligenceOptionsBrowser,
  readSpyIntelligencePendingBrowser,adjustSpyIntelligence,retrySpyIntelligence,
  type SpyDossier} from '@/lib/espionage/spy-dossier.functions';
+import {spyDossierActionOptions} from '@/lib/espionage/spy-dossier-action-options';
 import './spy-dossier.css';
 
 const safeDate=(date:string)=>parseDate(date)?formatDate(date):date;
@@ -87,7 +88,10 @@ function DossierCard({dossier,active,onSelect}:{dossier:SpyDossier;active:boolea
   <small>Abrir relatório</small>
  </button>;
 }
-function DossierCollection({dossiers,title,summary}:{dossiers:SpyDossier[];title:string;summary?:string}){
+function DossierCollection({dossiers,title,summary,onRefresh,refreshing=false}:{
+ dossiers:SpyDossier[];title:string;summary?:string;
+ onRefresh?:()=>void;refreshing?:boolean;
+}){
  const [selected,setSelected]=useState<string>('');
  const [targetFilter,setTargetFilter]=useState('');
  const [regionFilter,setRegionFilter]=useState('');
@@ -103,7 +107,8 @@ function DossierCollection({dossiers,title,summary}:{dossiers:SpyDossier[];title
    <p className="campaign-eyebrow">CORMYR · INTELIGÊNCIA</p>
    <h3><Eye size={18} style={{display:'inline-block',verticalAlign:'middle'}}/> {title}</h3>
    {summary&&<p className="house-caption">{summary}</p>}
-  </div></div>
+  </div>{onRefresh&&<Button type="button" variant="outline" disabled={refreshing}
+   onClick={onRefresh}><RefreshCw size={16}/>{refreshing?'Atualizando…':'Atualizar dossiês'}</Button>}</div>
   <div className="spy-dossier-filters">
    <label>Casa-alvo<input value={targetFilter} onChange={e=>setTargetFilter(e.target.value)}
     placeholder="Pesquisar casa nobre"/></label>
@@ -125,12 +130,14 @@ function DossierCollection({dossiers,title,summary}:{dossiers:SpyDossier[];title
 }
 export function SpyPlayerDossiers({houseId}:{houseId:string}){
  const query=useQuery({queryKey:['spy-dossiers',houseId],
-  queryFn:()=>readSpyDossiersBrowser(houseId),retry:false,staleTime:10000});
+  queryFn:()=>readSpyDossiersBrowser(houseId),retry:false,staleTime:10000,
+  refetchOnWindowFocus:'always',refetchOnReconnect:'always'});
  if(query.isPending)return <p role="status">Consultando dossiês da Casa…</p>;
  if(query.isError)return <div role="alert">Não foi possível consultar seus dossiês.
   <Button variant="outline" onClick={()=>void query.refetch()}>Tentar novamente</Button></div>;
  return <DossierCollection dossiers={query.data} title="Dossiês de Espionagem"
-  summary="Apenas informações conquistadas pela sua Casa. Cada descoberta permanece registrada para investigações futuras."/>;
+  summary="Apenas informações conquistadas pela sua Casa. Cada descoberta permanece registrada para investigações futuras."
+  onRefresh={()=>{void query.refetch();}} refreshing={query.isFetching}/>;
 }
 
 export function SpyNarratorDossiers(){
@@ -154,8 +161,8 @@ export function SpyNarratorDossiers(){
   &&(!region||d.targetRegion===region));
  const active=filtered.find(d=>d.id===selected)??filtered[0];
  const options=useQuery({queryKey:['spy-dossiers','options',active?.id],
-  enabled:!!active,queryFn:()=>readSpyIntelligenceOptionsBrowser(active!.id),retry:false});
- const available=(options.data??[]).filter(x=>x.objective===objective);
+  enabled:!!active&&!query.isError,queryFn:()=>readSpyIntelligenceOptionsBrowser(active!.id),retry:false});
+ const available=spyDossierActionOptions(options.data??[],active?.findings??[],objective,action);
  const currentKey=available.some(x=>x.key===subject)?subject:available[0]?.key??'';
  const refresh=async()=>{
   await Promise.all([qc.invalidateQueries({queryKey:['spy-dossiers']}),
@@ -177,11 +184,18 @@ export function SpyNarratorDossiers(){
   try{
    const result=await retry({data:{operationId:id}});
    setMessage(result.status==='complete'?'Descobertas processadas.':
+    result.status==='no_success_award'?'Esta operação não possui descobertas pendentes.':
     'A missão permanece pendente de dados oficiais da Casa.');
    await refresh();
   }catch(e){setMessage(e instanceof Error?e.message:'Falha ao reprocessar a missão.');}
   finally{setBusy(false);}
  };
+ if(query.isError)return <section className="house-panel spy-dossier-panel"
+  aria-label="Dossiês de Espionagem do Narrador">
+  <p role="alert">Não foi possível consultar os dossiês. O acesso pode ter sido revogado.</p>
+  <Button type="button" variant="outline" onClick={()=>void query.refetch()}>
+   Tentar novamente</Button>
+ </section>;
  return <section className="house-panel spy-dossier-panel" aria-label="Dossiês de Espionagem do Narrador">
   <div className="house-section-heading"><div>
    <p className="campaign-eyebrow">NARRADOR · INTELIGÊNCIA CONFIDENCIAL</p>
@@ -229,14 +243,21 @@ export function SpyNarratorDossiers(){
      onChange={e=>setSubject(e.target.value)}>
      {available.map(x=><option value={x.key} key={x.key}>{x.name}</option>)}
     </select></label>
-    <label>Ação<select value={action} onChange={e=>setAction(e.target.value as typeof action)}>
+    {options.isError&&action!=='revoke'&&<p role="alert" className="house-caption">
+     Não foi possível consultar a fonte oficial. Atualize os dossiês antes de alterar.</p>}
+    {available.length===0&&<p role="status" className="house-caption">
+     {action==='revoke'?'Nenhuma informação conhecida nesta modalidade.':
+      action==='revalidate'?'Nenhuma informação conhecida com fonte oficial disponível.':
+      'Nenhuma nova informação com fonte oficial disponível.'}</p>}
+    <label>Ação<select value={action} onChange={e=>{setAction(e.target.value as typeof action);setSubject('');}}>
      <option value="reveal">Adicionar descoberta</option>
      <option value="revalidate">Atualizar valor conhecido</option>
      <option value="revoke">Revogar conhecimento</option>
     </select></label>
     <label>Justificativa<textarea value={reason} required minLength={10} maxLength={1200}
      onChange={e=>setReason(e.target.value)}/></label>
-    <Button disabled={busy||!currentKey||reason.trim().length<10}>
+    <Button disabled={busy||!currentKey||reason.trim().length<10||
+     (options.isError&&action!=='revoke')}>
      {busy?'Registrando…':'Registrar alteração'}</Button>
    </form>
    {!!active.adminHistory.length&&<details className="house-ledger">
