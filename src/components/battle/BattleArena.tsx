@@ -1,4 +1,4 @@
-import {useMemo,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import type {BattleCommand,BattleStack,BattleState,Hex,Side} from '@/lib/battle/domain/types';
 import {startBattle,applyBattleCommand,getLegalActions,legalAttack} from '@/lib/battle/domain/turns';
@@ -9,12 +9,17 @@ import {hexKey,hexDistance} from '@/lib/battle/geometry/hex';
 import {reachablePaths} from '@/lib/battle/geometry/pathfinding';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
+import {runAiUntilHuman} from '@/lib/battle/domain/ai';
+import {exportReplayJson} from '@/lib/battle/domain/replay';
+import {BattleReplay} from './BattleReplay';
 
 const LABEL:Record<Side,string>={attacker:'Atacante',defender:'Defensor'};
-function BattleResult({state,sideNames,onRestart,onExit}:{
+function BattleResult({state,initial,sideNames,onRestart,onExit}:{
+ initial:BattleState;
  state:BattleState;sideNames:Record<Side,string>;onRestart:()=>void;onExit:()=>void;
 }){
  const report=battleReport(state);
+ const [replayVisible,setReplayVisible]=useState(false);
  return <section className="battle-surface" aria-label="Resultado da batalha">
    <h2>Resultado da simulação</h2>
    <p><strong>{state.winner?sideNames[state.winner]+' venceu':'Empate'}</strong>
@@ -37,10 +42,14 @@ function BattleResult({state,sideNames,onRestart,onExit}:{
    </table></div>
    <div className="battle-form-row">
     <Button variant="outline" onClick={()=>downloadBattleJson('resultado-batalha.json',JSON.stringify(report,null,2))}>Exportar resultado JSON</Button>
+    <Button variant="outline" onClick={()=>{try{downloadBattleJson('batalha-replay-verificado.json',exportReplayJson(initial,state));}
+      catch(e){window.alert(e instanceof Error?e.message:'Replay inválido.');}}}>Exportar batalha completa JSON</Button>
+    <Button variant="outline" onClick={()=>setReplayVisible(v=>!v)}>{replayVisible?'Ocultar replay':'Rever turnos'}</Button>
     <Button variant="outline" onClick={onRestart}>Nova simulação com as mesmas forças</Button>
     <Button onClick={onExit}>Voltar ao painel</Button>
    </div>
-   <p className="battle-note">Resultado experimental PTE-2.0. Replay verificável e salvamento persistente entram nos lotes 8 e 10.</p>
+   {replayVisible&&<BattleReplay initial={initial} state={state}/>}
+   <p className="battle-note">Replay verificável PTE-2.0. O salvamento isolado requer banco de homologação e aprovação da migração.</p>
  </section>;
 }
 export function BattleArena({initial,sideNames,onExit}:{
@@ -57,7 +66,7 @@ export function BattleArena({initial,sideNames,onExit}:{
  const [manualWinner,setManualWinner]=useState<Side|null>(null),[showHelp,setShowHelp]=useState(false);
  const active=battle.stacks.find(s=>s.id===battle.activeUnitId);
  const inspected=battle.stacks.find(s=>s.id===selected)??active;
- const canAct=battle.phase==='active'&&!paused&&selected===battle.activeUnitId;
+ const canAct=battle.phase==='active'&&!paused&&selected===battle.activeUnitId&&Boolean(active&&battle.controls[active.side]==='human');
  const legal=useMemo(()=>battle.phase==='active'?getLegalActions(battle):[],[battle]);
  const moves=useMemo(()=>legal.filter((c):c is Extract<BattleCommand,{type:'MOVE'}>=>c.type==='MOVE'),[legal]);
  const attacks=useMemo(()=>legal.filter((c):c is Extract<BattleCommand,{type:'ATTACK'}>=>c.type==='ATTACK'),[legal]);
@@ -75,6 +84,20 @@ export function BattleArena({initial,sideNames,onExit}:{
  const damagePreview=active&&target&&legalAttack(battle,active,target).legal
    ?resolveDamage(battle.map,active,target,hexDistance(active.position,target.position)>1):null;
  const clear=()=>{setMode('inspect');setPendingMove(null);setPendingAttack(null);setHover(null);};
+ useEffect(()=>{
+  if(paused||battle.phase!=='active'||!battle.activeUnitId)return;
+  const unit=battle.stacks.find(s=>s.id===battle.activeUnitId);
+  if(!unit||battle.controls[unit.side]!=='ai')return;
+  try{
+   const outcome=runAiUntilHuman(battle);
+   if(outcome.commands.length){
+    setHistory(values=>[...values.slice(-99),battle]);
+    setBattle(outcome.state);setSelected(outcome.state.activeUnitId);
+    setMode('inspect');setPendingMove(null);setPendingAttack(null);
+    setNotice('IA executou '+outcome.commands.length+' comandos legais.');
+   }
+  }catch(e){setPaused(true);setNotice(e instanceof Error?e.message:'Falha na IA: simulação pausada.');}
+ },[battle,paused]);
  const command=(cmd:BattleCommand)=>{
   if(paused){setNotice('A simulação está pausada.');return;}
   try{
@@ -107,7 +130,7 @@ export function BattleArena({initial,sideNames,onExit}:{
   const fresh=startBattle(initial);setBattle(fresh);setHistory([]);setSelected(fresh.activeUnitId);clear();setNotice('');
  };
  if(battle.phase==='completed'||battle.phase==='archived')
-  return <BattleResult state={battle} sideNames={sideNames} onRestart={restart} onExit={onExit}/>;
+  return <BattleResult state={battle} initial={initial} sideNames={sideNames} onRestart={restart} onExit={onExit}/>;
  return <section className="battle-arena" aria-label="Arena tática">
   <div className="battle-arena-top battle-surface">
    <div><h2>{battle.name}</h2><p>Rodada {battle.round} / 20 · {active?active.name:'Sem unidade ativa'}
