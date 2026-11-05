@@ -56,11 +56,13 @@ export function v3BarracksSummary(army:V3BarracksArmy):V3BarracksSummary{
   if(!Number.isSafeInteger(unit.count)||unit.count<1||unit.count>1000){
    issues.push('Efetivo deve estar entre 1 e 1000.');continue;
   }
-  if(!BASE_COST[unit.typeId]||!TRAINING_MULTIPLIER[unit.training]){
+  const baseCost=BASE_COST[unit.typeId];
+  const trainingFactor=TRAINING_MULTIPLIER[unit.training];
+  if(!baseCost||!trainingFactor){
    issues.push('Perfil militar ou treinamento desconhecido.');continue;
   }
   totalSoldiers+=unit.count;
-  cost+=Math.ceil(unit.count*BASE_COST[unit.typeId]*TRAINING_MULTIPLIER[unit.training]);
+  cost+=Math.ceil(unit.count*baseCost*trainingFactor);
   supplies+=unit.count*(unit.typeId==='cavalry'?3:unit.typeId==='engineers'?2:1);
  }
  if(cost>V3_TRAINING_BUDGET)issues.push('Orçamento fictício insuficiente.');
