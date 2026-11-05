@@ -70,6 +70,9 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,moveKeys=[],attac
               <text y="3" fontSize="13" textAnchor="middle" fontWeight="bold" fill="#fff">{unit.name.slice(0,2).toUpperCase()}</text>}
             <rect x="-23" y="11" width="46" height="15" rx="7" fill="#211d1d"/>
             <text x="0" y="22" fontSize="12" textAnchor="middle" fill="#fff" fontWeight="bold">{count}</text>
+            <rect x="-22" y="27" width="44" height="5" rx="2" fill="#201b1b"/>
+            <rect x="-22" y="27" width={44*Math.max(0,Math.min(1,unit.currentHp/(unit.initialCount*unit.hpPerSoldier)))}
+              height="5" rx="2" fill={unit.currentHp/(unit.initialCount*unit.hpPerSoldier)<.3?'#e47b60':'#b5d891'}/>
             {unit.moraleState==='routed'&&<text x="18" y="-18" fontSize="16" fill="#fff">!</text>}
           </>}
         </g>;

@@ -63,3 +63,76 @@
 .battle-zoom-controls output{min-width:46px;text-align:center;font-variant-numeric:tabular-nums}
 .battle-hex--interactive:focus-visible polygon{stroke:#ffe7a1;stroke-width:5}
 @media (pointer:coarse){.battle-zoom-controls button{min-height:44px;min-width:44px}}
+
+
+/* Cormyr Crusada V3 — identidade original de fantasia tática,
+   sem imagens, painéis ou arquivos proprietários de terceiros. */
+.crusade-mode{color:#eee3cf;font-family:inherit}
+.crusade-masthead{position:relative;overflow:hidden;
+ background:radial-gradient(ellipse at 86% 0%,rgba(183,126,64,.22),transparent 55%),
+ linear-gradient(135deg,#29241d,#45362b 55%,#232e29);border-color:#a28451;
+ box-shadow:inset 0 2px rgba(244,214,151,.20),0 15px 40px rgba(0,0,0,.2)}
+.crusade-masthead h1{font-family:Georgia,serif;font-variant:small-caps;letter-spacing:.04em}
+.crusade-mode .battle-surface{background:linear-gradient(140deg,#332d27,#282925);
+ border-color:#7b6349;box-shadow:inset 0 1px rgba(244,215,176,.08)}
+.crusade-model-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:14px 0}
+.crusade-side-card{border:1px solid #8c7455;padding:16px;border-radius:10px;
+ background:radial-gradient(circle at 100% 0,rgba(171,99,64,.12),transparent 65%),#292925}
+.crusade-side-card h3{font-family:Georgia,serif;color:#e9cb8d;margin:10px 0 6px}
+.crusade-side-card p{font-size:13px;color:#d4c6aa}
+.crusade-side-card label{display:block;margin:10px 0 8px;color:#f2dfb7}
+.crusade-model-roster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.crusade-model-roster span{padding:7px;border:1px solid #685b48;border-radius:6px;font-size:12px;
+ display:flex;gap:5px;justify-content:space-between}
+.crusade-model-roster b{color:#edc989}
+.crusade-commander-card{padding:11px;border:1px solid #947a50;border-radius:8px;
+ background:linear-gradient(135deg,#483929,#302d2c);margin:9px 0}
+.crusade-commander-card strong{display:block;color:#f8da95}
+.crusade-commander-card small{color:#d7c8a9}
+.crusade-commander-card p{color:#ded2ba;font-size:12px;margin:6px 0}
+.crusade-combat-grid{display:grid;grid-template-columns:minmax(172px,.85fr) minmax(330px,2.8fr) minmax(200px,1fr);
+ gap:10px;align-items:start}
+.crusade-combat-grid .battle-surface{padding:12px}
+.crusade-left section+section{border-top:1px solid #725c44;margin-top:16px;padding-top:13px}
+.crusade-side-title{font-family:Georgia,serif;color:#f2d99d;font-weight:700;margin:10px 0 0}
+.crusade-commander-name{font-size:12px;color:#d0b88d;margin:2px 0 10px}
+.crusade-troop{width:100%;text-align:left;padding:9px;margin:4px 0 7px;display:flex;flex-direction:column;
+ gap:3px;background:linear-gradient(100deg,#3b3630,#2a302d);
+ border:1px solid #73634f;border-left:4px solid #b7634e;color:#eee6d8;border-radius:7px}
+.crusade-left section:nth-of-type(2) .crusade-troop{border-left-color:#6087b7}
+.crusade-troop.selected{outline:2px solid #f2d998;background:#544936}
+.crusade-troop.active{box-shadow:inset 0 0 0 1px #dec179,0 0 12px rgba(239,184,101,.17)}
+.crusade-troop-title{font-weight:700;font-size:12px}
+.crusade-troop-count{font-size:12px;color:#ead09f}
+.crusade-troop small{font-size:10px;color:#d2c6b1}
+.crusade-life-track{display:block;min-height:5px;width:100%;background:#171b19;border-radius:4px;overflow:hidden}
+.crusade-life-track span{display:block;height:5px;background:linear-gradient(90deg,#678f61,#a1c486);border-radius:4px}
+.crusade-turn-banner{display:flex;justify-content:space-between;align-items:center;gap:8px;
+ padding:8px 12px;margin:-2px 0 10px;border:1px solid #88744b;border-radius:7px;
+ background:linear-gradient(90deg,#5a462f,#33352d);font-size:12px;color:#f7d79e;font-weight:800;letter-spacing:.06em}
+.crusade-turn-banner span{font-weight:normal;color:#f9ead1;letter-spacing:0}
+.crusade-mode .battle-board-svg{background:radial-gradient(ellipse at 52% 30%,#495143,#252e2c)}
+.crusade-mode .battle-board-frame{border-radius:8px;box-shadow:inset 0 0 0 1px #685741}
+.crusade-stats{display:grid;gap:7px;padding:9px 0;margin-bottom:10px}
+.crusade-stats span{display:flex;justify-content:space-between;gap:10px;
+ border-bottom:1px solid #5c5244;padding:4px 0;color:#dcd0bb;font-size:12px}
+.crusade-stats b{color:#f2d28e}
+.crusade-action-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:10px 0 16px}
+.crusade-action-buttons button{white-space:normal;min-height:39px;font-size:12px}
+.crusade-ability-buttons{display:flex;flex-wrap:wrap;gap:6px}
+.crusade-ability-buttons button{white-space:normal;min-height:39px}
+.crusade-right h3{font-family:Georgia,serif;margin:14px 0 5px;color:#efd39f;font-size:15px}
+.crusade-right>button{display:block;margin:7px 0}
+.crusade-status{border-left:3px solid #e1bd79;padding:9px 10px;background:#3b382c;margin:10px 0}
+.crusade-history ol{max-height:250px;overflow:auto}
+.crusade-history li{padding:6px;border-bottom:1px solid #695a48}
+.crusade-end{padding:18px;background:#403b2a;border:1px solid #c39d5b;border-radius:9px;margin:10px 0}
+.crusade-end h2{font-family:Georgia,serif;font-size:24px}
+@media(max-width:1200px){.crusade-combat-grid{grid-template-columns:minmax(150px,.9fr) minmax(320px,2.4fr)}
+ .crusade-right{grid-column:1/-1}.crusade-action-buttons{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(max-width:750px){.crusade-model-grid,.crusade-combat-grid{grid-template-columns:minmax(0,1fr)}
+ .crusade-left{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .crusade-left h2{grid-column:1/-1}.crusade-left section+section{margin:0;padding:0;border:0}
+ .crusade-right{grid-column:auto}.crusade-action-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .crusade-model-roster{grid-template-columns:1fr}.crusade-turn-banner{flex-wrap:wrap}}
+@media(max-width:420px){.crusade-left{grid-template-columns:1fr}}

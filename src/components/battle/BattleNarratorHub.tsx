@@ -8,10 +8,11 @@ import {BattleSetup} from './BattleSetup';
 import {BattleArena} from './BattleArena';
 import {BattleReplayImporter} from './BattleReplay';
 import {BattleSavedPanel} from './BattleSavedPanel';
+import {BattleV3Game} from './BattleV3Game';
 import './battle.css';
 
 export function BattleNarratorHub(){
- const [view,setView]=useState<'home'|'setup'|'arena'|'saved'>('home');
+ const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'>('home');
  const [state,setState]=useState<BattleState|null>(null);
  const [resumeState,setResumeState]=useState<BattleState|null>(null);
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Atacante',defender:'Defensor'});
@@ -41,9 +42,11 @@ export function BattleNarratorHub(){
   </header>
   {view==='home'&&<div className="battle-home battle-surface">
     <h2>Laboratório de batalha</h2>
-    <p>Prepare dois exércitos fictícios e conduza seus turnos em um mapa hexagonal independente.</p>
+    <p><strong>Batalhar:</strong> entre na Cruzada V3 com casas-modelo, habilidades e comandantes.
+      <strong> Criar batalha:</strong> mantenha o laboratório PTE-2.0 com editor e unidades oficiais em cópia somente leitura.</p>
     <div className="battle-home-actions">
-      <Button onClick={()=>setView('setup')}>Criar batalha</Button>
+      <Button onClick={()=>setView('crusade')}>Batalhar</Button>
+      <Button variant="outline" onClick={()=>setView('setup')}>Criar batalha</Button>
       <Button variant="outline" onClick={()=>setManual(x=>!x)}>Consultar regras</Button>
       <Button variant="outline" onClick={()=>setShowImport(x=>!x)}>Importar replay JSON</Button>
       {canSave?<Button variant="outline" onClick={()=>setView('saved')}>Batalhas salvas</Button>:
@@ -58,6 +61,7 @@ export function BattleNarratorHub(){
      <p>Os PV, as baixas e a moral são exclusivos desta simulação. IA determinística habilitada. O armazenamento exige autorização atual do Narrador e verificação do servidor. Nenhum impacto sobre recursos da casa.</p>
     </div>}
   </div>}
+  {view==='crusade'&&<BattleV3Game narrator onBack={()=>setView('home')}/>}
   {view==='saved'&&canSave&&<BattleSavedPanel onClose={()=>setView('home')}
     onResume={(ready,restored)=>{
       setState(ready);setResumeState(restored);
