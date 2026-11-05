@@ -13,7 +13,7 @@ export type SpyDossierSubjectOption={
  */
 export function spyDossierActionOptions(
  official:readonly SpyDossierSubjectOption[],
- findings:readonly SpyDossier['findings'][number][],
+ findings:ReadonlyArray<SpyDossier['findings'][number]>,
  objective:SpyIntelligenceObjective,
  action:SpyDossierAdminAction,
 ):SpyDossierSubjectOption[]{
