@@ -36,7 +36,7 @@
 ## Evidências da fase final de QA
 
 - [x] **Browser real Chromium, dados fictícios**: 3 testes de interface aprovados, incluindo viewport 390×844 com touch, seleção por teclado e zoom 100–250% dentro do mapa, editor 11×9/15×11 e integridade do replay. [GitHub Actions — Battle browser acceptance #42083219904](https://github.com/marceloloiro100cm-netizen/cormyr-chronicle-atlas/actions/runs/42083219904).
-- [x] **Banco descartável PostgreSQL 16**: RLS, revogação de Narrador, CAS, comandos idempotentes e rollback, em job sem conexão com Supabase de campanha. [GitHub Actions — Validate #42080001354](https://github.com/marceloloiro100cm-netizen/cormyr-chronicle-atlas/actions/runs/42080001354).
+- [x] **Banco descartável PostgreSQL 16**: RLS, revogação de Narrador, CAS, comandos idempotentes, rollback **e corrida real entre duas conexões** (uma gravação e um conflito `40001`), sem conexão com Supabase de campanha. [GitHub Actions — Validate #42090897370](https://github.com/marceloloiro100cm-netizen/cormyr-chronicle-atlas/actions/runs/42090897370).
 - [x] **Vitest, TypeScript e build** aprovados no workflow anterior; revalidar no SHA final do PR antes de merge.
 - [ ] **Homologação operacional da aplicação**: o SQL/RLS no Supabase isolado passou; faltam reconciliação Drizzle, credenciais de contas de teste, JWT real, gravação/reabertura após refresh e E2E mobile autenticado. Consulte o relatório de 05/11/2026.
 - [ ] **Publicação**: exige autorização expressa separada. O PR continua em rascunho; flags desligadas, banco e fichas oficiais intactos.
