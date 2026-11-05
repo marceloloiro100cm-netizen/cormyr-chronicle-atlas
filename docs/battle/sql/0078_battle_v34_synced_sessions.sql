@@ -63,10 +63,10 @@ REVOKE ALL ON TABLE public.battle_v34_sessions,public.battle_v34_receipts FROM P
 GRANT SELECT ON TABLE public.battle_v34_sessions,public.battle_v34_receipts TO authenticated;
 -- Wrapper de permissão vinculado ao JWT real; não recebe user_id arbitrário.
 CREATE OR REPLACE FUNCTION public.battle_v34_can_control(p_house text)
-RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public,pg_temp AS $
+RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public,pg_temp AS $v34$
  SELECT public.campaign_access_active()
    AND public.in_campaign_house(p_house,false)
-$;
+$v34$;
 REVOKE ALL ON FUNCTION public.battle_v34_can_control(text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.battle_v34_can_control(text) TO authenticated;
 -- Escrever requer Supabase service_role no servidor APÓS revalidar JWT, acesso e lado.
