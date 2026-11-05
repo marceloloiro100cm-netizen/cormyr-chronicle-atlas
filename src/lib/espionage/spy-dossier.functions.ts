@@ -46,7 +46,7 @@ async function browserRead(name:string,args:Record<string,unknown>){
   throw new Error('Sessão expirada. Entre novamente no Cormyr.');
  // SupabaseClient.rpc usa `this`; invocar um método extraído perde o receptor
  // e quebra os dossiês mesmo quando a sessão e a RPC do banco estão corretas.
- const rpc=supabase.rpc.bind(supabase) as Rpc;
+ const rpc=supabase.rpc.bind(supabase) as unknown as Rpc;
  const result=await rpc(name,args);
  if(result.error)throw new Error('Não foi possível consultar o dossiê. Confirme o acesso e tente novamente.');
  return result.data;
