@@ -5,11 +5,12 @@ import {makeFictionalStack,makeBattleSetup} from '@/lib/battle/domain/setup';
 import {createScenario,SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixtures';
 import {validateBattleMap} from '@/lib/battle/geometry/map-validation';
 import {hexKey} from '@/lib/battle/geometry/hex';
-import type {BattleMap,BattleState,Hex,Side,Training} from '@/lib/battle/domain/types';
+import type {BattleMap,BattleState,BattleStack,Hex,Side,Training} from '@/lib/battle/domain/types';
 import {BattleBoard} from './BattleBoard';
 import {BattleMapEditor} from './BattleMapEditor';
+import {BattleSourcePicker} from './BattleSourcePicker';
 
-type PreparedUnit={id:string;side:Side;name:string;typeId:string;training:Training;count:number;position:Hex|null};
+type PreparedUnit={id:string;side:Side;name:string;typeId:string;training:Training;count:number;position:Hex|null;imported?:BattleStack};
 const SIDE_LABEL={attacker:'Atacante',defender:'Defensor'} as const;
 const DEFAULTS:PreparedUnit[]=[
  {id:'attacker-1',side:'attacker',name:'Infantaria atacante',typeId:'infantry',training:'trained',count:100,position:null},
@@ -33,6 +34,17 @@ export function BattleSetup({onStart,onBack}:{
  const [error,setError]=useState('');
  const update=(id:string,change:Partial<PreparedUnit>)=>setUnits(list=>list.map(u=>u.id===id?{...u,...change}:u));
  const makeId=(side:Side)=>side+'-'+crypto.randomUUID().slice(0,8);
+ const addImported=(source:BattleStack)=>{
+  if(units.filter(u=>u.side===source.side).length>=5){setError('Limite de 5 agrupamentos por lado.');return;}
+  if(units.some(u=>u.imported?.source.houseId===source.source.houseId&&u.imported?.source.unitId===source.source.unitId)){
+   setError('Esta unidade oficial já foi copiada para a batalha.');return;
+  }
+  const id='src-'+crypto.randomUUID();
+  const imported={...source,id};
+  setUnits(list=>[...list,{id,side:source.side,name:source.name,typeId:source.primaryTypeId,
+    training:source.training,count:source.initialCount,position:null,imported}]);
+  setSelected(id);setError('');
+ };
  const add=(side:Side)=>{
   if(units.filter(u=>u.side===side).length>=5){setError('Limite de 5 agrupamentos por lado.');return;}
   const id=makeId(side);
@@ -67,6 +79,7 @@ export function BattleSetup({onStart,onBack}:{
   try{
    const stacks=units.map(u=>{
      if(!u.position)throw new Error('Posicione todas as unidades antes de iniciar.');
+     if(u.imported)return {...u.imported,position:u.position,side:u.side};
      return makeFictionalStack({id:u.id,side:u.side,name:u.name,typeId:u.typeId,
        training:u.training,count:u.count,position:u.position});
    });
@@ -108,10 +121,10 @@ export function BattleSetup({onStart,onBack}:{
         aria-pressed={selected===u.id} onClick={()=>setSelected(u.id)}>
         {u.name||'Sem nome'} {u.position?'· Posicionada':'· Sem posição'}
       </button>
-      <label>Nome da unidade<input aria-label={'Nome da unidade '+u.id} maxLength={120} value={u.name}
+      <label>Nome da unidade<input aria-label={'Nome da unidade '+u.id} maxLength={120} disabled={Boolean(u.imported)} value={u.name}
         onChange={e=>update(u.id,{name:e.target.value})}/></label>
       <div className="battle-form-row">
-       <label>Tipo<select aria-label={'Tipo da unidade '+u.id} value={u.typeId}
+       <label>Tipo<select disabled={Boolean(u.imported)} aria-label={'Tipo da unidade '+u.id} value={u.typeId}
          onChange={e=>{
           const typeId=e.target.value;tacticalProfile(typeId);
           update(u.id,{typeId,count:typeId==='cavalry'?20:100});
@@ -119,13 +132,18 @@ export function BattleSetup({onStart,onBack}:{
          {LAND_PROFILES.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
          <option value="warships" disabled>Navios de guerra · indisponível em terra</option>
        </select></label>
-       <label>Treino<select aria-label={'Treinamento '+u.id} value={u.training}
+       <label>Treino<select disabled={Boolean(u.imported)} aria-label={'Treinamento '+u.id} value={u.training}
          onChange={e=>update(u.id,{training:e.target.value as Training})}>
          {train.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
        </select></label>
        <label>Efetivo<input type="number" min="1" max="1000" step="1"
-        aria-label={'Efetivo '+u.id} value={u.count} onChange={e=>update(u.id,{count:Number(e.target.value)})}/></label>
+        aria-label={'Efetivo '+u.id} disabled={Boolean(u.imported)} value={u.count} onChange={e=>update(u.id,{count:Number(e.target.value)})}/></label>
       </div>
+      {u.imported&&<details><summary>Origem oficial · diagnóstico</summary>
+        <p>Casa {u.imported.source.houseId} · versão {u.imported.source.sourceVersion};
+          PV táticos calculados separadamente.</p>
+        {(u.imported.source.warnings??[]).map((w,i)=><p key={i}>{w}</p>)}
+       </details>}
       <div className="battle-roster-actions">
        <Button size="sm" variant="outline" onClick={()=>setSelected(u.id)}>Implantar</Button>
        <Button size="sm" variant="outline" disabled={units.filter(x=>x.side===side).length<=1}
@@ -137,6 +155,7 @@ export function BattleSetup({onStart,onBack}:{
    </fieldset>)}
    </div>
   </section>
+  <BattleSourcePicker onAdd={addImported}/>
   <section className="battle-surface" aria-label="Escolha do terreno">
    <h3>3. Terreno</h3>
    <div className="battle-form-row">
