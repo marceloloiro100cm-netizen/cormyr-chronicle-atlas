@@ -24,21 +24,21 @@
 - Serviço servidor revalida perfil/Replay e origens reais, acessa role corrente, usa chave técnica **apenas** no servidor; cria snapshot e aplica comando com CAS/UUID idempotente.
 - Flags em duas camadas: `VITE_ENABLE_BATTLE_PERSISTENCE=true` na UI e `ENABLE_BATTLE_PERSISTENCE=true` no servidor. O padrão é desligado. Ativar só **após** aplicar em banco homologado e provar RLS.
 - `BattleSavedPanel` lista e consulta com replay verificado. Em progresso, o laboratório pode propor salvamento quando flags forem habilitadas; a leitura continua restrita ao Narrador. A retomada editável de uma sessão compartilhada e comandos automáticos persistidos por IA precisam de aceite E2E próprio antes da publicação.
-- Nenhuma migração foi aplicada em Supabase de produção ou homologação existente.
+- **Atualização de 05/11/2026:** o SQL candidato foi aplicado somente ao banco PostgreSQL separado de homologação e validado quanto a RLS, serviço técnico, CAS, idempotência, revogação e rollback. **Nenhuma migração foi aplicada à produção**; o histórico Drizzle segue pendente de reconciliação. Evidências em `docs/battle/homologacao-persistencia-2026-11-05.md`.
 
 ## Lote 11 — QA / hardening
 - Testes Vitest de invariantes, IA, origem, replay e bloqueios estáticos no código, além de casos B-001..B-040 já cobertos por suítes anteriores.
 - Job isolado `battle-database` em GitHub Actions com PostgreSQL 16 descartável; aplica o SQL **apenas no container do CI**, com bootstrap sem dados privados, verifica RLS para anon/jogador/narrador/revogado, atomicidade, idempotência e rollback.
 - `bun run test`, `bunx tsc --noEmit`, `bun run build` no workflow Validate.
 - Browser Chromium sintético: editor, seleção mouse/teclado, viewport mobile com toque, zoom interno, replay e adulteração de JSON **aprovados**; não testa a rota autenticada nem o banco real.
-- E2E operacional em homologação autenticada (JWT, RLS real, salvamento e restauração) ainda pendente; não é coberto pelo Chromium sintético.
+- RLS, gravação e recuperação em nível de SQL **já foram verificadas no Supabase isolado** com `SET LOCAL ROLE` e claims sintéticas. E2E da **aplicação** com JWT real, servidor atualizado, replay completo e restauração após refresh permanece pendente.
 
 ## Evidências da fase final de QA
 
 - [x] **Browser real Chromium, dados fictícios**: 3 testes de interface aprovados, incluindo viewport 390×844 com touch, seleção por teclado e zoom 100–250% dentro do mapa, editor 11×9/15×11 e integridade do replay. [GitHub Actions — Battle browser acceptance #42083219904](https://github.com/marceloloiro100cm-netizen/cormyr-chronicle-atlas/actions/runs/42083219904).
-- [x] **Banco descartável PostgreSQL 16**: RLS, revogação de Narrador, CAS, comandos idempotentes e rollback, em job sem conexão com Supabase de campanha. [GitHub Actions — Validate #42080001354](https://github.com/marceloloiro100cm-netizen/cormyr-chronicle-atlas/actions/runs/42080001354).
+- [x] **Banco descartável PostgreSQL 16**: RLS, revogação de Narrador, CAS, comandos idempotentes, rollback **e corrida real entre duas conexões** (uma gravação e um conflito `40001`), sem conexão com Supabase de campanha. [GitHub Actions — Validate #42090897370](https://github.com/marceloloiro100cm-netizen/cormyr-chronicle-atlas/actions/runs/42090897370).
 - [x] **Vitest, TypeScript e build** aprovados no workflow anterior; revalidar no SHA final do PR antes de merge.
-- [ ] **Homologação real**: backup/inventário de migrações, aprovação da SQL, credenciais de contas de teste, revogação em tempo real, gravação/reabertura após refresh, E2E de papéis e validação de acessibilidade em mobile real.
+- [ ] **Homologação operacional da aplicação**: o SQL/RLS no Supabase isolado passou; faltam reconciliação Drizzle, credenciais de contas de teste, JWT real, gravação/reabertura após refresh e E2E mobile autenticado. Consulte o relatório de 05/11/2026.
 - [ ] **Publicação**: exige autorização expressa separada. O PR continua em rascunho; flags desligadas, banco e fichas oficiais intactos.
 
 **Resultado:** cobertura de regras e browser sintético comprovada; **NO_GO** para deploy real ou migração até testes operacionais e revisão de segurança. O teste browser sintético **não** garante a autorização dos endpoints de produção.

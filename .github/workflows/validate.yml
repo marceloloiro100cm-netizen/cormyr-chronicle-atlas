@@ -169,5 +169,9 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/battle/sql/test/battle-test-bootstrap.sql
       - name: Apply battle draft ONLY to disposable test database
         run: psql -v ON_ERROR_STOP=1 -f docs/battle/sql/0076_battle_sim_homologation.sql
+      - name: Two-client CAS race on disposable PostgreSQL
+        env:
+          BATTLE_DISPOSABLE_POSTGRES: 'true'
+        run: bash docs/battle/sql/test/battle-cas-race.sh
       - name: RLS, CAS, idempotency, rollback and revocation acceptance
         run: psql -v ON_ERROR_STOP=1 -f docs/battle/sql/test/battle-sql-smoke.sql
