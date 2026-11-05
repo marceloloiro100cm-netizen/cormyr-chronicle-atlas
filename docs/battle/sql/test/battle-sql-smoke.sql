@@ -93,10 +93,12 @@ DO $$DECLARE v uuid;BEGIN
  END;
 END $$;
 -- B-037 forced failure after event insert must roll back both event and session.
+RESET ROLE;
 CREATE FUNCTION public.battle_test_abort_event() RETURNS trigger LANGUAGE plpgsql AS $$
  BEGIN RAISE EXCEPTION 'Injected transactional failure'; END $$;
 CREATE TRIGGER battle_test_abort AFTER INSERT ON public.battle_sim_events
  FOR EACH ROW EXECUTE FUNCTION public.battle_test_abort_event();
+SET ROLE service_role;
 DO $$ DECLARE v uuid; BEGIN
  SELECT id INTO v FROM public.battle_sim_sessions LIMIT 1;
  BEGIN
@@ -113,11 +115,13 @@ DO $$ DECLARE v uuid; BEGIN
    OR (SELECT count(*) FROM public.battle_sim_events)<>1
  THEN RAISE EXCEPTION 'B-037: partial transaction committed'; END IF;
 END $$;
+RESET ROLE;
 DROP TRIGGER battle_test_abort ON public.battle_sim_events;
 DROP FUNCTION public.battle_test_abort_event();
 
 -- B-034: revoke actor, RPC rejects and RLS immediately hides former sessions.
 DELETE FROM public.user_roles WHERE user_id='11111111-1111-4111-8111-111111111111';
+SET ROLE service_role;
 DO $$DECLARE v uuid;BEGIN
  SELECT id INTO v FROM public.battle_sim_sessions LIMIT 1;
  BEGIN
