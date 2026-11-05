@@ -256,7 +256,8 @@ export function SpyNarratorDossiers(){
     </select></label>
     <label>Justificativa<textarea value={reason} required minLength={10} maxLength={1200}
      onChange={e=>setReason(e.target.value)}/></label>
-    <Button disabled={busy||!currentKey||reason.trim().length<10}>
+    <Button disabled={busy||!currentKey||reason.trim().length<10||
+     (options.isError&&action!=='revoke')}>
      {busy?'Registrando…':'Registrar alteração'}</Button>
    </form>
    {!!active.adminHistory.length&&<details className="house-ledger">
