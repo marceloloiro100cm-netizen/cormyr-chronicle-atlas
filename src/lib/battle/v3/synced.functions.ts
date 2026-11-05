@@ -147,7 +147,7 @@ export const readV34Session=createServerFn({method:'POST'})
   if(mySide)await member(db,mySide==='attacker'?session.attacker_house_id:session.defender_house_id);
   const service=await trusted();
   const invitationOpen=await invitationIsOpen(service,session.invitation_id);
-  return {session:{
+  const snapshot:V34SessionView={session:{
    id:session.id,title:session.title,invitation_id:session.invitation_id,
    attacker_house_id:session.attacker_house_id,
    defender_house_id:session.defender_house_id,attacker_user_id:session.attacker_user_id,
@@ -155,7 +155,8 @@ export const readV34Session=createServerFn({method:'POST'})
    state_version:session.state_version,
   },game:checked.game,initialGame:session.initial_game_json,receipts:checked.receipts,
     hash:session.current_hash,version:session.state_version,
-    mySide,invitationOpen} as V34SessionView;
+    mySide,invitationOpen};
+  return {snapshotJson:JSON.stringify(snapshot)};
  });
 export const joinV34Session=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth]).inputValidator(joinInput)
