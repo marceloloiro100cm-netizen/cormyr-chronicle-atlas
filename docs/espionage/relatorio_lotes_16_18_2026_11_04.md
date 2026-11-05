@@ -51,8 +51,8 @@ não cria registros fictícios de espionagem.
 
 ### Aceite e limitações
 - [x] Alterações e testes adicionados à branch.
-- [ ] Workflow GitHub Validate completo.
-- [ ] Pull request integrada à main.
+- [x] Workflow GitHub Validate e revisão isolada de Espionagem aprovados na PR #254.
+- [x] PR #254 integrada à main: commit `177126134218b322334858e6de3de3b70f7064c5`.
 - [ ] Sincronização de commit Lovable verificada.
 - [ ] Publicação da versão nova confirmada pelo provedor.
 - [ ] Testes reais cruzados de duas contas com Casas diferentes; precisam de
