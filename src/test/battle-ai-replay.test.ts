@@ -30,7 +30,7 @@ describe('Batalha V2 — lote 8 IA e replay',()=>{
   expect(captureReplay(ready,complete.commands)).toEqual(replay);
   expect(battleHash({b:2,a:1})).toBe(battleHash({a:1,b:2}));
   expect(battleHash(complete.state)).toBe(replay.finalStateHash);
-  const forged=structuredClone(replay) as {commands:{stateHash:string}[]};
+  const forged=structuredClone(replay) as unknown as {commands:{stateHash:string}[]};
   forged.commands[0]!.stateHash='f'.repeat(64);
   expect(()=>verifyReplay(forged)).toThrow('Integridade não confirmada');
   expect(parseReplayJson(exportReplayJson(ready,complete.state)).state).toEqual(complete.state);
