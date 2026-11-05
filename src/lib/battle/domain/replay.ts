@@ -59,7 +59,7 @@ function assertReady(initial:BattleState):BattleState{
  });
  if(initial.rngAlgorithm!=='none-PTE-2.0'||initial.noProgressRounds!==0)
   throw new Error('Origem de replay inconsistente.');
- return startBattle({...initial,...draft});
+ return startBattle(initial);
 }
 export function commandsFromState(state:BattleState):BattleCommand[]{
  return state.events.filter(e=>e.type!=='RETALIATION').map(e=>e.command);
