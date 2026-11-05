@@ -61,6 +61,7 @@ CREATE POLICY battle_v34_receipt_read ON public.battle_v34_receipts
      OR public.in_campaign_house(s.defender_house_id,false))));
 REVOKE ALL ON TABLE public.battle_v34_sessions,public.battle_v34_receipts FROM PUBLIC,anon,authenticated;
 GRANT SELECT ON TABLE public.battle_v34_sessions,public.battle_v34_receipts TO authenticated;
+GRANT SELECT,INSERT,UPDATE ON TABLE public.battle_v34_sessions,public.battle_v34_receipts TO service_role;
 -- Wrapper de permissão vinculado ao JWT real; não recebe user_id arbitrário.
 CREATE OR REPLACE FUNCTION public.battle_v34_can_control(p_house text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public,pg_temp AS $v34$
