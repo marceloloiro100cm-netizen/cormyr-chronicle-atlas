@@ -12,14 +12,14 @@ import {BattleBoard} from './BattleBoard';
 import {runAiUntilHuman} from '@/lib/battle/domain/ai';
 import {exportReplayJson} from '@/lib/battle/domain/replay';
 import {BattleReplay} from './BattleReplay';
-import {BATTLE_PERSISTENCE_UI_ENABLED} from '@/lib/battle/feature-flag';
 import {saveBattleReplay} from '@/lib/battle/battle-session.functions';
 import {useServerFn} from '@tanstack/react-start';
 
 const LABEL:Record<Side,string>={attacker:'Atacante',defender:'Defensor'};
-function BattleResult({state,initial,sideNames,onRestart,onExit}:{
+function BattleResult({state,initial,sideNames,onRestart,onExit,persistenceEnabled}:{
  initial:BattleState;
  state:BattleState;sideNames:Record<Side,string>;onRestart:()=>void;onExit:()=>void;
+ persistenceEnabled:boolean;
 }){
  const report=battleReport(state);
  const [replayVisible,setReplayVisible]=useState(false);
@@ -54,8 +54,8 @@ function BattleResult({state,initial,sideNames,onRestart,onExit}:{
    </table></div>
    <div className="battle-form-row">
     <Button variant="outline" onClick={()=>downloadBattleJson('resultado-batalha.json',JSON.stringify(report,null,2))}>Exportar resultado JSON</Button>
-    {BATTLE_PERSISTENCE_UI_ENABLED&&<Button disabled={saving} variant="outline" onClick={()=>void persist()}>
-      Salvar batalha no banco isolado
+    {persistenceEnabled&&<Button disabled={saving} variant="outline" onClick={()=>void persist()}>
+      Salvar batalha
     </Button>}
     <Button variant="outline" onClick={()=>{try{downloadBattleJson('batalha-replay-verificado.json',exportReplayJson(initial,state));}
       catch(e){window.alert(e instanceof Error?e.message:'Replay inválido.');}}}>Exportar batalha completa JSON</Button>
@@ -65,11 +65,12 @@ function BattleResult({state,initial,sideNames,onRestart,onExit}:{
    </div>
    {savedMessage&&<p role="status">{savedMessage}</p>}
    {replayVisible&&<BattleReplay initial={initial} state={state}/>}
-   <p className="battle-note">Replay verificável PTE-2.0. O salvamento isolado requer banco de homologação e aprovação da migração.</p>
+   <p className="battle-note">Replay verificável PTE-2.0. O salvamento usa registro tático independente e não altera fichas da campanha.</p>
  </section>;
 }
-export function BattleArena({initial,sideNames,onExit}:{
+export function BattleArena({initial,sideNames,onExit,persistenceEnabled=false}:{
  initial:BattleState;sideNames:Record<Side,string>;onExit:()=>void;
+ persistenceEnabled?:boolean;
 }){
  const [battle,setBattle]=useState<BattleState>(()=>startBattle(initial));
  const [history,setHistory]=useState<BattleState[]>([]);
@@ -148,7 +149,7 @@ export function BattleArena({initial,sideNames,onExit}:{
   const fresh=startBattle(initial);setBattle(fresh);setHistory([]);setSelected(fresh.activeUnitId);clear();setNotice('');
  };
  if(battle.phase==='completed'||battle.phase==='archived')
-  return <BattleResult state={battle} initial={initial} sideNames={sideNames} onRestart={restart} onExit={onExit}/>;
+  return <BattleResult state={battle} initial={initial} sideNames={sideNames} onRestart={restart} onExit={onExit} persistenceEnabled={persistenceEnabled}/>;
  return <section className="battle-arena" aria-label="Arena tática">
   <div className="battle-arena-top battle-surface">
    <div><h2>{battle.name}</h2><p>Rodada {battle.round} / 20 · {active?active.name:'Sem unidade ativa'}
@@ -157,11 +158,11 @@ export function BattleArena({initial,sideNames,onExit}:{
     <Button size="sm" variant="outline" onClick={()=>setPaused(x=>!x)}>{paused?'Retomar':'Pausar'}</Button>
     <Button size="sm" variant="outline" disabled={!history.length} onClick={undo}>Desfazer ação</Button>
     <Button size="sm" variant="outline" onClick={restart}>Reiniciar</Button>
-    {BATTLE_PERSISTENCE_UI_ENABLED&&<Button size="sm" variant="outline" disabled={savingProgress}
+    {persistenceEnabled&&<Button size="sm" variant="outline" disabled={savingProgress}
       onClick={async()=>{
         setSavingProgress(true);
         try{const saved=await saveProgress({data:{replayJson:exportReplayJson(initial,battle)}});
-          setNotice('Batalha salva no banco isolado: '+saved.sessionId);
+          setNotice('Batalha salva: '+saved.sessionId);
         }catch(e){setNotice(e instanceof Error?e.message:'Falha no salvamento.');}
         finally{setSavingProgress(false);}
       }}>Salvar progresso</Button>}
