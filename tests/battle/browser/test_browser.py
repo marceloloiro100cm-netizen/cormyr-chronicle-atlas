@@ -93,7 +93,7 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         page=self.open_page()
         replay=page.locator("#verified-replay")
         self.assertIn("SHA-256 verificado",replay.inner_text())
-        status=replay.get_by_role("status")
+        status=replay.locator('p[role="status"]').first
         self.assertIn("Comando 0 de",status.inner_text())
         replay.get_by_role("button",name="Próximo").click()
         self.assertIn("Comando 1 de",status.inner_text())
