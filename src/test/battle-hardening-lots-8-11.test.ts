@@ -44,7 +44,7 @@ describe('Batalha V2 — lote 11, segurança e conformidade',()=>{
  });
  it('B-026/027/040: 20 cenários realmente variados terminam, hashes e relatório coerentes',()=>{
   for(let n=0;n<20;n++){
-   const map=createScenario((['plain-open','contested-woods','border-hills','narrow-passage'] as const)[n%4],
+   const map=createScenario((['plain-open','contested-woods','border-hills','narrow-passage'] as const)[n%4]!,
      n%2===0?11:15);
    const countA=15+3*n,countB=15+2*n;
    const posA=map.deployment.attacker[(n%5)]!,
@@ -63,7 +63,7 @@ describe('Batalha V2 — lote 11, segurança e conformidade',()=>{
    expect(replay.finalStateHash).toBe(battleHash(sim.state));
    const report=battleReport(sim.state);
    for(const row of report.units)expect(row.alive+row.casualties).toBe(row.initial);
-   const broken=structuredClone(replay);
+   const broken=structuredClone(replay) as {finalStateHash:string};
    broken.finalStateHash='0'.repeat(64);
    expect(()=>verifyReplay(broken)).toThrow('Integridade não confirmada');
   }
