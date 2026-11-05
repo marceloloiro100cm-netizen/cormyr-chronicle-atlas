@@ -313,14 +313,33 @@ export function SpyNarratorDossiers(){
   </>}
   <details className="house-ledger">
    <summary>Missões aguardando fonte oficial ({pending.data?.length??0})</summary>
-   {pending.isError&&<p role="alert">Não foi possível consultar as pendências.</p>}
-   {pending.data?.map(item=><div className="spy-dossier-pending" key={item.operationId}>
-    <span>{item.ownerHouseId} → {item.targetHouseId} · {labels[item.objective]}
-     · {safeDate(item.dateKey)}</span>
-    <Button type="button" size="sm" variant="outline" disabled={busy}
-     onClick={()=>void retryPending(item.operationId)}>Reprocessar</Button>
-   </div>)}
-   {pending.data?.length===0&&<p className="house-caption">Nenhuma missão pendente.</p>}
+   {pending.isPending&&<p role="status">Consultando missões pendentes…</p>}
+   {pending.isError&&<p role="alert">Não foi possível consultar as pendências.
+    <Button type="button" variant="outline" onClick={()=>void pending.refetch()}>
+     Tentar novamente</Button></p>}
+   {!pending.isPending&&!pending.isError&&<>
+    <label className="spy-dossier-pending-filter">Modalidade
+     <select value={pendingObjective} onChange={e=>
+      setPendingObjective(e.target.value as SpyIntelligenceObjective|'all')}>
+      <option value="all">Todas as modalidades</option>
+      {SPY_INTELLIGENCE_OBJECTIVES.map(item=>
+       <option key={item.id} value={item.id}>{item.label}</option>)}
+     </select>
+    </label>
+    <p className="house-caption" role="status">{filteredPending.length} missão(ões) neste filtro.</p>
+    {filteredPending.map(item=>{
+     const names=spyDossierPendingHouseNames(item.ownerHouseId,item.targetHouseId,query.data??[]);
+     return <div className="spy-dossier-pending" key={item.operationId}>
+      <span><strong>Casa {names.owner} → Casa {names.target}</strong>
+       <small>{labels[item.objective]} · {safeDate(item.dateKey)} ·
+        Até {item.capacity} descobertas por missão</small>
+      </span>
+      <Button type="button" size="sm" variant="outline" disabled={busy}
+       onClick={()=>void retryPending(item.operationId)}>Reprocessar</Button>
+     </div>;
+    })}
+    {filteredPending.length===0&&<p className="house-caption">Nenhuma missão pendente neste filtro.</p>}
+   </>}
   </details>
   {message&&<p role="status" className="house-caption">{message}</p>}
  </section>;
