@@ -61,7 +61,7 @@ export function NarratorCalendar(){
   queryFn:async()=>{
    const version=expectedVersion!;
    const {data,error}=await supabase.rpc('preview_campaign_time_change',{
-    p_version:version,p_mode:mode,p_date:mode==='set'?date:null,
+    p_version:version,p_mode:mode,p_date:(mode==='set'?date:null) as unknown as string,
     p_count:mode==='advance'?count:0,p_allow_backdate:mode==='set'&&allowBackdate,
    });
    if(error)throw error;
@@ -161,7 +161,7 @@ export function NarratorCalendar(){
   try{
    await requireFreshNarratorAccess();
    const args=campaignTimeRpcArguments(mode,date,count,expectedVersion,key,reason.trim(),allowBackdate);
-   const {data:snapshot,error}=await supabase.rpc('publish_campaign_time_change',args);
+   const {data:snapshot,error}=await supabase.rpc('publish_campaign_time_change',args as typeof args & {p_date:string});
    if(error)throw error;
    const saved=snapshot as unknown as CalendarState|null;
    if(!matchesPublishedTime(saved,planned,expectedVersion))throw new Error('O banco não retornou a data e versão esperadas; confirme o estado no servidor antes de tentar novamente.');

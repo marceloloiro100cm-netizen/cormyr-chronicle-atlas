@@ -130,7 +130,7 @@ export function NarratorCharacterRegistry(){
     </select></label>}
     <Button type="button" disabled={busy||!rationale||(action==='link'&&!target)} onClick={()=>void submit(async()=>{
      const r=await supabase.rpc('review_character_source',{
-      p_queue_id:candidate.id,p_action:action,p_character_id:action==='link'?target:null,p_reason:reason.trim(),
+      p_queue_id:candidate.id,p_action:action,p_character_id:(action==='link'?target:null) as unknown as string,p_reason:reason.trim(),
      });if(r.error)throw r.error;setCandidate(null);return 'Fonte conciliada com auditoria.';
     })}>Confirmar revisão da fonte</Button>
    </div>}
@@ -162,7 +162,7 @@ export function NarratorCharacterRegistry(){
      review_status:reviewStatus,review_note:reviewNote,
     };
     const r=await supabase.rpc('save_campaign_character',{
-     p_id:personId,p_version:selectedPerson?.version??null,p_payload:payload,p_reason:reason.trim(),
+     p_id:personId as unknown as string,p_version:(selectedPerson?.version??null) as unknown as number,p_payload:payload,p_reason:reason.trim(),
     });if(r.error)throw r.error;
     const saved=r.data as {id:string}|null;
     if(saved?.id){setPersonId(saved.id);setTarget(saved.id);}
