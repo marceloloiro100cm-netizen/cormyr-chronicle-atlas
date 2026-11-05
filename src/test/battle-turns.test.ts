@@ -53,14 +53,14 @@ describe('Batalha V2 — lote 3, turnos determinísticos',()=>{
   expect(state.round).toBe(2);
   expect(state.activeUnitId).toBe('a');
  });
- it('ataque legal adjacente é placeholder sem dano e encerra ativação',()=>{
+ it('ataque legal adjacente causa dano e encerra ativação',()=>{
   const base=initial();
   const adjacent={...base,stacks:base.stacks.map(s=>s.id==='b'?{...s,position:offsetToAxial(1,0)}:s)};
   expect(getLegalActions(adjacent).some(c=>c.type==='ATTACK')).toBe(true);
   const result=applyBattleCommand(adjacent,{type:'ATTACK',unitId:'a',targetId:'b'});
-  expect(result.stacks.find(s=>s.id==='b')!.currentHp).toBe(1000);
+  expect(result.stacks.find(s=>s.id==='b')!.currentHp).toBeLessThan(1000);
   expect(result.activeUnitId).toBe('b');
-  expect(result.events[0]!.type).toBe('ATTACK_PENDING_RESOLUTION');
+  expect(result.events[0]!.type).toBe('DAMAGE');
   expect(()=>applyBattleCommand(result,{type:'MOVE',unitId:'a',to:offsetToAxial(2,0)})).toThrow();
  });
  it('tiro exige linha de visão e proíbe adjacência inimiga',()=>{
