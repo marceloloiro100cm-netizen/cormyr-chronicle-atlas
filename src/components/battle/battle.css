@@ -164,3 +164,18 @@
 .crusade-barracks select:focus-visible{outline:3px solid #f7d389;outline-offset:2px}
 @media(max-width:750px){.crusade-barracks-recruit{grid-template-columns:minmax(0,1fr)}
  .crusade-barracks-actions button{flex:1 1 42%}}
+
+/* Academia dos comandantes: progressão fictícia original V3.2. */
+.crusade-commander-hall{margin-top:12px;padding:12px;border:1px solid #9b815b;
+ border-radius:9px;background:linear-gradient(135deg,#333228,#3b302b)}
+.crusade-commander-hall h4{font-family:Georgia,serif;font-size:16px;color:#f1d18e;margin:0 0 6px}
+.crusade-talent-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.crusade-talent{border:1px solid #6b604d;border-radius:7px;padding:9px;min-width:0;
+ background:rgba(27,28,25,.48)}
+.crusade-talent.learned{border-color:#bfaa67;background:#494734}
+.crusade-talent strong{display:block;font-size:12px;color:#f4ddad}
+.crusade-talent small{color:#cfc2a7;font-size:10px}
+.crusade-talent p{font-size:11px;color:#ded3c0;margin:7px 0}
+.crusade-talent button{min-height:35px;white-space:normal}
+.crusade-talent button:focus-visible{outline:3px solid #f7d389;outline-offset:2px}
+@media(max-width:750px){.crusade-talent-grid{grid-template-columns:minmax(0,1fr)}}
