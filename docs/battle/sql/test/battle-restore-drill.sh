@@ -61,7 +61,12 @@ SQL
 # Dump the entire disposable DB to preserve functions, policies, RLS and grants.
 pg_dump -Fc --no-owner -f "$BACKUP_DIR/battle_test.backup" "$PGDATABASE"
 createdb -T template0 "$RESTORE_DB"
-pg_restore --exit-on-error --no-owner -d "$RESTORE_DB" "$BACKUP_DIR/battle_test.backup"
+# Hosted runners may ship pg_dump/pg_restore 17 while the isolated server is PG16.
+# Restore SQL is generated from the custom archive and the lone PG17-only
+# transaction_timeout statement is omitted for compatibility with PG16.
+pg_restore --no-owner --file="$BACKUP_DIR/battle_restore.sql" "$BACKUP_DIR/battle_test.backup"
+sed -i '/^SET transaction_timeout = 0;$/d' "$BACKUP_DIR/battle_restore.sql"
+psql -X -v ON_ERROR_STOP=1 -d "$RESTORE_DB" -f "$BACKUP_DIR/battle_restore.sql" >/dev/null
 PGDATABASE="$RESTORE_DB" psql -X -v ON_ERROR_STOP=1 <<'SQL'
 DO $assert$
 DECLARE v_session uuid;
