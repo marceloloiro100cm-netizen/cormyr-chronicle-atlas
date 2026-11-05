@@ -58,7 +58,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     attacker:v3BarracksDeploy(armies.attacker),
     defender:v3BarracksDeploy(armies.defender),
    };
-   const created=createV3Game({...options,rosters});
+   const created=createV3Game({...options,...(rosters?{rosters}:{})});
    setGame(created);setSelected(created.battle.activeUnitId);setMode('inspect');
    setStatus('Encontro iniciado. Cada token representa um agrupamento completo.');
   }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível criar o cenário-modelo.');}
