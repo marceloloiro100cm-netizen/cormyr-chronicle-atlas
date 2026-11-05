@@ -1,14 +1,15 @@
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
-import {BATTLE_RULES_VERSION} from '@/lib/battle/feature-flag';
+import {BATTLE_RULES_VERSION,BATTLE_PERSISTENCE_UI_ENABLED} from '@/lib/battle/feature-flag';
 import type {BattleState,Side} from '@/lib/battle/domain/types';
 import {BattleSetup} from './BattleSetup';
 import {BattleArena} from './BattleArena';
 import {BattleReplayImporter} from './BattleReplay';
+import {BattleSavedPanel} from './BattleSavedPanel';
 import './battle.css';
 
 export function BattleNarratorHub(){
- const [view,setView]=useState<'home'|'setup'|'arena'>('home');
+ const [view,setView]=useState<'home'|'setup'|'arena'|'saved'>('home');
  const [state,setState]=useState<BattleState|null>(null);
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Atacante',defender:'Defensor'});
  const [manual,setManual]=useState(false);
@@ -31,7 +32,8 @@ export function BattleNarratorHub(){
       <Button onClick={()=>setView('setup')}>Criar batalha</Button>
       <Button variant="outline" onClick={()=>setManual(x=>!x)}>Consultar regras</Button>
       <Button variant="outline" onClick={()=>setShowImport(x=>!x)}>Importar replay JSON</Button>
-      <Button variant="outline" disabled title="Disponível quando o armazenamento isolado for implementado">Batalhas salvas · futuro</Button>
+      {BATTLE_PERSISTENCE_UI_ENABLED?<Button variant="outline" onClick={()=>setView('saved')}>Batalhas salvas</Button>:
+        <Button variant="outline" disabled title="Disponível após homologação do banco">Batalhas salvas · requer homologação</Button>}
     </div>
     {showImport&&<BattleReplayImporter/>}
     {manual&&<div className="battle-rules-help">
@@ -41,6 +43,7 @@ export function BattleNarratorHub(){
      <p>Os PV, as baixas e a moral são exclusivos desta simulação. IA determinística habilitada. Persistência exige banco de homologação; nenhum impacto sobre recursos da casa.</p>
     </div>}
   </div>}
+  {view==='saved'&&BATTLE_PERSISTENCE_UI_ENABLED&&<BattleSavedPanel onClose={()=>setView('home')}/>}
   {view==='setup'&&<BattleSetup onBack={reset} onStart={(battle,names)=>{
     setState(battle);setSideNames(names);setView('arena');
   }}/>}
