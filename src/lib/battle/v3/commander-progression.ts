@@ -59,8 +59,8 @@ export function v3ProgressValid(id:CommanderId,progress:V3CommanderProgress):boo
  if(progress.selectedTalents.length>level-1)return false;
  const names=new Set(progress.selectedTalents);
  if(names.size!==progress.selectedTalents.length)return false;
- const available=new Set(v3CommanderTalents(id).map(t=>t.id));
- return progress.selectedTalents.every(t=>available.has(t));
+ const available=v3CommanderTalents(id);
+ return progress.selectedTalents.every(t=>available.some(entry=>entry.id===t&&entry.minLevel<=level));
 }
 export function v3AwardCommanderXp(progress:V3CommanderProgress,amount:number):V3CommanderProgress {
  if(progress.rulesVersion!==V3_COMMANDER_RULE_VERSION||!Number.isSafeInteger(progress.xp)||progress.xp<0)
