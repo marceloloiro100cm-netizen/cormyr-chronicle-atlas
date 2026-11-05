@@ -70,6 +70,24 @@ describe('Dossiês · contrato visual do jogador e ausência de inventário tota
   await waitFor(()=>expect(state.read).toHaveBeenCalledTimes(2));
   expect(state.read).toHaveBeenLastCalledWith('goldfin');
  });
+ it('pagina muitos dossiês e aplica filtro sem expor registros de outras páginas',async()=>{
+  const list=Array.from({length:13},(_,i)=>({
+   ...dossier,id:`dossier-${i}`,
+   targetHouseName:`Harcourt ${String(i+1).padStart(2,'0')}`,
+  }));
+  state.read.mockResolvedValue(list);mount();
+  await screen.findByText('Página 1 de 2');
+  expect(screen.queryByText('Casa Harcourt 13')).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'Próxima'}));
+  expect(screen.getByText('Página 2 de 2')).toBeInTheDocument();
+  expect(screen.getAllByText('Casa Harcourt 13').length).toBeGreaterThan(0);
+  fireEvent.change(screen.getByPlaceholderText('Pesquisar casa nobre'),{
+   target:{value:'Harcourt 01'},
+  });
+  expect(screen.getByText('1 dossiê(s) encontrado(s)')).toBeInTheDocument();
+  expect(screen.queryByText('Página 2 de 2')).toBeNull();
+  expect(screen.queryByText('Casa Harcourt 13')).toBeNull();
+ });
  it('não apresenta dossiês que a RPC não retornou',async()=>{
   state.read.mockResolvedValue([]);mount('ashkar');
   await screen.findByText(/Nenhum dossiê encontrado/);

@@ -12,6 +12,8 @@ import {readSpyDossiersBrowser,readSpyIntelligenceOptionsBrowser,
  readSpyIntelligencePendingBrowser,adjustSpyIntelligence,retrySpyIntelligence,
  type SpyDossier} from '@/lib/espionage/spy-dossier.functions';
 import {spyDossierActionOptions} from '@/lib/espionage/spy-dossier-action-options';
+import {filterSpyDossiers,paginateSpyDossiers,spyDossierPendingHouseNames,
+ type SpyDossierSort,type SpyDossierProgress} from '@/lib/espionage/spy-dossier-list';
 import './spy-dossier.css';
 
 const safeDate=(date:string)=>parseDate(date)?formatDate(date):date;
@@ -95,13 +97,15 @@ function DossierCollection({dossiers,title,summary,onRefresh,refreshing=false}:{
  const [selected,setSelected]=useState<string>('');
  const [targetFilter,setTargetFilter]=useState('');
  const [regionFilter,setRegionFilter]=useState('');
- const [progress,setProgress]=useState('all');
+ const [progress,setProgress]=useState<SpyDossierProgress>('all');
+ const [sort,setSort]=useState<SpyDossierSort>('recent');
+ const [page,setPage]=useState(1);
  const regions=[...new Set(dossiers.map(d=>d.targetRegion??'').filter(Boolean))].sort();
- const visible=dossiers.filter(d=>(!targetFilter||
-  d.targetHouseName.toLocaleLowerCase('pt-BR').includes(targetFilter.toLocaleLowerCase('pt-BR')))
-  &&(!regionFilter||d.targetRegion===regionFilter)
-  &&(progress==='all'||(progress==='complete'?count(d,'house_resources')===7:count(d,'house_resources')<7)));
- const chosen=visible.find(d=>d.id===selected)??visible[0];
+ const visible=filterSpyDossiers(dossiers,{
+  targetSearch:targetFilter,region:regionFilter,progress,sort,
+ });
+ const paged=paginateSpyDossiers(visible,page,12);
+ const chosen=paged.items.find(d=>d.id===selected)??paged.items[0];
  return <section className="house-panel spy-dossier-panel" aria-label={title}>
   <div className="house-section-heading"><div>
    <p className="campaign-eyebrow">CORMYR · INTELIGÊNCIA</p>
@@ -110,21 +114,36 @@ function DossierCollection({dossiers,title,summary,onRefresh,refreshing=false}:{
   </div>{onRefresh&&<Button type="button" variant="outline" disabled={refreshing}
    onClick={onRefresh}><RefreshCw size={16}/>{refreshing?'Atualizando…':'Atualizar dossiês'}</Button>}</div>
   <div className="spy-dossier-filters">
-   <label>Casa-alvo<input value={targetFilter} onChange={e=>setTargetFilter(e.target.value)}
+   <label>Casa-alvo<input value={targetFilter} onChange={e=>{setTargetFilter(e.target.value);setPage(1);}}
     placeholder="Pesquisar casa nobre"/></label>
-   <label>Região<select value={regionFilter} onChange={e=>setRegionFilter(e.target.value)}>
+   <label>Região<select value={regionFilter} onChange={e=>{setRegionFilter(e.target.value);setPage(1);}}>
     <option value="">Todas</option>{regions.map(region=><option value={region} key={region}>{region}</option>)}
    </select></label>
-   <label>Recursos<select value={progress} onChange={e=>setProgress(e.target.value)}>
+   <label>Recursos<select value={progress} onChange={e=>{setProgress(e.target.value as SpyDossierProgress);setPage(1);}}>
     <option value="all">Todos</option>
     <option value="incomplete">Incompletos</option>
     <option value="complete">7/7 completos</option>
    </select></label>
   </div>
+  <div className="spy-dossier-toolbar">
+   <span role="status">{visible.length} dossiê(s) encontrado(s)</span>
+   <label>Ordenar<select value={sort} onChange={e=>{setSort(e.target.value as SpyDossierSort);setPage(1);}}>
+    <option value="recent">Atualizados recentemente</option>
+    <option value="target">Nome da Casa-alvo</option>
+   </select></label>
+  </div>
   {visible.length?<><div className="spy-dossier-list">
-   {visible.map(d=><DossierCard dossier={d} key={d.id}
+   {paged.items.map(d=><DossierCard dossier={d} key={d.id}
     active={chosen?.id===d.id} onSelect={()=>setSelected(d.id)}/>)}
-  </div>{chosen&&<DossierView key={chosen.id} dossier={chosen}/>}</>:
+  </div>
+  {paged.totalPages>1&&<div className="spy-dossier-pages">
+   <Button type="button" variant="outline" disabled={paged.page===1}
+    onClick={()=>setPage(p=>p-1)}>Anterior</Button>
+   <span>Página {paged.page} de {paged.totalPages}</span>
+   <Button type="button" variant="outline" disabled={paged.page===paged.totalPages}
+    onClick={()=>setPage(p=>p+1)}>Próxima</Button>
+  </div>}
+  {chosen&&<DossierView key={chosen.id} dossier={chosen}/>}</>:
    <p className="house-caption">Nenhum dossiê encontrado. As informações surgem após missões homologadas.</p>}
  </section>;
 }
@@ -146,6 +165,10 @@ export function SpyNarratorDossiers(){
   [objective,setObjective]=useState<SpyIntelligenceObjective>('house_resources'),
   [subject,setSubject]=useState(''),[action,setAction]=useState<'reveal'|'revalidate'|'revoke'>('reveal'),
   [reason,setReason]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ const [progress,setProgress]=useState<SpyDossierProgress>('all');
+ const [sort,setSort]=useState<SpyDossierSort>('recent');
+ const [page,setPage]=useState(1);
+ const [pendingObjective,setPendingObjective]=useState<SpyIntelligenceObjective|'all'>('all');
  const query=useQuery({queryKey:['spy-dossiers','narrator'],
   queryFn:()=>readSpyDossiersBrowser(null),retry:false,staleTime:10000});
  const pending=useQuery({queryKey:['spy-dossiers','pending'],
@@ -155,11 +178,13 @@ export function SpyNarratorDossiers(){
  const owners=[...new Map((query.data??[]).map(d=>[d.ownerHouseId,d.ownerHouseName])).entries()];
  const regions=[...new Set((query.data??[]).map(d=>d.targetRegion).filter(
   (value):value is string=>Boolean(value)))].sort();
- const filtered=(query.data??[]).filter(d=>(!owner||d.ownerHouseId===owner)
-  &&(!target||d.targetHouseName.toLocaleLowerCase('pt-BR')
-   .includes(target.toLocaleLowerCase('pt-BR')))
-  &&(!region||d.targetRegion===region));
- const active=filtered.find(d=>d.id===selected)??filtered[0];
+ const filtered=filterSpyDossiers(query.data??[],{
+  ownerHouseId:owner,targetSearch:target,region,progress,sort,
+ });
+ const paged=paginateSpyDossiers(filtered,page,30);
+ const active=paged.items.find(d=>d.id===selected)??paged.items[0];
+ const filteredPending=(pending.data??[]).filter(item=>
+  pendingObjective==='all'||item.objective===pendingObjective);
  const options=useQuery({queryKey:['spy-dossiers','options',active?.id],
   enabled:!!active&&!query.isError,queryFn:()=>readSpyIntelligenceOptionsBrowser(active!.id),retry:false});
  const available=spyDossierActionOptions(options.data??[],active?.findings??[],objective,action);
@@ -206,29 +231,49 @@ export function SpyNarratorDossiers(){
   {query.isError&&<p role="alert">Não foi possível consultar os dossiês. Verifique suas permissões.</p>}
   <div className="spy-dossier-filters">
    <label>Casa investigadora<select value={owner}
-    onChange={e=>{setOwner(e.target.value);setSelected('');}}>
+    onChange={e=>{setOwner(e.target.value);setSelected('');setPage(1);}}>
     <option value="">Todas as Casas</option>
     {owners.map(([id,name])=><option value={id} key={id}>{name}</option>)}
    </select></label>
    <label>Casa-alvo<input value={target}
-    onChange={e=>{setTarget(e.target.value);setSelected('');}}
+    onChange={e=>{setTarget(e.target.value);setSelected('');setPage(1);}}
     placeholder="Pesquisar casa nobre"/></label>
    <label>Região<select value={region}
-    onChange={e=>{setRegion(e.target.value);setSelected('');}}>
+    onChange={e=>{setRegion(e.target.value);setSelected('');setPage(1);}}>
     <option value="">Todas</option>
     {regions.map(value=><option value={value} key={value}>{value}</option>)}
+   </select></label>
+  </div>
+  <div className="spy-dossier-toolbar">
+   <span role="status">{filtered.length} dossiê(s) no filtro</span>
+   <label>Recursos<select value={progress} onChange={e=>{
+    setProgress(e.target.value as SpyDossierProgress);setPage(1);setSelected('');}}>
+    <option value="all">Todos</option><option value="incomplete">Incompletos</option>
+    <option value="complete">7/7 completos</option>
+   </select></label>
+   <label>Ordenar<select value={sort} onChange={e=>{
+    setSort(e.target.value as SpyDossierSort);setPage(1);setSelected('');}}>
+    <option value="recent">Atualizados recentemente</option>
+    <option value="target">Nome da Casa-alvo</option>
    </select></label>
   </div>
   <div className="spy-dossier-admin-table-wrap"><table className="spy-dossier-admin-table">
    <thead><tr><th>Investigadora</th><th>Casa-alvo</th>
     <th>Recursos</th><th>Exército</th><th>Posses</th><th>Ação</th></tr></thead>
-   <tbody>{filtered.map(d=><tr key={d.id}>
+   <tbody>{paged.items.map(d=><tr key={d.id}>
     <td>{d.ownerHouseName}</td><td>{d.targetHouseName}</td>
     <td>{count(d,'house_resources')}/7</td><td>{count(d,'army')}</td><td>{count(d,'possessions')}</td>
     <td><Button size="sm" variant={active?.id===d.id?'default':'outline'}
      onClick={()=>setSelected(d.id)}>Consultar</Button></td>
    </tr>)}</tbody>
   </table></div>
+  {paged.totalPages>1&&<div className="spy-dossier-pages">
+   <Button type="button" variant="outline" disabled={paged.page===1}
+    onClick={()=>{setPage(p=>p-1);setSelected('');}}>Anterior</Button>
+   <span>Página {paged.page} de {paged.totalPages}</span>
+   <Button type="button" variant="outline" disabled={paged.page===paged.totalPages}
+    onClick={()=>{setPage(p=>p+1);setSelected('');}}>Próxima</Button>
+  </div>}
   {!query.isPending&&filtered.length===0&&<p className="house-caption">Nenhum conhecimento conquistado ainda.</p>}
   {active&&<>
    <DossierView key={active.id} dossier={active}/>
@@ -268,14 +313,33 @@ export function SpyNarratorDossiers(){
   </>}
   <details className="house-ledger">
    <summary>Missões aguardando fonte oficial ({pending.data?.length??0})</summary>
-   {pending.isError&&<p role="alert">Não foi possível consultar as pendências.</p>}
-   {pending.data?.map(item=><div className="spy-dossier-pending" key={item.operationId}>
-    <span>{item.ownerHouseId} → {item.targetHouseId} · {labels[item.objective]}
-     · {safeDate(item.dateKey)}</span>
-    <Button type="button" size="sm" variant="outline" disabled={busy}
-     onClick={()=>void retryPending(item.operationId)}>Reprocessar</Button>
-   </div>)}
-   {pending.data?.length===0&&<p className="house-caption">Nenhuma missão pendente.</p>}
+   {pending.isPending&&<p role="status">Consultando missões pendentes…</p>}
+   {pending.isError&&<p role="alert">Não foi possível consultar as pendências.
+    <Button type="button" variant="outline" onClick={()=>void pending.refetch()}>
+     Tentar novamente</Button></p>}
+   {!pending.isPending&&!pending.isError&&<>
+    <label className="spy-dossier-pending-filter">Modalidade
+     <select value={pendingObjective} onChange={e=>
+      setPendingObjective(e.target.value as SpyIntelligenceObjective|'all')}>
+      <option value="all">Todas as modalidades</option>
+      {SPY_INTELLIGENCE_OBJECTIVES.map(item=>
+       <option key={item.id} value={item.id}>{item.label}</option>)}
+     </select>
+    </label>
+    <p className="house-caption" role="status">{filteredPending.length} missão(ões) neste filtro.</p>
+    {filteredPending.map(item=>{
+     const names=spyDossierPendingHouseNames(item.ownerHouseId,item.targetHouseId,query.data??[]);
+     return <div className="spy-dossier-pending" key={item.operationId}>
+      <span><strong>Casa {names.owner} → Casa {names.target}</strong>
+       <small>{labels[item.objective]} · {safeDate(item.dateKey)} ·
+        Até {item.capacity} descobertas por missão</small>
+      </span>
+      <Button type="button" size="sm" variant="outline" disabled={busy}
+       onClick={()=>void retryPending(item.operationId)}>Reprocessar</Button>
+     </div>;
+    })}
+    {filteredPending.length===0&&<p className="house-caption">Nenhuma missão pendente neste filtro.</p>}
+   </>}
   </details>
   {message&&<p role="status" className="house-caption">{message}</p>}
  </section>;
