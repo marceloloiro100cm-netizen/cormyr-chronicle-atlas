@@ -48,7 +48,7 @@ type SessionRow={
  current_game_json:V3Game;initial_hash:string;current_hash:string;
 };
 export type V34SessionListItem=Readonly<Pick<SessionRow,
- 'id'|'title'|'attacker_house_id'|'defender_house_id'|'attacker_user_id'|
+ 'id'|'title'|'invitation_id'|'attacker_house_id'|'defender_house_id'|'attacker_user_id'|
  'defender_user_id'|'status'|'state_version'>>;
 export type V34SessionView=Readonly<{
  session:V34SessionListItem;game:V3Game;initialGame:V3Game;
@@ -93,7 +93,7 @@ export const listV34Sessions=createServerFn({method:'POST'})
   enabled();const db=context.supabase as unknown as Db;
   await access(db);
   const rows=await db.from('battle_v34_sessions')
-   .select('id,title,attacker_house_id,defender_house_id,attacker_user_id,defender_user_id,status,state_version')
+   .select('id,title,invitation_id,attacker_house_id,defender_house_id,attacker_user_id,defender_user_id,status,state_version')
    .order('updated_at',{ascending:false}).limit(40);
   if(rows.error)throw new Error('Lista de partidas sincronizadas indisponível.');
   await access(db);
@@ -148,7 +148,8 @@ export const readV34Session=createServerFn({method:'POST'})
   const service=await trusted();
   const invitationOpen=await invitationIsOpen(service,session.invitation_id);
   return {session:{
-   id:session.id,title:session.title,attacker_house_id:session.attacker_house_id,
+   id:session.id,title:session.title,invitation_id:session.invitation_id,
+   attacker_house_id:session.attacker_house_id,
    defender_house_id:session.defender_house_id,attacker_user_id:session.attacker_user_id,
    defender_user_id:session.defender_user_id,status:session.status,
    state_version:session.state_version,
