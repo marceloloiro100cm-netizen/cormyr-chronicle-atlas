@@ -146,6 +146,104 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_characters: {
+        Row: {
+          age_exception_note: string | null
+          age_policy: string
+          aliases: string[]
+          alive_status: string
+          apparent_age: string | null
+          baseline_age: number | null
+          baseline_year: number | null
+          birth_date: string | null
+          birth_year: number | null
+          confidence: string
+          created_at: string
+          created_by: string
+          death_date: string | null
+          death_year: number | null
+          display_name: string
+          house_id: string | null
+          id: string
+          is_noble: boolean
+          noble_roles: string[]
+          owner_user_id: string | null
+          race: string | null
+          review_note: string
+          review_status: string
+          updated_at: string
+          updated_by: string
+          version: number
+          visibility: string
+        }
+        Insert: {
+          age_exception_note?: string | null
+          age_policy?: string
+          aliases?: string[]
+          alive_status?: string
+          apparent_age?: string | null
+          baseline_age?: number | null
+          baseline_year?: number | null
+          birth_date?: string | null
+          birth_year?: number | null
+          confidence?: string
+          created_at?: string
+          created_by: string
+          death_date?: string | null
+          death_year?: number | null
+          display_name: string
+          house_id?: string | null
+          id?: string
+          is_noble?: boolean
+          noble_roles?: string[]
+          owner_user_id?: string | null
+          race?: string | null
+          review_note?: string
+          review_status?: string
+          updated_at?: string
+          updated_by: string
+          version?: number
+          visibility?: string
+        }
+        Update: {
+          age_exception_note?: string | null
+          age_policy?: string
+          aliases?: string[]
+          alive_status?: string
+          apparent_age?: string | null
+          baseline_age?: number | null
+          baseline_year?: number | null
+          birth_date?: string | null
+          birth_year?: number | null
+          confidence?: string
+          created_at?: string
+          created_by?: string
+          death_date?: string | null
+          death_year?: number | null
+          display_name?: string
+          house_id?: string | null
+          id?: string
+          is_noble?: boolean
+          noble_roles?: string[]
+          owner_user_id?: string | null
+          race?: string | null
+          review_note?: string
+          review_status?: string
+          updated_at?: string
+          updated_by?: string
+          version?: number
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_characters_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_houses: {
         Row: {
           active: boolean
@@ -196,63 +294,63 @@ export type Database = {
       }
       campaign_letter_consequences: {
         Row: {
+          active: boolean
+          changes: Json
+          created_at: string
+          created_by: string
+          explanation: string
+          house_id: string
           id: string
           letter_id: string
-          house_id: string
-          changes: Json
-          explanation: string
           operation_key: string
-          created_by: string
-          created_at: string
-          active: boolean
-          reversed_by: string | null
-          reversed_at: string | null
           reversal_key: string | null
           reversal_reason: string | null
+          reversed_at: string | null
+          reversed_by: string | null
         }
         Insert: {
+          active?: boolean
+          changes: Json
+          created_at?: string
+          created_by: string
+          explanation: string
+          house_id: string
           id?: string
           letter_id: string
-          house_id: string
-          changes: Json
-          explanation: string
           operation_key: string
-          created_by: string
-          created_at?: string
-          active?: boolean
-          reversed_by?: string | null
-          reversed_at?: string | null
           reversal_key?: string | null
           reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
         }
         Update: {
+          active?: boolean
+          changes?: Json
+          created_at?: string
+          created_by?: string
+          explanation?: string
+          house_id?: string
           id?: string
           letter_id?: string
-          house_id?: string
-          changes?: Json
-          explanation?: string
           operation_key?: string
-          created_by?: string
-          created_at?: string
-          active?: boolean
-          reversed_by?: string | null
-          reversed_at?: string | null
           reversal_key?: string | null
           reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "campaign_letter_consequences_letter_id_fkey"
-            columns: ["letter_id"]
-            isOneToOne: false
-            referencedRelation: "campaign_letters"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "campaign_letter_consequences_house_id_fkey"
             columns: ["house_id"]
             isOneToOne: false
             referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_letter_consequences_letter_id_fkey"
+            columns: ["letter_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_letters"
             referencedColumns: ["id"]
           },
         ]
@@ -638,6 +736,221 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_temporal_consumers: {
+        Row: {
+          boundary: string
+          code: string
+          created_at: string
+          description: string
+          enabled: boolean
+          mode: string
+          title: string
+        }
+        Insert: {
+          boundary: string
+          code: string
+          created_at?: string
+          description: string
+          enabled?: boolean
+          mode: string
+          title: string
+        }
+        Update: {
+          boundary?: string
+          code?: string
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          mode?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      campaign_temporal_deliveries: {
+        Row: {
+          boundary: string
+          calendar_version: number
+          consumer_code: string
+          created_at: string
+          direction: string
+          from_date: string
+          id: string
+          mode: string
+          operation_id: string
+          payload: Json
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          to_date: string
+        }
+        Insert: {
+          boundary: string
+          calendar_version: number
+          consumer_code: string
+          created_at?: string
+          direction: string
+          from_date: string
+          id?: string
+          mode: string
+          operation_id: string
+          payload: Json
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status: string
+          to_date: string
+        }
+        Update: {
+          boundary?: string
+          calendar_version?: number
+          consumer_code?: string
+          created_at?: string
+          direction?: string
+          from_date?: string
+          id?: string
+          mode?: string
+          operation_id?: string
+          payload?: Json
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          to_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_temporal_deliveries_consumer_code_fkey"
+            columns: ["consumer_code"]
+            isOneToOne: false
+            referencedRelation: "campaign_temporal_consumers"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "campaign_temporal_deliveries_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_time_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_temporal_delivery_resolutions: {
+        Row: {
+          actor: string
+          created_at: string
+          delivery_id: string
+          note: string
+          request_hash: string
+          request_key: string
+          status: string
+        }
+        Insert: {
+          actor: string
+          created_at?: string
+          delivery_id: string
+          note: string
+          request_hash: string
+          request_key: string
+          status: string
+        }
+        Update: {
+          actor?: string
+          created_at?: string
+          delivery_id?: string
+          note?: string
+          request_hash?: string
+          request_key?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_temporal_delivery_resolutions_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_temporal_deliveries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_temporal_effect_checkpoints: {
+        Row: {
+          consumer_code: string
+          effect_key: string
+          first_operation_id: string
+          recorded_at: string
+        }
+        Insert: {
+          consumer_code: string
+          effect_key: string
+          first_operation_id: string
+          recorded_at?: string
+        }
+        Update: {
+          consumer_code?: string
+          effect_key?: string
+          first_operation_id?: string
+          recorded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_temporal_effect_checkpoints_consumer_code_fkey"
+            columns: ["consumer_code"]
+            isOneToOne: false
+            referencedRelation: "campaign_temporal_consumers"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "campaign_temporal_effect_checkpoints_first_operation_id_fkey"
+            columns: ["first_operation_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_time_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_time_operations: {
+        Row: {
+          actor: string
+          after_state: Json
+          before_state: Json
+          created_at: string
+          expected_version: number
+          from_date: string
+          id: string
+          mode: string
+          reason: string
+          request_hash: string
+          to_date: string
+        }
+        Insert: {
+          actor: string
+          after_state: Json
+          before_state: Json
+          created_at?: string
+          expected_version: number
+          from_date: string
+          id: string
+          mode: string
+          reason: string
+          request_hash: string
+          to_date: string
+        }
+        Update: {
+          actor?: string
+          after_state?: Json
+          before_state?: Json
+          created_at?: string
+          expected_version?: number
+          from_date?: string
+          id?: string
+          mode?: string
+          reason?: string
+          request_hash?: string
+          to_date?: string
+        }
+        Relationships: []
+      }
       campaign_translations: {
         Row: {
           entity_id: string
@@ -668,6 +981,241 @@ export type Database = {
           translated_text?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      character_registry_audit: {
+        Row: {
+          action: string
+          actor: string
+          after_state: Json | null
+          before_state: Json | null
+          character_id: string | null
+          created_at: string
+          id: string
+          reason: string
+          source_key: string | null
+          source_kind: string | null
+        }
+        Insert: {
+          action: string
+          actor: string
+          after_state?: Json | null
+          before_state?: Json | null
+          character_id?: string | null
+          created_at?: string
+          id?: string
+          reason: string
+          source_key?: string | null
+          source_kind?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string
+          after_state?: Json | null
+          before_state?: Json | null
+          character_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string
+          source_key?: string | null
+          source_kind?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_registry_audit_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_characters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      character_relations: {
+        Row: {
+          approved_by: string
+          created_at: string
+          from_character: string
+          id: string
+          note: string
+          relation: string
+          to_character: string
+        }
+        Insert: {
+          approved_by: string
+          created_at?: string
+          from_character: string
+          id?: string
+          note?: string
+          relation: string
+          to_character: string
+        }
+        Update: {
+          approved_by?: string
+          created_at?: string
+          from_character?: string
+          id?: string
+          note?: string
+          relation?: string
+          to_character?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_relations_from_character_fkey"
+            columns: ["from_character"]
+            isOneToOne: false
+            referencedRelation: "campaign_characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "character_relations_to_character_fkey"
+            columns: ["to_character"]
+            isOneToOne: false
+            referencedRelation: "campaign_characters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      character_review_queue: {
+        Row: {
+          character_id: string | null
+          claimed_age: number | null
+          claimed_age_year: number | null
+          claimed_birth_year: number | null
+          created_at: string
+          evidence: Json
+          house_id: string | null
+          id: string
+          proposed_name: string
+          review_note: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_key: string
+          source_kind: string
+          source_visibility: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          character_id?: string | null
+          claimed_age?: number | null
+          claimed_age_year?: number | null
+          claimed_birth_year?: number | null
+          created_at?: string
+          evidence?: Json
+          house_id?: string | null
+          id?: string
+          proposed_name: string
+          review_note?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_key: string
+          source_kind: string
+          source_visibility?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          character_id?: string | null
+          claimed_age?: number | null
+          claimed_age_year?: number | null
+          claimed_birth_year?: number | null
+          created_at?: string
+          evidence?: Json
+          house_id?: string | null
+          id?: string
+          proposed_name?: string
+          review_note?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_key?: string
+          source_kind?: string
+          source_visibility?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_review_queue_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "character_review_queue_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      character_source_links: {
+        Row: {
+          character_id: string
+          confirmed_at: string
+          confirmed_by: string
+          id: string
+          source_key: string
+          source_kind: string
+          source_reference: Json
+          source_visibility: string
+        }
+        Insert: {
+          character_id: string
+          confirmed_at?: string
+          confirmed_by: string
+          id?: string
+          source_key: string
+          source_kind: string
+          source_reference?: Json
+          source_visibility?: string
+        }
+        Update: {
+          character_id?: string
+          confirmed_at?: string
+          confirmed_by?: string
+          id?: string
+          source_key?: string
+          source_kind?: string
+          source_reference?: Json
+          source_visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_source_links_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_characters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      character_year_transitions: {
+        Row: {
+          actor: string
+          calendar_version: number
+          created_at: string
+          from_year: number
+          id: string
+          to_year: number
+        }
+        Insert: {
+          actor: string
+          calendar_version: number
+          created_at?: string
+          from_year: number
+          id?: string
+          to_year: number
+        }
+        Update: {
+          actor?: string
+          calendar_version?: number
+          created_at?: string
+          from_year?: number
+          id?: string
+          to_year?: number
         }
         Relationships: []
       }
@@ -1572,6 +2120,1416 @@ export type Database = {
           },
         ]
       }
+      spy_agent_history: {
+        Row: {
+          actor: string
+          agent_id: string
+          agent_rank: string
+          calendar_version: number
+          created_at: string
+          cunning: number
+          detail: string
+          event_date_key: string
+          event_type: string
+          failure_degrees: number | null
+          guard_present: boolean | null
+          id: string
+          law_snapshot: number | null
+          modifier: number | null
+          operation_id: string | null
+          owner_house_id: string
+          prison_present: boolean | null
+          request_key: string
+          roll_total: number | null
+          target_difficulty: number | null
+          target_house_id: string | null
+          target_name: string | null
+          target_region: string | null
+          total_successes: number
+        }
+        Insert: {
+          actor: string
+          agent_id: string
+          agent_rank: string
+          calendar_version: number
+          created_at?: string
+          cunning: number
+          detail: string
+          event_date_key: string
+          event_type: string
+          failure_degrees?: number | null
+          guard_present?: boolean | null
+          id?: string
+          law_snapshot?: number | null
+          modifier?: number | null
+          operation_id?: string | null
+          owner_house_id: string
+          prison_present?: boolean | null
+          request_key: string
+          roll_total?: number | null
+          target_difficulty?: number | null
+          target_house_id?: string | null
+          target_name?: string | null
+          target_region?: string | null
+          total_successes: number
+        }
+        Update: {
+          actor?: string
+          agent_id?: string
+          agent_rank?: string
+          calendar_version?: number
+          created_at?: string
+          cunning?: number
+          detail?: string
+          event_date_key?: string
+          event_type?: string
+          failure_degrees?: number | null
+          guard_present?: boolean | null
+          id?: string
+          law_snapshot?: number | null
+          modifier?: number | null
+          operation_id?: string | null
+          owner_house_id?: string
+          prison_present?: boolean | null
+          request_key?: string
+          roll_total?: number | null
+          target_difficulty?: number | null
+          target_house_id?: string | null
+          target_name?: string | null
+          target_region?: string | null
+          total_successes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_agent_history_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "spy_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_agent_history_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "spy_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_agent_history_owner_house_id_fkey"
+            columns: ["owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_agent_removals: {
+        Row: {
+          agent_id: string
+          codename: string
+          owner_house_id: string
+          portrait_id: string | null
+          refunded_wealth: number
+          removed_at: string
+          removed_by: string
+          request_key: string
+        }
+        Insert: {
+          agent_id: string
+          codename: string
+          owner_house_id: string
+          portrait_id?: string | null
+          refunded_wealth: number
+          removed_at?: string
+          removed_by: string
+          request_key: string
+        }
+        Update: {
+          agent_id?: string
+          codename?: string
+          owner_house_id?: string
+          portrait_id?: string | null
+          refunded_wealth?: number
+          removed_at?: string
+          removed_by?: string
+          request_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_agent_removals_agent_id_owner_house_id_fkey"
+            columns: ["agent_id", "owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "spy_assets"
+            referencedColumns: ["id", "owner_house_id"]
+          },
+          {
+            foreignKeyName: "spy_agent_removals_owner_house_id_fkey"
+            columns: ["owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_agent_upgrades: {
+        Row: {
+          agent_id: string
+          cost_wealth: number
+          owner_house_id: string
+          purchased_at: string
+          purchased_by: string
+          request_key: string
+          upgrade_code: string
+        }
+        Insert: {
+          agent_id: string
+          cost_wealth?: number
+          owner_house_id: string
+          purchased_at?: string
+          purchased_by: string
+          request_key: string
+          upgrade_code: string
+        }
+        Update: {
+          agent_id?: string
+          cost_wealth?: number
+          owner_house_id?: string
+          purchased_at?: string
+          purchased_by?: string
+          request_key?: string
+          upgrade_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_agent_upgrades_agent_id_owner_house_id_fkey"
+            columns: ["agent_id", "owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "spy_assets"
+            referencedColumns: ["id", "owner_house_id"]
+          },
+          {
+            foreignKeyName: "spy_agent_upgrades_owner_house_id_fkey"
+            columns: ["owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_assets: {
+        Row: {
+          codename: string
+          created_at: string
+          current_location_id: string | null
+          id: string
+          kind: string
+          mission_successes: number
+          owner_house_id: string
+          portrait_id: string | null
+          rules_version: string
+          source_holding_id: string | null
+          source_ref: string
+          status: string
+          version: number
+        }
+        Insert: {
+          codename: string
+          created_at?: string
+          current_location_id?: string | null
+          id?: string
+          kind: string
+          mission_successes?: number
+          owner_house_id: string
+          portrait_id?: string | null
+          rules_version: string
+          source_holding_id?: string | null
+          source_ref: string
+          status?: string
+          version?: number
+        }
+        Update: {
+          codename?: string
+          created_at?: string
+          current_location_id?: string | null
+          id?: string
+          kind?: string
+          mission_successes?: number
+          owner_house_id?: string
+          portrait_id?: string | null
+          rules_version?: string
+          source_holding_id?: string | null
+          source_ref?: string
+          status?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_assets_current_location_id_fkey"
+            columns: ["current_location_id"]
+            isOneToOne: false
+            referencedRelation: "spy_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_assets_owner_house_id_fkey"
+            columns: ["owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_assets_portrait_id_fkey"
+            columns: ["portrait_id"]
+            isOneToOne: false
+            referencedRelation: "spy_portrait_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_contract_receipts: {
+        Row: {
+          created_at: string
+          holding_id: string
+          operation_key: string
+          owner_house_id: string
+        }
+        Insert: {
+          created_at?: string
+          holding_id: string
+          operation_key: string
+          owner_house_id: string
+        }
+        Update: {
+          created_at?: string
+          holding_id?: string
+          operation_key?: string
+          owner_house_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_contract_receipts_owner_house_id_fkey"
+            columns: ["owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_contract_receipts_owner_house_id_operation_key_fkey"
+            columns: ["owner_house_id", "operation_key"]
+            isOneToOne: true
+            referencedRelation: "noble_house_ledger"
+            referencedColumns: ["house_id", "operation_key"]
+          },
+        ]
+      }
+      spy_cormyr_mission_links: {
+        Row: {
+          active: boolean
+          from_region: string
+          passage: string
+          to_region: string
+        }
+        Insert: {
+          active?: boolean
+          from_region: string
+          passage: string
+          to_region: string
+        }
+        Update: {
+          active?: boolean
+          from_region?: string
+          passage?: string
+          to_region?: string
+        }
+        Relationships: []
+      }
+      spy_dossier_facts: {
+        Row: {
+          approved: boolean
+          confidence: string
+          disclosed_value: Json
+          dossier_id: string
+          field_code: string
+          id: string
+          observed_date_key: string
+          owner_house_id: string
+          report_id: string
+          stale_at_key: string | null
+        }
+        Insert: {
+          approved?: boolean
+          confidence: string
+          disclosed_value: Json
+          dossier_id: string
+          field_code: string
+          id: string
+          observed_date_key: string
+          owner_house_id: string
+          report_id: string
+          stale_at_key?: string | null
+        }
+        Update: {
+          approved?: boolean
+          confidence?: string
+          disclosed_value?: Json
+          dossier_id?: string
+          field_code?: string
+          id?: string
+          observed_date_key?: string
+          owner_house_id?: string
+          report_id?: string
+          stale_at_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_dossier_facts_dossier_id_owner_house_id_fkey"
+            columns: ["dossier_id", "owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "spy_dossiers"
+            referencedColumns: ["id", "owner_house_id"]
+          },
+          {
+            foreignKeyName: "spy_dossier_facts_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "spy_intel_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_dossiers: {
+        Row: {
+          id: string
+          owner_house_id: string
+          target_id: string
+          target_type: string
+          version: number
+        }
+        Insert: {
+          id?: string
+          owner_house_id: string
+          target_id: string
+          target_type: string
+          version?: number
+        }
+        Update: {
+          id?: string
+          owner_house_id?: string
+          target_id?: string
+          target_type?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_dossiers_owner_house_id_fkey"
+            columns: ["owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_intel_reports: {
+        Row: {
+          asset_codename: string
+          code: string
+          created_at: string
+          facts: Json
+          id: string
+          location_label: string
+          observed_date_key: string
+          operation_id: string
+          owner_house_id: string
+          release_by: string | null
+          release_date_key: string | null
+          release_key: string | null
+          release_reason: string | null
+          requested_fields: string[]
+          status: string
+          version: number
+        }
+        Insert: {
+          asset_codename: string
+          code: string
+          created_at?: string
+          facts?: Json
+          id?: string
+          location_label: string
+          observed_date_key: string
+          operation_id: string
+          owner_house_id: string
+          release_by?: string | null
+          release_date_key?: string | null
+          release_key?: string | null
+          release_reason?: string | null
+          requested_fields: string[]
+          status?: string
+          version?: number
+        }
+        Update: {
+          asset_codename?: string
+          code?: string
+          created_at?: string
+          facts?: Json
+          id?: string
+          location_label?: string
+          observed_date_key?: string
+          operation_id?: string
+          owner_house_id?: string
+          release_by?: string | null
+          release_date_key?: string | null
+          release_key?: string | null
+          release_reason?: string | null
+          requested_fields?: string[]
+          status?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_intel_reports_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "spy_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_intel_reports_operation_id_owner_house_id_fkey"
+            columns: ["operation_id", "owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "spy_operations"
+            referencedColumns: ["id", "owner_house_id"]
+          },
+          {
+            foreignKeyName: "spy_intel_reports_owner_house_id_fkey"
+            columns: ["owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_intelligence_admin_audit: {
+        Row: {
+          action: string
+          actor: string
+          after_snapshot: Json | null
+          before_snapshot: Json | null
+          campaign_date_key: string
+          created_at: string
+          dossier_id: string
+          id: string
+          objective: string
+          reason: string
+          subject_key: string
+        }
+        Insert: {
+          action: string
+          actor: string
+          after_snapshot?: Json | null
+          before_snapshot?: Json | null
+          campaign_date_key: string
+          created_at?: string
+          dossier_id: string
+          id?: string
+          objective: string
+          reason: string
+          subject_key: string
+        }
+        Update: {
+          action?: string
+          actor?: string
+          after_snapshot?: Json | null
+          before_snapshot?: Json | null
+          campaign_date_key?: string
+          created_at?: string
+          dossier_id?: string
+          id?: string
+          objective?: string
+          reason?: string
+          subject_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_intelligence_admin_audit_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "spy_intelligence_dossiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_intelligence_dossiers: {
+        Row: {
+          created_at: string
+          id: string
+          owner_house_id: string
+          target_house_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_house_id: string
+          target_house_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_house_id?: string
+          target_house_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_intelligence_dossiers_owner_house_id_fkey"
+            columns: ["owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_intelligence_dossiers_target_house_id_fkey"
+            columns: ["target_house_id"]
+            isOneToOne: false
+            referencedRelation: "house_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_intelligence_events: {
+        Row: {
+          calendar_version: number
+          campaign_date_key: string
+          created_at: string
+          dossier_id: string
+          event_type: string
+          id: string
+          new_snapshot: Json
+          objective: string
+          operation_id: string
+          previous_snapshot: Json | null
+          subject_key: string
+        }
+        Insert: {
+          calendar_version: number
+          campaign_date_key: string
+          created_at?: string
+          dossier_id: string
+          event_type: string
+          id?: string
+          new_snapshot: Json
+          objective: string
+          operation_id: string
+          previous_snapshot?: Json | null
+          subject_key: string
+        }
+        Update: {
+          calendar_version?: number
+          campaign_date_key?: string
+          created_at?: string
+          dossier_id?: string
+          event_type?: string
+          id?: string
+          new_snapshot?: Json
+          objective?: string
+          operation_id?: string
+          previous_snapshot?: Json | null
+          subject_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_intelligence_events_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "spy_intelligence_dossiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_intelligence_events_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "spy_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_intelligence_findings: {
+        Row: {
+          discovered_at: string
+          discovered_date_key: string
+          discovered_operation_id: string | null
+          dossier_id: string
+          id: string
+          objective: string
+          subject_key: string
+          value_snapshot: Json
+          verified_at: string
+          verified_date_key: string
+          verified_operation_id: string | null
+        }
+        Insert: {
+          discovered_at?: string
+          discovered_date_key: string
+          discovered_operation_id?: string | null
+          dossier_id: string
+          id?: string
+          objective: string
+          subject_key: string
+          value_snapshot: Json
+          verified_at?: string
+          verified_date_key: string
+          verified_operation_id?: string | null
+        }
+        Update: {
+          discovered_at?: string
+          discovered_date_key?: string
+          discovered_operation_id?: string | null
+          dossier_id?: string
+          id?: string
+          objective?: string
+          subject_key?: string
+          value_snapshot?: Json
+          verified_at?: string
+          verified_date_key?: string
+          verified_operation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_intelligence_findings_discovered_operation_id_fkey"
+            columns: ["discovered_operation_id"]
+            isOneToOne: false
+            referencedRelation: "spy_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_intelligence_findings_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "spy_intelligence_dossiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_intelligence_findings_verified_operation_id_fkey"
+            columns: ["verified_operation_id"]
+            isOneToOne: false
+            referencedRelation: "spy_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_intelligence_mission_awards: {
+        Row: {
+          campaign_date_key: string
+          created_at: string
+          dossier_id: string
+          objective: string
+          operation_id: string
+          processing_state: string
+          refreshed_count: number
+          reveal_capacity: number
+          revealed_count: number
+          success_degrees: number
+        }
+        Insert: {
+          campaign_date_key: string
+          created_at?: string
+          dossier_id: string
+          objective: string
+          operation_id: string
+          processing_state: string
+          refreshed_count?: number
+          reveal_capacity: number
+          revealed_count?: number
+          success_degrees: number
+        }
+        Update: {
+          campaign_date_key?: string
+          created_at?: string
+          dossier_id?: string
+          objective?: string
+          operation_id?: string
+          processing_state?: string
+          refreshed_count?: number
+          reveal_capacity?: number
+          revealed_count?: number
+          success_degrees?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_intelligence_mission_awards_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "spy_intelligence_dossiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_intelligence_mission_awards_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: true
+            referencedRelation: "spy_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_legacy_seed_archive: {
+        Row: {
+          archived_at: string
+          archived_snapshot: Json
+          id: string
+          owner_house_id: string
+          reason: string
+        }
+        Insert: {
+          archived_at?: string
+          archived_snapshot: Json
+          id: string
+          owner_house_id: string
+          reason: string
+        }
+        Update: {
+          archived_at?: string
+          archived_snapshot?: Json
+          id?: string
+          owner_house_id?: string
+          reason?: string
+        }
+        Relationships: []
+      }
+      spy_locations: {
+        Row: {
+          approved: boolean
+          id: string
+          kind: string
+          name: string
+          ref_id: string
+          region_id: string | null
+          source: string
+          version: number
+          visibility: string
+        }
+        Insert: {
+          approved?: boolean
+          id?: string
+          kind: string
+          name: string
+          ref_id: string
+          region_id?: string | null
+          source: string
+          version?: number
+          visibility?: string
+        }
+        Update: {
+          approved?: boolean
+          id?: string
+          kind?: string
+          name?: string
+          ref_id?: string
+          region_id?: string | null
+          source?: string
+          version?: number
+          visibility?: string
+        }
+        Relationships: []
+      }
+      spy_mission_decisions: {
+        Row: {
+          created_at: string
+          difficulty: number | null
+          id: string
+          law_source: string | null
+          law_source_version: number | null
+          modifiers: Json
+          operation_id: string
+          rationale: string | null
+          resolution: string
+          reviewer: string | null
+          rule_version: string | null
+          target_law: number | null
+        }
+        Insert: {
+          created_at?: string
+          difficulty?: number | null
+          id?: string
+          law_source?: string | null
+          law_source_version?: number | null
+          modifiers?: Json
+          operation_id: string
+          rationale?: string | null
+          resolution?: string
+          reviewer?: string | null
+          rule_version?: string | null
+          target_law?: number | null
+        }
+        Update: {
+          created_at?: string
+          difficulty?: number | null
+          id?: string
+          law_source?: string | null
+          law_source_version?: number | null
+          modifiers?: Json
+          operation_id?: string
+          rationale?: string | null
+          resolution?: string
+          reviewer?: string | null
+          rule_version?: string | null
+          target_law?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_mission_decisions_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "spy_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_mission_timeline: {
+        Row: {
+          agent_id: string
+          arrival_key: string
+          created_at: string
+          departure_key: string
+          destination_location_id: string
+          destination_region: string
+          investigation_end_key: string
+          operation_id: string
+          origin_region: string
+          owner_house_id: string
+          route: Json
+          source_calendar_version: number
+          source_location_id: string
+          travel_days: number
+          travel_rounds: number
+        }
+        Insert: {
+          agent_id: string
+          arrival_key: string
+          created_at?: string
+          departure_key: string
+          destination_location_id: string
+          destination_region: string
+          investigation_end_key: string
+          operation_id: string
+          origin_region: string
+          owner_house_id: string
+          route?: Json
+          source_calendar_version: number
+          source_location_id: string
+          travel_days: number
+          travel_rounds: number
+        }
+        Update: {
+          agent_id?: string
+          arrival_key?: string
+          created_at?: string
+          departure_key?: string
+          destination_location_id?: string
+          destination_region?: string
+          investigation_end_key?: string
+          operation_id?: string
+          origin_region?: string
+          owner_house_id?: string
+          route?: Json
+          source_calendar_version?: number
+          source_location_id?: string
+          travel_days?: number
+          travel_rounds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_mission_timeline_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "spy_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_mission_timeline_destination_location_id_fkey"
+            columns: ["destination_location_id"]
+            isOneToOne: false
+            referencedRelation: "spy_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_mission_timeline_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: true
+            referencedRelation: "spy_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_mission_timeline_owner_house_id_fkey"
+            columns: ["owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_mission_timeline_source_location_id_fkey"
+            columns: ["source_location_id"]
+            isOneToOne: false
+            referencedRelation: "spy_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_noble_house_stats: {
+        Row: {
+          attribute_origin: string
+          budget: number
+          defense: number
+          difference: number
+          hierarchy: string
+          house_id: string
+          house_name: string
+          imported_at: string
+          influence: number
+          lands: number
+          law: number
+          overlord: string
+          population: number
+          power: number
+          region_id: string
+          source_modified_at: string
+          source_row: number
+          source_sheet: string
+          source_spreadsheet_id: string
+          total: number
+          wealth: number
+        }
+        Insert: {
+          attribute_origin: string
+          budget: number
+          defense: number
+          difference: number
+          hierarchy?: string
+          house_id: string
+          house_name: string
+          imported_at?: string
+          influence: number
+          lands: number
+          law: number
+          overlord?: string
+          population: number
+          power: number
+          region_id: string
+          source_modified_at?: string
+          source_row: number
+          source_sheet?: string
+          source_spreadsheet_id?: string
+          total: number
+          wealth: number
+        }
+        Update: {
+          attribute_origin?: string
+          budget?: number
+          defense?: number
+          difference?: number
+          hierarchy?: string
+          house_id?: string
+          house_name?: string
+          imported_at?: string
+          influence?: number
+          lands?: number
+          law?: number
+          overlord?: string
+          population?: number
+          power?: number
+          region_id?: string
+          source_modified_at?: string
+          source_row?: number
+          source_sheet?: string
+          source_spreadsheet_id?: string
+          total?: number
+          wealth?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_noble_house_stats_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: true
+            referencedRelation: "house_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_operation_events: {
+        Row: {
+          actor: string | null
+          calendar_version: number | null
+          event_type: string
+          id: string
+          new_state: string | null
+          occurred_at: string
+          old_state: string | null
+          operation_id: string | null
+          reason: string
+          request_key: string
+        }
+        Insert: {
+          actor?: string | null
+          calendar_version?: number | null
+          event_type: string
+          id?: string
+          new_state?: string | null
+          occurred_at?: string
+          old_state?: string | null
+          operation_id?: string | null
+          reason: string
+          request_key: string
+        }
+        Update: {
+          actor?: string | null
+          calendar_version?: number | null
+          event_type?: string
+          id?: string
+          new_state?: string | null
+          occurred_at?: string
+          old_state?: string | null
+          operation_id?: string | null
+          reason?: string
+          request_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_operation_events_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "spy_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_operation_segments: {
+        Row: {
+          arrival_key: string
+          departure_key: string
+          duration_days: number
+          edge_id: string
+          edge_version: number
+          from_location_id: string
+          id: string
+          operation_id: string
+          ordinal: number
+          status: string
+          to_location_id: string
+        }
+        Insert: {
+          arrival_key: string
+          departure_key: string
+          duration_days: number
+          edge_id: string
+          edge_version: number
+          from_location_id: string
+          id?: string
+          operation_id: string
+          ordinal: number
+          status?: string
+          to_location_id: string
+        }
+        Update: {
+          arrival_key?: string
+          departure_key?: string
+          duration_days?: number
+          edge_id?: string
+          edge_version?: number
+          from_location_id?: string
+          id?: string
+          operation_id?: string
+          ordinal?: number
+          status?: string
+          to_location_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_operation_segments_edge_id_fkey"
+            columns: ["edge_id"]
+            isOneToOne: false
+            referencedRelation: "spy_travel_edges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_operation_segments_from_location_id_fkey"
+            columns: ["from_location_id"]
+            isOneToOne: false
+            referencedRelation: "spy_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_operation_segments_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "spy_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_operation_segments_to_location_id_fkey"
+            columns: ["to_location_id"]
+            isOneToOne: false
+            referencedRelation: "spy_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_operations: {
+        Row: {
+          asset_id: string
+          created_at: string
+          created_by: string
+          id: string
+          mission_kind: string
+          operation_key: string
+          owner_house_id: string
+          requested_fields: string[]
+          rules_version: string
+          source_calendar_version: number
+          status: string
+          target_id: string
+          target_type: string
+          version: number
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          mission_kind: string
+          operation_key: string
+          owner_house_id: string
+          requested_fields: string[]
+          rules_version: string
+          source_calendar_version: number
+          status?: string
+          target_id: string
+          target_type: string
+          version?: number
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          mission_kind?: string
+          operation_key?: string
+          owner_house_id?: string
+          requested_fields?: string[]
+          rules_version?: string
+          source_calendar_version?: number
+          status?: string
+          target_id?: string
+          target_type?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_operations_asset_id_owner_house_id_fkey"
+            columns: ["asset_id", "owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "spy_assets"
+            referencedColumns: ["id", "owner_house_id"]
+          },
+          {
+            foreignKeyName: "spy_operations_owner_house_id_fkey"
+            columns: ["owner_house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_portrait_catalog: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          image_url: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id: string
+          image_url: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          image_url?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      spy_region_links: {
+        Row: {
+          approval_reason: string | null
+          approved: boolean
+          approved_by: string | null
+          bidirectional: boolean
+          blocked: boolean
+          from_region: string
+          id: string
+          passage: string
+          source: string
+          to_region: string
+          version: number
+          visibility: string
+        }
+        Insert: {
+          approval_reason?: string | null
+          approved?: boolean
+          approved_by?: string | null
+          bidirectional?: boolean
+          blocked?: boolean
+          from_region: string
+          id?: string
+          passage: string
+          source: string
+          to_region: string
+          version?: number
+          visibility?: string
+        }
+        Update: {
+          approval_reason?: string | null
+          approved?: boolean
+          approved_by?: string | null
+          bidirectional?: boolean
+          blocked?: boolean
+          from_region?: string
+          id?: string
+          passage?: string
+          source?: string
+          to_region?: string
+          version?: number
+          visibility?: string
+        }
+        Relationships: []
+      }
+      spy_rule_sets: {
+        Row: {
+          approved_by: string
+          code: string
+          definition: Json
+          id: string
+          reason: string
+          version: number
+        }
+        Insert: {
+          approved_by: string
+          code: string
+          definition: Json
+          id?: string
+          reason: string
+          version: number
+        }
+        Update: {
+          approved_by?: string
+          code?: string
+          definition?: Json
+          id?: string
+          reason?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      spy_temporal_deliveries: {
+        Row: {
+          calendar_version: number
+          first_processed_at: string
+          id: string
+          segment_id: string
+          transition: string
+        }
+        Insert: {
+          calendar_version: number
+          first_processed_at?: string
+          id?: string
+          segment_id: string
+          transition: string
+        }
+        Update: {
+          calendar_version?: number
+          first_processed_at?: string
+          id?: string
+          segment_id?: string
+          transition?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_temporal_deliveries_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "spy_operation_segments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spy_travel_edges: {
+        Row: {
+          approval_reason: string | null
+          approved: boolean
+          approved_by: string | null
+          base_days: number
+          bidirectional: boolean
+          blocked: boolean
+          from_location_id: string
+          id: string
+          mode: string
+          source: string
+          to_location_id: string
+          version: number
+        }
+        Insert: {
+          approval_reason?: string | null
+          approved?: boolean
+          approved_by?: string | null
+          base_days: number
+          bidirectional?: boolean
+          blocked?: boolean
+          from_location_id: string
+          id?: string
+          mode: string
+          source: string
+          to_location_id: string
+          version?: number
+        }
+        Update: {
+          approval_reason?: string | null
+          approved?: boolean
+          approved_by?: string | null
+          base_days?: number
+          bidirectional?: boolean
+          blocked?: boolean
+          from_location_id?: string
+          id?: string
+          mode?: string
+          source?: string
+          to_location_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spy_travel_edges_from_location_id_fkey"
+            columns: ["from_location_id"]
+            isOneToOne: false
+            referencedRelation: "spy_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spy_travel_edges_to_location_id_fkey"
+            columns: ["to_location_id"]
+            isOneToOne: false
+            referencedRelation: "spy_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sync_conflicts: {
         Row: {
           created_at: string
@@ -1672,39 +3630,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      mail_trash_page: {
-        Args: { p_filters?: Json; p_page?: number; p_size?: number }
-        Returns: Json
-      }
-      restore_campaign_letter: {
-        Args: { p_id: string }
-        Returns: undefined
-      }
-      restore_letter_reply: {
-        Args: { p_id: string; p_version: number }
-        Returns: undefined
-      }
-      apply_letter_consequence: {
-        Args: {
-          p_letter: string
-          p_house: string
-          p_changes: Json
-          p_explanation: string
-          p_key: string
-          p_expected_version: number
-        }
-        Returns: Json
-      }
-      reverse_letter_consequence: {
-        Args: {
-          p_id: string
-          p_key: string
-          p_expected_version: number
-          p_reason: string
-        }
-        Returns: Json
-      }
-
       admin_save_player_account: {
         Args: {
           p_active: boolean
@@ -1730,11 +3655,26 @@ export type Database = {
         }
         Returns: boolean
       }
+      apply_letter_consequence: {
+        Args: {
+          p_changes: Json
+          p_expected_version: number
+          p_explanation: string
+          p_house: string
+          p_key: string
+          p_letter: string
+        }
+        Returns: Json
+      }
       calendar_mail_events: {
         Args: { p_month: number; p_year: number }
         Returns: Json
       }
       campaign_access_active: { Args: never; Returns: boolean }
+      campaign_date_in_month: {
+        Args: { p_date: string; p_month: number; p_year: number }
+        Returns: boolean
+      }
       campaign_representation_action: {
         Args: { p_action: string; p_args: Json }
         Returns: Json
@@ -1778,6 +3718,13 @@ export type Database = {
         Returns: boolean
       }
       can_read_reply_version: { Args: { p_reply: string }; Returns: boolean }
+      character_age_state: {
+        Args: {
+          p_character: Database["public"]["Tables"]["campaign_characters"]["Row"]
+          p_year: number
+        }
+        Returns: Json
+      }
       claim_drive_binding: {
         Args: { p_id: string; p_token: string }
         Returns: boolean
@@ -1855,10 +3802,55 @@ export type Database = {
         Returns: Json
       }
       get_campaign_calendar: { Args: never; Returns: Json }
+      get_campaign_chronology: {
+        Args: { p_month: number; p_year: number }
+        Returns: Json
+      }
       get_campaign_schedule_drafts: { Args: never; Returns: Json }
       get_campaign_schedule_events: {
         Args: { p_month: number; p_year: number }
         Returns: Json
+      }
+      get_campaign_time_history: { Args: { p_limit?: number }; Returns: Json }
+      get_character_age_dashboard: {
+        Args: { p_limit?: number; p_target_year?: number; p_year?: number }
+        Returns: Json
+      }
+      get_character_registry_hub: { Args: { p_limit?: number }; Returns: Json }
+      get_character_year_transitions: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      get_house_character_ages: { Args: { p_house: string }; Returns: Json }
+      get_public_campaign_time: { Args: never; Returns: Json }
+      get_temporal_consumer_dashboard: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      get_temporal_release_preflight: { Args: never; Returns: Json }
+      harptos_advance_desdia: {
+        Args: { p_count: number; p_start: string }
+        Returns: string
+      }
+      harptos_calendar_ordinal: { Args: { p_date: string }; Returns: number }
+      harptos_from_ordinary_index: {
+        Args: { p_index: number }
+        Returns: string
+      }
+      harptos_ordinary_index: { Args: { p_date: string }; Returns: number }
+      harptos_time_key: {
+        Args: {
+          p_day: number
+          p_festival: string
+          p_month: number
+          p_year: number
+        }
+        Returns: string
+      }
+      house_gallery_mail_images: { Args: { p_house: string }; Returns: Json }
+      import_character_source_candidates: {
+        Args: { p_candidates: Json }
+        Returns: number
       }
       in_campaign_house: {
         Args: { edit_required?: boolean; h: string }
@@ -1878,6 +3870,10 @@ export type Database = {
         Returns: Json
       }
       mail_recipient_read: { Args: { p_id: string }; Returns: boolean }
+      mail_trash_page: {
+        Args: { p_filters?: Json; p_page?: number; p_size?: number }
+        Returns: Json
+      }
       mark_letter_read: { Args: { p_id: string }; Returns: undefined }
       my_player_id: { Args: never; Returns: string }
       open_letter_round: { Args: never; Returns: number }
@@ -1895,6 +3891,20 @@ export type Database = {
         Returns: string
       }
       prepare_letter_week: { Args: { p_number: number }; Returns: undefined }
+      preview_campaign_time_change: {
+        Args: {
+          p_allow_backdate?: boolean
+          p_count?: number
+          p_date?: string
+          p_mode: string
+          p_version: number
+        }
+        Returns: Json
+      }
+      preview_house_time_impacts: {
+        Args: { p_target_date: string; p_version: number }
+        Returns: Json
+      }
       public_player_houses: {
         Args: never
         Returns: {
@@ -1919,6 +3929,19 @@ export type Database = {
         }
         Returns: Json
       }
+      publish_campaign_time_change: {
+        Args: {
+          p_allow_backdate?: boolean
+          p_count?: number
+          p_date?: string
+          p_key: string
+          p_mode: string
+          p_reason?: string
+          p_version: number
+        }
+        Returns: Json
+      }
+      replay_temporal_delivery: { Args: { p_id: string }; Returns: Json }
       reply_campaign_letter: {
         Args: { p_content: string; p_key: string; p_letter: string }
         Returns: string
@@ -1934,9 +3957,59 @@ export type Database = {
         }
         Returns: string
       }
+      resolve_campaign_time_target: {
+        Args: {
+          p_count: number
+          p_current: string
+          p_date: string
+          p_mode: string
+        }
+        Returns: string
+      }
       resolve_drive_import: {
         Args: { p_choice: string; p_content?: string; p_id: string }
         Returns: undefined
+      }
+      resolve_temporal_delivery: {
+        Args: {
+          p_id: string
+          p_note: string
+          p_request_key: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      restore_campaign_letter: { Args: { p_id: string }; Returns: undefined }
+      restore_letter_reply: {
+        Args: { p_id: string; p_version: number }
+        Returns: undefined
+      }
+      reverse_letter_consequence: {
+        Args: {
+          p_expected_version: number
+          p_id: string
+          p_key: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      review_character_source: {
+        Args: {
+          p_action: string
+          p_character_id?: string
+          p_queue_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      save_campaign_character: {
+        Args: {
+          p_id: string
+          p_payload: Json
+          p_reason: string
+          p_version: number
+        }
+        Returns: Json
       }
       save_campaign_record: {
         Args: {
@@ -1948,6 +4021,16 @@ export type Database = {
         Returns: Json
       }
       save_campaign_schedule_event: { Args: { p_payload: Json }; Returns: Json }
+      save_character_relation: {
+        Args: {
+          p_from: string
+          p_note: string
+          p_reason: string
+          p_relation: string
+          p_to: string
+        }
+        Returns: Json
+      }
       save_imported_source: {
         Args: { p_content: string; p_id: string; p_modified: string }
         Returns: undefined
@@ -2043,11 +4126,199 @@ export type Database = {
         Args: { p_closed: boolean; p_number: number }
         Returns: undefined
       }
+      spy_add_desdias: {
+        Args: { p_date_key: string; p_rounds: number }
+        Returns: string
+      }
+      spy_assign_agent_portrait: {
+        Args: {
+          p_agent: string
+          p_expected_version: number
+          p_house: string
+          p_portrait: string
+        }
+        Returns: Json
+      }
+      spy_buy_agent_upgrade: {
+        Args: {
+          p_agent: string
+          p_code: string
+          p_expected_agent_version: number
+          p_expected_house_version: number
+          p_house: string
+          p_key: string
+        }
+        Returns: Json
+      }
+      spy_campaign_ordinal: { Args: { p_key: string }; Returns: number }
+      spy_cancel_house_mission: {
+        Args: {
+          p_expected_version: number
+          p_house: string
+          p_operation: string
+          p_request_key: string
+        }
+        Returns: Json
+      }
+      spy_cormyr_mission_route: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      spy_cormyr_normalize_region: { Args: { v: string }; Returns: string }
+      spy_create_agent: {
+        Args: {
+          p_codename: string
+          p_house: string
+          p_portrait: string
+          p_request_key: string
+          p_source_holding: string
+          p_upgrades: string[]
+        }
+        Returns: Json
+      }
+      spy_get_regional_strategy: { Args: { p_house: string }; Returns: Json }
+      spy_house_management: { Args: { p_house: string }; Returns: Json }
+      spy_house_mission_timeline: { Args: { p_house: string }; Returns: Json }
+      spy_intelligence_admin_action: {
+        Args: {
+          p_action: string
+          p_dossier: string
+          p_objective: string
+          p_reason: string
+          p_resources?: Json
+          p_subject_key: string
+        }
+        Returns: Json
+      }
+      spy_intelligence_admin_options: {
+        Args: { p_dossier: string }
+        Returns: Json
+      }
+      spy_intelligence_admin_pending: { Args: never; Returns: Json }
+      spy_intelligence_capacity: { Args: { p_margin: number }; Returns: number }
+      spy_intelligence_finalize: {
+        Args: { p_operation: string; p_resources?: Json }
+        Returns: Json
+      }
+      spy_intelligence_read: { Args: { p_house?: string }; Returns: Json }
+      spy_intelligence_source_items: {
+        Args: { p_objective: string; p_resources?: Json; p_target: string }
+        Returns: Json
+      }
+      spy_narrator_noble_defense_source: {
+        Args: { p_house: string }
+        Returns: Json
+      }
+      spy_official_date_key: { Args: never; Returns: string }
+      spy_player_mission_preview: {
+        Args: { p_agent: string; p_house: string; p_target: string }
+        Returns: Json
+      }
+      spy_public_noble_targets: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+          region: string
+        }[]
+      }
+      spy_recruit_agent: {
+        Args: {
+          p_codename: string
+          p_house: string
+          p_request_key: string
+          p_source_holding: string
+        }
+        Returns: Json
+      }
+      spy_recruitment_options: { Args: { p_house: string }; Returns: Json }
+      spy_remove_agent: {
+        Args: {
+          p_agent: string
+          p_expected_agent_version: number
+          p_expected_house_version: number
+          p_house: string
+          p_request_key: string
+        }
+        Returns: Json
+      }
+      spy_rename_agent: {
+        Args: {
+          p_agent: string
+          p_expected_version: number
+          p_house: string
+          p_name: string
+          p_request_key: string
+        }
+        Returns: Json
+      }
+      spy_resolve_agent_mission: {
+        Args: {
+          p_discovered: boolean
+          p_expected_version: number
+          p_guard_override: boolean
+          p_modifier: number
+          p_operation: string
+          p_prison_override: boolean
+          p_reason: string
+          p_request_key: string
+          p_roll: number
+        }
+        Returns: Json
+      }
+      spy_review_region_link: {
+        Args: {
+          p_approved: boolean
+          p_bidirectional: boolean
+          p_blocked: boolean
+          p_expected_version: number
+          p_from: string
+          p_id: string
+          p_passage: string
+          p_reason: string
+          p_request_key: string
+          p_source: string
+          p_to: string
+          p_visibility: string
+        }
+        Returns: Json
+      }
+      spy_submit_house_mission:
+        | {
+            Args: {
+              p_agent: string
+              p_destination: string
+              p_expected_agent_version: number
+              p_expected_calendar_version: number
+              p_house: string
+              p_request_key: string
+              p_target: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_agent: string
+              p_destination: string
+              p_expected_agent_version: number
+              p_expected_calendar_version: number
+              p_house: string
+              p_objective: string
+              p_request_key: string
+              p_target: string
+            }
+            Returns: Json
+          }
+      stage_campaign_character_sources: { Args: never; Returns: Json }
       start_campaign_representation: {
         Args: { p_player: string }
         Returns: undefined
       }
       stop_campaign_representation: { Args: never; Returns: undefined }
+      temporal_season_crossings: {
+        Args: { p_from: string; p_to: string }
+        Returns: number
+      }
       valid_campaign_date: { Args: { v: string }; Returns: boolean }
       validate_mail_links: {
         Args: {
@@ -2057,77 +4328,6 @@ export type Database = {
           p_unit: string
         }
         Returns: number
-      }
-      get_campaign_chronology: { Args: { p_year: number; p_month: number }; Returns: Json }
-      get_temporal_consumer_dashboard: { Args: { p_limit?: number }; Returns: Json }
-      get_temporal_release_preflight: { Args: never; Returns: Json }
-      resolve_temporal_delivery: {
-        Args: { p_id: string; p_request_key: string; p_status: string; p_note: string }
-        Returns: Json
-      }
-      replay_temporal_delivery: { Args: { p_id: string }; Returns: Json }
-      campaign_date_in_month: { Args: { p_date: string; p_year: number; p_month: number }; Returns: boolean }
-      preview_campaign_time_change: {
-        Args: {
-          p_version: number
-          p_mode: string
-          p_date?: string | null
-          p_count?: number
-          p_allow_backdate?: boolean
-        }
-        Returns: Json
-      }
-      publish_campaign_time_change: {
-        Args: {
-          p_version: number
-          p_key: string
-          p_mode: string
-          p_date?: string | null
-          p_count?: number
-          p_reason?: string
-          p_allow_backdate?: boolean
-        }
-        Returns: Json
-      }
-      get_campaign_time_history: { Args: { p_limit?: number }; Returns: Json }
-      get_public_campaign_time: { Args: never; Returns: Json }
-      stage_campaign_character_sources: { Args: never; Returns: Json }
-      import_character_source_candidates: { Args: { p_candidates: Json }; Returns: number }
-      get_character_registry_hub: { Args: { p_limit?: number }; Returns: Json }
-      get_character_age_dashboard: {
-        Args: { p_year?: number | null; p_target_year?: number | null; p_limit?: number }
-        Returns: Json
-      }
-      preview_house_time_impacts: { Args: { p_version: number; p_target_date: string }; Returns: Json }
-      get_house_character_ages: { Args: { p_house: string }; Returns: Json }
-      get_character_year_transitions: { Args: { p_limit?: number }; Returns: Json }
-      save_campaign_character: {
-        Args: {
-          p_id: string | null
-          p_version: number | null
-          p_payload: Json
-          p_reason: string
-        }
-        Returns: Json
-      }
-      review_character_source: {
-        Args: {
-          p_queue_id: string
-          p_action: string
-          p_character_id?: string | null
-          p_reason?: string
-        }
-        Returns: Json
-      }
-      save_character_relation: {
-        Args: {
-          p_from: string
-          p_to: string
-          p_relation: string
-          p_note: string
-          p_reason: string
-        }
-        Returns: Json
       }
     }
     Enums: {
