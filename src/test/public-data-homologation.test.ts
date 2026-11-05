@@ -26,6 +26,10 @@ describe('Homologação · catálogo e traduções públicos com privilégio mí
   expect(fn).toContain(".in('entity_type', [...PUBLIC_TRANSLATION_ENTITY_TYPES])");
   expect(fn).toContain("!isPublicTranslationEntityType(data.entityType)");
   expect(fn).not.toContain(".eq('locale', data.locale);");
+  expect(fn).toContain("createClient<Database>(url,key");
+  expect(fn).toContain("auth:{persistSession:false,autoRefreshToken:false}");
+  expect(fn).not.toContain("supabaseAdmin");
+  expect(fn).toContain("cache:'no-store'");
  });
  it('mantém a leitura da ficha autenticada do vassalo, mas tira archive_data do papel anon',()=>{
   const sql=read('docs/security/sql/2026_11_04_homolog_public_read_boundaries.sql');
