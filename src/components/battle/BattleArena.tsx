@@ -12,6 +12,9 @@ import {BattleBoard} from './BattleBoard';
 import {runAiUntilHuman} from '@/lib/battle/domain/ai';
 import {exportReplayJson} from '@/lib/battle/domain/replay';
 import {BattleReplay} from './BattleReplay';
+import {BATTLE_PERSISTENCE_UI_ENABLED} from '@/lib/battle/feature-flag';
+import {saveBattleReplay} from '@/lib/battle/server/battle-session.functions';
+import {useServerFn} from '@tanstack/react-start';
 
 const LABEL:Record<Side,string>={attacker:'Atacante',defender:'Defensor'};
 function BattleResult({state,initial,sideNames,onRestart,onExit}:{
@@ -20,6 +23,15 @@ function BattleResult({state,initial,sideNames,onRestart,onExit}:{
 }){
  const report=battleReport(state);
  const [replayVisible,setReplayVisible]=useState(false);
+ const save=useServerFn(saveBattleReplay);
+ const [savedMessage,setSavedMessage]=useState(''),[saving,setSaving]=useState(false);
+ const persist=async()=>{
+  setSaving(true);
+  try{const receipt=await save({data:{replayJson:exportReplayJson(initial,state)}});
+   setSavedMessage('Batalha salva: '+receipt.sessionId);
+  }catch(e){setSavedMessage(e instanceof Error?e.message:'Falha ao salvar.');}
+  finally{setSaving(false);}
+ };
  return <section className="battle-surface" aria-label="Resultado da batalha">
    <h2>Resultado da simulação</h2>
    <p><strong>{state.winner?sideNames[state.winner]+' venceu':'Empate'}</strong>
@@ -42,12 +54,16 @@ function BattleResult({state,initial,sideNames,onRestart,onExit}:{
    </table></div>
    <div className="battle-form-row">
     <Button variant="outline" onClick={()=>downloadBattleJson('resultado-batalha.json',JSON.stringify(report,null,2))}>Exportar resultado JSON</Button>
+    {BATTLE_PERSISTENCE_UI_ENABLED&&<Button disabled={saving} variant="outline" onClick={()=>void persist()}>
+      Salvar batalha no banco isolado
+    </Button>}
     <Button variant="outline" onClick={()=>{try{downloadBattleJson('batalha-replay-verificado.json',exportReplayJson(initial,state));}
       catch(e){window.alert(e instanceof Error?e.message:'Replay inválido.');}}}>Exportar batalha completa JSON</Button>
     <Button variant="outline" onClick={()=>setReplayVisible(v=>!v)}>{replayVisible?'Ocultar replay':'Rever turnos'}</Button>
     <Button variant="outline" onClick={onRestart}>Nova simulação com as mesmas forças</Button>
     <Button onClick={onExit}>Voltar ao painel</Button>
    </div>
+   {savedMessage&&<p role="status">{savedMessage}</p>}
    {replayVisible&&<BattleReplay initial={initial} state={state}/>}
    <p className="battle-note">Replay verificável PTE-2.0. O salvamento isolado requer banco de homologação e aprovação da migração.</p>
  </section>;
@@ -62,6 +78,8 @@ export function BattleArena({initial,sideNames,onExit}:{
  const [pendingMove,setPendingMove]=useState<Hex|null>(null),[pendingAttack,setPendingAttack]=useState<string|null>(null);
  const [hover,setHover]=useState<Hex|null>(null);
  const [notice,setNotice]=useState(''),[paused,setPaused]=useState(false);
+ const saveProgress=useServerFn(saveBattleReplay);
+ const [savingProgress,setSavingProgress]=useState(false);
  const [showManual,setShowManual]=useState(false),[reason,setReason]=useState('');
  const [manualWinner,setManualWinner]=useState<Side|null>(null),[showHelp,setShowHelp]=useState(false);
  const active=battle.stacks.find(s=>s.id===battle.activeUnitId);
@@ -139,6 +157,14 @@ export function BattleArena({initial,sideNames,onExit}:{
     <Button size="sm" variant="outline" onClick={()=>setPaused(x=>!x)}>{paused?'Retomar':'Pausar'}</Button>
     <Button size="sm" variant="outline" disabled={!history.length} onClick={undo}>Desfazer ação</Button>
     <Button size="sm" variant="outline" onClick={restart}>Reiniciar</Button>
+    {BATTLE_PERSISTENCE_UI_ENABLED&&<Button size="sm" variant="outline" disabled={savingProgress}
+      onClick={async()=>{
+        setSavingProgress(true);
+        try{const saved=await saveProgress({data:{replayJson:exportReplayJson(initial,battle)}});
+          setNotice('Batalha salva no banco isolado: '+saved.sessionId);
+        }catch(e){setNotice(e instanceof Error?e.message:'Falha no salvamento.');}
+        finally{setSavingProgress(false);}
+      }}>Salvar progresso</Button>}
     <Button size="sm" variant="outline" onClick={()=>setShowHelp(x=>!x)}>Regras</Button>
     <Button size="sm" variant="outline" onClick={onExit}>Sair</Button>
    </div>
