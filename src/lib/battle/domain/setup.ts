@@ -99,7 +99,7 @@ export function validateBattleDraft(draft:unknown):BattleDraft {
       const sourceKey=s.source.houseId+':'+s.source.unitId;
       if(origin.has(sourceKey))throw new Error('A mesma unidade oficial não pode integrar duas forças.');
       origin.add(sourceKey);
-      if(s.originalTypeIds.length>1&&(!s.profileDecisionReason||s.profileDecisionReason.trim().length<12))
+      if(s.originalTypeIds.length>1&&(!('profileDecisionReason' in s)||typeof s.profileDecisionReason!=='string'||s.profileDecisionReason.trim().length<12))
         throw new Error('Tipo misto exige justificativa de perfil.');
       if(s.initialCount*s.hpPerSoldier!==s.currentHp||s.hpPerSoldier!==profile.hpPerSoldier||
         s.damagePerSoldier!==profile.damagePerSoldier||s.rangeHex!==profile.rangeHex||
@@ -128,6 +128,7 @@ export function serializeBattleDraft(draft:BattleDraftInput):string {
 }
 export function makeBattleSetup(input:{id:string;name:string;seed:string;map:BattleMap;controls:Record<Side,Control>;stacks:BattleStack[]}):BattleState {
   const draft=validateBattleDraft({...input,schemaVersion:2,rulesVersion:'PTE-2.0'});
-  return {...draft,phase:'ready',rngAlgorithm:'none-PTE-2.0',round:0,
+  const stacks:BattleStack[]=draft.stacks.map(s=>{const {profileDecisionReason,...rest}=s as typeof s & {profileDecisionReason?:string};return {...rest,...(typeof profileDecisionReason==='string'?{profileDecisionReason}:{})};});
+  return {...draft,stacks,phase:'ready',rngAlgorithm:'none-PTE-2.0',round:0,
     activationQueue:[],waitingQueue:[],activeUnitId:null,noProgressRounds:0,events:[],winner:null};
 }
