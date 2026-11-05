@@ -66,6 +66,7 @@ export function v3StrategyMarchCost(troops:number):number{
  return 20+Math.ceil(troops/200);
 }
 function finalResult(state:V3StrategyState):V3StrategyState{
+ if(state.phase==='completed')return state;
  const attacker=V3_STRATEGY_OBJECTIVES.filter(id=>state.owners[id]==='attacker').length;
  const defender=V3_STRATEGY_OBJECTIVES.filter(id=>state.owners[id]==='defender').length;
  if(attacker===3)return {...state,phase:'completed',winner:'attacker'};
@@ -119,8 +120,13 @@ export function v3StrategyOrder(state:V3StrategyState,order:V3StrategyOrder):V3S
     const defendingLoss=Math.min(state.troops[enemy],Math.ceil(state.troops[side]/6));
     const attackerRemains=state.troops[side]-attackingLoss;
     const defenderRemains=state.troops[enemy]-defendingLoss;
-    next={...next,troops:{...state.troops,[side]:Math.max(1,attackerRemains),
-     [enemy]:Math.max(1,defenderRemains)}};
+    next={...next,troops:{...state.troops,[side]:Math.max(0,attackerRemains),
+     [enemy]:Math.max(0,defenderRemains)}};
+    if(attackerRemains<=0||defenderRemains<=0){
+     const winner:Side|null=attackerRemains>0?side:defenderRemains>0?enemy:null;
+     return logOrder({...next,phase:'completed',winner},side,
+      'Hoste eliminada na escaramuça de treino em '+destination.name+'.');
+    }
     if(attackerRemains>defenderRemains){
      next={...next,position:{...state.position,[side]:order.to,[enemy]:BASES[enemy]},
       owners:{...state.owners,[order.to]:side}};
