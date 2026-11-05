@@ -1,4 +1,6 @@
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
+import {useServerFn} from '@tanstack/react-start';
+import {checkBattlePersistence} from '@/lib/battle/battle-session.functions';
 import {Button} from '@/components/ui/button';
 import {BATTLE_RULES_VERSION,BATTLE_PERSISTENCE_UI_ENABLED} from '@/lib/battle/feature-flag';
 import type {BattleState,Side} from '@/lib/battle/domain/types';
@@ -14,6 +16,17 @@ export function BattleNarratorHub(){
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Atacante',defender:'Defensor'});
  const [manual,setManual]=useState(false);
  const [showImport,setShowImport]=useState(false);
+ const checkStore=useServerFn(checkBattlePersistence);
+ const [storeStatus,setStoreStatus]=useState<'checking'|'available'|'unavailable'>(
+  BATTLE_PERSISTENCE_UI_ENABLED?'checking':'unavailable');
+ const probeStore=async()=>{
+  if(!BATTLE_PERSISTENCE_UI_ENABLED)return;
+  setStoreStatus('checking');
+  try{const status=await checkStore();setStoreStatus(status.available?'available':'unavailable');}
+  catch{setStoreStatus('unavailable');}
+ };
+ useEffect(()=>{void probeStore();},[]);
+ const canSave=BATTLE_PERSISTENCE_UI_ENABLED&&storeStatus==='available';
  const reset=()=>{
   if(state&&view==='arena'&&!window.confirm('A batalha existe apenas na memória. Deseja sair e perdê-la?'))return;
   setState(null);setView('home');
@@ -32,21 +45,22 @@ export function BattleNarratorHub(){
       <Button onClick={()=>setView('setup')}>Criar batalha</Button>
       <Button variant="outline" onClick={()=>setManual(x=>!x)}>Consultar regras</Button>
       <Button variant="outline" onClick={()=>setShowImport(x=>!x)}>Importar replay JSON</Button>
-      {BATTLE_PERSISTENCE_UI_ENABLED?<Button variant="outline" onClick={()=>setView('saved')}>Batalhas salvas</Button>:
-        <Button variant="outline" disabled title="Disponível após homologação do banco">Batalhas salvas · requer homologação</Button>}
+      {canSave?<Button variant="outline" onClick={()=>setView('saved')}>Batalhas salvas</Button>:
+        <Button variant="outline" disabled title="O servidor ainda não confirmou a autorização e o armazenamento">Batalhas salvas · {storeStatus==='checking'?'verificando…':'indisponíveis'}</Button>}
+      {BATTLE_PERSISTENCE_UI_ENABLED&&storeStatus==='unavailable'&&<Button variant="outline" onClick={()=>void probeStore()}>Verificar salvamento</Button>}
     </div>
     {showImport&&<BattleReplayImporter/>}
     {manual&&<div className="battle-rules-help">
      <h3>Manual rápido PTE-2.0</h3>
      <p>Até 5 unidades por lado; a iniciativa ordena os turnos. Cada ativação permite um movimento e depois um ataque, ou defender, esperar uma vez, ou terminar.</p>
      <p>Floresta e colina custam 2 pontos de movimento; rocha é bloqueio. Floresta intermediária bloqueia tiro, e artilheiros não disparam quando engajados.</p>
-     <p>Os PV, as baixas e a moral são exclusivos desta simulação. IA determinística habilitada. Persistência exige banco de homologação; nenhum impacto sobre recursos da casa.</p>
+     <p>Os PV, as baixas e a moral são exclusivos desta simulação. IA determinística habilitada. O armazenamento exige autorização atual do Narrador e verificação do servidor. Nenhum impacto sobre recursos da casa.</p>
     </div>}
   </div>}
-  {view==='saved'&&BATTLE_PERSISTENCE_UI_ENABLED&&<BattleSavedPanel onClose={()=>setView('home')}/>}
+  {view==='saved'&&canSave&&<BattleSavedPanel onClose={()=>setView('home')}/>}
   {view==='setup'&&<BattleSetup onBack={reset} onStart={(battle,names)=>{
     setState(battle);setSideNames(names);setView('arena');
   }}/>}
-  {view==='arena'&&state&&<BattleArena initial={state} sideNames={sideNames} onExit={reset}/>}
+  {view==='arena'&&state&&<BattleArena initial={state} sideNames={sideNames} persistenceEnabled={canSave} onExit={reset}/>}
  </main>;
 }

@@ -18,14 +18,36 @@ type Db={
  from:(table:string)=>any;
 };
 function requirePersistenceEnabled(){
- if(process.env['ENABLE_BATTLE_PERSISTENCE']!=='true')
-  throw new Error('Persistência de batalha não habilitada: exige homologação da migração e RLS.');
+ if(process.env['ENABLE_BATTLE_PERSISTENCE']==='false')
+  throw new Error('Persistência de batalha desativada pelo servidor.');
 }
 async function requireNarrator(db:Db):Promise<void>{
  const [role,active]=await Promise.all([db.rpc('is_campaign_admin'),db.rpc('campaign_access_active')]);
  if(role.error||active.error||role.data!==true||active.data!==true)
   throw new Error('Acesso ao módulo de batalhas salvas restrito ao Narrador.');
 }
+/** Confirma o armazenamento no servidor, sem expor segredos, antes da UI de salvamento.
+ * Falha segura quando o projeto não possui a chave técnica, banco ou papel ativo.
+ */
+export const checkBattlePersistence=createServerFn({method:'POST'})
+ .middleware([requireSupabaseAuth])
+ .handler(async({context})=>{
+  requirePersistenceEnabled();
+  const db=context.supabase as unknown as Db;
+  await requireNarrator(db);
+  // O cliente técnico é criado SOMENTE no servidor e nunca devolvido ao navegador.
+  const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
+  const trusted=supabaseAdmin as unknown as Db;
+  const [sessions,events]=await Promise.all([
+   trusted.from('battle_sim_sessions').select('id').limit(0),
+   trusted.from('battle_sim_events').select('seq').limit(0),
+  ]);
+  if(sessions.error||events.error)
+   throw new Error('Armazenamento de batalhas indisponível neste ambiente.');
+  await requireNarrator(db);
+  return {available:true as const};
+ });
+
 /** Não aceitar HouseState do cliente; reconsultar a origem e recusar versões alteradas. */
 async function verifySources(db:Db,initial:BattleState):Promise<void>{
  const authoritative=new Map<string,{state:HouseState;version:number}>();
