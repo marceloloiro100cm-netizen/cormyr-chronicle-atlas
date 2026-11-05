@@ -1,8 +1,8 @@
-/** Implantação formal FASE A (apenas Narrador): simulador isolado sem banco.
- * Kill-switch no build: VITE_ENABLE_BATTLE_MODULE=false.
- * A persistência FASE B continua separadamente bloqueada.
+/** Fase B: liberação expressa do Narrador, limitada ao armazenamento tático.
+ * Kill-switches de build: VITE_ENABLE_BATTLE_MODULE=false e VITE_ENABLE_BATTLE_PERSISTENCE=false.
+ * A API do servidor mantém uma verificação independente de papel e outro kill-switch.
  */
 export const BATTLE_MODULE_ENABLED = import.meta.env['VITE_ENABLE_BATTLE_MODULE'] !== 'false';
-/** Marco B só liga após migração isolada + autorização administrativa. */
-export const BATTLE_PERSISTENCE_UI_ENABLED=import.meta.env['VITE_ENABLE_BATTLE_PERSISTENCE']==='true';
+export const BATTLE_PERSISTENCE_UI_ENABLED =
+ BATTLE_MODULE_ENABLED && import.meta.env['VITE_ENABLE_BATTLE_PERSISTENCE'] !== 'false';
 export const BATTLE_RULES_VERSION = 'PTE-2.0' as const;

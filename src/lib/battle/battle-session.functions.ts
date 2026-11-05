@@ -17,9 +17,14 @@ type Db={
  rpc:(name:string,args?:Record<string,unknown>)=>Promise<RpcResult>;
  from:(table:string)=>any;
 };
+/** A liberação da fase B ocorreu com auditoria SQL/RLS de produção.
+ * O endpoint continua bloqueado pelo kill-switch explícito do runtime e pela
+ * verificação independente de JWT, Narrador e campanha vigente em cada chamada.
+ * Somente public.battle_sim_* recebe escritas, nunca fichas oficiais.
+ */
 function requirePersistenceEnabled(){
- if(process.env['ENABLE_BATTLE_PERSISTENCE']!=='true')
-  throw new Error('Persistência de batalha não habilitada: exige homologação da migração e RLS.');
+ if(process.env['ENABLE_BATTLE_PERSISTENCE']==='false')
+  throw new Error('Persistência de batalha suspensa pelo Narrador.');
 }
 async function requireNarrator(db:Db):Promise<void>{
  const [role,active]=await Promise.all([db.rpc('is_campaign_admin'),db.rpc('campaign_access_active')]);

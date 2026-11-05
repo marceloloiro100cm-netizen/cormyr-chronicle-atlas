@@ -55,7 +55,7 @@ function BattleResult({state,initial,sideNames,onRestart,onExit}:{
    <div className="battle-form-row">
     <Button variant="outline" onClick={()=>downloadBattleJson('resultado-batalha.json',JSON.stringify(report,null,2))}>Exportar resultado JSON</Button>
     {BATTLE_PERSISTENCE_UI_ENABLED&&<Button disabled={saving} variant="outline" onClick={()=>void persist()}>
-      Salvar batalha no banco isolado
+      Salvar batalha (nova cópia)
     </Button>}
     <Button variant="outline" onClick={()=>{try{downloadBattleJson('batalha-replay-verificado.json',exportReplayJson(initial,state));}
       catch(e){window.alert(e instanceof Error?e.message:'Replay inválido.');}}}>Exportar batalha completa JSON</Button>
@@ -65,7 +65,7 @@ function BattleResult({state,initial,sideNames,onRestart,onExit}:{
    </div>
    {savedMessage&&<p role="status">{savedMessage}</p>}
    {replayVisible&&<BattleReplay initial={initial} state={state}/>}
-   <p className="battle-note">Replay verificável PTE-2.0. O salvamento isolado requer banco de homologação e aprovação da migração.</p>
+   <p className="battle-note">Replay verificável PTE-2.0. Cada salvamento cria uma nova cópia tática; as fichas militares oficiais não são alteradas.</p>
  </section>;
 }
 export function BattleArena({initial,sideNames,onExit}:{
@@ -161,7 +161,7 @@ export function BattleArena({initial,sideNames,onExit}:{
       onClick={async()=>{
         setSavingProgress(true);
         try{const saved=await saveProgress({data:{replayJson:exportReplayJson(initial,battle)}});
-          setNotice('Batalha salva no banco isolado: '+saved.sessionId);
+          setNotice('Cópia tática salva: '+saved.sessionId);
         }catch(e){setNotice(e instanceof Error?e.message:'Falha no salvamento.');}
         finally{setSavingProgress(false);}
       }}>Salvar progresso</Button>}

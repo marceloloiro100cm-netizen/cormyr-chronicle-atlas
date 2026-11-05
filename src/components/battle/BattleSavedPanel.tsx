@@ -25,8 +25,8 @@ export function BattleSavedPanel({onClose}:{onClose:()=>void}){
   finally{setBusy(false);}
  };
  return <section className="battle-surface" aria-label="Batalhas salvas">
-  <h2>Batalhas salvas · banco isolado</h2>
-  <p>Disponível somente após liberação da migração e das duas flags de persistência. Somente leitura no visualizador.</p>
+  <h2>Batalhas salvas · arquivo tático</h2>
+  <p>Consulta e exportação de replays verificados do Narrador. Este painel é somente leitura; a retomada editável de uma batalha salva será tratada em etapa própria.</p>
   <div className="battle-form-row">
    <Button variant="outline" onClick={()=>void refresh()} disabled={busy}>Atualizar lista</Button>
    <Button variant="outline" onClick={onClose}>Voltar</Button>
