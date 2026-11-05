@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { z } from 'zod';
-import { SupportedLocale, TranslatableEntityType } from './types';
+import { PUBLIC_TRANSLATION_ENTITY_TYPES, isPublicTranslationEntityType } from './public-translations';
 
 export const loadDynamicTranslations = createServerFn({ method: 'POST' })
   .inputValidator(z.object({
@@ -9,7 +9,7 @@ export const loadDynamicTranslations = createServerFn({ method: 'POST' })
     entityType: z.enum(['house', 'region', 'event', 'adventure', 'catalog_item', 'record', 'festival', 'constitution']).optional(),
   }))
   .handler(async ({ data }) => {
-    if (data.locale === 'pt') return {};
+    if (data.locale === 'pt' || (data.entityType && !isPublicTranslationEntityType(data.entityType))) return {};
 
     // We don't require auth to read translations, so we can use the regular Supabase client for reading
     // Note: since it's a server function, we should use the admin or server client if possible.
@@ -18,7 +18,8 @@ export const loadDynamicTranslations = createServerFn({ method: 'POST' })
     let query = supabaseAdmin
       .from('campaign_translations')
       .select('entity_type, entity_id, field_name, translated_text')
-      .eq('locale', data.locale);
+      .eq('locale', data.locale)
+      .in('entity_type', [...PUBLIC_TRANSLATION_ENTITY_TYPES]);
 
     if (data.entityType) {
       query = query.eq('entity_type', data.entityType);
