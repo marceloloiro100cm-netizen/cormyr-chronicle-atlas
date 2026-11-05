@@ -40,6 +40,7 @@ class TacticalBrowserAcceptance(unittest.TestCase):
                 " errors="+repr(errors)+
                 " console="+repr(browser_console[-6:])+
                 " failedRequests="+repr(failures[-6:])+
+                " viteResponse="+repr(page.request.get(BASE.replace("harness.html","harness.tsx")).text()[:2400])+
                 " body="+repr(page.locator("body").inner_text()[:700])+
                 " html="+repr(page.content()[:1400])
             ) from exc
