@@ -16,18 +16,18 @@ export type V3Talent=Readonly<{
  minLevel:number;
 }>;
 const theme:Readonly<Record<CommanderId,Readonly<{
- craft:string;fortitude:string;march:string;signature:string;
+ battlecraft:string;fortitude:string;march:string;signature:string;
 }>>>={
- tillet:{craft:'Estratégia de Arabel',fortitude:'Escudos do Preceptor',march:'Marcha dos Aprendizes',signature:'Voz do Instrutor'},
- noble:{craft:'Dever dos Estandartes',fortitude:'Juramento Protetor',march:'Corte em Movimento',signature:'Comando dos Vassalos'},
- knight:{craft:'Lança Juramentada',fortitude:'Armadura de Honra',march:'Galope do Immerflow',signature:'Segunda Investida'},
- 'war-mage':{craft:'Fórmula de Guerra',fortitude:'Barreira de Mystra',march:'Passo Rúnico',signature:'Círculo dos Sete Véus'},
- 'purple-dragon':{craft:'Doutrina de Suzail',fortitude:'Escudos Púrpura',march:'Coluna Real',signature:'Ordem da Coroa'},
- ranger:{craft:'Precisão da Patrulha',fortitude:'Refúgio Verde',march:'Trilha Oculta',signature:'Sinal do Falcão'},
- priest:{craft:'Zelo de Helm',fortitude:'Manto do Guardião',march:'Peregrinação',signature:'Vigília Redobrada'},
- engineer:{craft:'Cálculo de Cerco',fortitude:'Bastião Improvisado',march:'Estrada dos Sitiantes',signature:'Duas Demolições'},
- quartermaster:{craft:'Ofensiva Provisionada',fortitude:'Estoques Protegidos',march:'Comboio Rápido',signature:'Abundância de Waukeen'},
- 'ashkar-raider':{craft:'Gume da Fênix',fortitude:'Cinzas Resistentes',march:'Passos na Areia',signature:'Segundo Rugido'},
+ tillet:{battlecraft:'Estratégia de Arabel',fortitude:'Escudos do Preceptor',march:'Marcha dos Aprendizes',signature:'Voz do Instrutor'},
+ noble:{battlecraft:'Dever dos Estandartes',fortitude:'Juramento Protetor',march:'Corte em Movimento',signature:'Comando dos Vassalos'},
+ knight:{battlecraft:'Lança Juramentada',fortitude:'Armadura de Honra',march:'Galope do Immerflow',signature:'Segunda Investida'},
+ 'war-mage':{battlecraft:'Fórmula de Guerra',fortitude:'Barreira de Mystra',march:'Passo Rúnico',signature:'Círculo dos Sete Véus'},
+ 'purple-dragon':{battlecraft:'Doutrina de Suzail',fortitude:'Escudos Púrpura',march:'Coluna Real',signature:'Ordem da Coroa'},
+ ranger:{battlecraft:'Precisão da Patrulha',fortitude:'Refúgio Verde',march:'Trilha Oculta',signature:'Sinal do Falcão'},
+ priest:{battlecraft:'Zelo de Helm',fortitude:'Manto do Guardião',march:'Peregrinação',signature:'Vigília Redobrada'},
+ engineer:{battlecraft:'Cálculo de Cerco',fortitude:'Bastião Improvisado',march:'Estrada dos Sitiantes',signature:'Duas Demolições'},
+ quartermaster:{battlecraft:'Ofensiva Provisionada',fortitude:'Estoques Protegidos',march:'Comboio Rápido',signature:'Abundância de Waukeen'},
+ 'ashkar-raider':{battlecraft:'Gume da Fênix',fortitude:'Cinzas Resistentes',march:'Passos na Areia',signature:'Segundo Rugido'},
 };
 const TALENT_KINDS:readonly V3TalentKind[]=['battlecraft','fortitude','march','signature'];
 export function v3CommanderLevel(xp:number):number {
