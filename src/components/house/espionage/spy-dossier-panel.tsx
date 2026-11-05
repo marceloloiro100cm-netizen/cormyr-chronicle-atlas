@@ -165,6 +165,10 @@ export function SpyNarratorDossiers(){
   [objective,setObjective]=useState<SpyIntelligenceObjective>('house_resources'),
   [subject,setSubject]=useState(''),[action,setAction]=useState<'reveal'|'revalidate'|'revoke'>('reveal'),
   [reason,setReason]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ const [progress,setProgress]=useState<SpyDossierProgress>('all');
+ const [sort,setSort]=useState<SpyDossierSort>('recent');
+ const [page,setPage]=useState(1);
+ const [pendingObjective,setPendingObjective]=useState<SpyIntelligenceObjective|'all'>('all');
  const query=useQuery({queryKey:['spy-dossiers','narrator'],
   queryFn:()=>readSpyDossiersBrowser(null),retry:false,staleTime:10000});
  const pending=useQuery({queryKey:['spy-dossiers','pending'],
@@ -174,11 +178,13 @@ export function SpyNarratorDossiers(){
  const owners=[...new Map((query.data??[]).map(d=>[d.ownerHouseId,d.ownerHouseName])).entries()];
  const regions=[...new Set((query.data??[]).map(d=>d.targetRegion).filter(
   (value):value is string=>Boolean(value)))].sort();
- const filtered=(query.data??[]).filter(d=>(!owner||d.ownerHouseId===owner)
-  &&(!target||d.targetHouseName.toLocaleLowerCase('pt-BR')
-   .includes(target.toLocaleLowerCase('pt-BR')))
-  &&(!region||d.targetRegion===region));
- const active=filtered.find(d=>d.id===selected)??filtered[0];
+ const filtered=filterSpyDossiers(query.data??[],{
+  ownerHouseId:owner,targetSearch:target,region,progress,sort,
+ });
+ const paged=paginateSpyDossiers(filtered,page,30);
+ const active=paged.items.find(d=>d.id===selected)??paged.items[0];
+ const filteredPending=(pending.data??[]).filter(item=>
+  pendingObjective==='all'||item.objective===pendingObjective);
  const options=useQuery({queryKey:['spy-dossiers','options',active?.id],
   enabled:!!active&&!query.isError,queryFn:()=>readSpyIntelligenceOptionsBrowser(active!.id),retry:false});
  const available=spyDossierActionOptions(options.data??[],active?.findings??[],objective,action);
@@ -225,29 +231,49 @@ export function SpyNarratorDossiers(){
   {query.isError&&<p role="alert">Não foi possível consultar os dossiês. Verifique suas permissões.</p>}
   <div className="spy-dossier-filters">
    <label>Casa investigadora<select value={owner}
-    onChange={e=>{setOwner(e.target.value);setSelected('');}}>
+    onChange={e=>{setOwner(e.target.value);setSelected('');setPage(1);}}>
     <option value="">Todas as Casas</option>
     {owners.map(([id,name])=><option value={id} key={id}>{name}</option>)}
    </select></label>
    <label>Casa-alvo<input value={target}
-    onChange={e=>{setTarget(e.target.value);setSelected('');}}
+    onChange={e=>{setTarget(e.target.value);setSelected('');setPage(1);}}
     placeholder="Pesquisar casa nobre"/></label>
    <label>Região<select value={region}
-    onChange={e=>{setRegion(e.target.value);setSelected('');}}>
+    onChange={e=>{setRegion(e.target.value);setSelected('');setPage(1);}}>
     <option value="">Todas</option>
     {regions.map(value=><option value={value} key={value}>{value}</option>)}
+   </select></label>
+  </div>
+  <div className="spy-dossier-toolbar">
+   <span role="status">{filtered.length} dossiê(s) no filtro</span>
+   <label>Recursos<select value={progress} onChange={e=>{
+    setProgress(e.target.value as SpyDossierProgress);setPage(1);setSelected('');}}>
+    <option value="all">Todos</option><option value="incomplete">Incompletos</option>
+    <option value="complete">7/7 completos</option>
+   </select></label>
+   <label>Ordenar<select value={sort} onChange={e=>{
+    setSort(e.target.value as SpyDossierSort);setPage(1);setSelected('');}}>
+    <option value="recent">Atualizados recentemente</option>
+    <option value="target">Nome da Casa-alvo</option>
    </select></label>
   </div>
   <div className="spy-dossier-admin-table-wrap"><table className="spy-dossier-admin-table">
    <thead><tr><th>Investigadora</th><th>Casa-alvo</th>
     <th>Recursos</th><th>Exército</th><th>Posses</th><th>Ação</th></tr></thead>
-   <tbody>{filtered.map(d=><tr key={d.id}>
+   <tbody>{paged.items.map(d=><tr key={d.id}>
     <td>{d.ownerHouseName}</td><td>{d.targetHouseName}</td>
     <td>{count(d,'house_resources')}/7</td><td>{count(d,'army')}</td><td>{count(d,'possessions')}</td>
     <td><Button size="sm" variant={active?.id===d.id?'default':'outline'}
      onClick={()=>setSelected(d.id)}>Consultar</Button></td>
    </tr>)}</tbody>
   </table></div>
+  {paged.totalPages>1&&<div className="spy-dossier-pages">
+   <Button type="button" variant="outline" disabled={paged.page===1}
+    onClick={()=>{setPage(p=>p-1);setSelected('');}}>Anterior</Button>
+   <span>Página {paged.page} de {paged.totalPages}</span>
+   <Button type="button" variant="outline" disabled={paged.page===paged.totalPages}
+    onClick={()=>{setPage(p=>p+1);setSelected('');}}>Próxima</Button>
+  </div>}
   {!query.isPending&&filtered.length===0&&<p className="house-caption">Nenhum conhecimento conquistado ainda.</p>}
   {active&&<>
    <DossierView key={active.id} dossier={active}/>
