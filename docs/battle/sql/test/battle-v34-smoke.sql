@@ -54,7 +54,7 @@ SELECT public.battle_v34_join_seat(:'sid'::uuid,
 SELECT public.battle_v34_join_seat(:'sid'::uuid,
  '33333333-3333-4333-8333-333333333333','defender');
 DO $v34$ BEGIN
- IF (SELECT status FROM public.battle_v34_sessions WHERE id=:'sid'::uuid)<>'active'
+ IF (SELECT status FROM public.battle_v34_sessions WHERE id=current_setting('test.v34_sid')::uuid)<>'active'
  THEN RAISE EXCEPTION 'V34: segunda cadeira não ativou partida'; END IF;
 END $v34$;
 SELECT public.battle_v34_commit_step(:'sid'::uuid,
