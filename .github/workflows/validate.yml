@@ -169,6 +169,10 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f docs/battle/sql/test/battle-test-bootstrap.sql
       - name: Apply battle draft ONLY to disposable test database
         run: psql -v ON_ERROR_STOP=1 -f docs/battle/sql/0076_battle_sim_homologation.sql
+      - name: Backup and restore battle DB into disposable clone
+        env:
+          BATTLE_DISPOSABLE_POSTGRES: 'true'
+        run: bash docs/battle/sql/test/battle-restore-drill.sh
       - name: Two-client CAS race on disposable PostgreSQL
         env:
           BATTLE_DISPOSABLE_POSTGRES: 'true'
