@@ -30,7 +30,18 @@
 - Testes Vitest de invariantes, IA, origem, replay e bloqueios estáticos no código, além de casos B-001..B-040 já cobertos por suítes anteriores.
 - Job isolado `battle-database` em GitHub Actions com PostgreSQL 16 descartável; aplica o SQL **apenas no container do CI**, com bootstrap sem dados privados, verifica RLS para anon/jogador/narrador/revogado, atomicidade, idempotência e rollback.
 - `bun run test`, `bunx tsc --noEmit`, `bun run build` no workflow Validate.
-- E2E em browser real/mobile e UX touch/zoom não estão automaticamente comprovados por Vitest; exigem ambiente de homologação e evidência antes de aprovação do release.
+- Browser Chromium sintético: editor, seleção mouse/teclado, viewport mobile com toque, zoom interno, replay e adulteração de JSON **aprovados**; não testa a rota autenticada nem o banco real.
+- E2E operacional em homologação autenticada (JWT, RLS real, salvamento e restauração) ainda pendente; não é coberto pelo Chromium sintético.
+
+## Evidências da fase final de QA
+
+- [x] **Browser real Chromium, dados fictícios**: 3 testes de interface aprovados, incluindo viewport 390×844 com touch, seleção por teclado e zoom 100–250% dentro do mapa, editor 11×9/15×11 e integridade do replay. [GitHub Actions — Battle browser acceptance #42083219904](https://github.com/marceloloiro100cm-netizen/cormyr-chronicle-atlas/actions/runs/42083219904).
+- [x] **Banco descartável PostgreSQL 16**: RLS, revogação de Narrador, CAS, comandos idempotentes e rollback, em job sem conexão com Supabase de campanha. [GitHub Actions — Validate #42080001354](https://github.com/marceloloiro100cm-netizen/cormyr-chronicle-atlas/actions/runs/42080001354).
+- [x] **Vitest, TypeScript e build** aprovados no workflow anterior; revalidar no SHA final do PR antes de merge.
+- [ ] **Homologação real**: backup/inventário de migrações, aprovação da SQL, credenciais de contas de teste, revogação em tempo real, gravação/reabertura após refresh, E2E de papéis e validação de acessibilidade em mobile real.
+- [ ] **Publicação**: exige autorização expressa separada. O PR continua em rascunho; flags desligadas, banco e fichas oficiais intactos.
+
+**Resultado:** cobertura de regras e browser sintético comprovada; **NO_GO** para deploy real ou migração até testes operacionais e revisão de segurança. O teste browser sintético **não** garante a autorização dos endpoints de produção.
 
 ## Checklist bloqueante de liberação
 
