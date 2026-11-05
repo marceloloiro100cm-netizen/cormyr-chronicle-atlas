@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import type {BattleCommand,BattleStack,Hex,Side} from '@/lib/battle/domain/types';
 import {getLegalActions} from '@/lib/battle/domain/turns';
@@ -9,10 +9,13 @@ import {SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixture
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
 import {BattleV3Barracks} from './BattleV3Barracks';
+import {BattleV3CommanderHall} from './BattleV3CommanderHall';
 import {v3BarracksBySide,v3BarracksFromHouse,v3BarracksDeploy,
  type V3BarracksArmy} from '@/lib/battle/v3/barracks';
 import {V3_COMMANDERS,commander,type CommanderId} from '@/lib/battle/v3/commanders';
 import {MODEL_HOUSES,modelHouse} from '@/lib/battle/v3/model-houses';
+import {v3NewCommanderProgress,v3ChooseCommanderTalent,v3AwardCommanderXp,
+ v3TrainingReward,type V3CommanderProgress} from '@/lib/battle/v3/commander-progression';
 import {createV3Game,v3PlayCommand,v3LegalSkills,v3SkillName,v3UseUnitSkill,
  v3CanUseCommander,v3UseCommander,v3RunAi,type V3Game,type V3ScenarioOptions,
  type V3UnitSkill} from '@/lib/battle/v3/engine';
@@ -42,6 +45,9 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  initialOptions?:V3ScenarioOptions;locked?:boolean;invitationName?:string;
 }){
  const [options,setOptions]=useState<V3ScenarioOptions>(initialOptions??defaults);
+ const [progressions,setProgressions]=useState<Record<CommanderId,V3CommanderProgress>>(()=>
+  Object.fromEntries(V3_COMMANDERS.map(c=>[c.id,v3NewCommanderProgress()])) as Record<CommanderId,V3CommanderProgress>);
+ const rewardedRef=useRef<V3Game|null>(null);
  const [armies,setArmies]=useState<Record<Side,V3BarracksArmy>>(()=>v3BarracksBySide(
   (initialOptions??defaults).attackerHouseId,(initialOptions??defaults).defenderHouseId));
  const [game,setGame]=useState<V3Game|null>(null);
@@ -58,7 +64,10 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     attacker:v3BarracksDeploy(armies.attacker),
     defender:v3BarracksDeploy(armies.defender),
    };
-   const created=createV3Game({...options,...(rosters?{rosters}:{})});
+   const trained=locked?undefined:{attacker:progressions[options.attackerCommander],
+    defender:progressions[options.defenderCommander]};
+   const created=createV3Game({...options,...(rosters?{rosters}:{}),
+    ...(trained?{progressions:trained}:{})});
    setGame(created);setSelected(created.battle.activeUnitId);setMode('inspect');
    setStatus('Encontro iniciado. Cada token representa um agrupamento completo.');
   }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível criar o cenário-modelo.');}
@@ -107,6 +116,20 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
   if(target){setSelected(target.id);setMode('inspect');}
  };
  useEffect(()=>{
+  if(!game||game.battle.phase!=='completed'||locked||rewardedRef.current===game)return;
+  rewardedRef.current=game;
+  setProgressions(previous=>{
+   const next={...previous};
+   for(const side of sides){
+    if(game.battle.controls[side.id]!=='human')continue;
+    const id=game.commanders[side.id];
+    next[id]=v3AwardCommanderXp(next[id],v3TrainingReward(
+     game.battle.winner,side.id,game.battle.round));
+   }
+   return next;
+  });
+ },[game,locked]);
+ useEffect(()=>{
   if(!game)return;
   const actor=game.battle.stacks.find(s=>s.id===game.battle.activeUnitId);
   if(game.battle.phase!=='active'||!actor||game.battle.controls[actor.side]!=='ai')return;
@@ -151,6 +174,14 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
        <small>{leader.title} · {leader.style}</small>
        <p>{leader.lore}</p><p><b>{leader.powerName}:</b> {leader.powerDescription}</p>
       </div>
+      {!locked&&<BattleV3CommanderHall id={leader.id} progress={progressions[leader.id]}
+       onChoose={talent=>{
+        try{
+         const next=v3ChooseCommanderTalent(leader.id,progressions[leader.id],talent);
+         setProgressions(old=>({...old,[leader.id]:next}));
+         setStatus('Talento de treinamento adquirido.');
+        }catch(e){setStatus(e instanceof Error?e.message:'Talento indisponível.');}
+       }}/>} 
      </article>;
     })}
    </div>
@@ -213,6 +244,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     {battle?.phase==='completed'&&report&&<div className="crusade-end">
      <h2>{battle.winner===null?'Empate':battle.winner==='attacker'?'Vitória aliada':'Vitória adversária'}</h2>
      <p>Baixas: aliados {report.bySide.attacker.casualties} · adversários {report.bySide.defender.casualties}</p>
+     {!locked&&<p>Comandantes humanos receberam XP fictício. Ao iniciar outra Cruzada,
+      abra a academia para escolher talentos liberados.</p>}
      <Button onClick={()=>{setGame(null);setStatus('');}}>Nova Cruzada</Button>
     </div>}
    </div>
@@ -254,7 +287,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      <Button size="sm" disabled={!canPower}
       variant={mode==='power'?'default':'outline'}
       onClick={()=>{setMode('power');setSkill(null);}}>
-      {game.usedPowers[active?.side??'attacker']?'Poder já utilizado':currentCommander.powerName}
+      {!canPower?'Poder já utilizado':currentCommander.powerName}
      </Button>
     </div>}
     <Button size="sm" variant="outline" onClick={()=>setShowDetails(x=>!x)}>
