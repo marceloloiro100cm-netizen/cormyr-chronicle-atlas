@@ -11,9 +11,9 @@ CREATE TABLE IF NOT EXISTS public.battle_v34_sessions (
  created_by uuid NOT NULL REFERENCES auth.users(id),
  attacker_user_id uuid REFERENCES auth.users(id),
  defender_user_id uuid REFERENCES auth.users(id),
- config_json jsonb NOT NULL,
- initial_game_json jsonb NOT NULL,
- current_game_json jsonb NOT NULL,
+ config_json jsonb NOT NULL CHECK (octet_length(config_json::text)<=25000),
+ initial_game_json jsonb NOT NULL CHECK (octet_length(initial_game_json::text)<=800000),
+ current_game_json jsonb NOT NULL CHECK (octet_length(current_game_json::text)<=800000),
  initial_hash text NOT NULL CHECK (initial_hash ~ '^[a-f0-9]{64}$'),
  current_hash text NOT NULL CHECK (current_hash ~ '^[a-f0-9]{64}$'),
  state_version integer NOT NULL DEFAULT 0 CHECK (state_version BETWEEN 0 AND 600),
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS public.battle_v34_receipts (
  command_id uuid NOT NULL,
  actor_id uuid NOT NULL REFERENCES auth.users(id),
  side text NOT NULL CHECK (side IN ('attacker','defender')),
- action_json jsonb NOT NULL,
+ action_json jsonb NOT NULL CHECK (octet_length(action_json::text)<=10000),
  prev_hash text NOT NULL CHECK (prev_hash ~ '^[a-f0-9]{64}$'),
  state_hash text NOT NULL CHECK (state_hash ~ '^[a-f0-9]{64}$'),
  created_at timestamptz NOT NULL DEFAULT now(),
@@ -79,6 +79,13 @@ BEGIN
  IF p_side NOT IN ('attacker','defender') THEN RAISE EXCEPTION 'INVALID_SIDE'; END IF;
  SELECT * INTO s FROM public.battle_v34_sessions WHERE id=p_session FOR UPDATE;
  IF NOT FOUND OR s.status NOT IN ('waiting','active') THEN RAISE EXCEPTION 'SESSION_CLOSED'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.battle_v3_invitations i
+   WHERE i.id=s.invitation_id AND i.status='open') THEN RAISE EXCEPTION 'INVITATION_CLOSED'; END IF;
+ -- A transação revalida o vínculo do próprio p_actor, não apenas a prévia do app.
+ PERFORM set_config('request.jwt.claim.sub',p_actor::text,true);
+ IF NOT public.in_campaign_house(CASE WHEN p_side='attacker' THEN
+    s.attacker_house_id ELSE s.defender_house_id END,false)
+ THEN RAISE EXCEPTION 'MEMBERSHIP_REVOKED'; END IF;
  IF p_side='attacker' THEN
    IF s.attacker_user_id IS NOT NULL AND s.attacker_user_id<>p_actor THEN RAISE EXCEPTION 'SEAT_TAKEN'; END IF;
    IF s.defender_user_id=p_actor THEN RAISE EXCEPTION 'SAME_PLAYER_BOTH_SIDES'; END IF;
@@ -114,6 +121,12 @@ BEGIN
  END IF;
  IF s.status<>'active' OR p_expected<>s.state_version OR p_prev_hash<>s.current_hash
     OR p_expected>=600 THEN RAISE EXCEPTION 'CONFLICT_OR_CLOSED'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.battle_v3_invitations i
+   WHERE i.id=s.invitation_id AND i.status='open') THEN RAISE EXCEPTION 'INVITATION_CLOSED'; END IF;
+ PERFORM set_config('request.jwt.claim.sub',p_actor::text,true);
+ IF NOT public.in_campaign_house(CASE WHEN p_side='attacker' THEN
+    s.attacker_house_id ELSE s.defender_house_id END,false)
+ THEN RAISE EXCEPTION 'MEMBERSHIP_REVOKED'; END IF;
  IF (p_side='attacker' AND s.attacker_user_id IS DISTINCT FROM p_actor)
     OR (p_side='defender' AND s.defender_user_id IS DISTINCT FROM p_actor)
     OR p_side NOT IN ('attacker','defender') THEN RAISE EXCEPTION 'SEAT_DENIED'; END IF;
