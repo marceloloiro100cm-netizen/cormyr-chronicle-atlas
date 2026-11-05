@@ -1,4 +1,10 @@
 -- V3.5 somente no banco de testes descartável após bootstrap V3.4.
+-- O smoke PTE-2.0 revoga o Narrador de TESTE para verificar RLS; restaurar
+-- apenas esta identidade sintética antes do ensaio isolado V3.5.
+INSERT INTO public.user_roles(user_id,role)
+ SELECT '11111111-1111-4111-8111-111111111111','admin'
+ WHERE NOT EXISTS (SELECT 1 FROM public.user_roles
+  WHERE user_id='11111111-1111-4111-8111-111111111111' AND role='admin');
 CREATE TABLE public.noble_house_sheets (
  house_id text PRIMARY KEY REFERENCES public.campaign_houses(id),
  state jsonb NOT NULL,version integer NOT NULL DEFAULT 0);
