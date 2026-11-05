@@ -132,7 +132,7 @@ export const readV35Case=createServerFn({method:'POST'})
   enabled();const db=context.supabase as unknown as Db;await narrator(db);
   const c=await caseRow(db,data.caseId);
   await narrator(db);
-  return c;
+  return {caseJson:JSON.stringify(c)};
  });
 export const stageV35Case=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth]).inputValidator(stageInput)
