@@ -231,3 +231,18 @@
 .crusade-mode .crusade-combat-grid .crusade-map{overflow:hidden}
 .crusade-mode .crusade-left .crusade-troop:focus-visible,
 .crusade-mode .crusade-right button:focus-visible{outline:3px solid #f7d389;outline-offset:2px}
+
+/* Revisão de baixas V3.5: foco e contraste na decisão manual do Narrador. */
+.crusade-v35-review{border-color:#b09565!important}
+.crusade-v35-unit{border:1px solid #8f7756;border-radius:8px;padding:12px;margin:10px 0;
+ background:linear-gradient(115deg,#38342d,#2e302a)}
+.crusade-v35-unit strong{color:#f8dda9;display:block}
+.crusade-v35-unit p{font-size:12px;color:#dacbb0;margin:6px 0}
+.crusade-v35-unit label{flex:1 1 160px;min-width:0}
+.crusade-v35-unit label:last-child{flex:3 1 260px}
+.crusade-v35-unit input:focus-visible{outline:3px solid #f9d78a;outline-offset:2px}
+.crusade-v35-actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center;padding:13px 0;
+ border-top:1px solid #8f7756}
+.crusade-v35-actions>p{flex-basis:100%;margin:5px 0}
+.crusade-v35-actions button:focus-visible{outline:3px solid #f9d78a;outline-offset:2px}
+@media(max-width:700px){.crusade-v35-unit .battle-form-row{display:grid;grid-template-columns:1fr}}
