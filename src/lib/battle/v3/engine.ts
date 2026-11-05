@@ -9,6 +9,8 @@ import {battleOutcome} from '../domain/victory';
 import {runAiUntilHuman} from '../domain/ai';
 import {commander,applyCommanderPassive,type CommanderId} from './commanders';
 import {modelHouse,type PresetUnit} from './model-houses';
+import {v3ApplyCommanderTalent,v3CommanderPowerLimit,v3ProgressValid,
+ type V3CommanderProgress} from './commander-progression';
 
 export type V3PowerTarget='ally'|'enemy';
 export type V3UnitSkill='CHARGE'|'VOLLEY'|'SHIELD_WALL'|'AMBUSH'|'SAPPERS';
@@ -21,6 +23,9 @@ export type V3Game=Readonly<{
  mode:'PTE-3.0-SANDBOX';battle:BattleState;
  commanders:Readonly<Record<Side,CommanderId>>;
  usedPowers:Readonly<Record<Side,boolean>>;
+ /** Contador exclusivo V3, preserva leitura de snapshots V3 anteriores com booleano. */
+ powerUses?:Readonly<Record<Side,number>>;
+ progressions?:Readonly<Record<Side,V3CommanderProgress>>;
  log:readonly V3Log[];
 }>;
 export type V3ScenarioOptions=Readonly<{
@@ -29,6 +34,7 @@ export type V3ScenarioOptions=Readonly<{
  scenario:BattleScenarioId;opponent:'ai'|'human';
  /** Apenas composição fictícia do quartel, nunca snapshots de casas oficiais. */
  rosters?:Readonly<Record<Side,readonly PresetUnit[]>>;
+ progressions?:Readonly<Record<Side,V3CommanderProgress>>;
 }>;
 const sideList=['attacker','defender'] as const;
 const LINE=new Set(['infantry','garrison','personal-guard','crusaders','mercenaries','levies']);
@@ -63,9 +69,18 @@ export function createV3Game(options:V3ScenarioOptions):V3Game{
  });
  const started=startBattle(draft);
  const commanders={attacker:options.attackerCommander,defender:options.defenderCommander};
- const stacks=started.stacks.map(s=>applyCommanderPassive(s,commanders[s.side]));
+ if(options.progressions){
+  for(const side of sideList){
+   if(!v3ProgressValid(commanders[side],options.progressions[side]))
+    throw new Error('Progresso de comandante inválido ou de outro personagem.');
+  }
+ }
+ const stacks=started.stacks.map(s=>v3ApplyCommanderTalent(
+  applyCommanderPassive(s,commanders[s.side]),commanders[s.side],options.progressions?.[s.side]));
  return {mode:'PTE-3.0-SANDBOX',battle:{...started,stacks},
-  commanders,usedPowers:{attacker:false,defender:false},log:[]};
+  commanders,usedPowers:{attacker:false,defender:false},
+  powerUses:{attacker:0,defender:0},
+  ...(options.progressions?{progressions:options.progressions}:{}),log:[]};
 }
 function append(game:V3Game,side:Side,label:string,battle=game.battle):V3Game{
  return {...game,battle,log:[...game.log,{round:game.battle.round,side,label}].slice(-100)};
@@ -128,7 +143,9 @@ export function v3UseUnitSkill(game:V3Game,skill:V3UnitSkill,targetId?:string):V
 }
 export function v3CanUseCommander(game:V3Game):boolean{
  const b=game.battle,active=b.stacks.find(s=>s.id===b.activeUnitId);
- return b.phase==='active'&&Boolean(active)&&!game.usedPowers[active!.side];
+ if(b.phase!=='active'||!active)return false;
+ const used=game.powerUses?.[active.side]??(game.usedPowers[active.side]?1:0);
+ return used<v3CommanderPowerLimit(game.commanders[active.side],game.progressions?.[active.side]);
 }
 export function v3UseCommander(game:V3Game,targetId:string):V3Game{
  if(!v3CanUseCommander(game))throw new Error('O comandante já utilizou seu poder ou a batalha terminou.');
@@ -164,8 +181,12 @@ export function v3UseCommander(game:V3Game,targetId:string):V3Game{
  const outcome=battleOutcome(next.stacks);
  if(outcome)next={...next,phase:'completed',winner:outcome.winner,
    resultReason:outcome.reason,activeUnitId:null,activationQueue:[],waitingQueue:[]};
+ const prior=game.powerUses??{
+  attacker:game.usedPowers.attacker?1:0,defender:game.usedPowers.defender?1:0,
+ };
  return {...append(game,side,c.powerName+' em '+target.name,next),
-  usedPowers:{...game.usedPowers,[side]:true}};
+  usedPowers:{...game.usedPowers,[side]:true},
+  powerUses:{...prior,[side]:prior[side]+1}};
 }
 export function v3RunAi(game:V3Game):V3Game{
  const battle=game.battle;
