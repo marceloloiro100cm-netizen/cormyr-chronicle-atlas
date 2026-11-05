@@ -13,7 +13,7 @@ import {runAiUntilHuman} from '@/lib/battle/domain/ai';
 import {exportReplayJson} from '@/lib/battle/domain/replay';
 import {BattleReplay} from './BattleReplay';
 import {BATTLE_PERSISTENCE_UI_ENABLED} from '@/lib/battle/feature-flag';
-import {saveBattleReplay} from '@/lib/battle/server/battle-session.functions';
+import {saveBattleReplay} from '@/lib/battle/battle-session.functions';
 import {useServerFn} from '@tanstack/react-start';
 
 const LABEL:Record<Side,string>={attacker:'Atacante',defender:'Defensor'};

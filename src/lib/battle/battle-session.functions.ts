@@ -1,10 +1,10 @@
 import {createServerFn} from '@tanstack/react-start';
 import {z} from 'zod';
 import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
-import {parseReplayJson,battleHash,verifyReplay,canonicalJson} from '../domain/replay';
-import {battleCommandSchema,applyBattleCommand} from '../domain/turns';
-import {adaptOfficialUnit} from '../adapters/unit-readonly';
-import type {BattleState,BattleCommand} from '../domain/types';
+import {parseReplayJson,battleHash,verifyReplay,canonicalJson} from './domain/replay';
+import {battleCommandSchema,applyBattleCommand} from './domain/turns';
+import {adaptOfficialUnit} from './adapters/unit-readonly';
+import type {BattleState,BattleCommand} from './domain/types';
 import type {HouseState} from '@/lib/house/types';
 
 const uuid=z.string().uuid();

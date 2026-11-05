@@ -11,7 +11,7 @@ const file=(p:string)=>readFileSync(resolve(p),'utf8');
 describe('Batalha V2 — lote 11, segurança e conformidade',()=>{
  it('B-033/034: endpoints de origem e persistência exigem autenticação e papel atual',()=>{
   const src=file('src/lib/battle/adapters/readonly-source.functions.ts');
-  const saved=file('src/lib/battle/server/battle-session.functions.ts');
+  const saved=file('src/lib/battle/battle-session.functions.ts');
   for(const x of [src,saved]){
    expect(x).toContain('requireSupabaseAuth');
    expect(x).toContain("db.rpc('is_campaign_admin')");
