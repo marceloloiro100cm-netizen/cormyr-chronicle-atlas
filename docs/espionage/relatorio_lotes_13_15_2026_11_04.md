@@ -53,8 +53,8 @@ agente, missão ou registro histórico será modificado.
 
 - [x] Código da atualização manual e das opções administrativas criado.
 - [x] Testes de regressão adicionados.
-- [ ] Pipeline de CI (testes, TypeScript, build) concluído.
-- [ ] PR integrada à branch principal.
+- [x] Pipeline de CI (testes, TypeScript, build) aprovado na PR #253.
+- [x] PR #253 integrada à branch principal (commit `4eedc005aa3ae0a2aed2c13d9979db280e01e4e1`).
 - [ ] Sincronização GitHub/Lovable confirmada.
 - [ ] Publicação específica confirmada (não confundir com
   `is_published=true` de uma versão anterior).
