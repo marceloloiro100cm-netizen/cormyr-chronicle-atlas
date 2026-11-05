@@ -9,7 +9,7 @@ import {livingCount} from '@/lib/battle/domain/morale';
 import {commander} from '@/lib/battle/v3/commanders';
 import {v3LegalSkills,v3SkillName,v3CanUseCommander,type V3UnitSkill} from '@/lib/battle/v3/engine';
 import {listV34Sessions,joinV34Session,readV34Session,playV34Step,
- type V34SessionListItem} from '@/lib/battle/v3/synced.functions';
+ type V34SessionListItem,type V34SessionView} from '@/lib/battle/v3/synced.functions';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import type {V34Action} from '@/lib/battle/v3/synced';
 import {BattleBoard} from './BattleBoard';
@@ -79,7 +79,10 @@ function BattleV34Room({sessionId,onBack}:{sessionId:string;onBack:()=>void}){
  const [message,setMessage]=useState('');
  const [busy,setBusy]=useState(false);
  const {data,refetch,isPending,isError}=useQuery({
-  queryKey:['v34-room',sessionId],queryFn:()=>read({data:{sessionId}}),
+  queryKey:['v34-room',sessionId],queryFn:async()=>{
+   const value=await read({data:{sessionId}});
+   return JSON.parse(value.snapshotJson) as V34SessionView;
+  },
   refetchInterval:2500,refetchOnWindowFocus:'always',retry:false,
  });
  const game=data?.game,battle=game?.battle;
