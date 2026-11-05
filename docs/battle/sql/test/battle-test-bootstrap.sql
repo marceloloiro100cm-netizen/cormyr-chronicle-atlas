@@ -15,7 +15,7 @@ CREATE FUNCTION public.campaign_access_active() RETURNS boolean LANGUAGE sql STA
  SELECT auth.uid() IS NOT NULL
   AND current_setting('app.campaign_active',true)='on'
 $$;
-CREATE FUNCTION public.is_campaign_admin() RETURNS boolean LANGUAGE sql STABLE AS $$
+CREATE FUNCTION public.is_campaign_admin() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
  SELECT EXISTS (SELECT 1 FROM public.user_roles
  WHERE user_id=auth.uid() AND role='admin')
 $$;
