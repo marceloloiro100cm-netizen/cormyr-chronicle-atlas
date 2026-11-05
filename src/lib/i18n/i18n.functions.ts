@@ -1,6 +1,8 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { z } from 'zod';
+import {createClient} from '@supabase/supabase-js';
+import type {Database} from '@/integrations/supabase/types';
 import { PUBLIC_TRANSLATION_ENTITY_TYPES, isPublicTranslationEntityType } from './public-translations';
 
 export const loadDynamicTranslations = createServerFn({ method: 'POST' })
@@ -11,11 +13,22 @@ export const loadDynamicTranslations = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     if (data.locale === 'pt' || (data.entityType && !isPublicTranslationEntityType(data.entityType))) return {};
 
-    // We don't require auth to read translations, so we can use the regular Supabase client for reading
-    // Note: since it's a server function, we should use the admin or server client if possible.
-    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    // Public server functions must use the anon database role so PostgreSQL
+    // RLS also excludes unpublished Houses, not just private entity types.
+    const url=process.env['SUPABASE_URL'],key=process.env['SUPABASE_PUBLISHABLE_KEY'];
+    if(!url||!key)return {};
+    const publicDb=createClient<Database>(url,key,{
+      auth:{persistSession:false,autoRefreshToken:false},
+      global:{fetch:(input,init)=>{
+        const headers=new Headers(init?.headers);
+        if(key.startsWith('sb_')&&headers.get('Authorization')===`Bearer ${key}`)
+          headers.delete('Authorization');
+        headers.set('apikey',key);
+        return fetch(input,{...init,headers,cache:'no-store'});
+      }},
+    });
 
-    let query = supabaseAdmin
+    let query = publicDb
       .from('campaign_translations')
       .select('entity_type, entity_id, field_name, translated_text')
       .eq('locale', data.locale)
