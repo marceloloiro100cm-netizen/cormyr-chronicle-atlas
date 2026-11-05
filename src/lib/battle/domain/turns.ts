@@ -116,7 +116,7 @@ function advance(state:BattleState):BattleState{
       const stack=stacks.find(s=>s.id===next);
       if(!stack||stack.currentHp<=0||stack.moraleState==='routed')continue;
       stacks=changeStack(stacks,next,{defenseGuard:false});
-      return {...state,activeUnitId:next,activationQueue:queue,waitingQueue:waiting,stacks};
+      return {...state,round,noProgressRounds,activeUnitId:next,activationQueue:queue,waitingQueue:waiting,stacks};
     }
     noProgressRounds=progressRound(state)?0:noProgressRounds+1;
     const after={...state,stacks,noProgressRounds};
