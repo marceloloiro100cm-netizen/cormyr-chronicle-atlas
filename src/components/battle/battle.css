@@ -179,3 +179,43 @@
 .crusade-talent button{min-height:35px;white-space:normal}
 .crusade-talent button:focus-visible{outline:3px solid #f7d389;outline-offset:2px}
 @media(max-width:750px){.crusade-talent-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Mapa estratégico abstrato da Cruzada V3.3. Nenhuma geografia oficial. */
+.crusade-strategy{margin:12px 0;padding:14px}
+.crusade-strategy-top{display:flex;justify-content:space-between;align-items:start;gap:12px}
+.crusade-strategy-top .battle-eyebrow{color:#efcc8f}
+.crusade-strategy-metrics{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+.crusade-strategy-metrics span{flex:1 1 145px;padding:8px;border:1px solid #7c694f;border-radius:7px;
+ color:#d9caae;font-size:11px}
+.crusade-strategy-metrics b{display:block;color:#f2d398;font-size:13px}
+.crusade-strategy-field{position:relative;width:100%;min-height:350px;aspect-ratio:2/1;
+ background:radial-gradient(circle at 48% 25%,rgba(99,122,82,.25),transparent 35%),
+ linear-gradient(130deg,#302e23,#3c4433,#292c28);
+ border:2px solid #8d795a;border-radius:11px;overflow:hidden}
+.crusade-strategy-roads{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.crusade-strategy-roads line{stroke:#c5ad75;stroke-width:.8;stroke-dasharray:1.1 .6;opacity:.75}
+.crusade-strategy-node{position:absolute;transform:translate(-50%,-50%);z-index:1;
+ width:clamp(70px,12%,155px);min-height:60px;padding:5px;
+ text-align:center;border:1px solid #a58a60;border-radius:8px;
+ background:linear-gradient(140deg,#423a2d,#2b332b);color:#f1e3c9;
+ box-shadow:0 3px 9px #14151280;font-size:10px;line-height:1.35}
+.crusade-strategy-node strong,.crusade-strategy-node span{display:block}
+.crusade-strategy-node span{font-size:10px;color:#f3db9d}
+.crusade-strategy-node.owned-attacker{border-color:#d0a661}
+.crusade-strategy-node.owned-defender{border-color:#8ab3d2}
+.crusade-strategy-node.current{outline:2px solid #fff1a6;outline-offset:2px}
+.crusade-strategy-node.reachable{cursor:pointer;background:linear-gradient(150deg,#53623d,#37452c)}
+.crusade-strategy-node:disabled{opacity:.92;cursor:default}
+.crusade-strategy-node:focus-visible{outline:3px solid #fce3a3;outline-offset:3px}
+.crusade-strategy-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:12px 0}
+.crusade-strategy-actions h3{font-family:Georgia,serif;color:#f1d398;margin:0 0 6px}
+.crusade-strategy-objectives p{margin:5px 0}
+.crusade-strategy-objectives strong{color:#e8cb99}
+.crusade-strategy-history{border-top:1px solid #78694d;padding-top:8px}
+.crusade-strategy-history summary{cursor:pointer;color:#f1d398}
+.crusade-strategy-history li{font-size:12px;border-bottom:1px solid #675a48;padding:5px 0}
+@media(max-width:700px){.crusade-strategy-top{display:block}.crusade-strategy-actions{grid-template-columns:1fr}
+ .crusade-strategy-field{min-height:380px;aspect-ratio:1.3}
+ .crusade-strategy-node{width:18%;min-height:55px;padding:3px;font-size:9px}
+ .crusade-strategy-node span{font-size:9px}
+}
