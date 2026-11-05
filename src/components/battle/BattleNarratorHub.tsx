@@ -1,9 +1,10 @@
-import {useState,lazy,Suspense} from 'react';
+import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {BATTLE_RULES_VERSION} from '@/lib/battle/feature-flag';
 import type {BattleState,Side} from '@/lib/battle/domain/types';
 import {BattleSetup} from './BattleSetup';
 import {BattleArena} from './BattleArena';
+import {BattleReplayImporter} from './BattleReplay';
 import './battle.css';
 
 export function BattleNarratorHub(){
@@ -11,6 +12,7 @@ export function BattleNarratorHub(){
  const [state,setState]=useState<BattleState|null>(null);
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Atacante',defender:'Defensor'});
  const [manual,setManual]=useState(false);
+ const [showImport,setShowImport]=useState(false);
  const reset=()=>{
   if(state&&view==='arena'&&!window.confirm('A batalha existe apenas na memória. Deseja sair e perdê-la?'))return;
   setState(null);setView('home');
@@ -28,13 +30,15 @@ export function BattleNarratorHub(){
     <div className="battle-home-actions">
       <Button onClick={()=>setView('setup')}>Criar batalha</Button>
       <Button variant="outline" onClick={()=>setManual(x=>!x)}>Consultar regras</Button>
+      <Button variant="outline" onClick={()=>setShowImport(x=>!x)}>Importar replay JSON</Button>
       <Button variant="outline" disabled title="Disponível quando o armazenamento isolado for implementado">Batalhas salvas · futuro</Button>
     </div>
+    {showImport&&<BattleReplayImporter/>}
     {manual&&<div className="battle-rules-help">
      <h3>Manual rápido PTE-2.0</h3>
      <p>Até 5 unidades por lado; a iniciativa ordena os turnos. Cada ativação permite um movimento e depois um ataque, ou defender, esperar uma vez, ou terminar.</p>
      <p>Floresta e colina custam 2 pontos de movimento; rocha é bloqueio. Floresta intermediária bloqueia tiro, e artilheiros não disparam quando engajados.</p>
-     <p>Os PV, as baixas e a moral são exclusivos desta simulação. Sem persistência, IA ou impacto sobre recursos da casa nesta etapa.</p>
+     <p>Os PV, as baixas e a moral são exclusivos desta simulação. IA determinística habilitada. Persistência exige banco de homologação; nenhum impacto sobre recursos da casa.</p>
     </div>}
   </div>}
   {view==='setup'&&<BattleSetup onBack={reset} onStart={(battle,names)=>{
