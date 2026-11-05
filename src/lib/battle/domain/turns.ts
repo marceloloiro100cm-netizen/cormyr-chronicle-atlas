@@ -96,7 +96,7 @@ function changeStack(stacks:readonly BattleStack[],id:string,change:Partial<Batt
   return stacks.map(s=>s.id===id?{...s,...change}:s);
 }
 function progressRound(state:BattleState):boolean {
-  return state.events.some(e=>e.round===state.round&&(e.type==='MOVE'||e.type==='DAMAGE'||e.type==='RETALIATION'));
+  return state.events.some(e=>e.round===state.round&&(e.type==='MOVE'||((e.type==='DAMAGE'||e.type==='RETALIATION')&&typeof e.delta['damage']==='number'&&e.delta['damage']>0)));
 }
 function finish(state:BattleState,reason:string,winner:Side|null):BattleState{
   return {...state,phase:'completed',activeUnitId:null,activationQueue:[],waitingQueue:[],
