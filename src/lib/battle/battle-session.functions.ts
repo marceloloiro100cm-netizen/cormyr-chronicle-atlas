@@ -3,6 +3,7 @@ import {z} from 'zod';
 import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
 import {parseReplayJson,battleHash,verifyReplay,canonicalJson} from './domain/replay';
 import {battleCommandSchema,applyBattleCommand} from './domain/turns';
+import {chooseAiCommand} from './domain/ai';
 import {adaptOfficialUnit} from './adapters/unit-readonly';
 import type {BattleState,BattleCommand} from './domain/types';
 import type {HouseState} from '@/lib/house/types';
@@ -10,6 +11,7 @@ import type {HouseState} from '@/lib/house/types';
 const uuid=z.string().uuid();
 const saveInput=z.object({replayJson:z.string().min(20).max(1_500_000)}).strict();
 const loadInput=z.object({sessionId:uuid}).strict();
+const aiInput=loadInput.extend({expectedVersion:z.number().int().min(0).max(1199)}).strict();
 const commandInput=loadInput.extend({commandId:uuid,expectedVersion:z.number().int().min(0).max(1199),
  command:battleCommandSchema}).strict();
 type RpcResult={data:unknown;error:{message:string;code?:string}|null};
@@ -175,4 +177,59 @@ export const applySavedBattleCommand=createServerFn({method:'POST'})
   if(result.error)throw new Error(result.error.message.includes('CONFLICT')?
    'CONFLICT: estado mudou; recarregue.':'Comando persistido não confirmado.');
   return {duplicate:false,receipt,stateVersion:receipt.actionSeq};
+ });
+
+
+/** Próxima fase: a IA avança SOMENTE no servidor sobre uma sessão já salva.
+ * Cada passo usa o mesmo CAS atômico e o mesmo hash do histórico. A versão
+ * esperada garante que duas abas não avancem a mesma sessão silenciosamente.
+ * Faz no máximo 16 ações por chamada para limitar tempo de resposta/abuso.
+ */
+export const advanceSavedBattleAi=createServerFn({method:'POST'})
+ .middleware([requireSupabaseAuth]).inputValidator(aiInput)
+ .handler(async({data,context})=>{
+  requirePersistenceEnabled();
+  const db=context.supabase as unknown as Db;
+  await requireNarrator(db);
+  const loaded=await db.from('battle_sim_sessions')
+   .select('current_state_json,state_hash,state_version')
+   .eq('id',data.sessionId).maybeSingle();
+  if(loaded.error||!loaded.data)throw new Error('Batalha salva não encontrada.');
+  let version=Number(loaded.data.state_version);
+  if(version!==data.expectedVersion)
+   throw new Error('CONFLICT: outra aba alterou a sessão. Recarregue o estado.');
+  let state=loaded.data.current_state_json as BattleState;
+  if(battleHash(state)!==loaded.data.state_hash)
+   throw new Error('Integridade não confirmada no estado persistido.');
+  const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
+  const trusted=supabaseAdmin as unknown as Db;
+  let previousHash=loaded.data.state_hash as string,applied=0;
+  for(let i=0;i<16;i++){
+   if(state.phase!=='active'||!state.activeUnitId)break;
+   const unit=state.stacks.find(stack=>stack.id===state.activeUnitId);
+   if(!unit||state.controls[unit.side]!=='ai')break;
+   if(version>=1200)throw new Error('Limite de comandos do replay alcançado.');
+   const command=chooseAiCommand(state);
+   const next=applyBattleCommand(state,command,'ai');
+   const nextHash=battleHash(next),nextVersion=version+1;
+   const receipt={
+    actionSeq:nextVersion,commandId:'cmd-'+nextVersion,
+    command,actor:'ai' as const,prevHash:previousHash,stateHash:nextHash,
+   };
+   // Confere role/campanha em cada comando; a RPC também confere user_roles.
+   await requireNarrator(db);
+   const result=await trusted.rpc('battle_sim_commit_step',{
+    p_actor:context.userId,p_session:data.sessionId,p_expected:version,
+    p_command_id:crypto.randomUUID(),p_command:command,p_receipt:receipt,
+    p_current:next,p_prev_hash:previousHash,p_state_hash:nextHash,
+   });
+   if(result.error){
+    if(result.error.message.includes('CONFLICT'))
+     throw new Error('CONFLICT: outra aba alterou a sessão. Recarregue o estado.');
+    throw new Error('Avanço da IA não pôde ser confirmado.');
+   }
+   version=nextVersion;state=next;previousHash=nextHash;applied++;
+  }
+  await requireNarrator(db);
+  return {applied,stateVersion:version,phase:state.phase};
  });
