@@ -26,10 +26,24 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         self.addCleanup(ctx.close)
         page=ctx.new_page()
         errors=[]
+        browser_console=[]
+        failures=[]
         page.on("pageerror",lambda e:errors.append(str(e)))
-        page.goto(BASE,wait_until="networkidle",timeout=60000)
-        page.get_by_text("Somente dados fictícios.",exact=False).wait_for()
-        self.assertEqual(errors,[],f"Browser console errors: {errors}")
+        page.on("console",lambda m:browser_console.append(m.text) if m.type=="error" else None)
+        page.on("requestfailed",lambda req:failures.append(req.url))
+        page.goto(BASE,wait_until="domcontentloaded",timeout=60000)
+        try:
+            page.get_by_text("Somente dados fictícios.",exact=False).wait_for(timeout=8000)
+        except Exception as exc:
+            raise AssertionError(
+                "Harness failed to mount; URL="+page.url+
+                " errors="+repr(errors)+
+                " console="+repr(browser_console[-6:])+
+                " failedRequests="+repr(failures[-6:])+
+                " body="+repr(page.locator("body").inner_text()[:700])+
+                " html="+repr(page.content()[:1400])
+            ) from exc
+        self.assertEqual(errors,[],f"Browser page errors: {errors}")
         return page
 
     def test_desktop_editor_mouse_keyboard_undo_and_15_by_11(self):
