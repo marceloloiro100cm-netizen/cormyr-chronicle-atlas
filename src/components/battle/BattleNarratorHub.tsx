@@ -13,6 +13,7 @@ import './battle.css';
 export function BattleNarratorHub(){
  const [view,setView]=useState<'home'|'setup'|'arena'|'saved'>('home');
  const [state,setState]=useState<BattleState|null>(null);
+ const [resumeState,setResumeState]=useState<BattleState|null>(null);
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Atacante',defender:'Defensor'});
  const [manual,setManual]=useState(false);
  const [showImport,setShowImport]=useState(false);
@@ -28,8 +29,8 @@ export function BattleNarratorHub(){
  useEffect(()=>{void probeStore();},[]);
  const canSave=BATTLE_PERSISTENCE_UI_ENABLED&&storeStatus==='available';
  const reset=()=>{
-  if(state&&view==='arena'&&!window.confirm('A batalha existe apenas na memória. Deseja sair e perdê-la?'))return;
-  setState(null);setView('home');
+  if(state&&view==='arena'&&!window.confirm('As alterações não salvas serão perdidas. Deseja sair da simulação?'))return;
+  setState(null);setResumeState(null);setView('home');
  };
  return <main className="battle-module" aria-label="Módulo de batalha do Narrador">
   <header className="battle-header">
@@ -57,10 +58,17 @@ export function BattleNarratorHub(){
      <p>Os PV, as baixas e a moral são exclusivos desta simulação. IA determinística habilitada. O armazenamento exige autorização atual do Narrador e verificação do servidor. Nenhum impacto sobre recursos da casa.</p>
     </div>}
   </div>}
-  {view==='saved'&&canSave&&<BattleSavedPanel onClose={()=>setView('home')}/>}
+  {view==='saved'&&canSave&&<BattleSavedPanel onClose={()=>setView('home')}
+    onResume={(ready,restored)=>{
+      setState(ready);setResumeState(restored);
+      setSideNames({attacker:'Atacante',defender:'Defensor'});
+      setView('arena');
+    }}/>}
   {view==='setup'&&<BattleSetup onBack={reset} onStart={(battle,names)=>{
-    setState(battle);setSideNames(names);setView('arena');
+    setResumeState(null);setState(battle);setSideNames(names);setView('arena');
   }}/>}
-  {view==='arena'&&state&&<BattleArena initial={state} sideNames={sideNames} persistenceEnabled={canSave} onExit={reset}/>}
+  {view==='arena'&&state&&<BattleArena initial={state}
+    {...(resumeState?{resume:resumeState}:{})}
+    sideNames={sideNames} persistenceEnabled={canSave} onExit={reset}/>}
  </main>;
 }
