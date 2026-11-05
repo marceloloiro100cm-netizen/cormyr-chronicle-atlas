@@ -12,6 +12,8 @@ import {readSpyDossiersBrowser,readSpyIntelligenceOptionsBrowser,
  readSpyIntelligencePendingBrowser,adjustSpyIntelligence,retrySpyIntelligence,
  type SpyDossier} from '@/lib/espionage/spy-dossier.functions';
 import {spyDossierActionOptions} from '@/lib/espionage/spy-dossier-action-options';
+import {filterSpyDossiers,paginateSpyDossiers,spyDossierPendingHouseNames,
+ type SpyDossierSort,type SpyDossierProgress} from '@/lib/espionage/spy-dossier-list';
 import './spy-dossier.css';
 
 const safeDate=(date:string)=>parseDate(date)?formatDate(date):date;
@@ -95,13 +97,15 @@ function DossierCollection({dossiers,title,summary,onRefresh,refreshing=false}:{
  const [selected,setSelected]=useState<string>('');
  const [targetFilter,setTargetFilter]=useState('');
  const [regionFilter,setRegionFilter]=useState('');
- const [progress,setProgress]=useState('all');
+ const [progress,setProgress]=useState<SpyDossierProgress>('all');
+ const [sort,setSort]=useState<SpyDossierSort>('recent');
+ const [page,setPage]=useState(1);
  const regions=[...new Set(dossiers.map(d=>d.targetRegion??'').filter(Boolean))].sort();
- const visible=dossiers.filter(d=>(!targetFilter||
-  d.targetHouseName.toLocaleLowerCase('pt-BR').includes(targetFilter.toLocaleLowerCase('pt-BR')))
-  &&(!regionFilter||d.targetRegion===regionFilter)
-  &&(progress==='all'||(progress==='complete'?count(d,'house_resources')===7:count(d,'house_resources')<7)));
- const chosen=visible.find(d=>d.id===selected)??visible[0];
+ const visible=filterSpyDossiers(dossiers,{
+  targetSearch:targetFilter,region:regionFilter,progress,sort,
+ });
+ const paged=paginateSpyDossiers(visible,page,12);
+ const chosen=paged.items.find(d=>d.id===selected)??paged.items[0];
  return <section className="house-panel spy-dossier-panel" aria-label={title}>
   <div className="house-section-heading"><div>
    <p className="campaign-eyebrow">CORMYR · INTELIGÊNCIA</p>
@@ -110,21 +114,36 @@ function DossierCollection({dossiers,title,summary,onRefresh,refreshing=false}:{
   </div>{onRefresh&&<Button type="button" variant="outline" disabled={refreshing}
    onClick={onRefresh}><RefreshCw size={16}/>{refreshing?'Atualizando…':'Atualizar dossiês'}</Button>}</div>
   <div className="spy-dossier-filters">
-   <label>Casa-alvo<input value={targetFilter} onChange={e=>setTargetFilter(e.target.value)}
+   <label>Casa-alvo<input value={targetFilter} onChange={e=>{setTargetFilter(e.target.value);setPage(1);}}
     placeholder="Pesquisar casa nobre"/></label>
-   <label>Região<select value={regionFilter} onChange={e=>setRegionFilter(e.target.value)}>
+   <label>Região<select value={regionFilter} onChange={e=>{setRegionFilter(e.target.value);setPage(1);}}>
     <option value="">Todas</option>{regions.map(region=><option value={region} key={region}>{region}</option>)}
    </select></label>
-   <label>Recursos<select value={progress} onChange={e=>setProgress(e.target.value)}>
+   <label>Recursos<select value={progress} onChange={e=>{setProgress(e.target.value as SpyDossierProgress);setPage(1);}}>
     <option value="all">Todos</option>
     <option value="incomplete">Incompletos</option>
     <option value="complete">7/7 completos</option>
    </select></label>
   </div>
+  <div className="spy-dossier-toolbar">
+   <span role="status">{visible.length} dossiê(s) encontrado(s)</span>
+   <label>Ordenar<select value={sort} onChange={e=>{setSort(e.target.value as SpyDossierSort);setPage(1);}}>
+    <option value="recent">Atualizados recentemente</option>
+    <option value="target">Nome da Casa-alvo</option>
+   </select></label>
+  </div>
   {visible.length?<><div className="spy-dossier-list">
-   {visible.map(d=><DossierCard dossier={d} key={d.id}
+   {paged.items.map(d=><DossierCard dossier={d} key={d.id}
     active={chosen?.id===d.id} onSelect={()=>setSelected(d.id)}/>)}
-  </div>{chosen&&<DossierView key={chosen.id} dossier={chosen}/>}</>:
+  </div>
+  {paged.totalPages>1&&<div className="spy-dossier-pages">
+   <Button type="button" variant="outline" disabled={paged.page===1}
+    onClick={()=>setPage(p=>p-1)}>Anterior</Button>
+   <span>Página {paged.page} de {paged.totalPages}</span>
+   <Button type="button" variant="outline" disabled={paged.page===paged.totalPages}
+    onClick={()=>setPage(p=>p+1)}>Próxima</Button>
+  </div>}
+  {chosen&&<DossierView key={chosen.id} dossier={chosen}/>}</>:
    <p className="house-caption">Nenhum dossiê encontrado. As informações surgem após missões homologadas.</p>}
  </section>;
 }
