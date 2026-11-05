@@ -53,8 +53,8 @@ export function BattleV3Barracks({army,onChange,label}:{
        Dividir
       </Button>
       <Button size="sm" variant="outline" disabled={!matches.length}
-       title={matches.length?'Fundir com '+matches[0].name:'Sem pilha homogênea'}
-       onClick={()=>matches.length&&act(()=>v3BarracksMerge(army,unit.id,matches[0].id))}>
+       title={matches.length?'Fundir com '+matches[0]!.name:'Sem pilha homogênea'}
+       onClick={()=>matches.length&&act(()=>v3BarracksMerge(army,unit.id,matches[0]!.id))}>
        Fundir
       </Button>
       <Button size="sm" variant="outline" onClick={()=>act(()=>v3BarracksRemove(army,unit.id))}>
