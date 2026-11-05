@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import type { BattleMap, BattleStack, Hex, Side } from '@/lib/battle/domain/types';
 import { axialToOffset, hexKey } from '@/lib/battle/geometry/hex';
 import { militaryUnitSymbolSrc } from '@/components/house/military-unit-symbol';
@@ -22,13 +23,21 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,moveKeys=[],attac
   moveKeys?:readonly string[];attackKeys?:readonly string[];pendingHex?:Hex|null;
   showZones?:boolean;onHexClick?:(hex:Hex)=>void;onHoverHex?:(hex:Hex|null)=>void;
 }){
+  const [zoom,setZoom]=useState(100);
   const tileMap=new Map(map.tiles.map(t=>[hexKey(t),t]));
   const occupied=new Map(stacks.filter(s=>s.currentHp>0).map(s=>[hexKey(s.position),s]));
   const a=new Set(map.deployment.attacker.map(hexKey)),b=new Set(map.deployment.defender.map(hexKey));
   const move=new Set(moveKeys),attack=new Set(attackKeys);
   const w=XSTEP*(map.width+1)+SIZE*1.6,h=SIZE*(1.5*(map.height-1)+2.8);
   return <div className="battle-board-frame">
-    <svg className="battle-board-svg" viewBox={`0 0 ${w} ${h}`}
+    <div className="battle-zoom-controls" role="group" aria-label="Ampliação do mapa">
+      <button type="button" aria-label="Reduzir zoom do mapa" disabled={zoom<=100} onClick={()=>setZoom(v=>Math.max(100,v-50))}>−</button>
+      <output aria-label="Zoom atual do mapa" aria-live="polite">{zoom}%</output>
+      <button type="button" aria-label="Ampliar zoom do mapa" disabled={zoom>=250} onClick={()=>setZoom(v=>Math.min(250,v+50))}>+</button>
+      <button type="button" aria-label="Restaurar zoom do mapa" disabled={zoom===100} onClick={()=>setZoom(100)}>Ajustar</button>
+    </div>
+    <div className="battle-board-scroll" role="region" tabIndex={0} aria-label="Área navegável do mapa hexagonal">
+    <svg className="battle-board-svg" viewBox={`0 0 ${w} ${h}`} style={{width:`${zoom}%`,maxWidth:'none'}}
       role="group" aria-label={`Mapa hexagonal com ${map.width} colunas por ${map.height} linhas`}>
       {map.tiles.map(tile=>{
         const key=hexKey(tile),pos=pixel(tile),unit=occupied.get(key);
@@ -66,6 +75,7 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,moveKeys=[],attac
         </g>;
       })}
     </svg>
+    </div>
     <div className="battle-board-legend" aria-label="Legenda do campo">
       <span>▱ Planície</span><span>♣ Floresta · custo 2</span><span>▲ Colina · custo 2</span>
       <span>◆ Rocha · bloqueio</span><span>Contorno verde: movimento</span><span>Contorno vermelho: alvo</span>
