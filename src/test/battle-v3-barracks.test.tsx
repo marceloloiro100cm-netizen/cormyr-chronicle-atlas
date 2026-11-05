@@ -15,16 +15,16 @@ describe('Crusada V3.1 — quartel 100% fictício',()=>{
  it('preserva exatamente o efetivo ao dividir e fundir pilhas homogêneas',()=>{
   const initial=v3BarracksFromHouse('evenhand-model');
   const total=v3BarracksSummary(initial).totalSoldiers;
-  const split=v3BarracksSplit(initial,initial[0].id,40);
+  const split=v3BarracksSplit(initial,initial[0]!.id,40);
   expect(split).toHaveLength(initial.length+1);
   expect(v3BarracksSummary(split).totalSoldiers).toBe(total);
   expect(split.at(-1)?.placement).toBe('reserve');
-  const merged=v3BarracksMerge(split,split.at(-1)!.id,initial[0].id);
+  const merged=v3BarracksMerge(split,split.at(-1)!.id,initial[0]!.id);
   expect(merged).toHaveLength(initial.length);
   expect(v3BarracksSummary(merged).totalSoldiers).toBe(total);
-  expect(merged.find(s=>s.id===initial[0].id)?.count).toBe(initial[0].count);
-  expect(initial[0].count).toBe(100);
-  expect(()=>v3BarracksMerge(initial,initial[0].id,initial[1].id)).toThrow();
+  expect(merged.find(s=>s.id===initial[0]!.id)?.count).toBe(initial[0]!.count);
+  expect(initial[0]!.count).toBe(100);
+  expect(()=>v3BarracksMerge(initial,initial[0]!.id,initial[1]!.id)).toThrow();
  });
  it('aplica limites de campo, orçamento e suprimentos sem qualquer transação',()=>{
   const initial=v3BarracksFromHouse('evenhand-model');
@@ -34,20 +34,20 @@ describe('Crusada V3.1 — quartel 100% fictício',()=>{
   expect(v3BarracksSummary(field).fieldStacks).toBe(5);
   const another=v3BarracksRecruit(field,'scouts','green',20);
   expect(()=>v3BarracksSetPlacement(another,another.at(-1)!.id,'field')).toThrow(/cinco/i);
-  expect(()=>v3BarracksChangeCount(initial,initial[0].id,1000)).toThrow(/orçamento/i);
+  expect(()=>v3BarracksChangeCount(initial,initial[0]!.id,1000)).toThrow(/orçamento/i);
   expect(()=>v3BarracksRecruit(initial,'warships','trained',10)).toThrow();
   expect(()=>v3BarracksRecruit(initial,'infantry','trained',0)).toThrow();
  });
  it('leva para a arena apenas pilhas em campo e mantém fontes fictícias',()=>{
   const initial=v3BarracksFromHouse('evenhand-model');
-  const split=v3BarracksSplit(initial,initial[0].id,40);
+  const split=v3BarracksSplit(initial,initial[0]!.id,40);
   const rosters={
    attacker:v3BarracksDeploy(split),
    defender:v3BarracksDeploy(v3BarracksFromHouse('ashkar-model')),
   };
   const game=createV3Game({...options,rosters});
   expect(game.battle.stacks).toHaveLength(8);
-  expect(game.battle.stacks.find(s=>s.name===initial[0].name)?.initialCount).toBe(60);
+  expect(game.battle.stacks.find(s=>s.name===initial[0]!.name)?.initialCount).toBe(60);
   expect(game.battle.stacks.every(s=>s.source.kind==='fictional')).toBe(true);
   expect(rosters.attacker).toHaveLength(4);
   expect(v3BarracksSummary(split).totalSoldiers).toBeGreaterThan(
