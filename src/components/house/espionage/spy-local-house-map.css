@@ -12,8 +12,9 @@
 .spy-local-origin-key{background:rgba(255,249,226,.55);border-color:#b59154}
 .spy-local-target-key{background:rgba(218,183,103,.4);border-color:#896837}
 .spy-noble-map-stage{position:relative;display:block;width:100%;min-width:0;
- line-height:0;overflow:hidden;background:#e9c78e}
-.spy-noble-map-stage img{width:100%;height:auto;display:block;max-width:100%}
+ line-height:0;overflow:hidden;background:#e9c78e;margin:0 auto}
+.spy-noble-map-stage img{position:absolute;inset:0;width:100%;height:100%;
+ display:block;object-fit:contain;max-width:100%}
 .spy-noble-map-overlay{position:absolute;inset:0;width:100%;height:100%;
  overflow:visible;pointer-events:none}
 .spy-noble-local-link{pointer-events:none}

@@ -27,3 +27,13 @@ As âncoras de Casas identificadas constam em `src/lib/espionage/spy-noble-detai
 4. Testar origem, destino, ausência de coordenadas, uso do fallback e comportamento responsivo.
 
 Não alterar `cormyr-interactive-map.tsx` nem as RPCs de viagem para cadastrar mapas novos.
+
+
+## Mapas adicionados (06/11/2026) — arquivos originais otimizados para WebP
+- **Helmlands**: 1536 × 1024, `/maps/espionage/helmlands.webp`, 25 estandartes cartografados; Marliir e Obarskyr sem marcador identificável na imagem.
+- **Shieldmark / Marca do Escudo**: 1536 × 1024, `/maps/espionage/shieldmark.webp`, 30 casas com coordenadas de estandartes.
+- **Crownlands / Terras da Coroa**: 1536 × 1024, `/maps/espionage/crownlands.webp`, 24 casas com coordenadas de estandartes.
+- Os mesmos arquivos são mostrados em **Reino e Regiões** como mapa da região, e na **Espionagem** como mapa local com sobreposição SVG calculada nas coordenadas originais.
+- A imagem e as linhas usam a mesma caixa responsiva, com proporções fixas e tamanho máximo baseado na altura da janela; sem recorte e sem zoom forçado.
+- Origem e alvo são encontrados pelo nome/ID normalizado da Casa, sem inferir posições para estandartes ausentes. As linhas são apenas orientação visual; não modificam distâncias, recursos ou as RPCs do Hub Temporal.
+- Integridade dos três arquivos WebP verificada por hash Git (blob SHA-1) após upload: `9ce5b178a582539331b1e11a7622fb1b2d45b6ed`, `0dd5f599aead606e29d2df6bde3d9e59528d2a22` e `feb353cd39a5079098a770db73391a2c5b52ad52`.
