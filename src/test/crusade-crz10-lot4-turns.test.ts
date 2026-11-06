@@ -60,7 +60,8 @@ function ready(args:{
    stacks:defenders.map(id=>troop(id,'orc-sintetico|test',args.orcs??30))},
   ...(args.withLeader?{leaders:{attacker:{
    id:'tillet-sintetico',name:'Tillet de treino',level:3,castingMod:2,
-   spells:['bless','bane','shield_of_faith','cure_wounds'] as const,
+   spells:['bless','bane','shield_of_faith','cure_wounds'] as Array<
+    'bless'|'bane'|'shield_of_faith'|'cure_wounds'>,
   }}}:{}),
  });
 }
