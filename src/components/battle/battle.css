@@ -246,3 +246,113 @@
 .crusade-v35-actions>p{flex-basis:100%;margin:5px 0}
 .crusade-v35-actions button:focus-visible{outline:3px solid #f9d78a;outline-offset:2px}
 @media(max-width:700px){.crusade-v35-unit .battle-form-row{display:grid;grid-template-columns:1fr}}
+
+
+/* V3.6 · Mesa de guerra visual de Cormyr. Visão original e não derivada de assets comerciais. */
+.crusade-v36-initiative{padding:9px 12px!important;display:grid;
+ grid-template-columns:minmax(120px,165px) minmax(0,1fr);align-items:center;gap:12px;
+ background:linear-gradient(110deg,#242d30,#473e2c)!important}
+.crusade-v36-initiative-head{display:flex;flex-direction:column;gap:3px;color:#eccb8e}
+.crusade-v36-initiative-head strong{font:700 13px Georgia,serif;letter-spacing:.14em}
+.crusade-v36-initiative-head span{color:#f6e2bc;font-size:13px}
+.crusade-v36-initiative-head small{font-size:10px;color:#c6b69b}
+.crusade-v36-turn-list{display:flex;align-items:center;gap:8px;overflow-x:auto;
+ list-style:none;margin:0;padding:6px 6px 12px;scroll-snap-type:x proximity}
+.crusade-v36-turn{position:relative;min-width:61px;display:flex;flex-direction:column;
+ align-items:center;gap:3px;scroll-snap-align:start}
+.crusade-v36-turn button{width:54px;height:55px;position:relative;overflow:hidden;border-radius:9px;
+ background:radial-gradient(circle at 50% 20%,#587fa4,#1d3b5a);
+ border:2px solid #82b9e0;box-shadow:0 3px 7px #080a0b70;
+ color:#fff;cursor:pointer;padding:2px}
+.crusade-v36-turn.enemy button{background:radial-gradient(circle at 50% 20%,#a96655,#4c2528);border-color:#d98c7b}
+.crusade-v36-turn.current button{outline:3px solid #f7d895;outline-offset:2px;transform:scale(1.06)}
+.crusade-v36-turn.waiting button{border-style:dashed}
+.crusade-v36-turn button img{display:block;width:37px;height:35px;object-fit:contain;margin:0 auto}
+.crusade-v36-turn-fallback{display:block;font:bold 17px Georgia,serif;margin-top:4px}
+.crusade-v36-turn button b{position:absolute;bottom:0;left:0;width:100%;
+ background:#0d1522c9;color:#fff;padding:0 2px;font:700 12px system-ui;line-height:17px}
+.crusade-v36-turn small{font-size:9px;color:#e0ccb0;font-weight:700}
+.crusade-v36-round-divider{position:absolute;left:-14px;top:-1px;color:#f7d895;
+ background:#2f2b27;border:1px solid #be9959;border-radius:5px;
+ padding:1px 4px;font-size:8px;white-space:nowrap;z-index:2}
+.crusade-v36-turn:has(.crusade-v36-round-divider){margin-left:28px}
+.crusade-v36-turn button:focus-visible{outline:3px solid #f7d895;outline-offset:3px}
+.crusade-v36-layout{grid-template-columns:minmax(205px,.92fr) minmax(0,3fr) minmax(185px,.86fr);gap:10px}
+.crusade-v36-commander-identity{display:flex;gap:9px;align-items:center}
+.crusade-v36-commander-emblem{display:grid;place-items:center;flex:none;
+ width:67px;height:72px;border:2px solid #b18c55;border-radius:8px 8px 17px 17px;
+ color:#f8dfa1;font:40px Georgia,serif;
+ background:radial-gradient(circle,#695039,#253d56 75%);
+ text-shadow:0 3px 7px #070707;box-shadow:inset 0 0 0 4px #cbb37732}
+.crusade-v36-command-panel h2{font:700 16px Georgia,serif;margin:3px 0}
+.crusade-v36-command-panel p{margin:3px 0;font-size:11px;color:#d9c9aa}
+.crusade-v36-command-panel .battle-eyebrow{font-size:9px;color:#eac77d}
+.crusade-v36-command-resources{border-top:1px solid #735d41;margin-top:10px;padding-top:10px}
+.crusade-v36-command-resources label{display:flex!important;flex-direction:row!important;
+ justify-content:space-between;gap:6px;font-size:11px}
+.crusade-v36-command-resources label strong{color:#f8e0a5}
+.crusade-v36-command-meter{height:9px;background:#171d27;border-radius:5px;
+ margin:7px 0;overflow:hidden;border:1px solid #aa8c5d}
+.crusade-v36-command-meter span{height:100%;display:block;
+ background:linear-gradient(90deg,#497cbb,#98c6ee)}
+.crusade-v36-command-resources small,.crusade-v36-field-hospital small{font-size:10px;color:#c3b49a}
+.crusade-v36-field-hospital{display:flex;gap:8px;border:1px solid #7b6f5a;
+ padding:9px 7px;margin-top:10px;background:#26342b;border-radius:6px}
+.crusade-v36-field-hospital>span{font-size:20px;color:#cce3b3}
+.crusade-v36-field-hospital strong{font-size:12px;color:#e9d8a9}
+.crusade-v36-fast-abilities{padding-top:9px}
+.crusade-v36-fast-abilities h3{font-size:14px!important}
+.crusade-v36-fast-abilities button{white-space:normal;min-height:42px;width:100%;
+ border-color:#bda36c;color:#ffedc3}
+.crusade-v36-fast-abilities button:focus-visible{outline:3px solid #f1d795}
+.crusade-v36-fast-abilities p{margin-top:7px}
+.crusade-v36-map-controls{display:flex;align-items:center;justify-content:flex-end;
+ flex-wrap:wrap;gap:5px;margin:0 0 10px}
+.crusade-v36-map-controls span{font:700 11px Georgia,serif;letter-spacing:.14em;
+ color:#ebcf95;margin-right:auto}
+.crusade-v36-map-controls button{min-height:34px;font-size:11px}
+.crusade-v36-map-controls button:focus-visible{outline:3px solid #efd091}
+.crusade-v36-layout .crusade-map{padding:10px!important;
+ background:linear-gradient(150deg,#2c332d,#222b2b)!important}
+.crusade-v36-layout .battle-board-svg.battlefield-illustrated{background:#23342e;
+ box-shadow:inset 0 0 0 3px #6e6248}
+.crusade-v36-layout .battle-board-svg.battlefield-contrast{background:#141b21}
+.crusade-v36-orders-help{border:1px solid #685d4b;padding:10px;border-radius:7px;
+ background:#2c352f}
+.crusade-v36-orders-help p{color:#d6c4a9;font-size:11px}
+.crusade-v36-quick-log{margin-top:12px}
+.crusade-v36-quick-log ol{padding-left:17px;max-height:155px;overflow:auto}
+.crusade-v36-quick-log li{font-size:11px;color:#e0cfb4;border-bottom:1px solid #5c5746;padding:5px 0}
+.crusade-v36-action-rail{display:grid;grid-template-columns:minmax(140px,.75fr)
+ minmax(300px,2fr) minmax(180px,1fr);gap:12px;align-items:center;
+ padding:12px 14px!important;margin-top:2px!important;border-color:#a98c59!important;
+ background:linear-gradient(90deg,#202c32,#3d3429,#202e2c)!important}
+.crusade-v36-active-unit{display:flex;align-items:center;gap:9px;min-width:0}
+.crusade-v36-unit-insignia{display:grid;place-items:center;font-size:22px;
+ background:#4e4538;border:1px solid #b4a06d;border-radius:7px;
+ width:44px;height:44px;flex:none;color:#f0d09a}
+.crusade-v36-active-unit div{display:flex;min-width:0;flex-direction:column}
+.crusade-v36-active-unit small,.crusade-v36-unit-skills>small{font-size:9px;
+ color:#d6c5a1;letter-spacing:.07em}
+.crusade-v36-active-unit strong{font:700 13px Georgia,serif;color:#f9e2a8}
+.crusade-v36-active-unit div>span{font-size:10px;color:#e0d2b6}
+.crusade-v36-commands{display:flex;flex-wrap:wrap;justify-content:center;gap:5px}
+.crusade-v36-commands button{font-size:12px;min-height:40px;flex:1 1 74px;
+ white-space:normal}
+.crusade-v36-unit-skills{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.crusade-v36-unit-skills>small{width:100%}
+.crusade-v36-unit-skills button{min-height:40px;font-size:11px;white-space:normal}
+.crusade-v36-unit-skills>span{font-size:11px;color:#bfaf95}
+.crusade-v36-action-rail button:focus-visible{outline:3px solid #ffdd9d;outline-offset:2px}
+@media(max-width:1280px){.crusade-v36-layout{grid-template-columns:minmax(190px,.95fr) minmax(0,2.4fr)}
+ .crusade-v36-layout .crusade-right{grid-column:1/-1}
+ .crusade-v36-action-rail{grid-template-columns:minmax(165px,1fr) minmax(0,2.6fr)}
+ .crusade-v36-unit-skills{grid-column:1/-1}}
+@media(max-width:790px){.crusade-v36-initiative{grid-template-columns:1fr}
+ .crusade-v36-layout{grid-template-columns:1fr}
+ .crusade-v36-layout .crusade-right{grid-column:auto}
+ .crusade-v36-layout .crusade-left{display:block}
+ .crusade-v36-action-rail{grid-template-columns:1fr}
+ .crusade-v36-unit-skills{grid-column:auto}
+ .crusade-v36-turn button{width:52px;height:52px}}
+@media(prefers-reduced-motion:reduce){.crusade-v36-turn.current button{transform:none}}
