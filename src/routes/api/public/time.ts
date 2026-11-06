@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { createClient } from '@supabase/supabase-js';
+import {resolvePublicSupabase} from '@/integrations/supabase/public-config';
 import type { Database } from '@/integrations/supabase/types';
 import { publicCampaignTimeProjection } from '@/lib/calendar/public-time';
 
@@ -10,8 +11,8 @@ const NO_STORE={'Cache-Control':'no-store, max-age=0','X-Content-Type-Options':'
  */
 export const Route=createFileRoute('/api/public/time')({
  server:{handlers:{GET:async()=>{
-  const url=process.env['SUPABASE_URL'];
-  const key=process.env['SUPABASE_PUBLISHABLE_KEY'];
+  const {url,key}=resolvePublicSupabase(process.env['SUPABASE_URL'],
+    process.env['SUPABASE_PUBLISHABLE_KEY']);
   if(!url||!key)return Response.json({error:'Calendário público indisponível'},{status:503,headers:NO_STORE});
   const db=createClient<Database>(url,key,{
    auth:{persistSession:false,autoRefreshToken:false},
