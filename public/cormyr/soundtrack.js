@@ -39,7 +39,8 @@
   'Cante uma Canção a Elturel':'https://www.youtube.com/watch?v=xoOtYuebA9k',
   'Terra dos Cavalos':'https://www.youtube.com/watch?v=f4L0mCHpOv8',
   'Nova música de Cormyr':'https://www.youtube.com/watch?v=wioZhfoQMAs',
-  'Nova música de Cormyr — WrXc5zCbMHA':'https://www.youtube.com/watch?v=WrXc5zCbMHA'
+  'Nova música de Cormyr — WrXc5zCbMHA':'https://www.youtube.com/watch?v=WrXc5zCbMHA',
+  'Nova música de Cormyr — qw9FgNYr7hE':'https://www.youtube.com/watch?v=qw9FgNYr7hE'
  };
  function attachVideo(song){
   const parsed=yt.parse(directVideos[song.title]||'');
@@ -61,6 +62,9 @@
    category:'playlist',region:'Cormyr',url:''}),
   // Título provisório até confirmação de metadados oficiais do vídeo.
   attachVideo({id:'youtube-WrXc5zCbMHA',title:'Nova música de Cormyr — WrXc5zCbMHA',
+   category:'playlist',region:'Cormyr',url:''}),
+  // Título temporário, sem presumir uma identidade que o YouTube não confirmou.
+  attachVideo({id:'youtube-qw9FgNYr7hE',title:'Nova música de Cormyr — qw9FgNYr7hE',
    category:'playlist',region:'Cormyr',url:''})
  ];
 })();
