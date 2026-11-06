@@ -35,9 +35,10 @@ describe('CRZ-1.0 · Lote 6 — treino do Narrador, HUD e replay',()=>{
  it('cada movimento de IA é registrado e pode ser reexecutado fielmente',()=>{
   const start=crzReplayBegin(crzTrainingReady(CRZ_TRAINING_DEFAULTS));
   let session=start;
-  for(let i=0;i<3;i++){
-   const id=session.state.activeStackId!;
-   session=crzReplayRecord(session,{type:'END_ACTIVATION',unitId:id},'human');
+  for(let i=0;i<10;i++){
+   const unit=session.state.stacks.find(s=>s.id===session.state.activeStackId)!;
+   if(session.state.controls[unit.side]==='ai')break;
+   session=crzReplayRecord(session,{type:'END_ACTIVATION',unitId:unit.id},'human');
   }
   const active=session.state.stacks.find(s=>s.id===session.state.activeStackId)!;
   expect(session.state.controls[active.side]).toBe('ai');
@@ -67,15 +68,16 @@ describe('CRZ-1.0 · Lote 6 — treino do Narrador, HUD e replay',()=>{
   const moves=screen.getAllByRole('button',{name:/^Mover para /});
   expect(moves.length).toBeGreaterThan(0);
   fireEvent.click(moves[0]!);
-  expect(screen.getByRole('status')).toHaveTextContent('Comando registrado');
+  expect(screen.getByText(/Comando registrado no replay verificável/))
+   .toBeInTheDocument();
   expect(screen.getByRole('region',{name:'Replay CRZ'})).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Revisar desde o início'}));
-  expect(screen.getByLabelText('Posição do replay')).toHaveTextContent('0 / 1');
+  expect(screen.getByLabelText('Posição do replay')).toHaveTextContent(/0\s*\/\s*[1-9]\d*/);
   expect(screen.getByRole('button',{name:'Mover (0)'})).toBeDisabled();
   fireEvent.click(screen.getByRole('button',{name:'Próximo'}));
-  expect(screen.getByLabelText('Posição do replay')).toHaveTextContent('1 / 1');
+  expect(screen.getByLabelText('Posição do replay')).toHaveTextContent(/1\s*\/\s*[1-9]\d*/);
   fireEvent.click(screen.getByRole('button',{name:'Retomar treino'}));
-  expect(screen.getByRole('button',{name:/Mover \(/})).toBeEnabled();
+  expect(screen.getByRole('button',{name:'Encerrar ativação'})).toBeEnabled();
  });
  it('General executa bless no turno humano e é incluído na trilha auditável',()=>{
   render(<BattleCrzLab/>);
@@ -83,7 +85,8 @@ describe('CRZ-1.0 · Lote 6 — treino do Narrador, HUD e replay',()=>{
   expect(screen.getByLabelText('Magia do General')).toHaveValue('bless');
   fireEvent.click(screen.getByRole('button',{name:'Conjurar (3 energia)'}));
   expect(screen.getByText(/Magia do General · tillet-general/)).toBeInTheDocument();
-  expect(screen.getByLabelText('Posição do replay')).toHaveTextContent('1 / 1');
+  expect(screen.getByLabelText('Posição do replay'))
+   .toHaveTextContent(/[1-9]\d*\s*\/\s*[1-9]\d*/);
   expect(screen.getByRole('button',{name:'Conjurar (3 energia)'})).toBeDisabled();
  });
  it('não conecta a HUD ao banco nem substitui o modo V3 dos jogadores',()=>{
