@@ -69,37 +69,43 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
  assert.equal(data.soundtrack.filter(s=>s.lyrics&&!s.url).length,1);
  const sossal=data.soundtrack.filter(s=>s.title==='Vou-me Embora pra Sossal');
  assert.equal(sossal.length,1);
- assert.equal(sossal[0].category,'cancioneiro');
+ assert.equal(sossal[0].category,'populares');
  assert.equal(sossal[0].region,'Stonelands');
  assert.equal(sossal[0].videoId,'b34LSA3yDak');
  assert.equal(sossal[0].url,'https://www.youtube.com/watch?v=b34LSA3yDak');
  assert.notEqual(sossal[0].linkStatus,'youtube-pending');
  const balada=data.soundtrack.find(s=>s.title==='A Balada Libertina do Guardião de Helm');
- assert.equal(balada?.category,'cancioneiro');
+ assert.equal(balada?.category,'populares');
  assert.equal(balada?.videoId,'4RuKLjM1QcU');
  assert.equal(balada?.url,'https://www.youtube.com/watch?v=4RuKLjM1QcU');
  assert.ok(balada?.lyrics.includes('Na noite fria e escura'));
  const nova=data.soundtrack.find(s=>s.id==='youtube-wioZhfoQMAs');
  assert.equal(nova?.title,'Nova música de Cormyr');
- assert.equal(nova?.category,'playlist');
+ assert.equal(nova?.category,'populares');
  assert.equal(nova?.videoId,'wioZhfoQMAs');
  assert.equal(nova?.url,'https://www.youtube.com/watch?v=wioZhfoQMAs');
  assert.equal(data.soundtrack.filter(s=>s.videoId==='wioZhfoQMAs').length,1);
  const newTrack=data.soundtrack.find(s=>s.id==='youtube-WrXc5zCbMHA');
- assert.equal(newTrack?.category,'playlist');
+ assert.equal(newTrack?.category,'populares');
  assert.equal(newTrack?.title,'Nova música de Cormyr — WrXc5zCbMHA');
  assert.equal(newTrack?.videoId,'WrXc5zCbMHA');
  assert.equal(newTrack?.url,'https://www.youtube.com/watch?v=WrXc5zCbMHA');
  assert.equal(data.soundtrack.filter(s=>s.videoId==='WrXc5zCbMHA').length,1);
  const newest=data.soundtrack.find(s=>s.id==='youtube-qw9FgNYr7hE');
  assert.equal(newest?.title,'Nova música de Cormyr — qw9FgNYr7hE');
- assert.equal(newest?.category,'playlist');
+ assert.equal(newest?.category,'populares');
  assert.equal(newest?.region,'Cormyr');
  assert.equal(newest?.videoId,'qw9FgNYr7hE');
  assert.equal(newest?.url,'https://www.youtube.com/watch?v=qw9FgNYr7hE');
  assert.equal(data.soundtrack.filter(s=>s.videoId==='qw9FgNYr7hE').length,1);
- assert.equal(data.soundtrack.find(s=>s.title==='Cante uma Canção a Elturel').category,'cancioneiro');
- assert.equal(data.soundtrack.find(s=>s.title==='Essa Coroa').category,'cancioneiro');
+ assert.equal(data.soundtrack.find(s=>s.title==='Cante uma Canção a Elturel').category,'populares');
+ assert.equal(data.soundtrack.find(s=>s.title==='Essa Coroa').category,'populares');
+ const popular=data.soundtrack.filter(s=>s.category==='populares');
+ assert.equal(popular.length,10);
+ assert.equal(popular.filter(s=>s.videoId).length,8);
+ assert.equal(popular.filter(s=>s.linkStatus==='youtube-pending').length,1);
+ assert.ok(popular.every(s=>s.region));
+ assert.equal(new Set(popular.map(s=>s.id)).size,popular.length);
 });
 
 test('the entire public music interface has no Drive playback integration',()=>{
@@ -174,7 +180,7 @@ test('a YouTube playback error is shown and the direct video link remains availa
 });
 
 
-test('Cancioneiro is a selectable group and missing regional themes are reported without invented videos',()=>{
+test('Músicas Populares reúne canções de bardo em um único filtro, sem duplicações',()=>{
  const window=setup();window.addEventListener=()=>{};
  const nodes={};
  function control(id){
@@ -195,14 +201,21 @@ test('Cancioneiro is a selectable group and missing regional themes are reported
   localStorage:{getItem:()=>null},setTimeout:()=>{}});
  assert.match(nodes['music-count'].textContent,/27 vídeos vinculados/);
  assert.equal(nodes['music-all'].notice,undefined,'No region is missing a theme');
- assert.match(nodes['music-kinds'].innerHTML,/Cancioneiro/);
- assert.match(nodes['music-kinds'].innerHTML,/Novidades da playlist/);
+ assert.match(nodes['music-kinds'].innerHTML,/Músicas Populares/);
+ assert.doesNotMatch(nodes['music-kinds'].innerHTML,/Cancioneiro|Novidades da playlist/);
  assert.match(nodes['music-all'].innerHTML,/wioZhfoQMAs/);
  assert.match(nodes['music-all'].innerHTML,/WrXc5zCbMHA/);
  assert.match(nodes['music-all'].innerHTML,/qw9FgNYr7hE/);
- nodes['music-kinds'].click({target:{closest:()=>({dataset:{musicKind:'cancioneiro'}})}});
+ nodes['music-kinds'].click({target:{closest:()=>({dataset:{musicKind:'populares'}})}});
  assert.match(nodes['music-count'].textContent,/1 título sem vídeo vinculado/);
  assert.match(nodes['music-count'].textContent,/1 letra sem vídeo/);
+ assert.match(nodes['music-count'].textContent,/8 vídeos vinculados em 1 grupo/);
+ assert.match(nodes['music-all'].innerHTML,/wioZhfoQMAs/);
+ assert.match(nodes['music-all'].innerHTML,/WrXc5zCbMHA/);
+ assert.match(nodes['music-all'].innerHTML,/qw9FgNYr7hE/);
+ assert.match(nodes['music-all'].innerHTML,/b34LSA3yDak/);
+ assert.equal((nodes['music-all'].innerHTML.match(/<section class="music-links panel">/g)||[]).length,1);
+ assert.doesNotMatch(nodes['music-all'].innerHTML,/Novidades da playlist|Cancioneiro/);
  assert.match(nodes['music-all'].innerHTML,/A Balada Libertina do Guardião de Helm/);
  assert.match(nodes['music-all'].innerHTML,/www.youtube.com\/watch\?v=4RuKLjM1QcU/);
  assert.match(nodes['music-all'].innerHTML,/Ver letra · A Balada Libertina do Guardião de Helm/);
