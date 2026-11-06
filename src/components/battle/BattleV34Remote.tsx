@@ -13,6 +13,7 @@ import {listV34Sessions,joinV34Session,readV34Session,playV34Step,
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import type {V34Action} from '@/lib/battle/v3/synced';
 import {BattleBoard} from './BattleBoard';
+import {BattleV36Initiative,BattleV36CommanderPanel} from './BattleV36Hud';
 
 export function BattleV34PlayerButton({houseId,onOpen}:{
  houseId:string;onOpen:()=>void;
@@ -148,6 +149,7 @@ function BattleV34Room({sessionId,onBack}:{sessionId:string;onBack:()=>void}){
       ' Vez de '+(active?.side==='attacker'?'Atacante':'Defensor')}</p>
    <p><strong>Sem efeitos sobre as casas oficiais.</strong></p>
   </header>
+  <BattleV36Initiative game={game} onInspect={id=>setSelected(id)}/>
   <section className="battle-surface">
    <p>Seu papel: <strong>{side==='attacker'?'Atacante':
     side==='defender'?'Defensor':'Observador'}</strong> ·
@@ -158,6 +160,10 @@ function BattleV34Room({sessionId,onBack}:{sessionId:string;onBack:()=>void}){
     <Button variant="outline" size="sm" onClick={()=>void refetch()}>Sincronizar</Button></div>
    <div className="crusade-combat-grid">
     <aside className="crusade-left">
+     <BattleV36CommanderPanel game={game} side={active?.side??'attacker'}
+      active={active??null}
+      canPower={canAct&&v3CanUseCommander(game)}
+      onPower={()=>setMode('power')}/>
      <h3>Exércitos</h3>
      {battle.stacks.map(stack=><button key={stack.id} type="button"
       className={'crusade-troop'+(inspected?.id===stack.id?' selected':'')}
@@ -170,7 +176,7 @@ function BattleV34Room({sessionId,onBack}:{sessionId:string;onBack:()=>void}){
      </button>)}
     </aside>
     <div className="crusade-map">
-     <BattleBoard map={battle.map} stacks={battle.stacks} activeId={battle.activeUnitId}
+     <BattleBoard appearance="illustrated" map={battle.map} stacks={battle.stacks} activeId={battle.activeUnitId}
       selectedId={inspected?.id??null}
       moveKeys={canAct&&mode==='move'?moves.map(m=>hexKey(m.to)):[]}
       attackKeys={canAct&&mode==='attack'?attacks.map(m=>m.targetId):

@@ -62,6 +62,6 @@ describe('Crusada V3.1 — quartel 100% fictício',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Batalhar'}));
   expect(screen.getByLabelText('Ordem de batalha')).toBeInTheDocument();
   expect(within(screen.getByLabelText('Ordem de batalha'))
-   .getAllByRole('button')).toHaveLength(9);
+   .getAllByRole('button',{name:/soldados/})).toHaveLength(9);
  });
 });
