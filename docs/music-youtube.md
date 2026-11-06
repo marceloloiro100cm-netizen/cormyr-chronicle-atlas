@@ -35,3 +35,14 @@ Referências oficiais: https://developers.google.com/youtube/iframe_api_referenc
 - Antes de dar a importação como completa, obter via YouTube Data API (ou exportação confiável) os IDs e títulos atuais, comparar com os 15 IDs do cadastro, acrescentar os que faltam e confirmar as associações regionais e de Cancioneiro.
 
 - A aba oferece **Ouvir a playlist aqui**: incorpora a playlist oficial somente após clique, exibindo também vídeos que ainda não foram individualmente catalogados. Essa vista não substitui a auditoria e classificação por vídeo. A abertura de uma faixa no Bardo fecha o iframe da playlist para evitar reprodução simultânea.
+
+
+## Atualização de vídeos fornecidos pelo Narrador (06/11/2026)
+- Swordmark: `https://www.youtube.com/watch?v=HHZjbwRCoes` (substitui o vínculo antigo).
+- Shieldmark: `https://www.youtube.com/watch?v=5VPgawygkEc` (substitui o vínculo antigo).
+- Ferlin: `https://www.youtube.com/watch?v=_uJndPcaHj0`.
+- Volkumburgh: `https://www.youtube.com/watch?v=bR66gczzEdk`; o mesmo ID também foi atribuído à Casa Von der Harten conforme o link fornecido.
+- Cancioneiro: Cante uma Canção a Elturel (`xoOtYuebA9k`), Terra dos Cavalos (`f4L0mCHpOv8`) e Essa Coroa (`HM4a9vYrdDU`).
+- Os vídeos do Cancioneiro são músicas independentes, não substituem temas regionais. Elturel conserva a letra; Terra dos Cavalos recebe a referência de Horselands.
+- Os links foram fornecidos diretamente pelo Narrador, normalizados e validados estruturalmente. A consulta do Windsor.ai ainda não retornou esses IDs; a disponibilidade atual e permissões de incorporação no YouTube não foram confirmadas pela fonte externa.
+- O catálogo possui 18 vínculos em reino/regiões/casas + 3 no Cancioneiro, **20 vídeos distintos**, com o ID de Volkumburgh usado em dois contextos. Permanecem cinco músicas sem vínculo e duas letras sem vídeo.
