@@ -47,6 +47,181 @@ export type Database = {
         }
         Relationships: []
       }
+      battle_sim_events: {
+        Row: {
+          actor_id: string
+          command_id: string
+          command_json: Json
+          created_at: string
+          event_json: Json
+          prev_hash: string
+          seq: number
+          session_id: string
+          state_hash: string
+        }
+        Insert: {
+          actor_id: string
+          command_id: string
+          command_json: Json
+          created_at?: string
+          event_json: Json
+          prev_hash: string
+          seq: number
+          session_id: string
+          state_hash: string
+        }
+        Update: {
+          actor_id?: string
+          command_id?: string
+          command_json?: Json
+          created_at?: string
+          event_json?: Json
+          prev_hash?: string
+          seq?: number
+          session_id?: string
+          state_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_sim_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "battle_sim_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_sim_scenarios: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          map_json: Json
+          name: string
+          rules_version: string
+          schema_version: number
+          units_json: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          map_json: Json
+          name: string
+          rules_version?: string
+          schema_version?: number
+          units_json?: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          map_json?: Json
+          name?: string
+          rules_version?: string
+          schema_version?: number
+          units_json?: Json
+        }
+        Relationships: []
+      }
+      battle_sim_sessions: {
+        Row: {
+          created_at: string
+          created_by: string
+          current_state_json: Json
+          id: string
+          initial_state_hash: string
+          initial_state_json: Json
+          name: string
+          rules_version: string
+          schema_version: number
+          state_hash: string
+          state_version: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          current_state_json: Json
+          id?: string
+          initial_state_hash: string
+          initial_state_json: Json
+          name: string
+          rules_version?: string
+          schema_version?: number
+          state_hash: string
+          state_version?: number
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          current_state_json?: Json
+          id?: string
+          initial_state_hash?: string
+          initial_state_json?: Json
+          name?: string
+          rules_version?: string
+          schema_version?: number
+          state_hash?: string
+          state_version?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      battle_v3_invitations: {
+        Row: {
+          attacker_commander: string
+          attacker_model_id: string
+          created_at: string
+          created_by: string
+          defender_commander: string
+          defender_model_id: string
+          id: string
+          scenario: string
+          status: string
+          target_house_id: string
+          title: string
+        }
+        Insert: {
+          attacker_commander: string
+          attacker_model_id: string
+          created_at?: string
+          created_by: string
+          defender_commander: string
+          defender_model_id: string
+          id?: string
+          scenario: string
+          status?: string
+          target_house_id: string
+          title: string
+        }
+        Update: {
+          attacker_commander?: string
+          attacker_model_id?: string
+          created_at?: string
+          created_by?: string
+          defender_commander?: string
+          defender_model_id?: string
+          id?: string
+          scenario?: string
+          status?: string
+          target_house_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_v3_invitations_target_house_id_fkey"
+            columns: ["target_house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_admin_audit: {
         Row: {
           action: string
@@ -562,6 +737,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      campaign_private_gm_content: {
+        Row: {
+          id: string
+          payload: Json
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          payload: Json
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          payload?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      campaign_private_vassal_workbooks: {
+        Row: {
+          parent_house_id: string
+          payload: Json
+          updated_at: string
+          vassal_house_id: string
+        }
+        Insert: {
+          parent_house_id: string
+          payload: Json
+          updated_at?: string
+          vassal_house_id: string
+        }
+        Update: {
+          parent_house_id?: string
+          payload?: Json
+          updated_at?: string
+          vassal_house_id?: string
+        }
+        Relationships: []
       }
       campaign_records: {
         Row: {
@@ -3663,6 +3877,32 @@ export type Database = {
           p_house: string
           p_key: string
           p_letter: string
+        }
+        Returns: Json
+      }
+      battle_sim_commit_replay: {
+        Args: {
+          p_actor: string
+          p_current: Json
+          p_current_hash: string
+          p_initial: Json
+          p_initial_hash: string
+          p_name: string
+          p_receipts: Json
+        }
+        Returns: string
+      }
+      battle_sim_commit_step: {
+        Args: {
+          p_actor: string
+          p_command: Json
+          p_command_id: string
+          p_current: Json
+          p_expected: number
+          p_prev_hash: string
+          p_receipt: Json
+          p_session: string
+          p_state_hash: string
         }
         Returns: Json
       }
