@@ -364,3 +364,38 @@
  border-color:#927f5a;min-height:42px;font-size:11px;line-height:1.35}
 .crusade-v37-abilities button[disabled]{opacity:.45}
 .crusade-v37-abilities button:focus-visible{outline:3px solid #f7d389;outline-offset:2px}
+
+/* Cruzada V3.8 — galeria de campos temáticos de Cormyr. */
+.crusade-v38-selector{margin:15px 0;padding:13px;border:1px solid #92764e;
+ border-radius:10px;background:linear-gradient(135deg,#2b3430,#342d29)}
+.crusade-v38-heading h3{font:700 18px Georgia,serif;color:#f3d49e;margin:4px 0}
+.crusade-v38-heading p{font-size:12px;color:#d9cbae;margin:5px 0 13px}
+.crusade-v38-theatre-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.crusade-v38-theatre{display:flex;flex-direction:column;text-align:left;min-width:0;
+ min-height:144px;border:2px solid #70634d;border-radius:9px;padding:11px;
+ background:linear-gradient(145deg,#39433d,#514636);color:#f4e3c3;
+ box-shadow:inset 0 0 0 1px #d6c29a1f;cursor:pointer;
+ transition:transform 120ms ease,border-color 120ms ease}
+.crusade-v38-theatre.selected{outline:2px solid #f6d791;outline-offset:2px}
+.crusade-v38-theatre:hover{transform:translateY(-1px)}
+.crusade-v38-theatre:focus-visible{outline:3px solid #f7dd9e;outline-offset:3px}
+.crusade-v38-theatre-icon{font-size:23px;line-height:1.1;color:#ffe1a8;margin-bottom:6px;
+ text-shadow:0 2px 5px #161a1c}
+.crusade-v38-theatre strong{font:700 14px Georgia,serif}
+.crusade-v38-theatre small{font-size:11px;color:#e9d4b0;margin:3px 0}
+.crusade-v38-theatre-caption{font-size:11px;line-height:1.4;margin-top:5px;color:#f3ece0}
+.crusade-v38-scenario-summary{margin:12px 0 0!important;font-size:12px;
+ border-top:1px solid #766649;padding-top:9px;color:#e5d2aa}
+.crusade-v38-scenario-summary strong{color:#f3dda5}
+.crusade-v38-scenario-summary span{display:block;margin-top:4px;font-size:11px}
+.crusade-v38-map-ribbon{display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:5px;border:1px solid #816e52;border-radius:6px;
+ padding:7px 9px;margin-top:8px;font-size:11px;color:#e9d1a2;background:#27332d}
+.crusade-v38-map-ribbon strong{font-family:Georgia,serif;font-size:13px}
+.crusade-v38-map-ribbon span{color:#d0c0a4}
+.crusade-v38-decoration{filter:drop-shadow(0 2px 2px #161d1866)}
+@media(max-width:980px){.crusade-v38-theatre-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.crusade-v38-theatre-grid{grid-template-columns:1fr}
+ .crusade-v38-theatre{min-height:115px}
+ .crusade-v38-theatre:hover{transform:none}}
+@media(prefers-reduced-motion:reduce){.crusade-v38-theatre{transition:none}}
