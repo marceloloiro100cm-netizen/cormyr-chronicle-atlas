@@ -87,14 +87,18 @@ describe('YouTube catalogue and pending recordings',()=>{
   new Function('window',publicFile('soundtrack.js'))(context);
   return archive;
  };
- it('normalizes all 15 region, house and royal video URLs to a direct YouTube link',()=>{
+ it('normalizes all 19 region, house and royal video URLs to a direct YouTube link',()=>{
   const archive=data();
   const tracks=[...archive.kingdomMusic];
   for(const region of archive.regions){
    tracks.push(...(region.music||[]));
    for(const house of region.houses)tracks.push(...(house.music||[]));
   }
-  expect(tracks).toHaveLength(15);
+  expect(tracks).toHaveLength(19);
+  expect(archive.regions).toHaveLength(11);
+  expect(archive.regions.every((r:{music:unknown[]})=>r.music.length===1)).toBe(true);
+  const byName=Object.fromEntries(archive.regions.map((r:{name:string;music:{videoId:string}[]})=>[r.name,r]));
+  expect((byName.Crownlands as {music:{videoId:string}[]}).music[0]?.videoId).toBe('7B-Mb9vnmZk');
   for(const track of tracks){
    expect(track.url).toMatch(/^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/);
    expect(track.videoId).toMatch(/^[A-Za-z0-9_-]{11}$/);
@@ -105,18 +109,21 @@ describe('YouTube catalogue and pending recordings',()=>{
   const fewmerry=archive.regions.flatMap((r:{houses:{name:string;music:{url:string}[]}[]})=>r.houses).find((h:{name:string})=>h.name==='Fewmerry');
   expect(fewmerry?.music[0].url).toBe('https://www.youtube.com/watch?v=kfq0BeCse98');
  });
- it('preserves six unmapped titles without pretending they have playable sources',()=>{
+ it('preserves five unmapped titles without inventing playable sources',()=>{
   const archive=data();
   const pending=archive.soundtrack.filter((t:{linkStatus?:string})=>t.linkStatus==='youtube-pending');
   expect(pending.map((t:{title:string})=>t.title)).toEqual([
    'O Nó de Sangue — A Balada da Escota Vermelha',
    'A Força Vem do Povo',
    'A Milonga das Vozes que Ficam',
-   'Essa Coroa',
    'Vou-me Embora pra Sossal',
    'Música dos Dragões Azuis'
   ]);
   expect(pending.every((t:{url:string})=>!t.url)).toBe(true);
+  expect(archive.soundtrack.find((t:{title:string})=>t.title==='Essa Coroa'))
+   .toMatchObject({category:'cancioneiro',videoId:'HM4a9vYrdDU'});
+  expect(archive.regions.find((r:{name:string})=>r.name==='Crownlands').music[0].videoId)
+   .toBe('7B-Mb9vnmZk');
   expect(publicFile('extras.js')).toContain('youtube-pending');
  });
 });
