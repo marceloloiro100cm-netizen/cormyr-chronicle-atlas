@@ -30,11 +30,8 @@ describe('V4 · unidade destruída ou em debandada não permanece no campo',()=>
    .toBeInTheDocument();
   expect(within(map).queryByRole('button',{name:new RegExp(dead!.name)}))
    .not.toBeInTheDocument();
-  // Duas pilhas de Guarda da Coroa têm o mesmo nome: conferir o HEX do ID retirado.
-  const routedTile=map.querySelector('[data-crz-hex="'+crzHexKey(routed!.position)+'"]');
-  expect(routedTile).toBeInTheDocument();
-  expect(routedTile).not.toHaveTextContent(routed!.id.slice(0,8));
-  expect(routedTile?.querySelector('circle[r="16"]')).toBeNull();
+  expect(within(map).queryByRole('button',{name:new RegExp(routed!.name)}))
+   .not.toBeInTheDocument();
   expect(map.querySelectorAll('[data-battle-hover-ring]')).toHaveLength(0);
   expect(map.querySelectorAll('[data-battle-attack-ring]')).toHaveLength(0);
   expect(map.querySelectorAll('[data-battle-selected-ring]')).toHaveLength(0);
@@ -101,8 +98,11 @@ describe('V4 · unidade destruída ou em debandada não permanece no campo',()=>
    .toBeInTheDocument();
   expect(within(map).queryByRole('button',{name:new RegExp(dead!.name)}))
    .not.toBeInTheDocument();
-  expect(within(map).queryByRole('button',{name:new RegExp(routed!.name)}))
-   .not.toBeInTheDocument();
+  // CRZ pode ter duas pilhas com o mesmo nome; ID e hexágono distinguem a retirada.
+  const routedTile=map.querySelector('[data-crz-hex="'+crzHexKey(routed!.position)+'"]');
+  expect(routedTile).toBeInTheDocument();
+  expect(routedTile).not.toHaveTextContent(routed!.id.slice(0,8));
+  expect(routedTile?.querySelector('circle[r="16"]')).toBeNull();
   expect(map.querySelectorAll('[data-crz-hover-ring]')).toHaveLength(0);
   expect(map.querySelectorAll('[data-crz-selected-ring]')).toHaveLength(0);
   expect(map.querySelectorAll('[data-crz-attack-ring]')).toHaveLength(0);
