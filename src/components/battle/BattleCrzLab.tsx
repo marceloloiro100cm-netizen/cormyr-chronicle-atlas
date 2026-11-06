@@ -82,7 +82,7 @@ function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,onTile}:{
  const objectivesByHex=new Map(objectives.map(o=>[crzHexKey(o.position),o]));
  const movable=new Set(moves.map(crzHexKey));
  const targets=new Set(attacks);
- const occupied=new Map(state.stacks.filter(s=>s.alive>0)
+ const occupied=new Map(state.stacks.filter(crzCapable)
   .map(s=>[crzHexKey(s.position),s]));
  const width=XSTEP*(state.map.width+1)+58;
  const height=SIZE*(1.5*(state.map.height-1)+3.4);
@@ -200,7 +200,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const report=useMemo(()=>session?crzAfterActionReport(session.replay):null,[session]);
  const objectives=useMemo(()=>frame?crzObservedObjectives(frame):[],[frame]);
  const active=frame?.stacks.find(s=>s.id===frame.activeStackId);
- const inspected=frame?.stacks.find(s=>s.id===selectedId)??active;
+ const inspected=frame?.stacks.find(s=>s.id===selectedId&&crzCapable(s))??
+  (active&&crzCapable(active)?active:undefined);
  const canAct=Boolean(session&&replayStep===null&&
   frame?.phase==='active'&&active&&frame.controls[active.side]==='human');
  const aiTurn=Boolean(session&&replayStep===null&&
@@ -252,7 +253,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const clickHex=(hex:CrzHex)=>{
   if(!frame)return;
   const key=crzHexKey(hex);
-  const unit=frame.stacks.find(s=>s.alive>0&&crzHexKey(s.position)===key);
+  const unit=frame.stacks.find(s=>crzCapable(s)&&crzHexKey(s.position)===key);
   if(canAct&&active&&selectedId===active.id){
    const attack=unit&&attacks.find(c=>c.targetId===unit.id);
    if(attack){apply(attack);return;}
