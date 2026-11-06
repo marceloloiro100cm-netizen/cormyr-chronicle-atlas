@@ -37,3 +37,16 @@ Não alterar `cormyr-interactive-map.tsx` nem as RPCs de viagem para cadastrar m
 - A imagem e as linhas usam a mesma caixa responsiva, com proporções fixas e tamanho máximo baseado na altura da janela; sem recorte e sem zoom forçado.
 - Origem e alvo são encontrados pelo nome/ID normalizado da Casa, sem inferir posições para estandartes ausentes. As linhas são apenas orientação visual; não modificam distâncias, recursos ou as RPCs do Hub Temporal.
 - Integridade dos três arquivos WebP verificada por hash Git (blob SHA-1) após upload: `9ce5b178a582539331b1e11a7622fb1b2d45b6ed`, `0dd5f599aead606e29d2df6bde3d9e59528d2a22` e `feb353cd39a5079098a770db73391a2c5b52ad52`.
+
+## Ferlin e Stonelands (06/11/2026) — preparação dos novos mapas
+
+| Região | Ativo no repositório | Tamanho original | Casas cartografadas |
+|---|---|---|---|
+| Ferlin | `public/maps/espionage/ferlin.webp` | 1183 × 1329 | 10 |
+| Stonelands | `public/maps/espionage/stonelands.webp` | 1536 × 1024 | 8 |
+
+Os mapas devem ser publicados **junto aos arquivos WebP originais otimizados**, não só com as referências de código. As duas imagens compartilhadas pelo Narrador foram convertidas para WebP mantendo a resolução; o pacote binário acompanha a entrega da tarefa.
+
+Em **Reino e Regiões**, `public/cormyr/data.js` referencia o mesmo ativo da Espionagem, evitando versões conflitantes. O CSS preserva todo o enquadramento para o formato vertical de Ferlin e o horizontal de Stonelands, sem corte. Em Espionagem, as posições dos estandartes são coordenadas de pixels da imagem original e servem apenas de orientação visual. O processo de deslocamento, probabilidades e a regra de mostrar mapa geral quando a região é diferente permanecem inalterados.
+
+A suíte de testes exige os dois WebP antes da integração, para impedir que uma publicação parcial quebre as imagens do atlas. Após anexar os dois arquivos em `public/maps/espionage/`, validar os testes de `src/test/espionage-noble-detail-maps.test.tsx` e o carregamento HTTP 200 dos dois ativos no domínio publicado.
