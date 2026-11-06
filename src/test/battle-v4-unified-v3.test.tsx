@@ -64,7 +64,8 @@ describe('Batalha V3 · padrão de interface V4 unificada',()=>{
  it('inspecionar inimigo na ordem não concede controle das ações',()=>{
   started();
   const order=within(screen.getByRole('region',{name:'Ordem de combate V3'}));
-  const enemy=order.getAllByRole('button').find(b=>b.className.includes('crusade-v4-defender'));
+  const enemy=order.getAllByRole('button').find(b=>
+   b.getAttribute('aria-current')!=='step');
   expect(enemy).toBeDefined();
   fireEvent.click(enemy!);
   expect(enemy).toHaveAttribute('aria-pressed','true');
@@ -77,7 +78,9 @@ describe('Batalha V3 · padrão de interface V4 unificada',()=>{
   const general=within(screen.getByRole('region',{name:'General e habilidades V3'}));
   expect(general.getByRole('button',{name:'Esperar'})).toBeEnabled();
   expect(general.getByRole('button',{name:'Defender'})).toBeEnabled();
-  const power=general.getByRole('button',{name:'Reagrupar'});
+  const power=general.getAllByRole('button').find(button=>
+   button.className.includes('crusade-v4-primary'))!;
+  expect(power).toBeDefined();
   fireEvent.click(power);
   expect(power).toHaveAttribute('aria-pressed','true');
   expect(general.getByRole('button',{name:'Cancelar alvo'})).toBeInTheDocument();
