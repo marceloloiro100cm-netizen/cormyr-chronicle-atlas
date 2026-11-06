@@ -12,3 +12,4 @@ export * from './battle';
 export * from './geometry';
 export * from './combat';
 export * from './turns';
+export * from './selectors';
