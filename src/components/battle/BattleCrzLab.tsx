@@ -15,6 +15,8 @@ import {CRZ_TRAINING_DEFAULTS,CRZ_TRAINING_SCENARIOS,
  crzTrainingReady,type CrzTrainingOptions}
  from '@/lib/crusade/training-demo';
 import type {CrzSpellId} from '@/lib/crusade/setup';
+import {crzObservedObjectives,crzAfterActionReport,crzAfterActionSerialize,
+ type CrzObservedObjective} from '@/lib/crusade/insights';
 import './crz-lab.css';
 
 type Mode='inspect'|'move'|'attack';
@@ -62,14 +64,16 @@ function eventLabel(event:CrzEvent):string{
   (extra?' · '+extra:'')+damage;
 }
 
-function CrzBoard({state,selectedId,mode,moves,attacks,onTile}:{
+function CrzBoard({state,selectedId,mode,moves,attacks,objectives,onTile}:{
  state:CrzBattleState;selectedId:string|null;mode:Mode;
  moves:readonly CrzHex[];attacks:readonly string[];
+ objectives:readonly CrzObservedObjective[];
  onTile:(hex:CrzHex)=>void;
 }){
  const [zoom,setZoom]=useState<100|150|200>(100);
  const [focusedKey,setFocusedKey]=useState<string|null>(null);
  const defaultFocus=crzHexKey(state.stacks.find(s=>s.id===state.activeStackId)?.position??state.map.tiles[0]!);
+ const objectivesByHex=new Map(objectives.map(o=>[crzHexKey(o.position),o]));
  const movable=new Set(moves.map(crzHexKey));
  const targets=new Set(attacks);
  const occupied=new Map(state.stacks.filter(s=>s.alive>0)
@@ -94,14 +98,15 @@ function CrzBoard({state,selectedId,mode,moves,attacks,onTile}:{
   <svg className="crz-map" viewBox={`0 0 ${width} ${height}`}
    style={{width:zoom+'%'}} role="group" aria-label={`Mapa CRZ ${state.map.width} por ${state.map.height}`}>
    {state.map.tiles.map(tile=>{
-    const key=crzHexKey(tile),{x,y}=pixel(tile),unit=occupied.get(key);
+    const key=crzHexKey(tile),{x,y}=pixel(tile),unit=occupied.get(key),objective=objectivesByHex.get(key);
     const isMove=mode==='move'&&movable.has(key);
     const isAttack=mode==='attack'&&Boolean(unit&&targets.has(unit.id));
     const active=unit?.id===state.activeStackId,selected=unit?.id===selectedId;
     const label=(isMove?'Mover para ':isAttack?'Atacar ':'Inspecionar ')+
      (unit?unit.name+' · ':'')+TERRAIN[tile.terrain]!.name+
      ' ('+crzAxialToOffset(tile).column+','+
-       crzAxialToOffset(tile).row+')';
+       crzAxialToOffset(tile).row+')'+
+       (objective?' · Marco: '+objective.title:'');
     const press=()=>onTile({q:tile.q,r:tile.r});
     const keyPress=(event:KeyboardEvent<SVGGElement>)=>{
      if(event.key==='Enter'||event.key===' '){event.preventDefault();press();return;}
@@ -136,6 +141,14 @@ function CrzBoard({state,selectedId,mode,moves,attacks,onTile}:{
       </>}
       {isMove&&!unit&&<circle cx={x} cy={y} r={5}
        fill="#f6e1a0" pointerEvents="none"/>}
+      {objective&&<g pointerEvents="none" aria-hidden="true">
+       <circle data-crz-objective={objective.id} cx={x+17} cy={y-17} r={8}
+        fill={objective.holder?SIDE[objective.holder].fill:'#332e24'}
+        stroke="#ffe1a2" strokeWidth={1.5}/>
+       <text x={x+17} y={y-14.5} textAnchor="middle" fontSize={8}
+        fontWeight={700} fill="#fff">{objective.id==='crossroads'?'1':
+          objective.id==='watchpoint'?'2':'3'}</text>
+      </g>}
      </g>;
    })}
   </svg>
@@ -166,6 +179,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const frame=useMemo(()=>!session?null:replayStep===null?session.state:
   crzTrainingReplayAt(session.replay,replayStep),
  [session,replayStep]);
+ const report=useMemo(()=>session?crzAfterActionReport(session.replay):null,[session]);
+ const objectives=useMemo(()=>frame?crzObservedObjectives(frame):[],[frame]);
  const active=frame?.stacks.find(s=>s.id===frame.activeStackId);
  const inspected=frame?.stacks.find(s=>s.id===selectedId)??active;
  const canAct=Boolean(session&&replayStep===null&&
@@ -248,6 +263,20 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    URL.revokeObjectURL(url);
    setError('');setMessage('Replay JSON verificado e exportado localmente.');
   }catch(cause){setError(cause instanceof Error?cause.message:'Falha na exportação.');}
+ };
+ const exportReport=()=>{
+  if(!session)return;
+  try{
+   const contents=crzAfterActionSerialize(session.replay);
+   const blob=new Blob([contents],{type:'application/json'});
+   const url=URL.createObjectURL(blob),anchor=document.createElement('a');
+   anchor.href=url;anchor.download=session.state.id+'-crz-after-action.json';
+   document.body.appendChild(anchor);anchor.click();anchor.remove();
+   URL.revokeObjectURL(url);
+   setError('');setMessage('Relatório derivado do replay validado e exportado.');
+  }catch(cause){
+   setError(cause instanceof Error?cause.message:'Não foi possível exportar relatório.');
+  }
  };
  const importReplay=async(event:ChangeEvent<HTMLInputElement>)=>{
   const file=event.currentTarget.files?.[0];
@@ -352,7 +381,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
      <p className="battle-note">Azul: Coroa · vermelho: Ashkar · pontos dourados:
       deslocamentos legais · contorno vermelho: alvos possíveis. O mapa é navegável por teclado.</p>
      <CrzBoard state={frame} selectedId={selectedId} mode={mode}
-      moves={moves.map(c=>c.to)} attacks={attacks.map(c=>c.targetId)} onTile={clickHex}/>
+      moves={moves.map(c=>c.to)} attacks={attacks.map(c=>c.targetId)}
+      objectives={objectives} onTile={clickHex}/>
     </div>
     <div className="crz-aside">
      <section className="battle-surface">
@@ -432,6 +462,42 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
      </section>
     </div>
    </section>
+   <div className="crz-insights">
+    <section className="battle-surface" aria-label="Marcos de observação CRZ">
+     <h2>Marcos de observação</h2>
+     <p className="battle-note">Os três marcos exibem apenas ocupação. Não alteram
+      condições de vitória, iniciativa, moral ou fichas da campanha.</p>
+     <ol className="crz-objectives">
+      {objectives.map(o=><li key={o.id}>
+       <strong>{o.title}</strong>
+       <span>{o.holder?SIDE[o.holder].name:'Livre'} ·
+        hex {crzAxialToOffset(o.position).column},{crzAxialToOffset(o.position).row}</span>
+      </li>)}
+     </ol>
+    </section>
+    {report&&<section className="battle-surface" aria-label="Relatório pós-batalha CRZ">
+     <h2>Relatório de combate</h2>
+     <p className="battle-note">Estatísticas derivadas de replay íntegro.
+      Acompanhamento local, sem registro de baixas oficiais.</p>
+     <table className="crz-report-table">
+      <thead><tr><th scope="col">Força</th><th scope="col">Vivos</th>
+       <th scope="col">Baixas</th><th scope="col">Dano aplicado</th>
+       <th scope="col">Magias</th></tr></thead>
+      <tbody>{(['attacker','defender'] as const).map(side=>{
+       const row=report.sides[side];return <tr key={side}>
+        <th scope="row">{SIDE[side].name}</th>
+        <td>{row.survivors}/{row.initialCreatures}</td>
+        <td>{row.casualties}</td><td>{row.inflictedDamage}</td>
+        <td>{row.spellsCast}</td>
+       </tr>;
+      })}</tbody>
+     </table>
+     <p className="battle-note">Rodada {report.round} ·
+      {report.replayCommands} comandos · hash {report.replayHeadHash.slice(0,12)}…
+     </p>
+     <Button variant="outline" onClick={exportReport}>Exportar relatório JSON</Button>
+    </section>}
+   </div>
    <section className="battle-surface" aria-label="Replay CRZ">
     <h2>Replay verificável</h2>
     <p className="battle-note">Cadeia SHA-256 verificada ao importar e exportar.
