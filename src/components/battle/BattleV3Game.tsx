@@ -8,6 +8,7 @@ import {battleReport} from '@/lib/battle/domain/report';
 import {SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixtures';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
+import {BattleExpandedView} from './BattleExpandedView';
 import {V3_COMMANDERS,commander,type CommanderId} from '@/lib/battle/v3/commanders';
 import {MODEL_HOUSES,modelHouse} from '@/lib/battle/v3/model-houses';
 import {createV3Game,v3PlayCommand,v3LegalSkills,v3SkillName,v3UseUnitSkill,
@@ -31,6 +32,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
 }){
  const [options,setOptions]=useState<V3ScenarioOptions>(initialOptions??defaults);
  const [game,setGame]=useState<V3Game|null>(null);
+ const [expanded,setExpanded]=useState(false);
  const [selected,setSelected]=useState<string|null>(null);
  const [hoveredId,setHoveredId]=useState<string|null>(null);
  const [mode,setMode]=useState<Mode>('inspect');
@@ -43,6 +45,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
   try{
    const created=createV3Game(options);
    setGame(created);setSelected(created.battle.activeUnitId);setMode('inspect');
+   setExpanded(true);
    setStatus('Encontro iniciado. Cada token representa um agrupamento completo.');
   }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível criar o cenário-modelo.');}
  };
@@ -164,7 +167,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const turnOrder=battle?[...new Set(orderIds)].map(id=>
   battle.stacks.find(unit=>unit.id===id)).filter(
    (unit):unit is BattleStack=>Boolean(unit&&unit.currentHp>0&&unit.moraleState!=='routed')):[];
- return <main className="battle-module crusade-mode crusade-v4" aria-label="Arena Cruzada V3">
+ const arena=<main className="battle-module crusade-mode crusade-v4" aria-label="Arena Cruzada V3">
   <section className="crusade-v4-stage" aria-label="Arena V4 unificada">
    <header className="crusade-v4-header">
     <div>
@@ -176,7 +179,12 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     <div className="crusade-v4-utility">
      <Button variant="outline" onClick={()=>downloadBattleJson('crusada-v3-treino.json',
       JSON.stringify(game,null,2))}>Exportar treino JSON</Button>
-     <Button variant="outline" onClick={()=>{setGame(null);setStatus('');}}>Nova batalha</Button>
+     <Button variant="outline" onClick={()=>{setExpanded(false);setGame(null);setStatus('');}}>Nova batalha</Button>
+     <Button variant="outline" className="battle-expand-toggle"
+      aria-label={expanded?'Sair da tela ampliada':'Ampliar batalha'}
+      onClick={()=>setExpanded(value=>!value)}>
+      {expanded?'↙ Sair da tela ampliada':'⤢ Ampliar batalha'}
+     </Button>
      {onBack&&<Button variant="outline" onClick={onBack}>Voltar ao módulo</Button>}
     </div>
    </header>
@@ -286,7 +294,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      {battle?.phase==='completed'&&report&&<div className="crusade-v4-end">
       <h2>{battle.winner===null?'Empate':battle.winner==='attacker'?'Vitória aliada':'Vitória adversária'}</h2>
       <p>Baixas: aliados {report.bySide.attacker.casualties} · adversários {report.bySide.defender.casualties}</p>
-      <Button onClick={()=>{setGame(null);setStatus('');}}>Nova Cruzada</Button>
+      <Button onClick={()=>{setExpanded(false);setGame(null);setStatus('');}}>Nova Cruzada</Button>
      </div>}
     </section>
     <aside className="crusade-v4-history" aria-label="Últimas ações V3">
@@ -315,4 +323,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    </footer>
   </section>
  </main>;
+ return <BattleExpandedView expanded={expanded} onClose={()=>setExpanded(false)}>
+  {arena}
+ </BattleExpandedView>;
 }
