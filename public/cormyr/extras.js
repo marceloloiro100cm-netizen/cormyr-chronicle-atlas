@@ -5,7 +5,7 @@
   const kindLabel=k=>KIND_LABELS[k]||(k?k.charAt(0).toUpperCase()+k.slice(1):'Outras');
   const groups=[];const seen=new Set();
   const hasVideo=s=>Boolean(window.CORMYR_YOUTUBE?.parse(s?.url));
-  const add=(kind,label,songs)=>{const list=(songs||[]).filter(s=>s&&(s.linkStatus==='youtube-pending'||s.lyrics||hasVideo(s))&&!seen.has((s.videoId||s.url||s.title)+'|'+kind+'|'+label));list.forEach(s=>seen.add((s.videoId||s.url||s.title)+'|'+kind+'|'+label));if(list.length)groups.push({kind:kind||'outra',label,songs:list});};
+  const add=(kind,label,songs)=>{const list=(songs||[]).filter(s=>s&&hasVideo(s)&&!seen.has((s.videoId||s.url||s.title)+'|'+kind+'|'+label));list.forEach(s=>seen.add((s.videoId||s.url||s.title)+'|'+kind+'|'+label));if(list.length)groups.push({kind:kind||'outra',label,songs:list});};
   add('reino','Tema do reino',data.kingdomMusic);
   (function walk(o,parent){if(!o||typeof o!=='object')return;if(Array.isArray(o)){o.forEach(x=>walk(x,parent));return;}if(o!==data&&Array.isArray(o.music))add(o.musicKind||(o.houses?'regiao':'casa'),(o.name||''),o.music);for(const k in o)if(k!=='music'&&k!=='kingdomMusic')walk(o[k],o);})(data);
   // Agrupe Cancioneiro e Novidades da playlist em Músicas Populares, incluindo letras sem vídeo.
@@ -30,11 +30,9 @@
     const extraKinds=Array.from(new Set(groups.map(g=>g.kind))).filter(k=>!KIND_ORDER.includes(k));
     const kinds=KIND_ORDER.filter(k=>groups.some(g=>g.kind===k)).concat(extraKinds);
     const countOf=k=>groups.filter(g=>k==='todas'||g.kind===k).reduce((a,g)=>a+g.songs.length,0);
-    const songMarkup=s=>s.lyrics&&!hasVideo(s)
-      ?`<details class="music-lyrics-entry"><summary>${esc(s.title)} · Letra${s.region?' · '+esc(s.region):''}</summary><pre>${esc(s.lyrics)}</pre></details>`
-      :s.linkStatus==='youtube-pending'
-      ?`<div class="music-unavailable" role="note"><strong>${esc(s.title)}</strong><small>${s.region?esc(s.region)+' · ':''}Vídeo ainda não identificado no catálogo. Consulte a playlist oficial.</small></div>`
-      :`<div class="music-catalogue-track"><a class="music-button" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">▶</span><span>${esc(s.title)}<small>Ouvir no YouTube</small></span></a><button type="button" class="quiet bard-preview-button" data-bard-title="${esc(s.title)}" data-bard-preview="${esc(s.url)}">▶ Ouvir aqui</button>${s.lyrics?`<details class="music-lyrics-entry"><summary>Ver letra · ${esc(s.title)}</summary><pre>${esc(s.lyrics)}</pre></details>`:''}</div>`;
+    // Exiba somente vídeos vinculados. Letras sem vídeo e títulos pendentes permanecem no acervo,
+    // mas não produzem cartões, botões vazios ou avisos desnecessários.
+    const songMarkup=s=>`<div class="music-catalogue-track"><a class="music-button" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">▶</span><span>${esc(s.title)}<small>Ouvir no YouTube</small></span></a><button type="button" class="quiet bard-preview-button" data-bard-title="${esc(s.title)}" data-bard-preview="${esc(s.url)}">▶ Ouvir aqui</button>${s.lyrics?`<details class="music-lyrics-entry"><summary>Ver letra · ${esc(s.title)}</summary><pre>${esc(s.lyrics)}</pre></details>`:''}</div>`;
     if(chips)chips.innerHTML=[['todas','Todas as músicas']].concat(kinds.map(k=>[k,kindLabel(k)])).map(([k,l])=>`<button type="button" class="region-view-button${k==='todas'?' active':''}" data-music-kind="${esc(k)}" aria-pressed="${k==='todas'}"><span>${esc(l)}</span><b>${countOf(k)}</b></button>`).join('');
     const fillSelect=()=>{if(!select)return;const list=groups.filter(g=>kind==='todas'||g.kind===kind);select.innerHTML='<option value="">Todas as músicas</option>'+list.map(g=>`<option value="${groups.indexOf(g)}">${esc(g.label)} · ${esc(kindLabel(g.kind))}</option>`).join('');select.value=item;};
     const render=()=>{
@@ -48,9 +46,7 @@
       }
       if(status){
         const linked=list.reduce((a,g)=>a+g.songs.filter(hasVideo).length,0);
-        const pending=list.reduce((a,g)=>a+g.songs.filter(s=>s.linkStatus==='youtube-pending').length,0);
-        const lyrics=list.reduce((a,g)=>a+g.songs.filter(s=>s.lyrics&&!hasVideo(s)).length,0);
-        status.textContent=`${linked} ${linked===1?'vídeo vinculado':'vídeos vinculados'} em ${list.length} ${list.length===1?'grupo':'grupos'}${pending?' · '+pending+(pending===1?' título sem vídeo vinculado':' títulos sem vídeo vinculado'):''}${lyrics?' · '+lyrics+(lyrics===1?' letra sem vídeo':' letras sem vídeo'):''}.`;
+        status.textContent=`${linked} ${linked===1?'vídeo vinculado':'vídeos vinculados'} em ${list.length} ${list.length===1?'grupo':'grupos'}.`;
       }
     };
     const setKind=k=>{kind=k;item='';if(chips)chips.querySelectorAll('[data-music-kind]').forEach(b=>{const on=b.dataset.musicKind===k;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});fillSelect();render();};
