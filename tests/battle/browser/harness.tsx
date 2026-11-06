@@ -1,6 +1,7 @@
 /** Test-only browser surface. Never imports secrets, server APIs or real HouseState. */
 import React,{useMemo,useState} from 'react';
 import {createRoot} from 'react-dom/client';
+import {Button} from '@/components/ui/button';
 import {BattleBoard} from '@/components/battle/BattleBoard';
 import {BattleV3Game} from '@/components/battle/BattleV3Game';
 import {BattleCrzLab} from '@/components/battle/BattleCrzLab';
@@ -37,6 +38,17 @@ function TestHarness(){
  return <main className="battle-module">
   <h1>Homologação sintética do módulo de batalha</h1>
   <p id="synthetic-notice">Somente dados fictícios. Não conectado a fichas oficiais ou Supabase.</p>
+  <section id="battle-legibility-probe" className="battle-home battle-surface"
+   aria-label="Amostra visual do laboratório">
+   <h2>Laboratório de batalha</h2>
+   <p><strong>Treinamento:</strong> comandos claros e fáceis de ler,
+    inclusive no menu do Narrador.</p>
+   <div className="battle-home-actions">
+    <Button>Iniciar ensaio visual</Button>
+    <Button variant="outline">Criar batalha visual</Button>
+    <Button variant="outline" disabled>Batalhas salvas indisponíveis</Button>
+   </div>
+  </section>
   <section id="v4-visual-acceptance" aria-label="Arenas V4 de homologação">
    <nav aria-label="Laboratórios sintéticos V4">
     <button type="button" onClick={()=>setArena('v3')}>Abrir arena V3</button>

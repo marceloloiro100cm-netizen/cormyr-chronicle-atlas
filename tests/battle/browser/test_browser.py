@@ -47,6 +47,78 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         self.assertEqual(errors,[],f"Browser page errors: {errors}")
         return page
 
+
+    def test_battle_home_buttons_and_text_are_readable(self):
+        for width,height in ((1440,900),(390,844)):
+            with self.subTest(viewport=width):
+                page=self.open_page(width,height,touch=width<600)
+                sample=page.locator("#battle-legibility-probe")
+                self.assertTrue(sample.get_by_role("heading",name="Laboratório de batalha").is_visible())
+                data=sample.evaluate("""root=>{
+                  const css=(el)=>getComputedStyle(el);
+                  const color=s=>{
+                    const nums=(s.match(/[\\d.]+/g)||[]).slice(0,3).map(Number);
+                    return nums.map(v=>v/255);
+                  };
+                  const lum=rgb=>rgb.map(v=>v<=.04045?v/12.92:
+                    Math.pow((v+.055)/1.055,2.4))
+                    .reduce((acc,v,i)=>acc+v*[.2126,.7152,.0722][i],0);
+                  const contrast=(a,b)=>{
+                    const l1=lum(color(a)),l2=lum(color(b));
+                    return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05);
+                  };
+                  const disabled=root.querySelector('button:disabled');
+                  const outline=Array.from(root.querySelectorAll('button'))
+                    .find(b=>b.textContent.includes('Criar batalha visual'));
+                  return {
+                    body:parseFloat(css(root).fontSize),
+                    description:parseFloat(css(root.querySelector('p')).fontSize),
+                    heading:parseFloat(css(root.querySelector('h2')).fontSize),
+                    outlineText:css(outline).color,
+                    outlineBackground:css(outline).backgroundColor,
+                    outlineRatio:contrast(css(outline).color,css(outline).backgroundColor),
+                    disabledOpacity:parseFloat(css(disabled).opacity),
+                    disabledRatio:contrast(css(disabled).color,css(disabled).backgroundColor),
+                    disabledBackground:css(disabled).backgroundColor,
+                  };
+                }""")
+                self.assertGreaterEqual(data["body"],16,data)
+                self.assertGreaterEqual(data["description"],16,data)
+                self.assertGreaterEqual(data["heading"],23,data)
+                self.assertGreaterEqual(data["outlineRatio"],4.5,data)
+                self.assertGreaterEqual(data["disabledRatio"],4.5,data)
+                self.assertEqual(data["disabledOpacity"],1,data)
+                self.assertLessEqual(page.evaluate(
+                    "document.documentElement.scrollWidth-window.innerWidth"),4)
+
+    def test_v4_battle_panels_keep_readable_font_sizing(self):
+        page=self.open_page(1440,900)
+        page.get_by_role("button",name="Abrir arena V3").click()
+        page.get_by_role("button",name="Batalhar",exact=True).click()
+        dialog=page.get_by_role("dialog",name="Batalha em tela ampliada")
+        dialog.wait_for(timeout=15000)
+        v3=dialog.evaluate("""root=>({
+          base:parseFloat(getComputedStyle(root.querySelector('.crusade-v4-stage')).fontSize),
+          turn:parseFloat(getComputedStyle(root.querySelector('.crusade-v4-turn-card strong')).fontSize),
+          action:parseFloat(getComputedStyle(root.querySelector('.crusade-v4-commands button')).fontSize)
+        })""")
+        self.assertGreaterEqual(v3["base"],16,v3)
+        self.assertGreaterEqual(v3["turn"],15,v3)
+        self.assertGreaterEqual(v3["action"],15,v3)
+        dialog.get_by_role("button",name="Sair da tela ampliada").click()
+        page.get_by_role("button",name="Abrir arena CRZ").click()
+        page.get_by_role("button",name="Iniciar treinamento CRZ").click()
+        crz=page.get_by_role("dialog",name="Batalha em tela ampliada")
+        crz.wait_for(timeout=15000)
+        sizes=crz.evaluate("""root=>({
+          base:parseFloat(getComputedStyle(root.querySelector('.crz-battle-stage')).fontSize),
+          turn:parseFloat(getComputedStyle(root.querySelector('.crz-turn-card strong')).fontSize),
+          action:parseFloat(getComputedStyle(root.querySelector('.crz-command-footer button')).fontSize)
+        })""")
+        self.assertGreaterEqual(sizes["base"],16,sizes)
+        self.assertGreaterEqual(sizes["turn"],15,sizes)
+        self.assertGreaterEqual(sizes["action"],15,sizes)
+
     def test_desktop_editor_mouse_keyboard_undo_and_15_by_11(self):
         page=self.open_page()
         edit=page.locator("#map-editor")
