@@ -105,6 +105,42 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+
+/**
+ * Identificação de segurança exclusiva das prévias de homologação.
+ * Não depende de variáveis VITE genéricas: a prévia de produção jamais deve mostrar o aviso.
+ */
+function StagingBanner() {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const ids = [
+      '6fbb6b20-e2ad-4d5b-8cb5-ee6bc5af29c6',
+      '41028f68-4fe7-4ed0-b123-c820522a0a3b',
+    ];
+    const domains = ['lovable.app', 'lovableproject.com', 'lovableproject-dev.com'];
+    const hostname = window.location.hostname.toLowerCase();
+    const isStaging = ids.some((id) =>
+      domains.some((domain) => hostname === `id-preview--${id}.${domain}`),
+    );
+    if (!isStaging) return;
+    const before = document.body.style.paddingTop;
+    document.body.style.paddingTop = '36px';
+    setVisible(true);
+    return () => { document.body.style.paddingTop = before; };
+  }, []);
+  return visible ? (
+    <div role="status" aria-label="Ambiente de teste" style={{
+      position:'fixed', top:0, left:0, right:0, height:36, zIndex:2147483646,
+      background:'#b91c1c', color:'#ffffff', display:'flex',
+      alignItems:'center', justifyContent:'center', textAlign:'center',
+      fontSize:13, fontWeight:800, letterSpacing:'0.12em', lineHeight:1.15,
+      boxShadow:'0 2px 8px rgba(0,0,0,0.35)', pointerEvents:'none',
+    }}>
+      AMBIENTE DE TESTE
+    </div>
+  ) : null;
+}
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR">
@@ -112,6 +148,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <StagingBanner />
         {children}
         <Scripts />
       </body>
