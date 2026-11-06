@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { createClient } from '@supabase/supabase-js';
+import {resolvePublicSupabase} from '@/integrations/supabase/public-config';
 import type { Database } from '@/integrations/supabase/types';
 import {PUBLIC_TRANSLATION_ENTITY_TYPES} from '@/lib/i18n/public-translations';
 
@@ -14,8 +15,8 @@ export const Route = createFileRoute('/api/public/translations')({
         const locale = new URL(request.url).searchParams.get('locale');
         if (!locale || !SUPPORTED.includes(locale))
           return Response.json({ error: 'Idioma inválido' }, { status: 400 });
-        const url = process.env['SUPABASE_URL'];
-        const key = process.env['SUPABASE_PUBLISHABLE_KEY'];
+        const {url,key}=resolvePublicSupabase(process.env['SUPABASE_URL'],
+          process.env['SUPABASE_PUBLISHABLE_KEY']);
         if (!url || !key)
           return Response.json({ translations: {} }, { headers: { 'Cache-Control': 'no-store' } });
         const db = createClient<Database>(url, key, {
