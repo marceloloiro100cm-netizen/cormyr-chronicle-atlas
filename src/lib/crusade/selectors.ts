@@ -11,7 +11,7 @@ export type CrzActionChoices=Readonly<{
  moves:readonly CrzHex[];
  attacks:readonly Readonly<{targetId:string;mode:'melee'|'ranged'}>[];
  canWait:boolean;canDefend:boolean;canEnd:boolean;
- abilities:readonly ('CHARGE'|'VOLLEY')[];
+ abilities:readonly ('CHARGE'|'VOLLEY'|'NIMBLE_ESCAPE')[];
  leaderSpells:readonly CrzSpellId[];
 }>;
 const empty:CrzActionChoices={
