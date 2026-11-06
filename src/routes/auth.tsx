@@ -61,7 +61,7 @@ function Auth() {
    setMessage(e instanceof Error?e.message:'Não foi possível entrar.');
   }finally{setBusy(false);}
  }
- return <CampaignShell>
+ return <CampaignShell publicClock>
   <p className="campaign-eyebrow">SEGUNDA TEMPORADA · CORMYR</p>
   <h1>Área dos jogadores</h1>
   <div className="campaign-auth-layout">
