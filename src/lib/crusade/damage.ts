@@ -191,3 +191,26 @@ export function crzAoEExpected(args:{
  const rawDamage=Math.floor(crzSafe(affected*perCreatureX100,'AoE total')/100);
  return {failBP,perCreatureX100,rawDamage,receipt:crzApplyDamage(target,rawDamage,'carry')};
 }
+
+/** Seleção de modo em CRZ-5E, 03 §7.5: até 10 engajados rolar,
+ * acima disso utilizar esperança inteira. Nenhum RNG é criado implicitamente.
+ */
+export function crzResolve5e(args:{
+ ruleset:CrzRuleset;engagedCount:number;attackBonus:number;targetAc:number;
+ target:CrzStack;entries:readonly CrzAttackEntry[];
+ mode?:'hybrid'|'expected'|'rolled';rngState?:CrzRngState;
+}):CrzExpectedResult|CrzRolledResult{
+ const mode=args.mode??(args.ruleset.damage.resolution==='hybrid'?'hybrid':'expected');
+ if(args.ruleset.id!=='CRZ-5E')throw new Error('Resolver 5e exige CRZ-5E.');
+ const effective=mode==='hybrid'?
+  (args.engagedCount<=args.ruleset.damage.hybridThreshold?'rolled':'expected'):mode;
+ if(effective==='rolled'){
+  if(!args.rngState)throw new Error('Modo rolado requer seed e estado de RNG.');
+  return crzRolled5e({ruleset:args.ruleset,attackerCount:args.engagedCount,
+   attackBonus:args.attackBonus,targetAc:args.targetAc,target:args.target,
+   entries:args.entries,rngState:args.rngState});
+ }
+ return crzExpected5e({ruleset:args.ruleset,attackerCount:args.engagedCount,
+  attackBonus:args.attackBonus,targetAc:args.targetAc,target:args.target,
+  entries:args.entries});
+}
