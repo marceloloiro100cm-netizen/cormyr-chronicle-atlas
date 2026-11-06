@@ -10,6 +10,8 @@
  * public/maps/espionage/crownlands.webp (1536 x 1024)
  * public/maps/espionage/helmlands.webp (1536 x 1024)
  * public/maps/espionage/shieldmark.webp (1536 x 1024)
+ * public/maps/espionage/ferlin.webp (1183 x 1329)
+ * public/maps/espionage/stonelands.webp (1536 x 1024)
  */
 export type NobleMapPoint={x:number;y:number};
 export type NobleDetailMap={
@@ -106,6 +108,20 @@ const shieldmark:Record<string,NobleMapPoint>={
  mareforte:{x:1179,y:846}
 };
 
+const ferlin:Record<string,NobleMapPoint>={
+ huntinghorn:{x:583,y:872},dawninghunt:{x:1017,y:518},
+ jabari:{x:380,y:382},alamber:{x:683,y:383},
+ mountwyrm:{x:212,y:530},gauntweather:{x:913,y:274},
+ torchtower:{x:634,y:185},silverhorn:{x:567,y:603},
+ naerinth:{x:994,y:882},imbranneth:{x:329,y:1013},
+};
+const stonelands:Record<string,NobleMapPoint>={
+ sorndrake:{x:418,y:263},helstallion:{x:732,y:207},
+ rowanmantle:{x:1109,y:161},braelbane:{x:267,y:550},
+ downshield:{x:574,y:579},misrim:{x:940,y:462},
+ hammerfalling:{x:1278,y:479},indesm:{x:1105,y:735},
+};
+
 const dragonCoast:Record<string,NobleMapPoint>={
  morler:{x:115,y:240},hardcastle:{x:354,y:278},
  indimber:{x:562,y:291},goldfin:{x:769,y:253},
@@ -136,6 +152,14 @@ const aliases:Record<string,string>={
  silversky:'silversky',
 };
 export const SPY_NOBLE_DETAIL_MAPS:Readonly<Record<string,NobleDetailMap>>={
+ ferlin:{
+  name:'Ferlin',src:'/maps/espionage/ferlin.webp',
+  width:1183,height:1329,houses:ferlin,
+ },
+ stonelands:{
+  name:'Stonelands',src:'/maps/espionage/stonelands.webp',
+  width:1536,height:1024,houses:stonelands,
+ },
  crownlands:{
   name:'Terras da Coroa',src:'/maps/espionage/crownlands.webp',
   width:1536,height:1024,houses:crownlands,
