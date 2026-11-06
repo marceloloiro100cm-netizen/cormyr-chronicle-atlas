@@ -109,17 +109,22 @@ describe('YouTube catalogue and pending recordings',()=>{
   const fewmerry=archive.regions.flatMap((r:{houses:{name:string;music:{url:string}[]}[]})=>r.houses).find((h:{name:string})=>h.name==='Fewmerry');
   expect(fewmerry?.music[0].url).toBe('https://www.youtube.com/watch?v=kfq0BeCse98');
  });
- it('preserves five unmapped titles without inventing playable sources',()=>{
+ it('preserves the remaining unmapped titles without inventing playable sources',()=>{
   const archive=data();
   const pending=archive.soundtrack.filter((t:{linkStatus?:string})=>t.linkStatus==='youtube-pending');
   expect(pending.map((t:{title:string})=>t.title)).toEqual([
    'O Nó de Sangue — A Balada da Escota Vermelha',
    'A Força Vem do Povo',
    'A Milonga das Vozes que Ficam',
-   'Vou-me Embora pra Sossal',
    'Música dos Dragões Azuis'
   ]);
   expect(pending.every((t:{url:string})=>!t.url)).toBe(true);
+  const sossal=archive.soundtrack.filter((t:{title:string})=>t.title==='Vou-me Embora pra Sossal');
+  expect(sossal).toHaveLength(1);
+  expect(sossal[0]).toMatchObject({
+   region:'Stonelands',category:'cancioneiro',
+   videoId:'b34LSA3yDak',url:'https://www.youtube.com/watch?v=b34LSA3yDak'
+  });
   expect(archive.soundtrack.find((t:{title:string})=>t.title==='Essa Coroa'))
    .toMatchObject({category:'cancioneiro',videoId:'HM4a9vYrdDU'});
   expect(archive.regions.find((r:{name:string})=>r.name==='Crownlands').music[0].videoId)
