@@ -83,7 +83,7 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
    ['ferlin','Huntinghorn',1183,1329,10],
    ['stonelands','Rowanmantle',1536,1024,8]
   ] as const)){
-   const map=SPY_NOBLE_DETAIL_MAPS[region];
+   const map=SPY_NOBLE_DETAIL_MAPS[region]!;
    const coords=Object.values(map.houses);
    expect(coords).toHaveLength(count);
    expect(new Set(coords.map(p=>p.x+','+p.y)).size).toBe(count);
@@ -106,7 +106,7 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
  });
  it('inclui os binários otimizados antes de liberar a publicação',()=>{
   for(const name of ['ferlin','stonelands']){
-   const map=SPY_NOBLE_DETAIL_MAPS[name];
+   const map=SPY_NOBLE_DETAIL_MAPS[name]!;
    const binary=statSync('public'+map.src);
    expect(binary.size).toBeGreaterThan(200_000);
   }
