@@ -119,6 +119,9 @@ describe('YouTube catalogue and pending recordings',()=>{
    'Música dos Dragões Azuis'
   ]);
   expect(pending.every((t:{url:string})=>!t.url)).toBe(true);
+  const adlar=archive.soundtrack.filter((t:{title:string})=>t.title==='Adlar — O Fiel da Balança');
+  expect(adlar).toHaveLength(1);
+  expect(adlar[0]).toMatchObject({region:'Cormyr',category:'populares',videoId:'a5DitnxYUZM',url:'https://www.youtube.com/watch?v=a5DitnxYUZM'});
   const sossal=archive.soundtrack.filter((t:{title:string})=>t.title==='Vou-me Embora pra Sossal');
   expect(sossal).toHaveLength(1);
   expect(sossal[0]).toMatchObject({
