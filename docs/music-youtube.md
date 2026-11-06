@@ -33,3 +33,5 @@ Referências oficiais: https://developers.google.com/youtube/iframe_api_referenc
 - Os rótulos usam **vídeo vinculado**, não **vídeo disponível**, porque o parser valida apenas o formato de URLs e IDs. A disponibilidade e a autorização de incorporação dependem de consulta real ao YouTube.
 - A playlist https://www.youtube.com/playlist?list=PLNkPwXjMDaCw não retornou seus itens na consulta externa desta auditoria. Assim, nenhuma música nova foi atribuída por suposição e nenhum link existente foi declarado reproduzível sem checagem externa.
 - Antes de dar a importação como completa, obter via YouTube Data API (ou exportação confiável) os IDs e títulos atuais, comparar com os 15 IDs do cadastro, acrescentar os que faltam e confirmar as associações regionais e de Cancioneiro.
+
+- A aba oferece **Ouvir a playlist aqui**: incorpora a playlist oficial somente após clique, exibindo também vídeos que ainda não foram individualmente catalogados. Essa vista não substitui a auditoria e classificação por vídeo. A abertura de uma faixa no Bardo fecha o iframe da playlist para evitar reprodução simultânea.
