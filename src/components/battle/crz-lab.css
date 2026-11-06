@@ -56,3 +56,16 @@
 @media(prefers-reduced-motion:reduce){
  .crz-lab .crz-map-tile polygon{transition:none}
 }
+
+/* Lote 7 — foco concentrado no tabuleiro, zoom e alto contraste opcional. */
+.crz-lab .crz-board-shell{min-width:0}
+.crz-lab .crz-map-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 6px}
+.crz-lab .crz-map-tools button{min-width:38px;min-height:38px}
+.crz-lab .crz-map-tools output{font-variant-numeric:tabular-nums;min-width:40px;text-align:center}
+.crz-lab .crz-map-help{font-size:12px;color:#e3d3b8;margin:5px 0 10px}
+.crz-lab.crz-high-contrast .crz-map-scroll{background:#091116;border-color:#fff}
+.crz-lab.crz-high-contrast .crz-map-tile polygon{stroke:#fff;stroke-width:1.7;filter:contrast(1.2)}
+.crz-lab.crz-high-contrast .crz-map-tile.crz-map-move polygon{stroke:#fff242;stroke-width:4}
+.crz-lab.crz-high-contrast .crz-map-tile.crz-map-attack polygon{stroke:#ff4837;stroke-width:4}
+.crz-lab.crz-high-contrast .crz-map-tile.crz-map-active polygon{stroke:#ffffff;stroke-width:5}
+.crz-lab.crz-high-contrast .crz-map-tile:focus-visible polygon{stroke:#ffe847;stroke-width:5}
