@@ -37,7 +37,8 @@
   'Essa Coroa':'https://www.youtube.com/watch?v=HM4a9vYrdDU',
   'Cante uma Canção a Elturel':'https://www.youtube.com/watch?v=xoOtYuebA9k',
   'Terra dos Cavalos':'https://www.youtube.com/watch?v=f4L0mCHpOv8',
-  'Nova música de Cormyr':'https://www.youtube.com/watch?v=wioZhfoQMAs'
+  'Nova música de Cormyr':'https://www.youtube.com/watch?v=wioZhfoQMAs',
+  'Nova música de Cormyr — WrXc5zCbMHA':'https://www.youtube.com/watch?v=WrXc5zCbMHA'
  };
  function attachVideo(song){
   const parsed=yt.parse(directVideos[song.title]||'');
@@ -56,6 +57,9 @@
    category:'cancioneiro',region:'Horselands',url:''}),
   // Title not confirmed by YouTube metadata; keep this entry distinct until verified.
   attachVideo({id:'youtube-wioZhfoQMAs',title:'Nova música de Cormyr',
+   category:'playlist',region:'Cormyr',url:''}),
+  // Título provisório até confirmação de metadados oficiais do vídeo.
+  attachVideo({id:'youtube-WrXc5zCbMHA',title:'Nova música de Cormyr — WrXc5zCbMHA',
    category:'playlist',region:'Cormyr',url:''})
  ];
 })();
