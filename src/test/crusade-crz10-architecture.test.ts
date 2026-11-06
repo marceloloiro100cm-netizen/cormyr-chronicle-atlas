@@ -7,7 +7,18 @@ describe('CRZ-1.0 · isolamento estrutural e segurança das regras',()=>{
  it('não depende de motor PTE, UI, Supabase, relógio ou RNG global',()=>{
   for(const file of ['ruleset.ts','stack.ts','rng.ts','damage.ts','creatures.ts','catalog.ts','convert.ts','battle.ts','geometry.ts','combat.ts','turns.ts']){
    const source=readFileSync(resolve('src/lib/crusade',file),'utf8');
-   expect(source).not.toMatch(/from\s+['"][^'"]*(?:\/battle\/|\/house\/|supabase|react|\.server|\.functions)/i);
+   // Reutilizar tipos e geometria pública é permitido; importar redutores PTE não.
+   const imports=[...source.matchAll(/import[^;]*from\s+['"]([^'"]+)['"]/g)];
+   for(const match of imports){
+    const path=match[1]??'';
+    if(path.includes('/battle/')){
+     const geometry=path.includes('/battle/geometry/');
+     const types=path.endsWith('/battle/domain/types')&&
+      /^import\s+type\s/.test(match[0].trim());
+     expect(geometry||types).toBe(true);
+    }
+   }
+   expect(source).not.toMatch(/from\s+['"][^'"]*(?:\/house\/|supabase|react|\.server|\.functions)/i);
    expect(source).not.toMatch(/\bMath\.random\s*\(/);
    expect(source).not.toMatch(/\bDate\.now\s*\(/);
    expect(source).not.toMatch(/\bcrypto\.getRandomValues\s*\(/);
