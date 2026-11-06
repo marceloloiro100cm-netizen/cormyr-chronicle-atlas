@@ -8,9 +8,13 @@ import {SpyLocalHouseMap} from '@/components/house/espionage/spy-local-house-map
 
 afterEach(cleanup);
 describe('Cartografia detalhada no planejador de espionagem',()=>{
- it('preserva os três arquivos e as dimensões originais do Narrador',()=>{
+ it('preserva os seis mapas e as dimensões originais do Narrador',()=>{
   expect(Object.keys(SPY_NOBLE_DETAIL_MAPS).sort()).toEqual(
-   ['dragoncoast','horselands','volkumburgh']);
+   ['crownlands','dragoncoast','helmlands','horselands','shieldmark','volkumburgh']);
+  for(const region of ['crownlands','helmlands','shieldmark']){
+   expect(SPY_NOBLE_DETAIL_MAPS[region]).toMatchObject({
+    width:1536,height:1024,src:'/maps/espionage/'+region+'.webp'});
+  }
   expect(SPY_NOBLE_DETAIL_MAPS['dragoncoast']).toMatchObject({
    width:1709,height:920,src:'/maps/espionage/dragoncoast.webp'});
   expect(SPY_NOBLE_DETAIL_MAPS['horselands']).toMatchObject({
@@ -25,6 +29,10 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
   expect(spyHouseMapPoint('horselands','Harcourt')).toEqual({x:243,y:578});
   expect(spyHouseMapPoint('horselands','Hardcourt')).toEqual({x:243,y:578});
   expect(spyHouseMapPoint('volkumburgh','Casa sem nome na bandeira')).toBeNull();
+  expect(spyHouseMapPoint('crownlands','Von der Harten')).toEqual({x:166,y:518});
+  expect(spyHouseMapPoint('helmlands','Evenhand')).toEqual({x:993,y:475});
+  expect(spyHouseMapPoint('shieldmark','Mareforte')).toEqual({x:1179,y:846});
+  expect(spyHouseMapPoint('helmlands','Marliir')).toBeNull();
   expect(spyHouseMapPoint('elfhold','Ashkar')).toBeNull();
  });
  it('exibe um mapa encaixado sem modal, carrossel nem controles de seta',()=>{
@@ -84,6 +92,41 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
   expect(screen.getByRole('note')).toHaveTextContent('não têm posição cartográfica');
   expect(container.querySelector('.spy-noble-local-route')).toBeNull();
   expect(screen.getByRole('img',{name:/Mapa detalhado de Volkumburgh/})).toBeTruthy();
+ });
+
+ it('mantém os dois pontos e a rota responsiva nas três regiões novas',()=>{
+  for(const [region,origin,target] of [
+   ['crownlands','Phelles','Wyvernspur'],
+   ['helmlands','Evenhand','Emmarask'],
+   ['shieldmark','Mareforte','Dauntinghorn']
+  ]){
+   const {container,unmount}=render(<SpyLocalHouseMap
+    regionId={region} originHouseId={origin.toLowerCase()} originHouseName={origin}
+    destinationHouseId={target.toLowerCase()} destinationHouseName={target}
+    plan={null} onSelectRegion={vi.fn()}/>);
+   const stage=container.querySelector<HTMLElement>('.spy-noble-map-stage');
+   expect(stage).not.toBeNull();
+   expect(stage!.style.aspectRatio).toBe('1536 / 1024');
+   expect(stage!.style.maxWidth).toContain('vh');
+   const image=container.querySelector('img');
+   const overlay=container.querySelector('svg.spy-noble-map-overlay');
+   expect(image).toHaveAttribute('src','/maps/espionage/'+region+'.webp');
+   expect(overlay).toHaveAttribute('viewBox','0 0 1536 1024');
+   expect(container.querySelectorAll('.spy-noble-local-pin')).toHaveLength(2);
+   expect(container.querySelector('.spy-noble-local-route')).not.toBeNull();
+   unmount();
+  }
+ });
+ it('as casas cartográficas publicadas têm pontos dentro da imagem, sem duplicatas',()=>{
+  const expected={crownlands:24,helmlands:25,shieldmark:30};
+  for(const [key,count] of Object.entries(expected)){
+   const map=SPY_NOBLE_DETAIL_MAPS[key];
+   const points=Object.values(map.houses);
+   expect(points).toHaveLength(count);
+   const unique=new Set(points.map(p=>p.x+','+p.y));
+   expect(unique.size).toBe(points.length);
+   for(const p of points){expect(p.x).toBeGreaterThan(0);expect(p.x).toBeLessThan(map.width);expect(p.y).toBeGreaterThan(0);expect(p.y).toBeLessThan(map.height);}
+  }
  });
  it('se o arquivo ainda não estiver publicado, preserva o mapa geral',()=>{
   const onSelect=vi.fn();
