@@ -23,16 +23,6 @@ const defaults:V3ScenarioOptions={
  attackerCommander:'purple-dragon',defenderCommander:'ashkar-raider',
  scenario:'plain-open',opponent:'ai',
 };
-function Troop({unit,selected,active,onSelect}:{unit:BattleStack;selected:boolean;active:boolean;onSelect:()=>void}){
- const alive=livingCount(unit);
- return <button type="button" className={'crusade-troop'+(selected?' selected':'')+(active?' active':'')}
-  onClick={onSelect} aria-pressed={selected}>
-  <span className="crusade-troop-title">{active?'◆ ':''}{unit.name}</span>
-  <span className="crusade-troop-count">{alive}/{unit.initialCount} soldados</span>
-  <span className="crusade-life-track"><span style={{width:Math.floor(100*unit.currentHp/(unit.initialCount*unit.hpPerSoldier))+'%'}}/></span>
-  <small>{unit.moraleState==='routed'?'⚑ Em retirada':unit.moraleState==='shaken'?'Moral abalada':'Moral firme'}</small>
- </button>;
-}
 /** Interface original de Cormyr: ritmo de turnos e leitura de pilhas inspirados no
  * gênero de batalhas de Cruzada, sem reutilizar arte, ícones ou UI proprietária. */
 export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,invitationName}:{
