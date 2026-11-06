@@ -90,9 +90,9 @@ describe('CRZ-1.0 Lote 5 · replays locais auditáveis',()=>{
   const next=recordCommand(moved);
   expect(session.replay.steps).toHaveLength(0);
   expect(next.replay.steps).toHaveLength(2);
-  expect(next.replay.steps[0].events.some(e=>e.type==='MOVED')).toBe(true);
-  expect(next.replay.steps[0].command.unitId).toBe(id);
-  expect(next.replay.steps[1].prevHash).toBe(next.replay.steps[0].hash);
+  expect(next.replay.steps[0]!.events.some(e=>e.type==='MOVED')).toBe(true);
+  expect(next.replay.steps[0]!.command.unitId).toBe(id);
+  expect(next.replay.steps[1]!.prevHash).toBe(next.replay.steps[0]!.hash);
   const checked=crzVerifyReplay(next.replay);
   expect(checked.ok).toBe(true);
   if(checked.ok)expect(checked.state).toEqual(next.state);
