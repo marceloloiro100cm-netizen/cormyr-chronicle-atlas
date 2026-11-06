@@ -75,3 +75,13 @@ Validação: `node --test scripts/youtube-music.test.mjs`, os testes de `src/tes
 - Título confirmado pelo Narrador: **O Truta**, na categoria **Músicas Populares**, referência ampla **Cormyr**. Não atribuir ao culto de Adlar.
 - Registro único; não altera os temas regionais ou o acervo existente.
 - Total esperado da seção Músicas Populares: 11 registros, 9 vídeos vinculados, 1 título pendente e 1 somente com letra. Todo o catálogo passa a ter 28 vínculos de vídeo; o vínculo não prova disponibilidade de execução ou autorização de incorporação no YouTube.
+
+
+## Alinhamento do catálogo e nova faixa (06/11/2026)
+
+- Incluído o vídeo fornecido pelo Narrador `uPYfE1gKDcg` em **Músicas Populares**, com o título temporário **Nova música de Cormyr — uPYfE1gKDcg** até verificação do título real.
+- A aba de músicas deixa de renderizar registros sem vídeo válido (incluindo letras isoladas e títulos pendentes). Os dados originais permanecem no código, para eventual associação futura; as letras das músicas com vídeo continuam disponíveis.
+- Reino, regiões, casas e Músicas Populares compartilham o mesmo par de controles por faixa: link do vídeo e botão **Ouvir aqui**, dentro de um cartão responsivo.
+- Os blocos de reprodução se alinham em uma grade fluida, com botões e títulos legíveis em telas pequenas. O filtro, a playlist e o player permanecem.
+- O catálogo possui agora **29 vínculos de vídeo**, com **28 IDs distintos** devido ao vídeo compartilhado de Volkumburgh/Von der Harten.
+- Como o YouTube não respondeu à consulta de metadados nesta edição, a URL foi verificada estruturalmente, mas a existência, disponibilidade e autorização de incorporação não foram certificadas.
