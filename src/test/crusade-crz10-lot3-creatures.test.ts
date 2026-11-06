@@ -39,7 +39,7 @@ function catalog(){
 function setup(overrides:Record<string,unknown>={}){
  return {
   id:'stack-a',templateId:'sentinela-sintetico|test',count:12,
-  source:{kind:'fictional'},training:'veteran',
+  source:{kind:'fictional' as const},training:'veteran' as const,
   modifiers:{attack:2,ac:1,hpPct:20,dmgPct:10},
   ...overrides,
  };
