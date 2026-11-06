@@ -4,7 +4,7 @@
 import {z} from 'zod';
 import {crzHitFactorBP} from './damage';
 import {crzClamp,crzMakeStack,crzSafe,type CrzStack} from './stack';
-import {crzRequireKnownRuleset,type CrzPresetId,type CrzRuleset} from './ruleset';
+import {crzRequireKnownRuleset,crzRulesetHash,type CrzPresetId,type CrzRuleset} from './ruleset';
 import {crzTrainingSchema,type CrzCreature,type CrzAttackProfile} from './creatures';
 import {crzGetCreature,type CrzCatalog} from './catalog';
 
@@ -40,7 +40,7 @@ export const crzLeaderModifiersSchema=z.object({
 export type CrzLeaderModifiers=z.infer<typeof crzLeaderModifiersSchema>;
 export const crzArmySetupSchema=z.object({
  side:z.enum(['attacker','defender']),name:z.string().trim().min(1).max(120),
- stacks:z.array(crzStackSetupSchema).min(1).max(7),
+ stacks:z.array(crzStackSetupSchema).min(1).max(1000),
  leaderModifiers:crzLeaderModifiersSchema.optional(),
 }).strict();
 export type CrzArmySetup=z.input<typeof crzArmySetupSchema>;
@@ -132,7 +132,7 @@ export function crzPrepareStack(args:{
 }):CrzPreparedStack{
  const {ruleset,catalog,side}=args;
  // Recusar configurações modificadas em jogo: hash deve ser o preset desta release.
- crzRequireKnownRuleset(ruleset.id as CrzPresetId,crzRequireRulesetHash(ruleset));
+ crzRequireKnownRuleset(ruleset.id as CrzPresetId,crzRulesetHash(ruleset));
  const setup=crzStackSetupSchema.parse(args.setup);
  if(setup.source.kind==='house-readonly')
   throw new Error('E_SETUP_SOURCE: unidades oficiais requerem adaptador autorizado.');
@@ -173,12 +173,6 @@ export function crzPrepareStack(args:{
   activation:{moved:false,attacked:false,guard:false,waited:false,retaliationRound:null},
   effects:[],usage:{},meleeRoutine,rangedRoutine,warnings};
 }
-function crzRequireRulesetHash(rule:CrzRuleset):string{
- // Não permitir configurar ruído distinto dos três presets sem versão nova.
- return crzRulesetHashForRule(rule);
-}
-import {crzRulesetHash as crzRulesetHashForRule} from './ruleset';
-
 export function crzPrepareArmy(args:{
  ruleset:CrzRuleset;catalog:CrzCatalog;setup:CrzArmySetup;
 }):CrzPreparedArmy{
