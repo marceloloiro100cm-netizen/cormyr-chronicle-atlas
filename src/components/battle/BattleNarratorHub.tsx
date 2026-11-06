@@ -2,7 +2,7 @@ import {useEffect,useState} from 'react';
 import {useServerFn} from '@tanstack/react-start';
 import {checkBattlePersistence} from '@/lib/battle/battle-session.functions';
 import {Button} from '@/components/ui/button';
-import {BATTLE_RULES_VERSION,BATTLE_PERSISTENCE_UI_ENABLED} from '@/lib/battle/feature-flag';
+import {BATTLE_RULES_VERSION,BATTLE_PERSISTENCE_UI_ENABLED,BATTLE_CRZ_TRAINING_UI_ENABLED} from '@/lib/battle/feature-flag';
 import type {BattleState,Side} from '@/lib/battle/domain/types';
 import {BattleSetup} from './BattleSetup';
 import {BattleArena} from './BattleArena';
@@ -50,7 +50,8 @@ export function BattleNarratorHub(){
       <strong> Criar batalha:</strong> mantenha o laboratório PTE-2.0 com editor e unidades oficiais em cópia somente leitura.</p>
     <div className="battle-home-actions">
       <Button onClick={()=>setView('crusade')}>Batalhar</Button>
-      <Button variant="outline" onClick={()=>setView('crz')}>CRZ-1.0 · Laboratório</Button>
+      {BATTLE_CRZ_TRAINING_UI_ENABLED&&<Button variant="outline"
+       onClick={()=>setView('crz')}>CRZ-1.0 · Laboratório</Button>}
       <Button variant="outline" onClick={()=>setView('setup')}>Criar batalha</Button>
       <Button variant="outline" onClick={()=>setView('invite')}>Convocar batalha</Button>
       {BATTLE_V35_OFFICIAL_UI_ENABLED&&<Button variant="outline"
@@ -70,7 +71,8 @@ export function BattleNarratorHub(){
     </div>}
   </div>}
   {view==='crusade'&&<BattleV3Game narrator onBack={()=>setView('home')}/>}
-  {view==='crz'&&<BattleCrzLab onBack={()=>setView('home')}/>}
+  {view==='crz'&&BATTLE_CRZ_TRAINING_UI_ENABLED&&
+   <BattleCrzLab onBack={()=>setView('home')}/>} 
   {view==='invite'&&<BattleV3InvitationCreator onBack={()=>setView('home')}/>}
   {view==='official'&&BATTLE_V35_OFFICIAL_UI_ENABLED&&
    <BattleV35Admin onBack={()=>setView('home')}/>}
