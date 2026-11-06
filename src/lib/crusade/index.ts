@@ -1,4 +1,4 @@
-/** API pública do núcleo matemático CRZ-1.0 (lotes 1 e 2).
+/** API pública isolada do núcleo CRZ-1.0 (lotes 1–5).
  * Não importar em batalhas PTE-2.0/V3 até contrato de integração separado.
  */
 export * from './ruleset';
@@ -15,3 +15,4 @@ export * from './strike';
 export * from './leader';
 export * from './turns';
 export * from './ai';
+export * from './replay';
