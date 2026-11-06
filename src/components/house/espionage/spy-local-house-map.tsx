@@ -54,7 +54,10 @@ export function SpyLocalHouseMap({
    <span><i className="spy-local-origin-key"/> Sua Casa</span>
    <span><i className="spy-local-target-key"/> Casa-alvo</span>
   </div>
-  <div className="spy-noble-map-stage">
+  <div className="spy-noble-map-stage" style={{
+   aspectRatio:map.width+' / '+map.height,
+   maxWidth:'min(100%, '+(map.width/map.height*78).toFixed(2)+'vh)',
+  }}>
    <img src={map.src} width={map.width} height={map.height}
     loading="lazy" decoding="async"
     alt={'Mapa detalhado de '+map.name+' fornecido pelo Narrador'}
