@@ -32,9 +32,9 @@ export const CRZ_TRAINING_DEFAULTS:CrzTrainingOptions={
 function sampleCreature(args:{
  id:string;name:string;hp:number;ac:number;dex:number;
  xp:number;attack:number;weaponDice:string;weaponMod:number;
- bow?:boolean;charge?:boolean;
+ bow?:boolean;charge?:boolean;nimble?:boolean;
 }){
- const {id,name,hp,ac,dex,xp,attack,weaponDice,weaponMod,bow,charge}=args;
+ const {id,name,hp,ac,dex,xp,attack,weaponDice,weaponMod,bow,charge,nimble}=args;
  return crzSealCreature({
   schemaVersion:1,id:id+'|original',name,
   source:'Laboratório fictício CRZ-1.0',size:'M',
@@ -52,7 +52,7 @@ function sampleCreature(args:{
   ],
   multiattack:{origin:'fallback',steps:[]},
   damageMods:{resist:[],immune:[],vulnerable:[]},
-  conditionImmunities:[],traits:charge?['charge']:[],
+  conditionImmunities:[],traits:[...(charge?['charge']:[]),...(nimble?['nimble-escape']:[])],
   flags:{flying:false,ranged:Boolean(bow),caster:false,
    legendary:false,swarm:false},
   provenance:{origin:'manual',srd:false,license:'original-authorized',
@@ -70,7 +70,7 @@ export const CRZ_TRAINING_CATALOG=crzBuildCatalog([
  sampleCreature({id:'raider-cca',name:'Vanguarda Ashkar',
   hp:12,ac:14,dex:2,xp:75,attack:5,weaponDice:'1d8',weaponMod:3,charge:true}),
  sampleCreature({id:'scout-cca',name:'Batedor da Costa',
-  hp:9,ac:13,dex:3,xp:50,attack:4,weaponDice:'1d6',weaponMod:2,bow:true}),
+  hp:9,ac:13,dex:3,xp:50,attack:4,weaponDice:'1d6',weaponMod:2,bow:true,nimble:true}),
 ]);
 
 const unit=(id:string,templateId:string,count:number)=>({
