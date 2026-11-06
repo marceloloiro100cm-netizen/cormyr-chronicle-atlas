@@ -50,7 +50,9 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
   }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível criar o cenário-modelo.');}
  };
  const battle=game?.battle,active=battle?.stacks.find(s=>s.id===battle.activeUnitId);
- const inspected=battle?.stacks.find(s=>s.id===selected)??active;
+ const inspected=battle?.stacks.find(s=>s.id===selected&&s.currentHp>0&&
+  s.moraleState!=='routed')??(active&&active.currentHp>0&&
+  active.moraleState!=='routed'?active:undefined);
  const canAct=Boolean(battle?.phase==='active'&&active&&battle.controls[active.side]==='human');
  const legal=useMemo(()=>battle?.phase==='active'?getLegalActions(battle):[],[battle]);
  const moves=legal.filter((c):c is Extract<BattleCommand,{type:'MOVE'}>=>c.type==='MOVE');
