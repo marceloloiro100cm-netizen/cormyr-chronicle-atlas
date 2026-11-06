@@ -1,5 +1,6 @@
 import {useMemo,useState,type ChangeEvent,type KeyboardEvent} from 'react';
 import {Button} from '@/components/ui/button';
+import {BattleExpandedView} from './BattleExpandedView';
 import {crzHexKey,crzAxialToOffset,type CrzHex,type CrzSide}
  from '@/lib/crusade/geometry';
 import {crzLegalCommands,type CrzCommand} from '@/lib/crusade/turns';
@@ -182,6 +183,7 @@ const spellCost:Partial<Record<CrzSpellId,number>>={
 export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const [options,setOptions]=useState<CrzTrainingOptions>(CRZ_TRAINING_DEFAULTS);
  const [session,setSession]=useState<CrzReplaySession|null>(null);
+ const [expanded,setExpanded]=useState(false);
  const [replayStep,setReplayStep]=useState<number|null>(null);
  const [panel,setPanel]=useState<SidePanel>('actions');
  const [hoveredId,setHoveredId]=useState<string|null>(null);
@@ -238,7 +240,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    const initial=crzReplayBegin(crzTrainingReady(options));
    const next=crzTrainingAdvanceAi(initial);
    setSession(next);setSelectedId(next.state.activeStackId);
-   setPanel('actions');setReplayStep(null);setError('');
+   setPanel('actions');setReplayStep(null);setError('');setExpanded(true);
    setMessage('Treino fictício iniciado. Nenhuma ficha oficial será alterada.');
   }catch(cause){
    setError(cause instanceof Error?cause.message:'Não foi possível iniciar o treino.');
@@ -315,7 +317,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    if(file.size>CRZ_REPLAY_MAX_BYTES)throw new Error('Arquivo maior que o limite de 8 MB.');
    const next=crzReplayParse(await file.text());
    setSession(next);setReplayStep(next.replay.steps.length);
-   setSelectedId(next.state.activeStackId);setPanel('replay');
+   setSelectedId(next.state.activeStackId);setPanel('replay');setExpanded(true);
    setShowImport(false);setError('');
    setMessage('Replay validado. Use a linha do tempo ou retome o treino.');
   }catch(cause){
@@ -323,10 +325,10 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
   }finally{event.currentTarget.value='';}
  };
  const reset=()=>{
-  setSession(null);setReplayStep(null);setSelectedId(null);
+  setExpanded(false);setSession(null);setReplayStep(null);setSelectedId(null);
   setError('');setMessage('');setPanel('actions');setHoveredId(null);
  };
- return <section className={'battle-module crusade-mode crz-lab'+
+ const arena=<section className={'battle-module crusade-mode crz-lab'+
   (highContrast?' crz-high-contrast':'')}
   aria-label="Laboratório CRZ-1.0 do Narrador">
   {!session&&<>
@@ -403,6 +405,11 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
       {session.replay.steps.length} comandos registrados</p>
     </div>
     <div className="crz-arena-utilities">
+      <Button variant="outline" className="battle-expand-toggle"
+       aria-label={expanded?'Sair da tela ampliada':'Ampliar batalha'}
+       onClick={()=>setExpanded(value=>!value)}>
+       {expanded?'↙ Sair da tela ampliada':'⤢ Ampliar batalha'}
+      </Button>
      {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
      <Button variant="outline" onClick={reset}>Novo treino</Button>
      <Button variant="outline" onClick={exportReplay}>Exportar replay</Button>
@@ -608,4 +615,6 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    </div>}
   </section>}
  </section>;
+ return <BattleExpandedView expanded={expanded&&Boolean(session)}
+  onClose={()=>setExpanded(false)}>{arena}</BattleExpandedView>;
 }
