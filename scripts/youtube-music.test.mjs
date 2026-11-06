@@ -164,6 +164,7 @@ test('Cancioneiro is a selectable group and missing regional themes are reported
  assert.match(nodes['music-count'].textContent,/2 títulos sem vídeo vinculado/);
  assert.match(nodes['music-count'].textContent,/2 letras sem vídeo/);
  assert.match(nodes['music-all'].innerHTML,/Cante uma Canção a Elturel/);
+ assert.match(nodes['music-all'].innerHTML,/Ver letra · Cante uma Canção a Elturel/);
  assert.doesNotMatch(nodes['music-all'].innerHTML,/Casa Ashkar/);
  assert.match(window.CORMYR_DATA.soundtrack.find(s=>s.title==='Cante uma Canção a Elturel').lyrics,/\n/);
 });
