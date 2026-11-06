@@ -132,7 +132,9 @@ describe('YouTube catalogue and pending recordings',()=>{
    .toMatchObject({category:'populares',videoId:'HM4a9vYrdDU'});
   expect(archive.regions.find((r:{name:string})=>r.name==='Crownlands').music[0].videoId)
    .toBe('7B-Mb9vnmZk');
-  expect(publicFile('extras.js')).toContain('youtube-pending');
+  expect(publicFile('soundtrack.js')).toContain('youtube-pending');
+  expect(publicFile('extras.js')).not.toContain('music-unavailable');
+  expect(publicFile('extras.js')).toContain('hasVideo(s)');
   expect(publicFile('extras.js')).toContain('Músicas Populares');
   expect(publicFile('extras.js')).not.toContain("cancioneiro:'Cancioneiro'");
  });

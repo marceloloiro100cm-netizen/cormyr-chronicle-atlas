@@ -41,7 +41,8 @@
   'Nova música de Cormyr':'https://www.youtube.com/watch?v=wioZhfoQMAs',
   'Nova música de Cormyr — WrXc5zCbMHA':'https://www.youtube.com/watch?v=WrXc5zCbMHA',
   'Nova música de Cormyr — qw9FgNYr7hE':'https://www.youtube.com/watch?v=qw9FgNYr7hE',
-  'O Truta':'https://www.youtube.com/watch?v=a5DitnxYUZM'
+  'O Truta':'https://www.youtube.com/watch?v=a5DitnxYUZM',
+  'Nova música de Cormyr — uPYfE1gKDcg':'https://www.youtube.com/watch?v=uPYfE1gKDcg'
  };
  function attachVideo(song){
   const parsed=yt.parse(directVideos[song.title]||'');
@@ -69,6 +70,9 @@
    category:'populares',region:'Cormyr',url:''}),
   // Título confirmado pelo Narrador; registrar como música popular, sem associação à fé de Adlar.
   attachVideo({id:'o-truta',title:'O Truta',
+   category:'populares',region:'Cormyr',url:''}),
+  // Título provisório: não atribuir um título oficial sem confirmação da fonte.
+  attachVideo({id:'youtube-uPYfE1gKDcg',title:'Nova música de Cormyr — uPYfE1gKDcg',
    category:'populares',region:'Cormyr',url:''})
  ];
 })();
