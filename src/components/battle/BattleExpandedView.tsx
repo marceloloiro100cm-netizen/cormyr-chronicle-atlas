@@ -10,6 +10,8 @@ export function BattleExpandedView({expanded,onClose,children}:{
 }){
  const dialogRef=useRef<HTMLDivElement>(null);
  const lastFocus=useRef<HTMLElement|null>(null);
+ const closeRef=useRef(onClose);
+ closeRef.current=onClose;
 
  useEffect(()=>{
   if(!expanded)return;
@@ -25,7 +27,7 @@ export function BattleExpandedView({expanded,onClose,children}:{
    if(event.key==='Escape'){
     event.preventDefault();
     event.stopPropagation();
-    onClose();
+    closeRef.current();
     return;
    }
    if(event.key!=='Tab'||!dialogRef.current)return;
@@ -49,7 +51,7 @@ export function BattleExpandedView({expanded,onClose,children}:{
    document.documentElement.style.overflow=previousRootOverflow;
    if(lastFocus.current?.isConnected)lastFocus.current.focus();
   };
- },[expanded,onClose]);
+ },[expanded]);
 
  if(!expanded||typeof document==='undefined')return <>{children}</>;
  return createPortal(
