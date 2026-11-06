@@ -43,18 +43,18 @@ SELECT public.battle_v35_approve_plan(
 SELECT public.battle_v35_apply(
  '11111111-1111-4111-8111-111111111111',:'caseid'::uuid,
  '99999999-9999-4999-8999-999999999999',repeat('f',64),
- '{"houseId":"house-v34-a","units":[{"id":"a","casualties":0}]}'::jsonb,
- '{"houseId":"house-v34-b","units":[{"id":"b","casualties":0}]}'::jsonb,
- '{"houseId":"house-v34-a","units":[{"id":"a","casualties":4}]}'::jsonb,
- '{"houseId":"house-v34-b","units":[{"id":"b","casualties":2}]}'::jsonb,
+ '{"houseId":"house-v34-a","units":[{"id":"a","strength":100,"casualties":0}]}'::jsonb,
+ '{"houseId":"house-v34-b","units":[{"id":"b","strength":100,"casualties":0}]}'::jsonb,
+ '{"houseId":"house-v34-a","units":[{"id":"a","strength":100,"casualties":4}]}'::jsonb,
+ '{"houseId":"house-v34-b","units":[{"id":"b","strength":100,"casualties":2}]}'::jsonb,
  7,8,repeat('1',64),repeat('2',64));
 SELECT public.battle_v35_apply(
  '11111111-1111-4111-8111-111111111111',:'caseid'::uuid,
  '99999999-9999-4999-8999-999999999999',repeat('f',64),
- '{"houseId":"house-v34-a","units":[{"id":"a","casualties":0}]}'::jsonb,
- '{"houseId":"house-v34-b","units":[{"id":"b","casualties":0}]}'::jsonb,
- '{"houseId":"house-v34-a","units":[{"id":"a","casualties":4}]}'::jsonb,
- '{"houseId":"house-v34-b","units":[{"id":"b","casualties":2}]}'::jsonb,
+ '{"houseId":"house-v34-a","units":[{"id":"a","strength":100,"casualties":0}]}'::jsonb,
+ '{"houseId":"house-v34-b","units":[{"id":"b","strength":100,"casualties":0}]}'::jsonb,
+ '{"houseId":"house-v34-a","units":[{"id":"a","strength":100,"casualties":4}]}'::jsonb,
+ '{"houseId":"house-v34-b","units":[{"id":"b","strength":100,"casualties":2}]}'::jsonb,
  7,8,repeat('1',64),repeat('2',64));
 DO $v35$
 DECLARE v uuid:=current_setting('test.v35_case')::uuid;
@@ -97,10 +97,10 @@ BEGIN
   PERFORM public.battle_v35_apply(
   '11111111-1111-4111-8111-111111111111',v,
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',repeat('f',64),
-  '{"houseId":"house-v34-a","units":[{"id":"a","casualties":4}]}'::jsonb,
-  '{"houseId":"house-v34-b","units":[{"id":"b","casualties":2}]}'::jsonb,
-  '{"houseId":"house-v34-a","units":[{"id":"a","casualties":5}]}'::jsonb,
-  '{"houseId":"house-v34-b","units":[{"id":"b","casualties":3}]}'::jsonb,
+  '{"houseId":"house-v34-a","units":[{"id":"a","strength":100,"casualties":4}]}'::jsonb,
+  '{"houseId":"house-v34-b","units":[{"id":"b","strength":100,"casualties":2}]}'::jsonb,
+  '{"houseId":"house-v34-a","units":[{"id":"a","strength":100,"casualties":5}]}'::jsonb,
+  '{"houseId":"house-v34-b","units":[{"id":"b","strength":100,"casualties":3}]}'::jsonb,
   8,9,repeat('3',64),repeat('4',64));
   RAISE EXCEPTION 'V35_TEST: gatilho de falha não executou';
  EXCEPTION WHEN raise_exception THEN
