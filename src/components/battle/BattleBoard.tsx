@@ -3,6 +3,8 @@ import type { BattleMap, BattleStack, Hex, Side } from '@/lib/battle/domain/type
 import { axialToOffset, hexKey } from '@/lib/battle/geometry/hex';
 import { militaryUnitSymbolSrc } from '@/components/house/military-unit-symbol';
 import { livingCount } from '@/lib/battle/domain/morale';
+import {v38TheatreFromMap,v38DecorationFor} from '@/lib/battle/v3/theatres-v38';
+import {BattleV38Decor} from './BattleV38Decor';
 
 type Token=Pick<BattleStack,'id'|'side'|'name'|'position'|'primaryTypeId'|'initialCount'|'hpPerSoldier'|'currentHp'|'moraleState'>;
 const TERRAIN_COLOR={plain:'#d4c69e',forest:'#66886b',hill:'#c4a36f',rock:'#787478'} as const;
@@ -28,6 +30,7 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,moveKeys=[],attac
   const [zoom,setZoom]=useState(100);
   const gradientId=useId().replace(/:/g,'');
   const illustrated=appearance==='illustrated',contrast=appearance==='contrast';
+  const theatre=v38TheatreFromMap(map);
   const sides=illustrated||contrast?{attacker:'#356ba1',defender:'#a64242'}:SIDE_COLOR;
   const terrainColor=contrast?{plain:'#d7d7c7',forest:'#286b38',hill:'#a47b2c',rock:'#464c57'}:TERRAIN_COLOR;
   const tileMap=new Map(map.tiles.map(t=>[hexKey(t),t]));
@@ -48,20 +51,20 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,moveKeys=[],attac
       role="group" aria-label={`Mapa hexagonal com ${map.width} colunas por ${map.height} linhas`}>
       <defs>
        <linearGradient id={gradientId+'-plain'} x1="0" y1="0" x2=".9" y2="1">
-        <stop offset="0%" stopColor="#b3ad80"/><stop offset="53%" stopColor="#817f5e"/>
-        <stop offset="100%" stopColor="#686d53"/>
+        <stop offset="0%" stopColor={theatre?.accent??"#b3ad80"}/><stop offset="53%" stopColor={theatre?.earth??"#817f5e"}/>
+        <stop offset="100%" stopColor={theatre?.sky??"#686d53"}/>
        </linearGradient>
        <linearGradient id={gradientId+'-forest'} x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#55705b"/><stop offset="100%" stopColor="#253c35"/>
+        <stop offset="0%" stopColor={theatre?.forest??"#55705b"}/><stop offset="100%" stopColor={theatre?.sky??"#253c35"}/>
        </linearGradient>
        <linearGradient id={gradientId+'-hill'} x1="0" y1="0" x2=".85" y2="1">
-        <stop offset="0%" stopColor="#bd9367"/><stop offset="100%" stopColor="#68513e"/>
+        <stop offset="0%" stopColor={theatre?.hill??"#bd9367"}/><stop offset="100%" stopColor={theatre?.earth??"#68513e"}/>
        </linearGradient>
        <linearGradient id={gradientId+'-rock'} x1="0" y1="0" x2=".8" y2="1">
-        <stop offset="0%" stopColor="#a39a8b"/><stop offset="100%" stopColor="#494d4b"/>
+        <stop offset="0%" stopColor={theatre?.rock??"#a39a8b"}/><stop offset="100%" stopColor={theatre?.sky??"#494d4b"}/>
        </linearGradient>
        <radialGradient id={gradientId+'-board'} cx="47%" cy="44%" r="73%">
-        <stop offset="0%" stopColor="#505947"/><stop offset="85%" stopColor="#303c33"/>
+        <stop offset="0%" stopColor={theatre?.earth??"#505947"}/><stop offset="85%" stopColor={theatre?.sky??"#303c33"}/>
         <stop offset="100%" stopColor="#1a2926"/>
        </radialGradient>
        <filter id={gradientId+'-halo'} x="-80%" y="-80%" width="260%" height="260%">
@@ -119,6 +122,7 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,moveKeys=[],attac
              <path d="M-2 -3 l14 3 -4 9 9 7" stroke="#444c4e" fill="none" strokeWidth="1.3"/>
             </>}
            </g>}
+          {illustrated&&theatre&&<BattleV38Decor kind={v38DecorationFor(map,tile)}/>}
           {(legalMove||legalAttack)&&<polygon points={points} fill={legalMove?'#75dc83':'#f57a65'}
             opacity={contrast?'.36':'.18'} pointerEvents="none"/>}
           {(isA||isB)&&<circle r="23" stroke={isA?sides.attacker:sides.defender} strokeWidth="1.8" fill="none" strokeDasharray="4 3"/>}
@@ -146,6 +150,9 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,moveKeys=[],attac
       })}
     </svg>
     </div>
+    {theatre&&<div className="crusade-v38-map-ribbon" role="note">
+     <strong>{theatre.icon} {theatre.name}</strong><span>{theatre.subtitle} · Ambiente fictício de treino</span>
+    </div>}
     <div className="battle-board-legend" aria-label="Legenda do campo">
       <span>▱ Planície</span><span>♣ Floresta · custo 2</span><span>▲ Colina · custo 2</span>
       <span>◆ Rocha · bloqueio</span><span>Contorno verde: movimento</span><span>Contorno vermelho: alvo</span>
