@@ -67,16 +67,32 @@ function CrzBoard({state,selectedId,mode,moves,attacks,onTile}:{
  moves:readonly CrzHex[];attacks:readonly string[];
  onTile:(hex:CrzHex)=>void;
 }){
+ const [zoom,setZoom]=useState<100|150|200>(100);
+ const [focusedKey,setFocusedKey]=useState<string|null>(null);
+ const defaultFocus=crzHexKey(state.stacks.find(s=>s.id===state.activeStackId)?.position??state.map.tiles[0]!);
  const movable=new Set(moves.map(crzHexKey));
  const targets=new Set(attacks);
  const occupied=new Map(state.stacks.filter(s=>s.alive>0)
   .map(s=>[crzHexKey(s.position),s]));
  const width=XSTEP*(state.map.width+1)+58;
  const height=SIZE*(1.5*(state.map.height-1)+3.4);
- return <div className="crz-map-scroll" role="region" tabIndex={0}
+ return <div className="crz-board-shell">
+  <div className="crz-map-tools" role="group" aria-label="Ferramentas do mapa CRZ">
+   <Button type="button" variant="outline" size="sm" aria-label="Reduzir zoom CRZ"
+    disabled={zoom===100} onClick={()=>setZoom(v=>v===200?150:100)}>−</Button>
+   <output aria-label="Zoom do mapa CRZ">{zoom}%</output>
+   <Button type="button" variant="outline" size="sm" aria-label="Ampliar zoom CRZ"
+    disabled={zoom===200} onClick={()=>setZoom(v=>v===100?150:200)}>+</Button>
+   <Button type="button" variant="outline" size="sm" onClick={()=>setZoom(100)}
+    disabled={zoom===100}>Ajustar mapa CRZ</Button>
+  </div>
+  <p className="crz-map-help" id="crz-keyboard-help">Teclado: Tab entra no mapa;
+   setas navegam pelos hexágonos; Enter ou Espaço executam a ação. Use o zoom
+   para ampliar sem alterar o tamanho das tropas.</p>
+  <div className="crz-map-scroll" role="region" tabIndex={0}
   aria-label="Área navegável do mapa CRZ">
   <svg className="crz-map" viewBox={`0 0 ${width} ${height}`}
-   role="group" aria-label={`Mapa CRZ ${state.map.width} por ${state.map.height}`}>
+   style={{width:zoom+'%'}} role="group" aria-label={`Mapa CRZ ${state.map.width} por ${state.map.height}`}>
    {state.map.tiles.map(tile=>{
     const key=crzHexKey(tile),{x,y}=pixel(tile),unit=occupied.get(key);
     const isMove=mode==='move'&&movable.has(key);
@@ -88,9 +104,21 @@ function CrzBoard({state,selectedId,mode,moves,attacks,onTile}:{
        crzAxialToOffset(tile).row+')';
     const press=()=>onTile({q:tile.q,r:tile.r});
     const keyPress=(event:KeyboardEvent<SVGGElement>)=>{
-     if(event.key==='Enter'||event.key===' '){event.preventDefault();press();}
+     if(event.key==='Enter'||event.key===' '){event.preventDefault();press();return;}
+     const direction:Record<string,CrzHex>={
+      ArrowRight:{q:1,r:0},ArrowLeft:{q:-1,r:0},
+      ArrowUp:{q:0,r:-1},ArrowDown:{q:0,r:1},
+     };
+     const delta=direction[event.key];if(!delta)return;
+     const nextKey=crzHexKey({q:tile.q+delta.q,r:tile.r+delta.r});
+     const siblings=event.currentTarget.ownerSVGElement?.querySelectorAll<SVGGElement>('[data-crz-hex]');
+     const next=siblings&&Array.from(siblings).find(node=>node.getAttribute('data-crz-hex')===nextKey);
+     if(next){event.preventDefault();setFocusedKey(nextKey);next.focus();}
     };
-    return <g key={key} role="button" tabIndex={0} aria-label={label}
+    return <g key={key} role="button"
+     data-crz-hex={key} tabIndex={key===(focusedKey??defaultFocus)?0:-1}
+     aria-label={label} aria-describedby="crz-keyboard-help"
+     onFocus={()=>setFocusedKey(key)}
      onClick={press} onKeyDown={keyPress}
      className={'crz-map-tile'+(isMove?' crz-map-move':'')+
        (isAttack?' crz-map-attack':'')+(active?' crz-map-active':'')+
@@ -111,6 +139,7 @@ function CrzBoard({state,selectedId,mode,moves,attacks,onTile}:{
      </g>;
    })}
   </svg>
+ </div>
  </div>;
 }
 
@@ -132,6 +161,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const [message,setMessage]=useState('');
  const [error,setError]=useState('');
  const [showImport,setShowImport]=useState(false);
+ const [highContrast,setHighContrast]=useState(false);
  const frame=useMemo(()=>!session?null:replayStep===null?session.state:
   crzTrainingReplayAt(session.replay,replayStep),
  [session,replayStep]);
@@ -234,7 +264,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
   setSession(null);setReplayStep(null);setSelectedId(null);
   setError('');setMessage('');setMode('inspect');
  };
- return <section className="battle-module crusade-mode crz-lab"
+ return <section className={'battle-module crusade-mode crz-lab'+
+  (highContrast?' crz-high-contrast':'')}
   aria-label="Laboratório CRZ-1.0 do Narrador">
   <header className="battle-header">
    <p className="battle-eyebrow">CORMYR · LABORATÓRIO DO NARRADOR</p>
@@ -246,6 +277,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
     {onBack&&<Button variant="outline" onClick={onBack}>Voltar ao módulo</Button>}
     {session&&<Button variant="outline" onClick={reset}>Novo treino</Button>}
     {session&&<Button variant="outline" onClick={exportReplay}>Exportar replay JSON</Button>}
+    <Button variant="outline" type="button" aria-pressed={highContrast}
+     onClick={()=>setHighContrast(value=>!value)}>Alto contraste CRZ</Button>
     <Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
      Importar replay JSON
     </Button>
@@ -314,7 +347,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
     <div className="battle-surface">
      <h2>Campo de batalha</h2>
      <p className="battle-note">Azul: Coroa · vermelho: Ashkar · pontos dourados:
-      deslocamentos legais · contorno vermelho: alvos possíveis.</p>
+      deslocamentos legais · contorno vermelho: alvos possíveis. O mapa é navegável por teclado.</p>
      <CrzBoard state={frame} selectedId={selectedId} mode={mode}
       moves={moves.map(c=>c.to)} attacks={attacks.map(c=>c.targetId)} onTile={clickHex}/>
     </div>
