@@ -39,7 +39,7 @@ Os dois resultados agora são demonstrados explicitamente no teste de integraç�
 - CRZ-5E padrão: 78 bruto, 53 aplicado, sete baixas.
 - Configuração alternativa carry **apenas no teste**: 78 aplicado, onze baixas.
 
-**Decisão pendente do Narrador:** esclarecer no manual se a retaliação de T-INT-01 constitui uma exceção à regra de cap ou se o exemplo utiliza o preset carry. Não alteramos o hash/preset atual nem mascaramos a divergência para satisfazer o golden.
+**Errata resolvida para o software:** CRZ-5E mantém **cap** para todos os ataques e retaliações. O texto de 11 baixas refere-se exclusivamente à alternativa `carry` fora do preset aprovado. O golden operacional T-INT-01 é **78 bruto / 53 aplicado / 7 baixas**. A justificativa completa e limites estão em `docs/battle/errata-crz10-t-int-01-cap-carry.md`; a conciliação entre os PRs #281 e #282 está em `docs/battle/reconciliation-crz10-pr281-pr282.md`.
 
 ## Acompanhamento e critérios antes de integrar
 
