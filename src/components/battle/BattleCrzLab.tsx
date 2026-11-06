@@ -208,12 +208,12 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const spells=legal.filter((c):c is Extract<CrzCommand,{type:'CAST'}>=>
   c.type==='CAST').filter(c=>CRZ_LOT8_SPELLS.includes(c.spellId));
  const caster=active?frame?.leaders[active.side]:null;
- const canCast=canAct&&spells.some(c=>c.spellId===spell)&&
-  Boolean(caster&&caster.energy>=(spellCost[spell]??Infinity))&&
-  (spell!=='shield_wall_formation'||Boolean(frame&&active&&
+ const canCast=canAct&&spells.some(c=>c.spellId===selectedSpell)&&
+  Boolean(caster&&caster.energy>=(spellCost[selectedSpell]??Infinity))&&
+  (selectedSpell!=='shield_wall_formation'||Boolean(frame&&active&&
    crzShieldWallTargets(frame,active.side).length>0));
  const targets=active?frame?.stacks.filter(s=>crzCapable(s)&&
-  s.side===(enemySpell(spell)?
+  s.side===(enemySpell(selectedSpell)?
    active.side==='attacker'?'defender':'attacker':active.side))??[]:[];
  const apply=(command:CrzCommand)=>{
   if(!session||!canAct)return;
@@ -259,13 +259,23 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    setError('Hexágono fora do movimento permitido. Selecione um hexágono verde.');
   }
  };
+ const selectedSpell:CrzSpellId=caster?.spells.includes(spell)?
+  spell:caster?.spells[0]??spell;
+ const orderIds=frame?[
+  ...(frame.activeStackId?[frame.activeStackId]:[]),
+  ...frame.activationQueue,...frame.waitingQueue,
+  ...crzOrder(frame.stacks),
+ ]:[];
+ const turnOrder=frame?[...new Set(orderIds)].map(id=>
+  frame.stacks.find(unit=>unit.id===id)).filter(
+   (unit):unit is CrzBattleStack=>Boolean(unit&&crzCapable(unit))):[];
  const cast=()=>{
   if(!active||!canCast)return;
-  if(!globalSpell(spell)&&!spellTarget){
+  if(!globalSpell(selectedSpell)&&!spellTarget){
    setError('Escolha uma pilha como alvo da magia.');return;
   }
-  apply({type:'CAST',unitId:active.id,spellId:spell,
-   targetId:globalSpell(spell)?null:spellTarget});
+  apply({type:'CAST',unitId:active.id,spellId:selectedSpell,
+   targetId:globalSpell(selectedSpell)?null:spellTarget});
  };
  const exportReplay=()=>{
   if(!session)return;
@@ -314,230 +324,283 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  return <section className={'battle-module crusade-mode crz-lab'+
   (highContrast?' crz-high-contrast':'')}
   aria-label="Laboratório CRZ-1.0 do Narrador">
-  <header className="battle-header">
-   <p className="battle-eyebrow">CORMYR · LABORATÓRIO DO NARRADOR</p>
-   <h1>CRZ-1.0 · Cruzada Experimental</h1>
-   <p>Tabuleiro tático de treinamento, separado da campanha e do PTE-2.0.</p>
-   <p><strong>Todas as tropas são fictícias. Sem baixas oficiais, banco,
-    alterações de casas, XP ou avanço do calendário.</strong></p>
-   <div className="crz-toolbar">
-    {onBack&&<Button variant="outline" onClick={onBack}>Voltar ao módulo</Button>}
-    {session&&<Button variant="outline" onClick={reset}>Novo treino</Button>}
-    {session&&<Button variant="outline" onClick={exportReplay}>Exportar replay JSON</Button>}
-    <Button variant="outline" type="button" aria-pressed={highContrast}
-     onClick={()=>setHighContrast(value=>!value)}>Alto contraste CRZ</Button>
-    <Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
-     Importar replay JSON
-    </Button>
-   </div>
+  {!session&&<>
+   <header className="battle-header crz-intro">
+    <p className="battle-eyebrow">CORMYR · LABORATÓRIO DO NARRADOR</p>
+    <h1>CRZ-1.0 · Cruzada Experimental</h1>
+    <p>Treinamento tático com exércitos-modelo. Nenhum efeito em casas,
+     baixas oficiais, contas ou no calendário.</p>
+    <div className="crz-toolbar">
+     {onBack&&<Button variant="outline" onClick={onBack}>Voltar ao módulo</Button>}
+     <Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
+      Importar replay JSON
+     </Button>
+     <Button variant="outline" aria-pressed={highContrast}
+      onClick={()=>setHighContrast(v=>!v)}>Alto contraste CRZ</Button>
+    </div>
+    {showImport&&<label className="crz-file">
+     Arquivo de replay (máximo 8 MB)
+     <input aria-label="Arquivo de replay CRZ" type="file"
+      accept=".json,application/json" onChange={event=>{void importReplay(event);}}/>
+    </label>}
+   </header>
+   {error&&<p className="crz-alert" role="alert">{error}</p>}
+   {message&&<p className="crz-status" role="status">{message}</p>}
+   <section className="battle-surface" aria-label="Preparar treino CRZ">
+    <h2>Preparar batalha-modelo</h2>
+    <p>Defensores da Coroa contra forças fictícias de Ashkar.</p>
+    <div className="crz-form">
+     <label>Cenário
+      <select value={options.scenario} aria-label="Cenário CRZ"
+       onChange={e=>setOptions(o=>({...o,scenario:e.target.value as CrzTrainingOptions['scenario']}))}>
+       {CRZ_TRAINING_SCENARIOS.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+      </select>
+     </label>
+     <label>Tamanho do mapa
+      <select value={options.width} aria-label="Tamanho do mapa CRZ"
+       onChange={e=>setOptions(o=>({...o,width:Number(e.target.value) as 11|15}))}>
+       <option value={11}>11 × 9</option><option value={15}>15 × 11</option>
+      </select>
+     </label>
+     <label>Resolução de dano
+      <select value={options.resolution} aria-label="Resolução CRZ"
+       onChange={e=>setOptions(o=>({...o,resolution:e.target.value as 'expected'|'hybrid'}))}>
+       <option value="expected">Esperada (sem rolagens)</option>
+       <option value="hybrid">Híbrida (PCG32)</option>
+      </select>
+     </label>
+     <label>Adversário
+      <select value={options.opponent} aria-label="Oponente CRZ"
+       onChange={e=>setOptions(o=>({...o,opponent:e.target.value as 'ai'|'human'}))}>
+       <option value="ai">IA local</option>
+       <option value="human">Segundo jogador local</option>
+      </select>
+     </label>
+     <label>Seed hexadecimal
+      <input value={options.seed} aria-label="Seed CRZ"
+       maxLength={16} pattern="[a-fA-F0-9]{1,16}"
+       onChange={e=>setOptions(o=>({...o,seed:e.target.value}))}/>
+     </label>
+    </div>
+    <Button onClick={begin}>Iniciar treinamento CRZ</Button>
+    <p className="battle-note">CRZ-WOTR e PTE-compat permanecem indisponíveis
+     até terem redutores completos.</p>
+   </section>
+  </>}
+  {session&&frame&&<section className="crz-battle-stage"
+   aria-label="Arena e comandos CRZ">
+   <header className="crz-arena-head">
+    <div className="crz-arena-heading">
+     <span className="crz-eyebrow">CORMYR · ARENA DE TREINAMENTO</span>
+     <h1>Cruzada <span>CRZ-1.0</span></h1>
+     <p>Rodada {frame.round} · {frame.phase==='completed'?
+      'Batalha encerrada':active?'Turno de '+active.name:'Preparando turno'} ·
+      {session.replay.steps.length} comandos registrados</p>
+    </div>
+    <div className="crz-arena-utilities">
+     {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
+     <Button variant="outline" onClick={reset}>Novo treino</Button>
+     <Button variant="outline" onClick={exportReplay}>Exportar replay</Button>
+     <Button variant="outline" aria-pressed={highContrast}
+      onClick={()=>setHighContrast(v=>!v)}>Alto contraste CRZ</Button>
+     <Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
+      Importar replay
+     </Button>
+    </div>
+   </header>
    {showImport&&<label className="crz-file">
-    Arquivo de replay (máximo 8 MB)
-    <input aria-label="Arquivo de replay CRZ" type="file" accept=".json,application/json"
+    Importar replay CRZ (máximo 8 MB)
+    <input type="file" accept=".json,application/json"
+     aria-label="Arquivo de replay CRZ"
      onChange={event=>{void importReplay(event);}}/>
    </label>}
-  </header>
-  {error&&<p className="crz-alert" role="alert">{error}</p>}
-  {message&&<p className="crz-status" role="status">{message}</p>}
-  {!session&&<section className="battle-surface" aria-label="Preparar treino CRZ">
-   <h2>Preparar batalha-modelo</h2>
-   <p className="battle-note">Defensores da Coroa contra um exército-modelo Ashkar.
-    Unidades criadas apenas para este laboratório.</p>
-   <div className="crz-form">
-    <label>Cenário
-     <select value={options.scenario} aria-label="Cenário CRZ"
-      onChange={e=>setOptions(o=>({...o,scenario:e.target.value as CrzTrainingOptions['scenario']}))}>
-      {CRZ_TRAINING_SCENARIOS.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
-     </select>
-    </label>
-    <label>Tamanho do mapa
-     <select value={options.width} aria-label="Tamanho do mapa CRZ"
-      onChange={e=>setOptions(o=>({...o,width:Number(e.target.value) as 11|15}))}>
-      <option value={11}>11 × 9</option><option value={15}>15 × 11</option>
-     </select>
-    </label>
-    <label>Resolução de dano
-     <select value={options.resolution} aria-label="Resolução CRZ"
-      onChange={e=>setOptions(o=>({...o,resolution:e.target.value as 'expected'|'hybrid'}))}>
-      <option value="expected">Esperada (sem rolagens)</option>
-      <option value="hybrid">Híbrida (PCG32)</option>
-     </select>
-    </label>
-    <label>Adversário
-     <select value={options.opponent} aria-label="Oponente CRZ"
-      onChange={e=>setOptions(o=>({...o,opponent:e.target.value as 'ai'|'human'}))}>
-      <option value="ai">IA local</option>
-      <option value="human">Segundo jogador local</option>
-     </select>
-    </label>
-    <label>Seed hexadecimal
-     <input value={options.seed} aria-label="Seed CRZ"
-      maxLength={16} pattern="[a-fA-F0-9]{1,16}"
-      onChange={e=>setOptions(o=>({...o,seed:e.target.value}))}/>
-    </label>
-   </div>
-   <Button onClick={begin}>Iniciar treinamento CRZ</Button>
-   <p className="battle-note">O modo CRZ-WOTR e a compatibilidade PTE ainda não possuem
-    redutores completos e não aparecem como opções jogáveis.</p>
-  </section>}
-  {frame&&session&&<>
-   <div className="crz-summary battle-surface">
-    <strong>Rodada {frame.round}</strong>
-    <span>Fase: {frame.phase==='active'?'Em combate':'Encerrada'}</span>
-    <span>Unidade ativa: {active?.name??'Nenhuma'}</span>
-    <span>Comandos gravados: {session.replay.steps.length}</span>
-    <span>Regras: {frame.rulesetId} · hash {frame.rulesetHash.slice(0,12)}…</span>
-    {frame.phase==='completed'&&<strong>
-     Resultado: {frame.winner?SIDE[frame.winner].name:'Empate'} · {frame.resultReason}
-    </strong>}
-   </div>
-   <section className="crz-layout" aria-label="Arena e comandos CRZ">
-    <div className="battle-surface">
-     <h2>Campo de batalha</h2>
-     <p className="battle-note">Azul: Coroa · vermelho: Ashkar · pontos dourados:
-      deslocamentos legais · contorno vermelho: alvos possíveis. O mapa é navegável por teclado.</p>
-     <CrzBoard state={frame} selectedId={selectedId} mode={mode}
-      moves={moves.map(c=>c.to)} attacks={attacks.map(c=>c.targetId)}
-      objectives={objectives} onTile={clickHex}/>
+   {error&&<p className="crz-alert" role="alert">{error}</p>}
+   {message&&<p className="crz-status" role="status">{message}</p>}
+   <section className="crz-turn-track" aria-label="Ordem de combate">
+    <div className="crz-track-title">
+     <h2>Ordem de combate</h2>
+     <span>Passe o cursor ou use Tab para localizar a unidade no mapa</span>
     </div>
-    <div className="crz-aside">
-     <section className="battle-surface">
-      <h2>Ordens de combate</h2>
-      <p className="battle-note">{replayStep!==null?
-       'Visualização do replay: ordens bloqueadas.':
-       canAct?'Selecione uma ordem e depois um hexágono no mapa.':
-       frame.phase==='completed'?'Combate encerrado.':'Aguardando turno da IA.'}</p>
-      <div className="crz-toolbar">
-       {aiTurn&&<Button variant="outline" onClick={()=>{
-        if(!session)return;
-        try{
-         const next=crzTrainingAdvanceAi(session);
-         setSession(next);setSelectedId(next.state.activeStackId);
-         setError('');setMessage('Turnos da IA registrados no replay.');
-        }catch(cause){
-         setError(cause instanceof Error?cause.message:'Não foi possível avançar a IA.');
-        }
-       }}>Executar turno da IA</Button>}
-       <Button disabled={!canAct||!moves.length}
-        variant={mode==='move'?'default':'outline'}
-        onClick={()=>{setMode('move');setError('');}}>Mover ({moves.length})</Button>
-       <Button disabled={!canAct||!attacks.length}
-        variant={mode==='attack'?'default':'outline'}
-        onClick={()=>{setMode('attack');setError('');}}>Atacar ({attacks.length})</Button>
-       {abilities.map(c=><Button key={c.ability} variant="outline"
-        onClick={()=>apply(c)}>{c.ability==='CHARGE'?'Preparar carga':
-         c.ability==='VOLLEY'?'Preparar salva':'Preparar evasão'}</Button>)}
-       {(['WAIT','DEFEND','END_ACTIVATION'] as const).map(type=>{
-        const command=legal.find(c=>c.type===type);
-        return <Button key={type} disabled={!canAct||!command}
-         variant="outline" onClick={()=>command&&apply(command)}>
-         {type==='WAIT'?'Esperar':type==='DEFEND'?'Defender':'Encerrar ativação'}
-        </Button>;
-       })}
-      </div>
-     </section>
-     <section className="battle-surface" aria-label="Painel do General CRZ">
-      <h2>General</h2>
-      <p>{caster?caster.name+' · Energia '+caster.energy+'/'+caster.energyMax:
-       'Nenhum General no turno atual.'}</p>
+    <div className="crz-turn-cards">
+     {turnOrder.map((unit,index)=><button type="button" key={unit.id}
+      className={'crz-turn-card crz-faction-'+unit.side+
+       (unit.id===frame.activeStackId?' crz-turn-current':'')+
+       (unit.id===hoveredId?' crz-turn-hovered':'')}
+      aria-label={'Ordem '+(index+1)+': '+unit.name+
+       ' · '+SIDE[unit.side].name+' · '+unit.alive+' vivos'}
+      aria-current={unit.id===frame.activeStackId?'step':undefined}
+      aria-pressed={selectedId===unit.id}
+      onMouseEnter={()=>setHoveredId(unit.id)}
+      onMouseLeave={()=>setHoveredId(current=>current===unit.id?null:current)}
+      onFocus={()=>setHoveredId(unit.id)}
+      onBlur={()=>setHoveredId(current=>current===unit.id?null:current)}
+      onClick={()=>setSelectedId(unit.id)}>
+      <span className="crz-turn-number">{index+1}</span>
+      <span className="crz-turn-symbol" aria-hidden="true">
+       {unit.rangedRoutine?'⌖':'⚔'}</span>
+      <strong>{unit.name}</strong>
+      <small>{unit.alive} vivos</small>
+     </button>)}
+    </div>
+   </section>
+   <div className="crz-battle-columns">
+    <aside className="crz-general-deck" aria-label="Painel do General CRZ">
+     <div className="crz-portrait" role="img"
+      aria-label="Espaço reservado para retrato do General">
+      <span className="crz-portrait-head" aria-hidden="true"/>
+      <span className="crz-portrait-body" aria-hidden="true"/>
+      <span className="crz-portrait-caption">Retrato do General</span>
+     </div>
+     <h2>General</h2>
+     <strong className="crz-general-name">{caster?.name??'Sem General ativo'}</strong>
+     <div className="crz-general-energy">
+      <span>Energia</span>
+      <strong>{caster?caster.energy+'/'+caster.energyMax:'—'}</strong>
+     </div>
+     <h3>Habilidades</h3>
+     <section className="crz-general-spells">
       <label>Magia preparada
-       <select aria-label="Magia do General" value={spell}
-        disabled={!canAct||!spells.length} onChange={e=>{
-         setSpell(e.target.value as CrzSpellId);setSpellTarget('');
-        }}>
-        {CRZ_LOT8_SPELLS.map(id=><option key={id} value={id}>{id}</option>)}
+       <select aria-label="Magia do General" value={selectedSpell}
+        disabled={!canAct||!spells.length}
+        onChange={e=>{setSpell(e.target.value as CrzSpellId);setSpellTarget('');}}>
+        {(caster?.spells??[]).filter(id=>CRZ_LOT8_SPELLS.includes(id)).map(id=>
+         <option key={id} value={id}>{SPELL_LABELS[id]??id}</option>)}
        </select>
       </label>
-      {!globalSpell(spell)&&<label>Alvo da magia
+      {!globalSpell(selectedSpell)&&<label>Alvo da magia
        <select aria-label="Alvo da magia" value={spellTarget}
         disabled={!canAct} onChange={e=>setSpellTarget(e.target.value)}>
         <option value="">Selecione uma pilha</option>
-        {targets.map(t=><option key={t.id} value={t.id}>{t.name} · {count(t)}</option>)}
+        {targets.map(t=><option key={t.id} value={t.id}>
+         {t.name} · {count(t)}</option>)}
        </select>
       </label>}
-      <Button disabled={!canCast||(!globalSpell(spell)&&!spellTarget)}
-       onClick={cast}>Conjurar ({spellCost[spell]??'?'} energia)</Button>
-      <p className="battle-note">Somente magias executáveis do Lote 4;
-       demais permanecem indisponíveis.</p>
+      <Button className="crz-action-primary"
+       disabled={!canCast||(!globalSpell(selectedSpell)&&!spellTarget)}
+       onClick={cast}>Conjurar ({spellCost[selectedSpell]??'?'} energia)</Button>
      </section>
-     <section className="battle-surface">
-      <h2>Unidades</h2>
-      <div className="crz-units">
-       {frame.stacks.map(s=><button type="button" key={s.id}
-        aria-pressed={inspected?.id===s.id} className="crz-unit"
-        onClick={()=>setSelectedId(s.id)}>
-        <span className={s.side==='attacker'?'crz-dot crown':'crz-dot ashkar'}/>
-        <strong>{s.name}</strong><span>{count(s)}</span>
-        <small>{s.moraleState==='routed'?'Debandada':
-         s.moraleState==='shaken'?'Abalada':'Firme'} · {s.hpPool} PV</small>
-       </button>)}
-      </div>
-      {inspected&&<p className="battle-note">Inspecionada: {inspected.name} ·
-       CA {inspected.acBase} · Movimento {inspected.movementHex} hex ·
-       {inspected.initialCount-inspected.alive} baixas fictícias</p>}
-     </section>
-    </div>
-   </section>
-   <div className="crz-insights">
-    <section className="battle-surface" aria-label="Marcos de observação CRZ">
-     <h2>Marcos de observação</h2>
-     <p className="battle-note">Os três marcos exibem apenas ocupação. Não alteram
-      condições de vitória, iniciativa, moral ou fichas da campanha.</p>
-     <ol className="crz-objectives">
-      {objectives.map(o=><li key={o.id}>
+     <div className="crz-general-ability-buttons">
+      {abilities.map(c=><Button key={c.ability} variant="outline"
+       onClick={()=>apply(c)}>{c.ability==='CHARGE'?'Preparar carga':
+        c.ability==='VOLLEY'?'Preparar salva':'Preparar evasão'}</Button>)}
+     </div>
+     <div className="crz-command-footer">
+      <h3>Decisão do turno</h3>
+      {aiTurn&&<Button variant="outline" onClick={()=>{
+       if(!session)return;
+       try{
+        const next=crzTrainingAdvanceAi(session);
+        setSession(next);setSelectedId(next.state.activeStackId);
+        setError('');setMessage('Turnos da IA registrados no replay.');
+       }catch(cause){
+        setError(cause instanceof Error?cause.message:'Não foi possível avançar a IA.');
+       }
+      }}>Executar turno da IA</Button>}
+      {(['WAIT','DEFEND','END_ACTIVATION'] as const).map(type=>{
+       const cmd=legal.find(c=>c.type===type);
+       return <Button key={type} variant="outline" disabled={!canAct||!cmd}
+        onClick={()=>cmd&&apply(cmd)}>
+        {type==='WAIT'?'Esperar':type==='DEFEND'?'Defender':'Encerrar ativação'}
+       </Button>;
+      })}
+     </div>
+    </aside>
+    <section className="crz-central-map" aria-label="Campo de batalha">
+     <div className="crz-map-caption">
+      <h2>Campo de batalha</h2>
+      <span className="crz-legend-item"><i className="crz-legend-green"/>Movimento</span>
+      <span className="crz-legend-item"><i className="crz-legend-red"/>Ataque legal</span>
+     </div>
+     <CrzBoard state={frame} selectedId={selectedId}
+      hoveredId={hoveredId}
+      moves={canAct&&selectedId===active?.id?moves.map(c=>c.to):[]}
+      attacks={canAct&&selectedId===active?.id?attacks.map(c=>c.targetId):[]}
+      objectives={objectives} onTile={clickHex}/>
+     {inspected&&<div className="crz-inspect-line">
+      <strong>{inspected.name}</strong>
+      <span>{SIDE[inspected.side].name} · {inspected.alive}/{inspected.initialCount} vivos</span>
+      <span>{inspected.hpPool} PV · CA {inspected.acBase}</span>
+      <span>{inspected.moraleState==='routed'?'Debandada':
+       inspected.moraleState==='shaken'?'Abalada':'Firme'}</span>
+     </div>}
+    </section>
+    <aside className="crz-last-actions" aria-label="Painel de informações CRZ">
+     <div className="crz-right-tabs" role="group" aria-label="Informações da batalha">
+      {([['actions','Ações'],['objectives','Marcos'],['report','Relatório'],
+       ['replay','Replay']] as const).map(([id,label])=>
+       <button type="button" key={id} aria-pressed={panel===id}
+        className={panel===id?'crz-tab-active':''}
+        onClick={()=>setPanel(id)}>{label}</button>)}
+     </div>
+     {panel==='actions'&&<section aria-label="Últimas ações">
+      <h2>Últimas ações</h2>
+      <ol className="crz-action-feed" aria-live="polite">
+       {frame.events.slice(-6).reverse().map(event=><li key={event.seq}
+        className={'crz-feed-'+event.type.toLowerCase()}>
+        {eventLabel(event)}
+       </li>)}
+      </ol>
+      <p className="crz-right-note">Os resultados são fictícios e não alteram
+       as fichas das casas.</p>
+     </section>}
+     {panel==='objectives'&&<section aria-label="Marcos de observação CRZ">
+      <h2>Marcos de observação</h2>
+      <p>Os marcos não alteram condições de vitória.</p>
+      <ol className="crz-objectives">{objectives.map(o=><li key={o.id}>
        <strong>{o.title}</strong>
        <span>{o.holder?SIDE[o.holder].name:'Livre'} ·
         hex {crzAxialToOffset(o.position).column},{crzAxialToOffset(o.position).row}</span>
-      </li>)}
-     </ol>
-    </section>
-    {report&&<section className="battle-surface" aria-label="Relatório pós-batalha CRZ">
-     <h2>Relatório de combate</h2>
-     <p className="battle-note">Estatísticas derivadas de replay íntegro.
-      Acompanhamento local, sem registro de baixas oficiais.</p>
-     <table className="crz-report-table">
-      <thead><tr><th scope="col">Força</th><th scope="col">Vivos</th>
-       <th scope="col">Baixas</th><th scope="col">Dano aplicado</th>
-       <th scope="col">Magias</th></tr></thead>
-      <tbody>{(['attacker','defender'] as const).map(side=>{
-       const row=report.sides[side];return <tr key={side}>
-        <th scope="row">{SIDE[side].name}</th>
-        <td>{row.survivors}/{row.initialCreatures}</td>
-        <td>{row.casualties}</td><td>{row.inflictedDamage}</td>
-        <td>{row.spellsCast}</td>
-       </tr>;
-      })}</tbody>
-     </table>
-     <p className="battle-note">Rodada {report.round} ·
-      {report.replayCommands} comandos · hash {report.replayHeadHash.slice(0,12)}…
-     </p>
-     <Button variant="outline" onClick={exportReport}>Exportar relatório JSON</Button>
-    </section>}
+      </li>)}</ol>
+     </section>}
+     {panel==='report'&&report&&<section aria-label="Relatório pós-batalha CRZ">
+      <h2>Relatório de combate</h2>
+      <table className="crz-report-table">
+       <thead><tr><th>Força</th><th>Vivos</th><th>Baixas</th>
+        <th>Dano</th><th>Magias</th></tr></thead>
+       <tbody>{(['attacker','defender'] as const).map(side=>{
+        const data=report.sides[side];return <tr key={side}>
+         <th scope="row">{SIDE[side].name}</th>
+         <td>{data.survivors}/{data.initialCreatures}</td>
+         <td>{data.casualties}</td><td>{data.inflictedDamage}</td>
+         <td>{data.spellsCast}</td>
+        </tr>;
+       })}</tbody>
+      </table>
+      <Button variant="outline" onClick={exportReport}>Exportar relatório JSON</Button>
+     </section>}
+     {panel==='replay'&&<section aria-label="Replay CRZ">
+      <h2>Replay verificável</h2>
+      <p>Reprodução local protegida pela cadeia SHA-256.</p>
+      <div className="crz-replay-tools">
+       <Button variant="outline" onClick={()=>setReplayStep(0)}>
+        Revisar desde o início</Button>
+       <Button variant="outline" disabled={replayStep===null||replayStep===0}
+        onClick={()=>setReplayStep(n=>n===null?0:Math.max(0,n-1))}>
+        Anterior</Button>
+       <Button variant="outline" disabled={replayStep===null||
+        replayStep>=session.replay.steps.length}
+        onClick={()=>setReplayStep(n=>n===null?0:
+         Math.min(session.replay.steps.length,n+1))}>
+        Próximo</Button>
+       {replayStep!==null&&<Button onClick={()=>setReplayStep(null)}>
+        {session.state.phase==='completed'?'Voltar ao resultado':'Retomar treino'}
+       </Button>}
+       <output aria-label="Posição do replay">
+        {replayStep??session.replay.steps.length} / {session.replay.steps.length}
+       </output>
+      </div>
+     </section>}
+    </aside>
    </div>
-   <section className="battle-surface" aria-label="Replay CRZ">
-    <h2>Replay verificável</h2>
-    <p className="battle-note">Cadeia SHA-256 verificada ao importar e exportar.
-     O arquivo comprova integridade interna, não identidade/autoria digital.</p>
-    <div className="crz-toolbar">
-     <Button variant="outline" onClick={()=>setReplayStep(0)}>
-      Revisar desde o início
-     </Button>
-     <Button variant="outline" disabled={replayStep===null||replayStep===0}
-      onClick={()=>setReplayStep(n=>n===null?0:Math.max(0,n-1))}>Anterior</Button>
-     <Button variant="outline" disabled={replayStep===null||
-       replayStep>=session.replay.steps.length}
-      onClick={()=>setReplayStep(n=>n===null?0:
-       Math.min(session.replay.steps.length,n+1))}>Próximo</Button>
-     {replayStep!==null&&<Button onClick={()=>setReplayStep(null)}>
-      {session.state.phase==='completed'?'Voltar ao resultado':'Retomar treino'}
-     </Button>}
-     <output aria-label="Posição do replay">
-      {replayStep??session.replay.steps.length} / {session.replay.steps.length}
-     </output>
-    </div>
-    <ol className="crz-event-list">
-     {frame.events.slice(-8).map(event=><li key={event.seq}>{eventLabel(event)}</li>)}
-    </ol>
-   </section>
-  </>}
+   <footer className="crz-arena-guide">
+    <strong>Como jogar</strong>
+    <span>Selecione a unidade da vez para destacá-la em verde.</span>
+    <span>Clique num hexágono verde para mover.</span>
+    <span>Clique num inimigo com contorno vermelho para atacar.</span>
+   </footer>
+   {frame.phase==='completed'&&<div className="crz-victory-banner" role="status">
+    Resultado: {frame.winner?SIDE[frame.winner].name:'Empate'} · {frame.resultReason}
+   </div>}
+  </section>}
  </section>;
 }
