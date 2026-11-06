@@ -26,6 +26,8 @@ jobs:
           bun-version: '1.3.3'
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
+      - name: Public repository privacy gate
+        run: node scripts/verify-public-repo.mjs
       - name: Validate public archive
         run: node --test scripts/*.test.mjs
       - name: Migration ledger audit (report only, never deploy)
@@ -122,8 +124,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-inflight-revocation.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-temporal-homologation-contracts.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-management.sql
-          psql -v ON_ERROR_STOP=1 -f scripts/test-house-workbook-import.sql
-          psql -v ON_ERROR_STOP=1 -f scripts/test-house-linked-workbooks.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-private-campaign-content.sql
           # Re-applying our reconciliation must be safe and must not erase history.
           psql -v ON_ERROR_STOP=1 --single-transaction -f drizzle/migrations/0059_reconcile_production_schema.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-production-reconciliation.sql
