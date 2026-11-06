@@ -8,7 +8,7 @@ import {livingCount,stateAfterDamage} from '../domain/morale';
 import {battleOutcome} from '../domain/victory';
 import {runAiUntilHuman} from '../domain/ai';
 import {commander,applyCommanderPassive,type CommanderId} from './commanders';
-import {modelHouse} from './model-houses';
+import {modelHouse,type PresetUnit} from './model-houses';
 
 export type V3PowerTarget='ally'|'enemy';
 export type V3UnitSkill='CHARGE'|'VOLLEY'|'SHIELD_WALL'|'AMBUSH'|'SAPPERS';
@@ -27,6 +27,8 @@ export type V3ScenarioOptions=Readonly<{
  attackerHouseId:string;defenderHouseId:string;
  attackerCommander:CommanderId;defenderCommander:CommanderId;
  scenario:BattleScenarioId;opponent:'ai'|'human';
+ /** Apenas composição fictícia do quartel, nunca snapshots de casas oficiais. */
+ rosters?:Readonly<Record<Side,readonly PresetUnit[]>>;
 }>;
 const sideList=['attacker','defender'] as const;
 const LINE=new Set(['infantry','garrison','personal-guard','crusaders','mercenaries','levies']);
@@ -38,7 +40,9 @@ export function createV3Game(options:V3ScenarioOptions):V3Game{
   const deployment=map.deployment[side].filter(h=>tileAt(map,h)?.terrain!=='rock')
     .sort((a,b)=>a.r-b.r||a.q-b.q);
   const taken=new Set<string>();
-  house.units.forEach((unit,index)=>{
+  const units=options.rosters?.[side]??house.units;
+  if(units.length<1||units.length>5)throw new Error('É preciso escalar de 1 a 5 pilhas por exército.');
+  units.forEach((unit,index)=>{
    const desired=[1,5,9,13][index]??index;
    const hex=deployment[desired]??deployment.find(h=>!taken.has(hexKey(h)));
    if(!hex||taken.has(hexKey(hex)))throw new Error('Mapa não possui espaço para o exército-modelo.');
