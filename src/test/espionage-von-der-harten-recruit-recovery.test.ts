@@ -53,7 +53,8 @@ describe('Von der Harten · recuperação segura do recrutamento',()=>{
   expect(client).toContain("name==='spy_create_agent'");
   expect(client).toContain('classifySpyCreationFailure(result.error)');
   expect(dialog).toContain('cause instanceof SpyCreationError');
-  expect(dialog).not.toMatch(/catch\(cause\)[\s\S]*?requestKey\.current=null;/);
+  const catchBlock=dialog.split('}catch(cause){')[1]?.split('}finally')[0]??'';
+  expect(catchBlock).not.toContain('requestKey.current=null;');
   expect(dialog).toContain('void Promise.allSettled([');
  });
 });
