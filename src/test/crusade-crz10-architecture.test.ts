@@ -5,7 +5,7 @@ import {crzPreset,crzRulesetHash,CRZ_APPROVED_HASHES} from '@/lib/crusade/rulese
 
 describe('CRZ-1.0 · isolamento estrutural e segurança das regras',()=>{
  it('não depende de motor PTE, UI, Supabase, relógio ou RNG global',()=>{
-  for(const file of ['ruleset.ts','stack.ts','rng.ts','damage.ts','creatures.ts','catalog.ts','convert.ts','battle.ts','geometry.ts','combat.ts','turns.ts']){
+  for(const file of ['ruleset.ts','stack.ts','rng.ts','damage.ts','creatures.ts','catalog.ts','convert.ts','battle.ts','geometry.ts','combat.ts','turns.ts','selectors.ts']){
    const source=readFileSync(resolve('src/lib/crusade',file),'utf8');
    // Reutilizar tipos e geometria pública é permitido; importar redutores PTE não.
    const imports=[...source.matchAll(/import[^;]*from\s+['"]([^'"]+)['"]/g)];
