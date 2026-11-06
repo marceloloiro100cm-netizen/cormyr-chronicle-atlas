@@ -130,7 +130,8 @@ export function v37CastSignature(game:V3Game,targetId:string):V3Game{
  if(!v3CanUseCommander(game))throw new Error('Poder de assinatura indisponível.');
  // A regra antiga continua intocada para replays V3.4, removemos a camada
  // somente durante a chamada ao redutor legado e devolvemos a camada versionada.
- const legacy:V3Game={...game,tactics:undefined};
+ const {tactics:validatedTactics,...legacy}=game;
+ if(validatedTactics?.rulesVersion!==V37_RULES_VERSION)throw new Error('Regras V3.7 inválidas.');
  const after=v3UseCommander(legacy,targetId);
  return {...after,tactics:spent(game,side,pool,round,cost,'signature'),
   log:[...after.log.slice(0,-1),
