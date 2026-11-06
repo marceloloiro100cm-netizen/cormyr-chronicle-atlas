@@ -1,0 +1,134 @@
+/* Cruzada V4 — estilo Cormyr original para batalha V3/PTE-3, isolado por escopo.
+ * Nenhum asset de jogos terceiros, nem mudanças nos motores de combate. */
+.crusade-v4{font-size:15px;line-height:1.52}
+.crusade-v4 .crusade-v4-stage{
+ color:#f8ead5;font-size:15px;
+ padding:14px;min-width:0;isolation:isolate;
+ border:2px solid #bd965e;border-radius:14px;
+ background:radial-gradient(ellipse at 52% 35%,rgba(116,89,51,.15),transparent 54%),
+ repeating-linear-gradient(45deg,transparent 0 18px,rgba(250,201,107,.013) 18px 20px),
+ linear-gradient(135deg,#151c1f,#23292b 55%,#141a1b);
+ box-shadow:inset 0 0 0 2px #30291e,0 12px 32px rgba(0,0,0,.35);
+}
+.crusade-v4 :is(h1,h2,h3){font-family:Georgia,serif;color:#f9d9a1;line-height:1.18}
+.crusade-v4 h1{font-size:clamp(22px,2vw,32px);margin:3px 0}
+.crusade-v4 h2{font-size:clamp(19px,1.6vw,24px);margin:0 0 10px}
+.crusade-v4 h3{font-size:18px;margin:14px 0 8px}
+.crusade-v4 p{color:#eadcc8;line-height:1.48}
+.crusade-v4 .crusade-v4-stage button:not(.battle-hex){
+ color:#fff0dc;background:linear-gradient(#3d4549,#252b2e);
+ border:1px solid #aa8a5e;border-radius:7px;
+ font-size:13px;line-height:1.35;font-weight:700;
+ white-space:normal;min-height:40px;padding:7px 10px;
+ box-shadow:inset 0 1px rgba(255,237,195,.13);
+}
+.crusade-v4 .crusade-v4-stage button:not(:disabled):hover{background:#53533c;border-color:#f5d692}
+.crusade-v4 .crusade-v4-stage button:disabled{opacity:1;color:#bfb6a7;background:#282b2c;border-color:#666053;cursor:not-allowed}
+.crusade-v4 .crusade-v4-stage button:focus-visible{outline:3px solid #ffdb86;outline-offset:2px}
+.crusade-v4 .crusade-v4-stage button[aria-pressed="true"]{border-color:#ffe1a0;box-shadow:inset 0 0 0 1px #ffe1a0}
+.crusade-v4 .crusade-v4-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #786244;padding:2px 6px 14px}
+.crusade-v4 .crusade-v4-header p{margin:0;color:#e6d3b5;font-size:13px}
+.crusade-v4 .crusade-v4-eyebrow{font-size:11px!important;font-weight:800;color:#e6be78!important;text-transform:uppercase;letter-spacing:.14em}
+.crusade-v4 .crusade-v4-utility{display:flex;gap:6px;flex-wrap:wrap;justify-content:end}
+.crusade-v4 .crusade-v4-turns{border-bottom:1px solid #786244;padding:12px 7px}
+.crusade-v4 .crusade-v4-section-head{display:flex;gap:14px;flex-wrap:wrap;align-items:baseline}
+.crusade-v4 .crusade-v4-section-head span{font-size:12px;color:#eee0c6}
+.crusade-v4 .crusade-v4-turn-strip{display:flex;gap:9px;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#d3ab6a #232b2d;scroll-snap-type:x proximity;padding:4px 3px 8px}
+.crusade-v4 .crusade-v4-stage button.crusade-v4-turn-card{flex:1 0 108px;min-width:108px;max-width:163px;min-height:89px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:center;position:relative;
+ text-align:center;padding:7px 6px;scroll-snap-align:start;overflow-wrap:anywhere;
+ border:2px solid #7995b1;background:linear-gradient(135deg,#315b7a,#1c3044);
+}
+.crusade-v4 .crusade-v4-stage button.crusade-v4-turn-card.crusade-v4-defender{border-color:#c37d6b;background:linear-gradient(135deg,#874b3c,#421f1d)}
+.crusade-v4 .crusade-v4-turn-card small{position:absolute;left:7px;top:3px;color:#fce0ad;font-size:11px}
+.crusade-v4 .crusade-v4-turn-card strong{color:#fff5e5;font-size:13px;line-height:1.16}
+.crusade-v4 .crusade-v4-turn-card span:last-child{font-size:11px;color:#f7e0c2}
+.crusade-v4 .crusade-v4-unit-symbol{font-size:20px;line-height:1;color:#ffe4ae}
+.crusade-v4 .crusade-v4-stage button.crusade-v4-turn-card[aria-current="step"]{
+ box-shadow:0 0 0 2px #e0b46e,0 0 15px rgba(234,189,104,.35);
+ border-color:#ffe1a4;
+}
+.crusade-v4 .crusade-v4-columns{display:grid;grid-template-columns:minmax(195px,1fr) minmax(0,3.4fr) minmax(208px,1.05fr);gap:12px;min-height:500px;padding:15px 0;align-items:stretch}
+.crusade-v4 .crusade-v4-columns>*{min-width:0}
+.crusade-v4 :is(.crusade-v4-general,.crusade-v4-battlefield,.crusade-v4-history){border:1px solid #a88a5e;border-radius:10px;background:linear-gradient(155deg,rgba(46,47,43,.96),rgba(29,32,31,.96));padding:13px;box-shadow:inset 0 1px rgba(244,218,174,.14)}
+.crusade-v4 .crusade-v4-general{display:flex;flex-direction:column;align-items:stretch}
+.crusade-v4 .crusade-v4-portrait{position:relative;width:100%;max-width:155px;height:142px;overflow:hidden;margin:0 auto 12px;border:3px ridge #be985c;border-radius:9px;
+ background:radial-gradient(ellipse at 50% 32%,#675c4b,#2b2d2c 80%);
+ box-shadow:inset 0 0 0 3px #27231e}
+.crusade-v4 .crusade-v4-portrait-face{position:absolute;top:20px;left:calc(50% - 23px);width:46px;height:51px;border-radius:50%;background:#8c8073}
+.crusade-v4 .crusade-v4-portrait-body{position:absolute;bottom:-9px;left:calc(50% - 50px);height:82px;width:100px;border-radius:47% 47% 0 0;background:#8c8073}
+.crusade-v4 .crusade-v4-portrait-caption{position:absolute;bottom:0;left:0;right:0;padding:3px 2px;text-align:center;color:#fff4d7;background:rgba(15,16,17,.84);font-size:11px;font-weight:700}
+.crusade-v4 .crusade-v4-general h2{text-align:center;margin-bottom:4px}
+.crusade-v4 .crusade-v4-general-name{font-family:Georgia,serif;color:#ffe0a5;font-size:19px;text-align:center}
+.crusade-v4 .crusade-v4-general-title{color:#efdec5;text-align:center;margin:3px 0 14px}
+.crusade-v4 .crusade-v4-power-status{display:flex;justify-content:space-between;gap:8px;border-block:1px solid #876b4d;padding:9px 2px;font-size:13px}
+.crusade-v4 .crusade-v4-power-status strong{color:#dff4b1}
+.crusade-v4 .crusade-v4-power-description{font-size:13px;color:#f0e1c8}
+.crusade-v4 .crusade-v4-general .crusade-v4-primary{min-height:44px;background:linear-gradient(#72507b,#443354);border-color:#d7ade8;font-size:14px}
+.crusade-v4 .crusade-v4-skills{display:flex;flex-direction:column;gap:6px}
+.crusade-v4 .crusade-v4-target-hint{padding:9px;border-left:3px solid #edc585;background:#423629;margin:11px 0;font-size:13px}
+.crusade-v4 .crusade-v4-target-hint button{width:100%;margin-top:8px}
+.crusade-v4 .crusade-v4-commands{margin-top:auto;border-top:1px solid #87714e;display:flex;flex-direction:column;gap:7px;padding-top:12px}
+.crusade-v4 .crusade-v4-commands h3{margin:0 0 3px}
+.crusade-v4 .crusade-v4-battlefield{display:flex;flex-direction:column;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#39463b,#172324 78%)}
+.crusade-v4 .crusade-v4-map-head{display:flex;gap:14px;flex-wrap:wrap;align-items:baseline}
+.crusade-v4 .crusade-v4-map-head h2{margin:0 0 10px}
+.crusade-v4 .crusade-v4-map-head span{font-size:12px;color:#f2e2c6;font-weight:700}
+.crusade-v4 .crusade-v4-map-head i{display:inline-block;width:13px;height:13px;border-radius:3px;border:1px solid #fff;margin-right:5px;vertical-align:middle}
+.crusade-v4 .crusade-v4-green{background:#77e388}.crusade-v4 .crusade-v4-red{background:#ee655c}
+.crusade-v4 .battle-board-frame{display:flex;flex:1;flex-direction:column;min-width:0}
+.crusade-v4 .battle-board-scroll{border:1px solid #9b8767;background:#152126;min-height:270px;max-height:none;flex:1}
+.crusade-v4 .battle-board-svg{background:radial-gradient(ellipse,#3e513f,#182527);height:auto;min-height:250px;touch-action:manipulation}
+.crusade-v4 .battle-board-svg--cormyr .battle-hex:focus-visible polygon{stroke:#ffdf8a;stroke-width:5}
+.crusade-v4 .battle-board-legend{font-size:12px;color:#ead9bd}
+.crusade-v4 .battle-zoom-controls{color:#f6e5cd;justify-content:flex-start}
+.crusade-v4 .crusade-v4-instruction{margin:9px 0 5px;font-weight:700;font-size:13px;color:#edf3d8}
+.crusade-v4 .crusade-v4-inspector{border-top:1px solid #886c48;display:flex;flex-wrap:wrap;gap:8px 13px;padding:9px 3px;color:#f7e9d1;font-size:13px}
+.crusade-v4 .crusade-v4-inspector strong{color:#ffe3a9}
+.crusade-v4 .crusade-v4-status{background:#273c32;border-left:3px solid #93c58b;padding:8px 10px;font-size:13px}
+.crusade-v4 .crusade-v4-end{text-align:center;border:1px solid #e0c286;background:#4c4230;padding:14px;border-radius:9px}
+.crusade-v4 .crusade-v4-end h2{margin:0}
+.crusade-v4 .crusade-v4-history{align-self:end;min-height:305px;max-height:560px;display:flex;flex-direction:column}
+.crusade-v4 .crusade-v4-history h2{border-bottom:1px solid #977d58;padding-bottom:11px}
+.crusade-v4 .crusade-v4-log{list-style:none;margin:0;padding:0;max-height:375px;overflow:auto}
+.crusade-v4 .crusade-v4-log li{display:flex;flex-direction:column;gap:3px;padding:11px 2px;border-bottom:1px solid #675842;font-size:14px;color:#f5eadb}
+.crusade-v4 .crusade-v4-log li:first-child{color:#ffe2ab}
+.crusade-v4 .crusade-v4-log strong{color:#f7d69d}
+.crusade-v4 .crusade-v4-history button{margin-top:8px}
+.crusade-v4 .crusade-v4-private-notice{font-size:12px;border-top:1px solid #766147;margin-top:12px;padding-top:12px}
+.crusade-v4 .crusade-v4-footnotes{display:flex;gap:8px 15px;flex-wrap:wrap;align-items:center;border-top:1px solid #94754d;padding:11px 8px 0;background:rgba(0,0,0,.2)}
+.crusade-v4 .crusade-v4-footnotes strong{color:#f1c686;font-family:Georgia,serif;font-size:17px}
+.crusade-v4 .crusade-v4-footnotes span{font-size:13px;color:#f3e9da;flex:1 1 170px}
+@media(max-width:1210px){
+ .crusade-v4 .crusade-v4-columns{grid-template-columns:minmax(170px,.95fr) minmax(0,2.8fr) minmax(180px,1fr);gap:9px}
+ .crusade-v4 .crusade-v4-stage{padding:9px}
+ .crusade-v4 :is(.crusade-v4-general,.crusade-v4-battlefield,.crusade-v4-history){padding:10px}
+}
+@media(max-width:980px){
+ .crusade-v4 .crusade-v4-columns{grid-template-columns:minmax(178px,.8fr) minmax(0,2fr)}
+ .crusade-v4 .crusade-v4-general{grid-row:1/span 2}
+ .crusade-v4 .crusade-v4-history{grid-column:2;align-self:start;max-height:350px;min-height:190px}
+}
+@media(max-width:660px){
+ .crusade-v4 .crusade-v4-columns{display:flex;flex-direction:column}
+ .crusade-v4 .crusade-v4-general{display:grid;grid-template-columns:105px minmax(0,1fr);gap:8px 11px}
+ .crusade-v4 .crusade-v4-portrait{height:113px;margin:0;grid-row:1/span 3}
+ .crusade-v4 .crusade-v4-general h2,.crusade-v4 .crusade-v4-general-name{text-align:left}
+ .crusade-v4 .crusade-v4-general-title{margin:0;text-align:left}
+ .crusade-v4 .crusade-v4-power-status{grid-column:1/-1}
+ .crusade-v4 .crusade-v4-general h3,
+ .crusade-v4 .crusade-v4-power-description,
+ .crusade-v4 .crusade-v4-general>.crusade-v4-primary,
+ .crusade-v4 .crusade-v4-skills,
+ .crusade-v4 .crusade-v4-target-hint,
+ .crusade-v4 .crusade-v4-commands{grid-column:1/-1}
+ .crusade-v4 .battle-board-svg{min-width:440px}
+ .crusade-v4 .crusade-v4-history{min-height:220px;max-height:350px}
+ .crusade-v4 .crusade-v4-utility{justify-content:flex-start}
+ .crusade-v4 .crusade-v4-utility button{flex:1 1 140px}
+}
+@media(prefers-reduced-motion:reduce){
+ .crusade-v4 .crusade-v4-stage *,
+ .crusade-v4 .crusade-v4-stage *::before{
+  transition:none!important;animation:none!important;
+ }
+}

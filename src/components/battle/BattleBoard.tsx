@@ -7,6 +7,7 @@ import { livingCount } from '@/lib/battle/domain/morale';
 type Token=Pick<BattleStack,'id'|'side'|'name'|'position'|'primaryTypeId'|'initialCount'|'hpPerSoldier'|'currentHp'|'moraleState'>;
 const TERRAIN_COLOR={plain:'#d4c69e',forest:'#66886b',hill:'#c4a36f',rock:'#787478'} as const;
 const SIDE_COLOR:Record<Side,string>={attacker:'#b9524d',defender:'#426e9e'};
+const CORMYR_SIDE_COLOR:Record<Side,string>={attacker:'#416f9b',defender:'#ab5246'};
 const SIZE=30;
 const XSTEP=Math.sqrt(3)*SIZE;
 const points=Array.from({length:6},(_,i)=>{
@@ -17,13 +18,15 @@ const pixel=(h:Hex)=>{const {column,row}=axialToOffset(h);return {
   x:SIZE*1.3+XSTEP*(column+(row&1)/2),
   y:SIZE*1.25+SIZE*1.5*row,
 };};
-export function BattleBoard({map,stacks=[],selectedId,activeId,moveKeys=[],attackKeys=[],pendingHex,
-  showZones=false,onHexClick,onHoverHex}:{
+export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKeys=[],attackKeys=[],pendingHex,
+  showZones=false,onHexClick,onHoverHex,theme='standard'}:{
   map:BattleMap;stacks?:readonly Token[];selectedId?:string|null;activeId?:string|null;
+  hoveredId?:string|null;theme?:'standard'|'cormyr';
   moveKeys?:readonly string[];attackKeys?:readonly string[];pendingHex?:Hex|null;
   showZones?:boolean;onHexClick?:(hex:Hex)=>void;onHoverHex?:(hex:Hex|null)=>void;
 }){
   const [zoom,setZoom]=useState(100);
+  const colors=theme==='cormyr'?CORMYR_SIDE_COLOR:SIDE_COLOR;
   const tileMap=new Map(map.tiles.map(t=>[hexKey(t),t]));
   const occupied=new Map(stacks.filter(s=>s.currentHp>0).map(s=>[hexKey(s.position),s]));
   const a=new Set(map.deployment.attacker.map(hexKey)),b=new Set(map.deployment.defender.map(hexKey));
@@ -37,11 +40,12 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,moveKeys=[],attac
       <button type="button" aria-label="Restaurar zoom do mapa" disabled={zoom===100} onClick={()=>setZoom(100)}>Ajustar</button>
     </div>
     <div className="battle-board-scroll" role="region" tabIndex={0} aria-label="Área navegável do mapa hexagonal">
-    <svg className="battle-board-svg" viewBox={`0 0 ${w} ${h}`} style={{width:`${zoom}%`,maxWidth:'none'}}
+    <svg className={'battle-board-svg'+(theme==='cormyr'?' battle-board-svg--cormyr':'')} viewBox={`0 0 ${w} ${h}`} style={{width:`${zoom}%`,maxWidth:'none'}}
       role="group" aria-label={`Mapa hexagonal com ${map.width} colunas por ${map.height} linhas`}>
       {map.tiles.map(tile=>{
         const key=hexKey(tile),pos=pixel(tile),unit=occupied.get(key);
         const isSelected=unit?.id===selectedId,isActive=unit?.id===activeId;
+        const isHovered=unit?.id===hoveredId;
         const isPending=pendingHex&&hexKey(pendingHex)===key;
         const legalMove=move.has(key),legalAttack=Boolean(unit&&attack.has(unit.id));
         const isA=showZones&&a.has(key),isB=showZones&&b.has(key);
@@ -58,14 +62,20 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,moveKeys=[],attac
           className={`battle-hex${onHexClick?' battle-hex--interactive':''}`}>
           <title>{label}</title>
           <polygon points={points} fill={TERRAIN_COLOR[tile.terrain]}
-            stroke={isPending?'#f7f4ba':isSelected?'#fff5c2':legalAttack?'#b62029':legalMove?'#3d9c5b':'#524b43'}
+            stroke={isPending?'#f7f4ba':isSelected?(theme==='cormyr'?'#84ff92':'#fff5c2'):legalAttack?'#e9574c':legalMove?'#72e881':'#524b43'}
             strokeWidth={isPending||isSelected||legalAttack?4:legalMove?3:1.25}/>
-          {(isA||isB)&&<circle r="23" stroke={isA?SIDE_COLOR.attacker:SIDE_COLOR.defender} strokeWidth="1.8" fill="none" strokeDasharray="4 3"/>}
+          {(isA||isB)&&<circle r="23" stroke={isA?colors.attacker:colors.defender} strokeWidth="1.8" fill="none" strokeDasharray="4 3"/>}
           {tile.terrain==='forest'&&!unit&&<text textAnchor="middle" y="6" fontSize="21" fill="#e3efe1" aria-hidden="true">♣</text>}
           {tile.terrain==='hill'&&!unit&&<text textAnchor="middle" y="6" fontSize="18" fill="#674923" aria-hidden="true">▲</text>}
           {tile.terrain==='rock'&&!unit&&<text textAnchor="middle" y="6" fontSize="19" fill="#e9e8e4" aria-hidden="true">◆</text>}
           {unit&&<>
-            <circle r="20" fill={SIDE_COLOR[unit.side]} stroke={isActive?'#f6e58c':'#faf7eb'} strokeWidth={isActive?3:1.8}/>
+            {isHovered&&<circle data-battle-hover-ring={unit.id} r="29"
+              stroke="#ffe29a" strokeWidth="4.5" fill="none" pointerEvents="none"/>}
+            {isSelected&&theme==='cormyr'&&<circle data-battle-selected-ring={unit.id} r="25"
+              stroke="#7eff9a" strokeWidth="4" fill="none" pointerEvents="none"/>}
+            {legalAttack&&theme==='cormyr'&&<circle data-battle-attack-ring={unit.id} r="27"
+              stroke="#ff685e" strokeWidth="4" fill="none" pointerEvents="none"/>}
+            <circle r="20" fill={colors[unit.side]} stroke={isActive?'#f6e58c':'#faf7eb'} strokeWidth={isActive?3:1.8}/>
             {mark?<image href={mark} x="-16" y="-19" width="32" height="32" preserveAspectRatio="xMidYMid slice"/>:
               <text y="3" fontSize="13" textAnchor="middle" fontWeight="bold" fill="#fff">{unit.name.slice(0,2).toUpperCase()}</text>}
             <rect x="-23" y="11" width="46" height="15" rx="7" fill="#211d1d"/>

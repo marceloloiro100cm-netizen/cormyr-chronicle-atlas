@@ -102,16 +102,21 @@ describe('CRZ Lote 9 — marcos observacionais e pós-ação verificável',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Iniciar treinamento CRZ'}));
   const map=screen.getByRole('group',{name:'Mapa CRZ 11 por 9'});
   expect(map.querySelectorAll('[data-crz-objective]')).toHaveLength(3);
+  fireEvent.click(screen.getByRole('button',{name:'Marcos'}));
   const objectives=within(screen.getByRole('region',{name:'Marcos de observação CRZ'}));
   expect(objectives.getAllByRole('listitem')).toHaveLength(3);
   expect(objectives.getByText('Estrada de Cormyr')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Relatório'}));
   const report=within(screen.getByRole('region',{name:'Relatório pós-batalha CRZ'}));
   expect(report.getAllByRole('row')).toHaveLength(3);
   expect(report.getByRole('button',{name:'Exportar relatório JSON'}))
    .toBeEnabled();
+  fireEvent.click(screen.getByRole('button',{name:'Replay'}));
   expect(screen.getByRole('region',{name:'Replay CRZ'})).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Revisar desde o início'}));
-  expect(objectives.getAllByRole('listitem')).toHaveLength(3);
   expect(screen.getByRole('button',{name:'Retomar treino'})).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Marcos'}));
+  expect(screen.getByRole('region',{name:'Marcos de observação CRZ'}))
+   .toBeInTheDocument();
  });
 });
