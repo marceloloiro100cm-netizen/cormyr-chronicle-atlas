@@ -185,3 +185,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f docs/battle/sql/0077_battle_v3_invitations.sql
           psql -v ON_ERROR_STOP=1 -f docs/battle/sql/0078_battle_v34_synced_sessions.sql
           psql -v ON_ERROR_STOP=1 -f docs/battle/sql/test/battle-v34-smoke.sql
+      - name: V3.5 official two-house adjudication — audit and rollback (disposable only)
+        run: |
+          psql -v ON_ERROR_STOP=1 -f docs/battle/sql/test/battle-v35-bootstrap.sql
+          psql -v ON_ERROR_STOP=1 -f docs/battle/sql/0079_battle_v35_adjudication.sql
+          psql -v ON_ERROR_STOP=1 -f docs/battle/sql/test/battle-v35-smoke.sql

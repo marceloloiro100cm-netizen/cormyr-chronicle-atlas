@@ -10,10 +10,12 @@ import {BattleReplayImporter} from './BattleReplay';
 import {BattleSavedPanel} from './BattleSavedPanel';
 import {BattleV3Game} from './BattleV3Game';
 import {BattleV3InvitationCreator} from './BattleV3InvitationCreator';
+import {BattleV35Admin} from './BattleV35Admin';
+import {BATTLE_V35_OFFICIAL_UI_ENABLED} from '@/lib/battle/feature-flag';
 import './battle.css';
 
 export function BattleNarratorHub(){
- const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'invite'>('home');
+ const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'invite'|'official'>('home');
  const [state,setState]=useState<BattleState|null>(null);
  const [resumeState,setResumeState]=useState<BattleState|null>(null);
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Atacante',defender:'Defensor'});
@@ -49,6 +51,8 @@ export function BattleNarratorHub(){
       <Button onClick={()=>setView('crusade')}>Batalhar</Button>
       <Button variant="outline" onClick={()=>setView('setup')}>Criar batalha</Button>
       <Button variant="outline" onClick={()=>setView('invite')}>Convocar batalha</Button>
+      {BATTLE_V35_OFFICIAL_UI_ENABLED&&<Button variant="outline"
+       onClick={()=>setView('official')}>Homologação oficial</Button>}
       <Button variant="outline" onClick={()=>setManual(x=>!x)}>Consultar regras</Button>
       <Button variant="outline" onClick={()=>setShowImport(x=>!x)}>Importar replay JSON</Button>
       {canSave?<Button variant="outline" onClick={()=>setView('saved')}>Batalhas salvas</Button>:
@@ -65,6 +69,8 @@ export function BattleNarratorHub(){
   </div>}
   {view==='crusade'&&<BattleV3Game narrator onBack={()=>setView('home')}/>}
   {view==='invite'&&<BattleV3InvitationCreator onBack={()=>setView('home')}/>}
+  {view==='official'&&BATTLE_V35_OFFICIAL_UI_ENABLED&&
+   <BattleV35Admin onBack={()=>setView('home')}/>}
   {view==='saved'&&canSave&&<BattleSavedPanel onClose={()=>setView('home')}
     onResume={(ready,restored)=>{
       setState(ready);setResumeState(restored);
