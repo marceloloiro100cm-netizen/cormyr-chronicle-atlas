@@ -28,7 +28,7 @@ describe('V4 · batalha ampliada automaticamente sobre o site',()=>{
    .toBeInTheDocument();
   expect(within(dialog).getByRole('region',{name:'Campo de batalha V3'}))
    .toBeInTheDocument();
-  expect(within(dialog).queryByRole('button',{name:'Ajustes',exact:true}))
+  expect(within(dialog).queryByRole('button',{name:/^Ajustes$/}))
    .not.toBeInTheDocument();
   const map=within(dialog).getByRole('group',{name:/Mapa hexagonal/});
   const destinations=within(map).getAllByRole('button',{name:/movimento permitido/});
@@ -58,7 +58,7 @@ describe('V4 · batalha ampliada automaticamente sobre o site',()=>{
    .toBeInTheDocument();
   expect(within(dialog).getByRole('region',{name:'Ordem de combate'}))
    .toBeInTheDocument();
-  expect(within(dialog).queryByRole('button',{name:'Ajustes',exact:true}))
+  expect(within(dialog).queryByRole('button',{name:/^Ajustes$/}))
    .not.toBeInTheDocument();
   fireEvent.click(within(dialog).getByRole('button',{name:'Replay'}));
   expect(within(dialog).getByRole('region',{name:'Replay CRZ'}))
