@@ -50,7 +50,7 @@
         const linked=list.reduce((a,g)=>a+g.songs.filter(hasVideo).length,0);
         const pending=list.reduce((a,g)=>a+g.songs.filter(s=>s.linkStatus==='youtube-pending').length,0);
         const lyrics=list.reduce((a,g)=>a+g.songs.filter(s=>s.lyrics&&!hasVideo(s)).length,0);
-        status.textContent=`${linked} ${linked===1?'vídeo vinculado':'vídeos vinculados'} em ${list.length} ${list.length===1?'grupo':'grupos'}${pending?' · '+pending+' títulos sem vídeo vinculado':''}${lyrics?' · '+lyrics+(lyrics===1?' letra sem vídeo':' letras sem vídeo'):''}.`;
+        status.textContent=`${linked} ${linked===1?'vídeo vinculado':'vídeos vinculados'} em ${list.length} ${list.length===1?'grupo':'grupos'}${pending?' · '+pending+(pending===1?' título sem vídeo vinculado':' títulos sem vídeo vinculado'):''}${lyrics?' · '+lyrics+(lyrics===1?' letra sem vídeo':' letras sem vídeo'):''}.`;
       }
     };
     const setKind=k=>{kind=k;item='';if(chips)chips.querySelectorAll('[data-music-kind]').forEach(b=>{const on=b.dataset.musicKind===k;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});fillSelect();render();};
