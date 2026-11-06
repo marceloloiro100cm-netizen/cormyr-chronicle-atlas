@@ -23,7 +23,7 @@ export const Route = createFileRoute('/.lovable/oauth/consent')({
   head: () => ({ meta: [{ title: 'Conectar aplicativo — Cormyr Chronicle' }, { name: 'description', content: 'Autorize um aplicativo externo a usar o Cormyr Chronicle com a sua conta.' }, { property: 'og:title', content: 'Conectar aplicativo — Cormyr Chronicle' }, { property: 'og:description', content: 'Autorize o acesso à campanha com as permissões da sua conta.' }, { property: 'og:type', content: 'website' }, { name: 'twitter:card', content: 'summary' }] }),
   component: Consent,
   errorComponent: ({ error }) => (
-    <CampaignShell><h1>Conexão com aplicativo</h1><p role="alert">Não foi possível carregar esta autorização: {error instanceof Error ? error.message : 'erro desconhecido'}.</p></CampaignShell>
+    <CampaignShell publicTime><h1>Conexão com aplicativo</h1><p role="alert">Não foi possível carregar esta autorização: {error instanceof Error ? error.message : 'erro desconhecido'}.</p></CampaignShell>
   ),
 });
 
@@ -71,7 +71,7 @@ function Consent() {
   const scopes = (details?.scope ?? '').split(' ').filter(Boolean);
 
   return (
-    <CampaignShell>
+    <CampaignShell publicTime>
       <p className="campaign-eyebrow">CONEXÃO EXTERNA</p>
       <h1>Conectar {clientName} ao Cormyr Chronicle</h1>
       <section className="campaign-auth">

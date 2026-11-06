@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {resolvePublicSupabase} from '@/integrations/supabase/public-config';
 
 // GM material lives in Supabase behind an admin-only RLS policy.
 // No event, adventure or secret is bundled into the public repository.
@@ -15,8 +16,9 @@ export const Route = createFileRoute("/api/public/gm-content")({
         const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
         if (!token) return fail(401);
 
-        const url = process.env["SUPABASE_URL"]?.replace(/\/+$/, "");
-        const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+        const {url:sourceUrl,key}=resolvePublicSupabase(process.env['SUPABASE_URL'],
+          process.env['SUPABASE_PUBLISHABLE_KEY']);
+        const url=sourceUrl.replace(/\/+$/,'');
         if (!url || !key) return fail(503);
         const headers = {
           apikey: key,

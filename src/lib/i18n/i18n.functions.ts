@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { z } from 'zod';
 import {createClient} from '@supabase/supabase-js';
+import {resolvePublicSupabase} from '@/integrations/supabase/public-config';
 import type {Database} from '@/integrations/supabase/types';
 import { PUBLIC_TRANSLATION_ENTITY_TYPES, isPublicTranslationEntityType } from './public-translations';
 
@@ -15,7 +16,8 @@ export const loadDynamicTranslations = createServerFn({ method: 'POST' })
 
     // Public server functions must use the anon database role so PostgreSQL
     // RLS also excludes unpublished Houses, not just private entity types.
-    const url=process.env['SUPABASE_URL'],key=process.env['SUPABASE_PUBLISHABLE_KEY'];
+    const {url,key}=resolvePublicSupabase(process.env['SUPABASE_URL'],
+    process.env['SUPABASE_PUBLISHABLE_KEY']);
     if(!url||!key)return {};
     const publicDb=createClient<Database>(url,key,{
       auth:{persistSession:false,autoRefreshToken:false},
