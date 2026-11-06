@@ -6,6 +6,7 @@ import {createV3Game,v3PlayCommand} from '@/lib/battle/v3/engine';
 import {getLegalActions,applyBattleCommand} from '@/lib/battle/domain/turns';
 import {hexKey,hexNeighbors} from '@/lib/battle/geometry/hex';
 import {crzReplayBegin} from '@/lib/crusade/replay';
+import {crzHexKey} from '@/lib/crusade/geometry';
 import {crzTrainingReady,CRZ_TRAINING_DEFAULTS} from '@/lib/crusade/training-demo';
 import type {BattleState,BattleCommand} from '@/lib/battle/domain/types';
 
@@ -29,8 +30,11 @@ describe('V4 · unidade destruída ou em debandada não permanece no campo',()=>
    .toBeInTheDocument();
   expect(within(map).queryByRole('button',{name:new RegExp(dead!.name)}))
    .not.toBeInTheDocument();
-  expect(within(map).queryByRole('button',{name:new RegExp(routed!.name)}))
-   .not.toBeInTheDocument();
+  // Duas pilhas de Guarda da Coroa têm o mesmo nome: conferir o HEX do ID retirado.
+  const routedTile=map.querySelector('[data-crz-hex="'+crzHexKey(routed!.position)+'"]');
+  expect(routedTile).toBeInTheDocument();
+  expect(routedTile).not.toHaveTextContent(routed!.id.slice(0,8));
+  expect(routedTile?.querySelector('circle[r="16"]')).toBeNull();
   expect(map.querySelectorAll('[data-battle-hover-ring]')).toHaveLength(0);
   expect(map.querySelectorAll('[data-battle-attack-ring]')).toHaveLength(0);
   expect(map.querySelectorAll('[data-battle-selected-ring]')).toHaveLength(0);
