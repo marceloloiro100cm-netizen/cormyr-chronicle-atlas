@@ -7,8 +7,9 @@ import {v3SkillName,type V3UnitSkill} from '@/lib/battle/v3/engine';
 import {Button} from '@/components/ui/button';
 import {militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import type {V3Game as Game} from '@/lib/battle/v3/engine';
+import {v37Abilities,v37CanCast} from '@/lib/battle/v3/tactics-v37';
 
-export type V36ActionMode='inspect'|'move'|'attack'|'skill'|'power';
+export type V36ActionMode='inspect'|'move'|'attack'|'skill'|'power'|'tactic';
 export function BattleV36Initiative({game,onInspect}:{
  game:Game;onInspect:(id:string)=>void;
 }){
@@ -43,8 +44,9 @@ export function BattleV36Initiative({game,onInspect}:{
   </ol>
  </section>;
 }
-export function BattleV36CommanderPanel({game,side,onPower,canPower,active}:{
+export function BattleV36CommanderPanel({game,side,onPower,canPower,active,onTactic,selectedTactic}:{
  game:Game;side:Side;onPower:()=>void;canPower:boolean;active:BattleStack|null;
+ onTactic?:(id:string)=>void;selectedTactic?:string|null;
 }){
  const id=game.commanders[side],leader=commander(id);
  const used=game.powerUses?.[side]??(game.usedPowers[side]?1:0);
@@ -57,12 +59,17 @@ export function BattleV36CommanderPanel({game,side,onPower,canPower,active}:{
     <h2>{pool.name}</h2><p>{leader.title}</p></div>
   </div>
   <div className="crusade-v36-command-resources">
-   <label>Ordens especiais de treino <strong>{pool.remaining}/{pool.capacity}</strong></label>
+   <label>{game.tactics?'Energia de comando':'Ordens especiais de treino'}
+    <strong>{game.tactics?game.tactics[side].energy+'/'+game.tactics[side].maxEnergy:
+      pool.remaining+'/'+pool.capacity}</strong></label>
    <div role="progressbar" aria-label="Cargas de comando restantes" aria-valuemin={0}
-    aria-valuemax={pool.capacity} aria-valuenow={pool.remaining}
+    aria-valuemax={game.tactics?game.tactics[side].maxEnergy:pool.capacity}
+    aria-valuenow={game.tactics?game.tactics[side].energy:pool.remaining}
     className="crusade-v36-command-meter"><span
-     style={{width:(100*pool.remaining/pool.capacity)+'%'}}/></div>
-   <small>Uso por batalha no motor V3. Energia mágica por rodada ainda não foi implementada.</small>
+     style={{width:(game.tactics?100*game.tactics[side].energy/game.tactics[side].maxEnergy:
+      100*pool.remaining/pool.capacity)+'%'}}/></div>
+   <small>{game.tactics?'Recurso limitado desta batalha de treino. Um estratagema por rodada, com recargas próprias.':
+    'Uso por batalha no motor V3. Energia por rodada não habilitada.'}</small>
   </div>
   <div className="crusade-v36-field-hospital">
    <span aria-hidden="true">✚</span>
@@ -77,6 +84,15 @@ export function BattleV36CommanderPanel({game,side,onPower,canPower,active}:{
     <span aria-hidden="true">{v36CommanderIcon(id)}</span> {leader.powerName}
    </Button>
    <p>{leader.powerDescription}</p>
+   {game.tactics&&onTactic&&<div className="crusade-v37-abilities" aria-label="Estratagemas do comandante">
+    {v37Abilities(id).map(ability=><Button key={ability.id} size="sm"
+     variant={selectedTactic===ability.id?'default':'outline'}
+     disabled={!onTactic||active?.side!==side||!v37CanCast(game,ability.id)}
+     onClick={()=>onTactic(ability.id)}
+     title={ability.description+' · '+ability.cost+' energia · recarga '+ability.cooldownRounds+' rodadas'}>
+      {ability.name} · {ability.cost} energia
+    </Button>)}
+   </div>}
   </div>
  </section>;
 }
