@@ -303,6 +303,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
        tacticTargets.map(s=>s.id):mode==='skill'&&canAct?
        battle!.stacks.filter(s=>s.side!==active?.side&&s.currentHp>0).map(s=>s.id):[])}
      objectiveMarkers={game.objectives?.points} onHexClick={clickHex}/>
+    {game.objectives&&<BattleV39ObjectivesPanel objectives={game.objectives}/>}
     <p className="battle-note">
      {mode==='move'?'Clique no destino verde para mover.':
       mode==='attack'?'Clique no alvo vermelho para atacar.':
