@@ -36,7 +36,8 @@
   'A Balada Libertina do Guardião de Helm':'https://www.youtube.com/watch?v=4RuKLjM1QcU',
   'Essa Coroa':'https://www.youtube.com/watch?v=HM4a9vYrdDU',
   'Cante uma Canção a Elturel':'https://www.youtube.com/watch?v=xoOtYuebA9k',
-  'Terra dos Cavalos':'https://www.youtube.com/watch?v=f4L0mCHpOv8'
+  'Terra dos Cavalos':'https://www.youtube.com/watch?v=f4L0mCHpOv8',
+  'Nova música de Cormyr':'https://www.youtube.com/watch?v=wioZhfoQMAs'
  };
  function attachVideo(song){
   const parsed=yt.parse(directVideos[song.title]||'');
@@ -52,6 +53,9 @@
    lyrics:lyrics.replace(/\\n/g,'\n'),url:''
   })),
   attachVideo({id:'cancioneiro-terra-dos-cavalos',title:'Terra dos Cavalos',
-   category:'cancioneiro',region:'Horselands',url:''})
+   category:'cancioneiro',region:'Horselands',url:''}),
+  // Title not confirmed by YouTube metadata; keep this entry distinct until verified.
+  attachVideo({id:'youtube-wioZhfoQMAs',title:'Nova música de Cormyr',
+   category:'playlist',region:'Cormyr',url:''})
  ];
 })();

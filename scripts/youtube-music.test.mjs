@@ -51,7 +51,7 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
  }
  assert.equal(data.soundtrack.filter(s=>s.linkStatus==='youtube-pending').length,5);
  assert.equal(data.soundtrack.filter(s=>s.lyrics).length,3);
- assert.equal(data.soundtrack.filter(s=>s.url).length,4);
+ assert.equal(data.soundtrack.filter(s=>s.url).length,5);
  const byRegion=Object.fromEntries(data.regions.map(r=>[r.name,r]));
  assert.equal(data.regions.length,11);
  assert.ok(data.regions.every(r=>r.music.length===1),'Every region must have one official theme');
@@ -65,13 +65,19 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
  assert.equal(byRegion.Crownlands.houses.find(h=>h.name==='Von der Harten').music[0].videoId,'bR66gczzEdk');
  const linked=data.soundtrack.filter(s=>s.videoId);
  const ids=Array.from(linked,s=>s.videoId).sort();
- assert.deepEqual(ids,['4RuKLjM1QcU','HM4a9vYrdDU','f4L0mCHpOv8','xoOtYuebA9k'].sort());
+ assert.deepEqual(ids,['4RuKLjM1QcU','HM4a9vYrdDU','f4L0mCHpOv8','wioZhfoQMAs','xoOtYuebA9k'].sort());
  assert.equal(data.soundtrack.filter(s=>s.lyrics&&!s.url).length,1);
  const balada=data.soundtrack.find(s=>s.title==='A Balada Libertina do Guardião de Helm');
  assert.equal(balada?.category,'cancioneiro');
  assert.equal(balada?.videoId,'4RuKLjM1QcU');
  assert.equal(balada?.url,'https://www.youtube.com/watch?v=4RuKLjM1QcU');
  assert.ok(balada?.lyrics.includes('Na noite fria e escura'));
+ const nova=data.soundtrack.find(s=>s.id==='youtube-wioZhfoQMAs');
+ assert.equal(nova?.title,'Nova música de Cormyr');
+ assert.equal(nova?.category,'playlist');
+ assert.equal(nova?.videoId,'wioZhfoQMAs');
+ assert.equal(nova?.url,'https://www.youtube.com/watch?v=wioZhfoQMAs');
+ assert.equal(data.soundtrack.filter(s=>s.videoId==='wioZhfoQMAs').length,1);
  assert.equal(data.soundtrack.find(s=>s.title==='Cante uma Canção a Elturel').category,'cancioneiro');
  assert.equal(data.soundtrack.find(s=>s.title==='Essa Coroa').category,'cancioneiro');
 });
@@ -167,9 +173,11 @@ test('Cancioneiro is a selectable group and missing regional themes are reported
  };
  runInNewContext(read('extras.js'),{window,document,URL,location:{hash:''},
   localStorage:{getItem:()=>null},setTimeout:()=>{}});
- assert.match(nodes['music-count'].textContent,/23 vídeos vinculados/);
+ assert.match(nodes['music-count'].textContent,/24 vídeos vinculados/);
  assert.equal(nodes['music-all'].notice,undefined,'No region is missing a theme');
  assert.match(nodes['music-kinds'].innerHTML,/Cancioneiro/);
+ assert.match(nodes['music-kinds'].innerHTML,/Novidades da playlist/);
+ assert.match(nodes['music-all'].innerHTML,/wioZhfoQMAs/);
  nodes['music-kinds'].click({target:{closest:()=>({dataset:{musicKind:'cancioneiro'}})}});
  assert.match(nodes['music-count'].textContent,/2 títulos sem vídeo vinculado/);
  assert.match(nodes['music-count'].textContent,/1 letra sem vídeo/);
@@ -212,7 +220,7 @@ test('all supplied URLs are valid, and the shared Von der Harten track is not du
  const tracks=[...data.kingdomMusic,...data.regions.flatMap(r=>(r.music||[]).concat(
   r.houses.flatMap(h=>h.music||[]))),
   ...data.soundtrack.filter(s=>s.videoId)];
- assert.equal(tracks.length,23);
- assert.equal(new Set(tracks.map(s=>s.videoId)).size,22);
+ assert.equal(tracks.length,24);
+ assert.equal(new Set(tracks.map(s=>s.videoId)).size,23);
  assert.ok(tracks.every(s=>data.musicPlaylist&&/^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/.test(s.url)));
 });
