@@ -10,8 +10,8 @@ CREATE TABLE public.noble_house_sheets (
  state jsonb NOT NULL,version integer NOT NULL DEFAULT 0);
 -- As casas de teste são sintéticas, não utilizam dados dos jogadores.
 INSERT INTO public.noble_house_sheets(house_id,state,version) VALUES
- ('house-v34-a','{"houseId":"house-v34-a","units":[{"id":"a","casualties":0}]}'::jsonb,7),
- ('house-v34-b','{"houseId":"house-v34-b","units":[{"id":"b","casualties":0}]}'::jsonb,8);
+ ('house-v34-a','{"houseId":"house-v34-a","units":[{"id":"a","strength":100,"casualties":0}]}'::jsonb,7),
+ ('house-v34-b','{"houseId":"house-v34-b","units":[{"id":"b","strength":100,"casualties":0}]}'::jsonb,8);
 GRANT SELECT,UPDATE ON TABLE public.noble_house_sheets TO service_role;
 INSERT INTO public.battle_sim_sessions(created_by,name,status,initial_state_json,current_state_json,
  initial_state_hash,state_hash) VALUES
