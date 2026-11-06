@@ -8,3 +8,10 @@ export const BATTLE_MODULE_ENABLED = import.meta.env['VITE_ENABLE_BATTLE_MODULE'
  */
 export const BATTLE_PERSISTENCE_UI_ENABLED=import.meta.env['VITE_ENABLE_BATTLE_PERSISTENCE']!=='false';
 export const BATTLE_RULES_VERSION = 'PTE-2.0' as const;
+
+/** Piloto de produção solicitado pelo Narrador em 06/11/2026.
+ * Habilitado por padrão só no painel autenticado do Narrador.
+ * Kill-switch: VITE_ENABLE_CRZ_TRAINING=false em novo build.
+ * NÃO autoriza alteração de casas, banco, contas nem resultados oficiais.
+ */
+export const BATTLE_CRZ_TRAINING_UI_ENABLED=import.meta.env['VITE_ENABLE_CRZ_TRAINING']!=='false';

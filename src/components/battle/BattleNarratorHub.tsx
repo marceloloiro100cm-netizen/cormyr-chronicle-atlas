@@ -1,8 +1,8 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useState,lazy,Suspense} from 'react';
 import {useServerFn} from '@tanstack/react-start';
 import {checkBattlePersistence} from '@/lib/battle/battle-session.functions';
 import {Button} from '@/components/ui/button';
-import {BATTLE_RULES_VERSION,BATTLE_PERSISTENCE_UI_ENABLED} from '@/lib/battle/feature-flag';
+import {BATTLE_RULES_VERSION,BATTLE_PERSISTENCE_UI_ENABLED,BATTLE_CRZ_TRAINING_UI_ENABLED} from '@/lib/battle/feature-flag';
 import type {BattleState,Side} from '@/lib/battle/domain/types';
 import {BattleSetup} from './BattleSetup';
 import {BattleArena} from './BattleArena';
@@ -12,8 +12,12 @@ import {BattleV3Game} from './BattleV3Game';
 import {BattleV3InvitationCreator} from './BattleV3InvitationCreator';
 import './battle.css';
 
+// Lazy-load do laboratório experimental para não atrasar a batalha V3 oficial.
+const BattleCrzLab=lazy(()=>import('./BattleCrzLab').then(m=>({default:m.BattleCrzLab})));
+
+
 export function BattleNarratorHub(){
- const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'invite'>('home');
+ const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'crz'|'invite'>('home');
  const [state,setState]=useState<BattleState|null>(null);
  const [resumeState,setResumeState]=useState<BattleState|null>(null);
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Atacante',defender:'Defensor'});
@@ -47,6 +51,8 @@ export function BattleNarratorHub(){
       <strong> Criar batalha:</strong> mantenha o laboratório PTE-2.0 com editor e unidades oficiais em cópia somente leitura.</p>
     <div className="battle-home-actions">
       <Button onClick={()=>setView('crusade')}>Batalhar</Button>
+      {BATTLE_CRZ_TRAINING_UI_ENABLED&&<Button variant="outline"
+       onClick={()=>setView('crz')}>CRZ-1.0 · Laboratório (teste)</Button>}
       <Button variant="outline" onClick={()=>setView('setup')}>Criar batalha</Button>
       <Button variant="outline" onClick={()=>setView('invite')}>Convocar batalha</Button>
       <Button variant="outline" onClick={()=>setManual(x=>!x)}>Consultar regras</Button>
@@ -64,6 +70,9 @@ export function BattleNarratorHub(){
     </div>}
   </div>}
   {view==='crusade'&&<BattleV3Game narrator onBack={()=>setView('home')}/>}
+  {view==='crz'&&BATTLE_CRZ_TRAINING_UI_ENABLED&&<Suspense fallback={<p role="status">Carregando laboratório CRZ…</p>}>
+   <BattleCrzLab onBack={()=>setView('home')}/>
+  </Suspense>}
   {view==='invite'&&<BattleV3InvitationCreator onBack={()=>setView('home')}/>}
   {view==='saved'&&canSave&&<BattleSavedPanel onClose={()=>setView('home')}
     onResume={(ready,restored)=>{
