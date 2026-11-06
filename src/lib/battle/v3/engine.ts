@@ -2,6 +2,7 @@ import type {BattleCommand,BattleStack,BattleState,Side} from '../domain/types';
 import {makeBattleSetup,makeFictionalStack} from '../domain/setup';
 import {startBattle,applyBattleCommand,getLegalActions} from '../domain/turns';
 import {createScenario,type BattleScenarioId} from '../geometry/map-fixtures';
+import {createV38TheatreMap,type V38TheatreId} from './theatres-v38';
 import {hexDistance,hexKey} from '../geometry/hex';
 import {tileAt} from '../geometry/terrain';
 import {livingCount,stateAfterDamage} from '../domain/morale';
@@ -35,6 +36,8 @@ export type V3ScenarioOptions=Readonly<{
  attackerHouseId:string;defenderHouseId:string;
  attackerCommander:CommanderId;defenderCommander:CommanderId;
  scenario:BattleScenarioId;opponent:'ai'|'human';
+ /** Opcional em treinos locais V3.8; ausente nos replays/sessões V3.4. */
+ theatre?:V38TheatreId;
  /** Apenas composição fictícia do quartel, nunca snapshots de casas oficiais. */
  rosters?:Readonly<Record<Side,readonly PresetUnit[]>>;
  progressions?:Readonly<Record<Side,V3CommanderProgress>>;
@@ -42,7 +45,8 @@ export type V3ScenarioOptions=Readonly<{
 const sideList=['attacker','defender'] as const;
 const LINE=new Set(['infantry','garrison','personal-guard','crusaders','mercenaries','levies']);
 export function createV3Game(options:V3ScenarioOptions):V3Game{
- const map=createScenario(options.scenario);
+ const map=options.theatre?createV38TheatreMap(options.theatre,options.scenario):
+  createScenario(options.scenario);
  const roster:BattleStack[]=[];
  for(const side of sideList){
   const house=modelHouse(side==='attacker'?options.attackerHouseId:options.defenderHouseId);
@@ -65,8 +69,9 @@ export function createV3Game(options:V3ScenarioOptions):V3Game{
  const attacker=modelHouse(options.attackerHouseId),defender=modelHouse(options.defenderHouseId);
  const draft=makeBattleSetup({
   id:'v3-'+attacker.id+'-'+defender.id+'-'+options.scenario,
+  // Mapa versionado já contém a identidade do teatro; nenhuma alteração a dados oficiais.
   name:attacker.subtitle+' contra '+defender.subtitle,
-  seed:'v3-'+options.scenario, map,
+  seed:'v3-'+map.id, map,
   controls:{attacker:'human',defender:options.opponent},
   stacks:roster,
  });
