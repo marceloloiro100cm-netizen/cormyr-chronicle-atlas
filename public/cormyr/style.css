@@ -282,3 +282,7 @@
 .music-unavailable{padding:12px 15px;border:1px dashed #a397ac;border-radius:6px;color:var(--purple);background:#f6f1e8}
 .music-unavailable strong,.music-unavailable small{display:block}
 .music-unavailable small{margin-top:5px;font-size:12px}
+
+/* O catálogo mantém a playlist opcional em um reprodutor sob demanda. */
+.music-playlist-embed:not([hidden]) { margin-top: 1rem; width: 100%; }
+.music-playlist-embed iframe { display: block; width: 100%; max-height: 550px; aspect-ratio: 16 / 9; border: 0; border-radius: 8px; }
