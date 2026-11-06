@@ -1,6 +1,6 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen} from '@testing-library/react';
-import {readFileSync} from 'node:fs';
+import {readFileSync,statSync} from 'node:fs';
 import {
  SPY_NOBLE_DETAIL_MAPS,nobleMapKey,spyHouseMapPoint,
 } from '@/lib/espionage/spy-noble-detail-maps';
@@ -102,6 +102,13 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
    expect(container.querySelectorAll('.spy-noble-local-pin')).toHaveLength(2);
    expect(container.querySelector('.spy-noble-local-route')).not.toBeNull();
    unmount();
+  }
+ });
+ it('inclui os binários otimizados antes de liberar a publicação',()=>{
+  for(const name of ['ferlin','stonelands']){
+   const map=SPY_NOBLE_DETAIL_MAPS[name];
+   const binary=statSync('public'+map.src);
+   expect(binary.size).toBeGreaterThan(200_000);
   }
  });
  it('usa linha fina, marfim e dourado, sem seta vermelha',()=>{
