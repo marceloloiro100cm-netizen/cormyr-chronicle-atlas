@@ -120,6 +120,24 @@ describe('CRZ-1.0 Lote 4 · setup e iniciativa',()=>{
  });
 });
 describe('CRZ-1.0 Lote 4 · ações, moral e retaliação',()=>{
+ it('lista somente ações legais e acompanha MOVE, habilidade e ataque',()=>{
+  const initial=crzStartBattle(ready({withLeader:true}));
+  const options=crzLegalActions(initial);
+  expect(options.actorId).toBe('a1');
+  expect(options.moves.length).toBeGreaterThan(0);
+  expect(options.canWait).toBe(true);
+  expect(options.canDefend).toBe(true);
+  expect(options.leaderSpells).toContain('bless');
+  expect(options.abilities).toEqual([]);
+  const moved=crzApplyCommand(initial,{type:'MOVE',unitId:'a1',
+   to:options.moves[0]!.to});
+  const next=crzLegalActions(moved);
+  expect(next.moves).toEqual([]);
+  expect(next.canWait).toBe(false);
+  expect(next.canDefend).toBe(false);
+  expect(next.leaderSpells).toEqual([]);
+  expect(next.canEnd).toBe(true);
+ });
  it('T-INT-01: goblins causam 208, orcs ficam abalados e retaliam 78',()=>{
   const before=adjacent(crzStartBattle(ready()));
   const after=crzApplyCommand(before,{type:'ATTACK',unitId:'a1',targetId:'d1'});
