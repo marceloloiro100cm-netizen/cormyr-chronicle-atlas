@@ -6,7 +6,7 @@ import {crzPreset,crzRulesetHash,CRZ_APPROVED_HASHES} from '@/lib/crusade/rulese
 describe('CRZ-1.0 · isolamento estrutural e segurança das regras',()=>{
  it('não depende de motor PTE, UI, Supabase, relógio ou RNG global',()=>{
   for(const file of ['ruleset.ts','stack.ts','rng.ts','damage.ts','creatures.ts','catalog.ts','convert.ts','geometry.ts','setup.ts','battle-state.ts',
-    'strike.ts','leader.ts','turns.ts','ai.ts']){
+    'strike.ts','leader.ts','turns.ts','ai.ts','replay.ts']){
    const source=readFileSync(resolve('src/lib/crusade',file),'utf8');
    expect(source).not.toMatch(/from\s+['"][^'"]*(?:\/battle\/|\/house\/|supabase|react|\.server|\.functions)/i);
    expect(source).not.toMatch(/\bMath\.random\s*\(/);
