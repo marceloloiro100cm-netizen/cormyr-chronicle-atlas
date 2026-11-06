@@ -10,7 +10,7 @@ afterEach(cleanup);
 describe('Cartografia detalhada no planejador de espionagem',()=>{
  it('preserva os seis mapas e as dimensões originais do Narrador',()=>{
   expect(Object.keys(SPY_NOBLE_DETAIL_MAPS).sort()).toEqual(
-   ['crownlands','dragoncoast','helmlands','horselands','shieldmark','volkumburgh']);
+   ['crownlands','dragoncoast','ferlin','helmlands','horselands','shieldmark','stonelands','volkumburgh']);
   for(const region of ['crownlands','helmlands','shieldmark']){
    expect(SPY_NOBLE_DETAIL_MAPS[region]).toMatchObject({
     width:1536,height:1024,src:'/maps/espionage/'+region+'.webp'});
@@ -19,6 +19,10 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
    width:1709,height:920,src:'/maps/espionage/dragoncoast.webp'});
   expect(SPY_NOBLE_DETAIL_MAPS['horselands']).toMatchObject({
    width:1024,height:1536,src:'/maps/espionage/horselands.webp'});
+  expect(SPY_NOBLE_DETAIL_MAPS['ferlin']).toMatchObject({
+   width:1183,height:1329,src:'/maps/espionage/ferlin.webp'});
+  expect(SPY_NOBLE_DETAIL_MAPS['stonelands']).toMatchObject({
+   width:1536,height:1024,src:'/maps/espionage/stonelands.webp'});
   expect(SPY_NOBLE_DETAIL_MAPS['volkumburgh']).toMatchObject({
    width:1536,height:1024,src:'/maps/espionage/volkumburgh.webp'});
  });
@@ -29,6 +33,8 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
   expect(spyHouseMapPoint('horselands','Harcourt')).toEqual({x:243,y:578});
   expect(spyHouseMapPoint('horselands','Hardcourt')).toEqual({x:243,y:578});
   expect(spyHouseMapPoint('volkumburgh','Casa sem nome na bandeira')).toBeNull();
+  expect(spyHouseMapPoint('ferlin','Huntinghorn')).toEqual({x:583,y:872});
+  expect(spyHouseMapPoint('stonelands','Rowanmantle')).toEqual({x:1109,y:161});
   expect(spyHouseMapPoint('crownlands','Von der Harten')).toEqual({x:166,y:518});
   expect(spyHouseMapPoint('helmlands','Evenhand')).toEqual({x:993,y:475});
   expect(spyHouseMapPoint('shieldmark','Mareforte')).toEqual({x:1179,y:846});
@@ -71,6 +77,32 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
   expect(onSelectHouse).toHaveBeenCalledTimes(1);
   expect(container.querySelector('.spy-noble-local-route-outline')).toBeTruthy();
   expect(container.querySelector('.spy-noble-local-route')).not.toHaveAttribute('marker-end');
+ });
+ it('os mapas de Ferlin e Stonelands têm pontos válidos e proporções distintas',()=>{
+  for(const [region,house,expectedWidth,expectedHeight,count] of ([
+   ['ferlin','Huntinghorn',1183,1329,10],
+   ['stonelands','Rowanmantle',1536,1024,8]
+  ] as const)){
+   const map=SPY_NOBLE_DETAIL_MAPS[region];
+   const coords=Object.values(map.houses);
+   expect(coords).toHaveLength(count);
+   expect(new Set(coords.map(p=>p.x+','+p.y)).size).toBe(count);
+   for(const {x,y} of coords){
+    expect(x).toBeGreaterThan(0);expect(x).toBeLessThan(map.width);
+    expect(y).toBeGreaterThan(0);expect(y).toBeLessThan(map.height);
+   }
+   const {container,unmount}=render(<SpyLocalHouseMap regionId={region}
+    originHouseId={house.toLowerCase()} originHouseName={house}
+    destinationHouseId={region==='ferlin'?'jabari':'misrim'}
+    destinationHouseName={region==='ferlin'?'Jabari':'Misrim'}
+    plan={null} onSelectRegion={vi.fn()}/>);
+   expect(container.querySelector('img')).toHaveAttribute('src',map.src);
+   expect(container.querySelector('svg.spy-noble-map-overlay'))
+    .toHaveAttribute('viewBox',`0 0 ${expectedWidth} ${expectedHeight}`);
+   expect(container.querySelectorAll('.spy-noble-local-pin')).toHaveLength(2);
+   expect(container.querySelector('.spy-noble-local-route')).not.toBeNull();
+   unmount();
+  }
  });
  it('usa linha fina, marfim e dourado, sem seta vermelha',()=>{
   const css=readFileSync('src/components/house/espionage/spy-local-house-map.css','utf8');
