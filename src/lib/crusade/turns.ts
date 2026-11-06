@@ -274,7 +274,7 @@ export function crzApplyCommand(untrusted:CrzBattleState,
   const boosted=crzReplace(state,{...active,usage:used,activation:{
    ...active.activation,activatedAbility:command.ability,abilityBonusDice:1,
   }});
-  return crzLog(boosted,'LEADER_CAST',active.id,null,{
+  return crzLog(boosted,'ABILITY_USED',active.id,null,{
    ability:command.ability,bonusDice:1,
   });
  }
