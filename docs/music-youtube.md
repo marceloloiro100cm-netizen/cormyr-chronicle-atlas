@@ -46,3 +46,12 @@ Referências oficiais: https://developers.google.com/youtube/iframe_api_referenc
 - Os vídeos do Cancioneiro são músicas independentes, não substituem temas regionais. Elturel conserva a letra; Terra dos Cavalos recebe a referência de Horselands.
 - Os links foram fornecidos diretamente pelo Narrador, normalizados e validados estruturalmente. A consulta do Windsor.ai ainda não retornou esses IDs; a disponibilidade atual e permissões de incorporação no YouTube não foram confirmadas pela fonte externa.
 - O catálogo possui 18 vínculos em reino/regiões/casas + 3 no Cancioneiro, **20 vídeos distintos**, com o ID de Volkumburgh usado em dois contextos. Permanecem cinco músicas sem vínculo e duas letras sem vídeo.
+
+
+## Cobertura regional completa — confirmação de Terras da Coroa (06/11/2026)
+- Tema oficial **Terras da Coroa / Crownlands**: `https://www.youtube.com/watch?v=7B-Mb9vnmZk`, conforme link fornecido pelo Narrador.
+- **Essa Coroa** (`HM4a9vYrdDU`) permanece **somente no Cancioneiro**, não é tema da região.
+- As **11 regiões** têm exatamente um tema registrado: Crownlands, Swordmark, Dragon Coast, Ferlin, Helmlands, Horselands, Veilstone, Stonelands, Elfhold, Volkumburgh e Shieldmark.
+- Swordmark/Shieldmark usam os links atualizados enviados em 06/11/2026; Ferlin/Volkumburgh foram adicionadas; o tema de Volkumburgh foi compartilhado com a Casa Von der Harten conforme indicado.
+- O catálogo final possui **19 vínculos** de temas do reino/regiões/casas e **3 no Cancioneiro**, ou **22 vínculos / 21 IDs distintos** (Volkumburgh e Von der Harten compartilham um ID). Há cinco títulos sem vídeo e duas letras ainda sem vídeo cadastrado.
+- Os IDs foram validados estruturalmente; reprodução e permissão de incorporação permanecem sujeitas ao YouTube, não certificadas por esta auditoria.
