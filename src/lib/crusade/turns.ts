@@ -18,7 +18,7 @@ export type CrzCommand=
  |Readonly<{type:'MOVE';unitId:string;to:CrzHex}>
  |Readonly<{type:'ATTACK';unitId:string;targetId:string;mode:'melee'|'ranged'}>
  |Readonly<{type:'WAIT'|'DEFEND'|'END_ACTIVATION';unitId:string}>
- |Readonly<{type:'ABILITY';unitId:string;ability:'CHARGE'|'VOLLEY'}>
+ |Readonly<{type:'ABILITY';unitId:string;ability:'CHARGE'|'VOLLEY'|'NIMBLE_ESCAPE'}>
  |Readonly<{type:'CAST';unitId:string;spellId:CrzSpellId;targetId:string|null}>;
 export type CrzActor='human'|'ai';
 export const crzEmptyActivation=():CrzActivation=>({
@@ -232,7 +232,8 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
  const enemy=state.stacks.filter(s=>s.side!==unit.side&&crzCapable(s));
  if(!unit.activation.attacked&&!unit.activation.moved){
   const occupied=state.stacks.filter(s=>s.id!==unit.id&&crzCapable(s)).map(s=>s.position);
-  const enemyPositions=state.ruleset.movement.zocEnabled?enemy.map(s=>s.position):[];
+  const enemyPositions=state.ruleset.movement.zocEnabled&&
+   unit.activation.preparedAbility!=='NIMBLE_ESCAPE'?enemy.map(s=>s.position):[];
   const bonus=crzEffectBonus(unit,'speed');
   const budget=Math.max(0,Math.min(state.ruleset.movement.maxBudget,
    unit.movementHex+bonus));
@@ -262,6 +263,8 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
   legal.push({type:'DEFEND',unitId:unit.id});
  if(!unit.activation.attacked&&!unit.activation.preparedAbility){
   const path=unit.activation.movedPath??[];
+  if(unit.template.traits.includes('nimble-escape')&&!unit.activation.moved)
+   legal.push({type:'ABILITY',unitId:unit.id,ability:'NIMBLE_ESCAPE'});
   if(unit.template.traits.includes('charge')&&unit.meleeRoutine&&path.length>=3){
    const directions=path.slice(1).map((p,i)=>{
     const prev=path[i]!;
@@ -337,7 +340,8 @@ export function crzPlay(state:CrzBattleState,command:CrzCommand,
  if(command.type==='END_ACTIVATION')return finishActivation(state);
  if(command.type==='MOVE'){
   const occupied=state.stacks.filter(s=>s.id!==unit.id&&crzCapable(s)).map(s=>s.position);
-  const enemies=state.ruleset.movement.zocEnabled?
+  const enemies=state.ruleset.movement.zocEnabled&&
+   unit.activation.preparedAbility!=='NIMBLE_ESCAPE'?
    state.stacks.filter(s=>s.side!==unit.side&&crzCapable(s)).map(s=>s.position):[];
   const path=crzReachable(state.map,unit.position,Math.max(0,Math.min(
    state.ruleset.movement.maxBudget,unit.movementHex+crzEffectBonus(unit,'speed'))),
