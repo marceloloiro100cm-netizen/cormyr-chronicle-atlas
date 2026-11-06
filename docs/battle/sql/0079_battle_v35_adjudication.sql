@@ -88,11 +88,17 @@ BEGIN
     approved_at=now(),updated_at=now() WHERE id=p_case;
  RETURN true;
 END;$v35$;
--- Defence in depth: even trusted server parameters may change ONLY casualties/notes.
--- The transaction rejects any altered XP, Power, health, buildings, roster or calendar.
+-- Valida que o JSON de destino muda exclusivamente casualties e notes por unidade.
 CREATE OR REPLACE FUNCTION public.battle_v35_losses_only(p_before jsonb,p_after jsonb)
-RETURNS boolean LANGUAGE plpgsql IMMUTABLE SET search_path=pg_catalog,public AS $v35$
-DECLARE n integer;i integer;oldunit jsonb;newunit jsonb;before_count integer;after_count integer;
+RETURNS boolean LANGUAGE plpgsql IMMUTABLE
+ SET search_path=pg_catalog,public AS $v35$
+DECLARE
+ n integer;
+ i integer;
+ oldunit jsonb;
+ newunit jsonb;
+ before_count integer;
+ after_count integer;
 BEGIN
  IF jsonb_typeof(p_before)<>'object' OR jsonb_typeof(p_after)<>'object'
     OR jsonb_typeof(p_before->'units')<>'array'
@@ -102,12 +108,29 @@ BEGIN
  n:=jsonb_array_length(p_before->'units');
  IF n<>jsonb_array_length(p_after->'units') THEN RETURN false; END IF;
  FOR i IN 0..n-1 LOOP
-  oldunit:=p_before->'units'->i;newunit:=p_after->'units'->i;
-  IF jsonb_typeof(oldunit)<>'object' OR jsonb_typeof(newunit)<>'object' OR
-     (oldunit-'casualties'-'notes')<>(newunit-'casualties'-'notes') OR
-     jsonb_typeof(oldunit->'casualties')<>'number' OR
-     jsonb_typeof(newunit->'casualties')<>'number' OR
-     (oldunit->>'casualties') !~ '^[0-9]+
+  oldunit:=p_before->'units'->i;
+  newunit:=p_after->'units'->i;
+  IF jsonb_typeof(oldunit)<>'object' OR jsonb_typeof(newunit)<>'object'
+     OR (oldunit-'casualties'-'notes')<>(newunit-'casualties'-'notes')
+     OR jsonb_typeof(oldunit->'casualties')<>'number'
+     OR jsonb_typeof(newunit->'casualties')<>'number'
+     OR jsonb_typeof(newunit->'strength')<>'number'
+     OR (oldunit->>'casualties') !~ '^[0-9]+$'
+     OR (newunit->>'casualties') !~ '^[0-9]+$'
+     OR (newunit->>'strength') !~ '^[0-9]+$'
+  THEN RETURN false; END IF;
+  before_count:=(oldunit->>'casualties')::integer;
+  after_count:=(newunit->>'casualties')::integer;
+  IF after_count<before_count OR after_count>(newunit->>'strength')::integer
+  THEN RETURN false; END IF;
+ END LOOP;
+ RETURN true;
+END;
+$v35$;
+REVOKE ALL ON FUNCTION public.battle_v35_losses_only(jsonb,jsonb)
+ FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.battle_v35_losses_only(jsonb,jsonb) TO service_role;
+CREATE OR REPLACE FUNCTION public.battle_v35_apply(
  p_actor uuid,p_case uuid,p_operation uuid,p_plan_hash text,
  p_before_a jsonb,p_before_b jsonb,p_after_a jsonb,p_after_b jsonb,
  p_version_a integer,p_version_b integer,p_new_hash_a text,p_new_hash_b text
