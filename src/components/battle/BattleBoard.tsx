@@ -28,7 +28,9 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
   const [zoom,setZoom]=useState(100);
   const colors=theme==='cormyr'?CORMYR_SIDE_COLOR:SIDE_COLOR;
   const tileMap=new Map(map.tiles.map(t=>[hexKey(t),t]));
-  const occupied=new Map(stacks.filter(s=>s.currentHp>0).map(s=>[hexKey(s.position),s]));
+  // Pilhas destruídas ou em debandada saem do campo; seguem no estado para baixas e relatório.
+  const occupied=new Map(stacks.filter(s=>s.currentHp>0&&s.moraleState!=='routed')
+    .map(s=>[hexKey(s.position),s]));
   const a=new Set(map.deployment.attacker.map(hexKey)),b=new Set(map.deployment.defender.map(hexKey));
   const move=new Set(moveKeys),attack=new Set(attackKeys);
   const w=XSTEP*(map.width+1)+SIZE*1.6,h=SIZE*(1.5*(map.height-1)+2.8);
