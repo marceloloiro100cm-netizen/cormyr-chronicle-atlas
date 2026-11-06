@@ -8,6 +8,9 @@ import type {CrzRngState} from './rng';
 export type CrzActivation=Readonly<{
  moved:boolean;attacked:boolean;guard:boolean;waited:boolean;
  retaliationRound:number|null;extraUsedRound:number|null;
+ /** Registro por ativação, presente apenas quando houve MOVE ou ABILITY. */
+ movedPath?:readonly CrzHex[];
+ preparedAbility?:'CHARGE'|'VOLLEY';
 }>;
 export type CrzEffect=Readonly<{
  id:string;sourceId:string;kind:'attack'|'ac'|'morale'|'speed';
@@ -26,6 +29,8 @@ export type CrzEventData=
  |Readonly<{type:'MOVED';unitId:string;from:CrzHex;to:CrzHex;
    cost:number;path:readonly CrzHex[]}>
  |Readonly<{type:'WAITED'|'DEFENDED';unitId:string}>
+ |Readonly<{type:'ABILITY_USED';unitId:string;
+   ability:'CHARGE'|'VOLLEY';uses:number}>
  |Readonly<{type:'ATTACK_RESOLVED'|'RETALIATION_RESOLVED';
    unitId:string;targetId:string;mode:'expected'|'rolled';
    attacks:number;hits:number;crits:number;rawDamage:number;
