@@ -112,6 +112,29 @@ describe('CRZ-1.0 · lotes 1–2, contratos e goldens normativos dos anexos',()=
   expect(a.hpPool+b.hpPool).toBe(197);
   expect(a.topHp).toBe(7);expect(b.topHp).toBe(10);
  });
+ it('T-INT-01 (03 §18): ataque 208, 13 mortos, retaliação 78 e 11 mortos',()=>{
+  const orcs=target(30,15);
+  const goblins=target(60,7);
+  const first=crzExpected5e({ruleset:rule,attackerCount:60,attackBonus:0,
+   targetAc:13,target:orcs,entries:[attack(4,1,6,2)]});
+  expect(first.breakdown[0]).toMatchObject({hitBP:6000,
+   perAttackX100:347,totalX100:20820});
+  expect(first).toMatchObject({rawDamage:208,receipt:{
+   casualties:13,stack:{hpPool:242,alive:17,topHp:2},
+  }});
+  const lossPct=Math.floor(100*first.receipt.casualties/30);
+  expect(lossPct).toBe(43);
+  const shakenAt=Math.max(20,Math.min(70,40+Math.floor(0/2)));
+  expect(lossPct).toBeGreaterThanOrEqual(shakenAt);
+  const retaliation=crzExpected5e({ruleset:rule,
+   attackerCount:first.receipt.stack.alive,attackBonus:-2,
+   targetAc:15,target:goblins,entries:[attack(5,1,12,3)]});
+  expect(retaliation.breakdown[0]).toMatchObject({
+   hitBP:4500,perAttackX100:459,totalX100:7803});
+  expect(retaliation).toMatchObject({rawDamage:78,receipt:{
+   casualties:11,stack:{hpPool:342,alive:49,topHp:6},
+  }});
+ });
  it('T-WOTR-01: 50 arqueiros, RD5, mult 0.9 vs CA22 => dano 59',()=>{
   const res=crzWotrExpected({ruleset:crzPreset('CRZ-WOTR'),
    attackerCount:50,attackBonus:10,targetAc:22,
