@@ -64,8 +64,18 @@ function onNewRound(state:CrzBattleState):CrzBattleState{
  const previous=state.round;
  let next=crzLog(state,{type:'ROUND_ENDED',note:'Encerrada a rodada '+previous});
  const stagnant=next.progressThisRound?0:next.stagnantRounds+1;
- if(previous>=next.ruleset.battle.maxRounds)
-  return endBattle(next,null,'round-limit');
+ if(previous>=next.ruleset.battle.maxRounds){
+  // Igual ao PR #281: pontuar o percentual de PV ainda válidos, não
+  // o volume bruto, para não favorecer exércitos inicialmente maiores.
+  const score=(side:CrzSide)=>{
+   const own=next.stacks.filter(s=>s.side===side);
+   const total=own.reduce((n,s)=>n+s.initialCount*s.hpPerCreature,0);
+   const live=own.reduce((n,s)=>n+(crzCapable(s)?s.hpPool:0),0);
+   return total?Math.floor(live*10000/total):0;
+  };
+  const a=score('attacker'),d=score('defender');
+  return endBattle(next,a===d?null:a>d?'attacker':'defender','round-limit');
+ }
  if(stagnant>=next.ruleset.battle.stalemateRounds)
   return endBattle(next,null,'stalemate');
  const refreshed:CrzBattleStack[]=next.stacks.map(s=>({
@@ -100,7 +110,8 @@ function onNewRound(state:CrzBattleState):CrzBattleState{
 function skipByMorale(state:CrzBattleState,unit:CrzBattleStack):{
  skip:boolean;state:CrzBattleState
 }{
- if(!state.ruleset.morale.skipChance||unit.moraleState!=='shaken')
+ if((state.resolution==='expected'&&state.ruleset.morale.expectedIgnoresNumeric)||
+  !state.ruleset.morale.skipChance||unit.moraleState!=='shaken')
   return {skip:false,state};
  // Provisório nesta fase: chance de perder a ativação 10–35%, sempre
  // obtida do estado PCG32 versionado, sem RNG global.
@@ -111,7 +122,8 @@ function skipByMorale(state:CrzBattleState,unit:CrzBattleStack):{
  return {skip,state:{...state,rngState:rng.state()}};
 }
 function maybeGrantExtra(state:CrzBattleState,unit:CrzBattleStack):CrzBattleState{
- if(!state.ruleset.morale.extraChance||state.ruleset.extraTurn.maxPerRound<1||
+ if((state.resolution==='expected'&&state.ruleset.morale.expectedIgnoresNumeric)||
+  !state.ruleset.morale.extraChance||state.ruleset.extraTurn.maxPerRound<1||
   !crzCapable(unit)||unit.moraleState!=='steady'||
   unit.activation.extraUsedRound===state.round)return state;
  const m=unit.morale+crzEffectBonus(unit,'morale');
