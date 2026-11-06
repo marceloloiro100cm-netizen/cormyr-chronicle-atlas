@@ -295,3 +295,75 @@
 /* Cancioneiro: o vídeo conserva o acesso à letra. */
 .music-catalogue-track{display:flex;align-items:center;flex-wrap:wrap;gap:10px;max-width:100%}
 .music-catalogue-track .music-lyrics-entry{flex:1 1 100%;margin:2px 0 0}
+
+
+/* Music catalogue: every track uses the same responsive card and aligned actions. */
+.music-links{display:block;min-width:0}
+.music-links>div:first-child{margin-bottom:16px}
+.music-links .music-actions{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,390px),1fr));
+  gap:14px;
+  width:100%;
+  min-width:0;
+  align-items:stretch;
+}
+.music-links .music-catalogue-track{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-content:start;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  min-width:0;
+  max-width:none;
+  padding:12px;
+  border:1px solid #e0d7e5;
+  border-radius:8px;
+  background:rgba(255,255,255,.84);
+}
+.music-links .music-button{
+  display:flex;
+  justify-content:flex-start;
+  width:100%;
+  min-width:0;
+  min-height:64px;
+  padding:10px 14px;
+  line-height:1.35;
+  font-size:15px;
+  border:1px solid #3e254f;
+}
+.music-links .music-button:visited{color:#fff}
+.music-links .music-button>span:last-child{min-width:0;overflow-wrap:anywhere}
+.music-links .bard-preview-button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  min-height:46px;
+  padding:10px 13px;
+  border:1px solid #bbaaca;
+  border-radius:6px;
+  color:var(--purple);
+  background:#fff;
+  font-size:14px;
+  font-weight:600;
+  line-height:1.35;
+  white-space:nowrap;
+}
+.music-links .bard-preview-button:hover{border-color:var(--plum);background:#f4edf8}
+.music-links .music-lyrics-entry{
+  grid-column:1/-1;
+  margin:0;
+  padding:9px 4px 2px;
+  min-width:0;
+  border-top:1px solid #e5ddeb;
+}
+.music-links .music-lyrics-entry summary{font-size:14px;line-height:1.45}
+.music-links .music-lyrics-entry pre{margin:10px 0 4px}
+.music-links .music-playlist{grid-column:1/-1}
+@media(max-width:640px){
+  .music-links .music-actions{grid-template-columns:minmax(0,1fr)}
+  .music-links .music-catalogue-track{grid-template-columns:minmax(0,1fr)}
+  .music-links .bard-preview-button{width:100%}
+}
