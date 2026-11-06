@@ -20,7 +20,7 @@ Este lote não permite selecionar exércitos reais, importar arquivo 05 de besti
 ## Critérios de aceite
 
 1. GitHub Actions Validate (testes, TypeScript e build) verde, com logs reais; regressões de banco PostgreSQL descartável devem continuar verdes.
-2. Conferir a divergência normativa de `overkill='cap'` no `T-INT-01` antes de aceitar dados de campanha: o preset padrão CRZ-5E **não** produz as mesmas baixas do exemplo carry.
+2. Aplicar a errata `docs/battle/errata-crz10-t-int-01-cap-carry.md`: o teste padrão de CRZ-5E aplica **53 PV/7 baixas** após 78 PV brutos, e `carry` (78 PV/11 baixas) é somente um cenário matemático alternativo, com hash diferente. Nenhuma baixa CRZ entra na campanha.
 3. Testar em homologação o futuro fluxo gráfico de salvar/importar/reproduzir; **nenhuma interface CRZ nem persistência é entregue neste lote**.
 4. Só mesclar a pilha de PRs após revisão da dependência #282 e sem descartar a variante paralela #281 sem reconciliação.
 
