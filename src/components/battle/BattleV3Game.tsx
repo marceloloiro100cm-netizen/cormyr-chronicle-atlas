@@ -16,6 +16,7 @@ import {createV3Game,v3PlayCommand,v3LegalSkills,v3SkillName,v3UseUnitSkill,
  type V3UnitSkill} from '@/lib/battle/v3/engine';
 import './battle.css';
 import './crusade-v4.css';
+import './battle-legibility.css';
 
 type Mode='inspect'|'skill'|'power';
 const sides:{id:Side;label:string}[]=[{id:'attacker',label:'Aliado'},{id:'defender',label:'Oponente'}];
