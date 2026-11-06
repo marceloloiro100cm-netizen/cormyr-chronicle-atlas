@@ -5,6 +5,7 @@ import { militaryUnitSymbolSrc } from '@/components/house/military-unit-symbol';
 import { livingCount } from '@/lib/battle/domain/morale';
 import {v38TheatreFromMap,v38DecorationFor} from '@/lib/battle/v3/theatres-v38';
 import {BattleV38Decor} from './BattleV38Decor';
+import type {V39ObjectivePoint} from '@/lib/battle/v3/objectives-v39';
 
 type Token=Pick<BattleStack,'id'|'side'|'name'|'position'|'primaryTypeId'|'initialCount'|'hpPerSoldier'|'currentHp'|'moraleState'>;
 const TERRAIN_COLOR={plain:'#d4c69e',forest:'#66886b',hill:'#c4a36f',rock:'#787478'} as const;
@@ -21,11 +22,11 @@ const pixel=(h:Hex)=>{const {column,row}=axialToOffset(h);return {
   y:SIZE*1.25+SIZE*1.5*row,
 };};
 export function BattleBoard({map,stacks=[],selectedId,activeId,moveKeys=[],attackKeys=[],pendingHex,
-  showZones=false,onHexClick,onHoverHex,appearance='classic'}:{
+  showZones=false,onHexClick,onHoverHex,appearance='classic',objectiveMarkers=[]}:{
   map:BattleMap;stacks?:readonly Token[];selectedId?:string|null;activeId?:string|null;
   moveKeys?:readonly string[];attackKeys?:readonly string[];pendingHex?:Hex|null;
   showZones?:boolean;onHexClick?:(hex:Hex)=>void;onHoverHex?:(hex:Hex|null)=>void;
-  appearance?:BattleBoardAppearance;
+  appearance?:BattleBoardAppearance;objectiveMarkers?:readonly V39ObjectivePoint[];
 }){
   const [zoom,setZoom]=useState(100);
   const gradientId=useId().replace(/:/g,'');
@@ -80,8 +81,9 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,moveKeys=[],attac
         const legalMove=move.has(key),legalAttack=Boolean(unit&&attack.has(unit.id));
         const isA=showZones&&a.has(key),isB=showZones&&b.has(key);
         const mark=militaryUnitSymbolSrc(unit?.primaryTypeId);
+        const objective=objectiveMarkers.find(point=>hexKey(point.position)===key);
         const count=unit?Math.min(unit.initialCount,Math.ceil(unit.currentHp/unit.hpPerSoldier)):0;
-        const label=`Hexágono ${tile.q}, ${tile.r}; ${tile.terrain==='plain'?'planície':tile.terrain==='forest'?'floresta':tile.terrain==='hill'?'colina':'rocha'}${unit?'; '+unit.name+', '+count+' combatentes':''}${legalMove?'; movimento permitido':''}${legalAttack?'; alvo válido':''}`;
+        const label=`Hexágono ${tile.q}, ${tile.r}; ${tile.terrain==='plain'?'planície':tile.terrain==='forest'?'floresta':tile.terrain==='hill'?'colina':'rocha'}${unit?'; '+unit.name+', '+count+' combatentes':''}${objective?'; objetivo '+objective.label+', '+(objective.holder==='attacker'?'aliados':objective.holder==='defender'?'adversário':'livre'):''}${legalMove?'; movimento permitido':''}${legalAttack?'; alvo válido':''}`;
         return <g key={key} transform={`translate(${pos.x},${pos.y})`}
           role="button" tabIndex={onHexClick?0:undefined} aria-label={label}
           onClick={()=>onHexClick?.({q:tile.q,r:tile.r})}
@@ -123,6 +125,18 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,moveKeys=[],attac
             </>}
            </g>}
           {illustrated&&theatre&&<BattleV38Decor kind={v38DecorationFor(map,tile)}/>}
+          {objective&&<g aria-hidden="true" pointerEvents="none">
+            <circle r="28" fill="none"
+             stroke={objective.holder==='attacker'?'#80c6fa':
+              objective.holder==='defender'?'#fa8e7a':'#ffe2a6'}
+             strokeWidth="4" strokeDasharray={objective.holder?'none':'5 4'}/>
+            {!unit&&<>
+             <circle r="19" fill="#182831df" stroke="#f1d49b" strokeWidth="1.6"/>
+             <text x="0" y="7" fontSize="20" textAnchor="middle" fill="#ffe4b1">
+              {objective.id==='bridge'?'⚑':objective.id==='highground'?'▲':'▣'}
+             </text>
+            </>}
+           </g>}
           {(legalMove||legalAttack)&&<polygon points={points} fill={legalMove?'#75dc83':'#f57a65'}
             opacity={contrast?'.36':'.18'} pointerEvents="none"/>}
           {(isA||isB)&&<circle r="23" stroke={isA?sides.attacker:sides.defender} strokeWidth="1.8" fill="none" strokeDasharray="4 3"/>}
