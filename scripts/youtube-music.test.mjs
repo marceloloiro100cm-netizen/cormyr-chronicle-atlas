@@ -124,3 +124,59 @@ test('a YouTube playback error is shown and the direct video link remains availa
  assert.equal(elements['bard-player-media'].children.length,0);
  assert.equal(closed,true);
 });
+
+
+test('Cancioneiro is a selectable group and missing regional themes are reported without invented videos',()=>{
+ const window=setup();window.addEventListener=()=>{};
+ const nodes={};
+ function control(id){
+  return nodes[id]={id,innerHTML:'',value:'',textContent:'',hidden:true,attributes:{},
+   addEventListener(type,fn){this[type]=fn;},
+   querySelectorAll(){return[];},
+   replaceChildren(...children){this.children=children;},
+   setAttribute(k,v){this.attributes[k]=v;},
+   prepend(node){this.notice=node.textContent;}};
+ }
+ for(const id of ['music-all','music-kinds','music-item','music-count','music-reset','music-playlist-preview','music-playlist-embed','bard-close'])control(id);
+ const document={
+  getElementById:id=>nodes[id]||{hidden:true},
+  createElement:tag=>({tag,textContent:'',className:''}),
+  querySelector:()=>({click(){}})
+ };
+ runInNewContext(read('extras.js'),{window,document,URL,location:{hash:''},
+  localStorage:{getItem:()=>null},setTimeout:()=>{}});
+ assert.match(nodes['music-count'].textContent,/15 vídeos vinculados/);
+ assert.match(nodes['music-all'].notice,/Crownlands, Ferlin, Volkumburgh/);
+ assert.match(nodes['music-kinds'].innerHTML,/Cancioneiro/);
+ nodes['music-kinds'].click({target:{closest:()=>({dataset:{musicKind:'cancioneiro'}})}});
+ assert.match(nodes['music-count'].textContent,/3 títulos sem vídeo vinculado/);
+ assert.match(nodes['music-count'].textContent,/3 letras sem vídeo/);
+ assert.match(nodes['music-all'].innerHTML,/Cante uma Canção a Elturel/);
+ assert.doesNotMatch(nodes['music-all'].innerHTML,/Casa Ashkar/);
+ assert.match(window.CORMYR_DATA.soundtrack.find(s=>s.title==='Cante uma Canção a Elturel').lyrics,/\n/);
+});
+
+test('official playlist iframe is created only after a click and removed when closed',()=>{
+ const window=setup();window.addEventListener=()=>{};
+ const nodes={};
+ const button={hidden:false,attributes:{},addEventListener(type,fn){this[type]=fn;},
+  setAttribute(k,v){this.attributes[k]=v;},textContent:''};
+ const host={hidden:true,children:[],replaceChildren(...children){this.children=children;}};
+ nodes['music-playlist-preview']=button;nodes['music-playlist-embed']=host;
+ nodes['bard-close']={click(){}};
+ const document={
+  getElementById:id=>nodes[id]||null,
+  createElement:tag=>({tag}),
+  querySelector:()=>null
+ };
+ runInNewContext(read('extras.js'),{window,document,URL,location:{hash:''},
+  localStorage:{getItem:()=>null},setTimeout:()=>{}});
+ assert.equal(host.children.length,0);
+ button.click();
+ assert.equal(host.hidden,false);
+ assert.match(host.children[0].src,/youtube-nocookie\.com\/embed\/videoseries\?list=PLNkPwXjMDaCw/);
+ assert.equal(button.attributes['aria-expanded'],'true');
+ window.CORMYR_CLOSE_PLAYLIST();
+ assert.equal(host.hidden,true);
+ assert.equal(host.children.length,0);
+});
