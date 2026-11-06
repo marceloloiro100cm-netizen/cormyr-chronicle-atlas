@@ -104,12 +104,12 @@ function isObject(value:unknown):value is Record<string,unknown>{
  return value!==null&&typeof value==='object'&&!Array.isArray(value);
 }
 function isStep(value:unknown):value is CrzReplayStep{
- return isObject(value)&&Number.isSafeInteger(value.seq)&&
-  typeof value.prevHash==='string'&&typeof value.hash==='string'&&
-  typeof value.beforeHash==='string'&&typeof value.afterHash==='string'&&
-  (value.actor==='human'||value.actor==='ai')&&
-  isObject(value.command)&&Array.isArray(value.events)&&
-  isObject(value.rngBefore)&&isObject(value.rngAfter);
+ return isObject(value)&&Number.isSafeInteger(value['seq'])&&
+  typeof value['prevHash']==='string'&&typeof value['hash']==='string'&&
+  typeof value['beforeHash']==='string'&&typeof value['afterHash']==='string'&&
+  (value['actor']==='human'||value['actor']==='ai')&&
+  isObject(value['command'])&&Array.isArray(value['events'])&&
+  isObject(value['rngBefore'])&&isObject(value['rngAfter']);
 }
 /** Verifica um replay não confiável reexecutando cada passo.
  * A cadeia prova consistência interna, NÃO a identidade do autor.
@@ -120,9 +120,9 @@ export function crzVerifyReplay(raw:unknown):CrzReplayVerification{
   const byteLength=JSON.stringify(raw)?.length??Infinity;
   if(byteLength>CRZ_REPLAY_MAX_BYTES||!isObject(raw))
    throw new Error('REPLAY: arquivo inválido ou grande demais.');
-  if(raw.replayVersion!==CRZ_REPLAY_VERSION||
-     raw.rulesVersion!=='CRZ-1.0'||!isObject(raw.initial)||
-     !Array.isArray(raw.steps)||raw.steps.length>CRZ_REPLAY_MAX_COMMANDS)
+  if(raw['replayVersion']!==CRZ_REPLAY_VERSION||
+     raw['rulesVersion']!=='CRZ-1.0'||!isObject(raw['initial'])||
+     !Array.isArray(raw['steps'])||raw['steps'].length>CRZ_REPLAY_MAX_COMMANDS)
    throw new Error('REPLAY: versão, setup ou número de comandos inválido.');
   const input=raw as unknown as CrzReplay;
   let current=crzReplayBegin(input.initial);
