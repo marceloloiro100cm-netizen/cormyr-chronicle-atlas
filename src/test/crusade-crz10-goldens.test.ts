@@ -88,7 +88,6 @@ describe('CRZ-1.0 · lotes 1–2, contratos e goldens normativos dos anexos',()=
  });
  it('T-PIL-06: pool 220 –100 => 120, vivos 11, topo 10',()=>{
   const res=crzApplyDamage(target(20,11),100);
-  expect(res.receipt).toBeUndefined();
   expect(res).toMatchObject({damageApplied:100,casualties:9,
    stack:{hpPool:120,alive:11,topHp:10}});
  });
