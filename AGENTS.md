@@ -14,7 +14,7 @@
 - Folder synchronization uses a server-only fetch adapter, leased durable mappings, transactional imports and a versioned outbox; each mapping requires explicit admin privacy review and runtime authorization, because archive association is not permission.
 - Drive reconciliation uses one authenticated managed hourly callback plus admin execution; provider ETags guard overwrites, and missing ETags require append-only content-addressed versions with read-back verification, because synthetic hashes must never authorize overwrites.
 - Official roster affiliation is stored separately from authorized memberships; this permits unlinked player registration without granting identity access.
-- Narrator-only Eventos/Aventuras live in src/server/gm-content.json, served by /api/public/gm-content after an admin check; why: public static files are readable by anyone.
+- Narrator-only Eventos/Aventuras live in Supabase campaign_private_gm_content, read by /api/public/gm-content only after JWT administrator verification and RLS. Never check in private narrative data; GitHub source and historical commits are public.
 - Images use private campaign storage and stable references in versioned text; RLS derives image readers from visible records/letters/replies, so attachments never become public.
 - Public house galleries use a separate public-house namespace and catalog-referenced image policy; private campaign attachments cannot be promoted through gallery readers.
 - Drive source imports retain original file identifiers and files; edits are versioned campaign JSON copies, and player refresh is scoped server-side to explicitly authorized bindings to prevent cross-house execution.

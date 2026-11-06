@@ -33,3 +33,22 @@ dist-ssr
 
 # Hub Temporal: inventários e provas locais (podem revelar metadados operacionais)
 .temporal-audit/
+
+# Never version real environment configuration or runtime credentials
+.env
+.env.*
+!.env.example
+.dev.vars.*
+*.pem
+*.p12
+*.pfx
+*.private.key
+*.private.json
+*.private.sql
+
+# Generated inspection artifacts and local administrative exports
+bun_output.txt
+css_extract.txt
+page_content.html
+.security-audit/
+.private-campaign/

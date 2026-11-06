@@ -17,8 +17,8 @@ Site da campanha de Cormyr, com acervo público e Conselho dos Jogadores da segu
 | `src/routes/` | Rotas TanStack Start, autenticação e endpoints |
 | `src/components/players/` | Conselho: carregamento, fichas, registros, administração e missivas |
 | `src/lib/house/` | Regras de recursos, compras, exércitos, corte e vassalos |
-| `src/server/gm-content.json` | Eventos e aventuras exclusivos do narrador |
-| `drizzle/migrations/` | 35 migrações SQL versionadas |
+| `campaign_private_gm_content` (Supabase) | Eventos e aventuras do Narrador com RLS |
+| `drizzle/migrations/` | Migrações SQL de esquema, sem dados privados de campanha |
 | `src/test/` | Testes unitários, de componentes e de integração |
 
 Stack: React 19, TypeScript, TanStack Start, Vite, Tailwind, Supabase/PostgreSQL e Drizzle. O build usa a configuração gerenciada da Lovable. A rota `/` encaminha ao acervo estático; a área autenticada fica em `/jogadores`.
@@ -52,7 +52,7 @@ bun run build
 
 O workflow roda em pull requests, pushes para `main` e execução manual. Ele não publica, não aplica migrações e não recebe credenciais administrativas do banco. Para exigir aprovação dos checks antes do merge, configure uma regra de proteção da branch no GitHub.
 
-A sincronização segue a branch ativa da integração Lovable. Não renomeie ou desconecte o repositório sem revisar essa integração. Não use force push nem reescreva commits já enviados.
+A sincronização segue a branch ativa da integração Lovable. Não renomeie ou desconecte o repositório sem revisar essa integração. Não use force push nem reescreva commits já enviados sem plano coordenado de recuperação do Lovable. A remoção dos arquivos do estado atual **não remove automaticamente** segredos de commits antigos.
 
 ## Banco, credenciais e testes de integração
 
@@ -69,3 +69,12 @@ Textos regionais são preservados integralmente em JSON e carregados somente qua
 Os mapas originais e seus downloads são preservados. As imagens de mapas já usam carregamento adiado; compressão ou novas miniaturas podem ser feitas separadamente, com conferência visual da legibilidade.
 
 Consulte `AGENTS.md` antes de alterar regras de acesso, sincronização, conteúdo privado ou gestão das casas.
+
+## Segurança do repositório público
+
+O código pode ser público; e-mails de acesso, credenciais, fichas privadas, missivas e segredos do Narrador não podem ser versionados. Os eventos do Narrador são obtidos da tabela `campaign_private_gm_content` sob RLS; as planilhas importadas das vassalas ficam em `campaign_private_vassal_workbooks` e são lidas por função autenticada. O arquivo `.env.example` só documenta nomes de variáveis: segredos reais devem estar configurados no ambiente de hospedagem.
+
+A remoção de conteúdo da branch atual **não apaga histórico Git, forks, clones, caches ou PRs anteriores**. Material já exposto deve ser tratado como comprometido até a revisão do histórico e a mitigação das credenciais. O script `scripts/setup-admin.ts` nunca altera senha ou e-mail nem cria usuários.
+
+### Aviso de conteúdo de fã
+Cormyr Chronicle Atlas é um projeto de fã não oficial, sem endosso da Wizards of the Coast. Forgotten Realms e materiais relacionados pertencem a seus respectivos titulares. Materiais originais da campanha permanecem sujeitos aos direitos de seus autores. Este aviso não concede licença para reproduzir conteúdo de livros não abertos.
