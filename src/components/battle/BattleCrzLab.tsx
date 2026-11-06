@@ -3,7 +3,7 @@ import {Button} from '@/components/ui/button';
 import {crzHexKey,crzAxialToOffset,type CrzHex,type CrzSide}
  from '@/lib/crusade/geometry';
 import {crzLegalCommands,type CrzCommand} from '@/lib/crusade/turns';
-import {crzCapable,type CrzBattleStack,type CrzBattleState,
+import {crzCapable,crzOrder,type CrzBattleStack,type CrzBattleState,
  type CrzEvent} from '@/lib/crusade/battle-state';
 import {CRZ_LOT8_SPELLS,crzShieldWallTargets} from '@/lib/crusade/leader';
 import {crzReplayBegin,crzReplayParse,crzReplayRecord,
@@ -19,7 +19,12 @@ import {crzObservedObjectives,crzAfterActionReport,crzAfterActionSerialize,
  type CrzObservedObjective} from '@/lib/crusade/insights';
 import './crz-lab.css';
 
-type Mode='inspect'|'move'|'attack';
+type SidePanel='actions'|'objectives'|'report'|'replay';
+const SPELL_LABELS:Readonly<Record<string,string>>={
+ bless:'Bênção',bane:'Maldição',shield_of_faith:'Escudo da fé',
+ heroism:'Heroísmo',cause_fear:'Amedrontar',cure_wounds:'Curar ferimentos',
+ firebolt:'Raio de fogo',shield_wall_formation:'Formação de escudos',
+};
 const TERRAIN:Readonly<Record<string,{name:string;fill:string}>>={
  plain:{name:'Planície',fill:'#a6a079'},
  forest:{name:'Bosque',fill:'#426953'},
@@ -64,8 +69,8 @@ function eventLabel(event:CrzEvent):string{
   (extra?' · '+extra:'')+damage;
 }
 
-function CrzBoard({state,selectedId,mode,moves,attacks,objectives,onTile}:{
- state:CrzBattleState;selectedId:string|null;mode:Mode;
+function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,onTile}:{
+ state:CrzBattleState;selectedId:string|null;hoveredId:string|null;
  moves:readonly CrzHex[];attacks:readonly string[];
  objectives:readonly CrzObservedObjective[];
  onTile:(hex:CrzHex)=>void;
@@ -99,9 +104,10 @@ function CrzBoard({state,selectedId,mode,moves,attacks,objectives,onTile}:{
    style={{width:zoom+'%'}} role="group" aria-label={`Mapa CRZ ${state.map.width} por ${state.map.height}`}>
    {state.map.tiles.map(tile=>{
     const key=crzHexKey(tile),{x,y}=pixel(tile),unit=occupied.get(key),objective=objectivesByHex.get(key);
-    const isMove=mode==='move'&&movable.has(key);
-    const isAttack=mode==='attack'&&Boolean(unit&&targets.has(unit.id));
+    const isMove=movable.has(key);
+    const isAttack=Boolean(unit&&targets.has(unit.id));
     const active=unit?.id===state.activeStackId,selected=unit?.id===selectedId;
+    const hovered=unit?.id===hoveredId;
     const label=(isMove?'Mover para ':isAttack?'Atacar ':'Inspecionar ')+
      (unit?unit.name+' · ':'')+TERRAIN[tile.terrain]!.name+
      ' ('+crzAxialToOffset(tile).column+','+
@@ -127,10 +133,14 @@ function CrzBoard({state,selectedId,mode,moves,attacks,objectives,onTile}:{
      onClick={press} onKeyDown={keyPress}
      className={'crz-map-tile'+(isMove?' crz-map-move':'')+
        (isAttack?' crz-map-attack':'')+(active?' crz-map-active':'')+
-       (selected?' crz-map-selected':'')}>
+       (selected?' crz-map-selected':'')+(hovered?' crz-map-hovered':'')}>
       <polygon points={HEX_POINTS} transform={`translate(${x} ${y})`}
        fill={TERRAIN[tile.terrain]!.fill}/>
       {unit&&<>
+       {hovered&&<circle data-crz-hover-ring={unit.id} cx={x} cy={y} r={23}
+        fill="none" stroke="#ffe3a1" strokeWidth={4} pointerEvents="none"/>}
+       {selected&&<circle data-crz-selected-ring={unit.id} cx={x} cy={y} r={21}
+        fill="none" stroke="#79ff86" strokeWidth={4} pointerEvents="none"/>}
        <circle cx={x} cy={y} r={16}
         fill={SIDE[unit.side].fill} stroke={active?'#f9df9c':'#e4d8c2'}
         strokeWidth={active?3:1.4}/>
@@ -140,7 +150,7 @@ function CrzBoard({state,selectedId,mode,moves,attacks,objectives,onTile}:{
         pointerEvents="none">{unit.id.slice(0,8)}</text>
       </>}
       {isMove&&!unit&&<circle cx={x} cy={y} r={5}
-       fill="#f6e1a0" pointerEvents="none"/>}
+       fill="#b7fa8c" pointerEvents="none"/>}
       {objective&&<g pointerEvents="none" aria-hidden="true">
        <circle data-crz-objective={objective.id} cx={x+17} cy={y-17} r={8}
         fill={objective.holder?SIDE[objective.holder].fill:'#332e24'}
@@ -168,7 +178,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const [options,setOptions]=useState<CrzTrainingOptions>(CRZ_TRAINING_DEFAULTS);
  const [session,setSession]=useState<CrzReplaySession|null>(null);
  const [replayStep,setReplayStep]=useState<number|null>(null);
- const [mode,setMode]=useState<Mode>('inspect');
+ const [panel,setPanel]=useState<SidePanel>('actions');
+ const [hoveredId,setHoveredId]=useState<string|null>(null);
  const [selectedId,setSelectedId]=useState<string|null>(null);
  const [spell,setSpell]=useState<CrzSpellId>('bless');
  const [spellTarget,setSpellTarget]=useState('');
@@ -209,7 +220,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
   try{
    const next=crzTrainingAdvanceAi(crzReplayRecord(session,command,'human'));
    setSession(next);setReplayStep(null);setSelectedId(next.state.activeStackId);
-   setSpellTarget('');setMode('inspect');setError('');
+   setSpellTarget('');setError('');
    setMessage('Comando registrado no replay verificável.');
   }catch(cause){
    setError(cause instanceof Error?cause.message:'Comando recusado.');
@@ -220,29 +231,33 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    const initial=crzReplayBegin(crzTrainingReady(options));
    const next=crzTrainingAdvanceAi(initial);
    setSession(next);setSelectedId(next.state.activeStackId);
-   setMode('inspect');setReplayStep(null);setError('');
+   setPanel('actions');setReplayStep(null);setError('');
    setMessage('Treino fictício iniciado. Nenhuma ficha oficial será alterada.');
   }catch(cause){
    setError(cause instanceof Error?cause.message:'Não foi possível iniciar o treino.');
   }
  };
+ /** Clique contextual: somente a pilha do turno pode mover/atacar.
+  * Toda jogada continua validada por crzLegalCommands e crzReplayRecord.
+  */
  const clickHex=(hex:CrzHex)=>{
   if(!frame)return;
   const key=crzHexKey(hex);
   const unit=frame.stacks.find(s=>s.alive>0&&crzHexKey(s.position)===key);
-  if(canAct&&mode==='move'&&active){
-   const command=moves.find(c=>crzHexKey(c.to)===key);
-   if(command)apply(command);
-   else setError('Destino não permitido: bloqueio, zona de controle ou distância.');
-   return;
+  if(canAct&&active&&selectedId===active.id){
+   const attack=unit&&attacks.find(c=>c.targetId===unit.id);
+   if(attack){apply(attack);return;}
+   if(!unit){
+    const move=moves.find(c=>crzHexKey(c.to)===key);
+    if(move){apply(move);return;}
+   }
   }
-  if(canAct&&mode==='attack'&&unit&&active){
-   const command=attacks.find(c=>c.targetId===unit.id);
-   if(command)apply(command);
-   else setError('Alvo fora de alcance ou sem linha de visão.');
-   return;
+  if(unit){
+   setSelectedId(unit.id);
+   setError('');
+  }else if(canAct&&active&&selectedId===active.id){
+   setError('Hexágono fora do movimento permitido. Selecione um hexágono verde.');
   }
-  if(unit){setSelectedId(unit.id);setMode('inspect');}
  };
  const cast=()=>{
   if(!active||!canCast)return;
@@ -285,7 +300,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    if(file.size>CRZ_REPLAY_MAX_BYTES)throw new Error('Arquivo maior que o limite de 8 MB.');
    const next=crzReplayParse(await file.text());
    setSession(next);setReplayStep(next.replay.steps.length);
-   setSelectedId(next.state.activeStackId);setMode('inspect');
+   setSelectedId(next.state.activeStackId);setPanel('replay');
    setShowImport(false);setError('');
    setMessage('Replay validado. Use a linha do tempo ou retome o treino.');
   }catch(cause){
@@ -294,7 +309,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  };
  const reset=()=>{
   setSession(null);setReplayStep(null);setSelectedId(null);
-  setError('');setMessage('');setMode('inspect');
+  setError('');setMessage('');setPanel('actions');setHoveredId(null);
  };
  return <section className={'battle-module crusade-mode crz-lab'+
   (highContrast?' crz-high-contrast':'')}
