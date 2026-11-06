@@ -21,16 +21,16 @@
   ['O Nó de Sangue — A Balada da Escota Vermelha','Mareforte','casa'],
   ['A Força Vem do Povo','Yellander','casa'],
   ['A Milonga das Vozes que Ficam','Mistwind / Yellander','casa'],
-  ['Essa Coroa','Crownlands','cancioneiro'],
-  ['Vou-me Embora pra Sossal','Stonelands','cancioneiro'],
-  ['Música dos Dragões Azuis','Crownlands','cancioneiro']
+  ['Essa Coroa','Crownlands','populares'],
+  ['Vou-me Embora pra Sossal','Stonelands','populares'],
+  ['Música dos Dragões Azuis','Crownlands','populares']
  ];
  const lyrics=[
   ['A Balada Libertina do Guardião de Helm','Helmlands','Na noite fria e escura o cavaleiro seguia\\nHorrores e agruras ele nada conhecia'],
   ['Badalos Elementais','Veilstone','Badalando nas colinas no vale eu vou\\nMeu rumo eu vou seguir'],
   ['Cante uma Canção a Elturel','Horselands','Cante uma canção a Elturel\\nDe água, bosques e colinas']
  ];
- // The Cancioneiro is independent of regional themes. Each video is mapped
+ // Músicas Populares reúne canções de bardos independentemente dos temas regionais. Cada vídeo é mapeado
  // to its exact YouTube video ID rather than to a playlist position.
  const directVideos={
   'A Balada Libertina do Guardião de Helm':'https://www.youtube.com/watch?v=4RuKLjM1QcU',
@@ -52,19 +52,19 @@
    id:'pending-'+i,title,region,category,url:'',linkStatus:'youtube-pending'
   })),
   ...lyrics.map(([title,region,lyrics],i)=>attachVideo({
-   id:'lyrics-'+i,title,category:'cancioneiro',region,
+   id:'lyrics-'+i,title,category:'populares',region,
    lyrics:lyrics.replace(/\\n/g,'\n'),url:''
   })),
   attachVideo({id:'cancioneiro-terra-dos-cavalos',title:'Terra dos Cavalos',
-   category:'cancioneiro',region:'Horselands',url:''}),
+   category:'populares',region:'Horselands',url:''}),
   // Title not confirmed by YouTube metadata; keep this entry distinct until verified.
   attachVideo({id:'youtube-wioZhfoQMAs',title:'Nova música de Cormyr',
-   category:'playlist',region:'Cormyr',url:''}),
+   category:'populares',region:'Cormyr',url:''}),
   // Título provisório até confirmação de metadados oficiais do vídeo.
   attachVideo({id:'youtube-WrXc5zCbMHA',title:'Nova música de Cormyr — WrXc5zCbMHA',
-   category:'playlist',region:'Cormyr',url:''}),
+   category:'populares',region:'Cormyr',url:''}),
   // Título temporário, sem presumir uma identidade que o YouTube não confirmou.
   attachVideo({id:'youtube-qw9FgNYr7hE',title:'Nova música de Cormyr — qw9FgNYr7hE',
-   category:'playlist',region:'Cormyr',url:''})
+   category:'populares',region:'Cormyr',url:''})
  ];
 })();

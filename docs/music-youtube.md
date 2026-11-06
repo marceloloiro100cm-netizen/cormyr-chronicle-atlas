@@ -55,3 +55,15 @@ Referências oficiais: https://developers.google.com/youtube/iframe_api_referenc
 - Swordmark/Shieldmark usam os links atualizados enviados em 06/11/2026; Ferlin/Volkumburgh foram adicionadas; o tema de Volkumburgh foi compartilhado com a Casa Von der Harten conforme indicado.
 - O catálogo final possui **19 vínculos** de temas do reino/regiões/casas e **3 no Cancioneiro**, ou **22 vínculos / 21 IDs distintos** (Volkumburgh e Von der Harten compartilham um ID). Há cinco títulos sem vídeo e duas letras ainda sem vídeo cadastrado.
 - Os IDs foram validados estruturalmente; reprodução e permissão de incorporação permanecem sujeitas ao YouTube, não certificadas por esta auditoria.
+
+
+## Unificação — Músicas Populares (06/11/2026)
+
+O Narrador unificou as antigas categorias **Cancioneiro** e **Novidades da playlist** em **Músicas Populares**, para reunir as canções de bardos em um único filtro e um único painel. A categoria interna é `populares`; a interface exibe o rótulo **Músicas Populares**. Os temas oficiais do reino, das regiões e das casas permanecem classificados separadamente.
+
+- São 10 registros de Músicas Populares, sendo 8 com vídeos do YouTube, 1 com vídeo ainda não vinculado e 1 com somente letra. Os identificadores, títulos, letras, regiões e URLs continuam preservados.
+- O agrupamento antigo `cancioneiro` ou `playlist`, quando encontrado em dados legados, também é tratado como `populares` na apresentação, evitando dois filtros separados.
+- O seletor de grupos mostra apenas **Músicas Populares**, sem subdividir canções por região; cada música mantém o metadado de região. A playlist do YouTube continua como opção de reprodução independente.
+- O catálogo público como um todo possui 27 vínculos de vídeo (26 IDs distintos) e quatro títulos pendentes, contando também as categorias de músicas das casas; a lista de letras é conservada.
+
+Validação: `node --test scripts/youtube-music.test.mjs`, os testes de `src/test/frontend-audit-public.test.ts` e o fluxo CI habitual. Os parágrafos anteriores deste documento são registros históricos de auditorias anteriores a essa unificação.

@@ -1,19 +1,19 @@
 (function(){let admin=false;
   const data=window.CORMYR_DATA||{};const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const KIND_LABELS={reino:'Tema do reino',regiao:'Músicas de região',casa:'Músicas de casa',cancioneiro:'Cancioneiro',playlist:'Novidades da playlist'};
-  const KIND_ORDER=['reino','regiao','casa','cancioneiro','playlist'];
+  const KIND_LABELS={reino:'Tema do reino',regiao:'Músicas de região',casa:'Músicas de casa',populares:'Músicas Populares'};
+  const KIND_ORDER=['reino','regiao','casa','populares'];
   const kindLabel=k=>KIND_LABELS[k]||(k?k.charAt(0).toUpperCase()+k.slice(1):'Outras');
   const groups=[];const seen=new Set();
   const hasVideo=s=>Boolean(window.CORMYR_YOUTUBE?.parse(s?.url));
   const add=(kind,label,songs)=>{const list=(songs||[]).filter(s=>s&&(s.linkStatus==='youtube-pending'||s.lyrics||hasVideo(s))&&!seen.has((s.videoId||s.url||s.title)+'|'+kind+'|'+label));list.forEach(s=>seen.add((s.videoId||s.url||s.title)+'|'+kind+'|'+label));if(list.length)groups.push({kind:kind||'outra',label,songs:list});};
   add('reino','Tema do reino',data.kingdomMusic);
   (function walk(o,parent){if(!o||typeof o!=='object')return;if(Array.isArray(o)){o.forEach(x=>walk(x,parent));return;}if(o!==data&&Array.isArray(o.music))add(o.musicKind||(o.houses?'regiao':'casa'),(o.name||''),o.music);for(const k in o)if(k!=='music'&&k!=='kingdomMusic')walk(o[k],o);})(data);
-  // Keep the Cancioneiro in its own section, including songs with only lyrics.
-  // A missing URL does not prove the song has not been published on YouTube.
+  // Agrupe Cancioneiro e Novidades da playlist em Músicas Populares, incluindo letras sem vídeo.
+  // Um link ausente não comprova que a gravação não esteja publicada no YouTube.
   const extraGroups=new Map();
   for(const song of data.soundtrack||[]){
-    const kind=song.category||'playlist';
-    const label=kind==='cancioneiro'?'Cancioneiro':(song.region||song.house||(kind==='playlist'?'Playlist do YouTube':'Outras'));
+    const kind=['cancioneiro','playlist','populares'].includes(song.category)?'populares':(song.category||'populares');
+    const label=kind==='populares'?'Músicas Populares':(song.region||song.house||'Outras');
     const key=kind+'|'+label;
     if(!extraGroups.has(key))extraGroups.set(key,{kind,label,songs:[]});
     extraGroups.get(key).songs.push(song);

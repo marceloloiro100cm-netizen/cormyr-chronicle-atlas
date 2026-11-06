@@ -31,7 +31,7 @@
    search:[e.title,e.id,e.kind,e.hook,e.theme].join(' '),hash:'#evento-'+e.kind+'-'+e.id});
   for(const g of [{name:'Reino',music:data.kingdomMusic},...(data.regions||[]).flatMap(r=>[{name:r.name,music:r.music},...(r.houses||[]).map(h=>({name:h.name,music:h.music}))])])
    for(const song of g.music||[])out.push({type:'Música',name:song.title,subtitle:g.name,search:[song.title,g.name].join(' '),hash:'#musicas'});
-  for(const song of data.soundtrack||[])out.push({type:'Música',name:song.title,subtitle:song.region||song.house||'Cancioneiro',
+  for(const song of data.soundtrack||[])out.push({type:'Música',name:song.title,subtitle:song.region||song.house||'Músicas Populares',
    search:[song.title,song.region,song.house,song.lyrics].join(' '),hash:'#musicas'});
   entries=out;
  }
