@@ -37,21 +37,33 @@ test('URL parser accepts real YouTube video shapes and strips playlist dependenc
  ])assert.equal(yt.parse(url),null,url);
 });
 
-test('existing 15 YouTube links remain usable; six unmatched titles remain visible',()=>{
+test('regional and house links use the videos supplied by the Narrator',()=>{
  const data=setup().CORMYR_DATA;
  const sources=[...(data.kingdomMusic||[])];
  for(const r of data.regions){
   sources.push(...(r.music||[]));
   for(const h of r.houses)sources.push(...(h.music||[]));
  }
- assert.equal(sources.length,15);
+ assert.equal(sources.length,18);
  for(const song of sources){
   assert.match(song.url,/^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/);
   assert.match(song.videoId,/^[A-Za-z0-9_-]{11}$/);
  }
- assert.equal(data.soundtrack.filter(s=>s.linkStatus==='youtube-pending').length,6);
+ assert.equal(data.soundtrack.filter(s=>s.linkStatus==='youtube-pending').length,5);
  assert.equal(data.soundtrack.filter(s=>s.lyrics).length,3);
- assert.ok(data.soundtrack.every(s=>!s.url));
+ assert.equal(data.soundtrack.filter(s=>s.url).length,3);
+ const byRegion=Object.fromEntries(data.regions.map(r=>[r.name,r]));
+ assert.equal(byRegion.Swordmark.music[0].videoId,'HHZjbwRCoes');
+ assert.equal(byRegion.Shieldmark.music[0].videoId,'5VPgawygkEc');
+ assert.equal(byRegion.Ferlin.music[0].videoId,'_uJndPcaHj0');
+ assert.equal(byRegion.Volkumburgh.music[0].videoId,'bR66gczzEdk');
+ assert.equal(byRegion.Crownlands.houses.find(h=>h.name==='Von der Harten').music[0].videoId,'bR66gczzEdk');
+ const linked=data.soundtrack.filter(s=>s.videoId);
+ const ids=linked.map(s=>s.videoId).sort();
+ assert.deepEqual(ids,['HM4a9vYrdDU','f4L0mCHpOv8','xoOtYuebA9k'].sort());
+ assert.equal(data.soundtrack.filter(s=>s.lyrics&&!s.url).length,2);
+ assert.equal(data.soundtrack.find(s=>s.title==='Cante uma Canção a Elturel').category,'cancioneiro');
+ assert.equal(data.soundtrack.find(s=>s.title==='Essa Coroa').category,'cancioneiro');
 });
 
 test('the entire public music interface has no Drive playback integration',()=>{
@@ -145,12 +157,12 @@ test('Cancioneiro is a selectable group and missing regional themes are reported
  };
  runInNewContext(read('extras.js'),{window,document,URL,location:{hash:''},
   localStorage:{getItem:()=>null},setTimeout:()=>{}});
- assert.match(nodes['music-count'].textContent,/15 vídeos vinculados/);
- assert.match(nodes['music-all'].notice,/Crownlands, Ferlin, Volkumburgh/);
+ assert.match(nodes['music-count'].textContent,/21 vídeos vinculados/);
+ assert.match(nodes['music-all'].notice,/Crownlands/);
  assert.match(nodes['music-kinds'].innerHTML,/Cancioneiro/);
  nodes['music-kinds'].click({target:{closest:()=>({dataset:{musicKind:'cancioneiro'}})}});
- assert.match(nodes['music-count'].textContent,/3 títulos sem vídeo vinculado/);
- assert.match(nodes['music-count'].textContent,/3 letras sem vídeo/);
+ assert.match(nodes['music-count'].textContent,/2 títulos sem vídeo vinculado/);
+ assert.match(nodes['music-count'].textContent,/2 letras sem vídeo/);
  assert.match(nodes['music-all'].innerHTML,/Cante uma Canção a Elturel/);
  assert.doesNotMatch(nodes['music-all'].innerHTML,/Casa Ashkar/);
  assert.match(window.CORMYR_DATA.soundtrack.find(s=>s.title==='Cante uma Canção a Elturel').lyrics,/\n/);
@@ -179,4 +191,14 @@ test('official playlist iframe is created only after a click and removed when cl
  window.CORMYR_CLOSE_PLAYLIST();
  assert.equal(host.hidden,true);
  assert.equal(host.children.length,0);
+});
+
+test('all supplied URLs are valid, and the shared Von der Harten track is not duplicated by ID',()=>{
+ const data=setup().CORMYR_DATA;
+ const tracks=[...data.kingdomMusic,...data.regions.flatMap(r=>(r.music||[]).concat(
+  r.houses.flatMap(h=>h.music||[]))),
+  ...data.soundtrack.filter(s=>s.videoId)];
+ assert.equal(tracks.length,21);
+ assert.equal(new Set(tracks.map(s=>s.videoId)).size,20);
+ assert.ok(tracks.every(s=>data.musicPlaylist&&/^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/.test(s.url)));
 });
