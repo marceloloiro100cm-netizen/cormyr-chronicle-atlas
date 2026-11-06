@@ -24,3 +24,14 @@ Execute `node --test scripts/youtube-music.test.mjs` ou `node --test scripts/*.t
 O reprodutor exibe a mensagem de erro e oferece `Abrir no YouTube`. Não tenta contornar restrições ou reproduzir vídeos sem autorização. A política de referenciador utiliza `strict-origin-when-cross-origin` e a URL incorporada inclui `origin`.
 
 Referências oficiais: https://developers.google.com/youtube/iframe_api_reference e https://developers.google.com/youtube/player_parameters.
+
+## Auditoria de categorias e cobertura regional (06/11/2026)
+
+- Catálogo estático: 15 vídeos vinculados por URL, 6 títulos ainda sem URL e 3 letras de Cancioneiro sem vídeo.
+- O filtro Cancioneiro agora agrupa suas letras e seus títulos pendentes sob um único agrupamento e contabiliza cada registro uma única vez; o seletor passa a descrever corretamente os grupos.
+- As 11 regiões são analisadas explicitamente: Crownlands, Ferlin e Volkumburgh não possuem vídeo temático vinculado no cadastro atual. Esses casos são apresentados como lacunas de cadastro, sem inventar vídeos.
+- Os rótulos usam **vídeo vinculado**, não **vídeo disponível**, porque o parser valida apenas o formato de URLs e IDs. A disponibilidade e a autorização de incorporação dependem de consulta real ao YouTube.
+- A playlist https://www.youtube.com/playlist?list=PLNkPwXjMDaCw não retornou seus itens na consulta externa desta auditoria. Assim, nenhuma música nova foi atribuída por suposição e nenhum link existente foi declarado reproduzível sem checagem externa.
+- Antes de dar a importação como completa, obter via YouTube Data API (ou exportação confiável) os IDs e títulos atuais, comparar com os 15 IDs do cadastro, acrescentar os que faltam e confirmar as associações regionais e de Cancioneiro.
+
+- A aba oferece **Ouvir a playlist aqui**: incorpora a playlist oficial somente após clique, exibindo também vídeos que ainda não foram individualmente catalogados. Essa vista não substitui a auditoria e classificação por vídeo. A abertura de uma faixa no Bardo fecha o iframe da playlist para evitar reprodução simultânea.

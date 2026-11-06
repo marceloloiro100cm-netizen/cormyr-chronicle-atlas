@@ -72,6 +72,7 @@
  document.addEventListener('click',async event=>{
   const button=event.target?.closest?.('button[data-bard-preview]');
   if(!button)return;
+  window.CORMYR_CLOSE_PLAYLIST?.();
   event.preventDefault();
   const video=youtube.parse(button.dataset.bardPreview);
   if(!video)return;
