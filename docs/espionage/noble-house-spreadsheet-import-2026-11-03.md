@@ -1,6 +1,6 @@
 # Cormyr — importação oficial de atributos nobres para missões de espionagem
 
-**Origem:** [Cormyr — Atributos das Casas Nobres](https://docs.google.com/spreadsheets/d/1Yts9r_X4yc1PsXcz1ah0HqmFvQme0CRCDoFhIgPMTmA/edit) · aba **Atributos das Casas**, células A1:O171.  
+**Origem:** [Cormyr — Atributos das Casas Nobres]([fonte privada no Drive do Narrador]) · aba **Atributos das Casas**, células A1:O171.  
 **Revisão observada:** 03/11/2026 18:14:40 UTC.  
 **Importação original (já executada no Supabase):** registros mantidos no banco. O arquivo público `docs/espionage/sql/0087_import_cormyr_noble_stats_2026_11_03.sql` foi higienizado e mantém somente o esquema e as funções, sem as 170 fichas confidenciais.  
 **Situação:** tabela de referência e RPCs instaladas no banco de produção; UI de administração e origem de missões em revisão no PR #223.
