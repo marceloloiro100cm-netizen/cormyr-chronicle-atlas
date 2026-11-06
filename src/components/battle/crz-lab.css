@@ -1,0 +1,85 @@
+/* Cruzada CRZ · aparência própria e isolada do simulador PTE/V3. */
+.crz-lab{color:#ece1cf}
+.crz-lab .battle-header{background:linear-gradient(118deg,#242d2b,#50402e)}
+.crz-lab .battle-surface{background:linear-gradient(135deg,rgba(48,47,42,.96),rgba(29,41,43,.95))}
+.crz-lab .crz-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+.crz-lab .crz-toolbar button{white-space:normal;text-align:center;min-height:36px}
+.crz-lab .crz-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:15px 0}
+.crz-lab .crz-form label{min-width:0}
+.crz-lab .crz-file{display:flex;max-width:360px;gap:6px;flex-direction:column;margin-top:12px}
+.crz-lab .crz-file input{padding:8px}
+.crz-lab .crz-summary{display:flex;flex-wrap:wrap;align-items:center;gap:8px 17px}
+.crz-lab .crz-summary span{font-size:12px;color:#ead9bd}
+.crz-lab .crz-summary strong{color:#f4d99b}
+.crz-lab .crz-layout{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(270px,1fr);gap:14px;align-items:start}
+.crz-lab .crz-layout>*,.crz-lab .crz-aside{min-width:0}
+.crz-lab .crz-aside .battle-surface{margin-bottom:12px}
+.crz-lab .crz-map-scroll{width:100%;max-width:100%;overflow:auto;max-height:75vh;border:1px solid #706958;border-radius:9px;background:#263732}
+.crz-lab .crz-map{display:block;width:100%;min-width:460px;height:auto}
+.crz-lab .crz-map-tile{cursor:pointer;outline:none}
+.crz-lab .crz-map-tile polygon{stroke:#555e4f;stroke-width:1.3;transition:filter .12s}
+.crz-lab .crz-map-tile:focus-visible polygon{stroke:#fff2ce;stroke-width:4;filter:brightness(1.22)}
+.crz-lab .crz-map-tile:hover polygon{filter:brightness(1.16)}
+.crz-lab .crz-map-tile.crz-map-move polygon{stroke:#ffe7a1;stroke-width:3;filter:brightness(1.12)}
+.crz-lab .crz-map-tile.crz-map-attack polygon{stroke:#ff756d;stroke-width:4}
+.crz-lab .crz-map-tile.crz-map-selected polygon{stroke:#ffffff;stroke-width:3}
+.crz-lab .crz-map-tile.crz-map-active polygon{stroke:#ffd79b;stroke-width:3}
+.crz-lab .crz-units{display:grid;gap:7px}
+.crz-lab .crz-unit{display:grid;grid-template-columns:10px 1fr auto;align-items:center;
+ gap:6px 9px;text-align:left;color:#f1e3cc;background:#343a39;
+ border:1px solid #736b57;border-radius:8px;padding:8px;min-width:0}
+.crz-lab .crz-unit[aria-pressed="true"]{outline:2px solid #e8c27d;background:#485048}
+.crz-lab .crz-unit:focus-visible{outline:3px solid #ffd696}
+.crz-lab .crz-unit strong{font-size:12px;overflow-wrap:anywhere}
+.crz-lab .crz-unit span:not(.crz-dot){font-size:12px}
+.crz-lab .crz-unit small{grid-column:2 / 4;color:#d8c8ab;font-size:11px}
+.crz-lab .crz-dot{height:10px;width:10px;border-radius:50%}
+.crz-lab .crz-dot.crown{background:#659cc9}
+.crz-lab .crz-dot.ashkar{background:#e77b60}
+.crz-lab .crz-event-list{margin:8px 0 0;padding:0 0 0 24px;color:#ecdcc5;
+ display:grid;gap:4px;font-size:12px;max-height:230px;overflow:auto}
+.crz-lab .crz-alert,.crz-lab .crz-status{border:1px solid #ae7566;border-radius:7px;
+ padding:9px 12px;margin-bottom:12px;background:#43302d;color:#ffe7e0}
+.crz-lab .crz-status{border-color:#6e916d;background:#2a3c32;color:#deefcd}
+.crz-lab [disabled]{cursor:not-allowed}
+@media(max-width:960px){
+ .crz-lab .crz-layout{grid-template-columns:minmax(0,1fr)}
+ .crz-lab .crz-aside{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .crz-lab .crz-aside .battle-surface{margin-bottom:0}
+}
+@media(max-width:630px){
+ .crz-lab .crz-aside{grid-template-columns:1fr}
+ .crz-lab .crz-summary{gap:6px 12px}
+ .crz-lab .crz-map{min-width:440px}
+ .crz-lab .crz-form{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+ .crz-lab .crz-map-tile polygon{transition:none}
+}
+
+/* Lote 7 — foco concentrado no tabuleiro, zoom e alto contraste opcional. */
+.crz-lab .crz-board-shell{min-width:0}
+.crz-lab .crz-map-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 6px}
+.crz-lab .crz-map-tools button{min-width:38px;min-height:38px}
+.crz-lab .crz-map-tools output{font-variant-numeric:tabular-nums;min-width:40px;text-align:center}
+.crz-lab .crz-map-help{font-size:12px;color:#e3d3b8;margin:5px 0 10px}
+.crz-lab.crz-high-contrast .crz-map-scroll{background:#091116;border-color:#fff}
+.crz-lab.crz-high-contrast .crz-map-tile polygon{stroke:#fff;stroke-width:1.7;filter:contrast(1.2)}
+.crz-lab.crz-high-contrast .crz-map-tile.crz-map-move polygon{stroke:#fff242;stroke-width:4}
+.crz-lab.crz-high-contrast .crz-map-tile.crz-map-attack polygon{stroke:#ff4837;stroke-width:4}
+.crz-lab.crz-high-contrast .crz-map-tile.crz-map-active polygon{stroke:#ffffff;stroke-width:5}
+.crz-lab.crz-high-contrast .crz-map-tile:focus-visible polygon{stroke:#ffe847;stroke-width:5}
+
+/* Lote 9 — observações de controle e tabela de desempenho somente leitura. */
+.crz-lab .crz-insights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:stretch}
+.crz-lab .crz-objectives{list-style:decimal;display:grid;gap:8px;margin:10px 0;padding-left:23px}
+.crz-lab .crz-objectives li{padding:6px 4px;border-bottom:1px solid #746f60}
+.crz-lab .crz-objectives strong{display:block;color:#f1dfae}
+.crz-lab .crz-objectives span{font-size:12px;color:#eadcc9}
+.crz-lab .crz-report-table{width:100%;border-collapse:collapse;text-align:left;font-size:12px;font-variant-numeric:tabular-nums}
+.crz-lab .crz-report-table th,.crz-lab .crz-report-table td{padding:8px 5px;border-bottom:1px solid #716956}
+.crz-lab .crz-report-table thead th{color:#f5dca5}
+.crz-lab .crz-report-table tbody th{color:#f6ead4}
+@media(max-width:900px){.crz-lab .crz-insights{grid-template-columns:1fr}}
+@media(max-width:500px){.crz-lab .crz-report-table{font-size:11px}
+ .crz-lab .crz-report-table th,.crz-lab .crz-report-table td{padding:6px 3px}}
