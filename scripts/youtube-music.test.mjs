@@ -193,7 +193,7 @@ test('Cancioneiro is a selectable group and missing regional themes are reported
  assert.match(nodes['music-all'].innerHTML,/wioZhfoQMAs/);
  assert.match(nodes['music-all'].innerHTML,/WrXc5zCbMHA/);
  nodes['music-kinds'].click({target:{closest:()=>({dataset:{musicKind:'cancioneiro'}})}});
- assert.match(nodes['music-count'].textContent,/1 títulos sem vídeo vinculado/);
+ assert.match(nodes['music-count'].textContent,/1 título sem vídeo vinculado/);
  assert.match(nodes['music-count'].textContent,/1 letra sem vídeo/);
  assert.match(nodes['music-all'].innerHTML,/A Balada Libertina do Guardião de Helm/);
  assert.match(nodes['music-all'].innerHTML,/www.youtube.com\/watch\?v=4RuKLjM1QcU/);
