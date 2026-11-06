@@ -70,7 +70,7 @@ function eventLabel(event:CrzEvent):string{
   (extra?' · '+extra:'')+damage;
 }
 
-function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,onTile}:{
+export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,onTile}:{
  state:CrzBattleState;selectedId:string|null;hoveredId:string|null;
  moves:readonly CrzHex[];attacks:readonly string[];
  objectives:readonly CrzObservedObjective[];
