@@ -44,7 +44,7 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
   sources.push(...(r.music||[]));
   for(const h of r.houses)sources.push(...(h.music||[]));
  }
- assert.equal(sources.length,18);
+ assert.equal(sources.length,19);
  for(const song of sources){
   assert.match(song.url,/^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/);
   assert.match(song.videoId,/^[A-Za-z0-9_-]{11}$/);
@@ -53,6 +53,11 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
  assert.equal(data.soundtrack.filter(s=>s.lyrics).length,3);
  assert.equal(data.soundtrack.filter(s=>s.url).length,3);
  const byRegion=Object.fromEntries(data.regions.map(r=>[r.name,r]));
+ assert.equal(data.regions.length,11);
+ assert.ok(data.regions.every(r=>r.music.length===1),'Every region must have one official theme');
+ assert.equal(byRegion.Crownlands.music[0].videoId,'7B-Mb9vnmZk');
+ assert.equal(byRegion.Crownlands.music[0].title,'Terras da Coroa');
+ assert.notEqual(byRegion.Crownlands.music[0].videoId,'HM4a9vYrdDU');
  assert.equal(byRegion.Swordmark.music[0].videoId,'HHZjbwRCoes');
  assert.equal(byRegion.Shieldmark.music[0].videoId,'5VPgawygkEc');
  assert.equal(byRegion.Ferlin.music[0].videoId,'_uJndPcaHj0');
@@ -157,8 +162,8 @@ test('Cancioneiro is a selectable group and missing regional themes are reported
  };
  runInNewContext(read('extras.js'),{window,document,URL,location:{hash:''},
   localStorage:{getItem:()=>null},setTimeout:()=>{}});
- assert.match(nodes['music-count'].textContent,/21 vídeos vinculados/);
- assert.match(nodes['music-all'].notice,/Crownlands/);
+ assert.match(nodes['music-count'].textContent,/22 vídeos vinculados/);
+ assert.equal(nodes['music-all'].notice,undefined,'No region is missing a theme');
  assert.match(nodes['music-kinds'].innerHTML,/Cancioneiro/);
  nodes['music-kinds'].click({target:{closest:()=>({dataset:{musicKind:'cancioneiro'}})}});
  assert.match(nodes['music-count'].textContent,/2 títulos sem vídeo vinculado/);
@@ -199,7 +204,7 @@ test('all supplied URLs are valid, and the shared Von der Harten track is not du
  const tracks=[...data.kingdomMusic,...data.regions.flatMap(r=>(r.music||[]).concat(
   r.houses.flatMap(h=>h.music||[]))),
   ...data.soundtrack.filter(s=>s.videoId)];
- assert.equal(tracks.length,21);
- assert.equal(new Set(tracks.map(s=>s.videoId)).size,20);
+ assert.equal(tracks.length,22);
+ assert.equal(new Set(tracks.map(s=>s.videoId)).size,21);
  assert.ok(tracks.every(s=>data.musicPlaylist&&/^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/.test(s.url)));
 });
