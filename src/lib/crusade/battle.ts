@@ -28,6 +28,7 @@ export type CrzActivation=Readonly<{
  moved:boolean;attacked:boolean;waited:boolean;defendActive:boolean;
  retaliationRound:number|null;extraTurnUsedRound:number|null;
  movedPath:readonly Hex[];afterWait:boolean;
+ abilityBonusDice:number;activatedAbility:string|null;
 }>;
 export type CrzBattleUnit=Omit<CrzPreparedStack,
  'position'|'activation'|'effects'|'moraleState'> & Readonly<{
@@ -216,7 +217,8 @@ export function crzPrepareBattle(input:CrzBattleSetup):CrzBattleState{
    const {activation:_,effects:__,moraleState:___,position:____,...rest}=s;
    stacks.push({...rest,position,
     activation:{moved:false,attacked:false,waited:false,defendActive:false,
-     retaliationRound:null,extraTurnUsedRound:null,movedPath:[],afterWait:false},
+     retaliationRound:null,extraTurnUsedRound:null,movedPath:[],afterWait:false,
+     abilityBonusDice:0,activatedAbility:null},
     effects:[],moraleState:'steady'});
   }
  }
