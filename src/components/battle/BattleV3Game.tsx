@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import type {BattleCommand,BattleStack,Hex,Side} from '@/lib/battle/domain/types';
-import {getLegalActions} from '@/lib/battle/domain/turns';
+import {getLegalActions,activationOrder} from '@/lib/battle/domain/turns';
 import {hexKey} from '@/lib/battle/geometry/hex';
 import {livingCount} from '@/lib/battle/domain/morale';
 import {battleReport} from '@/lib/battle/domain/report';
@@ -14,24 +14,15 @@ import {createV3Game,v3PlayCommand,v3LegalSkills,v3SkillName,v3UseUnitSkill,
  v3CanUseCommander,v3UseCommander,v3RunAi,type V3Game,type V3ScenarioOptions,
  type V3UnitSkill} from '@/lib/battle/v3/engine';
 import './battle.css';
+import './crusade-v4.css';
 
-type Mode='inspect'|'move'|'attack'|'skill'|'power';
+type Mode='inspect'|'skill'|'power';
 const sides:{id:Side;label:string}[]=[{id:'attacker',label:'Aliado'},{id:'defender',label:'Oponente'}];
 const defaults:V3ScenarioOptions={
  attackerHouseId:'evenhand-model',defenderHouseId:'ashkar-model',
  attackerCommander:'purple-dragon',defenderCommander:'ashkar-raider',
  scenario:'plain-open',opponent:'ai',
 };
-function Troop({unit,selected,active,onSelect}:{unit:BattleStack;selected:boolean;active:boolean;onSelect:()=>void}){
- const alive=livingCount(unit);
- return <button type="button" className={'crusade-troop'+(selected?' selected':'')+(active?' active':'')}
-  onClick={onSelect} aria-pressed={selected}>
-  <span className="crusade-troop-title">{active?'◆ ':''}{unit.name}</span>
-  <span className="crusade-troop-count">{alive}/{unit.initialCount} soldados</span>
-  <span className="crusade-life-track"><span style={{width:Math.floor(100*unit.currentHp/(unit.initialCount*unit.hpPerSoldier))+'%'}}/></span>
-  <small>{unit.moraleState==='routed'?'⚑ Em retirada':unit.moraleState==='shaken'?'Moral abalada':'Moral firme'}</small>
- </button>;
-}
 /** Interface original de Cormyr: ritmo de turnos e leitura de pilhas inspirados no
  * gênero de batalhas de Cruzada, sem reutilizar arte, ícones ou UI proprietária. */
 export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,invitationName}:{
@@ -41,6 +32,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const [options,setOptions]=useState<V3ScenarioOptions>(initialOptions??defaults);
  const [game,setGame]=useState<V3Game|null>(null);
  const [selected,setSelected]=useState<string|null>(null);
+ const [hoveredId,setHoveredId]=useState<string|null>(null);
  const [mode,setMode]=useState<Mode>('inspect');
  const [skill,setSkill]=useState<V3UnitSkill|null>(null);
  const [status,setStatus]=useState('');
@@ -81,21 +73,26 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    else if(mode==='skill'&&skill){finish(v3UseUnitSkill(game,skill,targetId));setStatus('Habilidade executada.');}
   }catch(e){setStatus(e instanceof Error?e.message:'Habilidade indisponível.');}
  };
+ /** Movimento e ataque são contextuais, mas o comando continua validado no motor.
+  * Inspecionar tropas de outro turno não concede permissão para executá-las. */
  const clickHex=(hex:Hex)=>{
   if(!game||!battle)return;
   const target=battle.stacks.find(s=>s.currentHp>0&&hexKey(s.position)===hexKey(hex));
-  if(canAct&&mode==='move'&&active){
-   const cmd=moves.find(m=>hexKey(m.to)===hexKey(hex));
-   if(cmd)action(cmd);else setStatus('Destino fora do alcance, ocupado ou bloqueado.');return;
-  }
-  if(canAct&&mode==='attack'&&target&&active){
-   if(attacks.some(a=>a.targetId===target.id))action({type:'ATTACK',unitId:active.id,targetId:target.id});
-   else setStatus('Alvo fora do alcance ou sem linha de visão.');return;
-  }
   if(canAct&&(mode==='power'||mode==='skill')){
-   if(target)cast(target.id);else setStatus('Selecione uma tropa para aplicar a habilidade.');return;
+   if(target)cast(target.id);else setStatus('Selecione uma tropa para aplicar a habilidade.');
+   return;
   }
-  if(target){setSelected(target.id);setMode('inspect');}
+  if(canAct&&mode==='inspect'&&active&&selected===active.id){
+   const attack=target&&attacks.find(a=>a.targetId===target.id);
+   if(attack){action(attack);return;}
+   if(!target){
+    const move=moves.find(m=>hexKey(m.to)===hexKey(hex));
+    if(move){action(move);return;}
+    setStatus('Destino indisponível: escolha um hexágono verde.');
+    return;
+   }
+  }
+  if(target){setSelected(target.id);setStatus('Tropa selecionada para inspeção.');}
  };
  useEffect(()=>{
   if(!game)return;
@@ -159,105 +156,163 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
   </section>
  </main>;
  const report=battle?battleReport(battle):null;
- return <main className="battle-module crusade-mode" aria-label="Arena Cruzada V3">
-  <header className="battle-header crusade-masthead">
-   <p className="battle-eyebrow">CORMYR · CRUSADA TÁTICA · MODO SEPARADO</p>
-   <h1>{battle?.name}</h1>
-   <p>Rodada {battle?.round} · {active?active.name:'Batalha encerrada'} · PTE-3.0-SANDBOX</p>
-   <p><strong>Simulação: as fichas das casas continuam intactas.</strong></p>
-  </header>
-  <div className="crusade-combat-grid">
-   <aside className="battle-surface crusade-left" aria-label="Ordem de batalha">
-    <h2>Exércitos</h2>
-    {sides.map(({id,label})=><section key={id}>
-     <p className="crusade-side-title">{label}: {modelHouse(id==='attacker'?options.attackerHouseId:options.defenderHouseId).name}</p>
-     <p className="crusade-commander-name">{commander(game.commanders[id]).name}</p>
-     {battle?.stacks.filter(s=>s.side===id).map(s=><Troop key={s.id} unit={s}
-      selected={selected===s.id} active={s.id===battle.activeUnitId}
-      onSelect={()=>{setSelected(s.id);setMode('inspect');}}/>)}
-    </section>)}
-   </aside>
-   <div className="battle-surface crusade-map">
-    <div className="crusade-turn-banner" role="status">
-     {battle?.phase==='completed'?'FIM DA BATALHA':
-      'VEZ DE '+(active?.side==='attacker'?'SEU EXÉRCITO':'EXÉRCITO ADVERSÁRIO')}
-     <span>{active?.name??'—'}</span>
+ const orderIds=battle?[
+  ...(battle.activeUnitId?[battle.activeUnitId]:[]),
+  ...battle.activationQueue,...battle.waitingQueue,
+  ...activationOrder(battle.stacks),
+ ]:[];
+ const turnOrder=battle?[...new Set(orderIds)].map(id=>
+  battle.stacks.find(unit=>unit.id===id)).filter(
+   (unit):unit is BattleStack=>Boolean(unit&&unit.currentHp>0&&unit.moraleState!=='routed')):[];
+ return <main className="battle-module crusade-mode crusade-v4" aria-label="Arena Cruzada V3">
+  <section className="crusade-v4-stage" aria-label="Arena V4 unificada">
+   <header className="crusade-v4-header">
+    <div>
+     <p className="crusade-v4-eyebrow">CORMYR · CRUZADA TÁTICA · TREINAMENTO</p>
+     <h1>{battle?.name}</h1>
+     <p>Rodada {battle?.round} · {active?active.name:'Batalha encerrada'} ·
+      PTE-3.0-SANDBOX</p>
     </div>
-    <BattleBoard map={battle!.map} stacks={battle!.stacks} activeId={battle!.activeUnitId}
-     selectedId={selected} moveKeys={mode==='move'&&canAct?moves.map(c=>hexKey(c.to)):[]}
-     attackKeys={mode==='attack'&&canAct?attacks.map(c=>c.targetId):
-      (mode==='power'&&canAct?powerTargets.map(s=>s.id):mode==='skill'&&canAct?
-       battle!.stacks.filter(s=>s.side!==active?.side&&s.currentHp>0).map(s=>s.id):[])}
-     onHexClick={clickHex}/>
-    <p className="battle-note">
-     {mode==='move'?'Clique no destino verde para mover.':
-      mode==='attack'?'Clique no alvo vermelho para atacar.':
-      mode==='power'?'Clique na tropa apropriada para o poder do comandante.':
-      mode==='skill'?'Clique no inimigo para executar a habilidade.':
-      'Escolha uma ação; as pilhas são movidas por hexágonos e agem por iniciativa.'}
-    </p>
-    {status&&<p role="status" className="crusade-status">{status}</p>}
-    {battle?.phase==='completed'&&report&&<div className="crusade-end">
-     <h2>{battle.winner===null?'Empate':battle.winner==='attacker'?'Vitória aliada':'Vitória adversária'}</h2>
-     <p>Baixas: aliados {report.bySide.attacker.casualties} · adversários {report.bySide.defender.casualties}</p>
-     <Button onClick={()=>{setGame(null);setStatus('');}}>Nova Cruzada</Button>
-    </div>}
-   </div>
-   <aside className="battle-surface crusade-right" aria-label="Ordens táticas">
-    <h2>Comando</h2>
-    <p>{inspected?.name??'Selecione uma tropa'}</p>
-    {inspected&&<div className="crusade-stats">
-     <span>Combatentes <b>{livingCount(inspected)} / {inspected.initialCount}</b></span>
-     <span>PV <b>{inspected.currentHp}</b></span>
-     <span>Ataque / Defesa <b>{inspected.attack} / {inspected.defense}</b></span>
-     <span>Movimento <b>{inspected.movementHex} hex</b></span>
-     <span>Alcance <b>{inspected.rangeHex} hex</b></span>
-    </div>}
-    <div className="crusade-action-buttons">
-     <Button disabled={!canAct||!moves.length} variant={mode==='move'?'default':'outline'}
-      onClick={()=>{setMode('move');setSkill(null);}}>Mover</Button>
-     <Button disabled={!canAct||!attacks.length} variant={mode==='attack'?'default':'outline'}
-      onClick={()=>{setMode('attack');setSkill(null);}}>Atacar</Button>
-     <Button disabled={!canAct||!active||!legal.some(c=>c.type==='DEFEND')} variant="outline"
-      onClick={()=>active&&action({type:'DEFEND',unitId:active.id})}>Defender</Button>
-     <Button disabled={!canAct||!active||!legal.some(c=>c.type==='WAIT')} variant="outline"
-      onClick={()=>active&&action({type:'WAIT',unitId:active.id})}>Esperar</Button>
-     <Button disabled={!canAct||!active} variant="outline"
-      onClick={()=>active&&action({type:'END_ACTIVATION',unitId:active.id})}>Fim de turno</Button>
-    </div>
-    <h3>Habilidades de tropa</h3>
-    {availableSkills.length===0?<p className="battle-note">Sem habilidade disponível nesta ativação.</p>:
-      <div className="crusade-ability-buttons">{availableSkills.map(s=>
-       <Button size="sm" variant={mode==='skill'&&skill===s?'default':'outline'}
-        key={s} disabled={!canAct} onClick={()=>{
-         if(!game)return;
-         if(s==='SHIELD_WALL'){try{finish(v3UseUnitSkill(game,s));setStatus('Formação defensiva aplicada.');}
-          catch(e){setStatus(e instanceof Error?e.message:'Ordem inválida.');}}
-         else{setSkill(s);setMode('skill');}
-        }}>{v3SkillName(s)}</Button>)}</div>}
-    <h3>Comandante</h3>
-    {currentCommander&&<div className="crusade-commander-card">
-     <strong>{currentCommander.name}</strong><p>{currentCommander.powerDescription}</p>
-     <Button size="sm" disabled={!canPower}
-      variant={mode==='power'?'default':'outline'}
-      onClick={()=>{setMode('power');setSkill(null);}}>
-      {game.usedPowers[active?.side??'attacker']?'Poder já utilizado':currentCommander.powerName}
-     </Button>
-    </div>}
-    <Button size="sm" variant="outline" onClick={()=>setShowDetails(x=>!x)}>
-     {showDetails?'Ocultar histórico':'Ver histórico'}
-    </Button>
-    <Button size="sm" variant="outline" onClick={()=>downloadBattleJson('crusada-v3-treino.json',
+    <div className="crusade-v4-utility">
+     <Button variant="outline" onClick={()=>downloadBattleJson('crusada-v3-treino.json',
       JSON.stringify(game,null,2))}>Exportar treino JSON</Button>
-    <Button size="sm" variant="outline" onClick={()=>{setGame(null);setStatus('');}}>Sair da batalha</Button>
-    {onBack&&<Button size="sm" variant="outline" onClick={onBack}>Voltar ao painel</Button>}
-   </aside>
-  </div>
-  {showDetails&&<section className="battle-surface crusade-history" aria-label="Histórico tático V3">
-   <h3>Registro de ordens</h3>
-   <ol>{[...game.log].reverse().map((e,i)=><li key={i}>
-     Rodada {e.round} · {e.side==='attacker'?'Aliados':'Adversários'} · {e.label}
-    </li>)}</ol>
-  </section>}
+     <Button variant="outline" onClick={()=>{setGame(null);setStatus('');}}>Nova batalha</Button>
+     {onBack&&<Button variant="outline" onClick={onBack}>Voltar ao módulo</Button>}
+    </div>
+   </header>
+   <section className="crusade-v4-turns" aria-label="Ordem de combate V3">
+    <div className="crusade-v4-section-head">
+     <h2>Ordem de combate</h2>
+     <span>Passe o mouse ou use Tab para localizar uma tropa no mapa</span>
+    </div>
+    <div className="crusade-v4-turn-strip">
+     {turnOrder.map((unit,index)=><button type="button" key={unit.id}
+      className={'crusade-v4-turn-card crusade-v4-'+unit.side+
+       (unit.id===battle?.activeUnitId?' is-current':'')}
+      aria-label={'Ordem '+(index+1)+': '+unit.name+' · '+livingCount(unit)+' soldados'}
+      aria-current={unit.id===battle?.activeUnitId?'step':undefined}
+      aria-pressed={selected===unit.id}
+      onMouseEnter={()=>setHoveredId(unit.id)}
+      onMouseLeave={()=>setHoveredId(value=>value===unit.id?null:value)}
+      onFocus={()=>setHoveredId(unit.id)}
+      onBlur={()=>setHoveredId(value=>value===unit.id?null:value)}
+      onClick={()=>{setSelected(unit.id);setMode('inspect');setSkill(null);}}>
+      <small>{index+1}</small>
+      <span className="crusade-v4-unit-symbol" aria-hidden="true">
+       {unit.rangeHex>1?'⌖':'⚔'}</span>
+      <strong>{unit.name}</strong>
+      <span>{livingCount(unit)} combatentes</span>
+     </button>)}
+    </div>
+   </section>
+   <div className="crusade-v4-columns">
+    <section className="crusade-v4-general" aria-label="General e habilidades V3">
+     <div className="crusade-v4-portrait" role="img"
+      aria-label="Espaço reservado para retrato do comandante">
+      <span className="crusade-v4-portrait-face" aria-hidden="true"/>
+      <span className="crusade-v4-portrait-body" aria-hidden="true"/>
+      <span className="crusade-v4-portrait-caption">Retrato do General</span>
+     </div>
+     <h2>General</h2>
+     <strong className="crusade-v4-general-name">{currentCommander?.name??'Comandante indisponível'}</strong>
+     <p className="crusade-v4-general-title">{currentCommander?.title??'—'}</p>
+     <div className="crusade-v4-power-status">
+      <span>Poder da batalha</span>
+      <strong>{game.usedPowers[active?.side??'attacker']?'Utilizado':'Disponível'}</strong>
+     </div>
+     <h3>Habilidades</h3>
+     {currentCommander&&<>
+      <p className="crusade-v4-power-description">{currentCommander.powerDescription}</p>
+      <Button className="crusade-v4-primary" variant="outline" disabled={!canPower}
+       aria-pressed={mode==='power'}
+       onClick={()=>{setMode(v=>v==='power'?'inspect':'power');setSkill(null);}}>
+       {game.usedPowers[active?.side??'attacker']?'Poder já utilizado':currentCommander.powerName}
+      </Button>
+     </>}
+     <h3>Habilidades de tropa</h3>
+     {availableSkills.length===0?<p>Sem habilidade disponível nesta ativação.</p>:
+      <div className="crusade-v4-skills">{availableSkills.map(ability=>
+       <Button key={ability} variant="outline" disabled={!canAct}
+        aria-pressed={mode==='skill'&&skill===ability}
+        onClick={()=>{
+         if(!game)return;
+         if(ability==='SHIELD_WALL'){
+          try{finish(v3UseUnitSkill(game,ability));setStatus('Formação defensiva aplicada.');}
+          catch(e){setStatus(e instanceof Error?e.message:'Ordem inválida.');}
+         }else{setSkill(ability);setMode('skill');}
+        }}>{v3SkillName(ability)}</Button>
+      )}</div>}
+     {mode!=='inspect'&&<div className="crusade-v4-target-hint" role="status">
+      Clique no alvo adequado no mapa.
+      <Button variant="outline" onClick={()=>{setMode('inspect');setSkill(null);}}>Cancelar alvo</Button>
+     </div>}
+     <div className="crusade-v4-commands">
+      <h3>Decisão do turno</h3>
+      <Button disabled={!canAct||!active||!legal.some(c=>c.type==='DEFEND')} variant="outline"
+       onClick={()=>active&&action({type:'DEFEND',unitId:active.id})}>Defender</Button>
+      <Button disabled={!canAct||!active||!legal.some(c=>c.type==='WAIT')} variant="outline"
+       onClick={()=>active&&action({type:'WAIT',unitId:active.id})}>Esperar</Button>
+      <Button disabled={!canAct||!active} variant="outline"
+       onClick={()=>active&&action({type:'END_ACTIVATION',unitId:active.id})}>Fim de turno</Button>
+     </div>
+    </section>
+    <section className="crusade-v4-battlefield" aria-label="Campo de batalha V3">
+     <div className="crusade-v4-map-head">
+      <h2>Campo de batalha</h2>
+      <span> <i className="crusade-v4-green"/> Movimento</span>
+      <span> <i className="crusade-v4-red"/> Ataque legal</span>
+     </div>
+     <BattleBoard map={battle!.map} stacks={battle!.stacks} activeId={battle!.activeUnitId}
+      selectedId={selected} hoveredId={hoveredId} theme="cormyr"
+      moveKeys={canAct&&mode==='inspect'&&selected===active?.id?
+       moves.map(c=>hexKey(c.to)):[]}
+      attackKeys={canAct&&mode==='inspect'&&selected===active?.id?
+       attacks.map(c=>c.targetId):
+       mode==='power'&&canAct?powerTargets.map(s=>s.id):
+       mode==='skill'&&canAct?attacks.map(c=>c.targetId):[]}
+      onHexClick={clickHex}/>
+     <p className="crusade-v4-instruction">
+      {mode==='power'?'Selecione a unidade para receber o poder do General.':
+       mode==='skill'?'Selecione um alvo vermelho para executar a habilidade.':
+       selected===active?.id?'Clique no hexágono verde para mover ou na unidade inimiga marcada para atacar.':
+       'Selecione a unidade ativa na ordem de combate para comandá-la.'}
+     </p>
+     {inspected&&<div className="crusade-v4-inspector">
+      <strong>{inspected.name}</strong>
+      <span>{livingCount(inspected)}/{inspected.initialCount} soldados</span>
+      <span>{inspected.currentHp} PV · Ataque {inspected.attack} · Defesa {inspected.defense}</span>
+     </div>}
+     {status&&<p role="status" className="crusade-v4-status">{status}</p>}
+     {battle?.phase==='completed'&&report&&<div className="crusade-v4-end">
+      <h2>{battle.winner===null?'Empate':battle.winner==='attacker'?'Vitória aliada':'Vitória adversária'}</h2>
+      <p>Baixas: aliados {report.bySide.attacker.casualties} · adversários {report.bySide.defender.casualties}</p>
+      <Button onClick={()=>{setGame(null);setStatus('');}}>Nova Cruzada</Button>
+     </div>}
+    </section>
+    <aside className="crusade-v4-history" aria-label="Últimas ações V3">
+     <h2>Últimas ações</h2>
+     <ol aria-live="polite" className="crusade-v4-log">
+      {(showDetails?[...game.log].reverse():[...game.log].reverse().slice(0,6)).map((entry,i)=>
+       <li key={game.log.length-i}>
+        <strong>Rodada {entry.round}</strong>
+        <span>{entry.side==='attacker'?'Coroa':'Ashkar'} · {entry.label}</span>
+       </li>)}
+     </ol>
+     {game.log.length===0&&<p>Nenhuma ordem executada nesta batalha.</p>}
+     <Button variant="outline" onClick={()=>setShowDetails(value=>!value)}>
+      {showDetails?'Ver últimas ações':'Ver histórico completo'}
+     </Button>
+     <p className="crusade-v4-private-notice">
+      Apenas exércitos-modelo. As fichas oficiais não são alteradas.
+     </p>
+    </aside>
+   </div>
+   <footer className="crusade-v4-footnotes">
+    <strong>Como jogar</strong>
+    <span>Selecione a unidade da vez; ela ficará verde.</span>
+    <span>Hexágono verde: mover. Inimigo destacado: atacar.</span>
+    <span>O motor PTE-3.0 valida todos os comandos.</span>
+   </footer>
+  </section>
  </main>;
 }

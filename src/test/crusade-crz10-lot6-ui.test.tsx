@@ -63,17 +63,18 @@ describe('CRZ-1.0 · Lote 6 — treino do Narrador, HUD e replay',()=>{
   expect(screen.getByRole('group',{name:'Mapa CRZ 11 por 9'})).toBeInTheDocument();
   expect(screen.getByRole('region',{name:'Painel do General CRZ'}))
    .toBeInTheDocument();
-  expect(screen.getByRole('button',{name:/Mover \(/})).toBeEnabled();
-  fireEvent.click(screen.getByRole('button',{name:/Mover \(/}));
+  expect(screen.queryByRole('button',{name:/^Mover \(/})).not.toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:/^Atacar \(/})).not.toBeInTheDocument();
   const moves=screen.getAllByRole('button',{name:/^Mover para /});
   expect(moves.length).toBeGreaterThan(0);
   fireEvent.click(moves[0]!);
   expect(screen.getByText(/Comando registrado no replay verificável/))
    .toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Replay'}));
   expect(screen.getByRole('region',{name:'Replay CRZ'})).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Revisar desde o início'}));
   expect(screen.getByLabelText('Posição do replay')).toHaveTextContent(/0\s*\/\s*[1-9]\d*/);
-  expect(screen.getByRole('button',{name:'Mover (0)'})).toBeDisabled();
+  expect(screen.queryByRole('button',{name:/^Mover \(/})).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Próximo'}));
   expect(screen.getByLabelText('Posição do replay')).toHaveTextContent(/1\s*\/\s*[1-9]\d*/);
   fireEvent.click(screen.getByRole('button',{name:'Retomar treino'}));
@@ -85,6 +86,7 @@ describe('CRZ-1.0 · Lote 6 — treino do Narrador, HUD e replay',()=>{
   expect(screen.getByLabelText('Magia do General')).toHaveValue('bless');
   fireEvent.click(screen.getByRole('button',{name:'Conjurar (3 energia)'}));
   expect(screen.getByText(/Magia do General · tillet-general/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Replay'}));
   expect(screen.getByLabelText('Posição do replay'))
    .toHaveTextContent(/[1-9]\d*\s*\/\s*[1-9]\d*/);
   expect(screen.getByRole('button',{name:'Conjurar (3 energia)'})).toBeDisabled();

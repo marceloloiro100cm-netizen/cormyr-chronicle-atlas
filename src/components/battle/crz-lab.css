@@ -83,3 +83,201 @@
 @media(max-width:900px){.crz-lab .crz-insights{grid-template-columns:1fr}}
 @media(max-width:500px){.crz-lab .crz-report-table{font-size:11px}
  .crz-lab .crz-report-table th,.crz-lab .crz-report-table td{padding:6px 3px}}
+
+
+/* CRZ V4 · interface tática de tela única. Estilo original Cormyr, sem imagens de terceiros. */
+.crz-lab{font-size:15px;line-height:1.55}
+.crz-lab .crz-battle-stage{
+ --crz-gold:#e4ba72;--crz-gold-muted:#ab8753;
+ --crz-paper:#fff1d6;--crz-ink:#171a1b;
+ color:var(--crz-paper);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+ font-size:15px;line-height:1.5;min-width:0;
+ padding:15px;position:relative;isolation:isolate;overflow:hidden;
+ border:2px solid #c59a59;border-radius:14px;
+ background:
+  radial-gradient(circle at 50% 36%,rgba(108,96,63,.12),transparent 52%),
+  repeating-linear-gradient(45deg,transparent 0 18px,rgba(250,201,107,.013) 18px 20px),
+  linear-gradient(132deg,#141a1d 0%,#202729 47%,#11181a 100%);
+ box-shadow:inset 0 0 0 2px #29221c,0 15px 45px rgba(0,0,0,.35);
+}
+.crz-lab .crz-battle-stage :is(h1,h2,h3){font-family:Georgia,serif;color:#f7d69c;line-height:1.16}
+.crz-lab .crz-battle-stage h1{font-size:clamp(23px,2.2vw,34px);margin:1px 0 4px}
+.crz-lab .crz-battle-stage h1 span{color:#fff0d4}
+.crz-lab .crz-battle-stage h2{font-size:clamp(20px,1.45vw,25px);margin:0 0 11px}
+.crz-lab .crz-battle-stage h3{font-size:19px;margin:12px 0 10px}
+.crz-lab .crz-battle-stage p{color:#e9dbc4;font-size:14px;line-height:1.48}
+.crz-lab .crz-arena-head{display:flex;align-items:center;justify-content:space-between;
+ gap:12px;flex-wrap:wrap;padding:0 6px 12px;border-bottom:1px solid #68543a}
+.crz-lab .crz-eyebrow{display:block;color:#e7c07b;text-transform:uppercase;font-weight:800;
+ letter-spacing:.13em;font-size:11px}
+.crz-lab .crz-arena-heading p{margin:0;font-size:13px;color:#e7d4b3}
+.crz-lab .crz-arena-utilities{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.crz-lab .crz-battle-stage button:not(.crz-map-tile){
+ background:linear-gradient(#354149,#20292d);color:#fff2de;
+ border:1px solid #b3915d;box-shadow:inset 0 1px rgba(255,241,209,.12);
+ border-radius:7px;padding:7px 11px;font-size:13px;font-weight:700;
+ line-height:1.3;min-height:39px;white-space:normal;text-align:center;
+}
+.crz-lab .crz-battle-stage button:not(:disabled):hover{background:#485442;border-color:#ffe0a3}
+.crz-lab .crz-battle-stage button:focus-visible{outline:3px solid #ffe18c;outline-offset:2px}
+.crz-lab .crz-battle-stage button:disabled{opacity:1;color:#c2bbb0;background:#292d30;
+ border-color:#6f6657;box-shadow:none;cursor:not-allowed}
+.crz-lab .crz-battle-stage button[aria-pressed="true"]{border-color:#ffe19b;box-shadow:0 0 0 1px #ffe19b}
+.crz-lab .crz-turn-track{padding:12px 8px 14px;border-bottom:1px solid #7d6345}
+.crz-lab .crz-track-title{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+.crz-lab .crz-track-title h2{margin:0 0 9px;font-size:24px}
+.crz-lab .crz-track-title span{font-size:12px;color:#e4d6bb}
+.crz-lab .crz-turn-cards{display:flex;align-items:stretch;gap:8px;padding:4px 4px 8px;
+ overflow-x:auto;scrollbar-color:#ad8a5b #192025;scrollbar-width:thin;scroll-snap-type:x proximity}
+.crz-lab .crz-battle-stage .crz-turn-card{min-width:106px;max-width:160px;flex:1 0 106px;
+ position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;
+ gap:3px;padding:6px 7px 8px;min-height:84px;
+ border:2px solid #7b93ad;background:linear-gradient(145deg,#294c6c,#132d49);
+ scroll-snap-align:start;overflow-wrap:anywhere}
+.crz-lab .crz-battle-stage .crz-turn-card.crz-faction-defender{
+ border-color:#bd8069;background:linear-gradient(145deg,#783b34,#401b1c)}
+.crz-lab .crz-turn-card strong{font-size:13px;color:#fff3de;line-height:1.2;
+ text-align:center;overflow-wrap:anywhere}
+.crz-lab .crz-turn-card small{font-size:11px;color:#f3e2c9}
+.crz-lab .crz-turn-number{position:absolute;top:3px;left:6px;font-size:10px;color:#e9c98e}
+.crz-lab .crz-turn-symbol{font-size:19px;line-height:1;color:#ffe0a3}
+.crz-lab .crz-battle-stage .crz-turn-card.crz-turn-current{border-color:#ffe29e;
+ box-shadow:0 0 0 2px #d6a45a,0 0 15px rgba(255,210,101,.48)}
+.crz-lab .crz-battle-stage .crz-turn-card.crz-turn-hovered{border-color:#fff1c5;
+ filter:brightness(1.18)}
+.crz-lab .crz-battle-columns{display:grid;grid-template-columns:minmax(196px,1fr)
+ minmax(0,3.3fr) minmax(215px,1.1fr);gap:12px;align-items:stretch;
+ padding:14px 0;min-height:500px}
+.crz-lab .crz-battle-columns > *{min-width:0}
+.crz-lab :is(.crz-general-deck,.crz-central-map,.crz-last-actions){
+ background:linear-gradient(143deg,rgba(47,47,43,.93),rgba(28,30,30,.97));
+ border:1px solid #a78755;box-shadow:inset 0 1px rgba(253,210,135,.15),
+ 0 3px 10px rgba(0,0,0,.15);border-radius:10px;padding:13px}
+.crz-lab .crz-general-deck{display:flex;flex-direction:column;align-items:stretch}
+.crz-lab .crz-portrait{height:140px;max-width:155px;width:100%;margin:0 auto 12px;
+ position:relative;overflow:hidden;border:3px ridge #ca9c57;border-radius:8px;
+ background:radial-gradient(ellipse at 50% 37%,#605644,#2f2e2b 80%);
+ box-shadow:inset 0 0 0 3px #2d241b}
+.crz-lab .crz-portrait-head{position:absolute;width:47px;height:50px;border-radius:50%;
+ background:#8a7b69;top:20px;left:calc(50% - 23px)}
+.crz-lab .crz-portrait-body{position:absolute;width:102px;height:80px;
+ border-radius:46% 46% 0 0;background:#8a7b69;bottom:-7px;left:calc(50% - 51px)}
+.crz-lab .crz-portrait-caption{position:absolute;left:0;right:0;bottom:0;
+ text-align:center;background:rgba(15,16,16,.85);color:#fff2d4;font-size:11px;
+ padding:3px;font-weight:700}
+.crz-lab .crz-general-deck h2{text-align:center;margin:0 0 3px;font-size:25px}
+.crz-lab .crz-general-name{text-align:center;color:#f9ddaa;font-family:Georgia,serif;
+ font-size:19px;padding:4px 0 10px}
+.crz-lab .crz-general-energy{display:flex;justify-content:space-between;align-items:center;
+ border-block:1px solid #8c7048;padding:8px 2px;margin-bottom:7px;font-size:15px}
+.crz-lab .crz-general-energy strong{color:#d8ffa4;font-size:18px}
+.crz-lab .crz-general-spells label{display:flex;flex-direction:column;
+ gap:6px;margin:10px 0;color:#f6e1bc;font-size:13px;font-weight:700}
+.crz-lab .crz-battle-stage select{background:#22282a;border:1px solid #b49a71;color:#fff6e4;
+ border-radius:7px;min-height:42px;max-width:100%;padding:8px;font-size:15px}
+.crz-lab .crz-battle-stage select:focus-visible{outline:3px solid #ffdb88}
+.crz-lab .crz-general-spells .crz-action-primary{width:100%;
+ background:linear-gradient(#655083,#403455);border-color:#d2b1ea;
+ font-size:15px;min-height:44px}
+.crz-lab .crz-general-ability-buttons{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.crz-lab .crz-command-footer{border-top:1px solid #786548;margin-top:auto;padding-top:9px;
+ display:flex;flex-direction:column;gap:6px}
+.crz-lab .crz-command-footer h3{margin:0 0 5px}
+.crz-lab .crz-central-map{display:flex;flex-direction:column;min-width:0;
+ background:
+  radial-gradient(ellipse at center,#384338 0%,#1c2926 62%,#171e1f 100%);overflow:hidden}
+.crz-lab .crz-map-caption{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.crz-lab .crz-map-caption h2{margin:0 0 8px}
+.crz-lab .crz-legend-item{display:inline-flex;gap:6px;align-items:center;font-size:12px;
+ color:#eee2c7;font-weight:700}
+.crz-lab .crz-legend-item i{height:13px;width:13px;border-radius:3px;
+ display:inline-block;border:1px solid #fff}
+.crz-lab .crz-legend-green{background:#70db5e}.crz-lab .crz-legend-red{background:#ed5c4c}
+.crz-lab .crz-central-map .crz-board-shell{flex:1;display:flex;flex-direction:column}
+.crz-lab .crz-central-map .crz-map-tools{margin:2px 0 5px}
+.crz-lab .crz-central-map .crz-map-tools button{min-height:38px}
+.crz-lab .crz-central-map .crz-map-help{font-size:12px;line-height:1.4;
+ margin:0 0 6px;color:#ebdfc7}
+.crz-lab .crz-central-map .crz-map-scroll{flex:1;max-height:none;
+ min-height:260px;overflow:auto;background:#172023;border:1px solid #a3906e}
+.crz-lab .crz-central-map .crz-map{min-width:100%;display:block;
+ width:100%;height:auto;touch-action:manipulation}
+.crz-lab .crz-central-map .crz-map-tile polygon:first-child{stroke:#f2dea9;
+ stroke-width:1.5;transition:stroke .12s,filter .12s}
+.crz-lab .crz-central-map .crz-map-tile.crz-map-move polygon:first-child{
+ stroke:#a6fe7c;stroke-width:3;filter:brightness(1.15)}
+.crz-lab .crz-central-map .crz-map-tile.crz-map-attack polygon:first-child{
+ stroke:#ff675b;stroke-width:4}
+.crz-lab .crz-central-map .crz-map-tile.crz-map-selected polygon:first-child{
+ stroke:#78fe80;stroke-width:3}
+.crz-lab .crz-central-map .crz-map-tile.crz-map-hovered polygon:first-child{
+ stroke:#ffdf84;stroke-width:4}
+.crz-lab .crz-inspect-line{border-top:1px solid #7c6a4f;margin-top:8px;padding:9px 2px 0;
+ display:flex;flex-wrap:wrap;gap:4px 11px;color:#eaddc6;font-size:12px}
+.crz-lab .crz-inspect-line strong{font-size:13px;color:#f7dda5}
+.crz-lab .crz-last-actions{align-self:end;min-height:310px;max-height:550px;
+ display:flex;flex-direction:column}
+.crz-lab .crz-right-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:5px;margin-bottom:14px}
+.crz-lab .crz-battle-stage .crz-right-tabs button{padding:7px 5px;min-height:37px}
+.crz-lab .crz-battle-stage .crz-right-tabs button.crz-tab-active{
+ background:#62503a;color:#ffefcf;border-color:#ffdd91}
+.crz-lab .crz-last-actions section{flex:1;overflow:auto;min-width:0}
+.crz-lab .crz-last-actions h2{font-size:22px;border-bottom:1px solid #957c53;padding-bottom:11px}
+.crz-lab .crz-action-feed{list-style:none;margin:0;padding:0 2px;
+ max-height:380px;overflow:auto}
+.crz-lab .crz-action-feed li{padding:10px 4px;border-bottom:1px solid #665742;
+ font-size:14px;line-height:1.46;color:#f3e9da;overflow-wrap:anywhere}
+.crz-lab .crz-action-feed li:first-child{color:#ffe1a4;font-weight:700}
+.crz-lab .crz-right-note{font-size:12px;margin-top:12px}
+.crz-lab .crz-last-actions .crz-report-table{font-size:12px}
+.crz-lab .crz-last-actions .crz-report-table th,.crz-lab .crz-last-actions .crz-report-table td{
+ padding:6px 3px;overflow-wrap:anywhere}
+.crz-lab .crz-last-actions .crz-report-table+button{margin-top:14px}
+.crz-lab .crz-last-actions .crz-replay-tools{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.crz-lab .crz-last-actions .crz-replay-tools button:first-child,
+.crz-lab .crz-last-actions .crz-replay-tools output{grid-column:1/-1}
+.crz-lab .crz-last-actions .crz-replay-tools output{text-align:center;color:#ffe0aa;
+ font-size:15px;font-weight:700}
+.crz-lab .crz-arena-guide{border-top:1px solid #92724c;background:rgba(0,0,0,.23);
+ padding:11px 8px 0;display:flex;justify-content:space-between;gap:8px 16px;
+ flex-wrap:wrap;align-items:center}
+.crz-lab .crz-arena-guide strong{color:#f2cb85;font-size:17px;font-family:Georgia,serif}
+.crz-lab .crz-arena-guide span{font-size:13px;color:#f1e9db;flex:1 1 170px}
+.crz-lab .crz-victory-banner{text-align:center;color:#fff1cb;font-size:21px;font-weight:800;
+ background:#3f432f;border:1px solid #dcb97b;border-radius:8px;padding:12px;margin-top:14px}
+.crz-lab .crz-battle-stage .crz-file{background:#282d2f;padding:10px;border-radius:7px}
+.crz-lab .crz-battle-stage .crz-alert,.crz-lab .crz-battle-stage .crz-status{
+ font-size:14px;margin:10px 0}
+.crz-lab.crz-high-contrast .crz-battle-stage{--crz-paper:#fff;--crz-gold:#ffeaa8;
+ background:#080b0c;border-color:#fff}
+.crz-lab.crz-high-contrast :is(.crz-general-deck,.crz-central-map,.crz-last-actions){
+ background:#090e10;border-color:#fff}
+.crz-lab.crz-high-contrast .crz-central-map .crz-map-tile.crz-map-move polygon:first-child{stroke:#deff42}
+.crz-lab.crz-high-contrast .crz-battle-stage button:focus-visible{outline-color:#fff}
+@media(max-width:1250px){
+ .crz-lab .crz-battle-columns{grid-template-columns:minmax(176px,.9fr) minmax(0,3fr) minmax(195px,1fr);gap:9px}
+ .crz-lab .crz-battle-stage{padding:10px}
+ .crz-lab .crz-last-actions{padding:9px}
+}
+@media(max-width:980px){
+ .crz-lab .crz-battle-columns{grid-template-columns:minmax(185px,.8fr) minmax(0,2fr)}
+ .crz-lab .crz-last-actions{grid-column:2;min-height:200px;max-height:350px;align-self:start}
+ .crz-lab .crz-general-deck{grid-row:1 / span 2}
+}
+@media(max-width:650px){
+ .crz-lab .crz-battle-columns{display:flex;flex-direction:column}
+ .crz-lab .crz-general-deck{display:grid;grid-template-columns:105px minmax(0,1fr);gap:8px 12px}
+ .crz-lab .crz-portrait{grid-row:1 / span 3;height:110px;margin:0}
+ .crz-lab .crz-general-deck h2,.crz-lab .crz-general-name{text-align:left}
+ .crz-lab .crz-general-energy{grid-column:2;margin:0}
+ .crz-lab .crz-general-deck h3{grid-column:1/-1}
+ .crz-lab .crz-general-spells,.crz-lab .crz-general-ability-buttons,.crz-lab .crz-command-footer{grid-column:1/-1}
+ .crz-lab .crz-central-map .crz-map{min-width:440px}
+ .crz-lab .crz-last-actions{min-height:230px;max-height:330px}
+ .crz-lab .crz-arena-utilities{justify-content:flex-start}
+}
+@media(prefers-reduced-motion:reduce){
+ .crz-lab .crz-battle-stage *, .crz-lab .crz-battle-stage *::before{
+  animation:none!important;transition:none!important}
+}
