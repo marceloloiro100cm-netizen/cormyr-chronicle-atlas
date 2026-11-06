@@ -49,9 +49,9 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
   assert.match(song.url,/^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/);
   assert.match(song.videoId,/^[A-Za-z0-9_-]{11}$/);
  }
- assert.equal(data.soundtrack.filter(s=>s.linkStatus==='youtube-pending').length,5);
+ assert.equal(data.soundtrack.filter(s=>s.linkStatus==='youtube-pending').length,4);
  assert.equal(data.soundtrack.filter(s=>s.lyrics).length,3);
- assert.equal(data.soundtrack.filter(s=>s.url).length,6);
+ assert.equal(data.soundtrack.filter(s=>s.url).length,7);
  const byRegion=Object.fromEntries(data.regions.map(r=>[r.name,r]));
  assert.equal(data.regions.length,11);
  assert.ok(data.regions.every(r=>r.music.length===1),'Every region must have one official theme');
@@ -65,8 +65,15 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
  assert.equal(byRegion.Crownlands.houses.find(h=>h.name==='Von der Harten').music[0].videoId,'bR66gczzEdk');
  const linked=data.soundtrack.filter(s=>s.videoId);
  const ids=Array.from(linked,s=>s.videoId).sort();
- assert.deepEqual(ids,['4RuKLjM1QcU','HM4a9vYrdDU','WrXc5zCbMHA','f4L0mCHpOv8','wioZhfoQMAs','xoOtYuebA9k'].sort());
+ assert.deepEqual(ids,['4RuKLjM1QcU','HM4a9vYrdDU','WrXc5zCbMHA','b34LSA3yDak','f4L0mCHpOv8','wioZhfoQMAs','xoOtYuebA9k'].sort());
  assert.equal(data.soundtrack.filter(s=>s.lyrics&&!s.url).length,1);
+ const sossal=data.soundtrack.filter(s=>s.title==='Vou-me Embora pra Sossal');
+ assert.equal(sossal.length,1);
+ assert.equal(sossal[0].category,'cancioneiro');
+ assert.equal(sossal[0].region,'Stonelands');
+ assert.equal(sossal[0].videoId,'b34LSA3yDak');
+ assert.equal(sossal[0].url,'https://www.youtube.com/watch?v=b34LSA3yDak');
+ assert.notEqual(sossal[0].linkStatus,'youtube-pending');
  const balada=data.soundtrack.find(s=>s.title==='A Balada Libertina do Guardião de Helm');
  assert.equal(balada?.category,'cancioneiro');
  assert.equal(balada?.videoId,'4RuKLjM1QcU');
@@ -179,18 +186,20 @@ test('Cancioneiro is a selectable group and missing regional themes are reported
  };
  runInNewContext(read('extras.js'),{window,document,URL,location:{hash:''},
   localStorage:{getItem:()=>null},setTimeout:()=>{}});
- assert.match(nodes['music-count'].textContent,/25 vídeos vinculados/);
+ assert.match(nodes['music-count'].textContent,/26 vídeos vinculados/);
  assert.equal(nodes['music-all'].notice,undefined,'No region is missing a theme');
  assert.match(nodes['music-kinds'].innerHTML,/Cancioneiro/);
  assert.match(nodes['music-kinds'].innerHTML,/Novidades da playlist/);
  assert.match(nodes['music-all'].innerHTML,/wioZhfoQMAs/);
  assert.match(nodes['music-all'].innerHTML,/WrXc5zCbMHA/);
  nodes['music-kinds'].click({target:{closest:()=>({dataset:{musicKind:'cancioneiro'}})}});
- assert.match(nodes['music-count'].textContent,/2 títulos sem vídeo vinculado/);
+ assert.match(nodes['music-count'].textContent,/1 título sem vídeo vinculado/);
  assert.match(nodes['music-count'].textContent,/1 letra sem vídeo/);
  assert.match(nodes['music-all'].innerHTML,/A Balada Libertina do Guardião de Helm/);
  assert.match(nodes['music-all'].innerHTML,/www.youtube.com\/watch\?v=4RuKLjM1QcU/);
  assert.match(nodes['music-all'].innerHTML,/Ver letra · A Balada Libertina do Guardião de Helm/);
+ assert.match(nodes['music-all'].innerHTML,/Vou-me Embora pra Sossal/);
+ assert.match(nodes['music-all'].innerHTML,/b34LSA3yDak/);
  assert.match(nodes['music-all'].innerHTML,/Cante uma Canção a Elturel/);
  assert.match(nodes['music-all'].innerHTML,/Ver letra · Cante uma Canção a Elturel/);
  assert.doesNotMatch(nodes['music-all'].innerHTML,/Casa Ashkar/);
@@ -227,7 +236,7 @@ test('all supplied URLs are valid, and the shared Von der Harten track is not du
  const tracks=[...data.kingdomMusic,...data.regions.flatMap(r=>(r.music||[]).concat(
   r.houses.flatMap(h=>h.music||[]))),
   ...data.soundtrack.filter(s=>s.videoId)];
- assert.equal(tracks.length,25);
- assert.equal(new Set(tracks.map(s=>s.videoId)).size,24);
+ assert.equal(tracks.length,26);
+ assert.equal(new Set(tracks.map(s=>s.videoId)).size,25);
  assert.ok(tracks.every(s=>data.musicPlaylist&&/^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/.test(s.url)));
 });
