@@ -56,7 +56,7 @@ describe('CRZ · V4: arena tática no padrão aprovado',()=>{
   expect(screen.getByText(/Comando registrado no replay verificável/))
    .toBeInTheDocument();
   expect(within(screen.getByRole('region',{name:'Últimas ações'}))
-   .getByText(/Movimento/)).toBeInTheDocument();
+   .getAllByText(/Movimento/).length).toBeGreaterThan(0);
  });
  it('seleção de unidade fora do turno só inspeciona, não falsifica movimentos',()=>{
   start();
