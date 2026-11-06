@@ -137,8 +137,20 @@ export function v37CastSignature(game:V3Game,targetId:string):V3Game{
    {round,side,label:commander(game.commanders[side]).powerName+
     ' · comando de assinatura (−'+cost+' energia)'}].slice(-100)};
 }
+function usefulTarget(ability:V37Ability,stack:BattleStack):boolean{
+ switch(ability.effect){
+  case 'guard':return !stack.defenseGuard||stack.armor<10;
+  case 'inspire':return stack.attack<15;
+  case 'march':return stack.movementHex<6;
+  case 'rally':return stack.moraleState!=='steady'||!stack.defenseGuard;
+  case 'weaken':return stack.attack>0;
+  case 'sunder':return stack.armor>0;
+  case 'heal':return stack.currentHp<livingCount(stack)*stack.hpPerSoldier;
+  case 'arcane':return stack.currentHp>0;
+ }
+}
 export function v37RunAi(game:V3Game):V3Game{
- const {active,side}=current(game);
+ const {side}=current(game);
  if(game.battle.controls[side]!=='ai')return game;
  let next=game;
  if(v37CanSignature(next)){
@@ -147,6 +159,20 @@ export function v37RunAi(game:V3Game):V3Game{
    (leader.powerTarget==='ally'?s.side===side:s.side!==side));
   for(const target of targets){
    try{next=v37CastSignature(next,target.id);break;}catch{/* alvo fora do alcance */}
+  }
+ }
+ if(next.battle.phase==='active'&&
+  next.tactics?.[side].actedRound!==next.battle.round){
+  for(const ability of v37Abilities(next.commanders[side])){
+   if(!v37CanCast(next,ability.id))continue;
+   const candidates=next.battle.stacks
+    .filter(s=>s.currentHp>0&&s.moraleState!=='routed'&&
+     (ability.target==='ally'?s.side===side:s.side!==side)&&usefulTarget(ability,s))
+    .sort((a,b)=>a.id.localeCompare(b.id));
+   if(candidates.length){
+    next=v37Cast(next,ability.id,candidates[0]!.id);
+    break;
+   }
   }
  }
  if(next.battle.phase==='active'){
