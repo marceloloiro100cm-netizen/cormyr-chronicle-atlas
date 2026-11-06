@@ -235,6 +235,24 @@ describe('CRZ-1.0 Lote 4 · ações, moral e retaliação',()=>{
   expect(crzAttackOptions(adjacentState,a).map(t=>t.targetId))
    .toContain('d1');
  });
+ it('entrar em zona de controle encerra o caminho; sair da ZOC de origem é livre',()=>{
+  const started=crzStartBattle(ready());
+  const enemy=offsetToAxial(3,4),actorHex=offsetToAxial(1,4),
+   contact=offsetToAxial(2,4);
+  const altered={...started,stacks:started.stacks.map(unit=>({
+   ...unit,position:unit.side==='attacker'?actorHex:enemy,
+  }))};
+  const unit=altered.stacks.find(s=>s.id==='a1')!;
+  const targets=crzReachable(altered,unit);
+  expect(targets.some(p=>p.to.q===contact.q&&p.to.r===contact.r)).toBe(true);
+  expect(targets.every(p=>p.path.slice(1,-1).every(
+   middle=>hexDistance(middle,enemy)>1))).toBe(true);
+  const contactState={...altered,stacks:altered.stacks.map(s=>
+   s.id==='a1'?{...s,position:contact}:s)};
+  const fromZoc=crzReachable(contactState,
+   contactState.stacks.find(s=>s.id==='a1')!);
+  expect(fromZoc.length).toBeGreaterThan(0);
+ });
  it('modo esperado não consome RNG na moral numérica',()=>{
   const started=crzStartBattle(ready());
   const old=started.rng;
