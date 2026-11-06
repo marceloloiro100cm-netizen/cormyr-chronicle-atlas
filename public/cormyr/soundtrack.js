@@ -33,6 +33,6 @@
  ];
  data.soundtrack=[
   ...pending.map(([title,region,category],i)=>({id:'pending-'+i,title,region,category,url:'',linkStatus:'youtube-pending'})),
-  ...lyrics.map(([title,region,lyrics],i)=>({id:'lyrics-'+i,title,category:'cancioneiro',region,lyrics,url:''}))
+  ...lyrics.map(([title,region,lyrics],i)=>({id:'lyrics-'+i,title,category:'cancioneiro',region,lyrics:lyrics.replace(/\\n/g,'\n'),url:''}))
  ];
 })();
