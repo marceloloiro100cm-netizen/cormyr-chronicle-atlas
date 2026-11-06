@@ -56,6 +56,6 @@ export function crzGetCreature(catalog:CrzCatalog,id:string):CrzCreature{
  if(!crzCreaturePlayable(creature))
   throw new Error('E_SETUP_TEMPLATE: criatura sem ataque utilizável: '+id);
  // Retorna uma cópia validada; não expor referência mutável do catálogo.
- return crzReadCreature(creature);
+ return freezeTree(crzReadCreature(creature));
 }
 export const CRZ_EMPTY_CATALOG=crzBuildCatalog([]);
