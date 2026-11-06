@@ -264,7 +264,7 @@ test('all supplied URLs are valid, and the shared Von der Harten track is not du
  const tracks=[...data.kingdomMusic,...data.regions.flatMap(r=>(r.music||[]).concat(
   r.houses.flatMap(h=>h.music||[]))),
   ...data.soundtrack.filter(s=>s.videoId)];
- assert.equal(tracks.length,27);
- assert.equal(new Set(tracks.map(s=>s.videoId)).size,26);
+ assert.equal(tracks.length,28);
+ assert.equal(new Set(tracks.map(s=>s.videoId)).size,27);
  assert.ok(tracks.every(s=>data.musicPlaylist&&/^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/.test(s.url)));
 });
