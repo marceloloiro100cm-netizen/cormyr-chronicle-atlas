@@ -380,7 +380,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
         onClick={()=>{setMode('attack');setError('');}}>Atacar ({attacks.length})</Button>
        {abilities.map(c=><Button key={c.ability} variant="outline"
         onClick={()=>apply(c)}>{c.ability==='CHARGE'?'Preparar carga':
-         c.ability==='VOLLEY'?'Preparar salva':'Preparar evasão'</Button>)}
+         c.ability==='VOLLEY'?'Preparar salva':'Preparar evasão'}</Button>)}
        {(['WAIT','DEFEND','END_ACTIVATION'] as const).map(type=>{
         const command=legal.find(c=>c.type===type);
         return <Button key={type} disabled={!canAct||!command}
