@@ -11,6 +11,7 @@ import {runAiUntilHuman} from '../domain/ai';
 import {commander,applyCommanderPassive,type CommanderId} from './commanders';
 import {modelHouse,type PresetUnit} from './model-houses';
 import type {V37Tactics} from './tactics-v37';
+import type {V39Objectives} from './objectives-v39';
 import {v3ApplyCommanderTalent,v3CommanderPowerLimit,v3ProgressValid,
  type V3CommanderProgress} from './commander-progression';
 
@@ -29,6 +30,8 @@ export type V3Game=Readonly<{
  powerUses?:Readonly<Record<Side,number>>;
  /** Só existe para partidas locais opt-in, não para sessões/replays V3.4. */
  tactics?:V37Tactics;
+ /** Variante de objetivos isolada, nunca parte de replays PTE-2.0/V3.4. */
+ objectives?:V39Objectives;
  progressions?:Readonly<Record<Side,V3CommanderProgress>>;
  log:readonly V3Log[];
 }>;

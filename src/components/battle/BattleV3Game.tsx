@@ -13,6 +13,8 @@ import {BattleV3Barracks} from './BattleV3Barracks';
 import {BattleV3CommanderHall} from './BattleV3CommanderHall';
 import {BattleV3StrategyBoard} from './BattleV3StrategyBoard';
 import {BattleV38TheatreChooser} from './BattleV38TheatreChooser';
+import {BattleV39ObjectivesPanel} from './BattleV39ObjectivesPanel';
+import {v39Enable,v39AfterAction,v39RunAi} from '@/lib/battle/v3/objectives-v39';
 import {v38TheatreFromMap,type V38TheatreId} from '@/lib/battle/v3/theatres-v38';
 import {v3BarracksBySide,v3BarracksFromHouse,v3BarracksDeploy,
  type V3BarracksArmy} from '@/lib/battle/v3/barracks';
@@ -61,6 +63,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const [mode,setMode]=useState<Mode>('inspect');
  const [appearance,setAppearance]=useState<BattleBoardAppearance>('illustrated');
  const [selectedTheatre,setSelectedTheatre]=useState<V38TheatreId|null>(null);
+ const [objectiveMode,setObjectiveMode]=useState<'classic'|'hold-majority'>('classic');
  const [skill,setSkill]=useState<V3UnitSkill|null>(null);
  const [tacticId,setTacticId]=useState<string|null>(null);
  const [status,setStatus]=useState('');
@@ -79,7 +82,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    const created=createV3Game({...options,...(rosters?{rosters}:{}),
     ...(trained?{progressions:trained}:{}),
     ...(!locked&&selectedTheatre?{theatre:selectedTheatre}:{})});
-   const prepared=locked?created:v37Enable(created);
+   const trainedGame=locked?created:v37Enable(created);
+   const prepared=!locked&&objectiveMode==='hold-majority'?v39Enable(trainedGame):trainedGame;
    setGame(prepared);setShowStrategy(false);setSelected(prepared.battle.activeUnitId);setMode('inspect');
    setStatus('Encontro iniciado. Cada token representa um agrupamento completo.');
   }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível criar o cenário-modelo.');}
@@ -99,7 +103,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const powerTargets=battle?.stacks.filter(s=>s.currentHp>0&&s.moraleState!=='routed'&&active&&currentCommander&&
   (currentCommander.powerTarget==='ally'?s.side===active.side:s.side!==active.side))??[];
  const finish=(next:V3Game)=>{
-  setGame(next);setSelected(next.battle.activeUnitId);
+  const updated=game?.objectives?v39AfterAction(game,next):next;
+  setGame(updated);setSelected(updated.battle.activeUnitId);
   setMode('inspect');setSkill(null);setTacticId(null);
  };
  const action=(cmd:BattleCommand)=>{
@@ -154,7 +159,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
   if(!game)return;
   const actor=game.battle.stacks.find(s=>s.id===game.battle.activeUnitId);
   if(game.battle.phase!=='active'||!actor||game.battle.controls[actor.side]!=='ai')return;
-  try{const advanced=game.tactics?v37RunAi(game):v3RunAi(game);
+  try{const advanced=game.objectives?v39RunAi(game):game.tactics?v37RunAi(game):v3RunAi(game);
    setGame(advanced);setSelected(advanced.battle.activeUnitId);}
   catch(e){setStatus(e instanceof Error?e.message:'Oponente não conseguiu jogar esta rodada.');}
  },[game]);
@@ -232,6 +237,18 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    </div>
    {!locked&&<BattleV38TheatreChooser selected={selectedTheatre}
     onChange={setSelectedTheatre} scenario={options.scenario}/>}
+   {!locked&&<div className="crusade-v39-setup" aria-label="Regras opcionais dos objetivos">
+    <label>Condição de vitória do treinamento
+     <select aria-label="Condição de vitória" value={objectiveMode}
+      onChange={e=>setObjectiveMode(e.target.value as typeof objectiveMode)}>
+      <option value="classic">Clássica · eliminar ou provocar debandada</option>
+      <option value="hold-majority">V3.9 experimental · dominar marcos estratégicos</option>
+     </select>
+    </label>
+    <small>O documento 03 (§12) reserva objetivos alternativos para versão futura.
+     Esta variante é experimental e independente do motor CRZ-1.0:
+     conquistar dois de três marcos por duas rodadas, sem baixa oficial.</small>
+   </div>}
    {status&&<p role="status">{status}</p>}
    <div className="battle-home-actions"><Button onClick={begin}>Batalhar</Button>
     {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
@@ -285,7 +302,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       (mode==='power'&&canAct?powerTargets.map(s=>s.id):mode==='tactic'&&canAct?
        tacticTargets.map(s=>s.id):mode==='skill'&&canAct?
        battle!.stacks.filter(s=>s.side!==active?.side&&s.currentHp>0).map(s=>s.id):[])}
-     onHexClick={clickHex}/>
+     {...(game.objectives?{objectiveMarkers:game.objectives.points}:{})} onHexClick={clickHex}/>
+    {game.objectives&&<BattleV39ObjectivesPanel objectives={game.objectives}/>}
     <p className="battle-note">
      {mode==='move'?'Clique no destino verde para mover.':
       mode==='attack'?'Clique no alvo vermelho para atacar.':
