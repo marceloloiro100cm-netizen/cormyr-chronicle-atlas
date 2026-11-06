@@ -50,7 +50,7 @@ describe('CRZ-1.0 · Lote 6 — treino do Narrador, HUD e replay',()=>{
    .toEqual(played.state);
   expect(()=>crzTrainingReplayAt(played.replay,-1)).toThrow();
   const changed=JSON.parse(JSON.stringify(played.replay));
-  changed.steps[0].actor='ai';
+  changed.steps[0].actor=played.replay.steps[0]!.actor==='ai'?'human':'ai';
   expect(()=>crzTrainingReplayAt(changed,1)).toThrow();
  });
  it('oferece tabuleiro, ações, General e replay visual em sessão local',()=>{
