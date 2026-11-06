@@ -136,7 +136,12 @@ function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,onTile}:{
        (selected?' crz-map-selected':'')+(hovered?' crz-map-hovered':'')}>
       <polygon points={HEX_POINTS} transform={`translate(${x} ${y})`}
        fill={TERRAIN[tile.terrain]!.fill}/>
+      {isMove&&<polygon className="crz-valid-overlay" points={HEX_POINTS}
+       transform={`translate(${x} ${y})`} fill="rgba(99,255,116,.24)"
+       pointerEvents="none"/>}
       {unit&&<>
+       {isAttack&&<circle data-crz-attack-ring={unit.id} cx={x} cy={y} r={22}
+        fill="none" stroke="#ff6d54" strokeWidth={4} pointerEvents="none"/>}
        {hovered&&<circle data-crz-hover-ring={unit.id} cx={x} cy={y} r={23}
         fill="none" stroke="#ffe3a1" strokeWidth={4} pointerEvents="none"/>}
        {selected&&<circle data-crz-selected-ring={unit.id} cx={x} cy={y} r={21}
@@ -208,6 +213,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const spells=legal.filter((c):c is Extract<CrzCommand,{type:'CAST'}>=>
   c.type==='CAST').filter(c=>CRZ_LOT8_SPELLS.includes(c.spellId));
  const caster=active?frame?.leaders[active.side]:null;
+ const selectedSpell:CrzSpellId=caster?.spells.includes(spell)?
+  spell:caster?.spells[0]??spell;
  const canCast=canAct&&spells.some(c=>c.spellId===selectedSpell)&&
   Boolean(caster&&caster.energy>=(spellCost[selectedSpell]??Infinity))&&
   (selectedSpell!=='shield_wall_formation'||Boolean(frame&&active&&
@@ -259,8 +266,6 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    setError('Hexágono fora do movimento permitido. Selecione um hexágono verde.');
   }
  };
- const selectedSpell:CrzSpellId=caster?.spells.includes(spell)?
-  spell:caster?.spells[0]??spell;
  const orderIds=frame?[
   ...(frame.activeStackId?[frame.activeStackId]:[]),
   ...frame.activationQueue,...frame.waitingQueue,
