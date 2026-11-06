@@ -9,7 +9,7 @@ import {V3_COMMANDERS} from '@/lib/battle/v3/commanders';
 
 const options={
  attackerHouseId:'evenhand-model',defenderHouseId:'ashkar-model',
- attackerCommander:'purple-dragon' as const,defenderCommander:'war-mage' as const,
+ attackerCommander:'purple-dragon' as const,defenderCommander:'purple-dragon' as const,
  scenario:'plain-open' as const,opponent:'human' as const,
 };
 describe('Cruzada V3.6 — interface tática sem mutação das regras',()=>{
