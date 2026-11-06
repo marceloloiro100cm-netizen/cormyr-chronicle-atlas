@@ -98,7 +98,7 @@ describe('YouTube catalogue and pending recordings',()=>{
   expect(archive.regions).toHaveLength(11);
   expect(archive.regions.every((r:{music:unknown[]})=>r.music.length===1)).toBe(true);
   const byName=Object.fromEntries(archive.regions.map((r:{name:string;music:{videoId:string}[]})=>[r.name,r]));
-  expect((byName.Crownlands as {music:{videoId:string}[]}).music[0]?.videoId).toBe('7B-Mb9vnmZk');
+  expect((byName['Crownlands'] as {music:{videoId:string}[]}).music[0]?.videoId).toBe('7B-Mb9vnmZk');
   for(const track of tracks){
    expect(track.url).toMatch(/^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/);
    expect(track.videoId).toMatch(/^[A-Za-z0-9_-]{11}$/);
