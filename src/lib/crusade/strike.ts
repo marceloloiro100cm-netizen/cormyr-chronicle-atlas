@@ -87,7 +87,9 @@ export function crzStrike(state:CrzBattleState,
   throw new Error('E_SETUP_RULESET: redutor CRZ-5E necessário.');
  // Habilidade preparada melhora apenas o ataque ativo; nunca uma retaliação.
  const entry=entries(actor,target,mode,
-  !retaliation&&actor.activation.preparedAbility?1:0);
+  !retaliation&&(
+   actor.activation.preparedAbility==='CHARGE'&&mode==='melee'||
+   actor.activation.preparedAbility==='VOLLEY'&&mode==='ranged')?1:0);
  const engaged=mode==='melee'?engagedCount(actor,target,
   state.ruleset.damage.frontage,state.ruleset.damage.frontageRanks):actor.alive;
  const result=crzResolve5e({
