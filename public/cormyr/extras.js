@@ -100,3 +100,27 @@
   }catch(e){setTimeout(hideGm,300);}
   window.addEventListener('hashchange',()=>{if(!admin)setTimeout(hideGm,0);});
 })();
+
+
+/* Identificação visual obrigatória da cópia pública de homologação; sem efeito em produção. */
+(function installStagingIndicator() {
+  var ids = ['6fbb6b20-e2ad-4d5b-8cb5-ee6bc5af29c6','41028f68-4fe7-4ed0-b123-c820522a0a3b'];
+  var domains = ['lovable.app','lovableproject.com','lovableproject-dev.com'];
+  var host = window.location.hostname.toLowerCase();
+  if (!ids.some(function (id) { return domains.some(function (domain) {
+    return host === 'id-preview--' + id + '.' + domain;
+  }); })) return;
+  function mount() {
+    if (document.getElementById('cormyr-staging-indicator')) return;
+    var el = document.createElement('div');
+    el.id = 'cormyr-staging-indicator';
+    el.setAttribute('role','status');
+    el.setAttribute('aria-label','Ambiente de teste');
+    el.textContent = 'AMBIENTE DE TESTE';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;height:36px;z-index:2147483646;background:#b91c1c;color:white;display:flex;align-items:center;justify-content:center;text-align:center;font:800 13px/1.15 system-ui,sans-serif;letter-spacing:.12em;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none';
+    document.body.style.paddingTop = '36px';
+    document.body.prepend(el);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',mount,{once:true});
+  else mount();
+})();
