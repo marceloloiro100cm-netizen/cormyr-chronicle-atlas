@@ -12,6 +12,8 @@ import {BattleV36Initiative,BattleV36CommanderPanel,BattleV36ActionBar} from './
 import {BattleV3Barracks} from './BattleV3Barracks';
 import {BattleV3CommanderHall} from './BattleV3CommanderHall';
 import {BattleV3StrategyBoard} from './BattleV3StrategyBoard';
+import {BattleV38TheatreChooser} from './BattleV38TheatreChooser';
+import {V38_THEATRES,v38TheatreFromMap,type V38TheatreId} from '@/lib/battle/v3/theatres-v38';
 import {v3BarracksBySide,v3BarracksFromHouse,v3BarracksDeploy,
  type V3BarracksArmy} from '@/lib/battle/v3/barracks';
 import {V3_COMMANDERS,commander,type CommanderId} from '@/lib/battle/v3/commanders';
@@ -58,6 +60,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const [selected,setSelected]=useState<string|null>(null);
  const [mode,setMode]=useState<Mode>('inspect');
  const [appearance,setAppearance]=useState<BattleBoardAppearance>('illustrated');
+ const [selectedTheatre,setSelectedTheatre]=useState<V38TheatreId|null>(null);
  const [skill,setSkill]=useState<V3UnitSkill|null>(null);
  const [tacticId,setTacticId]=useState<string|null>(null);
  const [status,setStatus]=useState('');
@@ -74,7 +77,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    const trained=locked?undefined:{attacker:progressions[options.attackerCommander],
     defender:progressions[options.defenderCommander]};
    const created=createV3Game({...options,...(rosters?{rosters}:{}),
-    ...(trained?{progressions:trained}:{})});
+    ...(trained?{progressions:trained}:{}),
+    ...(!locked&&selectedTheatre?{theatre:selectedTheatre}:{})});
    const prepared=locked?created:v37Enable(created);
    setGame(prepared);setShowStrategy(false);setSelected(prepared.battle.activeUnitId);setMode('inspect');
    setStatus('Encontro iniciado. Cada token representa um agrupamento completo.');
@@ -226,6 +230,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       <option value="ai">Inteligência artificial</option><option value="human">Dois comandantes no mesmo dispositivo</option>
     </select></label>
    </div>
+   {!locked&&<BattleV38TheatreChooser selected={selectedTheatre}
+    onChange={setSelectedTheatre} scenario={options.scenario}/>}
    {status&&<p role="status">{status}</p>}
    <div className="battle-home-actions"><Button onClick={begin}>Batalhar</Button>
     {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
@@ -265,7 +271,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      <span>{active?.name??'—'}</span>
     </div>
     <div className="crusade-v36-map-controls" role="group" aria-label="Estilo visual do mapa">
-     <span>MAPA DE GUERRA</span>
+     <span>MAPA DE GUERRA · {v38TheatreFromMap(battle!.map)?.name??'Terreno tradicional'}</span>
      <Button size="sm" variant={appearance==='illustrated'?'default':'outline'}
       aria-pressed={appearance==='illustrated'} onClick={()=>setAppearance('illustrated')}>Ilustrado</Button>
      <Button size="sm" variant={appearance==='classic'?'default':'outline'}
