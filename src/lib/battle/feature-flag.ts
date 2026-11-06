@@ -14,3 +14,8 @@ export const BATTLE_RULES_VERSION = 'PTE-2.0' as const;
 
 /** Dueloss sincronizados entre dois jogadores exigem migração V3.4 e aceite com JWT real. */
 export const BATTLE_V34_SYNC_UI_ENABLED=import.meta.env['VITE_ENABLE_BATTLE_V34_SYNC']==='true';
+
+/** CRZ-1.0 experimental: acesso somente do Narrador e opt-in no build.
+ * Não libera motor CRZ a jogadores ou autoriza aplicação de baixas.
+ */
+export const BATTLE_CRZ_TRAINING_UI_ENABLED=import.meta.env['VITE_ENABLE_CRZ_TRAINING']==='true';
