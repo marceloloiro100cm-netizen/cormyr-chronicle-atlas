@@ -2,6 +2,8 @@
 import React,{useMemo,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {BattleBoard} from '@/components/battle/BattleBoard';
+import {BattleV3Game} from '@/components/battle/BattleV3Game';
+import {BattleCrzLab} from '@/components/battle/BattleCrzLab';
 import {BattleMapEditor} from '@/components/battle/BattleMapEditor';
 import {BattleReplay,BattleReplayImporter} from '@/components/battle/BattleReplay';
 import {createScenario} from '@/lib/battle/geometry/map-fixtures';
@@ -15,6 +17,7 @@ import '@/components/battle/battle.css';
 function TestHarness(){
  const [map,setMap]=useState(()=>createScenario('plain-open'));
  const [selectedHex,setSelectedHex]=useState('nenhum');
+ const [arena,setArena]=useState<'none'|'v3'|'crz'>('none');
  const {initial,completed,replay}=useMemo(()=>{
   const field=createScenario('plain-open');
   const [attacker,defender]=[
@@ -34,6 +37,19 @@ function TestHarness(){
  return <main className="battle-module">
   <h1>Homologação sintética do módulo de batalha</h1>
   <p id="synthetic-notice">Somente dados fictícios. Não conectado a fichas oficiais ou Supabase.</p>
+  <section id="v4-visual-acceptance" aria-label="Arenas V4 de homologação">
+   <nav aria-label="Laboratórios sintéticos V4">
+    <button type="button" onClick={()=>setArena('v3')}>Abrir arena V3</button>
+    <button type="button" onClick={()=>setArena('crz')}>Abrir arena CRZ</button>
+    <button type="button" onClick={()=>setArena('none')}>Fechar arenas</button>
+   </nav>
+   {arena==='v3'&&<BattleV3Game initialOptions={{
+    attackerHouseId:'evenhand-model',defenderHouseId:'ashkar-model',
+    attackerCommander:'tillet',defenderCommander:'ashkar-raider',
+    scenario:'plain-open',opponent:'human',
+   }}/>}
+   {arena==='crz'&&<BattleCrzLab/>}
+  </section>
   <section id="interactive-board" aria-label="Tabuleiro interativo de teste">
    <h2>Tabuleiro de seleção</h2>
    <p data-testid="selected-hex" role="status">Hexágono selecionado: {selectedHex}</p>
