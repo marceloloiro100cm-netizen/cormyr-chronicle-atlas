@@ -53,7 +53,7 @@ export type CrzEvent=Readonly<{
   'BATTLE_STARTED'|'ACTIVATED'|'MOVED'|'ATTACKED'|'RETALIATED'|
   'WAITED'|'DEFENDED'|'ACTIVATION_ENDED'|'ROUND_ENDED'|
   'MORALE_CHANGED'|'TURN_SKIPPED'|'EXTRA_TURN_GRANTED'|
-  'LEADER_CAST'|'VICTORY';
+  'LEADER_CAST'|'ABILITY_USED'|'VICTORY';
  actorId:string|null;targetId:string|null;
  data:Readonly<Record<string,string|number|boolean|null>>;
 }>;
