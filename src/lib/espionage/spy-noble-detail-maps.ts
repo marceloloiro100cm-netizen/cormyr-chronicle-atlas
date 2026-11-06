@@ -7,6 +7,9 @@
  * public/maps/espionage/dragoncoast.webp (1709 x 920)
  * public/maps/espionage/horselands.webp (1024 x 1536)
  * public/maps/espionage/volkumburgh.webp (1536 x 1024)
+ * public/maps/espionage/crownlands.webp (1536 x 1024)
+ * public/maps/espionage/helmlands.webp (1536 x 1024)
+ * public/maps/espionage/shieldmark.webp (1536 x 1024)
  */
 export type NobleMapPoint={x:number;y:number};
 export type NobleDetailMap={
@@ -17,6 +20,92 @@ export function nobleMapKey(value:string):string{
  return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .toLowerCase().replace(/[^a-z0-9]/g,'');
 }
+const crownlands:Record<string,NobleMapPoint>={
+ farrowbrace:{x:352,y:246},
+ torchwinter:{x:592,y:229},
+ cordallar:{x:675,y:230},
+ ebonhawk:{x:789,y:243},
+ alsevir:{x:943,y:271},
+ wyvernspur:{x:1153,y:222},
+ immerdusk:{x:228,y:381},
+ torith:{x:402,y:415},
+ bleyshar:{x:656,y:376},
+ paertrover:{x:846,y:415},
+ vonderharten:{x:166,y:518},
+ scatterstars:{x:356,y:543},
+ illance:{x:546,y:546},
+ silversword:{x:764,y:524},
+ barelder:{x:914,y:526},
+ stonecastle:{x:1096,y:507},
+ thorntower:{x:1229,y:546},
+ ravenhill:{x:1409,y:550},
+ calantar:{x:235,y:655},
+ monthor:{x:599,y:641},
+ buckfast:{x:154,y:771},
+ phelles:{x:437,y:750},
+ crownsilver:{x:803,y:741},
+ lornsar:{x:1057,y:751}
+};
+const helmlands:Record<string,NobleMapPoint>={
+ fiddlemantle:{x:223,y:205},
+ ambruar:{x:417,y:264},
+ blackwinter:{x:673,y:232},
+ oldbridle:{x:902,y:233},
+ emmarask:{x:1112,y:205},
+ longbrooke:{x:1251,y:138},
+ huntingdown:{x:1339,y:250},
+ erdusking:{x:211,y:406},
+ staghunt:{x:526,y:359},
+ wyrvar:{x:711,y:366},
+ staglar:{x:927,y:373},
+ axehand:{x:1137,y:362},
+ skatterhawk:{x:486,y:473},
+ darendaal:{x:677,y:476},
+ evenhand:{x:993,y:475},
+ redbow:{x:1143,y:485},
+ grandwillow:{x:275,y:586},
+ loround:{x:903,y:665},
+ darstan:{x:1190,y:627},
+ dracohorn:{x:285,y:730},
+ brassfinger:{x:588,y:744},
+ stonetower:{x:1278,y:725},
+ torchmore:{x:174,y:835},
+ eldroon:{x:489,y:876},
+ aunkspear:{x:908,y:856}
+};
+const shieldmark:Record<string,NobleMapPoint>={
+ rallyhorn:{x:262,y:202},
+ battlebar:{x:482,y:158},
+ orthwood:{x:693,y:140},
+ thawnfaer:{x:871,y:148},
+ battlestar:{x:1050,y:140},
+ wintercoats:{x:1292,y:155},
+ hawklin:{x:1155,y:216},
+ muscalian:{x:1360,y:275},
+ dawningdown:{x:226,y:306},
+ hlombur:{x:405,y:321},
+ hiloar:{x:568,y:319},
+ belorgan:{x:739,y:320},
+ crownrood:{x:934,y:311},
+ indulshields:{x:1076,y:380},
+ wintersun:{x:1342,y:405},
+ huntcrown:{x:205,y:427},
+ kallowsar:{x:448,y:430},
+ halvaeron:{x:679,y:437},
+ valwater:{x:877,y:437},
+ blackgate:{x:1018,y:455},
+ briarbroke:{x:1202,y:455},
+ gyrlond:{x:694,y:538},
+ ambrival:{x:365,y:573},
+ blackwyrm:{x:1122,y:594},
+ summertree:{x:616,y:631},
+ hardivyper:{x:1248,y:652},
+ hethemer:{x:1429,y:683},
+ wavegallant:{x:261,y:698},
+ dauntinghorn:{x:979,y:699},
+ mareforte:{x:1179,y:846}
+};
+
 const dragonCoast:Record<string,NobleMapPoint>={
  morler:{x:115,y:240},hardcastle:{x:354,y:278},
  indimber:{x:562,y:291},goldfin:{x:769,y:253},
@@ -47,6 +136,18 @@ const aliases:Record<string,string>={
  silversky:'silversky',
 };
 export const SPY_NOBLE_DETAIL_MAPS:Readonly<Record<string,NobleDetailMap>>={
+ crownlands:{
+  name:'Terras da Coroa',src:'/maps/espionage/crownlands.webp',
+  width:1536,height:1024,houses:crownlands,
+ },
+ helmlands:{
+  name:'Helmlands',src:'/maps/espionage/helmlands.webp',
+  width:1536,height:1024,houses:helmlands,
+ },
+ shieldmark:{
+  name:'Marca do Escudo',src:'/maps/espionage/shieldmark.webp',
+  width:1536,height:1024,houses:shieldmark,
+ },
  dragoncoast:{
   name:'Costa do Dragão',src:'/maps/espionage/dragoncoast.webp',
   width:1709,height:920,houses:dragonCoast,
