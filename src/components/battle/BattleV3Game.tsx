@@ -7,7 +7,8 @@ import {livingCount} from '@/lib/battle/domain/morale';
 import {battleReport} from '@/lib/battle/domain/report';
 import {SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixtures';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
-import {BattleBoard} from './BattleBoard';
+import {BattleBoard,type BattleBoardAppearance} from './BattleBoard';
+import {BattleV36Initiative,BattleV36CommanderPanel,BattleV36ActionBar} from './BattleV36Hud';
 import {BattleV3Barracks} from './BattleV3Barracks';
 import {BattleV3CommanderHall} from './BattleV3CommanderHall';
 import {BattleV3StrategyBoard} from './BattleV3StrategyBoard';
@@ -54,6 +55,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const [game,setGame]=useState<V3Game|null>(null);
  const [selected,setSelected]=useState<string|null>(null);
  const [mode,setMode]=useState<Mode>('inspect');
+ const [appearance,setAppearance]=useState<BattleBoardAppearance>('illustrated');
  const [skill,setSkill]=useState<V3UnitSkill|null>(null);
  const [status,setStatus]=useState('');
  const [showManual,setShowManual]=useState(false);
@@ -225,8 +227,12 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    <p>Rodada {battle?.round} · {active?active.name:'Batalha encerrada'} · PTE-3.0-SANDBOX</p>
    <p><strong>Simulação: as fichas das casas continuam intactas.</strong></p>
   </header>
-  <div className="crusade-combat-grid">
+  <BattleV36Initiative game={game} onInspect={id=>{setSelected(id);setMode('inspect');}}/>
+  <div className="crusade-combat-grid crusade-v36-layout">
    <aside className="battle-surface crusade-left" aria-label="Ordem de batalha">
+    <BattleV36CommanderPanel game={game} side={active?.side??'attacker'}
+     active={active??null} canPower={canPower}
+     onPower={()=>{setMode('power');setSkill(null);}}/>
     <h2>Exércitos</h2>
     {sides.map(({id,label})=><section key={id}>
      <p className="crusade-side-title">{label}: {modelHouse(id==='attacker'?options.attackerHouseId:options.defenderHouseId).name}</p>
@@ -242,7 +248,16 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       'VEZ DE '+(active?.side==='attacker'?'SEU EXÉRCITO':'EXÉRCITO ADVERSÁRIO')}
      <span>{active?.name??'—'}</span>
     </div>
-    <BattleBoard map={battle!.map} stacks={battle!.stacks} activeId={battle!.activeUnitId}
+    <div className="crusade-v36-map-controls" role="group" aria-label="Estilo visual do mapa">
+     <span>MAPA DE GUERRA</span>
+     <Button size="sm" variant={appearance==='illustrated'?'default':'outline'}
+      aria-pressed={appearance==='illustrated'} onClick={()=>setAppearance('illustrated')}>Ilustrado</Button>
+     <Button size="sm" variant={appearance==='classic'?'default':'outline'}
+      aria-pressed={appearance==='classic'} onClick={()=>setAppearance('classic')}>Tático</Button>
+     <Button size="sm" variant={appearance==='contrast'?'default':'outline'}
+      aria-pressed={appearance==='contrast'} onClick={()=>setAppearance('contrast')}>Alto contraste</Button>
+    </div>
+    <BattleBoard appearance={appearance} map={battle!.map} stacks={battle!.stacks} activeId={battle!.activeUnitId}
      selectedId={selected} moveKeys={mode==='move'&&canAct?moves.map(c=>hexKey(c.to)):[]}
      attackKeys={mode==='attack'&&canAct?attacks.map(c=>c.targetId):
       (mode==='power'&&canAct?powerTargets.map(s=>s.id):mode==='skill'&&canAct?
@@ -274,37 +289,18 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      <span>Movimento <b>{inspected.movementHex} hex</b></span>
      <span>Alcance <b>{inspected.rangeHex} hex</b></span>
     </div>}
-    <div className="crusade-action-buttons">
-     <Button disabled={!canAct||!moves.length} variant={mode==='move'?'default':'outline'}
-      onClick={()=>{setMode('move');setSkill(null);}}>Mover</Button>
-     <Button disabled={!canAct||!attacks.length} variant={mode==='attack'?'default':'outline'}
-      onClick={()=>{setMode('attack');setSkill(null);}}>Atacar</Button>
-     <Button disabled={!canAct||!active||!legal.some(c=>c.type==='DEFEND')} variant="outline"
-      onClick={()=>active&&action({type:'DEFEND',unitId:active.id})}>Defender</Button>
-     <Button disabled={!canAct||!active||!legal.some(c=>c.type==='WAIT')} variant="outline"
-      onClick={()=>active&&action({type:'WAIT',unitId:active.id})}>Esperar</Button>
-     <Button disabled={!canAct||!active} variant="outline"
-      onClick={()=>active&&action({type:'END_ACTIVATION',unitId:active.id})}>Fim de turno</Button>
+    <div className="crusade-v36-orders-help">
+     <h3>Leitura tática</h3>
+     <p>As ordens ficam na barra inferior. Escolha uma ação e selecione
+      o hexágono ou a unidade correspondente no mapa.</p>
+     <p><b>{active?.name??'—'}</b> ·
+      {canAct?' Controle humano ativo':' Aguardando o outro lado'}</p>
     </div>
-    <h3>Habilidades de tropa</h3>
-    {availableSkills.length===0?<p className="battle-note">Sem habilidade disponível nesta ativação.</p>:
-      <div className="crusade-ability-buttons">{availableSkills.map(s=>
-       <Button size="sm" variant={mode==='skill'&&skill===s?'default':'outline'}
-        key={s} disabled={!canAct} onClick={()=>{
-         if(!game)return;
-         if(s==='SHIELD_WALL'){try{finish(v3UseUnitSkill(game,s));setStatus('Formação defensiva aplicada.');}
-          catch(e){setStatus(e instanceof Error?e.message:'Ordem inválida.');}}
-         else{setSkill(s);setMode('skill');}
-        }}>{v3SkillName(s)}</Button>)}</div>}
-    <h3>Comandante</h3>
-    {currentCommander&&<div className="crusade-commander-card">
-     <strong>{currentCommander.name}</strong><p>{currentCommander.powerDescription}</p>
-     <Button size="sm" disabled={!canPower}
-      variant={mode==='power'?'default':'outline'}
-      onClick={()=>{setMode('power');setSkill(null);}}>
-      {!canPower?'Poder já utilizado':currentCommander.powerName}
-     </Button>
-    </div>}
+    <div className="crusade-v36-quick-log" aria-label="Eventos recentes da batalha">
+     <h3>Últimos eventos</h3>
+     <ol>{[...game.log].slice(-4).reverse().map((event,i)=>
+      <li key={i}>R{event.round} · {event.label}</li>)}</ol>
+    </div>
     <Button size="sm" variant="outline" onClick={()=>setShowDetails(x=>!x)}>
      {showDetails?'Ocultar histórico':'Ver histórico'}
     </Button>
@@ -314,6 +310,19 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     {onBack&&<Button size="sm" variant="outline" onClick={onBack}>Voltar ao painel</Button>}
    </aside>
   </div>
+  <BattleV36ActionBar active={active??null} canAct={canAct}
+   mode={mode} legal={legal} skills={availableSkills} skill={skill}
+   onMode={next=>{setMode(next);setSkill(null);}}
+   onSkill={ability=>{
+    if(!game)return;
+    if(ability==='SHIELD_WALL'){
+     try{finish(v3UseUnitSkill(game,ability));setStatus('Formação defensiva aplicada.');}
+     catch(e){setStatus(e instanceof Error?e.message:'Ordem inválida.');}
+    }else{setSkill(ability);setMode('skill');}
+   }}
+   onAction={action}
+   onFinish={()=>active&&action({type:'END_ACTIVATION',unitId:active.id})}
+   onReset={()=>{setMode('inspect');setSkill(null);}}/>
   {showDetails&&<section className="battle-surface crusade-history" aria-label="Histórico tático V3">
    <h3>Registro de ordens</h3>
    <ol>{[...game.log].reverse().map((e,i)=><li key={i}>
