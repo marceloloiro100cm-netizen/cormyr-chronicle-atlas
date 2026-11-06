@@ -94,7 +94,7 @@ describe('Cruzada V3.7 — energia tática original e isolamento das casas',()=>
   fireEvent.click(screen.getByRole('button',{name:'Batalhar'}));
   const panel=screen.getByRole('region',{name:'Comandante na mesa de guerra'});
   expect(panel).toHaveTextContent('Energia de comando');
-  expect(panel).toHaveTextContent('Estratagema');
+  expect(screen.getByLabelText('Estratagemas do comandante')).toBeInTheDocument();
   expect(screen.getByRole('region',{name:'Fila de iniciativa da Cruzada'})).toBeInTheDocument();
   expect(screen.getByRole('region',{name:'Barra inferior de ações de batalha'})).toBeInTheDocument();
   expect(screen.getByText(/Simulação: as fichas das casas continuam intactas/)).toBeInTheDocument();
