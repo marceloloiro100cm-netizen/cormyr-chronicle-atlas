@@ -8,6 +8,7 @@ import {createSpyAgentBrowser,readSpyRecruitmentOptionsBrowser} from '@/lib/espi
 import {SPY_AGENT_UPGRADES,type SpyAgentUpgrade} from '@/lib/espionage/spy-agent-progression';
 import type {SpyManagement} from '@/lib/espionage/spy-management.functions';
 import {SpyPortraitPicker} from './spy-portrait-picker';
+import {SpyCreationError} from '@/lib/espionage/spy-creation-diagnostics';
 import '../creation-dialog-theme.css';
 
 /** Unified creation transaction. Do not call recruit and purchase separately:
@@ -63,20 +64,26 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
    });
    setSuccess('Espião '+result.codename+' criado como Verde (Astúcia 3).');
    reset();setOpen(false);
-   await Promise.all([
+   // A cache refresh error must not turn an already committed recruitment into
+   // a false creation failure. It never rolls the successful RPC back.
+   void Promise.allSettled([
     qc.invalidateQueries({queryKey:['spy-house-management',houseId]}),
     qc.invalidateQueries({queryKey:['spy-recruitment-options',houseId]}),
     qc.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
     qc.invalidateQueries({queryKey:['noble-house']}),
     qc.invalidateQueries({queryKey:['spy-mission-odds',houseId]}),
    ]);
-  }catch{
-   requestKey.current=null;
+  }catch(cause){
+   // Keep the same idempotency key on retry with unchanged input. If the
+   // network timed out after committing, the server can safely return the
+   // original outcome rather than create a second spy.
    await Promise.allSettled([
     qc.invalidateQueries({queryKey:['spy-recruitment-options',houseId]}),
     qc.invalidateQueries({queryKey:['spy-house-management',houseId]}),
    ]);
-   setError('Não foi possível criar o espião. A foto pode ter sido reservada por outro jogador; consulte a galeria atualizada e escolha outra. Confira também vagas e Riqueza.');
+   setError(cause instanceof SpyCreationError
+    ?cause.message
+    :new SpyCreationError('unconfirmed').message);
   }finally{setBusy(false);}
  };
  if(!canEdit)return null;

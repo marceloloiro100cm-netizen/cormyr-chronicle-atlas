@@ -4,6 +4,7 @@ import {balances} from '@/lib/house/engine';
 import type {HouseState} from '@/lib/house/types';
 import {spyManagementSchema,type SpyManagement} from './spy-management.functions';
 import {resolveSpyPortraitImageUrl} from './spy-portrait-manifest';
+import {classifySpyCreationFailure,SpyCreationError} from './spy-creation-diagnostics';
 import {spyRecruitmentOptionsSchema,type SpyRecruitmentOptions} from './spy-recruitment.functions';
 import {spyRegionalStrategySchema} from './region-turns';
 import type {SpyAgentUpgrade} from './spy-agent-progression';
@@ -25,6 +26,7 @@ async function houseRpc(name:string,houseId:string,extra:Record<string,unknown>=
  if(sessionError||!session?.access_token)throw new Error('Sessão expirada. Entre novamente no Cormyr.');
  const result=await db.rpc(name,{p_house:houseId,...extra});
  if(result.error){
+  if(name==='spy_create_agent')throw classifySpyCreationFailure(result.error);
   if(/permission|unauthoriz|não autorizad|nao autorizad|jwt|auth/i.test(result.error.message))
    throw new Error('Você não tem autorização para os espiões desta Casa.');
   throw new Error('O cadastro de espionagem não respondeu. Tente atualizar a página.');
@@ -109,7 +111,7 @@ export async function createSpyAgentBrowser(input:{
  const parsed=creationSchema.safeParse(data);
  if(!parsed.success||parsed.data.codename!==input.codename||
    parsed.data.upgrades.length!==input.upgrades.length)
-  throw new Error('O banco não confirmou a criação do espião.');
+  throw new SpyCreationError('unconfirmed');
  return parsed.data;
 }
 

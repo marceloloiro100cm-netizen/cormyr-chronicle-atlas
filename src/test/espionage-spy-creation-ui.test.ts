@@ -46,7 +46,8 @@ describe('Espionagem · criação com foto exclusiva, melhorias e campos ocultos
   expect(control).toContain('!p.occupied&&!p.assignedAgentId');
   expect(control).toContain("['spy-recruitment-options',houseId]");
   expect(create).toContain('!p.occupied&&!p.assignedAgentId');
-  expect(create).toContain('foto pode ter sido reservada por outro jogador');
+  expect(create).toContain('cause instanceof SpyCreationError');
+  expect(create).not.toContain('foto pode ter sido reservada por outro jogador');
   expect(create).toContain("['spy-recruitment-options',houseId]");
   expect(create).toContain('refetchInterval:open?10_000:false');
   expect(control).toContain('refetchInterval:open?10_000:false');
