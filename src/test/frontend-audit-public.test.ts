@@ -122,13 +122,15 @@ describe('YouTube catalogue and pending recordings',()=>{
   const sossal=archive.soundtrack.filter((t:{title:string})=>t.title==='Vou-me Embora pra Sossal');
   expect(sossal).toHaveLength(1);
   expect(sossal[0]).toMatchObject({
-   region:'Stonelands',category:'cancioneiro',
+   region:'Stonelands',category:'populares',
    videoId:'b34LSA3yDak',url:'https://www.youtube.com/watch?v=b34LSA3yDak'
   });
   expect(archive.soundtrack.find((t:{title:string})=>t.title==='Essa Coroa'))
-   .toMatchObject({category:'cancioneiro',videoId:'HM4a9vYrdDU'});
+   .toMatchObject({category:'populares',videoId:'HM4a9vYrdDU'});
   expect(archive.regions.find((r:{name:string})=>r.name==='Crownlands').music[0].videoId)
    .toBe('7B-Mb9vnmZk');
   expect(publicFile('extras.js')).toContain('youtube-pending');
+  expect(publicFile('extras.js')).toContain('Músicas Populares');
+  expect(publicFile('extras.js')).not.toContain("cancioneiro:'Cancioneiro'");
  });
 });
