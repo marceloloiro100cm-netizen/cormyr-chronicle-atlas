@@ -10,6 +10,7 @@ import {crzPrepareBattle,crzStartBattle,crzOrder,crzMoraleAfterDamage,
 import {crzApplyCommand} from '@/lib/crusade/turns';
 import {crzReachable,crzAttackOptions} from '@/lib/crusade/geometry';
 import {crzStrike} from '@/lib/crusade/combat';
+import {crzLegalActions} from '@/lib/crusade/selectors';
 
 function creature(name:'gob'|'orc'){
  const gob=name==='gob';
