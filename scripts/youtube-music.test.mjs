@@ -51,7 +51,7 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
  }
  assert.equal(data.soundtrack.filter(s=>s.linkStatus==='youtube-pending').length,4);
  assert.equal(data.soundtrack.filter(s=>s.lyrics).length,3);
- assert.equal(data.soundtrack.filter(s=>s.url).length,7);
+ assert.equal(data.soundtrack.filter(s=>s.url).length,8);
  const byRegion=Object.fromEntries(data.regions.map(r=>[r.name,r]));
  assert.equal(data.regions.length,11);
  assert.ok(data.regions.every(r=>r.music.length===1),'Every region must have one official theme');
@@ -65,7 +65,7 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
  assert.equal(byRegion.Crownlands.houses.find(h=>h.name==='Von der Harten').music[0].videoId,'bR66gczzEdk');
  const linked=data.soundtrack.filter(s=>s.videoId);
  const ids=Array.from(linked,s=>s.videoId).sort();
- assert.deepEqual(ids,['4RuKLjM1QcU','HM4a9vYrdDU','WrXc5zCbMHA','b34LSA3yDak','f4L0mCHpOv8','wioZhfoQMAs','xoOtYuebA9k'].sort());
+ assert.deepEqual(ids,['4RuKLjM1QcU','HM4a9vYrdDU','WrXc5zCbMHA','b34LSA3yDak','f4L0mCHpOv8','qw9FgNYr7hE','wioZhfoQMAs','xoOtYuebA9k'].sort());
  assert.equal(data.soundtrack.filter(s=>s.lyrics&&!s.url).length,1);
  const sossal=data.soundtrack.filter(s=>s.title==='Vou-me Embora pra Sossal');
  assert.equal(sossal.length,1);
@@ -91,6 +91,13 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
  assert.equal(newTrack?.videoId,'WrXc5zCbMHA');
  assert.equal(newTrack?.url,'https://www.youtube.com/watch?v=WrXc5zCbMHA');
  assert.equal(data.soundtrack.filter(s=>s.videoId==='WrXc5zCbMHA').length,1);
+ const newest=data.soundtrack.find(s=>s.id==='youtube-qw9FgNYr7hE');
+ assert.equal(newest?.title,'Nova música de Cormyr — qw9FgNYr7hE');
+ assert.equal(newest?.category,'playlist');
+ assert.equal(newest?.region,'Cormyr');
+ assert.equal(newest?.videoId,'qw9FgNYr7hE');
+ assert.equal(newest?.url,'https://www.youtube.com/watch?v=qw9FgNYr7hE');
+ assert.equal(data.soundtrack.filter(s=>s.videoId==='qw9FgNYr7hE').length,1);
  assert.equal(data.soundtrack.find(s=>s.title==='Cante uma Canção a Elturel').category,'cancioneiro');
  assert.equal(data.soundtrack.find(s=>s.title==='Essa Coroa').category,'cancioneiro');
 });
@@ -186,12 +193,13 @@ test('Cancioneiro is a selectable group and missing regional themes are reported
  };
  runInNewContext(read('extras.js'),{window,document,URL,location:{hash:''},
   localStorage:{getItem:()=>null},setTimeout:()=>{}});
- assert.match(nodes['music-count'].textContent,/26 vídeos vinculados/);
+ assert.match(nodes['music-count'].textContent,/27 vídeos vinculados/);
  assert.equal(nodes['music-all'].notice,undefined,'No region is missing a theme');
  assert.match(nodes['music-kinds'].innerHTML,/Cancioneiro/);
  assert.match(nodes['music-kinds'].innerHTML,/Novidades da playlist/);
  assert.match(nodes['music-all'].innerHTML,/wioZhfoQMAs/);
  assert.match(nodes['music-all'].innerHTML,/WrXc5zCbMHA/);
+ assert.match(nodes['music-all'].innerHTML,/qw9FgNYr7hE/);
  nodes['music-kinds'].click({target:{closest:()=>({dataset:{musicKind:'cancioneiro'}})}});
  assert.match(nodes['music-count'].textContent,/1 título sem vídeo vinculado/);
  assert.match(nodes['music-count'].textContent,/1 letra sem vídeo/);
@@ -236,7 +244,7 @@ test('all supplied URLs are valid, and the shared Von der Harten track is not du
  const tracks=[...data.kingdomMusic,...data.regions.flatMap(r=>(r.music||[]).concat(
   r.houses.flatMap(h=>h.music||[]))),
   ...data.soundtrack.filter(s=>s.videoId)];
- assert.equal(tracks.length,26);
- assert.equal(new Set(tracks.map(s=>s.videoId)).size,25);
+ assert.equal(tracks.length,27);
+ assert.equal(new Set(tracks.map(s=>s.videoId)).size,26);
  assert.ok(tracks.every(s=>data.musicPlaylist&&/^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/.test(s.url)));
 });
