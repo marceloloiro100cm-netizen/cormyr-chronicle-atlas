@@ -98,12 +98,12 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
  assert.equal(newest?.videoId,'qw9FgNYr7hE');
  assert.equal(newest?.url,'https://www.youtube.com/watch?v=qw9FgNYr7hE');
  assert.equal(data.soundtrack.filter(s=>s.videoId==='qw9FgNYr7hE').length,1);
- const adlar=data.soundtrack.find(s=>s.id==='adlar-o-fiel-da-balanca');
- assert.equal(adlar?.title,'Adlar — O Fiel da Balança');
- assert.equal(adlar?.category,'populares');
- assert.equal(adlar?.region,'Cormyr');
- assert.equal(adlar?.videoId,'a5DitnxYUZM');
- assert.equal(adlar?.url,'https://www.youtube.com/watch?v=a5DitnxYUZM');
+ const truta=data.soundtrack.find(s=>s.id==='o-truta');
+ assert.equal(truta?.title,'O Truta');
+ assert.equal(truta?.category,'populares');
+ assert.equal(truta?.region,'Cormyr');
+ assert.equal(truta?.videoId,'a5DitnxYUZM');
+ assert.equal(truta?.url,'https://www.youtube.com/watch?v=a5DitnxYUZM');
  assert.equal(data.soundtrack.filter(s=>s.videoId==='a5DitnxYUZM').length,1);
  assert.equal(data.soundtrack.find(s=>s.title==='Cante uma Canção a Elturel').category,'populares');
  assert.equal(data.soundtrack.find(s=>s.title==='Essa Coroa').category,'populares');
