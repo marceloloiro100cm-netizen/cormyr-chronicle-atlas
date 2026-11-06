@@ -111,7 +111,7 @@ describe('CRZ-1.0 · lotes 1–2, contratos e goldens normativos dos anexos',()=
   expect(a.hpPool+b.hpPool).toBe(197);
   expect(a.topHp).toBe(7);expect(b.topHp).toBe(10);
  });
- it('T-INT-01 (03 §18): ataque 208, 13 mortos, retaliação 78 e 11 mortos',()=>{
+ it('T-INT-01 (03 §18): 78 bruto, cap 53 aplicado e 7 mortos; 11 se carry',()=>{
   const orcs=target(30,15);
   const goblins=target(60,7);
   const first=crzExpected5e({ruleset:rule,attackerCount:60,attackBonus:0,
@@ -130,8 +130,19 @@ describe('CRZ-1.0 · lotes 1–2, contratos e goldens normativos dos anexos',()=
    targetAc:15,target:goblins,entries:[attack(5,1,12,3)]});
   expect(retaliation.breakdown[0]).toMatchObject({
    hitBP:4500,perAttackX100:459,totalX100:7803});
-  expect(retaliation).toMatchObject({rawDamage:78,receipt:{
-   casualties:11,stack:{hpPool:342,alive:49,topHp:6},
+  // A narrativa do manual usa 78 PV aplicados (carry), mas CRZ-5E
+  // declara cap: 7,65 acertos × 7 PV = teto 53 e sete baixas.
+  expect(retaliation).toMatchObject({rawDamage:78,capHP:53,receipt:{
+   damageApplied:53,casualties:7,
+   stack:{hpPool:367,alive:53,topHp:3},
+  }});
+  const carryRule={...rule,damage:{...rule.damage,overkill:'carry' as const}};
+  const withCarry=crzExpected5e({ruleset:carryRule,
+   attackerCount:first.receipt.stack.alive,attackBonus:-2,
+   targetAc:15,target:goblins,entries:[attack(5,1,12,3)]});
+  expect(withCarry).toMatchObject({rawDamage:78,receipt:{
+   damageApplied:78,casualties:11,
+   stack:{hpPool:342,alive:49,topHp:6},
   }});
  });
  it('T-WOTR-01: 50 arqueiros, RD5, mult 0.9 vs CA22 => dano 59',()=>{
