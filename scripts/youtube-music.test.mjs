@@ -59,7 +59,7 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
  assert.equal(byRegion.Volkumburgh.music[0].videoId,'bR66gczzEdk');
  assert.equal(byRegion.Crownlands.houses.find(h=>h.name==='Von der Harten').music[0].videoId,'bR66gczzEdk');
  const linked=data.soundtrack.filter(s=>s.videoId);
- const ids=linked.map(s=>s.videoId).sort();
+ const ids=Array.from(linked,s=>s.videoId).sort();
  assert.deepEqual(ids,['HM4a9vYrdDU','f4L0mCHpOv8','xoOtYuebA9k'].sort());
  assert.equal(data.soundtrack.filter(s=>s.lyrics&&!s.url).length,2);
  assert.equal(data.soundtrack.find(s=>s.title==='Cante uma Canção a Elturel').category,'cancioneiro');
