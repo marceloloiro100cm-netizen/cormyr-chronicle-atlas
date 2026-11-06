@@ -248,7 +248,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     <small>O documento 03 (§12) reserva objetivos alternativos para versão futura.
      Esta variante é experimental e independente do motor CRZ-1.0:
      conquistar dois de três marcos por duas rodadas, sem baixa oficial.</small>
-   </div>
+   </div>}
    {status&&<p role="status">{status}</p>}
    <div className="battle-home-actions"><Button onClick={begin}>Batalhar</Button>
     {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
