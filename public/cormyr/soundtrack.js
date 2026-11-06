@@ -16,8 +16,7 @@
   normalize(region.music);
   for(const house of region.houses||[])normalize(house.music);
  }
- // No YouTube video was mapped to these titles in the original catalogue.
- // Preserve their titles as pending entries instead of inventing links.
+ // Links received from the Narrator on 06/11/2026. Preserve pending songs where no video ID was supplied.
  const pending=[
   ['O Nó de Sangue — A Balada da Escota Vermelha','Mareforte','casa'],
   ['A Força Vem do Povo','Yellander','casa'],
@@ -31,8 +30,27 @@
   ['Badalos Elementais','Veilstone','Badalando nas colinas no vale eu vou\\nMeu rumo eu vou seguir'],
   ['Cante uma Canção a Elturel','Horselands','Cante uma canção a Elturel\\nDe água, bosques e colinas']
  ];
+ // The Cancioneiro is independent of regional themes. Each video is mapped
+ // to its exact YouTube video ID rather than to a playlist position.
+ const directVideos={
+  'Essa Coroa':'https://www.youtube.com/watch?v=HM4a9vYrdDU',
+  'Cante uma Canção a Elturel':'https://www.youtube.com/watch?v=xoOtYuebA9k',
+  'Terra dos Cavalos':'https://www.youtube.com/watch?v=f4L0mCHpOv8'
+ };
+ function attachVideo(song){
+  const parsed=yt.parse(directVideos[song.title]||'');
+  if(parsed){song.url=parsed.watchUrl;song.videoId=parsed.id;delete song.linkStatus;}
+  return song;
+ }
  data.soundtrack=[
-  ...pending.map(([title,region,category],i)=>({id:'pending-'+i,title,region,category,url:'',linkStatus:'youtube-pending'})),
-  ...lyrics.map(([title,region,lyrics],i)=>({id:'lyrics-'+i,title,category:'cancioneiro',region,lyrics:lyrics.replace(/\\n/g,'\n'),url:''}))
+  ...pending.map(([title,region,category],i)=>attachVideo({
+   id:'pending-'+i,title,region,category,url:'',linkStatus:'youtube-pending'
+  })),
+  ...lyrics.map(([title,region,lyrics],i)=>attachVideo({
+   id:'lyrics-'+i,title,category:'cancioneiro',region,
+   lyrics:lyrics.replace(/\\n/g,'\n'),url:''
+  })),
+  attachVideo({id:'cancioneiro-terra-dos-cavalos',title:'Terra dos Cavalos',
+   category:'cancioneiro',region:'Horselands',url:''})
  ];
 })();
