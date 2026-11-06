@@ -59,6 +59,38 @@
     if(reset)reset.addEventListener('click',()=>setKind('todas'));
     fillSelect();render();
   }
+  // The complete official playlist is available in-page even when the static catalogue
+  // has not yet been reconciled. The iframe is created only on explicit user action.
+  const playlistButton=document.getElementById('music-playlist-preview');
+  const playlistHost=document.getElementById('music-playlist-embed');
+  if(playlistButton?.addEventListener&&playlistHost?.replaceChildren){
+    const playlistId=(()=>{try{
+      const value=new URL(data.musicPlaylist).searchParams.get('list');
+      return /^[A-Za-z0-9_-]{10,}$/.test(value||'')?value:null;
+    }catch{return null;}})();
+    const closePlaylist=()=>{
+      playlistHost.replaceChildren();
+      playlistHost.hidden=true;
+      playlistButton.setAttribute('aria-expanded','false');
+      playlistButton.textContent='Ouvir a playlist aqui';
+    };
+    window.CORMYR_CLOSE_PLAYLIST=closePlaylist;
+    if(!playlistId)playlistButton.disabled=true;
+    playlistButton.addEventListener('click',()=>{
+      if(!playlistHost.hidden){closePlaylist();return;}
+      document.getElementById('bard-close')?.click();
+      const frame=document.createElement('iframe');
+      frame.src='https://www.youtube-nocookie.com/embed/videoseries?list='+encodeURIComponent(playlistId);
+      frame.title='Playlist oficial de músicas de Cormyr';
+      frame.referrerPolicy='strict-origin-when-cross-origin';
+      frame.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';
+      frame.allowFullscreen=true;
+      playlistHost.replaceChildren(frame);
+      playlistHost.hidden=false;
+      playlistButton.setAttribute('aria-expanded','true');
+      playlistButton.textContent='Fechar playlist';
+    });
+  }
   const hideGm=()=>{if(admin)return;if(!document.getElementById('view-eventos').hidden||!document.getElementById('view-aventura').hidden||['eventos','aventura'].includes((typeof state!=='undefined'&&state.view))||/^#(eventos|aventura|evento-)/.test(location.hash))document.querySelector('[data-view=reino]')?.click();};
   
   try{const raw=localStorage.getItem('sb-qkdznngbkwodsbpkpoax-auth-token');const tok=raw&&JSON.parse(raw).access_token;
