@@ -139,6 +139,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const inspected=frame?.stacks.find(s=>s.id===selectedId)??active;
  const canAct=Boolean(session&&replayStep===null&&
   frame?.phase==='active'&&active&&frame.controls[active.side]==='human');
+ const aiTurn=Boolean(session&&replayStep===null&&
+  frame?.phase==='active'&&active&&frame.controls[active.side]==='ai');
  const legal=canAct&&frame?crzLegalCommands(frame):[];
  const moves=legal.filter((c):c is Extract<CrzCommand,{type:'MOVE'}>=>
   c.type==='MOVE');
@@ -324,6 +326,16 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
        canAct?'Selecione uma ordem e depois um hexágono no mapa.':
        frame.phase==='completed'?'Combate encerrado.':'Aguardando turno da IA.'}</p>
       <div className="crz-toolbar">
+       {aiTurn&&<Button variant="outline" onClick={()=>{
+        if(!session)return;
+        try{
+         const next=crzTrainingAdvanceAi(session);
+         setSession(next);setSelectedId(next.state.activeStackId);
+         setError('');setMessage('Turnos da IA registrados no replay.');
+        }catch(cause){
+         setError(cause instanceof Error?cause.message:'Não foi possível avançar a IA.');
+        }
+       }}>Executar turno da IA</Button>}
        <Button disabled={!canAct||!moves.length}
         variant={mode==='move'?'default':'outline'}
         onClick={()=>{setMode('move');setError('');}}>Mover ({moves.length})</Button>
