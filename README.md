@@ -78,3 +78,6 @@ A remoção de conteúdo da branch atual **não apaga histórico Git, forks, clo
 
 ### Aviso de conteúdo de fã
 Cormyr Chronicle Atlas é um projeto de fã não oficial, sem endosso da Wizards of the Coast. Forgotten Realms e materiais relacionados pertencem a seus respectivos titulares. Materiais originais da campanha permanecem sujeitos aos direitos de seus autores. Este aviso não concede licença para reproduzir conteúdo de livros não abertos.
+
+### Inicialização pública do Supabase
+O navegador necessita de uma URL de projeto e de uma **chave publicável**, que não é senha, não é `service_role` e sempre é observável pelo cliente HTTP. `src/integrations/supabase/public-config.ts` guarda somente estes dois valores não secretos como fallback para builds do Lovable sem `VITE_*`. Qualquer privilégio real depende de sessão autenticada, RLS e verificações do servidor. Nunca coloque dados pessoais, chaves de servidor ou senhas nesse módulo.
