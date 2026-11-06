@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
+import {PUBLIC_TRANSLATION_ENTITY_TYPES} from '@/lib/i18n/public-translations';
 
 const SUPPORTED = ['en', 'es', 'de'];
-const PUBLIC_ENTITIES = ['region', 'house', 'constitution'] as const;
+
 
 /** Read only pre-approved public content translations. Never expose private record translations. */
 export const Route = createFileRoute('/api/public/translations')({
@@ -31,7 +32,7 @@ export const Route = createFileRoute('/api/public/translations')({
           .from('campaign_translations')
           .select('entity_type,entity_id,field_name,translated_text')
           .eq('locale', locale)
-          .in('entity_type', [...PUBLIC_ENTITIES])
+          .in('entity_type', [...PUBLIC_TRANSLATION_ENTITY_TYPES])
           .limit(5000);
         if (error)
           return Response.json({ error: 'Traduções indisponíveis' }, { status: 503 });
