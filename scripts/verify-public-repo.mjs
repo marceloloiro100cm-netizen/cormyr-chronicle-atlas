@@ -29,6 +29,9 @@ if(gm.includes('gm-content.json')||!gm.includes('campaign_private_gm_content'))
 const source=readFileSync('drizzle/migrations/0042_reconcile_house_workbooks.sql','utf8');
 if(!source.includes('$workbooks$[]$workbooks$'))
  violations.push('Historical migration still contains actual house state');
+const nobleStats=readFileSync('docs/espionage/sql/0087_import_cormyr_noble_stats_2026_11_03.sql','utf8');
+if(nobleStats.includes('jsonb_to_recordset($cca_noble_stat_source_2026_11_03$['))
+ violations.push('Private 170-house statistical snapshots appear in public SQL');
 if(violations.length){
  console.error('Security gate failed. Tracked private files or unsafe patterns:');
  for(const v of violations)console.error('- '+v);
