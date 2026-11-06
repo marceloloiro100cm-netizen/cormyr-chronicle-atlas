@@ -3,7 +3,7 @@ import {livingCount} from '@/lib/battle/domain/morale';
 import {commander} from '@/lib/battle/v3/commanders';
 import {v36Timeline,v36CommanderIcon,v36CommanderResources,v36Casualties,v36UnitStatus}
  from '@/lib/battle/v3/presentation-v36';
-import {v3SkillName,type V3Game,type V3UnitSkill} from '@/lib/battle/v3/engine';
+import {v3SkillName,type V3UnitSkill} from '@/lib/battle/v3/engine';
 import {Button} from '@/components/ui/button';
 import {militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import type {V3Game as Game} from '@/lib/battle/v3/engine';
