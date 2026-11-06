@@ -21,9 +21,11 @@ import {v3NewCommanderProgress,v3ChooseCommanderTalent,v3AwardCommanderXp,
 import {createV3Game,v3PlayCommand,v3LegalSkills,v3UseUnitSkill,
  v3CanUseCommander,v3UseCommander,v3RunAi,type V3Game,type V3ScenarioOptions,
  type V3UnitSkill} from '@/lib/battle/v3/engine';
+import {v37Enable,v37Cast,v37CastSignature,v37RunAi,v37CanSignature,
+ V37_ABILITIES} from '@/lib/battle/v3/tactics-v37';
 import './battle.css';
 
-type Mode='inspect'|'move'|'attack'|'skill'|'power';
+type Mode='inspect'|'move'|'attack'|'skill'|'power'|'tactic';
 const sides:{id:Side;label:string}[]=[{id:'attacker',label:'Aliado'},{id:'defender',label:'Oponente'}];
 const defaults:V3ScenarioOptions={
  attackerHouseId:'evenhand-model',defenderHouseId:'ashkar-model',
@@ -57,6 +59,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const [mode,setMode]=useState<Mode>('inspect');
  const [appearance,setAppearance]=useState<BattleBoardAppearance>('illustrated');
  const [skill,setSkill]=useState<V3UnitSkill|null>(null);
+ const [tacticId,setTacticId]=useState<string|null>(null);
  const [status,setStatus]=useState('');
  const [showManual,setShowManual]=useState(false);
  const [showDetails,setShowDetails]=useState(false);
@@ -72,7 +75,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     defender:progressions[options.defenderCommander]};
    const created=createV3Game({...options,...(rosters?{rosters}:{}),
     ...(trained?{progressions:trained}:{})});
-   setGame(created);setShowStrategy(false);setSelected(created.battle.activeUnitId);setMode('inspect');
+   const prepared=locked?created:v37Enable(created);
+   setGame(prepared);setShowStrategy(false);setSelected(prepared.battle.activeUnitId);setMode('inspect');
    setStatus('Encontro iniciado. Cada token representa um agrupamento completo.');
   }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível criar o cenário-modelo.');}
  };
@@ -84,12 +88,15 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const attacks=legal.filter((c):c is Extract<BattleCommand,{type:'ATTACK'}>=>c.type==='ATTACK');
  const availableSkills=game?v3LegalSkills(game):[];
  const currentCommander=active&&game?commander(game.commanders[active.side]):null;
- const canPower=Boolean(game&&canAct&&v3CanUseCommander(game));
+ const canPower=Boolean(game&&canAct&&(game.tactics?v37CanSignature(game):v3CanUseCommander(game)));
+ const chosenTactic=V37_ABILITIES.find(a=>a.id===tacticId);
+ const tacticTargets=battle?.stacks.filter(s=>s.currentHp>0&&s.moraleState!=='routed'&&
+  active&&chosenTactic&&(chosenTactic.target==='ally'?s.side===active.side:s.side!==active.side))??[];
  const powerTargets=battle?.stacks.filter(s=>s.currentHp>0&&s.moraleState!=='routed'&&active&&currentCommander&&
   (currentCommander.powerTarget==='ally'?s.side===active.side:s.side!==active.side))??[];
  const finish=(next:V3Game)=>{
   setGame(next);setSelected(next.battle.activeUnitId);
-  setMode('inspect');setSkill(null);
+  setMode('inspect');setSkill(null);setTacticId(null);
  };
  const action=(cmd:BattleCommand)=>{
   if(!game)return;
@@ -99,8 +106,14 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const cast=(targetId:string)=>{
   if(!game)return;
   try{
-   if(mode==='power'){finish(v3UseCommander(game,targetId));setStatus('Ordem do comandante cumprida.');}
-   else if(mode==='skill'&&skill){finish(v3UseUnitSkill(game,skill,targetId));setStatus('Habilidade executada.');}
+   if(mode==='power'){
+    finish(game.tactics?v37CastSignature(game,targetId):v3UseCommander(game,targetId));
+    setStatus('Ordem do comandante cumprida.');
+   }else if(mode==='tactic'&&tacticId){
+    finish(v37Cast(game,tacticId,targetId));setStatus('Estratagema de comando executado.');
+   }else if(mode==='skill'&&skill){
+    finish(v3UseUnitSkill(game,skill,targetId));setStatus('Habilidade executada.');
+   }
   }catch(e){setStatus(e instanceof Error?e.message:'Habilidade indisponível.');}
  };
  const clickHex=(hex:Hex)=>{
@@ -114,7 +127,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    if(attacks.some(a=>a.targetId===target.id))action({type:'ATTACK',unitId:active.id,targetId:target.id});
    else setStatus('Alvo fora do alcance ou sem linha de visão.');return;
   }
-  if(canAct&&(mode==='power'||mode==='skill')){
+  if(canAct&&(mode==='power'||mode==='skill'||mode==='tactic')){
    if(target)cast(target.id);else setStatus('Selecione uma tropa para aplicar a habilidade.');return;
   }
   if(target){setSelected(target.id);setMode('inspect');}
@@ -137,7 +150,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
   if(!game)return;
   const actor=game.battle.stacks.find(s=>s.id===game.battle.activeUnitId);
   if(game.battle.phase!=='active'||!actor||game.battle.controls[actor.side]!=='ai')return;
-  try{const advanced=v3RunAi(game);setGame(advanced);setSelected(advanced.battle.activeUnitId);}
+  try{const advanced=game.tactics?v37RunAi(game):v3RunAi(game);
+   setGame(advanced);setSelected(advanced.battle.activeUnitId);}
   catch(e){setStatus(e instanceof Error?e.message:'Oponente não conseguiu jogar esta rodada.');}
  },[game]);
  if(!game)return <main className="battle-module crusade-mode" aria-label="Jogo de batalha V3">
@@ -232,7 +246,9 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    <aside className="battle-surface crusade-left" aria-label="Ordem de batalha">
     <BattleV36CommanderPanel game={game} side={active?.side??'attacker'}
      active={active??null} canPower={canPower}
-     onPower={()=>{setMode('power');setSkill(null);}}/>
+     onPower={()=>{setMode('power');setSkill(null);setTacticId(null);}}
+     onTactic={id=>{setTacticId(id);setMode('tactic');setSkill(null);}}
+     selectedTactic={mode==='tactic'?tacticId:null}/>
     <h2>Exércitos</h2>
     {sides.map(({id,label})=><section key={id}>
      <p className="crusade-side-title">{label}: {modelHouse(id==='attacker'?options.attackerHouseId:options.defenderHouseId).name}</p>
@@ -260,7 +276,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     <BattleBoard appearance={appearance} map={battle!.map} stacks={battle!.stacks} activeId={battle!.activeUnitId}
      selectedId={selected} moveKeys={mode==='move'&&canAct?moves.map(c=>hexKey(c.to)):[]}
      attackKeys={mode==='attack'&&canAct?attacks.map(c=>c.targetId):
-      (mode==='power'&&canAct?powerTargets.map(s=>s.id):mode==='skill'&&canAct?
+      (mode==='power'&&canAct?powerTargets.map(s=>s.id):mode==='tactic'&&canAct?
+       tacticTargets.map(s=>s.id):mode==='skill'&&canAct?
        battle!.stacks.filter(s=>s.side!==active?.side&&s.currentHp>0).map(s=>s.id):[])}
      onHexClick={clickHex}/>
     <p className="battle-note">
@@ -268,6 +285,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       mode==='attack'?'Clique no alvo vermelho para atacar.':
       mode==='power'?'Clique na tropa apropriada para o poder do comandante.':
       mode==='skill'?'Clique no inimigo para executar a habilidade.':
+      mode==='tactic'?'Clique na unidade adequada para a ordem do comandante.':
       'Escolha uma ação; as pilhas são movidas por hexágonos e agem por iniciativa.'}
     </p>
     {status&&<p role="status" className="crusade-status">{status}</p>}
@@ -312,7 +330,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
   </div>
   <BattleV36ActionBar active={active??null} canAct={canAct}
    mode={mode} legal={legal} skills={availableSkills} skill={skill}
-   onMode={next=>{setMode(next);setSkill(null);}}
+   onMode={next=>{setMode(next);setSkill(null);setTacticId(null);}}
    onSkill={ability=>{
     if(!game)return;
     if(ability==='SHIELD_WALL'){
@@ -322,7 +340,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    }}
    onAction={action}
    onFinish={()=>active&&action({type:'END_ACTIVATION',unitId:active.id})}
-   onReset={()=>{setMode('inspect');setSkill(null);}}/>
+   onReset={()=>{setMode('inspect');setSkill(null);setTacticId(null);}}/>
   {showDetails&&<section className="battle-surface crusade-history" aria-label="Histórico tático V3">
    <h3>Registro de ordens</h3>
    <ol>{[...game.log].reverse().map((e,i)=><li key={i}>
