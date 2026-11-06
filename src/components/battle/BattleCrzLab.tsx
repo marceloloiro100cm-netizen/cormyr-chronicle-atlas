@@ -5,7 +5,7 @@ import {crzHexKey,crzAxialToOffset,type CrzHex,type CrzSide}
 import {crzLegalCommands,type CrzCommand} from '@/lib/crusade/turns';
 import {crzCapable,type CrzBattleStack,type CrzBattleState,
  type CrzEvent} from '@/lib/crusade/battle-state';
-import {CRZ_LOT4_SPELLS} from '@/lib/crusade/leader';
+import {CRZ_LOT8_SPELLS,crzShieldWallTargets} from '@/lib/crusade/leader';
 import {crzReplayBegin,crzReplayParse,crzReplayRecord,
  crzReplaySerialize,CRZ_REPLAY_MAX_BYTES,
  type CrzReplaySession} from '@/lib/crusade/replay';
@@ -143,11 +143,12 @@ function CrzBoard({state,selectedId,mode,moves,attacks,onTile}:{
  </div>;
 }
 
-const globalSpell=(spell:CrzSpellId)=>spell==='bless'||spell==='bane';
+const globalSpell=(spell:CrzSpellId)=>spell==='bless'||spell==='bane'||
+ spell==='shield_wall_formation';
 const enemySpell=(spell:CrzSpellId)=>spell==='cause_fear'||spell==='firebolt';
 const spellCost:Partial<Record<CrzSpellId,number>>={
  bless:3,bane:3,shield_of_faith:2,heroism:4,cause_fear:3,
- cure_wounds:2,firebolt:2,
+ cure_wounds:2,firebolt:2,shield_wall_formation:2,
 };
 
 export function BattleCrzLab({onBack}:{onBack?:()=>void}){
@@ -179,10 +180,12 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const abilities=legal.filter((c):c is Extract<CrzCommand,{type:'ABILITY'}>=>
   c.type==='ABILITY');
  const spells=legal.filter((c):c is Extract<CrzCommand,{type:'CAST'}>=>
-  c.type==='CAST').filter(c=>CRZ_LOT4_SPELLS.includes(c.spellId));
+  c.type==='CAST').filter(c=>CRZ_LOT8_SPELLS.includes(c.spellId));
  const caster=active?frame?.leaders[active.side]:null;
  const canCast=canAct&&spells.some(c=>c.spellId===spell)&&
-  Boolean(caster&&caster.energy>=(spellCost[spell]??Infinity));
+  Boolean(caster&&caster.energy>=(spellCost[spell]??Infinity))&&
+  (spell!=='shield_wall_formation'||Boolean(frame&&active&&
+   crzShieldWallTargets(frame,active.side).length>0));
  const targets=active?frame?.stacks.filter(s=>crzCapable(s)&&
   s.side===(enemySpell(spell)?
    active.side==='attacker'?'defender':'attacker':active.side))??[]:[];
@@ -376,7 +379,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
         variant={mode==='attack'?'default':'outline'}
         onClick={()=>{setMode('attack');setError('');}}>Atacar ({attacks.length})</Button>
        {abilities.map(c=><Button key={c.ability} variant="outline"
-        onClick={()=>apply(c)}>{c.ability==='CHARGE'?'Preparar carga':'Preparar salva'}</Button>)}
+        onClick={()=>apply(c)}>{c.ability==='CHARGE'?'Preparar carga':
+         c.ability==='VOLLEY'?'Preparar salva':'Preparar evasão'}</Button>)}
        {(['WAIT','DEFEND','END_ACTIVATION'] as const).map(type=>{
         const command=legal.find(c=>c.type===type);
         return <Button key={type} disabled={!canAct||!command}
@@ -395,7 +399,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
         disabled={!canAct||!spells.length} onChange={e=>{
          setSpell(e.target.value as CrzSpellId);setSpellTarget('');
         }}>
-        {CRZ_LOT4_SPELLS.map(id=><option key={id} value={id}>{id}</option>)}
+        {CRZ_LOT8_SPELLS.map(id=><option key={id} value={id}>{id}</option>)}
        </select>
       </label>
       {!globalSpell(spell)&&<label>Alvo da magia

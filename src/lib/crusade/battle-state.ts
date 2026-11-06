@@ -10,7 +10,7 @@ export type CrzActivation=Readonly<{
  retaliationRound:number|null;extraUsedRound:number|null;
  /** Registro por ativação, presente apenas quando houve MOVE ou ABILITY. */
  movedPath?:readonly CrzHex[];
- preparedAbility?:'CHARGE'|'VOLLEY';
+ preparedAbility?:'CHARGE'|'VOLLEY'|'NIMBLE_ESCAPE';
 }>;
 export type CrzEffect=Readonly<{
  id:string;sourceId:string;kind:'attack'|'ac'|'morale'|'speed';
@@ -30,7 +30,7 @@ export type CrzEventData=
    cost:number;path:readonly CrzHex[]}>
  |Readonly<{type:'WAITED'|'DEFENDED';unitId:string}>
  |Readonly<{type:'ABILITY_USED';unitId:string;
-   ability:'CHARGE'|'VOLLEY';uses:number}>
+   ability:'CHARGE'|'VOLLEY'|'NIMBLE_ESCAPE';uses:number}>
  |Readonly<{type:'ATTACK_RESOLVED'|'RETALIATION_RESOLVED';
    unitId:string;targetId:string;mode:'expected'|'rolled';
    attacks:number;hits:number;crits:number;rawDamage:number;

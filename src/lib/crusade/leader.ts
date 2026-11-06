@@ -4,7 +4,7 @@
 import {crzApplyDamage,crzHeal} from './stack';
 import {crzCapable,crzLog,crzMoraleState,crzReplaceStack,
  type CrzBattleStack,type CrzBattleState,type CrzEffect} from './battle-state';
-import type {CrzSide} from './geometry';
+import {crzDistance,type CrzSide} from './geometry';
 import type {CrzSpellId} from './setup';
 const COSTS:Readonly<Record<CrzSpellId,number>>={
  bless:3,bane:3,shield_of_faith:2,heroism:4,cause_fear:3,
@@ -15,6 +15,17 @@ export const CRZ_LOT4_SPELLS:readonly CrzSpellId[]=[
  'bless','bane','shield_of_faith','heroism','cause_fear',
  'cure_wounds','firebolt',
 ];
+export const CRZ_LOT8_SPELLS:readonly CrzSpellId[]=[
+ ...CRZ_LOT4_SPELLS,'shield_wall_formation',
+];
+/** Exige pelo menos duas pilhas corpo a corpo aliadas e adjacentes.
+ * A formação nunca é inferida de tropas ou posses oficiais.
+ */
+export function crzShieldWallTargets(state:CrzBattleState,side:CrzSide):CrzBattleStack[]{
+ const allies=state.stacks.filter(s=>s.side===side&&crzCapable(s)&&s.meleeRoutine);
+ return allies.filter(s=>allies.some(other=>other.id!==s.id&&
+  crzDistance(other.position,s.position)===1));
+}
 function requireTarget(state:CrzBattleState,id:string|null|undefined,
  side:CrzSide):CrzBattleStack{
  const target=state.stacks.find(s=>s.id===id);
@@ -32,7 +43,7 @@ export function crzCast(state:CrzBattleState,spellId:CrzSpellId,
  const side=active.side,leader=state.leaders[side];
  if(!leader)throw new Error('SPELL: General não presente.');
  if(!leader.spells.includes(spellId))throw new Error('SPELL: habilidade não preparada.');
- if(!CRZ_LOT4_SPELLS.includes(spellId))
+ if(!CRZ_LOT8_SPELLS.includes(spellId))
   throw new Error('SPELL_UNSUPPORTED: requer redutor do próximo lote.');
  if(leader.spellsCastThisRound>=state.ruleset.leader.castsPerRound)
   throw new Error('SPELL: General já atuou nesta rodada.');
@@ -44,6 +55,9 @@ export function crzCast(state:CrzBattleState,spellId:CrzSpellId,
   spellId==='firebolt'?(side==='attacker'?'defender':'attacker'):side;
  if(single)requireTarget(state,targetId,targetSide);
  else if(targetId!==null)throw new Error('SPELL: feitiço coletivo não aceita alvo único.');
+ const shieldWall=spellId==='shield_wall_formation'?crzShieldWallTargets(state,side):[];
+ if(spellId==='shield_wall_formation'&&!shieldWall.length)
+  throw new Error('SPELL: formação exige duas pilhas corpo a corpo aliadas adjacentes.');
  const withEnergy={...leader,energy:leader.energy-cost,
   spellsCastThisRound:leader.spellsCastThisRound+1};
  let next:CrzBattleState={...state,leaders:{...state.leaders,[side]:withEnergy}};
@@ -54,6 +68,8 @@ export function crzCast(state:CrzBattleState,spellId:CrzSpellId,
  if(spellId==='bless'||spellId==='bane'){
   effects.push({kind:'attack',amount:spellId==='bless'?1:-1,
    targets:next.stacks.filter(s=>s.side===targetSide&&crzCapable(s))});
+ }else if(spellId==='shield_wall_formation'){
+  effects.push({kind:'ac',amount:2,targets:shieldWall});
  }else if(spellId==='shield_of_faith'){
   effects.push({kind:'ac',amount:2+Math.floor(leader.power/6),
    targets:[requireTarget(next,targetId,targetSide)]});
@@ -69,8 +85,12 @@ export function crzCast(state:CrzBattleState,spellId:CrzSpellId,
   for(const s of targets){
    const effect:CrzEffect={id:leader.id+'-'+spellId+'-'+next.round+'-'+s.id+'-'+kind,
     sourceId:leader.id,kind,amount,rounds:duration};
-   next=crzReplaceStack(next,{...next.stacks.find(x=>x.id===s.id)!,
-    effects:[...next.stacks.find(x=>x.id===s.id)!.effects,effect]});
+   const current=next.stacks.find(x=>x.id===s.id)!;
+   // Renova, sem empilhar, um bônus da mesma formação do mesmo General.
+   const retained=current.effects.filter(old=>
+    !(spellId==='shield_wall_formation'&&old.kind==='ac'&&
+      old.sourceId===leader.id&&old.id.includes('-shield_wall_formation-')));
+   next=crzReplaceStack(next,{...current,effects:[...retained,effect]});
    next=crzLog(next,{type:'EFFECT_APPLIED',unitId:s.id,effectId:effect.id,
     kind,amount});
   }

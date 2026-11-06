@@ -116,7 +116,7 @@ function routineFor(template:CrzCreature,kind:'melee'|'ranged',
 function genericWarnings(template:CrzCreature):string[]{
  const warnings=[...template.warnings];
  for(const trait of template.traits)
-  if(trait!=='charge')warnings.push('Traço ainda não executável no CRZ: '+trait);
+  if(trait!=='charge'&&trait!=='nimble-escape')warnings.push('Traço ainda não executável no CRZ: '+trait);
  if(template.flags.caster)warnings.push('Magias da criatura aguardam redutor de habilidades.');
  if(template.flags.legendary)warnings.push('Ações lendárias ignoradas nesta fase.');
  if(template.flags.swarm)warnings.push('Regras específicas de enxame pendentes.');
