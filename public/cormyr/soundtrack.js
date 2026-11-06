@@ -33,6 +33,7 @@
  // The Cancioneiro is independent of regional themes. Each video is mapped
  // to its exact YouTube video ID rather than to a playlist position.
  const directVideos={
+  'A Balada Libertina do Guardião de Helm':'https://www.youtube.com/watch?v=4RuKLjM1QcU',
   'Essa Coroa':'https://www.youtube.com/watch?v=HM4a9vYrdDU',
   'Cante uma Canção a Elturel':'https://www.youtube.com/watch?v=xoOtYuebA9k',
   'Terra dos Cavalos':'https://www.youtube.com/watch?v=f4L0mCHpOv8'
