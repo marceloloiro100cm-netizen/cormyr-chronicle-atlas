@@ -1,5 +1,5 @@
 -- CCA-ESP-MVP-001 · Importação de atributos nobres do Google Sheets
--- Fonte: https://docs.google.com/spreadsheets/d/1Yts9r_X4yc1PsXcz1ah0HqmFvQme0CRCDoFhIgPMTmA/edit
+-- Fonte: [fonte privada no Drive do Narrador]
 -- Aba: Atributos das Casas (A2:O171), última modificação observada 2026-11-03T18:14:40.277Z
 -- 170 registros verificados por nome/ID/região contra house_catalog; 8 fichas operacionais preservadas.
 -- As abas "Compras" são propostas e NÃO constituem construções adquiridas.
