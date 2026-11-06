@@ -41,7 +41,7 @@
   'Nova música de Cormyr':'https://www.youtube.com/watch?v=wioZhfoQMAs',
   'Nova música de Cormyr — WrXc5zCbMHA':'https://www.youtube.com/watch?v=WrXc5zCbMHA',
   'Nova música de Cormyr — qw9FgNYr7hE':'https://www.youtube.com/watch?v=qw9FgNYr7hE',
-  'Adlar — O Fiel da Balança':'https://www.youtube.com/watch?v=a5DitnxYUZM'
+  'O Truta':'https://www.youtube.com/watch?v=a5DitnxYUZM'
  };
  function attachVideo(song){
   const parsed=yt.parse(directVideos[song.title]||'');
@@ -67,8 +67,8 @@
   // Título temporário, sem presumir uma identidade que o YouTube não confirmou.
   attachVideo({id:'youtube-qw9FgNYr7hE',title:'Nova música de Cormyr — qw9FgNYr7hE',
    category:'populares',region:'Cormyr',url:''}),
-  // Canção fornecida pelo Narrador para a face neutra de Adlar: Unidade e equilíbrio.
-  attachVideo({id:'adlar-o-fiel-da-balanca',title:'Adlar — O Fiel da Balança',
+  // Título confirmado pelo Narrador; registrar como música popular, sem associação à fé de Adlar.
+  attachVideo({id:'o-truta',title:'O Truta',
    category:'populares',region:'Cormyr',url:''})
  ];
 })();
