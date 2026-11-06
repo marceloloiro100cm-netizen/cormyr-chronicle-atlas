@@ -95,11 +95,11 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
  });
 
  it('mantém os dois pontos e a rota responsiva nas três regiões novas',()=>{
-  for(const [region,origin,target] of [
+  for(const [region,origin,target] of ([
    ['crownlands','Phelles','Wyvernspur'],
    ['helmlands','Evenhand','Emmarask'],
    ['shieldmark','Mareforte','Dauntinghorn']
-  ]){
+  ] as const)){
    const {container,unmount}=render(<SpyLocalHouseMap
     regionId={region} originHouseId={origin.toLowerCase()} originHouseName={origin}
     destinationHouseId={target.toLowerCase()} destinationHouseName={target}
@@ -120,7 +120,7 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
  it('as casas cartográficas publicadas têm pontos dentro da imagem, sem duplicatas',()=>{
   const expected={crownlands:24,helmlands:25,shieldmark:30};
   for(const [key,count] of Object.entries(expected)){
-   const map=SPY_NOBLE_DETAIL_MAPS[key];
+   const map=SPY_NOBLE_DETAIL_MAPS[key]!;
    const points=Object.values(map.houses);
    expect(points).toHaveLength(count);
    const unique=new Set(points.map(p=>p.x+','+p.y));
