@@ -130,17 +130,23 @@ export const crzCreatureSchema=body.safeExtend({
 });
 export type CrzCreature=z.infer<typeof crzCreatureSchema>;
 export type CrzCreatureBody=z.input<typeof body>;
+/** O hash canônico do ruleset aceita apenas inteiros. ND fracionário 5e
+ * fica explicitamente codificado em string neste domínio, sem alterar o ND da ficha.
+ */
+function creatureDigest(value:CrzCreatureBody):string{
+ return crzHash({...value,cr:String(value.cr)});
+}
 export function crzSealCreature(untrusted:unknown):CrzCreature{
  const parsed=body.parse(untrusted);
  const sealed={...parsed,provenance:{
-  ...parsed.provenance,contentHash:crzHash(parsed),
+  ...parsed.provenance,contentHash:creatureDigest(parsed),
  }};
  return crzReadCreature(sealed);
 }
 export function crzReadCreature(untrusted:unknown):CrzCreature{
  const creature=crzCreatureSchema.parse(untrusted);
  const {contentHash,...provenance}=creature.provenance;
- const actual=crzHash({...creature,provenance});
+ const actual=creatureDigest({...creature,provenance});
  if(actual!==contentHash)throw new Error('E_SETUP_TEMPLATE: contentHash adulterado.');
  return creature;
 }
