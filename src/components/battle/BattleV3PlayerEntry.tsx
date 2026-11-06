@@ -5,6 +5,7 @@ import {Button} from '@/components/ui/button';
 import {listV3Invitations,type BattleV3Invitation} from '@/lib/battle/v3/invitations.functions';
 import {BattleV3Game} from './BattleV3Game';
 import type {V3ScenarioOptions} from '@/lib/battle/v3/engine';
+import './battle-legibility.css';
 import type {CommanderId} from '@/lib/battle/v3/commanders';
 
 function invitationOptions(value:BattleV3Invitation):V3ScenarioOptions{
