@@ -132,7 +132,8 @@ export function crzStrike(state:CrzBattleState,attackerId:string,
  let retaliation:CrzStrikeInfo|null=null;
  if(option.kind==='melee'&&rules.id!=='CRZ-WOTR'&&
    crzAlive(enemy)&&enemy.meleeRoutine&&enemy.activation.retaliationRound!==state.round){
-  const retalOptions=crzAttackOptions(next,enemy)
+  const readyForRetaliation={...enemy,activation:{...enemy.activation,attacked:false}};
+  const retalOptions=crzAttackOptions(next,readyForRetaliation)
    .find(x=>x.targetId===attackerId&&x.kind==='melee');
   if(retalOptions){
    const result=strike(next,defenderId,attackerId,retalOptions,'RETALIATED');
