@@ -9,13 +9,14 @@ import {BattleArena} from './BattleArena';
 import {BattleReplayImporter} from './BattleReplay';
 import {BattleSavedPanel} from './BattleSavedPanel';
 import {BattleV3Game} from './BattleV3Game';
+import {BattleCrzLab} from './BattleCrzLab';
 import {BattleV3InvitationCreator} from './BattleV3InvitationCreator';
 import {BattleV35Admin} from './BattleV35Admin';
 import {BATTLE_V35_OFFICIAL_UI_ENABLED} from '@/lib/battle/feature-flag';
 import './battle.css';
 
 export function BattleNarratorHub(){
- const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'invite'|'official'>('home');
+ const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'crz'|'invite'|'official'>('home');
  const [state,setState]=useState<BattleState|null>(null);
  const [resumeState,setResumeState]=useState<BattleState|null>(null);
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Atacante',defender:'Defensor'});
@@ -49,6 +50,7 @@ export function BattleNarratorHub(){
       <strong> Criar batalha:</strong> mantenha o laboratório PTE-2.0 com editor e unidades oficiais em cópia somente leitura.</p>
     <div className="battle-home-actions">
       <Button onClick={()=>setView('crusade')}>Batalhar</Button>
+      <Button variant="outline" onClick={()=>setView('crz')}>CRZ-1.0 · Laboratório</Button>
       <Button variant="outline" onClick={()=>setView('setup')}>Criar batalha</Button>
       <Button variant="outline" onClick={()=>setView('invite')}>Convocar batalha</Button>
       {BATTLE_V35_OFFICIAL_UI_ENABLED&&<Button variant="outline"
@@ -68,6 +70,7 @@ export function BattleNarratorHub(){
     </div>}
   </div>}
   {view==='crusade'&&<BattleV3Game narrator onBack={()=>setView('home')}/>}
+  {view==='crz'&&<BattleCrzLab onBack={()=>setView('home')}/>}
   {view==='invite'&&<BattleV3InvitationCreator onBack={()=>setView('home')}/>}
   {view==='official'&&BATTLE_V35_OFFICIAL_UI_ENABLED&&
    <BattleV35Admin onBack={()=>setView('home')}/>}
