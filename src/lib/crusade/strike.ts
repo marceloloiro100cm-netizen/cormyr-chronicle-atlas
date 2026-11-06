@@ -30,18 +30,19 @@ function engagedCount(s:CrzBattleStack,target:CrzBattleStack,
  return Math.max(1,Math.min(s.alive,available*reach));
 }
 function entries(s:CrzBattleStack,target:CrzBattleStack,
- mode:CrzAttackMode):readonly CrzAttackEntry[]{
+ mode:CrzAttackMode,bonusDice=0):readonly CrzAttackEntry[]{
  const routine=mode==='melee'?s.meleeRoutine:s.rangedRoutine;
  if(!routine)throw new Error('ATTACK: rotina não disponível.');
- return routine.steps.map(step=>{
+ return routine.steps.map((step,stepIndex)=>{
   const atk=s.template.attacks.find(a=>a.id===step.attackId);
   if(!atk||atk.toHit===undefined)throw new Error('ATTACK: rotina incompleta.');
   return {id:atk.id,count:step.count,toHit:atk.toHit,
-   parts:atk.damage.map(part=>{
+   parts:atk.damage.map((part,partIndex)=>{
     const hit=/^([1-9][0-9]{0,2})d([1-9][0-9]{0,3})$/.exec(part.dice);
     if(!hit)throw new Error('ATTACK: dados não normalizados.');
     const value:CrzDamagePart={
-     type:part.type,dice:{count:Number(hit[1]),sides:Number(hit[2])},
+     type:part.type,dice:{count:Number(hit[1])+
+      (stepIndex===0&&partIndex===0?bonusDice:0),sides:Number(hit[2])},
      mod:part.mod,mitigation:mitigation(target,part.type),
     };
     return value;
@@ -84,7 +85,9 @@ export function crzStrike(state:CrzBattleState,
    !crzCapable(target))throw new Error('ATTACK: alvo/atacante inválido.');
  if(state.ruleset.id!=='CRZ-5E')
   throw new Error('E_SETUP_RULESET: redutor CRZ-5E necessário.');
- const entry=entries(actor,target,mode);
+ // Habilidade preparada melhora apenas o ataque ativo; nunca uma retaliação.
+ const entry=entries(actor,target,mode,
+  !retaliation&&actor.activation.preparedAbility?1:0);
  const engaged=mode==='melee'?engagedCount(actor,target,
   state.ruleset.damage.frontage,state.ruleset.damage.frontageRanks):actor.alive;
  const result=crzResolve5e({

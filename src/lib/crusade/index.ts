@@ -16,3 +16,4 @@ export * from './leader';
 export * from './turns';
 export * from './ai';
 export * from './replay';
+export * from './selectors';
