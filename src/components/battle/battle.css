@@ -356,3 +356,11 @@
  .crusade-v36-unit-skills{grid-column:auto}
  .crusade-v36-turn button{width:52px;height:52px}}
 @media(prefers-reduced-motion:reduce){.crusade-v36-turn.current button{transform:none}}
+
+/* V3.7 · habilidades de comando com energia e recarga da sessão de treino. */
+.crusade-v37-abilities{display:grid;gap:6px;margin-top:11px;padding-top:10px;
+ border-top:1px solid #826e4d}
+.crusade-v37-abilities button{white-space:normal;text-align:left;justify-content:flex-start;
+ border-color:#927f5a;min-height:42px;font-size:11px;line-height:1.35}
+.crusade-v37-abilities button[disabled]{opacity:.45}
+.crusade-v37-abilities button:focus-visible{outline:3px solid #f7d389;outline-offset:2px}

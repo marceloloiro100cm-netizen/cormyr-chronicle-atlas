@@ -9,6 +9,7 @@ import {battleOutcome} from '../domain/victory';
 import {runAiUntilHuman} from '../domain/ai';
 import {commander,applyCommanderPassive,type CommanderId} from './commanders';
 import {modelHouse,type PresetUnit} from './model-houses';
+import type {V37Tactics} from './tactics-v37';
 import {v3ApplyCommanderTalent,v3CommanderPowerLimit,v3ProgressValid,
  type V3CommanderProgress} from './commander-progression';
 
@@ -25,6 +26,8 @@ export type V3Game=Readonly<{
  usedPowers:Readonly<Record<Side,boolean>>;
  /** Contador exclusivo V3, preserva leitura de snapshots V3 anteriores com booleano. */
  powerUses?:Readonly<Record<Side,number>>;
+ /** Só existe para partidas locais opt-in, não para sessões/replays V3.4. */
+ tactics?:V37Tactics;
  progressions?:Readonly<Record<Side,V3CommanderProgress>>;
  log:readonly V3Log[];
 }>;
@@ -148,6 +151,7 @@ export function v3CanUseCommander(game:V3Game):boolean{
  return used<v3CommanderPowerLimit(game.commanders[active.side],game.progressions?.[active.side]);
 }
 export function v3UseCommander(game:V3Game,targetId:string):V3Game{
+ if(game.tactics)throw new Error('Comandante V3.7 deve usar o redutor versionado.');
  if(!v3CanUseCommander(game))throw new Error('O comandante já utilizou seu poder ou a batalha terminou.');
  const battle=game.battle,acting=battle.stacks.find(s=>s.id===battle.activeUnitId)!;
  const side=acting.side,c=commander(game.commanders[side]);
@@ -189,6 +193,7 @@ export function v3UseCommander(game:V3Game,targetId:string):V3Game{
   powerUses:{...prior,[side]:prior[side]+1}};
 }
 export function v3RunAi(game:V3Game):V3Game{
+ if(game.tactics)throw new Error('IA V3.7 deve usar o redutor versionado.');
  const battle=game.battle;
  if(battle.phase!=='active'||!battle.activeUnitId)return game;
  const active=battle.stacks.find(s=>s.id===battle.activeUnitId);
