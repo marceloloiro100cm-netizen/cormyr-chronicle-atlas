@@ -13,7 +13,7 @@ import {BattleV3Barracks} from './BattleV3Barracks';
 import {BattleV3CommanderHall} from './BattleV3CommanderHall';
 import {BattleV3StrategyBoard} from './BattleV3StrategyBoard';
 import {BattleV38TheatreChooser} from './BattleV38TheatreChooser';
-import {V38_THEATRES,v38TheatreFromMap,type V38TheatreId} from '@/lib/battle/v3/theatres-v38';
+import {v38TheatreFromMap,type V38TheatreId} from '@/lib/battle/v3/theatres-v38';
 import {v3BarracksBySide,v3BarracksFromHouse,v3BarracksDeploy,
  type V3BarracksArmy} from '@/lib/battle/v3/barracks';
 import {V3_COMMANDERS,commander,type CommanderId} from '@/lib/battle/v3/commanders';
