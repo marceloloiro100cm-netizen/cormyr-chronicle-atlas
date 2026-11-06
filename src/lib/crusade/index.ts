@@ -5,3 +5,6 @@ export * from './ruleset';
 export * from './stack';
 export * from './rng';
 export * from './damage';
+export * from './creatures';
+export * from './catalog';
+export * from './convert';
