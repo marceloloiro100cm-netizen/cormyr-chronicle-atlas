@@ -18,6 +18,7 @@ export type CrzCommand=
  |Readonly<{type:'MOVE';unitId:string;to:CrzHex}>
  |Readonly<{type:'ATTACK';unitId:string;targetId:string;mode:'melee'|'ranged'}>
  |Readonly<{type:'WAIT'|'DEFEND'|'END_ACTIVATION';unitId:string}>
+ |Readonly<{type:'ABILITY';unitId:string;ability:'CHARGE'|'VOLLEY'}>
  |Readonly<{type:'CAST';unitId:string;spellId:CrzSpellId;targetId:string|null}>;
 export type CrzActor='human'|'ai';
 export const crzEmptyActivation=():CrzActivation=>({
@@ -141,8 +142,11 @@ function nextActivation(state:CrzBattleState):CrzBattleState{
   const restWaiting=fromWait?waiting.slice(1):waiting;
   let stack=next.stacks.find(s=>s.id===id)!;
   const waited=stack.activation.waited;
+  const activation={...stack.activation};
+  delete activation.movedPath;
+  delete activation.preparedAbility;
   stack={...stack,defendActive:false,
-   activation:{...stack.activation,moved:false,attacked:false,
+   activation:{...activation,moved:false,attacked:false,
     guard:false,waited}};
   next=crzReplaceStack(next,stack);
   next={...next,activeStackId:id,activationQueue:restQueue,
@@ -227,9 +231,10 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
   const engaged=enemy.some(s=>crzDistance(s.position,unit.position)===1);
   for(const target of enemy){
    const distance=crzDistance(unit.position,target.position);
-   if(distance===1&&unit.meleeRoutine)
+   if(distance===1&&unit.meleeRoutine&&unit.activation.preparedAbility!=='VOLLEY')
     legal.push({type:'ATTACK',unitId:unit.id,targetId:target.id,mode:'melee'});
-   if(unit.rangedRoutine&&distance>0&&distance<=6&&
+   if(unit.rangedRoutine&&unit.activation.preparedAbility!=='CHARGE'&&
+     distance>0&&distance<=6&&
      crzLineOfSight(state.map,unit.position,target.position)&&
      (!engaged||state.ruleset.ranged.engaged!=='forbidden')&&
      distance<=Math.max(unit.rangeHex,
@@ -239,13 +244,28 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
   }
  }
  if(!unit.activation.moved&&!unit.activation.attacked&&
-   !unit.activation.waited&&!state.activeFromWait&&state.ruleset.wait.maxPerRound>0)
+   !unit.activation.preparedAbility&&!unit.activation.waited&&!state.activeFromWait&&state.ruleset.wait.maxPerRound>0)
   legal.push({type:'WAIT',unitId:unit.id});
- if(!unit.activation.attacked)
+ if(!unit.activation.attacked&&!unit.activation.preparedAbility)
   legal.push({type:'DEFEND',unitId:unit.id});
+ if(!unit.activation.attacked&&!unit.activation.preparedAbility){
+  const path=unit.activation.movedPath??[];
+  if(unit.template.traits.includes('charge')&&unit.meleeRoutine&&path.length>=3){
+   const directions=path.slice(1).map((p,i)=>{
+    const prev=path[i]!;
+    return (p.q-prev.q)+','+(p.r-prev.r);
+   });
+   if(directions.every(dir=>dir===directions[0]))
+    legal.push({type:'ABILITY',unitId:unit.id,ability:'CHARGE'});
+  }
+  if(unit.rangedRoutine&&state.ruleset.ability.rechargeUsesPerBattle>0&&
+    (unit.usage['volley']??0)<state.ruleset.ability.rechargeUsesPerBattle)
+   legal.push({type:'ABILITY',unitId:unit.id,ability:'VOLLEY'});
+ }
  legal.push({type:'END_ACTIVATION',unitId:unit.id});
  const leader=state.leaders[unit.side];
  if(leader&&!unit.activation.moved&&!unit.activation.attacked&&
+   !unit.activation.preparedAbility&&
    leader.spellsCastThisRound<state.ruleset.leader.castsPerRound){
   // A lista de alvos é gerada sob demanda pelo redutor crzCast.
   for(const spellId of leader.spells)
@@ -259,6 +279,7 @@ function matchingCommand(a:CrzCommand,b:CrzCommand):boolean{
   return crzHexKey(a.to)===crzHexKey(b.to);
  if(a.type==='ATTACK'&&b.type==='ATTACK')
   return a.targetId===b.targetId&&a.mode===b.mode;
+ if(a.type==='ABILITY'&&b.type==='ABILITY')return a.ability===b.ability;
  return a.type===b.type;
 }
 export function crzPlay(state:CrzBattleState,command:CrzCommand,
@@ -278,6 +299,14 @@ export function crzPlay(state:CrzBattleState,command:CrzCommand,
   if(!legal.some(candidate=>candidate.type==='CAST'&&candidate.spellId===command.spellId))
    throw new Error('SPELL: comando fora do momento permitido.');
   return checkOutcome(crzCast(state,command.spellId,command.targetId));
+ }
+ if(command.type==='ABILITY'){
+  const uses=command.ability==='VOLLEY'?(unit.usage['volley']??0)+1:0;
+  const updated=crzReplaceStack(state,{...unit,
+   usage:command.ability==='VOLLEY'?{...unit.usage,volley:uses}:unit.usage,
+   activation:{...unit.activation,preparedAbility:command.ability}});
+  return crzLog(updated,{type:'ABILITY_USED',unitId:unit.id,
+   ability:command.ability,uses});
  }
  if(command.type==='WAIT'){
   let next=crzReplaceStack(state,{...unit,
@@ -303,7 +332,7 @@ export function crzPlay(state:CrzBattleState,command:CrzCommand,
    occupied,enemies).find(p=>crzHexKey(p.to)===crzHexKey(command.to));
   if(!path)throw new Error('MOVE: caminho não disponível.');
   let next=crzReplaceStack(state,{...unit,position:command.to,
-   activation:{...unit.activation,moved:true}});
+   activation:{...unit.activation,moved:true,movedPath:path.path}});
   next=crzLog(next,{type:'MOVED',unitId:unit.id,from:unit.position,
    to:command.to,cost:path.cost,path:path.path});
   return {...next,progressThisRound:true};
