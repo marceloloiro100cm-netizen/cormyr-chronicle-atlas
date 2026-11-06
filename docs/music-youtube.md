@@ -67,3 +67,11 @@ O Narrador unificou as antigas categorias **Cancioneiro** e **Novidades da playl
 - O catálogo público como um todo possui 27 vínculos de vídeo (26 IDs distintos) e quatro títulos pendentes, contando também as categorias de músicas das casas; a lista de letras é conservada.
 
 Validação: `node --test scripts/youtube-music.test.mjs`, os testes de `src/test/frontend-audit-public.test.ts` e o fluxo CI habitual. Os parágrafos anteriores deste documento são registros históricos de auditorias anteriores a essa unificação.
+
+
+## Novo canto de Adlar — O Fiel da Balança (06/11/2026)
+
+- Vídeo fornecido pelo Narrador: `https://www.youtube.com/watch?v=a5DitnxYUZM`.
+- Título no catálogo: **Adlar — O Fiel da Balança** (face da Unidade / equilíbrio), na categoria **Músicas Populares**, referência ampla **Cormyr**.
+- Registro único, mantendo separados os cânticos do Alvorecer e do Crepúsculo e os temas regionais.
+- Total esperado da seção Músicas Populares: 11 registros, 9 vídeos vinculados, 1 título pendente e 1 somente com letra. Todo o catálogo passa a ter 28 vínculos de vídeo; o vínculo não prova disponibilidade de execução ou autorização de incorporação no YouTube.
