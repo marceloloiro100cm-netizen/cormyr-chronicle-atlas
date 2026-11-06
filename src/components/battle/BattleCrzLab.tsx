@@ -449,7 +449,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
     </div>
    </section>
    <div className="crz-battle-columns">
-    <aside className="crz-general-deck" aria-label="Painel do General CRZ">
+    <section className="crz-general-deck" aria-label="Painel do General CRZ">
      <div className="crz-portrait" role="img"
       aria-label="Espaço reservado para retrato do General">
       <span className="crz-portrait-head" aria-hidden="true"/>
@@ -509,7 +509,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
        </Button>;
       })}
      </div>
-    </aside>
+    </section>
     <section className="crz-central-map" aria-label="Campo de batalha">
      <div className="crz-map-caption">
       <h2>Campo de batalha</h2>
