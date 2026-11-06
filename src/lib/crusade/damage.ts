@@ -112,12 +112,16 @@ export type CrzRolledResult=Readonly<{
 export function crzRolled5e(args:{
  ruleset:CrzRuleset;attackerCount:number;attackBonus:number;targetAc:number;
  target:CrzStack;entries:readonly CrzAttackEntry[];rngState:CrzRngState;
+ damageBonusBP?:number;
 }):CrzRolledResult{
  const {ruleset,attackerCount,attackBonus,targetAc,entries}=args;
  if(ruleset.id!=='CRZ-5E')throw new Error('Rolagem exclusiva CRZ-5E.');
  if(!Number.isSafeInteger(attackerCount)||attackerCount<1||
   attackerCount>ruleset.stack.maxCount||entries.length<1||entries.length>10)
   throw new Error('E_SETUP_COUNT: quantidade inválida.');
+ const bonus=args.damageBonusBP??0;
+ if(!Number.isSafeInteger(bonus)||bonus< -9000||bonus>50000)
+  throw new Error('Bônus de dano inválido.');
  const rng=crzPcg32(args.rngState);
  let target=args.target,attacks=0,hits=0,crits=0,rawDamage=0,applied=0;
  for(const e of entries){
@@ -139,7 +143,9 @@ export function crzRolled5e(args:{
      amount=crzSafe(amount+rng.nextInt(part.dice.sides)+1,'rolled damage');
     total=crzSafe(total+mitigate(Math.max(0,amount),part.mitigation),'rolled total');
    }
-   const damage=immune?0:Math.max(1,total);
+   const basic=immune?0:Math.max(1,total);
+   const damage=basic===0?0:Math.max(0,Math.floor(
+    crzSafe(basic*(10000+bonus),'rolled bonus')/10000));
    rawDamage=crzSafe(rawDamage+damage,'damage sum');
    const result=crzApplyDamage(target,damage,'waste');
    applied=crzSafe(applied+result.damageApplied,'applied damage');
@@ -198,6 +204,7 @@ export function crzAoEExpected(args:{
 export function crzResolve5e(args:{
  ruleset:CrzRuleset;engagedCount:number;attackBonus:number;targetAc:number;
  target:CrzStack;entries:readonly CrzAttackEntry[];
+ damageBonusBP?:number;
  mode?:'hybrid'|'expected'|'rolled';rngState?:CrzRngState;
 }):CrzExpectedResult|CrzRolledResult{
  const mode=args.mode??(args.ruleset.damage.resolution==='hybrid'?'hybrid':'expected');
@@ -208,9 +215,11 @@ export function crzResolve5e(args:{
   if(!args.rngState)throw new Error('Modo rolado requer seed e estado de RNG.');
   return crzRolled5e({ruleset:args.ruleset,attackerCount:args.engagedCount,
    attackBonus:args.attackBonus,targetAc:args.targetAc,target:args.target,
-   entries:args.entries,rngState:args.rngState});
+   entries:args.entries,rngState:args.rngState,
+   ...(args.damageBonusBP!==undefined?{damageBonusBP:args.damageBonusBP}:{})});
  }
  return crzExpected5e({ruleset:args.ruleset,attackerCount:args.engagedCount,
   attackBonus:args.attackBonus,targetAc:args.targetAc,target:args.target,
-  entries:args.entries});
+  entries:args.entries,
+  ...(args.damageBonusBP!==undefined?{damageBonusBP:args.damageBonusBP}:{})});
 }
