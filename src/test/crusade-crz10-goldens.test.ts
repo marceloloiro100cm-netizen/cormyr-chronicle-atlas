@@ -3,7 +3,7 @@ import {crzPreset,crzRulesetHash,crzCanonical,CRZ_APPROVED_HASHES,
  CRZ_PRESET_IDS,crzRequireKnownRuleset,crzRulesetSchema} from '@/lib/crusade/ruleset';
 import {crzMakeStack,crzApplyDamage,crzHeal,crzSplitStack,crzMaxCount}
  from '@/lib/crusade/stack';
-import {crzHitFactorBP,crzExpected5e,crzRolled5e,
+import {crzHitFactorBP,crzExpected5e,crzRolled5e,crzResolve5e,
  crzWotrExpected,crzAoEExpected,type CrzAttackEntry} from '@/lib/crusade/damage';
 import {crzPcg32,CRZ_RNG_VERSION} from '@/lib/crusade/rng';
 const rule=crzPreset('CRZ-5E');
@@ -148,6 +148,18 @@ describe('CRZ-1.0 · lotes 1–2, contratos e goldens normativos dos anexos',()=
   expect(crzHitFactorBP(crzPreset('CRZ-WOTR'),40,5)).toBeGreaterThan(10000);
   expect(crzHitFactorBP(crzPreset('PTE-2.0-compat'),4,4)).toBe(10000);
   expect(crzHitFactorBP(crzPreset('PTE-2.0-compat'),0,10)).toBe(6000);
+ });
+ it('03 §7.5: híbrido rola com N≤10 e calcula esperado quando N>10',()=>{
+  const entries=[attack(4,1,6,2)];
+  const small=crzResolve5e({ruleset:rule,engagedCount:1,attackBonus:0,
+   targetAc:15,target:target(20,7),entries,
+   rngState:crzPcg32('aabbcc').state()});
+  expect(small.mode).toBe('rolled');
+  const big=crzResolve5e({ruleset:rule,engagedCount:11,attackBonus:0,
+   targetAc:15,target:target(20,7),entries});
+  expect(big.mode).toBe('expected');
+  expect(()=>crzResolve5e({ruleset:rule,engagedCount:1,attackBonus:0,
+   targetAc:15,target:target(20,7),entries})).toThrow(/RNG/);
  });
  it('PCG32 serializa estado e rolagem 5e usa mesmo seed, sem Math.random',()=>{
   const rng=crzPcg32('cafebeef');
