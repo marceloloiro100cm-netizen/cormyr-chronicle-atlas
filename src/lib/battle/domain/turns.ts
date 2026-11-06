@@ -75,7 +75,8 @@ export function legalAttack(state:BattleState,actor:BattleStack,target:BattleSta
 export function getLegalActions(state:BattleState):BattleCommand[]{
   const actor=currentUnit(state),commands:BattleCommand[]=[];
   if(!actor.movedThisActivation&&!actor.attackedThisActivation){
-    const occupied=state.stacks.filter(s=>s.id!==actor.id&&s.currentHp>0).map(s=>s.position);
+    const occupied=state.stacks.filter(s=>s.id!==actor.id&&s.currentHp>0&&
+      s.moraleState!=='routed').map(s=>s.position);
     const enemies=state.stacks.filter(s=>s.side!==actor.side&&s.currentHp>0&&s.moraleState!=='routed').map(s=>s.position);
     for(const path of reachablePaths(state.map,actor.position,actor.movementHex,{occupied,enemies}))
       commands.push({type:'MOVE',unitId:actor.id,to:path.to});
@@ -154,7 +155,8 @@ export function applyBattleCommand(state:BattleState,untrusted:unknown,actor:'na
   const legal=getLegalActions(state).some(choice=>JSON.stringify(choice)===JSON.stringify(cmd));
   if(!legal)throw new Error('Comando ilegal: movimento, alcance, ações ou alvo indisponíveis.');
   if(cmd.type==='MOVE'){
-    const occupied=state.stacks.filter(s=>s.id!==active.id&&s.currentHp>0).map(s=>s.position);
+    const occupied=state.stacks.filter(s=>s.id!==active.id&&s.currentHp>0&&
+      s.moraleState!=='routed').map(s=>s.position);
     const enemies=state.stacks.filter(s=>s.side!==active.side&&s.currentHp>0&&s.moraleState!=='routed').map(s=>s.position);
     const path=reachablePaths(state.map,active.position,active.movementHex,{occupied,enemies})
       .find(p=>hexKey(p.to)===hexKey(cmd.to));
