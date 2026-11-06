@@ -286,3 +286,7 @@
 /* O catálogo mantém a playlist opcional em um reprodutor sob demanda. */
 .music-playlist-embed:not([hidden]) { margin-top: 1rem; width: 100%; }
 .music-playlist-embed iframe { display: block; width: 100%; max-height: 550px; aspect-ratio: 16 / 9; border: 0; border-radius: 8px; }
+
+/* Cancioneiro: o vídeo conserva o acesso à letra. */
+.music-catalogue-track{display:flex;align-items:center;flex-wrap:wrap;gap:10px;max-width:100%}
+.music-catalogue-track .music-lyrics-entry{flex:1 1 100%;margin:2px 0 0}
