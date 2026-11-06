@@ -399,3 +399,37 @@
  .crusade-v38-theatre{min-height:115px}
  .crusade-v38-theatre:hover{transform:none}}
 @media(prefers-reduced-motion:reduce){.crusade-v38-theatre{transition:none}}
+
+/* V3.9 — objetivo de treino, contrato isolado de CRZ-1.0 e PTE-2.0. */
+.crusade-v39-setup{margin:12px 0;padding:12px;border:1px solid #987b56;
+ background:#2b352f;border-radius:8px}
+.crusade-v39-setup label{display:grid;gap:6px;color:#f0d8aa;font-size:13px}
+.crusade-v39-setup select{max-width:100%;min-height:42px;background:#1e292b;
+ color:#f8e7cb;border:1px solid #a68a60;border-radius:5px;padding:7px 10px}
+.crusade-v39-setup small{display:block;margin-top:8px;font-size:11px;line-height:1.5;color:#e0cbb1}
+.crusade-v39-panel{margin:12px 0;padding:12px;border-radius:10px;border:1px solid #b69a68;
+ background:linear-gradient(130deg,#2b3936,#393126);color:#e9d7b5}
+.crusade-v39-panel-header{display:flex;gap:10px;justify-content:space-between;
+ align-items:baseline;flex-wrap:wrap}
+.crusade-v39-panel h3{font:700 16px Georgia,serif;margin:0;color:#f4dcab}
+.crusade-v39-panel-header span{font-size:9px;letter-spacing:.06em;color:#edbe85}
+.crusade-v39-panel p{font-size:12px;margin:8px 0;line-height:1.45;color:#dfcfb9}
+.crusade-v39-points{list-style:none;padding:0;margin:10px 0;display:grid;gap:6px}
+.crusade-v39-points li{display:flex;gap:8px;align-items:center;border:1px solid #75664d;
+ background:#1c2930a8;border-radius:6px;padding:8px}
+.crusade-v39-point-icon{font-size:22px;color:#f1d38d;min-width:30px;text-align:center}
+.crusade-v39-points li>div{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.crusade-v39-points strong{font-size:12px;color:#f7e1bc}
+.crusade-v39-points small{font-size:10px;color:#d1c0a4}
+.crusade-v39-point-owner{font:700 10px system-ui;text-transform:uppercase;white-space:nowrap;
+ border-radius:4px;padding:5px 6px;border:1px solid #9e927c}
+.crusade-v39-point-owner.attacker{color:#a4d4fb;border-color:#538ebe}
+.crusade-v39-point-owner.defender{color:#faad9b;border-color:#b75d55}
+.crusade-v39-point-owner.neutral{color:#e5d0a3}
+.crusade-v39-score{display:grid;grid-template-columns:1fr 1fr;gap:7px;
+ border-top:1px solid #8c7556;margin-top:10px;padding-top:10px;font-size:12px}
+.crusade-v39-score strong{color:#ffdea1}
+.crusade-v39-panel>small{font-size:10px;display:block;margin-top:9px;color:#cfc6ad}
+@media(max-width:700px){.crusade-v39-score{grid-template-columns:1fr}
+ .crusade-v39-points li{flex-wrap:wrap}
+ .crusade-v39-point-owner{margin-left:auto}}
