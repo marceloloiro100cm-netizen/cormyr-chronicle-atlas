@@ -18,7 +18,7 @@ import {V3_COMMANDERS,commander,type CommanderId} from '@/lib/battle/v3/commande
 import {MODEL_HOUSES,modelHouse} from '@/lib/battle/v3/model-houses';
 import {v3NewCommanderProgress,v3ChooseCommanderTalent,v3AwardCommanderXp,
  v3TrainingReward,type V3CommanderProgress} from '@/lib/battle/v3/commander-progression';
-import {createV3Game,v3PlayCommand,v3LegalSkills,v3SkillName,v3UseUnitSkill,
+import {createV3Game,v3PlayCommand,v3LegalSkills,v3UseUnitSkill,
  v3CanUseCommander,v3UseCommander,v3RunAi,type V3Game,type V3ScenarioOptions,
  type V3UnitSkill} from '@/lib/battle/v3/engine';
 import './battle.css';
