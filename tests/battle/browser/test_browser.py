@@ -108,6 +108,9 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         dialog.get_by_role("button",name="Sair da tela ampliada").click()
         page.get_by_role("button",name="Abrir arena CRZ").click()
         page.get_by_role("button",name="Iniciar treinamento CRZ").click()
+        alert=page.locator(".crz-alert")
+        if alert.count() and alert.first.is_visible():
+            self.fail("CRZ setup rejeitou a malha: "+alert.first.inner_text())
         crz=page.get_by_role("dialog",name="Batalha em tela ampliada")
         crz.wait_for(timeout=15000)
         sizes=crz.evaluate("""root=>({
@@ -274,6 +277,9 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         self.assertIn("Marcha",page.locator(".crusade-v4-history").inner_text())
         page.get_by_role("button",name="Abrir arena CRZ").tap()
         page.get_by_role("button",name="Iniciar treinamento CRZ").tap()
+        alert=page.locator(".crz-alert")
+        if alert.count() and alert.first.is_visible():
+            self.fail("CRZ mobile rejeitou a malha: "+alert.first.inner_text())
         page.get_by_role("dialog",name="Batalha em tela ampliada").wait_for(timeout=15000)
         crz=page.get_by_role("region",name="Arena e comandos CRZ")
         crz.wait_for(timeout=15000)
