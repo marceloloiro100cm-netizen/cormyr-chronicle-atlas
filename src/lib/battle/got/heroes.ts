@@ -33,6 +33,7 @@ export type WarHero=Readonly<{
  rangedLoaded?:boolean;
  mount?:WarPersonalMount;mounted?:boolean;mountControlledTurn?:number;
  mountMovedTurn?:number;
+ counterattackReady?:Readonly<{ranged:boolean;vsCharge:boolean}>;
 }>;
 export type WarHeroAction=Readonly<{
  kind:'join'|'leave'|'rally'|'revive'|'abdicate'|'assume'|PersonalWarAction['kind'];
