@@ -95,11 +95,11 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
           }}
           className={`battle-hex${onHexClick?' battle-hex--interactive':''}`}>
           <title>{label}</title>
-          {square?<rect x={-SQUARE_STEP/2} y={-SQUARE_STEP/2}
+          {square?<rect data-battle-cell-shape="square" x={-SQUARE_STEP/2} y={-SQUARE_STEP/2}
             width={SQUARE_STEP} height={SQUARE_STEP} fill={TERRAIN_COLOR[tile.terrain]}
             stroke={isPending?'#f7f4ba':isSelected?(theme==='cormyr'?'#84ff92':'#fff5c2'):legalAttack?'#e9574c':legalMove?'#72e881':'#524b43'}
             strokeWidth={isPending||isSelected||legalAttack?4:legalMove?3:1.25}/>:
-          <polygon points={points} fill={TERRAIN_COLOR[tile.terrain]}
+          <polygon data-battle-cell-shape="hex" points={points} fill={TERRAIN_COLOR[tile.terrain]}
             stroke={isPending?'#f7f4ba':isSelected?(theme==='cormyr'?'#84ff92':'#fff5c2'):legalAttack?'#e9574c':legalMove?'#72e881':'#524b43'}
             strokeWidth={isPending||isSelected||legalAttack?4:legalMove?3:1.25}/>}
           {(isA||isB)&&<circle r="23" stroke={isA?colors.attacker:colors.defender} strokeWidth="1.8" fill="none" strokeDasharray="4 3"/>}
