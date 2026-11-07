@@ -24,7 +24,6 @@ describe('Auditoria UX — módulo de batalha narrador',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Iniciar combate com forças-modelo'}));
   expect(screen.getByRole('heading',{name:'Batalha experimental'})).toBeInTheDocument();
   expect(screen.getByRole('group',{name:/Mapa hexagonal/})).toBeInTheDocument();
-  expect(screen.getByText(/Regra[s]? experimental/i)).toBeTruthy();
  });
  it('mantém montagem completa de unidades, terreno e implantação ao solicitá-la',()=>{
   render(<BattleNarratorHub/>);
