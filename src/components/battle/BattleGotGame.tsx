@@ -1,6 +1,8 @@
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {MilitaryUnitSymbol,militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
+import {SQUARE_TERRAIN_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
+import {BattleSquareLegend} from './BattleSquareLegend';
 import {createWarBattle,issueWarOrder,issueWarPincer,advanceWarRound,warUnitSummary,previewWarMovement,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
 import {beginPersonalInitiative,personalTurnHeroId,delayPersonalTurn} from '@/lib/battle/got/personal-initiative';
@@ -36,6 +38,13 @@ import type {WarFormation,WarFacing} from '@/lib/battle/got/formations';
 import {WAR_FORMATIONS} from '@/lib/battle/got/formations';
 import {parseSharedSquareMap,sharedFromGotTiles,sharedToGotTiles,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleGotSourcePicker} from './BattleGotSourcePicker';
+/** Same four portable terrain colors; GOT-only terrain retains its own artwork. */
+const COMMON_GOT_TERRAIN:Readonly<Record<string,string>>={
+ plain:SQUARE_TERRAIN_PRESENTATION.plain.color,
+ 'dense-forest':SQUARE_TERRAIN_PRESENTATION.forest.color,
+ hill:SQUARE_TERRAIN_PRESENTATION.hill.color,
+ wall:SQUARE_TERRAIN_PRESENTATION.rock.color,
+};
 import type {Slot} from './BattleGotSourcePicker';
 import './battle-got.css';
 
@@ -761,6 +770,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       return p.x===x&&p.y===y;
      });
      return <button type="button" key={i} data-terrain={terrain}
+      style={!occupant?{backgroundColor:COMMON_GOT_TERRAIN[terrain]}:undefined}
       className={'got-cell'+(terrain!=='plain'?' got-terrain':'')+(occupant?' got-deployed '+occupant.side:'')}
       title={occupant?.name??terrain}
       aria-label={'Quadrado '+x+','+y+' · '+(occupant?.name??terrain)}
@@ -785,6 +795,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      </button>;
     })}
    </div>
+   <BattleSquareLegend showActions={false}/>
    <p className="battle-note">Pinte o terreno antes de iniciar; cada quadrado tem 10 metros. Campos com obstáculos não são automaticamente removidos quando contêm tropas.</p>
    <BattleGotSourcePicker chosenSlots={officialBySlot} onChoose={(slot,unit)=>
     setOfficialBySlot(current=>{
@@ -1191,6 +1202,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        const terrain=battle.tiles.find(t=>t.x===x&&t.y===y)?.terrain??'plain';
        return <button key={i} type="button"
         data-terrain={terrain}
+        style={!occupant?{backgroundColor:COMMON_GOT_TERRAIN[terrain]}:undefined}
         className={'got-cell'+(occupant?' occupied '+occupant.side:'')+(isDestination?' destination':'')+(pathSquares.has(x+':'+y)?' got-route':'')+(terrain!=='plain'?' got-terrain':'')}
         aria-label={'Quadrado '+x+','+y+' · '+terrain+(occupant?' · '+occupant.name+' · '+CONDITION[occupant.condition]:'')}
         title={occupant?.name??terrain+' · '+x+','+y}
@@ -1211,6 +1223,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        </button>;
       })}
      </div>
+     <BattleSquareLegend/>
      {inspectedTile&&inspectedEffect&&<div className="got-map-inspector" aria-live="polite">
       <strong>Quadrado {coord.x},{coord.y} · {inspectedTile.terrain}</strong>
       <span>Custo: {terrainMoveCost(inspectedTile,battle.visibility,battle.weather)*10} m de marcha
