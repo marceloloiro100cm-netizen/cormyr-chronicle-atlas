@@ -4,6 +4,7 @@ import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
 import type {HouseState} from '@/lib/house/types';
 import {battleHouseDirectory} from './house-directory';
 import {adaptOfficialUnit} from './unit-readonly';
+import {assessNpcWarReadiness} from './house-war-effects';
 import {snapshotOfficialWarUnit} from '../got/official-adapter';
 import {importedNpcBattleStack,importedNpcUnitSchema,previewImportedNpc,type ImportedNpcUnit} from './imported-npc-roster';
 
@@ -94,18 +95,21 @@ export const listBattleSourceUnits=createServerFn({method:'POST'})
    }));
    await requireNarrator(db);
    return {houseId:data.houseId,sourceVersion:version,
-    sourceStatus:'recorded' as const,units:roster};
+    sourceStatus:'recorded' as const,units:roster,
+    warReadiness:assessNpcWarReadiness({hasFullSheet:true,hasScenarioRoster:false})};
   }
   const archive=await readNpcRoster(db,data.houseId);
   if(archive.length){
    await requireNarrator(db);
    return {houseId:data.houseId,sourceVersion:null,
     sourceStatus:'scenario-roster' as const,
-    units:archive.map(previewImportedNpc)};
+    units:archive.map(previewImportedNpc),
+    warReadiness:assessNpcWarReadiness({hasFullSheet:false,hasScenarioRoster:true})};
   }
   await requireNarrator(db);
   return {houseId:data.houseId,sourceVersion:record?.version??null,
-   sourceStatus:record?'empty' as const:'no-military-sheet' as const,units:[]};
+   sourceStatus:record?'empty' as const:'no-military-sheet' as const,units:[],
+   warReadiness:assessNpcWarReadiness({hasFullSheet:false,hasScenarioRoster:false})};
  });
 /** O cliente envia IDs e decisão, JAMAIS um HouseState. A conversão acontece no servidor. */
 export const previewBattleSourceStack=createServerFn({method:'POST'})
