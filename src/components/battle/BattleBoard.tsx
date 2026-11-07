@@ -11,7 +11,7 @@ const SIDE_COLOR:Record<Side,string>={attacker:'#b9524d',defender:'#426e9e'};
 const CORMYR_SIDE_COLOR:Record<Side,string>={attacker:'#416f9b',defender:'#ab5246'};
 const SIZE=30;
 const XSTEP=Math.sqrt(3)*SIZE;
-const SQUARE_STEP=SIZE*1.55;
+const SQUARE_STEP=SIZE*2.1;
 const points=Array.from({length:6},(_,i)=>{
   const a=(-90+60*i)*Math.PI/180;
   return (SIZE*Math.cos(a)).toFixed(2)+','+(SIZE*Math.sin(a)).toFixed(2);
