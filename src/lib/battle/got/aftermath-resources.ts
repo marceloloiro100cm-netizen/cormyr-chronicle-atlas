@@ -13,6 +13,8 @@ export type WarResourceScenario=Readonly<{
  survivingFortDefenseValue:number;
  domainHasCommunityOrFort:boolean;
  transferredWealthInvestments:number;
+ /** Identificação declarada pelo Narrador: domínio arrasado -> proprietário. */
+ scorchedDomainOwners?:Readonly<Record<string,WarSide>>;
 }>;
 export type WarResourceProposal=Readonly<{
  battleId:string;winner:WarSide|null;loser:WarSide|null;
@@ -21,6 +23,8 @@ export type WarResourceProposal=Readonly<{
  captured:readonly Readonly<{heroId:string;name:string;side:WarSide;status:number;ransomWealth:number}>[];
  occupationMonthsRequired:3;
  occupationSecured:boolean;
+ provisionalOccupationTransfer:boolean;
+ unresolvedScorchedDomains:readonly string[];
  appliedToHouse:false;
  notes:readonly string[];
 }>;
@@ -43,6 +47,10 @@ export function previewWarResourceConsequences(
   scenario.capturedLandValue||scenario.survivingFortDefenseValue||
   scenario.transferredWealthInvestments||scenario.garrisonHeldForThreeMonths))
   throw new Error('Transferência de recursos exige domínio ocupado.');
+ const owners=scenario.scorchedDomainOwners??{};
+ if(Object.entries(owners).some(([id,owner])=>!id.trim()||
+  (owner!=='attacker'&&owner!=='defender')))
+  throw new Error('Proprietário do domínio arrasado precisa ser um dos exércitos.');
  const winner=battle.winner,loser=winner?other(winner):null;
  const delta:Record<WarSide,WarResources>={attacker:zero(),defender:zero()};
  const dice:Record<string,readonly number[]>={};
@@ -81,8 +89,24 @@ export function previewWarResourceConsequences(
   }else notes.push('Nenhuma transferência de domínio foi simulada.');
   delta[winner]=w;delta[loser]=l;
  }
+ const unresolved=new Set<string>();
+ // Terra Arrasada afeta o dono declarado do domínio, não o derrotado por suposição.
+ for(const record of battle.scorchedPreview??[]){
+  const owner=owners[record.domainId];
+  if(!owner){unresolved.add(record.domainId);continue;}
+  const affected=delta[owner];
+  delta[owner]={...affected,
+   population:affected.population+record.populationDelta,
+   wealth:affected.wealth+record.wealthDelta};
+ }
+ if(unresolved.size)notes.push('Terra Arrasada sem proprietário confirmado: '+
+  [...unresolved].join(', ')+'. Nenhuma perda dessas posses foi atribuída.');
+ if(scenario.occupiedDomain&&!scenario.garrisonHeldForThreeMonths)
+  notes.push('Terras e Defesa são projeções condicionais, não uma ocupação consolidada.');
  return {battleId:battle.id,winner,loser,attacker:delta.attacker,
   defender:delta.defender,dice,captured,occupationMonthsRequired:3,
   occupationSecured:scenario.occupiedDomain&&scenario.garrisonHeldForThreeMonths,
+  provisionalOccupationTransfer:scenario.occupiedDomain&&!scenario.garrisonHeldForThreeMonths,
+  unresolvedScorchedDomains:[...unresolved],
   appliedToHouse:false,notes};
 }
