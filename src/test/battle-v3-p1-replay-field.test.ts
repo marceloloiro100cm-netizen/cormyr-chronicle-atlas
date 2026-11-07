@@ -1,6 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {createV3Game,v3PlayCommand,v3UseCommander,v3RunAi} from '@/lib/battle/v3/engine';
 import {getLegalActions} from '@/lib/battle/domain/turns';
+import {commander} from '@/lib/battle/v3/commanders';
 import {fieldUnitAtHex} from '@/lib/battle/v3/field';
 import {exportV3ReplayJson,parseV3ReplayJson,verifyV3Replay} from '@/lib/battle/v3/replay';
 import {battleHash} from '@/lib/battle/domain/replay';
@@ -29,7 +30,9 @@ describe('P1 — Cruzada V3 recuperável e hexágonos livres após debandada',()
  it('poder único de comandante permanece consumido após importação',()=>{
   const initial=createV3Game(options);
   const active=initial.battle.stacks.find(s=>s.id===initial.battle.activeUnitId)!;
-  const target=initial.battle.stacks.find(s=>s.side===active.side)!;
+  const power=commander(initial.commanders[active.side]);
+  const target=initial.battle.stacks.find(s=>s.side===(power.powerTarget==='ally'?active.side:
+   active.side==='attacker'?'defender':'attacker'))!;
   const advanced=v3UseCommander(initial,target.id);
   const resumed=parseV3ReplayJson(exportV3ReplayJson(advanced)).game;
   expect(resumed.usedPowers[active.side]).toBe(true);
