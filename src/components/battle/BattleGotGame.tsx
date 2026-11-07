@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary} from '@/lib/battle/got/engine';
 import {modelWarUnit,modelWarCommanders} from '@/lib/battle/got/models';
+import {previewWarAftermath} from '@/lib/battle/got/aftermath';
 import type {WarBattle,WarOrder,WarOrderKind,WarUnit,WarSide} from '@/lib/battle/got/types';
 import type {WarWeather,WarVisibility,WarTerrainId,WarTerrainTile} from '@/lib/battle/got/terrain';
 import {WAR_TERRAIN} from '@/lib/battle/got/terrain';
@@ -275,6 +276,22 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      </div>)}</div>
     </section>
    </div>
+   {battle.phase==='finished'&&<section className="battle-surface got-after" aria-label="Prévia de sobreviventes">
+    <h3>Resultado pós-batalha · somente projeção</h3>
+    <p className="battle-note">A tabela de sobreviventes é calculada com dados auditáveis. Nenhuma perda,
+     glória ou mudança de treinamento é aplicada às fichas oficiais das Casas.</p>
+    <p>Glória proposta: Atacante {previewWarAftermath(battle).glory.attacker} ·
+     Defensor {previewWarAftermath(battle).glory.defender}.</p>
+    <div className="got-roster">
+     {previewWarAftermath(battle).survivors.map(row=><div className="got-unit" key={row.unitId}>
+      <strong>{row.unitName}</strong><span>Condição: {row.condition} · 1d6 = {row.die}
+       · resultado ajustado {row.adjusted}</span>
+      <span>Treinamento: {row.steps==='destroyed'?'proposta de destruição':
+       row.steps===0?'inalterado':row.steps>0?'+'+row.steps+' graduação(ões)':
+       row.steps+' graduação(ões)'}</span>
+     </div>)}
+    </div>
+   </section>}
    <section className="battle-surface got-events" aria-label="Histórico de rolagens">
     <h3>Registro auditável da batalha</h3>
     <ol>{battle.events.slice(-18).map(event=><li key={event.seq}>
