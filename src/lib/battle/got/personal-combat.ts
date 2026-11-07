@@ -313,7 +313,8 @@ export function executePersonalWarAction(
     (hero.mount.trainedForWar?0:6)+5*hits;
    const degrees=degreesOfSuccess(total,difficulty);
    const damage=degrees?Math.max(0,hero.mount.athletics*degrees-target.armor):0;
-   next={...next,seed:roll.nextSeed};
+   next={...next,seed:roll.nextSeed,
+    heroes:next.heroes.map(h=>h.id===hero.id?consumePersonalFateRoll(h):h)};
    if(damage)next=queuePersonalDamage(next,{actorName:hero.mount.name,
     targetHeroId:target.id,damage,source:'personal'});
    next=log(next,'personal-trample',hero.mount.name+' atropelou '+
@@ -354,10 +355,17 @@ export function executePersonalWarAction(
    throw new Error('Controle exige montaria viva e cavaleiro montado.');
   const weight=hero.mount.trainedForWar&&hero.mount.health===hero.mount.maxHealth?
    'minor':'major';
-  const used=spendPersonalAction(hero,weight);
-  return log(changeHero(battle,{...used,mountControlledTurn:hero.usedActions}),
-   'personal-control-mount',hero.name+' controlou a montaria ('+
-   (weight==='major'?'ação maior':'ação menor')+').',hero);
+  // O controle difícil ocupa o turno inteiro: movimento pode ocorrer junto
+  // à ação maior, em vez de ser impossibilitado pelo orçamento de ações.
+  const moving=weight==='major'&&action.toMetres?
+   moveFine(battle,hero,action.toMetres,hero.mount.movement):hero;
+  const used=spendPersonalAction(moving,weight);
+  return log(changeHero(battle,{
+   ...used,mountControlledTurn:hero.usedActions,
+   ...(moving!==hero?{mountMovedTurn:hero.usedActions}:{})
+  }),'personal-control-mount',hero.name+' controlou a montaria ('+
+   (weight==='major'?'ação maior':'ação menor')+')'+
+   (moving!==hero?' e deslocou-se durante o controle.':'.'),hero);
  }
  if(action.kind==='personal-move'){
   if(hero.mounted&&hero.mountControlledTurn!==hero.usedActions)
