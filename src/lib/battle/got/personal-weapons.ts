@@ -179,13 +179,15 @@ export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersona
  * Usar a segunda arma no ataque suspende seu bônus Defensivo.
  */
 export function equipModelWarOffhand(hero:WarHero,weaponId:WarPersonalWeaponId|null):WarHero{
- if(weaponId===null)return {...hero,offhandWeapon:undefined,offhandDefenseSuppressed:false};
+ if(weaponId===null)return {...hero,offhandWeapon:undefined,offhandDefenseSuppressed:false,
+  offhandDefenseDamage:0,offhandWeaponBroken:false};
  const weapon=WAR_PERSONAL_WEAPONS[weaponId];
  if((!weapon.offhandDamageBonus&&!weapon.defensiveOffhandBonus)||weapon.family!=='melee')
   throw new Error('Escolha arma de Mão Inábil ou escudo Defensivo para a mão secundária.');
  if(hero.meleeWeapon?.twoHanded)
   throw new Error('Arma principal de Duas Mãos não permite equipar arma secundária.');
- return {...hero,offhandWeapon:weapon,offhandDefenseSuppressed:false};
+ return {...hero,offhandWeapon:weapon,offhandDefenseSuppressed:false,
+  offhandDefenseDamage:0,offhandWeaponBroken:false};
 }
 export function activePersonalOffhandDefense(hero:WarHero):number{
  return hero.offhandDefenseSuppressed||hero.offhandWeaponBroken?0:
@@ -198,6 +200,8 @@ export function equipModelWarHero(hero:WarHero,input:{
  const melee=WAR_PERSONAL_WEAPONS[input.melee],ranged=WAR_PERSONAL_WEAPONS[input.ranged];
  if(melee.family!=='melee'||ranged.family!=='ranged')
   throw new Error('Escolha uma arma de Luta e uma de Pontaria.');
+ if(melee.twoHanded&&hero.offhandWeapon)
+  throw new Error('Arma principal de Duas Mãos não permite escudo ou arma secundária.');
  const base=(w:WarPersonalWeapon):number=>
   w.damageAbility==='athletics'?(hero.athletics??3):
   w.damageAbility==='animalHandling'?(hero.animalHandling??3):(hero.agility??3);
