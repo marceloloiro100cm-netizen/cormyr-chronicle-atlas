@@ -1,6 +1,6 @@
 import {REGIONS,regionId} from '@/lib/house/regions';
 
-export type BattleHouseDirectoryRow=Readonly<{id:string;name:string;region:string}>;
+export type BattleHouseDirectoryRow=Readonly<{id:string;name:string;region:string;crest?:string|null}>;
 export type BattleHouseRegion=Readonly<{id:string;name:string;houseCount:number}>;
 
 /** Canonical regions shared with the campaign. Unknown regions remain searchable. */
@@ -18,16 +18,25 @@ export function battleHouseDirectory(
 ):BattleHouseDirectoryRow[]{
  const merged=new Map<string,BattleHouseDirectoryRow>();
  const valid=(r:BattleHouseDirectoryRow)=>r.id.trim()&&r.name.trim();
+ const crestFrom=(row:BattleHouseDirectoryRow):string|null=>{
+  const crest=typeof row.crest==='string'?row.crest.trim():'';
+  // The catalogue is vetted. Restrict portraits to the site's own heraldic asset area.
+  return /^(?:\/cormyr\/assets\/|cormyr\/assets\/|assets\/|public\/cormyr\/assets\/)[a-z0-9][a-z0-9._-]*\.(?:webp|png|jpe?g|svg)$/i.test(crest)?crest:null;
+ };
  for(const row of catalog){
   if(!valid(row))continue;
-  merged.set(row.id,{id:row.id,name:row.name.trim(),region:battleRegionId(row.region)});
+  const crest=crestFrom(row);
+  merged.set(row.id,{id:row.id,name:row.name.trim(),region:battleRegionId(row.region),
+   ...(crest?{crest}:{})});
  }
  for(const row of campaign){
   if(!valid(row))continue;
   const prior=merged.get(row.id);
   const campaignRegion=battleRegionId(row.region);
+  const crest=crestFrom(row)||prior?.crest||null;
   merged.set(row.id,{id:row.id,name:row.name.trim(),
-   region:campaignRegion!=='unclassified'?campaignRegion:prior?.region??'unclassified'});
+   region:campaignRegion!=='unclassified'?campaignRegion:prior?.region??'unclassified',
+   ...(crest?{crest}:{})});
  }
  return [...merged.values()].sort((a,b)=>
   a.name.localeCompare(b.name,'pt-BR')||a.id.localeCompare(b.id));
