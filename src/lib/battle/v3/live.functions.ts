@@ -32,6 +32,11 @@ const turnInput=z.object({
  step:v3StepSchema,
 }).strict();
 type Db={rpc:(name:string,args?:Record<string,unknown>)=>Promise<{data:unknown;error:{message:string}|null}>;from:(table:string)=>any};
+function requireLiveEnabled(){
+ if(process.env['ENABLE_BATTLE_V3_LIVE']!=='true')
+  throw new Error('Batalhas multiplayer não habilitadas neste ambiente.');
+}
+
 export type LiveV3Match=Readonly<{
  id:string;title:string;attacker_house_id:string;defender_house_id:string;
  state_version:number;state_hash:string;replay_json:unknown;
@@ -67,6 +72,7 @@ async function readRow(db:Db,id:string):Promise<LiveV3Match>{
 export const listLiveV3Matches=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .handler(async({context})=>{
+  requireLiveEnabled();
   const db=context.supabase as unknown as Db;
   await requireAccess(db);
   const result=await db.from('battle_v3_live_matches')
@@ -79,6 +85,7 @@ export const listLiveV3Matches=createServerFn({method:'POST'})
 export const createLiveV3Match=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth]).inputValidator(createInput)
  .handler(async({data,context})=>{
+  requireLiveEnabled();
   const db=context.supabase as unknown as Db;
   await requireNarrator(db);
   if(data.attackerHouseId===data.defenderHouseId)
@@ -104,6 +111,7 @@ export const createLiveV3Match=createServerFn({method:'POST'})
 export const readLiveV3Match=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth]).inputValidator(matchInput)
  .handler(async({data,context})=>{
+  requireLiveEnabled();
   const db=context.supabase as unknown as Db;
   const row=await readRow(db,data.id);
   const {game}=verifyV3Replay(row.replay_json);
@@ -121,6 +129,7 @@ export const readLiveV3Match=createServerFn({method:'POST'})
 export const playLiveV3Turn=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth]).inputValidator(turnInput)
  .handler(async({data,context})=>{
+  requireLiveEnabled();
   const db=context.supabase as unknown as Db;
   const row=await readRow(db,data.id);
   if(row.status!=='active')throw new Error('Partida já encerrada.');
