@@ -132,7 +132,7 @@ describe('Capítulo 9 — atropelamento em linha reta',()=>{
   }});
   const events=after.events.filter(e=>e.kind==='personal-trample');
   expect(events).toHaveLength(2);
-  expect(events[1]!.difficulty-events[0]!.difficulty).toBe(5);
+  expect((events[1]?.difficulty??0)-(events[0]?.difficulty??0)).toBe(5);
   expect(after.heroes.find(h=>h.id==='e1')!.health).toBeLessThan(9);
   expect(after.heroes.find(h=>h.id==='e2')!.health).toBeLessThan(9);
   expect(after.heroes[0]?.position).toEqual({x:3,y:2});
