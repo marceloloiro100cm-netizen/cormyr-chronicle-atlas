@@ -24,6 +24,7 @@ export type WarOrder=Readonly<{
  /** Alvos e dados para um ataque coletivo dividido (não extrapola a graduação). */
  targetIds?:readonly string[];testRanks?:readonly number[];bonusRanks?:readonly number[];
  to?:WarPosition;
+ targetDomainId?:string;
  sprint?:boolean;
  ranged?:boolean;
  formation?:WarFormation;
@@ -90,6 +91,11 @@ export type WarBattle=Readonly<{
   nextStep:number;hits:number;mountName:string;mountAthletics:number;
   mountTrainedForWar:boolean;
  }>|undefined;
+ /** Consequências são prévias exclusivas do laboratório, não atualizam casas. */
+ scorchedPreview?:readonly Readonly<{
+  side:WarSide;unitId:string;domainId:string;round:number;
+  populationDelta:number;wealthDelta:number;
+ }>[];
  squads?:readonly WarSquad[];
  siege:readonly WarSiegeEngine[];siegeCompleted:Readonly<Record<WarSide,boolean>>;
  commanders:readonly WarCommander[];units:readonly WarUnit[];
