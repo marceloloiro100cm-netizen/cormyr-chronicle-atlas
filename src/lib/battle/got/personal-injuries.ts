@@ -1,6 +1,6 @@
 import type {WarBattle,WarEvent} from './types';
 import type {WarHero} from './heroes';
-import {resumePersonalCounterattack,resumePersonalTrample} from './personal-combat';
+import {resumePersonalCounterattack,resumePersonalTrample,resumePersonalSplit} from './personal-combat';
 
 /** Capítulo 9: decisões voluntárias de mitigação, mantidas fora das fichas oficiais. */
 export type PersonalMitigationChoice=Readonly<{
@@ -91,6 +91,8 @@ export function resolvePendingPersonalDamage(
  });
  // Uma reação pode criar uma nova decisão de dano. Nunca processe duas
  // decisões voluntárias ao mesmo tempo.
- return afterCounterattack.pendingPersonalDamage?afterCounterattack:
-  resumePersonalTrample(afterCounterattack);
+ if(afterCounterattack.pendingPersonalDamage)return afterCounterattack;
+ const afterTrample=resumePersonalTrample(afterCounterattack);
+ if(afterTrample.pendingPersonalDamage)return afterTrample;
+ return resumePersonalSplit(afterTrample);
 }
