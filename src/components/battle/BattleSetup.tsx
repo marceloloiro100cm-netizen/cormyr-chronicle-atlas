@@ -126,6 +126,7 @@ export function BattleSetup({onStart,onBack}:{
     <label>Campo de batalha<select aria-label="Cenário rápido" value={map.id}
      onChange={e=>{const id=e.target.value as BattleScenarioId;
       if(Object.hasOwn(SCENARIOS,id))setMap(createScenario(id,map.width));}}>
+     {!Object.hasOwn(SCENARIOS,map.id)&&<option value={map.id}>Mapa personalizado</option>}
      {Object.entries(SCENARIOS).map(([id,label])=><option key={id} value={id}>{label}</option>)}
     </select></label>
     <label>Adversário<select aria-label="Adversário rápido" value={quickOpponent}
