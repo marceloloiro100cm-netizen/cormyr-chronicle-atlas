@@ -433,6 +433,95 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      {battle.winner?'Vitória do '+SIDE[battle.winner]:'Confronto sem vencedor'}
     </strong></p>}
    </section>
+   {battle.heroes.some(h=>!h.squadId)&&
+    <section className="battle-surface got-heroes" aria-label="Pontos de Destino dos heróis">
+     <h3>Destino do capítulo 5 · simulação local</h3>
+     <div className="got-config-grid">
+      <label>Personagem importante
+       <select value={fateHeroId}
+        onChange={e=>setFateHeroId(e.target.value)}>
+        <option value="">Selecione um herói</option>
+        {battle.heroes.filter(h=>!h.squadId).map(h=>
+         <option key={h.id} value={h.id}>{h.name} ·
+          {fateAvailable(h)} disponível(is), {h.fateSpent??0} gasto(s),
+          {h.fateBurned??0} queimado(s)</option>)}
+       </select>
+      </label>
+      <label>Efeito de Destino
+       <select value={fateKind} onChange={e=>setFateKind(e.target.value as WarFateAction['kind'])}>
+        <option value="spend-bonus">Gastar · +1B no próximo teste</option>
+        <option value="spend-reduce-penalty">Gastar · remover −1D no próximo teste</option>
+        <option value="burn-clear-damage">Queimar · restaurar Saúde e ferimentos</option>
+        <option value="burn-choose-defeat">Queimar · escolher consequência da derrota</option>
+        <option value="burn-avoid-death">Queimar · evitar morte certa, sair da história</option>
+       </select>
+      </label>
+      {fateKind==='burn-choose-defeat'&&
+       <label>Consequência
+        <select value={fateOutcome}
+         onChange={e=>setFateOutcome(e.target.value as typeof fateOutcome)}>
+         <option value="unconscious">Inconsciência</option>
+         <option value="captured">Captura</option>
+         <option value="death">Morte</option>
+        </select>
+       </label>}
+     </div>
+     <p className="battle-note">Gastos só retornam após um marco narrativo.
+      Pontos queimados não retornam. A simulação não atualiza a ficha oficial.</p>
+     <Button onClick={fateDo} disabled={Boolean(battle.pendingPersonalDamage)}>
+      Usar Ponto de Destino
+     </Button>
+     {battle.phase==='finished'&&
+      <Button variant="outline" onClick={fateRefill}>
+       Simular marco narrativo · devolver apenas os pontos gastos
+      </Button>}
+    </section>}
+   {battle.phase==='finished'&&battle.heroes.some(h=>!h.squadId)&&
+    <section className="battle-surface got-heroes" aria-label="Recuperação de personagens">
+     <h3>Convalescença · capítulo 9</h3>
+     <p className="battle-note">Cada execução representa um dia (ferimento)
+      ou uma semana (lesão) já decorridos. Não altera o Hub Temporal.</p>
+     <div className="got-config-grid">
+      <label>Personagem
+       <select value={recoveryHeroId} onChange={e=>setRecoveryHeroId(e.target.value)}>
+        <option value="">Selecione um herói</option>
+        {battle.heroes.filter(h=>!h.squadId).map(h=>
+         <option key={h.id} value={h.id}>{h.name} · {h.wounds??0} ferimento(s),
+          {h.injuries??0} lesão(ões)</option>)}
+       </select>
+      </label>
+      <label>Intervalo
+       <select value={recoveryInterval}
+        onChange={e=>setRecoveryInterval(e.target.value as RecoveryInterval)}>
+        <option value="daily-wound">Diário · ferimento</option>
+        <option value="weekly-injury">Semanal · lesão</option>
+       </select>
+      </label>
+      <label>Atividade
+       <select value={recoveryActivity}
+        onChange={e=>setRecoveryActivity(e.target.value as RecoveryActivity)}>
+        <option value="rest">Repouso</option>
+        <option value="light">Atividade leve</option>
+        <option value="strenuous">Atividade cansativa</option>
+       </select>
+      </label>
+      <label className="got-check">
+       <input type="checkbox" checked={recoveryHealer}
+        onChange={e=>setRecoveryHealer(e.target.checked)}/>
+       Curandeiro presente (mínimo 4 horas)
+      </label>
+      {recoveryHealer&&<label>Graduação em Cura
+       <input type="number" min={1} max={15} value={recoveryHealerRank}
+        onChange={e=>setRecoveryHealerRank(Number(e.target.value))}/>
+      </label>}
+     </div>
+     <div className="got-config-grid">
+      <Button onClick={recoveryDo}>Resolver teste de recuperação</Button>
+      <Button variant="outline" onClick={restoreNormalDamage}>
+       Restaurar dano comum dos sobreviventes
+      </Button>
+     </div>
+    </section>}
    {battle.pendingPersonalDamage&&
     <section className="battle-surface got-heroes" aria-label="Resolver dano pessoal pendente">
      <h3>Escolha de redução de dano · capítulo 9</h3>
