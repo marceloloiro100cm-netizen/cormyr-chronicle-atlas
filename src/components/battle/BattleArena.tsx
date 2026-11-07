@@ -5,7 +5,8 @@ import {startBattle,applyBattleCommand,getLegalActions,legalAttack} from '@/lib/
 import {livingCount,casualtyCount} from '@/lib/battle/domain/morale';
 import {resolveDamage} from '@/lib/battle/domain/combat';
 import {battleReport} from '@/lib/battle/domain/report';
-import {hexKey,hexDistance} from '@/lib/battle/geometry/hex';
+import {hexKey} from '@/lib/battle/geometry/hex';
+import {gridDistance} from '@/lib/battle/geometry/grid';
 import {reachablePaths} from '@/lib/battle/geometry/pathfinding';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
@@ -114,7 +115,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
  const selectedPath=candidate?paths.find(p=>hexKey(p.to)===hexKey(candidate)):undefined;
  const target=pendingAttack?battle.stacks.find(s=>s.id===pendingAttack):undefined;
  const damagePreview=active&&target&&legalAttack(battle,active,target).legal
-   ?resolveDamage(battle.map,active,target,hexDistance(active.position,target.position)>1):null;
+   ?resolveDamage(battle.map,active,target,gridDistance(battle.map,active.position,target.position)>1):null;
  const clear=()=>{setMode('inspect');setPendingMove(null);setPendingAttack(null);setHover(null);};
  useEffect(()=>{
   if(paused||battle.phase!=='active'||!battle.activeUnitId)return;
