@@ -11,12 +11,16 @@ import {BattleReplayImporter} from './BattleReplay';
 import {BattleSavedPanel} from './BattleSavedPanel';
 import {BattleV3NarratorEntry} from './BattleV3NarratorEntry';
 import {BattleAccessCheck} from './BattleAccessCheck';
+import {BattleRulesetSelector} from './BattleRulesetSelector';
+import {BattleGotGame} from './BattleGotGame';
+import {battleRulesetOption,type BattleRulesetMode} from '@/lib/battle/ruleset-modes';
 import {BattleV3InvitationCreator} from './BattleV3InvitationCreator';
 import {BattleV3LiveCreator} from './BattleV3Live';
 import './battle.css';
 import './battle-legibility.css';
 import './battle-ui-v4.css';
 import './battle-cleanup.css';
+import './battle-ruleset-selector.css';
 
 // Lazy-load do laboratório experimental para não atrasar a batalha V3 oficial.
 const BattleCrzLab=lazy(()=>import('./BattleCrzLab').then(m=>({default:m.BattleCrzLab})));
@@ -24,7 +28,9 @@ const BattleStrategicLab=lazy(()=>import('./BattleStrategicLab').then(m=>({defau
 
 
 export function BattleNarratorHub(){
- const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'crz'|'invite'|'live'|'strategy'>('home');
+ const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'crz'|'invite'|'live'|'strategy'|'got'>('home');
+ const [rulesetMode,setRulesetMode]=useState<BattleRulesetMode>('adapted');
+ const ruleset=battleRulesetOption(rulesetMode);
  const [state,setState]=useState<BattleState|null>(null);
  const [resumeState,setResumeState]=useState<BattleState|null>(null);
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Atacante',defender:'Defensor'});
@@ -52,7 +58,7 @@ export function BattleNarratorHub(){
    <p className="battle-eyebrow">CORMYR CHRONICLE ATLAS · NARRADOR</p>
    <h1>Módulo de batalha</h1>
    <p>Simulador tático · sem efeito nas fichas oficiais</p>
-   <p><strong>{BATTLE_RULES_VERSION} — regras experimentais.</strong> Nenhuma baixa será lançada nas fichas das casas.</p>
+   <p><strong>{rulesetMode==='adapted'?BATTLE_RULES_VERSION+' — regras experimentais.':rulesetMode==='got'?'GOT-CH10-1 — laboratório do livro.':ruleset.label+' — seleção inicial.'}</strong> Nenhuma baixa será lançada nas fichas das casas.</p>
   </header>
   {view==='home'&&<div className="battle-home-dashboard">
    <section className="battle-surface battle-home-primary" aria-label="Iniciar batalha">
@@ -60,6 +66,8 @@ export function BattleNarratorHub(){
     <h2>Prepare seu próximo confronto</h2>
     <p>Monte os exércitos, escolha o campo, posicione as unidades e conduza o combate.
      O resultado pertence apenas à simulação.</p>
+    <BattleRulesetSelector value={rulesetMode} onChange={setRulesetMode}/>
+    {rulesetMode==='adapted'?<>
     <div className="battle-home-main-actions">
      <div className="battle-home-option">
       <h3>1 · Criar batalha</h3>
@@ -75,6 +83,18 @@ export function BattleNarratorHub(){
      </div>
     </div>
     <p className="battle-note">Roteiro básico: preparar → posicionar → combater → rever o resultado.</p>
+    </>:rulesetMode==='got'?<section className="battle-ruleset-pending" aria-label="Guerra do livro">
+     <h3>Guerra dos Tronos RPG · núcleo do capítulo 10</h3>
+     <p>Comandos de Guerra × Disciplina, iniciativa por rodada, ordens, ataque por graus de sucesso, Armadura e Saúde coletiva, desorganização e debandada.</p>
+     <p className="battle-note">Laboratório em desenvolvimento: ainda faltam fases e regras avançadas para equivalência integral ao capítulo 10.</p>
+     <Button onClick={()=>setView('got')}>Testar regras do livro</Button>
+    </section>:<section className="battle-ruleset-pending" aria-label="Preparação do sistema selecionado">
+     <h3>D&D · combate simplificado</h3>
+     <p>Próxima implementação: bônus de ataque, Classe de Armadura, pontos de vida, deslocamento, ações de combate e importação validada de monstros de D&D.</p>
+     <p className="battle-note">O motor deste sistema ainda não está disponível.
+      Não iniciaremos uma partida com regras do Adaptado por engano.</p>
+     <Button disabled>Iniciar batalha — em desenvolvimento</Button>
+    </section>}
    </section>
    <aside className="battle-home-side" aria-label="Continuação e opções de batalha">
     <section className="battle-surface" aria-label="Continuar batalha">
@@ -86,11 +106,11 @@ export function BattleNarratorHub(){
     <details className="battle-surface battle-home-advanced">
      <summary>Ferramentas avançadas e ajuda</summary>
      <div className="battle-home-secondary-actions">
-      <Button variant="outline" onClick={()=>setManual(x=>!x)}
-       aria-expanded={manual}>Consultar regras</Button>
-      <Button variant="outline" onClick={()=>setShowImport(x=>!x)}
-       aria-expanded={showImport}>Importar replay JSON</Button>
-      {BATTLE_CRZ_TRAINING_UI_ENABLED&&<Button variant="outline"
+      {rulesetMode==='adapted'&&<Button variant="outline" onClick={()=>setManual(x=>!x)}
+       aria-expanded={manual}>Consultar regras</Button>}
+      {rulesetMode==='adapted'&&<Button variant="outline" onClick={()=>setShowImport(x=>!x)}
+       aria-expanded={showImport}>Importar replay JSON</Button>}
+      {rulesetMode==='adapted'&&BATTLE_CRZ_TRAINING_UI_ENABLED&&<Button variant="outline"
        onClick={()=>setView('crz')}>CRZ-1.0 · Laboratório (teste)</Button>}
       <Button variant="outline" onClick={()=>setView('strategy')}>Cercos e mapa estratégico · P3</Button>
       {BATTLE_PLAYERS_ENABLED&&<Button variant="outline"
@@ -102,8 +122,8 @@ export function BattleNarratorHub(){
       {BATTLE_PERSISTENCE_UI_ENABLED&&storeStatus==='unavailable'&&
        <Button variant="outline" onClick={()=>void probeStore()}>Verificar salvamento</Button>}
      </div>
-     {showImport&&<BattleReplayImporter/>}
-     {manual&&<div className="battle-rules-help">
+     {rulesetMode==='adapted'&&showImport&&<BattleReplayImporter/>}
+     {rulesetMode==='adapted'&&manual&&<div className="battle-rules-help">
       <h3>Manual rápido PTE-2.0</h3>
       <p>Até 5 agrupamentos por lado. Cada ativação permite mover e atacar, defender,
        esperar uma vez ou encerrar o turno.</p>
@@ -116,6 +136,7 @@ export function BattleNarratorHub(){
     </details>
    </aside>
   </div>}
+  {view==='got'&&<BattleGotGame onBack={()=>setView('home')}/>}
   {view==='crusade'&&<BattleV3NarratorEntry onBack={()=>setView('home')}/>}
   {view==='crz'&&BATTLE_CRZ_TRAINING_UI_ENABLED&&<Suspense fallback={<p role="status">Carregando laboratório CRZ…</p>}>
    <BattleCrzLab onBack={()=>setView('home')}/>
