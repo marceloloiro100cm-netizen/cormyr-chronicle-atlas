@@ -114,8 +114,12 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
             {legalAttack&&theme==='cormyr'&&<circle data-battle-attack-ring={unit.id} r="27"
               stroke="#ff685e" strokeWidth="4" fill="none" pointerEvents="none"/>}
             <circle r="20" fill={colors[unit.side]} stroke={isActive?'#f6e58c':'#faf7eb'} strokeWidth={isActive?3:1.8}/>
-            {mark?<image href={mark} x="-16" y="-19" width="32" height="32" preserveAspectRatio="xMidYMid slice"/>:
-              <text y="3" fontSize="13" textAnchor="middle" fontWeight="bold" fill="#fff">{unit.name.slice(0,2).toUpperCase()}</text>}
+            <rect x="-18" y="-22" width="36" height="36" rx="7" fill="#17242a"
+              stroke={colors[unit.side]} strokeWidth="1.5" pointerEvents="none"/>
+            {mark?<image href={mark} x="-16" y="-20" width="32" height="32"
+              preserveAspectRatio="xMidYMid meet" pointerEvents="none"/>:
+              <text y="-2" fontSize="11" textAnchor="middle" fontWeight="bold" fill="#fff"
+               pointerEvents="none">{unit.name.slice(0,2).toUpperCase()}</text>}
             <rect x="-23" y="11" width="46" height="15" rx="7" fill="#211d1d"/>
             <text x="0" y="22" fontSize="12" textAnchor="middle" fill="#fff" fontWeight="bold">{count}</text>
             <rect x="-22" y="27" width="44" height="5" rx="2" fill="#201b1b"/>
