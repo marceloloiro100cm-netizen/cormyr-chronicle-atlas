@@ -168,7 +168,7 @@ function move(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,limit?
  const max=limit??Math.floor(effective/10);
  const path=movePath(battle,unit,to,sprint,max);
  const next=replaceUnit(battle,{...unit,position:path.at(-1)??unit.position});
- return log(next,'move',unit.name+' moveu '+path.length*10+' m'+(sprint?' em corrida':'')+'.',unit.side);
+ return triggerReadyReactions(log(next,'move',unit.name+' moveu '+path.length*10+' m'+(sprint?' em corrida':'')+'.',unit.side),unit.id,'enemy-adjacent');
 }
 function applyDamage(battle:WarBattle,target:WarUnit,amount:number,attackerName:string):WarBattle{
  if(amount<=0)return log(battle,'armor',target.name+' absorveu todo o dano.',target.side);
@@ -191,7 +191,8 @@ function applyDamage(battle:WarBattle,target:WarUnit,amount:number,attackerName:
  const text=attackerName+' causou '+amount+' de dano em '+target.name+'. Condição: '+updated.condition+'.';
  const withUnit=replaceUnit(battle,updated);
  const withHeroes=applyDamageToEmbeddedHeroes(withUnit,target,updated,amount);
- return log(withHeroes,'damage',text,target.side);
+ const resolved=log(withHeroes,'damage',text,target.side);
+ return target.condition!=='routed'&&updated.condition==='routed'?triggerReadyReactions(resolved,target.id,'enemy-routed'):resolved;
 }
 function chooseNearest(battle:WarBattle,unit:WarUnit,ranged:boolean):WarUnit|null{
  const max=ranged?(unit.range==='long'?20:unit.range==='short'?2:0):1;
@@ -249,6 +250,42 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
    roll:roll.dice,total:adjustedRoll,difficulty:defense,degrees,
   });
  return degrees?applyDamage(next,target,damage,attacker.name):next;
+}
+/** A ordem Prontidão fica armada até uma condição de movimento ou debandada ocorrer.
+ * Reações resolvem antes de a unidade que se move concluir sua ação (inclusive carga).
+ */
+function triggerReadyReactions(battle:WarBattle,subjectId:string,
+ trigger:'enemy-adjacent'|'enemy-routed'):WarBattle{
+ let next=battle;
+ const initial=next.units.find(u=>u.id===subjectId);
+ if(!initial)return next;
+ const candidates=next.units.filter(u=>u.side!==initial.side&&alive(u)&&
+  u.standing?.kind==='ready'&&u.standing.ready?.trigger===trigger);
+ for(const candidate of candidates){
+  const subject=next.units.find(u=>u.id===subjectId);
+  const watcher=next.units.find(u=>u.id===candidate.id);
+  if(!subject||!onBoard(subject)||!watcher||!alive(watcher))continue;
+  const plan=watcher.standing?.ready;
+  if(watcher.standing?.kind!=='ready'||!plan||plan.trigger!==trigger)continue;
+  if(trigger==='enemy-adjacent'&&distance(watcher.position,subject.position)!==1)continue;
+  if(trigger==='enemy-routed'&&subject.condition!=='routed')continue;
+  const ranged=Boolean(plan.ranged);
+  const max=plan.reaction==='attack'?(ranged?(watcher.range==='long'?20:watcher.range==='short'?2:0):1):Infinity;
+  if(plan.reaction==='attack'&&(max===0||distance(watcher.position,subject.position)>max))continue;
+  // Consumir antes da execução impede cadeias recursivas de reações.
+  next=replaceUnit(next,{...watcher,standing:plan.reaction==='attack'?{kind:'attack',ranged}:null});
+  try{
+   const current=next.units.find(u=>u.id===watcher.id)!;
+   if(plan.reaction==='attack')next=attack(next,current,subject,ranged);
+   else if(plan.to)next=move(next,current,plan.to,false);
+   next=log(next,'ready-trigger',watcher.name+' executou prontidão após '+
+    (trigger==='enemy-routed'?'debandada':'aproximação inimiga')+'.',watcher.side);
+  }catch{
+   next=log(next,'ready-skip',watcher.name+
+    ' não conseguiu completar a reação de prontidão.',watcher.side);
+  }
+ }
+ return next;
 }
 function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):WarBattle{
  const foes=battle.units.filter(u=>u.side!==unit.side&&onBoard(u));
@@ -312,6 +349,8 @@ function perform(battle:WarBattle,unit:WarUnit,order:WarOrder,degrees:number):Wa
    if(!destination)throw new Error('Carga sem corredor em linha reta.');
    next=move(next,actor,destination,true);
    actor=next.units.find(u=>u.id===unit.id)!;
+   if(!alive(actor))return log(next,'charge-blocked',actor.name+
+    ' foi neutralizada por prontidão antes de completar a carga.',actor.side);
   }
   const guarding=next.units.find(u=>u.id===target.id)!;
   if(guarding.counterChargeReady){
@@ -356,7 +395,8 @@ function perform(battle:WarBattle,unit:WarUnit,order:WarOrder,degrees:number):Wa
   const self=next.units.find(u=>u.id===unit.id)!;
   return retreatStep(next,self,Math.floor(movementCells(self,false)/2),false);
  }
- if(order.kind==='ready')return log(battle,'ready',unit.name+' ficou em prontidão.',unit.side);
+ if(order.kind==='ready')return log(battle,'ready',unit.name+' aguardará a condição '+
+  order.ready?.trigger+' para '+order.ready?.reaction+'.',unit.side);
  throw new Error('Ordem não suportada.');
 }
 export function issueWarOrder(battle:WarBattle,input:{
@@ -375,6 +415,16 @@ export function issueWarOrder(battle:WarBattle,input:{
  // Rejeitar instruções incompletas ANTES de consumir o orçamento e os dados.
  if(input.order.kind==='surrender')return issueWarSurrender(battle,{commanderId:input.commanderId});
  if(input.order.kind==='move'&&!input.order.to)throw new Error('Indique o quadrado de destino.');
+ if(input.order.kind==='ready'){
+  const plan=input.order.ready;
+  if(!plan||!['enemy-adjacent','enemy-routed'].includes(plan.trigger)||
+   !['attack','move'].includes(plan.reaction))
+   throw new Error('Prontidão exige condição e reação explícitas.');
+  if(plan.reaction==='move'&&(!plan.to||!inBounds(battle,plan.to)))
+   throw new Error('Movimento de prontidão exige um destino válido.');
+  if(plan.reaction==='attack'&&plan.ranged&&unit.range==='none')
+   throw new Error('Esta unidade não tem arma de Pontaria para prontidão.');
+ }
  if(input.order.kind==='formation'&&(!input.order.formation||!battle.advancedFormations))throw new Error('Formação avançada indisponível ou desabilitada.');
  if(input.order.kind==='turn'&&(!input.order.facing||!battle.advancedFormations))throw new Error('Selecione uma orientação válida.');
  if(['attack','charge','aggressive-retreat','suppress','ambush','probe','push'].includes(input.order.kind)&&input.order.targetId){
