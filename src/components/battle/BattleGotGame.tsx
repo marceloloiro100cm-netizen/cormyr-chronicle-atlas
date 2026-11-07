@@ -87,6 +87,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [heroAction,setHeroAction]=useState<WarHeroAction['kind']|'personal-attack-unit'>('join');
  const [heroUnitId,setHeroUnitId]=useState('');
  const [heroTargetId,setHeroTargetId]=useState('');
+ const [splitSecondTargetId,setSplitSecondTargetId]=useState('');
+ const [splitFirstRank,setSplitFirstRank]=useState(1);
+ const [splitFirstBonus,setSplitFirstBonus]=useState(0);
+ const [splitSecondBonus,setSplitSecondBonus]=useState(0);
+ const [heroTryGrapple,setHeroTryGrapple]=useState(false);
  const [heroRanged,setHeroRanged]=useState(false);
  const [heroGripTwoHands,setHeroGripTwoHands]=useState(false);
  const [heroStunHit,setHeroStunHit]=useState(false);
@@ -237,7 +242,16 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      'personal-cautious-attack','personal-reckless-attack'].includes(heroAction)?
      {targetHeroId:heroTargetId||battle.heroes.find(h=>h.side!==hero.side&&h.active)?.id||''}:{}),
     ...(['personal-move','personal-trample','personal-control-mount'].includes(heroAction)?{toMetres:heroMetres}:{}),
-    ...(heroAction==='personal-free-mount'?{escapeUsing:mountEscapeSkill}:{}),
+    ...(['personal-free-mount','personal-escape-entangle'].includes(heroAction)?
+     {escapeUsing:mountEscapeSkill}:{}),
+    ...(heroAction==='personal-split-attack'?{
+     splitTargets:[heroTargetId||battle.heroes.find(h=>h.side!==hero.side&&h.active)?.id||'',
+      splitSecondTargetId],
+     splitRanks:[splitFirstRank,hero.fighting-splitFirstRank],
+     splitBonuses:[splitFirstBonus,splitSecondBonus],
+    }:{}),
+    ...(['personal-attack','personal-cautious-attack','personal-charge'].includes(heroAction)&&
+     !heroRanged&&hero.meleeWeapon?.grapple?{grappleHit:heroTryGrapple}:{}),
     ...(['personal-attack','personal-cautious-attack','personal-attack-mount'].includes(heroAction)?{ranged:heroRanged}:{}),
     ...(heroAction==='personal-counterattack'?{
      ranged:heroRanged,vsCharge:counterAgainstCharge,
@@ -640,6 +654,12 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <option value="assume">Assumir comando vago</option>
         <option value="personal-attack">Combate pessoal · atacar (menor)</option>
         <option value="personal-aim">Combate pessoal · mirar (+1B, menor)</option>
+        <option value="personal-split-attack">Ataque Dividido · vários alvos (maior)</option>
+        <option value="personal-escape-grapple">Agarrar · escapar (menor)</option>
+        <option value="personal-release-grapple">Agarrar · soltar (livre)</option>
+        <option value="personal-escape-entangle">Enredar · escapar (maior)</option>
+        <option value="personal-release-impale">Empalar · puxar arma do alvo (menor)</option>
+        <option value="personal-remove-impale">Empalar · remover arma do corpo (maior)</option>
         <option value="personal-cautious-attack">Ataque Cauteloso (−1D; Defesa +3, menor)</option>
         <option value="personal-reckless-attack">Ataque Imprudente (+1D Luta; Defesa −5, maior)</option>
         <option value="personal-charge">Combate pessoal · carga (maior)</option>
@@ -662,7 +682,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        </select>
       </label>
       {['personal-attack','personal-charge','personal-attack-mount',
-       'personal-cautious-attack','personal-reckless-attack'].includes(heroAction)&&
+       'personal-cautious-attack','personal-reckless-attack','personal-split-attack'].includes(heroAction)&&
        <label>{heroAction==='personal-attack-mount'?'Cavaleiro da montaria adversária':'Herói adversário'}
         <select value={heroTargetId||battle.heroes.find(h=>h.side!==
          (battle.heroes.find(x=>x.id===heroId)??battle.heroes[0])?.side&&h.active)?.id||''}
@@ -674,6 +694,32 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
            {heroAction==='personal-attack-mount'?' · '+h.mount?.name:''}</option>)}
         </select>
        </label>}
+      {heroAction==='personal-split-attack'&&<>
+       <label>Segundo alvo distinto
+        <select value={splitSecondTargetId}
+         onChange={e=>setSplitSecondTargetId(e.target.value)}>
+         <option value="">Selecione outro inimigo</option>
+         {battle.heroes.filter(h=>h.active&&!h.unitId&&h.side!==
+          (battle.heroes.find(x=>x.id===heroId)??battle.heroes[0])?.side&&
+          h.id!==heroTargetId).map(h=><option key={h.id} value={h.id}>
+           {h.name}</option>)}
+        </select>
+       </label>
+       <label>Dados Luta do primeiro alvo (restante para o segundo)
+        <input type="number" min={1}
+         max={Math.max(1,(battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.fighting??3)-1}
+         value={splitFirstRank}
+         onChange={e=>setSplitFirstRank(Number(e.target.value))}/>
+       </label>
+       <label>Dados bônus do primeiro alvo
+        <input type="number" min={0} value={splitFirstBonus}
+         onChange={e=>setSplitFirstBonus(Number(e.target.value))}/>
+       </label>
+       <label>Dados bônus do segundo alvo
+        <input type="number" min={0} value={splitSecondBonus}
+         onChange={e=>setSplitSecondBonus(Number(e.target.value))}/>
+       </label>
+      </>}
       {heroAction==='personal-attack-unit'&&<label>Unidade adversária
        <select value={heroTargetUnitId}
         onChange={e=>setHeroTargetUnitId(e.target.value)}>
@@ -684,6 +730,12 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
          <option key={u.id} value={u.id}>{u.name}</option>)}
        </select>
       </label>}
+      {['personal-attack','personal-cautious-attack','personal-charge'].includes(heroAction)&&
+       !heroRanged&&(battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.meleeWeapon?.grapple&&
+       <label className="got-check"><input type="checkbox"
+        checked={heroTryGrapple} onChange={e=>setHeroTryGrapple(e.target.checked)}/>
+        Agarrar ao acertar (Luta vs Atletismo passivo)
+       </label>}
       {heroAction==='personal-counterattack'&&
        <label className="got-check"><input type="checkbox" checked={counterAgainstCharge}
         onChange={e=>setCounterAgainstCharge(e.target.checked)}/>
@@ -729,7 +781,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <input type="number" min={0} max={battle.height*10-1} value={heroMetres.y}
          onChange={e=>setHeroMetres(v=>({...v,y:Number(e.target.value)}))}/></label>
       </>}
-      {heroAction==='personal-free-mount'&&<label>Habilidade para se libertar
+      {['personal-free-mount','personal-escape-entangle'].includes(heroAction)&&<label>Habilidade para se libertar
        <select value={mountEscapeSkill}
         onChange={e=>setMountEscapeSkill(e.target.value as 'athletics'|'agility')}>
         <option value="athletics">Atletismo</option>
@@ -758,7 +810,13 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        (h.rangedWeapon?.reload?' · '+(h.rangedLoaded===false?'recarregar':'arma carregada'):'')+
        (h.counterattackReady?' · contra-ataque preparado':'')+
        (h.stunnedNextTurn?' · ATORDOADO':'')+
-       (h.meleeWeaponBroken?' · ARMA DE LUTA QUEBRADA':'')).join(' | ')}</p>
+       (h.meleeWeaponBroken?' · ARMA DE LUTA QUEBRADA':'')+
+       (h.grabbedBy?' · AGARRADO':'')+
+       (h.grapplingTargetId?' · AGARRANDO':'')+
+       (h.entangledBy?' · ENREDADO':'')+
+       (h.impaledBy?' · EMPALADO':'')+
+       (h.impalingTargetId?' · EMPALANDO':'')+
+       (h.meleeWeaponDisarmed?' · DESARMADO':'')).join(' | ')}</p>
      <p className="battle-note">Posições individuais: {battle.heroes.map(h=>
       h.name+' ('+(h.personalPosition?.x??h.position.x*10+5)+','+
       (h.personalPosition?.y??h.position.y*10+5)+' m; '+
