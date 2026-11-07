@@ -11,6 +11,7 @@ import {BattleV3Game} from './BattleV3Game';
 export function BattleV3NarratorEntry({onBack}:{onBack:()=>void}){
  const [copies,setCopies]=useState<BattleStack[]>([]);
  const [status,setStatus]=useState('');
+ const [houseNameById,setHouseNameById]=useState<Record<string,string>>({});
  const [pickerOpen,setPickerOpen]=useState(false);
  const remainingBySide={attacker:Math.max(0,5-copies.filter(s=>s.side==='attacker').length),
   defender:Math.max(0,5-copies.filter(s=>s.side==='defender').length)};
@@ -29,10 +30,15 @@ export function BattleV3NarratorEntry({onBack}:{onBack:()=>void}){
    setStatus('Alguma unidade desta Casa já está na simulação.');return false;
   }
   setCopies(xs=>[...xs,...stacks]);
+  setHouseNameById(current=>({...current,[stacks[0]!.source.houseId!]:houseName}));
   setStatus(stacks.length+' unidade(s) de '+houseName+' copiadas para treino.');
   return true;
  };
  const add=(stack:BattleStack,houseName:string)=>addMany([stack],houseName);
+ const labelFor=(side:BattleStack['side'])=>[...new Set(copies.filter(s=>s.side===side)
+  .map(s=>s.source.houseId).filter((id):id is string=>Boolean(id)))]
+  .map(id=>houseNameById[id]??id).join(' + ');
+ const officialHouseNames={attacker:labelFor('attacker'),defender:labelFor('defender')};
  return <section className="battle-module" aria-label="Preparação da batalha do Narrador">
   <details className="battle-surface battle-optional-source" open={pickerOpen}
    onToggle={event=>setPickerOpen(event.currentTarget.open)}>
@@ -52,6 +58,7 @@ export function BattleV3NarratorEntry({onBack}:{onBack:()=>void}){
    </div>}
    {status&&<p role="status">{status}</p>}
   </details>
-  <BattleV3Game narrator onBack={onBack} officialCopies={copies}/>
+  <BattleV3Game narrator onBack={onBack} officialCopies={copies}
+   officialHouseNames={officialHouseNames}/>
  </section>;
 }
