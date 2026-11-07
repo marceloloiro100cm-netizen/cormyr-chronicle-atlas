@@ -47,7 +47,7 @@ export function importedNpcBattleStack(row:ImportedNpcUnit,side:Side,position:He
  */
 export function isBattleTrainingCopy(stack:BattleStack):boolean{
  return stack.source.kind==='house-readonly'||
-  (stack.source.kind==='fictional'&&/^npc-roster-\\d+$/.test(stack.id));
+  (stack.source.kind==='fictional'&&/^npc-roster-\d+$/.test(stack.id));
 }
 export function battleTrainingSourceKey(stack:BattleStack):string{
  return stack.source.kind==='house-readonly'?
