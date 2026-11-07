@@ -55,7 +55,8 @@ export function warFieldOrderDifficulty(unit:WarUnit):number{
  return selected(unit)?.orderDifficulty??0;
 }
 export function warFieldForbidsAttack(unit:WarUnit):boolean{
- return selected(unit)?.attackBlocked??false;
+ return unit.fieldEquipment==='ladders'&&unit.laddersDeployed?false:
+  selected(unit)?.attackBlocked??false;
 }
 export function warFieldCanClimbWithoutPenalty(unit:WarUnit):boolean{
  return selected(unit)?.id==='ladders'||selected(unit)?.id==='siege-tower';
