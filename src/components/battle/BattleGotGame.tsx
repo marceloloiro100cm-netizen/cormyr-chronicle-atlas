@@ -1,6 +1,8 @@
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
-import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary} from '@/lib/battle/got/engine';
+import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary,fireWarSiegeVolley,skipWarSiege} from '@/lib/battle/got/engine';
+import {makeModelSiege,WAR_SIEGE_CATALOG} from '@/lib/battle/got/siege';
+import type {WarSiegeKind,WarSiegeAmmo} from '@/lib/battle/got/siege';
 import {modelWarUnit,modelWarCommanders} from '@/lib/battle/got/models';
 import {previewWarAftermath} from '@/lib/battle/got/aftermath';
 import type {WarBattle,WarOrder,WarOrderKind,WarUnit,WarSide} from '@/lib/battle/got/types';
@@ -10,17 +12,17 @@ import type {WarFormation,WarFacing} from '@/lib/battle/got/formations';
 import {WAR_FORMATIONS} from '@/lib/battle/got/formations';
 import './battle-got.css';
 
-type TypeId='infantry'|'archers'|'cavalry'|'garrison'|'raiders';
+type TypeId='infantry'|'archers'|'cavalry'|'garrison'|'raiders'|'engineers';
 const OPTIONS:readonly {id:TypeId;label:string}[]=[
  {id:'infantry',label:'Infantaria'},{id:'archers',label:'Arqueiros'},
  {id:'cavalry',label:'Cavalaria'},{id:'garrison',label:'Guarnição'},
- {id:'raiders',label:'Saqueadores'},
+ {id:'raiders',label:'Saqueadores'},{id:'engineers',label:'Engenheiros'},
 ];
 const SIDE:Record<WarSide,string>={attacker:'Atacante',defender:'Defensor'};
 const ORDER_LABEL:Record<WarOrderKind,string>={
  attack:'Atacar',charge:'Carga',defend:'Defender',move:'Mover',ready:'Prontidão',
  rally:'Reagrupar',revive:'Reanimar',reorganize:'Reorganizar',
- retreat:'Retirada', 'aggressive-retreat':'Retirada agressiva',
+ retreat:'Retirada', 'aggressive-retreat':'Retirada agressiva',surrender:'Rendição geral',
  formation:'Alterar formação',turn:'Girar',reverse:'Reverter',
 };
 const CONDITION:Record<WarUnit['condition'],string>={
@@ -44,6 +46,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [terrainPaint,setTerrainPaint]=useState<WarTerrainId>('plain');
  const [formation,setFormation]=useState<WarFormation>('battle');
  const [facing,setFacing]=useState<WarFacing>('north');
+ const [siegeEnabled,setSiegeEnabled]=useState(false);
+ const [siegeKind,setSiegeKind]=useState<WarSiegeKind>('catapult-small');
+ const [siegeAmmo,setSiegeAmmo]=useState<WarSiegeAmmo>('stone');
  const [selected,setSelected]=useState('');
  const [target,setTarget]=useState('');
  const [kind,setKind]=useState<WarOrderKind>('attack');
@@ -60,7 +65,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     {id:'defender-2',side:'defender' as WarSide,name:'Apoio defensor',position:{x:10,y:4}},
    ];
    setBattle(createWarBattle({id:'book-lab-'+seed,name,seed,width:12,height:7,
-    units:prepared.map(row=>modelWarUnit({...row,training,typeId:types[row.id]??'infantry'})),
+    units:prepared.map(row=>modelWarUnit({...row,training,
+     typeId:siegeEnabled&&row.id==='attacker-2'?'engineers':types[row.id]??'infantry'})),
+    siege:siegeEnabled?[makeModelSiege({id:'siege-attacker-1',kind:siegeKind,side:'attacker',
+     position:{x:1,y:3},engineerId:'attacker-2',
+     ammo:siegeKind.startsWith('catapult')?siegeAmmo:'stone'})]:[],
     commanders:modelWarCommanders(warfare),tiles,weather,visibility,advancedFormations:advanced,
    }));
    setSelected('');setTarget('');setError('');
@@ -77,6 +86,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const order=()=>{
   if(!battle||!commander||!selectedUnit){setError('Selecione um comandante e uma unidade.');return;}
   try{
+   if(legalKind==='surrender'&&!window.confirm('Confirmar rendição geral de todo este exército na simulação?'))return;
    const command:WarOrder={
     kind:legalKind,
     ...(['attack','charge','aggressive-retreat'].includes(legalKind)&&selectedTarget?{targetId:selectedTarget.id}:{}),
@@ -88,6 +98,21 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    const result=issueWarOrder(battle,{commanderId:commander.id,unitId:selectedUnit.id,order:command});
    setBattle(result.battle);setSelected('');setTarget('');setError('');
   }catch(e){setError(e instanceof Error?e.message:'Ordem não executada.');}
+ };
+ const siegeAction=(fire:boolean)=>{
+  if(!battle||battle.phase!=='siege')return;
+  try{
+   const activeWeapons=battle.siege.filter(w=>w.side===battle.turn&&w.health>0);
+   const leader=battle.commanders.find(x=>x.side===battle.turn&&x.role==='commander'&&x.active);
+   const availableTargets=battle.units.filter(u=>u.side!==battle.turn&&
+    !['destroyed','escaped','surrendered'].includes(u.condition));
+   const selected=availableTargets.find(u=>u.id===target)??availableTargets[0];
+   if(fire&&leader&&activeWeapons.length&&selected){
+    setBattle(fireWarSiegeVolley(battle,{commanderId:leader.id,
+     weaponIds:[activeWeapons[0]!.id],targetId:selected.id}));
+   }else setBattle(skipWarSiege(battle));
+   setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Disparo não executado.');}
  };
  const endRound=()=>{
   if(!battle)return;
@@ -101,8 +126,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    <Button variant="outline" onClick={onBack}>Voltar ao módulo</Button>
   </div>
   <p className="battle-note">Este motor é separado do Adaptado. O núcleo de ordens, iniciativa,
-   dano e moral já pode ser testado; heróis, máquinas de cerco, terreno detalhado,
-   formações avançadas e consequências narrativas ainda não estão completos.
+   dano, cerco inicial e moral já podem ser testados. Heróis, ordens avançadas,
+   fortificações, efeitos especiais de cerco e consequências narrativas seguem incompletos.
    Nenhum resultado modifica a ficha oficial de uma Casa.</p>
   {!battle?<section className="battle-surface got-config" aria-label="Preparar campo de guerra">
    <h3>Preparar confronto conforme a escala do livro</h3>
@@ -147,6 +172,22 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      </select>
     </label>
    </div>
+   <label className="got-check"><input type="checkbox" checked={siegeEnabled}
+    onChange={e=>setSiegeEnabled(e.target.checked)}/>
+    Preparar arma de cerco do atacante (troca o apoio atacante por engenheiros)</label>
+   {siegeEnabled&&<div className="got-config-grid">
+    <label>Arma de cerco
+     <select value={siegeKind} onChange={e=>setSiegeKind(e.target.value as WarSiegeKind)}>
+      {Object.values(WAR_SIEGE_CATALOG).map(row=><option key={row.kind} value={row.kind}>
+       {row.label} · alcance {row.rangeMetres} m</option>)}
+     </select>
+    </label>
+    {siegeKind.startsWith('catapult')&&<label>Munição
+     <select value={siegeAmmo} onChange={e=>setSiegeAmmo(e.target.value as WarSiegeAmmo)}>
+      <option value="stone">Pedra</option><option value="oil">Óleo (ignora VA)</option>
+     </select>
+    </label>}
+   </div>}
    <label className="got-check"><input type="checkbox" checked={advanced}
     onChange={e=>setAdvanced(e.target.checked)}/> Usar formações e ângulo frontal (opcional no livro)</label>
    <h4>Terreno do campo</h4>
@@ -211,6 +252,22 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     </section>
     <section className="battle-surface got-order-panel" aria-label="Dar ordem de guerra">
      <h3>Comando e Disciplina</h3>
+     {battle.phase==='siege'&&<div className="got-order-fields">
+      <p>Passo 5 · Armas de cerco. Uma ordem dispara até Guerra máquinas;
+       cada unidade de engenheiros opera até quatro. A arma precisa pular a rodada seguinte
+       para recarregar.</p>
+      {battle.siege.filter(w=>w.side===battle.turn&&w.health>0).map(w=><p key={w.id}>
+       <strong>{w.name}</strong> · alcance {WAR_SIEGE_CATALOG[w.kind].rangeMetres} m
+       · última rodada disparada {w.lastFiredRound??'nenhuma'}</p>)}
+      {battle.siege.some(w=>w.side===battle.turn&&w.health>0)&&<label>Alvo da arma de cerco
+       <select aria-label="Alvo de cerco" value={selectedTarget?.id??''}
+        onChange={e=>setTarget(e.target.value)}>
+        {enemy.map(u=><option key={u.id} value={u.id}>{u.name} · Saúde {u.health}/{u.maxHealth}</option>)}
+       </select></label>}
+      {battle.siege.some(w=>w.side===battle.turn&&w.health>0)&&
+       <Button onClick={()=>siegeAction(true)}>Disparar arma de cerco</Button>}
+      <Button variant="outline" onClick={()=>siegeAction(false)}>Sem disparos · prosseguir</Button>
+     </div>}
      {battle.phase==='orders'&&commander&&selectedUnit?<div className="got-order-fields">
       <p><strong>{commander.name}</strong> · Guerra {commander.warfare} ·
        {battle.ordersRemaining[commander.id]??0} ordem(ns) disponível(is)</p>
