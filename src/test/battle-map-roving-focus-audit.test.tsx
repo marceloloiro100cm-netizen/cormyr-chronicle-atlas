@@ -30,7 +30,7 @@ describe('Auditoria de acessibilidade — tabuleiro hexagonal PTE/V3',()=>{
   expect(target.q+','+target.r).toBe(after.getAttribute('data-battle-hex'));
  });
  it('tabuleiro somente informativo não coloca nenhum hexágono na tabulação',()=>{
-  render(<BattleBoard map={createScenario('wooded-front')}/>);
+  render(<BattleBoard map={createScenario('contested-woods')}/>);
   const board=screen.getByRole('group',{name:/Mapa hexagonal com/});
   expect(Array.from(board.querySelectorAll('[data-battle-hex]'))
    .every(el=>!el.hasAttribute('tabindex'))).toBe(true);
