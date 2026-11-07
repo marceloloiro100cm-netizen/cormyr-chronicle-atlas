@@ -50,7 +50,7 @@ export function BattleGotSourcePicker({onChoose,chosenSlots}:{
   try{
    const response=await fetchUnits({data:{houseId:id}});
    if(response.sourceStatus!=='recorded'){
-    setError('Esta Casa não possui ficha militar completa para o motor do livro. '+response.warReadiness.missingEvidence.join(' '));
+    setError('Esta Casa não possui ficha militar completa para o motor do livro. '+(response.warReadiness?.missingEvidence??[]).join(' '));
     return;
    }
    setRoster(response.units);
