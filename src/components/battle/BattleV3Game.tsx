@@ -30,7 +30,7 @@ const sides:{id:Side;label:string}[]=[{id:'attacker',label:'Aliado'},{id:'defend
 const defaults:V3ScenarioOptions={
  attackerHouseId:'evenhand-model',defenderHouseId:'ashkar-model',
  attackerCommander:'purple-dragon',defenderCommander:'ashkar-raider',
- scenario:'plain-open',opponent:'ai',grid:'square',grid:'square',
+ scenario:'plain-open',opponent:'ai',grid:'square',
 };
 /** Interface original de Cormyr: ritmo de turnos e leitura de pilhas inspirados no
  * gênero de batalhas de Cruzada, sem reutilizar arte, ícones ou UI proprietária. */
