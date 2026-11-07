@@ -1,4 +1,6 @@
 import {degreesOfSuccess,rollDice} from './dice';
+import {executePersonalWarAction} from './personal-combat';
+import type {PersonalWarAction} from './personal-combat';
 import type {WarBattle,WarPosition,WarSide,WarUnit} from './types';
 
 /** Capítulo 10, passos 6 e 8: uma fase corresponde a cinco rodadas individuais.
@@ -11,10 +13,18 @@ export type WarHero=Readonly<{
  defense:number;armor:number;meleeDamage:number;rangedDamage:number;
  health:number;maxHealth:number;active:boolean;usedActions:number;
  lockedUntilRound:number|null;
+ // Campos da escala pessoal: um quadrado da guerra contém 10 × 10 posições de 1 m.
+ personalPosition?:WarPosition;
+ agility?:number;athletics?:number;awareness?:number;endurance?:number;
+ runningBonusDice?:number;meleeBonusDice?:number;rangedBonusDice?:number;
+ shieldBonusDice?:number;defensiveBonus?:number;armorPenalty?:number;bulk?:number;
+ rangedRange?:'none'|'short'|'long';
+ wounds?:number;injuries?:number;passBonusDice?:number;
+ dodgeDefense?:number|null;minorActionsUsed?:number;surrendered?:boolean;
 }>;
 export type WarHeroAction=Readonly<{
- kind:'join'|'leave'|'rally'|'revive'|'abdicate'|'assume';
- unitId?:string;
+ kind:'join'|'leave'|'rally'|'revive'|'abdicate'|'assume'|PersonalWarAction['kind'];
+ unitId?:string;targetHeroId?:string;toMetres?:WarPosition;ranged?:boolean;
 }>;
 const distance=(a:WarPosition,b:WarPosition)=>Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y));
 const log=(battle:WarBattle,kind:string,text:string,side:WarSide,meta:{
@@ -36,6 +46,10 @@ export function makeModelWarHero(input:{
   ...(input.commanderId?{commanderId:input.commanderId}:{}),
   warfare:3,status:3,fighting:3,marksmanship:3,defense:8,armor:3,
   meleeDamage:3,rangedDamage:2,health:9,maxHealth:9,
+  agility:3,athletics:3,awareness:3,endurance:3,armorPenalty:0,bulk:0,
+  runningBonusDice:0,meleeBonusDice:0,rangedBonusDice:0,rangedRange:'long',
+  wounds:0,injuries:0,minorActionsUsed:0,surrendered:false,
+  personalPosition:{x:input.position.x*10+5,y:input.position.y*10+5},
   active:true,usedActions:0,lockedUntilRound:null};
 }
 export function validateWarHeroes(
@@ -48,6 +62,15 @@ export function validateWarHeroes(
    hero.position.x<0||hero.position.x>=width||hero.position.y<0||hero.position.y>=height)
    throw new Error('Herói ou posição inválidos.');
   ids.add(hero.id);
+  if(hero.minorActionsUsed!==undefined&&![0,1].includes(hero.minorActionsUsed))
+   throw new Error('Orçamento de ações menores inválido.');
+  if(hero.personalPosition&&(
+   !Number.isInteger(hero.personalPosition.x)||!Number.isInteger(hero.personalPosition.y)||
+   hero.personalPosition.x<0||hero.personalPosition.y<0||
+   hero.personalPosition.x>=width*10||hero.personalPosition.y>=height*10||
+   Math.floor(hero.personalPosition.x/10)!==hero.position.x||
+   Math.floor(hero.personalPosition.y/10)!==hero.position.y))
+   throw new Error('Posição pessoal deve corresponder ao quadrado de guerra.');
   if(hero.unitId&&!units.some(u=>u.id===hero.unitId&&u.side===hero.side))
    throw new Error('Herói associado a unidade de outro exército.');
  }
@@ -85,6 +108,8 @@ export function executeWarHeroAction(
  if(!hero||!hero.active||hero.usedActions>=5||hero.lockedUntilRound===battle.round)
   throw new Error('Este herói não tem ações individuais disponíveis.');
  const action=input.action;
+ if(action.kind.startsWith('personal-'))
+  return executePersonalWarAction(battle,hero,action as PersonalWarAction);
  if(hero.role!=='hero'&&action.kind!=='abdicate')
   throw new Error('Comandantes ativos devem abdicar antes de realizar ações individuais.');
  if(hero.unitId&&action.kind!=='leave')
