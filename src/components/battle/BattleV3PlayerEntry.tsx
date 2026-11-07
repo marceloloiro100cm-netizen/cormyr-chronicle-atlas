@@ -4,6 +4,7 @@ import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
 import {listV3Invitations,type BattleV3Invitation} from '@/lib/battle/v3/invitations.functions';
 import {BattleV3Game} from './BattleV3Game';
+import {BattleAccessCheck} from './BattleAccessCheck';
 import type {V3ScenarioOptions} from '@/lib/battle/v3/engine';
 import './battle-legibility.css';
 import type {CommanderId} from '@/lib/battle/v3/commanders';
@@ -58,6 +59,7 @@ export function BattleV3PlayerEntry({houseId}:{houseId:string}){
    </div>}
    {!isPending&&!isError&&<Button size="sm" variant="outline" onClick={()=>void refetch()}>Atualizar convocações</Button>}
    {isError&&<p className="battle-note">Convocações indisponíveis; o treinamento livre continua acessível.</p>}
+   <BattleAccessCheck role="player"/>
    <p className="battle-note">Batalhas convocadas V3 são exercícios locais; nenhuma baixa é registrada oficialmente.
     Uma convocação não compartilha turnos entre dispositivos nesta fase.</p>
   </div>
