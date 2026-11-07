@@ -79,7 +79,7 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide,onHouseLoade
    if(result.sourceStatus==='no-military-sheet')
     setMessage('Casa encontrada no catálogo, mas sem ficha militar importada. Não é possível presumir tropas a partir da história.');
    else if(result.sourceStatus==='scenario-roster')
-    setMessage('Unidades da planilha carregadas para batalha. Propostas permanecem simulações; nenhuma compra oficial será criada.');
+    setMessage('Unidades da planilha carregadas para batalha. Propostas permanecem simulações; nenhuma compra oficial será criada. Sem ficha militar completa, posses, qualidades, vantagens e defeitos NÃO concedem bônus automáticos. '+(result.warReadiness?.missingEvidence??[]).join(' '));
    else if(result.sourceStatus==='empty')
     setMessage('A ficha desta Casa existe, mas não há unidades militares cadastradas.');
    else if(!result.units.some(battleRosterEligible))
@@ -214,7 +214,7 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide,onHouseLoade
      <span>Máximo de cinco unidades por lado</span>
     </div>
     {sourceStatus==='scenario-roster'&&<p className="battle-note">
-     Os registros propostos são apenas forças de cenário, sem compra, custo ou baixa oficial.
+     Registros NPC são apenas forças de cenário, sem compra, custo ou baixa oficial. Sem ficha militar completa e posse ativa verificada, nenhum modificador de Casa é considerado fiel ao livro.
     </p>}
    </section>
    <aside className="battle-house-aside">

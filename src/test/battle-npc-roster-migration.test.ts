@@ -2,7 +2,7 @@ import {describe,it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {makeFictionalStack} from '@/lib/battle/domain/setup';
 import {createV3Game} from '@/lib/battle/v3/engine';
-import {previewImportedNpc,importedNpcBattleStack,isBattleTrainingCopy,
+import {previewImportedNpc,importedNpcBattleStack,importedNpcId,isBattleTrainingCopy,
  battleTrainingSourceKey} from '@/lib/battle/adapters/imported-npc-roster';
 
 const roster={
@@ -25,11 +25,12 @@ describe('Migração dos 483 grupos militares das Casas NPC — somente treino',
  it('cria cópia tática fictícia sem confundi-la com compra operacional',()=>{
   const copy=importedNpcBattleStack(roster,'attacker',{q:0,r:0},'garrison');
   expect(copy.name).toBe('Guarnição treinada');
-  expect(copy.id).toBe('npc-roster-32');
+  expect(copy.id).toBe(importedNpcId(roster));
+  expect(copy.id).toMatch(/^npc-roster-32-[a-z0-9]+$/);
   expect(copy.source.kind).toBe('fictional');
   expect(copy.initialCount).toBe(100);
   expect(isBattleTrainingCopy(copy)).toBe(true);
-  expect(battleTrainingSourceKey(copy)).toBe('npc::npc-roster-32');
+  expect(battleTrainingSourceKey(copy)).toBe('npc::'+importedNpcId(roster));
  });
  it('não permite forjar tipo diverso, navios em terra nem id ficcional livre',()=>{
   expect(()=>importedNpcBattleStack(roster,'attacker',{q:0,r:0},'cavalry'))

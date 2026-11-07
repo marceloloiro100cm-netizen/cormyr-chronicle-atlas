@@ -8,6 +8,7 @@ export type WarSurvivorProposal=Readonly<{
  condition:SurvivorCondition;disorganizations:number;die:number;
  /** Auditável: +1 para Mestre de Armas confirmado pelo Narrador; penalidade por desorganizações adicionais. */
  masterOfArmsBonus:0|1;disorganizationPenalty:number;
+ masterOfArmsSource:'official-house-sheet'|'narrator-scenario'|'none';
  adjusted:number;steps:number|'destroyed';
  /** Consequência da tabela 10-6 sobre a graduação atual, ainda sem aprovação. */
  proposedTraining:WarUnit['training']|'destroyed';
@@ -64,13 +65,20 @@ export function previewWarAftermath(battle:WarBattle,options?:{
   const dieRoll=rollDice(seed,1);seed=dieRoll.nextSeed;
   const die=dieRoll.dice[0]!;
   const condition=postCondition(u);
-  const bonus=options?.masterOfArmsBonus?.[u.id]??0;
+  const approvedHouseBonus=u.source.kind==='house-readonly'?
+   u.source.warEffects?.masterOfArmsSurvivorBonus??0:0;
+  const scenarioBonus=options?.masterOfArmsBonus?.[u.id]??0;
+  // O Mestre de Armas documentado na ficha é aplicado automaticamente;
+  // uma escolha narrativa não pode somá-lo uma segunda vez.
+  const bonus=Math.max(approvedHouseBonus,scenarioBonus) as 0|1;
+  const masterOfArmsSource=approvedHouseBonus?'official-house-sheet' as const:
+   scenarioBonus?'narrator-scenario' as const:'none' as const;
   const disorganizationPenalty=Math.max(0,u.disorganizations-1);
   const rolled=survivorResult(die,condition,u.disorganizations,bonus);
   const projected=projectTraining(u,rolled.steps);
   return {unitId:u.id,unitName:u.name,side:u.side,training:u.training,
    condition,disorganizations:u.disorganizations,die,adjusted:rolled.adjusted,
-   masterOfArmsBonus:bonus,disorganizationPenalty,
+   masterOfArmsBonus:bonus,disorganizationPenalty,masterOfArmsSource,
    steps:rolled.steps,proposedTraining:projected.training,
    extraRanksAfterElite:projected.extraRanks,requiresNarratorApproval:true};
  });

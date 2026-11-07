@@ -50,7 +50,7 @@ export function BattleGotSourcePicker({onChoose,chosenSlots}:{
   try{
    const response=await fetchUnits({data:{houseId:id}});
    if(response.sourceStatus!=='recorded'){
-    setError('Esta Casa não possui ficha militar oficial completa. O modo do livro não aceita conversão dos perfis do Adaptado.');
+    setError('Esta Casa não possui ficha militar completa para o motor do livro. '+(response.warReadiness?.missingEvidence??[]).join(' '));
     return;
    }
    setRoster(response.units);
@@ -132,6 +132,20 @@ export function BattleGotSourcePicker({onChoose,chosenSlots}:{
     <strong>{s.label} · {chosenSlots[s.id]!.name}</strong>
     <span>{chosenSlots[s.id]!.health}/{chosenSlots[s.id]!.maxHealth} Saúde ·
      Defesa {chosenSlots[s.id]!.defense} · Disciplina {chosenSlots[s.id]!.discipline}</span>
+    {chosenSlots[s.id]!.source.warEffects&&<details className="got-house-effects-audit">
+     <summary>Proveniência de efeitos da Casa</summary>
+     <p>Posse Mestre de Armas: +{chosenSlots[s.id]!.source.warEffects!.masterOfArmsSurvivorBonus}
+      em sobreviventes; cálculo automático confirmado pela ficha.</p>
+     <p>Defesa de fortificação pendente de posição:
+      +{chosenSlots[s.id]!.source.warEffects!.deferredFortDefense};
+      armadura condicional +{chosenSlots[s.id]!.source.warEffects!.deferredFortArmor}.
+      Esses valores não foram somados à Defesa base.</p>
+     <ul>{chosenSlots[s.id]!.source.warEffects!.automatic.map(e=>
+      <li key={e.holdingId}>{e.description}</li>)}</ul>
+     <strong>Condições pendentes do Narrador</strong>
+     <ul>{chosenSlots[s.id]!.source.warEffects!.narratorReview.map((item,i)=>
+      <li key={i}>{item}</li>)}</ul>
+    </details>}
     <Button variant="outline" onClick={()=>onChoose(s.id,null)}>Voltar à unidade-modelo</Button>
    </div>)}
   </div>

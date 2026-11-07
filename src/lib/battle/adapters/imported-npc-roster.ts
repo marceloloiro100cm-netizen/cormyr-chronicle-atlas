@@ -15,8 +15,17 @@ export const importedNpcUnitSchema=z.object({
  source_row:z.number().int().min(0),
 }).strict();
 export type ImportedNpcUnit=z.infer<typeof importedNpcUnitSchema>;
-export const importedNpcId=(unit:Pick<ImportedNpcUnit,'source_row'>)=>
- 'npc-roster-'+unit.source_row;
+/** Antigos IDs usavam apenas source_row e colidiam entre Casas NPC. A nova
+ * identidade incorpora Casa+chave de origem sem expor nomes ou conteúdo da ficha.
+ * FNV-1a serve como chave determinística de UI (não é checksum de segurança).
+ */
+export const importedNpcId=(unit:Pick<ImportedNpcUnit,'house_id'|'source_key'|'source_row'>)=>{
+ let hash=2166136261;
+ for(const char of unit.house_id+'::'+unit.source_key){
+  hash=Math.imul(hash^char.charCodeAt(0),16777619)>>>0;
+ }
+ return 'npc-roster-'+unit.source_row+'-'+hash.toString(36);
+};
 
 /** Mantém somente tipos/quantidades da planilha, aplicando os efetivos
  * padrão já usados na criação de unidades do site, sem nivelar Casas.
@@ -47,7 +56,7 @@ export function importedNpcBattleStack(row:ImportedNpcUnit,side:Side,position:He
  */
 export function isBattleTrainingCopy(stack:BattleStack):boolean{
  return stack.source.kind==='house-readonly'||
-  (stack.source.kind==='fictional'&&/^npc-roster-\d+$/.test(stack.id));
+  (stack.source.kind==='fictional'&&/^npc-roster-\d+(?:-[a-z0-9]+)?$/.test(stack.id));
 }
 export function battleTrainingSourceKey(stack:BattleStack):string{
  return stack.source.kind==='house-readonly'?
