@@ -107,6 +107,7 @@ export function executeWarHeroAction(
  if(battle.phase!=='heroes-first'&&battle.phase!=='heroes-second')
   throw new Error('As ações de heróis só ocorrem nos passos 6 e 8.');
  const hero=battle.heroes.find(h=>h.id===input.heroId);
+ if(battle.pendingPersonalDamage)throw new Error('Resolva o dano pessoal pendente.');
  if(!hero||!hero.active||hero.usedActions>=5||hero.lockedUntilRound===battle.round)
   throw new Error('Este herói não tem ações individuais disponíveis.');
  assertPersonalTurn(battle,hero.id);
