@@ -35,9 +35,9 @@ export type WarHero=Readonly<{
  squadId?:string;meleeWeapon?:WarPersonalWeapon;rangedWeapon?:WarPersonalWeapon;
  rangedLoaded?:boolean;meleeWeaponBroken?:boolean;rangedWeaponBroken?:boolean;
  stunnedNextTurn?:boolean;
- grabbedBy?:string;grapplingTargetId?:string;
- entangledBy?:string;entanglingTargetId?:string;
- impaledBy?:string;impalingTargetId?:string;meleeWeaponDisarmed?:boolean;
+ grabbedBy?:string|undefined;grapplingTargetId?:string|undefined;
+ entangledBy?:string|undefined;entanglingTargetId?:string|undefined;
+ impaledBy?:string|undefined;impalingTargetId?:string|undefined;meleeWeaponDisarmed?:boolean;
  mount?:WarPersonalMount;mounted?:boolean;mountControlledTurn?:number|undefined;
  mountMovedTurn?:number;
  pinnedByMount?:boolean;prone?:boolean;
