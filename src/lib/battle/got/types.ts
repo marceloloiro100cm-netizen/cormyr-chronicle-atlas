@@ -8,7 +8,7 @@ export type WarSide='attacker'|'defender';
 export type WarPosition=Readonly<{x:number;y:number}>;
 export type WarCondition='organized'|'disorganized'|'routed'|'destroyed'|'surrendered'|'escaped';
 export type WarRange='none'|'short'|'long';
-export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'surrender'|'formation'|'turn'|'reverse'|'suppress'|'probe'|'counter-charge'|'sabotage'|'ambush'|'join';
+export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'surrender'|'formation'|'turn'|'reverse'|'suppress'|'probe'|'push'|'counter-charge'|'sabotage'|'ambush'|'join';
 export type WarOrder=Readonly<{
  kind:WarOrderKind;
  targetId?:string;
