@@ -5,7 +5,8 @@ import type {WarTerrainTile,WarWeather,WarVisibility} from './terrain';
 import {WAR_FORMATIONS,formationAllowed,formationMovement,angleAttackBonus,attackAngle} from './formations';
 import {WAR_SIEGE_CATALOG,warSiegeDamage} from './siege';
 import type {WarSiegeEngine} from './siege';
-import {fortForUnit,fortDefense,validateWarForts,sabotageFortification} from './fortifications';
+import {fortForUnit,fortDefense,validateWarForts,sabotageFortification,damageWarFortification} from './fortifications';
+import {igniteWarUnit,advanceWarFire} from './siege-fire';
 import type {WarFortification} from './fortifications';
 import {executeAdvancedWarOrder,WAR_ADVANCED_ORDER_DIFFICULTY} from './advanced-orders';
 import {validateWarHeroes,heroUnitDefenseBonus,heroUnitBonusDice,applyDamageToEmbeddedHeroes} from './heroes';
@@ -690,8 +691,12 @@ export function issueWarOrder(battle:WarBattle,input:{
 }
 /** Rendição: a ordem geral requer um teste para cada unidade ativa. */
 /** Passo 5: uma ordem para disparar até Guerra máquinas, cada engenheiro com até quatro. */
+/** Book phase 5. A volley can target a unit or a structural fortification.
+ * Structural durability is explicitly a game-digital approximation.
+ */
 export function fireWarSiegeVolley(battle:WarBattle,input:{
- commanderId:string;weaponIds:readonly string[];targetId:string;
+ commanderId:string;weaponIds:readonly string[];
+ targetId?:string;fortId?:string;
 }):WarBattle{
  if(battle.phase!=='siege')throw new Error('A fase de cerco não está ativa.');
  const commander=battle.commanders.find(c=>c.id===input.commanderId&&c.active&&c.role==='commander');
@@ -700,8 +705,15 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
  if(battle.siegeCompleted[commander.side])throw new Error('Este lado já executou a fase de cerco.');
  if(!input.weaponIds.length||new Set(input.weaponIds).size!==input.weaponIds.length||
   input.weaponIds.length>commander.warfare)throw new Error('O disparo exige até Guerra máquinas distintas.');
- const target=battle.units.find(u=>u.id===input.targetId&&u.side!==commander.side&&onBoard(u));
- if(!target)throw new Error('Alvo de cerco inimigo indisponível.');
+ if(Boolean(input.targetId)===Boolean(input.fortId))
+  throw new Error('Escolha exatamente uma unidade ou fortificação como alvo.');
+ const target=input.targetId?battle.units.find(u=>
+  u.id===input.targetId&&u.side!==commander.side&&onBoard(u)):undefined;
+ const fort=input.fortId?battle.fortifications.find(f=>
+  f.id===input.fortId&&f.side!==commander.side&&!f.breached&&
+  f.structuralHealth!==0):undefined;
+ if(!target&&!fort)throw new Error('Alvo de cerco inimigo indisponível.');
+ const position=target?.position??fort!.cells[0]!;
  for(const id of input.weaponIds){
   const weapon=battle.siege.find(w=>w.id===id&&w.side===commander.side&&w.health>0);
   if(!weapon)throw new Error('Máquina não pertence ao exército ativo.');
@@ -710,7 +722,7 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
    throw new Error('Sem engenheiro disponível para a máquina.');
   if(weapon.lastFiredRound!==null&&battle.round-weapon.lastFiredRound<2)
    throw new Error('Máquina precisa aguardar uma rodada completa para recarregar.');
-  if(distance(weapon.position,target.position)*10>WAR_SIEGE_CATALOG[weapon.kind].rangeMetres)
+  if(distance(weapon.position,position)*10>WAR_SIEGE_CATALOG[weapon.kind].rangeMetres)
    throw new Error('Alvo fora do alcance de cerco.');
  }
  let next:WarBattle={...battle,ordersRemaining:{
@@ -722,17 +734,39 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
   const profile=WAR_SIEGE_CATALOG[weapon.kind];
   const rank=engineer.ability.warfare??2;
   const roll=rollDice(next.seed,rank,0,profile.engineerPenaltyDice);
-  const currentTarget=next.units.find(u=>u.id===input.targetId)!;
-  const degrees=degreesOfSuccess(roll.total,currentTarget.defense);
+  const currentTarget=target?next.units.find(u=>u.id===target.id):undefined;
+  const currentFort=fort?next.fortifications.find(f=>f.id===fort.id):undefined;
+  if(!currentTarget&&!currentFort)break;
+  if(currentFort&&(currentFort.breached||currentFort.structuralHealth===0))break;
+  if(currentTarget&&!onBoard(currentTarget))break;
+  const defenderFort=currentTarget?fortForUnit(next.fortifications,currentTarget):null;
+  const difficulty=currentTarget?
+   currentTarget.defense+(defenderFort?fortDefense(defenderFort):0):
+   12+fortDefense(currentFort!);
+  const degrees=degreesOfSuccess(roll.total,difficulty);
   const payload=warSiegeDamage(weapon);
-  const damage=Math.max(0,payload.base*degrees-(payload.ignoresArmor?0:currentTarget.armor));
+  const damage=currentTarget?
+   Math.max(0,payload.base*degrees-
+    (payload.ignoresArmor?0:currentTarget.armor)):0;
   next={...next,seed:roll.nextSeed,siege:next.siege.map(w=>
    w.id===weapon.id?{...w,lastFiredRound:next.round}:w)};
-  next=log(next,'siege',weapon.name+' disparou contra '+currentTarget.name+': Guerra '+
-   roll.total+' vs Defesa '+currentTarget.defense+', '+degrees+' grau(s), '+damage+' dano.',
-   commander.side,{roll:roll.dice,total:roll.total,difficulty:currentTarget.defense,degrees});
-  if(degrees>0&&damage>0)next=applyDamage(next,currentTarget,damage,weapon.name);
-  if(!next.units.some(u=>u.id===target.id&&onBoard(u)))break;
+  const label=currentTarget?.name??currentFort!.name;
+  next=log(next,'siege',weapon.name+' disparou contra '+label+': Guerra '+
+   roll.total+' vs Defesa '+difficulty+', '+degrees+' grau(s)'+
+   (currentTarget?', '+damage+' dano.':'.'),commander.side,{
+    roll:roll.dice,total:roll.total,difficulty,degrees});
+  if(currentTarget&&degrees>0){
+   if(damage>0)next=applyDamage(next,currentTarget,damage,weapon.name);
+   if(weapon.ammo==='wildfire')
+    next=igniteWarUnit(next,currentTarget.id,weapon.name,7,2);
+  }else if(currentFort&&degrees>0){
+   const hit=damageWarFortification(currentFort,payload.base*degrees);
+   next={...next,fortifications:next.fortifications.map(f=>
+    f.id===currentFort.id?hit.fort:f)};
+   next=log(next,hit.breached?'fort-breached':'fort-damage',
+    weapon.name+' causou '+hit.damage+' dano estrutural em '+
+    currentFort.name+(hit.breached?' (brecha aberta).':'.'),commander.side);
+  }
  }
  return completeSiegeSide(next,commander.side);
 }
@@ -835,6 +869,7 @@ export function advanceWarRound(battle:WarBattle):WarBattle{
  for(const unit of next.units.filter(u=>u.condition==='routed')){
   next=retreatStep(next,unit,movementCells(unit,true),true);
  }
+ next=advanceWarFire(next,applyDamage);
  next=checkVictory(next);
  if(next.phase==='finished')return next;
  next={...next,round:next.round+1,
