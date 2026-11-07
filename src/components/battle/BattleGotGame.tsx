@@ -242,7 +242,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     if(!victim)throw new Error('Selecione uma unidade inimiga.');
     setBattle(executeWarHeroAttackUnit(battle,{heroId:hero.id,unitId:victim.id,
      ranged:heroRanged,
-     ...(!heroRanged?{twoHandedGrip:heroGripTwoHands,powerBonusDice:heroPowerBonus}:{}),
+     ...(!heroRanged?{twoHandedGrip:heroGripTwoHands}:{}),
+     ...(!heroRanged||hero.rangedWeapon?.powerful?{powerBonusDice:heroPowerBonus}:{}) ,
     }));setError('');return;
    }
    const action:WarHeroAction={
@@ -276,7 +277,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     ...(['personal-attack','personal-cautious-attack',
       'personal-reckless-attack','personal-charge'].includes(heroAction)&&
       (!heroRanged||['personal-reckless-attack','personal-charge'].includes(heroAction))?
-      {twoHandedGrip:heroGripTwoHands,powerBonusDice:heroPowerBonus}:{}),
+      {twoHandedGrip:heroGripTwoHands,powerBonusDice:heroPowerBonus}:
+      ['personal-attack','personal-cautious-attack'].includes(heroAction)&&
+      hero.rangedWeapon?.powerful?{powerBonusDice:heroPowerBonus}:{}),
    };
    setBattle(executeWarHeroAction(battle,{heroId:hero.id,action}));
    setError('');
@@ -425,10 +428,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        <option key={w.id} value={w.id}>{w.label}</option>)}
      </select>
     </label>
-    <label>Arma secundária Mão Inábil
+    <label>Arma secundária / escudo Defensivo
      <select value={modelOffhand} onChange={e=>setModelOffhand(e.target.value as 'none'|WarPersonalWeaponId)}>
       <option value="none">Nenhuma</option>
-      {Object.values(WAR_PERSONAL_WEAPONS).filter(w=>Boolean(w.offhandDamageBonus)).
+      {Object.values(WAR_PERSONAL_WEAPONS).filter(w=>w.family==='melee'&&
+       Boolean(w.offhandDamageBonus||w.defensiveOffhandBonus)).
        map(w=><option key={w.id} value={w.id}>{w.label} ·
         +{w.offhandDamageBonus??0} dano /
         +{w.defensiveOffhandBonus??0} Defesa
@@ -801,9 +805,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         Adaptável · usar as duas mãos (+1 dano básico)
        </label>}
       {['personal-attack','personal-cautious-attack',
-       'personal-reckless-attack','personal-charge'].includes(heroAction)&&
-       (heroAction!=='personal-cautious-attack'||!heroRanged)&&
-       (battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.meleeWeapon?.powerful&&
+       'personal-reckless-attack','personal-charge','personal-attack-unit'].includes(heroAction)&&
+       (heroRanged&&!['personal-charge','personal-reckless-attack'].includes(heroAction)?
+        (battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.rangedWeapon?.powerful:
+        (battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.meleeWeapon?.powerful)&&
        <label>Dados bônus investidos em Força (Poderosa)
         <input type="number" min={0}
          max={(battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.strengthBonusDice??0}
