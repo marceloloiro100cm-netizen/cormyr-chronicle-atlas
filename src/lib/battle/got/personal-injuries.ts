@@ -1,6 +1,7 @@
 import type {WarBattle,WarEvent} from './types';
 import type {WarHero} from './heroes';
 import {resumePersonalCounterattack,resumePersonalTrample,resumePersonalSplit} from './personal-combat';
+import {releaseBrokenPersonalGrapples} from './personal-links';
 
 /** Capítulo 9: decisões voluntárias de mitigação, mantidas fora das fichas oficiais. */
 export type PersonalMitigationChoice=Readonly<{
@@ -73,7 +74,7 @@ function applyPersonalDamage(battle:WarBattle,input:WarPendingPersonalDamage,
   commanders:fallen&&hero.commanderId?battle.commanders.map(c=>
    c.id===hero.commanderId?{...c,active:false}:c):battle.commanders,
  };
- return log(next,'personal-damage',input.actorName+' causou '+input.damage+
+ return log(releaseBrokenPersonalGrapples(next),'personal-damage',input.actorName+' causou '+input.damage+
   ' de dano potencial a '+hero.name+'; mitigação: '+choice.kind+
   (choice.kind==='wounds'?' ('+(choice.woundCount??0)+' ferimento(s))':'')+
   '. Saúde final '+updated.health+'/'+updated.maxHealth+
