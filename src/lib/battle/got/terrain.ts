@@ -49,7 +49,8 @@ export function terrainEffect(tile:WarTerrainTile):WarTerrainEffect{
  const effect=WAR_TERRAIN[tile.terrain];
  return {
   ...effect,
-  blocked:effect.blocked&&!((tile.bridge&&tile.terrain==='river')),
+  blocked:effect.blocked&&!(tile.bridge&&tile.terrain==='river'),
+  water:effect.water&&!(tile.bridge&&tile.terrain==='river'),
   slow:tile.road?(effect.slow===2?1:0):tile.bridge&&tile.terrain==='river'?1:effect.slow,
   noCavalry:effect.noCavalry&&!(tile.road&&tile.terrain==='mountain'),
  };
