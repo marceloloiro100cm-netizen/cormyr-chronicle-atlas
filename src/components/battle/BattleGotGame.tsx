@@ -1065,7 +1065,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <option value="north">Norte</option><option value="east">Leste</option>
         <option value="south">Sul</option><option value="west">Oeste</option>
        </select></label>}
-      {(legalKind==='move'||(legalKind==='ready'&&readyReaction==='move'))&&<>
+      {(legalKind==='move'||legalKind==='lightning-attack'||legalKind==='trample'||
+       (legalKind==='ready'&&readyReaction==='move'))&&<>
        <label>Coluna X <input type="number" min={0} max={battle.width-1} value={coord.x}
         onChange={e=>setCoord(v=>({...v,x:Number(e.target.value)}))}/></label>
        <label>Linha Y <input type="number" min={0} max={battle.height-1} value={coord.y}
