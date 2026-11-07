@@ -5,6 +5,8 @@ import type {WarHero} from './heroes';
 import {queuePersonalDamage} from './personal-injuries';
 import {effectivePersonalArmor} from './personal-weapons';
 import {applyPersonalWeaponQualities} from './personal-weapon-effects';
+import {applyPersonalControlHit,resolvePersonalControlAction} from './personal-control';
+import type {ControlActionKind} from './personal-control';
 import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
 import {applyPersonalMountDamage} from './personal-mounts';
 
@@ -15,13 +17,18 @@ export type PersonalWarAction=Readonly<{
   'personal-reload'|'personal-mount'|'personal-dismount'|'personal-control-mount'|
   'personal-counterattack'|'personal-attack-mount'|'personal-trample'|
   'personal-free-mount'|'personal-stand'|'personal-aim'|
-  'personal-cautious-attack'|'personal-reckless-attack';
+  'personal-cautious-attack'|'personal-reckless-attack'|
+  'personal-release-grapple'|'personal-escape-grapple'|
+  'personal-escape-entangle'|'personal-release-impale'|
+  'personal-remove-impale'|'personal-split-attack';
  targetHeroId?:string;
  ranged?:boolean;
  vsCharge?:boolean;
  toMetres?:WarPosition;
  escapeUsing?:'agility'|'athletics';
  twoHandedGrip?:boolean;powerBonusDice?:number;stunHit?:boolean;
+ grappleHit?:boolean;splitTargets?:readonly string[];
+ splitRanks?:readonly number[];splitBonuses?:readonly number[];
 }>;
 export const personalPosition=(hero:WarHero):WarPosition=>
  hero.personalPosition??{x:hero.position.x*10+5,y:hero.position.y*10+5};
@@ -32,7 +39,7 @@ export function personalMovement(hero:WarHero):number{
   return hero.mount.movement;
  const athletics=hero.athletics??3;
  const base=athletics<=1?3:4;
- return Math.max(1,base+Math.floor((hero.runningBonusDice??0)/2)-
+ return hero.entangledBy?1:Math.max(1,base+Math.floor((hero.runningBonusDice??0)/2)-
   Math.floor((hero.bulk??0)/2));
 }
 export function spendPersonalAction(hero:WarHero,weight:'major'|'minor'):WarHero{
@@ -57,6 +64,8 @@ const changeHero=(battle:WarBattle,hero:WarHero):WarBattle=>({
  ...battle,heroes:battle.heroes.map(h=>h.id===hero.id?hero:h),
 });
 function moveFine(battle:WarBattle,hero:WarHero,to:WarPosition,max:number):WarHero{
+ if(hero.grabbedBy||hero.grapplingTargetId||hero.impaledBy)
+  throw new Error('Agarrado ou empalado: liberte-se antes de se mover.');
  if(!Number.isInteger(to.x)||!Number.isInteger(to.y)||to.x<0||to.y<0||
   to.x>=battle.width*10||to.y>=battle.height*10)
   throw new Error('Destino pessoal fora da área de batalha.');
@@ -80,12 +89,24 @@ function attackHero(
  battle:WarBattle,actor:WarHero,target:WarHero,ranged:boolean,
  options:{charge?:boolean;asReaction?:boolean;counterCharge?:boolean;
   cautious?:boolean;reckless?:boolean;
-  twoHandedGrip?:boolean;powerBonusDice?:number;stunHit?:boolean}={},
+  twoHandedGrip?:boolean;powerBonusDice?:number;stunHit?:boolean;
+  grappleHit?:boolean;splitRank?:number;splitBonus?:number}={},
 ):WarBattle{
  const from=personalPosition(actor),to=personalPosition(target);
  const dist=personalDistance(from,to);
  const reach=actor.meleeWeapon?.reachMetres??1;
  const selectedWeapon=ranged?actor.rangedWeapon:actor.meleeWeapon;
+ if(!ranged&&actor.meleeWeaponDisarmed)
+  throw new Error('A arma foi desarmada por Empalar e não pode atacar.');
+ if(actor.grabbedBy&&(!selectedWeapon?.grapple&&!selectedWeapon?.shortBlade||ranged))
+  throw new Error('Agarrado: ataque apenas com Briga ou lâmina curta.');
+ if(actor.grapplingTargetId&&(target.id!==actor.grapplingTargetId||
+  !selectedWeapon?.grapple))
+  throw new Error('Agarrando: ataque apenas o alvo seguro com arma de Agarrar.');
+ if(actor.entanglingTargetId&&selectedWeapon?.entangle)
+  throw new Error('A arma de Enredar está prendendo outro alvo.');
+ if(actor.impalingTargetId&&selectedWeapon?.impale)
+  throw new Error('A arma de Empalar está presa no alvo anterior.');
  if(ranged?actor.rangedWeaponBroken:actor.meleeWeaponBroken)
   throw new Error('A arma está quebrada e não pode ser utilizada.');
  if(options.stunHit&&(!selectedWeapon?.stunning||ranged))
@@ -124,6 +145,9 @@ function attackHero(
      attackerId:actor.id,defenderId:reactor.id,ranged,charge:Boolean(options.charge),
      cautious:Boolean(options.cautious),reckless:Boolean(options.reckless),
      ...(options.stunHit!==undefined?{stunHit:options.stunHit}:{}),
+     ...(options.grappleHit!==undefined?{grappleHit:options.grappleHit}:{}),
+     ...(options.splitRank!==undefined?{splitRank:options.splitRank}:{}),
+     ...(options.splitBonus!==undefined?{splitBonus:options.splitBonus}:{}),
      ...(options.twoHandedGrip!==undefined?{twoHandedGrip:options.twoHandedGrip}:{}),
      ...(options.powerBonusDice!==undefined?{powerBonusDice:options.powerBonusDice}:{}),
     }};
@@ -143,7 +167,8 @@ function attackHero(
  const rangePenalty=ranged?Math.min(15,Math.max(0,Math.ceil((dist-effectiveRange)/
   (actor.rangedRange==='long'?100:10)))):0;
  const weapon=ranged?actor.rangedWeapon:actor.meleeWeapon;
- const availableBonus=(ranged?actor.rangedBonusDice:actor.meleeBonusDice)??0;
+ const availableBonus=options.splitBonus??(
+  (ranged?actor.rangedBonusDice:actor.meleeBonusDice)??0);
  const requiredBonus=weapon?.trainingBonusDice??0;
  const trainingPenalty=Math.max(0,requiredBonus-availableBonus);
  const usableBonus=Math.max(0,availableBonus-requiredBonus);
@@ -154,26 +179,27 @@ function attackHero(
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty;
  const mountedBonus=!ranged&&actor.mounted&&actor.mount?.health&&
   actor.mount.health>0&&!target.mounted?1:0;
- const bonus=usableBonus+mountedBonus+(target.prone&&!ranged?1:0);
- const rank=Math.min(15,(ranged?actor.marksmanship:actor.fighting)+
+ const bonus=usableBonus+mountedBonus+(target.prone&&!ranged?1:0)+
+  (options.splitRank&&weapon?.fast?1:0);
+ const rank=Math.min(15,(options.splitRank??(ranged?actor.marksmanship:actor.fighting))+
   (options.reckless&&!ranged?1:0));
  const roll=rollPersonalWithFate(battle.seed,actor,rank,
   Math.min(15,bonus+(actor.passBonusDice??0)+(actor.aimBonusDice??0)),
   Math.min(15,totalPenalty));
- const total=Math.max(0,roll.total-(actor.wounds??0));
+ const total=Math.max(0,roll.total-(actor.wounds??0)-(actor.entangledBy?5:0));
  const difficulty=Math.max(1,(target.dodgeDefense??target.defense)+
   (target.cautiousDefenseBonus??0)-(target.recklessDefensePenalty??0)-
-  (target.pinnedByMount?5:0));
+  (target.pinnedByMount?5:0)-(target.grabbedBy?5:0));
  const degrees=degreesOfSuccess(total,difficulty);
  const stationaryMountBonus=!ranged&&actor.mounted&&actor.mount?.trainedForWar&&
   actor.mount.health>0&&actor.mountMovedTurn!==actor.usedActions?2:0;
- const base=ranged?actor.rangedDamage:
+ const base=weapon?.noDamage?0:ranged?actor.rangedDamage:
   actor.meleeDamage+(options.charge?2:0)+stationaryMountBonus+
   (options.counterCharge?2:0)+
   (!ranged&&selectedWeapon?.adaptable&&options.twoHandedGrip?1:0)+invested;
  const stunApplied=Boolean(options.stunHit&&selectedWeapon?.stunning&&degrees>=2);
  const damageDegrees=degrees-(stunApplied?1:0);
- const damage=damageDegrees?Math.max(0,base*damageDegrees-
+ const damage=damageDegrees&&base?Math.max(0,base*damageDegrees-
   effectivePersonalArmor(target.armor,ranged?actor.rangedWeapon:actor.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
   heroes:battle.heroes.map(h=>h.id===actor.id?{
@@ -185,6 +211,10 @@ function attackHero(
   targetHeroId:target.id,damage,source:'personal',cruel:weapon?.cruel??false});
  next=applyPersonalWeaponQualities(next,{
   actorId:actor.id,targetId:target.id,weapon,ranged,degrees,stunUsed:stunApplied,
+ });
+ next=applyPersonalControlHit(next,{
+  actorId:actor.id,targetId:target.id,weapon,degrees,total,
+  grappleHit:options.grappleHit,
  });
  const defeated=next.heroes.find(h=>h.id===target.id)?.active===false;
  next=log(next,'personal-attack',actor.name+' atacou '+target.name+
@@ -215,6 +245,9 @@ export function resumePersonalCounterattack(battle:WarBattle):WarBattle{
   asReaction:true,charge:pending.charge,
   cautious:Boolean(pending.cautious),reckless:Boolean(pending.reckless),
   ...(pending.stunHit!==undefined?{stunHit:pending.stunHit}:{}),
+  ...(pending.grappleHit!==undefined?{grappleHit:pending.grappleHit}:{}),
+  ...(pending.splitRank!==undefined?{splitRank:pending.splitRank}:{}),
+  ...(pending.splitBonus!==undefined?{splitBonus:pending.splitBonus}:{}),
   ...(pending.twoHandedGrip!==undefined?{twoHandedGrip:pending.twoHandedGrip}:{}),
   ...(pending.powerBonusDice!==undefined?{powerBonusDice:pending.powerBonusDice}:{}),
  });
