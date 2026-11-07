@@ -3,7 +3,7 @@ import type {WarPosition,WarSide} from './types';
 /** Equipamentos do capítulo 10, pp. 228–230. Munição especial não é importada automaticamente. */
 export type WarSiegeKind='catapult-small'|'catapult-medium'|'catapult-large'|
  'fire-pot'|'scorpion'|'mangonel'|'trebuchet';
-export type WarSiegeAmmo='stone'|'oil';
+export type WarSiegeAmmo='stone'|'oil'|'wildfire';
 export type WarSiegeProfile=Readonly<{
  kind:WarSiegeKind;label:string;rangeMetres:number;movementMetres:number;
  maxHealth:number;armor:number;damage:number;ignoreArmor:boolean;
@@ -44,14 +44,19 @@ export function makeModelSiege(input:{
  const profile=WAR_SIEGE_CATALOG[input.kind];
  if(!profile||!input.id.trim()||!input.engineerId.trim())
   throw new Error('Máquina de cerco inválida.');
- if(input.ammo==='oil'&&!input.kind.startsWith('catapult'))
-  throw new Error('Munição de óleo apenas para catapultas no modelo.');
+ if(input.ammo&&input.ammo!=='stone'&&
+  !input.kind.startsWith('catapult')&&input.kind!=='fire-pot')
+  throw new Error('Munição especial exige catapulta ou cospe-fogo.');
+ if(input.kind==='fire-pot'&&input.ammo==='stone')
+  throw new Error('Cospe-fogo exige óleo ou fogo selvagem.');
  return {id:input.id,name:profile.label,kind:input.kind,side:input.side,
-  position:{...input.position},engineerId:input.engineerId,ammo:input.ammo??'stone',
+  position:{...input.position},engineerId:input.engineerId,
+  ammo:input.ammo??(input.kind==='fire-pot'?'oil':'stone'),
   health:profile.maxHealth,lastFiredRound:null,source:{kind:'model'}};
 }
 export function warSiegeDamage(engine:WarSiegeEngine):{base:number;ignoresArmor:boolean}{
  const profile=WAR_SIEGE_CATALOG[engine.kind];
  if(!profile)throw new Error('Máquina de cerco desconhecida.');
- return {base:profile.damage,ignoresArmor:profile.ignoreArmor||engine.ammo==='oil'};
+ return {base:engine.ammo==='wildfire'?7:profile.damage,
+  ignoresArmor:profile.ignoreArmor||engine.ammo==='oil'||engine.ammo==='wildfire'};
 }
