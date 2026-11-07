@@ -25,7 +25,7 @@ describe('Guerra do livro — motor independente e rolagens',()=>{
   expect(roll.dice).toHaveLength(6);
   expect(roll.kept).toHaveLength(3);
   expect(roll.kept.every(v=>v>=1&&v<=6)).toBe(true);
-  const kept=roll.dice.toSorted((a,b)=>b-a).slice(0,4).slice(0,3);
+  const kept=roll.dice.slice().sort((a,b)=>b-a).slice(0,4).slice(0,3);
   expect(roll.kept).toEqual(kept);
   expect(rollDice(123456,4,2,1)).toEqual(roll);
  });
