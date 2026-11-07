@@ -37,7 +37,10 @@ export type V3ScenarioOptions=Readonly<{
 }>;
 const sideList=['attacker','defender'] as const;
 const LINE=new Set(['infantry','garrison','personal-guard','crusaders','mercenaries','levies']);
-export function createV3Game(options:V3ScenarioOptions):V3Game{
+export function createV3Game(options:V3ScenarioOptions,officialCopies:readonly BattleStack[]=[]):V3Game{
+ if(officialCopies.some(s=>s.source.kind!=='house-readonly'))
+  throw new Error('Somente snapshots oficiais autorizados pelo Narrador podem ser importados.');
+ if(officialCopies.length>10)throw new Error('Limite de dez agrupamentos de origem.');
  const map=createScenario(options.scenario);
  const roster:BattleStack[]=[];
  for(const side of sideList){
@@ -45,6 +48,18 @@ export function createV3Game(options:V3ScenarioOptions):V3Game{
   const deployment=map.deployment[side].filter(h=>tileAt(map,h)?.terrain!=='rock')
     .sort((a,b)=>a.r-b.r||a.q-b.q);
   const taken=new Set<string>();
+  const copies=officialCopies.filter(s=>s.side===side);
+  if(copies.length>5)throw new Error('Limite de cinco unidades importadas por lado.');
+  if(copies.length){
+   copies.forEach((copy,index)=>{
+    const desired=[1,5,9,13,17][index]??index;
+    const hex=deployment[desired]??deployment.find(h=>!taken.has(hexKey(h)));
+    if(!hex||taken.has(hexKey(hex)))throw new Error('Mapa sem espaço para unidades importadas.');
+    taken.add(hexKey(hex));
+    roster.push({...copy,id:side+'-source-'+index,side,position:hex});
+   });
+   continue;
+  }
   house.units.forEach((unit,index)=>{
    const desired=[1,5,9,13][index]??index;
    const hex=deployment[desired]??deployment.find(h=>!taken.has(hexKey(h)));
