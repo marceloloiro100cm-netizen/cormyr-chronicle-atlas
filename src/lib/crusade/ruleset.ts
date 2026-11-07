@@ -18,7 +18,7 @@ const cover=z.object({forest:nonnegative,hill:nonnegative}).strict();
 export const crzRulesetSchema=z.object({
  id:crzPresetIdSchema,rulesVersion:z.literal(CRZ_RULES_VERSION),
  schemaVersion:z.literal(CRZ_SCHEMA_VERSION),
- grid:z.object({kind:z.literal('hex'),sizes:z.array(z.tuple([positive,positive])).length(2)}).strict(),
+ grid:z.object({kind:z.enum(['hex','square']),sizes:z.array(z.tuple([positive,positive])).length(2)}).strict(),
  army:z.object({maxStacks:positive}).strict(),
  stack:z.object({maxCount:positive,maxCountBySize:sizeLimits}).strict(),
  battle:z.object({maxRounds:positive,stalemateRounds:positive}).strict(),
@@ -85,17 +85,17 @@ const common={
  infirmary:{enabled:false},ability:{rechargeUsesPerBattle:2},defend:{acBonus:4},
  army:{maxStacks:7},
 };
-function rawPreset(id:CrzPresetId):unknown{
- if(id==='CRZ-5E')return {...common,id,
+function rawPreset(id:CrzPresetId,grid:'hex'|'square'='hex'):unknown{
+ if(id==='CRZ-5E')return {...common,grid:{...common.grid,kind:grid},id,
   stack:{maxCount:1000,maxCountBySize:{T:1000,S:1000,M:1000,L:400,H:100,G:25}},
  };
- if(id==='CRZ-WOTR')return {...common,id,
+ if(id==='CRZ-WOTR')return {...common,grid:{...common.grid,kind:grid},id,
   battle:{maxRounds:40,stalemateRounds:2},
   hit:{...common.hit,model:'wotr-linear',pMaxBP:null,critEnabled:false,critBP:0},
   damage:{...common.damage,resolution:'wotr',overkill:'carry',mitigation:'flat-dr'},
   morale:{...common.morale,routByCasualties:false},infirmary:{enabled:true},
  };
- return {...common,id,
+ return {...common,grid:{...common.grid,kind:grid},id,
   army:{maxStacks:5},initiative:{formula:'pte',tiebreak:'pte'},
   wait:{order:'fifo',maxPerRound:1},defend:{acBonus:2},
   extraTurn:{maxPerRound:0},
@@ -112,8 +112,8 @@ function rawPreset(id:CrzPresetId):unknown{
  };
 }
 /** Entrada imutável na fronteira; não expõe um preset mutável compartilhado. */
-export function crzPreset(id:CrzPresetId):CrzRuleset{
- return crzRulesetSchema.parse(rawPreset(id));
+export function crzPreset(id:CrzPresetId,grid:'hex'|'square'='hex'):CrzRuleset{
+ return crzRulesetSchema.parse(rawPreset(id,grid));
 }
 function canonical(value:unknown):string{
  if(value===null)return 'null';
@@ -137,9 +137,15 @@ export const CRZ_PRESET_IDS=crzPresetIdSchema.options;
 export const CRZ_APPROVED_HASHES=Object.freeze(
  Object.fromEntries(CRZ_PRESET_IDS.map(id=>[id,crzRulesetHash(crzPreset(id))]))
 ) as Readonly<Record<CrzPresetId,string>>;
-/** No replay só se aceita o hash exato das configurações conhecidas nesta release. */
+/** Presets antigos conservam exatamente seus hashes; novos hashes square
+ * são aceitos sem regravar replays ou alterar a identificação histórica.
+ */
+export const CRZ_SQUARE_HASHES=Object.freeze(
+ Object.fromEntries(CRZ_PRESET_IDS.map(id=>[id,crzRulesetHash(crzPreset(id,'square'))]))
+) as Readonly<Record<CrzPresetId,string>>;
 export function crzRequireKnownRuleset(id:CrzPresetId,hash:string):CrzRuleset{
- const cfg=crzPreset(id);
- if(hash!==CRZ_APPROVED_HASHES[id])throw new Error('E_SETUP_RULESET: rulesetHash desconhecido.');
- return cfg;
+ const grid=hash===CRZ_APPROVED_HASHES[id]?'hex':
+  hash===CRZ_SQUARE_HASHES[id]?'square':null;
+ if(!grid)throw new Error('E_SETUP_RULESET: rulesetHash desconhecido.');
+ return crzPreset(id,grid);
 }
