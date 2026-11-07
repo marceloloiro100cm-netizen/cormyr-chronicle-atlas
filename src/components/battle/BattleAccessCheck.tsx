@@ -4,6 +4,7 @@ import {Button} from '@/components/ui/button';
 import {checkBattlePersistence,listSavedBattles} from '@/lib/battle/battle-session.functions';
 import {listBattleSourceHouses} from '@/lib/battle/adapters/readonly-source.functions';
 import {listV3Invitations} from '@/lib/battle/v3/invitations.functions';
+import {BATTLE_PLAYERS_ENABLED} from '@/lib/battle/feature-flag';
 
 /** P0: diagnóstico de ponta a ponta usando o JWT da sessão atual.
  * Somente leitura; resultados ficam nesta tela. Não cria usuários, senhas,
@@ -20,11 +21,15 @@ export function BattleAccessCheck({role}:{role:'narrator'|'player'}){
  const run=async()=>{
   setBusy(true);setChecks([]);setRan(false);
   const results:string[]=[];
-  try{
-   await invites();
-   results.push('PASSOU · JWT autenticado e acesso à tabela de convocações via RLS.');
-  }catch(e){
-   results.push('FALHOU · consulta de convocações: '+(e instanceof Error?e.message:'erro desconhecido'));
+  if(BATTLE_PLAYERS_ENABLED){
+   try{
+    await invites();
+    results.push('PASSOU · sessão autenticada e leitura de convocações permitida pelo RLS.');
+   }catch(e){
+    results.push('FALHOU · consulta de convocações: '+(e instanceof Error?e.message:'erro desconhecido'));
+   }
+  }else{
+   results.push('DESATIVADO · convocações para jogadores não integram esta publicação.');
   }
   if(role==='narrator'){
    try{await houses();results.push('PASSOU · permissão do Narrador e origem militar somente leitura.');}
