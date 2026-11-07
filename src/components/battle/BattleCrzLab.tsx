@@ -2,7 +2,7 @@ import {useEffect,useMemo,useState,type ChangeEvent,type KeyboardEvent} from 're
 import {Button} from '@/components/ui/button';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
-import {crzHexKey,crzAxialToOffset,type CrzHex,type CrzSide}
+import {crzHexKey,crzGridToOffset,type CrzHex,type CrzSide,type CrzMap}
  from '@/lib/crusade/geometry';
 import {crzLegalCommands,type CrzCommand} from '@/lib/crusade/turns';
 import {crzCapable,crzOrder,type CrzBattleStack,type CrzBattleState,
@@ -46,15 +46,16 @@ const SIDE:Readonly<Record<CrzSide,{name:string;fill:string}>>={
 };
 const SIZE=25;
 const XSTEP=Math.sqrt(3)*SIZE;
+const SQUARE_STEP=SIZE*2.15;
 const HEX_POINTS=Array.from({length:6},(_,i)=>{
  const angle=(-90+60*i)*Math.PI/180;
  return (SIZE*Math.cos(angle)).toFixed(2)+','+
   (SIZE*Math.sin(angle)).toFixed(2);
 }).join(' ');
-const pixel=(h:CrzHex)=>{
- const {column,row}=crzAxialToOffset(h);
- return {x:42+XSTEP*(column+(row&1)/2),
-  y:40+SIZE*1.5*row};
+const pixel=(map:CrzMap,h:CrzHex)=>{
+ const {column,row}=crzGridToOffset(map,h);
+ return map.grid==='square'?{x:SQUARE_STEP*(column+0.75),y:SQUARE_STEP*(row+0.75)}:
+  {x:42+XSTEP*(column+(row&1)/2),y:40+SIZE*1.5*row};
 };
 const count=(s:CrzBattleStack)=>s.alive+'/'+s.initialCount;
 function eventLabel(event:CrzEvent):string{
@@ -92,8 +93,9 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
  const targets=new Set(attacks);
  const occupied=new Map(state.stacks.filter(crzCapable)
   .map(s=>[crzHexKey(s.position),s]));
- const width=XSTEP*(state.map.width+1)+58;
- const height=SIZE*(1.5*(state.map.height-1)+3.4);
+ const square=state.map.grid==='square';
+ const width=square?SQUARE_STEP*(state.map.width+1.5):XSTEP*(state.map.width+1)+58;
+ const height=square?SQUARE_STEP*(state.map.height+1.5):SIZE*(1.5*(state.map.height-1)+3.4);
  return <div className="crz-board-shell">
   <div className="crz-map-tools" role="group" aria-label="Ferramentas do mapa CRZ">
    <Button type="button" variant="outline" size="sm" aria-label="Reduzir zoom CRZ"
@@ -105,22 +107,22 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
     disabled={zoom===100}>Ajustar mapa CRZ</Button>
   </div>
   <p className="crz-map-help" id="crz-keyboard-help">Teclado: Tab entra no mapa;
-   setas navegam pelos hexágonos; Enter ou Espaço executam a ação. Use o zoom
+   setas navegam pelos células; Enter ou Espaço executam a ação. Use o zoom
    para ampliar sem alterar o tamanho das tropas.</p>
   <div className="crz-map-scroll" role="region" tabIndex={0}
   aria-label="Área navegável do mapa CRZ">
   <svg className="crz-map" viewBox={`0 0 ${width} ${height}`}
    style={{width:zoom+'%'}} role="group" aria-label={`Mapa CRZ ${state.map.width} por ${state.map.height}`}>
    {state.map.tiles.map(tile=>{
-    const key=crzHexKey(tile),{x,y}=pixel(tile),unit=occupied.get(key),objective=objectivesByHex.get(key);
+    const key=crzHexKey(tile),{x,y}=pixel(state.map,tile),unit=occupied.get(key),objective=objectivesByHex.get(key);
     const isMove=movable.has(key);
     const isAttack=Boolean(unit&&targets.has(unit.id));
     const active=unit?.id===state.activeStackId,selected=unit?.id===selectedId;
     const hovered=unit?.id===hoveredId;
     const label=(isMove?'Mover para ':isAttack?'Atacar ':'Inspecionar ')+
      (unit?unit.name+' · ':'')+TERRAIN[tile.terrain]!.name+
-     ' ('+crzAxialToOffset(tile).column+','+
-       crzAxialToOffset(tile).row+')'+
+     ' ('+crzGridToOffset(state.map,tile).column+','+
+       crzGridToOffset(state.map,tile).row+')'+
        (objective?' · Marco: '+objective.title:'');
     const press=()=>onTile({q:tile.q,r:tile.r});
     const keyPress=(event:KeyboardEvent<SVGGElement>)=>{
@@ -143,11 +145,16 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
      className={'crz-map-tile'+(isMove?' crz-map-move':'')+
        (isAttack?' crz-map-attack':'')+(active?' crz-map-active':'')+
        (selected?' crz-map-selected':'')+(hovered?' crz-map-hovered':'')}>
-      <polygon points={HEX_POINTS} transform={`translate(${x} ${y})`}
-       fill={TERRAIN[tile.terrain]!.fill}/>
-      {isMove&&<polygon className="crz-valid-overlay" points={HEX_POINTS}
+      {square?<rect data-crz-cell-shape="square" x={x-SQUARE_STEP/2} y={y-SQUARE_STEP/2} width={SQUARE_STEP}
+       height={SQUARE_STEP} fill={TERRAIN[tile.terrain]!.fill}/>:
+      <polygon data-crz-cell-shape="hex" points={HEX_POINTS} transform={`translate(${x} ${y})`}
+       fill={TERRAIN[tile.terrain]!.fill}/>}
+      {isMove&&(square?<rect className="crz-valid-overlay"
+       x={x-SQUARE_STEP/2} y={y-SQUARE_STEP/2} width={SQUARE_STEP} height={SQUARE_STEP}
+       fill="rgba(99,255,116,.24)" pointerEvents="none"/>:
+      <polygon className="crz-valid-overlay" points={HEX_POINTS}
        transform={`translate(${x} ${y})`} fill="rgba(99,255,116,.24)"
-       pointerEvents="none"/>}
+       pointerEvents="none"/> )}
       {unit&&<>
        {isAttack&&<circle data-crz-attack-ring={unit.id} cx={x} cy={y} r={22}
         fill="none" stroke="#ff6d54" strokeWidth={4} pointerEvents="none"/>}
@@ -189,7 +196,7 @@ const spellCost:Partial<Record<CrzSpellId,number>>={
 };
 
 export function BattleCrzLab({onBack}:{onBack?:()=>void}){
- const [options,setOptions]=useState<CrzTrainingOptions>(CRZ_TRAINING_DEFAULTS);
+ const [options,setOptions]=useState<CrzTrainingOptions>({...CRZ_TRAINING_DEFAULTS,grid:'square'});
  const [session,setSession]=useState<CrzReplaySession|null>(null);
  const [expanded,setExpanded]=useState(false);
  const [replayStep,setReplayStep]=useState<number|null>(null);
@@ -287,7 +294,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    setSelectedId(unit.id);
    setError('');
   }else if(canAct&&active&&selectedId===active.id){
-   setError('Hexágono fora do movimento permitido. Selecione um hexágono verde.');
+   setError('Hexágono fora do movimento permitido. Selecione um quadrado verde.');
   }
  };
  const orderIds=frame?[
@@ -394,6 +401,13 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
        {CRZ_TRAINING_SCENARIOS.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
       </select>
      </label>
+     <label>Malha tática
+      <select aria-label="Formato da malha CRZ" value={options.grid??'hex'}
+       onChange={e=>setOptions(o=>({...o,grid:e.target.value as 'hex'|'square'}))}>
+       <option value="square">Quadrados (novo padrão)</option>
+       <option value="hex">Hexágonos (legado)</option>
+      </select>
+     </label>
      <label>Tamanho do mapa
       <select value={options.width} aria-label="Tamanho do mapa CRZ"
        onChange={e=>setOptions(o=>({...o,width:Number(e.target.value) as 11|15}))}>
@@ -467,7 +481,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    <section className="crz-turn-track" aria-label="Ordem de combate">
     <div className="crz-track-title">
      <h2>Ordem de combate</h2>
-     <span>Selecione uma tropa; Tab entra no mapa e as setas navegam entre hexágonos</span>
+     <span>Selecione uma tropa; Tab entra no mapa e as setas navegam entre células</span>
     </div>
     <div className="crz-turn-cards">
      {turnOrder.map((unit,index)=><button type="button" key={unit.id}
@@ -530,7 +544,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
      </div>
      <div className="crz-command-footer">
       <h3>Decisão do turno</h3>
-      <p className="battle-unified-action-hint">Mover: toque no hexágono verde. Atacar: selecione o inimigo destacado.</p>
+      <p className="battle-unified-action-hint">Mover: toque no quadrado verde. Atacar: selecione o inimigo destacado.</p>
       {aiTurn&&<Button variant="outline" onClick={()=>{
        if(!session)return;
        try{
@@ -595,7 +609,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
       <ol className="crz-objectives">{objectives.map(o=><li key={o.id}>
        <strong>{o.title}</strong>
        <span>{o.holder?SIDE[o.holder].name:'Livre'} ·
-        hex {crzAxialToOffset(o.position).column},{crzAxialToOffset(o.position).row}</span>
+        hex {crzGridToOffset(frame.map,o.position).column},{crzGridToOffset(frame.map,o.position).row}</span>
       </li>)}</ol>
      </section>}
      {panel==='report'&&report&&<section aria-label="Relatório pós-batalha CRZ">
@@ -641,7 +655,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    <footer className="crz-arena-guide">
     <strong>Como jogar</strong>
     <span>Selecione a unidade da vez para destacá-la em verde.</span>
-    <span>Clique num hexágono verde para mover.</span>
+    <span>Clique num quadrado verde para mover.</span>
     <span>Clique num inimigo com contorno vermelho para atacar.</span>
    </footer>
    {frame.phase==='completed'&&<div className="crz-victory-banner" role="status">
