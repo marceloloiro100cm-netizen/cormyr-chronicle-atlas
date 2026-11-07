@@ -18,7 +18,8 @@ import {makeWarFortification,WAR_FORT_PROFILES} from '@/lib/battle/got/fortifica
 import type {WarFortKind} from '@/lib/battle/got/fortifications';
 import {makeModelSiege,WAR_SIEGE_CATALOG} from '@/lib/battle/got/siege';
 import type {WarSiegeKind,WarSiegeAmmo} from '@/lib/battle/got/siege';
-import {modelWarUnit,modelWarCommanders} from '@/lib/battle/got/models';
+import {modelWarUnit,modelWarCommanders,WAR_MODEL_UNIT_TYPES} from '@/lib/battle/got/models';
+import type {WarModelUnitTypeId} from '@/lib/battle/got/models';
 import {modelWarLabDeployments} from '@/lib/battle/got/lab-deployment';
 import {previewWarAftermath} from '@/lib/battle/got/aftermath';
 import {previewWarResourceConsequences} from '@/lib/battle/got/aftermath-resources';
@@ -34,12 +35,8 @@ import {BattleGotSourcePicker} from './BattleGotSourcePicker';
 import type {Slot} from './BattleGotSourcePicker';
 import './battle-got.css';
 
-type TypeId='infantry'|'archers'|'cavalry'|'garrison'|'raiders'|'engineers';
-const OPTIONS:readonly {id:TypeId;label:string}[]=[
- {id:'infantry',label:'Infantaria'},{id:'archers',label:'Arqueiros'},
- {id:'cavalry',label:'Cavalaria'},{id:'garrison',label:'Guarnição'},
- {id:'raiders',label:'Saqueadores'},{id:'engineers',label:'Engenheiros'},
-];
+type TypeId=WarModelUnitTypeId;
+const OPTIONS:readonly {id:TypeId;label:string}[]=WAR_MODEL_UNIT_TYPES;
 const SIDE:Record<WarSide,string>={attacker:'Atacante',defender:'Defensor'};
 const ORDER_LABEL:Record<WarOrderKind,string>={
  attack:'Atacar',charge:'Carga',defend:'Defender',move:'Mover',ready:'Prontidão',
