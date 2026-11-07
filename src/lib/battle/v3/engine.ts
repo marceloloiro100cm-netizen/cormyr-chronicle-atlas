@@ -12,7 +12,7 @@ import {modelHouse} from './model-houses';
 
 export type V3PowerTarget='ally'|'enemy';
 export type V3UnitSkill='CHARGE'|'VOLLEY'|'SHIELD_WALL'|'AMBUSH'|'SAPPERS';
-export type V3Log=Readonly<{round:number;side:Side;label:string}>;
+export type V3Log=Readonly<{round:number;side:Side;label:string;detail?:string}>;
 export type V3Step=Readonly<
  |{type:'COMMAND';command:BattleCommand;actor:'narrator'|'ai'}
  |{type:'SKILL';skill:V3UnitSkill;targetId?:string}
@@ -85,8 +85,9 @@ export function createV3Game(options:V3ScenarioOptions,officialCopies:readonly B
  return {mode:'PTE-3.0-SANDBOX',battle:{...started,stacks},
   commanders,usedPowers:{attacker:false,defender:false},log:[],setup:{...options},steps:[]};
 }
-function append(game:V3Game,side:Side,label:string,battle=game.battle):V3Game{
- return {...game,battle,log:[...game.log,{round:game.battle.round,side,label}].slice(-100)};
+function append(game:V3Game,side:Side,label:string,battle=game.battle,detail?:string):V3Game{
+ return {...game,battle,log:[...game.log,{round:game.battle.round,side,label,
+  ...(detail?{detail}:{})}].slice(-100)};
 }
 export function v3LegalSkills(game:V3Game):readonly V3UnitSkill[]{
  const state=game.battle,id=state.activeUnitId;
@@ -115,8 +116,22 @@ export function v3SkillName(skill:V3UnitSkill):string{
 }
 export function v3PlayCommand(game:V3Game,cmd:BattleCommand,actor:'narrator'|'ai'='narrator'):V3Game{
  const side=game.battle.stacks.find(s=>s.id===game.battle.activeUnitId)?.side??'attacker';
- const battle=applyBattleCommand(game.battle,cmd,actor);
- return {...append(game,side,cmd.type==='ATTACK'?'Ataque ordinário':cmd.type==='MOVE'?'Marcha':cmd.type==='DEFEND'?'Defesa':cmd.type==='WAIT'?'Esperar':cmd.type==='MANUAL_FINISH'?'Encerramento':'Fim da ativação',battle),
+ const prior=game.battle;
+ const battle=applyBattleCommand(prior,cmd,actor);
+ const actorUnit=prior.stacks.find(s=>s.id===('unitId' in cmd?cmd.unitId:prior.activeUnitId));
+ const target=cmd.type==='ATTACK'?prior.stacks.find(s=>s.id===cmd.targetId):undefined;
+ const afterTarget=target&&battle.stacks.find(s=>s.id===target.id);
+ const casualties=target&&afterTarget?
+  Math.max(0,Math.ceil(target.currentHp/target.hpPerSoldier)-
+   Math.ceil(afterTarget.currentHp/afterTarget.hpPerSoldier)):0;
+ const detail=cmd.type==='ATTACK'&&target&&afterTarget?
+  (actorUnit?.name??'Unidade')+' atacou '+target.name+
+   ' · '+Math.max(0,target.currentHp-afterTarget.currentHp)+' PV de dano · '+casualties+' baixas':
+  cmd.type==='MOVE'&&actorUnit?
+   actorUnit.name+' marchou de ('+actorUnit.position.q+','+actorUnit.position.r+
+    ') para ('+cmd.to.q+','+cmd.to.r+')':
+  actorUnit?.name??'Ordem emitida';
+ return {...append(game,side,cmd.type==='ATTACK'?'Ataque ordinário':cmd.type==='MOVE'?'Marcha':cmd.type==='DEFEND'?'Defesa':cmd.type==='WAIT'?'Esperar':cmd.type==='MANUAL_FINISH'?'Encerramento':'Fim da ativação',battle,detail),
   steps:[...game.steps,{type:'COMMAND',command:cmd,actor}]};
 }
 export function v3UseUnitSkill(game:V3Game,skill:V3UnitSkill,targetId?:string):V3Game{
