@@ -52,6 +52,10 @@ export type WarEvent=Readonly<{
  seq:number;round:number;side:WarSide|null;kind:string;text:string;
  roll?:readonly number[];total?:number;difficulty?:number;degrees?:number;
 }>;
+export type WarPersonalInitiative=Readonly<{
+ phase:'heroes-first'|'heroes-second';roundIndex:number;
+ order:readonly string[];cursor:number;
+}>;
 export type WarBattle=Readonly<{
  schemaVersion:1;rulesVersion:'GOT-CH10-1';id:string;name:string;seed:number;
  width:number;height:number;metresPerCell:10;round:number;
@@ -59,6 +63,7 @@ export type WarBattle=Readonly<{
  fortifications:readonly WarFortification[];
  phase:'siege'|'heroes-first'|'orders'|'heroes-second'|'finished';first:WarSide;turn:WarSide;
  heroes:readonly WarHero[];heroSecondCompletedRound?:number;
+ personalInitiative?:WarPersonalInitiative;
  siege:readonly WarSiegeEngine[];siegeCompleted:Readonly<Record<WarSide,boolean>>;
  commanders:readonly WarCommander[];units:readonly WarUnit[];
  ordersRemaining:Readonly<Record<string,number>>;
