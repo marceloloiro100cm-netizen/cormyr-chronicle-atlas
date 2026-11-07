@@ -12,6 +12,7 @@ import {BattleSavedPanel} from './BattleSavedPanel';
 import {BattleV3NarratorEntry} from './BattleV3NarratorEntry';
 import {BattleAccessCheck} from './BattleAccessCheck';
 import {BattleRulesetSelector} from './BattleRulesetSelector';
+import {BattleGotGame} from './BattleGotGame';
 import {battleRulesetOption,type BattleRulesetMode} from '@/lib/battle/ruleset-modes';
 import {BattleV3InvitationCreator} from './BattleV3InvitationCreator';
 import {BattleV3LiveCreator} from './BattleV3Live';
@@ -27,7 +28,7 @@ const BattleStrategicLab=lazy(()=>import('./BattleStrategicLab').then(m=>({defau
 
 
 export function BattleNarratorHub(){
- const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'crz'|'invite'|'live'|'strategy'>('home');
+ const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'crz'|'invite'|'live'|'strategy'|'got'>('home');
  const [rulesetMode,setRulesetMode]=useState<BattleRulesetMode>('adapted');
  const ruleset=battleRulesetOption(rulesetMode);
  const [state,setState]=useState<BattleState|null>(null);
@@ -57,7 +58,7 @@ export function BattleNarratorHub(){
    <p className="battle-eyebrow">CORMYR CHRONICLE ATLAS · NARRADOR</p>
    <h1>Módulo de batalha</h1>
    <p>Simulador tático · sem efeito nas fichas oficiais</p>
-   <p><strong>{rulesetMode==='adapted'?BATTLE_RULES_VERSION+' — regras experimentais.':ruleset.label+' — seleção inicial.'}</strong> Nenhuma baixa será lançada nas fichas das casas.</p>
+   <p><strong>{rulesetMode==='adapted'?BATTLE_RULES_VERSION+' — regras experimentais.':rulesetMode==='got'?'GOT-CH10-1 — laboratório do livro.':ruleset.label+' — seleção inicial.'}</strong> Nenhuma baixa será lançada nas fichas das casas.</p>
   </header>
   {view==='home'&&<div className="battle-home-dashboard">
    <section className="battle-surface battle-home-primary" aria-label="Iniciar batalha">
@@ -82,7 +83,12 @@ export function BattleNarratorHub(){
      </div>
     </div>
     <p className="battle-note">Roteiro básico: preparar → posicionar → combater → rever o resultado.</p>
-    </>:<section className="battle-ruleset-pending" aria-label="Preparação do sistema selecionado">
+    </>:rulesetMode==='got'?<section className="battle-ruleset-pending" aria-label="Guerra do livro">
+     <h3>Guerra dos Tronos RPG · núcleo do capítulo 10</h3>
+     <p>Comandos de Guerra × Disciplina, iniciativa por rodada, ordens, ataque por graus de sucesso, Armadura e Saúde coletiva, desorganização e debandada.</p>
+     <p className="battle-note">Laboratório em desenvolvimento: ainda faltam fases e regras avançadas para equivalência integral ao capítulo 10.</p>
+     <Button onClick={()=>setView('got')}>Testar regras do livro</Button>
+    </section>:<section className="battle-ruleset-pending" aria-label="Preparação do sistema selecionado">
      <h3>{rulesetMode==='got'?'Guerra dos Tronos RPG · sistema do livro':'D&D · combate simplificado'}</h3>
      <p>{rulesetMode==='got'?
       'Próxima implementação: testes de Guerra e Disciplina, emissão de ordens, formações, moral e sobreviventes segundo as regras do livro.':
@@ -132,6 +138,7 @@ export function BattleNarratorHub(){
     </details>
    </aside>
   </div>}
+  {view==='got'&&<BattleGotGame onBack={()=>setView('home')}/>}
   {view==='crusade'&&<BattleV3NarratorEntry onBack={()=>setView('home')}/>}
   {view==='crz'&&BATTLE_CRZ_TRAINING_UI_ENABLED&&<Suspense fallback={<p role="status">Carregando laboratório CRZ…</p>}>
    <BattleCrzLab onBack={()=>setView('home')}/>
