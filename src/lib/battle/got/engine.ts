@@ -343,8 +343,8 @@ export function issueWarOrder(battle:WarBattle,input:{
  const degrees=degreesOfSuccess(roll.total,difficulty);
  let next:WarBattle={...battle,seed:roll.nextSeed,
   ordersRemaining:{...battle.ordersRemaining,[commander.id]:battle.ordersRemaining[commander.id]!-1}};
- next=replaceUnit(next,{...unit,issuedThisRound:unit.issuedThisRound+1,actedThisRound:passed,
-  criticalThisRound:critical});
+ next=replaceUnit(next,{...unit,issuedThisRound:unit.issuedThisRound+1,actedThisRound:unit.actedThisRound||passed,
+  criticalThisRound:unit.criticalThisRound||critical});
  next=log(next,'command',commander.name+' deu ordem '+input.order.kind+' a '+unit.name+
   ': '+roll.total+' vs Disciplina '+difficulty+(passed?' (sucesso).':critical?' (falha crítica).':' (falha).'),
   unit.side,{roll:roll.dice,total:roll.total,difficulty,degrees});
@@ -369,7 +369,7 @@ export function advanceWarRound(battle:WarBattle):WarBattle{
  // Passo 9: ordens permanentes somente para unidades não comandadas durante a rodada.
  for(const side of [battle.first,opposite(battle.first)]){
   for(const base of next.units.filter(u=>u.side===side&&u.activated&&u.standing&&
-   u.issuedThisRound===0&&!u.criticalThisRound&&alive(u))){
+   !u.actedThisRound&&!u.criticalThisRound&&alive(u))){
    const order=base.standing!;
    try{
     if(['attack','charge','aggressive-retreat'].includes(order.kind)){
