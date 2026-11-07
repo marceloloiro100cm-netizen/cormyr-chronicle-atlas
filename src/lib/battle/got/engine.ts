@@ -227,6 +227,8 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
  if(battle.pendingPersonalDamage)throw new Error('Resolva o dano pessoal pendente.');
  assertPersonalTurn(battle,hero.id);
  const ranged=Boolean(input.ranged),distanceMetres=distanceFromHeroToUnit(hero,target);
+ if(ranged?hero.rangedWeaponBroken:hero.meleeWeaponBroken)
+  throw new Error('Arma quebrada impede ataque contra a unidade.');
  const range=ranged?(hero.rangedRange==='long'?100:10):
   (hero.meleeWeapon?.reachMetres??1);
  if(!ranged&&distanceMetres>range)
@@ -274,6 +276,24 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
    roll:roll.dice,total,difficulty,degrees,
   });
  if(damage>0)next=applyDamage(next,target,damage,hero.name);
+ if(degrees>=2&&weapon?.shattering){
+  const current=next.units.find(u=>u.id===target.id);
+  if(current&&current.armor>0){
+   const loss=Math.min(current.armor,weapon.shattering);
+   next={...next,units:next.units.map(u=>u.id===target.id?{
+    ...u,armor:u.armor-loss,
+   }:u)};
+   next=log(next,'hero-shatter-unit',hero.name+' reduziu o VA de '+
+    target.name+' em '+loss+' com '+weapon.label+'.',hero.side);
+  }
+ }
+ if(degrees>=2&&weapon?.fragile){
+  next={...next,heroes:next.heroes.map(h=>h.id===hero.id?{
+   ...h,...(ranged?{rangedWeaponBroken:true}:{meleeWeaponBroken:true}),
+  }:h)};
+  next=log(next,'hero-weapon-broken',hero.name+' quebrou '+weapon.label+
+   ' após dois ou mais graus de sucesso.',hero.side);
+ }
  return settlePersonalTurn(battle,checkVictory(next),hero.id);
 }
 /** Capítulo 10: quando 100 homens atacam uma pessoa, recebem +2D. */
