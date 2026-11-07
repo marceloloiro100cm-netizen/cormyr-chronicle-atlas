@@ -4,6 +4,7 @@ import type {WarBattle,WarEvent,WarPosition} from './types';
 import type {WarHero} from './heroes';
 import {queuePersonalDamage} from './personal-injuries';
 import {effectivePersonalArmor} from './personal-weapons';
+import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
 
 /** Capítulo 9: escala pessoal de 1 m. Não usa os quadrados de guerra de 10 m para alcance. */
 export type PersonalWarAction=Readonly<{
@@ -79,7 +80,7 @@ function attackHero(
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty;
  const bonus=(ranged?actor.rangedBonusDice:actor.meleeBonusDice)??0;
  const rank=ranged?actor.marksmanship:actor.fighting;
- const roll=rollDice(battle.seed,rank,
+ const roll=rollPersonalWithFate(battle.seed,actor,rank,
   Math.min(15,bonus+(actor.passBonusDice??0)),Math.min(15,totalPenalty));
  const total=Math.max(0,roll.total-(actor.wounds??0));
  const difficulty=target.dodgeDefense??target.defense;
@@ -88,7 +89,7 @@ function attackHero(
  const damage=degrees?Math.max(0,base*degrees-
   effectivePersonalArmor(target.armor,ranged?actor.rangedWeapon:actor.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
-  heroes:battle.heroes.map(h=>h.id===actor.id?{...h,passBonusDice:0}:h),
+  heroes:battle.heroes.map(h=>h.id===actor.id?{...consumePersonalFateRoll(h),passBonusDice:0}:h),
  };
  if(damage>0)next=queuePersonalDamage(next,{actorName:actor.name,
   targetHeroId:target.id,damage,source:'personal'});
@@ -131,24 +132,24 @@ export function executePersonalWarAction(
  }
  if(action.kind==='personal-dodge'){
   const used=spendPersonalAction(hero,'major');
-  const roll=rollDice(battle.seed,hero.agility??3,
+  const roll=rollPersonalWithFate(battle.seed,hero,hero.agility??3,
    Math.min(15,(hero.shieldBonusDice??0)+(hero.passBonusDice??0)),
    Math.min(15,hero.injuries??0));
   const defense=Math.max(0,roll.total-(hero.armorPenalty??0)-(hero.wounds??0)+
    (hero.defensiveBonus??0));
   const next=changeHero({...battle,seed:roll.nextSeed},
-   {...used,dodgeDefense:defense,passBonusDice:0});
+   {...consumePersonalFateRoll(used),dodgeDefense:defense,passBonusDice:0});
   return log(next,'personal-dodge',hero.name+' esquivou e substituiu a Defesa por '+
    defense+'.',hero,{roll:roll.dice,total:defense});
  }
  if(action.kind==='personal-recover'){
   const used=spendPersonalAction(hero,'major');
-  const roll=rollDice(battle.seed,hero.endurance??3,
+  const roll=rollPersonalWithFate(battle.seed,hero,hero.endurance??3,
    hero.passBonusDice??0,hero.injuries??0);
   const total=Math.max(0,roll.total-(hero.wounds??0));
   const healed=Math.min(hero.maxHealth-hero.health,degreesOfSuccess(total,0));
   const next=changeHero({...battle,seed:roll.nextSeed},
-   {...used,health:hero.health+healed,passBonusDice:0});
+   {...consumePersonalFateRoll(used),health:hero.health+healed,passBonusDice:0});
   return log(next,'personal-recover',hero.name+' recuperou '+healed+' de Saúde.',
    hero,{roll:roll.dice,total,difficulty:0,degrees:degreesOfSuccess(total,0)});
  }
