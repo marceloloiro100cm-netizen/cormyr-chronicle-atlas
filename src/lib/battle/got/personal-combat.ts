@@ -306,7 +306,8 @@ export function executePersonalWarAction(
     h.active&&!h.unitId&&personalPosition(h).x===p.x&&
     personalPosition(h).y===p.y);
    if(!target)continue;
-   const roll=rollPersonalWithFate(next.seed,hero,hero.animalHandling??3,
+   const performer=next.heroes.find(h=>h.id===hero.id)??hero;
+   const roll=rollPersonalWithFate(next.seed,performer,hero.animalHandling??3,
     0,hero.injuries??0);
    const total=Math.max(0,roll.total-(hero.wounds??0));
    const difficulty=(target.dodgeDefense??target.defense)+
