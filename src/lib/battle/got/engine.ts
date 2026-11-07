@@ -780,8 +780,8 @@ export function issueWarOrder(battle:WarBattle,input:{
   WAR_FORMATIONS[unit.formation].discipline:0;
  const advancedBase=(WAR_ADVANCED_ORDER_DIFFICULTY as Partial<Record<WarOrder['kind'],number>>)[input.order.kind]??0;
  const advancedModifier=input.order.kind==='climb-walls'&&
-  !unit.fieldEquipmentConsumed&&
-  ['ladders','siege-tower'].includes(unit.fieldEquipment??'')?
+  (unit.laddersDeployed||(!unit.fieldEquipmentConsumed&&
+  ['ladders','siege-tower'].includes(unit.fieldEquipment??'')))?
   0:advancedBase;
  if(advancedModifier&&!battle.advancedFormations)
   throw new Error('Esta ordem avançada exige regras avançadas habilitadas.');
