@@ -81,9 +81,9 @@ describe('P1 — terreno, unidades escondidas e recursos',()=>{
  });
  it('supressão não atira através de muralhas nem identifica alvos ocultos',()=>{
   const attacker=troop('a','attacker',2,2,'archers');
-  const target=troop('d','defender',6,2);
+  const target=troop('d','defender',4,2);
   const b={...build([attacker,target],{advancedFormations:true,
-   strictLineOfSight:true,tiles:[{x:4,y:2,terrain:'wall'}]}),
+   strictLineOfSight:true,tiles:[{x:3,y:2,terrain:'wall'}]}),
    phase:'orders' as const,turn:'attacker' as const};
   expect(()=>issueWarOrder(b,{commanderId:'leader-attacker',
    unitId:'a',order:{kind:'suppress',targetId:'d'}}))
