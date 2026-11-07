@@ -109,12 +109,8 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         self.assertEqual(dialog.locator('[data-crz-cell-shape="square"]').count(),99)
         self.assertEqual(dialog.locator('[data-crz-cell-shape="hex"]').count(),0)
         dialog.get_by_role("button",name="Novo treino").click()
-        page.get_by_label("Formato da malha CRZ").select_option("hex")
-        page.get_by_role("button",name="Iniciar treinamento CRZ").click()
-        dialog=page.get_by_role("dialog",name="Batalha em tela ampliada")
-        dialog.wait_for(timeout=15000)
-        self.assertEqual(dialog.locator('[data-crz-cell-shape="hex"]').count(),99)
-        self.assertEqual(dialog.locator('[data-crz-cell-shape="square"]').count(),0)
+        self.assertEqual(page.get_by_label("Formato da malha CRZ").input_value(),"square")
+        self.assertEqual(page.get_by_label("Formato da malha CRZ").locator('option[value="hex"]').count(),0)
 
     def test_v4_battle_panels_keep_readable_font_sizing(self):
         page=self.open_page(1440,900)
