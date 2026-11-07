@@ -7,6 +7,7 @@ import {WAR_SIEGE_CATALOG,warSiegeDamage} from './siege';
 import type {WarSiegeEngine} from './siege';
 import {fortForUnit,fortDefense,validateWarForts,sabotageFortification,damageWarFortification} from './fortifications';
 import {igniteWarUnit,advanceWarFire,resolveCarriedWildfireRisk} from './siege-fire';
+import {canSeeWarTarget} from './line-of-sight';
 import {warFieldDefenseBonus,warFieldMovementMetres,warFieldOrderDifficulty,
  warFieldForbidsAttack,warFieldThrowDamage,validateWarFieldEquipment} from './field-equipment';
 import type {WarFortification} from './fortifications';
@@ -75,7 +76,7 @@ export function createWarBattle(input:{
  commanders:readonly WarCommander[];units:readonly WarUnit[];
  tiles?:readonly WarTerrainTile[];weather?:WarWeather;visibility?:WarVisibility;
  advancedFormations?:boolean;siege?:readonly WarSiegeEngine[];
- manualMitigation?:boolean;
+ manualMitigation?:boolean;strictLineOfSight?:boolean;
  fortifications?:readonly WarFortification[];heroes?:readonly WarHero[];
 }):WarBattle{
  if(!input.id.trim()||!input.name.trim()||input.seed.length<1)throw new Error('Identificação do combate inválida.');
@@ -132,6 +133,7 @@ export function createWarBattle(input:{
   siege:[...(input.siege??[])],siegeCompleted:{attacker:false,defender:false},
   tiles:[...(input.tiles??[])],weather:input.weather??'clear',visibility:input.visibility??'clear',
   advancedFormations:input.advancedFormations??false,
+  strictLineOfSight:input.strictLineOfSight??false,
   fortifications:(input.fortifications??[]).map(f=>({...f,cells:f.cells.map(x=>({...x}))})),
   ordersRemaining:{...commandBudget(commanders,'attacker'),...commandBudget(commanders,'defender')},
   events:[],winner:null};
@@ -381,6 +383,9 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  const max=ranged?(attacker.range==='long'?20:attacker.range==='short'?2:0):1;
  if(!max||distance(attacker.position,target.position)>max||(!ranged&&distance(attacker.position,target.position)===0))
   throw new Error('O alvo não está no alcance.');
+ if(ranged&&battle.strictLineOfSight&&
+  !canSeeWarTarget(attacker.position,target.position,battle.tiles))
+  throw new Error('Linha de visão bloqueada entre unidades.');
  const score=ranged?attacker.ability.marksmanship:attacker.ability.fighting;
  let extraPenalty=(attacker.condition==='disorganized'?1:0)+(options.penalty??0)+(options.charge?1:0);
  let bonus=options.bonusDice??(ranged?(attacker.rangedBonusDice??0):(attacker.meleeBonusDice??0));
@@ -882,6 +887,9 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
    throw new Error('Máquina precisa aguardar uma rodada completa para recarregar.');
   if(distance(weapon.position,position)*10>WAR_SIEGE_CATALOG[weapon.kind].rangeMetres)
    throw new Error('Alvo fora do alcance de cerco.');
+  if(battle.strictLineOfSight&&weapon.kind==='scorpion'&&
+   !canSeeWarTarget(weapon.position,position,battle.tiles))
+   throw new Error('Escorpião sem linha de visão para o alvo.');
  }
  let next:WarBattle={...battle,ordersRemaining:{
   ...battle.ordersRemaining,[commander.id]:(battle.ordersRemaining[commander.id]??0)-1,
