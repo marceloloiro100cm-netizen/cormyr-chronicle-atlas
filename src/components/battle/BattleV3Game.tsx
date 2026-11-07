@@ -21,6 +21,7 @@ import './battle.css';
 import './crusade-v4.css';
 import './battle-legibility.css';
 import './battle-ui-v4.css';
+import './battle-arena-unified.css';
 
 type Mode='inspect'|'skill'|'power';
 const sides:{id:Side;label:string}[]=[{id:'attacker',label:'Aliado'},{id:'defender',label:'Oponente'}];
@@ -228,7 +229,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    <section className="crusade-v4-turns" aria-label="Ordem de combate V3">
     <div className="crusade-v4-section-head">
      <h2>Ordem de combate</h2>
-     <span>Passe o mouse ou use Tab para localizar uma tropa no mapa</span>
+     <span>Selecione uma tropa; Tab entra no mapa e as setas navegam entre hexágonos</span>
     </div>
     <div className="crusade-v4-turn-strip">
      {turnOrder.map((unit,index)=><button type="button" key={unit.id}
@@ -289,6 +290,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      </div>}
      <div className="crusade-v4-commands">
       <h3>Decisão do turno</h3>
+      <p className="battle-unified-action-hint">Mover: toque no hexágono verde. Atacar: selecione o inimigo vermelho.</p>
       <Button disabled={!canAct||!active||!legal.some(c=>c.type==='DEFEND')} variant="outline"
        onClick={()=>active&&action({type:'DEFEND',unitId:active.id})}>Defender</Button>
       <Button disabled={!canAct||!active||!legal.some(c=>c.type==='WAIT')} variant="outline"
@@ -300,6 +302,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     <section className="crusade-v4-battlefield" aria-label="Campo de batalha V3">
      <div className="crusade-v4-map-head">
       <h2>Campo de batalha</h2>
+      <span className="battle-unified-leader-label">General: {currentCommander?.name??"Sem General ativo"}</span>
       <span> <i className="crusade-v4-green"/> Movimento</span>
       <span> <i className="crusade-v4-red"/> Ataque legal</span>
      </div>
@@ -354,7 +357,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       {showDetails?'Ver últimas ações':'Ver histórico completo'}
      </Button>
      <p className="crusade-v4-private-notice">
-      Apenas exércitos-modelo. As fichas oficiais não são alteradas.
+      {officialCopies.length>0?'Tropas autorizadas copiadas somente para treinamento.':
+       'Exércitos-modelo de treinamento.'} As fichas oficiais não são alteradas.
      </p>
     </aside>
    </div>
