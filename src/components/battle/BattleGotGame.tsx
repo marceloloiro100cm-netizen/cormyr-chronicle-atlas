@@ -3,6 +3,8 @@ import {Button} from '@/components/ui/button';
 import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
 import {beginPersonalInitiative,personalTurnHeroId} from '@/lib/battle/got/personal-initiative';
+import {resolvePendingPersonalDamage} from '@/lib/battle/got/personal-injuries';
+import type {PersonalMitigationChoice} from '@/lib/battle/got/personal-injuries';
 import type {WarHeroAction} from '@/lib/battle/got/heroes';
 import {makeWarFortification,WAR_FORT_PROFILES} from '@/lib/battle/got/fortifications';
 import type {WarFortKind} from '@/lib/battle/got/fortifications';
@@ -58,6 +60,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [facing,setFacing]=useState<WarFacing>('north');
  const [siegeEnabled,setSiegeEnabled]=useState(false);
  const [heroesEnabled,setHeroesEnabled]=useState(false);
+ const [manualMitigation,setManualMitigation]=useState(false);
+ const [mitigationKind,setMitigationKind]=useState<PersonalMitigationChoice['kind']>('none');
+ const [mitigationWounds,setMitigationWounds]=useState(1);
  const [heroId,setHeroId]=useState('');
  const [heroAction,setHeroAction]=useState<WarHeroAction['kind']|'personal-attack-unit'>('join');
  const [heroUnitId,setHeroUnitId]=useState('');
@@ -120,6 +125,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      hoursBuilt:fortKind==='temporary'?6:24,
     })],
     commanders:modelWarCommanders(warfare),tiles,weather,visibility,advancedFormations:advanced,
+    manualMitigation,
    }));
    setSelected('');setTarget('');setError('');
   }catch(e){setError(e instanceof Error?e.message:'Falha ao preparar a batalha.');}
@@ -202,6 +208,13 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    setError('');
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível agir com o herói.');}
  };
+ const resolveDamage=()=>{
+  if(!battle?.pendingPersonalDamage)return;
+  try{setBattle(resolvePendingPersonalDamage(battle,{
+   kind:mitigationKind,...(mitigationKind==='wounds'?{woundCount:mitigationWounds}:{}),
+  }));setMitigationKind('none');setMitigationWounds(1);setError('');}
+  catch(e){setError(e instanceof Error?e.message:'Falha ao mitigar o dano.');}
+ };
  const heroInitiative=()=>{
   if(!battle)return;
   try{setBattle(beginPersonalInitiative(battle));setError('');}
@@ -270,6 +283,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      </select>
     </label>
    </div>
+   <label className="got-check"><input type="checkbox" checked={manualMitigation}
+    onChange={e=>setManualMitigation(e.target.checked)}/>
+    Escolha de ferimentos/lesões após ser atingido (laboratório, sem alterar fichas)</label>
    <label className="got-check"><input type="checkbox" checked={heroesEnabled}
     onChange={e=>setHeroesEnabled(e.target.checked)}/>
     Dois heróis-modelo e fases individuais (Passos 6 e 8)</label>
@@ -341,6 +357,29 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      {battle.winner?'Vitória do '+SIDE[battle.winner]:'Confronto sem vencedor'}
     </strong></p>}
    </section>
+   {battle.pendingPersonalDamage&&
+    <section className="battle-surface got-heroes" aria-label="Resolver dano pessoal pendente">
+     <h3>Escolha de redução de dano · capítulo 9</h3>
+     <p><strong>{battle.heroes.find(h=>h.id===battle.pendingPersonalDamage?.targetHeroId)?.name}</strong>
+      {' '}sofrerá {battle.pendingPersonalDamage.damage} pontos de dano de
+      {' '}{battle.pendingPersonalDamage.actorName}.</p>
+     <p className="battle-note">Ferimento: reduz o dano em Vigor e impõe −1
+      a resultados futuros. Lesão: cancela todo o dano deste ataque, mas
+      impõe −1D e pode causar morte no limite de Vigor.</p>
+     <label>Mitigação
+      <select value={mitigationKind}
+       onChange={e=>setMitigationKind(e.target.value as PersonalMitigationChoice['kind'])}>
+       <option value="none">Não reduzir dano</option>
+       <option value="wounds">Aceitar ferimentos</option>
+       <option value="injury">Aceitar uma lesão</option>
+      </select>
+     </label>
+     {mitigationKind==='wounds'&&<label>Quantidade de ferimentos
+      <input type="number" min={1} max={15} value={mitigationWounds}
+       onChange={e=>setMitigationWounds(Number(e.target.value))}/>
+     </label>}
+     <Button onClick={resolveDamage}>Confirmar decisão de dano</Button>
+    </section>}
    {(battle.phase==='heroes-first'||battle.phase==='heroes-second')&&
     <section className="battle-surface got-heroes" aria-label="Ações individuais dos heróis">
      <h3>{battle.phase==='heroes-first'?'Passo 6 · Primeiras ações dos heróis':
@@ -435,8 +474,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        disabled={Boolean(battle.personalInitiative?.phase===battle.phase)}>
        Rolar iniciativa pessoal (Agilidade + Rapidez)
       </Button>
-      <Button onClick={heroDo}>Executar ação individual</Button>
-      <Button variant="outline" onClick={heroFinish}>Concluir cinco rodadas · avançar</Button>
+      <Button onClick={heroDo} disabled={Boolean(battle.pendingPersonalDamage)}>Executar ação individual</Button>
+      <Button variant="outline" onClick={heroFinish} disabled={Boolean(battle.pendingPersonalDamage)}>Concluir cinco rodadas · avançar</Button>
      </div>
     </section>}
    <div className="got-columns">
