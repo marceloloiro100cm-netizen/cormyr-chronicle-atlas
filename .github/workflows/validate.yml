@@ -180,3 +180,8 @@ jobs:
         run: bash docs/battle/sql/test/battle-cas-race.sh
       - name: RLS, CAS, idempotency, rollback and revocation acceptance
         run: psql -v ON_ERROR_STOP=1 -f docs/battle/sql/test/battle-sql-smoke.sql
+      - name: V3 multiplayer RLS only in disposable PostgreSQL
+        run: |
+          psql -v ON_ERROR_STOP=1 -f docs/battle/sql/test/battle-v3-live-fixture.sql
+          psql -v ON_ERROR_STOP=1 -f docs/battle/sql/0078_battle_v3_live_matches.sql
+          psql -v ON_ERROR_STOP=1 -f docs/battle/sql/test/battle-v3-live-rls.sql
