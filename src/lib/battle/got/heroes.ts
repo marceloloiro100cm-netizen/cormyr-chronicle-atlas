@@ -3,6 +3,7 @@ import {executePersonalWarAction} from './personal-combat';
 import type {PersonalWarAction} from './personal-combat';
 import type {WarPersonalWeapon} from './personal-weapons';
 import {assertPersonalTurn,settlePersonalTurn} from './personal-initiative';
+import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
 import type {WarBattle,WarPosition,WarSide,WarUnit} from './types';
 
 /** Capítulo 10, passos 6 e 8: uma fase corresponde a cinco rodadas individuais.
@@ -148,9 +149,9 @@ export function executeWarHeroAction(
   if(distance(hero.position,unit.position)>1)
    throw new Error('Reorganizar/Reanimar exige proximidade da unidade.');
   const difficulty=unit.discipline+unit.disorganizations*3;
-  const roll=rollDice(battle.seed,hero.warfare);
+  const roll=rollPersonalWithFate(battle.seed,hero,hero.warfare);
   const passed=roll.total>=difficulty;
-  let next=replace({...battle,seed:roll.nextSeed},used);
+  let next=replace({...battle,seed:roll.nextSeed},consumePersonalFateRoll(used));
   if(passed)next={...next,units:next.units.map(u=>u.id===unit.id?({
    ...u,condition:action.kind==='rally'?'organized' as const:'disorganized' as const,
    health:action.kind==='rally'?u.maxHealth:0,
