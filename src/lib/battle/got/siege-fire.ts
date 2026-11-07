@@ -69,3 +69,31 @@ export function advanceWarFire(battle:WarBattle,applyDamage:Damage):WarBattle{
  }
  return next;
 }
+
+/** Capítulo 10: uma unidade que ainda carrega potes de fogo selvagem
+ * e sofre dano tem 1 chance em 6 de incendiá-los acidentalmente.
+ * Consome o equipamento ANTES de aplicar o dano, evitando recursão.
+ */
+export function resolveCarriedWildfireRisk(
+ battle:WarBattle,unitId:string,applyDamage:Damage,
+):WarBattle{
+ const current=battle.units.find(u=>u.id===unitId);
+ if(!current||current.fieldEquipment!=='wildfire-pots'||
+  current.fieldEquipmentConsumed||current.condition==='destroyed'||
+  current.condition==='escaped'||current.condition==='surrendered')
+  return battle;
+ const die=rollDice(battle.seed,1);
+ let next:WarBattle={...battle,seed:die.nextSeed};
+ if(die.dice[0]!==1)return next;
+ next={...next,units:next.units.map(u=>u.id===unitId?{
+  ...u,fieldEquipmentConsumed:true,
+ }:u)};
+ next=event(next,current.side,'wildfire-accident',
+  current.name+' incendiou os próprios potes de fogo selvagem (1 em 6).');
+ const target=next.units.find(u=>u.id===unitId)!;
+ next=applyDamage(next,target,7,'Fogo selvagem acidental');
+ if(next.units.some(u=>u.id===unitId&&
+  !['destroyed','escaped','surrendered'].includes(u.condition)))
+  next=igniteWarUnit(next,unitId,'Fogo selvagem acidental',7,2);
+ return next;
+}
