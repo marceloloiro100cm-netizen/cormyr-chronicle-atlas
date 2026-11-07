@@ -696,7 +696,7 @@ export function issueWarOrder(battle:WarBattle,input:{
  */
 export function fireWarSiegeVolley(battle:WarBattle,input:{
  commanderId:string;weaponIds:readonly string[];
- targetId?:string;fortId?:string;
+ targetId?:string;fortId?:string;targetHeroId?:string;
 }):WarBattle{
  if(battle.phase!=='siege')throw new Error('A fase de cerco não está ativa.');
  const commander=battle.commanders.find(c=>c.id===input.commanderId&&c.active&&c.role==='commander');
@@ -705,15 +705,23 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
  if(battle.siegeCompleted[commander.side])throw new Error('Este lado já executou a fase de cerco.');
  if(!input.weaponIds.length||new Set(input.weaponIds).size!==input.weaponIds.length||
   input.weaponIds.length>commander.warfare)throw new Error('O disparo exige até Guerra máquinas distintas.');
- if(Boolean(input.targetId)===Boolean(input.fortId))
-  throw new Error('Escolha exatamente uma unidade ou fortificação como alvo.');
+ if([input.targetId,input.fortId,input.targetHeroId].filter(Boolean).length!==1)
+  throw new Error('Escolha exatamente um alvo de cerco.');
  const target=input.targetId?battle.units.find(u=>
   u.id===input.targetId&&u.side!==commander.side&&onBoard(u)):undefined;
  const fort=input.fortId?battle.fortifications.find(f=>
   f.id===input.fortId&&f.side!==commander.side&&!f.breached&&
   f.structuralHealth!==0):undefined;
- if(!target&&!fort)throw new Error('Alvo de cerco inimigo indisponível.');
- const position=target?.position??fort!.cells[0]!;
+ const hero=input.targetHeroId?battle.heroes.find(h=>
+  h.id===input.targetHeroId&&h.side!==commander.side&&h.active&&!h.unitId):undefined;
+ if(!target&&!fort&&!hero)throw new Error('Alvo de cerco inimigo indisponível.');
+ if(hero&&(input.weaponIds.length!==1||
+  battle.siege.find(w=>w.id===input.weaponIds[0])?.kind!=='scorpion'))
+  throw new Error('Apenas um escorpião pode alvejar personagem.');
+ const position=target?.position??fort?.cells[0]??{
+  x:Math.floor(personalPosition(hero!).x/10),
+  y:Math.floor(personalPosition(hero!).y/10),
+ };
  for(const id of input.weaponIds){
   const weapon=battle.siege.find(w=>w.id===id&&w.side===commander.side&&w.health>0);
   if(!weapon)throw new Error('Máquina não pertence ao exército ativo.');
@@ -732,17 +740,25 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
   const weapon=next.siege.find(w=>w.id===id)!;
   const engineer=next.units.find(u=>u.id===weapon.engineerId)!;
   const profile=WAR_SIEGE_CATALOG[weapon.kind];
-  const rank=engineer.ability.warfare??2;
-  const roll=rollDice(next.seed,rank,0,profile.engineerPenaltyDice);
+  const structuralRank:Readonly<Record<string,number>>={
+   'catapult-small':5,'catapult-medium':7,'catapult-large':9,
+   mangonel:10,trebuchet:12,
+  };
+  const rank=fort?(structuralRank[weapon.kind]??engineer.ability.warfare??2):
+   engineer.ability.warfare??2;
+  const roll=rollDice(next.seed,rank,0,
+   hero?1:fort?0:profile.engineerPenaltyDice);
   const currentTarget=target?next.units.find(u=>u.id===target.id):undefined;
   const currentFort=fort?next.fortifications.find(f=>f.id===fort.id):undefined;
-  if(!currentTarget&&!currentFort)break;
+  const currentHero=hero?next.heroes.find(h=>h.id===hero.id&&h.active):undefined;
+  if(!currentTarget&&!currentFort&&!currentHero)break;
   if(currentFort&&(currentFort.breached||currentFort.structuralHealth===0))break;
   if(currentTarget&&!onBoard(currentTarget))break;
   const defenderFort=currentTarget?fortForUnit(next.fortifications,currentTarget):null;
   const difficulty=currentTarget?
    currentTarget.defense+(defenderFort?fortDefense(defenderFort):0):
-   12+fortDefense(currentFort!);
+   currentHero?currentHero.defense:
+   currentFort!.structuralDifficulty??12+fortDefense(currentFort!);
   const degrees=degreesOfSuccess(roll.total,difficulty);
   const payload=warSiegeDamage(weapon);
   const damage=currentTarget?
@@ -750,11 +766,22 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
     (payload.ignoresArmor?0:currentTarget.armor)):0;
   next={...next,seed:roll.nextSeed,siege:next.siege.map(w=>
    w.id===weapon.id?{...w,lastFiredRound:next.round}:w)};
-  const label=currentTarget?.name??currentFort!.name;
+  const label=currentTarget?.name??currentFort?.name??currentHero!.name;
   next=log(next,'siege',weapon.name+' disparou contra '+label+': Guerra '+
    roll.total+' vs Defesa '+difficulty+', '+degrees+' grau(s)'+
    (currentTarget?', '+damage+' dano.':'.'),commander.side,{
     roll:roll.dice,total:roll.total,difficulty,degrees});
+  if(currentHero){
+   const heroDamage=degrees>0?Math.max(0,10-currentHero.armor):0;
+   next=log(next,'siege-hero',weapon.name+' atingiu '+currentHero.name+
+    ': '+heroDamage+' dano de escorpião.',commander.side,
+    {roll:roll.dice,total:roll.total,difficulty,degrees});
+   if(heroDamage)next=queuePersonalDamage(next,{
+    actorName:weapon.name,targetHeroId:currentHero.id,damage:heroDamage,
+    source:'personal',
+   });
+   break;
+  }
   if(currentTarget&&degrees>0){
    if(damage>0)next=applyDamage(next,currentTarget,damage,weapon.name);
    if(weapon.ammo==='wildfire')
