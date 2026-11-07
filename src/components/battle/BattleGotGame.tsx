@@ -60,6 +60,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [heroId,setHeroId]=useState('');
  const [heroAction,setHeroAction]=useState<WarHeroAction['kind']>('join');
  const [heroUnitId,setHeroUnitId]=useState('');
+ const [heroTargetId,setHeroTargetId]=useState('');
+ const [heroRanged,setHeroRanged]=useState(false);
+ const [heroMetres,setHeroMetres]=useState({x:25,y:55});
  const [fortKind,setFortKind]=useState<WarFortKind|'none'>('none');
  const [fortEngineer,setFortEngineer]=useState(false);
  const [siegeKind,setSiegeKind]=useState<WarSiegeKind>('catapult-small');
@@ -175,6 +178,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     kind:heroAction,
     ...(['join','rally','revive'].includes(heroAction)?
      {unitId:candidate?.id??matching?.id??''}:{}),
+    ...(['personal-attack','personal-charge'].includes(heroAction)?
+     {targetHeroId:heroTargetId||battle.heroes.find(h=>h.side!==hero.side&&h.active)?.id??''}:{}),
+    ...(heroAction==='personal-move'?{toMetres:heroMetres}:{}),
+    ...(heroAction==='personal-attack'?{ranged:heroRanged}:{}),
    };
    setBattle(executeWarHeroAction(battle,{heroId:hero.id,action}));
    setError('');
@@ -318,16 +325,21 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     <section className="battle-surface got-heroes" aria-label="Ações individuais dos heróis">
      <h3>{battle.phase==='heroes-first'?'Passo 6 · Primeiras ações dos heróis':
       'Passo 8 · Segundas ações dos heróis'}</h3>
-     <p className="battle-note">Cada fase corresponde a cinco rodadas individuais.
-      O combate completo entre personagens segue o capítulo 9 e não é substituído
-      por uma simulação improvisada. Aqui estão as ações próprias da guerra:
-      entrar/sair de unidades, recuperar moral e sucessão no comando.</p>
+     <p className="battle-note">Cada fase equivale a cinco rodadas de 6 segundos.
+      Combate pessoal usa posições de 1 metro, Luta/Pontaria contra Defesa,
+      dano por grau de sucesso menos armadura e ações menores/maiores.
+      Especialidades, equipamentos oficiais, iniciativa pessoal e ferimentos
+      continuam em desenvolvimento; nenhuma baixa altera fichas da Casa.</p>
      <div className="got-config-grid">
       <label>Herói
        <select value={heroId||battle.heroes[0]?.id||''}
-        onChange={e=>setHeroId(e.target.value)}>
+        onChange={e=>{setHeroId(e.target.value);
+         const h=battle.heroes.find(row=>row.id===e.target.value);
+         if(h)setHeroMetres(h.personalPosition??{
+          x:h.position.x*10+5,y:h.position.y*10+5});
+        }}>
         {battle.heroes.map(h=><option key={h.id} value={h.id}>
-         {h.name} · Saúde {h.health}/{h.maxHealth} · {h.usedActions}/5 ações
+         {h.name} · Saúde {h.health}/{h.maxHealth} · {h.usedActions}/5 rodadas
         </option>)}
        </select>
       </label>
@@ -339,8 +351,37 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <option value="revive">Reanimar tropa</option>
         <option value="abdicate">Abdicar do comando</option>
         <option value="assume">Assumir comando vago</option>
+        <option value="personal-attack">Combate pessoal · atacar (menor)</option>
+        <option value="personal-charge">Combate pessoal · carga (maior)</option>
+        <option value="personal-move">Combate pessoal · mover (menor)</option>
+        <option value="personal-dodge">Combate pessoal · esquiva (maior)</option>
+        <option value="personal-recover">Combate pessoal · recuperar o fôlego (maior)</option>
+        <option value="personal-pass">Combate pessoal · passar (maior)</option>
+        <option value="personal-end-turn">Combate pessoal · encerrar turno</option>
+        <option value="personal-surrender">Combate pessoal · render-se (maior)</option>
        </select>
       </label>
+      {['personal-attack','personal-charge'].includes(heroAction)&&
+       <label>Herói adversário
+        <select value={heroTargetId||battle.heroes.find(h=>h.side!==
+         (battle.heroes.find(x=>x.id===heroId)??battle.heroes[0])?.side&&h.active)?.id??''}
+         onChange={e=>setHeroTargetId(e.target.value)}>
+         {battle.heroes.filter(h=>h.side!==
+          (battle.heroes.find(x=>x.id===heroId)??battle.heroes[0])?.side&&h.active)
+          .map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+        </select>
+       </label>}
+      {heroAction==='personal-attack'&&<label className="got-check">
+       <input type="checkbox" checked={heroRanged} onChange={e=>setHeroRanged(e.target.checked)}/>
+       Atacar usando Pontaria (distâncias pessoais em metros)</label>}
+      {heroAction==='personal-move'&&<>
+       <label>X em metros (quadrados de 1 m)
+        <input type="number" min={0} max={battle.width*10-1} value={heroMetres.x}
+         onChange={e=>setHeroMetres(v=>({...v,x:Number(e.target.value)}))}/></label>
+       <label>Y em metros
+        <input type="number" min={0} max={battle.height*10-1} value={heroMetres.y}
+         onChange={e=>setHeroMetres(v=>({...v,y:Number(e.target.value)}))}/></label>
+      </>}
       {['join','rally','revive'].includes(heroAction)&&<label>Unidade aliada
        <select value={heroUnitId} onChange={e=>setHeroUnitId(e.target.value)}>
         <option value="">Escolha uma unidade</option>
@@ -349,6 +390,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        </select>
       </label>}
      </div>
+     <p className="battle-note">Posições individuais: {battle.heroes.map(h=>
+      h.name+' ('+(h.personalPosition?.x??h.position.x*10+5)+','+
+      (h.personalPosition?.y??h.position.y*10+5)+' m; '+
+      h.usedActions+'/5 rodadas; '+(h.minorActionsUsed??0)+'/2 menores)').join(' · ')}</p>
      <div className="got-config-grid">
       <Button onClick={heroDo}>Executar ação individual</Button>
       <Button variant="outline" onClick={heroFinish}>Concluir cinco rodadas · avançar</Button>
