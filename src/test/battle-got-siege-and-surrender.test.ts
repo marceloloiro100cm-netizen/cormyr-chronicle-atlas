@@ -13,7 +13,7 @@ function fixture(withSiege=true):WarBattle{
   id:'cat-a',side:'attacker',kind:'catapult-medium',engineerId:'a',position:{x:1,y:3},
  })]:[];
  return createWarBattle({id:'got-siege',name:'Cerco de ensaio',seed:'cerco-verificado',
-  width:12,height:7,units:[a,d],
+  width:12,height:7,units:[a,withSiege?{...d,defense:35}:d],
   commanders:modelWarCommanders({attacker:6,defender:4}),siege,
  });
 }
@@ -43,8 +43,9 @@ describe('Guerra do livro — armas de cerco e rendição',()=>{
   const b=fixture();
   const a=b.turn==='defender'?skipWarSiege(b):b;
   expect(a.turn).toBe('attacker');
-  const first=fireWarSiegeVolley(a,{commanderId:'leader-attacker',
+  const fired=fireWarSiegeVolley(a,{commanderId:'leader-attacker',
    weaponIds:['cat-a'],targetId:'d'});
+  const first=fired.phase==='siege'?skipWarSiege(fired):fired;
   expect(first.phase).toBe('orders');
   expect(first.ordersRemaining['leader-attacker']).toBe(5);
   expect(first.siege[0]!.lastFiredRound).toBe(1);
