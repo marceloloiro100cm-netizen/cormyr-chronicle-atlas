@@ -68,7 +68,11 @@ export type WarBattle=Readonly<{
  heroes:readonly WarHero[];heroSecondCompletedRound?:number;
  personalInitiative?:WarPersonalInitiative|undefined;
  manualMitigation?:boolean;pendingPersonalDamage?:WarPendingPersonalDamage|undefined;
- pendingPersonalCounterattack?:Readonly<{attackerId:string;defenderId:string;ranged:boolean;charge:boolean}>|undefined;
+ pendingPersonalCounterattack?:Readonly<{
+  attackerId:string;defenderId:string;ranged:boolean;charge:boolean;
+  cautious?:boolean;reckless?:boolean;
+  twoHandedGrip?:boolean;powerBonusDice?:number;
+ }>|undefined;
  squads?:readonly WarSquad[];
  siege:readonly WarSiegeEngine[];siegeCompleted:Readonly<Record<WarSide,boolean>>;
  commanders:readonly WarCommander[];units:readonly WarUnit[];
