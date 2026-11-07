@@ -21,6 +21,8 @@ import type {WarSiegeKind,WarSiegeAmmo} from '@/lib/battle/got/siege';
 import {modelWarUnit,modelWarCommanders} from '@/lib/battle/got/models';
 import {previewWarAftermath} from '@/lib/battle/got/aftermath';
 import {previewWarResourceConsequences} from '@/lib/battle/got/aftermath-resources';
+import {WAR_FIELD_EQUIPMENT} from '@/lib/battle/got/field-equipment';
+import type {WarFieldEquipmentId} from '@/lib/battle/got/field-equipment';
 import type {WarResourceScenario} from '@/lib/battle/got/aftermath-resources';
 import type {WarBattle,WarOrder,WarOrderKind,WarUnit,WarSide} from '@/lib/battle/got/types';
 import type {WarWeather,WarVisibility,WarTerrainId,WarTerrainTile} from '@/lib/battle/got/terrain';
@@ -54,6 +56,9 @@ const ORDER_LABEL:Record<WarOrderKind,string>={
  pincer:'Pinça · dois aliados (+3)',
  'hammer-anvil':'Martelo & Bigorna · prontidão (+6)',
  'climb-walls':'Escalar Muralhas (+3)',
+ 'fire-special':'Disparar munição especial (uso único)',
+ 'breach-gate':'Arrombar portão com aríete',
+ 'discard-equipment':'Abandonar equipamento especial',
 };
 const CONDITION:Record<WarUnit['condition'],string>={
  organized:'Organizada',disorganized:'Desorganizada',routed:'Debandada',
@@ -77,6 +82,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [formation,setFormation]=useState<WarFormation>('battle');
  const [facing,setFacing]=useState<WarFacing>('north');
  const [siegeEnabled,setSiegeEnabled]=useState(false);
+ const [modelFieldEquipment,setModelFieldEquipment]=useState<'none'|WarFieldEquipmentId>('none');
  const [heroesEnabled,setHeroesEnabled]=useState(false);
  const [modelMelee,setModelMelee]=useState<WarPersonalWeaponId>('longsword');
  const [modelRanged,setModelRanged]=useState<WarPersonalWeaponId>('longbow');
@@ -158,9 +164,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     throw new Error('O segundo espaço do atacante deve ter engenheiros para operar o cerco.');
    const units=prepared.map(row=>{
     const imported=officialBySlot[row.id as Slot];
-    if(imported)return {...imported,side:row.side,position:row.position};
-    return modelWarUnit({...row,training,
-     typeId:siegeEnabled&&row.id==='attacker-2'?'engineers':types[row.id]??'infantry'});
+    const model=imported?{...imported,side:row.side,position:row.position}:
+     modelWarUnit({...row,training,
+      typeId:siegeEnabled&&row.id==='attacker-2'?'engineers':types[row.id]??'infantry'});
+    return row.id==='attacker-1'&&modelFieldEquipment!=='none'?
+     {...model,fieldEquipment:modelFieldEquipment}:model;
    });
    const engineer=units.find(u=>u.side==='attacker'&&u.typeId==='engineers');
    if(siegeEnabled&&!engineer)throw new Error('Cerco exige unidade de engenheiros.');
@@ -227,11 +235,15 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     kind:legalKind,
     ...(legalKind==='attack'&&attackHeroWithUnit?
      {targetHeroId:unitTargetHeroId||battle.heroes.find(h=>h.side!==battle.turn&&h.active)?.id||''}:{ }),
-    ...(['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop','hammer-anvil'].includes(legalKind)&&selectedTarget&&
+    ...(['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop','hammer-anvil','fire-special'].includes(legalKind)&&selectedTarget&&
      !(legalKind==='attack'&&attackHeroWithUnit)?
      {targetId:selectedTarget.id}:{}),
     ...(legalKind==='join'?{targetId:activeUnits.find(u=>u.id!==selectedUnit.id)?.id??''}:{}),
     ...(legalKind==='sabotage'?{fortId:battle.fortifications.find(x=>x.side!==battle.turn)?.id??''}:{}),
+    ...(legalKind==='breach-gate'?{
+     fortId:siegeFortId||battle.fortifications.find(x=>x.side!==battle.turn&&!x.breached)?.id??'',
+     wallDifficulty,
+    }:{}),
     ...(legalKind==='move'?{to:coord,sprint}:{}),
     ...(['lightning-attack','trample'].includes(legalKind)?{to:coord}:{}),
     ...(legalKind==='split-attack'?{
@@ -459,6 +471,14 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      })}
     </div>)}
    </div>
+   <label>Equipamento especial da vanguarda atacante (somente laboratório)
+    <select value={modelFieldEquipment}
+     onChange={e=>setModelFieldEquipment(e.target.value as 'none'|WarFieldEquipmentId)}>
+     <option value="none">Nenhum equipamento especial</option>
+     {Object.values(WAR_FIELD_EQUIPMENT).map(item=>
+      <option key={item.id} value={item.id}>{item.label}</option>)}
+    </select>
+   </label>
    <label>Treinamento das tropas-modelo
     <select value={training} onChange={e=>setTraining(e.target.value as WarUnit['training'])}>
      <option value="green">Verde</option><option value="trained">Treinada</option>
@@ -1096,7 +1116,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
          .map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
        </select>
       </label>}
-      {['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop','split-attack','pincer','hammer-anvil'].includes(legalKind)&&
+      {['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop','split-attack','pincer','hammer-anvil','fire-special'].includes(legalKind)&&
        !(legalKind==='attack'&&attackHeroWithUnit)&&<>
        <label>Alvo
         <select aria-label="Alvo da ordem" value={selectedTarget?.id??''}
@@ -1148,6 +1168,19 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        <input value={scorchedDomain} placeholder="Nome ou identificador do domínio"
         onChange={e=>setScorchedDomain(e.target.value)}/>
       </label>}
+      {legalKind==='breach-gate'&&<>
+       <label>Portão de fortificação inimiga
+        <select value={siegeFortId} onChange={e=>setSiegeFortId(e.target.value)}>
+         <option value="">Selecionar fortificação</option>
+         {battle.fortifications.filter(f=>f.side!==battle.turn&&!f.breached)
+          .map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
+        </select>
+       </label>
+       <label>Dificuldade de Atletismo para arrombar
+        <input type="number" min={1} max={30} value={wallDifficulty}
+         onChange={e=>setWallDifficulty(Number(e.target.value))}/>
+       </label>
+      </>}
       {legalKind==='sabotage'&&<label>Fortificação inimiga
        <select value={battle.fortifications.find(f=>f.side!==battle.turn)?.id??''}
         disabled aria-label="Fortificação alvo da sabotagem">
@@ -1188,6 +1221,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       <strong>{u.name}</strong><span>{SIDE[u.side]} · {CONDITION[u.condition]}</span>
       <span>Saúde {u.health}/{u.maxHealth} · Defesa {u.defendRoll??u.defense} · VA {u.armor}</span>
       <span>Disciplina {warUnitSummary(u).discipline} · Desorganizações {u.disorganizations}</span>
+      {u.fieldEquipment&&<span>Equipamento: {WAR_FIELD_EQUIPMENT[u.fieldEquipment].label}
+       {u.fieldEquipmentConsumed?' · usado/abandonado':''}</span>}
       {u.burning&&<span>Incendiada · {u.burning.damagePerRound} dano/rodada por
        {u.burning.remainingRounds} rodada(s) restante(s)</span>}
       {battle.advancedFormations&&<span>Formação {u.formation} · Direção {u.facing}</span>}
