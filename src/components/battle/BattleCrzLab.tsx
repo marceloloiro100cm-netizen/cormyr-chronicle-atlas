@@ -465,7 +465,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      </label>
      {!dndMode&&<label>Malha tática
       <select aria-label="Formato da malha CRZ" value={options.grid??'square'}
-       onChange={e=>setOptions(o=>({...o,grid:'square'}))}>
+       disabled>
        <option value="square">Quadrados (novo padrão)</option>
        {/* Novas simulações usam apenas quadrados. */}
       </select>
