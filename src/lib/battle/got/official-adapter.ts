@@ -4,7 +4,7 @@ import {unitMilitaryBonuses} from '@/lib/house/military-bonuses';
 import type {HouseState,Unit,Skill} from '@/lib/house/types';
 import type {WarPosition,WarSide,WarUnit,WarRange} from './types';
 
-const FORMULAE:Record<string,Skill>={
+const FORMULAE:Record<string,'agility'|'athletics'|'animalHandling'>={
  'Atletismo':'athletics','Agilidade':'agility','Lidar com animais':'animalHandling',
 };
 /** Calcula dano da Tabela 10-1/10-2 sem converter o perfil para HP por soldado de PTE. */
@@ -13,7 +13,8 @@ export function resolveEquipmentDamage(expression:string,ability:WarUnit['abilit
  const match=/^(Atletismo|Agilidade|Lidar com animais)\s*([+-]\s*\d+)?$/.exec(value);
  if(!match)throw new Error('Fórmula de equipamento não reconhecida: '+value);
  const skill=FORMULAE[match[1]!];
- return Math.max(0,ability[skill as keyof typeof ability]+Number((match[2]??'0').replace(/\s/g,'')));
+ if(!skill)throw new Error('Habilidade de dano não reconhecida.');
+ return Math.max(0,ability[skill]+Number((match[2]??'0').replace(/\s/g,'')));
 }
 export function snapshotOfficialWarUnit(
  state:HouseState,unit:Unit,input:{
