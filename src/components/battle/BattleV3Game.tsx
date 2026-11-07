@@ -195,7 +195,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    {!locked&&<label>Retomar batalha V3 verificada (JSON)
     <input type="file" accept=".json,application/json" aria-label="Importar replay V3"
      onChange={e=>{void importReplay(e.currentTarget.files?.[0]);e.currentTarget.value='';}}/>
-   </label>
+   </label>}
    <p className="battle-note">{narrator?'Visão de Narrador · ':'Visão de Jogador · '}Exércitos fictícios; esta partida não é uma batalha oficial convocada.</p>
   </section>
  </main>;
