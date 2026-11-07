@@ -1,9 +1,10 @@
 import {useEffect,useMemo,useState,type ChangeEvent,type KeyboardEvent} from 'react';
 import {Button} from '@/components/ui/button';
 import {militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
+import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
-import {crzHexKey,crzGridToOffset,type CrzHex,type CrzSide,type CrzMap}
+import {crzHexKey,crzGridToOffset,crzScenario,type CrzHex,type CrzSide,type CrzMap}
  from '@/lib/crusade/geometry';
 import {crzLegalCommands,type CrzCommand} from '@/lib/crusade/turns';
 import {crzCapable,crzOrder,type CrzBattleStack,type CrzBattleState,
@@ -398,6 +399,39 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    <section className="battle-surface" aria-label="Preparar treino CRZ">
     <h2>Preparar batalha-modelo</h2>
     <p>Defensores da Coroa contra forças fictícias de Ashkar.</p>
+    <section className="battle-surface" aria-label="Mapas quadrados compartilhados">
+     <h3>Mapa quadrado compartilhado</h3>
+     <p>Importe um mapa quadrado de Adaptado ou Game of Thrones.
+      Somente terrenos básicos são transferidos; regras de combate não são copiadas.</p>
+     <label>Importar arquivo JSON do mapa
+      <input type="file" accept=".json,application/json" aria-label="Importar mapa quadrado D&D"
+       onChange={e=>{
+        const file=e.target.files?.[0];e.target.value='';
+        if(!file)return;
+        if(file.size>100000){setError('Arquivo de mapa excede 100 KB.');return;}
+        void file.text().then(json=>{
+         const common=parseSharedSquareMap(json);
+         setOptions(o=>({...o,grid:'square',width:common.width,sharedMap:common}));
+         setError('');setMessage('Mapa quadrado compartilhado importado: '+common.width+
+          ' × '+common.height+'.');
+        }).catch(err=>setError(err instanceof Error?err.message:'Mapa inválido.'));
+       }}/>
+     </label>
+     <Button variant="outline" onClick={()=>{
+      try{
+       const map=frame?.map??(options.sharedMap?sharedToCrzMap(options.sharedMap):
+        crzScenario(options.scenario,options.width,options.grid??'square'));
+       const shared=sharedFromCrzMap(map);
+       const blob=new Blob([serializeSharedSquareMap(shared)],{type:'application/json'});
+       const url=URL.createObjectURL(blob),anchor=document.createElement('a');
+       anchor.href=url;anchor.download='mapa-cormyr-quadrado.json';anchor.click();
+       URL.revokeObjectURL(url);
+       setMessage('Mapa compartilhado exportado.');setError('');
+      }catch(err){setError(err instanceof Error?err.message:'Mapa não exportado.');}
+     }}>Exportar mapa quadrado</Button>
+     {options.sharedMap&&<p role="status">Mapa compartilhado em uso:
+      {options.sharedMap.name} · {options.sharedMap.width} × {options.sharedMap.height}.</p>}
+    </section>
     <div className="crz-form">
      {!dndMode&&<label>Conjunto de regras
       <select aria-label="Preset CRZ" value={options.preset??'CRZ-5E'}
