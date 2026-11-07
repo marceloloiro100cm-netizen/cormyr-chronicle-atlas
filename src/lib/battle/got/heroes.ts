@@ -20,7 +20,7 @@ export type WarHero=Readonly<{
  // Campos da escala pessoal: um quadrado da guerra contém 10 × 10 posições de 1 m.
  personalPosition?:WarPosition;
  agility?:number;athletics?:number;awareness?:number;endurance?:number;
- animalHandling?:number;
+ animalHandling?:number;healing?:number;
  runningBonusDice?:number;quicknessBonusDice?:number;meleeBonusDice?:number;rangedBonusDice?:number;
  shieldBonusDice?:number;defensiveBonus?:number;armorPenalty?:number;bulk?:number;
  rangedRange?:'none'|'short'|'long';
@@ -33,9 +33,12 @@ export type WarHero=Readonly<{
  fateAvailable?:number;fateSpent?:number;fateBurned?:number;
  fateBonusDice?:number;fatePenaltyReduction?:number;removedFromStory?:boolean;
  squadId?:string;meleeWeapon?:WarPersonalWeapon;rangedWeapon?:WarPersonalWeapon;
+ offhandWeapon?:WarPersonalWeapon|undefined;offhandDefenseSuppressed?:boolean;
  rangedLoaded?:boolean;meleeWeaponBroken?:boolean;rangedWeaponBroken?:boolean;
  stunnedNextTurn?:boolean;
  grabbedBy?:string|undefined;grapplingTargetId?:string|undefined;
+ pinnedByHero?:string|undefined;pinningTargetId?:string|undefined;
+ impalePinnedBy?:string|undefined;
  entangledBy?:string|undefined;entanglingTargetId?:string|undefined;
  impaledBy?:string|undefined;impalingTargetId?:string|undefined;meleeWeaponDisarmed?:boolean;
  mount?:WarPersonalMount;mounted?:boolean;mountControlledTurn?:number|undefined;
@@ -71,7 +74,7 @@ export function makeModelWarHero(input:{
   ...(input.commanderId?{commanderId:input.commanderId}:{}),
   warfare:3,status:3,fighting:3,marksmanship:3,defense:8,armor:3,
   meleeDamage:3,rangedDamage:2,health:9,maxHealth:9,
-  agility:3,athletics:3,awareness:3,endurance:3,animalHandling:3,armorPenalty:0,bulk:0,
+  agility:3,athletics:3,awareness:3,endurance:3,animalHandling:3,healing:3,armorPenalty:0,bulk:0,
   runningBonusDice:0,quicknessBonusDice:0,meleeBonusDice:0,rangedBonusDice:0,rangedRange:'long',
   strengthBonusDice:0,
   wounds:0,injuries:0,minorActionsUsed:0,surrendered:false,
