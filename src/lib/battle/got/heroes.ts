@@ -29,6 +29,7 @@ export type WarHero=Readonly<{
  defeatOutcome?:'death'|'unconscious'|'captured'|'escaped'|undefined;
  attackedThisTurn?:boolean;
  aimBonusDice?:number; cautiousDefenseBonus?:number; recklessDefensePenalty?:number;
+ strengthBonusDice?:number;
  fateAvailable?:number;fateSpent?:number;fateBurned?:number;
  fateBonusDice?:number;fatePenaltyReduction?:number;removedFromStory?:boolean;
  squadId?:string;meleeWeapon?:WarPersonalWeapon;rangedWeapon?:WarPersonalWeapon;
@@ -42,6 +43,7 @@ export type WarHeroAction=Readonly<{
  kind:'join'|'leave'|'rally'|'revive'|'abdicate'|'assume'|PersonalWarAction['kind'];
  unitId?:string;targetHeroId?:string;toMetres?:WarPosition;ranged?:boolean;vsCharge?:boolean;
  escapeUsing?:'agility'|'athletics';
+ twoHandedGrip?:boolean;powerBonusDice?:number;
 }>;
 const distance=(a:WarPosition,b:WarPosition)=>Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y));
 const log=(battle:WarBattle,kind:string,text:string,side:WarSide,meta:{
@@ -65,6 +67,7 @@ export function makeModelWarHero(input:{
   meleeDamage:3,rangedDamage:2,health:9,maxHealth:9,
   agility:3,athletics:3,awareness:3,endurance:3,animalHandling:3,armorPenalty:0,bulk:0,
   runningBonusDice:0,quicknessBonusDice:0,meleeBonusDice:0,rangedBonusDice:0,rangedRange:'long',
+  strengthBonusDice:0,
   wounds:0,injuries:0,minorActionsUsed:0,surrendered:false,
   fateAvailable:2,fateSpent:0,fateBurned:0,
   personalPosition:{x:input.position.x*10+5,y:input.position.y*10+5},
