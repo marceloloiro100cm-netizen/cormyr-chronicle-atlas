@@ -3,6 +3,8 @@ import {Button} from '@/components/ui/button';
 import type {BattleCommand,BattleStack,Hex,Side} from '@/lib/battle/domain/types';
 import {getLegalActions,activationOrder} from '@/lib/battle/domain/turns';
 import {hexKey} from '@/lib/battle/geometry/hex';
+import {fieldUnitAtHex} from '@/lib/battle/v3/field';
+import {exportV3ReplayJson,parseV3ReplayJson} from '@/lib/battle/v3/replay';
 import {livingCount} from '@/lib/battle/domain/morale';
 import {battleReport} from '@/lib/battle/domain/report';
 import {SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixtures';
@@ -42,6 +44,17 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const [showManual,setShowManual]=useState(false);
  const [showDetails,setShowDetails]=useState(false);
  const update=(patch:Partial<V3ScenarioOptions>)=>setOptions(x=>({...x,...patch}));
+ const importReplay=async(file:File|undefined)=>{
+  if(!file)return;
+  try{
+   if(locked)throw new Error('Convocação não permite importar partidas externas.');
+   if(file.size>1_500_000)throw new Error('Replay V3 excede 1,5 MB.');
+   const {game:restored}=parseV3ReplayJson(await file.text());
+   setOptions(restored.setup);setGame(restored);setSelected(restored.battle.activeUnitId);
+   setMode('inspect');setSkill(null);setExpanded(true);
+   setStatus('Replay V3 verificado e retomado sem alterar as fichas oficiais.');
+  }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível recuperar o replay V3.');}
+ };
  const begin=()=>{
   try{
    const created=createV3Game(options);
@@ -83,7 +96,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
   * Inspecionar tropas de outro turno não concede permissão para executá-las. */
  const clickHex=(hex:Hex)=>{
   if(!game||!battle)return;
-  const target=battle.stacks.find(s=>s.currentHp>0&&hexKey(s.position)===hexKey(hex));
+  const target=fieldUnitAtHex(battle.stacks,hex);
   if(canAct&&(mode==='power'||mode==='skill')){
    if(target)cast(target.id);else setStatus('Selecione uma tropa para aplicar a habilidade.');
    return;
@@ -158,6 +171,10 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    <div className="battle-home-actions"><Button onClick={begin}>Batalhar</Button>
     {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
    </div>
+   {!locked&&<label>Retomar batalha V3 verificada (JSON)
+    <input type="file" accept=".json,application/json" aria-label="Importar replay V3"
+     onChange={e=>{void importReplay(e.currentTarget.files?.[0]);e.currentTarget.value='';}}/>
+   </label>
    <p className="battle-note">{narrator?'Visão de Narrador · ':'Visão de Jogador · '}Exércitos fictícios; esta partida não é uma batalha oficial convocada.</p>
   </section>
  </main>;
@@ -181,7 +198,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     </div>
     <div className="crusade-v4-utility">
      <Button variant="outline" onClick={()=>downloadBattleJson('crusada-v3-treino.json',
-      JSON.stringify(game,null,2))}>Exportar treino JSON</Button>
+      exportV3ReplayJson(game))}>Exportar replay V3 verificado</Button>
      <Button variant="outline" onClick={()=>{setExpanded(false);setGame(null);setStatus('');}}>Nova batalha</Button>
      <Button variant="outline" className="battle-expand-toggle"
       aria-label={expanded?'Sair da tela ampliada':'Ampliar batalha'}
@@ -306,7 +323,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       {(showDetails?[...game.log].reverse():[...game.log].reverse().slice(0,6)).map((entry,i)=>
        <li key={game.log.length-i}>
         <strong>Rodada {entry.round}</strong>
-        <span>{entry.side==='attacker'?'Coroa':'Ashkar'} · {entry.label}</span>
+        <span>{modelHouse(entry.side==='attacker'?game.setup.attackerHouseId:game.setup.defenderHouseId).name} · {entry.label}</span>
        </li>)}
      </ol>
      {game.log.length===0&&<p>Nenhuma ordem executada nesta batalha.</p>}
