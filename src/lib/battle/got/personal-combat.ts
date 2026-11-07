@@ -107,7 +107,8 @@ function attackHero(
    });
   }
  }
- const rangePenalty=ranged?Math.min(15,Math.max(0,Math.ceil((dist-effectiveRange)/10))):0;
+ const rangePenalty=ranged?Math.min(15,Math.max(0,Math.ceil((dist-effectiveRange)/
+  (actor.rangedRange==='long'?100:10)))):0;
  const weapon=ranged?actor.rangedWeapon:actor.meleeWeapon;
  const availableBonus=(ranged?actor.rangedBonusDice:actor.meleeBonusDice)??0;
  const requiredBonus=weapon?.trainingBonusDice??0;
