@@ -15,7 +15,8 @@ function example(weapon:'sledgehammer'|'peasant-tool'){
   units:[
    modelWarUnit({id:'a',name:'Aliados',side:'attacker',
     typeId:'infantry',position:{x:1,y:5}}),
-   {...defender,defense:0,armor:6,health:100,maxHealth:100},
+   {...defender,ability:{...defender.ability,endurance:12},
+    defense:0,armor:6,health:36,maxHealth:36},
   ],
   heroes:[{...hero,fighting:12,meleeBonusDice:2,
    personalPosition:{x:25,y:35}}],
