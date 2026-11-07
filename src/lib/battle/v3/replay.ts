@@ -18,7 +18,7 @@ const optionsSchema=z.object({
  scenario:z.enum(Object.keys(SCENARIOS) as [string,...string[]]),
  opponent:z.enum(['human','ai']),
 }).strict();
-const stepSchema=z.discriminatedUnion('type',[
+export const v3StepSchema=z.discriminatedUnion('type',[
  z.object({type:z.literal('COMMAND'),command:battleCommandSchema,actor:z.enum(['narrator','ai'])}).strict(),
  z.object({type:z.literal('SKILL'),skill:z.enum(['CHARGE','VOLLEY','SHIELD_WALL','AMBUSH','SAPPERS']),
   targetId:z.string().min(1).max(80).optional()}).strict(),
@@ -27,7 +27,7 @@ const stepSchema=z.discriminatedUnion('type',[
 ]);
 const hash=z.string().regex(/^[0-9a-f]{64}$/);
 const receiptSchema=z.object({
- index:z.number().int().min(1).max(1500),step:stepSchema,hash,
+ index:z.number().int().min(1).max(1500),step:v3StepSchema,hash,
 }).strict();
 const replaySchema=z.object({
  format:z.literal('CCA-V3-REPLAY-1'),
