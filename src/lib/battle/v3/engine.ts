@@ -13,6 +13,12 @@ import {modelHouse} from './model-houses';
 export type V3PowerTarget='ally'|'enemy';
 export type V3UnitSkill='CHARGE'|'VOLLEY'|'SHIELD_WALL'|'AMBUSH'|'SAPPERS';
 export type V3Log=Readonly<{round:number;side:Side;label:string}>;
+export type V3Step=Readonly<
+ |{type:'COMMAND';command:BattleCommand;actor:'narrator'|'ai'}
+ |{type:'SKILL';skill:V3UnitSkill;targetId?:string}
+ |{type:'POWER';targetId:string}
+ |{type:'AI'}
+>;
 /** PTE-3.0-SANDBOX uses the audited PTE-2.0 mechanics as its foundation.
  * This wrapper is deliberately not a PTE-2.0 replay or a server persistence format.
  * It never accepts official HouseState and has no Supabase dependencies.
@@ -22,6 +28,7 @@ export type V3Game=Readonly<{
  commanders:Readonly<Record<Side,CommanderId>>;
  usedPowers:Readonly<Record<Side,boolean>>;
  log:readonly V3Log[];
+ setup:V3ScenarioOptions;steps:readonly V3Step[];
 }>;
 export type V3ScenarioOptions=Readonly<{
  attackerHouseId:string;defenderHouseId:string;
@@ -61,7 +68,7 @@ export function createV3Game(options:V3ScenarioOptions):V3Game{
  const commanders={attacker:options.attackerCommander,defender:options.defenderCommander};
  const stacks=started.stacks.map(s=>applyCommanderPassive(s,commanders[s.side]));
  return {mode:'PTE-3.0-SANDBOX',battle:{...started,stacks},
-  commanders,usedPowers:{attacker:false,defender:false},log:[]};
+  commanders,usedPowers:{attacker:false,defender:false},log:[],setup:{...options},steps:[]};
 }
 function append(game:V3Game,side:Side,label:string,battle=game.battle):V3Game{
  return {...game,battle,log:[...game.log,{round:game.battle.round,side,label}].slice(-100)};
@@ -94,7 +101,8 @@ export function v3SkillName(skill:V3UnitSkill):string{
 export function v3PlayCommand(game:V3Game,cmd:BattleCommand,actor:'narrator'|'ai'='narrator'):V3Game{
  const side=game.battle.stacks.find(s=>s.id===game.battle.activeUnitId)?.side??'attacker';
  const battle=applyBattleCommand(game.battle,cmd,actor);
- return append(game,side,cmd.type==='ATTACK'?'Ataque ordinário':cmd.type==='MOVE'?'Marcha':cmd.type==='DEFEND'?'Defesa':cmd.type==='WAIT'?'Esperar':cmd.type==='MANUAL_FINISH'?'Encerramento':'Fim da ativação',battle);
+ return {...append(game,side,cmd.type==='ATTACK'?'Ataque ordinário':cmd.type==='MOVE'?'Marcha':cmd.type==='DEFEND'?'Defesa':cmd.type==='WAIT'?'Esperar':cmd.type==='MANUAL_FINISH'?'Encerramento':'Fim da ativação',battle),
+  steps:[...game.steps,{type:'COMMAND',command:cmd,actor}]};
 }
 export function v3UseUnitSkill(game:V3Game,skill:V3UnitSkill,targetId?:string):V3Game{
  if(!v3LegalSkills(game).includes(skill))throw new Error('Habilidade militar indisponível nesta ativação.');
@@ -103,7 +111,8 @@ export function v3UseUnitSkill(game:V3Game,skill:V3UnitSkill,targetId?:string):V
   const defended=applyBattleCommand(battle,{type:'DEFEND',unitId:active.id});
   const stacks=defended.stacks.map(s=>s.side===active.side&&s.currentHp>0&&
     hexDistance(s.position,active.position)<=1?{...s,defenseGuard:true}:s);
-  return append(game,active.side,'Muralha de Escudos', {...defended,stacks});
+  return {...append(game,active.side,'Muralha de Escudos', {...defended,stacks}),
+   steps:[...game.steps,{type:'SKILL',skill}]};
  }
  if(!targetId)throw new Error('Selecione um alvo inimigo para a habilidade.');
  const valid=getLegalActions(battle).some(c=>c.type==='ATTACK'&&c.targetId===targetId);
@@ -120,7 +129,8 @@ export function v3UseUnitSkill(game:V3Game,skill:V3UnitSkill,targetId?:string):V
  // Bonuses apply to this one attack only; reduction of armor from sappers persists.
  const restored=result.stacks.map(s=>s.id===active.id?{...s,attack:active.attack,
   damagePerSoldier:active.damagePerSoldier}:s);
- return append(game,active.side,v3SkillName(skill)+' · '+target.name,{...result,stacks:restored});
+ return {...append(game,active.side,v3SkillName(skill)+' · '+target.name,{...result,stacks:restored}),
+  steps:[...game.steps,{type:'SKILL',skill,targetId}]};
 }
 export function v3CanUseCommander(game:V3Game):boolean{
  const b=game.battle,active=b.stacks.find(s=>s.id===b.activeUnitId);
@@ -161,7 +171,8 @@ export function v3UseCommander(game:V3Game,targetId:string):V3Game{
  if(outcome)next={...next,phase:'completed',winner:outcome.winner,
    resultReason:outcome.reason,activeUnitId:null,activationQueue:[],waitingQueue:[]};
  return {...append(game,side,c.powerName+' em '+target.name,next),
-  usedPowers:{...game.usedPowers,[side]:true}};
+  usedPowers:{...game.usedPowers,[side]:true},
+  steps:[...game.steps,{type:'POWER',targetId}]};
 }
 export function v3RunAi(game:V3Game):V3Game{
  const battle=game.battle;
@@ -182,5 +193,5 @@ export function v3RunAi(game:V3Game):V3Game{
   if(result.commands.length)next=append(next,active.side,
     'IA executou '+result.commands.length+' comandos.');
  }
- return next;
+ return {...next,steps:[...game.steps,{type:'AI'}]};
 }
