@@ -94,7 +94,7 @@ export function validateWarHeroes(
    hero.position.x<0||hero.position.x>=width||hero.position.y<0||hero.position.y>=height)
    throw new Error('Herói ou posição inválidos.');
   ids.add(hero.id);
-  if(hero.minorActionsUsed!==undefined&&![0,1].includes(hero.minorActionsUsed))
+  if(hero.minorActionsUsed!==undefined&&![0,1,2].includes(hero.minorActionsUsed))
    throw new Error('Orçamento de ações menores inválido.');
   if(hero.personalPosition&&(
    !Number.isInteger(hero.personalPosition.x)||!Number.isInteger(hero.personalPosition.y)||
