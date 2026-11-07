@@ -1,5 +1,6 @@
 import type { BattleMap, Hex } from '../domain/types';
-import { hexDistance, hexKey, hexNeighbors } from './hex';
+import { hexKey } from './hex';
+import {gridDistance,gridNeighbors,gridStepCost,gridAllowsStep} from './grid';
 import { TERRAIN, tileIndex } from './terrain';
 export type HexPath=Readonly<{to:Hex;cost:number;steps:number;path:readonly Hex[]}>;
 export type PathContext=Readonly<{
@@ -27,12 +28,13 @@ export function reachablePaths(map:BattleMap,from:Hex,budget:number,context:Path
     const current=frontier.shift()!;
     const currentKey=hexKey(current.to);
     if(best.get(currentKey)!==current)continue;
-    const zoc=currentKey!==start&&hexNeighbors(current.to).some(h=>enemy.has(hexKey(h)));
+    const zoc=currentKey!==start&&gridNeighbors(map,current.to).some(h=>enemy.has(hexKey(h)));
     if(zoc)continue;
-    hexNeighbors(current.to).forEach((next,index)=>{
+    gridNeighbors(map,current.to).forEach((next,index)=>{
       const key=hexKey(next),target=tiles.get(key);
-      if(!target||TERRAIN[target.terrain].blocksMovement||occupied.has(key))return;
-      const cost=current.cost+TERRAIN[target.terrain].cost;
+      if(!target||TERRAIN[target.terrain].blocksMovement||occupied.has(key)||
+        !gridAllowsStep(map,current.to,next,occupied))return;
+      const cost=current.cost+gridStepCost(map,current.to,next,TERRAIN[target.terrain].cost);
       if(cost>budget)return;
       const candidate={to:next,cost,steps:current.steps+1,
         path:[...current.path,next],trace:current.trace+String(index)};
@@ -47,6 +49,6 @@ export function reachablePaths(map:BattleMap,from:Hex,budget:number,context:Path
     .map(c=>({to:c.to,cost:c.cost,steps:c.steps,path:c.path}));
 }
 export function findPath(map:BattleMap,from:Hex,to:Hex,budget:number,context:PathContext={}):HexPath|null{
-  if(hexDistance(from,to)===0)return {to,cost:0,steps:0,path:[from]};
+  if(gridDistance(map,from,to)===0)return {to,cost:0,steps:0,path:[from]};
   return reachablePaths(map,from,budget,context).find(item=>hexKey(item.to)===hexKey(to))??null;
 }
