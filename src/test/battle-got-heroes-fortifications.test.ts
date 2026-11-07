@@ -25,7 +25,7 @@ describe('Livro: passos de heróis e defesa das fortificações',()=>{
   const b=example(true);
   expect(b.phase).toBe('heroes-first');
   expect(()=>issueWarOrder(b,{commanderId:'leader-attacker',unitId:'a',
-   order:{kind:'ready'}})).toThrow(/fase|encerrada/i);
+   order:{kind:'ready',ready:{trigger:'enemy-adjacent',reaction:'attack'}}})).toThrow(/fase|encerrada/i);
   const commands=completeWarHeroPhase(b);
   expect(commands.phase).toBe('orders');
   const heroes=advanceWarRound(commands);
@@ -40,7 +40,7 @@ describe('Livro: passos de heróis e defesa das fortificações',()=>{
   expect(joined.heroes.find(h=>h.id==='h-a')?.unitId).toBe('a');
   const commands={...completeWarHeroPhase(joined),turn:'attacker' as const};
   const result=issueWarOrder(commands,{commanderId:'leader-attacker',unitId:'a',
-   order:{kind:'ready'}});
+   order:{kind:'ready',ready:{trigger:'enemy-adjacent',reaction:'attack'}}});
   expect(result.difficulty).toBe(0);
   expect(result.battle.units.find(u=>u.id==='a')?.health).toBe(9);
  });
