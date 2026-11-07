@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
+import {beginPersonalInitiative,personalTurnHeroId} from '@/lib/battle/got/personal-initiative';
 import type {WarHeroAction} from '@/lib/battle/got/heroes';
 import {makeWarFortification,WAR_FORT_PROFILES} from '@/lib/battle/got/fortifications';
 import type {WarFortKind} from '@/lib/battle/got/fortifications';
@@ -200,6 +201,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    setBattle(executeWarHeroAction(battle,{heroId:hero.id,action}));
    setError('');
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível agir com o herói.');}
+ };
+ const heroInitiative=()=>{
+  if(!battle)return;
+  try{setBattle(beginPersonalInitiative(battle));setError('');}
+  catch(e){setError(e instanceof Error?e.message:'Falha na iniciativa pessoal.');}
  };
  const heroFinish=()=>{
   if(!battle)return;
@@ -415,11 +421,20 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        </select>
       </label>}
      </div>
+     {battle.personalInitiative?.phase===battle.phase&&
+      <p role="status">Iniciativa pessoal · rodada {Math.min(5,battle.personalInitiative.roundIndex+1)}/5 ·
+       {personalTurnHeroId(battle)?' Vez de '+battle.heroes.find(h=>h.id===personalTurnHeroId(battle))?.name:
+        ' ações da janela concluídas'}
+      </p>}
      <p className="battle-note">Posições individuais: {battle.heroes.map(h=>
       h.name+' ('+(h.personalPosition?.x??h.position.x*10+5)+','+
       (h.personalPosition?.y??h.position.y*10+5)+' m; '+
       h.usedActions+'/5 rodadas; '+(h.minorActionsUsed??0)+'/2 menores)').join(' · ')}</p>
      <div className="got-config-grid">
+      <Button variant="outline" onClick={heroInitiative}
+       disabled={Boolean(battle.personalInitiative?.phase===battle.phase)}>
+       Rolar iniciativa pessoal (Agilidade + Rapidez)
+      </Button>
       <Button onClick={heroDo}>Executar ação individual</Button>
       <Button variant="outline" onClick={heroFinish}>Concluir cinco rodadas · avançar</Button>
      </div>
