@@ -3,7 +3,7 @@ import {createWarBattle,issueWarOrder} from '@/lib/battle/got/engine';
 import {makeWarFortification,fortDefense} from '@/lib/battle/got/fortifications';
 import {modelWarCommanders,modelWarUnit} from '@/lib/battle/got/models';
 import {WAR_FIELD_EQUIPMENT,warFieldDefenseBonus,warFieldMovementMetres,
- warFieldOrderDifficulty,warFieldForbidsAttack} from '@/lib/battle/got/field-equipment';
+ warFieldOrderDifficulty,warFieldForbidsAttack,warFieldThrowDamage} from '@/lib/battle/got/field-equipment';
 import type {WarFieldEquipmentId} from '@/lib/battle/got/field-equipment';
 import type {WarBattle,WarUnit} from '@/lib/battle/got/types';
 
@@ -66,7 +66,7 @@ describe('Capítulo 10 — equipamentos de campo e uso único',()=>{
   expect(target(fired.battle).health).toBeLessThan(60);
   expect(target(fired.battle).burning?.damagePerRound).toBe(7);
   expect(warFieldOrderDifficulty(actor(fired.battle))).toBe(0);
-  expect(()=>order(fired.battle,'fire-special'))
+  expect(()=>warFieldThrowDamage(actor(fired.battle)))
    .toThrow(/não possui munição especial/);
  });
  it('óleo e água fervente exigem muralhas e causam dano sem VA',()=>{
