@@ -17,7 +17,7 @@ describe('Auditoria V4 · arena unificada e limpa do Narrador',()=>{
   const dialog=openPte();
   expect(within(dialog).getByRole('region',{name:'Campo de batalha PTE'}))
    .toBeInTheDocument();
-  expect(within(dialog).getByRole('group',{name:/Mapa hexagonal com/}))
+  expect(within(dialog).getByRole('group',{name:/Mapa (?:hexagonal|quadrado) com/}))
    .toBeInTheDocument();
   expect(within(dialog).getByRole('heading',{name:'Comando tático'}))
    .toBeInTheDocument();
