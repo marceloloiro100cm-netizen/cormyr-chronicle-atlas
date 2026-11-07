@@ -5,7 +5,7 @@ import {modelWarCommanders,modelWarUnit} from '@/lib/battle/got/models';
 
 function example(separation=1){
  const a=makeModelWarHero({id:'h-a',name:'Guerreiro A',side:'attacker',position:{x:2,y:5}});
- const d=makeModelWarHero({id:'h-d',name:'Guerreiro D',side:'defender',position:{x:2,y:5}});
+ const d=makeModelWarHero({id:'h-d',name:'Guerreiro D',side:'defender',position:{x:Math.floor((25+separation)/10),y:5}});
  return createWarBattle({id:'personal',name:'Combate pessoal',seed:'capitulo-9',
   width:12,height:7,commanders:modelWarCommanders({attacker:6,defender:6}),
   units:[
