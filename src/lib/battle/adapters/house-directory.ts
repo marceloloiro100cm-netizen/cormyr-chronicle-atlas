@@ -41,7 +41,7 @@ export function battleHouseRegions(houses:readonly BattleHouseDirectoryRow[]):Ba
 }
 export type BattleRosterPreview=Readonly<{
  id:string;name:string;types:readonly string[];training:string;
- strength:number;casualties:number;destroyed:boolean;
+ strength:number;casualties:number;destroyed:boolean;sourceStatus?:string;
 }>;
 /** A roster is only selectable when it is valid for land combat and has men. */
 export function battleRosterEligible(unit:BattleRosterPreview):boolean{
