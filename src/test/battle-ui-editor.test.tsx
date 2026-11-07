@@ -26,7 +26,7 @@ describe('Batalha V2 — lotes 5, 6 e 7',()=>{
   render(<BattleMapEditor map={map} onChange={onChange}/>);
   expect(screen.getByText('Mapa válido para implantação.')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Floresta'}));
-  const cells=screen.getAllByRole('button',{name:/Hexágono /});
+  const cells=screen.getAllByRole('button',{name:/Quadrado /});
   fireEvent.click(cells[0]!);
   expect(onChange).toHaveBeenCalledOnce();
   expect(map.tiles[0]?.terrain).toBe('plain');
