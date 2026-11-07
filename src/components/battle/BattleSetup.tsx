@@ -4,6 +4,7 @@ import {Button} from '@/components/ui/button';
 import {LAND_PROFILES,tacticalProfile} from '@/lib/battle/domain/profiles-v2';
 import {makeFictionalStack,makeBattleSetup} from '@/lib/battle/domain/setup';
 import {createScenario,SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixtures';
+import {convertBattleMapGrid} from '@/lib/battle/geometry/map-conversion';
 import {validateBattleMap} from '@/lib/battle/geometry/map-validation';
 import {hexKey} from '@/lib/battle/geometry/hex';
 import type {BattleMap,BattleState,BattleStack,Hex,Side,Training} from '@/lib/battle/domain/types';
@@ -190,7 +191,9 @@ export function BattleSetup({onStart,onBack}:{
     <label>Formato do mapa<select aria-label="Formato da malha PTE"
       value={map.grid??'hex'} onChange={e=>{
        const id=Object.hasOwn(SCENARIOS,map.id)?map.id as BattleScenarioId:'plain-open';
-       setMap(createScenario(id,map.width,e.target.value as 'hex'|'square'));
+       try{setMap(convertBattleMapGrid(map,e.target.value as 'hex'|'square'));}catch(cause){
+        setError(cause instanceof Error?cause.message:'Conversão de malha recusada.');return;
+       }
        setUnits(list=>list.map(u=>({...u,position:null})));setError('');
       }}>
       <option value="square">Quadrados (novo padrão)</option>
@@ -303,7 +306,9 @@ export function BattleSetup({onStart,onBack}:{
      <label>Formato do mapa<select aria-label="Formato da malha PTE"
       value={map.grid??'hex'} onChange={e=>{
        const id=Object.hasOwn(SCENARIOS,map.id)?map.id as BattleScenarioId:'plain-open';
-       setMap(createScenario(id,map.width,e.target.value as 'hex'|'square'));
+       try{setMap(convertBattleMapGrid(map,e.target.value as 'hex'|'square'));}catch(cause){
+        setError(cause instanceof Error?cause.message:'Conversão de malha recusada.');return;
+       }
        setUnits(list=>list.map(u=>({...u,position:null})));setError('');
       }}>
       <option value="square">Quadrados (novo padrão)</option>
