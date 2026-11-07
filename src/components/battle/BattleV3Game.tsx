@@ -10,6 +10,7 @@ import {battleReport} from '@/lib/battle/domain/report';
 import {SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixtures';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
+import {BattleSourcePicker} from './BattleSourcePicker';
 import {BattleExpandedView} from './BattleExpandedView';
 import {V3_COMMANDERS,commander,type CommanderId} from '@/lib/battle/v3/commanders';
 import {MODEL_HOUSES,modelHouse} from '@/lib/battle/v3/model-houses';
@@ -35,6 +36,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
 }){
  const [options,setOptions]=useState<V3ScenarioOptions>(initialOptions??defaults);
  const [game,setGame]=useState<V3Game|null>(null);
+ const [officialCopies,setOfficialCopies]=useState<BattleStack[]>([]);
  const [expanded,setExpanded]=useState(false);
  const [selected,setSelected]=useState<string|null>(null);
  const [hoveredId,setHoveredId]=useState<string|null>(null);
@@ -57,7 +59,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  };
  const begin=()=>{
   try{
-   const created=createV3Game(options);
+   const created=createV3Game(options,narrator?officialCopies:[]);
    setGame(created);setSelected(created.battle.activeUnitId);setMode('inspect');
    setExpanded(true);
    setStatus('Encontro iniciado. Cada token representa um agrupamento completo.');
@@ -171,6 +173,25 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    <div className="battle-home-actions"><Button onClick={begin}>Batalhar</Button>
     {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
    </div>
+   {narrator&&!locked&&<>
+    <BattleSourcePicker onAdd={stack=>{
+     if(officialCopies.filter(s=>s.side===stack.side).length>=5){
+      setStatus('Limite de cinco unidades oficiais por lado.');return;
+     }
+     if(officialCopies.some(s=>s.source.kind==='house-readonly'&&stack.source.kind==='house-readonly'&&
+      s.source.houseId===stack.source.houseId&&s.source.unitId===stack.source.unitId)){
+      setStatus('Esta unidade já está na simulação.');return;
+     }
+     setOfficialCopies(list=>[...list,stack]);setStatus('Cópia autorizada adicionada para treino.');
+    }}/>
+    {officialCopies.length>0&&<div className="battle-surface">
+     <h3>Unidades oficiais copiadas · sem baixas reais</h3>
+     {officialCopies.map((stack,index)=><p key={index}>{stack.name} · {stack.side==='attacker'?'Atacante':'Defensor'}
+      {' '}<Button size="sm" variant="outline" onClick={()=>setOfficialCopies(xs=>xs.filter((_,i)=>i!==index))}>Remover cópia</Button></p>)}
+     <p className="battle-note">O lado com cópias oficiais utiliza essas unidades no lugar da casa-modelo.
+      Não é permitido importar nem validar replay externo de fichas oficiais neste modo.</p>
+    </div>}
+   </>}
    {!locked&&<label>Retomar batalha V3 verificada (JSON)
     <input type="file" accept=".json,application/json" aria-label="Importar replay V3"
      onChange={e=>{void importReplay(e.currentTarget.files?.[0]);e.currentTarget.value='';}}/>
@@ -197,8 +218,12 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       PTE-3.0-SANDBOX</p>
     </div>
     <div className="crusade-v4-utility">
-     <Button variant="outline" onClick={()=>downloadBattleJson('crusada-v3-treino.json',
-      exportV3ReplayJson(game))}>Exportar replay V3 verificado</Button>
+     {game.battle.stacks.every(s=>s.source.kind==='fictional')?
+      <Button variant="outline" onClick={()=>{
+       try{downloadBattleJson('crusada-v3-replay-verificado.json',exportV3ReplayJson(game));}
+       catch(e){setStatus(e instanceof Error?e.message:'Replay V3 indisponível.');}
+      }}>Exportar replay V3 verificado</Button>:
+      <span className="battle-note">Replay externo desativado para snapshots oficiais.</span>}
      <Button variant="outline" onClick={()=>{setExpanded(false);setGame(null);setStatus('');}}>Nova batalha</Button>
      <Button variant="outline" className="battle-expand-toggle"
       aria-label={expanded?'Sair da tela ampliada':'Ampliar batalha'}
