@@ -32,8 +32,9 @@ const turnInput=z.object({
  step:v3StepSchema,
 }).strict();
 type Db={rpc:(name:string,args?:Record<string,unknown>)=>Promise<{data:unknown;error:{message:string}|null}>;from:(table:string)=>any};
+const BATTLE_NARRATOR_ONLY_RELEASE=true;
 function requireLiveEnabled(){
- if(process.env['ENABLE_BATTLE_V3_LIVE']!=='true')
+ if(BATTLE_NARRATOR_ONLY_RELEASE||process.env['ENABLE_BATTLE_V3_LIVE']!=='true')
   throw new Error('Batalhas multiplayer não habilitadas neste ambiente.');
 }
 

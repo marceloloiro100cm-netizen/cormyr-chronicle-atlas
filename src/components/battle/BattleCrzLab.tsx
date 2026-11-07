@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState,type ChangeEvent,type KeyboardEvent} from 'react';
 import {Button} from '@/components/ui/button';
 import {BattleExpandedView} from './BattleExpandedView';
+import {BattleCommanderPortrait} from './BattleCommanderPortrait';
 import {crzHexKey,crzAxialToOffset,type CrzHex,type CrzSide}
  from '@/lib/crusade/geometry';
 import {crzLegalCommands,type CrzCommand} from '@/lib/crusade/turns';
@@ -491,12 +492,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    </section>
    <div className="crz-battle-columns">
     <section className="crz-general-deck" aria-label="Painel do General CRZ">
-     <div className="crz-portrait" role="img"
-      aria-label="Espaço reservado para retrato do General">
-      <span className="crz-portrait-head" aria-hidden="true"/>
-      <span className="crz-portrait-body" aria-hidden="true"/>
-      <span className="crz-portrait-caption">Retrato do General</span>
-     </div>
+     <BattleCommanderPortrait id={caster?.side==='defender'?'ashkar-raider':'tillet'}
+      className="crz-portrait" eager/>
      <h2>General</h2>
      <strong className="crz-general-name">{caster?.name??'Sem General ativo'}</strong>
      <div className="crz-general-energy">

@@ -18,3 +18,9 @@ export const BATTLE_CRZ_TRAINING_UI_ENABLED=import.meta.env['VITE_ENABLE_CRZ_TRA
 
 /** Multiplayer exige migração 0078 e aceite JWT/RLS; desligado até autorização. */
 export const BATTLE_V3_LIVE_ENABLED=import.meta.env['VITE_ENABLE_BATTLE_V3_LIVE']==='true';
+
+/** Implantação exclusiva do Narrador em 07/11/2026.
+ * Bloqueio deliberado, não acionável por variável pública de build.
+ * Nenhuma aba, entrada ou convocação de batalha é exibida a jogadores.
+ */
+export const BATTLE_PLAYERS_ENABLED=false as boolean;

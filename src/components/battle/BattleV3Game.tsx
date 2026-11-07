@@ -11,6 +11,7 @@ import {SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixture
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
 import {BattleExpandedView} from './BattleExpandedView';
+import {BattleCommanderPortrait} from './BattleCommanderPortrait';
 import {V3_COMMANDERS,commander,type CommanderId} from '@/lib/battle/v3/commanders';
 import {MODEL_HOUSES,modelHouse} from '@/lib/battle/v3/model-houses';
 import {createV3Game,v3PlayCommand,v3LegalSkills,v3SkillName,v3UseUnitSkill,
@@ -153,7 +154,9 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
        onChange={e=>update({[ckey]:e.target.value as CommanderId})}>
        {V3_COMMANDERS.map(c=><option key={c.id} value={c.id}>{c.name} · {c.style}</option>)}
       </select></label>
-      <div className="crusade-commander-card"><strong>{leader.name}</strong>
+      <div className="crusade-commander-card">
+       <BattleCommanderPortrait id={leader.id}/>
+       <strong>{leader.name}</strong>
        <small>{leader.title} · {leader.style}</small>
        <p>{leader.lore}</p><p><b>{leader.powerName}:</b> {leader.powerDescription}</p>
       </div>
@@ -245,12 +248,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    </section>
    <div className="crusade-v4-columns">
     <section className="crusade-v4-general" aria-label="General e habilidades V3">
-     <div className="crusade-v4-portrait" role="img"
-      aria-label="Espaço reservado para retrato do comandante">
-      <span className="crusade-v4-portrait-face" aria-hidden="true"/>
-      <span className="crusade-v4-portrait-body" aria-hidden="true"/>
-      <span className="crusade-v4-portrait-caption">Retrato do General</span>
-     </div>
+     {currentCommander&&<BattleCommanderPortrait id={currentCommander.id}
+      className="crusade-v4-portrait" eager/>}
      <h2>General</h2>
      <strong className="crusade-v4-general-name">{currentCommander?.name??'Comandante indisponível'}</strong>
      <p className="crusade-v4-general-title">{currentCommander?.title??'—'}</p>

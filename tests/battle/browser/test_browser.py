@@ -213,7 +213,10 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         self.assertLess(general["x"],field["x"])
         self.assertLess(field["x"],latest["x"])
         self.assertLess(turns["y"],field["y"])
-        self.assertTrue(stage.get_by_role("img",name="Espaço reservado para retrato do comandante").is_visible())
+        portrait=stage.locator(".crusade-v4-general .battle-commander-portrait img").first
+        self.assertTrue(portrait.is_visible())
+        portrait.evaluate("(img) => img.decode()")
+        self.assertGreater(portrait.evaluate("(img) => img.naturalWidth"),100)
         self.assertEqual(stage.get_by_role("button",name="Mover",exact=True).count(),0)
         self.assertEqual(stage.get_by_role("button",name="Atacar",exact=True).count(),0)
         board=stage.locator(".battle-board-svg--cormyr")
@@ -275,7 +278,10 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         crz=page.get_by_role("region",name="Arena e comandos CRZ")
         crz.wait_for(timeout=15000)
         self.assertTrue(crz.get_by_role("heading",name="Ordem de combate").is_visible())
-        self.assertTrue(crz.get_by_role("img",name="Espaço reservado para retrato do General").is_visible())
+        portrait=crz.locator(".crz-general-deck .battle-commander-portrait img").first
+        self.assertTrue(portrait.is_visible())
+        portrait.evaluate("(img) => img.decode()")
+        self.assertGreater(portrait.evaluate("(img) => img.naturalWidth"),100)
         self.assertLessEqual(page.evaluate("document.documentElement.scrollWidth-window.innerWidth"),4)
         crz.get_by_role("button",name="Ampliar zoom CRZ").tap()
         self.assertIn("150%",crz.get_by_label("Zoom do mapa CRZ").inner_text())

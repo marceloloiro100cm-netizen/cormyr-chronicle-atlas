@@ -16,9 +16,9 @@ const opts={
  scenario:'plain-open' as const,opponent:'human' as const,
 };
 describe('Crusada V3 — exércitos modelos, habilidades e separação da campanha',()=>{
- it('mantém 10 comandantes originais, 6 casas modelo e forma duas pilhas válidas de até 5',()=>{
-  expect(V3_COMMANDERS).toHaveLength(10);
-  expect(new Set(V3_COMMANDERS.map(c=>c.id)).size).toBe(10);
+ it('mantém 20 arquétipos e os dez poderes originais, 6 casas modelo e forma duas pilhas válidas de até 5',()=>{
+  expect(V3_COMMANDERS).toHaveLength(20);
+  expect(new Set(V3_COMMANDERS.map(c=>c.id)).size).toBe(20);
   expect(new Set(V3_COMMANDERS.map(c=>c.power)).size).toBe(10);
   expect(MODEL_HOUSES.length).toBeGreaterThanOrEqual(6);
   for(const home of MODEL_HOUSES){
@@ -91,7 +91,7 @@ describe('Crusada V3 — exércitos modelos, habilidades e separação da campan
   const route=src('src/routes/_authenticated/jogadores.tsx');
   const game=src('src/components/battle/BattleV3Game.tsx');
   const engine=src('src/lib/battle/v3/engine.ts');
-  expect(route).toContain("tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&<BattleV3PlayerEntry");
+  expect(route).toContain("tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED&&<BattleV3PlayerEntry");
   expect(route).not.toContain("tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&<BattleNarratorHub/>");
   expect(route).toContain('data.admin?<div');
   expect(route).toContain("section==='batalha'&&BATTLE_MODULE_ENABLED?<BattleNarratorHub/>");
