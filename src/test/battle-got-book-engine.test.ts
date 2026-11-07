@@ -61,7 +61,9 @@ describe('Guerra do livro — motor independente e rolagens',()=>{
   expect(second.difficulty).toBe(3);
  });
  it('um fracasso crítico consome uma ordem sem ativar unidade nem substituir ordem por outra engine',()=>{
-  const battle={...fixture({training:'green',warfare:1}),turn:'attacker' as const};
+  const original=fixture({training:'green',warfare:1});
+  const battle={...original,turn:'attacker' as const,
+   units:original.units.map(u=>u.id==='a'?{...u,discipline:30}:u)};
   const fail=issueWarOrder(battle,{commanderId:'leader-attacker',unitId:'a',order:{kind:'ready'}});
   expect(fail.critical).toBe(true);
   expect(fail.passed).toBe(false);
