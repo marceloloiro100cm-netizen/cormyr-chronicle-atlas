@@ -189,19 +189,19 @@ export function BattleSetup({onStart,onBack}:{
     <label>Nome do confronto<input aria-label="Nome do confronto rápido" maxLength={120}
      value={name} onChange={e=>setName(e.target.value)}/></label>
     <label>Formato do mapa<select aria-label="Formato da malha PTE"
-      value={map.grid??'hex'} onChange={e=>{
+      value="square" onChange={e=>{
        const id=Object.hasOwn(SCENARIOS,map.id)?map.id as BattleScenarioId:'plain-open';
-       try{setMap(convertBattleMapGrid(map,e.target.value as 'hex'|'square'));}catch(cause){
+       try{setMap(convertBattleMapGrid(map,'square'));}catch(cause){
         setError(cause instanceof Error?cause.message:'Conversão de malha recusada.');return;
        }
        setUnits(list=>list.map(u=>({...u,position:null})));setError('');
       }}>
       <option value="square">Quadrados (novo padrão)</option>
-      <option value="hex">Hexágonos (legado)</option>
+      {/* Mapas hexagonais históricos só podem ser lidos de replays antigos. */}
      </select></label>
      <label>Campo de batalha<select aria-label="Cenário rápido" value={map.id}
      onChange={e=>{const id=e.target.value as BattleScenarioId;
-      if(Object.hasOwn(SCENARIOS,id))setMap(createScenario(id,map.width,map.grid??'hex'));}}>
+      if(Object.hasOwn(SCENARIOS,id))setMap(createScenario(id,map.width,'square'));}}>
      {!Object.hasOwn(SCENARIOS,map.id)&&<option value={map.id}>Mapa personalizado</option>}
      {Object.entries(SCENARIOS).map(([id,label])=><option key={id} value={id}>{label}</option>)}
     </select></label>
@@ -304,18 +304,18 @@ export function BattleSetup({onStart,onBack}:{
    <h3>3. Terreno</h3>
    <div className="battle-form-row">
      <label>Formato do mapa<select aria-label="Formato da malha PTE"
-      value={map.grid??'hex'} onChange={e=>{
+      value="square" onChange={e=>{
        const id=Object.hasOwn(SCENARIOS,map.id)?map.id as BattleScenarioId:'plain-open';
-       try{setMap(convertBattleMapGrid(map,e.target.value as 'hex'|'square'));}catch(cause){
+       try{setMap(convertBattleMapGrid(map,'square'));}catch(cause){
         setError(cause instanceof Error?cause.message:'Conversão de malha recusada.');return;
        }
        setUnits(list=>list.map(u=>({...u,position:null})));setError('');
       }}>
       <option value="square">Quadrados (novo padrão)</option>
-      <option value="hex">Hexágonos (legado)</option>
+      {/* Mapas hexagonais históricos só podem ser lidos de replays antigos. */}
      </select></label>
       <label>Cenário<select aria-label="Escolher cenário" value={Object.hasOwn(SCENARIOS,map.id)?map.id:'custom'}
-      onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id)){setMap(createScenario(id,map.width,map.grid??'hex'));setUnits(x=>x.map(u=>({...u,position:null})));setError('');}}}>
+      onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id)){setMap(createScenario(id,map.width,'square'));setUnits(x=>x.map(u=>({...u,position:null})));setError('');}}}>
       {!Object.hasOwn(SCENARIOS,map.id)&&<option value="custom">Personalizado</option>}
       {Object.entries(SCENARIOS).map(([id,label])=><option value={id} key={id}>{label}</option>)}
      </select></label>
