@@ -237,7 +237,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     ...(legalKind==='join'?{targetId:activeUnits.find(u=>u.id!==selectedUnit.id)?.id??''}:{}),
     ...(legalKind==='sabotage'?{fortId:battle.fortifications.find(x=>x.side!==battle.turn)?.id??''}:{}),
     ...(legalKind==='breach-gate'?{
-     fortId:siegeFortId||battle.fortifications.find(x=>x.side!==battle.turn&&!x.breached)?.id??'',
+     fortId:siegeFortId||(battle.fortifications.find(x=>x.side!==battle.turn&&!x.breached)?.id??''),
      wallDifficulty,
     }:{}),
     ...(legalKind==='move'?{to:coord,sprint}:{}),
