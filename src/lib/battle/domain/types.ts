@@ -10,7 +10,7 @@ export type MapTile = Readonly<Hex & { terrain: Terrain }>;
 export type BattleMap = Readonly<{
   id: string; schemaVersion: 2; width: 11 | 15; height: 9 | 11;
   /** Ausência indica mapa legado hexagonal, sem alterar replays. */
-  grid?: 'square';
+  grid?: 'square' | undefined;
   tiles: readonly MapTile[];
   deployment: Readonly<Record<Side, readonly Hex[]>>;
   label: string;
