@@ -182,8 +182,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    </div>
    <div className="battle-form-row">
     <label>Formato do mapa<select aria-label="Formato da malha V3"
-     value={options.grid??'square'} disabled={locked}
-     disabled>
+     value={options.grid??'square'} disabled>
       <option value="square">Quadrados (novo padrão)</option>
       {/* Hexágonos históricos permanecem apenas nos replays antigos. */}
      </select></label>
