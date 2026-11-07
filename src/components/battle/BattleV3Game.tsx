@@ -10,7 +10,6 @@ import {battleReport} from '@/lib/battle/domain/report';
 import {SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixtures';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
-import {BattleSourcePicker} from './BattleSourcePicker';
 import {BattleExpandedView} from './BattleExpandedView';
 import {V3_COMMANDERS,commander,type CommanderId} from '@/lib/battle/v3/commanders';
 import {MODEL_HOUSES,modelHouse} from '@/lib/battle/v3/model-houses';
@@ -30,13 +29,13 @@ const defaults:V3ScenarioOptions={
 };
 /** Interface original de Cormyr: ritmo de turnos e leitura de pilhas inspirados no
  * gênero de batalhas de Cruzada, sem reutilizar arte, ícones ou UI proprietária. */
-export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,invitationName}:{
+export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,invitationName,officialCopies=[]}:{
  narrator?:boolean;onBack?:()=>void;
  initialOptions?:V3ScenarioOptions;locked?:boolean;invitationName?:string;
+ officialCopies?:readonly BattleStack[];
 }){
  const [options,setOptions]=useState<V3ScenarioOptions>(initialOptions??defaults);
  const [game,setGame]=useState<V3Game|null>(null);
- const [officialCopies,setOfficialCopies]=useState<BattleStack[]>([]);
  const [expanded,setExpanded]=useState(false);
  const [selected,setSelected]=useState<string|null>(null);
  const [hoveredId,setHoveredId]=useState<string|null>(null);
@@ -173,25 +172,9 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    <div className="battle-home-actions"><Button onClick={begin}>Batalhar</Button>
     {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
    </div>
-   {narrator&&!locked&&<>
-    <BattleSourcePicker onAdd={stack=>{
-     if(officialCopies.filter(s=>s.side===stack.side).length>=5){
-      setStatus('Limite de cinco unidades oficiais por lado.');return;
-     }
-     if(officialCopies.some(s=>s.source.kind==='house-readonly'&&stack.source.kind==='house-readonly'&&
-      s.source.houseId===stack.source.houseId&&s.source.unitId===stack.source.unitId)){
-      setStatus('Esta unidade já está na simulação.');return;
-     }
-     setOfficialCopies(list=>[...list,stack]);setStatus('Cópia autorizada adicionada para treino.');
-    }}/>
-    {officialCopies.length>0&&<div className="battle-surface">
-     <h3>Unidades oficiais copiadas · sem baixas reais</h3>
-     {officialCopies.map((stack,index)=><p key={index}>{stack.name} · {stack.side==='attacker'?'Atacante':'Defensor'}
-      {' '}<Button size="sm" variant="outline" onClick={()=>setOfficialCopies(xs=>xs.filter((_,i)=>i!==index))}>Remover cópia</Button></p>)}
-     <p className="battle-note">O lado com cópias oficiais utiliza essas unidades no lugar da casa-modelo.
-      Não é permitido importar nem validar replay externo de fichas oficiais neste modo.</p>
-    </div>}
-   </>}
+   {narrator&&officialCopies.length>0&&<p className="battle-note">
+    Treino com {officialCopies.length} cópia(s) oficial(is) somente leitura;
+    nenhuma baixa será aplicada à campanha.</p>}
    {!locked&&<label>Retomar batalha V3 verificada (JSON)
     <input type="file" accept=".json,application/json" aria-label="Importar replay V3"
      onChange={e=>{void importReplay(e.currentTarget.files?.[0]);e.currentTarget.value='';}}/>
