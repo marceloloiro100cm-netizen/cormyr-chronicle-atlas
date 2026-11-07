@@ -5,6 +5,8 @@ import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
 import {beginPersonalInitiative,personalTurnHeroId} from '@/lib/battle/got/personal-initiative';
 import {resolvePendingPersonalDamage} from '@/lib/battle/got/personal-injuries';
 import {deployWarSquad} from '@/lib/battle/got/squads';
+import {equipModelWarHero,WAR_PERSONAL_WEAPONS} from '@/lib/battle/got/personal-weapons';
+import type {WarPersonalWeaponId} from '@/lib/battle/got/personal-weapons';
 import type {PersonalMitigationChoice} from '@/lib/battle/got/personal-injuries';
 import type {WarHeroAction} from '@/lib/battle/got/heroes';
 import {makeWarFortification,WAR_FORT_PROFILES} from '@/lib/battle/got/fortifications';
@@ -61,6 +63,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [facing,setFacing]=useState<WarFacing>('north');
  const [siegeEnabled,setSiegeEnabled]=useState(false);
  const [heroesEnabled,setHeroesEnabled]=useState(false);
+ const [modelMelee,setModelMelee]=useState<WarPersonalWeaponId>('longsword');
+ const [modelRanged,setModelRanged]=useState<WarPersonalWeaponId>('longbow');
  const [manualMitigation,setManualMitigation]=useState(false);
  const [mitigationKind,setMitigationKind]=useState<PersonalMitigationChoice['kind']>('none');
  const [mitigationWounds,setMitigationWounds]=useState(1);
@@ -115,10 +119,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    setBattle(createWarBattle({id:'book-lab-'+seed,name,seed,width:12,height:7,
     units,siege,
     heroes:heroesEnabled?[
-     makeModelWarHero({id:'hero-attacker',name:'Herói atacante',side:'attacker',
-      position:{x:2,y:5}}),
-     makeModelWarHero({id:'hero-defender',name:'Herói defensor',side:'defender',
-      position:{x:9,y:5}}),
+     equipModelWarHero(makeModelWarHero({id:'hero-attacker',name:'Herói atacante',side:'attacker',
+      position:{x:2,y:5}}),{melee:modelMelee,ranged:modelRanged}),
+     equipModelWarHero(makeModelWarHero({id:'hero-defender',name:'Herói defensor',side:'defender',
+      position:{x:9,y:5}}),{melee:modelMelee,ranged:modelRanged}),
     ]:[],
     fortifications:fortKind==='none'?[]:[makeWarFortification({
      id:'defender-fort',name:WAR_FORT_PROFILES[fortKind].label,side:'defender',
@@ -301,6 +305,20 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    <label className="got-check"><input type="checkbox" checked={heroesEnabled}
     onChange={e=>setHeroesEnabled(e.target.checked)}/>
     Dois heróis-modelo e fases individuais (Passos 6 e 8)</label>
+   {heroesEnabled&&<div className="got-config-grid">
+    <label>Arma de Luta dos heróis-modelo
+     <select value={modelMelee} onChange={e=>setModelMelee(e.target.value as WarPersonalWeaponId)}>
+      {Object.values(WAR_PERSONAL_WEAPONS).filter(w=>w.family==='melee').map(w=>
+       <option key={w.id} value={w.id}>{w.label}</option>)}
+     </select>
+    </label>
+    <label>Arma de Pontaria dos heróis-modelo
+     <select value={modelRanged} onChange={e=>setModelRanged(e.target.value as WarPersonalWeaponId)}>
+      {Object.values(WAR_PERSONAL_WEAPONS).filter(w=>w.family==='ranged').map(w=>
+       <option key={w.id} value={w.id}>{w.label}</option>)}
+     </select>
+    </label>
+   </div>}
    <label>Fortificação do defensor
     <select value={fortKind} onChange={e=>setFortKind(e.target.value as WarFortKind|'none')}>
      <option value="none">Sem fortificação</option>
