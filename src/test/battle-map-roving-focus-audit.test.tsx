@@ -5,7 +5,7 @@ import {createScenario} from '@/lib/battle/geometry/map-fixtures';
 
 describe('Auditoria de acessibilidade — tabuleiro hexagonal PTE/V3',()=>{
  it('usa um único tab stop e fornece instruções para navegação por setas',()=>{
-  render(<BattleBoard map={createScenario('plain-open')} onHexClick={vi.fn()}/>);
+  render(<BattleBoard map={createScenario('plain-open',11,'hex')} onHexClick={vi.fn()}/>);
   const board=screen.getByRole('group',{name:/Mapa hexagonal com/});
   const hexes=Array.from(board.querySelectorAll<SVGGElement>('[data-battle-hex]'));
   expect(hexes.length).toBe(99);
@@ -14,7 +14,7 @@ describe('Auditoria de acessibilidade — tabuleiro hexagonal PTE/V3',()=>{
  });
  it('permite percorrer, selecionar e não executa comando ao apenas navegar',()=>{
   const onHexClick=vi.fn();
-  render(<BattleBoard map={createScenario('plain-open')} onHexClick={onHexClick}/>);
+  render(<BattleBoard map={createScenario('plain-open',11,'hex')} onHexClick={onHexClick}/>);
   const board=screen.getByRole('group',{name:/Mapa hexagonal com/});
   const hexes=Array.from(board.querySelectorAll<SVGGElement>('[data-battle-hex]'));
   const first=hexes.find(el=>el.getAttribute('tabindex')==='0')!;
@@ -30,7 +30,7 @@ describe('Auditoria de acessibilidade — tabuleiro hexagonal PTE/V3',()=>{
   expect(target.q+','+target.r).toBe(after.getAttribute('data-battle-hex'));
  });
  it('tabuleiro somente informativo não coloca nenhum hexágono na tabulação',()=>{
-  render(<BattleBoard map={createScenario('contested-woods')}/>);
+  render(<BattleBoard map={createScenario('contested-woods',11,'hex')}/>);
   const board=screen.getByRole('group',{name:/Mapa hexagonal com/});
   expect(Array.from(board.querySelectorAll('[data-battle-hex]'))
    .every(el=>!el.hasAttribute('tabindex'))).toBe(true);
