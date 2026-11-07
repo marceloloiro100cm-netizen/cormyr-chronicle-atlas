@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {advanceWarRound,createWarBattle,fireWarSiegeVolley,issueWarOrder} from '@/lib/battle/got/engine';
+import {advanceWarRound,createWarBattle,fireWarSiegeVolley,issueWarOrder,issueWarPincer} from '@/lib/battle/got/engine';
 import {modelWarCommanders,modelWarUnit} from '@/lib/battle/got/models';
 import {makeModelSiege} from '@/lib/battle/got/siege';
 import {previewWarResourceConsequences} from '@/lib/battle/got/aftermath-resources';
@@ -45,6 +45,23 @@ describe('P0 — resoluções simultâneas e ordem permanente',()=>{
  });
 });
 
+describe('P0 — Pinça coordenada',()=>{
+ it('executa ambos os ataques antes de consolidar a perda de Saúde do alvo',()=>{
+  const one={...troop('a','attacker',2,3),ability:{...troop('a','attacker',2,3).ability,fighting:8}};
+  const two={...troop('b','attacker',3,2),ability:{...troop('b','attacker',3,2).ability,fighting:8}};
+  const target={...troop('d','defender',3,3),defense:0,armor:0,
+   health:9,maxHealth:9};
+  const b={...build([one,two,target],{advancedFormations:true}),
+   phase:'orders' as const,turn:'attacker' as const};
+  const x=issueWarPincer(b,{commanderId:'leader-attacker',
+   firstUnitId:'a',secondUnitId:'b',targetId:'d',firstWarfareDice:6});
+  expect(x.passed).toBe(true);
+  expect(x.battle.events.filter(e=>e.kind==='attack')).toHaveLength(2);
+  expect(x.battle.events.filter(e=>e.kind==='pincer-simultaneous')).toHaveLength(1);
+  expect(x.battle.events.filter(e=>e.kind==='damage')).toHaveLength(1);
+ });
+});
+
 describe('P1 — terreno, unidades escondidas e recursos',()=>{
  it('bloqueia tiro direto sobre unidade oculta e a revela ao mover',()=>{
   const archer=troop('a','attacker',2,2,'archers');
@@ -61,6 +78,20 @@ describe('P1 — terreno, unidades escondidas e recursos',()=>{
   });
   expect(moved.passed).toBe(true);
   expect(moved.battle.units.find(u=>u.id==='d')?.hidden).toBe(false);
+ });
+ it('supressão não atira através de muralhas nem identifica alvos ocultos',()=>{
+  const attacker=troop('a','attacker',2,2,'archers');
+  const target=troop('d','defender',6,2);
+  const b={...build([attacker,target],{advancedFormations:true,
+   strictLineOfSight:true,tiles:[{x:4,y:2,terrain:'wall'}]}),
+   phase:'orders' as const,turn:'attacker' as const};
+  expect(()=>issueWarOrder(b,{commanderId:'leader-attacker',
+   unitId:'a',order:{kind:'suppress',targetId:'d'}}))
+   .toThrow(/Linha de visão/);
+  const clear={...b,tiles:[],units:b.units.map(u=>u.id==='d'?{...u,hidden:true}:u)};
+  expect(()=>issueWarOrder(clear,{commanderId:'leader-attacker',
+   unitId:'a',order:{kind:'suppress',targetId:'d'}}))
+   .toThrow(/escondida/);
  });
  it('não atravessa muralhas em retirada automática',()=>{
   const b={...build([troop('a','attacker',4,3),troop('d','defender',5,3)],{
