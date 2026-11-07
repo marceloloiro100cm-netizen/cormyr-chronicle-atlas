@@ -1,6 +1,6 @@
 import type { BattleMap, Hex } from '../domain/types';
 import { hexKey } from './hex';
-import {gridToOffset,gridDistance,gridNeighbors} from './grid';
+import {gridToOffset,gridDistance,gridNeighbors,gridAllowsStep} from './grid';
 import { TERRAIN, tileIndex } from './terrain';
 export function validateBattleMap(map:BattleMap):string[]{
   const issues:string[]=[];
@@ -47,7 +47,7 @@ export function validateBattleMap(map:BattleMap):string[]{
     const node=front[i]!;
     for(const neighbor of gridNeighbors(map,node)){
       const key=hexKey(neighbor);
-      if(!passable.has(key)||visited.has(key))continue;
+      if(!passable.has(key)||visited.has(key)||!gridAllowsStep(map,node,neighbor))continue;
       visited.add(key);front.push(neighbor);
     }
   }
