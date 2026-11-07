@@ -98,4 +98,21 @@ describe('Seletor militar · Região → Casa → Exército',()=>{
    .not.toBeInTheDocument();
   expect(mocked.snapshot).not.toHaveBeenCalled();
  });
+ it('importa os exércitos de cenário da planilha sem dizer que foram comprados',async()=>{
+  mocked.units.mockResolvedValue({
+   houseId:'ashkar',sourceVersion:null,sourceStatus:'scenario-roster',
+   units:[{...army[0],id:'1k8vvnu2V1cD73zkeQlnqE81Z6dpUaOfK:painel:32',
+    sourceStatus:'Compra proposta'}],
+  });
+  render(<BattleSourcePicker onAdd={vi.fn(()=>true)} onAddMany={vi.fn(()=>true)}/>);
+  await selectAshkar();
+  expect(screen.getByText(/Unidades da planilha carregadas para batalha/))
+   .toBeInTheDocument();
+  expect(screen.getByText(/sem compra, custo ou baixa oficial/))
+   .toBeInTheDocument();
+  expect(screen.getByRole('heading',{name:/Exército documentado de Ashkar/}))
+   .toBeInTheDocument();
+  expect(screen.getByText(/Compra proposta/)).toBeInTheDocument();
+ });
+
 });
