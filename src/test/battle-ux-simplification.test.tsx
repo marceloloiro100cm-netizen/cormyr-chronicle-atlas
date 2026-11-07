@@ -37,7 +37,7 @@ describe('Auditoria UX — módulo de batalha narrador',()=>{
  it('importação de tropas V3 fica antes da partida e não consulta origem por padrão',()=>{
   render(<BattleV3NarratorEntry onBack={vi.fn()}/>);
   const section=screen.getByLabelText('Preparação da batalha do Narrador');
-  const summary=screen.getByText(/Opcional · Usar unidades existentes de uma casa/);
+  const summary=screen.getByText(/Carregar unidades · Região → Casa → Exército/);
   const play=screen.getByRole('button',{name:'Batalhar'});
   expect(section.contains(summary)).toBe(true);
   expect(summary.compareDocumentPosition(play)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
