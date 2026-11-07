@@ -32,10 +32,11 @@ const defaults:V3ScenarioOptions={
 };
 /** Interface original de Cormyr: ritmo de turnos e leitura de pilhas inspirados no
  * gênero de batalhas de Cruzada, sem reutilizar arte, ícones ou UI proprietária. */
-export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,invitationName,officialCopies=[]}:{
+export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,invitationName,officialCopies=[],officialHouseNames}:{
  narrator?:boolean;onBack?:()=>void;
  initialOptions?:V3ScenarioOptions;locked?:boolean;invitationName?:string;
  officialCopies?:readonly BattleStack[];
+ officialHouseNames?:Partial<Record<Side,string>>;
 }){
  const [options,setOptions]=useState<V3ScenarioOptions>(initialOptions??defaults);
  const [game,setGame]=useState<V3Game|null>(null);
@@ -144,11 +145,12 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      const sideCopies=narrator?officialCopies.filter(unit=>unit.side===s.id):[];
      return <article className="crusade-side-card" key={s.id}>
       <p className="battle-eyebrow">{s.label==='Aliado'?'SEU EXÉRCITO':'EXÉRCITO ADVERSÁRIO'}</p>
-      <label>Casa modelo<select aria-label={'Casa modelo '+s.label} value={options[key]} disabled={locked||sideCopies.length>0}
-       onChange={e=>update({[key]:e.target.value})}>
-       {MODEL_HOUSES.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
-      </select></label>
-      <h3>{sideCopies.length>0?'Forças copiadas para treinamento':chosen.subtitle}</h3>
+      {sideCopies.length>0?<p><strong>Casa selecionada: {officialHouseNames?.[s.id]||'Casa cadastrada'}</strong></p>:
+       <label>Casa modelo<select aria-label={'Casa modelo '+s.label} value={options[key]} disabled={locked}
+        onChange={e=>update({[key]:e.target.value})}>
+        {MODEL_HOUSES.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+       </select></label>}
+      <h3>{sideCopies.length>0?'Exército da Casa selecionada':chosen.subtitle}</h3>
       <p>{sideCopies.length>0?'A casa-modelo deste lado foi substituída por cópias autorizadas, sem alterações na origem.':chosen.description}</p>
       <div className="crusade-model-roster">
        {sideCopies.length>0?
@@ -189,7 +191,9 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     <input type="file" accept=".json,application/json" aria-label="Importar replay V3"
      onChange={e=>{void importReplay(e.currentTarget.files?.[0]);e.currentTarget.value='';}}/>
    </label>}
-   <p className="battle-note">{narrator?'Visão de Narrador · ':'Visão de Jogador · '}Exércitos fictícios; esta partida não é uma batalha oficial convocada.</p>
+   <p className="battle-note">{narrator?'Visão de Narrador · ':'Visão de Jogador · '}
+    {officialCopies.length?'Tropas oficiais copiadas somente para simulação.':'Exércitos fictícios.'}
+    Esta partida não é uma batalha oficial convocada.</p>
   </section>
  </main>;
  const report=battle?battleReport(battle):null;
@@ -206,7 +210,9 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    <header className="crusade-v4-header">
     <div>
      <p className="crusade-v4-eyebrow">CORMYR · CRUZADA TÁTICA · TREINAMENTO</p>
-     <h1>{battle?.name}</h1>
+     <h1>{officialCopies.length>0?
+      (officialHouseNames?.attacker||modelHouse(options.attackerHouseId).name)+' × '+
+      (officialHouseNames?.defender||modelHouse(options.defenderHouseId).name):battle?.name}</h1>
      <p>Rodada {battle?.round} · {active?active.name:'Batalha encerrada'} ·
       PTE-3.0-SANDBOX</p>
     </div>
@@ -348,7 +354,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
        [...game.log].reverse().filter(e=>historySide==='all'||e.side===historySide).slice(0,6)).map((entry,i)=>
        <li key={game.log.length-i}>
         <strong>Rodada {entry.round}</strong>
-        <span>{modelHouse(entry.side==='attacker'?game.setup.attackerHouseId:game.setup.defenderHouseId).name} · {entry.label}</span>
+        <span>{officialHouseNames?.[entry.side]||
+        modelHouse(entry.side==='attacker'?game.setup.attackerHouseId:game.setup.defenderHouseId).name} · {entry.label}</span>
         {entry.detail&&<small>{entry.detail}</small>}
        </li>)}
      </ol>
