@@ -14,6 +14,7 @@ import {BattleV3InvitationCreator} from './BattleV3InvitationCreator';
 import {BattleV3LiveCreator} from './BattleV3Live';
 import './battle.css';
 import './battle-legibility.css';
+import './battle-ui-v4.css';
 
 // Lazy-load do laboratório experimental para não atrasar a batalha V3 oficial.
 const BattleCrzLab=lazy(()=>import('./BattleCrzLab').then(m=>({default:m.BattleCrzLab})));
