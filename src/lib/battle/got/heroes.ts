@@ -35,6 +35,9 @@ export type WarHero=Readonly<{
  squadId?:string;meleeWeapon?:WarPersonalWeapon;rangedWeapon?:WarPersonalWeapon;
  rangedLoaded?:boolean;meleeWeaponBroken?:boolean;rangedWeaponBroken?:boolean;
  stunnedNextTurn?:boolean;
+ grabbedBy?:string;grapplingTargetId?:string;
+ entangledBy?:string;entanglingTargetId?:string;
+ impaledBy?:string;impalingTargetId?:string;meleeWeaponDisarmed?:boolean;
  mount?:WarPersonalMount;mounted?:boolean;mountControlledTurn?:number|undefined;
  mountMovedTurn?:number;
  pinnedByMount?:boolean;prone?:boolean;
@@ -45,6 +48,8 @@ export type WarHeroAction=Readonly<{
  unitId?:string;targetHeroId?:string;toMetres?:WarPosition;ranged?:boolean;vsCharge?:boolean;
  escapeUsing?:'agility'|'athletics';
  twoHandedGrip?:boolean;powerBonusDice?:number;stunHit?:boolean;
+ grappleHit?:boolean;splitTargets?:readonly string[];
+ splitRanks?:readonly number[];splitBonuses?:readonly number[];
 }>;
 const distance=(a:WarPosition,b:WarPosition)=>Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y));
 const log=(battle:WarBattle,kind:string,text:string,side:WarSide,meta:{
