@@ -80,7 +80,8 @@ describe('Cormyr · Lotes 1–2 · migração de malha para quadrados',()=>{
   const session=crzReplayBegin(ready);
   const first=crzLegalCommands(session.state).find(c=>c.type==='MOVE');
   expect(first).toBeDefined();
-  const played=crzReplayRecord(session,first!);
+  const actor=session.state.stacks.find(s=>s.id===session.state.activeStackId)!;
+  const played=crzReplayRecord(session,first!,session.state.controls[actor.side]);
   expect(crzVerifyReplay(played.replay).ok).toBe(true);
  });
 });
