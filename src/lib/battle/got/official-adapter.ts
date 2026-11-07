@@ -36,7 +36,7 @@ export function snapshotOfficialWarUnit(
   awareness:skill('awareness'),
   endurance:mounted&&unit.mount?unit.mount.endurance:skill('endurance'),
   fighting:skill('fighting'),marksmanship:skill('marksmanship'),
-  animalHandling:skill('animalHandling'),
+  animalHandling:skill('animalHandling'),warfare:skill('warfare'),
  };
  const melee=row[unit.equipment.includes('fighting')?'improved':'initial'];
  const marks=row[unit.equipment.includes('marksmanship')?'improved':'initial'];
