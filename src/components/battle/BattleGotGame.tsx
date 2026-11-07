@@ -3,6 +3,10 @@ import {Button} from '@/components/ui/button';
 import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary} from '@/lib/battle/got/engine';
 import {modelWarUnit,modelWarCommanders} from '@/lib/battle/got/models';
 import type {WarBattle,WarOrder,WarOrderKind,WarUnit,WarSide} from '@/lib/battle/got/types';
+import type {WarWeather,WarVisibility,WarTerrainId,WarTerrainTile} from '@/lib/battle/got/terrain';
+import {WAR_TERRAIN} from '@/lib/battle/got/terrain';
+import type {WarFormation,WarFacing} from '@/lib/battle/got/formations';
+import {WAR_FORMATIONS} from '@/lib/battle/got/formations';
 import './battle-got.css';
 
 type TypeId='infantry'|'archers'|'cavalry'|'garrison'|'raiders';
@@ -16,6 +20,7 @@ const ORDER_LABEL:Record<WarOrderKind,string>={
  attack:'Atacar',charge:'Carga',defend:'Defender',move:'Mover',ready:'Prontidão',
  rally:'Reagrupar',revive:'Reanimar',reorganize:'Reorganizar',
  retreat:'Retirada', 'aggressive-retreat':'Retirada agressiva',
+ formation:'Alterar formação',turn:'Girar',reverse:'Reverter',
 };
 const CONDITION:Record<WarUnit['condition'],string>={
  organized:'Organizada',disorganized:'Desorganizada',routed:'Debandada',
@@ -31,6 +36,13 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
   'defender-1':'infantry','defender-2':'archers',
  });
  const [training,setTraining]=useState<WarUnit['training']>('trained');
+ const [weather,setWeather]=useState<WarWeather>('clear');
+ const [visibility,setVisibility]=useState<WarVisibility>('clear');
+ const [advanced,setAdvanced]=useState(false);
+ const [tiles,setTiles]=useState<WarTerrainTile[]>([]);
+ const [terrainPaint,setTerrainPaint]=useState<WarTerrainId>('plain');
+ const [formation,setFormation]=useState<WarFormation>('battle');
+ const [facing,setFacing]=useState<WarFacing>('north');
  const [selected,setSelected]=useState('');
  const [target,setTarget]=useState('');
  const [kind,setKind]=useState<WarOrderKind>('attack');
@@ -48,7 +60,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    ];
    setBattle(createWarBattle({id:'book-lab-'+seed,name,seed,width:12,height:7,
     units:prepared.map(row=>modelWarUnit({...row,training,typeId:types[row.id]??'infantry'})),
-    commanders:modelWarCommanders(warfare),
+    commanders:modelWarCommanders(warfare),tiles,weather,visibility,advancedFormations:advanced,
    }));
    setSelected('');setTarget('');setError('');
   }catch(e){setError(e instanceof Error?e.message:'Falha ao preparar a batalha.');}
@@ -68,6 +80,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     kind:legalKind,
     ...(['attack','charge','aggressive-retreat'].includes(legalKind)&&selectedTarget?{targetId:selectedTarget.id}:{}),
     ...(legalKind==='move'?{to:coord,sprint}:{}),
+    ...(legalKind==='formation'?{formation}:{}),
+    ...(legalKind==='turn'?{facing}:{}),
     ...(['attack','aggressive-retreat'].includes(legalKind)?{ranged}:{}),
    };
    const result=issueWarOrder(battle,{commanderId:commander.id,unitId:selectedUnit.id,order:command});
@@ -117,6 +131,24 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      <option value="veteran">Veterana</option><option value="elite">Elite</option>
     </select>
    </label>
+   <div className="got-config-grid">
+    <label>Clima
+     <select value={weather} onChange={e=>setWeather(e.target.value as WarWeather)}>
+      <option value="clear">Tempo aberto</option><option value="light-rain">Chuva leve</option>
+      <option value="heavy-rain">Chuva forte</option><option value="light-snow">Neve leve</option>
+      <option value="heavy-snow">Neve forte</option>
+     </select>
+    </label>
+    <label>Visibilidade
+     <select value={visibility} onChange={e=>setVisibility(e.target.value as WarVisibility)}>
+      <option value="clear">Clara</option><option value="dim">Penumbra</option>
+      <option value="dark">Escura</option>
+     </select>
+    </label>
+   </div>
+   <label className="got-check"><input type="checkbox" checked={advanced}
+    onChange={e=>setAdvanced(e.target.checked)}/> Usar formações e ângulo frontal (opcional no livro)</label>
+   <p className="battle-note">O terreno pode ser ajustado no mapa após iniciar uma nova partida de treino.</p>
    <Button onClick={start}>Iniciar simulação pelo livro</Button>
   </section>:<>
    <section className="battle-surface got-status" aria-label="Estado da guerra" aria-live="polite">
@@ -133,16 +165,19 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    <div className="got-columns">
     <section className="battle-surface got-map-panel" aria-label="Mapa em quadrados">
      <h3>Tabuleiro · 10 metros por quadrado</h3>
+     <p>Clima: {battle.weather} · Visibilidade: {battle.visibility} · Formações avançadas: {battle.advancedFormations?'sim':'não'}</p>
+     <p className="battle-note">Terreno do treino: terreno selecionado é destacado no mapa.</p>
      <div className="got-map" style={{gridTemplateColumns:'repeat('+battle.width+',minmax(0,1fr))'}}>
       {Array.from({length:battle.width*battle.height},(_,i)=>{
        const x=i%battle.width,y=Math.floor(i/battle.width);
        const occupant=battle.units.find(u=>u.position.x===x&&u.position.y===y&&
         !['destroyed','escaped','surrendered'].includes(u.condition));
        const isDestination=coord.x===x&&coord.y===y;
+       const terrain=tiles.find(t=>t.x===x&&t.y===y)?.terrain??'plain';
        return <button key={i} type="button"
-        className={'got-cell'+(occupant?' occupied '+occupant.side:'')+(isDestination?' destination':'')}
-        aria-label={'Quadrado '+x+','+y+(occupant?' · '+occupant.name+' · '+CONDITION[occupant.condition]:'')}
-        title={occupant?.name??x+','+y}
+        className={'got-cell'+(occupant?' occupied '+occupant.side:'')+(isDestination?' destination':'')+(terrain!=='plain'?' got-terrain':'')}
+        aria-label={'Quadrado '+x+','+y+' · '+terrain+(occupant?' · '+occupant.name+' · '+CONDITION[occupant.condition]:'')}
+        title={occupant?.name??terrain+' · '+x+','+y}
         onClick={()=>{
          setCoord({x,y});
          if(occupant){
@@ -151,7 +186,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
          }
         }}>
         {occupant?<><strong>{occupant.side==='attacker'?'A':'D'}</strong><small>{occupant.name.split(' ')[0]}</small></>:
-         <span className="got-cell-dot" aria-hidden="true">·</span>}
+         <span className="got-cell-dot" aria-hidden="true">{terrain==='plain'?'·':'▥'}</span>}
        </button>;
       })}
      </div>
@@ -177,6 +212,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         onChange={e=>setKind(e.target.value as WarOrderKind)}>
         {Object.entries(ORDER_LABEL).filter(([id])=>selectedUnit.condition==='routed'?
          id==='revive':id!=='revive'&&(id!=='reorganize'||selectedUnit.condition==='disorganized'))
+         .filter(([id])=>battle.advancedFormations||!['formation','turn','reverse'].includes(id))
          .map(([id,label])=><option key={id} value={id}>{label}</option>)}
        </select>
       </label>
@@ -191,6 +227,15 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <input type="checkbox" checked={ranged} onChange={e=>setRanged(e.target.checked)}/>
         Usar Pontaria (quando houver arma à distância)</label>}
       </>}
+      {battle.advancedFormations&&legalKind==='formation'&&<label>Formação
+       <select value={formation} onChange={e=>setFormation(e.target.value as WarFormation)}>
+        {Object.keys(WAR_FORMATIONS).map(id=><option key={id} value={id}>{id}</option>)}
+       </select></label>}
+      {battle.advancedFormations&&legalKind==='turn'&&<label>Direção
+       <select value={facing} onChange={e=>setFacing(e.target.value as WarFacing)}>
+        <option value="north">Norte</option><option value="east">Leste</option>
+        <option value="south">Sul</option><option value="west">Oeste</option>
+       </select></label>}
       {legalKind==='move'&&<>
        <label>Coluna X <input type="number" min={0} max={battle.width-1} value={coord.x}
         onChange={e=>setCoord(v=>({...v,x:Number(e.target.value)}))}/></label>
@@ -211,6 +256,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       <strong>{u.name}</strong><span>{SIDE[u.side]} · {CONDITION[u.condition]}</span>
       <span>Saúde {u.health}/{u.maxHealth} · Defesa {u.defendRoll??u.defense} · VA {u.armor}</span>
       <span>Disciplina {warUnitSummary(u).discipline} · Desorganizações {u.disorganizations}</span>
+      {battle.advancedFormations&&<span>Formação {u.formation} · Direção {u.facing}</span>}
      </div>)}</div>
     </section>
    </div>
