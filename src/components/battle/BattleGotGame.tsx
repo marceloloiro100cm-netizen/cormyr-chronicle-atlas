@@ -638,7 +638,15 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     onChange={e=>setStrictSightline(e.target.checked)}/>
     Bloquear tiros através de muralhas e montanhas (adaptação digital opcional)
    </label>
-   <h4>Terreno e posicionamento inicial</h4>
+   <label>Emboscada de treinamento (primeira unidade escondida)
+     <select value={hiddenModelSide}
+      onChange={e=>setHiddenModelSide(e.target.value as 'none'|WarSide)}>
+      <option value="none">Nenhuma unidade escondida</option>
+      <option value="attacker">Atacante · unidade 1</option>
+      <option value="defender">Defensor · unidade 1</option>
+     </select>
+    </label>
+    <h4>Terreno e posicionamento inicial</h4>
    <div className="got-config-grid">
     <label>Editar mapa
      <select value={deploymentMode}
