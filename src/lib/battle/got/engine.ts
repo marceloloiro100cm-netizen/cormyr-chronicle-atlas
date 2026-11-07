@@ -214,6 +214,7 @@ function distanceFromHeroToUnit(hero:WarHero,unit:WarUnit):number{
  */
 export function executeWarHeroAttackUnit(battle:WarBattle,input:{
  heroId:string;unitId:string;ranged?:boolean;
+ twoHandedGrip?:boolean;powerBonusDice?:number;
 }):WarBattle{
  if(battle.phase!=='heroes-first'&&battle.phase!=='heroes-second')
   throw new Error('Ataques pessoais exigem a fase de heróis.');
@@ -226,13 +227,23 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
  if(battle.pendingPersonalDamage)throw new Error('Resolva o dano pessoal pendente.');
  assertPersonalTurn(battle,hero.id);
  const ranged=Boolean(input.ranged),distanceMetres=distanceFromHeroToUnit(hero,target);
- const range=ranged?(hero.rangedRange==='long'?100:10):1;
- if(!ranged&&distanceMetres>1)
+ const range=ranged?(hero.rangedRange==='long'?100:10):
+  (hero.meleeWeapon?.reachMetres??1);
+ if(!ranged&&distanceMetres>range)
   throw new Error('Ataque de Luta exige contato com a unidade em escala pessoal.');
  if(ranged&&(hero.rangedRange==='none'||hero.rangedDamage<=0))
   throw new Error('Herói sem arma de Pontaria.');
  if(ranged&&hero.rangedWeapon?.reload&&hero.rangedLoaded===false)
   throw new Error('Arma de Pontaria exige recarga antes de disparar.');
+ const chosenWeapon=ranged?hero.rangedWeapon:hero.meleeWeapon;
+ if(!ranged&&chosenWeapon?.counterChargeOnly)
+  throw new Error('Pique Contra Carga exige reação específica a uma carga.');
+ if(input.twoHandedGrip&&(!chosenWeapon?.adaptable||ranged))
+  throw new Error('Uso Adaptável exige arma de Luta apropriada.');
+ const invested=input.powerBonusDice??0;
+ if(!Number.isInteger(invested)||invested<0||invested>(hero.strengthBonusDice??0)||
+  (invested>0&&(!chosenWeapon?.powerful||ranged)))
+  throw new Error('Dados de Força investidos inválidos para arma Poderosa.');
  const used=spendPersonalAction(hero,'major');
  const rangePenalty=ranged?Math.max(0,Math.ceil((distanceMetres-range)/
   (hero.rangedRange==='long'?100:10))):0;
@@ -250,7 +261,8 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
  const difficulty=target.defense+20;
  const degrees=degreesOfSuccess(total,difficulty);
  const damage=degrees?Math.max(0,
-  (ranged?hero.rangedDamage:hero.meleeDamage)*degrees-
+  (ranged?hero.rangedDamage:hero.meleeDamage+
+   (chosenWeapon?.adaptable&&input.twoHandedGrip?1:0)+invested)*degrees-
    effectivePersonalArmor(target.armor,ranged?hero.rangedWeapon:hero.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
   heroes:battle.heroes.map(h=>h.id===hero.id?{
