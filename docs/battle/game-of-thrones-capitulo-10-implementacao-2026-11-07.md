@@ -146,3 +146,40 @@ Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsist
   gasto/queima de Destino, recuperação em cronologia real e escolha narrativa
   de consequências, esquiva e interrupções avançadas, efeitos de armas
   e armaduras, precisão geométrica, casos de liderança e cerco avançado.
+
+## Incremento — equipamento, montaria e contra-ataque (7/11/2026)
+
+- **Equipamento, capítulos 9, pp. 195–200:** ampliada a amostra do catálogo
+  (`personal-weapons.ts`) com a **Besta pesada** e atributos de treinamento,
+  recarga, Desajeitada, Lenta e Duas Mãos. Treinamento insuficiente consome
+  dados de bônus e, se necessário, impõe dados de penalidade.
+  Besta leve requer ação menor de recarga; besta pesada, ação maior.
+  Arma Cruel que derrota personagem produz consequência fatal,
+  respeitando a escolha de ferimentos/lesões antes do desfecho.
+  Pontaria com arma de Longo Alcance sofre −1D por cada 100 m adicionais
+  além do alcance efetivo; Curto Alcance usa incrementos de 10 m.
+- **Montarias, capítulo 9, pp. 205–206:** `personal-mounts.ts` fornece modelo
+  local de cavalo e suas estatísticas. Personagens podem montar, desmontar
+  e controlar o animal; a montaria fornece seu Movimento, bônus de +1B
+  em Luta contra adversário a pé e +2 ao dano básico da arma de Luta
+  quando um animal de guerra não se moveu no turno. Armas Desajeitadas
+  geram −2D sobre a montaria. Controlar montaria treinada e íntegra
+  custa ação menor; não treinada ou ferida, ação maior.
+  **Não está completo** o tratamento de montaria ferida/morta,
+  queda, dano do cavalo, corrida montada e atropelamento.
+- **Contra-Ataque, capítulo 9, p. 216:** uma ação maior arma reação
+  pessoal, que pode atingir antes do ataque inimigo. A variação
+  contra carga acrescenta +2 dano básico quando ocorrer uma carga.
+  Uma vítima derrubada pela reação perde o ataque interrompido.
+  O protótipo está disponível apenas com mitigação manual desligada
+  e em trocas **herói contra herói**; ataque de unidade contra
+  herói, interrupções com dano pendente e reação contra outras ações
+  ainda exigem a máquina completa de estados.
+- **Testes:** `battle-got-mounted-reload.test.ts` e
+  `battle-got-personal-counterattack.test.ts`, além dos testes de
+  regressão preexistentes. Todas as mudanças ficam restritas ao
+  motor GOT, sem tocar fichas oficiais nem os motores Adaptado/D&D.
+- **Status de equivalência:** as qualidades Adaptável, Poderosa,
+  Frágil, Empalar, Enredar, Estilhaçadora, todas as recargas de
+  equipamento, Contra Carga do pique e montarias complexas ainda
+  não foram integralmente aplicadas. Não declarar fidelidade 100%.
