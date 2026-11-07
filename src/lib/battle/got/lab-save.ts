@@ -52,7 +52,8 @@ export function decodeGotLabSave(json:string):WarBattle{
   value.events.length>15000||
   !value.units.every(u=>validUnit(u,value.width as number,value.height as number))||
   new Set((value.units as WarUnit[]).map(u=>u.id)).size!==value.units.length||
-  new Set((value.units as WarUnit[]).map(u=>u.position.x+':'+u.position.y)).size!==value.units.length||
+  new Set((value.units as WarUnit[]).filter(u=>!['destroyed','escaped','surrendered'].includes(u.condition)).map(u=>u.position.x+':'+u.position.y)).size!==
+   (value.units as WarUnit[]).filter(u=>!['destroyed','escaped','surrendered'].includes(u.condition)).length||
   !value.commanders.every((c:unknown)=>rec(c)&&typeof c.id==='string'&&
    sides.has(c.side as string)&&Number.isInteger(c.warfare)&&
    (c.warfare as number)>=1&&(c.warfare as number)<=12)||
@@ -60,7 +61,7 @@ export function decodeGotLabSave(json:string):WarBattle{
    value.winner!==undefined||
   !value.events.every((e:unknown,i:number)=>rec(e)&&e.seq===i+1&&
    typeof e.text==='string'&&e.text.length<8000)||
-  !sides.has('attacker')||!sides.has('defender'))
+  !Array.isArray(value.events))
   throw new Error('Esta simulação não é compatível com o modo Guerra dos Tronos.');
  return value as unknown as WarBattle;
 }
