@@ -30,7 +30,7 @@ const sides:{id:Side;label:string}[]=[{id:'attacker',label:'Aliado'},{id:'defend
 const defaults:V3ScenarioOptions={
  attackerHouseId:'evenhand-model',defenderHouseId:'ashkar-model',
  attackerCommander:'purple-dragon',defenderCommander:'ashkar-raider',
- scenario:'plain-open',opponent:'ai',grid:'square',
+ scenario:'plain-open',opponent:'ai',grid:'square',grid:'square',
 };
 /** Interface original de Cormyr: ritmo de turnos e leitura de pilhas inspirados no
  * gênero de batalhas de Cruzada, sem reutilizar arte, ícones ou UI proprietária. */
@@ -182,7 +182,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    </div>
    <div className="battle-form-row">
     <label>Formato do mapa<select aria-label="Formato da malha V3"
-     value={options.grid??'hex'} disabled={locked}
+     value={options.grid??'square'} disabled={locked}
      onChange={e=>update({grid:e.target.value as 'hex'|'square'})}>
       <option value="square">Quadrados (novo padrão)</option>
       <option value="hex">Hexágonos (legado)</option>
