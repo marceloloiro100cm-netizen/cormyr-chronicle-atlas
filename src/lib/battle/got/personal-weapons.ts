@@ -2,6 +2,7 @@ import type {WarHero} from './heroes';
 
 /** Amostra verificável da tabela 9-3; não é o catálogo completo do livro. */
 export type WarPersonalWeaponId='longsword'|'bastard-sword'|'greatsword'|'long-axe'|'spear'|'pike'|'sledgehammer'|'peasant-tool'|'spiked-flail'|
+ 'fist'|'dagger'|'whip'|'boar-spear'|'net'|
  'hunting-bow'|'longbow'|'light-crossbow'|'heavy-crossbow';
 export type WarPersonalWeapon=Readonly<{
  id:WarPersonalWeaponId;label:string;
@@ -12,6 +13,8 @@ export type WarPersonalWeapon=Readonly<{
  slow?:boolean;twoHanded?:boolean;mountedOnly?:boolean;
  adaptable?:boolean;powerful?:boolean;counterChargeOnly?:boolean;
  stunning?:boolean;shattering?:number;fragile?:boolean;
+ grapple?:boolean;entangle?:boolean;impale?:boolean;fast?:boolean;
+ shortBlade?:boolean;noDamage?:boolean;
 }>;
 export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersonalWeapon>>={
  longsword:{id:'longsword',label:'Espada longa',family:'melee',
@@ -28,10 +31,10 @@ export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersona
   piercing:0,cruel:true,trainingBonusDice:1,twoHanded:true,powerful:true},
  spear:{id:'spear',label:'Lança',family:'melee',
   damageAbility:'athletics',damageBonus:0,reachMetres:1,range:'none',
-  piercing:0,cruel:false},
+  piercing:0,cruel:false,fast:true},
  pike:{id:'pike',label:'Pique',family:'melee',
   damageAbility:'athletics',damageBonus:2,reachMetres:1,range:'none',
-  piercing:0,cruel:false,slow:true,twoHanded:true,counterChargeOnly:true},
+  piercing:0,cruel:false,slow:true,twoHanded:true,counterChargeOnly:true,impale:true},
  sledgehammer:{id:'sledgehammer',label:'Marreta',family:'melee',
   damageAbility:'athletics',damageBonus:1,reachMetres:1,range:'none',
   piercing:0,cruel:false,twoHanded:true,slow:true,stunning:true,shattering:1},
@@ -41,6 +44,22 @@ export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersona
  'spiked-flail':{id:'spiked-flail',label:'Mangual com cravos',family:'melee',
   damageAbility:'athletics',damageBonus:0,reachMetres:1,range:'none',
   piercing:0,cruel:true,shattering:1},
+ fist:{id:'fist',label:'Punho',family:'melee',
+  damageAbility:'athletics',damageBonus:-3,reachMetres:1,range:'none',
+  piercing:0,cruel:false,grapple:true,fast:true},
+ dagger:{id:'dagger',label:'Adaga',family:'melee',
+  damageAbility:'agility',damageBonus:-2,reachMetres:1,range:'none',
+  piercing:0,cruel:false,fast:true,shortBlade:true},
+ whip:{id:'whip',label:'Chicote',family:'melee',
+  damageAbility:'agility',damageBonus:-1,reachMetres:3,range:'none',
+  piercing:0,cruel:false,trainingBonusDice:2,entangle:true},
+ 'boar-spear':{id:'boar-spear',label:'Lança de javali',family:'melee',
+  damageAbility:'athletics',damageBonus:1,reachMetres:1,range:'none',
+  piercing:0,cruel:false,trainingBonusDice:1,twoHanded:true,
+  slow:true,powerful:true,impale:true},
+ net:{id:'net',label:'Rede',family:'ranged',
+  damageAbility:'agility',damageBonus:-15,reachMetres:0,range:'short',
+  piercing:0,cruel:false,trainingBonusDice:1,entangle:true,noDamage:true},
  'hunting-bow':{id:'hunting-bow',label:'Arco de caça',family:'ranged',
   damageAbility:'agility',damageBonus:0,reachMetres:0,range:'long',
   piercing:0,cruel:false},
