@@ -7,7 +7,7 @@ export const SCENARIOS:Readonly<Record<BattleScenarioId,string>>={
   'border-hills':'Colinas da fronteira',
   'narrow-passage':'Passagem estreita',
 };
-export function createScenario(id:BattleScenarioId,width:11|15=11,grid:'hex'|'square'='hex'):BattleMap {
+export function createScenario(id:BattleScenarioId,width:11|15=11,grid:'hex'|'square'='square'):BattleMap {
   const height:9|11=width===11?9:11;
   const tiles:MapTile[]=[];
   const mid=Math.floor(width/2),center=Math.floor(height/2);
