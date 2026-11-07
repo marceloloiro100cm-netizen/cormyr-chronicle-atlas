@@ -4,6 +4,7 @@ import type {WarBattle,WarEvent,WarPosition} from './types';
 import type {WarHero} from './heroes';
 import {queuePersonalDamage} from './personal-injuries';
 import {effectivePersonalArmor} from './personal-weapons';
+import {applyPersonalWeaponQualities} from './personal-weapon-effects';
 import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
 import {applyPersonalMountDamage} from './personal-mounts';
 
@@ -20,7 +21,7 @@ export type PersonalWarAction=Readonly<{
  vsCharge?:boolean;
  toMetres?:WarPosition;
  escapeUsing?:'agility'|'athletics';
- twoHandedGrip?:boolean;powerBonusDice?:number;
+ twoHandedGrip?:boolean;powerBonusDice?:number;stunHit?:boolean;
 }>;
 export const personalPosition=(hero:WarHero):WarPosition=>
  hero.personalPosition??{x:hero.position.x*10+5,y:hero.position.y*10+5};
@@ -40,10 +41,11 @@ export function spendPersonalAction(hero:WarHero,weight:'major'|'minor'):WarHero
  // A Defesa transitória termina quando o herói começa seu próximo turno.
  const expired=minor===0?{cautiousDefenseBonus:0,recklessDefensePenalty:0}:{};
  if(weight==='major'){
+  if(hero.stunnedNextTurn)throw new Error('Atordoante impede ação maior neste turno.');
   if(minor!==0)throw new Error('Uma ação maior exige um turno sem ações menores prévias.');
   return {...hero,...expired,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false,counterattackReady:undefined};
  }
- if(minor>0)return {...hero,...expired,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false,counterattackReady:undefined};
+ if(minor>0)return {...hero,...expired,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false,counterattackReady:undefined,stunnedNextTurn:false};
  return {...hero,...expired,minorActionsUsed:1,dodgeDefense:null,counterattackReady:undefined};
 }
 const log=(battle:WarBattle,kind:string,text:string,hero:WarHero,details:Partial<WarEvent>={}):WarBattle=>({
@@ -78,12 +80,16 @@ function attackHero(
  battle:WarBattle,actor:WarHero,target:WarHero,ranged:boolean,
  options:{charge?:boolean;asReaction?:boolean;counterCharge?:boolean;
   cautious?:boolean;reckless?:boolean;
-  twoHandedGrip?:boolean;powerBonusDice?:number}={},
+  twoHandedGrip?:boolean;powerBonusDice?:number;stunHit?:boolean}={},
 ):WarBattle{
  const from=personalPosition(actor),to=personalPosition(target);
  const dist=personalDistance(from,to);
  const reach=actor.meleeWeapon?.reachMetres??1;
  const selectedWeapon=ranged?actor.rangedWeapon:actor.meleeWeapon;
+ if(ranged?actor.rangedWeaponBroken:actor.meleeWeaponBroken)
+  throw new Error('A arma está quebrada e não pode ser utilizada.');
+ if(options.stunHit&&(!selectedWeapon?.stunning||ranged))
+  throw new Error('Atordoante exige arma de Luta apropriada.');
  if(!ranged&&selectedWeapon?.counterChargeOnly&&!options.counterCharge)
   throw new Error('Arma Contra Carga só pode atacar numa reação a uma carga.');
  if(options.twoHandedGrip&&(!selectedWeapon?.adaptable||ranged))
@@ -164,7 +170,9 @@ function attackHero(
   actor.meleeDamage+(options.charge?2:0)+stationaryMountBonus+
   (options.counterCharge?2:0)+
   (!ranged&&selectedWeapon?.adaptable&&options.twoHandedGrip?1:0)+invested;
- const damage=degrees?Math.max(0,base*degrees-
+ const stunApplied=Boolean(options.stunHit&&selectedWeapon?.stunning&&degrees>=2);
+ const damageDegrees=degrees-(stunApplied?1:0);
+ const damage=damageDegrees?Math.max(0,base*damageDegrees-
   effectivePersonalArmor(target.armor,ranged?actor.rangedWeapon:actor.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
   heroes:battle.heroes.map(h=>h.id===actor.id?{
@@ -174,10 +182,14 @@ function attackHero(
  };
  if(damage>0)next=queuePersonalDamage(next,{actorName:actor.name,
   targetHeroId:target.id,damage,source:'personal',cruel:weapon?.cruel??false});
+ next=applyPersonalWeaponQualities(next,{
+  actorId:actor.id,targetId:target.id,weapon,ranged,degrees,stunUsed:stunApplied,
+ });
  const defeated=next.heroes.find(h=>h.id===target.id)?.active===false;
  next=log(next,'personal-attack',actor.name+' atacou '+target.name+
   ' ('+(ranged?'Pontaria':'Luta')+'): '+total+' vs Defesa '+difficulty+
-  ', '+degrees+' grau(s), '+damage+' dano'+(defeated?' (derrotado)':'')+'.',
+  ', '+degrees+' grau(s), '+damage+' dano'+(stunApplied?' (Atordoante)':'')+
+  (defeated?' (derrotado)':'')+'.',
   actor,{roll:roll.dice,total,difficulty,degrees});
  return next;
 }
@@ -267,7 +279,7 @@ export function executePersonalWarAction(
  if(action.kind==='personal-end-turn'){
   if(!hero.minorActionsUsed)throw new Error('Não há ação menor pendente para encerrar.');
   return log(changeHero(battle,{...hero,minorActionsUsed:0,
-   usedActions:hero.usedActions+1,attackedThisTurn:false}),'personal-end-turn',
+   usedActions:hero.usedActions+1,attackedThisTurn:false,stunnedNextTurn:false}),'personal-end-turn',
    hero.name+' encerrou sua rodada pessoal.',hero);
  }
  if(action.kind==='personal-surrender'){
@@ -481,6 +493,7 @@ export function executePersonalWarAction(
   const used=spendPersonalAction(moved,'major');
   const next=changeHero(battle,used);
   return attackHero(next,used,target,false,{charge:true,
+   ...(action.stunHit!==undefined?{stunHit:action.stunHit}:{}),
    ...(action.twoHandedGrip!==undefined?{twoHandedGrip:action.twoHandedGrip}:{}),
    ...(action.powerBonusDice!==undefined?{powerBonusDice:action.powerBonusDice}:{})});
  }
@@ -501,6 +514,7 @@ export function executePersonalWarAction(
    reckless:action.kind==='personal-reckless-attack',
    ...(action.twoHandedGrip!==undefined?{twoHandedGrip:action.twoHandedGrip}:{}),
    ...(action.powerBonusDice!==undefined?{powerBonusDice:action.powerBonusDice}:{}),
+   ...(action.stunHit!==undefined?{stunHit:action.stunHit}:{}),
   });
  }
  throw new Error('Ação individual não implementada.');
