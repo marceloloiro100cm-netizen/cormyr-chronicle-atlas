@@ -28,7 +28,7 @@ export type CrzTrainingOptions=Readonly<{
 }>;
 
 export const CRZ_TRAINING_DEFAULTS:CrzTrainingOptions={
- scenario:'plain-open',width:11,resolution:'expected',
+ scenario:'plain-open',grid:'square',width:11,resolution:'expected',
  opponent:'ai',seed:'c0ffee52',
 };
 
@@ -84,7 +84,7 @@ const unit=(id:string,templateId:string,count:number)=>({
 /** Uma batalha reproduzível por seed explícita e sem leitura do servidor. */
 export function crzTrainingReady(options:CrzTrainingOptions):CrzReady{
  const preset=options.preset??'CRZ-5E';
- const rules=crzPreset(preset,options.grid??'hex');
+ const rules=crzPreset(preset,options.grid??'square');
  if(preset!=='CRZ-5E'&&options.resolution!=='expected')
   throw new Error('WOTR e PTE-compat exigem resolução expected.');
  const generalLevel=options.generalLevel??3;
