@@ -43,7 +43,7 @@ export function createV3Game(options:V3ScenarioOptions,officialCopies:readonly B
  if(officialCopies.some(s=>!isBattleTrainingCopy(s)))
   throw new Error('Somente snapshots oficiais autorizados pelo Narrador podem ser importados.');
  if(officialCopies.length>10)throw new Error('Limite de dez agrupamentos de origem.');
- const map=createScenario(options.scenario,11,options.grid??'hex');
+ const map=createScenario(options.scenario,11,options.grid??'square');
  const roster:BattleStack[]=[];
  for(const side of sideList){
   const house=modelHouse(side==='attacker'?options.attackerHouseId:options.defenderHouseId);
