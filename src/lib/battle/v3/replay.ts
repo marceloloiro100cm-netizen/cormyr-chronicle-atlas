@@ -55,6 +55,8 @@ export function applyV3ReplayStep(game:V3Game,step:V3Step):V3Game{
  return v3RunAi(game);
 }
 export function captureV3Replay(game:V3Game):V3ReplayFile{
+ if(game.battle.stacks.some(s=>s.source.kind!=='fictional'))
+  throw new Error('Exportação de fichas oficiais não permitida no replay V3.');
  if(game.steps.length>1500)throw new Error('Histórico V3 excede 1.500 passos.');
  let cursor=createV3Game(optionsSchema.parse(game.setup) as V3ScenarioOptions);
  const initialHash=battleHash(cursor);
