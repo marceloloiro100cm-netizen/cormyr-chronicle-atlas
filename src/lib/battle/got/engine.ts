@@ -1,6 +1,6 @@
 import {criticalFailure,degreesOfSuccess,rollDice,seedFromText} from './dice';
 import type {WarBattle,WarCommander,WarCondition,WarEvent,WarOrder,WarOrderResult,WarPosition,WarSide,WarUnit} from './types';
-import {terrainAt,terrainEffect,movementSlow,visibilityPenalty,weatherAttackModifier,terrainHighGround} from './terrain';
+import {terrainAt,terrainEffect,movementSlow,visibilityPenalty,weatherAttackModifier,terrainHighGround,terrainCoverBonus,terrainMoveCost} from './terrain';
 import type {WarTerrainTile,WarWeather,WarVisibility} from './terrain';
 import {WAR_FORMATIONS,formationAllowed,formationMovement,angleAttackBonus,attackAngle} from './formations';
 import {WAR_SIEGE_CATALOG,warSiegeDamage} from './siege';
@@ -161,7 +161,7 @@ function movePath(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,ma
    if(effect.blocked||(effect.water&&!unit.naval)||(unit.mounted&&effect.noCavalry))continue;
    if(unit.naval&&!effect.naval&&tile.terrain!=='coast')continue;
    if(sprint&&(directX!==0&&step.y!==unit.position.y||directY!==0&&step.x!==unit.position.x))continue;
-   const movement=1+movementSlow(tile,battle.visibility,battle.weather);
+   const movement=terrainMoveCost(tile,battle.visibility,battle.weather);
    const nextCost=cost+movement;
    if(nextCost>maxCells||(seen.get(id)??Infinity)<=nextCost)continue;
    const candidate=[...path,step];
@@ -176,12 +176,38 @@ function movementCells(unit:WarUnit,sprint:boolean):number{
  const equipped=warFieldMovementMetres(unit,sprint?base*4:base);
  return Math.floor(equipped/10);
 }
-function move(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,limit?:number):WarBattle{
+function availableMovementMetres(battle:WarBattle,unit:WarUnit,sprint:boolean):number{
  const base=movementCells(unit,sprint)*10;
- const effective=battle.advancedFormations&&unit.formation?
+ return battle.advancedFormations&&unit.formation?
   formationMovement(base,unit.formation):base;
- const max=limit??Math.floor(effective/10);
+}
+export type WarMovementPreview=Readonly<{
+ legal:boolean;path:readonly WarPosition[];distanceMetres:number;
+ costMetres:number;budgetMetres:number;reason:string;
+}>;
+/** Prévia sem dados ou mutação: exatamente a rota usada pela ordem Mover. */
+export function previewWarMovement(
+ battle:WarBattle,unitId:string,to:WarPosition,sprint=false,
+):WarMovementPreview{
+ const unit=battle.units.find(u=>u.id===unitId);
+ if(!unit||!alive(unit))return {legal:false,path:[],distanceMetres:0,
+  costMetres:0,budgetMetres:0,reason:'Unidade não está apta para marchar.'};
+ const budgetMetres=availableMovementMetres(battle,unit,sprint);
+ try{
+  const path=movePath(battle,unit,to,sprint,Math.floor(budgetMetres/10));
+  const costMetres=path.reduce((sum,p)=>sum+
+   terrainMoveCost(terrainAt(battle.tiles,p),battle.visibility,battle.weather)*10,0);
+  return {legal:true,path,distanceMetres:path.length*10,costMetres,budgetMetres,
+   reason:path.length?'Rota disponível.':'Unidade já ocupa este quadrado.'};
+ }catch(e){
+  return {legal:false,path:[],distanceMetres:0,costMetres:0,budgetMetres,
+   reason:e instanceof Error?e.message:'Destino indisponível.'};
+ }
+}
+function move(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,limit?:number):WarBattle{
+ const max=limit??Math.floor(availableMovementMetres(battle,unit,sprint)/10);
  const path=movePath(battle,unit,to,sprint,max);
+ if(!path.length)return log(battle,'move-still',unit.name+' permaneceu na mesma posição.',unit.side);
  let next=battle;
  const final=path.at(-1)??unit.position;
  const holder=unit.envelopedBy?next.units.find(u=>u.id===unit.envelopedBy&&alive(u)):null;
@@ -425,7 +451,7 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  extraPenalty+=visibilityPenalty(battle.visibility,battle.weather,ranged);
  const roll=rollDice(battle.seed,Math.min(15,Math.max(1,(options.testRank??score)+testDice)),bonus,extraPenalty);
  let next:{seed:number}&WarBattle={...battle,seed:roll.nextSeed};
- const cover=target.defendRoll!==null?terrainEffect(targetTile).cover:0;
+ const cover=terrainCoverBonus(targetTile,ranged,target.defendRoll!==null);
  const fort=fortForUnit(battle.fortifications,target);
  const fortBonus=fort?fortDefense(fort):0;
  const probeBonus=target.probeDefenseRound===battle.round?2:0;
