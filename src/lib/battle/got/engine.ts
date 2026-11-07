@@ -108,9 +108,9 @@ function movePath(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,ma
  const key=(p:WarPosition)=>p.x+':'+p.y;
  const queue:{pos:WarPosition;path:WarPosition[];cost:number}[]=[{pos:unit.position,path:[],cost:0}];
  const seen=new Map([[key(unit.position),0]]);
- for(let i=0;i<queue.length;i++){
+ while(queue.length>0){
   queue.sort((a,b)=>a.cost-b.cost);
-  const current=queue.shift()!;i--;
+  const current=queue.shift()!;
   const {pos,path,cost}=current;
   if(cost>=maxCells)continue;
   for(const [dx,dy] of ([[1,0],[-1,0],[0,1],[0,-1]] as const)){
