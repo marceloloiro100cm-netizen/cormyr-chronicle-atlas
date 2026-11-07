@@ -9,6 +9,7 @@ import {BattleArena} from './BattleArena';
 import {BattleReplayImporter} from './BattleReplay';
 import {BattleSavedPanel} from './BattleSavedPanel';
 import {BattleV3Game} from './BattleV3Game';
+import {BattleAccessCheck} from './BattleAccessCheck';
 import {BattleV3InvitationCreator} from './BattleV3InvitationCreator';
 import './battle.css';
 import './battle-legibility.css';
@@ -62,6 +63,7 @@ export function BattleNarratorHub(){
         <Button variant="outline" disabled title="O servidor ainda não confirmou a autorização e o armazenamento">Batalhas salvas · {storeStatus==='checking'?'verificando…':'indisponíveis'}</Button>}
       {BATTLE_PERSISTENCE_UI_ENABLED&&storeStatus==='unavailable'&&<Button variant="outline" onClick={()=>void probeStore()}>Verificar salvamento</Button>}
     </div>
+    <BattleAccessCheck role="narrator"/>
     {showImport&&<BattleReplayImporter/>}
     {manual&&<div className="battle-rules-help">
      <h3>Manual rápido PTE-2.0</h3>
