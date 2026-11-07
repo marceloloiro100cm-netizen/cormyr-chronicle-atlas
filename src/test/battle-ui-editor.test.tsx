@@ -36,6 +36,8 @@ describe('Batalha V2 — lotes 5, 6 e 7',()=>{
  it('narrador monta forças, posiciona e alcança resultado sem persistir no banco',()=>{
   render(<BattleNarratorHub/>);
   fireEvent.click(screen.getByRole('button',{name:'Criar batalha'}));
+  expect(screen.getByRole('heading',{name:'Configuração rápida'})).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Personalizar unidades e mapa'}));
   expect(screen.getByRole('heading',{name:'2. Exércitos'})).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Posicionar automaticamente'}));
   expect(screen.getByText(/2 \/ 2 agrupamentos posicionados/)).toBeInTheDocument();
