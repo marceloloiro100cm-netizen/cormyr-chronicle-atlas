@@ -53,9 +53,9 @@ export const listBattleSourceHouses=createServerFn({method:'POST'})
   const db=context.supabase as unknown as Context['supabase'];
   await requireNarrator(db);
   const [catalog,campaign]=await Promise.all([
-   db.from('house_catalog').select('id,name,region')
+   db.from('house_catalog').select('id,name,region,crest:archive_data->>crest')
     .eq('public_reviewed',true).order('name').limit(500),
-   db.from('campaign_houses').select('id,name,region')
+   db.from('campaign_houses').select('id,name,region,crest')
     .eq('active',true).eq('season',2).order('name').limit(500),
   ]);
   if(catalog.error||campaign.error)
@@ -63,11 +63,13 @@ export const listBattleSourceHouses=createServerFn({method:'POST'})
   await requireNarrator(db);
   const safe=(data:unknown)=>{
    if(!Array.isArray(data))return [];
-   return data.filter((row):row is {id:string;name:string;region:string|null}=>{
+   return data.filter((row):row is {id:string;name:string;region:string|null;crest?:string|null}=>{
     return row!==null&&typeof row==='object'&&
      typeof row.id==='string'&&typeof row.name==='string'&&
-     (row.region===null||typeof row.region==='string');
-   }).map(row=>({id:row.id,name:row.name,region:row.region??''}));
+     (row.region===null||typeof row.region==='string')&&
+     (!('crest' in row)||row.crest===null||typeof row.crest==='string');
+   }).map(row=>({id:row.id,name:row.name,region:row.region??'',
+    ...(typeof row.crest==='string'?{crest:row.crest}:{})}));
   };
   return battleHouseDirectory(safe(catalog.data),safe(campaign.data));
  });
