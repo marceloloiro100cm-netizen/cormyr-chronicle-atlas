@@ -5,7 +5,7 @@ export type WarSide='attacker'|'defender';
 export type WarPosition=Readonly<{x:number;y:number}>;
 export type WarCondition='organized'|'disorganized'|'routed'|'destroyed'|'surrendered'|'escaped';
 export type WarRange='none'|'short'|'long';
-export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'formation'|'turn'|'reverse';
+export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'surrender'|'formation'|'turn'|'reverse';
 export type WarOrder=Readonly<{
  kind:WarOrderKind;
  targetId?:string;
@@ -23,13 +23,14 @@ export type WarUnit=Readonly<{
  id:string;name:string;side:WarSide;typeId:string;
  position:WarPosition;training:'green'|'trained'|'veteran'|'elite';
  ability:Readonly<{agility:number;athletics:number;awareness:number;endurance:number;
- fighting:number;marksmanship:number;animalHandling:number;}>;
+ fighting:number;marksmanship:number;animalHandling:number;warfare?:number;}>;
  defense:number;discipline:number;armor:number;bulk:number;
  meleeDamage:number;rangedDamage:number;range:WarRange;mounted:boolean;naval:boolean;
  meleeBonusDice?:number;rangedBonusDice?:number;
  maxHealth:number;health:number;condition:WarCondition;disorganizations:number;
  standing:WarOrder|null;activated:boolean;defendRoll:number|null;
  formation?:WarFormation;facing?:WarFacing;
+ hidden?:boolean;exposedFacingUntilRound?:number;
  issuedThisRound:number;actedThisRound:boolean;criticalThisRound:boolean;
  source:Readonly<{kind:'model'|'house-readonly';houseId?:string;unitId?:string;version?:number}>;
 }>;
