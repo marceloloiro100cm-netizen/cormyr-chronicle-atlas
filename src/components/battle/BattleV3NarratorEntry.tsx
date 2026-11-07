@@ -10,6 +10,7 @@ import {BattleV3Game} from './BattleV3Game';
 export function BattleV3NarratorEntry({onBack}:{onBack:()=>void}){
  const [copies,setCopies]=useState<BattleStack[]>([]);
  const [status,setStatus]=useState('');
+ const [pickerOpen,setPickerOpen]=useState(false);
  const add=(stack:BattleStack)=>{
   if(copies.filter(s=>s.side===stack.side).length>=5){
    setStatus('Limite de cinco unidades por lado.');return;
@@ -20,19 +21,24 @@ export function BattleV3NarratorEntry({onBack}:{onBack:()=>void}){
   }
   setCopies(xs=>[...xs,stack]);setStatus('Cópia militar adicionada somente para treino.');
  };
- return <section aria-label="Preparação da batalha do Narrador">
-  <BattleV3Game narrator onBack={onBack} officialCopies={copies}/>
-  <section className="battle-module" aria-label="Importação autorizada de tropas oficiais V3">
-   <BattleSourcePicker onAdd={add}/>
-   {copies.length>0&&<section className="battle-surface">
-    <h3>Forças copiadas para o treinamento V3</h3>
-    {copies.map((s,i)=><p key={i}>{s.name} · {s.side==='attacker'?'Atacante':'Defensor'}
-     {' '}<Button size="sm" variant="outline" onClick={()=>setCopies(xs=>xs.filter((_,n)=>n!==i))}>Remover cópia</Button>
-    </p>)}
-    <p className="battle-note">As unidades oficiais são consultadas como snapshots;
-     exércitos originais, perdas e recursos da campanha não são modificados.</p>
-   </section>}
+ return <section className="battle-module" aria-label="Preparação da batalha do Narrador">
+  <details className="battle-surface battle-optional-source" open={pickerOpen}
+   onToggle={event=>setPickerOpen(event.currentTarget.open)}>
+   <summary>Opcional · Usar unidades existentes de uma casa
+    {copies.length>0?' ('+copies.length+' copiadas)':''}</summary>
+   <p className="battle-note">Escolha e copie unidades autorizadas antes de iniciar.
+    Uma cópia é apenas uma referência de treinamento: a ficha oficial não recebe baixas.</p>
+   {pickerOpen&&<BattleSourcePicker onAdd={add}/>}
+   {copies.length>0&&<div className="battle-selected-copies">
+    <h3>Unidades copiadas</h3>
+    {copies.map((stack,i)=><div key={stack.id} className="battle-selected-copy">
+     <span>{stack.name} · {stack.side==='attacker'?'Atacante':'Defensor'}</span>
+     <Button size="sm" variant="outline" onClick={()=>
+      setCopies(list=>list.filter((_,index)=>index!==i))}>Remover cópia</Button>
+    </div>)}
+   </div>}
    {status&&<p role="status">{status}</p>}
-  </section>
+  </details>
+  <BattleV3Game narrator onBack={onBack} officialCopies={copies}/>
  </section>;
 }
