@@ -3,12 +3,19 @@ import type { BattleMap, BattleStack, Hex, Side } from '@/lib/battle/domain/type
 import { hexKey } from '@/lib/battle/geometry/hex';
 import { gridKind,gridToOffset } from '@/lib/battle/geometry/grid';
 import { militaryUnitSymbolSrc } from '@/components/house/military-unit-symbol';
+import {BattleSquareLegend} from './BattleSquareLegend';
+import {SQUARE_TERRAIN_PRESENTATION,SQUARE_SIDE_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
 import { livingCount } from '@/lib/battle/domain/morale';
 
 type Token=Pick<BattleStack,'id'|'side'|'name'|'position'|'primaryTypeId'|'initialCount'|'hpPerSoldier'|'currentHp'|'moraleState'>;
-const TERRAIN_COLOR={plain:'#d4c69e',forest:'#66886b',hill:'#c4a36f',rock:'#787478'} as const;
-const SIDE_COLOR:Record<Side,string>={attacker:'#b9524d',defender:'#426e9e'};
-const CORMYR_SIDE_COLOR:Record<Side,string>={attacker:'#416f9b',defender:'#ab5246'};
+const TERRAIN_COLOR={
+ plain:SQUARE_TERRAIN_PRESENTATION.plain.color,forest:SQUARE_TERRAIN_PRESENTATION.forest.color,
+ hill:SQUARE_TERRAIN_PRESENTATION.hill.color,rock:SQUARE_TERRAIN_PRESENTATION.rock.color,
+} as const;
+const SIDE_COLOR:Record<Side,string>={
+ attacker:SQUARE_SIDE_PRESENTATION.attacker.color,
+ defender:SQUARE_SIDE_PRESENTATION.defender.color,
+};
 const SIZE=30;
 const XSTEP=Math.sqrt(3)*SIZE;
 const SQUARE_STEP=SIZE*2.1;
@@ -49,7 +56,7 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
    }
    return true;
   };
-  const colors=theme==='cormyr'?CORMYR_SIDE_COLOR:SIDE_COLOR;
+  const colors=SIDE_COLOR;
   const square=gridKind(map)==='square';
   const tileMap=new Map(map.tiles.map(t=>[hexKey(t),t]));
   // Pilhas destruídas ou em debandada saem do campo; seguem no estado para baixas e relatório.
@@ -131,10 +138,8 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
       })}
     </svg>
     </div>
-    <div className="battle-board-legend" aria-label="Legenda do campo">
-      <span>▱ Planície</span><span>♣ Floresta · custo 2</span><span>▲ Colina · custo 2</span>
-      <span>◆ Rocha · bloqueio</span><span>Contorno verde: movimento</span><span>Contorno vermelho: alvo</span>
-    </div>
+    <BattleSquareLegend/>
+    <p className="battle-board-cost-note">Adaptado: Floresta e Colina têm custo 2; Rocha bloqueia a passagem.</p>
     <span id={helpId} className="sr-only">Use Tab para entrar no mapa, setas para navegar pelos células,
       Enter ou Espaço para selecionar o destino.</span>
     <span className="sr-only">{tileMap.size} células disponíveis; use Tab e Enter para selecionar.</span>
