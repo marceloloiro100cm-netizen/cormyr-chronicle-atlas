@@ -213,12 +213,17 @@ describe('CRZ-1.0 · Lote 4: batalha em memória, isolada e determinística',()=
    spellId,targetId:null})).toThrow(/momento permitido|já atuou/i);
   expect(start.leaders[unit.side]?.energy).toBe(leader?.energy);
  });
- it('rejeita presets ainda não implementados, sem rotular compatibilidade falsa',()=>{
+ it('abre variantes esperadas com hash conhecido e mantém modos aleatórios bloqueados',()=>{
   const initial=ready();
-  const wotr=crzPreset('CRZ-WOTR');
-  const patched={...initial,rulesetId:'CRZ-WOTR' as const,
-   rulesetHash:crzRulesetHash(wotr),ruleset:wotr};
-  expect(()=>crzStart(patched)).toThrow(/aguardam redutores próprios/i);
+  for(const id of ['CRZ-WOTR','PTE-2.0-compat'] as const){
+   const rules=crzPreset(id);
+   const patched={...initial,rulesetId:id,rulesetHash:crzRulesetHash(rules),
+    ruleset:rules,resolution:'expected' as const};
+   const live=crzStart(patched);
+   expect(live.phase).toBe('active');
+   expect(live.rulesetId).toBe(id);
+   expect(()=>crzStart({...patched,resolution:'hybrid'})).toThrow(/expected/i);
+  }
  });
  it('IA executa comandos da própria facção, respeitando o turno humano',()=>{
   const start=game({controls:{attacker:'human',defender:'ai'}});
