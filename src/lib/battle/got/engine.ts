@@ -149,7 +149,8 @@ function applyDamage(battle:WarBattle,target:WarUnit,amount:number,attackerName:
  if(target.condition==='routed'||amount>target.maxHealth*2){
   updated={...target,health:0,condition:'destroyed',standing:null};
  }else if(target.condition==='disorganized'){
-  updated={...target,health:0,condition:'routed',standing:{kind:'retreat'}};
+  updated={...target,health:0,condition:'routed',standing:{kind:'retreat'},
+   ...(battle.advancedFormations?{formation:'mob' as const}:{})};
  }else{
   const health=target.health-amount;
   if(health>0){updated={...target,health};}
@@ -188,6 +189,9 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
   if(!ranged){
    if(options.charge)testDice+=own.chargeBonus;
    if(target.formation==='mob')testDice+=own.meleeBonusAgainstMob;
+   const ownAngle=attackAngle(target.position,attacker.position,attacker.facing??'north');
+   if(ownAngle==='rear')throw new Error('Uma unidade não pode atacar pela própria retaguarda.');
+   if(ownAngle==='flank')extraPenalty+=1;
    const angle=attackAngle(attacker.position,target.position,target.facing??'north');
    const closeEnemies=battle.units.filter(u=>u.side===attacker.side&&onBoard(u)&&distance(u.position,target.position)===1).length;
    const edge=angleAttackBonus(angle,closeEnemies>=2,enemy.flankImmunity);
@@ -197,7 +201,7 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  }
  const attackerTile=terrainAt(battle.tiles,attacker.position);
  const targetTile=terrainAt(battle.tiles,target.position);
- testDice+=terrainHighGround(attackerTile,targetTile);
+ bonus+=terrainHighGround(attackerTile,targetTile);
  extraPenalty+=visibilityPenalty(battle.visibility,battle.weather,ranged);
  const roll=rollDice(battle.seed,Math.max(1,score+testDice),bonus,extraPenalty);
  let next:{seed:number}&WarBattle={...battle,seed:roll.nextSeed};
@@ -324,6 +328,7 @@ export function issueWarOrder(battle:WarBattle,input:{
  if(!alive(unit)&&input.order.kind!=='revive')throw new Error('Uma tropa em debandada só pode ser reanimada.');
  if(input.order.kind==='revive'&&unit.condition!=='routed')throw new Error('Esta unidade não está em debandada.');
  // Rejeitar instruções incompletas ANTES de consumir o orçamento e os dados.
+ if(input.order.kind==='surrender')return issueWarSurrender(battle,{commanderId:input.commanderId});
  if(input.order.kind==='move'&&!input.order.to)throw new Error('Indique o quadrado de destino.');
  if(input.order.kind==='formation'&&(!input.order.formation||!battle.advancedFormations))throw new Error('Formação avançada indisponível ou desabilitada.');
  if(input.order.kind==='turn'&&(!input.order.facing||!battle.advancedFormations))throw new Error('Selecione uma orientação válida.');
@@ -348,6 +353,27 @@ export function issueWarOrder(battle:WarBattle,input:{
  next=log(next,'command',commander.name+' deu ordem '+input.order.kind+' a '+unit.name+
   ': '+roll.total+' vs Disciplina '+difficulty+(passed?' (sucesso).':critical?' (falha crítica).':' (falha).'),
   unit.side,{roll:roll.dice,total:roll.total,difficulty,degrees});
+ if(!passed&&critical&&['retreat','aggressive-retreat'].includes(input.order.kind)){
+  const affected=next.units.find(u=>u.id===unit.id)!;
+  if(input.order.kind==='retreat'){
+   next=replaceUnit(next,{...affected,health:0,condition:'routed',standing:{kind:'retreat'},
+    ...(next.advancedFormations?{formation:'mob' as const}:{})});
+   next=log(next,'critical-retreat',unit.name+' entrou em debandada após falha crítica de retirada.',unit.side);
+  }else{
+   const disorganizations=affected.disorganizations+1;
+   const destroyed=disorganizations>=affected.ability.endurance;
+   next=replaceUnit(next,{...affected,disorganizations,health:0,
+    condition:destroyed?'destroyed':'disorganized',standing:destroyed?null:affected.standing});
+   next=log(next,'critical-aggressive-retreat',unit.name+' ficou desorganizada após falha crítica.',unit.side);
+  }
+ }
+ if(!passed&&!critical&&['turn','reverse'].includes(input.order.kind)&&next.advancedFormations){
+  const affected=next.units.find(u=>u.id===unit.id)!;
+  const facing=input.order.kind==='turn'?input.order.facing:
+   ({north:'south',south:'north',east:'west',west:'east'} as const)[affected.facing??'north'];
+  next=replaceUnit(next,{...affected,...(facing?{facing}:{}),exposedFacingUntilRound:next.round});
+  next=log(next,'turn-failure',unit.name+' virou-se, mas permanece vulnerável ao flanco nesta rodada.',unit.side);
+ }
  if(passed){
   const updated=next.units.find(u=>u.id===unit.id)!;
   const issued={...updated,standing:{...input.order},activated:true};
@@ -362,6 +388,34 @@ export function issueWarOrder(battle:WarBattle,input:{
  next={...next,turn:turnAfter(next,commander.side)};
  next=checkVictory(next);
  return {battle:next,passed,critical,test:roll.total,difficulty,degrees};
+}
+/** Rendição: a ordem geral requer um teste para cada unidade ativa. */
+export function issueWarSurrender(battle:WarBattle,input:{commanderId:string}):WarOrderResult{
+ if(battle.phase!=='orders')throw new Error('Batalha encerrada.');
+ const commander=battle.commanders.find(c=>c.id===input.commanderId&&c.active&&c.role==='commander');
+ if(!commander||commander.side!==battle.turn||(battle.ordersRemaining[commander.id]??0)<1)
+  throw new Error('Rendição exige comandante ativo e ordem disponível.');
+ let next:WarBattle={...battle,ordersRemaining:{
+  ...battle.ordersRemaining,[commander.id]:(battle.ordersRemaining[commander.id]??0)-1,
+ }};
+ const units=next.units.filter(u=>u.side===commander.side&&alive(u));
+ for(const unit of units){
+  const difficulty=unit.discipline+unit.disorganizations*3+unit.issuedThisRound*3;
+  const roll=rollDice(next.seed,commander.warfare);
+  const passed=roll.total>=difficulty;
+  const updated:WarUnit=passed?{...unit,health:0,condition:'surrendered',standing:null,issuedThisRound:unit.issuedThisRound+1}:
+   {...unit,health:0,condition:'routed',standing:{kind:'retreat'},
+    issuedThisRound:unit.issuedThisRound+1,
+    ...(next.advancedFormations?{formation:'mob' as const}:{})};
+  next=replaceUnit({...next,seed:roll.nextSeed},updated);
+  next=log(next,'surrender',unit.name+(passed?' rendeu-se.':' debandou ao recusar a rendição.'),
+   commander.side,{roll:roll.dice,total:roll.total,difficulty,
+    degrees:degreesOfSuccess(roll.total,difficulty)});
+ }
+ next={...next,turn:turnAfter(next,commander.side)};
+ next=checkVictory(next);
+ return {battle:next,passed:units.every(u=>next.units.find(v=>v.id===u.id)?.condition==='surrendered'),
+  critical:false,test:0,difficulty:0,degrees:0};
 }
 export function advanceWarRound(battle:WarBattle):WarBattle{
  if(battle.phase!=='orders')throw new Error('Batalha encerrada.');
