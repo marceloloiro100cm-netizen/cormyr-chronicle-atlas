@@ -1366,51 +1366,48 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     <h3>Resultado pós-batalha · somente projeção</h3>
     <p className="battle-note">A tabela de sobreviventes é calculada com dados auditáveis. Nenhuma perda,
      glória ou mudança de treinamento é aplicada às fichas oficiais das Casas.</p>
-    {aftermath&&<>
-     <p>Glória proposta: Atacante {aftermath.glory.attacker} ·
-      Defensor {aftermath.glory.defender}.</p>
-     <div className="got-after-summary">
-      {(['attacker','defender'] as const).map(side=>{
-       const summary=aftermath.summary[side],detail=aftermath.gloryBreakdown[side];
-       return <div className="got-unit" key={side}>
-        <strong>{SIDE[side]} · balanço militar</strong>
-        <span>Início: {summary.originalUnits} tropas · Organizadas: {summary.organized}
-         · Desorganizadas: {summary.disorganized}</span>
-        <span>Debandadas/retiradas: {summary.routedOrEscaped}
-         · Rendidas: {summary.surrendered} · Destruídas em campo: {summary.destroyedInBattle}</span>
-        <span>Proposta da tabela: {summary.proposedDestroyed} destruição(ões) ·
-         {summary.trainingAdvanced} melhora(s) · {summary.trainingReduced} redução(ões)</span>
-        <span>Glória: vitória {detail.victory} + desvantagem numérica {detail.outnumberedBonus}
-         + consolação {detail.defeatConsolation} = {aftermath.glory[side]}</span>
-       </div>;
-      })}
-     </div>
-     <label>Filtrar resultados das tropas
-      <select value={aftermathSide}
-       onChange={e=>setAftermathSide(e.target.value as 'all'|WarSide)}>
-       <option value="all">Ambos os exércitos</option>
-       <option value="attacker">Atacante</option>
-       <option value="defender">Defensor</option>
-      </select>
-     </label>
-    </>}
+    <p>Glória proposta: Atacante {aftermath?.glory.attacker} ·
+     Defensor {aftermath?.glory.defender}.</p>
+    {aftermath&&<div className="got-after-summary">
+     {(['attacker','defender'] as const).map(side=><div className="got-unit" key={side}>
+      <strong>{SIDE[side]} · balanço militar</strong>
+      <span>Início: {aftermath.summary[side].originalUnits} · Organizadas: {aftermath.summary[side].organized}
+       · Desorganizadas: {aftermath.summary[side].disorganized}</span>
+      <span>Debandadas/retiradas: {aftermath.summary[side].routedOrEscaped}
+       · Rendidas: {aftermath.summary[side].surrendered}
+       · Destruídas: {aftermath.summary[side].destroyedInBattle}</span>
+      <span>Proposta: {aftermath.summary[side].proposedDestroyed} destruições ·
+       {aftermath.summary[side].trainingAdvanced} melhorias ·
+       {aftermath.summary[side].trainingReduced} reduções</span>
+      <span>Glória: {aftermath.gloryBreakdown[side].victory} vitória +
+       {aftermath.gloryBreakdown[side].outnumberedBonus} desvantagem numérica +
+       {aftermath.gloryBreakdown[side].defeatConsolation} consolação =
+       {aftermath.glory[side]}</span>
+     </div>)}
+    </div>}
+    <label>Filtrar resultados das tropas
+     <select value={aftermathSide}
+      onChange={e=>setAftermathSide(e.target.value as 'all'|WarSide)}>
+      <option value="all">Ambos os exércitos</option>
+      <option value="attacker">Atacante</option>
+      <option value="defender">Defensor</option>
+     </select>
+    </label>
     <div className="got-roster">
-     {aftermath?.survivors.filter(row=>aftermathSide==='all'||row.side===aftermathSide).map(row=><div className="got-unit" key={row.unitId}>
+     {(aftermath?.survivors??[]).filter(row=>aftermathSide==='all'||row.side===aftermathSide).map(row=><div className="got-unit" key={row.unitId}>
       <strong>{row.unitName}</strong><span>Condição: {row.condition} · 1d6 = {row.die}
        · resultado ajustado {row.adjusted}</span>
       <span>Treinamento: {row.steps==='destroyed'?'proposta de destruição':
        row.steps===0?'inalterado':row.steps>0?'+'+row.steps+' graduação(ões)':
        row.steps+' graduação(ões)'}</span>
-      <span>Proposta: {row.training} → {row.proposedTraining}
-       {row.extraRanksAfterElite>0?' · '+row.extraRanksAfterElite+' graduação(ões) extras além de Elite':''}
-       · decisão pendente do Narrador</span>
+      <span>Proposta: {row.training} → {row.proposedTraining} · decisão pendente do Narrador
+       {row.extraRanksAfterElite>0?' · '+row.extraRanksAfterElite+' graduação(ões) extras após Elite':''}</span>
      </div>)}
     </div>
     <h4>Recursos e domínio · proposta do passo 11</h4>
     {Boolean(battle.scorchedPreview?.length)&&<div className="got-roster">
      <h4>Terra Arrasada · proprietário dos domínios</h4>
-     <p className="battle-note">Escolha quem era dono de cada domínio. Sem esta informação,
-      perdas de Riqueza e População não são atribuídas a nenhum lado.</p>
+     <p className="battle-note">Sem dono declarado, perdas de recursos não são atribuídas.</p>
      {[...new Set((battle.scorchedPreview??[]).map(row=>row.domainId))].map(domain=>
       <label key={domain}>{domain}
        <select value={resourceScenario.scorchedDomainOwners?.[domain]??''}
@@ -1484,10 +1481,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        ', resgate proposto '+h.ransomWealth+' Riqueza)').join(' · '):
       'nenhum registrado'}.</p>
      <p className="battle-note">{projectedResources.notes.join(' ')}</p>
-     {projectedResources.provisionalOccupationTransfer&&<p role="status" className="got-review-alert">
-      Ocupação ainda não consolidada: valores de Terras e Defesa são apenas condicionais.</p>}
-     {projectedResources.unresolvedScorchedDomains.length>0&&<p role="status" className="got-review-alert">
-      Terra Arrasada sem proprietário: {projectedResources.unresolvedScorchedDomains.join(', ')}.</p>
+     {projectedResources.provisionalOccupationTransfer?
+      <p role="status" className="got-review-alert">Ocupação não consolidada: Terras e Defesa condicionais.</p>:null}
+     {projectedResources.unresolvedScorchedDomains.length>0?
+      <p role="status" className="got-review-alert">Terra Arrasada sem proprietário:
+       {projectedResources.unresolvedScorchedDomains.join(', ')}.</p>:null}
     </div>}
    </section>}
    <section className="battle-surface got-events" aria-label="Histórico de rolagens">
