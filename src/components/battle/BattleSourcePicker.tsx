@@ -24,7 +24,7 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide,onHouseLoade
  onAdd:(stack:BattleStack,houseName:string)=>boolean;
  onAddMany?:(stacks:BattleStack[],houseName:string)=>boolean;
  remainingBySide?:Readonly<Record<Side,number>>;
- onHouseLoaded?:(value:{side:Side;house:BattleHouseDirectoryRow})=>void;
+ onHouseLoaded?:(value:{side:Side;house:BattleHouseDirectoryRow;stacks:BattleStack[]})=>void;
 }){
  const fetchHouses=useServerFn(listBattleSourceHouses);
  const fetchUnits=useServerFn(listBattleSourceUnits);
@@ -99,7 +99,7 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide,onHouseLoade
     primaryTypeId:profile,...(reason.trim()?{profileDecisionReason:reason.trim()}:{})
    }});
    if(onAdd(stack,selectedHouse.name)){
-    onHouseLoaded?.({side,house:selectedHouse});
+    onHouseLoaded?.({side,house:selectedHouse,stacks:[stack]});
     setMessage('Unidade copiada para treinamento. A ficha oficial permanece inalterada.');
    }
    else setMessage('Não foi possível adicionar: verifique o limite ou unidades duplicadas.');
@@ -119,7 +119,7 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide,onHouseLoade
      position:{q:0,r:0},primaryTypeId:soloProfile(row)!}});
    }));
    if(onAddMany(stacks,selectedHouse.name)){
-    onHouseLoaded?.({side,house:selectedHouse});
+    onHouseLoaded?.({side,house:selectedHouse,stacks});
     setMessage(stacks.length+' unidades copiadas para o exército. Posicione-as no mapa antes da batalha.');
    }
    else setMessage('Nenhuma unidade foi adicionada: confira duplicatas e o limite de cinco.');
