@@ -50,6 +50,8 @@ export type WarUnit=Readonly<{
  hidden?:boolean;exposedFacingUntilRound?:number;
  suppressionPenalty?:number;suppressionRound?:number;probeDefenseRound?:number;
  counterChargeReady?:boolean;
+ /** Queimadura local de fogo selvagem por rodadas de guerra restantes. */
+ wildfire?:Readonly<{rounds:number;damage:number}>|undefined;
  /** Fogo persistente de munição especial do capítulo 10. */
  burning?:Readonly<{remainingRounds:number;damagePerRound:number;source:string}>|undefined;
  envelopingTargetId?:string|undefined;envelopedBy?:string|undefined;
