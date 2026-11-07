@@ -10,6 +10,7 @@ import type {WarFortification} from './fortifications';
 import {executeAdvancedWarOrder,WAR_ADVANCED_ORDER_DIFFICULTY} from './advanced-orders';
 import {validateWarHeroes,heroUnitDefenseBonus,heroUnitBonusDice,applyDamageToEmbeddedHeroes} from './heroes';
 import type {WarHero} from './heroes';
+import {personalPosition,spendPersonalAction} from './personal-combat';
 
 const SIDES:readonly WarSide[]=['attacker','defender'];
 const opposite=(side:WarSide):WarSide=>side==='attacker'?'defender':'attacker';
@@ -194,6 +195,83 @@ function applyDamage(battle:WarBattle,target:WarUnit,amount:number,attackerName:
  const resolved=log(withHeroes,'damage',text,target.side);
  return target.condition!=='routed'&&updated.condition==='routed'?triggerReadyReactions(resolved,target.id,'enemy-routed'):resolved;
 }
+/** A pegada da unidade tem 10×10 m; a pessoa usa coordenadas de 1 m. */
+function distanceFromHeroToUnit(hero:WarHero,unit:WarUnit):number{
+ const p=personalPosition(hero),left=unit.position.x*10,top=unit.position.y*10;
+ const dx=Math.max(left-p.x,0,p.x-(left+9));
+ const dy=Math.max(top-p.y,0,p.y-(top+9));
+ return Math.max(dx,dy);
+}
+/** Capítulo 10, passo 6/8: um personagem atacando uma unidade inteira.
+ * A unidade recebe +20 Defesa; resolver a Saúde coletiva pelo motor de guerra.
+ */
+export function executeWarHeroAttackUnit(battle:WarBattle,input:{
+ heroId:string;unitId:string;ranged?:boolean;
+}):WarBattle{
+ if(battle.phase!=='heroes-first'&&battle.phase!=='heroes-second')
+  throw new Error('Ataques pessoais exigem a fase de heróis.');
+ const hero=battle.heroes.find(h=>h.id===input.heroId);
+ const target=battle.units.find(u=>u.id===input.unitId);
+ if(!hero||!hero.active||hero.role!=='hero'||hero.unitId||
+  hero.usedActions>=5||!target||!onBoard(target)||target.side===hero.side)
+  throw new Error('Herói ou unidade inimiga indisponível.');
+ const ranged=Boolean(input.ranged),distanceMetres=distanceFromHeroToUnit(hero,target);
+ const range=ranged?(hero.rangedRange==='long'?100:10):1;
+ if(!ranged&&distanceMetres>1)
+  throw new Error('Ataque de Luta exige contato com a unidade em escala pessoal.');
+ if(ranged&&(hero.rangedRange==='none'||hero.rangedDamage<=0))
+  throw new Error('Herói sem arma de Pontaria.');
+ const used=spendPersonalAction(hero,'major');
+ const rangePenalty=ranged?Math.max(0,Math.ceil((distanceMetres-range)/10)):0;
+ const penalty=Math.min(15,(hero.injuries??0)+
+  visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty);
+ const roll=rollDice(battle.seed,ranged?hero.marksmanship:hero.fighting,
+  Math.min(15,(ranged?hero.rangedBonusDice:hero.meleeBonusDice)??0),penalty);
+ const total=Math.max(0,roll.total-(hero.wounds??0));
+ const difficulty=target.defense+20;
+ const degrees=degreesOfSuccess(total,difficulty);
+ const damage=degrees?Math.max(0,
+  (ranged?hero.rangedDamage:hero.meleeDamage)*degrees-target.armor):0;
+ let next:WarBattle={...battle,seed:roll.nextSeed,
+  heroes:battle.heroes.map(h=>h.id===hero.id?{...used,passBonusDice:0}:h)};
+ next=log(next,'hero-vs-unit',hero.name+' atacou '+target.name+' (Defesa +20): '+
+  total+' vs '+difficulty+', '+degrees+' grau(s), '+damage+' dano.',hero.side,{
+   roll:roll.dice,total,difficulty,degrees,
+  });
+ if(damage>0)next=applyDamage(next,target,damage,hero.name);
+ return checkVictory(next);
+}
+/** Capítulo 10: quando 100 homens atacam uma pessoa, recebem +2D. */
+function attackIndividualFromWarUnit(
+ battle:WarBattle,actor:WarUnit,hero:WarHero,ranged:boolean,
+):WarBattle{
+ if(!alive(actor)||!hero.active||hero.unitId||hero.side===actor.side)
+  throw new Error('Herói inimigo não pode ser atacado pela unidade.');
+ const distanceMetres=distanceFromHeroToUnit(hero,actor);
+ const max=ranged?(actor.range==='long'?200:actor.range==='short'?20:0):1;
+ if(max===0||distanceMetres>max)
+  throw new Error('Herói fora do alcance da unidade.');
+ const rank=ranged?actor.ability.marksmanship:actor.ability.fighting;
+ const roll=rollDice(battle.seed,Math.min(15,rank+2),
+  (ranged?actor.rangedBonusDice:actor.meleeBonusDice)??0,
+  (actor.condition==='disorganized'?1:0)+
+  visibilityPenalty(battle.visibility,battle.weather,ranged));
+ const total=roll.total;
+ const difficulty=hero.dodgeDefense??hero.defense;
+ const degrees=degreesOfSuccess(total,difficulty);
+ const damage=degrees?Math.max(0,
+  (ranged?actor.rangedDamage:actor.meleeDamage)*degrees-hero.armor):0;
+ const health=Math.max(0,hero.health-damage),defeated=health===0;
+ let next:WarBattle={...battle,seed:roll.nextSeed,
+  heroes:battle.heroes.map(h=>h.id===hero.id?{...h,health,
+   active:!defeated&&h.active}:h),
+  commanders:defeated&&hero.commanderId?battle.commanders.map(c=>
+   c.id===hero.commanderId?{...c,active:false}:c):battle.commanders};
+ return log(next,'unit-vs-hero',actor.name+' atacou '+hero.name+
+  ' (+2D de Luta/Pontaria): '+total+' vs Defesa '+difficulty+
+  ', '+degrees+' grau(s), '+damage+' dano'+(defeated?' (derrotado)':'')+'.',
+  actor.side,{roll:roll.dice,total,difficulty,degrees});
+}
 function chooseNearest(battle:WarBattle,unit:WarUnit,ranged:boolean):WarUnit|null{
  const max=ranged?(unit.range==='long'?20:unit.range==='short'?2:0):1;
  return battle.units.filter(u=>u.side!==unit.side&&onBoard(u)&&distance(u.position,unit.position)<=max)
@@ -329,6 +407,11 @@ function perform(battle:WarBattle,unit:WarUnit,order:WarOrder,degrees:number):Wa
   return move(battle,unit,order.to,Boolean(order.sprint));
  }
  if(order.kind==='attack'){
+  if(order.targetHeroId){
+   const hero=battle.heroes.find(h=>h.id===order.targetHeroId);
+   if(!hero)throw new Error('Selecione um herói inimigo válido.');
+   return attackIndividualFromWarUnit(battle,unit,hero,Boolean(order.ranged));
+  }
   const target=battle.units.find(u=>u.id===order.targetId)??chooseNearest(battle,unit,Boolean(order.ranged));
   if(!target)throw new Error('Selecione um alvo válido.');
   return attack(battle,unit,target,Boolean(order.ranged));
@@ -414,6 +497,11 @@ export function issueWarOrder(battle:WarBattle,input:{
  if(input.order.kind==='revive'&&unit.condition!=='routed')throw new Error('Esta unidade não está em debandada.');
  // Rejeitar instruções incompletas ANTES de consumir o orçamento e os dados.
  if(input.order.kind==='surrender')return issueWarSurrender(battle,{commanderId:input.commanderId});
+ if(input.order.targetHeroId&&input.order.kind!=='attack')
+  throw new Error('Apenas a ordem Atacar pode alvejar herói individual.');
+ if(input.order.targetHeroId&&(!battle.heroes.some(h=>
+  h.id===input.order.targetHeroId&&h.side!==unit.side&&h.active&&!h.unitId)))
+  throw new Error('Herói adversário indisponível.');
  if(input.order.kind==='move'&&!input.order.to)throw new Error('Indique o quadrado de destino.');
  if(input.order.kind==='ready'){
   const plan=input.order.ready;
