@@ -139,8 +139,8 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide,onHouseLoade
    <div>
     <h3><Swords size={22} aria-hidden="true" style={{display:'inline',verticalAlign:'middle',marginRight:9}}/>
      Preparar forças da Casa</h3>
-    <p>Escolha a região, a Casa e o lado da batalha. Os brasões e as tropas são obtidos
-     dos registros oficiais do acervo de Cormyr.</p>
+    <p>Escolha a região, a Casa e o lado da batalha. Os brasões vêm do catálogo de Cormyr;
+     as tropas, das fichas militares ou das planilhas de cenário.</p>
    </div>
    <span className="battle-eyebrow">MÓDULO DO NARRADOR</span>
   </div>
