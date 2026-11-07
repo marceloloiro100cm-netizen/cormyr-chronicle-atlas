@@ -1,9 +1,10 @@
 import {degreesOfSuccess,rollDice} from './dice';
 import {fortDefense,fortForUnit,sabotageFortification} from './fortifications';
+import {terrainAt,terrainEffect,movementSlow} from './terrain';
 import type {WarBattle,WarOrder,WarUnit} from './types';
 
 export const WAR_ADVANCED_ORDER_DIFFICULTY={
- 'suppress':3,'probe':6,'counter-charge':3,'sabotage':3,'ambush':3,'join':3,
+ 'suppress':3,'probe':6,'push':3,'counter-charge':3,'sabotage':3,'ambush':3,'join':3,
 } as const;
 export type WarAdvancedKind=keyof typeof WAR_ADVANCED_ORDER_DIFFICULTY;
 
@@ -34,6 +35,38 @@ export function executeAdvancedWarOrder(
 ):WarBattle|null{
  if(!(order.kind in WAR_ADVANCED_ORDER_DIFFICULTY))return null;
  if(!battle.advancedFormations)throw new Error('Ative as regras avançadas de Guerra.');
+ if(order.kind==='push'){
+  const target=targetOf(battle,actor,order);
+  if(target.side===actor.side||distance(actor.position,target.position)!==1)
+   throw new Error('Empurrar exige unidade inimiga adjacente.');
+  const roll=rollDice(battle.seed,actor.ability.fighting,actor.meleeBonusDice??0,
+   actor.condition==='disorganized'?1:0);
+  const difficulty=target.ability.athletics*4; // Resultado passivo de Atletismo.
+  const degrees=degreesOfSuccess(roll.total,difficulty);
+  let next:WarBattle={...battle,seed:roll.nextSeed};
+  let position={...target.position},cost=0,metres=0;
+  const dx=Math.sign(target.position.x-actor.position.x);
+  const dy=Math.sign(target.position.y-actor.position.y);
+  // Cada grau autoriza 10 m; terreno traiçoeiro consome os graus disponíveis.
+  for(let n=0;n<degrees;n++){
+   const to={x:position.x+dx,y:position.y+dy};
+   if(to.x<0||to.y<0||to.x>=battle.width||to.y>=battle.height)break;
+   if(next.units.some(u=>u.id!==target.id&&alive(u)&&
+    u.position.x===to.x&&u.position.y===to.y))break;
+   const tile=terrainAt(battle.tiles,to);
+   const effect=terrainEffect(tile);
+   if(effect.blocked||(effect.water&&!target.naval)||
+    (target.mounted&&effect.noCavalry))break;
+   const stepCost=1+movementSlow(tile,battle.visibility,battle.weather);
+   if(cost+stepCost>degrees)break;
+   cost+=stepCost;position=to;metres+=10;
+  }
+  if(metres>0)next=replace(next,{...target,position});
+  return log(next,'push',actor.name+' tentou empurrar '+target.name+
+   ' por '+metres+' m ('+degrees+' grau(s) de sucesso).',actor,{
+    roll:roll.dice,total:roll.total,difficulty,degrees,
+   });
+ }
  if(order.kind==='probe'){
   const target=targetOf(battle,actor,order);
   if(target.side===actor.side||distance(actor.position,target.position)>1)
