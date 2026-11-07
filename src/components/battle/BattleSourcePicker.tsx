@@ -189,7 +189,7 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide,onHouseLoade
         <label className="battle-source-unit-row">
          <input type="checkbox" aria-label={'Selecionar '+r.name} disabled={busy||!selectable}
           checked={marked.includes(r.id)} onChange={e=>toggle(r.id,e.target.checked)}/>
-         <MilitaryUnitSymbol typeId={r.types[0]} size="small"/>
+         <MilitaryUnitSymbol typeId={r.types[0]??''} size="small"/>
          <span>
           <strong className="battle-source-unit-name">{r.name}</strong>
           <small className="battle-source-unit-detail">
