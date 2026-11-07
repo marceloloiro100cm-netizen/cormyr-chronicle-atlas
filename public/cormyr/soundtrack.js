@@ -38,11 +38,11 @@
   'Vou-me Embora pra Sossal':'https://www.youtube.com/watch?v=b34LSA3yDak',
   'Cante uma Canção a Elturel':'https://www.youtube.com/watch?v=xoOtYuebA9k',
   'Terra dos Cavalos':'https://www.youtube.com/watch?v=f4L0mCHpOv8',
-  'Nova música de Cormyr':'https://www.youtube.com/watch?v=wioZhfoQMAs',
-  'Nova música de Cormyr — WrXc5zCbMHA':'https://www.youtube.com/watch?v=WrXc5zCbMHA',
-  'Nova música de Cormyr — qw9FgNYr7hE':'https://www.youtube.com/watch?v=qw9FgNYr7hE',
+  'Faixa de Cormyr 01':'https://www.youtube.com/watch?v=wioZhfoQMAs',
+  'Faixa de Cormyr 02':'https://www.youtube.com/watch?v=WrXc5zCbMHA',
+  'Faixa de Cormyr 03':'https://www.youtube.com/watch?v=qw9FgNYr7hE',
   'O Truta':'https://www.youtube.com/watch?v=a5DitnxYUZM',
-  'Nova música de Cormyr — uPYfE1gKDcg':'https://www.youtube.com/watch?v=uPYfE1gKDcg'
+  'Faixa de Cormyr 04':'https://www.youtube.com/watch?v=uPYfE1gKDcg'
  };
  function attachVideo(song){
   const parsed=yt.parse(directVideos[song.title]||'');
@@ -59,20 +59,20 @@
   })),
   attachVideo({id:'cancioneiro-terra-dos-cavalos',title:'Terra dos Cavalos',
    category:'populares',region:'Horselands',url:''}),
-  // Title not confirmed by YouTube metadata; keep this entry distinct until verified.
-  attachVideo({id:'youtube-wioZhfoQMAs',title:'Nova música de Cormyr',
+  // Título oficial ainda não confirmado: identificação neutra por faixa, sem confundir com nome do vídeo.
+  attachVideo({id:'youtube-wioZhfoQMAs',title:'Faixa de Cormyr 01',
    category:'populares',region:'Cormyr',url:''}),
-  // Título provisório até confirmação de metadados oficiais do vídeo.
-  attachVideo({id:'youtube-WrXc5zCbMHA',title:'Nova música de Cormyr — WrXc5zCbMHA',
+  // Faixa sem metadados oficiais verificados; vínculo com YouTube preservado.
+  attachVideo({id:'youtube-WrXc5zCbMHA',title:'Faixa de Cormyr 02',
    category:'populares',region:'Cormyr',url:''}),
-  // Título temporário, sem presumir uma identidade que o YouTube não confirmou.
-  attachVideo({id:'youtube-qw9FgNYr7hE',title:'Nova música de Cormyr — qw9FgNYr7hE',
+  // Não exibir o identificador do YouTube como nome da música.
+  attachVideo({id:'youtube-qw9FgNYr7hE',title:'Faixa de Cormyr 03',
    category:'populares',region:'Cormyr',url:''}),
   // Título confirmado pelo Narrador; registrar como música popular, sem associação à fé de Adlar.
   attachVideo({id:'o-truta',title:'O Truta',
    category:'populares',region:'Cormyr',url:''}),
-  // Título provisório: não atribuir um título oficial sem confirmação da fonte.
-  attachVideo({id:'youtube-uPYfE1gKDcg',title:'Nova música de Cormyr — uPYfE1gKDcg',
+  // O vídeo enviado pelo Narrador permanece acessível sem nome oficial atribuído.
+  attachVideo({id:'youtube-uPYfE1gKDcg',title:'Faixa de Cormyr 04',
    category:'populares',region:'Cormyr',url:''})
  ];
 })();
