@@ -4,6 +4,7 @@
 import {crzSealCreature} from './creatures';
 import {crzBuildCatalog} from './catalog';
 import {crzScenario,type CrzScenarioId} from './geometry';
+import {sharedToCrzMap,type SharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {crzPreset,crzRulesetHash,type CrzPresetId} from './ruleset';
 import {crzPrepareBattle,type CrzReady} from './setup';
 
@@ -19,6 +20,8 @@ export const CRZ_TRAINING_SCENARIOS:readonly Readonly<{
 export type CrzTrainingOptions=Readonly<{
  scenario:CrzScenarioId;
  grid?:'hex'|'square';
+ /** Map data shared with Adaptado and GOT; D&D rules remain independent. */
+ sharedMap?:SharedSquareMap;
  preset?:CrzPresetId;
  generalLevel?:number;
  width:11|15;
@@ -96,7 +99,8 @@ export function crzTrainingReady(options:CrzTrainingOptions):CrzReady{
   seed:options.seed,rulesetId:preset,
   rulesetHash:crzRulesetHash(rules),
   resolution:options.resolution,
-  map:crzScenario(options.scenario,options.width,options.grid??'hex'),
+  map:options.sharedMap?sharedToCrzMap(options.sharedMap):
+    crzScenario(options.scenario,options.width,options.grid??'square'),
   armies:{
    attacker:{side:'attacker',name:'Defensores da Coroa',stacks:[
     unit('guard-a','guard-cca',14),
