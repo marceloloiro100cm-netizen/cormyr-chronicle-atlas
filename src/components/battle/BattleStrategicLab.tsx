@@ -7,8 +7,9 @@ import './battle-strategy.css';
 
 const LABELS:Record<SiegeAction,string>={
  BLOCKADE:'Bloquear suprimentos',BOMBARD:'Bombardear muralhas',
+ UNDERMINE:'Minar portão e fundações',
  ASSAULT:'Assaltar brecha',WITHDRAW:'Retirar tropas',
- REPAIR:'Reparar muralhas',SORTIE:'Executar sortida',
+ REPAIR:'Reparar muralhas',FORTIFY_GATE:'Reforçar portão e torres',SORTIE:'Executar sortida',
  RATION:'Racionar suprimentos',
 };
 export function BattleStrategicLab({onBack}:{onBack?:()=>void}){
@@ -97,6 +98,8 @@ export function BattleStrategicLab({onBack}:{onBack?:()=>void}){
        siege.turn==='attacker'?'Turno atacante':'Turno defensor'}</p>
       <p>Integridade das muralhas <strong>{siege.wall}/100</strong></p>
       <meter min={0} max={100} value={siege.wall}/>
+      <p>Portão <strong>{siege.gate}/100</strong> · torres <strong>{siege.towers}/100</strong></p>
+      <p>Ponto de ruptura: <strong>{siege.wall<=65||siege.gate<=35?'brecha aberta':'defesas intactas'}</strong></p>
       <p>Forças sitiantes <strong>{siege.attacker}</strong> · guarnição <strong>{siege.garrison}</strong></p>
       <p>Suprimentos atacantes <strong>{siege.attackerSupply}</strong> · defensores <strong>{siege.defenderSupply}</strong></p>
       <p>Máquinas de cerco <strong>{siege.engines}</strong></p>
@@ -112,7 +115,8 @@ export function BattleStrategicLab({onBack}:{onBack?:()=>void}){
      <ol aria-label="Histórico do cerco">
       {[...siege.history].reverse().map((event,i)=><li key={siege.history.length-i}>
        Dia {event.day} · {event.side==='attacker'?'Atacantes':'Defensores'} ·
-       {' '}{event.text}. Muralha {event.wall}, guarnição {event.garrison}.
+       {' '}{event.text}. Muralha {event.wall}, portão {event.gate},
+       torres {event.towers}, guarnição {event.garrison}.
       </li>)}
      </ol>
     </>}
