@@ -31,9 +31,9 @@ export type WarHero=Readonly<{
  fateBonusDice?:number;fatePenaltyReduction?:number;removedFromStory?:boolean;
  squadId?:string;meleeWeapon?:WarPersonalWeapon;rangedWeapon?:WarPersonalWeapon;
  rangedLoaded?:boolean;
- mount?:WarPersonalMount;mounted?:boolean;mountControlledTurn?:number;
+ mount?:WarPersonalMount;mounted?:boolean;mountControlledTurn?:number|undefined;
  mountMovedTurn?:number;
- counterattackReady?:Readonly<{ranged:boolean;vsCharge:boolean}>;
+ counterattackReady?:Readonly<{ranged:boolean;vsCharge:boolean}>|undefined;
 }>;
 export type WarHeroAction=Readonly<{
  kind:'join'|'leave'|'rally'|'revive'|'abdicate'|'assume'|PersonalWarAction['kind'];
