@@ -35,7 +35,7 @@ export type V3Game=Readonly<{
 export type V3ScenarioOptions=Readonly<{
  attackerHouseId:string;defenderHouseId:string;
  attackerCommander:CommanderId;defenderCommander:CommanderId;
- scenario:BattleScenarioId;opponent:'ai'|'human';grid?:'square';
+ scenario:BattleScenarioId;opponent:'ai'|'human';grid?:'hex'|'square';
 }>;
 const sideList=['attacker','defender'] as const;
 const LINE=new Set(['infantry','garrison','personal-guard','crusaders','mercenaries','levies']);
