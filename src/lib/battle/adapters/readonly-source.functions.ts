@@ -4,6 +4,7 @@ import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
 import type {HouseState} from '@/lib/house/types';
 import {battleHouseDirectory} from './house-directory';
 import {adaptOfficialUnit} from './unit-readonly';
+import {importedNpcBattleStack,importedNpcUnitSchema,previewImportedNpc} from './imported-npc-roster';
 
 const sourceQuery=z.object({houseId:z.string().min(1).max(100)}).strict();
 const importQuery=sourceQuery.extend({
@@ -34,6 +35,16 @@ async function readState(db:Context['supabase'],houseId:string):Promise<{state:H
  const version=Number(query.data.version);
  if(!Number.isInteger(version)||version<0)throw new Error('Versão oficial inválida.');
  return {state,version};
+}
+/** O catálogo de cenário guarda propostas e entradas autorais somente para batalha.
+ * Nenhum dado é lançado em noble_house_sheets ou no orçamento da Casa.
+ */
+async function readNpcRoster(db:Context['supabase'],houseId:string){
+ const result=await db.from('battle_house_roster_imports')
+  .select('source_key,house_id,unit_name,unit_type,training,quantity,standard_unit_strength,source_status,source_row')
+  .eq('house_id',houseId).order('source_row').limit(100);
+ if(result.error)throw new Error('O catálogo militar de cenários está indisponível.');
+ return (result.data??[]).map((raw:unknown)=>importedNpcUnitSchema.parse(raw));
 }
 /** Não retorna HouseState nem atributos privados; somente casas sob sessão administrativa. */
 export const listBattleSourceHouses=createServerFn({method:'POST'})
@@ -66,18 +77,27 @@ export const listBattleSourceUnits=createServerFn({method:'POST'})
   const db=context.supabase as unknown as Context['supabase'];
   await requireNarrator(db);
   const record=await readState(db,data.houseId);
-  if(!record){
+  // Fichas operacionais de jogadores sempre prevalecem sobre propostas NPC.
+  if(record&&record.state.units.length){
+   const {state,version}=record;
+   const roster=state.units.map(unit=>({
+    id:unit.id,name:unit.name,types:unit.types,training:unit.training,
+    strength:unit.strength,casualties:unit.casualties,destroyed:Boolean(unit.destroyed),
+   }));
    await requireNarrator(db);
-   return {houseId:data.houseId,sourceVersion:null,sourceStatus:'no-military-sheet' as const,units:[]};
+   return {houseId:data.houseId,sourceVersion:version,
+    sourceStatus:'recorded' as const,units:roster};
   }
-  const {state,version}=record;
-  const roster=state.units.map(unit=>({
-   id:unit.id,name:unit.name,types:unit.types,training:unit.training,
-   strength:unit.strength,casualties:unit.casualties,destroyed:Boolean(unit.destroyed),
-  }));
+  const archive=await readNpcRoster(db,data.houseId);
+  if(archive.length){
+   await requireNarrator(db);
+   return {houseId:data.houseId,sourceVersion:null,
+    sourceStatus:'scenario-roster' as const,
+    units:archive.map(previewImportedNpc)};
+  }
   await requireNarrator(db);
-  return {houseId:data.houseId,sourceVersion:version,
-   sourceStatus:roster.length?'recorded' as const:'empty' as const,units:roster};
+  return {houseId:data.houseId,sourceVersion:record?.version??null,
+   sourceStatus:record?'empty' as const:'no-military-sheet' as const,units:[]};
  });
 /** O cliente envia IDs e decisão, JAMAIS um HouseState. A conversão acontece no servidor. */
 export const previewBattleSourceStack=createServerFn({method:'POST'})
@@ -86,16 +106,23 @@ export const previewBattleSourceStack=createServerFn({method:'POST'})
   const db=context.supabase as unknown as Context['supabase'];
   await requireNarrator(db);
   const source=await readState(db,data.houseId);
-  if(!source)throw new Error('Esta casa ainda não possui ficha militar registrada no site.');
-  const {state,version}=source;
-  const unit=state.units.find(u=>u.id===data.unitId);
-  if(!unit)throw new Error('Unidade de origem indisponível.');
-  const stack=adaptOfficialUnit(state,unit,{
-   houseId:data.houseId,unitId:data.unitId,side:data.side,
-   position:data.position,primaryTypeId:data.primaryTypeId,
-   ...(data.profileDecisionReason?{profileDecisionReason:data.profileDecisionReason}:{}),
-   sourceVersion:version,capturedAt:new Date().toISOString(),
-  });
+  if(source?.state.units.length){
+   const {state,version}=source;
+   const unit=state.units.find(u=>u.id===data.unitId);
+   if(!unit)throw new Error('Unidade oficial de origem indisponível.');
+   const stack=adaptOfficialUnit(state,unit,{
+    houseId:data.houseId,unitId:data.unitId,side:data.side,
+    position:data.position,primaryTypeId:data.primaryTypeId,
+    ...(data.profileDecisionReason?{profileDecisionReason:data.profileDecisionReason}:{}),
+    sourceVersion:version,capturedAt:new Date().toISOString(),
+   });
+   await requireNarrator(db);
+   return stack;
+  }
+  const roster=await readNpcRoster(db,data.houseId);
+  const row=roster.find(x=>x.source_key===data.unitId);
+  if(!row)throw new Error('A Casa não possui esta unidade no catálogo de batalha.');
+  const stack=importedNpcBattleStack(row,data.side,data.position,data.primaryTypeId);
   await requireNarrator(db);
   return stack;
  });
