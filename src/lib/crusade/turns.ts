@@ -190,8 +190,8 @@ export function crzStart(ready:CrzReady):CrzBattleState{
  const rule=crzRequireKnownRuleset(ready.rulesetId,ready.rulesetHash);
  if(crzRulesetHash(ready.ruleset)!==ready.rulesetHash)
   throw new Error('E_SETUP_RULESET: ruleset modificado.');
- if(rule.id!=='CRZ-5E')
-  throw new Error('E_SETUP_RULESET: os presets WOTR/PTE aguardam redutores próprios.');
+ if(rule.id!=='CRZ-5E'&&ready.resolution!=='expected')
+  throw new Error('E_SETUP_RULESET: WOTR/PTE experimental exige expected.');
  if(ready.stacks.some(s=>s.source.kind==='house-readonly'))
   throw new Error('E_SETUP_SOURCE: batalha oficial não autorizada.');
  if(new Set(ready.stacks.map(s=>s.id)).size!==ready.stacks.length)
