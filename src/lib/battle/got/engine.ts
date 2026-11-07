@@ -325,7 +325,7 @@ export function issueWarOrder(battle:WarBattle,input:{
  if(input.order.kind==='revive'&&unit.condition!=='routed')throw new Error('Esta unidade não está em debandada.');
  // Rejeitar instruções incompletas ANTES de consumir o orçamento e os dados.
  if(input.order.kind==='move'&&!input.order.to)throw new Error('Indique o quadrado de destino.');
- if(input.order.kind==='formation'&&(!input.order.formation||!battle.advancedFormations))throw new Error('Selecione uma formação válida.');
+ if(input.order.kind==='formation'&&(!input.order.formation||!battle.advancedFormations))throw new Error('Formação avançada indisponível ou desabilitada.');
  if(input.order.kind==='turn'&&(!input.order.facing||!battle.advancedFormations))throw new Error('Selecione uma orientação válida.');
  if(['attack','charge','aggressive-retreat'].includes(input.order.kind)&&input.order.targetId){
   const target=battle.units.find(u=>u.id===input.order.targetId);
