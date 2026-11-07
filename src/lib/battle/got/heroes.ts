@@ -22,6 +22,7 @@ export type WarHero=Readonly<{
  rangedRange?:'none'|'short'|'long';
  wounds?:number;injuries?:number;passBonusDice?:number;
  dodgeDefense?:number|null;minorActionsUsed?:number;surrendered?:boolean;
+ defeatOutcome?:'death'|'unconscious'|'captured';attackedThisTurn?:boolean;
 }>;
 export type WarHeroAction=Readonly<{
  kind:'join'|'leave'|'rally'|'revive'|'abdicate'|'assume'|PersonalWarAction['kind'];
