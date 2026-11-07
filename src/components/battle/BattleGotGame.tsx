@@ -224,7 +224,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       !['destroyed','surrendered','escaped'].includes(u.condition));
     if(!victim)throw new Error('Selecione uma unidade inimiga.');
     setBattle(executeWarHeroAttackUnit(battle,{heroId:hero.id,unitId:victim.id,
-     ranged:heroRanged}));setError('');return;
+     ranged:heroRanged,
+     ...(!heroRanged?{twoHandedGrip:heroGripTwoHands,powerBonusDice:heroPowerBonus}:{}),
+    }));setError('');return;
    }
    const action:WarHeroAction={
     kind:heroAction,
@@ -241,7 +243,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     }:{}),
     ...(['personal-attack','personal-cautious-attack',
       'personal-reckless-attack','personal-charge'].includes(heroAction)&&
-      (heroAction!=='personal-cautious-attack'||!heroRanged)?
+      (!heroRanged||['personal-reckless-attack','personal-charge'].includes(heroAction))?
       {twoHandedGrip:heroGripTwoHands,powerBonusDice:heroPowerBonus}:{}),
    };
    setBattle(executeWarHeroAction(battle,{heroId:hero.id,action}));
@@ -687,8 +689,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        <input type="checkbox" checked={heroRanged} onChange={e=>setHeroRanged(e.target.checked)}/>
        Atacar usando Pontaria (distâncias pessoais em metros)</label>}
       {['personal-attack','personal-cautious-attack',
-       'personal-reckless-attack','personal-charge'].includes(heroAction)&&
-       (heroAction!=='personal-cautious-attack'||!heroRanged)&&
+       'personal-reckless-attack','personal-charge','personal-attack-unit'].includes(heroAction)&&
+       (!heroRanged||['personal-reckless-attack','personal-charge'].includes(heroAction))&&
        (battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.meleeWeapon?.adaptable&&
        <label className="got-check"><input type="checkbox" checked={heroGripTwoHands}
         onChange={e=>setHeroGripTwoHands(e.target.checked)}/>
