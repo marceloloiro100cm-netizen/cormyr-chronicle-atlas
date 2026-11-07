@@ -1,6 +1,10 @@
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
-import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary,fireWarSiegeVolley,skipWarSiege} from '@/lib/battle/got/engine';
+import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase} from '@/lib/battle/got/engine';
+import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
+import type {WarHeroAction} from '@/lib/battle/got/heroes';
+import {makeWarFortification,WAR_FORT_PROFILES} from '@/lib/battle/got/fortifications';
+import type {WarFortKind} from '@/lib/battle/got/fortifications';
 import {makeModelSiege,WAR_SIEGE_CATALOG} from '@/lib/battle/got/siege';
 import type {WarSiegeKind,WarSiegeAmmo} from '@/lib/battle/got/siege';
 import {modelWarUnit,modelWarCommanders} from '@/lib/battle/got/models';
@@ -49,6 +53,12 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [formation,setFormation]=useState<WarFormation>('battle');
  const [facing,setFacing]=useState<WarFacing>('north');
  const [siegeEnabled,setSiegeEnabled]=useState(false);
+ const [heroesEnabled,setHeroesEnabled]=useState(false);
+ const [heroId,setHeroId]=useState('');
+ const [heroAction,setHeroAction]=useState<WarHeroAction['kind']>('join');
+ const [heroUnitId,setHeroUnitId]=useState('');
+ const [fortKind,setFortKind]=useState<WarFortKind|'none'>('none');
+ const [fortEngineer,setFortEngineer]=useState(false);
  const [siegeKind,setSiegeKind]=useState<WarSiegeKind>('catapult-small');
  const [siegeAmmo,setSiegeAmmo]=useState<WarSiegeAmmo>('stone');
  const [officialBySlot,setOfficialBySlot]=useState<Partial<Record<Slot,WarUnit>>>({});
@@ -85,6 +95,18 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    })]:[];
    setBattle(createWarBattle({id:'book-lab-'+seed,name,seed,width:12,height:7,
     units,siege,
+    heroes:heroesEnabled?[
+     makeModelWarHero({id:'hero-attacker',name:'Herói atacante',side:'attacker',
+      position:{x:2,y:5}}),
+     makeModelWarHero({id:'hero-defender',name:'Herói defensor',side:'defender',
+      position:{x:9,y:5}}),
+    ]:[],
+    fortifications:fortKind==='none'?[]:[makeWarFortification({
+     id:'defender-fort',name:WAR_FORT_PROFILES[fortKind].label,side:'defender',
+     kind:fortKind,cells:fortKind==='temporary'?[{x:10,y:2}]:
+      [{x:10,y:2},{x:10,y:4}],engineerBuilt:fortKind==='temporary'&&fortEngineer,
+     hoursBuilt:fortKind==='temporary'?6:24,
+    })],
     commanders:modelWarCommanders(warfare),tiles,weather,visibility,advancedFormations:advanced,
    }));
    setSelected('');setTarget('');setError('');
@@ -128,6 +150,28 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    }else setBattle(skipWarSiege(battle));
    setError('');
   }catch(e){setError(e instanceof Error?e.message:'Disparo não executado.');}
+ };
+ const heroDo=()=>{
+  if(!battle)return;
+  const hero=battle.heroes.find(h=>h.id===heroId)??battle.heroes.find(h=>h.active);
+  if(!hero){setError('Não há herói ativo.');return;}
+  try{
+   const candidate=battle.units.find(u=>u.id===heroUnitId&&u.side===hero.side);
+   const matching=battle.units.find(u=>u.side===hero.side&&u.condition==='organized'&&
+    Math.max(Math.abs(u.position.x-hero.position.x),Math.abs(u.position.y-hero.position.y))<=1);
+   const action:WarHeroAction={
+    kind:heroAction,
+    ...(['join','rally','revive'].includes(heroAction)?
+     {unitId:candidate?.id??matching?.id??''}:{}),
+   };
+   setBattle(executeWarHeroAction(battle,{heroId:hero.id,action}));
+   setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível agir com o herói.');}
+ };
+ const heroFinish=()=>{
+  if(!battle)return;
+  try{setBattle(completeWarHeroPhase(battle));setError('');}
+  catch(e){setError(e instanceof Error?e.message:'Erro ao concluir a fase de heróis.');}
  };
  const endRound=()=>{
   if(!battle)return;
@@ -187,6 +231,22 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      </select>
     </label>
    </div>
+   <label className="got-check"><input type="checkbox" checked={heroesEnabled}
+    onChange={e=>setHeroesEnabled(e.target.checked)}/>
+    Dois heróis-modelo e fases individuais (Passos 6 e 8)</label>
+   <label>Fortificação do defensor
+    <select value={fortKind} onChange={e=>setFortKind(e.target.value as WarFortKind|'none')}>
+     <option value="none">Sem fortificação</option>
+     {Object.entries(WAR_FORT_PROFILES).map(([id,row])=><option key={id} value={id}>
+      {row.label} · Defesa +{row.defense} · até {row.capacity} unidade(s)
+     </option>)}
+    </select>
+   </label>
+   {fortKind==='temporary'&&<label className="got-check">
+    <input type="checkbox" checked={fortEngineer}
+     onChange={e=>setFortEngineer(e.target.checked)}/>
+    Construída por engenheiros (+2 Defesa total; seis horas antes da batalha)
+   </label>}
    <label className="got-check"><input type="checkbox" checked={siegeEnabled}
     onChange={e=>setSiegeEnabled(e.target.checked)}/>
     Preparar arma de cerco do atacante (troca o apoio atacante por engenheiros)</label>
@@ -233,7 +293,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    <section className="battle-surface got-status" aria-label="Estado da guerra" aria-live="polite">
     <h3>{battle.name}</h3>
     <p>Rodada <strong>{battle.round}</strong> · {battle.phase==='finished'?
-     'Combate encerrado':<>Comanda agora: <strong>{SIDE[battle.turn]}</strong></>}
+     'Combate encerrado':battle.phase==='heroes-first'||battle.phase==='heroes-second'?
+     'Ações individuais dos heróis':<>Comanda agora: <strong>{SIDE[battle.turn]}</strong></>}
      {' '}· Iniciativa: {SIDE[battle.first]}</p>
     <p>Ordens restantes: {battle.commanders.map(c=>
      c.name+': '+(battle.ordersRemaining[c.id]??0)).join(' · ')}</p>
@@ -241,6 +302,46 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      {battle.winner?'Vitória do '+SIDE[battle.winner]:'Confronto sem vencedor'}
     </strong></p>}
    </section>
+   {(battle.phase==='heroes-first'||battle.phase==='heroes-second')&&
+    <section className="battle-surface got-heroes" aria-label="Ações individuais dos heróis">
+     <h3>{battle.phase==='heroes-first'?'Passo 6 · Primeiras ações dos heróis':
+      'Passo 8 · Segundas ações dos heróis'}</h3>
+     <p className="battle-note">Cada fase corresponde a cinco rodadas individuais.
+      O combate completo entre personagens segue o capítulo 9 e não é substituído
+      por uma simulação improvisada. Aqui estão as ações próprias da guerra:
+      entrar/sair de unidades, recuperar moral e sucessão no comando.</p>
+     <div className="got-config-grid">
+      <label>Herói
+       <select value={heroId||battle.heroes[0]?.id||''}
+        onChange={e=>setHeroId(e.target.value)}>
+        {battle.heroes.map(h=><option key={h.id} value={h.id}>
+         {h.name} · Saúde {h.health}/{h.maxHealth} · {h.usedActions}/5 ações
+        </option>)}
+       </select>
+      </label>
+      <label>Ação
+       <select value={heroAction} onChange={e=>setHeroAction(e.target.value as WarHeroAction['kind'])}>
+        <option value="join">Entrar em unidade</option>
+        {battle.phase==='heroes-second'&&<option value="leave">Sair de unidade</option>}
+        <option value="rally">Reorganizar tropa</option>
+        <option value="revive">Reanimar tropa</option>
+        <option value="abdicate">Abdicar do comando</option>
+        <option value="assume">Assumir comando vago</option>
+       </select>
+      </label>
+      {['join','rally','revive'].includes(heroAction)&&<label>Unidade aliada
+       <select value={heroUnitId} onChange={e=>setHeroUnitId(e.target.value)}>
+        <option value="">Escolha uma unidade</option>
+        {battle.units.filter(u=>u.side===(battle.heroes.find(h=>h.id===heroId)??
+         battle.heroes[0])?.side).map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
+       </select>
+      </label>}
+     </div>
+     <div className="got-config-grid">
+      <Button onClick={heroDo}>Executar ação individual</Button>
+      <Button variant="outline" onClick={heroFinish}>Concluir cinco rodadas · avançar</Button>
+     </div>
+    </section>}
    <div className="got-columns">
     <section className="battle-surface got-map-panel" aria-label="Mapa em quadrados">
      <h3>Tabuleiro · 10 metros por quadrado</h3>
