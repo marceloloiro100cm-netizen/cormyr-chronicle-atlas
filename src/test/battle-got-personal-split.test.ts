@@ -8,7 +8,7 @@ import {deployWarSquad} from '@/lib/battle/got/squads';
 import {modelWarCommanders,modelWarUnit} from '@/lib/battle/got/models';
 import type {WarBattle} from '@/lib/battle/got/types';
 
-function arena(melee:'dagger'|'greatsword'='dagger',manual=false):WarBattle{
+function arena(melee:'dagger'|'shortsword'|'greatsword'='shortsword',manual=false):WarBattle{
  const a=equipModelWarHero(makeModelWarHero({id:'actor',name:'Combatente',
   side:'attacker',position:{x:2,y:2}}),{melee,ranged:'longbow'});
  const d1=makeModelWarHero({id:'d1',name:'Primeiro',
