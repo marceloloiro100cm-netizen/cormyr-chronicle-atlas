@@ -30,7 +30,7 @@ const ORDER_LABEL:Record<WarOrderKind,string>={
  rally:'Reagrupar',revive:'Reanimar',reorganize:'Reorganizar',
  retreat:'Retirada', 'aggressive-retreat':'Retirada agressiva',surrender:'Rendição geral',
  formation:'Alterar formação',turn:'Girar',reverse:'Reverter',
- suppress:'Fogo de supressão',probe:'Ataque exploratório',
+ suppress:'Fogo de supressão',probe:'Ataque exploratório',push:'Empurrar',
  'counter-charge':'Preparar contra carga',sabotage:'Sabotagem',
  ambush:'Emboscada',join:'Junção de unidades',
 };
@@ -129,7 +129,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    if(legalKind==='surrender'&&!window.confirm('Confirmar rendição geral de todo este exército na simulação?'))return;
    const command:WarOrder={
     kind:legalKind,
-    ...(['attack','charge','aggressive-retreat','suppress','probe','ambush'].includes(legalKind)&&selectedTarget?
+    ...(['attack','charge','aggressive-retreat','suppress','probe','ambush','push'].includes(legalKind)&&selectedTarget?
      {targetId:selectedTarget.id}:{}),
     ...(legalKind==='join'?{targetId:activeUnits.find(u=>u.id!==selectedUnit.id)?.id??''}:{}),
     ...(legalKind==='sabotage'?{fortId:battle.fortifications.find(x=>x.side!==battle.turn)?.id??''}:{}),
