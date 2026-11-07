@@ -1,4 +1,5 @@
 import './battle-source-regions.css';
+import {BattleSelectedHouseCard} from './BattleHouseCrest';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
@@ -17,8 +18,8 @@ const soloProfile=(unit:BattleRosterPreview)=>
 const canBatch=(unit:BattleRosterPreview)=>battleRosterEligible(unit)&&soloProfile(unit)!==null;
 
 export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
- onAdd:(stack:BattleStack,houseName:string)=>boolean;
- onAddMany?:(stacks:BattleStack[],houseName:string)=>boolean;
+ onAdd:(stack:BattleStack,houseName:string,house?:BattleHouseDirectoryRow)=>boolean;
+ onAddMany?:(stacks:BattleStack[],houseName:string,house?:BattleHouseDirectoryRow)=>boolean;
  remainingBySide?:Readonly<Record<Side,number>>;
 }){
  const fetchHouses=useServerFn(listBattleSourceHouses);
@@ -44,6 +45,7 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
  const regions=useMemo(()=>battleHouseRegions(houses),[houses]);
  const regionalHouses=useMemo(()=>houses.filter(h=>h.region===region),[houses,region]);
  const selectedHouse=houses.find(h=>h.id===house);
+ const totalMen=roster.reduce((sum,r)=>sum+Math.max(0,r.strength-r.casualties),0);
  const selected=roster.find(r=>r.id===unit);
  const allowed=(selected?.types??[]).filter(t=>SUPPORTED.has(t));
  const remaining=Math.max(0,Math.min(LIMIT,remainingBySide?.[side]??LIMIT));
@@ -93,7 +95,7 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
     houseId:house,unitId:selected.id,side,position:{q:0,r:0},
     primaryTypeId:profile,...(reason.trim()?{profileDecisionReason:reason.trim()}:{})
    }});
-   if(onAdd(stack,selectedHouse.name))
+   if(onAdd(stack,selectedHouse.name,selectedHouse))
     setMessage('Unidade copiada para treinamento. A ficha oficial permanece inalterada.');
    else setMessage('Não foi possível adicionar: verifique o limite ou unidades duplicadas.');
   }catch(e){setMessage(e instanceof Error?e.message:'A cópia não foi autorizada.');}
@@ -111,7 +113,7 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
     return getSnapshot({data:{houseId:house,unitId:id,side,
      position:{q:0,r:0},primaryTypeId:soloProfile(row)!}});
    }));
-   if(onAddMany(stacks,selectedHouse.name))
+   if(onAddMany(stacks,selectedHouse.name,selectedHouse))
     setMessage(stacks.length+' unidades copiadas para o exército. Posicione-as no mapa antes da batalha.');
    else setMessage('Nenhuma unidade foi adicionada: confira duplicatas e o limite de cinco.');
   }catch(e){setMessage(e instanceof Error?e.message:'O carregamento não foi autorizado.');}
@@ -128,6 +130,8 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
   <h3>Carregar unidades por Região e Casa</h3>
   <p className="battle-note">Catálogo oficial de Cormyr. A seleção é apenas para treinamento:
    nenhuma baixa, compra, treino ou movimentação será gravada na casa de origem.</p>
+  <div className="battle-source-layout">
+   <div className="battle-source-controls">
   <div className="battle-form-row">
    <label>Lado da batalha<select aria-label="Lado da cópia oficial" value={side}
     disabled={busy} onChange={e=>{setSide(e.target.value as Side);setMarked([]);}}>
@@ -146,7 +150,10 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
   </div>
   {loading&&<p role="status">Carregando catálogo regional de casas…</p>}
   {house&&(sourceStatus==='recorded'||sourceStatus==='scenario-roster')&&<div className="battle-source-roster">
-   <h4>{sourceStatus==='scenario-roster'?'Exército documentado':'Unidades cadastradas'} de {selectedHouse?.name} ({roster.length})</h4>
+   <div className="battle-source-roster__title">
+    <h4>{sourceStatus==='scenario-roster'?'Exército documentado':'Unidades cadastradas'} de {selectedHouse?.name} ({roster.length})</h4>
+    <span>Total: {roster.length} unidades · {totalMen.toLocaleString('pt-BR')} de efetivo</span>
+   </div>
    <p className="battle-note">A Casa e suas tropas foram consultadas automaticamente.
     Marque até cinco unidades terrestres para copiar, ou escolha uma unidade individual.
     {sourceStatus==='scenario-roster'&&<strong> Os registros propostos são apenas forças de cenário, sem compra, custo ou baixa oficial.</strong>}</p>
@@ -202,5 +209,13 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
     onClick={()=>void add()}>Adicionar cópia individual</Button>
   </details>}
   {message&&<p role="status">{message}</p>}
+   </div>
+   <BattleSelectedHouseCard
+    house={selectedHouse??null}
+    unitCount={roster.length}
+    menCount={totalMen}
+    status={sourceStatus}
+    side={side}/>
+  </div>
  </section>;
 }
