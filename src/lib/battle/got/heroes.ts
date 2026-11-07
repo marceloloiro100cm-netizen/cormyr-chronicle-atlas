@@ -130,7 +130,8 @@ export function executeWarHeroAction(
   const successor=battle.commanders.filter(c=>c.side===hero.side&&c.active&&
    c.role==='subcommander').sort((a,b)=>b.status-a.status)[0];
   if(!successor)throw new Error('Abdicar exige subcomandante capaz de assumir o exército.');
-  const next=replace(battle,{...used,role:'hero'});
+  const {commanderId:_formerCommander,...released}=used;
+  const next=replace(battle,{...released,role:'hero'});
   return log({...next,commanders:next.commanders.map(c=>
    c.id===commander.id?{...c,active:false}:c.id===successor.id?{...c,role:'commander'}:c),
    ordersRemaining:{...next.ordersRemaining,[commander.id]:0,
