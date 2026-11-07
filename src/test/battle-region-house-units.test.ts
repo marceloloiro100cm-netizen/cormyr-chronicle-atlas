@@ -42,9 +42,9 @@ describe('Batalha · seleção de Região, Casa e unidades oficiais',()=>{
  });
  it('somente Narrador consulta roster; a ficha é convertida no servidor e a Casa histórica vazia não gera tropas',()=>{
   const source=readFileSync('src/lib/battle/adapters/readonly-source.functions.ts','utf8');
-  expect(source).toContain("db.from('house_catalog').select('id,name,region')");
+  expect(source).toContain("db.from('house_catalog').select('id,name,region,classification,crest:archive_data->>crest')");
   expect(source).toContain(".eq('public_reviewed',true)");
-  expect(source).toContain("db.from('campaign_houses').select('id,name,region')");
+  expect(source).toContain("db.from('campaign_houses').select('id,name,region,crest')");
   expect(source).toContain("await requireNarrator(db)");
   expect(source).toContain("'no-military-sheet' as const");
   expect(source).toContain("sourceStatus:'scenario-roster' as const");

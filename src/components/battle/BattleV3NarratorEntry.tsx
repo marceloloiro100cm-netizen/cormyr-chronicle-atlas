@@ -3,6 +3,8 @@ import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import type {BattleStack} from '@/lib/battle/domain/types';
 import {BattleSourcePicker} from './BattleSourcePicker';
+import {BattleHouseVersus} from './BattleHouseHeraldry';
+import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
 import {isBattleTrainingCopy,battleTrainingSourceKey} from '@/lib/battle/adapters/imported-npc-roster';
 import {BattleV3Game} from './BattleV3Game';
 
@@ -13,6 +15,11 @@ export function BattleV3NarratorEntry({onBack}:{onBack:()=>void}){
  const [copies,setCopies]=useState<BattleStack[]>([]);
  const [status,setStatus]=useState('');
  const [houseNameById,setHouseNameById]=useState<Record<string,string>>({});
+ const [houseByUnitKey,setHouseByUnitKey]=useState<Record<string,BattleHouseDirectoryRow>>({});
+ const onHouseLoaded=({house,stacks}:{
+  side:BattleStack['side'];house:BattleHouseDirectoryRow;stacks:BattleStack[];
+ })=>setHouseByUnitKey(before=>({...before,...Object.fromEntries(
+  stacks.map(s=>[battleTrainingSourceKey(s),house]))}));
  const [pickerOpen,setPickerOpen]=useState(false);
  const remainingBySide={attacker:Math.max(0,5-copies.filter(s=>s.side==='attacker').length),
   defender:Math.max(0,5-copies.filter(s=>s.side==='defender').length)};
@@ -42,6 +49,11 @@ export function BattleV3NarratorEntry({onBack}:{onBack:()=>void}){
   .filter((id):id is string=>Boolean(id))
   .map(id=>houseNameById[id]??id))].join(' + ');
  const officialHouseNames={attacker:labelFor('attacker'),defender:labelFor('defender')};
+ const houseForSide=(side:BattleStack['side'])=>copies.filter(s=>s.side===side)
+  .map(s=>houseByUnitKey[battleTrainingSourceKey(s)]).find(Boolean);
+ const attacker=houseForSide('attacker'),defender=houseForSide('defender');
+ const officialHouseHeraldry:Partial<Record<BattleStack['side'],BattleHouseDirectoryRow>>={
+  ...(attacker?{attacker}:{}),...(defender?{defender}:{})};
  return <section className="battle-module" aria-label="Preparação da batalha do Narrador">
   <details className="battle-surface battle-optional-source" open={pickerOpen}
    onToggle={event=>setPickerOpen(event.currentTarget.open)}>
@@ -50,9 +62,12 @@ export function BattleV3NarratorEntry({onBack}:{onBack:()=>void}){
    <p className="battle-note">Escolha e copie unidades autorizadas antes de iniciar.
     Uma cópia é apenas uma referência de treinamento: a ficha oficial não recebe baixas.</p>
    {pickerOpen&&<BattleSourcePicker onAdd={add} onAddMany={addMany}
-    remainingBySide={remainingBySide}/>}
+    onHouseLoaded={onHouseLoaded} remainingBySide={remainingBySide}/>}
    {copies.length>0&&<div className="battle-selected-copies">
     <h3>Unidades copiadas</h3>
+    <BattleHouseVersus houses={officialHouseHeraldry}
+     names={{attacker:officialHouseNames.attacker||'Exército atacante',
+      defender:officialHouseNames.defender||'Exército defensor'}}/>
     {copies.map((stack,i)=><div key={stack.id} className="battle-selected-copy">
      <span>{stack.name} · {stack.side==='attacker'?'Atacante':'Defensor'}</span>
      <Button size="sm" variant="outline" onClick={()=>
@@ -62,6 +77,7 @@ export function BattleV3NarratorEntry({onBack}:{onBack:()=>void}){
    {status&&<p role="status">{status}</p>}
   </details>
   <BattleV3Game narrator onBack={onBack} officialCopies={copies}
-   officialHouseNames={officialHouseNames}/>
+   officialHouseNames={officialHouseNames}
+   officialHouseHeraldry={officialHouseHeraldry}/>
  </section>;
 }

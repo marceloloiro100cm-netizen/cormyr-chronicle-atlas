@@ -2,6 +2,10 @@ import './battle-source-regions.css';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
+import {MapPinned,UsersRound,Swords} from 'lucide-react';
+import {MilitaryUnitSymbol} from '@/components/house/military-unit-symbol';
+import {BattleHouseBanner,BattleHouseCrest,BattleHouseIdentityCard}
+ from './BattleHouseHeraldry';
 import type {BattleStack,Side} from '@/lib/battle/domain/types';
 import {LAND_PROFILES} from '@/lib/battle/domain/profiles-v2';
 import {battleHouseRegions,battleRosterEligible,type BattleHouseDirectoryRow,
@@ -16,10 +20,11 @@ const soloProfile=(unit:BattleRosterPreview)=>
  unit.types.length===1&&SUPPORTED.has(unit.types[0]!)?unit.types[0]!:null;
 const canBatch=(unit:BattleRosterPreview)=>battleRosterEligible(unit)&&soloProfile(unit)!==null;
 
-export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
+export function BattleSourcePicker({onAdd,onAddMany,remainingBySide,onHouseLoaded}:{
  onAdd:(stack:BattleStack,houseName:string)=>boolean;
  onAddMany?:(stacks:BattleStack[],houseName:string)=>boolean;
  remainingBySide?:Readonly<Record<Side,number>>;
+ onHouseLoaded?:(value:{side:Side;house:BattleHouseDirectoryRow;stacks:BattleStack[]})=>void;
 }){
  const fetchHouses=useServerFn(listBattleSourceHouses);
  const fetchUnits=useServerFn(listBattleSourceUnits);
@@ -93,8 +98,10 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
     houseId:house,unitId:selected.id,side,position:{q:0,r:0},
     primaryTypeId:profile,...(reason.trim()?{profileDecisionReason:reason.trim()}:{})
    }});
-   if(onAdd(stack,selectedHouse.name))
+   if(onAdd(stack,selectedHouse.name)){
+    onHouseLoaded?.({side,house:selectedHouse,stacks:[stack]});
     setMessage('Unidade copiada para treinamento. A ficha oficial permanece inalterada.');
+   }
    else setMessage('Não foi possível adicionar: verifique o limite ou unidades duplicadas.');
   }catch(e){setMessage(e instanceof Error?e.message:'A cópia não foi autorizada.');}
   finally{setBusy(false);}
@@ -111,8 +118,10 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
     return getSnapshot({data:{houseId:house,unitId:id,side,
      position:{q:0,r:0},primaryTypeId:soloProfile(row)!}});
    }));
-   if(onAddMany(stacks,selectedHouse.name))
+   if(onAddMany(stacks,selectedHouse.name)){
+    onHouseLoaded?.({side,house:selectedHouse,stacks});
     setMessage(stacks.length+' unidades copiadas para o exército. Posicione-as no mapa antes da batalha.');
+   }
    else setMessage('Nenhuma unidade foi adicionada: confira duplicatas e o limite de cinco.');
   }catch(e){setMessage(e instanceof Error?e.message:'O carregamento não foi autorizado.');}
   finally{setBusy(false);}
@@ -124,54 +133,101 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
    return [...before,id];
   });
  };
- return <section className="battle-surface battle-house-source" aria-label="Unidades de casas existentes">
-  <h3>Carregar unidades por Região e Casa</h3>
-  <p className="battle-note">Catálogo oficial de Cormyr. A seleção é apenas para treinamento:
-   nenhuma baixa, compra, treino ou movimentação será gravada na casa de origem.</p>
-  <div className="battle-form-row">
-   <label>Lado da batalha<select aria-label="Lado da cópia oficial" value={side}
-    disabled={busy} onChange={e=>{setSide(e.target.value as Side);setMarked([]);}}>
-    <option value="attacker">Atacante</option><option value="defender">Defensor</option>
-   </select></label>
-   <label>Região<select aria-label="Região das casas" value={region}
-    disabled={busy||loading} onChange={e=>chooseRegion(e.target.value)}>
-    <option value="">Selecione a região</option>
-    {regions.map(r=><option key={r.id} value={r.id}>{r.name} ({r.houseCount})</option>)}
-   </select></label>
-   <label>Casa<select aria-label="Casa de origem militar" value={house}
-    disabled={busy||!region||loading} onChange={e=>void chooseHouse(e.target.value)}>
-    <option value="">Selecione a casa</option>
-    {regionalHouses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
-   </select></label>
+ return <section className="battle-surface battle-house-source battle-house-royal-layout"
+ aria-label="Unidades de casas existentes">
+  <div className="battle-house-section-header">
+   <div>
+    <h3><Swords size={22} aria-hidden="true" style={{display:'inline',verticalAlign:'middle',marginRight:9}}/>
+     Preparar forças da Casa</h3>
+    <p>Escolha a região, a Casa e o lado da batalha. Os brasões vêm do catálogo de Cormyr;
+     as tropas, das fichas militares ou das planilhas de cenário.</p>
+   </div>
+   <span className="battle-eyebrow">MÓDULO DO NARRADOR</span>
   </div>
-  {loading&&<p role="status">Carregando catálogo regional de casas…</p>}
-  {house&&(sourceStatus==='recorded'||sourceStatus==='scenario-roster')&&<div className="battle-source-roster">
-   <h4>{sourceStatus==='scenario-roster'?'Exército documentado':'Unidades cadastradas'} de {selectedHouse?.name} ({roster.length})</h4>
-   <p className="battle-note">A Casa e suas tropas foram consultadas automaticamente.
-    Marque até cinco unidades terrestres para copiar, ou escolha uma unidade individual.
-    {sourceStatus==='scenario-roster'&&<strong> Os registros propostos são apenas forças de cenário, sem compra, custo ou baixa oficial.</strong>}</p>
-   <ul aria-label="Unidades carregadas da casa" className="battle-source-units">
-    {roster.map(r=>{
-     const selectable=canBatch(r),eligible=battleRosterEligible(r);
-     return <li key={r.id}>
-      <label>
-       <input type="checkbox" aria-label={'Selecionar '+r.name} disabled={busy||!selectable}
-        checked={marked.includes(r.id)} onChange={e=>toggle(r.id,e.target.checked)}/>
-       <span><strong>{r.name}</strong> · {available(r)} disponíveis
-        {' · '}{r.training}{r.sourceStatus?' · '+r.sourceStatus:''}{r.destroyed?' · Destruída':''}
-        {!eligible?' · indisponível':eligible&&!selectable?' · perfil misto: escolha individualmente':''}
-       </span>
-      </label>
-     </li>;
-    })}
-   </ul>
-   <p className="battle-note" role="status">{legalMarked.length} selecionadas ·
-    {remaining} vagas disponíveis para o {side==='attacker'?'Atacante':'Defensor'}.</p>
-   {onAddMany&&<Button variant="outline" disabled={busy||legalMarked.length===0||
-    legalMarked.length>remaining} onClick={()=>void addSelected()}>
-    Carregar {legalMarked.length} unidades na batalha
-   </Button>}
-  </div>}
+  <div className="battle-house-selection-fields">
+   <label><span><MapPinned size={16} aria-hidden="true" style={{display:'inline',verticalAlign:'middle'}}/> Região</span>
+    <select aria-label="Região das casas" value={region} disabled={busy||loading}
+     onChange={e=>chooseRegion(e.target.value)}>
+     <option value="">Selecione a região</option>
+     {regions.map(r=><option key={r.id} value={r.id}>{r.name} ({r.houseCount})</option>)}
+    </select>
+   </label>
+   <label><span>Casa</span>
+    <span className="battle-house-select-with-crest">
+     <BattleHouseCrest house={selectedHouse} size="tiny" decorative/>
+     <select aria-label="Casa de origem militar" value={house} disabled={busy||!region||loading}
+      onChange={e=>void chooseHouse(e.target.value)}>
+      <option value="">Selecione a casa</option>
+      {regionalHouses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+     </select>
+    </span>
+   </label>
+   <label><span><Swords size={16} aria-hidden="true" style={{display:'inline',verticalAlign:'middle'}}/> Lado</span>
+    <select aria-label="Lado da cópia oficial" value={side} disabled={busy}
+     onChange={e=>{setSide(e.target.value as Side);setMarked([]);}}>
+     <option value="attacker">Atacante</option><option value="defender">Defensor</option>
+    </select>
+   </label>
+  </div>
+  <div className="battle-house-presentation-grid">
+   <section className="battle-house-roster-section" aria-label="Exército da casa selecionada">
+    <div className="battle-house-roster-head">
+     <h4><UsersRound aria-hidden="true" size={19} style={{display:'inline',verticalAlign:'middle',marginRight:8}}/>
+      Unidades da Casa</h4>
+     <small>{roster.length} agrupamentos · {roster.reduce((n,u)=>n+available(u),0).toLocaleString('pt-BR')} combatentes</small>
+    </div>
+    {loading?<p role="status">Carregando catálogo regional de casas…</p>:
+     !house?<p className="battle-note">Selecione uma Casa para carregar suas unidades militares.</p>:
+     busy&&!roster.length?<p role="status">Consultando as unidades cadastradas…</p>:
+     roster.length===0?<p className="battle-note">{sourceStatus==='no-military-sheet'?
+      'Esta Casa está no catálogo, mas não possui ficha militar ou exército de cenário registrado.':
+      'Esta Casa não possui unidades militares cadastradas para o combate.'}</p>:
+     <ul aria-label="Unidades carregadas da casa" className="battle-source-units">
+      {roster.map(r=>{
+       const selectable=canBatch(r),eligible=battleRosterEligible(r);
+       return <li key={r.id}>
+        <label className="battle-source-unit-row">
+         <input type="checkbox" aria-label={'Selecionar '+r.name} disabled={busy||!selectable}
+          checked={marked.includes(r.id)} onChange={e=>toggle(r.id,e.target.checked)}/>
+         <MilitaryUnitSymbol typeId={r.types[0]??''} size="small"/>
+         <span>
+          <strong className="battle-source-unit-name">{r.name}</strong>
+          <small className="battle-source-unit-detail">
+           <span className="battle-training-tag">{r.training}</span>
+           {r.sourceStatus?' · '+r.sourceStatus:''}
+           {r.destroyed?' · Destruída':''}
+           {!eligible?' · indisponível':
+            eligible&&!selectable?' · perfil misto: escolha individualmente':''}
+          </small>
+         </span>
+         <span className="battle-source-unit-stats">
+          <strong>{available(r).toLocaleString('pt-BR')}</strong>
+          <small>disponíveis</small>
+         </span>
+        </label>
+       </li>;
+      })}
+     </ul>}
+    <div className="battle-house-roster-footer" role="status">
+     <span>{legalMarked.length} selecionadas · {remaining} vagas disponíveis para
+      o {side==='attacker'?'Atacante':'Defensor'}</span>
+     <span>Máximo de cinco unidades por lado</span>
+    </div>
+    {sourceStatus==='scenario-roster'&&<p className="battle-note">
+     Os registros propostos são apenas forças de cenário, sem compra, custo ou baixa oficial.
+    </p>}
+   </section>
+   <aside className="battle-house-aside">
+    <BattleHouseIdentityCard house={selectedHouse} sourceStatus={sourceStatus}
+     {...(house?{unitCount:roster.length,men:roster.reduce((n,u)=>n+available(u),0),
+      selectedCount:legalMarked.length}:{})}/>
+    <section className="battle-surface" aria-label="Lado da batalha selecionado">
+     <h4><Swords size={18} aria-hidden="true" style={{display:'inline',verticalAlign:'middle',marginRight:8}}/>
+      Lado da batalha</h4>
+     <BattleHouseBanner side={side} house={selectedHouse}/>
+    </section>
+   </aside>
+  </div>
   {house&&roster.length>0&&<details className="battle-source-individual">
    <summary>Adicionar unidade individual ou perfil misto</summary>
    <div className="battle-form-row">
@@ -201,6 +257,14 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
     !battleRosterEligible(selected)||(selected.types.length>1&&reason.trim().length<12)}
     onClick={()=>void add()}>Adicionar cópia individual</Button>
   </details>}
-  {message&&<p role="status">{message}</p>}
+  {message&&<p role="status" className="battle-house-feedback">{message}</p>}
+  <div className="battle-house-source-actions">
+   {onAddMany&&<Button disabled={busy||legalMarked.length===0||
+    legalMarked.length>remaining} onClick={()=>void addSelected()}>
+    Carregar {legalMarked.length} unidades na batalha
+   </Button>}
+  </div>
+  <p className="battle-note">Cópias de treinamento: nenhum resultado modifica
+   os exércitos, os recursos ou as fichas originais das casas.</p>
  </section>;
 }

@@ -4,6 +4,7 @@ import {checkBattlePersistence} from '@/lib/battle/battle-session.functions';
 import {Button} from '@/components/ui/button';
 import {BATTLE_RULES_VERSION,BATTLE_PERSISTENCE_UI_ENABLED,BATTLE_CRZ_TRAINING_UI_ENABLED,BATTLE_V3_LIVE_ENABLED,BATTLE_PLAYERS_ENABLED} from '@/lib/battle/feature-flag';
 import type {BattleState,Side} from '@/lib/battle/domain/types';
+import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
 import {BattleSetup} from './BattleSetup';
 import {BattleArena} from './BattleArena';
 import {BattleReplayImporter} from './BattleReplay';
@@ -27,6 +28,7 @@ export function BattleNarratorHub(){
  const [state,setState]=useState<BattleState|null>(null);
  const [resumeState,setResumeState]=useState<BattleState|null>(null);
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Atacante',defender:'Defensor'});
+ const [sideHeraldry,setSideHeraldry]=useState<Partial<Record<Side,BattleHouseDirectoryRow>>>({});
  const [manual,setManual]=useState(false);
  const [showImport,setShowImport]=useState(false);
  const [showDiagnostic,setShowDiagnostic]=useState(false);
@@ -43,7 +45,7 @@ export function BattleNarratorHub(){
  const canSave=BATTLE_PERSISTENCE_UI_ENABLED&&storeStatus==='available';
  const reset=()=>{
   if(state&&view==='arena'&&!window.confirm('As alterações não salvas serão perdidas. Deseja sair da simulação?'))return;
-  setState(null);setResumeState(null);setView('home');
+  setState(null);setResumeState(null);setSideHeraldry({});setView('home');
  };
  return <main className="battle-module" aria-label="Módulo de batalha do Narrador">
   <header className="battle-header">
@@ -127,13 +129,14 @@ export function BattleNarratorHub(){
     onResume={(ready,restored)=>{
       setState(ready);setResumeState(restored);
       setSideNames({attacker:'Atacante',defender:'Defensor'});
+      setSideHeraldry({});
       setView('arena');
     }}/>}
-  {view==='setup'&&<BattleSetup onBack={reset} onStart={(battle,names)=>{
-    setResumeState(null);setState(battle);setSideNames(names);setView('arena');
+  {view==='setup'&&<BattleSetup onBack={reset} onStart={(battle,names,heraldry)=>{
+    setResumeState(null);setState(battle);setSideNames(names);setSideHeraldry(heraldry??{});setView('arena');
   }}/>}
   {view==='arena'&&state&&<BattleArena initial={state}
     {...(resumeState?{resume:resumeState}:{})}
-    sideNames={sideNames} persistenceEnabled={canSave} onExit={reset}/>}
+    sideNames={sideNames} heraldry={sideHeraldry} persistenceEnabled={canSave} onExit={reset}/>}
  </main>;
 }

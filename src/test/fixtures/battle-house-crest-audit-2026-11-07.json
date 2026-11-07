@@ -1,0 +1,1034 @@
+[
+  {
+    "crest": "assets/ferlin-alamber.webp",
+    "id": "alamber",
+    "name": "Alamber",
+    "region": "Ferlin"
+  },
+  {
+    "crest": "assets/veilstone-aldmore.webp",
+    "id": "aldmore",
+    "name": "Aldmore",
+    "region": "Veilstone"
+  },
+  {
+    "crest": "assets/crownlands-alsevir.webp",
+    "id": "alsevir",
+    "name": "Alsevir",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/swordmark-ambershield.webp",
+    "id": "ambershield",
+    "name": "Ambershield",
+    "region": "Swordmark"
+  },
+  {
+    "crest": "assets/shieldmark-ambrival.webp",
+    "id": "ambrival",
+    "name": "Ambrival",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/helmlands-ambruar.webp",
+    "id": "ambruar",
+    "name": "Ambruar",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/veilstone-ammaeth.webp",
+    "id": "ammaeth",
+    "name": "Ammaeth",
+    "region": "Veilstone"
+  },
+  {
+    "crest": "assets/elfhold-arcantlet.webp",
+    "id": "arcantlet",
+    "name": "Arcantlet",
+    "region": "Elfhold"
+  },
+  {
+    "crest": "assets/veilstone-aris.webp",
+    "id": "aris",
+    "name": "Aris",
+    "region": "Veilstone"
+  },
+  {
+    "crest": "assets/dragoncoast-ashkar.webp",
+    "id": "ashkar",
+    "name": "Ashkar",
+    "region": "Dragon Coast"
+  },
+  {
+    "crest": "assets/helmlands-aunkspear.webp",
+    "id": "aunkspear",
+    "name": "Aunkspear",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/helmlands-axehand.webp",
+    "id": "axehand",
+    "name": "Axehand",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/crownlands-barelder.webp",
+    "id": "barelder",
+    "name": "Barelder",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/shieldmark-battlebar.webp",
+    "id": "battlebar",
+    "name": "Battlebar",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/shieldmark-battlestar.webp",
+    "id": "battlestar",
+    "name": "Battlestar",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/shieldmark-belorgan.webp",
+    "id": "belorgan",
+    "name": "Belorgan",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/shieldmark-blackgate.webp",
+    "id": "blackgate",
+    "name": "Blackgate",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/dragoncoast-blacksilver.webp",
+    "id": "blacksilver",
+    "name": "Blacksilver",
+    "region": "Dragon Coast"
+  },
+  {
+    "crest": "assets/helmlands-blackwinter.webp",
+    "id": "blackwinter",
+    "name": "Blackwinter",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/shieldmark-blackwyrm.webp",
+    "id": "blackwyrm",
+    "name": "Blackwyrm",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/volkumburgh-blester.webp",
+    "id": "blester",
+    "name": "Blester",
+    "region": "Volkumburgh"
+  },
+  {
+    "crest": "assets/crownlands-bleyshar.webp",
+    "id": "bleyshar",
+    "name": "Bleyshar",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/veilstone-bracegauntlet.webp",
+    "id": "bracegauntlet",
+    "name": "Bracegauntlet",
+    "region": "Veilstone"
+  },
+  {
+    "crest": "assets/stonelands-braelbane.webp",
+    "id": "braelbane",
+    "name": "Braelbane",
+    "region": "Stonelands"
+  },
+  {
+    "crest": "assets/volkumburgh-braerwinter.webp",
+    "id": "braerwinter",
+    "name": "Braerwinter",
+    "region": "Volkumburgh"
+  },
+  {
+    "crest": "assets/helmlands-brassfinger.webp",
+    "id": "brassfinger",
+    "name": "Brassfinger",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/shieldmark-briarbroke.webp",
+    "id": "briarbroke",
+    "name": "Briarbroke",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/volkumburgh-brightaxe.webp",
+    "id": "brightaxe",
+    "name": "Brightaxe",
+    "region": "Volkumburgh"
+  },
+  {
+    "crest": "assets/horselands-bryarn.webp",
+    "id": "bryarn",
+    "name": "Bryarn",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/crownlands-buckfast.webp",
+    "id": "buckfast",
+    "name": "Buckfast",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/dragoncoast-burnig.webp",
+    "id": "burnig",
+    "name": "Burnig",
+    "region": "Dragon Coast"
+  },
+  {
+    "crest": "assets/crownlands-calantar.webp",
+    "id": "calantar",
+    "name": "Calantar",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/crownlands-cordallar.webp",
+    "id": "cordallar",
+    "name": "Cordallar",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/horselands-crakehall.webp",
+    "id": "crakehall",
+    "name": "Crakehall",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/swordmark-creth.webp",
+    "id": "creth",
+    "name": "Creth",
+    "region": "Swordmark"
+  },
+  {
+    "crest": "assets/shieldmark-crownrood.webp",
+    "id": "crownrood",
+    "name": "Crownrood",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/crownlands-crownsilver.webp",
+    "id": "crownsilver",
+    "name": "Crownsilver",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/elfhold-dagohnlar.webp",
+    "id": "dagohnlar",
+    "name": "Dagohnlar",
+    "region": "Elfhold"
+  },
+  {
+    "crest": "assets/helmlands-darendaal.webp",
+    "id": "darendaal",
+    "name": "Darendaal",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/helmlands-darstan.webp",
+    "id": "darstan",
+    "name": "Darstan",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/shieldmark-dauntinghorn.webp",
+    "id": "dauntinghorn",
+    "name": "Dauntinghorn",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/shieldmark-dawningdown.webp",
+    "id": "dawningdown",
+    "name": "Dawningdown",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/ferlin-dawninghunt.webp",
+    "id": "dawninghunt",
+    "name": "Dawninghunt",
+    "region": "Ferlin"
+  },
+  {
+    "crest": "assets/stonelands-downshield.webp",
+    "id": "downshield",
+    "name": "Downshield",
+    "region": "Stonelands"
+  },
+  {
+    "crest": "assets/helmlands-dracohorn.webp",
+    "id": "dracohorn",
+    "name": "Dracohorn",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/horselands-dragonwood.webp",
+    "id": "dragonwood",
+    "name": "Dragonwood",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/elfhold-drauthglas.webp",
+    "id": "drauthglas",
+    "name": "Drauthglas",
+    "region": "Elfhold"
+  },
+  {
+    "crest": "assets/crownlands-ebonhawk.webp",
+    "id": "ebonhawk",
+    "name": "Ebonhawk",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/helmlands-eldroon.webp",
+    "id": "eldroon",
+    "name": "Eldroon",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/helmlands-emmarask.webp",
+    "id": "emmarask",
+    "name": "Emmarask",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/horselands-erdenor.webp",
+    "id": "erdenor",
+    "name": "Erdenor",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/helmlands-erdusking.webp",
+    "id": "erdusking",
+    "name": "Erdusking",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/helmlands-evenhand.webp",
+    "id": "evenhand",
+    "name": "Evenhand",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/horselands-eveningspire.webp",
+    "id": "eveningspire",
+    "name": "Eveningspire",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/horselands-everet.webp",
+    "id": "everet",
+    "name": "Everet",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/horselands-everlost.webp",
+    "id": "everlost",
+    "name": "Everlost",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/crownlands-farrowbrace.webp",
+    "id": "farrowbrace",
+    "name": "Farrowbrace",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/dragoncoast-fewmerry.webp",
+    "id": "fewmerry",
+    "name": "Fewmerry",
+    "region": "Dragon Coast"
+  },
+  {
+    "crest": "assets/helmlands-fiddlemantle.webp",
+    "id": "fiddlemantle",
+    "name": "Fiddlemantle",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/ferlin-gauntweather.webp",
+    "id": "gauntweather",
+    "name": "Gauntweather",
+    "region": "Ferlin"
+  },
+  {
+    "crest": "assets/dragoncoast-goldfin.webp",
+    "id": "goldfin",
+    "name": "Goldfin",
+    "region": "Dragon Coast"
+  },
+  {
+    "crest": "assets/dragoncoast-grandragon.webp",
+    "id": "grandragon",
+    "name": "Grandragon",
+    "region": "Dragon Coast"
+  },
+  {
+    "crest": "assets/helmlands-grandwillow.webp",
+    "id": "grandwillow",
+    "name": "Grandwillow",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/dragoncoast-grantass.webp",
+    "id": "grantass",
+    "name": "Grantass",
+    "region": "Dragon Coast"
+  },
+  {
+    "crest": "assets/horselands-greatgaunt.webp",
+    "id": "greatgaunt",
+    "name": "Greatgaunt",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/dragoncoast-greenhorns.webp",
+    "id": "greenhorns",
+    "name": "Greenhorns",
+    "region": "Dragon Coast"
+  },
+  {
+    "crest": "assets/swordmark-greenmantle.webp",
+    "id": "greenmantle",
+    "name": "Greenmantle",
+    "region": "Swordmark"
+  },
+  {
+    "crest": "assets/shieldmark-gyrlond.webp",
+    "id": "gyrlond",
+    "name": "Gyrlond",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/horselands-haelbroke.webp",
+    "id": "haelbroke",
+    "name": "Haelbroke",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/elfhold-haldoneir.webp",
+    "id": "haldoneir",
+    "name": "Haldoneir",
+    "region": "Elfhold"
+  },
+  {
+    "crest": "assets/shieldmark-halvaeron.webp",
+    "id": "halvaeron",
+    "name": "Halvaeron",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/stonelands-hammerfalling.webp",
+    "id": "hammerfalling",
+    "name": "Hammerfalling",
+    "region": "Stonelands"
+  },
+  {
+    "crest": "assets/horselands-handragon.webp",
+    "id": "handragon",
+    "name": "Handragon",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/horselands-harcourt.webp",
+    "id": "harcourt",
+    "name": "Harcourt",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/dragoncoast-hardcastle.webp",
+    "id": "hardcastle",
+    "name": "Hardcastle",
+    "region": "Dragon Coast"
+  },
+  {
+    "crest": "assets/shieldmark-hardivyper.webp",
+    "id": "hardivyper",
+    "name": "Hardivyper",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/volkumburgh-harefollow.webp",
+    "id": "harefollow",
+    "name": "Harefollow",
+    "region": "Volkumburgh"
+  },
+  {
+    "crest": "assets/swordmark-hargryphon.webp",
+    "id": "hargryphon",
+    "name": "Hargryphon",
+    "region": "Swordmark"
+  },
+  {
+    "crest": "assets/horselands-hartalan.webp",
+    "id": "hartalan",
+    "name": "Hartalan",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/shieldmark-hawklin.webp",
+    "id": "hawklin",
+    "name": "Hawklin",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/volkumburgh-helmstone.webp",
+    "id": "helmstone",
+    "name": "Helmstone",
+    "region": "Volkumburgh"
+  },
+  {
+    "crest": "assets/stonelands-helstallion.webp",
+    "id": "helstallion",
+    "name": "Helstallion",
+    "region": "Stonelands"
+  },
+  {
+    "crest": "assets/shieldmark-hethemer.webp",
+    "id": "hethemer",
+    "name": "Hethemer",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/shieldmark-hiloar.webp",
+    "id": "hiloar",
+    "name": "Hiloar",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/dragoncoast-hinniven.webp",
+    "id": "hinniven",
+    "name": "Hinniven",
+    "region": "Dragon Coast"
+  },
+  {
+    "crest": "assets/shieldmark-hlombur.webp",
+    "id": "hlombur",
+    "name": "Hlombur",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/shieldmark-huntcrown.webp",
+    "id": "huntcrown",
+    "name": "Huntcrown",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/helmlands-huntingdown.webp",
+    "id": "huntingdown",
+    "name": "Huntingdown",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/ferlin-huntinghorn.webp",
+    "id": "huntinghorn",
+    "name": "Huntinghorn",
+    "region": "Ferlin"
+  },
+  {
+    "crest": "assets/crownlands-illance.webp",
+    "id": "illance",
+    "name": "Illance",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/ferlin-imbranneth.webp",
+    "id": "imbranneth",
+    "name": "Imbranneth",
+    "region": "Ferlin"
+  },
+  {
+    "crest": "assets/crownlands-immerdusk.webp",
+    "id": "immerdusk",
+    "name": "Immerdusk",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/stonelands-indesm.webp",
+    "id": "indesm",
+    "name": "Indesm",
+    "region": "Stonelands"
+  },
+  {
+    "crest": "assets/dragoncoast-indimber.webp",
+    "id": "indimber",
+    "name": "Indimber",
+    "region": "Dragon Coast"
+  },
+  {
+    "crest": "assets/shieldmark-indulshields.webp",
+    "id": "indulshields",
+    "name": "Indulshields",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/veilstone-ironcastle.webp",
+    "id": "ironcastle",
+    "name": "Ironcastle",
+    "region": "Veilstone"
+  },
+  {
+    "crest": "assets/veilstone-iverson.webp",
+    "id": "iverson",
+    "name": "Iverson",
+    "region": "Veilstone"
+  },
+  {
+    "crest": "assets/ferlin-jabari.webp",
+    "id": "jabari",
+    "name": "Jabari",
+    "region": "Ferlin"
+  },
+  {
+    "crest": "assets/shieldmark-kallowsar.webp",
+    "id": "kallowsar",
+    "name": "Kallowsar",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/swordmark-kessemer.webp",
+    "id": "kessemer",
+    "name": "Kessemer",
+    "region": "Swordmark"
+  },
+  {
+    "crest": "assets/helmlands-longbrooke.webp",
+    "id": "longbrooke",
+    "name": "Longbrooke",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/swordmark-longflail.webp",
+    "id": "longflail",
+    "name": "Longflail",
+    "region": "Swordmark"
+  },
+  {
+    "crest": "assets/elfhold-lorelei.webp",
+    "id": "lorelei",
+    "name": "Lorelei",
+    "region": "Elfhold"
+  },
+  {
+    "crest": "assets/crownlands-lornsar.webp",
+    "id": "lornsar",
+    "name": "Lornsar",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/helmlands-loround.webp",
+    "id": "loround",
+    "name": "Loround",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/horselands-mantlepard.webp",
+    "id": "mantlepard",
+    "name": "Mantlepard",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/shieldmark-mareforte.webp",
+    "id": "mareforte",
+    "name": "Mareforte",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/helmlands-marliir.webp",
+    "id": "marliir",
+    "name": "Marliir",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/elfhold-melliholli.webp",
+    "id": "melliholli",
+    "name": "Melliholli",
+    "region": "Elfhold"
+  },
+  {
+    "crest": "assets/stonelands-misrim.webp",
+    "id": "misrim",
+    "name": "Misrim",
+    "region": "Stonelands"
+  },
+  {
+    "crest": "assets/horselands-mistwind.webp",
+    "id": "mistwind",
+    "name": "Mistwind",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/veilstone-montgomery.webp",
+    "id": "montgomery",
+    "name": "Montgomery",
+    "region": "Veilstone"
+  },
+  {
+    "crest": "assets/crownlands-monthor.webp",
+    "id": "monthor",
+    "name": "Monthor",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/dragoncoast-morler.webp",
+    "id": "morler",
+    "name": "Morler",
+    "region": "Dragon Coast"
+  },
+  {
+    "crest": "assets/ferlin-mountwyrm.webp",
+    "id": "mountwyrm",
+    "name": "Mountwyrm",
+    "region": "Ferlin"
+  },
+  {
+    "crest": "assets/shieldmark-muscalian.webp",
+    "id": "muscalian",
+    "name": "Muscalian",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/ferlin-naerinth.webp",
+    "id": "naerinth",
+    "name": "Naerinth",
+    "region": "Ferlin"
+  },
+  {
+    "crest": "assets/helmlands-obarskyr.webp",
+    "id": "obarskyr",
+    "name": "Obarskyr",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/helmlands-oldbridle.webp",
+    "id": "oldbridle",
+    "name": "Oldbridle",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/shieldmark-orthwood.webp",
+    "id": "orthwood",
+    "name": "Orthwood",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/crownlands-paertrover.webp",
+    "id": "paertrover",
+    "name": "Paertrover",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/crownlands-phelles.webp",
+    "id": "phelles",
+    "name": "Phelles",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/dragoncoast-qazir.webp",
+    "id": "qazir",
+    "name": "Qazir",
+    "region": "Dragon Coast"
+  },
+  {
+    "crest": "assets/shieldmark-rallyhorn.webp",
+    "id": "rallyhorn",
+    "name": "Rallyhorn",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/crownlands-ravenhill.webp",
+    "id": "ravenhill",
+    "name": "Ravenhill",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/helmlands-redbow.webp",
+    "id": "redbow",
+    "name": "Redbow",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/elfhold-ridinghound.webp",
+    "id": "ridinghound",
+    "name": "Ridinghound",
+    "region": "Elfhold"
+  },
+  {
+    "crest": "assets/elfhold-roaringhorn.webp",
+    "id": "roaringhorn",
+    "name": "Roaringhorn",
+    "region": "Elfhold"
+  },
+  {
+    "crest": "assets/stonelands-rowanmantle.webp",
+    "id": "rowanmantle",
+    "name": "Rowanmantle",
+    "region": "Stonelands"
+  },
+  {
+    "crest": "assets/elfhold-sauvrurn.webp",
+    "id": "sauvrurn",
+    "name": "Sauvrurn",
+    "region": "Elfhold"
+  },
+  {
+    "crest": "assets/crownlands-scatterstars.webp",
+    "id": "scatterstars",
+    "name": "Scatterstars",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/ferlin-silverhorn.webp",
+    "id": "silverhorn",
+    "name": "Silverhorn",
+    "region": "Ferlin"
+  },
+  {
+    "crest": "assets/horselands-silversky.webp",
+    "id": "silversky",
+    "name": "Silversky",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/crownlands-silversword.webp",
+    "id": "silversword",
+    "name": "Silversword",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/helmlands-skatterhawk.webp",
+    "id": "skatterhawk",
+    "name": "Skatterhawk",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/stonelands-sorndrake.webp",
+    "id": "sorndrake",
+    "name": "Sorndrake",
+    "region": "Stonelands"
+  },
+  {
+    "crest": "assets/swordmark-spurbright.webp",
+    "id": "spurbright",
+    "name": "Spurbright",
+    "region": "Swordmark"
+  },
+  {
+    "crest": "assets/helmlands-staghunt.webp",
+    "id": "staghunt",
+    "name": "Staghunt",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/helmlands-staglar.webp",
+    "id": "staglar",
+    "name": "Staglar",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/crownlands-stonecastle.webp",
+    "id": "stonecastle",
+    "name": "Stonecastle",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/helmlands-stonetower.webp",
+    "id": "stonetower",
+    "name": "Stonetower",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/horselands-stormserpent.webp",
+    "id": "stormserpent",
+    "name": "Stormserpent",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/swordmark-stoutheart.webp",
+    "id": "stoutheart",
+    "name": "Stoutheart",
+    "region": "Swordmark"
+  },
+  {
+    "crest": "assets/volkumburgh-summerstar.webp",
+    "id": "summerstar",
+    "name": "Summerstar",
+    "region": "Volkumburgh"
+  },
+  {
+    "crest": "assets/shieldmark-summertree.webp",
+    "id": "summertree",
+    "name": "Summertree",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/volkumburgh-talcontin.webp",
+    "id": "talcontin",
+    "name": "Talcontin",
+    "region": "Volkumburgh"
+  },
+  {
+    "crest": "assets/swordmark-tammarast.webp",
+    "id": "tammarast",
+    "name": "Tammarast",
+    "region": "Swordmark"
+  },
+  {
+    "crest": "assets/veilstone-tantorn.webp",
+    "id": "tantorn",
+    "name": "Tantorn",
+    "region": "Veilstone"
+  },
+  {
+    "crest": "assets/elfhold-tathcrown.webp",
+    "id": "tathcrown",
+    "name": "Tathcrown",
+    "region": "Elfhold"
+  },
+  {
+    "crest": "assets/elfhold-thalthallow.webp",
+    "id": "thalthallow",
+    "name": "Thalthallow",
+    "region": "Elfhold"
+  },
+  {
+    "crest": "assets/shieldmark-thawnfaer.webp",
+    "id": "thawnfaer",
+    "name": "Thawnfaer",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/swordmark-thistle.webp",
+    "id": "thistle",
+    "name": "Thistle",
+    "region": "Swordmark"
+  },
+  {
+    "crest": "assets/crownlands-thorntower.webp",
+    "id": "thorntower",
+    "name": "Thorntower",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/volkumburgh-thunderfall.webp",
+    "id": "thunderfall",
+    "name": "Thunderfall",
+    "region": "Volkumburgh"
+  },
+  {
+    "crest": "assets/swordmark-thundersword.webp",
+    "id": "thundersword",
+    "name": "Thundersword",
+    "region": "Swordmark"
+  },
+  {
+    "crest": "assets/volkumburgh-tolon.webp",
+    "id": "tolon",
+    "name": "Tolon",
+    "region": "Volkumburgh"
+  },
+  {
+    "crest": "assets/helmlands-torchmore.webp",
+    "id": "torchmore",
+    "name": "Torchmore",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/ferlin-torchtower.webp",
+    "id": "torchtower",
+    "name": "Torchtower",
+    "region": "Ferlin"
+  },
+  {
+    "crest": "assets/crownlands-torchwinter.webp",
+    "id": "torchwinter",
+    "name": "Torchwinter",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/crownlands-torith.webp",
+    "id": "torith",
+    "name": "Torith",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/horselands-vaeren.webp",
+    "id": "vaeren",
+    "name": "Vaeren",
+    "region": "Horselands"
+  },
+  {
+    "crest": "assets/shieldmark-valwater.webp",
+    "id": "valwater",
+    "name": "Valwater",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/elfhold-vaylan.webp",
+    "id": "vaylan",
+    "name": "Vaylan",
+    "region": "Elfhold"
+  },
+  {
+    "crest": "assets/crownlands-vonderharten.webp",
+    "id": "von-der-harten",
+    "name": "Von der Harten",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/volkumburgh-warblade.webp",
+    "id": "warblade",
+    "name": "Warblade",
+    "region": "Volkumburgh"
+  },
+  {
+    "crest": "assets/shieldmark-wavegallant.webp",
+    "id": "wavegallant",
+    "name": "Wavegallant",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/veilstone-windstag.webp",
+    "id": "windstag",
+    "name": "Windstag",
+    "region": "Veilstone"
+  },
+  {
+    "crest": "assets/shieldmark-wintercoats.webp",
+    "id": "wintercoats",
+    "name": "Wintercoats",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/shieldmark-wintersun.webp",
+    "id": "wintersun",
+    "name": "Wintersun",
+    "region": "Shieldmark"
+  },
+  {
+    "crest": "assets/helmlands-wyrvar.webp",
+    "id": "wyrvar",
+    "name": "Wyrvar",
+    "region": "Helmlands"
+  },
+  {
+    "crest": "assets/crownlands-wyvernspur.webp",
+    "id": "wyvernspur",
+    "name": "Wyvernspur",
+    "region": "Crownlands"
+  },
+  {
+    "crest": "assets/horselands-yellander.webp",
+    "id": "yellander",
+    "name": "Yellander",
+    "region": "Horselands"
+  }
+]

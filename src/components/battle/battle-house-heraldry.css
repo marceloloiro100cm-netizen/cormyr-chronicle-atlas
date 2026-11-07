@@ -1,0 +1,279 @@
+/* Heraldic battle identity · prototype adaptation for actual Cormyr app.
+ * Emblems are loaded from the verified house_catalog archive_data.crest paths.
+ * Never crop/zoom/stretch a house image; maintain intrinsic heraldry proportions.
+ */
+.battle-module .battle-house-source{
+ --heraldry-gold:#d5b576;
+ --heraldry-text:#f2e6cf;
+ --heraldry-border:rgba(201,167,111,.53);
+ margin:14px 0;
+ border:1px solid var(--heraldry-border);
+ border-radius:12px;
+ padding:clamp(14px,2.3vw,24px);
+ background:
+  radial-gradient(ellipse at 30% 0%,rgba(160,130,75,.16),transparent 48%),
+  linear-gradient(155deg,#202a2e 4%,#182024 88%);
+ box-shadow:inset 0 1px rgba(255,238,196,.12),0 8px 28px rgba(0,0,0,.2);
+ color:var(--heraldry-text);
+}
+.battle-house-source .battle-house-section-header{
+ display:flex;gap:13px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+ border-bottom:1px solid var(--heraldry-border);padding-bottom:13px;margin-bottom:13px;
+}
+.battle-house-source .battle-house-section-header h3{
+ font-family:Georgia,serif;color:#f9e7c6;
+ font-size:clamp(19px,2vw,25px);line-height:1.25;margin:0;
+}
+.battle-house-source .battle-house-section-header p{
+ font-size:13px;color:#e4d4b5;margin:5px 0 0;max-width:80ch;line-height:1.5;
+}
+.battle-house-source .battle-house-selection-fields{
+ display:grid;grid-template-columns:minmax(120px,1fr) minmax(145px,1.25fr) minmax(115px,.75fr);
+ gap:12px;margin-bottom:18px;
+}
+.battle-house-source .battle-house-selection-fields>label{
+ display:flex;flex-direction:column;gap:7px;min-width:0;
+ color:#f1ddb6;font-weight:650;font-size:15px;
+}
+.battle-house-source .battle-house-selection-fields select{
+ display:block;min-width:0;width:100%;height:46px;min-height:46px;
+ border:1px solid #b99d6a;border-radius:8px;
+ padding:7px 12px;background-color:#20282e;color:#fff3de;
+ font-size:15px;line-height:1.3;
+}
+.battle-house-source .battle-house-selection-fields select:disabled{
+ color:#baa989;opacity:.74;
+}
+.battle-house-source .battle-house-selection-fields .battle-house-select-with-crest{
+ position:relative;min-width:0;
+}
+.battle-house-source .battle-house-select-with-crest select{
+ padding-left:49px;
+}
+.battle-house-source .battle-house-select-with-crest .battle-house-crest{
+ position:absolute;left:8px;top:5px;z-index:1;pointer-events:none;
+ width:34px;height:36px;border:none;background:transparent;
+}
+.battle-house-source .battle-house-select-with-crest .battle-house-crest img{
+ padding:0;
+}
+.battle-house-source .battle-house-presentation-grid{
+ display:grid;grid-template-columns:minmax(0,1.55fr) minmax(255px,1fr);
+ gap:16px;align-items:start;
+}
+.battle-house-source .battle-house-presentation-grid>*{min-width:0}
+.battle-house-source .battle-house-roster-section{
+ padding:14px;border:1px solid #867454;border-radius:10px;
+ background:linear-gradient(160deg,#253039,#1d272f 95%);
+}
+.battle-house-source .battle-house-roster-head{
+ display:flex;justify-content:space-between;align-items:center;gap:9px;
+ margin-bottom:10px;padding-bottom:9px;border-bottom:1px solid rgba(191,155,106,.45);
+}
+.battle-house-source .battle-house-roster-head h4{
+ color:#fbe6bd;font-family:Georgia,serif;font-size:clamp(16px,1.6vw,21px);margin:0;
+}
+.battle-house-source .battle-house-roster-head small{
+ color:#e7d7bb;font-size:13px;white-space:normal;text-align:right;
+}
+.battle-module .battle-house-source .battle-source-units{
+ display:flex;flex-direction:column;gap:7px;margin:10px 0;padding:0 3px 0 0;
+ max-height:min(56vh,520px);overflow-y:auto;scrollbar-color:#b19a6b #1d2529;
+}
+.battle-module .battle-house-source .battle-source-units li{
+ border:1px solid #706a5f;border-radius:8px;background:rgba(24,34,42,.7);
+ box-shadow:inset 0 1px rgba(255,255,255,.06);
+ padding:0;
+}
+.battle-module .battle-house-source .battle-source-units li:has(input:checked){
+ border-color:#cdb47a;background:rgba(63,69,58,.62);
+}
+.battle-module .battle-house-source .battle-source-units li:has(input:disabled){opacity:.74}
+.battle-module .battle-house-source .battle-source-unit-row{
+ display:grid;grid-template-columns:auto 42px minmax(0,1fr) auto;
+ align-items:center;gap:11px;cursor:pointer;padding:8px 11px;width:100%;min-width:0;
+}
+.battle-module .battle-house-source .battle-source-unit-row input[type=checkbox]{
+ width:20px;height:20px;margin:0;accent-color:#d8bd83;flex:none;
+}
+.battle-module .battle-house-source .battle-source-unit-row .military-unit-symbol--small{
+ width:39px;height:43px;min-width:39px;border-radius:5px;
+}
+.battle-house-source .battle-source-unit-name{display:block;font-size:15px;color:#fff2db;line-height:1.32;overflow-wrap:anywhere}
+.battle-house-source .battle-source-unit-detail{display:block;color:#d7c6aa;font-size:12px;line-height:1.4;margin-top:3px}
+.battle-house-source .battle-source-unit-stats{text-align:right;white-space:nowrap}
+.battle-house-source .battle-source-unit-stats strong{display:block;color:#fae1ac;font-size:15px}
+.battle-house-source .battle-training-tag{
+ display:inline-block;border:1px solid #a79a72;padding:1px 7px;line-height:1.4;
+ border-radius:99px;font-size:11px;color:#e8d7b4;
+ background:rgba(79,93,73,.35);
+}
+.battle-house-source .battle-house-roster-footer{
+ display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+ border-top:1px solid rgba(190,163,112,.44);padding-top:10px;
+ color:#ead9b9;font-size:13px;
+}
+.battle-house-source .battle-house-aside{display:flex;flex-direction:column;gap:12px}
+.battle-house-crest{
+ display:inline-flex;align-items:center;justify-content:center;
+ flex-shrink:0;vertical-align:middle;overflow:hidden;
+ border-radius:8px;border:1px solid rgba(187,155,104,.36);
+ background:radial-gradient(circle,#e7dab5,#c6b17f);
+}
+.battle-house-crest--tiny{width:34px;height:38px}
+.battle-house-crest--small{width:56px;height:62px}
+.battle-house-crest--large{width:clamp(118px,12vw,170px);height:clamp(138px,15vw,204px)}
+.battle-house-crest img{
+ width:100%;height:100%;max-width:100%;max-height:100%;
+ display:block;object-fit:contain!important;object-position:50% 50%;
+ padding:4px;box-sizing:border-box;mix-blend-mode:normal;
+}
+.battle-house-crest svg{width:55%;height:55%;color:#77643e}
+.battle-heraldry-identity{
+ padding:14px 16px;min-width:0;
+ color:#33251c;border-radius:12px;
+ border:2px solid #b89962;
+ background:
+  radial-gradient(ellipse at 15% 17%,rgba(255,253,238,.8),transparent 55%),
+  linear-gradient(145deg,#e5d7b9,#cbb890 70%,#dfcfae);
+ box-shadow:inset 0 0 0 3px rgba(255,250,228,.45),0 5px 20px rgba(0,0,0,.22);
+}
+.battle-heraldry-identity header{
+ display:flex;align-items:center;gap:9px;padding-bottom:8px;
+ border-bottom:1px solid rgba(115,83,54,.4);
+}
+.battle-heraldry-identity header h3{
+ font-family:Georgia,serif;color:#302419!important;
+ font-size:21px;margin:0;
+}
+.battle-heraldry-identity header svg{color:#7c542e}
+.battle-heraldry-identity-body{
+ display:flex;gap:12px;align-items:center;padding:15px 0 5px;
+}
+.battle-heraldry-identity-text{flex:1;min-width:0}
+.battle-heraldry-identity-text h4{
+ font-family:Georgia,serif;color:#241d17;font-size:clamp(21px,2.3vw,29px);
+ margin:0;line-height:1.16;overflow-wrap:anywhere;
+}
+.battle-heraldry-identity-text>p{
+ font-size:13px;color:#4a3a29;line-height:1.45;margin:6px 0;
+}
+.battle-heraldry-identity .battle-heraldry-separator{
+ height:1px;background:linear-gradient(90deg,#725632,transparent);margin:12px 0;
+}
+.battle-heraldry-identity .battle-heraldry-source{font-weight:600}
+.battle-heraldry-identity .battle-heraldry-unit-count{font-weight:650;font-size:12px}
+.battle-heraldry-empty{display:flex;align-items:center;gap:14px;min-height:120px}
+.battle-heraldry-empty svg{color:#8f7954;flex-shrink:0}
+.battle-heraldry-empty p{color:#554430;font-size:14px;line-height:1.5}
+.battle-house-banner{
+ display:flex;align-items:center;gap:9px;min-width:0;min-height:62px;
+ color:#f7e6c6;border:1px solid #bd985d;border-radius:9px;
+ padding:6px 12px;background:linear-gradient(95deg,#59302f,#361c23 88%);
+ box-shadow:inset 0 0 0 2px rgba(20,18,18,.55);
+}
+.battle-house-banner--defender{
+ background:linear-gradient(95deg,#293f4d,#1b2a37 90%);
+ border-color:#8ea4a8;
+}
+.battle-house-banner .battle-house-crest{
+ width:48px;height:55px;border:none;background:none;overflow:visible;
+}
+.battle-house-banner .battle-house-crest img{padding:1px}
+.battle-house-banner .battle-house-crest svg{color:#e6c589}
+.battle-house-banner-label{font-size:13px;color:#efd8ac}
+.battle-house-banner strong{
+ font-family:Georgia,serif;font-size:clamp(15px,1.7vw,19px);
+ color:#fff2d1;overflow-wrap:anywhere;
+}
+.battle-house-banner--subtle{
+ padding:5px 9px;min-height:54px;background:rgba(46,34,35,.76)
+}
+.battle-house-banner--defender.battle-house-banner--subtle{background:rgba(29,51,65,.74)}
+.battle-house-banner--subtle .battle-house-crest{width:42px;height:47px}
+.battle-house-versus{
+ display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+ align-items:center;gap:10px;margin:9px 0 12px;
+}
+.battle-house-versus-mark{
+ font-family:Georgia,serif;font-size:22px;color:#e5c88a;
+}
+.battle-house-source .battle-house-aside h4{color:inherit}
+.battle-house-source .battle-house-source-actions{
+ display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:10px;
+ margin-top:14px;padding-top:13px;border-top:1px solid rgba(191,155,106,.48);
+}
+.battle-house-source .battle-house-source-actions button{
+ min-height:45px;white-space:normal;padding-inline:19px;
+ background:linear-gradient(#f5dfb2,#c8a46b);
+ color:#2b2319;border:1px solid #6d5034;font-weight:700;
+ box-shadow:inset 0 1px rgba(255,250,231,.65);
+}
+.battle-house-source .battle-house-source-actions button:disabled{
+ opacity:.5;box-shadow:none;
+}
+.battle-house-source .battle-source-individual{
+ margin-top:12px;padding-top:8px;
+}
+.battle-house-source .battle-source-individual summary{color:#f4d8a6}
+.battle-house-source button:focus-visible,
+.battle-house-source select:focus-visible,
+.battle-house-source input:focus-visible{
+ outline:3px solid #ffe2a5;outline-offset:2px;
+}
+.battle-module .battle-setup.battle-heraldry-mode .battle-quick-start{
+ background:linear-gradient(140deg,#232c30,#1c2428);
+ border-color:#a38960;
+}
+.battle-module .battle-setup.battle-heraldry-mode .battle-house-source{
+ margin-top:15px;
+}
+.battle-module .battle-setup.battle-heraldry-mode .battle-home-actions button:first-child{
+ background:linear-gradient(#f5dfb3,#c9a46b);color:#302316;border-color:#a58048;
+ font-size:15px;font-weight:700;
+}
+.battle-module .battle-setup .battle-quick-start .battle-note{line-height:1.5}
+.battle-module .crusade-side-card .battle-house-selected-label{
+ display:flex;align-items:center;gap:10px;margin:5px 0 12px;
+ color:#f6dfb2;
+}
+.battle-module .crusade-side-card .battle-house-selected-label strong{
+ font-family:Georgia,serif;font-size:17px;overflow-wrap:anywhere;
+}
+.battle-module .crusade-v4-header .battle-house-versus{margin:10px 0 0}
+.battle-module .battle-arena-heading .battle-house-versus{margin:10px 0 0}
+.battle-module .battle-army-sidebar .battle-house-army-head{margin-bottom:8px}
+.battle-module .battle-army-sidebar .battle-house-army-head .battle-house-crest{
+ width:38px;height:43px;
+}
+.battle-module .battle-army-sidebar .battle-house-army-head h3{margin:0}
+@media(max-width:1050px){
+ .battle-house-source .battle-house-presentation-grid{grid-template-columns:minmax(0,1fr)}
+ .battle-house-source .battle-house-aside{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,.6fr)}
+ .battle-house-source .battle-house-aside>*{min-width:0}
+}
+@media(max-width:760px){
+ .battle-house-source .battle-house-selection-fields{grid-template-columns:minmax(0,1fr)}
+ .battle-house-source .battle-house-aside{grid-template-columns:minmax(0,1fr)}
+ .battle-heraldry-identity-body{flex-wrap:wrap;justify-content:center;text-align:center}
+ .battle-heraldry-identity .battle-heraldry-separator{margin-inline:auto}
+ .battle-house-versus{grid-template-columns:minmax(0,1fr);gap:5px}
+ .battle-house-versus-mark{text-align:center;line-height:1}
+ .battle-house-source .battle-house-source-actions{justify-content:stretch}
+ .battle-house-source .battle-house-source-actions button{width:100%}
+}
+@media(max-width:480px){
+ .battle-house-source .battle-source-unit-row{
+  grid-template-columns:auto 33px minmax(0,1fr);gap:8px;padding:8px;
+ }
+ .battle-house-source .battle-source-unit-stats{
+  grid-column:3;text-align:left;
+ }
+ .battle-house-source .battle-source-unit-stats strong{display:inline}
+ .battle-module .battle-house-source .battle-source-unit-row .military-unit-symbol--small{width:33px;height:38px;min-width:33px}
+ .battle-heraldry-identity{padding:10px}
+ .battle-heraldry-identity-body .battle-house-crest--large{width:130px;height:155px}
+}
+@media(prefers-reduced-motion:reduce){
+ .battle-house-source *, .battle-house-crest img{scroll-behavior:auto!important;transition:none!important}
+}

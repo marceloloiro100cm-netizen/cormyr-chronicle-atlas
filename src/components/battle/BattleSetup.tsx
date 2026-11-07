@@ -10,6 +10,8 @@ import type {BattleMap,BattleState,BattleStack,Hex,Side,Training} from '@/lib/ba
 import {BattleBoard} from './BattleBoard';
 import {BattleMapEditor} from './BattleMapEditor';
 import {BattleSourcePicker} from './BattleSourcePicker';
+import {BattleHouseVersus} from './BattleHouseHeraldry';
+import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
 import {isBattleTrainingCopy,battleTrainingSourceKey} from '@/lib/battle/adapters/imported-npc-roster';
 
 type PreparedUnit={id:string;side:Side;name:string;typeId:string;training:Training;count:number;position:Hex|null;imported?:BattleStack;importKey?:string};
@@ -23,7 +25,8 @@ const train:{id:Training;label:string}[]=[
  {id:'veteran',label:'Veterana'},{id:'elite',label:'Elite'},
 ];
 export function BattleSetup({onStart,onBack}:{
- onStart:(state:BattleState,sideNames:Record<Side,string>)=>void;onBack:()=>void;
+ onStart:(state:BattleState,sideNames:Record<Side,string>,
+  heraldry?:Partial<Record<Side,BattleHouseDirectoryRow>>)=>void;onBack:()=>void;
 }){
  const [name,setName]=useState('Batalha experimental');
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Exército atacante',defender:'Exército defensor'});
@@ -37,6 +40,29 @@ export function BattleSetup({onStart,onBack}:{
  const [quickOpponent,setQuickOpponent]=useState<'human'|'ai'>('ai');
  const [quickSource,setQuickSource]=useState<'models'|'houses'>('models');
  const [error,setError]=useState('');
+ const [houseByUnitKey,setHouseByUnitKey]=useState<Record<string,BattleHouseDirectoryRow>>({});
+ const onHouseLoaded=({house,stacks}:{
+  side:Side;house:BattleHouseDirectoryRow;stacks:BattleStack[];
+ })=>setHouseByUnitKey(before=>({...before,...Object.fromEntries(
+  stacks.map(stack=>[battleTrainingSourceKey(stack),house]))}));
+ const housesForSide=(side:Side)=>[...new Map(
+  units.filter(u=>u.side===side&&u.imported).map(u=>{
+   const house=houseByUnitKey[u.importKey??battleTrainingSourceKey(u.imported!)];
+   return house?[house.id,house] as const:null;
+  }).filter((entry):entry is readonly [string,BattleHouseDirectoryRow]=>Boolean(entry))
+ ).values()];
+ const primaryAttacker=housesForSide('attacker')[0];
+ const primaryDefender=housesForSide('defender')[0];
+ const heraldry:Partial<Record<Side,BattleHouseDirectoryRow>>={
+  ...(primaryAttacker?{attacker:primaryAttacker}:{}),
+  ...(primaryDefender?{defender:primaryDefender}:{}),
+ };
+ const displaySideNames:Record<Side,string>={
+  attacker:housesForSide('attacker').length?
+   housesForSide('attacker').map(h=>h.name).join(' + '):sideNames.attacker,
+  defender:housesForSide('defender').length?
+   housesForSide('defender').map(h=>h.name).join(' + '):sideNames.defender,
+ };
  const update=(id:string,change:Partial<PreparedUnit>)=>setUnits(list=>list.map(u=>u.id===id?{...u,...change}:u));
  const makeId=(side:Side)=>side+'-'+crypto.randomUUID().slice(0,8);
  const effectiveUnits=(side:Side)=>units.filter(u=>u.side===side&&
@@ -117,7 +143,7 @@ export function BattleSetup({onStart,onBack}:{
    const state=makeBattleSetup({id:'lab-'+seed,name,seed,map,
      controls,stacks});
    if(!sideNames.attacker.trim()||!sideNames.defender.trim())throw new Error('Nomeie os dois exércitos.');
-   onStart(state,sideNames);
+   onStart(state,displaySideNames,heraldry);
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível preparar a batalha.');}
  };
  const quickStart=()=>{
@@ -140,12 +166,12 @@ export function BattleSetup({onStart,onBack}:{
    });
    const battle=makeBattleSetup({id:'lab-'+seed,name,seed,map,
     controls:{attacker:'human',defender:quickOpponent},stacks});
-   setError('');onStart(battle,sideNames);
+   setError('');onStart(battle,displaySideNames,heraldry);
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível iniciar o confronto.');}
  };
  const mapErrors=validateBattleMap(map);
  const positioned=units.filter(u=>u.position).length;
- return <div className="battle-setup">
+ return <div className="battle-setup battle-heraldry-mode">
   <div className="battle-heading"><div><h2>Preparar batalha</h2><p>Laboratório de tropas fictícias — nenhuma baixa altera fichas de casas.</p></div>
     <Button variant="outline" onClick={onBack}>Voltar ao painel</Button></div>
   {!advanced&&<section className="battle-surface battle-quick-start" aria-label="Começar batalha simples">
@@ -175,7 +201,8 @@ export function BattleSetup({onStart,onBack}:{
    </div>
    {quickSource==='houses'&&<div className="battle-source-quick" aria-label="Selecionar casas e exércitos">
     <BattleSourcePicker onAdd={addImported} onAddMany={addImportedMany}
-     remainingBySide={remainingBySide}/>
+     onHouseLoaded={onHouseLoaded} remainingBySide={remainingBySide}/>
+    <BattleHouseVersus houses={heraldry} names={displaySideNames}/>
     <p className="battle-note">
      {units.filter(u=>u.imported).length} unidades documentadas copiadas para este exercício.
      Exércitos sem Casa selecionada continuam com tropas-modelo.</p>
@@ -259,7 +286,8 @@ export function BattleSetup({onStart,onBack}:{
    </div>
   </section>
   <BattleSourcePicker onAdd={addImported} onAddMany={addImportedMany}
-   remainingBySide={remainingBySide}/>
+   onHouseLoaded={onHouseLoaded} remainingBySide={remainingBySide}/>
+  <BattleHouseVersus houses={heraldry} names={displaySideNames}/>
   <section className="battle-surface" aria-label="Escolha do terreno">
    <h3>3. Terreno</h3>
    <div className="battle-form-row">

@@ -25,8 +25,8 @@ const army=[
 ];
 beforeEach(()=>{
  mocked.houses.mockReset().mockResolvedValue([
-  {id:'ashkar',name:'Ashkar',region:'dragoncoast'},
-  {id:'phelles',name:'Phelles',region:'crownlands'},
+  {id:'ashkar',name:'Ashkar',region:'dragoncoast',crest:'assets/dragoncoast-ashkar.webp'},
+  {id:'phelles',name:'Phelles',region:'crownlands',crest:'assets/crownlands-phelles.webp'},
  ]);
  mocked.units.mockReset().mockResolvedValue({
   houseId:'ashkar',sourceVersion:8,sourceStatus:'recorded',units:army,
@@ -56,7 +56,9 @@ describe('Seletor militar · Região → Casa → Exército',()=>{
   expect(mocked.units).toHaveBeenCalledWith({data:{houseId:'ashkar'}});
   const list=screen.getByRole('list',{name:'Unidades carregadas da casa'});
   expect(within(list).getByText('Guarda da Fênix')).toBeInTheDocument();
-  expect(within(list).getByText(/90 disponíveis/)).toBeInTheDocument();
+  expect(within(list).getByText('90')).toBeInTheDocument();
+  expect(screen.getByRole('img',{name:'Brasão da Casa Ashkar'}))
+   .toHaveAttribute('src','/cormyr/assets/dragoncoast-ashkar.webp');
   expect(screen.getByLabelText('Selecionar Navios do Lago')).toBeDisabled();
   expect(screen.getByLabelText('Selecionar Batedores Mistos')).toBeDisabled();
   expect(screen.getByLabelText('Selecionar Guarda da Fênix')).toBeChecked();
@@ -94,8 +96,8 @@ describe('Seletor militar · Região → Casa → Exército',()=>{
   fireEvent.change(screen.getByLabelText('Região das casas'),{target:{value:'crownlands'}});
   fireEvent.change(screen.getByLabelText('Casa de origem militar'),{target:{value:'phelles'}});
   expect(await screen.findByText(/sem ficha militar importada/)).toBeInTheDocument();
-  expect(screen.queryByRole('button',{name:/Carregar .* unidades na batalha/}))
-   .not.toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Carregar 0 unidades na batalha'}))
+   .toBeDisabled();
   expect(mocked.snapshot).not.toHaveBeenCalled();
  });
  it('importa os exércitos de cenário da planilha sem dizer que foram comprados',async()=>{
@@ -110,7 +112,9 @@ describe('Seletor militar · Região → Casa → Exército',()=>{
    .toBeInTheDocument();
   expect(screen.getByText(/sem compra, custo ou baixa oficial/))
    .toBeInTheDocument();
-  expect(screen.getByRole('heading',{name:/Exército documentado de Ashkar/}))
+  expect(screen.getByRole('heading',{name:'Casa Selecionada'}))
+   .toBeInTheDocument();
+  expect(screen.getByText(/Exército documental de treinamento/))
    .toBeInTheDocument();
   expect(screen.getByText(/Compra proposta/)).toBeInTheDocument();
  });
