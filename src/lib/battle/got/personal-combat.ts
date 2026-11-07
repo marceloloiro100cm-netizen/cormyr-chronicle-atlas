@@ -224,6 +224,31 @@ function attackHero(
   actor,{roll:roll.dice,total,difficulty,degrees});
  return next;
 }
+/** Uma ação maior pode atacar dois ou mais inimigos, dividindo os dados
+ * de teste e os de bônus. Salva o índice antes de um golpe pendente para
+ * que escolhas de dano e contra-ataques não dupliquem rolagens.
+ */
+export function resumePersonalSplit(battle:WarBattle):WarBattle{
+ const plan=battle.pendingPersonalSplit;
+ if(!plan)return battle;
+ if(battle.pendingPersonalDamage||battle.pendingPersonalCounterattack)
+  throw new Error('Resolva a reação pendente antes de continuar ataque dividido.');
+ let next=battle;
+ for(let i=plan.nextIndex;i<plan.targetIds.length;i++){
+  const actor=next.heroes.find(h=>h.id===plan.actorId);
+  const target=next.heroes.find(h=>h.id===plan.targetIds[i]);
+  if(!actor?.active||!target?.active)continue;
+  next={...next,pendingPersonalSplit:{...plan,nextIndex:i+1}};
+  next=attackHero(next,actor,target,false,{
+   splitRank:plan.ranks[i],splitBonus:plan.bonuses[i],
+  });
+  if(next.pendingPersonalDamage||next.pendingPersonalCounterattack)return next;
+ }
+ const actor=next.heroes.find(h=>h.id===plan.actorId);
+ const completed:WarBattle={...next,pendingPersonalSplit:undefined};
+ return actor?log(completed,'personal-split-complete',actor.name+
+  ' concluiu ataque dividido em '+plan.targetIds.length+' alvos.',actor):completed;
+}
 /** Retoma o golpe interrompido após a vítima decidir a mitigação.
  * Uma reação que derruba o agressor cancela o ataque original.
  */
@@ -311,6 +336,48 @@ export function executePersonalWarAction(
  if(hero.role!=='hero')throw new Error('Comandante deve abdicar antes de lutar.');
  if(hero.pinnedByMount&&!['personal-free-mount','personal-surrender'].includes(action.kind))
   throw new Error('Cavaleiro preso sob a montaria precisa se libertar antes de agir.');
+ if(action.kind==='personal-release-grapple'){
+  return resolvePersonalControlAction(battle,hero,action.kind);
+ }
+ if(['personal-escape-grapple','personal-escape-entangle',
+     'personal-release-impale','personal-remove-impale'].includes(action.kind)){
+  const kind=action.kind as ControlActionKind;
+  const weight=kind==='personal-escape-grapple'||kind==='personal-release-impale'?
+   'minor':'major';
+  const spent=spendPersonalAction(hero,weight);
+  return resolvePersonalControlAction(changeHero(battle,spent),spent,kind,
+   action.escapeUsing??'athletics');
+ }
+ if(action.kind==='personal-split-attack'){
+  if(hero.attackedThisTurn)throw new Error('Somente um ataque por rodada individual.');
+  if(hero.grapplingTargetId||hero.grabbedBy||hero.impaledBy)
+   throw new Error('Libere a contenção antes de dividir os ataques.');
+  if(hero.meleeWeapon?.slow||hero.meleeWeapon?.counterChargeOnly)
+   throw new Error('Arma Lenta ou Contra Carga não permite Ataque Dividido.');
+  if(hero.meleeWeaponBroken||hero.meleeWeaponDisarmed||hero.impalingTargetId)
+   throw new Error('A arma não está disponível para Ataque Dividido.');
+  const ids=action.splitTargets??[],ranks=action.splitRanks??[];
+  const bonuses=action.splitBonuses??ids.map(()=>0);
+  if(ids.length<2||ids.length!==ranks.length||ids.length!==bonuses.length||
+   new Set(ids).size!==ids.length)
+   throw new Error('Ataque Dividido exige pelo menos dois alvos distintos e alocações.');
+  const allocated=ranks.reduce((s,n)=>s+n,0),allocatedBonus=bonuses.reduce((s,n)=>s+n,0);
+  if(ranks.some(n=>!Number.isInteger(n)||n<1||n>15)||
+   bonuses.some((n,i)=>!Number.isInteger(n)||n<0||n>ranks[i]!)||
+   allocated!==hero.fighting||allocatedBonus>(hero.meleeBonusDice??0))
+   throw new Error('Divida exatamente os dados de Luta e limite os dados de bônus.');
+  for(const id of ids){
+   const target=battle.heroes.find(h=>h.id===id&&h.active&&!h.unitId&&h.side!==hero.side);
+   if(!target||personalDistance(personalPosition(hero),personalPosition(target))>
+     (hero.meleeWeapon?.reachMetres??1))
+    throw new Error('Todos os alvos divididos devem ser inimigos ativos no alcance.');
+  }
+  const used=spendPersonalAction(hero,'major');
+  const next:WarBattle={...changeHero(battle,{...used,attackedThisTurn:true}),
+   pendingPersonalSplit:{actorId:hero.id,targetIds:[...ids],
+    ranks:[...ranks],bonuses:[...bonuses],nextIndex:0}};
+  return resumePersonalSplit(next);
+ }
  if(action.kind==='personal-end-turn'){
   if(!hero.minorActionsUsed)throw new Error('Não há ação menor pendente para encerrar.');
   return log(changeHero(battle,{...hero,minorActionsUsed:0,
@@ -550,6 +617,7 @@ export function executePersonalWarAction(
    ...(action.twoHandedGrip!==undefined?{twoHandedGrip:action.twoHandedGrip}:{}),
    ...(action.powerBonusDice!==undefined?{powerBonusDice:action.powerBonusDice}:{}),
    ...(action.stunHit!==undefined?{stunHit:action.stunHit}:{}),
+   ...(action.grappleHit!==undefined?{grappleHit:action.grappleHit}:{}),
   });
  }
  throw new Error('Ação individual não implementada.');
