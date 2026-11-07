@@ -1,7 +1,7 @@
 import type {WarHero} from './heroes';
 
 /** Amostra verificável da tabela 9-3; não é o catálogo completo do livro. */
-export type WarPersonalWeaponId='longsword'|'bastard-sword'|'greatsword'|'long-axe'|'spear'|'pike'|
+export type WarPersonalWeaponId='longsword'|'bastard-sword'|'greatsword'|'long-axe'|'spear'|'pike'|'sledgehammer'|'peasant-tool'|'spiked-flail'|
  'hunting-bow'|'longbow'|'light-crossbow'|'heavy-crossbow';
 export type WarPersonalWeapon=Readonly<{
  id:WarPersonalWeaponId;label:string;
@@ -11,6 +11,7 @@ export type WarPersonalWeapon=Readonly<{
  trainingBonusDice?:number;reload?:'minor'|'major';clumsy?:boolean;
  slow?:boolean;twoHanded?:boolean;mountedOnly?:boolean;
  adaptable?:boolean;powerful?:boolean;counterChargeOnly?:boolean;
+ stunning?:boolean;shattering?:number;fragile?:boolean;
 }>;
 export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersonalWeapon>>={
  longsword:{id:'longsword',label:'Espada longa',family:'melee',
@@ -31,6 +32,15 @@ export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersona
  pike:{id:'pike',label:'Pique',family:'melee',
   damageAbility:'athletics',damageBonus:2,reachMetres:1,range:'none',
   piercing:0,cruel:false,slow:true,twoHanded:true,counterChargeOnly:true},
+ sledgehammer:{id:'sledgehammer',label:'Marreta',family:'melee',
+  damageAbility:'athletics',damageBonus:1,reachMetres:1,range:'none',
+  piercing:0,cruel:false,twoHanded:true,slow:true,stunning:true,shattering:1},
+ 'peasant-tool':{id:'peasant-tool',label:'Ferramenta de aldeão',family:'melee',
+  damageAbility:'athletics',damageBonus:2,reachMetres:1,range:'none',
+  piercing:0,cruel:false,twoHanded:true,clumsy:true,fragile:true},
+ 'spiked-flail':{id:'spiked-flail',label:'Mangual com cravos',family:'melee',
+  damageAbility:'athletics',damageBonus:0,reachMetres:1,range:'none',
+  piercing:0,cruel:true,shattering:1},
  'hunting-bow':{id:'hunting-bow',label:'Arco de caça',family:'ranged',
   damageAbility:'agility',damageBonus:0,reachMetres:0,range:'long',
   piercing:0,cruel:false},
