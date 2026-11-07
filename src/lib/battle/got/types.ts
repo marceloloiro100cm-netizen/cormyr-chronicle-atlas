@@ -63,7 +63,14 @@ export type WarUnit=Readonly<{
  envelopingTargetId?:string|undefined;envelopedBy?:string|undefined;
  laddersDeployed?:boolean;wallClimbedRound?:number;
  issuedThisRound:number;actedThisRound:boolean;criticalThisRound:boolean;
- source:Readonly<{kind:'model'|'house-readonly';houseId?:string;unitId?:string;version?:number}>;
+ source:Readonly<{kind:'model'|'house-readonly';houseId?:string;unitId?:string;version?:number;
+  warEffects?:Readonly<{
+   source:'official-house-sheet';masterOfArmsSurvivorBonus:0|1;
+   deferredFortDefense:number;deferredFortArmor:number;
+   automatic:readonly Readonly<{holdingId:string;description:string}>[];
+   narratorReview:readonly string[];
+  }>;
+ }>;
 }>;
 export type WarEvent=Readonly<{
  seq:number;round:number;side:WarSide|null;kind:string;text:string;
