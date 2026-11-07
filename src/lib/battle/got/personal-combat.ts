@@ -10,9 +10,11 @@ import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
 export type PersonalWarAction=Readonly<{
  kind:'personal-attack'|'personal-charge'|'personal-move'|'personal-dodge'|
   'personal-recover'|'personal-pass'|'personal-end-turn'|'personal-surrender'|
-  'personal-reload'|'personal-mount'|'personal-dismount'|'personal-control-mount';
+  'personal-reload'|'personal-mount'|'personal-dismount'|'personal-control-mount'|
+  'personal-counterattack';
  targetHeroId?:string;
  ranged?:boolean;
+ vsCharge?:boolean;
  toMetres?:WarPosition;
 }>;
 export const personalPosition=(hero:WarHero):WarPosition=>
@@ -32,10 +34,10 @@ export function spendPersonalAction(hero:WarHero,weight:'major'|'minor'):WarHero
  const minor=hero.minorActionsUsed??0;
  if(weight==='major'){
   if(minor!==0)throw new Error('Uma ação maior exige um turno sem ações menores prévias.');
-  return {...hero,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false};
+  return {...hero,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false,counterattackReady:undefined};
  }
- if(minor>0)return {...hero,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false};
- return {...hero,minorActionsUsed:1,dodgeDefense:null};
+ if(minor>0)return {...hero,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false,counterattackReady:undefined};
+ return {...hero,minorActionsUsed:1,dodgeDefense:null,counterattackReady:undefined};
 }
 const log=(battle:WarBattle,kind:string,text:string,hero:WarHero,details:Partial<WarEvent>={}):WarBattle=>({
  ...battle,events:[...battle.events,{
@@ -67,7 +69,7 @@ function moveFine(battle:WarBattle,hero:WarHero,to:WarPosition,max:number):WarHe
 }
 function attackHero(
  battle:WarBattle,actor:WarHero,target:WarHero,ranged:boolean,
- options:{charge?:boolean}={},
+ options:{charge?:boolean;asReaction?:boolean;counterCharge?:boolean}={},
 ):WarBattle{
  const from=personalPosition(actor),to=personalPosition(target);
  const dist=personalDistance(from,to);
@@ -79,6 +81,32 @@ function attackHero(
   throw new Error('Herói não possui arma de Pontaria disponível.');
  if(ranged&&actor.rangedWeapon?.reload&&actor.rangedLoaded===false)
   throw new Error('Esta arma precisa ser recarregada antes do próximo disparo.');
+ // Contra-ataque (cap. 9, p. 216) é resolvido antes do golpe que o disparou.
+ // Para mitigação manual, a reação avançada aguarda o fluxo de dano posterior.
+ if(!options.asReaction&&target.counterattackReady&&!battle.manualMitigation){
+  const stance=target.counterattackReady;
+  const reactionDistance=personalDistance(personalPosition(target),personalPosition(actor));
+  const range=stance.ranged?(target.rangedRange==='long'?100:10):
+   (target.meleeWeapon?.reachMetres??1);
+  const loaded=!stance.ranged||!target.rangedWeapon?.reload||target.rangedLoaded!==false;
+  if(reactionDistance<=range&&loaded){
+   const reactor={...target,counterattackReady:undefined};
+   let defended=changeHero(battle,reactor);
+   defended=attackHero(defended,reactor,actor,stance.ranged,{
+    asReaction:true,counterCharge:Boolean(options.charge&&stance.vsCharge),
+   });
+   const survivingAttacker=defended.heroes.find(h=>h.id===actor.id);
+   if(!survivingAttacker?.active)
+    return log(defended,'personal-counterattack-interrupt',
+     reactor.name+' interrompeu o ataque de '+actor.name+' por contra-ataque.',
+     reactor);
+   const survivingDefender=defended.heroes.find(h=>h.id===reactor.id);
+   if(!survivingDefender?.active)return defended;
+   return attackHero(defended,survivingAttacker,survivingDefender,ranged,{
+    ...options,asReaction:true,
+   });
+  }
+ }
  const rangePenalty=ranged?Math.min(15,Math.max(0,Math.ceil((dist-effectiveRange)/10))):0;
  const weapon=ranged?actor.rangedWeapon:actor.meleeWeapon;
  const availableBonus=(ranged?actor.rangedBonusDice:actor.meleeBonusDice)??0;
@@ -101,7 +129,8 @@ function attackHero(
  const stationaryMountBonus=!ranged&&actor.mounted&&actor.mount?.trainedForWar&&
   actor.mount.health>0&&actor.mountMovedTurn!==actor.usedActions?2:0;
  const base=ranged?actor.rangedDamage:
-  actor.meleeDamage+(options.charge?2:0)+stationaryMountBonus;
+  actor.meleeDamage+(options.charge?2:0)+stationaryMountBonus+
+  (options.counterCharge?2:0);
  const damage=degrees?Math.max(0,base*degrees-
   effectivePersonalArmor(target.armor,ranged?actor.rangedWeapon:actor.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
@@ -140,6 +169,21 @@ export function executePersonalWarAction(
   return log({...next,commanders:hero.commanderId?
    next.commanders.map(c=>c.id===hero.commanderId?{...c,active:false}:c):
    next.commanders},'personal-surrender',hero.name+' se rendeu (destino narrativo pendente).',hero);
+ }
+ if(action.kind==='personal-counterattack'){
+  if(battle.manualMitigation)
+   throw new Error('Desative mitigação manual para testar contra-ataques antecipados neste laboratório.');
+  if(action.ranged&&(hero.rangedDamage<=0||hero.rangedRange==='none'))
+   throw new Error('O contra-ataque à distância exige arma de Pontaria.');
+  if(action.ranged&&hero.rangedWeapon?.reload&&hero.rangedLoaded===false)
+   throw new Error('Recarregue antes de preparar o contra-ataque.');
+  if(action.vsCharge&&action.ranged)
+   throw new Error('Preparar contra carga exige arma de Luta.');
+  const used=spendPersonalAction(hero,'major');
+  return log(changeHero(battle,{...used,counterattackReady:{
+   ranged:Boolean(action.ranged),vsCharge:Boolean(action.vsCharge),
+  }}),'personal-counterattack-ready',hero.name+
+   ' preparou contra-ataque'+(action.vsCharge?' contra carga':'')+'.',hero);
  }
  if(action.kind==='personal-reload'){
   if(!hero.rangedWeapon?.reload)
