@@ -1,7 +1,7 @@
 import type {WarHero} from './heroes';
 
 /** Amostra verificável da tabela 9-3; não é o catálogo completo do livro. */
-export type WarPersonalWeaponId='longsword'|'greatsword'|'long-axe'|'spear'|'pike'|
+export type WarPersonalWeaponId='longsword'|'bastard-sword'|'greatsword'|'long-axe'|'spear'|'pike'|
  'hunting-bow'|'longbow'|'light-crossbow'|'heavy-crossbow';
 export type WarPersonalWeapon=Readonly<{
  id:WarPersonalWeaponId;label:string;
@@ -10,23 +10,27 @@ export type WarPersonalWeapon=Readonly<{
  piercing:number;cruel:boolean;
  trainingBonusDice?:number;reload?:'minor'|'major';clumsy?:boolean;
  slow?:boolean;twoHanded?:boolean;mountedOnly?:boolean;
+ adaptable?:boolean;powerful?:boolean;counterChargeOnly?:boolean;
 }>;
 export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersonalWeapon>>={
  longsword:{id:'longsword',label:'Espada longa',family:'melee',
   damageAbility:'athletics',damageBonus:1,reachMetres:1,range:'none',
   piercing:0,cruel:false},
+ 'bastard-sword':{id:'bastard-sword',label:'Espada bastarda',family:'melee',
+  damageAbility:'athletics',damageBonus:1,reachMetres:1,range:'none',
+  piercing:0,cruel:false,trainingBonusDice:1,adaptable:true},
  greatsword:{id:'greatsword',label:'Montante',family:'melee',
   damageAbility:'athletics',damageBonus:3,reachMetres:1,range:'none',
-  piercing:0,cruel:true,clumsy:true,slow:true,twoHanded:true},
+  piercing:0,cruel:true,clumsy:true,slow:true,twoHanded:true,powerful:true},
  'long-axe':{id:'long-axe',label:'Machado longo',family:'melee',
   damageAbility:'athletics',damageBonus:3,reachMetres:3,range:'none',
-  piercing:0,cruel:true,trainingBonusDice:1,twoHanded:true},
+  piercing:0,cruel:true,trainingBonusDice:1,twoHanded:true,powerful:true},
  spear:{id:'spear',label:'Lança',family:'melee',
   damageAbility:'athletics',damageBonus:0,reachMetres:1,range:'none',
   piercing:0,cruel:false},
  pike:{id:'pike',label:'Pique',family:'melee',
   damageAbility:'athletics',damageBonus:2,reachMetres:1,range:'none',
-  piercing:0,cruel:false,slow:true,twoHanded:true},
+  piercing:0,cruel:false,slow:true,twoHanded:true,counterChargeOnly:true},
  'hunting-bow':{id:'hunting-bow',label:'Arco de caça',family:'ranged',
   damageAbility:'agility',damageBonus:0,reachMetres:0,range:'long',
   piercing:0,cruel:false},
