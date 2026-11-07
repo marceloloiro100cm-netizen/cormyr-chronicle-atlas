@@ -179,7 +179,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     ...(['join','rally','revive'].includes(heroAction)?
      {unitId:candidate?.id??matching?.id??''}:{}),
     ...(['personal-attack','personal-charge'].includes(heroAction)?
-     {targetHeroId:heroTargetId||battle.heroes.find(h=>h.side!==hero.side&&h.active)?.id??''}:{}),
+     {targetHeroId:heroTargetId||battle.heroes.find(h=>h.side!==hero.side&&h.active)?.id||''}:{}),
     ...(heroAction==='personal-move'?{toMetres:heroMetres}:{}),
     ...(heroAction==='personal-attack'?{ranged:heroRanged}:{}),
    };
@@ -364,7 +364,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       {['personal-attack','personal-charge'].includes(heroAction)&&
        <label>Herói adversário
         <select value={heroTargetId||battle.heroes.find(h=>h.side!==
-         (battle.heroes.find(x=>x.id===heroId)??battle.heroes[0])?.side&&h.active)?.id??''}
+         (battle.heroes.find(x=>x.id===heroId)??battle.heroes[0])?.side&&h.active)?.id||''}
          onChange={e=>setHeroTargetId(e.target.value)}>
          {battle.heroes.filter(h=>h.side!==
           (battle.heroes.find(x=>x.id===heroId)??battle.heroes[0])?.side&&h.active)
