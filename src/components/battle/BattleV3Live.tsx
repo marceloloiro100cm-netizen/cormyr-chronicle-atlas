@@ -9,7 +9,7 @@ import {fieldUnitAtHex} from '@/lib/battle/v3/field';
 import {modelHouse,MODEL_HOUSES} from '@/lib/battle/v3/model-houses';
 import {V3_COMMANDERS,commander,type CommanderId} from '@/lib/battle/v3/commanders';
 import {SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixtures';
-import {v3LegalSkills,v3SkillName,type V3Step,type V3UnitSkill} from '@/lib/battle/v3/engine';
+import {v3LegalSkills,v3SkillName,type V3Game,type V3Step,type V3UnitSkill} from '@/lib/battle/v3/engine';
 import {listBattleSourceHouses} from '@/lib/battle/adapters/readonly-source.functions';
 import {createLiveV3Match,listLiveV3Matches,readLiveV3Match,playLiveV3Turn} from '@/lib/battle/v3/live.functions';
 import {BattleBoard} from './BattleBoard';
@@ -31,7 +31,8 @@ export function BattleV3LiveArena({id,onBack}:{id:string;onBack:()=>void}){
   queryKey:['battle-v3-live',id],queryFn:()=>read({data:{id}}),
   refetchInterval:2500,refetchOnWindowFocus:'always',retry:false,
  });
- const game=data?.game,active=game?.battle.stacks.find(s=>s.id===game.battle.activeUnitId);
+ const game=useMemo(()=>data?.gameJson?JSON.parse(data.gameJson) as V3Game:undefined,[data?.gameJson]);
+ const active=game?.battle.stacks.find(s=>s.id===game.battle.activeUnitId);
  const canPlay=Boolean(data?.canPlay&&!busy&&game?.battle.phase==='active'&&active);
  const legal=useMemo(()=>game?.battle.phase==='active'?getLegalActions(game.battle):[],[game]);
  const moves=legal.filter((c):c is Extract<BattleCommand,{type:'MOVE'}>=>c.type==='MOVE');
