@@ -77,6 +77,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [weather,setWeather]=useState<WarWeather>('clear');
  const [visibility,setVisibility]=useState<WarVisibility>('clear');
  const [advanced,setAdvanced]=useState(false);
+ const [strictSightline,setStrictSightline]=useState(false);
  const [tiles,setTiles]=useState<WarTerrainTile[]>([]);
  const [terrainPaint,setTerrainPaint]=useState<WarTerrainId>('plain');
  const [formation,setFormation]=useState<WarFormation>('battle');
@@ -181,6 +182,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    if(modelOneHandUnavailable&&modelOffhand!=='none')
     throw new Error('Não é possível usar arma secundária com uma mão indisponível.');
    setBattle(createWarBattle({id:'book-lab-'+seed,name,seed,width:12,height:7,
+    strictLineOfSight:strictSightline,
     units,siege,
     heroes:heroesEnabled?[
      {...equipModelWarOffhand(equipModelWarHero(makeModelWarHero({
@@ -585,6 +587,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    </div>}
    <label className="got-check"><input type="checkbox" checked={advanced}
     onChange={e=>setAdvanced(e.target.checked)}/> Usar formações e ângulo frontal (opcional no livro)</label>
+   <label className="got-check"><input type="checkbox" checked={strictSightline}
+    onChange={e=>setStrictSightline(e.target.checked)}/>
+    Bloquear tiros através de muralhas e montanhas (adaptação digital opcional)
+   </label>
    <h4>Terreno do campo</h4>
    <label>Pintar quadrados com
     <select value={terrainPaint} onChange={e=>setTerrainPaint(e.target.value as WarTerrainId)}>
