@@ -35,7 +35,8 @@ export function beginPersonalInitiative(battle:WarBattle):WarBattle{
   i=end;
  }
  const order=entries.map(e=>e.heroId);
- const pending:WarPersonalInitiative={phase:battle.phase,roundIndex:0,order,cursor:0};
+ const pending:WarPersonalInitiative={phase:battle.phase,roundIndex:0,order,cursor:0,
+  originalOrder:[...order],delayedHeroIds:[]};
  const state={...battle,seed,
   heroes:battle.heroes.map(h=>heroes.some(x=>x.id===h.id)?consumePersonalFateRoll(h):h),
   personalInitiative:seekNextActor(battle,pending)};
@@ -48,16 +49,47 @@ export function beginPersonalInitiative(battle:WarBattle):WarBattle{
 }
 function seekNextActor(battle:WarBattle,initiative:WarPersonalInitiative):WarPersonalInitiative{
  let round=initiative.roundIndex,offset=initiative.cursor;
+ let order=initiative.order;
+ let delayedIds=initiative.delayedHeroIds??[];
+ const base=initiative.originalOrder??initiative.order;
  while(round<5){
-  while(offset<initiative.order.length){
-   const hero=battle.heroes.find(h=>h.id===initiative.order[offset]);
+  while(offset<order.length){
+   const hero=battle.heroes.find(h=>h.id===order[offset]);
    if(hero?.active&&!hero.unitId&&!hero.surrendered&&hero.role==='hero'&&
-    hero.usedActions<=round)return {...initiative,roundIndex:round,cursor:offset};
+    hero.usedActions<=round)return {...initiative,roundIndex:round,
+     order,cursor:offset,delayedHeroIds:delayedIds};
    offset++;
   }
-  round++;offset=0;
+  round++;offset=0;order=base;delayedIds=[];
  }
- return {...initiative,roundIndex:5,cursor:initiative.order.length};
+ return {...initiative,roundIndex:5,order:base,cursor:base.length,delayedHeroIds:[]};
+}
+/** Atrasar atua após o turno dos demais, sem interromper o turno de outro personagem.
+ * O jogador só pode atrasar uma vez por rodada pessoal; a ordem base retorna
+ * na rodada seguinte.
+ */
+export function delayPersonalTurn(battle:WarBattle,heroId:string):WarBattle{
+ const plan=battle.personalInitiative;
+ if(!plan||plan.phase!==battle.phase||plan.roundIndex>=5)
+  throw new Error('Role a iniciativa pessoal antes de atrasar.');
+ if(battle.pendingPersonalDamage)throw new Error('Resolva o dano pendente.');
+ if(personalTurnHeroId(battle)!==heroId)
+  throw new Error('Aguarde a vez de seu personagem.');
+ if((plan.delayedHeroIds??[]).includes(heroId))
+  throw new Error('O personagem já atrasou seu turno nesta rodada.');
+ if(plan.cursor>=plan.order.length-1)
+  throw new Error('Não há outra personagem para agir antes desta.');
+ const order=[...plan.order.slice(0,plan.cursor),
+  ...plan.order.slice(plan.cursor+1),heroId];
+ const state={...battle,personalInitiative:seekNextActor(battle,{
+  ...plan,order,delayedHeroIds:[...(plan.delayedHeroIds??[]),heroId],
+ })};
+ const hero=battle.heroes.find(h=>h.id===heroId)!;
+ return {...state,events:[...battle.events,{
+  seq:battle.events.length+1,round:battle.round,side:hero.side,
+  kind:'personal-delay',text:hero.name+
+   ' atrasou o turno, sem interromper outros personagens.',
+ }]};
 }
 export function personalTurnHeroId(battle:WarBattle):string|null{
  const plan=battle.personalInitiative;
