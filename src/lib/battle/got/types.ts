@@ -10,7 +10,7 @@ export type WarSide='attacker'|'defender';
 export type WarPosition=Readonly<{x:number;y:number}>;
 export type WarCondition='organized'|'disorganized'|'routed'|'destroyed'|'surrendered'|'escaped';
 export type WarRange='none'|'short'|'long';
-export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'surrender'|'formation'|'turn'|'reverse'|'suppress'|'probe'|'push'|'counter-charge'|'sabotage'|'ambush'|'join'|'split-attack'|'lightning-attack'|'trample'|'envelop'|'scorched-earth';
+export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'surrender'|'formation'|'turn'|'reverse'|'suppress'|'probe'|'push'|'counter-charge'|'sabotage'|'ambush'|'join'|'split-attack'|'lightning-attack'|'trample'|'envelop'|'scorched-earth'|'pincer'|'hammer-anvil'|'climb-walls';
 export type WarReadyPlan=Readonly<{
  trigger:'enemy-adjacent'|'enemy-routed';
  reaction:'attack'|'move';
@@ -25,6 +25,10 @@ export type WarOrder=Readonly<{
  targetIds?:readonly string[];testRanks?:readonly number[];bonusRanks?:readonly number[];
  to?:WarPosition;
  targetDomainId?:string;
+ /** Unidade aliada participante da manobra coordenada. */
+ auxiliaryUnitId?:string;
+ /** Dificuldade de escalada determinada pelo Narrador. */
+ wallDifficulty?:number;
  sprint?:boolean;
  ranged?:boolean;
  formation?:WarFormation;
@@ -55,6 +59,7 @@ export type WarUnit=Readonly<{
  /** Fogo persistente de munição especial do capítulo 10. */
  burning?:Readonly<{remainingRounds:number;damagePerRound:number;source:string}>|undefined;
  envelopingTargetId?:string|undefined;envelopedBy?:string|undefined;
+ laddersDeployed?:boolean;wallClimbedRound?:number;
  issuedThisRound:number;actedThisRound:boolean;criticalThisRound:boolean;
  source:Readonly<{kind:'model'|'house-readonly';houseId?:string;unitId?:string;version?:number}>;
 }>;
