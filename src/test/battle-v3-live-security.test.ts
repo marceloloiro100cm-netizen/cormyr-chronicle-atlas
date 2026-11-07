@@ -41,6 +41,6 @@ describe('P0/P1 — partidas compartilhadas com segurança e sem efeitos oficiai
   for(const operation of ['checkBattlePersistence','listSavedBattles','listBattleSourceHouses','listV3Invitations'])
    expect(p).toContain(operation);
   expect(p).not.toMatch(/insert\(|update\(|delete\(|resetPassword|password|email.*=/);
-  expect(p).toContain('role="player"').toBe(false);
+  expect(p).not.toContain('<BattleAccessCheck role="player"');
  });
 });
