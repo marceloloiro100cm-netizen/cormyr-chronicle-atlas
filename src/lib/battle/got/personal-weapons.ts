@@ -15,6 +15,7 @@ export type WarPersonalWeapon=Readonly<{
  stunning?:boolean;shattering?:number;fragile?:boolean;
  grapple?:boolean;entangle?:boolean;impale?:boolean;fast?:boolean;
  shortBlade?:boolean;noDamage?:boolean;
+ offhandDamageBonus?:number;defensiveOffhandBonus?:number;
 }>;
 export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersonalWeapon>>={
  longsword:{id:'longsword',label:'Espada longa',family:'melee',
@@ -49,7 +50,8 @@ export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersona
   piercing:0,cruel:false,grapple:true,fast:true},
  dagger:{id:'dagger',label:'Adaga',family:'melee',
   damageAbility:'agility',damageBonus:-2,reachMetres:1,range:'none',
-  piercing:0,cruel:false,fast:true,shortBlade:true},
+  piercing:0,cruel:false,fast:true,shortBlade:true,
+  offhandDamageBonus:1,defensiveOffhandBonus:1},
  whip:{id:'whip',label:'Chicote',family:'melee',
   damageAbility:'agility',damageBonus:-1,reachMetres:3,range:'none',
   piercing:0,cruel:false,trainingBonusDice:2,entangle:true},
@@ -73,6 +75,21 @@ export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersona
   damageAbility:'agility',damageBonus:2,reachMetres:0,range:'long',
   piercing:2,cruel:true,slow:true,reload:'major',twoHanded:true},
 };
+/** Ataque com duas armas só aceita segunda arma que tenha Mão Inábil.
+ * Usar a segunda arma no ataque suspende seu bônus Defensivo.
+ */
+export function equipModelWarOffhand(hero:WarHero,weaponId:WarPersonalWeaponId|null):WarHero{
+ if(weaponId===null)return {...hero,offhandWeapon:undefined,offhandDefenseSuppressed:false};
+ const weapon=WAR_PERSONAL_WEAPONS[weaponId];
+ if(!weapon.offhandDamageBonus||weapon.family!=='melee')
+  throw new Error('Escolha uma arma secundária com qualidade Mão Inábil.');
+ if(hero.meleeWeapon?.twoHanded)
+  throw new Error('Arma principal de Duas Mãos não permite equipar arma secundária.');
+ return {...hero,offhandWeapon:weapon,offhandDefenseSuppressed:false};
+}
+export function activePersonalOffhandDefense(hero:WarHero):number{
+ return hero.offhandDefenseSuppressed?0:hero.offhandWeapon?.defensiveOffhandBonus??0;
+}
 export function equipModelWarHero(hero:WarHero,input:{
  melee:WarPersonalWeaponId;ranged:WarPersonalWeaponId;
 }):WarHero{
