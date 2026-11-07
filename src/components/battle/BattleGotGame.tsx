@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
-import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
+import {createWarBattle,issueWarOrder,issueWarPincer,advanceWarRound,warUnitSummary,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
 import {beginPersonalInitiative,personalTurnHeroId,delayPersonalTurn} from '@/lib/battle/got/personal-initiative';
 import {resolvePendingPersonalDamage} from '@/lib/battle/got/personal-injuries';
@@ -51,6 +51,9 @@ const ORDER_LABEL:Record<WarOrderKind,string>={
  trample:'Atropelar (cavalaria)',
  envelop:'Envolver',
  'scorched-earth':'Terra Arrasada (prévia)',
+ pincer:'Pinça · dois aliados (+3)',
+ 'hammer-anvil':'Martelo & Bigorna · prontidão (+6)',
+ 'climb-walls':'Escalar Muralhas (+3)',
 };
 const CONDITION:Record<WarUnit['condition'],string>={
  organized:'Organizada',disorganized:'Desorganizada',routed:'Debandada',
@@ -118,7 +121,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [fortEngineer,setFortEngineer]=useState(false);
  const [siegeKind,setSiegeKind]=useState<WarSiegeKind>('catapult-small');
  const [siegeAmmo,setSiegeAmmo]=useState<WarSiegeAmmo>('stone');
- const [siegeTargetMode,setSiegeTargetMode]=useState<'unit'|'fort'>('unit');
+ const [siegeTargetMode,setSiegeTargetMode]=useState<'unit'|'fort'|'hero'>('unit');
+ const [siegeHeroId,setSiegeHeroId]=useState('');
  const [siegeFortId,setSiegeFortId]=useState('');
  const [resourceScenario,setResourceScenario]=useState<WarResourceScenario>({
   occupiedDomain:false,garrisonHeldForThreeMonths:false,
@@ -130,6 +134,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [target,setTarget]=useState('');
  const [advancedSecondTarget,setAdvancedSecondTarget]=useState('');
  const [advancedFirstDice,setAdvancedFirstDice]=useState(1);
+ const [advancedAllyId,setAdvancedAllyId]=useState('');
+ const [pincerFirstWarfare,setPincerFirstWarfare]=useState(1);
+ const [wallDifficulty,setWallDifficulty]=useState(12);
  const [scorchedDomain,setScorchedDomain]=useState('');
  const [kind,setKind]=useState<WarOrderKind>('attack');
  const [ranged,setRanged]=useState(false);
@@ -208,11 +215,19 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
   if(!battle||!commander||!selectedUnit){setError('Selecione um comandante e uma unidade.');return;}
   try{
    if(legalKind==='surrender'&&!window.confirm('Confirmar rendição geral de todo este exército na simulação?'))return;
+   if(legalKind==='pincer'){
+    if(!selectedTarget)throw new Error('Selecione inimigo para a Pinça.');
+    const other=advancedAllyId||activeUnits.find(u=>u.id!==selectedUnit.id)?.id||'';
+    const outcome=issueWarPincer(battle,{commanderId:commander.id,
+     firstUnitId:selectedUnit.id,secondUnitId:other,
+     targetId:selectedTarget.id,firstWarfareDice:pincerFirstWarfare});
+    setBattle(outcome.battle);setError('');return;
+   }
    const command:WarOrder={
     kind:legalKind,
     ...(legalKind==='attack'&&attackHeroWithUnit?
      {targetHeroId:unitTargetHeroId||battle.heroes.find(h=>h.side!==battle.turn&&h.active)?.id||''}:{ }),
-    ...(['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop'].includes(legalKind)&&selectedTarget&&
+    ...(['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop','hammer-anvil'].includes(legalKind)&&selectedTarget&&
      !(legalKind==='attack'&&attackHeroWithUnit)?
      {targetId:selectedTarget.id}:{}),
     ...(legalKind==='join'?{targetId:activeUnits.find(u=>u.id!==selectedUnit.id)?.id??''}:{}),
@@ -228,6 +243,12 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      bonusRanks:[0,0],ranged,
     }:{}),
     ...(legalKind==='scorched-earth'?{targetDomainId:scorchedDomain.trim()}:{}),
+    ...(legalKind==='hammer-anvil'?{auxiliaryUnitId:
+     advancedAllyId||activeUnits.find(u=>u.id!==selectedUnit.id)?.id||''}:{}),
+    ...(legalKind==='climb-walls'?{
+     fortId:battle.fortifications.find(f=>f.side!==battle.turn&&!f.breached)?.id??'',
+     wallDifficulty,
+    }:{}),
     ...(legalKind==='ready'?{ready:{
      trigger:readyTrigger,reaction:readyReaction,
      ...(readyReaction==='move'?{to:coord}:{ranged}),
@@ -256,9 +277,15 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      throw new Error('Selecione uma unidade inimiga.');
     if(siegeTargetMode==='fort'&&!fort)
      throw new Error('Não existe fortificação inimiga íntegra.');
+    const hero=battle.heroes.find(h=>h.id===siegeHeroId&&h.active&&
+     h.side!==battle.turn&&!h.unitId)??battle.heroes.find(h=>h.active&&
+     h.side!==battle.turn&&!h.unitId);
+    if(siegeTargetMode==='hero'&&!hero)
+     throw new Error('Selecione personagem inimigo para o escorpião.');
     setBattle(fireWarSiegeVolley(battle,{commanderId:leader.id,
      weaponIds:[activeWeapons[0]!.id],
-     ...(siegeTargetMode==='fort'?{fortId:fort!.id}:{targetId:selected!.id}),
+     ...(siegeTargetMode==='fort'?{fortId:fort!.id}:
+      siegeTargetMode==='hero'?{targetHeroId:hero!.id}:{targetId:selected!.id}),
     }));
    }else setBattle(skipWarSiege(battle));
    setError('');
@@ -983,9 +1010,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       {battle.siege.some(w=>w.side===battle.turn&&w.health>0)&&
        <label>Tipo de alvo
         <select value={siegeTargetMode}
-         onChange={e=>setSiegeTargetMode(e.target.value as 'unit'|'fort')}>
+         onChange={e=>setSiegeTargetMode(e.target.value as 'unit'|'fort'|'hero')}>
          <option value="unit">Unidade militar</option>
          <option value="fort">Fortificação / muralha</option>
+         <option value="hero">Personagem (apenas escorpião)</option>
         </select>
        </label>}
       {siegeTargetMode==='fort'&&
@@ -998,6 +1026,13 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
            f.structuralHealth??'padrão do modelo'}</option>)}
         </select>
        </label>}
+      {siegeTargetMode==='hero'&&<label>Personagem inimigo
+       <select value={siegeHeroId} onChange={e=>setSiegeHeroId(e.target.value)}>
+        <option value="">Selecionar personagem</option>
+        {battle.heroes.filter(h=>h.active&&h.side!==battle.turn&&!h.unitId)
+         .map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+       </select>
+      </label>}
       {siegeTargetMode==='unit'&&battle.siege.some(w=>w.side===battle.turn&&w.health>0)&&<label>Alvo da arma de cerco
        <select aria-label="Alvo de cerco" value={selectedTarget?.id??''}
         onChange={e=>setTarget(e.target.value)}>
@@ -1025,7 +1060,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         {Object.entries(ORDER_LABEL).filter(([id])=>selectedUnit.condition==='routed'?
          id==='revive':id!=='revive'&&(id!=='reorganize'||selectedUnit.condition==='disorganized'))
          .filter(([id])=>battle.advancedFormations||
-          !['formation','turn','reverse','suppress','probe','counter-charge','sabotage','ambush','join','push','split-attack','lightning-attack','trample','envelop','scorched-earth'].includes(id))
+          !['formation','turn','reverse','suppress','probe','counter-charge','sabotage','ambush','join','push','split-attack','lightning-attack','trample','envelop','scorched-earth','pincer','hammer-anvil','climb-walls'].includes(id))
          .map(([id,label])=><option key={id} value={id}>{label}</option>)}
        </select>
       </label>
@@ -1061,7 +1096,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
          .map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
        </select>
       </label>}
-      {['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop','split-attack'].includes(legalKind)&&
+      {['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop','split-attack','pincer','hammer-anvil'].includes(legalKind)&&
        !(legalKind==='attack'&&attackHeroWithUnit)&&<>
        <label>Alvo
         <select aria-label="Alvo da ordem" value={selectedTarget?.id??''}
@@ -1090,6 +1125,25 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        <p className="battle-note">Distribuição exata das graduações; dados de bônus ficam zerados
         neste controle inicial. Cada inimigo exige alcance válido.</p>
       </>}
+      {['pincer','hammer-anvil'].includes(legalKind)&&<>
+       <label>Segunda unidade aliada
+        <select aria-label="Unidade aliada da manobra" value={advancedAllyId}
+         onChange={e=>setAdvancedAllyId(e.target.value)}>
+         <option value="">Selecionar automaticamente</option>
+         {activeUnits.filter(u=>u.id!==selectedUnit.id).map(u=>
+          <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+       </label>
+       {legalKind==='pincer'&&<label>Dados de Guerra do primeiro comando
+        <input type="number" min={1} max={Math.max(1,commander.warfare-1)}
+         value={pincerFirstWarfare}
+         onChange={e=>setPincerFirstWarfare(Number(e.target.value))}/>
+       </label>}
+      </>}
+      {legalKind==='climb-walls'&&<label>Dificuldade de escalada (Narrador)
+       <input type="number" min={3} max={30} value={wallDifficulty}
+        onChange={e=>setWallDifficulty(Number(e.target.value))}/>
+      </label>}
       {legalKind==='scorched-earth'&&<label>Domínio afetado (apenas prévia)
        <input value={scorchedDomain} placeholder="Nome ou identificador do domínio"
         onChange={e=>setScorchedDomain(e.target.value)}/>
