@@ -12,6 +12,7 @@ import {validateWarHeroes,heroUnitDefenseBonus,heroUnitBonusDice,applyDamageToEm
 import type {WarHero} from './heroes';
 import {personalPosition,spendPersonalAction} from './personal-combat';
 import {queuePersonalDamage} from './personal-injuries';
+import {settleWarSquadLosses} from './squads';
 
 const SIDES:readonly WarSide[]=['attacker','defender'];
 const opposite=(side:WarSide):WarSide=>side==='attacker'?'defender':'attacker';
@@ -120,7 +121,7 @@ export function createWarBattle(input:{
   round:1,phase:(input.siege?.length??0)>0?'siege':(input.heroes?.length?'heroes-first':'orders'),
   first:'defender',turn:'defender',units,commanders,
   heroes:(input.heroes??[]).map(h=>({...h,position:{...h.position},usedActions:0})),
-  manualMitigation:input.manualMitigation??false,
+  manualMitigation:input.manualMitigation??false,squads:[],
   siege:[...(input.siege??[])],siegeCompleted:{attacker:false,defender:false},
   tiles:[...(input.tiles??[])],weather:input.weather??'clear',visibility:input.visibility??'clear',
   advancedFormations:input.advancedFormations??false,
@@ -672,11 +673,17 @@ export function issueWarSurrender(battle:WarBattle,input:{commanderId:string}):W
 /** Passos seis/oito: conclui a janela de cinco rodadas dos personagens. */
 export function completeWarHeroPhase(battle:WarBattle):WarBattle{
  if(battle.pendingPersonalDamage)throw new Error('Resolva o dano pessoal pendente antes de avançar.');
- if(battle.phase==='heroes-first')
-  return log({...battle,phase:'orders',personalInitiative:undefined,heroes:battle.heroes.map(h=>({...h,usedActions:0,minorActionsUsed:0,attackedThisTurn:false}))},
+ if(battle.phase!=='heroes-first'&&battle.phase!=='heroes-second')
+  throw new Error('Esta não é uma fase de heróis.');
+ const settled=settleWarSquadLosses(battle,(state,unit,squad)=>
+  applyDamage(state,unit,1,'Baixas do esquadrão '+squad));
+ const resolved=checkVictory(settled);
+ if(resolved.phase==='finished')return resolved;
+ if(resolved.phase==='heroes-first')
+  return log({...resolved,phase:'orders',personalInitiative:undefined,heroes:resolved.heroes.map(h=>({...h,usedActions:0,minorActionsUsed:0,attackedThisTurn:false}))},
    'hero-phase','Passo seis concluído: ordens dos exércitos.',null);
- if(battle.phase==='heroes-second'){
-  const ready:WarBattle={...battle,phase:'orders',heroSecondCompletedRound:battle.round};
+ if(resolved.phase==='heroes-second'){
+  const ready:WarBattle={...resolved,phase:'orders',heroSecondCompletedRound:resolved.round};
   return advanceWarRound(log(ready,'hero-phase','Passo oito concluído: ordens contínuas.',null));
  }
  throw new Error('Esta não é uma fase de heróis.');
