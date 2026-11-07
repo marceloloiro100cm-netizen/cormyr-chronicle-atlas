@@ -1,9 +1,9 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
-import {cleanup,fireEvent,render,screen} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,within} from '@testing-library/react';
 import {BattleGotGame} from '@/components/battle/BattleGotGame';
 import {decodeGotLabSave,GOT_LAB_SAVE_KEY} from '@/lib/battle/got/lab-save';
 
-afterEach(()=>{cleanup();window.localStorage.clear();});
+afterEach(()=>{cleanup();vi.restoreAllMocks();window.localStorage.clear();});
 describe('Aceitação da interface: preparar, posicionar, salvar e retomar',()=>{
  it('abre batalha de 14 tropas, salva estado e retoma no mesmo navegador',()=>{
   render(<BattleGotGame onBack={vi.fn()}/>);
@@ -19,6 +19,7 @@ describe('Aceitação da interface: preparar, posicionar, salvar e retomar',()=>
   expect(json).not.toBeNull();
   const restored=decodeGotLabSave(json!);
   expect(restored.units).toHaveLength(14);
+  vi.spyOn(window,'confirm').mockReturnValue(true);
   fireEvent.click(screen.getByRole('button',{name:'Retomar simulação salva'}));
   expect(screen.getByText(/Simulação retomada/)).toBeInTheDocument();
  });
