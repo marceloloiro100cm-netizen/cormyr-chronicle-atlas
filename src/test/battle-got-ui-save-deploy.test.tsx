@@ -30,6 +30,7 @@ describe('Aceitação da interface: preparar, posicionar, salvar e retomar',()=>
   fireEvent.click(screen.getByRole('button',{name:/Iniciar simulação pelo livro/}));
   const map=screen.getByRole('region',{name:/Mapa em quadrados/});
   expect(map).toBeInTheDocument();
-  expect(screen.getByText(/Vanguarda atacante \(6,3/)).toBeInTheDocument();
+  expect(within(map).getByRole('button',{name:/Quadrado 6,3.*Vanguarda atacante/}))
+   .toBeInTheDocument();
  });
 });
