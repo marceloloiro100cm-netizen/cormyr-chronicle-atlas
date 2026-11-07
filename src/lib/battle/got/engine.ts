@@ -846,10 +846,16 @@ export function issueWarOrder(battle:WarBattle,input:{
  }
  if(passed){
   const updated=next.units.find(u=>u.id===unit.id)!;
-  const issued={...updated,standing:{...input.order},activated:true};
-  next=replaceUnit(next,issued);
+  const revealing=['attack','charge','move','aggressive-retreat','split-attack',
+   'lightning-attack','trample','envelop','pincer','hammer-anvil','suppress',
+   'probe','push','ambush','fire-special','breach-gate','climb-walls','sabotage'];
+  const issued={...updated,standing:{...input.order},activated:true,
+   ...(revealing.includes(input.order.kind)?{hidden:false}:{})};
+  // A emboscada precisa preservar o estado oculto até seu ataque especial.
+  const executing=input.order.kind==='ambush'?{...issued,hidden:updated.hidden}:issued;
+  next=replaceUnit(next,executing);
   // Instruções que não geram ação recorrente encerram a sua execução neste momento.
-  try{next=perform(next,issued,input.order,degrees);}
+  try{next=perform(next,executing,input.order,degrees);}
   catch(e){throw e;}
   const latest=next.units.find(u=>u.id===unit.id)!;
   const continuous=(['attack','charge','defend','retreat','aggressive-retreat','ready','push'].includes(input.order.kind));
@@ -885,6 +891,8 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
  const hero=input.targetHeroId?battle.heroes.find(h=>
   h.id===input.targetHeroId&&h.side!==commander.side&&h.active&&!h.unitId):undefined;
  if(!target&&!fort&&!hero)throw new Error('Alvo de cerco inimigo indisponível.');
+ if(target?.hidden)
+  throw new Error('Unidade escondida ainda não foi revelada para a artilharia.');
  if(hero&&(input.weaponIds.length!==1||
   battle.siege.find(w=>w.id===input.weaponIds[0])?.kind!=='scorpion'))
   throw new Error('Apenas um escorpião pode alvejar personagem.');
@@ -924,9 +932,18 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
   const currentTarget=target?next.units.find(u=>u.id===target.id):undefined;
   const currentFort=fort?next.fortifications.find(f=>f.id===fort.id):undefined;
   const currentHero=hero?next.heroes.find(h=>h.id===hero.id&&h.active):undefined;
-  if(!currentTarget&&!currentFort&&!currentHero)break;
-  if(currentFort&&(currentFort.breached||currentFort.structuralHealth===0))break;
-  if(currentTarget&&!onBoard(currentTarget))break;
+  // As máquinas de uma salva são comprometidas simultaneamente.
+  // Se o primeiro disparo destruir o alvo, as demais ainda gastam o turno
+  // de fogo e recarga; não são preservadas para uma salva futura gratuita.
+  if((currentFort&&(currentFort.breached||currentFort.structuralHealth===0))||
+   (currentTarget&&!onBoard(currentTarget))||
+   (!currentTarget&&!currentFort&&!currentHero)){
+   next={...next,siege:next.siege.map(w=>w.id===weapon.id?
+    {...w,lastFiredRound:next.round}:w)};
+   next=log(next,'siege-spent',weapon.name+
+    ' já integrava a salva; o alvo foi neutralizado antes da resolução individual.',commander.side);
+   continue;
+  }
   const defenderFort=currentTarget?fortForUnit(next.fortifications,currentTarget):null;
   const difficulty=currentTarget?
    currentTarget.defense+(defenderFort?fortDefense(defenderFort):0):
