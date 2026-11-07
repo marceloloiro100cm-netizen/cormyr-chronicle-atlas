@@ -21,9 +21,14 @@ describe('Capítulo 10 — exércitos-modelo com reforços configuráveis',()=>{
    u.position.x>=0&&u.position.x<12)).toBe(true);
  });
  it('rejeita quantidades acima da capacidade do mapa de laboratório',()=>{
-  expect(()=>modelWarLabDeployments(6)).toThrow(/0 a 5/);
-  expect(()=>modelWarLabDeployments(-1)).toThrow(/0 a 5/);
-  expect(()=>modelWarLabDeployments(1.5)).toThrow(/0 a 5/);
+  const expanded=modelWarLabDeployments(12);
+  expect(expanded).toHaveLength(28);
+  expect(expanded.filter(u=>u.side==='attacker')).toHaveLength(14);
+  expect(expanded.filter(u=>u.side==='defender')).toHaveLength(14);
+  expect(new Set(expanded.map(u=>u.position.x+':'+u.position.y)).size).toBe(28);
+  expect(()=>modelWarLabDeployments(13)).toThrow(/0 a 12/);
+  expect(()=>modelWarLabDeployments(-1)).toThrow(/0 a 12/);
+  expect(()=>modelWarLabDeployments(1.5)).toThrow(/0 a 12/);
  });
  it('constrói 14 unidades ativas sem alterar modelos ou recursos reais',()=>{
   const set=modelWarLabDeployments(5);

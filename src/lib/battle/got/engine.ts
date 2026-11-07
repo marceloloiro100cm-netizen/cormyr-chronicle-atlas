@@ -1,6 +1,6 @@
 import {criticalFailure,degreesOfSuccess,rollDice,seedFromText} from './dice';
 import type {WarBattle,WarCommander,WarCondition,WarEvent,WarOrder,WarOrderResult,WarPosition,WarSide,WarUnit} from './types';
-import {terrainAt,terrainEffect,movementSlow,visibilityPenalty,weatherAttackModifier,terrainHighGround} from './terrain';
+import {terrainAt,terrainEffect,movementSlow,visibilityPenalty,weatherAttackModifier,terrainHighGround,terrainCoverBonus,terrainMoveCost} from './terrain';
 import type {WarTerrainTile,WarWeather,WarVisibility} from './terrain';
 import {WAR_FORMATIONS,formationAllowed,formationMovement,angleAttackBonus,attackAngle} from './formations';
 import {WAR_SIEGE_CATALOG,warSiegeDamage} from './siege';
@@ -161,7 +161,7 @@ function movePath(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,ma
    if(effect.blocked||(effect.water&&!unit.naval)||(unit.mounted&&effect.noCavalry))continue;
    if(unit.naval&&!effect.naval&&tile.terrain!=='coast')continue;
    if(sprint&&(directX!==0&&step.y!==unit.position.y||directY!==0&&step.x!==unit.position.x))continue;
-   const movement=1+movementSlow(tile,battle.visibility,battle.weather);
+   const movement=terrainMoveCost(tile,battle.visibility,battle.weather);
    const nextCost=cost+movement;
    if(nextCost>maxCells||(seen.get(id)??Infinity)<=nextCost)continue;
    const candidate=[...path,step];
@@ -176,12 +176,38 @@ function movementCells(unit:WarUnit,sprint:boolean):number{
  const equipped=warFieldMovementMetres(unit,sprint?base*4:base);
  return Math.floor(equipped/10);
 }
-function move(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,limit?:number):WarBattle{
+function availableMovementMetres(battle:WarBattle,unit:WarUnit,sprint:boolean):number{
  const base=movementCells(unit,sprint)*10;
- const effective=battle.advancedFormations&&unit.formation?
+ return battle.advancedFormations&&unit.formation?
   formationMovement(base,unit.formation):base;
- const max=limit??Math.floor(effective/10);
+}
+export type WarMovementPreview=Readonly<{
+ legal:boolean;path:readonly WarPosition[];distanceMetres:number;
+ costMetres:number;budgetMetres:number;reason:string;
+}>;
+/** Prévia sem dados ou mutação: exatamente a rota usada pela ordem Mover. */
+export function previewWarMovement(
+ battle:WarBattle,unitId:string,to:WarPosition,sprint=false,
+):WarMovementPreview{
+ const unit=battle.units.find(u=>u.id===unitId);
+ if(!unit||!alive(unit))return {legal:false,path:[],distanceMetres:0,
+  costMetres:0,budgetMetres:0,reason:'Unidade não está apta para marchar.'};
+ const budgetMetres=availableMovementMetres(battle,unit,sprint);
+ try{
+  const path=movePath(battle,unit,to,sprint,Math.floor(budgetMetres/10));
+  const costMetres=path.reduce((sum,p)=>sum+
+   terrainMoveCost(terrainAt(battle.tiles,p),battle.visibility,battle.weather)*10,0);
+  return {legal:true,path,distanceMetres:path.length*10,costMetres,budgetMetres,
+   reason:path.length?'Rota disponível.':'Unidade já ocupa este quadrado.'};
+ }catch(e){
+  return {legal:false,path:[],distanceMetres:0,costMetres:0,budgetMetres,
+   reason:e instanceof Error?e.message:'Destino indisponível.'};
+ }
+}
+function move(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,limit?:number):WarBattle{
+ const max=limit??Math.floor(availableMovementMetres(battle,unit,sprint)/10);
  const path=movePath(battle,unit,to,sprint,max);
+ if(!path.length)return log(battle,'move-still',unit.name+' permaneceu na mesma posição.',unit.side);
  let next=battle;
  const final=path.at(-1)??unit.position;
  const holder=unit.envelopedBy?next.units.find(u=>u.id===unit.envelopedBy&&alive(u)):null;
@@ -196,7 +222,7 @@ function move(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,limit?
  }
  const moving=next.units.find(u=>u.id===unit.id)!;
  const broken=Boolean(holder&&distance(final,holder.position)>1);
- next=replaceUnit(next,{...moving,position:final,
+ next=replaceUnit(next,{...moving,position:final,hidden:false,
   ...(broken?{envelopedBy:undefined}:{})});
  return triggerReadyReactions(log(next,'move',unit.name+' moveu '+path.length*10+
   ' m'+(sprint?' em corrida':'')+'.',unit.side),unit.id,'enemy-adjacent');
@@ -229,6 +255,8 @@ function applyDamage(battle:WarBattle,target:WarUnit,amount:number,attackerName:
    return u;
   })};
  }
+ // Dano efetivo revela a posição de uma unidade previamente escondida.
+ if(updated.hidden)withUnit=replaceUnit(withUnit,{...updated,hidden:false});
  const withHeroes=applyDamageToEmbeddedHeroes(withUnit,target,updated,amount);
  const resolved=log(withHeroes,'damage',text,target.side);
  const afterAccident=resolveCarriedWildfireRisk(resolved,target.id,applyDamage);
@@ -370,16 +398,23 @@ function attackIndividualFromWarUnit(
 }
 function chooseNearest(battle:WarBattle,unit:WarUnit,ranged:boolean):WarUnit|null{
  const max=ranged?(unit.range==='long'?20:unit.range==='short'?2:0):1;
- return battle.units.filter(u=>u.side!==unit.side&&onBoard(u)&&distance(u.position,unit.position)<=max)
+ return battle.units.filter(u=>u.side!==unit.side&&onBoard(u)&&
+   (!u.hidden||distance(u.position,unit.position)<=1)&&distance(u.position,unit.position)<=max)
    .sort((a,b)=>distance(a.position,unit.position)-distance(b.position,unit.position)||a.id.localeCompare(b.id))[0]??null;
 }
 function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  options:{charge?:boolean;penalty?:number;counterCharge?:boolean;
-  testRank?:number;bonusDice?:number;damageBonus?:number}={}):WarBattle{
+  testRank?:number;bonusDice?:number;damageBonus?:number;
+  /** Pinça: resolve o acerto sem modificar o alvo até ambos atacarem. */
+  deferDamage?:(damage:number)=>void;}={}):WarBattle{
  if(!alive(attacker))throw new Error('Esta unidade não pode atacar.');
  if(warFieldForbidsAttack(attacker))
   throw new Error('O equipamento especial impede ataques enquanto estiver transportado.');
  if(!onBoard(target)||target.side===attacker.side)throw new Error('Alvo indisponível.');
+ // Uma tropa escondida só pode ser escolhida por quem já a alcançou.
+ // A resolução de detecção a distância continua reservada ao Narrador.
+ if(target.hidden&&distance(attacker.position,target.position)>1)
+  throw new Error('Unidade escondida: é preciso descobri-la antes de atacar.');
  const max=ranged?(attacker.range==='long'?20:attacker.range==='short'?2:0):1;
  if(!max||distance(attacker.position,target.position)>max||(!ranged&&distance(attacker.position,target.position)===0))
   throw new Error('O alvo não está no alcance.');
@@ -403,7 +438,8 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
    if(ownAngle==='rear')throw new Error('Uma unidade não pode atacar pela própria retaguarda.');
    if(ownAngle==='flank')extraPenalty+=1;
    const angle=attackAngle(attacker.position,target.position,target.facing??'north');
-   const closeEnemies=battle.units.filter(u=>u.side===attacker.side&&onBoard(u)&&distance(u.position,target.position)===1).length;
+   const closeEnemies=battle.units.filter(u=>u.side===attacker.side&&alive(u)&&
+    distance(u.position,target.position)===1).length;
    const edge=angleAttackBonus(angle,closeEnemies>=2,enemy.flankImmunity);
    bonus+=edge.bonusDice;testDice+=edge.testDice;
   }
@@ -415,7 +451,7 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  extraPenalty+=visibilityPenalty(battle.visibility,battle.weather,ranged);
  const roll=rollDice(battle.seed,Math.min(15,Math.max(1,(options.testRank??score)+testDice)),bonus,extraPenalty);
  let next:{seed:number}&WarBattle={...battle,seed:roll.nextSeed};
- const cover=target.defendRoll!==null?terrainEffect(targetTile).cover:0;
+ const cover=terrainCoverBonus(targetTile,ranged,target.defendRoll!==null);
  const fort=fortForUnit(battle.fortifications,target);
  const fortBonus=fort?fortDefense(fort):0;
  const probeBonus=target.probeDefenseRound===battle.round?2:0;
@@ -431,6 +467,10 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
    roll:roll.dice,total:adjustedRoll,difficulty:defense,degrees,
   });
  if(!degrees)return next;
+ if(options.deferDamage){
+  options.deferDamage(damage);
+  return next;
+ }
  const linkedId=ranged?(target.envelopedBy??target.envelopingTargetId):undefined;
  next=applyDamage(next,target,damage,attacker.name);
  if(linkedId){
@@ -486,7 +526,7 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
  if(!foes.length)return battle;
  const nearest=foes.sort((a,b)=>distance(a.position,unit.position)-distance(b.position,unit.position))[0]!;
  const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
- let pos={...unit.position},escaped=false;
+ let pos={...unit.position},escaped=false,spent=0;
  for(let i=0;i<steps;i++){
   const occupied=new Set(battle.units.filter(u=>u.id!==unit.id&&onBoard(u)).map(u=>u.position.x+':'+u.position.y));
   const candidates=dirs.map(([dx,dy])=>({x:pos.x+dx!,y:pos.y+dy!}))
@@ -494,12 +534,23 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
    .sort((a,b)=>distance(b,nearest.position)-distance(a,nearest.position));
   const outside=candidates.find(p=>!inBounds(battle,p));
   if(outside){escaped=true;break;}
-  const allowed=candidates.filter(p=>inBounds(battle,p));
+  const allowed=candidates.filter(p=>{
+   if(!inBounds(battle,p))return false;
+   const tile=terrainAt(battle.tiles,p),effect=terrainEffect(tile);
+   return !effect.blocked&&!(effect.water&&!unit.naval)&&
+    !(unit.mounted&&effect.noCavalry)&&
+    (!unit.naval||effect.naval||tile.terrain==='coast')&&
+    spent+1+movementSlow(tile,battle.visibility,battle.weather)<=steps;
+  });
   if(!allowed.length)break;
+  // Retiradas não atravessam paredes, rios ou montanhas proibidas.
   pos=allowed[0]!;
+  spent+=1+movementSlow(terrainAt(battle.tiles,pos),battle.visibility,battle.weather);
+  if(spent>=steps)break;
  }
  const updated={...unit,position:pos,condition:escaped?'escaped' as WarCondition:unit.condition,
-  standing:escaped?null:unit.standing};
+  standing:escaped?null:unit.standing,
+  ...(escaped?{}:{hidden:false})};
  return log(replaceUnit(battle,updated),rout?'rout':'retreat',
   unit.name+(escaped?' saiu do campo.':' retirou-se até '+pos.x+','+pos.y+'.'),unit.side);
 }
@@ -717,14 +768,27 @@ export function issueWarPincer(battle:WarBattle,input:{
    degrees:passed?Math.min(degreesOfSuccess(one.total,d1),
     degreesOfSuccess(two.total,d2)):0});
  if(passed){
+  // As duas rolagens veem a mesma condição e Defesa do alvo.
+  // O dano individual já desconta o VA, mas só modifica Saúde após
+  // ambas as rolagens: o primeiro golpe não cancela o segundo.
+  const pending:{name:string;damage:number}[]=[];
   for(const id of [first.id,second.id]){
    const attacker=next.units.find(u=>u.id===id)!;
    const target=next.units.find(u=>u.id===enemy.id)!;
-   if(!alive(attacker)||!alive(target))break;
+   if(!alive(attacker)||!alive(target))
+    throw new Error('Pinça interrompida: participantes não estão mais ativos.');
    next=attack(next,attacker,target,false,{
     testRank:Math.min(15,attacker.ability.fighting+1),
+    deferDamage:(damage)=>pending.push({name:attacker.name,damage}),
    });
   }
+  const damage=pending.reduce((sum,p)=>sum+p.damage,0);
+  const original=next.units.find(u=>u.id===enemy.id)!;
+  if(damage>0)next=applyDamage(next,original,damage,
+   first.name+' e '+second.name);
+  next=log(next,'pincer-simultaneous',first.name+' e '+second.name+
+   ' resolveram dois ataques antes de aplicar '+damage+
+   ' dano total a '+enemy.name+'.',commander.side);
  }
  next=checkVictory({...next,turn:turnAfter(next,commander.side)});
  return {battle:next,passed,
@@ -831,10 +895,16 @@ export function issueWarOrder(battle:WarBattle,input:{
  }
  if(passed){
   const updated=next.units.find(u=>u.id===unit.id)!;
-  const issued={...updated,standing:{...input.order},activated:true};
-  next=replaceUnit(next,issued);
+  const revealing=['attack','charge','move','aggressive-retreat','split-attack',
+   'lightning-attack','trample','envelop','pincer','hammer-anvil','suppress',
+   'probe','push','ambush','fire-special','breach-gate','climb-walls','sabotage'];
+  const issued={...updated,standing:{...input.order},activated:true,
+   ...(revealing.includes(input.order.kind)?{hidden:false}:{})};
+  // A emboscada precisa preservar o estado oculto até seu ataque especial.
+  const executing=input.order.kind==='ambush'?{...issued,hidden:updated.hidden??false}:issued;
+  next=replaceUnit(next,executing);
   // Instruções que não geram ação recorrente encerram a sua execução neste momento.
-  try{next=perform(next,issued,input.order,degrees);}
+  try{next=perform(next,executing,input.order,degrees);}
   catch(e){throw e;}
   const latest=next.units.find(u=>u.id===unit.id)!;
   const continuous=(['attack','charge','defend','retreat','aggressive-retreat','ready','push'].includes(input.order.kind));
@@ -870,6 +940,8 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
  const hero=input.targetHeroId?battle.heroes.find(h=>
   h.id===input.targetHeroId&&h.side!==commander.side&&h.active&&!h.unitId):undefined;
  if(!target&&!fort&&!hero)throw new Error('Alvo de cerco inimigo indisponível.');
+ if(target?.hidden)
+  throw new Error('Unidade escondida ainda não foi revelada para a artilharia.');
  if(hero&&(input.weaponIds.length!==1||
   battle.siege.find(w=>w.id===input.weaponIds[0])?.kind!=='scorpion'))
   throw new Error('Apenas um escorpião pode alvejar personagem.');
@@ -909,9 +981,18 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
   const currentTarget=target?next.units.find(u=>u.id===target.id):undefined;
   const currentFort=fort?next.fortifications.find(f=>f.id===fort.id):undefined;
   const currentHero=hero?next.heroes.find(h=>h.id===hero.id&&h.active):undefined;
-  if(!currentTarget&&!currentFort&&!currentHero)break;
-  if(currentFort&&(currentFort.breached||currentFort.structuralHealth===0))break;
-  if(currentTarget&&!onBoard(currentTarget))break;
+  // As máquinas de uma salva são comprometidas simultaneamente.
+  // Se o primeiro disparo destruir o alvo, as demais ainda gastam o turno
+  // de fogo e recarga; não são preservadas para uma salva futura gratuita.
+  if((currentFort&&(currentFort.breached||currentFort.structuralHealth===0))||
+   (currentTarget&&!onBoard(currentTarget))||
+   (!currentTarget&&!currentFort&&!currentHero)){
+   next={...next,siege:next.siege.map(w=>w.id===weapon.id?
+    {...w,lastFiredRound:next.round}:w)};
+   next=log(next,'siege-spent',weapon.name+
+    ' já integrava a salva; o alvo foi neutralizado antes da resolução individual.',commander.side);
+   continue;
+  }
   const defenderFort=currentTarget?fortForUnit(next.fortifications,currentTarget):null;
   const difficulty=currentTarget?
    currentTarget.defense+(defenderFort?fortDefense(defenderFort):0):
@@ -1027,24 +1108,29 @@ export function advanceWarRound(battle:WarBattle):WarBattle{
    !u.actedThisRound&&!u.criticalThisRound&&alive(u))){
    const order=base.standing!;
    try{
-    if(['attack','charge','aggressive-retreat'].includes(order.kind)){
+    // A lista de ordens foi obtida no início da fase: após cada ataque,
+   // a unidade seguinte pode ter sido derrotada, debandado ou movido.
+   // Nunca reutilizar uma ficha antiga para executar ação posterior.
+   const current=next.units.find(u=>u.id===base.id);
+   if(!current||!alive(current)||current.actedThisRound||current.criticalThisRound)continue;
+   if(['attack','charge','aggressive-retreat'].includes(order.kind)){
      const ranged=Boolean(order.ranged);
-     const target=chooseNearest(next,base,ranged);
-     if(target)next=attack(next,base,target,ranged);
+     const target=chooseNearest(next,current,ranged);
+     if(target)next=attack(next,current,target,ranged);
     }else if(order.kind==='envelop'){
-     const target=base.envelopingTargetId?
-      next.units.find(u=>u.id===base.envelopingTargetId):null;
-     if(target&&alive(target)&&distance(base.position,target.position)===1)
-      next=attack(next,base,target,false);
+     const target=current.envelopingTargetId?
+      next.units.find(u=>u.id===current.envelopingTargetId):null;
+     if(target&&alive(target)&&distance(current.position,target.position)===1)
+      next=attack(next,current,target,false);
     }else if(order.kind==='push'){
-     const target=chooseNearest(next,base,false);
+     const target=chooseNearest(next,current,false);
      if(target){
-      const pushed=executeAdvancedWarOrder(next,base,{kind:'push',targetId:target.id},
+      const pushed=executeAdvancedWarOrder(next,current,{kind:'push',targetId:target.id},
        {attack,applyDamage});
       if(pushed)next=pushed;
      }
-    }else if(order.kind==='defend')next=perform(next,base,{kind:'defend'},1);
-    else if(order.kind==='retreat')next=retreatStep(next,base,movementCells(base,false),false);
+    }else if(order.kind==='defend')next=perform(next,current,{kind:'defend'},1);
+    else if(order.kind==='retreat')next=retreatStep(next,current,movementCells(current,false),false);
    }catch{
     next=log(next,'standing-skip',base.name+' não pôde executar a ordem contínua.',base.side);
    }

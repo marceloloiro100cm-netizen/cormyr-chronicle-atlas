@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
-import {createWarBattle,issueWarOrder,issueWarPincer,advanceWarRound,warUnitSummary,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
+import {createWarBattle,issueWarOrder,issueWarPincer,advanceWarRound,warUnitSummary,previewWarMovement,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
 import {beginPersonalInitiative,personalTurnHeroId,delayPersonalTurn} from '@/lib/battle/got/personal-initiative';
 import {resolvePendingPersonalDamage} from '@/lib/battle/got/personal-injuries';
@@ -30,7 +30,7 @@ import type {WarFieldEquipmentId} from '@/lib/battle/got/field-equipment';
 import type {WarResourceScenario} from '@/lib/battle/got/aftermath-resources';
 import type {WarBattle,WarOrder,WarOrderKind,WarUnit,WarSide,WarPosition} from '@/lib/battle/got/types';
 import type {WarWeather,WarVisibility,WarTerrainId,WarTerrainTile} from '@/lib/battle/got/terrain';
-import {WAR_TERRAIN} from '@/lib/battle/got/terrain';
+import {WAR_TERRAIN,terrainAt,terrainEffect,terrainCoverBonus,terrainMoveCost,visibilityPenalty} from '@/lib/battle/got/terrain';
 import type {WarFormation,WarFacing} from '@/lib/battle/got/formations';
 import {WAR_FORMATIONS} from '@/lib/battle/got/formations';
 import {BattleGotSourcePicker} from './BattleGotSourcePicker';
@@ -83,6 +83,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [visibility,setVisibility]=useState<WarVisibility>('clear');
  const [advanced,setAdvanced]=useState(false);
  const [strictSightline,setStrictSightline]=useState(false);
+ const [hiddenModelSide,setHiddenModelSide]=useState<'none'|WarSide>('none');
  const [tiles,setTiles]=useState<WarTerrainTile[]>([]);
  const [terrainPaint,setTerrainPaint]=useState<WarTerrainId>('plain');
  const [formation,setFormation]=useState<WarFormation>('battle');
@@ -157,6 +158,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [sprint,setSprint]=useState(false);
  const [coord,setCoord]=useState({x:4,y:3});
  const [error,setError]=useState('');
+ const [mapExpanded,setMapExpanded]=useState(false);
+ const [eventFilter,setEventFilter]=useState<'all'|'attacker'|'defender'|'dice'>('all');
+ const [aftermathSide,setAftermathSide]=useState<'all'|WarSide>('all');
  const start=()=>{
   try{
    const prepared=positionedWarLabDeployments(extraUnitsPerSide,deploymentPositions);
@@ -168,8 +172,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     const model=imported?{...imported,side:row.side,position:row.position}:
      modelWarUnit({...row,training,
       typeId:siegeEnabled&&row.id==='attacker-2'?'engineers':types[row.id]??'infantry'});
-    return row.id==='attacker-1'&&modelFieldEquipment!=='none'?
+    const equipped=row.id==='attacker-1'&&modelFieldEquipment!=='none'?
      {...model,fieldEquipment:modelFieldEquipment}:model;
+    // Opção exclusiva da simulação, não altera fichas importadas.
+    return hiddenModelSide===row.side&&row.id===row.side+'-1'?
+     {...equipped,hidden:true}:equipped;
    });
    const engineer=units.find(u=>u.side==='attacker'&&u.typeId==='engineers');
    if(siegeEnabled&&!engineer)throw new Error('Cerco exige unidade de engenheiros.');
@@ -461,11 +468,20 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
   }catch{setError('Não foi possível apagar a cópia local.');}
  };
  const preparedDeployments=modelWarLabDeployments(extraUnitsPerSide);
+ const aftermath=battle?.phase==='finished'?previewWarAftermath(battle):null;
  const projectedResources=battle?.phase==='finished'?
   previewWarResourceConsequences(battle,resourceScenario.occupiedDomain?
    resourceScenario:{...resourceScenario,capturedLandValue:0,
     survivingFortDefenseValue:0,transferredWealthInvestments:0,
     garrisonHeldForThreeMonths:false}):null;
+ const movePreview=battle&&selectedUnit&&battle.phase==='orders'?
+  previewWarMovement(battle,selectedUnit.id,coord,sprint):null;
+ const pathSquares=new Set(legalKind==='move'&&movePreview?.legal?
+  movePreview.path.map(p=>p.x+':'+p.y):[]);
+ const inspectedTile=battle?terrainAt(battle.tiles,coord):null;
+ const inspectedEffect=inspectedTile?terrainEffect(inspectedTile):null;
+ const battleEvents=battle?.events.filter(e=>eventFilter==='all'||
+  (eventFilter==='dice'?Boolean(e.roll):e.side===eventFilter)).slice(-30)??[];
  return <section className="battle-got" aria-label="Batalha pelas regras de Guerra dos Tronos RPG">
   <div className="battle-heading">
    <div><h2>Game of Thrones · regras do livro</h2>
@@ -511,7 +527,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    <label>Unidades adicionais por lado (tropas-modelo, sem modificar Casas)
     <select value={extraUnitsPerSide}
      onChange={e=>setExtraUnitsPerSide(Number(e.target.value))}>
-     {[0,1,2,3,4,5].map(n=><option key={n} value={n}>
+     {Array.from({length:13},(_,n)=>n).map(n=><option key={n} value={n}>
       {n===0?'Duas unidades por lado':(2+n)+' unidades por lado · '+(4+2*n)+' totais'}
      </option>)}
     </select>
@@ -634,7 +650,15 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     onChange={e=>setStrictSightline(e.target.checked)}/>
     Bloquear tiros através de muralhas e montanhas (adaptação digital opcional)
    </label>
-   <h4>Terreno e posicionamento inicial</h4>
+   <label>Emboscada de treinamento (primeira unidade escondida)
+     <select value={hiddenModelSide}
+      onChange={e=>setHiddenModelSide(e.target.value as 'none'|WarSide)}>
+      <option value="none">Nenhuma unidade escondida</option>
+      <option value="attacker">Atacante · unidade 1</option>
+      <option value="defender">Defensor · unidade 1</option>
+     </select>
+    </label>
+    <h4>Terreno e posicionamento inicial</h4>
    <div className="got-config-grid">
     <label>Editar mapa
      <select value={deploymentMode}
@@ -669,7 +693,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       const p=deploymentPositions[u.id]??u.position;
       return p.x===x&&p.y===y;
      });
-     return <button type="button" key={i}
+     return <button type="button" key={i} data-terrain={terrain}
       className={'got-cell'+(terrain!=='plain'?' got-terrain':'')+(occupant?' got-deployed '+occupant.side:'')}
       title={occupant?.name??terrain}
       aria-label={'Quadrado '+x+','+y+' · '+(occupant?.name??terrain)}
@@ -1077,9 +1101,14 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       <Button variant="outline" onClick={heroFinish} disabled={Boolean(battle.pendingPersonalDamage)}>Concluir cinco rodadas · avançar</Button>
      </div>
     </section>}
-   <div className="got-columns">
+   <div className={'got-columns'+(mapExpanded?' got-wide':'')}>
     <section className="battle-surface got-map-panel" aria-label="Mapa em quadrados">
-     <h3>Tabuleiro · 10 metros por quadrado</h3>
+     <div className="got-map-header">
+      <h3>Tabuleiro · 10 metros por quadrado</h3>
+      <Button variant="outline" onClick={()=>setMapExpanded(x=>!x)}>
+       {mapExpanded?'Restaurar painel lado a lado':'Ampliar o mapa de batalha'}
+      </Button>
+     </div>
      <p>Clima: {battle.weather} · Visibilidade: {battle.visibility} · Formações avançadas: {battle.advancedFormations?'sim':'não'}</p>
      <p className="battle-note">Terreno do treino: terreno selecionado é destacado no mapa.</p>
      <div className="got-map" style={{gridTemplateColumns:'repeat('+battle.width+',minmax(0,1fr))'}}>
@@ -1090,7 +1119,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        const isDestination=coord.x===x&&coord.y===y;
        const terrain=battle.tiles.find(t=>t.x===x&&t.y===y)?.terrain??'plain';
        return <button key={i} type="button"
-        className={'got-cell'+(occupant?' occupied '+occupant.side:'')+(isDestination?' destination':'')+(terrain!=='plain'?' got-terrain':'')}
+        data-terrain={terrain}
+        className={'got-cell'+(occupant?' occupied '+occupant.side:'')+(isDestination?' destination':'')+(pathSquares.has(x+':'+y)?' got-route':'')+(terrain!=='plain'?' got-terrain':'')}
         aria-label={'Quadrado '+x+','+y+' · '+terrain+(occupant?' · '+occupant.name+' · '+CONDITION[occupant.condition]:'')}
         title={occupant?.name??terrain+' · '+x+','+y}
         onClick={()=>{
@@ -1105,6 +1135,18 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        </button>;
       })}
      </div>
+     {inspectedTile&&inspectedEffect&&<div className="got-map-inspector" aria-live="polite">
+      <strong>Quadrado {coord.x},{coord.y} · {inspectedTile.terrain}</strong>
+      <span>Custo: {terrainMoveCost(inspectedTile,battle.visibility,battle.weather)*10} m de marcha
+       · Cobertura contra tiros: +{terrainCoverBonus(inspectedTile,true,false)} Defesa
+       · {inspectedEffect.blocked?'Bloqueado para marcha terrestre':'Terreno transitável'}</span>
+      <span>Clima/visibilidade: penalidade de {visibilityPenalty(battle.visibility,battle.weather,true)} dado(s) para Pontaria</span>
+      {legalKind==='move'&&movePreview&&<span className={movePreview.legal?'got-legal':'got-illegal'}>
+       {movePreview.legal?'Rota disponível: '+movePreview.distanceMetres+
+        ' m percorridos, '+movePreview.costMetres+' / '+movePreview.budgetMetres+
+        ' m de orçamento':'Destino indisponível: '+movePreview.reason}
+      </span>}
+     </div>}
      <p className="battle-note">Toque em um quadrado para indicar o destino ou selecionar uma tropa.
       Tropas destruídas ou fora de campo não ocupam mais quadrados.</p>
     </section>
@@ -1311,6 +1353,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       <strong>{u.name}</strong><span>{SIDE[u.side]} · {CONDITION[u.condition]}</span>
       <span>Saúde {u.health}/{u.maxHealth} · Defesa {u.defendRoll??u.defense} · VA {u.armor}</span>
       <span>Disciplina {warUnitSummary(u).discipline} · Desorganizações {u.disorganizations}</span>
+      {u.hidden&&<span>Posição oculta · disponível para emboscada</span>}
       {u.fieldEquipment&&<span>Equipamento: {WAR_FIELD_EQUIPMENT[u.fieldEquipment].label}
        {u.fieldEquipmentConsumed?' · usado/abandonado':''}</span>}
       {u.burning&&<span>Incendiada · {u.burning.damagePerRound} dano/rodada por
@@ -1323,18 +1366,63 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     <h3>Resultado pós-batalha · somente projeção</h3>
     <p className="battle-note">A tabela de sobreviventes é calculada com dados auditáveis. Nenhuma perda,
      glória ou mudança de treinamento é aplicada às fichas oficiais das Casas.</p>
-    <p>Glória proposta: Atacante {previewWarAftermath(battle).glory.attacker} ·
-     Defensor {previewWarAftermath(battle).glory.defender}.</p>
+    <p>Glória proposta: Atacante {aftermath?.glory.attacker} ·
+     Defensor {aftermath?.glory.defender}.</p>
+    {aftermath&&<div className="got-after-summary">
+     {(['attacker','defender'] as const).map(side=><div className="got-unit" key={side}>
+      <strong>{SIDE[side]} · balanço militar</strong>
+      <span>Início: {aftermath.summary[side].originalUnits} · Organizadas: {aftermath.summary[side].organized}
+       · Desorganizadas: {aftermath.summary[side].disorganized}</span>
+      <span>Debandadas/retiradas: {aftermath.summary[side].routedOrEscaped}
+       · Rendidas: {aftermath.summary[side].surrendered}
+       · Destruídas: {aftermath.summary[side].destroyedInBattle}</span>
+      <span>Proposta: {aftermath.summary[side].proposedDestroyed} destruições ·
+       {aftermath.summary[side].trainingAdvanced} melhorias ·
+       {aftermath.summary[side].trainingReduced} reduções</span>
+      <span>Glória: {aftermath.gloryBreakdown[side].victory} vitória +
+       {aftermath.gloryBreakdown[side].outnumberedBonus} desvantagem numérica +
+       {aftermath.gloryBreakdown[side].defeatConsolation} consolação =
+       {aftermath.glory[side]}</span>
+     </div>)}
+    </div>}
+    <label>Filtrar resultados das tropas
+     <select value={aftermathSide}
+      onChange={e=>setAftermathSide(e.target.value as 'all'|WarSide)}>
+      <option value="all">Ambos os exércitos</option>
+      <option value="attacker">Atacante</option>
+      <option value="defender">Defensor</option>
+     </select>
+    </label>
     <div className="got-roster">
-     {previewWarAftermath(battle).survivors.map(row=><div className="got-unit" key={row.unitId}>
+     {(aftermath?.survivors??[]).filter(row=>aftermathSide==='all'||row.side===aftermathSide).map(row=><div className="got-unit" key={row.unitId}>
       <strong>{row.unitName}</strong><span>Condição: {row.condition} · 1d6 = {row.die}
        · resultado ajustado {row.adjusted}</span>
       <span>Treinamento: {row.steps==='destroyed'?'proposta de destruição':
        row.steps===0?'inalterado':row.steps>0?'+'+row.steps+' graduação(ões)':
        row.steps+' graduação(ões)'}</span>
+      <span>Proposta: {row.training} → {row.proposedTraining} · decisão pendente do Narrador
+       {row.extraRanksAfterElite>0?' · '+row.extraRanksAfterElite+' graduação(ões) extras após Elite':''}</span>
      </div>)}
     </div>
     <h4>Recursos e domínio · proposta do passo 11</h4>
+    {Boolean(battle.scorchedPreview?.length)&&<div className="got-roster">
+     <h4>Terra Arrasada · proprietário dos domínios</h4>
+     <p className="battle-note">Sem dono declarado, perdas de recursos não são atribuídas.</p>
+     {[...new Set((battle.scorchedPreview??[]).map(row=>row.domainId))].map(domain=>
+      <label key={domain}>{domain}
+       <select value={resourceScenario.scorchedDomainOwners?.[domain]??''}
+        onChange={e=>setResourceScenario(s=>{
+         const owners={...s.scorchedDomainOwners};
+         if(!e.target.value)delete owners[domain];
+         else owners[domain]=e.target.value as WarSide;
+         return {...s,scorchedDomainOwners:owners};
+        })}>
+        <option value="">Atribuição pendente</option>
+        <option value="attacker">Atacante</option>
+        <option value="defender">Defensor</option>
+       </select>
+      </label>)}
+    </div>}
     <p className="battle-note">Aproximação digital das consequências do livro.
      Não altera saldos, posses ou a situação oficial de nenhuma Casa.</p>
     <div className="got-config-grid">
@@ -1393,11 +1481,26 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        ', resgate proposto '+h.ransomWealth+' Riqueza)').join(' · '):
       'nenhum registrado'}.</p>
      <p className="battle-note">{projectedResources.notes.join(' ')}</p>
+     {projectedResources.provisionalOccupationTransfer?
+      <p role="status" className="got-review-alert">Ocupação não consolidada: Terras e Defesa condicionais.</p>:null}
+     {projectedResources.unresolvedScorchedDomains.length>0?
+      <p role="status" className="got-review-alert">Terra Arrasada sem proprietário:
+       {projectedResources.unresolvedScorchedDomains.join(', ')}.</p>:null}
     </div>}
    </section>}
    <section className="battle-surface got-events" aria-label="Histórico de rolagens">
     <h3>Registro auditável da batalha</h3>
-    <ol>{battle.events.slice(-18).map(event=><li key={event.seq}>
+    <label>Filtrar histórico
+     <select value={eventFilter} onChange={e=>setEventFilter(e.target.value as typeof eventFilter)}>
+      <option value="all">Todas as ações</option>
+      <option value="attacker">Somente atacante</option>
+      <option value="defender">Somente defensor</option>
+      <option value="dice">Somente ações com dados</option>
+     </select>
+    </label>
+    <p className="battle-note">Mostrando as últimas {battleEvents.length} ações do filtro selecionado,
+     em ordem de resolução. O histórico integral permanece no salvamento local.</p>
+    <ol>{battleEvents.map(event=><li key={event.seq}>
      <strong>#{event.seq} · R{event.round}</strong> {event.text}
      {event.roll&&<small> · Dados [{event.roll.join(', ')}]</small>}
     </li>)}</ol>

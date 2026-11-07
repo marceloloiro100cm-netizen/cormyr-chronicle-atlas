@@ -71,3 +71,30 @@
 }
 .battle-module .got-map.got-paint .got-cell.got-deployed strong{font-size:15px}
 .battle-module .got-map.got-paint .got-cell.got-deployed small{font-size:9px;display:block}
+
+
+/* P0/P1: tactical board inspection. Text always accompanies each colour cue. */
+.battle-module .got-columns.got-wide{grid-template-columns:minmax(0,1fr)}
+.battle-module .got-columns.got-wide .got-map{max-width:1160px}
+.battle-module .got-map-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.battle-module .got-map-header h3{margin:0}
+.battle-module .got-map-inspector{display:grid;gap:5px;border:1px solid #c8a967;
+ border-radius:8px;background:#263b32;color:#fff1d6;padding:12px;font-size:14px;line-height:1.5;margin-top:9px}
+.battle-module .got-map-inspector strong{font-size:15px}
+.battle-module .got-map-inspector .got-legal{color:#c7f0cb}
+.battle-module .got-map-inspector .got-illegal{color:#ffc0b9}
+.battle-module .got-cell.got-route:not(.occupied){box-shadow:inset 0 0 0 3px #f3d688}
+.battle-module .got-cell.got-terrain[data-terrain="river"]:not(.occupied):not(.got-deployed),
+.battle-module .got-cell.got-terrain[data-terrain="small-lake"]:not(.occupied):not(.got-deployed),
+.battle-module .got-cell.got-terrain[data-terrain="large-lake"]:not(.occupied):not(.got-deployed),
+.battle-module .got-cell.got-terrain[data-terrain="coast"]:not(.occupied):not(.got-deployed){background:#295c76;border-color:#8dbfdf}
+.battle-module .got-cell.got-terrain[data-terrain="dense-forest"]:not(.occupied):not(.got-deployed),
+.battle-module .got-cell.got-terrain[data-terrain="sparse-forest"]:not(.occupied):not(.got-deployed){background:#285e3b;border-color:#a3c69e}
+.battle-module .got-cell.got-terrain[data-terrain="hill"]:not(.occupied):not(.got-deployed),
+.battle-module .got-cell.got-terrain[data-terrain="mountain"]:not(.occupied):not(.got-deployed),
+.battle-module .got-cell.got-terrain[data-terrain="wall"]:not(.occupied):not(.got-deployed){background:#675d57;border-color:#d2c7b1}
+.battle-module .got-after-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.battle-module .got-review-alert{border-left:4px solid #efc987;padding:8px 10px;color:#ffeac6;background:#403927}
+@media(max-width:730px){.battle-module .got-after-summary{grid-template-columns:1fr}
+ .battle-module .got-map-header{align-items:stretch}
+}
