@@ -185,7 +185,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
    </div>
    {narrator&&officialCopies.length>0&&<p className="battle-note">
-    Treino com {officialCopies.length} cópia(s) oficial(is) somente leitura;
+    Treino com {officialCopies.length} cópia(s) documentada(s) somente para simulação;
     nenhuma baixa será aplicada à campanha.</p>}
    {!locked&&<label>Retomar batalha V3 verificada (JSON)
     <input type="file" accept=".json,application/json" aria-label="Importar replay V3"
@@ -217,12 +217,12 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       PTE-3.0-SANDBOX</p>
     </div>
     <div className="crusade-v4-utility">
-     {game.battle.stacks.every(s=>s.source.kind==='fictional')?
+     {officialCopies.length===0&&game.battle.stacks.every(s=>s.source.kind==='fictional')?
       <Button variant="outline" onClick={()=>{
        try{downloadBattleJson('crusada-v3-replay-verificado.json',exportV3ReplayJson(game));}
        catch(e){setStatus(e instanceof Error?e.message:'Replay V3 indisponível.');}
       }}>Exportar replay V3 verificado</Button>:
-      <span className="battle-note">Replay externo desativado para snapshots oficiais.</span>}
+      <span className="battle-note">Replay externo desativado para cópias militares de casas.</span>}
      <Button variant="outline" onClick={()=>{setExpanded(false);setGame(null);setStatus('');}}>Nova batalha</Button>
      <Button variant="outline" className="battle-expand-toggle"
       aria-label={expanded?'Sair da tela ampliada':'Ampliar batalha'}
@@ -364,7 +364,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       {showDetails?'Ver últimas ações':'Ver histórico completo'}
      </Button>
      <p className="crusade-v4-private-notice">
-      {officialCopies.length>0?'Tropas autorizadas copiadas somente para treinamento.':
+      {officialCopies.length>0?'Unidades de casas copiadas somente para treinamento.':
        'Exércitos-modelo de treinamento.'} As fichas oficiais não são alteradas.
      </p>
     </aside>
