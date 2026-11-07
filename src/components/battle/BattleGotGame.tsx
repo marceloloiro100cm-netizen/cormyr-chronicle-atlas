@@ -693,7 +693,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       const p=deploymentPositions[u.id]??u.position;
       return p.x===x&&p.y===y;
      });
-     return <button type="button" key={i}
+     return <button type="button" key={i} data-terrain={terrain}
       className={'got-cell'+(terrain!=='plain'?' got-terrain':'')+(occupant?' got-deployed '+occupant.side:'')}
       title={occupant?.name??terrain}
       aria-label={'Quadrado '+x+','+y+' · '+(occupant?.name??terrain)}
