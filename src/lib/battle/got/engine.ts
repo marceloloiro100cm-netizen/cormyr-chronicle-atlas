@@ -226,6 +226,9 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
   throw new Error('Herói ou unidade inimiga indisponível.');
  if(battle.pendingPersonalDamage)throw new Error('Resolva o dano pessoal pendente.');
  assertPersonalTurn(battle,hero.id);
+ if(hero.pinnedByHero||hero.pinnedByMount||hero.grabbedBy||
+  hero.grapplingTargetId||hero.impaledBy)
+  throw new Error('Libere a contenção antes de atacar uma unidade coletiva.');
  const ranged=Boolean(input.ranged),distanceMetres=distanceFromHeroToUnit(hero,target);
  if(ranged?hero.rangedWeaponBroken:hero.meleeWeaponBroken)
   throw new Error('Arma quebrada impede ataque contra a unidade.');
@@ -261,7 +264,7 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
  const roll=rollPersonalWithFate(battle.seed,hero,ranged?hero.marksmanship:hero.fighting,
   Math.min(15,Math.max(0,availableBonus-requiredBonus)+
    (hero.passBonusDice??0)+(hero.aimBonusDice??0)),penalty);
- const total=Math.max(0,roll.total-(hero.wounds??0));
+ const total=Math.max(0,roll.total-(hero.wounds??0)-(hero.entangledBy?5:0));
  const difficulty=target.defense+20;
  const degrees=degreesOfSuccess(total,difficulty);
  const damage=degrees?Math.max(0,
