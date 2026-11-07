@@ -35,7 +35,7 @@ export function deployWarSquad(battle:WarBattle,input:{
    meleeDamage:unit.meleeDamage,rangedDamage:unit.rangedDamage,
    rangedRange:unit.range,
    health:unit.ability.endurance*3,maxHealth:unit.ability.endurance*3,
-   quicknessBonusDice:0};
+   quicknessBonusDice:0,fateAvailable:0,fateSpent:0,fateBurned:0};
  });
  return {...battle,heroes:[...battle.heroes,...troops],
   squads:[...(battle.squads??[]),{
