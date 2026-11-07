@@ -21,15 +21,15 @@ describe('Seletor dos três sistemas de batalha — lote inicial',()=>{
   fireEvent.click(screen.getByRole('radio',{name:/D&D/}));
   expect(onChange).toHaveBeenCalledWith('dnd');
  });
- it('preserva as ações atuais apenas em Adaptado e não camufla motores pendentes',()=>{
+ it('mantém Adaptado independente, abre laboratório GOT e bloqueia motor D&D pendente',()=>{
   render(<BattleNarratorHub/>);
   expect(screen.getByRole('radio',{name:/Adaptado/})).toBeChecked();
   expect(screen.getByRole('button',{name:'Criar batalha'})).toBeEnabled();
   expect(screen.getByRole('button',{name:'Batalha rápida com comandantes'})).toBeEnabled();
   fireEvent.click(screen.getByRole('radio',{name:/Game of Thrones/}));
   expect(screen.queryByRole('button',{name:'Criar batalha'})).not.toBeInTheDocument();
-  expect(screen.getByRole('button',{name:'Iniciar batalha — em desenvolvimento'})).toBeDisabled();
-  expect(screen.getByText(/não será substituído pelo Adaptado/)).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Testar regras do livro'})).toBeEnabled();
+  expect(screen.getByText(/Não será substituído pelo Adaptado/i)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('radio',{name:/D&D/}));
   expect(screen.getByRole('button',{name:'Iniciar batalha — em desenvolvimento'})).toBeDisabled();
   expect(screen.getByText(/Bônus de ataque, Classe de Armadura/)).toBeInTheDocument();
