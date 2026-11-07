@@ -5,7 +5,7 @@ import {crzResolve5e,crzWotrExpected,crzHitFactorBP,
  type CrzAttackEntry,type CrzDamagePart,type CrzMitigation} from './damage';
 import {crzApplyDamage} from './stack';
 import {crzSafe} from './stack';
-import {crzDistance,crzMapIndex,type CrzHex} from './geometry';
+import {crzGridDistance,crzMapIndex,type CrzHex,type CrzMap} from './geometry';
 import {crzEffectBonus,crzLog,crzMoraleState,crzReplaceStack,crzCapable,
  type CrzBattleStack,type CrzBattleState} from './battle-state';
 export type CrzAttackMode='melee'|'ranged';
@@ -17,7 +17,7 @@ function mitigation(stack:CrzBattleStack,type:string):CrzMitigation{
  if(mods.vulnerable.includes(type as never))return 'vulnerable';
  return 'normal';
 }
-const isAdjacent=(a:CrzHex,b:CrzHex)=>crzDistance(a,b)===1;
+const isAdjacent=(map:CrzMap,a:CrzHex,b:CrzHex)=>crzGridDistance(map,a,b)===1;
 function engagedCount(s:CrzBattleStack,target:CrzBattleStack,
  frontage:'off'|'sqrt',ranks:number):number{
  if(frontage==='off')return s.alive;
@@ -68,9 +68,9 @@ function attackBonus(state:CrzBattleState,actor:CrzBattleStack,
   isAdjacent(s.position,target.position)).length;
  const flank=allies>=2?state.ruleset.hit.flankBonus:0;
  const engaged=mode==='ranged'&&state.stacks.some(s=>s.side!==actor.side&&
-  crzCapable(s)&&isAdjacent(s.position,actor.position))?
+  crzCapable(s)&&isAdjacent(state.map,s.position,actor.position))?
   state.ruleset.ranged.engagedPenalty:0;
- const distance=crzDistance(actor.position,target.position);
+ const distance=crzGridDistance(state.map,actor.position,target.position);
  const longRange=mode==='ranged'&&distance>actor.rangeHex?
   state.ruleset.ranged.longRangePenalty:0;
  const shaken=actor.moraleState==='shaken'?state.ruleset.morale.shakenPenalty:0;
