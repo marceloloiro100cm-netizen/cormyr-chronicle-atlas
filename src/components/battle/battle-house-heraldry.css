@@ -76,26 +76,26 @@
 .battle-house-source .battle-house-roster-head small{
  color:#e7d7bb;font-size:13px;white-space:normal;text-align:right;
 }
-.battle-house-source .battle-source-units{
+.battle-module .battle-house-source .battle-source-units{
  display:flex;flex-direction:column;gap:7px;margin:10px 0;padding:0;
 }
-.battle-house-source .battle-source-units li{
+.battle-module .battle-house-source .battle-source-units li{
  border:1px solid #706a5f;border-radius:8px;background:rgba(24,34,42,.7);
  box-shadow:inset 0 1px rgba(255,255,255,.06);
  padding:0;
 }
-.battle-house-source .battle-source-units li:has(input:checked){
+.battle-module .battle-house-source .battle-source-units li:has(input:checked){
  border-color:#cdb47a;background:rgba(63,69,58,.62);
 }
-.battle-house-source .battle-source-units li:has(input:disabled){opacity:.74}
-.battle-house-source .battle-source-unit-row{
+.battle-module .battle-house-source .battle-source-units li:has(input:disabled){opacity:.74}
+.battle-module .battle-house-source .battle-source-unit-row{
  display:grid;grid-template-columns:auto 42px minmax(0,1fr) auto;
  align-items:center;gap:11px;cursor:pointer;padding:8px 11px;width:100%;min-width:0;
 }
-.battle-house-source .battle-source-unit-row input[type=checkbox]{
+.battle-module .battle-house-source .battle-source-unit-row input[type=checkbox]{
  width:20px;height:20px;margin:0;accent-color:#d8bd83;flex:none;
 }
-.battle-house-source .battle-source-unit-row .military-unit-symbol--small{
+.battle-module .battle-house-source .battle-source-unit-row .military-unit-symbol--small{
  width:39px;height:43px;min-width:39px;border-radius:5px;
 }
 .battle-house-source .battle-source-unit-name{display:block;font-size:15px;color:#fff2db;line-height:1.32;overflow-wrap:anywhere}
@@ -269,7 +269,7 @@
   grid-column:3;text-align:left;
  }
  .battle-house-source .battle-source-unit-stats strong{display:inline}
- .battle-house-source .battle-source-unit-row .military-unit-symbol--small{width:33px;height:38px;min-width:33px}
+ .battle-module .battle-house-source .battle-source-unit-row .military-unit-symbol--small{width:33px;height:38px;min-width:33px}
  .battle-heraldry-identity{padding:10px}
  .battle-heraldry-identity-body .battle-house-crest--large{width:130px;height:155px}
 }
