@@ -10,6 +10,8 @@ import {reachablePaths} from '@/lib/battle/geometry/pathfinding';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
 import {BattleExpandedView} from './BattleExpandedView';
+import {BattleHouseBanner,BattleHouseVersus} from './BattleHouseHeraldry';
+import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
 import './battle-arena-unified.css';
 import {runAiUntilHuman} from '@/lib/battle/domain/ai';
 import {exportReplayJson} from '@/lib/battle/domain/replay';
@@ -18,9 +20,11 @@ import {saveBattleReplay} from '@/lib/battle/battle-session.functions';
 import {useServerFn} from '@tanstack/react-start';
 
 const LABEL:Record<Side,string>={attacker:'Atacante',defender:'Defensor'};
-function BattleResult({state,initial,sideNames,onRestart,onExit,persistenceEnabled}:{
+function BattleResult({state,initial,sideNames,heraldry,onRestart,onExit,persistenceEnabled}:{
  initial:BattleState;
- state:BattleState;sideNames:Record<Side,string>;onRestart:()=>void;onExit:()=>void;
+ state:BattleState;sideNames:Record<Side,string>;
+ heraldry?:Partial<Record<Side,BattleHouseDirectoryRow>>;
+ onRestart:()=>void;onExit:()=>void;
  persistenceEnabled:boolean;
 }){
  const report=battleReport(state);
@@ -36,11 +40,13 @@ function BattleResult({state,initial,sideNames,onRestart,onExit,persistenceEnabl
  };
  return <section className="battle-surface" aria-label="Resultado da batalha">
    <h2>Resultado da simulação</h2>
+  <BattleHouseVersus houses={heraldry} names={sideNames}/>
    <p><strong>{state.winner?sideNames[state.winner]+' venceu':'Empate'}</strong>
      {' · '}Causa: {state.resultReason??'não informada'}{' · '}Rodadas: {state.round}</p>
    <div className="battle-summary-grid">
     {(['attacker','defender'] as const).map(side=><article key={side} className="battle-result-card">
-      <h3>{sideNames[side]}</h3>
+      {heraldry?.[side]?<BattleHouseBanner side={side} house={heraldry[side]}
+  name={sideNames[side]} subtle/>:<h3>{sideNames[side]}</h3>}
       <p>{report.bySide[side].alive} / {report.bySide[side].initial} sobreviventes</p>
       <p>{report.bySide[side].casualties} baixas táticas · {report.bySide[side].damageDealt} dano causado</p>
     </article>)}
@@ -70,8 +76,9 @@ function BattleResult({state,initial,sideNames,onRestart,onExit,persistenceEnabl
    <p className="battle-note">Replay verificável PTE-2.0. O salvamento usa registro tático independente e não altera fichas da campanha.</p>
  </section>;
 }
-export function BattleArena({initial,resume,sideNames,onExit,persistenceEnabled=false}:{
- initial:BattleState;resume?:BattleState;sideNames:Record<Side,string>;onExit:()=>void;
+export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenceEnabled=false}:{
+ initial:BattleState;resume?:BattleState;sideNames:Record<Side,string>;
+ heraldry?:Partial<Record<Side,BattleHouseDirectoryRow>>;onExit:()=>void;
  persistenceEnabled?:boolean;
 }){
  // Uma batalha retomada foi reconstruída por replay SHA-256 no servidor e no navegador.
@@ -165,7 +172,7 @@ export function BattleArena({initial,resume,sideNames,onExit,persistenceEnabled=
       {expanded?'↙ Sair da tela ampliada':'⤢ Ampliar batalha'}
      </Button>
     </div>
-    <BattleResult state={battle} initial={initial} sideNames={sideNames}
+    <BattleResult state={battle} initial={initial} sideNames={sideNames} heraldry={heraldry}
      onRestart={restart} onExit={onExit} persistenceEnabled={persistenceEnabled}/>
    </div>
   </BattleExpandedView>;
@@ -175,6 +182,7 @@ export function BattleArena({initial,resume,sideNames,onExit,persistenceEnabled=
    <div className="battle-arena-heading">
     <p className="battle-eyebrow">CORMYR · CAMPO TÁTICO · TREINAMENTO</p>
     <h2>{battle.name}</h2>
+    <BattleHouseVersus houses={heraldry} names={sideNames}/>
     <p>Rodada {battle.round} / 20 · {active?active.name:'Sem unidade ativa'}
      {' · '}PTE-2.0 experimental</p>
    </div>
@@ -211,7 +219,8 @@ export function BattleArena({initial,resume,sideNames,onExit,persistenceEnabled=
   <div className="battle-arena-grid">
     <aside className="battle-surface battle-army-sidebar" aria-label="Exércitos na arena">
      {(['attacker','defender'] as const).map(side=><div key={side}>
-      <h3>{sideNames[side]}</h3>
+      {heraldry?.[side]?<BattleHouseBanner side={side} house={heraldry[side]}
+  name={sideNames[side]} subtle/>:<h3>{sideNames[side]}</h3>}
       {battle.stacks.filter(u=>u.side===side).map(u=><button type="button" key={u.id}
         className={u.id===selected?'battle-unit-list active':'battle-unit-list'}
         aria-pressed={u.id===selected} onClick={()=>{setSelected(u.id);clear();}}>
