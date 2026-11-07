@@ -39,11 +39,11 @@ export function rollPersonalRecovery(hero:WarHero,seed:number,
    !Number.isFinite(healer.hours)||healer.hours<4))
   throw new Error('Tratamento exige curandeiro válido e quatro horas diárias.');
  const rank=healer?.rank??endurance;
- const penalty=healer?.injuries??hero.injuries??0;
+ const penalty=healer?(healer.injuries??0):(hero.injuries??0);
  const bonus=healer?.bonusDice??0;
  const roll=healer?rollDice(seed,rank,bonus,penalty):
   rollPersonalWithFate(seed,hero,rank,0,penalty);
- const total=Math.max(0,roll.total-(healer?.wounds??hero.wounds??0));
+ const total=Math.max(0,roll.total-(healer?(healer.wounds??0):(hero.wounds??0)));
  const degrees=degreesOfSuccess(total,difficulty);
  const critical=criticalFailure(total,difficulty);
  let wounds=hero.wounds??0,injuries=hero.injuries??0;
