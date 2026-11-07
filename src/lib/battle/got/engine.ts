@@ -7,6 +7,7 @@ import {WAR_SIEGE_CATALOG,warSiegeDamage} from './siege';
 import type {WarSiegeEngine} from './siege';
 import {fortForUnit,fortDefense,validateWarForts,sabotageFortification} from './fortifications';
 import type {WarFortification} from './fortifications';
+import {executeAdvancedWarOrder,WAR_ADVANCED_ORDER_DIFFICULTY} from './advanced-orders';
 
 const SIDES:readonly WarSide[]=['attacker','defender'];
 const opposite=(side:WarSide):WarSide=>side==='attacker'?'defender':'attacker';
@@ -191,7 +192,7 @@ function chooseNearest(battle:WarBattle,unit:WarUnit,ranged:boolean):WarUnit|nul
    .sort((a,b)=>distance(a.position,unit.position)-distance(b.position,unit.position)||a.id.localeCompare(b.id))[0]??null;
 }
 function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
- options:{charge?:boolean;penalty?:number}={}):WarBattle{
+ options:{charge?:boolean;penalty?:number;counterCharge?:boolean}={}):WarBattle{
  if(!alive(attacker))throw new Error('Esta unidade não pode atacar.');
  if(!onBoard(target)||target.side===attacker.side)throw new Error('Alvo indisponível.');
  const max=ranged?(attacker.range==='long'?20:attacker.range==='short'?2:0):1;
@@ -234,7 +235,7 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  const adjustedRoll=Math.max(0,roll.total+weatherAttackModifier(battle.weather));
  const degrees=degreesOfSuccess(adjustedRoll,defense);
  const baseDamage=ranged?attacker.rangedDamage:attacker.meleeDamage+(options.charge?2:0);
- const raw=baseDamage*degrees;
+ const raw=baseDamage*(degrees+(options.counterCharge&&degrees>0?1:0));
  const damage=Math.max(0,raw-target.armor);
  next=log(next,'attack',attacker.name+' atacou '+target.name+' ('+(ranged?'Pontaria':'Luta')+
   '); teste '+adjustedRoll+' vs Defesa '+defense+', '+degrees+' grau(s).',attacker.side,{
@@ -265,6 +266,8 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
   unit.name+(escaped?' saiu do campo.':' retirou-se até '+pos.x+','+pos.y+'.'),unit.side);
 }
 function perform(battle:WarBattle,unit:WarUnit,order:WarOrder,degrees:number):WarBattle{
+ const advanced=executeAdvancedWarOrder(battle,unit,order,{attack});
+ if(advanced)return advanced;
  if(order.kind==='formation'){
   if(!battle.advancedFormations)throw new Error('Formações avançadas desabilitadas.');
   if(!order.formation||!formationAllowed(order.formation,unit))throw new Error('Formação indisponível à unidade.');
@@ -303,7 +306,16 @@ function perform(battle:WarBattle,unit:WarUnit,order:WarOrder,degrees:number):Wa
    next=move(next,actor,destination,true);
    actor=next.units.find(u=>u.id===unit.id)!;
   }
-  return attack(next,actor,target,false,{charge:true});
+  const guarding=next.units.find(u=>u.id===target.id)!;
+  if(guarding.counterChargeReady){
+   const counter=attack(next,guarding,actor,false,{counterCharge:true});
+   const afterDefender=counter.units.find(u=>u.id===guarding.id)!;
+   next=replaceUnit(counter,{...afterDefender,counterChargeReady:false});
+   if(!alive(next.units.find(u=>u.id===actor.id)!))
+    return log(next,'charge-blocked',actor.name+' não conseguiu completar a carga.',actor.side);
+   actor=next.units.find(u=>u.id===actor.id)!;
+  }
+  return attack(next,actor,next.units.find(u=>u.id===target.id)!,false,{charge:true});
  }
  if(order.kind==='defend'){
   const roll=rollDice(battle.seed,unit.ability.agility,0,unit.condition==='disorganized'?1:0);
@@ -364,9 +376,7 @@ export function issueWarOrder(battle:WarBattle,input:{
   WAR_FORMATIONS[input.order.formation].difficulty:input.order.kind==='turn'&&battle.advancedFormations?3:0;
  const formationDiscipline=battle.advancedFormations&&unit.formation?
   WAR_FORMATIONS[unit.formation].discipline:0;
- const advancedModifier=({
-  suppress:3,probe:6,'counter-charge':3,sabotage:3,ambush:3,join:3,
- } as Partial<Record<WarOrder['kind'],number>>)[input.order.kind]??0;
+ const advancedModifier=(WAR_ADVANCED_ORDER_DIFFICULTY as Partial<Record<WarOrder['kind'],number>>)[input.order.kind]??0;
  if(advancedModifier&&!battle.advancedFormations)
   throw new Error('Esta ordem avançada exige regras avançadas habilitadas.');
  const suppression=unit.suppressionRound===battle.round?(unit.suppressionPenalty??0):0;
@@ -535,7 +545,7 @@ export function advanceWarRound(battle:WarBattle):WarBattle{
  if(next.phase==='finished')return next;
  next={...next,round:next.round+1,
   units:next.units.map(u=>({...u,issuedThisRound:0,actedThisRound:false,
-   criticalThisRound:false,defendRoll:null})),
+   criticalThisRound:false,defendRoll:null,counterChargeReady:false})),
   ordersRemaining:{
    ...commandBudget(next.commanders,'attacker'),
    ...commandBudget(next.commanders,'defender'),
