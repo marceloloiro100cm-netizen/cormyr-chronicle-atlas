@@ -20,6 +20,8 @@ import {makeModelSiege,WAR_SIEGE_CATALOG} from '@/lib/battle/got/siege';
 import type {WarSiegeKind,WarSiegeAmmo} from '@/lib/battle/got/siege';
 import {modelWarUnit,modelWarCommanders} from '@/lib/battle/got/models';
 import {previewWarAftermath} from '@/lib/battle/got/aftermath';
+import {previewWarResourceConsequences} from '@/lib/battle/got/aftermath-resources';
+import type {WarResourceScenario} from '@/lib/battle/got/aftermath-resources';
 import type {WarBattle,WarOrder,WarOrderKind,WarUnit,WarSide} from '@/lib/battle/got/types';
 import type {WarWeather,WarVisibility,WarTerrainId,WarTerrainTile} from '@/lib/battle/got/terrain';
 import {WAR_TERRAIN} from '@/lib/battle/got/terrain';
@@ -116,6 +118,13 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [fortEngineer,setFortEngineer]=useState(false);
  const [siegeKind,setSiegeKind]=useState<WarSiegeKind>('catapult-small');
  const [siegeAmmo,setSiegeAmmo]=useState<WarSiegeAmmo>('stone');
+ const [siegeTargetMode,setSiegeTargetMode]=useState<'unit'|'fort'>('unit');
+ const [siegeFortId,setSiegeFortId]=useState('');
+ const [resourceScenario,setResourceScenario]=useState<WarResourceScenario>({
+  occupiedDomain:false,garrisonHeldForThreeMonths:false,
+  capturedLandValue:0,survivingFortDefenseValue:0,
+  domainHasCommunityOrFort:false,transferredWealthInvestments:0,
+ });
  const [officialBySlot,setOfficialBySlot]=useState<Partial<Record<Slot,WarUnit>>>({});
  const [selected,setSelected]=useState('');
  const [target,setTarget]=useState('');
@@ -151,7 +160,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    const siege=siegeEnabled&&engineer?[makeModelSiege({
     id:'siege-attacker-1',kind:siegeKind,side:'attacker',
     position:{x:1,y:3},engineerId:engineer.id,
-    ammo:siegeKind.startsWith('catapult')?siegeAmmo:'stone',
+    ammo:siegeKind.startsWith('catapult')?siegeAmmo:
+     siegeKind==='fire-pot'?(siegeAmmo==='wildfire'?'wildfire':'oil'):'stone',
    })]:[];
    if(modelOneHandUnavailable&&modelOffhand!=='none')
     throw new Error('Não é possível usar arma secundária com uma mão indisponível.');
@@ -238,9 +248,18 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    const availableTargets=battle.units.filter(u=>u.side!==battle.turn&&
     !['destroyed','escaped','surrendered'].includes(u.condition));
    const selected=availableTargets.find(u=>u.id===target)??availableTargets[0];
-   if(fire&&leader&&activeWeapons.length&&selected){
+   const fort=battle.fortifications.find(f=>f.id===siegeFortId&&
+    f.side!==battle.turn&&!f.breached)??battle.fortifications.find(f=>
+    f.side!==battle.turn&&!f.breached);
+   if(fire&&leader&&activeWeapons.length){
+    if(siegeTargetMode==='unit'&&!selected)
+     throw new Error('Selecione uma unidade inimiga.');
+    if(siegeTargetMode==='fort'&&!fort)
+     throw new Error('Não existe fortificação inimiga íntegra.');
     setBattle(fireWarSiegeVolley(battle,{commanderId:leader.id,
-     weaponIds:[activeWeapons[0]!.id],targetId:selected.id}));
+     weaponIds:[activeWeapons[0]!.id],
+     ...(siegeTargetMode==='fort'?{fortId:fort!.id}:{targetId:selected!.id}),
+    }));
    }else setBattle(skipWarSiege(battle));
    setError('');
   }catch(e){setError(e instanceof Error?e.message:'Disparo não executado.');}
@@ -376,6 +395,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
   try{setBattle(advanceWarRound(battle));setSelected('');setTarget('');setError('');}
   catch(e){setError(e instanceof Error?e.message:'Erro ao concluir rodada.');}
  };
+ const projectedResources=battle?.phase==='finished'?
+  previewWarResourceConsequences(battle,resourceScenario.occupiedDomain?
+   resourceScenario:{...resourceScenario,capturedLandValue:0,
+    survivingFortDefenseValue:0,transferredWealthInvestments:0,
+    garrisonHeldForThreeMonths:false}):null;
  return <section className="battle-got" aria-label="Batalha pelas regras de Guerra dos Tronos RPG">
   <div className="battle-heading">
    <div><h2>Game of Thrones · regras do livro</h2>
@@ -495,14 +519,20 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     Preparar arma de cerco do atacante (troca o apoio atacante por engenheiros)</label>
    {siegeEnabled&&<div className="got-config-grid">
     <label>Arma de cerco
-     <select value={siegeKind} onChange={e=>setSiegeKind(e.target.value as WarSiegeKind)}>
+     <select value={siegeKind} onChange={e=>{
+      const chosen=e.target.value as WarSiegeKind;
+      setSiegeKind(chosen);
+      if(chosen==='fire-pot')setSiegeAmmo('oil');
+    }}>
       {Object.values(WAR_SIEGE_CATALOG).map(row=><option key={row.kind} value={row.kind}>
        {row.label} · alcance {row.rangeMetres} m</option>)}
      </select>
     </label>
-    {siegeKind.startsWith('catapult')&&<label>Munição
+    {(siegeKind.startsWith('catapult')||siegeKind==='fire-pot')&&<label>Munição
      <select value={siegeAmmo} onChange={e=>setSiegeAmmo(e.target.value as WarSiegeAmmo)}>
-      <option value="stone">Pedra</option><option value="oil">Óleo (ignora VA)</option>
+      {siegeKind!=='fire-pot'&&<option value="stone">Pedra</option>}
+      <option value="oil">Óleo (ignora VA)</option>
+      <option value="wildfire">Fogo selvagem (ignora VA + 2d6 rodadas)</option>
      </select>
     </label>}
    </div>}
@@ -948,9 +978,27 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        cada unidade de engenheiros opera até quatro. A arma precisa pular a rodada seguinte
        para recarregar.</p>
       {battle.siege.filter(w=>w.side===battle.turn&&w.health>0).map(w=><p key={w.id}>
-       <strong>{w.name}</strong> · alcance {WAR_SIEGE_CATALOG[w.kind].rangeMetres} m
+       <strong>{w.name}</strong> · munição {w.ammo} · alcance {WAR_SIEGE_CATALOG[w.kind].rangeMetres} m
        · última rodada disparada {w.lastFiredRound??'nenhuma'}</p>)}
-      {battle.siege.some(w=>w.side===battle.turn&&w.health>0)&&<label>Alvo da arma de cerco
+      {battle.siege.some(w=>w.side===battle.turn&&w.health>0)&&
+       <label>Tipo de alvo
+        <select value={siegeTargetMode}
+         onChange={e=>setSiegeTargetMode(e.target.value as 'unit'|'fort')}>
+         <option value="unit">Unidade militar</option>
+         <option value="fort">Fortificação / muralha</option>
+        </select>
+       </label>}
+      {siegeTargetMode==='fort'&&
+       <label>Fortificação inimiga
+        <select value={siegeFortId}
+         onChange={e=>setSiegeFortId(e.target.value)}>
+         <option value="">Selecionar fortificação</option>
+         {battle.fortifications.filter(f=>f.side!==battle.turn&&!f.breached)
+          .map(f=><option key={f.id} value={f.id}>{f.name} · integridade {
+           f.structuralHealth??'padrão do modelo'}</option>)}
+        </select>
+       </label>}
+      {siegeTargetMode==='unit'&&battle.siege.some(w=>w.side===battle.turn&&w.health>0)&&<label>Alvo da arma de cerco
        <select aria-label="Alvo de cerco" value={selectedTarget?.id??''}
         onChange={e=>setTarget(e.target.value)}>
         {enemy.map(u=><option key={u.id} value={u.id}>{u.name} · Saúde {u.health}/{u.maxHealth}</option>)}
@@ -1086,6 +1134,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       <strong>{u.name}</strong><span>{SIDE[u.side]} · {CONDITION[u.condition]}</span>
       <span>Saúde {u.health}/{u.maxHealth} · Defesa {u.defendRoll??u.defense} · VA {u.armor}</span>
       <span>Disciplina {warUnitSummary(u).discipline} · Desorganizações {u.disorganizations}</span>
+      {u.burning&&<span>Incendiada · {u.burning.damagePerRound} dano/rodada por
+       {u.burning.remainingRounds} rodada(s) restante(s)</span>}
       {battle.advancedFormations&&<span>Formação {u.formation} · Direção {u.facing}</span>}
      </div>)}</div>
     </section>
