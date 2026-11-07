@@ -36,6 +36,19 @@ const SPELL_LABELS:Readonly<Record<string,string>>={
  heroism:'Heroísmo',cause_fear:'Amedrontar',cure_wounds:'Curar ferimentos',
  firebolt:'Raio de fogo',fireball:'Bola de fogo (área)',shield_wall_formation:'Formação de escudos',
 };
+/** Tokens fictícios CRZ adotam o mesmo catálogo heráldico das tropas
+ * de Cormyr. Criaturas importadas sem correspondência mostram iniciais.
+ */
+export const CRZ_MODEL_MILITARY_TYPE:Readonly<Record<string,string>>={
+ 'guard-cca|original':'garrison',
+ 'archer-cca|original':'archers',
+ 'raider-cca|original':'raiders',
+ 'scout-cca|original':'scouts',
+};
+export const crzUnitMilitarySymbol=(templateId:string):string|undefined=>
+ militaryUnitSymbolSrc(templateId)||
+ militaryUnitSymbolSrc(CRZ_MODEL_MILITARY_TYPE[templateId]);
+
 const TERRAIN:Readonly<Record<string,{name:string;fill:string}>>={
  plain:{name:'Planície',fill:'#a6a079'},
  forest:{name:'Bosque',fill:'#426953'},
@@ -169,8 +182,8 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
         strokeWidth={active?3:1.8} pointerEvents="none"/>
        <rect x={x-17} y={y-21} width={34} height={34} rx={7}
         fill="#162629" stroke="#dbc58d" strokeWidth="1.2" pointerEvents="none"/>
-       {militaryUnitSymbolSrc(unit.templateId)?
-        <image href={militaryUnitSymbolSrc(unit.templateId)} x={x-16} y={y-20}
+       {crzUnitMilitarySymbol(unit.templateId)?
+        <image href={crzUnitMilitarySymbol(unit.templateId)} x={x-16} y={y-20}
          width={32} height={32} preserveAspectRatio="xMidYMid meet" pointerEvents="none"/>:
         <text x={x} y={y-1} textAnchor="middle" fill="#fff" fontSize={13}
          fontWeight={700} pointerEvents="none">{unit.name.slice(0,2).toUpperCase()}</text>}
