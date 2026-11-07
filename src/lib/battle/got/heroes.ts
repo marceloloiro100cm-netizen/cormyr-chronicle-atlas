@@ -1,6 +1,7 @@
 import {degreesOfSuccess,rollDice} from './dice';
 import {executePersonalWarAction} from './personal-combat';
 import type {PersonalWarAction} from './personal-combat';
+import {assertPersonalTurn,settlePersonalTurn} from './personal-initiative';
 import type {WarBattle,WarPosition,WarSide,WarUnit} from './types';
 
 /** Capítulo 10, passos 6 e 8: uma fase corresponde a cinco rodadas individuais.
@@ -16,7 +17,7 @@ export type WarHero=Readonly<{
  // Campos da escala pessoal: um quadrado da guerra contém 10 × 10 posições de 1 m.
  personalPosition?:WarPosition;
  agility?:number;athletics?:number;awareness?:number;endurance?:number;
- runningBonusDice?:number;meleeBonusDice?:number;rangedBonusDice?:number;
+ runningBonusDice?:number;quicknessBonusDice?:number;meleeBonusDice?:number;rangedBonusDice?:number;
  shieldBonusDice?:number;defensiveBonus?:number;armorPenalty?:number;bulk?:number;
  rangedRange?:'none'|'short'|'long';
  wounds?:number;injuries?:number;passBonusDice?:number;
@@ -47,7 +48,7 @@ export function makeModelWarHero(input:{
   warfare:3,status:3,fighting:3,marksmanship:3,defense:8,armor:3,
   meleeDamage:3,rangedDamage:2,health:9,maxHealth:9,
   agility:3,athletics:3,awareness:3,endurance:3,armorPenalty:0,bulk:0,
-  runningBonusDice:0,meleeBonusDice:0,rangedBonusDice:0,rangedRange:'long',
+  runningBonusDice:0,quicknessBonusDice:0,meleeBonusDice:0,rangedBonusDice:0,rangedRange:'long',
   wounds:0,injuries:0,minorActionsUsed:0,surrendered:false,
   personalPosition:{x:input.position.x*10+5,y:input.position.y*10+5},
   active:true,usedActions:0,lockedUntilRound:null};
@@ -107,9 +108,11 @@ export function executeWarHeroAction(
  const hero=battle.heroes.find(h=>h.id===input.heroId);
  if(!hero||!hero.active||hero.usedActions>=5||hero.lockedUntilRound===battle.round)
   throw new Error('Este herói não tem ações individuais disponíveis.');
+ assertPersonalTurn(battle,hero.id);
+ const finish=(next:WarBattle)=>settlePersonalTurn(battle,next,hero.id);
  const action=input.action;
  if(action.kind.startsWith('personal-'))
-  return executePersonalWarAction(battle,hero,action as PersonalWarAction);
+  return finish(executePersonalWarAction(battle,hero,action as PersonalWarAction));
  if(hero.role!=='hero'&&action.kind!=='abdicate')
   throw new Error('Comandantes ativos devem abdicar antes de realizar ações individuais.');
  if(hero.unitId&&action.kind!=='leave')
@@ -119,16 +122,16 @@ export function executeWarHeroAction(
   const unit=battle.units.find(u=>u.id===action.unitId);
   if(!unit||unit.side!==hero.side||!alive(unit)||distance(hero.position,unit.position)>1)
    throw new Error('Entrar exige unidade aliada adjacente e organizada.');
-  return log(replace(battle,{...used,position:unit.position,unitId:unit.id,usedActions:5}),
+  return finish(log(replace(battle,{...used,position:unit.position,unitId:unit.id,usedActions:5}),
    'hero-join',hero.name+' entrou na unidade '+unit.name+
-    ' (Disciplina −3, +1D em Luta e Pontaria, sem acúmulo).',hero.side);
+    ' (Disciplina −3, +1D em Luta e Pontaria, sem acúmulo).',hero.side));
  }
  if(action.kind==='leave'){
   if(battle.phase!=='heroes-second'||!hero.unitId)
    throw new Error('Sair de unidade ocorre no segundo passo de ações.');
-  return log(replace(battle,{...used,unitId:null,usedActions:5,
+  return finish(log(replace(battle,{...used,unitId:null,usedActions:5,
    lockedUntilRound:battle.round}),'hero-leave',
-   hero.name+' deixou sua unidade; não poderá agir até a próxima rodada de batalha.',hero.side);
+   hero.name+' deixou sua unidade; não poderá agir até a próxima rodada de batalha.',hero.side));
  }
  if(action.kind==='rally'||action.kind==='revive'){
   const unit=battle.units.find(u=>u.id===action.unitId&&u.side===hero.side);
@@ -144,9 +147,9 @@ export function executeWarHeroAction(
    ...u,condition:action.kind==='rally'?'organized' as const:'disorganized' as const,
    health:action.kind==='rally'?u.maxHealth:0,
   }):u)};
-  return log(next,'hero-'+action.kind,hero.name+(passed?' recuperou ':' falhou em recuperar ')+
+  return finish(log(next,'hero-'+action.kind,hero.name+(passed?' recuperou ':' falhou em recuperar ')+
    unit.name+'.',hero.side,{roll:roll.dice,total:roll.total,difficulty,
-    degrees:degreesOfSuccess(roll.total,difficulty)});
+    degrees:degreesOfSuccess(roll.total,difficulty)}));
  }
  if(action.kind==='abdicate'){
   const commander=battle.commanders.find(c=>c.id===hero.commanderId&&c.active&&
@@ -157,11 +160,11 @@ export function executeWarHeroAction(
   if(!successor)throw new Error('Abdicar exige subcomandante capaz de assumir o exército.');
   const {commanderId:_formerCommander,...released}=used;
   const next=replace(battle,{...released,role:'hero'});
-  return log({...next,commanders:next.commanders.map(c=>
+  return finish(log({...next,commanders:next.commanders.map(c=>
    c.id===commander.id?{...c,active:false}:c.id===successor.id?{...c,role:'commander'}:c),
    ordersRemaining:{...next.ordersRemaining,[commander.id]:0,
     [successor.id]:successor.warfare},
-  },'hero-abdicate',hero.name+' abdicou; '+successor.name+' assumiu o comando.',hero.side);
+  },'hero-abdicate',hero.name+' abdicou; '+successor.name+' assumiu o comando.',hero.side));
  }
  if(action.kind==='assume'){
   if(battle.commanders.some(c=>c.side===hero.side&&c.role==='commander'&&c.active))
@@ -170,9 +173,9 @@ export function executeWarHeroAction(
    role:'commander' as const,warfare:hero.warfare,status:hero.status,strategy:0,active:true};
   const next=replace(battle,{...used,role:'commander',commanderId:newCommander.id,
    usedActions:5});
-  return log({...next,commanders:[...next.commanders,newCommander],
+  return finish(log({...next,commanders:[...next.commanders,newCommander],
    ordersRemaining:{...next.ordersRemaining,[newCommander.id]:hero.warfare}},
-  'hero-assume',hero.name+' assumiu o comando do exército.',hero.side);
+  'hero-assume',hero.name+' assumiu o comando do exército.',hero.side));
  }
  throw new Error('Ação de herói não suportada.');
 }
