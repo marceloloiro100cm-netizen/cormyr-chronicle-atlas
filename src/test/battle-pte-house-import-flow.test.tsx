@@ -29,8 +29,10 @@ describe('PTE · iniciar com tropas de uma Casa documentada',()=>{
   expect(start).toBeDisabled();
   fireEvent.click(screen.getByRole('button',{name:'Carregar Guarda da Fênix do catálogo'}));
   expect(start).toBeEnabled();
-  expect(screen.getByText(/1 unidades oficiais copiadas para este exercício/))
+  expect(screen.getByText(/1 unidades documentadas copiadas para este exercício/))
    .toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Carregar Guarda da Fênix do catálogo'}));
+  expect(screen.getByRole('alert')).toHaveTextContent('já foram copiadas');
   fireEvent.click(start);
   expect(onStart).toHaveBeenCalledOnce();
   const [battle,names]=onStart.mock.calls[0]!;
