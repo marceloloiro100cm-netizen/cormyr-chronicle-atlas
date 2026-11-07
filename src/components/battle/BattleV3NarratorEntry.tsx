@@ -1,3 +1,4 @@
+import './battle-cleanup.css';
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import type {BattleStack} from '@/lib/battle/domain/types';
