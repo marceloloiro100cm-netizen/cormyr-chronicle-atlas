@@ -71,6 +71,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [modelMelee,setModelMelee]=useState<WarPersonalWeaponId>('longsword');
  const [modelRanged,setModelRanged]=useState<WarPersonalWeaponId>('longbow');
  const [modelMountEnabled,setModelMountEnabled]=useState(false);
+ const [modelStrengthBonus,setModelStrengthBonus]=useState(2);
  const [manualMitigation,setManualMitigation]=useState(false);
  const [mitigationKind,setMitigationKind]=useState<PersonalMitigationChoice['kind']>('none');
  const [mitigationWounds,setMitigationWounds]=useState(1);
@@ -87,6 +88,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [heroUnitId,setHeroUnitId]=useState('');
  const [heroTargetId,setHeroTargetId]=useState('');
  const [heroRanged,setHeroRanged]=useState(false);
+ const [heroGripTwoHands,setHeroGripTwoHands]=useState(false);
+ const [heroPowerBonus,setHeroPowerBonus]=useState(0);
  const [counterAgainstCharge,setCounterAgainstCharge]=useState(false);
  const [mountEscapeSkill,setMountEscapeSkill]=useState<'athletics'|'agility'>('athletics');
  const [heroTargetUnitId,setHeroTargetUnitId]=useState('');
@@ -137,10 +140,12 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     heroes:heroesEnabled?[
      {...equipModelWarHero(makeModelWarHero({id:'hero-attacker',name:'Herói atacante',side:'attacker',
       position:{x:2,y:5}}),{melee:modelMelee,ranged:modelRanged}),
+      strengthBonusDice:modelStrengthBonus,
       ...(modelMountEnabled?{mount:makeModelWarMount({id:'horse-attacker',
        name:'Corcel atacante',trainedForWar:true})}:{})},
      {...equipModelWarHero(makeModelWarHero({id:'hero-defender',name:'Herói defensor',side:'defender',
       position:{x:9,y:5}}),{melee:modelMelee,ranged:modelRanged}),
+      strengthBonusDice:modelStrengthBonus,
       ...(modelMountEnabled?{mount:makeModelWarMount({id:'horse-defender',
        name:'Corcel defensor',trainedForWar:true})}:{})},
     ]:[],
@@ -234,6 +239,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     ...(heroAction==='personal-counterattack'?{
      ranged:heroRanged,vsCharge:counterAgainstCharge,
     }:{}),
+    ...(['personal-attack','personal-cautious-attack',
+      'personal-reckless-attack','personal-charge'].includes(heroAction)&&
+      (heroAction!=='personal-cautious-attack'||!heroRanged)?
+      {twoHandedGrip:heroGripTwoHands,powerBonusDice:heroPowerBonus}:{}),
    };
    setBattle(executeWarHeroAction(battle,{heroId:hero.id,action}));
    setError('');
@@ -381,6 +390,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       {Object.values(WAR_PERSONAL_WEAPONS).filter(w=>w.family==='melee').map(w=>
        <option key={w.id} value={w.id}>{w.label}</option>)}
      </select>
+    </label>
+    <label>Dados bônus de Força (heróis-modelo)
+     <input type="number" min={0} max={5} value={modelStrengthBonus}
+      onChange={e=>setModelStrengthBonus(Math.max(0,Math.min(5,Number(e.target.value))))}/>
     </label>
     <label>Arma de Pontaria dos heróis-modelo
      <select value={modelRanged} onChange={e=>setModelRanged(e.target.value as WarPersonalWeaponId)}>
@@ -673,6 +686,26 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        'personal-attack-mount','personal-cautious-attack'].includes(heroAction)&&<label className="got-check">
        <input type="checkbox" checked={heroRanged} onChange={e=>setHeroRanged(e.target.checked)}/>
        Atacar usando Pontaria (distâncias pessoais em metros)</label>}
+      {['personal-attack','personal-cautious-attack',
+       'personal-reckless-attack','personal-charge'].includes(heroAction)&&
+       (heroAction!=='personal-cautious-attack'||!heroRanged)&&
+       (battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.meleeWeapon?.adaptable&&
+       <label className="got-check"><input type="checkbox" checked={heroGripTwoHands}
+        onChange={e=>setHeroGripTwoHands(e.target.checked)}/>
+        Adaptável · usar as duas mãos (+1 dano básico)
+       </label>}
+      {['personal-attack','personal-cautious-attack',
+       'personal-reckless-attack','personal-charge'].includes(heroAction)&&
+       (heroAction!=='personal-cautious-attack'||!heroRanged)&&
+       (battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.meleeWeapon?.powerful&&
+       <label>Dados bônus investidos em Força (Poderosa)
+        <input type="number" min={0}
+         max={(battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.strengthBonusDice??0}
+         value={heroPowerBonus}
+         onChange={e=>setHeroPowerBonus(Math.max(0,Math.min(
+          (battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.strengthBonusDice??0,
+          Number(e.target.value))))}/>
+       </label>}
       {['personal-move','personal-trample','personal-control-mount'].includes(heroAction)&&<>
        <label>X em metros (quadrados de 1 m)
         <input type="number" min={0} max={battle.width*10-1} value={heroMetres.x}
