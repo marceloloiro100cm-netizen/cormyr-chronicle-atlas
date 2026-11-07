@@ -7,6 +7,7 @@ import {createWarBattle,issueWarOrder,previewWarMovement} from '@/lib/battle/got
 import {modelWarCommanders,modelWarUnit} from '@/lib/battle/got/models';
 import {previewWarAftermath} from '@/lib/battle/got/aftermath';
 import {BattleGotGame} from '@/components/battle/BattleGotGame';
+import {GOT_LAB_SAVE_KEY,encodeGotLabSave} from '@/lib/battle/got/lab-save';
 
 const army=(id:string,side:'attacker'|'defender',x:number,y:number,
  type:'infantry'|'archers'='infantry')=>
@@ -103,9 +104,25 @@ describe('P1 — interface de jogabilidade e revisão',()=>{
   expect(within(map).getByText(/Clima\/visibilidade/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:/Ampliar o mapa de batalha/}));
   expect(screen.getByRole('button',{name:/Restaurar painel lado a lado/})).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Ordem do livro'),{target:{value:'move'}});
+  expect(within(map).getByText(/Rota disponível:|Destino indisponível:/)).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Filtrar histórico'),{target:{value:'dice'}});
   expect(screen.getByText(/Mostrando as últimas/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:/Restaurar painel lado a lado/}));
   expect(screen.getByRole('button',{name:/Ampliar o mapa de batalha/})).toBeInTheDocument();
+ });
+ it('retoma batalha finalizada e permite filtrar o relatório de sobreviventes',()=>{
+  const base=make('plain');
+  const done={...base,phase:'finished' as const,winner:'attacker' as const,
+   units:base.units.map(u=>u.id==='d'?{...u,condition:'destroyed' as const,health:0}:u)};
+  window.localStorage.setItem(GOT_LAB_SAVE_KEY,encodeGotLabSave(done));
+  render(<BattleGotGame onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Retomar simulação salva'}));
+  const result=screen.getByRole('region',{name:'Prévia de sobreviventes'});
+  expect(within(result).getAllByText(/balanço militar/)).toHaveLength(2);
+  fireEvent.change(within(result).getByLabelText('Filtrar resultados das tropas'),
+   {target:{value:'defender'}});
+  expect(within(result).getByText(/proposta de destruição|graduação/)).toBeInTheDocument();
+  expect(within(result).getByText(/decisão pendente do Narrador/)).toBeInTheDocument();
  });
 });
