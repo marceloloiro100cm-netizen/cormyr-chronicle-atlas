@@ -10,11 +10,11 @@ const start=()=>{
 };
 
 describe('CRZ · V4: arena tática no padrão aprovado',()=>{
- it('encaixa General, retrato vazio, ordem, mapa e últimas ações na mesma arena',()=>{
+ it('encaixa General, retrato de Tillet, ordem, mapa e últimas ações na mesma arena',()=>{
   const arena=start();
   expect(within(arena).getByRole('region',{name:'Painel do General CRZ'}))
    .toBeInTheDocument();
-  expect(within(arena).getByRole('img',{name:'Espaço reservado para retrato do General'}))
+  expect(within(arena).getByRole('img',{name:'Comandante: Tillet'}))
    .toBeInTheDocument();
   expect(within(arena).getByRole('region',{name:'Ordem de combate'}))
    .toBeInTheDocument();
