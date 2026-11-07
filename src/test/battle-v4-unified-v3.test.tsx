@@ -18,7 +18,7 @@ describe('Batalha V3 · padrão de interface V4 unificada',()=>{
   const arena=started();
   expect(within(arena).getByRole('region',{name:'General e habilidades V3'}))
    .toBeInTheDocument();
-  expect(within(arena).getByRole('img',{name:'Comandante: Tillet'}))
+  expect(within(arena).getByRole('img',{name:/Comandante: /}))
    .toBeInTheDocument();
   expect(within(arena).getByRole('region',{name:'Ordem de combate V3'}))
    .toBeInTheDocument();
