@@ -1,7 +1,7 @@
 import {UNIT_EQUIPMENT} from '@/lib/house/equipment';
 import {TRAINING,UNIT_TYPES} from '@/lib/house/engine';
 import {resolveEquipmentDamage} from './official-adapter';
-import type {WarCommander,WarPosition,WarSide,WarUnit} from './types';
+import type {WarCommander,WarPosition,WarSide,WarUnit,WarRange} from './types';
 
 export function modelWarUnit(input:{
  id:string;name:string;side:WarSide;position:WarPosition;
@@ -18,7 +18,7 @@ export function modelWarUnit(input:{
  };
  const mounted=input.typeId==='cavalry';
  const discipline=Math.max(0,TRAINING[training].discipline+type.discipline);
- const range=equip.marksmanship==='—'?'none':equip.marksmanship.includes('longo')?'long':'short';
+ const range:WarRange=equip.marksmanship==='—'?'none':equip.marksmanship.includes('longo')?'long':'short';
  return {
   id:input.id,name:input.name,side:input.side,position:{...input.position},typeId:input.typeId,
   training,ability:skills,defense:skills.agility+skills.athletics+skills.awareness-equip.penalty,
