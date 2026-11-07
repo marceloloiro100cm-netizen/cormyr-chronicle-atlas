@@ -1,6 +1,7 @@
 import type {WarFormation,WarFacing} from './formations';
 import type {WarTerrainTile,WarVisibility,WarWeather} from './terrain';
 import type {WarFortification} from './fortifications';
+import type {WarHero} from './heroes';
 import type {WarSiegeEngine} from './siege';
 /** Motor independente de Guerra dos Tronos RPG, capítulo 10. Não reaproveitar BattleState/PTE. */
 export type WarSide='attacker'|'defender';
@@ -48,7 +49,8 @@ export type WarBattle=Readonly<{
  width:number;height:number;metresPerCell:10;round:number;
  tiles:readonly WarTerrainTile[];weather:WarWeather;visibility:WarVisibility;advancedFormations:boolean;
  fortifications:readonly WarFortification[];
- phase:'siege'|'orders'|'finished';first:WarSide;turn:WarSide;
+ phase:'siege'|'heroes-first'|'orders'|'heroes-second'|'finished';first:WarSide;turn:WarSide;
+ heroes:readonly WarHero[];heroSecondCompletedRound?:number;
  siege:readonly WarSiegeEngine[];siegeCompleted:Readonly<Record<WarSide,boolean>>;
  commanders:readonly WarCommander[];units:readonly WarUnit[];
  ordersRemaining:Readonly<Record<string,number>>;
