@@ -10,6 +10,7 @@ import type {BattleMap,BattleState,BattleStack,Hex,Side,Training} from '@/lib/ba
 import {BattleBoard} from './BattleBoard';
 import {BattleMapEditor} from './BattleMapEditor';
 import {BattleSourcePicker} from './BattleSourcePicker';
+import {isBattleTrainingCopy,battleTrainingSourceKey} from '@/lib/battle/adapters/imported-npc-roster';
 
 type PreparedUnit={id:string;side:Side;name:string;typeId:string;training:Training;count:number;position:Hex|null;imported?:BattleStack};
 const SIDE_LABEL={attacker:'Atacante',defender:'Defensor'} as const;
@@ -45,7 +46,7 @@ export function BattleSetup({onStart,onBack}:{
  const addImportedMany=(stacks:BattleStack[],houseName:string):boolean=>{
   if(stacks.length===0)return false;
   const side=stacks[0]!.side;
-  if(stacks.some(source=>source.side!==side||source.source.kind!=='house-readonly')){
+  if(stacks.some(source=>source.side!==side||!isBattleTrainingCopy(source))){
    setError('Somente cópias militares do mesmo exército podem ser importadas.');return false;
   }
   const current=units.filter(u=>!(u.side===side&&u.id===side+'-1'&&!u.imported));
@@ -53,8 +54,8 @@ export function BattleSetup({onStart,onBack}:{
    setError('Limite de cinco agrupamentos por lado.');return false;
   }
   const keys=[...current.filter(u=>u.imported).map(u=>
-   u.imported!.source.houseId+'::'+u.imported!.source.unitId),
-   ...stacks.map(u=>u.source.houseId+'::'+u.source.unitId)];
+   battleTrainingSourceKey(u.imported!)),
+   ...stacks.map(battleTrainingSourceKey)];
   if(new Set(keys).size!==keys.length){
    setError('Uma ou mais unidades desta Casa já foram copiadas.');return false;
   }
@@ -175,7 +176,7 @@ export function BattleSetup({onStart,onBack}:{
     <BattleSourcePicker onAdd={addImported} onAddMany={addImportedMany}
      remainingBySide={remainingBySide}/>
     <p className="battle-note">
-     {units.filter(u=>u.imported).length} unidades oficiais copiadas para este exercício.
+     {units.filter(u=>u.imported).length} unidades documentadas copiadas para este exercício.
      Exércitos sem Casa selecionada continuam com tropas-modelo.</p>
    </div>}
    {error&&<p role="alert" className="battle-error">{error}</p>}
