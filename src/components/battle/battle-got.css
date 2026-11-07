@@ -138,3 +138,19 @@
 .battle-module .got-cell:not(.occupied):not(.got-deployed)[data-terrain="wall"]{color:#fff4da}
 .battle-module .got-map .got-token-art{object-fit:contain;object-position:center;transform:none;max-height:100%;max-width:100%}
 .battle-module .got-cell .got-token-frame{flex:0 0 auto}
+
+
+/* Chapter 10: explanatory siege and aftermath audit, no official House writes. */
+.battle-module .got-siege-inspector,
+.battle-module .got-resource-rolls,
+.battle-module .got-after-modifiers,
+.battle-module .got-review-tasks{border:1px solid #c5ae7d;border-radius:8px;
+ background:rgba(19,35,32,.78);padding:12px;color:#fff3da}
+.battle-module .got-siege-inspector summary,
+.battle-module .got-resource-rolls summary{cursor:pointer;font-weight:700;
+ color:#ffe3ac;min-height:30px}
+.battle-module .got-siege-inspector .got-unit{margin-top:8px}
+.battle-module .got-after-modifiers{display:grid;gap:8px;margin:12px 0}
+.battle-module .got-after-modifiers legend{font-weight:700;padding:0 6px}
+.battle-module .got-review-tasks ul{padding-left:22px;line-height:1.6;margin:6px 0}
+.battle-module .got-resource-rolls p{font-variant-numeric:tabular-nums}
