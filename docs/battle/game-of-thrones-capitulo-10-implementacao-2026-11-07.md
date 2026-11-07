@@ -218,7 +218,7 @@ Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsist
   ampliação de `battle-got-personal-counterattack.test.ts`.
   Não há migração de banco, publicação ou mudanças de ficha.
 - **Ainda ausente**: sobrevivência da montaria com gasto de Destino,
-  atropelamento com múltiplas decisões manuais, ataques de montaria
+  atropelamento com interrupções de unidades, ataques de montaria
   treinada independente, animais com estatísticas oficiais,
   riscos e coberturas de obstáculos mais complexos, interrupções
   de unidades e outras qualidades de armas. A equivalência 100%
@@ -254,3 +254,41 @@ Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsist
   da tabela 9-3; efeitos ambientais, montarias e reações em
   sequência com múltiplos alvos precisam de auditoria adicional.
   Não mesclar em produção sem CI e revisão de equivalência.
+
+## Incremento — sequência de atropelamento e três novas qualidades (7/11/2026)
+
+- O atropelamento do laboratório agora percorre a linha de 1 metro em
+  **ordem de alvos**; se o defensor puder escolher ferimentos ou lesão,
+  o golpe fica pendente e o percurso aguarda a decisão. Quando resolvido,
+  a simulação retoma do **próximo metro**, sem repetir ataque, sem gastar
+  outra ação maior e sem recalcular as rolagens anteriores.
+- O percurso é uma máquina de estado explícita
+  (`pendingPersonalTrample`): salva trajetória, índice seguinte,
+  número de alvos já atingidos e características da montaria.
+  Soldados comuns, que não podem aceitar ferimentos voluntários, têm
+  dano aplicado no próprio passo; as decisões de heróis seguintes
+  continuam surgindo na ordem correta.
+- **Atordoante (cap. 9, p. 198):** uma arma com esta qualidade e
+  dois ou mais graus pode trocar um grau de dano pela impossibilidade
+  de a vítima executar uma ação maior no próximo turno. A escolha é
+  explícita no laboratório. A restrição termina quando a vítima
+  conclui seu turno com ações menores.
+- **Estilhaçadora (cap. 9, p. 200):** com dois ou mais graus reduz
+  primeiro o bônus defensivo da arma/escudo e depois o VA, até o
+  valor da qualidade. É aplicada após o dano do golpe, sem retroagir
+  sobre a absorção deste mesmo ataque. Também se aplica ao VA de
+  unidades militares atingidas por um personagem.
+- **Frágil (cap. 9, p. 200):** dois ou mais graus quebram a arma do
+  atacante, ainda que a armadura absorva todo o dano. Ataques
+  subsequentes com a mesma arma quebrada são bloqueados.
+- Novos exemplos do catálogo-modelo: **Marreta**, **Ferramenta de
+  Aldeão** e **Mangual com Cravos**, com dados da tabela 9-3.
+- Novos testes: `battle-got-trample-manual-mitigation.test.ts`,
+  `battle-got-personal-weapon-effects.test.ts` e
+  `battle-got-weapon-effects-unit.test.ts`.
+- **Limitação explícita:** atropelamento é uma mecânica experimental
+  própria do laboratório, sujeita a validação do Narrador para
+  equivalência do livro. Agarrar, Enredar, Empalar e efeitos de
+  múltiplos equipamentos ainda não integram o catálogo completo;
+  o dano do golpe contra montaria ainda não usa todas as qualidades
+  da arma. Não modificar fichas oficiais nem publicar o PR sem revisão.
