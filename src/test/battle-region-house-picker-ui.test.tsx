@@ -71,7 +71,7 @@ describe('Seletor militar · Região → Casa → Exército',()=>{
   const [stacks,name]=onAddMany.mock.calls[0]!;
   expect(name).toBe('Ashkar');
   expect(stacks).toHaveLength(2);
-  expect(stacks.map((s:{source:{unitId:string}})=>s.source.unitId)).toEqual(['u1','u2']);
+  expect(stacks.map(s=>s.source.unitId)).toEqual(['u1','u2']);
   expect(mocked.snapshot).toHaveBeenCalledTimes(2);
   expect(mocked.snapshot.mock.calls[0]![0].data).toMatchObject({
    houseId:'ashkar',side:'attacker',unitId:'u1',primaryTypeId:'infantry',
