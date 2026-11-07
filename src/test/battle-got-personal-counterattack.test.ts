@@ -1,6 +1,7 @@
 import {describe,expect,it} from 'vitest';
 import {createWarBattle} from '@/lib/battle/got/engine';
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
+import {resolvePendingPersonalDamage} from '@/lib/battle/got/personal-injuries';
 import {modelWarCommanders,modelWarUnit} from '@/lib/battle/got/models';
 
 function setup(input:{manual?:boolean;distance?:number;attackerHp?:number}={}){
@@ -71,9 +72,34 @@ describe('Capítulo 9 — contra-ataque pessoal preparado',()=>{
   expect(raised.heroes[0]!.health)
    .toBe(normal.heroes[0]!.health-2*degrees);
  });
- it('mitigação manual bloqueia o modo antecipado até fluxo de reações ser implementado',()=>{
-  expect(()=>executeWarHeroAction(setup({manual:true}),{heroId:'d',
-   action:{kind:'personal-counterattack'}})).toThrow(/mitigação manual/);
+ it('permite mitigação da reação antes de prosseguir com ataque original',()=>{
+  const prepared=executeWarHeroAction(setup({manual:true}),{heroId:'d',
+   action:{kind:'personal-counterattack'}});
+  const paused=executeWarHeroAction(prepared,{heroId:'a',
+   action:{kind:'personal-attack',targetHeroId:'d'}});
+  expect(paused.pendingPersonalDamage?.targetHeroId).toBe('a');
+  expect(paused.pendingPersonalCounterattack?.attackerId).toBe('a');
+  expect(paused.events.filter(e=>e.kind==='personal-attack')).toHaveLength(1);
+  const resumed=resolvePendingPersonalDamage(paused,{kind:'wounds',woundCount:1});
+  expect(resumed.pendingPersonalCounterattack).toBeUndefined();
+  expect(resumed.pendingPersonalDamage?.targetHeroId).toBe('d');
+  expect(resumed.events.filter(e=>e.kind==='personal-attack')).toHaveLength(2);
+  const completed=resolvePendingPersonalDamage(resumed,{kind:'none'});
+  expect(completed.pendingPersonalDamage).toBeUndefined();
+  expect(completed.events.filter(e=>e.kind==='personal-damage')).toHaveLength(2);
+ });
+ it('cancela ataque principal se reação derruba agressor após sua decisão de mitigação',()=>{
+  const first=setup({manual:true,attackerHp:1});
+  const prepared=executeWarHeroAction(first,{heroId:'d',
+   action:{kind:'personal-counterattack'}});
+  const paused=executeWarHeroAction(prepared,{heroId:'a',
+   action:{kind:'personal-attack',targetHeroId:'d'}});
+  const resolved=resolvePendingPersonalDamage(paused,{kind:'none'});
+  expect(resolved.heroes.find(h=>h.id==='a')?.active).toBe(false);
+  expect(resolved.pendingPersonalDamage).toBeUndefined();
+  expect(resolved.pendingPersonalCounterattack).toBeUndefined();
+  expect(resolved.events.filter(e=>e.kind==='personal-attack')).toHaveLength(1);
+  expect(resolved.events.some(e=>e.kind==='personal-counterattack-interrupt')).toBe(true);
  });
  it('contra-ataque à distância usa Pontaria quando existe alcance',()=>{
   const b=setup({distance:5});
