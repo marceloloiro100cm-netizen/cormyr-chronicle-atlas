@@ -4,7 +4,7 @@
 export const BATTLE_RULESET_OPTIONS=[
  {id:'got',label:'Game of Thrones',shortName:'Regras do livro',
   description:'Guerra dos Tronos RPG: Guerra, Disciplina, ordens, moral, formações e sobreviventes.',
-  status:'planned',engine:null},
+  status:'partial',engine:'got-core'},
  {id:'adapted',label:'Adaptado',shortName:'Sistema atual de Cormyr',
   description:'Mantém o combate desenvolvido: PTE-2.0, Cruzada V3 e laboratório CRZ.',
   status:'available',engine:'pte-v3'},
@@ -21,7 +21,7 @@ export function battleRulesetOption(id:BattleRulesetMode):BattleRulesetOption {
  if(!found)throw new Error('Sistema de regras desconhecido.');
  return found;
 }
-/** Somente o motor existente pode iniciar uma batalha nesta etapa. */
+/** Modo pronto para guerra completa; núcleo GOT é testável separadamente. */
 export function battleRulesetReady(id:BattleRulesetMode):boolean {
  return battleRulesetOption(id).status==='available';
 }
