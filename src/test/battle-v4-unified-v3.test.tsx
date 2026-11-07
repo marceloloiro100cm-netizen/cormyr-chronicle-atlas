@@ -86,7 +86,7 @@ describe('Batalha V3 · padrão de interface V4 unificada',()=>{
   expect(general.getByRole('button',{name:'Cancelar alvo'})).toBeInTheDocument();
   fireEvent.click(general.getByRole('button',{name:'Cancelar alvo'}));
   expect(power).toHaveAttribute('aria-pressed','false');
-  expect(screen.getByRole('button',{name:'Exportar treino JSON'})).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Exportar replay V3 verificado'})).toBeInTheDocument();
  });
  it('escopo e responsividade independentes de dados oficiais',()=>{
   const css=readFileSync('src/components/battle/crusade-v4.css','utf8');
