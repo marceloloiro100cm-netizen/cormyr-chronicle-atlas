@@ -1,4 +1,5 @@
 import {rollDice} from './dice';
+import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
 import type {WarBattle,WarPersonalInitiative} from './types';
 
 /** Iniciativa do Cap. 9: Agilidade e dados de bônus Rapidez. Ação intercalada opt-in no laboratório. */
@@ -11,7 +12,7 @@ export function beginPersonalInitiative(battle:WarBattle):WarBattle{
  if(!heroes.length)throw new Error('Não há personagens disponíveis para iniciativa.');
  let seed=battle.seed;
  const entries=heroes.map(h=>{
-  const roll=rollDice(seed,h.agility??3,h.quicknessBonusDice??0,h.injuries??0);
+  const roll=rollPersonalWithFate(seed,h,h.agility??3,h.quicknessBonusDice??0,h.injuries??0);
   seed=roll.nextSeed;
   return {heroId:h.id,name:h.name,total:Math.max(0,roll.total-(h.wounds??0)),
    quickness:h.quicknessBonusDice??0,roll:roll.dice,rank:h.agility??3};
@@ -35,7 +36,9 @@ export function beginPersonalInitiative(battle:WarBattle):WarBattle{
  }
  const order=entries.map(e=>e.heroId);
  const pending:WarPersonalInitiative={phase:battle.phase,roundIndex:0,order,cursor:0};
- const state={...battle,seed,personalInitiative:seekNextActor(battle,pending)};
+ const state={...battle,seed,
+  heroes:battle.heroes.map(h=>heroes.some(x=>x.id===h.id)?consumePersonalFateRoll(h):h),
+  personalInitiative:seekNextActor(battle,pending)};
  return {...state,events:[...state.events,...entries.map(e=>({
   seq:state.events.length+entries.indexOf(e)+1,round:state.round,
   side:heroes.find(h=>h.id===e.heroId)!.side,kind:'personal-initiative',
