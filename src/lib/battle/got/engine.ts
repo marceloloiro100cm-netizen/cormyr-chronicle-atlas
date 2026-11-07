@@ -265,15 +265,14 @@ function attackIndividualFromWarUnit(
  const degrees=degreesOfSuccess(total,difficulty);
  const damage=degrees?Math.max(0,
   (ranged?actor.rangedDamage:actor.meleeDamage)*degrees-hero.armor):0;
- const health=Math.max(0,hero.health-damage),defeated=health===0;
- let next:WarBattle={...battle,seed:roll.nextSeed,
-  heroes:battle.heroes.map(h=>h.id===hero.id?{...h,health,
-   active:!defeated&&h.active}:h),
-  commanders:defeated&&hero.commanderId?battle.commanders.map(c=>
-   c.id===hero.commanderId?{...c,active:false}:c):battle.commanders};
+ let next:WarBattle={...battle,seed:roll.nextSeed};
+ if(damage>0)next=queuePersonalDamage(next,{actorName:actor.name,
+  targetHeroId:hero.id,damage,source:'unit'});
+ const defeated=next.heroes.find(h=>h.id===hero.id)?.active===false;
  return log(next,'unit-vs-hero',actor.name+' atacou '+hero.name+
   ' (+2D de Luta/Pontaria): '+total+' vs Defesa '+difficulty+
-  ', '+degrees+' grau(s), '+damage+' dano'+(defeated?' (derrotado)':'')+'.',
+  ', '+degrees+' grau(s), '+damage+' dano potencial'+
+  (defeated?' (derrotado)':'')+'.',
   actor.side,{roll:roll.dice,total,difficulty,degrees});
 }
 function chooseNearest(battle:WarBattle,unit:WarUnit,ranged:boolean):WarUnit|null{
@@ -674,7 +673,7 @@ export function issueWarSurrender(battle:WarBattle,input:{commanderId:string}):W
 export function completeWarHeroPhase(battle:WarBattle):WarBattle{
  if(battle.pendingPersonalDamage)throw new Error('Resolva o dano pessoal pendente antes de avançar.');
  if(battle.phase==='heroes-first')
-  return log({...battle,phase:'orders',personalInitiative:undefined,heroes:battle.heroes.map(h=>({...h,usedActions:0,minorActionsUsed:0}))},
+  return log({...battle,phase:'orders',personalInitiative:undefined,heroes:battle.heroes.map(h=>({...h,usedActions:0,minorActionsUsed:0,attackedThisTurn:false}))},
    'hero-phase','Passo seis concluído: ordens dos exércitos.',null);
  if(battle.phase==='heroes-second'){
   const ready:WarBattle={...battle,phase:'orders',heroSecondCompletedRound:battle.round};
@@ -723,7 +722,7 @@ export function advanceWarRound(battle:WarBattle):WarBattle{
  next={...next,round:next.round+1,
   units:next.units.map(u=>({...u,issuedThisRound:0,actedThisRound:false,
    criticalThisRound:false,defendRoll:null,counterChargeReady:false})),
-  heroes:next.heroes.map(h=>({...h,usedActions:0,minorActionsUsed:0,dodgeDefense:null})),
+  heroes:next.heroes.map(h=>({...h,usedActions:0,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false})),
   personalInitiative:undefined,
   ordersRemaining:{
    ...commandBudget(next.commanders,'attacker'),
