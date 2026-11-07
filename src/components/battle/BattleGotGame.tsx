@@ -460,7 +460,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      {Array.from({length:2+extraUnitsPerSide},(_,i)=>i+1).map(n=>{
       const id=side+'-'+n;
       return <label key={id}>Unidade {n}
-       <select value={types[id]} onChange={e=>setTypes(v=>({...v,[id]:e.target.value as TypeId}))}>
+       <select value={types[id]??'infantry'} onChange={e=>setTypes(v=>({...v,[id]:e.target.value as TypeId}))}>
         {OPTIONS.map(row=><option key={row.id} value={row.id}>{row.label}</option>)}
        </select>
       </label>;
