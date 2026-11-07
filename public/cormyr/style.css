@@ -297,12 +297,12 @@
 .music-catalogue-track .music-lyrics-entry{flex:1 1 100%;margin:2px 0 0}
 
 
-/* Music catalogue: every track uses the same responsive card and aligned actions. */
+/* Music catalogue: full-width horizontal tracks like the royal theme (desktop/tablet). */
 .music-links{display:block;min-width:0}
 .music-links>div:first-child{margin-bottom:16px}
 .music-links .music-actions{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(min(100%,390px),1fr));
+  grid-template-columns:minmax(0,1fr);
   gap:14px;
   width:100%;
   min-width:0;
