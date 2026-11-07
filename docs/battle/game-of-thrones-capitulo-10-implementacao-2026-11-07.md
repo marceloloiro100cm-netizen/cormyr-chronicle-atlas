@@ -419,3 +419,37 @@ Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsist
   ações de interação para apanhar uma arma perdida e
   revalidação narrativa de estados de rede e Empalar.
   Nenhum efeito foi publicado em produção.
+
+## Incremento — auditoria de equipamento e estados de contenção (7/11/2026)
+
+- **Tabela 9-3, páginas impressas 196–197:** auditadas armas
+  modelo e corrigidas as qualidades do Punho (Agarrar e Mão
+  Inábil +1, sem Rápida) e da Adaga (Defensiva +1 e Mão
+  Inábil +1, sem Rápida). O teste de Ataque Dividido
+  passou a usar Espada Pequena, que realmente é Rápida.
+- O **Pique** também é Desajeitado (−2D a cavalo). O
+  **Arco de Caça** exige Duas Mãos. Ajustado o Volume
+  listado para Marreta (1), Martelo de Guerra (1),
+  Machado Longo (1), Lança de Guerra (2) e Lança
+  de Torneio (1), mantendo os escudos pesados
+  já modelados.
+- **Enredar:** a restrição de Movimento para 1 m passou
+  a valer mesmo quando o personagem está montado,
+  inclusive para deslocamento ao controlar montaria não
+  treinada e para atropelamento. Anteriormente a velocidade
+  do cavalo permitia contornar a restrição.
+- **Ciclo de vínculos:** adicionados testes cobrindo
+  derrota ou rendição de quem Agarra e derrota de quem
+  está agarrado. Agarrar e imobilização ativa são liberados;
+  redes e armas empaladas permanecem até a retirada própria,
+  porque não dependem da consciência do agressor.
+- **Testes acrescentados:**
+  `battle-got-personal-restraint-lifecycle.test.ts` e
+  `battle-got-weapon-table-parity.test.ts`.
+  Mantida a simulação local, sem qualquer escrita em
+  fichas de Casas, integrantes da campanha ou produção.
+- **Pendências:** ainda é necessária uma conferência
+  integral do catálogo, movimentação por terrenos e
+  interações complexas com montarias, efeitos de
+  armadura, combate de cerco e todas as habilidades
+  do livro. Sem selo de paridade 100%.
