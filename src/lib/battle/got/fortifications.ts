@@ -18,6 +18,8 @@ export type WarFortification=Readonly<{
  sabotage:number;
  /** Parâmetros destrutíveis do laboratório digital, não valores oficiais de PV do livro. */
  structuralHealth?:number;structuralArmor?:number;breached?:boolean;
+ /** Dificuldade de quebrar a estrutura, adjudicada pelo Narrador. */
+ structuralDifficulty?:number;
 }>;
 const same=(a:WarPosition,b:WarPosition)=>a.x===b.x&&a.y===b.y;
 export function makeWarFortification(input:Omit<WarFortification,'sabotage'>):WarFortification{
@@ -52,7 +54,8 @@ export function validateWarForts(
   if(!fort.cells.length||fort.cells.length>WAR_FORT_PROFILES[fort.kind].capacity||
    !Number.isInteger(fort.sabotage)||fort.sabotage<0||
    (fort.structuralHealth!==undefined&&(!Number.isInteger(fort.structuralHealth)||fort.structuralHealth<0))||
-   (fort.structuralArmor!==undefined&&(!Number.isInteger(fort.structuralArmor)||fort.structuralArmor<0)))
+   (fort.structuralArmor!==undefined&&(!Number.isInteger(fort.structuralArmor)||fort.structuralArmor<0))||
+   (fort.structuralDifficulty!==undefined&&(!Number.isInteger(fort.structuralDifficulty)||fort.structuralDifficulty<1)))
    throw new Error('Fortificação inconsistente.');
   if(fort.cells.some(c=>!Number.isInteger(c.x)||!Number.isInteger(c.y)||
    c.x<0||c.y<0||c.x>=width||c.y>=height))
