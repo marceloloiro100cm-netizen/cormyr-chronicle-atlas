@@ -42,7 +42,7 @@ describe('Batalha V3 — convocações entre narrador e jogador',()=>{
   expect(creator).toContain('closeV3Invitation');
   expect(creator).toContain('Casa destinatária');
   expect(hub).toContain('Convocar batalha');
-  expect(hub).toContain("view==='invite'&&<BattleV3InvitationCreator");
+  expect(hub).toContain("view==='invite'&&BATTLE_PLAYERS_ENABLED&&<BattleV3InvitationCreator");
   expect(file('src/components/battle/BattleV3PlayerEntry.tsx')).not.toContain('BattleV3InvitationCreator');
  });
 });
