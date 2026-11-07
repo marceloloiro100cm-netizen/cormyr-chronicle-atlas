@@ -3,6 +3,7 @@ import {movementSlow,terrainAt,terrainEffect,visibilityPenalty} from './terrain'
 import type {WarBattle,WarEvent,WarPosition} from './types';
 import type {WarHero} from './heroes';
 import {queuePersonalDamage} from './personal-injuries';
+import {effectivePersonalArmor} from './personal-weapons';
 
 /** Capítulo 9: escala pessoal de 1 m. Não usa os quadrados de guerra de 10 m para alcance. */
 export type PersonalWarAction=Readonly<{
@@ -66,12 +67,15 @@ function attackHero(
 ):WarBattle{
  const from=personalPosition(actor),to=personalPosition(target);
  const dist=personalDistance(from,to);
- if(!ranged&&dist>1)throw new Error('Ataque de Luta exige herói adjacente em escala de 1 m.');
+ const reach=actor.meleeWeapon?.reachMetres??1;
+ if(!ranged&&dist>Math.max(1,reach))
+  throw new Error('Ataque de Luta exige alvo dentro do alcance em metros.');
  const effectiveRange=(actor.rangedRange??'short')==='long'?100:10;
  if(ranged&&(actor.rangedDamage<=0||actor.rangedRange==='none'))
   throw new Error('Herói não possui arma de Pontaria disponível.');
  const rangePenalty=ranged?Math.min(15,Math.max(0,Math.ceil((dist-effectiveRange)/10))):0;
  const totalPenalty=(actor.injuries??0)+(options.charge?1:0)+
+  (!ranged&&reach>1&&dist<3?1:0)+
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty;
  const bonus=(ranged?actor.rangedBonusDice:actor.meleeBonusDice)??0;
  const rank=ranged?actor.marksmanship:actor.fighting;
@@ -81,7 +85,8 @@ function attackHero(
  const difficulty=target.dodgeDefense??target.defense;
  const degrees=degreesOfSuccess(total,difficulty);
  const base=ranged?actor.rangedDamage:actor.meleeDamage+(options.charge?2:0);
- const damage=degrees?Math.max(0,base*degrees-target.armor):0;
+ const damage=degrees?Math.max(0,base*degrees-
+  effectivePersonalArmor(target.armor,ranged?actor.rangedWeapon:actor.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
   heroes:battle.heroes.map(h=>h.id===actor.id?{...h,passBonusDice:0}:h),
  };
