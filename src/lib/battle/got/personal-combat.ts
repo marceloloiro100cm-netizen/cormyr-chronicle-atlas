@@ -214,7 +214,7 @@ function attackHero(
  });
  next=applyPersonalControlHit(next,{
   actorId:actor.id,targetId:target.id,weapon,degrees,total,
-  grappleHit:options.grappleHit,
+  ...(options.grappleHit!==undefined?{grappleHit:options.grappleHit}:{}),
  });
  const defeated=next.heroes.find(h=>h.id===target.id)?.active===false;
  next=log(next,'personal-attack',actor.name+' atacou '+target.name+
@@ -240,7 +240,7 @@ export function resumePersonalSplit(battle:WarBattle):WarBattle{
   if(!actor?.active||!target?.active)continue;
   next={...next,pendingPersonalSplit:{...plan,nextIndex:i+1}};
   next=attackHero(next,actor,target,false,{
-   splitRank:plan.ranks[i],splitBonus:plan.bonuses[i],
+   splitRank:plan.ranks[i]!,splitBonus:plan.bonuses[i]!,
   });
   if(next.pendingPersonalDamage||next.pendingPersonalCounterattack)return next;
  }
