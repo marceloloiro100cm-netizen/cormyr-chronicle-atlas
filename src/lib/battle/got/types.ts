@@ -1,15 +1,19 @@
+import type {WarFormation,WarFacing} from './formations';
+import type {WarTerrainTile,WarVisibility,WarWeather} from './terrain';
 /** Motor independente de Guerra dos Tronos RPG, capítulo 10. Não reaproveitar BattleState/PTE. */
 export type WarSide='attacker'|'defender';
 export type WarPosition=Readonly<{x:number;y:number}>;
 export type WarCondition='organized'|'disorganized'|'routed'|'destroyed'|'surrendered'|'escaped';
 export type WarRange='none'|'short'|'long';
-export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat';
+export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'formation'|'turn'|'reverse';
 export type WarOrder=Readonly<{
  kind:WarOrderKind;
  targetId?:string;
  to?:WarPosition;
  sprint?:boolean;
  ranged?:boolean;
+ formation?:WarFormation;
+ facing?:WarFacing;
 }>;
 export type WarCommander=Readonly<{
  id:string;name:string;side:WarSide;role:'commander'|'subcommander';
@@ -25,6 +29,7 @@ export type WarUnit=Readonly<{
  meleeBonusDice?:number;rangedBonusDice?:number;
  maxHealth:number;health:number;condition:WarCondition;disorganizations:number;
  standing:WarOrder|null;activated:boolean;defendRoll:number|null;
+ formation?:WarFormation;facing?:WarFacing;
  issuedThisRound:number;actedThisRound:boolean;criticalThisRound:boolean;
  source:Readonly<{kind:'model'|'house-readonly';houseId?:string;unitId?:string;version?:number}>;
 }>;
@@ -35,6 +40,7 @@ export type WarEvent=Readonly<{
 export type WarBattle=Readonly<{
  schemaVersion:1;rulesVersion:'GOT-CH10-1';id:string;name:string;seed:number;
  width:number;height:number;metresPerCell:10;round:number;
+ tiles:readonly WarTerrainTile[];weather:WarWeather;visibility:WarVisibility;advancedFormations:boolean;
  phase:'orders'|'finished';first:WarSide;turn:WarSide;
  commanders:readonly WarCommander[];units:readonly WarUnit[];
  ordersRemaining:Readonly<Record<string,number>>;
