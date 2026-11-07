@@ -213,7 +213,8 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
  const hero=battle.heroes.find(h=>h.id===input.heroId);
  const target=battle.units.find(u=>u.id===input.unitId);
  if(!hero||!hero.active||hero.role!=='hero'||hero.unitId||
-  hero.usedActions>=5||!target||!onBoard(target)||target.side===hero.side)
+  hero.usedActions>=5||hero.lockedUntilRound===battle.round||
+  !target||!onBoard(target)||target.side===hero.side)
   throw new Error('Herói ou unidade inimiga indisponível.');
  const ranged=Boolean(input.ranged),distanceMetres=distanceFromHeroToUnit(hero,target);
  const range=ranged?(hero.rangedRange==='long'?100:10):1;
@@ -226,7 +227,7 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
  const penalty=Math.min(15,(hero.injuries??0)+
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty);
  const roll=rollDice(battle.seed,ranged?hero.marksmanship:hero.fighting,
-  Math.min(15,(ranged?hero.rangedBonusDice:hero.meleeBonusDice)??0),penalty);
+  Math.min(15,((ranged?hero.rangedBonusDice:hero.meleeBonusDice)??0)+(hero.passBonusDice??0)),penalty);
  const total=Math.max(0,roll.total-(hero.wounds??0));
  const difficulty=target.defense+20;
  const degrees=degreesOfSuccess(total,difficulty);
