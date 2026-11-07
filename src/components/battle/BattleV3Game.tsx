@@ -183,9 +183,9 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    <div className="battle-form-row">
     <label>Formato do mapa<select aria-label="Formato da malha V3"
      value={options.grid??'square'} disabled={locked}
-     onChange={e=>update({grid:e.target.value as 'hex'|'square'})}>
+     onChange={e=>update({grid:'square'})}>
       <option value="square">Quadrados (novo padrão)</option>
-      <option value="hex">Hexágonos (legado)</option>
+      {/* Hexágonos históricos permanecem apenas nos replays antigos. */}
      </select></label>
     <label>Cenário<select value={options.scenario} aria-label="Cenário da Cruzada" disabled={locked}
      onChange={e=>update({scenario:e.target.value as BattleScenarioId})}>
