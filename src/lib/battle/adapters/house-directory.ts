@@ -1,6 +1,10 @@
 import {REGIONS,regionId} from '@/lib/house/regions';
 
-export type BattleHouseDirectoryRow=Readonly<{id:string;name:string;region:string}>;
+export type BattleHouseDirectoryRow=Readonly<{
+ id:string;name:string;region:string;
+ /** Source is the exact asset registered for this house, never inferred from its ID. */
+ crest?:string|null;classification?:string|null;
+}>;
 export type BattleHouseRegion=Readonly<{id:string;name:string;houseCount:number}>;
 
 /** Canonical regions shared with the campaign. Unknown regions remain searchable. */
@@ -20,14 +24,20 @@ export function battleHouseDirectory(
  const valid=(r:BattleHouseDirectoryRow)=>r.id.trim()&&r.name.trim();
  for(const row of catalog){
   if(!valid(row))continue;
-  merged.set(row.id,{id:row.id,name:row.name.trim(),region:battleRegionId(row.region)});
+  merged.set(row.id,{id:row.id,name:row.name.trim(),region:battleRegionId(row.region),
+   ...(row.crest!==undefined?{crest:row.crest?.trim()||null}:{}),
+   ...(row.classification!==undefined?{classification:row.classification||null}:{})});
  }
  for(const row of campaign){
   if(!valid(row))continue;
   const prior=merged.get(row.id);
   const campaignRegion=battleRegionId(row.region);
   merged.set(row.id,{id:row.id,name:row.name.trim(),
-   region:campaignRegion!=='unclassified'?campaignRegion:prior?.region??'unclassified'});
+   region:campaignRegion!=='unclassified'?campaignRegion:prior?.region??'unclassified',
+   ...(row.crest!==undefined||prior?.crest!==undefined?
+    {crest:row.crest?.trim()||prior?.crest||null}:{}),
+   ...(prior?.classification!==undefined||row.classification!==undefined?
+    {classification:row.classification||prior?.classification||null}:{})});
  }
  return [...merged.values()].sort((a,b)=>
   a.name.localeCompare(b.name,'pt-BR')||a.id.localeCompare(b.id));
