@@ -497,6 +497,70 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
   unit.name+(escaped?' saiu do campo.':' retirou-se até '+pos.x+','+pos.y+'.'),unit.side);
 }
 function perform(battle:WarBattle,unit:WarUnit,order:WarOrder,degrees:number):WarBattle{
+ if(order.kind==='discard-equipment'){
+  if(!unit.fieldEquipment||unit.fieldEquipmentConsumed)
+   throw new Error('A unidade não possui equipamento a abandonar.');
+  return log(replaceUnit(battle,{...unit,fieldEquipmentConsumed:true}),
+   'discard-equipment',unit.name+' abandonou '+unit.fieldEquipment+'.',unit.side);
+ }
+ if(order.kind==='breach-gate'){
+  if(unit.fieldEquipmentConsumed||
+   !['ram','covered-ram'].includes(unit.fieldEquipment??''))
+   throw new Error('Arrombar portões exige aríete disponível.');
+  const fort=battle.fortifications.find(f=>f.id===order.fortId&&
+   f.side!==unit.side&&!f.breached&&f.structuralHealth!==0);
+  if(!fort||!fort.cells.some(p=>distance(unit.position,p)<=1))
+   throw new Error('Arrombar exige fortificação inimiga adjacente.');
+  const covered=unit.fieldEquipment==='covered-ram';
+  const difficulty=order.wallDifficulty??12;
+  if(!Number.isInteger(difficulty)||difficulty<1||difficulty>30)
+   throw new Error('Dificuldade de arrombamento inválida.');
+  const roll=rollDice(battle.seed,covered?8:unit.ability.athletics,
+   covered?0:2,unit.condition==='disorganized'?1:0);
+  const success=degreesOfSuccess(roll.total,difficulty);
+  let next:WarBattle={...battle,seed:roll.nextSeed};
+  if(success){
+   const hit=damageWarFortification(fort,5*success+(covered?8:0));
+   next={...next,fortifications:next.fortifications.map(f=>
+    f.id===fort.id?hit.fort:f)};
+   next=log(next,hit.breached?'gate-breached':'gate-damage',
+    unit.name+' atingiu '+fort.name+' com o aríete: '+
+    hit.damage+' dano estrutural'+(hit.breached?', brecha aberta.':'.'),
+    unit.side);
+  }
+  return log(next,'ram-test',unit.name+' arrombou '+fort.name+
+   ' ('+roll.total+' vs '+difficulty+').',unit.side,{
+    roll:roll.dice,total:roll.total,difficulty,degrees:success});
+ }
+ if(order.kind==='fire-special'){
+  if(!order.targetId)throw new Error('Selecione a unidade alvo da munição especial.');
+  const target=battle.units.find(u=>u.id===order.targetId&&u.side!==unit.side&&onBoard(u));
+  if(!target)throw new Error('Alvo especial inválido.');
+  const payload=warFieldThrowDamage(unit);
+  if(distance(unit.position,target.position)>1)
+   throw new Error('Munição especial só atinge unidade adjacente.');
+  if(!payload.wildfire&&!fortForUnit(battle.fortifications,unit))
+   throw new Error('Água e óleo fervente exigem posição em fortificação.');
+  const difficulty=target.defense+warFieldDefenseBonus(target,true)+
+   (fortForUnit(battle.fortifications,target)?
+    fortDefense(fortForUnit(battle.fortifications,target)!):0);
+  const roll=rollDice(battle.seed,unit.ability.marksmanship,
+   unit.rangedBonusDice??0,unit.condition==='disorganized'?1:0);
+  const success=degreesOfSuccess(roll.total,difficulty);
+  let next:WarBattle={...battle,seed:roll.nextSeed,
+   units:battle.units.map(u=>u.id===unit.id?{
+    ...u,fieldEquipmentConsumed:true}:u)};
+  next=log(next,'special-fire',unit.name+' utilizou '+unit.fieldEquipment+
+   ' contra '+target.name+': '+roll.total+' vs '+difficulty+
+   ', '+success+' grau(s).',unit.side,{
+    roll:roll.dice,total:roll.total,difficulty,degrees:success});
+  if(success){
+   const damage=payload.wildfire?payload.damage*success:payload.damage;
+   next=applyDamage(next,target,damage,unit.name);
+   if(payload.wildfire)next=igniteWarUnit(next,target.id,unit.name,7,2);
+  }
+  return next;
+ }
  const advanced=executeAdvancedWarOrder(battle,unit,order,{attack,applyDamage});
  if(advanced)return advanced;
  if(order.kind==='formation'){
