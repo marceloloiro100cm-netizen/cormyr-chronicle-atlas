@@ -30,6 +30,9 @@ const ORDER_LABEL:Record<WarOrderKind,string>={
  rally:'Reagrupar',revive:'Reanimar',reorganize:'Reorganizar',
  retreat:'Retirada', 'aggressive-retreat':'Retirada agressiva',surrender:'Rendição geral',
  formation:'Alterar formação',turn:'Girar',reverse:'Reverter',
+ suppress:'Fogo de supressão',probe:'Ataque exploratório',
+ 'counter-charge':'Preparar contra carga',sabotage:'Sabotagem',
+ ambush:'Emboscada',join:'Junção de unidades',
 };
 const CONDITION:Record<WarUnit['condition'],string>={
  organized:'Organizada',disorganized:'Desorganizada',routed:'Debandada',
@@ -126,11 +129,14 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    if(legalKind==='surrender'&&!window.confirm('Confirmar rendição geral de todo este exército na simulação?'))return;
    const command:WarOrder={
     kind:legalKind,
-    ...(['attack','charge','aggressive-retreat'].includes(legalKind)&&selectedTarget?{targetId:selectedTarget.id}:{}),
+    ...(['attack','charge','aggressive-retreat','suppress','probe','ambush'].includes(legalKind)&&selectedTarget?
+     {targetId:selectedTarget.id}:{}),
+    ...(legalKind==='join'?{targetId:activeUnits.find(u=>u.id!==selectedUnit.id)?.id??''}:{}),
+    ...(legalKind==='sabotage'?{fortId:battle.fortifications.find(x=>x.side!==battle.turn)?.id??''}:{}),
     ...(legalKind==='move'?{to:coord,sprint}:{}),
     ...(legalKind==='formation'?{formation}:{}),
     ...(legalKind==='turn'?{facing}:{}),
-    ...(['attack','aggressive-retreat'].includes(legalKind)?{ranged}:{}),
+    ...(['attack','aggressive-retreat','ambush'].includes(legalKind)?{ranged}:{}),
    };
    const result=issueWarOrder(battle,{commanderId:commander.id,unitId:selectedUnit.id,order:command});
    setBattle(result.battle);setSelected('');setTarget('');setError('');
@@ -408,21 +414,32 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         onChange={e=>setKind(e.target.value as WarOrderKind)}>
         {Object.entries(ORDER_LABEL).filter(([id])=>selectedUnit.condition==='routed'?
          id==='revive':id!=='revive'&&(id!=='reorganize'||selectedUnit.condition==='disorganized'))
-         .filter(([id])=>battle.advancedFormations||!['formation','turn','reverse'].includes(id))
+         .filter(([id])=>battle.advancedFormations||
+          !['formation','turn','reverse','suppress','probe','counter-charge','sabotage','ambush','join'].includes(id))
          .map(([id,label])=><option key={id} value={id}>{label}</option>)}
        </select>
       </label>
-      {['attack','charge','aggressive-retreat'].includes(legalKind)&&<>
+      {['attack','charge','aggressive-retreat','suppress','probe','ambush'].includes(legalKind)&&<>
        <label>Alvo
         <select aria-label="Alvo da ordem" value={selectedTarget?.id??''}
          onChange={e=>setTarget(e.target.value)}>
          {enemy.map(u=><option key={u.id} value={u.id}>{u.name} · {warUnitSummary(u).health}</option>)}
         </select>
        </label>
-       {legalKind!=='charge'&&<label className="got-check">
+       {['attack','aggressive-retreat','ambush'].includes(legalKind)&&<label className="got-check">
         <input type="checkbox" checked={ranged} onChange={e=>setRanged(e.target.checked)}/>
         Usar Pontaria (quando houver arma à distância)</label>}
       </>}
+      {legalKind==='sabotage'&&<label>Fortificação inimiga
+       <select value={battle.fortifications.find(f=>f.side!==battle.turn)?.id??''}
+        disabled aria-label="Fortificação alvo da sabotagem">
+        {battle.fortifications.filter(f=>f.side!==battle.turn).map(f=>
+         <option key={f.id} value={f.id}>{f.name}</option>)}
+       </select>
+      </label>}
+      {legalKind==='join'&&<p className="battle-note">
+       Junção: o segundo agrupamento aliado será escolhido automaticamente entre as
+       unidades disponíveis. Ambas devem estar feridas e adjacentes.</p>}
       {battle.advancedFormations&&legalKind==='formation'&&<label>Formação
        <select value={formation} onChange={e=>setFormation(e.target.value as WarFormation)}>
         {Object.keys(WAR_FORMATIONS).map(id=><option key={id} value={id}>{id}</option>)}
