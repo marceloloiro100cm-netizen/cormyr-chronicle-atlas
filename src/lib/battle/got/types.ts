@@ -22,6 +22,7 @@ export type WarUnit=Readonly<{
  fighting:number;marksmanship:number;animalHandling:number;}>;
  defense:number;discipline:number;armor:number;bulk:number;
  meleeDamage:number;rangedDamage:number;range:WarRange;mounted:boolean;naval:boolean;
+ meleeBonusDice?:number;rangedBonusDice?:number;
  maxHealth:number;health:number;condition:WarCondition;disorganizations:number;
  standing:WarOrder|null;activated:boolean;defendRoll:number|null;
  issuedThisRound:number;actedThisRound:boolean;criticalThisRound:boolean;
