@@ -9,7 +9,7 @@ import type {WarFateAction} from '@/lib/battle/got/personal-fate';
 import {resolveLabRecovery,restoreOrdinaryDamageAfterBattle} from '@/lib/battle/got/personal-recovery';
 import type {RecoveryActivity,RecoveryInterval} from '@/lib/battle/got/personal-recovery';
 import {deployWarSquad} from '@/lib/battle/got/squads';
-import {equipModelWarHero,WAR_PERSONAL_WEAPONS} from '@/lib/battle/got/personal-weapons';
+import {equipModelWarHero,equipModelWarOffhand,WAR_PERSONAL_WEAPONS} from '@/lib/battle/got/personal-weapons';
 import {makeModelWarMount} from '@/lib/battle/got/personal-mounts';
 import type {WarPersonalWeaponId} from '@/lib/battle/got/personal-weapons';
 import type {PersonalMitigationChoice} from '@/lib/battle/got/personal-injuries';
@@ -70,6 +70,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [heroesEnabled,setHeroesEnabled]=useState(false);
  const [modelMelee,setModelMelee]=useState<WarPersonalWeaponId>('longsword');
  const [modelRanged,setModelRanged]=useState<WarPersonalWeaponId>('longbow');
+ const [modelOffhand,setModelOffhand]=useState<'none'|'dagger'>('none');
+ const [modelHealingRank,setModelHealingRank]=useState(3);
  const [modelMountEnabled,setModelMountEnabled]=useState(false);
  const [modelStrengthBonus,setModelStrengthBonus]=useState(2);
  const [manualMitigation,setManualMitigation]=useState(false);
@@ -88,6 +90,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [heroUnitId,setHeroUnitId]=useState('');
  const [heroTargetId,setHeroTargetId]=useState('');
  const [splitSecondTargetId,setSplitSecondTargetId]=useState('');
+ const [healTargetId,setHealTargetId]=useState('');
  const [splitFirstRank,setSplitFirstRank]=useState(1);
  const [splitFirstBonus,setSplitFirstBonus]=useState(0);
  const [splitSecondBonus,setSplitSecondBonus]=useState(0);
@@ -144,13 +147,17 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    setBattle(createWarBattle({id:'book-lab-'+seed,name,seed,width:12,height:7,
     units,siege,
     heroes:heroesEnabled?[
-     {...equipModelWarHero(makeModelWarHero({id:'hero-attacker',name:'Herói atacante',side:'attacker',
+     {...equipModelWarOffhand(equipModelWarHero(makeModelWarHero({
+      id:'hero-attacker',name:'Herói atacante',side:'attacker',
       position:{x:2,y:5}}),{melee:modelMelee,ranged:modelRanged}),
+      modelOffhand==='none'?null:modelOffhand),healing:modelHealingRank,
       strengthBonusDice:modelStrengthBonus,
       ...(modelMountEnabled?{mount:makeModelWarMount({id:'horse-attacker',
        name:'Corcel atacante',trainedForWar:true})}:{})},
-     {...equipModelWarHero(makeModelWarHero({id:'hero-defender',name:'Herói defensor',side:'defender',
+     {...equipModelWarOffhand(equipModelWarHero(makeModelWarHero({
+      id:'hero-defender',name:'Herói defensor',side:'defender',
       position:{x:9,y:5}}),{melee:modelMelee,ranged:modelRanged}),
+      modelOffhand==='none'?null:modelOffhand),healing:modelHealingRank,
       strengthBonusDice:modelStrengthBonus,
       ...(modelMountEnabled?{mount:makeModelWarMount({id:'horse-defender',
        name:'Corcel defensor',trainedForWar:true})}:{})},
@@ -239,12 +246,14 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     ...(['join','rally','revive'].includes(heroAction)?
      {unitId:candidate?.id??matching?.id??''}:{}),
     ...(['personal-attack','personal-charge','personal-attack-mount',
-     'personal-cautious-attack','personal-reckless-attack'].includes(heroAction)?
+     'personal-cautious-attack','personal-reckless-attack',
+     'personal-dual-attack'].includes(heroAction)?
      {targetHeroId:heroTargetId||battle.heroes.find(h=>h.side!==hero.side&&h.active)?.id||''}:{}),
     ...(['personal-move','personal-trample','personal-control-mount'].includes(heroAction)?{toMetres:heroMetres}:{}),
+    ...(heroAction==='personal-heal-remove-impale'?{targetHeroId:healTargetId}:{}),
     ...(['personal-free-mount','personal-escape-entangle'].includes(heroAction)?
      {escapeUsing:mountEscapeSkill}:{}),
-    ...(heroAction==='personal-split-attack'?{
+    ...(['personal-split-attack','personal-combined-attack'].includes(heroAction)?{
      splitTargets:[heroTargetId||battle.heroes.find(h=>h.side!==hero.side&&h.active)?.id||'',
       splitSecondTargetId],
      splitRanks:[splitFirstRank,hero.fighting-splitFirstRank],
@@ -411,6 +420,16 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       {Object.values(WAR_PERSONAL_WEAPONS).filter(w=>w.family==='melee').map(w=>
        <option key={w.id} value={w.id}>{w.label}</option>)}
      </select>
+    </label>
+    <label>Arma secundária Mão Inábil
+     <select value={modelOffhand} onChange={e=>setModelOffhand(e.target.value as 'none'|'dagger')}>
+      <option value="none">Nenhuma</option>
+      <option value="dagger">Adaga · +1 dano ou +1 Defesa</option>
+     </select>
+    </label>
+    <label>Graduação em Cura (heróis-modelo)
+     <input type="number" min={1} max={15} value={modelHealingRank}
+      onChange={e=>setModelHealingRank(Math.max(1,Math.min(15,Number(e.target.value))))}/>
     </label>
     <label>Dados bônus de Força (heróis-modelo)
      <input type="number" min={0} max={5} value={modelStrengthBonus}
@@ -655,6 +674,12 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <option value="personal-attack">Combate pessoal · atacar (menor)</option>
         <option value="personal-aim">Combate pessoal · mirar (+1B, menor)</option>
         <option value="personal-split-attack">Ataque Dividido · vários alvos (maior)</option>
+        <option value="personal-dual-attack">Ataque com Duas Armas · secundária aumenta dano (maior)</option>
+        <option value="personal-combined-attack">Ataque Combinado · dividido + Mão Inábil (maior)</option>
+        <option value="personal-pin-grapple">Imobilizar · agarrado em chão (maior)</option>
+        <option value="personal-escape-pin">Imobilizado · escapar (maior)</option>
+        <option value="personal-pin-impale">Empalar · prender ao cenário (maior)</option>
+        <option value="personal-heal-remove-impale">Cura · aliado remove arma empalada (maior)</option>
         <option value="personal-escape-grapple">Agarrar · escapar (menor)</option>
         <option value="personal-release-grapple">Agarrar · soltar (livre)</option>
         <option value="personal-escape-entangle">Enredar · escapar (maior)</option>
@@ -682,7 +707,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        </select>
       </label>
       {['personal-attack','personal-charge','personal-attack-mount',
-       'personal-cautious-attack','personal-reckless-attack','personal-split-attack'].includes(heroAction)&&
+       'personal-cautious-attack','personal-reckless-attack','personal-split-attack',
+       'personal-dual-attack','personal-combined-attack'].includes(heroAction)&&
        <label>{heroAction==='personal-attack-mount'?'Cavaleiro da montaria adversária':'Herói adversário'}
         <select value={heroTargetId||battle.heroes.find(h=>h.side!==
          (battle.heroes.find(x=>x.id===heroId)??battle.heroes[0])?.side&&h.active)?.id||''}
@@ -694,7 +720,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
            {heroAction==='personal-attack-mount'?' · '+h.mount?.name:''}</option>)}
         </select>
        </label>}
-      {heroAction==='personal-split-attack'&&<>
+      {['personal-split-attack','personal-combined-attack'].includes(heroAction)&&<>
        <label>Segundo alvo distinto
         <select value={splitSecondTargetId}
          onChange={e=>setSplitSecondTargetId(e.target.value)}>
@@ -720,6 +746,14 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
          onChange={e=>setSplitSecondBonus(Number(e.target.value))}/>
        </label>
       </>}
+      {heroAction==='personal-heal-remove-impale'&&<label>Aliado empalado
+       <select value={healTargetId} onChange={e=>setHealTargetId(e.target.value)}>
+        <option value="">Selecione o aliado</option>
+        {battle.heroes.filter(h=>h.active&&h.impaledBy&&h.id!==heroId&&
+         h.side===(battle.heroes.find(x=>x.id===heroId)??battle.heroes[0])?.side)
+         .map(h=><option value={h.id} key={h.id}>{h.name}</option>)}
+       </select>
+      </label>}
       {heroAction==='personal-attack-unit'&&<label>Unidade adversária
        <select value={heroTargetUnitId}
         onChange={e=>setHeroTargetUnitId(e.target.value)}>
@@ -816,7 +850,12 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        (h.entangledBy?' · ENREDADO':'')+
        (h.impaledBy?' · EMPALADO':'')+
        (h.impalingTargetId?' · EMPALANDO':'')+
-       (h.meleeWeaponDisarmed?' · DESARMADO':'')).join(' | ')}</p>
+       (h.meleeWeaponDisarmed?' · DESARMADO':'')+
+       (h.pinnedByHero?' · IMOBILIZADO':'')+
+       (h.pinningTargetId?' · MANTÉM IMOBILIZAÇÃO':'')+
+       (h.impalePinnedBy?' · PRESO POR EMPALAR':'')+
+       (h.offhandWeapon?' · secundária '+h.offhandWeapon.label+
+        (h.offhandDefenseSuppressed?' (Defesa suspensa)':' (Defesa ativa)'):'')).join(' | ')}</p>
      <p className="battle-note">Posições individuais: {battle.heroes.map(h=>
       h.name+' ('+(h.personalPosition?.x??h.position.x*10+5)+','+
       (h.personalPosition?.y??h.position.y*10+5)+' m; '+
