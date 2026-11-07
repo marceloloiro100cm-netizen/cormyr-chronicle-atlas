@@ -197,7 +197,7 @@ export function executeAdvancedWarOrder(
   const ladder=actor.fieldEquipment==='ladders'&&!actor.fieldEquipmentConsumed;
   const tower=actor.fieldEquipment==='siege-tower'&&!actor.fieldEquipmentConsumed;
   const roll=tower?null:rollDice(battle.seed,actor.ability.athletics,
-   ladder?1:0,actor.condition==='disorganized'?1:0);
+   ladder||actor.laddersDeployed?1:0,actor.condition==='disorganized'?1:0);
   const total=roll?.total??difficulty;
   const degrees=tower?1:degreesOfSuccess(total,difficulty);
   let next:WarBattle={...battle,seed:roll?.nextSeed??battle.seed};
@@ -206,7 +206,7 @@ export function executeAdvancedWarOrder(
     u.position.x===cell.x&&u.position.y===cell.y);
    if(occupant?.side===actor.side)throw new Error('Muralha ocupada por aliado.');
    const staged={...actor,wallClimbedRound:battle.round,
-    ...(ladder?{laddersDeployed:true}:{})};
+    ...(ladder?{laddersDeployed:true,fieldEquipmentConsumed:true}:{})};
    next=replace(next,staged);
    if(occupant)next=helpers.attack(next,staged,occupant,false);
    else next=replace(next,{...staged,position:cell});
