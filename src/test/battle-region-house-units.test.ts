@@ -46,7 +46,8 @@ describe('Batalha · seleção de Região, Casa e unidades oficiais',()=>{
   expect(source).toContain(".eq('public_reviewed',true)");
   expect(source).toContain("db.from('campaign_houses').select('id,name,region')");
   expect(source).toContain("await requireNarrator(db)");
-  expect(source).toContain("sourceStatus:'no-military-sheet'");
+  expect(source).toContain("'no-military-sheet' as const");
+  expect(source).toContain("sourceStatus:'scenario-roster' as const");
   expect(source).toContain('adaptOfficialUnit(state,unit');
   expect(source).not.toMatch(/houseOperation\(|changeUnitState\(|resolveSurvivors\(/);
  });
@@ -56,7 +57,8 @@ describe('Batalha · seleção de Região, Casa e unidades oficiais',()=>{
   const picker=readFileSync('src/components/battle/BattleSourcePicker.tsx','utf8');
   expect(pte).toContain("quickSource==='houses'");
   expect(pte).toContain("u.imported?{...u.imported,position,side:u.side}");
-  expect(v3).toContain("source.kind!=='house-readonly'");
+  expect(v3).toContain('isBattleTrainingCopy');
+  expect(readFileSync('src/lib/battle/adapters/imported-npc-roster.ts','utf8')).toContain("stack.source.kind==='house-readonly'");
   expect(v3).toContain('officialHouseNames={officialHouseNames}');
   expect(picker).toContain('Região das casas');
   expect(picker).toContain('Casa de origem militar');
