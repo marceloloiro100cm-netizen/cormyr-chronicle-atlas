@@ -194,20 +194,26 @@ export function executeAdvancedWarOrder(
   const difficulty=order.wallDifficulty??12;
   if(!Number.isInteger(difficulty)||difficulty<3||difficulty>30)
    throw new Error('O Narrador deve definir dificuldade de escalada entre 3 e 30.');
-  const roll=rollDice(battle.seed,actor.ability.athletics,
-   actor.laddersDeployed?1:0,actor.condition==='disorganized'?1:0);
-  const degrees=degreesOfSuccess(roll.total,difficulty);
-  let next:WarBattle={...battle,seed:roll.nextSeed};
+  const ladder=actor.fieldEquipment==='ladders'&&!actor.fieldEquipmentConsumed;
+  const tower=actor.fieldEquipment==='siege-tower'&&!actor.fieldEquipmentConsumed;
+  const roll=tower?null:rollDice(battle.seed,actor.ability.athletics,
+   ladder?1:0,actor.condition==='disorganized'?1:0);
+  const total=roll?.total??difficulty;
+  const degrees=tower?1:degreesOfSuccess(total,difficulty);
+  let next:WarBattle={...battle,seed:roll?.nextSeed??battle.seed};
   if(degrees>0){
    const occupant=next.units.find(u=>u.id!==actor.id&&alive(u)&&
     u.position.x===cell.x&&u.position.y===cell.y);
    if(occupant?.side===actor.side)throw new Error('Muralha ocupada por aliado.');
-   if(occupant)next=helpers.attack(next,actor,occupant,false);
-   else next=replace(next,{...actor,position:cell,wallClimbedRound:battle.round});
+   const staged={...actor,wallClimbedRound:battle.round,
+    ...(ladder?{laddersDeployed:true}:{})};
+   next=replace(next,staged);
+   if(occupant)next=helpers.attack(next,staged,occupant,false);
+   else next=replace(next,{...staged,position:cell});
   }
   return log(next,'climb-walls',actor.name+(degrees?' escalou ':' falhou em escalar ')+
-   fort.name+' ('+roll.total+' vs '+difficulty+').',actor,{
-    roll:roll.dice,total:roll.total,difficulty,degrees,
+   fort.name+' ('+total+' vs '+difficulty+').',actor,{
+    ...(roll?{roll:roll.dice}:{}),total,difficulty,degrees,
    });
  }
  if(order.kind==='push'){
