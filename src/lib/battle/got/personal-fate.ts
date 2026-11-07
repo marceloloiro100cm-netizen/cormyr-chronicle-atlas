@@ -32,6 +32,8 @@ export function applyWarFate(battle:WarBattle,action:WarFateAction):WarBattle{
   throw new Error('O personagem não possui Pontos de Destino disponíveis.');
  if(battle.pendingPersonalDamage)
   throw new Error('Resolva o dano pendente antes de usar Destino.');
+ if(!hero.active&&!['burn-clear-damage','burn-choose-defeat','burn-avoid-death'].includes(action.kind))
+  throw new Error('Personagem derrotado não pode preparar bônus de testes.');
  const burn=action.kind.startsWith('burn-');
  if(action.kind==='burn-choose-defeat'&&(!action.outcome||hero.active))
   throw new Error('Escolha consequência apenas para personagem derrotado.');
