@@ -58,6 +58,12 @@ describe('Capítulo 10 — esquadrões de dez homens',()=>{
   for(let i=3;i<=10;i++)
    expanded=deployWarSquad(expanded,{unitId:'a',squadId:'grupo-a-'+i});
   expect(expanded.squads?.filter(s=>s.unitId==='a')).toHaveLength(10);
+  const personal=expanded.heroes.filter(h=>h.squadId?.startsWith('grupo-a'));
+  expect(personal).toHaveLength(100);
+  expect(new Set(personal.map(h=>h.personalPosition!.x+':'+h.personalPosition!.y)).size)
+   .toBe(100);
+  expect(personal.every(h=>h.personalPosition!.x>=20&&h.personalPosition!.x<30&&
+   h.personalPosition!.y>=30&&h.personalPosition!.y<40)).toBe(true);
   expect(()=>deployWarSquad(expanded,{unitId:'a',squadId:'grupo-a-11'}))
    .toThrow(/no máximo dez/);
   expect(()=>deployWarSquad(first,{unitId:'a',squadId:'grupo-a-1'}))
