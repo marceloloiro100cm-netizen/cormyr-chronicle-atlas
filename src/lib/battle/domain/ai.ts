@@ -39,7 +39,7 @@ export function chooseAiCommand(state:BattleState):BattleCommand {
  const enemies=enemyAble(state,unit.side);
  const choices=legal.filter((c):c is Move=>c.type==='MOVE');
  if(choices.length&&enemies.length){
-  const occupied=state.stacks.filter(s=>s.id!==unit.id&&s.currentHp>0).map(s=>s.position);
+  const occupied=state.stacks.filter(s=>s.id!==unit.id&&s.currentHp>0&&s.moraleState!=='routed').map(s=>s.position);
   const zoc=enemies.map(s=>s.position);
   const paths=reachablePaths(state.map,unit.position,unit.movementHex,{occupied,enemies:zoc});
   const costs=new Map(paths.map(p=>[hexKey(p.to),p.cost]));
