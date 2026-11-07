@@ -78,6 +78,8 @@ export type WarBattle=Readonly<{
  schemaVersion:1;rulesVersion:'GOT-CH10-1';id:string;name:string;seed:number;
  width:number;height:number;metresPerCell:10;round:number;
  tiles:readonly WarTerrainTile[];weather:WarWeather;visibility:WarVisibility;advancedFormations:boolean;
+ /** Regra digital opcional; false mantém adjudicação manual do livro. */
+ strictLineOfSight?:boolean;
  fortifications:readonly WarFortification[];
  phase:'siege'|'heroes-first'|'orders'|'heroes-second'|'finished';first:WarSide;turn:WarSide;
  heroes:readonly WarHero[];heroSecondCompletedRound?:number;
