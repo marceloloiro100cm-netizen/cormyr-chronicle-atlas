@@ -4,6 +4,7 @@ import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
 import type {HouseState} from '@/lib/house/types';
 import {battleHouseDirectory} from './house-directory';
 import {adaptOfficialUnit} from './unit-readonly';
+import {snapshotOfficialWarUnit} from '../got/official-adapter';
 import {importedNpcBattleStack,importedNpcUnitSchema,previewImportedNpc,type ImportedNpcUnit} from './imported-npc-roster';
 
 const sourceQuery=z.object({houseId:z.string().min(1).max(100)}).strict();
@@ -132,4 +133,34 @@ export const previewBattleSourceStack=createServerFn({method:'POST'})
   const stack=importedNpcBattleStack(row,data.side,data.position,data.primaryTypeId);
   await requireNarrator(db);
   return stack;
+ });
+
+/** Game of Thrones: captura oficial autêntica, nunca um BattleStack convertido do PTE.
+ * Somente narrador autorizado; retorna dados militares estritamente necessários.
+ * Não interpreta planilhas NPC sem habilidades, Saúde e Disciplina registradas.
+ */
+const gotWarUnitQuery=sourceQuery.extend({
+ unitId:z.string().min(1).max(90),
+ side:z.enum(['attacker','defender']),
+ position:z.object({x:z.number().int().min(0).max(59),y:z.number().int().min(0).max(59)}).strict(),
+ typeId:z.string().min(1).max(60),
+ rangeOverride:z.enum(['short','long']).optional(),
+}).strict();
+export const previewBattleWarUnit=createServerFn({method:'POST'})
+ .middleware([requireSupabaseAuth]).inputValidator(gotWarUnitQuery)
+ .handler(async({data,context})=>{
+  const db=context.supabase as unknown as Context['supabase'];
+  await requireNarrator(db);
+  const source=await readState(db,data.houseId);
+  if(!source?.state.units.length)
+   throw new Error('Este modo exige ficha militar oficial completa; rosters de cenário não podem ser convertidos automaticamente.');
+  const unit=source.state.units.find(x=>x.id===data.unitId);
+  if(!unit)throw new Error('Unidade militar oficial não encontrada.');
+  const snapshot=snapshotOfficialWarUnit(source.state,unit,{
+   side:data.side,position:data.position,version:source.version,
+   typeId:data.typeId,
+   ...(data.rangeOverride?{rangeOverride:data.rangeOverride}:{}),
+  });
+  await requireNarrator(db);
+  return snapshot;
  });
