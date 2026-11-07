@@ -9,6 +9,7 @@ import {makeWarFortification,fortForUnit,fortDefense} from '@/lib/battle/got/for
 import {createWarBattle} from '@/lib/battle/got/engine';
 import {modelWarCommanders,modelWarUnit} from '@/lib/battle/got/models';
 import {previewWarAftermath} from '@/lib/battle/got/aftermath';
+import {importedNpcBattleStack,isBattleTrainingCopy} from '@/lib/battle/adapters/imported-npc-roster';
 
 function fixture(){
  const state=newHouseState('npc-with-verified-sheet');
@@ -35,6 +36,24 @@ const gotArgs={side:'defender' as const,position:{x:9,y:2},
 const pteArgs={houseId:'npc-with-verified-sheet',unitId:'garrison-1',
  side:'defender' as const,position:{q:9,r:2},sourceVersion:5,
  primaryTypeId:'garrison',capturedAt:'2026-11-07T23:00:00Z'};
+
+describe('Identidade dos rosters NPC entre Casas distintas',()=>{
+ it('mesma source_row em duas Casas não colide e replays legados continuam reconhecidos',()=>{
+  const row={source_key:'linha-1',unit_name:'Infantaria NPC',unit_type:'infantry',
+   training:'trained' as const,quantity:1,standard_unit_strength:100,
+   source_status:'Compra proposta',source_row:1};
+  const a=importedNpcBattleStack({...row,house_id:'npc-alpha'},'attacker',
+   {q:0,r:0},'infantry');
+  const b=importedNpcBattleStack({...row,house_id:'npc-beta'},'defender',
+   {q:9,r:0},'infantry');
+  expect(a.id).not.toBe(b.id);
+  expect(importedNpcBattleStack({...row,house_id:'npc-alpha'},'attacker',
+   {q:0,r:0},'infantry').id).toBe(a.id);
+  expect(isBattleTrainingCopy(a)).toBe(true);
+  expect(isBattleTrainingCopy(b)).toBe(true);
+  expect(isBattleTrainingCopy({...a,id:'npc-roster-1'})).toBe(true);
+ });
+});
 
 describe('Integração da guerra com fontes oficiais de Casas NPC',()=>{
  it('bloqueia multiplicadores presumidos de rosters e narrativas',()=>{
