@@ -1,5 +1,6 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
-import {render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {render,screen,fireEvent,waitFor,within} from '@testing-library/react';
+import type {BattleStack} from '@/lib/battle/domain/types';
 import {BattleSourcePicker} from '@/components/battle/BattleSourcePicker';
 
 const mocked=vi.hoisted(()=>({
@@ -53,15 +54,16 @@ describe('Seletor militar · Região → Casa → Exército',()=>{
   render(<BattleSourcePicker onAdd={vi.fn(()=>true)} onAddMany={vi.fn(()=>true)}/>);
   await selectAshkar();
   expect(mocked.units).toHaveBeenCalledWith({data:{houseId:'ashkar'}});
-  expect(screen.getByText(/Guarda da Fênix/)).toBeInTheDocument();
-  expect(screen.getByText(/90 disponíveis/)).toBeInTheDocument();
+  const list=screen.getByRole('list',{name:'Unidades carregadas da casa'});
+  expect(within(list).getByText('Guarda da Fênix')).toBeInTheDocument();
+  expect(within(list).getByText(/90 disponíveis/)).toBeInTheDocument();
   expect(screen.getByLabelText('Selecionar Navios do Lago')).toBeDisabled();
   expect(screen.getByLabelText('Selecionar Batedores Mistos')).toBeDisabled();
   expect(screen.getByLabelText('Selecionar Guarda da Fênix')).toBeChecked();
   expect(screen.getByLabelText('Selecionar Arqueiros de Cinzaria')).toBeChecked();
  });
  it('importa as duas tropas permitidas como snapshots, sem escrever na origem',async()=>{
-  const onAddMany=vi.fn(()=>true);
+  const onAddMany=vi.fn((_stacks:BattleStack[],_houseName:string)=>true);
   render(<BattleSourcePicker onAdd={vi.fn(()=>true)} onAddMany={onAddMany}/>);
   await selectAshkar();
   fireEvent.click(screen.getByRole('button',{name:'Carregar 2 unidades na batalha'}));
