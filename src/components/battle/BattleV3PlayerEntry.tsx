@@ -5,6 +5,9 @@ import {Button} from '@/components/ui/button';
 import {listV3Invitations,type BattleV3Invitation} from '@/lib/battle/v3/invitations.functions';
 import {BattleV3Game} from './BattleV3Game';
 import {BattleAccessCheck} from './BattleAccessCheck';
+import {BATTLE_V3_LIVE_ENABLED} from '@/lib/battle/feature-flag';
+import {listLiveV3Matches} from '@/lib/battle/v3/live.functions';
+import {BattleV3LiveArena} from './BattleV3Live';
 import type {V3ScenarioOptions} from '@/lib/battle/v3/engine';
 import './battle-legibility.css';
 import type {CommanderId} from '@/lib/battle/v3/commanders';
@@ -23,6 +26,11 @@ function invitationOptions(value:BattleV3Invitation):V3ScenarioOptions{
  */
 export function BattleV3PlayerEntry({houseId}:{houseId:string}){
  const list=useServerFn(listV3Invitations);
+ const listLive=useServerFn(listLiveV3Matches);
+ const {data:liveData=[]}=useQuery({queryKey:['battle-v3-live-list',houseId],
+  queryFn:()=>listLive(),enabled:BATTLE_V3_LIVE_ENABLED,
+  refetchInterval:5000,refetchOnWindowFocus:'always',retry:false});
+ const liveMatches=liveData.filter(m=>m.attacker_house_id===houseId||m.defender_house_id===houseId);
  const {data=[],isPending,isError,refetch}=useQuery({
   queryKey:['battle-v3-invitations',houseId],
   queryFn:()=>list(),
@@ -31,9 +39,12 @@ export function BattleV3PlayerEntry({houseId}:{houseId:string}){
   retry:false,
  });
  const invites=data.filter(i=>i.target_house_id===houseId&&i.status==='open');
- const [mode,setMode]=useState<'choose'|'training'|'invitations'|'playing'>('choose');
+ const [mode,setMode]=useState<'choose'|'training'|'invitations'|'playing'|'live-list'|'live-playing'>('choose');
  const [selected,setSelected]=useState<BattleV3Invitation|null>(null);
+ const [selectedLive,setSelectedLive]=useState<string|null>(null);
  if(mode==='training')return <BattleV3Game onBack={()=>setMode('choose')}/>;
+ if(mode==='live-playing'&&selectedLive)return <BattleV3LiveArena id={selectedLive}
+  onBack={()=>{setSelectedLive(null);setMode('choose');}}/>;
  if(mode==='playing'&&selected)return <BattleV3Game key={selected.id}
   initialOptions={invitationOptions(selected)} locked invitationName={selected.title}
   onBack={()=>{setSelected(null);setMode('choose');}}/>;
@@ -45,10 +56,19 @@ export function BattleV3PlayerEntry({houseId}:{houseId:string}){
   <div className="battle-surface">
    <div className="battle-home-actions">
     <Button onClick={()=>setMode('training')}>Batalhar</Button>
+    {BATTLE_V3_LIVE_ENABLED&&liveMatches.length>0&&<Button variant="outline"
+      onClick={()=>setMode('live-list')}>Batalhas multiplayer ({liveMatches.length})</Button>}
     {invites.length>0&&<Button variant="outline" onClick={()=>setMode('invitations')}>
      Batalha convocada ({invites.length})
     </Button>}
    </div>
+   {mode==='live-list'&&<div className="crusade-invitation-list">
+    <h2>Partidas compartilhadas</h2>
+    {liveMatches.map(m=><article key={m.id} className="battle-result-card">
+     <strong>{m.title}</strong><p>Status: {m.status} · versão {m.state_version}</p>
+     <Button onClick={()=>{setSelectedLive(m.id);setMode('live-playing');}}>Entrar no multiplayer</Button>
+    </article>)}
+   </div>}
    {mode==='invitations'&&<div className="crusade-invitation-list">
     <h2>Convocações do Narrador</h2>
     {invites.map(i=><article key={i.id} className="battle-result-card">
