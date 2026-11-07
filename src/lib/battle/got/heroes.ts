@@ -35,6 +35,7 @@ export type WarHero=Readonly<{
  squadId?:string;meleeWeapon?:WarPersonalWeapon;rangedWeapon?:WarPersonalWeapon;
  offhandWeapon?:WarPersonalWeapon|undefined;offhandDefenseSuppressed?:boolean;
  offhandWeaponBroken?:boolean;
+ oneHandUnavailable?:boolean;
  rangedLoaded?:boolean;meleeWeaponBroken?:boolean;rangedWeaponBroken?:boolean;
  stunnedNextTurn?:boolean;
  grabbedBy?:string|undefined;grapplingTargetId?:string|undefined;
