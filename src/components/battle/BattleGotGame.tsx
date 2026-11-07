@@ -83,6 +83,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [visibility,setVisibility]=useState<WarVisibility>('clear');
  const [advanced,setAdvanced]=useState(false);
  const [strictSightline,setStrictSightline]=useState(false);
+ const [hiddenModelSide,setHiddenModelSide]=useState<'none'|WarSide>('none');
  const [tiles,setTiles]=useState<WarTerrainTile[]>([]);
  const [terrainPaint,setTerrainPaint]=useState<WarTerrainId>('plain');
  const [formation,setFormation]=useState<WarFormation>('battle');
@@ -168,8 +169,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     const model=imported?{...imported,side:row.side,position:row.position}:
      modelWarUnit({...row,training,
       typeId:siegeEnabled&&row.id==='attacker-2'?'engineers':types[row.id]??'infantry'});
-    return row.id==='attacker-1'&&modelFieldEquipment!=='none'?
+    const equipped=row.id==='attacker-1'&&modelFieldEquipment!=='none'?
      {...model,fieldEquipment:modelFieldEquipment}:model;
+    // Opção exclusiva da simulação, não altera fichas importadas.
+    return hiddenModelSide===row.side&&row.id===row.side+'-1'?
+     {...equipped,hidden:true}:equipped;
    });
    const engineer=units.find(u=>u.side==='attacker'&&u.typeId==='engineers');
    if(siegeEnabled&&!engineer)throw new Error('Cerco exige unidade de engenheiros.');
@@ -1311,6 +1315,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       <strong>{u.name}</strong><span>{SIDE[u.side]} · {CONDITION[u.condition]}</span>
       <span>Saúde {u.health}/{u.maxHealth} · Defesa {u.defendRoll??u.defense} · VA {u.armor}</span>
       <span>Disciplina {warUnitSummary(u).discipline} · Desorganizações {u.disorganizations}</span>
+      {u.hidden&&<span>Posição oculta · disponível para emboscada</span>}
       {u.fieldEquipment&&<span>Equipamento: {WAR_FIELD_EQUIPMENT[u.fieldEquipment].label}
        {u.fieldEquipmentConsumed?' · usado/abandonado':''}</span>}
       {u.burning&&<span>Incendiada · {u.burning.damagePerRound} dano/rodada por
@@ -1335,6 +1340,25 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      </div>)}
     </div>
     <h4>Recursos e domínio · proposta do passo 11</h4>
+    {Boolean(battle.scorchedPreview?.length)&&<div className="got-roster">
+     <h4>Terra Arrasada · proprietário dos domínios</h4>
+     <p className="battle-note">Escolha quem era dono de cada domínio. Sem esta informação,
+      perdas de Riqueza e População não são atribuídas a nenhum lado.</p>
+     {[...new Set((battle.scorchedPreview??[]).map(row=>row.domainId))].map(domain=>
+      <label key={domain}>{domain}
+       <select value={resourceScenario.scorchedDomainOwners?.[domain]??''}
+        onChange={e=>setResourceScenario(s=>{
+         const owners={...s.scorchedDomainOwners};
+         if(!e.target.value)delete owners[domain];
+         else owners[domain]=e.target.value as WarSide;
+         return {...s,scorchedDomainOwners:owners};
+        })}>
+        <option value="">Atribuição pendente</option>
+        <option value="attacker">Atacante</option>
+        <option value="defender">Defensor</option>
+       </select>
+      </label>)}
+    </div>}
     <p className="battle-note">Aproximação digital das consequências do livro.
      Não altera saldos, posses ou a situação oficial de nenhuma Casa.</p>
     <div className="got-config-grid">
