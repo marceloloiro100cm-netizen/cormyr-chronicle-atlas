@@ -1,5 +1,6 @@
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
+import {MilitaryUnitSymbol,militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import {createWarBattle,issueWarOrder,issueWarPincer,advanceWarRound,warUnitSummary,previewWarMovement,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
 import {beginPersonalInitiative,personalTurnHeroId,delayPersonalTurn} from '@/lib/battle/got/personal-initiative';
@@ -708,8 +709,12 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         }catch(e){setError(e instanceof Error?e.message:'Posição inválida.');}
        }
       }}>
-      {occupant?<><strong>{occupant.side==='attacker'?'A':'D'}</strong>
-       <small>{occupant.id.split('-').at(-1)}</small></>:
+      {occupant?<><span className="got-token-frame">
+       {militaryUnitSymbolSrc(types[occupant.id]??'infantry')?
+        <img className="got-token-art" src={militaryUnitSymbolSrc(types[occupant.id]??'infantry')}
+         alt="" loading="lazy"/>:
+        <strong>{occupant.side==='attacker'?'A':'D'}</strong>}
+       </span><small>{occupant.id.split('-').at(-1)}</small></>:
        terrain==='plain'?'·':'▥'}
      </button>;
     })}
@@ -1130,7 +1135,12 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
           else setTarget(occupant.id);
          }
         }}>
-        {occupant?<><strong>{occupant.side==='attacker'?'A':'D'}</strong><small>{occupant.name.split(' ')[0]}</small></>:
+        {occupant?<><span className="got-token-frame">
+         {militaryUnitSymbolSrc(occupant.typeId)?
+          <img className="got-token-art" src={militaryUnitSymbolSrc(occupant.typeId)}
+           alt="" loading="lazy"/>:
+          <strong>{occupant.side==='attacker'?'A':'D'}</strong>}
+         </span><small>{occupant.name.split(' ')[0]}</small></>:
          <span className="got-cell-dot" aria-hidden="true">{terrain==='plain'?'·':'▥'}</span>}
        </button>;
       })}
@@ -1350,7 +1360,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      </Button>}
      <h4>Tropas no campo</h4>
      <div className="got-roster">{battle.units.map(u=><div className="got-unit" key={u.id}>
-      <strong>{u.name}</strong><span>{SIDE[u.side]} · {CONDITION[u.condition]}</span>
+      <div className="got-roster-head"><MilitaryUnitSymbol typeId={u.typeId} size="small"/>
+       <div><strong>{u.name}</strong><span>{SIDE[u.side]} · {CONDITION[u.condition]}</span></div>
+      </div>
       <span>Saúde {u.health}/{u.maxHealth} · Defesa {u.defendRoll??u.defense} · VA {u.armor}</span>
       <span>Disciplina {warUnitSummary(u).discipline} · Desorganizações {u.disorganizations}</span>
       {u.hidden&&<span>Posição oculta · disponível para emboscada</span>}
