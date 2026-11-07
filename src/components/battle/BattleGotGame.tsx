@@ -69,6 +69,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [target,setTarget]=useState('');
  const [kind,setKind]=useState<WarOrderKind>('attack');
  const [ranged,setRanged]=useState(false);
+ const [readyTrigger,setReadyTrigger]=useState<'enemy-adjacent'|'enemy-routed'>('enemy-adjacent');
+ const [readyReaction,setReadyReaction]=useState<'attack'|'move'>('attack');
  const [sprint,setSprint]=useState(false);
  const [coord,setCoord]=useState({x:4,y:3});
  const [error,setError]=useState('');
@@ -134,6 +136,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     ...(legalKind==='join'?{targetId:activeUnits.find(u=>u.id!==selectedUnit.id)?.id??''}:{}),
     ...(legalKind==='sabotage'?{fortId:battle.fortifications.find(x=>x.side!==battle.turn)?.id??''}:{}),
     ...(legalKind==='move'?{to:coord,sprint}:{}),
+    ...(legalKind==='ready'?{ready:{
+     trigger:readyTrigger,reaction:readyReaction,
+     ...(readyReaction==='move'?{to:coord}:{ranged}),
+    }}:{}),
     ...(legalKind==='formation'?{formation}:{}),
     ...(legalKind==='turn'?{facing}:{}),
     ...(['attack','aggressive-retreat','ambush'].includes(legalKind)?{ranged}:{}),
@@ -419,6 +425,25 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
          .map(([id,label])=><option key={id} value={id}>{label}</option>)}
        </select>
       </label>
+      {legalKind==='ready'&&<div className="got-config-grid">
+       <label>Disparar prontidão quando
+        <select aria-label="Condição da prontidão" value={readyTrigger}
+         onChange={e=>setReadyTrigger(e.target.value as typeof readyTrigger)}>
+         <option value="enemy-adjacent">Inimigo entrar em quadrado adjacente</option>
+         <option value="enemy-routed">Unidade inimiga debandar</option>
+        </select>
+       </label>
+       <label>Reação preparada
+        <select aria-label="Reação da prontidão" value={readyReaction}
+         onChange={e=>setReadyReaction(e.target.value as typeof readyReaction)}>
+         <option value="attack">Atacar</option><option value="move">Mover</option>
+        </select>
+       </label>
+       {readyReaction==='attack'&&<label className="got-check">
+        <input type="checkbox" checked={ranged}
+         onChange={e=>setRanged(e.target.checked)}/>
+        Ataque de Pontaria (quando equipada)</label>}
+      </div>}
       {['attack','charge','aggressive-retreat','suppress','probe','ambush','push'].includes(legalKind)&&<>
        <label>Alvo
         <select aria-label="Alvo da ordem" value={selectedTarget?.id??''}
@@ -449,13 +474,13 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <option value="north">Norte</option><option value="east">Leste</option>
         <option value="south">Sul</option><option value="west">Oeste</option>
        </select></label>}
-      {legalKind==='move'&&<>
+      {(legalKind==='move'||(legalKind==='ready'&&readyReaction==='move'))&&<>
        <label>Coluna X <input type="number" min={0} max={battle.width-1} value={coord.x}
         onChange={e=>setCoord(v=>({...v,x:Number(e.target.value)}))}/></label>
        <label>Linha Y <input type="number" min={0} max={battle.height-1} value={coord.y}
         onChange={e=>setCoord(v=>({...v,y:Number(e.target.value)}))}/></label>
-       <label className="got-check"><input type="checkbox" checked={sprint}
-        onChange={e=>setSprint(e.target.checked)}/> Correr (linha reta)</label>
+       {legalKind==='move'&&<label className="got-check"><input type="checkbox" checked={sprint}
+        onChange={e=>setSprint(e.target.checked)}/> Correr (linha reta)</label>}
       </>}
       <Button onClick={order} disabled={(battle.ordersRemaining[commander.id]??0)<1}>
        Emitir ordem · testar Guerra
