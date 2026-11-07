@@ -861,7 +861,7 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
  if(!input.weaponIds.length||new Set(input.weaponIds).size!==input.weaponIds.length||
   input.weaponIds.length>commander.warfare)throw new Error('O disparo exige até Guerra máquinas distintas.');
  if([input.targetId,input.fortId,input.targetHeroId].filter(Boolean).length!==1)
-  throw new Error('Escolha exatamente um alvo de cerco.');
+  throw new Error('Escolha exatamente um único alvo de cerco.');
  const target=input.targetId?battle.units.find(u=>
   u.id===input.targetId&&u.side!==commander.side&&onBoard(u)):undefined;
  const fort=input.fortId?battle.fortifications.find(f=>
