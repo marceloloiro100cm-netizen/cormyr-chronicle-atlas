@@ -12,24 +12,36 @@ export function BattleV3NarratorEntry({onBack}:{onBack:()=>void}){
  const [copies,setCopies]=useState<BattleStack[]>([]);
  const [status,setStatus]=useState('');
  const [pickerOpen,setPickerOpen]=useState(false);
- const add=(stack:BattleStack)=>{
-  if(copies.filter(s=>s.side===stack.side).length>=5){
-   setStatus('Limite de cinco unidades por lado.');return;
+ const remainingBySide={attacker:Math.max(0,5-copies.filter(s=>s.side==='attacker').length),
+  defender:Math.max(0,5-copies.filter(s=>s.side==='defender').length)};
+ const addMany=(stacks:BattleStack[],houseName:string):boolean=>{
+  if(!stacks.length)return false;
+  const side=stacks[0]!.side;
+  if(stacks.some(s=>s.side!==side||s.source.kind!=='house-readonly')){
+   setStatus('Apenas unidades oficiais do mesmo lado podem ser copiadas.');return false;
   }
-  if(copies.some(s=>s.source.kind==='house-readonly'&&stack.source.kind==='house-readonly'&&
-    s.source.houseId===stack.source.houseId&&s.source.unitId===stack.source.unitId)){
-   setStatus('Esta unidade já está na simulação.');return;
+  if(copies.filter(s=>s.side===side).length+stacks.length>5){
+   setStatus('Limite de cinco unidades por lado.');return false;
   }
-  setCopies(xs=>[...xs,stack]);setStatus('Cópia militar adicionada somente para treino.');
+  const all=[...copies,...stacks];
+  const keys=all.map(s=>s.source.houseId+'::'+s.source.unitId);
+  if(new Set(keys).size!==keys.length){
+   setStatus('Alguma unidade desta Casa já está na simulação.');return false;
+  }
+  setCopies(xs=>[...xs,...stacks]);
+  setStatus(stacks.length+' unidade(s) de '+houseName+' copiadas para treino.');
+  return true;
  };
+ const add=(stack:BattleStack,houseName:string)=>addMany([stack],houseName);
  return <section className="battle-module" aria-label="Preparação da batalha do Narrador">
   <details className="battle-surface battle-optional-source" open={pickerOpen}
    onToggle={event=>setPickerOpen(event.currentTarget.open)}>
-   <summary>Opcional · Usar unidades existentes de uma casa
+   <summary>Carregar unidades · Região → Casa → Exército
     {copies.length>0?' ('+copies.length+' copiadas)':''}</summary>
    <p className="battle-note">Escolha e copie unidades autorizadas antes de iniciar.
     Uma cópia é apenas uma referência de treinamento: a ficha oficial não recebe baixas.</p>
-   {pickerOpen&&<BattleSourcePicker onAdd={add}/>}
+   {pickerOpen&&<BattleSourcePicker onAdd={add} onAddMany={addMany}
+    remainingBySide={remainingBySide}/>}
    {copies.length>0&&<div className="battle-selected-copies">
     <h3>Unidades copiadas</h3>
     {copies.map((stack,i)=><div key={stack.id} className="battle-selected-copy">
