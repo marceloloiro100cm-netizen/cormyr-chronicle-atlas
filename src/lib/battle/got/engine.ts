@@ -584,6 +584,77 @@ function perform(battle:WarBattle,unit:WarUnit,order:WarOrder,degrees:number):Wa
   order.ready?.trigger+' para '+order.ready?.reaction+'.',unit.side);
  throw new Error('Ordem não suportada.');
 }
+/** Pinça (cap. 10): uma ordem consome duas parcelas distintas de Guerra.
+ * Ambas as unidades devem passar seu próprio teste de comando para
+ * receber +1D no ataque de Luta contra o mesmo inimigo.
+ */
+export function issueWarPincer(battle:WarBattle,input:{
+ commanderId:string;firstUnitId:string;secondUnitId:string;
+ targetId:string;firstWarfareDice:number;
+}):WarOrderResult{
+ if(battle.phase!=='orders'||!battle.advancedFormations)
+  throw new Error('Pinça exige fase de ordens com regras avançadas.');
+ const commander=battle.commanders.find(c=>c.id===input.commanderId&&
+  c.active&&c.side===battle.turn);
+ if(!commander||(battle.ordersRemaining[commander.id]??0)<1||
+  battle.heroes.some(h=>h.active&&h.commanderId===commander.id&&h.unitId))
+  throw new Error('Comandante indisponível para Pinça.');
+ const first=battle.units.find(u=>u.id===input.firstUnitId);
+ const second=battle.units.find(u=>u.id===input.secondUnitId);
+ const enemy=battle.units.find(u=>u.id===input.targetId);
+ if(!first||!second||!enemy||first.id===second.id||
+  first.side!==commander.side||second.side!==commander.side||
+  enemy.side===commander.side||!alive(first)||!alive(second)||!alive(enemy)||
+  distance(first.position,enemy.position)!==1||
+  distance(second.position,enemy.position)!==1)
+  throw new Error('Pinça exige dois aliados ativos adjacentes ao mesmo inimigo.');
+ const n1=input.firstWarfareDice,n2=commander.warfare-n1;
+ if(!Number.isInteger(n1)||n1<1||n2<1||n1>15||n2>15)
+  throw new Error('Divida exatamente os dados de Guerra entre as duas unidades.');
+ const dif=(u:WarUnit)=>Math.max(0,u.discipline+u.disorganizations*3+
+  u.issuedThisRound*3+3+heroUnitDefenseBonus(battle,u)+
+  (u.formation?WAR_FORMATIONS[u.formation].discipline:0)+
+  (u.suppressionRound===battle.round?(u.suppressionPenalty??0):0));
+ const d1=dif(first),d2=dif(second);
+ const one=rollDice(battle.seed,n1),two=rollDice(one.nextSeed,n2);
+ const passed1=one.total>=d1,passed2=two.total>=d2;
+ const passed=passed1&&passed2;
+ let next:WarBattle={...battle,seed:two.nextSeed,
+  ordersRemaining:{...battle.ordersRemaining,
+   [commander.id]:battle.ordersRemaining[commander.id]!-1},
+  units:battle.units.map(u=>{
+   if(u.id!==first.id&&u.id!==second.id)return u;
+   return {...u,issuedThisRound:u.issuedThisRound+1,
+    actedThisRound:u.actedThisRound||passed,
+    criticalThisRound:u.criticalThisRound||
+     (u.id===first.id?criticalFailure(one.total,d1):criticalFailure(two.total,d2)),
+    ...(passed?{activated:true,standing:{kind:'attack' as const}}:{})};
+  }),
+ };
+ next=log(next,'pincer-command',commander.name+' dividiu Guerra '+
+  n1+'/'+n2+' para Pinça: '+one.total+' vs '+d1+' e '+
+  two.total+' vs '+d2+(passed?' (ambos passaram).':' (manobra falhou).'),
+  commander.side,{roll:[...one.dice,...two.dice],
+   total:Math.min(one.total,two.total),difficulty:Math.max(d1,d2),
+   degrees:passed?Math.min(degreesOfSuccess(one.total,d1),
+    degreesOfSuccess(two.total,d2)):0});
+ if(passed){
+  for(const id of [first.id,second.id]){
+   const attacker=next.units.find(u=>u.id===id)!;
+   const target=next.units.find(u=>u.id===enemy.id)!;
+   if(!alive(attacker)||!alive(target))break;
+   next=attack(next,attacker,target,false,{
+    testRank:Math.min(15,attacker.ability.fighting+1),
+   });
+  }
+ }
+ next=checkVictory({...next,turn:turnAfter(next,commander.side)});
+ return {battle:next,passed,
+  critical:criticalFailure(one.total,d1)||criticalFailure(two.total,d2),
+  test:Math.min(one.total,two.total),difficulty:Math.max(d1,d2),
+  degrees:passed?Math.min(degreesOfSuccess(one.total,d1),
+   degreesOfSuccess(two.total,d2)):0};
+}
 export function issueWarOrder(battle:WarBattle,input:{
  commanderId:string;unitId:string;order:WarOrder;
 }):WarOrderResult{
@@ -599,6 +670,7 @@ export function issueWarOrder(battle:WarBattle,input:{
  if(!alive(unit)&&input.order.kind!=='revive')throw new Error('Uma tropa em debandada só pode ser reanimada.');
  if(input.order.kind==='revive'&&unit.condition!=='routed')throw new Error('Esta unidade não está em debandada.');
  // Rejeitar instruções incompletas ANTES de consumir o orçamento e os dados.
+ if(input.order.kind==='pincer')throw new Error('Use o comando simultâneo Pinça de duas unidades.');
  if(input.order.kind==='surrender')return issueWarSurrender(battle,{commanderId:input.commanderId});
  if(input.order.targetHeroId&&input.order.kind!=='attack')
   throw new Error('Apenas a ordem Atacar pode alvejar herói individual.');
