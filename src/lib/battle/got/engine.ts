@@ -14,6 +14,8 @@ import {personalPosition,spendPersonalAction} from './personal-combat';
 import {queuePersonalDamage} from './personal-injuries';
 import {settleWarSquadLosses} from './squads';
 import {effectivePersonalArmor} from './personal-weapons';
+import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
+import {assertPersonalTurn,settlePersonalTurn} from './personal-initiative';
 
 const SIDES:readonly WarSide[]=['attacker','defender'];
 const opposite=(side:WarSide):WarSide=>side==='attacker'?'defender':'attacker';
@@ -221,6 +223,8 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
   hero.usedActions>=5||hero.lockedUntilRound===battle.round||
   !target||!onBoard(target)||target.side===hero.side)
   throw new Error('Herói ou unidade inimiga indisponível.');
+ if(battle.pendingPersonalDamage)throw new Error('Resolva o dano pessoal pendente.');
+ assertPersonalTurn(battle,hero.id);
  const ranged=Boolean(input.ranged),distanceMetres=distanceFromHeroToUnit(hero,target);
  const range=ranged?(hero.rangedRange==='long'?100:10):1;
  if(!ranged&&distanceMetres>1)
@@ -231,7 +235,7 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
  const rangePenalty=ranged?Math.max(0,Math.ceil((distanceMetres-range)/10)):0;
  const penalty=Math.min(15,(hero.injuries??0)+
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty);
- const roll=rollDice(battle.seed,ranged?hero.marksmanship:hero.fighting,
+ const roll=rollPersonalWithFate(battle.seed,hero,ranged?hero.marksmanship:hero.fighting,
   Math.min(15,((ranged?hero.rangedBonusDice:hero.meleeBonusDice)??0)+(hero.passBonusDice??0)),penalty);
  const total=Math.max(0,roll.total-(hero.wounds??0));
  const difficulty=target.defense+20;
@@ -240,13 +244,13 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
   (ranged?hero.rangedDamage:hero.meleeDamage)*degrees-
    effectivePersonalArmor(target.armor,ranged?hero.rangedWeapon:hero.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
-  heroes:battle.heroes.map(h=>h.id===hero.id?{...used,passBonusDice:0}:h)};
+  heroes:battle.heroes.map(h=>h.id===hero.id?{...consumePersonalFateRoll(used),passBonusDice:0}:h)};
  next=log(next,'hero-vs-unit',hero.name+' atacou '+target.name+' (Defesa +20): '+
   total+' vs '+difficulty+', '+degrees+' grau(s), '+damage+' dano.',hero.side,{
    roll:roll.dice,total,difficulty,degrees,
   });
  if(damage>0)next=applyDamage(next,target,damage,hero.name);
- return checkVictory(next);
+ return settlePersonalTurn(battle,checkVictory(next),hero.id);
 }
 /** Capítulo 10: quando 100 homens atacam uma pessoa, recebem +2D. */
 function attackIndividualFromWarUnit(
