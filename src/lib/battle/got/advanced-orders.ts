@@ -51,7 +51,8 @@ export function executeAdvancedWarOrder(
   for(let n=0;n<degrees;n++){
    const to={x:position.x+dx,y:position.y+dy};
    if(to.x<0||to.y<0||to.x>=battle.width||to.y>=battle.height)break;
-   if(next.units.some(u=>u.id!==target.id&&alive(u)&&
+   if(next.units.some(u=>u.id!==target.id&&
+    !['destroyed','surrendered','escaped'].includes(u.condition)&&
     u.position.x===to.x&&u.position.y===to.y))break;
    const tile=terrainAt(battle.tiles,to);
    const effect=terrainEffect(tile);
