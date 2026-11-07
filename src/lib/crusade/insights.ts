@@ -2,7 +2,7 @@
  * Não é um segundo redutor e não decreta vitória por objetivo.
  */
 import {crzVerifyReplay,type CrzReplay} from './replay';
-import {crzAxialToOffset,crzHexKey,type CrzHex,type CrzSide}
+import {crzGridToOffset,crzHexKey,type CrzHex,type CrzSide}
  from './geometry';
 import {crzCapable,type CrzBattleState} from './battle-state';
 
@@ -29,7 +29,7 @@ export function crzObservedObjectives(state:CrzBattleState):CrzObservedObjective
   const targetRow=Math.round((state.map.height-1)*spec.row);
   const eligible=candidates.filter(t=>!claimed.has(crzHexKey(t)));
   eligible.sort((a,b)=>{
-   const p=crzAxialToOffset(a),q=crzAxialToOffset(b);
+   const p=crzGridToOffset(state.map,a),q=crzGridToOffset(state.map,b);
    const score=(col:number,row:number)=>
     Math.abs(col-targetCol)*2+Math.abs(row-targetRow);
    return score(p.column,p.row)-score(q.column,q.row)||
