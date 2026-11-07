@@ -382,3 +382,40 @@ Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsist
   automatização dos limites de mão/armadura e auditoria
   integral do livro. A branch permanece para revisão;
   nenhuma declaração de equivalência 100%.
+
+## Incremento — auditoria de equipamentos e vínculos pessoais (7/11/2026)
+
+**Auditoria de consistência** entre o capítulo 9 e o catálogo-modelo:
+- Os qualificadores **Montada** e **Duas Mãos** agora aplicam −2D
+  respectivamente ao combate a pé e a quem tiver apenas uma mão
+  disponível, tanto em herói contra herói quanto herói contra
+  unidade coletiva. A interface oferece esse segundo cenário como
+  hipótese de teste local; não é atributo da ficha oficial.
+- O catálogo foi ampliado com **Cajado, Martelo de Guerra, Broquel,
+  Adaga de Mão Esquerda, Arakh, Lança de Guerra, Lança de Torneio,
+  Besta Média e Besta Myrish**, com seus qualificadores da
+  tabela 9-3. A **Lança de Guerra/Torneio** usa **Lidar com Animais**
+  para o dano básico, em vez de Atletismo. A seleção da arma
+  secundária é gerada a partir das opções Mão Inábil do catálogo.
+- Não é permitido equipar uma arma secundária com arma principal
+  de Duas Mãos ou com apenas uma mão disponível.
+- **Contenções após derrota/rendição**: vínculos de Agarrar e
+  Imobilizar são removidos dos dois personagens quando um dos
+  envolvidos fica incapacitado ou se rende. A aplicação central
+  do dano cobre ataques de herói, esquadrão e unidade. Redes e
+  armas ainda empaladas permanecem fisicamente presas até uma
+  ação específica de retirada, mesmo com o agressor derrotado.
+- Personagens imobilizados não disparam contra-ataques
+  previamente armados; aqueles que estão agarrados, empalados
+  ou presos sob a montaria não conseguem burlar a contenção
+  atacando diretamente uma unidade coletiva. A penalidade
+  de −5 de Enredar também se aplica a esses testes.
+- Testes novos: `battle-got-personal-link-integrity.test.ts` e
+  `battle-got-personal-equipment-table.test.ts`, cobrindo
+  derrota, rendição, reações, restrições de mão, catálogo,
+  desempenho contra heróis e unidades.
+- **Não indica completude da tabela**: continuam pendentes
+  todos os perfis de armas, variações especiais de Escudos,
+  ações de interação para apanhar uma arma perdida e
+  revalidação narrativa de estados de rede e Empalar.
+  Nenhum efeito foi publicado em produção.
