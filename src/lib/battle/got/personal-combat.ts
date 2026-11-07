@@ -40,11 +40,13 @@ export const personalPosition=(hero:WarHero):WarPosition=>
 export const personalDistance=(a:WarPosition,b:WarPosition):number=>
  Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y));
 export function personalMovement(hero:WarHero):number{
+ // Enredar limita o deslocamento do alvo, mesmo que esteja cavalgando.
+ if(hero.entangledBy)return 1;
  if(hero.mounted&&hero.mount?.health&&hero.mount.health>0)
   return hero.mount.movement;
  const athletics=hero.athletics??3;
  const base=athletics<=1?3:4;
- return hero.entangledBy?1:Math.max(1,base+Math.floor((hero.runningBonusDice??0)/2)-
+ return Math.max(1,base+Math.floor((hero.runningBonusDice??0)/2)-
   Math.floor(((hero.bulk??0)+(hero.offhandWeapon?.bulk??0)+
    (hero.meleeWeapon?.bulk??0)+(hero.rangedWeapon?.bulk??0))/2));
 }
@@ -550,9 +552,9 @@ export function executePersonalWarAction(
   const steps=Math.max(Math.abs(dx),Math.abs(dy));
   if(steps<1||!(dx===0||dy===0||Math.abs(dx)===Math.abs(dy)))
    throw new Error('Atropelamento exige trajeto em linha reta.');
-  if(steps>hero.mount.movement)
-   throw new Error('Atropelamento excede Movimento da montaria.');
-  const moved=moveFine(battle,hero,to,hero.mount.movement);
+  if(steps>personalMovement(hero))
+   throw new Error('Atropelamento excede Movimento pessoal disponível.');
+  const moved=moveFine(battle,hero,to,personalMovement(hero));
   const used=spendPersonalAction(moved,'major');
   const next:WarBattle={...changeHero(battle,{
    ...used,mountMovedTurn:hero.usedActions,
@@ -595,7 +597,7 @@ export function executePersonalWarAction(
   // O controle difícil ocupa o turno inteiro: movimento pode ocorrer junto
   // à ação maior, em vez de ser impossibilitado pelo orçamento de ações.
   const moving=weight==='major'&&action.toMetres?
-   moveFine(battle,hero,action.toMetres,hero.mount.movement):hero;
+   moveFine(battle,hero,action.toMetres,personalMovement(hero)):hero;
   const used=spendPersonalAction(moving,weight);
   return log(changeHero(battle,{
    ...used,mountControlledTurn:hero.usedActions,
