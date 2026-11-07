@@ -26,6 +26,7 @@ import {crzObservedObjectives,crzAfterActionReport,crzAfterActionSerialize,
 import './crz-lab.css';
 import './battle-legibility.css';
 import './battle-ui-v4.css';
+import './battle-arena-unified.css';
 
 type SidePanel='actions'|'objectives'|'report'|'replay';
 const SPELL_LABELS:Readonly<Record<string,string>>={
@@ -466,7 +467,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    <section className="crz-turn-track" aria-label="Ordem de combate">
     <div className="crz-track-title">
      <h2>Ordem de combate</h2>
-     <span>Passe o cursor ou use Tab para localizar a unidade no mapa</span>
+     <span>Selecione uma tropa; Tab entra no mapa e as setas navegam entre hexágonos</span>
     </div>
     <div className="crz-turn-cards">
      {turnOrder.map((unit,index)=><button type="button" key={unit.id}
@@ -529,6 +530,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
      </div>
      <div className="crz-command-footer">
       <h3>Decisão do turno</h3>
+      <p className="battle-unified-action-hint">Mover: toque no hexágono verde. Atacar: selecione o inimigo destacado.</p>
       {aiTurn&&<Button variant="outline" onClick={()=>{
        if(!session)return;
        try{
@@ -551,6 +553,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
     <section className="crz-central-map" aria-label="Campo de batalha">
      <div className="crz-map-caption">
       <h2>Campo de batalha</h2>
+      <span className="battle-unified-leader-label">General: {caster?.name??"Nenhum ativo"}</span>
       <span className="crz-legend-item"><i className="crz-legend-green"/>Movimento</span>
       <span className="crz-legend-item"><i className="crz-legend-red"/>Ataque legal</span>
      </div>

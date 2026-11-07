@@ -15,6 +15,7 @@ import {BattleV3LiveCreator} from './BattleV3Live';
 import './battle.css';
 import './battle-legibility.css';
 import './battle-ui-v4.css';
+import './battle-cleanup.css';
 
 // Lazy-load do laboratório experimental para não atrasar a batalha V3 oficial.
 const BattleCrzLab=lazy(()=>import('./BattleCrzLab').then(m=>({default:m.BattleCrzLab})));
@@ -28,6 +29,7 @@ export function BattleNarratorHub(){
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Atacante',defender:'Defensor'});
  const [manual,setManual]=useState(false);
  const [showImport,setShowImport]=useState(false);
+ const [showDiagnostic,setShowDiagnostic]=useState(false);
  const checkStore=useServerFn(checkBattlePersistence);
  const [storeStatus,setStoreStatus]=useState<'checking'|'available'|'unavailable'>(
   BATTLE_PERSISTENCE_UI_ENABLED?'checking':'unavailable');
@@ -50,32 +52,67 @@ export function BattleNarratorHub(){
    <p>Simulador tático · sem efeito nas fichas oficiais</p>
    <p><strong>{BATTLE_RULES_VERSION} — regras experimentais.</strong> Nenhuma baixa será lançada nas fichas das casas.</p>
   </header>
-  {view==='home'&&<div className="battle-home battle-surface">
-    <h2>Laboratório de batalha</h2>
-    <p><strong>Batalhar:</strong> entre na Cruzada V3 com casas-modelo, habilidades e comandantes.
-      <strong> Criar batalha:</strong> mantenha o laboratório PTE-2.0 com editor e unidades oficiais em cópia somente leitura.</p>
-    <div className="battle-home-actions">
-      <Button onClick={()=>setView('crusade')}>Batalhar</Button>
+  {view==='home'&&<div className="battle-home-dashboard">
+   <section className="battle-surface battle-home-primary" aria-label="Iniciar batalha">
+    <p className="battle-eyebrow">LABORATÓRIO DO NARRADOR</p>
+    <h2>Prepare seu próximo confronto</h2>
+    <p>Monte os exércitos, escolha o campo, posicione as unidades e conduza o combate.
+     O resultado pertence apenas à simulação.</p>
+    <div className="battle-home-main-actions">
+     <div className="battle-home-option">
+      <h3>1 · Criar batalha</h3>
+      <p>Modo tático PTE-2.0: dois exércitos, cenários, editor hexagonal,
+       movimento, ataques, moral e relatório.</p>
+      <Button onClick={()=>setView('setup')}>Criar batalha</Button>
+     </div>
+     <div className="battle-home-option">
+      <h3>2 · Batalha rápida</h3>
+      <p>Cruzada V3: selecione forças-modelo e comandantes com retratos;
+       partida local contra IA ou controlada pelo narrador.</p>
+      <Button variant="outline" onClick={()=>setView('crusade')}>Batalha rápida com comandantes</Button>
+     </div>
+    </div>
+    <p className="battle-note">Roteiro básico: preparar → posicionar → combater → rever o resultado.</p>
+   </section>
+   <aside className="battle-home-side" aria-label="Continuação e opções de batalha">
+    <section className="battle-surface" aria-label="Continuar batalha">
+     <h3>Continuar batalha</h3>
+     {canSave?<Button variant="outline" onClick={()=>setView('saved')}>Batalhas salvas</Button>:
+      <p className="battle-note" role="status">Salvamento no servidor {storeStatus==='checking'?
+       'em verificação':'indisponível neste ambiente'}. As simulações locais podem ser exportadas.</p>}
+    </section>
+    <details className="battle-surface battle-home-advanced">
+     <summary>Ferramentas avançadas e ajuda</summary>
+     <div className="battle-home-secondary-actions">
+      <Button variant="outline" onClick={()=>setManual(x=>!x)}
+       aria-expanded={manual}>Consultar regras</Button>
+      <Button variant="outline" onClick={()=>setShowImport(x=>!x)}
+       aria-expanded={showImport}>Importar replay JSON</Button>
       {BATTLE_CRZ_TRAINING_UI_ENABLED&&<Button variant="outline"
        onClick={()=>setView('crz')}>CRZ-1.0 · Laboratório (teste)</Button>}
-      <Button variant="outline" onClick={()=>setView('setup')}>Criar batalha</Button>
       <Button variant="outline" onClick={()=>setView('strategy')}>Cercos e mapa estratégico · P3</Button>
-      {BATTLE_PLAYERS_ENABLED&&<Button variant="outline" onClick={()=>setView('invite')}>Convocar batalha</Button>}
-      {BATTLE_PLAYERS_ENABLED&&BATTLE_V3_LIVE_ENABLED&&<Button variant="outline" onClick={()=>setView('live')}>Convocar multiplayer</Button>}
-      <Button variant="outline" onClick={()=>setManual(x=>!x)}>Consultar regras</Button>
-      <Button variant="outline" onClick={()=>setShowImport(x=>!x)}>Importar replay JSON</Button>
-      {canSave?<Button variant="outline" onClick={()=>setView('saved')}>Batalhas salvas</Button>:
-        <Button variant="outline" disabled title="O servidor ainda não confirmou a autorização e o armazenamento">Batalhas salvas · {storeStatus==='checking'?'verificando…':'indisponíveis'}</Button>}
-      {BATTLE_PERSISTENCE_UI_ENABLED&&storeStatus==='unavailable'&&<Button variant="outline" onClick={()=>void probeStore()}>Verificar salvamento</Button>}
-    </div>
-    <BattleAccessCheck role="narrator"/>
-    {showImport&&<BattleReplayImporter/>}
-    {manual&&<div className="battle-rules-help">
-     <h3>Manual rápido PTE-2.0</h3>
-     <p>Até 5 unidades por lado; a iniciativa ordena os turnos. Cada ativação permite um movimento e depois um ataque, ou defender, esperar uma vez, ou terminar.</p>
-     <p>Floresta e colina custam 2 pontos de movimento; rocha é bloqueio. Floresta intermediária bloqueia tiro, e artilheiros não disparam quando engajados.</p>
-     <p>Os PV, as baixas e a moral são exclusivos desta simulação. IA determinística habilitada. O armazenamento exige autorização atual do Narrador e verificação do servidor. Nenhum impacto sobre recursos da casa.</p>
-    </div>}
+      {BATTLE_PLAYERS_ENABLED&&<Button variant="outline"
+       onClick={()=>setView('invite')}>Convocar batalha</Button>}
+      {BATTLE_PLAYERS_ENABLED&&BATTLE_V3_LIVE_ENABLED&&<Button variant="outline"
+       onClick={()=>setView('live')}>Convocar multiplayer</Button>}
+      <Button variant="outline" aria-expanded={showDiagnostic}
+       onClick={()=>setShowDiagnostic(x=>!x)}>Diagnóstico de acesso</Button>
+      {BATTLE_PERSISTENCE_UI_ENABLED&&storeStatus==='unavailable'&&
+       <Button variant="outline" onClick={()=>void probeStore()}>Verificar salvamento</Button>}
+     </div>
+     {showImport&&<BattleReplayImporter/>}
+     {manual&&<div className="battle-rules-help">
+      <h3>Manual rápido PTE-2.0</h3>
+      <p>Até 5 agrupamentos por lado. Cada ativação permite mover e atacar, defender,
+       esperar uma vez ou encerrar o turno.</p>
+      <p>Floresta e colina custam 2 pontos de movimento; rocha é intransponível.
+       Linha de visão e engajamento limitam disparos. Dano e moral valem apenas no tabuleiro.</p>
+      <p>Os dados reais das casas, quando consultados, são copiados somente para treino.
+       Nenhum resultado altera exércitos, XP, recursos ou calendário.</p>
+     </div>}
+     {showDiagnostic&&<BattleAccessCheck role="narrator"/>}
+    </details>
+   </aside>
   </div>}
   {view==='crusade'&&<BattleV3NarratorEntry onBack={()=>setView('home')}/>}
   {view==='crz'&&BATTLE_CRZ_TRAINING_UI_ENABLED&&<Suspense fallback={<p role="status">Carregando laboratório CRZ…</p>}>

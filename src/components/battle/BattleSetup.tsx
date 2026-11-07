@@ -1,3 +1,4 @@
+import './battle-cleanup.css';
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {LAND_PROFILES,tacticalProfile} from '@/lib/battle/domain/profiles-v2';
@@ -9,8 +10,9 @@ import type {BattleMap,BattleState,BattleStack,Hex,Side,Training} from '@/lib/ba
 import {BattleBoard} from './BattleBoard';
 import {BattleMapEditor} from './BattleMapEditor';
 import {BattleSourcePicker} from './BattleSourcePicker';
+import {isBattleTrainingCopy,battleTrainingSourceKey} from '@/lib/battle/adapters/imported-npc-roster';
 
-type PreparedUnit={id:string;side:Side;name:string;typeId:string;training:Training;count:number;position:Hex|null;imported?:BattleStack};
+type PreparedUnit={id:string;side:Side;name:string;typeId:string;training:Training;count:number;position:Hex|null;imported?:BattleStack;importKey?:string};
 const SIDE_LABEL={attacker:'Atacante',defender:'Defensor'} as const;
 const DEFAULTS:PreparedUnit[]=[
  {id:'attacker-1',side:'attacker',name:'Infantaria atacante',typeId:'infantry',training:'trained',count:100,position:null},
@@ -31,20 +33,49 @@ export function BattleSetup({onStart,onBack}:{
  const [units,setUnits]=useState<PreparedUnit[]>(DEFAULTS);
  const [selected,setSelected]=useState('attacker-1');
  const [editor,setEditor]=useState(false);
+ const [advanced,setAdvanced]=useState(false);
+ const [quickOpponent,setQuickOpponent]=useState<'human'|'ai'>('ai');
+ const [quickSource,setQuickSource]=useState<'models'|'houses'>('models');
  const [error,setError]=useState('');
  const update=(id:string,change:Partial<PreparedUnit>)=>setUnits(list=>list.map(u=>u.id===id?{...u,...change}:u));
  const makeId=(side:Side)=>side+'-'+crypto.randomUUID().slice(0,8);
- const addImported=(source:BattleStack)=>{
-  if(units.filter(u=>u.side===source.side).length>=5){setError('Limite de 5 agrupamentos por lado.');return;}
-  if(units.some(u=>u.imported?.source.houseId===source.source.houseId&&u.imported?.source.unitId===source.source.unitId)){
-   setError('Esta unidade oficial já foi copiada para a batalha.');return;
+ const effectiveUnits=(side:Side)=>units.filter(u=>u.side===side&&
+  !(u.id===side+'-1'&&!u.imported));
+ const remainingBySide={attacker:Math.max(0,5-effectiveUnits('attacker').length),
+  defender:Math.max(0,5-effectiveUnits('defender').length)};
+ const addImportedMany=(stacks:BattleStack[],houseName:string):boolean=>{
+  if(stacks.length===0)return false;
+  const side=stacks[0]!.side;
+  if(stacks.some(source=>source.side!==side||!isBattleTrainingCopy(source))){
+   setError('Somente cópias militares do mesmo exército podem ser importadas.');return false;
   }
-  const id='src-'+crypto.randomUUID();
-  const imported={...source,id};
-  setUnits(list=>[...list,{id,side:source.side,name:source.name,typeId:source.primaryTypeId,
-    training:source.training,count:source.initialCount,position:null,imported}]);
-  setSelected(id);setError('');
+  const current=units.filter(u=>!(u.side===side&&u.id===side+'-1'&&!u.imported));
+  if(current.filter(u=>u.side===side).length+stacks.length>5){
+   setError('Limite de cinco agrupamentos por lado.');return false;
+  }
+  const keys=[...current.filter(u=>u.imported).map(u=>
+   u.importKey??battleTrainingSourceKey(u.imported!)),
+   ...stacks.map(battleTrainingSourceKey)];
+  if(new Set(keys).size!==keys.length){
+   setError('Uma ou mais unidades desta Casa já foram copiadas.');return false;
+  }
+  const prepared=stacks.map(source=>{
+   const id='src-'+crypto.randomUUID();
+   const imported={...source,id};
+   return {id,side,name:source.name,typeId:source.primaryTypeId,
+    training:source.training,count:source.initialCount,position:null,imported,
+    importKey:battleTrainingSourceKey(source)};
+  });
+  setUnits([...current,...prepared]);
+  setSelected(prepared[0]!.id);
+  setSideNames(before=>({...before,
+   [side]:before[side]==='Exército '+(side==='attacker'?'atacante':'defensor')?
+    'Casa '+houseName:before[side]}));
+  setError('');
+  return true;
  };
+ const addImported=(source:BattleStack,houseName:string)=>
+  addImportedMany([source],houseName);
  const add=(side:Side)=>{
   if(units.filter(u=>u.side===side).length>=5){setError('Limite de 5 agrupamentos por lado.');return;}
   const id=makeId(side);
@@ -89,11 +120,83 @@ export function BattleSetup({onStart,onBack}:{
    onStart(state,sideNames);
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível preparar a batalha.');}
  };
+ const quickStart=()=>{
+  try{
+   if(!name.trim()||!seed.trim())throw new Error('Informe um nome e uma semente válidos.');
+   const errors=validateBattleMap(map);
+   if(errors.length>0)throw new Error('Mapa inválido: '+errors.join('; '));
+   const occupied=new Set<string>();
+   const prepared=quickSource==='houses'?units:DEFAULTS;
+   if(quickSource==='houses'&&!prepared.some(u=>u.imported))
+    throw new Error('Escolha uma Região, uma Casa e carregue suas unidades antes de iniciar.');
+   const stacks=prepared.map(u=>{
+    const position=map.deployment[u.side].find(h=>!occupied.has(hexKey(h))&&
+     map.tiles.find(tile=>hexKey(tile)===hexKey(h))?.terrain!=='rock');
+    if(!position)throw new Error('O cenário não possui espaços legais para os dois exércitos.');
+    occupied.add(hexKey(position));
+    return u.imported?{...u.imported,position,side:u.side}:
+     makeFictionalStack({id:u.id,side:u.side,name:u.name,typeId:u.typeId,
+      training:u.training,count:u.count,position});
+   });
+   const battle=makeBattleSetup({id:'lab-'+seed,name,seed,map,
+    controls:{attacker:'human',defender:quickOpponent},stacks});
+   setError('');onStart(battle,sideNames);
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível iniciar o confronto.');}
+ };
  const mapErrors=validateBattleMap(map);
  const positioned=units.filter(u=>u.position).length;
  return <div className="battle-setup">
   <div className="battle-heading"><div><h2>Preparar batalha</h2><p>Laboratório de tropas fictícias — nenhuma baixa altera fichas de casas.</p></div>
     <Button variant="outline" onClick={onBack}>Voltar ao painel</Button></div>
+  {!advanced&&<section className="battle-surface battle-quick-start" aria-label="Começar batalha simples">
+   <h3>Configuração rápida</h3>
+   <p>Inicie com uma infantaria-modelo de cada lado, posicionada automaticamente no mapa.
+    Para escolher as unidades, alterar os efetivos e pintar o terreno, use a configuração completa.</p>
+   <div className="battle-source-toggle" role="group" aria-label="Origem dos exércitos">
+    <Button variant={quickSource==='models'?'default':'outline'} aria-pressed={quickSource==='models'}
+     onClick={()=>setQuickSource('models')}>Forças-modelo</Button>
+    <Button variant={quickSource==='houses'?'default':'outline'} aria-pressed={quickSource==='houses'}
+     onClick={()=>setQuickSource('houses')}>Casas cadastradas · Região e Casa</Button>
+   </div>
+   <div className="battle-form-row">
+    <label>Nome do confronto<input aria-label="Nome do confronto rápido" maxLength={120}
+     value={name} onChange={e=>setName(e.target.value)}/></label>
+    <label>Campo de batalha<select aria-label="Cenário rápido" value={map.id}
+     onChange={e=>{const id=e.target.value as BattleScenarioId;
+      if(Object.hasOwn(SCENARIOS,id))setMap(createScenario(id,map.width));}}>
+     {!Object.hasOwn(SCENARIOS,map.id)&&<option value={map.id}>Mapa personalizado</option>}
+     {Object.entries(SCENARIOS).map(([id,label])=><option key={id} value={id}>{label}</option>)}
+    </select></label>
+    <label>Adversário<select aria-label="Adversário rápido" value={quickOpponent}
+     onChange={e=>setQuickOpponent(e.target.value as 'human'|'ai')}>
+     <option value="ai">Inteligência artificial</option>
+     <option value="human">Narrador controla os dois lados</option>
+    </select></label>
+   </div>
+   {quickSource==='houses'&&<div className="battle-source-quick" aria-label="Selecionar casas e exércitos">
+    <BattleSourcePicker onAdd={addImported} onAddMany={addImportedMany}
+     remainingBySide={remainingBySide}/>
+    <p className="battle-note">
+     {units.filter(u=>u.imported).length} unidades documentadas copiadas para este exercício.
+     Exércitos sem Casa selecionada continuam com tropas-modelo.</p>
+   </div>}
+   {error&&<p role="alert" className="battle-error">{error}</p>}
+   <div className="battle-home-actions">
+    <Button disabled={Boolean(mapErrors.length)||!name.trim()||
+     (quickSource==='houses'&&!units.some(u=>u.imported))} onClick={quickStart}>
+     {quickSource==='houses'?'Iniciar batalha com unidades das casas':'Iniciar combate com forças-modelo'}</Button>
+    <Button variant="outline" onClick={()=>{setAdvanced(true);setError('');}}>
+     Personalizar unidades e mapa</Button>
+   </div>
+   <p className="battle-note">Você pode terminar o exercício e repetir a batalha.
+    Nenhum exército oficial será alterado.</p>
+  </section>}
+  {advanced&&<>
+   <div className="battle-advanced-back">
+    <Button variant="outline" onClick={()=>{setAdvanced(false);setError('');}}>
+     Voltar à configuração rápida</Button>
+    <p>Montagem detalhada · cinco etapas</p>
+   </div>
   <section className="battle-surface" aria-label="Identificação da batalha">
     <h3>1. Identificação</h3>
     <div className="battle-form-row">
@@ -155,7 +258,8 @@ export function BattleSetup({onStart,onBack}:{
    </fieldset>)}
    </div>
   </section>
-  <BattleSourcePicker onAdd={addImported}/>
+  <BattleSourcePicker onAdd={addImported} onAddMany={addImportedMany}
+   remainingBySide={remainingBySide}/>
   <section className="battle-surface" aria-label="Escolha do terreno">
    <h3>3. Terreno</h3>
    <div className="battle-form-row">
@@ -197,5 +301,6 @@ export function BattleSetup({onStart,onBack}:{
    <Button disabled={mapErrors.length>0||units.some(u=>!u.position)||!name.trim()||!seed.trim()}
      onClick={start}>Iniciar batalha</Button>
   </section>
+  </>}
  </div>;
 }

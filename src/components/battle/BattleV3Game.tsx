@@ -21,6 +21,7 @@ import './battle.css';
 import './crusade-v4.css';
 import './battle-legibility.css';
 import './battle-ui-v4.css';
+import './battle-arena-unified.css';
 
 type Mode='inspect'|'skill'|'power';
 const sides:{id:Side;label:string}[]=[{id:'attacker',label:'Aliado'},{id:'defender',label:'Oponente'}];
@@ -31,10 +32,11 @@ const defaults:V3ScenarioOptions={
 };
 /** Interface original de Cormyr: ritmo de turnos e leitura de pilhas inspirados no
  * gênero de batalhas de Cruzada, sem reutilizar arte, ícones ou UI proprietária. */
-export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,invitationName,officialCopies=[]}:{
+export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,invitationName,officialCopies=[],officialHouseNames}:{
  narrator?:boolean;onBack?:()=>void;
  initialOptions?:V3ScenarioOptions;locked?:boolean;invitationName?:string;
  officialCopies?:readonly BattleStack[];
+ officialHouseNames?:Partial<Record<Side,string>>;
 }){
  const [options,setOptions]=useState<V3ScenarioOptions>(initialOptions??defaults);
  const [game,setGame]=useState<V3Game|null>(null);
@@ -140,15 +142,20 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      const key=s.id==='attacker'?'attackerHouseId':'defenderHouseId';
      const ckey=s.id==='attacker'?'attackerCommander':'defenderCommander';
      const leader=commander(options[ckey]);
+     const sideCopies=narrator?officialCopies.filter(unit=>unit.side===s.id):[];
      return <article className="crusade-side-card" key={s.id}>
       <p className="battle-eyebrow">{s.label==='Aliado'?'SEU EXÉRCITO':'EXÉRCITO ADVERSÁRIO'}</p>
-      <label>Casa modelo<select aria-label={'Casa modelo '+s.label} value={options[key]} disabled={locked}
-       onChange={e=>update({[key]:e.target.value})}>
-       {MODEL_HOUSES.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
-      </select></label>
-      <h3>{chosen.subtitle}</h3><p>{chosen.description}</p>
+      {sideCopies.length>0?<p><strong>Casa selecionada: {officialHouseNames?.[s.id]||'Casa cadastrada'}</strong></p>:
+       <label>Casa modelo<select aria-label={'Casa modelo '+s.label} value={options[key]} disabled={locked}
+        onChange={e=>update({[key]:e.target.value})}>
+        {MODEL_HOUSES.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+       </select></label>}
+      <h3>{sideCopies.length>0?'Exército da Casa selecionada':chosen.subtitle}</h3>
+      <p>{sideCopies.length>0?'A casa-modelo deste lado foi substituída por cópias autorizadas, sem alterações na origem.':chosen.description}</p>
       <div className="crusade-model-roster">
-       {chosen.units.map(u=><span key={u.name}>{u.name} <b>×{u.count}</b></span>)}
+       {sideCopies.length>0?
+        sideCopies.map(u=><span key={u.id}>{u.name} <b>×{u.initialCount}</b></span>):
+        chosen.units.map(u=><span key={u.name}>{u.name} <b>×{u.count}</b></span>)}
       </div>
       <label>Comandante<select aria-label={'Comandante '+s.label} value={leader.id} disabled={locked}
        onChange={e=>update({[ckey]:e.target.value as CommanderId})}>
@@ -178,13 +185,15 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
    </div>
    {narrator&&officialCopies.length>0&&<p className="battle-note">
-    Treino com {officialCopies.length} cópia(s) oficial(is) somente leitura;
+    Treino com {officialCopies.length} cópia(s) documentada(s) somente para simulação;
     nenhuma baixa será aplicada à campanha.</p>}
    {!locked&&<label>Retomar batalha V3 verificada (JSON)
     <input type="file" accept=".json,application/json" aria-label="Importar replay V3"
      onChange={e=>{void importReplay(e.currentTarget.files?.[0]);e.currentTarget.value='';}}/>
    </label>}
-   <p className="battle-note">{narrator?'Visão de Narrador · ':'Visão de Jogador · '}Exércitos fictícios; esta partida não é uma batalha oficial convocada.</p>
+   <p className="battle-note">{narrator?'Visão de Narrador · ':'Visão de Jogador · '}
+    {officialCopies.length?'Tropas oficiais copiadas somente para simulação.':'Exércitos fictícios.'}
+    Esta partida não é uma batalha oficial convocada.</p>
   </section>
  </main>;
  const report=battle?battleReport(battle):null;
@@ -201,17 +210,19 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    <header className="crusade-v4-header">
     <div>
      <p className="crusade-v4-eyebrow">CORMYR · CRUZADA TÁTICA · TREINAMENTO</p>
-     <h1>{battle?.name}</h1>
+     <h1>{officialCopies.length>0?
+      (officialHouseNames?.attacker||modelHouse(options.attackerHouseId).name)+' × '+
+      (officialHouseNames?.defender||modelHouse(options.defenderHouseId).name):battle?.name}</h1>
      <p>Rodada {battle?.round} · {active?active.name:'Batalha encerrada'} ·
       PTE-3.0-SANDBOX</p>
     </div>
     <div className="crusade-v4-utility">
-     {game.battle.stacks.every(s=>s.source.kind==='fictional')?
+     {officialCopies.length===0&&game.battle.stacks.every(s=>s.source.kind==='fictional')?
       <Button variant="outline" onClick={()=>{
        try{downloadBattleJson('crusada-v3-replay-verificado.json',exportV3ReplayJson(game));}
        catch(e){setStatus(e instanceof Error?e.message:'Replay V3 indisponível.');}
       }}>Exportar replay V3 verificado</Button>:
-      <span className="battle-note">Replay externo desativado para snapshots oficiais.</span>}
+      <span className="battle-note">Replay externo desativado para cópias militares de casas.</span>}
      <Button variant="outline" onClick={()=>{setExpanded(false);setGame(null);setStatus('');}}>Nova batalha</Button>
      <Button variant="outline" className="battle-expand-toggle"
       aria-label={expanded?'Sair da tela ampliada':'Ampliar batalha'}
@@ -224,7 +235,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    <section className="crusade-v4-turns" aria-label="Ordem de combate V3">
     <div className="crusade-v4-section-head">
      <h2>Ordem de combate</h2>
-     <span>Passe o mouse ou use Tab para localizar uma tropa no mapa</span>
+     <span>Selecione uma tropa; Tab entra no mapa e as setas navegam entre hexágonos</span>
     </div>
     <div className="crusade-v4-turn-strip">
      {turnOrder.map((unit,index)=><button type="button" key={unit.id}
@@ -285,6 +296,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      </div>}
      <div className="crusade-v4-commands">
       <h3>Decisão do turno</h3>
+      <p className="battle-unified-action-hint">Mover: toque no hexágono verde. Atacar: selecione o inimigo vermelho.</p>
       <Button disabled={!canAct||!active||!legal.some(c=>c.type==='DEFEND')} variant="outline"
        onClick={()=>active&&action({type:'DEFEND',unitId:active.id})}>Defender</Button>
       <Button disabled={!canAct||!active||!legal.some(c=>c.type==='WAIT')} variant="outline"
@@ -296,6 +308,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     <section className="crusade-v4-battlefield" aria-label="Campo de batalha V3">
      <div className="crusade-v4-map-head">
       <h2>Campo de batalha</h2>
+      <span className="battle-unified-leader-label">General: {currentCommander?.name??"Sem General ativo"}</span>
       <span> <i className="crusade-v4-green"/> Movimento</span>
       <span> <i className="crusade-v4-red"/> Ataque legal</span>
      </div>
@@ -341,7 +354,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
        [...game.log].reverse().filter(e=>historySide==='all'||e.side===historySide).slice(0,6)).map((entry,i)=>
        <li key={game.log.length-i}>
         <strong>Rodada {entry.round}</strong>
-        <span>{modelHouse(entry.side==='attacker'?game.setup.attackerHouseId:game.setup.defenderHouseId).name} · {entry.label}</span>
+        <span>{officialHouseNames?.[entry.side]||
+        modelHouse(entry.side==='attacker'?game.setup.attackerHouseId:game.setup.defenderHouseId).name} · {entry.label}</span>
         {entry.detail&&<small>{entry.detail}</small>}
        </li>)}
      </ol>
@@ -350,7 +364,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       {showDetails?'Ver últimas ações':'Ver histórico completo'}
      </Button>
      <p className="crusade-v4-private-notice">
-      Apenas exércitos-modelo. As fichas oficiais não são alteradas.
+      {officialCopies.length>0?'Unidades de casas copiadas somente para treinamento.':
+       'Exércitos-modelo de treinamento.'} As fichas oficiais não são alteradas.
      </p>
     </aside>
    </div>

@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useId,useRef,useState} from 'react';
 import type { BattleMap, BattleStack, Hex, Side } from '@/lib/battle/domain/types';
 import { axialToOffset, hexKey } from '@/lib/battle/geometry/hex';
 import { militaryUnitSymbolSrc } from '@/components/house/military-unit-symbol';
@@ -26,6 +26,27 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
   showZones?:boolean;onHexClick?:(hex:Hex)=>void;onHoverHex?:(hex:Hex|null)=>void;
 }){
   const [zoom,setZoom]=useState(100);
+  const svgRef=useRef<SVGSVGElement>(null);
+  const helpId=useId();
+  const [focusKey,setFocusKey]=useState(()=>hexKey(map.tiles[0]??{q:0,r:0}));
+  const accessibleFocusKey=map.tiles.some(tile=>hexKey(tile)===focusKey)?
+   focusKey:hexKey(map.tiles[0]??{q:0,r:0});
+  const navigateKeyboard=(tile:Hex,key:string)=>{
+   const offset=axialToOffset(tile);
+   const delta=key==='ArrowLeft'?{x:-1,y:0}:key==='ArrowRight'?{x:1,y:0}:
+    key==='ArrowUp'?{x:0,y:-1}:key==='ArrowDown'?{x:0,y:1}:null;
+   if(!delta)return false;
+   const next=map.tiles.find(h=>{
+    const at=axialToOffset(h);
+    return at.column===offset.column+delta.x&&at.row===offset.row+delta.y;
+   });
+   if(next){
+    const nextKey=hexKey(next);
+    setFocusKey(nextKey);
+    svgRef.current?.querySelector<SVGElement>('[data-battle-hex="'+nextKey+'"]')?.focus?.();
+   }
+   return true;
+  };
   const colors=theme==='cormyr'?CORMYR_SIDE_COLOR:SIDE_COLOR;
   const tileMap=new Map(map.tiles.map(t=>[hexKey(t),t]));
   // Pilhas destruídas ou em debandada saem do campo; seguem no estado para baixas e relatório.
@@ -42,7 +63,7 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
       <button type="button" aria-label="Restaurar zoom do mapa" disabled={zoom===100} onClick={()=>setZoom(100)}>Ajustar</button>
     </div>
     <div className="battle-board-scroll" role="region" tabIndex={0} aria-label="Área navegável do mapa hexagonal">
-    <svg className={'battle-board-svg'+(theme==='cormyr'?' battle-board-svg--cormyr':'')} viewBox={`0 0 ${w} ${h}`} style={{width:`${zoom}%`,maxWidth:'none'}}
+    <svg ref={svgRef} className={'battle-board-svg'+(theme==='cormyr'?' battle-board-svg--cormyr':'')} viewBox={`0 0 ${w} ${h}`} style={{width:`${zoom}%`,maxWidth:'none'}}
       role="group" aria-label={`Mapa hexagonal com ${map.width} colunas por ${map.height} linhas`}>
       {map.tiles.map(tile=>{
         const key=hexKey(tile),pos=pixel(tile),unit=occupied.get(key);
@@ -55,12 +76,19 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
         const count=unit?Math.min(unit.initialCount,Math.ceil(unit.currentHp/unit.hpPerSoldier)):0;
         const label=`Hexágono ${tile.q}, ${tile.r}; ${tile.terrain==='plain'?'planície':tile.terrain==='forest'?'floresta':tile.terrain==='hill'?'colina':'rocha'}${unit?'; '+unit.name+', '+count+' combatentes':''}${legalMove?'; movimento permitido':''}${legalAttack?'; alvo válido':''}`;
         return <g key={key} transform={`translate(${pos.x},${pos.y})`}
-          role="button" tabIndex={onHexClick?0:undefined} aria-label={label}
+          data-battle-hex={key} role="button"
+          tabIndex={onHexClick?(key===accessibleFocusKey?0:-1):undefined}
+          aria-label={label} aria-describedby={onHexClick?helpId:undefined}
           onClick={()=>onHexClick?.({q:tile.q,r:tile.r})}
           onMouseEnter={()=>onHoverHex?.({q:tile.q,r:tile.r})}
           onMouseLeave={()=>onHoverHex?.(null)}
-          onFocus={()=>onHoverHex?.({q:tile.q,r:tile.r})}
-          onKeyDown={e=>{if((e.key==='Enter'||e.key===' ')&&onHexClick){e.preventDefault();onHexClick({q:tile.q,r:tile.r});}}}
+          onFocus={()=>{setFocusKey(key);onHoverHex?.({q:tile.q,r:tile.r});}}
+          onKeyDown={e=>{
+           if(!onHexClick)return;
+           if(e.key==='Enter'||e.key===' '){
+            e.preventDefault();onHexClick({q:tile.q,r:tile.r});
+           }else if(navigateKeyboard(tile,e.key))e.preventDefault();
+          }}
           className={`battle-hex${onHexClick?' battle-hex--interactive':''}`}>
           <title>{label}</title>
           <polygon points={points} fill={TERRAIN_COLOR[tile.terrain]}
@@ -95,6 +123,8 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
       <span>▱ Planície</span><span>♣ Floresta · custo 2</span><span>▲ Colina · custo 2</span>
       <span>◆ Rocha · bloqueio</span><span>Contorno verde: movimento</span><span>Contorno vermelho: alvo</span>
     </div>
+    <span id={helpId} className="sr-only">Use Tab para entrar no mapa, setas para navegar pelos hexágonos,
+      Enter ou Espaço para selecionar o destino.</span>
     <span className="sr-only">{tileMap.size} hexágonos disponíveis; use Tab e Enter para selecionar.</span>
   </div>;
 }

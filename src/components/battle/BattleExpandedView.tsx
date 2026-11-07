@@ -32,7 +32,7 @@ export function BattleExpandedView({expanded,onClose,children}:{
    }
    if(event.key!=='Tab'||!dialogRef.current)return;
    const focusable=Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
-    'button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),'+
+    'button:not([disabled]),summary,a[href],input:not([disabled]),select:not([disabled]),'+
     'textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
    )).filter(el=>el.getClientRects().length>0);
    if(focusable.length===0){event.preventDefault();dialogRef.current.focus();return;}

@@ -17,6 +17,14 @@ const inviteData=z.object({
  attackerCommander:commanderId,defenderCommander:commanderId,
 }).strict();
 const deleteData=z.object({id:uuid}).strict();
+/** Publicação atual é exclusiva do Narrador. Um botão oculto NÃO bloqueia
+ * chamadas diretas: convites de jogadores exigem liberação explícita do servidor.
+ */
+function requireInvitationsEnabled(){
+ if(process.env['ENABLE_BATTLE_INVITATIONS']!=='true')
+  throw new Error('Convocações de jogadores desativadas neste ambiente.');
+}
+
 type Db={rpc:(name:string,args?:Record<string,unknown>)=>Promise<{data:unknown;error:{message:string}|null}>;from:(table:string)=>any};
 export type BattleV3Invitation=Readonly<{
  id:string;title:string;target_house_id:string;scenario:string;
@@ -40,6 +48,7 @@ async function requireNarrator(db:Db){
 export const listV3Invitations=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .handler(async({context})=>{
+  requireInvitationsEnabled();
   const db=context.supabase as unknown as Db;
   await requireAccess(db);
   const found=await db.from('battle_v3_invitations')
@@ -53,6 +62,7 @@ export const createV3Invitation=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(inviteData)
  .handler(async({data,context})=>{
+  requireInvitationsEnabled();
   const db=context.supabase as unknown as Db;
   await requireNarrator(db);
   const house=await db.from('campaign_houses').select('id')
@@ -71,6 +81,7 @@ export const createV3Invitation=createServerFn({method:'POST'})
 export const closeV3Invitation=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth]).inputValidator(deleteData)
  .handler(async({data,context})=>{
+  requireInvitationsEnabled();
   const db=context.supabase as unknown as Db;
   await requireNarrator(db);
   const result=await db.from('battle_v3_invitations').update({status:'closed'}).eq('id',data.id)

@@ -1,0 +1,33 @@
+/* Auditoria UX 07/11: um fluxo principal e ferramentas especializadas recolhíveis.
+ * Escopo limitado ao módulo de batalha; fichas e navegação do site permanecem intocadas. */
+.battle-module .battle-home-dashboard{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(260px,.85fr);gap:14px;align-items:start}
+.battle-module .battle-home-primary{padding:20px 22px}
+.battle-module .battle-home-primary>p{max-width:70ch;line-height:1.6}
+.battle-module .battle-home-main-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0 12px}
+.battle-module .battle-home-option{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;border:1px solid #8e7656;border-radius:10px;background:rgba(26,31,27,.55)}
+.battle-module .battle-home-option h3{margin:0;font-size:19px}
+.battle-module .battle-home-option p{flex:1;font-size:14px;line-height:1.55;margin:0 0 8px;color:#e6dac7}
+.battle-module .battle-home-option button{width:100%;min-height:45px;white-space:normal}
+.battle-module .battle-home-side{display:grid;gap:12px;min-width:0}
+.battle-module .battle-home-side>.battle-surface{margin:0}
+.battle-module .battle-home-side button{white-space:normal}
+.battle-module .battle-home-advanced summary,.battle-module .battle-optional-source summary{cursor:pointer;color:#f6dfad;font-weight:650;font-size:16px;line-height:1.45;padding:5px 4px}
+.battle-module .battle-home-advanced summary:focus-visible,.battle-module .battle-optional-source summary:focus-visible{outline:3px solid #f9d486;outline-offset:3px}
+.battle-module .battle-home-advanced[open] summary,.battle-module .battle-optional-source[open] summary{border-bottom:1px solid #816f53;margin-bottom:12px;padding-bottom:12px}
+.battle-module .battle-home-secondary-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin:10px 0}
+.battle-module .battle-home-secondary-actions button{min-height:41px;width:100%;text-align:left;justify-content:flex-start}
+.battle-module .battle-home-side .battle-rules-help{font-size:14px;line-height:1.55}
+.battle-module .battle-quick-start{padding:20px}
+.battle-module .battle-quick-start>p{max-width:75ch;line-height:1.55}
+.battle-module .battle-quick-start .battle-form-row{align-items:flex-end}
+.battle-module .battle-quick-start .battle-form-row label{flex:1 1 190px}
+.battle-module .battle-quick-start .battle-home-actions button{min-height:46px}
+.battle-module .battle-advanced-back{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:5px 0 18px}
+.battle-module .battle-advanced-back p{margin:0;color:#dac9a9;font-weight:600}
+.battle-module .battle-optional-source{margin-bottom:12px}
+.battle-module .battle-optional-source>.battle-surface{margin-top:10px}
+.battle-module .battle-selected-copies{border-top:1px solid #74634d;margin-top:14px;padding-top:10px}
+.battle-module .battle-selected-copy{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0}
+.battle-module .battle-selected-copy span{overflow-wrap:anywhere}
+@media(max-width:920px){.battle-module .battle-home-dashboard{grid-template-columns:minmax(0,1fr)}.battle-module .battle-home-side{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.battle-module .battle-home-main-actions,.battle-module .battle-home-side{grid-template-columns:minmax(0,1fr)}.battle-module .battle-home-primary{padding:14px}.battle-module .battle-home-option{padding:14px}.battle-module .battle-home-option button{min-height:48px}}

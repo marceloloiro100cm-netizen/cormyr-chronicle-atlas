@@ -9,6 +9,8 @@ import {hexKey,hexDistance} from '@/lib/battle/geometry/hex';
 import {reachablePaths} from '@/lib/battle/geometry/pathfinding';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
+import {BattleExpandedView} from './BattleExpandedView';
+import './battle-arena-unified.css';
 import {runAiUntilHuman} from '@/lib/battle/domain/ai';
 import {exportReplayJson} from '@/lib/battle/domain/replay';
 import {BattleReplay} from './BattleReplay';
@@ -76,6 +78,8 @@ export function BattleArena({initial,resume,sideNames,onExit,persistenceEnabled=
  // A edição é local; o salvamento posterior cria uma nova cópia, sem sobrescrever a origem.
  const [battle,setBattle]=useState<BattleState>(()=>resume??startBattle(initial));
  const [history,setHistory]=useState<BattleState[]>([]);
+ const [expanded,setExpanded]=useState(true);
+ const [fullHistory,setFullHistory]=useState(false);
  const [selected,setSelected]=useState<string|null>(battle.activeUnitId);
  const [mode,setMode]=useState<'inspect'|'move'|'attack'>('inspect');
  const [pendingMove,setPendingMove]=useState<Hex|null>(null),[pendingAttack,setPendingAttack]=useState<string|null>(null);
@@ -151,27 +155,58 @@ export function BattleArena({initial,resume,sideNames,onExit,persistenceEnabled=
   const fresh=startBattle(initial);setBattle(fresh);setHistory([]);setSelected(fresh.activeUnitId);clear();setNotice('');
  };
  if(battle.phase==='completed'||battle.phase==='archived')
-  return <BattleResult state={battle} initial={initial} sideNames={sideNames} onRestart={restart} onExit={onExit} persistenceEnabled={persistenceEnabled}/>;
- return <section className="battle-arena" aria-label="Arena tática">
-  <div className="battle-arena-top battle-surface">
-   <div><h2>{battle.name}</h2><p>Rodada {battle.round} / 20 · {active?active.name:'Sem unidade ativa'}
-     {' · '}PTE-2.0 experimental</p></div>
-   <div className="battle-form-row">
+  return <BattleExpandedView expanded={expanded} onClose={()=>setExpanded(false)}>
+   <div className="battle-module battle-unified-shell battle-result-screen">
+    <div className="battle-arena-top battle-surface">
+     <strong>Resultado da batalha · PTE-2.0</strong>
+     <Button size="sm" variant="outline" className="battle-expand-toggle"
+      aria-label={expanded?'Sair da tela ampliada':'Ampliar batalha'}
+      onClick={()=>setExpanded(value=>!value)}>
+      {expanded?'↙ Sair da tela ampliada':'⤢ Ampliar batalha'}
+     </Button>
+    </div>
+    <BattleResult state={battle} initial={initial} sideNames={sideNames}
+     onRestart={restart} onExit={onExit} persistenceEnabled={persistenceEnabled}/>
+   </div>
+  </BattleExpandedView>;
+ const arena=<div className="battle-module battle-unified-shell">
+  <section className="battle-arena" aria-label="Arena tática">
+  <header className="battle-arena-top battle-surface">
+   <div className="battle-arena-heading">
+    <p className="battle-eyebrow">CORMYR · CAMPO TÁTICO · TREINAMENTO</p>
+    <h2>{battle.name}</h2>
+    <p>Rodada {battle.round} / 20 · {active?active.name:'Sem unidade ativa'}
+     {' · '}PTE-2.0 experimental</p>
+   </div>
+   <div className="battle-arena-quick-controls">
+    <Button size="sm" variant="outline" className="battle-expand-toggle"
+     aria-label={expanded?'Sair da tela ampliada':'Ampliar batalha'}
+     onClick={()=>setExpanded(value=>!value)}>
+     {expanded?'↙ Sair da tela ampliada':'⤢ Ampliar batalha'}
+    </Button>
     <Button size="sm" variant="outline" onClick={()=>setPaused(x=>!x)}>{paused?'Retomar':'Pausar'}</Button>
-    <Button size="sm" variant="outline" disabled={!history.length} onClick={undo}>Desfazer ação</Button>
-    <Button size="sm" variant="outline" onClick={restart}>Reiniciar</Button>
-    {persistenceEnabled&&<Button size="sm" variant="outline" disabled={savingProgress}
-      onClick={async()=>{
+    <Button size="sm" variant="outline" onClick={onExit}>Sair</Button>
+    <details className="battle-arena-extra">
+     <summary>Mais opções</summary>
+     <div className="battle-arena-extra-buttons">
+      <Button size="sm" variant="outline" disabled={!history.length} onClick={undo}>Desfazer ação</Button>
+      <Button size="sm" variant="outline" onClick={restart}>Reiniciar</Button>
+      {persistenceEnabled&&<Button size="sm" variant="outline" disabled={savingProgress}
+       onClick={async()=>{
         setSavingProgress(true);
-        try{const saved=await saveProgress({data:{replayJson:exportReplayJson(initial,battle)}});
-          setNotice('Batalha salva: '+saved.sessionId);
+        try{
+         const saved=await saveProgress({data:{replayJson:exportReplayJson(initial,battle)}});
+         setNotice('Batalha salva: '+saved.sessionId);
         }catch(e){setNotice(e instanceof Error?e.message:'Falha no salvamento.');}
         finally{setSavingProgress(false);}
-      }}>Salvar cópia da batalha</Button>}
-    <Button size="sm" variant="outline" onClick={()=>setShowHelp(x=>!x)}>Regras</Button>
-    <Button size="sm" variant="outline" onClick={onExit}>Sair</Button>
+       }}>Salvar cópia da batalha</Button>}
+      <Button size="sm" variant="outline" onClick={()=>setShowHelp(x=>!x)}>
+       {showHelp?'Ocultar regras':'Regras'}
+      </Button>
+     </div>
+    </details>
    </div>
-  </div>
+  </header>
   {showHelp&&<div className="battle-surface" role="note">Mover uma vez e atacar depois; defender concede +2 até a próxima ativação; esperar uma vez por rodada. Retaliação corpo a corpo uma vez por rodada. Todas as baixas são apenas simuladas.</div>}
   <div className="battle-arena-grid">
     <aside className="battle-surface battle-army-sidebar" aria-label="Exércitos na arena">
@@ -185,7 +220,10 @@ export function BattleArena({initial,resume,sideNames,onExit,persistenceEnabled=
       </button>)}
      </div>)}
     </aside>
-    <div className="battle-surface battle-field">
+    <section className="battle-surface battle-field" aria-label="Campo de batalha PTE">
+     <div className="battle-unified-map-label">
+      <h3>Campo de batalha</h3><span>Verde: mover · vermelho: atacar</span>
+     </div>
      <BattleBoard map={battle.map} stacks={battle.stacks} activeId={battle.activeUnitId}
        selectedId={selected} moveKeys={canAct&&mode==='move'?moveKeys:[]}
        attackKeys={canAct&&mode==='attack'?attackIds:[]} pendingHex={pendingMove}
@@ -213,17 +251,25 @@ export function BattleArena({initial,resume,sideNames,onExit,persistenceEnabled=
        <Button onClick={()=>command({type:'ATTACK',unitId:active.id,targetId:pendingAttack})}>Confirmar ataque</Button>
        <Button variant="outline" onClick={()=>setPendingAttack(null)}>Cancelar</Button>
      </div>}
-    </div>
+    </section>
     <aside className="battle-surface battle-inspector" aria-label="Ficha tática selecionada">
-     <h3>Unidade selecionada</h3>
+     <h3>Comando tático</h3>
+     <p className="battle-note">A unidade ativa recebe ordens diretamente; o perfil PTE-2.0 não inclui General.</p>
      {inspected?<UnitInspector unit={inspected} active={inspected.id===battle.activeUnitId}/>:
       <p>Selecione uma unidade no tabuleiro.</p>}
     </aside>
   </div>
   <div className="battle-surface battle-timeline" aria-label="Registro da batalha">
-   <h3>Registro de combate</h3>
+   <div className="battle-unified-timeline-head">
+    <h3>Últimas ações</h3>
+    <Button size="sm" variant="outline" aria-expanded={fullHistory}
+     onClick={()=>setFullHistory(value=>!value)}>
+     {fullHistory?'Ver últimas ações':'Ver histórico completo'}
+    </Button>
+   </div>
    {battle.events.length===0?<p>Nenhuma ação registrada.</p>:
-    <ol aria-live="polite">{[...battle.events].reverse().slice(0,30).map(e=><li key={e.seq}>
+    <ol aria-live="polite" className={fullHistory?'battle-timeline-all':''}>
+     {[...battle.events].reverse().slice(0,fullHistory?100:6).map(e=><li key={e.seq}>
       Rodada {e.round} · {e.type==='DAMAGE'?'Ataque':e.type==='RETALIATION'?'Retaliação':e.type==='MOVE'?'Movimento':e.type==='DEFEND'?'Defesa':e.type==='WAIT'?'Espera':e.type==='END_ACTIVATION'?'Fim de turno':e.type}
       {' · '}{typeof e.delta['damage']==='number'?e.delta['damage']+' PV, '+e.delta['casualties']+' baixas':''}
      </li>)}</ol>}
@@ -239,12 +285,17 @@ export function BattleArena({initial,resume,sideNames,onExit,persistenceEnabled=
        onClick={()=>command({type:'MANUAL_FINISH',reason,winnerSide:manualWinner})}>Confirmar encerramento</Button>
    </div>}
   </div>
- </section>;
+  </section>
+ </div>;
+ return <BattleExpandedView expanded={expanded} onClose={()=>setExpanded(false)}>
+  {arena}
+ </BattleExpandedView>;
 }
 function UnitInspector({unit,active}:{unit:BattleStack;active:boolean}){
  return <div>
   <p><strong>{unit.name}</strong>{active?' · Unidade ativa':' · Consulta'}</p>
-  <p>{unit.primaryTypeId} · {unit.training} · origem fictícia</p>
+  <p>{unit.primaryTypeId} · {unit.training} ·
+   {unit.source.kind==='house-readonly'?' cópia autorizada somente leitura':' origem fictícia'}</p>
   <dl className="battle-inspector-list">
    <dt>Combatentes vivos</dt><dd>{livingCount(unit)} / {unit.initialCount}</dd>
    <dt>PV táticos</dt><dd>{unit.currentHp} / {unit.initialCount*unit.hpPerSoldier}</dd>
