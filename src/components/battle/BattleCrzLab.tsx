@@ -379,7 +379,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
     <div className="crz-form">
      <label>Conjunto de regras
       <select aria-label="Preset CRZ" value={options.preset??'CRZ-5E'}
-       onChange={e=>setOptions(o=>({...o,preset:e.target.value as CrzTrainingOptions['preset'],
+       onChange={e=>setOptions(o=>({...o,preset:e.target.value as NonNullable<CrzTrainingOptions['preset']>,
         resolution:e.target.value==='CRZ-5E'?o.resolution:'expected'}))}>
        <option value="CRZ-5E">CRZ-5E</option>
        <option value="CRZ-WOTR">CRZ-WOTR (esperado)</option>
