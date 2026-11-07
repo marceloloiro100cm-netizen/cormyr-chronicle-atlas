@@ -74,8 +74,8 @@ export function resolvePersonalControlAction(
   if(!actor.grapplingTargetId)throw new Error('Não há oponente agarrado para soltar.');
   const target=battle.heroes.find(h=>h.id===actor.grapplingTargetId);
   if(!target)throw new Error('Oponente agarrado não localizado.');
-  const next=pair(battle,{...actor,grapplingTargetId:undefined},
-   {...target,grabbedBy:undefined});
+  const next=pair(battle,{...actor,grapplingTargetId:undefined,pinningTargetId:undefined},
+   {...target,grabbedBy:undefined,pinnedByHero:undefined});
   return record(next,actor,'personal-grapple-release',actor.name+' soltou '+target.name+'.');
  }
  if(kind==='personal-escape-grapple'){
@@ -93,10 +93,10 @@ export function resolvePersonalControlAction(
   let next:WarBattle={...battle,seed:opposing.nextSeed};
   next=pair(next,{
    ...consumePersonalFateRoll(actor),
-   ...(success?{grabbedBy:undefined}:{}),
+   ...(success?{grabbedBy:undefined,pinnedByHero:undefined}:{}),
   },{
    ...consumePersonalFateRoll(holder),
-   ...(success?{grapplingTargetId:undefined}:{}),
+   ...(success?{grapplingTargetId:undefined,pinningTargetId:undefined}:{}),
   });
   return record(next,actor,'personal-grapple-escape',actor.name+
    (success?' escapou de ':' não escapou de ')+holder.name+
@@ -133,7 +133,7 @@ export function resolvePersonalControlAction(
   next=replace(next,consumePersonalFateRoll(actor));
   if(degrees){
    next=pair(next,{...consumePersonalFateRoll(actor),impalingTargetId:undefined},
-    {...victim,impaledBy:undefined});
+    {...victim,impaledBy:undefined,impalePinnedBy:undefined});
    if(degrees>1){
     const damage=actor.meleeDamage*(degrees-1);
     next=queuePersonalDamage(next,{actorName:actor.name,
@@ -156,7 +156,7 @@ export function resolvePersonalControlAction(
   const willInjure=success&&wounds>=maxWounds;
   const dead=willInjure&&injuries+1>=maxWounds;
   const freed:WarHero={...consumePersonalFateRoll(actor),
-   ...(success?{impaledBy:undefined,
+   ...(success?{impaledBy:undefined,impalePinnedBy:undefined,
     wounds:wounds+(willInjure?0:1),injuries:injuries+(willInjure?1:0),
     ...(dead?{active:false,health:0,defeatOutcome:'death' as const}:{})}:{})};
   let next:WarBattle={...battle,seed:roll.nextSeed};
@@ -167,4 +167,125 @@ export function resolvePersonalControlAction(
     degrees:degreesOfSuccess(total,9)});
  }
  throw new Error('Ação de contenção não suportada.');
+}
+
+/** Major-action pin and allied removal, kept separate from minor escape actions. */
+export type AdvancedControlKind='personal-pin-grapple'|'personal-escape-pin'|
+ 'personal-pin-impale'|'personal-heal-remove-impale';
+export function releaseAbandonedGrapplePin(battle:WarBattle,actorId:string):WarBattle{
+ const actor=battle.heroes.find(h=>h.id===actorId);
+ if(!actor?.pinningTargetId)return battle;
+ const target=battle.heroes.find(h=>h.id===actor.pinningTargetId);
+ if(!target)return replace(battle,{...actor,pinningTargetId:undefined});
+ return pair(battle,{...actor,pinningTargetId:undefined},
+  {...target,pinnedByHero:undefined});
+}
+export function resolveAdvancedPersonalControl(
+ battle:WarBattle,actor:WarHero,kind:AdvancedControlKind,targetHeroId?:string,
+):WarBattle{
+ const target=battle.heroes.find(h=>h.id===(
+  kind==='personal-pin-grapple'?actor.grapplingTargetId:
+  kind==='personal-pin-impale'?actor.impalingTargetId:
+  kind==='personal-escape-pin'?actor.pinnedByHero:targetHeroId));
+ if(!target||!target.active)throw new Error('Alvo para contenção avançada indisponível.');
+ if(kind==='personal-pin-grapple'){
+  if(actor.grapplingTargetId!==target.id||target.grabbedBy!==actor.id)
+   throw new Error('Imobilizar exige agarrar o alvo no turno anterior.');
+  // A partir da rodada seguinte, o agarrador pode manter a imobilização
+  // gastando uma ação maior, sem novo teste oposto.
+  if(actor.pinningTargetId===target.id){
+   return record(battle,actor,'personal-pin-maintain',actor.name+
+    ' manteve '+target.name+' imobilizado por uma ação maior.');
+  }
+  const roll=rollPersonalWithFate(battle.seed,actor,actor.athletics??3,
+   0,actor.injuries??0);
+  const oppose=rollPersonalWithFate(roll.nextSeed,target,target.athletics??3,
+   0,target.injuries??0);
+  const total=Math.max(0,roll.total-(actor.wounds??0)-
+   (actor.entangledBy?5:0));
+  const opposing=Math.max(0,oppose.total-(target.wounds??0)-
+   (target.entangledBy?5:0));
+  const success=total>opposing;
+  let next:WarBattle={...battle,seed:oppose.nextSeed};
+  next=pair(next,{...consumePersonalFateRoll(actor),
+   ...(success?{pinningTargetId:target.id}:{})},{
+   ...consumePersonalFateRoll(target),
+   ...(success?{pinnedByHero:actor.id}:{})});
+  return record(next,actor,'personal-pin-grapple',
+   actor.name+(success?' imobilizou ':' falhou em imobilizar ')+
+   target.name+' ('+total+' vs '+opposing+').',
+   {roll:roll.dice,total,difficulty:opposing+1,
+    degrees:success?degreesOfSuccess(total,opposing+1):0});
+ }
+ if(kind==='personal-escape-pin'){
+  if(actor.pinnedByHero!==target.id||target.pinningTargetId!==actor.id)
+   throw new Error('Escapar de Imobilização exige alvo imobilizado.');
+  const roll=rollPersonalWithFate(battle.seed,actor,actor.fighting,0,
+   actor.injuries??0);
+  const opposing=rollPersonalWithFate(roll.nextSeed,target,target.fighting,
+   0,target.injuries??0);
+  const total=Math.max(0,roll.total-(actor.wounds??0)-
+   (actor.entangledBy?5:0));
+  const other=Math.max(0,opposing.total-(target.wounds??0)-
+   (target.entangledBy?5:0));
+  const success=total>other;
+  let next:WarBattle={...battle,seed:opposing.nextSeed};
+  next=pair(next,{...consumePersonalFateRoll(actor),
+   ...(success?{pinnedByHero:undefined,grabbedBy:undefined}:{})},
+   {...consumePersonalFateRoll(target),
+    ...(success?{pinningTargetId:undefined,grapplingTargetId:undefined}:{})});
+  return record(next,actor,'personal-escape-pin',
+   actor.name+(success?' escapou da imobilização':' continuou imobilizado')+
+   ' ('+total+' vs '+other+').',
+   {roll:roll.dice,total,difficulty:other+1,
+    degrees:success?degreesOfSuccess(total,other+1):0});
+ }
+ if(kind==='personal-pin-impale'){
+  if(actor.impalingTargetId!==target.id||target.impaledBy!==actor.id)
+   throw new Error('Imobilizar com Empalar exige arma presa em alvo vivo.');
+  const roll=rollPersonalWithFate(battle.seed,actor,actor.athletics??3,0,
+   actor.injuries??0);
+  const total=Math.max(0,roll.total-(actor.wounds??0)-
+   (actor.entangledBy?5:0));
+  const difficulty=(target.endurance??3)*4;
+  const success=total>=difficulty;
+  let next:WarBattle={...battle,seed:roll.nextSeed};
+  next=pair(next,consumePersonalFateRoll(actor),
+   success?{...target,impalePinnedBy:actor.id}:target);
+  return record(next,actor,'personal-pin-impale',
+   actor.name+(success?' prendeu ':' falhou em prender ')+
+   target.name+' ao cenário ('+total+' vs '+difficulty+').',
+   {roll:roll.dice,total,difficulty,degrees:degreesOfSuccess(total,difficulty)});
+ }
+ // A habilidade de Cura é do aliado ativo, nunca do paciente, e a ação é maior.
+ if(kind==='personal-heal-remove-impale'){
+  if(actor.id===target.id||actor.side!==target.side||!target.impaledBy)
+   throw new Error('Cura de Empalar exige aliado empalado.');
+  const px=actor.personalPosition??{x:actor.position.x*10+5,
+   y:actor.position.y*10+5};
+  const py=target.personalPosition??{x:target.position.x*10+5,
+   y:target.position.y*10+5};
+  if(Math.max(Math.abs(px.x-py.x),Math.abs(px.y-py.y))>1)
+   throw new Error('Curandeiro precisa estar adjacente ao aliado empalado.');
+  const roll=rollPersonalWithFate(battle.seed,actor,actor.healing??3,0,
+   actor.injuries??0);
+  const total=Math.max(0,roll.total-(actor.wounds??0)-
+   (actor.entangledBy?5:0));
+  const passed=total>=12;
+  const holder=battle.heroes.find(h=>h.id===target.impaledBy);
+  const cleared={...target,impaledBy:undefined,impalePinnedBy:undefined};
+  let next:WarBattle={...battle,seed:roll.nextSeed};
+  next=replace(next,consumePersonalFateRoll(actor));
+  next=replace(next,cleared);
+  if(holder)next=replace(next,{...holder,impalingTargetId:undefined});
+  const damage=passed?0:Math.max(1,Math.ceil((12-total)/5));
+  if(damage)next=queuePersonalDamage(next,{
+   actorName:actor.name,targetHeroId:target.id,damage,source:'personal',
+  });
+  return record(next,actor,'personal-heal-remove-impale',
+   actor.name+(passed?' removeu sem danos a arma de ':' removeu com risco a arma de ')+
+   target.name+' ('+total+' vs 12, '+damage+' dano).',
+   {roll:roll.dice,total,difficulty:12,degrees:degreesOfSuccess(total,12)});
+ }
+ throw new Error('Ação avançada de contenção inválida.');
 }
