@@ -71,7 +71,7 @@ export type WarBattle=Readonly<{
  pendingPersonalCounterattack?:Readonly<{
   attackerId:string;defenderId:string;ranged:boolean;charge:boolean;
   cautious?:boolean;reckless?:boolean;
-  twoHandedGrip?:boolean;powerBonusDice?:number;
+  twoHandedGrip?:boolean;powerBonusDice?:number;stunHit?:boolean;
  }>|undefined;
  /** Percurso de atropelamento pausado para decisões individuais de dano. */
  pendingPersonalTrample?:Readonly<{
