@@ -33,7 +33,8 @@ export type WarHero=Readonly<{
  fateAvailable?:number;fateSpent?:number;fateBurned?:number;
  fateBonusDice?:number;fatePenaltyReduction?:number;removedFromStory?:boolean;
  squadId?:string;meleeWeapon?:WarPersonalWeapon;rangedWeapon?:WarPersonalWeapon;
- rangedLoaded?:boolean;
+ rangedLoaded?:boolean;meleeWeaponBroken?:boolean;rangedWeaponBroken?:boolean;
+ stunnedNextTurn?:boolean;
  mount?:WarPersonalMount;mounted?:boolean;mountControlledTurn?:number|undefined;
  mountMovedTurn?:number;
  pinnedByMount?:boolean;prone?:boolean;
@@ -43,7 +44,7 @@ export type WarHeroAction=Readonly<{
  kind:'join'|'leave'|'rally'|'revive'|'abdicate'|'assume'|PersonalWarAction['kind'];
  unitId?:string;targetHeroId?:string;toMetres?:WarPosition;ranged?:boolean;vsCharge?:boolean;
  escapeUsing?:'agility'|'athletics';
- twoHandedGrip?:boolean;powerBonusDice?:number;
+ twoHandedGrip?:boolean;powerBonusDice?:number;stunHit?:boolean;
 }>;
 const distance=(a:WarPosition,b:WarPosition)=>Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y));
 const log=(battle:WarBattle,kind:string,text:string,side:WarSide,meta:{
