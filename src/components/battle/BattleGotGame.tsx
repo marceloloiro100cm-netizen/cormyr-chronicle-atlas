@@ -2,7 +2,7 @@ import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
-import {beginPersonalInitiative,personalTurnHeroId} from '@/lib/battle/got/personal-initiative';
+import {beginPersonalInitiative,personalTurnHeroId,delayPersonalTurn} from '@/lib/battle/got/personal-initiative';
 import {resolvePendingPersonalDamage} from '@/lib/battle/got/personal-injuries';
 import {applyWarFate,restoreSpentFate,fateAvailable} from '@/lib/battle/got/personal-fate';
 import type {WarFateAction} from '@/lib/battle/got/personal-fate';
@@ -276,6 +276,13 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
   if(!battle)return;
   try{setBattle(restoreOrdinaryDamageAfterBattle(battle));setError('');}
   catch(e){setError(e instanceof Error?e.message:'Dano não restaurado.');}
+ };
+ const heroDelay=()=>{
+  if(!battle)return;
+  try{
+   const id=heroId||personalTurnHeroId(battle)||'';
+   setBattle(delayPersonalTurn(battle,id));setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível atrasar.');}
  };
  const heroInitiative=()=>{
   if(!battle)return;
@@ -658,6 +665,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        disabled={Boolean(battle.personalInitiative?.phase===battle.phase)}>
        Rolar iniciativa pessoal (Agilidade + Rapidez)
       </Button>
+      {battle.personalInitiative?.phase===battle.phase&&
+       <Button variant="outline" onClick={heroDelay}
+        disabled={Boolean(battle.pendingPersonalDamage)||!personalTurnHeroId(battle)}>
+        Atrasar turno pessoal
+       </Button>}
       <Button onClick={heroDo} disabled={Boolean(battle.pendingPersonalDamage)}>Executar ação individual</Button>
       <Button variant="outline" onClick={heroFinish} disabled={Boolean(battle.pendingPersonalDamage)}>Concluir cinco rodadas · avançar</Button>
      </div>
