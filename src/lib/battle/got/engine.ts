@@ -247,7 +247,7 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
   throw new Error('Uso Adaptável exige arma de Luta apropriada.');
  const invested=input.powerBonusDice??0;
  if(!Number.isInteger(invested)||invested<0||invested>(hero.strengthBonusDice??0)||
-  (invested>0&&(!chosenWeapon?.powerful||ranged)))
+  (invested>0&&!chosenWeapon?.powerful))
   throw new Error('Dados de Força investidos inválidos para arma Poderosa.');
  const used=spendPersonalAction(hero,'major');
  const rangePenalty=ranged?Math.max(0,Math.ceil((distanceMetres-range)/
@@ -268,8 +268,9 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
  const difficulty=target.defense+20;
  const degrees=degreesOfSuccess(total,difficulty);
  const damage=degrees?Math.max(0,
-  (ranged?hero.rangedDamage:hero.meleeDamage+
-   (chosenWeapon?.adaptable&&input.twoHandedGrip?1:0)+invested)*degrees-
+  ((ranged?hero.rangedDamage:
+    hero.meleeDamage+(chosenWeapon?.adaptable&&input.twoHandedGrip?1:0))+
+   invested)*degrees-
    effectivePersonalArmor(target.armor,ranged?hero.rangedWeapon:hero.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
   heroes:battle.heroes.map(h=>h.id===hero.id?{
