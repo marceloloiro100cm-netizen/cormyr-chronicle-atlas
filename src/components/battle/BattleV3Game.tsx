@@ -183,7 +183,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    <div className="battle-form-row">
     <label>Formato do mapa<select aria-label="Formato da malha V3"
      value={options.grid??'hex'} disabled={locked}
-     onChange={e=>update({grid:e.target.value==='square'?'square':undefined})}>
+     onChange={e=>update({grid:e.target.value as 'hex'|'square'})}>
       <option value="square">Quadrados (novo padrão)</option>
       <option value="hex">Hexágonos (legado)</option>
      </select></label>
