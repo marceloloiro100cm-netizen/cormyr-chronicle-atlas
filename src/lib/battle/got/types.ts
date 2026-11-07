@@ -73,6 +73,12 @@ export type WarBattle=Readonly<{
   cautious?:boolean;reckless?:boolean;
   twoHandedGrip?:boolean;powerBonusDice?:number;
  }>|undefined;
+ /** Percurso de atropelamento pausado para decisões individuais de dano. */
+ pendingPersonalTrample?:Readonly<{
+  riderId:string;from:WarPosition;to:WarPosition;steps:number;
+  nextStep:number;hits:number;mountName:string;mountAthletics:number;
+  mountTrainedForWar:boolean;
+ }>|undefined;
  squads?:readonly WarSquad[];
  siege:readonly WarSiegeEngine[];siegeCompleted:Readonly<Record<WarSide,boolean>>;
  commanders:readonly WarCommander[];units:readonly WarUnit[];
