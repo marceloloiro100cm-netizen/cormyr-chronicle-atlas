@@ -57,6 +57,7 @@ export type WarEvent=Readonly<{
 export type WarPersonalInitiative=Readonly<{
  phase:'heroes-first'|'heroes-second';roundIndex:number;
  order:readonly string[];cursor:number;
+ originalOrder?:readonly string[];delayedHeroIds?:readonly string[];
 }>;
 export type WarBattle=Readonly<{
  schemaVersion:1;rulesVersion:'GOT-CH10-1';id:string;name:string;seed:number;
