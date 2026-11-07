@@ -76,11 +76,21 @@ function moveFine(battle:WarBattle,hero:WarHero,to:WarPosition,max:number):WarHe
 function attackHero(
  battle:WarBattle,actor:WarHero,target:WarHero,ranged:boolean,
  options:{charge?:boolean;asReaction?:boolean;counterCharge?:boolean;
-  cautious?:boolean;reckless?:boolean}={},
+  cautious?:boolean;reckless?:boolean;
+  twoHandedGrip?:boolean;powerBonusDice?:number}={},
 ):WarBattle{
  const from=personalPosition(actor),to=personalPosition(target);
  const dist=personalDistance(from,to);
  const reach=actor.meleeWeapon?.reachMetres??1;
+ const selectedWeapon=ranged?actor.rangedWeapon:actor.meleeWeapon;
+ if(!ranged&&selectedWeapon?.counterChargeOnly&&!options.counterCharge)
+  throw new Error('Arma Contra Carga só pode atacar numa reação a uma carga.');
+ if(options.twoHandedGrip&&(!selectedWeapon?.adaptable||ranged))
+  throw new Error('Uso Adaptável exige arma de Luta apropriada.');
+ const invested=options.powerBonusDice??0;
+ if(!Number.isInteger(invested)||invested<0||invested>(actor.strengthBonusDice??0)||
+  (invested>0&&(!selectedWeapon?.powerful||ranged)))
+  throw new Error('Dados de Força investidos inválidos para arma Poderosa.');
  if(!ranged&&dist>Math.max(1,reach))
   throw new Error('Ataque de Luta exige alvo adjacente ou dentro do alcance em metros.');
  const effectiveRange=(actor.rangedRange??'short')==='long'?100:10;
@@ -96,7 +106,7 @@ function attackHero(
   const range=stance.ranged?(target.rangedRange==='long'?100:10):
    (target.meleeWeapon?.reachMetres??1);
   const loaded=!stance.ranged||!target.rangedWeapon?.reload||target.rangedLoaded!==false;
-  if(reactionDistance<=range&&loaded){
+  if(reactionDistance<=range&&loaded&&(!stance.vsCharge||options.charge)){
    const reactor={...target,counterattackReady:undefined};
    let defended=changeHero(battle,reactor);
    defended=attackHero(defended,reactor,actor,stance.ranged,{
@@ -148,7 +158,8 @@ function attackHero(
   actor.mount.health>0&&actor.mountMovedTurn!==actor.usedActions?2:0;
  const base=ranged?actor.rangedDamage:
   actor.meleeDamage+(options.charge?2:0)+stationaryMountBonus+
-  (options.counterCharge?2:0);
+  (options.counterCharge?2:0)+
+  (!ranged&&selectedWeapon?.adaptable&&options.twoHandedGrip?1:0)+invested;
  const damage=degrees?Math.max(0,base*degrees-
   effectivePersonalArmor(target.armor,ranged?actor.rangedWeapon:actor.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
@@ -224,6 +235,8 @@ export function executePersonalWarAction(
    throw new Error('Recarregue antes de preparar o contra-ataque.');
   if(action.vsCharge&&action.ranged)
    throw new Error('Preparar contra carga exige arma de Luta.');
+  if(!action.ranged&&hero.meleeWeapon?.counterChargeOnly&&!action.vsCharge)
+   throw new Error('Pique só pode ser preparado contra uma carga.');
   const used=spendPersonalAction(hero,'major');
   return log(changeHero(battle,{...used,counterattackReady:{
    ranged:Boolean(action.ranged),vsCharge:Boolean(action.vsCharge),
@@ -431,7 +444,8 @@ export function executePersonalWarAction(
   const moved=moveFine(battle,hero,aim,personalMovement(hero)*2);
   const used=spendPersonalAction(moved,'major');
   const next=changeHero(battle,used);
-  return attackHero(next,used,target,false,{charge:true});
+  return attackHero(next,used,target,false,{charge:true,
+   twoHandedGrip:action.twoHandedGrip,powerBonusDice:action.powerBonusDice});
  }
  if(['personal-attack','personal-cautious-attack','personal-reckless-attack'].includes(action.kind)){
   if(hero.attackedThisTurn)throw new Error('Somente um ataque por rodada individual.');
@@ -448,6 +462,8 @@ export function executePersonalWarAction(
   return attackHero(next,used,target,Boolean(action.ranged),{
    cautious:action.kind==='personal-cautious-attack',
    reckless:action.kind==='personal-reckless-attack',
+   twoHandedGrip:action.twoHandedGrip,
+   powerBonusDice:action.powerBonusDice,
   });
  }
  throw new Error('Ação individual não implementada.');
