@@ -19,7 +19,8 @@
 | Teste Guerra × Disciplina e repetição de comando (+3 sucessivamente) | Implementada |
 | Unidades sem ordem inicial inativas; falha crítica distinta | Implementada |
 | Ataque corpo a corpo e Pontaria por graus; VA subtraída uma vez | Implementada |
-| Carga, movimento, corrida, defender, reagrupar, reorganizar, reanimar e retirada | Implementação funcional inicial, requer refino em casos de borda |\n| Prontidão (p. 232) | Condição explícita (inimigo adjacente / unidade inimiga em debandada); reação preparada de ataque ou movimento, consumida quando ativada; persistência até o gatilho. Outros gatilhos narrativos ainda pendentes |
+| Carga, movimento, corrida, defender, reagrupar, reorganizar, reanimar e retirada | Implementação funcional inicial, requer refino em casos de borda |
+| Prontidão (p. 232) | Condição explícita (inimigo adjacente / unidade inimiga em debandada); reação preparada de ataque ou movimento, consumida quando ativada; persistência até o gatilho. Outros gatilhos narrativos ainda pendentes |
 | Desorganizar, debandar, destruir e retirar unidades do mapa | Implementação funcional inicial |
 | Continuação de ataques e defesas na etapa de ordens permanentes | Implementação funcional inicial |
 | Unidade oficial com stats, equipamentos e benefícios de posses, por snapshot somente leitura | Implementada com endpoint protegido de Narrador e escolha de Região, Casa, unidade e posição; somente fichas completas (não converte importação de NPC) |
@@ -29,13 +30,17 @@
 | Passo 5 — catapulta, cospe-fogo, escorpião, manganela e trabuco | Catálogo, alcance, operadores engenheiros, limite de quatro equipamentos por unidade, custo de uma ordem para disparar, recarga alternada e rolagens incorporados à arena; munições especiais e dano estrutural pendentes |
 | Fortificações do livro (pp. 227–228) | Tabela de Defesa +3/+4/+6/+8/+12, capacidade de ocupação, obras temporárias com seis horas e bônus de engenheiros, com defesa e sabotagem na engine |
 | Passos 6 e 8: heróis individuais | Janelas de cinco rodadas, entrada/saída da unidade, Disciplina e +1D, sucessão e recuperação de moral, dano sem VA, além de **núcleo parcial de combate pessoal do capítulo 9** com escala de 1 m, ações maiores/menores, ataque, carga, esquiva, movimento, recuperação, passar e rendição. Ataque indivíduo → unidade inteira (Defesa +20) e unidade → indivíduo (+2D) integrados; lacunas listadas abaixo |
+| Iniciativa pessoal (cap. 9) | Modo opcional na arena: teste de Agilidade, Rapidez, desempate, ordem de atuação e alternância de ações em cada uma das cinco rodadas da janela. Ainda requer validação do sistema de atraso e de reações pessoais |
+| Mitigação pessoal (cap. 9) | Escolha manual opcional após o golpe: ferimentos reduzem dano em Vigor cada (–1 no resultado); lesões cancelam o golpe (–1D, morte ao atingir Vigor). Soldados comuns não podem usar essas opções; Destino não integrado |
+| Esquadrões de dez (cap. 10) | Destaque de 10 combatentes da tropa para escala de 1 m; quando os 10 são derrotados, consolida 1 perda de Saúde da unidade uma única vez, na conclusão da janela de heróis |
+| Armas pessoais-modelo | Exemplos de armas da tabela 9-3, dano por habilidade, alcance Comprida e Perfurante reduzindo VA; treinamento, Cruel, montarias, recarga e propriedades restantes ainda incompletos |
 | Ordens avançadas | Ataque exploratório, fogo de supressão, preparação contra carga, emboscada, junção, sabotagem e **Empurrar** (+3 em comando, Luta × Atletismo passivo, 10 m por grau com bloqueios e terreno) incorporadas em protótipo auditável; demais manobras pendentes |
 | Rendição e erros críticos de retirada | Rendição geral testa cada unidade ativa; falhas críticas de retirada e retirada agressiva geram consequências distintas |
 | Seleção entre GOT, Adaptado e D&D | Implementada no painel do Narrador |
 
 ## Itens ainda não equivalentes ao livro (bloqueiam a alegação de 100%)
 
-1. **Fases de heróis (6 e 8):** núcleo numérico do **capítulo 9** agora inclui ataques entre personagens, distâncias de 1 m, ataque/carga/esquiva/recuperação, orçamento de uma ação maior ou duas menores, derrota e registro auditável. Ataques indivíduo → unidade inteira (+20 Defesa) e unidade → indivíduo (+2D) também estão disponíveis em laboratório. **Não está 100%**: iniciativa individual com turnos intercalados, 10 participantes de esquadrões separados, ferimentos e lesões com escolhas de Destino, efeitos completos das armas, reações e especialidades, cobertura detalhada, movimentação tática/linha de visão em escala 1 m, fichas oficiais pessoais e consequências de comandantes/heróis derrotados.
+1. **Fases de heróis (6 e 8):** núcleo numérico do **capítulo 9** agora inclui ataques entre personagens, distâncias de 1 m, ataque/carga/esquiva/recuperação, orçamento de uma ação maior ou duas menores, derrota e registro auditável. Ataques indivíduo → unidade inteira (+20 Defesa) e unidade → indivíduo (+2D) também estão disponíveis em laboratório. **Não está 100%**: iniciativa pessoal ainda não obrigatória, ação de Atrasar sem integração completa, ferimentos/lesões com escolha voluntária mas sem Destino, esquadrões de dez em versão inicial, efeitos completos das armas, reações e especialidades, cobertura detalhada, movimentação tática/linha de visão em escala 1 m, fichas oficiais pessoais e consequências de comandantes/heróis derrotados.
 2. **Passo 5, armas de cerco:** implementação inicial inclui iniciativa, operadores, disparos/recarga e Defesa de fortificações ocupadas. Ainda faltam efeitos completos de munição incendiária, dano a estruturas/portões, especialidades de fortificações e personagens como alvos.
 3. **Passos 1 a 3:** terreno, clima e visibilidade estão em versão inicial, mas ainda faltam todas as variantes da Tabela 10-3, efeitos de cobertura em construções, linha de visão, parley, posicionamento alternado e unidade escondida.
 4. **Regras avançadas:** já há formações, flanco e rotinas iniciais de ataque exploratório, fogo de supressão, contra-carga, emboscada, junção e sabotagem; faltam ataque dividido, ataque relâmpago, atropelar, envolver, escalar muralhas, pinça, martelo e bigorna, terra arrasada e condições completas de reações/posicionamento.
@@ -57,7 +62,7 @@
 
 Ações disponíveis na arena: ataque, carga, defender, mover, prontidão condicional, empurrar (avançada), reagrupar, reanimar, reorganizar, retirada, retirada agressiva, rendição geral e, opcionalmente, formação, giro e reversão. A interface mostra dados, iniciativas, Disciplina e a condição da tropa. A roda de eventos é exclusivamente local e não salva em produção.
 
-Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsistemas ainda ausentes do combate individual do capítulo 9 (incluindo ferimentos, lesões, esquadrões de 10, Destino e especialidades); (b) completar munições especiais, fortificações destrutíveis e armas de cerco; (c) linha de visão, reações de prontidão e geometria completa de movimento; (d) manobras avançadas ainda pendentes; (e) exércitos de qualquer tamanho, NPCs com ficha oficial e comandantes/heróis reais; (f) persistência/replay e consequências narrativas com autorização explícita.
+Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsistemas ainda ausentes do combate individual do capítulo 9 (incluindo Destino, iniciativa individual obrigatória, recuperação de ferimentos/lesões, especialidades e qualidades completas de equipamento); (b) completar munições especiais, fortificações destrutíveis e armas de cerco; (c) linha de visão, reações de prontidão e geometria completa de movimento; (d) manobras avançadas ainda pendentes; (e) exércitos de qualquer tamanho, NPCs com ficha oficial e comandantes/heróis reais; (f) persistência/replay e consequências narrativas com autorização explícita.
 
 ## Incremento — combate pessoal e tropas (continuação)
 
@@ -65,8 +70,8 @@ Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsist
   integração em `heroes.ts`, `engine.ts` e `BattleGotGame.tsx`.
 - Uma rodada de batalha = dez rodadas pessoais de seis segundos; cada janela de heróis
   dos passos 6 e 8 contempla cinco rodadas pessoais. No laboratório, o orçamento de
-  cada personagem é controlado individualmente, mas ainda **não** existe iniciativa
-  microtática/intercalação automática fiel ao capítulo 9.
+  cada personagem é controlado individualmente, e a iniciativa de Agilidade/Rapidez com alternância de microturnos está disponível
+  mediante ativação explícita no laboratório, ainda sem ação Atrasar completa.
 - Ataque pessoal usa Luta/Pontaria vs Defesa, multiplicação do dano por grau de
   sucesso e subtração de VA; derrota a Saúde 0 sem impor automaticamente morte.
   Movimento pessoal usa coordenadas de um metro; colisão e cobertura precisam refino.
@@ -76,7 +81,31 @@ Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsist
   às fichas oficiais. Modelos de heróis ainda não são NPCs/PCs importados do livro.
 - Testes: `battle-got-personal-combat.test.ts` e
   `battle-got-mixed-hero-unit.test.ts`. Validar CI no SHA do PR antes de merge.
-- Pendências críticas para a equivalência 100%: exaustão/ferimentos/lesões com opções
-  de Destino, iniciativa individual, armas e suas qualidades completas,
-  combate de esquadrões de 10, montarias, ataques divididos, esquiva/contra-ataque
+- Pendências críticas para a equivalência 100%: recuperação e Destino para ferimentos/lesões,
+  iniciativa individual obrigatória e Atrasar, armas e suas qualidades completas,
+  aperfeiçoamento de esquadrões de 10, montarias, ataques divididos, esquiva/contra-ataque
   com temporização individual e julgamento dos efeitos de moral pela morte de líderes.
+
+## Incremento — iniciativa pessoal, ferimentos e destacamentos de dez
+
+- `personal-initiative.ts`: iniciativa por Agilidade e Rapidez com desempate e
+  rodadas de ações intercaladas. A ativação permanece opcional para proteger os
+  cenários de teste que usam ações livres de heróis e para permitir migração gradual.
+- `personal-injuries.ts`: dano pendente opcional para decisão do defensor entre
+  aceitar o golpe, aplicar ferimentos ou sofrer lesão. Ferimentos exigem Vigor
+  disponível, e atingir o teto de lesões causa morte local; ainda não inclui
+  o gasto/queima de Destino. Apenas personagens importantes podem mitigar.
+- `squads.ts`: gera dez combatentes derivados da tropa em mapa de 1 m.
+  Somente dez soldados totalmente derrotados causam a perda consolidada
+  de 1 Saúde na unidade de 100, com proteção contra contagem duplicada.
+  Isso não é uma simulação individual definitiva de todos os soldados da unidade.
+- `personal-weapons.ts`: pequena amostra declarada de armas com dano por
+  habilidade, alcance e Perfurante, aplicada a ataques pessoais e ataques
+  de indivíduos contra tropas inteiras. Qualidade Cruel está anotada no catálogo,
+  mas seu efeito de derrota ainda depende de Destino e resolução narrativa.
+  Outras qualidades e treinamento especializado continuam pendentes.
+- Novos testes em arquivos `battle-got-personal-initiative.test.ts`,
+  `battle-got-personal-injuries.test.ts`, `battle-got-squads.test.ts` e
+  `battle-got-personal-weapons.test.ts`.
+- A implementação permanece **isolada e não aprovada para produção**.
+  Revalidar no HEAD do PR #324 antes de qualquer mesclagem.
