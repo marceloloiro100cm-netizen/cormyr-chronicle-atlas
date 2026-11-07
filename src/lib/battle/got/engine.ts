@@ -669,7 +669,7 @@ export function issueWarSurrender(battle:WarBattle,input:{commanderId:string}):W
 /** Passos seis/oito: conclui a janela de cinco rodadas dos personagens. */
 export function completeWarHeroPhase(battle:WarBattle):WarBattle{
  if(battle.phase==='heroes-first')
-  return log({...battle,phase:'orders',heroes:battle.heroes.map(h=>({...h,usedActions:0}))},
+  return log({...battle,phase:'orders',personalInitiative:undefined,heroes:battle.heroes.map(h=>({...h,usedActions:0,minorActionsUsed:0}))},
    'hero-phase','Passo seis concluído: ordens dos exércitos.',null);
  if(battle.phase==='heroes-second'){
   const ready:WarBattle={...battle,phase:'orders',heroSecondCompletedRound:battle.round};
@@ -681,7 +681,7 @@ export function advanceWarRound(battle:WarBattle):WarBattle{
  if(battle.phase!=='orders')throw new Error('Batalha não está na fase de ordens.');
  if(battle.heroes.length>0&&battle.heroSecondCompletedRound!==battle.round)
   return log({...battle,phase:'heroes-second',
-   heroes:battle.heroes.map(h=>({...h,usedActions:0}))},
+   heroes:battle.heroes.map(h=>({...h,usedActions:0,minorActionsUsed:0})),personalInitiative:undefined},
    'hero-phase','Passo oito: cinco rodadas individuais dos heróis.',null);
  let next=battle;
  // Passo 9: ordens permanentes somente para unidades não comandadas durante a rodada.
@@ -717,7 +717,8 @@ export function advanceWarRound(battle:WarBattle):WarBattle{
  next={...next,round:next.round+1,
   units:next.units.map(u=>({...u,issuedThisRound:0,actedThisRound:false,
    criticalThisRound:false,defendRoll:null,counterChargeReady:false})),
-  heroes:next.heroes.map(h=>({...h,usedActions:0})),
+  heroes:next.heroes.map(h=>({...h,usedActions:0,minorActionsUsed:0,dodgeDefense:null})),
+  personalInitiative:undefined,
   ordersRemaining:{
    ...commandBudget(next.commanders,'attacker'),
    ...commandBudget(next.commanders,'defender'),
