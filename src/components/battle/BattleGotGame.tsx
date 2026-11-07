@@ -34,6 +34,7 @@ import type {WarWeather,WarVisibility,WarTerrainId,WarTerrainTile} from '@/lib/b
 import {WAR_TERRAIN,terrainAt,terrainEffect,terrainCoverBonus,terrainMoveCost,visibilityPenalty} from '@/lib/battle/got/terrain';
 import type {WarFormation,WarFacing} from '@/lib/battle/got/formations';
 import {WAR_FORMATIONS} from '@/lib/battle/got/formations';
+import {parseSharedSquareMap,sharedFromGotTiles,sharedToGotTiles,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleGotSourcePicker} from './BattleGotSourcePicker';
 import type {Slot} from './BattleGotSourcePicker';
 import './battle-got.css';
@@ -86,6 +87,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [strictSightline,setStrictSightline]=useState(false);
  const [hiddenModelSide,setHiddenModelSide]=useState<'none'|WarSide>('none');
  const [tiles,setTiles]=useState<WarTerrainTile[]>([]);
+ const [mapSize,setMapSize]=useState({width:12,height:7});
+ const [mapImportStatus,setMapImportStatus]=useState('');
  const [terrainPaint,setTerrainPaint]=useState<WarTerrainId>('plain');
  const [formation,setFormation]=useState<WarFormation>('battle');
  const [facing,setFacing]=useState<WarFacing>('north');
@@ -166,7 +169,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [aftermathSide,setAftermathSide]=useState<'all'|WarSide>('all');
  const start=()=>{
   try{
-   const prepared=positionedWarLabDeployments(extraUnitsPerSide,deploymentPositions);
+   const prepared=positionedWarLabDeployments(extraUnitsPerSide,deploymentPositions,
+    mapSize.width,mapSize.height);
    if(siegeEnabled&&officialBySlot['attacker-2']&&
     officialBySlot['attacker-2'].typeId!=='engineers')
     throw new Error('O segundo espaço do atacante deve ter engenheiros para operar o cerco.');
@@ -192,7 +196,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     })):[];
    if(modelOneHandUnavailable&&modelOffhand!=='none')
     throw new Error('Não é possível usar arma secundária com uma mão indisponível.');
-   setBattle(createWarBattle({id:'book-lab-'+seed,name,seed,width:12,height:7,
+   setBattle(createWarBattle({id:'book-lab-'+seed,name,seed,
+    width:mapSize.width,height:mapSize.height,
     strictLineOfSight:strictSightline,
     units,siege,
     heroes:heroesEnabled?[
@@ -206,7 +211,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        name:'Corcel atacante',trainedForWar:true})}:{})},
      {...equipModelWarOffhand(equipModelWarHero(makeModelWarHero({
       id:'hero-defender',name:'Herói defensor',side:'defender',
-      position:{x:9,y:5}}),{melee:modelMelee,ranged:modelRanged}),
+      position:{x:mapSize.width-3,y:5}}),{melee:modelMelee,ranged:modelRanged}),
       modelOffhand==='none'?null:modelOffhand),healing:modelHealingRank,
       strengthBonusDice:modelStrengthBonus,
       ...(modelMountEnabled?{mount:makeModelWarMount({id:'horse-defender',
@@ -214,8 +219,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     ]:[],
     fortifications:fortKind==='none'?[]:[makeWarFortification({
      id:'defender-fort',name:WAR_FORT_PROFILES[fortKind].label,side:'defender',
-     kind:fortKind,cells:WAR_FORT_PROFILES[fortKind].capacity===1?[{x:10,y:2}]:
-      [{x:10,y:2},{x:10,y:4}],engineerBuilt:fortKind==='temporary'&&fortEngineer,
+     kind:fortKind,cells:WAR_FORT_PROFILES[fortKind].capacity===1?
+      [{x:mapSize.width-2,y:2}]:
+      [{x:mapSize.width-2,y:2},{x:mapSize.width-2,y:4}],engineerBuilt:fortKind==='temporary'&&fortEngineer,
      hoursBuilt:fortKind==='temporary'?6:24,
     })],
     commanders:modelWarCommanders(warfare),tiles,weather,visibility,advancedFormations:advanced,
@@ -476,7 +482,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    setLocalSaveStatus('Cópia local apagada.');setError('');
   }catch{setError('Não foi possível apagar a cópia local.');}
  };
- const preparedDeployments=modelWarLabDeployments(extraUnitsPerSide);
+ const preparedDeployments=modelWarLabDeployments(extraUnitsPerSide,mapSize.width,mapSize.height);
  const aftermath=battle?.phase==='finished'?previewWarAftermath(battle):null;
  const projectedResources=battle?.phase==='finished'?
   previewWarResourceConsequences(battle,resourceScenario.occupiedDomain?
@@ -672,7 +678,54 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       <option value="defender">Defensor · unidade 1</option>
      </select>
     </label>
-    <h4>Terreno e posicionamento inicial</h4>
+    <h4>Mapa quadrado reutilizável</h4>
+   <div className="got-config-grid">
+    <label>Tamanho do campo
+     <select value={mapSize.width+'x'+mapSize.height}
+      onChange={e=>{
+       const next=e.target.value==='11x9'?{width:11,height:9}:
+        e.target.value==='15x11'?{width:15,height:11}:{width:12,height:7};
+       setMapSize(next);setDeploymentPositions({});setTiles([]);setMapImportStatus('');
+      }}>
+      <option value="12x7">12 × 7 · laboratório original</option>
+      <option value="11x9">11 × 9 · compatível com os três modos</option>
+      <option value="15x11">15 × 11 · compatível com os três modos</option>
+     </select>
+    </label>
+    <label>Importar mapa quadrado compartilhado
+     <input type="file" accept=".json,application/json"
+      aria-label="Importar mapa quadrado GOT" onChange={e=>{
+       const file=e.target.files?.[0];e.target.value='';
+       if(!file)return;
+       if(file.size>100000){setError('Mapa compartilhado excede 100 KB.');return;}
+       void file.text().then(json=>{
+        const map=parseSharedSquareMap(json);
+        setMapSize({width:map.width,height:map.height});
+        setTiles(sharedToGotTiles(map));setDeploymentPositions({});
+        setMapImportStatus('Mapa importado em quadrados · '+map.width+' × '+map.height);
+        setError('');
+       }).catch(err=>setError(err instanceof Error?err.message:'Mapa inválido.'));
+      }}/>
+    </label>
+   </div>
+   <Button variant="outline" onClick={()=>{
+    try{
+     if(mapSize.width!==11&&mapSize.width!==15)
+      throw new Error('Para compartilhar, selecione 11 × 9 ou 15 × 11 quadrados.');
+     const common=sharedFromGotTiles(mapSize.width,
+      mapSize.width===11?9:11,tiles,name);
+     const blob=new Blob([serializeSharedSquareMap(common)],{type:'application/json'});
+     const url=URL.createObjectURL(blob),a=document.createElement('a');
+     a.href=url;a.download='mapa-cormyr-quadrado.json';a.click();URL.revokeObjectURL(url);
+     setMapImportStatus('Mapa quadrado exportado para os três modos.');
+     setError('');
+    }catch(e){setError(e instanceof Error?e.message:'Não foi possível exportar o mapa.');}
+   }}>Exportar mapa para outros modos</Button>
+   {mapImportStatus&&<p role="status">{mapImportStatus}</p>}
+   <p className="battle-note">O mapa compartilhado transporta terrenos e dimensões,
+    não regras. Cobertura e movimentação continuam próprias de cada sistema.
+    Terrenos especiais do GOT exigem conversão manual.</p>
+   <h4>Terreno e posicionamento inicial</h4>
    <div className="got-config-grid">
     <label>Editar mapa
      <select value={deploymentMode}
@@ -691,7 +744,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    </div>
    {deploymentMode==='deploy'&&<>
     <p className="battle-note">Selecione uma tropa e toque no quadrado de destino.
-     Não é permitido sobrepor unidades. O tabuleiro de combate tem 12 × 7 quadrados.</p>
+     Não é permitido sobrepor unidades. O tabuleiro usa {mapSize.width} × {mapSize.height} quadrados.</p>
     <Button variant="outline" onClick={()=>{setDeploymentPositions({});setError('');}}>
      Restaurar posições iniciais</Button>
    </>}
@@ -700,9 +753,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     <select value={terrainPaint} onChange={e=>setTerrainPaint(e.target.value as WarTerrainId)}>
      {Object.keys(WAR_TERRAIN).map(id=><option key={id} value={id}>{id}</option>)}
     </select></label>
-   <div className="got-map got-paint" style={{gridTemplateColumns:'repeat(12,minmax(0,1fr))'}}>
-    {Array.from({length:84},(_,i)=>{
-     const x=i%12,y=Math.floor(i/12),terrain=tiles.find(t=>t.x===x&&t.y===y)?.terrain??'plain';
+   <div className="got-map got-paint" style={{gridTemplateColumns:'repeat('+mapSize.width+',minmax(0,1fr))'}}>
+    {Array.from({length:mapSize.width*mapSize.height},(_,i)=>{
+     const x=i%mapSize.width,y=Math.floor(i/mapSize.width),terrain=tiles.find(t=>t.x===x&&t.y===y)?.terrain??'plain';
      const occupant=preparedDeployments.find(u=>{
       const p=deploymentPositions[u.id]??u.position;
       return p.x===x&&p.y===y;
@@ -717,7 +770,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        }else{
         try{
          setDeploymentPositions(positionWarLabUnit(extraUnitsPerSide,
-          deploymentPositions,deploymentSelected,{x,y}));
+          deploymentPositions,deploymentSelected,{x,y},mapSize.width,mapSize.height));
          setError('');
         }catch(e){setError(e instanceof Error?e.message:'Posição inválida.');}
        }
