@@ -106,9 +106,11 @@ function crzExpectedVariant(state:CrzBattleState,attackEntries:readonly CrzAttac
  const reduction=Math.min(state.ruleset.damage.armorReductionMaxBP,armor*step);
  const tile=crzMapIndex(state.map).get(target.position.q+','+target.position.r);
  const cover=modeCoverBP(state,tile?.terrain);
- const raw=Math.floor(totalX100*count*hitMultiplier*(10000-reduction)*cover*
-  (10000+bonusBP)/100/10000/10000/10000/10000);
- const damage=Math.max(0,raw);
+ let perX100=Math.floor(crzSafe(totalX100*hitMultiplier,'pte chance')/10000);
+ perX100=Math.floor(crzSafe(perX100*(10000-reduction),'pte armor')/10000);
+ perX100=Math.floor(crzSafe(perX100*cover,'pte cover')/10000);
+ perX100=Math.floor(crzSafe(perX100*(10000+bonusBP),'pte bonus')/10000);
+ const damage=Math.max(0,Math.floor(crzSafe(perX100*count,'pte stack damage')/100));
  return {mode:'expected' as const,receipt:crzApplyDamage(target,damage,'carry'),
   rawDamage:damage,expectedHitsX100:hits*100};
 }
