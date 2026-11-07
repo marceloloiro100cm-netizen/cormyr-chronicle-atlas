@@ -3,7 +3,7 @@ import type {WarBattle,WarCommander,WarCondition,WarEvent,WarOrder,WarOrderResul
 import {terrainAt,terrainEffect,movementSlow,visibilityPenalty,weatherAttackModifier,terrainHighGround,terrainCoverBonus,terrainMoveCost} from './terrain';
 import type {WarTerrainTile,WarWeather,WarVisibility} from './terrain';
 import {WAR_FORMATIONS,formationAllowed,formationMovement,angleAttackBonus,attackAngle} from './formations';
-import {WAR_SIEGE_CATALOG,warSiegeDamage} from './siege';
+import {WAR_SIEGE_CATALOG,warSiegeDamage,warSiegeReloadRemaining,warSiegeTargetInRange} from './siege';
 import type {WarSiegeEngine} from './siege';
 import {fortForUnit,fortDefense,validateWarForts,sabotageFortification,damageWarFortification} from './fortifications';
 import {igniteWarUnit,advanceWarFire,resolveCarriedWildfireRisk} from './siege-fire';
@@ -89,7 +89,9 @@ export function createWarBattle(input:{
  for(const engine of input.siege??[]){
   const profile=WAR_SIEGE_CATALOG[engine.kind];
   if(!profile||siegeIds.has(engine.id)||!engine.id.trim()||!inBounds(input,engine.position)||
-   engine.health<0||engine.health>profile.maxHealth)throw new Error('Máquina de cerco inválida.');
+   !Number.isInteger(engine.health)||engine.health<0||engine.health>profile.maxHealth||
+   (engine.lastFiredRound!==null&&(!Number.isInteger(engine.lastFiredRound)||
+    engine.lastFiredRound<0)))throw new Error('Máquina de cerco inválida.');
   siegeIds.add(engine.id);
   const operator=input.units.find(u=>u.id===engine.engineerId);
   if(!operator||operator.side!==engine.side||operator.typeId!=='engineers'||!alive(operator))
@@ -955,9 +957,9 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
   const engineer=battle.units.find(u=>u.id===weapon.engineerId);
   if(!engineer||!alive(engineer)||engineer.typeId!=='engineers')
    throw new Error('Sem engenheiro disponível para a máquina.');
-  if(weapon.lastFiredRound!==null&&battle.round-weapon.lastFiredRound<2)
+  if(warSiegeReloadRemaining(weapon,battle.round)>0)
    throw new Error('Máquina precisa aguardar uma rodada completa para recarregar.');
-  if(distance(weapon.position,position)*10>WAR_SIEGE_CATALOG[weapon.kind].rangeMetres)
+  if(!warSiegeTargetInRange(weapon,position))
    throw new Error('Alvo fora do alcance de cerco.');
   if(battle.strictLineOfSight&&weapon.kind==='scorpion'&&
    !canSeeWarTarget(weapon.position,position,battle.tiles))
