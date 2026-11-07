@@ -65,8 +65,8 @@ export type WarBattle=Readonly<{
  fortifications:readonly WarFortification[];
  phase:'siege'|'heroes-first'|'orders'|'heroes-second'|'finished';first:WarSide;turn:WarSide;
  heroes:readonly WarHero[];heroSecondCompletedRound?:number;
- personalInitiative?:WarPersonalInitiative;
- manualMitigation?:boolean;pendingPersonalDamage?:WarPendingPersonalDamage;
+ personalInitiative?:WarPersonalInitiative|undefined;
+ manualMitigation?:boolean;pendingPersonalDamage?:WarPendingPersonalDamage|undefined;
  squads?:readonly WarSquad[];
  siege:readonly WarSiegeEngine[];siegeCompleted:Readonly<Record<WarSide,boolean>>;
  commanders:readonly WarCommander[];units:readonly WarUnit[];
