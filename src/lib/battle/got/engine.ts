@@ -231,12 +231,21 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
   throw new Error('Ataque de Luta exige contato com a unidade em escala pessoal.');
  if(ranged&&(hero.rangedRange==='none'||hero.rangedDamage<=0))
   throw new Error('Herói sem arma de Pontaria.');
+ if(ranged&&hero.rangedWeapon?.reload&&hero.rangedLoaded===false)
+  throw new Error('Arma de Pontaria exige recarga antes de disparar.');
  const used=spendPersonalAction(hero,'major');
- const rangePenalty=ranged?Math.max(0,Math.ceil((distanceMetres-range)/10)):0;
+ const rangePenalty=ranged?Math.max(0,Math.ceil((distanceMetres-range)/
+  (hero.rangedRange==='long'?100:10))):0;
+ const weapon=ranged?hero.rangedWeapon:hero.meleeWeapon;
+ const availableBonus=(ranged?hero.rangedBonusDice:hero.meleeBonusDice)??0;
+ const requiredBonus=weapon?.trainingBonusDice??0;
  const penalty=Math.min(15,(hero.injuries??0)+
+  Math.max(0,requiredBonus-availableBonus)+
+  (hero.mounted&&weapon?.clumsy?2:0)+
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty);
  const roll=rollPersonalWithFate(battle.seed,hero,ranged?hero.marksmanship:hero.fighting,
-  Math.min(15,((ranged?hero.rangedBonusDice:hero.meleeBonusDice)??0)+(hero.passBonusDice??0)),penalty);
+  Math.min(15,Math.max(0,availableBonus-requiredBonus)+
+   (hero.passBonusDice??0)),penalty);
  const total=Math.max(0,roll.total-(hero.wounds??0));
  const difficulty=target.defense+20;
  const degrees=degreesOfSuccess(total,difficulty);
@@ -244,7 +253,10 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
   (ranged?hero.rangedDamage:hero.meleeDamage)*degrees-
    effectivePersonalArmor(target.armor,ranged?hero.rangedWeapon:hero.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
-  heroes:battle.heroes.map(h=>h.id===hero.id?{...consumePersonalFateRoll(used),passBonusDice:0}:h)};
+  heroes:battle.heroes.map(h=>h.id===hero.id?{
+   ...consumePersonalFateRoll(used),passBonusDice:0,
+   ...(ranged&&weapon?.reload?{rangedLoaded:false}:{})
+  }:h)};
  next=log(next,'hero-vs-unit',hero.name+' atacou '+target.name+' (Defesa +20): '+
   total+' vs '+difficulty+', '+degrees+' grau(s), '+damage+' dano.',hero.side,{
    roll:roll.dice,total,difficulty,degrees,
