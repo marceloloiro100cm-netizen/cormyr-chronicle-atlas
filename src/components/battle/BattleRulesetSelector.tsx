@@ -22,7 +22,7 @@ export function BattleRulesetSelector({value,onChange}:{
     <span className="battle-ruleset-description">{option.description}</span>
     <span className="battle-ruleset-status">
      {option.status==='available'?'Disponível · sistema atual':option.status==='partial'?
-      'Núcleo jogável · cobertura do livro em desenvolvimento':'Em desenvolvimento · próximo lote'}
+      'Laboratório jogável · regras em evolução':'Em desenvolvimento · próximo lote'}
     </span>
    </label>)}
   </div>
@@ -30,7 +30,9 @@ export function BattleRulesetSelector({value,onChange}:{
    {selected.status==='available'?
     'Modo Adaptado selecionado: a preparação e os motores atuais permanecem disponíveis.':
     selected.status==='partial'?
+     selected.id==='got'?
      'Game of Thrones selecionado: motor independente disponível para testes; regras avançadas pendentes. Não será substituído pelo Adaptado.':
+     'D&D simplificado selecionado: motor CRZ-5E em tabuleiro quadrado, separado do Adaptado e do Game of Thrones.':
      selected.label+' selecionado para configuração. Este modo ainda não executa combates; não será substituído pelo Adaptado.'}
   </p>
  </fieldset>;
