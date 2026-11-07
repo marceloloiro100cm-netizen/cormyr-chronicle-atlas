@@ -8,6 +8,8 @@ import type {WarSiegeEngine} from './siege';
 import {fortForUnit,fortDefense,validateWarForts,sabotageFortification} from './fortifications';
 import type {WarFortification} from './fortifications';
 import {executeAdvancedWarOrder,WAR_ADVANCED_ORDER_DIFFICULTY} from './advanced-orders';
+import {validateWarHeroes,heroUnitDefenseBonus,heroUnitBonusDice,applyDamageToEmbeddedHeroes} from './heroes';
+import type {WarHero} from './heroes';
 
 const SIDES:readonly WarSide[]=['attacker','defender'];
 const opposite=(side:WarSide):WarSide=>side==='attacker'?'defender':'attacker';
@@ -64,7 +66,7 @@ export function createWarBattle(input:{
  commanders:readonly WarCommander[];units:readonly WarUnit[];
  tiles?:readonly WarTerrainTile[];weather?:WarWeather;visibility?:WarVisibility;
  advancedFormations?:boolean;siege?:readonly WarSiegeEngine[];
- fortifications?:readonly WarFortification[];
+ fortifications?:readonly WarFortification[];heroes?:readonly WarHero[];
 }):WarBattle{
  if(!input.id.trim()||!input.name.trim()||input.seed.length<1)throw new Error('Identificação do combate inválida.');
  if(!Number.isInteger(input.width)||!Number.isInteger(input.height)||input.width<5||input.height<5||
@@ -97,6 +99,7 @@ export function createWarBattle(input:{
    u.discipline<0||u.defense<0)throw new Error('Atributos inconsistentes com o livro: '+u.name);
  }
  validateWarForts(input.fortifications??[],input.units,input.width,input.height);
+ validateWarHeroes(input.heroes??[],input.units,input.width,input.height);
  for(const side of SIDES){
   const leaders=input.commanders.filter(c=>c.side===side&&c.active&&c.role==='commander');
   const sub=input.commanders.filter(c=>c.side===side&&c.active&&c.role==='subcommander');
@@ -111,7 +114,9 @@ export function createWarBattle(input:{
   standing:u.standing?{...u.standing}:null,issuedThisRound:0,actedThisRound:false,criticalThisRound:false}));
  const initial:WarBattle={id:input.id,name:input.name,seed:seedFromText(input.seed),schemaVersion:1,
   rulesVersion:'GOT-CH10-1',width:input.width,height:input.height,metresPerCell:10,
-  round:1,phase:(input.siege?.length??0)>0?'siege':'orders',first:'defender',turn:'defender',units,commanders,
+  round:1,phase:(input.siege?.length??0)>0?'siege':(input.heroes?.length?'heroes-first':'orders'),
+  first:'defender',turn:'defender',units,commanders,
+  heroes:(input.heroes??[]).map(h=>({...h,position:{...h.position},usedActions:0})),
   siege:[...(input.siege??[])],siegeCompleted:{attacker:false,defender:false},
   tiles:[...(input.tiles??[])],weather:input.weather??'clear',visibility:input.visibility??'clear',
   advancedFormations:input.advancedFormations??false,
@@ -184,7 +189,9 @@ function applyDamage(battle:WarBattle,target:WarUnit,amount:number,attackerName:
   }
  }
  const text=attackerName+' causou '+amount+' de dano em '+target.name+'. Condição: '+updated.condition+'.';
- return log(replaceUnit(battle,updated),'damage',text,target.side);
+ const withUnit=replaceUnit(battle,updated);
+ const withHeroes=applyDamageToEmbeddedHeroes(withUnit,target,updated,amount);
+ return log(withHeroes,'damage',text,target.side);
 }
 function chooseNearest(battle:WarBattle,unit:WarUnit,ranged:boolean):WarUnit|null{
  const max=ranged?(unit.range==='long'?20:unit.range==='short'?2:0):1;
@@ -201,7 +208,7 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  const score=ranged?attacker.ability.marksmanship:attacker.ability.fighting;
  let extraPenalty=(attacker.condition==='disorganized'?1:0)+(options.penalty??0)+(options.charge?1:0);
  let bonus=ranged?(attacker.rangedBonusDice??0):(attacker.meleeBonusDice??0);
- let testDice=0;
+ let testDice=heroUnitBonusDice(battle,attacker);
  let formationDefense=0;
  if(battle.advancedFormations){
   const own=WAR_FORMATIONS[attacker.formation??'battle'];
@@ -359,6 +366,8 @@ export function issueWarOrder(battle:WarBattle,input:{
  const commander=battle.commanders.find(c=>c.id===input.commanderId&&c.active);
  if(!commander||commander.side!==battle.turn||(battle.ordersRemaining[commander.id]??0)<1)
   throw new Error('Não é a vez deste comandante, ou suas ordens terminaram.');
+ if(battle.heroes.some(h=>h.active&&h.commanderId===commander.id&&h.unitId))
+  throw new Error('Comandante dentro de unidade não pode dar ordens.');
  const unit=battle.units.find(u=>u.id===input.unitId);
  if(!unit||unit.side!==commander.side||!onBoard(unit))throw new Error('Unidade fora do comando.');
  if(!alive(unit)&&input.order.kind!=='revive')throw new Error('Uma tropa em debandada só pode ser reanimada.');
@@ -380,8 +389,9 @@ export function issueWarOrder(battle:WarBattle,input:{
  if(advancedModifier&&!battle.advancedFormations)
   throw new Error('Esta ordem avançada exige regras avançadas habilitadas.');
  const suppression=unit.suppressionRound===battle.round?(unit.suppressionPenalty??0):0;
- const difficulty=Math.max(0,unit.discipline+unit.disorganizations*3+
-  unit.issuedThisRound*3+formationDifficulty+formationDiscipline+advancedModifier+suppression);
+ const difficulty=Math.max(0,unit.discipline+heroUnitDefenseBonus(battle,unit)+
+  unit.disorganizations*3+unit.issuedThisRound*3+
+  formationDifficulty+formationDiscipline+advancedModifier+suppression);
  const roll=rollDice(battle.seed,commander.warfare,0,0);
  const passed=roll.total>=difficulty;
  const critical=criticalFailure(roll.total,difficulty);
@@ -480,7 +490,7 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
 function completeSiegeSide(battle:WarBattle,side:WarSide):WarBattle{
  const done={...battle.siegeCompleted,[side]:true};
  return {...battle,siegeCompleted:done,
-  ...(done.attacker&&done.defender?{phase:'orders' as const,turn:battle.first}:
+  ...(done.attacker&&done.defender?{phase:(battle.heroes.length?'heroes-first':'orders') as WarBattle['phase'],turn:battle.first}:
    {turn:opposite(side)})};
 }
 /** A passagem voluntária da fase de cerco não consome ordem. */
@@ -517,8 +527,23 @@ export function issueWarSurrender(battle:WarBattle,input:{commanderId:string}):W
  return {battle:next,passed:units.every(u=>next.units.find(v=>v.id===u.id)?.condition==='surrendered'),
   critical:false,test:0,difficulty:0,degrees:0};
 }
+/** Passos seis/oito: conclui a janela de cinco rodadas dos personagens. */
+export function completeWarHeroPhase(battle:WarBattle):WarBattle{
+ if(battle.phase==='heroes-first')
+  return log({...battle,phase:'orders',heroes:battle.heroes.map(h=>({...h,usedActions:0}))},
+   'hero-phase','Passo seis concluído: ordens dos exércitos.',null);
+ if(battle.phase==='heroes-second'){
+  const ready:WarBattle={...battle,phase:'orders',heroSecondCompletedRound:battle.round};
+  return advanceWarRound(log(ready,'hero-phase','Passo oito concluído: ordens contínuas.',null));
+ }
+ throw new Error('Esta não é uma fase de heróis.');
+}
 export function advanceWarRound(battle:WarBattle):WarBattle{
- if(battle.phase!=='orders')throw new Error('Batalha encerrada.');
+ if(battle.phase!=='orders')throw new Error('Batalha não está na fase de ordens.');
+ if(battle.heroes.length>0&&battle.heroSecondCompletedRound!==battle.round)
+  return log({...battle,phase:'heroes-second',
+   heroes:battle.heroes.map(h=>({...h,usedActions:0}))},
+   'hero-phase','Passo oito: cinco rodadas individuais dos heróis.',null);
  let next=battle;
  // Passo 9: ordens permanentes somente para unidades não comandadas durante a rodada.
  for(const side of [battle.first,opposite(battle.first)]){
@@ -546,15 +571,16 @@ export function advanceWarRound(battle:WarBattle):WarBattle{
  next={...next,round:next.round+1,
   units:next.units.map(u=>({...u,issuedThisRound:0,actedThisRound:false,
    criticalThisRound:false,defendRoll:null,counterChargeReady:false})),
+  heroes:next.heroes.map(h=>({...h,usedActions:0})),
   ordersRemaining:{
    ...commandBudget(next.commanders,'attacker'),
    ...commandBudget(next.commanders,'defender'),
   },
  };
  const readyForSiege=next.siege.length>0&&next.siege.some(s=>s.health>0);
- if(readyForSiege){
-  next={...next,phase:'siege',siegeCompleted:{attacker:false,defender:false}};
- }
+ next={...next,
+  phase:readyForSiege?'siege':next.heroes.length?'heroes-first':'orders',
+  ...(readyForSiege?{siegeCompleted:{attacker:false,defender:false}}:{})};
  return sideInitiative(next);
 }
 export function warUnitSummary(unit:WarUnit):{
