@@ -155,7 +155,8 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
   throw new Error('O alvo não está no alcance.');
  const score=ranged?attacker.ability.marksmanship:attacker.ability.fighting;
  const extraPenalty=(attacker.condition==='disorganized'?1:0)+(options.penalty??0)+(options.charge?1:0);
- const roll=rollDice(battle.seed,score,0,extraPenalty);
+ const bonus=ranged?(attacker.rangedBonusDice??0):(attacker.meleeBonusDice??0);
+ const roll=rollDice(battle.seed,score,bonus,extraPenalty);
  let next:{seed:number}&WarBattle={...battle,seed:roll.nextSeed};
  const defense=target.defendRoll??target.defense;
  const degrees=degreesOfSuccess(roll.total,defense);
