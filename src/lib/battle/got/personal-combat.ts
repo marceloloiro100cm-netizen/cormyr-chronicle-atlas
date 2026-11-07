@@ -193,7 +193,6 @@ function attackHero(
  const mountedOnlyPenalty=!actor.mounted&&weapon?.mountedOnly?2:0;
  const totalPenalty=(actor.injuries??0)+(options.charge?1:0)+
   (options.cautious?1:0)+
-  (!actor.mounted&&weapon?.mountedOnly?2:0)+
   (actor.oneHandUnavailable&&weapon?.twoHanded?2:0)+
   (!ranged&&reach>1&&dist<3?1:0)+trainingPenalty+clumsyPenalty+mountedOnlyPenalty+
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty;
