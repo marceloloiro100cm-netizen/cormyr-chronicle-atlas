@@ -341,7 +341,8 @@ function chooseNearest(battle:WarBattle,unit:WarUnit,ranged:boolean):WarUnit|nul
    .sort((a,b)=>distance(a.position,unit.position)-distance(b.position,unit.position)||a.id.localeCompare(b.id))[0]??null;
 }
 function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
- options:{charge?:boolean;penalty?:number;counterCharge?:boolean}={}):WarBattle{
+ options:{charge?:boolean;penalty?:number;counterCharge?:boolean;
+  testRank?:number;bonusDice?:number;damageBonus?:number}={}):WarBattle{
  if(!alive(attacker))throw new Error('Esta unidade não pode atacar.');
  if(!onBoard(target)||target.side===attacker.side)throw new Error('Alvo indisponível.');
  const max=ranged?(attacker.range==='long'?20:attacker.range==='short'?2:0):1;
@@ -349,7 +350,7 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
   throw new Error('O alvo não está no alcance.');
  const score=ranged?attacker.ability.marksmanship:attacker.ability.fighting;
  let extraPenalty=(attacker.condition==='disorganized'?1:0)+(options.penalty??0)+(options.charge?1:0);
- let bonus=ranged?(attacker.rangedBonusDice??0):(attacker.meleeBonusDice??0);
+ let bonus=options.bonusDice??(ranged?(attacker.rangedBonusDice??0):(attacker.meleeBonusDice??0));
  let testDice=heroUnitBonusDice(battle,attacker);
  let formationDefense=0;
  if(battle.advancedFormations){
@@ -374,7 +375,7 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  const targetTile=terrainAt(battle.tiles,target.position);
  bonus+=terrainHighGround(attackerTile,targetTile);
  extraPenalty+=visibilityPenalty(battle.visibility,battle.weather,ranged);
- const roll=rollDice(battle.seed,Math.max(1,score+testDice),bonus,extraPenalty);
+ const roll=rollDice(battle.seed,Math.min(15,Math.max(1,(options.testRank??score)+testDice)),bonus,extraPenalty);
  let next:{seed:number}&WarBattle={...battle,seed:roll.nextSeed};
  const cover=target.defendRoll!==null?terrainEffect(targetTile).cover:0;
  const fort=fortForUnit(battle.fortifications,target);
@@ -383,7 +384,7 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  const defense=(target.defendRoll??target.defense)+cover+formationDefense+fortBonus+probeBonus;
  const adjustedRoll=Math.max(0,roll.total+weatherAttackModifier(battle.weather));
  const degrees=degreesOfSuccess(adjustedRoll,defense);
- const baseDamage=ranged?attacker.rangedDamage:attacker.meleeDamage+(options.charge?2:0);
+ const baseDamage=(ranged?attacker.rangedDamage:attacker.meleeDamage+(options.charge?2:0))+(options.damageBonus??0);
  const raw=baseDamage*(degrees+(options.counterCharge&&degrees>0?1:0));
  const damage=Math.max(0,raw-target.armor);
  next=log(next,'attack',attacker.name+' atacou '+target.name+' ('+(ranged?'Pontaria':'Luta')+
@@ -579,7 +580,7 @@ export function issueWarOrder(battle:WarBattle,input:{
  }
  if(input.order.kind==='formation'&&(!input.order.formation||!battle.advancedFormations))throw new Error('Formação avançada indisponível ou desabilitada.');
  if(input.order.kind==='turn'&&(!input.order.facing||!battle.advancedFormations))throw new Error('Selecione uma orientação válida.');
- if(['attack','charge','aggressive-retreat','suppress','ambush','probe','push'].includes(input.order.kind)&&input.order.targetId){
+ if(['attack','charge','aggressive-retreat','suppress','ambush','probe','push','envelop'].includes(input.order.kind)&&input.order.targetId){
   const target=battle.units.find(u=>u.id===input.order.targetId);
   if(!target||target.side===unit.side||!onBoard(target))throw new Error('Alvo inimigo indisponível.');
  }
