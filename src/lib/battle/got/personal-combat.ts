@@ -2,6 +2,7 @@ import {degreesOfSuccess,rollDice} from './dice';
 import {movementSlow,terrainAt,terrainEffect,visibilityPenalty} from './terrain';
 import type {WarBattle,WarEvent,WarPosition} from './types';
 import type {WarHero} from './heroes';
+import {queuePersonalDamage} from './personal-injuries';
 
 /** Capítulo 9: escala pessoal de 1 m. Não usa os quadrados de guerra de 10 m para alcance. */
 export type PersonalWarAction=Readonly<{
@@ -26,9 +27,9 @@ export function spendPersonalAction(hero:WarHero,weight:'major'|'minor'):WarHero
  const minor=hero.minorActionsUsed??0;
  if(weight==='major'){
   if(minor!==0)throw new Error('Uma ação maior exige um turno sem ações menores prévias.');
-  return {...hero,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null};
+  return {...hero,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false};
  }
- if(minor>0)return {...hero,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null};
+ if(minor>0)return {...hero,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false};
  return {...hero,minorActionsUsed:1,dodgeDefense:null};
 }
 const log=(battle:WarBattle,kind:string,text:string,hero:WarHero,details:Partial<WarEvent>={}):WarBattle=>({
@@ -81,16 +82,12 @@ function attackHero(
  const degrees=degreesOfSuccess(total,difficulty);
  const base=ranged?actor.rangedDamage:actor.meleeDamage+(options.charge?2:0);
  const damage=degrees?Math.max(0,base*degrees-target.armor):0;
- const health=Math.max(0,target.health-damage);
- const defeated=health===0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
-  heroes:battle.heroes.map(h=>h.id===target.id?{
-   ...h,health,active:!defeated&&h.active,
-  }:h.id===actor.id?{...h,passBonusDice:0}:h),
-  commanders:defeated&&target.commanderId?
-   battle.commanders.map(c=>c.id===target.commanderId?{...c,active:false}:c):
-   battle.commanders,
+  heroes:battle.heroes.map(h=>h.id===actor.id?{...h,passBonusDice:0}:h),
  };
+ if(damage>0)next=queuePersonalDamage(next,{actorName:actor.name,
+  targetHeroId:target.id,damage,source:'personal'});
+ const defeated=next.heroes.find(h=>h.id===target.id)?.active===false;
  next=log(next,'personal-attack',actor.name+' atacou '+target.name+
   ' ('+(ranged?'Pontaria':'Luta')+'): '+total+' vs Defesa '+difficulty+
   ', '+degrees+' grau(s), '+damage+' dano'+(defeated?' (derrotado)':'')+'.',
@@ -102,13 +99,14 @@ export function executePersonalWarAction(
 ):WarBattle{
  if(battle.phase!=='heroes-first'&&battle.phase!=='heroes-second')
   throw new Error('Combate pessoal só ocorre nas fases de heróis.');
+ if(battle.pendingPersonalDamage)throw new Error('Resolva o dano pessoal pendente.');
  if(!hero.active||hero.surrendered||hero.unitId||hero.usedActions>=5)
   throw new Error('Herói não pode atuar individualmente agora.');
  if(hero.role!=='hero')throw new Error('Comandante deve abdicar antes de lutar.');
  if(action.kind==='personal-end-turn'){
   if(!hero.minorActionsUsed)throw new Error('Não há ação menor pendente para encerrar.');
   return log(changeHero(battle,{...hero,minorActionsUsed:0,
-   usedActions:hero.usedActions+1}),'personal-end-turn',
+   usedActions:hero.usedActions+1,attackedThisTurn:false}),'personal-end-turn',
    hero.name+' encerrou sua rodada pessoal.',hero);
  }
  if(action.kind==='personal-surrender'){
@@ -166,9 +164,11 @@ export function executePersonalWarAction(
   return attackHero(next,used,target,false,{charge:true});
  }
  if(action.kind==='personal-attack'){
+  if(hero.attackedThisTurn)throw new Error('Somente um ataque por rodada individual.');
   const target=battle.heroes.find(h=>h.id===action.targetHeroId&&h.active&&h.side!==hero.side&&!h.unitId);
   if(!target)throw new Error('Selecione um herói inimigo ativo.');
-  const used=spendPersonalAction(hero,'minor');
+  const spent=spendPersonalAction(hero,'minor');
+  const used={...spent,attackedThisTurn:spent.usedActions===hero.usedActions};
   const next=changeHero(battle,used);
   return attackHero(next,used,target,Boolean(action.ranged));
  }
