@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
-import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase} from '@/lib/battle/got/engine';
+import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
 import type {WarHeroAction} from '@/lib/battle/got/heroes';
 import {makeWarFortification,WAR_FORT_PROFILES} from '@/lib/battle/got/fortifications';
@@ -62,6 +62,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [heroUnitId,setHeroUnitId]=useState('');
  const [heroTargetId,setHeroTargetId]=useState('');
  const [heroRanged,setHeroRanged]=useState(false);
+ const [heroTargetUnitId,setHeroTargetUnitId]=useState('');
+ const [attackHeroWithUnit,setAttackHeroWithUnit]=useState(false);
+ const [unitTargetHeroId,setUnitTargetHeroId]=useState('');
  const [heroMetres,setHeroMetres]=useState({x:25,y:55});
  const [fortKind,setFortKind]=useState<WarFortKind|'none'>('none');
  const [fortEngineer,setFortEngineer]=useState(false);
@@ -134,7 +137,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    if(legalKind==='surrender'&&!window.confirm('Confirmar rendição geral de todo este exército na simulação?'))return;
    const command:WarOrder={
     kind:legalKind,
-    ...(['attack','charge','aggressive-retreat','suppress','probe','ambush','push'].includes(legalKind)&&selectedTarget?
+    ...(legalKind==='attack'&&attackHeroWithUnit?
+     {targetHeroId:unitTargetHeroId||battle.heroes.find(h=>h.side!==battle.turn&&h.active)?.id||''}:{ }),
+    ...(['attack','charge','aggressive-retreat','suppress','probe','ambush','push'].includes(legalKind)&&selectedTarget&&
+     !(legalKind==='attack'&&attackHeroWithUnit)?
      {targetId:selectedTarget.id}:{}),
     ...(legalKind==='join'?{targetId:activeUnits.find(u=>u.id!==selectedUnit.id)?.id??''}:{}),
     ...(legalKind==='sabotage'?{fortId:battle.fortifications.find(x=>x.side!==battle.turn)?.id??''}:{}),
@@ -174,6 +180,14 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    const candidate=battle.units.find(u=>u.id===heroUnitId&&u.side===hero.side);
    const matching=battle.units.find(u=>u.side===hero.side&&u.condition==='organized'&&
     Math.max(Math.abs(u.position.x-hero.position.x),Math.abs(u.position.y-hero.position.y))<=1);
+   if(heroAction==='personal-attack-unit'){
+    const victim=battle.units.find(u=>u.id===heroTargetUnitId&&u.side!==hero.side)??
+     battle.units.find(u=>u.side!==hero.side&&
+      !['destroyed','surrendered','escaped'].includes(u.condition));
+    if(!victim)throw new Error('Selecione uma unidade inimiga.');
+    setBattle(executeWarHeroAttackUnit(battle,{heroId:hero.id,unitId:victim.id,
+     ranged:heroRanged}));setError('');return;
+   }
    const action:WarHeroAction={
     kind:heroAction,
     ...(['join','rally','revive'].includes(heroAction)?
@@ -353,6 +367,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <option value="assume">Assumir comando vago</option>
         <option value="personal-attack">Combate pessoal · atacar (menor)</option>
         <option value="personal-charge">Combate pessoal · carga (maior)</option>
+        <option value="personal-attack-unit">Herói atacar unidade inteira · Defesa +20</option>
         <option value="personal-move">Combate pessoal · mover (menor)</option>
         <option value="personal-dodge">Combate pessoal · esquiva (maior)</option>
         <option value="personal-recover">Combate pessoal · recuperar o fôlego (maior)</option>
@@ -371,7 +386,17 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
           .map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
         </select>
        </label>}
-      {heroAction==='personal-attack'&&<label className="got-check">
+      {heroAction==='personal-attack-unit'&&<label>Unidade adversária
+       <select value={heroTargetUnitId}
+        onChange={e=>setHeroTargetUnitId(e.target.value)}>
+        <option value="">Escolha uma unidade</option>
+        {battle.units.filter(u=>u.side!==
+         (battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.side&&
+          !['destroyed','surrendered','escaped'].includes(u.condition)).map(u=>
+         <option key={u.id} value={u.id}>{u.name}</option>)}
+       </select>
+      </label>}
+      {['personal-attack','personal-attack-unit'].includes(heroAction)&&<label className="got-check">
        <input type="checkbox" checked={heroRanged} onChange={e=>setHeroRanged(e.target.checked)}/>
        Atacar usando Pontaria (distâncias pessoais em metros)</label>}
       {heroAction==='personal-move'&&<>
@@ -489,7 +514,21 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
          onChange={e=>setRanged(e.target.checked)}/>
         Ataque de Pontaria (quando equipada)</label>}
       </div>}
-      {['attack','charge','aggressive-retreat','suppress','probe','ambush','push'].includes(legalKind)&&<>
+      {legalKind==='attack'&&battle.heroes.some(h=>h.side!==battle.turn&&h.active&&!h.unitId)&&
+       <label className="got-check">
+        <input type="checkbox" checked={attackHeroWithUnit}
+         onChange={e=>setAttackHeroWithUnit(e.target.checked)}/>
+        Alvejar herói individual (+2D para a unidade)
+       </label>}
+      {legalKind==='attack'&&attackHeroWithUnit&&<label>Herói adversário
+       <select value={unitTargetHeroId} onChange={e=>setUnitTargetHeroId(e.target.value)}>
+        <option value="">Selecione um herói</option>
+        {battle.heroes.filter(h=>h.side!==battle.turn&&h.active&&!h.unitId)
+         .map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+       </select>
+      </label>}
+      {['attack','charge','aggressive-retreat','suppress','probe','ambush','push'].includes(legalKind)&&
+       !(legalKind==='attack'&&attackHeroWithUnit)&&<>
        <label>Alvo
         <select aria-label="Alvo da ordem" value={selectedTarget?.id??''}
          onChange={e=>setTarget(e.target.value)}>
