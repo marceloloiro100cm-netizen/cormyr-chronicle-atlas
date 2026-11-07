@@ -122,7 +122,7 @@ describe('P1 — interface de jogabilidade e revisão',()=>{
   expect(within(result).getAllByText(/balanço militar/)).toHaveLength(2);
   fireEvent.change(within(result).getByLabelText('Filtrar resultados das tropas'),
    {target:{value:'defender'}});
-  expect(within(result).getByText(/proposta de destruição|graduação/)).toBeInTheDocument();
+  expect(within(result).getByText(/Treinamento:/)).toBeInTheDocument();
   expect(within(result).getByText(/decisão pendente do Narrador/)).toBeInTheDocument();
  });
 });
