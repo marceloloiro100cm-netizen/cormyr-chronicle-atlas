@@ -4,6 +4,7 @@ import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary,fireWarSieg
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
 import {beginPersonalInitiative,personalTurnHeroId} from '@/lib/battle/got/personal-initiative';
 import {resolvePendingPersonalDamage} from '@/lib/battle/got/personal-injuries';
+import {deployWarSquad} from '@/lib/battle/got/squads';
 import type {PersonalMitigationChoice} from '@/lib/battle/got/personal-injuries';
 import type {WarHeroAction} from '@/lib/battle/got/heroes';
 import {makeWarFortification,WAR_FORT_PROFILES} from '@/lib/battle/got/fortifications';
@@ -69,6 +70,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [heroTargetId,setHeroTargetId]=useState('');
  const [heroRanged,setHeroRanged]=useState(false);
  const [heroTargetUnitId,setHeroTargetUnitId]=useState('');
+ const [squadUnitId,setSquadUnitId]=useState('');
  const [attackHeroWithUnit,setAttackHeroWithUnit]=useState(false);
  const [unitTargetHeroId,setUnitTargetHeroId]=useState('');
  const [heroMetres,setHeroMetres]=useState({x:25,y:55});
@@ -214,6 +216,16 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    kind:mitigationKind,...(mitigationKind==='wounds'?{woundCount:mitigationWounds}:{}),
   }));setMitigationKind('none');setMitigationWounds(1);setError('');}
   catch(e){setError(e instanceof Error?e.message:'Falha ao mitigar o dano.');}
+ };
+ const squadDeploy=()=>{
+  if(!battle)return;
+  try{
+   const unit=battle.units.find(u=>u.id===squadUnitId)??battle.units.find(u=>
+    u.condition==='organized'||u.condition==='disorganized');
+   if(!unit)throw new Error('Selecione uma unidade ativa para destacar soldados.');
+   const id='destacamento-'+unit.id+'-'+battle.round+'-'+(battle.squads?.length??0);
+   setBattle(deployWarSquad(battle,{unitId:unit.id,squadId:id}));setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível destacar o esquadrão.');}
  };
  const heroInitiative=()=>{
   if(!battle)return;
@@ -389,6 +401,25 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       dano por grau de sucesso menos armadura e ações menores/maiores.
       Especialidades, equipamentos oficiais, iniciativa pessoal e ferimentos
       continuam em desenvolvimento; nenhuma baixa altera fichas da Casa.</p>
+     <div className="got-config-grid">
+      <label>Destacar dez soldados de
+       <select value={squadUnitId}
+        onChange={e=>setSquadUnitId(e.target.value)}>
+        <option value="">Escolha uma unidade</option>
+        {battle.units.filter(u=>u.condition==='organized'||u.condition==='disorganized')
+         .map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
+       </select>
+      </label>
+      <Button variant="outline" onClick={squadDeploy}
+       disabled={Boolean(battle.personalInitiative?.phase===battle.phase)}>
+       Destacar esquadrão de 10 (cap. 10)
+      </Button>
+     </div>
+     {(battle.squads?.length??0)>0&&<p className="battle-note">
+      Esquadrões: {battle.squads?.map(s=>s.id+' · '+
+       s.memberIds.filter(id=>battle.heroes.find(h=>h.id===id&&!h.active)).length+
+       '/10 derrotados'+(s.casualtyRecorded?' · 1 Saúde consolidada':'')).join(' | ')}
+     </p>}
      <div className="got-config-grid">
       <label>Herói
        <select value={heroId||battle.heroes[0]?.id||''}
