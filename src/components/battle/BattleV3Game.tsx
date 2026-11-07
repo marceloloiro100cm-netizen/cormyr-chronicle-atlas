@@ -44,6 +44,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const [status,setStatus]=useState('');
  const [showManual,setShowManual]=useState(false);
  const [showDetails,setShowDetails]=useState(false);
+ const [historySide,setHistorySide]=useState<'all'|Side>('all');
  const update=(patch:Partial<V3ScenarioOptions>)=>setOptions(x=>({...x,...patch}));
  const importReplay=async(file:File|undefined)=>{
   if(!file)return;
@@ -327,11 +328,21 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     </section>
     <aside className="crusade-v4-history" aria-label="Últimas ações V3">
      <h2>Últimas ações</h2>
+     <label className="crusade-v4-history-filter">Filtrar histórico
+      <select aria-label="Filtrar histórico por facção" value={historySide}
+       onChange={e=>setHistorySide(e.target.value as 'all'|Side)}>
+       <option value="all">Ambos os exércitos</option>
+       <option value="attacker">Aliados</option>
+       <option value="defender">Adversários</option>
+      </select>
+     </label>
      <ol aria-live="polite" className="crusade-v4-log">
-      {(showDetails?[...game.log].reverse():[...game.log].reverse().slice(0,6)).map((entry,i)=>
+      {(showDetails?[...game.log].reverse().filter(e=>historySide==='all'||e.side===historySide):
+       [...game.log].reverse().filter(e=>historySide==='all'||e.side===historySide).slice(0,6)).map((entry,i)=>
        <li key={game.log.length-i}>
         <strong>Rodada {entry.round}</strong>
         <span>{modelHouse(entry.side==='attacker'?game.setup.attackerHouseId:game.setup.defenderHouseId).name} · {entry.label}</span>
+        {entry.detail&&<small>{entry.detail}</small>}
        </li>)}
      </ol>
      {game.log.length===0&&<p>Nenhuma ordem executada nesta batalha.</p>}
