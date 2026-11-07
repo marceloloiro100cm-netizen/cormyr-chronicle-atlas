@@ -44,6 +44,8 @@ function squareRaySupercover(map:BattleMap,from:Hex,to:Hex):Hex[]{
   return true;
  };
  return map.tiles.filter(t=>hexKey(t)!==hexKey(from)&&hexKey(t)!==hexKey(to)&&crosses(t))
+  // Los, replay e UI devem receber somente coordenadas, nunca o objeto Tile.
+  .map(t=>({q:t.q,r:t.r}))
   .sort((a,b)=>(a.q-from.q)**2+(a.r-from.r)**2-(b.q-from.q)**2-(b.r-from.r)**2);
 }
 
