@@ -85,10 +85,12 @@ export function BattleMapEditor({map,onChange,locked=false}:{
         </select></label>
       <Button variant="outline" onClick={()=>save(createScenario('plain-open',map.width,'square'))}>Restaurar</Button>
       <Button variant="outline" aria-label="Pré-visualizar conversão de malha"
-        onClick={()=>{const to:'square'='square';
-         setGridPreview({source:JSON.stringify(map),result:previewBattleMapGridConversion(map,to)});
+        disabled={map.grid==='square'}
+        onClick={()=>{
+         setGridPreview({source:JSON.stringify(map),
+          result:previewBattleMapGridConversion(map,'square')});
          setMessage('');}}>
-        Prévia: converter para {map.grid==='square'?'hexágonos':'quadrados'}
+        Converter mapa antigo para quadrados
       </Button>
     </div>
     {gridPreview&&<section className="battle-map-conversion-preview" aria-label="Prévia de conversão de malha">
