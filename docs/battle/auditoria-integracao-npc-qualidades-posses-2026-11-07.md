@@ -10,7 +10,7 @@ Data: 2026-11-07. Escopo: Cormyr Chronicle Atlas, **Game of Thrones: capítulo 1
 - `noble_house_rule_overrides` possui 0 linhas; `noble_house_gm_notes` possui 0 linhas.
 - Muitos atributos NPC são estimativas narrativas/regionais (`attribute_origin`), não comprovação de posse comprada e ativa.
 - O catálogo `archive_data` registra principalmente história, heráldica, vínculos e localização. **Não armazena propriedades militares estruturadas, condições, treinamento ou qualidades de personagens.**
-- Fontes autorais individuais no Drive podem mencionar castelos, cavalos, abadia, fortalezas, vantagens etc., mas **narrativa não equivale a investimentos de regras**. Exemplo: “Burned Rock Fortress” é descrita como estrutura com funções militares reduzidas — seu nome não autoriza +8 de castelo.
+- Fontes autorais individuais no Drive podem mencionar castelos, cavalos, abadia, fortalezas, vantagens etc., mas **narrativa não equivale a investimentos de regras**. Exemplo genérico: o nome narrativo de uma sede não comprova o investimento mecânico em Castelo nem autoriza +8 de Defesa.
 
 **Conclusão de dados:** não é possível certificar fidelidade 100% para 162 Casas NPC enquanto 0 têm a ficha mecânica de guerra completa. Preservar a diferença entre informação narrativa, proposta de compra e registro validado.
 
