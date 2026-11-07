@@ -38,11 +38,11 @@
   'Vou-me Embora pra Sossal':'https://www.youtube.com/watch?v=b34LSA3yDak',
   'Cante uma Canção a Elturel':'https://www.youtube.com/watch?v=xoOtYuebA9k',
   'Terra dos Cavalos':'https://www.youtube.com/watch?v=f4L0mCHpOv8',
-  'Faixa de Cormyr 01':'https://www.youtube.com/watch?v=wioZhfoQMAs',
-  'Faixa de Cormyr 02':'https://www.youtube.com/watch?v=WrXc5zCbMHA',
-  'Faixa de Cormyr 03':'https://www.youtube.com/watch?v=qw9FgNYr7hE',
+  'Vai, Meu Grifo, Vai!':'https://www.youtube.com/watch?v=wioZhfoQMAs',
+  'O Brinde das Cinco Cores':'https://www.youtube.com/watch?v=WrXc5zCbMHA',
+  'Worist da Companhia Consorte':'https://www.youtube.com/watch?v=qw9FgNYr7hE',
   'O Truta':'https://www.youtube.com/watch?v=a5DitnxYUZM',
-  'Faixa de Cormyr 04':'https://www.youtube.com/watch?v=uPYfE1gKDcg'
+  'Papai Foi Rei':'https://www.youtube.com/watch?v=uPYfE1gKDcg'
  };
  function attachVideo(song){
   const parsed=yt.parse(directVideos[song.title]||'');
@@ -59,20 +59,20 @@
   })),
   attachVideo({id:'cancioneiro-terra-dos-cavalos',title:'Terra dos Cavalos',
    category:'populares',region:'Horselands',url:''}),
-  // Título oficial ainda não confirmado: identificação neutra por faixa, sem confundir com nome do vídeo.
-  attachVideo({id:'youtube-wioZhfoQMAs',title:'Faixa de Cormyr 01',
+  // Títulos informados pelo Narrador; cada vídeo mantém seu ID e vínculo original.
+  attachVideo({id:'youtube-wioZhfoQMAs',title:'Vai, Meu Grifo, Vai!',
    category:'populares',region:'Cormyr',url:''}),
-  // Faixa sem metadados oficiais verificados; vínculo com YouTube preservado.
-  attachVideo({id:'youtube-WrXc5zCbMHA',title:'Faixa de Cormyr 02',
+  // Título confirmado pelo Narrador; o vínculo com o YouTube é preservado.
+  attachVideo({id:'youtube-WrXc5zCbMHA',title:'O Brinde das Cinco Cores',
    category:'populares',region:'Cormyr',url:''}),
-  // Não exibir o identificador do YouTube como nome da música.
-  attachVideo({id:'youtube-qw9FgNYr7hE',title:'Faixa de Cormyr 03',
+  // Título confirmado pelo Narrador; não mostrar IDs técnicos como nomes.
+  attachVideo({id:'youtube-qw9FgNYr7hE',title:'Worist da Companhia Consorte',
    category:'populares',region:'Cormyr',url:''}),
   // Título confirmado pelo Narrador; registrar como música popular, sem associação à fé de Adlar.
   attachVideo({id:'o-truta',title:'O Truta',
    category:'populares',region:'Cormyr',url:''}),
-  // O vídeo enviado pelo Narrador permanece acessível sem nome oficial atribuído.
-  attachVideo({id:'youtube-uPYfE1gKDcg',title:'Faixa de Cormyr 04',
+  // Nome indicado pelo Narrador para o vídeo enviado anteriormente.
+  attachVideo({id:'youtube-uPYfE1gKDcg',title:'Papai Foi Rei',
    category:'populares',region:'Cormyr',url:''})
  ];
 })();
