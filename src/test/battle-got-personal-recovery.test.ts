@@ -61,6 +61,17 @@ describe('Capítulo 9 — testes de recuperação em tempo narrativo',()=>{
   expect(result.degrees).toBe(0);
   expect(result.hero.injuries).toBe(1);
  });
+ it('Cura usa exclusivamente as penalidades do curandeiro, não as do paciente',()=>{
+  const h={...hero(),wounds:3,injuries:2};
+  const treated=rollPersonalRecovery(h,147,{interval:'daily-wound',
+   activity:'rest',healer:{rank:3,hours:4}});
+  const untreated=rollPersonalRecovery(h,147,{interval:'daily-wound',
+   activity:'rest'});
+  expect(treated.total).toBeGreaterThanOrEqual(untreated.total);
+  const treatedInjured=rollPersonalRecovery(h,147,{interval:'daily-wound',
+   activity:'rest',healer:{rank:3,hours:4,wounds:1,injuries:1}});
+  expect(treatedInjured.total).toBeLessThanOrEqual(treated.total);
+ });
  it('não manipula relógio e só aplica recuperação após batalha, com auditoria',()=>{
   const original=battle();
   expect(()=>resolveLabRecovery(original,{heroId:'h',interval:'daily-wound',
