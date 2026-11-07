@@ -5,12 +5,13 @@ import type {WarHero} from './heroes';
 import type {WarSiegeEngine} from './siege';
 import type {WarPendingPersonalDamage} from './personal-injuries';
 import type {WarSquad} from './squads';
+import type {WarFieldEquipmentId} from './field-equipment';
 /** Motor independente de Guerra dos Tronos RPG, capítulo 10. Não reaproveitar BattleState/PTE. */
 export type WarSide='attacker'|'defender';
 export type WarPosition=Readonly<{x:number;y:number}>;
 export type WarCondition='organized'|'disorganized'|'routed'|'destroyed'|'surrendered'|'escaped';
 export type WarRange='none'|'short'|'long';
-export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'surrender'|'formation'|'turn'|'reverse'|'suppress'|'probe'|'push'|'counter-charge'|'sabotage'|'ambush'|'join'|'split-attack'|'lightning-attack'|'trample'|'envelop'|'scorched-earth'|'pincer'|'hammer-anvil'|'climb-walls';
+export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'surrender'|'formation'|'turn'|'reverse'|'suppress'|'probe'|'push'|'counter-charge'|'sabotage'|'ambush'|'join'|'split-attack'|'lightning-attack'|'trample'|'envelop'|'scorched-earth'|'pincer'|'hammer-anvil'|'climb-walls'|'fire-special'|'breach-gate'|'discard-equipment';
 export type WarReadyPlan=Readonly<{
  trigger:'enemy-adjacent'|'enemy-routed';
  reaction:'attack'|'move';
@@ -58,6 +59,7 @@ export type WarUnit=Readonly<{
  wildfire?:Readonly<{rounds:number;damage:number}>|undefined;
  /** Fogo persistente de munição especial do capítulo 10. */
  burning?:Readonly<{remainingRounds:number;damagePerRound:number;source:string}>|undefined;
+ fieldEquipment?:WarFieldEquipmentId;fieldEquipmentConsumed?:boolean;
  envelopingTargetId?:string|undefined;envelopedBy?:string|undefined;
  laddersDeployed?:boolean;wallClimbedRound?:number;
  issuedThisRound:number;actedThisRound:boolean;criticalThisRound:boolean;
