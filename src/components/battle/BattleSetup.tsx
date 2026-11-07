@@ -32,7 +32,7 @@ export function BattleSetup({onStart,onBack}:{
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Exército atacante',defender:'Exército defensor'});
  const [seed,setSeed]=useState('lab-pte2-2026');
  const [controls,setControls]=useState<Record<Side,'human'|'ai'>>({attacker:'human',defender:'human'});
- const [map,setMap]=useState<BattleMap>(()=>createScenario('plain-open'));
+ const [map,setMap]=useState<BattleMap>(()=>createScenario('plain-open',11,'square'));
  const [units,setUnits]=useState<PreparedUnit[]>(DEFAULTS);
  const [selected,setSelected]=useState('attacker-1');
  const [editor,setEditor]=useState(false);
@@ -113,11 +113,11 @@ export function BattleSetup({onStart,onBack}:{
   if(!unit){setError('Selecione uma unidade antes de posicionar.');return;}
   const key=hexKey(hex);
   if(!map.deployment[unit.side].some(h=>hexKey(h)===key)){
-    setError('Selecione um hexágono da zona do '+SIDE_LABEL[unit.side]+'.');return;
+    setError('Selecione um célula da zona do '+SIDE_LABEL[unit.side]+'.');return;
   }
   if(map.tiles.find(t=>hexKey(t)===key)?.terrain==='rock'){setError('Rocha intransponível.');return;}
   if(units.some(other=>other.id!==unit.id&&other.position&&hexKey(other.position)===key)){
-    setError('Este hexágono já está ocupado.');return;
+    setError('Este célula já está ocupado.');return;
   }
   update(selected,{position:hex});setError('');
  };
@@ -189,7 +189,7 @@ export function BattleSetup({onStart,onBack}:{
      value={name} onChange={e=>setName(e.target.value)}/></label>
     <label>Campo de batalha<select aria-label="Cenário rápido" value={map.id}
      onChange={e=>{const id=e.target.value as BattleScenarioId;
-      if(Object.hasOwn(SCENARIOS,id))setMap(createScenario(id,map.width));}}>
+      if(Object.hasOwn(SCENARIOS,id))setMap(createScenario(id,map.width,map.grid??'hex'));}}>
      {!Object.hasOwn(SCENARIOS,map.id)&&<option value={map.id}>Mapa personalizado</option>}
      {Object.entries(SCENARIOS).map(([id,label])=><option key={id} value={id}>{label}</option>)}
     </select></label>
@@ -292,7 +292,7 @@ export function BattleSetup({onStart,onBack}:{
    <h3>3. Terreno</h3>
    <div className="battle-form-row">
      <label>Cenário<select aria-label="Escolher cenário" value={Object.hasOwn(SCENARIOS,map.id)?map.id:'custom'}
-      onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id)){setMap(createScenario(id,map.width));setUnits(x=>x.map(u=>({...u,position:null})));setError('');}}}>
+      onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id)){setMap(createScenario(id,map.width,map.grid??'hex'));setUnits(x=>x.map(u=>({...u,position:null})));setError('');}}}>
       {!Object.hasOwn(SCENARIOS,map.id)&&<option value="custom">Personalizado</option>}
       {Object.entries(SCENARIOS).map(([id,label])=><option value={id} key={id}>{label}</option>)}
      </select></label>
@@ -305,7 +305,7 @@ export function BattleSetup({onStart,onBack}:{
   </section>
   <section className="battle-surface" aria-label="Implantação das unidades">
    <h3>4. Implantação</h3>
-   <p>Selecione uma unidade no exército e toque no hexágono de sua zona. Vermelho: atacante; azul: defensor.</p>
+   <p>Selecione uma unidade no exército e toque no célula de sua zona. Vermelho: atacante; azul: defensor.</p>
    <p role="status">{positioned} / {units.length} agrupamentos posicionados.</p>
    <div className="battle-form-row">
     <label>Unidade selecionada<select aria-label="Unidade para implantar" value={selected}
