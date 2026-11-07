@@ -3,10 +3,11 @@ import {movementSlow,terrainAt,terrainEffect,visibilityPenalty} from './terrain'
 import type {WarBattle,WarEvent,WarPosition} from './types';
 import type {WarHero} from './heroes';
 import {queuePersonalDamage} from './personal-injuries';
-import {effectivePersonalArmor} from './personal-weapons';
+import {effectivePersonalArmor,activePersonalOffhandDefense} from './personal-weapons';
 import {applyPersonalWeaponQualities} from './personal-weapon-effects';
 import {applyPersonalControlHit,resolvePersonalControlAction} from './personal-control';
-import type {ControlActionKind} from './personal-control';
+import type {ControlActionKind,AdvancedControlKind} from './personal-control';
+import {resolveAdvancedPersonalControl,releaseAbandonedGrapplePin} from './personal-control';
 import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
 import {applyPersonalMountDamage} from './personal-mounts';
 
@@ -20,7 +21,10 @@ export type PersonalWarAction=Readonly<{
   'personal-cautious-attack'|'personal-reckless-attack'|
   'personal-release-grapple'|'personal-escape-grapple'|
   'personal-escape-entangle'|'personal-release-impale'|
-  'personal-remove-impale'|'personal-split-attack';
+  'personal-remove-impale'|'personal-split-attack'|
+  'personal-dual-attack'|'personal-combined-attack'|
+  'personal-pin-grapple'|'personal-escape-pin'|'personal-pin-impale'|
+  'personal-heal-remove-impale';
  targetHeroId?:string;
  ranged?:boolean;
  vsCharge?:boolean;
@@ -46,7 +50,8 @@ export function spendPersonalAction(hero:WarHero,weight:'major'|'minor'):WarHero
  if(hero.usedActions>=5)throw new Error('Cinco rodadas individuais já concluídas.');
  const minor=hero.minorActionsUsed??0;
  // A Defesa transitória termina quando o herói começa seu próximo turno.
- const expired=minor===0?{cautiousDefenseBonus:0,recklessDefensePenalty:0}:{};
+ const expired=minor===0?{cautiousDefenseBonus:0,recklessDefensePenalty:0,
+  offhandDefenseSuppressed:false}:{};
  if(weight==='major'){
   if(hero.stunnedNextTurn)throw new Error('Atordoante impede ação maior neste turno.');
   if(minor!==0)throw new Error('Uma ação maior exige um turno sem ações menores prévias.');
@@ -90,12 +95,16 @@ function attackHero(
  options:{charge?:boolean;asReaction?:boolean;counterCharge?:boolean;
   cautious?:boolean;reckless?:boolean;
   twoHandedGrip?:boolean;powerBonusDice?:number;stunHit?:boolean;
-  grappleHit?:boolean;splitRank?:number;splitBonus?:number}={},
+  grappleHit?:boolean;splitRank?:number;splitBonus?:number;
+  offhandDamageBonus?:number}={},
 ):WarBattle{
  const from=personalPosition(actor),to=personalPosition(target);
  const dist=personalDistance(from,to);
  const reach=actor.meleeWeapon?.reachMetres??1;
  const selectedWeapon=ranged?actor.rangedWeapon:actor.meleeWeapon;
+ if(options.offhandDamageBonus&&(!actor.offhandWeapon?.offhandDamageBonus||
+   actor.offhandWeaponBroken||actor.meleeWeapon?.twoHanded||ranged))
+  throw new Error('Ataque com duas armas exige Mão Inábil disponível.');
  if(!ranged&&actor.meleeWeaponDisarmed)
   throw new Error('A arma foi desarmada por Empalar e não pode atacar.');
  if(actor.grabbedBy&&(!selectedWeapon?.grapple&&!selectedWeapon?.shortBlade||ranged))
@@ -148,6 +157,7 @@ function attackHero(
      ...(options.grappleHit!==undefined?{grappleHit:options.grappleHit}:{}),
      ...(options.splitRank!==undefined?{splitRank:options.splitRank}:{}),
      ...(options.splitBonus!==undefined?{splitBonus:options.splitBonus}:{}),
+     ...(options.offhandDamageBonus!==undefined?{offhandDamageBonus:options.offhandDamageBonus}:{}),
      ...(options.twoHandedGrip!==undefined?{twoHandedGrip:options.twoHandedGrip}:{}),
      ...(options.powerBonusDice!==undefined?{powerBonusDice:options.powerBonusDice}:{}),
     }};
@@ -182,12 +192,13 @@ function attackHero(
  const bonus=usableBonus+mountedBonus+(target.prone&&!ranged?1:0)+
   (options.splitRank&&weapon?.fast?1:0);
  const rank=Math.min(15,(options.splitRank??(ranged?actor.marksmanship:actor.fighting))+
-  (options.reckless&&!ranged?1:0));
+  (options.reckless&&!ranged?1:0)+(target.pinnedByHero?1:0));
  const roll=rollPersonalWithFate(battle.seed,actor,rank,
   Math.min(15,bonus+(actor.passBonusDice??0)+(actor.aimBonusDice??0)),
   Math.min(15,totalPenalty));
  const total=Math.max(0,roll.total-(actor.wounds??0)-(actor.entangledBy?5:0));
  const difficulty=Math.max(1,(target.dodgeDefense??target.defense)+
+  activePersonalOffhandDefense(target)-(target.pinnedByHero?(target.agility??3):0)+
   (target.cautiousDefenseBonus??0)-(target.recklessDefensePenalty??0)-
   (target.pinnedByMount?5:0)-(target.grabbedBy?5:0));
  const degrees=degreesOfSuccess(total,difficulty);
@@ -196,7 +207,8 @@ function attackHero(
  const base=weapon?.noDamage?0:ranged?actor.rangedDamage:
   actor.meleeDamage+(options.charge?2:0)+stationaryMountBonus+
   (options.counterCharge?2:0)+
-  (!ranged&&selectedWeapon?.adaptable&&options.twoHandedGrip?1:0)+invested;
+  (!ranged&&selectedWeapon?.adaptable&&options.twoHandedGrip?1:0)+invested+
+  (options.offhandDamageBonus??0);
  const stunApplied=Boolean(options.stunHit&&selectedWeapon?.stunning&&degrees>=2);
  const damageDegrees=degrees-(stunApplied?1:0);
  const damage=damageDegrees&&base?Math.max(0,base*damageDegrees-
@@ -241,6 +253,7 @@ export function resumePersonalSplit(battle:WarBattle):WarBattle{
   next={...next,pendingPersonalSplit:{...plan,nextIndex:i+1}};
   next=attackHero(next,actor,target,false,{
    splitRank:plan.ranks[i]!,splitBonus:plan.bonuses[i]!,
+   ...(plan.offhandDamageBonus!==undefined?{offhandDamageBonus:plan.offhandDamageBonus}:{}),
   });
   if(next.pendingPersonalDamage||next.pendingPersonalCounterattack)return next;
  }
@@ -273,6 +286,7 @@ export function resumePersonalCounterattack(battle:WarBattle):WarBattle{
   ...(pending.grappleHit!==undefined?{grappleHit:pending.grappleHit}:{}),
   ...(pending.splitRank!==undefined?{splitRank:pending.splitRank}:{}),
   ...(pending.splitBonus!==undefined?{splitBonus:pending.splitBonus}:{}),
+  ...(pending.offhandDamageBonus!==undefined?{offhandDamageBonus:pending.offhandDamageBonus}:{}),
   ...(pending.twoHandedGrip!==undefined?{twoHandedGrip:pending.twoHandedGrip}:{}),
   ...(pending.powerBonusDice!==undefined?{powerBonusDice:pending.powerBonusDice}:{}),
  });
@@ -336,6 +350,18 @@ export function executePersonalWarAction(
  if(hero.role!=='hero')throw new Error('Comandante deve abdicar antes de lutar.');
  if(hero.pinnedByMount&&!['personal-free-mount','personal-surrender'].includes(action.kind))
   throw new Error('Cavaleiro preso sob a montaria precisa se libertar antes de agir.');
+ if(hero.pinnedByHero&&!['personal-escape-pin','personal-surrender'].includes(action.kind))
+  throw new Error('Imobilizado: só pode tentar escapar ou render-se.');
+ if(hero.pinningTargetId&&!['personal-pin-grapple','personal-release-grapple'].includes(action.kind)){
+  battle=releaseAbandonedGrapplePin(battle,hero.id);
+  hero=battle.heroes.find(h=>h.id===hero.id)!;
+ }
+ if(['personal-pin-grapple','personal-escape-pin','personal-pin-impale',
+   'personal-heal-remove-impale'].includes(action.kind)){
+  const used=spendPersonalAction(hero,'major');
+  return resolveAdvancedPersonalControl(changeHero(battle,used),used,
+   action.kind as AdvancedControlKind,action.targetHeroId);
+ }
  if(action.kind==='personal-release-grapple'){
   return resolvePersonalControlAction(battle,hero,action.kind);
  }
@@ -348,10 +374,28 @@ export function executePersonalWarAction(
   return resolvePersonalControlAction(changeHero(battle,spent),spent,kind,
    action.escapeUsing??'athletics');
  }
- if(action.kind==='personal-split-attack'){
+ if(action.kind==='personal-dual-attack'){
+  if(hero.attackedThisTurn)throw new Error('Somente um ataque por rodada individual.');
+  const target=battle.heroes.find(h=>h.id===action.targetHeroId&&h.active&&
+   h.side!==hero.side&&!h.unitId);
+  if(!target)throw new Error('Selecione inimigo individual para Duas Armas.');
+  if(!hero.offhandWeapon?.offhandDamageBonus||hero.offhandWeaponBroken||
+   hero.meleeWeapon?.twoHanded||hero.meleeWeaponBroken)
+   throw new Error('Duas Armas exige arma principal e Mão Inábil disponíveis.');
+  const used={...spendPersonalAction(hero,'major'),
+   attackedThisTurn:true,offhandDefenseSuppressed:true};
+  return attackHero(changeHero(battle,used),used,target,false,{
+   offhandDamageBonus:hero.offhandWeapon.offhandDamageBonus,
+  });
+ }
+ if(['personal-split-attack','personal-combined-attack'].includes(action.kind)){
   if(hero.attackedThisTurn)throw new Error('Somente um ataque por rodada individual.');
   if(hero.grapplingTargetId||hero.grabbedBy||hero.impaledBy)
    throw new Error('Libere a contenção antes de dividir os ataques.');
+  if(action.kind==='personal-combined-attack'&&
+   (!hero.offhandWeapon?.offhandDamageBonus||hero.offhandWeaponBroken||
+    hero.meleeWeapon?.twoHanded))
+   throw new Error('Ataque Combinado exige arma secundária Mão Inábil.');
   if(hero.meleeWeapon?.slow||hero.meleeWeapon?.counterChargeOnly)
    throw new Error('Arma Lenta ou Contra Carga não permite Ataque Dividido.');
   if(hero.meleeWeaponBroken||hero.meleeWeaponDisarmed||hero.impalingTargetId)
@@ -373,9 +417,12 @@ export function executePersonalWarAction(
     throw new Error('Todos os alvos divididos devem ser inimigos ativos no alcance.');
   }
   const used=spendPersonalAction(hero,'major');
-  const next:WarBattle={...changeHero(battle,{...used,attackedThisTurn:true}),
+  const paired=action.kind==='personal-combined-attack';
+  const next:WarBattle={...changeHero(battle,{...used,attackedThisTurn:true,
+   ...(paired?{offhandDefenseSuppressed:true}:{})}),
    pendingPersonalSplit:{actorId:hero.id,targetIds:[...ids],
-    ranks:[...ranks],bonuses:[...bonuses],nextIndex:0}};
+    ranks:[...ranks],bonuses:[...bonuses],nextIndex:0,
+    ...(paired?{offhandDamageBonus:hero.offhandWeapon!.offhandDamageBonus!}:{})}};
   return resumePersonalSplit(next);
  }
  if(action.kind==='personal-end-turn'){
