@@ -37,7 +37,7 @@ export type WarHero=Readonly<{
 }>;
 export type WarHeroAction=Readonly<{
  kind:'join'|'leave'|'rally'|'revive'|'abdicate'|'assume'|PersonalWarAction['kind'];
- unitId?:string;targetHeroId?:string;toMetres?:WarPosition;ranged?:boolean;
+ unitId?:string;targetHeroId?:string;toMetres?:WarPosition;ranged?:boolean;vsCharge?:boolean;
 }>;
 const distance=(a:WarPosition,b:WarPosition)=>Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y));
 const log=(battle:WarBattle,kind:string,text:string,side:WarSide,meta:{
