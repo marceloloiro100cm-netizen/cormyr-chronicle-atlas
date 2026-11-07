@@ -465,9 +465,9 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      </label>
      {!dndMode&&<label>Malha tática
       <select aria-label="Formato da malha CRZ" value={options.grid??'square'}
-       onChange={e=>setOptions(o=>({...o,grid:e.target.value as 'hex'|'square'}))}>
+       onChange={e=>setOptions(o=>({...o,grid:'square'}))}>
        <option value="square">Quadrados (novo padrão)</option>
-       <option value="hex">Hexágonos (legado)</option>
+       {/* Novas simulações usam apenas quadrados. */}
       </select>
      </label>}
      <label>Tamanho do mapa
