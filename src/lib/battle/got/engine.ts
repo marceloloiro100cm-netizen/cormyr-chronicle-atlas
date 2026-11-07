@@ -13,6 +13,7 @@ import type {WarHero} from './heroes';
 import {personalPosition,spendPersonalAction} from './personal-combat';
 import {queuePersonalDamage} from './personal-injuries';
 import {settleWarSquadLosses} from './squads';
+import {effectivePersonalArmor} from './personal-weapons';
 
 const SIDES:readonly WarSide[]=['attacker','defender'];
 const opposite=(side:WarSide):WarSide=>side==='attacker'?'defender':'attacker';
@@ -236,7 +237,8 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
  const difficulty=target.defense+20;
  const degrees=degreesOfSuccess(total,difficulty);
  const damage=degrees?Math.max(0,
-  (ranged?hero.rangedDamage:hero.meleeDamage)*degrees-target.armor):0;
+  (ranged?hero.rangedDamage:hero.meleeDamage)*degrees-
+   effectivePersonalArmor(target.armor,ranged?hero.rangedWeapon:hero.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
   heroes:battle.heroes.map(h=>h.id===hero.id?{...used,passBonusDice:0}:h)};
  next=log(next,'hero-vs-unit',hero.name+' atacou '+target.name+' (Defesa +20): '+
