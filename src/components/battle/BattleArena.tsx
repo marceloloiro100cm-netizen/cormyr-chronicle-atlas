@@ -171,25 +171,42 @@ export function BattleArena({initial,resume,sideNames,onExit,persistenceEnabled=
   </BattleExpandedView>;
  const arena=<div className="battle-module battle-unified-shell">
   <section className="battle-arena" aria-label="Arena tática">
-  <div className="battle-arena-top battle-surface">
-   <div><h2>{battle.name}</h2><p>Rodada {battle.round} / 20 · {active?active.name:'Sem unidade ativa'}
-     {' · '}PTE-2.0 experimental</p></div>
-   <div className="battle-form-row">
+  <header className="battle-arena-top battle-surface">
+   <div className="battle-arena-heading">
+    <p className="battle-eyebrow">CORMYR · CAMPO TÁTICO · TREINAMENTO</p>
+    <h2>{battle.name}</h2>
+    <p>Rodada {battle.round} / 20 · {active?active.name:'Sem unidade ativa'}
+     {' · '}PTE-2.0 experimental</p>
+   </div>
+   <div className="battle-arena-quick-controls">
+    <Button size="sm" variant="outline" className="battle-expand-toggle"
+     aria-label={expanded?'Sair da tela ampliada':'Ampliar batalha'}
+     onClick={()=>setExpanded(value=>!value)}>
+     {expanded?'↙ Sair da tela ampliada':'⤢ Ampliar batalha'}
+    </Button>
     <Button size="sm" variant="outline" onClick={()=>setPaused(x=>!x)}>{paused?'Retomar':'Pausar'}</Button>
-    <Button size="sm" variant="outline" disabled={!history.length} onClick={undo}>Desfazer ação</Button>
-    <Button size="sm" variant="outline" onClick={restart}>Reiniciar</Button>
-    {persistenceEnabled&&<Button size="sm" variant="outline" disabled={savingProgress}
-      onClick={async()=>{
+    <Button size="sm" variant="outline" onClick={onExit}>Sair</Button>
+    <details className="battle-arena-extra">
+     <summary>Mais opções</summary>
+     <div className="battle-arena-extra-buttons">
+      <Button size="sm" variant="outline" disabled={!history.length} onClick={undo}>Desfazer ação</Button>
+      <Button size="sm" variant="outline" onClick={restart}>Reiniciar</Button>
+      {persistenceEnabled&&<Button size="sm" variant="outline" disabled={savingProgress}
+       onClick={async()=>{
         setSavingProgress(true);
-        try{const saved=await saveProgress({data:{replayJson:exportReplayJson(initial,battle)}});
-          setNotice('Batalha salva: '+saved.sessionId);
+        try{
+         const saved=await saveProgress({data:{replayJson:exportReplayJson(initial,battle)}});
+         setNotice('Batalha salva: '+saved.sessionId);
         }catch(e){setNotice(e instanceof Error?e.message:'Falha no salvamento.');}
         finally{setSavingProgress(false);}
-      }}>Salvar cópia da batalha</Button>}
-    <Button size="sm" variant="outline" onClick={()=>setShowHelp(x=>!x)}>Regras</Button>
-    <Button size="sm" variant="outline" onClick={onExit}>Sair</Button>
+       }}>Salvar cópia da batalha</Button>}
+      <Button size="sm" variant="outline" onClick={()=>setShowHelp(x=>!x)}>
+       {showHelp?'Ocultar regras':'Regras'}
+      </Button>
+     </div>
+    </details>
    </div>
-  </div>
+  </header>
   {showHelp&&<div className="battle-surface" role="note">Mover uma vez e atacar depois; defender concede +2 até a próxima ativação; esperar uma vez por rodada. Retaliação corpo a corpo uma vez por rodada. Todas as baixas são apenas simuladas.</div>}
   <div className="battle-arena-grid">
     <aside className="battle-surface battle-army-sidebar" aria-label="Exércitos na arena">
