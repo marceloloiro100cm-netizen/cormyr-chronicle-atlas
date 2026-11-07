@@ -113,7 +113,7 @@ export function crzTrainingReady(options:CrzTrainingOptions):CrzReady{
    attacker:{id:'tillet-general',name:'General Tillet (modelo)',
     level:generalLevel,abilityMod:2,
     spells:['bless','shield_of_faith','cure_wounds','firebolt',
-     'shield_wall_formation']},
+     'shield_wall_formation','fireball']},
    defender:{id:'ashkar-general',name:'Oficial Ashkar (modelo)',
     level:3,abilityMod:1,spells:['bane','cause_fear']},
   },
