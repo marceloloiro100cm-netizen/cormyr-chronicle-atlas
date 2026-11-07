@@ -98,7 +98,7 @@ export function crzValidateMap(raw:unknown):CrzMap{
  for(let i=0;i<pending.length;i++){
   for(const next of crzGridNeighbors(map,pending[i]!)){
    const key=crzHexKey(next);
-   if(!walkable.has(key)||visited.has(key))continue;
+   if(!walkable.has(key)||visited.has(key)||!crzAllowsStep(map,pending[i]!,next,new Set()))continue;
    visited.add(key);pending.push(next);
   }
  }
