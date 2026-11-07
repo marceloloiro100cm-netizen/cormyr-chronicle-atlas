@@ -205,6 +205,54 @@ export function resumePersonalCounterattack(battle:WarBattle):WarBattle{
   ...(pending.powerBonusDice!==undefined?{powerBonusDice:pending.powerBonusDice}:{}),
  });
 }
+/** Retoma um atropelamento a partir da próxima casa pessoal ainda não processada.
+ * O percurso e a ação maior são comprometidos uma única vez. Quando o defensor
+ * optar por ferimentos/lesão, a reação para antes de encontrar outro alvo.
+ */
+export function resumePersonalTrample(battle:WarBattle):WarBattle{
+ const plan=battle.pendingPersonalTrample;
+ if(!plan)return battle;
+ if(battle.pendingPersonalDamage)
+  throw new Error('Resolva a mitigação antes de continuar o atropelamento.');
+ const rider=battle.heroes.find(h=>h.id===plan.riderId);
+ if(!rider?.active){
+  return {...battle,pendingPersonalTrample:undefined};
+ }
+ let next=battle,hits=plan.hits;
+ const dir={x:Math.sign(plan.to.x-plan.from.x),
+  y:Math.sign(plan.to.y-plan.from.y)};
+ for(let step=plan.nextStep;step<=plan.steps;step++){
+  const p={x:plan.from.x+dir.x*step,y:plan.from.y+dir.y*step};
+  const target=next.heroes.find(h=>h.id!==rider.id&&h.side!==rider.side&&
+   h.active&&!h.unitId&&personalPosition(h).x===p.x&&
+   personalPosition(h).y===p.y);
+  if(!target)continue;
+  const performer=next.heroes.find(h=>h.id===rider.id)??rider;
+  const roll=rollPersonalWithFate(next.seed,performer,
+   performer.animalHandling??3,0,performer.injuries??0);
+  const total=Math.max(0,roll.total-(performer.wounds??0));
+  const difficulty=Math.max(1,(target.dodgeDefense??target.defense)+
+   (target.cautiousDefenseBonus??0)-(target.recklessDefensePenalty??0)-
+   (target.pinnedByMount?5:0))+
+   (plan.mountTrainedForWar?0:6)+5*hits;
+  const degrees=degreesOfSuccess(total,difficulty);
+  const damage=degrees?Math.max(0,plan.mountAthletics*degrees-target.armor):0;
+  next={...next,seed:roll.nextSeed,
+   heroes:next.heroes.map(h=>h.id===rider.id?consumePersonalFateRoll(h):h)};
+  if(damage)next=queuePersonalDamage(next,{actorName:plan.mountName,
+   targetHeroId:target.id,damage,source:'personal'});
+  next=log(next,'personal-trample',plan.mountName+' atropelou '+
+   target.name+' ('+(hits+1)+'º alvo): '+total+' vs '+difficulty+
+   ', '+damage+' dano.',rider,{roll:roll.dice,total,difficulty,degrees});
+  hits++;
+  if(next.pendingPersonalDamage)
+   return {...next,pendingPersonalTrample:{...plan,nextStep:step+1,hits}};
+ }
+ const completed:WarBattle={...next,pendingPersonalTrample:undefined};
+ return log(completed,'personal-trample-move',rider.name+' percorreu '+
+  plan.steps+' m em linha reta com '+plan.mountName+
+  ' e atingiu '+hits+' alvo(s).',rider);
+}
 export function executePersonalWarAction(
  battle:WarBattle,hero:WarHero,action:PersonalWarAction,
 ):WarBattle{
@@ -319,8 +367,8 @@ export function executePersonalWarAction(
    });
  }
  if(action.kind==='personal-trample'){
-  if(battle.manualMitigation)
-   throw new Error('Atropelamento com mitigação manual ainda exige resolução por múltiplos alvos.');
+  if(battle.pendingPersonalTrample)
+   throw new Error('Já existe um atropelamento a resolver.');
   if(!hero.mounted||!hero.mount||hero.mount.health<=0)
    throw new Error('Atropelar exige montaria viva e cavaleiro montado.');
   if(!action.toMetres)throw new Error('Selecione destino de atropelamento em metros.');
@@ -333,36 +381,14 @@ export function executePersonalWarAction(
    throw new Error('Atropelamento excede Movimento da montaria.');
   const moved=moveFine(battle,hero,to,hero.mount.movement);
   const used=spendPersonalAction(moved,'major');
-  let next=changeHero(battle,{...used,mountMovedTurn:hero.usedActions});
-  let hits=0;
-  const dir={x:Math.sign(dx),y:Math.sign(dy)};
-  for(let step=1;step<=steps;step++){
-   const p={x:from.x+dir.x*step,y:from.y+dir.y*step};
-   const target=next.heroes.find(h=>h.id!==hero.id&&h.side!==hero.side&&
-    h.active&&!h.unitId&&personalPosition(h).x===p.x&&
-    personalPosition(h).y===p.y);
-   if(!target)continue;
-   const performer=next.heroes.find(h=>h.id===hero.id)??hero;
-   const roll=rollPersonalWithFate(next.seed,performer,hero.animalHandling??3,
-    0,hero.injuries??0);
-   const total=Math.max(0,roll.total-(hero.wounds??0));
-   const difficulty=Math.max(1,(target.dodgeDefense??target.defense)+
-    (target.cautiousDefenseBonus??0)-(target.recklessDefensePenalty??0)-
-    (target.pinnedByMount?5:0))+(hero.mount.trainedForWar?0:6)+5*hits;
-   const degrees=degreesOfSuccess(total,difficulty);
-   const damage=degrees?Math.max(0,hero.mount.athletics*degrees-target.armor):0;
-   next={...next,seed:roll.nextSeed,
-    heroes:next.heroes.map(h=>h.id===hero.id?consumePersonalFateRoll(h):h)};
-   if(damage)next=queuePersonalDamage(next,{actorName:hero.mount.name,
-    targetHeroId:target.id,damage,source:'personal'});
-   next=log(next,'personal-trample',hero.mount.name+' atropelou '+
-    target.name+' ('+(hits+1)+'º alvo): '+total+' vs '+difficulty+
-    ', '+damage+' dano.',hero,{roll:roll.dice,total,difficulty,degrees});
-   hits++;
-  }
-  return log(next,'personal-trample-move',hero.name+' moveu-se '+
-   steps+' m em linha reta com '+hero.mount.name+
-   ' e atingiu '+hits+' alvo(s).',hero);
+  const next:WarBattle={...changeHero(battle,{
+   ...used,mountMovedTurn:hero.usedActions,
+  }),pendingPersonalTrample:{
+   riderId:hero.id,from,to,steps,nextStep:1,hits:0,
+   mountName:hero.mount.name,mountAthletics:hero.mount.athletics,
+   mountTrainedForWar:hero.mount.trainedForWar,
+  }};
+  return resumePersonalTrample(next);
  }
  if(action.kind==='personal-reload'){
   if(!hero.rangedWeapon?.reload)
