@@ -9,7 +9,8 @@ import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
 /** Capítulo 9: escala pessoal de 1 m. Não usa os quadrados de guerra de 10 m para alcance. */
 export type PersonalWarAction=Readonly<{
  kind:'personal-attack'|'personal-charge'|'personal-move'|'personal-dodge'|
-  'personal-recover'|'personal-pass'|'personal-end-turn'|'personal-surrender';
+  'personal-recover'|'personal-pass'|'personal-end-turn'|'personal-surrender'|
+  'personal-reload'|'personal-mount'|'personal-dismount'|'personal-control-mount';
  targetHeroId?:string;
  ranged?:boolean;
  toMetres?:WarPosition;
@@ -19,6 +20,8 @@ export const personalPosition=(hero:WarHero):WarPosition=>
 export const personalDistance=(a:WarPosition,b:WarPosition):number=>
  Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y));
 export function personalMovement(hero:WarHero):number{
+ if(hero.mounted&&hero.mount?.health&&hero.mount.health>0)
+  return hero.mount.movement;
  const athletics=hero.athletics??3;
  const base=athletics<=1?3:4;
  return Math.max(1,base+Math.floor((hero.runningBonusDice??0)/2)-
@@ -74,25 +77,41 @@ function attackHero(
  const effectiveRange=(actor.rangedRange??'short')==='long'?100:10;
  if(ranged&&(actor.rangedDamage<=0||actor.rangedRange==='none'))
   throw new Error('Herói não possui arma de Pontaria disponível.');
+ if(ranged&&actor.rangedWeapon?.reload&&actor.rangedLoaded===false)
+  throw new Error('Esta arma precisa ser recarregada antes do próximo disparo.');
  const rangePenalty=ranged?Math.min(15,Math.max(0,Math.ceil((dist-effectiveRange)/10))):0;
+ const weapon=ranged?actor.rangedWeapon:actor.meleeWeapon;
+ const availableBonus=(ranged?actor.rangedBonusDice:actor.meleeBonusDice)??0;
+ const requiredBonus=weapon?.trainingBonusDice??0;
+ const trainingPenalty=Math.max(0,requiredBonus-availableBonus);
+ const usableBonus=Math.max(0,availableBonus-requiredBonus);
+ const clumsyPenalty=actor.mounted&&weapon?.clumsy?2:0;
  const totalPenalty=(actor.injuries??0)+(options.charge?1:0)+
-  (!ranged&&reach>1&&dist<3?1:0)+
+  (!ranged&&reach>1&&dist<3?1:0)+trainingPenalty+clumsyPenalty+
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty;
- const bonus=(ranged?actor.rangedBonusDice:actor.meleeBonusDice)??0;
+ const mountedBonus=!ranged&&actor.mounted&&actor.mount?.health&&
+  actor.mount.health>0&&!target.mounted?1:0;
+ const bonus=usableBonus+mountedBonus;
  const rank=ranged?actor.marksmanship:actor.fighting;
  const roll=rollPersonalWithFate(battle.seed,actor,rank,
   Math.min(15,bonus+(actor.passBonusDice??0)),Math.min(15,totalPenalty));
  const total=Math.max(0,roll.total-(actor.wounds??0));
  const difficulty=target.dodgeDefense??target.defense;
  const degrees=degreesOfSuccess(total,difficulty);
- const base=ranged?actor.rangedDamage:actor.meleeDamage+(options.charge?2:0);
+ const stationaryMountBonus=!ranged&&actor.mounted&&actor.mount?.trainedForWar&&
+  actor.mount.health>0&&actor.mountMovedTurn!==actor.usedActions?2:0;
+ const base=ranged?actor.rangedDamage:
+  actor.meleeDamage+(options.charge?2:0)+stationaryMountBonus;
  const damage=degrees?Math.max(0,base*degrees-
   effectivePersonalArmor(target.armor,ranged?actor.rangedWeapon:actor.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
-  heroes:battle.heroes.map(h=>h.id===actor.id?{...consumePersonalFateRoll(h),passBonusDice:0}:h),
+  heroes:battle.heroes.map(h=>h.id===actor.id?{
+   ...consumePersonalFateRoll(h),passBonusDice:0,
+   ...(ranged&&weapon?.reload?{rangedLoaded:false}:{})
+  }:h),
  };
  if(damage>0)next=queuePersonalDamage(next,{actorName:actor.name,
-  targetHeroId:target.id,damage,source:'personal'});
+  targetHeroId:target.id,damage,source:'personal',cruel:weapon?.cruel??false});
  const defeated=next.heroes.find(h=>h.id===target.id)?.active===false;
  next=log(next,'personal-attack',actor.name+' atacou '+target.name+
   ' ('+(ranged?'Pontaria':'Luta')+'): '+total+' vs Defesa '+difficulty+
@@ -122,11 +141,49 @@ export function executePersonalWarAction(
    next.commanders.map(c=>c.id===hero.commanderId?{...c,active:false}:c):
    next.commanders},'personal-surrender',hero.name+' se rendeu (destino narrativo pendente).',hero);
  }
+ if(action.kind==='personal-reload'){
+  if(!hero.rangedWeapon?.reload)
+   throw new Error('Arma selecionada não requer recarga.');
+  if(hero.rangedLoaded!==false)
+   throw new Error('A arma já está carregada.');
+  const weight=hero.rangedWeapon.reload;
+  const used=spendPersonalAction(hero,weight);
+  return log(changeHero(battle,{...used,rangedLoaded:true}),'personal-reload',
+   hero.name+' recarregou '+hero.rangedWeapon.label+' ('+
+   (weight==='major'?'ação maior':'ação menor')+').',hero);
+ }
+ if(action.kind==='personal-mount'){
+  if(!hero.mount||hero.mount.health<=0||hero.mounted)
+   throw new Error('Não existe montaria viva disponível para montar.');
+  const used=spendPersonalAction(hero,'minor');
+  return log(changeHero(battle,{...used,mounted:true}),'personal-mount',
+   hero.name+' montou '+hero.mount.name+'.',hero);
+ }
+ if(action.kind==='personal-dismount'){
+  if(!hero.mounted)throw new Error('Personagem não está montado.');
+  const used=spendPersonalAction(hero,'minor');
+  return log(changeHero(battle,{...used,mounted:false,mountControlledTurn:undefined}),
+   'personal-dismount',hero.name+' desmontou.',hero);
+ }
+ if(action.kind==='personal-control-mount'){
+  if(!hero.mounted||!hero.mount||hero.mount.health<=0)
+   throw new Error('Controle exige montaria viva e cavaleiro montado.');
+  const weight=hero.mount.trainedForWar&&hero.mount.health===hero.mount.maxHealth?
+   'minor':'major';
+  const used=spendPersonalAction(hero,weight);
+  return log(changeHero(battle,{...used,mountControlledTurn:hero.usedActions}),
+   'personal-control-mount',hero.name+' controlou a montaria ('+
+   (weight==='major'?'ação maior':'ação menor')+').',hero);
+ }
  if(action.kind==='personal-move'){
+  if(hero.mounted&&hero.mountControlledTurn!==hero.usedActions)
+   throw new Error('Controle a montaria antes de deslocá-la.');
   if(!action.toMetres)throw new Error('Informe a posição de destino em metros.');
   const moved=moveFine(battle,hero,action.toMetres,personalMovement(hero));
   const next=spendPersonalAction(moved,'minor');
-  return log(changeHero(battle,next),'personal-move',
+  return log(changeHero(battle,hero.mounted?{
+   ...next,mountMovedTurn:hero.usedActions,
+  }:next),'personal-move',
    hero.name+' moveu-se em escala de um metro para '+action.toMetres.x+
    ','+action.toMetres.y+'.',hero);
  }
