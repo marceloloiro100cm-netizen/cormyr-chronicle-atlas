@@ -149,7 +149,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
   }
   if(canAct&&mode==='attack'){
    if(unit&&attackIds.includes(unit.id)){setPendingAttack(unit.id);setPendingMove(null);setNotice('Confirme o ataque abaixo.');}
-   else setNotice('Este hexágono não contém um alvo legal.');
+   else setNotice('Este '+(battle.map.grid==='square'?'quadrado':'hexágono')+' não contém um alvo legal.');
    return;
   }
   if(unit){setSelected(unit.id);clear();}
@@ -238,7 +238,8 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
        selectedId={selected} moveKeys={canAct&&mode==='move'?moveKeys:[]}
        attackKeys={canAct&&mode==='attack'?attackIds:[]} pendingHex={pendingMove}
        onHexClick={chooseHex} onHoverHex={setHover}/>
-     {mode==='move'&&<p role="status">Rota: {selectedPath?selectedPath.steps+' hexágonos · custo '+selectedPath.cost:'selecione um hexágono destacado'}</p>}
+     {mode==='move'&&<p role="status">Rota: {selectedPath?selectedPath.steps+' '+(battle.map.grid==='square'?'quadrados':'hexágonos')+' · custo '+selectedPath.cost:
+      'Selecione um '+(battle.map.grid==='square'?'quadrado':'hexágono')+' destacado'}</p>}
      {damagePreview&&<p role="status">Ataque previsto contra {target?.name}: {damagePreview.damage} PV · {damagePreview.casualties} baixas antes de eventual retaliação.</p>}
      {notice&&<p role="alert" className="battle-error">{notice}</p>}
      <div className="battle-actions" aria-label="Ações da unidade">
