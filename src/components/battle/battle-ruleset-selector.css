@@ -1,0 +1,19 @@
+/* Seletor de motor isolado do módulo de batalha. */
+.battle-module .battle-ruleset-selector{border:0;padding:0;margin:18px 0 0;min-width:0}
+.battle-module .battle-ruleset-selector legend{font-size:19px;font-weight:750;color:#f9e7bc}
+.battle-module .battle-ruleset-intro{margin:4px 0 14px;color:#e5d8c3;line-height:1.5;font-size:15px}
+.battle-module .battle-ruleset-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.battle-module .battle-ruleset-card{min-width:0;display:flex;flex-direction:column;gap:8px;cursor:pointer;background:rgba(29,36,32,.75);border:2px solid #766f60;border-radius:10px;padding:13px 12px;color:#f4e7d0;line-height:1.4;transition:border-color .15s,background-color .15s}
+.battle-module .battle-ruleset-card:hover,.battle-module .battle-ruleset-card:focus-within{border-color:#d9b978;background:rgba(52,58,44,.86)}
+.battle-module .battle-ruleset-card.is-selected{border-color:#f3d08f;background:rgba(72,60,39,.65)}
+.battle-module .battle-ruleset-head{display:flex;align-items:center;gap:9px;min-width:0}
+.battle-module .battle-ruleset-head input{accent-color:#f2c978;width:19px;height:19px;flex-shrink:0;cursor:pointer}
+.battle-module .battle-ruleset-head input:focus-visible{outline:3px solid #ffdb9b;outline-offset:3px}
+.battle-module .battle-ruleset-head strong{font-size:17px}
+.battle-module .battle-ruleset-subtitle{font-weight:650;font-size:14px}
+.battle-module .battle-ruleset-description{font-size:13px;line-height:1.5;color:#e7dcca;flex:1}
+.battle-module .battle-ruleset-status{font-size:12px;color:#f7dcaa;font-weight:650}
+.battle-module .battle-ruleset-pending{margin:16px 0 12px;display:flex;flex-direction:column;align-items:flex-start;gap:10px;border:1px solid #967b58;border-radius:10px;padding:16px;background:rgba(26,31,27,.55)}
+.battle-module .battle-ruleset-pending h3,.battle-module .battle-ruleset-pending p{margin:0;line-height:1.5}
+.battle-module .battle-ruleset-pending button{min-height:44px}
+@media(max-width:950px){.battle-module .battle-ruleset-grid{grid-template-columns:minmax(0,1fr)}}
