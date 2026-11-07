@@ -7,6 +7,8 @@ import {WAR_SIEGE_CATALOG,warSiegeDamage} from './siege';
 import type {WarSiegeEngine} from './siege';
 import {fortForUnit,fortDefense,validateWarForts,sabotageFortification,damageWarFortification} from './fortifications';
 import {igniteWarUnit,advanceWarFire} from './siege-fire';
+import {warFieldDefenseBonus,warFieldMovementMetres,warFieldOrderDifficulty,
+ warFieldForbidsAttack,warFieldThrowDamage,validateWarFieldEquipment} from './field-equipment';
 import type {WarFortification} from './fortifications';
 import {executeAdvancedWarOrder,WAR_ADVANCED_ORDER_DIFFICULTY} from './advanced-orders';
 import {validateWarHeroes,heroUnitDefenseBonus,heroUnitBonusDice,applyDamageToEmbeddedHeroes} from './heroes';
@@ -99,6 +101,7 @@ export function createWarBattle(input:{
   if(!inBounds(input,tile)||!terrainEffect(tile))throw new Error('Terreno inválido.');
  }
  for(const u of input.units){
+  validateWarFieldEquipment(u);
   if(!inBounds(input,u.position))throw new Error('Unidade fora do mapa: '+u.name);
   const key=u.position.x+':'+u.position.y;
   if(occupied.has(key))throw new Error('Duas unidades ocupam o mesmo quadrado.');
@@ -168,7 +171,8 @@ function movePath(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,ma
 }
 function movementCells(unit:WarUnit,sprint:boolean):number{
  const base=Math.max(0,(unit.naval?60:unit.mounted?80:40)-unit.bulk*10);
- return Math.floor((sprint?base*4:base)/10);
+ const equipped=warFieldMovementMetres(unit,base);
+ return Math.floor((sprint?equipped*4:equipped)/10);
 }
 function move(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,limit?:number):WarBattle{
  const base=movementCells(unit,sprint)*10;
@@ -369,6 +373,8 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  options:{charge?:boolean;penalty?:number;counterCharge?:boolean;
   testRank?:number;bonusDice?:number;damageBonus?:number}={}):WarBattle{
  if(!alive(attacker))throw new Error('Esta unidade não pode atacar.');
+ if(warFieldForbidsAttack(attacker))
+  throw new Error('O equipamento especial impede ataques enquanto estiver transportado.');
  if(!onBoard(target)||target.side===attacker.side)throw new Error('Alvo indisponível.');
  const max=ranged?(attacker.range==='long'?20:attacker.range==='short'?2:0):1;
  if(!max||distance(attacker.position,target.position)>max||(!ranged&&distance(attacker.position,target.position)===0))
@@ -406,7 +412,8 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  const fort=fortForUnit(battle.fortifications,target);
  const fortBonus=fort?fortDefense(fort):0;
  const probeBonus=target.probeDefenseRound===battle.round?2:0;
- const defense=(target.defendRoll??target.defense)+cover+formationDefense+fortBonus+probeBonus;
+ const defense=(target.defendRoll??target.defense)+cover+formationDefense+
+  fortBonus+probeBonus+warFieldDefenseBonus(target,ranged);
  const adjustedRoll=Math.max(0,roll.total+weatherAttackModifier(battle.weather));
  const degrees=degreesOfSuccess(adjustedRoll,defense);
  const baseDamage=(ranged?attacker.rangedDamage:attacker.meleeDamage+(options.charge?2:0))+(options.damageBonus??0);
@@ -713,7 +720,8 @@ export function issueWarOrder(battle:WarBattle,input:{
  const suppression=unit.suppressionRound===battle.round?(unit.suppressionPenalty??0):0;
  const difficulty=Math.max(0,unit.discipline+heroUnitDefenseBonus(battle,unit)+
   unit.disorganizations*3+unit.issuedThisRound*3+
-  formationDifficulty+formationDiscipline+advancedModifier+suppression);
+  formationDifficulty+formationDiscipline+advancedModifier+suppression+
+  warFieldOrderDifficulty(unit));
  const roll=rollDice(battle.seed,commander.warfare,0,0);
  const passed=roll.total>=difficulty;
  const critical=criticalFailure(roll.total,difficulty);
