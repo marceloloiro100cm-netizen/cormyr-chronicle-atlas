@@ -123,3 +123,18 @@
 .battle-module .got-hero-overview summary{cursor:pointer;font-weight:700;
  padding:6px;color:#f8deb1}
 .battle-module .got-hero-overview .got-unit{margin-top:6px}
+
+
+/* Three-mode square contract: same side colors/terrain swatches as PTE and CRZ.
+ * The emblem stays framed and readable, while underlying GOT modifiers differ.
+ */
+.battle-module .got-cell.occupied.attacker{background:#416f9b;border-color:#cfddf4}
+.battle-module .got-cell.occupied.defender{background:#ab5246;border-color:#f2c2b5}
+.battle-module .got-map.got-paint .got-cell.got-deployed.attacker{background:#416f9b;border-color:#cfddf4}
+.battle-module .got-map.got-paint .got-cell.got-deployed.defender{background:#ab5246;border-color:#f2c2b5}
+.battle-module .got-cell:not(.occupied):not(.got-deployed)[data-terrain="plain"],
+.battle-module .got-cell:not(.occupied):not(.got-deployed)[data-terrain="hill"]{color:#282219}
+.battle-module .got-cell:not(.occupied):not(.got-deployed)[data-terrain="dense-forest"],
+.battle-module .got-cell:not(.occupied):not(.got-deployed)[data-terrain="wall"]{color:#fff4da}
+.battle-module .got-map .got-token-art{object-fit:contain;object-position:center;transform:none;max-height:100%;max-width:100%}
+.battle-module .got-cell .got-token-frame{flex:0 0 auto}
