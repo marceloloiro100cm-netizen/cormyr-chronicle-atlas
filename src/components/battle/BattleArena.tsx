@@ -220,7 +220,10 @@ export function BattleArena({initial,resume,sideNames,onExit,persistenceEnabled=
       </button>)}
      </div>)}
     </aside>
-    <div className="battle-surface battle-field">
+    <section className="battle-surface battle-field" aria-label="Campo de batalha PTE">
+     <div className="battle-unified-map-label">
+      <h3>Campo de batalha</h3><span>Verde: mover · vermelho: atacar</span>
+     </div>
      <BattleBoard map={battle.map} stacks={battle.stacks} activeId={battle.activeUnitId}
        selectedId={selected} moveKeys={canAct&&mode==='move'?moveKeys:[]}
        attackKeys={canAct&&mode==='attack'?attackIds:[]} pendingHex={pendingMove}
@@ -248,17 +251,25 @@ export function BattleArena({initial,resume,sideNames,onExit,persistenceEnabled=
        <Button onClick={()=>command({type:'ATTACK',unitId:active.id,targetId:pendingAttack})}>Confirmar ataque</Button>
        <Button variant="outline" onClick={()=>setPendingAttack(null)}>Cancelar</Button>
      </div>}
-    </div>
+    </section>
     <aside className="battle-surface battle-inspector" aria-label="Ficha tática selecionada">
-     <h3>Unidade selecionada</h3>
+     <h3>Comando tático</h3>
+     <p className="battle-note">A unidade ativa recebe ordens diretamente; o perfil PTE-2.0 não inclui General.</p>
      {inspected?<UnitInspector unit={inspected} active={inspected.id===battle.activeUnitId}/>:
       <p>Selecione uma unidade no tabuleiro.</p>}
     </aside>
   </div>
   <div className="battle-surface battle-timeline" aria-label="Registro da batalha">
-   <h3>Registro de combate</h3>
+   <div className="battle-unified-timeline-head">
+    <h3>Últimas ações</h3>
+    <Button size="sm" variant="outline" aria-expanded={fullHistory}
+     onClick={()=>setFullHistory(value=>!value)}>
+     {fullHistory?'Ver últimas ações':'Ver histórico completo'}
+    </Button>
+   </div>
    {battle.events.length===0?<p>Nenhuma ação registrada.</p>:
-    <ol aria-live="polite">{[...battle.events].reverse().slice(0,30).map(e=><li key={e.seq}>
+    <ol aria-live="polite" className={fullHistory?'battle-timeline-all':''}>
+     {[...battle.events].reverse().slice(0,fullHistory?100:6).map(e=><li key={e.seq}>
       Rodada {e.round} · {e.type==='DAMAGE'?'Ataque':e.type==='RETALIATION'?'Retaliação':e.type==='MOVE'?'Movimento':e.type==='DEFEND'?'Defesa':e.type==='WAIT'?'Espera':e.type==='END_ACTIVATION'?'Fim de turno':e.type}
       {' · '}{typeof e.delta['damage']==='number'?e.delta['damage']+' PV, '+e.delta['casualties']+' baixas':''}
      </li>)}</ol>}
