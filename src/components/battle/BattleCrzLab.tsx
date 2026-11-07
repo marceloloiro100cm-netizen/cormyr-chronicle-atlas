@@ -22,6 +22,7 @@ import {crzObservedObjectives,crzAfterActionReport,crzAfterActionSerialize,
  type CrzObservedObjective} from '@/lib/crusade/insights';
 import './crz-lab.css';
 import './battle-legibility.css';
+import './battle-ui-v4.css';
 
 type SidePanel='actions'|'objectives'|'report'|'replay';
 const SPELL_LABELS:Readonly<Record<string,string>>={
