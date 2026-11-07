@@ -143,6 +143,73 @@ export function executeAdvancedWarOrder(
    'scorched-earth',actor.name+' arrasou '+record.domainId+
    ': prévia de População −1, Riqueza −1 (sem modificar Casa).',actor);
  }
+ if(order.kind==='hammer-anvil'){
+  const target=targetOf(battle,actor,order);
+  const anvil=battle.units.find(u=>u.id===order.auxiliaryUnitId&&
+   u.side===actor.side&&alive(u)&&u.id!==actor.id);
+  if(target.side===actor.side||distance(target.position,actor.position)!==1||
+   !anvil||anvil.standing?.kind!=='ready'||anvil.standing.ready?.reaction!=='attack'||
+   anvil.standing.ready?.ranged)
+   throw new Error('Martelo e Bigorna exige inimigo adjacente e aliado de Prontidão para Luta.');
+  const dx=Math.sign(target.position.x-actor.position.x);
+  const dy=Math.sign(target.position.y-actor.position.y);
+  const half=Math.floor(Math.max(0,(target.mounted?80:40)-target.bulk*10)/20);
+  const dest={x:target.position.x+dx*half,y:target.position.y+dy*half};
+  if(half<1||dest.x<0||dest.y<0||dest.x>=battle.width||dest.y>=battle.height||
+   distance(dest,anvil.position)!==1)
+   throw new Error('A Bigorna deve aguardar na posição que receberá o inimigo.');
+  for(let i=1;i<=half;i++){
+   const p={x:target.position.x+dx*i,y:target.position.y+dy*i};
+   const tile=terrainAt(battle.tiles,p),effect=terrainEffect(tile);
+   if(effect.blocked||effect.noCavalry&&target.mounted||
+    effect.water&&!target.naval||movementSlow(tile,battle.visibility,battle.weather)>0||
+    battle.units.some(u=>u.id!==target.id&&alive(u)&&
+     u.position.x===p.x&&u.position.y===p.y))
+    throw new Error('O trajeto do Martelo está bloqueado ou impedido pelo terreno.');
+  }
+  const a=rollDice(battle.seed,actor.ability.athletics);
+  const d=rollDice(a.nextSeed,target.ability.athletics);
+  const success=a.total>d.total;
+  let next:WarBattle={...battle,seed:d.nextSeed};
+  next=log(next,'hammer-anvil',actor.name+(success?' empurrou ':' falhou em empurrar ')+
+   target.name+' ('+a.total+' vs '+d.total+').',actor,{
+    roll:a.dice,total:a.total,difficulty:d.total+1,
+    degrees:success?degreesOfSuccess(a.total,d.total+1):0,
+   });
+  if(!success)return next;
+  next=replace(next,{...target,position:dest});
+  const guard=next.units.find(u=>u.id===anvil.id)!;
+  next=replace(next,{...guard,standing:null});
+  return helpers.attack(next,next.units.find(u=>u.id===guard.id)!,
+   next.units.find(u=>u.id===target.id)!,false,{
+    testRank:Math.min(15,guard.ability.fighting+1),
+   });
+ }
+ if(order.kind==='climb-walls'){
+  const fort=battle.fortifications.find(f=>f.id===order.fortId&&
+   f.side!==actor.side&&!f.breached);
+  if(!fort)throw new Error('Escalar muralhas exige fortificação inimiga.');
+  const cell=fort.cells.find(p=>distance(p,actor.position)===1);
+  if(!cell)throw new Error('A unidade precisa estar adjacente à muralha.');
+  const difficulty=order.wallDifficulty??12;
+  if(!Number.isInteger(difficulty)||difficulty<3||difficulty>30)
+   throw new Error('O Narrador deve definir dificuldade de escalada entre 3 e 30.');
+  const roll=rollDice(battle.seed,actor.ability.athletics,
+   actor.laddersDeployed?1:0,actor.condition==='disorganized'?1:0);
+  const degrees=degreesOfSuccess(roll.total,difficulty);
+  let next:WarBattle={...battle,seed:roll.nextSeed};
+  if(degrees>0){
+   const occupant=next.units.find(u=>u.id!==actor.id&&alive(u)&&
+    u.position.x===cell.x&&u.position.y===cell.y);
+   if(occupant?.side===actor.side)throw new Error('Muralha ocupada por aliado.');
+   if(occupant)next=helpers.attack(next,actor,occupant,false);
+   else next=replace(next,{...actor,position:cell,wallClimbedRound:battle.round});
+  }
+  return log(next,'climb-walls',actor.name+(degrees?' escalou ':' falhou em escalar ')+
+   fort.name+' ('+roll.total+' vs '+difficulty+').',actor,{
+    roll:roll.dice,total:roll.total,difficulty,degrees,
+   });
+ }
  if(order.kind==='push'){
   const target=targetOf(battle,actor,order);
   if(target.side===actor.side||distance(actor.position,target.position)!==1)
