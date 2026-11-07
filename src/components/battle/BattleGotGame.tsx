@@ -227,7 +227,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      {unitId:candidate?.id??matching?.id??''}:{}),
     ...(['personal-attack','personal-charge','personal-attack-mount'].includes(heroAction)?
      {targetHeroId:heroTargetId||battle.heroes.find(h=>h.side!==hero.side&&h.active)?.id||''}:{}),
-    ...(['personal-move','personal-trample'].includes(heroAction)?{toMetres:heroMetres}:{}),
+    ...(['personal-move','personal-trample','personal-control-mount'].includes(heroAction)?{toMetres:heroMetres}:{}),
     ...(heroAction==='personal-free-mount'?{escapeUsing:mountEscapeSkill}:{}),
     ...(['personal-attack','personal-attack-mount'].includes(heroAction)?{ranged:heroRanged}:{}),
     ...(heroAction==='personal-counterattack'?{
@@ -667,7 +667,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       {['personal-attack','personal-attack-unit','personal-counterattack','personal-attack-mount'].includes(heroAction)&&<label className="got-check">
        <input type="checkbox" checked={heroRanged} onChange={e=>setHeroRanged(e.target.checked)}/>
        Atacar usando Pontaria (distâncias pessoais em metros)</label>}
-      {['personal-move','personal-trample'].includes(heroAction)&&<>
+      {['personal-move','personal-trample','personal-control-mount'].includes(heroAction)&&<>
        <label>X em metros (quadrados de 1 m)
         <input type="number" min={0} max={battle.width*10-1} value={heroMetres.x}
          onChange={e=>setHeroMetres(v=>({...v,x:Number(e.target.value)}))}/></label>
