@@ -377,7 +377,7 @@ export function issueWarOrder(battle:WarBattle,input:{
  if(input.order.kind==='move'&&!input.order.to)throw new Error('Indique o quadrado de destino.');
  if(input.order.kind==='formation'&&(!input.order.formation||!battle.advancedFormations))throw new Error('Formação avançada indisponível ou desabilitada.');
  if(input.order.kind==='turn'&&(!input.order.facing||!battle.advancedFormations))throw new Error('Selecione uma orientação válida.');
- if(['attack','charge','aggressive-retreat','suppress','ambush','probe'].includes(input.order.kind)&&input.order.targetId){
+ if(['attack','charge','aggressive-retreat','suppress','ambush','probe','push'].includes(input.order.kind)&&input.order.targetId){
   const target=battle.units.find(u=>u.id===input.order.targetId);
   if(!target||target.side===unit.side||!onBoard(target))throw new Error('Alvo inimigo indisponível.');
  }
@@ -432,7 +432,7 @@ export function issueWarOrder(battle:WarBattle,input:{
   try{next=perform(next,issued,input.order,degrees);}
   catch(e){throw e;}
   const latest=next.units.find(u=>u.id===unit.id)!;
-  const continuous=(['attack','charge','defend','retreat','aggressive-retreat','ready'].includes(input.order.kind));
+  const continuous=(['attack','charge','defend','retreat','aggressive-retreat','ready','push'].includes(input.order.kind));
   next=replaceUnit(next,{...latest,standing:continuous&&onBoard(latest)?input.order:null});
  }
  next={...next,turn:turnAfter(next,commander.side)};
@@ -555,6 +555,13 @@ export function advanceWarRound(battle:WarBattle):WarBattle{
      const ranged=Boolean(order.ranged);
      const target=chooseNearest(next,base,ranged);
      if(target)next=attack(next,base,target,ranged);
+    }else if(order.kind==='push'){
+     const target=chooseNearest(next,base,false);
+     if(target){
+      const pushed=executeAdvancedWarOrder(next,base,{kind:'push',targetId:target.id},
+       {attack,applyDamage});
+      if(pushed)next=pushed;
+     }
     }else if(order.kind==='defend')next=perform(next,base,{kind:'defend'},1);
     else if(order.kind==='retreat')next=retreatStep(next,base,movementCells(base,false),false);
    }catch{
