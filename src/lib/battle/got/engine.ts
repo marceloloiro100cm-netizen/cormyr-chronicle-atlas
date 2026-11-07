@@ -3,6 +3,8 @@ import type {WarBattle,WarCommander,WarCondition,WarEvent,WarOrder,WarOrderResul
 import {terrainAt,terrainEffect,movementSlow,visibilityPenalty,weatherAttackModifier,terrainHighGround} from './terrain';
 import type {WarTerrainTile,WarWeather,WarVisibility} from './terrain';
 import {WAR_FORMATIONS,formationAllowed,formationMovement,angleAttackBonus,attackAngle} from './formations';
+import {WAR_SIEGE_CATALOG,warSiegeDamage} from './siege';
+import type {WarSiegeEngine} from './siege';
 
 const SIDES:readonly WarSide[]=['attacker','defender'];
 const opposite=(side:WarSide):WarSide=>side==='attacker'?'defender':'attacker';
@@ -58,13 +60,26 @@ export function createWarBattle(input:{
  id:string;name:string;seed:string;width:number;height:number;
  commanders:readonly WarCommander[];units:readonly WarUnit[];
  tiles?:readonly WarTerrainTile[];weather?:WarWeather;visibility?:WarVisibility;
- advancedFormations?:boolean;
+ advancedFormations?:boolean;siege?:readonly WarSiegeEngine[];
 }):WarBattle{
  if(!input.id.trim()||!input.name.trim()||input.seed.length<1)throw new Error('Identificação do combate inválida.');
  if(!Number.isInteger(input.width)||!Number.isInteger(input.height)||input.width<5||input.height<5||
  input.width>60||input.height>60)throw new Error('Dimensão do mapa inválida.');
  const ids=[...input.units.map(u=>u.id),...input.commanders.map(c=>c.id)];
  if(new Set(ids).size!==ids.length||input.units.length<2)throw new Error('Identificadores ou unidades inválidos.');
+ const siegeIds=new Set<string>();
+ const engineerCounts=new Map<string,number>();
+ for(const engine of input.siege??[]){
+  const profile=WAR_SIEGE_CATALOG[engine.kind];
+  if(!profile||siegeIds.has(engine.id)||!engine.id.trim()||!inBounds(input,engine.position)||
+   engine.health<0||engine.health>profile.maxHealth)throw new Error('Máquina de cerco inválida.');
+  siegeIds.add(engine.id);
+  const operator=input.units.find(u=>u.id===engine.engineerId);
+  if(!operator||operator.side!==engine.side||operator.typeId!=='engineers'||!alive(operator))
+   throw new Error('Uma máquina de cerco precisa de unidade de engenheiros ativa.');
+  engineerCounts.set(operator.id,(engineerCounts.get(operator.id)??0)+1);
+  if(engineerCounts.get(operator.id)!>4)throw new Error('Cada unidade de engenheiros opera até quatro máquinas.');
+ }
  const occupied=new Set<string>();
  for(const tile of input.tiles??[]){
   if(!inBounds(input,tile)||!terrainEffect(tile))throw new Error('Terreno inválido.');
@@ -91,7 +106,8 @@ export function createWarBattle(input:{
   standing:u.standing?{...u.standing}:null,issuedThisRound:0,actedThisRound:false,criticalThisRound:false}));
  const initial:WarBattle={id:input.id,name:input.name,seed:seedFromText(input.seed),schemaVersion:1,
   rulesVersion:'GOT-CH10-1',width:input.width,height:input.height,metresPerCell:10,
-  round:1,phase:'orders',first:'defender',turn:'defender',units,commanders,
+  round:1,phase:(input.siege?.length??0)>0?'siege':'orders',first:'defender',turn:'defender',units,commanders,
+  siege:[...(input.siege??[])],siegeCompleted:{attacker:false,defender:false},
   tiles:[...(input.tiles??[])],weather:input.weather??'clear',visibility:input.visibility??'clear',
   advancedFormations:input.advancedFormations??false,
   ordersRemaining:{...commandBudget(commanders,'attacker'),...commandBudget(commanders,'defender')},
@@ -390,6 +406,66 @@ export function issueWarOrder(battle:WarBattle,input:{
  return {battle:next,passed,critical,test:roll.total,difficulty,degrees};
 }
 /** Rendição: a ordem geral requer um teste para cada unidade ativa. */
+/** Passo 5: uma ordem para disparar até Guerra máquinas, cada engenheiro com até quatro. */
+export function fireWarSiegeVolley(battle:WarBattle,input:{
+ commanderId:string;weaponIds:readonly string[];targetId:string;
+}):WarBattle{
+ if(battle.phase!=='siege')throw new Error('A fase de cerco não está ativa.');
+ const commander=battle.commanders.find(c=>c.id===input.commanderId&&c.active&&c.role==='commander');
+ if(!commander||commander.side!==battle.turn||(battle.ordersRemaining[commander.id]??0)<1)
+  throw new Error('Ordem de cerco indisponível.');
+ if(battle.siegeCompleted[commander.side])throw new Error('Este lado já executou a fase de cerco.');
+ if(!input.weaponIds.length||new Set(input.weaponIds).size!==input.weaponIds.length||
+  input.weaponIds.length>commander.warfare)throw new Error('O disparo exige até Guerra máquinas distintas.');
+ const target=battle.units.find(u=>u.id===input.targetId&&u.side!==commander.side&&onBoard(u));
+ if(!target)throw new Error('Alvo de cerco inimigo indisponível.');
+ for(const id of input.weaponIds){
+  const weapon=battle.siege.find(w=>w.id===id&&w.side===commander.side&&w.health>0);
+  if(!weapon)throw new Error('Máquina não pertence ao exército ativo.');
+  const engineer=battle.units.find(u=>u.id===weapon.engineerId);
+  if(!engineer||!alive(engineer)||engineer.typeId!=='engineers')
+   throw new Error('Sem engenheiro disponível para a máquina.');
+  if(weapon.lastFiredRound!==null&&battle.round-weapon.lastFiredRound<2)
+   throw new Error('Máquina precisa aguardar uma rodada completa para recarregar.');
+  if(distance(weapon.position,target.position)*10>WAR_SIEGE_CATALOG[weapon.kind].rangeMetres)
+   throw new Error('Alvo fora do alcance de cerco.');
+ }
+ let next:WarBattle={...battle,ordersRemaining:{
+  ...battle.ordersRemaining,[commander.id]:(battle.ordersRemaining[commander.id]??0)-1,
+ }};
+ for(const id of input.weaponIds){
+  const weapon=next.siege.find(w=>w.id===id)!;
+  const engineer=next.units.find(u=>u.id===weapon.engineerId)!;
+  const profile=WAR_SIEGE_CATALOG[weapon.kind];
+  const rank=engineer.ability.warfare??2;
+  const roll=rollDice(next.seed,rank,0,profile.engineerPenaltyDice);
+  const currentTarget=next.units.find(u=>u.id===input.targetId)!;
+  const degrees=degreesOfSuccess(roll.total,currentTarget.defense);
+  const payload=warSiegeDamage(weapon);
+  const damage=Math.max(0,payload.base*degrees-(payload.ignoresArmor?0:currentTarget.armor));
+  next={...next,seed:roll.nextSeed,siege:next.siege.map(w=>
+   w.id===weapon.id?{...w,lastFiredRound:next.round}:w)};
+  next=log(next,'siege',weapon.name+' disparou contra '+currentTarget.name+': Guerra '+
+   roll.total+' vs Defesa '+currentTarget.defense+', '+degrees+' grau(s), '+damage+' dano.',
+   commander.side,{roll:roll.dice,total:roll.total,difficulty:currentTarget.defense,degrees});
+  if(degrees>0&&damage>0)next=applyDamage(next,currentTarget,damage,weapon.name);
+  if(!next.units.some(u=>u.id===target.id&&onBoard(u)))break;
+ }
+ return completeSiegeSide(next,commander.side);
+}
+function completeSiegeSide(battle:WarBattle,side:WarSide):WarBattle{
+ const done={...battle.siegeCompleted,[side]:true};
+ return {...battle,siegeCompleted:done,
+  ...(done.attacker&&done.defender?{phase:'orders' as const,turn:battle.first}:
+   {turn:opposite(side)})};
+}
+/** A passagem voluntária da fase de cerco não consome ordem. */
+export function skipWarSiege(battle:WarBattle):WarBattle{
+ if(battle.phase!=='siege'||battle.siegeCompleted[battle.turn])
+  throw new Error('Não há fase de cerco para pular.');
+ const side=battle.turn;
+ return completeSiegeSide(log(battle,'siege-skip','Sem disparos nesta fase de cerco.',side),side);
+}
 export function issueWarSurrender(battle:WarBattle,input:{commanderId:string}):WarOrderResult{
  if(battle.phase!=='orders')throw new Error('Batalha encerrada.');
  const commander=battle.commanders.find(c=>c.id===input.commanderId&&c.active&&c.role==='commander');
@@ -451,6 +527,10 @@ export function advanceWarRound(battle:WarBattle):WarBattle{
    ...commandBudget(next.commanders,'defender'),
   },
  };
+ const readyForSiege=next.siege.length>0&&next.siege.some(s=>s.health>0);
+ if(readyForSiege){
+  next={...next,phase:'siege',siegeCompleted:{attacker:false,defender:false}};
+ }
  return sideInitiative(next);
 }
 export function warUnitSummary(unit:WarUnit):{
