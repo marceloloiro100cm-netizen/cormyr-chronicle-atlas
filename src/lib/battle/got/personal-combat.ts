@@ -69,7 +69,7 @@ function attackHero(
  const dist=personalDistance(from,to);
  const reach=actor.meleeWeapon?.reachMetres??1;
  if(!ranged&&dist>Math.max(1,reach))
-  throw new Error('Ataque de Luta exige alvo dentro do alcance em metros.');
+  throw new Error('Ataque de Luta exige alvo adjacente ou dentro do alcance em metros.');
  const effectiveRange=(actor.rangedRange??'short')==='long'?100:10;
  if(ranged&&(actor.rangedDamage<=0||actor.rangedRange==='none'))
   throw new Error('Herói não possui arma de Pontaria disponível.');
