@@ -15,7 +15,7 @@ import {makeModelWarMount} from '@/lib/battle/got/personal-mounts';
 import type {WarPersonalWeaponId} from '@/lib/battle/got/personal-weapons';
 import type {PersonalMitigationChoice} from '@/lib/battle/got/personal-injuries';
 import type {WarHeroAction} from '@/lib/battle/got/heroes';
-import {makeWarFortification,WAR_FORT_PROFILES} from '@/lib/battle/got/fortifications';
+import {makeWarFortification,WAR_FORT_PROFILES,WAR_FORT_DIGITAL_DURABILITY,fortDefense} from '@/lib/battle/got/fortifications';
 import type {WarFortKind} from '@/lib/battle/got/fortifications';
 import {makeModelSiege,WAR_SIEGE_CATALOG,warSiegeReloadRemaining} from '@/lib/battle/got/siege';
 import type {WarSiegeKind,WarSiegeAmmo} from '@/lib/battle/got/siege';
@@ -1435,6 +1435,46 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      {battle.phase==='orders'&&<Button variant="outline" onClick={endRound}>
       Concluir rodada · ordens contínuas
      </Button>}
+     {battle.fortifications.length>0&&<section className="got-fort-preview"
+      aria-label="Estado das fortificações">
+      <h4>Fortificações e integridade</h4>
+      <p className="battle-note">Saúde estrutural e VA são parâmetros de simulação digital,
+       não valores oficiais definidos pela tabela do livro.</p>
+      {battle.fortifications.map(f=><div className="got-unit" key={f.id}>
+       <strong>{f.name} · {WAR_FORT_PROFILES[f.kind].label}</strong>
+       <span>{SIDE[f.side]} · capacidade {WAR_FORT_PROFILES[f.kind].capacity}
+        · Defesa atual +{fortDefense(f)}</span>
+       <span>Integridade {f.structuralHealth??WAR_FORT_DIGITAL_DURABILITY[f.kind].health}
+        /{WAR_FORT_DIGITAL_DURABILITY[f.kind].health}
+        · VA estrutural {f.structuralArmor??WAR_FORT_DIGITAL_DURABILITY[f.kind].armor}
+        · sabotagem {f.sabotage}</span>
+       <span>{f.breached||f.structuralHealth===0?'Brecha aberta · bônus de Defesa eliminado':
+        'Estrutura íntegra ou parcialmente danificada'}</span>
+      </div>)}
+     </section>}
+     {battle.heroes.length>0&&<details className="got-hero-overview">
+      <summary>Heróis e esquadrões · {battle.heroes.filter(h=>h.active).length} ativos,
+       {battle.squads?.length??0} destacamentos</summary>
+      <p className="battle-note">Ações individuais e baixas de esquadrão são mantidas
+       no estado da batalha, separadas da ficha militar real.</p>
+      {battle.heroes.filter(h=>!h.squadId).map(h=><div className="got-unit" key={h.id}>
+       <strong>{h.name} · {SIDE[h.side]}</strong>
+       <span>{h.active?'Ativo':'Incapacitado'} · Saúde {h.health}/{h.maxHealth}
+        · Defesa {h.defense} · VA {h.armor}</span>
+       <span>Luta {h.fighting}d6 · Pontaria {h.marksmanship}d6
+        · ferimentos {h.wounds??0} · lesões {h.injuries??0}</span>
+      </div>)}
+      {(battle.squads??[]).map(squad=>{
+       const disabled=squad.memberIds.filter(id=>
+        !battle.heroes.find(h=>h.id===id)?.active).length;
+       return <div className="got-unit" key={squad.id}>
+        <strong>{squad.id}</strong>
+        <span>Unidade: {battle.units.find(u=>u.id===squad.unitId)?.name??squad.unitId}
+         · incapacitados {disabled}/10
+         · baixa coletiva {squad.casualtyRecorded?'consolidada':'pendente'}</span>
+       </div>;
+      })}
+     </details>}
      <h4>Tropas no campo</h4>
      <div className="got-roster">{battle.units.map(u=><div className="got-unit" key={u.id}>
       <div className="got-roster-head"><MilitaryUnitSymbol typeId={u.typeId} size="small"/>
