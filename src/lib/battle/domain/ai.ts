@@ -1,7 +1,8 @@
 import type { BattleCommand, BattleState, BattleStack, Hex } from './types';
 import { applyBattleCommand, getLegalActions } from './turns';
 import { resolveDamage } from './combat';
-import { hexDistance, hexKey } from '../geometry/hex';
+import { hexKey } from '../geometry/hex';
+import {gridDistance} from '../geometry/grid';
 import { reachablePaths } from '../geometry/pathfinding';
 
 type Attack=Extract<BattleCommand,{type:'ATTACK'}>;
@@ -20,7 +21,7 @@ export function chooseAiCommand(state:BattleState):BattleCommand {
  const legal=getLegalActions(state);
  const attacks=legal.filter((c):c is Attack=>c.type==='ATTACK').map(command=>{
   const target=state.stacks.find(s=>s.id===command.targetId)!;
-  const melee=hexDistance(unit.position,target.position)===1;
+  const melee=gridDistance(state.map,unit.position,target.position)===1;
   const result=resolveDamage(state.map,unit,target,!melee);
   const defeats=result.defender.currentHp===0||result.defender.moraleState==='routed';
   return {command,target,result,defeats};
@@ -43,10 +44,10 @@ export function chooseAiCommand(state:BattleState):BattleCommand {
   const zoc=enemies.map(s=>s.position);
   const paths=reachablePaths(state.map,unit.position,unit.movementHex,{occupied,enemies:zoc});
   const costs=new Map(paths.map(p=>[hexKey(p.to),p.cost]));
-  const oldDistance=Math.min(...enemies.map(s=>hexDistance(unit.position,s.position)));
+  const oldDistance=Math.min(...enemies.map(s=>gridDistance(state.map,unit.position,s.position)));
   const ranked=choices.map(command=>({
    command,
-   distance:Math.min(...enemies.map(e=>hexDistance(command.to,e.position))),
+   distance:Math.min(...enemies.map(e=>gridDistance(state.map,command.to,e.position))),
    cost:costs.get(hexKey(command.to))??Infinity,
   })).filter(item=>item.distance<oldDistance);
   ranked.sort((a,b)=>a.distance-b.distance||a.cost-b.cost||
