@@ -54,3 +54,7 @@
  .battle-module .got-cell.occupied strong{font-size:12px}
  .battle-module .battle-got .battle-heading{align-items:start;flex-direction:column}
 }
+
+.battle-module .got-map.got-paint{max-width:540px}
+.battle-module .got-cell.got-terrain{background:#645437;border-color:#efc77d}
+.battle-module .got-map.got-paint .got-cell{min-height:28px;font-size:13px}
