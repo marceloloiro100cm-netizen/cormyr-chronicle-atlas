@@ -1,4 +1,4 @@
-import {degreesOfSuccess,rollDice} from './dice';
+import {degreesOfSuccess} from './dice';
 import {executePersonalWarAction} from './personal-combat';
 import type {PersonalWarAction} from './personal-combat';
 import type {WarPersonalWeapon} from './personal-weapons';
