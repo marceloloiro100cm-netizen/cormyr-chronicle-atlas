@@ -2,7 +2,7 @@ import {useEffect,useState,lazy,Suspense} from 'react';
 import {useServerFn} from '@tanstack/react-start';
 import {checkBattlePersistence} from '@/lib/battle/battle-session.functions';
 import {Button} from '@/components/ui/button';
-import {BATTLE_RULES_VERSION,BATTLE_PERSISTENCE_UI_ENABLED,BATTLE_CRZ_TRAINING_UI_ENABLED} from '@/lib/battle/feature-flag';
+import {BATTLE_RULES_VERSION,BATTLE_PERSISTENCE_UI_ENABLED,BATTLE_CRZ_TRAINING_UI_ENABLED,BATTLE_V3_LIVE_ENABLED} from '@/lib/battle/feature-flag';
 import type {BattleState,Side} from '@/lib/battle/domain/types';
 import {BattleSetup} from './BattleSetup';
 import {BattleArena} from './BattleArena';
@@ -11,6 +11,7 @@ import {BattleSavedPanel} from './BattleSavedPanel';
 import {BattleV3Game} from './BattleV3Game';
 import {BattleAccessCheck} from './BattleAccessCheck';
 import {BattleV3InvitationCreator} from './BattleV3InvitationCreator';
+import {BattleV3LiveCreator} from './BattleV3Live';
 import './battle.css';
 import './battle-legibility.css';
 
@@ -19,7 +20,7 @@ const BattleCrzLab=lazy(()=>import('./BattleCrzLab').then(m=>({default:m.BattleC
 
 
 export function BattleNarratorHub(){
- const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'crz'|'invite'>('home');
+ const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'crz'|'invite'|'live'>('home');
  const [state,setState]=useState<BattleState|null>(null);
  const [resumeState,setResumeState]=useState<BattleState|null>(null);
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Atacante',defender:'Defensor'});
@@ -57,6 +58,7 @@ export function BattleNarratorHub(){
        onClick={()=>setView('crz')}>CRZ-1.0 · Laboratório (teste)</Button>}
       <Button variant="outline" onClick={()=>setView('setup')}>Criar batalha</Button>
       <Button variant="outline" onClick={()=>setView('invite')}>Convocar batalha</Button>
+      {BATTLE_V3_LIVE_ENABLED&&<Button variant="outline" onClick={()=>setView('live')}>Convocar multiplayer</Button>}
       <Button variant="outline" onClick={()=>setManual(x=>!x)}>Consultar regras</Button>
       <Button variant="outline" onClick={()=>setShowImport(x=>!x)}>Importar replay JSON</Button>
       {canSave?<Button variant="outline" onClick={()=>setView('saved')}>Batalhas salvas</Button>:
@@ -77,6 +79,7 @@ export function BattleNarratorHub(){
    <BattleCrzLab onBack={()=>setView('home')}/>
   </Suspense>}
   {view==='invite'&&<BattleV3InvitationCreator onBack={()=>setView('home')}/>}
+  {view==='live'&&BATTLE_V3_LIVE_ENABLED&&<BattleV3LiveCreator onBack={()=>setView('home')}/>}
   {view==='saved'&&canSave&&<BattleSavedPanel onClose={()=>setView('home')}
     onResume={(ready,restored)=>{
       setState(ready);setResumeState(restored);
