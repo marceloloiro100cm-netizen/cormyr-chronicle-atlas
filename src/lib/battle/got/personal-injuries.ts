@@ -1,5 +1,6 @@
 import type {WarBattle,WarEvent} from './types';
 import type {WarHero} from './heroes';
+import {resumePersonalCounterattack} from './personal-combat';
 
 /** Capítulo 9: decisões voluntárias de mitigação, mantidas fora das fichas oficiais. */
 export type PersonalMitigationChoice=Readonly<{
@@ -85,5 +86,5 @@ export function resolvePendingPersonalDamage(
  const pending=battle.pendingPersonalDamage;
  if(!pending)throw new Error('Não há dano pessoal pendente.');
  const resolved=applyPersonalDamage(battle,pending,choice);
- return {...resolved,pendingPersonalDamage:undefined};
+ return resumePersonalCounterattack({...resolved,pendingPersonalDamage:undefined});
 }
