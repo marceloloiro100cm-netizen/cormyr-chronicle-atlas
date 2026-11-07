@@ -225,11 +225,12 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     kind:heroAction,
     ...(['join','rally','revive'].includes(heroAction)?
      {unitId:candidate?.id??matching?.id??''}:{}),
-    ...(['personal-attack','personal-charge','personal-attack-mount'].includes(heroAction)?
+    ...(['personal-attack','personal-charge','personal-attack-mount',
+     'personal-cautious-attack','personal-reckless-attack'].includes(heroAction)?
      {targetHeroId:heroTargetId||battle.heroes.find(h=>h.side!==hero.side&&h.active)?.id||''}:{}),
     ...(['personal-move','personal-trample','personal-control-mount'].includes(heroAction)?{toMetres:heroMetres}:{}),
     ...(heroAction==='personal-free-mount'?{escapeUsing:mountEscapeSkill}:{}),
-    ...(['personal-attack','personal-attack-mount'].includes(heroAction)?{ranged:heroRanged}:{}),
+    ...(['personal-attack','personal-cautious-attack','personal-attack-mount'].includes(heroAction)?{ranged:heroRanged}:{}),
     ...(heroAction==='personal-counterattack'?{
      ranged:heroRanged,vsCharge:counterAgainstCharge,
     }:{}),
@@ -618,6 +619,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <option value="abdicate">Abdicar do comando</option>
         <option value="assume">Assumir comando vago</option>
         <option value="personal-attack">Combate pessoal · atacar (menor)</option>
+        <option value="personal-aim">Combate pessoal · mirar (+1B, menor)</option>
+        <option value="personal-cautious-attack">Ataque Cauteloso (−1D; Defesa +3, menor)</option>
+        <option value="personal-reckless-attack">Ataque Imprudente (+1D Luta; Defesa −5, maior)</option>
         <option value="personal-charge">Combate pessoal · carga (maior)</option>
         <option value="personal-attack-unit">Herói atacar unidade inteira · Defesa +20</option>
         <option value="personal-move">Combate pessoal · mover (menor)</option>
@@ -637,7 +641,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <option value="personal-surrender">Combate pessoal · render-se (maior)</option>
        </select>
       </label>
-      {['personal-attack','personal-charge','personal-attack-mount'].includes(heroAction)&&
+      {['personal-attack','personal-charge','personal-attack-mount',
+       'personal-cautious-attack','personal-reckless-attack'].includes(heroAction)&&
        <label>{heroAction==='personal-attack-mount'?'Cavaleiro da montaria adversária':'Herói adversário'}
         <select value={heroTargetId||battle.heroes.find(h=>h.side!==
          (battle.heroes.find(x=>x.id===heroId)??battle.heroes[0])?.side&&h.active)?.id||''}
@@ -664,7 +669,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         onChange={e=>setCounterAgainstCharge(e.target.checked)}/>
         Preparar contra carga (arma de Luta, +2 dano básico quando o ataque for uma carga)
        </label>}
-      {['personal-attack','personal-attack-unit','personal-counterattack','personal-attack-mount'].includes(heroAction)&&<label className="got-check">
+      {['personal-attack','personal-attack-unit','personal-counterattack',
+       'personal-attack-mount','personal-cautious-attack'].includes(heroAction)&&<label className="got-check">
        <input type="checkbox" checked={heroRanged} onChange={e=>setHeroRanged(e.target.checked)}/>
        Atacar usando Pontaria (distâncias pessoais em metros)</label>}
       {['personal-move','personal-trample','personal-control-mount'].includes(heroAction)&&<>
