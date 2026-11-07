@@ -16,8 +16,10 @@ import {CRZ_TRAINING_DEFAULTS,CRZ_TRAINING_SCENARIOS,
  crzTrainingReady,type CrzTrainingOptions}
  from '@/lib/crusade/training-demo';
 import type {CrzSpellId} from '@/lib/crusade/setup';
-import {initialGeneralProfile,generalProfileFromJson,awardGeneralTraining,
+import {initialGeneralProfile,awardGeneralTraining,
  type TrainingGeneralProfile} from '@/lib/crusade/general-progression';
+import {readGeneralTrainingProfile,saveGeneralTrainingProfile}
+ from '@/lib/crusade/training-profile-store';
 import {crzObservedObjectives,crzAfterActionReport,crzAfterActionSerialize,
  type CrzObservedObjective} from '@/lib/crusade/insights';
 import './crz-lab.css';
@@ -199,18 +201,13 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const [showImport,setShowImport]=useState(false);
  const [highContrast,setHighContrast]=useState(false);
  const [generalProfile,setGeneralProfile]=useState<TrainingGeneralProfile>(initialGeneralProfile);
- useEffect(()=>{
-  try{
-   const saved=window.localStorage.getItem('cca-crz-training-general-v1');
-   if(saved)setGeneralProfile(generalProfileFromJson(saved));
-  }catch{/* Perfil local opcional; simulação não depende de armazenamento. */}
- },[]);
+ useEffect(()=>{setGeneralProfile(readGeneralTrainingProfile());},[]);
  const awardProgress=()=>{
   if(!session)return;
   try{
    const result=awardGeneralTraining(generalProfile,session.replay);
    setGeneralProfile(result.profile);
-   window.localStorage.setItem('cca-crz-training-general-v1',JSON.stringify(result.profile));
+   saveGeneralTrainingProfile(result.profile);
    setMessage(result.awarded>0?
     'General Tillet recebeu '+result.awarded+' XP de treinamento.':'Esta batalha já concedeu XP.');
    setError('');
@@ -512,7 +509,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
        <select aria-label="Magia do General" value={selectedSpell}
         disabled={!canAct||!spells.length}
         onChange={e=>{setSpell(e.target.value as CrzSpellId);setSpellTarget('');}}>
-        {(caster?.spells??[]).filter(id=>CRZ_LOT8_SPELLS.includes(id)).map(id=>
+        {(caster?.spells??[]).filter(id=>CRZ_ADVANCED_SPELLS.includes(id)).map(id=>
          <option key={id} value={id}>{SPELL_LABELS[id]??id}</option>)}
        </select>
       </label>
