@@ -20,6 +20,8 @@ import type {WarHeroAction} from '@/lib/battle/got/heroes';
 import {makeWarFortification,WAR_FORT_PROFILES,WAR_FORT_DIGITAL_DURABILITY,fortDefense} from '@/lib/battle/got/fortifications';
 import type {WarFortKind} from '@/lib/battle/got/fortifications';
 import {makeModelSiege,WAR_SIEGE_CATALOG,warSiegeReloadRemaining} from '@/lib/battle/got/siege';
+import {previewWarSiegeReadiness} from '@/lib/battle/got/siege-readiness';
+import {personalPosition} from '@/lib/battle/got/personal-combat';
 import type {WarSiegeKind,WarSiegeAmmo} from '@/lib/battle/got/siege';
 import {modelWarUnit,modelWarCommanders,WAR_MODEL_UNIT_TYPES} from '@/lib/battle/got/models';
 import type {WarModelUnitTypeId} from '@/lib/battle/got/models';
@@ -176,6 +178,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [mapExpanded,setMapExpanded]=useState(false);
  const [eventFilter,setEventFilter]=useState<'all'|'attacker'|'defender'|'dice'>('all');
  const [aftermathSide,setAftermathSide]=useState<'all'|WarSide>('all');
+ const [masterOfArmsSides,setMasterOfArmsSides]=useState<Record<WarSide,boolean>>({
+  attacker:false,defender:false,
+ });
  const start=()=>{
   try{
    const prepared=positionedWarLabDeployments(extraUnitsPerSide,deploymentPositions,
@@ -492,7 +497,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
   }catch{setError('Não foi possível apagar a cópia local.');}
  };
  const preparedDeployments=modelWarLabDeployments(extraUnitsPerSide,mapSize.width,mapSize.height);
- const aftermath=battle?.phase==='finished'?previewWarAftermath(battle):null;
+ const aftermath=battle?.phase==='finished'?previewWarAftermath(battle,{
+  masterOfArmsBonus:Object.fromEntries(battle.units.filter(u=>masterOfArmsSides[u.side])
+   .map(u=>[u.id,1 as const])),
+ }):null;
  const projectedResources=battle?.phase==='finished'?
   previewWarResourceConsequences(battle,resourceScenario.occupiedDomain?
    resourceScenario:{...resourceScenario,capturedLandValue:0,
@@ -504,6 +512,26 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
   movePreview.path.map(p=>p.x+':'+p.y):[]);
  const inspectedTile=battle?terrainAt(battle.tiles,coord):null;
  const inspectedEffect=inspectedTile?terrainEffect(inspectedTile):null;
+ const siegeTargetUnit=battle?.phase==='siege'&&siegeTargetMode==='unit'?
+  battle.units.find(u=>u.id===target&&u.side!==battle.turn&&
+   !['destroyed','escaped','surrendered'].includes(u.condition))??
+  battle.units.find(u=>u.side!==battle.turn&&
+   !['destroyed','escaped','surrendered'].includes(u.condition)):null;
+ const siegeTargetFort=battle?.phase==='siege'&&siegeTargetMode==='fort'?
+  battle.fortifications.find(f=>f.id===siegeFortId&&f.side!==battle.turn&&!f.breached)??
+  battle.fortifications.find(f=>f.side!==battle.turn&&!f.breached):null;
+ const siegeTargetHero=battle?.phase==='siege'&&siegeTargetMode==='hero'?
+  battle.heroes.find(h=>h.id===siegeHeroId&&h.active&&h.side!==battle.turn&&!h.unitId)??
+  battle.heroes.find(h=>h.active&&h.side!==battle.turn&&!h.unitId):null;
+ const siegeHeroPosition=siegeTargetHero?personalPosition(siegeTargetHero):null;
+ const siegeAim= siegeTargetMode==='unit'?siegeTargetUnit?.position??null:
+  siegeTargetMode==='fort'?siegeTargetFort?.cells[0]??null:
+  siegeHeroPosition?{x:Math.floor(siegeHeroPosition.x/10),
+   y:Math.floor(siegeHeroPosition.y/10)}:null;
+ const siegeReadiness=battle?.phase==='siege'?
+  previewWarSiegeReadiness(battle,battle.turn,siegeAim,{
+   targetHidden:Boolean(siegeTargetUnit?.hidden&&siegeTargetMode==='unit'),
+  }):[];
  const battleEvents=battle?.events.filter(e=>eventFilter==='all'||
   (eventFilter==='dice'?Boolean(e.roll):e.side===eventFilter)).slice(-30)??[];
  return <section className="battle-got" aria-label="Batalha pelas regras de Guerra dos Tronos RPG">
@@ -1259,6 +1287,18 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       <p className="battle-note">Selecione até Guerra máquinas para uma salva.
        Sem seleção, dispara a primeira disponível. Todas as máquinas escolhidas
        consomem recarga mesmo que o alvo seja neutralizado.</p>
+      <details className="got-siege-inspector" open>
+       <summary>Diagnóstico de cerco · {siegeReadiness.filter(w=>w.available).length}
+        /{siegeReadiness.length} máquinas prontas para o alvo</summary>
+       <p className="battle-note">Leitura preventiva: não consome ordem ou recarga.
+        O motor verifica novamente todas as condições ao disparar.</p>
+       {siegeReadiness.map(w=><div className="got-unit" key={w.weaponId}>
+        <strong>{w.weaponName} · {w.weaponId} · {w.available?'Pronta':'Bloqueada'}</strong>
+        <span>Engenheiros: {w.engineerName??'não encontrados'} · Vida da máquina {w.remainingHealth}
+         · {w.ammo} · alvo a {w.distanceMetres??'—'} m / alcance {w.rangeMetres} m</span>
+        <span>{w.blockers.length?w.blockers.join(' '):'Sem bloqueios identificados.'}</span>
+       </div>)}
+      </details>
       {battle.siege.some(w=>w.side===battle.turn&&w.health>0)&&
        <label>Tipo de alvo
         <select value={siegeTargetMode}
@@ -1533,6 +1573,16 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        {aftermath.glory[side]}</span>
      </div>)}
     </div>}
+    <fieldset className="got-after-modifiers">
+     <legend>Mestre de Armas · bônus condicional na Tabela 10-6</legend>
+     <p className="battle-note">Ative +1 apenas se a Casa tiver a posse correspondente.
+      Esta escolha vale somente para o relatório da simulação.</p>
+     {(['attacker','defender'] as const).map(side=><label className="got-check" key={side}>
+      <input type="checkbox" checked={masterOfArmsSides[side]}
+       onChange={e=>setMasterOfArmsSides(prev=>({...prev,[side]:e.target.checked}))}/>
+      Mestre de Armas confirmado: {SIDE[side]} (+1)
+     </label>)}
+    </fieldset>
     <label>Filtrar resultados das tropas
      <select value={aftermathSide}
       onChange={e=>setAftermathSide(e.target.value as 'all'|WarSide)}>
@@ -1545,6 +1595,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      {(aftermath?.survivors??[]).filter(row=>aftermathSide==='all'||row.side===aftermathSide).map(row=><div className="got-unit" key={row.unitId}>
       <strong>{row.unitName}</strong><span>Condição: {row.condition} · 1d6 = {row.die}
        · resultado ajustado {row.adjusted}</span>
+      <span>Cálculo: d6 {row.die} + Mestre de Armas {row.masterOfArmsBonus}
+       − Desorganizações adicionais {row.disorganizationPenalty} =
+       {row.adjusted} (limitado a 0–6)</span>
       <span>Treinamento: {row.steps==='destroyed'?'proposta de destruição':
        row.steps===0?'inalterado':row.steps>0?'+'+row.steps+' graduação(ões)':
        row.steps+' graduação(ões)'}</span>
@@ -1629,6 +1682,23 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        ', resgate proposto '+h.ransomWealth+' Riqueza)').join(' · '):
       'nenhum registrado'}.</p>
      <p className="battle-note">{projectedResources.notes.join(' ')}</p>
+     <div className="got-unit">
+      <strong>Ocupação · {projectedResources.occupationReview.status==='secured'?
+       'três meses informados':'não consolidada'}</strong>
+      <span>Terras {projectedResources.occupationReview.land} ·
+       Defesa {projectedResources.occupationReview.defense} ·
+       Riqueza investida {projectedResources.occupationReview.wealth}</span>
+      <span>Proposta pendente de autorização do Narrador; nenhum valor lançado.</span>
+     </div>
+     <details className="got-resource-rolls">
+      <summary>Auditoria dos dados de consequências ({projectedResources.rollLedger.length})</summary>
+      {projectedResources.rollLedger.map(roll=><p key={roll.reason}>
+       {roll.reason}: [{roll.dice.join(', ')}] = {roll.total}</p>)}
+     </details>
+     {projectedResources.approvalItems.length>0&&<div className="got-review-tasks">
+      <strong>Decisões pendentes do Narrador</strong>
+      <ul>{projectedResources.approvalItems.map((item,i)=><li key={i}>{item}</li>)}</ul>
+     </div>}
      {projectedResources.provisionalOccupationTransfer?
       <p role="status" className="got-review-alert">Ocupação não consolidada: Terras e Defesa condicionais.</p>:null}
      {projectedResources.unresolvedScorchedDomains.length>0?
