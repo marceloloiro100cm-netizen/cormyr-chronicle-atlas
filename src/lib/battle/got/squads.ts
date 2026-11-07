@@ -29,7 +29,11 @@ export function deployWarSquad(battle:WarBattle,input:{
  const troops=ids.map((id,i)=>{
   const hero=makeModelWarHero({id,name:unit.name+' · soldado '+(i+1),
    side:unit.side,position:{...unit.position}});
-  const position={x:unit.position.x*10+(i%5)+2,y:unit.position.y*10+Math.floor(i/5)+4};
+  // Cada destacamento utiliza dez posições pessoais exclusivas da
+  // área 10×10 m da unidade: evita sobrepor dez esquadrões no mesmo local.
+  const ordinal=attached.length*10+i;
+  const position={x:unit.position.x*10+(ordinal%10),
+   y:unit.position.y*10+Math.floor(ordinal/10)};
   return {...hero,squadId:input.squadId,personalPosition:position,
    agility:unit.ability.agility,athletics:unit.ability.athletics,
    awareness:unit.ability.awareness,endurance:unit.ability.endurance,
