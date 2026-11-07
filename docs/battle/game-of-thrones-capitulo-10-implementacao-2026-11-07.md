@@ -337,3 +337,48 @@ Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsist
   oponente contido já derrotado, mais ferramentas de
   contenção e interrupções de múltiplas ações requerem auditoria.
   Não declarar equivalência integral ao livro.
+
+## Incremento — duas armas, ataque combinado e imobilização avançada (7/11/2026)
+
+- **Ataque com Duas Armas (capítulo 9, p. 205):** uma ação maior combina
+  uma arma principal de Luta com uma arma secundária Mão Inábil.
+  No catálogo-modelo, a adaga aumenta em +1 o dano básico por
+  grau de sucesso. A mesma adaga oferece +1 à Defesa se não for
+  utilizada no ataque. Ao atacar com ambas, a Defesa da arma secundária
+  é suspensa até o início do próximo turno. Armas principais de
+  Duas Mãos não permitem a combinação.
+- **Ataque Combinado (p. 205):** ação maior que distribui dados de Luta
+  e bônus por dois ou mais alvos, adicionando o dano da Mão Inábil a
+  cada golpe. Reutiliza a sequência `pendingPersonalSplit`, inclusive
+  o modificador de dano da arma secundária, para que mitigação manual
+  e contra-ataques não dupliquem golpes ou custos.
+- **Imobilização de Agarrar (p. 206):** o agarrador pode gastar uma
+  ação maior em teste oposto de Atletismo para imobilizar o oponente
+  já agarrado. Turnos seguintes exigem outra ação maior para manter
+  a imobilização; abandonar a manutenção remove o estado de
+  indefeso, mas não libera automaticamente o Agarrar. A vítima só
+  pode tentar escapar com uma ação maior e teste oposto de Luta.
+  Alvo indefeso perde o componente de Agilidade da Defesa e
+  concede +1D aos ataques contra si.
+- **Imobilização de Empalar (p. 199–200):** ação maior, Atletismo
+  contra Vigor passivo do alvo, para prender o inimigo empalado
+  ao cenário. A retirada da arma também limpa a fixação ao cenário.
+- **Cura de aliado (p. 200):** um aliado adjacente pode retirar a
+  arma empalada com ação maior e teste de Cura (Dificuldade 12).
+  Sucesso retira sem dano extra; falha ainda remove a arma,
+  causando ao menos 1 ponto de dano e mais um para cada
+  5 pontos de diferença. A decisão voluntária por ferimentos
+  segue o fluxo do laboratório.
+- **Compatibilidade:** foi criado equipamento de Mão Inábil
+  apenas nos heróis-modelo; não se alteram fichas oficiais,
+  atributos de Casa, estoque de itens, Hub Temporal ou os
+  motores Adaptado e D&D. O teste de unidade contra herói
+  leva em conta a Defesa da arma secundária.
+- **Testes:** `battle-got-personal-dual-combined.test.ts` e
+  `battle-got-personal-pin-heal.test.ts`.
+- **Pendências:** armamentos secundários adicionais, efeitos
+  avançados de Mão Inábil, condições contínuas em todos os
+  tipos de ações, escolhas de múltiplos alvos simultâneos,
+  automatização dos limites de mão/armadura e auditoria
+  integral do livro. A branch permanece para revisão;
+  nenhuma declaração de equivalência 100%.
