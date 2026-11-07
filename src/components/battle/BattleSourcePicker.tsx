@@ -1,3 +1,4 @@
+import './battle-source-regions.css';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
