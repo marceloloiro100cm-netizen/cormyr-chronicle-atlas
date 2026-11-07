@@ -10,6 +10,7 @@ export type WarAdvancedKind=keyof typeof WAR_ADVANCED_ORDER_DIFFICULTY;
 type Helpers=Readonly<{
  attack:(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
   options?:{charge?:boolean;penalty?:number;counterCharge?:boolean})=>WarBattle;
+ applyDamage:(battle:WarBattle,target:WarUnit,amount:number,attackerName:string)=>WarBattle;
 }>;
 const distance=(a:WarUnit['position'],b:WarUnit['position'])=>
  Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y));
@@ -62,14 +63,7 @@ export function executeAdvancedWarOrder(
     // No livro, dois ou mais graus causam o mesmo dano de um ataque normal.
     // A supressão nunca ganha dano extra de um terceiro ou quarto grau.
     const damage=Math.max(0,actor.rangedDamage*2-target.armor);
-    if(damage>0){
-     const hp=penalized.health-damage;
-     next=replace(next,{...penalized,health:Math.max(0,hp),
-      ...(hp<=0?{condition:'disorganized' as const,
-       disorganizations:penalized.disorganizations+1}:{})});
-     next=log(next,'suppress-damage',actor.name+' causou '+damage+
-      ' de dano sob supressão em '+target.name+'.',actor);
-    }
+    if(damage>0)next=helpers.applyDamage(next,penalized,damage,actor.name);
    }
   }
   return next;
