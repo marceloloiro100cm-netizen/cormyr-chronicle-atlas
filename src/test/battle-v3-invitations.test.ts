@@ -25,7 +25,7 @@ describe('Batalha V3 — convocações entre narrador e jogador',()=>{
   expect(server).not.toContain('houseOperation(');
   expect(server).not.toContain('changeUnitState(');
  });
- it('jogador só vê o segundo botão com convite ativo filtrado por casa',()=>{
+ it('convocações permanecem preparadas mas ocultas para jogadores nesta publicação',()=>{
   const ui=file('src/components/battle/BattleV3PlayerEntry.tsx');
   const route=file('src/routes/_authenticated/jogadores.tsx');
   expect(ui).toContain("invites.length>0&&<Button");
@@ -33,7 +33,7 @@ describe('Batalha V3 — convocações entre narrador e jogador',()=>{
   expect(ui).toContain("i.target_house_id===houseId&&i.status==='open'");
   expect(ui).toContain('refetchInterval:30000');
   expect(ui).toContain('locked invitationName={selected.title}');
-  expect(route).toContain("tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&<BattleV3PlayerEntry");
+  expect(route).toContain("tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED&&<BattleV3PlayerEntry");
  });
  it('narrador pode criar e encerrar sem expor seus controles ao jogador',()=>{
   const creator=file('src/components/battle/BattleV3InvitationCreator.tsx');
