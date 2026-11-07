@@ -77,7 +77,8 @@
  color:#e7d7bb;font-size:13px;white-space:normal;text-align:right;
 }
 .battle-module .battle-house-source .battle-source-units{
- display:flex;flex-direction:column;gap:7px;margin:10px 0;padding:0;
+ display:flex;flex-direction:column;gap:7px;margin:10px 0;padding:0 3px 0 0;
+ max-height:min(56vh,520px);overflow-y:auto;scrollbar-color:#b19a6b #1d2529;
 }
 .battle-module .battle-house-source .battle-source-units li{
  border:1px solid #706a5f;border-radius:8px;background:rgba(24,34,42,.7);
