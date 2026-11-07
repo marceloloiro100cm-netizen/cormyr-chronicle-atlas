@@ -124,7 +124,7 @@ export const readLiveV3Match=createServerFn({method:'POST'})
   await requireAccess(db);
   return {id:row.id,title:row.title,version:row.state_version,
    status:row.status,attackerHouseId:row.attacker_house_id,defenderHouseId:row.defender_house_id,
-   canPlay:row.status==='active'&&allowed,game};
+   canPlay:row.status==='active'&&allowed,gameJson:JSON.stringify(game)};
  });
 export const playLiveV3Turn=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth]).inputValidator(turnInput)
