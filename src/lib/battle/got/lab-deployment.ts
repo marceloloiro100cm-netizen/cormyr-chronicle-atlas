@@ -1,4 +1,6 @@
 import type {WarPosition,WarSide} from './types';
+import {terrainAt,terrainEffect} from './terrain';
+import type {WarTerrainTile} from './terrain';
 export type WarLabDeployment=Readonly<{
  id:string;side:WarSide;name:string;position:WarPosition;
 }>;
@@ -24,4 +26,50 @@ export function modelWarLabDeployments(extraPerSide:number):readonly WarLabDeplo
    name:'Reforço defensor '+(i+1),position:{x:10,y:row}});
  }
  return basic;
+}
+
+/** Read-only preview. The four imported House slots and extra model slots
+ * share the same placement algorithm, never changing House records.
+ */
+export function placedWarLabDeployments(
+ extraPerSide:number,positions:Readonly<Record<string,WarPosition>>,
+):readonly WarLabDeployment[]{
+ return modelWarLabDeployments(extraPerSide).map(unit=>({
+  ...unit,position:positions[unit.id]?{...positions[unit.id]}:{...unit.position},
+ }));
+}
+export function validateWarLabPlacement(
+ deployments:readonly WarLabDeployment[],tiles:readonly WarTerrainTile[],
+ unitTypes:Readonly<Record<string,string>>,width=12,height=7,
+):void{
+ const used=new Set<string>();
+ for(const unit of deployments){
+  const p=unit.position;
+  if(!Number.isInteger(p.x)||!Number.isInteger(p.y)||p.x<0||p.y<0||
+   p.x>=width||p.y>=height)
+   throw new Error(unit.name+' está fora dos limites do mapa.');
+  const key=p.x+':'+p.y;
+  if(used.has(key))throw new Error('Duas unidades não podem ocupar o mesmo quadrado.');
+  used.add(key);
+  const tile=terrainAt(tiles,p),effect=terrainEffect(tile);
+  const naval=unitTypes[unit.id]==='warships';
+  const mounted=unitTypes[unit.id]==='cavalry';
+  if(naval&&!effect.naval)throw new Error(unit.name+' precisa de água navegável ou costa.');
+  if(!naval&&(effect.blocked||effect.water))
+   throw new Error(unit.name+' não pode ser posicionada em água ou terreno bloqueado.');
+  if(mounted&&effect.noCavalry)
+   throw new Error(unit.name+' não pode ser posicionada em terreno proibido à cavalaria.');
+ }
+}
+/** Validated coordinate relocation, preserving unchanged positions on failure. */
+export function moveWarLabDeployment(
+ extraPerSide:number,positions:Readonly<Record<string,WarPosition>>,
+ unitId:string,to:WarPosition,tiles:readonly WarTerrainTile[],
+ unitTypes:Readonly<Record<string,string>>,
+):Readonly<Record<string,WarPosition>>{
+ if(!modelWarLabDeployments(extraPerSide).some(u=>u.id===unitId))
+  throw new Error('Unidade de posicionamento inexistente.');
+ const next={...positions,[unitId]:{...to}};
+ validateWarLabPlacement(placedWarLabDeployments(extraPerSide,next),tiles,unitTypes);
+ return next;
 }
