@@ -10,7 +10,7 @@ export type WarSide='attacker'|'defender';
 export type WarPosition=Readonly<{x:number;y:number}>;
 export type WarCondition='organized'|'disorganized'|'routed'|'destroyed'|'surrendered'|'escaped';
 export type WarRange='none'|'short'|'long';
-export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'surrender'|'formation'|'turn'|'reverse'|'suppress'|'probe'|'push'|'counter-charge'|'sabotage'|'ambush'|'join';
+export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'surrender'|'formation'|'turn'|'reverse'|'suppress'|'probe'|'push'|'counter-charge'|'sabotage'|'ambush'|'join'|'split-attack'|'lightning-attack'|'trample'|'envelop'|'scorched-earth';
 export type WarReadyPlan=Readonly<{
  trigger:'enemy-adjacent'|'enemy-routed';
  reaction:'attack'|'move';
@@ -21,6 +21,8 @@ export type WarOrder=Readonly<{
  kind:WarOrderKind;
  targetId?:string;
  targetHeroId?:string;
+ /** Alvos e dados para um ataque coletivo dividido (não extrapola a graduação). */
+ targetIds?:readonly string[];testRanks?:readonly number[];bonusRanks?:readonly number[];
  to?:WarPosition;
  sprint?:boolean;
  ranged?:boolean;
@@ -47,6 +49,7 @@ export type WarUnit=Readonly<{
  hidden?:boolean;exposedFacingUntilRound?:number;
  suppressionPenalty?:number;suppressionRound?:number;probeDefenseRound?:number;
  counterChargeReady?:boolean;
+ envelopingTargetId?:string|undefined;envelopedBy?:string|undefined;
  issuedThisRound:number;actedThisRound:boolean;criticalThisRound:boolean;
  source:Readonly<{kind:'model'|'house-readonly';houseId?:string;unitId?:string;version?:number}>;
 }>;
