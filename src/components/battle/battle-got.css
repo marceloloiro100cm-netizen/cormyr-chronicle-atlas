@@ -113,3 +113,13 @@
 .battle-module .got-map.got-paint .got-cell.got-deployed .got-token-frame{
  width:75%;height:75%;max-width:42px;max-height:42px}
 .battle-module .got-map.got-paint .got-cell.got-deployed img{max-width:100%}
+
+
+/* Harmonized equipment/hero inspection with the same unit card visual style. */
+.battle-module .got-fort-preview,.battle-module .got-hero-overview{
+ margin:10px 0;padding:10px;border:1px solid #8c7d5b;border-radius:8px;
+ background:rgba(18,30,25,.66);display:grid;gap:8px;color:#f2e6cc;
+}
+.battle-module .got-hero-overview summary{cursor:pointer;font-weight:700;
+ padding:6px;color:#f8deb1}
+.battle-module .got-hero-overview .got-unit{margin-top:6px}
