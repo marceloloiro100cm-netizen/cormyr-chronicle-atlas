@@ -106,7 +106,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     ]:[],
     fortifications:fortKind==='none'?[]:[makeWarFortification({
      id:'defender-fort',name:WAR_FORT_PROFILES[fortKind].label,side:'defender',
-     kind:fortKind,cells:fortKind==='temporary'?[{x:10,y:2}]:
+     kind:fortKind,cells:WAR_FORT_PROFILES[fortKind].capacity===1?[{x:10,y:2}]:
       [{x:10,y:2},{x:10,y:4}],engineerBuilt:fortKind==='temporary'&&fortEngineer,
      hoursBuilt:fortKind==='temporary'?6:24,
     })],
