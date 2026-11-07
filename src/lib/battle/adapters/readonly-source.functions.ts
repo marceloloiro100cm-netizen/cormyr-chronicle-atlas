@@ -4,7 +4,7 @@ import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
 import type {HouseState} from '@/lib/house/types';
 import {battleHouseDirectory} from './house-directory';
 import {adaptOfficialUnit} from './unit-readonly';
-import {importedNpcBattleStack,importedNpcUnitSchema,previewImportedNpc} from './imported-npc-roster';
+import {importedNpcBattleStack,importedNpcUnitSchema,previewImportedNpc,type ImportedNpcUnit} from './imported-npc-roster';
 
 const sourceQuery=z.object({houseId:z.string().min(1).max(100)}).strict();
 const importQuery=sourceQuery.extend({
@@ -39,12 +39,12 @@ async function readState(db:Context['supabase'],houseId:string):Promise<{state:H
 /** O catálogo de cenário guarda propostas e entradas autorais somente para batalha.
  * Nenhum dado é lançado em noble_house_sheets ou no orçamento da Casa.
  */
-async function readNpcRoster(db:Context['supabase'],houseId:string){
+async function readNpcRoster(db:Context['supabase'],houseId:string):Promise<ImportedNpcUnit[]>{
  const result=await db.from('battle_house_roster_imports')
   .select('source_key,house_id,unit_name,unit_type,training,quantity,standard_unit_strength,source_status,source_row')
   .eq('house_id',houseId).order('source_row').limit(100);
  if(result.error)throw new Error('O catálogo militar de cenários está indisponível.');
- return (result.data??[]).map((raw:unknown)=>importedNpcUnitSchema.parse(raw));
+ return ((result.data??[]) as unknown[]).map(raw=>importedNpcUnitSchema.parse(raw));
 }
 /** Não retorna HouseState nem atributos privados; somente casas sob sessão administrativa. */
 export const listBattleSourceHouses=createServerFn({method:'POST'})
