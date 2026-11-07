@@ -70,7 +70,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [heroesEnabled,setHeroesEnabled]=useState(false);
  const [modelMelee,setModelMelee]=useState<WarPersonalWeaponId>('longsword');
  const [modelRanged,setModelRanged]=useState<WarPersonalWeaponId>('longbow');
- const [modelOffhand,setModelOffhand]=useState<'none'|'dagger'>('none');
+ const [modelOffhand,setModelOffhand]=useState<'none'|WarPersonalWeaponId>('none');
+ const [modelOneHandUnavailable,setModelOneHandUnavailable]=useState(false);
  const [modelHealingRank,setModelHealingRank]=useState(3);
  const [modelMountEnabled,setModelMountEnabled]=useState(false);
  const [modelStrengthBonus,setModelStrengthBonus]=useState(2);
@@ -144,6 +145,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     position:{x:1,y:3},engineerId:engineer.id,
     ammo:siegeKind.startsWith('catapult')?siegeAmmo:'stone',
    })]:[];
+   if(modelOneHandUnavailable&&modelOffhand!=='none')
+    throw new Error('Não é possível usar arma secundária com uma mão indisponível.');
    setBattle(createWarBattle({id:'book-lab-'+seed,name,seed,width:12,height:7,
     units,siege,
     heroes:heroesEnabled?[
@@ -151,6 +154,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       id:'hero-attacker',name:'Herói atacante',side:'attacker',
       position:{x:2,y:5}}),{melee:modelMelee,ranged:modelRanged}),
       modelOffhand==='none'?null:modelOffhand),healing:modelHealingRank,
+      oneHandUnavailable:modelOneHandUnavailable,
       strengthBonusDice:modelStrengthBonus,
       ...(modelMountEnabled?{mount:makeModelWarMount({id:'horse-attacker',
        name:'Corcel atacante',trainedForWar:true})}:{})},
@@ -422,10 +426,19 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      </select>
     </label>
     <label>Arma secundária Mão Inábil
-     <select value={modelOffhand} onChange={e=>setModelOffhand(e.target.value as 'none'|'dagger')}>
+     <select value={modelOffhand} onChange={e=>setModelOffhand(e.target.value as 'none'|WarPersonalWeaponId)}>
       <option value="none">Nenhuma</option>
-      <option value="dagger">Adaga · +1 dano ou +1 Defesa</option>
+      {Object.values(WAR_PERSONAL_WEAPONS).filter(w=>Boolean(w.offhandDamageBonus)).
+       map(w=><option key={w.id} value={w.id}>{w.label} ·
+        +{w.offhandDamageBonus??0} dano /
+        +{w.defensiveOffhandBonus??0} Defesa
+       </option>)}
      </select>
+    </label>
+    <label className="got-check">
+     <input type="checkbox" checked={modelOneHandUnavailable}
+      onChange={e=>setModelOneHandUnavailable(e.target.checked)}/>
+     Uma mão indisponível (−2D com arma de Duas Mãos; incompatível com secundária)
     </label>
     <label>Graduação em Cura (heróis-modelo)
      <input type="number" min={1} max={15} value={modelHealingRank}
