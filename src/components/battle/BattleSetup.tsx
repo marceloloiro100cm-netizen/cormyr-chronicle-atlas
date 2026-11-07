@@ -4,7 +4,7 @@ import {Button} from '@/components/ui/button';
 import {LAND_PROFILES,tacticalProfile} from '@/lib/battle/domain/profiles-v2';
 import {makeFictionalStack,makeBattleSetup} from '@/lib/battle/domain/setup';
 import {createScenario,SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixtures';
-import {convertBattleMapGrid} from '@/lib/battle/geometry/map-conversion';
+
 import {validateBattleMap} from '@/lib/battle/geometry/map-validation';
 import {hexKey} from '@/lib/battle/geometry/hex';
 import type {BattleMap,BattleState,BattleStack,Hex,Side,Training} from '@/lib/battle/domain/types';
@@ -189,13 +189,7 @@ export function BattleSetup({onStart,onBack}:{
     <label>Nome do confronto<input aria-label="Nome do confronto rápido" maxLength={120}
      value={name} onChange={e=>setName(e.target.value)}/></label>
     <label>Formato do mapa<select aria-label="Formato da malha PTE"
-      value="square" onChange={e=>{
-       const id=Object.hasOwn(SCENARIOS,map.id)?map.id as BattleScenarioId:'plain-open';
-       try{setMap(convertBattleMapGrid(map,'square'));}catch(cause){
-        setError(cause instanceof Error?cause.message:'Conversão de malha recusada.');return;
-       }
-       setUnits(list=>list.map(u=>({...u,position:null})));setError('');
-      }}>
+      value="square" disabled>
       <option value="square">Quadrados (novo padrão)</option>
       {/* Mapas hexagonais históricos só podem ser lidos de replays antigos. */}
      </select></label>
@@ -304,13 +298,7 @@ export function BattleSetup({onStart,onBack}:{
    <h3>3. Terreno</h3>
    <div className="battle-form-row">
      <label>Formato do mapa<select aria-label="Formato da malha PTE"
-      value="square" onChange={e=>{
-       const id=Object.hasOwn(SCENARIOS,map.id)?map.id as BattleScenarioId:'plain-open';
-       try{setMap(convertBattleMapGrid(map,'square'));}catch(cause){
-        setError(cause instanceof Error?cause.message:'Conversão de malha recusada.');return;
-       }
-       setUnits(list=>list.map(u=>({...u,position:null})));setError('');
-      }}>
+      value="square" disabled>
       <option value="square">Quadrados (novo padrão)</option>
       {/* Mapas hexagonais históricos só podem ser lidos de replays antigos. */}
      </select></label>
