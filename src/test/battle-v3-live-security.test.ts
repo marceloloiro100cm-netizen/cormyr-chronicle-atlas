@@ -25,6 +25,8 @@ describe('P0/P1 — partidas compartilhadas com segurança e sem efeitos oficiai
  it('funções protegem JWT, vínculo da casa, concorrência e replay; sem operações oficiais',()=>{
   const src=read('src/lib/battle/v3/live.functions.ts');
   expect(src).toContain('requireSupabaseAuth');
+  expect(src).toContain("process.env['ENABLE_BATTLE_V3_LIVE']!=='true'");
+  expect(src.match(/requireLiveEnabled\(\);/g)?.length).toBe(4);
   expect(src).toContain('campaign_access_active');
   expect(src).toContain("'in_campaign_house'");
   expect(src).toContain('edit_required:true');
