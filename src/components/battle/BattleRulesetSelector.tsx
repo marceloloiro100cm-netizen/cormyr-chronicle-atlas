@@ -21,14 +21,17 @@ export function BattleRulesetSelector({value,onChange}:{
     <span className="battle-ruleset-subtitle">{option.shortName}</span>
     <span className="battle-ruleset-description">{option.description}</span>
     <span className="battle-ruleset-status">
-     {option.status==='available'?'Disponível · sistema atual':'Em desenvolvimento · próximo lote'}
+     {option.status==='available'?'Disponível · sistema atual':option.status==='partial'?
+      'Núcleo jogável · cobertura do livro em desenvolvimento':'Em desenvolvimento · próximo lote'}
     </span>
    </label>)}
   </div>
   <p role="status" aria-live="polite" className="battle-note">
    {selected.status==='available'?
     'Modo Adaptado selecionado: a preparação e os motores atuais permanecem disponíveis.':
-    selected.label+' selecionado para configuração. Este modo ainda não executa combates; não será substituído pelo Adaptado.'}
+    selected.status==='partial'?
+     'Game of Thrones selecionado: motor independente disponível para testes; regras avançadas pendentes. Não será substituído pelo Adaptado.':
+     selected.label+' selecionado para configuração. Este modo ainda não executa combates; não será substituído pelo Adaptado.'}
   </p>
  </fieldset>;
 }
