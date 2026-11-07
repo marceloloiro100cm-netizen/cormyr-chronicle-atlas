@@ -80,19 +80,19 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
  assert.equal(balada?.url,'https://www.youtube.com/watch?v=4RuKLjM1QcU');
  assert.ok(balada?.lyrics.includes('Na noite fria e escura'));
  const nova=data.soundtrack.find(s=>s.id==='youtube-wioZhfoQMAs');
- assert.equal(nova?.title,'Faixa de Cormyr 01');
+ assert.equal(nova?.title,'Vai, Meu Grifo, Vai!');
  assert.equal(nova?.category,'populares');
  assert.equal(nova?.videoId,'wioZhfoQMAs');
  assert.equal(nova?.url,'https://www.youtube.com/watch?v=wioZhfoQMAs');
  assert.equal(data.soundtrack.filter(s=>s.videoId==='wioZhfoQMAs').length,1);
  const newTrack=data.soundtrack.find(s=>s.id==='youtube-WrXc5zCbMHA');
  assert.equal(newTrack?.category,'populares');
- assert.equal(newTrack?.title,'Faixa de Cormyr 02');
+ assert.equal(newTrack?.title,'O Brinde das Cinco Cores');
  assert.equal(newTrack?.videoId,'WrXc5zCbMHA');
  assert.equal(newTrack?.url,'https://www.youtube.com/watch?v=WrXc5zCbMHA');
  assert.equal(data.soundtrack.filter(s=>s.videoId==='WrXc5zCbMHA').length,1);
  const newest=data.soundtrack.find(s=>s.id==='youtube-qw9FgNYr7hE');
- assert.equal(newest?.title,'Faixa de Cormyr 03');
+ assert.equal(newest?.title,'Worist da Companhia Consorte');
  assert.equal(newest?.category,'populares');
  assert.equal(newest?.region,'Cormyr');
  assert.equal(newest?.videoId,'qw9FgNYr7hE');
@@ -106,7 +106,7 @@ test('regional and house links use the videos supplied by the Narrator',()=>{
  assert.equal(truta?.url,'https://www.youtube.com/watch?v=a5DitnxYUZM');
  assert.equal(data.soundtrack.filter(s=>s.videoId==='a5DitnxYUZM').length,1);
  const added=data.soundtrack.find(s=>s.id==='youtube-uPYfE1gKDcg');
- assert.equal(added?.title,'Faixa de Cormyr 04');
+ assert.equal(added?.title,'Papai Foi Rei');
  assert.equal(added?.category,'populares');
  assert.equal(added?.videoId,'uPYfE1gKDcg');
  assert.equal(added?.url,'https://www.youtube.com/watch?v=uPYfE1gKDcg');
@@ -228,7 +228,7 @@ test('Músicas Populares reúne canções de bardo em um único filtro, sem dupl
  assert.match(nodes['music-all'].innerHTML,/qw9FgNYr7hE/);
  assert.match(nodes['music-all'].innerHTML,/b34LSA3yDak/);
  assert.match(nodes['music-all'].innerHTML,/uPYfE1gKDcg/);
- for(const label of ['Faixa de Cormyr 01','Faixa de Cormyr 02','Faixa de Cormyr 03','Faixa de Cormyr 04'])
+ for(const label of ['Vai, Meu Grifo, Vai!','O Brinde das Cinco Cores','Worist da Companhia Consorte','Papai Foi Rei'])
   assert.ok(nodes['music-all'].innerHTML.includes(label),label);
  assert.doesNotMatch(nodes['music-all'].innerHTML,/>Nova música de Cormyr(?:\s|<)/);
  assert.doesNotMatch(nodes['music-all'].innerHTML,/Badalos Elementais|Música dos Dragões Azuis/);
@@ -238,12 +238,13 @@ test('Músicas Populares reúne canções de bardo em um único filtro, sem dupl
  assert.equal((nodes['music-all'].innerHTML.match(/<section class="music-links panel">/g)||[]).length,1);
  assert.doesNotMatch(nodes['music-all'].innerHTML,/Novidades da playlist|Cancioneiro/);
  assert.match(nodes['music-all'].innerHTML,/A Balada Libertina do Guardião de Helm/);
+ assert.doesNotMatch(nodes['music-all'].innerHTML,/Ver letra|music-lyrics-entry|<details/i);
  assert.match(nodes['music-all'].innerHTML,/www.youtube.com\/watch\?v=4RuKLjM1QcU/);
- assert.match(nodes['music-all'].innerHTML,/Ver letra · A Balada Libertina do Guardião de Helm/);
+
  assert.match(nodes['music-all'].innerHTML,/Vou-me Embora pra Sossal/);
  assert.match(nodes['music-all'].innerHTML,/b34LSA3yDak/);
  assert.match(nodes['music-all'].innerHTML,/Cante uma Canção a Elturel/);
- assert.match(nodes['music-all'].innerHTML,/Ver letra · Cante uma Canção a Elturel/);
+
  assert.doesNotMatch(nodes['music-all'].innerHTML,/Casa Ashkar/);
  assert.match(window.CORMYR_DATA.soundtrack.find(s=>s.title==='Cante uma Canção a Elturel').lyrics,/\n/);
 });
