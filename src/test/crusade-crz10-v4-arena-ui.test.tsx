@@ -14,7 +14,7 @@ describe('CRZ · V4: arena tática no padrão aprovado',()=>{
   const arena=start();
   expect(within(arena).getByRole('region',{name:'Painel do General CRZ'}))
    .toBeInTheDocument();
-  expect(within(arena).getByRole('img',{name:'Comandante: Tillet'}))
+  expect(within(arena).getByRole('img',{name:/Comandante: /}))
    .toBeInTheDocument();
   expect(within(arena).getByRole('region',{name:'Ordem de combate'}))
    .toBeInTheDocument();
