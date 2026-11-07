@@ -203,8 +203,10 @@ const spellCost:Partial<Record<CrzSpellId,number>>={
  cure_wounds:2,firebolt:2,fireball:6,shield_wall_formation:2,
 };
 
-export function BattleCrzLab({onBack}:{onBack?:()=>void}){
- const [options,setOptions]=useState<CrzTrainingOptions>({...CRZ_TRAINING_DEFAULTS,grid:'square'});
+export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'dnd'}){
+ const dndMode=mode==='dnd';
+ const [options,setOptions]=useState<CrzTrainingOptions>({...CRZ_TRAINING_DEFAULTS,
+  grid:'square',preset:'CRZ-5E'});
  const [session,setSession]=useState<CrzReplaySession|null>(null);
  const [expanded,setExpanded]=useState(false);
  const [replayStep,setReplayStep]=useState<number|null>(null);
@@ -274,7 +276,9 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  };
  const begin=()=>{
   try{
-   const initial=crzReplayBegin(crzTrainingReady({...options,generalLevel:generalProfile.level}));
+   const initial=crzReplayBegin(crzTrainingReady({...options,
+    grid:dndMode?'square':options.grid,preset:dndMode?'CRZ-5E':options.preset,
+    generalLevel:generalProfile.level}));
    const next=crzTrainingAdvanceAi(initial);
    setSession(next);setSelectedId(next.state.activeStackId);
    setPanel('actions');setReplayStep(null);setError('');setExpanded(true);
@@ -367,13 +371,14 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  };
  const arena=<section className={'battle-module crusade-mode crz-lab'+
   (highContrast?' crz-high-contrast':'')}
-  aria-label="Laboratório CRZ-1.0 do Narrador">
+  aria-label={dndMode?'D&D simplificado · laboratório do Narrador':'Laboratório CRZ-1.0 do Narrador'}>
   {!session&&<>
    <header className="battle-header crz-intro">
     <p className="battle-eyebrow">CORMYR · LABORATÓRIO DO NARRADOR</p>
-    <h1>CRZ-1.0 · Cruzada Experimental</h1>
-    <p>Treinamento tático com exércitos-modelo. Nenhum efeito em casas,
-     baixas oficiais, contas ou no calendário.</p>
+    <h1>{dndMode?'D&D · Combate simplificado':'CRZ-1.0 · Cruzada Experimental'}</h1>
+    <p>{dndMode?'Regras simplificadas de inspiração 5e: ataque, CA, PV, movimento e iniciativa em quadrados.':
+     'Treinamento tático com exércitos-modelo.'}
+     Nenhum efeito em casas, baixas oficiais, contas ou no calendário.</p>
     <div className="crz-toolbar">
      {onBack&&<Button variant="outline" onClick={onBack}>Voltar ao módulo</Button>}
      <Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
@@ -394,7 +399,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
     <h2>Preparar batalha-modelo</h2>
     <p>Defensores da Coroa contra forças fictícias de Ashkar.</p>
     <div className="crz-form">
-     <label>Conjunto de regras
+     {!dndMode&&<label>Conjunto de regras
       <select aria-label="Preset CRZ" value={options.preset??'CRZ-5E'}
        onChange={e=>setOptions(o=>({...o,preset:e.target.value as NonNullable<CrzTrainingOptions['preset']>,
         resolution:e.target.value==='CRZ-5E'?o.resolution:'expected'}))}>
@@ -402,20 +407,22 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
        <option value="CRZ-WOTR">CRZ-WOTR (esperado)</option>
        <option value="PTE-2.0-compat">PTE-2.0-compat (esperado)</option>
       </select>
-     </label>
+     </label>}
+     {dndMode&&<p className="battle-note">Motor CRZ-5E fixo neste modo; não substitui
+      regras completas de D&D 5e e não altera os outros sistemas.</p>}
      <label>Cenário
       <select value={options.scenario} aria-label="Cenário CRZ"
        onChange={e=>setOptions(o=>({...o,scenario:e.target.value as CrzTrainingOptions['scenario']}))}>
        {CRZ_TRAINING_SCENARIOS.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
       </select>
      </label>
-     <label>Malha tática
-      <select aria-label="Formato da malha CRZ" value={options.grid??'hex'}
+     {!dndMode&&<label>Malha tática
+      <select aria-label="Formato da malha CRZ" value={options.grid??'square'}
        onChange={e=>setOptions(o=>({...o,grid:e.target.value as 'hex'|'square'}))}>
        <option value="square">Quadrados (novo padrão)</option>
        <option value="hex">Hexágonos (legado)</option>
       </select>
-     </label>
+     </label>}
      <label>Tamanho do mapa
       <select value={options.width} aria-label="Tamanho do mapa CRZ"
        onChange={e=>setOptions(o=>({...o,width:Number(e.target.value) as 11|15}))}>
