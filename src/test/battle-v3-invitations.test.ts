@@ -35,6 +35,13 @@ describe('Batalha V3 — convocações entre narrador e jogador',()=>{
   expect(ui).toContain('locked invitationName={selected.title}');
   expect(route).toContain("tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED&&<BattleV3PlayerEntry");
  });
+ it('convocações estão bloqueadas no servidor durante a publicação exclusiva do Narrador',()=>{
+  const server=file('src/lib/battle/v3/invitations.functions.ts');
+  const gate="process.env['ENABLE_BATTLE_INVITATIONS']!=='true'";
+  expect(server).toContain(gate);
+  expect(server.match(/requireInvitationsEnabled\(\);/g)).toHaveLength(3);
+  expect(file('src/lib/battle/feature-flag.ts')).toContain('BATTLE_PLAYERS_ENABLED=false');
+ });
  it('narrador pode criar e encerrar sem expor seus controles ao jogador',()=>{
   const creator=file('src/components/battle/BattleV3InvitationCreator.tsx');
   const hub=file('src/components/battle/BattleNarratorHub.tsx');
