@@ -109,3 +109,40 @@ Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsist
   `battle-got-personal-weapons.test.ts`.
 - A implementação permanece **isolada e não aprovada para produção**.
   Revalidar no HEAD do PR #324 antes de qualquer mesclagem.
+
+## Incremento — Destino, convalescença e iniciativa adiada
+
+- **Destino (capítulo 5):** `personal-fate.ts` contabiliza pontos disponíveis,
+  gastos (recarregáveis após marco narrativo) e queimados (permanentemente
+  consumidos). Efeitos disponíveis no laboratório: gastar para +1B no próximo
+  teste, gastar para compensar −1D no próximo teste; queimar para remover dano
+  comum e ferimentos, escolher resultado de derrota ou evitar morte certa
+  ficando fora da história. O destino padrão de heróis-modelo é apenas um
+  valor de exemplo (dois pontos), sem conexão com personagens oficiais.
+  Esquadrões comuns não recebem pontos. Outros efeitos do capítulo 5,
+  como ação menor extra, modificação ambiental e alteração de testes de
+  oponentes, exigem implementação adicional ou decisão do Narrador.
+- **Recuperação (capítulo 9):** `personal-recovery.ts` testa Vigor diariamente
+  para ferimentos (dificuldades 6, 9 e 12), ou semanalmente para lesões
+  (9, 15 e 21), com agravamento em falha crítica. Uma Cura substitutiva requer
+  um curandeiro que atenda durante pelo menos quatro horas; falhas de Cura
+  não geram novas lesões/ferimentos. Uma ação explícita separada retira dano
+  comum ao encerrar o combate, sem apagar ferimentos ou lesões.
+  **Não** representa o avanço de um dia/semana no calendário da campanha:
+  o laboratório apenas registra a resolução de um período passado.
+- **Iniciativa atrasada:** `personal-initiative.ts` agora permite adiar a ação
+  até depois dos outros turnos sem interrupção. Atrasar só é permitido uma
+  vez na mesma rodada pessoal; o ordenamento de iniciativa é restaurado
+  no começo da rodada seguinte. Reações de interrupção por teste oposto
+  de Agilidade continuam fora do escopo atual.
+- O ataque individual de herói contra unidade passou a respeitar a
+  iniciativa pessoal e aplicar os bônus de Destino na próxima rolagem.
+  Testes de comando de Guerra dos heróis também consomem tais modificadores.
+- **Novos testes:** `battle-got-personal-fate.test.ts`,
+  `battle-got-personal-recovery.test.ts`, `battle-got-personal-delay.test.ts`.
+  Os resultados permanecem locais e auditáveis, sem qualquer gravação nas
+  fichas oficiais ou alteração do motor Adaptado/D&D.
+- **Ainda bloqueia o selo 100% fiel:** implementações restantes de
+  gasto/queima de Destino, recuperação em cronologia real e escolha narrativa
+  de consequências, esquiva e interrupções avançadas, efeitos de armas
+  e armaduras, precisão geométrica, casos de liderança e cerco avançado.
