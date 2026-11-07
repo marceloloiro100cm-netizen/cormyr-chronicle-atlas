@@ -138,8 +138,8 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
       })}
     </svg>
     </div>
-    <BattleSquareLegend/>
-    <p className="battle-board-cost-note">Adaptado: Floresta e Colina têm custo 2; Rocha bloqueia a passagem.</p>
+    {square&&<BattleSquareLegend/>}
+    {square&&<p className="battle-board-cost-note">Adaptado: Floresta e Colina têm custo 2; Rocha bloqueia a passagem.</p>}
     <span id={helpId} className="sr-only">Use Tab para entrar no mapa, setas para navegar pelos células,
       Enter ou Espaço para selecionar o destino.</span>
     <span className="sr-only">{tileMap.size} células disponíveis; use Tab e Enter para selecionar.</span>
