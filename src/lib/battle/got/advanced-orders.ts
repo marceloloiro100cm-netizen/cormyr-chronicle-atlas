@@ -6,6 +6,7 @@ import type {WarBattle,WarOrder,WarUnit} from './types';
 export const WAR_ADVANCED_ORDER_DIFFICULTY={
  'suppress':3,'probe':6,'push':3,'counter-charge':3,'sabotage':3,'ambush':3,'join':3,
  'split-attack':6,'lightning-attack':6,'trample':3,'envelop':6,'scorched-earth':3,
+ 'pincer':3,'hammer-anvil':6,'climb-walls':3,
 } as const;
 export type WarAdvancedKind=keyof typeof WAR_ADVANCED_ORDER_DIFFICULTY;
 
