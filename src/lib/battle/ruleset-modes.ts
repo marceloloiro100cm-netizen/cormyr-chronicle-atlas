@@ -8,9 +8,9 @@ export const BATTLE_RULESET_OPTIONS=[
  {id:'adapted',label:'Adaptado',shortName:'Sistema atual de Cormyr',
   description:'Mantém o combate desenvolvido: PTE-2.0, Cruzada V3 e laboratório CRZ.',
   status:'available',engine:'pte-v3'},
- {id:'dnd',label:'D&D',shortName:'Combate simplificado',
-  description:'Bônus de ataque, Classe de Armadura, pontos de vida, deslocamento e monstros de D&D.',
-  status:'planned',engine:null},
+ {id:'dnd',label:'D&D',shortName:'Combate simplificado (5e)',
+  description:'Laboratório 5e com bônus de ataque, CA, pontos de vida, movimentação e tropas-modelo. Não replica todo o livro de D&D.',
+  status:'partial',engine:'crz-5e'},
 ] as const;
 
 export type BattleRulesetMode=(typeof BATTLE_RULESET_OPTIONS)[number]['id'];
