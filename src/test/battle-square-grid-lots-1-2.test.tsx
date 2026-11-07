@@ -49,7 +49,9 @@ describe('Cormyr · Lotes 1–2 · migração de malha para quadrados',()=>{
   expect(lineOfSight(original,a,b).clear).toBe(true);
   const blocked={...original,tiles:original.tiles.map(t=>t.q===3&&t.r===2?
    {...t,terrain:'rock' as const}:t)};
-  expect(lineOfSight(blocked,a,b).clear).toBe(false);
+  const ray=lineOfSight(blocked,a,b);
+  expect(ray.clear).toBe(false);
+  expect(Object.keys(ray.blocker??{}).sort()).toEqual(['q','r']);
  });
  it('desenha quadrados SVG sem alterar o tabuleiro legado',()=>{
   const {unmount}=render(<BattleBoard map={createScenario('plain-open',11,'square')}/>);
