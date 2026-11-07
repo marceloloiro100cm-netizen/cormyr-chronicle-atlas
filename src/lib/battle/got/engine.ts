@@ -584,6 +584,15 @@ export function issueWarOrder(battle:WarBattle,input:{
   const target=battle.units.find(u=>u.id===input.order.targetId);
   if(!target||target.side===unit.side||!onBoard(target))throw new Error('Alvo inimigo indisponível.');
  }
+ if(['lightning-attack','trample'].includes(input.order.kind)&&!input.order.to)
+  throw new Error('Selecione destino para a manobra avançada.');
+ if(input.order.kind==='scorched-earth'&&!input.order.targetDomainId?.trim())
+  throw new Error('Terra Arrasada exige domínio declarado.');
+ if(input.order.kind==='split-attack'&&
+  (!input.order.targetIds||input.order.targetIds.length<2||
+   !input.order.testRanks||input.order.testRanks.length!==input.order.targetIds.length||
+   !input.order.bonusRanks||input.order.bonusRanks.length!==input.order.targetIds.length))
+  throw new Error('Ataque Dividido exige múltiplos alvos e dados alocados.');
  const formationDifficulty=battle.advancedFormations&&input.order.kind==='formation'&&input.order.formation?
   WAR_FORMATIONS[input.order.formation].difficulty:input.order.kind==='turn'&&battle.advancedFormations?3:0;
  const formationDiscipline=battle.advancedFormations&&unit.formation?
