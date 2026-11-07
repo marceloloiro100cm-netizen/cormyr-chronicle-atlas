@@ -1,6 +1,7 @@
 import {useId,useRef,useState} from 'react';
 import type { BattleMap, BattleStack, Hex, Side } from '@/lib/battle/domain/types';
-import { axialToOffset, hexKey } from '@/lib/battle/geometry/hex';
+import { hexKey } from '@/lib/battle/geometry/hex';
+import { gridKind,gridToOffset } from '@/lib/battle/geometry/grid';
 import { militaryUnitSymbolSrc } from '@/components/house/military-unit-symbol';
 import { livingCount } from '@/lib/battle/domain/morale';
 
@@ -10,14 +11,15 @@ const SIDE_COLOR:Record<Side,string>={attacker:'#b9524d',defender:'#426e9e'};
 const CORMYR_SIDE_COLOR:Record<Side,string>={attacker:'#416f9b',defender:'#ab5246'};
 const SIZE=30;
 const XSTEP=Math.sqrt(3)*SIZE;
+const SQUARE_STEP=SIZE*1.55;
 const points=Array.from({length:6},(_,i)=>{
   const a=(-90+60*i)*Math.PI/180;
   return (SIZE*Math.cos(a)).toFixed(2)+','+(SIZE*Math.sin(a)).toFixed(2);
 }).join(' ');
-const pixel=(h:Hex)=>{const {column,row}=axialToOffset(h);return {
-  x:SIZE*1.3+XSTEP*(column+(row&1)/2),
-  y:SIZE*1.25+SIZE*1.5*row,
-};};
+const pixel=(map:BattleMap,h:Hex)=>{const {column,row}=gridToOffset(map,h);return gridKind(map)==='square'?
+  {x:SQUARE_STEP*(column+0.75),y:SQUARE_STEP*(row+0.75)}:
+  {x:SIZE*1.3+XSTEP*(column+(row&1)/2),y:SIZE*1.25+SIZE*1.5*row};
+};
 export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKeys=[],attackKeys=[],pendingHex,
   showZones=false,onHexClick,onHoverHex,theme='standard'}:{
   map:BattleMap;stacks?:readonly Token[];selectedId?:string|null;activeId?:string|null;
@@ -32,12 +34,12 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
   const accessibleFocusKey=map.tiles.some(tile=>hexKey(tile)===focusKey)?
    focusKey:hexKey(map.tiles[0]??{q:0,r:0});
   const navigateKeyboard=(tile:Hex,key:string)=>{
-   const offset=axialToOffset(tile);
+   const offset=gridToOffset(map,tile);
    const delta=key==='ArrowLeft'?{x:-1,y:0}:key==='ArrowRight'?{x:1,y:0}:
     key==='ArrowUp'?{x:0,y:-1}:key==='ArrowDown'?{x:0,y:1}:null;
    if(!delta)return false;
    const next=map.tiles.find(h=>{
-    const at=axialToOffset(h);
+    const at=gridToOffset(map,h);
     return at.column===offset.column+delta.x&&at.row===offset.row+delta.y;
    });
    if(next){
@@ -48,13 +50,15 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
    return true;
   };
   const colors=theme==='cormyr'?CORMYR_SIDE_COLOR:SIDE_COLOR;
+  const square=gridKind(map)==='square';
   const tileMap=new Map(map.tiles.map(t=>[hexKey(t),t]));
   // Pilhas destruídas ou em debandada saem do campo; seguem no estado para baixas e relatório.
   const occupied=new Map(stacks.filter(s=>s.currentHp>0&&s.moraleState!=='routed')
     .map(s=>[hexKey(s.position),s]));
   const a=new Set(map.deployment.attacker.map(hexKey)),b=new Set(map.deployment.defender.map(hexKey));
   const move=new Set(moveKeys),attack=new Set(attackKeys);
-  const w=XSTEP*(map.width+1)+SIZE*1.6,h=SIZE*(1.5*(map.height-1)+2.8);
+  const w=square?SQUARE_STEP*(map.width+1.5):XSTEP*(map.width+1)+SIZE*1.6;
+  const h=square?SQUARE_STEP*(map.height+1.5):SIZE*(1.5*(map.height-1)+2.8);
   return <div className="battle-board-frame">
     <div className="battle-zoom-controls" role="group" aria-label="Ampliação do mapa">
       <button type="button" aria-label="Reduzir zoom do mapa" disabled={zoom<=100} onClick={()=>setZoom(v=>Math.max(100,v-50))}>−</button>
@@ -62,11 +66,11 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
       <button type="button" aria-label="Ampliar zoom do mapa" disabled={zoom>=250} onClick={()=>setZoom(v=>Math.min(250,v+50))}>+</button>
       <button type="button" aria-label="Restaurar zoom do mapa" disabled={zoom===100} onClick={()=>setZoom(100)}>Ajustar</button>
     </div>
-    <div className="battle-board-scroll" role="region" tabIndex={0} aria-label="Área navegável do mapa hexagonal">
+    <div className="battle-board-scroll" role="region" tabIndex={0} aria-label={square?'Área navegável do mapa quadrado':'Área navegável do mapa hexagonal'}>
     <svg ref={svgRef} className={'battle-board-svg'+(theme==='cormyr'?' battle-board-svg--cormyr':'')} viewBox={`0 0 ${w} ${h}`} style={{width:`${zoom}%`,maxWidth:'none'}}
-      role="group" aria-label={`Mapa hexagonal com ${map.width} colunas por ${map.height} linhas`}>
+      role="group" aria-label={`Mapa ${square?'quadrado':'hexagonal'} com ${map.width} colunas por ${map.height} linhas`}>
       {map.tiles.map(tile=>{
-        const key=hexKey(tile),pos=pixel(tile),unit=occupied.get(key);
+        const key=hexKey(tile),pos=pixel(map,tile),unit=occupied.get(key);
         const isSelected=unit?.id===selectedId,isActive=unit?.id===activeId;
         const isHovered=unit?.id===hoveredId;
         const isPending=pendingHex&&hexKey(pendingHex)===key;
@@ -74,7 +78,7 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
         const isA=showZones&&a.has(key),isB=showZones&&b.has(key);
         const mark=militaryUnitSymbolSrc(unit?.primaryTypeId);
         const count=unit?Math.min(unit.initialCount,Math.ceil(unit.currentHp/unit.hpPerSoldier)):0;
-        const label=`Hexágono ${tile.q}, ${tile.r}; ${tile.terrain==='plain'?'planície':tile.terrain==='forest'?'floresta':tile.terrain==='hill'?'colina':'rocha'}${unit?'; '+unit.name+', '+count+' combatentes':''}${legalMove?'; movimento permitido':''}${legalAttack?'; alvo válido':''}`;
+        const label=`${square?'Quadrado':'Hexágono'} ${tile.q}, ${tile.r}; ${tile.terrain==='plain'?'planície':tile.terrain==='forest'?'floresta':tile.terrain==='hill'?'colina':'rocha'}${unit?'; '+unit.name+', '+count+' combatentes':''}${legalMove?'; movimento permitido':''}${legalAttack?'; alvo válido':''}`;
         return <g key={key} transform={`translate(${pos.x},${pos.y})`}
           data-battle-hex={key} role="button"
           tabIndex={onHexClick?(key===accessibleFocusKey?0:-1):undefined}
@@ -91,9 +95,13 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
           }}
           className={`battle-hex${onHexClick?' battle-hex--interactive':''}`}>
           <title>{label}</title>
+          {square?<rect x={-SQUARE_STEP/2} y={-SQUARE_STEP/2}
+            width={SQUARE_STEP} height={SQUARE_STEP} fill={TERRAIN_COLOR[tile.terrain]}
+            stroke={isPending?'#f7f4ba':isSelected?(theme==='cormyr'?'#84ff92':'#fff5c2'):legalAttack?'#e9574c':legalMove?'#72e881':'#524b43'}
+            strokeWidth={isPending||isSelected||legalAttack?4:legalMove?3:1.25}/>:
           <polygon points={points} fill={TERRAIN_COLOR[tile.terrain]}
             stroke={isPending?'#f7f4ba':isSelected?(theme==='cormyr'?'#84ff92':'#fff5c2'):legalAttack?'#e9574c':legalMove?'#72e881':'#524b43'}
-            strokeWidth={isPending||isSelected||legalAttack?4:legalMove?3:1.25}/>
+            strokeWidth={isPending||isSelected||legalAttack?4:legalMove?3:1.25}/>}
           {(isA||isB)&&<circle r="23" stroke={isA?colors.attacker:colors.defender} strokeWidth="1.8" fill="none" strokeDasharray="4 3"/>}
           {tile.terrain==='forest'&&!unit&&<text textAnchor="middle" y="6" fontSize="21" fill="#e3efe1" aria-hidden="true">♣</text>}
           {tile.terrain==='hill'&&!unit&&<text textAnchor="middle" y="6" fontSize="18" fill="#674923" aria-hidden="true">▲</text>}
@@ -123,8 +131,8 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
       <span>▱ Planície</span><span>♣ Floresta · custo 2</span><span>▲ Colina · custo 2</span>
       <span>◆ Rocha · bloqueio</span><span>Contorno verde: movimento</span><span>Contorno vermelho: alvo</span>
     </div>
-    <span id={helpId} className="sr-only">Use Tab para entrar no mapa, setas para navegar pelos hexágonos,
+    <span id={helpId} className="sr-only">Use Tab para entrar no mapa, setas para navegar pelos células,
       Enter ou Espaço para selecionar o destino.</span>
-    <span className="sr-only">{tileMap.size} hexágonos disponíveis; use Tab e Enter para selecionar.</span>
+    <span className="sr-only">{tileMap.size} células disponíveis; use Tab e Enter para selecionar.</span>
   </div>;
 }
