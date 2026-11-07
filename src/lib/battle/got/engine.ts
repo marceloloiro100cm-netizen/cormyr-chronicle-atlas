@@ -255,6 +255,8 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
  const penalty=Math.min(15,(hero.injuries??0)+
   Math.max(0,requiredBonus-availableBonus)+
   (hero.mounted&&weapon?.clumsy?2:0)+
+  (!hero.mounted&&weapon?.mountedOnly?2:0)+
+  (hero.oneHandUnavailable&&weapon?.twoHanded?2:0)+
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty);
  const roll=rollPersonalWithFate(battle.seed,hero,ranged?hero.marksmanship:hero.fighting,
   Math.min(15,Math.max(0,availableBonus-requiredBonus)+
