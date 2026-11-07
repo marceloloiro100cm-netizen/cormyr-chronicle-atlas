@@ -51,7 +51,7 @@ describe('Guerra do livro — motor independente e rolagens',()=>{
  });
  it('ativa a unidade no primeiro sucesso e cobra ordem adicional com dificuldade cumulativa',()=>{
   const original={...fixture(),turn:'attacker' as const};
-  const first=issueWarOrder(original,{commanderId:'leader-attacker',unitId:'a',order:{kind:'ready'}});
+  const first=issueWarOrder(original,{commanderId:'leader-attacker',unitId:'a',order:{kind:'ready',ready:{trigger:'enemy-adjacent',reaction:'attack'}}});
   expect(first.passed).toBe(true);
   expect(first.difficulty).toBe(0);
   expect(first.battle.units.find(u=>u.id==='a')?.activated).toBe(true);
@@ -64,7 +64,7 @@ describe('Guerra do livro — motor independente e rolagens',()=>{
   const original=fixture({training:'green',warfare:1});
   const battle={...original,turn:'attacker' as const,
    units:original.units.map(u=>u.id==='a'?{...u,discipline:30}:u)};
-  const fail=issueWarOrder(battle,{commanderId:'leader-attacker',unitId:'a',order:{kind:'ready'}});
+  const fail=issueWarOrder(battle,{commanderId:'leader-attacker',unitId:'a',order:{kind:'ready',ready:{trigger:'enemy-adjacent',reaction:'attack'}}});
   expect(fail.critical).toBe(true);
   expect(fail.passed).toBe(false);
   expect(fail.battle.ordersRemaining['leader-attacker']).toBe(0);
@@ -85,7 +85,7 @@ describe('Guerra do livro — motor independente e rolagens',()=>{
  });
  it('mantém ordem contínua no ciclo e reinicia contagem de comando por rodada',()=>{
   const b={...fixture(),turn:'attacker' as const};
-  const result=issueWarOrder(b,{commanderId:'leader-attacker',unitId:'a',order:{kind:'ready'}});
+  const result=issueWarOrder(b,{commanderId:'leader-attacker',unitId:'a',order:{kind:'ready',ready:{trigger:'enemy-adjacent',reaction:'attack'}}});
   const next=advanceWarRound(result.battle);
   expect(next.round).toBe(2);
   expect(next.ordersRemaining['leader-attacker']).toBe(8);
@@ -101,7 +101,7 @@ describe('Guerra do livro — motor independente e rolagens',()=>{
   const prepared={...before,
    units:before.units.map(u=>u.id==='a'?{...u,discipline:test+1}:u)};
   const failing=issueWarOrder(prepared,{commanderId:'leader-attacker',unitId:'a',
-   order:{kind:'ready'}});
+   order:{kind:'ready',ready:{trigger:'enemy-adjacent',reaction:'attack'}}});
   expect(failing.passed).toBe(false);
   expect(failing.critical).toBe(false);
   const defendsBefore=failing.battle.events.filter(e=>e.kind==='defend').length;
@@ -111,7 +111,7 @@ describe('Guerra do livro — motor independente e rolagens',()=>{
  it('não permite ultrapassar ordens nem criar comando sem comandante válido',()=>{
   const b={...fixture(),turn:'attacker' as const};
   expect(()=>issueWarOrder({...b,ordersRemaining:{...b.ordersRemaining,'leader-attacker':0}},
-   {commanderId:'leader-attacker',unitId:'a',order:{kind:'ready'}})).toThrow(/ordens terminaram/);
+   {commanderId:'leader-attacker',unitId:'a',order:{kind:'ready',ready:{trigger:'enemy-adjacent',reaction:'attack'}}})).toThrow(/ordens terminaram/);
   expect(()=>createWarBattle({
    id:'invalid',name:'invalid',seed:'x',width:12,height:7,units:b.units,commanders:[],
   })).toThrow(/comandante válido/);
