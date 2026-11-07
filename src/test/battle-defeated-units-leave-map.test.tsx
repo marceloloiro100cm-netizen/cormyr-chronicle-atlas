@@ -25,7 +25,7 @@ describe('V4 · unidade destruída ou em debandada não permanece no campo',()=>
   render(<BattleBoard map={battle.map} stacks={stacks}
    activeId={living!.id} selectedId={dead!.id} hoveredId={routed!.id}
    attackKeys={[dead!.id,routed!.id]} theme="cormyr"/>);
-  const map=screen.getByRole('group',{name:/Mapa hexagonal/});
+  const map=screen.getByRole('group',{name:/Mapa (?:hexagonal|quadrado)/});
   expect(within(map).getByRole('button',{name:new RegExp(living!.name)}))
    .toBeInTheDocument();
   expect(within(map).queryByRole('button',{name:new RegExp(dead!.name)}))
@@ -63,7 +63,7 @@ describe('V4 · unidade destruída ou em debandada não permanece no campo',()=>
    e.delta['defenderId']===enemy.id)).toBe(true);
   render(<BattleBoard map={result.battle.map} stacks={result.battle.stacks}
    activeId={result.battle.activeUnitId} theme="cormyr"/>);
-  expect(within(screen.getByRole('group',{name:/Mapa hexagonal/}))
+  expect(within(screen.getByRole('group',{name:/Mapa (?:hexagonal|quadrado)/}))
    .queryByRole('button',{name:new RegExp(enemy.name)}))
    .not.toBeInTheDocument();
   expect(result.battle.stacks).toHaveLength(battle.stacks.length);
