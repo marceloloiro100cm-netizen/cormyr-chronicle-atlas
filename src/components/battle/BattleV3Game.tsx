@@ -181,6 +181,12 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     })}
    </div>
    <div className="battle-form-row">
+    <label>Formato do mapa<select aria-label="Formato da malha V3"
+     value={options.grid??'hex'} disabled={locked}
+     onChange={e=>update({grid:e.target.value==='square'?'square':undefined})}>
+      <option value="square">Quadrados (novo padrão)</option>
+      <option value="hex">Hexágonos (legado)</option>
+     </select></label>
     <label>Cenário<select value={options.scenario} aria-label="Cenário da Cruzada" disabled={locked}
      onChange={e=>update({scenario:e.target.value as BattleScenarioId})}>
       {Object.entries(SCENARIOS).map(([id,name])=><option key={id} value={id}>{name}</option>)}
