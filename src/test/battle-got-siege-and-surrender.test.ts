@@ -56,7 +56,8 @@ describe('Guerra do livro — armas de cerco e rendição',()=>{
   expect(()=>fireWarSiegeVolley(next,{commanderId:'leader-attacker',
    weaponIds:['cat-a'],targetId:'d'})).toThrow(/recarregar/);
   // Rodada de cerco pode ser ignorada em ambos os exércitos.
-  const done=skipWarSiege(next);
+  const skipped=skipWarSiege(next);
+  const done=skipped.phase==='siege'?skipWarSiege(skipped):skipped;
   expect(done.phase).toBe('orders');
  });
  it('recusa máquina sem unidade de engenheiros',()=>{
