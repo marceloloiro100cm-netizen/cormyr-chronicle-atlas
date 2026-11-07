@@ -51,8 +51,11 @@ export function BattleSetup({onStart,onBack}:{
    return house?[house.id,house] as const:null;
   }).filter((entry):entry is readonly [string,BattleHouseDirectoryRow]=>Boolean(entry))
  ).values()];
+ const primaryAttacker=housesForSide('attacker')[0];
+ const primaryDefender=housesForSide('defender')[0];
  const heraldry:Partial<Record<Side,BattleHouseDirectoryRow>>={
-  attacker:housesForSide('attacker')[0],defender:housesForSide('defender')[0],
+  ...(primaryAttacker?{attacker:primaryAttacker}:{}),
+  ...(primaryDefender?{defender:primaryDefender}:{}),
  };
  const displaySideNames:Record<Side,string>={
   attacker:housesForSide('attacker').length?
