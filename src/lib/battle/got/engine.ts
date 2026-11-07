@@ -875,7 +875,7 @@ export function issueWarOrder(battle:WarBattle,input:{
   const issued={...updated,standing:{...input.order},activated:true,
    ...(revealing.includes(input.order.kind)?{hidden:false}:{})};
   // A emboscada precisa preservar o estado oculto até seu ataque especial.
-  const executing=input.order.kind==='ambush'?{...issued,hidden:updated.hidden}:issued;
+  const executing=input.order.kind==='ambush'?{...issued,hidden:updated.hidden??false}:issued;
   next=replaceUnit(next,executing);
   // Instruções que não geram ação recorrente encerram a sua execução neste momento.
   try{next=perform(next,executing,input.order,degrees);}
