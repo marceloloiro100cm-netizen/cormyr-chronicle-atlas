@@ -45,7 +45,8 @@ export function personalMovement(hero:WarHero):number{
  const athletics=hero.athletics??3;
  const base=athletics<=1?3:4;
  return hero.entangledBy?1:Math.max(1,base+Math.floor((hero.runningBonusDice??0)/2)-
-  Math.floor((hero.bulk??0)/2));
+  Math.floor(((hero.bulk??0)+(hero.offhandWeapon?.bulk??0)+
+   (hero.meleeWeapon?.bulk??0)+(hero.rangedWeapon?.bulk??0))/2));
 }
 export function spendPersonalAction(hero:WarHero,weight:'major'|'minor'):WarHero{
  if(hero.usedActions>=5)throw new Error('Cinco rodadas individuais já concluídas.');
@@ -127,7 +128,7 @@ function attackHero(
   throw new Error('Uso Adaptável exige arma de Luta apropriada.');
  const invested=options.powerBonusDice??0;
  if(!Number.isInteger(invested)||invested<0||invested>(actor.strengthBonusDice??0)||
-  (invested>0&&(!selectedWeapon?.powerful||ranged)))
+  (invested>0&&!selectedWeapon?.powerful))
   throw new Error('Dados de Força investidos inválidos para arma Poderosa.');
  if(!ranged&&dist>Math.max(1,reach))
   throw new Error('Ataque de Luta exige alvo adjacente ou dentro do alcance em metros.');
@@ -189,11 +190,12 @@ function attackHero(
  const trainingPenalty=Math.max(0,requiredBonus-availableBonus);
  const usableBonus=Math.max(0,availableBonus-requiredBonus);
  const clumsyPenalty=actor.mounted&&weapon?.clumsy?2:0;
+ const mountedOnlyPenalty=!actor.mounted&&weapon?.mountedOnly?2:0;
  const totalPenalty=(actor.injuries??0)+(options.charge?1:0)+
   (options.cautious?1:0)+
   (!actor.mounted&&weapon?.mountedOnly?2:0)+
   (actor.oneHandUnavailable&&weapon?.twoHanded?2:0)+
-  (!ranged&&reach>1&&dist<3?1:0)+trainingPenalty+clumsyPenalty+
+  (!ranged&&reach>1&&dist<3?1:0)+trainingPenalty+clumsyPenalty+mountedOnlyPenalty+
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty;
  const mountedBonus=!ranged&&actor.mounted&&actor.mount?.health&&
   actor.mount.health>0&&!target.mounted?1:0;
@@ -212,11 +214,12 @@ function attackHero(
  const degrees=degreesOfSuccess(total,difficulty);
  const stationaryMountBonus=!ranged&&actor.mounted&&actor.mount?.trainedForWar&&
   actor.mount.health>0&&actor.mountMovedTurn!==actor.usedActions?2:0;
- const base=weapon?.noDamage?0:ranged?actor.rangedDamage:
-  actor.meleeDamage+(options.charge?2:0)+stationaryMountBonus+
-  (options.counterCharge?2:0)+
-  (!ranged&&selectedWeapon?.adaptable&&options.twoHandedGrip?1:0)+invested+
-  (options.offhandDamageBonus??0);
+ const base=weapon?.noDamage?0:
+  (ranged?actor.rangedDamage:
+   actor.meleeDamage+(options.charge?2:0)+stationaryMountBonus+
+   (options.counterCharge?2:0)+
+   (!ranged&&selectedWeapon?.adaptable&&options.twoHandedGrip?1:0)+
+   (options.offhandDamageBonus??0))+invested;
  const stunApplied=Boolean(options.stunHit&&selectedWeapon?.stunning&&degrees>=2);
  const damageDegrees=degrees-(stunApplied?1:0);
  const damage=damageDegrees&&base?Math.max(0,base*damageDegrees-
