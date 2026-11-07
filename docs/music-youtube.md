@@ -85,3 +85,11 @@ Validação: `node --test scripts/youtube-music.test.mjs`, os testes de `src/tes
 - Os blocos de reprodução se alinham em uma grade fluida, com botões e títulos legíveis em telas pequenas. O filtro, a playlist e o player permanecem.
 - O catálogo possui agora **29 vínculos de vídeo**, com **28 IDs distintos** devido ao vídeo compartilhado de Volkumburgh/Von der Harten.
 - Como o YouTube não respondeu à consulta de metadados nesta edição, a URL foi verificada estruturalmente, mas a existência, disponibilidade e autorização de incorporação não foram certificadas.
+
+ 
+## Padronização visual e títulos provisórios (06/11/2026)
+
+- Todas as faixas do catálogo público passam a ocupar **uma linha inteira**, seguindo o cartão de **O Trono do Dragão**: fundo claro, botão roxo do YouTube preenchendo o espaço disponível e **Ouvir aqui** à direita. Letras continuam abaixo da respectiva faixa, quando cadastradas. O empilhamento no celular permanece.
+- Quatro entradas com nome genérico ou código de vídeo no título passam a usar rótulos editoriais neutros: **Faixa de Cormyr 01** (`wioZhfoQMAs`), **02** (`WrXc5zCbMHA`), **03** (`qw9FgNYr7hE`) e **04** (`uPYfE1gKDcg`). A numeração é somente organizacional, **não representa o nome oficial das composições**.
+- Os links originais, categorias, quantidade de faixas e reprodutores foram preservados. Nenhuma música foi removida, e os IDs dos vídeos aparecem apenas nos dados técnicos e nas URLs, não como títulos de cartões.
+- Os metadados do YouTube não puderam ser confirmados. Substituir os rótulos por títulos oficiais somente com evidência verificável ou confirmação explícita do Narrador.
