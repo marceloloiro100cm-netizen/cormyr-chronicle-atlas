@@ -13,7 +13,7 @@ import type {WarHero} from './heroes';
 import {personalPosition,spendPersonalAction} from './personal-combat';
 import {queuePersonalDamage} from './personal-injuries';
 import {settleWarSquadLosses} from './squads';
-import {effectivePersonalArmor} from './personal-weapons';
+import {effectivePersonalArmor,activePersonalOffhandDefense} from './personal-weapons';
 import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
 import {assertPersonalTurn,settlePersonalTurn} from './personal-initiative';
 
@@ -313,6 +313,7 @@ function attackIndividualFromWarUnit(
   visibilityPenalty(battle.visibility,battle.weather,ranged));
  const total=roll.total;
  const difficulty=Math.max(1,(hero.dodgeDefense??hero.defense)+
+  activePersonalOffhandDefense(hero)-(hero.pinnedByHero?(hero.agility??3):0)+
   (hero.cautiousDefenseBonus??0)-(hero.recklessDefensePenalty??0)-
   (hero.pinnedByMount?5:0));
  const degrees=degreesOfSuccess(total,difficulty);
