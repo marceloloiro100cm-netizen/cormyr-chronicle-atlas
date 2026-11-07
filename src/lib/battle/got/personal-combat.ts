@@ -445,7 +445,8 @@ export function executePersonalWarAction(
   const used=spendPersonalAction(moved,'major');
   const next=changeHero(battle,used);
   return attackHero(next,used,target,false,{charge:true,
-   twoHandedGrip:action.twoHandedGrip,powerBonusDice:action.powerBonusDice});
+   ...(action.twoHandedGrip!==undefined?{twoHandedGrip:action.twoHandedGrip}:{}),
+   ...(action.powerBonusDice!==undefined?{powerBonusDice:action.powerBonusDice}:{})});
  }
  if(['personal-attack','personal-cautious-attack','personal-reckless-attack'].includes(action.kind)){
   if(hero.attackedThisTurn)throw new Error('Somente um ataque por rodada individual.');
@@ -462,8 +463,8 @@ export function executePersonalWarAction(
   return attackHero(next,used,target,Boolean(action.ranged),{
    cautious:action.kind==='personal-cautious-attack',
    reckless:action.kind==='personal-reckless-attack',
-   twoHandedGrip:action.twoHandedGrip,
-   powerBonusDice:action.powerBonusDice,
+   ...(action.twoHandedGrip!==undefined?{twoHandedGrip:action.twoHandedGrip}:{}),
+   ...(action.powerBonusDice!==undefined?{powerBonusDice:action.powerBonusDice}:{}),
   });
  }
  throw new Error('Ação individual não implementada.');
