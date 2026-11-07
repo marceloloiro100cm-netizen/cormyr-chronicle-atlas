@@ -1,5 +1,6 @@
 import type {WarBattle,WarEvent} from './types';
 import type {WarPersonalWeapon} from './personal-weapons';
+import {activePersonalOffhandDefense} from './personal-weapons';
 
 /** Efeitos de qualidades de arma após acertar (cap. 9, pp. 198–200).
  * Executados depois do cálculo de dano do golpe: uma armadura partida
@@ -22,17 +23,25 @@ export function applyPersonalWeaponQualities(battle:WarBattle,input:{
    ' não poderá usar ação maior no próximo turno (Atordoante).'});
  }
  if(weapon.shattering){
+  // Armas e escudos Defensivos sofrem dano antes da própria armadura.
+  const offhand=activePersonalOffhandDefense(target);
+  const offhandLoss=Math.min(offhand,weapon.shattering);
+  const remaining=Math.max(0,weapon.shattering-offhandLoss);
   const shield=Math.max(0,target.defensiveBonus??0);
-  const shieldLoss=Math.min(shield,weapon.shattering);
-  const armorLoss=Math.min(Math.max(0,weapon.shattering-shieldLoss),target.armor);
-  if(shieldLoss||armorLoss){
+  const shieldLoss=Math.min(shield,remaining);
+  const armorLoss=Math.min(Math.max(0,remaining-shieldLoss),target.armor);
+  if(offhandLoss||shieldLoss||armorLoss){
+   const offhandBroken=offhandLoss>0&&offhandLoss>=offhand;
    target={...target,
+    offhandDefenseDamage:(target.offhandDefenseDamage??0)+offhandLoss,
+    ...(offhandBroken?{offhandWeaponBroken:true}:{}),
     defensiveBonus:shield-shieldLoss,
     defense:Math.max(1,target.defense-shieldLoss),
     armor:target.armor-armorLoss};
    notices.push({kind:'personal-shatter',text:weapon.label+
-    ' reduziu '+shieldLoss+' ponto(s) de bônus defensivo e '+
-    armorLoss+' ponto(s) de VA de '+defender.name+'.'});
+    ' reduziu '+(offhandLoss+shieldLoss)+' ponto(s) de proteção defensiva e '+
+    armorLoss+' ponto(s) de VA de '+defender.name+
+    (offhandBroken?' (arma ou escudo defensivo destruído)':'')+'.'});
   }
  }
  if(weapon.fragile){
