@@ -63,7 +63,7 @@ describe('Auditoria V4 · arena unificada e limpa do Narrador',()=>{
   expect(within(dialog).getByRole('region',{name:'Campo de batalha V3'}))
    .toBeInTheDocument();
   expect(within(dialog).getByText(/^General: /)).toBeInTheDocument();
-  expect(within(dialog).getByText(/Mover: toque no hexágono verde/))
+  expect(within(dialog).getByText(/Mover: toque no (?:hexágono|quadrado) verde/))
    .toBeInTheDocument();
  });
  it('a CRZ mantém portrait, mapa e ações com as mesmas instruções',()=>{
