@@ -11,7 +11,10 @@ function canonical(value:unknown):string{
  if(value===null)return 'null';
  if(typeof value==='string'||typeof value==='boolean')return JSON.stringify(value);
  if(typeof value==='number'){
-  if(!Number.isSafeInteger(value))throw new Error('Replay exige números inteiros e seguros.');
+  // Custos diagonais quadrados usam incrementos exatos de 0,5.
+  // A serialização anterior de inteiros e seus hashes não mudam.
+  if(!Number.isSafeInteger(value)&&!Number.isSafeInteger(value*2))
+   throw new Error('Replay exige números seguros em passos de meio ponto.');
   return JSON.stringify(value);
  }
  if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';
