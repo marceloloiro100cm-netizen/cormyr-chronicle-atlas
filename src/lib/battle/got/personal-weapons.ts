@@ -4,6 +4,10 @@ import type {WarHero} from './heroes';
 export type WarPersonalWeaponId='longsword'|'bastard-sword'|'greatsword'|'long-axe'|'spear'|'pike'|'sledgehammer'|'peasant-tool'|'spiked-flail'|
  'fist'|'dagger'|'whip'|'boar-spear'|'net'|
  'staff'|'warhammer'|'buckler'|'left-hand-dagger'|'arakh'|'war-lance'|'tourney-lance'|
+ 'chain-ball'|'mace'|'flail'|'club'|'halberd'|'knife'|'gauntlet'|
+ 'shield'|'large-shield'|'body-shield'|'shortsword'|'stiletto'|'dirk'|
+ 'battle-axe'|'pickaxe'|'double-curved-bow'|'sling'|'throwing-javelin'|
+ 'trident'|'frog-spear'|'crowbill'|
  'hunting-bow'|'longbow'|'light-crossbow'|'medium-crossbow'|'myrish-crossbow'|'heavy-crossbow';
 export type WarPersonalWeapon=Readonly<{
  id:WarPersonalWeaponId;label:string;
@@ -16,7 +20,7 @@ export type WarPersonalWeapon=Readonly<{
  stunning?:boolean;shattering?:number;fragile?:boolean;
  grapple?:boolean;entangle?:boolean;impale?:boolean;fast?:boolean;
  shortBlade?:boolean;noDamage?:boolean;
- offhandDamageBonus?:number;defensiveOffhandBonus?:number;
+ offhandDamageBonus?:number;defensiveOffhandBonus?:number;bulk?:number;
 }>;
 export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersonalWeapon>>={
  longsword:{id:'longsword',label:'Espada longa',family:'melee',
@@ -87,6 +91,71 @@ export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersona
  net:{id:'net',label:'Rede',family:'ranged',
   damageAbility:'agility',damageBonus:-15,reachMetres:0,range:'short',
   piercing:0,cruel:false,trainingBonusDice:1,entangle:true,noDamage:true},
+ 'chain-ball':{id:'chain-ball',label:'Bola com corrente',family:'melee',
+  damageAbility:'athletics',damageBonus:0,reachMetres:1,range:'none',
+  piercing:0,cruel:false,trainingBonusDice:1,shattering:1,powerful:true},
+ mace:{id:'mace',label:'Maça',family:'melee',
+  damageAbility:'athletics',damageBonus:0,reachMetres:1,range:'none',
+  piercing:0,cruel:false},
+ flail:{id:'flail',label:'Mangual',family:'melee',
+  damageAbility:'athletics',damageBonus:3,reachMetres:1,range:'none',
+  piercing:0,cruel:false,trainingBonusDice:2,twoHanded:true,
+  shattering:1,powerful:true},
+ club:{id:'club',label:'Porrete/Bordão',family:'melee',
+  damageAbility:'athletics',damageBonus:-1,reachMetres:1,range:'none',
+  piercing:0,cruel:false,offhandDamageBonus:1},
+ halberd:{id:'halberd',label:'Alabarda',family:'melee',
+  damageAbility:'athletics',damageBonus:3,reachMetres:1,range:'none',
+  piercing:0,cruel:false,trainingBonusDice:1,twoHanded:true,powerful:true,bulk:1},
+ knife:{id:'knife',label:'Faca',family:'melee',
+  damageAbility:'athletics',damageBonus:-2,reachMetres:1,range:'none',
+  piercing:0,cruel:false,offhandDamageBonus:1,fast:true,shortBlade:true},
+ gauntlet:{id:'gauntlet',label:'Manopla',family:'melee',
+  damageAbility:'athletics',damageBonus:-2,reachMetres:1,range:'none',
+  piercing:0,cruel:false,grapple:true,offhandDamageBonus:1},
+ shield:{id:'shield',label:'Escudo',family:'melee',
+  damageAbility:'athletics',damageBonus:-2,reachMetres:1,range:'none',
+  piercing:0,cruel:false,defensiveOffhandBonus:2},
+ 'large-shield':{id:'large-shield',label:'Escudo grande',family:'melee',
+  damageAbility:'athletics',damageBonus:-2,reachMetres:1,range:'none',
+  piercing:0,cruel:false,trainingBonusDice:1,defensiveOffhandBonus:4,bulk:1},
+ 'body-shield':{id:'body-shield',label:'Escudo de corpo',family:'melee',
+  damageAbility:'athletics',damageBonus:-2,reachMetres:1,range:'none',
+  piercing:0,cruel:false,trainingBonusDice:2,defensiveOffhandBonus:6,bulk:2},
+ shortsword:{id:'shortsword',label:'Espada pequena',family:'melee',
+  damageAbility:'agility',damageBonus:-1,reachMetres:1,range:'none',
+  piercing:0,cruel:false,fast:true},
+ stiletto:{id:'stiletto',label:'Estilete',family:'melee',
+  damageAbility:'agility',damageBonus:0,reachMetres:1,range:'none',
+  piercing:2,cruel:false,trainingBonusDice:1,shortBlade:true},
+ dirk:{id:'dirk',label:'Punhal',family:'melee',
+  damageAbility:'agility',damageBonus:-2,reachMetres:1,range:'none',
+  piercing:0,cruel:false,offhandDamageBonus:2,shortBlade:true},
+ 'battle-axe':{id:'battle-axe',label:'Machado de batalha',family:'melee',
+  damageAbility:'athletics',damageBonus:0,reachMetres:1,range:'none',
+  piercing:0,cruel:false,adaptable:true},
+ pickaxe:{id:'pickaxe',label:'Picareta',family:'melee',
+  damageAbility:'athletics',damageBonus:1,reachMetres:1,range:'none',
+  piercing:0,cruel:false,twoHanded:true,slow:true,powerful:true},
+ trident:{id:'trident',label:'Tridente',family:'melee',
+  damageAbility:'athletics',damageBonus:0,reachMetres:1,range:'none',
+  piercing:0,cruel:false,adaptable:true,slow:true},
+ 'frog-spear':{id:'frog-spear',label:'Lança de sapo',family:'melee',
+  damageAbility:'agility',damageBonus:1,reachMetres:1,range:'none',
+  piercing:0,cruel:false,trainingBonusDice:1,adaptable:true},
+ crowbill:{id:'crowbill',label:'Bico de corvo',family:'melee',
+  damageAbility:'athletics',damageBonus:-1,reachMetres:1,range:'none',
+  piercing:0,cruel:false,shattering:1},
+ 'double-curved-bow':{id:'double-curved-bow',label:'Arco de curvatura dupla',
+  family:'ranged',damageAbility:'agility',damageBonus:1,reachMetres:0,
+  range:'long',piercing:0,cruel:false,trainingBonusDice:1,
+  twoHanded:true,powerful:true},
+ sling:{id:'sling',label:'Funda',family:'ranged',
+  damageAbility:'athletics',damageBonus:-1,reachMetres:0,range:'long',
+  piercing:0,cruel:false},
+ 'throwing-javelin':{id:'throwing-javelin',label:'Azagaia',family:'ranged',
+  damageAbility:'athletics',damageBonus:0,reachMetres:0,range:'short',
+  piercing:0,cruel:false},
  'hunting-bow':{id:'hunting-bow',label:'Arco de caça',family:'ranged',
   damageAbility:'agility',damageBonus:0,reachMetres:0,range:'long',
   piercing:0,cruel:false},
@@ -112,14 +181,16 @@ export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersona
 export function equipModelWarOffhand(hero:WarHero,weaponId:WarPersonalWeaponId|null):WarHero{
  if(weaponId===null)return {...hero,offhandWeapon:undefined,offhandDefenseSuppressed:false};
  const weapon=WAR_PERSONAL_WEAPONS[weaponId];
- if(!weapon.offhandDamageBonus||weapon.family!=='melee')
-  throw new Error('Escolha uma arma secundária com qualidade Mão Inábil.');
+ if((!weapon.offhandDamageBonus&&!weapon.defensiveOffhandBonus)||weapon.family!=='melee')
+  throw new Error('Escolha arma de Mão Inábil ou escudo Defensivo para a mão secundária.');
  if(hero.meleeWeapon?.twoHanded)
   throw new Error('Arma principal de Duas Mãos não permite equipar arma secundária.');
  return {...hero,offhandWeapon:weapon,offhandDefenseSuppressed:false};
 }
 export function activePersonalOffhandDefense(hero:WarHero):number{
- return hero.offhandDefenseSuppressed?0:hero.offhandWeapon?.defensiveOffhandBonus??0;
+ return hero.offhandDefenseSuppressed||hero.offhandWeaponBroken?0:
+  Math.max(0,(hero.offhandWeapon?.defensiveOffhandBonus??0)-
+   (hero.offhandDefenseDamage??0));
 }
 export function equipModelWarHero(hero:WarHero,input:{
  melee:WarPersonalWeaponId;ranged:WarPersonalWeaponId;
