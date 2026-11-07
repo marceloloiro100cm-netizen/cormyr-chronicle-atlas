@@ -70,6 +70,12 @@ export function moveWarLabDeployment(
  if(!modelWarLabDeployments(extraPerSide).some(u=>u.id===unitId))
   throw new Error('Unidade de posicionamento inexistente.');
  const next={...positions,[unitId]:{...to}};
- validateWarLabPlacement(placedWarLabDeployments(extraPerSide,next),tiles,unitTypes);
+ const deployments=placedWarLabDeployments(extraPerSide,next);
+ const chosen=deployments.find(u=>u.id===unitId)!;
+ if(deployments.some(u=>u.id!==unitId&&u.position.x===to.x&&u.position.y===to.y))
+  throw new Error('Duas unidades não podem ocupar o mesmo quadrado.');
+ // Other rows can be temporarily unprepared while the narrator paints
+ // water or fortifications; validate the full roster when starting battle.
+ validateWarLabPlacement([chosen],tiles,unitTypes);
  return next;
 }
