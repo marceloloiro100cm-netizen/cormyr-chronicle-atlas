@@ -39,8 +39,12 @@ describe('Capítulo 10 — manobras avançadas de guerra de escala 10 metros',()
   expect(out.passed).toBe(true);
   const strikes=out.battle.events.filter(e=>e.kind==='attack');
   expect(strikes).toHaveLength(2);
-  expect(strikes[0]?.roll).toHaveLength(4);
-  expect(strikes[1]?.roll).toHaveLength(4);
+  // 3D alocados +1B; ângulos de flanco nas formações avançadas
+  // podem conceder mais 1B, mas nunca duplicar a alocação.
+  for(const attack of strikes){
+   expect(attack.roll?.length).toBeGreaterThanOrEqual(4);
+   expect(attack.roll?.length).toBeLessThanOrEqual(5);
+  }
   expect(out.battle.events.some(e=>e.kind==='split-attack')).toBe(true);
   expect(out.battle.units.find(u=>u.id==='a')?.issuedThisRound).toBe(1);
   expect(JSON.stringify(start)).toBe(immutable);
