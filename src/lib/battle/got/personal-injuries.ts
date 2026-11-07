@@ -8,7 +8,7 @@ export type PersonalMitigationChoice=Readonly<{
 }>;
 export type WarPendingPersonalDamage=Readonly<{
  actorName:string;targetHeroId:string;damage:number;
- source:'personal'|'unit';
+ source:'personal'|'unit';cruel?:boolean;
 }>;
 export function reducePersonalDamage(
  hero:WarHero,damage:number,decision:PersonalMitigationChoice,
@@ -63,7 +63,9 @@ function applyPersonalDamage(battle:WarBattle,input:WarPendingPersonalDamage,
  choice:PersonalMitigationChoice):WarBattle{
  const hero=battle.heroes.find(h=>h.id===input.targetHeroId);
  if(!hero)throw new Error('Alvo não localizado.');
- const updated=reducePersonalDamage(hero,input.damage,choice);
+ const mitigated=reducePersonalDamage(hero,input.damage,choice);
+ const updated=input.cruel&&!mitigated.active?
+  {...mitigated,defeatOutcome:'death' as const}:mitigated;
  const fallen=hero.active&&!updated.active;
  const next:WarBattle={...battle,
   heroes:battle.heroes.map(h=>h.id===hero.id?updated:h),
