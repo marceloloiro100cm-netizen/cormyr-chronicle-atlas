@@ -5,12 +5,14 @@ import type {WarBattle,WarOrder,WarUnit} from './types';
 
 export const WAR_ADVANCED_ORDER_DIFFICULTY={
  'suppress':3,'probe':6,'push':3,'counter-charge':3,'sabotage':3,'ambush':3,'join':3,
+ 'split-attack':6,'lightning-attack':6,'trample':3,'envelop':6,'scorched-earth':3,
 } as const;
 export type WarAdvancedKind=keyof typeof WAR_ADVANCED_ORDER_DIFFICULTY;
 
 type Helpers=Readonly<{
  attack:(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
-  options?:{charge?:boolean;penalty?:number;counterCharge?:boolean})=>WarBattle;
+  options?:{charge?:boolean;penalty?:number;counterCharge?:boolean;
+   testRank?:number;bonusDice?:number;damageBonus?:number})=>WarBattle;
  applyDamage:(battle:WarBattle,target:WarUnit,amount:number,attackerName:string)=>WarBattle;
 }>;
 const distance=(a:WarUnit['position'],b:WarUnit['position'])=>
@@ -35,6 +37,111 @@ export function executeAdvancedWarOrder(
 ):WarBattle|null{
  if(!(order.kind in WAR_ADVANCED_ORDER_DIFFICULTY))return null;
  if(!battle.advancedFormations)throw new Error('Ative as regras avançadas de Guerra.');
+ if(order.kind==='split-attack'){
+  const ids=order.targetIds??[],ranks=order.testRanks??[],bonuses=order.bonusRanks??[];
+  const ranged=Boolean(order.ranged),rank=ranged?actor.ability.marksmanship:actor.ability.fighting;
+  const available=ranged?(actor.rangedBonusDice??0):(actor.meleeBonusDice??0);
+  const range=ranged?(actor.range==='long'?20:actor.range==='short'?2:0):1;
+  if(ids.length<2||ids.length!==ranks.length||ids.length!==bonuses.length||
+   new Set(ids).size!==ids.length||ids.some(id=>!id)||
+   ranks.some(n=>!Number.isInteger(n)||n<1||n>15)||
+   bonuses.some(n=>!Number.isInteger(n)||n<0||n>15)||
+   ranks.reduce((sum,n)=>sum+n,0)!==rank||
+   bonuses.reduce((sum,n)=>sum+n,0)>available)
+   throw new Error('Ataque Dividido exige dois alvos distintos e divisão válida dos dados de teste/bônus.');
+  const targets=ids.map(id=>battle.units.find(u=>u.id===id));
+  if(!range||targets.some(t=>!t||!alive(t)||t.side===actor.side||
+   distance(t.position,actor.position)>range||(!ranged&&distance(t.position,actor.position)===0)))
+   throw new Error('Todos os alvos divididos precisam ser inimigos ativos no alcance.');
+  let next=battle;
+  for(let i=0;i<ids.length;i++){
+   const current=next.units.find(u=>u.id===actor.id);
+   const target=next.units.find(u=>u.id===ids[i]);
+   if(!current||!alive(current)||!target||!alive(target))continue;
+   next=helpers.attack(next,current,target,ranged,{
+    testRank:ranks[i]!,bonusDice:bonuses[i]!,
+   });
+  }
+  return log(next,'split-attack',actor.name+
+   ' dividiu os dados de '+(ranged?'Pontaria':'Luta')+
+   ' entre '+ids.length+' unidades.',actor);
+ }
+ if(order.kind==='lightning-attack'||order.kind==='trample'){
+  const mounted=order.kind==='trample';
+  if(mounted&&!actor.mounted)throw new Error('Atropelar exige unidade de cavalaria.');
+  if(!order.to)throw new Error('Informe o destino do ataque em linha reta.');
+  const dx=order.to.x-actor.position.x,dy=order.to.y-actor.position.y;
+  const steps=Math.max(Math.abs(dx),Math.abs(dy));
+  if(steps<1||!Number.isInteger(dx)||!Number.isInteger(dy)||
+   !(dx===0||dy===0||Math.abs(dx)===Math.abs(dy)))
+   throw new Error('Ataque Relâmpago/Atropelar exige movimento em linha reta.');
+  const move=Math.max(0,(actor.naval?60:actor.mounted?80:40)-actor.bulk*10)*4;
+  const dir={x:Math.sign(dx),y:Math.sign(dy)};
+  let spent=0;
+  const encountered:string[]=[];
+  for(let step=1;step<=steps;step++){
+   const p={x:actor.position.x+dir.x*step,y:actor.position.y+dir.y*step};
+   if(p.x<0||p.y<0||p.x>=battle.width||p.y>=battle.height)
+    throw new Error('Trajeto atravessa limite do mapa.');
+   const tile=terrainAt(battle.tiles,p),effect=terrainEffect(tile);
+   if(effect.blocked||(effect.water&&!actor.naval)||actor.mounted&&effect.noCavalry)
+    throw new Error('Trajeto atravessa terreno proibido.');
+   spent+=10*(1+movementSlow(tile,battle.visibility,battle.weather));
+   if(spent>move)throw new Error('Trajeto ultrapassa deslocamento de corrida.');
+   const occupying=battle.units.find(u=>u.id!==actor.id&&alive(u)&&
+    u.position.x===p.x&&u.position.y===p.y);
+   if(occupying?.side===actor.side)
+    throw new Error('A manobra não pode atravessar unidades aliadas.');
+   if(occupying){
+    if(step===steps)throw new Error('A manobra não pode terminar sobre inimigo.');
+    encountered.push(occupying.id);
+   }
+  }
+  if(encountered.length===0)throw new Error('A manobra exige inimigos no trajeto.');
+  let next=battle;
+  const origin=actor.position;
+  for(const [index,id] of encountered.entries()){
+   const target=next.units.find(u=>u.id===id);
+   const current=next.units.find(u=>u.id===actor.id);
+   if(!target||!alive(target)||!current||!alive(current))continue;
+   const attackFrom={x:target.position.x-dir.x,y:target.position.y-dir.y};
+   const virtual={...current,position:attackFrom};
+   const setup=replace(next,virtual);
+   const damaged=helpers.attack(setup,virtual,target,false,{
+    penalty:index,damageBonus:mounted?5:0,
+   });
+   const updated=damaged.units.find(u=>u.id===actor.id)!;
+   next=replace(damaged,{...updated,position:origin});
+  }
+  const finalUnit=next.units.find(u=>u.id===actor.id)!;
+  if(alive(finalUnit))next=replace(next,{...finalUnit,position:{...order.to}});
+  return log(next,order.kind,actor.name+
+   (mounted?' atropelou ':' atravessou ') +encountered.length+
+   ' tropa(s) inimiga(s) em corrida.',actor);
+ }
+ if(order.kind==='envelop'){
+  const target=targetOf(battle,actor,order);
+  if(target.side===actor.side||distance(actor.position,target.position)!==1||
+   actor.envelopingTargetId||target.envelopedBy)
+   throw new Error('Envolver exige inimigo adjacente sem outro vínculo de cerco.');
+  const attacked=helpers.attack(battle,actor,target,false);
+  const source=attacked.units.find(u=>u.id===actor.id)!;
+  const victim=attacked.units.find(u=>u.id===target.id)!;
+  if(!alive(source)||!alive(victim))return attacked;
+  let next=replace(attacked,{...source,envelopingTargetId:victim.id});
+  next=replace(next,{...victim,envelopedBy:source.id});
+  return log(next,'envelop',actor.name+' envolveu '+target.name+
+   '; retiradas geram ataque livre, disparos atingem ambos.',actor);
+ }
+ if(order.kind==='scorched-earth'){
+  if(!order.targetDomainId?.trim())
+   throw new Error('Terra Arrasada requer identificação do domínio afetado.');
+  const record={side:actor.side,unitId:actor.id,domainId:order.targetDomainId,
+   round:battle.round,populationDelta:-1,wealthDelta:-1};
+  return log({...battle,scorchedPreview:[...(battle.scorchedPreview??[]),record]},
+   'scorched-earth',actor.name+' arrasou '+record.domainId+
+   ': prévia de População −1, Riqueza −1 (sem modificar Casa).',actor);
+ }
  if(order.kind==='push'){
   const target=targetOf(battle,actor,order);
   if(target.side===actor.side||distance(actor.position,target.position)!==1)
