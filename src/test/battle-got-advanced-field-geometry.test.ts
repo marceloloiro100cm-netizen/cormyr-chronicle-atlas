@@ -14,7 +14,7 @@ function arena(equipment:WarFieldEquipmentId,athletics=12){
   seed:'sprint-special',width:12,height:7,
   advancedFormations:true,
   commanders:modelWarCommanders({attacker:12,defender:8}),
-  units:[{...a,fieldEquipment:equipment,
+  units:[{...a,formation:'column',fieldEquipment:equipment,
    ability:{...a.ability,athletics}},d],
   fortifications:[makeWarFortification({
    id:'fort',name:'Torre de vigia',side:'defender',kind:'tower',
