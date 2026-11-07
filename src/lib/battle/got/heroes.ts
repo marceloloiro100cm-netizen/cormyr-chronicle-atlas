@@ -23,6 +23,7 @@ export type WarHero=Readonly<{
  wounds?:number;injuries?:number;passBonusDice?:number;
  dodgeDefense?:number|null;minorActionsUsed?:number;surrendered?:boolean;
  defeatOutcome?:'death'|'unconscious'|'captured';attackedThisTurn?:boolean;
+ squadId?:string;
 }>;
 export type WarHeroAction=Readonly<{
  kind:'join'|'leave'|'rally'|'revive'|'abdicate'|'assume'|PersonalWarAction['kind'];
