@@ -378,7 +378,9 @@ function chooseNearest(battle:WarBattle,unit:WarUnit,ranged:boolean):WarUnit|nul
 }
 function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  options:{charge?:boolean;penalty?:number;counterCharge?:boolean;
-  testRank?:number;bonusDice?:number;damageBonus?:number}={}):WarBattle{
+  testRank?:number;bonusDice?:number;damageBonus?:number;
+  /** Pinça: resolve o acerto sem modificar o alvo até ambos atacarem. */
+  deferDamage?:(damage:number)=>void;}={}):WarBattle{
  if(!alive(attacker))throw new Error('Esta unidade não pode atacar.');
  if(warFieldForbidsAttack(attacker))
   throw new Error('O equipamento especial impede ataques enquanto estiver transportado.');
@@ -439,6 +441,10 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
    roll:roll.dice,total:adjustedRoll,difficulty:defense,degrees,
   });
  if(!degrees)return next;
+ if(options.deferDamage){
+  options.deferDamage(damage);
+  return next;
+ }
  const linkedId=ranged?(target.envelopedBy??target.envelopingTargetId):undefined;
  next=applyDamage(next,target,damage,attacker.name);
  if(linkedId){
@@ -736,14 +742,27 @@ export function issueWarPincer(battle:WarBattle,input:{
    degrees:passed?Math.min(degreesOfSuccess(one.total,d1),
     degreesOfSuccess(two.total,d2)):0});
  if(passed){
+  // As duas rolagens veem a mesma condição e Defesa do alvo.
+  // O dano individual já desconta o VA, mas só modifica Saúde após
+  // ambas as rolagens: o primeiro golpe não cancela o segundo.
+  const pending:{name:string;damage:number}[]=[];
   for(const id of [first.id,second.id]){
    const attacker=next.units.find(u=>u.id===id)!;
    const target=next.units.find(u=>u.id===enemy.id)!;
-   if(!alive(attacker)||!alive(target))break;
+   if(!alive(attacker)||!alive(target))
+    throw new Error('Pinça interrompida: participantes não estão mais ativos.');
    next=attack(next,attacker,target,false,{
     testRank:Math.min(15,attacker.ability.fighting+1),
+    deferDamage:(damage)=>pending.push({name:attacker.name,damage}),
    });
   }
+  const damage=pending.reduce((sum,p)=>sum+p.damage,0);
+  const original=next.units.find(u=>u.id===enemy.id)!;
+  if(damage>0)next=applyDamage(next,original,damage,
+   first.name+' e '+second.name);
+  next=log(next,'pincer-simultaneous',first.name+' e '+second.name+
+   ' resolveram dois ataques antes de aplicar '+damage+
+   ' dano total a '+enemy.name+'.',commander.side);
  }
  next=checkVictory({...next,turn:turnAfter(next,commander.side)});
  return {battle:next,passed,
