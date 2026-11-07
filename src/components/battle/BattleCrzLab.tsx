@@ -1,4 +1,4 @@
-import {useMemo,useState,type ChangeEvent,type KeyboardEvent} from 'react';
+import {useEffect,useMemo,useState,type ChangeEvent,type KeyboardEvent} from 'react';
 import {Button} from '@/components/ui/button';
 import {BattleExpandedView} from './BattleExpandedView';
 import {crzHexKey,crzAxialToOffset,type CrzHex,type CrzSide}
@@ -16,6 +16,8 @@ import {CRZ_TRAINING_DEFAULTS,CRZ_TRAINING_SCENARIOS,
  crzTrainingReady,type CrzTrainingOptions}
  from '@/lib/crusade/training-demo';
 import type {CrzSpellId} from '@/lib/crusade/setup';
+import {initialGeneralProfile,generalProfileFromJson,awardGeneralTraining,
+ type TrainingGeneralProfile} from '@/lib/crusade/general-progression';
 import {crzObservedObjectives,crzAfterActionReport,crzAfterActionSerialize,
  type CrzObservedObjective} from '@/lib/crusade/insights';
 import './crz-lab.css';
@@ -195,6 +197,24 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const [error,setError]=useState('');
  const [showImport,setShowImport]=useState(false);
  const [highContrast,setHighContrast]=useState(false);
+ const [generalProfile,setGeneralProfile]=useState<TrainingGeneralProfile>(initialGeneralProfile);
+ useEffect(()=>{
+  try{
+   const saved=window.localStorage.getItem('cca-crz-training-general-v1');
+   if(saved)setGeneralProfile(generalProfileFromJson(saved));
+  }catch{/* Perfil local opcional; simulação não depende de armazenamento. */}
+ },[]);
+ const awardProgress=()=>{
+  if(!session)return;
+  try{
+   const result=awardGeneralTraining(generalProfile,session.replay);
+   setGeneralProfile(result.profile);
+   window.localStorage.setItem('cca-crz-training-general-v1',JSON.stringify(result.profile));
+   setMessage(result.awarded>0?
+    'General Tillet recebeu '+result.awarded+' XP de treinamento.':'Esta batalha já concedeu XP.');
+   setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível validar a progressão.');}
+ };
  const frame=useMemo(()=>!session?null:replayStep===null?session.state:
   crzTrainingReplayAt(session.replay,replayStep),
  [session,replayStep]);
@@ -239,7 +259,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  };
  const begin=()=>{
   try{
-   const initial=crzReplayBegin(crzTrainingReady(options));
+   const initial=crzReplayBegin(crzTrainingReady({...options,generalLevel:generalProfile.level}));
    const next=crzTrainingAdvanceAi(initial);
    setSession(next);setSelectedId(next.state.activeStackId);
    setPanel('actions');setReplayStep(null);setError('');setExpanded(true);
@@ -400,6 +420,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
        onChange={e=>setOptions(o=>({...o,seed:e.target.value}))}/>
      </label>
     </div>
+    <p className="battle-note">General Tillet · nível {generalProfile.level} · {generalProfile.xp} XP
+     de treinamento local. O progresso não altera a Corte nem o exército.</p>
     <Button onClick={begin}>Iniciar treinamento CRZ</Button>
     <p className="battle-note">CRZ-WOTR e PTE-compat são simulações experimentais determinísticas,
      sem paridade oficial ou aplicação de baixas. Os replays registram o preset e seu hash.</p>
@@ -411,6 +433,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
     <div className="crz-arena-heading">
      <span className="crz-eyebrow">CORMYR · ARENA DE TREINAMENTO</span>
      <h1>Cruzada <span>CRZ-1.0</span></h1>
+     <p>Preset: {frame.rulesetId} · General Tillet nível {frame.leaders.attacker?.level??'—'} (treino)</p>
      <p>Rodada {frame.round} · {frame.phase==='completed'?
       'Batalha encerrada':active?'Turno de '+active.name:'Preparando turno'} ·
       {session.replay.steps.length} comandos registrados</p>
@@ -424,6 +447,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
      {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
      <Button variant="outline" onClick={reset}>Novo treino</Button>
      <Button variant="outline" onClick={exportReplay}>Exportar replay</Button>
+     {session.state.phase==='completed'&&<Button variant="outline" onClick={awardProgress}>
+      Registrar XP do General (treino)</Button>}
      <Button variant="outline" aria-pressed={highContrast}
       onClick={()=>setHighContrast(v=>!v)}>Alto contraste CRZ</Button>
      <Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
