@@ -1155,6 +1155,66 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        row.steps+' graduação(ões)'}</span>
      </div>)}
     </div>
+    <h4>Recursos e domínio · proposta do passo 11</h4>
+    <p className="battle-note">Aproximação digital das consequências do livro.
+     Não altera saldos, posses ou a situação oficial de nenhuma Casa.</p>
+    <div className="got-config-grid">
+     <label className="got-check"><input type="checkbox"
+      checked={resourceScenario.occupiedDomain}
+      onChange={e=>setResourceScenario(s=>({...s,occupiedDomain:e.target.checked}))}/>
+      O vencedor ocupou um domínio do derrotado
+     </label>
+     {resourceScenario.occupiedDomain&&<>
+      <label className="got-check"><input type="checkbox"
+       checked={resourceScenario.garrisonHeldForThreeMonths}
+       onChange={e=>setResourceScenario(s=>({...s,
+        garrisonHeldForThreeMonths:e.target.checked}))}/>
+       A guarnição manteve o domínio por três meses
+      </label>
+      <label className="got-check"><input type="checkbox"
+       checked={resourceScenario.domainHasCommunityOrFort}
+       onChange={e=>setResourceScenario(s=>({...s,
+        domainHasCommunityOrFort:e.target.checked}))}/>
+       O domínio contém comunidade ou fortaleza
+      </label>
+      <label>Investimento em Terras transferido
+       <input type="number" min={0} max={10000}
+        value={resourceScenario.capturedLandValue}
+        onChange={e=>setResourceScenario(s=>({...s,
+         capturedLandValue:Math.max(0,Math.trunc(Number(e.target.value)||0))}))}/>
+      </label>
+      <label>Defesa da fortaleza sobrevivente
+       <input type="number" min={0} max={10000}
+        value={resourceScenario.survivingFortDefenseValue}
+        onChange={e=>setResourceScenario(s=>({...s,
+         survivingFortDefenseValue:Math.max(0,Math.trunc(Number(e.target.value)||0))}))}/>
+      </label>
+      <label>Investimentos em Riqueza transferidos
+       <input type="number" min={0} max={10000}
+        value={resourceScenario.transferredWealthInvestments}
+        onChange={e=>setResourceScenario(s=>({...s,
+         transferredWealthInvestments:Math.max(0,Math.trunc(Number(e.target.value)||0))}))}/>
+      </label>
+     </>}
+    </div>
+    {projectedResources&&<div className="got-roster">
+     {(['attacker','defender'] as const).map(side=>{
+      const delta=projectedResources[side];
+      return <div className="got-unit" key={side}>
+       <strong>{SIDE[side]} · variação proposta</strong>
+       <span>Lei {delta.law>=0?'+':''}{delta.law} ·
+        População {delta.population>=0?'+':''}{delta.population}</span>
+       <span>Riqueza {delta.wealth>=0?'+':''}{delta.wealth} ·
+        Terras {delta.land>=0?'+':''}{delta.land} ·
+        Defesa {delta.defense>=0?'+':''}{delta.defense}</span>
+      </div>;
+     })}
+     <p>Prisioneiros: {projectedResources.captured.length?
+      projectedResources.captured.map(h=>h.name+' (Status '+h.status+
+       ', resgate proposto '+h.ransomWealth+' Riqueza)').join(' · '):
+      'nenhum registrado'}.</p>
+     <p className="battle-note">{projectedResources.notes.join(' ')}</p>
+    </div>}
    </section>}
    <section className="battle-surface got-events" aria-label="Histórico de rolagens">
     <h3>Registro auditável da batalha</h3>
