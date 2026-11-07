@@ -51,8 +51,9 @@ export function BattleV3NarratorEntry({onBack}:{onBack:()=>void}){
  const officialHouseNames={attacker:labelFor('attacker'),defender:labelFor('defender')};
  const houseForSide=(side:BattleStack['side'])=>copies.filter(s=>s.side===side)
   .map(s=>houseByUnitKey[battleTrainingSourceKey(s)]).find(Boolean);
- const officialHouseHeraldry={
-  attacker:houseForSide('attacker'),defender:houseForSide('defender')};
+ const attacker=houseForSide('attacker'),defender=houseForSide('defender');
+ const officialHouseHeraldry:Partial<Record<BattleStack['side'],BattleHouseDirectoryRow>>={
+  ...(attacker?{attacker}:{}),...(defender?{defender}:{})};
  return <section className="battle-module" aria-label="Preparação da batalha do Narrador">
   <details className="battle-surface battle-optional-source" open={pickerOpen}
    onToggle={event=>setPickerOpen(event.currentTarget.open)}>
