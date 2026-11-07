@@ -9,6 +9,7 @@ import {battleOutcome} from '../domain/victory';
 import {runAiUntilHuman} from '../domain/ai';
 import {commander,applyCommanderPassive,type CommanderId} from './commanders';
 import {modelHouse} from './model-houses';
+import {isBattleTrainingCopy} from '../adapters/imported-npc-roster';
 
 export type V3PowerTarget='ally'|'enemy';
 export type V3UnitSkill='CHARGE'|'VOLLEY'|'SHIELD_WALL'|'AMBUSH'|'SAPPERS';
@@ -38,7 +39,7 @@ export type V3ScenarioOptions=Readonly<{
 const sideList=['attacker','defender'] as const;
 const LINE=new Set(['infantry','garrison','personal-guard','crusaders','mercenaries','levies']);
 export function createV3Game(options:V3ScenarioOptions,officialCopies:readonly BattleStack[]=[]):V3Game{
- if(officialCopies.some(s=>s.source.kind!=='house-readonly'))
+ if(officialCopies.some(s=>!isBattleTrainingCopy(s)))
   throw new Error('Somente snapshots oficiais autorizados pelo Narrador podem ser importados.');
  if(officialCopies.length>10)throw new Error('Limite de dez agrupamentos de origem.');
  const map=createScenario(options.scenario);
