@@ -88,6 +88,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [heroTargetId,setHeroTargetId]=useState('');
  const [heroRanged,setHeroRanged]=useState(false);
  const [counterAgainstCharge,setCounterAgainstCharge]=useState(false);
+ const [mountEscapeSkill,setMountEscapeSkill]=useState<'athletics'|'agility'>('athletics');
  const [heroTargetUnitId,setHeroTargetUnitId]=useState('');
  const [squadUnitId,setSquadUnitId]=useState('');
  const [attackHeroWithUnit,setAttackHeroWithUnit]=useState(false);
@@ -224,10 +225,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     kind:heroAction,
     ...(['join','rally','revive'].includes(heroAction)?
      {unitId:candidate?.id??matching?.id??''}:{}),
-    ...(['personal-attack','personal-charge'].includes(heroAction)?
+    ...(['personal-attack','personal-charge','personal-attack-mount'].includes(heroAction)?
      {targetHeroId:heroTargetId||battle.heroes.find(h=>h.side!==hero.side&&h.active)?.id||''}:{}),
-    ...(heroAction==='personal-move'?{toMetres:heroMetres}:{}),
-    ...(heroAction==='personal-attack'?{ranged:heroRanged}:{}),
+    ...(['personal-move','personal-trample'].includes(heroAction)?{toMetres:heroMetres}:{}),
+    ...(heroAction==='personal-free-mount'?{escapeUsing:mountEscapeSkill}:{}),
+    ...(['personal-attack','personal-attack-mount'].includes(heroAction)?{ranged:heroRanged}:{}),
     ...(heroAction==='personal-counterattack'?{
      ranged:heroRanged,vsCharge:counterAgainstCharge,
     }:{}),
@@ -622,6 +624,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <option value="personal-dodge">Combate pessoal · esquiva (maior)</option>
         <option value="personal-counterattack">Combate pessoal · contra-ataque preparado (maior)</option>
         <option value="personal-reload">Combate pessoal · recarregar arma</option>
+        <option value="personal-attack-mount">Combate pessoal · atacar montaria inimiga</option>
+        <option value="personal-trample">Montaria · atropelar em linha reta (maior)</option>
+        <option value="personal-free-mount">Montaria · libertar-se do cavalo caído (maior)</option>
+        <option value="personal-stand">Combate pessoal · levantar-se após queda</option>
         <option value="personal-mount">Montaria · montar (menor)</option>
         <option value="personal-dismount">Montaria · desmontar (menor)</option>
         <option value="personal-control-mount">Montaria · controlar (menor ou maior)</option>
@@ -631,14 +637,16 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <option value="personal-surrender">Combate pessoal · render-se (maior)</option>
        </select>
       </label>
-      {['personal-attack','personal-charge'].includes(heroAction)&&
-       <label>Herói adversário
+      {['personal-attack','personal-charge','personal-attack-mount'].includes(heroAction)&&
+       <label>{heroAction==='personal-attack-mount'?'Cavaleiro da montaria adversária':'Herói adversário'}
         <select value={heroTargetId||battle.heroes.find(h=>h.side!==
          (battle.heroes.find(x=>x.id===heroId)??battle.heroes[0])?.side&&h.active)?.id||''}
          onChange={e=>setHeroTargetId(e.target.value)}>
          {battle.heroes.filter(h=>h.side!==
-          (battle.heroes.find(x=>x.id===heroId)??battle.heroes[0])?.side&&h.active)
-          .map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+          (battle.heroes.find(x=>x.id===heroId)??battle.heroes[0])?.side&&h.active&&
+          (heroAction!=='personal-attack-mount'||Boolean(h.mount&&h.mount.health>0)))
+          .map(h=><option key={h.id} value={h.id}>{h.name}
+           {heroAction==='personal-attack-mount'?' · '+h.mount?.name:''}</option>)}
         </select>
        </label>}
       {heroAction==='personal-attack-unit'&&<label>Unidade adversária
@@ -656,10 +664,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         onChange={e=>setCounterAgainstCharge(e.target.checked)}/>
         Preparar contra carga (arma de Luta, +2 dano básico quando o ataque for uma carga)
        </label>}
-      {['personal-attack','personal-attack-unit','personal-counterattack'].includes(heroAction)&&<label className="got-check">
+      {['personal-attack','personal-attack-unit','personal-counterattack','personal-attack-mount'].includes(heroAction)&&<label className="got-check">
        <input type="checkbox" checked={heroRanged} onChange={e=>setHeroRanged(e.target.checked)}/>
        Atacar usando Pontaria (distâncias pessoais em metros)</label>}
-      {heroAction==='personal-move'&&<>
+      {['personal-move','personal-trample'].includes(heroAction)&&<>
        <label>X em metros (quadrados de 1 m)
         <input type="number" min={0} max={battle.width*10-1} value={heroMetres.x}
          onChange={e=>setHeroMetres(v=>({...v,x:Number(e.target.value)}))}/></label>
@@ -667,6 +675,13 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <input type="number" min={0} max={battle.height*10-1} value={heroMetres.y}
          onChange={e=>setHeroMetres(v=>({...v,y:Number(e.target.value)}))}/></label>
       </>}
+      {heroAction==='personal-free-mount'&&<label>Habilidade para se libertar
+       <select value={mountEscapeSkill}
+        onChange={e=>setMountEscapeSkill(e.target.value as 'athletics'|'agility')}>
+        <option value="athletics">Atletismo</option>
+        <option value="agility">Agilidade</option>
+       </select>
+      </label>}
       {['join','rally','revive'].includes(heroAction)&&<label>Unidade aliada
        <select value={heroUnitId} onChange={e=>setHeroUnitId(e.target.value)}>
         <option value="">Escolha uma unidade</option>
@@ -681,7 +696,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         ' ações da janela concluídas'}
       </p>}
      <p className="battle-note">Montarias e armas: {battle.heroes.filter(h=>!h.squadId).map(h=>
-       h.name+': '+(h.mounted?'montado em '+h.mount?.name:h.mount?'cavalo disponível':'a pé')+
+       h.name+': '+(h.mounted?'montado em '+h.mount?.name:
+        h.mount?.health===0?'cavalo morto':h.mount?'cavalo disponível':'a pé')+
+       (h.mount?' · cavalo '+h.mount.health+'/'+h.mount.maxHealth+' Saúde':'')+
+       (h.pinnedByMount?' · PRESO sob montaria':'')+
+       (h.prone?' · caído':'')+
        (h.rangedWeapon?.reload?' · '+(h.rangedLoaded===false?'recarregar':'arma carregada'):'')+
        (h.counterattackReady?' · contra-ataque preparado':'')).join(' | ')}</p>
      <p className="battle-note">Posições individuais: {battle.heroes.map(h=>
