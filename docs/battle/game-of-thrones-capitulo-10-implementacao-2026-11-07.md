@@ -292,3 +292,48 @@ Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsist
   múltiplos equipamentos ainda não integram o catálogo completo;
   o dano do golpe contra montaria ainda não usa todas as qualidades
   da arma. Não modificar fichas oficiais nem publicar o PR sem revisão.
+
+## Incremento — Agarrar, Enredar, Empalar e Ataque Dividido (7/11/2026)
+
+- **Agarrar** (capítulo 9, p. 198): Punho de modelo pode segurar
+  um oponente após sucesso de Luta também igualar/superar Atletismo
+  passivo. Fonte e alvo ficam impedidos de se deslocar, o agarrado
+  sofre −5 em Defesa e pode atacar somente com arma de Briga ou
+  lâmina curta. Soltar é ação livre. Escapar exige ação menor e
+  teste oposto de Luta. O estado é individual e auditável.
+- **Enredar** (p. 200): Chicote e Rede são opções-modelo. Um acerto
+  aplica estado de Enredado, reduz Movimento para 1 metro e impõe
+  −5 nos testes pessoais. Libertação por ação maior com Atletismo
+  ou Agilidade contra Dificuldade 9. Uma arma já prendendo
+  outro alvo fica indisponível para novos ataques de Enredar.
+  Rede não causa dano básico direto na simulação.
+- **Empalar** (pp. 199–200): Lança de javali e pique-modelo recebem
+  a qualidade. Com três ou mais graus, exige Atletismo (9).
+  Sucesso deixa o alvo preso e impede novo ataque com a arma;
+  falha desarma o atacante. O agressor pode remover a arma com
+  ação menor, Dificuldade 3 + VA; graus adicionais causam dano.
+  O empalado pode removê-la com ação maior e Atletismo (9),
+  aceitando um ferimento (ou lesão quando atingir limite).
+  A imobilização contra superfícies e a retirada por um aliado
+  curandeiro ainda exigem regras e telas adicionais.
+- **Ataque Dividido** (p. 205): ação maior exige dois ou mais alvos
+  distintos em alcance pessoal, divisão exata dos dados de teste
+  de Luta e alocação limitada de bônus. Armas Lentas são
+  impedidas; armas Rápidas recebem +1B extra em cada teste.
+  O estado `pendingPersonalSplit` permite interromper o
+  primeiro ou segundo acerto para mitigação manual e retomar
+  sem rolar duas vezes nem gastar outra ação.
+- **Integração:** estados de controle e ataques divididos são
+  combatidos em escala pessoal de 1 metro, dentro de janelas
+  de 5 rodadas do capítulo 10. Soldados de esquadrões destacados
+  (10 indivíduos) são alvos individuais; não se aplicam
+  indevidamente estados de contenção à ficha da unidade inteira.
+  Não altera unidades oficiais, Hub Temporal, Adaptado ou D&D.
+- **Testes novos:** `battle-got-personal-control.test.ts` e
+  `battle-got-personal-split.test.ts`.
+- **Limites conhecidos:** sequência de duas armas e ataques
+  combinados ainda não foi concluída. Empalar e agarrar em
+  situações narrativas excepcionais, escolha de alvo com
+  oponente contido já derrotado, mais ferramentas de
+  contenção e interrupções de múltiplas ações requerem auditoria.
+  Não declarar equivalência integral ao livro.
