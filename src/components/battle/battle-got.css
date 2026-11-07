@@ -58,3 +58,16 @@
 .battle-module .got-map.got-paint{max-width:540px}
 .battle-module .got-cell.got-terrain{background:#645437;border-color:#efc77d}
 .battle-module .got-map.got-paint .got-cell{min-height:28px;font-size:13px}
+
+/* Save / resume and custom setup positions — visible on compact screens. */
+.battle-module .got-save-panel{display:flex;flex-direction:column;gap:8px}
+.battle-module .got-save-actions{display:flex;gap:8px;flex-wrap:wrap}
+.battle-module .got-save-panel p{margin:0}
+.battle-module .got-map.got-paint .got-cell.got-deployed{
+ background:#674444;border-color:#efb9a6;color:#fff5e6
+}
+.battle-module .got-map.got-paint .got-cell.got-deployed.defender{
+ background:#394c83;border-color:#aabefa
+}
+.battle-module .got-map.got-paint .got-cell.got-deployed strong{font-size:15px}
+.battle-module .got-map.got-paint .got-cell.got-deployed small{font-size:9px;display:block}
