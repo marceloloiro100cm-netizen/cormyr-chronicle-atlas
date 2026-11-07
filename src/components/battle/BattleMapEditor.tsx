@@ -74,18 +74,18 @@ export function BattleMapEditor({map,onChange,locked=false}:{
     <div className="battle-form-row">
       <label>Cenário
         <select aria-label="Cenário" value={Object.hasOwn(SCENARIOS,map.id)?map.id:'custom'}
-          onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id))save(createScenario(id,map.width,map.grid??'hex'));}}>
+          onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id))save(createScenario(id,map.width,'square'));}}>
           {!Object.hasOwn(SCENARIOS,map.id)&&<option value="custom">Personalizado</option>}
           {Object.entries(SCENARIOS).map(([id,name])=><option key={id} value={id}>{name}</option>)}
         </select></label>
       <label>Dimensões
         <select aria-label="Dimensões do mapa" value={String(map.width)}
-          onChange={e=>save(createScenario('plain-open',e.target.value==='15'?15:11,map.grid??'hex'))}>
+          onChange={e=>save(createScenario('plain-open',e.target.value==='15'?15:11,'square'))}>
           <option value="11">11 × 9</option><option value="15">15 × 11</option>
         </select></label>
-      <Button variant="outline" onClick={()=>save(createScenario('plain-open',map.width,map.grid??'hex'))}>Restaurar</Button>
+      <Button variant="outline" onClick={()=>save(createScenario('plain-open',map.width,'square'))}>Restaurar</Button>
       <Button variant="outline" aria-label="Pré-visualizar conversão de malha"
-        onClick={()=>{const to=map.grid==='square'?'hex':'square';
+        onClick={()=>{const to:'square'='square';
          setGridPreview({source:JSON.stringify(map),result:previewBattleMapGridConversion(map,to)});
          setMessage('');}}>
         Prévia: converter para {map.grid==='square'?'hexágonos':'quadrados'}
