@@ -22,21 +22,23 @@
 | Carga, movimento, corrida, defender, reagrupar, reorganizar, reanimar e retirada | Implementação funcional inicial, requer refino em casos de borda |
 | Desorganizar, debandar, destruir e retirar unidades do mapa | Implementação funcional inicial |
 | Continuação de ataques e defesas na etapa de ordens permanentes | Implementação funcional inicial |
-| Unidade oficial com stats, equipamentos e benefícios de posses, por snapshot somente leitura | Adaptador puro implementado, interface de importação ainda não conectada |
+| Unidade oficial com stats, equipamentos e benefícios de posses, por snapshot somente leitura | Implementada com endpoint protegido de Narrador e escolha de Região, Casa, unidade e posição; somente fichas completas (não converte importação de NPC) |
 | Terreno e modificadores de clima/visibilidade, deslocamento e obstáculos | Implementação inicial e editor de mapa quadrado (precisa conferir variantes e linha de visão) |
 | Formações e ângulo frontal | Nove formações cadastradas; ordens e flanco opcional em laboratório; reações e restrições ainda incompletas |
 | Tabela de sobreviventes (10-6) e Glória (10-5) | Prévia local determinística e sem mutação oficial; resolução narrativa ainda pendente |
+| Passo 5 — catapulta, cospe-fogo, escorpião, manganela e trabuco | Catálogo, alcance, operadores engenheiros, limite de quatro equipamentos por unidade, custo de uma ordem para disparar, recarga alternada e rolagens incorporados à arena; efeitos especiais e fortificações pendentes |
+| Rendição e erros críticos de retirada | Rendição geral testa cada unidade ativa; falhas críticas de retirada e retirada agressiva geram consequências distintas |
 | Seleção entre GOT, Adaptado e D&D | Implementada no painel do Narrador |
 
 ## Itens ainda não equivalentes ao livro (bloqueiam a alegação de 100%)
 
 1. **Fases de heróis (6 e 8):** ações individuais, associação à tropa, dano de heróis, rendição e substituição de comando.
-2. **Passo 5, armas de cerco:** disparos por iniciativa, operadores engenheiros, munições, paredes/portões, dano a fortificações.
+2. **Passo 5, armas de cerco:** implementação inicial inclui iniciativa, operadores e disparos/recarga. Ainda faltam efeitos completos de munição incendiária, dano a estruturas/portões, especialidades de fortificações e personagens como alvos.
 3. **Passos 1 a 3:** terreno, clima e visibilidade estão em versão inicial, mas ainda faltam todas as variantes da Tabela 10-3, efeitos de cobertura em construções, linha de visão, parley, posicionamento alternado e unidade escondida.
 4. **Regras avançadas:** formações e flanco foram introduzidos; faltam ataques reativos e a execução completa de ordens avançadas como ataque dividido, fogo de supressão, empurrar, junção, pinça, martelo e bigorna, emboscada e sabotagem.
 5. **Passo 11:** tabelas de Glória e sobreviventes agora são prévias locais, sem gravação; faltam prisioneiros, consequências de recursos, ocupação e permanência, variações de cenário e revisão/aceite do Narrador.
 6. **Controle preciso:** corrida e carga ainda usam deslocamento ortogonal e corredor simples, sem adjudicação completa de cobertura/obstáculos; reação de Prontidão ainda não dispara condicionalmente.
-7. **Integração oficial na interface:** importar/selecionar exércitos de Casas pelo adaptador `snapshotOfficialWarUnit`, registrar versão, escolher comandante pessoal e revisar bônus condicionais.
+7. **Integração oficial na interface:** a seleção Região/Casa/unidade, captura de versão e cópia autenticada ao Narrador foram integradas em até quatro espaços. Faltam escala livre de unidades (sem esse limite do laboratório), associação de comandantes pessoais, equipamento variável não padronizado, bônus condicionais e validação de posicionamento/organização de forças.
 
 ## Diretrizes de correção
 
@@ -50,6 +52,6 @@
 
 ## Comandos básicos para próxima revisão
 
-Ações disponíveis na arena: ataque, carga, defender, mover, prontidão, reagrupar, reanimar, reorganizar, retirada, retirada agressiva e, opcionalmente, formação, giro e reversão. A interface mostra dados, iniciativas, Disciplina e a condição da tropa. A roda de eventos é exclusivamente local e não salva em produção.
+Ações disponíveis na arena: ataque, carga, defender, mover, prontidão, reagrupar, reanimar, reorganizar, retirada, retirada agressiva, rendição geral e, opcionalmente, formação, giro e reversão. A interface mostra dados, iniciativas, Disciplina e a condição da tropa. A roda de eventos é exclusivamente local e não salva em produção.
 
-Próximas implementações devem priorizar: (a) precisão de geometrias e prontidão; (b) unidades oficiais em jogo; (c) formação/flanqueamento; (d) heróis; (e) cerco; (f) pós-batalha.
+Próximas implementações devem priorizar: (a) corrigir geometria, linhas de visão e prontidão; (b) completar terreno, fortificações e ataques de cerco; (c) heróis e as janelas dos Passos 6 e 8; (d) todas as ordens avançadas; (e) exércitos de qualquer tamanho, NPCs com ficha oficial e comandantes reais; (f) persistência/replay e consequências narrativas com autorização explícita.
