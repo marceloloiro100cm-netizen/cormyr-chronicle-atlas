@@ -148,7 +148,22 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    </div>
    <label className="got-check"><input type="checkbox" checked={advanced}
     onChange={e=>setAdvanced(e.target.checked)}/> Usar formações e ângulo frontal (opcional no livro)</label>
-   <p className="battle-note">O terreno pode ser ajustado no mapa após iniciar uma nova partida de treino.</p>
+   <h4>Terreno do campo</h4>
+   <label>Pintar quadrados com
+    <select value={terrainPaint} onChange={e=>setTerrainPaint(e.target.value as WarTerrainId)}>
+     {Object.keys(WAR_TERRAIN).map(id=><option key={id} value={id}>{id}</option>)}
+    </select></label>
+   <div className="got-map got-paint" style={{gridTemplateColumns:'repeat(12,minmax(0,1fr))'}}>
+    {Array.from({length:84},(_,i)=>{
+     const x=i%12,y=Math.floor(i/12),terrain=tiles.find(t=>t.x===x&&t.y===y)?.terrain??'plain';
+     return <button type="button" key={i} className={'got-cell'+(terrain!=='plain'?' got-terrain':'')}
+      title={terrain} aria-label={'Pintar quadrado '+x+','+y+' · '+terrain}
+      onClick={()=>setTiles(prev=>[...prev.filter(t=>t.x!==x||t.y!==y),{x,y,terrain:terrainPaint}])}>
+      {terrain==='plain'?'·':'▥'}
+     </button>;
+    })}
+   </div>
+   <p className="battle-note">Pinte o terreno antes de iniciar; cada quadrado tem 10 metros. Campos com obstáculos não são automaticamente removidos quando contêm tropas.</p>
    <Button onClick={start}>Iniciar simulação pelo livro</Button>
   </section>:<>
    <section className="battle-surface got-status" aria-label="Estado da guerra" aria-live="polite">
@@ -173,7 +188,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        const occupant=battle.units.find(u=>u.position.x===x&&u.position.y===y&&
         !['destroyed','escaped','surrendered'].includes(u.condition));
        const isDestination=coord.x===x&&coord.y===y;
-       const terrain=tiles.find(t=>t.x===x&&t.y===y)?.terrain??'plain';
+       const terrain=battle.tiles.find(t=>t.x===x&&t.y===y)?.terrain??'plain';
        return <button key={i} type="button"
         className={'got-cell'+(occupant?' occupied '+occupant.side:'')+(isDestination?' destination':'')+(terrain!=='plain'?' got-terrain':'')}
         aria-label={'Quadrado '+x+','+y+' · '+terrain+(occupant?' · '+occupant.name+' · '+CONDITION[occupant.condition]:'')}
