@@ -5,7 +5,7 @@
 import {crzRequireKnownRuleset,crzRulesetHash} from './ruleset';
 import {crzPcg32} from './rng';
 import {crzValidateStack} from './stack';
-import {crzLineOfSight,crzReachable,crzDistance,crzHexKey,
+import {crzLineOfSight,crzReachable,crzGridDistance,crzHexKey,
  crzValidateMap,crzMapIndex,type CrzHex,type CrzSide} from './geometry';
 import {crzCapable,crzLog,crzOrder,crzReplaceStack,crzMoraleState,
  crzEffectBonus,type CrzActivation,type CrzBattleStack,
@@ -197,6 +197,8 @@ export function crzStart(ready:CrzReady):CrzBattleState{
  if(new Set(ready.stacks.map(s=>s.id)).size!==ready.stacks.length)
   throw new Error('E_SETUP_DUP: ID repetido.');
  const verifiedMap=crzValidateMap(ready.map),tiles=crzMapIndex(verifiedMap);
+  if((verifiedMap.grid??'hex')!==ready.ruleset.grid.kind)
+   throw new Error('E_SETUP_MAP: malha e conjunto de regras incompatíveis.');
  const expectedRng=crzPcg32(ready.seed).state();
  if(expectedRng.version!==ready.rngState.version||
     expectedRng.state!==ready.rngState.state||
@@ -241,9 +243,9 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
    legal.push({type:'MOVE',unitId:unit.id,to:p.to});
  }
  if(!unit.activation.attacked){
-  const engaged=enemy.some(s=>crzDistance(s.position,unit.position)===1);
+  const engaged=enemy.some(s=>crzGridDistance(state.map,s.position,unit.position)===1);
   for(const target of enemy){
-   const distance=crzDistance(unit.position,target.position);
+   const distance=crzGridDistance(state.map,unit.position,target.position);
    if(distance===1&&unit.meleeRoutine&&unit.activation.preparedAbility!=='VOLLEY')
     legal.push({type:'ATTACK',unitId:unit.id,targetId:target.id,mode:'melee'});
    if(unit.rangedRoutine&&unit.activation.preparedAbility!=='CHARGE'&&
@@ -359,7 +361,7 @@ export function crzPlay(state:CrzBattleState,command:CrzCommand,
   next=crzReplaceStack(next,{...current,
    activation:{...current.activation,attacked:true}});
   const target=next.stacks.find(s=>s.id===command.targetId)!;
-  if(crzCapable(target)&&crzDistance(target.position,unit.position)===1&&
+  if(crzCapable(target)&&crzGridDistance(state.map,target.position,unit.position)===1&&
     target.meleeRoutine&&target.activation.retaliationRound!==next.round){
    next=crzReplaceStack(next,{...target,activation:{
     ...target.activation,retaliationRound:next.round}});
