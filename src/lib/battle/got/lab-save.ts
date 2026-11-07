@@ -9,7 +9,7 @@ const conditions=new Set(['organized','disorganized','routed','destroyed','surre
 const rec=(value:unknown):value is Record<string,unknown>=>Boolean(value)&&
  typeof value==='object'&&!Array.isArray(value);
 const validUnit=(x:unknown,width:number,height:number):x is WarUnit=>{
- if(!rec(x)||typeof x['id']!=='string'||!x['id'].trim()||typeof x['name']!=='string'||
+ if(!rec(x)||typeof x['id']!=='string'||!x['id']['trim']()||typeof x['name']!=='string'||
   !sides.has(x['side'] as string)||!conditions.has(x['condition'] as string)||
   !rec(x['position'])||!rec(x['ability'])||!rec(x['source'])||
   !Number.isInteger(x['position']['x'])||!Number.isInteger(x['position']['y'])||
@@ -33,8 +33,8 @@ export function decodeGotLabSave(json:string):WarBattle{
  try{value=JSON.parse(json) as unknown;}
  catch{throw new Error('Formato JSON da simulação inválido.');}
  if(!rec(value)||value['schemaVersion']!==1||value['rulesVersion']!=='GOT-CH10-1'||
-  typeof value['id']!=='string'||!value['id'].trim()||
-  typeof value['name']!=='string'||!value['name'].trim()||
+  typeof value['id']!=='string'||!value['id']['trim']()||
+  typeof value['name']!=='string'||!value['name']['trim']()||
   !Number.isInteger(value['seed'])||(value['seed'] as number)<0||
   (value['seed'] as number)>4294967295||
   !Number.isInteger(value['width'])||!Number.isInteger(value['height'])||
@@ -48,19 +48,19 @@ export function decodeGotLabSave(json:string):WarBattle{
   !Array.isArray(value['siege'])||!Array.isArray(value['fortifications'])||
   !Array.isArray(value['tiles'])||!Array.isArray(value['events'])||
   !rec(value['ordersRemaining'])||!rec(value['siegeCompleted'])||
-  value['units'].length<2||value['units'].length>250||
-  value['events'].length>15000||
-  !value['units'].every(u=>validUnit(u,value['width'] as number,value['height'] as number))||
-  new Set((value['units'] as WarUnit[]).map(u=>u.id)).size!==value['units'].length||
+  value['units']['length']<2||value['units']['length']>250||
+  value['events']['length']>15000||
+  !value['units']['every'](u=>validUnit(u,value['width'] as number,value['height'] as number))||
+  new Set((value['units'] as WarUnit[]).map(u=>u.id)).size!==value['units']['length']||
   new Set((value['units'] as WarUnit[]).filter(u=>!['destroyed','escaped','surrendered'].includes(u.condition)).map(u=>u.position.x+':'+u.position.y)).size!==
    (value['units'] as WarUnit[]).filter(u=>!['destroyed','escaped','surrendered'].includes(u.condition)).length||
-  !value['commanders'].every((c:unknown)=>rec(c)&&typeof c['id']==='string'&&
+  !value['commanders']['every']((c:unknown)=>rec(c)&&typeof c['id']==='string'&&
    sides.has(c['side'] as string)&&Number.isInteger(c['warfare'])&&
    (c['warfare'] as number)>=1&&(c['warfare'] as number)<=12)||
   value['winner']!==null&&!sides.has(value['winner'] as string)&&
    value['winner']!==undefined||
-  !value['events'].every((e:unknown,i:number)=>rec(e)&&e['seq']===i+1&&
-   typeof e['text']==='string'&&e['text'].length<8000)||
+  !value['events']['every']((e:unknown,i:number)=>rec(e)&&e['seq']===i+1&&
+   typeof e['text']==='string'&&e['text']['length']<8000)||
   !Array.isArray(value['events']))
   throw new Error('Esta simulação não é compatível com o modo Guerra dos Tronos.');
  return value as unknown as WarBattle;
