@@ -3,10 +3,11 @@ import type {WarHero} from './heroes';
 /** Amostra verificável da tabela 9-3; não é o catálogo completo do livro. */
 export type WarPersonalWeaponId='longsword'|'bastard-sword'|'greatsword'|'long-axe'|'spear'|'pike'|'sledgehammer'|'peasant-tool'|'spiked-flail'|
  'fist'|'dagger'|'whip'|'boar-spear'|'net'|
- 'hunting-bow'|'longbow'|'light-crossbow'|'heavy-crossbow';
+ 'staff'|'warhammer'|'buckler'|'left-hand-dagger'|'arakh'|'war-lance'|'tourney-lance'|
+ 'hunting-bow'|'longbow'|'light-crossbow'|'medium-crossbow'|'myrish-crossbow'|'heavy-crossbow';
 export type WarPersonalWeapon=Readonly<{
  id:WarPersonalWeaponId;label:string;
- family:'melee'|'ranged';damageAbility:'athletics'|'agility';
+ family:'melee'|'ranged';damageAbility:'athletics'|'agility'|'animalHandling';
  damageBonus:number;reachMetres:number;range:'none'|'short'|'long';
  piercing:number;cruel:boolean;
  trainingBonusDice?:number;reload?:'minor'|'major';clumsy?:boolean;
@@ -52,6 +53,30 @@ export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersona
   damageAbility:'agility',damageBonus:-2,reachMetres:1,range:'none',
   piercing:0,cruel:false,fast:true,shortBlade:true,
   offhandDamageBonus:1,defensiveOffhandBonus:1},
+ buckler:{id:'buckler',label:'Broquel',family:'melee',
+  damageAbility:'athletics',damageBonus:-2,reachMetres:1,range:'none',
+  piercing:0,cruel:false,offhandDamageBonus:1,defensiveOffhandBonus:1},
+ 'left-hand-dagger':{id:'left-hand-dagger',label:'Adaga de mão esquerda',family:'melee',
+  damageAbility:'agility',damageBonus:-1,reachMetres:1,range:'none',
+  piercing:0,cruel:false,trainingBonusDice:1,
+  offhandDamageBonus:1,defensiveOffhandBonus:2},
+ arakh:{id:'arakh',label:'Arakh',family:'melee',
+  damageAbility:'athletics',damageBonus:0,reachMetres:1,range:'none',
+  piercing:0,cruel:false,trainingBonusDice:1,adaptable:true,fast:true},
+ staff:{id:'staff',label:'Cajado',family:'melee',
+  damageAbility:'athletics',damageBonus:0,reachMetres:1,range:'none',
+  piercing:0,cruel:false,fast:true,twoHanded:true},
+ warhammer:{id:'warhammer',label:'Martelo de guerra',family:'melee',
+  damageAbility:'athletics',damageBonus:0,reachMetres:1,range:'none',
+  piercing:0,cruel:false,twoHanded:true,slow:true,shattering:2,powerful:true},
+ 'war-lance':{id:'war-lance',label:'Lança de guerra',family:'melee',
+  damageAbility:'animalHandling',damageBonus:4,reachMetres:1,range:'none',
+  piercing:0,cruel:true,trainingBonusDice:1,slow:true,
+  mountedOnly:true,powerful:true,impale:true},
+ 'tourney-lance':{id:'tourney-lance',label:'Lança de torneio',family:'melee',
+  damageAbility:'animalHandling',damageBonus:3,reachMetres:3,range:'none',
+  piercing:0,cruel:false,trainingBonusDice:1,slow:true,
+  mountedOnly:true,powerful:true,fragile:true},
  whip:{id:'whip',label:'Chicote',family:'melee',
   damageAbility:'agility',damageBonus:-1,reachMetres:3,range:'none',
   piercing:0,cruel:false,trainingBonusDice:2,entangle:true},
@@ -71,6 +96,12 @@ export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersona
  'light-crossbow':{id:'light-crossbow',label:'Besta leve',family:'ranged',
   damageAbility:'agility',damageBonus:1,reachMetres:0,range:'long',
   piercing:0,cruel:false,slow:true,reload:'minor'},
+ 'medium-crossbow':{id:'medium-crossbow',label:'Besta média',family:'ranged',
+  damageAbility:'agility',damageBonus:1,reachMetres:0,range:'long',
+  piercing:1,cruel:false,slow:true,twoHanded:true,reload:'minor'},
+ 'myrish-crossbow':{id:'myrish-crossbow',label:'Besta myrish',family:'ranged',
+  damageAbility:'agility',damageBonus:1,reachMetres:0,range:'long',
+  piercing:1,cruel:false,fast:true,twoHanded:true,trainingBonusDice:1,reload:'minor'},
  'heavy-crossbow':{id:'heavy-crossbow',label:'Besta pesada',family:'ranged',
   damageAbility:'agility',damageBonus:2,reachMetres:0,range:'long',
   piercing:2,cruel:true,slow:true,reload:'major',twoHanded:true},
@@ -97,7 +128,8 @@ export function equipModelWarHero(hero:WarHero,input:{
  if(melee.family!=='melee'||ranged.family!=='ranged')
   throw new Error('Escolha uma arma de Luta e uma de Pontaria.');
  const base=(w:WarPersonalWeapon):number=>
-  w.damageAbility==='athletics'?hero.athletics??3:hero.agility??3;
+  w.damageAbility==='athletics'?(hero.athletics??3):
+  w.damageAbility==='animalHandling'?(hero.animalHandling??3):(hero.agility??3);
  return {...hero,meleeWeapon:melee,rangedWeapon:ranged,
   meleeDamage:Math.max(1,base(melee)+melee.damageBonus),
   rangedDamage:Math.max(1,base(ranged)+ranged.damageBonus),
