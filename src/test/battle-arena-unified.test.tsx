@@ -73,7 +73,7 @@ describe('Auditoria V4 · arena unificada e limpa do Narrador',()=>{
   expect(within(dialog).getByRole('region',{name:'Campo de batalha'}))
    .toBeInTheDocument();
   expect(within(dialog).getByText(/^General: /)).toBeInTheDocument();
-  expect(within(dialog).getByText(/Mover: toque no hexágono verde/))
+  expect(within(dialog).getByText(/Mover: toque no quadrado verde/))
    .toBeInTheDocument();
  });
  it('mantém engines puros e portal acessível sem duplicação de estado',()=>{
