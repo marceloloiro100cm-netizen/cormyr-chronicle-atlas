@@ -115,6 +115,9 @@ function attackHero(
    if(defended.pendingPersonalDamage){
     return {...defended,pendingPersonalCounterattack:{
      attackerId:actor.id,defenderId:reactor.id,ranged,charge:Boolean(options.charge),
+     cautious:Boolean(options.cautious),reckless:Boolean(options.reckless),
+     ...(options.twoHandedGrip!==undefined?{twoHandedGrip:options.twoHandedGrip}:{}),
+     ...(options.powerBonusDice!==undefined?{powerBonusDice:options.powerBonusDice}:{}),
     }};
    }
    const survivingAttacker=defended.heroes.find(h=>h.id===actor.id);
@@ -196,6 +199,9 @@ export function resumePersonalCounterattack(battle:WarBattle):WarBattle{
  if(!defender?.active)return next;
  return attackHero(next,attacker,defender,pending.ranged,{
   asReaction:true,charge:pending.charge,
+  cautious:Boolean(pending.cautious),reckless:Boolean(pending.reckless),
+  ...(pending.twoHandedGrip!==undefined?{twoHandedGrip:pending.twoHandedGrip}:{}),
+  ...(pending.powerBonusDice!==undefined?{powerBonusDice:pending.powerBonusDice}:{}),
  });
 }
 export function executePersonalWarAction(
