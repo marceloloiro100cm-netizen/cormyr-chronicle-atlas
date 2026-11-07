@@ -17,6 +17,7 @@ import type {WarHero} from './heroes';
 import {personalPosition,spendPersonalAction} from './personal-combat';
 import {queuePersonalDamage} from './personal-injuries';
 import {settleWarSquadLosses} from './squads';
+import {auditWarUnitStats} from './unit-validation';
 import {effectivePersonalArmor,activePersonalOffhandDefense} from './personal-weapons';
 import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
 import {assertPersonalTurn,settlePersonalTurn} from './personal-initiative';
@@ -104,6 +105,7 @@ export function createWarBattle(input:{
   if(!inBounds(input,tile)||!terrainEffect(tile))throw new Error('Terreno inválido.');
  }
  for(const u of input.units){
+  auditWarUnitStats(u);
   validateWarFieldEquipment(u);
   if(!inBounds(input,u.position))throw new Error('Unidade fora do mapa: '+u.name);
   const key=u.position.x+':'+u.position.y;
