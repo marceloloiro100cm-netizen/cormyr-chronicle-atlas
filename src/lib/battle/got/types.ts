@@ -1,12 +1,13 @@
 import type {WarFormation,WarFacing} from './formations';
 import type {WarTerrainTile,WarVisibility,WarWeather} from './terrain';
+import type {WarFortification} from './fortifications';
 import type {WarSiegeEngine} from './siege';
 /** Motor independente de Guerra dos Tronos RPG, capítulo 10. Não reaproveitar BattleState/PTE. */
 export type WarSide='attacker'|'defender';
 export type WarPosition=Readonly<{x:number;y:number}>;
 export type WarCondition='organized'|'disorganized'|'routed'|'destroyed'|'surrendered'|'escaped';
 export type WarRange='none'|'short'|'long';
-export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'surrender'|'formation'|'turn'|'reverse';
+export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'surrender'|'formation'|'turn'|'reverse'|'suppress'|'probe'|'counter-charge'|'sabotage'|'ambush'|'join';
 export type WarOrder=Readonly<{
  kind:WarOrderKind;
  targetId?:string;
@@ -15,6 +16,7 @@ export type WarOrder=Readonly<{
  ranged?:boolean;
  formation?:WarFormation;
  facing?:WarFacing;
+ fortId?:string;
 }>;
 export type WarCommander=Readonly<{
  id:string;name:string;side:WarSide;role:'commander'|'subcommander';
@@ -32,6 +34,8 @@ export type WarUnit=Readonly<{
  standing:WarOrder|null;activated:boolean;defendRoll:number|null;
  formation?:WarFormation;facing?:WarFacing;
  hidden?:boolean;exposedFacingUntilRound?:number;
+ suppressionPenalty?:number;suppressionRound?:number;probeDefenseRound?:number;
+ counterChargeReady?:boolean;
  issuedThisRound:number;actedThisRound:boolean;criticalThisRound:boolean;
  source:Readonly<{kind:'model'|'house-readonly';houseId?:string;unitId?:string;version?:number}>;
 }>;
@@ -43,6 +47,7 @@ export type WarBattle=Readonly<{
  schemaVersion:1;rulesVersion:'GOT-CH10-1';id:string;name:string;seed:number;
  width:number;height:number;metresPerCell:10;round:number;
  tiles:readonly WarTerrainTile[];weather:WarWeather;visibility:WarVisibility;advancedFormations:boolean;
+ fortifications:readonly WarFortification[];
  phase:'siege'|'orders'|'finished';first:WarSide;turn:WarSide;
  siege:readonly WarSiegeEngine[];siegeCompleted:Readonly<Record<WarSide,boolean>>;
  commanders:readonly WarCommander[];units:readonly WarUnit[];
