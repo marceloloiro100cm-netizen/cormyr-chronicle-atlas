@@ -273,7 +273,7 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
   unit.name+(escaped?' saiu do campo.':' retirou-se até '+pos.x+','+pos.y+'.'),unit.side);
 }
 function perform(battle:WarBattle,unit:WarUnit,order:WarOrder,degrees:number):WarBattle{
- const advanced=executeAdvancedWarOrder(battle,unit,order,{attack});
+ const advanced=executeAdvancedWarOrder(battle,unit,order,{attack,applyDamage});
  if(advanced)return advanced;
  if(order.kind==='formation'){
   if(!battle.advancedFormations)throw new Error('Formações avançadas desabilitadas.');
