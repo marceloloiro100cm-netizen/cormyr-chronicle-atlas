@@ -147,10 +147,19 @@ describe('Capítulo 9 — atropelamento em linha reta',()=>{
    kind:'personal-trample',toMetres:{x:28,y:25},
   }})).toThrow(/montaria viva/);
  });
- it('não executa múltiplos danos enquanto mitigação manual exigir decisão intermediária',()=>{
+ it('pausa o atropelamento para a decisão manual e o conclui sem cobrar nova ação',()=>{
   const mounted=sample({actorMounted:true,manual:true});
-  expect(()=>executeWarHeroAction(mounted,{heroId:'a',action:{
+  const paused=executeWarHeroAction(mounted,{heroId:'a',action:{
    kind:'personal-trample',toMetres:{x:28,y:25},
-  }})).toThrow(/mitigação manual/);
+  }});
+  expect(paused.pendingPersonalDamage?.targetHeroId).toBe('d');
+  expect(paused.pendingPersonalTrample?.hits).toBe(1);
+  expect(paused.heroes[0]?.usedActions).toBe(1);
+  const done=resolvePendingPersonalDamage(paused,{kind:'injury'});
+  expect(done.pendingPersonalDamage).toBeUndefined();
+  expect(done.pendingPersonalTrample).toBeUndefined();
+  expect(done.heroes.find(h=>h.id==='d')?.injuries).toBe(1);
+  expect(done.events.filter(e=>e.kind==='personal-trample-move')).toHaveLength(1);
+  expect(done.heroes[0]?.usedActions).toBe(1);
  });
 });
