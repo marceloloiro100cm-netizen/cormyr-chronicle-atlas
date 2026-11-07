@@ -11,6 +11,7 @@ import {executeAdvancedWarOrder,WAR_ADVANCED_ORDER_DIFFICULTY} from './advanced-
 import {validateWarHeroes,heroUnitDefenseBonus,heroUnitBonusDice,applyDamageToEmbeddedHeroes} from './heroes';
 import type {WarHero} from './heroes';
 import {personalPosition,spendPersonalAction} from './personal-combat';
+import {queuePersonalDamage} from './personal-injuries';
 
 const SIDES:readonly WarSide[]=['attacker','defender'];
 const opposite=(side:WarSide):WarSide=>side==='attacker'?'defender':'attacker';
@@ -67,6 +68,7 @@ export function createWarBattle(input:{
  commanders:readonly WarCommander[];units:readonly WarUnit[];
  tiles?:readonly WarTerrainTile[];weather?:WarWeather;visibility?:WarVisibility;
  advancedFormations?:boolean;siege?:readonly WarSiegeEngine[];
+ manualMitigation?:boolean;
  fortifications?:readonly WarFortification[];heroes?:readonly WarHero[];
 }):WarBattle{
  if(!input.id.trim()||!input.name.trim()||input.seed.length<1)throw new Error('Identificação do combate inválida.');
@@ -118,6 +120,7 @@ export function createWarBattle(input:{
   round:1,phase:(input.siege?.length??0)>0?'siege':(input.heroes?.length?'heroes-first':'orders'),
   first:'defender',turn:'defender',units,commanders,
   heroes:(input.heroes??[]).map(h=>({...h,position:{...h.position},usedActions:0})),
+  manualMitigation:input.manualMitigation??false,
   siege:[...(input.siege??[])],siegeCompleted:{attacker:false,defender:false},
   tiles:[...(input.tiles??[])],weather:input.weather??'clear',visibility:input.visibility??'clear',
   advancedFormations:input.advancedFormations??false,
@@ -487,6 +490,7 @@ export function issueWarOrder(battle:WarBattle,input:{
  commanderId:string;unitId:string;order:WarOrder;
 }):WarOrderResult{
  if(battle.phase!=='orders')throw new Error('Batalha encerrada.');
+ if(battle.pendingPersonalDamage)throw new Error('Resolva o dano pessoal pendente.');
  const commander=battle.commanders.find(c=>c.id===input.commanderId&&c.active);
  if(!commander||commander.side!==battle.turn||(battle.ordersRemaining[commander.id]??0)<1)
   throw new Error('Não é a vez deste comandante, ou suas ordens terminaram.');
@@ -668,6 +672,7 @@ export function issueWarSurrender(battle:WarBattle,input:{commanderId:string}):W
 }
 /** Passos seis/oito: conclui a janela de cinco rodadas dos personagens. */
 export function completeWarHeroPhase(battle:WarBattle):WarBattle{
+ if(battle.pendingPersonalDamage)throw new Error('Resolva o dano pessoal pendente antes de avançar.');
  if(battle.phase==='heroes-first')
   return log({...battle,phase:'orders',personalInitiative:undefined,heroes:battle.heroes.map(h=>({...h,usedActions:0,minorActionsUsed:0}))},
    'hero-phase','Passo seis concluído: ordens dos exércitos.',null);
@@ -678,6 +683,7 @@ export function completeWarHeroPhase(battle:WarBattle):WarBattle{
  throw new Error('Esta não é uma fase de heróis.');
 }
 export function advanceWarRound(battle:WarBattle):WarBattle{
+ if(battle.pendingPersonalDamage)throw new Error('Resolva o dano pessoal pendente.');
  if(battle.phase!=='orders')throw new Error('Batalha não está na fase de ordens.');
  if(battle.heroes.length>0&&battle.heroSecondCompletedRound!==battle.round)
   return log({...battle,phase:'heroes-second',
