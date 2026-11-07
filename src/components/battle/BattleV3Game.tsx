@@ -140,15 +140,19 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      const key=s.id==='attacker'?'attackerHouseId':'defenderHouseId';
      const ckey=s.id==='attacker'?'attackerCommander':'defenderCommander';
      const leader=commander(options[ckey]);
+     const sideCopies=narrator?officialCopies.filter(unit=>unit.side===s.id):[];
      return <article className="crusade-side-card" key={s.id}>
       <p className="battle-eyebrow">{s.label==='Aliado'?'SEU EXÉRCITO':'EXÉRCITO ADVERSÁRIO'}</p>
-      <label>Casa modelo<select aria-label={'Casa modelo '+s.label} value={options[key]} disabled={locked}
+      <label>Casa modelo<select aria-label={'Casa modelo '+s.label} value={options[key]} disabled={locked||sideCopies.length>0}
        onChange={e=>update({[key]:e.target.value})}>
        {MODEL_HOUSES.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
       </select></label>
-      <h3>{chosen.subtitle}</h3><p>{chosen.description}</p>
+      <h3>{sideCopies.length>0?'Forças copiadas para treinamento':chosen.subtitle}</h3>
+      <p>{sideCopies.length>0?'A casa-modelo deste lado foi substituída por cópias autorizadas, sem alterações na origem.':chosen.description}</p>
       <div className="crusade-model-roster">
-       {chosen.units.map(u=><span key={u.name}>{u.name} <b>×{u.count}</b></span>)}
+       {sideCopies.length>0?
+        sideCopies.map(u=><span key={u.id}>{u.name} <b>×{u.initialCount}</b></span>):
+        chosen.units.map(u=><span key={u.name}>{u.name} <b>×{u.count}</b></span>)}
       </div>
       <label>Comandante<select aria-label={'Comandante '+s.label} value={leader.id} disabled={locked}
        onChange={e=>update({[ckey]:e.target.value as CommanderId})}>
