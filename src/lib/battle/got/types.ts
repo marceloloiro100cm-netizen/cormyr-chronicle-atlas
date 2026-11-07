@@ -72,6 +72,12 @@ export type WarBattle=Readonly<{
   attackerId:string;defenderId:string;ranged:boolean;charge:boolean;
   cautious?:boolean;reckless?:boolean;
   twoHandedGrip?:boolean;powerBonusDice?:number;stunHit?:boolean;
+  splitRank?:number;splitBonus?:number;grappleHit?:boolean;
+ }>|undefined;
+ /** Ataques divididos pausados, mantendo cada alocação e alvo em ordem. */
+ pendingPersonalSplit?:Readonly<{
+  actorId:string;targetIds:readonly string[];ranks:readonly number[];
+  bonuses:readonly number[];nextIndex:number;
  }>|undefined;
  /** Percurso de atropelamento pausado para decisões individuais de dano. */
  pendingPersonalTrample?:Readonly<{
