@@ -1,6 +1,7 @@
 import {degreesOfSuccess,rollDice} from './dice';
 import {executePersonalWarAction} from './personal-combat';
 import type {PersonalWarAction} from './personal-combat';
+import type {WarPersonalWeapon} from './personal-weapons';
 import {assertPersonalTurn,settlePersonalTurn} from './personal-initiative';
 import type {WarBattle,WarPosition,WarSide,WarUnit} from './types';
 
@@ -23,7 +24,7 @@ export type WarHero=Readonly<{
  wounds?:number;injuries?:number;passBonusDice?:number;
  dodgeDefense?:number|null;minorActionsUsed?:number;surrendered?:boolean;
  defeatOutcome?:'death'|'unconscious'|'captured';attackedThisTurn?:boolean;
- squadId?:string;
+ squadId?:string;meleeWeapon?:WarPersonalWeapon;rangedWeapon?:WarPersonalWeapon;
 }>;
 export type WarHeroAction=Readonly<{
  kind:'join'|'leave'|'rally'|'revive'|'abdicate'|'assume'|PersonalWarAction['kind'];
