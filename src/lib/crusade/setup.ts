@@ -3,7 +3,7 @@
  */
 import {z} from 'zod';
 import {crzPrepareArmy,crzArmySetupSchema,type CrzPreparedStack} from './convert';
-import {crzMapSchema,crzValidateMap,crzHexKey,crzAxialToOffset,
+import {crzMapSchema,crzValidateMap,crzHexKey,crzGridToOffset,
  type CrzMap,type CrzHex,type CrzSide} from './geometry';
 import {crzPresetIdSchema,crzRequireKnownRuleset,type CrzPresetId,type CrzRuleset} from './ruleset';
 import {crzPcg32,type CrzRngState} from './rng';
@@ -79,18 +79,18 @@ function orderedZones(map:CrzMap,side:CrzSide):{
 }{
  const middle=Math.floor(map.height/2);
  const compare=(a:CrzHex,b:CrzHex)=>{
-  const ar=crzAxialToOffset(a),br=crzAxialToOffset(b);
+  const ar=crzGridToOffset(map,a),br=crzGridToOffset(map,b);
   return Math.abs(ar.row-middle)-Math.abs(br.row-middle)||
    ar.row-br.row||ar.column-br.column;
  };
  const zone=[...map.deployment[side]];
  zone.sort((a,b)=>{
-  const aa=crzAxialToOffset(a).column,bb=crzAxialToOffset(b).column;
+  const aa=crzGridToOffset(map,a).column,bb=crzGridToOffset(map,b).column;
   return (side==='attacker'?bb-aa:aa-bb)||compare(a,b);
  });
  const pivot=side==='attacker'?1:map.width-2;
- return {front:zone.filter(h=>crzAxialToOffset(h).column===pivot).sort(compare),
-  rear:zone.filter(h=>crzAxialToOffset(h).column!==pivot).sort(compare)};
+ return {front:zone.filter(h=>crzGridToOffset(map,h).column===pivot).sort(compare),
+  rear:zone.filter(h=>crzGridToOffset(map,h).column!==pivot).sort(compare)};
 }
 function deploy(map:CrzMap,stacks:readonly CrzPreparedStack[]):CrzReadyStack[]{
  const occupied=new Set<string>();

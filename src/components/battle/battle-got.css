@@ -98,3 +98,59 @@
 @media(max-width:730px){.battle-module .got-after-summary{grid-template-columns:1fr}
  .battle-module .got-map-header{align-items:stretch}
 }
+
+
+/* Consistent insignia framing across preparation, square board, and House sheets. */
+.battle-module .got-token-frame{width:76%;height:76%;max-width:42px;max-height:42px;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+  border:1px solid #dbbf82;border-radius:7px;background:#152522;
+  box-shadow:0 1px 4px #0008;flex-shrink:0}
+.battle-module .got-token-art{display:block;width:100%;height:100%;object-fit:contain;
+  object-position:center;transform:none;aspect-ratio:1;pointer-events:none}
+.battle-module .got-roster-head{display:flex;align-items:center;gap:10px;min-width:0}
+.battle-module .got-roster-head>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.battle-module .got-roster-head strong{overflow-wrap:anywhere}
+.battle-module .got-map.got-paint .got-cell.got-deployed .got-token-frame{
+ width:75%;height:75%;max-width:42px;max-height:42px}
+.battle-module .got-map.got-paint .got-cell.got-deployed img{max-width:100%}
+
+
+/* Harmonized equipment/hero inspection with the same unit card visual style. */
+.battle-module .got-fort-preview,.battle-module .got-hero-overview{
+ margin:10px 0;padding:10px;border:1px solid #8c7d5b;border-radius:8px;
+ background:rgba(18,30,25,.66);display:grid;gap:8px;color:#f2e6cc;
+}
+.battle-module .got-hero-overview summary{cursor:pointer;font-weight:700;
+ padding:6px;color:#f8deb1}
+.battle-module .got-hero-overview .got-unit{margin-top:6px}
+
+
+/* Three-mode square contract: same side colors/terrain swatches as PTE and CRZ.
+ * The emblem stays framed and readable, while underlying GOT modifiers differ.
+ */
+.battle-module .got-cell.occupied.attacker{background:#416f9b;border-color:#cfddf4}
+.battle-module .got-cell.occupied.defender{background:#ab5246;border-color:#f2c2b5}
+.battle-module .got-map.got-paint .got-cell.got-deployed.attacker{background:#416f9b;border-color:#cfddf4}
+.battle-module .got-map.got-paint .got-cell.got-deployed.defender{background:#ab5246;border-color:#f2c2b5}
+.battle-module .got-cell:not(.occupied):not(.got-deployed)[data-terrain="plain"],
+.battle-module .got-cell:not(.occupied):not(.got-deployed)[data-terrain="hill"]{color:#282219}
+.battle-module .got-cell:not(.occupied):not(.got-deployed)[data-terrain="dense-forest"],
+.battle-module .got-cell:not(.occupied):not(.got-deployed)[data-terrain="wall"]{color:#fff4da}
+.battle-module .got-map .got-token-art{object-fit:contain;object-position:center;transform:none;max-height:100%;max-width:100%}
+.battle-module .got-cell .got-token-frame{flex:0 0 auto}
+
+
+/* Chapter 10: explanatory siege and aftermath audit, no official House writes. */
+.battle-module .got-siege-inspector,
+.battle-module .got-resource-rolls,
+.battle-module .got-after-modifiers,
+.battle-module .got-review-tasks{border:1px solid #c5ae7d;border-radius:8px;
+ background:rgba(19,35,32,.78);padding:12px;color:#fff3da}
+.battle-module .got-siege-inspector summary,
+.battle-module .got-resource-rolls summary{cursor:pointer;font-weight:700;
+ color:#ffe3ac;min-height:30px}
+.battle-module .got-siege-inspector .got-unit{margin-top:8px}
+.battle-module .got-after-modifiers{display:grid;gap:8px;margin:12px 0}
+.battle-module .got-after-modifiers legend{font-weight:700;padding:0 6px}
+.battle-module .got-review-tasks ul{padding-left:22px;line-height:1.6;margin:6px 0}
+.battle-module .got-resource-rolls p{font-variant-numeric:tabular-nums}

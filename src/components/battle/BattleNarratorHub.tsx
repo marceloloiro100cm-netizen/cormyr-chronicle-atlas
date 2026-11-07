@@ -28,7 +28,7 @@ const BattleStrategicLab=lazy(()=>import('./BattleStrategicLab').then(m=>({defau
 
 
 export function BattleNarratorHub(){
- const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'crz'|'invite'|'live'|'strategy'|'got'>('home');
+ const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'crz'|'invite'|'live'|'strategy'|'got'|'dnd'>('home');
  const [rulesetMode,setRulesetMode]=useState<BattleRulesetMode>('adapted');
  const ruleset=battleRulesetOption(rulesetMode);
  const [state,setState]=useState<BattleState|null>(null);
@@ -58,7 +58,7 @@ export function BattleNarratorHub(){
    <p className="battle-eyebrow">CORMYR CHRONICLE ATLAS · NARRADOR</p>
    <h1>Módulo de batalha</h1>
    <p>Simulador tático · sem efeito nas fichas oficiais</p>
-   <p><strong>{rulesetMode==='adapted'?BATTLE_RULES_VERSION+' — regras experimentais.':rulesetMode==='got'?'GOT-CH10-1 — laboratório do livro.':ruleset.label+' — seleção inicial.'}</strong> Nenhuma baixa será lançada nas fichas das casas.</p>
+   <p><strong>{rulesetMode==='adapted'?BATTLE_RULES_VERSION+' — regras experimentais.':rulesetMode==='got'?'GOT-CH10-1 — laboratório do livro.':'D&D-CRZ-5E — combate simplificado em quadrados.'}</strong> Nenhuma baixa será lançada nas fichas das casas.</p>
   </header>
   {view==='home'&&<div className="battle-home-dashboard">
    <section className="battle-surface battle-home-primary" aria-label="Iniciar batalha">
@@ -71,7 +71,7 @@ export function BattleNarratorHub(){
     <div className="battle-home-main-actions">
      <div className="battle-home-option">
       <h3>1 · Criar batalha</h3>
-      <p>Modo tático PTE-2.0: dois exércitos, cenários, editor hexagonal,
+      <p>Modo tático PTE-2.0: dois exércitos, cenários, editor em quadrados,
        movimento, ataques, moral e relatório.</p>
       <Button onClick={()=>setView('setup')}>Criar batalha</Button>
      </div>
@@ -90,10 +90,11 @@ export function BattleNarratorHub(){
      <Button onClick={()=>setView('got')}>Testar regras do livro</Button>
     </section>:<section className="battle-ruleset-pending" aria-label="Preparação do sistema selecionado">
      <h3>D&D · combate simplificado</h3>
-     <p>Próxima implementação: bônus de ataque, Classe de Armadura, pontos de vida, deslocamento, ações de combate e importação validada de monstros de D&D.</p>
-     <p className="battle-note">O motor deste sistema ainda não está disponível.
-      Não iniciaremos uma partida com regras do Adaptado por engano.</p>
-     <Button disabled>Iniciar batalha — em desenvolvimento</Button>
+     <p>Motor CRZ-5E independente, com bônus de ataque, Classe de Armadura,
+      pontos de vida, deslocamento e ações de combate em grade quadrada.</p>
+     <p className="battle-note">Laboratório D&D simplificado: tropas e criaturas-modelo fictícias.
+      Não equivale a todas as regras de D&D 5e e não executa o motor Adaptado.</p>
+     <Button onClick={()=>setView('dnd')}>Iniciar D&D simplificado</Button>
     </section>}
    </section>
    <aside className="battle-home-side" aria-label="Continuação e opções de batalha">
@@ -140,6 +141,9 @@ export function BattleNarratorHub(){
   {view==='crusade'&&<BattleV3NarratorEntry onBack={()=>setView('home')}/>}
   {view==='crz'&&BATTLE_CRZ_TRAINING_UI_ENABLED&&<Suspense fallback={<p role="status">Carregando laboratório CRZ…</p>}>
    <BattleCrzLab onBack={()=>setView('home')}/>
+  </Suspense>}
+  {view==='dnd'&&<Suspense fallback={<p role="status">Carregando D&D simplificado…</p>}>
+   <BattleCrzLab mode="dnd" onBack={()=>setView('home')}/>
   </Suspense>}
   {view==='invite'&&BATTLE_PLAYERS_ENABLED&&<BattleV3InvitationCreator onBack={()=>setView('home')}/>}
   {view==='strategy'&&<Suspense fallback={<p role="status">Carregando mapa de operações…</p>}>

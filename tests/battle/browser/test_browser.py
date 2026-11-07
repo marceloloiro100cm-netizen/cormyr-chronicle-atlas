@@ -91,6 +91,27 @@ class TacticalBrowserAcceptance(unittest.TestCase):
                 self.assertLessEqual(page.evaluate(
                     "document.documentElement.scrollWidth-window.innerWidth"),4)
 
+    def test_square_maps_render_and_legacy_hex_remains_available(self):
+        page=self.open_page(1440,900)
+        page.get_by_role("button",name="Abrir arena V3").click()
+        page.get_by_role("button",name="Batalhar",exact=True).click()
+        dialog=page.get_by_role("dialog",name="Batalha em tela ampliada")
+        dialog.wait_for(timeout=15000)
+        v3=dialog.get_by_role("group",name="Mapa quadrado com 11 colunas por 9 linhas")
+        self.assertEqual(v3.locator('[data-battle-cell-shape="square"]').count(),99)
+        self.assertEqual(v3.locator('[data-battle-cell-shape="hex"]').count(),0)
+        dialog.get_by_role("button",name="Sair da tela ampliada").click()
+        page.get_by_role("button",name="Abrir arena CRZ").click()
+        self.assertEqual(page.get_by_label("Formato da malha CRZ").input_value(),"square")
+        page.get_by_role("button",name="Iniciar treinamento CRZ").click()
+        dialog=page.get_by_role("dialog",name="Batalha em tela ampliada")
+        dialog.wait_for(timeout=15000)
+        self.assertEqual(dialog.locator('[data-crz-cell-shape="square"]').count(),99)
+        self.assertEqual(dialog.locator('[data-crz-cell-shape="hex"]').count(),0)
+        dialog.get_by_role("button",name="Novo treino").click()
+        self.assertEqual(page.get_by_label("Formato da malha CRZ").input_value(),"square")
+        self.assertEqual(page.get_by_label("Formato da malha CRZ").locator('option[value="hex"]').count(),0)
+
     def test_v4_battle_panels_keep_readable_font_sizing(self):
         page=self.open_page(1440,900)
         page.get_by_role("button",name="Abrir arena V3").click()
@@ -108,6 +129,9 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         dialog.get_by_role("button",name="Sair da tela ampliada").click()
         page.get_by_role("button",name="Abrir arena CRZ").click()
         page.get_by_role("button",name="Iniciar treinamento CRZ").click()
+        alert=page.locator(".crz-alert")
+        if alert.count() and alert.first.is_visible():
+            self.fail("CRZ setup rejeitou a malha: "+alert.first.inner_text())
         crz=page.get_by_role("dialog",name="Batalha em tela ampliada")
         crz.wait_for(timeout=15000)
         sizes=crz.evaluate("""root=>({
@@ -124,13 +148,13 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         edit=page.locator("#map-editor")
         board=page.locator("#interactive-board")
         cell=edit.locator(".battle-hex--interactive").first
-        polygon=cell.locator("polygon")
-        self.assertEqual(polygon.get_attribute("fill"),"#d4c69e")
+        shape=cell.locator('[data-battle-cell-shape="square"]')
+        self.assertEqual(shape.get_attribute("fill"),"#d4c69e")
         edit.get_by_role("button",name="Floresta",exact=True).click()
         cell.click()
-        self.assertEqual(polygon.get_attribute("fill"),"#66886b")
+        self.assertEqual(shape.get_attribute("fill"),"#66886b")
         edit.get_by_role("button",name="Desfazer pincel").click()
-        self.assertEqual(polygon.get_attribute("fill"),"#d4c69e")
+        self.assertEqual(shape.get_attribute("fill"),"#d4c69e")
         selected=board.get_by_test_id("selected-hex")
         bcell=board.locator(".battle-hex--interactive").first
         bcell.focus()
@@ -274,6 +298,9 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         self.assertIn("Marcha",page.locator(".crusade-v4-history").inner_text())
         page.get_by_role("button",name="Abrir arena CRZ").tap()
         page.get_by_role("button",name="Iniciar treinamento CRZ").tap()
+        alert=page.locator(".crz-alert")
+        if alert.count() and alert.first.is_visible():
+            self.fail("CRZ mobile rejeitou a malha: "+alert.first.inner_text())
         page.get_by_role("dialog",name="Batalha em tela ampliada").wait_for(timeout=15000)
         crz=page.get_by_role("region",name="Arena e comandos CRZ")
         crz.wait_for(timeout=15000)

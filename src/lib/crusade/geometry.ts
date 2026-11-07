@@ -8,6 +8,8 @@ export type CrzTerrain='plain'|'forest'|'hill'|'rock';
 export type CrzTile=CrzHex&Readonly<{terrain:CrzTerrain}>;
 export type CrzMap=Readonly<{
  id:string;label:string;schemaVersion:2;width:11|15;height:9|11;
+ /** Ausente nos mapas legados; a origem q/r passa a ser coluna/linha em square. */
+ grid?:'square'|undefined;
  tiles:readonly CrzTile[];
  deployment:Readonly<Record<CrzSide,readonly CrzHex[]>>;
 }>;
@@ -17,6 +19,7 @@ const tileSchema=hexSchema.safeExtend({terrain:z.enum(['plain','forest','hill','
 export const crzMapSchema=z.object({
  id:z.string().min(1).max(100),label:z.string().min(1).max(150),
  schemaVersion:z.literal(2),width:z.union([z.literal(11),z.literal(15)]),
+  grid:z.literal('square').optional(),
  height:z.union([z.literal(9),z.literal(11)]),
  tiles:z.array(tileSchema).max(165),
  deployment:z.object({
@@ -40,6 +43,25 @@ export const crzDistance=(a:CrzHex,b:CrzHex):number=>Math.max(
 export const crzNeighbors=(h:CrzHex):CrzHex[]=>CRZ_DIRECTIONS.map(d=>({
  q:h.q+d.q,r:h.r+d.r,
 }));
+/** Mapa quadrado: 8 vizinhos, diagonais custando +0,5, sem atravessar esquinas. */
+const CRZ_SQUARE_DIRECTIONS:readonly CrzHex[]=[
+ {q:1,r:0},{q:0,r:1},{q:-1,r:0},{q:0,r:-1},
+ {q:1,r:1},{q:-1,r:1},{q:-1,r:-1},{q:1,r:-1},
+];
+export const crzGridToOffset=(map:CrzMap,h:CrzHex):{column:number;row:number}=>
+ map.grid==='square'?{column:h.q,row:h.r}:crzAxialToOffset(h);
+export const crzGridFromOffset=(map:CrzMap,column:number,row:number):CrzHex=>
+ map.grid==='square'?{q:column,r:row}:crzOffsetToAxial(column,row);
+export const crzGridDistance=(map:CrzMap,a:CrzHex,b:CrzHex):number=>
+ map.grid==='square'?Math.max(Math.abs(a.q-b.q),Math.abs(a.r-b.r)):crzDistance(a,b);
+export const crzGridNeighbors=(map:CrzMap,h:CrzHex):CrzHex[]=>
+ (map.grid==='square'?CRZ_SQUARE_DIRECTIONS:CRZ_DIRECTIONS).map(d=>({q:h.q+d.q,r:h.r+d.r}));
+export const crzAllowsStep=(map:CrzMap,from:CrzHex,to:CrzHex,occupied:ReadonlySet<string>):boolean=>{
+ if(map.grid!=='square'||from.q===to.q||from.r===to.r)return true;
+ return [{q:to.q,r:from.r},{q:from.q,r:to.r}].every(h=>
+  !occupied.has(crzHexKey(h))&&map.tiles.some(t=>crzHexKey(t)===crzHexKey(h)&&t.terrain!=='rock'));
+};
+
 export const crzTerrainCost=(terrain:CrzTerrain):number=>
  terrain==='rock'?Infinity:terrain==='plain'?1:2;
 export const crzMapIndex=(map:CrzMap):Map<string,CrzTile>=>
@@ -52,7 +74,7 @@ export function crzValidateMap(raw:unknown):CrzMap{
  if(map.tiles.length!==map.width*map.height)
   throw new Error('E_SETUP_MAP: grade incompleta.');
  for(const tile of map.tiles){
-  const p=crzAxialToOffset(tile),key=crzHexKey(tile);
+  const p=crzGridToOffset(map,tile),key=crzHexKey(tile);
   if(p.column<0||p.column>=map.width||p.row<0||p.row>=map.height||
      seen.has(key))throw new Error('E_SETUP_MAP: hexágono duplicado ou fora.');
   seen.add(key);
@@ -68,15 +90,15 @@ export function crzValidateMap(raw:unknown):CrzMap{
   }
  }
  for(const a of map.deployment.attacker){
-  if(map.deployment.defender.some(h=>crzDistance(a,h)<2))
+  if(map.deployment.defender.some(h=>crzGridDistance(map,a,h)<2))
    throw new Error('E_SETUP_MAP: zonas começam adjacentes.');
  }
  const walkable=new Set(map.tiles.filter(t=>t.terrain!=='rock').map(crzHexKey));
  const pending=[...map.deployment.attacker],visited=new Set(pending.map(crzHexKey));
  for(let i=0;i<pending.length;i++){
-  for(const next of crzNeighbors(pending[i]!)){
+  for(const next of crzGridNeighbors(map,pending[i]!)){
    const key=crzHexKey(next);
-   if(!walkable.has(key)||visited.has(key))continue;
+   if(!walkable.has(key)||visited.has(key)||!crzAllowsStep(map,pending[i]!,next,new Set()))continue;
    visited.add(key);pending.push(next);
   }
  }
@@ -85,7 +107,7 @@ export function crzValidateMap(raw:unknown):CrzMap{
  return map;
 }
 /** Determinístico; não usa biblioteca gráfica ou dados privados do Cormyr. */
-export function crzScenario(id:CrzScenarioId,width:11|15=11):CrzMap{
+export function crzScenario(id:CrzScenarioId,width:11|15=11,grid:'hex'|'square'='hex'):CrzMap{
  const height:9|11=width===11?9:11,tiles:CrzTile[]=[];
  const mid=Math.floor(width/2),center=Math.floor(height/2);
  for(let row=0;row<height;row++)for(let col=0;col<width;col++){
@@ -98,14 +120,15 @@ export function crzScenario(id:CrzScenarioId,width:11|15=11):CrzMap{
   }
   if(id==='narrow-passage'&&col===mid&&Math.abs(row-center)>1)
    terrain='rock';
-  tiles.push({...crzOffsetToAxial(col,row),terrain});
+  tiles.push({...(grid==='square'?{q:col,r:row}:crzOffsetToAxial(col,row)),terrain});
  }
  return crzValidateMap({
   id:'crz-'+id,label:id,schemaVersion:2,width,height,tiles,
+   ...(grid==='square'?{grid:'square' as const}:{}),
   deployment:{
-   attacker:tiles.filter(t=>crzAxialToOffset(t).column<=1)
+   attacker:tiles.filter(t=>(grid==='square'?t.q:crzAxialToOffset(t).column)<=1)
     .map(t=>({q:t.q,r:t.r})),
-   defender:tiles.filter(t=>crzAxialToOffset(t).column>=width-2)
+   defender:tiles.filter(t=>(grid==='square'?t.q:crzAxialToOffset(t).column)>=width-2)
     .map(t=>({q:t.q,r:t.r})),
   },
  });
@@ -130,11 +153,13 @@ export function crzReachable(map:CrzMap,from:CrzHex,budget:number,
   const at=frontier.shift()!,key=crzHexKey(at.to);
   if(best.get(key)!==at)continue;
   // Entrar em ZOC finaliza movimento. Sair da ZOC de origem é livre.
-  if(key!==fromKey&&crzNeighbors(at.to).some(n=>enemySet.has(crzHexKey(n))))continue;
-  for(const [i,next] of crzNeighbors(at.to).entries()){
+  if(key!==fromKey&&crzGridNeighbors(map,at.to).some(n=>enemySet.has(crzHexKey(n))))continue;
+  for(const [i,next] of crzGridNeighbors(map,at.to).entries()){
    const nkey=crzHexKey(next),tile=tiles.get(nkey);
-   if(!tile||tile.terrain==='rock'||blocked.has(nkey))continue;
-   const cost=at.cost+crzTerrainCost(tile.terrain);
+   if(!tile||tile.terrain==='rock'||blocked.has(nkey)||
+      !crzAllowsStep(map,at.to,next,blocked))continue;
+   const cost=at.cost+crzTerrainCost(tile.terrain)+
+     (map.grid==='square'&&at.to.q!==next.q&&at.to.r!==next.r?0.5:0);
    if(cost>budget)continue;
    const candidate:Candidate={to:next,cost,steps:at.steps+1,
     path:[...at.path,next],trace:at.trace+i};
@@ -157,9 +182,30 @@ function cubeRound(q:number,r:number):CrzHex{
  else if(dr>ds)rr=-rq-rs;
  return {q:rq,r:rr};
 }
+/** Supercover quadrado conservador: testa todas as células tocadas pela reta. */
+function crzSquareRay(map:CrzMap,from:CrzHex,to:CrzHex):CrzHex[]{
+ const x0=from.q+0.5,y0=from.r+0.5,dx=to.q-from.q,dy=to.r-from.r,eps=1e-9;
+ const crosses=(h:CrzHex)=>{
+  let lo=0,hi=1;
+  for(const [p,d,min,max] of [[x0,dx,h.q,h.q+1],[y0,dy,h.r,h.r+1]] as const){
+   if(Math.abs(d)<eps){if(p<min-eps||p>max+eps)return false;continue;}
+   const a=(min-p)/d,b=(max-p)/d;
+   lo=Math.max(lo,Math.min(a,b));hi=Math.min(hi,Math.max(a,b));
+   if(lo>hi+eps)return false;
+  }
+  return true;
+ };
+ return map.tiles.filter(t=>crzHexKey(t)!==crzHexKey(from)&&
+  crzHexKey(t)!==crzHexKey(to)&&crosses(t));
+}
+
 export function crzLineOfSight(map:CrzMap,from:CrzHex,to:CrzHex):boolean{
  const index=crzMapIndex(map),distance=crzDistance(from,to);
  if(!index.has(crzHexKey(from))||!index.has(crzHexKey(to)))return false;
+  if(map.grid==='square')return crzSquareRay(map,from,to).every(h=>{
+   const terrain=index.get(crzHexKey(h))?.terrain;
+   return Boolean(terrain&&terrain!=='forest'&&terrain!=='rock');
+  });
  if(distance<=1)return true;
  const checked=new Set<string>();
  for(let i=1;i<distance*12;i++){

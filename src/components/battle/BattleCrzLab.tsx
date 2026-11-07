@@ -1,8 +1,12 @@
 import {useEffect,useMemo,useState,type ChangeEvent,type KeyboardEvent} from 'react';
 import {Button} from '@/components/ui/button';
+import {militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
+import {SQUARE_TERRAIN_PRESENTATION,SQUARE_SIDE_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
+import {BattleSquareLegend} from './BattleSquareLegend';
+import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
-import {crzHexKey,crzAxialToOffset,type CrzHex,type CrzSide}
+import {crzHexKey,crzGridToOffset,crzScenario,type CrzHex,type CrzSide,type CrzMap}
  from '@/lib/crusade/geometry';
 import {crzLegalCommands,type CrzCommand} from '@/lib/crusade/turns';
 import {crzCapable,crzOrder,type CrzBattleStack,type CrzBattleState,
@@ -34,27 +38,41 @@ const SPELL_LABELS:Readonly<Record<string,string>>={
  heroism:'Heroísmo',cause_fear:'Amedrontar',cure_wounds:'Curar ferimentos',
  firebolt:'Raio de fogo',fireball:'Bola de fogo (área)',shield_wall_formation:'Formação de escudos',
 };
+/** Tokens fictícios CRZ adotam o mesmo catálogo heráldico das tropas
+ * de Cormyr. Criaturas importadas sem correspondência mostram iniciais.
+ */
+export const CRZ_MODEL_MILITARY_TYPE:Readonly<Record<string,string>>={
+ 'guard-cca|original':'garrison',
+ 'archer-cca|original':'archers',
+ 'raider-cca|original':'raiders',
+ 'scout-cca|original':'scouts',
+};
+export const crzUnitMilitarySymbol=(templateId:string):string|undefined=>
+ militaryUnitSymbolSrc(templateId)||
+ militaryUnitSymbolSrc(CRZ_MODEL_MILITARY_TYPE[templateId]);
+
 const TERRAIN:Readonly<Record<string,{name:string;fill:string}>>={
- plain:{name:'Planície',fill:'#a6a079'},
- forest:{name:'Bosque',fill:'#426953'},
- hill:{name:'Colina',fill:'#a88b5a'},
- rock:{name:'Rocha',fill:'#575960'},
+ plain:{name:SQUARE_TERRAIN_PRESENTATION.plain.name,fill:SQUARE_TERRAIN_PRESENTATION.plain.color},
+ forest:{name:SQUARE_TERRAIN_PRESENTATION.forest.name,fill:SQUARE_TERRAIN_PRESENTATION.forest.color},
+ hill:{name:SQUARE_TERRAIN_PRESENTATION.hill.name,fill:SQUARE_TERRAIN_PRESENTATION.hill.color},
+ rock:{name:SQUARE_TERRAIN_PRESENTATION.rock.name,fill:SQUARE_TERRAIN_PRESENTATION.rock.color},
 };
 const SIDE:Readonly<Record<CrzSide,{name:string;fill:string}>>={
- attacker:{name:'Coroa',fill:'#3e719e'},
- defender:{name:'Ashkar',fill:'#a85540'},
+ attacker:{name:'Coroa',fill:SQUARE_SIDE_PRESENTATION.attacker.color},
+ defender:{name:'Ashkar',fill:SQUARE_SIDE_PRESENTATION.defender.color},
 };
 const SIZE=25;
 const XSTEP=Math.sqrt(3)*SIZE;
+const SQUARE_STEP=SIZE*2.15;
 const HEX_POINTS=Array.from({length:6},(_,i)=>{
  const angle=(-90+60*i)*Math.PI/180;
  return (SIZE*Math.cos(angle)).toFixed(2)+','+
   (SIZE*Math.sin(angle)).toFixed(2);
 }).join(' ');
-const pixel=(h:CrzHex)=>{
- const {column,row}=crzAxialToOffset(h);
- return {x:42+XSTEP*(column+(row&1)/2),
-  y:40+SIZE*1.5*row};
+const pixel=(map:CrzMap,h:CrzHex)=>{
+ const {column,row}=crzGridToOffset(map,h);
+ return map.grid==='square'?{x:SQUARE_STEP*(column+0.75),y:SQUARE_STEP*(row+0.75)}:
+  {x:42+XSTEP*(column+(row&1)/2),y:40+SIZE*1.5*row};
 };
 const count=(s:CrzBattleStack)=>s.alive+'/'+s.initialCount;
 function eventLabel(event:CrzEvent):string{
@@ -92,8 +110,9 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
  const targets=new Set(attacks);
  const occupied=new Map(state.stacks.filter(crzCapable)
   .map(s=>[crzHexKey(s.position),s]));
- const width=XSTEP*(state.map.width+1)+58;
- const height=SIZE*(1.5*(state.map.height-1)+3.4);
+ const square=state.map.grid==='square';
+ const width=square?SQUARE_STEP*(state.map.width+1.5):XSTEP*(state.map.width+1)+58;
+ const height=square?SQUARE_STEP*(state.map.height+1.5):SIZE*(1.5*(state.map.height-1)+3.4);
  return <div className="crz-board-shell">
   <div className="crz-map-tools" role="group" aria-label="Ferramentas do mapa CRZ">
    <Button type="button" variant="outline" size="sm" aria-label="Reduzir zoom CRZ"
@@ -105,22 +124,22 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
     disabled={zoom===100}>Ajustar mapa CRZ</Button>
   </div>
   <p className="crz-map-help" id="crz-keyboard-help">Teclado: Tab entra no mapa;
-   setas navegam pelos hexágonos; Enter ou Espaço executam a ação. Use o zoom
+   setas navegam pelas células; Enter ou Espaço executam a ação. Use o zoom
    para ampliar sem alterar o tamanho das tropas.</p>
   <div className="crz-map-scroll" role="region" tabIndex={0}
   aria-label="Área navegável do mapa CRZ">
   <svg className="crz-map" viewBox={`0 0 ${width} ${height}`}
    style={{width:zoom+'%'}} role="group" aria-label={`Mapa CRZ ${state.map.width} por ${state.map.height}`}>
    {state.map.tiles.map(tile=>{
-    const key=crzHexKey(tile),{x,y}=pixel(tile),unit=occupied.get(key),objective=objectivesByHex.get(key);
+    const key=crzHexKey(tile),{x,y}=pixel(state.map,tile),unit=occupied.get(key),objective=objectivesByHex.get(key);
     const isMove=movable.has(key);
     const isAttack=Boolean(unit&&targets.has(unit.id));
     const active=unit?.id===state.activeStackId,selected=unit?.id===selectedId;
     const hovered=unit?.id===hoveredId;
     const label=(isMove?'Mover para ':isAttack?'Atacar ':'Inspecionar ')+
      (unit?unit.name+' · ':'')+TERRAIN[tile.terrain]!.name+
-     ' ('+crzAxialToOffset(tile).column+','+
-       crzAxialToOffset(tile).row+')'+
+     ' ('+crzGridToOffset(state.map,tile).column+','+
+       crzGridToOffset(state.map,tile).row+')'+
        (objective?' · Marco: '+objective.title:'');
     const press=()=>onTile({q:tile.q,r:tile.r});
     const keyPress=(event:KeyboardEvent<SVGGElement>)=>{
@@ -143,11 +162,16 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
      className={'crz-map-tile'+(isMove?' crz-map-move':'')+
        (isAttack?' crz-map-attack':'')+(active?' crz-map-active':'')+
        (selected?' crz-map-selected':'')+(hovered?' crz-map-hovered':'')}>
-      <polygon points={HEX_POINTS} transform={`translate(${x} ${y})`}
-       fill={TERRAIN[tile.terrain]!.fill}/>
-      {isMove&&<polygon className="crz-valid-overlay" points={HEX_POINTS}
+      {square?<rect data-crz-cell-shape="square" x={x-SQUARE_STEP/2} y={y-SQUARE_STEP/2} width={SQUARE_STEP}
+       height={SQUARE_STEP} fill={TERRAIN[tile.terrain]!.fill}/>:
+      <polygon data-crz-cell-shape="hex" points={HEX_POINTS} transform={`translate(${x} ${y})`}
+       fill={TERRAIN[tile.terrain]!.fill}/>}
+      {isMove&&(square?<rect className="crz-valid-overlay"
+       x={x-SQUARE_STEP/2} y={y-SQUARE_STEP/2} width={SQUARE_STEP} height={SQUARE_STEP}
+       fill="rgba(99,255,116,.24)" pointerEvents="none"/>:
+      <polygon className="crz-valid-overlay" points={HEX_POINTS}
        transform={`translate(${x} ${y})`} fill="rgba(99,255,116,.24)"
-       pointerEvents="none"/>}
+       pointerEvents="none"/> )}
       {unit&&<>
        {isAttack&&<circle data-crz-attack-ring={unit.id} cx={x} cy={y} r={22}
         fill="none" stroke="#ff6d54" strokeWidth={4} pointerEvents="none"/>}
@@ -155,13 +179,20 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
         fill="none" stroke="#ffe3a1" strokeWidth={4} pointerEvents="none"/>}
        {selected&&<circle data-crz-selected-ring={unit.id} cx={x} cy={y} r={21}
         fill="none" stroke="#79ff86" strokeWidth={4} pointerEvents="none"/>}
-       <circle cx={x} cy={y} r={16}
+       <circle cx={x} cy={y} r={21}
         fill={SIDE[unit.side].fill} stroke={active?'#f9df9c':'#e4d8c2'}
-        strokeWidth={active?3:1.4}/>
-       <text x={x} y={y-3} textAnchor="middle" fill="#fff" fontSize={10}
+        strokeWidth={active?3:1.8} pointerEvents="none"/>
+       <rect x={x-17} y={y-21} width={34} height={34} rx={7}
+        fill="#162629" stroke="#dbc58d" strokeWidth="1.2" pointerEvents="none"/>
+       {crzUnitMilitarySymbol(unit.templateId)?
+        <image href={crzUnitMilitarySymbol(unit.templateId)} x={x-16} y={y-20}
+         width={32} height={32} preserveAspectRatio="xMidYMid meet" pointerEvents="none"/>:
+        <text x={x} y={y-1} textAnchor="middle" fill="#fff" fontSize={13}
+         fontWeight={700} pointerEvents="none">{unit.name.slice(0,2).toUpperCase()}</text>}
+       <rect x={x-18} y={y+10} width={36} height={14} rx={6}
+        fill="#1c2525" stroke="#dfc79a" strokeWidth=".6" pointerEvents="none"/>
+       <text x={x} y={y+21} textAnchor="middle" fill="#fff" fontSize={11}
         fontWeight={700} pointerEvents="none">{unit.alive}</text>
-       <text x={x} y={y+9} textAnchor="middle" fill="#fff" fontSize={8}
-        pointerEvents="none">{unit.id.slice(0,8)}</text>
       </>}
       {isMove&&!unit&&<circle cx={x} cy={y} r={5}
        fill="#b7fa8c" pointerEvents="none"/>}
@@ -177,6 +208,7 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
    })}
   </svg>
  </div>
+ <BattleSquareLegend/>
  </div>;
 }
 
@@ -188,8 +220,10 @@ const spellCost:Partial<Record<CrzSpellId,number>>={
  cure_wounds:2,firebolt:2,fireball:6,shield_wall_formation:2,
 };
 
-export function BattleCrzLab({onBack}:{onBack?:()=>void}){
- const [options,setOptions]=useState<CrzTrainingOptions>(CRZ_TRAINING_DEFAULTS);
+export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'dnd'}){
+ const dndMode=mode==='dnd';
+ const [options,setOptions]=useState<CrzTrainingOptions>({...CRZ_TRAINING_DEFAULTS,
+  grid:'square',preset:'CRZ-5E'});
  const [session,setSession]=useState<CrzReplaySession|null>(null);
  const [expanded,setExpanded]=useState(false);
  const [replayStep,setReplayStep]=useState<number|null>(null);
@@ -259,7 +293,10 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  };
  const begin=()=>{
   try{
-   const initial=crzReplayBegin(crzTrainingReady({...options,generalLevel:generalProfile.level}));
+   const initial=crzReplayBegin(crzTrainingReady({...options,
+    grid:'square',
+    ...(dndMode?{preset:'CRZ-5E' as const}:options.preset?{preset:options.preset}:{}),
+    generalLevel:generalProfile.level}));
    const next=crzTrainingAdvanceAi(initial);
    setSession(next);setSelectedId(next.state.activeStackId);
    setPanel('actions');setReplayStep(null);setError('');setExpanded(true);
@@ -287,7 +324,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    setSelectedId(unit.id);
    setError('');
   }else if(canAct&&active&&selectedId===active.id){
-   setError('Hexágono fora do movimento permitido. Selecione um hexágono verde.');
+   setError('Quadrado fora do movimento permitido. Selecione um quadrado verde.');
   }
  };
  const orderIds=frame?[
@@ -352,13 +389,14 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  };
  const arena=<section className={'battle-module crusade-mode crz-lab'+
   (highContrast?' crz-high-contrast':'')}
-  aria-label="Laboratório CRZ-1.0 do Narrador">
+  aria-label={dndMode?'D&D simplificado · laboratório do Narrador':'Laboratório CRZ-1.0 do Narrador'}>
   {!session&&<>
    <header className="battle-header crz-intro">
     <p className="battle-eyebrow">CORMYR · LABORATÓRIO DO NARRADOR</p>
-    <h1>CRZ-1.0 · Cruzada Experimental</h1>
-    <p>Treinamento tático com exércitos-modelo. Nenhum efeito em casas,
-     baixas oficiais, contas ou no calendário.</p>
+    <h1>{dndMode?'D&D · Combate simplificado':'CRZ-1.0 · Cruzada Experimental'}</h1>
+    <p>{dndMode?'Regras simplificadas de inspiração 5e: ataque, CA, PV, movimento e iniciativa em quadrados.':
+     'Treinamento tático com exércitos-modelo.'}
+     Nenhum efeito em casas, baixas oficiais, contas ou no calendário.</p>
     <div className="crz-toolbar">
      {onBack&&<Button variant="outline" onClick={onBack}>Voltar ao módulo</Button>}
      <Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
@@ -378,8 +416,41 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    <section className="battle-surface" aria-label="Preparar treino CRZ">
     <h2>Preparar batalha-modelo</h2>
     <p>Defensores da Coroa contra forças fictícias de Ashkar.</p>
+    <section className="battle-surface" aria-label="Mapas quadrados compartilhados">
+     <h3>Mapa quadrado compartilhado</h3>
+     <p>Importe um mapa quadrado de Adaptado ou Game of Thrones.
+      Somente terrenos básicos são transferidos; regras de combate não são copiadas.</p>
+     <label>Importar arquivo JSON do mapa
+      <input type="file" accept=".json,application/json" aria-label="Importar mapa quadrado D&D"
+       onChange={e=>{
+        const file=e.target.files?.[0];e.target.value='';
+        if(!file)return;
+        if(file.size>100000){setError('Arquivo de mapa excede 100 KB.');return;}
+        void file.text().then(json=>{
+         const common=parseSharedSquareMap(json);
+         setOptions(o=>({...o,grid:'square',width:common.width,sharedMap:common}));
+         setError('');setMessage('Mapa quadrado compartilhado importado: '+common.width+
+          ' × '+common.height+'.');
+        }).catch(err=>setError(err instanceof Error?err.message:'Mapa inválido.'));
+       }}/>
+     </label>
+     <Button variant="outline" onClick={()=>{
+      try{
+       const map=frame?.map??(options.sharedMap?sharedToCrzMap(options.sharedMap):
+        crzScenario(options.scenario,options.width,options.grid??'square'));
+       const shared=sharedFromCrzMap(map);
+       const blob=new Blob([serializeSharedSquareMap(shared)],{type:'application/json'});
+       const url=URL.createObjectURL(blob),anchor=document.createElement('a');
+       anchor.href=url;anchor.download='mapa-cormyr-quadrado.json';anchor.click();
+       URL.revokeObjectURL(url);
+       setMessage('Mapa compartilhado exportado.');setError('');
+      }catch(err){setError(err instanceof Error?err.message:'Mapa não exportado.');}
+     }}>Exportar mapa quadrado</Button>
+     {options.sharedMap&&<p role="status">Mapa compartilhado em uso:
+      {options.sharedMap.name} · {options.sharedMap.width} × {options.sharedMap.height}.</p>}
+    </section>
     <div className="crz-form">
-     <label>Conjunto de regras
+     {!dndMode&&<label>Conjunto de regras
       <select aria-label="Preset CRZ" value={options.preset??'CRZ-5E'}
        onChange={e=>setOptions(o=>({...o,preset:e.target.value as NonNullable<CrzTrainingOptions['preset']>,
         resolution:e.target.value==='CRZ-5E'?o.resolution:'expected'}))}>
@@ -387,13 +458,22 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
        <option value="CRZ-WOTR">CRZ-WOTR (esperado)</option>
        <option value="PTE-2.0-compat">PTE-2.0-compat (esperado)</option>
       </select>
-     </label>
+     </label>}
+     {dndMode&&<p className="battle-note">Motor CRZ-5E fixo neste modo; não substitui
+      regras completas de D&D 5e e não altera os outros sistemas.</p>}
      <label>Cenário
       <select value={options.scenario} aria-label="Cenário CRZ"
        onChange={e=>setOptions(o=>({...o,scenario:e.target.value as CrzTrainingOptions['scenario']}))}>
        {CRZ_TRAINING_SCENARIOS.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
       </select>
      </label>
+     {!dndMode&&<label>Malha tática
+      <select aria-label="Formato da malha CRZ" value={options.grid??'square'}
+       disabled>
+       <option value="square">Quadrados (novo padrão)</option>
+       {/* Novas simulações usam apenas quadrados. */}
+      </select>
+     </label>}
      <label>Tamanho do mapa
       <select value={options.width} aria-label="Tamanho do mapa CRZ"
        onChange={e=>setOptions(o=>({...o,width:Number(e.target.value) as 11|15}))}>
@@ -467,7 +547,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    <section className="crz-turn-track" aria-label="Ordem de combate">
     <div className="crz-track-title">
      <h2>Ordem de combate</h2>
-     <span>Selecione uma tropa; Tab entra no mapa e as setas navegam entre hexágonos</span>
+     <span>Selecione uma tropa; Tab entra no mapa e as setas navegam entre células</span>
     </div>
     <div className="crz-turn-cards">
      {turnOrder.map((unit,index)=><button type="button" key={unit.id}
@@ -530,7 +610,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
      </div>
      <div className="crz-command-footer">
       <h3>Decisão do turno</h3>
-      <p className="battle-unified-action-hint">Mover: toque no hexágono verde. Atacar: selecione o inimigo destacado.</p>
+      <p className="battle-unified-action-hint">Mover: toque no quadrado verde. Atacar: selecione o inimigo destacado.</p>
       {aiTurn&&<Button variant="outline" onClick={()=>{
        if(!session)return;
        try{
@@ -595,7 +675,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
       <ol className="crz-objectives">{objectives.map(o=><li key={o.id}>
        <strong>{o.title}</strong>
        <span>{o.holder?SIDE[o.holder].name:'Livre'} ·
-        hex {crzAxialToOffset(o.position).column},{crzAxialToOffset(o.position).row}</span>
+        hex {crzGridToOffset(frame.map,o.position).column},{crzGridToOffset(frame.map,o.position).row}</span>
       </li>)}</ol>
      </section>}
      {panel==='report'&&report&&<section aria-label="Relatório pós-batalha CRZ">
@@ -641,7 +721,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
    <footer className="crz-arena-guide">
     <strong>Como jogar</strong>
     <span>Selecione a unidade da vez para destacá-la em verde.</span>
-    <span>Clique num hexágono verde para mover.</span>
+    <span>Clique num quadrado verde para mover.</span>
     <span>Clique num inimigo com contorno vermelho para atacar.</span>
    </footer>
    {frame.phase==='completed'&&<div className="crz-victory-banner" role="status">

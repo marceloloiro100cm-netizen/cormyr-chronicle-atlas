@@ -3,7 +3,8 @@ import type { BattleCommand, BattleEvent, BattleStack, BattleState, Hex, Side } 
 import { TRAINING_BONUS } from './profiles-v2';
 import { BATTLE_RULES } from './rulebook-v2';
 import { validateBattleDraft } from './setup';
-import { hexDistance, hexKey, hexNeighbors } from '../geometry/hex';
+import { hexKey } from '../geometry/hex';
+import {gridDistance} from '../geometry/grid';
 import { reachablePaths } from '../geometry/pathfinding';
 import { lineOfSight } from '../geometry/visibility';
 import { resolveDamage } from './combat';
@@ -61,11 +62,11 @@ export function legalAttack(state:BattleState,actor:BattleStack,target:BattleSta
 }{
   if(actor.id===target.id||actor.side===target.side)return {legal:false,reason:'O alvo não é inimigo.'};
   if(target.currentHp<=0||target.moraleState==='routed')return {legal:false,reason:'Alvo derrotado.'};
-  const distance=hexDistance(actor.position,target.position);
+  const distance=gridDistance(state.map,actor.position,target.position);
   if(actor.rangeHex===1)
     return distance===1?{legal:true}:{legal:false,reason:'Fora do alcance.'};
   if(state.stacks.some(s=>s.side!==actor.side&&s.currentHp>0&&s.moraleState!=='routed'&&
-     hexDistance(s.position,actor.position)===1))
+     gridDistance(state.map,s.position,actor.position)===1))
     return {legal:false,reason:'Atirador engajado em combate adjacente.'};
   if(distance<2||distance>actor.rangeHex)return {legal:false,reason:'Fora do alcance.'};
   const los=lineOfSight(state.map,actor.position,target.position);
@@ -174,7 +175,7 @@ export function applyBattleCommand(state:BattleState,untrusted:unknown,actor:'na
   if(cmd.type==='ATTACK'){
     const target=state.stacks.find(s=>s.id===cmd.targetId);
     if(!target)throw new Error('Alvo não encontrado.');
-    const melee=hexDistance(active.position,target.position)===1;
+    const melee=gridDistance(state.map,active.position,target.position)===1;
     const hit=resolveDamage(state.map,active,target,!melee);
     let next:BattleState={...state,stacks:changeStack(state.stacks,target.id,{
       currentHp:hit.defender.currentHp,moraleState:hit.defender.moraleState,

@@ -7,7 +7,7 @@ export const SCENARIOS:Readonly<Record<BattleScenarioId,string>>={
   'border-hills':'Colinas da fronteira',
   'narrow-passage':'Passagem estreita',
 };
-export function createScenario(id:BattleScenarioId,width:11|15=11):BattleMap {
+export function createScenario(id:BattleScenarioId,width:11|15=11,grid:'hex'|'square'='square'):BattleMap {
   const height:9|11=width===11?9:11;
   const tiles:MapTile[]=[];
   const mid=Math.floor(width/2),center=Math.floor(height/2);
@@ -21,13 +21,13 @@ export function createScenario(id:BattleScenarioId,width:11|15=11):BattleMap {
     }
     if(id==='narrow-passage' && col===mid && Math.abs(row-center)>1)
       terrain='rock';
-    tiles.push({...offsetToAxial(col,row),terrain});
+    tiles.push({...(grid==='square'?{q:col,r:row}:offsetToAxial(col,row)),terrain});
   }
   const deployment={
-    attacker:tiles.filter(t=>{const col=t.q+Math.floor((t.r-(t.r&1))/2);return col<=1;})
+    attacker:tiles.filter(t=>{const col=grid==='square'?t.q:t.q+Math.floor((t.r-(t.r&1))/2);return col<=1;})
       .map(t=>({q:t.q,r:t.r})),
-    defender:tiles.filter(t=>{const col=t.q+Math.floor((t.r-(t.r&1))/2);return col>=width-2;})
+    defender:tiles.filter(t=>{const col=grid==='square'?t.q:t.q+Math.floor((t.r-(t.r&1))/2);return col>=width-2;})
       .map(t=>({q:t.q,r:t.r})),
   };
-  return {id,label:SCENARIOS[id],schemaVersion:2,width,height,tiles,deployment};
+  return {id,label:SCENARIOS[id],schemaVersion:2,width,height,tiles,deployment,...(grid==='square'?{grid:'square' as const}:{})};
 }

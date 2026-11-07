@@ -24,6 +24,14 @@ export type WarResourceProposal=Readonly<{
  occupationMonthsRequired:3;
  occupationSecured:boolean;
  provisionalOccupationTransfer:boolean;
+ /** Transferência hipotética: não é débito/crédito das Casas. */
+ occupationReview:Readonly<{
+  status:'not-occupied'|'provisional'|'secured';
+  land:number;defense:number;wealth:number;requiresNarratorApproval:true;
+ }>;
+ /** Toda rolagem da proposta, inclusive dados sem efeito em caso de derrota. */
+ rollLedger:readonly Readonly<{reason:string;dice:readonly number[];total:number}>[];
+ approvalItems:readonly string[];
  unresolvedScorchedDomains:readonly string[];
  appliedToHouse:false;
  notes:readonly string[];
@@ -103,10 +111,31 @@ export function previewWarResourceConsequences(
   [...unresolved].join(', ')+'. Nenhuma perda dessas posses foi atribuída.');
  if(scenario.occupiedDomain&&!scenario.garrisonHeldForThreeMonths)
   notes.push('Terras e Defesa são projeções condicionais, não uma ocupação consolidada.');
+ const occupationStatus:WarResourceProposal['occupationReview']['status']=
+  !scenario.occupiedDomain?'not-occupied':
+  scenario.garrisonHeldForThreeMonths?'secured':'provisional';
+ const approvalItems=[
+  ...(scenario.occupiedDomain?[
+   'Validar a posse, a guarnição e os investimentos territoriais antes de qualquer transferência.'
+  ]:[]),
+  ...(scenario.occupiedDomain&&!scenario.garrisonHeldForThreeMonths?[
+   'Pendente: confirmar três meses de ocupação na cronologia da campanha.'
+  ]:[]),
+  ...[...unresolved].map(domain=>'Informar proprietário do domínio arrasado: '+domain+'.'),
+  ...captured.map(hero=>'Decidir cativeiro, resgate e destino de '+hero.name+'.'),
+ ];
+ const rollLedger=Object.entries(dice).map(([reason,values])=>({
+  reason,dice:values,total:values.reduce((sum,value)=>sum+value,0),
+ }));
  return {battleId:battle.id,winner,loser,attacker:delta.attacker,
   defender:delta.defender,dice,captured,occupationMonthsRequired:3,
   occupationSecured:scenario.occupiedDomain&&scenario.garrisonHeldForThreeMonths,
   provisionalOccupationTransfer:scenario.occupiedDomain&&!scenario.garrisonHeldForThreeMonths,
-  unresolvedScorchedDomains:[...unresolved],
+  occupationReview:{status:occupationStatus,
+   land:scenario.occupiedDomain?scenario.capturedLandValue:0,
+   defense:scenario.occupiedDomain?scenario.survivingFortDefenseValue:0,
+   wealth:scenario.occupiedDomain?scenario.transferredWealthInvestments:0,
+   requiresNarratorApproval:true},
+  rollLedger,approvalItems,unresolvedScorchedDomains:[...unresolved],
   appliedToHouse:false,notes};
 }

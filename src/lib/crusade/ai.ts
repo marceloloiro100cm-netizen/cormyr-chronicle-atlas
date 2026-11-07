@@ -2,7 +2,7 @@
  * Não usa redutor PTE nem acelera o tempo da campanha.
  */
 import {crzLegalCommands,crzPlay,type CrzCommand} from './turns';
-import {crzDistance,crzReachable,crzHexKey} from './geometry';
+import {crzGridDistance} from './geometry';
 import {crzCapable,type CrzBattleState} from './battle-state';
 
 export function crzChooseAi(state:CrzBattleState):CrzCommand{
@@ -24,7 +24,7 @@ export function crzChooseAi(state:CrzBattleState):CrzCommand{
  if(!unit.activation.moved){
   const moves=legal.filter((c):c is Extract<CrzCommand,{type:'MOVE'}>=>c.type==='MOVE');
   const distance=(q:number,r:number)=>Math.min(...enemies.map(s=>
-   crzDistance({q,r},s.position)));
+   crzGridDistance(state.map,{q,r},s.position)));
   if(enemies.length&&moves.length){
    const oldDistance=distance(unit.position.q,unit.position.r);
    const closer=moves.filter(c=>distance(c.to.q,c.to.r)<oldDistance)

@@ -49,13 +49,28 @@ describe('Capítulo 10 — esquadrões de dez homens',()=>{
   expect(after.squads?.[0]?.casualtyRecorded).toBe(true);
   expect(after.events.filter(e=>e.kind==='squad-loss')).toHaveLength(1);
  });
- it('rejeita destacamento repetido, falta de soldados e criação após a iniciativa',()=>{
-  const d=deployWarSquad(sample(),{unitId:'a',squadId:'grupo-a'});
-  expect(()=>deployWarSquad(d,{unitId:'a',squadId:'outro'}))
-   .toThrow(/já tem esquadrão/);
-  expect(()=>deployWarSquad(d,{unitId:'nada',squadId:'nenhum'}))
+ it('permite dez grupos por centena sem duplicar soldados ou ultrapassar a capacidade',()=>{
+  const first=deployWarSquad(sample(),{unitId:'a',squadId:'grupo-a-1'});
+  const second=deployWarSquad(first,{unitId:'a',squadId:'grupo-a-2'});
+  expect(second.squads).toHaveLength(2);
+  expect(second.heroes.filter(h=>h.squadId?.startsWith('grupo-a'))).toHaveLength(20);
+  let expanded=second;
+  for(let i=3;i<=10;i++)
+   expanded=deployWarSquad(expanded,{unitId:'a',squadId:'grupo-a-'+i});
+  expect(expanded.squads?.filter(s=>s.unitId==='a')).toHaveLength(10);
+  const personal=expanded.heroes.filter(h=>h.squadId?.startsWith('grupo-a'));
+  expect(personal).toHaveLength(100);
+  expect(new Set(personal.map(h=>h.personalPosition!.x+':'+h.personalPosition!.y)).size)
+   .toBe(100);
+  expect(personal.every(h=>h.personalPosition!.x>=20&&h.personalPosition!.x<30&&
+   h.personalPosition!.y>=30&&h.personalPosition!.y<40)).toBe(true);
+  expect(()=>deployWarSquad(expanded,{unitId:'a',squadId:'grupo-a-11'}))
+   .toThrow(/no máximo dez/);
+  expect(()=>deployWarSquad(first,{unitId:'a',squadId:'grupo-a-1'}))
+   .toThrow(/repetido/);
+  expect(()=>deployWarSquad(first,{unitId:'nada',squadId:'nenhum'}))
    .toThrow(/origem/);
-  const started=beginPersonalInitiative(d);
+  const started=beginPersonalInitiative(first);
   expect(()=>deployWarSquad(started,{unitId:'d',squadId:'grupo-d'}))
    .toThrow(/antes de rolar/);
  });

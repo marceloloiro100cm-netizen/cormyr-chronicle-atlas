@@ -1,0 +1,13 @@
+.battle-square-legend{display:grid;gap:9px;width:100%;padding:10px 12px;
+ margin-top:8px;background:rgba(22,32,32,.86);border:1px solid #ac946c;
+ border-radius:8px;color:#fff4dd;font-size:13px;line-height:1.4}
+.battle-square-legend strong{font-weight:700;color:#ffe4b4}
+.battle-square-legend-items{display:flex;gap:8px 15px;flex-wrap:wrap}
+.battle-square-legend-item{display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.battle-square-legend-swatch{display:inline-flex;align-items:center;justify-content:center;
+ width:22px;height:22px;border:1px solid #decca8;border-radius:3px;color:#151b19;
+ font-size:13px;font-weight:700}
+.battle-square-legend-ring{width:17px;height:17px;border-radius:3px;border:3px solid}
+.battle-square-legend-ring.move{border-color:#72e881}
+.battle-square-legend-ring.attack{border-color:#e9574c}
+.battle-square-legend small{color:#f4dfb8;font-size:12px}

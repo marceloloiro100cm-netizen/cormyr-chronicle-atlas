@@ -35,7 +35,7 @@ describe('Batalha V3 · padrão de interface V4 unificada',()=>{
   const order=screen.getByRole('region',{name:'Ordem de combate V3'});
   const cards=within(order).getAllByRole('button');
   expect(cards.length).toBe(8);
-  const map=screen.getByRole('group',{name:/Mapa hexagonal/});
+  const map=screen.getByRole('group',{name:/Mapa (?:hexagonal|quadrado)/});
   expect(map.querySelectorAll('[data-battle-hover-ring]')).toHaveLength(0);
   fireEvent.mouseEnter(cards[1]!);
   expect(map.querySelectorAll('[data-battle-hover-ring]')).toHaveLength(1);
@@ -48,7 +48,7 @@ describe('Batalha V3 · padrão de interface V4 unificada',()=>{
  });
  it('move diretamente por hexágono legal, sem alternância manual de ações',()=>{
   started();
-  const map=screen.getByRole('group',{name:/Mapa hexagonal/});
+  const map=screen.getByRole('group',{name:/Mapa (?:hexagonal|quadrado)/});
   const current=within(screen.getByRole('region',{name:'Ordem de combate V3'}))
    .getAllByRole('button')[0]!;
   expect(current).toHaveAttribute('aria-current','step');
@@ -69,7 +69,7 @@ describe('Batalha V3 · padrão de interface V4 unificada',()=>{
   expect(enemy).toBeDefined();
   fireEvent.click(enemy!);
   expect(enemy).toHaveAttribute('aria-pressed','true');
-  expect(within(screen.getByRole('group',{name:/Mapa hexagonal/}))
+  expect(within(screen.getByRole('group',{name:/Mapa (?:hexagonal|quadrado)/}))
    .queryAllByRole('button',{name:/movimento permitido/})).toHaveLength(0);
   expect(screen.getByRole('button',{name:'Fim de turno'})).toBeEnabled();
  });

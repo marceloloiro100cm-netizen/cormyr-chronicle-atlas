@@ -37,3 +37,21 @@
  :is(button,select,input,textarea){font-size:15px}
  .battle-module .battle-surface{padding:13px}
 }
+
+/* Migração da malha, lotes 3/4: prévia separada do mapa em edição. */
+.battle-module .battle-map-conversion-preview{
+ margin:12px 0;padding:12px 14px;border:1px solid #b49c73;border-radius:10px;
+ background:#222c2c;color:#f4ead9;line-height:1.5;
+}
+.battle-module .battle-map-conversion-preview h4{
+ font-family:Georgia,serif;font-size:17px;color:#f5d9a4;margin:0 0 8px;
+}
+.battle-module .battle-map-conversion-preview p{margin:6px 0;font-size:14px;color:#f1e4d1}
+.battle-module .battle-map-conversion-preview p[role="alert"]{
+ color:#ffe5d6;border-left:3px solid #e8a17e;padding-left:10px;
+}
+.battle-module .battle-map-conversion-preview .battle-form-row{margin-top:12px}
+@media(max-width:630px){
+ .battle-module .battle-map-conversion-preview{padding:12px}
+ .battle-module .battle-map-conversion-preview .battle-form-row{flex-wrap:wrap}
+}

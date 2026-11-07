@@ -60,3 +60,23 @@ export function warSiegeDamage(engine:WarSiegeEngine):{base:number;ignoresArmor:
  return {base:engine.ammo==='wildfire'?7:profile.damage,
   ignoresArmor:profile.ignoreArmor||engine.ammo==='oil'||engine.ammo==='wildfire'};
 }
+
+
+/** Read-only siege availability. A machine can fire again only after a
+ * complete intervening war round. Digital targeting uses 10-metre squares.
+ */
+export function warSiegeReloadRemaining(engine:WarSiegeEngine,round:number):number{
+ if(!Number.isInteger(round)||round<1)throw new Error('Rodada de cerco inválida.');
+ return engine.lastFiredRound===null?0:Math.max(0,2-(round-engine.lastFiredRound));
+}
+export function warSiegeDistanceMetres(
+ engine:WarSiegeEngine,target:WarPosition,
+):number{
+ if(!Number.isInteger(target.x)||!Number.isInteger(target.y))
+  throw new Error('Alvo de cerco precisa estar no mapa quadrado.');
+ return Math.max(Math.abs(engine.position.x-target.x),
+  Math.abs(engine.position.y-target.y))*10;
+}
+export function warSiegeTargetInRange(engine:WarSiegeEngine,target:WarPosition):boolean{
+ return warSiegeDistanceMetres(engine,target)<=WAR_SIEGE_CATALOG[engine.kind].rangeMetres;
+}

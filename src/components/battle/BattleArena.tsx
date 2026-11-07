@@ -5,7 +5,8 @@ import {startBattle,applyBattleCommand,getLegalActions,legalAttack} from '@/lib/
 import {livingCount,casualtyCount} from '@/lib/battle/domain/morale';
 import {resolveDamage} from '@/lib/battle/domain/combat';
 import {battleReport} from '@/lib/battle/domain/report';
-import {hexKey,hexDistance} from '@/lib/battle/geometry/hex';
+import {hexKey} from '@/lib/battle/geometry/hex';
+import {gridDistance} from '@/lib/battle/geometry/grid';
 import {reachablePaths} from '@/lib/battle/geometry/pathfinding';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
@@ -114,7 +115,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
  const selectedPath=candidate?paths.find(p=>hexKey(p.to)===hexKey(candidate)):undefined;
  const target=pendingAttack?battle.stacks.find(s=>s.id===pendingAttack):undefined;
  const damagePreview=active&&target&&legalAttack(battle,active,target).legal
-   ?resolveDamage(battle.map,active,target,hexDistance(active.position,target.position)>1):null;
+   ?resolveDamage(battle.map,active,target,gridDistance(battle.map,active.position,target.position)>1):null;
  const clear=()=>{setMode('inspect');setPendingMove(null);setPendingAttack(null);setHover(null);};
  useEffect(()=>{
   if(paused||battle.phase!=='active'||!battle.activeUnitId)return;
@@ -148,7 +149,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
   }
   if(canAct&&mode==='attack'){
    if(unit&&attackIds.includes(unit.id)){setPendingAttack(unit.id);setPendingMove(null);setNotice('Confirme o ataque abaixo.');}
-   else setNotice('Este hexágono não contém um alvo legal.');
+   else setNotice('Este '+(battle.map.grid==='square'?'quadrado':'hexágono')+' não contém um alvo legal.');
    return;
   }
   if(unit){setSelected(unit.id);clear();}
@@ -237,7 +238,8 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
        selectedId={selected} moveKeys={canAct&&mode==='move'?moveKeys:[]}
        attackKeys={canAct&&mode==='attack'?attackIds:[]} pendingHex={pendingMove}
        onHexClick={chooseHex} onHoverHex={setHover}/>
-     {mode==='move'&&<p role="status">Rota: {selectedPath?selectedPath.steps+' hexágonos · custo '+selectedPath.cost:'selecione um hexágono destacado'}</p>}
+     {mode==='move'&&<p role="status">Rota: {selectedPath?selectedPath.steps+' '+(battle.map.grid==='square'?'quadrados':'hexágonos')+' · custo '+selectedPath.cost:
+      'Selecione um '+(battle.map.grid==='square'?'quadrado':'hexágono')+' destacado'}</p>}
      {damagePreview&&<p role="status">Ataque previsto contra {target?.name}: {damagePreview.damage} PV · {damagePreview.casualties} baixas antes de eventual retaliação.</p>}
      {notice&&<p role="alert" className="battle-error">{notice}</p>}
      <div className="battle-actions" aria-label="Ações da unidade">

@@ -17,13 +17,13 @@
 .crz-lab .crz-map-scroll{width:100%;max-width:100%;overflow:auto;max-height:75vh;border:1px solid #706958;border-radius:9px;background:#263732}
 .crz-lab .crz-map{display:block;width:100%;min-width:460px;height:auto}
 .crz-lab .crz-map-tile{cursor:pointer;outline:none}
-.crz-lab .crz-map-tile polygon{stroke:#555e4f;stroke-width:1.3;transition:filter .12s}
-.crz-lab .crz-map-tile:focus-visible polygon{stroke:#fff2ce;stroke-width:4;filter:brightness(1.22)}
-.crz-lab .crz-map-tile:hover polygon{filter:brightness(1.16)}
-.crz-lab .crz-map-tile.crz-map-move polygon{stroke:#ffe7a1;stroke-width:3;filter:brightness(1.12)}
-.crz-lab .crz-map-tile.crz-map-attack polygon{stroke:#ff756d;stroke-width:4}
-.crz-lab .crz-map-tile.crz-map-selected polygon{stroke:#ffffff;stroke-width:3}
-.crz-lab .crz-map-tile.crz-map-active polygon{stroke:#ffd79b;stroke-width:3}
+.crz-lab .crz-map-tile :is(polygon,rect){stroke:#555e4f;stroke-width:1.3;transition:filter .12s}
+.crz-lab .crz-map-tile:focus-visible :is(polygon,rect){stroke:#fff2ce;stroke-width:4;filter:brightness(1.22)}
+.crz-lab .crz-map-tile:hover :is(polygon,rect){filter:brightness(1.16)}
+.crz-lab .crz-map-tile.crz-map-move :is(polygon,rect){stroke:#ffe7a1;stroke-width:3;filter:brightness(1.12)}
+.crz-lab .crz-map-tile.crz-map-attack :is(polygon,rect){stroke:#ff756d;stroke-width:4}
+.crz-lab .crz-map-tile.crz-map-selected :is(polygon,rect){stroke:#ffffff;stroke-width:3}
+.crz-lab .crz-map-tile.crz-map-active :is(polygon,rect){stroke:#ffd79b;stroke-width:3}
 .crz-lab .crz-units{display:grid;gap:7px}
 .crz-lab .crz-unit{display:grid;grid-template-columns:10px 1fr auto;align-items:center;
  gap:6px 9px;text-align:left;color:#f1e3cc;background:#343a39;
@@ -54,7 +54,7 @@
  .crz-lab .crz-form{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){
- .crz-lab .crz-map-tile polygon{transition:none}
+ .crz-lab .crz-map-tile :is(polygon,rect){transition:none}
 }
 
 /* Lote 7 — foco concentrado no tabuleiro, zoom e alto contraste opcional. */
@@ -64,11 +64,11 @@
 .crz-lab .crz-map-tools output{font-variant-numeric:tabular-nums;min-width:40px;text-align:center}
 .crz-lab .crz-map-help{font-size:12px;color:#e3d3b8;margin:5px 0 10px}
 .crz-lab.crz-high-contrast .crz-map-scroll{background:#091116;border-color:#fff}
-.crz-lab.crz-high-contrast .crz-map-tile polygon{stroke:#fff;stroke-width:1.7;filter:contrast(1.2)}
-.crz-lab.crz-high-contrast .crz-map-tile.crz-map-move polygon{stroke:#fff242;stroke-width:4}
-.crz-lab.crz-high-contrast .crz-map-tile.crz-map-attack polygon{stroke:#ff4837;stroke-width:4}
-.crz-lab.crz-high-contrast .crz-map-tile.crz-map-active polygon{stroke:#ffffff;stroke-width:5}
-.crz-lab.crz-high-contrast .crz-map-tile:focus-visible polygon{stroke:#ffe847;stroke-width:5}
+.crz-lab.crz-high-contrast .crz-map-tile :is(polygon,rect){stroke:#fff;stroke-width:1.7;filter:contrast(1.2)}
+.crz-lab.crz-high-contrast .crz-map-tile.crz-map-move :is(polygon,rect){stroke:#fff242;stroke-width:4}
+.crz-lab.crz-high-contrast .crz-map-tile.crz-map-attack :is(polygon,rect){stroke:#ff4837;stroke-width:4}
+.crz-lab.crz-high-contrast .crz-map-tile.crz-map-active :is(polygon,rect){stroke:#ffffff;stroke-width:5}
+.crz-lab.crz-high-contrast .crz-map-tile:focus-visible :is(polygon,rect){stroke:#ffe847;stroke-width:5}
 
 /* Lote 9 — observações de controle e tabela de desempenho somente leitura. */
 .crz-lab .crz-insights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:stretch}
@@ -202,15 +202,15 @@
  min-height:260px;overflow:auto;background:#172023;border:1px solid #a3906e}
 .crz-lab .crz-central-map .crz-map{min-width:100%;display:block;
  width:100%;height:auto;touch-action:manipulation}
-.crz-lab .crz-central-map .crz-map-tile polygon:first-child{stroke:#f2dea9;
+.crz-lab .crz-central-map .crz-map-tile :is(polygon,rect):first-child{stroke:#f2dea9;
  stroke-width:1.5;transition:stroke .12s,filter .12s}
-.crz-lab .crz-central-map .crz-map-tile.crz-map-move polygon:first-child{
+.crz-lab .crz-central-map .crz-map-tile.crz-map-move :is(polygon,rect):first-child{
  stroke:#a6fe7c;stroke-width:3;filter:brightness(1.15)}
-.crz-lab .crz-central-map .crz-map-tile.crz-map-attack polygon:first-child{
+.crz-lab .crz-central-map .crz-map-tile.crz-map-attack :is(polygon,rect):first-child{
  stroke:#ff675b;stroke-width:4}
-.crz-lab .crz-central-map .crz-map-tile.crz-map-selected polygon:first-child{
+.crz-lab .crz-central-map .crz-map-tile.crz-map-selected :is(polygon,rect):first-child{
  stroke:#78fe80;stroke-width:3}
-.crz-lab .crz-central-map .crz-map-tile.crz-map-hovered polygon:first-child{
+.crz-lab .crz-central-map .crz-map-tile.crz-map-hovered :is(polygon,rect):first-child{
  stroke:#ffdf84;stroke-width:4}
 .crz-lab .crz-inspect-line{border-top:1px solid #7c6a4f;margin-top:8px;padding:9px 2px 0;
  display:flex;flex-wrap:wrap;gap:4px 11px;color:#eaddc6;font-size:12px}
@@ -253,7 +253,7 @@
  background:#080b0c;border-color:#fff}
 .crz-lab.crz-high-contrast :is(.crz-general-deck,.crz-central-map,.crz-last-actions){
  background:#090e10;border-color:#fff}
-.crz-lab.crz-high-contrast .crz-central-map .crz-map-tile.crz-map-move polygon:first-child{stroke:#deff42}
+.crz-lab.crz-high-contrast .crz-central-map .crz-map-tile.crz-map-move :is(polygon,rect):first-child{stroke:#deff42}
 .crz-lab.crz-high-contrast .crz-battle-stage button:focus-visible{outline-color:#fff}
 @media(max-width:1250px){
  .crz-lab .crz-battle-columns{grid-template-columns:minmax(176px,.9fr) minmax(0,3fr) minmax(195px,1fr);gap:9px}

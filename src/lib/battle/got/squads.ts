@@ -18,15 +18,22 @@ export function deployWarSquad(battle:WarBattle,input:{
  if(!unit||!alive(unit))throw new Error('A unidade de origem precisa estar em combate.');
  if(!input.squadId.trim()||battle.squads?.some(s=>s.id===input.squadId))
   throw new Error('Identificador de esquadrão inválido ou repetido.');
- if(battle.squads?.some(s=>s.unitId===unit.id&&!s.casualtyRecorded))
-  throw new Error('Esta unidade já tem esquadrão destacado em combate.');
+ // Cem soldados podem ser representados por dez grupos de dez.
+ // Um destaque continua sendo uma cópia da simulação: não reduz a ficha da Casa.
+ const attached=(battle.squads??[]).filter(s=>s.unitId===unit.id);
+ if(attached.length>=10)
+  throw new Error('Cada unidade de cem soldados pode destacar no máximo dez esquadrões.');
  const currentIds=new Set(battle.heroes.map(h=>h.id));
  const ids=Array.from({length:10},(_,i)=>input.squadId+'-'+(i+1));
  if(ids.some(id=>currentIds.has(id)))throw new Error('Identificação de combatente duplicada.');
  const troops=ids.map((id,i)=>{
   const hero=makeModelWarHero({id,name:unit.name+' · soldado '+(i+1),
    side:unit.side,position:{...unit.position}});
-  const position={x:unit.position.x*10+(i%5)+2,y:unit.position.y*10+Math.floor(i/5)+4};
+  // Cada destacamento utiliza dez posições pessoais exclusivas da
+  // área 10×10 m da unidade: evita sobrepor dez esquadrões no mesmo local.
+  const ordinal=attached.length*10+i;
+  const position={x:unit.position.x*10+(ordinal%10),
+   y:unit.position.y*10+Math.floor(ordinal/10)};
   return {...hero,squadId:input.squadId,personalPosition:position,
    agility:unit.ability.agility,athletics:unit.ability.athletics,
    awareness:unit.ability.awareness,endurance:unit.ability.endurance,

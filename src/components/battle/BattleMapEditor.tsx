@@ -3,6 +3,8 @@ import type { BattleMap, Hex, Terrain } from '@/lib/battle/domain/types';
 import {createScenario,SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixtures';
 import {validateBattleMap} from '@/lib/battle/geometry/map-validation';
 import {hexKey} from '@/lib/battle/geometry/hex';
+import {previewBattleMapGridConversion,type GridConversionPreview} from '@/lib/battle/geometry/map-conversion';
+import {parseSharedSquareMap,sharedFromBattleMap,sharedToBattleMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleBoard} from './BattleBoard';
 import {downloadBattleJson,parseBattleMapJson,serializeBattleMap} from '@/lib/battle/serialization/map-io';
 import {Button} from '@/components/ui/button';
@@ -18,11 +20,12 @@ export function BattleMapEditor({map,onChange,locked=false}:{
 }){
  const [brush,setBrush]=useState<Brush>('forest'),[fillTerrain,setFillTerrain]=useState<Terrain>('plain');
  const [undo,setUndo]=useState<BattleMap[]>([]),[message,setMessage]=useState('');
+ const [gridPreview,setGridPreview]=useState<{source:string;result:GridConversionPreview}|null>(null);
  const file=useRef<HTMLInputElement|null>(null);
  const problems=validateBattleMap(map);
  const save=(next:BattleMap)=>{
   if(locked)return;
-  setUndo(h=>[...h.slice(-24),map]);onChange(next);setMessage('');
+  setUndo(h=>[...h.slice(-24),map]);onChange(next);setMessage('');setGridPreview(null);
  };
  const paint=(h:Hex)=>{
   if(locked||brush==='select')return;
@@ -52,13 +55,17 @@ export function BattleMapEditor({map,onChange,locked=false}:{
  };
  const undoLast=()=>{
   const previous=undo.at(-1);if(!previous)return;
-  setUndo(x=>x.slice(0,-1));onChange(previous);setMessage('');
+  setUndo(x=>x.slice(0,-1));onChange(previous);setMessage('');setGridPreview(null);
  };
  const loadFile=async(f:File)=>{
   try{
     if(f.size>150_000)throw new Error('Arquivo excede 150 KB.');
-    const parsed=parseBattleMapJson(await f.text());
-    save(parsed);setMessage('Mapa importado e validado.');
+    const json=await f.text();
+    const shared=json.includes('"cormyr-square-map"');
+    const parsed=shared?sharedToBattleMap(parseSharedSquareMap(json)):
+     parseBattleMapJson(json);
+    save(parsed);setMessage(shared?'Mapa quadrado compartilhado importado.':
+     'Mapa de batalha importado e validado.');
   }catch(e){setMessage(e instanceof Error?e.message:'Falha ao importar o mapa.');}
  };
  return <section className="battle-surface battle-editor" aria-label="Editor de mapas táticos">
@@ -67,17 +74,41 @@ export function BattleMapEditor({map,onChange,locked=false}:{
     <div className="battle-form-row">
       <label>Cenário
         <select aria-label="Cenário" value={Object.hasOwn(SCENARIOS,map.id)?map.id:'custom'}
-          onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id))save(createScenario(id,map.width));}}>
+          onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id))save(createScenario(id,map.width,'square'));}}>
           {!Object.hasOwn(SCENARIOS,map.id)&&<option value="custom">Personalizado</option>}
           {Object.entries(SCENARIOS).map(([id,name])=><option key={id} value={id}>{name}</option>)}
         </select></label>
       <label>Dimensões
         <select aria-label="Dimensões do mapa" value={String(map.width)}
-          onChange={e=>save(createScenario('plain-open',e.target.value==='15'?15:11))}>
+          onChange={e=>save(createScenario('plain-open',e.target.value==='15'?15:11,'square'))}>
           <option value="11">11 × 9</option><option value="15">15 × 11</option>
         </select></label>
-      <Button variant="outline" onClick={()=>save(createScenario('plain-open',map.width))}>Restaurar</Button>
+      <Button variant="outline" onClick={()=>save(createScenario('plain-open',map.width,'square'))}>Restaurar</Button>
+      <Button variant="outline" aria-label="Pré-visualizar conversão de malha"
+        disabled={map.grid==='square'}
+        onClick={()=>{
+         setGridPreview({source:JSON.stringify(map),
+          result:previewBattleMapGridConversion(map,'square')});
+         setMessage('');}}>
+        Converter mapa antigo para quadrados
+      </Button>
     </div>
+    {gridPreview&&<section className="battle-map-conversion-preview" aria-label="Prévia de conversão de malha">
+      <h4>Conversão não aplicada — {gridPreview.result.from==='hex'?'hexágonos':'quadrados'} para {gridPreview.result.to==='square'?'quadrados':'hexágonos'}</h4>
+      <p>{gridPreview.result.tilesPreserved} terrenos e {gridPreview.result.attackerZonesPreserved} zonas A /
+       {gridPreview.result.defenderZonesPreserved} zonas B preservados por coluna e linha.</p>
+      <p>{gridPreview.result.repositionedCoordinates} coordenadas internas serão recalculadas.
+       Partidas iniciadas e replays não serão alterados.</p>
+      {gridPreview.result.issues.length>0&&<p role="alert">
+       Conversão bloqueada: {gridPreview.result.issues.join('; ')}
+      </p>}
+      <div className="battle-form-row">
+       <Button variant="outline" disabled={gridPreview.result.issues.length>0||
+        gridPreview.source!==JSON.stringify(map)}
+        onClick={()=>save(gridPreview.result.converted)}>Aplicar conversão validada</Button>
+       <Button variant="outline" onClick={()=>setGridPreview(null)}>Cancelar conversão</Button>
+      </div>
+     </section>}
     <div className="battle-tools" role="group" aria-label="Pincel de terreno">
       {BRUSHES.map(b=><button type="button" key={b.id} aria-pressed={brush===b.id}
         className={brush===b.id?'battle-tool--active':''} onClick={()=>setBrush(b.id)}>{b.name}</button>)}
@@ -96,6 +127,12 @@ export function BattleMapEditor({map,onChange,locked=false}:{
       <Button variant="outline" disabled={!undo.length} onClick={undoLast}>Desfazer pincel</Button>
       <Button variant="outline" onClick={()=>{try{downloadBattleJson('mapa-batalha.json',serializeBattleMap(map));setMessage('Mapa exportado.');}
         catch(e){setMessage(e instanceof Error?e.message:'Mapa não pode ser exportado.');}}}>Exportar JSON</Button>
+      <Button variant="outline" onClick={()=>{try{
+       const portable=sharedFromBattleMap(map);
+       downloadBattleJson('mapa-cormyr-quadrado.json',serializeSharedSquareMap(portable));
+       setMessage('Mapa quadrado compartilhado exportado para os três modos.');
+      }catch(e){setMessage(e instanceof Error?e.message:'Converta para quadrados antes de compartilhar.');}}}>
+       Exportar mapa compartilhado</Button>
       <Button variant="outline" onClick={()=>file.current?.click()}>Importar JSON</Button>
       <input type="file" className="sr-only" accept=".json,application/json" ref={file}
         aria-label="Selecionar arquivo JSON do mapa"
