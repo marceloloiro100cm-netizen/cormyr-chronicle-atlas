@@ -183,3 +183,43 @@ Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsist
   Frágil, Empalar, Enredar, Estilhaçadora, todas as recargas de
   equipamento, Contra Carga do pique e montarias complexas ainda
   não foram integralmente aplicadas. Não declarar fidelidade 100%.
+
+## Incremento — montarias feridas, queda, atropelar e mitigação antecipada
+
+- **Ferimentos e morte do cavalo**, `personal-mounts.ts`:
+  qualquer acerto direto contra a montaria reduz sua Saúde no laboratório.
+  Cavalo com Saúde reduzida exige ação maior para ser controlado.
+  Cavalo morto desmonta seu ocupante. O personagem testa Lidar com
+  Animais contra 12: sucesso salta até um espaço livre a 1 m;
+  falha causa dano igual ao Atletismo da montaria ignorando VA,
+  derruba o personagem e o deixa preso sob o corpo.
+  A queda permite mitigação manual de dano voluntária quando ativada,
+  antes da aplicação da perda de Saúde.
+- **Escapar da montaria caída**, `personal-combat.ts`:
+  ação maior de Agilidade ou Atletismo contra 9; se bem-sucedido,
+  o cavaleiro continua caído, mas não está mais aprisionado.
+  Levantar-se custa ação menor, ou maior quando VA da armadura >= 6.
+  Enquanto preso, a Defesa pessoal sofre −5; oponência a pessoa caída
+  acrescenta +1D em Luta.
+- **Atropelar (ação maior)**: deslocamento do cavaleiro montado numa
+  linha reta sobre quadrados de 1 m, teste de Lidar com Animais
+  para cada alvo; montaria não treinada aumenta dificuldade em +6
+  e cada alvo subsequente recebe +5 na Defesa em Combate. Sucesso causa
+  o Atletismo da montaria multiplicado pelos graus de sucesso,
+  menos a armadura do alvo. Ainda **bloqueado com mitigação manual
+  simultânea**, até haver decisões sucessivas de múltiplos defensores.
+- **Contra-ataque + mitigação manual**: o golpe de reação ocorre
+  primeiro; caso gere dano pendente, o defensor decide ferimentos
+  ou lesões antes de retomar a ação de ataque original. Se a reação
+  derrubar o atacante, o golpe original é cancelado. O estado
+  transitório `pendingPersonalCounterattack` só existe na batalha
+  local e é consumido depois da decisão de dano.
+- **Novos testes**: `battle-got-mount-falls-trample.test.ts` e
+  ampliação de `battle-got-personal-counterattack.test.ts`.
+  Não há migração de banco, publicação ou mudanças de ficha.
+- **Ainda ausente**: sobrevivência da montaria com gasto de Destino,
+  atropelamento com múltiplas decisões manuais, ataques de montaria
+  treinada independente, animais com estatísticas oficiais,
+  riscos e coberturas de obstáculos mais complexos, interrupções
+  de unidades e outras qualidades de armas. A equivalência 100%
+  com o livro ainda não foi atingida.
