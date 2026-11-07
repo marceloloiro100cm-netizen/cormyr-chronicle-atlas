@@ -1,8 +1,9 @@
 /** CRZ-1.0 · resolução tática separada do redutor PTE, manual 03 §§6.7–7,10.
  * Lote 4 executa CRZ-5E. Presets sem paridade comprovada não são ativados.
  */
-import {crzResolve5e,type CrzAttackEntry,type CrzDamagePart,
- type CrzMitigation} from './damage';
+import {crzResolve5e,crzWotrExpected,crzHitFactorBP,
+ type CrzAttackEntry,type CrzDamagePart,type CrzMitigation} from './damage';
+import {crzApplyDamage} from './stack';
 import {crzSafe} from './stack';
 import {crzDistance,crzMapIndex,type CrzHex} from './geometry';
 import {crzEffectBonus,crzLog,crzMoraleState,crzReplaceStack,crzCapable,
@@ -76,6 +77,45 @@ function attackBonus(state:CrzBattleState,actor:CrzBattleStack,
  return crzSafe(actor.atkMod+crzEffectBonus(actor,'attack')+flank-
   engaged-longRange-shaken,'attack bonus');
 }
+/** Ataque esperado de presets experimentais, sem falsificar paridade PTE oficial.
+ * RD do WOTR fica zero nos templates sintéticos sem atributo de redução plano.
+ */
+function crzExpectedVariant(state:CrzBattleState,attackEntries:readonly CrzAttackEntry[],
+ count:number,attackBonusValue:number,targetAc:number,target:CrzBattleStack,bonusBP:number){
+ if(state.resolution!=='expected')
+  throw new Error('E_SETUP_RULESET: variantes exigem resolução expected.');
+ const totalX100=attackEntries.reduce((sum,e)=>{
+  const avg=e.parts.reduce((n,p)=>n+
+   Math.max(0,p.dice.count*(p.dice.sides+1)*50+p.mod*100),0);
+  return crzSafe(sum+e.count*avg,'damage expected variant');
+ },0);
+ const first=attackEntries[0];
+ if(!first)throw new Error('ATTACK: nenhuma rotina válida.');
+ const hits=Math.floor(count*crzHitFactorBP(state.ruleset,first.toHit+attackBonusValue,targetAc)/10000);
+ const hitMultiplier=crzHitFactorBP(state.ruleset,first.toHit+attackBonusValue,targetAc);
+ if(state.ruleset.id==='CRZ-WOTR'){
+  const wotr=crzWotrExpected({ruleset:state.ruleset,attackerCount:count,
+   attackBonus:first.toHit+attackBonusValue,targetAc,averageDamageX100:totalX100,
+   flatDr:0,baseMultiplierBP:10000+bonusBP,target});
+  return {mode:'expected' as const,receipt:wotr.receipt,rawDamage:wotr.damage,
+   expectedHitsX100:hits*100};
+ }
+ // PTE-compat deliberadamente não usa dados nem acertos críticos.
+ const armor=Math.max(0,target.acBase-10);
+ const step=state.ruleset.damage.armorReductionStepBP;
+ const reduction=Math.min(state.ruleset.damage.armorReductionMaxBP,armor*step);
+ const tile=crzMapIndex(state.map).get(target.position.q+','+target.position.r);
+ const cover=modeCoverBP(state,tile?.terrain);
+ const raw=Math.floor(totalX100*count*hitMultiplier*(10000-reduction)*cover*
+  (10000+bonusBP)/100/10000/10000/10000/10000);
+ const damage=Math.max(0,raw);
+ return {mode:'expected' as const,receipt:crzApplyDamage(target,damage,'carry'),
+  rawDamage:damage,expectedHitsX100:hits*100};
+}
+function modeCoverBP(state:CrzBattleState,terrain:string|undefined):number{
+ return terrain==='forest'?state.ruleset.hit.coverDamageBP.forest:
+  terrain==='hill'?state.ruleset.hit.coverDamageBP.hill:10000;
+}
 export function crzStrike(state:CrzBattleState,
  actorId:string,targetId:string,mode:CrzAttackMode,
  retaliation=false):CrzBattleState{
@@ -83,32 +123,30 @@ export function crzStrike(state:CrzBattleState,
  const target=state.stacks.find(s=>s.id===targetId);
  if(!actor||!target||actor.side===target.side||!crzCapable(actor)||
    !crzCapable(target))throw new Error('ATTACK: alvo/atacante inválido.');
- if(state.ruleset.id!=='CRZ-5E')
-  throw new Error('E_SETUP_RULESET: redutor CRZ-5E necessário.');
- // Habilidade preparada melhora apenas o ataque ativo; nunca uma retaliação.
+ // Habilidade preparada modifica somente o ataque atual, nunca retaliação.
  const entry=entries(actor,target,mode,
-  !retaliation&&(
-   actor.activation.preparedAbility==='CHARGE'&&mode==='melee'||
-   actor.activation.preparedAbility==='VOLLEY'&&mode==='ranged')?1:0);
+  !retaliation&&(actor.activation.preparedAbility==='CHARGE'&&mode==='melee'||
+    actor.activation.preparedAbility==='VOLLEY'&&mode==='ranged')?1:0);
  const engaged=mode==='melee'?engagedCount(actor,target,
   state.ruleset.damage.frontage,state.ruleset.damage.frontageRanks):actor.alive;
- const result=crzResolve5e({
-  ruleset:state.ruleset,engagedCount:engaged,
-  attackBonus:attackBonus(state,actor,target,mode),
-  targetAc:targetAC(state,target,mode),
-  target,entries:entry,mode:state.resolution,
-  rngState:state.rngState,damageBonusBP:actor.damageBonusBP,
- });
+ const attack=attackBonus(state,actor,target,mode),ac=targetAC(state,target,mode);
+ // Três modelos matemáticos com identidade e hash de preset independentes.
+ // WOTR e PTE-compat são treino esperado, não importação de baixas PTE oficiais.
+ const result=state.ruleset.id==='CRZ-5E'?
+  crzResolve5e({ruleset:state.ruleset,engagedCount:engaged,
+   attackBonus:attack,targetAc:ac,target,entries:entry,mode:state.resolution,
+   rngState:state.rngState,damageBonusBP:actor.damageBonusBP}):
+  crzExpectedVariant(state,entry,engaged,attack,ac,target,actor.damageBonusBP);
  let next=state;
  if(result.mode==='rolled')next={...next,rngState:result.rngState};
  const changed0={...target,...result.receipt.stack};
  const moraleState=crzMoraleState(changed0);
  const changed:CrzBattleStack={...changed0,moraleState};
  next=crzReplaceStack(next,changed);
- const count=entry.reduce((sum,e)=>sum+e.count,0)*engaged;
+ const attacksCount=entry.reduce((sum,e)=>sum+e.count,0)*engaged;
  const evt={type:retaliation?'RETALIATION_RESOLVED':'ATTACK_RESOLVED',
   unitId:actorId,targetId,mode:result.mode,
-  attacks:result.mode==='rolled'?result.attacks:count,
+  attacks:result.mode==='rolled'?result.attacks:attacksCount,
   hits:result.mode==='rolled'?result.hits:Math.floor(result.expectedHitsX100/100),
   crits:result.mode==='rolled'?result.crits:0,
   rawDamage:result.rawDamage,appliedDamage:result.receipt.damageApplied,
