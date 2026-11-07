@@ -1,4 +1,4 @@
-import {degreesOfSuccess,rollDice} from './dice';
+import {degreesOfSuccess} from './dice';
 import {movementSlow,terrainAt,terrainEffect,visibilityPenalty} from './terrain';
 import type {WarBattle,WarEvent,WarPosition} from './types';
 import type {WarHero} from './heroes';
