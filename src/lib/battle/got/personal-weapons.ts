@@ -1,7 +1,7 @@
 import type {WarHero} from './heroes';
 
 /** Amostra verificável da tabela 9-3; não é o catálogo completo do livro. */
-export type WarPersonalWeaponId='longsword'|'greatsword'|'spear'|'pike'|
+export type WarPersonalWeaponId='longsword'|'greatsword'|'long-axe'|'spear'|'pike'|
  'hunting-bow'|'longbow'|'light-crossbow';
 export type WarPersonalWeapon=Readonly<{
  id:WarPersonalWeaponId;label:string;
@@ -15,6 +15,9 @@ export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersona
   piercing:0,cruel:false},
  greatsword:{id:'greatsword',label:'Montante',family:'melee',
   damageAbility:'athletics',damageBonus:3,reachMetres:1,range:'none',
+  piercing:0,cruel:true},
+ 'long-axe':{id:'long-axe',label:'Machado longo',family:'melee',
+  damageAbility:'athletics',damageBonus:3,reachMetres:3,range:'none',
   piercing:0,cruel:true},
  spear:{id:'spear',label:'Lança',family:'melee',
   damageAbility:'athletics',damageBonus:0,reachMetres:1,range:'none',
