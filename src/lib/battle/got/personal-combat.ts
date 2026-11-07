@@ -105,7 +105,6 @@ export function executePersonalWarAction(
  if(!hero.active||hero.surrendered||hero.unitId||hero.usedActions>=5)
   throw new Error('Herói não pode atuar individualmente agora.');
  if(hero.role!=='hero')throw new Error('Comandante deve abdicar antes de lutar.');
- const weight=action.kind==='personal-attack'||action.kind==='personal-move'?'minor':'major';
  if(action.kind==='personal-end-turn'){
   if(!hero.minorActionsUsed)throw new Error('Não há ação menor pendente para encerrar.');
   return log(changeHero(battle,{...hero,minorActionsUsed:0,
