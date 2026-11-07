@@ -10,7 +10,7 @@ describe('P0/P1 — partidas compartilhadas com segurança e sem efeitos oficiai
   const player=read('src/components/battle/BattleV3PlayerEntry.tsx');
   const gm=read('src/components/battle/BattleNarratorHub.tsx');
   expect(player).toContain('BATTLE_V3_LIVE_ENABLED&&liveMatches.length>0');
-  expect(gm).toContain('BATTLE_V3_LIVE_ENABLED&&<Button');
+  expect(gm).toContain('BATTLE_PLAYERS_ENABLED&&BATTLE_V3_LIVE_ENABLED&&<Button');
  });
  it('tabela V3 tem RLS, leitura de casas participantes e escrita só service_role',()=>{
   const sql=read('docs/battle/sql/0078_battle_v3_live_matches.sql');
@@ -26,6 +26,7 @@ describe('P0/P1 — partidas compartilhadas com segurança e sem efeitos oficiai
   const src=read('src/lib/battle/v3/live.functions.ts');
   expect(src).toContain('requireSupabaseAuth');
   expect(src).toContain("process.env['ENABLE_BATTLE_V3_LIVE']!=='true'");
+  expect(src).toContain('BATTLE_NARRATOR_ONLY_RELEASE=true');
   expect(src.match(/requireLiveEnabled\(\);/g)?.length).toBe(4);
   expect(src).toContain('campaign_access_active');
   expect(src).toContain("'in_campaign_house'");
