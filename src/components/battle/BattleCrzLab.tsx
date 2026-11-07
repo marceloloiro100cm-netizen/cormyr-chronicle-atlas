@@ -1,6 +1,8 @@
 import {useEffect,useMemo,useState,type ChangeEvent,type KeyboardEvent} from 'react';
 import {Button} from '@/components/ui/button';
 import {militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
+import {SQUARE_TERRAIN_PRESENTATION,SQUARE_SIDE_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
+import {BattleSquareLegend} from './BattleSquareLegend';
 import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
@@ -50,14 +52,14 @@ export const crzUnitMilitarySymbol=(templateId:string):string|undefined=>
  militaryUnitSymbolSrc(CRZ_MODEL_MILITARY_TYPE[templateId]);
 
 const TERRAIN:Readonly<Record<string,{name:string;fill:string}>>={
- plain:{name:'Planície',fill:'#a6a079'},
- forest:{name:'Bosque',fill:'#426953'},
- hill:{name:'Colina',fill:'#a88b5a'},
- rock:{name:'Rocha',fill:'#575960'},
+ plain:{name:SQUARE_TERRAIN_PRESENTATION.plain.name,fill:SQUARE_TERRAIN_PRESENTATION.plain.color},
+ forest:{name:SQUARE_TERRAIN_PRESENTATION.forest.name,fill:SQUARE_TERRAIN_PRESENTATION.forest.color},
+ hill:{name:SQUARE_TERRAIN_PRESENTATION.hill.name,fill:SQUARE_TERRAIN_PRESENTATION.hill.color},
+ rock:{name:SQUARE_TERRAIN_PRESENTATION.rock.name,fill:SQUARE_TERRAIN_PRESENTATION.rock.color},
 };
 const SIDE:Readonly<Record<CrzSide,{name:string;fill:string}>>={
- attacker:{name:'Coroa',fill:'#3e719e'},
- defender:{name:'Ashkar',fill:'#a85540'},
+ attacker:{name:'Coroa',fill:SQUARE_SIDE_PRESENTATION.attacker.color},
+ defender:{name:'Ashkar',fill:SQUARE_SIDE_PRESENTATION.defender.color},
 };
 const SIZE=25;
 const XSTEP=Math.sqrt(3)*SIZE;
@@ -122,7 +124,7 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
     disabled={zoom===100}>Ajustar mapa CRZ</Button>
   </div>
   <p className="crz-map-help" id="crz-keyboard-help">Teclado: Tab entra no mapa;
-   setas navegam pelos células; Enter ou Espaço executam a ação. Use o zoom
+   setas navegam pelas células; Enter ou Espaço executam a ação. Use o zoom
    para ampliar sem alterar o tamanho das tropas.</p>
   <div className="crz-map-scroll" role="region" tabIndex={0}
   aria-label="Área navegável do mapa CRZ">
@@ -206,6 +208,7 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
    })}
   </svg>
  </div>
+ <BattleSquareLegend/>
  </div>;
 }
 
@@ -320,7 +323,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    setSelectedId(unit.id);
    setError('');
   }else if(canAct&&active&&selectedId===active.id){
-   setError('Hexágono fora do movimento permitido. Selecione um quadrado verde.');
+   setError('Quadrado fora do movimento permitido. Selecione um quadrado verde.');
   }
  };
  const orderIds=frame?[
