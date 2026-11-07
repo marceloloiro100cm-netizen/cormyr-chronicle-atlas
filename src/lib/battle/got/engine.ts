@@ -256,7 +256,7 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty);
  const roll=rollPersonalWithFate(battle.seed,hero,ranged?hero.marksmanship:hero.fighting,
   Math.min(15,Math.max(0,availableBonus-requiredBonus)+
-   (hero.passBonusDice??0)),penalty);
+   (hero.passBonusDice??0)+(hero.aimBonusDice??0)),penalty);
  const total=Math.max(0,roll.total-(hero.wounds??0));
  const difficulty=target.defense+20;
  const degrees=degreesOfSuccess(total,difficulty);
@@ -266,7 +266,7 @@ export function executeWarHeroAttackUnit(battle:WarBattle,input:{
    effectivePersonalArmor(target.armor,ranged?hero.rangedWeapon:hero.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
   heroes:battle.heroes.map(h=>h.id===hero.id?{
-   ...consumePersonalFateRoll(used),passBonusDice:0,
+   ...consumePersonalFateRoll(used),passBonusDice:0,aimBonusDice:0,
    ...(ranged&&weapon?.reload?{rangedLoaded:false}:{})
   }:h)};
  next=log(next,'hero-vs-unit',hero.name+' atacou '+target.name+' (Defesa +20): '+
@@ -292,7 +292,9 @@ function attackIndividualFromWarUnit(
   (actor.condition==='disorganized'?1:0)+
   visibilityPenalty(battle.visibility,battle.weather,ranged));
  const total=roll.total;
- const difficulty=hero.dodgeDefense??hero.defense;
+ const difficulty=Math.max(1,(hero.dodgeDefense??hero.defense)+
+  (hero.cautiousDefenseBonus??0)-(hero.recklessDefensePenalty??0)-
+  (hero.pinnedByMount?5:0));
  const degrees=degreesOfSuccess(total,difficulty);
  const damage=degrees?Math.max(0,
   (ranged?actor.rangedDamage:actor.meleeDamage)*degrees-hero.armor):0;
