@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {createWarBattle,fireWarSiegeVolley,skipWarSiege,advanceWarRound} from '@/lib/battle/got/engine';
+import {createWarBattle,fireWarSiegeVolley} from '@/lib/battle/got/engine';
 import {makeModelSiege} from '@/lib/battle/got/siege';
 import {makeWarFortification,fortDefense} from '@/lib/battle/got/fortifications';
 import {makeModelWarHero} from '@/lib/battle/got/heroes';
@@ -57,9 +57,9 @@ describe('Capítulo 10 — disparos de cerco contra muralhas e personagens',()=>
   const fired=fireWarSiegeVolley(b,{commanderId:'leader-attacker',
    weaponIds:['gun'],targetId:'foe'});
   const enemy=fired.units.find(u=>u.id==='foe')!;
-  expect(enemy.wildfire).toBeDefined();
-  expect(enemy.wildfire!.rounds).toBeGreaterThanOrEqual(2);
-  expect(enemy.wildfire!.rounds).toBeLessThanOrEqual(12);
+  expect(enemy.burning).toBeDefined();
+  expect(enemy.burning!.remainingRounds).toBeGreaterThanOrEqual(2);
+  expect(enemy.burning!.remainingRounds).toBeLessThanOrEqual(12);
   expect(fired.events.some(e=>e.kind==='wildfire-ignite')).toBe(true);
  });
  it('escorpião ataca herói com −1D em Guerra e exatamente 10 pontos de dano antes do VA',()=>{
