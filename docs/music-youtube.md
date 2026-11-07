@@ -93,3 +93,15 @@ Validação: `node --test scripts/youtube-music.test.mjs`, os testes de `src/tes
 - Quatro entradas com nome genérico ou código de vídeo no título passam a usar rótulos editoriais neutros: **Faixa de Cormyr 01** (`wioZhfoQMAs`), **02** (`WrXc5zCbMHA`), **03** (`qw9FgNYr7hE`) e **04** (`uPYfE1gKDcg`). A numeração é somente organizacional, **não representa o nome oficial das composições**.
 - Os links originais, categorias, quantidade de faixas e reprodutores foram preservados. Nenhuma música foi removida, e os IDs dos vídeos aparecem apenas nos dados técnicos e nas URLs, não como títulos de cartões.
 - Os metadados do YouTube não puderam ser confirmados. Substituir os rótulos por títulos oficiais somente com evidência verificável ou confirmação explícita do Narrador.
+
+
+## Títulos confirmados e simplificação dos cartões (06/11/2026)
+
+O Narrador confirmou os quatro nomes, mantendo a correspondência original com cada vídeo:
+
+- **Vai, Meu Grifo, Vai!** — `wioZhfoQMAs` (antes Faixa de Cormyr 01).
+- **O Brinde das Cinco Cores** — `WrXc5zCbMHA` (antes Faixa de Cormyr 02).
+- **Worist da Companhia Consorte** — `qw9FgNYr7hE` (antes Faixa de Cormyr 03).
+- **Papai Foi Rei** — `uPYfE1gKDcg` (antes Faixa de Cormyr 04).
+
+O controle **Ver letra** foi retirado dos cartões da seção de músicas; letras existentes continuam registradas nos dados, sem alteração de links, agrupamentos ou reprodução.
