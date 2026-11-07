@@ -24,7 +24,7 @@ import {crzLegalCommands} from '@/lib/crusade/turns';
 describe('Cormyr · Lotes 3 e 4 · migração segura e replay',()=>{
  it('converte mapas personalizados sem perder terrenos, zonas ou metadados',()=>{
   for(const width of [11,15] as const){
-   const base=createScenario('contested-woods',width);
+   const base=createScenario('contested-woods',width,'hex');
    const marked={...base,id:'terras-evenhand',label:'Mapa personalizado de Hillmarch',
     tiles:base.tiles.map((t,i)=>i===25?{...t,terrain:'hill' as const}:t)};
    const preview=previewBattleMapGridConversion(marked,'square');
@@ -42,7 +42,7 @@ describe('Cormyr · Lotes 3 e 4 · migração segura e replay',()=>{
   }
  });
  it('bloqueia conversão incompleta sem alterar a origem',()=>{
-  const old=createScenario('plain-open');
+  const old=createScenario('plain-open',11,'hex');
   const malformed={...old,tiles:old.tiles.slice(1)};
   const snapshot=JSON.stringify(malformed);
   expect(previewBattleMapGridConversion(malformed,'square').issues).not.toHaveLength(0);
@@ -73,7 +73,7 @@ describe('Cormyr · Lotes 3 e 4 · migração segura e replay',()=>{
   expect(blocked?.cost).not.toBe(1.5);
  });
  it('editor apresenta prévia e aplica somente conversão validada',()=>{
-  const map=createScenario('contested-woods');
+  const map=createScenario('contested-woods',11,'hex');
   const onChange=vi.fn();
   render(<BattleMapEditor map={map} onChange={onChange}/>);
   fireEvent.click(screen.getByRole('button',{name:'Pré-visualizar conversão de malha'}));
