@@ -89,10 +89,8 @@ export function BattleNarratorHub(){
      <p className="battle-note">Laboratório em desenvolvimento: ainda faltam fases e regras avançadas para equivalência integral ao capítulo 10.</p>
      <Button onClick={()=>setView('got')}>Testar regras do livro</Button>
     </section>:<section className="battle-ruleset-pending" aria-label="Preparação do sistema selecionado">
-     <h3>{rulesetMode==='got'?'Guerra dos Tronos RPG · sistema do livro':'D&D · combate simplificado'}</h3>
-     <p>{rulesetMode==='got'?
-      'Próxima implementação: testes de Guerra e Disciplina, emissão de ordens, formações, moral e sobreviventes segundo as regras do livro.':
-      'Próxima implementação: bônus de ataque, Classe de Armadura, pontos de vida, deslocamento, ações de combate e importação validada de monstros de D&D.'}</p>
+     <h3>D&D · combate simplificado</h3>
+     <p>Próxima implementação: bônus de ataque, Classe de Armadura, pontos de vida, deslocamento, ações de combate e importação validada de monstros de D&D.</p>
      <p className="battle-note">O motor deste sistema ainda não está disponível.
       Não iniciaremos uma partida com regras do Adaptado por engano.</p>
      <Button disabled>Iniciar batalha — em desenvolvimento</Button>
