@@ -50,6 +50,8 @@ export type WarUnit=Readonly<{
  hidden?:boolean;exposedFacingUntilRound?:number;
  suppressionPenalty?:number;suppressionRound?:number;probeDefenseRound?:number;
  counterChargeReady?:boolean;
+ /** Fogo persistente de munição especial do capítulo 10. */
+ burning?:Readonly<{remainingRounds:number;damagePerRound:number;source:string}>|undefined;
  envelopingTargetId?:string|undefined;envelopedBy?:string|undefined;
  issuedThisRound:number;actedThisRound:boolean;criticalThisRound:boolean;
  source:Readonly<{kind:'model'|'house-readonly';houseId?:string;unitId?:string;version?:number}>;
