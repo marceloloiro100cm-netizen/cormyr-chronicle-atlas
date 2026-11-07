@@ -10,7 +10,7 @@ import {listBattleSourceHouses,listBattleSourceUnits,previewBattleSourceStack}
  from '@/lib/battle/adapters/readonly-source.functions';
 
 const LIMIT=5;
-const SUPPORTED=new Set(LAND_PROFILES.map(profile=>profile.id));
+const SUPPORTED=new Set<string>(LAND_PROFILES.map(profile=>profile.id));
 const available=(unit:BattleRosterPreview)=>Math.max(0,unit.strength-unit.casualties);
 const soloProfile=(unit:BattleRosterPreview)=>
  unit.types.length===1&&SUPPORTED.has(unit.types[0]!)?unit.types[0]!:null;
