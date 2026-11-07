@@ -14,11 +14,11 @@ function started(){
  return screen.getByRole('region',{name:'Arena V4 unificada'});
 }
 describe('Batalha V3 · padrão de interface V4 unificada',()=>{
- it('contém general com placeholder, ordem superior, mapa central e últimas ações',()=>{
+ it('contém retrato do general, ordem superior, mapa central e últimas ações',()=>{
   const arena=started();
   expect(within(arena).getByRole('region',{name:'General e habilidades V3'}))
    .toBeInTheDocument();
-  expect(within(arena).getByRole('img',{name:'Espaço reservado para retrato do comandante'}))
+  expect(within(arena).getByRole('img',{name:'Comandante: Tillet'}))
    .toBeInTheDocument();
   expect(within(arena).getByRole('region',{name:'Ordem de combate V3'}))
    .toBeInTheDocument();
