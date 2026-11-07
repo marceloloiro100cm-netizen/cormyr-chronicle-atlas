@@ -10,6 +10,7 @@ import {listLiveV3Matches} from '@/lib/battle/v3/live.functions';
 import {BattleV3LiveArena} from './BattleV3Live';
 import type {V3ScenarioOptions} from '@/lib/battle/v3/engine';
 import './battle-legibility.css';
+import './battle-ui-v4.css';
 import type {CommanderId} from '@/lib/battle/v3/commanders';
 
 function invitationOptions(value:BattleV3Invitation):V3ScenarioOptions{

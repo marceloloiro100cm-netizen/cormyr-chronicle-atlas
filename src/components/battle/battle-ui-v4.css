@@ -1,0 +1,39 @@
+/* P2: identidade comum à Arena V4, editor PTE e laboratório CRZ.
+ * Scope limitado ao módulo, sem alterar estilos de fichas e demais áreas. */
+.battle-module{
+ --b-v4-gold:#e4c487;
+ --b-v4-border:#99815c;
+ --b-v4-panel:#252d2d;
+ --b-v4-text:#f6eee2;
+ --b-v4-muted:#e3d5c0;
+ --b-v4-focus:#ffe4a5;
+}
+.battle-module :is(.battle-editor,.battle-surface,.battle-arena-grid .battle-surface){
+ border-color:var(--b-v4-border);
+ box-shadow:inset 0 1px 0 rgba(255,240,201,.09);
+}
+.battle-module :is(.battle-editor,.battle-surface,.crz-general-deck,.crusade-v4-general)
+ :is(h2,h3){font-family:Georgia,serif;color:var(--b-v4-gold);line-height:1.25}
+.battle-module :is(.battle-editor,.battle-arena-grid,.battle-home,.crusade-v4-stage,.crz-battle-stage)
+ :is(button,select,input,textarea){font-size:clamp(14px,1.05vw,16px)}
+.battle-module :is(.battle-tools,.battle-home-actions,.battle-actions,.crz-toolbar)
+ button{min-height:40px;line-height:1.35;white-space:normal}
+.battle-module :is(.battle-editor,.crz-form,.battle-form-row)
+ :is(select,input){min-height:42px;background:#262b2a;color:var(--b-v4-text);border:1px solid var(--b-v4-border)}
+.battle-module :is(.battle-editor,.crz-battle-stage,.crusade-v4-stage)
+ :is(button,select,input):focus-visible{outline:3px solid var(--b-v4-focus);outline-offset:2px}
+.battle-module :is(.battle-board-legend,.crz-map-help,.crusade-v4-history li)
+ {color:var(--b-v4-muted);font-size:clamp(12px,.95vw,14px);line-height:1.5}
+.battle-module :is(.battle-editor,.crz-battle-stage,.crusade-v4-stage)
+ [role="alert"]{font-size:14px;line-height:1.45}
+.crusade-v4 .crusade-v4-history-filter{display:flex;flex-direction:column;gap:5px;margin:8px 0 10px;font-size:13px}
+.crusade-v4 .crusade-v4-history-filter select{min-height:40px;width:100%;border:1px solid var(--b-v4-border);border-radius:7px;background:#252c2c;color:#f8ebcf}
+.crusade-v4 .crusade-v4-log li small{display:block;color:#e9d8b9;font-size:13px;line-height:1.45;margin-top:4px}
+@media(pointer:coarse){
+ .battle-module :is(.battle-tools,.battle-actions,.crusade-v4-utility,.crz-toolbar) button{min-height:44px}
+}
+@media(max-width:680px){
+ .battle-module :is(.battle-editor,.crz-battle-stage,.crusade-v4-stage)
+ :is(button,select,input,textarea){font-size:15px}
+ .battle-module .battle-surface{padding:13px}
+}

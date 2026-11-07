@@ -4,7 +4,7 @@
 import {crzSealCreature} from './creatures';
 import {crzBuildCatalog} from './catalog';
 import {crzScenario,type CrzScenarioId} from './geometry';
-import {crzPreset,crzRulesetHash} from './ruleset';
+import {crzPreset,crzRulesetHash,type CrzPresetId} from './ruleset';
 import {crzPrepareBattle,type CrzReady} from './setup';
 
 export const CRZ_TRAINING_SCENARIOS:readonly Readonly<{
@@ -18,6 +18,8 @@ export const CRZ_TRAINING_SCENARIOS:readonly Readonly<{
 
 export type CrzTrainingOptions=Readonly<{
  scenario:CrzScenarioId;
+ preset?:CrzPresetId;
+ generalLevel?:number;
  width:11|15;
  resolution:'expected'|'hybrid';
  opponent:'ai'|'human';
@@ -80,11 +82,17 @@ const unit=(id:string,templateId:string,count:number)=>({
 
 /** Uma batalha reproduzível por seed explícita e sem leitura do servidor. */
 export function crzTrainingReady(options:CrzTrainingOptions):CrzReady{
- const rules=crzPreset('CRZ-5E');
+ const preset=options.preset??'CRZ-5E';
+ const rules=crzPreset(preset);
+ if(preset!=='CRZ-5E'&&options.resolution!=='expected')
+  throw new Error('WOTR e PTE-compat exigem resolução expected.');
+ const generalLevel=options.generalLevel??3;
+ if(!Number.isInteger(generalLevel)||generalLevel<1||generalLevel>10)
+  throw new Error('Nível de General fora do limite de treinamento.');
  return crzPrepareBattle({
   id:'crz-training-'+options.seed.toLowerCase(),
   name:'Treinamento da Cruzada · Cormyr',
-  seed:options.seed,rulesetId:'CRZ-5E',
+  seed:options.seed,rulesetId:preset,
   rulesetHash:crzRulesetHash(rules),
   resolution:options.resolution,
   map:crzScenario(options.scenario,options.width),
@@ -103,9 +111,9 @@ export function crzTrainingReady(options:CrzTrainingOptions):CrzReady{
   controls:{attacker:'human',defender:options.opponent},
   leaders:{
    attacker:{id:'tillet-general',name:'General Tillet (modelo)',
-    level:3,abilityMod:2,
+    level:generalLevel,abilityMod:2,
     spells:['bless','shield_of_faith','cure_wounds','firebolt',
-     'shield_wall_formation']},
+     'shield_wall_formation','fireball']},
    defender:{id:'ashkar-general',name:'Oficial Ashkar (modelo)',
     level:3,abilityMod:1,spells:['bane','cause_fear']},
   },

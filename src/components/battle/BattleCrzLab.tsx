@@ -1,4 +1,4 @@
-import {useMemo,useState,type ChangeEvent,type KeyboardEvent} from 'react';
+import {useEffect,useMemo,useState,type ChangeEvent,type KeyboardEvent} from 'react';
 import {Button} from '@/components/ui/button';
 import {BattleExpandedView} from './BattleExpandedView';
 import {crzHexKey,crzAxialToOffset,type CrzHex,type CrzSide}
@@ -6,7 +6,7 @@ import {crzHexKey,crzAxialToOffset,type CrzHex,type CrzSide}
 import {crzLegalCommands,type CrzCommand} from '@/lib/crusade/turns';
 import {crzCapable,crzOrder,type CrzBattleStack,type CrzBattleState,
  type CrzEvent} from '@/lib/crusade/battle-state';
-import {CRZ_LOT8_SPELLS,crzShieldWallTargets} from '@/lib/crusade/leader';
+import {CRZ_ADVANCED_SPELLS,crzShieldWallTargets} from '@/lib/crusade/leader';
 import {crzReplayBegin,crzReplayParse,crzReplayRecord,
  crzReplaySerialize,CRZ_REPLAY_MAX_BYTES,
  type CrzReplaySession} from '@/lib/crusade/replay';
@@ -16,16 +16,21 @@ import {CRZ_TRAINING_DEFAULTS,CRZ_TRAINING_SCENARIOS,
  crzTrainingReady,type CrzTrainingOptions}
  from '@/lib/crusade/training-demo';
 import type {CrzSpellId} from '@/lib/crusade/setup';
+import {initialGeneralProfile,awardGeneralTraining,
+ type TrainingGeneralProfile} from '@/lib/crusade/general-progression';
+import {readGeneralTrainingProfile,saveGeneralTrainingProfile}
+ from '@/lib/crusade/training-profile-store';
 import {crzObservedObjectives,crzAfterActionReport,crzAfterActionSerialize,
  type CrzObservedObjective} from '@/lib/crusade/insights';
 import './crz-lab.css';
 import './battle-legibility.css';
+import './battle-ui-v4.css';
 
 type SidePanel='actions'|'objectives'|'report'|'replay';
 const SPELL_LABELS:Readonly<Record<string,string>>={
  bless:'Bênção',bane:'Maldição',shield_of_faith:'Escudo da fé',
  heroism:'Heroísmo',cause_fear:'Amedrontar',cure_wounds:'Curar ferimentos',
- firebolt:'Raio de fogo',shield_wall_formation:'Formação de escudos',
+ firebolt:'Raio de fogo',fireball:'Bola de fogo (área)',shield_wall_formation:'Formação de escudos',
 };
 const TERRAIN:Readonly<Record<string,{name:string;fill:string}>>={
  plain:{name:'Planície',fill:'#a6a079'},
@@ -175,10 +180,10 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
 
 const globalSpell=(spell:CrzSpellId)=>spell==='bless'||spell==='bane'||
  spell==='shield_wall_formation';
-const enemySpell=(spell:CrzSpellId)=>spell==='cause_fear'||spell==='firebolt';
+const enemySpell=(spell:CrzSpellId)=>spell==='cause_fear'||spell==='firebolt'||spell==='fireball';
 const spellCost:Partial<Record<CrzSpellId,number>>={
  bless:3,bane:3,shield_of_faith:2,heroism:4,cause_fear:3,
- cure_wounds:2,firebolt:2,shield_wall_formation:2,
+ cure_wounds:2,firebolt:2,fireball:6,shield_wall_formation:2,
 };
 
 export function BattleCrzLab({onBack}:{onBack?:()=>void}){
@@ -195,6 +200,19 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const [error,setError]=useState('');
  const [showImport,setShowImport]=useState(false);
  const [highContrast,setHighContrast]=useState(false);
+ const [generalProfile,setGeneralProfile]=useState<TrainingGeneralProfile>(initialGeneralProfile);
+ useEffect(()=>{setGeneralProfile(readGeneralTrainingProfile());},[]);
+ const awardProgress=()=>{
+  if(!session)return;
+  try{
+   const result=awardGeneralTraining(generalProfile,session.replay);
+   setGeneralProfile(result.profile);
+   saveGeneralTrainingProfile(result.profile);
+   setMessage(result.awarded>0?
+    'General Tillet recebeu '+result.awarded+' XP de treinamento.':'Esta batalha já concedeu XP.');
+   setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível validar a progressão.');}
+ };
  const frame=useMemo(()=>!session?null:replayStep===null?session.state:
   crzTrainingReplayAt(session.replay,replayStep),
  [session,replayStep]);
@@ -215,7 +233,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const abilities=legal.filter((c):c is Extract<CrzCommand,{type:'ABILITY'}>=>
   c.type==='ABILITY');
  const spells=legal.filter((c):c is Extract<CrzCommand,{type:'CAST'}>=>
-  c.type==='CAST').filter(c=>CRZ_LOT8_SPELLS.includes(c.spellId));
+  c.type==='CAST').filter(c=>CRZ_ADVANCED_SPELLS.includes(c.spellId));
  const caster=active?frame?.leaders[active.side]:null;
  const selectedSpell:CrzSpellId=caster?.spells.includes(spell)?
   spell:caster?.spells[0]??spell;
@@ -239,7 +257,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  };
  const begin=()=>{
   try{
-   const initial=crzReplayBegin(crzTrainingReady(options));
+   const initial=crzReplayBegin(crzTrainingReady({...options,generalLevel:generalProfile.level}));
    const next=crzTrainingAdvanceAi(initial);
    setSession(next);setSelectedId(next.state.activeStackId);
    setPanel('actions');setReplayStep(null);setError('');setExpanded(true);
@@ -359,6 +377,15 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
     <h2>Preparar batalha-modelo</h2>
     <p>Defensores da Coroa contra forças fictícias de Ashkar.</p>
     <div className="crz-form">
+     <label>Conjunto de regras
+      <select aria-label="Preset CRZ" value={options.preset??'CRZ-5E'}
+       onChange={e=>setOptions(o=>({...o,preset:e.target.value as NonNullable<CrzTrainingOptions['preset']>,
+        resolution:e.target.value==='CRZ-5E'?o.resolution:'expected'}))}>
+       <option value="CRZ-5E">CRZ-5E</option>
+       <option value="CRZ-WOTR">CRZ-WOTR (esperado)</option>
+       <option value="PTE-2.0-compat">PTE-2.0-compat (esperado)</option>
+      </select>
+     </label>
      <label>Cenário
       <select value={options.scenario} aria-label="Cenário CRZ"
        onChange={e=>setOptions(o=>({...o,scenario:e.target.value as CrzTrainingOptions['scenario']}))}>
@@ -375,7 +402,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
       <select value={options.resolution} aria-label="Resolução CRZ"
        onChange={e=>setOptions(o=>({...o,resolution:e.target.value as 'expected'|'hybrid'}))}>
        <option value="expected">Esperada (sem rolagens)</option>
-       <option value="hybrid">Híbrida (PCG32)</option>
+       <option value="hybrid" disabled={(options.preset??'CRZ-5E')!=='CRZ-5E'}>Híbrida (PCG32)</option>
       </select>
      </label>
      <label>Adversário
@@ -391,9 +418,11 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
        onChange={e=>setOptions(o=>({...o,seed:e.target.value}))}/>
      </label>
     </div>
+    <p className="battle-note">General Tillet · nível {generalProfile.level} · {generalProfile.xp} XP
+     de treinamento local. O progresso não altera a Corte nem o exército.</p>
     <Button onClick={begin}>Iniciar treinamento CRZ</Button>
-    <p className="battle-note">CRZ-WOTR e PTE-compat permanecem indisponíveis
-     até terem redutores completos.</p>
+    <p className="battle-note">CRZ-WOTR e PTE-compat são simulações experimentais determinísticas,
+     sem paridade oficial ou aplicação de baixas. Os replays registram o preset e seu hash.</p>
    </section>
   </>}
   {session&&frame&&<section className="crz-battle-stage"
@@ -402,6 +431,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
     <div className="crz-arena-heading">
      <span className="crz-eyebrow">CORMYR · ARENA DE TREINAMENTO</span>
      <h1>Cruzada <span>CRZ-1.0</span></h1>
+     <p>Preset: {frame.rulesetId} · General Tillet nível {frame.leaders.attacker?.level??'—'} (treino)</p>
      <p>Rodada {frame.round} · {frame.phase==='completed'?
       'Batalha encerrada':active?'Turno de '+active.name:'Preparando turno'} ·
       {session.replay.steps.length} comandos registrados</p>
@@ -415,6 +445,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
      {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
      <Button variant="outline" onClick={reset}>Novo treino</Button>
      <Button variant="outline" onClick={exportReplay}>Exportar replay</Button>
+     {session.state.phase==='completed'&&<Button variant="outline" onClick={awardProgress}>
+      Registrar XP do General (treino)</Button>}
      <Button variant="outline" aria-pressed={highContrast}
       onClick={()=>setHighContrast(v=>!v)}>Alto contraste CRZ</Button>
      <Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
@@ -477,7 +509,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
        <select aria-label="Magia do General" value={selectedSpell}
         disabled={!canAct||!spells.length}
         onChange={e=>{setSpell(e.target.value as CrzSpellId);setSpellTarget('');}}>
-        {(caster?.spells??[]).filter(id=>CRZ_LOT8_SPELLS.includes(id)).map(id=>
+        {(caster?.spells??[]).filter(id=>CRZ_ADVANCED_SPELLS.includes(id)).map(id=>
          <option key={id} value={id}>{SPELL_LABELS[id]??id}</option>)}
        </select>
       </label>

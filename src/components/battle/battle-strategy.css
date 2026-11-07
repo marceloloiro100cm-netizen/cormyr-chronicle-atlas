@@ -1,0 +1,11 @@
+.battle-strategy-lab .battle-strategy-layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(280px,1fr);gap:16px;margin:16px 0}
+.battle-strategy-lab .battle-surface{min-width:0}
+.battle-strategy-lab .battle-strategy-map{border:2px ridge #ac8d59;border-radius:10px;overflow:hidden;background:#302f2a;padding:8px;margin:12px 0}
+.battle-strategy-lab .battle-strategy-map svg{width:100%;height:auto;max-height:450px;display:block}
+.battle-strategy-lab .battle-strategy-stats{font-size:16px;line-height:1.55}
+.battle-strategy-lab .battle-strategy-stats meter{display:block;width:100%;height:17px}
+.battle-strategy-lab .battle-strategy-actions{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}
+.battle-strategy-lab ol{max-height:300px;overflow:auto;padding-left:25px;line-height:1.5}
+.battle-strategy-lab ol li{margin:7px 0}
+.battle-strategy-lab select{width:100%;min-width:0;min-height:42px}
+@media(max-width:860px){.battle-strategy-lab .battle-strategy-layout{grid-template-columns:minmax(0,1fr)}}

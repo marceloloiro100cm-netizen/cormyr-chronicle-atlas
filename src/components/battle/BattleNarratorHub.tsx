@@ -14,13 +14,15 @@ import {BattleV3InvitationCreator} from './BattleV3InvitationCreator';
 import {BattleV3LiveCreator} from './BattleV3Live';
 import './battle.css';
 import './battle-legibility.css';
+import './battle-ui-v4.css';
 
 // Lazy-load do laboratório experimental para não atrasar a batalha V3 oficial.
 const BattleCrzLab=lazy(()=>import('./BattleCrzLab').then(m=>({default:m.BattleCrzLab})));
+const BattleStrategicLab=lazy(()=>import('./BattleStrategicLab').then(m=>({default:m.BattleStrategicLab})));
 
 
 export function BattleNarratorHub(){
- const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'crz'|'invite'|'live'>('home');
+ const [view,setView]=useState<'home'|'setup'|'arena'|'saved'|'crusade'|'crz'|'invite'|'live'|'strategy'>('home');
  const [state,setState]=useState<BattleState|null>(null);
  const [resumeState,setResumeState]=useState<BattleState|null>(null);
  const [sideNames,setSideNames]=useState<Record<Side,string>>({attacker:'Atacante',defender:'Defensor'});
@@ -57,6 +59,7 @@ export function BattleNarratorHub(){
       {BATTLE_CRZ_TRAINING_UI_ENABLED&&<Button variant="outline"
        onClick={()=>setView('crz')}>CRZ-1.0 · Laboratório (teste)</Button>}
       <Button variant="outline" onClick={()=>setView('setup')}>Criar batalha</Button>
+      <Button variant="outline" onClick={()=>setView('strategy')}>Cercos e mapa estratégico · P3</Button>
       <Button variant="outline" onClick={()=>setView('invite')}>Convocar batalha</Button>
       {BATTLE_V3_LIVE_ENABLED&&<Button variant="outline" onClick={()=>setView('live')}>Convocar multiplayer</Button>}
       <Button variant="outline" onClick={()=>setManual(x=>!x)}>Consultar regras</Button>
@@ -79,6 +82,9 @@ export function BattleNarratorHub(){
    <BattleCrzLab onBack={()=>setView('home')}/>
   </Suspense>}
   {view==='invite'&&<BattleV3InvitationCreator onBack={()=>setView('home')}/>}
+  {view==='strategy'&&<Suspense fallback={<p role="status">Carregando mapa de operações…</p>}>
+   <BattleStrategicLab onBack={()=>setView('home')}/>
+  </Suspense>}
   {view==='live'&&BATTLE_V3_LIVE_ENABLED&&<BattleV3LiveCreator onBack={()=>setView('home')}/>}
   {view==='saved'&&canSave&&<BattleSavedPanel onClose={()=>setView('home')}
     onResume={(ready,restored)=>{
