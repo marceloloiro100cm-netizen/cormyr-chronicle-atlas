@@ -294,7 +294,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const begin=()=>{
   try{
    const initial=crzReplayBegin(crzTrainingReady({...options,
-    grid:dndMode?'square':options.grid,preset:dndMode?'CRZ-5E':options.preset,
+    grid:'square',
+    ...(dndMode?{preset:'CRZ-5E' as const}:options.preset?{preset:options.preset}:{}),
     generalLevel:generalProfile.level}));
    const next=crzTrainingAdvanceAi(initial);
    setSession(next);setSelectedId(next.state.activeStackId);
