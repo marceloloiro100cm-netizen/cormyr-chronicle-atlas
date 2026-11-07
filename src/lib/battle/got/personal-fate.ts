@@ -1,4 +1,5 @@
 import type {WarBattle} from './types';
+import {rollDice} from './dice';
 import type {WarHero} from './heroes';
 
 /** Destino do capítulo 5: pontos gastos voltam apenas em marcos narrativos.
@@ -10,6 +11,17 @@ export type WarFateAction=Readonly<{
   'burn-choose-defeat'|'burn-avoid-death';
  outcome?:'unconscious'|'captured'|'death';
 }>;
+/** Consumir um ponto gasto afeta o próximo teste, sem alterar rolagens posteriores. */
+export function rollPersonalWithFate(
+ seed:number,hero:WarHero,rank:number,bonus=0,penalty=0,
+){
+ return rollDice(seed,rank,
+  Math.min(15,bonus+(hero.fateBonusDice??0)),
+  Math.max(0,Math.min(15,penalty)-(hero.fatePenaltyReduction??0)));
+}
+export function consumePersonalFateRoll(hero:WarHero):WarHero{
+ return {...hero,fateBonusDice:0,fatePenaltyReduction:0};
+}
 export function fateAvailable(hero:WarHero):number{
  return hero.fateAvailable??0;
 }
