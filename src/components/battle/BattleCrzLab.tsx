@@ -609,7 +609,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
       <ol className="crz-objectives">{objectives.map(o=><li key={o.id}>
        <strong>{o.title}</strong>
        <span>{o.holder?SIDE[o.holder].name:'Livre'} ·
-        hex {crzAxialToOffset(o.position).column},{crzAxialToOffset(o.position).row}</span>
+        hex {crzGridToOffset(frame.map,o.position).column},{crzGridToOffset(frame.map,o.position).row}</span>
       </li>)}</ol>
      </section>}
      {panel==='report'&&report&&<section aria-label="Relatório pós-batalha CRZ">
