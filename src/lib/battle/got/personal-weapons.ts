@@ -2,12 +2,14 @@ import type {WarHero} from './heroes';
 
 /** Amostra verificável da tabela 9-3; não é o catálogo completo do livro. */
 export type WarPersonalWeaponId='longsword'|'greatsword'|'long-axe'|'spear'|'pike'|
- 'hunting-bow'|'longbow'|'light-crossbow';
+ 'hunting-bow'|'longbow'|'light-crossbow'|'heavy-crossbow';
 export type WarPersonalWeapon=Readonly<{
  id:WarPersonalWeaponId;label:string;
  family:'melee'|'ranged';damageAbility:'athletics'|'agility';
  damageBonus:number;reachMetres:number;range:'none'|'short'|'long';
  piercing:number;cruel:boolean;
+ trainingBonusDice?:number;reload?:'minor'|'major';clumsy?:boolean;
+ slow?:boolean;twoHanded?:boolean;mountedOnly?:boolean;
 }>;
 export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersonalWeapon>>={
  longsword:{id:'longsword',label:'Espada longa',family:'melee',
@@ -15,25 +17,28 @@ export const WAR_PERSONAL_WEAPONS:Readonly<Record<WarPersonalWeaponId,WarPersona
   piercing:0,cruel:false},
  greatsword:{id:'greatsword',label:'Montante',family:'melee',
   damageAbility:'athletics',damageBonus:3,reachMetres:1,range:'none',
-  piercing:0,cruel:true},
+  piercing:0,cruel:true,clumsy:true,slow:true,twoHanded:true},
  'long-axe':{id:'long-axe',label:'Machado longo',family:'melee',
   damageAbility:'athletics',damageBonus:3,reachMetres:3,range:'none',
-  piercing:0,cruel:true},
+  piercing:0,cruel:true,trainingBonusDice:1,twoHanded:true},
  spear:{id:'spear',label:'Lança',family:'melee',
   damageAbility:'athletics',damageBonus:0,reachMetres:1,range:'none',
   piercing:0,cruel:false},
  pike:{id:'pike',label:'Pique',family:'melee',
   damageAbility:'athletics',damageBonus:2,reachMetres:1,range:'none',
-  piercing:0,cruel:false},
+  piercing:0,cruel:false,slow:true,twoHanded:true},
  'hunting-bow':{id:'hunting-bow',label:'Arco de caça',family:'ranged',
   damageAbility:'agility',damageBonus:0,reachMetres:0,range:'long',
   piercing:0,cruel:false},
  longbow:{id:'longbow',label:'Arco longo',family:'ranged',
   damageAbility:'agility',damageBonus:2,reachMetres:0,range:'long',
-  piercing:1,cruel:false},
+  piercing:1,cruel:false,trainingBonusDice:1,clumsy:true,twoHanded:true},
  'light-crossbow':{id:'light-crossbow',label:'Besta leve',family:'ranged',
   damageAbility:'agility',damageBonus:1,reachMetres:0,range:'long',
-  piercing:0,cruel:false},
+  piercing:0,cruel:false,slow:true,reload:'minor'},
+ 'heavy-crossbow':{id:'heavy-crossbow',label:'Besta pesada',family:'ranged',
+  damageAbility:'agility',damageBonus:2,reachMetres:0,range:'long',
+  piercing:2,cruel:true,slow:true,reload:'major',twoHanded:true},
 };
 export function equipModelWarHero(hero:WarHero,input:{
  melee:WarPersonalWeaponId;ranged:WarPersonalWeaponId;
@@ -46,7 +51,7 @@ export function equipModelWarHero(hero:WarHero,input:{
  return {...hero,meleeWeapon:melee,rangedWeapon:ranged,
   meleeDamage:Math.max(1,base(melee)+melee.damageBonus),
   rangedDamage:Math.max(1,base(ranged)+ranged.damageBonus),
-  rangedRange:ranged.range};
+  rangedRange:ranged.range,rangedLoaded:true};
 }
 /** Perfurante reduz o VA, sem produzir VA negativo. */
 export function effectivePersonalArmor(armor:number,weapon:WarPersonalWeapon|undefined):number{
