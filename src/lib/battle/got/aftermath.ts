@@ -6,6 +6,8 @@ import type {WarBattle,WarSide,WarUnit} from './types';
 export type WarSurvivorProposal=Readonly<{
  unitId:string;unitName:string;side:WarSide;training:WarUnit['training'];
  condition:SurvivorCondition;disorganizations:number;die:number;
+ /** Auditável: +1 para Mestre de Armas confirmado pelo Narrador; penalidade por desorganizações adicionais. */
+ masterOfArmsBonus:0|1;disorganizationPenalty:number;
  adjusted:number;steps:number|'destroyed';
  /** Consequência da tabela 10-6 sobre a graduação atual, ainda sem aprovação. */
  proposedTraining:WarUnit['training']|'destroyed';
@@ -63,10 +65,12 @@ export function previewWarAftermath(battle:WarBattle,options?:{
   const die=dieRoll.dice[0]!;
   const condition=postCondition(u);
   const bonus=options?.masterOfArmsBonus?.[u.id]??0;
+  const disorganizationPenalty=Math.max(0,u.disorganizations-1);
   const rolled=survivorResult(die,condition,u.disorganizations,bonus);
   const projected=projectTraining(u,rolled.steps);
   return {unitId:u.id,unitName:u.name,side:u.side,training:u.training,
    condition,disorganizations:u.disorganizations,die,adjusted:rolled.adjusted,
+   masterOfArmsBonus:bonus,disorganizationPenalty,
    steps:rolled.steps,proposedTraining:projected.training,
    extraRanksAfterElite:projected.extraRanks,requiresNarratorApproval:true};
  });
