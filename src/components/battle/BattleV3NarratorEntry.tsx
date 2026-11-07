@@ -3,6 +3,7 @@ import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import type {BattleStack} from '@/lib/battle/domain/types';
 import {BattleSourcePicker} from './BattleSourcePicker';
+import {isBattleTrainingCopy,battleTrainingSourceKey} from '@/lib/battle/adapters/imported-npc-roster';
 import {BattleV3Game} from './BattleV3Game';
 
 /** O adaptador de fichas oficiais não deve ser importado pela arena V3 pública:
@@ -18,25 +19,26 @@ export function BattleV3NarratorEntry({onBack}:{onBack:()=>void}){
  const addMany=(stacks:BattleStack[],houseName:string):boolean=>{
   if(!stacks.length)return false;
   const side=stacks[0]!.side;
-  if(stacks.some(s=>s.side!==side||s.source.kind!=='house-readonly')){
+  if(stacks.some(s=>s.side!==side||!isBattleTrainingCopy(s))){
    setStatus('Apenas unidades oficiais do mesmo lado podem ser copiadas.');return false;
   }
   if(copies.filter(s=>s.side===side).length+stacks.length>5){
    setStatus('Limite de cinco unidades por lado.');return false;
   }
   const all=[...copies,...stacks];
-  const keys=all.map(s=>s.source.houseId+'::'+s.source.unitId);
+  const keys=all.map(battleTrainingSourceKey);
   if(new Set(keys).size!==keys.length){
    setStatus('Alguma unidade desta Casa já está na simulação.');return false;
   }
   setCopies(xs=>[...xs,...stacks]);
-  setHouseNameById(current=>({...current,[stacks[0]!.source.houseId!]:houseName}));
+  setHouseNameById(current=>({...current,
+   [stacks[0]!.source.kind==='house-readonly'?stacks[0]!.source.houseId!:stacks[0]!.id]:houseName}));
   setStatus(stacks.length+' unidade(s) de '+houseName+' copiadas para treino.');
   return true;
  };
  const add=(stack:BattleStack,houseName:string)=>addMany([stack],houseName);
  const labelFor=(side:BattleStack['side'])=>[...new Set(copies.filter(s=>s.side===side)
-  .map(s=>s.source.houseId).filter((id):id is string=>Boolean(id)))]
+  .map(s=>s.source.kind==='house-readonly'?s.source.houseId:s.id).filter((id):id is string=>Boolean(id)))]
   .map(id=>houseNameById[id]??id).join(' + ');
  const officialHouseNames={attacker:labelFor('attacker'),defender:labelFor('defender')};
  return <section className="battle-module" aria-label="Preparação da batalha do Narrador">
