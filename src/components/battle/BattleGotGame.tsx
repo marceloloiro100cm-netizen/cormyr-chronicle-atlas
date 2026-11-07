@@ -481,7 +481,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const inspectedTile=battle?terrainAt(battle.tiles,coord):null;
  const inspectedEffect=inspectedTile?terrainEffect(inspectedTile):null;
  const battleEvents=battle?.events.filter(e=>eventFilter==='all'||
-  eventFilter==='dice'?Boolean(e.roll):e.side===eventFilter).slice(-30)??[];
+  (eventFilter==='dice'?Boolean(e.roll):e.side===eventFilter)).slice(-30)??[];
  return <section className="battle-got" aria-label="Batalha pelas regras de Guerra dos Tronos RPG">
   <div className="battle-heading">
    <div><h2>Game of Thrones · regras do livro</h2>
