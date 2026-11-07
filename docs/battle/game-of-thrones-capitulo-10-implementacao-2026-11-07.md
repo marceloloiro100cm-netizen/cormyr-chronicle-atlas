@@ -223,3 +223,34 @@ Próximas implementações devem priorizar: (a) fechar a iniciativa e os subsist
   riscos e coberturas de obstáculos mais complexos, interrupções
   de unidades e outras qualidades de armas. A equivalência 100%
   com o livro ainda não foi atingida.
+
+## Incremento — posturas de combate e três qualidades adicionais (7/11/2026)
+
+- **Mirar (capítulo 9, p. 217):** ação menor para preparar +1B no próximo
+  ataque de Luta ou Pontaria. Não permite acumular bônus múltiplos;
+  o bônus é consumido pelo teste.
+- **Ataque Cauteloso (p. 215):** ação menor com −1D ao teste do
+  ataque e Defesa em Combate +3 até começar o próximo turno do
+  combatente; essa redução de dados não se acumula.
+- **Ataque Imprudente (p. 215):** ação maior de Luta com +1D no
+  teste e Defesa em Combate −5 até começar o próximo turno. Não é
+  permitido com ataque de Pontaria. As posturas são processadas
+  na mesma rolagem que pode disparar contra-ataques preparados.
+- **Adaptável (p. 198):** espada bastarda modelo, com empunhadura
+  opcional de duas mãos que eleva o dano básico em +1.
+- **Poderosa (p. 200):** montante e machado longo podem investir até
+  os dados de bônus de Força disponíveis do herói em dano básico
+  adicional. Os dados são escolhidos pelo narrador antes da rolagem.
+- **Contra Carga (p. 199):** pique apenas dispara em contra-ataque
+  preparado contra carga. Essa preparação não é consumida ao ser
+  alvo de ataque comum. Ataques diretos de pique são recusados.
+- **Escalas integradas:** a seleção de empunhadura e os dados
+  investidos afetam tanto ataques pessoais contra personagens
+  quanto ataques de um personagem contra uma unidade inteira,
+  preservando Defesa +20 da unidade do capítulo 10.
+- **Testes adicionais:** `battle-got-personal-stances.test.ts` e
+  `battle-got-personal-weapon-qualities.test.ts`.
+- **Limites:** o modelo ainda não reproduz todas as qualidades
+  da tabela 9-3; efeitos ambientais, montarias e reações em
+  sequência com múltiplos alvos precisam de auditoria adicional.
+  Não mesclar em produção sem CI e revisão de equivalência.
