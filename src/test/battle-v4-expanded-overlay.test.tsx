@@ -30,7 +30,7 @@ describe('V4 · batalha ampliada automaticamente sobre o site',()=>{
    .toBeInTheDocument();
   expect(within(dialog).queryByRole('button',{name:/^Ajustes$/}))
    .not.toBeInTheDocument();
-  const map=within(dialog).getByRole('group',{name:/Mapa hexagonal/});
+  const map=within(dialog).getByRole('group',{name:/Mapa (?:hexagonal|quadrado)/});
   const destinations=within(map).getAllByRole('button',{name:/movimento permitido/});
   fireEvent.click(destinations[0]!);
   expect(within(dialog).getByText('Ordem aplicada com sucesso.')).toBeInTheDocument();
