@@ -7,7 +7,7 @@ import {listBattleSourceHouses,listBattleSourceUnits,previewBattleWarUnit}
  from '@/lib/battle/adapters/readonly-source.functions';
 import type {WarUnit,WarSide} from '@/lib/battle/got/types';
 
-type Slot='attacker-1'|'attacker-2'|'defender-1'|'defender-2';
+export type Slot='attacker-1'|'attacker-2'|'defender-1'|'defender-2';
 const SLOTS:readonly {id:Slot;label:string;side:WarSide;position:{x:number;y:number}}[]=[
  {id:'attacker-1',label:'Atacante · 1',side:'attacker',position:{x:1,y:2}},
  {id:'attacker-2',label:'Atacante · 2',side:'attacker',position:{x:1,y:4}},
