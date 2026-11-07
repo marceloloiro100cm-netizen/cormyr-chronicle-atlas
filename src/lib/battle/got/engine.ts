@@ -6,7 +6,7 @@ import {WAR_FORMATIONS,formationAllowed,formationMovement,angleAttackBonus,attac
 import {WAR_SIEGE_CATALOG,warSiegeDamage} from './siege';
 import type {WarSiegeEngine} from './siege';
 import {fortForUnit,fortDefense,validateWarForts,sabotageFortification,damageWarFortification} from './fortifications';
-import {igniteWarUnit,advanceWarFire} from './siege-fire';
+import {igniteWarUnit,advanceWarFire,resolveCarriedWildfireRisk} from './siege-fire';
 import {warFieldDefenseBonus,warFieldMovementMetres,warFieldOrderDifficulty,
  warFieldForbidsAttack,warFieldThrowDamage,validateWarFieldEquipment} from './field-equipment';
 import type {WarFortification} from './fortifications';
@@ -229,7 +229,9 @@ function applyDamage(battle:WarBattle,target:WarUnit,amount:number,attackerName:
  }
  const withHeroes=applyDamageToEmbeddedHeroes(withUnit,target,updated,amount);
  const resolved=log(withHeroes,'damage',text,target.side);
- return target.condition!=='routed'&&updated.condition==='routed'?triggerReadyReactions(resolved,target.id,'enemy-routed'):resolved;
+ const afterAccident=resolveCarriedWildfireRisk(resolved,target.id,applyDamage);
+ return target.condition!=='routed'&&updated.condition==='routed'?
+  triggerReadyReactions(afterAccident,target.id,'enemy-routed'):afterAccident;
 }
 /** A pegada da unidade tem 10×10 m; a pessoa usa coordenadas de 1 m. */
 function distanceFromHeroToUnit(hero:WarHero,unit:WarUnit):number{
