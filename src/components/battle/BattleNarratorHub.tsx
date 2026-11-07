@@ -8,7 +8,7 @@ import {BattleSetup} from './BattleSetup';
 import {BattleArena} from './BattleArena';
 import {BattleReplayImporter} from './BattleReplay';
 import {BattleSavedPanel} from './BattleSavedPanel';
-import {BattleV3Game} from './BattleV3Game';
+import {BattleV3NarratorEntry} from './BattleV3NarratorEntry';
 import {BattleAccessCheck} from './BattleAccessCheck';
 import {BattleV3InvitationCreator} from './BattleV3InvitationCreator';
 import {BattleV3LiveCreator} from './BattleV3Live';
@@ -74,7 +74,7 @@ export function BattleNarratorHub(){
      <p>Os PV, as baixas e a moral são exclusivos desta simulação. IA determinística habilitada. O armazenamento exige autorização atual do Narrador e verificação do servidor. Nenhum impacto sobre recursos da casa.</p>
     </div>}
   </div>}
-  {view==='crusade'&&<BattleV3Game narrator onBack={()=>setView('home')}/>}
+  {view==='crusade'&&<BattleV3NarratorEntry onBack={()=>setView('home')}/>}
   {view==='crz'&&BATTLE_CRZ_TRAINING_UI_ENABLED&&<Suspense fallback={<p role="status">Carregando laboratório CRZ…</p>}>
    <BattleCrzLab onBack={()=>setView('home')}/>
   </Suspense>}
