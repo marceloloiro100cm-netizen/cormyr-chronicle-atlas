@@ -21,12 +21,14 @@ import type {WarSiegeKind,WarSiegeAmmo} from '@/lib/battle/got/siege';
 import {modelWarUnit,modelWarCommanders,WAR_MODEL_UNIT_TYPES} from '@/lib/battle/got/models';
 import type {WarModelUnitTypeId} from '@/lib/battle/got/models';
 import {modelWarLabDeployments} from '@/lib/battle/got/lab-deployment';
+import {positionedWarLabDeployments,positionWarLabUnit} from '@/lib/battle/got/lab-positioning';
+import {encodeGotLabSave,decodeGotLabSave,GOT_LAB_SAVE_KEY} from '@/lib/battle/got/lab-save';
 import {previewWarAftermath} from '@/lib/battle/got/aftermath';
 import {previewWarResourceConsequences} from '@/lib/battle/got/aftermath-resources';
 import {WAR_FIELD_EQUIPMENT} from '@/lib/battle/got/field-equipment';
 import type {WarFieldEquipmentId} from '@/lib/battle/got/field-equipment';
 import type {WarResourceScenario} from '@/lib/battle/got/aftermath-resources';
-import type {WarBattle,WarOrder,WarOrderKind,WarUnit,WarSide} from '@/lib/battle/got/types';
+import type {WarBattle,WarOrder,WarOrderKind,WarUnit,WarSide,WarPosition} from '@/lib/battle/got/types';
 import type {WarWeather,WarVisibility,WarTerrainId,WarTerrainTile} from '@/lib/battle/got/terrain';
 import {WAR_TERRAIN} from '@/lib/battle/got/terrain';
 import type {WarFormation,WarFacing} from '@/lib/battle/got/formations';
@@ -73,6 +75,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  });
  const [training,setTraining]=useState<WarUnit['training']>('trained');
  const [extraUnitsPerSide,setExtraUnitsPerSide]=useState(0);
+ const [deploymentPositions,setDeploymentPositions]=useState<Readonly<Record<string,WarPosition>>>({});
+ const [deploymentMode,setDeploymentMode]=useState<'paint'|'deploy'>('paint');
+ const [deploymentSelected,setDeploymentSelected]=useState('attacker-1');
+ const [localSaveStatus,setLocalSaveStatus]=useState('');
  const [weather,setWeather]=useState<WarWeather>('clear');
  const [visibility,setVisibility]=useState<WarVisibility>('clear');
  const [advanced,setAdvanced]=useState(false);
@@ -153,7 +159,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [error,setError]=useState('');
  const start=()=>{
   try{
-   const prepared=modelWarLabDeployments(extraUnitsPerSide);
+   const prepared=positionedWarLabDeployments(extraUnitsPerSide,deploymentPositions);
    if(siegeEnabled&&officialBySlot['attacker-2']&&
     officialBySlot['attacker-2'].typeId!=='engineers')
     throw new Error('O segundo espaço do atacante deve ter engenheiros para operar o cerco.');
@@ -430,6 +436,31 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
   try{setBattle(advanceWarRound(battle));setSelected('');setTarget('');setError('');}
   catch(e){setError(e instanceof Error?e.message:'Erro ao concluir rodada.');}
  };
+ const saveLocalBattle=()=>{
+  if(!battle)return;
+  try{
+   window.localStorage.setItem(GOT_LAB_SAVE_KEY,encodeGotLabSave(battle));
+   setLocalSaveStatus('Simulação salva somente neste navegador.');
+   setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível salvar localmente.');}
+ };
+ const loadLocalBattle=()=>{
+  try{
+   const saved=window.localStorage.getItem(GOT_LAB_SAVE_KEY);
+   if(!saved)throw new Error('Nenhuma simulação local foi encontrada neste navegador.');
+   if(battle&&!window.confirm('Substituir a simulação atual pela versão salva?'))return;
+   const loaded=decodeGotLabSave(saved);
+   setBattle(loaded);setSelected('');setTarget('');setError('');
+   setLocalSaveStatus('Simulação retomada. Rodada '+loaded.round+'.');
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível retomar a simulação.');}
+ };
+ const clearLocalBattle=()=>{
+  if(!window.confirm('Apagar a cópia local desta simulação? A batalha aberta não será alterada.'))return;
+  try{window.localStorage.removeItem(GOT_LAB_SAVE_KEY);
+   setLocalSaveStatus('Cópia local apagada.');setError('');
+  }catch{setError('Não foi possível apagar a cópia local.');}
+ };
+ const preparedDeployments=modelWarLabDeployments(extraUnitsPerSide);
  const projectedResources=battle?.phase==='finished'?
   previewWarResourceConsequences(battle,resourceScenario.occupiedDomain?
    resourceScenario:{...resourceScenario,capturedLandValue:0,
@@ -441,10 +472,20 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     <p>Laboratório do capítulo 10 · quadrados de 10 m · uma rodada representa 1 minuto.</p></div>
    <Button variant="outline" onClick={onBack}>Voltar ao módulo</Button>
   </div>
-  <p className="battle-note">Este motor é separado do Adaptado. O núcleo de ordens, iniciativa,
-   dano, cerco inicial e moral já podem ser testados. Heróis, ordens avançadas,
-   fortificações, efeitos especiais de cerco e consequências narrativas seguem incompletos.
-   Nenhum resultado modifica a ficha oficial de uma Casa.</p>
+  <p className="battle-note">Laboratório isolado do Adaptado e D&D.
+   Ordens, heróis, cerco, formações e pós-batalha estão disponíveis para testes;
+   regras excepcionais e parâmetros de fortificações podem exigir decisão do Narrador.
+   Nenhuma baixa ou alteração é aplicada às fichas oficiais das Casas.</p>
+  <section className="battle-surface got-save-panel" aria-label="Salvar e retomar teste local">
+   <div className="got-save-actions">
+    {battle&&<Button variant="outline" onClick={saveLocalBattle}>Salvar simulação neste navegador</Button>}
+    <Button variant="outline" onClick={loadLocalBattle}>Retomar simulação salva</Button>
+    <Button variant="outline" onClick={clearLocalBattle}>Apagar cópia salva</Button>
+   </div>
+   <p className="battle-note">Salvamento manual, exclusivo deste navegador. Não publica
+    resultados, não grava em contas nem modifica exércitos ou recursos oficiais.</p>
+   {localSaveStatus&&<p role="status">{localSaveStatus}</p>}
+  </section>
   {!battle?<section className="battle-surface got-config" aria-label="Preparar campo de guerra">
    <h3>Preparar confronto conforme a escala do livro</h3>
    <label>Nome da batalha <input value={name} onChange={e=>setName(e.target.value)} maxLength={100}/></label>
@@ -593,6 +634,29 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     onChange={e=>setStrictSightline(e.target.checked)}/>
     Bloquear tiros através de muralhas e montanhas (adaptação digital opcional)
    </label>
+   <h4>Terreno e posicionamento inicial</h4>
+   <div className="got-config-grid">
+    <label>Editar mapa
+     <select value={deploymentMode}
+      onChange={e=>setDeploymentMode(e.target.value as 'paint'|'deploy')}>
+      <option value="paint">Pintar o terreno</option>
+      <option value="deploy">Posicionar unidades</option>
+     </select>
+    </label>
+    {deploymentMode==='deploy'&&<label>Tropa selecionada para posicionar
+     <select value={deploymentSelected}
+      onChange={e=>setDeploymentSelected(e.target.value)}>
+      {preparedDeployments.map(u=><option key={u.id} value={u.id}>
+       {u.name} · {SIDE[u.side]}</option>)}
+     </select>
+    </label>}
+   </div>
+   {deploymentMode==='deploy'&&<>
+    <p className="battle-note">Selecione uma tropa e toque no quadrado de destino.
+     Não é permitido sobrepor unidades. O tabuleiro de combate tem 12 × 7 quadrados.</p>
+    <Button variant="outline" onClick={()=>{setDeploymentPositions({});setError('');}}>
+     Restaurar posições iniciais</Button>
+   </>}
    <h4>Terreno do campo</h4>
    <label>Pintar quadrados com
     <select value={terrainPaint} onChange={e=>setTerrainPaint(e.target.value as WarTerrainId)}>
@@ -601,10 +665,28 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    <div className="got-map got-paint" style={{gridTemplateColumns:'repeat(12,minmax(0,1fr))'}}>
     {Array.from({length:84},(_,i)=>{
      const x=i%12,y=Math.floor(i/12),terrain=tiles.find(t=>t.x===x&&t.y===y)?.terrain??'plain';
-     return <button type="button" key={i} className={'got-cell'+(terrain!=='plain'?' got-terrain':'')}
-      title={terrain} aria-label={'Pintar quadrado '+x+','+y+' · '+terrain}
-      onClick={()=>setTiles(prev=>[...prev.filter(t=>t.x!==x||t.y!==y),{x,y,terrain:terrainPaint}])}>
-      {terrain==='plain'?'·':'▥'}
+     const occupant=preparedDeployments.find(u=>{
+      const p=deploymentPositions[u.id]??u.position;
+      return p.x===x&&p.y===y;
+     });
+     return <button type="button" key={i}
+      className={'got-cell'+(terrain!=='plain'?' got-terrain':'')+(occupant?' got-deployed '+occupant.side:'')}
+      title={occupant?.name??terrain}
+      aria-label={'Quadrado '+x+','+y+' · '+(occupant?.name??terrain)}
+      onClick={()=>{
+       if(deploymentMode==='paint'){
+        setTiles(prev=>[...prev.filter(t=>t.x!==x||t.y!==y),{x,y,terrain:terrainPaint}]);
+       }else{
+        try{
+         setDeploymentPositions(positionWarLabUnit(extraUnitsPerSide,
+          deploymentPositions,deploymentSelected,{x,y}));
+         setError('');
+        }catch(e){setError(e instanceof Error?e.message:'Posição inválida.');}
+       }
+      }}>
+      {occupant?<><strong>{occupant.side==='attacker'?'A':'D'}</strong>
+       <small>{occupant.id.split('-').at(-1)}</small></>:
+       terrain==='plain'?'·':'▥'}
      </button>;
     })}
    </div>
