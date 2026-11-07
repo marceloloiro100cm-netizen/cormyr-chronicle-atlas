@@ -2,6 +2,7 @@ import {degreesOfSuccess} from './dice';
 import {executePersonalWarAction} from './personal-combat';
 import type {PersonalWarAction} from './personal-combat';
 import type {WarPersonalWeapon} from './personal-weapons';
+import type {WarPersonalMount} from './personal-mounts';
 import {assertPersonalTurn,settlePersonalTurn} from './personal-initiative';
 import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
 import type {WarBattle,WarPosition,WarSide,WarUnit} from './types';
@@ -29,6 +30,9 @@ export type WarHero=Readonly<{
  fateAvailable?:number;fateSpent?:number;fateBurned?:number;
  fateBonusDice?:number;fatePenaltyReduction?:number;removedFromStory?:boolean;
  squadId?:string;meleeWeapon?:WarPersonalWeapon;rangedWeapon?:WarPersonalWeapon;
+ rangedLoaded?:boolean;
+ mount?:WarPersonalMount;mounted?:boolean;mountControlledTurn?:number;
+ mountMovedTurn?:number;
 }>;
 export type WarHeroAction=Readonly<{
  kind:'join'|'leave'|'rally'|'revive'|'abdicate'|'assume'|PersonalWarAction['kind'];
