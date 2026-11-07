@@ -415,11 +415,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         {Object.entries(ORDER_LABEL).filter(([id])=>selectedUnit.condition==='routed'?
          id==='revive':id!=='revive'&&(id!=='reorganize'||selectedUnit.condition==='disorganized'))
          .filter(([id])=>battle.advancedFormations||
-          !['formation','turn','reverse','suppress','probe','counter-charge','sabotage','ambush','join'].includes(id))
+          !['formation','turn','reverse','suppress','probe','counter-charge','sabotage','ambush','join','push'].includes(id))
          .map(([id,label])=><option key={id} value={id}>{label}</option>)}
        </select>
       </label>
-      {['attack','charge','aggressive-retreat','suppress','probe','ambush'].includes(legalKind)&&<>
+      {['attack','charge','aggressive-retreat','suppress','probe','ambush','push'].includes(legalKind)&&<>
        <label>Alvo
         <select aria-label="Alvo da ordem" value={selectedTarget?.id??''}
          onChange={e=>setTarget(e.target.value)}>
