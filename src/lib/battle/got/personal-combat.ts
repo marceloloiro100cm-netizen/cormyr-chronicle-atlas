@@ -20,6 +20,7 @@ export type PersonalWarAction=Readonly<{
  vsCharge?:boolean;
  toMetres?:WarPosition;
  escapeUsing?:'agility'|'athletics';
+ twoHandedGrip?:boolean;powerBonusDice?:number;
 }>;
 export const personalPosition=(hero:WarHero):WarPosition=>
  hero.personalPosition??{x:hero.position.x*10+5,y:hero.position.y*10+5};
