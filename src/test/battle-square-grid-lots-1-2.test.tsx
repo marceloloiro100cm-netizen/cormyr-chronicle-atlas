@@ -29,7 +29,7 @@ describe('Cormyr · Lotes 1–2 · migração de malha para quadrados',()=>{
   }
  });
  it('mantém o formato hexadecimal histórico quando grid estiver ausente',()=>{
-  const map=createScenario('plain-open');
+  const map=createScenario('plain-open',11,'hex');
   expect(map.grid).toBeUndefined();
   expect(gridNeighbors(map,map.tiles[40]!)).toHaveLength(6);
   expect(validateBattleMap(map)).toEqual([]);
@@ -56,7 +56,7 @@ describe('Cormyr · Lotes 1–2 · migração de malha para quadrados',()=>{
   const square=screen.getByRole('group',{name:/Mapa quadrado com/});
   expect(square.querySelectorAll('[data-battle-hex] > rect')).toHaveLength(99);
   unmount();
-  const {container}=render(<BattleBoard map={createScenario('plain-open')}/>);
+  const {container}=render(<BattleBoard map={createScenario('plain-open',11,'hex')}/>);
   expect(container.querySelectorAll('.battle-hex > polygon')).toHaveLength(99);
  });
  it('CRZ: valida malha quadrada, diagonal e bloqueio de tiro',()=>{
