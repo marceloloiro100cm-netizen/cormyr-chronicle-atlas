@@ -184,8 +184,8 @@ export function equipModelWarOffhand(hero:WarHero,weaponId:WarPersonalWeaponId|n
  const weapon=WAR_PERSONAL_WEAPONS[weaponId];
  if((!weapon.offhandDamageBonus&&!weapon.defensiveOffhandBonus)||weapon.family!=='melee')
   throw new Error('Escolha arma de Mão Inábil ou escudo Defensivo para a mão secundária.');
- if(hero.meleeWeapon?.twoHanded)
-  throw new Error('Arma principal de Duas Mãos não permite equipar arma secundária.');
+ if(hero.meleeWeapon?.twoHanded||hero.oneHandUnavailable)
+  throw new Error('Arma principal de Duas Mãos ou mão indisponível impede arma secundária.');
  return {...hero,offhandWeapon:weapon,offhandDefenseSuppressed:false,
   offhandDefenseDamage:0,offhandWeaponBroken:false};
 }
