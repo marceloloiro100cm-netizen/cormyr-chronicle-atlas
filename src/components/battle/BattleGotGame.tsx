@@ -10,6 +10,7 @@ import {resolveLabRecovery,restoreOrdinaryDamageAfterBattle} from '@/lib/battle/
 import type {RecoveryActivity,RecoveryInterval} from '@/lib/battle/got/personal-recovery';
 import {deployWarSquad} from '@/lib/battle/got/squads';
 import {equipModelWarHero,WAR_PERSONAL_WEAPONS} from '@/lib/battle/got/personal-weapons';
+import {makeModelWarMount} from '@/lib/battle/got/personal-mounts';
 import type {WarPersonalWeaponId} from '@/lib/battle/got/personal-weapons';
 import type {PersonalMitigationChoice} from '@/lib/battle/got/personal-injuries';
 import type {WarHeroAction} from '@/lib/battle/got/heroes';
@@ -69,6 +70,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [heroesEnabled,setHeroesEnabled]=useState(false);
  const [modelMelee,setModelMelee]=useState<WarPersonalWeaponId>('longsword');
  const [modelRanged,setModelRanged]=useState<WarPersonalWeaponId>('longbow');
+ const [modelMountEnabled,setModelMountEnabled]=useState(false);
  const [manualMitigation,setManualMitigation]=useState(false);
  const [mitigationKind,setMitigationKind]=useState<PersonalMitigationChoice['kind']>('none');
  const [mitigationWounds,setMitigationWounds]=useState(1);
@@ -85,6 +87,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [heroUnitId,setHeroUnitId]=useState('');
  const [heroTargetId,setHeroTargetId]=useState('');
  const [heroRanged,setHeroRanged]=useState(false);
+ const [counterAgainstCharge,setCounterAgainstCharge]=useState(false);
  const [heroTargetUnitId,setHeroTargetUnitId]=useState('');
  const [squadUnitId,setSquadUnitId]=useState('');
  const [attackHeroWithUnit,setAttackHeroWithUnit]=useState(false);
@@ -131,10 +134,14 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    setBattle(createWarBattle({id:'book-lab-'+seed,name,seed,width:12,height:7,
     units,siege,
     heroes:heroesEnabled?[
-     equipModelWarHero(makeModelWarHero({id:'hero-attacker',name:'Herói atacante',side:'attacker',
+     {...equipModelWarHero(makeModelWarHero({id:'hero-attacker',name:'Herói atacante',side:'attacker',
       position:{x:2,y:5}}),{melee:modelMelee,ranged:modelRanged}),
-     equipModelWarHero(makeModelWarHero({id:'hero-defender',name:'Herói defensor',side:'defender',
+      ...(modelMountEnabled?{mount:makeModelWarMount({id:'horse-attacker',
+       name:'Corcel atacante',trainedForWar:true})}:{})},
+     {...equipModelWarHero(makeModelWarHero({id:'hero-defender',name:'Herói defensor',side:'defender',
       position:{x:9,y:5}}),{melee:modelMelee,ranged:modelRanged}),
+      ...(modelMountEnabled?{mount:makeModelWarMount({id:'horse-defender',
+       name:'Corcel defensor',trainedForWar:true})}:{})},
     ]:[],
     fortifications:fortKind==='none'?[]:[makeWarFortification({
      id:'defender-fort',name:WAR_FORT_PROFILES[fortKind].label,side:'defender',
@@ -221,6 +228,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      {targetHeroId:heroTargetId||battle.heroes.find(h=>h.side!==hero.side&&h.active)?.id||''}:{}),
     ...(heroAction==='personal-move'?{toMetres:heroMetres}:{}),
     ...(heroAction==='personal-attack'?{ranged:heroRanged}:{}),
+    ...(heroAction==='personal-counterattack'?{
+     ranged:heroRanged,vsCharge:counterAgainstCharge,
+    }:{}),
    };
    setBattle(executeWarHeroAction(battle,{heroId:hero.id,action}));
    setError('');
@@ -358,6 +368,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    <label className="got-check"><input type="checkbox" checked={heroesEnabled}
     onChange={e=>setHeroesEnabled(e.target.checked)}/>
     Dois heróis-modelo e fases individuais (Passos 6 e 8)</label>
+   {heroesEnabled&&<label className="got-check">
+    <input type="checkbox" checked={modelMountEnabled}
+     onChange={e=>setModelMountEnabled(e.target.checked)}/>
+    Disponibilizar cavalos treinados para os heróis-modelo (combate montado)</label>}
    {heroesEnabled&&<div className="got-config-grid">
     <label>Arma de Luta dos heróis-modelo
      <select value={modelMelee} onChange={e=>setModelMelee(e.target.value as WarPersonalWeaponId)}>
@@ -606,6 +620,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         <option value="personal-attack-unit">Herói atacar unidade inteira · Defesa +20</option>
         <option value="personal-move">Combate pessoal · mover (menor)</option>
         <option value="personal-dodge">Combate pessoal · esquiva (maior)</option>
+        <option value="personal-counterattack">Combate pessoal · contra-ataque preparado (maior)</option>
+        <option value="personal-reload">Combate pessoal · recarregar arma</option>
+        <option value="personal-mount">Montaria · montar (menor)</option>
+        <option value="personal-dismount">Montaria · desmontar (menor)</option>
+        <option value="personal-control-mount">Montaria · controlar (menor ou maior)</option>
         <option value="personal-recover">Combate pessoal · recuperar o fôlego (maior)</option>
         <option value="personal-pass">Combate pessoal · passar (maior)</option>
         <option value="personal-end-turn">Combate pessoal · encerrar turno</option>
@@ -632,7 +651,12 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
          <option key={u.id} value={u.id}>{u.name}</option>)}
        </select>
       </label>}
-      {['personal-attack','personal-attack-unit'].includes(heroAction)&&<label className="got-check">
+      {heroAction==='personal-counterattack'&&
+       <label className="got-check"><input type="checkbox" checked={counterAgainstCharge}
+        onChange={e=>setCounterAgainstCharge(e.target.checked)}/>
+        Preparar contra carga (arma de Luta, +2 dano básico quando o ataque for uma carga)
+       </label>}
+      {['personal-attack','personal-attack-unit','personal-counterattack'].includes(heroAction)&&<label className="got-check">
        <input type="checkbox" checked={heroRanged} onChange={e=>setHeroRanged(e.target.checked)}/>
        Atacar usando Pontaria (distâncias pessoais em metros)</label>}
       {heroAction==='personal-move'&&<>
@@ -656,6 +680,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        {personalTurnHeroId(battle)?' Vez de '+battle.heroes.find(h=>h.id===personalTurnHeroId(battle))?.name:
         ' ações da janela concluídas'}
       </p>}
+     <p className="battle-note">Montarias e armas: {battle.heroes.filter(h=>!h.squadId).map(h=>
+       h.name+': '+(h.mounted?'montado em '+h.mount?.name:h.mount?'cavalo disponível':'a pé')+
+       (h.rangedWeapon?.reload?' · '+(h.rangedLoaded===false?'recarregar':'arma carregada'):'')+
+       (h.counterattackReady?' · contra-ataque preparado':'')).join(' | ')}</p>
      <p className="battle-note">Posições individuais: {battle.heroes.map(h=>
       h.name+' ('+(h.personalPosition?.x??h.position.x*10+5)+','+
       (h.personalPosition?.y??h.position.y*10+5)+' m; '+
