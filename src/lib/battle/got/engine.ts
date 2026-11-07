@@ -1,5 +1,8 @@
 import {criticalFailure,degreesOfSuccess,rollDice,seedFromText} from './dice';
 import type {WarBattle,WarCommander,WarCondition,WarEvent,WarOrder,WarOrderResult,WarPosition,WarSide,WarUnit} from './types';
+import {terrainAt,terrainEffect,movementSlow,visibilityPenalty,weatherAttackModifier,terrainHighGround} from './terrain';
+import type {WarTerrainTile,WarWeather,WarVisibility} from './terrain';
+import {WAR_FORMATIONS,formationAllowed,formationMovement,angleAttackBonus,attackAngle} from './formations';
 
 const SIDES:readonly WarSide[]=['attacker','defender'];
 const opposite=(side:WarSide):WarSide=>side==='attacker'?'defender':'attacker';
@@ -54,6 +57,8 @@ function sideInitiative(battle:WarBattle):WarBattle{
 export function createWarBattle(input:{
  id:string;name:string;seed:string;width:number;height:number;
  commanders:readonly WarCommander[];units:readonly WarUnit[];
+ tiles?:readonly WarTerrainTile[];weather?:WarWeather;visibility?:WarVisibility;
+ advancedFormations?:boolean;
 }):WarBattle{
  if(!input.id.trim()||!input.name.trim()||input.seed.length<1)throw new Error('Identificação do combate inválida.');
  if(!Number.isInteger(input.width)||!Number.isInteger(input.height)||input.width<5||input.height<5||
@@ -61,6 +66,9 @@ export function createWarBattle(input:{
  const ids=[...input.units.map(u=>u.id),...input.commanders.map(c=>c.id)];
  if(new Set(ids).size!==ids.length||input.units.length<2)throw new Error('Identificadores ou unidades inválidos.');
  const occupied=new Set<string>();
+ for(const tile of input.tiles??[]){
+  if(!inBounds(input,tile)||!terrainEffect(tile))throw new Error('Terreno inválido.');
+ }
  for(const u of input.units){
   if(!inBounds(input,u.position))throw new Error('Unidade fora do mapa: '+u.name);
   const key=u.position.x+':'+u.position.y;
@@ -79,10 +87,13 @@ export function createWarBattle(input:{
  }
  const commanders=input.commanders.map(c=>({...c}));
  const units=input.units.map(u=>({...u,position:{...u.position},ability:{...u.ability},
+  ...(input.advancedFormations?{formation:u.formation??'battle',facing:u.facing??(u.side==='attacker'?'east':'west')}:{}),
   standing:u.standing?{...u.standing}:null,issuedThisRound:0,actedThisRound:false,criticalThisRound:false}));
  const initial:WarBattle={id:input.id,name:input.name,seed:seedFromText(input.seed),schemaVersion:1,
   rulesVersion:'GOT-CH10-1',width:input.width,height:input.height,metresPerCell:10,
   round:1,phase:'orders',first:'defender',turn:'defender',units,commanders,
+  tiles:[...(input.tiles??[])],weather:input.weather??'clear',visibility:input.visibility??'clear',
+  advancedFormations:input.advancedFormations??false,
   ordersRemaining:{...commandBudget(commanders,'attacker'),...commandBudget(commanders,'defender')},
   events:[],winner:null};
  return sideInitiative(initial);
@@ -95,18 +106,26 @@ function movePath(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,ma
  const directX=to.x-unit.position.x,directY=to.y-unit.position.y;
  if(sprint&&(directX!==0&&directY!==0))throw new Error('Corrida exige deslocamento em linha reta.');
  const key=(p:WarPosition)=>p.x+':'+p.y;
- const queue:[WarPosition,WarPosition[]][]=[[unit.position,[]]];
- const seen=new Set([key(unit.position)]);
+ const queue:{pos:WarPosition;path:WarPosition[];cost:number}[]=[{pos:unit.position,path:[],cost:0}];
+ const seen=new Map([[key(unit.position),0]]);
  for(let i=0;i<queue.length;i++){
-  const [pos,path]=queue[i]!;
-  if(path.length>=maxCells)continue;
+  queue.sort((a,b)=>a.cost-b.cost);
+  const current=queue.shift()!;i--;
+  const {pos,path,cost}=current;
+  if(cost>=maxCells)continue;
   for(const [dx,dy] of ([[1,0],[-1,0],[0,1],[0,-1]] as const)){
    const step={x:pos.x+dx,y:pos.y+dy},id=key(step);
-   if(!inBounds(battle,step)||seen.has(id)||occupied.has(id))continue;
+   if(!inBounds(battle,step)||occupied.has(id))continue;
+   const tile=terrainAt(battle.tiles,step),effect=terrainEffect(tile);
+   if(effect.blocked||(effect.water&&!unit.naval)||(unit.mounted&&effect.noCavalry))continue;
+   if(unit.naval&&!effect.naval&&tile.terrain!=='coast')continue;
    if(sprint&&(directX!==0&&step.y!==unit.position.y||directY!==0&&step.x!==unit.position.x))continue;
+   const movement=1+movementSlow(tile,battle.visibility,battle.weather);
+   const nextCost=cost+movement;
+   if(nextCost>maxCells||(seen.get(id)??Infinity)<=nextCost)continue;
    const candidate=[...path,step];
    if(step.x===to.x&&step.y===to.y)return candidate;
-   seen.add(id);queue.push([step,candidate]);
+   seen.set(id,nextCost);queue.push({pos:step,path:candidate,cost:nextCost});
   }
  }
  throw new Error('Destino inacessível no limite de movimento ou ocupado.');
@@ -116,7 +135,10 @@ function movementCells(unit:WarUnit,sprint:boolean):number{
  return Math.floor((sprint?base*4:base)/10);
 }
 function move(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,limit?:number):WarBattle{
- const max=limit??movementCells(unit,sprint);
+ const base=movementCells(unit,sprint)*10;
+ const effective=battle.advancedFormations&&unit.formation?
+  formationMovement(base,unit.formation):base;
+ const max=limit??Math.floor(effective/10);
  const path=movePath(battle,unit,to,sprint,max);
  const next=replaceUnit(battle,{...unit,position:path.at(-1)??unit.position});
  return log(next,'move',unit.name+' moveu '+path.length*10+' m'+(sprint?' em corrida':'')+'.',unit.side);
@@ -154,18 +176,41 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  if(!max||distance(attacker.position,target.position)>max||(!ranged&&distance(attacker.position,target.position)===0))
   throw new Error('O alvo não está no alcance.');
  const score=ranged?attacker.ability.marksmanship:attacker.ability.fighting;
- const extraPenalty=(attacker.condition==='disorganized'?1:0)+(options.penalty??0)+(options.charge?1:0);
- const bonus=ranged?(attacker.rangedBonusDice??0):(attacker.meleeBonusDice??0);
- const roll=rollDice(battle.seed,score,bonus,extraPenalty);
+ let extraPenalty=(attacker.condition==='disorganized'?1:0)+(options.penalty??0)+(options.charge?1:0);
+ let bonus=ranged?(attacker.rangedBonusDice??0):(attacker.meleeBonusDice??0);
+ let testDice=0;
+ let formationDefense=0;
+ if(battle.advancedFormations){
+  const own=WAR_FORMATIONS[attacker.formation??'battle'];
+  const enemy=WAR_FORMATIONS[target.formation??'battle'];
+  if(own.noAttack)throw new Error('Esta formação não permite ataques.');
+  extraPenalty+=ranged?0:own.meleePenalty;
+  if(!ranged){
+   if(options.charge)testDice+=own.chargeBonus;
+   if(target.formation==='mob')testDice+=own.meleeBonusAgainstMob;
+   const angle=attackAngle(attacker.position,target.position,target.facing??'north');
+   const closeEnemies=battle.units.filter(u=>u.side===attacker.side&&onBoard(u)&&distance(u.position,target.position)===1).length;
+   const edge=angleAttackBonus(angle,closeEnemies>=2,enemy.flankImmunity);
+   bonus+=edge.bonusDice;testDice+=edge.testDice;
+  }
+  formationDefense=ranged?enemy.rangedDefense:enemy.meleeDefense;
+ }
+ const attackerTile=terrainAt(battle.tiles,attacker.position);
+ const targetTile=terrainAt(battle.tiles,target.position);
+ testDice+=terrainHighGround(attackerTile,targetTile);
+ extraPenalty+=visibilityPenalty(battle.visibility,battle.weather,ranged);
+ const roll=rollDice(battle.seed,Math.max(1,score+testDice),bonus,extraPenalty);
  let next:{seed:number}&WarBattle={...battle,seed:roll.nextSeed};
- const defense=target.defendRoll??target.defense;
- const degrees=degreesOfSuccess(roll.total,defense);
+ const cover=target.defendRoll!==null?terrainEffect(targetTile).cover:0;
+ const defense=(target.defendRoll??target.defense)+cover+formationDefense;
+ const adjustedRoll=Math.max(0,roll.total+weatherAttackModifier(battle.weather));
+ const degrees=degreesOfSuccess(adjustedRoll,defense);
  const baseDamage=ranged?attacker.rangedDamage:attacker.meleeDamage+(options.charge?2:0);
  const raw=baseDamage*degrees;
  const damage=Math.max(0,raw-target.armor);
  next=log(next,'attack',attacker.name+' atacou '+target.name+' ('+(ranged?'Pontaria':'Luta')+
-  '); teste '+roll.total+' vs Defesa '+defense+', '+degrees+' grau(s).',attacker.side,{
-   roll:roll.dice,total:roll.total,difficulty:defense,degrees,
+  '); teste '+adjustedRoll+' vs Defesa '+defense+', '+degrees+' grau(s).',attacker.side,{
+   roll:roll.dice,total:adjustedRoll,difficulty:defense,degrees,
   });
  return degrees?applyDamage(next,target,damage,attacker.name):next;
 }
@@ -192,6 +237,18 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
   unit.name+(escaped?' saiu do campo.':' retirou-se até '+pos.x+','+pos.y+'.'),unit.side);
 }
 function perform(battle:WarBattle,unit:WarUnit,order:WarOrder,degrees:number):WarBattle{
+ if(order.kind==='formation'){
+  if(!battle.advancedFormations)throw new Error('Formações avançadas desabilitadas.');
+  if(!order.formation||!formationAllowed(order.formation,unit))throw new Error('Formação indisponível à unidade.');
+  return log(replaceUnit(battle,{...unit,formation:order.formation}),'formation',unit.name+' adotou '+order.formation+'.',unit.side);
+ }
+ if(order.kind==='turn'||order.kind==='reverse'){
+  if(!battle.advancedFormations)throw new Error('Ângulo frontal desabilitado.');
+  const facing=order.kind==='turn'?order.facing:
+   ({north:'south',south:'north',east:'west',west:'east'} as const)[unit.facing??'north'];
+  if(!facing)throw new Error('Informe a orientação.');
+  return log(replaceUnit(battle,{...unit,facing}), 'facing',unit.name+' voltou-se para '+facing+'.',unit.side);
+ }
  if(order.kind==='move'){
   if(!order.to)throw new Error('Movimentação exige destino.');
   return move(battle,unit,order.to,Boolean(order.sprint));
@@ -268,12 +325,18 @@ export function issueWarOrder(battle:WarBattle,input:{
  if(input.order.kind==='revive'&&unit.condition!=='routed')throw new Error('Esta unidade não está em debandada.');
  // Rejeitar instruções incompletas ANTES de consumir o orçamento e os dados.
  if(input.order.kind==='move'&&!input.order.to)throw new Error('Indique o quadrado de destino.');
+ if(input.order.kind==='formation'&&(!input.order.formation||!battle.advancedFormations))throw new Error('Selecione uma formação válida.');
+ if(input.order.kind==='turn'&&(!input.order.facing||!battle.advancedFormations))throw new Error('Selecione uma orientação válida.');
  if(['attack','charge','aggressive-retreat'].includes(input.order.kind)&&input.order.targetId){
   const target=battle.units.find(u=>u.id===input.order.targetId);
   if(!target||target.side===unit.side||!onBoard(target))throw new Error('Alvo inimigo indisponível.');
  }
- const difficulty=unit.discipline+unit.disorganizations*3+
-  unit.issuedThisRound*3;
+ const formationDifficulty=battle.advancedFormations&&input.order.kind==='formation'&&input.order.formation?
+  WAR_FORMATIONS[input.order.formation].difficulty:input.order.kind==='turn'&&battle.advancedFormations?3:0;
+ const formationDiscipline=battle.advancedFormations&&unit.formation?
+  WAR_FORMATIONS[unit.formation].discipline:0;
+ const difficulty=Math.max(0,unit.discipline+unit.disorganizations*3+
+  unit.issuedThisRound*3+formationDifficulty+formationDiscipline);
  const roll=rollDice(battle.seed,commander.warfare,0,0);
  const passed=roll.total>=difficulty;
  const critical=criticalFailure(roll.total,difficulty);
