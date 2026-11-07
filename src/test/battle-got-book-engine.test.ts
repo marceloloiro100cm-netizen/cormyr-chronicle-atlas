@@ -92,6 +92,22 @@ describe('Guerra do livro — motor independente e rolagens',()=>{
   expect(next.units.find(u=>u.id==='a')!.standing?.kind).toBe('ready');
   expect(next.units.find(u=>u.id==='a')!.issuedThisRound).toBe(0);
  });
+ it('falha comum conserva ordem permanente e ela atua ao final da rodada',()=>{
+  const baseline={...fixture(),turn:'attacker' as const};
+  const begin=issueWarOrder(baseline,{commanderId:'leader-attacker',unitId:'a',order:{kind:'defend'}});
+  const nextRound=advanceWarRound(begin.battle);
+  const before={...nextRound,turn:'attacker' as const};
+  const test=rollDice(before.seed,8).total;
+  const prepared={...before,
+   units:before.units.map(u=>u.id==='a'?{...u,discipline:test+1}:u)};
+  const failing=issueWarOrder(prepared,{commanderId:'leader-attacker',unitId:'a',
+   order:{kind:'ready'}});
+  expect(failing.passed).toBe(false);
+  expect(failing.critical).toBe(false);
+  const defendsBefore=failing.battle.events.filter(e=>e.kind==='defend').length;
+  const after=advanceWarRound(failing.battle);
+  expect(after.events.filter(e=>e.kind==='defend').length).toBe(defendsBefore+1);
+ });
  it('não permite ultrapassar ordens nem criar comando sem comandante válido',()=>{
   const b={...fixture(),turn:'attacker' as const};
   expect(()=>issueWarOrder({...b,ordersRemaining:{...b.ordersRemaining,'leader-attacker':0}},
