@@ -23,7 +23,7 @@ const LABEL:Record<Side,string>={attacker:'Atacante',defender:'Defensor'};
 function BattleResult({state,initial,sideNames,heraldry,onRestart,onExit,persistenceEnabled}:{
  initial:BattleState;
  state:BattleState;sideNames:Record<Side,string>;
- heraldry?:Partial<Record<Side,BattleHouseDirectoryRow>>;
+ heraldry?:Partial<Record<Side,BattleHouseDirectoryRow>>|undefined;
  onRestart:()=>void;onExit:()=>void;
  persistenceEnabled:boolean;
 }){
@@ -78,7 +78,7 @@ function BattleResult({state,initial,sideNames,heraldry,onRestart,onExit,persist
 }
 export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenceEnabled=false}:{
  initial:BattleState;resume?:BattleState;sideNames:Record<Side,string>;
- heraldry?:Partial<Record<Side,BattleHouseDirectoryRow>>;onExit:()=>void;
+ heraldry?:Partial<Record<Side,BattleHouseDirectoryRow>>|undefined;onExit:()=>void;
  persistenceEnabled?:boolean;
 }){
  // Uma batalha retomada foi reconstruída por replay SHA-256 no servidor e no navegador.
