@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useState,type ChangeEvent,type KeyboardEvent} from 'react';
 import {Button} from '@/components/ui/button';
+import {militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
 import {crzHexKey,crzGridToOffset,type CrzHex,type CrzSide,type CrzMap}
@@ -162,13 +163,20 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
         fill="none" stroke="#ffe3a1" strokeWidth={4} pointerEvents="none"/>}
        {selected&&<circle data-crz-selected-ring={unit.id} cx={x} cy={y} r={21}
         fill="none" stroke="#79ff86" strokeWidth={4} pointerEvents="none"/>}
-       <circle cx={x} cy={y} r={16}
+       <circle cx={x} cy={y} r={21}
         fill={SIDE[unit.side].fill} stroke={active?'#f9df9c':'#e4d8c2'}
-        strokeWidth={active?3:1.4}/>
-       <text x={x} y={y-3} textAnchor="middle" fill="#fff" fontSize={10}
+        strokeWidth={active?3:1.8} pointerEvents="none"/>
+       <rect x={x-17} y={y-21} width={34} height={34} rx={7}
+        fill="#162629" stroke="#dbc58d" strokeWidth="1.2" pointerEvents="none"/>
+       {militaryUnitSymbolSrc(unit.templateId)?
+        <image href={militaryUnitSymbolSrc(unit.templateId)} x={x-16} y={y-20}
+         width={32} height={32} preserveAspectRatio="xMidYMid meet" pointerEvents="none"/>:
+        <text x={x} y={y-1} textAnchor="middle" fill="#fff" fontSize={13}
+         fontWeight={700} pointerEvents="none">{unit.name.slice(0,2).toUpperCase()}</text>}
+       <rect x={x-18} y={y+10} width={36} height={14} rx={6}
+        fill="#1c2525" stroke="#dfc79a" strokeWidth=".6" pointerEvents="none"/>
+       <text x={x} y={y+21} textAnchor="middle" fill="#fff" fontSize={11}
         fontWeight={700} pointerEvents="none">{unit.alive}</text>
-       <text x={x} y={y+9} textAnchor="middle" fill="#fff" fontSize={8}
-        pointerEvents="none">{unit.id.slice(0,8)}</text>
       </>}
       {isMove&&!unit&&<circle cx={x} cy={y} r={5}
        fill="#b7fa8c" pointerEvents="none"/>}
