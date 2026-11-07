@@ -113,8 +113,8 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         page.get_by_role("button",name="Iniciar treinamento CRZ").click()
         dialog=page.get_by_role("dialog",name="Batalha em tela ampliada")
         dialog.wait_for(timeout=15000)
-        self.assertEqual(dialog.locator(".crz-map-tile > polygon").count(),99)
-        self.assertEqual(dialog.locator(".crz-map-tile > rect").count(),0)
+        self.assertEqual(dialog.locator('[data-crz-cell-shape="hex"]').count(),99)
+        self.assertEqual(dialog.locator('[data-crz-cell-shape="square"]').count(),0)
 
     def test_v4_battle_panels_keep_readable_font_sizing(self):
         page=self.open_page(1440,900)
@@ -152,13 +152,13 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         edit=page.locator("#map-editor")
         board=page.locator("#interactive-board")
         cell=edit.locator(".battle-hex--interactive").first
-        polygon=cell.locator("polygon")
-        self.assertEqual(polygon.get_attribute("fill"),"#d4c69e")
+        shape=cell.locator('[data-battle-cell-shape="square"]')
+        self.assertEqual(shape.get_attribute("fill"),"#d4c69e")
         edit.get_by_role("button",name="Floresta",exact=True).click()
         cell.click()
-        self.assertEqual(polygon.get_attribute("fill"),"#66886b")
+        self.assertEqual(shape.get_attribute("fill"),"#66886b")
         edit.get_by_role("button",name="Desfazer pincel").click()
-        self.assertEqual(polygon.get_attribute("fill"),"#d4c69e")
+        self.assertEqual(shape.get_attribute("fill"),"#d4c69e")
         selected=board.get_by_test_id("selected-hex")
         bcell=board.locator(".battle-hex--interactive").first
         bcell.focus()
