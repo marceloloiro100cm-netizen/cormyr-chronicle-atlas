@@ -18,7 +18,7 @@ export const battleHouseClassLabel=(house:BattleHouseHeraldry)=>
  * object-fit:contain in CSS preserves the entire original image and heraldry.
  */
 export function BattleHouseCrest({house,size='small',decorative=false}:{
- house?:BattleHouseHeraldry|null;size?:'tiny'|'small'|'large';decorative?:boolean;
+ house?:BattleHouseHeraldry|null|undefined;size?:'tiny'|'small'|'large';decorative?:boolean;
 }){
  const url=vassalCrestUrl(house?.crest);
  const [broken,setBroken]=useState<string|null>(null);
@@ -35,7 +35,7 @@ export function BattleHouseCrest({house,size='small',decorative=false}:{
 }
 
 export function BattleHouseIdentityCard({house,sourceStatus,unitCount,men,selectedCount}:{
- house?:BattleHouseHeraldry|null;sourceStatus?:string;
+ house?:BattleHouseHeraldry|null|undefined;sourceStatus?:string;
  unitCount?:number;men?:number;selectedCount?:number;
 }){
  const sourceLabel=sourceStatus==='recorded'?'Ficha militar cadastrada':
@@ -65,7 +65,7 @@ export function BattleHouseIdentityCard({house,sourceStatus,unitCount,men,select
 }
 
 export function BattleHouseBanner({side,house,name,subtle=false}:{
- side:Side;house?:BattleHouseHeraldry|null;name?:string;subtle?:boolean;
+ side:Side;house?:BattleHouseHeraldry|null|undefined;name?:string;subtle?:boolean;
 }){
  const label=side==='attacker'?'Atacantes':'Defensores';
  return <div className={'battle-house-banner battle-house-banner--'+side+
@@ -78,7 +78,7 @@ export function BattleHouseBanner({side,house,name,subtle=false}:{
 }
 
 export function BattleHouseVersus({houses,names}:{
- houses?:Partial<Record<Side,BattleHouseHeraldry|null>>;
+ houses?:Partial<Record<Side,BattleHouseHeraldry|null>>|undefined;
  names:Record<Side,string>;
 }){
  if(!houses?.attacker&&!houses?.defender)return null;
