@@ -187,7 +187,16 @@ export function BattleSetup({onStart,onBack}:{
    <div className="battle-form-row">
     <label>Nome do confronto<input aria-label="Nome do confronto rápido" maxLength={120}
      value={name} onChange={e=>setName(e.target.value)}/></label>
-    <label>Campo de batalha<select aria-label="Cenário rápido" value={map.id}
+    <label>Formato do mapa<select aria-label="Formato da malha PTE"
+      value={map.grid??'hex'} onChange={e=>{
+       const id=Object.hasOwn(SCENARIOS,map.id)?map.id as BattleScenarioId:'plain-open';
+       setMap(createScenario(id,map.width,e.target.value as 'hex'|'square'));
+       setUnits(list=>list.map(u=>({...u,position:null})));setError('');
+      }}>
+      <option value="square">Quadrados (novo padrão)</option>
+      <option value="hex">Hexágonos (legado)</option>
+     </select></label>
+     <label>Campo de batalha<select aria-label="Cenário rápido" value={map.id}
      onChange={e=>{const id=e.target.value as BattleScenarioId;
       if(Object.hasOwn(SCENARIOS,id))setMap(createScenario(id,map.width,map.grid??'hex'));}}>
      {!Object.hasOwn(SCENARIOS,map.id)&&<option value={map.id}>Mapa personalizado</option>}
@@ -291,7 +300,16 @@ export function BattleSetup({onStart,onBack}:{
   <section className="battle-surface" aria-label="Escolha do terreno">
    <h3>3. Terreno</h3>
    <div className="battle-form-row">
-     <label>Cenário<select aria-label="Escolher cenário" value={Object.hasOwn(SCENARIOS,map.id)?map.id:'custom'}
+     <label>Formato do mapa<select aria-label="Formato da malha PTE"
+      value={map.grid??'hex'} onChange={e=>{
+       const id=Object.hasOwn(SCENARIOS,map.id)?map.id as BattleScenarioId:'plain-open';
+       setMap(createScenario(id,map.width,e.target.value as 'hex'|'square'));
+       setUnits(list=>list.map(u=>({...u,position:null})));setError('');
+      }}>
+      <option value="square">Quadrados (novo padrão)</option>
+      <option value="hex">Hexágonos (legado)</option>
+     </select></label>
+      <label>Cenário<select aria-label="Escolher cenário" value={Object.hasOwn(SCENARIOS,map.id)?map.id:'custom'}
       onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id)){setMap(createScenario(id,map.width,map.grid??'hex'));setUnits(x=>x.map(u=>({...u,position:null})));setError('');}}}>
       {!Object.hasOwn(SCENARIOS,map.id)&&<option value="custom">Personalizado</option>}
       {Object.entries(SCENARIOS).map(([id,label])=><option value={id} key={id}>{label}</option>)}
@@ -305,7 +323,7 @@ export function BattleSetup({onStart,onBack}:{
   </section>
   <section className="battle-surface" aria-label="Implantação das unidades">
    <h3>4. Implantação</h3>
-   <p>Selecione uma unidade no exército e toque no célula de sua zona. Vermelho: atacante; azul: defensor.</p>
+   <p>Selecione uma unidade no exército e toque na célula de sua zona. Vermelho: atacante; azul: defensor.</p>
    <p role="status">{positioned} / {units.length} agrupamentos posicionados.</p>
    <div className="battle-form-row">
     <label>Unidade selecionada<select aria-label="Unidade para implantar" value={selected}
