@@ -171,8 +171,8 @@ function movePath(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,ma
 }
 function movementCells(unit:WarUnit,sprint:boolean):number{
  const base=Math.max(0,(unit.naval?60:unit.mounted?80:40)-unit.bulk*10);
- const equipped=warFieldMovementMetres(unit,base);
- return Math.floor((sprint?equipped*4:equipped)/10);
+ const equipped=warFieldMovementMetres(unit,sprint?base*4:base);
+ return Math.floor(equipped/10);
 }
 function move(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,limit?:number):WarBattle{
  const base=movementCells(unit,sprint)*10;
@@ -778,7 +778,11 @@ export function issueWarOrder(battle:WarBattle,input:{
   WAR_FORMATIONS[input.order.formation].difficulty:input.order.kind==='turn'&&battle.advancedFormations?3:0;
  const formationDiscipline=battle.advancedFormations&&unit.formation?
   WAR_FORMATIONS[unit.formation].discipline:0;
- const advancedModifier=(WAR_ADVANCED_ORDER_DIFFICULTY as Partial<Record<WarOrder['kind'],number>>)[input.order.kind]??0;
+ const advancedBase=(WAR_ADVANCED_ORDER_DIFFICULTY as Partial<Record<WarOrder['kind'],number>>)[input.order.kind]??0;
+ const advancedModifier=input.order.kind==='climb-walls'&&
+  !unit.fieldEquipmentConsumed&&
+  ['ladders','siege-tower'].includes(unit.fieldEquipment??'')?
+  0:advancedBase;
  if(advancedModifier&&!battle.advancedFormations)
   throw new Error('Esta ordem avançada exige regras avançadas habilitadas.');
  const suppression=unit.suppressionRound===battle.round?(unit.suppressionPenalty??0):0;
