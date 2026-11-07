@@ -18,8 +18,11 @@ export function deployWarSquad(battle:WarBattle,input:{
  if(!unit||!alive(unit))throw new Error('A unidade de origem precisa estar em combate.');
  if(!input.squadId.trim()||battle.squads?.some(s=>s.id===input.squadId))
   throw new Error('Identificador de esquadrão inválido ou repetido.');
- if(battle.squads?.some(s=>s.unitId===unit.id&&!s.casualtyRecorded))
-  throw new Error('Esta unidade já tem esquadrão destacado em combate.');
+ // Cem soldados podem ser representados por dez grupos de dez.
+ // Um destaque continua sendo uma cópia da simulação: não reduz a ficha da Casa.
+ const attached=(battle.squads??[]).filter(s=>s.unitId===unit.id);
+ if(attached.length>=10)
+  throw new Error('Cada unidade de cem soldados pode destacar no máximo dez esquadrões.');
  const currentIds=new Set(battle.heroes.map(h=>h.id));
  const ids=Array.from({length:10},(_,i)=>input.squadId+'-'+(i+1));
  if(ids.some(id=>currentIds.has(id)))throw new Error('Identificação de combatente duplicada.');
