@@ -145,9 +145,9 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
      className={'crz-map-tile'+(isMove?' crz-map-move':'')+
        (isAttack?' crz-map-attack':'')+(active?' crz-map-active':'')+
        (selected?' crz-map-selected':'')+(hovered?' crz-map-hovered':'')}>
-      {square?<rect x={x-SQUARE_STEP/2} y={y-SQUARE_STEP/2} width={SQUARE_STEP}
+      {square?<rect data-crz-cell-shape="square" x={x-SQUARE_STEP/2} y={y-SQUARE_STEP/2} width={SQUARE_STEP}
        height={SQUARE_STEP} fill={TERRAIN[tile.terrain]!.fill}/>:
-      <polygon points={HEX_POINTS} transform={`translate(${x} ${y})`}
+      <polygon data-crz-cell-shape="hex" points={HEX_POINTS} transform={`translate(${x} ${y})`}
        fill={TERRAIN[tile.terrain]!.fill}/>}
       {isMove&&(square?<rect className="crz-valid-overlay"
        x={x-SQUARE_STEP/2} y={y-SQUARE_STEP/2} width={SQUARE_STEP} height={SQUARE_STEP}
