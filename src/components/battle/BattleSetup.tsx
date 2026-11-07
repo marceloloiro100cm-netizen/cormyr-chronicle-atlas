@@ -12,7 +12,7 @@ import {BattleMapEditor} from './BattleMapEditor';
 import {BattleSourcePicker} from './BattleSourcePicker';
 import {isBattleTrainingCopy,battleTrainingSourceKey} from '@/lib/battle/adapters/imported-npc-roster';
 
-type PreparedUnit={id:string;side:Side;name:string;typeId:string;training:Training;count:number;position:Hex|null;imported?:BattleStack};
+type PreparedUnit={id:string;side:Side;name:string;typeId:string;training:Training;count:number;position:Hex|null;imported?:BattleStack;importKey?:string};
 const SIDE_LABEL={attacker:'Atacante',defender:'Defensor'} as const;
 const DEFAULTS:PreparedUnit[]=[
  {id:'attacker-1',side:'attacker',name:'Infantaria atacante',typeId:'infantry',training:'trained',count:100,position:null},
@@ -54,7 +54,7 @@ export function BattleSetup({onStart,onBack}:{
    setError('Limite de cinco agrupamentos por lado.');return false;
   }
   const keys=[...current.filter(u=>u.imported).map(u=>
-   battleTrainingSourceKey(u.imported!)),
+   u.importKey??battleTrainingSourceKey(u.imported!)),
    ...stacks.map(battleTrainingSourceKey)];
   if(new Set(keys).size!==keys.length){
    setError('Uma ou mais unidades desta Casa já foram copiadas.');return false;
@@ -63,7 +63,8 @@ export function BattleSetup({onStart,onBack}:{
    const id='src-'+crypto.randomUUID();
    const imported={...source,id};
    return {id,side,name:source.name,typeId:source.primaryTypeId,
-    training:source.training,count:source.initialCount,position:null,imported};
+    training:source.training,count:source.initialCount,position:null,imported,
+    importKey:battleTrainingSourceKey(source)};
   });
   setUnits([...current,...prepared]);
   setSelected(prepared[0]!.id);
