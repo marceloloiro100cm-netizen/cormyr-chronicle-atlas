@@ -515,7 +515,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    <label>Unidades adicionais por lado (tropas-modelo, sem modificar Casas)
     <select value={extraUnitsPerSide}
      onChange={e=>setExtraUnitsPerSide(Number(e.target.value))}>
-     {[0,1,2,3,4,5].map(n=><option key={n} value={n}>
+     {Array.from({length:13},(_,n)=>n).map(n=><option key={n} value={n}>
       {n===0?'Duas unidades por lado':(2+n)+' unidades por lado · '+(4+2*n)+' totais'}
      </option>)}
     </select>
