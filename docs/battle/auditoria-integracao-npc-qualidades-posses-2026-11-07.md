@@ -45,6 +45,7 @@ Livro: `Guerra dos Tronos RPG.pdf` (Green Ronin/Jambô), páginas impressas:
 4. Adaptado: remove fortificação de atributos universais em campo aberto e mantém aviso de pendência; efeitos não convertidos não são marcados como aplicados.
 5. UI e servidor: informa quando tropas NPC são apenas propostas, mostra lacunas para fidelidade ao livro e expõe o relatório da proveniência das unidades com ficha completa.
 6. Testes: posse ativa/inativa, domínio diferente, unidade fora de casa, Defesa não duplicada, sobreviventes e classificação NPC.
+7. Rosters NPC: IDs antigos usavam só `source_row` e colidiam entre Casas; o ID novo incorpora chave de origem e Casa, preservando a leitura dos replays legados.
 
 ## Lista de requisitos para alcançar integração verificável
 
