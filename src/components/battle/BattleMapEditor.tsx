@@ -67,16 +67,16 @@ export function BattleMapEditor({map,onChange,locked=false}:{
     <div className="battle-form-row">
       <label>Cenário
         <select aria-label="Cenário" value={Object.hasOwn(SCENARIOS,map.id)?map.id:'custom'}
-          onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id))save(createScenario(id,map.width));}}>
+          onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id))save(createScenario(id,map.width,map.grid??'hex'));}}>
           {!Object.hasOwn(SCENARIOS,map.id)&&<option value="custom">Personalizado</option>}
           {Object.entries(SCENARIOS).map(([id,name])=><option key={id} value={id}>{name}</option>)}
         </select></label>
       <label>Dimensões
         <select aria-label="Dimensões do mapa" value={String(map.width)}
-          onChange={e=>save(createScenario('plain-open',e.target.value==='15'?15:11))}>
+          onChange={e=>save(createScenario('plain-open',e.target.value==='15'?15:11,map.grid??'hex'))}>
           <option value="11">11 × 9</option><option value="15">15 × 11</option>
         </select></label>
-      <Button variant="outline" onClick={()=>save(createScenario('plain-open',map.width))}>Restaurar</Button>
+      <Button variant="outline" onClick={()=>save(createScenario('plain-open',map.width,map.grid??'hex'))}>Restaurar</Button>
     </div>
     <div className="battle-tools" role="group" aria-label="Pincel de terreno">
       {BRUSHES.map(b=><button type="button" key={b.id} aria-pressed={brush===b.id}
