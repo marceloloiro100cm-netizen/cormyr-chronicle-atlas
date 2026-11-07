@@ -289,7 +289,8 @@ export function executePersonalWarAction(
     Math.max(0,Math.ceil((dist-range)/(hero.rangedRange==='long'?100:10))):0));
   const roll=rollPersonalWithFate(battle.seed,hero,
    ranged?hero.marksmanship:hero.fighting,
-   Math.min(15,Math.max(0,bonus-required)+(hero.passBonusDice??0)),penalty);
+   Math.min(15,Math.max(0,bonus-required)+(hero.passBonusDice??0)+
+    (hero.aimBonusDice??0)),penalty);
   const total=Math.max(0,roll.total-(hero.wounds??0));
   const difficulty=target.mount!.defense;
   const degrees=degreesOfSuccess(total,difficulty);
@@ -298,7 +299,8 @@ export function executePersonalWarAction(
   const spent=spendPersonalAction(hero,'minor');
   const used={...consumePersonalFateRoll(spent),
    attackedThisTurn:spent.usedActions===hero.usedActions,
-   passBonusDice:0,...(ranged&&weapon?.reload?{rangedLoaded:false}:{})};
+   passBonusDice:0,aimBonusDice:0,
+   ...(ranged&&weapon?.reload?{rangedLoaded:false}:{})};
   let next=changeHero({...battle,seed:roll.nextSeed},used);
   if(damage>0)next=applyPersonalMountDamage(next,{
    riderId:target.id,damage,source:hero.name,
@@ -337,8 +339,9 @@ export function executePersonalWarAction(
    const roll=rollPersonalWithFate(next.seed,performer,hero.animalHandling??3,
     0,hero.injuries??0);
    const total=Math.max(0,roll.total-(hero.wounds??0));
-   const difficulty=(target.dodgeDefense??target.defense)+
-    (hero.mount.trainedForWar?0:6)+5*hits;
+   const difficulty=Math.max(1,(target.dodgeDefense??target.defense)+
+    (target.cautiousDefenseBonus??0)-(target.recklessDefensePenalty??0)-
+    (target.pinnedByMount?5:0))+(hero.mount.trainedForWar?0:6)+5*hits;
    const degrees=degreesOfSuccess(total,difficulty);
    const damage=degrees?Math.max(0,hero.mount.athletics*degrees-target.armor):0;
    next={...next,seed:roll.nextSeed,
