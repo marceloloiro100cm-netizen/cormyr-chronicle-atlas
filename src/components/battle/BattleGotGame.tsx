@@ -19,6 +19,7 @@ import type {WarFortKind} from '@/lib/battle/got/fortifications';
 import {makeModelSiege,WAR_SIEGE_CATALOG} from '@/lib/battle/got/siege';
 import type {WarSiegeKind,WarSiegeAmmo} from '@/lib/battle/got/siege';
 import {modelWarUnit,modelWarCommanders} from '@/lib/battle/got/models';
+import {modelWarLabDeployments} from '@/lib/battle/got/lab-deployment';
 import {previewWarAftermath} from '@/lib/battle/got/aftermath';
 import {previewWarResourceConsequences} from '@/lib/battle/got/aftermath-resources';
 import {WAR_FIELD_EQUIPMENT} from '@/lib/battle/got/field-equipment';
@@ -74,6 +75,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
   'defender-1':'infantry','defender-2':'archers',
  });
  const [training,setTraining]=useState<WarUnit['training']>('trained');
+ const [extraUnitsPerSide,setExtraUnitsPerSide]=useState(0);
  const [weather,setWeather]=useState<WarWeather>('clear');
  const [visibility,setVisibility]=useState<WarVisibility>('clear');
  const [advanced,setAdvanced]=useState(false);
@@ -154,12 +156,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [error,setError]=useState('');
  const start=()=>{
   try{
-   const prepared=[
-    {id:'attacker-1',side:'attacker' as WarSide,name:'Vanguarda atacante',position:{x:1,y:2}},
-    {id:'attacker-2',side:'attacker' as WarSide,name:'Apoio atacante',position:{x:1,y:4}},
-    {id:'defender-1',side:'defender' as WarSide,name:'Vanguarda defensora',position:{x:10,y:2}},
-    {id:'defender-2',side:'defender' as WarSide,name:'Apoio defensor',position:{x:10,y:4}},
-   ];
+   const prepared=modelWarLabDeployments(extraUnitsPerSide);
    if(siegeEnabled&&officialBySlot['attacker-2']&&
     officialBySlot['attacker-2'].typeId!=='engineers')
     throw new Error('O segundo espaço do atacante deve ter engenheiros para operar o cerco.');
@@ -463,7 +460,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        {[2,3,4,5,6].map(rank=><option key={rank} value={rank}>{rank}</option>)}
       </select>
      </label>
-     {[1,2].map(n=>{
+     {Array.from({length:2+extraUnitsPerSide},(_,i)=>i+1).map(n=>{
       const id=side+'-'+n;
       return <label key={id}>Unidade {n}
        <select value={types[id]} onChange={e=>setTypes(v=>({...v,[id]:e.target.value as TypeId}))}>
@@ -473,6 +470,14 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      })}
     </div>)}
    </div>
+   <label>Unidades adicionais por lado (tropas-modelo, sem modificar Casas)
+    <select value={extraUnitsPerSide}
+     onChange={e=>setExtraUnitsPerSide(Number(e.target.value))}>
+     {[0,1,2,3,4,5].map(n=><option key={n} value={n}>
+      {n===0?'Duas unidades por lado':(2+n)+' unidades por lado · '+(4+2*n)+' totais'}
+     </option>)}
+    </select>
+   </label>
    <label>Equipamento especial da vanguarda atacante (somente laboratório)
     <select value={modelFieldEquipment}
      onChange={e=>setModelFieldEquipment(e.target.value as 'none'|WarFieldEquipmentId)}>
