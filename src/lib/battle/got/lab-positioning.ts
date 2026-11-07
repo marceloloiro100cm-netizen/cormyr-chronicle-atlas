@@ -7,14 +7,15 @@ import type {WarPosition} from './types';
 export function positionedWarLabDeployments(
  extraPerSide:number,
  placements:Readonly<Record<string,WarPosition>>,
+ width=12,height=7,
 ):readonly WarLabDeployment[]{
- const original=modelWarLabDeployments(extraPerSide);
+ const original=modelWarLabDeployments(extraPerSide,width,height);
  const deployed=original.map(u=>({...u,position:{...(placements[u.id]??u.position)}}));
  const occupied=new Set<string>();
  for(const u of deployed){
   const {x,y}=u.position;
   if(!Number.isInteger(x)||!Number.isInteger(y)||
-   x<0||x>=12||y<0||y>=7)throw new Error('Unidade fora do campo de 12 × 7 quadrados.');
+   x<0||x>=width||y<0||y>=height)throw new Error('Unidade fora do campo de '+width+' × '+height+' quadrados.');
   const key=x+':'+y;
   if(occupied.has(key))throw new Error('Duas tropas não podem iniciar no mesmo quadrado.');
   occupied.add(key);
@@ -26,10 +27,11 @@ export function positionWarLabUnit(
  placements:Readonly<Record<string,WarPosition>>,
  unitId:string,
  position:WarPosition,
+ width=12,height=7,
 ):Readonly<Record<string,WarPosition>>{
- const slots=modelWarLabDeployments(extraPerSide);
+ const slots=modelWarLabDeployments(extraPerSide,width,height);
  if(!slots.some(u=>u.id===unitId))throw new Error('Selecione uma tropa da lista.');
  const result={...placements,[unitId]:{...position}};
- positionedWarLabDeployments(extraPerSide,result);
+ positionedWarLabDeployments(extraPerSide,result,width,height);
  return result;
 }
