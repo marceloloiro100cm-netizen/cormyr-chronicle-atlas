@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {render,screen} from '@testing-library/react';
-import {readFileSync} from 'node:fs';
+import {existsSync,readFileSync,statSync} from 'node:fs';
 import {BATTLE_COMMANDER_PORTRAITS,commanderPortraitUrl}
  from '@/lib/battle/v3/commander-portraits';
 import {V3_COMMANDERS,commander} from '@/lib/battle/v3/commanders';
@@ -22,6 +22,13 @@ describe('Publicação de batalha exclusiva do Narrador · retratos',()=>{
   for(const id of ids){
    expect(commander(id).name).toBeTruthy();
    expect(commanderPortraitUrl(id)).toMatch(/^\/battle\/commanders\/[0-9]{2}-[a-z-]+\.webp$/);
+   const path='public'+commanderPortraitUrl(id);
+   expect(existsSync(path)).toBe(true);
+   expect(statSync(path).size).toBeGreaterThan(25_000);
+   expect(statSync(path).size).toBeLessThan(450_000);
+   const bytes=readFileSync(path);
+   expect(bytes.toString('ascii',0,4)).toBe('RIFF');
+   expect(bytes.toString('ascii',8,12)).toBe('WEBP');
   }
  });
  it('renderiza o retrato sem nome sobreposto e com fallback acessível',()=>{
