@@ -100,7 +100,7 @@ function movePath(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,ma
  for(let i=0;i<queue.length;i++){
   const [pos,path]=queue[i]!;
   if(path.length>=maxCells)continue;
-  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+  for(const [dx,dy] of ([[1,0],[-1,0],[0,1],[0,-1]] as const)){
    const step={x:pos.x+dx,y:pos.y+dy},id=key(step);
    if(!inBounds(battle,step)||seen.has(id)||occupied.has(id))continue;
    if(sprint&&(directX!==0&&step.y!==unit.position.y||directY!==0&&step.x!==unit.position.x))continue;
