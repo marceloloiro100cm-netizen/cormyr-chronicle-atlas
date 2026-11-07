@@ -410,7 +410,8 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
    if(ownAngle==='rear')throw new Error('Uma unidade não pode atacar pela própria retaguarda.');
    if(ownAngle==='flank')extraPenalty+=1;
    const angle=attackAngle(attacker.position,target.position,target.facing??'north');
-   const closeEnemies=battle.units.filter(u=>u.side===attacker.side&&onBoard(u)&&distance(u.position,target.position)===1).length;
+   const closeEnemies=battle.units.filter(u=>u.side===attacker.side&&alive(u)&&
+    distance(u.position,target.position)===1).length;
    const edge=angleAttackBonus(angle,closeEnemies>=2,enemy.flankImmunity);
    bonus+=edge.bonusDice;testDice+=edge.testDice;
   }
@@ -493,7 +494,7 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
  if(!foes.length)return battle;
  const nearest=foes.sort((a,b)=>distance(a.position,unit.position)-distance(b.position,unit.position))[0]!;
  const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
- let pos={...unit.position},escaped=false;
+ let pos={...unit.position},escaped=false,spent=0;
  for(let i=0;i<steps;i++){
   const occupied=new Set(battle.units.filter(u=>u.id!==unit.id&&onBoard(u)).map(u=>u.position.x+':'+u.position.y));
   const candidates=dirs.map(([dx,dy])=>({x:pos.x+dx!,y:pos.y+dy!}))
@@ -506,11 +507,14 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
    const tile=terrainAt(battle.tiles,p),effect=terrainEffect(tile);
    return !effect.blocked&&!(effect.water&&!unit.naval)&&
     !(unit.mounted&&effect.noCavalry)&&
-    (!unit.naval||effect.naval||tile.terrain==='coast');
+    (!unit.naval||effect.naval||tile.terrain==='coast')&&
+    spent+1+movementSlow(tile,battle.visibility,battle.weather)<=steps;
   });
   if(!allowed.length)break;
   // Retiradas não atravessam paredes, rios ou montanhas proibidas.
   pos=allowed[0]!;
+  spent+=1+movementSlow(terrainAt(battle.tiles,pos),battle.visibility,battle.weather);
+  if(spent>=steps)break;
  }
  const updated={...unit,position:pos,condition:escaped?'escaped' as WarCondition:unit.condition,
   standing:escaped?null:unit.standing,
