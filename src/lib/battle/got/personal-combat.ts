@@ -144,7 +144,12 @@ function attackHero(
   const range=stance.ranged?(target.rangedRange==='long'?100:10):
    (target.meleeWeapon?.reachMetres??1);
   const loaded=!stance.ranged||!target.rangedWeapon?.reload||target.rangedLoaded!==false;
-  if(reactionDistance<=range&&loaded&&(!stance.vsCharge||options.charge)){
+  if(reactionDistance<=range&&loaded&&(!stance.vsCharge||options.charge)&&
+    !target.pinnedByHero&&!target.pinnedByMount&&
+    (!target.grabbedBy||(!stance.ranged&&Boolean(
+     target.meleeWeapon?.grapple||target.meleeWeapon?.shortBlade)))&&
+    (!target.grapplingTargetId||(!stance.ranged&&
+     target.grapplingTargetId===actor.id&&Boolean(target.meleeWeapon?.grapple)))){
    const reactor={...target,counterattackReady:undefined};
    let defended=changeHero(battle,reactor);
    defended=attackHero(defended,reactor,actor,stance.ranged,{
