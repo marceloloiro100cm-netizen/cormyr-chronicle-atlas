@@ -23,7 +23,10 @@ export type WarHero=Readonly<{
  rangedRange?:'none'|'short'|'long';
  wounds?:number;injuries?:number;passBonusDice?:number;
  dodgeDefense?:number|null;minorActionsUsed?:number;surrendered?:boolean;
- defeatOutcome?:'death'|'unconscious'|'captured';attackedThisTurn?:boolean;
+ defeatOutcome?:'death'|'unconscious'|'captured'|'escaped'|undefined;
+ attackedThisTurn?:boolean;
+ fateAvailable?:number;fateSpent?:number;fateBurned?:number;
+ fateBonusDice?:number;fatePenaltyReduction?:number;removedFromStory?:boolean;
  squadId?:string;meleeWeapon?:WarPersonalWeapon;rangedWeapon?:WarPersonalWeapon;
 }>;
 export type WarHeroAction=Readonly<{
@@ -53,6 +56,7 @@ export function makeModelWarHero(input:{
   agility:3,athletics:3,awareness:3,endurance:3,armorPenalty:0,bulk:0,
   runningBonusDice:0,quicknessBonusDice:0,meleeBonusDice:0,rangedBonusDice:0,rangedRange:'long',
   wounds:0,injuries:0,minorActionsUsed:0,surrendered:false,
+  fateAvailable:2,fateSpent:0,fateBurned:0,
   personalPosition:{x:input.position.x*10+5,y:input.position.y*10+5},
   active:true,usedActions:0,lockedUntilRound:null};
 }
