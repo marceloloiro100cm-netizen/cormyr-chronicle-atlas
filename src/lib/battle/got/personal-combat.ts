@@ -10,6 +10,7 @@ import type {ControlActionKind,AdvancedControlKind} from './personal-control';
 import {resolveAdvancedPersonalControl,releaseAbandonedGrapplePin} from './personal-control';
 import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
 import {applyPersonalMountDamage} from './personal-mounts';
+import {releaseBrokenPersonalGrapples} from './personal-links';
 
 /** Capítulo 9: escala pessoal de 1 m. Não usa os quadrados de guerra de 10 m para alcance. */
 export type PersonalWarAction=Readonly<{
@@ -185,6 +186,8 @@ function attackHero(
  const clumsyPenalty=actor.mounted&&weapon?.clumsy?2:0;
  const totalPenalty=(actor.injuries??0)+(options.charge?1:0)+
   (options.cautious?1:0)+
+  (!actor.mounted&&weapon?.mountedOnly?2:0)+
+  (actor.oneHandUnavailable&&weapon?.twoHanded?2:0)+
   (!ranged&&reach>1&&dist<3?1:0)+trainingPenalty+clumsyPenalty+
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty;
  const mountedBonus=!ranged&&actor.mounted&&actor.mount?.health&&
@@ -434,9 +437,9 @@ export function executePersonalWarAction(
  if(action.kind==='personal-surrender'){
   const used=spendPersonalAction(hero,'major');
   const next=changeHero(battle,{...used,surrendered:true,active:false});
-  return log({...next,commanders:hero.commanderId?
+  return log(releaseBrokenPersonalGrapples({...next,commanders:hero.commanderId?
    next.commanders.map(c=>c.id===hero.commanderId?{...c,active:false}:c):
-   next.commanders},'personal-surrender',hero.name+' se rendeu (destino narrativo pendente).',hero);
+   next.commanders}),'personal-surrender',hero.name+' se rendeu (destino narrativo pendente).',hero);
  }
  if(action.kind==='personal-aim'){
   if(hero.aimBonusDice)throw new Error('Mirar não acumula bônus em ataques consecutivos.');
@@ -501,6 +504,8 @@ export function executePersonalWarAction(
   const required=weapon?.trainingBonusDice??0;
   const penalty=Math.min(15,(hero.injuries??0)+Math.max(0,required-bonus)+
    (hero.mounted&&weapon?.clumsy?2:0)+
+   (!hero.mounted&&weapon?.mountedOnly?2:0)+
+   (hero.oneHandUnavailable&&weapon?.twoHanded?2:0)+
    (ranged?visibilityPenalty(battle.visibility,battle.weather,true)+
     Math.max(0,Math.ceil((dist-range)/(hero.rangedRange==='long'?100:10))):0));
   const roll=rollPersonalWithFate(battle.seed,hero,
