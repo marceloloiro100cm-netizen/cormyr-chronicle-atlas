@@ -28,6 +28,7 @@ export type WarHero=Readonly<{
  dodgeDefense?:number|null;minorActionsUsed?:number;surrendered?:boolean;
  defeatOutcome?:'death'|'unconscious'|'captured'|'escaped'|undefined;
  attackedThisTurn?:boolean;
+ aimBonusDice?:number; cautiousDefenseBonus?:number; recklessDefensePenalty?:number;
  fateAvailable?:number;fateSpent?:number;fateBurned?:number;
  fateBonusDice?:number;fatePenaltyReduction?:number;removedFromStory?:boolean;
  squadId?:string;meleeWeapon?:WarPersonalWeapon;rangedWeapon?:WarPersonalWeapon;
