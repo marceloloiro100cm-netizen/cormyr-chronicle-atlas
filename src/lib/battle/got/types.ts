@@ -18,6 +18,7 @@ export type WarReadyPlan=Readonly<{
 export type WarOrder=Readonly<{
  kind:WarOrderKind;
  targetId?:string;
+ targetHeroId?:string;
  to?:WarPosition;
  sprint?:boolean;
  ranged?:boolean;
