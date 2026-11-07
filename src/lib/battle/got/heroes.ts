@@ -34,7 +34,7 @@ export type WarHero=Readonly<{
  fateBonusDice?:number;fatePenaltyReduction?:number;removedFromStory?:boolean;
  squadId?:string;meleeWeapon?:WarPersonalWeapon;rangedWeapon?:WarPersonalWeapon;
  offhandWeapon?:WarPersonalWeapon|undefined;offhandDefenseSuppressed?:boolean;
- offhandWeaponBroken?:boolean;
+ offhandWeaponBroken?:boolean;offhandDefenseDamage?:number;
  oneHandUnavailable?:boolean;
  rangedLoaded?:boolean;meleeWeaponBroken?:boolean;rangedWeaponBroken?:boolean;
  stunnedNextTurn?:boolean;
