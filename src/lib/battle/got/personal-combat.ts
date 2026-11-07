@@ -123,6 +123,7 @@ function attackHero(
     return {...defended,pendingPersonalCounterattack:{
      attackerId:actor.id,defenderId:reactor.id,ranged,charge:Boolean(options.charge),
      cautious:Boolean(options.cautious),reckless:Boolean(options.reckless),
+     ...(options.stunHit!==undefined?{stunHit:options.stunHit}:{}),
      ...(options.twoHandedGrip!==undefined?{twoHandedGrip:options.twoHandedGrip}:{}),
      ...(options.powerBonusDice!==undefined?{powerBonusDice:options.powerBonusDice}:{}),
     }};
@@ -213,6 +214,7 @@ export function resumePersonalCounterattack(battle:WarBattle):WarBattle{
  return attackHero(next,attacker,defender,pending.ranged,{
   asReaction:true,charge:pending.charge,
   cautious:Boolean(pending.cautious),reckless:Boolean(pending.reckless),
+  ...(pending.stunHit!==undefined?{stunHit:pending.stunHit}:{}),
   ...(pending.twoHandedGrip!==undefined?{twoHandedGrip:pending.twoHandedGrip}:{}),
   ...(pending.powerBonusDice!==undefined?{powerBonusDice:pending.powerBonusDice}:{}),
  });
