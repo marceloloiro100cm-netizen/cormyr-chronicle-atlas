@@ -41,7 +41,7 @@ describe('Cormyr · Lotes 1–2 · migração de malha para quadrados',()=>{
   expect(findPath(original,from,to,1)).toBeNull();
   const map={...original,tiles:original.tiles.map(t=>
    t.q===3&&t.r===2||t.q===2&&t.r===3?{...t,terrain:'rock' as const}:t)};
-  expect(findPath(map,from,to,1.5)).toBeNull();
+  expect(findPath(map,from,to,2)).toBeNull();
  });
  it('não permite disparo através de cobertura de esquina no quadrado',()=>{
   const original=createScenario('plain-open',11,'square');
