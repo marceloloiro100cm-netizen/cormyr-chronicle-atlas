@@ -44,7 +44,7 @@ describe('CRZ Lote 7 — acessibilidade e gating de laboratório',()=>{
   expect(Array.from(tiles).filter(x=>x.getAttribute('tabindex')==='0')).toHaveLength(1);
   const initial=Array.from(tiles).find(x=>x.getAttribute('tabindex')==='0')!;
   expect(initial.getAttribute('aria-describedby')).toBe('crz-keyboard-help');
-  expect(screen.getByText(/setas navegam pelos hexágonos/)).toBeInTheDocument();
+  expect(screen.getByText(/setas navegam pelas células/)).toBeInTheDocument();
   fireEvent.keyDown(initial,{key:'Enter'});
   expect(Array.from(tiles).some(x=>x.getAttribute('aria-label')?.includes('Inspecionar'))).toBe(true);
  });
