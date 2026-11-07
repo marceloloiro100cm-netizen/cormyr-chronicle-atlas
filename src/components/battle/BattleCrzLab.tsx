@@ -6,7 +6,7 @@ import {crzHexKey,crzAxialToOffset,type CrzHex,type CrzSide}
 import {crzLegalCommands,type CrzCommand} from '@/lib/crusade/turns';
 import {crzCapable,crzOrder,type CrzBattleStack,type CrzBattleState,
  type CrzEvent} from '@/lib/crusade/battle-state';
-import {CRZ_LOT8_SPELLS,crzShieldWallTargets} from '@/lib/crusade/leader';
+import {CRZ_ADVANCED_SPELLS,crzShieldWallTargets} from '@/lib/crusade/leader';
 import {crzReplayBegin,crzReplayParse,crzReplayRecord,
  crzReplaySerialize,CRZ_REPLAY_MAX_BYTES,
  type CrzReplaySession} from '@/lib/crusade/replay';
@@ -25,7 +25,7 @@ type SidePanel='actions'|'objectives'|'report'|'replay';
 const SPELL_LABELS:Readonly<Record<string,string>>={
  bless:'Bênção',bane:'Maldição',shield_of_faith:'Escudo da fé',
  heroism:'Heroísmo',cause_fear:'Amedrontar',cure_wounds:'Curar ferimentos',
- firebolt:'Raio de fogo',shield_wall_formation:'Formação de escudos',
+ firebolt:'Raio de fogo',fireball:'Bola de fogo (área)',shield_wall_formation:'Formação de escudos',
 };
 const TERRAIN:Readonly<Record<string,{name:string;fill:string}>>={
  plain:{name:'Planície',fill:'#a6a079'},
@@ -175,10 +175,10 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
 
 const globalSpell=(spell:CrzSpellId)=>spell==='bless'||spell==='bane'||
  spell==='shield_wall_formation';
-const enemySpell=(spell:CrzSpellId)=>spell==='cause_fear'||spell==='firebolt';
+const enemySpell=(spell:CrzSpellId)=>spell==='cause_fear'||spell==='firebolt'||spell==='fireball';
 const spellCost:Partial<Record<CrzSpellId,number>>={
  bless:3,bane:3,shield_of_faith:2,heroism:4,cause_fear:3,
- cure_wounds:2,firebolt:2,shield_wall_formation:2,
+ cure_wounds:2,firebolt:2,fireball:6,shield_wall_formation:2,
 };
 
 export function BattleCrzLab({onBack}:{onBack?:()=>void}){
@@ -215,7 +215,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
  const abilities=legal.filter((c):c is Extract<CrzCommand,{type:'ABILITY'}>=>
   c.type==='ABILITY');
  const spells=legal.filter((c):c is Extract<CrzCommand,{type:'CAST'}>=>
-  c.type==='CAST').filter(c=>CRZ_LOT8_SPELLS.includes(c.spellId));
+  c.type==='CAST').filter(c=>CRZ_ADVANCED_SPELLS.includes(c.spellId));
  const caster=active?frame?.leaders[active.side]:null;
  const selectedSpell:CrzSpellId=caster?.spells.includes(spell)?
   spell:caster?.spells[0]??spell;
@@ -359,6 +359,15 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
     <h2>Preparar batalha-modelo</h2>
     <p>Defensores da Coroa contra forças fictícias de Ashkar.</p>
     <div className="crz-form">
+     <label>Conjunto de regras
+      <select aria-label="Preset CRZ" value={options.preset??'CRZ-5E'}
+       onChange={e=>setOptions(o=>({...o,preset:e.target.value as CrzTrainingOptions['preset'],
+        resolution:e.target.value==='CRZ-5E'?o.resolution:'expected'}))}>
+       <option value="CRZ-5E">CRZ-5E</option>
+       <option value="CRZ-WOTR">CRZ-WOTR (esperado)</option>
+       <option value="PTE-2.0-compat">PTE-2.0-compat (esperado)</option>
+      </select>
+     </label>
      <label>Cenário
       <select value={options.scenario} aria-label="Cenário CRZ"
        onChange={e=>setOptions(o=>({...o,scenario:e.target.value as CrzTrainingOptions['scenario']}))}>
@@ -375,7 +384,7 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
       <select value={options.resolution} aria-label="Resolução CRZ"
        onChange={e=>setOptions(o=>({...o,resolution:e.target.value as 'expected'|'hybrid'}))}>
        <option value="expected">Esperada (sem rolagens)</option>
-       <option value="hybrid">Híbrida (PCG32)</option>
+       <option value="hybrid" disabled={(options.preset??'CRZ-5E')!=='CRZ-5E'}>Híbrida (PCG32)</option>
       </select>
      </label>
      <label>Adversário
@@ -392,8 +401,8 @@ export function BattleCrzLab({onBack}:{onBack?:()=>void}){
      </label>
     </div>
     <Button onClick={begin}>Iniciar treinamento CRZ</Button>
-    <p className="battle-note">CRZ-WOTR e PTE-compat permanecem indisponíveis
-     até terem redutores completos.</p>
+    <p className="battle-note">CRZ-WOTR e PTE-compat são simulações experimentais determinísticas,
+     sem paridade oficial ou aplicação de baixas. Os replays registram o preset e seu hash.</p>
    </section>
   </>}
   {session&&frame&&<section className="crz-battle-stage"
