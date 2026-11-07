@@ -175,8 +175,24 @@ function move(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,limit?
   formationMovement(base,unit.formation):base;
  const max=limit??Math.floor(effective/10);
  const path=movePath(battle,unit,to,sprint,max);
- const next=replaceUnit(battle,{...unit,position:path.at(-1)??unit.position});
- return triggerReadyReactions(log(next,'move',unit.name+' moveu '+path.length*10+' m'+(sprint?' em corrida':'')+'.',unit.side),unit.id,'enemy-adjacent');
+ let next=battle;
+ const final=path.at(-1)??unit.position;
+ const holder=unit.envelopedBy?next.units.find(u=>u.id===unit.envelopedBy&&alive(u)):null;
+ if(holder&&distance(final,holder.position)>1){
+  // A reação livre acontece ANTES da retirada. O alvo ainda está adjacente.
+  next=attack(next,holder,unit,false);
+  if(!alive(next.units.find(u=>u.id===unit.id)!))
+   return log(next,'envelop-retreat-blocked',
+    unit.name+' não conseguiu romper o envolvimento.',unit.side);
+  next=replaceUnit(next,{...next.units.find(u=>u.id===holder.id)!,
+   envelopingTargetId:undefined});
+ }
+ const moving=next.units.find(u=>u.id===unit.id)!;
+ const broken=Boolean(holder&&distance(final,holder.position)>1);
+ next=replaceUnit(next,{...moving,position:final,
+  ...(broken?{envelopedBy:undefined}:{})});
+ return triggerReadyReactions(log(next,'move',unit.name+' moveu '+path.length*10+
+  ' m'+(sprint?' em corrida':'')+'.',unit.side),unit.id,'enemy-adjacent');
 }
 function applyDamage(battle:WarBattle,target:WarUnit,amount:number,attackerName:string):WarBattle{
  if(amount<=0)return log(battle,'armor',target.name+' absorveu todo o dano.',target.side);
@@ -197,7 +213,15 @@ function applyDamage(battle:WarBattle,target:WarUnit,amount:number,attackerName:
   }
  }
  const text=attackerName+' causou '+amount+' de dano em '+target.name+'. Condição: '+updated.condition+'.';
- const withUnit=replaceUnit(battle,updated);
+ let withUnit=replaceUnit(battle,updated);
+ if(!alive(updated)&&(target.envelopedBy||target.envelopingTargetId)){
+  withUnit={...withUnit,units:withUnit.units.map(u=>{
+   if(u.id===updated.id)return {...u,envelopedBy:undefined,envelopingTargetId:undefined};
+   if(u.envelopingTargetId===updated.id)return {...u,envelopingTargetId:undefined};
+   if(u.envelopedBy===updated.id)return {...u,envelopedBy:undefined};
+   return u;
+  })};
+ }
  const withHeroes=applyDamageToEmbeddedHeroes(withUnit,target,updated,amount);
  const resolved=log(withHeroes,'damage',text,target.side);
  return target.condition!=='routed'&&updated.condition==='routed'?triggerReadyReactions(resolved,target.id,'enemy-routed'):resolved;
@@ -391,7 +415,20 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
   '); teste '+adjustedRoll+' vs Defesa '+defense+', '+degrees+' grau(s).',attacker.side,{
    roll:roll.dice,total:adjustedRoll,difficulty:defense,degrees,
   });
- return degrees?applyDamage(next,target,damage,attacker.name):next;
+ if(!degrees)return next;
+ const linkedId=ranged?(target.envelopedBy??target.envelopingTargetId):undefined;
+ next=applyDamage(next,target,damage,attacker.name);
+ if(linkedId){
+  const linked=next.units.find(u=>u.id===linkedId&&alive(u));
+  if(linked){
+   const secondary=Math.max(0,raw-linked.armor);
+   next=log(next,'envelop-friendly-fire',
+    'Disparo sobre tropas envolvidas atinge também '+linked.name+
+    ' ('+secondary+' dano).',attacker.side);
+   next=applyDamage(next,linked,secondary,attacker.name);
+  }
+ }
+ return next;
 }
 /** A ordem Prontidão fica armada até uma condição de movimento ou debandada ocorrer.
  * Reações resolvem antes de a unidade que se move concluir sua ação (inclusive carga).
@@ -775,6 +812,11 @@ export function advanceWarRound(battle:WarBattle):WarBattle{
      const ranged=Boolean(order.ranged);
      const target=chooseNearest(next,base,ranged);
      if(target)next=attack(next,base,target,ranged);
+    }else if(order.kind==='envelop'){
+     const target=base.envelopingTargetId?
+      next.units.find(u=>u.id===base.envelopingTargetId):null;
+     if(target&&alive(target)&&distance(base.position,target.position)===1)
+      next=attack(next,base,target,false);
     }else if(order.kind==='push'){
      const target=chooseNearest(next,base,false);
      if(target){
