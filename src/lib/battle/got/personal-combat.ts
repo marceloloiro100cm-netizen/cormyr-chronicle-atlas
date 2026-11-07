@@ -82,8 +82,8 @@ function attackHero(
  if(ranged&&actor.rangedWeapon?.reload&&actor.rangedLoaded===false)
   throw new Error('Esta arma precisa ser recarregada antes do próximo disparo.');
  // Contra-ataque (cap. 9, p. 216) é resolvido antes do golpe que o disparou.
- // Para mitigação manual, a reação avançada aguarda o fluxo de dano posterior.
- if(!options.asReaction&&target.counterattackReady&&!battle.manualMitigation){
+ // O dano da reação é decidido antes de retomar o ataque interrompido.
+ if(!options.asReaction&&target.counterattackReady){
   const stance=target.counterattackReady;
   const reactionDistance=personalDistance(personalPosition(target),personalPosition(actor));
   const range=stance.ranged?(target.rangedRange==='long'?100:10):
@@ -95,6 +95,11 @@ function attackHero(
    defended=attackHero(defended,reactor,actor,stance.ranged,{
     asReaction:true,counterCharge:Boolean(options.charge&&stance.vsCharge),
    });
+   if(defended.pendingPersonalDamage){
+    return {...defended,pendingPersonalCounterattack:{
+     attackerId:actor.id,defenderId:reactor.id,ranged,charge:Boolean(options.charge),
+    }};
+   }
    const survivingAttacker=defended.heroes.find(h=>h.id===actor.id);
    if(!survivingAttacker?.active)
     return log(defended,'personal-counterattack-interrupt',
@@ -149,6 +154,27 @@ function attackHero(
   actor,{roll:roll.dice,total,difficulty,degrees});
  return next;
 }
+/** Retoma o golpe interrompido após a vítima decidir a mitigação.
+ * Uma reação que derruba o agressor cancela o ataque original.
+ */
+export function resumePersonalCounterattack(battle:WarBattle):WarBattle{
+ const pending=battle.pendingPersonalCounterattack;
+ if(!pending)return battle;
+ if(battle.pendingPersonalDamage)
+  throw new Error('Resolva a mitigação da reação antes de continuar.');
+ const next:WarBattle={...battle,pendingPersonalCounterattack:undefined};
+ const attacker=next.heroes.find(h=>h.id===pending.attackerId);
+ const defender=next.heroes.find(h=>h.id===pending.defenderId);
+ if(!attacker?.active){
+  return defender?log(next,'personal-counterattack-interrupt',
+   defender.name+' interrompeu o ataque de '+(attacker?.name??'oponente')+
+   ' por contra-ataque.',defender):next;
+ }
+ if(!defender?.active)return next;
+ return attackHero(next,attacker,defender,pending.ranged,{
+  asReaction:true,charge:pending.charge,
+ });
+}
 export function executePersonalWarAction(
  battle:WarBattle,hero:WarHero,action:PersonalWarAction,
 ):WarBattle{
@@ -172,8 +198,6 @@ export function executePersonalWarAction(
    next.commanders},'personal-surrender',hero.name+' se rendeu (destino narrativo pendente).',hero);
  }
  if(action.kind==='personal-counterattack'){
-  if(battle.manualMitigation)
-   throw new Error('Desative mitigação manual para testar contra-ataques antecipados neste laboratório.');
   if(action.ranged&&(hero.rangedDamage<=0||hero.rangedRange==='none'))
    throw new Error('O contra-ataque à distância exige arma de Pontaria.');
   if(action.ranged&&hero.rangedWeapon?.reload&&hero.rangedLoaded===false)
