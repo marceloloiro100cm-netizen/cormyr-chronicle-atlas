@@ -89,6 +89,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [heroTargetId,setHeroTargetId]=useState('');
  const [heroRanged,setHeroRanged]=useState(false);
  const [heroGripTwoHands,setHeroGripTwoHands]=useState(false);
+ const [heroStunHit,setHeroStunHit]=useState(false);
  const [heroPowerBonus,setHeroPowerBonus]=useState(0);
  const [counterAgainstCharge,setCounterAgainstCharge]=useState(false);
  const [mountEscapeSkill,setMountEscapeSkill]=useState<'athletics'|'agility'>('athletics');
@@ -241,6 +242,10 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     ...(heroAction==='personal-counterattack'?{
      ranged:heroRanged,vsCharge:counterAgainstCharge,
     }:{}),
+    ...(['personal-attack','personal-cautious-attack',
+      'personal-reckless-attack','personal-charge'].includes(heroAction)&&
+      (!heroRanged||['personal-reckless-attack','personal-charge'].includes(heroAction))&&
+      hero.meleeWeapon?.stunning?{stunHit:heroStunHit}:{}),
     ...(['personal-attack','personal-cautious-attack',
       'personal-reckless-attack','personal-charge'].includes(heroAction)&&
       (!heroRanged||['personal-reckless-attack','personal-charge'].includes(heroAction))?
@@ -708,6 +713,14 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
           (battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.strengthBonusDice??0,
           Number(e.target.value))))}/>
        </label>}
+      {['personal-attack','personal-cautious-attack',
+       'personal-reckless-attack','personal-charge'].includes(heroAction)&&
+       (!heroRanged||['personal-reckless-attack','personal-charge'].includes(heroAction))&&
+       (battle.heroes.find(h=>h.id===heroId)??battle.heroes[0])?.meleeWeapon?.stunning&&
+       <label className="got-check"><input type="checkbox" checked={heroStunHit}
+        onChange={e=>setHeroStunHit(e.target.checked)}/>
+        Atordoante · sacrificar 1 grau de sucesso para bloquear a próxima ação maior
+       </label>}
       {['personal-move','personal-trample','personal-control-mount'].includes(heroAction)&&<>
        <label>X em metros (quadrados de 1 m)
         <input type="number" min={0} max={battle.width*10-1} value={heroMetres.x}
@@ -743,7 +756,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        (h.pinnedByMount?' · PRESO sob montaria':'')+
        (h.prone?' · caído':'')+
        (h.rangedWeapon?.reload?' · '+(h.rangedLoaded===false?'recarregar':'arma carregada'):'')+
-       (h.counterattackReady?' · contra-ataque preparado':'')).join(' | ')}</p>
+       (h.counterattackReady?' · contra-ataque preparado':'')+
+       (h.stunnedNextTurn?' · ATORDOADO':'')+
+       (h.meleeWeaponBroken?' · ARMA DE LUTA QUEBRADA':'')).join(' | ')}</p>
      <p className="battle-note">Posições individuais: {battle.heroes.map(h=>
       h.name+' ('+(h.personalPosition?.x??h.position.x*10+5)+','+
       (h.personalPosition?.y??h.position.y*10+5)+' m; '+
