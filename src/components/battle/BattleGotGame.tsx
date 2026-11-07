@@ -17,7 +17,7 @@ import type {PersonalMitigationChoice} from '@/lib/battle/got/personal-injuries'
 import type {WarHeroAction} from '@/lib/battle/got/heroes';
 import {makeWarFortification,WAR_FORT_PROFILES} from '@/lib/battle/got/fortifications';
 import type {WarFortKind} from '@/lib/battle/got/fortifications';
-import {makeModelSiege,WAR_SIEGE_CATALOG} from '@/lib/battle/got/siege';
+import {makeModelSiege,WAR_SIEGE_CATALOG,warSiegeReloadRemaining} from '@/lib/battle/got/siege';
 import type {WarSiegeKind,WarSiegeAmmo} from '@/lib/battle/got/siege';
 import {modelWarUnit,modelWarCommanders,WAR_MODEL_UNIT_TYPES} from '@/lib/battle/got/models';
 import type {WarModelUnitTypeId} from '@/lib/battle/got/models';
@@ -90,6 +90,8 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [formation,setFormation]=useState<WarFormation>('battle');
  const [facing,setFacing]=useState<WarFacing>('north');
  const [siegeEnabled,setSiegeEnabled]=useState(false);
+ const [siegeCount,setSiegeCount]=useState(1);
+ const [selectedSiegeIds,setSelectedSiegeIds]=useState<string[]>([]);
  const [modelFieldEquipment,setModelFieldEquipment]=useState<'none'|WarFieldEquipmentId>('none');
  const [heroesEnabled,setHeroesEnabled]=useState(false);
  const [modelMelee,setModelMelee]=useState<WarPersonalWeaponId>('longsword');
@@ -181,12 +183,13 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    });
    const engineer=units.find(u=>u.side==='attacker'&&u.typeId==='engineers');
    if(siegeEnabled&&!engineer)throw new Error('Cerco exige unidade de engenheiros.');
-   const siege=siegeEnabled&&engineer?[makeModelSiege({
-    id:'siege-attacker-1',kind:siegeKind,side:'attacker',
-    position:{x:1,y:3},engineerId:engineer.id,
-    ammo:siegeKind.startsWith('catapult')?siegeAmmo:
-     siegeKind==='fire-pot'?(siegeAmmo==='wildfire'?'wildfire':'oil'):'stone',
-   })]:[];
+   const siege=siegeEnabled&&engineer?
+    Array.from({length:siegeCount},(_,i)=>makeModelSiege({
+     id:'siege-attacker-'+(i+1),kind:siegeKind,side:'attacker',
+     position:{x:1,y:3+i},engineerId:engineer.id,
+     ammo:siegeKind.startsWith('catapult')?siegeAmmo:
+      siegeKind==='fire-pot'?(siegeAmmo==='wildfire'?'wildfire':'oil'):'stone',
+    })):[];
    if(modelOneHandUnavailable&&modelOffhand!=='none')
     throw new Error('Não é possível usar arma secundária com uma mão indisponível.');
    setBattle(createWarBattle({id:'book-lab-'+seed,name,seed,width:12,height:7,
@@ -295,6 +298,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     f.side!==battle.turn&&!f.breached)??battle.fortifications.find(f=>
     f.side!==battle.turn&&!f.breached);
    if(fire&&leader&&activeWeapons.length){
+    const selectedWeapons=selectedSiegeIds.length?
+     activeWeapons.filter(w=>selectedSiegeIds.includes(w.id)):activeWeapons.slice(0,1);
+    if(!selectedWeapons.length)throw new Error('Selecione pelo menos uma arma de cerco.');
+    if(selectedWeapons.length>leader.warfare)
+     throw new Error('Uma salva não pode exceder a graduação Guerra do comandante.');
     if(siegeTargetMode==='unit'&&!selected)
      throw new Error('Selecione uma unidade inimiga.');
     if(siegeTargetMode==='fort'&&!fort)
@@ -305,7 +313,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     if(siegeTargetMode==='hero'&&!hero)
      throw new Error('Selecione personagem inimigo para o escorpião.');
     setBattle(fireWarSiegeVolley(battle,{commanderId:leader.id,
-     weaponIds:[activeWeapons[0]!.id],
+     weaponIds:selectedWeapons.map(w=>w.id),
      ...(siegeTargetMode==='fort'?{fortId:fort!.id}:
       siegeTargetMode==='hero'?{targetHeroId:hero!.id}:{targetId:selected!.id}),
     }));
@@ -627,6 +635,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     onChange={e=>setSiegeEnabled(e.target.checked)}/>
     Preparar arma de cerco do atacante (troca o apoio atacante por engenheiros)</label>
    {siegeEnabled&&<div className="got-config-grid">
+    <label>Quantidade de máquinas (até quatro por unidade de engenheiros)
+     <select value={siegeCount} onChange={e=>setSiegeCount(Number(e.target.value))}>
+      {[1,2,3,4].map(n=><option key={n} value={n}>{n} máquina(s)</option>)}
+     </select>
+    </label>
     <label>Arma de cerco
      <select value={siegeKind} onChange={e=>{
       const chosen=e.target.value as WarSiegeKind;
@@ -1166,9 +1179,20 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       <p>Passo 5 · Armas de cerco. Uma ordem dispara até Guerra máquinas;
        cada unidade de engenheiros opera até quatro. A arma precisa pular a rodada seguinte
        para recarregar.</p>
-      {battle.siege.filter(w=>w.side===battle.turn&&w.health>0).map(w=><p key={w.id}>
-       <strong>{w.name}</strong> · munição {w.ammo} · alcance {WAR_SIEGE_CATALOG[w.kind].rangeMetres} m
-       · última rodada disparada {w.lastFiredRound??'nenhuma'}</p>)}
+      {battle.siege.filter(w=>w.side===battle.turn&&w.health>0).map(w=>
+       <label className="got-check" key={w.id}>
+        <input type="checkbox" checked={selectedSiegeIds.includes(w.id)}
+         onChange={e=>setSelectedSiegeIds(current=>e.target.checked?
+          [...current,w.id]:current.filter(id=>id!==w.id))}/>
+        <span><strong>{w.name} · {w.id}</strong> · munição {w.ammo}
+         · alcance {WAR_SIEGE_CATALOG[w.kind].rangeMetres} m
+         {warSiegeReloadRemaining(w,battle.round)>0?
+          ' · recarregando por '+warSiegeReloadRemaining(w,battle.round)+' rodada(s)':
+          ' · pronta para disparar'}</span>
+       </label>)}
+      <p className="battle-note">Selecione até Guerra máquinas para uma salva.
+       Sem seleção, dispara a primeira disponível. Todas as máquinas escolhidas
+       consomem recarga mesmo que o alvo seja neutralizado.</p>
       {battle.siege.some(w=>w.side===battle.turn&&w.health>0)&&
        <label>Tipo de alvo
         <select value={siegeTargetMode}
@@ -1365,6 +1389,12 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
       </div>
       <span>Saúde {u.health}/{u.maxHealth} · Defesa {u.defendRoll??u.defense} · VA {u.armor}</span>
       <span>Disciplina {warUnitSummary(u).discipline} · Desorganizações {u.disorganizations}</span>
+      <span>Atributos: Agilidade {u.ability.agility} · Atletismo {u.ability.athletics} ·
+       Percepção {u.ability.awareness} · Vigor {u.ability.endurance} ·
+       Luta {u.ability.fighting} · Pontaria {u.ability.marksmanship} ·
+       Guerra {u.ability.warfare??'—'}</span>
+      <span>Saúde máxima: Vigor {u.ability.endurance} × 3 = {u.maxHealth}
+       · Dados de Luta {u.ability.fighting}d6 · Dados de Pontaria {u.ability.marksmanship}d6</span>
       {u.hidden&&<span>Posição oculta · disponível para emboscada</span>}
       {u.fieldEquipment&&<span>Equipamento: {WAR_FIELD_EQUIPMENT[u.fieldEquipment].label}
        {u.fieldEquipmentConsumed?' · usado/abandonado':''}</span>}
