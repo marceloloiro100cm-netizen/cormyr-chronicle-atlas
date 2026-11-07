@@ -31,6 +31,8 @@ export function BattleSetup({onStart,onBack}:{
  const [units,setUnits]=useState<PreparedUnit[]>(DEFAULTS);
  const [selected,setSelected]=useState('attacker-1');
  const [editor,setEditor]=useState(false);
+ const [advanced,setAdvanced]=useState(false);
+ const [quickOpponent,setQuickOpponent]=useState<'human'|'ai'>('ai');
  const [error,setError]=useState('');
  const update=(id:string,change:Partial<PreparedUnit>)=>setUnits(list=>list.map(u=>u.id===id?{...u,...change}:u));
  const makeId=(side:Side)=>side+'-'+crypto.randomUUID().slice(0,8);
@@ -89,11 +91,64 @@ export function BattleSetup({onStart,onBack}:{
    onStart(state,sideNames);
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível preparar a batalha.');}
  };
+ const quickStart=()=>{
+  try{
+   if(!name.trim()||!seed.trim())throw new Error('Informe um nome e uma semente válidos.');
+   const errors=validateBattleMap(map);
+   if(errors.length>0)throw new Error('Mapa inválido: '+errors.join('; '));
+   const occupied=new Set<string>();
+   const stacks=DEFAULTS.map(u=>{
+    const position=map.deployment[u.side].find(h=>!occupied.has(hexKey(h))&&
+     map.tiles.find(tile=>hexKey(tile)===hexKey(h))?.terrain!=='rock');
+    if(!position)throw new Error('O cenário não possui espaços legais para os dois exércitos.');
+    occupied.add(hexKey(position));
+    return makeFictionalStack({id:u.id,side:u.side,name:u.name,typeId:u.typeId,
+     training:u.training,count:u.count,position});
+   });
+   const battle=makeBattleSetup({id:'lab-'+seed,name,seed,map,
+    controls:{attacker:'human',defender:quickOpponent},stacks});
+   setError('');onStart(battle,sideNames);
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível iniciar o confronto.');}
+ };
  const mapErrors=validateBattleMap(map);
  const positioned=units.filter(u=>u.position).length;
  return <div className="battle-setup">
   <div className="battle-heading"><div><h2>Preparar batalha</h2><p>Laboratório de tropas fictícias — nenhuma baixa altera fichas de casas.</p></div>
     <Button variant="outline" onClick={onBack}>Voltar ao painel</Button></div>
+  {!advanced&&<section className="battle-surface battle-quick-start" aria-label="Começar batalha simples">
+   <h3>Configuração rápida</h3>
+   <p>Inicie com uma infantaria-modelo de cada lado, posicionada automaticamente no mapa.
+    Para escolher as unidades, alterar os efetivos e pintar o terreno, use a configuração completa.</p>
+   <div className="battle-form-row">
+    <label>Nome do confronto<input aria-label="Nome do confronto rápido" maxLength={120}
+     value={name} onChange={e=>setName(e.target.value)}/></label>
+    <label>Campo de batalha<select aria-label="Cenário rápido" value={map.id}
+     onChange={e=>{const id=e.target.value as BattleScenarioId;
+      if(Object.hasOwn(SCENARIOS,id))setMap(createScenario(id,map.width));}}>
+     {Object.entries(SCENARIOS).map(([id,label])=><option key={id} value={id}>{label}</option>)}
+    </select></label>
+    <label>Adversário<select aria-label="Adversário rápido" value={quickOpponent}
+     onChange={e=>setQuickOpponent(e.target.value as 'human'|'ai')}>
+     <option value="ai">Inteligência artificial</option>
+     <option value="human">Narrador controla os dois lados</option>
+    </select></label>
+   </div>
+   {error&&<p role="alert" className="battle-error">{error}</p>}
+   <div className="battle-home-actions">
+    <Button disabled={Boolean(mapErrors.length)||!name.trim()} onClick={quickStart}>
+     Iniciar combate com forças-modelo</Button>
+    <Button variant="outline" onClick={()=>{setAdvanced(true);setError('');}}>
+     Personalizar unidades e mapa</Button>
+   </div>
+   <p className="battle-note">Você pode terminar o exercício e repetir a batalha.
+    Nenhum exército oficial será alterado.</p>
+  </section>}
+  {advanced&&<>
+   <div className="battle-advanced-back">
+    <Button variant="outline" onClick={()=>{setAdvanced(false);setError('');}}>
+     Voltar à configuração rápida</Button>
+    <p>Montagem detalhada · cinco etapas</p>
+   </div>
   <section className="battle-surface" aria-label="Identificação da batalha">
     <h3>1. Identificação</h3>
     <div className="battle-form-row">
@@ -197,5 +252,6 @@ export function BattleSetup({onStart,onBack}:{
    <Button disabled={mapErrors.length>0||units.some(u=>!u.position)||!name.trim()||!seed.trim()}
      onClick={start}>Iniciar batalha</Button>
   </section>
+  </>}
  </div>;
 }
