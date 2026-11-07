@@ -9,7 +9,7 @@ export type CrzTile=CrzHex&Readonly<{terrain:CrzTerrain}>;
 export type CrzMap=Readonly<{
  id:string;label:string;schemaVersion:2;width:11|15;height:9|11;
  /** Ausente nos mapas legados; a origem q/r passa a ser coluna/linha em square. */
- grid?:'square';
+ grid?:'square'|undefined;
  tiles:readonly CrzTile[];
  deployment:Readonly<Record<CrzSide,readonly CrzHex[]>>;
 }>;
