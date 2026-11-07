@@ -31,7 +31,7 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
  const [unit,setUnit]=useState(''),[side,setSide]=useState<Side>('attacker');
  const [profile,setProfile]=useState(''),[reason,setReason]=useState('');
  const [marked,setMarked]=useState<string[]>([]);
- const [sourceStatus,setSourceStatus]=useState<'pending'|'recorded'|'empty'|'no-military-sheet'>('pending');
+ const [sourceStatus,setSourceStatus]=useState<'pending'|'recorded'|'scenario-roster'|'empty'|'no-military-sheet'>('pending');
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
 
  useEffect(()=>{
@@ -73,6 +73,8 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
    }
    if(result.sourceStatus==='no-military-sheet')
     setMessage('Casa encontrada no catálogo, mas sem ficha militar importada. Não é possível presumir tropas a partir da história.');
+   else if(result.sourceStatus==='scenario-roster')
+    setMessage('Unidades da planilha carregadas para batalha. Propostas permanecem simulações; nenhuma compra oficial será criada.');
    else if(result.sourceStatus==='empty')
     setMessage('A ficha desta Casa existe, mas não há unidades militares cadastradas.');
    else if(!result.units.some(battleRosterEligible))
@@ -143,10 +145,11 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
    </select></label>
   </div>
   {loading&&<p role="status">Carregando catálogo regional de casas…</p>}
-  {house&&sourceStatus==='recorded'&&<div className="battle-source-roster">
-   <h4>Unidades cadastradas de {selectedHouse?.name} ({roster.length})</h4>
+  {house&&(sourceStatus==='recorded'||sourceStatus==='scenario-roster')&&<div className="battle-source-roster">
+   <h4>{sourceStatus==='scenario-roster'?'Exército documentado':'Unidades cadastradas'} de {selectedHouse?.name} ({roster.length})</h4>
    <p className="battle-note">A Casa e suas tropas foram consultadas automaticamente.
-    Marque até cinco unidades terrestres para copiar, ou escolha uma unidade individual.</p>
+    Marque até cinco unidades terrestres para copiar, ou escolha uma unidade individual.
+    {sourceStatus==='scenario-roster'&&<strong> Os registros propostos são apenas forças de cenário, sem compra, custo ou baixa oficial.</strong>}</p>
    <ul aria-label="Unidades carregadas da casa" className="battle-source-units">
     {roster.map(r=>{
      const selectable=canBatch(r),eligible=battleRosterEligible(r);
@@ -155,7 +158,7 @@ export function BattleSourcePicker({onAdd,onAddMany,remainingBySide}:{
        <input type="checkbox" aria-label={'Selecionar '+r.name} disabled={busy||!selectable}
         checked={marked.includes(r.id)} onChange={e=>toggle(r.id,e.target.checked)}/>
        <span><strong>{r.name}</strong> · {available(r)} disponíveis
-        {' · '}{r.training}{r.destroyed?' · Destruída':''}
+        {' · '}{r.training}{r.sourceStatus?' · '+r.sourceStatus:''}{r.destroyed?' · Destruída':''}
         {!eligible?' · indisponível':eligible&&!selectable?' · perfil misto: escolha individualmente':''}
        </span>
       </label>
