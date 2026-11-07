@@ -13,7 +13,8 @@ export type PersonalWarAction=Readonly<{
   'personal-recover'|'personal-pass'|'personal-end-turn'|'personal-surrender'|
   'personal-reload'|'personal-mount'|'personal-dismount'|'personal-control-mount'|
   'personal-counterattack'|'personal-attack-mount'|'personal-trample'|
-  'personal-free-mount'|'personal-stand';
+  'personal-free-mount'|'personal-stand'|'personal-aim'|
+  'personal-cautious-attack'|'personal-reckless-attack';
  targetHeroId?:string;
  ranged?:boolean;
  vsCharge?:boolean;
@@ -35,12 +36,14 @@ export function personalMovement(hero:WarHero):number{
 export function spendPersonalAction(hero:WarHero,weight:'major'|'minor'):WarHero{
  if(hero.usedActions>=5)throw new Error('Cinco rodadas individuais já concluídas.');
  const minor=hero.minorActionsUsed??0;
+ // A Defesa transitória termina quando o herói começa seu próximo turno.
+ const expired=minor===0?{cautiousDefenseBonus:0,recklessDefensePenalty:0}:{};
  if(weight==='major'){
   if(minor!==0)throw new Error('Uma ação maior exige um turno sem ações menores prévias.');
-  return {...hero,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false,counterattackReady:undefined};
+  return {...hero,...expired,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false,counterattackReady:undefined};
  }
- if(minor>0)return {...hero,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false,counterattackReady:undefined};
- return {...hero,minorActionsUsed:1,dodgeDefense:null,counterattackReady:undefined};
+ if(minor>0)return {...hero,...expired,usedActions:hero.usedActions+1,minorActionsUsed:0,dodgeDefense:null,attackedThisTurn:false,counterattackReady:undefined};
+ return {...hero,...expired,minorActionsUsed:1,dodgeDefense:null,counterattackReady:undefined};
 }
 const log=(battle:WarBattle,kind:string,text:string,hero:WarHero,details:Partial<WarEvent>={}):WarBattle=>({
  ...battle,events:[...battle.events,{
@@ -72,7 +75,8 @@ function moveFine(battle:WarBattle,hero:WarHero,to:WarPosition,max:number):WarHe
 }
 function attackHero(
  battle:WarBattle,actor:WarHero,target:WarHero,ranged:boolean,
- options:{charge?:boolean;asReaction?:boolean;counterCharge?:boolean}={},
+ options:{charge?:boolean;asReaction?:boolean;counterCharge?:boolean;
+  cautious?:boolean;reckless?:boolean}={},
 ):WarBattle{
  const from=personalPosition(actor),to=personalPosition(target);
  const dist=personalDistance(from,to);
@@ -124,16 +128,20 @@ function attackHero(
  const usableBonus=Math.max(0,availableBonus-requiredBonus);
  const clumsyPenalty=actor.mounted&&weapon?.clumsy?2:0;
  const totalPenalty=(actor.injuries??0)+(options.charge?1:0)+
+  (options.cautious?1:0)+
   (!ranged&&reach>1&&dist<3?1:0)+trainingPenalty+clumsyPenalty+
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty;
  const mountedBonus=!ranged&&actor.mounted&&actor.mount?.health&&
   actor.mount.health>0&&!target.mounted?1:0;
  const bonus=usableBonus+mountedBonus+(target.prone&&!ranged?1:0);
- const rank=ranged?actor.marksmanship:actor.fighting;
+ const rank=Math.min(15,(ranged?actor.marksmanship:actor.fighting)+
+  (options.reckless&&!ranged?1:0));
  const roll=rollPersonalWithFate(battle.seed,actor,rank,
-  Math.min(15,bonus+(actor.passBonusDice??0)),Math.min(15,totalPenalty));
+  Math.min(15,bonus+(actor.passBonusDice??0)+(actor.aimBonusDice??0)),
+  Math.min(15,totalPenalty));
  const total=Math.max(0,roll.total-(actor.wounds??0));
- const difficulty=Math.max(1,(target.dodgeDefense??target.defense)-
+ const difficulty=Math.max(1,(target.dodgeDefense??target.defense)+
+  (target.cautiousDefenseBonus??0)-(target.recklessDefensePenalty??0)-
   (target.pinnedByMount?5:0));
  const degrees=degreesOfSuccess(total,difficulty);
  const stationaryMountBonus=!ranged&&actor.mounted&&actor.mount?.trainedForWar&&
@@ -145,7 +153,7 @@ function attackHero(
   effectivePersonalArmor(target.armor,ranged?actor.rangedWeapon:actor.meleeWeapon)):0;
  let next:WarBattle={...battle,seed:roll.nextSeed,
   heroes:battle.heroes.map(h=>h.id===actor.id?{
-   ...consumePersonalFateRoll(h),passBonusDice:0,
+   ...consumePersonalFateRoll(h),passBonusDice:0,aimBonusDice:0,
    ...(ranged&&weapon?.reload?{rangedLoaded:false}:{})
   }:h),
  };
@@ -202,6 +210,12 @@ export function executePersonalWarAction(
   return log({...next,commanders:hero.commanderId?
    next.commanders.map(c=>c.id===hero.commanderId?{...c,active:false}:c):
    next.commanders},'personal-surrender',hero.name+' se rendeu (destino narrativo pendente).',hero);
+ }
+ if(action.kind==='personal-aim'){
+  if(hero.aimBonusDice)throw new Error('Mirar não acumula bônus em ataques consecutivos.');
+  const used=spendPersonalAction(hero,'minor');
+  return log(changeHero(battle,{...used,aimBonusDice:1}),
+   'personal-aim',hero.name+' mirou, ganhando +1B no próximo ataque.',hero);
  }
  if(action.kind==='personal-counterattack'){
   if(action.ranged&&(hero.rangedDamage<=0||hero.rangedRange==='none'))
@@ -419,14 +433,22 @@ export function executePersonalWarAction(
   const next=changeHero(battle,used);
   return attackHero(next,used,target,false,{charge:true});
  }
- if(action.kind==='personal-attack'){
+ if(['personal-attack','personal-cautious-attack','personal-reckless-attack'].includes(action.kind)){
   if(hero.attackedThisTurn)throw new Error('Somente um ataque por rodada individual.');
   const target=battle.heroes.find(h=>h.id===action.targetHeroId&&h.active&&h.side!==hero.side&&!h.unitId);
   if(!target)throw new Error('Selecione um herói inimigo ativo.');
-  const spent=spendPersonalAction(hero,'minor');
-  const used={...spent,attackedThisTurn:spent.usedActions===hero.usedActions};
+  if(action.kind==='personal-reckless-attack'&&action.ranged)
+   throw new Error('Ataque Imprudente exige Luta corpo a corpo.');
+  const spent=spendPersonalAction(hero,
+   action.kind==='personal-reckless-attack'?'major':'minor');
+  const used={...spent,attackedThisTurn:spent.usedActions===hero.usedActions,
+   ...(action.kind==='personal-cautious-attack'?{cautiousDefenseBonus:3}:{}),
+   ...(action.kind==='personal-reckless-attack'?{recklessDefensePenalty:5}:{})};
   const next=changeHero(battle,used);
-  return attackHero(next,used,target,Boolean(action.ranged));
+  return attackHero(next,used,target,Boolean(action.ranged),{
+   cautious:action.kind==='personal-cautious-attack',
+   reckless:action.kind==='personal-reckless-attack',
+  });
  }
  throw new Error('Ação individual não implementada.');
 }
