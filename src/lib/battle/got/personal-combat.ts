@@ -5,17 +5,20 @@ import type {WarHero} from './heroes';
 import {queuePersonalDamage} from './personal-injuries';
 import {effectivePersonalArmor} from './personal-weapons';
 import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
+import {applyPersonalMountDamage} from './personal-mounts';
 
 /** Capítulo 9: escala pessoal de 1 m. Não usa os quadrados de guerra de 10 m para alcance. */
 export type PersonalWarAction=Readonly<{
  kind:'personal-attack'|'personal-charge'|'personal-move'|'personal-dodge'|
   'personal-recover'|'personal-pass'|'personal-end-turn'|'personal-surrender'|
   'personal-reload'|'personal-mount'|'personal-dismount'|'personal-control-mount'|
-  'personal-counterattack';
+  'personal-counterattack'|'personal-attack-mount'|'personal-trample'|
+  'personal-free-mount'|'personal-stand';
  targetHeroId?:string;
  ranged?:boolean;
  vsCharge?:boolean;
  toMetres?:WarPosition;
+ escapeUsing?:'agility'|'athletics';
 }>;
 export const personalPosition=(hero:WarHero):WarPosition=>
  hero.personalPosition??{x:hero.position.x*10+5,y:hero.position.y*10+5};
@@ -125,12 +128,13 @@ function attackHero(
   visibilityPenalty(battle.visibility,battle.weather,ranged)+rangePenalty;
  const mountedBonus=!ranged&&actor.mounted&&actor.mount?.health&&
   actor.mount.health>0&&!target.mounted?1:0;
- const bonus=usableBonus+mountedBonus;
+ const bonus=usableBonus+mountedBonus+(target.prone&&!ranged?1:0);
  const rank=ranged?actor.marksmanship:actor.fighting;
  const roll=rollPersonalWithFate(battle.seed,actor,rank,
   Math.min(15,bonus+(actor.passBonusDice??0)),Math.min(15,totalPenalty));
  const total=Math.max(0,roll.total-(actor.wounds??0));
- const difficulty=target.dodgeDefense??target.defense;
+ const difficulty=Math.max(1,(target.dodgeDefense??target.defense)-
+  (target.pinnedByMount?5:0));
  const degrees=degreesOfSuccess(total,difficulty);
  const stationaryMountBonus=!ranged&&actor.mounted&&actor.mount?.trainedForWar&&
   actor.mount.health>0&&actor.mountMovedTurn!==actor.usedActions?2:0;
@@ -184,6 +188,8 @@ export function executePersonalWarAction(
  if(!hero.active||hero.surrendered||hero.unitId||hero.usedActions>=5)
   throw new Error('Herói não pode atuar individualmente agora.');
  if(hero.role!=='hero')throw new Error('Comandante deve abdicar antes de lutar.');
+ if(hero.pinnedByMount&&!['personal-free-mount','personal-surrender'].includes(action.kind))
+  throw new Error('Cavaleiro preso sob a montaria precisa se libertar antes de agir.');
  if(action.kind==='personal-end-turn'){
   if(!hero.minorActionsUsed)throw new Error('Não há ação menor pendente para encerrar.');
   return log(changeHero(battle,{...hero,minorActionsUsed:0,
@@ -209,6 +215,115 @@ export function executePersonalWarAction(
    ranged:Boolean(action.ranged),vsCharge:Boolean(action.vsCharge),
   }}),'personal-counterattack-ready',hero.name+
    ' preparou contra-ataque'+(action.vsCharge?' contra carga':'')+'.',hero);
+ }
+ if(action.kind==='personal-stand'){
+  if(!hero.prone||hero.pinnedByMount)
+   throw new Error('A ação de levantar exige personagem caído e livre.');
+  const used=spendPersonalAction(hero,hero.armor>=6?'major':'minor');
+  return log(changeHero(battle,{...used,prone:false}),'personal-stand',
+   hero.name+' se levantou após a queda.',hero);
+ }
+ if(action.kind==='personal-free-mount'){
+  if(!hero.pinnedByMount)throw new Error('O personagem não está preso sob a montaria.');
+  const rank=action.escapeUsing==='agility'?hero.agility??3:hero.athletics??3;
+  const used=spendPersonalAction(hero,'major');
+  const roll=rollPersonalWithFate(battle.seed,hero,rank,0,hero.injuries??0);
+  const total=Math.max(0,roll.total-(hero.wounds??0));
+  const success=total>=9;
+  const freed={...consumePersonalFateRoll(used),pinnedByMount:!success};
+  return log(changeHero({...battle,seed:roll.nextSeed},freed),
+   'personal-free-mount',hero.name+(success?' libertou-se':' falhou em se libertar')+
+   ' sob a montaria: '+total+' vs 9.',hero,{
+    roll:roll.dice,total,difficulty:9,degrees:degreesOfSuccess(total,9),
+   });
+ }
+ if(action.kind==='personal-attack-mount'){
+  if(hero.attackedThisTurn)
+   throw new Error('Somente um ataque por rodada individual.');
+  const target=battle.heroes.find(h=>h.id===action.targetHeroId&&
+   h.side!==hero.side&&h.mount&&h.mount.health>0&&!h.unitId);
+  if(!target)throw new Error('Selecione montaria inimiga viva.');
+  const ranged=Boolean(action.ranged),dist=personalDistance(
+   personalPosition(hero),personalPosition(target));
+  const reach=hero.meleeWeapon?.reachMetres??1;
+  if(!ranged&&dist>Math.max(1,reach))
+   throw new Error('Montaria fora do alcance de Luta.');
+  const range=ranged?(hero.rangedRange==='long'?100:10):reach;
+  if(ranged&&(hero.rangedRange==='none'||hero.rangedDamage<=0))
+   throw new Error('Arma de Pontaria indisponível.');
+  if(ranged&&hero.rangedWeapon?.reload&&hero.rangedLoaded===false)
+   throw new Error('Recarregue a arma antes de atacar a montaria.');
+  const weapon=ranged?hero.rangedWeapon:hero.meleeWeapon;
+  const bonus=(ranged?hero.rangedBonusDice:hero.meleeBonusDice)??0;
+  const required=weapon?.trainingBonusDice??0;
+  const penalty=Math.min(15,(hero.injuries??0)+Math.max(0,required-bonus)+
+   (hero.mounted&&weapon?.clumsy?2:0)+
+   (ranged?visibilityPenalty(battle.visibility,battle.weather,true)+
+    Math.max(0,Math.ceil((dist-range)/(hero.rangedRange==='long'?100:10))):0));
+  const roll=rollPersonalWithFate(battle.seed,hero,
+   ranged?hero.marksmanship:hero.fighting,
+   Math.min(15,Math.max(0,bonus-required)+(hero.passBonusDice??0)),penalty);
+  const total=Math.max(0,roll.total-(hero.wounds??0));
+  const difficulty=target.mount!.defense;
+  const degrees=degreesOfSuccess(total,difficulty);
+  const damage=degrees?Math.max(0,
+   (ranged?hero.rangedDamage:hero.meleeDamage)*degrees):0;
+  const spent=spendPersonalAction(hero,'minor');
+  const used={...consumePersonalFateRoll(spent),
+   attackedThisTurn:spent.usedActions===hero.usedActions,
+   passBonusDice:0,...(ranged&&weapon?.reload?{rangedLoaded:false}:{})};
+  let next=changeHero({...battle,seed:roll.nextSeed},used);
+  if(damage>0)next=applyPersonalMountDamage(next,{
+   riderId:target.id,damage,source:hero.name,
+  });
+  return log(next,'personal-attack-mount',hero.name+' atacou '+
+   target.mount!.name+': '+total+' vs Defesa '+difficulty+
+   ', '+degrees+' grau(s), '+damage+' dano.',hero,{
+    roll:roll.dice,total,difficulty,degrees,
+   });
+ }
+ if(action.kind==='personal-trample'){
+  if(battle.manualMitigation)
+   throw new Error('Atropelamento com mitigação manual ainda exige resolução por múltiplos alvos.');
+  if(!hero.mounted||!hero.mount||hero.mount.health<=0)
+   throw new Error('Atropelar exige montaria viva e cavaleiro montado.');
+  if(!action.toMetres)throw new Error('Selecione destino de atropelamento em metros.');
+  const from=personalPosition(hero),to=action.toMetres;
+  const dx=to.x-from.x,dy=to.y-from.y;
+  const steps=Math.max(Math.abs(dx),Math.abs(dy));
+  if(steps<1||!(dx===0||dy===0||Math.abs(dx)===Math.abs(dy)))
+   throw new Error('Atropelamento exige trajeto em linha reta.');
+  if(steps>hero.mount.movement)
+   throw new Error('Atropelamento excede Movimento da montaria.');
+  const moved=moveFine(battle,hero,to,hero.mount.movement);
+  const used=spendPersonalAction(moved,'major');
+  let next=changeHero(battle,{...used,mountMovedTurn:hero.usedActions});
+  let hits=0;
+  const dir={x:Math.sign(dx),y:Math.sign(dy)};
+  for(let step=1;step<=steps;step++){
+   const p={x:from.x+dir.x*step,y:from.y+dir.y*step};
+   const target=next.heroes.find(h=>h.id!==hero.id&&h.side!==hero.side&&
+    h.active&&!h.unitId&&personalPosition(h).x===p.x&&
+    personalPosition(h).y===p.y);
+   if(!target)continue;
+   const roll=rollPersonalWithFate(next.seed,hero,hero.animalHandling??3,
+    0,hero.injuries??0);
+   const total=Math.max(0,roll.total-(hero.wounds??0));
+   const difficulty=(target.dodgeDefense??target.defense)+
+    (hero.mount.trainedForWar?0:6)+5*hits;
+   const degrees=degreesOfSuccess(total,difficulty);
+   const damage=degrees?Math.max(0,hero.mount.athletics*degrees-target.armor):0;
+   next={...next,seed:roll.nextSeed};
+   if(damage)next=queuePersonalDamage(next,{actorName:hero.mount.name,
+    targetHeroId:target.id,damage,source:'personal'});
+   next=log(next,'personal-trample',hero.mount.name+' atropelou '+
+    target.name+' ('+(hits+1)+'º alvo): '+total+' vs '+difficulty+
+    ', '+damage+' dano.',hero,{roll:roll.dice,total,difficulty,degrees});
+   hits++;
+  }
+  return log(next,'personal-trample-move',hero.name+' moveu-se '+
+   steps+' m em linha reta com '+hero.mount.name+
+   ' e atingiu '+hits+' alvo(s).',hero);
  }
  if(action.kind==='personal-reload'){
   if(!hero.rangedWeapon?.reload)
