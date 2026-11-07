@@ -58,7 +58,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [siegeEnabled,setSiegeEnabled]=useState(false);
  const [heroesEnabled,setHeroesEnabled]=useState(false);
  const [heroId,setHeroId]=useState('');
- const [heroAction,setHeroAction]=useState<WarHeroAction['kind']>('join');
+ const [heroAction,setHeroAction]=useState<WarHeroAction['kind']|'personal-attack-unit'>('join');
  const [heroUnitId,setHeroUnitId]=useState('');
  const [heroTargetId,setHeroTargetId]=useState('');
  const [heroRanged,setHeroRanged]=useState(false);
@@ -358,7 +358,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
        </select>
       </label>
       <label>Ação
-       <select value={heroAction} onChange={e=>setHeroAction(e.target.value as WarHeroAction['kind'])}>
+       <select value={heroAction} onChange={e=>setHeroAction(e.target.value as WarHeroAction['kind']|'personal-attack-unit')}>
         <option value="join">Entrar em unidade</option>
         {battle.phase==='heroes-second'&&<option value="leave">Sair de unidade</option>}
         <option value="rally">Reorganizar tropa</option>
