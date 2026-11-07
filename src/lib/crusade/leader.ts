@@ -5,7 +5,7 @@ import {crzApplyDamage,crzHeal} from './stack';
 import {crzAoEExpected} from './damage';
 import {crzCapable,crzLog,crzMoraleState,crzReplaceStack,
  type CrzBattleStack,type CrzBattleState,type CrzEffect} from './battle-state';
-import {crzDistance,type CrzSide} from './geometry';
+import {crzGridDistance,type CrzSide} from './geometry';
 import type {CrzSpellId} from './setup';
 const COSTS:Readonly<Record<CrzSpellId,number>>={
  bless:3,bane:3,shield_of_faith:2,heroism:4,cause_fear:3,
@@ -26,7 +26,7 @@ export const CRZ_ADVANCED_SPELLS:readonly CrzSpellId[]=[...CRZ_LOT8_SPELLS,'fire
 export function crzShieldWallTargets(state:CrzBattleState,side:CrzSide):CrzBattleStack[]{
  const allies=state.stacks.filter(s=>s.side===side&&crzCapable(s)&&s.meleeRoutine);
  return allies.filter(s=>allies.some(other=>other.id!==s.id&&
-  crzDistance(other.position,s.position)===1));
+  crzGridDistance(state.map,other.position,s.position)===1));
 }
 function requireTarget(state:CrzBattleState,id:string|null|undefined,
  side:CrzSide):CrzBattleStack{
@@ -97,15 +97,15 @@ export function crzCast(state:CrzBattleState,spellId:CrzSpellId,
     kind,amount});
   }
  }
- // Bola de fogo: centro sobre pilha inimiga viva, raio hexagonal 2, sem fogo amigo
+ // Bola de fogo: centro sobre pilha inimiga viva, raio tático 2, sem fogo amigo
  // no laboratório; até 10 combatentes expostos por agrupamento. Sorte é
  // resolvida deterministicamente por salvaguarda esperada, não RNG global.
  if(spellId==='fireball'){
   const anchor=requireTarget(next,targetId,targetSide);
-  if(crzDistance(active.position,anchor.position)>5)
+  if(crzGridDistance(state.map,active.position,anchor.position)>5)
    throw new Error('SPELL: centro da explosão fora do alcance de cinco hexágonos.');
   const victims=next.stacks.filter(s=>s.side===targetSide&&crzCapable(s)&&
-   crzDistance(s.position,anchor.position)<=2);
+   crzGridDistance(state.map,s.position,anchor.position)<=2);
   if(victims.length===0)throw new Error('SPELL: nenhum inimigo alcançado.');
   for(const victim of victims){
    const current=next.stacks.find(s=>s.id===victim.id)!;

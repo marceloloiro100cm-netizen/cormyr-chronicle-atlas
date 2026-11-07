@@ -30,7 +30,7 @@ const sides:{id:Side;label:string}[]=[{id:'attacker',label:'Aliado'},{id:'defend
 const defaults:V3ScenarioOptions={
  attackerHouseId:'evenhand-model',defenderHouseId:'ashkar-model',
  attackerCommander:'purple-dragon',defenderCommander:'ashkar-raider',
- scenario:'plain-open',opponent:'ai',
+ scenario:'plain-open',opponent:'ai',grid:'square',
 };
 /** Interface original de Cormyr: ritmo de turnos e leitura de pilhas inspirados no
  * gênero de batalhas de Cruzada, sem reutilizar arte, ícones ou UI proprietária. */
@@ -120,7 +120,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    if(!target){
     const move=moves.find(m=>hexKey(m.to)===hexKey(hex));
     if(move){action(move);return;}
-    setStatus('Destino indisponível: escolha um hexágono verde.');
+    setStatus('Destino indisponível: escolha um quadrado verde.');
     return;
    }
   }
@@ -181,6 +181,12 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     })}
    </div>
    <div className="battle-form-row">
+    <label>Formato do mapa<select aria-label="Formato da malha V3"
+     value={options.grid??'hex'} disabled={locked}
+     onChange={e=>update({grid:e.target.value as 'hex'|'square'})}>
+      <option value="square">Quadrados (novo padrão)</option>
+      <option value="hex">Hexágonos (legado)</option>
+     </select></label>
     <label>Cenário<select value={options.scenario} aria-label="Cenário da Cruzada" disabled={locked}
      onChange={e=>update({scenario:e.target.value as BattleScenarioId})}>
       {Object.entries(SCENARIOS).map(([id,name])=><option key={id} value={id}>{name}</option>)}
@@ -245,7 +251,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    <section className="crusade-v4-turns" aria-label="Ordem de combate V3">
     <div className="crusade-v4-section-head">
      <h2>Ordem de combate</h2>
-     <span>Selecione uma tropa; Tab entra no mapa e as setas navegam entre hexágonos</span>
+     <span>Selecione uma tropa; Tab entra no mapa e as setas navegam entre células</span>
     </div>
     <div className="crusade-v4-turn-strip">
      {turnOrder.map((unit,index)=><button type="button" key={unit.id}
@@ -306,7 +312,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      </div>}
      <div className="crusade-v4-commands">
       <h3>Decisão do turno</h3>
-      <p className="battle-unified-action-hint">Mover: toque no hexágono verde. Atacar: selecione o inimigo vermelho.</p>
+      <p className="battle-unified-action-hint">Mover: toque no quadrado verde. Atacar: selecione o inimigo vermelho.</p>
       <Button disabled={!canAct||!active||!legal.some(c=>c.type==='DEFEND')} variant="outline"
        onClick={()=>active&&action({type:'DEFEND',unitId:active.id})}>Defender</Button>
       <Button disabled={!canAct||!active||!legal.some(c=>c.type==='WAIT')} variant="outline"
@@ -334,7 +340,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      <p className="crusade-v4-instruction">
       {mode==='power'?'Selecione a unidade para receber o poder do General.':
        mode==='skill'?'Selecione um alvo vermelho para executar a habilidade.':
-       selected===active?.id?'Clique no hexágono verde para mover ou na unidade inimiga marcada para atacar.':
+       selected===active?.id?'Clique no quadrado verde para mover ou na unidade inimiga marcada para atacar.':
        'Selecione a unidade ativa na ordem de combate para comandá-la.'}
      </p>
      {inspected&&<div className="crusade-v4-inspector">

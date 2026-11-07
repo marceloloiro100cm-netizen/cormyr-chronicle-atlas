@@ -22,6 +22,7 @@ const tileSchema=hexSchema.extend({terrain:terrainSchema});
 export const battleMapSchema=z.object({
   id:z.string().min(1).max(80),schemaVersion:z.literal(2),width:z.union([z.literal(11),z.literal(15)]),
   height:z.union([z.literal(9),z.literal(11)]),
+  grid:z.literal('square').optional(),
   label:z.string().min(1).max(120),
   tiles:z.array(tileSchema).max(165),
   deployment:z.object({attacker:z.array(hexSchema).max(165),defender:z.array(hexSchema).max(165)}).strict(),

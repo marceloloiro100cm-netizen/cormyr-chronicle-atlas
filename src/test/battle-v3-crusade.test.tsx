@@ -83,7 +83,7 @@ describe('Crusada V3 — exércitos modelos, habilidades e separação da campan
   fireEvent.change(screen.getByLabelText('Controle do adversário'),{target:{value:'human'}});
   fireEvent.click(screen.getByRole('button',{name:'Batalhar'}));
   expect(screen.getByRole('heading',{name:/Exército de Hillmarch contra Hoste da Fênix/})).toBeInTheDocument();
-  expect(screen.getByRole('group',{name:/Mapa hexagonal/})).toBeInTheDocument();
+  expect(screen.getByRole('group',{name:/Mapa (?:hexagonal|quadrado)/})).toBeInTheDocument();
   expect(screen.getByRole('button',{name:'Fim de turno'})).toBeInTheDocument();
  });
  it('exposição de jogador tem escopo autenticado e não importa operações de escrita oficiais',()=>{

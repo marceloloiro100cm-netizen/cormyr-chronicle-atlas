@@ -2,7 +2,8 @@ import type {BattleCommand,BattleStack,BattleState,Side} from '../domain/types';
 import {makeBattleSetup,makeFictionalStack} from '../domain/setup';
 import {startBattle,applyBattleCommand,getLegalActions} from '../domain/turns';
 import {createScenario,type BattleScenarioId} from '../geometry/map-fixtures';
-import {hexDistance,hexKey} from '../geometry/hex';
+import {hexKey} from '../geometry/hex';
+import {gridDistance} from '../geometry/grid';
 import {tileAt} from '../geometry/terrain';
 import {livingCount,stateAfterDamage} from '../domain/morale';
 import {battleOutcome} from '../domain/victory';
@@ -34,7 +35,7 @@ export type V3Game=Readonly<{
 export type V3ScenarioOptions=Readonly<{
  attackerHouseId:string;defenderHouseId:string;
  attackerCommander:CommanderId;defenderCommander:CommanderId;
- scenario:BattleScenarioId;opponent:'ai'|'human';
+ scenario:BattleScenarioId;opponent:'ai'|'human';grid?:'hex'|'square';
 }>;
 const sideList=['attacker','defender'] as const;
 const LINE=new Set(['infantry','garrison','personal-guard','crusaders','mercenaries','levies']);
@@ -42,7 +43,7 @@ export function createV3Game(options:V3ScenarioOptions,officialCopies:readonly B
  if(officialCopies.some(s=>!isBattleTrainingCopy(s)))
   throw new Error('Somente snapshots oficiais autorizados pelo Narrador podem ser importados.');
  if(officialCopies.length>10)throw new Error('Limite de dez agrupamentos de origem.');
- const map=createScenario(options.scenario);
+ const map=createScenario(options.scenario,11,options.grid??'hex');
  const roster:BattleStack[]=[];
  for(const side of sideList){
   const house=modelHouse(side==='attacker'?options.attackerHouseId:options.defenderHouseId);
@@ -101,7 +102,7 @@ export function v3LegalSkills(game:V3Game):readonly V3UnitSkill[]{
   skills.push('CHARGE');
  if(['archers','scouts','guerrillas'].includes(actor.primaryTypeId)&&
     !actor.attackedThisActivation&&legal.some(c=>c.type==='ATTACK'&&
-      hexDistance(actor.position,state.stacks.find(s=>s.id===c.targetId)!.position)>1))
+      gridDistance(state.map,actor.position,state.stacks.find(s=>s.id===c.targetId)!.position)>1))
   skills.push('VOLLEY');
  if(LINE.has(actor.primaryTypeId)&&legal.some(c=>c.type==='DEFEND'))
   skills.push('SHIELD_WALL');
@@ -141,7 +142,7 @@ export function v3UseUnitSkill(game:V3Game,skill:V3UnitSkill,targetId?:string):V
  if(skill==='SHIELD_WALL'){
   const defended=applyBattleCommand(battle,{type:'DEFEND',unitId:active.id});
   const stacks=defended.stacks.map(s=>s.side===active.side&&s.currentHp>0&&
-    hexDistance(s.position,active.position)<=1?{...s,defenseGuard:true}:s);
+    gridDistance(battle.map,s.position,active.position)<=1?{...s,defenseGuard:true}:s);
   return {...append(game,active.side,'Muralha de Escudos', {...defended,stacks}),
    steps:[...game.steps,{type:'SKILL',skill}]};
  }
@@ -176,7 +177,7 @@ export function v3UseCommander(game:V3Game,targetId:string):V3Game{
   throw new Error('Selecione um agrupamento ativo para o poder.');
  if(c.powerTarget==='ally'&&target.side!==side||c.powerTarget==='enemy'&&target.side===side)
   throw new Error('O poder foi usado em um lado inválido.');
- if(c.power==='arcane-lance'&&hexDistance(acting.position,target.position)>4)
+ if(c.power==='arcane-lance'&&gridDistance(battle.map,acting.position,target.position)>4)
   throw new Error('O feitiço exige alcance de até 4 hexágonos.');
  let changed:BattleStack=target;
  switch(c.power){
@@ -215,7 +216,7 @@ export function v3RunAi(game:V3Game):V3Game{
   const c=commander(next.commanders[active.side]);
   const targets=next.battle.stacks.filter(s=>s.currentHp>0&&s.moraleState!=='routed'&&
    (c.powerTarget==='ally'?s.side===active.side:s.side!==active.side)&&
-   (c.power!=='arcane-lance'||hexDistance(active.position,s.position)<=4));
+   (c.power!=='arcane-lance'||gridDistance(battle.map,active.position,s.position)<=4));
   if(targets.length)next=v3UseCommander(next,targets[0]!.id);
  }
  if(next.battle.phase==='active'){
