@@ -18,6 +18,7 @@ export const CRZ_TRAINING_SCENARIOS:readonly Readonly<{
 
 export type CrzTrainingOptions=Readonly<{
  scenario:CrzScenarioId;
+ grid?:'hex'|'square';
  preset?:CrzPresetId;
  generalLevel?:number;
  width:11|15;
@@ -83,7 +84,7 @@ const unit=(id:string,templateId:string,count:number)=>({
 /** Uma batalha reproduzível por seed explícita e sem leitura do servidor. */
 export function crzTrainingReady(options:CrzTrainingOptions):CrzReady{
  const preset=options.preset??'CRZ-5E';
- const rules=crzPreset(preset);
+ const rules=crzPreset(preset,options.grid??'hex');
  if(preset!=='CRZ-5E'&&options.resolution!=='expected')
   throw new Error('WOTR e PTE-compat exigem resolução expected.');
  const generalLevel=options.generalLevel??3;
@@ -95,7 +96,7 @@ export function crzTrainingReady(options:CrzTrainingOptions):CrzReady{
   seed:options.seed,rulesetId:preset,
   rulesetHash:crzRulesetHash(rules),
   resolution:options.resolution,
-  map:crzScenario(options.scenario,options.width),
+  map:crzScenario(options.scenario,options.width,options.grid??'hex'),
   armies:{
    attacker:{side:'attacker',name:'Defensores da Coroa',stacks:[
     unit('guard-a','guard-cca',14),
