@@ -14,6 +14,8 @@ export function reducePersonalDamage(
  hero:WarHero,damage:number,decision:PersonalMitigationChoice,
 ):WarHero{
  if(!Number.isInteger(damage)||damage<0)throw new Error('Dano pessoal inválido.');
+ if(hero.squadId&&decision.kind!=='none')
+  throw new Error('Soldados comuns não recebem ferimentos ou lesões voluntários.');
  const endurance=hero.endurance??3;
  const currentWounds=hero.wounds??0,currentInjuries=hero.injuries??0;
  if(endurance<1||!Number.isInteger(endurance))
@@ -50,10 +52,10 @@ export function queuePersonalDamage(
  battle:WarBattle,input:WarPendingPersonalDamage,
 ):WarBattle{
  if(input.damage<=0)return battle;
- if(!battle.heroes.some(h=>h.id===input.targetHeroId&&h.active))
-  throw new Error('Personagem atingido indisponível.');
+ const victim=battle.heroes.find(h=>h.id===input.targetHeroId&&h.active);
+ if(!victim)throw new Error('Personagem atingido indisponível.');
  if(battle.pendingPersonalDamage)throw new Error('Resolva o dano pessoal pendente.');
- if(battle.manualMitigation)
+ if(battle.manualMitigation&&!victim.squadId)
   return {...battle,pendingPersonalDamage:{...input}};
  return applyPersonalDamage(battle,input,{kind:'none'});
 }
