@@ -15,3 +15,6 @@ export const BATTLE_RULES_VERSION = 'PTE-2.0' as const;
  * NÃO autoriza alteração de casas, banco, contas nem resultados oficiais.
  */
 export const BATTLE_CRZ_TRAINING_UI_ENABLED=import.meta.env['VITE_ENABLE_CRZ_TRAINING']!=='false';
+
+/** Multiplayer exige migração 0078 e aceite JWT/RLS; desligado até autorização. */
+export const BATTLE_V3_LIVE_ENABLED=import.meta.env['VITE_ENABLE_BATTLE_V3_LIVE']==='true';
