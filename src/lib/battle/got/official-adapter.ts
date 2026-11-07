@@ -1,6 +1,7 @@
 import {unitStats} from '@/lib/house/engine';
 import {UNIT_EQUIPMENT} from '@/lib/house/equipment';
 import {unitMilitaryBonuses} from '@/lib/house/military-bonuses';
+import {auditHouseWarEffects} from '@/lib/battle/adapters/house-war-effects';
 import type {HouseState,Unit,Skill} from '@/lib/house/types';
 import type {WarPosition,WarSide,WarUnit,WarRange} from './types';
 
@@ -30,6 +31,7 @@ export function snapshotOfficialWarUnit(
  const row=UNIT_EQUIPMENT.find(e=>e.id===typeId);
  if(!row)throw new Error('Equipamento não cadastrado no livro.');
  const stats=unitStats(unit,state),bonuses=unitMilitaryBonuses(state,unit);
+ const warEffects=auditHouseWarEffects(state,unit);
  const skill=(s:Skill)=>unit.skills[s]+(bonuses.skillBonuses[s]??0);
  const mounted=unit.types.includes('cavalry')&&unit.mounted!==false;
  const ability={
@@ -54,7 +56,13 @@ export function snapshotOfficialWarUnit(
   id:'official-'+state.houseId+'-'+unit.id,name:unit.name,
   side:input.side,typeId,position:{...input.position},
   training:training as WarUnit['training'],ability,
-  defense:stats.defense,discipline:stats.discipline,armor:stats.armorRating,bulk:unit.bulk??row.initial.bulk,
+  // A ficha administrativa pode incluir +3/+4/+6/+8/+12 de fortificação,
+  // mas o campo de batalha só concede esse bônus quando a unidade está lá.
+  // O motor aplica fortDefense via fortForUnit, evitando dupla contagem.
+  defense:stats.defense-warEffects.deferredFortDefense,
+  discipline:stats.discipline,
+  armor:stats.armorRating-warEffects.deferredFortArmor,
+  bulk:unit.bulk??row.initial.bulk,
   meleeDamage:resolveEquipmentDamage(melee.fighting,ability)+bonuses.fightingDamage,
   rangedDamage:range==='none'?0:resolveEquipmentDamage(marks.marksmanship,ability)+bonuses.marksmanshipDamage,
   range,mounted,naval:unit.types.includes('warships'),
@@ -62,6 +70,15 @@ export function snapshotOfficialWarUnit(
   maxHealth:stats.maxHealth,health:stats.health,condition:'organized',disorganizations:0,
   standing:null,activated:false,defendRoll:null,
   issuedThisRound:0,actedThisRound:false,criticalThisRound:false,
-  source:{kind:'house-readonly',houseId:state.houseId,unitId:unit.id,version:input.version},
+  source:{kind:'house-readonly',houseId:state.houseId,unitId:unit.id,version:input.version,
+   warEffects:{
+    source:'official-house-sheet',
+    masterOfArmsSurvivorBonus:warEffects.masterOfArmsSurvivorBonus,
+    deferredFortDefense:warEffects.deferredFortDefense,
+    deferredFortArmor:warEffects.deferredFortArmor,
+    automatic:warEffects.automatic,
+    narratorReview:warEffects.narratorReview,
+   },
+  },
  };
 }
