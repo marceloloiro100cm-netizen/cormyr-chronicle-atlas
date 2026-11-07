@@ -41,7 +41,18 @@ describe('Capítulo 9 — montarias feridas e mortas',()=>{
   expect(controlled.heroes[1]?.minorActionsUsed).toBe(0);
   expect(before.heroes[1]?.mount?.health).toBe(12);
  });
- it('ao morrer cavalo, falha em Lidar com Animais deixa cavaleiro preso com dano ignorando VA',()=>{
+ it('controle em ação maior move cavalo ferido sem violar orçamento de ações',()=>{
+  const injured=applyPersonalMountDamage(sample(),{
+   riderId:'d',damage:2,source:'Corte',
+  });
+  const moved=executeWarHeroAction(injured,{heroId:'d',action:{
+   kind:'personal-control-mount',toMetres:{x:30,y:25},
+  }});
+  expect(moved.heroes.find(h=>h.id==='d')?.usedActions).toBe(1);
+  expect(moved.heroes.find(h=>h.id==='d')?.personalPosition).toEqual({x:30,y:25});
+  expect(moved.heroes.find(h=>h.id==='d')?.mountMovedTurn).toBe(0);
+ });
+  it('ao morrer cavalo, falha em Lidar com Animais deixa cavaleiro preso com dano ignorando VA',()=>{
   const before=sample({handling:1});
   const after=applyPersonalMountDamage(before,{riderId:'d',damage:12,source:'Lança'});
   expect(after.heroes[1]?.mount?.health).toBe(0);
