@@ -65,7 +65,7 @@ function targetAC(state:CrzBattleState,target:CrzBattleStack,mode:CrzAttackMode)
 function attackBonus(state:CrzBattleState,actor:CrzBattleStack,
  target:CrzBattleStack,mode:CrzAttackMode):number{
  const allies=state.stacks.filter(s=>s.side===actor.side&&crzCapable(s)&&
-  isAdjacent(s.position,target.position)).length;
+  isAdjacent(state.map,s.position,target.position)).length;
  const flank=allies>=2?state.ruleset.hit.flankBonus:0;
  const engaged=mode==='ranged'&&state.stacks.some(s=>s.side!==actor.side&&
   crzCapable(s)&&isAdjacent(state.map,s.position,actor.position))?
