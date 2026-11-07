@@ -1,6 +1,7 @@
 import {degreesOfSuccess,rollDice} from './dice';
 import {fortDefense,fortForUnit,sabotageFortification} from './fortifications';
 import {terrainAt,terrainEffect,movementSlow} from './terrain';
+import {canSeeWarTarget} from './line-of-sight';
 import type {WarBattle,WarOrder,WarUnit} from './types';
 
 export const WAR_ADVANCED_ORDER_DIFFICULTY={
@@ -263,6 +264,11 @@ export function executeAdvancedWarOrder(
   if(target.side===actor.side||actor.range==='none'||
    distance(actor.position,target.position)>(actor.range==='long'?20:2))
    throw new Error('Fogo de supressão exige Pontaria e inimigo no alcance.');
+  if(target.hidden&&distance(actor.position,target.position)>1)
+   throw new Error('Fogo de supressão não pode localizar uma tropa escondida.');
+  if(battle.strictLineOfSight&&
+   !canSeeWarTarget(actor.position,target.position,battle.tiles))
+   throw new Error('Linha de visão bloqueada para fogo de supressão.');
   const roll=rollDice(battle.seed,actor.ability.marksmanship,actor.rangedBonusDice??0,
    actor.condition==='disorganized'?1:0);
   const fort=fortForUnit(battle.fortifications,target);
