@@ -10,6 +10,8 @@ import type {WarWeather,WarVisibility,WarTerrainId,WarTerrainTile} from '@/lib/b
 import {WAR_TERRAIN} from '@/lib/battle/got/terrain';
 import type {WarFormation,WarFacing} from '@/lib/battle/got/formations';
 import {WAR_FORMATIONS} from '@/lib/battle/got/formations';
+import {BattleGotSourcePicker} from './BattleGotSourcePicker';
+import type {Slot} from './BattleGotSourcePicker';
 import './battle-got.css';
 
 type TypeId='infantry'|'archers'|'cavalry'|'garrison'|'raiders'|'engineers';
@@ -49,6 +51,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [siegeEnabled,setSiegeEnabled]=useState(false);
  const [siegeKind,setSiegeKind]=useState<WarSiegeKind>('catapult-small');
  const [siegeAmmo,setSiegeAmmo]=useState<WarSiegeAmmo>('stone');
+ const [officialBySlot,setOfficialBySlot]=useState<Partial<Record<Slot,WarUnit>>>({});
  const [selected,setSelected]=useState('');
  const [target,setTarget]=useState('');
  const [kind,setKind]=useState<WarOrderKind>('attack');
@@ -64,12 +67,24 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     {id:'defender-1',side:'defender' as WarSide,name:'Vanguarda defensora',position:{x:10,y:2}},
     {id:'defender-2',side:'defender' as WarSide,name:'Apoio defensor',position:{x:10,y:4}},
    ];
+   if(siegeEnabled&&officialBySlot['attacker-2']&&
+    officialBySlot['attacker-2'].typeId!=='engineers')
+    throw new Error('O segundo espaço do atacante deve ter engenheiros para operar o cerco.');
+   const units=prepared.map(row=>{
+    const imported=officialBySlot[row.id as Slot];
+    if(imported)return {...imported,side:row.side,position:row.position};
+    return modelWarUnit({...row,training,
+     typeId:siegeEnabled&&row.id==='attacker-2'?'engineers':types[row.id]??'infantry'});
+   });
+   const engineer=units.find(u=>u.side==='attacker'&&u.typeId==='engineers');
+   if(siegeEnabled&&!engineer)throw new Error('Cerco exige unidade de engenheiros.');
+   const siege=siegeEnabled&&engineer?[makeModelSiege({
+    id:'siege-attacker-1',kind:siegeKind,side:'attacker',
+    position:{x:1,y:3},engineerId:engineer.id,
+    ammo:siegeKind.startsWith('catapult')?siegeAmmo:'stone',
+   })]:[];
    setBattle(createWarBattle({id:'book-lab-'+seed,name,seed,width:12,height:7,
-    units:prepared.map(row=>modelWarUnit({...row,training,
-     typeId:siegeEnabled&&row.id==='attacker-2'?'engineers':types[row.id]??'infantry'})),
-    siege:siegeEnabled?[makeModelSiege({id:'siege-attacker-1',kind:siegeKind,side:'attacker',
-     position:{x:1,y:3},engineerId:'attacker-2',
-     ammo:siegeKind.startsWith('catapult')?siegeAmmo:'stone'})]:[],
+    units,siege,
     commanders:modelWarCommanders(warfare),tiles,weather,visibility,advancedFormations:advanced,
    }));
    setSelected('');setTarget('');setError('');
@@ -206,6 +221,13 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     })}
    </div>
    <p className="battle-note">Pinte o terreno antes de iniciar; cada quadrado tem 10 metros. Campos com obstáculos não são automaticamente removidos quando contêm tropas.</p>
+   <BattleGotSourcePicker chosenSlots={officialBySlot} onChoose={(slot,unit)=>
+    setOfficialBySlot(current=>{
+     const next={...current};
+     if(unit)next[slot]=unit;
+     else delete next[slot];
+     return next;
+    })}/>
    <Button onClick={start}>Iniciar simulação pelo livro</Button>
   </section>:<>
    <section className="battle-surface got-status" aria-label="Estado da guerra" aria-live="polite">
