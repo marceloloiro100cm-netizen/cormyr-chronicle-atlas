@@ -4,6 +4,10 @@ import {createWarBattle,issueWarOrder,advanceWarRound,warUnitSummary,fireWarSieg
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
 import {beginPersonalInitiative,personalTurnHeroId} from '@/lib/battle/got/personal-initiative';
 import {resolvePendingPersonalDamage} from '@/lib/battle/got/personal-injuries';
+import {applyWarFate,restoreSpentFate,fateAvailable} from '@/lib/battle/got/personal-fate';
+import type {WarFateAction} from '@/lib/battle/got/personal-fate';
+import {resolveLabRecovery,restoreOrdinaryDamageAfterBattle} from '@/lib/battle/got/personal-recovery';
+import type {RecoveryActivity,RecoveryInterval} from '@/lib/battle/got/personal-recovery';
 import {deployWarSquad} from '@/lib/battle/got/squads';
 import {equipModelWarHero,WAR_PERSONAL_WEAPONS} from '@/lib/battle/got/personal-weapons';
 import type {WarPersonalWeaponId} from '@/lib/battle/got/personal-weapons';
@@ -69,6 +73,14 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [mitigationKind,setMitigationKind]=useState<PersonalMitigationChoice['kind']>('none');
  const [mitigationWounds,setMitigationWounds]=useState(1);
  const [heroId,setHeroId]=useState('');
+ const [fateHeroId,setFateHeroId]=useState('');
+ const [fateKind,setFateKind]=useState<WarFateAction['kind']>('spend-bonus');
+ const [fateOutcome,setFateOutcome]=useState<'unconscious'|'captured'|'death'>('unconscious');
+ const [recoveryHeroId,setRecoveryHeroId]=useState('');
+ const [recoveryInterval,setRecoveryInterval]=useState<RecoveryInterval>('daily-wound');
+ const [recoveryActivity,setRecoveryActivity]=useState<RecoveryActivity>('rest');
+ const [recoveryHealer,setRecoveryHealer]=useState(false);
+ const [recoveryHealerRank,setRecoveryHealerRank]=useState(4);
  const [heroAction,setHeroAction]=useState<WarHeroAction['kind']|'personal-attack-unit'>('join');
  const [heroUnitId,setHeroUnitId]=useState('');
  const [heroTargetId,setHeroTargetId]=useState('');
@@ -230,6 +242,40 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    const id='destacamento-'+unit.id+'-'+battle.round+'-'+(battle.squads?.length??0);
    setBattle(deployWarSquad(battle,{unitId:unit.id,squadId:id}));setError('');
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível destacar o esquadrão.');}
+ };
+ const fateDo=()=>{
+  if(!battle)return;
+  const h=battle.heroes.find(x=>x.id===fateHeroId&&!x.squadId)??
+   battle.heroes.find(x=>!x.squadId);
+  if(!h){setError('Escolha um personagem importante.');return;}
+  try{setBattle(applyWarFate(battle,{heroId:h.id,kind:fateKind,
+   ...(fateKind==='burn-choose-defeat'?{outcome:fateOutcome}:{})}));
+   setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Destino não executado.');}
+ };
+ const fateRefill=()=>{
+  if(!battle)return;
+  const h=battle.heroes.find(x=>x.id===fateHeroId&&!x.squadId)??
+   battle.heroes.find(x=>!x.squadId);
+  if(!h)return;
+  try{setBattle(restoreSpentFate(battle,h.id));setError('');}
+  catch(e){setError(e instanceof Error?e.message:'Recarga não executada.');}
+ };
+ const recoveryDo=()=>{
+  if(!battle)return;
+  const h=battle.heroes.find(x=>x.id===recoveryHeroId&&!x.squadId)??
+   battle.heroes.find(x=>!x.squadId);
+  if(!h){setError('Selecione um personagem.');return;}
+  try{setBattle(resolveLabRecovery(battle,{heroId:h.id,
+   interval:recoveryInterval,activity:recoveryActivity,
+   ...(recoveryHealer?{healer:{rank:recoveryHealerRank,hours:4}}:{})}));
+   setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Recuperação não executada.');}
+ };
+ const restoreNormalDamage=()=>{
+  if(!battle)return;
+  try{setBattle(restoreOrdinaryDamageAfterBattle(battle));setError('');}
+  catch(e){setError(e instanceof Error?e.message:'Dano não restaurado.');}
  };
  const heroInitiative=()=>{
   if(!battle)return;
