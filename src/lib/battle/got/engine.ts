@@ -196,7 +196,7 @@ function move(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,limit?
  }
  const moving=next.units.find(u=>u.id===unit.id)!;
  const broken=Boolean(holder&&distance(final,holder.position)>1);
- next=replaceUnit(next,{...moving,position:final,
+ next=replaceUnit(next,{...moving,position:final,hidden:false,
   ...(broken?{envelopedBy:undefined}:{})});
  return triggerReadyReactions(log(next,'move',unit.name+' moveu '+path.length*10+
   ' m'+(sprint?' em corrida':'')+'.',unit.side),unit.id,'enemy-adjacent');
@@ -229,6 +229,8 @@ function applyDamage(battle:WarBattle,target:WarUnit,amount:number,attackerName:
    return u;
   })};
  }
+ // Dano efetivo revela a posição de uma unidade previamente escondida.
+ if(updated.hidden)withUnit=replaceUnit(withUnit,{...updated,hidden:false});
  const withHeroes=applyDamageToEmbeddedHeroes(withUnit,target,updated,amount);
  const resolved=log(withHeroes,'damage',text,target.side);
  const afterAccident=resolveCarriedWildfireRisk(resolved,target.id,applyDamage);
@@ -370,7 +372,8 @@ function attackIndividualFromWarUnit(
 }
 function chooseNearest(battle:WarBattle,unit:WarUnit,ranged:boolean):WarUnit|null{
  const max=ranged?(unit.range==='long'?20:unit.range==='short'?2:0):1;
- return battle.units.filter(u=>u.side!==unit.side&&onBoard(u)&&distance(u.position,unit.position)<=max)
+ return battle.units.filter(u=>u.side!==unit.side&&onBoard(u)&&
+   (!u.hidden||distance(u.position,unit.position)<=1)&&distance(u.position,unit.position)<=max)
    .sort((a,b)=>distance(a.position,unit.position)-distance(b.position,unit.position)||a.id.localeCompare(b.id))[0]??null;
 }
 function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
@@ -380,6 +383,10 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  if(warFieldForbidsAttack(attacker))
   throw new Error('O equipamento especial impede ataques enquanto estiver transportado.');
  if(!onBoard(target)||target.side===attacker.side)throw new Error('Alvo indisponível.');
+ // Uma tropa escondida só pode ser escolhida por quem já a alcançou.
+ // A resolução de detecção a distância continua reservada ao Narrador.
+ if(target.hidden&&distance(attacker.position,target.position)>1)
+  throw new Error('Unidade escondida: é preciso descobri-la antes de atacar.');
  const max=ranged?(attacker.range==='long'?20:attacker.range==='short'?2:0):1;
  if(!max||distance(attacker.position,target.position)>max||(!ranged&&distance(attacker.position,target.position)===0))
   throw new Error('O alvo não está no alcance.');
@@ -494,12 +501,20 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
    .sort((a,b)=>distance(b,nearest.position)-distance(a,nearest.position));
   const outside=candidates.find(p=>!inBounds(battle,p));
   if(outside){escaped=true;break;}
-  const allowed=candidates.filter(p=>inBounds(battle,p));
+  const allowed=candidates.filter(p=>{
+   if(!inBounds(battle,p))return false;
+   const tile=terrainAt(battle.tiles,p),effect=terrainEffect(tile);
+   return !effect.blocked&&!(effect.water&&!unit.naval)&&
+    !(unit.mounted&&effect.noCavalry)&&
+    (!unit.naval||effect.naval||tile.terrain==='coast');
+  });
   if(!allowed.length)break;
+  // Retiradas não atravessam paredes, rios ou montanhas proibidas.
   pos=allowed[0]!;
  }
  const updated={...unit,position:pos,condition:escaped?'escaped' as WarCondition:unit.condition,
-  standing:escaped?null:unit.standing};
+  standing:escaped?null:unit.standing,
+  ...(escaped?{}:{hidden:false})};
  return log(replaceUnit(battle,updated),rout?'rout':'retreat',
   unit.name+(escaped?' saiu do campo.':' retirou-se até '+pos.x+','+pos.y+'.'),unit.side);
 }
@@ -1027,24 +1042,29 @@ export function advanceWarRound(battle:WarBattle):WarBattle{
    !u.actedThisRound&&!u.criticalThisRound&&alive(u))){
    const order=base.standing!;
    try{
-    if(['attack','charge','aggressive-retreat'].includes(order.kind)){
+    // A lista de ordens foi obtida no início da fase: após cada ataque,
+   // a unidade seguinte pode ter sido derrotada, debandado ou movido.
+   // Nunca reutilizar uma ficha antiga para executar ação posterior.
+   const current=next.units.find(u=>u.id===base.id);
+   if(!current||!alive(current)||current.actedThisRound||current.criticalThisRound)continue;
+   if(['attack','charge','aggressive-retreat'].includes(order.kind)){
      const ranged=Boolean(order.ranged);
-     const target=chooseNearest(next,base,ranged);
-     if(target)next=attack(next,base,target,ranged);
+     const target=chooseNearest(next,current,ranged);
+     if(target)next=attack(next,current,target,ranged);
     }else if(order.kind==='envelop'){
-     const target=base.envelopingTargetId?
-      next.units.find(u=>u.id===base.envelopingTargetId):null;
-     if(target&&alive(target)&&distance(base.position,target.position)===1)
-      next=attack(next,base,target,false);
+     const target=current.envelopingTargetId?
+      next.units.find(u=>u.id===current.envelopingTargetId):null;
+     if(target&&alive(target)&&distance(current.position,target.position)===1)
+      next=attack(next,current,target,false);
     }else if(order.kind==='push'){
-     const target=chooseNearest(next,base,false);
+     const target=chooseNearest(next,current,false);
      if(target){
-      const pushed=executeAdvancedWarOrder(next,base,{kind:'push',targetId:target.id},
+      const pushed=executeAdvancedWarOrder(next,current,{kind:'push',targetId:target.id},
        {attack,applyDamage});
       if(pushed)next=pushed;
      }
-    }else if(order.kind==='defend')next=perform(next,base,{kind:'defend'},1);
-    else if(order.kind==='retreat')next=retreatStep(next,base,movementCells(base,false),false);
+    }else if(order.kind==='defend')next=perform(next,current,{kind:'defend'},1);
+    else if(order.kind==='retreat')next=retreatStep(next,current,movementCells(current,false),false);
    }catch{
     next=log(next,'standing-skip',base.name+' não pôde executar a ordem contínua.',base.side);
    }
