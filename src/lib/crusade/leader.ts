@@ -2,6 +2,7 @@
  * Manual 03 §9. Lote 4 implementa subset auditável e recusa o resto.
  */
 import {crzApplyDamage,crzHeal} from './stack';
+import {crzAoEExpected} from './damage';
 import {crzCapable,crzLog,crzMoraleState,crzReplaceStack,
  type CrzBattleStack,type CrzBattleState,type CrzEffect} from './battle-state';
 import {crzDistance,type CrzSide} from './geometry';
@@ -18,6 +19,7 @@ export const CRZ_LOT4_SPELLS:readonly CrzSpellId[]=[
 export const CRZ_LOT8_SPELLS:readonly CrzSpellId[]=[
  ...CRZ_LOT4_SPELLS,'shield_wall_formation',
 ];
+export const CRZ_ADVANCED_SPELLS:readonly CrzSpellId[]=[...CRZ_LOT8_SPELLS,'fireball'];
 /** Exige pelo menos duas pilhas corpo a corpo aliadas e adjacentes.
  * A formação nunca é inferida de tropas ou posses oficiais.
  */
@@ -43,16 +45,16 @@ export function crzCast(state:CrzBattleState,spellId:CrzSpellId,
  const side=active.side,leader=state.leaders[side];
  if(!leader)throw new Error('SPELL: General não presente.');
  if(!leader.spells.includes(spellId))throw new Error('SPELL: habilidade não preparada.');
- if(!CRZ_LOT8_SPELLS.includes(spellId))
+ if(!CRZ_ADVANCED_SPELLS.includes(spellId))
   throw new Error('SPELL_UNSUPPORTED: requer redutor do próximo lote.');
  if(leader.spellsCastThisRound>=state.ruleset.leader.castsPerRound)
   throw new Error('SPELL: General já atuou nesta rodada.');
  const cost=COSTS[spellId];
  if(leader.energy<cost)throw new Error('SPELL: energia insuficiente.');
  const single=spellId==='shield_of_faith'||spellId==='heroism'||
-  spellId==='cause_fear'||spellId==='cure_wounds'||spellId==='firebolt';
+  spellId==='cause_fear'||spellId==='cure_wounds'||spellId==='firebolt'||spellId==='fireball';
  const targetSide=spellId==='bane'||spellId==='cause_fear'||
-  spellId==='firebolt'?(side==='attacker'?'defender':'attacker'):side;
+  spellId==='firebolt'||spellId==='fireball'?(side==='attacker'?'defender':'attacker'):side;
  if(single)requireTarget(state,targetId,targetSide);
  else if(targetId!==null)throw new Error('SPELL: feitiço coletivo não aceita alvo único.');
  const shieldWall=spellId==='shield_wall_formation'?crzShieldWallTargets(state,side):[];
@@ -93,6 +95,35 @@ export function crzCast(state:CrzBattleState,spellId:CrzSpellId,
    next=crzReplaceStack(next,{...current,effects:[...retained,effect]});
    next=crzLog(next,{type:'EFFECT_APPLIED',unitId:s.id,effectId:effect.id,
     kind,amount});
+  }
+ }
+ // Bola de fogo: centro sobre pilha inimiga viva, raio hexagonal 2, sem fogo amigo
+ // no laboratório; até 10 combatentes expostos por agrupamento. Sorte é
+ // resolvida deterministicamente por salvaguarda esperada, não RNG global.
+ if(spellId==='fireball'){
+  const anchor=requireTarget(next,targetId,targetSide);
+  if(crzDistance(active.position,anchor.position)>5)
+   throw new Error('SPELL: centro da explosão fora do alcance de cinco hexágonos.');
+  const victims=next.stacks.filter(s=>s.side===targetSide&&crzCapable(s)&&
+   crzDistance(s.position,anchor.position)<=2);
+  if(victims.length===0)throw new Error('SPELL: nenhum inimigo alcançado.');
+  for(const victim of victims){
+   const current=next.stacks.find(s=>s.id===victim.id)!;
+   const hit=crzAoEExpected({affected:Math.min(10,current.alive),
+    averageDamageX100:(20+leader.power*2)*100,
+    saveBonus:current.template.abilityMods.dex,
+    dc:12+Math.floor(leader.power/2),saveEffect:'half',target:current});
+   const changed={...current,...hit.receipt.stack};
+   const morale=crzMoraleState(changed);
+   next=crzReplaceStack(next,{...changed,moraleState:morale});
+   next=crzLog(next,{type:'SPELL_DAMAGE',leaderId:leader.id,unitId:current.id,
+    amount:hit.receipt.damageApplied,casualties:hit.receipt.casualties,
+    aliveAfter:changed.alive});
+   if(hit.receipt.damageApplied>0)next={...next,progressThisRound:true};
+   if(morale!==current.moraleState)next=crzLog(next,{
+    type:'MORALE_CHANGED',unitId:current.id,from:current.moraleState,to:morale});
+   if(changed.alive===0)next=crzLog(next,{type:'STACK_DESTROYED',unitId:current.id});
+   else if(morale==='routed')next=crzLog(next,{type:'STACK_ROUTED',unitId:current.id});
   }
  }
  if(spellId==='cure_wounds'||spellId==='firebolt'){
