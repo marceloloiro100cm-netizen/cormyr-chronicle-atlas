@@ -30,7 +30,7 @@ export const WAR_FIELD_EQUIPMENT:Readonly<Record<WarFieldEquipmentId,WarFieldEqu
   costResource:'land',cost:2,attackBlocked:true,
   moveOverrideMetres:10,defenseBonus:5},
  'wildfire-pots':{id:'wildfire-pots',label:'Fogo selvagem',
-  costResource:'wealth',cost:5,attackBlocked:false,
+  costResource:'wealth',cost:5,attackBlocked:true,
   orderDifficulty:3,singleUse:true},
  'boiling-water':{id:'boiling-water',label:'Água fervente',
   costResource:'wealth',cost:0.5,attackBlocked:false,singleUse:true},
