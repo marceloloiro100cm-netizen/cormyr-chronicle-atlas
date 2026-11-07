@@ -44,6 +44,11 @@ const ORDER_LABEL:Record<WarOrderKind,string>={
  suppress:'Fogo de supressão',probe:'Ataque exploratório',push:'Empurrar',
  'counter-charge':'Preparar contra carga',sabotage:'Sabotagem',
  ambush:'Emboscada',join:'Junção de unidades',
+ 'split-attack':'Ataque Dividido (unidades)',
+ 'lightning-attack':'Ataque Relâmpago',
+ trample:'Atropelar (cavalaria)',
+ envelop:'Envolver',
+ 'scorched-earth':'Terra Arrasada (prévia)',
 };
 const CONDITION:Record<WarUnit['condition'],string>={
  organized:'Organizada',disorganized:'Desorganizada',routed:'Debandada',
@@ -114,6 +119,9 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [officialBySlot,setOfficialBySlot]=useState<Partial<Record<Slot,WarUnit>>>({});
  const [selected,setSelected]=useState('');
  const [target,setTarget]=useState('');
+ const [advancedSecondTarget,setAdvancedSecondTarget]=useState('');
+ const [advancedFirstDice,setAdvancedFirstDice]=useState(1);
+ const [scorchedDomain,setScorchedDomain]=useState('');
  const [kind,setKind]=useState<WarOrderKind>('attack');
  const [ranged,setRanged]=useState(false);
  const [readyTrigger,setReadyTrigger]=useState<'enemy-adjacent'|'enemy-routed'>('enemy-adjacent');
@@ -194,12 +202,22 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
     kind:legalKind,
     ...(legalKind==='attack'&&attackHeroWithUnit?
      {targetHeroId:unitTargetHeroId||battle.heroes.find(h=>h.side!==battle.turn&&h.active)?.id||''}:{ }),
-    ...(['attack','charge','aggressive-retreat','suppress','probe','ambush','push'].includes(legalKind)&&selectedTarget&&
+    ...(['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop'].includes(legalKind)&&selectedTarget&&
      !(legalKind==='attack'&&attackHeroWithUnit)?
      {targetId:selectedTarget.id}:{}),
     ...(legalKind==='join'?{targetId:activeUnits.find(u=>u.id!==selectedUnit.id)?.id??''}:{}),
     ...(legalKind==='sabotage'?{fortId:battle.fortifications.find(x=>x.side!==battle.turn)?.id??''}:{}),
     ...(legalKind==='move'?{to:coord,sprint}:{}),
+    ...(['lightning-attack','trample'].includes(legalKind)?{to:coord}:{}),
+    ...(legalKind==='split-attack'?{
+     targetIds:[selectedTarget?.id??'',
+      advancedSecondTarget||enemy.find(u=>u.id!==selectedTarget?.id)?.id||''],
+     testRanks:[advancedFirstDice,
+      (ranged?selectedUnit.ability.marksmanship:selectedUnit.ability.fighting)-
+       advancedFirstDice],
+     bonusRanks:[0,0],ranged,
+    }:{}),
+    ...(legalKind==='scorched-earth'?{targetDomainId:scorchedDomain.trim()}:{}),
     ...(legalKind==='ready'?{ready:{
      trigger:readyTrigger,reaction:readyReaction,
      ...(readyReaction==='move'?{to:coord}:{ranged}),
@@ -959,7 +977,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         {Object.entries(ORDER_LABEL).filter(([id])=>selectedUnit.condition==='routed'?
          id==='revive':id!=='revive'&&(id!=='reorganize'||selectedUnit.condition==='disorganized'))
          .filter(([id])=>battle.advancedFormations||
-          !['formation','turn','reverse','suppress','probe','counter-charge','sabotage','ambush','join','push'].includes(id))
+          !['formation','turn','reverse','suppress','probe','counter-charge','sabotage','ambush','join','push','split-attack','lightning-attack','trample','envelop','scorched-earth'].includes(id))
          .map(([id,label])=><option key={id} value={id}>{label}</option>)}
        </select>
       </label>
@@ -995,7 +1013,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
          .map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
        </select>
       </label>}
-      {['attack','charge','aggressive-retreat','suppress','probe','ambush','push'].includes(legalKind)&&
+      {['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop','split-attack'].includes(legalKind)&&
        !(legalKind==='attack'&&attackHeroWithUnit)&&<>
        <label>Alvo
         <select aria-label="Alvo da ordem" value={selectedTarget?.id??''}
@@ -1003,10 +1021,31 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
          {enemy.map(u=><option key={u.id} value={u.id}>{u.name} · {warUnitSummary(u).health}</option>)}
         </select>
        </label>
-       {['attack','aggressive-retreat','ambush'].includes(legalKind)&&<label className="got-check">
+       {['attack','aggressive-retreat','ambush','split-attack'].includes(legalKind)&&<label className="got-check">
         <input type="checkbox" checked={ranged} onChange={e=>setRanged(e.target.checked)}/>
         Usar Pontaria (quando houver arma à distância)</label>}
       </>}
+      {legalKind==='split-attack'&&<>
+       <label>Segundo inimigo
+        <select aria-label="Segundo alvo dividido" value={advancedSecondTarget}
+         onChange={e=>setAdvancedSecondTarget(e.target.value)}>
+         <option value="">Selecione</option>
+         {enemy.filter(u=>u.id!==selectedTarget?.id).map(u=>
+          <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+       </label>
+       <label>Dados de teste do primeiro alvo (restante para segundo)
+        <input type="number" min={1}
+         max={Math.max(1,(ranged?selectedUnit.ability.marksmanship:selectedUnit.ability.fighting)-1)}
+         value={advancedFirstDice} onChange={e=>setAdvancedFirstDice(Number(e.target.value))}/>
+       </label>
+       <p className="battle-note">Distribuição exata das graduações; dados de bônus ficam zerados
+        neste controle inicial. Cada inimigo exige alcance válido.</p>
+      </>}
+      {legalKind==='scorched-earth'&&<label>Domínio afetado (apenas prévia)
+       <input value={scorchedDomain} placeholder="Nome ou identificador do domínio"
+        onChange={e=>setScorchedDomain(e.target.value)}/>
+      </label>}
       {legalKind==='sabotage'&&<label>Fortificação inimiga
        <select value={battle.fortifications.find(f=>f.side!==battle.turn)?.id??''}
         disabled aria-label="Fortificação alvo da sabotagem">
