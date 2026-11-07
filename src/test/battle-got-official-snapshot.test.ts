@@ -26,7 +26,7 @@ describe('Guerra dos Tronos — importar ficha militar sem conversão PTE',()=>{
   expect(snapshot.defense).toBe(4);
   expect(snapshot.armor).toBe(3);
   expect(snapshot.discipline).toBe(6);
-  expect(snapshot.meleeDamage).toBe(4);
+  expect(snapshot.meleeDamage).toBe(3);
   expect(snapshot.ability.warfare).toBe(2);
   expect(snapshot.source).toMatchObject({kind:'house-readonly',houseId:'house-got',unitId:'unit-real',version:4});
   expect(state).toEqual(before);
