@@ -20,7 +20,7 @@ export async function loadDndCombatOverrides(
  catalog:DndCormyrCatalog):Promise<DndCormyrCatalog>{
  await requireNarrator();
  const {data,error}=await db.from('battle_dnd_monster_overrides')
-  .select('monster_id,combat_patch').limit(300);
+  .select('monster_id,combat_patch').limit(500);
  if(error||!Array.isArray(data))
   throw Error('Não foi possível consultar as correções privadas do bestiário.');
  const patches:DndCombatOverrideEntry[]=data.map((entry:Record<string,unknown>)=>({
