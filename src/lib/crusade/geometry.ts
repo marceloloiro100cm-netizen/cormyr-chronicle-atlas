@@ -5,6 +5,7 @@ import {z} from 'zod';
 export type CrzSide='attacker'|'defender';
 export type CrzHex=Readonly<{q:number;r:number}>;
 export type CrzTerrain='plain'|'forest'|'hill'|'rock';
+export type CrzCreatureSize='T'|'S'|'M'|'L'|'H'|'G';
 export type CrzTile=CrzHex&Readonly<{terrain:CrzTerrain}>;
 export type CrzMap=Readonly<{
  id:string;label:string;schemaVersion:2;width:11|15;height:9|11;
@@ -32,6 +33,24 @@ export const CRZ_DIRECTIONS:readonly CrzHex[]=[
  {q:-1,r:0},{q:-1,r:1},{q:0,r:1},
 ] as const;
 export const crzHexKey=(h:CrzHex):string=>h.q+','+h.r;
+/** O token representa uma pilha; no D&D V3 a área ocupada por sua maior
+ * criatura é T/S/M=1, L=2x2, H=3x3, G=4x4 quadrados. Esta
+ * convenção é exclusiva do V3, não altera mapas/replays antigos.
+ */
+export const crzFootprintWidth=(size:CrzCreatureSize):number=>
+ size==='L'?2:size==='H'?3:size==='G'?4:1;
+export function crzFootprintCells(map:CrzMap,anchor:CrzHex,
+ size:CrzCreatureSize):CrzHex[]{
+ if(map.grid!=='square')return [anchor];
+ const n=crzFootprintWidth(size);
+ if(anchor.q<0||anchor.r<0||anchor.q>=map.width||anchor.r>=map.height)
+  return [];
+ const left=Math.max(0,Math.min(map.width-n,anchor.q-Math.floor((n-1)/2)));
+ const top=Math.max(0,Math.min(map.height-n,anchor.r-Math.floor((n-1)/2)));
+ const cells:CrzHex[]=[];
+ for(let y=top;y<top+n;y++)for(let x=left;x<left+n;x++)cells.push({q:x,r:y});
+ return cells;
+}
 export const crzOffsetToAxial=(column:number,row:number):CrzHex=>({
  q:column-Math.floor((row-(row&1))/2),r:row,
 });
@@ -135,7 +154,8 @@ export function crzScenario(id:CrzScenarioId,width:11|15=11,grid:'hex'|'square'=
 }
 export type CrzPath=Readonly<{to:CrzHex;cost:number;steps:number;path:readonly CrzHex[]}>;
 export function crzReachable(map:CrzMap,from:CrzHex,budget:number,
- occupied:readonly CrzHex[]=[],enemies:readonly CrzHex[]=[],flight=false):CrzPath[]{
+ occupied:readonly CrzHex[]=[],enemies:readonly CrzHex[]=[],flight=false,
+ footprintSize:CrzCreatureSize='M'):CrzPath[]{
  if(!Number.isSafeInteger(budget)||budget<0||budget>6)
   throw new Error('MOVE: orçamento inválido.');
  const tiles=crzMapIndex(map),fromKey=crzHexKey(from);
@@ -158,9 +178,14 @@ export function crzReachable(map:CrzMap,from:CrzHex,budget:number,
    const nkey=crzHexKey(next),tile=tiles.get(nkey);
    // Em voo pode atravessar rocha, rios/barreiras equivalentes, floresta
    // e outras tropas; a célula ocupada continua proibida como destino.
-   if(!tile||(!flight&&(tile.terrain==='rock'||blocked.has(nkey)||
-      !crzAllowsStep(map,at.to,next,blocked))))continue;
-   const cost=at.cost+(flight?1:crzTerrainCost(tile.terrain))+
+   const footprint=crzFootprintCells(map,next,footprintSize);
+   if(!tile||!footprint.length||
+    (!flight&&(!crzAllowsStep(map,at.to,next,blocked)||
+     footprint.some(h=>!tiles.has(crzHexKey(h))||
+      tiles.get(crzHexKey(h))?.terrain==='rock'||blocked.has(crzHexKey(h))))))continue;
+   const groundCost=Math.max(...footprint.map(h=>
+     crzTerrainCost(tiles.get(crzHexKey(h))?.terrain??'rock')));
+   const cost=at.cost+(flight?1:groundCost)+
      (map.grid==='square'&&at.to.q!==next.q&&at.to.r!==next.r?0.5:0);
    if(cost>budget)continue;
    const candidate:Candidate={to:next,cost,steps:at.steps+1,
@@ -174,7 +199,8 @@ export function crzReachable(map:CrzMap,from:CrzHex,budget:number,
   }
  }
  return [...best.values()].filter(n=>crzHexKey(n.to)!==fromKey&&
-   (!flight||!blocked.has(crzHexKey(n.to))))
+   (!flight||crzFootprintCells(map,n.to,footprintSize).every(h=>
+    !blocked.has(crzHexKey(h)))))
   .sort((a,b)=>a.cost-b.cost||a.steps-b.steps||a.to.q-b.to.q||a.to.r-b.to.r)
   .map(({to,cost,steps,path})=>({to,cost,steps,path}));
 }
