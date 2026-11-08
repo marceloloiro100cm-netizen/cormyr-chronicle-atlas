@@ -10,7 +10,7 @@ import {terrainCoverBonus,movementSlow,visibilityPenalty,weatherAttackModifier}
 import type {WarTerrainTile,WarWeather} from '@/lib/battle/got/terrain';
 
 const unit=(id:string,side:'attacker'|'defender',x:number,y:number,
- typeId:'infantry'|'archers'|'warships'='infantry')=>
+ typeId:'infantry'|'archers'|'warships'|'engineers'='infantry')=>
  ({...modelWarUnit({id,name:id,side,position:{x,y},typeId}),discipline:0});
 const battle=(id:string,tiles:WarTerrainTile[],attacker=unit('a','attacker',1,2))=>
  ({...createWarBattle({id,name:'Auditoria cap. 10',seed:'cap10-book-2026',
@@ -117,8 +117,7 @@ describe('GOT livro base — limites de heróis e artilharia',()=>{
    commanders:modelWarCommanders({attacker:6,defender:6})})).not.toThrow();
  });
  it('Tabela 10-3: montanha impede artilharia atacante, inclusive na prévia',()=>{
-  const engineer=unit('engineer','attacker',1,2,'infantry');
-  const oper={...engineer,typeId:'engineers'};
+  const oper=unit('engineer','attacker',1,2,'engineers');
   const defender=unit('d','defender',9,2);
   const siege=makeModelSiege({id:'cat',kind:'catapult-small',
    side:'attacker',position:{x:1,y:3},engineerId:oper.id});
@@ -140,7 +139,7 @@ describe('GOT livro base — limites de heróis e artilharia',()=>{
    .toBe(true);
  });
  it('defensor com fortificação ativa pode utilizar cerco no terreno montanhoso',()=>{
-  const engineer={...unit('engineer','defender',8,2),typeId:'engineers' as const};
+  const engineer=unit('engineer','defender',8,2,'engineers');
   const attacker=unit('a','attacker',1,2);
   const fort=makeWarFortification({id:'tower',name:'Torre',kind:'tower',
    side:'defender',cells:[{x:8,y:2}],engineerBuilt:false,hoursBuilt:72});
