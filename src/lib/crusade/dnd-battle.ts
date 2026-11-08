@@ -78,6 +78,9 @@ export function dndBattleReady(options:CrzTrainingOptions,
   initiative:rng.nextInt(20)+1+stack.template.abilityMods.dex+
    ready.ruleset.training[stack.training].initiative,
  }));
- return {...ready,stacks,rngState:rng.state(),
+ // Manter o estado inicial do RNG do motor: crzStart verifica que ele
+ // corresponde exatamente à seed original. A iniciativa é determinística
+ // e persistida em stacks/replay, mas não consome esse fluxo de combate.
+ return {...ready,stacks,
   warnings:[...ready.warnings,'Iniciativa D&D: d20 + DES + treino, uma vez por encontro; perfis militares são traduções digitais originais.']};
 }
