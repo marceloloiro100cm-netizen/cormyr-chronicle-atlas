@@ -42,7 +42,7 @@ export function dndBattleReady(options:CrzTrainingOptions,
  }
  const rules=crzPreset('CRZ-5E','square');
  const input={
-  id:'dnd-training-'+options.seed.toLowerCase()+(runId?'-'+runId.toLowerCase():''),
+  id:'dnd-training-v2-'+options.seed.toLowerCase()+(runId?'-'+runId.toLowerCase():''),
   name:'D&D · Batalha tática de criaturas e exércitos',
   seed:options.seed,rulesetId:'CRZ-5E' as const,
   rulesetHash:crzRulesetHash(rules),
