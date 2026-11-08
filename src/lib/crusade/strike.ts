@@ -8,6 +8,7 @@ import {crzSafe} from './stack';
 import {crzGridDistance,crzMapIndex,type CrzHex,type CrzMap} from './geometry';
 import {crzEffectBonus,crzLog,crzMoraleState,crzReplaceStack,crzCapable,
  type CrzBattleStack,type CrzBattleState} from './battle-state';
+import {isDndBattle} from './dnd-mode';
 export type CrzAttackMode='melee'|'ranged';
 
 function mitigation(stack:CrzBattleStack,type:string):CrzMitigation{
@@ -58,7 +59,7 @@ function targetAC(state:CrzBattleState,target:CrzBattleStack,mode:CrzAttackMode)
   mode==='ranged'&&tile?.terrain==='hill'?
    state.ruleset.hit.coverAcBonus.hill:0;
  const leaderDefense=state.leaders[target.side]?.defenseBonus??0;
- const penalty=target.moraleState==='shaken'?state.ruleset.morale.shakenPenalty:0;
+ const penalty=!isDndBattle(state)&&target.moraleState==='shaken'?state.ruleset.morale.shakenPenalty:0;
  return crzSafe(target.acBase+leaderDefense+crzEffectBonus(target,'ac')+
   (target.defendActive?state.ruleset.defend.acBonus:0)+cover-penalty,'target CA');
 }
@@ -71,9 +72,9 @@ function attackBonus(state:CrzBattleState,actor:CrzBattleStack,
   crzCapable(s)&&isAdjacent(state.map,s.position,actor.position))?
   state.ruleset.ranged.engagedPenalty:0;
  const distance=crzGridDistance(state.map,actor.position,target.position);
- const longRange=mode==='ranged'&&distance>actor.rangeHex?
+ const longRange=!isDndBattle(state)&&mode==='ranged'&&distance>actor.rangeHex?
   state.ruleset.ranged.longRangePenalty:0;
- const shaken=actor.moraleState==='shaken'?state.ruleset.morale.shakenPenalty:0;
+ const shaken=!isDndBattle(state)&&actor.moraleState==='shaken'?state.ruleset.morale.shakenPenalty:0;
  return crzSafe(actor.atkMod+crzEffectBonus(actor,'attack')+flank-
   engaged-longRange-shaken,'attack bonus');
 }
@@ -142,7 +143,7 @@ export function crzStrike(state:CrzBattleState,
  let next=state;
  if(result.mode==='rolled')next={...next,rngState:result.rngState};
  const changed0={...target,...result.receipt.stack};
- const moraleState=crzMoraleState(changed0);
+ const moraleState=isDndBattle(state)?changed0.moraleState:crzMoraleState(changed0);
  const changed:CrzBattleStack={...changed0,moraleState};
  next=crzReplaceStack(next,changed);
  const attacksCount=entry.reduce((sum,e)=>sum+e.count,0)*engaged;
