@@ -161,6 +161,7 @@ export const dndCormyrTemplateId=(m:DndCormyrMonster)=>
  * o motor D&D ignora distância máxima, mantendo a linha de visão.
  */
 export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
+ const createdByNarrator=m.id.startsWith('custom-');
  const attacks:CrzAttackProfile[]=[];
  if(m.melee){
   const a=m.melee;
@@ -184,7 +185,7 @@ export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
  const flySpeed=m.fly_ft??(provisionalFlight?DND_PROVISIONAL_FLY_SPEED_FT:0);
  return crzSealCreature({
   schemaVersion:1,id:dndCormyrTemplateId(m),name:m.name,
-  source:'5etools · '+m.source,size:m.size,
+  source:(createdByNarrator?'Narrador · ':'5etools · ')+m.source,size:m.size,
   creatureType:groupType[m.group],
   tags:['cormyr-300',m.group,m.source,
    ...(provisionalFlight?['provisional-flight']:[]),
@@ -201,10 +202,17 @@ export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
   conditionImmunities:[],traits:[],
   flags:{flying:flySpeed>0,ranged:attacks.some(a=>a.kind==='ranged'),
    caster:false,legendary:false,swarm:false},
-  provenance:{origin:'5etools',srd:false,license:'local-unverified',
-   attribution:'Seleção Cormyr 300 de arquivos 5etools fornecidos pelo Narrador. Fonte '+m.source+'.'},
+  provenance:createdByNarrator?{
+   origin:'manual',srd:false,license:'original-authorized',
+   attribution:'Ficha original ou autorizada declarada pelo Narrador. Fonte '+m.source+'.',
+   permissionEvidence:'Autoria ou autorização declarada explicitamente pelo Narrador durante o cadastro privado.',
+  }:{
+   origin:'5etools',srd:false,license:'local-unverified',
+   attribution:'Seleção Cormyr 300 de arquivos 5etools fornecidos pelo Narrador. Fonte '+m.source+'.',
+  },
   warnings:[
-   'Conteúdo de uso local do Narrador; licença de redistribuição não verificada.',
+   ...(createdByNarrator?['Ficha de autoria/autorização declarada pelo Narrador, de uso privado.']:
+    ['Conteúdo de uso local do Narrador; licença de redistribuição não verificada.']),
    'Importação simplificada: sem habilidades, multiataques especiais e magias.',
    ...(m.dex_mod===undefined?['DES não registrada na fonte resumida; iniciativa usa 0 provisório.']:[]),
    ...(m.melee&&!m.melee.damage_type?['Tipo de dano corpo a corpo não verificado; concussão neutra provisória.']:[]),
