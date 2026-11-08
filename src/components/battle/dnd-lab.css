@@ -1,0 +1,39 @@
+.dnd-config{
+ display:grid;gap:1rem;margin:1rem 0;padding:1rem;border:1px solid #94836b;
+ border-radius:12px;background:rgba(21,30,31,.45);color:#f1e9db;
+}
+.dnd-config h3,.dnd-config h4{margin:.2rem 0;font-weight:750;color:#f4deaf}
+.dnd-config p{margin:.2rem 0;line-height:1.5}
+.dnd-config label{display:grid;gap:.3rem;min-width:0;font-size:.9rem}
+.dnd-config input,.dnd-config select{
+ min-height:2.45rem;max-width:100%;padding:.45rem .6rem;border-radius:8px;
+ border:1px solid #8f816e;background:#172224;color:#fff;box-sizing:border-box;
+}
+.dnd-roster-side{display:grid;gap:.75rem;padding:.8rem;border:1px solid #817867;border-radius:10px}
+.dnd-stack-row{
+ display:grid;grid-template-columns:minmax(170px,2.5fr) minmax(105px,.7fr)
+ minmax(125px,1fr) auto;gap:.65rem;align-items:end;
+}
+.dnd-stack-row button{align-self:end;min-height:2.4rem}
+.dnd-conversion{padding:.7rem;border:1px solid #a4977c;border-radius:10px}
+.dnd-conversion summary{cursor:pointer;font-weight:700;color:#f9e2b0}
+.dnd-table-scroll{overflow:auto;max-height:360px;margin-top:.65rem}
+.dnd-table-scroll table{border-collapse:collapse;width:100%;min-width:680px;font-size:.82rem}
+.dnd-table-scroll td,.dnd-table-scroll th{
+ border-bottom:1px solid #726b5e;padding:.45rem .55rem;text-align:left;
+ vertical-align:top;white-space:nowrap;
+}
+.dnd-table-scroll th{color:#fff1cf}
+.dnd-inspected-stats{
+ display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:.45rem;
+ margin:.5rem 0;padding:.7rem;border-radius:9px;border:1px solid #a6977e;
+ background:#142426;color:#fff1dc;line-height:1.45;
+}
+.dnd-inspected-stats strong{grid-column:1/-1;color:#f4dea6}
+.dnd-inspected-stats span{overflow-wrap:anywhere}
+@media(max-width:820px){
+ .dnd-stack-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .dnd-stack-row label:first-child{grid-column:1/-1}
+ .dnd-inspected-stats{grid-template-columns:1fr}
+}
+@media(max-width:450px){.dnd-stack-row{grid-template-columns:1fr}}
