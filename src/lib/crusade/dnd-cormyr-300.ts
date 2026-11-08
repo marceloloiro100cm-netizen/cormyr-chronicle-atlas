@@ -116,11 +116,11 @@ export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
   schemaVersion:1,id:dndCormyrTemplateId(m),name:m.name,
   source:'5etools · '+m.source,size:m.size,
   creatureType:groupType[m.group],
-  tags:['cormyr-300',m.group,m.source],
+  tags:['cormyr-300',m.group,m.source,...(m.speed_ft===0?['immobile']:[])],
   cr:m.challenge_rating,xp:0,proficiencyBonus:2,
   // O catálogo não traz DES: não inferir iniciativa de ND, dano ou CA.
   abilityMods:{str:0,dex:0,con:0,int:0,wis:0,cha:0},
-  hp:{average:m.hp},ac:m.ac,speedFt:{walk:Math.max(1,m.speed_ft)},
+  hp:{average:m.hp},ac:m.ac,speedFt:{walk:m.speed_ft},
   attacks,multiattack:{origin:'fallback',steps:[]},
   damageMods:{resist:[],immune:[],vulnerable:[]},
   conditionImmunities:[],traits:[],
@@ -135,7 +135,7 @@ export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
    ...(m.ranged&&m.ranged.range_ft==null?
     ['Ataque marcado à distância sem alcance: '+m.ranged.name+
      '. Sem alcance presumido; revisar classificação do ataque.']:[]),
-   ...(m.speed_ft===0?['Deslocamento 0 na fonte; mínimo tático 1 pé.']:[]),
+   ...(m.speed_ft===0?['Deslocamento 0 na fonte: criatura imóvel, não pode se mover.']:[]),
   ],
  });
 }
