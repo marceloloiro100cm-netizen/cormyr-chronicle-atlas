@@ -13,6 +13,7 @@ import {BattleV3LiveArena} from './BattleV3Live';
 import type {V3ScenarioOptions} from '@/lib/battle/v3/engine';
 import './battle-legibility.css';
 import './battle-ui-v4.css';
+import './battle-ruleset-selector.css';
 import type {CommanderId} from '@/lib/battle/v3/commanders';
 const PlayerGotGame=lazy(()=>import('./BattleGotGame').then(m=>({default:m.BattleGotGame})));
 const PlayerDndGame=lazy(()=>import('./BattleCrzLab').then(m=>({default:m.BattleCrzLab})));
