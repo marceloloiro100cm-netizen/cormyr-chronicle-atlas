@@ -997,13 +997,13 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
       <h2>Relatório de combate</h2>
       <table className="crz-report-table">
        <thead><tr><th>Força</th><th>Vivos</th><th>Baixas</th>
-        <th>Dano</th><th>Magias</th></tr></thead>
+        <th>Dano</th><th>{dndMode?'Retiradas':'Magias'}</th></tr></thead>
        <tbody>{(['attacker','defender'] as const).map(side=>{
         const data=report.sides[side];return <tr key={side}>
          <th scope="row">{SIDE[side].name}</th>
          <td>{data.survivors}/{data.initialCreatures}</td>
          <td>{data.casualties}</td><td>{data.inflictedDamage}</td>
-         <td>{data.spellsCast}</td>
+         <td>{dndMode?data.routedStacks:data.spellsCast}</td>
         </tr>;
        })}</tbody>
       </table>
@@ -1040,7 +1040,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
     <span>Clique num inimigo com contorno vermelho para atacar.</span>
    </footer>
    {frame.phase==='completed'&&<div className="crz-victory-banner" role="status">
-    Resultado: {frame.winner?SIDE[frame.winner].name:'Empate'} · {frame.resultReason}
+    Resultado: {frame.winner?SIDE[frame.winner].name:'Empate'} · {frame.resultReason==='withdrawal'?'retirada':frame.resultReason}
    </div>}
   </section>}
  </section>;
