@@ -38,7 +38,8 @@ describe('D&D V3: lote 5, implantação sobre barreiras para voadores',()=>{
   const rocky={...map,tiles:map.tiles.map(t=>
    t.q===1&&t.r===4?{...t,terrain:'rock' as const}:t)};
   expect(()=>crzValidateMap(rocky)).toThrow(/rochosa/);
-  expect(()=>crzValidateMap(rocky,true)).not.toThrow();
+  expect(()=>crzValidateMap(rocky,true)).toThrow(/rochosa/);
+  expect(()=>crzValidateMap(rocky,true,true)).not.toThrow();
   const drafts=[
    {id:'flyer',side:'attacker' as const,templateId:flying.id,
     count:1,training:'trained' as const,position:{q:1,r:4}},
