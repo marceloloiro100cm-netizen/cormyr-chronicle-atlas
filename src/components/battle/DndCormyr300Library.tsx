@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState,useRef,type ChangeEvent} from 'react';
 import {Button} from '@/components/ui/button';
 import {loadPrivateDndCormyr300} from '@/lib/crusade/dnd-cormyr-private-loader';
+import {DndCustomMonsterEditor} from './DndCustomMonsterEditor';
 import {saveDndCombatOverride,resetDndCombatOverride}
  from '@/lib/crusade/dnd-private-overrides';
 import {
@@ -117,7 +118,7 @@ export function DndCormyr300Library({
    if(!active||importedManually.current)return;
    setCatalog(remote);onCatalog(remote);
    setError('');
-   setMessage('300 criaturas carregadas automaticamente do banco privado do Narrador.');
+   setMessage(remote.monsters.length+' criaturas carregadas do banco privado do Narrador.');
   }).catch(cause=>{
    if(!active||cached||importedManually.current)return;
    setError(cause instanceof Error?cause.message:
@@ -137,13 +138,13 @@ export function DndCormyr300Library({
    saveDndCormyr300Local(parsed);
    setCatalog(parsed);onCatalog(parsed);
    setFilters({...DND_CORMYR_DEFAULT_FILTERS});setShown(PER_PAGE);
-   setError('');setMessage('Catálogo Cormyr importado e salvo neste navegador: 300 criaturas.');
+   setError('');setMessage('Catálogo Cormyr importado e salvo neste navegador: '+parsed.monsters.length+' criaturas.');
   }catch(cause){
    setError(cause instanceof Error?cause.message:'Arquivo do catálogo inválido.');
   }
  };
  return <section className="dnd-cormyr-library" aria-label="Biblioteca de 300 monstros Cormyr">
-  <h4>Biblioteca Cormyr · 300 criaturas de Faerûn</h4>
+  <h4>Biblioteca Cormyr · 300 criaturas-base + entradas próprias</h4>
   <p>O banco privado carrega automaticamente as 300 criaturas para o Narrador autenticado.
    Você também pode importar o arquivo <strong>bestiario_cormyr_faerun_300.json</strong>
    como alternativa local. O conteúdo não é publicado no repositório nem para jogadores.</p>
@@ -154,6 +155,12 @@ export function DndCormyr300Library({
   </label>
   {message&&<p role="status">{message}</p>}
   {error&&<p className="crz-alert" role="alert">{error}</p>}
+  <DndCustomMonsterEditor onSaved={async()=>{
+   const remote=await loadPrivateDndCormyr300();
+   importedManually.current=false;
+   setCatalog(remote);onCatalog(remote);
+   setError('');setMessage('Catálogo V2 atualizado: '+remote.monsters.length+' criaturas.');
+  }}/>
   {catalog&&<>
    <p className="dnd-cormyr-count" role="status">
     <strong>{catalog.monsters.length} criaturas carregadas</strong> ·
