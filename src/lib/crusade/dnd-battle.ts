@@ -1,16 +1,18 @@
 import {crzBuildCatalog} from './catalog';
 import type {CrzCreature} from './creatures';
-import {crzScenario} from './geometry';
+import {crzScenario,type CrzHex} from './geometry';
 import {crzPreset,crzRulesetHash} from './ruleset';
 import {crzPrepareBattle,type CrzReady} from './setup';
 import {crzPcg32} from './rng';
 import type {CrzTrainingOptions} from './training-demo';
 import {sharedToCrzMap} from '@/lib/battle/geometry/shared-square-map';
 import {DND_MILITARY_CREATURES,dndMilitaryTemplateId} from './dnd-military';
+import {DND_FEET_PER_SQUARE} from './dnd-mode';
 
 export type DndStackDraft=Readonly<{
  id:string;side:'attacker'|'defender';templateId:string;
  count:number;training:'green'|'trained'|'veteran'|'elite';
+ position?:CrzHex|undefined;
 }>;
 export const DND_DEFAULT_STACKS:readonly DndStackDraft[]=[
  {id:'army-infantry',side:'attacker',templateId:dndMilitaryTemplateId('infantry'),count:12,training:'trained'},
@@ -41,10 +43,12 @@ export function dndBattleReady(options:CrzTrainingOptions,
    throw new Error('D&D: quantidade de criaturas inválida.');
  }
  const rules=crzPreset('CRZ-5E','square');
+ if(rules.movement.feetPerHex!==DND_FEET_PER_SQUARE)
+  throw Error('D&D V3: escala do mapa divergente do contrato tático.');
  const input={
-  id:'dnd-training-v2-'+options.seed.toLowerCase()+(runId?'-'+runId.toLowerCase():''),
+  id:'dnd-training-v3-'+options.seed.toLowerCase()+(runId?'-'+runId.toLowerCase():''),
   name:'D&D · Batalha tática de criaturas e exércitos',
-  seed:options.seed,rulesetId:'CRZ-5E' as const,
+  seed:options.seed,rulesetId:'CRZ-5E' as const,simulationProfile:'dnd-v3' as const,
   rulesetHash:crzRulesetHash(rules),
   resolution:options.resolution,
   map:options.sharedMap?sharedToCrzMap(options.sharedMap):
@@ -53,6 +57,7 @@ export function dndBattleReady(options:CrzTrainingOptions,
    attacker:{side:'attacker' as const,name:'Exército atacante',
     stacks:drafts.filter(d=>d.side==='attacker').map(d=>({
      id:d.id,templateId:d.templateId,count:d.count,training:d.training,
+     ...(d.position?{position:d.position}:{}),
      source:(d.templateId.endsWith('|user')||d.templateId.endsWith('|local'))?
       {kind:'monster-library' as const,catalogHash:catalog.catalogHash}:
       {kind:'fictional' as const},
@@ -60,6 +65,7 @@ export function dndBattleReady(options:CrzTrainingOptions,
    defender:{side:'defender' as const,name:'Exército defensor',
     stacks:drafts.filter(d=>d.side==='defender').map(d=>({
      id:d.id,templateId:d.templateId,count:d.count,training:d.training,
+     ...(d.position?{position:d.position}:{}),
      source:(d.templateId.endsWith('|user')||d.templateId.endsWith('|local'))?
       {kind:'monster-library' as const,catalogHash:catalog.catalogHash}:
       {kind:'fictional' as const},
@@ -82,5 +88,7 @@ export function dndBattleReady(options:CrzTrainingOptions,
  // corresponde exatamente à seed original. A iniciativa é determinística
  // e persistida em stacks/replay, mas não consome esse fluxo de combate.
  return {...ready,stacks,
-  warnings:[...ready.warnings,'Iniciativa D&D: d20 + DES + treino, uma vez por encontro; perfis militares são traduções digitais originais.']};
+  warnings:[...ready.warnings,
+   'D&D V3: quadrado = 10 pés; diagonal = 15 pés; adjacência = um quadrado; ataques à distância sem teto, respeitando linha de visão.',
+   'Iniciativa D&D: d20 + DES + treino, uma vez por encontro; perfis militares são traduções digitais originais.']};
 }

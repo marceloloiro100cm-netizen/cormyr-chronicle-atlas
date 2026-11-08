@@ -6,7 +6,8 @@ import {BattleSquareLegend} from './BattleSquareLegend';
 import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
-import {crzHexKey,crzGridToOffset,crzScenario,type CrzHex,type CrzSide,type CrzMap}
+import {crzHexKey,crzGridToOffset,crzScenario,crzFootprintCells,
+ type CrzHex,type CrzSide,type CrzMap}
  from '@/lib/crusade/geometry';
 import {crzLegalCommands,type CrzCommand} from '@/lib/crusade/turns';
 import {crzCapable,crzOrder,type CrzBattleStack,type CrzBattleState,
@@ -23,6 +24,7 @@ import {CRZ_TRAINING_DEFAULTS,CRZ_TRAINING_SCENARIOS,
 import type {CrzSpellId} from '@/lib/crusade/setup';
 import type {CrzCreature} from '@/lib/crusade/creatures';
 import {DndCormyr300Library} from './DndCormyr300Library';
+import {DndDeploymentGrid} from './DndDeploymentGrid';
 import {dndCormyrCreature,type DndCormyrCatalog} from '@/lib/crusade/dnd-cormyr-300';
 import {DND_MILITARY_MAPPING,dndMilitaryTemplateId,dndMilitaryType}
  from '@/lib/crusade/dnd-military';
@@ -33,7 +35,7 @@ import {DND_DEFAULT_STACKS,dndBattleReady,type DndStackDraft}
 import {DND_MILITARY_CREATURES} from '@/lib/crusade/dnd-military';
 import {saveDndBattle,listDndBattles,loadDndBattle,
  type DndSavedBattle} from '@/lib/crusade/dnd-private-sessions';
-import {isDndReplay,isDndBattle} from '@/lib/crusade/dnd-mode';
+import {isDndReplay,isDndBattle,isDndV3} from '@/lib/crusade/dnd-mode';
 import {initialGeneralProfile,awardGeneralTraining,
  type TrainingGeneralProfile} from '@/lib/crusade/general-progression';
 import {readGeneralTrainingProfile,saveGeneralTrainingProfile}
@@ -108,8 +110,11 @@ function eventLabel(event:CrzEvent):string{
  const extra='unitId' in event?event.unitId:
   'leaderId' in event?event.leaderId:'';
  const damage='appliedDamage' in event?' · '+event.appliedDamage+' PV':'';
+ const result=event.type==='ATTACK_RESOLVED'||event.type==='RETALIATION_RESOLVED'?
+  ' · '+event.hits+'/'+event.attacks+' acertos'+
+  (event.crits?' · '+event.crits+' críticos':''):''; 
  return '#'+event.seq+' '+(names[event.type]??event.type)+
-  (extra?' · '+extra:'')+damage;
+  (extra?' · '+extra:'')+result+damage;
 }
 
 export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,onTile}:{
@@ -126,6 +131,10 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
  const targets=new Set(attacks);
  const occupied=new Map(state.stacks.filter(crzCapable)
   .map(s=>[crzHexKey(s.position),s]));
+ const footprints=new Map<string,CrzBattleStack>(isDndV3(state)?
+  state.stacks.filter(crzCapable).flatMap(stack=>
+   crzFootprintCells(state.map,stack.position,stack.size).map(h=>
+    [crzHexKey(h),stack] as const)):[...occupied]);
  const square=state.map.grid==='square';
  const width=square?SQUARE_STEP*(state.map.width+1.5):XSTEP*(state.map.width+1)+58;
  const height=square?SQUARE_STEP*(state.map.height+1.5):SIZE*(1.5*(state.map.height-1)+3.4);
@@ -147,17 +156,18 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
   <svg className="crz-map" viewBox={`0 0 ${width} ${height}`}
    style={{width:zoom+'%'}} role="group" aria-label={`Mapa CRZ ${state.map.width} por ${state.map.height}`}>
    {state.map.tiles.map(tile=>{
-    const key=crzHexKey(tile),{x,y}=pixel(state.map,tile),unit=occupied.get(key),objective=objectivesByHex.get(key);
+    const key=crzHexKey(tile),{x,y}=pixel(state.map,tile),
+     unit=occupied.get(key),covered=footprints.get(key),objective=objectivesByHex.get(key);
     const isMove=movable.has(key);
-    const isAttack=Boolean(unit&&targets.has(unit.id));
-    const active=unit?.id===state.activeStackId,selected=unit?.id===selectedId;
-    const hovered=unit?.id===hoveredId;
+    const isAttack=Boolean(covered&&targets.has(covered.id));
+    const active=covered?.id===state.activeStackId,selected=covered?.id===selectedId;
+    const hovered=covered?.id===hoveredId;
     const label=(isMove?'Mover para ':isAttack?'Atacar ':'Inspecionar ')+
-     (unit?unit.name+' · ':'')+TERRAIN[tile.terrain]!.name+
+     (covered?covered.name+' · ':'')+TERRAIN[tile.terrain]!.name+
      ' ('+crzGridToOffset(state.map,tile).column+','+
        crzGridToOffset(state.map,tile).row+')'+
        (objective?' · Marco: '+objective.title:'');
-    const press=()=>onTile({q:tile.q,r:tile.r});
+    const press=()=>onTile(covered?.position??{q:tile.q,r:tile.r});
     const keyPress=(event:KeyboardEvent<SVGGElement>)=>{
      if(event.key==='Enter'||event.key===' '){event.preventDefault();press();return;}
      const direction:Record<string,CrzHex>={
@@ -182,6 +192,12 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
        height={SQUARE_STEP} fill={TERRAIN[tile.terrain]!.fill}/>:
       <polygon data-crz-cell-shape="hex" points={HEX_POINTS} transform={`translate(${x} ${y})`}
        fill={TERRAIN[tile.terrain]!.fill}/>}
+      {square&&covered&&!unit&&<rect data-dnd-footprint={covered.id}
+       x={x-SQUARE_STEP/2} y={y-SQUARE_STEP/2}
+       width={SQUARE_STEP} height={SQUARE_STEP}
+       fill={active?'rgba(255,224,153,.25)':'rgba(255,224,153,.15)'}
+       stroke={isAttack?'#ff6d54':'#c6aa70'} strokeWidth={isAttack?3:1.5}
+       pointerEvents="none"/>}
       {isMove&&(square?<rect className="crz-valid-overlay"
        x={x-SQUARE_STEP/2} y={y-SQUARE_STEP/2} width={SQUARE_STEP} height={SQUARE_STEP}
        fill="rgba(99,255,116,.24)" pointerEvents="none"/>:
@@ -252,11 +268,18 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const [error,setError]=useState('');
  const [showImport,setShowImport]=useState(false);
  const [dndRoster,setDndRoster]=useState<DndStackDraft[]>([...DND_DEFAULT_STACKS]);
+ const [placingStackId,setPlacingStackId]=useState(DND_DEFAULT_STACKS[0]!.id);
  const [dndMonsters,setDndMonsters]=useState<CrzCreature[]>([]);
  const [dndCormyr300,setDndCormyr300]=useState<DndCormyrCatalog|null>(null);
  const dndAllMonsters=useMemo(()=>[...dndMonsters,
   ...(dndCormyr300?.monsters.map(dndCormyrCreature)??[])],
   [dndMonsters,dndCormyr300]);
+ const dndDeploymentMap=useMemo(()=>{
+  if(!dndMode)return null;
+  try{return options.sharedMap?sharedToCrzMap(options.sharedMap):
+   crzScenario(options.scenario,options.width,'square');}
+  catch{return null;}
+ },[dndMode,options.sharedMap,options.scenario,options.width]);
  const [dndImportedStatus,setDndImportedStatus]=useState('');
  const [adminCount,setAdminCount]=useState(1);
  const [reinforceTemplate,setReinforceTemplate]=useState(dndMilitaryTemplateId('infantry'));
@@ -302,7 +325,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    (side==='attacker'?'atacante.':'defensor.'));
  };
  const changeDndStack=(id:string,part:Partial<DndStackDraft>)=>{
-  setDndRoster(current=>current.map(x=>x.id===id?{...x,...part}:x));
+  setDndRoster(current=>current.map(x=>x.id===id?{...x,...part,
+   ...(part.templateId?{position:undefined}:{})}:x));
  };
  useEffect(()=>{setGeneralProfile(readGeneralTrainingProfile());},[]);
  const awardProgress=()=>{
@@ -644,6 +668,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
          </optgroup>}
         </select>
        </label>
+       {stack.position&&<small className="battle-note">Posição: {stack.position.q}, {stack.position.r}</small>}
        <label>Quantidade na pilha
         <input type="number" min={1} max={1000} step={1} value={stack.count}
          aria-label={'Quantidade D&D '+stack.id}
@@ -666,6 +691,11 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
        disabled={dndRoster.filter(x=>x.side===side).length>=7}
        onClick={()=>addDndStack(side)}>Adicionar pilha {side==='attacker'?'atacante':'defensora'}</Button>
      </section>)}
+     {dndDeploymentMap&&<DndDeploymentGrid map={dndDeploymentMap}
+      drafts={dndRoster} creatures={[...DND_MILITARY_CREATURES,...dndAllMonsters]}
+      selectedId={dndRoster.some(x=>x.id===placingStackId)?placingStackId:dndRoster[0]?.id??''}
+      onSelected={setPlacingStackId}
+      onPlace={(id,position)=>changeDndStack(id,{position})}/>}
      <details className="dnd-conversion">
       <summary>Ver de/para das 17 unidades de Cormyr para D&D</summary>
       <p>PV e atributos são valores <strong>propostos para o simulador</strong>, não uma
@@ -681,7 +711,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
         <td>{x.unavailableReason?'—':(x.initiativeModifier>=0?'+':'')+x.initiativeModifier}</td>
         <td>{x.unavailableReason?'—':x.speedFt+' pés'}</td>
         <td>{x.unavailableReason?'—':x.rangedToHit===undefined?'—':
-         '+'+x.rangedToHit+' / '+x.rangedRangeFt+' pés'}</td>
+         '+'+x.rangedToHit+' · à distância'}</td>
         <td>{x.unavailableReason??x.individualsPerOriginalUnit+' por unidade GOT'}</td>
        </tr>)}</tbody>
       </table></div>
@@ -697,8 +727,11 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
        <option value="PTE-2.0-compat">PTE-2.0-compat (esperado)</option>
       </select>
      </label>}
-     {dndMode&&<p className="battle-note">Motor CRZ-5E fixo neste modo; não substitui
-      regras completas de D&D 5e e não altera os outros sistemas.</p>}
+     {dndMode&&<p className="battle-note">D&D V3: cada quadrado equivale a 10 pés
+      (diagonais custam 15 pés). O ataque corpo a corpo exige adjacência;
+      ataques à distância não têm limite numérico no mapa, mas exigem linha de visão.
+      O voo atravessa terreno difícil e barreiras; tamanhos Grande/Enorme/Gargantuesco
+      ocupam áreas de 2×2/3×3/4×4. Regras próprias, não D&D 5e integral.</p>}
      <label>Cenário
       <select value={options.scenario} aria-label="Cenário CRZ"
        onChange={e=>setOptions(o=>({...o,scenario:e.target.value as CrzTrainingOptions['scenario']}))}>
@@ -754,7 +787,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
     <div className="crz-arena-heading">
      <span className="crz-eyebrow">CORMYR · ARENA DE TREINAMENTO</span>
      <h1>{dndMode?'Batalha D&D':'Cruzada'} <span>{dndMode?'d20 simplificado':'CRZ-1.0'}</span></h1>
-     <p>Preset: {frame.rulesetId} · {dndMode?'Iniciativa d20 por encontro · criaturas empilhadas':
+     <p>Preset: {frame.rulesetId} · {dndMode?'V3 · quadrados de 10 pés · à distância sem teto · iniciativa d20':
      'General Tillet nível '+(frame.leaders.attacker?.level??'—')+' (treino)'}</p>
      <p>Rodada {frame.round} · {frame.phase==='completed'?
       'Batalha encerrada':active?'Turno de '+active.name:'Preparando turno'} ·
@@ -914,7 +947,9 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      </>}
      <div className="crz-command-footer">
       <h3>Decisão do turno</h3>
-      <p className="battle-unified-action-hint">Mover: toque no quadrado verde. Atacar: selecione o inimigo destacado.</p>
+      <p className="battle-unified-action-hint">{dndMode?
+       'V3: ataque simples e um movimento, em qualquer ordem. Após atacar, mova ou encerre a ativação. À distância sem teto, com linha de visão.':
+       'Mover: toque no quadrado verde. Atacar: selecione o inimigo destacado.'}</p>
       {aiTurn&&<Button variant="outline" onClick={()=>{
        if(!session)return;
        try{

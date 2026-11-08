@@ -1,6 +1,7 @@
 import {supabase} from '@/integrations/supabase/client';
 import {parseDndCormyr300,type DndCormyrCatalog} from './dnd-cormyr-300';
 import {loadDndCombatOverrides} from './dnd-private-overrides';
+import {loadDndCustomMonsters} from './dnd-private-custom';
 
 /** Carrega o catálogo do Supabase somente no navegador com sessão do Narrador.
  * RLS no banco aplica is_campaign_admin() AND campaign_access_active().
@@ -17,13 +18,13 @@ export async function loadPrivateDndCormyr300():Promise<DndCormyrCatalog>{
  if(role.error||active.error||role.data!==true||active.data!==true)
   throw Error('O bestiário privado exige sessão do Narrador autorizada.');
  const result=await db.from('battle_dnd_cormyr_monsters')
-  .select('id,name,group_name,source,challenge_rating,hp,ac,size,speed_ft,melee,ranged')
-  .order('id').limit(300);
+  .select('id,name,group_name,source,challenge_rating,hp,ac,size,speed_ft,melee,ranged,catalog_version')
+  .order('id').limit(500);
  if(result.error)
   throw Error('O bestiário privado não pôde ser consultado.');
  const records=result.data as unknown[];
  if(!Array.isArray(records)||records.length!==300)
-  throw Error('O catálogo privado está incompleto: são esperadas 300 criaturas.');
+  throw Error('O catálogo privado de origem está incompleto: são esperadas 300 criaturas.');
  const monsters=records.map(record=>{
   if(!record||typeof record!=='object')throw Error('Registro de criatura inválido.');
   const m=record as Record<string,unknown>;
@@ -34,10 +35,19 @@ export async function loadPrivateDndCormyr300():Promise<DndCormyrCatalog>{
    melee:m['melee'],ranged:m['ranged'],special_abilities:[],
   };
  });
+ // Novas entradas ficam em tabela separada; a seleção original continua imutável.
+ const extras=await loadDndCustomMonsters();
+ const known=new Set(monsters.map(m=>String(m.id)));
+ for(const extra of extras){
+  if(known.has(extra.id))throw Error('ID de criatura extra duplica a fonte original.');
+  known.add(extra.id);
+ }
+ const combined=[...monsters,...extras];
  // Revalidação estrita no cliente, sem confiar em conteúdos de rede.
  const base=parseDndCormyr300(JSON.stringify({
-  metadata:{catalog:'Cormyr · 300 criaturas D&D para Faerûn',version:1,count:300},
-  monsters,
+  metadata:{catalog:'Cormyr · bestiário privado de Faerûn',
+   version:extras.length?2:1,count:combined.length},
+  monsters:combined,
  }));
  return loadDndCombatOverrides(base);
 }

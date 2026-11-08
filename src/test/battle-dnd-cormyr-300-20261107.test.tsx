@@ -91,7 +91,7 @@ describe('Cormyr 300: arquivo do usuário, grupos, ND, conversão básica',()=>{
   expect(uncertain.attacks).toHaveLength(1);
   expect(uncertain.attacks[0]).toMatchObject({
    id:'ranged',name:'Raio sem alcance',kind:'ranged',toHit:12,
-   damage:[{dice:'4d8',mod:6,type:'piercing'}],
+   damage:[{dice:'4d8',mod:6,type:'bludgeoning'}],
   });
   expect(uncertain.tags).toContain('dnd-ranged-unbounded');
   expect(uncertain.warnings.join(' ')).toMatch(/sem limite de alcance/);

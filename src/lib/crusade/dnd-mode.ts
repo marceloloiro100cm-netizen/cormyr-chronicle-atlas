@@ -1,6 +1,16 @@
 /** Regras exclusivas do simulador D&D, sem alterar os outros presets CRZ. */
-export const isDndBattle=(state:Readonly<{id:string;rulesetId:string}>):boolean=>
- state.rulesetId==='CRZ-5E'&&state.id.startsWith('dnd-training-v2-');
+export type DndSimulationProfile='dnd-v3';
+/** Escala da regra da casa: cada quadrado representa dez pés.
+ * Diagonal custa 1,5 células; ataque adjacente = célula vizinha.
+ * Ataque à distância não tem alcance numérico: exige linha de visão.
+ */
+export const DND_FEET_PER_SQUARE=10 as const;
+export const isDndV3=(state:Readonly<{rulesetId:string;simulationProfile?:string|undefined}>):boolean=>
+ state.rulesetId==='CRZ-5E'&&state.simulationProfile==='dnd-v3';
+export const isDndBattle=(state:Readonly<{id:string;rulesetId:string;
+ simulationProfile?:string|undefined}>):boolean=>
+ state.rulesetId==='CRZ-5E'&&
+ (state.id.startsWith('dnd-training-v2-')||isDndV3(state));
 
 /** Reconhece arquivos antigos sem reinterpretar a matemática/replay V1. */
 export const isDndReplay=(state:Readonly<{id:string;rulesetId:string}>):boolean=>
