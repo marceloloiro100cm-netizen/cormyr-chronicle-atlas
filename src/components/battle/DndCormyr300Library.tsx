@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useState,useRef,type ChangeEvent} from 'react';
 import {Button} from '@/components/ui/button';
-import {loadBattleDndCormyr300} from '@/lib/crusade/dnd-cormyr.functions';
+import {loadPrivateDndCormyr300} from '@/lib/crusade/dnd-cormyr.client';
 import {
  DND_CORMYR_300_MAX_BYTES,
  DND_CORMYR_DEFAULT_FILTERS,
@@ -44,7 +44,7 @@ export function DndCormyr300Library({
   // permanece na função de servidor com autenticação e RLS Supabase.
   if(import.meta.env.MODE==='test')return;
   let active=true;
-  void loadBattleDndCormyr300().then(remote=>{
+  void loadPrivateDndCormyr300().then(remote=>{
    if(!active||importedManually.current)return;
    setCatalog(remote);onCatalog(remote);
    setError('');
