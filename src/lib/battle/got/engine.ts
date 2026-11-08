@@ -1,6 +1,6 @@
 import {criticalFailure,degreesOfSuccess,rollDice,seedFromText} from './dice';
 import type {WarBattle,WarCommander,WarCondition,WarEvent,WarOrder,WarOrderResult,WarPosition,WarSide,WarUnit} from './types';
-import {terrainAt,terrainEffect,movementSlow,visibilityPenalty,weatherAttackModifier,terrainHighGround,terrainCoverBonus,terrainMoveCost} from './terrain';
+import {terrainAt,terrainEffect,movementSlow,visibilityPenalty,weatherAttackModifier,terrainHighGround,terrainCoverBonus} from './terrain';
 import type {WarTerrainTile,WarWeather,WarVisibility} from './terrain';
 import {WAR_FORMATIONS,formationAllowed,formationMovement,angleAttackBonus,attackAngle} from './formations';
 import {WAR_SIEGE_CATALOG,warSiegeDamage,warSiegeReloadRemaining,warSiegeTargetInRange} from './siege';
@@ -143,41 +143,59 @@ export function createWarBattle(input:{
   events:[],winner:null};
  return sideInitiative(initial);
 }
+/** Tabela 10-3: movimento lento reduz o MOVIMENTO da ordem em 10 m,
+ * muito lento em 20 m. O penalizador de terreno é aplicado uma vez pela
+ * maior restrição atravessada, não cobrado novamente a cada quadrado.
+ * Dijkstra só conclui a rota ao retirar o destino da fila ordenada;
+ * retornar na primeira descoberta escolhia rotas mais caras.
+ */
 function movePath(battle:WarBattle,unit:WarUnit,to:WarPosition,sprint:boolean,maxCells:number):WarPosition[]{
  if(!inBounds(battle,to))throw new Error('Destino fora do campo de batalha.');
+ if(sprint&&unit.naval)throw new Error('Navios de guerra não podem correr.');
  if(unit.position.x===to.x&&unit.position.y===to.y)return [];
  const occupied=new Set(battle.units.filter(u=>u.id!==unit.id&&onBoard(u))
-   .map(u=>u.position.x+':'+u.position.y));
+  .map(u=>u.position.x+':'+u.position.y));
  const directX=to.x-unit.position.x,directY=to.y-unit.position.y;
- if(sprint&&(directX!==0&&directY!==0))throw new Error('Corrida exige deslocamento em linha reta.');
- const key=(p:WarPosition)=>p.x+':'+p.y;
- const queue:{pos:WarPosition;path:WarPosition[];cost:number}[]=[{pos:unit.position,path:[],cost:0}];
- const seen=new Map([[key(unit.position),0]]);
- while(queue.length>0){
+ if(sprint&&directX!==0&&directY!==0)
+  throw new Error('Corrida exige deslocamento em linha reta.');
+ const slowAt=(p:WarPosition)=>movementSlow(terrainAt(battle.tiles,p),
+  battle.visibility,battle.weather);
+ const startSlow=slowAt(unit.position);
+ const key=(p:WarPosition,slow:number)=>p.x+':'+p.y+':'+slow;
+ type PathStep={pos:WarPosition;path:WarPosition[];cost:number;maxSlow:number};
+ const queue:PathStep[]=[{pos:unit.position,path:[],cost:0,maxSlow:startSlow}];
+ const seen=new Map([[key(unit.position,startSlow),0]]);
+ while(queue.length){
   queue.sort((a,b)=>a.cost-b.cost);
   const current=queue.shift()!;
-  const {pos,path,cost}=current;
+  const {pos,path,cost,maxSlow}=current;
+  if(cost>(seen.get(key(pos,maxSlow))??Infinity))continue;
+  if(pos.x===to.x&&pos.y===to.y)return path;
   if(cost>=maxCells)continue;
   for(const [dx,dy] of ([[1,0],[-1,0],[0,1],[0,-1]] as const)){
-   const step={x:pos.x+dx,y:pos.y+dy},id=key(step);
-   if(!inBounds(battle,step)||occupied.has(id))continue;
+   const step={x:pos.x+dx,y:pos.y+dy};
+   if(!inBounds(battle,step)||occupied.has(step.x+':'+step.y))continue;
    const tile=terrainAt(battle.tiles,step),effect=terrainEffect(tile);
-   if(effect.blocked||(effect.water&&!unit.naval)||(unit.mounted&&effect.noCavalry))continue;
-   if(unit.naval&&!effect.naval&&tile.terrain!=='coast')continue;
-   if(sprint&&(directX!==0&&step.y!==unit.position.y||directY!==0&&step.x!==unit.position.x))continue;
-   const movement=terrainMoveCost(tile,battle.visibility,battle.weather);
-   const nextCost=cost+movement;
-   if(nextCost>maxCells||(seen.get(id)??Infinity)<=nextCost)continue;
+   // Rios e lagos bloqueiam soldados terrestres, mas permitem navios.
+   if((effect.blocked&&!(unit.naval&&effect.naval))||
+    (effect.water&&!unit.naval)||(unit.mounted&&effect.noCavalry))continue;
+   if(unit.naval&&!effect.naval)continue;
+   if(sprint&&(directX!==0&&step.y!==unit.position.y||
+    directY!==0&&step.x!==unit.position.x))continue;
+   const nextSlow=Math.max(maxSlow,slowAt(step));
    const candidate=[...path,step];
-   if(step.x===to.x&&step.y===to.y)return candidate;
-   seen.set(id,nextCost);queue.push({pos:step,path:candidate,cost:nextCost});
+   const nextCost=candidate.length+nextSlow;
+   const stepKey=key(step,nextSlow);
+   if(nextCost>maxCells||(seen.get(stepKey)??Infinity)<=nextCost)continue;
+   seen.set(stepKey,nextCost);
+   queue.push({pos:step,path:candidate,cost:nextCost,maxSlow:nextSlow});
   }
  }
  throw new Error('Destino inacessível no limite de movimento ou ocupado.');
 }
 function movementCells(unit:WarUnit,sprint:boolean):number{
  const base=Math.max(0,(unit.naval?60:unit.mounted?80:40)-unit.bulk*10);
- const equipped=warFieldMovementMetres(unit,sprint?base*4:base);
+ const equipped=warFieldMovementMetres(unit,sprint&&!unit.naval?base*4:base);
  return Math.floor(equipped/10);
 }
 function availableMovementMetres(battle:WarBattle,unit:WarUnit,sprint:boolean):number{
@@ -199,8 +217,11 @@ export function previewWarMovement(
  const budgetMetres=availableMovementMetres(battle,unit,sprint);
  try{
   const path=movePath(battle,unit,to,sprint,Math.floor(budgetMetres/10));
-  const costMetres=path.reduce((sum,p)=>sum+
-   terrainMoveCost(terrainAt(battle.tiles,p),battle.visibility,battle.weather)*10,0);
+  const slowest=path.length?Math.max(
+   movementSlow(terrainAt(battle.tiles,unit.position),battle.visibility,battle.weather),
+   ...path.map(p=>movementSlow(terrainAt(battle.tiles,p),battle.visibility,battle.weather))
+  ):0;
+  const costMetres=path.length*10+slowest*10;
   return {legal:true,path,distanceMetres:path.length*10,costMetres,budgetMetres,
    reason:path.length?'Rota disponível.':'Unidade já ocupa este quadrado.'};
  }catch(e){
