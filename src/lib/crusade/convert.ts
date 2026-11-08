@@ -150,8 +150,9 @@ export function crzPrepareStack(args:{
   hpPerCreature,ruleset});
  const movementFt=Math.max(template.speedFt.walk,
   template.flags.flying?(template.speedFt.fly??0):0);
- const movementHex=crzClamp(Math.round(movementFt/ruleset.movement.feetPerHex),
-  1,ruleset.movement.maxBudget);
+ const movementHex=template.tags.includes('immobile')&&movementFt===0?0:
+  crzClamp(Math.round(movementFt/ruleset.movement.feetPerHex),
+   1,ruleset.movement.maxBudget);
  const atkMod=train.attack+(mods.attack??0)+leader.attackBonus;
  const acBase=template.ac+train.ac+(mods.ac??0);
  const initiative=crzSafe(2*movementHex+template.abilityMods.dex+

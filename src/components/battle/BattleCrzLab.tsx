@@ -21,6 +21,15 @@ import {CRZ_TRAINING_DEFAULTS,CRZ_TRAINING_SCENARIOS,
  crzTrainingReady,type CrzTrainingOptions}
  from '@/lib/crusade/training-demo';
 import type {CrzSpellId} from '@/lib/crusade/setup';
+import type {CrzCreature} from '@/lib/crusade/creatures';
+import {DndCormyr300Library} from './DndCormyr300Library';
+import {dndCormyrCreature,type DndCormyrCatalog} from '@/lib/crusade/dnd-cormyr-300';
+import {DND_MILITARY_MAPPING,dndMilitaryTemplateId,dndMilitaryType}
+ from '@/lib/crusade/dnd-military';
+import {DND_MONSTER_FILE_MAX_BYTES,DND_MONSTER_CSV_EXAMPLE,parseDndMonsterTable}
+ from '@/lib/crusade/dnd-import';
+import {DND_DEFAULT_STACKS,dndBattleReady,type DndStackDraft}
+ from '@/lib/crusade/dnd-battle';
 import {initialGeneralProfile,awardGeneralTraining,
  type TrainingGeneralProfile} from '@/lib/crusade/general-progression';
 import {readGeneralTrainingProfile,saveGeneralTrainingProfile}
@@ -31,6 +40,7 @@ import './crz-lab.css';
 import './battle-legibility.css';
 import './battle-ui-v4.css';
 import './battle-arena-unified.css';
+import './dnd-lab.css';
 
 type SidePanel='actions'|'objectives'|'report'|'replay';
 const SPELL_LABELS:Readonly<Record<string,string>>={
@@ -49,7 +59,7 @@ export const CRZ_MODEL_MILITARY_TYPE:Readonly<Record<string,string>>={
 };
 export const crzUnitMilitarySymbol=(templateId:string):string|undefined=>
  militaryUnitSymbolSrc(templateId)||
- militaryUnitSymbolSrc(CRZ_MODEL_MILITARY_TYPE[templateId]);
+ militaryUnitSymbolSrc(CRZ_MODEL_MILITARY_TYPE[templateId]??dndMilitaryType(templateId));
 
 const TERRAIN:Readonly<Record<string,{name:string;fill:string}>>={
  plain:{name:SQUARE_TERRAIN_PRESENTATION.plain.name,fill:SQUARE_TERRAIN_PRESENTATION.plain.color},
@@ -223,7 +233,7 @@ const spellCost:Partial<Record<CrzSpellId,number>>={
 export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'dnd'}){
  const dndMode=mode==='dnd';
  const [options,setOptions]=useState<CrzTrainingOptions>({...CRZ_TRAINING_DEFAULTS,
-  grid:'square',preset:'CRZ-5E'});
+  grid:'square',preset:'CRZ-5E',resolution:dndMode?'rolled':'expected'});
  const [session,setSession]=useState<CrzReplaySession|null>(null);
  const [expanded,setExpanded]=useState(false);
  const [replayStep,setReplayStep]=useState<number|null>(null);
@@ -235,8 +245,51 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const [message,setMessage]=useState('');
  const [error,setError]=useState('');
  const [showImport,setShowImport]=useState(false);
+ const [dndRoster,setDndRoster]=useState<DndStackDraft[]>([...DND_DEFAULT_STACKS]);
+ const [dndMonsters,setDndMonsters]=useState<CrzCreature[]>([]);
+ const [dndCormyr300,setDndCormyr300]=useState<DndCormyrCatalog|null>(null);
+ const dndAllMonsters=useMemo(()=>[...dndMonsters,
+  ...(dndCormyr300?.monsters.map(dndCormyrCreature)??[])],
+  [dndMonsters,dndCormyr300]);
+ const [dndImportedStatus,setDndImportedStatus]=useState('');
  const [highContrast,setHighContrast]=useState(false);
  const [generalProfile,setGeneralProfile]=useState<TrainingGeneralProfile>(initialGeneralProfile);
+ const importDndMonsters=async(file:File)=>{
+  try{
+   if(file.size>DND_MONSTER_FILE_MAX_BYTES)throw new Error('Tabela maior que 1 MB.');
+   const parsed=parseDndMonsterTable(await file.text());
+   setDndMonsters([...parsed.creatures]);
+   setDndImportedStatus(parsed.creatures.length+' monstros importados para uso local.');
+   setError('');setMessage('Catálogo de monstros validado. Escolha-os nas pilhas.');
+  }catch(error){setError(error instanceof Error?error.message:'Tabela de monstros inválida.');}
+ };
+ const addDndStack=(side:DndStackDraft['side'])=>{
+  setDndRoster(current=>{
+   if(current.filter(x=>x.side===side).length>=7)return current;
+   let number=1;while(current.some(x=>x.id===side+'-stack-'+number))number++;
+   return [...current,{id:side+'-stack-'+number,side,
+    templateId:dndMilitaryTemplateId('infantry'),count:10,training:'trained'}];
+  });
+ };
+ const addDndCatalogStack=(templateId:string,_name:string,
+  side:DndStackDraft['side'],count:number)=>{
+  const template=dndAllMonsters.find(m=>m.id===templateId);
+  if(!template){setError('Criatura importada não encontrada no catálogo.');return;}
+  const limit=({T:1000,S:1000,M:1000,L:400,H:100,G:25} as const)[template.size];
+  if(dndRoster.filter(d=>d.side===side).length>=7){
+   setError('D&D: limite de sete pilhas para este lado.');return;
+  }
+  let n=1;while(dndRoster.some(d=>d.id===side+'-catalog-'+n))n++;
+  const amount=Math.max(1,Math.min(limit,count));
+  setDndRoster(current=>[...current,{
+   id:side+'-catalog-'+n,side,templateId,count:amount,training:'trained'}]);
+  setError('');
+  setMessage(template.name+': '+amount+' criatura(s) adicionada(s) ao lado '+
+   (side==='attacker'?'atacante.':'defensor.'));
+ };
+ const changeDndStack=(id:string,part:Partial<DndStackDraft>)=>{
+  setDndRoster(current=>current.map(x=>x.id===id?{...x,...part}:x));
+ };
  useEffect(()=>{setGeneralProfile(readGeneralTrainingProfile());},[]);
  const awardProgress=()=>{
   if(!session)return;
@@ -293,14 +346,17 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  };
  const begin=()=>{
   try{
-   const initial=crzReplayBegin(crzTrainingReady({...options,
-    grid:'square',
-    ...(dndMode?{preset:'CRZ-5E' as const}:options.preset?{preset:options.preset}:{}),
-    generalLevel:generalProfile.level}));
+   const ready=dndMode?dndBattleReady({...options,grid:'square',
+    preset:'CRZ-5E'},dndRoster,dndAllMonsters):
+    crzTrainingReady({...options,grid:'square',
+     ...(options.preset?{preset:options.preset}:{}),
+     generalLevel:generalProfile.level});
+   const initial=crzReplayBegin(ready);
    const next=crzTrainingAdvanceAi(initial);
    setSession(next);setSelectedId(next.state.activeStackId);
    setPanel('actions');setReplayStep(null);setError('');setExpanded(true);
-   setMessage('Treino fictício iniciado. Nenhuma ficha oficial será alterada.');
+   setMessage(dndMode?'Batalha D&D iniciada com d20 e pilhas locais. Nenhuma ficha oficial será alterada.':
+    'Treino fictício iniciado. Nenhuma ficha oficial será alterada.');
   }catch(cause){
    setError(cause instanceof Error?cause.message:'Não foi possível iniciar o treino.');
   }
@@ -449,6 +505,102 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      {options.sharedMap&&<p role="status">Mapa compartilhado em uso:
       {options.sharedMap.name} · {options.sharedMap.width} × {options.sharedMap.height}.</p>}
     </section>
+    {dndMode&&<section className="dnd-config" aria-label="Preparação de exércitos D&D">
+     <h3>Monstros e unidades militares · D&D</h3>
+     <p>Escolha os perfis e a quantidade de criaturas por pilha. Cada pilha reúne
+      criaturas do mesmo tipo e acompanha PV, CA, ataques e baixas. A importação é
+      local: não altera unidades, fichas ou recursos das Casas.</p>
+     <label className="dnd-import">
+      Importar tabela de monstros (CSV ou JSON, até 1 MB)
+      <input type="file" accept=".csv,text/csv,.json,application/json"
+       aria-label="Importar tabela de monstros D&D"
+       onChange={event=>{
+        const file=event.target.files?.[0];event.target.value='';
+        if(file)void importDndMonsters(file);
+       }}/>
+     </label>
+     <Button type="button" variant="outline" onClick={()=>{
+      const blob=new Blob([DND_MONSTER_CSV_EXAMPLE],{type:'text/csv;charset=utf-8'});
+      const url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download='modelo-monstros-dnd-cormyr.csv';a.click();
+      URL.revokeObjectURL(url);
+     }}>Modelo CSV de monstros</Button>
+     <p className="battle-note">Importe fichas originais ou material com autorização documentada.
+      São obrigatórios a origem, licença, atribuição e comprovação de uso.
+      Ataques especiais, magias e ações lendárias não são convertidos automaticamente.</p>
+     {dndImportedStatus&&<p role="status">{dndImportedStatus}</p>}
+     <DndCormyr300Library onCatalog={setDndCormyr300}
+      onAdd={addDndCatalogStack}
+      sideCounts={{
+       attacker:dndRoster.filter(s=>s.side==='attacker').length,
+       defender:dndRoster.filter(s=>s.side==='defender').length,
+      }}/>
+     {(['attacker','defender'] as const).map(side=><section key={side}
+      className="dnd-roster-side" aria-label={'Pilha D&D '+(side==='attacker'?'atacante':'defensora')}>
+      <h4>{side==='attacker'?'Exército atacante':'Exército defensor'}</h4>
+      {dndRoster.filter(x=>x.side===side).map(stack=><div className="dnd-stack-row" key={stack.id}>
+       <label>Unidade ou monstro
+        <select value={stack.templateId} aria-label={'Perfil D&D '+stack.id}
+         onChange={e=>changeDndStack(stack.id,{templateId:e.target.value})}>
+         <optgroup label="17 tipos de Cormyr · de/para digital">
+          {DND_MILITARY_MAPPING.filter(x=>!x.unavailableReason).map(x=>
+           <option key={x.typeId} value={dndMilitaryTemplateId(x.typeId)}>
+            {x.name}{x.requiresNarratorReview?' (revisar)':''}</option>)}
+         </optgroup>
+         {dndMonsters.length>0&&<optgroup label="Monstros CSV/JSON particulares">
+          {dndMonsters.map(monster=><option key={monster.id} value={monster.id}>
+           {monster.name}</option>)}
+         </optgroup>}
+         {dndCormyr300&&<optgroup label="Biblioteca Cormyr 300">
+          {dndCormyr300.monsters.map(monster=><option
+           key={monster.id} value={'cy-'+monster.id+'|local'}>
+           {monster.name} · ND {monster.challenge_rating}</option>)}
+         </optgroup>}
+        </select>
+       </label>
+       <label>Quantidade na pilha
+        <input type="number" min={1} max={1000} step={1} value={stack.count}
+         aria-label={'Quantidade D&D '+stack.id}
+         onChange={e=>changeDndStack(stack.id,{count:Number(e.target.value)})}/>
+       </label>
+       <label>Treinamento
+        <select value={stack.training} aria-label={'Treinamento D&D '+stack.id}
+         onChange={e=>changeDndStack(stack.id,{
+          training:e.target.value as DndStackDraft['training']})}>
+         <option value="green">Verde</option><option value="trained">Treinado</option>
+         <option value="veteran">Veterano</option><option value="elite">Elite</option>
+        </select>
+       </label>
+       <Button type="button" variant="outline" size="sm"
+        disabled={dndRoster.filter(x=>x.side===side).length<2}
+        onClick={()=>setDndRoster(current=>current.filter(x=>x.id!==stack.id))}>
+        Retirar pilha</Button>
+      </div>)}
+      <Button type="button" variant="outline"
+       disabled={dndRoster.filter(x=>x.side===side).length>=7}
+       onClick={()=>addDndStack(side)}>Adicionar pilha {side==='attacker'?'atacante':'defensora'}</Button>
+     </section>)}
+     <details className="dnd-conversion">
+      <summary>Ver de/para das 17 unidades de Cormyr para D&D</summary>
+      <p>PV e atributos são valores <strong>propostos para o simulador</strong>, não uma
+       conversão oficial de Guerra dos Tronos nem estatísticas retiradas de D&D.</p>
+      <div className="dnd-table-scroll"><table>
+       <thead><tr><th>Unidade</th><th>PV</th><th>CA</th>
+        <th>Ataque</th><th>Iniciativa</th><th>Deslocamento</th>
+        <th>Distância</th><th>Empilhamento</th></tr></thead>
+       <tbody>{DND_MILITARY_MAPPING.map(x=><tr key={x.typeId}>
+        <th>{x.name}{x.requiresNarratorReview?' *':''}</th>
+        <td>{x.unavailableReason?'—':x.hp}</td><td>{x.unavailableReason?'—':x.ac}</td>
+        <td>{x.unavailableReason?'—':'+'+x.meleeToHit}</td>
+        <td>{x.unavailableReason?'—':(x.initiativeModifier>=0?'+':'')+x.initiativeModifier}</td>
+        <td>{x.unavailableReason?'—':x.speedFt+' pés'}</td>
+        <td>{x.unavailableReason?'—':x.rangedToHit===undefined?'—':
+         '+'+x.rangedToHit+' / '+x.rangedRangeFt+' pés'}</td>
+        <td>{x.unavailableReason??x.individualsPerOriginalUnit+' por unidade GOT'}</td>
+       </tr>)}</tbody>
+      </table></div>
+     </details>
+    </section>}
     <div className="crz-form">
      {!dndMode&&<label>Conjunto de regras
       <select aria-label="Preset CRZ" value={options.preset??'CRZ-5E'}
@@ -482,9 +634,11 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      </label>
      <label>Resolução de dano
       <select value={options.resolution} aria-label="Resolução CRZ"
-       onChange={e=>setOptions(o=>({...o,resolution:e.target.value as 'expected'|'hybrid'}))}>
-       <option value="expected">Esperada (sem rolagens)</option>
-       <option value="hybrid" disabled={(options.preset??'CRZ-5E')!=='CRZ-5E'}>Híbrida (PCG32)</option>
+       onChange={e=>setOptions(o=>({...o,resolution:e.target.value as CrzTrainingOptions['resolution']}))}>
+       {dndMode&&<option value="rolled">D20 rolado (cada criatura)</option>}
+       <option value="expected">Esperada (probabilidade d20, sem rolagens)</option>
+       <option value="hybrid" disabled={!dndMode&&(options.preset??'CRZ-5E')!=='CRZ-5E'}>
+        Híbrida (d20 em pilhas pequenas; média nas grandes)</option>
       </select>
      </label>
      <label>Adversário
@@ -500,11 +654,12 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
        onChange={e=>setOptions(o=>({...o,seed:e.target.value}))}/>
      </label>
     </div>
-    <p className="battle-note">General Tillet · nível {generalProfile.level} · {generalProfile.xp} XP
-     de treinamento local. O progresso não altera a Corte nem o exército.</p>
-    <Button onClick={begin}>Iniciar treinamento CRZ</Button>
-    <p className="battle-note">CRZ-WOTR e PTE-compat são simulações experimentais determinísticas,
-     sem paridade oficial ou aplicação de baixas. Os replays registram o preset e seu hash.</p>
+    {!dndMode&&<p className="battle-note">General Tillet · nível {generalProfile.level} · {generalProfile.xp} XP
+     de treinamento local. O progresso não altera a Corte nem o exército.</p>}
+    <Button onClick={begin}>{dndMode?'Iniciar batalha D&D · d20':'Iniciar treinamento CRZ'}</Button>
+    <p className="battle-note">{dndMode?
+     'D&D utiliza rolagens de d20, CA e PV por criatura, com pilhas que somam PV e baixas. Iniciativa é rolada uma vez por encontro. Não há compras ou baixas oficiais.':
+     'CRZ-WOTR e PTE-compat são simulações experimentais determinísticas, sem paridade oficial ou aplicação de baixas. Os replays registram o preset e seu hash.'}</p>
    </section>
   </>}
   {session&&frame&&<section className="crz-battle-stage"
@@ -512,8 +667,9 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    <header className="crz-arena-head">
     <div className="crz-arena-heading">
      <span className="crz-eyebrow">CORMYR · ARENA DE TREINAMENTO</span>
-     <h1>Cruzada <span>CRZ-1.0</span></h1>
-     <p>Preset: {frame.rulesetId} · General Tillet nível {frame.leaders.attacker?.level??'—'} (treino)</p>
+     <h1>{dndMode?'Batalha D&D':'Cruzada'} <span>{dndMode?'d20 simplificado':'CRZ-1.0'}</span></h1>
+     <p>Preset: {frame.rulesetId} · {dndMode?'Iniciativa d20 por encontro · criaturas empilhadas':
+     'General Tillet nível '+(frame.leaders.attacker?.level??'—')+' (treino)'}</p>
      <p>Rodada {frame.round} · {frame.phase==='completed'?
       'Batalha encerrada':active?'Turno de '+active.name:'Preparando turno'} ·
       {session.replay.steps.length} comandos registrados</p>
@@ -527,7 +683,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
      <Button variant="outline" onClick={reset}>Novo treino</Button>
      <Button variant="outline" onClick={exportReplay}>Exportar replay</Button>
-     {session.state.phase==='completed'&&<Button variant="outline" onClick={awardProgress}>
+     {!dndMode&&session.state.phase==='completed'&&<Button variant="outline" onClick={awardProgress}>
       Registrar XP do General (treino)</Button>}
      <Button variant="outline" aria-pressed={highContrast}
       onClick={()=>setHighContrast(v=>!v)}>Alto contraste CRZ</Button>
@@ -646,6 +802,29 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
       <strong>{inspected.name}</strong>
       <span>{SIDE[inspected.side].name} · {inspected.alive}/{inspected.initialCount} vivos</span>
       <span>{inspected.hpPool} PV · CA {inspected.acBase}</span>
+      {dndMode&&<section className="dnd-inspected-stats" aria-label="Ficha D&D da pilha">
+       <strong>Ficha D&D · d20</strong>
+       <span>PV por criatura: {inspected.hpPerCreature} · PV da pilha: {inspected.hpPool}</span>
+       <span>Classe de Armadura (CA): {inspected.acBase}</span>
+       <span>Iniciativa (d20 + modificadores): {inspected.initiative}</span>
+       <span>Deslocamento: {inspected.template.speedFt.walk} pés
+        · {inspected.movementHex} quadrados</span>
+       <span>Corpo a corpo: {inspected.meleeRoutine?
+        inspected.meleeRoutine.steps.map(a=>{
+         const hit=inspected.template.attacks.find(x=>x.id===a.attackId);
+         return hit?hit.name+' '+((hit.toHit??0)+inspected.atkMod>=0?'+':'')+
+          ((hit.toHit??0)+inspected.atkMod)+' ('+hit.damage.map(d=>
+           d.dice+(d.mod>=0?'+':'')+d.mod).join(', ')+')':'—';
+        }).join('; '):'—'}</span>
+       <span>À distância: {inspected.rangedRoutine?
+        inspected.rangedRoutine.steps.map(a=>{
+         const hit=inspected.template.attacks.find(x=>x.id===a.attackId);
+         return hit?hit.name+' '+((hit.toHit??0)+inspected.atkMod>=0?'+':'')+
+          ((hit.toHit??0)+inspected.atkMod)+' · '+hit.rangeFt?.normal+' pés':'—';
+        }).join('; '):'—'}</span>
+       <span>Quantidade empilhada: {inspected.alive} /
+        {inspected.initialCount} · PV da criatura ferida: {inspected.topHp}</span>
+      </section>}
       <span>{inspected.moraleState==='routed'?'Debandada':
        inspected.moraleState==='shaken'?'Abalada':'Firme'}</span>
      </div>}
