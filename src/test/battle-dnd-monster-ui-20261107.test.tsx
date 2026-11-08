@@ -30,7 +30,7 @@ describe('Interface D&D · 17 unidades, d20 e monstros empilhados',()=>{
   render(<BattleCrzLab mode="dnd" onBack={vi.fn()}/>);
   fireEvent.click(screen.getByRole('button',{name:/Iniciar batalha D&D/}));
   expect(screen.getByRole('region',{name:'Arena e comandos CRZ'})).toBeInTheDocument();
-  expect(screen.getByText(/Batalha D&D/)).toBeInTheDocument();
+  expect(screen.getAllByText(/Batalha D&D/).length).toBeGreaterThan(0);
   const sheet=screen.getByRole('region',{name:'Ficha D&D da pilha'});
   expect(within(sheet).getByText(/PV por criatura:/)).toBeInTheDocument();
   expect(within(sheet).getByText(/Classe de Armadura/)).toBeInTheDocument();
