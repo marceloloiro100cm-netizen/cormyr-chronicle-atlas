@@ -138,7 +138,8 @@ export function crzPrepareBattle(raw:unknown,catalog:CrzCatalog):CrzReady{
   input.rulesetId,input.rulesetHash);
  if(input.armies.attacker.side!=='attacker'||input.armies.defender.side!=='defender')
   throw new Error('E_SETUP_SOURCE: lados dos exércitos inconsistentes.');
- const map=crzValidateMap(input.map,isDndBattle(input));
+ const map=crzValidateMap(input.map,isDndBattle(input),
+  input.simulationProfile==='dnd-v3');
  const leaders={
   attacker:buildLeader(input.leaders?.attacker,'attacker'),
   defender:buildLeader(input.leaders?.defender,'defender'),
