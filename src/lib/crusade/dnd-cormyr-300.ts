@@ -5,6 +5,11 @@
 import {z} from 'zod';
 import {crzSealCreature,type CrzAttackProfile,type CrzCreature} from './creatures';
 
+/** Velocidade apenas operacional para fichas que trouxeram 0 pés terrestres
+ * e perderam o modo de voo na seleção simplificada. NÃO é dado oficial.
+ * A origem não é modificada; revisar a velocidade real no segundo lote.
+ */
+export const DND_PROVISIONAL_FLY_SPEED_FT=30 as const;
 const groups=['Dragões','Goblinoides','Humanoides','Constructos','Mortos-vivos'] as const;
 export type DndCormyrGroup=(typeof groups)[number];
 export const DND_CORMYR_300_STORAGE_KEY='cormyr-dnd-catalog-300-v1';
@@ -25,7 +30,7 @@ const row=z.object({
  size:z.enum(['T','S','M','L','H','G']),
  speed_ft:z.number().int().min(0).max(1000),
  melee:attack.nullable(),ranged:attack.nullable(),
- special_abilities:z.array(z.unknown()).optional(),
+ special_abilities:z.array(z.string().max(500)).optional(),
  review:z.string().max(500).optional(),
 }).strict().refine(x=>x.melee!==null||x.ranged!==null,
  {message:'Criatura precisa de ataque básico.'});
@@ -107,24 +112,32 @@ export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
    attacks.push({id:'ranged',name:a.name,kind:'ranged',toHit:a.bonus,
     rangeFt:{normal:a.range_ft,long:a.range_ft*4},
     damage:[{...damage(a.damage),type:'piercing'}]});
-  }else if(!m.melee){
-   attacks.push({id:'melee',name:a.name,kind:'melee',toHit:a.bonus,
-    reachFt:5,damage:[{...damage(a.damage),type:'bludgeoning'}]});
   }
  }
+ // Um efeito de alcance desconhecido NÃO pode virar golpe corpo a corpo
+ // preservando dano/bônus do disparo. Para o combate simplificado, usar
+ // somente um ataque provisório explicitamente não derivado da fonte.
+ if(attacks.length===0){
+  attacks.push({id:'basic',name:'Ataque básico provisório',kind:'melee',
+   toHit:0,reachFt:5,damage:[{dice:'1d4',mod:0,avg:2,type:'bludgeoning'}]});
+ }
+ const provisionalFlight=m.speed_ft===0;
  return crzSealCreature({
   schemaVersion:1,id:dndCormyrTemplateId(m),name:m.name,
   source:'5etools · '+m.source,size:m.size,
   creatureType:groupType[m.group],
-  tags:['cormyr-300',m.group,m.source,...(m.speed_ft===0?['immobile']:[])],
+  tags:['cormyr-300',m.group,m.source,
+   ...(provisionalFlight?['provisional-flight']:[]),
+   ...(attacks[0]?.id==='basic'?['provisional-attack']:[])],
   cr:m.challenge_rating,xp:0,proficiencyBonus:2,
   // O catálogo não traz DES: não inferir iniciativa de ND, dano ou CA.
   abilityMods:{str:0,dex:0,con:0,int:0,wis:0,cha:0},
-  hp:{average:m.hp},ac:m.ac,speedFt:{walk:m.speed_ft},
+  hp:{average:m.hp},ac:m.ac,speedFt:{walk:m.speed_ft,
+   ...(provisionalFlight?{fly:DND_PROVISIONAL_FLY_SPEED_FT}:{})},
   attacks,multiattack:{origin:'fallback',steps:[]},
   damageMods:{resist:[],immune:[],vulnerable:[]},
   conditionImmunities:[],traits:[],
-  flags:{flying:false,ranged:attacks.some(a=>a.kind==='ranged'),
+  flags:{flying:provisionalFlight,ranged:attacks.some(a=>a.kind==='ranged'),
    caster:false,legendary:false,swarm:false},
   provenance:{origin:'5etools',srd:false,license:'local-unverified',
    attribution:'Seleção Cormyr 300 de arquivos 5etools fornecidos pelo Narrador. Fonte '+m.source+'.'},
@@ -133,9 +146,11 @@ export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
    'Importação simplificada: sem habilidades, multiataques especiais e magias.',
    'Modificador de iniciativa não consta da seleção; adotado 0 até revisão.',
    ...(m.ranged&&m.ranged.range_ft==null?
-    ['Ataque marcado à distância sem alcance: '+m.ranged.name+
-     '. Sem alcance presumido; revisar classificação do ataque.']:[]),
-   ...(m.speed_ft===0?['Deslocamento 0 na fonte: criatura imóvel, não pode se mover.']:[]),
+    ['Ataque à distância sem alcance conhecido: '+m.ranged.name+
+     '. Disparo ignorado; '+(!m.melee?'ataque básico provisório +0, 1d4, corpo a corpo.':'ataque corpo a corpo original preservado.')+
+     ' Revisar alcance antes de habilitar o disparo.']:[]),
+   ...(provisionalFlight?['Deslocamento terrestre 0 na fonte: voo TÁTICO PROVISÓRIO de '+
+     DND_PROVISIONAL_FLY_SPEED_FT+' pés. Valor não é oficial; revisar velocidade e tipo de voo.']:[]),
   ],
  });
 }

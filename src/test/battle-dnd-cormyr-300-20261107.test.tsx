@@ -67,11 +67,14 @@ describe('Cormyr 300: arquivo do usuário, grupos, ND, conversão básica',()=>{
   });
   expect(creature.tags).toContain('Dragões');
  });
- it('preserva deslocamento zero com tag imóvel e sem caminho legal para movimento',()=>{
+ it('corrige deslocamento 0 com voo provisório auditável e deslocamento válido na arena',()=>{
   const raw=parseDndCormyr300(fixture()).monsters[0]!;
   const immobile=dndCormyrCreature({...raw,speed_ft:0});
   expect(immobile.speedFt.walk).toBe(0);
-  expect(immobile.tags).toContain('immobile');
+  expect(immobile.speedFt.fly).toBe(30);
+  expect(immobile.flags.flying).toBe(true);
+  expect(immobile.tags).toContain('provisional-flight');
+  expect(immobile.warnings.join(' ')).toMatch(/PROVISÓRIO/);
   const ready=dndBattleReady({...CRZ_TRAINING_DEFAULTS,
    resolution:'rolled',seed:'c0ffee52'},[
    DND_DEFAULT_STACKS[0]!,
@@ -79,7 +82,38 @@ describe('Cormyr 300: arquivo do usuário, grupos, ND, conversão básica',()=>{
     count:1,training:'trained'},
   ],[immobile]);
   const deployed=ready.stacks.find(s=>s.id==='immobile')!;
-  expect(deployed.movementHex).toBe(0);
+  expect(deployed.movementHex).toBe(3);
+ });
+ it('não converte disparo sem alcance em golpe com dano original; usa ataque básico temporário',()=>{
+  const raw=parseDndCormyr300(fixture()).monsters[0]!;
+  const uncertain=dndCormyrCreature({...raw,melee:null,
+   ranged:{name:'Raio sem alcance',bonus:12,damage:'4d8+6',range_ft:null}});
+  expect(uncertain.attacks).toHaveLength(1);
+  expect(uncertain.attacks[0]).toMatchObject({
+   id:'basic',name:'Ataque básico provisório',kind:'melee',toHit:0,reachFt:5,
+   damage:[{dice:'1d4',mod:0,avg:2,type:'bludgeoning'}],
+  });
+  expect(uncertain.tags).toContain('provisional-attack');
+  expect(uncertain.warnings.join(' ')).toMatch(/disparo ignorado|Disparo ignorado/);
+  const ready=dndBattleReady({...CRZ_TRAINING_DEFAULTS,
+   resolution:'rolled',seed:'c0ffee52'},[
+   DND_DEFAULT_STACKS[0]!,
+   {id:'ranged-unknown',side:'defender',templateId:uncertain.id,
+    count:2,training:'trained'},
+  ],[uncertain]);
+  const deployed=ready.stacks.find(s=>s.id==='ranged-unknown')!;
+  expect(deployed.meleeRoutine?.steps[0]?.attackId).toBe('basic');
+  expect(deployed.rangedRoutine).toBeNull();
+  expect(crzVerifyReplay(crzReplayBegin(ready).replay).ok).toBe(true);
+ });
+ it('preserva o ataque corpo a corpo real quando o único disparo está incompleto',()=>{
+  const raw=parseDndCormyr300(fixture()).monsters[0]!;
+  const converted=dndCormyrCreature({...raw,
+   ranged:{name:'Raio sem alcance',bonus:12,damage:'4d8+6',range_ft:null}});
+  expect(converted.attacks).toHaveLength(1);
+  expect(converted.attacks[0]?.id).toBe('melee');
+  expect(converted.attacks[0]?.toHit).toBe(4);
+  expect(converted.warnings.join(' ')).toContain('Disparo ignorado');
  });
  it('recusa registros duplicados, ataques inválidos, contagem diferente e arquivos maiores',()=>{
   const parsed=JSON.parse(fixture());

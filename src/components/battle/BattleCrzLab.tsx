@@ -728,7 +728,12 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
     </div>
    </section>
    <div className="crz-battle-columns">
-    <section className="crz-general-deck" aria-label="Painel do General CRZ">
+    <section className="crz-general-deck" aria-label={dndMode?'Painel de combate básico D&D':'Painel do General CRZ'}>
+     {dndMode?<div className="dnd-basic-panel">
+      <h2>Combate básico D&D</h2>
+      <p>Somente movimento e ataque simples por enquanto. Habilidades especiais,
+       magia e ações lendárias ficam para uma próxima fase.</p>
+     </div>:<>
      <BattleCommanderPortrait id={caster?.side==='defender'?'ashkar-raider':'tillet'}
       className="crz-portrait" eager/>
      <h2>General</h2>
@@ -764,6 +769,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
        onClick={()=>apply(c)}>{c.ability==='CHARGE'?'Preparar carga':
         c.ability==='VOLLEY'?'Preparar salva':'Preparar evasão'}</Button>)}
      </div>
+     </>}
      <div className="crz-command-footer">
       <h3>Decisão do turno</h3>
       <p className="battle-unified-action-hint">Mover: toque no quadrado verde. Atacar: selecione o inimigo destacado.</p>
@@ -824,6 +830,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
         }).join('; '):'—'}</span>
        <span>Quantidade empilhada: {inspected.alive} /
         {inspected.initialCount} · PV da criatura ferida: {inspected.topHp}</span>
+       {inspected.warnings.filter(w=>/provisóri[oa]|provisório|PROVISÓRIO/i.test(w))
+        .map((warning,i)=><span key={i} className="battle-note">{warning}</span>)}
       </section>}
       <span>{inspected.moraleState==='routed'?'Debandada':
        inspected.moraleState==='shaken'?'Abalada':'Firme'}</span>

@@ -1,7 +1,8 @@
-import {useEffect,useMemo,useState,type ChangeEvent} from 'react';
+import {useEffect,useMemo,useState,useRef,type ChangeEvent} from 'react';
 import {Button} from '@/components/ui/button';
+import {loadPrivateDndCormyr300} from '@/lib/crusade/dnd-cormyr-private-loader';
 import {
- DND_CORMYR_300_MAX_BYTES,
+ DND_CORMYR_300_MAX_BYTES,DND_PROVISIONAL_FLY_SPEED_FT,
  DND_CORMYR_DEFAULT_FILTERS,
  parseDndCormyr300,readDndCormyr300Local,saveDndCormyr300Local,
  filterDndCormyr300,dndCormyrTemplateId,
@@ -22,6 +23,7 @@ export function DndCormyr300Library({
  sideCounts:Readonly<Record<'attacker'|'defender',number>>;
 }){
  const [catalog,setCatalog]=useState<DndCormyrCatalog|null>(null);
+ const importedManually=useRef(false);
  const [filters,setFilters]=useState<DndCormyrOptions>({...DND_CORMYR_DEFAULT_FILTERS});
  const [shown,setShown]=useState(PER_PAGE);
  const [count,setCount]=useState(1);
@@ -38,7 +40,21 @@ export function DndCormyr300Library({
  useEffect(()=>{
   const cached=readDndCormyr300Local();
   if(cached){setCatalog(cached);onCatalog(cached);}
-  // Só na montagem: a importação manual chama onCatalog explicitamente.
+  // Testes de interface rodam sem sessão/servidor; verificação de acesso real
+  // permanece na função de servidor com autenticação e RLS Supabase.
+  if(import.meta.env.MODE==='test')return;
+  let active=true;
+  void loadPrivateDndCormyr300().then(remote=>{
+   if(!active||importedManually.current)return;
+   setCatalog(remote);onCatalog(remote);
+   setError('');
+   setMessage('300 criaturas carregadas automaticamente do banco privado do Narrador.');
+  }).catch(cause=>{
+   if(!active||cached||importedManually.current)return;
+   setError(cause instanceof Error?cause.message:
+    'Catálogo privado indisponível. Importe seu JSON localmente.');
+  });
+  return ()=>{active=false;};
  },[]); // eslint-disable-line react-hooks/exhaustive-deps
  const read=async(event:ChangeEvent<HTMLInputElement>)=>{
   const file=event.currentTarget.files?.[0];
@@ -48,6 +64,7 @@ export function DndCormyr300Library({
    if(file.size>DND_CORMYR_300_MAX_BYTES)
     throw Error('Arquivo JSON ultrapassa o limite de 600 KB.');
    const parsed=parseDndCormyr300(await file.text());
+   importedManually.current=true;
    saveDndCormyr300Local(parsed);
    setCatalog(parsed);onCatalog(parsed);
    setFilters({...DND_CORMYR_DEFAULT_FILTERS});setShown(PER_PAGE);
@@ -58,9 +75,9 @@ export function DndCormyr300Library({
  };
  return <section className="dnd-cormyr-library" aria-label="Biblioteca de 300 monstros Cormyr">
   <h4>Biblioteca Cormyr · 300 criaturas de Faerûn</h4>
-  <p>Importe o arquivo <strong>bestiario_cormyr_faerun_300.json</strong>. O catálogo é
-   armazenado <strong>somente neste navegador do Narrador</strong> e não é publicado
-   no repositório, banco nem para os jogadores.</p>
+  <p>O banco privado carrega automaticamente as 300 criaturas para o Narrador autenticado.
+   Você também pode importar o arquivo <strong>bestiario_cormyr_faerun_300.json</strong>
+   como alternativa local. O conteúdo não é publicado no repositório nem para jogadores.</p>
   <label>Carregar catálogo Cormyr 300 (JSON)
    <input type="file" accept=".json,application/json"
     aria-label="Importar catálogo Cormyr 300"
@@ -73,6 +90,11 @@ export function DndCormyr300Library({
     <strong>{catalog.monsters.length} criaturas carregadas</strong> ·
     {matched.length} resultados do filtro ·
     {groups.length} grupos</p>
+   <p className="battle-note">Dados provisórios de combate: {catalog.monsters.filter(m=>m.speed_ft===0).length}
+    criaturas sem velocidade terrestre usam voo tático de {DND_PROVISIONAL_FLY_SPEED_FT} pés;
+    {catalog.monsters.filter(m=>m.ranged&&m.ranged.range_ft==null).length} disparos sem
+    alcance conhecido ficam desativados. Quando não houver golpe corpo a corpo,
+    aplica-se apenas um ataque básico provisório (+0, 1d4). Nenhuma ficha original é alterada.</p>
    <div className="dnd-cormyr-filters" role="group" aria-label="Filtros de monstros Cormyr">
     <label>Nome ou fonte
      <input type="search" aria-label="Buscar monstro Cormyr"
@@ -141,11 +163,19 @@ export function DndCormyr300Library({
       <th>Tam.</th><th>PV</th><th>CA</th>
       <th>Ataques básicos</th><th>Ações</th></tr></thead>
      <tbody>{visible.map(m=><tr key={m.id}>
-      <th>{m.name}<small className="dnd-cormyr-source">{m.source}</small></th>
+      <th>{m.name}<small className="dnd-cormyr-source">{m.source}
+       {m.speed_ft===0?' · voo provisório 30 pés':''}
+       {!m.melee&&m.ranged?.range_ft==null?' · ataque provisório':''}
+       </small></th>
       <td>{m.group}</td><td>{m.challenge_rating}</td><td>{m.size}</td>
       <td>{m.hp}</td><td>{m.ac}</td>
-      <td>{[m.melee,m.ranged].filter(Boolean).map(a=>
-       a!.name+' '+(a!.bonus>=0?'+':'')+a!.bonus).join(' / ')}</td>
+      <td>{[
+       ...(m.melee?[m.melee.name+' '+(m.melee.bonus>=0?'+':'')+m.melee.bonus]:[]),
+       ...(m.ranged&&m.ranged.range_ft!=null?
+        [m.ranged.name+' '+(m.ranged.bonus>=0?'+':'')+m.ranged.bonus]:[]),
+       ...(!m.melee&&m.ranged?.range_ft==null?
+        ['Ataque básico provisório +0 · 1d4']:[]),
+      ].join(' / ')}</td>
       <td><div className="dnd-cormyr-buttons">
        <Button type="button" variant="outline" size="sm"
         aria-label={'Adicionar '+m.name+' ao atacante'}

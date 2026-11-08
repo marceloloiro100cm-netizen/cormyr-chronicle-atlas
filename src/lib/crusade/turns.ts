@@ -231,6 +231,9 @@ export function crzStart(ready:CrzReady):CrzBattleState{
 export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
  if(state.phase!=='active'||!state.activeStackId)return [];
  const unit=activeStack(state),legal:CrzCommand[]=[];
+ // O D&D básico é um modo identificado na sessão, não uma reconfiguração
+ // global do CRZ-5E. Não oferece poderes, magias ou ordens especiais ainda.
+ const basicOnlyDnd=state.rulesetId==='CRZ-5E'&&state.id.startsWith('dnd-training-');
  const enemy=state.stacks.filter(s=>s.side!==unit.side&&crzCapable(s));
  if(!unit.activation.attacked&&!unit.activation.moved){
   const occupied=state.stacks.filter(s=>s.id!==unit.id&&crzCapable(s)).map(s=>s.position);
@@ -263,7 +266,7 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
   legal.push({type:'WAIT',unitId:unit.id});
  if(!unit.activation.attacked&&!unit.activation.preparedAbility)
   legal.push({type:'DEFEND',unitId:unit.id});
- if(!unit.activation.attacked&&!unit.activation.preparedAbility){
+ if(!basicOnlyDnd&&!unit.activation.attacked&&!unit.activation.preparedAbility){
   const path=unit.activation.movedPath??[];
   if(unit.template.traits.includes('nimble-escape')&&!unit.activation.moved)
    legal.push({type:'ABILITY',unitId:unit.id,ability:'NIMBLE_ESCAPE'});
@@ -281,7 +284,7 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
  }
  legal.push({type:'END_ACTIVATION',unitId:unit.id});
  const leader=state.leaders[unit.side];
- if(leader&&!unit.activation.moved&&!unit.activation.attacked&&
+ if(!basicOnlyDnd&&leader&&!unit.activation.moved&&!unit.activation.attacked&&
    !unit.activation.preparedAbility&&
    leader.spellsCastThisRound<state.ruleset.leader.castsPerRound){
   // A lista de alvos é gerada sob demanda pelo redutor crzCast.

@@ -106,7 +106,9 @@ describe('D&D: pilhas, iniciativa d20, combate e replay verificável',()=>{
   const session=crzReplayBegin(ready);
   expect(session.state.stacks.every(s=>s.hpPool>0)).toBe(true);
   expect(crzVerifyReplay(session.replay).ok).toBe(true);
-  expect(crzLegalCommands(session.state).length).toBeGreaterThan(0);
+  const commands=crzLegalCommands(session.state);
+  expect(commands.length).toBeGreaterThan(0);
+  expect(commands.filter(c=>c.type==='ABILITY'||c.type==='CAST')).toEqual([]);
  });
  it('importa monstros licenciados para pilhas com quantidades e ataque a distância',()=>{
   const [header,values]=DND_MONSTER_CSV_EXAMPLE.split('\n');
