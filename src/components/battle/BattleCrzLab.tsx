@@ -947,7 +947,9 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      </>}
      <div className="crz-command-footer">
       <h3>Decisão do turno</h3>
-      <p className="battle-unified-action-hint">Mover: toque no quadrado verde. Atacar: selecione o inimigo destacado.</p>
+      <p className="battle-unified-action-hint">{dndMode?
+       'V3: ataque simples e um movimento, em qualquer ordem. Após atacar, mova ou encerre a ativação. À distância sem teto, com linha de visão.':
+       'Mover: toque no quadrado verde. Atacar: selecione o inimigo destacado.'}</p>
       {aiTurn&&<Button variant="outline" onClick={()=>{
        if(!session)return;
        try{
