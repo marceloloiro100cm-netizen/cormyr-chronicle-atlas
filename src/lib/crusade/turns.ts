@@ -14,8 +14,9 @@ import type {CrzReady,CrzSpellId} from './setup';
 import {crzStrike} from './strike';
 import {crzCast} from './leader';
 import {isDndBattle,dndCanFly} from './dnd-mode';
+import {dndAdminPlay,type DndAdminCommand} from './dnd-admin';
 
-export type CrzCommand=
+export type CrzCommand=DndAdminCommand
  |Readonly<{type:'MOVE';unitId:string;to:CrzHex}>
  |Readonly<{type:'ATTACK';unitId:string;targetId:string;mode:'melee'|'ranged'}>
  |Readonly<{type:'WAIT'|'DEFEND'|'END_ACTIVATION';unitId:string}>
@@ -310,6 +311,14 @@ export function crzPlay(state:CrzBattleState,command:CrzCommand,
  actor:CrzActor='human'):CrzBattleState{
  if(state.phase!=='active')throw new Error('TURN: batalha encerrada.');
  const unit=activeStack(state);
+ if(command.type==='DND_SET_COUNT'||command.type==='DND_WITHDRAW'||
+    command.type==='DND_ADD_STACK'){
+  if(actor!=='human')throw Error('D&D: ajustes são exclusivos do Narrador.');
+  const next=dndAdminPlay(state,command);
+  const outcome=checkOutcome(next);
+  return outcome.phase==='active'&&!outcome.activeStackId?
+   nextActivation(outcome):outcome;
+ }
  if(state.controls[unit.side]!==actor)
   throw new Error('TURN: ator sem controle do lado ativo.');
  if(command.unitId!==unit.id)
