@@ -39,7 +39,8 @@ export function dndAdminPlay(state:CrzBattleState,command:DndAdminCommand):CrzBa
   const delta=command.count-stack.alive;
   if(!delta)return state;
   const initialCount=stack.initialCount+delta;
-  if(initialCount<1)throw Error('D&D: total histórico inconsistente.');
+  if(initialCount<1||initialCount>crzMaxCount(state.ruleset,stack.size))
+   throw Error('D&D: limite histórico da pilha excedido.');
   const changed:CrzBattleStack={...stack,initialCount,alive:command.count,
    hpPool:stack.hpPool+delta*stack.hpPerCreature};
   crzValidateStack(changed);
