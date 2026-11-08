@@ -4,7 +4,7 @@ Data: 7 de novembro de 2026. Continuação do PR #329.
 
 ## Entrada suportada
 
-Arquivo do Narrador: `bestiario_cormyr_faerun_300.json`, com `metadata.version=1`, `metadata.count=300` e array `monsters` de 300 entradas. **O arquivo não é versionado nem distribuído neste repositório público.** A tela do Narrador permite selecionar esse arquivo; o navegador valida campos e o guarda em `localStorage` deste dispositivo. Outras máquinas ou navegadores exigem importar uma vez novamente. A ferramenta não publica o conteúdo em banco, CDN ou API do Cormyr.
+Arquivo do Narrador: `bestiario_cormyr_faerun_300.json`, com `metadata.version=1`, `metadata.count=300` e array `monsters` de 300 entradas. **O arquivo não é versionado nem distribuído neste repositório público.** As 300 fichas básicas foram registradas no banco Supabase privado, em `public.battle_dnd_cormyr_monsters`, com RLS de Narrador autenticado e acesso ativo. A interface carrega automaticamente as fichas pela função segura `loadBattleDndCormyr300`. A importação manual do arquivo JSON permanece como fallback, validado e salvo apenas no `localStorage` do dispositivo. Outras máquinas/navegadores autenticados podem consultar o mesmo catálogo privado.
 
 Os metadados exibidos no navegador são nome, grupo, fonte, ND, tamanho, PV, CA, deslocamento e bônus de ataque. Habilidades especiais, conjuração, ações lendárias, ataque em área e multiataques não são importados para a engine. A proveniência é marcada `local-unverified`, explicitamente sem licença pública confirmada.
 
@@ -45,6 +45,6 @@ Os valores do catálogo são derivados da seleção fornecida pelo usuário, e n
 
 ## Fluxo do Narrador após a publicação
 
-Módulo de batalha → D&D → **Carregar catálogo Cormyr 300 (JSON)** → selecionar `bestiario_cormyr_faerun_300.json` → filtrar criaturas → definir quantidade → **Atacante/Defensor** → **Iniciar batalha D&D · d20**.
+Módulo de batalha → D&D → **biblioteca carregada automaticamente do banco privado**, após autenticação do Narrador → filtrar criaturas → definir quantidade → **Atacante/Defensor** → **Iniciar batalha D&D · d20**. Fallback: **Carregar catálogo Cormyr 300 (JSON)** para arquivo local.
 
-**Nota de entrega:** importação remota e pré-carregamento no banco de dados não estão implementados; o upload local é uma escolha deliberada para evitar publicação ou redistribuição do bestiário em um repositório público.
+**Nota de entrega:** a carga inicial dos 300 registros foi realizada diretamente no banco privado do projeto. O SQL de esquema e política fica em `docs/battle/sql/0081_dnd_cormyr_300_private_catalog.sql`; os registros não fazem parte do GitHub. A função de consulta verifica a sessão do Narrador, confere a existência exata das 300 entradas e aplica a mesma validação estrita do arquivo JSON. Material não é servido à área pública.
