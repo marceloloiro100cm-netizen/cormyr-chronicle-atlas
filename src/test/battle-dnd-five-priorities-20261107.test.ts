@@ -1,7 +1,7 @@
 import {describe,expect,it} from 'vitest';
 import {dndBattleReady,DND_DEFAULT_STACKS} from '@/lib/crusade/dnd-battle';
 import {CRZ_TRAINING_DEFAULTS} from '@/lib/crusade/training-demo';
-import {crzScenario,crzReachable,crzGridDistance} from '@/lib/crusade/geometry';
+import {crzScenario,crzReachable,crzGridDistance,crzValidateMap} from '@/lib/crusade/geometry';
 import {crzLegalCommands} from '@/lib/crusade/turns';
 import {crzReplayBegin,crzReplayRecord,crzVerifyReplay} from '@/lib/crusade/replay';
 import {crzCapable} from '@/lib/crusade/battle-state';
@@ -23,6 +23,15 @@ describe('D&D Cormyr: regras do Narrador e replay verificável',()=>{
   const flight=crzReachable(map,from,3,[occupied],[],true);
   expect(flight.some(p=>p.to.q===goal.q&&p.to.r===goal.r)).toBe(true);
   expect(flight.some(p=>p.to.q===occupied.q&&p.to.r===occupied.r)).toBe(false);
+ });
+ it('valida mapa dividido por rio/barreira somente no modo tático D&D',()=>{
+  const base=crzScenario('plain-open',11,'square');
+  const map={...base,tiles:base.tiles.map(tile=>
+   tile.q===5?{...tile,terrain:'rock' as const}:tile)};
+  expect(()=>crzValidateMap(map)).toThrow(/desconectados/);
+  expect(crzValidateMap(map,true).width).toBe(11);
+  const flight=crzReachable(map,{q:4,r:4},3,[],[],true);
+  expect(flight.some(p=>p.to.q===6&&p.to.r===4)).toBe(true);
  });
  it('ataque à distância pode atingir além de seis quadrados com linha de visão',()=>{
   let session=sample();
