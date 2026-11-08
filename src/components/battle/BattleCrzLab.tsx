@@ -24,12 +24,9 @@ import {CRZ_TRAINING_DEFAULTS,CRZ_TRAINING_SCENARIOS,
 import type {CrzSpellId} from '@/lib/crusade/setup';
 import type {CrzCreature} from '@/lib/crusade/creatures';
 import {DndCormyr300Library} from './DndCormyr300Library';
-import {DndDeploymentGrid} from './DndDeploymentGrid';
 import {dndCormyrCreature,type DndCormyrCatalog} from '@/lib/crusade/dnd-cormyr-300';
 import {DND_MILITARY_MAPPING,dndMilitaryTemplateId,dndMilitaryType}
  from '@/lib/crusade/dnd-military';
-import {DND_MONSTER_FILE_MAX_BYTES,DND_MONSTER_CSV_EXAMPLE,parseDndMonsterTable}
- from '@/lib/crusade/dnd-import';
 import {DND_DEFAULT_STACKS,dndBattleReady,type DndStackDraft}
  from '@/lib/crusade/dnd-battle';
 import {DND_MILITARY_CREATURES} from '@/lib/crusade/dnd-military';
@@ -268,19 +265,33 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const [error,setError]=useState('');
  const [showImport,setShowImport]=useState(false);
  const [dndRoster,setDndRoster]=useState<DndStackDraft[]>([...DND_DEFAULT_STACKS]);
- const [placingStackId,setPlacingStackId]=useState(DND_DEFAULT_STACKS[0]!.id);
- const [dndMonsters,setDndMonsters]=useState<CrzCreature[]>([]);
  const [dndCormyr300,setDndCormyr300]=useState<DndCormyrCatalog|null>(null);
- const dndAllMonsters=useMemo(()=>[...dndMonsters,
-  ...(dndCormyr300?.monsters.map(dndCormyrCreature)??[])],
-  [dndMonsters,dndCormyr300]);
- const dndDeploymentMap=useMemo(()=>{
-  if(!dndMode)return null;
-  try{return options.sharedMap?sharedToCrzMap(options.sharedMap):
-   crzScenario(options.scenario,options.width,'square');}
-  catch{return null;}
- },[dndMode,options.sharedMap,options.scenario,options.width]);
- const [dndImportedStatus,setDndImportedStatus]=useState('');
+ const dndAllMonsters=useMemo(()=>dndCormyr300?.monsters.map(dndCormyrCreature)??[],
+  [dndCormyr300]);
+ const [dndSide,setDndSide]=useState<DndStackDraft['side']>('attacker');
+ const [dndSearch,setDndSearch]=useState('');
+ const [dndGroup,setDndGroup]=useState('all');
+ const [dndChoiceId,setDndChoiceId]=useState('');
+ const [dndCount,setDndCount]=useState(10);
+ const dndChoices=useMemo(()=>[
+  ...DND_MILITARY_MAPPING.filter(x=>!x.unavailableReason).map(x=>({
+   id:dndMilitaryTemplateId(x.typeId),name:x.name,group:'Unidades militares',
+   size:'M' as const,cr:undefined as number|undefined,
+  })),
+  ...(dndCormyr300?.monsters.map(m=>({
+   id:'cy-'+m.id+'|local',name:m.name,group:m.group,
+   size:m.size,cr:m.challenge_rating as number|undefined,
+  }))??[]),
+ ],[dndCormyr300]);
+ const dndGroups=useMemo(()=>[...new Set(dndChoices.map(x=>x.group))],
+  [dndChoices]);
+ const filteredDndChoices=useMemo(()=>dndChoices.filter(x=>
+  (dndGroup==='all'||x.group===dndGroup)&&
+  (!dndSearch.trim()||x.name.toLocaleLowerCase('pt-BR').includes(
+   dndSearch.trim().toLocaleLowerCase('pt-BR')))),
+  [dndChoices,dndGroup,dndSearch]);
+ const chosenDnd=filteredDndChoices.find(x=>x.id===dndChoiceId)??
+  filteredDndChoices[0];
  const [adminCount,setAdminCount]=useState(1);
  const [reinforceTemplate,setReinforceTemplate]=useState(dndMilitaryTemplateId('infantry'));
  const [reinforceSide,setReinforceSide]=useState<'attacker'|'defender'>('attacker');
@@ -291,26 +302,9 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const [dndBusy,setDndBusy]=useState(false);
  const [highContrast,setHighContrast]=useState(false);
  const [generalProfile,setGeneralProfile]=useState<TrainingGeneralProfile>(initialGeneralProfile);
- const importDndMonsters=async(file:File)=>{
-  try{
-   if(file.size>DND_MONSTER_FILE_MAX_BYTES)throw new Error('Tabela maior que 1 MB.');
-   const parsed=parseDndMonsterTable(await file.text());
-   setDndMonsters([...parsed.creatures]);
-   setDndImportedStatus(parsed.creatures.length+' monstros importados para uso local.');
-   setError('');setMessage('Catálogo de monstros validado. Escolha-os nas pilhas.');
-  }catch(error){setError(error instanceof Error?error.message:'Tabela de monstros inválida.');}
- };
- const addDndStack=(side:DndStackDraft['side'])=>{
-  setDndRoster(current=>{
-   if(current.filter(x=>x.side===side).length>=7)return current;
-   let number=1;while(current.some(x=>x.id===side+'-stack-'+number))number++;
-   return [...current,{id:side+'-stack-'+number,side,
-    templateId:dndMilitaryTemplateId('infantry'),count:10,training:'trained'}];
-  });
- };
  const addDndCatalogStack=(templateId:string,_name:string,
   side:DndStackDraft['side'],count:number)=>{
-  const template=dndAllMonsters.find(m=>m.id===templateId);
+  const template=[...DND_MILITARY_CREATURES,...dndAllMonsters].find(m=>m.id===templateId);
   if(!template){setError('Criatura importada não encontrada no catálogo.');return;}
   const limit=({T:1000,S:1000,M:1000,L:400,H:100,G:25} as const)[template.size];
   if(dndRoster.filter(d=>d.side===side).length>=7){
@@ -438,7 +432,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const begin=()=>{
   try{
    const ready=dndMode?dndBattleReady({...options,grid:'square',
-    preset:'CRZ-5E'},dndRoster,dndAllMonsters,Date.now().toString(36)):
+    preset:'CRZ-5E'},dndRoster.map(stack=>({...stack,position:undefined})),
+    dndAllMonsters,Date.now().toString(36)):
     crzTrainingReady({...options,grid:'square',
      ...(options.preset?{preset:options.preset}:{}),
      generalLevel:generalProfile.level});
@@ -580,9 +575,9 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    {message&&<p className="crz-status" role="status">{message}</p>}
    {savedPanel}
    <section className="battle-surface" aria-label="Preparar treino CRZ">
-    <h2>Preparar batalha-modelo</h2>
-    <p>Defensores da Coroa contra forças fictícias de Ashkar.</p>
-    <section className="battle-surface" aria-label="Mapas quadrados compartilhados">
+    <h2>{dndMode?'Preparar combate D&D':'Preparar batalha-modelo'}</h2>
+    {!dndMode&&<p>Defensores da Coroa contra forças fictícias de Ashkar.</p>}
+    {!dndMode&&<section className="battle-surface" aria-label="Mapas quadrados compartilhados">
      <h3>Mapa quadrado compartilhado</h3>
      <p>Importe um mapa quadrado de Adaptado ou Game of Thrones.
       Somente terrenos básicos são transferidos; regras de combate não são copiadas.</p>
@@ -614,61 +609,70 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      }}>Exportar mapa quadrado</Button>
      {options.sharedMap&&<p role="status">Mapa compartilhado em uso:
       {options.sharedMap.name} · {options.sharedMap.width} × {options.sharedMap.height}.</p>}
-    </section>
+    </section>}
     {dndMode&&<section className="dnd-config" aria-label="Preparação de exércitos D&D">
-     <h3>Monstros e unidades militares · D&D</h3>
-     <p>Escolha os perfis e a quantidade de criaturas por pilha. Cada pilha reúne
-      criaturas do mesmo tipo e acompanha PV, CA, ataques e baixas. A importação é
-      local: não altera unidades, fichas ou recursos das Casas.</p>
-     <label className="dnd-import">
-      Importar tabela de monstros (CSV ou JSON, até 1 MB)
-      <input type="file" accept=".csv,text/csv,.json,application/json"
-       aria-label="Importar tabela de monstros D&D"
-       onChange={event=>{
-        const file=event.target.files?.[0];event.target.value='';
-        if(file)void importDndMonsters(file);
-       }}/>
-     </label>
-     <Button type="button" variant="outline" onClick={()=>{
-      const blob=new Blob([DND_MONSTER_CSV_EXAMPLE],{type:'text/csv;charset=utf-8'});
-      const url=URL.createObjectURL(blob),a=document.createElement('a');
-      a.href=url;a.download='modelo-monstros-dnd-cormyr.csv';a.click();
-      URL.revokeObjectURL(url);
-     }}>Modelo CSV de monstros</Button>
-     <p className="battle-note">Importe fichas originais ou material com autorização documentada.
-      São obrigatórios a origem, licença, atribuição e comprovação de uso.
-      Ataques especiais, magias e ações lendárias não são convertidos automaticamente.</p>
-     {dndImportedStatus&&<p role="status">{dndImportedStatus}</p>}
-     <DndCormyr300Library onCatalog={setDndCormyr300}
+     <h3>Montros</h3>
+     <p>Escolha o lado, busque uma criatura e informe a quantidade. As pilhas são
+      posicionadas automaticamente ao iniciar a batalha, sem afetar as Casas.</p>
+     <DndCormyr300Library compact onCatalog={setDndCormyr300}
       onAdd={addDndCatalogStack}
       sideCounts={{
-       attacker:dndRoster.filter(s=>s.side==='attacker').length,
-       defender:dndRoster.filter(s=>s.side==='defender').length,
+       attacker:dndRoster.filter(x=>x.side==='attacker').length,
+       defender:dndRoster.filter(x=>x.side==='defender').length,
       }}/>
-     {(['attacker','defender'] as const).map(side=><section key={side}
-      className="dnd-roster-side" aria-label={'Pilha D&D '+(side==='attacker'?'atacante':'defensora')}>
-      <h4>{side==='attacker'?'Exército atacante':'Exército defensor'}</h4>
-      {dndRoster.filter(x=>x.side===side).map(stack=><div className="dnd-stack-row" key={stack.id}>
-       <label>Unidade ou monstro
-        <select value={stack.templateId} aria-label={'Perfil D&D '+stack.id}
-         onChange={e=>changeDndStack(stack.id,{templateId:e.target.value})}>
-         <optgroup label="17 tipos de Cormyr · de/para digital">
-          {DND_MILITARY_MAPPING.filter(x=>!x.unavailableReason).map(x=>
-           <option key={x.typeId} value={dndMilitaryTemplateId(x.typeId)}>
-            {x.name}{x.requiresNarratorReview?' (revisar)':''}</option>)}
-         </optgroup>
-         {dndMonsters.length>0&&<optgroup label="Monstros CSV/JSON particulares">
-          {dndMonsters.map(monster=><option key={monster.id} value={monster.id}>
-           {monster.name}</option>)}
-         </optgroup>}
-         {dndCormyr300&&<optgroup label="Biblioteca Cormyr 300">
-          {dndCormyr300.monsters.map(monster=><option
-           key={monster.id} value={'cy-'+monster.id+'|local'}>
-           {monster.name} · ND {monster.challenge_rating}</option>)}
-         </optgroup>}
-        </select>
-       </label>
-       {stack.position&&<small className="battle-note">Posição: {stack.position.q}, {stack.position.r}</small>}
+     <div className="dnd-side-switch" role="group" aria-label="Selecionar exército D&D">
+      {(['attacker','defender'] as const).map(side=><Button key={side}
+       type="button" variant={dndSide===side?'default':'outline'}
+       aria-pressed={dndSide===side} onClick={()=>setDndSide(side)}>
+       {side==='attacker'?'Atacante':'Defensor'} ·
+       {dndRoster.filter(x=>x.side===side).length}/7 pilhas
+      </Button>)}
+     </div>
+     <div className="dnd-picker" role="group" aria-label="Escolher monstro para o exército">
+      <label>Buscar pelo nome
+       <input type="search" aria-label="Buscar monstro D&D"
+        placeholder="Nome do monstro ou unidade…" value={dndSearch}
+        onChange={e=>setDndSearch(e.target.value)}/>
+      </label>
+      <label>Grupo
+       <select aria-label="Grupo de monstros D&D" value={dndGroup}
+        onChange={e=>setDndGroup(e.target.value)}>
+        <option value="all">Todos os grupos</option>
+        {dndGroups.map(group=><option key={group} value={group}>{group}</option>)}
+       </select>
+      </label>
+      <label>Monstro ou unidade
+       <select aria-label="Monstro D&D para adicionar"
+        value={chosenDnd?.id??''} disabled={!chosenDnd}
+        onChange={e=>setDndChoiceId(e.target.value)}>
+        {!chosenDnd&&<option value="">Nenhum resultado</option>}
+        {filteredDndChoices.map(item=><option key={item.id} value={item.id}>
+         {item.name}{item.cr===undefined?'':' · ND '+item.cr}</option>)}
+       </select>
+      </label>
+      <label>Quantidade
+       <input aria-label="Quantidade de monstros D&D" type="number"
+        min={1} max={1000} step={1} value={dndCount}
+        onChange={e=>setDndCount(Math.max(1,Math.min(1000,Number(e.target.value)||1)))}/>
+      </label>
+      <Button type="button" disabled={!chosenDnd||
+       dndRoster.filter(x=>x.side===dndSide).length>=7}
+       onClick={()=>chosenDnd&&addDndCatalogStack(chosenDnd.id,chosenDnd.name,
+        dndSide,dndCount)}>
+       Adicionar ao {dndSide==='attacker'?'atacante':'defensor'}
+      </Button>
+     </div>
+     <section className="dnd-roster-side"
+      aria-label={'Pilha D&D '+(dndSide==='attacker'?'atacante':'defensora')}>
+      <h4>{dndSide==='attacker'?'Exército atacante':'Exército defensor'}</h4>
+      <p>{dndRoster.filter(x=>x.side===dndSide).length} pilhas configuradas.
+       O posicionamento no mapa será automático.</p>
+      {dndRoster.filter(x=>x.side===dndSide).map(stack=><div
+       className="dnd-stack-row" key={stack.id}>
+       <div className="dnd-stack-identity">
+        <strong>{dndChoices.find(x=>x.id===stack.templateId)?.name??stack.templateId}</strong>
+        <small>{dndChoices.find(x=>x.id===stack.templateId)?.group??'Unidade'}</small>
+       </div>
        <label>Quantidade na pilha
         <input type="number" min={1} max={1000} step={1} value={stack.count}
          aria-label={'Quantidade D&D '+stack.id}
@@ -683,19 +687,11 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
         </select>
        </label>
        <Button type="button" variant="outline" size="sm"
-        disabled={dndRoster.filter(x=>x.side===side).length<2}
+        disabled={dndRoster.filter(x=>x.side===dndSide).length<2}
         onClick={()=>setDndRoster(current=>current.filter(x=>x.id!==stack.id))}>
         Retirar pilha</Button>
       </div>)}
-      <Button type="button" variant="outline"
-       disabled={dndRoster.filter(x=>x.side===side).length>=7}
-       onClick={()=>addDndStack(side)}>Adicionar pilha {side==='attacker'?'atacante':'defensora'}</Button>
-     </section>)}
-     {dndDeploymentMap&&<DndDeploymentGrid map={dndDeploymentMap}
-      drafts={dndRoster} creatures={[...DND_MILITARY_CREATURES,...dndAllMonsters]}
-      selectedId={dndRoster.some(x=>x.id===placingStackId)?placingStackId:dndRoster[0]?.id??''}
-      onSelected={setPlacingStackId}
-      onPlace={(id,position)=>changeDndStack(id,{position})}/>}
+     </section>
      <details className="dnd-conversion">
       <summary>Ver de/para das 17 unidades de Cormyr para D&D</summary>
       <p>PV e atributos são valores <strong>propostos para o simulador</strong>, não uma
@@ -727,11 +723,6 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
        <option value="PTE-2.0-compat">PTE-2.0-compat (esperado)</option>
       </select>
      </label>}
-     {dndMode&&<p className="battle-note">D&D V3: cada quadrado equivale a 10 pés
-      (diagonais custam 15 pés). O ataque corpo a corpo exige adjacência;
-      ataques à distância não têm limite numérico no mapa, mas exigem linha de visão.
-      O voo atravessa terreno difícil e barreiras; tamanhos Grande/Enorme/Gargantuesco
-      ocupam áreas de 2×2/3×3/4×4. Regras próprias, não D&D 5e integral.</p>}
      <label>Cenário
       <select value={options.scenario} aria-label="Cenário CRZ"
        onChange={e=>setOptions(o=>({...o,scenario:e.target.value as CrzTrainingOptions['scenario']}))}>
