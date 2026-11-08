@@ -1,6 +1,7 @@
 import type {WarBattle,WarPosition,WarSide} from './types';
 import {WAR_SIEGE_CATALOG,warSiegeDistanceMetres,warSiegeReloadRemaining} from './siege';
 import {canSeeWarTarget} from './line-of-sight';
+import {terrainAt,terrainEffect} from './terrain';
 
 export type WarSiegeReadiness=Readonly<{
  weaponId:string;weaponName:string;engineerId:string;engineerName:string|null;
@@ -24,6 +25,13 @@ export function previewWarSiegeReadiness(
   const distanceMetres=target?warSiegeDistanceMetres(weapon,target):null;
   const blockers:string[]=[];
   if(weapon.health<1)blockers.push('Máquina destruída.');
+  // Tabela 10-3: montanhas proíbem artilharia atacante. Defensores
+  // só podem utilizá-la nesta zona se possuírem fortificação.
+  const square=terrainEffect(terrainAt(battle.tiles,weapon.position));
+  const defendedFort=battle.fortifications.some(f=>f.side===side&&
+   !f.breached&&f.structuralHealth!==0);
+  if(square.noSiege&&(side==='attacker'||!defendedFort))
+   blockers.push('Terreno proíbe armas de cerco nesta posição.');
   if(!operator||operator.side!==side||operator.typeId!=='engineers'||
    !['organized','disorganized'].includes(operator.condition))
    blockers.push('Unidade de engenheiros indisponível.');
