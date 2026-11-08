@@ -81,6 +81,8 @@ export function executeAdvancedWarOrder(
   const move=Math.max(0,(actor.naval?60:actor.mounted?80:40)-actor.bulk*10)*4;
   const dir={x:Math.sign(dx),y:Math.sign(dy)};
   let spent=0;
+  let slowest=movementSlow(terrainAt(battle.tiles,actor.position),
+   battle.visibility,battle.weather);
   const encountered:string[]=[];
   for(let step=1;step<=steps;step++){
    const p={x:actor.position.x+dir.x*step,y:actor.position.y+dir.y*step};
@@ -90,7 +92,8 @@ export function executeAdvancedWarOrder(
    if((effect.blocked&&!(actor.naval&&effect.naval))||
     (effect.water&&!actor.naval)||actor.mounted&&effect.noCavalry)
     throw new Error('Trajeto atravessa terreno proibido.');
-   spent+=10*(1+movementSlow(tile,battle.visibility,battle.weather));
+   slowest=Math.max(slowest,movementSlow(tile,battle.visibility,battle.weather));
+   spent=(step+slowest)*10;
    if(spent>move)throw new Error('Trajeto ultrapassa deslocamento de corrida.');
    const occupying=battle.units.find(u=>u.id!==actor.id&&alive(u)&&
     u.position.x===p.x&&u.position.y===p.y);
