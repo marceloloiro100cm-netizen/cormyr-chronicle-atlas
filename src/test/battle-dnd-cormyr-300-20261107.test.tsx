@@ -67,6 +67,20 @@ describe('Cormyr 300: arquivo do usuário, grupos, ND, conversão básica',()=>{
   });
   expect(creature.tags).toContain('Dragões');
  });
+ it('preserva deslocamento zero com tag imóvel e sem caminho legal para movimento',()=>{
+  const raw=parseDndCormyr300(fixture()).monsters[0]!;
+  const immobile=dndCormyrCreature({...raw,speed_ft:0});
+  expect(immobile.speedFt.walk).toBe(0);
+  expect(immobile.tags).toContain('immobile');
+  const ready=dndBattleReady({...CRZ_TRAINING_DEFAULTS,
+   resolution:'rolled',seed:'c0ffee52'},[
+   DND_DEFAULT_STACKS[0]!,
+   {id:'immobile',side:'defender',templateId:immobile.id,
+    count:1,training:'trained'},
+  ],[immobile]);
+  const deployed=ready.stacks.find(s=>s.id==='immobile')!;
+  expect(deployed.movementHex).toBe(0);
+ });
  it('recusa registros duplicados, ataques inválidos, contagem diferente e arquivos maiores',()=>{
   const parsed=JSON.parse(fixture());
   parsed.monsters[1].id=parsed.monsters[0].id;
