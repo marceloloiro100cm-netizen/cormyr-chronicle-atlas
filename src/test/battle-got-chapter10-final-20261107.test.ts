@@ -1,6 +1,10 @@
 import {describe,expect,it} from 'vitest';
 import {modelWarUnit,modelWarCommanders} from '@/lib/battle/got/models';
-import {createWarBattle,issueWarOrder,previewWarMovement} from '@/lib/battle/got/engine';
+import {makeModelWarHero} from '@/lib/battle/got/heroes';
+import {makeModelSiege} from '@/lib/battle/got/siege';
+import {makeWarFortification} from '@/lib/battle/got/fortifications';
+import {previewWarSiegeReadiness} from '@/lib/battle/got/siege-readiness';
+import {createWarBattle,issueWarOrder,previewWarMovement,fireWarSiegeVolley} from '@/lib/battle/got/engine';
 import {terrainCoverBonus,movementSlow,visibilityPenalty,weatherAttackModifier}
  from '@/lib/battle/got/terrain';
 import type {WarTerrainTile,WarWeather} from '@/lib/battle/got/terrain';
@@ -94,5 +98,63 @@ describe('GOT livro base — paridade de campo, clima e marinha',()=>{
    order:{kind:'move',to:{x:4,y:2}}});
   expect(actual.battle.units.find(u=>u.id==='a')?.position).toEqual({x:4,y:2});
   expect(JSON.stringify(b)).toBe(copy);
+ });
+});
+
+describe('GOT livro base — limites de heróis e artilharia',()=>{
+ it('Cap. 10: quantidade de heróis não ultrapassa o Status do comandante',()=>{
+  const army=[unit('a','attacker',1,2),unit('d','defender',9,2)];
+  const heroes=Array.from({length:4},(_,i)=>makeModelWarHero({
+   id:'hero-'+i,name:'Herói '+i,side:'attacker',position:{x:1,y:i+1},
+  }));
+  expect(()=>createWarBattle({id:'many-heroes',name:'Status',
+   seed:'many-heroes',width:12,height:7,
+   units:army,heroes,commanders:modelWarCommanders({attacker:6,defender:6})}))
+   .toThrow(/heróis excede o Status/);
+  expect(()=>createWarBattle({id:'three-heroes',name:'Status',
+   seed:'three-heroes',width:12,height:7,
+   units:army,heroes:heroes.slice(0,3),
+   commanders:modelWarCommanders({attacker:6,defender:6})})).not.toThrow();
+ });
+ it('Tabela 10-3: montanha impede artilharia atacante, inclusive na prévia',()=>{
+  const engineer=unit('engineer','attacker',1,2,'infantry');
+  const oper={...engineer,typeId:'engineers'};
+  const defender=unit('d','defender',9,2);
+  const siege=makeModelSiege({id:'cat',kind:'catapult-small',
+   side:'attacker',position:{x:1,y:3},engineerId:oper.id});
+  const start=(mountain:boolean)=>{
+   const b=createWarBattle({id:'mount-siege',name:'Montanha',seed:'siege-mountain',
+    width:12,height:7,units:[oper,defender],siege:[siege],
+    commanders:modelWarCommanders({attacker:12,defender:12}),
+    tiles:mountain?[{x:1,y:3,terrain:'mountain'}]:[]});
+   return {...b,turn:'attacker' as const};
+  };
+  const illegal=start(true),original=JSON.stringify(illegal);
+  const report=previewWarSiegeReadiness(illegal,'attacker',{x:9,y:2})[0]!;
+  expect(report.available).toBe(false);
+  expect(report.blockers.join(' ')).toMatch(/Terreno proíbe armas de cerco/);
+  expect(()=>fireWarSiegeVolley(illegal,{commanderId:'leader-attacker',
+   weaponIds:['cat'],targetId:'d'})).toThrow(/Terreno proíbe armas de cerco/);
+  expect(JSON.stringify(illegal)).toBe(original);
+  expect(previewWarSiegeReadiness(start(false),'attacker',{x:9,y:2})[0]!.available)
+   .toBe(true);
+ });
+ it('defensor com fortificação ativa pode utilizar cerco no terreno montanhoso',()=>{
+  const engineer={...unit('engineer','defender',8,2),typeId:'engineers' as const};
+  const attacker=unit('a','attacker',1,2);
+  const fort=makeWarFortification({id:'tower',name:'Torre',kind:'tower',
+   side:'defender',cells:[{x:8,y:2}],engineerBuilt:false,hoursBuilt:72});
+  const siege=makeModelSiege({id:'def-scorpion',kind:'scorpion',
+   side:'defender',position:{x:8,y:3},engineerId:'engineer'});
+  const start=(withFort:boolean)=>createWarBattle({
+   id:'def-siege',name:'Cerco Defensor',seed:'def-siege',
+   width:12,height:7,units:[attacker,engineer],siege:[siege],
+   fortifications:withFort?[fort]:[],
+   commanders:modelWarCommanders({attacker:12,defender:12}),
+   tiles:[{x:8,y:3,terrain:'mountain'}]});
+  expect(previewWarSiegeReadiness(start(false),'defender',{x:1,y:2})[0]?.available)
+   .toBe(false);
+  expect(previewWarSiegeReadiness(start(true),'defender',{x:1,y:2})[0]?.available)
+   .toBe(true);
  });
 });
