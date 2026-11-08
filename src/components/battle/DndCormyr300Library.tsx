@@ -32,9 +32,11 @@ type MonsterEditor=Readonly<{id:string;hp:number;ac:number;speed_ft:number;
  ranged_bonus:number;ranged_damage:string;ranged_damage_type:string;
  review_source:string;review_note:string}>;
 export function DndCormyr300Library({
- onCatalog,onAdd,sideCounts,
+ onCatalog,onAdd,sideCounts,compact=false,
 }:{
  onCatalog:(catalog:DndCormyrCatalog|null)=>void;
+ /** Exibe somente o carregamento privado quando a seleção acontece no painel da batalha. */
+ compact?:boolean;
  onAdd:(templateId:string,name:string,side:'attacker'|'defender',count:number)=>void;
  sideCounts:Readonly<Record<'attacker'|'defender',number>>;
 }){
@@ -157,6 +159,11 @@ export function DndCormyr300Library({
    setError(cause instanceof Error?cause.message:'Arquivo do catálogo inválido.');
   }
  };
+ if(compact)return <div className="dnd-cormyr-compact" aria-label="Estado do bestiário privado D&D">
+  {catalog?<p role="status">{catalog.monsters.length} monstros disponíveis para seleção.</p>:
+   <p role="status">Carregando monstros do bestiário privado…</p>}
+  {error&&<p className="crz-alert" role="alert">{error}</p>}
+ </div>;
  return <section className="dnd-cormyr-library" aria-label="Biblioteca de 300 monstros Cormyr">
   <h4>Biblioteca Cormyr · 300 criaturas-base + entradas próprias</h4>
   <p>O banco privado carrega automaticamente as 300 criaturas para o Narrador autenticado.

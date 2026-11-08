@@ -56,3 +56,21 @@
 .dnd-cormyr-library table td:last-child{min-width:180px}
 .dnd-cormyr-library button{color:#f7edda}
 @media(max-width:600px){.dnd-cormyr-library{padding:.6rem}.dnd-cormyr-add-controls{display:grid}}
+
+/* D&D: escolha concentrada em um único painel com alternância de lado. */
+.dnd-side-switch{display:flex;gap:.6rem;flex-wrap:wrap}
+.dnd-side-switch button[aria-pressed="true"]{background:#b18b49;color:#121d1c;border-color:#e0c893}
+.dnd-picker{
+ display:grid;grid-template-columns:minmax(160px,1.3fr) minmax(135px,.9fr)
+ minmax(190px,1.7fr) minmax(105px,.65fr) auto;gap:.65rem;align-items:end;
+ padding:.9rem;background:rgba(7,22,25,.55);border:1px solid #877656;
+ border-radius:10px;
+}
+.dnd-picker button{min-height:2.5rem}
+.dnd-picker label{min-width:0}
+.dnd-stack-identity{display:flex;flex-direction:column;justify-content:center;gap:.2rem}
+.dnd-stack-identity strong{font-weight:700;color:#f4deaf;overflow-wrap:anywhere}
+.dnd-stack-identity small{color:#cfc2aa;font-size:.79rem}
+.dnd-cormyr-compact p{margin:.1rem 0;color:#f6dfb1}
+@media(max-width:1100px){.dnd-picker{grid-template-columns:repeat(2,minmax(0,1fr))}.dnd-picker button{grid-column:1/-1}}
+@media(max-width:620px){.dnd-picker{grid-template-columns:1fr}.dnd-side-switch button{flex:1 1 140px}}
