@@ -9,6 +9,7 @@ import {DndDeploymentGrid} from '@/components/battle/DndDeploymentGrid';
 import {crzScenario,crzFootprintCells,crzFootprintDistance,
  crzReachable} from '@/lib/crusade/geometry';
 import {crzReplayBegin,crzVerifyReplay,crzReplayRecord} from '@/lib/crusade/replay';
+import {crzLegalCommands} from '@/lib/crusade/turns';
 import {isDndV3,isDndBattle} from '@/lib/crusade/dnd-mode';
 import {CRZ_TRAINING_DEFAULTS} from '@/lib/crusade/training-demo';
 
@@ -97,6 +98,28 @@ describe('Lote 3: identidade do motor, tamanho, voo e implantação',()=>{
   expect(flying.some(p=>p.to.q===4&&p.to.r===4)).toBe(true);
   const walking=crzReachable(blockedMap,{q:2,r:4},5,occupied,[],false,'L');
   expect(walking.some(p=>p.to.q===4&&p.to.r===4)).toBe(false);
+ });
+ it('pode atacar e depois mover no mesmo turno V3, sem segunda ação de ataque',()=>{
+  const ready=dndBattleReady(readyOpts,[
+   {id:'archer-a',templateId:DND_DEFAULT_STACKS[1]!.templateId,
+    side:'attacker',count:8,training:'trained',position:{q:1,r:4}},
+   {id:'enemy-b',templateId:DND_DEFAULT_STACKS[2]!.templateId,
+    side:'defender',count:10,training:'trained',position:{q:9,r:4}},
+  ]);
+  let session=crzReplayBegin(ready);
+  for(let i=0;i<6&&session.state.activeStackId!=='archer-a';i++)
+   session=crzReplayRecord(session,{
+    type:'END_ACTIVATION',unitId:session.state.activeStackId!},'human');
+  expect(session.state.activeStackId).toBe('archer-a');
+  session=crzReplayRecord(session,{type:'ATTACK',unitId:'archer-a',
+   targetId:'enemy-b',mode:'ranged'},'human');
+  expect(session.state.activeStackId).toBe('archer-a');
+  const moves=crzLegalCommands(session.state).filter(c=>c.type==='MOVE');
+  expect(moves.length).toBeGreaterThan(0);
+  expect(crzLegalCommands(session.state).filter(c=>c.type==='ATTACK')).toHaveLength(0);
+  session=crzReplayRecord(session,moves[0]!,'human');
+  expect(session.state.activeStackId).not.toBe('archer-a');
+  expect(crzVerifyReplay(session.replay).ok).toBe(true);
  });
  it('replay aceita posicionamento manual legal, mantém ataque e estado auditável',()=>{
   const ready=dndBattleReady(readyOpts,[
