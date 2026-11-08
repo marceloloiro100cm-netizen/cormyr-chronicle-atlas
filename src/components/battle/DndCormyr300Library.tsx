@@ -1,6 +1,8 @@
 import {useEffect,useMemo,useState,useRef,type ChangeEvent} from 'react';
 import {Button} from '@/components/ui/button';
 import {loadPrivateDndCormyr300} from '@/lib/crusade/dnd-cormyr-private-loader';
+import {saveDndCombatOverride,resetDndCombatOverride}
+ from '@/lib/crusade/dnd-private-overrides';
 import {
  DND_CORMYR_300_MAX_BYTES,DND_PROVISIONAL_FLY_SPEED_FT,
  DND_CORMYR_DEFAULT_FILTERS,
@@ -15,6 +17,9 @@ const sizes=[['T','Miúdo'],['S','Pequeno'],['M','Médio'],
 const types=[['dragon','Dragão'],['humanoid','Humanoide'],
  ['construct','Constructo'],['undead','Morto-vivo']];
 const PER_PAGE=30;
+type MonsterEditor=Readonly<{id:string;hp:number;ac:number;speed_ft:number;
+ fly_ft:number;melee_bonus:number;melee_damage:string;ranged_bonus:number;
+ ranged_damage:string}>;
 export function DndCormyr300Library({
  onCatalog,onAdd,sideCounts,
 }:{
@@ -29,6 +34,49 @@ export function DndCormyr300Library({
  const [count,setCount]=useState(1);
  const [message,setMessage]=useState('');
  const [error,setError]=useState('');
+ const [editor,setEditor]=useState<MonsterEditor|null>(null);
+ const [saving,setSaving]=useState(false);
+ const editNumber=(field:'hp'|'ac'|'speed_ft'|'fly_ft'|'melee_bonus'|'ranged_bonus',value:number)=>
+  setEditor(old=>old?{...old,[field]:value}:old);
+ const editDice=(field:'melee_damage'|'ranged_damage',value:string)=>
+  setEditor(old=>old?{...old,[field]:value}:old);
+ const openEditor=(id:string)=>{
+  const m=catalog?.monsters.find(x=>x.id===id);
+  if(!m)return;
+  setEditor({id,hp:m.hp,ac:m.ac,speed_ft:m.speed_ft,
+   fly_ft:m.fly_ft??(m.speed_ft===0?DND_PROVISIONAL_FLY_SPEED_FT:0),
+   melee_bonus:m.melee?.bonus??0,melee_damage:m.melee?.damage??'1d4',
+   ranged_bonus:m.ranged?.bonus??0,ranged_damage:m.ranged?.damage??'1d4'});
+  setError('');setMessage('');
+ };
+ const saveEditor=async()=>{
+  if(!editor)return;
+  const m=catalog?.monsters.find(x=>x.id===editor.id);
+  if(!m)return;
+  setSaving(true);
+  try{
+   await saveDndCombatOverride(editor.id,{
+    hp:editor.hp,ac:editor.ac,speed_ft:editor.speed_ft,fly_ft:editor.fly_ft,
+    ...(m.melee?{melee_bonus:editor.melee_bonus,melee_damage:editor.melee_damage}:{}),
+    ...(m.ranged?{ranged_bonus:editor.ranged_bonus,ranged_damage:editor.ranged_damage}:{}),
+   });
+   const updated=await loadPrivateDndCormyr300();
+   setCatalog(updated);onCatalog(updated);setEditor(null);
+   setMessage('Ficha de combate salva no banco privado do Narrador.');
+  }catch(e){setError(e instanceof Error?e.message:'Falha ao editar criatura.');}
+  finally{setSaving(false);}
+ };
+ const resetEditor=async()=>{
+  if(!editor)return;
+  setSaving(true);
+  try{
+   await resetDndCombatOverride(editor.id);
+   const updated=await loadPrivateDndCormyr300();
+   setCatalog(updated);onCatalog(updated);setEditor(null);
+   setMessage('Ajuste removido; atributos originais restaurados na ficha tática.');
+  }catch(e){setError(e instanceof Error?e.message:'Falha ao restaurar ficha.');}
+  finally{setSaving(false);}
+ };
  const sourceOptions=useMemo(()=>[...new Set(catalog?.monsters.map(m=>m.source)??[])]
   .sort(),[catalog]);
  const matched=useMemo(()=>catalog?filterDndCormyr300(catalog.monsters,filters):[],
@@ -90,11 +138,12 @@ export function DndCormyr300Library({
     <strong>{catalog.monsters.length} criaturas carregadas</strong> ·
     {matched.length} resultados do filtro ·
     {groups.length} grupos</p>
-   <p className="battle-note">Dados provisórios de combate: {catalog.monsters.filter(m=>m.speed_ft===0).length}
-    criaturas sem velocidade terrestre usam voo tático de {DND_PROVISIONAL_FLY_SPEED_FT} pés;
-    {catalog.monsters.filter(m=>m.ranged&&m.ranged.range_ft==null).length} disparos sem
-    alcance conhecido ficam desativados. Quando não houver golpe corpo a corpo,
-    aplica-se apenas um ataque básico provisório (+0, 1d4). Nenhuma ficha original é alterada.</p>
+   <p className="battle-note">Regras do Cormyr: ataques à distância não têm
+    alcance máximo no tabuleiro, mas exigem linha de visão.
+    Criaturas voadoras atravessam terreno bloqueado e florestas.
+    {catalog.monsters.filter(m=>m.speed_ft===0&&m.fly_ft===undefined).length}
+    fichas usam voo provisório de {DND_PROVISIONAL_FLY_SPEED_FT} pés.
+    O Narrador pode corrigir PV, CA, movimento e ataque sem sobrescrever a fonte.</p>
    <div className="dnd-cormyr-filters" role="group" aria-label="Filtros de monstros Cormyr">
     <label>Nome ou fonte
      <input type="search" aria-label="Buscar monstro Cormyr"
@@ -148,6 +197,43 @@ export function DndCormyr300Library({
      </select>
     </label>
    </div>
+   {editor&&<section className="battle-surface" aria-label="Editor privado de criatura D&D">
+    <h5>Editar ficha de combate · {catalog.monsters.find(m=>m.id===editor.id)?.name}</h5>
+    <p>Ajuste privado apenas para simulações; a ficha original dos 300 é preservada.</p>
+    <div className="dnd-cormyr-filters">
+     <label>PV<input type="number" min={1} max={100000} value={editor.hp}
+      aria-label="PV D&D edição" onChange={e=>editNumber('hp',Number(e.target.value))}/></label>
+     <label>CA<input type="number" min={1} max={40} value={editor.ac}
+      aria-label="CA D&D edição" onChange={e=>editNumber('ac',Number(e.target.value))}/></label>
+     <label>Deslocamento terrestre (pés)<input type="number" min={0} max={1000}
+      value={editor.speed_ft} aria-label="Terrestre D&D edição"
+      onChange={e=>editNumber('speed_ft',Number(e.target.value))}/></label>
+     <label>Voo (pés; zero para desativar)<input type="number" min={0} max={1000}
+      value={editor.fly_ft} aria-label="Voo D&D edição"
+      onChange={e=>editNumber('fly_ft',Number(e.target.value))}/></label>
+     {catalog.monsters.find(m=>m.id===editor.id)?.melee&&<>
+      <label>Bônus corpo a corpo<input type="number" min={-30} max={60}
+       value={editor.melee_bonus} aria-label="Bônus corpo a corpo D&D"
+       onChange={e=>editNumber('melee_bonus',Number(e.target.value))}/></label>
+      <label>Dano corpo a corpo<input value={editor.melee_damage}
+       aria-label="Dano corpo a corpo D&D"
+       onChange={e=>editDice('melee_damage',e.target.value)}/></label>
+     </>}
+     {catalog.monsters.find(m=>m.id===editor.id)?.ranged&&<>
+      <label>Bônus à distância<input type="number" min={-30} max={60}
+       value={editor.ranged_bonus} aria-label="Bônus à distância D&D"
+       onChange={e=>editNumber('ranged_bonus',Number(e.target.value))}/></label>
+      <label>Dano à distância<input value={editor.ranged_damage}
+       aria-label="Dano à distância D&D"
+       onChange={e=>editDice('ranged_damage',e.target.value)}/></label>
+     </>}
+    </div>
+    <div className="dnd-cormyr-buttons">
+     <Button disabled={saving} onClick={()=>void saveEditor()}>Salvar ficha privada</Button>
+     <Button variant="outline" disabled={saving} onClick={()=>void resetEditor()}>Restaurar original</Button>
+     <Button variant="outline" disabled={saving} onClick={()=>setEditor(null)}>Cancelar</Button>
+    </div>
+   </section>}
    <div className="dnd-cormyr-add-controls">
     <label>Quantidade por nova pilha
      <input aria-label="Quantidade para adicionar monstro" type="number"
@@ -164,19 +250,20 @@ export function DndCormyr300Library({
       <th>Ataques básicos</th><th>Ações</th></tr></thead>
      <tbody>{visible.map(m=><tr key={m.id}>
       <th>{m.name}<small className="dnd-cormyr-source">{m.source}
-       {m.speed_ft===0?' · voo provisório 30 pés':''}
-       {!m.melee&&m.ranged?.range_ft==null?' · ataque provisório':''}
+       {m.speed_ft===0&&m.fly_ft===undefined?' · voo provisório 30 pés':''}
+       {m.fly_ft!==undefined?' · voo '+m.fly_ft+' pés':''}
+       {m.ranged?' · ataque à distância sem limite':''}
        </small></th>
       <td>{m.group}</td><td>{m.challenge_rating}</td><td>{m.size}</td>
       <td>{m.hp}</td><td>{m.ac}</td>
       <td>{[
        ...(m.melee?[m.melee.name+' '+(m.melee.bonus>=0?'+':'')+m.melee.bonus]:[]),
-       ...(m.ranged&&m.ranged.range_ft!=null?
-        [m.ranged.name+' '+(m.ranged.bonus>=0?'+':'')+m.ranged.bonus]:[]),
-       ...(!m.melee&&m.ranged?.range_ft==null?
-        ['Ataque básico provisório +0 · 1d4']:[]),
+       ...(m.ranged?
+        [m.ranged.name+' '+(m.ranged.bonus>=0?'+':'')+m.ranged.bonus+' (à distância)']:[]),
       ].join(' / ')}</td>
       <td><div className="dnd-cormyr-buttons">
+       <Button type="button" variant="outline" size="sm"
+        aria-label={'Editar ficha '+m.name} onClick={()=>openEditor(m.id)}>Editar</Button>
        <Button type="button" variant="outline" size="sm"
         aria-label={'Adicionar '+m.name+' ao atacante'}
         disabled={sideCounts.attacker>=7}
