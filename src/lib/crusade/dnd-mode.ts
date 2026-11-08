@@ -10,7 +10,7 @@ export const isDndReplay=(state:Readonly<{id:string;rulesetId:string}>):boolean=
  * Ataques continuam exigindo linha de visão; não há combate vertical nesta etapa.
  */
 export const dndCanFly=(unit:Readonly<{
- template:Readonly<{flags:Readonly<{flying:boolean}>;speedFt:Readonly<{fly?:number}>}>;
+ template:Readonly<{flags:Readonly<{flying:boolean}>;speedFt:Readonly<{fly:number|undefined}>}>;
 }>):boolean=>Boolean(unit.template.flags.flying&&(unit.template.speedFt.fly??0)>0);
 
 /** Distância sem limite no tabuleiro: não impõe alcance máximo, mas respeita LOS. */
