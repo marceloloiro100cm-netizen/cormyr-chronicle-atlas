@@ -1,5 +1,6 @@
-import {useEffect,useMemo,useState,type ChangeEvent} from 'react';
+import {useEffect,useMemo,useState,useRef,type ChangeEvent} from 'react';
 import {Button} from '@/components/ui/button';
+import {loadBattleDndCormyr300} from '@/lib/crusade/dnd-cormyr.functions';
 import {
  DND_CORMYR_300_MAX_BYTES,
  DND_CORMYR_DEFAULT_FILTERS,
@@ -22,6 +23,7 @@ export function DndCormyr300Library({
  sideCounts:Readonly<Record<'attacker'|'defender',number>>;
 }){
  const [catalog,setCatalog]=useState<DndCormyrCatalog|null>(null);
+ const importedManually=useRef(false);
  const [filters,setFilters]=useState<DndCormyrOptions>({...DND_CORMYR_DEFAULT_FILTERS});
  const [shown,setShown]=useState(PER_PAGE);
  const [count,setCount]=useState(1);
@@ -38,7 +40,21 @@ export function DndCormyr300Library({
  useEffect(()=>{
   const cached=readDndCormyr300Local();
   if(cached){setCatalog(cached);onCatalog(cached);}
-  // Só na montagem: a importação manual chama onCatalog explicitamente.
+  // Testes de interface rodam sem sessão/servidor; verificação de acesso real
+  // permanece na função de servidor com autenticação e RLS Supabase.
+  if(import.meta.env.MODE==='test')return;
+  let active=true;
+  void loadBattleDndCormyr300().then(remote=>{
+   if(!active||importedManually.current)return;
+   setCatalog(remote);onCatalog(remote);
+   setError('');
+   setMessage('300 criaturas carregadas automaticamente do banco privado do Narrador.');
+  }).catch(cause=>{
+   if(!active||cached||importedManually.current)return;
+   setError(cause instanceof Error?cause.message:
+    'Catálogo privado indisponível. Importe seu JSON localmente.');
+  });
+  return ()=>{active=false;};
  },[]); // eslint-disable-line react-hooks/exhaustive-deps
  const read=async(event:ChangeEvent<HTMLInputElement>)=>{
   const file=event.currentTarget.files?.[0];
@@ -48,6 +64,7 @@ export function DndCormyr300Library({
    if(file.size>DND_CORMYR_300_MAX_BYTES)
     throw Error('Arquivo JSON ultrapassa o limite de 600 KB.');
    const parsed=parseDndCormyr300(await file.text());
+   importedManually.current=true;
    saveDndCormyr300Local(parsed);
    setCatalog(parsed);onCatalog(parsed);
    setFilters({...DND_CORMYR_DEFAULT_FILTERS});setShown(PER_PAGE);
@@ -58,9 +75,9 @@ export function DndCormyr300Library({
  };
  return <section className="dnd-cormyr-library" aria-label="Biblioteca de 300 monstros Cormyr">
   <h4>Biblioteca Cormyr · 300 criaturas de Faerûn</h4>
-  <p>Importe o arquivo <strong>bestiario_cormyr_faerun_300.json</strong>. O catálogo é
-   armazenado <strong>somente neste navegador do Narrador</strong> e não é publicado
-   no repositório, banco nem para os jogadores.</p>
+  <p>O banco privado carrega automaticamente as 300 criaturas para o Narrador autenticado.
+   Você também pode importar o arquivo <strong>bestiario_cormyr_faerun_300.json</strong>
+   como alternativa local. O conteúdo não é publicado no repositório nem para jogadores.</p>
   <label>Carregar catálogo Cormyr 300 (JSON)
    <input type="file" accept=".json,application/json"
     aria-label="Importar catálogo Cormyr 300"
