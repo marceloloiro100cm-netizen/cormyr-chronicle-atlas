@@ -23,7 +23,7 @@ export const DND_DEFAULT_STACKS:readonly DndStackDraft[]=[
  * e monstros trazidos pelo usuário. A simulação inteira é local e reexecutável.
  */
 export function dndBattleReady(options:CrzTrainingOptions,
- drafts:readonly DndStackDraft[],imported:readonly CrzCreature[]=[]):CrzReady{
+ drafts:readonly DndStackDraft[],imported:readonly CrzCreature[]=[],runId=''):CrzReady{
  if(drafts.length<2||drafts.length>14)
   throw new Error('D&D: escolha de 2 a 14 pilhas.');
  for(const side of ['attacker','defender'] as const)
@@ -42,7 +42,7 @@ export function dndBattleReady(options:CrzTrainingOptions,
  }
  const rules=crzPreset('CRZ-5E','square');
  const input={
-  id:'dnd-training-'+options.seed.toLowerCase(),
+  id:'dnd-training-'+options.seed.toLowerCase()+(runId?'-'+runId.toLowerCase():''),
   name:'D&D · Batalha tática de criaturas e exércitos',
   seed:options.seed,rulesetId:'CRZ-5E' as const,
   rulesetHash:crzRulesetHash(rules),
