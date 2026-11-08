@@ -84,17 +84,17 @@ describe('Cormyr 300: arquivo do usuário, grupos, ND, conversão básica',()=>{
   const deployed=ready.stacks.find(s=>s.id==='immobile')!;
   expect(deployed.movementHex).toBe(3);
  });
- it('não converte disparo sem alcance em golpe com dano original; usa ataque básico temporário',()=>{
+ it('permite disparos sem alcance máximo e preserva bônus e dano originais',()=>{
   const raw=parseDndCormyr300(fixture()).monsters[0]!;
   const uncertain=dndCormyrCreature({...raw,melee:null,
    ranged:{name:'Raio sem alcance',bonus:12,damage:'4d8+6',range_ft:null}});
   expect(uncertain.attacks).toHaveLength(1);
   expect(uncertain.attacks[0]).toMatchObject({
-   id:'basic',name:'Ataque básico provisório',kind:'melee',toHit:0,reachFt:5,
-   damage:[{dice:'1d4',mod:0,avg:2,type:'bludgeoning'}],
+   id:'ranged',name:'Raio sem alcance',kind:'ranged',toHit:12,
+   damage:[{dice:'4d8',mod:6,type:'piercing'}],
   });
-  expect(uncertain.tags).toContain('provisional-attack');
-  expect(uncertain.warnings.join(' ')).toMatch(/disparo ignorado|Disparo ignorado/);
+  expect(uncertain.tags).toContain('dnd-ranged-unbounded');
+  expect(uncertain.warnings.join(' ')).toMatch(/sem limite de alcance/);
   const ready=dndBattleReady({...CRZ_TRAINING_DEFAULTS,
    resolution:'rolled',seed:'c0ffee52'},[
    DND_DEFAULT_STACKS[0]!,
@@ -102,18 +102,19 @@ describe('Cormyr 300: arquivo do usuário, grupos, ND, conversão básica',()=>{
     count:2,training:'trained'},
   ],[uncertain]);
   const deployed=ready.stacks.find(s=>s.id==='ranged-unknown')!;
-  expect(deployed.meleeRoutine?.steps[0]?.attackId).toBe('basic');
-  expect(deployed.rangedRoutine).toBeNull();
+  expect(deployed.meleeRoutine).toBeNull();
+  expect(deployed.rangedRoutine?.steps[0]?.attackId).toBe('ranged');
   expect(crzVerifyReplay(crzReplayBegin(ready).replay).ok).toBe(true);
  });
- it('preserva o ataque corpo a corpo real quando o único disparo está incompleto',()=>{
+ it('preserva corpo a corpo e disparo mesmo se a fonte não informa alcance',()=>{
   const raw=parseDndCormyr300(fixture()).monsters[0]!;
   const converted=dndCormyrCreature({...raw,
    ranged:{name:'Raio sem alcance',bonus:12,damage:'4d8+6',range_ft:null}});
-  expect(converted.attacks).toHaveLength(1);
+  expect(converted.attacks).toHaveLength(2);
   expect(converted.attacks[0]?.id).toBe('melee');
   expect(converted.attacks[0]?.toHit).toBe(4);
-  expect(converted.warnings.join(' ')).toContain('Disparo ignorado');
+  expect(converted.attacks[1]?.id).toBe('ranged');
+  expect(converted.warnings.join(' ')).toMatch(/sem limite de alcance/);
  });
  it('recusa registros duplicados, ataques inválidos, contagem diferente e arquivos maiores',()=>{
   const parsed=JSON.parse(fixture());
