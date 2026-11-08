@@ -58,31 +58,28 @@ export function terrainEffect(tile:WarTerrainTile):WarTerrainEffect{
 export function visibilityPenalty(
  visibility:WarVisibility,weather:WarWeather,ranged:boolean,
 ):number{
- // Chuva intensa reduz a visão efetiva; neve forte impõe escuro.
- const finalVisibility=weather==='heavy-snow'?'dark':
-  weather==='heavy-rain'&&visibility==='clear'?'dim':visibility;
+ // A neve pesada equivale à escuridão; chuva forte altera o RESULTADO
+ // dos ataques em -2, mas NÃO impõe automaticamente pouca luz (p. 226-227).
+ const finalVisibility=weather==='heavy-snow'?'dark':visibility;
  return (finalVisibility==='dark'?(ranged?4:2):finalVisibility==='dim'?(ranged?2:1):0);
 }
 export function weatherAttackModifier(weather:WarWeather):number{
  return ['heavy-rain','light-snow','heavy-snow'].includes(weather)?-2:0;
 }
-/** Custo adicional por célula (uma unidade = 10 m de orçamento de marcha).
- * A mistura de terreno e clima é uma convenção explícita do laboratório digital;
- * o Narrador pode desativar clima na preparação do confronto.
+/** Restrição do terreno em dezenas de metros: lento -10, muito lento -20.
+ * O mapa do Narrador determina condições de solo/encharcamento; não inventar
+ * automaticamente lentidão adicional por chuva ou neve leve (p. 226-227).
  */
 export function movementSlow(tile:WarTerrainTile,visibility:WarVisibility,weather:WarWeather):number{
  const tier=terrainEffect(tile).slow;
  const poorVisibility=visibility==='dark'||weather==='heavy-snow';
- const muddy=weather==='heavy-rain'&&['stream','marsh','hill'].includes(tile.terrain);
- const snow=weather==='light-snow'&&['mountain','hill','marsh'].includes(tile.terrain);
- return Math.min(2,tier+(poorVisibility?1:0)+(muddy||snow?1:0));
+ return Math.min(2,tier+(poorVisibility?1:0));
 }
-/** Proteção no terreno: aplicada aos tiros, ou ao corpo a corpo apenas se a
- * unidade estiver defendendo. Evita perder o bônus de cobertura dos arqueiros
- * quando o alvo ainda não recebeu a ordem Defender.
+/** Tabela 10-3: cobertura é exclusiva de unidade sob a ordem Defender;
+ * não se torna passiva por o ataque ser de Pontaria.
  */
-export function terrainCoverBonus(tile:WarTerrainTile,ranged:boolean,defending:boolean):number{
- return ranged||defending?terrainEffect(tile).cover:0;
+export function terrainCoverBonus(tile:WarTerrainTile,_ranged:boolean,defending:boolean):number{
+ return defending?terrainEffect(tile).cover:0;
 }
 export function terrainMoveCost(tile:WarTerrainTile,visibility:WarVisibility,weather:WarWeather):number{
  return 1+movementSlow(tile,visibility,weather);
