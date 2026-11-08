@@ -123,6 +123,10 @@ export function createWarBattle(input:{
    leaders[0]!.warfare>12||sub.length>Math.floor(input.units.filter(u=>u.side===side).length/2))
    throw new Error('Exige comandante válido e no máximo um subcomandante para cada duas unidades.');
   if(input.units.filter(u=>u.side===side).length<1)throw new Error('Cada lado precisa de unidades.');
+  // Cap. 10, p. 222: cada exército dispõe de até Status do comandante em heróis.
+  if((input.heroes??[]).filter(h=>h.side===side&&h.role==='hero').length>
+   leaders[0]!.status)
+   throw new Error('Número de heróis excede o Status do comandante.');
  }
  const commanders=input.commanders.map(c=>({...c}));
  const units=input.units.map(u=>({...u,position:{...u.position},ability:{...u.ability},
@@ -562,7 +566,8 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
   const allowed=candidates.filter(p=>{
    if(!inBounds(battle,p))return false;
    const tile=terrainAt(battle.tiles,p),effect=terrainEffect(tile);
-   return !effect.blocked&&!(effect.water&&!unit.naval)&&
+   return (!effect.blocked||(unit.naval&&effect.naval))&&
+    !(effect.water&&!unit.naval)&&
     !(unit.mounted&&effect.noCavalry)&&
     (!unit.naval||effect.naval||tile.terrain==='coast')&&
     spent+1+movementSlow(tile,battle.visibility,battle.weather)<=steps;
@@ -982,6 +987,12 @@ export function fireWarSiegeVolley(battle:WarBattle,input:{
    throw new Error('Sem engenheiro disponível para a máquina.');
   if(warSiegeReloadRemaining(weapon,battle.round)>0)
    throw new Error('Máquina precisa aguardar uma rodada completa para recarregar.');
+  const engineTerrain=terrainEffect(terrainAt(battle.tiles,weapon.position));
+  const defenderHasFort=battle.fortifications.some(f=>f.side===weapon.side&&
+   !f.breached&&f.structuralHealth!==0);
+  if(engineTerrain.noSiege&&
+   (weapon.side==='attacker'||!defenderHasFort))
+   throw new Error('Terreno proíbe armas de cerco nesta posição.');
   if(!warSiegeTargetInRange(weapon,position))
    throw new Error('Alvo fora do alcance de cerco.');
   if(battle.strictLineOfSight&&weapon.kind==='scorpion'&&
