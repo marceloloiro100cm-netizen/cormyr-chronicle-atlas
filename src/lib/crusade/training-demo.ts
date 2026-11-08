@@ -25,7 +25,7 @@ export type CrzTrainingOptions=Readonly<{
  preset?:CrzPresetId;
  generalLevel?:number;
  width:11|15;
- resolution:'expected'|'hybrid';
+ resolution:'expected'|'hybrid'|'rolled';
  opponent:'ai'|'human';
  seed:string;
 }>;
