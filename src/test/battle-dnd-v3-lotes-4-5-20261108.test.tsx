@@ -10,7 +10,7 @@ import {crzStart} from '@/lib/crusade/turns';
 import {CRZ_TRAINING_DEFAULTS} from '@/lib/crusade/training-demo';
 
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
-const options={...CRZ_TRAINING_DEFAULTS,seed:'dndf00d',
+const options={...CRZ_TRAINING_DEFAULTS,seed:'dadf00d0',
  resolution:'rolled' as const,opponent:'human' as const};
 const flying=dndCormyrCreature({
  id:'test-voador',name:'Voador de teste',group:'Dragões',
