@@ -33,7 +33,7 @@ import {DND_DEFAULT_STACKS,dndBattleReady,type DndStackDraft}
 import {DND_MILITARY_CREATURES} from '@/lib/crusade/dnd-military';
 import {saveDndBattle,listDndBattles,loadDndBattle,
  type DndSavedBattle} from '@/lib/crusade/dnd-private-sessions';
-import {isDndReplay} from '@/lib/crusade/dnd-mode';
+import {isDndReplay,isDndBattle} from '@/lib/crusade/dnd-mode';
 import {initialGeneralProfile,awardGeneralTraining,
  type TrainingGeneralProfile} from '@/lib/crusade/general-progression';
 import {readGeneralTrainingProfile,saveGeneralTrainingProfile}
@@ -262,6 +262,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const [reinforceTemplate,setReinforceTemplate]=useState(dndMilitaryTemplateId('infantry'));
  const [reinforceSide,setReinforceSide]=useState<'attacker'|'defender'>('attacker');
  const [reinforceCount,setReinforceCount]=useState(1);
+ const [dndWinner,setDndWinner]=useState<'attacker'|'defender'|'draw'>('draw');
  const [storedBattles,setStoredBattles]=useState<readonly DndSavedBattle[]>([]);
  const [restoreBattleId,setRestoreBattleId]=useState('');
  const [dndBusy,setDndBusy]=useState(false);
@@ -788,7 +789,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    {error&&<p className="crz-alert" role="alert">{error}</p>}
    {message&&<p className="crz-status" role="status">{message}</p>}
    {savedPanel}
-   {dndMode&&frame.phase==='active'&&<section className="battle-surface"
+   {dndMode&&isDndBattle(frame)&&frame.phase==='active'&&<section className="battle-surface"
     aria-label="Gerenciamento de tropas durante a batalha D&D">
     <h2>Gerenciar criaturas e reforços</h2>
     <p>Altere o efetivo sem encerrar a partida. Cada ajuste é registrado no replay.
@@ -825,6 +826,20 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
        min={1} max={1000} value={reinforceCount}
        onChange={e=>setReinforceCount(Number(e.target.value))}/></label>
      <Button variant="outline" onClick={addReinforcement}>Adicionar reforços</Button>
+    </div>
+    <div className="dnd-cormyr-add-controls">
+     <label>Resultado definido pelo Narrador
+      <select aria-label="Vencedor D&D" value={dndWinner}
+       onChange={e=>setDndWinner(e.target.value as 'attacker'|'defender'|'draw')}>
+       <option value="draw">Sem vencedor</option>
+       <option value="attacker">Vitória dos atacantes</option>
+       <option value="defender">Vitória dos defensores</option>
+      </select>
+     </label>
+     <Button variant="outline" onClick={()=>frame.activeStackId&&adminCommand({
+      type:'DND_END_BATTLE',unitId:frame.activeStackId,
+      winner:dndWinner==='draw'?null:dndWinner,
+     })}>Encerrar combate D&D</Button>
     </div>
    </section>}
    <section className="crz-turn-track" aria-label="Ordem de combate">
@@ -1040,7 +1055,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
     <span>Clique num inimigo com contorno vermelho para atacar.</span>
    </footer>
    {frame.phase==='completed'&&<div className="crz-victory-banner" role="status">
-    Resultado: {frame.winner?SIDE[frame.winner].name:'Empate'} · {frame.resultReason==='withdrawal'?'retirada':frame.resultReason}
+    Resultado: {frame.winner?SIDE[frame.winner].name:'Empate'} · {frame.resultReason==='withdrawal'?'retirada':frame.resultReason==='narrator-end'?
+    'encerramento pelo Narrador':frame.resultReason}
    </div>}
   </section>}
  </section>;
