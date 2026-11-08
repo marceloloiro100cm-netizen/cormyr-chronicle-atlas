@@ -48,7 +48,7 @@ export type CrzEventData=
  |Readonly<{type:'EFFECT_APPLIED'|'EFFECT_EXPIRED';
    unitId:string;effectId:string;kind:CrzEffect['kind'];amount:number}>
  |Readonly<{type:'BATTLE_ENDED';winner:CrzSide|null;
-   reason:'elimination'|'rout'|'mutual-defeat'|'stalemate'|'round-limit'}>;
+   reason:'elimination'|'rout'|'withdrawal'|'mutual-defeat'|'stalemate'|'round-limit'}>;
 export type CrzEvent=CrzEventData &Readonly<{seq:number;round:number}>;
 export type CrzBattleState=Omit<CrzReady,'phase'|'stacks'|'rngState'|'leaders'> &
  Readonly<{
