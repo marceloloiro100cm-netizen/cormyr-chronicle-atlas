@@ -7,6 +7,7 @@ import {crzPcg32} from './rng';
 import type {CrzTrainingOptions} from './training-demo';
 import {sharedToCrzMap} from '@/lib/battle/geometry/shared-square-map';
 import {DND_MILITARY_CREATURES,dndMilitaryTemplateId} from './dnd-military';
+import {DND_FEET_PER_SQUARE} from './dnd-mode';
 
 export type DndStackDraft=Readonly<{
  id:string;side:'attacker'|'defender';templateId:string;
@@ -42,6 +43,8 @@ export function dndBattleReady(options:CrzTrainingOptions,
    throw new Error('D&D: quantidade de criaturas inválida.');
  }
  const rules=crzPreset('CRZ-5E','square');
+ if(rules.movement.feetPerHex!==DND_FEET_PER_SQUARE)
+  throw Error('D&D V3: escala do mapa divergente do contrato tático.');
  const input={
   id:'dnd-training-v3-'+options.seed.toLowerCase()+(runId?'-'+runId.toLowerCase():''),
   name:'D&D · Batalha tática de criaturas e exércitos',
@@ -85,5 +88,7 @@ export function dndBattleReady(options:CrzTrainingOptions,
  // corresponde exatamente à seed original. A iniciativa é determinística
  // e persistida em stacks/replay, mas não consome esse fluxo de combate.
  return {...ready,stacks,
-  warnings:[...ready.warnings,'Iniciativa D&D: d20 + DES + treino, uma vez por encontro; perfis militares são traduções digitais originais.']};
+  warnings:[...ready.warnings,
+   'D&D V3: quadrado = 10 pés; diagonal = 15 pés; adjacência = um quadrado; ataques à distância sem teto, respeitando linha de visão.',
+   'Iniciativa D&D: d20 + DES + treino, uma vez por encontro; perfis militares são traduções digitais originais.']};
 }
