@@ -23,6 +23,7 @@ import {CRZ_TRAINING_DEFAULTS,CRZ_TRAINING_SCENARIOS,
 import type {CrzSpellId} from '@/lib/crusade/setup';
 import type {CrzCreature} from '@/lib/crusade/creatures';
 import {DndCormyr300Library} from './DndCormyr300Library';
+import {DndDeploymentGrid} from './DndDeploymentGrid';
 import {dndCormyrCreature,type DndCormyrCatalog} from '@/lib/crusade/dnd-cormyr-300';
 import {DND_MILITARY_MAPPING,dndMilitaryTemplateId,dndMilitaryType}
  from '@/lib/crusade/dnd-military';
@@ -252,11 +253,18 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const [error,setError]=useState('');
  const [showImport,setShowImport]=useState(false);
  const [dndRoster,setDndRoster]=useState<DndStackDraft[]>([...DND_DEFAULT_STACKS]);
+ const [placingStackId,setPlacingStackId]=useState(DND_DEFAULT_STACKS[0]!.id);
  const [dndMonsters,setDndMonsters]=useState<CrzCreature[]>([]);
  const [dndCormyr300,setDndCormyr300]=useState<DndCormyrCatalog|null>(null);
  const dndAllMonsters=useMemo(()=>[...dndMonsters,
   ...(dndCormyr300?.monsters.map(dndCormyrCreature)??[])],
   [dndMonsters,dndCormyr300]);
+ const dndDeploymentMap=useMemo(()=>{
+  if(!dndMode)return null;
+  try{return options.sharedMap?sharedToCrzMap(options.sharedMap):
+   crzScenario(options.scenario,options.width,'square');}
+  catch{return null;}
+ },[dndMode,options.sharedMap,options.scenario,options.width]);
  const [dndImportedStatus,setDndImportedStatus]=useState('');
  const [adminCount,setAdminCount]=useState(1);
  const [reinforceTemplate,setReinforceTemplate]=useState(dndMilitaryTemplateId('infantry'));
@@ -302,7 +310,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    (side==='attacker'?'atacante.':'defensor.'));
  };
  const changeDndStack=(id:string,part:Partial<DndStackDraft>)=>{
-  setDndRoster(current=>current.map(x=>x.id===id?{...x,...part}:x));
+  setDndRoster(current=>current.map(x=>x.id===id?{...x,...part,
+   ...(part.templateId?{position:undefined}:{})}:x));
  };
  useEffect(()=>{setGeneralProfile(readGeneralTrainingProfile());},[]);
  const awardProgress=()=>{
@@ -644,6 +653,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
          </optgroup>}
         </select>
        </label>
+       {stack.position&&<small className="battle-note">Posição: {stack.position.q}, {stack.position.r}</small>}
        <label>Quantidade na pilha
         <input type="number" min={1} max={1000} step={1} value={stack.count}
          aria-label={'Quantidade D&D '+stack.id}
@@ -666,6 +676,11 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
        disabled={dndRoster.filter(x=>x.side===side).length>=7}
        onClick={()=>addDndStack(side)}>Adicionar pilha {side==='attacker'?'atacante':'defensora'}</Button>
      </section>)}
+     {dndDeploymentMap&&<DndDeploymentGrid map={dndDeploymentMap}
+      drafts={dndRoster} creatures={[...DND_MILITARY_CREATURES,...dndAllMonsters]}
+      selectedId={dndRoster.some(x=>x.id===placingStackId)?placingStackId:dndRoster[0]?.id??''}
+      onSelected={setPlacingStackId}
+      onPlace={(id,position)=>changeDndStack(id,{position})}/>}
      <details className="dnd-conversion">
       <summary>Ver de/para das 17 unidades de Cormyr para D&D</summary>
       <p>PV e atributos são valores <strong>propostos para o simulador</strong>, não uma
