@@ -61,6 +61,21 @@ describe('D&D Cormyr: regras do Narrador e replay verificável',()=>{
   expect(session.state.events.some(e=>e.type==='DND_STACK_WITHDRAWN')).toBe(true);
   expect(crzVerifyReplay(session.replay).ok).toBe(true);
  });
+ it('não encerra automaticamente por dois turnos sem dano; permite fim pelo Narrador',()=>{
+  let session=sample();
+  for(let i=0;i<22;i++){
+   if(session.state.round>=3)break;
+   session=crzReplayRecord(session,{type:'END_ACTIVATION',
+    unitId:session.state.activeStackId!},'human');
+  }
+  expect(session.state.round).toBeGreaterThanOrEqual(3);
+  expect(session.state.phase).toBe('active');
+  session=crzReplayRecord(session,{type:'DND_END_BATTLE',
+   unitId:session.state.activeStackId!,winner:'attacker'},'human');
+  expect(session.state.phase).toBe('completed');
+  expect(session.state.resultReason).toBe('narrator-end');
+  expect(crzVerifyReplay(session.replay).ok).toBe(true);
+ });
  it('rejeita ajuste inválido e não disponibiliza magia ou poderes de Cruzada',()=>{
   const session=sample(),unitId=session.state.activeStackId!;
   expect(crzLegalCommands(session.state).filter(c=>
