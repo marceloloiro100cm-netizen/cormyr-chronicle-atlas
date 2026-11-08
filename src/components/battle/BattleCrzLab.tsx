@@ -33,7 +33,7 @@ import {DND_DEFAULT_STACKS,dndBattleReady,type DndStackDraft}
 import {DND_MILITARY_CREATURES} from '@/lib/crusade/dnd-military';
 import {saveDndBattle,listDndBattles,loadDndBattle,
  type DndSavedBattle} from '@/lib/crusade/dnd-private-sessions';
-import {isDndBattle} from '@/lib/crusade/dnd-mode';
+import {isDndReplay} from '@/lib/crusade/dnd-mode';
 import {initialGeneralProfile,awardGeneralTraining,
  type TrainingGeneralProfile} from '@/lib/crusade/general-progression';
 import {readGeneralTrainingProfile,saveGeneralTrainingProfile}
@@ -497,7 +497,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
   try{
    if(file.size>CRZ_REPLAY_MAX_BYTES)throw new Error('Arquivo maior que o limite de 8 MB.');
    const next=crzReplayParse(await file.text());
-   if(dndMode!==isDndBattle(next.state))
+   if(dndMode!==isDndReplay(next.state))
     throw Error('O replay pertence a outro modo de batalha.');
    setSession(next);setReplayStep(next.replay.steps.length);
    setSelectedId(next.state.activeStackId);setPanel('replay');setExpanded(true);
