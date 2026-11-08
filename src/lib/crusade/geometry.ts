@@ -109,7 +109,7 @@ export function crzValidateMap(raw:unknown,allowSeparatedByObstacles=false):CrzM
   const local=new Set<string>();
   for(const h of map.deployment[side]){
    const key=crzHexKey(h),tile=index.get(key);
-   if(!tile||tile.terrain==='rock'||local.has(key)||allZones.has(key))
+   if(!tile||(tile.terrain==='rock'&&!(allowSeparatedByObstacles&&map.grid==='square'))||local.has(key)||allZones.has(key))
     throw new Error('E_SETUP_MAP: zona sobreposta, rochosa ou fora do mapa.');
    allZones.add(key);local.add(key);
   }
@@ -232,6 +232,17 @@ function crzSquareRay(map:CrzMap,from:CrzHex,to:CrzHex):CrzHex[]{
  };
  return map.tiles.filter(t=>crzHexKey(t)!==crzHexKey(from)&&
   crzHexKey(t)!==crzHexKey(to)&&crosses(t));
+}
+
+/** D&D V3: mirar de qualquer célula ocupada para qualquer célula do alvo.
+ * Não cria alcance máximo e mantém a checagem de terreno em cada raio.
+ * O modo legado continua usando somente os pontos de ancoragem.
+ */
+export function crzFootprintLineOfSight(map:CrzMap,from:CrzHex,
+ fromSize:CrzCreatureSize,to:CrzHex,toSize:CrzCreatureSize):boolean{
+ const origin=crzFootprintCells(map,from,fromSize);
+ const target=crzFootprintCells(map,to,toSize);
+ return origin.some(a=>target.some(b=>crzLineOfSight(map,a,b)));
 }
 
 export function crzLineOfSight(map:CrzMap,from:CrzHex,to:CrzHex):boolean{
