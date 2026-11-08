@@ -1,6 +1,6 @@
 import {crzBuildCatalog} from './catalog';
 import type {CrzCreature} from './creatures';
-import {crzScenario} from './geometry';
+import {crzScenario,type CrzHex} from './geometry';
 import {crzPreset,crzRulesetHash} from './ruleset';
 import {crzPrepareBattle,type CrzReady} from './setup';
 import {crzPcg32} from './rng';
@@ -11,6 +11,7 @@ import {DND_MILITARY_CREATURES,dndMilitaryTemplateId} from './dnd-military';
 export type DndStackDraft=Readonly<{
  id:string;side:'attacker'|'defender';templateId:string;
  count:number;training:'green'|'trained'|'veteran'|'elite';
+ position?:CrzHex|undefined;
 }>;
 export const DND_DEFAULT_STACKS:readonly DndStackDraft[]=[
  {id:'army-infantry',side:'attacker',templateId:dndMilitaryTemplateId('infantry'),count:12,training:'trained'},
@@ -53,6 +54,7 @@ export function dndBattleReady(options:CrzTrainingOptions,
    attacker:{side:'attacker' as const,name:'Exército atacante',
     stacks:drafts.filter(d=>d.side==='attacker').map(d=>({
      id:d.id,templateId:d.templateId,count:d.count,training:d.training,
+     ...(d.position?{position:d.position}:{}),
      source:(d.templateId.endsWith('|user')||d.templateId.endsWith('|local'))?
       {kind:'monster-library' as const,catalogHash:catalog.catalogHash}:
       {kind:'fictional' as const},
@@ -60,6 +62,7 @@ export function dndBattleReady(options:CrzTrainingOptions,
    defender:{side:'defender' as const,name:'Exército defensor',
     stacks:drafts.filter(d=>d.side==='defender').map(d=>({
      id:d.id,templateId:d.templateId,count:d.count,training:d.training,
+     ...(d.position?{position:d.position}:{}),
      source:(d.templateId.endsWith('|user')||d.templateId.endsWith('|local'))?
       {kind:'monster-library' as const,catalogHash:catalog.catalogHash}:
       {kind:'fictional' as const},
