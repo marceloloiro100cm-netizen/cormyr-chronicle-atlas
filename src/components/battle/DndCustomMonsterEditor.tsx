@@ -27,11 +27,16 @@ export function DndCustomMonsterEditor({onSaved}:{
   bonus:2,damage:'1d6',damage_type:'bludgeoning',
  });
  const [saving,setSaving]=useState(false);
+ const [confirmedAuthorship,setConfirmedAuthorship]=useState(false);
  const [error,setError]=useState('');
  const [message,setMessage]=useState('');
  const change=<K extends keyof State>(key:K,value:State[K])=>
   setDraft(prev=>({...prev,[key]:value}));
  const save=async()=>{
+  if(!confirmedAuthorship){
+   setError('Confirme autoria ou permissão de uso antes de cadastrar.');
+   return;
+  }
   setSaving(true);setError('');setMessage('');
   try{
    const attack={
@@ -127,9 +132,15 @@ export function DndCustomMonsterEditor({onSaved}:{
     </select>
    </label>
   </div>
+  <label className="battle-note">
+   <input type="checkbox" aria-label="Confirmar autoria ou autorização D&D"
+    checked={confirmedAuthorship}
+    onChange={e=>setConfirmedAuthorship(e.target.checked)}/>
+   Confirmo que esta ficha foi criada por mim ou possui autorização para uso privado.
+  </label>
   {error&&<p className="crz-alert" role="alert">{error}</p>}
   {message&&<p role="status">{message}</p>}
-  <Button disabled={saving} onClick={()=>void save()}>
+  <Button disabled={saving||!confirmedAuthorship} onClick={()=>void save()}>
    Salvar criatura original</Button>
  </details>;
 }
