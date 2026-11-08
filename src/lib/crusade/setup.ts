@@ -4,6 +4,7 @@
 import {z} from 'zod';
 import {crzPrepareArmy,crzArmySetupSchema,type CrzPreparedStack} from './convert';
 import {crzMapSchema,crzValidateMap,crzHexKey,crzGridToOffset,
+ crzFootprintCells,crzMapIndex,
  type CrzMap,type CrzHex,type CrzSide} from './geometry';
 import {crzPresetIdSchema,crzRequireKnownRuleset,type CrzPresetId,type CrzRuleset} from './ruleset';
 import {crzPcg32,type CrzRngState} from './rng';
@@ -95,25 +96,37 @@ function orderedZones(map:CrzMap,side:CrzSide):{
  return {front:zone.filter(h=>crzGridToOffset(map,h).column===pivot).sort(compare),
   rear:zone.filter(h=>crzGridToOffset(map,h).column!==pivot).sort(compare)};
 }
-function deploy(map:CrzMap,stacks:readonly CrzPreparedStack[]):CrzReadyStack[]{
- const occupied=new Set<string>();
- for(const stack of stacks){
-  if(!stack.position)continue;
-  const key=crzHexKey(stack.position);
-  if(!map.deployment[stack.side].some(h=>crzHexKey(h)===key))
-   throw new Error('E_SETUP_ZONE: posição fora da implantação: '+stack.id);
-  if(occupied.has(key))throw new Error('E_SETUP_DUP: posição repetida: '+key);
-  occupied.add(key);
- }
+function deploy(map:CrzMap,stacks:readonly CrzPreparedStack[],
+ dndV3=false):CrzReadyStack[]{
+ const occupied=new Set<string>(),tiles=crzMapIndex(map);
+ const footprint=(stack:CrzPreparedStack,pos:CrzHex)=>dndV3?
+  crzFootprintCells(map,pos,stack.size):[pos];
+ const valid=(stack:CrzPreparedStack,pos:CrzHex)=>{
+  if(!map.deployment[stack.side].some(h=>crzHexKey(h)===crzHexKey(pos)))return false;
+  const cells=footprint(stack,pos),fly=Boolean(dndV3&&stack.template.flags.flying);
+  return cells.length>0&&tiles.get(crzHexKey(pos))?.terrain!=='rock'&&
+   cells.every(h=>{
+    const key=crzHexKey(h),tile=tiles.get(key);
+    return Boolean(tile&&!occupied.has(key)&&(fly||tile.terrain!=='rock'));
+   });
+ };
+ const reserve=(stack:CrzPreparedStack,pos:CrzHex)=>{
+  if(!valid(stack,pos))
+   throw Error('E_SETUP_ZONE: implantação bloqueada ou sobreposta: '+stack.id);
+  for(const h of footprint(stack,pos))occupied.add(crzHexKey(h));
+ };
+ // Reservar todas as posições fixas antes da implantação automática.
+ for(const stack of stacks)if(stack.position)reserve(stack,stack.position);
  const result:CrzReadyStack[]=[];
  for(const side of ['attacker','defender'] as const){
   const zone=orderedZones(map,side);
   for(const stack of stacks.filter(s=>s.side===side)){
    const candidates=stack.rangedRoutine&&!stack.meleeRoutine?
     [...zone.rear,...zone.front]:[...zone.front,...zone.rear];
-   const position=stack.position??candidates.find(h=>!occupied.has(crzHexKey(h)));
-   if(!position)throw new Error('E_SETUP_ZONE: implantação sem vagas.');
-   occupied.add(crzHexKey(position));
+   const position=stack.position??candidates.find(h=>valid(stack,h));
+   if(!position)throw Error('E_SETUP_ZONE: sem espaço livre para '+stack.name+
+    ' ('+stack.size+'); reduza as pilhas ou reposicione.');
+   if(!stack.position)reserve(stack,position);
    result.push({...stack,position});
   }
  }
