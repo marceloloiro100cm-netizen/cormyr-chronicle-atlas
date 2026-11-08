@@ -711,7 +711,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
         <td>{x.unavailableReason?'—':(x.initiativeModifier>=0?'+':'')+x.initiativeModifier}</td>
         <td>{x.unavailableReason?'—':x.speedFt+' pés'}</td>
         <td>{x.unavailableReason?'—':x.rangedToHit===undefined?'—':
-         '+'+x.rangedToHit+' / '+x.rangedRangeFt+' pés'}</td>
+         '+'+x.rangedToHit+' · à distância'}</td>
         <td>{x.unavailableReason??x.individualsPerOriginalUnit+' por unidade GOT'}</td>
        </tr>)}</tbody>
       </table></div>
