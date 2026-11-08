@@ -38,6 +38,10 @@ const row=z.object({
  review:z.string().max(500).optional(),
 }).strict().refine(x=>x.melee!==null||x.ranged!==null,
  {message:'Criatura precisa de ataque básico.'});
+/** Validar ficha individual antes de inserir no catálogo privado V2. */
+export function parseDndCustomMonster(input:unknown):DndCormyrMonster{
+ return row.parse(input);
+}
 /** Ajustes por cima da fonte privada: o registro original nunca é sobrescrito. */
 export const dndCombatOverrideSchema=z.object({
  hp:z.number().int().min(1).max(100000).optional(),
