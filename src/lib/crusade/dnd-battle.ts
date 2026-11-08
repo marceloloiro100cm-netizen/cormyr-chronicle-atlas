@@ -60,7 +60,7 @@ export function dndBattleReady(options:CrzTrainingOptions,
    defender:{side:'defender' as const,name:'Exército defensor',
     stacks:drafts.filter(d=>d.side==='defender').map(d=>({
      id:d.id,templateId:d.templateId,count:d.count,training:d.training,
-     source:d.templateId.endsWith('|user')?
+     source:(d.templateId.endsWith('|user')||d.templateId.endsWith('|local'))?
       {kind:'monster-library' as const,catalogHash:catalog.catalogHash}:
       {kind:'fictional' as const},
     }))},
