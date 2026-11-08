@@ -69,6 +69,7 @@ export function executeAdvancedWarOrder(
    ' entre '+ids.length+' unidades.',actor);
  }
  if(order.kind==='lightning-attack'||order.kind==='trample'){
+  if(actor.naval)throw new Error('Navios de guerra não podem executar manobras de corrida.');
   const mounted=order.kind==='trample';
   if(mounted&&!actor.mounted)throw new Error('Atropelar exige unidade de cavalaria.');
   if(!order.to)throw new Error('Informe o destino do ataque em linha reta.');
@@ -86,7 +87,8 @@ export function executeAdvancedWarOrder(
    if(p.x<0||p.y<0||p.x>=battle.width||p.y>=battle.height)
     throw new Error('Trajeto atravessa limite do mapa.');
    const tile=terrainAt(battle.tiles,p),effect=terrainEffect(tile);
-   if(effect.blocked||(effect.water&&!actor.naval)||actor.mounted&&effect.noCavalry)
+   if((effect.blocked&&!(actor.naval&&effect.naval))||
+    (effect.water&&!actor.naval)||actor.mounted&&effect.noCavalry)
     throw new Error('Trajeto atravessa terreno proibido.');
    spent+=10*(1+movementSlow(tile,battle.visibility,battle.weather));
    if(spent>move)throw new Error('Trajeto ultrapassa deslocamento de corrida.');
@@ -238,8 +240,8 @@ export function executeAdvancedWarOrder(
     u.position.x===to.x&&u.position.y===to.y))break;
    const tile=terrainAt(battle.tiles,to);
    const effect=terrainEffect(tile);
-   if(effect.blocked||(effect.water&&!target.naval)||
-    (target.mounted&&effect.noCavalry))break;
+   if((effect.blocked&&!(target.naval&&effect.naval))||
+    (effect.water&&!target.naval)||(target.mounted&&effect.noCavalry))break;
    const stepCost=1+movementSlow(tile,battle.visibility,battle.weather);
    if(cost+stepCost>degrees)break;
    cost+=stepCost;position=to;metres+=10;
