@@ -22,6 +22,8 @@ import {CRZ_TRAINING_DEFAULTS,CRZ_TRAINING_SCENARIOS,
  from '@/lib/crusade/training-demo';
 import type {CrzSpellId} from '@/lib/crusade/setup';
 import type {CrzCreature} from '@/lib/crusade/creatures';
+import {DndCormyr300Library} from './DndCormyr300Library';
+import {dndCormyrCreature,type DndCormyrCatalog} from '@/lib/crusade/dnd-cormyr-300';
 import {DND_MILITARY_MAPPING,dndMilitaryTemplateId,dndMilitaryType}
  from '@/lib/crusade/dnd-military';
 import {DND_MONSTER_FILE_MAX_BYTES,DND_MONSTER_CSV_EXAMPLE,parseDndMonsterTable}
@@ -245,6 +247,10 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const [showImport,setShowImport]=useState(false);
  const [dndRoster,setDndRoster]=useState<DndStackDraft[]>([...DND_DEFAULT_STACKS]);
  const [dndMonsters,setDndMonsters]=useState<CrzCreature[]>([]);
+ const [dndCormyr300,setDndCormyr300]=useState<DndCormyrCatalog|null>(null);
+ const dndAllMonsters=useMemo(()=>[...dndMonsters,
+  ...(dndCormyr300?.monsters.map(dndCormyrCreature)??[])],
+  [dndMonsters,dndCormyr300]);
  const [dndImportedStatus,setDndImportedStatus]=useState('');
  const [highContrast,setHighContrast]=useState(false);
  const [generalProfile,setGeneralProfile]=useState<TrainingGeneralProfile>(initialGeneralProfile);
@@ -264,6 +270,22 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    return [...current,{id:side+'-stack-'+number,side,
     templateId:dndMilitaryTemplateId('infantry'),count:10,training:'trained'}];
   });
+ };
+ const addDndCatalogStack=(templateId:string,_name:string,
+  side:DndStackDraft['side'],count:number)=>{
+  const template=dndAllMonsters.find(m=>m.id===templateId);
+  if(!template){setError('Criatura importada não encontrada no catálogo.');return;}
+  const limit=({T:1000,S:1000,M:1000,L:400,H:100,G:25} as const)[template.size];
+  if(dndRoster.filter(d=>d.side===side).length>=7){
+   setError('D&D: limite de sete pilhas para este lado.');return;
+  }
+  let n=1;while(dndRoster.some(d=>d.id===side+'-catalog-'+n))n++;
+  const amount=Math.max(1,Math.min(limit,count));
+  setDndRoster(current=>[...current,{
+   id:side+'-catalog-'+n,side,templateId,count:amount,training:'trained'}]);
+  setError('');
+  setMessage(template.name+': '+amount+' criatura(s) adicionada(s) ao lado '+
+   (side==='attacker'?'atacante.':'defensor.'));
  };
  const changeDndStack=(id:string,part:Partial<DndStackDraft>)=>{
   setDndRoster(current=>current.map(x=>x.id===id?{...x,...part}:x));
@@ -325,7 +347,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const begin=()=>{
   try{
    const ready=dndMode?dndBattleReady({...options,grid:'square',
-    preset:'CRZ-5E'},dndRoster,dndMonsters):
+    preset:'CRZ-5E'},dndRoster,dndAllMonsters):
     crzTrainingReady({...options,grid:'square',
      ...(options.preset?{preset:options.preset}:{}),
      generalLevel:generalProfile.level});
@@ -507,6 +529,12 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
       São obrigatórios a origem, licença, atribuição e comprovação de uso.
       Ataques especiais, magias e ações lendárias não são convertidos automaticamente.</p>
      {dndImportedStatus&&<p role="status">{dndImportedStatus}</p>}
+     <DndCormyr300Library onCatalog={setDndCormyr300}
+      onAdd={addDndCatalogStack}
+      sideCounts={{
+       attacker:dndRoster.filter(s=>s.side==='attacker').length,
+       defender:dndRoster.filter(s=>s.side==='defender').length,
+      }}/>
      {(['attacker','defender'] as const).map(side=><section key={side}
       className="dnd-roster-side" aria-label={'Pilha D&D '+(side==='attacker'?'atacante':'defensora')}>
       <h4>{side==='attacker'?'Exército atacante':'Exército defensor'}</h4>
@@ -519,9 +547,14 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
            <option key={x.typeId} value={dndMilitaryTemplateId(x.typeId)}>
             {x.name}{x.requiresNarratorReview?' (revisar)':''}</option>)}
          </optgroup>
-         {dndMonsters.length>0&&<optgroup label="Monstros da tabela importada">
+         {dndMonsters.length>0&&<optgroup label="Monstros CSV/JSON particulares">
           {dndMonsters.map(monster=><option key={monster.id} value={monster.id}>
            {monster.name}</option>)}
+         </optgroup>}
+         {dndCormyr300&&<optgroup label="Biblioteca Cormyr 300">
+          {dndCormyr300.monsters.map(monster=><option
+           key={monster.id} value={'cy-'+monster.id+'|local'}>
+           {monster.name} · ND {monster.challenge_rating}</option>)}
          </optgroup>}
         </select>
        </label>
