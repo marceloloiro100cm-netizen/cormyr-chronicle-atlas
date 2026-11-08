@@ -2,7 +2,7 @@ import {useEffect,useMemo,useState,useRef,type ChangeEvent} from 'react';
 import {Button} from '@/components/ui/button';
 import {loadPrivateDndCormyr300} from '@/lib/crusade/dnd-cormyr-private-loader';
 import {
- DND_CORMYR_300_MAX_BYTES,
+ DND_CORMYR_300_MAX_BYTES,DND_PROVISIONAL_FLY_SPEED_FT,
  DND_CORMYR_DEFAULT_FILTERS,
  parseDndCormyr300,readDndCormyr300Local,saveDndCormyr300Local,
  filterDndCormyr300,dndCormyrTemplateId,
@@ -90,6 +90,11 @@ export function DndCormyr300Library({
     <strong>{catalog.monsters.length} criaturas carregadas</strong> ·
     {matched.length} resultados do filtro ·
     {groups.length} grupos</p>
+   <p className="battle-note">Dados provisórios de combate: {catalog.monsters.filter(m=>m.speed_ft===0).length}
+    criaturas sem velocidade terrestre usam voo tático de {DND_PROVISIONAL_FLY_SPEED_FT} pés;
+    {catalog.monsters.filter(m=>m.ranged&&m.ranged.range_ft==null).length} disparos sem
+    alcance conhecido ficam desativados. Quando não houver golpe corpo a corpo,
+    aplica-se apenas um ataque básico provisório (+0, 1d4). Nenhuma ficha original é alterada.</p>
    <div className="dnd-cormyr-filters" role="group" aria-label="Filtros de monstros Cormyr">
     <label>Nome ou fonte
      <input type="search" aria-label="Buscar monstro Cormyr"
@@ -158,11 +163,19 @@ export function DndCormyr300Library({
       <th>Tam.</th><th>PV</th><th>CA</th>
       <th>Ataques básicos</th><th>Ações</th></tr></thead>
      <tbody>{visible.map(m=><tr key={m.id}>
-      <th>{m.name}<small className="dnd-cormyr-source">{m.source}</small></th>
+      <th>{m.name}<small className="dnd-cormyr-source">{m.source}
+       {m.speed_ft===0?' · voo provisório 30 pés':''}
+       {!m.melee&&m.ranged?.range_ft==null?' · ataque provisório':''}
+       </small></th>
       <td>{m.group}</td><td>{m.challenge_rating}</td><td>{m.size}</td>
       <td>{m.hp}</td><td>{m.ac}</td>
-      <td>{[m.melee,m.ranged].filter(Boolean).map(a=>
-       a!.name+' '+(a!.bonus>=0?'+':'')+a!.bonus).join(' / ')}</td>
+      <td>{[
+       ...(m.melee?[m.melee.name+' '+(m.melee.bonus>=0?'+':'')+m.melee.bonus]:[]),
+       ...(m.ranged&&m.ranged.range_ft!=null?
+        [m.ranged.name+' '+(m.ranged.bonus>=0?'+':'')+m.ranged.bonus]:[]),
+       ...(!m.melee&&m.ranged?.range_ft==null?
+        ['Ataque básico provisório +0 · 1d4']:[]),
+      ].join(' / ')}</td>
       <td><div className="dnd-cormyr-buttons">
        <Button type="button" variant="outline" size="sm"
         aria-label={'Adicionar '+m.name+' ao atacante'}
