@@ -203,7 +203,8 @@ export function crzStart(ready:CrzReady):CrzBattleState{
   throw new Error('E_SETUP_SOURCE: batalha oficial não autorizada.');
  if(new Set(ready.stacks.map(s=>s.id)).size!==ready.stacks.length)
   throw new Error('E_SETUP_DUP: ID repetido.');
- const verifiedMap=crzValidateMap(ready.map,isDndBattle(ready)),tiles=crzMapIndex(verifiedMap);
+ const verifiedMap=crzValidateMap(ready.map,isDndBattle(ready),isDndV3(ready)),
+  tiles=crzMapIndex(verifiedMap);
   if((verifiedMap.grid??'hex')!==ready.ruleset.grid.kind)
    throw new Error('E_SETUP_MAP: malha e conjunto de regras incompatíveis.');
  const expectedRng=crzPcg32(ready.seed).state();
