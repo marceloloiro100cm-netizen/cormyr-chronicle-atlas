@@ -66,7 +66,7 @@ export const crzTerrainCost=(terrain:CrzTerrain):number=>
  terrain==='rock'?Infinity:terrain==='plain'?1:2;
 export const crzMapIndex=(map:CrzMap):Map<string,CrzTile>=>
  new Map(map.tiles.map(t=>[crzHexKey(t),t]));
-export function crzValidateMap(raw:unknown):CrzMap{
+export function crzValidateMap(raw:unknown,allowSeparatedByObstacles=false):CrzMap{
  const map=crzMapSchema.parse(raw);
  const seen=new Set<string>();
  if(map.width===11&&map.height!==9||map.width===15&&map.height!==11)
@@ -102,7 +102,7 @@ export function crzValidateMap(raw:unknown):CrzMap{
    visited.add(key);pending.push(next);
   }
  }
- if(!map.deployment.defender.some(h=>visited.has(crzHexKey(h))))
+ if(!allowSeparatedByObstacles&&!map.deployment.defender.some(h=>visited.has(crzHexKey(h))))
   throw new Error('E_SETUP_MAP: lados desconectados.');
  return map;
 }
