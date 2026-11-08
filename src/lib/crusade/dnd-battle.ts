@@ -53,7 +53,7 @@ export function dndBattleReady(options:CrzTrainingOptions,
    attacker:{side:'attacker' as const,name:'Exército atacante',
     stacks:drafts.filter(d=>d.side==='attacker').map(d=>({
      id:d.id,templateId:d.templateId,count:d.count,training:d.training,
-     source:d.templateId.endsWith('|user')?
+     source:(d.templateId.endsWith('|user')||d.templateId.endsWith('|local'))?
       {kind:'monster-library' as const,catalogHash:catalog.catalogHash}:
       {kind:'fictional' as const},
     }))},
