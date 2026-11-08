@@ -31,8 +31,8 @@ export function DndDeploymentGrid({map,drafts,creatures,selectedId,onSelected,on
   const creature=byId.get(selected.templateId);
   if(!creature)return false;
   if(!map.deployment[selected.side].some(p=>crzHexKey(p)===crzHexKey(pos)))return false;
-  if(terrain.get(crzHexKey(pos))?.terrain==='rock')return false;
   const flying=creature.flags.flying&&(creature.speedFt.fly??0)>0;
+  if(!flying&&terrain.get(crzHexKey(pos))?.terrain==='rock')return false;
   return crzFootprintCells(map,pos,creature.size).every(p=>{
    const tile=terrain.get(crzHexKey(p));
    return Boolean(tile&&!occupied.has(crzHexKey(p))&&
