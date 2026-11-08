@@ -29,6 +29,9 @@ export type CrzEventData=
  |Readonly<{type:'MOVED';unitId:string;from:CrzHex;to:CrzHex;
    cost:number;path:readonly CrzHex[]}>
  |Readonly<{type:'WAITED'|'DEFENDED';unitId:string}>
+ |Readonly<{type:'DND_COUNT_CHANGED';unitId:string;previous:number;current:number}>
+ |Readonly<{type:'DND_STACK_WITHDRAWN';unitId:string;survivors:number}>
+ |Readonly<{type:'DND_STACK_ADDED';unitId:string;side:CrzSide;count:number}>
  |Readonly<{type:'ABILITY_USED';unitId:string;
    ability:'CHARGE'|'VOLLEY'|'NIMBLE_ESCAPE';uses:number}>
  |Readonly<{type:'ATTACK_RESOLVED'|'RETALIATION_RESOLVED';
