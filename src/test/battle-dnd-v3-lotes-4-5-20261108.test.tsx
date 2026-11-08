@@ -6,7 +6,7 @@ import {dndCormyrCreature} from '@/lib/crusade/dnd-cormyr-300';
 import {DND_MILITARY_CREATURES} from '@/lib/crusade/dnd-military';
 import {crzScenario,crzLineOfSight,crzFootprintLineOfSight,
  crzValidateMap} from '@/lib/crusade/geometry';
-import {crzStart} from '@/lib/crusade/turns';
+import {crzStart,crzLegalCommands} from '@/lib/crusade/turns';
 import {CRZ_TRAINING_DEFAULTS} from '@/lib/crusade/training-demo';
 
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
@@ -31,6 +31,32 @@ describe('D&D V3: lote 4, linha de visão de criaturas multicélula',()=>{
   expect(crzFootprintLineOfSight(wall,{q:2,r:4},'L',
    {q:8,r:4},'L')).toBe(false);
  });
+});
+it('ações reais respeitam raios de borda, muralha e distância ilimitada',()=>{
+ const archer=dndCormyrCreature({
+  id:'archer-large',name:'Arqueiro gigante de teste',group:'Humanoides',
+  source:'Original do teste',challenge_rating:2,hp:40,ac:13,
+  size:'L',speed_ft:30,
+  melee:null,ranged:{name:'Arco',bonus:5,damage:'1d8+2'},
+ });
+ const drafts=[
+  {id:'archer-large-stack',side:'attacker' as const,templateId:archer.id,
+   count:1,training:'trained' as const,position:{q:1,r:4}},
+  {...DND_DEFAULT_STACKS[2]!,position:{q:9,r:4}},
+ ];
+ const ready=dndBattleReady(options,drafts,[archer]);
+ const map=ready.map;
+ const partiallyBlocked={...map,tiles:map.tiles.map(t=>
+  t.q===5&&t.r===4?{...t,terrain:'rock' as const}:t)};
+ const begin=crzStart({...ready,map:partiallyBlocked});
+ const active={...begin,activeStackId:'archer-large-stack'};
+ const canShoot=(state:typeof active)=>crzLegalCommands(state).some(cmd=>
+  cmd.type==='ATTACK'&&cmd.unitId==='archer-large-stack'&&
+  cmd.targetId===drafts[1]!.id&&cmd.mode==='ranged');
+ expect(canShoot(active)).toBe(true);
+ const wall={...map,tiles:map.tiles.map(t=>
+  t.q===5?{...t,terrain:'rock' as const}:t)};
+ expect(canShoot({...active,map:wall})).toBe(false);
 });
 describe('D&D V3: lote 5, implantação sobre barreiras para voadores',()=>{
  it('zona rochosa é válida apenas no mapa D&D, sem mudar regras legadas',()=>{
