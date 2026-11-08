@@ -2,6 +2,7 @@ import {supabase} from '@/integrations/supabase/client';
 import {parseDndCormyr300,type DndCormyrCatalog} from './dnd-cormyr-300';
 import {loadDndCombatOverrides} from './dnd-private-overrides';
 import {loadDndCustomMonsters} from './dnd-private-custom';
+import {loadDndVerifiedSources} from './dnd-verified-sources';
 
 /** Carrega o catálogo do Supabase somente no navegador com sessão do Narrador.
  * RLS no banco aplica is_campaign_admin() AND campaign_access_active().
@@ -49,5 +50,5 @@ export async function loadPrivateDndCormyr300():Promise<DndCormyrCatalog>{
    version:extras.length?2:1,count:combined.length},
   monsters:combined,
  }));
- return loadDndCombatOverrides(base);
+ return loadDndCombatOverrides(await loadDndVerifiedSources(base));
 }
