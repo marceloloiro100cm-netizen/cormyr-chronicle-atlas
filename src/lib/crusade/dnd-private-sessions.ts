@@ -3,7 +3,7 @@
  */
 import {supabase} from '@/integrations/supabase/client';
 import {crzReplayParse,crzReplaySerialize,type CrzReplaySession} from './replay';
-import {crzAfterActionReport} from './after-action';
+import {crzAfterActionReport} from './insights';
 import {isDndBattle} from './dnd-mode';
 
 type QueryResult={data:unknown;error:{message:string}|null};
