@@ -4,12 +4,12 @@
 import {crzBuildCatalog} from './catalog';
 import {crzReadCreature,type CrzCreature} from './creatures';
 import {crzPrepareStack} from './convert';
-import {crzHexKey,crzMapIndex,type CrzSide} from './geometry';
+import {crzHexKey,crzMapIndex,crzFootprintCells,type CrzSide} from './geometry';
 import {crzPcg32} from './rng';
 import {crzMaxCount,crzValidateStack} from './stack';
 import {crzCapable,crzLog,crzReplaceStack,type CrzBattleStack,
  type CrzBattleState} from './battle-state';
-import {isDndBattle} from './dnd-mode';
+import {isDndBattle,isDndV3} from './dnd-mode';
 
 export type DndAdminCommand=
  |Readonly<{type:'DND_SET_COUNT';unitId:string;targetId:string;count:number}>
@@ -58,10 +58,19 @@ export function dndAdminPlay(state:CrzBattleState,command:DndAdminCommand):CrzBa
   throw Error('D&D: reforço inválido, duplicado ou acima do limite.');
  if(state.stacks.filter(s=>s.side===command.side&&crzCapable(s)).length>=7)
   throw Error('D&D: máximo de sete pilhas ativas por exército.');
- const occupied=new Set(state.stacks.filter(crzCapable).map(s=>crzHexKey(s.position)));
- const tiles=crzMapIndex(state.map);
- const zone=state.map.deployment[command.side].find(pos=>
-  !occupied.has(crzHexKey(pos))&&tiles.get(crzHexKey(pos))?.terrain!=='rock');
+ const occupied=new Set(state.stacks.filter(crzCapable).flatMap(s=>
+  isDndV3(state)?crzFootprintCells(state.map,s.position,s.size):[s.position]
+ ).map(crzHexKey));
+ const tiles=crzMapIndex(state.map),flying=Boolean(template.flags.flying);
+ const zone=state.map.deployment[command.side].find(pos=>{
+  if(tiles.get(crzHexKey(pos))?.terrain==='rock')return false;
+  const cells=isDndV3(state)?crzFootprintCells(state.map,pos,template.size):[pos];
+  return cells.length>0&&cells.every(h=>{
+   const key=crzHexKey(h),tile=tiles.get(key);
+   return Boolean(tile&&!occupied.has(key)&&(isDndV3(state)&&flying||
+    tile.terrain!=='rock'));
+  });
+ });
  if(!zone)throw Error('D&D: zona de reforços ocupada.');
  const all=[...state.stacks.map(s=>s.template),template];
  const catalog=crzBuildCatalog([...new Map(all.map(t=>[t.id,t])).values()]);
