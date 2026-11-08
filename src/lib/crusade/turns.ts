@@ -5,7 +5,7 @@
 import {crzRequireKnownRuleset,crzRulesetHash} from './ruleset';
 import {crzPcg32} from './rng';
 import {crzValidateStack} from './stack';
-import {crzLineOfSight,crzReachable,crzGridDistance,crzHexKey,
+import {crzLineOfSight,crzFootprintLineOfSight,crzReachable,crzGridDistance,crzHexKey,
  crzFootprintCells,crzFootprintDistance,
  crzValidateMap,crzMapIndex,type CrzHex,type CrzSide} from './geometry';
 import {crzCapable,crzLog,crzOrder,crzReplaceStack,crzMoraleState,
@@ -279,7 +279,9 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
     legal.push({type:'ATTACK',unitId:unit.id,targetId:target.id,mode:'melee'});
    if(unit.rangedRoutine&&unit.activation.preparedAbility!=='CHARGE'&&
      distance>0&&(basicOnlyDnd||distance<=6)&&
-     crzLineOfSight(state.map,unit.position,target.position)&&
+     (isDndV3(state)?
+      crzFootprintLineOfSight(state.map,unit.position,unit.size,target.position,target.size):
+      crzLineOfSight(state.map,unit.position,target.position))&&
      (!engaged||state.ruleset.ranged.engaged!=='forbidden')&&
      (basicOnlyDnd||distance<=Math.max(unit.rangeHex,
       ...unit.template.attacks.filter(x=>x.kind==='ranged').map(x=>
