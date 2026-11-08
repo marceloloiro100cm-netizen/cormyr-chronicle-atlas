@@ -57,6 +57,12 @@ export const crzOffsetToAxial=(column:number,row:number):CrzHex=>({
 export const crzAxialToOffset=(h:CrzHex):{column:number;row:number}=>({
  column:h.q+Math.floor((h.r-(h.r&1))/2),row:h.r,
 });
+/** Distância entre bordas ocupadas, em células, exclusiva do D&D V3. */
+export function crzFootprintDistance(map:CrzMap,a:CrzHex,asize:CrzCreatureSize,
+ b:CrzHex,bsize:CrzCreatureSize):number{
+ const ca=crzFootprintCells(map,a,asize),cb=crzFootprintCells(map,b,bsize);
+ return Math.min(...ca.flatMap(x=>cb.map(y=>crzGridDistance(map,x,y))));
+}
 export const crzDistance=(a:CrzHex,b:CrzHex):number=>Math.max(
  Math.abs(a.q-b.q),Math.abs(a.r-b.r),Math.abs(a.q+a.r-b.q-b.r));
 export const crzNeighbors=(h:CrzHex):CrzHex[]=>CRZ_DIRECTIONS.map(d=>({
