@@ -6,7 +6,8 @@ import {BattleSquareLegend} from './BattleSquareLegend';
 import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
-import {crzHexKey,crzGridToOffset,crzScenario,type CrzHex,type CrzSide,type CrzMap}
+import {crzHexKey,crzGridToOffset,crzScenario,crzFootprintCells,
+ type CrzHex,type CrzSide,type CrzMap}
  from '@/lib/crusade/geometry';
 import {crzLegalCommands,type CrzCommand} from '@/lib/crusade/turns';
 import {crzCapable,crzOrder,type CrzBattleStack,type CrzBattleState,
@@ -34,7 +35,7 @@ import {DND_DEFAULT_STACKS,dndBattleReady,type DndStackDraft}
 import {DND_MILITARY_CREATURES} from '@/lib/crusade/dnd-military';
 import {saveDndBattle,listDndBattles,loadDndBattle,
  type DndSavedBattle} from '@/lib/crusade/dnd-private-sessions';
-import {isDndReplay,isDndBattle} from '@/lib/crusade/dnd-mode';
+import {isDndReplay,isDndBattle,isDndV3} from '@/lib/crusade/dnd-mode';
 import {initialGeneralProfile,awardGeneralTraining,
  type TrainingGeneralProfile} from '@/lib/crusade/general-progression';
 import {readGeneralTrainingProfile,saveGeneralTrainingProfile}
@@ -109,8 +110,11 @@ function eventLabel(event:CrzEvent):string{
  const extra='unitId' in event?event.unitId:
   'leaderId' in event?event.leaderId:'';
  const damage='appliedDamage' in event?' · '+event.appliedDamage+' PV':'';
+ const result=event.type==='ATTACK_RESOLVED'||event.type==='RETALIATION_RESOLVED'?
+  ' · '+event.hits+'/'+event.attacks+' acertos'+
+  (event.crits?' · '+event.crits+' críticos':''):''; 
  return '#'+event.seq+' '+(names[event.type]??event.type)+
-  (extra?' · '+extra:'')+damage;
+  (extra?' · '+extra:'')+result+damage;
 }
 
 export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,onTile}:{
@@ -127,6 +131,10 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
  const targets=new Set(attacks);
  const occupied=new Map(state.stacks.filter(crzCapable)
   .map(s=>[crzHexKey(s.position),s]));
+ const footprints=new Map<string,CrzBattleStack>(isDndV3(state)?
+  state.stacks.filter(crzCapable).flatMap(stack=>
+   crzFootprintCells(state.map,stack.position,stack.size).map(h=>
+    [crzHexKey(h),stack] as const)):[...occupied]);
  const square=state.map.grid==='square';
  const width=square?SQUARE_STEP*(state.map.width+1.5):XSTEP*(state.map.width+1)+58;
  const height=square?SQUARE_STEP*(state.map.height+1.5):SIZE*(1.5*(state.map.height-1)+3.4);
@@ -148,17 +156,18 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
   <svg className="crz-map" viewBox={`0 0 ${width} ${height}`}
    style={{width:zoom+'%'}} role="group" aria-label={`Mapa CRZ ${state.map.width} por ${state.map.height}`}>
    {state.map.tiles.map(tile=>{
-    const key=crzHexKey(tile),{x,y}=pixel(state.map,tile),unit=occupied.get(key),objective=objectivesByHex.get(key);
+    const key=crzHexKey(tile),{x,y}=pixel(state.map,tile),
+     unit=occupied.get(key),covered=footprints.get(key),objective=objectivesByHex.get(key);
     const isMove=movable.has(key);
-    const isAttack=Boolean(unit&&targets.has(unit.id));
-    const active=unit?.id===state.activeStackId,selected=unit?.id===selectedId;
-    const hovered=unit?.id===hoveredId;
+    const isAttack=Boolean(covered&&targets.has(covered.id));
+    const active=covered?.id===state.activeStackId,selected=covered?.id===selectedId;
+    const hovered=covered?.id===hoveredId;
     const label=(isMove?'Mover para ':isAttack?'Atacar ':'Inspecionar ')+
-     (unit?unit.name+' · ':'')+TERRAIN[tile.terrain]!.name+
+     (covered?covered.name+' · ':'')+TERRAIN[tile.terrain]!.name+
      ' ('+crzGridToOffset(state.map,tile).column+','+
        crzGridToOffset(state.map,tile).row+')'+
        (objective?' · Marco: '+objective.title:'');
-    const press=()=>onTile({q:tile.q,r:tile.r});
+    const press=()=>onTile(covered?.position??{q:tile.q,r:tile.r});
     const keyPress=(event:KeyboardEvent<SVGGElement>)=>{
      if(event.key==='Enter'||event.key===' '){event.preventDefault();press();return;}
      const direction:Record<string,CrzHex>={
@@ -183,6 +192,12 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
        height={SQUARE_STEP} fill={TERRAIN[tile.terrain]!.fill}/>:
       <polygon data-crz-cell-shape="hex" points={HEX_POINTS} transform={`translate(${x} ${y})`}
        fill={TERRAIN[tile.terrain]!.fill}/>}
+      {square&&covered&&!unit&&<rect data-dnd-footprint={covered.id}
+       x={x-SQUARE_STEP/2} y={y-SQUARE_STEP/2}
+       width={SQUARE_STEP} height={SQUARE_STEP}
+       fill={active?'rgba(255,224,153,.25)':'rgba(255,224,153,.15)'}
+       stroke={isAttack?'#ff6d54':'#c6aa70'} strokeWidth={isAttack?3:1.5}
+       pointerEvents="none"/>}
       {isMove&&(square?<rect className="crz-valid-overlay"
        x={x-SQUARE_STEP/2} y={y-SQUARE_STEP/2} width={SQUARE_STEP} height={SQUARE_STEP}
        fill="rgba(99,255,116,.24)" pointerEvents="none"/>:
