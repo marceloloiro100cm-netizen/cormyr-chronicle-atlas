@@ -75,6 +75,26 @@ describe('GOT livro base — paridade de campo, clima e marinha',()=>{
   expect(moved.battle.units.find(u=>u.id==='a')?.position).toEqual({x:3,y:2});
   expect(JSON.stringify(navy)).toBe(copy);
  });
+ it('retirada de navio respeita rios e lagos sem abandonar vias navegáveis',()=>{
+  const tiles:WarTerrainTile[]=[
+   {x:1,y:2,terrain:'coast'},
+   {x:2,y:2,terrain:'large-lake'},
+   {x:3,y:2,terrain:'river'},
+   {x:4,y:2,terrain:'coast'},
+  ];
+  const ship=unit('a','attacker',4,2,'warships');
+  const enemy=unit('d','defender',5,2);
+  const b={...createWarBattle({id:'navy-retreat',name:'Retirada naval',
+   seed:'naval-retreat-2026',width:12,height:7,
+   commanders:modelWarCommanders({attacker:12,defender:12}),
+   units:[ship,enemy],tiles}),turn:'attacker' as const};
+  const moved=issueWarOrder(b,{commanderId:'leader-attacker',
+   unitId:'a',order:{kind:'retreat'}});
+  expect(moved.passed).toBe(true);
+  expect(moved.battle.units.find(u=>u.id==='a')?.position.x).toBeLessThan(4);
+  expect(moved.battle.events.some(e=>e.kind==='retreat')).toBe(true);
+ });
+
  it('rio e lago bloqueiam soldados terrestres, ponte permite a passagem',()=>{
   const tiles:WarTerrainTile[]=[
    ...Array.from({length:7},(_,y)=>({x:2,y,terrain:'river' as const})),
