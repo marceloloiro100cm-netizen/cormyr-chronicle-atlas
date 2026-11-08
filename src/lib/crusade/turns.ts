@@ -399,7 +399,10 @@ export function crzPlay(state:CrzBattleState,command:CrzCommand,
    activation:{...unit.activation,moved:true,movedPath:path.path}});
   next=crzLog(next,{type:'MOVED',unitId:unit.id,from:unit.position,
    to:command.to,cost:path.cost,path:path.path});
-  return {...next,progressThisRound:true};
+  const moved={...next,progressThisRound:true};
+  // Se o D&D V3 já atacou, mover conclui sua única ativação.
+  return isDndV3(state)&&unit.activation.attacked?
+   checkOutcome(finishActivationIfActive(moved)):moved;
  }
  if(command.type==='ATTACK'){
   let next=crzStrike(state,unit.id,command.targetId,command.mode);
