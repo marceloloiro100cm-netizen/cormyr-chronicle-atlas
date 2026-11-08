@@ -37,3 +37,22 @@
  .dnd-inspected-stats{grid-template-columns:1fr}
 }
 @media(max-width:450px){.dnd-stack-row{grid-template-columns:1fr}}
+
+.dnd-cormyr-library{
+ display:grid;gap:.85rem;padding:1rem;margin:.8rem 0;
+ background:rgba(13,29,30,.88);color:#f1e9dd;border:1px solid #877656;border-radius:12px;
+}
+.dnd-cormyr-library h4{font-size:1.15rem;color:#f1d69d;font-weight:700}
+.dnd-cormyr-filters{
+ display:grid;gap:.65rem;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));
+}
+.dnd-cormyr-add-controls{display:flex;flex-wrap:wrap;align-items:end;gap:1rem}
+.dnd-cormyr-add-controls>label{width:180px}
+.dnd-cormyr-add-controls>p{flex:1;min-width:220px}
+.dnd-cormyr-buttons{display:flex;flex-wrap:wrap;gap:.35rem}
+.dnd-cormyr-source{display:block;font-size:.75rem;color:#c8b897;font-weight:400}
+.dnd-cormyr-count{color:#e7d8b2}
+.dnd-cormyr-library table td{white-space:normal;min-width:45px}
+.dnd-cormyr-library table td:last-child{min-width:180px}
+.dnd-cormyr-library button{color:#f7edda}
+@media(max-width:600px){.dnd-cormyr-library{padding:.6rem}.dnd-cormyr-add-controls{display:grid}}
