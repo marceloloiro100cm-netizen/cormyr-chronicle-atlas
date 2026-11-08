@@ -36,6 +36,7 @@ export type CrzLeader=Readonly<{
 export const crzBattleSetupSchema=z.object({
  id:z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/),
  name:z.string().trim().min(1).max(120),
+ simulationProfile:z.literal('dnd-v3').optional(),
  seed:z.string().regex(/^[a-fA-F0-9]{1,16}$/),
  rulesetId:crzPresetIdSchema,
  rulesetHash:z.string().regex(/^[a-f0-9]{64}$/),
@@ -59,6 +60,7 @@ export type CrzReadyStack=CrzPreparedStack&Readonly<{position:CrzHex}>;
 export type CrzReady=Readonly<{
  phase:'ready';rulesVersion:'CRZ-1.0';schemaVersion:1;
  id:string;name:string;seed:string;
+ simulationProfile?:'dnd-v3'|undefined;
  rulesetId:CrzPresetId;rulesetHash:string;
  ruleset:CrzRuleset;resolution:'expected'|'rolled'|'hybrid';
  map:CrzMap;stacks:readonly CrzReadyStack[];
@@ -137,7 +139,7 @@ export function crzPrepareBattle(raw:unknown,catalog:CrzCatalog):CrzReady{
    }}:{}),
   }});
  });
- const stacks=deploy(map,armies.flatMap(a=>a.stacks));
+ const stacks=deploy(map,armies.flatMap(a=>a.stacks),input.simulationProfile==='dnd-v3');
  const ids=new Set(stacks.map(s=>s.id));
  if(ids.size!==stacks.length)throw new Error('E_SETUP_DUP: ID global duplicado.');
  if(input.resolution==='rolled'||input.resolution==='hybrid'){
@@ -145,6 +147,7 @@ export function crzPrepareBattle(raw:unknown,catalog:CrzCatalog):CrzReady{
    throw new Error('E_SETUP_RULESET: PTE exige expected.');
  }
  return {phase:'ready',id:input.id,name:input.name,seed:input.seed,
+  ...(input.simulationProfile?{simulationProfile:input.simulationProfile}:{}),
   rulesVersion:'CRZ-1.0',schemaVersion:1,rulesetId:input.rulesetId,
   rulesetHash:input.rulesetHash,ruleset,resolution:input.resolution,
   map,stacks,leaders,controls:input.controls,rngState:crzPcg32(input.seed).state(),
