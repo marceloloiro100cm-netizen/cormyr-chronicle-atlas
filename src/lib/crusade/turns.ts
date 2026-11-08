@@ -5,7 +5,7 @@
 import {crzRequireKnownRuleset,crzRulesetHash} from './ruleset';
 import {crzPcg32} from './rng';
 import {crzValidateStack} from './stack';
-import {crzLineOfSight,crzReachable,crzGridDistance,crzHexKey,
+import {crzLineOfSight,crzFootprintLineOfSight,crzReachable,crzGridDistance,crzHexKey,
  crzFootprintCells,crzFootprintDistance,
  crzValidateMap,crzMapIndex,type CrzHex,type CrzSide} from './geometry';
 import {crzCapable,crzLog,crzOrder,crzReplaceStack,crzMoraleState,
@@ -203,7 +203,8 @@ export function crzStart(ready:CrzReady):CrzBattleState{
   throw new Error('E_SETUP_SOURCE: batalha oficial não autorizada.');
  if(new Set(ready.stacks.map(s=>s.id)).size!==ready.stacks.length)
   throw new Error('E_SETUP_DUP: ID repetido.');
- const verifiedMap=crzValidateMap(ready.map,isDndBattle(ready)),tiles=crzMapIndex(verifiedMap);
+ const verifiedMap=crzValidateMap(ready.map,isDndBattle(ready),isDndV3(ready)),
+  tiles=crzMapIndex(verifiedMap);
   if((verifiedMap.grid??'hex')!==ready.ruleset.grid.kind)
    throw new Error('E_SETUP_MAP: malha e conjunto de regras incompatíveis.');
  const expectedRng=crzPcg32(ready.seed).state();
@@ -215,7 +216,7 @@ export function crzStart(ready:CrzReady):CrzBattleState{
  for(const stack of ready.stacks){
   crzValidateStack(stack);
   const key=crzHexKey(stack.position),tile=tiles.get(key);
-  if(!tile||tile.terrain==='rock')
+  if(!tile||(tile.terrain==='rock'&&!(isDndV3(ready)&&dndCanFly(stack))))
    throw new Error('E_SETUP_MAP: posição inicial fora de quadrado caminhável.');
   if(!verifiedMap.deployment[stack.side].some(h=>crzHexKey(h)===key))
    throw new Error('E_SETUP_ZONE: posição fora da implantação.');
@@ -279,7 +280,9 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
     legal.push({type:'ATTACK',unitId:unit.id,targetId:target.id,mode:'melee'});
    if(unit.rangedRoutine&&unit.activation.preparedAbility!=='CHARGE'&&
      distance>0&&(basicOnlyDnd||distance<=6)&&
-     crzLineOfSight(state.map,unit.position,target.position)&&
+     (isDndV3(state)?
+      crzFootprintLineOfSight(state.map,unit.position,unit.size,target.position,target.size):
+      crzLineOfSight(state.map,unit.position,target.position))&&
      (!engaged||state.ruleset.ranged.engaged!=='forbidden')&&
      (basicOnlyDnd||distance<=Math.max(unit.rangeHex,
       ...unit.template.attacks.filter(x=>x.kind==='ranged').map(x=>

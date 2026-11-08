@@ -103,8 +103,9 @@ function deploy(map:CrzMap,stacks:readonly CrzPreparedStack[],
   crzFootprintCells(map,pos,stack.size):[pos];
  const valid=(stack:CrzPreparedStack,pos:CrzHex)=>{
   if(!map.deployment[stack.side].some(h=>crzHexKey(h)===crzHexKey(pos)))return false;
-  const cells=footprint(stack,pos),fly=Boolean(dndV3&&stack.template.flags.flying);
-  return cells.length>0&&tiles.get(crzHexKey(pos))?.terrain!=='rock'&&
+  const cells=footprint(stack,pos),fly=Boolean(dndV3&&
+   stack.template.flags.flying&&(stack.template.speedFt.fly??0)>0);
+  return cells.length>0&&(fly||tiles.get(crzHexKey(pos))?.terrain!=='rock')&&
    cells.every(h=>{
     const key=crzHexKey(h),tile=tiles.get(key);
     return Boolean(tile&&!occupied.has(key)&&(fly||tile.terrain!=='rock'));
@@ -137,7 +138,8 @@ export function crzPrepareBattle(raw:unknown,catalog:CrzCatalog):CrzReady{
   input.rulesetId,input.rulesetHash);
  if(input.armies.attacker.side!=='attacker'||input.armies.defender.side!=='defender')
   throw new Error('E_SETUP_SOURCE: lados dos exércitos inconsistentes.');
- const map=crzValidateMap(input.map,isDndBattle(input));
+ const map=crzValidateMap(input.map,isDndBattle(input),
+  input.simulationProfile==='dnd-v3');
  const leaders={
   attacker:buildLeader(input.leaders?.attacker,'attacker'),
   defender:buildLeader(input.leaders?.defender,'defender'),
