@@ -17,9 +17,18 @@ const sizes=[['T','Miúdo'],['S','Pequeno'],['M','Médio'],
 const types=[['dragon','Dragão'],['humanoid','Humanoide'],
  ['construct','Constructo'],['undead','Morto-vivo']];
 const PER_PAGE=30;
+const damageTypes=[
+ ['','Não verificado'],['slashing','Cortante'],['piercing','Perfurante'],
+ ['bludgeoning','Concussão'],['fire','Fogo'],['cold','Frio'],
+ ['force','Força'],['necrotic','Necrótico'],['radiant','Radiante'],
+ ['acid','Ácido'],['lightning','Elétrico'],['poison','Veneno'],
+ ['psychic','Psíquico'],['thunder','Trovão'],
+] as const;
 type MonsterEditor=Readonly<{id:string;hp:number;ac:number;speed_ft:number;
- fly_ft:number;melee_bonus:number;melee_damage:string;ranged_bonus:number;
- ranged_damage:string}>;
+ fly_ft:number;dex_mod:string;
+ melee_bonus:number;melee_damage:string;melee_damage_type:string;
+ ranged_bonus:number;ranged_damage:string;ranged_damage_type:string;
+ review_source:string;review_note:string}>;
 export function DndCormyr300Library({
  onCatalog,onAdd,sideCounts,
 }:{
@@ -38,15 +47,20 @@ export function DndCormyr300Library({
  const [saving,setSaving]=useState(false);
  const editNumber=(field:'hp'|'ac'|'speed_ft'|'fly_ft'|'melee_bonus'|'ranged_bonus',value:number)=>
   setEditor(old=>old?{...old,[field]:value}:old);
- const editDice=(field:'melee_damage'|'ranged_damage',value:string)=>
+ const editDice=(field:'melee_damage'|'ranged_damage'|'dex_mod'|
+  'melee_damage_type'|'ranged_damage_type'|'review_source'|'review_note',value:string)=>
   setEditor(old=>old?{...old,[field]:value}:old);
  const openEditor=(id:string)=>{
   const m=catalog?.monsters.find(x=>x.id===id);
   if(!m)return;
   setEditor({id,hp:m.hp,ac:m.ac,speed_ft:m.speed_ft,
    fly_ft:m.fly_ft??(m.speed_ft===0?DND_PROVISIONAL_FLY_SPEED_FT:0),
+   dex_mod:m.dex_mod===undefined?'':String(m.dex_mod),
    melee_bonus:m.melee?.bonus??0,melee_damage:m.melee?.damage??'1d4',
-   ranged_bonus:m.ranged?.bonus??0,ranged_damage:m.ranged?.damage??'1d4'});
+   melee_damage_type:m.melee?.damage_type??'',
+   ranged_bonus:m.ranged?.bonus??0,ranged_damage:m.ranged?.damage??'1d4',
+   ranged_damage_type:m.ranged?.damage_type??'',
+   review_source:'',review_note:m.review??''});
   setError('');setMessage('');
  };
  const saveEditor=async()=>{
@@ -58,7 +72,14 @@ export function DndCormyr300Library({
    await saveDndCombatOverride(editor.id,{
     hp:editor.hp,ac:editor.ac,speed_ft:editor.speed_ft,fly_ft:editor.fly_ft,
     ...(m.melee?{melee_bonus:editor.melee_bonus,melee_damage:editor.melee_damage}:{}),
-    ...(m.ranged?{ranged_bonus:editor.ranged_bonus,ranged_damage:editor.ranged_damage}:{}),
+    ...(m.ranged?{ranged_bonus:editor.ranged_bonus,ranged_damage:editor.ranged_damage,
+     ...(editor.ranged_damage_type?{ranged_damage_type:editor.ranged_damage_type as
+      'bludgeoning'}:{})}:{}),
+    ...(m.melee&&editor.melee_damage_type?{melee_damage_type:editor.melee_damage_type as
+     'bludgeoning'}:{}),
+    ...(editor.dex_mod.trim()?{dex_mod:Number(editor.dex_mod)}:{}),
+    ...(editor.review_source.trim()?{review_source:editor.review_source.trim()}:{}),
+    ...(editor.review_note.trim()?{review_note:editor.review_note.trim()}:{}),
    });
    const updated=await loadPrivateDndCormyr300();
    setCatalog(updated);onCatalog(updated);setEditor(null);
@@ -138,6 +159,10 @@ export function DndCormyr300Library({
     <strong>{catalog.monsters.length} criaturas carregadas</strong> ·
     {matched.length} resultados do filtro ·
     {groups.length} grupos</p>
+   <p className="battle-note">Revisão de fichas: {catalog.monsters.filter(m=>m.melee&&!m.melee.damage_type||
+     m.ranged&&!m.ranged.damage_type).length} criaturas com tipo de dano não confirmado.
+    Os valores provisórios não são atributos oficiais.
+    O Narrador pode completar Destreza, voo e fontes da revisão.</p>
    <p className="battle-note">Regras do Cormyr: ataques à distância não têm
     alcance máximo no tabuleiro, mas exigem linha de visão.
     Criaturas voadoras atravessam terreno bloqueado e florestas.
@@ -201,6 +226,16 @@ export function DndCormyr300Library({
     <h5>Editar ficha de combate · {catalog.monsters.find(m=>m.id===editor.id)?.name}</h5>
     <p>Ajuste privado apenas para simulações; a ficha original dos 300 é preservada.</p>
     <div className="dnd-cormyr-filters">
+     <label>Modificador de DES (vazio = desconhecido)
+      <input aria-label="Destreza D&D edição" type="number" min={-10} max={30}
+       value={editor.dex_mod} onChange={e=>editDice('dex_mod',e.target.value)}/></label>
+     <label>Fonte da revisão
+      <input aria-label="Fonte da revisão D&D" value={editor.review_source}
+       onChange={e=>editDice('review_source',e.target.value)}
+       placeholder="Manual ou referência autorizada"/></label>
+     <label>Notas da revisão
+      <input aria-label="Notas da revisão D&D" value={editor.review_note}
+       onChange={e=>editDice('review_note',e.target.value)}/></label>
      <label>PV<input type="number" min={1} max={100000} value={editor.hp}
       aria-label="PV D&D edição" onChange={e=>editNumber('hp',Number(e.target.value))}/></label>
      <label>CA<input type="number" min={1} max={40} value={editor.ac}
@@ -218,6 +253,12 @@ export function DndCormyr300Library({
       <label>Dano corpo a corpo<input value={editor.melee_damage}
        aria-label="Dano corpo a corpo D&D"
        onChange={e=>editDice('melee_damage',e.target.value)}/></label>
+      <label>Tipo de dano corpo a corpo
+       <select aria-label="Tipo corpo a corpo D&D" value={editor.melee_damage_type}
+        onChange={e=>editDice('melee_damage_type',e.target.value)}>
+        {damageTypes.map(([v,label])=><option key={v} value={v}>{label}</option>)}
+       </select>
+      </label>
      </>}
      {catalog.monsters.find(m=>m.id===editor.id)?.ranged&&<>
       <label>Bônus à distância<input type="number" min={-30} max={60}
@@ -226,6 +267,12 @@ export function DndCormyr300Library({
       <label>Dano à distância<input value={editor.ranged_damage}
        aria-label="Dano à distância D&D"
        onChange={e=>editDice('ranged_damage',e.target.value)}/></label>
+      <label>Tipo de dano à distância
+       <select aria-label="Tipo à distância D&D" value={editor.ranged_damage_type}
+        onChange={e=>editDice('ranged_damage_type',e.target.value)}>
+        {damageTypes.map(([v,label])=><option key={v} value={v}>{label}</option>)}
+       </select>
+      </label>
      </>}
     </div>
     <div className="dnd-cormyr-buttons">
