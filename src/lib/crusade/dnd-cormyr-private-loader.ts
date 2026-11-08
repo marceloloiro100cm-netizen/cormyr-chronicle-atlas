@@ -1,5 +1,6 @@
 import {supabase} from '@/integrations/supabase/client';
 import {parseDndCormyr300,type DndCormyrCatalog} from './dnd-cormyr-300';
+import {loadDndCombatOverrides} from './dnd-private-overrides';
 
 /** Carrega o catálogo do Supabase somente no navegador com sessão do Narrador.
  * RLS no banco aplica is_campaign_admin() AND campaign_access_active().
@@ -34,8 +35,9 @@ export async function loadPrivateDndCormyr300():Promise<DndCormyrCatalog>{
   };
  });
  // Revalidação estrita no cliente, sem confiar em conteúdos de rede.
- return parseDndCormyr300(JSON.stringify({
+ const base=parseDndCormyr300(JSON.stringify({
   metadata:{catalog:'Cormyr · 300 criaturas D&D para Faerûn',version:1,count:300},
   monsters,
  }));
+ return loadDndCombatOverrides(base);
 }
