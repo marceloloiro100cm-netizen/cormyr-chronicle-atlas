@@ -48,11 +48,12 @@ function checkOutcome(state:CrzBattleState):CrzBattleState{
  const capable=(side:CrzSide)=>state.stacks.filter(s=>s.side===side&&crzCapable(s));
  const a=capable('attacker'),d=capable('defender');
  if(!a.length&&!d.length)return endBattle(state,null,
-  survivors('attacker').length||survivors('defender').length?'rout':'mutual-defeat');
+  survivors('attacker').length||survivors('defender').length?
+    (isDndBattle(state)?'withdrawal':'rout'):'mutual-defeat');
  if(!a.length)return endBattle(state,'defender',
-  survivors('attacker').length?'rout':'elimination');
+  survivors('attacker').length?(isDndBattle(state)?'withdrawal':'rout'):'elimination');
  if(!d.length)return endBattle(state,'attacker',
-  survivors('defender').length?'rout':'elimination');
+  survivors('defender').length?(isDndBattle(state)?'withdrawal':'rout'):'elimination');
  return state;
 }
 function clearLeaderUsage(state:CrzBattleState):CrzBattleState{
