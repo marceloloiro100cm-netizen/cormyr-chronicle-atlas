@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useState,useRef,type ChangeEvent} from 'react';
 import {Button} from '@/components/ui/button';
-import {loadPrivateDndCormyr300} from '@/lib/crusade/dnd-cormyr.client';
+import {loadPrivateDndCormyr300} from '@/lib/crusade/dnd-cormyr-private-loader';
 import {
  DND_CORMYR_300_MAX_BYTES,
  DND_CORMYR_DEFAULT_FILTERS,
