@@ -555,14 +555,15 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
  if(!foes.length)return battle;
  const nearest=foes.sort((a,b)=>distance(a.position,unit.position)-distance(b.position,unit.position))[0]!;
  const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
- let pos={...unit.position},escaped=false,spent=0;
+ let pos={...unit.position},escaped=false;
+ let slowest=movementSlow(terrainAt(battle.tiles,pos),battle.visibility,battle.weather);
  for(let i=0;i<steps;i++){
   const occupied=new Set(battle.units.filter(u=>u.id!==unit.id&&onBoard(u)).map(u=>u.position.x+':'+u.position.y));
   const candidates=dirs.map(([dx,dy])=>({x:pos.x+dx!,y:pos.y+dy!}))
    .filter(p=>!occupied.has(p.x+':'+p.y)&&distance(p,nearest.position)>distance(pos,nearest.position))
    .sort((a,b)=>distance(b,nearest.position)-distance(a,nearest.position));
   const outside=candidates.find(p=>!inBounds(battle,p));
-  if(outside){escaped=true;break;}
+  if(outside&&i+1+slowest<=steps){escaped=true;break;}
   const allowed=candidates.filter(p=>{
    if(!inBounds(battle,p))return false;
    const tile=terrainAt(battle.tiles,p),effect=terrainEffect(tile);
@@ -570,13 +571,14 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
     !(effect.water&&!unit.naval)&&
     !(unit.mounted&&effect.noCavalry)&&
     (!unit.naval||effect.naval||tile.terrain==='coast')&&
-    spent+1+movementSlow(tile,battle.visibility,battle.weather)<=steps;
+    i+1+Math.max(slowest,movementSlow(tile,battle.visibility,battle.weather))<=steps;
   });
   if(!allowed.length)break;
   // Retiradas não atravessam paredes, rios ou montanhas proibidas.
   pos=allowed[0]!;
-  spent+=1+movementSlow(terrainAt(battle.tiles,pos),battle.visibility,battle.weather);
-  if(spent>=steps)break;
+  slowest=Math.max(slowest,movementSlow(terrainAt(battle.tiles,pos),
+   battle.visibility,battle.weather));
+  if(i+1+slowest>=steps)break;
  }
  const updated={...unit,position:pos,condition:escaped?'escaped' as WarCondition:unit.condition,
   standing:escaped?null:unit.standing,
