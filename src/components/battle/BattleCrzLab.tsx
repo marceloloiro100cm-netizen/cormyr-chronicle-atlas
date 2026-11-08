@@ -601,9 +601,11 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      </label>
      <label>Resolução de dano
       <select value={options.resolution} aria-label="Resolução CRZ"
-       onChange={e=>setOptions(o=>({...o,resolution:e.target.value as 'expected'|'hybrid'}))}>
-       <option value="expected">Esperada (sem rolagens)</option>
-       <option value="hybrid" disabled={(options.preset??'CRZ-5E')!=='CRZ-5E'}>Híbrida (PCG32)</option>
+       onChange={e=>setOptions(o=>({...o,resolution:e.target.value as CrzTrainingOptions['resolution']}))}>
+       {dndMode&&<option value="rolled">D20 rolado (cada criatura)</option>}
+       <option value="expected">Esperada (probabilidade d20, sem rolagens)</option>
+       <option value="hybrid" disabled={!dndMode&&(options.preset??'CRZ-5E')!=='CRZ-5E'}>
+        Híbrida (d20 em pilhas pequenas; média nas grandes)</option>
       </select>
      </label>
      <label>Adversário
@@ -619,11 +621,12 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
        onChange={e=>setOptions(o=>({...o,seed:e.target.value}))}/>
      </label>
     </div>
-    <p className="battle-note">General Tillet · nível {generalProfile.level} · {generalProfile.xp} XP
-     de treinamento local. O progresso não altera a Corte nem o exército.</p>
-    <Button onClick={begin}>Iniciar treinamento CRZ</Button>
-    <p className="battle-note">CRZ-WOTR e PTE-compat são simulações experimentais determinísticas,
-     sem paridade oficial ou aplicação de baixas. Os replays registram o preset e seu hash.</p>
+    {!dndMode&&<p className="battle-note">General Tillet · nível {generalProfile.level} · {generalProfile.xp} XP
+     de treinamento local. O progresso não altera a Corte nem o exército.</p>}
+    <Button onClick={begin}>{dndMode?'Iniciar batalha D&D · d20':'Iniciar treinamento CRZ'}</Button>
+    <p className="battle-note">{dndMode?
+     'D&D utiliza rolagens de d20, CA e PV por criatura, com pilhas que somam PV e baixas. Iniciativa é rolada uma vez por encontro. Não há compras ou baixas oficiais.':
+     'CRZ-WOTR e PTE-compat são simulações experimentais determinísticas, sem paridade oficial ou aplicação de baixas. Os replays registram o preset e seu hash.'}</p>
    </section>
   </>}
   {session&&frame&&<section className="crz-battle-stage"
@@ -631,8 +634,9 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    <header className="crz-arena-head">
     <div className="crz-arena-heading">
      <span className="crz-eyebrow">CORMYR · ARENA DE TREINAMENTO</span>
-     <h1>Cruzada <span>CRZ-1.0</span></h1>
-     <p>Preset: {frame.rulesetId} · General Tillet nível {frame.leaders.attacker?.level??'—'} (treino)</p>
+     <h1>{dndMode?'Batalha D&D':'Cruzada'} <span>{dndMode?'d20 simplificado':'CRZ-1.0'}</span></h1>
+     <p>Preset: {frame.rulesetId} · {dndMode?'Iniciativa d20 por encontro · criaturas empilhadas':
+     'General Tillet nível '+(frame.leaders.attacker?.level??'—')+' (treino)'}</p>
      <p>Rodada {frame.round} · {frame.phase==='completed'?
       'Batalha encerrada':active?'Turno de '+active.name:'Preparando turno'} ·
       {session.replay.steps.length} comandos registrados</p>
@@ -646,7 +650,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
      <Button variant="outline" onClick={reset}>Novo treino</Button>
      <Button variant="outline" onClick={exportReplay}>Exportar replay</Button>
-     {session.state.phase==='completed'&&<Button variant="outline" onClick={awardProgress}>
+     {!dndMode&&session.state.phase==='completed'&&<Button variant="outline" onClick={awardProgress}>
       Registrar XP do General (treino)</Button>}
      <Button variant="outline" aria-pressed={highContrast}
       onClick={()=>setHighContrast(v=>!v)}>Alto contraste CRZ</Button>
@@ -765,6 +769,29 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
       <strong>{inspected.name}</strong>
       <span>{SIDE[inspected.side].name} · {inspected.alive}/{inspected.initialCount} vivos</span>
       <span>{inspected.hpPool} PV · CA {inspected.acBase}</span>
+      {dndMode&&<section className="dnd-inspected-stats" aria-label="Ficha D&D da pilha">
+       <strong>Ficha D&D · d20</strong>
+       <span>PV por criatura: {inspected.hpPerCreature} · PV da pilha: {inspected.hpPool}</span>
+       <span>Classe de Armadura (CA): {inspected.acBase}</span>
+       <span>Iniciativa (d20 + modificadores): {inspected.initiative}</span>
+       <span>Deslocamento: {inspected.template.speedFt.walk} pés
+        · {inspected.movementHex} quadrados</span>
+       <span>Corpo a corpo: {inspected.meleeRoutine?
+        inspected.meleeRoutine.steps.map(a=>{
+         const hit=inspected.template.attacks.find(x=>x.id===a.attackId);
+         return hit?hit.name+' '+((hit.toHit??0)+inspected.atkMod>=0?'+':'')+
+          ((hit.toHit??0)+inspected.atkMod)+' ('+hit.damage.map(d=>
+           d.dice+(d.mod>=0?'+':'')+d.mod).join(', ')+')':'—';
+        }).join('; '):'—'}</span>
+       <span>À distância: {inspected.rangedRoutine?
+        inspected.rangedRoutine.steps.map(a=>{
+         const hit=inspected.template.attacks.find(x=>x.id===a.attackId);
+         return hit?hit.name+' '+((hit.toHit??0)+inspected.atkMod>=0?'+':'')+
+          ((hit.toHit??0)+inspected.atkMod)+' · '+hit.rangeFt?.normal+' pés':'—';
+        }).join('; '):'—'}</span>
+       <span>Quantidade empilhada: {inspected.alive} /
+        {inspected.initialCount} · PV da criatura ferida: {inspected.topHp}</span>
+      </section>}
       <span>{inspected.moraleState==='routed'?'Debandada':
        inspected.moraleState==='shaken'?'Abalada':'Firme'}</span>
      </div>}
