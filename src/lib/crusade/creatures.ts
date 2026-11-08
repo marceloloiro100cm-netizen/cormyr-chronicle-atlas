@@ -119,7 +119,7 @@ const body=z.object({
    ctx.addIssue({code:'custom',message:'Multiattack referencia ataque ausente: '+step.attackId});
  if(c.multiattack.origin!=='fallback'&&c.multiattack.steps.length===0)
   ctx.addIssue({code:'custom',message:'Multiattack declarado sem passos.'});
- if(c.speedFt.walk===0&&(!c.flags.flying||!c.speedFt.fly))
+ if(c.speedFt.walk===0&&(!c.flags.flying||!c.speedFt.fly)&&!c.tags.includes('immobile'))
   ctx.addIssue({code:'custom',message:'Criatura sem deslocamento caminhável/voador.'});
  if(c.flags.flying&&!c.speedFt.fly)
   ctx.addIssue({code:'custom',message:'Criatura voadora precisa de velocidade de voo.'});
