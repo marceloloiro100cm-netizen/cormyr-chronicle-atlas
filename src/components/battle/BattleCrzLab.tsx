@@ -22,7 +22,6 @@ import {CRZ_TRAINING_DEFAULTS,CRZ_TRAINING_SCENARIOS,
  crzTrainingReady,type CrzTrainingOptions}
  from '@/lib/crusade/training-demo';
 import type {CrzSpellId} from '@/lib/crusade/setup';
-import type {CrzCreature} from '@/lib/crusade/creatures';
 import {DndCormyr300Library} from './DndCormyr300Library';
 import {dndCormyrCreature,type DndCormyrCatalog} from '@/lib/crusade/dnd-cormyr-300';
 import {DND_MILITARY_MAPPING,dndMilitaryTemplateId,dndMilitaryType}
