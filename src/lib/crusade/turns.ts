@@ -6,6 +6,7 @@ import {crzRequireKnownRuleset,crzRulesetHash} from './ruleset';
 import {crzPcg32} from './rng';
 import {crzValidateStack} from './stack';
 import {crzLineOfSight,crzReachable,crzGridDistance,crzHexKey,
+ crzFootprintCells,crzFootprintDistance,
  crzValidateMap,crzMapIndex,type CrzHex,type CrzSide} from './geometry';
 import {crzCapable,crzLog,crzOrder,crzReplaceStack,crzMoraleState,
  crzEffectBonus,type CrzActivation,type CrzBattleStack,
@@ -13,7 +14,7 @@ import {crzCapable,crzLog,crzOrder,crzReplaceStack,crzMoraleState,
 import type {CrzReady,CrzSpellId} from './setup';
 import {crzStrike} from './strike';
 import {crzCast} from './leader';
-import {isDndBattle,dndCanFly} from './dnd-mode';
+import {isDndBattle,isDndV3,dndCanFly} from './dnd-mode';
 import {dndAdminPlay,type DndAdminCommand} from './dnd-admin';
 
 export type CrzCommand=DndAdminCommand
@@ -215,11 +216,20 @@ export function crzStart(ready:CrzReady):CrzBattleState{
   crzValidateStack(stack);
   const key=crzHexKey(stack.position),tile=tiles.get(key);
   if(!tile||tile.terrain==='rock')
-   throw new Error('E_SETUP_MAP: posição inicial fora de hexágono caminhável.');
+   throw new Error('E_SETUP_MAP: posição inicial fora de quadrado caminhável.');
   if(!verifiedMap.deployment[stack.side].some(h=>crzHexKey(h)===key))
    throw new Error('E_SETUP_ZONE: posição fora da implantação.');
-  if(positions.has(key))throw new Error('E_SETUP_DUP: posição repetida.');
-  positions.add(key);
+  const cells=isDndV3(ready)?
+   crzFootprintCells(verifiedMap,stack.position,stack.size):[stack.position];
+  for(const cell of cells){
+   const tileAt=tiles.get(crzHexKey(cell)),cellKey=crzHexKey(cell);
+   if(!tileAt||tileAt.terrain==='rock'&&
+    !(isDndV3(ready)&&dndCanFly(stack)))
+    throw new Error('E_SETUP_MAP: área da criatura bloqueada.');
+   if(positions.has(cellKey))
+    throw new Error('E_SETUP_DUP: área de criatura sobreposta.');
+   positions.add(cellKey);
+  }
  }
  const stacks:CrzBattleStack[]=ready.stacks.map(s=>({
   ...s,activation:crzEmptyActivation(),effects:[],
@@ -243,19 +253,27 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
  const flight=basicOnlyDnd&&dndCanFly(unit);
  const enemy=state.stacks.filter(s=>s.side!==unit.side&&crzCapable(s));
  if(!unit.activation.attacked&&!unit.activation.moved){
-  const occupied=state.stacks.filter(s=>s.id!==unit.id&&crzCapable(s)).map(s=>s.position);
+  const occupied=state.stacks.filter(s=>s.id!==unit.id&&crzCapable(s))
+   .flatMap(s=>isDndV3(state)?crzFootprintCells(state.map,s.position,s.size):[s.position]);
   const enemyPositions=state.ruleset.movement.zocEnabled&&
-   unit.activation.preparedAbility!=='NIMBLE_ESCAPE'?enemy.map(s=>s.position):[];
+   unit.activation.preparedAbility!=='NIMBLE_ESCAPE'?
+    enemy.flatMap(s=>isDndV3(state)?
+     crzFootprintCells(state.map,s.position,s.size):[s.position]):[];
   const bonus=crzEffectBonus(unit,'speed');
   const budget=Math.max(0,Math.min(state.ruleset.movement.maxBudget,
    unit.movementHex+bonus));
-  for(const p of crzReachable(state.map,unit.position,budget,occupied,enemyPositions,flight))
+  for(const p of crzReachable(state.map,unit.position,budget,occupied,
+    enemyPositions,flight,isDndV3(state)?unit.size:'M'))
    legal.push({type:'MOVE',unitId:unit.id,to:p.to});
  }
  if(!unit.activation.attacked){
-  const engaged=enemy.some(s=>crzGridDistance(state.map,s.position,unit.position)===1);
+  const engaged=enemy.some(s=>(isDndV3(state)?
+    crzFootprintDistance(state.map,s.position,s.size,unit.position,unit.size):
+    crzGridDistance(state.map,s.position,unit.position))===1);
   for(const target of enemy){
-   const distance=crzGridDistance(state.map,unit.position,target.position);
+   const distance=isDndV3(state)?
+    crzFootprintDistance(state.map,unit.position,unit.size,target.position,target.size):
+    crzGridDistance(state.map,unit.position,target.position);
    if(distance===1&&unit.meleeRoutine&&unit.activation.preparedAbility!=='VOLLEY')
     legal.push({type:'ATTACK',unitId:unit.id,targetId:target.id,mode:'melee'});
    if(unit.rangedRoutine&&unit.activation.preparedAbility!=='CHARGE'&&
@@ -365,13 +383,16 @@ export function crzPlay(state:CrzBattleState,command:CrzCommand,
  }
  if(command.type==='END_ACTIVATION')return finishActivation(state);
  if(command.type==='MOVE'){
-  const occupied=state.stacks.filter(s=>s.id!==unit.id&&crzCapable(s)).map(s=>s.position);
+  const occupied=state.stacks.filter(s=>s.id!==unit.id&&crzCapable(s))
+   .flatMap(s=>isDndV3(state)?crzFootprintCells(state.map,s.position,s.size):[s.position]);
   const enemies=state.ruleset.movement.zocEnabled&&
    unit.activation.preparedAbility!=='NIMBLE_ESCAPE'?
-   state.stacks.filter(s=>s.side!==unit.side&&crzCapable(s)).map(s=>s.position):[];
+   state.stacks.filter(s=>s.side!==unit.side&&crzCapable(s))
+    .flatMap(s=>isDndV3(state)?crzFootprintCells(state.map,s.position,s.size):[s.position]):[];
   const path=crzReachable(state.map,unit.position,Math.max(0,Math.min(
    state.ruleset.movement.maxBudget,unit.movementHex+crzEffectBonus(unit,'speed'))),
-   occupied,enemies,isDndBattle(state)&&dndCanFly(unit)).find(p=>crzHexKey(p.to)===crzHexKey(command.to));
+   occupied,enemies,isDndBattle(state)&&dndCanFly(unit),
+   isDndV3(state)?unit.size:'M').find(p=>crzHexKey(p.to)===crzHexKey(command.to));
   if(!path)throw new Error('MOVE: caminho não disponível.');
   let next=crzReplaceStack(state,{...unit,position:command.to,
    activation:{...unit.activation,moved:true,movedPath:path.path}});
