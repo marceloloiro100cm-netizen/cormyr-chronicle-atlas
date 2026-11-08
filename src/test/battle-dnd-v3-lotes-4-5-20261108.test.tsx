@@ -39,12 +39,18 @@ it('ações reais respeitam raios de borda, muralha e distância ilimitada',()=>
   size:'L',speed_ft:30,
   melee:null,ranged:{name:'Arco',bonus:5,damage:'1d8+2'},
  });
+ const target=dndCormyrCreature({
+  id:'defender-large',name:'Defensor gigante de teste',group:'Humanoides',
+  source:'Original do teste',challenge_rating:2,hp:40,ac:13,
+  size:'L',speed_ft:30,
+  melee:{name:'Clava',bonus:4,damage:'1d6+2'},ranged:null,
+ });
  const drafts=[
   {id:'archer-large-stack',side:'attacker' as const,templateId:archer.id,
    count:1,training:'trained' as const,position:{q:1,r:4}},
-  {...DND_DEFAULT_STACKS[2]!,position:{q:9,r:4}},
+  {...DND_DEFAULT_STACKS[2]!,templateId:target.id,position:{q:9,r:4}},
  ];
- const ready=dndBattleReady(options,drafts,[archer]);
+ const ready=dndBattleReady(options,drafts,[archer,target]);
  const map=ready.map;
  const partiallyBlocked={...map,tiles:map.tiles.map(t=>
   t.q===5&&t.r===4?{...t,terrain:'rock' as const}:t)};
