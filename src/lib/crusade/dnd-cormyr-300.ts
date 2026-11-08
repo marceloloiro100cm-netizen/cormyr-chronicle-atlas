@@ -25,7 +25,7 @@ const row=z.object({
  size:z.enum(['T','S','M','L','H','G']),
  speed_ft:z.number().int().min(0).max(1000),
  melee:attack.nullable(),ranged:attack.nullable(),
- special_abilities:z.array(z.unknown()).optional(),
+ special_abilities:z.array(z.string().max(500)).optional(),
  review:z.string().max(500).optional(),
 }).strict().refine(x=>x.melee!==null||x.ranged!==null,
  {message:'Criatura precisa de ataque básico.'});
