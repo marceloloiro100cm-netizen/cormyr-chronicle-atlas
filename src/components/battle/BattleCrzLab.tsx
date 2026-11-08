@@ -727,8 +727,11 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
        <option value="PTE-2.0-compat">PTE-2.0-compat (esperado)</option>
       </select>
      </label>}
-     {dndMode&&<p className="battle-note">Motor CRZ-5E fixo neste modo; não substitui
-      regras completas de D&D 5e e não altera os outros sistemas.</p>}
+     {dndMode&&<p className="battle-note">D&D V3: cada quadrado equivale a 10 pés
+      (diagonais custam 15 pés). O ataque corpo a corpo exige adjacência;
+      ataques à distância não têm limite numérico no mapa, mas exigem linha de visão.
+      O voo atravessa terreno difícil e barreiras; tamanhos Grande/Enorme/Gargantuesco
+      ocupam áreas de 2×2/3×3/4×4. Regras próprias, não D&D 5e integral.</p>}
      <label>Cenário
       <select value={options.scenario} aria-label="Cenário CRZ"
        onChange={e=>setOptions(o=>({...o,scenario:e.target.value as CrzTrainingOptions['scenario']}))}>
@@ -784,7 +787,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
     <div className="crz-arena-heading">
      <span className="crz-eyebrow">CORMYR · ARENA DE TREINAMENTO</span>
      <h1>{dndMode?'Batalha D&D':'Cruzada'} <span>{dndMode?'d20 simplificado':'CRZ-1.0'}</span></h1>
-     <p>Preset: {frame.rulesetId} · {dndMode?'Iniciativa d20 por encontro · criaturas empilhadas':
+     <p>Preset: {frame.rulesetId} · {dndMode?'V3 · quadrados de 10 pés · à distância sem teto · iniciativa d20':
      'General Tillet nível '+(frame.leaders.attacker?.level??'—')+' (treino)'}</p>
      <p>Rodada {frame.round} · {frame.phase==='completed'?
       'Batalha encerrada':active?'Turno de '+active.name:'Preparando turno'} ·
