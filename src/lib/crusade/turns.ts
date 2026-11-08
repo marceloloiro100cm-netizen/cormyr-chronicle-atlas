@@ -13,6 +13,7 @@ import {crzCapable,crzLog,crzOrder,crzReplaceStack,crzMoraleState,
 import type {CrzReady,CrzSpellId} from './setup';
 import {crzStrike} from './strike';
 import {crzCast} from './leader';
+import {isDndBattle,dndCanFly} from './dnd-mode';
 
 export type CrzCommand=
  |Readonly<{type:'MOVE';unitId:string;to:CrzHex}>
@@ -94,7 +95,7 @@ function onNewRound(state:CrzBattleState):CrzBattleState{
     effectId:expired.id,kind:expired.kind,amount:expired.amount});
   }
   if(!crzCapable(updated))continue;
-  const revised=crzMoraleState(updated);
+  const revised=isDndBattle(next)?updated.moraleState:crzMoraleState(updated);
   if(revised!==updated.moraleState){
    next=crzReplaceStack(next,{...updated,moraleState:revised});
    next=crzLog(next,{type:'MORALE_CHANGED',unitId:updated.id,
@@ -110,7 +111,8 @@ function onNewRound(state:CrzBattleState):CrzBattleState{
 function skipByMorale(state:CrzBattleState,unit:CrzBattleStack):{
  skip:boolean;state:CrzBattleState
 }{
- if((state.resolution==='expected'&&state.ruleset.morale.expectedIgnoresNumeric)||
+ if(isDndBattle(state)||
+  (state.resolution==='expected'&&state.ruleset.morale.expectedIgnoresNumeric)||
   !state.ruleset.morale.skipChance||unit.moraleState!=='shaken')
   return {skip:false,state};
  // Provisório nesta fase: chance de perder a ativação 10–35%, sempre
@@ -122,7 +124,8 @@ function skipByMorale(state:CrzBattleState,unit:CrzBattleStack):{
  return {skip,state:{...state,rngState:rng.state()}};
 }
 function maybeGrantExtra(state:CrzBattleState,unit:CrzBattleStack):CrzBattleState{
- if((state.resolution==='expected'&&state.ruleset.morale.expectedIgnoresNumeric)||
+ if(isDndBattle(state)||
+  (state.resolution==='expected'&&state.ruleset.morale.expectedIgnoresNumeric)||
   !state.ruleset.morale.extraChance||state.ruleset.extraTurn.maxPerRound<1||
   !crzCapable(unit)||unit.moraleState!=='steady'||
   unit.activation.extraUsedRound===state.round)return state;
@@ -233,7 +236,8 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
  const unit=activeStack(state),legal:CrzCommand[]=[];
  // O D&D básico é um modo identificado na sessão, não uma reconfiguração
  // global do CRZ-5E. Não oferece poderes, magias ou ordens especiais ainda.
- const basicOnlyDnd=state.rulesetId==='CRZ-5E'&&state.id.startsWith('dnd-training-');
+ const basicOnlyDnd=isDndBattle(state);
+ const flight=basicOnlyDnd&&dndCanFly(unit);
  const enemy=state.stacks.filter(s=>s.side!==unit.side&&crzCapable(s));
  if(!unit.activation.attacked&&!unit.activation.moved){
   const occupied=state.stacks.filter(s=>s.id!==unit.id&&crzCapable(s)).map(s=>s.position);
@@ -242,7 +246,7 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
   const bonus=crzEffectBonus(unit,'speed');
   const budget=Math.max(0,Math.min(state.ruleset.movement.maxBudget,
    unit.movementHex+bonus));
-  for(const p of crzReachable(state.map,unit.position,budget,occupied,enemyPositions))
+  for(const p of crzReachable(state.map,unit.position,budget,occupied,enemyPositions,flight))
    legal.push({type:'MOVE',unitId:unit.id,to:p.to});
  }
  if(!unit.activation.attacked){
@@ -252,12 +256,12 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
    if(distance===1&&unit.meleeRoutine&&unit.activation.preparedAbility!=='VOLLEY')
     legal.push({type:'ATTACK',unitId:unit.id,targetId:target.id,mode:'melee'});
    if(unit.rangedRoutine&&unit.activation.preparedAbility!=='CHARGE'&&
-     distance>0&&distance<=6&&
+     distance>0&&(basicOnlyDnd||distance<=6)&&
      crzLineOfSight(state.map,unit.position,target.position)&&
      (!engaged||state.ruleset.ranged.engaged!=='forbidden')&&
-     distance<=Math.max(unit.rangeHex,
+     (basicOnlyDnd||distance<=Math.max(unit.rangeHex,
       ...unit.template.attacks.filter(x=>x.kind==='ranged').map(x=>
-       x.rangeFt?.long?Math.min(6,Math.ceil(x.rangeFt.long/30)):unit.rangeHex)))
+       x.rangeFt?.long?Math.min(6,Math.ceil(x.rangeFt.long/30)):unit.rangeHex))))
     legal.push({type:'ATTACK',unitId:unit.id,targetId:target.id,mode:'ranged'});
   }
  }
@@ -350,7 +354,7 @@ export function crzPlay(state:CrzBattleState,command:CrzCommand,
    state.stacks.filter(s=>s.side!==unit.side&&crzCapable(s)).map(s=>s.position):[];
   const path=crzReachable(state.map,unit.position,Math.max(0,Math.min(
    state.ruleset.movement.maxBudget,unit.movementHex+crzEffectBonus(unit,'speed'))),
-   occupied,enemies).find(p=>crzHexKey(p.to)===crzHexKey(command.to));
+   occupied,enemies,isDndBattle(state)&&dndCanFly(unit)).find(p=>crzHexKey(p.to)===crzHexKey(command.to));
   if(!path)throw new Error('MOVE: caminho não disponível.');
   let next=crzReplaceStack(state,{...unit,position:command.to,
    activation:{...unit.activation,moved:true,movedPath:path.path}});
@@ -364,7 +368,7 @@ export function crzPlay(state:CrzBattleState,command:CrzCommand,
   next=crzReplaceStack(next,{...current,
    activation:{...current.activation,attacked:true}});
   const target=next.stacks.find(s=>s.id===command.targetId)!;
-  if(crzCapable(target)&&crzGridDistance(state.map,target.position,unit.position)===1&&
+  if(!isDndBattle(state)&&crzCapable(target)&&crzGridDistance(state.map,target.position,unit.position)===1&&
     target.meleeRoutine&&target.activation.retaliationRound!==next.round){
    next=crzReplaceStack(next,{...target,activation:{
     ...target.activation,retaliationRound:next.round}});
