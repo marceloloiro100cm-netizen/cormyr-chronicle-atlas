@@ -4,7 +4,7 @@
 import {supabase} from '@/integrations/supabase/client';
 import {crzReplayParse,crzReplaySerialize,type CrzReplaySession} from './replay';
 import {crzAfterActionReport} from './insights';
-import {isDndBattle} from './dnd-mode';
+import {isDndReplay} from './dnd-mode';
 
 type QueryResult={data:unknown;error:{message:string}|null};
 const db=supabase as unknown as {
@@ -21,7 +21,7 @@ async function requireNarrator():Promise<void>{
 export type DndSavedBattle=Readonly<{battleId:string;updatedAt:string}>;
 
 export async function saveDndBattle(session:CrzReplaySession):Promise<void>{
- if(!isDndBattle(session.state))throw Error('Somente batalhas D&D podem ser salvas.');
+ if(!isDndReplay(session.state))throw Error('Somente batalhas D&D podem ser salvas.');
  const replay=crzReplaySerialize(session.replay);
  await requireNarrator();
  const {error}=await db.from('battle_dnd_sessions').upsert({
@@ -51,7 +51,7 @@ export async function loadDndBattle(battleId:string):Promise<CrzReplaySession>{
   throw Error('Batalha D&D não encontrada na conta do Narrador.');
  const raw=(data as Record<string,unknown>)['replay'];
  const restored=crzReplayParse(JSON.stringify(raw));
- if(!isDndBattle(restored.state)||restored.state.id!==battleId)
+ if(!isDndReplay(restored.state)||restored.state.id!==battleId)
   throw Error('Batalha incompatível ou replay adulterado.');
  return restored;
 }
