@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {crzSealCreature,type CrzCreature} from '@/lib/crusade/creatures';
+import {crzSealCreature,type CrzCreature,type CrzAttackProfile} from '@/lib/crusade/creatures';
 import {crzBuildCatalog} from '@/lib/crusade/catalog';
 import {DND_MILITARY_CREATURES} from './dnd-military';
 
@@ -147,7 +147,7 @@ export function parseDndMonsterTable(text:string):DndMonsterImported{
    const speed=integer(row['speedFt'],'speedFt',0,1000);
    const melee=String(row['meleeAttack']??'').trim(),ranged=String(row['rangedAttack']??'').trim();
    if(!melee&&!ranged)throw new Error('informar ataque corpo a corpo ou à distância.');
-   const attacks:CrzCreature['attacks']=[];
+   const attacks:CrzAttackProfile[]=[];
    if(melee)attacks.push({id:'melee',name:'Corpo a corpo',kind:'melee',
     toHit:integer(melee,'meleeAttack',-30,60),reachFt:5,
     damage:[damage(row['meleeDamage'])]});
