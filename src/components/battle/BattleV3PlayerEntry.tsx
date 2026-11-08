@@ -1,9 +1,11 @@
-import {useState} from 'react';
+import {useState,lazy,Suspense} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
 import {listV3Invitations,type BattleV3Invitation} from '@/lib/battle/v3/invitations.functions';
 import {BattleV3Game} from './BattleV3Game';
+import {BattleRulesetSelector} from './BattleRulesetSelector';
+import type {BattleRulesetMode} from '@/lib/battle/ruleset-modes';
 import {BattleAccessCheck} from './BattleAccessCheck';
 import {BATTLE_V3_LIVE_ENABLED} from '@/lib/battle/feature-flag';
 import {listLiveV3Matches} from '@/lib/battle/v3/live.functions';
@@ -12,6 +14,8 @@ import type {V3ScenarioOptions} from '@/lib/battle/v3/engine';
 import './battle-legibility.css';
 import './battle-ui-v4.css';
 import type {CommanderId} from '@/lib/battle/v3/commanders';
+const PlayerGotGame=lazy(()=>import('./BattleGotGame').then(m=>({default:m.BattleGotGame})));
+const PlayerDndGame=lazy(()=>import('./BattleCrzLab').then(m=>({default:m.BattleCrzLab})));
 
 function invitationOptions(value:BattleV3Invitation):V3ScenarioOptions{
  return {
@@ -40,10 +44,17 @@ export function BattleV3PlayerEntry({houseId}:{houseId:string}){
   retry:false,
  });
  const invites=data.filter(i=>i.target_house_id===houseId&&i.status==='open');
- const [mode,setMode]=useState<'choose'|'training'|'invitations'|'playing'|'live-list'|'live-playing'>('choose');
+ const [mode,setMode]=useState<'choose'|'training'|'got-training'|'dnd-training'|'invitations'|'playing'|'live-list'|'live-playing'>('choose');
+ const [rulesetMode,setRulesetMode]=useState<BattleRulesetMode>('adapted');
  const [selected,setSelected]=useState<BattleV3Invitation|null>(null);
  const [selectedLive,setSelectedLive]=useState<string|null>(null);
  if(mode==='training')return <BattleV3Game onBack={()=>setMode('choose')}/>;
+ if(mode==='got-training')return <Suspense fallback={<p role="status">Carregando Game of Thrones…</p>}>
+  <PlayerGotGame playerSandbox onBack={()=>setMode('choose')}/>
+ </Suspense>;
+ if(mode==='dnd-training')return <Suspense fallback={<p role="status">Carregando D&D simplificado…</p>}>
+  <PlayerDndGame mode="dnd" playerSandbox onBack={()=>setMode('choose')}/>
+ </Suspense>;
  if(mode==='live-playing'&&selectedLive)return <BattleV3LiveArena id={selectedLive}
   onBack={()=>{setSelectedLive(null);setMode('choose');}}/>;
  if(mode==='playing'&&selected)return <BattleV3Game key={selected.id}
@@ -55,8 +66,12 @@ export function BattleV3PlayerEntry({houseId}:{houseId:string}){
    <p>Treinos independentes das suas fichas, atributos, exército e calendário.</p>
   </header>
   <div className="battle-surface">
+   <BattleRulesetSelector value={rulesetMode} onChange={setRulesetMode}/>
+   <p className="battle-note">Batalhas livres usam apenas exércitos-modelo e não
+    alteram unidades oficiais, ficha, recursos, XP ou calendário da campanha.</p>
    <div className="battle-home-actions">
-    <Button onClick={()=>setMode('training')}>Batalhar</Button>
+    <Button onClick={()=>setMode(rulesetMode==='got'?'got-training':
+     rulesetMode==='dnd'?'dnd-training':'training')}>Batalhar</Button>
     {BATTLE_V3_LIVE_ENABLED&&liveMatches.length>0&&<Button variant="outline"
       onClick={()=>setMode('live-list')}>Batalhas multiplayer ({liveMatches.length})</Button>}
     {invites.length>0&&<Button variant="outline" onClick={()=>setMode('invitations')}>
