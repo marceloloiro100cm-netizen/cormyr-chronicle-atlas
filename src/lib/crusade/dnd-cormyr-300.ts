@@ -36,6 +36,42 @@ const row=z.object({
  review:z.string().max(500).optional(),
 }).strict().refine(x=>x.melee!==null||x.ranged!==null,
  {message:'Criatura precisa de ataque básico.'});
+/** Ajustes por cima da fonte privada: o registro original nunca é sobrescrito. */
+export const dndCombatOverrideSchema=z.object({
+ hp:z.number().int().min(1).max(100000).optional(),
+ ac:z.number().int().min(1).max(40).optional(),
+ speed_ft:z.number().int().min(0).max(1000).optional(),
+ fly_ft:z.number().int().min(0).max(1000).optional(),
+ melee_bonus:z.number().int().min(-30).max(60).optional(),
+ melee_damage:attack.shape.damage.optional(),
+ ranged_bonus:z.number().int().min(-30).max(60).optional(),
+ ranged_damage:attack.shape.damage.optional(),
+}).strict();
+export type DndCombatOverride=z.infer<typeof dndCombatOverrideSchema>;
+export type DndCombatOverrideEntry=Readonly<{monsterId:string;patch:DndCombatOverride}>;
+
+export function applyDndCombatOverrides(catalog:DndCormyrCatalog,
+ patches:readonly DndCombatOverrideEntry[]):DndCormyrCatalog{
+ const byId=new Map(patches.map(entry=>[
+  entry.monsterId,dndCombatOverrideSchema.parse(entry.patch),
+ ]));
+ const monsters=catalog.monsters.map(m=>{
+  const patch=byId.get(m.id);
+  if(!patch)return m;
+  const melee=m.melee?{...m.melee,
+   bonus:patch.melee_bonus??m.melee.bonus,
+   damage:patch.melee_damage??m.melee.damage}:null;
+  const ranged=m.ranged?{...m.ranged,
+   bonus:patch.ranged_bonus??m.ranged.bonus,
+   damage:patch.ranged_damage??m.ranged.damage}:null;
+  return {...m,hp:patch.hp??m.hp,ac:patch.ac??m.ac,
+   speed_ft:patch.speed_ft??m.speed_ft,
+   ...(patch.fly_ft!==undefined?{fly_ft:patch.fly_ft}:{}),
+   melee,ranged};
+ });
+ return parseDndCormyr300(JSON.stringify({metadata:catalog.metadata,monsters}));
+}
+
 const root=z.object({
  metadata:z.object({
   catalog:z.string().min(1).max(200),
@@ -130,6 +166,7 @@ export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
   creatureType:groupType[m.group],
   tags:['cormyr-300',m.group,m.source,
    ...(provisionalFlight?['provisional-flight']:[]),
+   ...(m.speed_ft===0&&flySpeed===0?['immobile']:[]),
    ...(attacks[0]?.id==='basic'?['provisional-attack']:[]),
    ...(m.ranged?['dnd-ranged-unbounded']:[])],
   cr:m.challenge_rating,xp:0,proficiencyBonus:2,
