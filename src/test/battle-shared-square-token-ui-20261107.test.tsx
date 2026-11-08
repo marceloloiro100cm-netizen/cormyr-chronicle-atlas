@@ -33,8 +33,11 @@ describe('Tokens e mapas compartilhados entre os três sistemas',()=>{
   expect(screen.getByRole('heading',{name:/D&D · Combate simplificado/})).toBeInTheDocument();
   expect(screen.queryByLabelText('Formato da malha CRZ')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Preset CRZ')).not.toBeInTheDocument();
-  expect(screen.getByRole('region',{name:'Mapas quadrados compartilhados'}))
-   .toBeInTheDocument();
+  // O importador foi ocultado no D&D; a malha continua quadrada e selecionável
+  // pelos controles de cenário e tamanho do mapa.
+  expect(screen.queryByRole('region',{name:'Mapas quadrados compartilhados'}))
+   .not.toBeInTheDocument();
+  expect(screen.getByLabelText('Tamanho do mapa CRZ')).toHaveValue('11');
  });
  it('tropas fictícias 5e recebem ícones coerentes, sem inventar brasões de monstros',()=>{
   expect(Object.keys(CRZ_MODEL_MILITARY_TYPE)).toHaveLength(4);
