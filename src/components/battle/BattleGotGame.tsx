@@ -35,7 +35,7 @@ import type {WarFieldEquipmentId} from '@/lib/battle/got/field-equipment';
 import type {WarResourceScenario} from '@/lib/battle/got/aftermath-resources';
 import type {WarBattle,WarOrder,WarOrderKind,WarUnit,WarSide,WarPosition} from '@/lib/battle/got/types';
 import type {WarWeather,WarVisibility,WarTerrainId,WarTerrainTile} from '@/lib/battle/got/terrain';
-import {WAR_TERRAIN,terrainAt,terrainEffect,terrainCoverBonus,terrainMoveCost,visibilityPenalty} from '@/lib/battle/got/terrain';
+import {WAR_TERRAIN,terrainAt,terrainEffect,terrainCoverBonus,movementSlow,visibilityPenalty,weatherAttackModifier} from '@/lib/battle/got/terrain';
 import type {WarFormation,WarFacing} from '@/lib/battle/got/formations';
 import {WAR_FORMATIONS} from '@/lib/battle/got/formations';
 import {parseSharedSquareMap,sharedFromGotTiles,sharedToGotTiles,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
@@ -277,7 +277,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      fortId:siegeFortId||(battle.fortifications.find(x=>x.side!==battle.turn&&!x.breached)?.id??''),
      wallDifficulty,
     }:{}),
-    ...(legalKind==='move'?{to:coord,sprint}:{}),
+    ...(legalKind==='move'?{to:coord,sprint:sprint&&!selectedUnit?.naval}:{}),
     ...(['lightning-attack','trample'].includes(legalKind)?{to:coord}:{}),
     ...(legalKind==='split-attack'?{
      targetIds:[selectedTarget?.id??'',
@@ -1254,10 +1254,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      <BattleSquareLegend/>
      {inspectedTile&&inspectedEffect&&<div className="got-map-inspector" aria-live="polite">
       <strong>Quadrado {coord.x},{coord.y} · {inspectedTile.terrain}</strong>
-      <span>Custo: {terrainMoveCost(inspectedTile,battle.visibility,battle.weather)*10} m de marcha
-       · Cobertura contra tiros: +{terrainCoverBonus(inspectedTile,true,false)} Defesa
-       · {inspectedEffect.blocked?'Bloqueado para marcha terrestre':'Terreno transitável'}</span>
-      <span>Clima/visibilidade: penalidade de {visibilityPenalty(battle.visibility,battle.weather,true)} dado(s) para Pontaria</span>
+      <span>Redução de Movimento do terreno: {movementSlow(inspectedTile,battle.visibility,battle.weather)*10} m por ordem
+       · Cobertura ao Defender: +{terrainCoverBonus(inspectedTile,true,true)} Defesa
+       · {inspectedEffect.blocked?'Obstáculo terrestre (navios podem navegar por água)':'Terreno transitável'}</span>
+      <span>Clima/visibilidade: penalidade de {visibilityPenalty(battle.visibility,battle.weather,true)} dado(s) para Pontaria
+       · ajuste no resultado: {weatherAttackModifier(battle.weather)}</span>
       {legalKind==='move'&&movePreview&&<span className={movePreview.legal?'got-legal':'got-illegal'}>
        {movePreview.legal?'Rota disponível: '+movePreview.distanceMetres+
         ' m percorridos, '+movePreview.costMetres+' / '+movePreview.budgetMetres+
@@ -1478,8 +1479,11 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
         onChange={e=>setCoord(v=>({...v,x:Number(e.target.value)}))}/></label>
        <label>Linha Y <input type="number" min={0} max={battle.height-1} value={coord.y}
         onChange={e=>setCoord(v=>({...v,y:Number(e.target.value)}))}/></label>
-       {legalKind==='move'&&<label className="got-check"><input type="checkbox" checked={sprint}
-        onChange={e=>setSprint(e.target.checked)}/> Correr (linha reta)</label>}
+       {legalKind==='move'&&<label className="got-check"><input type="checkbox"
+        checked={sprint&&!selectedUnit?.naval} disabled={Boolean(selectedUnit?.naval)}
+        onChange={e=>setSprint(e.target.checked)}/>
+        {selectedUnit?.naval?'Navios de guerra não podem correr (Cap. 10)':'Correr (linha reta)'}
+       </label>}
       </>}
       <Button onClick={order} disabled={(battle.ordersRemaining[commander.id]??0)<1}>
        Emitir ordem · testar Guerra

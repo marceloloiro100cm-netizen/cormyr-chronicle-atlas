@@ -69,6 +69,7 @@ export function executeAdvancedWarOrder(
    ' entre '+ids.length+' unidades.',actor);
  }
  if(order.kind==='lightning-attack'||order.kind==='trample'){
+  if(actor.naval)throw new Error('Navios de guerra não podem executar manobras de corrida.');
   const mounted=order.kind==='trample';
   if(mounted&&!actor.mounted)throw new Error('Atropelar exige unidade de cavalaria.');
   if(!order.to)throw new Error('Informe o destino do ataque em linha reta.');
@@ -80,15 +81,19 @@ export function executeAdvancedWarOrder(
   const move=Math.max(0,(actor.naval?60:actor.mounted?80:40)-actor.bulk*10)*4;
   const dir={x:Math.sign(dx),y:Math.sign(dy)};
   let spent=0;
+  let slowest=movementSlow(terrainAt(battle.tiles,actor.position),
+   battle.visibility,battle.weather);
   const encountered:string[]=[];
   for(let step=1;step<=steps;step++){
    const p={x:actor.position.x+dir.x*step,y:actor.position.y+dir.y*step};
    if(p.x<0||p.y<0||p.x>=battle.width||p.y>=battle.height)
     throw new Error('Trajeto atravessa limite do mapa.');
    const tile=terrainAt(battle.tiles,p),effect=terrainEffect(tile);
-   if(effect.blocked||(effect.water&&!actor.naval)||actor.mounted&&effect.noCavalry)
+   if((effect.blocked&&!(actor.naval&&effect.naval))||
+    (effect.water&&!actor.naval)||actor.mounted&&effect.noCavalry)
     throw new Error('Trajeto atravessa terreno proibido.');
-   spent+=10*(1+movementSlow(tile,battle.visibility,battle.weather));
+   slowest=Math.max(slowest,movementSlow(tile,battle.visibility,battle.weather));
+   spent=(step+slowest)*10;
    if(spent>move)throw new Error('Trajeto ultrapassa deslocamento de corrida.');
    const occupying=battle.units.find(u=>u.id!==actor.id&&alive(u)&&
     u.position.x===p.x&&u.position.y===p.y);
@@ -238,8 +243,8 @@ export function executeAdvancedWarOrder(
     u.position.x===to.x&&u.position.y===to.y))break;
    const tile=terrainAt(battle.tiles,to);
    const effect=terrainEffect(tile);
-   if(effect.blocked||(effect.water&&!target.naval)||
-    (target.mounted&&effect.noCavalry))break;
+   if((effect.blocked&&!(target.naval&&effect.naval))||
+    (effect.water&&!target.naval)||(target.mounted&&effect.noCavalry))break;
    const stepCost=1+movementSlow(tile,battle.visibility,battle.weather);
    if(cost+stepCost>degrees)break;
    cost+=stepCost;position=to;metres+=10;

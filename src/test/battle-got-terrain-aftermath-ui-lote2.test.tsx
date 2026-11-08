@@ -23,19 +23,19 @@ const make=(terrain:'plain'|'dense-forest'='plain')=>
 afterEach(()=>{cleanup();vi.restoreAllMocks();window.localStorage.clear();});
 
 describe('P1 — terreno, clima, proteção e caminho consistente',()=>{
- it('chuva intensa limita Pontaria e encarece a travessia de terreno encharcado',()=>{
+ it('chuva intensa: -2 no ataque, sem penalidade automática de pouca luz ou terreno',()=>{
   const stream={x:2,y:2,terrain:'stream' as const};
   const forest={x:2,y:2,terrain:'dense-forest' as const};
-  expect(visibilityPenalty('clear','heavy-rain',true)).toBe(2);
-  expect(movementSlow(stream,'clear','heavy-rain')).toBe(2);
-  expect(terrainMoveCost(stream,'clear','heavy-rain')).toBe(3);
-  expect(movementSlow({x:0,y:0,terrain:'hill'},'clear','light-snow')).toBe(2);
-  expect(terrainCoverBonus(forest,true,false)).toBe(5);
+  expect(visibilityPenalty('clear','heavy-rain',true)).toBe(0);
+  expect(movementSlow(stream,'clear','heavy-rain')).toBe(1);
+  expect(terrainMoveCost(stream,'clear','heavy-rain')).toBe(2);
+  expect(movementSlow({x:0,y:0,terrain:'hill'},'clear','light-snow')).toBe(1);
+  expect(terrainCoverBonus(forest,true,false)).toBe(0);
   expect(terrainCoverBonus(forest,false,false)).toBe(0);
   expect(terrainCoverBonus(forest,false,true)).toBe(5);
   expect(terrainAt([],{x:10,y:10}).terrain).toBe('plain');
  });
- it('atiradores ganham cobertura de floresta mesmo sem receber ordem Defender',()=>{
+ it('atiradores não recebem cobertura sem a ordem Defender (Tabela 10-3)',()=>{
   const plain={...make('plain'),turn:'attacker' as const};
   const forest={...make('dense-forest'),turn:'attacker' as const};
   const command={commanderId:'leader-attacker',unitId:'a',order:{
@@ -45,7 +45,7 @@ describe('P1 — terreno, clima, proteção e caminho consistente',()=>{
   const forestResult=issueWarOrder(forest,command).battle;
   const plainRoll=plainResult.events.find(e=>e.kind==='attack')!;
   const forestRoll=forestResult.events.find(e=>e.kind==='attack')!;
-  expect(forestRoll.difficulty).toBe(plainRoll.difficulty!+5);
+  expect(forestRoll.difficulty).toBe(plainRoll.difficulty);
   expect(forest.units.find(u=>u.id==='d')?.defendRoll).toBeNull();
  });
  it('prévia de marcha usa o mesmo caminho da execução e não altera a batalha',()=>{
@@ -100,7 +100,7 @@ describe('P1 — interface de jogabilidade e revisão',()=>{
   fireEvent.change(screen.getByLabelText('Clima'),{target:{value:'heavy-rain'}});
   fireEvent.click(screen.getByRole('button',{name:/Iniciar simulação pelo livro/}));
   const map=screen.getByRole('region',{name:/Mapa em quadrados/});
-  expect(within(map).getByText(/Cobertura contra tiros/)).toBeInTheDocument();
+  expect(within(map).getByText(/Cobertura ao Defender/)).toBeInTheDocument();
   expect(within(map).getByText(/Clima\/visibilidade/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:/Ampliar o mapa de batalha/}));
   expect(screen.getByRole('button',{name:/Restaurar painel lado a lado/})).toBeInTheDocument();
