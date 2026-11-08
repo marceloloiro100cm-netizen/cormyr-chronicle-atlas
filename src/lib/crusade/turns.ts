@@ -252,7 +252,8 @@ export function crzLegalCommands(state:CrzBattleState):readonly CrzCommand[]{
  const basicOnlyDnd=isDndBattle(state);
  const flight=basicOnlyDnd&&dndCanFly(unit);
  const enemy=state.stacks.filter(s=>s.side!==unit.side&&crzCapable(s));
- if(!unit.activation.attacked&&!unit.activation.moved){
+ // No D&D V3, é permitido mover antes OU depois do ataque simples.
+ if((isDndV3(state)||!unit.activation.attacked)&&!unit.activation.moved){
   const occupied=state.stacks.filter(s=>s.id!==unit.id&&crzCapable(s))
    .flatMap(s=>isDndV3(state)?crzFootprintCells(state.map,s.position,s.size):[s.position]);
   const enemyPositions=state.ruleset.movement.zocEnabled&&
@@ -411,6 +412,13 @@ export function crzPlay(state:CrzBattleState,command:CrzCommand,
    next=crzReplaceStack(next,{...target,activation:{
     ...target.activation,retaliationRound:next.round}});
    next=crzStrike(next,target.id,unit.id,'melee',true);
+  }
+  // V3 permite ainda deslocar-se após atacar; o Narrador encerra
+  // a ativação ou conclui o movimento. Replays V2 conservam auto-fim.
+  if(isDndV3(state)){
+   const outcome=checkOutcome(next);
+   if(outcome.phase==='completed')return outcome;
+   return unit.activation.moved?finishActivationIfActive(outcome):outcome;
   }
   return checkOutcome(finishActivationIfActive(next));
  }
