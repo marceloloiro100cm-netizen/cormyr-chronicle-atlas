@@ -21,6 +21,13 @@ import {CRZ_TRAINING_DEFAULTS,CRZ_TRAINING_SCENARIOS,
  crzTrainingReady,type CrzTrainingOptions}
  from '@/lib/crusade/training-demo';
 import type {CrzSpellId} from '@/lib/crusade/setup';
+import type {CrzCreature} from '@/lib/crusade/creatures';
+import {DND_MILITARY_MAPPING,dndMilitaryTemplateId,dndMilitaryType}
+ from '@/lib/crusade/dnd-military';
+import {DND_MONSTER_FILE_MAX_BYTES,DND_MONSTER_CSV_EXAMPLE,parseDndMonsterTable}
+ from '@/lib/crusade/dnd-import';
+import {DND_DEFAULT_STACKS,dndBattleReady,type DndStackDraft}
+ from '@/lib/crusade/dnd-battle';
 import {initialGeneralProfile,awardGeneralTraining,
  type TrainingGeneralProfile} from '@/lib/crusade/general-progression';
 import {readGeneralTrainingProfile,saveGeneralTrainingProfile}
@@ -31,6 +38,7 @@ import './crz-lab.css';
 import './battle-legibility.css';
 import './battle-ui-v4.css';
 import './battle-arena-unified.css';
+import './dnd-lab.css';
 
 type SidePanel='actions'|'objectives'|'report'|'replay';
 const SPELL_LABELS:Readonly<Record<string,string>>={
@@ -49,7 +57,7 @@ export const CRZ_MODEL_MILITARY_TYPE:Readonly<Record<string,string>>={
 };
 export const crzUnitMilitarySymbol=(templateId:string):string|undefined=>
  militaryUnitSymbolSrc(templateId)||
- militaryUnitSymbolSrc(CRZ_MODEL_MILITARY_TYPE[templateId]);
+ militaryUnitSymbolSrc(CRZ_MODEL_MILITARY_TYPE[templateId]??dndMilitaryType(templateId));
 
 const TERRAIN:Readonly<Record<string,{name:string;fill:string}>>={
  plain:{name:SQUARE_TERRAIN_PRESENTATION.plain.name,fill:SQUARE_TERRAIN_PRESENTATION.plain.color},
@@ -223,7 +231,7 @@ const spellCost:Partial<Record<CrzSpellId,number>>={
 export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'dnd'}){
  const dndMode=mode==='dnd';
  const [options,setOptions]=useState<CrzTrainingOptions>({...CRZ_TRAINING_DEFAULTS,
-  grid:'square',preset:'CRZ-5E'});
+  grid:'square',preset:'CRZ-5E',resolution:dndMode?'rolled':'expected'});
  const [session,setSession]=useState<CrzReplaySession|null>(null);
  const [expanded,setExpanded]=useState(false);
  const [replayStep,setReplayStep]=useState<number|null>(null);
@@ -235,8 +243,31 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const [message,setMessage]=useState('');
  const [error,setError]=useState('');
  const [showImport,setShowImport]=useState(false);
+ const [dndRoster,setDndRoster]=useState<DndStackDraft[]>([...DND_DEFAULT_STACKS]);
+ const [dndMonsters,setDndMonsters]=useState<CrzCreature[]>([]);
+ const [dndImportedStatus,setDndImportedStatus]=useState('');
  const [highContrast,setHighContrast]=useState(false);
  const [generalProfile,setGeneralProfile]=useState<TrainingGeneralProfile>(initialGeneralProfile);
+ const importDndMonsters=async(file:File)=>{
+  try{
+   if(file.size>DND_MONSTER_FILE_MAX_BYTES)throw new Error('Tabela maior que 1 MB.');
+   const parsed=parseDndMonsterTable(await file.text());
+   setDndMonsters([...parsed.creatures]);
+   setDndImportedStatus(parsed.creatures.length+' monstros importados para uso local.');
+   setError('');setMessage('Catálogo de monstros validado. Escolha-os nas pilhas.');
+  }catch(error){setError(error instanceof Error?error.message:'Tabela de monstros inválida.');}
+ };
+ const addDndStack=(side:DndStackDraft['side'])=>{
+  setDndRoster(current=>{
+   if(current.filter(x=>x.side===side).length>=7)return current;
+   let number=1;while(current.some(x=>x.id===side+'-stack-'+number))number++;
+   return [...current,{id:side+'-stack-'+number,side,
+    templateId:dndMilitaryTemplateId('infantry'),count:10,training:'trained'}];
+  });
+ };
+ const changeDndStack=(id:string,part:Partial<DndStackDraft>)=>{
+  setDndRoster(current=>current.map(x=>x.id===id?{...x,...part}:x));
+ };
  useEffect(()=>{setGeneralProfile(readGeneralTrainingProfile());},[]);
  const awardProgress=()=>{
   if(!session)return;
@@ -293,14 +324,17 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  };
  const begin=()=>{
   try{
-   const initial=crzReplayBegin(crzTrainingReady({...options,
-    grid:'square',
-    ...(dndMode?{preset:'CRZ-5E' as const}:options.preset?{preset:options.preset}:{}),
-    generalLevel:generalProfile.level}));
+   const ready=dndMode?dndBattleReady({...options,grid:'square',
+    preset:'CRZ-5E'},dndRoster,dndMonsters):
+    crzTrainingReady({...options,grid:'square',
+     ...(options.preset?{preset:options.preset}:{}),
+     generalLevel:generalProfile.level});
+   const initial=crzReplayBegin(ready);
    const next=crzTrainingAdvanceAi(initial);
    setSession(next);setSelectedId(next.state.activeStackId);
    setPanel('actions');setReplayStep(null);setError('');setExpanded(true);
-   setMessage('Treino fictício iniciado. Nenhuma ficha oficial será alterada.');
+   setMessage(dndMode?'Batalha D&D iniciada com d20 e pilhas locais. Nenhuma ficha oficial será alterada.':
+    'Treino fictício iniciado. Nenhuma ficha oficial será alterada.');
   }catch(cause){
    setError(cause instanceof Error?cause.message:'Não foi possível iniciar o treino.');
   }
