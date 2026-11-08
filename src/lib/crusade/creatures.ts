@@ -63,15 +63,19 @@ export const crzProvenanceSchema=z.object({
  origin:z.enum(['5etools','open5e','srd','manual']),
  srd:z.boolean(),
  /** Licença explícita do conteúdo que se pretende usar, não licença da plataforma de origem. */
- license:z.enum(['CC-BY-4.0','CC-BY-3.0','CC0-1.0','OGL-1.0a','original-authorized']),
+ license:z.enum(['CC-BY-4.0','CC-BY-3.0','CC0-1.0','OGL-1.0a','original-authorized','local-unverified']),
  attribution:z.string().trim().min(6).max(1000),
  /** Obrigatório para material não-SRD ou autorização direta. */
  permissionEvidence:z.string().trim().min(12).max(2000).optional(),
 }).strict().superRefine((p,ctx)=>{
  if(p.origin==='srd'&&!p.srd)
   ctx.addIssue({code:'custom',message:'Origem SRD deve declarar SRD.'});
- if(!p.srd&&!p.permissionEvidence)
+ if(!p.srd&&!p.permissionEvidence&&p.license!=='local-unverified')
   ctx.addIssue({code:'custom',message:'Conteúdo não-SRD requer evidência de uso.'});
+ // O arquivo do Narrador pode ser consultado localmente. Este marcador NÃO
+ // declara licença, autorização de publicação ou direito de redistribuição.
+ if(p.license==='local-unverified'&&(p.origin!=='5etools'||p.srd))
+  ctx.addIssue({code:'custom',message:'Importação privada exige origem 5etools e direitos não verificados.'});
  if(p.license==='original-authorized'&&!p.permissionEvidence)
   ctx.addIssue({code:'custom',message:'Autorização original requer evidência.'});
 });
