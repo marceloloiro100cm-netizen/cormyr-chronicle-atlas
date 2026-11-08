@@ -483,6 +483,91 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      {options.sharedMap&&<p role="status">Mapa compartilhado em uso:
       {options.sharedMap.name} · {options.sharedMap.width} × {options.sharedMap.height}.</p>}
     </section>
+    {dndMode&&<section className="dnd-config" aria-label="Preparação de exércitos D&D">
+     <h3>Monstros e unidades militares · D&D</h3>
+     <p>Escolha os perfis e a quantidade de criaturas por pilha. Cada pilha reúne
+      criaturas do mesmo tipo e acompanha PV, CA, ataques e baixas. A importação é
+      local: não altera unidades, fichas ou recursos das Casas.</p>
+     <label className="dnd-import">
+      Importar tabela de monstros (CSV ou JSON, até 1 MB)
+      <input type="file" accept=".csv,text/csv,.json,application/json"
+       aria-label="Importar tabela de monstros D&D"
+       onChange={event=>{
+        const file=event.target.files?.[0];event.target.value='';
+        if(file)void importDndMonsters(file);
+       }}/>
+     </label>
+     <Button type="button" variant="outline" onClick={()=>{
+      const blob=new Blob([DND_MONSTER_CSV_EXAMPLE],{type:'text/csv;charset=utf-8'});
+      const url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download='modelo-monstros-dnd-cormyr.csv';a.click();
+      URL.revokeObjectURL(url);
+     }}>Modelo CSV de monstros</Button>
+     <p className="battle-note">Importe fichas originais ou material com autorização documentada.
+      São obrigatórios a origem, licença, atribuição e comprovação de uso.
+      Ataques especiais, magias e ações lendárias não são convertidos automaticamente.</p>
+     {dndImportedStatus&&<p role="status">{dndImportedStatus}</p>}
+     {(['attacker','defender'] as const).map(side=><section key={side}
+      className="dnd-roster-side" aria-label={'Pilha D&D '+(side==='attacker'?'atacante':'defensora')}>
+      <h4>{side==='attacker'?'Exército atacante':'Exército defensor'}</h4>
+      {dndRoster.filter(x=>x.side===side).map(stack=><div className="dnd-stack-row" key={stack.id}>
+       <label>Unidade ou monstro
+        <select value={stack.templateId} aria-label={'Perfil D&D '+stack.id}
+         onChange={e=>changeDndStack(stack.id,{templateId:e.target.value})}>
+         <optgroup label="17 tipos de Cormyr · de/para digital">
+          {DND_MILITARY_MAPPING.filter(x=>!x.unavailableReason).map(x=>
+           <option key={x.typeId} value={dndMilitaryTemplateId(x.typeId)}>
+            {x.name}{x.requiresNarratorReview?' (revisar)':''}</option>)}
+         </optgroup>
+         {dndMonsters.length>0&&<optgroup label="Monstros da tabela importada">
+          {dndMonsters.map(monster=><option key={monster.id} value={monster.id}>
+           {monster.name}</option>)}
+         </optgroup>}
+        </select>
+       </label>
+       <label>Quantidade na pilha
+        <input type="number" min={1} max={1000} step={1} value={stack.count}
+         aria-label={'Quantidade D&D '+stack.id}
+         onChange={e=>changeDndStack(stack.id,{count:Number(e.target.value)})}/>
+       </label>
+       <label>Treinamento
+        <select value={stack.training} aria-label={'Treinamento D&D '+stack.id}
+         onChange={e=>changeDndStack(stack.id,{
+          training:e.target.value as DndStackDraft['training']})}>
+         <option value="green">Verde</option><option value="trained">Treinado</option>
+         <option value="veteran">Veterano</option><option value="elite">Elite</option>
+        </select>
+       </label>
+       <Button type="button" variant="outline" size="sm"
+        disabled={dndRoster.filter(x=>x.side===side).length<2}
+        onClick={()=>setDndRoster(current=>current.filter(x=>x.id!==stack.id))}>
+        Retirar pilha</Button>
+      </div>)}
+      <Button type="button" variant="outline"
+       disabled={dndRoster.filter(x=>x.side===side).length>=7}
+       onClick={()=>addDndStack(side)}>Adicionar pilha {side==='attacker'?'atacante':'defensora'}</Button>
+     </section>)}
+     <details className="dnd-conversion">
+      <summary>Ver de/para das 17 unidades de Cormyr para D&D</summary>
+      <p>PV e atributos são valores <strong>propostos para o simulador</strong>, não uma
+       conversão oficial de Guerra dos Tronos nem estatísticas retiradas de D&D.</p>
+      <div className="dnd-table-scroll"><table>
+       <thead><tr><th>Unidade</th><th>PV</th><th>CA</th>
+        <th>Ataque</th><th>Iniciativa</th><th>Deslocamento</th>
+        <th>Distância</th><th>Empilhamento</th></tr></thead>
+       <tbody>{DND_MILITARY_MAPPING.map(x=><tr key={x.typeId}>
+        <th>{x.name}{x.requiresNarratorReview?' *':''}</th>
+        <td>{x.unavailableReason?'—':x.hp}</td><td>{x.unavailableReason?'—':x.ac}</td>
+        <td>{x.unavailableReason?'—':'+'+x.meleeToHit}</td>
+        <td>{x.unavailableReason?'—':(x.initiativeModifier>=0?'+':'')+x.initiativeModifier}</td>
+        <td>{x.unavailableReason?'—':x.speedFt+' pés'}</td>
+        <td>{x.unavailableReason?'—':x.rangedToHit===undefined?'—':
+         '+'+x.rangedToHit+' / '+x.rangedRangeFt+' pés'}</td>
+        <td>{x.unavailableReason??x.individualsPerOriginalUnit+' por unidade GOT'}</td>
+       </tr>)}</tbody>
+      </table></div>
+     </details>
+    </section>}
     <div className="crz-form">
      {!dndMode&&<label>Conjunto de regras
       <select aria-label="Preset CRZ" value={options.preset??'CRZ-5E'}
