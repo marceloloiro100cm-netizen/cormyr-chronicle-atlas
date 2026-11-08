@@ -91,7 +91,8 @@ export const crzTerrainCost=(terrain:CrzTerrain):number=>
  terrain==='rock'?Infinity:terrain==='plain'?1:2;
 export const crzMapIndex=(map:CrzMap):Map<string,CrzTile>=>
  new Map(map.tiles.map(t=>[crzHexKey(t),t]));
-export function crzValidateMap(raw:unknown,allowSeparatedByObstacles=false):CrzMap{
+export function crzValidateMap(raw:unknown,allowSeparatedByObstacles=false,
+ allowRockyDeployment=false):CrzMap{
  const map=crzMapSchema.parse(raw);
  const seen=new Set<string>();
  if(map.width===11&&map.height!==9||map.width===15&&map.height!==11)
@@ -109,7 +110,7 @@ export function crzValidateMap(raw:unknown,allowSeparatedByObstacles=false):CrzM
   const local=new Set<string>();
   for(const h of map.deployment[side]){
    const key=crzHexKey(h),tile=index.get(key);
-   if(!tile||(tile.terrain==='rock'&&!(allowSeparatedByObstacles&&map.grid==='square'))||local.has(key)||allZones.has(key))
+   if(!tile||(tile.terrain==='rock'&&!(allowRockyDeployment&&map.grid==='square'))||local.has(key)||allZones.has(key))
     throw new Error('E_SETUP_MAP: zona sobreposta, rochosa ou fora do mapa.');
    allZones.add(key);local.add(key);
   }
