@@ -66,7 +66,7 @@ export const crzTerrainCost=(terrain:CrzTerrain):number=>
  terrain==='rock'?Infinity:terrain==='plain'?1:2;
 export const crzMapIndex=(map:CrzMap):Map<string,CrzTile>=>
  new Map(map.tiles.map(t=>[crzHexKey(t),t]));
-export function crzValidateMap(raw:unknown):CrzMap{
+export function crzValidateMap(raw:unknown,allowSeparatedByObstacles=false):CrzMap{
  const map=crzMapSchema.parse(raw);
  const seen=new Set<string>();
  if(map.width===11&&map.height!==9||map.width===15&&map.height!==11)
@@ -102,7 +102,7 @@ export function crzValidateMap(raw:unknown):CrzMap{
    visited.add(key);pending.push(next);
   }
  }
- if(!map.deployment.defender.some(h=>visited.has(crzHexKey(h))))
+ if(!allowSeparatedByObstacles&&!map.deployment.defender.some(h=>visited.has(crzHexKey(h))))
   throw new Error('E_SETUP_MAP: lados desconectados.');
  return map;
 }
@@ -135,11 +135,11 @@ export function crzScenario(id:CrzScenarioId,width:11|15=11,grid:'hex'|'square'=
 }
 export type CrzPath=Readonly<{to:CrzHex;cost:number;steps:number;path:readonly CrzHex[]}>;
 export function crzReachable(map:CrzMap,from:CrzHex,budget:number,
- occupied:readonly CrzHex[]=[],enemies:readonly CrzHex[]=[]):CrzPath[]{
+ occupied:readonly CrzHex[]=[],enemies:readonly CrzHex[]=[],flight=false):CrzPath[]{
  if(!Number.isSafeInteger(budget)||budget<0||budget>6)
   throw new Error('MOVE: orçamento inválido.');
  const tiles=crzMapIndex(map),fromKey=crzHexKey(from);
- if(!tiles.has(fromKey)||tiles.get(fromKey)?.terrain==='rock')
+ if(!tiles.has(fromKey)||(!flight&&tiles.get(fromKey)?.terrain==='rock'))
   throw new Error('MOVE: origem inválida.');
  const blocked=new Set(occupied.map(crzHexKey));blocked.delete(fromKey);
  const enemySet=new Set(enemies.map(crzHexKey));
@@ -153,12 +153,14 @@ export function crzReachable(map:CrzMap,from:CrzHex,budget:number,
   const at=frontier.shift()!,key=crzHexKey(at.to);
   if(best.get(key)!==at)continue;
   // Entrar em ZOC finaliza movimento. Sair da ZOC de origem é livre.
-  if(key!==fromKey&&crzGridNeighbors(map,at.to).some(n=>enemySet.has(crzHexKey(n))))continue;
+  if(!flight&&key!==fromKey&&crzGridNeighbors(map,at.to).some(n=>enemySet.has(crzHexKey(n))))continue;
   for(const [i,next] of crzGridNeighbors(map,at.to).entries()){
    const nkey=crzHexKey(next),tile=tiles.get(nkey);
-   if(!tile||tile.terrain==='rock'||blocked.has(nkey)||
-      !crzAllowsStep(map,at.to,next,blocked))continue;
-   const cost=at.cost+crzTerrainCost(tile.terrain)+
+   // Em voo pode atravessar rocha, rios/barreiras equivalentes, floresta
+   // e outras tropas; a célula ocupada continua proibida como destino.
+   if(!tile||(!flight&&(tile.terrain==='rock'||blocked.has(nkey)||
+      !crzAllowsStep(map,at.to,next,blocked))))continue;
+   const cost=at.cost+(flight?1:crzTerrainCost(tile.terrain))+
      (map.grid==='square'&&at.to.q!==next.q&&at.to.r!==next.r?0.5:0);
    if(cost>budget)continue;
    const candidate:Candidate={to:next,cost,steps:at.steps+1,
@@ -171,7 +173,8 @@ export function crzReachable(map:CrzMap,from:CrzHex,budget:number,
    }
   }
  }
- return [...best.values()].filter(n=>crzHexKey(n.to)!==fromKey)
+ return [...best.values()].filter(n=>crzHexKey(n.to)!==fromKey&&
+   (!flight||!blocked.has(crzHexKey(n.to))))
   .sort((a,b)=>a.cost-b.cost||a.steps-b.steps||a.to.q-b.to.q||a.to.r-b.to.r)
   .map(({to,cost,steps,path})=>({to,cost,steps,path}));
 }

@@ -7,6 +7,7 @@ import {crzMapSchema,crzValidateMap,crzHexKey,crzGridToOffset,
  type CrzMap,type CrzHex,type CrzSide} from './geometry';
 import {crzPresetIdSchema,crzRequireKnownRuleset,type CrzPresetId,type CrzRuleset} from './ruleset';
 import {crzPcg32,type CrzRngState} from './rng';
+import {isDndBattle} from './dnd-mode';
 import type {CrzCatalog} from './catalog';
 
 export const crzSpellIdSchema=z.enum([
@@ -121,7 +122,7 @@ export function crzPrepareBattle(raw:unknown,catalog:CrzCatalog):CrzReady{
   input.rulesetId,input.rulesetHash);
  if(input.armies.attacker.side!=='attacker'||input.armies.defender.side!=='defender')
   throw new Error('E_SETUP_SOURCE: lados dos exércitos inconsistentes.');
- const map=crzValidateMap(input.map);
+ const map=crzValidateMap(input.map,isDndBattle(input));
  const leaders={
   attacker:buildLeader(input.leaders?.attacker,'attacker'),
   defender:buildLeader(input.leaders?.defender,'defender'),

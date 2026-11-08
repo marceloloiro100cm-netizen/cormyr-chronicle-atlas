@@ -30,6 +30,10 @@ import {DND_MONSTER_FILE_MAX_BYTES,DND_MONSTER_CSV_EXAMPLE,parseDndMonsterTable}
  from '@/lib/crusade/dnd-import';
 import {DND_DEFAULT_STACKS,dndBattleReady,type DndStackDraft}
  from '@/lib/crusade/dnd-battle';
+import {DND_MILITARY_CREATURES} from '@/lib/crusade/dnd-military';
+import {saveDndBattle,listDndBattles,loadDndBattle,
+ type DndSavedBattle} from '@/lib/crusade/dnd-private-sessions';
+import {isDndReplay,isDndBattle} from '@/lib/crusade/dnd-mode';
 import {initialGeneralProfile,awardGeneralTraining,
  type TrainingGeneralProfile} from '@/lib/crusade/general-progression';
 import {readGeneralTrainingProfile,saveGeneralTrainingProfile}
@@ -96,6 +100,8 @@ function eventLabel(event:CrzEvent):string{
   SPELL_DAMAGE:'Dano mágico',SPELL_HEALED:'Cura',
   EFFECT_APPLIED:'Efeito aplicado',EFFECT_EXPIRED:'Efeito expirado',
   MORALE_CHANGED:'Moral alterada',STACK_ROUTED:'Debandada',
+  DND_COUNT_CHANGED:'Efetivo ajustado',DND_STACK_WITHDRAWN:'Pilha retirada',
+  DND_STACK_ADDED:'Reforço adicionado',
   STACK_DESTROYED:'Pilha destruída',BATTLE_ENDED:'Batalha encerrada',
   EXTRA_TURN_GRANTED:'Ativação extra',TURN_SKIPPED:'Turno perdido',
  };
@@ -252,6 +258,14 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
   ...(dndCormyr300?.monsters.map(dndCormyrCreature)??[])],
   [dndMonsters,dndCormyr300]);
  const [dndImportedStatus,setDndImportedStatus]=useState('');
+ const [adminCount,setAdminCount]=useState(1);
+ const [reinforceTemplate,setReinforceTemplate]=useState(dndMilitaryTemplateId('infantry'));
+ const [reinforceSide,setReinforceSide]=useState<'attacker'|'defender'>('attacker');
+ const [reinforceCount,setReinforceCount]=useState(1);
+ const [dndWinner,setDndWinner]=useState<'attacker'|'defender'|'draw'>('draw');
+ const [storedBattles,setStoredBattles]=useState<readonly DndSavedBattle[]>([]);
+ const [restoreBattleId,setRestoreBattleId]=useState('');
+ const [dndBusy,setDndBusy]=useState(false);
  const [highContrast,setHighContrast]=useState(false);
  const [generalProfile,setGeneralProfile]=useState<TrainingGeneralProfile>(initialGeneralProfile);
  const importDndMonsters=async(file:File)=>{
@@ -310,6 +324,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const active=frame?.stacks.find(s=>s.id===frame.activeStackId);
  const inspected=frame?.stacks.find(s=>s.id===selectedId&&crzCapable(s))??
   (active&&crzCapable(active)?active:undefined);
+ useEffect(()=>{if(dndMode&&inspected)setAdminCount(inspected.alive);},
+  [dndMode,inspected?.id,inspected?.alive]);
  const canAct=Boolean(session&&replayStep===null&&
   frame?.phase==='active'&&active&&frame.controls[active.side]==='human');
  const aiTurn=Boolean(session&&replayStep===null&&
@@ -344,10 +360,61 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    setError(cause instanceof Error?cause.message:'Comando recusado.');
   }
  };
+ const adminCommand=(command:CrzCommand)=>{
+  if(!dndMode||!session||replayStep!==null||session.state.phase!=='active')return;
+  try{
+   const updated=crzReplayRecord(session,command,'human');
+   setSession(updated);setError('');setReplayStep(null);
+   setSelectedId(updated.state.stacks.some(x=>x.id===selectedId&&crzCapable(x))?
+    selectedId:updated.state.activeStackId);
+   setMessage('Ajuste do Narrador registrado no replay da batalha.');
+  }catch(e){setError(e instanceof Error?e.message:'Ajuste da batalha recusado.');}
+ };
+ const addReinforcement=()=>{
+  if(!session?.state.activeStackId)return;
+  const list=[...DND_MILITARY_CREATURES,...dndAllMonsters,
+   ...session.state.stacks.map(x=>x.template)];
+  const template=list.find(x=>x.id===reinforceTemplate);
+  if(!template){setError('Selecione um modelo de reforço válido.');return;}
+  const id=reinforceSide+'-reinforce-'+Date.now().toString(36);
+  adminCommand({type:'DND_ADD_STACK',unitId:session.state.activeStackId,
+   stackId:id,side:reinforceSide,count:reinforceCount,template});
+ };
+ const saveSession=async()=>{
+  if(!dndMode||!session)return;
+  setDndBusy(true);
+  try{
+   await saveDndBattle(session);
+   setMessage('Batalha salva no banco privado do Narrador.');
+   setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Falha ao salvar batalha.');}
+  finally{setDndBusy(false);}
+ };
+ const fetchSaves=async()=>{
+  setDndBusy(true);
+  try{
+   const records=await listDndBattles();
+   setStoredBattles(records);setRestoreBattleId(records[0]?.battleId??'');
+   setError('');
+   setMessage(records.length+' batalha(s) privada(s) encontrada(s).');
+  }catch(e){setError(e instanceof Error?e.message:'Falha ao consultar batalhas.');}
+  finally{setDndBusy(false);}
+ };
+ const restoreSession=async()=>{
+  if(!restoreBattleId)return;
+  setDndBusy(true);
+  try{
+   const loaded=await loadDndBattle(restoreBattleId);
+   setSession(loaded);setSelectedId(loaded.state.activeStackId);
+   setExpanded(true);setReplayStep(null);setError('');setPanel('actions');
+   setMessage('Batalha privada restaurada com replay validado.');
+  }catch(e){setError(e instanceof Error?e.message:'Falha ao recuperar batalha.');}
+  finally{setDndBusy(false);}
+ };
  const begin=()=>{
   try{
    const ready=dndMode?dndBattleReady({...options,grid:'square',
-    preset:'CRZ-5E'},dndRoster,dndAllMonsters):
+    preset:'CRZ-5E'},dndRoster,dndAllMonsters,Date.now().toString(36)):
     crzTrainingReady({...options,grid:'square',
      ...(options.preset?{preset:options.preset}:{}),
      generalLevel:generalProfile.level});
@@ -431,6 +498,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
   try{
    if(file.size>CRZ_REPLAY_MAX_BYTES)throw new Error('Arquivo maior que o limite de 8 MB.');
    const next=crzReplayParse(await file.text());
+   if(dndMode!==isDndReplay(next.state))
+    throw Error('O replay pertence a outro modo de batalha.');
    setSession(next);setReplayStep(next.replay.steps.length);
    setSelectedId(next.state.activeStackId);setPanel('replay');setExpanded(true);
    setShowImport(false);setError('');
@@ -443,6 +512,22 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
   setExpanded(false);setSession(null);setReplayStep(null);setSelectedId(null);
   setError('');setMessage('');setPanel('actions');setHoveredId(null);
  };
+ const savedPanel=dndMode?<details className="battle-surface" aria-label="Batalhas D&D salvas">
+  <summary>Batalhas privadas do Narrador</summary>
+  <Button variant="outline" disabled={dndBusy}
+   onClick={()=>void fetchSaves()}>Consultar batalhas salvas</Button>
+  {storedBattles.length>0&&<>
+   <label>Escolher batalha para continuar
+    <select value={restoreBattleId} aria-label="Batalha D&D para retomar"
+     onChange={e=>setRestoreBattleId(e.target.value)}>
+     {storedBattles.map(b=><option key={b.battleId} value={b.battleId}>
+      {b.battleId} · {new Date(b.updatedAt).toLocaleString('pt-BR')}</option>)}
+    </select>
+   </label>
+   <Button disabled={dndBusy||!restoreBattleId} onClick={()=>void restoreSession()}>
+    Retomar batalha salva</Button>
+  </>}
+ </details>:null;
  const arena=<section className={'battle-module crusade-mode crz-lab'+
   (highContrast?' crz-high-contrast':'')}
   aria-label={dndMode?'D&D simplificado · laboratório do Narrador':'Laboratório CRZ-1.0 do Narrador'}>
@@ -469,6 +554,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    </header>
    {error&&<p className="crz-alert" role="alert">{error}</p>}
    {message&&<p className="crz-status" role="status">{message}</p>}
+   {savedPanel}
    <section className="battle-surface" aria-label="Preparar treino CRZ">
     <h2>Preparar batalha-modelo</h2>
     <p>Defensores da Coroa contra forças fictícias de Ashkar.</p>
@@ -683,6 +769,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
      <Button variant="outline" onClick={reset}>Novo treino</Button>
      <Button variant="outline" onClick={exportReplay}>Exportar replay</Button>
+     {dndMode&&<Button variant="outline" disabled={dndBusy}
+      onClick={()=>void saveSession()}>Salvar batalha privada</Button>}
      {!dndMode&&session.state.phase==='completed'&&<Button variant="outline" onClick={awardProgress}>
       Registrar XP do General (treino)</Button>}
      <Button variant="outline" aria-pressed={highContrast}
@@ -700,6 +788,60 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    </label>}
    {error&&<p className="crz-alert" role="alert">{error}</p>}
    {message&&<p className="crz-status" role="status">{message}</p>}
+   {savedPanel}
+   {dndMode&&isDndBattle(frame)&&frame.phase==='active'&&<details className="battle-surface"
+    aria-label="Gerenciamento de tropas durante a batalha D&D">
+    <summary>Gerenciar criaturas, reforços e resultado</summary>
+    <p>Altere o efetivo sem encerrar a partida. Cada ajuste é registrado no replay.
+     Os resultados não afetam as Casas.</p>
+    {inspected&&<div className="dnd-cormyr-add-controls">
+     <label>Quantidade de {inspected.name}
+      <input aria-label="Quantidade em combate D&D" type="number"
+       min={0} max={1000} value={adminCount}
+       onChange={e=>setAdminCount(Number(e.target.value))}/></label>
+     <Button variant="outline" onClick={()=>frame.activeStackId&&adminCommand({
+      type:'DND_SET_COUNT',unitId:frame.activeStackId,
+      targetId:inspected.id,count:adminCount})}>Aplicar quantidade</Button>
+     <Button variant="outline" onClick={()=>frame.activeStackId&&adminCommand({
+      type:'DND_WITHDRAW',unitId:frame.activeStackId,
+      targetId:inspected.id})}>Retirar unidade do campo</Button>
+    </div>}
+    <div className="dnd-cormyr-add-controls">
+     <label>Modelo de reforço
+      <select aria-label="Modelo de reforço D&D" value={reinforceTemplate}
+       onChange={e=>setReinforceTemplate(e.target.value)}>
+       {[...new Map([...DND_MILITARY_CREATURES,...dndAllMonsters,
+        ...frame.stacks.map(s=>s.template)].map(t=>[t.id,t])).values()]
+        .map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+      </select>
+     </label>
+     <label>Lado do reforço
+      <select aria-label="Lado do reforço D&D" value={reinforceSide}
+       onChange={e=>setReinforceSide(e.target.value as 'attacker'|'defender')}>
+       <option value="attacker">Atacante</option><option value="defender">Defensor</option>
+      </select>
+     </label>
+     <label>Quantidade de reforços
+      <input aria-label="Quantidade de reforços D&D" type="number"
+       min={1} max={1000} value={reinforceCount}
+       onChange={e=>setReinforceCount(Number(e.target.value))}/></label>
+     <Button variant="outline" onClick={addReinforcement}>Adicionar reforços</Button>
+    </div>
+    <div className="dnd-cormyr-add-controls">
+     <label>Resultado definido pelo Narrador
+      <select aria-label="Vencedor D&D" value={dndWinner}
+       onChange={e=>setDndWinner(e.target.value as 'attacker'|'defender'|'draw')}>
+       <option value="draw">Sem vencedor</option>
+       <option value="attacker">Vitória dos atacantes</option>
+       <option value="defender">Vitória dos defensores</option>
+      </select>
+     </label>
+     <Button variant="outline" onClick={()=>frame.activeStackId&&adminCommand({
+      type:'DND_END_BATTLE',unitId:frame.activeStackId,
+      winner:dndWinner==='draw'?null:dndWinner,
+     })}>Encerrar combate D&D</Button>
+    </div>
+   </details>}
    <section className="crz-turn-track" aria-label="Ordem de combate">
     <div className="crz-track-title">
      <h2>Ordem de combate</h2>
@@ -813,7 +955,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
        <span>PV por criatura: {inspected.hpPerCreature} · PV da pilha: {inspected.hpPool}</span>
        <span>Classe de Armadura (CA): {inspected.acBase}</span>
        <span>Iniciativa (d20 + modificadores): {inspected.initiative}</span>
-       <span>Deslocamento: {inspected.template.speedFt.walk} pés
+       <span>Deslocamento: {inspected.template.speedFt.walk} pés terrestres
+        {inspected.template.flags.flying?' · Voo '+inspected.template.speedFt.fly+' pés (sobre obstáculos)':''}
         · {inspected.movementHex} quadrados</span>
        <span>Corpo a corpo: {inspected.meleeRoutine?
         inspected.meleeRoutine.steps.map(a=>{
@@ -826,15 +969,15 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
         inspected.rangedRoutine.steps.map(a=>{
          const hit=inspected.template.attacks.find(x=>x.id===a.attackId);
          return hit?hit.name+' '+((hit.toHit??0)+inspected.atkMod>=0?'+':'')+
-          ((hit.toHit??0)+inspected.atkMod)+' · '+hit.rangeFt?.normal+' pés':'—';
+          ((hit.toHit??0)+inspected.atkMod)+' · à distância, sem limite no mapa':'—';
         }).join('; '):'—'}</span>
        <span>Quantidade empilhada: {inspected.alive} /
         {inspected.initialCount} · PV da criatura ferida: {inspected.topHp}</span>
        {inspected.warnings.filter(w=>/provisóri[oa]|provisório|PROVISÓRIO/i.test(w))
         .map((warning,i)=><span key={i} className="battle-note">{warning}</span>)}
       </section>}
-      <span>{inspected.moraleState==='routed'?'Debandada':
-       inspected.moraleState==='shaken'?'Abalada':'Firme'}</span>
+      {!dndMode&&<span>{inspected.moraleState==='routed'?'Debandada':
+       inspected.moraleState==='shaken'?'Abalada':'Firme'}</span>}
      </div>}
     </section>
     <aside className="crz-last-actions" aria-label="Painel de informações CRZ">
@@ -869,13 +1012,13 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
       <h2>Relatório de combate</h2>
       <table className="crz-report-table">
        <thead><tr><th>Força</th><th>Vivos</th><th>Baixas</th>
-        <th>Dano</th><th>Magias</th></tr></thead>
+        <th>Dano</th><th>{dndMode?'Retiradas':'Magias'}</th></tr></thead>
        <tbody>{(['attacker','defender'] as const).map(side=>{
         const data=report.sides[side];return <tr key={side}>
          <th scope="row">{SIDE[side].name}</th>
          <td>{data.survivors}/{data.initialCreatures}</td>
          <td>{data.casualties}</td><td>{data.inflictedDamage}</td>
-         <td>{data.spellsCast}</td>
+         <td>{dndMode?data.routedStacks:data.spellsCast}</td>
         </tr>;
        })}</tbody>
       </table>
@@ -912,7 +1055,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
     <span>Clique num inimigo com contorno vermelho para atacar.</span>
    </footer>
    {frame.phase==='completed'&&<div className="crz-victory-banner" role="status">
-    Resultado: {frame.winner?SIDE[frame.winner].name:'Empate'} · {frame.resultReason}
+    Resultado: {frame.winner?SIDE[frame.winner].name:'Empate'} · {frame.resultReason==='withdrawal'?'retirada':frame.resultReason==='narrator-end'?
+    'encerramento pelo Narrador':frame.resultReason}
    </div>}
   </section>}
  </section>;

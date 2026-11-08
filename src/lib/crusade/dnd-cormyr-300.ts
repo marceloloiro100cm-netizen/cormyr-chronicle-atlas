@@ -29,11 +29,49 @@ const row=z.object({
  ac:z.number().int().min(1).max(40),
  size:z.enum(['T','S','M','L','H','G']),
  speed_ft:z.number().int().min(0).max(1000),
+ /** Ajuste privado opcional do Narrador; não modifica o dado original. */
+ fly_ft:z.number().int().min(0).max(1000).optional(),
  melee:attack.nullable(),ranged:attack.nullable(),
  special_abilities:z.array(z.string().max(500)).optional(),
  review:z.string().max(500).optional(),
 }).strict().refine(x=>x.melee!==null||x.ranged!==null,
  {message:'Criatura precisa de ataque básico.'});
+/** Ajustes por cima da fonte privada: o registro original nunca é sobrescrito. */
+export const dndCombatOverrideSchema=z.object({
+ hp:z.number().int().min(1).max(100000).optional(),
+ ac:z.number().int().min(1).max(40).optional(),
+ speed_ft:z.number().int().min(0).max(1000).optional(),
+ fly_ft:z.number().int().min(0).max(1000).optional(),
+ melee_bonus:z.number().int().min(-30).max(60).optional(),
+ melee_damage:attack.shape.damage.optional(),
+ ranged_bonus:z.number().int().min(-30).max(60).optional(),
+ ranged_damage:attack.shape.damage.optional(),
+}).strict();
+export type DndCombatOverride=z.infer<typeof dndCombatOverrideSchema>;
+export type DndCombatOverrideEntry=Readonly<{monsterId:string;patch:DndCombatOverride}>;
+
+export function applyDndCombatOverrides(catalog:DndCormyrCatalog,
+ patches:readonly DndCombatOverrideEntry[]):DndCormyrCatalog{
+ const byId=new Map(patches.map(entry=>[
+  entry.monsterId,dndCombatOverrideSchema.parse(entry.patch),
+ ]));
+ const monsters=catalog.monsters.map(m=>{
+  const patch=byId.get(m.id);
+  if(!patch)return m;
+  const melee=m.melee?{...m.melee,
+   bonus:patch.melee_bonus??m.melee.bonus,
+   damage:patch.melee_damage??m.melee.damage}:null;
+  const ranged=m.ranged?{...m.ranged,
+   bonus:patch.ranged_bonus??m.ranged.bonus,
+   damage:patch.ranged_damage??m.ranged.damage}:null;
+  return {...m,hp:patch.hp??m.hp,ac:patch.ac??m.ac,
+   speed_ft:patch.speed_ft??m.speed_ft,
+   ...(patch.fly_ft!==undefined?{fly_ft:patch.fly_ft}:{}),
+   melee,ranged};
+ });
+ return parseDndCormyr300(JSON.stringify({metadata:catalog.metadata,monsters}));
+}
+
 const root=z.object({
  metadata:z.object({
   catalog:z.string().min(1).max(200),
@@ -96,8 +134,9 @@ const groupType:Record<DndCormyrGroup,string>={
 };
 export const dndCormyrTemplateId=(m:DndCormyrMonster)=>
  'cy-'+m.id+'|local';
-/** Se a fonte registrou ataque "ranged" sem range, NÃO presumir alcance.
- * Ele vira ataque adjacente provisório e recebe aviso de revisão.
+/** Alcance não é limitado por pés no modo D&D simplificado de Cormyr.
+ * O token de alcance mínimo serve somente para validar o esquema genérico:
+ * o motor D&D ignora distância máxima, mantendo a linha de visão.
  */
 export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
  const attacks:CrzAttackProfile[]=[];
@@ -108,11 +147,9 @@ export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
  }
  if(m.ranged){
   const a=m.ranged;
-  if(a.range_ft!=null){
-   attacks.push({id:'ranged',name:a.name,kind:'ranged',toHit:a.bonus,
-    rangeFt:{normal:a.range_ft,long:a.range_ft*4},
-    damage:[{...damage(a.damage),type:'piercing'}]});
-  }
+  attacks.push({id:'ranged',name:a.name,kind:'ranged',toHit:a.bonus,
+   rangeFt:{normal:a.range_ft??1},
+   damage:[{...damage(a.damage),type:'piercing'}]});
  }
  // Um efeito de alcance desconhecido NÃO pode virar golpe corpo a corpo
  // preservando dano/bônus do disparo. Para o combate simplificado, usar
@@ -121,23 +158,26 @@ export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
   attacks.push({id:'basic',name:'Ataque básico provisório',kind:'melee',
    toHit:0,reachFt:5,damage:[{dice:'1d4',mod:0,avg:2,type:'bludgeoning'}]});
  }
- const provisionalFlight=m.speed_ft===0;
+ const provisionalFlight=m.speed_ft===0&&m.fly_ft===undefined;
+ const flySpeed=m.fly_ft??(provisionalFlight?DND_PROVISIONAL_FLY_SPEED_FT:0);
  return crzSealCreature({
   schemaVersion:1,id:dndCormyrTemplateId(m),name:m.name,
   source:'5etools · '+m.source,size:m.size,
   creatureType:groupType[m.group],
   tags:['cormyr-300',m.group,m.source,
    ...(provisionalFlight?['provisional-flight']:[]),
-   ...(attacks[0]?.id==='basic'?['provisional-attack']:[])],
+   ...(m.speed_ft===0&&flySpeed===0?['immobile']:[]),
+   ...(attacks[0]?.id==='basic'?['provisional-attack']:[]),
+   ...(m.ranged?['dnd-ranged-unbounded']:[])],
   cr:m.challenge_rating,xp:0,proficiencyBonus:2,
   // O catálogo não traz DES: não inferir iniciativa de ND, dano ou CA.
   abilityMods:{str:0,dex:0,con:0,int:0,wis:0,cha:0},
   hp:{average:m.hp},ac:m.ac,speedFt:{walk:m.speed_ft,
-   ...(provisionalFlight?{fly:DND_PROVISIONAL_FLY_SPEED_FT}:{})},
+   ...(flySpeed>0?{fly:flySpeed}:{})},
   attacks,multiattack:{origin:'fallback',steps:[]},
   damageMods:{resist:[],immune:[],vulnerable:[]},
   conditionImmunities:[],traits:[],
-  flags:{flying:provisionalFlight,ranged:attacks.some(a=>a.kind==='ranged'),
+  flags:{flying:flySpeed>0,ranged:attacks.some(a=>a.kind==='ranged'),
    caster:false,legendary:false,swarm:false},
   provenance:{origin:'5etools',srd:false,license:'local-unverified',
    attribution:'Seleção Cormyr 300 de arquivos 5etools fornecidos pelo Narrador. Fonte '+m.source+'.'},
@@ -145,10 +185,7 @@ export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
    'Conteúdo de uso local do Narrador; licença de redistribuição não verificada.',
    'Importação simplificada: sem habilidades, multiataques especiais e magias.',
    'Modificador de iniciativa não consta da seleção; adotado 0 até revisão.',
-   ...(m.ranged&&m.ranged.range_ft==null?
-    ['Ataque à distância sem alcance conhecido: '+m.ranged.name+
-     '. Disparo ignorado; '+(!m.melee?'ataque básico provisório +0, 1d4, corpo a corpo.':'ataque corpo a corpo original preservado.')+
-     ' Revisar alcance antes de habilitar o disparo.']:[]),
+   ...(m.ranged?['Ataque à distância sem limite de alcance no tabuleiro D&D; exige linha de visão.']:[]),
    ...(provisionalFlight?['Deslocamento terrestre 0 na fonte: voo TÁTICO PROVISÓRIO de '+
      DND_PROVISIONAL_FLY_SPEED_FT+' pés. Valor não é oficial; revisar velocidade e tipo de voo.']:[]),
   ],

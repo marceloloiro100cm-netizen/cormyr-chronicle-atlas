@@ -29,6 +29,9 @@ export type CrzEventData=
  |Readonly<{type:'MOVED';unitId:string;from:CrzHex;to:CrzHex;
    cost:number;path:readonly CrzHex[]}>
  |Readonly<{type:'WAITED'|'DEFENDED';unitId:string}>
+ |Readonly<{type:'DND_COUNT_CHANGED';unitId:string;previous:number;current:number}>
+ |Readonly<{type:'DND_STACK_WITHDRAWN';unitId:string;survivors:number}>
+ |Readonly<{type:'DND_STACK_ADDED';unitId:string;side:CrzSide;count:number}>
  |Readonly<{type:'ABILITY_USED';unitId:string;
    ability:'CHARGE'|'VOLLEY'|'NIMBLE_ESCAPE';uses:number}>
  |Readonly<{type:'ATTACK_RESOLVED'|'RETALIATION_RESOLVED';
@@ -45,7 +48,7 @@ export type CrzEventData=
  |Readonly<{type:'EFFECT_APPLIED'|'EFFECT_EXPIRED';
    unitId:string;effectId:string;kind:CrzEffect['kind'];amount:number}>
  |Readonly<{type:'BATTLE_ENDED';winner:CrzSide|null;
-   reason:'elimination'|'rout'|'mutual-defeat'|'stalemate'|'round-limit'}>;
+   reason:'elimination'|'rout'|'withdrawal'|'mutual-defeat'|'stalemate'|'round-limit'|'narrator-end'}>;
 export type CrzEvent=CrzEventData &Readonly<{seq:number;round:number}>;
 export type CrzBattleState=Omit<CrzReady,'phase'|'stacks'|'rngState'|'leaders'> &
  Readonly<{
