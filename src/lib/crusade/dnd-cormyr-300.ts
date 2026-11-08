@@ -44,11 +44,11 @@ export type DndCormyrCatalog=Readonly<{
  monsters:readonly DndCormyrMonster[];
 }>;
 export type DndCormyrOptions=Readonly<{
- search:string;group:string;size:string;source:string;
+ search:string;group:string;type:string;size:string;source:string;
  minCr:number;maxCr:number;order:'name'|'cr-asc'|'cr-desc';
 }>;
 export const DND_CORMYR_DEFAULT_FILTERS:DndCormyrOptions={
- search:'',group:'all',size:'all',source:'all',
+ search:'',group:'all',type:'all',size:'all',source:'all',
  minCr:0,maxCr:30,order:'name',
 };
 export function parseDndCormyr300(text:string):DndCormyrCatalog{
@@ -146,6 +146,7 @@ export function filterDndCormyr300(
   (!text||[m.name,m.id,m.group,m.source].some(v=>
     v.toLocaleLowerCase('pt-BR').includes(text)))&&
   (filter.group==='all'||m.group===filter.group)&&
+  (filter.type==='all'||groupType[m.group]===filter.type)&&
   (filter.size==='all'||m.size===filter.size)&&
   (filter.source==='all'||m.source===filter.source)&&
   m.challenge_rating>=filter.minCr&&m.challenge_rating<=filter.maxCr);
