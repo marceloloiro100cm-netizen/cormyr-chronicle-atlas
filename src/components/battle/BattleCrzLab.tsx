@@ -512,8 +512,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
   setExpanded(false);setSession(null);setReplayStep(null);setSelectedId(null);
   setError('');setMessage('');setPanel('actions');setHoveredId(null);
  };
- const savedPanel=dndMode?<section className="battle-surface" aria-label="Batalhas D&D salvas">
-  <h3>Batalhas privadas do Narrador</h3>
+ const savedPanel=dndMode?<details className="battle-surface" aria-label="Batalhas D&D salvas">
+  <summary>Batalhas privadas do Narrador</summary>
   <Button variant="outline" disabled={dndBusy}
    onClick={()=>void fetchSaves()}>Consultar batalhas salvas</Button>
   {storedBattles.length>0&&<>
@@ -527,7 +527,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    <Button disabled={dndBusy||!restoreBattleId} onClick={()=>void restoreSession()}>
     Retomar batalha salva</Button>
   </>}
- </section>:null;
+ </details>:null;
  const arena=<section className={'battle-module crusade-mode crz-lab'+
   (highContrast?' crz-high-contrast':'')}
   aria-label={dndMode?'D&D simplificado · laboratório do Narrador':'Laboratório CRZ-1.0 do Narrador'}>
@@ -789,9 +789,9 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    {error&&<p className="crz-alert" role="alert">{error}</p>}
    {message&&<p className="crz-status" role="status">{message}</p>}
    {savedPanel}
-   {dndMode&&isDndBattle(frame)&&frame.phase==='active'&&<section className="battle-surface"
+   {dndMode&&isDndBattle(frame)&&frame.phase==='active'&&<details className="battle-surface"
     aria-label="Gerenciamento de tropas durante a batalha D&D">
-    <h2>Gerenciar criaturas e reforços</h2>
+    <summary>Gerenciar criaturas, reforços e resultado</summary>
     <p>Altere o efetivo sem encerrar a partida. Cada ajuste é registrado no replay.
      Os resultados não afetam as Casas.</p>
     {inspected&&<div className="dnd-cormyr-add-controls">
@@ -841,7 +841,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
       winner:dndWinner==='draw'?null:dndWinner,
      })}>Encerrar combate D&D</Button>
     </div>
-   </section>}
+   </details>}
    <section className="crz-turn-track" aria-label="Ordem de combate">
     <div className="crz-track-title">
      <h2>Ordem de combate</h2>
