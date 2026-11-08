@@ -25,7 +25,9 @@ export async function saveDndBattle(session:CrzReplaySession):Promise<void>{
  const replay=crzReplaySerialize(session.replay);
  await requireNarrator();
  const {error}=await db.from('battle_dnd_sessions').upsert({
-  battle_id:session.state.id,replay:JSON.parse(replay),
+  // JSONB recebe uma string JSON (valor escalar), preservando a ordem dos
+  // bytes do replay: objetos JSONB reordenam chaves e quebrariam hashes.
+  battle_id:session.state.id,replay,
   report:session.state.phase==='completed'?crzAfterActionReport(session.replay):null,
   updated_at:new Date().toISOString(),
  },{onConflict:'owner_id,battle_id'});
@@ -50,7 +52,9 @@ export async function loadDndBattle(battleId:string):Promise<CrzReplaySession>{
  if(error||!data||typeof data!=='object')
   throw Error('Batalha D&D não encontrada na conta do Narrador.');
  const raw=(data as Record<string,unknown>)['replay'];
- const restored=crzReplayParse(JSON.stringify(raw));
+ if(typeof raw!=='string')
+  throw Error('Formato de replay privado incompatível.');
+ const restored=crzReplayParse(raw);
  if(!isDndReplay(restored.state)||restored.state.id!==battleId)
   throw Error('Batalha incompatível ou replay adulterado.');
  return restored;
