@@ -215,7 +215,7 @@ export function crzStart(ready:CrzReady):CrzBattleState{
  for(const stack of ready.stacks){
   crzValidateStack(stack);
   const key=crzHexKey(stack.position),tile=tiles.get(key);
-  if(!tile||tile.terrain==='rock')
+  if(!tile||(tile.terrain==='rock'&&!(isDndV3(ready)&&dndCanFly(stack))))
    throw new Error('E_SETUP_MAP: posição inicial fora de quadrado caminhável.');
   if(!verifiedMap.deployment[stack.side].some(h=>crzHexKey(h)===key))
    throw new Error('E_SETUP_ZONE: posição fora da implantação.');
