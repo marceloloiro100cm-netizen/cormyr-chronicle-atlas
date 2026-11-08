@@ -21,7 +21,8 @@ export type CrzCommand=DndAdminCommand
  |Readonly<{type:'ATTACK';unitId:string;targetId:string;mode:'melee'|'ranged'}>
  |Readonly<{type:'WAIT'|'DEFEND'|'END_ACTIVATION';unitId:string}>
  |Readonly<{type:'ABILITY';unitId:string;ability:'CHARGE'|'VOLLEY'|'NIMBLE_ESCAPE'}>
- |Readonly<{type:'CAST';unitId:string;spellId:CrzSpellId;targetId:string|null}>;
+ |Readonly<{type:'CAST';unitId:string;spellId:CrzSpellId;targetId:string|null}>
+ |Readonly<{type:'DND_END_BATTLE';unitId:string;winner:CrzSide|null}>;
 export type CrzActor='human'|'ai';
 export const crzEmptyActivation=():CrzActivation=>({
  moved:false,attacked:false,guard:false,waited:false,
@@ -67,7 +68,7 @@ function onNewRound(state:CrzBattleState):CrzBattleState{
  const previous=state.round;
  let next=crzLog(state,{type:'ROUND_ENDED',note:'Encerrada a rodada '+previous});
  const stagnant=next.progressThisRound?0:next.stagnantRounds+1;
- if(previous>=next.ruleset.battle.maxRounds){
+ if(!isDndBattle(next)&&previous>=next.ruleset.battle.maxRounds){
   // Igual ao PR #281: pontuar o percentual de PV ainda válidos, não
   // o volume bruto, para não favorecer exércitos inicialmente maiores.
   const score=(side:CrzSide)=>{
@@ -79,7 +80,7 @@ function onNewRound(state:CrzBattleState):CrzBattleState{
   const a=score('attacker'),d=score('defender');
   return endBattle(next,a===d?null:a>d?'attacker':'defender','round-limit');
  }
- if(stagnant>=next.ruleset.battle.stalemateRounds)
+ if(!isDndBattle(next)&&stagnant>=next.ruleset.battle.stalemateRounds)
   return endBattle(next,null,'stalemate');
  const refreshed:CrzBattleStack[]=next.stacks.map(s=>({
   ...s,
@@ -312,6 +313,12 @@ export function crzPlay(state:CrzBattleState,command:CrzCommand,
  actor:CrzActor='human'):CrzBattleState{
  if(state.phase!=='active')throw new Error('TURN: batalha encerrada.');
  const unit=activeStack(state);
+ if(command.type==='DND_END_BATTLE'){
+  if(!isDndBattle(state)||actor!=='human'||command.unitId!==unit.id||
+   (command.winner!==null&&command.winner!=='attacker'&&command.winner!=='defender'))
+   throw Error('D&D: somente Narrador pode encerrar a batalha.');
+  return endBattle(state,command.winner,'narrator-end');
+ }
  if(command.type==='DND_SET_COUNT'||command.type==='DND_WITHDRAW'||
     command.type==='DND_ADD_STACK'){
   if(actor!=='human')throw Error('D&D: ajustes são exclusivos do Narrador.');
