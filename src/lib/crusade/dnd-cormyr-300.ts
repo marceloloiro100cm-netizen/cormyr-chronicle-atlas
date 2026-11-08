@@ -33,6 +33,7 @@ const row=z.object({
  /** Ajuste privado opcional do Narrador; não modifica o dado original. */
  fly_ft:z.number().int().min(0).max(1000).optional(),
  dex_mod:z.number().int().min(-10).max(30).optional(),
+ review_source:z.string().trim().min(4).max(240).optional(),
  melee:attack.nullable(),ranged:attack.nullable(),
  special_abilities:z.array(z.string().max(500)).optional(),
  review:z.string().max(500).optional(),
@@ -82,6 +83,7 @@ export function applyDndCombatOverrides(catalog:DndCormyrCatalog,
    ...(patch.fly_ft!==undefined?{fly_ft:patch.fly_ft}:{}),
    ...(patch.dex_mod!==undefined?{dex_mod:patch.dex_mod}:{}),
    ...(patch.review_note?{review:patch.review_note}:{}),
+   ...(patch.review_source?{review_source:patch.review_source}:{}),
    melee,ranged};
  });
  return parseDndCormyr300(JSON.stringify({metadata:catalog.metadata,monsters}));
@@ -208,6 +210,7 @@ export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
    ...(m.melee&&!m.melee.damage_type?['Tipo de dano corpo a corpo não verificado; concussão neutra provisória.']:[]),
    ...(m.ranged&&!m.ranged.damage_type?['Tipo de dano à distância não verificado; concussão neutra provisória.']:[]),
    ...(m.ranged?['Ataque à distância sem limite de alcance no tabuleiro D&D; exige linha de visão.']:[]),
+   ...(m.review_source?['Revisão da ficha: '+m.review_source]:[]),
    ...(provisionalFlight?['Deslocamento terrestre 0 na fonte: voo TÁTICO PROVISÓRIO de '+
      DND_PROVISIONAL_FLY_SPEED_FT+' pés. Valor não é oficial; revisar velocidade e tipo de voo.']:[]),
   ],
