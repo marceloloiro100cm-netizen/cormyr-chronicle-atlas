@@ -2,6 +2,7 @@ import {useEffect,useMemo,useState,useRef,type ChangeEvent} from 'react';
 import {Button} from '@/components/ui/button';
 import {loadPrivateDndCormyr300} from '@/lib/crusade/dnd-cormyr-private-loader';
 import {DndCustomMonsterEditor} from './DndCustomMonsterEditor';
+import {saveDndCustomMonster} from '@/lib/crusade/dnd-private-custom';
 import {saveDndCombatOverride,resetDndCombatOverride}
  from '@/lib/crusade/dnd-private-overrides';
 import {
@@ -70,7 +71,20 @@ export function DndCormyr300Library({
   if(!m)return;
   setSaving(true);
   try{
-   await saveDndCombatOverride(editor.id,{
+   if(editor.id.startsWith('custom-')){
+    await saveDndCustomMonster({...m,hp:editor.hp,ac:editor.ac,
+     speed_ft:editor.speed_ft,fly_ft:editor.fly_ft,
+     ...(editor.dex_mod.trim()?{dex_mod:Number(editor.dex_mod)}:{}),
+     ...(editor.review_source.trim()?{review_source:editor.review_source.trim()}:{}),
+     ...(editor.review_note.trim()?{review:editor.review_note.trim()}:{}),
+     melee:m.melee?{...m.melee,bonus:editor.melee_bonus,
+      damage:editor.melee_damage,
+      ...(editor.melee_damage_type?{damage_type:editor.melee_damage_type}:{})}:null,
+     ranged:m.ranged?{...m.ranged,bonus:editor.ranged_bonus,
+      damage:editor.ranged_damage,
+      ...(editor.ranged_damage_type?{damage_type:editor.ranged_damage_type}:{})}:null,
+    });
+   }else await saveDndCombatOverride(editor.id,{
     hp:editor.hp,ac:editor.ac,speed_ft:editor.speed_ft,fly_ft:editor.fly_ft,
     ...(m.melee?{melee_bonus:editor.melee_bonus,melee_damage:editor.melee_damage}:{}),
     ...(m.ranged?{ranged_bonus:editor.ranged_bonus,ranged_damage:editor.ranged_damage,
@@ -284,7 +298,8 @@ export function DndCormyr300Library({
     </div>
     <div className="dnd-cormyr-buttons">
      <Button disabled={saving} onClick={()=>void saveEditor()}>Salvar ficha privada</Button>
-     <Button variant="outline" disabled={saving} onClick={()=>void resetEditor()}>Restaurar original</Button>
+     <Button variant="outline" disabled={saving||editor.id.startsWith('custom-')}
+      onClick={()=>void resetEditor()}>Restaurar original</Button>
      <Button variant="outline" disabled={saving} onClick={()=>setEditor(null)}>Cancelar</Button>
     </div>
    </section>}
