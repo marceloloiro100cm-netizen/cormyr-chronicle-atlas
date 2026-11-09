@@ -23,3 +23,19 @@
 .spy-mission-odds-facts{display:grid;gap:6px;padding-top:8px}
 .spy-mission-odds-facts p{margin:0;line-height:1.5;color:#62503e}
 @media(max-width:940px){.spy-mission-key-metrics{grid-template-columns:1fr}}
+
+/* P1: risco como texto, sem atribuir cores fictícias a probabilidades. */
+.spy-mission-risk{margin:0;padding:10px 12px;border-radius:8px;border:1px solid #dbc9a6;
+ background:#fffefa;color:#54402f;font-size:13px;line-height:1.55}
+.spy-mission-risk strong{display:inline;color:#3b2b24}
+.spy-mission-risk--impossible,.spy-mission-risk--extreme{border-left:4px solid #98684d}
+.spy-mission-risk--high{border-left:4px solid #b08b4d}
+.spy-mission-preview{overflow-wrap:anywhere}
+@media(max-width:640px){
+ .spy-mission-preview{padding:12px;gap:10px}
+ .spy-mission-preview-heading h4{font-size:20px}
+ .spy-mission-key-metric{padding:11px;gap:4px}
+ .spy-mission-key-metric strong{font-size:23px}
+ .spy-mission-key-metric span{font-size:12px}
+ .spy-mission-odds-details>summary{min-height:44px;display:flex;align-items:center}
+}

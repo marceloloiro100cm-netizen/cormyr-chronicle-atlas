@@ -87,9 +87,8 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
   aria-label="Planejador de missão de espionagem">
   <header className="spy-planner-heading">
    <p className="campaign-eyebrow">ESTRATÉGIA DE INTELIGÊNCIA</p>
-   <h3>Planejador de missão de espionagem</h3>
-   <p>Escolha seu espião, a região de destino e a Casa que deseja investigar.
-    O tempo, a chance de sucesso e o caminho aparecem abaixo.</p>
+   <h3>Nova missão de espionagem</h3>
+   <p>Escolha o espião e a Casa-alvo. A região atual já aparece selecionada; você pode mudá-la.</p>
   </header>
 
   {isPending&&<p role="status" className="spy-planner-feedback">
@@ -100,21 +99,26 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
     onClick={()=>void refetch()}>Consultar novamente</Button>
   </div>}
 
+  {data&&<p className="spy-planner-availability" role="status">
+   {agents.filter(a=>a.status==='available').length} disponíveis ·
+   {' '}{agents.filter(a=>a.status!=='available'&&a.status!=='retired').length} indisponíveis
+  </p>}
   {data&&<div className="spy-planner-steps">
    <label className="spy-planner-step">
     <span className="spy-planner-step-title"><b>1</b> Espião</span>
     <select aria-label="Agente da missão" value={assetId}
-     onChange={e=>{setAssetId(e.target.value);setDestination('');setTargetHouseId('');}}>
+     onChange={e=>{
+      const agent=agents.find(a=>a.id===e.target.value);
+      setAssetId(e.target.value);
+      setDestination(agent?.status==='available'?agent.currentRegion??'':'');
+      setTargetHouseId('');
+     }}>
      <option value="">Selecione um espião</option>
-     {agents.filter(a=>a.status!=='retired').map(a=><option
-      key={a.id} value={a.id} disabled={a.status!=='available'}>
+     {agents.filter(a=>a.status==='available').map(a=><option key={a.id} value={a.id}>
       {a.codename} · {a.currentRegion?name(a.currentRegion):'posição pendente'}
-      {a.status==='available'?' · disponível':' · indisponível'}
      </option>)}
     </select>
-    <small>{selected
-     ?'Origem atual: '+originName+' · definida automaticamente pela ficha do agente'
-     :'A origem é a posição atual registrada do espião.'}</small>
+    {selected&&<small>Origem: {originName}</small>}
    </label>
    <label className="spy-planner-step">
     <span className="spy-planner-step-title"><b>2</b> Região de destino</span>
@@ -125,10 +129,8 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
      {regions.map(region=><option key={region.regionId}
       value={region.regionId}>{region.regionName}</option>)}
     </select>
-    <small>{!assetId?'Primeiro escolha um espião.':
-     !originRegion?'Localização real pendente de confirmação.':
-     destination?'Partida: '+originName+' · Chegada: '+name(destination):
-     'Pode ser a mesma região em que o espião está.'}</small>
+    {selected&&<small>{!originRegion?'Localização do espião pendente.':
+     destination===originRegion?'Região atual selecionada.':'Viagem a partir de '+originName}</small>}
    </label>
    <label className="spy-planner-step">
     <span className="spy-planner-step-title"><b>3</b> Casa a investigar</span>
@@ -139,11 +141,10 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
      <option value="">Selecione a Casa</option>
      {houseChoices.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
     </select>
-    <small>{!destination?'Escolha a região para ver as Casas.':
-     targetsQuery.isPending?'Carregando Casas da região…':
-     targetsQuery.isError?'Lista indisponível.':
-     houseChoices.length===0?'Nenhuma outra Casa homologada nessa região.':
-     houseChoices.length+' Casas nobres disponíveis nesta região.'}</small>
+    {destination&&<small>{targetsQuery.isPending?'Carregando Casas…':
+     targetsQuery.isError?'Casas indisponíveis.':
+     houseChoices.length===0?'Nenhuma outra Casa homologada.':
+     houseChoices.length+' Casas disponíveis.'}</small>}
    </label>
   </div>}
 
@@ -182,7 +183,9 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
    {plan&&!ready&&<p className="spy-planner-feedback" role="status">
     {routeError[plan.status]}
    </p>}
-   <div className="spy-planner-map-wrap">
+   <details className="spy-planner-map-details">
+    <summary>Ver trajeto no mapa</summary>
+    <div className="spy-planner-map-wrap">
     <div className="spy-planner-route-caption">
      <strong>Trajeto da missão</strong>
      <span>{originName} → {name(destination)}</span>
@@ -197,7 +200,8 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
      <CormyrInteractiveMap selectedRegion={destination}
       originRegion={originRegion} plan={ready?plan:null}
       onSelect={chooseRegion}/>}
-   </div>
+    </div>
+   </details>
    {ready&&agentAvailable&&originRegion&&
     <div className="spy-planner-start-row">
      <SpySubmitHouseMission
@@ -229,7 +233,7 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
 
   {!allSelected&&data&&agentAvailable&&destination&&
    <p className="spy-planner-feedback" role="status">
-    Selecione a Casa nobre para visualizar o tempo, a chance e o trajeto da missão.
+    Escolha uma Casa para ver a chance de sucesso e iniciar a missão.
    </p>}
  </section>;
 }

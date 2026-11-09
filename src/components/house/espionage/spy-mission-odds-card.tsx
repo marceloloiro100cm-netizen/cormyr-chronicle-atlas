@@ -2,6 +2,7 @@ import {useQuery} from '@tanstack/react-query';
 import {Target} from 'lucide-react';
 import {readSpyMissionOddsBrowser} from '@/lib/espionage/spy-target-browser';
 import {REGIONS} from '@/lib/house/regions';
+import {spyMissionRiskAssessment} from '@/lib/espionage/spy-mission-probability';
 import './spy-mission-odds-card.css';
 
 type Props={
@@ -26,11 +27,14 @@ export function SpyMissionOddsCard(props:Props){
 
  const data=query.data;
  const success=data?.successPercent;
+ const risk=data?spyMissionRiskAssessment(data.testDice,data.testDifficulty):null;
  const missionRounds=props.travelRounds===null?null:props.travelRounds+1;
  const regionName=REGIONS[props.destinationRegion]?.name??props.destinationRegion;
  const formatRounds=(n:number)=>n+' '+(n===1?'désdia':'désdias');
  const percent=success===undefined?'Indisponível':
-  success.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%';
+  success===0&&data&&data.testDifficulty<=data.testDice*6
+   ?'Menos de 0,1%':
+   success.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%';
  const chanceLabel=!enabled?'Agente indisponível':
   query.isPending?'Calculando…':
   query.isError?'Indisponível':percent;
@@ -59,7 +63,7 @@ export function SpyMissionOddsCard(props:Props){
    <article className="spy-mission-key-metric spy-mission-key-metric--chance">
     <small>Chance estimada de sucesso</small>
     <strong aria-live="polite">{chanceLabel}</strong>
-    <span>Astúcia do espião × dificuldade da Casa</span>
+    <span>{risk?.label??'Astúcia contra a dificuldade da Casa'}</span>
    </article>
    <article className="spy-mission-key-metric">
     <small>Tempo para executar a missão</small>
@@ -73,7 +77,11 @@ export function SpyMissionOddsCard(props:Props){
   {enabled&&query.isPending&&<p role="status" className="spy-mission-odds-status">
    Calculando a chance com os atributos reais do agente e a Casa-alvo…</p>}
   {enabled&&query.isError&&<p role="alert" className="spy-mission-odds-status">
-   Não foi possível consultar a chance desta Casa. Verifique a sessão ou os dados do espião.</p>}
+   Chance indisponível. Atualize a seleção do agente ou tente novamente.</p>}
+  {risk&&enabled&&<p className={'spy-mission-risk spy-mission-risk--'+risk.tier}
+   role="status" aria-live="polite">
+   <strong>{risk.label}.</strong> {risk.advice}
+  </p>}
   {data&&enabled&&<details className="spy-mission-odds-details">
    <summary>Ver detalhes do cálculo</summary>
    <div className="spy-mission-odds-facts">
@@ -82,9 +90,8 @@ export function SpyMissionOddsCard(props:Props){
      {' '}({data.difficultyLabel})</p>
     <p><strong>Resistência da Casa:</strong> {data.houseDefense}
      {' '}· {sourceLabel}</p>
-    <p>A probabilidade corresponde à proporção exata das combinações de dados
-     cuja soma alcança a dificuldade. O Narrador ainda pode aplicar condições
-     específicas à missão.</p>
+    <p>O sistema calcula as combinações de dados e arredonda a chance a 0,1%.
+     O Narrador pode aplicar modificadores à rolagem; esta prévia não prevê descoberta, prisão ou morte.</p>
     {data.forgedDocuments&&<p><strong>Documentos falsificados:</strong>
      {' '}reduzem a gravidade de uma descoberta.</p>}
     {data.aceInTheHole&&<p><strong>Uma carta na manga:</strong>

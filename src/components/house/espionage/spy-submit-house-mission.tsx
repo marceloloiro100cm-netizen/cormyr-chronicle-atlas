@@ -62,7 +62,7 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
    onSubmitted?.(result.operationId);
   }catch(e){
    setError(e instanceof Error?e.message:
-    'Não foi possível registrar a ordem. Atualize a ficha e tente novamente.');
+    'Não foi possível confirmar a missão. Atualize os agentes antes de reenviar.');
   }finally{setBusy(false);}
  };
  return <div className="spy-planner-execution">
@@ -97,17 +97,18 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
      <select id="spy-mission-objective" aria-label="Objetivo da espionagem"
       className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground"
       value={objective} disabled={busy}
-      onChange={event=>setObjective(event.target.value as SpyIntelligenceObjective)}>
+      onChange={event=>{
+       requestKey.current=null;agentVersion.current=null;
+       setError('');setObjective(event.target.value as SpyIntelligenceObjective);
+      }}>
       {SPY_INTELLIGENCE_OBJECTIVES.map(item=><option key={item.id} value={item.id}>
        {item.label} — {item.description}
       </option>)}
      </select>
-     <p><strong>Viagem estimada:</strong> {travelRounds} désdia(s) · {travelRounds*10} dias</p>
-     <p><strong>Missão estimada:</strong> {total} désdia(s) · {total*10} dias</p>
-     <small>Uma missão revela apenas informações da modalidade escolhida.
-      O conhecimento anterior da sua Casa é preservado.</small>
-     <small>O servidor valida a região, a rota e o prazo antes de iniciar.
-      O resultado da espionagem será definido ao término da investigação.</small>
+     <p><strong>Duração prevista:</strong> {total} {total===1?'désdia':'désdias'}
+      {' '}({total*10} dias ordinários, incluindo {travelRounds} de viagem).</p>
+     <small>Uma missão investiga apenas a modalidade escolhida.
+      A viagem segue o HUB Temporal; o narrador resolve o resultado.</small>
     </div>
     {error&&<p className="house-warning" role="alert">{error}</p>}
     <DialogFooter>

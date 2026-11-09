@@ -1,0 +1,22 @@
+/* P1: formulário de adjudicação curto e acessível, sem novos controles de regra. */
+.spy-narrator-form{padding:14px;display:grid;gap:12px;min-width:0}
+.spy-narrator-main-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0}
+.spy-narrator-main-fields label,.spy-narrator-advanced label{display:grid;gap:5px;min-width:0;
+ font-size:13px;font-weight:600}
+.spy-narrator-main-fields input,.spy-narrator-main-fields select,
+.spy-narrator-advanced textarea{width:100%;max-width:100%;min-width:0;min-height:44px;
+ border:1px solid var(--border);border-radius:7px;background:var(--background);
+ color:var(--foreground);font-size:16px;padding:9px}
+.spy-narrator-check{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px}
+.spy-narrator-check input{width:18px;height:18px;flex-shrink:0}
+.spy-narrator-advanced{border:1px solid var(--border);border-radius:10px;padding:10px 12px;
+ display:grid;gap:12px;min-width:0}
+.spy-narrator-advanced summary{cursor:pointer;font-weight:600;font-size:13px;min-height:34px}
+.spy-narrator-advanced .house-caption{margin:10px 0;font-size:12px}
+.spy-narrator-advanced .spy-narrator-main-fields{margin:10px 0}
+.spy-narrator-advanced textarea{margin-top:5px;resize:vertical}
+.spy-narrator-form>button[type=submit]{min-height:44px;justify-self:start}
+@media(max-width:640px){
+ .spy-narrator-main-fields{grid-template-columns:minmax(0,1fr)}
+ .spy-narrator-form>button[type=submit]{width:100%}
+}
