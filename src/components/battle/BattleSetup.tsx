@@ -1,4 +1,5 @@
 import './battle-cleanup.css';
+import './battle-p3.css';
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {LAND_PROFILES,tacticalProfile} from '@/lib/battle/domain/profiles-v2';
