@@ -1,11 +1,13 @@
 import type { BattleMap, MapTile, Terrain } from '../domain/types';
 import { offsetToAxial } from './hex';
-export type BattleScenarioId = 'plain-open' | 'contested-woods' | 'border-hills' | 'narrow-passage';
+export type BattleScenarioId = 'plain-open' | 'contested-woods' | 'border-hills' | 'narrow-passage' | 'bridge-crossing' | 'fortress-gate';
 export const SCENARIOS:Readonly<Record<BattleScenarioId,string>>={
   'plain-open':'Planície aberta',
   'contested-woods':'Bosque disputado',
   'border-hills':'Colinas da fronteira',
   'narrow-passage':'Passagem estreita',
+  'bridge-crossing':'Travessia de ponte (barreira)',
+  'fortress-gate':'Portão fortificado (muralha simplificada)',
 };
 export function createScenario(id:BattleScenarioId,width:11|15=11,grid:'hex'|'square'='square'):BattleMap {
   const height:9|11=width===11?9:11;
@@ -21,6 +23,11 @@ export function createScenario(id:BattleScenarioId,width:11|15=11,grid:'hex'|'sq
     }
     if(id==='narrow-passage' && col===mid && Math.abs(row-center)>1)
       terrain='rock';
+    if(id==='bridge-crossing'&&col===mid&&row!==center)terrain='rock';
+    // Muralha de rocha intransponível por tropas terrestres; portão aberto ao centro.
+    if(id==='fortress-gate'&&
+      ((col===width-4&&row>=1&&row<=height-2&&row!==center)||
+       (col>=width-4&&(row===1||row===height-2))))terrain='rock';
     tiles.push({...(grid==='square'?{q:col,r:row}:offsetToAxial(col,row)),terrain});
   }
   const deployment={
