@@ -152,6 +152,18 @@ describe('P3 · the narrator can edit objectives in the full setup UI',()=>{
  });
 });
 
+describe('P3 · defensive doctrine remains on held ground',()=>{
+ it('defender-oriented AI guards a strategic cell instead of leaving it',()=>{
+  const map=createScenario('bridge-crossing');
+  const objective=makeTacticalObjective('bridge',map);
+  if(objective?.kind!=='multi-capture')throw Error('Expected multi mission');
+  const started=startBattle(fixture(objective,'defensive'));
+  const moved={...started,stacks:started.stacks.map(s=>s.id==='a'?
+   {...s,position:objective.positions[0]!}:s)} satisfies BattleState;
+  expect(chooseAiCommand(moved).type).toBe('DEFEND');
+ });
+});
+
 describe('P3 · relative challenge and transparent session metrics',()=>{
  it('counts non-retaliation actions and formats actual elapsed time',()=>{
   const initial=fixture();
