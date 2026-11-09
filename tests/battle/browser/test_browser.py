@@ -388,6 +388,20 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         self.assertLessEqual(page.evaluate(
             "document.documentElement.scrollWidth-window.innerWidth"),4)
 
+    def test_p3_bridge_mission_multiple_goals_and_metrics_on_mobile(self):
+        page=self.open_page(390,844,touch=True)
+        page.get_by_role("button",name="Abrir missão P3").tap()
+        dialog=page.get_by_role("dialog",name="Batalha em tela ampliada")
+        dialog.wait_for(timeout=15000)
+        goal=dialog.get_by_role("region",name="Objetivo tático")
+        self.assertIn("Tomar a ponte",goal.inner_text())
+        self.assertEqual(dialog.locator(".battle-goal-marker").count(),3)
+        dialog.get_by_text("Indicadores de combate",exact=True).tap()
+        self.assertIn("Forças:",dialog.locator(".battle-metrics-content").inner_text())
+        self.assertIn("min",dialog.locator(".battle-metrics-content").inner_text())
+        self.assertLessEqual(page.evaluate(
+            "document.documentElement.scrollWidth-window.innerWidth"),4)
+
     def test_mobile_save_destinations_and_scope_are_explicit(self):
         page=self.open_page(390,844,touch=True)
         page.get_by_role("button",name="Abrir arena GOT").tap()

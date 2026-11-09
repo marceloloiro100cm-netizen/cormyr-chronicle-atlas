@@ -5,6 +5,8 @@ import {startBattle,applyBattleCommand,getLegalActions,legalAttack} from '@/lib/
 import {livingCount,casualtyCount} from '@/lib/battle/domain/morale';
 import {resolveDamage} from '@/lib/battle/domain/combat';
 import {battleReport} from '@/lib/battle/domain/report';
+import {battleTacticalMetrics} from '@/lib/battle/domain/metrics';
+import {BattleMetricsPanel} from './BattleMetricsPanel';
 import {hexKey} from '@/lib/battle/geometry/hex';
 import {gridDistance} from '@/lib/battle/geometry/grid';
 import {reachablePaths} from '@/lib/battle/geometry/pathfinding';
@@ -29,12 +31,12 @@ import {saveBattleReplay} from '@/lib/battle/battle-session.functions';
 import {useServerFn} from '@tanstack/react-start';
 
 const LABEL:Record<Side,string>={attacker:'Atacante',defender:'Defensor'};
-function BattleResult({state,initial,sideNames,heraldry,onRestart,onExit,persistenceEnabled}:{
+function BattleResult({state,initial,sideNames,heraldry,onRestart,onExit,persistenceEnabled,elapsedSeconds}:{
  initial:BattleState;
  state:BattleState;sideNames:Record<Side,string>;
  heraldry?:Partial<Record<Side,BattleHouseDirectoryRow>>|undefined;
  onRestart:()=>void;onExit:()=>void;
- persistenceEnabled:boolean;
+ persistenceEnabled:boolean;elapsedSeconds:number;
 }){
  const report=battleReport(state);
  const [replayVisible,setReplayVisible]=useState(false);
@@ -54,11 +56,14 @@ function BattleResult({state,initial,sideNames,heraldry,onRestart,onExit,persist
     round={state.round} reason={state.resultReason==='objective-capture'?'Posição conquistada':
      state.resultReason==='objective-defense'?'Defesa resistiu até o prazo':
      state.resultReason==='objective-survive'?'Defensor resistiu ao confronto':
+     state.resultReason==='objective-multi-capture'?'Pontos estratégicos conquistados':
+     state.resultReason==='objective-multi-defense'?'Defesa dos pontos bem-sucedida':
      state.resultReason??'Sem causa informada'}
     losses={[
      {label:sideNames.attacker,count:report.bySide.attacker.casualties},
      {label:sideNames.defender,count:report.bySide.defender.casualties},
     ]}/>
+   <BattleMetricsPanel state={state} elapsedSeconds={elapsedSeconds}/>
    <div className="battle-summary-grid">
     {(['attacker','defender'] as const).map(side=><article key={side} className="battle-result-card">
       {heraldry?.[side]?<BattleHouseBanner side={side} house={heraldry[side]}
@@ -77,7 +82,8 @@ function BattleResult({state,initial,sideNames,heraldry,onRestart,onExit,persist
     </tr>)}</tbody>
    </table></div>
    <div className="battle-form-row">
-    <Button variant="outline" onClick={()=>downloadBattleJson('resultado-batalha.json',JSON.stringify(report,null,2))}>Exportar resultado JSON</Button>
+    <Button variant="outline" onClick={()=>downloadBattleJson('resultado-batalha.json',JSON.stringify({...report,metrics:battleTacticalMetrics(state),
+    sessionElapsedSeconds:elapsedSeconds},null,2))}>Exportar resultado JSON</Button>
     {persistenceEnabled&&<Button disabled={saving} variant="outline" onClick={()=>void persist()}>
       Salvar batalha
     </Button>}
@@ -100,6 +106,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
  // Uma batalha retomada foi reconstruída por replay SHA-256 no servidor e no navegador.
  // A edição é local; o salvamento posterior cria uma nova cópia, sem sobrescrever a origem.
  const [battle,setBattle]=useState<BattleState>(()=>resume??startBattle(initial));
+ const [elapsedSeconds,setElapsedSeconds]=useState(0);
  const [history,setHistory]=useState<BattleState[]>([]);
  const [expanded,setExpanded]=useState(true);
  const [fullHistory,setFullHistory]=useState(false);
@@ -112,6 +119,11 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
  const [savingProgress,setSavingProgress]=useState(false);
  const [showManual,setShowManual]=useState(false),[reason,setReason]=useState('');
  const [manualWinner,setManualWinner]=useState<Side|null>(null),[showHelp,setShowHelp]=useState(false);
+ useEffect(()=>{
+  if(paused||battle.phase!=='active')return;
+  const timer=window.setInterval(()=>setElapsedSeconds(s=>s+1),1000);
+  return()=>window.clearInterval(timer);
+ },[paused,battle.phase]);
  const active=battle.stacks.find(s=>s.id===battle.activeUnitId);
  const inspected=battle.stacks.find(s=>s.id===selected)??active;
  const canAct=battle.phase==='active'&&!paused&&selected===battle.activeUnitId&&Boolean(active&&battle.controls[active.side]==='human');
@@ -198,7 +210,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
  };
  const restart=()=>{
   if(!window.confirm('Reiniciar esta simulação e descartar as ações anteriores?'))return;
-  const fresh=startBattle(initial);setBattle(fresh);setHistory([]);setSelected(fresh.activeUnitId);clear();setNotice('');
+  const fresh=startBattle(initial);setBattle(fresh);setHistory([]);setSelected(fresh.activeUnitId);setElapsedSeconds(0);clear();setNotice('');
  };
  if(battle.phase==='completed'||battle.phase==='archived')
   return <BattleExpandedView expanded={expanded} onClose={()=>setExpanded(false)}>
@@ -212,7 +224,8 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
      </Button>
     </div>
     <BattleResult state={battle} initial={initial} sideNames={sideNames} heraldry={heraldry}
-     onRestart={restart} onExit={onExit} persistenceEnabled={persistenceEnabled}/>
+     onRestart={restart} onExit={onExit} persistenceEnabled={persistenceEnabled}
+     elapsedSeconds={elapsedSeconds}/>
    </div>
   </BattleExpandedView>;
  const arena=<div className="battle-module battle-unified-shell">
@@ -261,12 +274,13 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
    onSelectActive={active?()=>{setSelected(active.id);clear();}:undefined}
    hint={canAct?'Toque no verde para mover ou no inimigo destacado para atacar.':
     'Confira a unidade da vez e aguarde sua ativação.'}/>
+  <BattleMetricsPanel state={battle} elapsedSeconds={elapsedSeconds}/>
   {latestAction&&<BattleActionFeedback round={latestAction.round}
    label={pteEventLabel(latestAction,battle.stacks)}
    damage={latestDamage} casualties={latestCasualties}
    detail={latestAction.type==='DAMAGE'?'Ataque resolvido pelo motor PTE.':undefined}/>}
   {battle.objective&&<section className="battle-tactical-goal" aria-label="Objetivo tático" role="region" aria-live="polite">
-    <strong>{battle.objective.kind==='capture'?'Conquistar posição':'Resistir ao ataque'}</strong>
+    <strong>{battle.objective.kind==='capture'||battle.objective.kind==='multi-capture'?'Conquistar posição':'Resistir ao ataque'}</strong>
     <p>{tacticalObjectiveDescription(battle)}</p>
    </section>}
   {showHelp&&<div className="battle-surface" role="note">Mover e atacar; defender dá +2. Esperar uma vez por rodada. Baixas apenas simuladas.</div>}
@@ -291,7 +305,8 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
        selectedId={selected} moveKeys={canAct&&mode!=='attack'?moveKeys:[]}
        attackKeys={canAct&&mode!=='move'?attackIds:[]} pendingHex={pendingMove}
        onHexClick={chooseHex} onHoverHex={setHover}
-       objectivePosition={battle.objective?.kind==='capture'?battle.objective.position:undefined}/>
+       objectivePosition={battle.objective?.kind==='capture'?battle.objective.position:undefined}
+       objectivePositions={battle.objective?.kind==='multi-capture'?battle.objective.positions:undefined}/>
      {mode==='move'&&<p role="status">Rota: {selectedPath?selectedPath.steps+' '+(battle.map.grid==='square'?'quadrados':'hexágonos')+' · custo '+selectedPath.cost:
       'Selecione um '+(battle.map.grid==='square'?'quadrado':'hexágono')+' destacado'}</p>}
      {damagePreview&&<p role="status">Ataque previsto contra {target?.name}: {damagePreview.damage} PV · {damagePreview.casualties} baixas antes de eventual retaliação.</p>}

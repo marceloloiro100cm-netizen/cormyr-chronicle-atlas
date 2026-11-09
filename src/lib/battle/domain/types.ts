@@ -5,11 +5,14 @@ export type Morale = 'steady' | 'shaken' | 'routed';
 export type Control = 'human' | 'ai';
 export type Terrain = 'plain' | 'forest' | 'hill' | 'rock';
 export type Training = 'green' | 'trained' | 'veteran' | 'elite';
+export type AiProfile = 'balanced' | 'aggressive' | 'defensive' | 'ranged';
 export type Hex = Readonly<{ q: number; r: number }>;
 export type MapTile = Readonly<Hex & { terrain: Terrain }>;
 export type TacticalObjective=Readonly<
  | {kind:'capture';position:Hex;holdRounds:number;deadlineRound:number}
  | {kind:'survive';defenderRounds:number}
+ | {kind:'multi-capture';mission:'outposts'|'bridge'|'fortress';
+    positions:readonly Hex[];requiredPositions:number;holdRounds:number;deadlineRound:number}
 >;
 export type TacticalObjectiveProgress=Readonly<{holder:Side|null;consecutiveRounds:number}>;
 export type BattleMap = Readonly<{
@@ -61,4 +64,6 @@ export type BattleState = Readonly<{
   events: readonly BattleEvent[]; winner: Side | null; resultReason?: string;
   /** Opcionais: replays legados sem objetivos seguem byte a byte iguais. */
   objective?: TacticalObjective; objectiveProgress?: TacticalObjectiveProgress;
+  /** Configuração opt-in. Nenhuma alteração do comportamento de replays anteriores. */
+  aiProfiles?: Readonly<Partial<Record<Side,AiProfile|undefined>>>;
 }>;

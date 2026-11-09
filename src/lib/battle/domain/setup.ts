@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { BattleMap, BattleStack, BattleState, Control, Hex, Side, Training, TacticalObjective } from './types';
+import type { BattleMap, BattleStack, BattleState, Control, Hex, Side, Training, TacticalObjective, AiProfile } from './types';
 import { tacticalProfile, TRAINING_BONUS } from './profiles-v2';
 import { BATTLE_RULES } from './rulebook-v2';
 import { validateBattleMap } from '../geometry/map-validation';
@@ -52,12 +52,17 @@ export const tacticalObjectiveSchema=z.discriminatedUnion('kind',[
  z.object({kind:z.literal('capture'),position:hexSchema,
   holdRounds:z.number().int().min(1).max(10),deadlineRound:z.number().int().min(2).max(20)}).strict(),
  z.object({kind:z.literal('survive'),defenderRounds:z.number().int().min(1).max(20)}).strict(),
+ z.object({kind:z.literal('multi-capture'),mission:z.enum(['outposts','bridge','fortress']),
+  positions:z.array(hexSchema).min(2).max(5),requiredPositions:z.number().int().min(1).max(5),
+  holdRounds:z.number().int().min(1).max(10),deadlineRound:z.number().int().min(2).max(20)}).strict(),
 ]);
 export const battleDraftSchema=z.object({
   id:z.string().min(1).max(80),name:z.string().trim().min(1).max(120),schemaVersion:z.literal(2),
   rulesVersion:z.literal('PTE-2.0'),seed:z.string().min(1).max(128),
   map:battleMapSchema,
   objective:tacticalObjectiveSchema.optional(),
+  aiProfiles:z.object({attacker:z.enum(['balanced','aggressive','defensive','ranged']).optional(),
+   defender:z.enum(['balanced','aggressive','defensive','ranged']).optional()}).strict().optional(),
   controls:z.object({attacker:z.enum(['human','ai']),defender:z.enum(['human','ai'])}).strict(),
   stacks:z.array(z.union([fictionalStackSchema,officialStackSchema])).min(2).max(10),
 }).strict();
@@ -95,6 +100,19 @@ export function validateBattleDraft(draft:unknown):BattleDraft {
    if(!target||target.terrain==='rock')throw new Error('Objetivo tático fora de célula acessível.');
    if(objective.deadlineRound<objective.holdRounds)
     throw new Error('Prazo do objetivo insuficiente.');
+  }
+  if(objective?.kind==='multi-capture'){
+   if(objective.holdRounds>objective.deadlineRound||
+      objective.requiredPositions>objective.positions.length)
+    throw new Error('Quantidade e prazo dos objetivos incompatíveis.');
+   const seen=new Set<string>();
+   for(const position of objective.positions){
+    const key=hexKey(position);
+    if(seen.has(key))throw new Error('Objetivos não podem ocupar o mesmo quadrado.');
+    seen.add(key);
+    if(!result.map.tiles.some(t=>hexKey(t)===key&&t.terrain!=='rock'))
+     throw new Error('Objetivo localizado fora do terreno transitável.');
+   }
   }
   const ids=new Set<string>(),positions=new Set<string>();
   for(const side of ['attacker','defender'] as const){
@@ -136,15 +154,16 @@ export function parseBattleDraftJson(json:string):BattleDraft {
   if(json.length>250_000)throw new Error('Arquivo de simulação excede 250 KB.');
   return validateBattleDraft(JSON.parse(json) as unknown);
 }
-export type BattleDraftInput = Readonly<Pick<BattleState, 'id' | 'name' | 'schemaVersion' | 'rulesVersion' | 'seed' | 'map' | 'controls' | 'stacks' | 'objective'>>;
+export type BattleDraftInput = Readonly<Pick<BattleState, 'id' | 'name' | 'schemaVersion' | 'rulesVersion' | 'seed' | 'map' | 'controls' | 'stacks' | 'objective' | 'aiProfiles'>>;
 export function serializeBattleDraft(draft:BattleDraftInput):string {
   return JSON.stringify(validateBattleDraft(draft));
 }
-export function makeBattleSetup(input:{id:string;name:string;seed:string;map:BattleMap;controls:Record<Side,Control>;stacks:BattleStack[];objective?:TacticalObjective}):BattleState {
+export function makeBattleSetup(input:{id:string;name:string;seed:string;map:BattleMap;controls:Record<Side,Control>;stacks:BattleStack[];objective?:TacticalObjective;aiProfiles?:Readonly<Partial<Record<Side,AiProfile>>>}):BattleState {
   const draft=validateBattleDraft({...input,schemaVersion:2,rulesVersion:'PTE-2.0'});
   const stacks:BattleStack[]=draft.stacks.map(s=>{const {profileDecisionReason,...rest}=s as typeof s & {profileDecisionReason?:string};return {...rest,...(typeof profileDecisionReason==='string'?{profileDecisionReason}:{})};});
-  const {objective,...validated}=draft;
-  return {...validated,...(objective?{objective}:{}),stacks,
+  const {objective,aiProfiles,...validated}=draft;
+  return {...validated,...(objective?{objective}:{}),
+    ...(aiProfiles?{aiProfiles}:{}),stacks,
     phase:'ready',rngAlgorithm:'none-PTE-2.0',round:0,
     activationQueue:[],waitingQueue:[],activeUnitId:null,noProgressRounds:0,events:[],winner:null};
 }

@@ -1,4 +1,5 @@
 import './battle-cleanup.css';
+import './battle-p3.css';
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {LAND_PROFILES,tacticalProfile} from '@/lib/battle/domain/profiles-v2';
@@ -8,7 +9,7 @@ import {createScenario,SCENARIOS,type BattleScenarioId} from '@/lib/battle/geome
 
 import {validateBattleMap} from '@/lib/battle/geometry/map-validation';
 import {hexKey} from '@/lib/battle/geometry/hex';
-import type {BattleMap,BattleState,BattleStack,Hex,Side,Training} from '@/lib/battle/domain/types';
+import type {BattleMap,BattleState,BattleStack,Hex,Side,Training,AiProfile} from '@/lib/battle/domain/types';
 import {BattleBoard} from './BattleBoard';
 import {BattleMapEditor} from './BattleMapEditor';
 import {BattleSourcePicker} from './BattleSourcePicker';
@@ -42,6 +43,45 @@ export function BattleSetup({onStart,onBack}:{
  const [quickOpponent,setQuickOpponent]=useState<'human'|'ai'>('ai');
  const [quickSource,setQuickSource]=useState<'models'|'houses'>('models');
  const [objectiveMode,setObjectiveMode]=useState<TacticalObjectivePreset>('elimination');
+ const [aiProfiles,setAiProfiles]=useState<Record<Side,AiProfile>>({attacker:'balanced',defender:'balanced'});
+ const [objectiveOverrides,setObjectiveOverrides]=useState<Hex[]>([]);
+ const [requiredPositions,setRequiredPositions]=useState(2);
+ const [editingObjectives,setEditingObjectives]=useState(false);
+ const multiMode=['outposts','bridge','fortress'].includes(objectiveMode);
+ const objectiveSettings={
+  ...(objectiveOverrides.length?{positions:objectiveOverrides}:{}),requiredPositions};
+ const objectivePreview=(()=>{
+  try{return makeTacticalObjective(objectiveMode,map,objectiveSettings);}
+  catch{return undefined;}
+ })();
+ const selectObjectiveMode=(mode:TacticalObjectivePreset,quick:boolean)=>{
+  setObjectiveMode(mode);setObjectiveOverrides([]);setRequiredPositions(2);setEditingObjectives(false);
+  const preset=mode==='bridge'?'bridge-crossing':mode==='fortress'?'fortress-gate':
+   mode==='outposts'?'contested-woods':null;
+  if(quick&&preset){
+   setMap(createScenario(preset,map.width,'square'));
+   setUnits(list=>list.map(u=>({...u,position:null})));
+  }
+ };
+ const toggleObjective=(position:Hex)=>{
+  const tile=map.tiles.find(t=>hexKey(t)===hexKey(position));
+  if(!tile||tile.terrain==='rock'){setError('Objetivo precisa estar em terreno transitável.');return;}
+  const current=objectiveOverrides.length?objectiveOverrides:
+   objectivePreview?.kind==='multi-capture'?[...objectivePreview.positions]:[];
+  const key=hexKey(position),exists=current.some(p=>hexKey(p)===key);
+  if(exists&&current.length<=2){setError('Mantenha ao menos dois pontos. Adicione outro antes de remover.');return;}
+  if(!exists&&current.length>=5){setError('Limite de cinco objetivos por mapa.');return;}
+  const next=exists?current.filter(p=>hexKey(p)!==key):[...current,position];
+  setObjectiveOverrides(next);setRequiredPositions(v=>Math.min(v,next.length));setError('');
+ };
+ const configuredAiProfiles=(quick:boolean)=>{
+  const result:Partial<Record<Side,AiProfile>>={};
+  const controlling=quick?{attacker:'human',defender:quickOpponent}:controls;
+  for(const side of ['attacker','defender'] as const)
+   if(controlling[side]==='ai'&&aiProfiles[side]!=='balanced')
+    result[side]=aiProfiles[side];
+  return Object.keys(result).length?{aiProfiles:result}:{};
+ };
  const [error,setError]=useState('');
  const [houseByUnitKey,setHouseByUnitKey]=useState<Record<string,BattleHouseDirectoryRow>>({});
  const onHouseLoaded=({house,stacks}:{
@@ -143,9 +183,9 @@ export function BattleSetup({onStart,onBack}:{
      return makeFictionalStack({id:u.id,side:u.side,name:u.name,typeId:u.typeId,
        training:u.training,count:u.count,position:u.position});
    });
-   const objective=makeTacticalObjective(objectiveMode,map);
+   const objective=makeTacticalObjective(objectiveMode,map,objectiveSettings);
    const state=makeBattleSetup({id:'lab-'+seed,name,seed,map,
-     controls,stacks,...(objective?{objective}:{})});
+     controls,stacks,...(objective?{objective}:{}),...configuredAiProfiles(false)});
    if(!sideNames.attacker.trim()||!sideNames.defender.trim())throw new Error('Nomeie os dois exércitos.');
    onStart(state,displaySideNames,heraldry);
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível preparar a batalha.');}
@@ -168,10 +208,10 @@ export function BattleSetup({onStart,onBack}:{
      makeFictionalStack({id:u.id,side:u.side,name:u.name,typeId:u.typeId,
       training:u.training,count:u.count,position});
    });
-   const objective=makeTacticalObjective(objectiveMode,map);
+   const objective=makeTacticalObjective(objectiveMode,map,objectiveSettings);
    const battle=makeBattleSetup({id:'lab-'+seed,name,seed,map,
     controls:{attacker:'human',defender:quickOpponent},stacks,
-    ...(objective?{objective}:{})});
+    ...(objective?{objective}:{}),...configuredAiProfiles(true)});
    setError('');onStart(battle,displaySideNames,heraldry);
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível iniciar o confronto.');}
  };
@@ -195,15 +235,18 @@ export function BattleSetup({onStart,onBack}:{
      value={name} onChange={e=>setName(e.target.value)}/></label>
      <label>Campo de batalha<select aria-label="Cenário rápido" value={map.id}
      onChange={e=>{const id=e.target.value as BattleScenarioId;
-      if(Object.hasOwn(SCENARIOS,id))setMap(createScenario(id,map.width,'square'));}}>
+      if(Object.hasOwn(SCENARIOS,id)){setMap(createScenario(id,map.width,'square'));setObjectiveOverrides([]);}}}>
      {!Object.hasOwn(SCENARIOS,map.id)&&<option value={map.id}>Mapa personalizado</option>}
      {Object.entries(SCENARIOS).map(([id,label])=><option key={id} value={id}>{label}</option>)}
     </select></label>
     <label>Objetivo<select aria-label="Objetivo da batalha" value={objectiveMode}
-     onChange={e=>setObjectiveMode(e.target.value as TacticalObjectivePreset)}>
+     onChange={e=>selectObjectiveMode(e.target.value as TacticalObjectivePreset,true)}>
      <option value="elimination">Derrotar o inimigo</option>
      <option value="capture">Conquistar posição · 2 rodadas</option>
      <option value="survive">Resistir · 6 rodadas</option>
+     <option value="outposts">Controlar postos avançados</option>
+     <option value="bridge">Tomar a ponte</option>
+     <option value="fortress">Tomar a fortificação</option>
     </select></label>
     <label>Adversário<select aria-label="Adversário rápido" value={quickOpponent}
      onChange={e=>setQuickOpponent(e.target.value as 'human'|'ai')}>
@@ -211,6 +254,13 @@ export function BattleSetup({onStart,onBack}:{
      <option value="human">Narrador controla os dois lados</option>
     </select></label>
    </div>
+   {quickOpponent==='ai'&&<label className="battle-ai-choice">Estratégia da IA
+    <select aria-label="Perfil da IA rápido" value={aiProfiles.defender}
+     onChange={e=>setAiProfiles(p=>({...p,defender:e.target.value as AiProfile}))}>
+     <option value="balanced">Equilibrada</option><option value="aggressive">Agressiva</option>
+     <option value="defensive">Defensiva</option><option value="ranged">À distância</option>
+    </select>
+   </label>}
    {quickSource==='houses'&&<div className="battle-source-quick" aria-label="Selecionar casas e exércitos">
     <BattleSourcePicker onAdd={addImported} onAddMany={addImportedMany}
      onHouseLoaded={onHouseLoaded} remainingBySide={remainingBySide}/>
@@ -249,17 +299,28 @@ export function BattleSetup({onStart,onBack}:{
         <option value="human">Narrador</option><option value="ai">Inteligência artificial</option>
       </select>
      </label>)}</div>
+    {(['attacker','defender'] as const).filter(side=>controls[side]==='ai').map(side=>
+     <label key={side}>Perfil da IA · {SIDE_LABEL[side]}
+      <select aria-label={'Perfil da IA '+SIDE_LABEL[side]} value={aiProfiles[side]}
+       onChange={e=>setAiProfiles(p=>({...p,[side]:e.target.value as AiProfile}))}>
+       <option value="balanced">Equilibrada</option><option value="aggressive">Agressiva</option>
+       <option value="defensive">Defensiva</option><option value="ranged">À distância</option>
+      </select>
+     </label>)}
     <label>Objetivo tático
      <select aria-label="Objetivo detalhado" value={objectiveMode}
-      onChange={e=>setObjectiveMode(e.target.value as TacticalObjectivePreset)}>
+      onChange={e=>selectObjectiveMode(e.target.value as TacticalObjectivePreset,false)}>
       <option value="elimination">Derrotar o inimigo</option>
       <option value="capture">Atacante captura por 2 rodadas; defensor resiste até a 8ª</option>
       <option value="survive">Defensor resiste 6 rodadas</option>
+      <option value="outposts">Conquistar múltiplos postos</option>
+      <option value="bridge">Tomar a ponte · cenário tático</option>
+      <option value="fortress">Tomar a fortificação · portão simplificado</option>
      </select>
     </label>
     <p className="battle-note">Objetivos opcionais: não alteram as regras do GOT ou D&D.
-     A posição é um quadrado transitável próximo ao centro do mapa. Uma rodada = todas as ativações.</p>
-    <p className="battle-note">IA heurística determinística, sem dados externos. Regras PTE-2.0 experimentais.</p>
+     Os pontos devem ser transitáveis. A rodada termina após todas as ativações.</p>
+    <p className="battle-note">IA determinística, sem dados externos. A fortificação usa muros simplificados, não regras de cerco GOT.</p>
   </section>
   <section className="battle-surface" aria-label="Exércitos fictícios">
    <h3>2. Exércitos</h3>
@@ -319,20 +380,44 @@ export function BattleSetup({onStart,onBack}:{
       {/* Mapas hexagonais históricos só podem ser lidos de replays antigos. */}
      </select></label>
       <label>Cenário<select aria-label="Escolher cenário" value={Object.hasOwn(SCENARIOS,map.id)?map.id:'custom'}
-      onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id)){setMap(createScenario(id,map.width,'square'));setUnits(x=>x.map(u=>({...u,position:null})));setError('');}}}>
+      onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id)){setMap(createScenario(id,map.width,'square'));setUnits(x=>x.map(u=>({...u,position:null})));setObjectiveOverrides([]);setError('');}}}>
       {!Object.hasOwn(SCENARIOS,map.id)&&<option value="custom">Personalizado</option>}
       {Object.entries(SCENARIOS).map(([id,label])=><option value={id} key={id}>{label}</option>)}
      </select></label>
      <Button variant="outline" onClick={()=>setEditor(x=>!x)}>{editor?'Fechar editor':'Abrir editor de mapa'}</Button>
    </div>
    {editor&&<BattleMapEditor map={map} onChange={next=>{
-     setMap(next);setUnits(list=>list.map(u=>({...u,position:null})));setError('');
+     setMap(next);setUnits(list=>list.map(u=>({...u,position:null})));setObjectiveOverrides([]);setError('');
    }}/>}
    {mapErrors.length>0&&<p role="alert">Mapa inválido: {mapErrors.join('; ')}</p>}
   </section>
   <section className="battle-surface" aria-label="Implantação das unidades">
    <h3>4. Implantação</h3>
    <p>Selecione uma unidade no exército e toque na célula de sua zona. Vermelho: atacante; azul: defensor.</p>
+   {multiMode&&<section className="battle-objective-editor" aria-label="Editor de objetivos P3">
+    <div className="battle-form-row">
+     <Button type="button" variant={editingObjectives?'default':'outline'}
+      aria-pressed={editingObjectives}
+      onClick={()=>{
+       if(!editingObjectives&&objectiveOverrides.length===0&&
+         objectivePreview?.kind==='multi-capture')
+        setObjectiveOverrides([...objectivePreview.positions]);
+       setEditingObjectives(x=>!x);
+      }}>
+      {editingObjectives?'Concluir edição de pontos':'Editar objetivos no mapa'}</Button>
+     <label>Pontos necessários
+      <select aria-label="Pontos exigidos para vitória" value={requiredPositions}
+       onChange={e=>setRequiredPositions(Number(e.target.value))}>
+       {Array.from({length:objectivePreview?.kind==='multi-capture'?
+          objectivePreview.positions.length:3},(_,i)=>i+1).map(n=>
+         <option key={n} value={n}>{n}</option>)}
+      </select>
+     </label>
+    </div>
+    <p className="battle-note">{editingObjectives?
+     'Toque para adicionar ou remover estrelas (2 a 5). Conclua a edição para posicionar unidades.':
+     'As estrelas são pontos de controle. Personalização opcional.'}</p>
+   </section>}
    <p role="status">{positioned} / {units.length} agrupamentos posicionados.</p>
    <div className="battle-form-row">
     <label>Unidade selecionada<select aria-label="Unidade para implantar" value={selected}
@@ -341,11 +426,14 @@ export function BattleSetup({onStart,onBack}:{
     </select></label>
     <Button variant="outline" onClick={automatic}>Posicionar automaticamente</Button>
    </div>
-   <BattleBoard map={map} showZones stacks={units.filter(u=>u.position).map(u=>{
+   <BattleBoard map={map} showZones
+    objectivePositions={objectivePreview?.kind==='multi-capture'?objectivePreview.positions:undefined}
+    objectivePosition={objectivePreview?.kind==='capture'?objectivePreview.position:undefined}
+    stacks={units.filter(u=>u.position).map(u=>{
      const p=tacticalProfile(u.typeId);
      return {id:u.id,side:u.side,name:u.name,position:u.position!,primaryTypeId:u.typeId,
        initialCount:u.count,hpPerSoldier:p.hpPerSoldier,currentHp:u.count*p.hpPerSoldier,moraleState:'steady' as const};
-   })} selectedId={selected} onHexClick={place}/>
+   })} selectedId={selected} onHexClick={editingObjectives?toggleObjective:place}/>
   </section>
   <section className="battle-surface" aria-label="Revisão e início">
    <h3>5. Revisão</h3>
