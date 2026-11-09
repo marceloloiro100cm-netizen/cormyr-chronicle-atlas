@@ -166,8 +166,10 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
        {data?.availableWealth!==null&&data?.availableWealth!==undefined&&
         <small>· disponível: {data.availableWealth}</small>}
       </span>
-      {!enoughWealth&&<small role="alert">Riqueza insuficiente para as melhorias escolhidas.</small>}
      </details>
+     {!enoughWealth&&<p role="alert" className="house-warning">
+      Riqueza insuficiente. Abra Melhorias opcionais e remova uma compra.
+     </p>
 
      {error&&<p role="alert" className="house-warning">{error}</p>}
      <DialogFooter className="cormyr-creation-footer">
