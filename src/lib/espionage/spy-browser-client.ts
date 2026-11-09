@@ -5,6 +5,7 @@ import type {HouseState} from '@/lib/house/types';
 import {spyManagementSchema,type SpyManagement} from './spy-management.functions';
 import {resolveSpyPortraitImageUrl} from './spy-portrait-manifest';
 import {classifySpyCreationFailure,SpyCreationError} from './spy-creation-diagnostics';
+import {classifySpyMissionFailure,SpyMissionError} from './spy-mission-errors';
 import {spyRecruitmentOptionsSchema,type SpyRecruitmentOptions} from './spy-recruitment.functions';
 import {spyRegionalStrategySchema} from './region-turns';
 import type {SpyAgentUpgrade} from './spy-agent-progression';
@@ -27,6 +28,7 @@ async function houseRpc(name:string,houseId:string,extra:Record<string,unknown>=
  const result=await db.rpc(name,{p_house:houseId,...extra});
  if(result.error){
   if(name==='spy_create_agent')throw classifySpyCreationFailure(result.error);
+  if(name==='spy_submit_house_mission')throw classifySpyMissionFailure(result.error);
   if(/permission|unauthoriz|não autorizad|nao autorizad|jwt|auth/i.test(result.error.message))
    throw new Error('Você não tem autorização para os espiões desta Casa.');
   throw new Error('O cadastro de espionagem não respondeu. Tente atualizar a página.');
@@ -180,7 +182,7 @@ export async function submitSpyHouseMissionBrowser(input:{
  if(!parsed.success||parsed.data.agentId!==input.agentId||
   parsed.data.targetHouseId!==input.targetHouseId||
   parsed.data.objective!==input.objective)
-  throw new Error('A ordem não foi confirmada pelo servidor.');
+  throw new SpyMissionError('not_confirmed');
  return parsed.data;
 }
 
