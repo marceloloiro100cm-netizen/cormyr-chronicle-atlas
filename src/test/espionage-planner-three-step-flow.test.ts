@@ -10,7 +10,7 @@ const agent={
  codename:'O Corvo',status:'available' as const,currentRegion:'dragoncoast',
 };
 
-describe('Planejador de espionagem · espião → região → Casa → resumo e mapa',()=>{
+describe('Planejador de espionagem · espião → destino → objetivo → resumo e mapa',()=>{
  it('solicita os três campos na sequência e usa a posição real do espião',()=>{
   const panel=source('src/components/house/espionage/spy-regional-turns-panel.tsx');
   const agentStep=panel.indexOf('aria-label="Agente da missão"');
@@ -26,7 +26,10 @@ describe('Planejador de espionagem · espião → região → Casa → resumo e 
   expect(panel).toContain("const originRegion=selected?.currentRegion??null");
   expect(panel).toContain("const [assetId,setAssetId]=useState('')");
   expect(panel).not.toContain('Origem do cálculo');
-  expect(panel).not.toContain('Objetivo da espionagem');
+  expect(panel).toContain('Objetivo da espionagem');
+  const objectiveStep=panel.indexOf('aria-label="Objetivo da espionagem"');
+  expect(objectiveStep).toBeGreaterThan(houseStep);
+  expect(preview).toBeGreaterThan(objectiveStep);
   expect(panel).not.toContain('originOverride');
   expect(panel).not.toContain("setTargetMode(");
  });
@@ -69,7 +72,7 @@ describe('Planejador de espionagem · espião → região → Casa → resumo e 
    simulation:false,
   })).toBe('requires_region_arrival');
   const panel=source('src/components/house/espionage/spy-regional-turns-panel.tsx');
-  expect(panel).toContain('Este planejamento não o desloca automaticamente');
+  expect(panel).toContain('A missão inicia a viagem até');
   expect(panel).toContain("queryFn:readSpyNobleHouseTargetsBrowser");
   expect(panel).toContain("queryFn:()=>readSpyRegionalStrategyBrowser(houseId)");
  });
