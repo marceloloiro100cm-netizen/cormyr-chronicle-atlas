@@ -27,10 +27,11 @@ export function SpyNarratorTargetDefense({houseId}:{houseId:string}){
    <p><strong>{q.data.houseName}</strong> · {q.data.source==='own_house_sheet'
     ?'Defesa derivada da ficha da Casa':'Casa sem ficha — defesa provisória de NPC'}</p>
    {q.data.source==='regional_npc_fallback'
-    ?<p>Lei regional {q.data.regionalLaw} + 10 = <strong>{q.data.difficulty}</strong>.
-     Nenhum bônus de construção foi presumido.</p>
-    :<p>Lei própria {q.data.law} + construções aplicáveis
-     {q.data.constructionBonus} = <strong>{q.data.difficulty}</strong>.</p>}
+    ?<p>Lei regional de referência: {q.data.regionalLaw}.
+     Dificuldade oficial: <strong>{q.data.difficulty}</strong>.
+     Nenhuma construção foi presumida.</p>
+    :<p>Lei própria: {q.data.law} · bônus de construções: +{q.data.constructionBonus}.
+     Dificuldade oficial do teste: <strong>{q.data.difficulty}</strong>.</p>}
    {q.data.sources.length>0&&<ul>{q.data.sources.map((s,i)=>
     <li key={i}>{s.name}: +{s.bonus} ({s.description})</li>)}</ul>}
    <small>Consulta exclusiva do Narrador. Não enviar esta defesa à Casa atacante.</small>
