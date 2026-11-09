@@ -12,8 +12,8 @@ describe('Battle production JWT P0: defensas de segurança',()=>{
   const script=readFileSync('scripts/battle-authenticated-readonly.mjs','utf8');
   expect(script).toContain("rows(narrator,'battle_dnd_cormyr_monsters')");
   expect(script).toContain("rows(player,'battle_dnd_cormyr_monsters')");
-  expect(script).toContain("rows(narrator,'battle_house_roster_imports')");
-  expect(script).toContain("rows(player,'battle_house_roster_imports')");
+  expect(script).toContain("rows(narrator,'battle_house_roster_imports','source_key')");
+  expect(script).toContain("rows(player,'battle_house_roster_imports','source_key')");
   expect(script).toContain("BATTLE_E2E_REQUIRE_PRIVATE_FIXTURE==='true'");
  });
  it('só permite teste manual no ambiente protegido e host correto',()=>{
