@@ -159,7 +159,7 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
          <ScrollText size={16}/>Dossiê</Button>
        </div>
        {spyView==='operations'?<>
-        <SpyDefensePanel state={state}/>
+        <SpyDefensePanel state={state} houseId={house.id}/>
         <SpyAgentManagement houseId={house.id} canEdit={canEdit} admin={admin}/>
         <SpyRegionalTurnsPanel houseId={house.id} admin={admin}/>
         <HouseAssetCatalog section="spy" state={state} catalog={catalog}
