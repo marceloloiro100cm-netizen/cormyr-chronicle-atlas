@@ -55,7 +55,7 @@ describe('R4: transações autenticadas de verdade preservam o cliente Supabase'
    codename:'O Corvo',portraitId:null,upgrades:[],requestKey:requestId,
   },context:{supabase:db}};
   const result=await (createSpyAgent as unknown as
-   (input:typeof input)=>Promise<{id:string;status:string}>)(input);
+   (payload:typeof input)=>Promise<{id:string;status:string}>)(input);
   expect(result.id).toBe(agentId);
   expect(result.status).toBe('available');
   expect(calls).toEqual(['spy_create_agent']);
@@ -68,7 +68,7 @@ describe('R4: transações autenticadas de verdade preservam o cliente Supabase'
    expectedAgentVersion:1,requestKey:requestId,reason:'',
   },context:{supabase:db}};
   const result=await (resolveSpyAgentMission as unknown as
-   (input:typeof input)=>Promise<{outcome:string;intelligenceStatus:string}>)(input);
+   (payload:typeof input)=>Promise<{outcome:string;intelligenceStatus:string}>)(input);
   expect(result.outcome).toBe('mission_success');
   expect(result.intelligenceStatus).toBe('complete');
   expect(calls).toEqual([
@@ -84,7 +84,7 @@ describe('R4: transações autenticadas de verdade preservam o cliente Supabase'
    expectedAgentVersion:1,requestKey:requestId,reason:'',
   },context:{supabase:db}};
   const result=await (resolveSpyAgentMission as unknown as
-   (input:typeof input)=>Promise<{outcome:string;intelligenceStatus:string}>)(input);
+   (payload:typeof input)=>Promise<{outcome:string;intelligenceStatus:string}>)(input);
   expect(result.outcome).toBe('mission_success');
   expect(result.intelligenceStatus).toBe('retry_required');
  });
@@ -96,7 +96,7 @@ describe('R4: transações autenticadas de verdade preservam o cliente Supabase'
    expectedAgentVersion:1,requestKey:requestId,reason:'',
   },context:{supabase:db}};
   await expect((resolveSpyAgentMission as unknown as
-   (input:typeof input)=>Promise<unknown>)(input)).rejects.toThrow('Somente o Narrador');
+   (payload:typeof input)=>Promise<unknown>)(input)).rejects.toThrow('Somente o Narrador');
   expect(calls).toEqual(['is_campaign_admin']);
  });
 });

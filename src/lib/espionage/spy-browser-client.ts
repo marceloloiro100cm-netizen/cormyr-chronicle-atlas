@@ -112,7 +112,9 @@ export async function createSpyAgentBrowser(input:{
  });
  const parsed=creationSchema.safeParse(data);
  if(!parsed.success||parsed.data.codename!==input.codename||
-   parsed.data.upgrades.length!==input.upgrades.length)
+   parsed.data.portraitId!==input.portraitId||
+   parsed.data.upgrades.length!==input.upgrades.length||
+   parsed.data.upgrades.some(code=>!input.upgrades.includes(code)))
   throw new SpyCreationError('unconfirmed');
  return parsed.data;
 }

@@ -98,7 +98,9 @@ export const createSpyAgent=createServerFn({method:'POST'})
   if(result.error)throw new Error('Não foi possível criar o espião. Confira a vaga, o retrato selecionado e a Riqueza da Casa.');
   const validated=createSpyResult.safeParse(result.data);
   if(!validated.success||validated.data.codename!==data.codename||
-    validated.data.upgrades.length!==data.upgrades.length)
+    validated.data.portraitId!==data.portraitId||
+    validated.data.upgrades.length!==data.upgrades.length||
+    validated.data.upgrades.some(code=>!data.upgrades.includes(code)))
    throw new Error('Criação de espião não confirmada pelo servidor.');
   return validated.data;
  });
@@ -139,7 +141,9 @@ const resolveInput=z.object({
 }).strict();
 const resolveResult=z.object({
  operationId:z.string().uuid(),agentId:z.string().uuid(),
- alreadyApplied:z.boolean(),outcome:z.string().optional(),
+ alreadyApplied:z.boolean(),outcome:z.enum([
+  'mission_success','mission_failure','escaped','captured','dead',
+ ]).optional(),
  status:z.string(),rank:z.enum(['Verde','Treinada','Veterana','Elite']),
  cunning:z.number().int().min(3).max(6),
  missionSuccesses:z.number().int().nonnegative(),

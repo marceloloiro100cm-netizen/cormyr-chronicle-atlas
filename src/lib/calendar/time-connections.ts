@@ -32,6 +32,13 @@ export const TEMPORAL_QUERY_CONNECTIONS=[
  {domain:'nobles',prefix:'character-age-impact',reason:'prévia de envelhecimento'},
  {domain:'nobles',prefix:'character-year-transitions',reason:'transições históricas'},
  {domain:'nobles',prefix:'noble-character-registry',reason:'nobres e fontes confirmadas'},
+ // O gatilho SQL atualiza as operações com o avanço oficial; estas chaves
+ // garantem que a interface aberta reflita a nova etapa imediatamente.
+ {domain:'espionage',prefix:'spy-house-management',reason:'estado do agente após atualização do HUB'},
+ {domain:'espionage',prefix:'espionage-regional-strategy',reason:'posição atual e viagens válidas'},
+ {domain:'espionage',prefix:'spy-narrator-operations',reason:'operações prontas para homologação'},
+ {domain:'espionage',prefix:'spy-dossiers',reason:'data oficial de atualização do dossiê'},
+ {domain:'espionage',prefix:'spy-mission-odds',reason:'prévia da missão com calendário atualizado'},
 ] as const;
 
 export const TEMPORAL_QUERY_PREFIXES=TEMPORAL_QUERY_CONNECTIONS.map(x=>x.prefix);
