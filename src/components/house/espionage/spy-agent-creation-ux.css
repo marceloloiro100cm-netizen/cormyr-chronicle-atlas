@@ -26,3 +26,50 @@
   font-size:12px;line-height:1.4;
  }
 }
+
+
+/* R5 Lote 2 — o essencial fica visível, custos avançados sob demanda. */
+.cormyr-creation-dialog--spy .spy-create-vacancy{
+ margin:0;padding:9px 11px;display:flex;gap:6px;align-items:baseline;
+ border-radius:8px;border:1px solid #b9a076;
+ background:#fffaf0;color:#342a24;font-size:13px;line-height:1.5
+}
+.cormyr-creation-dialog--spy .spy-create-vacancy strong{
+ font-size:18px;font-variant-numeric:tabular-nums
+}
+.cormyr-creation-dialog--spy .spy-create-upgrades{
+ display:block;padding:10px;border:1px solid #bba078;border-radius:8px;
+ background:#fffaf0;color:#342a24
+}
+.cormyr-creation-dialog--spy .spy-create-upgrades>summary{
+ display:flex;align-items:center;justify-content:space-between;gap:10px;
+ min-height:48px;cursor:pointer;font-weight:700;list-style-position:inside;
+ overflow-wrap:anywhere
+}
+.cormyr-creation-dialog--spy .spy-create-upgrades>summary small{
+ font-size:12px;font-weight:400;color:#695442;text-align:right
+}
+.cormyr-creation-dialog--spy .spy-create-upgrades[open]{
+ display:grid;gap:12px
+}
+.cormyr-creation-dialog--spy .spy-create-upgrades:focus-within{
+ outline:2px solid #9b743d;outline-offset:2px
+}
+.cormyr-creation-dialog--spy input:not([type=checkbox]){
+ box-sizing:border-box;width:100%;min-height:48px;min-width:0;
+ font-size:16px;line-height:1.45
+}
+.cormyr-creation-dialog--spy .cormyr-creation-choice{
+ min-height:48px;align-items:center
+}
+.cormyr-creation-dialog--spy .cormyr-creation-choice input[type=checkbox]{
+ width:19px;height:19px;flex-shrink:0
+}
+@media(max-width:360px){
+ .cormyr-creation-dialog--spy .cormyr-creation-footer{
+  grid-template-columns:minmax(0,1fr)
+ }
+ .cormyr-creation-dialog--spy .spy-create-upgrades>summary{
+  flex-wrap:wrap
+ }
+}
