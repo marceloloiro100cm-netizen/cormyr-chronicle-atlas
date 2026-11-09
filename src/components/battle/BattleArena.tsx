@@ -294,7 +294,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
       <p>Selecione uma unidade no tabuleiro.</p>}
     </aside>
   </div>
-  <div className="battle-surface battle-timeline" aria-label="Registro da batalha">
+  <div className="battle-surface battle-timeline" role="region" aria-label="Registro da batalha">
    <div className="battle-unified-timeline-head">
     <h3>Últimas ações</h3>
     <Button size="sm" variant="outline" aria-expanded={fullHistory}
