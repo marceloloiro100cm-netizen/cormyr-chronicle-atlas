@@ -19,6 +19,7 @@ import {pteEventLabel,mostRecentAction,pteAiActionDescription}
 import {BattleHouseBanner,BattleHouseVersus} from './BattleHouseHeraldry';
 import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
 import './battle-arena-unified.css';
+import './battle-p0-p1.css';
 import {runAiUntilHuman} from '@/lib/battle/domain/ai';
 import {exportReplayJson} from '@/lib/battle/domain/replay';
 import {BattleReplay} from './BattleReplay';
@@ -217,6 +218,8 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
      {expanded?'↙ Sair da tela ampliada':'⤢ Ampliar batalha'}
     </Button>
     <Button size="sm" variant="outline" onClick={()=>setPaused(x=>!x)}>{paused?'Retomar':'Pausar'}</Button>
+    {history.length>0&&<Button size="sm" variant="outline"
+     aria-label="Desfazer última ação" onClick={undo}>Desfazer</Button>}
     <Button size="sm" variant="outline" onClick={onExit}>Sair</Button>
     <details className="battle-arena-extra">
      <summary>Mais opções</summary>
