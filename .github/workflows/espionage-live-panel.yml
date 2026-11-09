@@ -7,6 +7,8 @@ on:
       - 'src/components/house/hub.tsx'
       - 'src/lib/calendar/time-connections.ts'
       - 'scripts/espionage-r5-lot1-rollback-acceptance.sql'
+      - 'scripts/espionage-r5-lot3-privacy-rollback.sql'
+      - 'scripts/espionage-authenticated-acceptance.mjs'
       - 'src/test/espionage-*.test.ts'
       - 'src/test/espionage-*.test.tsx'
       - 'src/components/house/asset-catalog.tsx'
@@ -59,6 +61,8 @@ jobs:
         run: bunx vitest run src/test/espionage-r5-lote1-lifecycle.test.ts
       - name: R5 Lote 2 — player journey and safe mobile mission planning
         run: bunx vitest run src/test/espionage-r5-lote2-player-journey.test.ts
+      - name: R5 Lote 3 — narrator action queue, dossier confidentiality and permissions
+        run: bunx vitest run src/test/espionage-r5-lote3-operations-privacy.test.ts
       - name: Scoped TypeScript verification (spy module and integration)
         run: bunx tsc -p tsconfig.espionage-live.json --noEmit
       - name: Production build without deploying
