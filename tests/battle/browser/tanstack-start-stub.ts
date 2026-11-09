@@ -7,3 +7,4 @@ const builder:StubBuilder={
  middleware:()=>builder,validator:()=>builder,inputValidator:()=>builder,handler:()=>disabled,
 };
 export const createServerFn=(_options?:unknown):StubBuilder=>builder;
+export const createMiddleware=(_options?:unknown)=>({server:(_handler:unknown)=>({})});
