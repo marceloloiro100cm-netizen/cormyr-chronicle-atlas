@@ -60,7 +60,13 @@ function NarratorDecision({houseId,operation,agent,onResolved}:{
     requestKey:key,reason,
    }});
    requestKey.current=null;
-   setOutcome('Resultado: '+(outcomeLabels[response.outcome??response.status]??'Missão resolvida')+
+   // A repetição da mesma chave SQL pode voltar sem "outcome".
+   // Nunca converter somente "available" em um novo sucesso/fraco, nem
+   // induzir o Narrador a julgar a mesma missão novamente.
+   const resolutionLabel=response.alreadyApplied&&!response.outcome
+    ?'Resultado anterior confirmado; nenhuma nova rolagem foi realizada'
+    :(outcomeLabels[response.outcome??response.status]??'Missão resolvida');
+   setOutcome('Resultado: '+resolutionLabel+
     ' · '+response.rank+' (Astúcia '+response.cunning+'; '+response.cunning+' dados de seis faces)'+
     (response.promoted?' · promovido automaticamente':''));
    const status=response.intelligenceStatus;
