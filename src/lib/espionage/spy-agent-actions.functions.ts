@@ -98,7 +98,9 @@ export const createSpyAgent=createServerFn({method:'POST'})
   if(result.error)throw new Error('Não foi possível criar o espião. Confira a vaga, o retrato selecionado e a Riqueza da Casa.');
   const validated=createSpyResult.safeParse(result.data);
   if(!validated.success||validated.data.codename!==data.codename||
-    validated.data.upgrades.length!==data.upgrades.length)
+    validated.data.portraitId!==data.portraitId||
+    validated.data.upgrades.length!==data.upgrades.length||
+    validated.data.upgrades.some(code=>!data.upgrades.includes(code)))
    throw new Error('Criação de espião não confirmada pelo servidor.');
   return validated.data;
  });
