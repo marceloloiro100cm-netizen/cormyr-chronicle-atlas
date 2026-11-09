@@ -141,7 +141,9 @@ const resolveInput=z.object({
 }).strict();
 const resolveResult=z.object({
  operationId:z.string().uuid(),agentId:z.string().uuid(),
- alreadyApplied:z.boolean(),outcome:z.string().optional(),
+ alreadyApplied:z.boolean(),outcome:z.enum([
+  'mission_success','mission_failure','escaped','captured','dead',
+ ]).optional(),
  status:z.string(),rank:z.enum(['Verde','Treinada','Veterana','Elite']),
  cunning:z.number().int().min(3).max(6),
  missionSuccesses:z.number().int().nonnegative(),
