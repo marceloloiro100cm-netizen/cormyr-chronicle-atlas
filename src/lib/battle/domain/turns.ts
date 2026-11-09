@@ -9,6 +9,7 @@ import { reachablePaths } from '../geometry/pathfinding';
 import { lineOfSight } from '../geometry/visibility';
 import { resolveDamage } from './combat';
 import { battleOutcome } from './victory';
+import {evaluateTacticalObjective} from './objectives';
 import { livingCount } from './morale';
 
 const coordinate=z.object({q:z.number().int().safe(),r:z.number().int().safe()}).strict();
@@ -42,13 +43,15 @@ export function startBattle(state:BattleState):BattleState {
     id:state.id,name:state.name,schemaVersion:state.schemaVersion,
     rulesVersion:state.rulesVersion,seed:state.seed,map:state.map,
     controls:state.controls,stacks:state.stacks,
+    ...(state.objective?{objective:state.objective}:{}),
   });
   const order=activationOrder(state.stacks);
   if(!order.length)throw new Error('Nenhuma unidade pode ser ativada.');
   const first=order[0]!;
   return {...state,phase:'active',round:1,
     activationQueue:order.slice(1),waitingQueue:[],activeUnitId:first,
-    stacks:state.stacks.map(s=>s.id===first?{...s,defenseGuard:false}:s)};
+    stacks:state.stacks.map(s=>s.id===first?{...s,defenseGuard:false}:s),
+    ...(state.objective?{objectiveProgress:{holder:null,consecutiveRounds:0}}:{})};
 }
 function currentUnit(state:BattleState):BattleStack {
   if(state.phase!=='active'||!state.activeUnitId)throw new Error('Batalha fora de turno ativo.');
@@ -114,6 +117,7 @@ function advance(state:BattleState):BattleState{
   // Fila regular é consumida antes da fila dos que esperaram.
   let queue=[...state.activationQueue],waiting=[...state.waitingQueue];
   let stacks=[...state.stacks],round=state.round,noProgressRounds=state.noProgressRounds;
+  let objectiveProgress=state.objectiveProgress;
   while(true){
     let next=queue.shift();
     if(!next)next=waiting.shift();
@@ -121,11 +125,21 @@ function advance(state:BattleState):BattleState{
       const stack=stacks.find(s=>s.id===next);
       if(!stack||stack.currentHp<=0||stack.moraleState==='routed')continue;
       stacks=changeStack(stacks,next,{defenseGuard:false});
-      return {...state,round,noProgressRounds,activeUnitId:next,activationQueue:queue,waitingQueue:waiting,stacks};
+      return {...state,round,noProgressRounds,activeUnitId:next,activationQueue:queue,waitingQueue:waiting,stacks,
+        ...(state.objective?{objectiveProgress}: {})};
     }
     noProgressRounds=progressRound(state)?0:noProgressRounds+1;
-    const after={...state,stacks,noProgressRounds};
-    if(noProgressRounds>=2)return finish(after,'stalemate',null);
+    if(state.objective){
+      const assessed=evaluateTacticalObjective({...state,stacks,round,
+       ...(objectiveProgress?{objectiveProgress}:{})});
+      objectiveProgress=assessed.progress;
+      if(assessed.reason)return finish({...state,stacks,round,noProgressRounds,
+       objectiveProgress},assessed.reason,assessed.winner);
+    }
+    const after={...state,stacks,noProgressRounds,
+      ...(state.objective?{objectiveProgress}:{})};
+    // Cenários de resistência avançam mesmo sem ataques; não há empate automático.
+    if(noProgressRounds>=2&&!state.objective)return finish(after,'stalemate',null);
     if(round>=BATTLE_RULES.maxRounds){
       const a=roundScore(stacks,'attacker'),b=roundScore(stacks,'defender');
       return finish(after,'round-limit',a===b?null:a>b?'attacker':'defender');
