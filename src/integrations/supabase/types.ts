@@ -47,6 +47,231 @@ export type Database = {
         }
         Relationships: []
       }
+      battle_dnd_cormyr_monsters: {
+        Row: {
+          ac: number
+          catalog_version: number
+          challenge_rating: number
+          group_name: string
+          hp: number
+          id: string
+          inserted_at: string
+          melee: Json | null
+          name: string
+          ranged: Json | null
+          size: string
+          source: string
+          speed_ft: number
+        }
+        Insert: {
+          ac: number
+          catalog_version?: number
+          challenge_rating: number
+          group_name: string
+          hp: number
+          id: string
+          inserted_at?: string
+          melee?: Json | null
+          name: string
+          ranged?: Json | null
+          size: string
+          source: string
+          speed_ft: number
+        }
+        Update: {
+          ac?: number
+          catalog_version?: number
+          challenge_rating?: number
+          group_name?: string
+          hp?: number
+          id?: string
+          inserted_at?: string
+          melee?: Json | null
+          name?: string
+          ranged?: Json | null
+          size?: string
+          source?: string
+          speed_ft?: number
+        }
+        Relationships: []
+      }
+      battle_dnd_custom_monsters: {
+        Row: {
+          catalog_version: number
+          created_by: string
+          id: string
+          payload: Json
+          updated_at: string
+        }
+        Insert: {
+          catalog_version?: number
+          created_by?: string
+          id: string
+          payload: Json
+          updated_at?: string
+        }
+        Update: {
+          catalog_version?: number
+          created_by?: string
+          id?: string
+          payload?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      battle_dnd_monster_overrides: {
+        Row: {
+          combat_patch: Json
+          monster_id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          combat_patch?: Json
+          monster_id: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Update: {
+          combat_patch?: Json
+          monster_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_dnd_monster_overrides_monster_id_fkey"
+            columns: ["monster_id"]
+            isOneToOne: true
+            referencedRelation: "battle_dnd_cormyr_monsters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_dnd_sessions: {
+        Row: {
+          battle_id: string
+          owner_id: string
+          replay: Json
+          report: Json | null
+          updated_at: string
+        }
+        Insert: {
+          battle_id: string
+          owner_id?: string
+          replay: Json
+          report?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          battle_id?: string
+          owner_id?: string
+          replay?: Json
+          report?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      battle_dnd_verified_sources: {
+        Row: {
+          combat_defaults: Json
+          monster_id: string
+          source_filename: string
+          verified_at: string
+        }
+        Insert: {
+          combat_defaults: Json
+          monster_id: string
+          source_filename: string
+          verified_at?: string
+        }
+        Update: {
+          combat_defaults?: Json
+          monster_id?: string
+          source_filename?: string
+          verified_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_dnd_verified_sources_monster_id_fkey"
+            columns: ["monster_id"]
+            isOneToOne: true
+            referencedRelation: "battle_dnd_cormyr_monsters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_house_roster_imports: {
+        Row: {
+          catalog_id: string
+          house_id: string
+          imported_at: string
+          quantity: number
+          simulation_only: boolean
+          source_domain: string | null
+          source_file_id: string
+          source_key: string
+          source_note: string | null
+          source_region: string
+          source_row: number
+          source_status: string
+          source_url: string | null
+          standard_unit_strength: number
+          training: string
+          unit_name: string
+          unit_strength_basis: string
+          unit_type: string
+        }
+        Insert: {
+          catalog_id: string
+          house_id: string
+          imported_at?: string
+          quantity: number
+          simulation_only?: boolean
+          source_domain?: string | null
+          source_file_id: string
+          source_key: string
+          source_note?: string | null
+          source_region: string
+          source_row: number
+          source_status: string
+          source_url?: string | null
+          standard_unit_strength: number
+          training: string
+          unit_name: string
+          unit_strength_basis?: string
+          unit_type: string
+        }
+        Update: {
+          catalog_id?: string
+          house_id?: string
+          imported_at?: string
+          quantity?: number
+          simulation_only?: boolean
+          source_domain?: string | null
+          source_file_id?: string
+          source_key?: string
+          source_note?: string | null
+          source_region?: string
+          source_row?: number
+          source_status?: string
+          source_url?: string | null
+          standard_unit_strength?: number
+          training?: string
+          unit_name?: string
+          unit_strength_basis?: string
+          unit_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_house_roster_imports_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: false
+            referencedRelation: "house_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       battle_sim_events: {
         Row: {
           actor_id: string
