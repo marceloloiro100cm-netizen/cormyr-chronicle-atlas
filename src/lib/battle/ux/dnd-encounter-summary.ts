@@ -20,8 +20,9 @@ export function summarizeDndEncounter(
    const count=Number.isSafeInteger(row.count)&&row.count>0?row.count:0;
    n+=count;
    const source=byId.get(row.templateId);
-   if(!source||!Number.isFinite(source.hp)||!Number.isFinite(source.ac)||
-    (source.hp??0)<=0||(source.ac??0)<=0){
+   if(!source||typeof source.hp!=='number'||typeof source.ac!=='number'||
+    !Number.isFinite(source.hp)||!Number.isFinite(source.ac)||
+    source.hp<=0||source.ac<=0){
     unknown+=count;continue;
    }
    hp+=(source.hp??0)*count;armor+=(source.ac??0)*count;
