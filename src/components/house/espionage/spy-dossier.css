@@ -74,15 +74,16 @@
 }
 @media print{
  @page{size:auto;margin:14mm}
- body *{visibility:hidden!important}
- .spy-dossier-sheet,.spy-dossier-sheet *{visibility:visible!important}
- .spy-dossier-sheet{position:absolute!important;top:0!important;left:0!important;
+ body.spy-dossier-print-active *{visibility:hidden!important}
+ body.spy-dossier-print-active .spy-dossier-sheet,
+ body.spy-dossier-print-active .spy-dossier-sheet *{visibility:visible!important}
+ body.spy-dossier-print-active .spy-dossier-sheet{position:absolute!important;top:0!important;left:0!important;
   width:100%!important;max-width:none!important;box-shadow:none!important;border:0!important;
   background:#fff!important;color:#111!important;margin:0!important;padding:0!important;overflow:visible!important}
- .spy-dossier-sheet .spy-dossier-tabs,
- .spy-dossier-sheet .spy-dossier-report-tools,
- .spy-dossier-sheet .spy-dossier-version-history{display:none!important}
- .spy-dossier-sheet .spy-dossier-item{break-inside:avoid;background:#fff!important;color:#111!important}
- .spy-dossier-sheet .spy-dossier-briefing>div{break-inside:avoid;color:#111!important}
- .spy-dossier-sheet .spy-dossier-unknown{color:#555!important}
+ body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-tabs,
+ body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-report-tools,
+ body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-version-history{display:none!important}
+ body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-item{break-inside:avoid;background:#fff!important;color:#111!important}
+ body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-briefing>div{break-inside:avoid;color:#111!important}
+ body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-unknown{color:#555!important}
 }
