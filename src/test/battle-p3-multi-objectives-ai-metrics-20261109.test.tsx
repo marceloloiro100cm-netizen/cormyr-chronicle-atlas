@@ -9,6 +9,7 @@ import {chooseAiCommand} from '@/lib/battle/domain/ai';
 import {captureReplay,verifyReplay,commandsFromState} from '@/lib/battle/domain/replay';
 import {battleTacticalMetrics,formatSessionDuration} from '@/lib/battle/domain/metrics';
 import {BattleBoard} from '@/components/battle/BattleBoard';
+import {BattleNarratorHub} from '@/components/battle/BattleNarratorHub';
 import {BattleMetricsPanel} from '@/components/battle/BattleMetricsPanel';
 import type {AiProfile,BattleState,Hex,TacticalObjective} from '@/lib/battle/domain/types';
 
@@ -123,6 +124,32 @@ describe('P3 · AI profiles preserve legal deterministic commands',()=>{
    expect(getLegalActions(state)).toContainEqual(command);
    expect(chooseAiCommand(state)).toEqual(command);
   });
+});
+
+describe('P3 · the narrator can edit objectives in the full setup UI',()=>{
+ it('changes map, edits points, sets quota and starts a valid mission',()=>{
+  const {container}=render(<BattleNarratorHub/>);
+  fireEvent.click(screen.getByRole('button',{name:'Criar batalha'}));
+  fireEvent.change(screen.getByLabelText('Objetivo da batalha'),{
+   target:{value:'bridge'}});
+  expect(screen.getByLabelText('Cenário rápido')).toHaveValue('bridge-crossing');
+  fireEvent.click(screen.getByRole('button',{name:'Personalizar unidades e mapa'}));
+  expect(screen.getByRole('region',{name:'Editor de objetivos P3'})).toBeInTheDocument();
+  expect(container.querySelectorAll('.battle-goal-marker')).toHaveLength(3);
+  fireEvent.click(screen.getByRole('button',{name:'Editar objetivos no mapa'}));
+  const fourth=container.querySelector('[data-battle-hex="3,4"]');
+  expect(fourth).not.toBeNull();
+  fireEvent.click(fourth!);
+  expect(container.querySelectorAll('.battle-goal-marker')).toHaveLength(4);
+  fireEvent.change(screen.getByLabelText('Pontos exigidos para vitória'),{
+   target:{value:'3'}});
+  fireEvent.click(screen.getByRole('button',{name:'Concluir edição de pontos'}));
+  fireEvent.click(screen.getByRole('button',{name:'Posicionar automaticamente'}));
+  fireEvent.click(screen.getByRole('button',{name:'Iniciar batalha'}));
+  const goal=screen.getByRole('region',{name:'Objetivo tático'});
+  expect(goal).toHaveTextContent('Tomar a ponte');
+  expect(goal).toHaveTextContent('0/3');
+ });
 });
 
 describe('P3 · relative challenge and transparent session metrics',()=>{
