@@ -11,6 +11,7 @@ import {reachablePaths} from '@/lib/battle/geometry/pathfinding';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
 import {BattleExpandedView} from './BattleExpandedView';
+import {BattleActionPulse,BattleOutcomeSummary,pteActionText} from './BattleUxFeedback';
 import {BattleTurnCue} from './BattleTurnCue';
 import {BattleHouseBanner,BattleHouseVersus} from './BattleHouseHeraldry';
 import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
@@ -45,14 +46,13 @@ function BattleResult({state,initial,sideNames,heraldry,onRestart,onExit,persist
   <BattleHouseVersus houses={heraldry} names={sideNames}/>
    <p><strong>{state.winner?sideNames[state.winner]+' venceu':'Empate'}</strong>
      {' · '}Causa: {state.resultReason??'não informada'}{' · '}Rodadas: {state.round}</p>
-   <div className="battle-summary-grid">
-    {(['attacker','defender'] as const).map(side=><article key={side} className="battle-result-card">
-      {heraldry?.[side]?<BattleHouseBanner side={side} house={heraldry[side]}
-  name={sideNames[side]} subtle/>:<h3>{sideNames[side]}</h3>}
-      <p>{report.bySide[side].alive} / {report.bySide[side].initial} sobreviventes</p>
-      <p>{report.bySide[side].casualties} baixas táticas · {report.bySide[side].damageDealt} dano causado</p>
-    </article>)}
-   </div>
+   <BattleOutcomeSummary winner={state.winner?sideNames[state.winner]+' venceu':'Empate'}
+    round={state.round}
+    attacker={{label:sideNames.attacker,remaining:report.bySide.attacker.alive,
+     losses:report.bySide.attacker.casualties,damage:report.bySide.attacker.damageDealt}}
+    defender={{label:sideNames.defender,remaining:report.bySide.defender.alive,
+     losses:report.bySide.defender.casualties,damage:report.bySide.defender.damageDealt}}
+    note="Sem alteração nas fichas oficiais."/>
    <div className="battle-report-scroll"><table className="battle-report-table">
     <caption>Resultado por agrupamento — sem alterações nas fichas oficiais</caption>
     <thead><tr><th>Unidade</th><th>Lado</th><th>Vivos</th><th>Baixas</th><th>PV</th><th>Causou</th><th>Recebeu</th><th>Moral</th></tr></thead>
@@ -258,6 +258,9 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
       'Selecione um '+(battle.map.grid==='square'?'quadrado':'hexágono')+' destacado'}</p>}
      {damagePreview&&<p role="status">Ataque previsto contra {target?.name}: {damagePreview.damage} PV · {damagePreview.casualties} baixas antes de eventual retaliação.</p>}
      {notice&&<p role="alert" className="battle-error">{notice}</p>}
+     <BattleActionPulse summary={pteActionText(
+      [...battle.events].reverse().find(e=>
+       ['DAMAGE','RETALIATION','MOVE','DEFEND','WAIT'].includes(e.type)),battle.stacks)}/>
      <div className="battle-actions battle-actions-compact" role="group" aria-label="Ações da unidade">
       <Button disabled={!canAct||!legal.some(c=>c.type==='DEFEND')} variant="outline"
         onClick={()=>active&&command({type:'DEFEND',unitId:active.id})}>Defender</Button>

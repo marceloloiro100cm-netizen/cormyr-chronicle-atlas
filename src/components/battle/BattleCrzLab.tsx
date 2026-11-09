@@ -6,6 +6,7 @@ import {BattleSquareLegend} from './BattleSquareLegend';
 import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
+import {BattleActionPulse,BattleOutcomeSummary,crzActionText} from './BattleUxFeedback';
 import {suggestDndImpassReview} from '@/lib/battle/ux/dnd-impasse';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
 import {crzHexKey,crzGridToOffset,crzScenario,crzFootprintCells,
@@ -934,6 +935,9 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
    </label>}
    {error&&<p className="crz-alert" role="alert">{error}</p>}
    {message&&<p className="crz-status" role="status">{message}</p>}
+   <BattleActionPulse summary={crzActionText(
+    [...frame.events].reverse().find(e=>['ATTACK_RESOLVED','RETALIATION_RESOLVED',
+     'MOVED','DEFENDED','WAITED','STACK_DESTROYED'].includes(e.type)),frame.stacks)}/>
    <BattleTurnCue system={dndMode?'dnd':'adapted'} round={frame.round}
     phase={frame.phase} activeUnit={active?.name} canAct={canAct}
     moves={moves.length} attacks={attacks.length}
@@ -1217,10 +1221,14 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
     <span>Clique num quadrado verde para mover.</span>
     <span>Clique num inimigo com contorno vermelho para atacar.</span>
    </footer>
-   {frame.phase==='completed'&&<div className="crz-victory-banner" role="status">
-    Resultado: {frame.winner?SIDE[frame.winner].name:'Empate'} · {frame.resultReason==='withdrawal'?'retirada':frame.resultReason==='narrator-end'?
-    'encerramento pelo Narrador':frame.resultReason}
-   </div>}
+   {frame.phase==='completed'&&report&&<BattleOutcomeSummary
+    winner={frame.winner?SIDE[frame.winner].name+' venceu':'Empate'}
+    round={frame.round} unit={dndMode?'criaturas':'soldados'}
+    attacker={{label:SIDE.attacker.name,remaining:report.sides.attacker.survivors,
+     losses:report.sides.attacker.casualties,damage:report.sides.attacker.inflictedDamage}}
+    defender={{label:SIDE.defender.name,remaining:report.sides.defender.survivors,
+     losses:report.sides.defender.casualties,damage:report.sides.defender.inflictedDamage}}
+    note="Resultado fictício · fichas oficiais preservadas."/>}
   </section>}
  </section>;
  return <BattleExpandedView expanded={expanded&&Boolean(session)}

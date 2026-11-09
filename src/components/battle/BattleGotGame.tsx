@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import {BattleTurnCue} from './BattleTurnCue';
 import {BattleGotGuide} from './BattleGotGuide';
+import {BattleActionPulse,BattleOutcomeSummary} from './BattleUxFeedback';
 import {Button} from '@/components/ui/button';
 import {MilitaryUnitSymbol,militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import {SQUARE_TERRAIN_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
@@ -965,6 +966,18 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    <BattleGotGuide phase={battle.phase}
     hasSiege={battle.siege.length>0}
     hasHeroes={battle.heroes.some(h=>h.active)}/>
+   <BattleActionPulse summary={battle.events.at(-1)?.text}
+    detail={battle.events.at(-1)?.text}/>
+   {battle.phase==='finished'&&aftermath&&<BattleOutcomeSummary
+    winner={battle.winner?SIDE[battle.winner]+' venceu':'Empate'}
+    round={battle.round} unit="unidades"
+    attacker={{label:'Atacantes',
+     remaining:aftermath.summary.attacker.organized+aftermath.summary.attacker.disorganized,
+     losses:aftermath.summary.attacker.destroyedInBattle}}
+    defender={{label:'Defensores',
+     remaining:aftermath.summary.defender.organized+aftermath.summary.defender.disorganized,
+     losses:aftermath.summary.defender.destroyedInBattle}}
+    note="Projeção de unidades, não de combatentes. Sem aplicação às Casas."/>}
    <BattleTurnCue system="got" round={battle.round} phase={battle.phase}
     activeUnit={battle.phase==='orders'?SIDE[battle.turn]:'Fase do livro'}
     canAct={battle.phase!=='finished'}

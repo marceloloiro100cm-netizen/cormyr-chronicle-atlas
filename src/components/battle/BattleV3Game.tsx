@@ -12,6 +12,7 @@ import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
+import {BattleActionPulse,BattleOutcomeSummary} from './BattleUxFeedback';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
 import {BattleHouseBanner,BattleHouseVersus} from './BattleHouseHeraldry';
 import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
@@ -365,9 +366,17 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       <span>{inspected.currentHp} PV · Ataque {inspected.attack} · Defesa {inspected.defense}</span>
      </div>}
      {status&&<p role="status" className="crusade-v4-status">{status}</p>}
+     <BattleActionPulse summary={game.log.at(-1)?.label}
+      detail={game.log.at(-1)?.detail??null}/>
      {battle?.phase==='completed'&&report&&<div className="crusade-v4-end">
-      <h2>{battle.winner===null?'Empate':battle.winner==='attacker'?'Vitória aliada':'Vitória adversária'}</h2>
-      <p>Baixas: aliados {report.bySide.attacker.casualties} · adversários {report.bySide.defender.casualties}</p>
+      <BattleOutcomeSummary
+       winner={battle.winner===null?'Empate':battle.winner==='attacker'?'Vitória aliada':'Vitória adversária'}
+       round={battle.round}
+       attacker={{label:battleHouseNames.attacker,remaining:report.bySide.attacker.alive,
+        losses:report.bySide.attacker.casualties}}
+       defender={{label:battleHouseNames.defender,remaining:report.bySide.defender.alive,
+        losses:report.bySide.defender.casualties}}
+       note="Resultado simulado; a campanha não foi alterada."/>
       <Button onClick={()=>{setExpanded(false);setGame(null);setStatus('');}}>Nova Cruzada</Button>
      </div>}
     </section>
