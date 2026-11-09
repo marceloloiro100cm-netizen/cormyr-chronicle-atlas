@@ -188,11 +188,6 @@ export function BattleSetup({onStart,onBack}:{
    <div className="battle-form-row">
     <label>Nome do confronto<input aria-label="Nome do confronto rápido" maxLength={120}
      value={name} onChange={e=>setName(e.target.value)}/></label>
-    <label>Formato do mapa<select aria-label="Formato da malha PTE"
-      value="square" disabled>
-      <option value="square">Quadrados (novo padrão)</option>
-      {/* Mapas hexagonais históricos só podem ser lidos de replays antigos. */}
-     </select></label>
      <label>Campo de batalha<select aria-label="Cenário rápido" value={map.id}
      onChange={e=>{const id=e.target.value as BattleScenarioId;
       if(Object.hasOwn(SCENARIOS,id))setMap(createScenario(id,map.width,'square'));}}>

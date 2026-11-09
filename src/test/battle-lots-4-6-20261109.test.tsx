@@ -29,6 +29,7 @@ describe('Lote 4: fases do livro e preparação acessível',()=>{
  });
  it('oferece configuração rápida não destrutiva e navegação na preparação',()=>{
   render(<BattleGotGame onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByText('Personalizar tropas, heróis e mapa'));
   expect(screen.getByRole('button',{name:'Aplicar cenário rápido'})).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Clima'),{target:{value:'heavy-rain'}});
   fireEvent.click(screen.getByRole('button',{name:'Aplicar cenário rápido'}));

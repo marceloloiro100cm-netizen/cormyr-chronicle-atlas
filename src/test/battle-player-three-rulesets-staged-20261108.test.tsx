@@ -27,12 +27,14 @@ describe('Três simuladores do jogador preparados, mas ainda NÃO liberados',()=
  it('GOT de jogador não oferece tropas oficiais e mantém salvamento local segregado',()=>{
   window.localStorage.setItem(GOT_LAB_SAVE_KEY,'conteudo-privado-do-narrador');
   render(<BattleGotGame playerSandbox onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByText('Personalizar tropas, heróis e mapa'));
   expect(screen.getByText(/Modo de treino do jogador/)).toBeInTheDocument();
   expect(screen.queryByText('Usar unidades oficiais das Casas (somente leitura)'))
    .not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Iniciar simulação pelo livro'}));
   expect(screen.getByRole('heading',{name:'Escaramuça de treinamento'}))
    .toBeInTheDocument();
+  fireEvent.click(screen.getByText('Salvar ou retomar'));
   fireEvent.click(screen.getByRole('button',{name:'Salvar simulação neste navegador'}));
   expect(window.localStorage.getItem(GOT_LAB_SAVE_KEY))
    .toBe('conteudo-privado-do-narrador');
@@ -45,6 +47,7 @@ describe('Três simuladores do jogador preparados, mas ainda NÃO liberados',()=
    item.creature.provenance.origin==='manual'&&item.creature.tags.includes('player-model')))
    .toBe(true);
   render(<BattleCrzLab mode="dnd" playerSandbox onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByText('Montar exércitos e ajustar cenário'));
   expect(screen.getByRole('region',{name:'D&D · simulador local do jogador'}))
    .toBeInTheDocument();
   expect(screen.getByText(/O bestiário privado do Narrador não é consultado/))

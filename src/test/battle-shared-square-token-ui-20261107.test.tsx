@@ -30,6 +30,7 @@ describe('Tokens e mapas compartilhados entre os três sistemas',()=>{
  });
  it('o D&D simplificado é independente e fixa quadrados e regras CRZ-5E',()=>{
   render(<BattleCrzLab mode="dnd" onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByText('Montar exércitos e ajustar cenário'));
   expect(screen.getByRole('heading',{name:/D&D · Combate simplificado/})).toBeInTheDocument();
   expect(screen.queryByLabelText('Formato da malha CRZ')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Preset CRZ')).not.toBeInTheDocument();

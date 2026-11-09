@@ -97,6 +97,7 @@ describe('P1 — resultado militar transparente sem gravar Casas',()=>{
 describe('P1 — interface de jogabilidade e revisão',()=>{
  it('amplia o tabuleiro, exibe inspeção de terreno e filtra o histórico',()=>{
   render(<BattleGotGame onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByText('Personalizar tropas, heróis e mapa'));
   fireEvent.change(screen.getByLabelText('Clima'),{target:{value:'heavy-rain'}});
   fireEvent.click(screen.getByRole('button',{name:/Iniciar simulação pelo livro/}));
   const map=screen.getByRole('region',{name:/Mapa em quadrados/});
@@ -117,6 +118,7 @@ describe('P1 — interface de jogabilidade e revisão',()=>{
    units:base.units.map(u=>u.id==='d'?{...u,condition:'destroyed' as const,health:0}:u)};
   window.localStorage.setItem(GOT_LAB_SAVE_KEY,encodeGotLabSave(done));
   render(<BattleGotGame onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByText('Salvar ou retomar'));
   fireEvent.click(screen.getByRole('button',{name:'Retomar simulação salva'}));
   const result=screen.getByRole('region',{name:'Prévia de sobreviventes'});
   expect(within(result).getAllByText(/balanço militar/)).toHaveLength(2);

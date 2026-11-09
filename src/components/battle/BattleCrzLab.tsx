@@ -616,6 +616,14 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
    {message&&<p className="crz-status" role="status">{message}</p>}
    {savedPanel}
    <section className="battle-surface" aria-label="Preparar treino CRZ">
+    {dndMode&&<div className="battle-simple-launch" aria-label="Início rápido D&D">
+     <h3>Batalha rápida</h3>
+     <p>{dndRoster.filter(x=>x.side==='attacker').length} grupos atacantes ×
+      {dndRoster.filter(x=>x.side==='defender').length} defensores · mapa quadrado</p>
+     <Button onClick={begin}>Batalhar agora</Button>
+    </div>}
+    <details className="battle-advanced-config" open={!dndMode}>
+     <summary>{dndMode?'Montar exércitos e ajustar cenário':'Configuração do laboratório'}</summary>
     <h2>{dndMode?'Preparar combate D&D':'Preparar batalha-modelo'}</h2>
     {!dndMode&&<p>Defensores da Coroa contra forças fictícias de Ashkar.</p>}
     {!dndMode&&<section className="battle-surface" aria-label="Mapas quadrados compartilhados">
@@ -882,6 +890,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
     <p className="battle-note">{dndMode?
      'D&D utiliza rolagens de d20, CA e PV por criatura, com pilhas que somam PV e baixas. Iniciativa é rolada uma vez por encontro. Não há compras ou baixas oficiais.':
      'CRZ-WOTR e PTE-compat são simulações experimentais determinísticas, sem paridade oficial ou aplicação de baixas. Os replays registram o preset e seu hash.'}</p>
+    </details>
    </section>
   </>}
   {session&&frame&&<section className="crz-battle-stage"

@@ -10,6 +10,7 @@ describe('Interface D&D · seleção concentrada e implantação automática',()
   render(<BattleCrzLab mode="dnd" onBack={vi.fn()}/>);
   expect(screen.getByRole('region',{name:'D&D simplificado · laboratório do Narrador'}))
    .toBeInTheDocument();
+  fireEvent.click(screen.getByText('Montar exércitos e ajustar cenário'));
   expect(screen.getByRole('heading',{name:'Montros'})).toBeInTheDocument();
   expect(screen.queryByLabelText('Importar tabela de monstros D&D')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Importar mapa quadrado D&D')).not.toBeInTheDocument();
@@ -52,6 +53,7 @@ describe('Interface D&D · seleção concentrada e implantação automática',()
    metadata:{catalog:'Teste privado',count:300,version:1},monsters,
   }));
   render(<BattleCrzLab mode="dnd"/>);
+  fireEvent.click(screen.getByText('Montar exércitos e ajustar cenário'));
   expect(screen.getByText(/300 monstros disponíveis para seleção/)).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Grupo de monstros D&D'),
    {target:{value:'Mortos-vivos'}});
@@ -69,7 +71,7 @@ describe('Interface D&D · seleção concentrada e implantação automática',()
  });
  it('inicia batalha com pilhas automaticamente posicionadas e mostra a ficha tática',()=>{
   render(<BattleCrzLab mode="dnd" onBack={vi.fn()}/>);
-  fireEvent.click(screen.getByRole('button',{name:/Iniciar batalha D&D/}));
+  fireEvent.click(screen.getByRole('button',{name:'Batalhar agora'}));
   expect(screen.getByRole('region',{name:'Arena e comandos CRZ'})).toBeInTheDocument();
   expect(screen.getByRole('region',{name:'Painel de combate básico D&D'}))
    .toBeInTheDocument();

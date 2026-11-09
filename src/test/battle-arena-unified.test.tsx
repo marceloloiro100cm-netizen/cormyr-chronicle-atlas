@@ -19,7 +19,7 @@ describe('Auditoria V4 · arena unificada e limpa do Narrador',()=>{
    .toBeInTheDocument();
   expect(within(dialog).getByRole('group',{name:/Mapa (?:hexagonal|quadrado) com/}))
    .toBeInTheDocument();
-  expect(within(dialog).getByRole('heading',{name:'Comando tático'}))
+  expect(within(dialog).getByRole('heading',{name:'Unidade selecionada'}))
    .toBeInTheDocument();
   expect(within(dialog).getByRole('heading',{name:'Últimas ações'}))
    .toBeInTheDocument();
