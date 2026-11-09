@@ -34,8 +34,9 @@ async function isTrue(client,func,label){
  if(r.error)throw new Error(label+': RPC de autorização indisponível.');
  return r.data===true;
 }
-async function rows(client,table){
- const r=await client.from(table).select('id').limit(60);
+async function rows(client,table,column='id'){
+ // battle_house_roster_imports tem chave source_key, não coluna id.
+ const r=await client.from(table).select(column).limit(60);
  if(r.error)throw new Error(table+': RLS/SELECT indisponível.');
  return r.data??[];
 }
@@ -66,8 +67,8 @@ try{
  const [adminMonsters,playerMonsters,adminRoster,playerRoster]=await Promise.all([
   rows(narrator,'battle_dnd_cormyr_monsters'),
   rows(player,'battle_dnd_cormyr_monsters'),
-  rows(narrator,'battle_house_roster_imports'),
-  rows(player,'battle_house_roster_imports'),
+  rows(narrator,'battle_house_roster_imports','source_key'),
+  rows(player,'battle_house_roster_imports','source_key'),
  ]);
  if(playerMonsters.length>0||playerRoster.length>0)
   throw new Error('P0: jogador consegue ler catálogo ou tropas privadas.');
