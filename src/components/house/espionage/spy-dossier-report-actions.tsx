@@ -21,10 +21,21 @@ export function SpyDossierReportActions({dossier,officialDate}:{
    setFeedback('Não foi possível copiar. Use Imprimir / PDF para guardar o relatório.');
   }
  };
+ const print=()=>{
+  document.body.classList.add('spy-dossier-print-active');
+  const clear=()=>document.body.classList.remove('spy-dossier-print-active');
+  window.addEventListener('afterprint',clear,{once:true});
+  try{window.print();}
+  catch{
+   window.removeEventListener('afterprint',clear);
+   clear();
+   setFeedback('Não foi possível abrir a impressão neste dispositivo.');
+  }
+ };
  return <div className="spy-dossier-report-tools" aria-label="Exportação do dossiê">
   <Button type="button" variant="outline" size="sm" onClick={()=>void copy()}>
    <FileDown size={15} aria-hidden="true"/> Copiar relatório</Button>
-  <Button type="button" variant="outline" size="sm" onClick={()=>window.print()}>
+  <Button type="button" variant="outline" size="sm" onClick={print}>
    <Printer size={15} aria-hidden="true"/> Imprimir / PDF</Button>
   {feedback&&<small role="status">{feedback}</small>}
  </div>;
