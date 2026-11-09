@@ -58,7 +58,9 @@ describe('R5 Lote 3: central do Narrador com pendências prioritárias',()=>{
    op(2,{status:'completed',outcome:'success',intelligenceStatus:null,
     ownerHouseName:'Harcourt'})];
   expect(filterSpyOperations(rows,'erdenor','attention')).toHaveLength(1);
-  expect(filterSpyOperations(rows,'Harcourt','review')).toHaveLength(0);
+  // Harcourt also occurs as the target of Érdénor; search covers both sides.
+  expect(filterSpyOperations(rows,'Harcourt','review').map(x=>x.operationId))
+   .toEqual([id(1)]);
   expect(filterSpyOperations(rows,'','dossier').map(x=>x.operationId)).toEqual([id(2)]);
  });
  it('a tela abre diretamente em pendências e mantém os botões R4',()=>{
