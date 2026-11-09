@@ -1,4 +1,5 @@
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
+import {BattleTurnCue} from './BattleTurnCue';
 import {Button} from '@/components/ui/button';
 import {MilitaryUnitSymbol,militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import {SQUARE_TERRAIN_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
@@ -77,7 +78,7 @@ const CONDITION:Record<WarUnit['condition'],string>={
  organized:'Organizada',disorganized:'Desorganizada',routed:'Debandada',
  destroyed:'Destruída',surrendered:'Rendida',escaped:'Fora de campo',
 };
-export function BattleGotGame({onBack}:{onBack:()=>void}){
+export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;resumeFromLibrary?:boolean}){
  const [battle,setBattle]=useState<WarBattle|null>(null);
  const [seed,setSeed]=useState('guerra-cormyr-livro');
  const [name,setName]=useState('Escaramuça de treinamento');
@@ -92,6 +93,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
  const [deploymentMode,setDeploymentMode]=useState<'paint'|'deploy'>('paint');
  const [deploymentSelected,setDeploymentSelected]=useState('attacker-1');
  const [localSaveStatus,setLocalSaveStatus]=useState('');
+ const [lastSavedSnapshot,setLastSavedSnapshot]=useState('');
  const [weather,setWeather]=useState<WarWeather>('clear');
  const [visibility,setVisibility]=useState<WarVisibility>('clear');
  const [advanced,setAdvanced]=useState(false);
@@ -472,10 +474,27 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
   try{setBattle(advanceWarRound(battle));setSelected('');setTarget('');setError('');}
   catch(e){setError(e instanceof Error?e.message:'Erro ao concluir rodada.');}
  };
+ useEffect(()=>{
+  if(!resumeFromLibrary)return;
+  try{
+   const raw=window.localStorage.getItem(GOT_LAB_SAVE_KEY);
+   if(!raw){setLocalSaveStatus('Nenhuma batalha GOT salva neste navegador.');return;}
+   const loaded=decodeGotLabSave(raw);
+   setBattle(loaded);setSelected('');setTarget('');setLastSavedSnapshot(raw);
+   setLocalSaveStatus('Batalha retomada · rodada '+loaded.round+'.');
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível retomar GOT.');}
+ },[resumeFromLibrary]);
+ const leaveBattle=()=>{
+  if(battle&&JSON.stringify(battle)!==lastSavedSnapshot&&
+    !window.confirm('Há alterações não salvas na batalha Game of Thrones. Deseja sair?'))return;
+  onBack();
+ };
  const saveLocalBattle=()=>{
   if(!battle)return;
   try{
-   window.localStorage.setItem(GOT_LAB_SAVE_KEY,encodeGotLabSave(battle));
+   const snapshot=encodeGotLabSave(battle);
+   window.localStorage.setItem(GOT_LAB_SAVE_KEY,snapshot);
+   setLastSavedSnapshot(snapshot);
    setLocalSaveStatus('Simulação salva somente neste navegador.');
    setError('');
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível salvar localmente.');}
@@ -486,7 +505,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
    if(!saved)throw new Error('Nenhuma simulação local foi encontrada neste navegador.');
    if(battle&&!window.confirm('Substituir a simulação atual pela versão salva?'))return;
    const loaded=decodeGotLabSave(saved);
-   setBattle(loaded);setSelected('');setTarget('');setError('');
+   setBattle(loaded);setSelected('');setTarget('');setLastSavedSnapshot(saved);setError('');
    setLocalSaveStatus('Simulação retomada. Rodada '+loaded.round+'.');
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível retomar a simulação.');}
  };
@@ -538,7 +557,7 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
   <div className="battle-heading">
    <div><h2>Game of Thrones · regras do livro</h2>
     <p>Laboratório do capítulo 10 · quadrados de 10 m · uma rodada representa 1 minuto.</p></div>
-   <Button variant="outline" onClick={onBack}>Voltar ao módulo</Button>
+   <Button variant="outline" onClick={leaveBattle}>Voltar ao módulo</Button>
   </div>
   <p className="battle-note">Laboratório isolado do Adaptado e D&D.
    Ordens, heróis, cerco, formações e pós-batalha estão disponíveis para testes;
@@ -846,6 +865,13 @@ export function BattleGotGame({onBack}:{onBack:()=>void}){
      {battle.winner?'Vitória do '+SIDE[battle.winner]:'Confronto sem vencedor'}
     </strong></p>}
    </section>
+   <BattleTurnCue system="got" round={battle.round} phase={battle.phase}
+    activeUnit={battle.phase==='orders'?SIDE[battle.turn]:'Fase do livro'}
+    canAct={battle.phase!=='finished'}
+    hint={battle.phase==='siege'?'Resolva a etapa de cerco antes de emitir ordens.':
+     battle.phase==='orders'?'Selecione uma unidade, escolha a ordem legal e confirme o teste de Guerra.':
+     battle.phase==='finished'?'Confira as projeções de perdas e Glória; nada altera as Casas.':
+     'Resolva as ações dos heróis e avance a fase quando estiver pronta.'}/>
    {battle.heroes.some(h=>!h.squadId)&&
     <section className="battle-surface got-heroes" aria-label="Pontos de Destino dos heróis">
      <h3>Destino do capítulo 5 · simulação local</h3>
