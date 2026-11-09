@@ -50,8 +50,8 @@ describe('UX lotes 1–3 — preparação rápida e arena contextual',()=>{
   expect(within(controls).getAllByRole('button')).toHaveLength(3);
   expect(within(dialog).getByRole('region',{name:/Orientação do turno · Adaptado/}))
    .toBeInTheDocument();
-  expect(within(dialog).queryByRole('button',{name:'Mover',exact:true}))
-   .not.toBeInTheDocument();
+  expect((within(dialog).getByRole('button',{name:'Mover',exact:true})
+   .closest('details') as HTMLDetailsElement).open).toBe(false);
   const field=within(dialog).getByRole('region',{name:'Campo de batalha PTE'});
   const moves=within(field).getAllByRole('button',{name:/movimento permitido/});
   expect(moves.length).toBeGreaterThan(0);
