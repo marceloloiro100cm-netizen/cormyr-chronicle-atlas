@@ -56,6 +56,13 @@ export async function readSpyDossiersBrowser(houseId:string|null):Promise<SpyDos
  const parsed=spyDossierListSchema.safeParse(raw);
  if(!parsed.success || (houseId&&parsed.data.some(d=>d.ownerHouseId!==houseId)))
   throw new Error('Resposta de inteligência incompatível com esta Casa.');
+ // Defesa em profundidade: a RPC já filtra o conteúdo pela Casa; este contrato
+ // impede exibir auditoria administrativa ou snapshots históricos caso uma
+ // migração futura mude inadvertidamente o formato para jogadores.
+ if(houseId&&parsed.data.some(d=>
+  d.adminHistory.length>0||d.history.some(e=>
+   e.oldSnapshot!==null||Object.keys(e.newSnapshot).length>0)))
+  throw new Error('O dossiê contém dados reservados e não pode ser exibido.');
  return parsed.data;
 }
 export async function readSpyIntelligencePendingBrowser(){

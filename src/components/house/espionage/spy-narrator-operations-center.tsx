@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {ClipboardList,RefreshCw} from 'lucide-react';
@@ -19,9 +19,26 @@ const statusLabels:Record<string,string>={
 const objectiveLabels:Record<string,string>={
  house_resources:'Recursos',army:'Exército',possessions:'Posses',
 };
+/** Only successful, completed missions can require an intelligence award.
+ * Failed/captured/dead operations have no dossier to recover.
+ */
 export const spyNeedsDossierAttention=(o:SpyNarratorOperation)=>
  o.status==='completed'&&o.outcome==='success'&&
  o.intelligenceStatus!=='complete';
+
+export const spyNeedsNarratorAction=(o:SpyNarratorOperation)=>
+ o.status==='pending_narrator_review'||spyNeedsDossierAttention(o);
+
+/** Single, predictable queue: decisions first, then missing intelligence.
+ * Never mix completed failures with awards awaiting processing.
+ */
+export function spyNarratorActionQueue(operations:readonly SpyNarratorOperation[]){
+ const priority=(o:SpyNarratorOperation)=>
+  o.status==='pending_narrator_review'?0:spyNeedsDossierAttention(o)?1:2;
+ return operations.filter(spyNeedsNarratorAction)
+  .sort((a,b)=>priority(a)-priority(b)||
+   b.createdAt.localeCompare(a.createdAt)||a.operationId.localeCompare(b.operationId));
+}
 export function spyOperationCounters(operations:readonly SpyNarratorOperation[]){
  return {
   active:operations.filter(o=>['traveling','operating','returning','planned'].includes(o.status)).length,
@@ -40,6 +57,7 @@ export function filterSpyOperations(operations:readonly SpyNarratorOperation[],
   const matches=!q||[o.ownerHouseName,o.targetHouseName,o.agentName]
    .some(value=>normalized(value).includes(q));
   if(!matches)return false;
+  if(state==='attention')return spyNeedsNarratorAction(o);
   if(state==='review')return o.status==='pending_narrator_review';
   if(state==='active')return ['traveling','operating','returning','planned'].includes(o.status);
   if(state==='dossier')return spyNeedsDossierAttention(o);
@@ -49,6 +67,7 @@ export function filterSpyOperations(operations:readonly SpyNarratorOperation[],
 }
 const dateLabel=(value:string|null)=>value&&parseDate(value)?formatDate(value):'—';
 export function SpyNarratorOperationsCenter(){
+ const reviewRef=useRef<HTMLElement|null>(null);
  const [search,setSearch]=useState('');
  const [state,setState]=useState('attention');
  const [page,setPage]=useState(1);
@@ -57,6 +76,11 @@ export function SpyNarratorOperationsCenter(){
  }|null>(null);
  const [recentResolution,setRecentResolution]=useState('');
  const [retryingDossier,setRetryingDossier]=useState<string|null>(null);
+ useEffect(()=>{
+  if(!selectedReview)return;
+  reviewRef.current?.focus({preventScroll:true});
+  reviewRef.current?.scrollIntoView({block:'start',behavior:'smooth'});
+ },[selectedReview]);
  const qc=useQueryClient();
  const retryDossier=useServerFn(retrySpyIntelligence);
  const finishDossier=async(operationId:string)=>{
@@ -90,8 +114,9 @@ export function SpyNarratorOperationsCenter(){
  });
  const operations=query.data??[];
  const counters=spyOperationCounters(operations);
- const effectiveState=state==='attention'?'review':state;
- const pending=filterSpyOperations(operations,search,effectiveState);
+ const pending=state==='attention'
+  ?filterSpyOperations(spyNarratorActionQueue(operations),search,'attention')
+  :filterSpyOperations(operations,search,state);
  const pageSize=15,totalPages=Math.max(1,Math.ceil(pending.length/pageSize));
  const safePage=Math.min(totalPages,Math.max(1,page));
  const visible=pending.slice((safePage-1)*pageSize,safePage*pageSize);
@@ -101,7 +126,7 @@ export function SpyNarratorOperationsCenter(){
    <div>
     <p className="campaign-eyebrow">ESPIONAGEM · NARRADOR</p>
     <h3><ClipboardList size={18} aria-hidden="true"/> Central de operações</h3>
-    <p className="house-caption">Acompanhe todas as missões sem abrir cada Casa.</p>
+    <p className="house-caption">Julgue missões e confirme descobertas no mesmo lugar.</p>
    </div>
    <Button type="button" variant="outline" disabled={query.isFetching}
     onClick={()=>void query.refetch()}><RefreshCw size={16}/>
@@ -113,7 +138,7 @@ export function SpyNarratorOperationsCenter(){
     Tentar novamente</Button></p>}
   {query.data&&<>
    <div className="spy-operations-metrics" aria-label="Resumo operacional">
-    <div><strong>{counters.review}</strong><small>Aguardam Narrador</small></div>
+    <div><strong>{counters.review}</strong><small>Aguardam julgamento</small></div>
     <div><strong>{counters.active}</strong><small>Em andamento</small></div>
     <div><strong>{counters.dossier}</strong><small>Dossiês pendentes</small></div>
     <div><strong>{counters.complete}</strong><small>Concluídas</small></div>
@@ -125,7 +150,8 @@ export function SpyNarratorOperationsCenter(){
     </label>
     <label>Situação
      <select value={state} onChange={e=>{setState(e.target.value);setPage(1);}}>
-      <option value="attention">Aguardando Narrador</option>
+      <option value="attention">Ações pendentes ({counters.review+counters.dossier})</option>
+      <option value="review">Aguardando julgamento</option>
       <option value="active">Em andamento</option>
       <option value="dossier">Dossiês pendentes</option>
       <option value="completed">Concluídas</option>
@@ -133,46 +159,15 @@ export function SpyNarratorOperationsCenter(){
      </select>
     </label>
    </div>
-   <p className="house-caption" role="status">{pending.length} operações neste filtro.</p>
-   {visible.length?<div className="spy-operations-list">
-    {visible.map(o=><article className="spy-operation-row" key={o.operationId}>
-     <div>
-      <strong>{o.ownerHouseName} → {o.targetHouseName}</strong>
-      <small>{o.agentName} · {objectiveLabels[o.objective]}</small>
-     </div>
-     <div>
-      <strong>{statusLabels[o.status]??o.status}</strong>
-      <small>{o.status==='pending_narrator_review'
-       ?'Pronta para homologação na ficha da Casa investigadora':
-       spyNeedsDossierAttention(o)?'Verifique a fila de Dossiês':
-       'Chegada '+dateLabel(o.arrivalKey)+' · fim '+dateLabel(o.investigationEndKey)}</small>
-     </div>
-     {o.status==='pending_narrator_review'&&<Button type="button"
-      variant={selectedReview?.operationId===o.operationId?'default':'outline'}
-      className="spy-operation-resolve-button"
-      aria-pressed={selectedReview?.operationId===o.operationId}
-      onClick={()=>{
-       setRecentResolution('');
-       setSelectedReview({operationId:o.operationId,ownerHouseId:o.ownerHouseId});
-      }}>Resolver agora</Button>}
-     {spyNeedsDossierAttention(o)&&<Button type="button"
-      variant="outline" className="spy-operation-resolve-button"
-      disabled={Boolean(retryingDossier)}
-      onClick={()=>void finishDossier(o.operationId)}>
-      {retryingDossier===o.operationId?'Verificando…':'Concluir dossiê'}
-     </Button>}
-    </article>)}
-   </div>:<p className="house-caption">Nenhuma missão neste filtro.</p>}
-   {totalPages>1&&<div className="spy-operations-pages">
-    <Button type="button" variant="outline" disabled={safePage===1}
-     onClick={()=>setPage(n=>n-1)}>Anterior</Button>
-    <span>Página {safePage} de {totalPages}</span>
-    <Button type="button" variant="outline" disabled={safePage===totalPages}
-     onClick={()=>setPage(n=>n+1)}>Próxima</Button>
-   </div>}
+   <p className="house-caption" role="status">{pending.length}
+    {' '}operação(ões) neste filtro.</p>
+   {state==='attention'&&counters.review+counters.dossier===0&&<p role="status"
+    className="spy-operations-idle">Tudo em dia: nenhuma missão ou descoberta
+    aguardando o Narrador.</p>}
    {recentResolution&&<p role="status" className="spy-operations-feedback">
     {recentResolution}</p>}
    {selectedReview&&<section className="spy-operation-inline-review"
+    ref={reviewRef} tabIndex={-1}
     aria-label="Resolver missão selecionada">
     <header className="spy-operation-inline-header">
      <strong>Homologar missão selecionada</strong>
@@ -204,6 +199,43 @@ export function SpyNarratorOperationsCenter(){
      o.id===selectedReview.operationId&&o.status==='pending_narrator_review')&&
      <p role="status">Esta missão não está mais aguardando resolução.</p>}
    </section>}
+   {visible.length?<div className="spy-operations-list">
+    {visible.map(o=><article className="spy-operation-row" key={o.operationId}>
+     <div>
+      <strong>{o.ownerHouseName} → {o.targetHouseName}</strong>
+      <small>{o.agentName} · {objectiveLabels[o.objective]}</small>
+     </div>
+     <div>
+      <strong>{statusLabels[o.status]??o.status}</strong>
+      <small>{o.status==='pending_narrator_review'
+       ?'Resultado aguardando a sua decisão':
+       spyNeedsDossierAttention(o)?'Resultado salvo; descobertas pendentes':
+       'Chegada '+dateLabel(o.arrivalKey)+' · fim '+dateLabel(o.investigationEndKey)}</small>
+     </div>
+     {o.status==='pending_narrator_review'&&<Button type="button"
+      variant={selectedReview?.operationId===o.operationId?'default':'outline'}
+      className="spy-operation-resolve-button"
+      aria-pressed={selectedReview?.operationId===o.operationId}
+      onClick={()=>{
+       setRecentResolution('');
+       setSelectedReview({operationId:o.operationId,ownerHouseId:o.ownerHouseId});
+      }}>Resolver agora</Button>}
+     {spyNeedsDossierAttention(o)&&<Button type="button"
+      variant="outline" className="spy-operation-resolve-button"
+      disabled={Boolean(retryingDossier)}
+      onClick={()=>void finishDossier(o.operationId)}>
+      {retryingDossier===o.operationId?'Verificando…':'Concluir dossiê'}
+     </Button>}
+    </article>)}
+   </div>:<p className="house-caption">Nenhuma missão neste filtro.</p>}
+   {totalPages>1&&<div className="spy-operations-pages">
+    <Button type="button" variant="outline" disabled={safePage===1}
+     onClick={()=>setPage(n=>n-1)}>Anterior</Button>
+    <span>Página {safePage} de {totalPages}</span>
+    <Button type="button" variant="outline" disabled={safePage===totalPages}
+     onClick={()=>setPage(n=>n+1)}>Próxima</Button>
+   </div>}
+
    <small className="house-caption">Resolva missões e confirme descobertas
     nesta central. Falhas de integridade exigem revisão na fila de dossiês.</small>
   </>}

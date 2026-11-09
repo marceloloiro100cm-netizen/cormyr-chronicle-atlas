@@ -12,10 +12,18 @@ describe('Dossiês · lotes 13–15 · integração e defesa em profundidade',()
   expect(ui).toContain('onRefresh={()=>{void query.refetch();}}');
   expect(client).toContain("parsed.data.some(d=>d.ownerHouseId!==houseId)");
  });
- it('não renderiza relatório administrativo cacheado se a consulta falhou',()=>{
+ it('não renderiza dossiês cacheados em erro, mas mantém a Central independente',()=>{
   const ui=read('src/components/house/espionage/spy-dossier-panel.tsx');
-  expect(ui).toContain('if(query.isError)return <section');
-  expect(ui).toContain('O acesso pode ter sido revogado.');
+  const marker='if(query.isError)return <>';
+  const start=ui.indexOf(marker);
+  const end=ui.indexOf(' </>;\n return <>',start+marker.length);
+  expect(start).toBeGreaterThan(-1);
+  expect(end).toBeGreaterThan(start);
+  const failure=ui.slice(start,end);
+  expect(failure).toContain('<SpyNarratorOperationsCenter/>');
+  expect(failure).toContain('<SpyNarratorIncidentHistory/>');
+  expect(failure).toContain('Tentar novamente');
+  expect(failure).not.toContain('<DossierView');
   expect(ui).toContain('enabled:!!active&&!query.isError');
  });
  it('rejeita operações que dependem de fonte quando a consulta falha',()=>{

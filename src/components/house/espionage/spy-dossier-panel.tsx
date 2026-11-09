@@ -239,12 +239,19 @@ export function SpyNarratorDossiers(){
   }catch(e){setMessage(e instanceof Error?e.message:'Falha ao reprocessar a missão.');}
   finally{setBusy(false);}
  };
- if(query.isError)return <section className="house-panel spy-dossier-panel"
-  aria-label="Dossiês de Espionagem do Narrador">
-  <p role="alert">Não foi possível consultar os dossiês. O acesso pode ter sido revogado.</p>
-  <Button type="button" variant="outline" onClick={()=>void query.refetch()}>
-   Tentar novamente</Button>
- </section>;
+ // A Central e o arquivo de incidentes usam RPCs privadas independentes.
+ // Uma indisponibilidade de dossiês NÃO deve impedir o Narrador de julgar missões.
+ if(query.isError)return <>
+  <SpyNarratorOperationsCenter/>
+  <SpyNarratorIncidentHistory/>
+  <section className="house-panel spy-dossier-panel"
+   aria-label="Dossiês de Espionagem do Narrador">
+   <p role="alert">Não foi possível consultar os dossiês. A Central de Operações
+    continua disponível acima. Confira a sessão ou tente novamente.</p>
+   <Button type="button" variant="outline" onClick={()=>void query.refetch()}>
+    Tentar novamente</Button>
+  </section>
+ </>;
  return <>
  <SpyNarratorOperationsCenter/>
  <SpyNarratorIncidentHistory/>
@@ -292,13 +299,25 @@ export function SpyNarratorDossiers(){
   </div>
   <div className="spy-dossier-admin-table-wrap"><table className="spy-dossier-admin-table">
    <thead><tr><th>Investigadora</th><th>Casa-alvo</th>
-    <th>Recursos</th><th>Exército</th><th>Posses</th><th>Ação</th></tr></thead>
-   <tbody>{paged.items.map(d=><tr key={d.id}>
-    <td>{d.ownerHouseName}</td><td>{d.targetHouseName}</td>
-    <td>{count(d,'house_resources')}/7</td><td>{count(d,'army')}</td><td>{count(d,'possessions')}</td>
-    <td><Button size="sm" variant={active?.id===d.id?'default':'outline'}
-     onClick={()=>setSelected(d.id)}>Consultar</Button></td>
-   </tr>)}</tbody>
+    <th>Recursos</th><th>Exército</th><th>Posses</th>
+    <th>Última confirmação</th><th>Ação</th></tr></thead>
+   <tbody>{paged.items.map(d=>{
+    const last=spyDossierLastVerified(d);
+    return <tr key={d.id}>
+     <td data-label="Investigadora">{d.ownerHouseName}</td>
+     <td data-label="Casa-alvo">{d.targetHouseName}</td>
+     <td data-label="Recursos">{count(d,'house_resources')}/7</td>
+     <td data-label="Exército">{count(d,'army')}</td>
+     <td data-label="Posses">{count(d,'possessions')}</td>
+     <td data-label="Confirmação">{last?safeDate(last):'Sem confirmação'}
+      {last&&<small className="spy-dossier-age">
+       {spyIntelligenceFreshness(last,officialDate).label}</small>}
+     </td>
+     <td data-label="Ação"><Button type="button" size="sm"
+      variant={active?.id===d.id?'default':'outline'}
+      onClick={()=>setSelected(d.id)}>Consultar</Button></td>
+    </tr>;
+   })}</tbody>
   </table></div>
   {paged.totalPages>1&&<div className="spy-dossier-pages">
    <Button type="button" variant="outline" disabled={paged.page===1}

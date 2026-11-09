@@ -87,3 +87,29 @@
  body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-briefing>div{break-inside:avoid;color:#111!important}
  body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-unknown{color:#555!important}
 }
+
+
+/* R5 Lote 3: lista do Narrador vira cartões legíveis em celulares. */
+.spy-dossier-age{display:block;font-size:11px;
+ color:var(--muted-foreground);line-height:1.4}
+.spy-dossier-admin-table button{min-height:44px}
+.spy-dossier-admin-table-wrap{min-width:0}
+@media(max-width:720px){
+ .spy-dossier-admin-table,
+ .spy-dossier-admin-table tbody,
+ .spy-dossier-admin-table tr,
+ .spy-dossier-admin-table td{display:block;width:100%;box-sizing:border-box}
+ .spy-dossier-admin-table thead{position:absolute;width:1px;height:1px;
+  padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+ .spy-dossier-admin-table tbody{display:grid;gap:12px}
+ .spy-dossier-admin-table tr{border:1px solid var(--border);border-radius:10px;
+  padding:10px;overflow-wrap:anywhere}
+ .spy-dossier-admin-table td{border:0;padding:6px 2px;display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:10px;
+  min-height:34px;align-items:center;font-size:13px}
+ .spy-dossier-admin-table td:before{content:attr(data-label);font-weight:650;
+  color:var(--muted-foreground);font-size:12px}
+ .spy-dossier-admin-table td:last-child{display:block}
+ .spy-dossier-admin-table td:last-child:before{display:none}
+ .spy-dossier-admin-table td:last-child button{width:100%;min-height:48px}
+}
