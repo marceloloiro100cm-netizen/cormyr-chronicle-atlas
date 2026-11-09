@@ -134,6 +134,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
        disabled={busy} onChange={e=>{
         requestKey.current=null;setError('');setSourceHoldingId(e.target.value);
        }}>
+       {sourceHoldingId&&!source&&<option value="">Escolha outra Rede disponível</option>}
        {slots.map(slot=><option key={slot.sourceHoldingId} value={slot.sourceHoldingId}>
         {slot.name} · {slot.vacancies} {slot.vacancies===1?'vaga livre':'vagas livres'}
        </option>)}
