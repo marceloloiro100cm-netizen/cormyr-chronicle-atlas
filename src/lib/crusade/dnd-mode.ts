@@ -1,12 +1,16 @@
 /** Regras exclusivas do simulador D&D, sem alterar os outros presets CRZ. */
 export type DndSimulationProfile='dnd-v3';
-/** Escala da regra da casa: cada quadrado representa dez pés.
- * Diagonal custa 1,5 células; ataque adjacente = célula vizinha.
+/** Regra Cormyr (métrica): cada quadrado mede 3 m.
+ * Diagonal custa 1,5 quadrado; ataque adjacente = célula vizinha.
  * Ataque à distância não tem alcance numérico: exige linha de visão.
  */
+export const DND_METRES_PER_SQUARE=3 as const;
+export const DND_DIAGONAL_SQUARE_COST=1.5 as const;
+/** @deprecated Campo histórico do ruleset (`movement.feetPerHex`), mantido só
+ * para hashes/replays. Equivale a 3 m na escala de mesa. Não usar em regras novas. */
 export const DND_FEET_PER_SQUARE=10 as const;
-/** Escala da interface (aproximada), sem substituir a escala histórica do motor. */
-export const DND_METRES_PER_SQUARE_DISPLAY=3 as const;
+/** @deprecated Use DND_METRES_PER_SQUARE. */
+export const DND_METRES_PER_SQUARE_DISPLAY=DND_METRES_PER_SQUARE;
 export const isDndV3=(state:Readonly<{rulesetId:string;simulationProfile?:string|undefined}>):boolean=>
  state.rulesetId==='CRZ-5E'&&state.simulationProfile==='dnd-v3';
 export const isDndBattle=(state:Readonly<{id:string;rulesetId:string;

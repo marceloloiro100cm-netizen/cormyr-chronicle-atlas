@@ -68,10 +68,21 @@ export type CrzPreparedArmy=Readonly<{
  stacks:readonly CrzPreparedStack[];
  totalValue:number;warnings:readonly string[];
 }>;
-export function crzRangeHex(ft:number):number{
- crzSafe(ft,'range ft');
- if(ft<=0)throw new Error('Alcance em pés inválido.');
- return ft<=30?2:ft<=80?3:ft<=150?4:ft<=300?5:6;
+/** Faixas de alcance em metros (escala de mesa): 9/24/45/90 m. */
+export function crzRangeHexFromDecimetres(dm:number):number{
+ crzSafe(dm,'range dm');
+ if(dm<=0)throw new Error('Alcance inválido.');
+ return dm<=90?2:dm<=240?3:dm<=450?4:dm<=900?5:6;
+}
+export const crzRangeHexFromMetres=(m:number):number=>{
+ if(!Number.isFinite(m)||m<=0)throw new Error('Alcance inválido.');
+ return crzRangeHexFromDecimetres(Math.round(m*10));
+};
+/** Adaptador legado: alcance da ficha (pés) → faixa métrica. Resultado idêntico ao histórico. */
+export function crzRangeHex(legacyFt:number):number{
+ crzSafe(legacyFt,'range');
+ if(legacyFt<=0)throw new Error('Alcance inválido.');
+ return crzRangeHexFromDecimetres(tableFeetToDecimetres(legacyFt));
 }
 function diceAverageX100(raw:string):number{
  const match=/^([1-9][0-9]{0,2})d([1-9][0-9]{0,3})$/.exec(raw);
@@ -151,7 +162,7 @@ export function crzPrepareStack(args:{
  const movementFt=Math.max(template.speedFt.walk,
   template.flags.flying?(template.speedFt.fly??0):0);
  const movementHex=template.tags.includes('immobile')&&movementFt===0?0:
-  crzClamp(Math.round(movementFt/ruleset.movement.feetPerHex),
+  crzClamp(Math.round(tableFeetToDecimetres(movementFt)/crzDecimetresPerCell(ruleset)),
    1,ruleset.movement.maxBudget);
  const atkMod=train.attack+(mods.attack??0)+leader.attackBonus;
  const acBase=template.ac+train.ac+(mods.ac??0);

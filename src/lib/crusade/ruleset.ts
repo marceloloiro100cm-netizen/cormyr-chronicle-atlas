@@ -149,3 +149,12 @@ export function crzRequireKnownRuleset(id:CrzPresetId,hash:string):CrzRuleset{
  if(!grid)throw new Error('E_SETUP_RULESET: rulesetHash desconhecido.');
  return crzPreset(id,grid);
 }
+
+/** Escala métrica da célula. `feetPerHex` é o campo histórico persistido no
+ * hash canônico e nos replays; a regra nova lê sempre metros via este adaptador
+ * (escala de mesa: 10 → 3 m). Decímetros inteiros evitam ponto flutuante. */
+export function crzDecimetresPerCell(rules:Readonly<{movement:Readonly<{feetPerHex:number}>}>):number{
+ return rules.movement.feetPerHex*3;
+}
+export const crzMetresPerCell=(rules:Readonly<{movement:Readonly<{feetPerHex:number}>}>):number=>
+ crzDecimetresPerCell(rules)/10;
