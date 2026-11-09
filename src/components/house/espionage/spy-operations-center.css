@@ -69,3 +69,16 @@
  .spy-operation-inline-header{flex-wrap:wrap}
  .spy-operation-inline-header button{min-height:44px}
 }
+
+/* R5 Lote 3 — ações urgentes antes de detalhes e filtros. */
+.spy-operations-quick-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.spy-operations-quick-actions button{min-height:44px;white-space:normal}
+.spy-operation-row[data-priority=urgent]{border-color:var(--campaign-gold,#a98b54)}
+.spy-operation-row button:focus-visible,.spy-operations-quick-actions button:focus-visible{
+ outline:3px solid var(--primary);outline-offset:2px
+}
+@media(max-width:720px){
+ .spy-operations-quick-actions{display:grid;grid-template-columns:minmax(0,1fr)}
+ .spy-operations-quick-actions button{min-width:0;width:100%;min-height:48px}
+ .spy-operation-row button{min-height:48px}
+}
