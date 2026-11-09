@@ -105,14 +105,14 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   []:listGotArchives(window.localStorage,archiveScope));
  const [archiveLabel,setArchiveLabel]=useState('');
  const [selectedArchive,setSelectedArchive]=useState('');
- const terrainLookup=useMemo(()=>new Map(tiles.map(t=>
-  [t.x+':'+t.y,t.terrain] as const)),[tiles]);
  const [weather,setWeather]=useState<WarWeather>('clear');
  const [visibility,setVisibility]=useState<WarVisibility>('clear');
  const [advanced,setAdvanced]=useState(false);
  const [strictSightline,setStrictSightline]=useState(false);
  const [hiddenModelSide,setHiddenModelSide]=useState<'none'|WarSide>('none');
  const [tiles,setTiles]=useState<WarTerrainTile[]>([]);
+ const terrainLookup=useMemo(()=>new Map(tiles.map(t=>
+  [t.x+':'+t.y,t.terrain] as const)),[tiles]);
  const [mapSize,setMapSize]=useState({width:12,height:7});
  const [mapImportStatus,setMapImportStatus]=useState('');
  const [terrainPaint,setTerrainPaint]=useState<WarTerrainId>('plain');
