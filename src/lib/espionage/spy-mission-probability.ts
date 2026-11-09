@@ -49,3 +49,37 @@ export function spyMissionOdds(houseDefense:number,dice:number=SPY_BASELINE_TEST
   provisional:true as const,
  };
 }
+
+/** UX-only risk language. Never alters the approved Law/DC or die roll rules.
+ * `successPercent` is rounded to 0.1, so a displayed zero is not enough
+ * to distinguish impossible from merely extremely unlikely.
+ */
+export type SpyRiskTier='impossible'|'extreme'|'high'|'moderate'|'low';
+export function spyMissionRiskAssessment(dice:number,difficulty:number){
+ const percent=spyDiceSuccessPercent(dice,difficulty);
+ if(difficulty>dice*6)return {
+  tier:'impossible' as SpyRiskTier,
+  label:'Inalcançável sem modificadores',
+  advice:'Com os dados atuais, este agente não alcança a dificuldade. Considere outro alvo ou um agente mais experiente.',
+ };
+ if(percent<10)return {
+  tier:'extreme' as SpyRiskTier,
+  label:'Risco muito alto',
+  advice:'A chance é muito pequena. Um agente mais experiente aumenta a possibilidade de sucesso.',
+ };
+ if(percent<35)return {
+  tier:'high' as SpyRiskTier,
+  label:'Risco alto',
+  advice:'A missão é arriscada. Avalie usar um agente com maior Astúcia.',
+ };
+ if(percent<70)return {
+  tier:'moderate' as SpyRiskTier,
+  label:'Risco moderado',
+  advice:'Há chances de sucesso e de falha. Confira o objetivo antes de enviar.',
+ };
+ return {
+  tier:'low' as SpyRiskTier,
+  label:'Risco reduzido',
+  advice:'A chance estimada é favorável, mas não garante sucesso nem evita descoberta.',
+ };
+}
