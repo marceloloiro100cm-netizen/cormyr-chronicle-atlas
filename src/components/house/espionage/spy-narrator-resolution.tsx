@@ -6,6 +6,7 @@ import {Button} from '@/components/ui/button';
 import {resolveSpyAgentMission} from '@/lib/espionage/spy-agent-actions.functions';
 import type {SpyManagement} from '@/lib/espionage/spy-management.functions';
 import {SPY_INTELLIGENCE_OBJECTIVES} from '@/lib/espionage/spy-intelligence-rules';
+import './spy-narrator-resolution.css';
 
 type Op=SpyManagement['operations'][number];
 type Agent=SpyManagement['agents'][number];
@@ -43,6 +44,7 @@ function NarratorDecision({houseId,operation,agent}:{
  const [error,setError]=useState('');
  // Reusar a mesma chave após falha de rede evita dupla homologação.
  const requestKey=useRef<string|null>(null);
+ const changed=()=>{requestKey.current=null;setError('');};
  const submit=async(e:React.FormEvent)=>{
   e.preventDefault();if(busy)return;
   setBusy(true);setError('');setOutcome('');setDossierWarning('');
@@ -83,48 +85,55 @@ function NarratorDecision({houseId,operation,agent}:{
   }catch{setError('Não foi possível confirmar a resolução. Recarregue a missão e tente novamente com a mesma solicitação.');}
   finally{setBusy(false);}
  };
- return <form className="house-ledger" onSubmit={e=>void submit(e)}
-  style={{padding:12,display:'grid',gap:9}}>
-  <strong>{agent.codename} · {agent.rank} · Astúcia {agent.cunning} ({agent.cunning} dados de seis faces)</strong>
+ return <form className="house-ledger spy-narrator-form" onSubmit={e=>void submit(e)}>
+  <strong>{agent.codename} · {agent.rank} · Astúcia {agent.cunning}D6</strong>
   <small>Objetivo: {SPY_INTELLIGENCE_OBJECTIVES.find(item=>item.id===operation.objective)?.label
    ??missionLabels[operation.missionKind]??'Missão de espionagem'} · Alvo: {operation.targetId}</small>
-  <div style={{display:'flex',flexWrap:'wrap',gap:12}}>
-   <label>Resultado dos dados
-    <input type="number" min={agent.cunning} max={agent.cunning*6}
-     value={roll} onChange={e=>setRoll(Number(e.target.value))}/>
+  <div className="spy-narrator-main-fields">
+   <label>Resultado dos dados (D6)
+    <input type="number" inputMode="numeric" min={agent.cunning} max={agent.cunning*6}
+     value={roll} onChange={e=>{changed();setRoll(Number(e.target.value));}}/>
    </label>
-   <label>Bônus ou penalidade
-    <input type="number" min={-9} max={9} value={modifier}
-     onChange={e=>setModifier(Number(e.target.value))}/>
-   </label>
-  </div>
-  <label style={{display:'flex',gap:8}}>
-   <input type="checkbox" checked={discovered} onChange={e=>setDiscovered(e.target.checked)}/>
-   Agente foi descoberto
-  </label>
-  <p className="house-caption">Para casas sem ficha operacional, confirme a presença de
-   guardas e prisão. Esses dados são necessários para definir fuga, prisão ou morte.
-   Em casas com ficha, as estruturas oficiais prevalecem.</p>
-  <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-   <label>Guardas da Casa
-    <select value={guard} onChange={e=>setGuard(e.target.value as typeof guard)}>
-     <option value="unknown">A confirmar</option><option value="yes">Sim</option>
-     <option value="no">Não</option>
-    </select>
-   </label>
-   <label>Cadeia da Casa
-    <select value={prison} onChange={e=>setPrison(e.target.value as typeof prison)}>
-     <option value="unknown">A confirmar</option><option value="yes">Sim</option>
-     <option value="no">Não</option>
-    </select>
+   <label>Bônus / penalidade
+    <input type="number" inputMode="numeric" min={-9} max={9} value={modifier}
+     onChange={e=>{changed();setModifier(Number(e.target.value));}}/>
    </label>
   </div>
-  <label>Descrição do resultado e circunstâncias
-   <textarea rows={2} maxLength={1200} value={reason}
-    onChange={e=>setReason(e.target.value)} placeholder="Detalhes da missão"/>
+  <label className="spy-narrator-check">
+   <input type="checkbox" checked={discovered}
+    onChange={e=>{changed();setDiscovered(e.target.checked);}}/>
+   Espião descoberto?
   </label>
-  <Button type="submit" disabled={busy||roll<agent.cunning||roll>agent.cunning*6}>
-   <Gavel size={16}/>{busy?'Resolvendo…':'Homologar resultado e atualizar agente'}
+  <details className="spy-narrator-advanced">
+   <summary>Proteções do alvo e observações (quando necessário)</summary>
+   <p className="house-caption">Preencha guardas e cadeia apenas quando a Casa-alvo
+    não possuir ficha operacional. Nas demais Casas, o servidor usa as estruturas oficiais.</p>
+   <div className="spy-narrator-main-fields">
+    <label>Guardas
+     <select value={guard} onChange={e=>{changed();setGuard(e.target.value as typeof guard);}}>
+      <option value="unknown">A confirmar</option><option value="yes">Sim</option>
+      <option value="no">Não</option>
+     </select>
+    </label>
+    <label>Cadeia
+     <select value={prison} onChange={e=>{changed();setPrison(e.target.value as typeof prison);}}>
+      <option value="unknown">A confirmar</option><option value="yes">Sim</option>
+      <option value="no">Não</option>
+     </select>
+    </label>
+   </div>
+   <label>Observações opcionais
+    <textarea rows={2} maxLength={1200} value={reason}
+     onChange={e=>{changed();setReason(e.target.value);}}
+     placeholder="Circunstâncias da missão"/>
+   </label>
+  </details>
+  <small className="house-caption">O servidor calcula a dificuldade, a consequência
+   e as descobertas. A confirmação altera a campanha.</small>
+  <Button type="submit" disabled={busy||Boolean(outcome)||!Number.isInteger(roll)||
+   roll<agent.cunning||roll>agent.cunning*6||!Number.isInteger(modifier)||
+   modifier< -9||modifier>9}>
+   <Gavel size={16}/>{busy?'Resolvendo…':'Resolver missão'}
   </Button>
   {outcome&&<p role="status">{outcome}</p>}
   {dossierWarning&&<p role="alert" className="house-warning">{dossierWarning}</p>}
