@@ -25,7 +25,7 @@ type Status='complete'|'waiting_catalog'|'missing_award'|'no_success_award';
 function server(opts:{
  role?:boolean;receiptUpgrades?:string[];receiptPortrait?:string|null;
  operationOutcome?:Outcome|null;alreadyApplied?:boolean;
- intelligence?:Status;rpcError?:string;
+ intelligence?:Status;finalizeStatus?:'complete'|'waiting_catalog';rpcError?:string;
 }={}){
  const calls:string[]=[];
  const db={
@@ -58,7 +58,7 @@ function server(opts:{
      targetHouseId:'target',dateKey:'1522-01-11',capacity:3,
     }],error:null};
    if(name==='spy_intelligence_finalize')
-    return {data:{status:'complete',revealed:3,refreshed:0},error:null};
+    return {data:{status:opts.finalizeStatus??'complete',revealed:3,refreshed:0},error:null};
    return {data:null,error:{message:'unexpected '+name}};
   },
  };
@@ -122,8 +122,10 @@ describe('R5 Lote 1: função real, contrato de banco e ciclo de premiação',()
   expect(calls.filter(x=>x==='spy_resolve_agent_mission')).toHaveLength(1);
  });
  it('se o prêmio ainda aguarda catálogo, não anuncia dossiê concluído',async()=>{
-  const result=await resolveWith(server({intelligence:'waiting_catalog'}).db);
-  expect(result.intelligenceStatus).toBe('complete');
+  const result=await resolveWith(server({
+   intelligence:'waiting_catalog',finalizeStatus:'waiting_catalog',
+  }).db);
+  expect(result.intelligenceStatus).toBe('waiting_catalog');
  });
  it('ausência anormal de prêmio fica como retry_required, não como sucesso total',async()=>{
   const result=await resolveWith(server({intelligence:'missing_award'}).db);
