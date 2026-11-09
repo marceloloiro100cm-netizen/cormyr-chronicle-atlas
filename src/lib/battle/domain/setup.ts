@@ -90,7 +90,7 @@ export function validateBattleDraft(draft:unknown):BattleDraft {
   const issues=validateBattleMap(result.map);
   if(issues.length)throw new Error('Mapa inválido: '+issues.join('; '));
   if(result.objective?.kind==='capture'){
-   const target=result.map.tiles.find(t=>hexKey(t)===hexKey(result.objective!.kind==='capture'?result.objective.position:{q:-1,r:-1}));
+   const target=result.map.tiles.find(t=>hexKey(t)===hexKey(result.objective.position));
    if(!target||target.terrain==='rock')throw new Error('Objetivo tático fora de célula acessível.');
    if(result.objective.deadlineRound<result.objective.holdRounds)
     throw new Error('Prazo do objetivo insuficiente.');
