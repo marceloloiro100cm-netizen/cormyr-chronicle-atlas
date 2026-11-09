@@ -64,7 +64,8 @@ describe('Espionagem · criação com foto exclusiva, melhorias e campos ocultos
  it('formulário exige nome, vagas, foto se há catálogo e oferece as duas compras',()=>{
   const s=file('src/components/house/espionage/spy-create-agent-dialog.tsx');
   expect(s).toContain('Criar espião');
-  expect(s).toContain('required autoFocus minLength={2} maxLength={80}');
+  expect(s).toMatch(/<input required autoFocus\s+disabled=\{busy\}\s+minLength=\{2\}\s+maxLength=\{80\}/);
+  expect(s).toContain("if(busy)return;requestKey.current=null;setPortraitId(id);");
   expect(s).toContain('Object.keys(SPY_AGENT_UPGRADES)');
   expect(s).toContain('SPY_AGENT_UPGRADES');
   expect(s).toContain('portraits.length===0||Boolean(portraitId');
