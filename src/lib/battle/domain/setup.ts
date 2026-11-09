@@ -89,10 +89,11 @@ export function validateBattleDraft(draft:unknown):BattleDraft {
   const result=battleDraftSchema.parse(draft);
   const issues=validateBattleMap(result.map);
   if(issues.length)throw new Error('Mapa inválido: '+issues.join('; '));
-  if(result.objective?.kind==='capture'){
-   const target=result.map.tiles.find(t=>hexKey(t)===hexKey(result.objective.position));
+  const objective=result.objective;
+  if(objective?.kind==='capture'){
+   const target=result.map.tiles.find(t=>hexKey(t)===hexKey(objective.position));
    if(!target||target.terrain==='rock')throw new Error('Objetivo tático fora de célula acessível.');
-   if(result.objective.deadlineRound<result.objective.holdRounds)
+   if(objective.deadlineRound<objective.holdRounds)
     throw new Error('Prazo do objetivo insuficiente.');
   }
   const ids=new Set<string>(),positions=new Set<string>();
@@ -142,6 +143,8 @@ export function serializeBattleDraft(draft:BattleDraftInput):string {
 export function makeBattleSetup(input:{id:string;name:string;seed:string;map:BattleMap;controls:Record<Side,Control>;stacks:BattleStack[];objective?:TacticalObjective}):BattleState {
   const draft=validateBattleDraft({...input,schemaVersion:2,rulesVersion:'PTE-2.0'});
   const stacks:BattleStack[]=draft.stacks.map(s=>{const {profileDecisionReason,...rest}=s as typeof s & {profileDecisionReason?:string};return {...rest,...(typeof profileDecisionReason==='string'?{profileDecisionReason}:{})};});
-  return {...draft,stacks,phase:'ready',rngAlgorithm:'none-PTE-2.0',round:0,
+  const {objective,...validated}=draft;
+  return {...validated,...(objective?{objective}:{}),stacks,
+    phase:'ready',rngAlgorithm:'none-PTE-2.0',round:0,
     activationQueue:[],waitingQueue:[],activeUnitId:null,noProgressRounds:0,events:[],winner:null};
 }
