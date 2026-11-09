@@ -239,12 +239,19 @@ export function SpyNarratorDossiers(){
   }catch(e){setMessage(e instanceof Error?e.message:'Falha ao reprocessar a missão.');}
   finally{setBusy(false);}
  };
- if(query.isError)return <section className="house-panel spy-dossier-panel"
-  aria-label="Dossiês de Espionagem do Narrador">
-  <p role="alert">Não foi possível consultar os dossiês. O acesso pode ter sido revogado.</p>
-  <Button type="button" variant="outline" onClick={()=>void query.refetch()}>
-   Tentar novamente</Button>
- </section>;
+ // A Central e o arquivo de incidentes usam RPCs privadas independentes.
+ // Uma indisponibilidade de dossiês NÃO deve impedir o Narrador de julgar missões.
+ if(query.isError)return <>
+  <SpyNarratorOperationsCenter/>
+  <SpyNarratorIncidentHistory/>
+  <section className="house-panel spy-dossier-panel"
+   aria-label="Dossiês de Espionagem do Narrador">
+   <p role="alert">Não foi possível consultar os dossiês. A Central de Operações
+    continua disponível acima. Confira a sessão ou tente novamente.</p>
+   <Button type="button" variant="outline" onClick={()=>void query.refetch()}>
+    Tentar novamente</Button>
+  </section>
+ </>;
  return <>
  <SpyNarratorOperationsCenter/>
  <SpyNarratorIncidentHistory/>
