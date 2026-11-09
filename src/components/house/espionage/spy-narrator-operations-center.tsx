@@ -85,6 +85,8 @@ export function SpyNarratorOperationsCenter(){
  const query=useQuery({
   queryKey:['spy-narrator-operations'],
   queryFn:readSpyNarratorOperationsBrowser,retry:false,staleTime:15_000,
+  refetchInterval:30_000,refetchIntervalInBackground:false,
+  refetchOnWindowFocus:'always',refetchOnReconnect:'always',
  });
  const operations=query.data??[];
  const counters=spyOperationCounters(operations);
