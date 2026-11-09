@@ -1,0 +1,22 @@
+.battle-module .battle-turn-cue{
+ display:grid;gap:.45rem;margin:.6rem 0;padding:.85rem 1rem;
+ background:rgba(20,35,35,.94);border:1px solid #9b845d;
+ border-inline-start:4px solid #d2b477;border-radius:10px;
+ color:#f9f0db;min-width:0;
+}
+.battle-module .battle-turn-cue-header{
+ display:flex;justify-content:space-between;align-items:center;
+ flex-wrap:wrap;gap:.45rem;font-size:clamp(.9rem,1.15vw,1.1rem);
+}
+.battle-module .battle-turn-cue-header span{color:#e7ddc5}
+.battle-module .battle-turn-cue-body{
+ display:flex;align-items:center;flex-wrap:wrap;gap:.7rem;line-height:1.5;
+}
+.battle-module .battle-turn-cue-body p{margin:0;flex:1 1 240px;font-size:.92rem}
+.battle-module .battle-turn-cue-count{font-size:.83rem;color:#e5c996}
+.battle-module .battle-turn-cue button{min-height:42px;white-space:normal}
+@media(max-width:700px){
+ .battle-module .battle-turn-cue{padding:.7rem}
+ .battle-module .battle-turn-cue-body{align-items:stretch}
+ .battle-module .battle-turn-cue-body p{flex-basis:100%}
+}

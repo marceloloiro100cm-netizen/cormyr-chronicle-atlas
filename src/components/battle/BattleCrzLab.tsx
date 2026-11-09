@@ -5,6 +5,7 @@ import {SQUARE_TERRAIN_PRESENTATION,SQUARE_SIDE_PRESENTATION} from '@/lib/battle
 import {BattleSquareLegend} from './BattleSquareLegend';
 import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleExpandedView} from './BattleExpandedView';
+import {BattleTurnCue} from './BattleTurnCue';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
 import {crzHexKey,crzGridToOffset,crzScenario,crzFootprintCells,
  type CrzHex,type CrzSide,type CrzMap}
@@ -248,7 +249,9 @@ const spellCost:Partial<Record<CrzSpellId,number>>={
  cure_wounds:2,firebolt:2,fireball:6,shield_wall_formation:2,
 };
 
-export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'dnd'}){
+export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
+ onBack?:()=>void;mode?:'crz'|'dnd';showSavedOnOpen?:boolean;
+}){
  const dndMode=mode==='dnd';
  const [options,setOptions]=useState<CrzTrainingOptions>({...CRZ_TRAINING_DEFAULTS,
   grid:'square',preset:'CRZ-5E',resolution:dndMode?'rolled':'expected'});
@@ -270,25 +273,39 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const [dndSide,setDndSide]=useState<DndStackDraft['side']>('attacker');
  const [dndSearch,setDndSearch]=useState('');
  const [dndGroup,setDndGroup]=useState('all');
+ const [dndSize,setDndSize]=useState('all');
+ const [dndSource,setDndSource]=useState('all');
+ const [dndCrMin,setDndCrMin]=useState('');
+ const [dndCrMax,setDndCrMax]=useState('');
  const [dndChoiceId,setDndChoiceId]=useState('');
  const [dndCount,setDndCount]=useState(10);
  const dndChoices=useMemo(()=>[
   ...DND_MILITARY_MAPPING.filter(x=>!x.unavailableReason).map(x=>({
    id:dndMilitaryTemplateId(x.typeId),name:x.name,group:'Unidades militares',
    size:'M' as const,cr:undefined as number|undefined,
+   source:'Modelo militar',hp:x.hp,ac:x.ac,
   })),
   ...(dndCormyr300?.monsters.map(m=>({
    id:'cy-'+m.id+'|local',name:m.name,group:m.group,
    size:m.size,cr:m.challenge_rating as number|undefined,
+   source:m.source,hp:m.hp,ac:m.ac,
   }))??[]),
  ],[dndCormyr300]);
  const dndGroups=useMemo(()=>[...new Set(dndChoices.map(x=>x.group))],
   [dndChoices]);
+ const dndSources=useMemo(()=>[...new Set(dndChoices.map(x=>x.source))].sort(),
+  [dndChoices]);
+ const dndSizes=useMemo(()=>[...new Set(dndChoices.map(x=>x.size))].sort(),
+  [dndChoices]);
  const filteredDndChoices=useMemo(()=>dndChoices.filter(x=>
   (dndGroup==='all'||x.group===dndGroup)&&
-  (!dndSearch.trim()||x.name.toLocaleLowerCase('pt-BR').includes(
-   dndSearch.trim().toLocaleLowerCase('pt-BR')))),
-  [dndChoices,dndGroup,dndSearch]);
+  (dndSize==='all'||x.size===dndSize)&&
+  (dndSource==='all'||x.source===dndSource)&&
+  (!dndCrMin||(x.cr!==undefined&&x.cr>=Number(dndCrMin)))&&
+  (!dndCrMax||(x.cr!==undefined&&x.cr<=Number(dndCrMax)))&&
+  (!dndSearch.trim()||[x.name,x.source].some(s=>
+   s.toLocaleLowerCase('pt-BR').includes(dndSearch.trim().toLocaleLowerCase('pt-BR'))))),
+  [dndChoices,dndGroup,dndSize,dndSource,dndCrMin,dndCrMax,dndSearch]);
  const chosenDnd=filteredDndChoices.find(x=>x.id===dndChoiceId)??
   filteredDndChoices[0];
  const [adminCount,setAdminCount]=useState(1);
@@ -297,6 +314,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
  const [reinforceCount,setReinforceCount]=useState(1);
  const [dndWinner,setDndWinner]=useState<'attacker'|'defender'|'draw'>('draw');
  const [storedBattles,setStoredBattles]=useState<readonly DndSavedBattle[]>([]);
+ const [savedPanelOpen,setSavedPanelOpen]=useState(showSavedOnOpen);
+ const [lastSavedReplayStep,setLastSavedReplayStep]=useState<number|null>(null);
  const [restoreBattleId,setRestoreBattleId]=useState('');
  const [dndBusy,setDndBusy]=useState(false);
  const [highContrast,setHighContrast]=useState(false);
@@ -316,6 +335,11 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
   setError('');
   setMessage(template.name+': '+amount+' criatura(s) adicionada(s) ao lado '+
    (side==='attacker'?'atacante.':'defensor.'));
+ };
+ const stackMaxCount=(templateId:string)=>{
+  const template=[...DND_MILITARY_CREATURES,...dndAllMonsters].find(x=>x.id===templateId);
+  const limits={T:1000,S:1000,M:1000,L:400,H:100,G:25};
+  return template?limits[template.size]:1000;
  };
  const changeDndStack=(id:string,part:Partial<DndStackDraft>)=>{
   setDndRoster(current=>current.map(x=>x.id===id?{...x,...part,
@@ -402,6 +426,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
   setDndBusy(true);
   try{
    await saveDndBattle(session);
+   setLastSavedReplayStep(session.replay.steps.length);
    setMessage('Batalha salva no banco privado do Narrador.');
    setError('');
   }catch(e){setError(e instanceof Error?e.message:'Falha ao salvar batalha.');}
@@ -422,7 +447,8 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
   setDndBusy(true);
   try{
    const loaded=await loadDndBattle(restoreBattleId);
-   setSession(loaded);setSelectedId(loaded.state.activeStackId);
+   setSession(loaded);setLastSavedReplayStep(loaded.replay.steps.length);
+   setSelectedId(loaded.state.activeStackId);
    setExpanded(true);setReplayStep(null);setError('');setPanel('actions');
    setMessage('Batalha privada restaurada com replay validado.');
   }catch(e){setError(e instanceof Error?e.message:'Falha ao recuperar batalha.');}
@@ -438,7 +464,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      generalLevel:generalProfile.level});
    const initial=crzReplayBegin(ready);
    const next=crzTrainingAdvanceAi(initial);
-   setSession(next);setSelectedId(next.state.activeStackId);
+   setSession(next);setLastSavedReplayStep(null);setSelectedId(next.state.activeStackId);
    setPanel('actions');setReplayStep(null);setError('');setExpanded(true);
    setMessage(dndMode?'Batalha D&D iniciada com d20 e pilhas locais. Nenhuma ficha oficial será alterada.':
     'Treino fictício iniciado. Nenhuma ficha oficial será alterada.');
@@ -526,11 +552,18 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    setError(cause instanceof Error?cause.message:'Replay não verificável.');
   }finally{event.currentTarget.value='';}
  };
+ const confirmExit=()=>!session||session.replay.steps.length===lastSavedReplayStep||
+  window.confirm('Esta batalha contém mudanças não salvas. Deseja sair?');
+ const leave=()=>{if(confirmExit())onBack?.();};
  const reset=()=>{
+  if(!confirmExit())return;
+  setLastSavedReplayStep(null);
   setExpanded(false);setSession(null);setReplayStep(null);setSelectedId(null);
   setError('');setMessage('');setPanel('actions');setHoveredId(null);
  };
- const savedPanel=dndMode?<details className="battle-surface" aria-label="Batalhas D&D salvas">
+ const savedPanel=dndMode?<details className="battle-surface"
+  aria-label="Batalhas D&D salvas" open={savedPanelOpen}
+  onToggle={event=>setSavedPanelOpen(event.currentTarget.open)}>
   <summary>Batalhas privadas do Narrador</summary>
   <Button variant="outline" disabled={dndBusy}
    onClick={()=>void fetchSaves()}>Consultar batalhas salvas</Button>
@@ -557,7 +590,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
      'Treinamento tático com exércitos-modelo.'}
      Nenhum efeito em casas, baixas oficiais, contas ou no calendário.</p>
     <div className="crz-toolbar">
-     {onBack&&<Button variant="outline" onClick={onBack}>Voltar ao módulo</Button>}
+     {onBack&&<Button variant="outline" onClick={leave}>Voltar ao módulo</Button>}
      <Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
       Importar replay JSON
      </Button>
@@ -627,6 +660,39 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
        {dndRoster.filter(x=>x.side===side).length}/7 pilhas
       </Button>)}
      </div>
+     <details className="dnd-filter-details">
+      <summary>Filtros avançados de monstros</summary>
+      <div className="dnd-extra-filters">
+       <label>Tamanho
+        <select aria-label="Filtrar tamanho D&D" value={dndSize}
+         onChange={e=>setDndSize(e.target.value)}>
+         <option value="all">Todos os tamanhos</option>
+         {dndSizes.map(size=><option key={size} value={size}>{size}</option>)}
+        </select>
+       </label>
+       <label>Fonte
+        <select aria-label="Filtrar fonte D&D" value={dndSource}
+         onChange={e=>setDndSource(e.target.value)}>
+         <option value="all">Todas as fontes</option>
+         {dndSources.map(source=><option key={source} value={source}>{source}</option>)}
+        </select>
+       </label>
+       <label>ND mínimo
+        <input type="number" min={0} max={30} step={0.125}
+         aria-label="ND mínimo D&D" value={dndCrMin}
+         onChange={e=>setDndCrMin(e.target.value)}/>
+       </label>
+       <label>ND máximo
+        <input type="number" min={0} max={30} step={0.125}
+         aria-label="ND máximo D&D" value={dndCrMax}
+         onChange={e=>setDndCrMax(e.target.value)}/>
+       </label>
+       <Button variant="outline" onClick={()=>{
+        setDndSearch('');setDndGroup('all');setDndSize('all');
+        setDndSource('all');setDndCrMin('');setDndCrMax('');setDndChoiceId('');
+       }}>Limpar filtros</Button>
+      </div>
+     </details>
      <div className="dnd-picker" role="group" aria-label="Escolher monstro para o exército">
       <label>Buscar pelo nome
        <input type="search" aria-label="Buscar monstro D&D"
@@ -661,6 +727,36 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
        Adicionar ao {dndSide==='attacker'?'atacante':'defensor'}
       </Button>
      </div>
+     <div className="dnd-choice-preview" role="status"
+      aria-label="Prévia da criatura selecionada">
+      {chosenDnd?<><strong>{chosenDnd.name}</strong>
+       <span>Grupo: {chosenDnd.group} · Porte: {chosenDnd.size} ·
+        {chosenDnd.cr===undefined?' Perfil militar':' ND '+chosenDnd.cr}</span>
+       <span>PV {chosenDnd.hp??'—'} · CA {chosenDnd.ac??'—'} ·
+        Fonte: {chosenDnd.source}</span></>:
+       <span>Nenhum monstro corresponde aos filtros.</span>}
+      <span>{filteredDndChoices.length} opção(ões) no filtro.</span>
+     </div>
+     <section className="dnd-encounter-summary" aria-label="Resumo do confronto D&D">
+      <h4>Composição do encontro</h4>
+      <div className="dnd-encounter-sides">
+       {(['attacker','defender'] as const).map(side=>{
+        const roster=dndRoster.filter(x=>x.side===side);
+        return <div className="dnd-encounter-side" key={side}>
+         <strong>{side==='attacker'?'Atacantes':'Defensores'}</strong>
+         <span>{roster.length}/7 pilhas · {roster.reduce((sum,x)=>sum+x.count,0)}
+          {' '}criaturas</span>
+        </div>;
+       })}
+      </div>
+      <p>As pilhas serão posicionadas automaticamente. As quantidades são independentes
+       das unidades oficiais da campanha.</p>
+      <Button variant="outline" size="sm" onClick={()=>{
+       if(window.confirm('Restaurar os exércitos de exemplo e descartar esta composição?')){
+        setDndRoster([...DND_DEFAULT_STACKS]);setError('');
+       }
+      }}>Restaurar exércitos de exemplo</Button>
+     </section>
      <section className="dnd-roster-side"
       aria-label={'Pilha D&D '+(dndSide==='attacker'?'atacante':'defensora')}>
       <h4>{dndSide==='attacker'?'Exército atacante':'Exército defensor'}</h4>
@@ -673,9 +769,10 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
         <small>{dndChoices.find(x=>x.id===stack.templateId)?.group??'Unidade'}</small>
        </div>
        <label>Quantidade na pilha
-        <input type="number" min={1} max={1000} step={1} value={stack.count}
-         aria-label={'Quantidade D&D '+stack.id}
-         onChange={e=>changeDndStack(stack.id,{count:Number(e.target.value)})}/>
+        <input type="number" min={1} max={stackMaxCount(stack.templateId)}
+         step={1} value={stack.count} aria-label={'Quantidade D&D '+stack.id}
+         onChange={e=>changeDndStack(stack.id,{count:Math.min(
+          stackMaxCount(stack.templateId),Math.max(1,Number(e.target.value)||1))})}/>
        </label>
        <label>Treinamento
         <select value={stack.training} aria-label={'Treinamento D&D '+stack.id}
@@ -685,6 +782,11 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
          <option value="veteran">Veterano</option><option value="elite">Elite</option>
         </select>
        </label>
+       <Button type="button" variant="outline" size="sm"
+        disabled={dndRoster.filter(x=>x.side===dndSide).length>=7}
+        onClick={()=>addDndCatalogStack(stack.templateId,
+         dndChoices.find(x=>x.id===stack.templateId)?.name??stack.templateId,
+         stack.side,stack.count)}>Duplicar pilha</Button>
        <Button type="button" variant="outline" size="sm"
         disabled={dndRoster.filter(x=>x.side===dndSide).length<2}
         onClick={()=>setDndRoster(current=>current.filter(x=>x.id!==stack.id))}>
@@ -789,7 +891,7 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
        onClick={()=>setExpanded(value=>!value)}>
        {expanded?'↙ Sair da tela ampliada':'⤢ Ampliar batalha'}
       </Button>
-     {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
+     {onBack&&<Button variant="outline" onClick={leave}>Voltar</Button>}
      <Button variant="outline" onClick={reset}>Novo treino</Button>
      <Button variant="outline" onClick={exportReplay}>Exportar replay</Button>
      {dndMode&&<Button variant="outline" disabled={dndBusy}
@@ -811,6 +913,11 @@ export function BattleCrzLab({onBack,mode='crz'}:{onBack?:()=>void;mode?:'crz'|'
    </label>}
    {error&&<p className="crz-alert" role="alert">{error}</p>}
    {message&&<p className="crz-status" role="status">{message}</p>}
+   <BattleTurnCue system={dndMode?'dnd':'adapted'} round={frame.round}
+    phase={frame.phase} activeUnit={active?.name} canAct={canAct}
+    moves={moves.length} attacks={attacks.length}
+    needsSelection={Boolean(canAct&&active&&selectedId!==active.id)}
+    onSelectActive={active?()=>setSelectedId(active.id):undefined}/>
    {savedPanel}
    {dndMode&&isDndBattle(frame)&&frame.phase==='active'&&<details className="battle-surface"
     aria-label="Gerenciamento de tropas durante a batalha D&D">

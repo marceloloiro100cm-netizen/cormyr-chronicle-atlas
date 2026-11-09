@@ -1,4 +1,4 @@
-import {describe,it,expect} from 'vitest';
+import {describe,it,expect,vi} from 'vitest';
 import {fireEvent,render,screen,within} from '@testing-library/react';
 import {BattleV3Game} from '@/components/battle/BattleV3Game';
 import {BattleCrzLab} from '@/components/battle/BattleCrzLab';
@@ -70,7 +70,10 @@ describe('V4 · batalha ampliada automaticamente sobre o site',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Ampliar batalha'}));
   expect(screen.getByRole('dialog',{name:'Batalha em tela ampliada'}))
    .toBeInTheDocument();
+  const confirm=vi.spyOn(window,'confirm').mockReturnValue(true);
   fireEvent.click(screen.getByRole('button',{name:'Novo treino'}));
+  expect(confirm).toHaveBeenCalledOnce();
+  confirm.mockRestore();
   expect(screen.queryByRole('dialog',{name:'Batalha em tela ampliada'}))
    .not.toBeInTheDocument();
   expect(screen.getByRole('button',{name:'Iniciar treinamento CRZ'}))

@@ -74,3 +74,31 @@
 .dnd-cormyr-compact p{margin:.1rem 0;color:#f6dfb1}
 @media(max-width:1100px){.dnd-picker{grid-template-columns:repeat(2,minmax(0,1fr))}.dnd-picker button{grid-column:1/-1}}
 @media(max-width:620px){.dnd-picker{grid-template-columns:1fr}.dnd-side-switch button{flex:1 1 140px}}
+
+/* Lote 3: filtros técnicos avançados recolhidos, prévia e resumo na montagem. */
+.dnd-filter-details{
+ border:1px solid #877656;border-radius:10px;padding:.6rem .8rem;
+ background:rgba(18,31,30,.65);
+}
+.dnd-filter-details summary{cursor:pointer;color:#f5e1b7;font-weight:650}
+.dnd-filter-details summary:focus-visible{outline:3px solid #f9d486;outline-offset:3px}
+.dnd-extra-filters{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));
+ align-items:end;gap:.75rem;margin-top:.8rem;
+}
+.dnd-extra-filters button{min-height:42px}
+.dnd-choice-preview{
+ display:flex;gap:.4rem 1.1rem;align-items:center;flex-wrap:wrap;
+ background:rgba(17,40,40,.9);border:1px solid #867355;
+ padding:.65rem .85rem;border-radius:8px;color:#f9ecd0;
+}
+.dnd-choice-preview strong{color:#fff1c7}
+.dnd-choice-preview span{font-size:.82rem}
+.dnd-encounter-summary{padding:.8rem;border:1px solid #98815d;border-radius:10px}
+.dnd-encounter-summary h4{margin:0 0 .55rem;color:#ffe1a1}
+.dnd-encounter-summary p{font-size:.83rem;margin:.5rem 0}
+.dnd-encounter-sides{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
+.dnd-encounter-side{display:flex;flex-direction:column;gap:.25rem;background:#233532;
+ border-radius:7px;padding:.65rem;font-size:.88rem}
+.dnd-encounter-side span{color:#f3ddbd}
+@media(max-width:620px){.dnd-encounter-sides{grid-template-columns:1fr}}

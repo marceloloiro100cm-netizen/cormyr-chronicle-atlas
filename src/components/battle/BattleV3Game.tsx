@@ -11,6 +11,7 @@ import {SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixture
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
 import {BattleExpandedView} from './BattleExpandedView';
+import {BattleTurnCue} from './BattleTurnCue';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
 import {BattleHouseBanner,BattleHouseVersus} from './BattleHouseHeraldry';
 import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
@@ -211,6 +212,11 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     Esta partida não é uma batalha oficial convocada.</p>
   </section>
  </main>;
+ const leaveBattle=()=>{
+  if(game?.battle.phase==='active'&&
+   !window.confirm('Esta batalha V3 não foi salva automaticamente. Deseja sair?'))return;
+  onBack?.();
+ };
  const report=battle?battleReport(battle):null;
  const orderIds=battle?[
   ...(battle.activeUnitId?[battle.activeUnitId]:[]),
@@ -238,15 +244,26 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
        catch(e){setStatus(e instanceof Error?e.message:'Replay V3 indisponível.');}
       }}>Exportar replay V3 verificado</Button>:
       <span className="battle-note">Replay externo desativado para cópias militares de casas.</span>}
-     <Button variant="outline" onClick={()=>{setExpanded(false);setGame(null);setStatus('');}}>Nova batalha</Button>
+     <Button variant="outline" onClick={()=>{
+      if(game.battle.phase==='active'&&
+       !window.confirm('A batalha V3 atual será descartada. Continuar?'))return;
+      setExpanded(false);setGame(null);setStatus('');
+     }}>Nova batalha</Button>
      <Button variant="outline" className="battle-expand-toggle"
       aria-label={expanded?'Sair da tela ampliada':'Ampliar batalha'}
       onClick={()=>setExpanded(value=>!value)}>
       {expanded?'↙ Sair da tela ampliada':'⤢ Ampliar batalha'}
      </Button>
-     {onBack&&<Button variant="outline" onClick={onBack}>Voltar ao módulo</Button>}
+     {onBack&&<Button variant="outline" onClick={leaveBattle}>Voltar ao módulo</Button>}
     </div>
    </header>
+   <BattleTurnCue system="adapted" round={battle?.round??1}
+    phase={battle?.phase??'active'} activeUnit={active?.name}
+    canAct={canAct} moves={moves.length} attacks={attacks.length}
+    needsSelection={Boolean(canAct&&active&&selected!==active.id)}
+    onSelectActive={active?()=>{
+     setSelected(active.id);setMode('inspect');setSkill(null);
+    }:undefined}/>
    <section className="crusade-v4-turns" aria-label="Ordem de combate V3">
     <div className="crusade-v4-section-head">
      <h2>Ordem de combate</h2>

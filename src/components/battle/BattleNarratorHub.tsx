@@ -38,6 +38,8 @@ export function BattleNarratorHub(){
  const [manual,setManual]=useState(false);
  const [showImport,setShowImport]=useState(false);
  const [showDiagnostic,setShowDiagnostic]=useState(false);
+ const [resumeDnd,setResumeDnd]=useState(false);
+ const [resumeGot,setResumeGot]=useState(false);
  const checkStore=useServerFn(checkBattlePersistence);
  const [storeStatus,setStoreStatus]=useState<'checking'|'available'|'unavailable'>(
   BATTLE_PERSISTENCE_UI_ENABLED?'checking':'unavailable');
@@ -87,22 +89,34 @@ export function BattleNarratorHub(){
      <h3>Guerra dos Tronos RPG · núcleo do capítulo 10</h3>
      <p>Comandos de Guerra × Disciplina, iniciativa por rodada, ordens, ataque por graus de sucesso, Armadura e Saúde coletiva, desorganização e debandada.</p>
      <p className="battle-note">Laboratório em desenvolvimento: ainda faltam fases e regras avançadas para equivalência integral ao capítulo 10.</p>
-     <Button onClick={()=>setView('got')}>Testar regras do livro</Button>
+     <Button onClick={()=>{setResumeGot(false);setView('got');}}>Testar regras do livro</Button>
     </section>:<section className="battle-ruleset-pending" aria-label="Preparação do sistema selecionado">
      <h3>D&D · combate simplificado</h3>
      <p>Motor CRZ-5E independente, com bônus de ataque, Classe de Armadura,
       pontos de vida, deslocamento e ações de combate em grade quadrada.</p>
      <p className="battle-note">Laboratório D&D simplificado: tropas e criaturas-modelo fictícias.
       Não equivale a todas as regras de D&D 5e e não executa o motor Adaptado.</p>
-     <Button onClick={()=>setView('dnd')}>Iniciar D&D simplificado</Button>
+     <Button onClick={()=>{setResumeDnd(false);setView('dnd');}}>Iniciar D&D simplificado</Button>
     </section>}
    </section>
    <aside className="battle-home-side" aria-label="Continuação e opções de batalha">
     <section className="battle-surface" aria-label="Continuar batalha">
      <h3>Continuar batalha</h3>
-     {canSave?<Button variant="outline" onClick={()=>setView('saved')}>Batalhas salvas</Button>:
-      <p className="battle-note" role="status">Salvamento no servidor {storeStatus==='checking'?
-       'em verificação':'indisponível neste ambiente'}. As simulações locais podem ser exportadas.</p>}
+     {rulesetMode==='adapted'?
+      (canSave?<Button variant="outline" onClick={()=>setView('saved')}>Batalhas salvas · Adaptado</Button>:
+       <p className="battle-note" role="status">Salvamento Adaptado {storeStatus==='checking'?
+        'em verificação':'indisponível neste ambiente'}. É possível exportar replays locais.</p>):
+      rulesetMode==='got'?<>
+       <Button variant="outline" onClick={()=>{setResumeGot(true);setView('got');}}>
+        Retomar batalha Game of Thrones
+       </Button>
+       <p className="battle-note">Abre a simulação salva neste navegador, se existir.</p>
+      </>:<>
+       <Button variant="outline" onClick={()=>{setResumeDnd(true);setView('dnd');}}>
+        Consultar batalhas D&D salvas
+       </Button>
+       <p className="battle-note">Batalhas privadas do Narrador, com acesso autenticado.</p>
+      </>}
     </section>
     <details className="battle-surface battle-home-advanced">
      <summary>Ferramentas avançadas e ajuda</summary>
@@ -137,13 +151,13 @@ export function BattleNarratorHub(){
     </details>
    </aside>
   </div>}
-  {view==='got'&&<BattleGotGame onBack={()=>setView('home')}/>}
+  {view==='got'&&<BattleGotGame resumeFromLibrary={resumeGot} onBack={()=>setView('home')}/>}
   {view==='crusade'&&<BattleV3NarratorEntry onBack={()=>setView('home')}/>}
   {view==='crz'&&BATTLE_CRZ_TRAINING_UI_ENABLED&&<Suspense fallback={<p role="status">Carregando laboratório CRZ…</p>}>
    <BattleCrzLab onBack={()=>setView('home')}/>
   </Suspense>}
   {view==='dnd'&&<Suspense fallback={<p role="status">Carregando D&D simplificado…</p>}>
-   <BattleCrzLab mode="dnd" onBack={()=>setView('home')}/>
+   <BattleCrzLab mode="dnd" showSavedOnOpen={resumeDnd} onBack={()=>setView('home')}/>
   </Suspense>}
   {view==='invite'&&BATTLE_PLAYERS_ENABLED&&<BattleV3InvitationCreator onBack={()=>setView('home')}/>}
   {view==='strategy'&&<Suspense fallback={<p role="status">Carregando mapa de operações…</p>}>
