@@ -77,7 +77,7 @@ export function crzRangeHexFromDecimetres(dm:number):number{
 }
 export const crzRangeHexFromMetres=(m:number):number=>{
  if(!Number.isFinite(m)||m<=0)throw new Error('Alcance inválido.');
- return crzRangeHexFromDecimetres(Math.round(m*10));
+ return crzRangeHexFromDecimetres(Math.ceil(m*10-1e-9));
 };
 /** Adaptador legado: alcance da ficha (pés) → faixa métrica. Resultado idêntico ao histórico. */
 export function crzRangeHex(legacyFt:number):number{
