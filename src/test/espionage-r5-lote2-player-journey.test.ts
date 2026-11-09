@@ -87,6 +87,7 @@ describe('R5 Lote 2 — jornada simples de jogador',()=>{
   expect(ui).toContain('SpyPortraitPicker');
   expect(ui).toContain('<details className="cormyr-creation-section spy-create-upgrades">');
   expect(ui).toContain('Melhorias opcionais');
+  expect(ui).toContain('Riqueza insuficiente. Abra Melhorias opcionais');
   expect(ui).toContain('sourceHoldingId:source.sourceHoldingId');
   expect(ui).toContain('if(busy)return;requestKey.current=null;setPortraitId');
   expect(ui).not.toContain('Vagas de espionagem da Casa');
