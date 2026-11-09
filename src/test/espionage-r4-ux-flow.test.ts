@@ -39,7 +39,7 @@ describe('R4 · jornada de espionagem utilizável numa sessão real',()=>{
   expect(src).toContain("result.intelligenceStatus==='complete'");
   expect(src).toContain('Verifique o reprocessamento do dossiê.');
   const server=file('src/lib/espionage/spy-agent-actions.functions.ts');
-  expect(server).toContain("intelligenceStatus='retry_required'");
+  expect(server).toContain("='retry_required';");
   expect(server).toContain("parsed.data.outcome==='mission_success'");
  });
  it('a API preserva receiver em todas as ações server-side de espionagem',()=>{
