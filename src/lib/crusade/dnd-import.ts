@@ -2,17 +2,18 @@ import {z} from 'zod';
 import {crzSealCreature,type CrzCreature,type CrzAttackProfile} from '@/lib/crusade/creatures';
 import {crzBuildCatalog} from '@/lib/crusade/catalog';
 import {DND_MILITARY_CREATURES} from './dnd-military';
+import {tableMetresToFeet} from '@/lib/units/metric';
 
 export const DND_MONSTER_FILE_MAX_BYTES=1_000_000;
 export const DND_MONSTER_TABLE_MAX_ROWS=200;
 export const DND_MONSTER_CSV_HEADERS=[
- 'id','name','size','type','hp','ac','initiative','speedFt',
- 'meleeAttack','meleeDamage','rangedAttack','rangedDamage','rangeFt',
+ 'id','name','size','type','hp','ac','initiative','speedM',
+ 'meleeAttack','meleeDamage','rangedAttack','rangedDamage','rangeM',
  'count','side','source','license','attribution','permissionEvidence',
 ] as const;
 export const DND_MONSTER_CSV_EXAMPLE=[
  DND_MONSTER_CSV_HEADERS.join(';'),
- 'wolf-test;Lobo de treino;M;beast;11;13;2;40;+4;2d4+2;;;;6;defender;Criação do narrador;original-authorized;Criatura fictícia da campanha Cormyr;Autorização do próprio criador para uso privado no simulador',
+ 'wolf-test;Lobo de treino;M;beast;11;13;2;12;+4;2d4+2;;;;6;defender;Criação do narrador;original-authorized;Criatura fictícia da campanha Cormyr;Autorização do próprio criador para uso privado no simulador',
 ].join('\n');
 const integer=(value:unknown,label:string,min:number,max:number)=>{
  const raw=String(value??'').trim();
@@ -22,6 +23,27 @@ const integer=(value:unknown,label:string,min:number,max:number)=>{
   throw new Error('Tabela D&D: '+label+' fora do intervalo '+min+' a '+max+'.');
  return num;
 };
+/** As novas tabelas usam metros; os campos legados do motor ficam na borda. */
+const metres=(value:unknown,label:string,min:number,max:number)=>{
+ const raw=String(value??'').trim().replace(',','.');
+ if(!/^\d+(?:\.\d+)?$/.test(raw))throw new Error('Tabela D&D: '+label+' exige metros numéricos.');
+ const m=Number(raw);
+ if(!Number.isFinite(m)||m<min||m>max)throw new Error('Tabela D&D: '+label+' fora do intervalo.');
+ return m;
+};
+function metricSpeedToLegacy(value:unknown,label:string):number{
+ const m=metres(value,label,0,300);
+ const legacy=tableMetresToFeet(m);
+ if(Math.abs(legacy*0.3-m)>0.000001)
+  throw new Error('Tabela D&D: '+label+' deve usar incrementos de 1,5 m.');
+ return legacy;
+}
+function metricRangeToLegacy(value:unknown):number{
+ const m=metres(value,'alcance (m)',0.3,30000);
+ // No CRZ legado o alcance é inteiro em pés; quantizar somente na importação.
+ return Math.max(1,Math.min(100000,Math.round(m/0.3)));
+}
+const isProvided=(value:unknown)=>value!==undefined&&value!==null&&String(value).trim()!=='';
 const natural=(input:unknown,label:string,max=120)=>{
  const value=String(input??'').trim();
  if(!value||value.length>max)throw new Error('Tabela D&D: '+label+' obrigatório (máximo '+max+').');
@@ -87,11 +109,14 @@ function csvRows(text:string):string[][]{
 }
 const ALIASES:Readonly<Record<string,string>>={
  nome:'name',tamanho:'size',tipo:'type',pv:'hp',pontosdevida:'hp',
- classearmadura:'ac',ca:'ac',iniciativa:'initiative',deslocamento:'speedFt',
- deslocamentopes:'speedFt',ataquecorpoacorpo:'meleeAttack',
+ classearmadura:'ac',ca:'ac',iniciativa:'initiative',deslocamento:'speedM',
+ deslocamentometros:'speedM',deslocamentom:'speedM',velocidadem:'speedM',
+ deslocamentopes:'speedFt',speedft:'speedFt',voometros:'flyM',voom:'flyM',
+ flyft:'flyFt',rangeft:'rangeFt',ataquecorpoacorpo:'meleeAttack',
  danoCorpoACorpo:'meleeDamage',danocorpoacorpo:'meleeDamage',
  ataquedistancia:'rangedAttack',danodistancia:'rangedDamage',
- alcance:'rangeFt',quantidade:'count',lado:'side',fonte:'source',
+ alcance:'rangeM',alcancem:'rangeM',alcancemetros:'rangeM',
+ alcancepe:'rangeFt',quantidade:'count',lado:'side',fonte:'source',
  licenca:'license',atribuicao:'attribution',comprovante:'permissionEvidence',
  };
 const canonicalHeader=(h:string)=>{
@@ -109,8 +134,10 @@ function rowsFromCsv(text:string):Record<string,unknown>[]{
  if(records.length<2)throw new Error('Tabela D&D: CSV precisa de cabeçalho e monstros.');
  const header=records[0]!.map(canonicalHeader);
  if(new Set(header).size!==header.length)throw new Error('Tabela D&D: colunas repetidas.');
- for(const required of ['id','name','hp','ac','initiative','speedFt','source','license','attribution','permissionEvidence'])
+ for(const required of ['id','name','hp','ac','initiative','source','license','attribution','permissionEvidence'])
   if(!header.includes(required))throw new Error('Tabela D&D: coluna obrigatória ausente: '+required+'.');
+ if(!header.includes('speedM')&&!header.includes('speedFt'))
+  throw new Error('Tabela D&D: coluna obrigatória ausente: speedM (metros).');
  return records.slice(1).map((row,index)=>{
   if(row.length!==header.length)throw new Error('Tabela D&D: linha '+(index+2)+' tem colunas inconsistentes.');
   return Object.fromEntries(header.map((key,col)=>[key,row[col]?.trim()??'']));
@@ -144,7 +171,20 @@ export function parseDndMonsterTable(text:string):DndMonsterImported{
    const creatureName=natural(row['name'],'name');
    const hp=integer(row['hp'],'hp',1,100000),ac=integer(row['ac'],'ac',1,40);
    const initiative=integer(row['initiative'],'initiative',-10,30);
-   const speed=integer(row['speedFt'],'speedFt',0,1000);
+   const metricSpeed=row['speedM']??row['speed_m']??row['walk_m'];
+   const legacySpeed=row['speedFt']??row['speed_ft'];
+   if(isProvided(metricSpeed)&&isProvided(legacySpeed))
+    throw new Error('informe apenas deslocamento em metros ou campo legado, não ambos.');
+   if(!isProvided(metricSpeed)&&!isProvided(legacySpeed))
+    throw new Error('deslocamento em metros obrigatório (speedM).');
+   const speed=isProvided(metricSpeed)?metricSpeedToLegacy(metricSpeed,'deslocamento (m)'):
+    integer(legacySpeed,'deslocamento legado',0,1000);
+   const metricFly=row['flyM']??row['fly_m'];
+   const legacyFly=row['flyFt']??row['fly_ft'];
+   if(isProvided(metricFly)&&isProvided(legacyFly))
+    throw new Error('informe voo em metros ou campo legado, não ambos.');
+   const fly=isProvided(metricFly)?metricSpeedToLegacy(metricFly,'voo (m)'):
+    isProvided(legacyFly)?integer(legacyFly,'voo legado',0,1000):0;
    const melee=String(row['meleeAttack']??'').trim(),ranged=String(row['rangedAttack']??'').trim();
    if(!melee&&!ranged)throw new Error('informar ataque corpo a corpo ou à distância.');
    const attacks:CrzAttackProfile[]=[];
@@ -153,7 +193,14 @@ export function parseDndMonsterTable(text:string):DndMonsterImported{
     damage:[damage(row['meleeDamage'])]});
    if(ranged)attacks.push({id:'ranged',name:'À distância',kind:'ranged',
     toHit:integer(ranged,'rangedAttack',-30,60),
-    rangeFt:{normal:integer(row['rangeFt'],'rangeFt',1,100000)},
+    rangeFt:{normal:(()=>{
+     const metricRange=row['rangeM']??row['range_m'];
+     const legacyRange=row['rangeFt']??row['range_ft'];
+     if(isProvided(metricRange)&&isProvided(legacyRange))
+      throw new Error('informe alcance em metros ou campo legado, não ambos.');
+     return isProvided(metricRange)?metricRangeToLegacy(metricRange):
+      integer(legacyRange,'alcance legado',1,100000);
+    })()},
     damage:[{...damage(row['rangedDamage']),type:'piercing'}]});
    const license=natural(row['license'],'license',40);
    if(!LICENSES.includes(license as typeof LICENSES[number]))
@@ -169,10 +216,10 @@ export function parseDndMonsterTable(text:string):DndMonsterImported{
     size:kind,creatureType:String(row['type']??'monstros').trim()||'monster',
     tags:['user-import','dnd'],cr:0.25,xp:50,proficiencyBonus:2,
     abilityMods:{str:1,dex:initiative,con:1,int:0,wis:0,cha:0},
-    hp:{average:hp},ac,speedFt:{walk:speed},
+    hp:{average:hp},ac,speedFt:{walk:speed,...(fly>0?{fly}:{})},
     attacks,multiattack:{origin:'fallback',steps:[]},
     damageMods:{resist:[],immune:[],vulnerable:[]},conditionImmunities:[],
-    traits:[],flags:{flying:false,ranged:Boolean(ranged),
+    traits:[],flags:{flying:fly>0,ranged:Boolean(ranged),
      caster:false,legendary:false,swarm:false},
     provenance:{origin:'manual',srd:false,license,
      attribution:natural(row['attribution'],'attribution',1000),
