@@ -16,6 +16,8 @@ import {BattleActionFeedback} from './BattleActionFeedback';
 import {BattleOutcomeSummary} from './BattleOutcomeSummary';
 import {pteEventLabel,mostRecentAction,pteAiActionDescription}
  from '@/lib/battle/ux/action-explanation';
+import {tacticalObjectiveDescription} from '@/lib/battle/domain/objectives';
+import './battle-p2.css';
 import {BattleHouseBanner,BattleHouseVersus} from './BattleHouseHeraldry';
 import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
 import './battle-arena-unified.css';
@@ -49,7 +51,10 @@ function BattleResult({state,initial,sideNames,heraldry,onRestart,onExit,persist
    <h2>Resultado da simulação</h2>
   <BattleHouseVersus houses={heraldry} names={sideNames}/>
    <BattleOutcomeSummary title={state.winner?sideNames[state.winner]+' venceu':'Empate'}
-    round={state.round} reason={state.resultReason??'Sem causa informada'}
+    round={state.round} reason={state.resultReason==='objective-capture'?'Posição conquistada':
+     state.resultReason==='objective-defense'?'Defesa resistiu até o prazo':
+     state.resultReason==='objective-survive'?'Defensor resistiu ao confronto':
+     state.resultReason??'Sem causa informada'}
     losses={[
      {label:sideNames.attacker,count:report.bySide.attacker.casualties},
      {label:sideNames.defender,count:report.bySide.defender.casualties},
@@ -260,7 +265,11 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
    label={pteEventLabel(latestAction,battle.stacks)}
    damage={latestDamage} casualties={latestCasualties}
    detail={latestAction.type==='DAMAGE'?'Ataque resolvido pelo motor PTE.':undefined}/>}
-  {showHelp&&<div className="battle-surface" role="note">Mover e atacar; defender dá +2. Esperar uma vez por rodada. Baixas apenas simuladas.</div>}
+  {battle.objective&&<section className="battle-tactical-goal" aria-label="Objetivo tático" role="status">
+    <strong>{battle.objective.kind==='capture'?'Conquistar posição':'Resistir ao ataque'}</strong>
+    <p>{tacticalObjectiveDescription(battle)}</p>
+   </section>}
+  {showHelp&&<div className="battle-surface" role="note">Mover e atacar; defender dá +2. Esperar uma vez por rodada. Baixas apenas simuladas.</div>
   <div className="battle-arena-grid">
     <aside className="battle-surface battle-army-sidebar" aria-label="Exércitos na arena">
      {(['attacker','defender'] as const).map(side=><div key={side}>
@@ -281,7 +290,8 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
      <BattleBoard map={battle.map} stacks={battle.stacks} activeId={battle.activeUnitId}
        selectedId={selected} moveKeys={canAct&&mode!=='attack'?moveKeys:[]}
        attackKeys={canAct&&mode!=='move'?attackIds:[]} pendingHex={pendingMove}
-       onHexClick={chooseHex} onHoverHex={setHover}/>
+       onHexClick={chooseHex} onHoverHex={setHover}
+       objectivePosition={battle.objective?.kind==='capture'?battle.objective.position:undefined}/>
      {mode==='move'&&<p role="status">Rota: {selectedPath?selectedPath.steps+' '+(battle.map.grid==='square'?'quadrados':'hexágonos')+' · custo '+selectedPath.cost:
       'Selecione um '+(battle.map.grid==='square'?'quadrado':'hexágono')+' destacado'}</p>}
      {damagePreview&&<p role="status">Ataque previsto contra {target?.name}: {damagePreview.damage} PV · {damagePreview.casualties} baixas antes de eventual retaliação.</p>}
