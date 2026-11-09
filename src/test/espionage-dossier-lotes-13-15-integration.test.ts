@@ -14,8 +14,12 @@ describe('Dossiês · lotes 13–15 · integração e defesa em profundidade',()
  });
  it('não renderiza dossiês cacheados em erro, mas mantém a Central independente',()=>{
   const ui=read('src/components/house/espionage/spy-dossier-panel.tsx');
-  const failure=ui.slice(ui.indexOf('if(query.isError)return <>'),
-   ui.indexOf('return <>',ui.indexOf('if(query.isError)return <>')+1));
+  const marker='if(query.isError)return <>';
+  const start=ui.indexOf(marker);
+  const end=ui.indexOf(' </>;\n return <>',start+marker.length);
+  expect(start).toBeGreaterThan(-1);
+  expect(end).toBeGreaterThan(start);
+  const failure=ui.slice(start,end);
   expect(failure).toContain('<SpyNarratorOperationsCenter/>');
   expect(failure).toContain('<SpyNarratorIncidentHistory/>');
   expect(failure).toContain('Tentar novamente');
