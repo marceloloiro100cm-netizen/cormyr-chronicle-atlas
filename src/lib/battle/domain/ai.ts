@@ -51,6 +51,10 @@ export function chooseAiCommand(state:BattleState):BattleCommand {
    a.target.id.localeCompare(b.target.id,'en'));
   return attacks[0]!.command;
  }
+ // Perfil defensivo conserva um ponto já ocupado, sem abandonar a posição para perseguir.
+ if(style==='defensive'&&objectives.some(p=>hexKey(p)===hexKey(unit.position)))
+  return legal.find(c=>c.type==='DEFEND')??
+   legal.find(c=>c.type==='END_ACTIVATION')!;
  const choices=legal.filter((c):c is Move=>c.type==='MOVE');
  const enemies=enemyAble(state,unit.side);
  // Em objetivos de sobrevivência, o defensor pode guardar posição e economizar baixas.
