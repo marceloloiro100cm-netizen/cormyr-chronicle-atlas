@@ -269,7 +269,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
     <strong>{battle.objective.kind==='capture'?'Conquistar posição':'Resistir ao ataque'}</strong>
     <p>{tacticalObjectiveDescription(battle)}</p>
    </section>}
-  {showHelp&&<div className="battle-surface" role="note">Mover e atacar; defender dá +2. Esperar uma vez por rodada. Baixas apenas simuladas.</div>
+  {showHelp&&<div className="battle-surface" role="note">Mover e atacar; defender dá +2. Esperar uma vez por rodada. Baixas apenas simuladas.</div>}
   <div className="battle-arena-grid">
     <aside className="battle-surface battle-army-sidebar" aria-label="Exércitos na arena">
      {(['attacker','defender'] as const).map(side=><div key={side}>
