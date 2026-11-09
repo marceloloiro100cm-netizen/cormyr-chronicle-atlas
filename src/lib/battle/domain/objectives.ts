@@ -25,7 +25,7 @@ export function defaultMissionPositions(map:BattleMap,mission:MultiCaptureMissio
  const aims=mission==='bridge'?
   [{q:midQ-1,r:midR},{q:midQ,r:midR},{q:midQ+1,r:midR}]:
   mission==='fortress'?
-   [{q:midQ+1,r:midR-2},{q:midQ+2,r:midR},{q:midQ+1,r:midR+2}]:
+   [{q:midQ+3,r:midR-2},{q:midQ+3,r:midR},{q:midQ+3,r:midR+2}]:
    [{q:midQ,r:midR-2},{q:midQ,r:midR},{q:midQ,r:midR+2}];
  const chosen:Hex[]=[];
  for(const aim of aims)chosen.push(nearestFree(map,aim,chosen));
