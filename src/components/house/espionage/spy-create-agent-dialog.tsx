@@ -113,7 +113,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
        onClick={()=>void refetch()}>Tentar novamente</Button>
      </div>}
      <label className="cormyr-creation-section"><span>Nome do espião <span aria-hidden>*</span></span>
-      <input required autoFocus minLength={2} maxLength={80}
+      <input required autoFocus disabled={busy} minLength={2} maxLength={80}
        placeholder="Ex.: O Corvo" value={name}
        onChange={e=>{requestKey.current=null;setName(e.target.value);}}/>
      </label>
@@ -152,7 +152,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
       {(Object.keys(SPY_AGENT_UPGRADES) as SpyAgentUpgrade[]).map(code=>{
        const u=SPY_AGENT_UPGRADES[code];
        return <label key={code} className="cormyr-creation-choice">
-        <input type="checkbox"
+        <input type="checkbox" disabled={busy}
          checked={upgrades.includes(code)}
          onChange={e=>toggle(code,e.target.checked)}/>
         <span><strong>{u.name} — 1 Riqueza</strong>
@@ -168,7 +168,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
      </div>
      <div className="cormyr-creation-section cormyr-creation-portraits">
       <SpyPortraitPicker portraits={portraits} selected={portraitId}
-       onChange={id=>{requestKey.current=null;setPortraitId(id);}}/>
+       onChange={id=>{if(busy)return;requestKey.current=null;setPortraitId(id);}}/>
      </div>
      {portraits.length>0&&!pictureOk&&<small role="status">
       Escolha uma foto disponível. As imagens em cinza já estão reservadas por outro agente da campanha.</small>}
