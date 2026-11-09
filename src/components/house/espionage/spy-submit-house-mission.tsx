@@ -7,6 +7,8 @@ import {Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogT
 import {readSpyHouseManagementBrowser,submitSpyHouseMissionBrowser}
  from '@/lib/espionage/spy-browser-client';
 import {regionId} from '@/lib/house/regions';
+import {getCampaignTime,CAMPAIGN_TIME_QUERY_KEY} from '@/lib/calendar/campaign-time';
+import {SpyMissionError} from '@/lib/espionage/spy-mission-errors';
 import {SPY_INTELLIGENCE_OBJECTIVES,type SpyIntelligenceObjective}
  from '@/lib/espionage/spy-intelligence-rules';
 
@@ -35,6 +37,17 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
   if(!ready||calendarVersion===null)return;
   setBusy(true);setError('');
   try{
+   // Check the authoritative Hub date immediately before sending the order.
+   // A previously open confirmation dialog must never submit stale deadlines.
+   const latest=await getCampaignTime();
+   if(latest.version!==calendarVersion){
+    requestKey.current=null;agentVersion.current=null;
+    await Promise.allSettled([
+     qc.invalidateQueries({queryKey:CAMPAIGN_TIME_QUERY_KEY}),
+     qc.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
+    ]);
+    throw new SpyMissionError('calendar_changed');
+   }
    const key=requestKey.current??crypto.randomUUID();
    requestKey.current=key;
    // Obtain the version from the authoritative agent roster instead of using
@@ -61,6 +74,13 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
    ]);
    onSubmitted?.(result.operationId);
   }catch(e){
+   if(e instanceof SpyMissionError&&e.problem==='calendar_changed'){
+    requestKey.current=null;agentVersion.current=null;
+    void Promise.allSettled([
+     qc.invalidateQueries({queryKey:CAMPAIGN_TIME_QUERY_KEY}),
+     qc.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
+    ]);
+   }
    setError(e instanceof Error?e.message:
     'Não foi possível confirmar a missão. Atualize os agentes antes de reenviar.');
   }finally{setBusy(false);}
@@ -77,7 +97,7 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
    disabled={!ready} onClick={()=>{setError('');setOpen(true);}}>
    <Send size={16} aria-hidden="true"/> Iniciar missão
   </Button>}
-  {!receipt&&!ready&&<small role="status">
+  {!receipt&&!ready&&!busy&&<small role="status">
    Selecione um espião disponível, uma Casa e aguarde o carregamento do calendário.
   </small>}
   <Dialog open={open} onOpenChange={next=>{if(!busy)setOpen(next);}}>
@@ -110,7 +130,15 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
      <small>Uma missão investiga apenas a modalidade escolhida.
       A viagem segue o HUB Temporal; o narrador resolve o resultado.</small>
     </div>
-    {error&&<p className="house-warning" role="alert">{error}</p>}
+    {error&&<div className="house-warning" role="alert">
+     <p>{error}</p>
+     <Button type="button" variant="outline" size="sm" disabled={busy}
+      onClick={()=>void Promise.allSettled([
+       qc.invalidateQueries({queryKey:CAMPAIGN_TIME_QUERY_KEY}),
+       qc.invalidateQueries({queryKey:['spy-house-management',houseId]}),
+       qc.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
+      ])}>Atualizar previsão e agentes</Button>
+    </div>}
     <DialogFooter>
      <Button type="button" variant="outline" disabled={busy}
       onClick={()=>setOpen(false)}>Cancelar</Button>
