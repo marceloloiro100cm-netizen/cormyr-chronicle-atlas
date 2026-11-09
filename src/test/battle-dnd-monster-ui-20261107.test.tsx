@@ -11,7 +11,7 @@ describe('Interface D&D · seleção concentrada e implantação automática',()
   expect(screen.getByRole('region',{name:'D&D simplificado · laboratório do Narrador'}))
    .toBeInTheDocument();
   fireEvent.click(screen.getByText('Montar exércitos e ajustar cenário'));
-  expect(screen.getByRole('heading',{name:'Monstros'})).toBeInTheDocument();
+  expect(screen.getByRole('heading',{name:'Montros'})).toBeInTheDocument();
   expect(screen.queryByLabelText('Importar tabela de monstros D&D')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Importar mapa quadrado D&D')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Importar catálogo Cormyr 300')).not.toBeInTheDocument();

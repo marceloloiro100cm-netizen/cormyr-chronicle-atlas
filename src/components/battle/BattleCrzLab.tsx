@@ -660,7 +660,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
       {options.sharedMap.name} · {options.sharedMap.width} × {options.sharedMap.height}.</p>}
     </section>}
     {dndMode&&<section className="dnd-config" aria-label="Preparação de exércitos D&D">
-     <h3>Monstros</h3>
+     <h3>Montros</h3>
      <p>Escolha o lado, busque uma criatura e informe a quantidade. As pilhas são
       posicionadas automaticamente ao iniciar a batalha, sem afetar as Casas.</p>
      {sandbox?<p role="status" className="battle-note">
