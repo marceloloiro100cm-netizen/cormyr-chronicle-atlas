@@ -8,6 +8,7 @@ import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
 import {formatDndMetres} from '@/lib/crusade/dnd-metric';
 import {crzEventLabel,mostRecentAction} from '@/lib/battle/ux/action-explanation';
+import {BattleSaveScope} from './BattleSaveScope';
 import {BattleActionFeedback} from './BattleActionFeedback';
 import {BattleOutcomeSummary} from './BattleOutcomeSummary';
 import {dndNeedsImpasseReview} from '@/lib/battle/ux/dnd-impasse';
@@ -590,7 +591,8 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
  const savedPanel=dndMode&&!sandbox?<details className="battle-surface"
   aria-label="Batalhas D&D salvas" open={savedPanelOpen}
   onToggle={event=>setSavedPanelOpen(event.currentTarget.open)}>
-  <summary>Batalhas privadas do Narrador</summary>
+  <summary>Continuar batalha</summary>
+  <BattleSaveScope system="dnd"/>
   <Button variant="outline" disabled={dndBusy}
    onClick={()=>void fetchSaves()}>Consultar batalhas salvas</Button>
   {storedBattles.length>0&&<>
@@ -929,17 +931,20 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
        {expanded?'↙ Sair da tela ampliada':'⤢ Ampliar batalha'}
       </Button>
      {onBack&&<Button variant="outline" onClick={leave}>Voltar</Button>}
-     <Button variant="outline" onClick={reset}>Novo treino</Button>
-     <Button variant="outline" onClick={exportReplay}>Exportar replay</Button>
      {dndMode&&!sandbox&&<Button variant="outline" disabled={dndBusy}
-      onClick={()=>void saveSession()}>Salvar batalha privada</Button>}
-     {!dndMode&&session.state.phase==='completed'&&<Button variant="outline" onClick={awardProgress}>
-      Registrar XP do General (treino)</Button>}
-     <Button variant="outline" aria-pressed={highContrast}
-      onClick={()=>setHighContrast(v=>!v)}>Alto contraste CRZ</Button>
-     {!sandbox&&<Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
-      Importar replay
-     </Button>}
+      onClick={()=>void saveSession()}>Salvar batalha</Button>}
+     <details className="battle-crz-utilities">
+      <summary>Mais opções</summary>
+      <div className="battle-crz-utilities-buttons">
+       <Button variant="outline" onClick={reset}>Novo treino</Button>
+       <Button variant="outline" onClick={exportReplay}>Exportar replay</Button>
+       {!dndMode&&session.state.phase==='completed'&&<Button variant="outline" onClick={awardProgress}>
+        Registrar XP do General (treino)</Button>}
+       <Button variant="outline" aria-pressed={highContrast}
+        onClick={()=>setHighContrast(v=>!v)}>Alto contraste CRZ</Button>
+       {!sandbox&&<Button variant="outline" onClick={()=>setShowImport(v=>!v)}>Importar replay</Button>}
+      </div>
+     </details>
     </div>
    </header>
    {!sandbox&&showImport&&<label className="crz-file">

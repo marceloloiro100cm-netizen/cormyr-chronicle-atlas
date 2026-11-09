@@ -12,6 +12,7 @@ import {BattleSavedPanel} from './BattleSavedPanel';
 import {BattleV3NarratorEntry} from './BattleV3NarratorEntry';
 import {BattleAccessCheck} from './BattleAccessCheck';
 import {BattleRulesetSelector} from './BattleRulesetSelector';
+import {BattleSaveScope} from './BattleSaveScope';
 import {BattleGotGame} from './BattleGotGame';
 import {battleRulesetOption,type BattleRulesetMode} from '@/lib/battle/ruleset-modes';
 import {BattleV3InvitationCreator} from './BattleV3InvitationCreator';
@@ -84,20 +85,21 @@ export function BattleNarratorHub(){
    <aside className="battle-home-side" aria-label="Continuação e opções de batalha">
     <section className="battle-surface" aria-label="Continuar batalha">
      <h3>Continuar</h3>
+     <BattleSaveScope system={rulesetMode}/>
      {rulesetMode==='adapted'?
-      (canSave?<Button variant="outline" onClick={()=>setView('saved')}>Batalhas salvas · Adaptado</Button>:
+      (canSave?<Button variant="outline" onClick={()=>setView('saved')}>Continuar batalha</Button>:
        <p className="battle-note" role="status">Salvamento Adaptado {storeStatus==='checking'?
         'em verificação':'indisponível neste ambiente'}. É possível exportar replays locais.</p>):
       rulesetMode==='got'?<>
        <Button variant="outline" onClick={()=>{setResumeGot(true);setView('got');}}>
-        Retomar batalha Game of Thrones
+        Continuar batalha
        </Button>
-       <p className="battle-note">Abre a simulação salva neste navegador, se existir.</p>
+       <p className="battle-note">Selecione uma cópia local para continuar.</p>
       </>:<>
        <Button variant="outline" onClick={()=>{setResumeDnd(true);setView('dnd');}}>
-        Consultar batalhas D&D salvas
+        Continuar batalha
        </Button>
-       <p className="battle-note">Batalhas privadas do Narrador, com acesso autenticado.</p>
+       <p className="battle-note">Selecione sua batalha privada.</p>
       </>}
     </section>
     <details className="battle-surface battle-home-advanced">

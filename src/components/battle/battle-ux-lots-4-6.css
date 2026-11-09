@@ -56,3 +56,23 @@
  .battle-module :is(button,summary,.crz-map-tile,.got-cell,.battle-action-feedback)
  {scroll-behavior:auto!important;animation:none!important;transition:none!important}
 }
+
+/* Lote 9 — salvamento legível e menu avançado contextual. */
+.battle-module .battle-save-scope{display:grid;gap:.15rem;padding:.5rem .75rem;
+ border-inline-start:3px solid #a6b898;margin:.5rem 0;
+ background:rgba(74,90,66,.16);line-height:1.4;max-width:55ch}
+.battle-module .battle-save-scope strong{font-size:14px;color:#ffebbc}
+.battle-module .battle-save-scope span{font-size:13px;color:#e1dccd}
+.battle-module .battle-crz-utilities{position:relative;min-width:0;z-index:2}
+.battle-module .battle-crz-utilities>summary{cursor:pointer;min-height:44px;
+ display:flex;align-items:center;font-weight:650;padding:6px 10px;
+ border:1px solid #b3915d;border-radius:7px}
+.battle-module .battle-crz-utilities-buttons{display:flex;flex-wrap:wrap;gap:7px;
+ margin-top:6px;padding:8px;border:1px solid #856d4c;border-radius:8px}
+.battle-module .battle-crz-utilities>summary:focus-visible{outline:3px solid #ffde91;outline-offset:2px}
+@media(max-width:680px){.battle-module .battle-crz-utilities-buttons{display:grid;grid-template-columns:1fr 1fr}
+.battle-module .battle-crz-utilities-buttons>button{min-height:44px}
+.battle-module .battle-save-scope{max-width:100%}}
+@media(prefers-reduced-motion:reduce){
+ .battle-module .battle-crz-utilities *{animation:none!important;transition:none!important}
+}
