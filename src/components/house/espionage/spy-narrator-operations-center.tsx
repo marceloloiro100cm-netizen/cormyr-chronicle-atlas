@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {ClipboardList,RefreshCw} from 'lucide-react';
@@ -67,6 +67,7 @@ export function filterSpyOperations(operations:readonly SpyNarratorOperation[],
 }
 const dateLabel=(value:string|null)=>value&&parseDate(value)?formatDate(value):'—';
 export function SpyNarratorOperationsCenter(){
+ const reviewRef=useRef<HTMLElement|null>(null);
  const [search,setSearch]=useState('');
  const [state,setState]=useState('attention');
  const [page,setPage]=useState(1);
@@ -75,6 +76,11 @@ export function SpyNarratorOperationsCenter(){
  }|null>(null);
  const [recentResolution,setRecentResolution]=useState('');
  const [retryingDossier,setRetryingDossier]=useState<string|null>(null);
+ useEffect(()=>{
+  if(!selectedReview)return;
+  reviewRef.current?.focus({preventScroll:true});
+  reviewRef.current?.scrollIntoView({block:'start',behavior:'smooth'});
+ },[selectedReview]);
  const qc=useQueryClient();
  const retryDossier=useServerFn(retrySpyIntelligence);
  const finishDossier=async(operationId:string)=>{
@@ -153,13 +159,15 @@ export function SpyNarratorOperationsCenter(){
      </select>
     </label>
    </div>
-   <p className="house-caption" role="status">{pending.length} operações neste filtro.</p>
+   <p className="house-caption" role="status">{pending.length}
+    {' '}operação(ões) neste filtro.</p>
    {state==='attention'&&counters.review+counters.dossier===0&&<p role="status"
     className="spy-operations-idle">Tudo em dia: nenhuma missão ou descoberta
     aguardando o Narrador.</p>}
    {recentResolution&&<p role="status" className="spy-operations-feedback">
     {recentResolution}</p>}
    {selectedReview&&<section className="spy-operation-inline-review"
+    ref={reviewRef} tabIndex={-1}
     aria-label="Resolver missão selecionada">
     <header className="spy-operation-inline-header">
      <strong>Homologar missão selecionada</strong>
