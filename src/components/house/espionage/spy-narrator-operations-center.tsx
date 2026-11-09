@@ -1,5 +1,6 @@
 import {useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
+import {useServerFn} from '@tanstack/react-start';
 import {ClipboardList,RefreshCw} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {formatDate,parseDate} from '@/lib/calendar/harptos';
@@ -7,6 +8,7 @@ import {readSpyNarratorOperationsBrowser,type SpyNarratorOperation}
  from '@/lib/espionage/spy-operations-browser';
 import {readSpyHouseManagementBrowser} from '@/lib/espionage/spy-browser-client';
 import {SpyNarratorResolutionPanel} from './spy-narrator-resolution';
+import {retrySpyIntelligence} from '@/lib/espionage/spy-dossier.functions';
 import './spy-operations-center.css';
 
 const statusLabels:Record<string,string>={
@@ -54,7 +56,27 @@ export function SpyNarratorOperationsCenter(){
   operationId:string;ownerHouseId:string;
  }|null>(null);
  const [recentResolution,setRecentResolution]=useState('');
+ const [retryingDossier,setRetryingDossier]=useState<string|null>(null);
  const qc=useQueryClient();
+ const retryDossier=useServerFn(retrySpyIntelligence);
+ const finishDossier=async(operationId:string)=>{
+  if(retryingDossier)return;
+  setRetryingDossier(operationId);setRecentResolution('');
+  try{
+   const response=await retryDossier({data:{operationId}});
+   setRecentResolution(response.status==='complete'
+    ?'Descobertas confirmadas. O dossiê está atualizado.'
+    :response.status==='waiting_catalog'
+     ?'Fonte oficial ainda indisponível. O resultado da missão continua salvo.'
+     :'Esta operação não possui prêmio de inteligência a processar.');
+   await Promise.allSettled([
+    qc.invalidateQueries({queryKey:['spy-narrator-operations']}),
+    qc.invalidateQueries({queryKey:['spy-dossiers']}),
+   ]);
+  }catch{
+   setRecentResolution('O dossiê não pôde ser finalizado. Verifique a fonte oficial e a fila do Narrador.');
+  }finally{setRetryingDossier(null);}
+ };
  const houseQuery=useQuery({
   queryKey:['spy-house-management',selectedReview?.ownerHouseId],
   queryFn:()=>readSpyHouseManagementBrowser(selectedReview!.ownerHouseId),
@@ -131,6 +153,12 @@ export function SpyNarratorOperationsCenter(){
        setRecentResolution('');
        setSelectedReview({operationId:o.operationId,ownerHouseId:o.ownerHouseId});
       }}>Resolver agora</Button>}
+     {spyNeedsDossierAttention(o)&&<Button type="button"
+      variant="outline" className="spy-operation-resolve-button"
+      disabled={Boolean(retryingDossier)}
+      onClick={()=>void finishDossier(o.operationId)}>
+      {retryingDossier===o.operationId?'Verificando…':'Concluir dossiê'}
+     </Button>}
     </article>)}
    </div>:<p className="house-caption">Nenhuma missão neste filtro.</p>}
    {totalPages>1&&<div className="spy-operations-pages">
@@ -174,8 +202,8 @@ export function SpyNarratorOperationsCenter(){
      o.id===selectedReview.operationId&&o.status==='pending_narrator_review')&&
      <p role="status">Esta missão não está mais aguardando resolução.</p>}
    </section>}
-   <small className="house-caption">Missões aguardando avaliação podem ser resolvidas
-    aqui mesmo. Dossiês pendentes continuam no painel de inteligência abaixo.</small>
+   <small className="house-caption">Resolva missões e confirme descobertas
+    nesta central. Falhas de integridade exigem revisão na fila de dossiês.</small>
   </>}
  </section>;
 }
