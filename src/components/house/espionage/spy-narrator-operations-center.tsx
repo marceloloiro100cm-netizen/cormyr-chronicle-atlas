@@ -163,7 +163,8 @@ export function SpyNarratorOperationsCenter(){
    </div>
    <p className="house-caption" role="status">{pending.length} operações neste filtro.</p>
    {visible.length?<div className="spy-operations-list">
-    {visible.map(o=><article className="spy-operation-row" key={o.operationId}>
+    {visible.map(o=><article className="spy-operation-row" key={o.operationId}
+     data-priority={o.status==='pending_narrator_review'||spyNeedsDossierAttention(o)?'urgent':'normal'}>
      <div>
       <strong>{o.ownerHouseName} → {o.targetHouseName}</strong>
       <small>{o.agentName} · {objectiveLabels[o.objective]}</small>
@@ -215,7 +216,8 @@ export function SpyNarratorOperationsCenter(){
      <Button type="button" variant="outline" onClick={()=>void houseQuery.refetch()}>
       Tentar novamente</Button>
     </div>}
-    {houseQuery.data&&
+    {houseQuery.data&&houseQuery.data.operations.some(o=>
+     o.id===selectedReview.operationId&&o.status==='pending_narrator_review')&&
      <SpyNarratorResolutionPanel data={houseQuery.data}
       operationId={selectedReview.operationId}
       onResolved={result=>{
@@ -228,7 +230,7 @@ export function SpyNarratorOperationsCenter(){
        void Promise.allSettled([
         qc.invalidateQueries({queryKey:['spy-narrator-operations']}),
         qc.invalidateQueries({queryKey:['spy-dossiers']}),
-        qc.invalidateQueries({queryKey:['spy-house-management',selectedReview.ownerHouseId]}),
+        qc.invalidateQueries({queryKey:['spy-house-management',selectedReview?.ownerHouseId]}),
        ]);
       }}/>}
     {houseQuery.data&&!houseQuery.data.operations.some(o=>
