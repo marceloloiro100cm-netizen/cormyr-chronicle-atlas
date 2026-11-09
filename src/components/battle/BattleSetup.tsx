@@ -234,15 +234,18 @@ export function BattleSetup({onStart,onBack}:{
      value={name} onChange={e=>setName(e.target.value)}/></label>
      <label>Campo de batalha<select aria-label="Cenário rápido" value={map.id}
      onChange={e=>{const id=e.target.value as BattleScenarioId;
-      if(Object.hasOwn(SCENARIOS,id))setMap(createScenario(id,map.width,'square'));}}>
+      if(Object.hasOwn(SCENARIOS,id)){setMap(createScenario(id,map.width,'square'));setObjectiveOverrides([]);}}}>
      {!Object.hasOwn(SCENARIOS,map.id)&&<option value={map.id}>Mapa personalizado</option>}
      {Object.entries(SCENARIOS).map(([id,label])=><option key={id} value={id}>{label}</option>)}
     </select></label>
     <label>Objetivo<select aria-label="Objetivo da batalha" value={objectiveMode}
-     onChange={e=>setObjectiveMode(e.target.value as TacticalObjectivePreset)}>
+     onChange={e=>selectObjectiveMode(e.target.value as TacticalObjectivePreset,true)}>
      <option value="elimination">Derrotar o inimigo</option>
      <option value="capture">Conquistar posição · 2 rodadas</option>
      <option value="survive">Resistir · 6 rodadas</option>
+     <option value="outposts">Controlar postos avançados</option>
+     <option value="bridge">Tomar a ponte</option>
+     <option value="fortress">Tomar a fortificação</option>
     </select></label>
     <label>Adversário<select aria-label="Adversário rápido" value={quickOpponent}
      onChange={e=>setQuickOpponent(e.target.value as 'human'|'ai')}>
@@ -250,6 +253,13 @@ export function BattleSetup({onStart,onBack}:{
      <option value="human">Narrador controla os dois lados</option>
     </select></label>
    </div>
+   {quickOpponent==='ai'&&<label className="battle-ai-choice">Estratégia da IA
+    <select aria-label="Perfil da IA rápido" value={aiProfiles.defender}
+     onChange={e=>setAiProfiles(p=>({...p,defender:e.target.value as AiProfile}))}>
+     <option value="balanced">Equilibrada</option><option value="aggressive">Agressiva</option>
+     <option value="defensive">Defensiva</option><option value="ranged">À distância</option>
+    </select>
+   </label>}
    {quickSource==='houses'&&<div className="battle-source-quick" aria-label="Selecionar casas e exércitos">
     <BattleSourcePicker onAdd={addImported} onAddMany={addImportedMany}
      onHouseLoaded={onHouseLoaded} remainingBySide={remainingBySide}/>
@@ -288,17 +298,28 @@ export function BattleSetup({onStart,onBack}:{
         <option value="human">Narrador</option><option value="ai">Inteligência artificial</option>
       </select>
      </label>)}</div>
+    {(['attacker','defender'] as const).filter(side=>controls[side]==='ai').map(side=>
+     <label key={side}>Perfil da IA · {SIDE_LABEL[side]}
+      <select aria-label={'Perfil da IA '+SIDE_LABEL[side]} value={aiProfiles[side]}
+       onChange={e=>setAiProfiles(p=>({...p,[side]:e.target.value as AiProfile}))}>
+       <option value="balanced">Equilibrada</option><option value="aggressive">Agressiva</option>
+       <option value="defensive">Defensiva</option><option value="ranged">À distância</option>
+      </select>
+     </label>)}
     <label>Objetivo tático
      <select aria-label="Objetivo detalhado" value={objectiveMode}
-      onChange={e=>setObjectiveMode(e.target.value as TacticalObjectivePreset)}>
+      onChange={e=>selectObjectiveMode(e.target.value as TacticalObjectivePreset,false)}>
       <option value="elimination">Derrotar o inimigo</option>
       <option value="capture">Atacante captura por 2 rodadas; defensor resiste até a 8ª</option>
       <option value="survive">Defensor resiste 6 rodadas</option>
+      <option value="outposts">Conquistar múltiplos postos</option>
+      <option value="bridge">Tomar a ponte · cenário tático</option>
+      <option value="fortress">Tomar a fortificação · portão simplificado</option>
      </select>
     </label>
     <p className="battle-note">Objetivos opcionais: não alteram as regras do GOT ou D&D.
-     A posição é um quadrado transitável próximo ao centro do mapa. Uma rodada = todas as ativações.</p>
-    <p className="battle-note">IA heurística determinística, sem dados externos. Regras PTE-2.0 experimentais.</p>
+     Os pontos devem ser transitáveis. A rodada termina após todas as ativações.</p>
+    <p className="battle-note">IA determinística, sem dados externos. A fortificação usa muros simplificados, não regras de cerco GOT.</p>
   </section>
   <section className="battle-surface" aria-label="Exércitos fictícios">
    <h3>2. Exércitos</h3>
@@ -358,14 +379,14 @@ export function BattleSetup({onStart,onBack}:{
       {/* Mapas hexagonais históricos só podem ser lidos de replays antigos. */}
      </select></label>
       <label>Cenário<select aria-label="Escolher cenário" value={Object.hasOwn(SCENARIOS,map.id)?map.id:'custom'}
-      onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id)){setMap(createScenario(id,map.width,'square'));setUnits(x=>x.map(u=>({...u,position:null})));setError('');}}}>
+      onChange={e=>{const id=e.target.value as BattleScenarioId;if(Object.hasOwn(SCENARIOS,id)){setMap(createScenario(id,map.width,'square'));setUnits(x=>x.map(u=>({...u,position:null})));setObjectiveOverrides([]);setError('');}}}>
       {!Object.hasOwn(SCENARIOS,map.id)&&<option value="custom">Personalizado</option>}
       {Object.entries(SCENARIOS).map(([id,label])=><option value={id} key={id}>{label}</option>)}
      </select></label>
      <Button variant="outline" onClick={()=>setEditor(x=>!x)}>{editor?'Fechar editor':'Abrir editor de mapa'}</Button>
    </div>
    {editor&&<BattleMapEditor map={map} onChange={next=>{
-     setMap(next);setUnits(list=>list.map(u=>({...u,position:null})));setError('');
+     setMap(next);setUnits(list=>list.map(u=>({...u,position:null})));setObjectiveOverrides([]);setError('');
    }}/>}
    {mapErrors.length>0&&<p role="alert">Mapa inválido: {mapErrors.join('; ')}</p>}
   </section>
