@@ -1,0 +1,35 @@
+.battle-got .got-phase-guide{
+ border:1px solid #987d54;border-inline-start:4px solid #d4b374;
+ background:rgba(22,30,28,.90);border-radius:12px;
+ color:#f8eddb;padding:1rem;margin:.65rem 0 1rem;
+ display:grid;gap:.75rem;
+}
+.battle-got .got-phase-guide-intro{display:flex;gap:.5rem 1rem;flex-wrap:wrap;align-items:baseline}
+.battle-got .got-phase-guide-intro strong{color:#ffe1a0;font-size:1.1rem}
+.battle-got .got-phase-guide-intro p{margin:0;line-height:1.55;flex:1 1 260px}
+.battle-got .got-phase-steps{list-style:none;padding:0;margin:0;display:grid;
+ grid-template-columns:repeat(6,minmax(100px,1fr));gap:.35rem}
+.battle-got .got-phase-steps li{padding:.55rem .35rem;border:1px solid #666c61;
+ border-radius:7px;display:flex;align-items:center;gap:.4rem;font-size:.83rem}
+.battle-got .got-phase-steps li>span{min-width:1.3rem;text-align:center;
+ background:#45504a;border-radius:50%;color:#fff}
+.battle-got .got-phase-steps li.is-current{border:2px solid #e0bd75;
+ background:#3a4135;color:#fff4d0;font-weight:700}
+.battle-got .got-phase-steps li.is-complete{opacity:.74}
+.battle-got .got-phase-guide-links{display:flex;flex-wrap:wrap;gap:.45rem}
+.battle-got .got-phase-guide-links button{min-height:42px;white-space:normal}
+.battle-got .got-phase-note{font-size:.79rem;opacity:.84;margin:0}
+.battle-got [id^="got-prep-"]{scroll-margin-top:6rem}
+@media(max-width:850px){.battle-got .got-phase-steps{
+ grid-template-columns:repeat(3,minmax(0,1fr))}
+ .battle-got .got-phase-steps li{font-size:.77rem}}
+@media(max-width:480px){.battle-got .got-phase-steps{
+ grid-template-columns:repeat(2,minmax(0,1fr))}
+ .battle-got .got-phase-guide{padding:.7rem}}
+.battle-got .got-save-actions label{
+ display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;min-width:190px
+}
+.battle-got .got-save-actions label input,.battle-got .got-save-actions label select{
+ width:min(100%,270px);min-height:40px
+}
+.battle-got .got-save-actions button{min-height:42px;white-space:normal}

@@ -11,7 +11,9 @@ describe('CRZ Lote 7 — acessibilidade e gating de laboratório',()=>{
   expect(hub).toContain('BATTLE_CRZ_TRAINING_UI_ENABLED&&<Button');
   expect(hub).toContain("view==='crz'&&BATTLE_CRZ_TRAINING_UI_ENABLED");
   const player=readFileSync('src/components/battle/BattleV3PlayerEntry.tsx','utf8');
-  expect(player).not.toContain('BattleCrzLab');
+  expect(player).toContain('PlayerDndGame mode="dnd" playerSandbox');
+  const gate=readFileSync('src/lib/battle/feature-flag.ts','utf8');
+  expect(gate).toContain('BATTLE_PLAYERS_ENABLED=false');
  });
  it('suporta zoom 100/150/200, restauração e contraste reversível',()=>{
   render(<BattleCrzLab/>);

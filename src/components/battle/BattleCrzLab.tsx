@@ -30,6 +30,7 @@ import {DND_MILITARY_MAPPING,dndMilitaryTemplateId,dndMilitaryType}
 import {DND_DEFAULT_STACKS,dndBattleReady,type DndStackDraft}
  from '@/lib/crusade/dnd-battle';
 import {DND_MILITARY_CREATURES} from '@/lib/crusade/dnd-military';
+import {PLAYER_DND_MODELS} from '@/lib/crusade/dnd-player-models';
 import {saveDndBattle,listDndBattles,loadDndBattle,
  type DndSavedBattle} from '@/lib/crusade/dnd-private-sessions';
 import {isDndReplay,isDndBattle,isDndV3} from '@/lib/crusade/dnd-mode';
@@ -249,10 +250,11 @@ const spellCost:Partial<Record<CrzSpellId,number>>={
  cure_wounds:2,firebolt:2,fireball:6,shield_wall_formation:2,
 };
 
-export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
- onBack?:()=>void;mode?:'crz'|'dnd';showSavedOnOpen?:boolean;
+export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSandbox=false}:{
+ onBack?:()=>void;mode?:'crz'|'dnd';showSavedOnOpen?:boolean;playerSandbox?:boolean;
 }){
  const dndMode=mode==='dnd';
+ const sandbox=dndMode&&playerSandbox;
  const [options,setOptions]=useState<CrzTrainingOptions>({...CRZ_TRAINING_DEFAULTS,
   grid:'square',preset:'CRZ-5E',resolution:dndMode?'rolled':'expected'});
  const [session,setSession]=useState<CrzReplaySession|null>(null);
@@ -268,8 +270,9 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
  const [showImport,setShowImport]=useState(false);
  const [dndRoster,setDndRoster]=useState<DndStackDraft[]>([...DND_DEFAULT_STACKS]);
  const [dndCormyr300,setDndCormyr300]=useState<DndCormyrCatalog|null>(null);
- const dndAllMonsters=useMemo(()=>dndCormyr300?.monsters.map(dndCormyrCreature)??[],
-  [dndCormyr300]);
+ const dndAllMonsters=useMemo(()=>sandbox?PLAYER_DND_MODELS.map(m=>m.creature):
+  dndCormyr300?.monsters.map(dndCormyrCreature)??[],
+  [dndCormyr300,sandbox]);
  const [dndSide,setDndSide]=useState<DndStackDraft['side']>('attacker');
  const [dndSearch,setDndSearch]=useState('');
  const [dndGroup,setDndGroup]=useState('all');
@@ -285,12 +288,16 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
    size:'M' as const,cr:undefined as number|undefined,
    source:'Modelo militar',hp:x.hp,ac:x.ac,
   })),
-  ...(dndCormyr300?.monsters.map(m=>({
+  ...(sandbox?PLAYER_DND_MODELS.map(m=>({
+   id:m.creature.id,name:m.creature.name,group:m.group,
+   size:m.creature.size,cr:m.creature.cr as number|undefined,
+   source:m.creature.source,hp:m.creature.hp.average,ac:m.creature.ac,
+  })):dndCormyr300?.monsters.map(m=>({
    id:'cy-'+m.id+'|local',name:m.name,group:m.group,
    size:m.size,cr:m.challenge_rating as number|undefined,
    source:m.source,hp:m.hp,ac:m.ac,
   }))??[]),
- ],[dndCormyr300]);
+ ],[dndCormyr300,sandbox]);
  const dndGroups=useMemo(()=>[...new Set(dndChoices.map(x=>x.group))],
   [dndChoices]);
  const dndSources=useMemo(()=>[...new Set(dndChoices.map(x=>x.source))].sort(),
@@ -345,9 +352,9 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
   setDndRoster(current=>current.map(x=>x.id===id?{...x,...part,
    ...(part.templateId?{position:undefined}:{})}:x));
  };
- useEffect(()=>{setGeneralProfile(readGeneralTrainingProfile());},[]);
+ useEffect(()=>{if(!sandbox)setGeneralProfile(readGeneralTrainingProfile());},[sandbox]);
  const awardProgress=()=>{
-  if(!session)return;
+  if(sandbox||!session)return;
   try{
    const result=awardGeneralTraining(generalProfile,session.replay);
    setGeneralProfile(result.profile);
@@ -402,7 +409,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
   }
  };
  const adminCommand=(command:CrzCommand)=>{
-  if(!dndMode||!session||replayStep!==null||session.state.phase!=='active')return;
+  if(sandbox||!dndMode||!session||replayStep!==null||session.state.phase!=='active')return;
   try{
    const updated=crzReplayRecord(session,command,'human');
    setSession(updated);setError('');setReplayStep(null);
@@ -412,7 +419,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
   }catch(e){setError(e instanceof Error?e.message:'Ajuste da batalha recusado.');}
  };
  const addReinforcement=()=>{
-  if(!session?.state.activeStackId)return;
+  if(sandbox||!session?.state.activeStackId)return;
   const list=[...DND_MILITARY_CREATURES,...dndAllMonsters,
    ...session.state.stacks.map(x=>x.template)];
   const template=list.find(x=>x.id===reinforceTemplate);
@@ -422,7 +429,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
    stackId:id,side:reinforceSide,count:reinforceCount,template});
  };
  const saveSession=async()=>{
-  if(!dndMode||!session)return;
+  if(sandbox||!dndMode||!session)return;
   setDndBusy(true);
   try{
    await saveDndBattle(session);
@@ -433,6 +440,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
   finally{setDndBusy(false);}
  };
  const fetchSaves=async()=>{
+  if(sandbox)return;
   setDndBusy(true);
   try{
    const records=await listDndBattles();
@@ -443,7 +451,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
   finally{setDndBusy(false);}
  };
  const restoreSession=async()=>{
-  if(!restoreBattleId)return;
+  if(sandbox||!restoreBattleId)return;
   setDndBusy(true);
   try{
    const loaded=await loadDndBattle(restoreBattleId);
@@ -537,6 +545,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
   }
  };
  const importReplay=async(event:ChangeEvent<HTMLInputElement>)=>{
+  if(sandbox)return;
   const file=event.currentTarget.files?.[0];
   if(!file)return;
   try{
@@ -561,7 +570,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
   setExpanded(false);setSession(null);setReplayStep(null);setSelectedId(null);
   setError('');setMessage('');setPanel('actions');setHoveredId(null);
  };
- const savedPanel=dndMode?<details className="battle-surface"
+ const savedPanel=dndMode&&!sandbox?<details className="battle-surface"
   aria-label="Batalhas D&D salvas" open={savedPanelOpen}
   onToggle={event=>setSavedPanelOpen(event.currentTarget.open)}>
   <summary>Batalhas privadas do Narrador</summary>
@@ -581,23 +590,23 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
  </details>:null;
  const arena=<section className={'battle-module crusade-mode crz-lab'+
   (highContrast?' crz-high-contrast':'')}
-  aria-label={dndMode?'D&D simplificado · laboratório do Narrador':'Laboratório CRZ-1.0 do Narrador'}>
+  aria-label={sandbox?'D&D · simulador local do jogador':dndMode?'D&D simplificado · laboratório do Narrador':'Laboratório CRZ-1.0 do Narrador'}>
   {!session&&<>
    <header className="battle-header crz-intro">
-    <p className="battle-eyebrow">CORMYR · LABORATÓRIO DO NARRADOR</p>
+    <p className="battle-eyebrow">{sandbox?'CORMYR · SIMULAÇÃO DO JOGADOR':'CORMYR · LABORATÓRIO DO NARRADOR'}</p>
     <h1>{dndMode?'D&D · Combate simplificado':'CRZ-1.0 · Cruzada Experimental'}</h1>
     <p>{dndMode?'Regras simplificadas de inspiração 5e: ataque, CA, PV, movimento e iniciativa em quadrados.':
      'Treinamento tático com exércitos-modelo.'}
      Nenhum efeito em casas, baixas oficiais, contas ou no calendário.</p>
     <div className="crz-toolbar">
      {onBack&&<Button variant="outline" onClick={leave}>Voltar ao módulo</Button>}
-     <Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
+     {!sandbox&&<Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
       Importar replay JSON
-     </Button>
+     </Button>}
      <Button variant="outline" aria-pressed={highContrast}
       onClick={()=>setHighContrast(v=>!v)}>Alto contraste CRZ</Button>
     </div>
-    {showImport&&<label className="crz-file">
+    {!sandbox&&showImport&&<label className="crz-file">
      Arquivo de replay (máximo 8 MB)
      <input aria-label="Arquivo de replay CRZ" type="file"
       accept=".json,application/json" onChange={event=>{void importReplay(event);}}/>
@@ -646,12 +655,14 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
      <h3>Montros</h3>
      <p>Escolha o lado, busque uma criatura e informe a quantidade. As pilhas são
       posicionadas automaticamente ao iniciar a batalha, sem afetar as Casas.</p>
-     <DndCormyr300Library compact onCatalog={setDndCormyr300}
+     {sandbox?<p role="status" className="battle-note">
+      Modelos fictícios disponíveis. O bestiário privado do Narrador não é consultado.
+     </p>:<DndCormyr300Library compact onCatalog={setDndCormyr300}
       onAdd={addDndCatalogStack}
       sideCounts={{
        attacker:dndRoster.filter(x=>x.side==='attacker').length,
        defender:dndRoster.filter(x=>x.side==='defender').length,
-      }}/>
+      }}/>} 
      <div className="dnd-side-switch" role="group" aria-label="Selecionar exército D&D">
       {(['attacker','defender'] as const).map(side=><Button key={side}
        type="button" variant={dndSide===side?'default':'outline'}
@@ -894,18 +905,18 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
      {onBack&&<Button variant="outline" onClick={leave}>Voltar</Button>}
      <Button variant="outline" onClick={reset}>Novo treino</Button>
      <Button variant="outline" onClick={exportReplay}>Exportar replay</Button>
-     {dndMode&&<Button variant="outline" disabled={dndBusy}
+     {dndMode&&!sandbox&&<Button variant="outline" disabled={dndBusy}
       onClick={()=>void saveSession()}>Salvar batalha privada</Button>}
      {!dndMode&&session.state.phase==='completed'&&<Button variant="outline" onClick={awardProgress}>
       Registrar XP do General (treino)</Button>}
      <Button variant="outline" aria-pressed={highContrast}
       onClick={()=>setHighContrast(v=>!v)}>Alto contraste CRZ</Button>
-     <Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
+     {!sandbox&&<Button variant="outline" onClick={()=>setShowImport(v=>!v)}>
       Importar replay
-     </Button>
+     </Button>}
     </div>
    </header>
-   {showImport&&<label className="crz-file">
+   {!sandbox&&showImport&&<label className="crz-file">
     Importar replay CRZ (máximo 8 MB)
     <input type="file" accept=".json,application/json"
      aria-label="Arquivo de replay CRZ"
@@ -919,7 +930,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false}:{
     needsSelection={Boolean(canAct&&active&&selectedId!==active.id)}
     onSelectActive={active?()=>setSelectedId(active.id):undefined}/>
    {savedPanel}
-   {dndMode&&isDndBattle(frame)&&frame.phase==='active'&&<details className="battle-surface"
+   {dndMode&&!sandbox&&isDndBattle(frame)&&frame.phase==='active'&&<details className="battle-surface"
     aria-label="Gerenciamento de tropas durante a batalha D&D">
     <summary>Gerenciar criaturas, reforços e resultado</summary>
     <p>Altere o efetivo sem encerrar a partida. Cada ajuste é registrado no replay.

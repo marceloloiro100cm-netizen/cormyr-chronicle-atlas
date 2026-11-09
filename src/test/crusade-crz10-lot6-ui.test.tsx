@@ -98,6 +98,8 @@ describe('CRZ-1.0 · Lote 6 — treino do Narrador, HUD e replay',()=>{
   const hub=readFileSync('src/components/battle/BattleNarratorHub.tsx','utf8');
   const player=readFileSync('src/components/battle/BattleV3PlayerEntry.tsx','utf8');
   expect(hub).toContain('BattleCrzLab');
-  expect(player).not.toContain('BattleCrzLab');
+  expect(player).toContain('PlayerDndGame mode="dnd" playerSandbox');
+  const gate=readFileSync('src/lib/battle/feature-flag.ts','utf8');
+  expect(gate).toContain('BATTLE_PLAYERS_ENABLED=false');
  });
 });

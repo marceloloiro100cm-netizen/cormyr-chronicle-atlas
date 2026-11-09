@@ -1,5 +1,6 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import {BattleTurnCue} from './BattleTurnCue';
+import {BattleGotGuide} from './BattleGotGuide';
 import {Button} from '@/components/ui/button';
 import {MilitaryUnitSymbol,militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import {SQUARE_TERRAIN_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
@@ -29,6 +30,8 @@ import type {WarModelUnitTypeId} from '@/lib/battle/got/models';
 import {modelWarLabDeployments} from '@/lib/battle/got/lab-deployment';
 import {positionedWarLabDeployments,positionWarLabUnit} from '@/lib/battle/got/lab-positioning';
 import {encodeGotLabSave,decodeGotLabSave,GOT_LAB_SAVE_KEY} from '@/lib/battle/got/lab-save';
+import {saveGotArchive,listGotArchives,loadGotArchive,deleteGotArchive,
+ type GotArchiveEntry} from '@/lib/battle/got/lab-archive';
 import {previewWarAftermath} from '@/lib/battle/got/aftermath';
 import {previewWarResourceConsequences} from '@/lib/battle/got/aftermath-resources';
 import {WAR_FIELD_EQUIPMENT} from '@/lib/battle/got/field-equipment';
@@ -78,7 +81,10 @@ const CONDITION:Record<WarUnit['condition'],string>={
  organized:'Organizada',disorganized:'Desorganizada',routed:'Debandada',
  destroyed:'Destruída',surrendered:'Rendida',escaped:'Fora de campo',
 };
-export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;resumeFromLibrary?:boolean}){
+export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=false}:{
+ onBack:()=>void;resumeFromLibrary?:boolean;playerSandbox?:boolean;
+}){
+ const saveKey=playerSandbox?'cormyr-got-player-training-v1':GOT_LAB_SAVE_KEY;
  const [battle,setBattle]=useState<WarBattle|null>(null);
  const [seed,setSeed]=useState('guerra-cormyr-livro');
  const [name,setName]=useState('Escaramuça de treinamento');
@@ -94,12 +100,19 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
  const [deploymentSelected,setDeploymentSelected]=useState('attacker-1');
  const [localSaveStatus,setLocalSaveStatus]=useState('');
  const [lastSavedSnapshot,setLastSavedSnapshot]=useState('');
+ const archiveScope=playerSandbox?'player' as const:'narrator' as const;
+ const [archives,setArchives]=useState<readonly GotArchiveEntry[]>(()=>typeof window==='undefined'?
+  []:listGotArchives(window.localStorage,archiveScope));
+ const [archiveLabel,setArchiveLabel]=useState('');
+ const [selectedArchive,setSelectedArchive]=useState('');
  const [weather,setWeather]=useState<WarWeather>('clear');
  const [visibility,setVisibility]=useState<WarVisibility>('clear');
  const [advanced,setAdvanced]=useState(false);
  const [strictSightline,setStrictSightline]=useState(false);
  const [hiddenModelSide,setHiddenModelSide]=useState<'none'|WarSide>('none');
  const [tiles,setTiles]=useState<WarTerrainTile[]>([]);
+ const terrainLookup=useMemo(()=>new Map(tiles.map(t=>
+  [t.x+':'+t.y,t.terrain] as const)),[tiles]);
  const [mapSize,setMapSize]=useState({width:12,height:7});
  const [mapImportStatus,setMapImportStatus]=useState('');
  const [terrainPaint,setTerrainPaint]=useState<WarTerrainId>('plain');
@@ -187,11 +200,11 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
   try{
    const prepared=positionedWarLabDeployments(extraUnitsPerSide,deploymentPositions,
     mapSize.width,mapSize.height);
-   if(siegeEnabled&&officialBySlot['attacker-2']&&
+   if(!playerSandbox&&siegeEnabled&&officialBySlot['attacker-2']&&
     officialBySlot['attacker-2'].typeId!=='engineers')
     throw new Error('O segundo espaço do atacante deve ter engenheiros para operar o cerco.');
    const units=prepared.map(row=>{
-    const imported=officialBySlot[row.id as Slot];
+    const imported=playerSandbox?undefined:officialBySlot[row.id as Slot];
     const model=imported?{...imported,side:row.side,position:row.position}:
      modelWarUnit({...row,training,
       typeId:siegeEnabled&&row.id==='attacker-2'?'engineers':types[row.id]??'infantry'});
@@ -477,23 +490,54 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
  useEffect(()=>{
   if(!resumeFromLibrary)return;
   try{
-   const raw=window.localStorage.getItem(GOT_LAB_SAVE_KEY);
+   const raw=window.localStorage.getItem(saveKey);
    if(!raw){setLocalSaveStatus('Nenhuma batalha GOT salva neste navegador.');return;}
    const loaded=decodeGotLabSave(raw);
    setBattle(loaded);setSelected('');setTarget('');setLastSavedSnapshot(raw);
    setLocalSaveStatus('Batalha retomada · rodada '+loaded.round+'.');
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível retomar GOT.');}
- },[resumeFromLibrary]);
+ },[resumeFromLibrary,saveKey]);
  const leaveBattle=()=>{
   if(battle&&JSON.stringify(battle)!==lastSavedSnapshot&&
     !window.confirm('Há alterações não salvas na batalha Game of Thrones. Deseja sair?'))return;
   onBack();
  };
+ const storeNamedBattle=()=>{
+  if(!battle)return;
+  try{
+   const next=saveGotArchive(window.localStorage,archiveScope,archiveLabel||battle.name,battle);
+   setArchives(listGotArchives(window.localStorage,archiveScope));
+   setSelectedArchive(next.id);setArchiveLabel('');
+   setLastSavedSnapshot(encodeGotLabSave(battle));
+   setLocalSaveStatus('Cópia nomeada salva neste navegador: '+next.label+'.');
+   setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Erro ao criar cópia nomeada.');}
+ };
+ const restoreNamedBattle=()=>{
+  try{
+   const loaded=loadGotArchive(window.localStorage,archiveScope,selectedArchive);
+   if(battle&&JSON.stringify(battle)!==lastSavedSnapshot&&
+    !window.confirm('A batalha atual tem mudanças não salvas. Substituí-la pela cópia escolhida?'))return;
+   setBattle(loaded);setLastSavedSnapshot(encodeGotLabSave(loaded));
+   setSelected('');setTarget('');setError('');
+   setLocalSaveStatus('Cópia nomeada retomada: '+loaded.name+'.');
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível abrir a cópia.');}
+ };
+ const removeNamedBattle=()=>{
+  if(!selectedArchive||!window.confirm('Excluir esta cópia nomeada deste navegador?'))return;
+  try{
+   deleteGotArchive(window.localStorage,archiveScope,selectedArchive);
+   const next=listGotArchives(window.localStorage,archiveScope);
+   setArchives(next);setSelectedArchive(next[0]?.id??'');
+   setLocalSaveStatus('Cópia nomeada excluída. A batalha aberta não foi alterada.');
+   setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Erro ao excluir a cópia.');}
+ };
  const saveLocalBattle=()=>{
   if(!battle)return;
   try{
    const snapshot=encodeGotLabSave(battle);
-   window.localStorage.setItem(GOT_LAB_SAVE_KEY,snapshot);
+   window.localStorage.setItem(saveKey,snapshot);
    setLastSavedSnapshot(snapshot);
    setLocalSaveStatus('Simulação salva somente neste navegador.');
    setError('');
@@ -501,7 +545,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
  };
  const loadLocalBattle=()=>{
   try{
-   const saved=window.localStorage.getItem(GOT_LAB_SAVE_KEY);
+   const saved=window.localStorage.getItem(saveKey);
    if(!saved)throw new Error('Nenhuma simulação local foi encontrada neste navegador.');
    if(battle&&!window.confirm('Substituir a simulação atual pela versão salva?'))return;
    const loaded=decodeGotLabSave(saved);
@@ -511,7 +555,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
  };
  const clearLocalBattle=()=>{
   if(!window.confirm('Apagar a cópia local desta simulação? A batalha aberta não será alterada.'))return;
-  try{window.localStorage.removeItem(GOT_LAB_SAVE_KEY);
+  try{window.localStorage.removeItem(saveKey);
    setLastSavedSnapshot('');
    setLocalSaveStatus('Cópia local apagada.');setError('');
   }catch{setError('Não foi possível apagar a cópia local.');}
@@ -560,6 +604,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
     <p>Laboratório do capítulo 10 · quadrados de 10 m · uma rodada representa 1 minuto.</p></div>
    <Button variant="outline" onClick={leaveBattle}>Voltar ao módulo</Button>
   </div>
+  {playerSandbox&&<p className="battle-note" role="status">Modo de treino do jogador: apenas tropas fictícias. Nenhum acesso a unidades oficiais das Casas.</p>}
   <p className="battle-note">Laboratório isolado do Adaptado e D&D.
    Ordens, heróis, cerco, formações e pós-batalha estão disponíveis para testes;
    regras excepcionais e parâmetros de fortificações podem exigir decisão do Narrador.
@@ -572,10 +617,41 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
    </div>
    <p className="battle-note">Salvamento manual, exclusivo deste navegador. Não publica
     resultados, não grava em contas nem modifica exércitos ou recursos oficiais.</p>
+   <div className="got-save-actions" role="group" aria-label="Cópias nomeadas Game of Thrones">
+    {battle&&<>
+     <label>Nome da cópia
+      <input aria-label="Nome da cópia GOT" maxLength={80} value={archiveLabel}
+       placeholder={battle.name} onChange={event=>setArchiveLabel(event.target.value)}/>
+     </label>
+     <Button variant="outline" onClick={storeNamedBattle}>
+      Salvar cópia nomeada</Button>
+    </>}
+    {archives.length>0&&<>
+     <label>Cópia disponível
+      <select aria-label="Escolher cópia GOT" value={selectedArchive}
+       onChange={event=>setSelectedArchive(event.target.value)}>
+       <option value="">Escolher uma cópia</option>
+       {archives.map(item=><option value={item.id} key={item.id}>
+        {item.label} · rodada {item.round} · {new Date(item.updatedAt).toLocaleDateString('pt-BR')}
+       </option>)}
+      </select>
+     </label>
+     <Button variant="outline" disabled={!selectedArchive} onClick={restoreNamedBattle}>Retomar cópia nomeada</Button>
+     <Button variant="outline" disabled={!selectedArchive} onClick={removeNamedBattle}>Excluir cópia nomeada</Button>
+    </>}
+   </div>
+   <p className="battle-note">Até oito cópias nomeadas por perfil, separadas das
+    simulações do jogador e do Narrador. Não substitui backup entre dispositivos.</p>
    {localSaveStatus&&<p role="status">{localSaveStatus}</p>}
   </section>
   {!battle?<section className="battle-surface got-config" aria-label="Preparar campo de guerra">
-   <h3>Preparar confronto conforme a escala do livro</h3>
+   <BattleGotGuide phase="preparation" onQuickPreset={()=>{
+    setSiegeEnabled(false);setFortKind('none');setHeroesEnabled(false);
+    setAdvanced(false);setWeather('clear');setVisibility('clear');
+    setStrictSightline(false);setExtraUnitsPerSide(0);
+    setError('');setLocalSaveStatus('Configuração rápida aplicada. Confira tropas e mapa antes de iniciar.');
+   }}/>
+   <h3 id="got-prep-forces">Preparar confronto conforme a escala do livro</h3>
    <label>Nome da batalha <input value={name} onChange={e=>setName(e.target.value)} maxLength={100}/></label>
    <label>Semente reprodutível <input value={seed} onChange={e=>setSeed(e.target.value)} maxLength={100}/></label>
    <div className="got-config-grid">
@@ -604,6 +680,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
      </option>)}
     </select>
    </label>
+   <h4 id="got-prep-conditions">Condições, heróis e cerco</h4>
    <label>Equipamento especial da vanguarda atacante (somente laboratório)
     <select value={modelFieldEquipment}
      onChange={e=>setModelFieldEquipment(e.target.value as 'none'|WarFieldEquipmentId)}>
@@ -735,7 +812,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
       <option value="defender">Defensor · unidade 1</option>
      </select>
     </label>
-    <h4>Mapa quadrado reutilizável</h4>
+    <h4 id="got-prep-map">Mapa quadrado reutilizável</h4>
    <div className="got-config-grid">
     <label>Tamanho do campo
      <select value={mapSize.width+'x'+mapSize.height}
@@ -812,7 +889,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
     </select></label>
    <div className="got-map got-paint" style={{gridTemplateColumns:'repeat('+mapSize.width+',minmax(0,1fr))'}}>
     {Array.from({length:mapSize.width*mapSize.height},(_,i)=>{
-     const x=i%mapSize.width,y=Math.floor(i/mapSize.width),terrain=tiles.find(t=>t.x===x&&t.y===y)?.terrain??'plain';
+     const x=i%mapSize.width,y=Math.floor(i/mapSize.width),terrain=terrainLookup.get(x+':'+y)??'plain';
      const occupant=preparedDeployments.find(u=>{
       const p=deploymentPositions[u.id]??u.position;
       return p.x===x&&p.y===y;
@@ -845,13 +922,13 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
    </div>
    <BattleSquareLegend showActions={false}/>
    <p className="battle-note">Pinte o terreno antes de iniciar; cada quadrado tem 10 metros. Campos com obstáculos não são automaticamente removidos quando contêm tropas.</p>
-   <BattleGotSourcePicker chosenSlots={officialBySlot} onChoose={(slot,unit)=>
+   {!playerSandbox&&<BattleGotSourcePicker chosenSlots={officialBySlot} onChoose={(slot,unit)=>
     setOfficialBySlot(current=>{
      const next={...current};
      if(unit)next[slot]=unit;
      else delete next[slot];
      return next;
-    })}/>
+    })}/>}
    <Button onClick={start}>Iniciar simulação pelo livro</Button>
   </section>:<>
    <section className="battle-surface got-status" aria-label="Estado da guerra" aria-live="polite">
@@ -866,6 +943,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
      {battle.winner?'Vitória do '+SIDE[battle.winner]:'Confronto sem vencedor'}
     </strong></p>}
    </section>
+   <BattleGotGuide phase={battle.phase}/>
    <BattleTurnCue system="got" round={battle.round} phase={battle.phase}
     activeUnit={battle.phase==='orders'?SIDE[battle.turn]:'Fase do livro'}
     canAct={battle.phase!=='finished'}
@@ -1295,7 +1373,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
      <p className="battle-note">Toque em um quadrado para indicar o destino ou selecionar uma tropa.
       Tropas destruídas ou fora de campo não ocupam mais quadrados.</p>
     </section>
-    <section className="battle-surface got-order-panel" aria-label="Dar ordem de guerra">
+    <section id="got-battle-orders" className="battle-surface got-order-panel" aria-label="Dar ordem de guerra">
      <h3>Comando e Disciplina</h3>
      {battle.phase==='siege'&&<div className="got-order-fields">
       <p>Passo 5 · Armas de cerco. Uma ordem dispara até Guerra máquinas;
