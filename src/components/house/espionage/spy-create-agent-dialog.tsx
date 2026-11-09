@@ -10,6 +10,7 @@ import type {SpyManagement} from '@/lib/espionage/spy-management.functions';
 import {SpyPortraitPicker} from './spy-portrait-picker';
 import {SpyCreationError} from '@/lib/espionage/spy-creation-diagnostics';
 import '../creation-dialog-theme.css';
+import './spy-agent-creation-ux.css';
 
 /** Unified creation transaction. Do not call recruit and purchase separately:
  * that would leave half-created agents when the House runs out of Wealth.
