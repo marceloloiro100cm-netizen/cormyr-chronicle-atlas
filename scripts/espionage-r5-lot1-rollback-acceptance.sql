@@ -28,7 +28,7 @@ VALUES('r5-l1-source','R5 Origem','dragoncoast','noble','{}'::jsonb,true),
 ('r5-l1-target','R5 Alvo','ferlin','noble','{}'::jsonb,true);
 INSERT INTO public.noble_house_sheets(house_id,state,updated_by)
 VALUES
-('r5-l1-source','{"base":{"law":10},"permanent":{"law":0},"holdings":[{"id":"r5-network","name":"Rede Inicial","itemId":"pros-spy-network","status":"active","domainId":"r5-domain"}]}'::jsonb,'d1d1d1d1-d1d1-41d1-81d1-d1d1d1d1d1d1'),
+('r5-l1-source','{"phase":"active","month":0,"base":{"law":10,"wealth":10},"permanent":{"law":0,"wealth":0},"holdings":[{"id":"r5-network","name":"Rede Inicial","itemId":"pros-spy-network","status":"active","domainId":"r5-domain"}]}'::jsonb,'d1d1d1d1-d1d1-41d1-81d1-d1d1d1d1d1d1'),
 ('r5-l1-target','{"base":{"law":10},"permanent":{"law":0},"holdings":[{"id":"h1","name":"Posse 1","status":"active"},{"id":"h2","name":"Posse 2","status":"active"},{"id":"h3","name":"Posse 3","status":"active"}],"domains":[{"id":"d1","name":"Domínio 1"}],"units":[{"id":"u1","name":"Guerreiros 1"},{"id":"u2","name":"Guerreiros 2"},{"id":"u3","name":"Guerreiros 3"}]}'::jsonb,'d1d1d1d1-d1d1-41d1-81d1-d1d1d1d1d1d1');
 INSERT INTO public.spy_locations(kind,ref_id,region_id,name,approved,visibility,source)
 VALUES('region','dragoncoast','dragoncoast','R5 Costa',true,'public','r5'),
@@ -48,11 +48,18 @@ DECLARE
  v_objective text;v_idx integer;v_successes integer;v_promo_count integer;
 BEGIN
  SELECT public.spy_create_agent('r5-l1-source','r5-network','Agente R5','r5-portrait-only-rollback',
-  ARRAY[]::text[],'a2a2a2a2-a2a2-42a2-82a2-a2a2a2a2a2a2') INTO v_create;
+  ARRAY['forged_documents']::text[],'a2a2a2a2-a2a2-42a2-82a2-a2a2a2a2a2a2') INTO v_create;
  IF v_create->>'status'<>'available' OR v_create->>'rank'<>'Verde'
   OR v_create->>'portraitId'<>'r5-portrait-only-rollback'
  THEN RAISE EXCEPTION 'R5 criação incorreta: %',v_create; END IF;
  v_agent:=(v_create->>'id')::uuid;
+ IF (SELECT count(*) FROM public.spy_agent_upgrades
+    WHERE agent_id=v_agent AND upgrade_code='forged_documents')<>1
+   OR (SELECT state#>>'{permanent,wealth}' FROM public.noble_house_sheets
+       WHERE house_id='r5-l1-source')<>'-1'
+   OR (SELECT count(*) FROM public.noble_house_ledger
+       WHERE house_id='r5-l1-source' AND action='spy_agent_upgrade')<>1
+ THEN RAISE EXCEPTION 'R5 melhoria não debitada/registrada atomicamente'; END IF;
  SELECT public.spy_create_agent('r5-l1-source','r5-network','Agente R5','r5-portrait-only-rollback',
   ARRAY[]::text[],'a2a2a2a2-a2a2-42a2-82a2-a2a2a2a2a2a2') INTO v_retry;
  IF v_retry->>'alreadyApplied'<>'true' OR (v_retry->>'id')::uuid<>v_agent
