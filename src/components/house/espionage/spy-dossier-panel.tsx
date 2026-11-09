@@ -15,6 +15,7 @@ import {spyDossierActionOptions} from '@/lib/espionage/spy-dossier-action-option
 import {filterSpyDossiers,paginateSpyDossiers,spyDossierPendingHouseNames,
  type SpyDossierSort,type SpyDossierProgress} from '@/lib/espionage/spy-dossier-list';
 import './spy-dossier.css';
+import {SpyNarratorOperationsCenter} from './spy-narrator-operations-center';
 
 const safeDate=(date:string)=>parseDate(date)?formatDate(date):date;
 const labels=Object.fromEntries(SPY_INTELLIGENCE_OBJECTIVES.map(item=>[item.id,item.label]));
@@ -221,7 +222,9 @@ export function SpyNarratorDossiers(){
   <Button type="button" variant="outline" onClick={()=>void query.refetch()}>
    Tentar novamente</Button>
  </section>;
- return <section className="house-panel spy-dossier-panel" aria-label="Dossiês de Espionagem do Narrador">
+ return <>
+ <SpyNarratorOperationsCenter/>
+ <section className="house-panel spy-dossier-panel" aria-label="Dossiês de Espionagem do Narrador">
   <div className="house-section-heading"><div>
    <p className="campaign-eyebrow">NARRADOR · INTELIGÊNCIA CONFIDENCIAL</p>
    <h2>Dossiês de Espionagem</h2>
@@ -342,5 +345,6 @@ export function SpyNarratorDossiers(){
    </>}
   </details>
   {message&&<p role="status" className="house-caption">{message}</p>}
- </section>;
+ </section>
+ </>;
 }
