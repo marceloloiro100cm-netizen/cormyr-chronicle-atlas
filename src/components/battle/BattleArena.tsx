@@ -11,6 +11,7 @@ import {reachablePaths} from '@/lib/battle/geometry/pathfinding';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
 import {BattleExpandedView} from './BattleExpandedView';
+import {BattleTurnCue} from './BattleTurnCue';
 import {BattleHouseBanner,BattleHouseVersus} from './BattleHouseHeraldry';
 import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
 import './battle-arena-unified.css';
@@ -142,14 +143,22 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
  const chooseHex=(hex:Hex)=>{
   if(paused)return;
   const unit=battle.stacks.find(s=>hexKey(s.position)===hexKey(hex)&&s.currentHp>0);
+  // Lote 2: movimento e ataque contextuais. O motor continua validando cada
+  // comando; o modo guiado preserva a confirmação explícita para quem preferir.
+  if(canAct&&mode==='inspect'&&active){
+   const attack=unit&&attacks.find(c=>c.targetId===unit.id);
+   if(attack){command(attack);return;}
+   const move=!unit&&moves.find(c=>hexKey(c.to)===hexKey(hex));
+   if(move){command(move);return;}
+  }
   if(canAct&&mode==='move'){
    if(moveKeys.includes(hexKey(hex))){setPendingMove(hex);setPendingAttack(null);setNotice('Confirme o deslocamento abaixo.');}
-   else setNotice('O destino não está ao alcance ou está bloqueado.');
+   else setNotice('Destino bloqueado. Escolha um quadrado verde.');
    return;
   }
   if(canAct&&mode==='attack'){
    if(unit&&attackIds.includes(unit.id)){setPendingAttack(unit.id);setPendingMove(null);setNotice('Confirme o ataque abaixo.');}
-   else setNotice('Este '+(battle.map.grid==='square'?'quadrado':'hexágono')+' não contém um alvo legal.');
+   else setNotice('Escolha um inimigo destacado.');
    return;
   }
   if(unit){setSelected(unit.id);clear();}
@@ -216,7 +225,14 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
     </details>
    </div>
   </header>
-  {showHelp&&<div className="battle-surface" role="note">Mover uma vez e atacar depois; defender concede +2 até a próxima ativação; esperar uma vez por rodada. Retaliação corpo a corpo uma vez por rodada. Todas as baixas são apenas simuladas.</div>}
+  <BattleTurnCue system="adapted" round={battle.round} phase={battle.phase}
+   activeUnit={active?.name} canAct={canAct} moves={moves.length}
+   attacks={attacks.length}
+   needsSelection={Boolean(active&&battle.controls[active.side]==='human'&&selected!==active.id)}
+   onSelectActive={active?()=>{setSelected(active.id);clear();}:undefined}
+   hint={canAct?'Toque no verde para mover ou no inimigo destacado para atacar.':
+    'Confira a unidade da vez e aguarde sua ativação.'}/>
+  {showHelp&&<div className="battle-surface" role="note">Mover e atacar; defender dá +2. Esperar uma vez por rodada. Baixas apenas simuladas.</div>}
   <div className="battle-arena-grid">
     <aside className="battle-surface battle-army-sidebar" aria-label="Exércitos na arena">
      {(['attacker','defender'] as const).map(side=><div key={side}>
@@ -235,23 +251,32 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
       <h3>Campo de batalha</h3><span>Verde: mover · vermelho: atacar</span>
      </div>
      <BattleBoard map={battle.map} stacks={battle.stacks} activeId={battle.activeUnitId}
-       selectedId={selected} moveKeys={canAct&&mode==='move'?moveKeys:[]}
-       attackKeys={canAct&&mode==='attack'?attackIds:[]} pendingHex={pendingMove}
+       selectedId={selected} moveKeys={canAct&&mode!=='attack'?moveKeys:[]}
+       attackKeys={canAct&&mode!=='move'?attackIds:[]} pendingHex={pendingMove}
        onHexClick={chooseHex} onHoverHex={setHover}/>
      {mode==='move'&&<p role="status">Rota: {selectedPath?selectedPath.steps+' '+(battle.map.grid==='square'?'quadrados':'hexágonos')+' · custo '+selectedPath.cost:
       'Selecione um '+(battle.map.grid==='square'?'quadrado':'hexágono')+' destacado'}</p>}
      {damagePreview&&<p role="status">Ataque previsto contra {target?.name}: {damagePreview.damage} PV · {damagePreview.casualties} baixas antes de eventual retaliação.</p>}
      {notice&&<p role="alert" className="battle-error">{notice}</p>}
-     <div className="battle-actions" aria-label="Ações da unidade">
-      <Button disabled={!canAct||!moves.length} variant={mode==='move'?'default':'outline'} onClick={()=>{clear();setMode('move');}}>Mover</Button>
-      <Button disabled={!canAct||!attacks.length} variant={mode==='attack'?'default':'outline'} onClick={()=>{clear();setMode('attack');}}>Atacar</Button>
+     <div className="battle-actions battle-actions-compact" aria-label="Ações da unidade">
       <Button disabled={!canAct||!legal.some(c=>c.type==='DEFEND')} variant="outline"
         onClick={()=>active&&command({type:'DEFEND',unitId:active.id})}>Defender</Button>
       <Button disabled={!canAct||!legal.some(c=>c.type==='WAIT')} variant="outline"
         onClick={()=>active&&command({type:'WAIT',unitId:active.id})}>Esperar</Button>
-      <Button disabled={!canAct} variant="outline"
-        onClick={()=>active&&command({type:'END_ACTIVATION',unitId:active.id})}>Encerrar ativação</Button>
+      <Button disabled={!canAct} onClick={()=>active&&command({type:'END_ACTIVATION',unitId:active.id})}>Fim do turno</Button>
      </div>
+     <details className="battle-alternative-controls"
+      onToggle={event=>{if(!event.currentTarget.open)clear();}}>
+      <summary>Controles por botões</summary>
+      <p className="battle-note">Alternativa com confirmação antes de mover ou atacar.</p>
+      <div className="battle-actions" role="group" aria-label="Ações guiadas">
+       <Button disabled={!canAct||!moves.length} variant={mode==='move'?'default':'outline'}
+        onClick={()=>{clear();setMode('move');}}>Mover</Button>
+       <Button disabled={!canAct||!attacks.length} variant={mode==='attack'?'default':'outline'}
+        onClick={()=>{clear();setMode('attack');}}>Atacar</Button>
+       <Button variant="outline" onClick={clear}>Cancelar seleção</Button>
+      </div>
+     </details>
      {pendingMove&&active&&<div className="battle-confirm" role="group" aria-label="Confirmar movimento">
        <span>Movimento para {pendingMove.q}, {pendingMove.r}</span>
        <Button onClick={()=>command({type:'MOVE',unitId:active.id,to:pendingMove})}>Confirmar movimento</Button>
@@ -264,8 +289,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
      </div>}
     </section>
     <aside className="battle-surface battle-inspector" aria-label="Ficha tática selecionada">
-     <h3>Comando tático</h3>
-     <p className="battle-note">A unidade ativa recebe ordens diretamente; o perfil PTE-2.0 não inclui General.</p>
+     <h3>Unidade selecionada</h3>
      {inspected?<UnitInspector unit={inspected} active={inspected.id===battle.activeUnitId}/>:
       <p>Selecione uma unidade no tabuleiro.</p>}
     </aside>
@@ -307,7 +331,11 @@ function UnitInspector({unit,active}:{unit:BattleStack;active:boolean}){
   <p><strong>{unit.name}</strong>{active?' · Unidade ativa':' · Consulta'}</p>
   <p>{unit.primaryTypeId} · {unit.training} ·
    {unit.source.kind==='house-readonly'?' cópia autorizada somente leitura':' origem fictícia'}</p>
-  <dl className="battle-inspector-list">
+  <p className="battle-unit-compact-stats"><strong>{livingCount(unit)}</strong> vivos ·
+   {unit.currentHp} PV · Ataque {unit.attack} · Defesa {unit.defense}</p>
+  <details className="battle-unit-full-sheet">
+   <summary>Ficha completa</summary>
+   <dl className="battle-inspector-list">
    <dt>Combatentes vivos</dt><dd>{livingCount(unit)} / {unit.initialCount}</dd>
    <dt>PV táticos</dt><dd>{unit.currentHp} / {unit.initialCount*unit.hpPerSoldier}</dd>
    <dt>Baixas nesta batalha</dt><dd>{casualtyCount(unit)}</dd>
@@ -316,7 +344,8 @@ function UnitInspector({unit,active}:{unit:BattleStack;active:boolean}){
    <dt>Movimento / Alcance</dt><dd>{unit.movementHex} / {unit.rangeHex} hex</dd>
    <dt>Moral</dt><dd>{unit.moraleState==='steady'?'Firme':unit.moraleState==='shaken'?'Abalada':'Debandada'}</dd>
    <dt>Posição</dt><dd>{unit.position.q}, {unit.position.r}</dd>
-  </dl>
+   </dl>
+  </details>
   <details><summary>Origem dos atributos</summary>
    <p>Perfil {unit.primaryTypeId} · treinamento {unit.training} · perfil PTE-2.0 experimental.</p>
    <p>PV = efetivo × PV por combatente; ataque e defesa usam o perfil mais bônus de treinamento.</p>
