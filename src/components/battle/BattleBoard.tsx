@@ -28,11 +28,12 @@ const pixel=(map:BattleMap,h:Hex)=>{const {column,row}=gridToOffset(map,h);retur
   {x:SIZE*1.3+XSTEP*(column+(row&1)/2),y:SIZE*1.25+SIZE*1.5*row};
 };
 export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKeys=[],attackKeys=[],pendingHex,
-  showZones=false,onHexClick,onHoverHex,theme='standard'}:{
+  showZones=false,onHexClick,onHoverHex,theme='standard',objectivePosition}:{
   map:BattleMap;stacks?:readonly Token[];selectedId?:string|null;activeId?:string|null;
   hoveredId?:string|null;theme?:'standard'|'cormyr';
   moveKeys?:readonly string[];attackKeys?:readonly string[];pendingHex?:Hex|null;
-  showZones?:boolean;onHexClick?:(hex:Hex)=>void;onHoverHex?:(hex:Hex|null)=>void;
+  showZones?:boolean;objectivePosition?:Hex|undefined;
+  onHexClick?:(hex:Hex)=>void;onHoverHex?:(hex:Hex|null)=>void;
 }){
   const [zoom,setZoom]=useState(100);
   const svgRef=useRef<SVGSVGElement>(null);
@@ -84,8 +85,9 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
         const legalMove=move.has(key),legalAttack=Boolean(unit&&attack.has(unit.id));
         const isA=showZones&&a.has(key),isB=showZones&&b.has(key);
         const mark=militaryUnitSymbolSrc(unit?.primaryTypeId);
+        const isGoal=Boolean(objectivePosition&&hexKey(objectivePosition)===key);
         const count=unit?Math.min(unit.initialCount,Math.ceil(unit.currentHp/unit.hpPerSoldier)):0;
-        const label=`${square?'Quadrado':'Hexágono'} ${tile.q}, ${tile.r}; ${tile.terrain==='plain'?'planície':tile.terrain==='forest'?'floresta':tile.terrain==='hill'?'colina':'rocha'}${unit?'; '+unit.name+', '+count+' combatentes':''}${legalMove?'; movimento permitido':''}${legalAttack?'; alvo válido':''}`;
+        const label=`${square?'Quadrado':'Hexágono'} ${tile.q}, ${tile.r}; ${tile.terrain==='plain'?'planície':tile.terrain==='forest'?'floresta':tile.terrain==='hill'?'colina':'rocha'}${unit?'; '+unit.name+', '+count+' combatentes':''}${legalMove?'; movimento permitido':''}${legalAttack?'; alvo válido':''}${isGoal?'; objetivo da batalha':''}`;
         return <g key={key} transform={`translate(${pos.x},${pos.y})`}
           data-battle-hex={key} role="button"
           tabIndex={onHexClick?(key===accessibleFocusKey?0:-1):undefined}
@@ -110,6 +112,10 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
             stroke={isPending?'#f7f4ba':isSelected?(theme==='cormyr'?'#84ff92':'#fff5c2'):legalAttack?'#e9574c':legalMove?'#72e881':'#524b43'}
             strokeWidth={isPending||isSelected||legalAttack?4:legalMove?3:1.25}/>}
           {(isA||isB)&&<circle r="23" stroke={isA?colors.attacker:colors.defender} strokeWidth="1.8" fill="none" strokeDasharray="4 3"/>}
+          {isGoal&&<g className="battle-goal-marker" aria-label="Objetivo" aria-hidden="true">
+           <circle cx="20" cy="-20" r="12" fill="#3e3525" stroke="#ffdc81" strokeWidth="2.5"/>
+           <text x="20" y="-16" fontSize="13" fill="#fff6dc" fontWeight="700" textAnchor="middle">★</text>
+          </g>}
           {tile.terrain==='forest'&&!unit&&<text textAnchor="middle" y="6" fontSize="21" fill="#e3efe1" aria-hidden="true">♣</text>}
           {tile.terrain==='hill'&&!unit&&<text textAnchor="middle" y="6" fontSize="18" fill="#674923" aria-hidden="true">▲</text>}
           {tile.terrain==='rock'&&!unit&&<text textAnchor="middle" y="6" fontSize="19" fill="#e9e8e4" aria-hidden="true">◆</text>}

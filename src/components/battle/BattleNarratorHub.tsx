@@ -13,6 +13,7 @@ import {BattleV3NarratorEntry} from './BattleV3NarratorEntry';
 import {BattleAccessCheck} from './BattleAccessCheck';
 import {BattleRulesetSelector} from './BattleRulesetSelector';
 import {BattleSaveScope} from './BattleSaveScope';
+import {BattleFirstBattleGuide} from './BattleFirstBattleGuide';
 import {BattleGotGame} from './BattleGotGame';
 import {battleRulesetOption,type BattleRulesetMode} from '@/lib/battle/ruleset-modes';
 import {BattleV3InvitationCreator} from './BattleV3InvitationCreator';
@@ -67,6 +68,7 @@ export function BattleNarratorHub(){
     <h2>Nova batalha</h2>
     <p>Escolha as regras e comece. Ajustes detalhados são opcionais.</p>
     <BattleRulesetSelector value={rulesetMode} onChange={setRulesetMode}/>
+    <BattleFirstBattleGuide key={rulesetMode} mode={rulesetMode}/>
     {rulesetMode==='adapted'?<>
     <div className="battle-home-single-action">
      <Button onClick={()=>setView('setup')}>Criar batalha</Button>

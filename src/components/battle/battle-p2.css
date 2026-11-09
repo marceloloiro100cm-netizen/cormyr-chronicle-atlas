@@ -1,0 +1,19 @@
+/* P2: tutorial discreto e objetivo visível; interface não altera a legalidade. */
+.battle-module .battle-first-guide{display:grid;gap:6px;padding:12px 14px;margin:12px 0;
+ color:#f8f0db;background:rgba(39,52,42,.95);border:1px solid #a48b60;border-radius:9px}
+.battle-module .battle-first-guide-head,.battle-module .battle-first-guide-foot{
+ display:flex;align-items:center;gap:10px;justify-content:space-between}
+.battle-module .battle-first-guide h3{font-size:17px;margin:0;color:#f8ddac}
+.battle-module .battle-first-guide p{font-size:15px;line-height:1.5;margin:0 0 5px}
+.battle-module .battle-first-guide button{min-height:44px}
+.battle-module .battle-tactical-goal{padding:9px 12px;border:1px solid #99865e;
+ border-left:4px solid #d9ba79;border-radius:8px;margin:8px 0;background:#2b3027;color:#f6ebd7}
+.battle-module .battle-tactical-goal p{margin:4px 0;line-height:1.5;font-size:15px}
+.battle-module .battle-tactical-goal strong{font-size:16px}
+.battle-module .battle-goal-marker{pointer-events:none}
+@media(max-width:650px){
+ .battle-module .battle-first-guide{padding:10px}
+ .battle-module .battle-tactical-goal{padding:10px}
+}
+@media(prefers-reduced-motion:reduce){.battle-module .battle-first-guide,
+ .battle-module .battle-tactical-goal{scroll-behavior:auto!important;transition:none!important}}

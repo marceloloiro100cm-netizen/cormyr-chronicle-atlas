@@ -59,6 +59,7 @@ function assertReady(initial:BattleState):BattleState{
   id:initial.id,name:initial.name,schemaVersion:initial.schemaVersion,
   rulesVersion:initial.rulesVersion,seed:initial.seed,map:initial.map,
   controls:initial.controls,stacks:initial.stacks,
+  ...(initial.objective?{objective:initial.objective}:{}),
  });
  if(initial.rngAlgorithm!=='none-PTE-2.0'||initial.noProgressRounds!==0)
   throw new Error('Origem de replay inconsistente.');

@@ -3,6 +3,7 @@ import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {LAND_PROFILES,tacticalProfile} from '@/lib/battle/domain/profiles-v2';
 import {makeFictionalStack,makeBattleSetup} from '@/lib/battle/domain/setup';
+import {makeTacticalObjective,type TacticalObjectivePreset} from '@/lib/battle/domain/objectives';
 import {createScenario,SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixtures';
 
 import {validateBattleMap} from '@/lib/battle/geometry/map-validation';
@@ -40,6 +41,7 @@ export function BattleSetup({onStart,onBack}:{
  const [advanced,setAdvanced]=useState(false);
  const [quickOpponent,setQuickOpponent]=useState<'human'|'ai'>('ai');
  const [quickSource,setQuickSource]=useState<'models'|'houses'>('models');
+ const [objectiveMode,setObjectiveMode]=useState<TacticalObjectivePreset>('elimination');
  const [error,setError]=useState('');
  const [houseByUnitKey,setHouseByUnitKey]=useState<Record<string,BattleHouseDirectoryRow>>({});
  const onHouseLoaded=({house,stacks}:{
@@ -141,8 +143,9 @@ export function BattleSetup({onStart,onBack}:{
      return makeFictionalStack({id:u.id,side:u.side,name:u.name,typeId:u.typeId,
        training:u.training,count:u.count,position:u.position});
    });
+   const objective=makeTacticalObjective(objectiveMode,map);
    const state=makeBattleSetup({id:'lab-'+seed,name,seed,map,
-     controls,stacks});
+     controls,stacks,...(objective?{objective}:{})});
    if(!sideNames.attacker.trim()||!sideNames.defender.trim())throw new Error('Nomeie os dois exércitos.');
    onStart(state,displaySideNames,heraldry);
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível preparar a batalha.');}
@@ -165,8 +168,10 @@ export function BattleSetup({onStart,onBack}:{
      makeFictionalStack({id:u.id,side:u.side,name:u.name,typeId:u.typeId,
       training:u.training,count:u.count,position});
    });
+   const objective=makeTacticalObjective(objectiveMode,map);
    const battle=makeBattleSetup({id:'lab-'+seed,name,seed,map,
-    controls:{attacker:'human',defender:quickOpponent},stacks});
+    controls:{attacker:'human',defender:quickOpponent},stacks,
+    ...(objective?{objective}:{})});
    setError('');onStart(battle,displaySideNames,heraldry);
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível iniciar o confronto.');}
  };
@@ -193,6 +198,12 @@ export function BattleSetup({onStart,onBack}:{
       if(Object.hasOwn(SCENARIOS,id))setMap(createScenario(id,map.width,'square'));}}>
      {!Object.hasOwn(SCENARIOS,map.id)&&<option value={map.id}>Mapa personalizado</option>}
      {Object.entries(SCENARIOS).map(([id,label])=><option key={id} value={id}>{label}</option>)}
+    </select></label>
+    <label>Objetivo<select aria-label="Objetivo da batalha" value={objectiveMode}
+     onChange={e=>setObjectiveMode(e.target.value as TacticalObjectivePreset)}>
+     <option value="elimination">Derrotar o inimigo</option>
+     <option value="capture">Conquistar posição · 2 rodadas</option>
+     <option value="survive">Resistir · 6 rodadas</option>
     </select></label>
     <label>Adversário<select aria-label="Adversário rápido" value={quickOpponent}
      onChange={e=>setQuickOpponent(e.target.value as 'human'|'ai')}>
@@ -238,6 +249,16 @@ export function BattleSetup({onStart,onBack}:{
         <option value="human">Narrador</option><option value="ai">Inteligência artificial</option>
       </select>
      </label>)}</div>
+    <label>Objetivo tático
+     <select aria-label="Objetivo detalhado" value={objectiveMode}
+      onChange={e=>setObjectiveMode(e.target.value as TacticalObjectivePreset)}>
+      <option value="elimination">Derrotar o inimigo</option>
+      <option value="capture">Atacante captura por 2 rodadas; defensor resiste até a 8ª</option>
+      <option value="survive">Defensor resiste 6 rodadas</option>
+     </select>
+    </label>
+    <p className="battle-note">Objetivos opcionais: não alteram as regras do GOT ou D&D.
+     A posição é um quadrado transitável próximo ao centro do mapa. Uma rodada = todas as ativações.</p>
     <p className="battle-note">IA heurística determinística, sem dados externos. Regras PTE-2.0 experimentais.</p>
   </section>
   <section className="battle-surface" aria-label="Exércitos fictícios">

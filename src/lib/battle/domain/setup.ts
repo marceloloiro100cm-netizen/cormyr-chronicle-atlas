@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { BattleMap, BattleStack, BattleState, Control, Hex, Side, Training } from './types';
+import type { BattleMap, BattleStack, BattleState, Control, Hex, Side, Training, TacticalObjective } from './types';
 import { tacticalProfile, TRAINING_BONUS } from './profiles-v2';
 import { BATTLE_RULES } from './rulebook-v2';
 import { validateBattleMap } from '../geometry/map-validation';
@@ -48,10 +48,16 @@ export const officialStackSchema=fictionalStackSchema
   appliedEffectIds:z.array(z.string()).max(100),
   profileDecisionReason:z.string().max(500).optional(),
  }).strict();
+export const tacticalObjectiveSchema=z.discriminatedUnion('kind',[
+ z.object({kind:z.literal('capture'),position:hexSchema,
+  holdRounds:z.number().int().min(1).max(10),deadlineRound:z.number().int().min(2).max(20)}).strict(),
+ z.object({kind:z.literal('survive'),defenderRounds:z.number().int().min(1).max(20)}).strict(),
+]);
 export const battleDraftSchema=z.object({
   id:z.string().min(1).max(80),name:z.string().trim().min(1).max(120),schemaVersion:z.literal(2),
   rulesVersion:z.literal('PTE-2.0'),seed:z.string().min(1).max(128),
   map:battleMapSchema,
+  objective:tacticalObjectiveSchema.optional(),
   controls:z.object({attacker:z.enum(['human','ai']),defender:z.enum(['human','ai'])}).strict(),
   stacks:z.array(z.union([fictionalStackSchema,officialStackSchema])).min(2).max(10),
 }).strict();
@@ -83,6 +89,13 @@ export function validateBattleDraft(draft:unknown):BattleDraft {
   const result=battleDraftSchema.parse(draft);
   const issues=validateBattleMap(result.map);
   if(issues.length)throw new Error('Mapa inválido: '+issues.join('; '));
+  const objective=result.objective;
+  if(objective?.kind==='capture'){
+   const target=result.map.tiles.find(t=>hexKey(t)===hexKey(objective.position));
+   if(!target||target.terrain==='rock')throw new Error('Objetivo tático fora de célula acessível.');
+   if(objective.deadlineRound<objective.holdRounds)
+    throw new Error('Prazo do objetivo insuficiente.');
+  }
   const ids=new Set<string>(),positions=new Set<string>();
   for(const side of ['attacker','defender'] as const){
     const army=result.stacks.filter(s=>s.side===side);
@@ -123,13 +136,15 @@ export function parseBattleDraftJson(json:string):BattleDraft {
   if(json.length>250_000)throw new Error('Arquivo de simulação excede 250 KB.');
   return validateBattleDraft(JSON.parse(json) as unknown);
 }
-export type BattleDraftInput = Readonly<Pick<BattleState, 'id' | 'name' | 'schemaVersion' | 'rulesVersion' | 'seed' | 'map' | 'controls' | 'stacks'>>;
+export type BattleDraftInput = Readonly<Pick<BattleState, 'id' | 'name' | 'schemaVersion' | 'rulesVersion' | 'seed' | 'map' | 'controls' | 'stacks' | 'objective'>>;
 export function serializeBattleDraft(draft:BattleDraftInput):string {
   return JSON.stringify(validateBattleDraft(draft));
 }
-export function makeBattleSetup(input:{id:string;name:string;seed:string;map:BattleMap;controls:Record<Side,Control>;stacks:BattleStack[]}):BattleState {
+export function makeBattleSetup(input:{id:string;name:string;seed:string;map:BattleMap;controls:Record<Side,Control>;stacks:BattleStack[];objective?:TacticalObjective}):BattleState {
   const draft=validateBattleDraft({...input,schemaVersion:2,rulesVersion:'PTE-2.0'});
   const stacks:BattleStack[]=draft.stacks.map(s=>{const {profileDecisionReason,...rest}=s as typeof s & {profileDecisionReason?:string};return {...rest,...(typeof profileDecisionReason==='string'?{profileDecisionReason}:{})};});
-  return {...draft,stacks,phase:'ready',rngAlgorithm:'none-PTE-2.0',round:0,
+  const {objective,...validated}=draft;
+  return {...validated,...(objective?{objective}:{}),stacks,
+    phase:'ready',rngAlgorithm:'none-PTE-2.0',round:0,
     activationQueue:[],waitingQueue:[],activeUnitId:null,noProgressRounds:0,events:[],winner:null};
 }

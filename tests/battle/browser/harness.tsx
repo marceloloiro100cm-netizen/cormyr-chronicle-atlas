@@ -7,6 +7,7 @@ import {BattleV3Game} from '@/components/battle/BattleV3Game';
 import {BattleCrzLab} from '@/components/battle/BattleCrzLab';
 import {BattleGotGame} from '@/components/battle/BattleGotGame';
 import {BattleArena} from '@/components/battle/BattleArena';
+import {BattleFirstBattleGuide} from '@/components/battle/BattleFirstBattleGuide';
 import {BattleMapEditor} from '@/components/battle/BattleMapEditor';
 import {BattleReplay,BattleReplayImporter} from '@/components/battle/BattleReplay';
 import {createScenario} from '@/lib/battle/geometry/map-fixtures';
@@ -20,7 +21,7 @@ import '@/components/battle/battle.css';
 function TestHarness(){
  const [map,setMap]=useState(()=>createScenario('plain-open'));
  const [selectedHex,setSelectedHex]=useState('nenhum');
- const [arena,setArena]=useState<'none'|'v3'|'crz'|'got'|'dnd'|'adapted'>('none');
+ const [arena,setArena]=useState<'none'|'v3'|'crz'|'got'|'dnd'|'adapted'|'adapted-goal'>('none');
  const {initial,completed,replay}=useMemo(()=>{
   const field=createScenario('plain-open');
   const [attacker,defender]=[
@@ -51,6 +52,9 @@ function TestHarness(){
     <Button variant="outline" disabled>Batalhas salvas indisponíveis</Button>
    </div>
   </section>
+  <section id="p2-tutorial" aria-label="Tutorial P2 de teste">
+   <BattleFirstBattleGuide mode="adapted"/>
+  </section>
   <section id="v4-visual-acceptance" aria-label="Arenas V4 de homologação">
    <nav aria-label="Laboratórios sintéticos V4">
     <button type="button" onClick={()=>setArena('v3')}>Abrir arena V3</button>
@@ -58,6 +62,7 @@ function TestHarness(){
     <button type="button" onClick={()=>setArena('got')}>Abrir arena GOT</button>
     <button type="button" onClick={()=>setArena('dnd')}>Abrir arena D&amp;D</button>
     <button type="button" onClick={()=>setArena('adapted')}>Abrir arena Adaptado</button>
+    <button type="button" onClick={()=>setArena('adapted-goal')}>Abrir objetivo Adaptado</button>
     <button type="button" onClick={()=>setArena('none')}>Fechar arenas</button>
    </nav>
    {arena==='v3'&&<BattleV3Game initialOptions={{
@@ -68,6 +73,11 @@ function TestHarness(){
    {arena==='crz'&&<BattleCrzLab/>}
    {arena==='got'&&<BattleGotGame playerSandbox onBack={()=>setArena('none')}/>}
    {arena==='dnd'&&<BattleCrzLab mode="dnd" playerSandbox onBack={()=>setArena('none')}/>}
+   {arena==='adapted-goal'&&<BattleArena initial={{...initial,id:'browser-e2e-objective',
+    objective:{kind:'capture',position:{q:5,r:4},holdRounds:2,deadlineRound:8},
+    controls:{attacker:'human',defender:'human'}}}
+    sideNames={{attacker:'Atacantes fictícios',defender:'Defensores fictícios'}}
+    onExit={()=>setArena('none')}/>}
    {arena==='adapted'&&<BattleArena initial={{...initial,id:'browser-e2e-manual',
     controls:{attacker:'human',defender:'human'}}}
     sideNames={{attacker:'Atacantes fictícios',defender:'Defensores fictícios'}}
