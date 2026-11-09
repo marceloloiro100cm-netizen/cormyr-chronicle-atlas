@@ -1,7 +1,7 @@
 import {describe,expect,it} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {
- spyNeedsDossierAttention,spyOperationCounters,filterSpyOperations,
+ spyNeedsDossierAttention,spyCanRetryDossier,spyOperationCounters,filterSpyOperations,
  prioritizeSpyOperations,
 } from '@/components/house/espionage/spy-narrator-operations-center';
 import type {SpyNarratorOperation}
@@ -45,6 +45,10 @@ describe('R5 Lote 3 — Central Narrador, missão e prêmio sem navegação late
   expect(spyNeedsDossierAttention(awarded)).toBe(false);
   expect(spyNeedsDossierAttention(finished)).toBe(false);
   expect(spyNeedsDossierAttention(pending)).toBe(true);
+  expect(spyCanRetryDossier(pending)).toBe(true);
+  const missing=op(uuid('9'),'completed',{outcome:'success',intelligenceStatus:null});
+  expect(spyNeedsDossierAttention(missing)).toBe(true);
+  expect(spyCanRetryDossier(missing)).toBe(false);
   expect(spyOperationCounters(rows)).toEqual({active:1,review:1,dossier:1,complete:3});
  });
  it('filtro de modalidade e busca continuam isolados, inclusive com acentos',()=>{
@@ -62,6 +66,8 @@ describe('R5 Lote 3 — Central Narrador, missão e prêmio sem navegação late
   expect(src).toContain('o.id===selectedReview.operationId&&o.status');
   expect(src).toContain('Resolver agora');
   expect(src).toContain('Concluir dossiê');
+  expect(src).toContain('spyCanRetryDossier(o)');
+  expect(src).toContain('Não repetir o julgamento; revisar integridade do dossiê');
   expect(src).toContain("qc.invalidateQueries({queryKey:['spy-dossiers']})");
  });
  it('a Central permanece acessível quando apenas a consulta aos dossiês falha',()=>{
