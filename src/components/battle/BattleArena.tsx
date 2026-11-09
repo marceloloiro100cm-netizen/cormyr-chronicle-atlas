@@ -54,6 +54,8 @@ function BattleResult({state,initial,sideNames,heraldry,onRestart,onExit,persist
     round={state.round} reason={state.resultReason==='objective-capture'?'Posição conquistada':
      state.resultReason==='objective-defense'?'Defesa resistiu até o prazo':
      state.resultReason==='objective-survive'?'Defensor resistiu ao confronto':
+     state.resultReason==='objective-multi-capture'?'Pontos estratégicos conquistados':
+     state.resultReason==='objective-multi-defense'?'Defesa dos pontos bem-sucedida':
      state.resultReason??'Sem causa informada'}
     losses={[
      {label:sideNames.attacker,count:report.bySide.attacker.casualties},
@@ -266,7 +268,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
    damage={latestDamage} casualties={latestCasualties}
    detail={latestAction.type==='DAMAGE'?'Ataque resolvido pelo motor PTE.':undefined}/>}
   {battle.objective&&<section className="battle-tactical-goal" aria-label="Objetivo tático" role="region" aria-live="polite">
-    <strong>{battle.objective.kind==='capture'?'Conquistar posição':'Resistir ao ataque'}</strong>
+    <strong>{battle.objective.kind==='capture'||battle.objective.kind==='multi-capture'?'Conquistar posição':'Resistir ao ataque'}</strong>
     <p>{tacticalObjectiveDescription(battle)}</p>
    </section>}
   {showHelp&&<div className="battle-surface" role="note">Mover e atacar; defender dá +2. Esperar uma vez por rodada. Baixas apenas simuladas.</div>}
@@ -291,7 +293,8 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
        selectedId={selected} moveKeys={canAct&&mode!=='attack'?moveKeys:[]}
        attackKeys={canAct&&mode!=='move'?attackIds:[]} pendingHex={pendingMove}
        onHexClick={chooseHex} onHoverHex={setHover}
-       objectivePosition={battle.objective?.kind==='capture'?battle.objective.position:undefined}/>
+       objectivePosition={battle.objective?.kind==='capture'?battle.objective.position:undefined}
+       objectivePositions={battle.objective?.kind==='multi-capture'?battle.objective.positions:undefined}/>
      {mode==='move'&&<p role="status">Rota: {selectedPath?selectedPath.steps+' '+(battle.map.grid==='square'?'quadrados':'hexágonos')+' · custo '+selectedPath.cost:
       'Selecione um '+(battle.map.grid==='square'?'quadrado':'hexágono')+' destacado'}</p>}
      {damagePreview&&<p role="status">Ataque previsto contra {target?.name}: {damagePreview.damage} PV · {damagePreview.casualties} baixas antes de eventual retaliação.</p>}
