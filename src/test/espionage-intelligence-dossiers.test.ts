@@ -9,14 +9,17 @@ const read=(p:string)=>readFileSync(p,'utf8');
 const migration=()=>read('docs/espionage/sql/0104_spy_intelligence_dossiers_lotes_1_3.sql');
 
 describe('Dossiês de espionagem · primeiros 3 lotes',()=>{
- it('oferece as três modalidades ao confirmar a missão',()=>{
+ it('oferece as três modalidades no planejador antes da confirmação',()=>{
   expect(SPY_INTELLIGENCE_OBJECTIVES.map(x=>x.id))
    .toEqual(['house_resources','army','possessions']);
-  const ui=read('src/components/house/espionage/spy-submit-house-mission.tsx');
+  const ui=read('src/components/house/espionage/spy-regional-turns-panel.tsx');
+  const confirmation=read('src/components/house/espionage/spy-submit-house-mission.tsx');
   const client=read('src/lib/espionage/spy-browser-client.ts');
   expect(ui).toContain('Objetivo da espionagem');
   expect(ui).toContain('SPY_INTELLIGENCE_OBJECTIVES.map');
-  expect(ui).toContain('destinationRegion,objective,');
+  expect(confirmation).toContain('destinationRegion,objective,');
+  expect(confirmation).toContain('<strong>Objetivo:</strong>');
+  expect(confirmation).not.toContain('id="spy-mission-objective"');
   expect(client).toContain('p_objective:input.objective');
   expect(client).toContain('parsed.data.objective!==input.objective');
  });
