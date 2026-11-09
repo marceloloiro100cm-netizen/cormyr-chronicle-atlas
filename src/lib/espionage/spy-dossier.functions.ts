@@ -129,10 +129,10 @@ export async function finishSpyIntelligence(
   p_operation:operationId,p_resources:resources,
  });
  if(result.error)throw new Error('Resultado homologado; atualização do dossiê pendente: '+result.error.message);
- const status=z.object({status:z.enum([
+ const finalStatus=z.object({status:z.enum([
   'complete','waiting_catalog','no_success_award',
  ])}).passthrough().parse(result.data).status;
- return status;
+ return finalStatus;
 }
 const retryInput=z.object({operationId:z.string().uuid()}).strict();
 export const retrySpyIntelligence=createServerFn({method:'POST'})
