@@ -30,6 +30,7 @@
 
 **Andamento da missão**
 - A ficha mostra Viagem → Investigação → Narrador → Concluída.
+- Após a resolução, mantém na ficha um resumo da última missão concluída, sem chamar fracasso de sucesso; detalhes ficam no histórico.
 - Exibe próximo passo e data prevista de conclusão em destaque; datas detalhadas e histórico seguem recolhidos.
 - Quando a ficha não carrega, oferece botão **Tentar novamente**.
 
