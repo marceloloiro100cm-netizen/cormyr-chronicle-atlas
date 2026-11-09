@@ -38,7 +38,7 @@ export const reviewSpyTargetDefense=createServerFn({method:'POST'})
  .handler(async({data,context})=>{
   const admin=await context.supabase.rpc('is_campaign_admin');
   if(admin.error||admin.data!==true)throw new Error('Defesa de Casas rivais é restrita ao Narrador.');
-  const rpc=context.supabase.rpc as unknown as Rpc;
+  const rpc=context.supabase.rpc.bind(context.supabase) as unknown as Rpc;
   const publicResult=await rpc('spy_public_house_targets');
   if(publicResult.error)throw new Error('O catálogo de Casas ainda não está homologado.');
   const parsed=listing.safeParse(publicResult.data);
