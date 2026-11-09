@@ -4,7 +4,8 @@
 import {z} from 'zod';
 import {crzHitFactorBP} from './damage';
 import {crzClamp,crzMakeStack,crzSafe,type CrzStack} from './stack';
-import {crzRequireKnownRuleset,crzRulesetHash,type CrzPresetId,type CrzRuleset} from './ruleset';
+import {tableFeetToDecimetres} from '@/lib/units/metric';
+import {crzDecimetresPerCell,crzRequireKnownRuleset,crzRulesetHash,type CrzPresetId,type CrzRuleset} from './ruleset';
 import {crzTrainingSchema,type CrzCreature,type CrzAttackProfile} from './creatures';
 import {crzGetCreature,type CrzCatalog} from './catalog';
 
