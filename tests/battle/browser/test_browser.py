@@ -326,5 +326,58 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         self.assertIn("150%",crz.get_by_label("Zoom do mapa CRZ").inner_text())
         self.assertLessEqual(page.evaluate("document.documentElement.scrollWidth-window.innerWidth"),4)
 
+
+    def test_mobile_all_three_modes_got_next_phase_dnd_summary_and_adapted_undo(self):
+        # Dados fictícios e sem autenticação: cobertura de regressão móvel, NÃO prova RLS.
+        got=self.open_page(390,844,touch=True)
+        got.get_by_role("button",name="Abrir arena GOT").tap()
+        got.get_by_role("button",name="Batalhar agora").tap()
+        dock=got.get_by_role("region",name="Próxima decisão")
+        dock.wait_for(timeout=15000)
+        self.assertIn("Agora",dock.inner_text())
+        next_button=dock.locator("button")
+        self.assertGreaterEqual(next_button.evaluate("el=>el.getBoundingClientRect().height"),44)
+        next_button.tap()
+        self.assertEqual(got.locator("#got-battle-orders, #got-personal-actions, #got-after-action").count()>=1,True)
+        self.assertLessEqual(got.evaluate("document.documentElement.scrollWidth-window.innerWidth"),4)
+
+        dnd=self.open_page(390,844,touch=True)
+        dnd.get_by_role("button",name="Abrir arena D&D").tap()
+        dnd.get_by_text("Montar exércitos e ajustar cenário").tap()
+        summary=dnd.get_by_role("region",name="Resumo do confronto D&D")
+        summary.wait_for(timeout=15000)
+        self.assertIn("PV estimados",summary.inner_text())
+        self.assertIn("CA média",summary.inner_text())
+        self.assertIn("não",summary.inner_text())
+        self.assertEqual(summary.locator(".dnd-encounter-metric").count(),2)
+        dnd.get_by_role("button",name="Batalhar agora").tap()
+        dnd.get_by_role("dialog",name="Batalha em tela ampliada").wait_for(timeout=15000)
+        self.assertLessEqual(dnd.evaluate("document.documentElement.scrollWidth-window.innerWidth"),4)
+
+        adapted=self.open_page(390,844,touch=True)
+        adapted.get_by_role("button",name="Abrir arena Adaptado").tap()
+        dialog=adapted.get_by_role("dialog",name="Batalha em tela ampliada")
+        dialog.wait_for(timeout=15000)
+        legal=dialog.locator('[data-battle-hex][aria-label*="movimento permitido"]')
+        self.assertGreater(legal.count(),0)
+        legal.first.tap()
+        undo=dialog.get_by_role("button",name="Desfazer última ação")
+        undo.wait_for(timeout=10000)
+        self.assertGreaterEqual(undo.evaluate("el=>el.getBoundingClientRect().height"),44)
+        undo.tap()
+        self.assertIn("Última ação desfeita",dialog.inner_text())
+        self.assertLessEqual(adapted.evaluate(
+            "document.documentElement.scrollWidth-window.innerWidth"),4)
+
+    def test_mobile_save_destinations_and_scope_are_explicit(self):
+        page=self.open_page(390,844,touch=True)
+        page.get_by_role("button",name="Abrir arena GOT").tap()
+        page.get_by_text("Salvar ou retomar",exact=True).tap()
+        self.assertIn("Este navegador",page.get_by_role(
+            "note").first.inner_text())
+        page.get_by_role("button",name="Batalhar agora").tap()
+        self.assertTrue(page.get_by_role("button",name="Salvar batalha").is_visible())
+
+
 if __name__=="__main__":
     unittest.main()
