@@ -42,6 +42,7 @@ DO $accept$
 DECLARE
  v_agent uuid;v_op uuid;v_agent_version integer;v_calendar_version integer;
  v_create jsonb;v_submission jsonb;v_result jsonb;v_award jsonb;v_retry jsonb;
+ v_request_key uuid;
  v_objective text;v_idx integer;v_successes integer;v_promo_count integer;
 BEGIN
  SELECT public.spy_create_agent('r5-l1-source','r5-network','Agente R5',NULL,
@@ -49,6 +50,14 @@ BEGIN
  IF v_create->>'status'<>'available' OR v_create->>'rank'<>'Verde'
  THEN RAISE EXCEPTION 'R5 criação incorreta: %',v_create; END IF;
  v_agent:=(v_create->>'id')::uuid;
+ SELECT public.spy_create_agent('r5-l1-source','r5-network','Agente R5',NULL,
+  ARRAY[]::text[],'a2a2a2a2-a2a2-42a2-82a2-a2a2a2a2a2a2') INTO v_retry;
+ IF v_retry->>'alreadyApplied'<>'true' OR (v_retry->>'id')::uuid<>v_agent
+  OR (SELECT count(*) FROM public.spy_assets WHERE owner_house_id='r5-l1-source')<>1
+ THEN RAISE EXCEPTION 'R5 criação duplicada em repetição da chave'; END IF;
+ IF public.spy_add_desdias('1522-01-21',1)<>'1522-02-01'
+   OR public.spy_add_desdias('1524-07-21',1)<>'1524-08-01'
+ THEN RAISE EXCEPTION 'R5 Harptos: Midwinter ou Shieldmeet inválido'; END IF;
 
  FOR v_idx IN 1..3 LOOP
   v_objective:=CASE v_idx WHEN 1 THEN 'house_resources' WHEN 2 THEN 'army'
@@ -76,8 +85,9 @@ BEGIN
    OR (SELECT status FROM public.spy_assets WHERE id=v_agent)<>'pending_review'
   THEN RAISE EXCEPTION 'R5 HUB não exigiu homologação'; END IF;
   SELECT version INTO v_agent_version FROM public.spy_assets WHERE id=v_agent;
+  v_request_key:=gen_random_uuid();
   SELECT public.spy_resolve_agent_mission(v_op,15,0,false,NULL,NULL,
-   v_agent_version,gen_random_uuid(),'Teste R5 isolado') INTO v_result;
+   v_agent_version,v_request_key,'Teste R5 isolado') INTO v_result;
   IF v_result->>'outcome'<>'mission_success'
    OR (SELECT status FROM public.spy_operations WHERE id=v_op)<>'completed'
   THEN RAISE EXCEPTION 'R5 resolução incorreta: %',v_result; END IF;
@@ -94,8 +104,12 @@ BEGIN
   THEN RAISE EXCEPTION 'R5 informações faltando na modalidade %',v_objective; END IF;
 
   IF v_idx=3 THEN
-   -- Repetir a mesma chave de homologação é verificado abaixo por operação:
-   -- apenas a chamada idempotente de finalizar nunca cria novas descobertas.
+   SELECT public.spy_resolve_agent_mission(v_op,15,0,false,NULL,NULL,
+    v_agent_version,v_request_key,'Teste R5 isolado') INTO v_retry;
+   IF v_retry->>'alreadyApplied'<>'true' OR
+      (SELECT count(*) FROM public.spy_mission_decisions
+       WHERE operation_id=v_op)<>1
+   THEN RAISE EXCEPTION 'R5 homologação duplicada após retry: %',v_retry; END IF;
    SELECT public.spy_intelligence_finalize(v_op,NULL) INTO v_retry;
    IF v_retry->>'alreadyApplied'<>'true'
    THEN RAISE EXCEPTION 'R5 dossiê duplicado em retry: %',v_retry; END IF;
