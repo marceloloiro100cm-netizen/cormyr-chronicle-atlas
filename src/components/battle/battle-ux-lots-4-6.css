@@ -31,3 +31,28 @@
 @media(prefers-reduced-motion:reduce){
  .battle-module .battle-action-feedback,.battle-module .battle-outcome-summary{animation:none!important;transition:none!important}
 }
+
+/* Lote 6 — conforto de toque, teclado e redução de movimento. */
+.battle-module .battle-action-feedback :focus-visible,
+.battle-module .battle-outcome-summary :focus-visible{
+ outline:3px solid #ffe1a2;outline-offset:3px}
+.battle-module :is(.battle-action-feedback,.battle-outcome-summary,
+ .battle-impasse-help){box-sizing:border-box;max-width:100%;min-width:0;overflow-wrap:anywhere}
+@media(pointer:coarse){
+ .battle-module :is(.battle-action-feedback summary,.battle-impasse-help summary,
+ .battle-alternative-controls summary,.got-phase-guide-links button,
+ .crz-arena-utilities button,.crusade-v4-stage button){min-height:44px}
+ .battle-module .battle-action-feedback summary{display:flex;align-items:center}
+}
+@media(max-width:680px){
+ .battle-module .battle-action-feedback{display:grid;grid-template-columns:1fr;
+  padding:10px 12px;gap:5px}
+ .battle-module .battle-outcome-summary{padding:12px}
+ .battle-module .battle-outcome-summary li{flex-wrap:wrap}
+ .battle-module .battle-impasse-help{padding:10px}
+ .battle-module .got-phase-guide-intro{display:grid}
+}
+@media(prefers-reduced-motion:reduce){
+ .battle-module :is(button,summary,.crz-map-tile,.got-cell,.battle-action-feedback)
+ {scroll-behavior:auto!important;animation:none!important;transition:none!important}
+}

@@ -8,6 +8,7 @@ import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
 import {BattleActionFeedback} from './BattleActionFeedback';
 import {BattleOutcomeSummary} from './BattleOutcomeSummary';
+import {dndNeedsImpasseReview} from '@/lib/battle/ux/dnd-impasse';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
 import {crzHexKey,crzGridToOffset,crzScenario,crzFootprintCells,
  type CrzHex,type CrzSide,type CrzMap}
@@ -959,7 +960,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
     needsSelection={Boolean(canAct&&active&&selectedId!==active.id)}
     onSelectActive={active?()=>setSelectedId(active.id):undefined}
     hint={dndMode?'Toque no verde para mover ou no inimigo destacado para atacar.':undefined}/>
-   {dndMode&&frame.phase==='active'&&frame.stagnantRounds>=3&&
+   {dndMode&&dndNeedsImpasseReview(frame)&&
     <details className="battle-impasse-help" aria-label="Revisão de impasse D&D">
      <summary>Possível impasse · {frame.stagnantRounds} rodadas sem progresso</summary>
      <p>Sem resultado automático. Reposicione forças ou avance os turnos.
