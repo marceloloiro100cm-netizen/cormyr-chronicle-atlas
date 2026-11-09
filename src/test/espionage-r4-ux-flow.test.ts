@@ -10,6 +10,8 @@ describe('R4 · jornada de espionagem utilizável numa sessão real',()=>{
   expect(src).toContain('sourceHoldingId?slots.find');
   expect(src).not.toContain('const source=slots[0]');
   expect(src).toContain('sourceHoldingId&&!source');
+  expect(src).toContain('disabled={busy} minLength={2}');
+  expect(src).toContain('if(busy)return;requestKey.current=null;setPortraitId');
   expect(src).toContain('requestKey.current=null;setSourceHoldingId');
  });
  it('o envio real revalida o HUB no último segundo',()=>{
