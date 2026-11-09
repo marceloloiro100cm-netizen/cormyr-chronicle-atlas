@@ -12,6 +12,8 @@ import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
+import {BattleActionFeedback} from './BattleActionFeedback';
+import {BattleOutcomeSummary} from './BattleOutcomeSummary';
 import {BattleHouseBanner,BattleHouseVersus} from './BattleHouseHeraldry';
 import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
 import './battle-arena-unified.css';
@@ -43,8 +45,12 @@ function BattleResult({state,initial,sideNames,heraldry,onRestart,onExit,persist
  return <section className="battle-surface" aria-label="Resultado da batalha">
    <h2>Resultado da simulação</h2>
   <BattleHouseVersus houses={heraldry} names={sideNames}/>
-   <p><strong>{state.winner?sideNames[state.winner]+' venceu':'Empate'}</strong>
-     {' · '}Causa: {state.resultReason??'não informada'}{' · '}Rodadas: {state.round}</p>
+   <BattleOutcomeSummary title={state.winner?sideNames[state.winner]+' venceu':'Empate'}
+    round={state.round} reason={state.resultReason??'Sem causa informada'}
+    losses={[
+     {label:sideNames.attacker,count:report.bySide.attacker.casualties},
+     {label:sideNames.defender,count:report.bySide.defender.casualties},
+    ]}/>
    <div className="battle-summary-grid">
     {(['attacker','defender'] as const).map(side=><article key={side} className="battle-result-card">
       {heraldry?.[side]?<BattleHouseBanner side={side} house={heraldry[side]}
@@ -115,6 +121,12 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
  const candidate=mode==='move'?(pendingMove??hover):null;
  const selectedPath=candidate?paths.find(p=>hexKey(p.to)===hexKey(candidate)):undefined;
  const target=pendingAttack?battle.stacks.find(s=>s.id===pendingAttack):undefined;
+ const latestAction=[...battle.events].reverse().find(e=>
+  ['DAMAGE','RETALIATION','MOVE','DEFEND','WAIT'].includes(e.type));
+ const latestDamage=latestAction&&typeof latestAction.delta['damage']==='number'?
+  latestAction.delta['damage'] as number:undefined;
+ const latestCasualties=latestAction&&typeof latestAction.delta['casualties']==='number'?
+  latestAction.delta['casualties'] as number:undefined;
  const damagePreview=active&&target&&legalAttack(battle,active,target).legal
    ?resolveDamage(battle.map,active,target,gridDistance(battle.map,active.position,target.position)>1):null;
  const clear=()=>{setMode('inspect');setPendingMove(null);setPendingAttack(null);setHover(null);};
@@ -232,6 +244,10 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
    onSelectActive={active?()=>{setSelected(active.id);clear();}:undefined}
    hint={canAct?'Toque no verde para mover ou no inimigo destacado para atacar.':
     'Confira a unidade da vez e aguarde sua ativação.'}/>
+  {latestAction&&<BattleActionFeedback round={latestAction.round}
+   label={latestAction.type==='DAMAGE'?'Ataque':latestAction.type==='RETALIATION'?
+    'Retaliação':latestAction.type==='MOVE'?'Movimento':latestAction.type==='DEFEND'?
+    'Defesa':'Espera'} damage={latestDamage} casualties={latestCasualties}/>}
   {showHelp&&<div className="battle-surface" role="note">Mover e atacar; defender dá +2. Esperar uma vez por rodada. Baixas apenas simuladas.</div>}
   <div className="battle-arena-grid">
     <aside className="battle-surface battle-army-sidebar" aria-label="Exércitos na arena">

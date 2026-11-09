@@ -12,6 +12,8 @@ import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
 import {BattleBoard} from './BattleBoard';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
+import {BattleActionFeedback} from './BattleActionFeedback';
+import {BattleOutcomeSummary} from './BattleOutcomeSummary';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
 import {BattleHouseBanner,BattleHouseVersus} from './BattleHouseHeraldry';
 import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
@@ -257,6 +259,10 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      {onBack&&<Button variant="outline" onClick={leaveBattle}>Voltar ao módulo</Button>}
     </div>
    </header>
+   {game.log.length>0&&<BattleActionFeedback
+    round={game.log[game.log.length-1]!.round}
+    label={game.log[game.log.length-1]!.label}
+    detail={game.log[game.log.length-1]!.detail}/>}
    <BattleTurnCue system="adapted" round={battle?.round??1}
     phase={battle?.phase??'active'} activeUnit={active?.name}
     canAct={canAct} moves={moves.length} attacks={attacks.length}
@@ -366,8 +372,13 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
      </div>}
      {status&&<p role="status" className="crusade-v4-status">{status}</p>}
      {battle?.phase==='completed'&&report&&<div className="crusade-v4-end">
-      <h2>{battle.winner===null?'Empate':battle.winner==='attacker'?'Vitória aliada':'Vitória adversária'}</h2>
-      <p>Baixas: aliados {report.bySide.attacker.casualties} · adversários {report.bySide.defender.casualties}</p>
+      <BattleOutcomeSummary
+       title={battle.winner===null?'Empate':battle.winner==='attacker'?'Vitória aliada':'Vitória adversária'}
+       round={battle.round}
+       losses={[
+        {label:'Aliados',count:report.bySide.attacker.casualties},
+        {label:'Adversários',count:report.bySide.defender.casualties},
+       ]}/>
       <Button onClick={()=>{setExpanded(false);setGame(null);setStatus('');}}>Nova Cruzada</Button>
      </div>}
     </section>

@@ -5,3 +5,29 @@
  display:flex;align-items:center}
 .battle-module .battle-impasse-help p{margin:6px 0;line-height:1.5}
 .battle-module .battle-impasse-help summary:focus-visible{outline:3px solid #f6d68b;outline-offset:2px}
+
+.battle-module .battle-action-feedback{
+ display:flex;align-items:center;gap:.35rem .8rem;flex-wrap:wrap;min-height:48px;
+ border:1px solid #807a5a;border-inline-start:4px solid #d5b77b;border-radius:8px;
+ background:rgba(41,50,43,.92);padding:9px 12px;margin:8px 0;
+ color:#f6edda;font-size:clamp(14px,1vw,16px);line-height:1.45}
+.battle-module .battle-action-feedback strong{color:#f7d697}
+.battle-module .battle-action-feedback b{color:#ffccaa;font-variant-numeric:tabular-nums}
+.battle-module .battle-action-feedback details{margin-left:auto;min-width:0}
+.battle-module .battle-action-feedback summary{cursor:pointer;padding:5px;font-size:14px}
+.battle-module .battle-action-feedback details p{margin:4px 0;max-width:55ch;overflow-wrap:anywhere}
+.battle-module .battle-outcome-summary{display:grid;gap:.4rem;padding:12px 14px;
+ border:1px solid #b89e67;border-radius:10px;background:rgba(47,54,42,.94);margin:8px 0}
+.battle-module .battle-outcome-summary h3{margin:0;color:#ffe4aa;font-size:clamp(19px,1.4vw,25px)}
+.battle-module .battle-outcome-summary p{margin:0;color:#f0e5cf;font-size:14px}
+.battle-module .battle-outcome-summary ul{margin:4px 0 0;padding:0;list-style:none;
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.battle-module .battle-outcome-summary li{display:flex;justify-content:space-between;
+ gap:6px;padding:7px 10px;border:1px solid #697566;border-radius:7px;
+ font-size:14px;font-variant-numeric:tabular-nums}
+@media(max-width:620px){.battle-module .battle-outcome-summary ul{grid-template-columns:1fr}
+ .battle-module .battle-action-feedback{align-items:flex-start}
+ .battle-module .battle-action-feedback details{margin-left:0;width:100%}}
+@media(prefers-reduced-motion:reduce){
+ .battle-module .battle-action-feedback,.battle-module .battle-outcome-summary{animation:none!important;transition:none!important}
+}
