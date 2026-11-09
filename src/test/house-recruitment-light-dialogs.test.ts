@@ -51,7 +51,8 @@ describe('Cormyr · criação militar e de espiões em marfim e dourado',()=>{
   const s=file('src/components/house/espionage/spy-create-agent-dialog.tsx');
   for(const text of [
    'createSpyAgentBrowser({','readSpyRecruitmentOptionsBrowser(houseId)',
-   'SPY_AGENT_UPGRADES','Vagas de espionagem da Casa',
+   'SPY_AGENT_UPGRADES','spy-create-vacancy',
+   'Vagas disponíveis para criar espiões',
    '<SpyPortraitPicker portraits={portraits} selected={portraitId}',
    'sourceHoldingId:source.sourceHoldingId','upgrades,',
   ])expect(s).toContain(text);
