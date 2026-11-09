@@ -82,3 +82,8 @@
  .spy-operations-quick-actions button{min-width:0;width:100%;min-height:48px}
  .spy-operation-row button{min-height:48px}
 }
+
+.spy-operation-integrity-warning{display:block;min-width:0;
+ padding:9px;border:1px solid var(--border);border-radius:7px;
+ overflow-wrap:anywhere;font-size:12px;line-height:1.45;font-weight:650}
+@media(max-width:720px){.spy-operation-integrity-warning{font-size:13px}}
