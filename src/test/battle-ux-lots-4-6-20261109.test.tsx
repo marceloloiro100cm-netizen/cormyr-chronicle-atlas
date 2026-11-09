@@ -34,7 +34,8 @@ describe('Lote 4 — orientação sem alteração do motor',()=>{
  it('não mostra atalho de ordens durante cerco e conserva fases sem pulo',()=>{
   render(<BattleGotGuide phase="siege" hasSiege hasHeroes={false}/>);
   expect(screen.queryByRole('button',{name:'Ver ordens'})).not.toBeInTheDocument();
-  expect(screen.getByText('Cerco')).toBeInTheDocument();
+  expect(screen.getByRole('navigation',{name:'Guia de fases Game of Thrones'})
+   .querySelector('[aria-current="step"]')).toHaveTextContent('Cerco');
   expect(screen.getByText('Sobre as fases')).toBeInTheDocument();
  });
  it('só recomenda revisão de impasse após três rodadas completas sem dano',()=>{
