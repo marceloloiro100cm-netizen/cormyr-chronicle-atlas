@@ -265,7 +265,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
    label={pteEventLabel(latestAction,battle.stacks)}
    damage={latestDamage} casualties={latestCasualties}
    detail={latestAction.type==='DAMAGE'?'Ataque resolvido pelo motor PTE.':undefined}/>}
-  {battle.objective&&<section className="battle-tactical-goal" aria-label="Objetivo tático" role="status">
+  {battle.objective&&<section className="battle-tactical-goal" aria-label="Objetivo tático" role="region" aria-live="polite">
     <strong>{battle.objective.kind==='capture'?'Conquistar posição':'Resistir ao ataque'}</strong>
     <p>{tacticalObjectiveDescription(battle)}</p>
    </section>}
