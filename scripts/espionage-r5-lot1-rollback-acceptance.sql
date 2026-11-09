@@ -60,7 +60,7 @@ BEGIN
    v_calendar_version,gen_random_uuid(),v_objective) INTO v_submission;
   v_op:=(v_submission->>'operationId')::uuid;
   IF v_submission->>'objective'<>v_objective OR
-    v_submission->>'status'<>CASE WHEN v_idx=1 THEN 'traveling' ELSE 'operating' END
+    (v_submission->>'status')<>(CASE WHEN v_idx=1 THEN 'traveling' ELSE 'operating' END)
   THEN RAISE EXCEPTION 'R5 início de missão incorreto: %',v_submission; END IF;
   IF v_idx=1 THEN
    UPDATE public.campaign_calendar SET day=21,version=version+1 WHERE id=true;
