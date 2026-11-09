@@ -1,6 +1,6 @@
 import './battle-ux-lots-4-6.css';
 
-type SideLoss=Readonly<{label:string;count:number}>;
+type SideLoss=Readonly<{label:string;count:number;unit?:string}>;
 /** Mesmo contrato visual de resultado nos três conjuntos de regras. */
 export function BattleOutcomeSummary({title,round,reason,losses=[]}:{
  title:string;round:number;reason?:string|undefined;
@@ -11,7 +11,7 @@ export function BattleOutcomeSummary({title,round,reason,losses=[]}:{
   <p>Rodada {round}{reason?' · '+reason:''}</p>
   {losses.length>0&&<ul>
    {losses.map(side=><li key={side.label}>
-    <span>{side.label}</span><strong>{side.count} baixas</strong>
+    <span>{side.label}</span><strong>{side.count} {side.unit??'baixas'}</strong>
    </li>)}
   </ul>}
  </section>;

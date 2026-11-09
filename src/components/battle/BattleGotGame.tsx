@@ -954,10 +954,10 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      title={battle.winner?'Vitória do '+SIDE[battle.winner]:'Confronto sem vencedor'}
      round={battle.round}
      losses={aftermath?[
-      {label:'Atacante · unidades destruídas',
-       count:aftermath.summary.attacker.destroyedInBattle},
-      {label:'Defensor · unidades destruídas',
-       count:aftermath.summary.defender.destroyedInBattle},
+      {label:'Atacante',count:aftermath.summary.attacker.destroyedInBattle,
+       unit:'unidades destruídas'},
+      {label:'Defensor',count:aftermath.summary.defender.destroyedInBattle,
+       unit:'unidades destruídas'},
      ]:[]}/>} 
    </section>
    <BattleGotGuide phase={battle.phase}
