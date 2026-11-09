@@ -113,3 +113,11 @@
  .spy-agent-finish-date{font-size:13px}
  .spy-agent-card-footer button{min-height:48px}
 }
+
+
+/* Registro sintético após a homologação; não chama fracasso de sucesso. */
+.spy-agent-last-mission{display:grid;gap:4px;border-top:1px solid var(--border);
+ padding:11px 0 3px;margin:0;min-width:0;overflow-wrap:anywhere;font-size:13px}
+.spy-agent-last-mission strong{font-size:14px}
+.spy-agent-last-mission span{line-height:1.45}
+.spy-agent-last-mission small{color:var(--muted-foreground);font-size:12px}
