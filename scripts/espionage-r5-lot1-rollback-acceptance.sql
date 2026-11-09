@@ -35,7 +35,10 @@ VALUES('region','dragoncoast','dragoncoast','R5 Costa',true,'public','r5'),
 ('region','ferlin','ferlin','R5 Ferlin',true,'public','r5'),
 ('domain','r5-domain','dragoncoast','R5 Domínio',true,'narrator','r5');
 INSERT INTO public.spy_portrait_catalog(id,label,image_url)
-VALUES('r5-portrait-only-rollback','Retrato R5','https://example.invalid/r5-test.jpg');
+VALUES
+('r5-portrait-only-rollback','Retrato R5','https://example.invalid/r5-test.jpg'),
+('r5-portrait-escape','Retrato Fuga R5','https://example.invalid/r5-escape.jpg'),
+('r5-portrait-capture','Retrato Captura R5','https://example.invalid/r5-capture.jpg');
 INSERT INTO public.spy_cormyr_mission_links(from_region,to_region,passage,active)
 VALUES('dragoncoast','ferlin','land_neighbor',true);
 INSERT INTO public.campaign_calendar(id,year,month,day,auto_advance,version,updated_by)
@@ -167,9 +170,56 @@ BEGIN
  (SELECT status FROM public.spy_assets WHERE id=v_agent)<>'dead' OR
  (SELECT mission_successes FROM public.spy_assets WHERE id=v_agent)<>3
  THEN RAISE EXCEPTION 'R5 destino do agente incorreto: %',v_result; END IF;
+ -- Testar FUGA (grau 1) e CAPTURA com melhoria Uma carta na manga,
+ -- sem afetar o agente morto ou introduzir premiação falsa.
+ FOR v_idx IN 1..2 LOOP
+  SELECT public.spy_create_agent(
+   'r5-l1-source','r5-network',
+   CASE WHEN v_idx=1 THEN 'Agente Fuga R5' ELSE 'Agente Captura R5' END,
+   CASE WHEN v_idx=1 THEN 'r5-portrait-escape' ELSE 'r5-portrait-capture' END,
+   CASE WHEN v_idx=1 THEN ARRAY[]::text[]
+    ELSE ARRAY['ace_in_the_hole']::text[] END,
+   gen_random_uuid()) INTO v_create;
+  v_agent:=(v_create->>'id')::uuid;
+  SELECT version INTO v_agent_version FROM public.spy_assets WHERE id=v_agent;
+  SELECT version INTO v_calendar_version FROM public.campaign_calendar WHERE id=true;
+  SELECT public.spy_submit_house_mission(
+    'r5-l1-source',v_agent,'r5-l1-target','ferlin',
+    v_agent_version,v_calendar_version,gen_random_uuid(),'house_resources')
+    INTO v_submission;
+  IF v_submission->>'status'<>'traveling'
+   THEN RAISE EXCEPTION 'R5 novos agentes não iniciaram viagem'; END IF;
+  v_op:=(v_submission->>'operationId')::uuid;
+  IF v_idx=1 THEN
+   UPDATE public.campaign_calendar SET month=2,day=21,version=version+1 WHERE id=true;
+   UPDATE public.campaign_calendar SET month=3,day=1,version=version+1 WHERE id=true;
+  ELSE
+   UPDATE public.campaign_calendar SET month=3,day=11,version=version+1 WHERE id=true;
+   UPDATE public.campaign_calendar SET month=3,day=21,version=version+1 WHERE id=true;
+  END IF;
+  SELECT version INTO v_agent_version FROM public.spy_assets WHERE id=v_agent;
+  SELECT public.spy_resolve_agent_mission(
+   v_op,CASE WHEN v_idx=1 THEN 8 ELSE 3 END,
+   CASE WHEN v_idx=1 THEN 0 ELSE -9 END,
+   true,NULL,NULL,v_agent_version,gen_random_uuid(),'Descoberto R5')
+   INTO v_result;
+  IF v_idx=1 AND (v_result->>'outcome'<>'escaped' OR
+     (SELECT status FROM public.spy_assets WHERE id=v_agent)<>'available')
+   THEN RAISE EXCEPTION 'R5 fuga incorreta: %',v_result; END IF;
+  IF v_idx=2 AND (v_result->>'outcome'<>'captured' OR
+     (SELECT status FROM public.spy_assets WHERE id=v_agent)<>'captured')
+   THEN RAISE EXCEPTION 'R5 captura incorreta: %',v_result; END IF;
+  IF (SELECT mission_successes FROM public.spy_assets WHERE id=v_agent)<>0
+   OR EXISTS(SELECT 1 FROM public.spy_intelligence_mission_awards
+     WHERE operation_id=v_op)
+  THEN RAISE EXCEPTION 'R5 fracasso de segurança gerou XP ou segredos'; END IF;
+ END LOOP;
  IF (SELECT count(*) FROM public.spy_mission_decisions)<>
    (SELECT count(*) FROM public.spy_operations)
  THEN RAISE EXCEPTION 'R5 operação sem decisão ou duplicada'; END IF;
+ IF (SELECT count(*) FROM public.spy_agent_upgrades
+    WHERE upgrade_code IN('forged_documents','ace_in_the_hole'))<>2
+ THEN RAISE EXCEPTION 'R5 melhorias não persistiram corretamente'; END IF;
 END $accept$;
 -- Sem commit: a transação apaga inclusive o usuário sintético de laboratório.
 ROLLBACK;
