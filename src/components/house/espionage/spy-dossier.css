@@ -38,3 +38,13 @@
 .spy-dossier-pending-filter{display:grid;gap:5px;font-size:.85rem;max-width:280px;margin-top:12px}
 .spy-dossier-pending>span{min-width:0;display:grid;gap:4px}
 .spy-dossier-pending>span small{display:block;color:var(--muted-foreground)}
+
+.spy-dossier-freshness{display:block;margin-top:6px;font-size:12px;line-height:1.5}
+.spy-dossier-freshness[data-freshness=old],
+.spy-dossier-freshness[data-freshness=review]{font-weight:650}
+.spy-dossier-sheet-body small{line-height:1.5}
+@media(max-width:700px){
+ .spy-dossier-filters input,.spy-dossier-filters select{min-height:48px;font-size:16px}
+ .spy-dossier-tabs button{min-height:44px}
+ .spy-dossier-admin-form textarea,.spy-dossier-admin-form select{font-size:16px}
+}
