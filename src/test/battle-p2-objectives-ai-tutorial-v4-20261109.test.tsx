@@ -113,8 +113,7 @@ describe('P2 — IA determinística orientada a terreno e objetivo',()=>{
   expect(getLegalActions(state)).toContainEqual(command);
   if(command.type!=='MOVE')throw Error('Expected move.');
   const before=state.stacks.find(x=>x.id==='a')!;
-  expect(gridDistance(state.map,command.to,state.objective!.kind==='capture'?
-   state.objective!.position:{q:5,r:4})).toBeLessThan(
+  expect(gridDistance(state.map,command.to,{q:5,r:4})).toBeLessThan(
     gridDistance(state.map,before.position,{q:5,r:4}));
   expect(chooseAiCommand(state)).toEqual(command);
  });
