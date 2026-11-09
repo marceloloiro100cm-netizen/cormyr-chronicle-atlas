@@ -128,7 +128,7 @@ export async function finishSpyIntelligence(
  const result=await db.rpc('spy_intelligence_finalize',{
   p_operation:operationId,p_resources:resources,
  });
- if(result.error)throw new Error('Resultado homologado; atualização do dossiê pendente: '+result.error.message);
+ if(result.error)throw new Error('Resultado homologado, mas o dossiê ainda precisa de reprocessamento. Atualize a fila do Narrador.');
  const finalStatus=z.object({status:z.enum([
   'complete','waiting_catalog','no_success_award',
  ])}).passthrough().parse(result.data).status;
@@ -166,7 +166,7 @@ export const adjustSpyIntelligence=createServerFn({method:'POST'})
    p_subject_key:data.subjectKey,p_action:data.action,p_reason:data.reason,
    p_resources:resources,
   });
-  if(result.error)throw new Error(result.error.message);
+  if(result.error)throw new Error('Não foi possível registrar a alteração do dossiê. Confira a fonte oficial, a justificativa e suas permissões.');
   return z.object({
    status:z.literal('applied'),knownCount:z.number().int().nonnegative(),
   }).parse(result.data);

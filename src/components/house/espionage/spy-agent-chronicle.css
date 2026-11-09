@@ -1,0 +1,27 @@
+.spy-agent-chronicle{min-width:0;overflow-wrap:anywhere}
+.spy-agent-chronicle>summary{cursor:pointer;font-weight:650;min-height:36px}
+.spy-chronicle-filters{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:10px;margin-top:12px}
+.spy-chronicle-filters label{display:grid;gap:6px;font-size:12px;font-weight:600;min-width:0}
+.spy-chronicle-filters input,.spy-chronicle-filters select{width:100%;min-width:0;
+ min-height:44px;border:1px solid var(--border);border-radius:8px;
+ background:var(--background);color:var(--foreground);padding:8px}
+.spy-chronicle-list{list-style:none;margin:8px 0;padding:0;display:grid;gap:8px}
+.spy-chronicle-list>li{border-left:3px solid var(--campaign-gold,#a98b54);
+ border-top:1px solid var(--border);border-right:1px solid var(--border);
+ border-bottom:1px solid var(--border);padding:11px;border-radius:6px;
+ display:grid;gap:5px;min-width:0}
+.spy-chronicle-list small{color:var(--muted-foreground);font-size:11px}
+.spy-chronicle-list strong{font-size:14px}
+.spy-chronicle-list span{font-size:12px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.spy-counterintelligence{display:grid;gap:10px}
+.spy-counterintelligence-heading{display:flex;gap:10px;flex-wrap:wrap;
+ justify-content:space-between;align-items:center}
+.spy-counterintelligence-heading h4{display:flex;gap:8px;align-items:center;font-weight:700}
+.spy-counterintelligence-events{display:grid;gap:6px;list-style:none;padding:0;margin:10px 0}
+.spy-counterintelligence-events li{display:flex;justify-content:space-between;gap:8px;
+ flex-wrap:wrap;font-size:12px;border-bottom:1px solid var(--border);padding:8px 0}
+@media(max-width:680px){
+ .spy-chronicle-filters{grid-template-columns:minmax(0,1fr)}
+ .spy-chronicle-filters input,.spy-chronicle-filters select{min-height:48px;font-size:16px}
+ .spy-counterintelligence button{min-height:44px}
+}

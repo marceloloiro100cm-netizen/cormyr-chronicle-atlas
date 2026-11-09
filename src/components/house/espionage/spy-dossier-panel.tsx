@@ -4,7 +4,10 @@ import {useServerFn} from '@tanstack/react-start';
 import {Eye,ScrollText,Shield,Swords,Castle,LockKeyhole,RefreshCw} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {RESOURCE_NAMES} from '@/lib/house/types';
-import {formatDate,parseDate} from '@/lib/calendar/harptos';
+import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
+import {useCampaignTime} from '@/lib/calendar/campaign-time';
+import {spyIntelligenceFreshness,spyDossierLastVerified}
+ from '@/lib/espionage/spy-intelligence-freshness';
 import {SPY_INTELLIGENCE_OBJECTIVES,
  SPY_INTELLIGENCE_RESOURCE_KEYS,type SpyIntelligenceObjective}
  from '@/lib/espionage/spy-intelligence-rules';
@@ -13,8 +16,9 @@ import {readSpyDossiersBrowser,readSpyIntelligenceOptionsBrowser,
  type SpyDossier} from '@/lib/espionage/spy-dossier.functions';
 import {spyDossierActionOptions} from '@/lib/espionage/spy-dossier-action-options';
 import {filterSpyDossiers,paginateSpyDossiers,spyDossierPendingHouseNames,
- type SpyDossierSort,type SpyDossierProgress} from '@/lib/espionage/spy-dossier-list';
+ type SpyDossierSort,type SpyDossierProgress,type SpyDossierFreshness} from '@/lib/espionage/spy-dossier-list';
 import './spy-dossier.css';
+import {SpyNarratorOperationsCenter} from './spy-narrator-operations-center';
 
 const safeDate=(date:string)=>parseDate(date)?formatDate(date):date;
 const labels=Object.fromEntries(SPY_INTELLIGENCE_OBJECTIVES.map(item=>[item.id,item.label]));
@@ -23,12 +27,18 @@ function count(d:SpyDossier,objective:SpyIntelligenceObjective){
 }
 function DossierView({dossier}:{dossier:SpyDossier}){
  const [tab,setTab]=useState<SpyIntelligenceObjective>('house_resources');
+ const time=useCampaignTime();
+ const official=time.data&&!time.isError?dateKey(time.data):null;
+ const last=spyDossierLastVerified(dossier);
+ const freshness=last?spyIntelligenceFreshness(last,official):null;
  const found=dossier.findings.filter(f=>f.objective===tab);
  return <section className="spy-dossier-sheet" aria-label={'Dossiê da Casa '+dossier.targetHouseName}>
   <header className="spy-dossier-sheet-header">
    <div><p className="campaign-eyebrow">RELATÓRIO DE INTELIGÊNCIA · CONFIDENCIAL</p>
     <h3>Casa {dossier.targetHouseName}</h3>
     <small>Informações pertencentes à Casa {dossier.ownerHouseName}</small>
+    {freshness&&<small className="spy-dossier-freshness"
+     data-freshness={freshness.tier}>{freshness.label}</small>}
    </div><ScrollText size={30} aria-hidden="true"/>
   </header>
   <div className="spy-dossier-tabs" role="group" aria-label="Modalidade do dossiê">
@@ -51,7 +61,8 @@ function DossierView({dossier}:{dossier:SpyDossier}){
        <strong>{RESOURCE_NAMES[key]}</strong>
        {row?<span>{String(row.snapshot['value']??'—')}</span>:
         <span className="spy-dossier-unknown"><LockKeyhole size={13}/>Desconhecido</span>}
-       {row&&<small>Confirmado: {safeDate(row.verifiedDate)}</small>}
+       {row&&<small>Confirmado: {safeDate(row.verifiedDate)}
+        {' '}· {spyIntelligenceFreshness(row.verifiedDate,official).label}</small>}
       </div>;
      })}
     </div>
@@ -62,7 +73,8 @@ function DossierView({dossier}:{dossier:SpyDossier}){
       (Array.isArray(f.snapshot['types'])?f.snapshot['types'].join(', '):'Unidade militar'))}</span>
      {tab==='army'&&typeof f.snapshot['strength']==='number'&&
       <small>Força registrada: {f.snapshot['strength']}</small>}
-     <small>Última confirmação: {safeDate(f.verifiedDate)}</small>
+     <small>Última confirmação: {safeDate(f.verifiedDate)}
+      {' '}· {spyIntelligenceFreshness(f.verifiedDate,official).label}</small>
     </article>)}
    </div>:<p className="house-caption">Nenhuma informação desta categoria foi descoberta.</p>}
    {tab!=='house_resources'&&
@@ -98,11 +110,15 @@ function DossierCollection({dossiers,title,summary,onRefresh,refreshing=false}:{
  const [targetFilter,setTargetFilter]=useState('');
  const [regionFilter,setRegionFilter]=useState('');
  const [progress,setProgress]=useState<SpyDossierProgress>('all');
+ const [freshness,setFreshness]=useState<SpyDossierFreshness>('all');
+ const time=useCampaignTime();
+ const officialDate=time.data&&!time.isError?dateKey(time.data):null;
  const [sort,setSort]=useState<SpyDossierSort>('recent');
  const [page,setPage]=useState(1);
  const regions=[...new Set(dossiers.map(d=>d.targetRegion??'').filter(Boolean))].sort();
  const visible=filterSpyDossiers(dossiers,{
   targetSearch:targetFilter,region:regionFilter,progress,sort,
+  freshness,officialDate,
  });
  const paged=paginateSpyDossiers(visible,page,12);
  const chosen=paged.items.find(d=>d.id===selected)??paged.items[0];
@@ -123,6 +139,12 @@ function DossierCollection({dossiers,title,summary,onRefresh,refreshing=false}:{
     <option value="all">Todos</option>
     <option value="incomplete">Incompletos</option>
     <option value="complete">7/7 completos</option>
+   </select></label>
+   <label>Atualidade<select value={freshness}
+    onChange={e=>{setFreshness(e.target.value as SpyDossierFreshness);setPage(1);}}>
+    <option value="all">Todas</option>
+    <option value="recent">Até 30 dias</option>
+    <option value="stale">Mais de 30 dias</option>
    </select></label>
   </div>
   <div className="spy-dossier-toolbar">
@@ -166,6 +188,9 @@ export function SpyNarratorDossiers(){
   [subject,setSubject]=useState(''),[action,setAction]=useState<'reveal'|'revalidate'|'revoke'>('reveal'),
   [reason,setReason]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
  const [progress,setProgress]=useState<SpyDossierProgress>('all');
+ const [freshness,setFreshness]=useState<SpyDossierFreshness>('all');
+ const time=useCampaignTime();
+ const officialDate=time.data&&!time.isError?dateKey(time.data):null;
  const [sort,setSort]=useState<SpyDossierSort>('recent');
  const [page,setPage]=useState(1);
  const [pendingObjective,setPendingObjective]=useState<SpyIntelligenceObjective|'all'>('all');
@@ -180,6 +205,7 @@ export function SpyNarratorDossiers(){
   (value):value is string=>Boolean(value)))].sort();
  const filtered=filterSpyDossiers(query.data??[],{
   ownerHouseId:owner,targetSearch:target,region,progress,sort,
+  freshness,officialDate,
  });
  const paged=paginateSpyDossiers(filtered,page,30);
  const active=paged.items.find(d=>d.id===selected)??paged.items[0];
@@ -221,7 +247,9 @@ export function SpyNarratorDossiers(){
   <Button type="button" variant="outline" onClick={()=>void query.refetch()}>
    Tentar novamente</Button>
  </section>;
- return <section className="house-panel spy-dossier-panel" aria-label="Dossiês de Espionagem do Narrador">
+ return <>
+ <SpyNarratorOperationsCenter/>
+ <section className="house-panel spy-dossier-panel" aria-label="Dossiês de Espionagem do Narrador">
   <div className="house-section-heading"><div>
    <p className="campaign-eyebrow">NARRADOR · INTELIGÊNCIA CONFIDENCIAL</p>
    <h2>Dossiês de Espionagem</h2>
@@ -250,6 +278,12 @@ export function SpyNarratorDossiers(){
     setProgress(e.target.value as SpyDossierProgress);setPage(1);setSelected('');}}>
     <option value="all">Todos</option><option value="incomplete">Incompletos</option>
     <option value="complete">7/7 completos</option>
+   </select></label>
+   <label>Atualidade<select value={freshness}
+    onChange={e=>{setFreshness(e.target.value as SpyDossierFreshness);setPage(1);setSelected('');}}>
+    <option value="all">Todas</option>
+    <option value="recent">Até 30 dias</option>
+    <option value="stale">Mais de 30 dias</option>
    </select></label>
    <label>Ordenar<select value={sort} onChange={e=>{
     setSort(e.target.value as SpyDossierSort);setPage(1);setSelected('');}}>
@@ -342,5 +376,6 @@ export function SpyNarratorDossiers(){
    </>}
   </details>
   {message&&<p role="status" className="house-caption">{message}</p>}
- </section>;
+ </section>
+ </>;
 }

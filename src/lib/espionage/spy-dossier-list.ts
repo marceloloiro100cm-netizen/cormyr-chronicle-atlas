@@ -1,10 +1,13 @@
 import type {SpyDossier} from './spy-dossier.functions';
+import {spyDossierLastVerified,spyIntelligenceFreshness} from './spy-intelligence-freshness';
 
 export type SpyDossierSort='recent'|'target';
 export type SpyDossierProgress='all'|'incomplete'|'complete';
+export type SpyDossierFreshness='all'|'recent'|'stale';
 export type SpyDossierFilters={
  ownerHouseId?:string;targetSearch?:string;region?:string;
  progress?:SpyDossierProgress;sort?:SpyDossierSort;
+ freshness?:SpyDossierFreshness;officialDate?:string|null;
 };
 
 export const normalizeDossierSearch=(value:string)=>
@@ -24,6 +27,13 @@ export function filterSpyDossiers(
   const knownResources=d.findings.filter(f=>f.objective==='house_resources').length;
   if(filters.progress==='complete'&&knownResources!==7)return false;
   if(filters.progress==='incomplete'&&knownResources===7)return false;
+  if(filters.freshness&&filters.freshness!=='all'){
+   const last=spyDossierLastVerified(d);
+   if(!last)return false;
+   const tier=spyIntelligenceFreshness(last,filters.officialDate??null).tier;
+   if(filters.freshness==='recent'&&tier!=='recent')return false;
+   if(filters.freshness==='stale'&&tier!=='review'&&tier!=='old')return false;
+  }
   return true;
  });
  return result.sort((a,b)=>{

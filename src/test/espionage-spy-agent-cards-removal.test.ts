@@ -55,8 +55,10 @@ describe('Agentes: cartas, retrato ampliado e baixa auditável',()=>{
   expect(sql).not.toMatch(/DELETE FROM public\.spy_agent_history/i);
  });
  it('preserva as ocorrências arquivadas no painel de histórico',()=>{
-  const s=file('src/components/house/espionage/spy-agent-recruitment-history.tsx');
-  expect(s).toContain("retired:'Agente excluído'");
+  const s=file('src/lib/espionage/spy-agent-chronicle.ts');
+  const panel=file('src/components/house/espionage/spy-agent-recruitment-history.tsx');
+  expect(s).toContain("retired:'Baixa do agente'");
+  expect(panel).toContain('buildSpyChronicle(data)');
   const schema=spyManagementSchema.parse({
    houseId:'ashkar',houseVersion:3,agents:[],operations:[],recruitment:[],
    portraits:[],history:[{

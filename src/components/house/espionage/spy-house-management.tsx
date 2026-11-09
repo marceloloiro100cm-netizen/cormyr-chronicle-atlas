@@ -19,6 +19,7 @@ import {SpyRemoveAgentButton} from './spy-remove-agent-button';
 import {SpyCancelMissionButton} from './spy-cancel-mission-button';
 import './spy-agent-cards.css';
 import {SpyNarratorResolutionPanel} from './spy-narrator-resolution';
+import {SpyHouseCounterintelligence} from './spy-house-counterintelligence';
 
 const missionKinds:Record<string,string>={
  regional_recon:'Reconhecimento regional',house_recon:'Espionar Casa',
@@ -91,7 +92,7 @@ export function spyMissionProgress(
  return {mission:title,travel,remaining,end,arrival,...(operation.departureKey?{departure:operation.departureKey}:{})};
 }
 
-export function SpyDefensePanel({state}:{state:HouseState}){
+export function SpyDefensePanel({state,houseId}:{state:HouseState;houseId:string}){
  const defense=calculateSpyDefense(state);
  const general=defense.baseDifficulty+defense.globalBonuses;
  return <section className="house-panel" aria-label="Defesa de Espionagem">
@@ -99,20 +100,26 @@ export function SpyDefensePanel({state}:{state:HouseState}){
    <p className="campaign-eyebrow">CONTRAESPIONAGEM</p>
    <h3><ShieldCheck size={20} style={{display:'inline-block',verticalAlign:'middle'}}/> Defesa de Espionagem</h3>
   </div></div>
-  <p className="house-caption">A Lei da Casa <strong>determina a dificuldade-base do teste</strong>,
-   mas não é o número da dificuldade. Pelo livro: Lei até 30 → dificuldade 6;
-   a cada 5 pontos completos acima de 30, +3 de dificuldade.
-   Acrescente apenas as proteções ativas aplicáveis ao local. Não somamos Lei de outra região.</p>
-  <div className="house-input-grid" style={{margin:'12px 0'}}>
-   <div className="house-ledger"><strong>Lei efetiva da Casa</strong><h3>{defense.law}</h3></div>
-   <div className="house-ledger"><strong>Defesa geral de Espionagem</strong><h3>{general}</h3></div>
+  <p className="house-caption">A Lei determina a dificuldade-base;
+   construções defensivas adicionam bônus. Esta é a proteção da sua própria Casa.</p>
+  <div className="spy-defense-overview" aria-label="Composição da defesa">
+   <div className="house-ledger"><small>Lei efetiva</small><strong>{defense.law}</strong></div>
+   <div className="house-ledger"><small>Base do teste</small><strong>{defense.baseDifficulty}</strong></div>
+   <div className="house-ledger"><small>Bônus ativos</small><strong>+{defense.globalBonuses}</strong></div>
+   <div className="house-ledger"><small>Defesa total</small><strong>{general}</strong></div>
   </div>
-  {defense.globalSources.length>0&&<ul>
-   {defense.globalSources.map(v=><li key={v.holdingId}>{v.name}: +{v.bonus} — {v.description}</li>)}
-  </ul>}
-  {defense.otherEffects.length>0&&<details className="house-ledger"><summary>Proteções e efeitos especiais (sem bônus numérico de dificuldade)</summary>
-   <ul>{defense.otherEffects.map((e,i)=><li key={i}>{e.name}: {e.description}</li>)}</ul>
-  </details>}
+  <details className="house-ledger spy-defense-details">
+   <summary>Ver origem dos bônus e proteções</summary>
+   {defense.globalSources.length>0?<ul>
+    {defense.globalSources.map(v=><li key={v.holdingId}>{v.name}: +{v.bonus} — {v.description}</li>)}
+   </ul>:<p className="house-caption">Sem bônus global de construção ativo.</p>}
+   {defense.otherEffects.length>0&&<ul>
+    {defense.otherEffects.map((e,i)=><li key={i}>{e.name}: {e.description}</li>)}
+   </ul>}
+   <p className="house-caption">A dificuldade do teste não é igual ao valor bruto da Lei.
+    Algumas proteções locais variam conforme o domínio.</p>
+  </details>
+  <SpyHouseCounterintelligence houseId={houseId}/>
  </section>;
 }
 
