@@ -78,7 +78,10 @@ const CONDITION:Record<WarUnit['condition'],string>={
  organized:'Organizada',disorganized:'Desorganizada',routed:'Debandada',
  destroyed:'Destruída',surrendered:'Rendida',escaped:'Fora de campo',
 };
-export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;resumeFromLibrary?:boolean}){
+export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=false}:{
+ onBack:()=>void;resumeFromLibrary?:boolean;playerSandbox?:boolean;
+}){
+ const saveKey=playerSandbox?'cormyr-got-player-training-v1':GOT_LAB_SAVE_KEY;
  const [battle,setBattle]=useState<WarBattle|null>(null);
  const [seed,setSeed]=useState('guerra-cormyr-livro');
  const [name,setName]=useState('Escaramuça de treinamento');
@@ -187,11 +190,11 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
   try{
    const prepared=positionedWarLabDeployments(extraUnitsPerSide,deploymentPositions,
     mapSize.width,mapSize.height);
-   if(siegeEnabled&&officialBySlot['attacker-2']&&
+   if(!playerSandbox&&siegeEnabled&&officialBySlot['attacker-2']&&
     officialBySlot['attacker-2'].typeId!=='engineers')
     throw new Error('O segundo espaço do atacante deve ter engenheiros para operar o cerco.');
    const units=prepared.map(row=>{
-    const imported=officialBySlot[row.id as Slot];
+    const imported=playerSandbox?undefined:officialBySlot[row.id as Slot];
     const model=imported?{...imported,side:row.side,position:row.position}:
      modelWarUnit({...row,training,
       typeId:siegeEnabled&&row.id==='attacker-2'?'engineers':types[row.id]??'infantry'});
@@ -477,13 +480,13 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
  useEffect(()=>{
   if(!resumeFromLibrary)return;
   try{
-   const raw=window.localStorage.getItem(GOT_LAB_SAVE_KEY);
+   const raw=window.localStorage.getItem(saveKey);
    if(!raw){setLocalSaveStatus('Nenhuma batalha GOT salva neste navegador.');return;}
    const loaded=decodeGotLabSave(raw);
    setBattle(loaded);setSelected('');setTarget('');setLastSavedSnapshot(raw);
    setLocalSaveStatus('Batalha retomada · rodada '+loaded.round+'.');
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível retomar GOT.');}
- },[resumeFromLibrary]);
+ },[resumeFromLibrary,saveKey]);
  const leaveBattle=()=>{
   if(battle&&JSON.stringify(battle)!==lastSavedSnapshot&&
     !window.confirm('Há alterações não salvas na batalha Game of Thrones. Deseja sair?'))return;
@@ -493,7 +496,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
   if(!battle)return;
   try{
    const snapshot=encodeGotLabSave(battle);
-   window.localStorage.setItem(GOT_LAB_SAVE_KEY,snapshot);
+   window.localStorage.setItem(saveKey,snapshot);
    setLastSavedSnapshot(snapshot);
    setLocalSaveStatus('Simulação salva somente neste navegador.');
    setError('');
@@ -501,7 +504,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
  };
  const loadLocalBattle=()=>{
   try{
-   const saved=window.localStorage.getItem(GOT_LAB_SAVE_KEY);
+   const saved=window.localStorage.getItem(saveKey);
    if(!saved)throw new Error('Nenhuma simulação local foi encontrada neste navegador.');
    if(battle&&!window.confirm('Substituir a simulação atual pela versão salva?'))return;
    const loaded=decodeGotLabSave(saved);
@@ -511,7 +514,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
  };
  const clearLocalBattle=()=>{
   if(!window.confirm('Apagar a cópia local desta simulação? A batalha aberta não será alterada.'))return;
-  try{window.localStorage.removeItem(GOT_LAB_SAVE_KEY);
+  try{window.localStorage.removeItem(saveKey);
    setLastSavedSnapshot('');
    setLocalSaveStatus('Cópia local apagada.');setError('');
   }catch{setError('Não foi possível apagar a cópia local.');}
@@ -560,6 +563,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
     <p>Laboratório do capítulo 10 · quadrados de 10 m · uma rodada representa 1 minuto.</p></div>
    <Button variant="outline" onClick={leaveBattle}>Voltar ao módulo</Button>
   </div>
+  {playerSandbox&&<p className="battle-note" role="status">Modo de treino do jogador: apenas tropas fictícias. Nenhum acesso a unidades oficiais das Casas.</p>}
   <p className="battle-note">Laboratório isolado do Adaptado e D&D.
    Ordens, heróis, cerco, formações e pós-batalha estão disponíveis para testes;
    regras excepcionais e parâmetros de fortificações podem exigir decisão do Narrador.
@@ -845,13 +849,13 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
    </div>
    <BattleSquareLegend showActions={false}/>
    <p className="battle-note">Pinte o terreno antes de iniciar; cada quadrado tem 10 metros. Campos com obstáculos não são automaticamente removidos quando contêm tropas.</p>
-   <BattleGotSourcePicker chosenSlots={officialBySlot} onChoose={(slot,unit)=>
+   {!playerSandbox&&<BattleGotSourcePicker chosenSlots={officialBySlot} onChoose={(slot,unit)=>
     setOfficialBySlot(current=>{
      const next={...current};
      if(unit)next[slot]=unit;
      else delete next[slot];
      return next;
-    })}/>
+    })}/>}
    <Button onClick={start}>Iniciar simulação pelo livro</Button>
   </section>:<>
    <section className="battle-surface got-status" aria-label="Estado da guerra" aria-live="polite">
