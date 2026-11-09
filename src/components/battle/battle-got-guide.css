@@ -36,3 +36,14 @@
 
 .battle-got .got-phase-steps li small{display:block;font-size:.67rem;line-height:1.2;
  color:#cdd7c9;margin-left:auto;max-width:95px}
+
+/* Lote 7: uma fase visível por padrão, trilha completa consultável. */
+.battle-got .got-phase-details>summary,.battle-got .got-phase-note>summary{
+ cursor:pointer;min-height:44px;display:list-item;padding:.55rem;
+ color:#ffdfa2;font-weight:700}
+.battle-got .got-phase-details>summary:focus-visible,
+.battle-got .got-phase-note>summary:focus-visible{outline:3px solid #ffe29b;outline-offset:2px}
+.battle-got .got-phase-details .got-phase-steps{margin:.5rem 0}
+@media(prefers-reduced-motion:reduce){
+ .battle-got .got-phase-guide *{animation:none!important;transition:none!important}
+}

@@ -28,23 +28,28 @@ export function BattleGotGuide({phase,onQuickPreset,hasSiege=true,hasHeroes=true
   // A preparação foi recolhida nos lotes 1–3; navegação deve abri-la antes do foco.
   const parent=target?.closest('details');
   if(parent)parent.open=true;
-  target?.scrollIntoView({behavior:'smooth',block:'start'});
+  const reduced=typeof window!=='undefined'&&
+   Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  target?.scrollIntoView({behavior:reduced?'auto':'smooth',block:'start'});
  };
  return <nav className="got-phase-guide" aria-label="Guia de fases Game of Thrones">
   <div className="got-phase-guide-intro">
    <strong>{current.label}</strong>
    <p>{contextualHint}</p>
   </div>
-  <ol className="got-phase-steps">
-   {PHASES.map((step,i)=><li key={step.id}
-    className={step.id===phase?'is-current':stepIndex(phase)>i?'is-complete':''}
-    aria-current={step.id===phase?'step':undefined}>
-    <span aria-hidden="true">{i+1}</span>{step.label}
-    {((step.id==='siege'&&!hasSiege)||
-      ((step.id==='heroes-first'||step.id==='heroes-second')&&!hasHeroes))&&
-      <small title="Sem elementos especiais neste confronto">Sem tropas especiais</small>}
-   </li>)}
-  </ol>
+  <details className="got-phase-details">
+   <summary>Ver fases · {stepIndex(phase)+1}/6</summary>
+   <ol className="got-phase-steps">
+    {PHASES.map((step,i)=><li key={step.id}
+     className={step.id===phase?'is-current':stepIndex(phase)>i?'is-complete':''}
+     aria-current={step.id===phase?'step':undefined}>
+     <span aria-hidden="true">{i+1}</span>{step.label}
+     {((step.id==='siege'&&!hasSiege)||
+       ((step.id==='heroes-first'||step.id==='heroes-second')&&!hasHeroes))&&
+       <small title="Sem elementos especiais neste confronto">Sem tropas especiais</small>}
+    </li>)}
+   </ol>
+  </details>
   {phase==='preparation'&&<div className="got-phase-guide-links" role="group"
    aria-label="Navegação da preparação">
    <Button size="sm" variant="outline" onClick={()=>jump('got-prep-forces')}>1 · Tropas</Button>
@@ -57,7 +62,9 @@ export function BattleGotGuide({phase,onQuickPreset,hasSiege=true,hasHeroes=true
    <Button size="sm" variant="outline" onClick={()=>jump('got-battle-orders')}>
     Ir ao painel de comandos</Button>
   </div>}
-  <p className="got-phase-note">Guia visual: a mudança de fase continua controlada pelas
-   regras de Guerra dos Tronos RPG e pelas decisões do Narrador.</p>
+  <details className="got-phase-note">
+   <summary>Regras desta fase</summary>
+   <p>O avanço segue o livro e a decisão do Narrador.</p>
+  </details>
  </nav>;
 }

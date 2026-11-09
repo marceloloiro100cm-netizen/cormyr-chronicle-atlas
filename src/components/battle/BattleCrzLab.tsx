@@ -6,6 +6,7 @@ import {BattleSquareLegend} from './BattleSquareLegend';
 import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
+import {formatDndMetres} from '@/lib/crusade/dnd-metric';
 import {BattleActionFeedback} from './BattleActionFeedback';
 import {BattleOutcomeSummary} from './BattleOutcomeSummary';
 import {dndNeedsImpasseReview} from '@/lib/battle/ux/dnd-impasse';
@@ -257,6 +258,8 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
  onBack?:()=>void;mode?:'crz'|'dnd';showSavedOnOpen?:boolean;playerSandbox?:boolean;
 }){
  const dndMode=mode==='dnd';
+ const teamName=(side:CrzSide):string=>dndMode?
+  (side==='attacker'?'Atacantes':'Defensores'):SIDE[side].name;
  const sandbox=dndMode&&playerSandbox;
  const [options,setOptions]=useState<CrzTrainingOptions>({...CRZ_TRAINING_DEFAULTS,
   grid:'square',preset:'CRZ-5E',resolution:dndMode?'rolled':'expected'});
@@ -846,7 +849,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
         <td>{x.unavailableReason?'—':x.hp}</td><td>{x.unavailableReason?'—':x.ac}</td>
         <td>{x.unavailableReason?'—':'+'+x.meleeToHit}</td>
         <td>{x.unavailableReason?'—':(x.initiativeModifier>=0?'+':'')+x.initiativeModifier}</td>
-        <td>{x.unavailableReason?'—':x.speedFt+' pés'}</td>
+        <td>{x.unavailableReason?'—':formatDndMetres(x.speedFt)}</td>
         <td>{x.unavailableReason?'—':x.rangedToHit===undefined?'—':
          '+'+x.rangedToHit+' · à distância'}</td>
         <td>{x.unavailableReason??x.individualsPerOriginalUnit+' por unidade GOT'}</td>
@@ -920,7 +923,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
     <div className="crz-arena-heading">
      <span className="crz-eyebrow">CORMYR · ARENA DE TREINAMENTO</span>
      <h1>{dndMode?'Batalha D&D':'Cruzada'} <span>{dndMode?'d20 simplificado':'CRZ-1.0'}</span></h1>
-     <p>Preset: {frame.rulesetId} · {dndMode?'V3 · quadrados de 10 pés · à distância sem teto · iniciativa d20':
+     <p>Preset: {frame.rulesetId} · {dndMode?'V3 · quadrados de 3 m · distância sem limite · iniciativa d20':
      'General Tillet nível '+(frame.leaders.attacker?.level??'—')+' (treino)'}</p>
      <p>Rodada {frame.round} · {frame.phase==='completed'?
       'Batalha encerrada':active?'Turno de '+active.name:'Preparando turno'} ·
@@ -1034,7 +1037,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
        (unit.id===frame.activeStackId?' crz-turn-current':'')+
        (unit.id===hoveredId?' crz-turn-hovered':'')}
       aria-label={'Ordem '+(index+1)+': '+unit.name+
-       ' · '+SIDE[unit.side].name+' · '+unit.alive+' vivos'}
+       ' · '+teamName(unit.side)+' · '+unit.alive+' vivos'}
       aria-current={unit.id===frame.activeStackId?'step':undefined}
       aria-pressed={selectedId===unit.id}
       onMouseEnter={()=>setHoveredId(unit.id)}
@@ -1120,7 +1123,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
     <section className="crz-central-map" aria-label="Campo de batalha">
      <div className="crz-map-caption">
       <h2>Campo de batalha</h2>
-      <span className="battle-unified-leader-label">General: {caster?.name??"Nenhum ativo"}</span>
+      {!dndMode&&<span className="battle-unified-leader-label">General: {caster?.name??"Nenhum ativo"}</span>}
       <span className="crz-legend-item"><i className="crz-legend-green"/>Movimento</span>
       <span className="crz-legend-item"><i className="crz-legend-red"/>Ataque legal</span>
      </div>
@@ -1131,15 +1134,16 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
       objectives={objectives} onTile={clickHex}/>
      {inspected&&<div className="crz-inspect-line">
       <strong>{inspected.name}</strong>
-      <span>{SIDE[inspected.side].name} · {inspected.alive}/{inspected.initialCount} vivos</span>
+      <span>{teamName(inspected.side)} · {inspected.alive}/{inspected.initialCount} vivos</span>
       <span>{inspected.hpPool} PV · CA {inspected.acBase}</span>
       {dndMode&&<section className="dnd-inspected-stats" aria-label="Ficha D&D da pilha">
        <strong>Ficha D&D · d20</strong>
        <span>PV por criatura: {inspected.hpPerCreature} · PV da pilha: {inspected.hpPool}</span>
        <span>Classe de Armadura (CA): {inspected.acBase}</span>
        <span>Iniciativa (d20 + modificadores): {inspected.initiative}</span>
-       <span>Deslocamento: {inspected.template.speedFt.walk} pés terrestres
-        {inspected.template.flags.flying?' · Voo '+inspected.template.speedFt.fly+' pés (sobre obstáculos)':''}
+       <span>Deslocamento: {formatDndMetres(inspected.template.speedFt.walk)} terrestres
+        {inspected.template.flags.flying&&inspected.template.speedFt.fly!==undefined?
+         ' · Voo '+formatDndMetres(inspected.template.speedFt.fly)+' (sobre obstáculos)':''}
         · {inspected.movementHex} quadrados</span>
        <span>Corpo a corpo: {inspected.meleeRoutine?
         inspected.meleeRoutine.steps.map(a=>{
@@ -1187,7 +1191,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
       <p>Os marcos não alteram condições de vitória.</p>
       <ol className="crz-objectives">{objectives.map(o=><li key={o.id}>
        <strong>{o.title}</strong>
-       <span>{o.holder?SIDE[o.holder].name:'Livre'} ·
+       <span>{o.holder?teamName(o.holder):'Livre'} ·
         hex {crzGridToOffset(frame.map,o.position).column},{crzGridToOffset(frame.map,o.position).row}</span>
       </li>)}</ol>
      </section>}
@@ -1198,7 +1202,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
         <th>Dano</th><th>{dndMode?'Retiradas':'Magias'}</th></tr></thead>
        <tbody>{(['attacker','defender'] as const).map(side=>{
         const data=report.sides[side];return <tr key={side}>
-         <th scope="row">{SIDE[side].name}</th>
+         <th scope="row">{teamName(side)}</th>
          <td>{data.survivors}/{data.initialCreatures}</td>
          <td>{data.casualties}</td><td>{data.inflictedDamage}</td>
          <td>{dndMode?data.routedStacks:data.spellsCast}</td>
