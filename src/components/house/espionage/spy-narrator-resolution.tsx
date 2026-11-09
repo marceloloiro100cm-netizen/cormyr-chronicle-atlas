@@ -27,8 +27,9 @@ const outcomeLabels:Record<string,string>={
  dead:'Espião morto durante a missão',
  available:'Agente disponível',completed:'Missão concluída',
 };
-function NarratorDecision({houseId,operation,agent}:{
+function NarratorDecision({houseId,operation,agent,onResolved}:{
  houseId:string;operation:Op;agent:Agent;
+ onResolved?:(result:{outcome:string;intelligenceStatus:string})=>void;
 }){
  const action=useServerFn(resolveSpyAgentMission);
  const queryClient=useQueryClient();
@@ -77,11 +78,14 @@ function NarratorDecision({houseId,operation,agent}:{
      queryClient.invalidateQueries({queryKey:['spy-house-management',houseId]}),
      queryClient.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
      queryClient.invalidateQueries({queryKey:['spy-dossiers']}),
+     queryClient.invalidateQueries({queryKey:['spy-narrator-operations']}),
     ]);
    }catch{
     setDossierWarning(previous=>previous||
      'Missão salva, mas a tela não atualizou. Use Atualizar dossiês antes de repetir a operação.');
    }
+   onResolved?.({outcome:response.outcome??response.status,
+    intelligenceStatus:response.intelligenceStatus});
   }catch{setError('Não foi possível confirmar a resolução. Recarregue a missão e tente novamente com a mesma solicitação.');}
   finally{setBusy(false);}
  };
@@ -144,9 +148,13 @@ function NarratorDecision({houseId,operation,agent}:{
 /** Only narrator may adjudicate pending registered operations. A simulation
  * never creates a mission or records a success for progression purposes.
  */
-export function SpyNarratorResolutionPanel({data}:{data:SpyManagement}){
+export function SpyNarratorResolutionPanel({data,operationId,onResolved}:{
+ data:SpyManagement;operationId?:string;
+ onResolved?:(result:{outcome:string;intelligenceStatus:string})=>void;
+}){
  const pending=data.operations.filter(o=>
-  o.status==='pending_narrator_review'&&o.targetType==='house');
+  o.status==='pending_narrator_review'&&o.targetType==='house'&&
+  (!operationId||o.id===operationId));
  if(!pending.length)return null;
  return <section className="house-panel" aria-label="Resolução de espionagem pelo Narrador">
   <div className="house-section-heading"><div>
@@ -158,7 +166,7 @@ export function SpyNarratorResolutionPanel({data}:{data:SpyManagement}){
    {pending.map(o=>{
     const agent=data.agents.find(a=>a.id===o.assetId);
     return agent?<NarratorDecision key={o.id} houseId={data.houseId}
-     operation={o} agent={agent}/>:null;
+     operation={o} agent={agent} onResolved={onResolved}/>:null;
    })}
   </div>
  </section>;
