@@ -34,6 +34,8 @@ INSERT INTO public.spy_locations(kind,ref_id,region_id,name,approved,visibility,
 VALUES('region','dragoncoast','dragoncoast','R5 Costa',true,'public','r5'),
 ('region','ferlin','ferlin','R5 Ferlin',true,'public','r5'),
 ('domain','r5-domain','dragoncoast','R5 Domínio',true,'narrator','r5');
+INSERT INTO public.spy_portrait_catalog(id,label,image_url)
+VALUES('r5-portrait-only-rollback','Retrato R5','https://example.invalid/r5-test.jpg');
 INSERT INTO public.spy_cormyr_mission_links(from_region,to_region,passage,active)
 VALUES('dragoncoast','ferlin','land_neighbor',true);
 INSERT INTO public.campaign_calendar(id,year,month,day,auto_advance,version,updated_by)
@@ -45,12 +47,13 @@ DECLARE
  v_request_key uuid;
  v_objective text;v_idx integer;v_successes integer;v_promo_count integer;
 BEGIN
- SELECT public.spy_create_agent('r5-l1-source','r5-network','Agente R5',NULL,
+ SELECT public.spy_create_agent('r5-l1-source','r5-network','Agente R5','r5-portrait-only-rollback',
   ARRAY[]::text[],'a2a2a2a2-a2a2-42a2-82a2-a2a2a2a2a2a2') INTO v_create;
  IF v_create->>'status'<>'available' OR v_create->>'rank'<>'Verde'
+  OR v_create->>'portraitId'<>'r5-portrait-only-rollback'
  THEN RAISE EXCEPTION 'R5 criação incorreta: %',v_create; END IF;
  v_agent:=(v_create->>'id')::uuid;
- SELECT public.spy_create_agent('r5-l1-source','r5-network','Agente R5',NULL,
+ SELECT public.spy_create_agent('r5-l1-source','r5-network','Agente R5','r5-portrait-only-rollback',
   ARRAY[]::text[],'a2a2a2a2-a2a2-42a2-82a2-a2a2a2a2a2a2') INTO v_retry;
  IF v_retry->>'alreadyApplied'<>'true' OR (v_retry->>'id')::uuid<>v_agent
   OR (SELECT count(*) FROM public.spy_assets WHERE owner_house_id='r5-l1-source')<>1
