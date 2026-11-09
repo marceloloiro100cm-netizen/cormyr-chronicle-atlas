@@ -7,6 +7,11 @@ export type Terrain = 'plain' | 'forest' | 'hill' | 'rock';
 export type Training = 'green' | 'trained' | 'veteran' | 'elite';
 export type Hex = Readonly<{ q: number; r: number }>;
 export type MapTile = Readonly<Hex & { terrain: Terrain }>;
+export type TacticalObjective=Readonly<
+ | {kind:'capture';position:Hex;holdRounds:number;deadlineRound:number}
+ | {kind:'survive';defenderRounds:number}
+>;
+export type TacticalObjectiveProgress=Readonly<{holder:Side|null;consecutiveRounds:number}>;
 export type BattleMap = Readonly<{
   id: string; schemaVersion: 2; width: 11 | 15; height: 9 | 11;
   /** Ausência indica mapa legado hexagonal, sem alterar replays. */
@@ -54,4 +59,6 @@ export type BattleState = Readonly<{
   activationQueue: readonly string[]; waitingQueue: readonly string[];
   activeUnitId: string | null; noProgressRounds: number;
   events: readonly BattleEvent[]; winner: Side | null; resultReason?: string;
+  /** Opcionais: replays legados sem objetivos seguem byte a byte iguais. */
+  objective?: TacticalObjective; objectiveProgress?: TacticalObjectiveProgress;
 }>;
