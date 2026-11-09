@@ -5,14 +5,15 @@
 .spy-planner-heading{max-width:860px}
 .spy-planner-heading h3{font:600 clamp(23px,3vw,30px)/1.2 Georgia,serif;margin:5px 0 10px;color:var(--foreground)}
 .spy-planner-heading>p:last-child{font-size:14px;line-height:1.55;color:var(--muted-foreground);margin:0}
-.spy-planner-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.spy-planner-step{display:grid;align-content:start;gap:9px;min-width:0;min-height:155px;
- padding:15px;border:1px solid var(--spy-planner-border);border-radius:12px;
- background:var(--spy-planner-paper);color:var(--spy-planner-ink)}
+.spy-planner-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;
+ padding:16px;border:1px solid var(--spy-planner-border);
+ border-radius:12px;background:var(--spy-planner-paper)}
+.spy-planner-step{display:grid;align-content:start;gap:8px;min-width:0;
+ padding:0;background:transparent;color:var(--spy-planner-ink)}
 .spy-planner-step-title{display:flex;align-items:center;gap:9px;font-weight:700;font-size:14px}
 .spy-planner-step-title b{flex:none;display:grid;place-items:center;width:27px;height:27px;
  border-radius:50%;background:#f1e0bd;color:#62452a;border:1px solid #c9aa75;font:700 14px Georgia,serif}
-.spy-planner-step select{box-sizing:border-box;width:100%;min-width:0;min-height:44px;
+.spy-planner-step select{box-sizing:border-box;width:100%;min-width:0;min-height:48px;
  border:1px solid #c6ad7d;border-radius:8px;background:#fffefa;color:#362a26;
  color-scheme:light;font:inherit;font-size:13px;padding:9px 10px}
 .spy-planner-step select option{background:#fffefa;color:#362a26}
@@ -88,4 +89,25 @@
 }
 .spy-planner-start-row .spy-planner-execution-confirmed{
  width:100%;
+}
+
+/* P1: resumo acima do formulário, mapa como informação secundária. */
+.spy-planner-availability{margin:0;font-size:13px;color:var(--muted-foreground)}
+.spy-planner-map-details{border:1px solid var(--spy-planner-border);border-radius:12px;
+ min-width:0;background:var(--spy-planner-paper);overflow:hidden}
+.spy-planner-map-details>summary{min-height:48px;padding:12px 16px;display:list-item;
+ font-weight:650;cursor:pointer;color:var(--spy-planner-ink);list-style-position:inside}
+.spy-planner-map-details>summary:focus-visible{outline:3px solid #a78140;outline-offset:-3px}
+.spy-planner-map-details .spy-planner-map-wrap{margin:0 12px 12px}
+@media(max-width:640px){
+ .spy-mission-planner{gap:12px}
+ .spy-planner-steps{padding:12px;gap:12px}
+ .spy-planner-step select{font-size:16px;min-height:48px}
+ .spy-planner-step-title{font-size:14px}
+ .spy-planner-step small{font-size:12px}
+ .spy-planner-map-details .spy-planner-map-wrap{margin:0 6px 6px}
+ .spy-planner-execution{padding:12px}
+ .spy-mission-confirm-dialog{max-height:calc(100dvh - 24px);overflow-y:auto;
+  width:calc(100vw - 24px);max-width:100%}
+ .spy-planner-execution-details select{min-height:48px;font-size:16px}
 }
