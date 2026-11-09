@@ -2,6 +2,7 @@ import {useEffect,useMemo,useState,useRef,type ChangeEvent} from 'react';
 import {Button} from '@/components/ui/button';
 import {loadPrivateDndCormyr300} from '@/lib/crusade/dnd-cormyr-private-loader';
 import {DndCustomMonsterEditor} from './DndCustomMonsterEditor';
+import {feetToDndMetres,dndMetresToFeet,formatDndMetres} from '@/lib/crusade/dnd-metric';
 import {saveDndCustomMonster} from '@/lib/crusade/dnd-private-custom';
 import {saveDndCombatOverride,resetDndCombatOverride}
  from '@/lib/crusade/dnd-private-overrides';
@@ -195,7 +196,7 @@ export function DndCormyr300Library({
     alcance máximo no tabuleiro, mas exigem linha de visão.
     Criaturas voadoras atravessam terreno bloqueado e florestas.
     {catalog.monsters.filter(m=>m.speed_ft===0&&m.fly_ft===undefined).length}
-    fichas usam voo provisório de {DND_PROVISIONAL_FLY_SPEED_FT} pés.
+    fichas usam voo provisório de {formatDndMetres(DND_PROVISIONAL_FLY_SPEED_FT)}.
     O Narrador pode corrigir PV, CA, movimento e ataque sem sobrescrever a fonte.</p>
    <div className="dnd-cormyr-filters" role="group" aria-label="Filtros de monstros Cormyr">
     <label>Nome ou fonte
@@ -268,12 +269,12 @@ export function DndCormyr300Library({
       aria-label="PV D&D edição" onChange={e=>editNumber('hp',Number(e.target.value))}/></label>
      <label>CA<input type="number" min={1} max={40} value={editor.ac}
       aria-label="CA D&D edição" onChange={e=>editNumber('ac',Number(e.target.value))}/></label>
-     <label>Deslocamento terrestre (pés)<input type="number" min={0} max={1000}
-      value={editor.speed_ft} aria-label="Terrestre D&D edição"
-      onChange={e=>editNumber('speed_ft',Number(e.target.value))}/></label>
-     <label>Voo (pés; zero para desativar)<input type="number" min={0} max={1000}
-      value={editor.fly_ft} aria-label="Voo D&D edição"
-      onChange={e=>editNumber('fly_ft',Number(e.target.value))}/></label>
+     <label>Deslocamento terrestre (m)<input type="number" min={0} max={300} step={0.5}
+      value={feetToDndMetres(editor.speed_ft)} aria-label="Terrestre D&D edição"
+      onChange={e=>editNumber('speed_ft',dndMetresToFeet(Number(e.target.value)))}/></label>
+     <label>Voo (m; zero para desativar)<input type="number" min={0} max={300} step={0.5}
+      value={feetToDndMetres(editor.fly_ft)} aria-label="Voo D&D edição"
+      onChange={e=>editNumber('fly_ft',dndMetresToFeet(Number(e.target.value)))}/></label>
      {catalog.monsters.find(m=>m.id===editor.id)?.melee&&<>
       <label>Bônus corpo a corpo<input type="number" min={-30} max={60}
        value={editor.melee_bonus} aria-label="Bônus corpo a corpo D&D"
@@ -326,8 +327,8 @@ export function DndCormyr300Library({
       <th>Ataques básicos</th><th>Ações</th></tr></thead>
      <tbody>{visible.map(m=><tr key={m.id}>
       <th>{m.name}<small className="dnd-cormyr-source">{m.source}
-       {m.speed_ft===0&&m.fly_ft===undefined?' · voo provisório 30 pés':''}
-       {m.fly_ft!==undefined?' · voo '+m.fly_ft+' pés':''}
+       {m.speed_ft===0&&m.fly_ft===undefined?' · voo provisório '+formatDndMetres(30):''}
+       {m.fly_ft!==undefined?' · voo '+formatDndMetres(m.fly_ft):''}
        {m.ranged?' · ataque à distância sem limite':''}
        </small></th>
       <td>{m.group}</td><td>{m.challenge_rating}</td><td>{m.size}</td>

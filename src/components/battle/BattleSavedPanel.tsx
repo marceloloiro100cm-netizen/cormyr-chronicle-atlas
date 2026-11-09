@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
+import {BattleSaveScope} from './BattleSaveScope';
 import {listSavedBattles,readSavedBattle} from '@/lib/battle/battle-session.functions';
 import {parseReplayJson} from '@/lib/battle/domain/replay';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
@@ -29,8 +30,9 @@ export function BattleSavedPanel({onClose,onResume}:{
   finally{setBusy(false);}
  };
  return <section className="battle-surface" aria-label="Batalhas salvas">
-  <h2>Batalhas salvas</h2>
-  <p>Registros táticos independentes das fichas oficiais. Retomar uma batalha ativa permite continuar localmente; cada salvamento cria uma nova cópia sem modificar o original.</p>
+  <h2>Continuar batalha</h2>
+  <BattleSaveScope system="adapted"/>
+  <p className="battle-note">Cada salvamento cria uma cópia. Nenhuma ficha oficial é alterada.</p>
   <div className="battle-form-row">
    <Button variant="outline" onClick={()=>void refresh()} disabled={busy}>Atualizar lista</Button>
    <Button variant="outline" onClick={onClose}>Voltar</Button>

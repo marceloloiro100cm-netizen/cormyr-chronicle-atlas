@@ -5,6 +5,8 @@ export type DndSimulationProfile='dnd-v3';
  * Ataque à distância não tem alcance numérico: exige linha de visão.
  */
 export const DND_FEET_PER_SQUARE=10 as const;
+/** Escala da interface (aproximada), sem substituir a escala histórica do motor. */
+export const DND_METRES_PER_SQUARE_DISPLAY=3 as const;
 export const isDndV3=(state:Readonly<{rulesetId:string;simulationProfile?:string|undefined}>):boolean=>
  state.rulesetId==='CRZ-5E'&&state.simulationProfile==='dnd-v3';
 export const isDndBattle=(state:Readonly<{id:string;rulesetId:string;

@@ -10,8 +10,8 @@ describe('Lotes 1 e 2 · navegação, proteção e orientação contextual',()=>
  it('roteia continuacao por motor sem enviar D&D e GOT para painel PTE',()=>{
   const hub=readFileSync('src/components/battle/BattleNarratorHub.tsx','utf8');
   expect(hub).toContain("rulesetMode==='adapted'?");
-  expect(hub).toContain('Retomar batalha Game of Thrones');
-  expect(hub).toContain('Consultar batalhas D&D salvas');
+  expect(hub).toContain('Continuar batalha');
+  expect(hub).toContain('<BattleSaveScope system={rulesetMode}/>');
   expect(hub).toContain('resumeFromLibrary={resumeGot}');
   expect(hub).toContain('showSavedOnOpen={resumeDnd}');
   expect(readFileSync('src/components/battle/BattleGotGame.tsx','utf8'))

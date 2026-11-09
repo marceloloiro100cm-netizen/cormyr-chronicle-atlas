@@ -2,6 +2,7 @@ import {useEffect,useMemo,useState} from 'react';
 import {BattleTurnCue} from './BattleTurnCue';
 import {BattleActionFeedback} from './BattleActionFeedback';
 import {BattleOutcomeSummary} from './BattleOutcomeSummary';
+import {BattleSaveScope} from './BattleSaveScope';
 import {BattleGotGuide} from './BattleGotGuide';
 import {Button} from '@/components/ui/button';
 import {MilitaryUnitSymbol,militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
@@ -613,6 +614,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    Nenhuma baixa ou alteração é aplicada às fichas oficiais das Casas.</p>
   <details className="battle-surface got-save-panel" aria-label="Salvar e retomar teste local">
    <summary>Salvar ou retomar</summary>
+   <BattleSaveScope system="got"/>
    <div className="got-save-actions">
     {battle&&<Button variant="outline" onClick={saveLocalBattle}>Salvar simulação neste navegador</Button>}
     <Button variant="outline" onClick={loadLocalBattle}>Retomar simulação salva</Button>

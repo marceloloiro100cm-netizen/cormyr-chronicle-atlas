@@ -119,6 +119,7 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         self.assertEqual(dialog.locator('[data-crz-cell-shape="hex"]').count(),0)
         # Lote 1: reiniciar uma batalha ativa exige confirmação explícita.
         page.once("dialog",lambda prompt:prompt.accept())
+        dialog.locator(".battle-crz-utilities > summary").click()
         dialog.get_by_role("button",name="Novo treino").click()
         self.assertEqual(page.get_by_label("Formato da malha CRZ").input_value(),"square")
         self.assertEqual(page.get_by_label("Formato da malha CRZ").locator('option[value="hex"]').count(),0)

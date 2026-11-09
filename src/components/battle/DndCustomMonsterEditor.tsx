@@ -4,6 +4,7 @@
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {saveDndCustomMonster} from '@/lib/crusade/dnd-private-custom';
+import {feetToDndMetres,dndMetresToFeet} from '@/lib/crusade/dnd-metric';
 import {parseDndCustomMonster,type DndCormyrGroup}
  from '@/lib/crusade/dnd-cormyr-300';
 import {crzDamageTypeSchema} from '@/lib/crusade/creatures';
@@ -96,14 +97,16 @@ export function DndCustomMonsterEditor({onSaved}:{
      {sizeOptions.map(size=><option key={size} value={size}>{size}</option>)}
     </select>
    </label>
-   <label>Deslocamento terrestre em pés
-    <input type="number" min={0} max={1000} value={draft.speed_ft}
+   <label>Deslocamento terrestre em metros
+    <input type="number" min={0} max={300} step={0.5} value={feetToDndMetres(draft.speed_ft)}
      aria-label="Deslocamento nova criatura D&D"
-     onChange={e=>change('speed_ft',Number(e.target.value))}/></label>
-   <label>Voo em pés (vazio = não definido)
-    <input type="number" min={0} max={1000} value={draft.fly_ft}
+     onChange={e=>change('speed_ft',dndMetresToFeet(Number(e.target.value)))}/></label>
+   <label>Voo em metros (vazio = não definido)
+    <input type="number" min={0} max={300} step={0.5}
+     value={draft.fly_ft===''?'':feetToDndMetres(Number(draft.fly_ft))}
      aria-label="Voo nova criatura D&D"
-     onChange={e=>change('fly_ft',e.target.value)}/></label>
+     onChange={e=>change('fly_ft',e.target.value===''?'':String(
+      dndMetresToFeet(Number(e.target.value))))}/></label>
    <label>Modificador DES (opcional)
     <input type="number" min={-10} max={30} value={draft.dex_mod}
      aria-label="DES nova criatura D&D"
