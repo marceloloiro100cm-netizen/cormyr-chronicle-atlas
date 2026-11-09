@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import type {BattleRulesetMode} from '@/lib/battle/ruleset-modes';
 import './battle-p2.css';
@@ -27,7 +27,8 @@ function alreadySeen(mode:BattleRulesetMode):boolean{
 }
 /** Ajuda contextual de primeiro uso. Não dispara ações no motor nem exige conta. */
 export function BattleFirstBattleGuide({mode}:{mode:BattleRulesetMode}){
- const [visible,setVisible]=useState(()=>!alreadySeen(mode));
+ const [visible,setVisible]=useState(true);
+ useEffect(()=>{setVisible(!alreadySeen(mode));},[mode]);
  const [step,setStep]=useState(0);
  const pages=INSTRUCTIONS[mode];
  const complete=()=>{
