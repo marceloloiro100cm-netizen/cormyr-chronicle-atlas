@@ -30,7 +30,10 @@ Cenários exercitados pelas funções SQL reais:
 - Materializar descobertas de Recursos, **Exército** e **Posses**, com 3 sucessos e 1 promoção automática a Treinada.
 - Repetir a chave do último julgamento e a finalização do dossiê, sem nova decisão ou prêmio.
 - Homologar fracasso sem conceder XP ou inteligência.
-- Homologar descoberta em região com Lei alta e proteção, resultando em morte do agente; verificar ocorrência registrada.
+- Homologar descoberta em região com Lei alta e proteção, resultando em **morte** do agente; verificar ocorrência registrada.
+- Homologar **fuga** de agente com apenas um grau de falha, mantendo-o disponível.
+- Homologar **captura** de agente com a melhoria Uma carta na manga, evitando morte; validar que não recebe XP nem inteligência.
+- Utilizar três agentes diferentes, retratos exclusivos e duas compras atômicas de melhorias, sem duplicação de lançamentos.
 - Conferir datas de Harptos incluindo Midwinter e Shieldmeet.
 - Repetir as funções de criação, envio, resolução e finalização de inteligência sem JWT: todas as 4 foram recusadas.
 - Conferir o estado **após ROLLBACK**: 0 usuários, 0 agentes, 0 operações, 0 decisões, 0 descobertas e 0 calendários persistentes na homologação isolada.
@@ -39,7 +42,7 @@ A execução não simulou dois usuários *autenticados pelo Supabase*. Isso exig
 
 ## Gate e status
 
-**Concluído:** correções de código, integração SQL transacional, regressão por missão e bloqueio de acessos anônimos.  
+**Concluído:** correções de código, integração SQL transacional (todas as cinco saídas: sucesso, fracasso, fuga, captura e morte), regressão por missão e bloqueio de acessos anônimos.  
 **Pendente:** CI geral e específico na revisão final da PR; depois, execução autenticada real jogador/narrador em homologação e avaliação visual.  
 **Produção:** não alterada por este lote.
 
