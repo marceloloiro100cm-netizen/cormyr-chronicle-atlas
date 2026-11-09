@@ -45,7 +45,6 @@ export function spyOperationCounters(operations:readonly SpyNarratorOperation[])
   review:operations.filter(o=>o.status==='pending_narrator_review').length,
   dossier:operations.filter(spyNeedsDossierAttention).length,
   complete:operations.filter(o=>o.status==='completed').length,
-  attention:operations.filter(spyNeedsNarratorAction).length,
  };
 }
 export function filterSpyOperations(operations:readonly SpyNarratorOperation[],
@@ -145,7 +144,7 @@ export function SpyNarratorOperationsCenter(){
     </label>
     <label>Situação
      <select value={state} onChange={e=>{setState(e.target.value);setPage(1);}}>
-      <option value="attention">Ações pendentes ({counters.attention})</option>
+      <option value="attention">Ações pendentes ({counters.review+counters.dossier})</option>
       <option value="review">Aguardando julgamento</option>
       <option value="active">Em andamento</option>
       <option value="dossier">Dossiês pendentes</option>
@@ -155,9 +154,43 @@ export function SpyNarratorOperationsCenter(){
     </label>
    </div>
    <p className="house-caption" role="status">{pending.length} operações neste filtro.</p>
-   {state==='attention'&&counters.attention===0&&<p role="status"
+   {state==='attention'&&counters.review+counters.dossier===0&&<p role="status"
     className="spy-operations-idle">Tudo em dia: nenhuma missão ou descoberta
     aguardando o Narrador.</p>}
+   {recentResolution&&<p role="status" className="spy-operations-feedback">
+    {recentResolution}</p>}
+   {selectedReview&&<section className="spy-operation-inline-review"
+    aria-label="Resolver missão selecionada">
+    <header className="spy-operation-inline-header">
+     <strong>Homologar missão selecionada</strong>
+     <Button type="button" variant="outline" size="sm"
+      onClick={()=>setSelectedReview(null)}>Fechar</Button>
+    </header>
+    {houseQuery.isPending&&<p role="status">Carregando ficha do agente…</p>}
+    {houseQuery.isError&&<div role="alert">
+     <p>Não foi possível consultar o agente desta Casa.</p>
+     <Button type="button" variant="outline" onClick={()=>void houseQuery.refetch()}>
+      Tentar novamente</Button>
+    </div>}
+    {houseQuery.data&&
+     <SpyNarratorResolutionPanel data={houseQuery.data}
+      operationId={selectedReview.operationId}
+      onResolved={result=>{
+       setSelectedReview(null);
+       setRecentResolution(result.intelligenceStatus==='complete'
+        ?'Missão resolvida e dossiê confirmado.'
+        :result.outcome==='mission_success'
+         ?'Missão resolvida. Verifique o reprocessamento do dossiê.'
+         :'Missão resolvida. Resultado registrado na campanha.');
+       void Promise.allSettled([
+        qc.invalidateQueries({queryKey:['spy-narrator-operations']}),
+        qc.invalidateQueries({queryKey:['spy-dossiers']}),
+       ]);
+      }}/>}
+    {houseQuery.data&&!houseQuery.data.operations.some(o=>
+     o.id===selectedReview.operationId&&o.status==='pending_narrator_review')&&
+     <p role="status">Esta missão não está mais aguardando resolução.</p>}
+   </section>}
    {visible.length?<div className="spy-operations-list">
     {visible.map(o=><article className="spy-operation-row" key={o.operationId}>
      <div>
@@ -194,40 +227,7 @@ export function SpyNarratorOperationsCenter(){
     <Button type="button" variant="outline" disabled={safePage===totalPages}
      onClick={()=>setPage(n=>n+1)}>Próxima</Button>
    </div>}
-   {recentResolution&&<p role="status" className="spy-operations-feedback">
-    {recentResolution}</p>}
-   {selectedReview&&<section className="spy-operation-inline-review"
-    aria-label="Resolver missão selecionada">
-    <header className="spy-operation-inline-header">
-     <strong>Homologar missão selecionada</strong>
-     <Button type="button" variant="outline" size="sm"
-      onClick={()=>setSelectedReview(null)}>Fechar</Button>
-    </header>
-    {houseQuery.isPending&&<p role="status">Carregando ficha do agente…</p>}
-    {houseQuery.isError&&<div role="alert">
-     <p>Não foi possível consultar o agente desta Casa.</p>
-     <Button type="button" variant="outline" onClick={()=>void houseQuery.refetch()}>
-      Tentar novamente</Button>
-    </div>}
-    {houseQuery.data&&
-     <SpyNarratorResolutionPanel data={houseQuery.data}
-      operationId={selectedReview.operationId}
-      onResolved={result=>{
-       setSelectedReview(null);
-       setRecentResolution(result.intelligenceStatus==='complete'
-        ?'Missão resolvida e dossiê confirmado.'
-        :result.outcome==='mission_success'
-         ?'Missão resolvida. Verifique o reprocessamento do dossiê.'
-         :'Missão resolvida. Resultado registrado na campanha.');
-       void Promise.allSettled([
-        qc.invalidateQueries({queryKey:['spy-narrator-operations']}),
-        qc.invalidateQueries({queryKey:['spy-dossiers']}),
-       ]);
-      }}/>}
-    {houseQuery.data&&!houseQuery.data.operations.some(o=>
-     o.id===selectedReview.operationId&&o.status==='pending_narrator_review')&&
-     <p role="status">Esta missão não está mais aguardando resolução.</p>}
-   </section>}
+
    <small className="house-caption">Resolva missões e confirme descobertas
     nesta central. Falhas de integridade exigem revisão na fila de dossiês.</small>
   </>}
