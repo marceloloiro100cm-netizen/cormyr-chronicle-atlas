@@ -38,3 +38,33 @@
 .spy-agent-equipment>section{margin-top:12px;min-width:0!important}
 .spy-agent-card-footer{margin-top:auto;display:flex;justify-content:flex-end;border-top:1px solid var(--border);padding-top:10px;gap:8px}
 @media(max-width:440px){.spy-agent-grid{grid-template-columns:minmax(0,1fr)}.spy-agent-stat-grid strong{font-size:17px}.spy-agent-card-heading{flex-direction:column}.spy-agent-state{align-self:flex-start}}
+
+/* P1: informar disponibilidade e fase atual antes do histórico detalhado. */
+.spy-agent-overview{margin:8px 0 14px;font-size:13px;color:var(--muted-foreground);
+ display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
+.spy-agent-overview strong{font-variant-numeric:tabular-nums;color:var(--foreground)}
+.spy-agent-state[data-status=available]{font-weight:700}
+.spy-agent-stages,.spy-mission-stages{list-style:none;padding:0;margin:4px 0;
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;min-width:0}
+.spy-mission-stages li{text-align:center;border:1px solid var(--border);border-radius:7px;
+ padding:6px 3px;font-size:11px;line-height:1.35;min-width:0;overflow-wrap:anywhere;
+ color:var(--muted-foreground)}
+.spy-mission-stages li[data-progress=done]{border-color:var(--campaign-gold,#a98b54)}
+.spy-mission-stages li[data-progress=current]{color:var(--foreground);
+ background:color-mix(in srgb,var(--campaign-gold,#a98b54) 12%,transparent);
+ border-color:var(--campaign-gold,#a98b54);font-weight:700}
+.spy-agent-next-step{margin:2px 0;font-size:13px;font-weight:650;line-height:1.45}
+.spy-agent-timeline-details{font-size:12px;color:var(--foreground)}
+.spy-agent-timeline-details summary{cursor:pointer;min-height:40px;
+ display:flex;align-items:center;font-weight:600;list-style-position:inside}
+.spy-agent-timeline-details dl{margin-top:5px}
+@media(max-width:640px){
+ .spy-agent-grid{gap:12px}
+ .spy-agent-card{gap:10px;padding:12px}
+ .spy-agent-stat-grid{gap:5px}
+ .spy-agent-stat-grid>div{padding:8px 6px}
+ .spy-agent-stat-grid small{font-size:11px}
+ .spy-agent-card-footer{flex-wrap:wrap;justify-content:stretch}
+ .spy-agent-card-footer button{min-height:44px;flex:1 1 140px}
+ .spy-agent-rename{min-height:44px}
+}
