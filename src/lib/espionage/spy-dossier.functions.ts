@@ -47,11 +47,15 @@ async function browserRead(name:string,args:Record<string,unknown>){
  // SupabaseClient.rpc usa `this`; invocar um método extraído perde o receptor
  // e quebra os dossiês mesmo quando a sessão e a RPC do banco estão corretas.
  const rpc=supabase.rpc.bind(supabase) as unknown as Rpc;
- const result=await rpc(name,args);
+ let result:RpcResponse;
+ try{result=await rpc(name,args);}
+ catch{throw new Error('Não foi possível acessar o dossiê. Verifique sua conexão e tente novamente.');}
  if(result.error)throw new Error('Não foi possível consultar o dossiê. Confirme o acesso e tente novamente.');
  return result.data;
 }
 export async function readSpyDossiersBrowser(houseId:string|null):Promise<SpyDossier[]>{
+ if(houseId!==null&&(!houseId.trim()||houseId.length>100))
+  throw new Error('Casa inválida para consulta de dossiês.');
  const raw=await browserRead('spy_intelligence_read',{p_house:houseId});
  const parsed=spyDossierListSchema.safeParse(raw);
  if(!parsed.success || (houseId&&parsed.data.some(d=>d.ownerHouseId!==houseId)))
