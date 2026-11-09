@@ -115,7 +115,7 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
      }}>
      <option value="">Selecione um espião</option>
      {agents.filter(a=>a.status==='available').map(a=><option key={a.id} value={a.id}>
-      {a.codename} · {a.rank}
+      {a.codename} · {a.currentRegion?name(a.currentRegion):'posição pendente'}
      </option>)}
     </select>
     {selected&&<small>Origem: {originName}</small>}
