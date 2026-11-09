@@ -40,6 +40,9 @@ function DossierView({dossier,narrator=false}:{dossier:SpyDossier;narrator?:bool
    <div><p className="campaign-eyebrow">RELATÓRIO DE INTELIGÊNCIA · CONFIDENCIAL</p>
     <h3>Casa {dossier.targetHouseName}</h3>
     <small>Informações pertencentes à Casa {dossier.ownerHouseName}</small>
+    <small className="spy-dossier-last-confirmed">
+     {last?'Última confirmação: '+safeDate(last):'Nenhuma descoberta confirmada'}
+    </small>
     {freshness&&<small className="spy-dossier-freshness"
      data-freshness={freshness.tier}>{freshness.label}</small>}
    </div><ScrollText size={30} aria-hidden="true"/>
@@ -50,7 +53,7 @@ function DossierView({dossier,narrator=false}:{dossier:SpyDossier;narrator?:bool
    {SPY_INTELLIGENCE_OBJECTIVES.map(item=><Button type="button" key={item.id}
     variant={tab===item.id?'default':'outline'} aria-pressed={tab===item.id}
     onClick={()=>setTab(item.id)}>{item.id==='army'?<Swords size={16}/>:item.id==='possessions'?<Castle size={16}/>:<Shield size={16}/>}
-    {item.label}</Button>)}
+    {item.label} ({count(dossier,item.id)}{item.id==='house_resources'?'/7':''})</Button>)}
   </div>
   <div className="spy-dossier-sheet-body">
    <h4>{labels[tab]} · {count(dossier,tab)}{tab==='house_resources'?'/7':''}</h4>
@@ -97,7 +100,9 @@ function DossierCard({dossier,active,onSelect}:{dossier:SpyDossier;active:boolea
   <span>Recursos: {count(dossier,'house_resources')}/7</span>
   <span>Exército: {count(dossier,'army')} conhecido(s)</span>
   <span>Posses: {count(dossier,'possessions')} conhecida(s)</span>
-  <small>Abrir relatório</small>
+  <small>{spyDossierLastVerified(dossier)
+   ?'Última confirmação: '+safeDate(spyDossierLastVerified(dossier)!)
+   :'Sem data de confirmação'} · Abrir relatório</small>
  </button>;
 }
 function DossierCollection({dossiers,title,summary,onRefresh,refreshing=false}:{
@@ -239,12 +244,15 @@ export function SpyNarratorDossiers(){
   }catch(e){setMessage(e instanceof Error?e.message:'Falha ao reprocessar a missão.');}
   finally{setBusy(false);}
  };
- if(query.isError)return <section className="house-panel spy-dossier-panel"
-  aria-label="Dossiês de Espionagem do Narrador">
-  <p role="alert">Não foi possível consultar os dossiês. O acesso pode ter sido revogado.</p>
-  <Button type="button" variant="outline" onClick={()=>void query.refetch()}>
-   Tentar novamente</Button>
- </section>;
+ if(query.isError)return <>
+  <SpyNarratorOperationsCenter/>
+  <section className="house-panel spy-dossier-panel"
+   aria-label="Dossiês de Espionagem do Narrador">
+   <p role="alert">Não foi possível consultar os dossiês. O acesso pode ter sido revogado.</p>
+   <Button type="button" variant="outline" onClick={()=>void query.refetch()}>
+    Tentar novamente</Button>
+  </section>
+ </>;
  return <>
  <SpyNarratorOperationsCenter/>
  <SpyNarratorIncidentHistory/>
@@ -252,7 +260,7 @@ export function SpyNarratorDossiers(){
   <div className="house-section-heading"><div>
    <p className="campaign-eyebrow">NARRADOR · INTELIGÊNCIA CONFIDENCIAL</p>
    <h2>Dossiês de Espionagem</h2>
-   <p className="house-caption">Segredos conquistados pelas Casas nobres. O acesso é restrito ao Narrador.</p>
+   <p className="house-caption">Consulte apenas descobertas registradas e sua data de confirmação.</p>
   </div><Button variant="outline" onClick={()=>void refresh()}><RefreshCw size={16}/>Atualizar</Button></div>
   {query.isPending&&<p role="status">Consultando informações de inteligência…</p>}
   {query.isError&&<p role="alert">Não foi possível consultar os dossiês. Verifique suas permissões.</p>}
@@ -294,9 +302,12 @@ export function SpyNarratorDossiers(){
    <thead><tr><th>Investigadora</th><th>Casa-alvo</th>
     <th>Recursos</th><th>Exército</th><th>Posses</th><th>Ação</th></tr></thead>
    <tbody>{paged.items.map(d=><tr key={d.id}>
-    <td>{d.ownerHouseName}</td><td>{d.targetHouseName}</td>
-    <td>{count(d,'house_resources')}/7</td><td>{count(d,'army')}</td><td>{count(d,'possessions')}</td>
-    <td><Button size="sm" variant={active?.id===d.id?'default':'outline'}
+    <td data-label="Investigadora">{d.ownerHouseName}</td>
+    <td data-label="Casa-alvo">{d.targetHouseName}</td>
+    <td data-label="Recursos">{count(d,'house_resources')}/7</td>
+    <td data-label="Exército">{count(d,'army')}</td>
+    <td data-label="Posses">{count(d,'possessions')}</td>
+    <td data-label="Ação"><Button size="sm" variant={active?.id===d.id?'default':'outline'}
      onClick={()=>setSelected(d.id)}>Consultar</Button></td>
    </tr>)}</tbody>
   </table></div>
