@@ -22,7 +22,15 @@ const enemyAble=(state:BattleState,side:BattleStack['side'])=>
 export function chooseAiCommand(state:BattleState):BattleCommand {
  const unit=active(state);
  const legal=getLegalActions(state);
- const goal=state.objective?.kind==='capture'?state.objective.position:null;
+ const style=state.aiProfiles?.[unit.side]??'balanced';
+ const objectives=state.objective?.kind==='capture'?[state.objective.position]:
+  state.objective?.kind==='multi-capture'?state.objective.positions:[];
+ const allied=new Set(state.stacks.filter(s=>s.side===unit.side&&s.id!==unit.id&&
+  s.currentHp>0&&s.moraleState!=='routed').map(s=>hexKey(s.position)));
+ const available=objectives.filter(p=>!allied.has(hexKey(p)));
+ const goal=(available.length?available:objectives).slice().sort((a,b)=>
+  gridDistance(state.map,unit.position,a)-gridDistance(state.map,unit.position,b)||
+  a.q-b.q||a.r-b.r)[0]??null;
  const attacks=legal.filter((c):c is Attack=>c.type==='ATTACK').map(command=>{
   const target=state.stacks.find(s=>s.id===command.targetId)!;
   const melee=gridDistance(state.map,unit.position,target.position)===1;
@@ -33,6 +41,7 @@ export function chooseAiCommand(state:BattleState):BattleCommand {
  });
  if(attacks.length){
   attacks.sort((a,b)=>
+   (style==='aggressive'?b.result.damage-a.result.damage:0)||
    Number(b.defeats)-Number(a.defeats)||
    Number(b.objectiveThreat)-Number(a.objectiveThreat)||
    b.result.casualties-a.result.casualties||
@@ -45,7 +54,8 @@ export function chooseAiCommand(state:BattleState):BattleCommand {
  const choices=legal.filter((c):c is Move=>c.type==='MOVE');
  const enemies=enemyAble(state,unit.side);
  // Em objetivos de sobrevivência, o defensor pode guardar posição e economizar baixas.
- if(state.objective?.kind==='survive'&&unit.side==='defender')
+ if((state.objective?.kind==='survive'&&unit.side==='defender')||
+   (style==='defensive'&&!goal))
   return legal.find(c=>c.type==='DEFEND')??
    legal.find(c=>c.type==='END_ACTIVATION')!;
  if(choices.length&&enemies.length){
@@ -72,6 +82,14 @@ export function chooseAiCommand(state:BattleState):BattleCommand {
   });
   const byPosition=(a:typeof ranked[number],b:typeof ranked[number])=>
    a.cost-b.cost||a.command.to.q-b.command.to.q||a.command.to.r-b.command.to.r;
+  if(style==='ranged'&&unit.rangeHex>1){
+   const safe=ranked.filter(x=>x.inRange&&x.threatened===0);
+   safe.sort((a,b)=>a.distance-b.distance||byPosition(a,b));
+   if(safe.length)return safe[0]!.command;
+   const escape=ranked.filter(x=>x.threatened===0&&x.distance>oldEnemyDistance);
+   escape.sort((a,b)=>b.distance-a.distance||byPosition(a,b));
+   if(escape.length)return escape[0]!.command;
+  }
   if(goal&&goalDistance>0){
    const toward=ranked.filter(x=>x.goalDistance<goalDistance);
    toward.sort((a,b)=>a.goalDistance-b.goalDistance||
