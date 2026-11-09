@@ -19,13 +19,16 @@ import {filterSpyDossiers,paginateSpyDossiers,spyDossierPendingHouseNames,
  type SpyDossierSort,type SpyDossierProgress,type SpyDossierFreshness} from '@/lib/espionage/spy-dossier-list';
 import './spy-dossier.css';
 import {SpyNarratorOperationsCenter} from './spy-narrator-operations-center';
+import {SpyNarratorIncidentHistory} from './spy-narrator-incidents';
+import {SpyDossierReportActions,SpyDossierSummary,SpyDossierVersionHistory}
+ from './spy-dossier-report-actions';
 
 const safeDate=(date:string)=>parseDate(date)?formatDate(date):date;
 const labels=Object.fromEntries(SPY_INTELLIGENCE_OBJECTIVES.map(item=>[item.id,item.label]));
 function count(d:SpyDossier,objective:SpyIntelligenceObjective){
  return d.findings.filter(f=>f.objective===objective).length;
 }
-function DossierView({dossier}:{dossier:SpyDossier}){
+function DossierView({dossier,narrator=false}:{dossier:SpyDossier;narrator?:boolean}){
  const [tab,setTab]=useState<SpyIntelligenceObjective>('house_resources');
  const time=useCampaignTime();
  const official=time.data&&!time.isError?dateKey(time.data):null;
@@ -41,6 +44,8 @@ function DossierView({dossier}:{dossier:SpyDossier}){
      data-freshness={freshness.tier}>{freshness.label}</small>}
    </div><ScrollText size={30} aria-hidden="true"/>
   </header>
+  <SpyDossierSummary dossier={dossier} officialDate={official}/>
+  <SpyDossierReportActions dossier={dossier} officialDate={official}/>
   <div className="spy-dossier-tabs" role="group" aria-label="Modalidade do dossiê">
    {SPY_INTELLIGENCE_OBJECTIVES.map(item=><Button type="button" key={item.id}
     variant={tab===item.id?'default':'outline'} aria-pressed={tab===item.id}
@@ -81,14 +86,7 @@ function DossierView({dossier}:{dossier:SpyDossier}){
     <p className="house-caption">A quantidade real de {tab==='army'?'unidades militares':'posses'}
      do alvo é desconhecida. Os dados apresentados são históricos.</p>}
   </div>
-  <details className="house-ledger">
-   <summary>Histórico de inteligência ({dossier.history.length})</summary>
-   {dossier.history.length?<div className="spy-dossier-history">
-    {dossier.history.map(row=><p key={row.id}>
-     {safeDate(row.dateKey)} · {labels[row.objective]} · {row.key} ·
-     {row.action==='revealed'?'descoberto':'revalidado'}</p>)}
-   </div>:<p className="house-caption">Nenhuma descoberta registrada no histórico.</p>}
-  </details>
+  <SpyDossierVersionHistory dossier={dossier} narrator={narrator}/>
  </section>;
 }
 function DossierCard({dossier,active,onSelect}:{dossier:SpyDossier;active:boolean;onSelect:()=>void}){
@@ -249,6 +247,7 @@ export function SpyNarratorDossiers(){
  </section>;
  return <>
  <SpyNarratorOperationsCenter/>
+ <SpyNarratorIncidentHistory/>
  <section className="house-panel spy-dossier-panel" aria-label="Dossiês de Espionagem do Narrador">
   <div className="house-section-heading"><div>
    <p className="campaign-eyebrow">NARRADOR · INTELIGÊNCIA CONFIDENCIAL</p>
@@ -310,7 +309,7 @@ export function SpyNarratorDossiers(){
   </div>}
   {!query.isPending&&filtered.length===0&&<p className="house-caption">Nenhum conhecimento conquistado ainda.</p>}
   {active&&<>
-   <DossierView key={active.id} dossier={active}/>
+   <DossierView key={active.id} dossier={active} narrator/>
    <form className="house-ledger spy-dossier-admin-form" onSubmit={e=>void submit(e)}>
     <h3>Gerenciamento de segredos</h3>
     <p className="house-caption">Adicionar, revalidar ou revogar conhecimento. Todas as intervenções são auditadas.</p>

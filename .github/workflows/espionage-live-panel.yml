@@ -41,6 +41,11 @@ jobs:
           src/test/espionage-p2-rpc-privacy.test.ts
           src/test/espionage-planner-three-step-flow.test.ts
           src/test/espionage-dossier-rpc-binding.test.ts
+      - name: Spy P3 report privacy, narrator history and print regression suites
+        run: >-
+          bunx vitest run
+          src/test/espionage-p3-reports.test.ts
+          src/test/espionage-p3-rpc-privacy.test.ts
       - name: Scoped TypeScript verification (spy module and integration)
         run: bunx tsc -p tsconfig.espionage-live.json --noEmit
       - name: Production build without deploying

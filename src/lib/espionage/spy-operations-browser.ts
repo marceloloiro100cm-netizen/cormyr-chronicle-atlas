@@ -48,3 +48,19 @@ export async function readSpyHouseCounterintelligenceBrowser(houseId:string){
  return spyCounterintelligenceSchema.parse(
   await privateSpyRead('spy_house_counterintelligence',{p_house:houseId}));
 }
+
+/** Histórico inteiro somente para o Narrador: o banco valida o papel por RPC.
+ * Nunca encaminhar estes eventos às Casas atacantes.
+ */
+const spyNarratorIncidentSchema=z.object({
+ id:z.string().uuid(),dateKey:z.string().min(1),
+ outcome:z.enum(['escaped','captured','dead']),
+ ownerHouseName:z.string().min(1),targetHouseName:z.string().min(1),
+ agentName:z.string().min(1),targetRegion:z.string().nullable(),
+ detail:z.string(),
+}).strict();
+export const spyNarratorIncidentListSchema=z.array(spyNarratorIncidentSchema).max(800);
+export type SpyNarratorIncident=z.infer<typeof spyNarratorIncidentSchema>;
+export async function readSpyNarratorIncidentsBrowser():Promise<SpyNarratorIncident[]>{
+ return spyNarratorIncidentListSchema.parse(await privateSpyRead('spy_narrator_incident_history',{}));
+}

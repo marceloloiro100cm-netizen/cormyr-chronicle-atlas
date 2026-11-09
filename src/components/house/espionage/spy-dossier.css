@@ -48,3 +48,42 @@
  .spy-dossier-tabs button{min-height:44px}
  .spy-dossier-admin-form textarea,.spy-dossier-admin-form select{font-size:16px}
 }
+
+
+/* P3: briefing, relatório impresso isolado e histórico por versões. */
+.spy-dossier-briefing{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;min-width:0}
+.spy-dossier-briefing>div{padding:10px 8px;border:1px solid var(--border);border-radius:8px;display:grid;gap:4px;min-width:0}
+.spy-dossier-briefing strong{font-size:21px;line-height:1.1;font-variant-numeric:tabular-nums}
+.spy-dossier-briefing small{color:var(--muted-foreground);font-size:11px;line-height:1.35}
+.spy-dossier-report-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.spy-dossier-report-tools button{min-height:42px}
+.spy-dossier-report-tools>small{flex:1 1 100%;font-size:12px}
+.spy-dossier-version-history{min-width:0;padding:12px}
+.spy-dossier-version-history>summary{cursor:pointer;display:flex;align-items:center;gap:7px;min-height:40px}
+.spy-dossier-version-history>label{display:grid;max-width:250px;gap:5px;margin:10px 0;font-size:12px}
+.spy-dossier-version-history select{min-height:44px;border:1px solid var(--border);border-radius:7px;background:var(--background);color:var(--foreground);padding:6px}
+.spy-dossier-version-list{list-style:none;display:grid;gap:6px;padding:0;margin:8px 0}
+.spy-dossier-version-list>li{display:grid;gap:5px;padding:9px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;overflow-wrap:anywhere}
+.spy-dossier-version-list>li small{color:var(--muted-foreground);line-height:1.45}
+@media(max-width:700px){
+ .spy-dossier-briefing{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .spy-dossier-report-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .spy-dossier-report-tools button{min-height:48px;white-space:normal}
+ .spy-dossier-report-tools>small{grid-column:1/-1}
+ .spy-dossier-version-history select{font-size:16px;min-height:48px}
+}
+@media print{
+ @page{size:auto;margin:14mm}
+ body.spy-dossier-print-active *{visibility:hidden!important}
+ body.spy-dossier-print-active .spy-dossier-sheet,
+ body.spy-dossier-print-active .spy-dossier-sheet *{visibility:visible!important}
+ body.spy-dossier-print-active .spy-dossier-sheet{position:absolute!important;top:0!important;left:0!important;
+  width:100%!important;max-width:none!important;box-shadow:none!important;border:0!important;
+  background:#fff!important;color:#111!important;margin:0!important;padding:0!important;overflow:visible!important}
+ body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-tabs,
+ body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-report-tools,
+ body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-version-history{display:none!important}
+ body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-item{break-inside:avoid;background:#fff!important;color:#111!important}
+ body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-briefing>div{break-inside:avoid;color:#111!important}
+ body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-unknown{color:#555!important}
+}
