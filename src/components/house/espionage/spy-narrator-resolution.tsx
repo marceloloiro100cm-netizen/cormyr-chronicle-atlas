@@ -101,16 +101,16 @@ function NarratorDecision({houseId,operation,agent,onResolved}:{
    ??missionLabels[operation.missionKind]??'Missão de espionagem'} · Alvo: {operation.targetId}</small>
   <div className="spy-narrator-main-fields">
    <label>Resultado dos dados (D6)
-    <input type="number" inputMode="numeric" min={agent.cunning} max={agent.cunning*6}
+    <input type="number" inputMode="numeric" disabled={busy||Boolean(outcome)} min={agent.cunning} max={agent.cunning*6}
      value={roll} onChange={e=>{changed();setRoll(Number(e.target.value));}}/>
    </label>
    <label>Bônus / penalidade
-    <input type="number" inputMode="numeric" min={-9} max={9} value={modifier}
+    <input type="number" inputMode="numeric" disabled={busy||Boolean(outcome)} min={-9} max={9} value={modifier}
      onChange={e=>{changed();setModifier(Number(e.target.value));}}/>
    </label>
   </div>
   <label className="spy-narrator-check">
-   <input type="checkbox" checked={discovered}
+   <input type="checkbox" disabled={busy||Boolean(outcome)} checked={discovered}
     onChange={e=>{changed();setDiscovered(e.target.checked);}}/>
    Espião descoberto?
   </label>
@@ -120,20 +120,20 @@ function NarratorDecision({houseId,operation,agent,onResolved}:{
     não possuir ficha operacional. Nas demais Casas, o servidor usa as estruturas oficiais.</p>
    <div className="spy-narrator-main-fields">
     <label>Guardas
-     <select value={guard} onChange={e=>{changed();setGuard(e.target.value as typeof guard);}}>
+     <select value={guard} disabled={busy||Boolean(outcome)} onChange={e=>{changed();setGuard(e.target.value as typeof guard);}}>
       <option value="unknown">A confirmar</option><option value="yes">Sim</option>
       <option value="no">Não</option>
      </select>
     </label>
     <label>Cadeia
-     <select value={prison} onChange={e=>{changed();setPrison(e.target.value as typeof prison);}}>
+     <select value={prison} disabled={busy||Boolean(outcome)} onChange={e=>{changed();setPrison(e.target.value as typeof prison);}}>
       <option value="unknown">A confirmar</option><option value="yes">Sim</option>
       <option value="no">Não</option>
      </select>
     </label>
    </div>
    <label>Observações opcionais
-    <textarea rows={2} maxLength={1200} value={reason}
+    <textarea rows={2} maxLength={1200} disabled={busy||Boolean(outcome)} value={reason}
      onChange={e=>{changed();setReason(e.target.value);}}
      placeholder="Circunstâncias da missão"/>
    </label>
