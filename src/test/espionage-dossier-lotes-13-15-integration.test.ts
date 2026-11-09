@@ -14,7 +14,8 @@ describe('Dossiês · lotes 13–15 · integração e defesa em profundidade',()
  });
  it('não renderiza relatório administrativo cacheado se a consulta falhou',()=>{
   const ui=read('src/components/house/espionage/spy-dossier-panel.tsx');
-  expect(ui).toContain('if(query.isError)return <section');
+  expect(ui).toContain('if(query.isError)return <>');
+  expect(ui).toContain('<SpyNarratorOperationsCenter/>');
   expect(ui).toContain('O acesso pode ter sido revogado.');
   expect(ui).toContain('enabled:!!active&&!query.isError');
  });
