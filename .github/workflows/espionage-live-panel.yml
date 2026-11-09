@@ -31,6 +31,16 @@ jobs:
         run: bunx vitest run src/test/espionage-region-turns.test.ts src/test/espionage-region-review.test.ts src/test/espionage-cormyr-map.test.tsx src/test/espionage-house-management.test.ts src/test/espionage-npc-defense.test.ts
       - name: Harptos desdia time projections
         run: bunx vitest run src/test/espionage-desdia-temporal.test.ts
+      - name: Spy P0-P2 integrity, UX and permission regression suites
+        run: >-
+          bunx vitest run
+          src/test/espionage-p0-integrity.test.ts
+          src/test/espionage-p0-server.test.ts
+          src/test/espionage-p1-ux.test.ts
+          src/test/espionage-p2-operations-integration.test.ts
+          src/test/espionage-p2-rpc-privacy.test.ts
+          src/test/espionage-planner-three-step-flow.test.ts
+          src/test/espionage-dossier-rpc-binding.test.ts
       - name: Scoped TypeScript verification (spy module and integration)
         run: bunx tsc -p tsconfig.espionage-live.json --noEmit
       - name: Production build without deploying
