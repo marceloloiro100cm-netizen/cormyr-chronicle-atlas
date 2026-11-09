@@ -19,6 +19,7 @@ import {filterSpyDossiers,paginateSpyDossiers,spyDossierPendingHouseNames,
  type SpyDossierSort,type SpyDossierProgress,type SpyDossierFreshness} from '@/lib/espionage/spy-dossier-list';
 import './spy-dossier.css';
 import {SpyNarratorOperationsCenter} from './spy-narrator-operations-center';
+import {SpyNarratorIncidentHistory} from './spy-narrator-incidents';
 import {SpyDossierReportActions,SpyDossierSummary,SpyDossierVersionHistory}
  from './spy-dossier-report-actions';
 
@@ -246,6 +247,7 @@ export function SpyNarratorDossiers(){
  </section>;
  return <>
  <SpyNarratorOperationsCenter/>
+ <SpyNarratorIncidentHistory/>
  <section className="house-panel spy-dossier-panel" aria-label="Dossiês de Espionagem do Narrador">
   <div className="house-section-heading"><div>
    <p className="campaign-eyebrow">NARRADOR · INTELIGÊNCIA CONFIDENCIAL</p>
