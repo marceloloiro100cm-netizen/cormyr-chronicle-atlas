@@ -1,21 +1,32 @@
-/** Conversão de exibição para D&D. NÃO use no motor, nas fichas JSON nem no replay.
- * Fórmula exata 1 pé = 0,3048 m; display de mesa em passos aproximados de 0,5 m.
- * A grade legada de 10 pés (~3 m) preserva seus custos de movimento.
+/** Adaptador D&D: fichas legadas (speed_ft/fly_ft, 5etools) → escala métrica de mesa.
+ * Delegado ao módulo central `@/lib/units/metric`. Os valores legados nunca
+ * são reescritos; a conversão ocorre apenas na borda (leitura/edição/exibição).
  */
-export const FEET_TO_METRES_EXACT=0.3048 as const;
-export const feetToMetresExact=(feet:number):number=>feet*FEET_TO_METRES_EXACT;
+import {FOOT_M_EXACT,feetToMetresExact as exact,tableFeetToMetres,
+ tableMetresToFeet,formatMetres} from '@/lib/units/metric';
+
+export const FEET_TO_METRES_EXACT=FOOT_M_EXACT;
+export const feetToMetresExact=(feet:number):number=>exact(feet);
 export function feetToDndMetres(feet:number):number{
- if(!Number.isFinite(feet)||feet<0)throw new Error('Distância em pés inválida.');
- // D&D convencional adota 5 pés ≈ 1,5 metro: facilita contar casas de 3 m.
- return Math.round(feet*0.3*2)/2;
+ if(!Number.isFinite(feet)||feet<0)throw new Error('Distância legada inválida.');
+ return tableFeetToMetres(feet);
 }
-export function dndMetresToFeet(metres:number):number{
- if(!Number.isFinite(metres)||metres<0||metres>300)
-  throw new Error('Distância em metros inválida.');
- // Velocidades de criaturas são expressas em passos de 5 pés no motor existente.
- return Math.round(metres/1.5)*5;
+export const dndMetresToFeet=(metres:number):number=>tableMetresToFeet(metres);
+export const formatDndMetres=(feet:number):string=>formatMetres(feetToDndMetres(feet));
+
+/** Leitura métrica de um registro legado do bestiário, preservando a fonte para auditoria. */
+export type DndLegacySpeed=Readonly<{speed_ft:number;fly_ft?:number|undefined|null}>;
+export function dndLegacySpeedToMetric(row:DndLegacySpeed){
+ return {
+  walkM:feetToDndMetres(row.speed_ft),
+  flyM:row.fly_ft==null?null:feetToDndMetres(row.fly_ft),
+  legacy:{speed_ft:row.speed_ft,fly_ft:row.fly_ft??null},
+ } as const;
 }
-export function formatDndMetres(feet:number):string{
- const metres=feetToDndMetres(feet);
- return metres.toLocaleString('pt-BR',{maximumFractionDigits:1})+' m';
+/** Escrita: metros digitados → campos legados (passos de 1,5 m = 5 pés). */
+export function dndMetricSpeedToLegacy(input:Readonly<{walkM:number;flyM?:number|null}>){
+ return {
+  speed_ft:dndMetresToFeet(input.walkM),
+  ...(input.flyM==null?{}:{fly_ft:dndMetresToFeet(input.flyM)}),
+ };
 }
