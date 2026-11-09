@@ -131,6 +131,9 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
  const rename=useServerFn(renameSpyAgent);
  const qc=useQueryClient();
  const progress=spyMissionProgress(operation,officialDate);
+ const timelineOutOfSync=Boolean(operation&&officialDate&&progress.end&&
+  ['traveling','operating'].includes(operation.status)&&
+  listCrossedHarptosPeriods(officialDate,progress.end).direction!=='forward');
  const save=async(e:React.FormEvent)=>{
   e.preventDefault();if(busy)return;
   setBusy(true);setError('');
@@ -207,6 +210,14 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
      data-progress={index<stage?'done':index===stage?'current':'upcoming'}>{item}</li>)}
    </ol>}
    <p className="spy-agent-next-step" role="status">{progress.remaining}</p>
+   {timelineOutOfSync&&<div className="spy-mission-sync-alert" role="status">
+    <span>O prazo chegou. Confirme se o HUB atualizou a etapa da missão.</span>
+    <Button type="button" size="sm" variant="outline"
+     onClick={()=>void Promise.allSettled([
+      qc.invalidateQueries({queryKey:['spy-house-management',houseId]}),
+      qc.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
+     ])}>Atualizar andamento</Button>
+   </div>}
    <details className="spy-agent-timeline-details">
     <summary>Ver datas e percurso</summary>
     <dl>
@@ -241,6 +252,8 @@ export function SpyAgentManagement({houseId,canEdit,admin=false}:{houseId:string
  const {data,isPending,isError,refetch}=useQuery({
   queryKey:['spy-house-management',houseId],
   queryFn:()=>readSpyHouseManagementBrowser(houseId),retry:false,staleTime:15_000,
+  refetchInterval:30_000,refetchIntervalInBackground:false,
+  refetchOnWindowFocus:'always',refetchOnReconnect:'always',
  });
  const time=useCampaignTime();
  const officialDate=time.data&&!time.isError?dateKey(time.data):null;
