@@ -35,6 +35,23 @@ A avaliação anterior foi uma estimativa técnica ponderada, **não** uma amost
 - Gate de publicação: testes CI verdes, resolução das falhas, homologação de usuários, merge controlado e somente depois publicação Lovable.
 - Se o banco finalizar a missão, mas não conseguir materializar o catálogo, mostrar *missão salva; dossiê pendente*, nunca reportar falso erro de resolução.
 
+## Teste autenticado de isolamento de Casas — pronto para execução
+
+O repositório inclui `scripts/espionage-authenticated-acceptance.mjs`, um ensaio
+**somente leitura** que usa autenticação real (jogador e narrador separados)
+para verificar gestão da própria Casa, acesso negado à Casa adversária,
+dossiês privados, proibição do painel global e acesso correto do Narrador.
+
+O script exige `SPY_ACCEPTANCE_ENV=isolated-homologation`, URL e chave pública
+do Supabase, duas contas reais de teste e duas Casas distintas. Sem credenciais
+ele recusa executar; não cria login falso, não utiliza `service_role`,
+não altera agentes, partidas ou calendário. Executar no repositório com:
+`node scripts/espionage-authenticated-acceptance.mjs` após configurar as
+variáveis de ambiente indicadas no cabeçalho do script.
+
+**Esta prova não foi executada com credenciais neste lote** porque o ambiente
+isolado continua sem o calendário e as contas de teste necessárias.
+
 ## Roteiro de aceite real — exatamente nessa ordem
 
 1. Autenticar narrador e jogador em **homologação isolada**; validar separação de permissões de duas Casas.
