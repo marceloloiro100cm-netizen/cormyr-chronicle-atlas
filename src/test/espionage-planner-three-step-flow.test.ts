@@ -30,13 +30,16 @@ describe('Planejador de espionagem · espião → região → Casa → resumo e 
   expect(panel).not.toContain('originOverride');
   expect(panel).not.toContain("setTargetMode(");
  });
- it('limpa região e Casa quando se escolhe outro espião; limpa Casa ao trocar a região',()=>{
+ it('pré-seleciona a região atual ao escolher o espião e limpa Casa quando muda o destino',()=>{
   const panel=source('src/components/house/espionage/spy-regional-turns-panel.tsx');
-  expect(panel).toContain("setAssetId(e.target.value);setDestination('');setTargetHouseId('')");
+  expect(panel).toContain("setAssetId(e.target.value);");
+  expect(panel).toContain("setDestination(agent?.status==='available'?agent.currentRegion??'':'');");
+  expect(panel).toContain("setTargetHouseId('');");
   expect(panel).toContain("const chooseRegion=(id:string)=>{\n  setDestination(id);\n  setTargetHouseId('');");
   expect(panel).toContain('h.regionId===destination&&h.id!==houseId');
   expect(panel).toContain('disabled={!destination||targetsQuery.isPending||targetsQuery.isError}');
-  expect(panel).toContain("a.status!=='available'");
+  expect(panel).toContain("agents.filter(a=>a.status==='available')");
+  expect(panel).toContain('Ver trajeto no mapa');
  });
  it('separa a viagem da investigação e inclui passagens marítimas aprovadas',()=>{
   const result=planSpyRegionalMission({
