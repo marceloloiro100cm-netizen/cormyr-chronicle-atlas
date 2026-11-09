@@ -32,7 +32,7 @@ export function BattleBoard({map,stacks=[],selectedId,activeId,hoveredId,moveKey
   map:BattleMap;stacks?:readonly Token[];selectedId?:string|null;activeId?:string|null;
   hoveredId?:string|null;theme?:'standard'|'cormyr';
   moveKeys?:readonly string[];attackKeys?:readonly string[];pendingHex?:Hex|null;
-  showZones?:boolean;objectivePosition?:Hex|undefined;objectivePositions?:readonly Hex[];
+  showZones?:boolean;objectivePosition?:Hex|undefined;objectivePositions?:readonly Hex[]|undefined;
   onHexClick?:(hex:Hex)=>void;onHoverHex?:(hex:Hex|null)=>void;
 }){
   const [zoom,setZoom]=useState(100);
