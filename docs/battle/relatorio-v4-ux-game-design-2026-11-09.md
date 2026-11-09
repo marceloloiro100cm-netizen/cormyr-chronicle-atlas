@@ -81,7 +81,11 @@ O guia é exibido no primeiro uso do modo, pode ser pulado e permanece acessíve
 | Touch e zoom mobile | Chromium 390×844; sem rolagem horizontal da página |
 | TypeScript, build, banco | Jobs Validate + Battle browser sem falhas |
 
-**Registro de execução:** substituir por estados reais do GitHub Actions após os checks da PR. Não reportar como aprovado antes dos resultados.
+**Registro de execução — aprovado:** PR #348 integrada em `main` pelo commit `8ee4f4c622da4b267e18066608f1536f84ad1371`.
+- GitHub Actions `Validate`: **success** (266 arquivos de testes aprovados, 4 ignorados; TypeScript e build aprovados).
+- GitHub Actions `Battle browser acceptance (synthetic)`: **success** (12 testes Chromium aprovados, incluindo viewport móvel, tutorial e objetivo).
+- Bancos de teste descartáveis para batalha e correspondência: **success**; nenhuma migração aplicada na produção.
+- Aceite em Android físico com sessão autenticada do Narrador: **pendente**.
 
 ## 9. Dívida restante e proposta de P3
 **Alto impacto:** teste Android físico autenticado do Narrador, auditoria completa de persistência depois de retomar em outro dispositivo e inspeção de contraste/toque com pessoas reais.
@@ -90,4 +94,4 @@ O guia é exibido no primeiro uso do modo, pode ser pulado e permanece acessíve
 
 ## 10. Veredito V4
 **Direção de produto:** UX com poucas decisões visíveis, regra completa escondida em detalhes, condição de vitória comunicada antes do primeiro turno e feedback de consequência depois de cada rodada.  
-**Status final:** depende dos checks de CI e da aceitação autenticada em aparelho real; merge não equivale a publicação no site.
+**Status final:** implementação P2 e regressão automatizada concluídas e integradas à branch `main`; a aceitação autenticada em Android físico e a verificação de publicação no Lovable permanecem pendentes. Merge não equivale a deploy.
