@@ -77,7 +77,7 @@ function TestHarness(){
    {arena==='dnd'&&<BattleCrzLab mode="dnd" playerSandbox onBack={()=>setArena('none')}/>}
    {arena==='adapted-p3'&&<BattleArena initial={{...initial,id:'browser-e2e-multi',
     map:createScenario('bridge-crossing'),
-    objective:makeTacticalObjective('bridge',createScenario('bridge-crossing')),
+    objective:makeTacticalObjective('bridge',createScenario('bridge-crossing'))!,
     aiProfiles:{defender:'defensive'},
     controls:{attacker:'human',defender:'ai'}}}
     sideNames={{attacker:'Atacantes fictícios',defender:'Defensores fictícios'}}
