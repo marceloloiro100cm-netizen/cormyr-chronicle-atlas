@@ -43,6 +43,7 @@ describe('Contrato visual comum — mapas quadrados dos três sistemas',()=>{
  });
  it('GOT usa a mesma legenda em tabuleiro quadrado sem trocar o motor',()=>{
   render(<BattleGotGame onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByText('Personalizar tropas, heróis e mapa'));
   expect(screen.getByRole('group',{name:'Legenda comum de mapas quadrados'})).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:/Iniciar simulação pelo livro/}));
   const map=screen.getByRole('region',{name:/Mapa em quadrados/});

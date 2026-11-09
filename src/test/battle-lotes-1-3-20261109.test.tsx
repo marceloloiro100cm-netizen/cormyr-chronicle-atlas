@@ -41,6 +41,7 @@ describe('Lotes 1 e 2 · navegação, proteção e orientação contextual',()=>
 describe('Lote 3 · montador D&D',()=>{
  it('oferece filtros avançados e prévia sem exibir editor privado',()=>{
   render(<BattleCrzLab mode="dnd" onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByText('Montar exércitos e ajustar cenário'));
   const preview=screen.getByRole('status',{name:'Prévia da criatura selecionada'});
   expect(within(preview).getByText(/PV/)).toBeInTheDocument();
   expect(screen.getByRole('region',{name:'Resumo do confronto D&D'})).toBeInTheDocument();
@@ -56,6 +57,7 @@ describe('Lote 3 · montador D&D',()=>{
  });
  it('resumo acompanha pilhas duplicadas e contagem dos dois lados',()=>{
   render(<BattleCrzLab mode="dnd" onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByText('Montar exércitos e ajustar cenário'));
   const summary=screen.getByRole('region',{name:'Resumo do confronto D&D'});
   expect(within(summary).getAllByText('2/7 pilhas · 20 criaturas')).toHaveLength(2);
   fireEvent.click(screen.getAllByRole('button',{name:'Duplicar pilha'})[0]!);

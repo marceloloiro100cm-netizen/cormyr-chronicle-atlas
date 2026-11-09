@@ -7,6 +7,7 @@ afterEach(()=>{cleanup();vi.restoreAllMocks();window.localStorage.clear();});
 describe('Aceitação da interface: preparar, posicionar, salvar e retomar',()=>{
  it('abre batalha de 14 tropas, salva estado e retoma no mesmo navegador',()=>{
   render(<BattleGotGame onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByText('Personalizar tropas, heróis e mapa'));
   expect(screen.getByRole('heading',{name:/Game of Thrones/})).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText(/Unidades adicionais por lado/),{
    target:{value:'5'},
@@ -14,6 +15,7 @@ describe('Aceitação da interface: preparar, posicionar, salvar e retomar',()=>
   fireEvent.click(screen.getByRole('button',{name:/Iniciar simulação pelo livro/}));
   expect(screen.getByRole('heading',{name:'Escaramuça de treinamento'}))
    .toBeInTheDocument();
+  fireEvent.click(screen.getByText('Salvar ou retomar'));
   fireEvent.click(screen.getByRole('button',{name:'Salvar simulação neste navegador'}));
   const json=window.localStorage.getItem(GOT_LAB_SAVE_KEY);
   expect(json).not.toBeNull();
@@ -25,6 +27,7 @@ describe('Aceitação da interface: preparar, posicionar, salvar e retomar',()=>
  });
  it('editor do mapa impede sobreposição, mas permite posição personalizada',()=>{
   render(<BattleGotGame onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByText('Personalizar tropas, heróis e mapa'));
   fireEvent.change(screen.getByLabelText('Editar mapa'),{target:{value:'deploy'}});
   fireEvent.click(screen.getByRole('button',{name:/Quadrado 6,3/}));
   fireEvent.click(screen.getByRole('button',{name:/Iniciar simulação pelo livro/}));

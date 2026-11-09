@@ -10,10 +10,11 @@ describe('Auditoria UX — módulo de batalha narrador',()=>{
  it('oferece uma ação principal PTE, alternativa V3 e ferramentas recolhíveis',()=>{
   render(<BattleNarratorHub/>);
   expect(screen.getByRole('button',{name:'Criar batalha'})).toBeInTheDocument();
-  expect(screen.getByRole('button',{name:'Batalha rápida com comandantes'})).toBeInTheDocument();
-  expect(screen.getByText('Ferramentas avançadas e ajuda')).toBeInTheDocument();
-  expect(screen.getByText(/preparar → posicionar → combater → rever o resultado/)).toBeInTheDocument();
-  expect(screen.getByRole('heading',{name:'Continuar batalha'})).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Mais opções'));
+  expect(screen.getByRole('button',{name:'Cruzada com comandantes'})).toBeInTheDocument();
+  expect(screen.getByText('Mais opções')).toBeInTheDocument();
+  expect(screen.getByText(/Forças-modelo e posicionamento automático/)).toBeInTheDocument();
+  expect(screen.getByRole('heading',{name:'Continuar'})).toBeInTheDocument();
  });
  it('inicia combate fictício com três escolhas, sem posicionamento manual obrigatório',()=>{
   render(<BattleNarratorHub/>);
