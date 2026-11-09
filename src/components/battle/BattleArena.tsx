@@ -14,6 +14,8 @@ import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
 import {BattleActionFeedback} from './BattleActionFeedback';
 import {BattleOutcomeSummary} from './BattleOutcomeSummary';
+import {pteEventLabel,mostRecentAction,pteAiActionDescription}
+ from '@/lib/battle/ux/action-explanation';
 import {BattleHouseBanner,BattleHouseVersus} from './BattleHouseHeraldry';
 import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
 import './battle-arena-unified.css';
@@ -121,8 +123,8 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
  const candidate=mode==='move'?(pendingMove??hover):null;
  const selectedPath=candidate?paths.find(p=>hexKey(p.to)===hexKey(candidate)):undefined;
  const target=pendingAttack?battle.stacks.find(s=>s.id===pendingAttack):undefined;
- const latestAction=[...battle.events].reverse().find(e=>
-  ['DAMAGE','RETALIATION','MOVE','DEFEND','WAIT'].includes(e.type));
+ const latestAction=mostRecentAction(battle.events,
+  ['DAMAGE','RETALIATION','MOVE','DEFEND','WAIT']);
  const latestDamage=latestAction&&typeof latestAction.delta['damage']==='number'?
   latestAction.delta['damage'] as number:undefined;
  const latestCasualties=latestAction&&typeof latestAction.delta['casualties']==='number'?
@@ -140,7 +142,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
     setHistory(values=>[...values.slice(-99),battle]);
     setBattle(outcome.state);setSelected(outcome.state.activeUnitId);
     setMode('inspect');setPendingMove(null);setPendingAttack(null);
-    setNotice('IA executou '+outcome.commands.length+' comandos legais.');
+    setNotice(pteAiActionDescription(outcome.commands));
    }
   }catch(e){setPaused(true);setNotice(e instanceof Error?e.message:'Falha na IA: simulação pausada.');}
  },[battle,paused]);
@@ -245,9 +247,9 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
    hint={canAct?'Toque no verde para mover ou no inimigo destacado para atacar.':
     'Confira a unidade da vez e aguarde sua ativação.'}/>
   {latestAction&&<BattleActionFeedback round={latestAction.round}
-   label={latestAction.type==='DAMAGE'?'Ataque':latestAction.type==='RETALIATION'?
-    'Retaliação':latestAction.type==='MOVE'?'Movimento':latestAction.type==='DEFEND'?
-    'Defesa':'Espera'} damage={latestDamage} casualties={latestCasualties}/>}
+   label={pteEventLabel(latestAction,battle.stacks)}
+   damage={latestDamage} casualties={latestCasualties}
+   detail={latestAction.type==='DAMAGE'?'Ataque resolvido pelo motor PTE.':undefined}/>}
   {showHelp&&<div className="battle-surface" role="note">Mover e atacar; defender dá +2. Esperar uma vez por rodada. Baixas apenas simuladas.</div>}
   <div className="battle-arena-grid">
     <aside className="battle-surface battle-army-sidebar" aria-label="Exércitos na arena">
@@ -320,7 +322,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
    </div>
    {battle.events.length===0?<p>Nenhuma ação registrada.</p>:
     <ol aria-live="polite" className={fullHistory?'battle-timeline-all':''}>
-     {[...battle.events].reverse().slice(0,fullHistory?100:6).map(e=><li key={e.seq}>
+     {battle.events.slice(-(fullHistory?100:6)).reverse().map(e=><li key={e.seq}>
       Rodada {e.round} · {e.type==='DAMAGE'?'Ataque':e.type==='RETALIATION'?'Retaliação':e.type==='MOVE'?'Movimento':e.type==='DEFEND'?'Defesa':e.type==='WAIT'?'Espera':e.type==='END_ACTIVATION'?'Fim de turno':e.type}
       {' · '}{typeof e.delta['damage']==='number'?e.delta['damage']+' PV, '+e.delta['casualties']+' baixas':''}
      </li>)}</ol>}

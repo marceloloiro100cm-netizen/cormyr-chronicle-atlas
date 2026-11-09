@@ -7,6 +7,7 @@ import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSqua
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
 import {formatDndMetres} from '@/lib/crusade/dnd-metric';
+import {crzEventLabel,mostRecentAction} from '@/lib/battle/ux/action-explanation';
 import {BattleActionFeedback} from './BattleActionFeedback';
 import {BattleOutcomeSummary} from './BattleOutcomeSummary';
 import {dndNeedsImpasseReview} from '@/lib/battle/ux/dnd-impasse';
@@ -374,17 +375,9 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
   crzTrainingReplayAt(session.replay,replayStep),
  [session,replayStep]);
  const report=useMemo(()=>session?crzAfterActionReport(session.replay):null,[session]);
- const recentAction=frame?[...frame.events].reverse().find(event=>
+ const recentAction=frame?mostRecentAction(frame.events,
   ['MOVED','ATTACK_RESOLVED','RETALIATION_RESOLVED','DEFENDED','WAITED',
-   'SPELL_DAMAGE','SPELL_HEALED','ABILITY_USED'].includes(event.type)):undefined;
- const recentLabel=recentAction?.type==='ATTACK_RESOLVED'?'Ataque':
-  recentAction?.type==='RETALIATION_RESOLVED'?'Retaliação':
-  recentAction?.type==='MOVED'?'Movimento':
-  recentAction?.type==='DEFENDED'?'Defesa':
-  recentAction?.type==='WAITED'?'Espera':
-  recentAction?.type==='SPELL_DAMAGE'?'Dano mágico':
-  recentAction?.type==='SPELL_HEALED'?'Cura':
-  recentAction?.type==='ABILITY_USED'?'Habilidade':'Ação';
+   'SPELL_DAMAGE','SPELL_HEALED','ABILITY_USED']):undefined;
  const recentDamage=recentAction&&
   (recentAction.type==='ATTACK_RESOLVED'||recentAction.type==='RETALIATION_RESOLVED')?
   recentAction.appliedDamage:recentAction?.type==='SPELL_DAMAGE'?
@@ -971,7 +964,11 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
       "Gerenciar criaturas, reforços e resultado".</p>
     </details>}
    {recentAction&&<BattleActionFeedback round={recentAction.round}
-    label={recentLabel} damage={recentDamage} casualties={recentLosses}/>}
+    label={crzEventLabel(recentAction,frame.stacks)}
+    damage={recentDamage} casualties={recentLosses}
+    detail={recentAction.type==='ATTACK_RESOLVED'||recentAction.type==='RETALIATION_RESOLVED'?
+     recentAction.hits+' acertos de '+recentAction.attacks+
+      (recentAction.crits?' · '+recentAction.crits+' críticos':''):undefined}/>}
    {savedPanel}
    {dndMode&&!sandbox&&isDndBattle(frame)&&frame.phase==='active'&&<details className="battle-surface"
     aria-label="Gerenciamento de tropas durante a batalha D&D">
