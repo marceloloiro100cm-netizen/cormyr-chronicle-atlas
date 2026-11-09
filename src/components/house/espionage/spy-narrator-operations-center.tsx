@@ -19,15 +19,33 @@ const statusLabels:Record<string,string>={
 const objectiveLabels:Record<string,string>={
  house_resources:'Recursos',army:'Exército',possessions:'Posses',
 };
+/** Only successful, completed missions can require an intelligence award.
+ * Failed/captured/dead operations have no dossier to recover.
+ */
 export const spyNeedsDossierAttention=(o:SpyNarratorOperation)=>
  o.status==='completed'&&o.outcome==='success'&&
  o.intelligenceStatus!=='complete';
+
+export const spyNeedsNarratorAction=(o:SpyNarratorOperation)=>
+ o.status==='pending_narrator_review'||spyNeedsDossierAttention(o);
+
+/** Single, predictable queue: decisions first, then missing intelligence.
+ * Never mix completed failures with awards awaiting processing.
+ */
+export function spyNarratorActionQueue(operations:readonly SpyNarratorOperation[]){
+ const priority=(o:SpyNarratorOperation)=>
+  o.status==='pending_narrator_review'?0:spyNeedsDossierAttention(o)?1:2;
+ return operations.filter(spyNeedsNarratorAction)
+  .sort((a,b)=>priority(a)-priority(b)||
+   b.createdAt.localeCompare(a.createdAt)||a.operationId.localeCompare(b.operationId));
+}
 export function spyOperationCounters(operations:readonly SpyNarratorOperation[]){
  return {
   active:operations.filter(o=>['traveling','operating','returning','planned'].includes(o.status)).length,
   review:operations.filter(o=>o.status==='pending_narrator_review').length,
   dossier:operations.filter(spyNeedsDossierAttention).length,
   complete:operations.filter(o=>o.status==='completed').length,
+  attention:operations.filter(spyNeedsNarratorAction).length,
  };
 }
 export function filterSpyOperations(operations:readonly SpyNarratorOperation[],
@@ -40,6 +58,7 @@ export function filterSpyOperations(operations:readonly SpyNarratorOperation[],
   const matches=!q||[o.ownerHouseName,o.targetHouseName,o.agentName]
    .some(value=>normalized(value).includes(q));
   if(!matches)return false;
+  if(state==='attention')return spyNeedsNarratorAction(o);
   if(state==='review')return o.status==='pending_narrator_review';
   if(state==='active')return ['traveling','operating','returning','planned'].includes(o.status);
   if(state==='dossier')return spyNeedsDossierAttention(o);
@@ -90,8 +109,9 @@ export function SpyNarratorOperationsCenter(){
  });
  const operations=query.data??[];
  const counters=spyOperationCounters(operations);
- const effectiveState=state==='attention'?'review':state;
- const pending=filterSpyOperations(operations,search,effectiveState);
+ const pending=state==='attention'
+  ?filterSpyOperations(spyNarratorActionQueue(operations),search,'attention')
+  :filterSpyOperations(operations,search,state);
  const pageSize=15,totalPages=Math.max(1,Math.ceil(pending.length/pageSize));
  const safePage=Math.min(totalPages,Math.max(1,page));
  const visible=pending.slice((safePage-1)*pageSize,safePage*pageSize);
@@ -101,7 +121,7 @@ export function SpyNarratorOperationsCenter(){
    <div>
     <p className="campaign-eyebrow">ESPIONAGEM · NARRADOR</p>
     <h3><ClipboardList size={18} aria-hidden="true"/> Central de operações</h3>
-    <p className="house-caption">Acompanhe todas as missões sem abrir cada Casa.</p>
+    <p className="house-caption">Julgue missões e confirme descobertas no mesmo lugar.</p>
    </div>
    <Button type="button" variant="outline" disabled={query.isFetching}
     onClick={()=>void query.refetch()}><RefreshCw size={16}/>
@@ -113,7 +133,7 @@ export function SpyNarratorOperationsCenter(){
     Tentar novamente</Button></p>}
   {query.data&&<>
    <div className="spy-operations-metrics" aria-label="Resumo operacional">
-    <div><strong>{counters.review}</strong><small>Aguardam Narrador</small></div>
+    <div><strong>{counters.review}</strong><small>Aguardam julgamento</small></div>
     <div><strong>{counters.active}</strong><small>Em andamento</small></div>
     <div><strong>{counters.dossier}</strong><small>Dossiês pendentes</small></div>
     <div><strong>{counters.complete}</strong><small>Concluídas</small></div>
@@ -125,7 +145,8 @@ export function SpyNarratorOperationsCenter(){
     </label>
     <label>Situação
      <select value={state} onChange={e=>{setState(e.target.value);setPage(1);}}>
-      <option value="attention">Aguardando Narrador</option>
+      <option value="attention">Ações pendentes ({counters.attention})</option>
+      <option value="review">Aguardando julgamento</option>
       <option value="active">Em andamento</option>
       <option value="dossier">Dossiês pendentes</option>
       <option value="completed">Concluídas</option>
@@ -134,6 +155,9 @@ export function SpyNarratorOperationsCenter(){
     </label>
    </div>
    <p className="house-caption" role="status">{pending.length} operações neste filtro.</p>
+   {state==='attention'&&counters.attention===0&&<p role="status"
+    className="spy-operations-idle">Tudo em dia: nenhuma missão ou descoberta
+    aguardando o Narrador.</p>}
    {visible.length?<div className="spy-operations-list">
     {visible.map(o=><article className="spy-operation-row" key={o.operationId}>
      <div>
@@ -143,8 +167,8 @@ export function SpyNarratorOperationsCenter(){
      <div>
       <strong>{statusLabels[o.status]??o.status}</strong>
       <small>{o.status==='pending_narrator_review'
-       ?'Pronta para homologação na ficha da Casa investigadora':
-       spyNeedsDossierAttention(o)?'Verifique a fila de Dossiês':
+       ?'Resultado aguardando a sua decisão':
+       spyNeedsDossierAttention(o)?'Resultado salvo; descobertas pendentes':
        'Chegada '+dateLabel(o.arrivalKey)+' · fim '+dateLabel(o.investigationEndKey)}</small>
      </div>
      {o.status==='pending_narrator_review'&&<Button type="button"
