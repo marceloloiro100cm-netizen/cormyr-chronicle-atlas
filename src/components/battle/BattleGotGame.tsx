@@ -952,7 +952,9 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      {battle.winner?'Vitória do '+SIDE[battle.winner]:'Confronto sem vencedor'}
     </strong></p>}
    </section>
-   <BattleGotGuide phase={battle.phase}/>
+   <BattleGotGuide phase={battle.phase}
+    hasSiege={battle.siege.some(w=>w.health>0)}
+    hasHeroes={battle.heroes.some(h=>h.active)}/>
    <BattleTurnCue system="got" round={battle.round} phase={battle.phase}
     activeUnit={battle.phase==='orders'?SIDE[battle.turn]:'Fase do livro'}
     canAct={battle.phase!=='finished'}

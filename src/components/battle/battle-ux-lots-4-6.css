@@ -1,0 +1,7 @@
+/* Batalha: UX lotes 4–6. Complemento compartilhado, sem modificar motores. */
+.battle-module .battle-impasse-help{border:1px solid #b89659;border-radius:8px;
+ padding:10px 14px;margin:8px 0;background:rgba(85,66,31,.35)}
+.battle-module .battle-impasse-help summary{cursor:pointer;font-weight:700;min-height:44px;
+ display:flex;align-items:center}
+.battle-module .battle-impasse-help p{margin:6px 0;line-height:1.5}
+.battle-module .battle-impasse-help summary:focus-visible{outline:3px solid #f6d68b;outline-offset:2px}

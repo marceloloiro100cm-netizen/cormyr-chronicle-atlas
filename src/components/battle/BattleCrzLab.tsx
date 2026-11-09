@@ -937,7 +937,15 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
     phase={frame.phase} activeUnit={active?.name} canAct={canAct}
     moves={moves.length} attacks={attacks.length}
     needsSelection={Boolean(canAct&&active&&selectedId!==active.id)}
-    onSelectActive={active?()=>setSelectedId(active.id):undefined}/>
+    onSelectActive={active?()=>setSelectedId(active.id):undefined}
+    hint={dndMode?'Toque no verde para mover ou no inimigo destacado para atacar.':undefined}/>
+   {dndMode&&frame.phase==='active'&&frame.stagnantRounds>=3&&
+    <details className="battle-impasse-help" aria-label="Revisão de impasse D&D">
+     <summary>Possível impasse · {frame.stagnantRounds} rodadas sem progresso</summary>
+     <p>Sem resultado automático. Reposicione forças ou avance os turnos.
+      O Narrador pode definir empate, vitória ou retirada em
+      "Gerenciar criaturas, reforços e resultado".</p>
+    </details>}
    {savedPanel}
    {dndMode&&!sandbox&&isDndBattle(frame)&&frame.phase==='active'&&<details className="battle-surface"
     aria-label="Gerenciamento de tropas durante a batalha D&D">
