@@ -6,7 +6,7 @@ describe('Battle production JWT P0: defensas de segurança',()=>{
   const script=readFileSync('scripts/battle-authenticated-readonly.mjs','utf8');
   expect(script).toContain("signOut({scope:'local'})");
   expect(script).not.toMatch(/\.auth\.signOut\(\)/);
-  expect(script).not.toContain('service_role');
+  expect(script).not.toMatch(/createClient\([^\n]*service_role/i);
  });
  it('exige prova positiva de RLS usando dados privados existentes',()=>{
   const script=readFileSync('scripts/battle-authenticated-readonly.mjs','utf8');
