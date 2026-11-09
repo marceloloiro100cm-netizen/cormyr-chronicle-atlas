@@ -8,7 +8,7 @@ import {createScenario,SCENARIOS,type BattleScenarioId} from '@/lib/battle/geome
 
 import {validateBattleMap} from '@/lib/battle/geometry/map-validation';
 import {hexKey} from '@/lib/battle/geometry/hex';
-import type {BattleMap,BattleState,BattleStack,Hex,Side,Training} from '@/lib/battle/domain/types';
+import type {BattleMap,BattleState,BattleStack,Hex,Side,Training,AiProfile} from '@/lib/battle/domain/types';
 import {BattleBoard} from './BattleBoard';
 import {BattleMapEditor} from './BattleMapEditor';
 import {BattleSourcePicker} from './BattleSourcePicker';
@@ -42,6 +42,45 @@ export function BattleSetup({onStart,onBack}:{
  const [quickOpponent,setQuickOpponent]=useState<'human'|'ai'>('ai');
  const [quickSource,setQuickSource]=useState<'models'|'houses'>('models');
  const [objectiveMode,setObjectiveMode]=useState<TacticalObjectivePreset>('elimination');
+ const [aiProfiles,setAiProfiles]=useState<Record<Side,AiProfile>>({attacker:'balanced',defender:'balanced'});
+ const [objectiveOverrides,setObjectiveOverrides]=useState<Hex[]>([]);
+ const [requiredPositions,setRequiredPositions]=useState(2);
+ const [editingObjectives,setEditingObjectives]=useState(false);
+ const multiMode=['outposts','bridge','fortress'].includes(objectiveMode);
+ const objectiveSettings={
+  ...(objectiveOverrides.length?{positions:objectiveOverrides}:{}),requiredPositions};
+ const objectivePreview=(()=>{
+  try{return makeTacticalObjective(objectiveMode,map,objectiveSettings);}
+  catch{return undefined;}
+ })();
+ const selectObjectiveMode=(mode:TacticalObjectivePreset,quick:boolean)=>{
+  setObjectiveMode(mode);setObjectiveOverrides([]);setRequiredPositions(2);setEditingObjectives(false);
+  const preset=mode==='bridge'?'bridge-crossing':mode==='fortress'?'fortress-gate':
+   mode==='outposts'?'contested-woods':null;
+  if(quick&&preset){
+   setMap(createScenario(preset,map.width,'square'));
+   setUnits(list=>list.map(u=>({...u,position:null})));
+  }
+ };
+ const toggleObjective=(position:Hex)=>{
+  const tile=map.tiles.find(t=>hexKey(t)===hexKey(position));
+  if(!tile||tile.terrain==='rock'){setError('Objetivo precisa estar em terreno transitável.');return;}
+  const current=objectiveOverrides.length?objectiveOverrides:
+   objectivePreview?.kind==='multi-capture'?[...objectivePreview.positions]:[];
+  const key=hexKey(position),exists=current.some(p=>hexKey(p)===key);
+  if(exists&&current.length<=2){setError('Mantenha ao menos dois pontos. Adicione outro antes de remover.');return;}
+  if(!exists&&current.length>=5){setError('Limite de cinco objetivos por mapa.');return;}
+  const next=exists?current.filter(p=>hexKey(p)!==key):[...current,position];
+  setObjectiveOverrides(next);setRequiredPositions(v=>Math.min(v,next.length));setError('');
+ };
+ const configuredAiProfiles=(quick:boolean)=>{
+  const result:Partial<Record<Side,AiProfile>>={};
+  const controlling=quick?{attacker:'human',defender:quickOpponent}:controls;
+  for(const side of ['attacker','defender'] as const)
+   if(controlling[side]==='ai'&&aiProfiles[side]!=='balanced')
+    result[side]=aiProfiles[side];
+  return Object.keys(result).length?{aiProfiles:result}:{};
+ };
  const [error,setError]=useState('');
  const [houseByUnitKey,setHouseByUnitKey]=useState<Record<string,BattleHouseDirectoryRow>>({});
  const onHouseLoaded=({house,stacks}:{
@@ -143,9 +182,9 @@ export function BattleSetup({onStart,onBack}:{
      return makeFictionalStack({id:u.id,side:u.side,name:u.name,typeId:u.typeId,
        training:u.training,count:u.count,position:u.position});
    });
-   const objective=makeTacticalObjective(objectiveMode,map);
+   const objective=makeTacticalObjective(objectiveMode,map,objectiveSettings);
    const state=makeBattleSetup({id:'lab-'+seed,name,seed,map,
-     controls,stacks,...(objective?{objective}:{})});
+     controls,stacks,...(objective?{objective}:{}),...configuredAiProfiles(false)});
    if(!sideNames.attacker.trim()||!sideNames.defender.trim())throw new Error('Nomeie os dois exércitos.');
    onStart(state,displaySideNames,heraldry);
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível preparar a batalha.');}
@@ -168,10 +207,10 @@ export function BattleSetup({onStart,onBack}:{
      makeFictionalStack({id:u.id,side:u.side,name:u.name,typeId:u.typeId,
       training:u.training,count:u.count,position});
    });
-   const objective=makeTacticalObjective(objectiveMode,map);
+   const objective=makeTacticalObjective(objectiveMode,map,objectiveSettings);
    const battle=makeBattleSetup({id:'lab-'+seed,name,seed,map,
     controls:{attacker:'human',defender:quickOpponent},stacks,
-    ...(objective?{objective}:{})});
+    ...(objective?{objective}:{}),...configuredAiProfiles(true)});
    setError('');onStart(battle,displaySideNames,heraldry);
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível iniciar o confronto.');}
  };
