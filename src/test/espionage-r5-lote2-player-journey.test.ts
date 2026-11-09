@@ -98,6 +98,9 @@ describe('R5 Lote 2 — jornada simples de jogador',()=>{
   expect(ui).toContain('Conclusão prevista: <strong>{formatDate(progress.end)}</strong>');
   expect(ui).toContain('Tentar novamente');
   expect(ui).toContain('spy-agent-timeline-details');
+  expect(ui).toContain('Última missão: Concluída');
+  expect(ui).toContain('latestCompletedSpyMission(data.operations,agent.id)');
+  expect(ui).not.toContain('Última missão: Sucesso');
  });
  it('os layouts estreitos evitam rolagem lateral e priorizam toque',()=>{
   const planner=file('src/components/house/espionage/spy-mission-planner.css');
