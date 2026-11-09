@@ -45,7 +45,14 @@ O módulo calcula força relativa a partir de efetivo inicial, pontos de vida e 
 6. Painel não grava informações pessoais nem depende de servidor;
 7. Chromium móvel, testes de componentes, checagem TypeScript, build e bancos descartáveis passam.
 
-**Estado dos checks:** atualizar somente após execução efetiva dos workflows da PR.
+**Estado dos checks — APROVADOS (09/11/2026):**
+- PR [#349](https://github.com/marceloloiro100cm-netizen/cormyr-chronicle-atlas/pull/349) integrada à `main` (merge `5d83fe308074bee9c2abaf29dd72cbb210db91ec`).
+- GitHub Actions `Validate`: **success**, 267 arquivos de testes aprovados, 4 ignorados, TypeScript e build aprovados.
+- GitHub Actions `Battle browser acceptance (synthetic)`: **success**, 13 testes Chromium, incluindo missão P3 com objetivos múltiplos e indicador de combate.
+- Testes de banco descartável de batalha e de correspondência: **success**. Nenhuma migração de produção realizada.
+- Teste de editor Narrador (objetivo, mapa, quota, início) e IA defensiva incluídos na suíte de componentes.
+- Aceite autenticado em Android físico e testes com participantes reais: **pendentes**; não confundir com CI.
+- A integração GitHub **não comprova publicação** da última revisão no endereço público.
 
 ## 7. Roteiro de teste real — ainda pendente
 Executar com Narrador autenticado em Android e 3–5 participantes voluntários:
