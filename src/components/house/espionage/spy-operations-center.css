@@ -69,3 +69,20 @@
  .spy-operation-inline-header{flex-wrap:wrap}
  .spy-operation-inline-header button{min-height:44px}
 }
+
+
+/* R5 Lote 3: pendências prioritárias, decisão visível e alvo tocável. */
+.spy-operations-idle{margin:0;padding:12px;border:1px solid var(--border);
+ border-radius:9px;font-weight:650;line-height:1.5}
+.spy-operation-inline-review{scroll-margin-top:92px;outline:none}
+.spy-operation-inline-review:focus-visible{outline:3px solid var(--primary);
+ outline-offset:2px}
+.spy-operation-row button{min-height:48px;white-space:normal;text-align:center}
+.spy-operations-filters select,.spy-operations-filters input{font-size:16px}
+.spy-operations-feedback{line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:720px){
+ .spy-operation-row{grid-template-columns:minmax(0,1fr);gap:10px}
+ .spy-operation-row button{width:100%;justify-self:stretch;min-height:48px}
+ .spy-operation-inline-review{padding:10px;scroll-margin-top:64px}
+ .spy-operation-inline-review .spy-narrator-form{min-width:0}
+}
