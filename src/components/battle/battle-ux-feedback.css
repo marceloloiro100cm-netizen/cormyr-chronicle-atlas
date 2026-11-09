@@ -29,3 +29,40 @@
  .battle-impasse-hint button{width:100%}}
 @media(prefers-reduced-motion:reduce){
  .battle-action-pulse,.battle-outcome-summary{animation:none!important;transition:none!important}}
+
+/* L6 — foco no mapa, controles móveis e uso com teclado. */
+.battle-module .battle-outcome-summary,
+.battle-module .battle-action-pulse,
+.battle-got .got-phase-guide{max-width:100%;min-width:0;box-sizing:border-box}
+.battle-module :is(.battle-impasse-hint button,
+ .battle-outcome-summary button,
+ .battle-alternative-controls button,
+ .crz-command-footer button){min-height:44px}
+.battle-module :is(.battle-action-pulse summary,.got-phase-rules summary,
+ .got-phase-guide-links button,.battle-impasse-hint button):focus-visible{
+ outline:3px solid #f7d58f;outline-offset:3px
+}
+.battle-got :is(.got-order-fields,.got-config-grid,.got-columns,.got-map-panel){
+ min-width:0;max-width:100%
+}
+.battle-got .got-phase-steps li{overflow-wrap:anywhere}
+.battle-module .battle-outcome-heading,.battle-module .battle-action-pulse{
+ overflow-wrap:anywhere
+}
+@media(max-width:700px){
+ .battle-module .battle-action-pulse{font-size:.95rem}
+ .battle-got .got-phase-guide-intro p{font-size:.93rem}
+ .battle-module .battle-outcome-sides{gap:.4rem}
+ .battle-got .got-phase-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .battle-got .got-phase-guide-links button{flex:1 1 135px;min-height:44px}
+}
+@media(max-width:440px){
+ .battle-module .battle-action-pulse{display:grid;gap:.25rem}
+ .battle-got .got-phase-guide-links{display:grid;grid-template-columns:1fr 1fr}
+ .battle-module .battle-impasse-hint{display:grid;gap:.45rem}
+}
+@media(prefers-reduced-motion:reduce){
+ .battle-got .got-phase-guide,.battle-module .battle-action-pulse{
+  animation:none!important;scroll-behavior:auto!important
+ }
+}

@@ -106,6 +106,14 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
  const attacks=useMemo(()=>legal.filter((c):c is Extract<BattleCommand,{type:'ATTACK'}>=>c.type==='ATTACK'),[legal]);
  const attackIds=attacks.map(c=>c.targetId);
  const moveKeys=moves.map(c=>hexKey(c.to));
+ const recentAction=useMemo(()=>{
+  for(let i=battle.events.length-1;i>=0;i--){
+   const event=battle.events[i];
+   if(event&&['DAMAGE','RETALIATION','MOVE','DEFEND','WAIT'].includes(event.type))
+    return pteActionText(event,battle.stacks);
+  }
+  return null;
+ },[battle.events,battle.stacks]);
  const paths=useMemo(()=>{
   if(!active||active.movedThisActivation||active.attackedThisActivation||battle.phase!=='active')return [];
   const occupied=battle.stacks.filter(s=>s.id!==active.id&&s.currentHp>0).map(s=>s.position);
@@ -258,9 +266,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
       'Selecione um '+(battle.map.grid==='square'?'quadrado':'hexágono')+' destacado'}</p>}
      {damagePreview&&<p role="status">Ataque previsto contra {target?.name}: {damagePreview.damage} PV · {damagePreview.casualties} baixas antes de eventual retaliação.</p>}
      {notice&&<p role="alert" className="battle-error">{notice}</p>}
-     <BattleActionPulse summary={pteActionText(
-      [...battle.events].reverse().find(e=>
-       ['DAMAGE','RETALIATION','MOVE','DEFEND','WAIT'].includes(e.type)),battle.stacks)}/>
+     <BattleActionPulse summary={recentAction}/>
      <div className="battle-actions battle-actions-compact" role="group" aria-label="Ações da unidade">
       <Button disabled={!canAct||!legal.some(c=>c.type==='DEFEND')} variant="outline"
         onClick={()=>active&&command({type:'DEFEND',unitId:active.id})}>Defender</Button>

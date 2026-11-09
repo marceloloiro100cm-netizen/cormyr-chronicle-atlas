@@ -370,6 +370,16 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
   crzTrainingReplayAt(session.replay,replayStep),
  [session,replayStep]);
  const report=useMemo(()=>session?crzAfterActionReport(session.replay):null,[session]);
+ const recentAction=useMemo(()=>{
+  if(!frame)return null;
+  for(let i=frame.events.length-1;i>=0;i--){
+   const event=frame.events[i];
+   if(event&&['ATTACK_RESOLVED','RETALIATION_RESOLVED','MOVED',
+    'DEFENDED','WAITED','STACK_DESTROYED'].includes(event.type))
+    return crzActionText(event,frame.stacks);
+  }
+  return null;
+ },[frame]);
  const objectives=useMemo(()=>frame?crzObservedObjectives(frame):[],[frame]);
  const active=frame?.stacks.find(s=>s.id===frame.activeStackId);
  const inspected=frame?.stacks.find(s=>s.id===selectedId&&crzCapable(s))??
@@ -935,9 +945,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
    </label>}
    {error&&<p className="crz-alert" role="alert">{error}</p>}
    {message&&<p className="crz-status" role="status">{message}</p>}
-   <BattleActionPulse summary={crzActionText(
-    [...frame.events].reverse().find(e=>['ATTACK_RESOLVED','RETALIATION_RESOLVED',
-     'MOVED','DEFENDED','WAITED','STACK_DESTROYED'].includes(e.type)),frame.stacks)}/>
+   <BattleActionPulse summary={recentAction}/>
    <BattleTurnCue system={dndMode?'dnd':'adapted'} round={frame.round}
     phase={frame.phase} activeUnit={active?.name} canAct={canAct}
     moves={moves.length} attacks={attacks.length}
