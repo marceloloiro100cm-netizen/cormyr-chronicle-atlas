@@ -22,6 +22,11 @@ const objectiveLabels:Record<string,string>={
 export const spyNeedsDossierAttention=(o:SpyNarratorOperation)=>
  o.status==='completed'&&o.outcome==='success'&&
  o.intelligenceStatus!=='complete';
+/** Only catalog-waiting awards can be reprocessed. A missing award is an
+ * integrity incident, not something to retry indefinitely or mask as success.
+ */
+export const spyCanRetryDossier=(o:SpyNarratorOperation)=>
+ spyNeedsDossierAttention(o)&&o.intelligenceStatus==='waiting_catalog';
 export function spyOperationCounters(operations:readonly SpyNarratorOperation[]){
  return {
   active:operations.filter(o=>['traveling','operating','returning','planned'].includes(o.status)).length,
@@ -173,7 +178,8 @@ export function SpyNarratorOperationsCenter(){
       <strong>{statusLabels[o.status]??o.status}</strong>
       <small>{o.status==='pending_narrator_review'
        ?'Pronta para julgamento':
-       spyNeedsDossierAttention(o)?'Resultado salvo; descobertas ainda pendentes':
+       spyCanRetryDossier(o)?'Resultado salvo; descobertas ainda pendentes':
+       spyNeedsDossierAttention(o)?'Prêmio ausente ou inconsistente; revisão técnica necessária':
        'Chegada '+dateLabel(o.arrivalKey)+' · fim '+dateLabel(o.investigationEndKey)}</small>
      </div>
      {o.status==='pending_narrator_review'&&<Button type="button"
@@ -184,12 +190,16 @@ export function SpyNarratorOperationsCenter(){
        setRecentResolution('');
        setSelectedReview({operationId:o.operationId,ownerHouseId:o.ownerHouseId});
       }}>Resolver agora</Button>}
-     {spyNeedsDossierAttention(o)&&<Button type="button"
+     {spyCanRetryDossier(o)&&<Button type="button"
       variant="outline" className="spy-operation-resolve-button"
       disabled={Boolean(retryingDossier)}
       onClick={()=>void finishDossier(o.operationId)}>
       {retryingDossier===o.operationId?'Verificando…':'Concluir dossiê'}
      </Button>}
+     {spyNeedsDossierAttention(o)&&!spyCanRetryDossier(o)&&
+      <span role="alert" className="spy-operation-integrity-warning">
+       Prêmio inconsistente. Não repetir o julgamento; revisar integridade do dossiê.
+      </span>}
     </article>)}
    </div>:<p className="house-caption" role="status">
     {state==='attention'?'Nenhuma ação pendente. As missões novas aparecerão aqui.':'Nenhuma missão neste filtro.'}
