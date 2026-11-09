@@ -57,7 +57,7 @@ describe('Lote 3 · montador D&D',()=>{
  it('resumo acompanha pilhas duplicadas e contagem dos dois lados',()=>{
   render(<BattleCrzLab mode="dnd" onBack={vi.fn()}/>);
   const summary=screen.getByRole('region',{name:'Resumo do confronto D&D'});
-  expect(within(summary).getByText('2/7 pilhas · 20 criaturas')).toBeInTheDocument();
+  expect(within(summary).getAllByText('2/7 pilhas · 20 criaturas')).toHaveLength(2);
   fireEvent.click(screen.getAllByRole('button',{name:'Duplicar pilha'})[0]!);
   expect(within(summary).getByText('3/7 pilhas · 32 criaturas')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:/Defensor ·/}));

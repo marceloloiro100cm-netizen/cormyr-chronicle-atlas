@@ -102,7 +102,16 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         self.assertEqual(v3.locator('[data-battle-cell-shape="hex"]').count(),0)
         dialog.get_by_role("button",name="Sair da tela ampliada").click()
         page.get_by_role("button",name="Abrir arena CRZ").click()
-        self.assertEqual(page.get_by_label("Formato da malha CRZ").input_value(),"square")
+        crz_field=page.get_by_label("Formato da malha CRZ")
+        try:
+            crz_field.wait_for(timeout=12000)
+        except Exception as exc:
+            raise AssertionError(
+                "CRZ nao montou apos alternar V3: "+
+                repr(page.locator("#v4-visual-acceptance").inner_text()[:1800])+
+                " body="+repr(page.locator("body").inner_text()[:500])
+            ) from exc
+        self.assertEqual(crz_field.input_value(),"square")
         page.get_by_role("button",name="Iniciar treinamento CRZ").click()
         dialog=page.get_by_role("dialog",name="Batalha em tela ampliada")
         dialog.wait_for(timeout=15000)
