@@ -5,6 +5,8 @@ on:
       - 'src/lib/espionage/**'
       - 'src/components/house/espionage/**'
       - 'src/components/house/hub.tsx'
+      - 'src/lib/calendar/time-connections.ts'
+      - 'scripts/espionage-r5-lot1-rollback-acceptance.sql'
       - 'src/test/espionage-*.test.ts'
       - 'src/test/espionage-*.test.tsx'
       - 'src/components/house/asset-catalog.tsx'
