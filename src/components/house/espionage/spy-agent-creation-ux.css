@@ -1,0 +1,28 @@
+/* R4: campos grandes, foco visível e leitura confortável em mesa/celular.
+ * Escopo restrito ao formulário de espionagem. */
+.cormyr-creation-dialog--spy .cormyr-creation-section select{
+ display:block;width:100%;min-width:0;min-height:48px;padding:10px 12px;
+ background:#fffaf0;color:#342a24;border:1px solid #bba078;
+ border-radius:8px;font-size:16px;line-height:1.45;
+}
+.cormyr-creation-dialog--spy .cormyr-creation-section select:focus-visible{
+ outline:3px solid #946b37;outline-offset:2px;
+}
+.cormyr-creation-dialog--spy .cormyr-creation-footer button{
+ min-height:48px;white-space:normal;
+}
+.cormyr-creation-dialog--spy .cormyr-creation-summary{overflow-wrap:anywhere}
+@media(max-width:640px){
+ .cormyr-creation-dialog--spy .cormyr-creation-form{
+  gap:14px;
+ }
+ .cormyr-creation-dialog--spy .cormyr-creation-footer{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+ }
+ .cormyr-creation-dialog--spy .cormyr-creation-footer button{
+  width:100%;min-width:0;min-height:50px;font-size:14px;
+ }
+ .cormyr-creation-dialog--spy .cormyr-creation-summary small{
+  font-size:12px;line-height:1.4;
+ }
+}
