@@ -90,3 +90,26 @@
 @media(max-width:640px){
  .spy-mission-sync-alert button{width:100%;min-height:48px}
 }
+
+
+/* R5 Lote 2 — estado da missão em quatro etapas, com próximo passo claro. */
+.spy-mission-stages{grid-template-columns:repeat(4,minmax(0,1fr))}
+.spy-agent-next-step-label{margin:3px 0 0;font-size:12px;
+ color:var(--muted-foreground);line-height:1.4;font-weight:650}
+.spy-agent-finish-date{margin:0;font-size:12px;
+ color:var(--muted-foreground);line-height:1.4}
+.spy-agent-finish-date strong{color:var(--foreground)}
+.spy-agent-timeline-details>summary{min-height:44px}
+.spy-agent-timeline-details>summary:focus-visible,
+.spy-agent-equipment>summary:focus-visible{
+ outline:2px solid var(--primary);outline-offset:2px;border-radius:4px
+}
+.spy-agent-card-footer button,.spy-agent-rename{min-height:48px}
+@media(max-width:440px){
+ .spy-mission-stages{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .spy-mission-stages li{font-size:12px;min-height:44px;
+  display:grid;place-items:center}
+ .spy-agent-card{min-width:0;overflow-wrap:anywhere}
+ .spy-agent-finish-date{font-size:13px}
+ .spy-agent-card-footer button{min-height:48px}
+}
