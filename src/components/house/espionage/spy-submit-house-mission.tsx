@@ -9,6 +9,8 @@ import {readSpyHouseManagementBrowser,submitSpyHouseMissionBrowser}
 import {regionId} from '@/lib/house/regions';
 import {getCampaignTime,CAMPAIGN_TIME_QUERY_KEY} from '@/lib/calendar/campaign-time';
 import {SpyMissionError} from '@/lib/espionage/spy-mission-errors';
+import {formatDate} from '@/lib/calendar/harptos';
+import {spyPlayerMissionSummary} from '@/lib/espionage/spy-player-journey';
 import {SPY_INTELLIGENCE_OBJECTIVES,type SpyIntelligenceObjective}
  from '@/lib/espionage/spy-intelligence-rules';
 
@@ -16,23 +18,28 @@ import {SPY_INTELLIGENCE_OBJECTIVES,type SpyIntelligenceObjective}
  * calendar; the Hub controls progression, and the Narrator handles outcomes. */
 export function SpySubmitHouseMission({houseId,agentId,agentName,
  originRegion,destinationRegion,destinationName,targetHouseId,targetHouseName,
- travelRounds,calendarVersion,canSubmit,onSubmitted}:{
+ travelRounds,calendarVersion,canSubmit,objective,
+ departureDate,arrivalDate,completionDate,onSubmitted}:{
  houseId:string;agentId:string;agentName:string;
  originRegion:string;destinationRegion:string;destinationName:string;
  targetHouseId:string;targetHouseName:string;travelRounds:number;
  calendarVersion:number|null;canSubmit:boolean;
+ objective:SpyIntelligenceObjective;
+ departureDate:string|null;arrivalDate:string|null;completionDate:string|null;
  onSubmitted?:(operationId:string)=>void;
 }){
  const qc=useQueryClient();
  const [open,setOpen]=useState(false);
- const [objective,setObjective]=useState<SpyIntelligenceObjective>('house_resources');
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  const [receipt,setReceipt]=useState<{id:string;status:'traveling'|'operating'|'pending_narrator_review'}|null>(null);
  const requestKey=useRef<string|null>(null);
  const agentVersion=useRef<number|null>(null);
  const ready=canSubmit&&calendarVersion!==null&&!receipt&&!busy;
- const total=travelRounds+1;
+ const summary=spyPlayerMissionSummary({
+  objective,travelRounds,arrivalDate,endDate:completionDate,
+ });
+ const objectiveDetails=SPY_INTELLIGENCE_OBJECTIVES.find(item=>item.id===objective);
  const send=async()=>{
   if(!ready||calendarVersion===null)return;
   setBusy(true);setError('');
@@ -105,30 +112,22 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
     <DialogHeader>
      <DialogTitle>Confirmar início da missão</DialogTitle>
      <DialogDescription>
-      A missão começa imediatamente após a confirmação. A viagem e a
-      investigação seguem os prazos do Hub Temporal, sem autorização adicional.
+      A missão começa após confirmar. O HUB controla o prazo; o Narrador decide o resultado.
      </DialogDescription>
     </DialogHeader>
     <div className="spy-planner-execution-details">
      <p><strong>Espião:</strong> {agentName}</p>
      <p><strong>Casa-alvo:</strong> {targetHouseName}</p>
      <p><strong>Região:</strong> {destinationName}</p>
-     <label htmlFor="spy-mission-objective"><strong>Objetivo da espionagem</strong></label>
-     <select id="spy-mission-objective" aria-label="Objetivo da espionagem"
-      className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground"
-      value={objective} disabled={busy}
-      onChange={event=>{
-       requestKey.current=null;agentVersion.current=null;
-       setError('');setObjective(event.target.value as SpyIntelligenceObjective);
-      }}>
-      {SPY_INTELLIGENCE_OBJECTIVES.map(item=><option key={item.id} value={item.id}>
-       {item.label} — {item.description}
-      </option>)}
-     </select>
-     <p><strong>Duração prevista:</strong> {total} {total===1?'désdia':'désdias'}
-      {' '}({total*10} dias ordinários, incluindo {travelRounds} de viagem).</p>
-     <small>Uma missão investiga apenas a modalidade escolhida.
-      A viagem segue o HUB Temporal; o narrador resolve o resultado.</small>
+     <p><strong>Objetivo:</strong> {objectiveDetails?.label??objective}</p>
+     <p><strong>Prazo estimado:</strong> {summary.durationDesdias}
+      {' '}{summary.durationDesdias===1?'désdia':'désdias'}
+      {' '}({summary.durationOrdinaryDays} dias ordinários;
+      {' '}{summary.travelDesdias} {summary.travelDesdias===1?'désdia':'désdias'} de viagem).</p>
+     {departureDate&&<p><strong>Partida:</strong> {formatDate(departureDate)}</p>}
+     {summary.endDate&&<p><strong>Conclusão prevista:</strong>
+      {' '}{formatDate(summary.endDate)}</p>}
+     <small>O resultado será apresentado após a decisão do Narrador.</small>
     </div>
     {error&&<div className="house-warning" role="alert">
      <p>{error}</p>
@@ -139,7 +138,7 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
        qc.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
       ])}>Atualizar previsão e agentes</Button>
     </div>}
-    <DialogFooter>
+    <DialogFooter className="spy-mission-confirm-actions">
      <Button type="button" variant="outline" disabled={busy}
       onClick={()=>setOpen(false)}>Cancelar</Button>
      <Button type="button" disabled={!ready} onClick={()=>void send()}>
