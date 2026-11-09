@@ -19,6 +19,7 @@ import {pteEventLabel,mostRecentAction,pteAiActionDescription}
 import {BattleHouseBanner,BattleHouseVersus} from './BattleHouseHeraldry';
 import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
 import './battle-arena-unified.css';
+import './battle-p0-p1.css';
 import {runAiUntilHuman} from '@/lib/battle/domain/ai';
 import {exportReplayJson} from '@/lib/battle/domain/replay';
 import {BattleReplay} from './BattleReplay';
@@ -177,6 +178,15 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
   }
   if(unit){setSelected(unit.id);clear();}
  };
+ const saveCurrent=async()=>{
+  if(!persistenceEnabled||savingProgress)return;
+  setSavingProgress(true);
+  try{
+   const saved=await saveProgress({data:{replayJson:exportReplayJson(initial,battle)}});
+   setNotice('Batalha salva: '+saved.sessionId);
+  }catch(e){setNotice(e instanceof Error?e.message:'Falha no salvamento.');}
+  finally{setSavingProgress(false);}
+ };
  const undo=()=>{
   const last=history.at(-1);if(!last)return;
   setHistory(xs=>xs.slice(0,-1));setBattle(last);setSelected(last.activeUnitId);setNotice('Última ação desfeita no laboratório.');clear();
@@ -217,21 +227,21 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
      {expanded?'↙ Sair da tela ampliada':'⤢ Ampliar batalha'}
     </Button>
     <Button size="sm" variant="outline" onClick={()=>setPaused(x=>!x)}>{paused?'Retomar':'Pausar'}</Button>
+    {history.length>0&&<Button size="sm" variant="outline"
+     aria-label="Desfazer última ação" onClick={undo}>Desfazer</Button>}
+    {persistenceEnabled&&<Button size="sm" variant="outline" disabled={savingProgress}
+     onClick={()=>void saveCurrent()}>Salvar batalha</Button>}
     <Button size="sm" variant="outline" onClick={onExit}>Sair</Button>
     <details className="battle-arena-extra">
      <summary>Mais opções</summary>
      <div className="battle-arena-extra-buttons">
       <Button size="sm" variant="outline" disabled={!history.length} onClick={undo}>Desfazer ação</Button>
       <Button size="sm" variant="outline" onClick={restart}>Reiniciar</Button>
-      {persistenceEnabled&&<Button size="sm" variant="outline" disabled={savingProgress}
-       onClick={async()=>{
-        setSavingProgress(true);
-        try{
-         const saved=await saveProgress({data:{replayJson:exportReplayJson(initial,battle)}});
-         setNotice('Batalha salva: '+saved.sessionId);
-        }catch(e){setNotice(e instanceof Error?e.message:'Falha no salvamento.');}
-        finally{setSavingProgress(false);}
-       }}>Salvar cópia da batalha</Button>}
+      {!persistenceEnabled&&<Button size="sm" variant="outline"
+       onClick={()=>{try{downloadBattleJson('batalha-replay-verificado.json',
+        exportReplayJson(initial,battle));setNotice('Replay exportado para arquivo local.');}
+        catch(e){setNotice(e instanceof Error?e.message:'Falha ao exportar replay.');}}}>
+       Exportar replay</Button>}
       <Button size="sm" variant="outline" onClick={()=>setShowHelp(x=>!x)}>
        {showHelp?'Ocultar regras':'Regras'}
       </Button>

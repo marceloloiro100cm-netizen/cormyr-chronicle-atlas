@@ -46,11 +46,11 @@ describe('lote 7 — D&D em metros sem mudar o motor',()=>{
 describe('lotes 8–9 — histórico claro e continuidade sem alterar persistência',()=>{
  it('informa onde ficam partidas GOT, D&D, Adaptado e V3',()=>{
   const view=render(<BattleSaveScope system="got"/>);
-  expect(screen.getByText('Salvo neste navegador')).toBeInTheDocument();
+  expect(screen.getByText('Este navegador')).toBeInTheDocument();
   view.rerender(<BattleSaveScope system="dnd"/>);
-  expect(screen.getByText('Salvo na conta do Narrador')).toBeInTheDocument();
+  expect(screen.getByText('Conta do Narrador · privado')).toBeInTheDocument();
   view.rerender(<BattleSaveScope system="v3"/>);
-  expect(screen.getByText('Salvo como arquivo')).toBeInTheDocument();
+  expect(screen.getByText('Arquivo local')).toBeInTheDocument();
  });
  it('mantém modo de salvamento original, com uma interface de continuidade consistente',()=>{
   const hub=readFileSync('src/components/battle/BattleNarratorHub.tsx','utf8');

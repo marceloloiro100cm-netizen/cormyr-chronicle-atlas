@@ -7,6 +7,8 @@ import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSqua
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
 import {formatDndMetres} from '@/lib/crusade/dnd-metric';
+import {summarizeDndEncounter} from '@/lib/battle/ux/dnd-encounter-summary';
+import './battle-p0-p1.css';
 import {crzEventLabel,mostRecentAction} from '@/lib/battle/ux/action-explanation';
 import {BattleSaveScope} from './BattleSaveScope';
 import {BattleActionFeedback} from './BattleActionFeedback';
@@ -323,6 +325,8 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
   [dndChoices,dndGroup,dndSize,dndSource,dndCrMin,dndCrMax,dndSearch]);
  const chosenDnd=filteredDndChoices.find(x=>x.id===dndChoiceId)??
   filteredDndChoices[0];
+ const encounterSummary=useMemo(()=>summarizeDndEncounter(dndRoster,dndChoices),
+  [dndRoster,dndChoices]);
  const [adminCount,setAdminCount]=useState(1);
  const [reinforceTemplate,setReinforceTemplate]=useState(dndMilitaryTemplateId('infantry'));
  const [reinforceSide,setReinforceSide]=useState<'attacker'|'defender'>('attacker');
@@ -777,6 +781,18 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
      </div>
      <section className="dnd-encounter-summary" aria-label="Resumo do confronto D&D">
       <h4>Composição do encontro</h4>
+      <div className="dnd-encounter-metrics" aria-label="Comparação das forças">
+       {(['attacker','defender'] as const).map(side=>{
+        const metrics=encounterSummary[side];
+        return <div key={side} className="dnd-encounter-metric">
+         <strong>{side==='attacker'?'Atacantes':'Defensores'}</strong>
+         <span>{metrics.creatures} criaturas · {metrics.stacks} pilhas</span>
+         <span>{metrics.totalHp===null?'PV desconhecidos':metrics.totalHp+' PV estimados'}
+          {' · '}CA média {metrics.meanAc===null?'—':metrics.meanAc.toLocaleString('pt-BR')}</span>
+        </div>;
+       })}
+      </div>
+      <p className="dnd-encounter-comparison" role="status">{encounterSummary.comparison}</p>
       <div className="dnd-encounter-sides">
        {(['attacker','defender'] as const).map(side=>{
         const roster=dndRoster.filter(x=>x.side===side);

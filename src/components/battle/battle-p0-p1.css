@@ -1,0 +1,22 @@
+/* UX P0/P1 — decisões curtas e métricas sem interferir no motor. */
+.battle-module .battle-got-phase-dock{display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:12px;padding:12px 16px;margin:10px 0;border:1px solid #a98b59;
+ border-inline-start:4px solid #e9c882;border-radius:9px;background:#2b3028;color:#fff2d9;
+ scroll-margin-top:24px}
+.battle-module .battle-got-phase-dock strong{font-size:17px}
+.battle-module .battle-got-phase-dock p{margin:4px 0 0;max-width:68ch;font-size:15px;line-height:1.5}
+.battle-module .battle-got-phase-dock button{min-height:44px;min-width:132px}
+.battle-module .battle-got-phase-dock :focus-visible{outline:3px solid #ffdf90;outline-offset:3px}
+.battle-module .dnd-encounter-metrics{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(0,1fr));margin:8px 0}
+.battle-module .dnd-encounter-metric{display:grid;gap:4px;padding:10px 12px;
+ border:1px solid #8a806c;border-radius:8px;background:rgba(34,40,34,.75);min-width:0}
+.battle-module .dnd-encounter-metric strong{font-size:16px;color:#f5dfaf}
+.battle-module .dnd-encounter-metric span{font-size:14px;color:#f2eee5}
+.battle-module .dnd-encounter-comparison{font-size:14px;line-height:1.5;max-width:70ch}
+@media(max-width:680px){
+ .battle-module .battle-got-phase-dock{display:grid;grid-template-columns:minmax(0,1fr)}
+ .battle-module .battle-got-phase-dock button{width:100%}
+ .battle-module .dnd-encounter-metrics{grid-template-columns:minmax(0,1fr)}
+ .battle-module .battle-arena-quick-controls button{min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){.battle-module .battle-got-phase-dock{scroll-behavior:auto!important}}

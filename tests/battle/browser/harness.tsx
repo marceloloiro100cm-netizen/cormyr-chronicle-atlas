@@ -5,6 +5,8 @@ import {Button} from '@/components/ui/button';
 import {BattleBoard} from '@/components/battle/BattleBoard';
 import {BattleV3Game} from '@/components/battle/BattleV3Game';
 import {BattleCrzLab} from '@/components/battle/BattleCrzLab';
+import {BattleGotGame} from '@/components/battle/BattleGotGame';
+import {BattleArena} from '@/components/battle/BattleArena';
 import {BattleMapEditor} from '@/components/battle/BattleMapEditor';
 import {BattleReplay,BattleReplayImporter} from '@/components/battle/BattleReplay';
 import {createScenario} from '@/lib/battle/geometry/map-fixtures';
@@ -18,7 +20,7 @@ import '@/components/battle/battle.css';
 function TestHarness(){
  const [map,setMap]=useState(()=>createScenario('plain-open'));
  const [selectedHex,setSelectedHex]=useState('nenhum');
- const [arena,setArena]=useState<'none'|'v3'|'crz'>('none');
+ const [arena,setArena]=useState<'none'|'v3'|'crz'|'got'|'dnd'|'adapted'>('none');
  const {initial,completed,replay}=useMemo(()=>{
   const field=createScenario('plain-open');
   const [attacker,defender]=[
@@ -53,6 +55,9 @@ function TestHarness(){
    <nav aria-label="Laboratórios sintéticos V4">
     <button type="button" onClick={()=>setArena('v3')}>Abrir arena V3</button>
     <button type="button" onClick={()=>setArena('crz')}>Abrir arena CRZ</button>
+    <button type="button" onClick={()=>setArena('got')}>Abrir arena GOT</button>
+    <button type="button" onClick={()=>setArena('dnd')}>Abrir arena D&amp;D</button>
+    <button type="button" onClick={()=>setArena('adapted')}>Abrir arena Adaptado</button>
     <button type="button" onClick={()=>setArena('none')}>Fechar arenas</button>
    </nav>
    {arena==='v3'&&<BattleV3Game initialOptions={{
@@ -61,6 +66,13 @@ function TestHarness(){
     scenario:'plain-open',opponent:'human',
    }}/>}
    {arena==='crz'&&<BattleCrzLab/>}
+   {arena==='got'&&<BattleGotGame playerSandbox onBack={()=>setArena('none')}/>}
+   {arena==='dnd'&&<BattleCrzLab mode="dnd" playerSandbox onBack={()=>setArena('none')}/>}
+   {arena==='adapted'&&<BattleArena initial={{...initial,id:'browser-e2e-manual',
+    controls:{attacker:'human',defender:'human'}}}
+    sideNames={{attacker:'Atacantes fictícios',defender:'Defensores fictícios'}}
+    onExit={()=>setArena('none')}/>}
+
   </section>
   <section id="interactive-board" aria-label="Tabuleiro interativo de teste">
    <h2>Tabuleiro de seleção</h2>

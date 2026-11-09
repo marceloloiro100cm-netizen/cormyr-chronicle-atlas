@@ -4,6 +4,7 @@ import {BattleActionFeedback} from './BattleActionFeedback';
 import {BattleOutcomeSummary} from './BattleOutcomeSummary';
 import {BattleSaveScope} from './BattleSaveScope';
 import {BattleGotGuide} from './BattleGotGuide';
+import {BattleGotPhaseDock} from './BattleGotPhaseDock';
 import {Button} from '@/components/ui/button';
 import {MilitaryUnitSymbol,militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import {SQUARE_TERRAIN_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
@@ -965,6 +966,13 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    <BattleGotGuide phase={battle.phase}
     hasSiege={battle.siege.some(w=>w.health>0)}
     hasHeroes={battle.heroes.some(h=>h.active)}/>
+   <BattleGotPhaseDock phase={battle.phase}
+    hasSiege={battle.siege.some(w=>w.health>0)}
+    hasHeroes={battle.heroes.some(h=>h.active)}/>
+   {battle.phase!=='finished'&&<div className="got-quick-save">
+    <Button variant="outline" onClick={saveLocalBattle}>Salvar batalha</Button>
+    <span>Salvamento manual neste navegador</span>
+   </div>}
    {battle.events.length>0&&<BattleActionFeedback
     round={battle.events[battle.events.length-1]!.round}
     label={battle.events[battle.events.length-1]!.text}/>}
@@ -1088,7 +1096,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      <Button onClick={resolveDamage}>Confirmar decisão de dano</Button>
     </section>}
    {(battle.phase==='heroes-first'||battle.phase==='heroes-second')&&
-    <section className="battle-surface got-heroes" aria-label="Ações individuais dos heróis">
+    <section id="got-personal-actions" className="battle-surface got-heroes" aria-label="Ações individuais dos heróis">
      <h3>{battle.phase==='heroes-first'?'Passo 6 · Primeiras ações dos heróis':
       'Passo 8 · Segundas ações dos heróis'}</h3>
      <p className="battle-note">Cada fase equivale a cinco rodadas de 6 segundos.
@@ -1683,7 +1691,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      </div>)}</div>
     </section>
    </div>
-   {battle.phase==='finished'&&<section className="battle-surface got-after" aria-label="Prévia de sobreviventes">
+   {battle.phase==='finished'&&<section id="got-after-action" className="battle-surface got-after" aria-label="Prévia de sobreviventes">
     <h3>Resultado pós-batalha · somente projeção</h3>
     <p className="battle-note">A tabela de sobreviventes é calculada com dados auditáveis. Nenhuma perda,
      glória ou mudança de treinamento é aplicada às fichas oficiais das Casas.</p>
