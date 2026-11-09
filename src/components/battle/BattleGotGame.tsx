@@ -512,6 +512,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false}:{onBack:()=>void;
  const clearLocalBattle=()=>{
   if(!window.confirm('Apagar a cópia local desta simulação? A batalha aberta não será alterada.'))return;
   try{window.localStorage.removeItem(GOT_LAB_SAVE_KEY);
+   setLastSavedSnapshot('');
    setLocalSaveStatus('Cópia local apagada.');setError('');
   }catch{setError('Não foi possível apagar a cópia local.');}
  };

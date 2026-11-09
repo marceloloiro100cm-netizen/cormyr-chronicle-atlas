@@ -3,9 +3,9 @@ import './battle-turn-cue.css';
 
 type System='got'|'adapted'|'dnd';
 type Props={
- system:System;round:number;phase:string;activeUnit?:string;
+ system:System;round:number;phase:string;activeUnit?:string|undefined;
  canAct?:boolean;moves?:number;attacks?:number;needsSelection?:boolean;
- onSelectActive?:()=>void;hint?:string;
+ onSelectActive?:(()=>void)|undefined;hint?:string|undefined;
 };
 /** Orientação comum: a lógica de legalidade permanece em cada motor. */
 export function BattleTurnCue({system,round,phase,activeUnit,canAct=false,
