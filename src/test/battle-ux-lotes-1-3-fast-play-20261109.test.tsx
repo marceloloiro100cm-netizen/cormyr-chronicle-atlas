@@ -11,7 +11,8 @@ describe('UX lotes 1–3 — preparação rápida e arena contextual',()=>{
  it('mostra um único início principal e preserva a Cruzada V3 como opcional',()=>{
   render(<BattleNarratorHub/>);
   expect(screen.getByRole('button',{name:'Criar batalha'})).toBeEnabled();
-  expect(screen.queryByRole('button',{name:'Cruzada com comandantes'})).not.toBeInTheDocument();
+  expect((screen.getByRole('button',{name:'Cruzada com comandantes'})
+   .closest('details') as HTMLDetailsElement).open).toBe(false);
   fireEvent.click(screen.getByText('Mais opções'));
   expect(screen.getByRole('button',{name:'Cruzada com comandantes'})).toBeEnabled();
   expect(BATTLE_PLAYERS_ENABLED).toBe(false);
@@ -20,8 +21,8 @@ describe('UX lotes 1–3 — preparação rápida e arena contextual',()=>{
  it('GOT inicia direto com exércitos-modelo sem obrigar edição das fases',()=>{
   render(<BattleGotGame onBack={vi.fn()}/>);
   expect(screen.getByRole('button',{name:'Batalhar agora'})).toBeEnabled();
-  expect(screen.queryByRole('button',{name:'Iniciar simulação pelo livro'}))
-   .not.toBeInTheDocument();
+  expect((screen.getByRole('button',{name:'Iniciar simulação pelo livro'})
+   .closest('details') as HTMLDetailsElement).open).toBe(false);
   fireEvent.click(screen.getByRole('button',{name:'Batalhar agora'}));
   expect(screen.getByRole('heading',{name:'Escaramuça de treinamento'}))
    .toBeInTheDocument();
@@ -32,7 +33,8 @@ describe('UX lotes 1–3 — preparação rápida e arena contextual',()=>{
  it('D&D inicia com o roster automático e o editor técnico recolhido',()=>{
   render(<BattleCrzLab mode="dnd" onBack={vi.fn()}/>);
   expect(screen.getByRole('button',{name:'Batalhar agora'})).toBeEnabled();
-  expect(screen.queryByRole('heading',{name:'Montros'})).not.toBeInTheDocument();
+  expect((screen.getByRole('heading',{name:'Montros'})
+   .closest('details') as HTMLDetailsElement).open).toBe(false);
   fireEvent.click(screen.getByRole('button',{name:'Batalhar agora'}));
   expect(screen.getByRole('region',{name:'Arena e comandos CRZ'})).toBeInTheDocument();
   expect(screen.getByRole('region',{name:'Painel de combate básico D&D'}))

@@ -258,7 +258,7 @@ export function BattleArena({initial,resume,sideNames,heraldry,onExit,persistenc
       'Selecione um '+(battle.map.grid==='square'?'quadrado':'hexágono')+' destacado'}</p>}
      {damagePreview&&<p role="status">Ataque previsto contra {target?.name}: {damagePreview.damage} PV · {damagePreview.casualties} baixas antes de eventual retaliação.</p>}
      {notice&&<p role="alert" className="battle-error">{notice}</p>}
-     <div className="battle-actions battle-actions-compact" aria-label="Ações da unidade">
+     <div className="battle-actions battle-actions-compact" role="group" aria-label="Ações da unidade">
       <Button disabled={!canAct||!legal.some(c=>c.type==='DEFEND')} variant="outline"
         onClick={()=>active&&command({type:'DEFEND',unitId:active.id})}>Defender</Button>
       <Button disabled={!canAct||!legal.some(c=>c.type==='WAIT')} variant="outline"
