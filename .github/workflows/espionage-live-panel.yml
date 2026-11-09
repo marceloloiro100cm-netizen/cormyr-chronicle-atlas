@@ -46,6 +46,11 @@ jobs:
           bunx vitest run
           src/test/espionage-p3-reports.test.ts
           src/test/espionage-p3-rpc-privacy.test.ts
+      - name: Spy R4 real server RPC and complete usability journey
+        run: >-
+          bunx vitest run
+          src/test/espionage-r4-real-server-actions.test.ts
+          src/test/espionage-r4-ux-flow.test.ts
       - name: Scoped TypeScript verification (spy module and integration)
         run: bunx tsc -p tsconfig.espionage-live.json --noEmit
       - name: Production build without deploying
