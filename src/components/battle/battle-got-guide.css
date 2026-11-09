@@ -26,3 +26,10 @@
 @media(max-width:480px){.battle-got .got-phase-steps{
  grid-template-columns:repeat(2,minmax(0,1fr))}
  .battle-got .got-phase-guide{padding:.7rem}}
+.battle-got .got-save-actions label{
+ display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;min-width:190px
+}
+.battle-got .got-save-actions label input,.battle-got .got-save-actions label select{
+ width:min(100%,270px);min-height:40px
+}
+.battle-got .got-save-actions button{min-height:42px;white-space:normal}

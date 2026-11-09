@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import {BattleTurnCue} from './BattleTurnCue';
 import {BattleGotGuide} from './BattleGotGuide';
 import {Button} from '@/components/ui/button';
@@ -30,6 +30,8 @@ import type {WarModelUnitTypeId} from '@/lib/battle/got/models';
 import {modelWarLabDeployments} from '@/lib/battle/got/lab-deployment';
 import {positionedWarLabDeployments,positionWarLabUnit} from '@/lib/battle/got/lab-positioning';
 import {encodeGotLabSave,decodeGotLabSave,GOT_LAB_SAVE_KEY} from '@/lib/battle/got/lab-save';
+import {saveGotArchive,listGotArchives,loadGotArchive,deleteGotArchive,
+ type GotArchiveEntry} from '@/lib/battle/got/lab-archive';
 import {previewWarAftermath} from '@/lib/battle/got/aftermath';
 import {previewWarResourceConsequences} from '@/lib/battle/got/aftermath-resources';
 import {WAR_FIELD_EQUIPMENT} from '@/lib/battle/got/field-equipment';
@@ -98,6 +100,13 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
  const [deploymentSelected,setDeploymentSelected]=useState('attacker-1');
  const [localSaveStatus,setLocalSaveStatus]=useState('');
  const [lastSavedSnapshot,setLastSavedSnapshot]=useState('');
+ const archiveScope=playerSandbox?'player' as const:'narrator' as const;
+ const [archives,setArchives]=useState<readonly GotArchiveEntry[]>(()=>typeof window==='undefined'?
+  []:listGotArchives(window.localStorage,archiveScope));
+ const [archiveLabel,setArchiveLabel]=useState('');
+ const [selectedArchive,setSelectedArchive]=useState('');
+ const terrainLookup=useMemo(()=>new Map(tiles.map(t=>
+  [t.x+':'+t.y,t.terrain] as const)),[tiles]);
  const [weather,setWeather]=useState<WarWeather>('clear');
  const [visibility,setVisibility]=useState<WarVisibility>('clear');
  const [advanced,setAdvanced]=useState(false);
@@ -493,6 +502,37 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
     !window.confirm('Há alterações não salvas na batalha Game of Thrones. Deseja sair?'))return;
   onBack();
  };
+ const storeNamedBattle=()=>{
+  if(!battle)return;
+  try{
+   const next=saveGotArchive(window.localStorage,archiveScope,archiveLabel||battle.name,battle);
+   setArchives(listGotArchives(window.localStorage,archiveScope));
+   setSelectedArchive(next.id);setArchiveLabel('');
+   setLastSavedSnapshot(encodeGotLabSave(battle));
+   setLocalSaveStatus('Cópia nomeada salva neste navegador: '+next.label+'.');
+   setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Erro ao criar cópia nomeada.');}
+ };
+ const restoreNamedBattle=()=>{
+  try{
+   const loaded=loadGotArchive(window.localStorage,archiveScope,selectedArchive);
+   if(battle&&JSON.stringify(battle)!==lastSavedSnapshot&&
+    !window.confirm('A batalha atual tem mudanças não salvas. Substituí-la pela cópia escolhida?'))return;
+   setBattle(loaded);setLastSavedSnapshot(encodeGotLabSave(loaded));
+   setSelected('');setTarget('');setError('');
+   setLocalSaveStatus('Cópia nomeada retomada: '+loaded.name+'.');
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível abrir a cópia.');}
+ };
+ const removeNamedBattle=()=>{
+  if(!selectedArchive||!window.confirm('Excluir esta cópia nomeada deste navegador?'))return;
+  try{
+   deleteGotArchive(window.localStorage,archiveScope,selectedArchive);
+   const next=listGotArchives(window.localStorage,archiveScope);
+   setArchives(next);setSelectedArchive(next[0]?.id??'');
+   setLocalSaveStatus('Cópia nomeada excluída. A batalha aberta não foi alterada.');
+   setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Erro ao excluir a cópia.');}
+ };
  const saveLocalBattle=()=>{
   if(!battle)return;
   try{
@@ -577,6 +617,31 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    </div>
    <p className="battle-note">Salvamento manual, exclusivo deste navegador. Não publica
     resultados, não grava em contas nem modifica exércitos ou recursos oficiais.</p>
+   <div className="got-save-actions" role="group" aria-label="Cópias nomeadas Game of Thrones">
+    {battle&&<>
+     <label>Nome da cópia
+      <input aria-label="Nome da cópia GOT" maxLength={80} value={archiveLabel}
+       placeholder={battle.name} onChange={event=>setArchiveLabel(event.target.value)}/>
+     </label>
+     <Button variant="outline" onClick={storeNamedBattle}>
+      Salvar cópia nomeada</Button>
+    </>}
+    {archives.length>0&&<>
+     <label>Cópia disponível
+      <select aria-label="Escolher cópia GOT" value={selectedArchive}
+       onChange={event=>setSelectedArchive(event.target.value)}>
+       <option value="">Escolher uma cópia</option>
+       {archives.map(item=><option value={item.id} key={item.id}>
+        {item.label} · rodada {item.round} · {new Date(item.updatedAt).toLocaleDateString('pt-BR')}
+       </option>)}
+      </select>
+     </label>
+     <Button variant="outline" disabled={!selectedArchive} onClick={restoreNamedBattle}>Retomar cópia nomeada</Button>
+     <Button variant="outline" disabled={!selectedArchive} onClick={removeNamedBattle}>Excluir cópia nomeada</Button>
+    </>}
+   </div>
+   <p className="battle-note">Até oito cópias nomeadas por perfil, separadas das
+    simulações do jogador e do Narrador. Não substitui backup entre dispositivos.</p>
    {localSaveStatus&&<p role="status">{localSaveStatus}</p>}
   </section>
   {!battle?<section className="battle-surface got-config" aria-label="Preparar campo de guerra">
@@ -824,7 +889,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
     </select></label>
    <div className="got-map got-paint" style={{gridTemplateColumns:'repeat('+mapSize.width+',minmax(0,1fr))'}}>
     {Array.from({length:mapSize.width*mapSize.height},(_,i)=>{
-     const x=i%mapSize.width,y=Math.floor(i/mapSize.width),terrain=tiles.find(t=>t.x===x&&t.y===y)?.terrain??'plain';
+     const x=i%mapSize.width,y=Math.floor(i/mapSize.width),terrain=terrainLookup.get(x+':'+y)??'plain';
      const occupant=preparedDeployments.find(u=>{
       const p=deploymentPositions[u.id]??u.position;
       return p.x===x&&p.y===y;
