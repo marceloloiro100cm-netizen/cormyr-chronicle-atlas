@@ -51,3 +51,21 @@
  .spy-narrator-incidents-toolbar select{font-size:16px;min-height:48px}
  .spy-narrator-incidents-toolbar button{min-height:44px}
 }
+
+
+/* R4: resolver direto na central, com prioridade visual para a tarefa do Narrador. */
+.spy-operation-row{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) auto;align-items:center}
+.spy-operation-resolve-button{min-height:44px;justify-self:end;white-space:nowrap}
+.spy-operation-inline-review{display:grid;gap:12px;border:1px solid var(--border);
+ padding:14px;border-radius:12px;min-width:0}
+.spy-operation-inline-header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.spy-operations-feedback{padding:12px;border:1px solid var(--border);
+ border-radius:8px;font-weight:600}
+.spy-operation-inline-review .house-panel{margin:0}
+@media(max-width:720px){
+ .spy-operation-row{grid-template-columns:minmax(0,1fr)}
+ .spy-operation-resolve-button{width:100%;justify-self:stretch;min-height:48px}
+ .spy-operation-inline-review{padding:10px}
+ .spy-operation-inline-header{flex-wrap:wrap}
+ .spy-operation-inline-header button{min-height:44px}
+}
