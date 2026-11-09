@@ -369,6 +369,25 @@ class TacticalBrowserAcceptance(unittest.TestCase):
         self.assertLessEqual(adapted.evaluate(
             "document.documentElement.scrollWidth-window.innerWidth"),4)
 
+    def test_p2_objective_marker_and_first_battle_guide_mobile(self):
+        page=self.open_page(390,844,touch=True)
+        guide=page.get_by_role("region",name="Tutorial da primeira batalha")
+        guide.wait_for()
+        self.assertIn("1/3",guide.inner_text())
+        guide.get_by_role("button",name="Próximo").tap()
+        self.assertIn("2/3",guide.inner_text())
+        guide.get_by_role("button",name="Pular").tap()
+        self.assertTrue(page.locator("#p2-tutorial").get_by_role(
+            "button",name="Como jogar").is_visible())
+        page.get_by_role("button",name="Abrir objetivo Adaptado").tap()
+        dialog=page.get_by_role("dialog",name="Batalha em tela ampliada")
+        dialog.wait_for(timeout=15000)
+        self.assertIn("Conquistar posição",dialog.get_by_role(
+            "region",name="Objetivo tático").inner_text())
+        self.assertEqual(dialog.locator(".battle-goal-marker").count(),1)
+        self.assertLessEqual(page.evaluate(
+            "document.documentElement.scrollWidth-window.innerWidth"),4)
+
     def test_mobile_save_destinations_and_scope_are_explicit(self):
         page=self.open_page(390,844,touch=True)
         page.get_by_role("button",name="Abrir arena GOT").tap()
