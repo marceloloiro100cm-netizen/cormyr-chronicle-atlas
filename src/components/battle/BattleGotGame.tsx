@@ -1,5 +1,6 @@
 import {useEffect,useState} from 'react';
 import {BattleTurnCue} from './BattleTurnCue';
+import {BattleGotGuide} from './BattleGotGuide';
 import {Button} from '@/components/ui/button';
 import {MilitaryUnitSymbol,militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import {SQUARE_TERRAIN_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
@@ -579,7 +580,13 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    {localSaveStatus&&<p role="status">{localSaveStatus}</p>}
   </section>
   {!battle?<section className="battle-surface got-config" aria-label="Preparar campo de guerra">
-   <h3>Preparar confronto conforme a escala do livro</h3>
+   <BattleGotGuide phase="preparation" onQuickPreset={()=>{
+    setSiegeEnabled(false);setFortKind('none');setHeroesEnabled(false);
+    setAdvanced(false);setWeather('clear');setVisibility('clear');
+    setStrictSightline(false);setExtraUnitsPerSide(0);
+    setError('');setLocalSaveStatus('Configuração rápida aplicada. Confira tropas e mapa antes de iniciar.');
+   }}/>
+   <h3 id="got-prep-forces">Preparar confronto conforme a escala do livro</h3>
    <label>Nome da batalha <input value={name} onChange={e=>setName(e.target.value)} maxLength={100}/></label>
    <label>Semente reprodutível <input value={seed} onChange={e=>setSeed(e.target.value)} maxLength={100}/></label>
    <div className="got-config-grid">
@@ -608,6 +615,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      </option>)}
     </select>
    </label>
+   <h4 id="got-prep-conditions">Condições, heróis e cerco</h4>
    <label>Equipamento especial da vanguarda atacante (somente laboratório)
     <select value={modelFieldEquipment}
      onChange={e=>setModelFieldEquipment(e.target.value as 'none'|WarFieldEquipmentId)}>
@@ -739,7 +747,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
       <option value="defender">Defensor · unidade 1</option>
      </select>
     </label>
-    <h4>Mapa quadrado reutilizável</h4>
+    <h4 id="got-prep-map">Mapa quadrado reutilizável</h4>
    <div className="got-config-grid">
     <label>Tamanho do campo
      <select value={mapSize.width+'x'+mapSize.height}
@@ -870,6 +878,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      {battle.winner?'Vitória do '+SIDE[battle.winner]:'Confronto sem vencedor'}
     </strong></p>}
    </section>
+   <BattleGotGuide phase={battle.phase}/>
    <BattleTurnCue system="got" round={battle.round} phase={battle.phase}
     activeUnit={battle.phase==='orders'?SIDE[battle.turn]:'Fase do livro'}
     canAct={battle.phase!=='finished'}
@@ -1299,7 +1308,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      <p className="battle-note">Toque em um quadrado para indicar o destino ou selecionar uma tropa.
       Tropas destruídas ou fora de campo não ocupam mais quadrados.</p>
     </section>
-    <section className="battle-surface got-order-panel" aria-label="Dar ordem de guerra">
+    <section id="got-battle-orders" className="battle-surface got-order-panel" aria-label="Dar ordem de guerra">
      <h3>Comando e Disciplina</h3>
      {battle.phase==='siege'&&<div className="got-order-fields">
       <p>Passo 5 · Armas de cerco. Uma ordem dispara até Guerra máquinas;
