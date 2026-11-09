@@ -65,5 +65,5 @@ export type BattleState = Readonly<{
   /** Opcionais: replays legados sem objetivos seguem byte a byte iguais. */
   objective?: TacticalObjective; objectiveProgress?: TacticalObjectiveProgress;
   /** Configuração opt-in. Nenhuma alteração do comportamento de replays anteriores. */
-  aiProfiles?: Readonly<Partial<Record<Side,AiProfile>>>;
+  aiProfiles?: Readonly<Partial<Record<Side,AiProfile|undefined>>>;
 }>;
