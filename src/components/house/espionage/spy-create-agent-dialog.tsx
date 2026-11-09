@@ -100,8 +100,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
     <DialogHeader>
      <DialogTitle><UserRound size={20} style={{display:'inline',verticalAlign:'middle'}}/>
       {' '}Criar espião</DialogTitle>
-     <DialogDescription>O novo agente começa no nível Verde, com Astúcia 3.
-      As melhorias e o retrato são definidos antes de confirmar sua criação.</DialogDescription>
+     <DialogDescription>Escolha nome, Rede e retrato. Melhorias são opcionais.</DialogDescription>
     </DialogHeader>
     <form className="cormyr-creation-form cormyr-creation-form--spy" onSubmit={e=>void submit(e)}>
      {loadingOptions&&<p className="house-caption" role="status">
@@ -117,16 +116,12 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
        placeholder="Ex.: O Corvo" value={name}
        onChange={e=>{requestKey.current=null;setName(e.target.value);}}/>
      </label>
-     <div className="house-ledger cormyr-creation-summary" role="status" aria-label="Vagas disponíveis para criar espiões">
-      <strong>Vagas de espionagem da Casa</strong>
-      <p style={{margin:'6px 0'}}><strong>{totalVacancies}</strong> {totalVacancies===1?'vaga livre':'vagas livres'} para novos agentes.</p>
-      {options?.recruitment.map(slot=><small key={slot.sourceHoldingId}
-       style={{display:'block',marginTop:3}}>
-       {slot.name}: {slot.vacancies} de {slot.capacity} {slot.capacity===1?'vaga':'vagas'} disponíveis.
-      </small>)}
-      <small className="house-caption">Ao confirmar um agente, uma vaga da rede com espaço
-       é ocupada automaticamente. A disponibilidade é recalculada pelo servidor para a próxima criação.</small>
-     </div>
+     {options&&!loadingOptions&&!optionsError&&
+      <p className="cormyr-creation-summary spy-create-vacancy" role="status"
+       aria-label="Vagas disponíveis para criar espiões">
+       <strong>{totalVacancies}</strong> {totalVacancies===1?'vaga disponível':'vagas disponíveis'}
+       {' '}na sua Casa
+      </p>}
      {slots.length>0&&<label className="cormyr-creation-section">
       <span>Rede de origem do agente <span aria-hidden="true">*</span></span>
       <select aria-label="Rede de origem do agente" value={source?.sourceHoldingId??''}
@@ -139,16 +134,23 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
         {slot.name} · {slot.vacancies} {slot.vacancies===1?'vaga livre':'vagas livres'}
        </option>)}
       </select>
-      <small className="house-caption">O agente começa no domínio desta Rede.
-       Escolha outra origem para distribuir seus agentes entre diferentes domínios.</small>
+      <small className="house-caption">O espião começa no domínio da Rede escolhida.</small>
      </label>}
      {sourceHoldingId&&!source&&<p className="house-warning" role="alert">
       A Rede selecionada não tem mais vagas. Escolha outra origem antes de criar.</p>}
      {Boolean(options)&&!loadingOptions&&!optionsError&&!slots.length&&<p className="house-caption" role="status">
       Não há vaga livre nesta Casa. É necessário possuir uma Rede de Espiões
       ativa ou construir uma Rede Ampliada para liberar novos agentes.</p>}
-     <div className="cormyr-creation-section">
-      <strong>Melhorias individuais (opcionais)</strong>
+     <div className="cormyr-creation-section cormyr-creation-portraits">
+      <SpyPortraitPicker portraits={portraits} selected={portraitId}
+       onChange={id=>{if(busy)return;requestKey.current=null;setPortraitId(id);}}/>
+     </div>
+     {portraits.length>0&&!pictureOk&&<small role="status">
+      Escolha uma foto disponível. As imagens em cinza já estão reservadas por outro agente da campanha.</small>}
+     <details className="cormyr-creation-section spy-create-upgrades">
+      <summary>Melhorias opcionais
+       <small>{cost===0?'Nenhuma selecionada':cost+' Riqueza'}</small>
+      </summary>
       {(Object.keys(SPY_AGENT_UPGRADES) as SpyAgentUpgrade[]).map(code=>{
        const u=SPY_AGENT_UPGRADES[code];
        return <label key={code} className="cormyr-creation-choice">
@@ -164,14 +166,10 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
        {data?.availableWealth!==null&&data?.availableWealth!==undefined&&
         <small>· disponível: {data.availableWealth}</small>}
       </span>
-      {!enoughWealth&&<small role="alert">Riqueza insuficiente para as melhorias escolhidas.</small>}
-     </div>
-     <div className="cormyr-creation-section cormyr-creation-portraits">
-      <SpyPortraitPicker portraits={portraits} selected={portraitId}
-       onChange={id=>{if(busy)return;requestKey.current=null;setPortraitId(id);}}/>
-     </div>
-     {portraits.length>0&&!pictureOk&&<small role="status">
-      Escolha uma foto disponível. As imagens em cinza já estão reservadas por outro agente da campanha.</small>}
+     </details>
+     {!enoughWealth&&<p role="alert" className="house-warning">
+      Riqueza insuficiente. Abra Melhorias opcionais e remova uma compra.
+     </p>}
 
      {error&&<p role="alert" className="house-warning">{error}</p>}
      <DialogFooter className="cormyr-creation-footer">

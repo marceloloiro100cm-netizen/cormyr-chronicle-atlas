@@ -73,7 +73,7 @@ describe('Espionagem · Iniciar missão registra ordem real, não simulação',(
   expect(sql).not.toContain('spy_resolve_agent_mission(');
   const btn=read('src/components/house/espionage/spy-submit-house-mission.tsx');
   expect(btn).toContain('Missão iniciada. O espião está em viagem');
-  expect(btn).toContain('A missão começa imediatamente');
+  expect(btn).toContain('A missão começa após confirmar.');
   expect(btn).not.toContain('homologação da rota pelo Narrador');
  });
  it('após confirmação registra comprovante e recarrega elenco e rota',()=>{

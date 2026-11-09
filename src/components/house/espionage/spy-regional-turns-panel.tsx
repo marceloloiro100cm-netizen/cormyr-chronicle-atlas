@@ -16,6 +16,10 @@ import {SpyLocalHouseMap} from './spy-local-house-map';
 import {SPY_NOBLE_DETAIL_MAPS} from '@/lib/espionage/spy-noble-detail-maps';
 import {SpyMissionOddsCard} from './spy-mission-odds-card';
 import {SpySubmitHouseMission} from './spy-submit-house-mission';
+import {SPY_INTELLIGENCE_OBJECTIVES,type SpyIntelligenceObjective}
+ from '@/lib/espionage/spy-intelligence-rules';
+import {spyPlayerJourneyStep}
+ from '@/lib/espionage/spy-player-journey';
 import './spy-mission-planner.css';
 
 /** Fluxo único de prévia: espião REAL -> região -> Casa -> resumo e mapa.
@@ -37,6 +41,7 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
  const [assetId,setAssetId]=useState('');
  const [destination,setDestination]=useState('');
  const [targetHouseId,setTargetHouseId]=useState('');
+ const [objective,setObjective]=useState<SpyIntelligenceObjective>('house_resources');
  const [submitted,setSubmitted]=useState<{
   operationId:string;agentName:string;targetName:string;
  }|null>(null);
@@ -72,6 +77,7 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
  const chooseRegion=(id:string)=>{
   setDestination(id);
   setTargetHouseId('');
+  setSubmitted(null);
  };
  const routeError={
   unknown_destination:'A região de destino não está cadastrada.',
@@ -82,13 +88,18 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
  };
  const allSelected=Boolean(selected&&destination&&selectedTargetHouse);
  const originName=originRegion?name(originRegion):'Localização não confirmada';
+ const playerStep=spyPlayerJourneyStep({
+  hasAgent:Boolean(selected),agentAvailable:Boolean(agentAvailable),
+  hasRegion:Boolean(destination),hasTarget:Boolean(selectedTargetHouse),
+  routeReady:ready,
+ });
 
  return <section className="house-panel spy-mission-planner"
   aria-label="Planejador de missão de espionagem">
   <header className="spy-planner-heading">
    <p className="campaign-eyebrow">ESTRATÉGIA DE INTELIGÊNCIA</p>
    <h3>Nova missão de espionagem</h3>
-   <p>Escolha o espião e a Casa-alvo. A região atual já aparece selecionada; você pode mudá-la.</p>
+   <p>Escolha seu agente, o destino e o que deseja descobrir. Depois, confirme a missão.</p>
   </header>
 
   {isPending&&<p role="status" className="spy-planner-feedback">
@@ -103,8 +114,10 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
    {agents.filter(a=>a.status==='available').length} disponíveis ·
    {' '}{agents.filter(a=>a.status!=='available'&&a.status!=='retired').length} indisponíveis
   </p>}
-  {data&&<div className="spy-planner-steps">
-   <label className="spy-planner-step">
+  {data&&<div className="spy-planner-steps" role="group"
+   aria-label="Planeje sua missão em três etapas">
+   <label className="spy-planner-step" data-active={playerStep==='agent'}
+    aria-current={playerStep==='agent'?'step':undefined}>
     <span className="spy-planner-step-title"><b>1</b> Espião</span>
     <select aria-label="Agente da missão" value={assetId}
      onChange={e=>{
@@ -112,6 +125,7 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
       setAssetId(e.target.value);
       setDestination(agent?.status==='available'?agent.currentRegion??'':'');
       setTargetHouseId('');
+      setSubmitted(null);
      }}>
      <option value="">Selecione um espião</option>
      {agents.filter(a=>a.status==='available').map(a=><option key={a.id} value={a.id}>
@@ -120,34 +134,54 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
     </select>
     {selected&&<small>Origem: {originName}</small>}
    </label>
-   <label className="spy-planner-step">
-    <span className="spy-planner-step-title"><b>2</b> Região de destino</span>
-    <select aria-label="Região de destino" value={destination}
-     disabled={!agentAvailable||!originRegion}
-     onChange={e=>chooseRegion(e.target.value)}>
-     <option value="">Selecione uma região</option>
-     {regions.map(region=><option key={region.regionId}
-      value={region.regionId}>{region.regionName}</option>)}
-    </select>
-    {selected&&<small>{!originRegion?'Localização do espião pendente.':
-     destination===originRegion?'Região atual selecionada.':'Viagem a partir de '+originName}</small>}
-   </label>
-   <label className="spy-planner-step">
-    <span className="spy-planner-step-title"><b>3</b> Casa a investigar</span>
-    <select aria-label="Casa nobre alvo"
-     value={houseChoices.some(h=>h.id===targetHouseId)?targetHouseId:''}
-     disabled={!destination||targetsQuery.isPending||targetsQuery.isError}
-     onChange={e=>setTargetHouseId(e.target.value)}>
-     <option value="">Selecione a Casa</option>
-     {houseChoices.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
-    </select>
+   <div className="spy-planner-step" data-active={playerStep==='destination'}
+    aria-current={playerStep==='destination'?'step':undefined}>
+    <span className="spy-planner-step-title"><b>2</b> Destino</span>
+    <label className="spy-planner-field">
+     <span>Região</span>
+     <select aria-label="Região de destino" value={destination}
+      disabled={!agentAvailable||!originRegion}
+      onChange={e=>chooseRegion(e.target.value)}>
+      <option value="">Selecione uma região</option>
+      {regions.map(region=><option key={region.regionId}
+       value={region.regionId}>{region.regionName}</option>)}
+     </select>
+    </label>
+    <label className="spy-planner-field">
+     <span>Casa-alvo</span>
+     <select aria-label="Casa nobre alvo"
+      value={houseChoices.some(h=>h.id===targetHouseId)?targetHouseId:''}
+      disabled={!destination||targetsQuery.isPending||targetsQuery.isError}
+      onChange={e=>{setTargetHouseId(e.target.value);setSubmitted(null);}}>
+      <option value="">Selecione a Casa</option>
+      {houseChoices.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+     </select>
+    </label>
     {destination&&<small>{targetsQuery.isPending?'Carregando Casas…':
      targetsQuery.isError?'Casas indisponíveis.':
      houseChoices.length===0?'Nenhuma outra Casa homologada.':
      houseChoices.length+' Casas disponíveis.'}</small>}
+   </div>
+   <label className="spy-planner-step" data-active={playerStep==='objective'}
+    aria-current={playerStep==='objective'?'step':undefined}>
+    <span className="spy-planner-step-title"><b>3</b> Missão</span>
+    <select aria-label="Objetivo da espionagem" value={objective}
+     disabled={!selectedTargetHouse||!agentAvailable||!ready}
+     onChange={e=>{
+      setObjective(e.target.value as SpyIntelligenceObjective);
+      setSubmitted(null);
+     }}>
+     {SPY_INTELLIGENCE_OBJECTIVES.map(item=><option key={item.id} value={item.id}>
+      {item.label}
+     </option>)}
+    </select>
+    <small>{SPY_INTELLIGENCE_OBJECTIVES.find(item=>item.id===objective)?.description}</small>
    </label>
   </div>}
 
+  {data&&selected&&!agentAvailable&&<p role="alert" className="spy-planner-feedback">
+   Este espião não está disponível. Selecione outro agente para iniciar uma missão.
+  </p>}
   {data&&targetsQuery.isError&&<div className="spy-planner-feedback" role="alert">
    A lista oficial de Casas está indisponível nesta sessão.
    <Button type="button" variant="outline" size="sm"
@@ -177,14 +211,14 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
     originRegion={originRegion}
     includeReturn={false} returnRounds={null}/>
    {houseStage==='requires_region_arrival'&&<p className="spy-planner-feedback" role="note">
-    O espião poderá investigar {selectedTargetHouse.name} somente após chegar
-    fisicamente a {name(destination)}. Este planejamento não o desloca automaticamente.
+    A missão inicia a viagem até {name(destination)}. O agente começará
+    a investigar {selectedTargetHouse.name} após a chegada.
    </p>}
    {plan&&!ready&&<p className="spy-planner-feedback" role="status">
     {routeError[plan.status]}
    </p>}
    <details className="spy-planner-map-details">
-    <summary>Ver trajeto no mapa</summary>
+    <summary>Ver trajeto no mapa (opcional)</summary>
     <div className="spy-planner-map-wrap">
     <div className="spy-planner-route-caption">
      <strong>Trajeto da missão</strong>
@@ -202,10 +236,25 @@ export function SpyRegionalTurnsPanel({houseId}:{houseId:string;admin?:boolean})
       onSelect={chooseRegion}/>}
     </div>
    </details>
+   {ready&&agentAvailable&&originRegion&&selectedTargetHouse&&
+    <div className="spy-planner-brief" aria-label="Resumo da missão">
+     <strong>Resumo da missão</strong>
+     <span>{selected.codename} → {selectedTargetHouse.name}</span>
+     <span>{SPY_INTELLIGENCE_OBJECTIVES.find(item=>item.id===objective)?.label}
+      {' '}· {plan.travelRounds+1} {plan.travelRounds===0?'désdia':'désdias'}
+      {' '}({(plan.travelRounds+1)*10} dias ordinários)</span>
+     <span>{forecast
+      ?'Conclusão estimada: '+formatDate(forecast.investigationEndsDateKey)
+      :'Aguardando a previsão oficial do HUB'}</span>
+    </div>}
    {ready&&agentAvailable&&originRegion&&
     <div className="spy-planner-start-row">
      <SpySubmitHouseMission
-      key={selected.id+':'+selectedTargetHouse.id+':'+destination}
+      key={selected.id+':'+selectedTargetHouse.id+':'+destination+':'+objective}
+      objective={objective}
+      departureDate={forecast?.officialDateKey??null}
+      arrivalDate={forecast?.arrivesAtTargetDateKey??null}
+      completionDate={forecast?.investigationEndsDateKey??null}
       houseId={houseId} agentId={selected.id} agentName={selected.codename}
       originRegion={originRegion}
       destinationRegion={destination} destinationName={name(destination)}

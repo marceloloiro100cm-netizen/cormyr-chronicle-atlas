@@ -2,7 +2,7 @@ import {describe,it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {newHouseState,type Holding} from '@/lib/house/types';
 import {calculateSpyDefense,spyDiscoveryBaseDifficulty,SPY_HOLDING_ID_SET} from '@/lib/espionage/spy-defense';
-import {spyMissionProgress,pendingMission} from '@/components/house/espionage/spy-house-management';
+import {spyMissionProgress,pendingMission,latestCompletedSpyMission} from '@/components/house/espionage/spy-house-management';
 import {spyHouseTargetStage} from '@/lib/espionage/spy-target-stages';
 import type {SpyRegionalAgent} from '@/lib/espionage/region-turns';
 import {spyRegionalBaseline} from '@/lib/espionage/public-strategy';
@@ -164,6 +164,19 @@ describe('Tabela de gerenciamento · missão e prazos',()=>{
   missionKind:'regional_recon',status:'traveling',
   travelDays:10,arrivalKey:'1524-08-10',createdAt:'2026-11-03T00:00:00+00:00',
  };
+ it('última missão concluída permanece visível sem confundir conclusão com sucesso',()=>{
+  const one={...operation,id:'33333333-3333-4333-8333-333333333333',
+   status:'completed' as const,createdAt:'2026-11-01T00:00:00Z'};
+  const newest={...operation,id:'44444444-4444-4444-8444-444444444444',
+   status:'completed' as const,createdAt:'2026-11-02T00:00:00Z'};
+  const traveling={...operation,status:'traveling' as const,
+   createdAt:'2026-11-03T00:00:00Z'};
+  expect(latestCompletedSpyMission([one,newest,traveling],operation.assetId)?.id)
+   .toBe(newest.id);
+  expect(latestCompletedSpyMission([traveling],operation.assetId)).toBeNull();
+  expect(latestCompletedSpyMission([newest],'44444444-4444-4444-8444-444444444445'))
+   .toBeNull();
+ });
  it('missão cancelada não aparece como atual e agente permanece livre',()=>{
   const ended={...operation,status:'cancelled' as const};
   expect(pendingMission([ended],ended.assetId)).toBeNull();

@@ -54,6 +54,16 @@ type SpyMissionProgress={
  mission:string;travel:string;remaining:string;
  arrival?:string;departure?:string;end?:string;
 };
+/** Apenas uma informação resumida, visível ao dono da Casa.
+ * Não confunde missão concluída com missão bem-sucedida.
+ */
+export function latestCompletedSpyMission(
+ operations:SpyManagement['operations'],agentId:string
+):Mission|null{
+ return operations.filter(o=>o.assetId===agentId&&o.status==='completed')
+  .sort((a,b)=>b.createdAt.localeCompare(a.createdAt))[0]??null;
+}
+
 export function spyMissionProgress(
  operation:Mission|null,officialDate:string|null
 ):SpyMissionProgress{
@@ -123,8 +133,8 @@ export function SpyDefensePanel({state,houseId}:{state:HouseState;houseId:string
  </section>;
 }
 
-function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,availableWealth,portraits}:{agent:SpyManagement['agents'][number];
- operation:Mission|null;houseId:string;canEdit:boolean;officialDate:string|null;
+function AgentRow({agent,operation,lastCompleted,houseId,canEdit,officialDate,houseVersion,availableWealth,portraits}:{agent:SpyManagement['agents'][number];
+ operation:Mission|null;lastCompleted:Mission|null;houseId:string;canEdit:boolean;officialDate:string|null;
  houseVersion:number;availableWealth:number|null;portraits:SpyManagement['portraits']}){
  const [editing,setEditing]=useState(false),[name,setName]=useState(agent.codename);
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -156,7 +166,14 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
  const stage=operation?.status==='traveling'?0:
   operation?.status==='operating'?1:
   operation?.status==='pending_narrator_review'?2:-1;
- const stages=['Viagem','Investigação','Narrador'];
+ const stages=['Viagem','Investigação','Narrador','Concluída'];
+ const nextStep=operation?.status==='traveling'
+  ?'Próxima etapa: chegada e investigação'
+  :operation?.status==='operating'
+   ?'Próxima etapa: avaliação pelo Narrador'
+   :operation?.status==='pending_narrator_review'
+    ?'Próxima etapa: resultado do Narrador'
+    :null;
  return <article className="house-card spy-agent-card">
   <header className="spy-agent-card-heading">
    <div className="spy-agent-identity">
@@ -209,7 +226,11 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
      aria-current={index===stage?'step':undefined}
      data-progress={index<stage?'done':index===stage?'current':'upcoming'}>{item}</li>)}
    </ol>}
+   {nextStep&&<p className="spy-agent-next-step-label">{nextStep}</p>}
    <p className="spy-agent-next-step" role="status">{progress.remaining}</p>
+   {progress.end&&<p className="spy-agent-finish-date">
+    Conclusão prevista: <strong>{formatDate(progress.end)}</strong>
+   </p>}
    {timelineOutOfSync&&<div className="spy-mission-sync-alert" role="status">
     <span>O prazo chegou. Confirme se o HUB atualizou a etapa da missão.</span>
     <Button type="button" size="sm" variant="outline"
@@ -231,6 +252,12 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
     </dl>
    </details>
   </section>}
+  {!operation&&lastCompleted&&<p className="spy-agent-last-mission" role="status">
+   <strong>Última missão: Concluída</strong>
+   <span>{missionKinds[lastCompleted.missionKind]??'Espionagem'}
+    {' '}· {lastCompleted.targetHouseName??lastCompleted.targetId}</span>
+   <small>Consulte o histórico para verificar o resultado.</small>
+  </p>}
   <details className="spy-agent-equipment">
    <summary>Equipamentos e melhorias
     <small>{Number(agent.forgedDocuments)+Number(agent.aceInTheHole)} de 2 adquiridos</small>
@@ -268,7 +295,8 @@ export function SpyAgentManagement({houseId,canEdit,admin=false}:{houseId:string
   {isPending&&<p role="status">Consultando os agentes da Casa…</p>}
   {isError&&<div role="alert" className="house-ledger" style={{padding:10}}>
    <p style={{margin:0}}>Não foi possível carregar os agentes desta Casa.</p>
-   <small>Confirme o acesso à Casa ou atualize o cadastro.</small>
+   <Button type="button" variant="outline" size="sm"
+    onClick={()=>void refetch()}>Tentar novamente</Button>
   </div>}
   {data&&<p className="spy-agent-overview" role="status">
    <strong>{data.agents.filter(a=>a.status==='available').length}</strong> disponíveis
@@ -283,7 +311,8 @@ export function SpyAgentManagement({houseId,canEdit,admin=false}:{houseId:string
      canEdit={canEdit} officialDate={officialDate}
      houseVersion={data.houseVersion} availableWealth={data.availableWealth}
      portraits={data.portraits}
-     operation={pendingMission(data.operations,agent.id)}/>)}
+     operation={pendingMission(data.operations,agent.id)}
+     lastCompleted={latestCompletedSpyMission(data.operations,agent.id)}/>)}
   </div>}
   {data&&!data.agents.some(agent=>agent.status!=='retired')&&
    <p className="house-caption">Esta Casa ainda não possui espiões ativos.
