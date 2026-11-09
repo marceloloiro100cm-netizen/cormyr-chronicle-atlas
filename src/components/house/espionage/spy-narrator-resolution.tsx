@@ -68,12 +68,19 @@ function NarratorDecision({houseId,operation,agent}:{
     :status==='no_success_award'&&response.outcome==='mission_success'
     ?'Missão bem-sucedida sem prêmio registrado. Verifique a integridade da operação.'
     :'');
-   await Promise.all([
-    queryClient.invalidateQueries({queryKey:['spy-house-management',houseId]}),
-    queryClient.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
-    queryClient.invalidateQueries({queryKey:['spy-dossiers']}),
-   ]);
-  }catch{setError('Não foi possível resolver. Exige missão autorizada, viagem concluída e confirmação de guardas/cadeia quando não houver ficha operacional.');}
+   // Uma falha de atualização do cache NÃO desfaz o resultado já gravado.
+   // Nunca dizer ao Narrador que a missão falhou após a RPC confirmar êxito.
+   try{
+    await Promise.all([
+     queryClient.invalidateQueries({queryKey:['spy-house-management',houseId]}),
+     queryClient.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
+     queryClient.invalidateQueries({queryKey:['spy-dossiers']}),
+    ]);
+   }catch{
+    setDossierWarning(previous=>previous||
+     'Missão salva, mas a tela não atualizou. Use Atualizar dossiês antes de repetir a operação.');
+   }
+  }catch{setError('Não foi possível confirmar a resolução. Recarregue a missão e tente novamente com a mesma solicitação.');}
   finally{setBusy(false);}
  };
  return <form className="house-ledger" onSubmit={e=>void submit(e)}
