@@ -143,6 +143,10 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
  };
  const status=agentStatuses[agent.status]??agent.status;
  const hasActiveMission=Boolean(operation&&!['completed','cancelled'].includes(operation.status));
+ const stage=operation?.status==='traveling'?0:
+  operation?.status==='operating'?1:
+  operation?.status==='pending_narrator_review'?2:-1;
+ const stages=['Viagem','Investigação','Narrador'];
  return <article className="house-card spy-agent-card">
   <header className="spy-agent-card-heading">
    <div className="spy-agent-identity">
@@ -155,7 +159,7 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
       'Localização não confirmada'}</small>
     </div>
    </div>
-   <span className="spy-agent-state">{status}</span>
+   <span className="spy-agent-state" data-status={agent.status}>{status}</span>
   </header>
   {canEdit&&!editing&&<Button type="button" size="sm" variant="outline"
    className="spy-agent-rename" onClick={()=>{setName(agent.codename);setEditing(true);}}>
@@ -179,7 +183,7 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
   </div>
   <div className="spy-agent-progress">
    <small>{agent.toNextRank===0?'Graduação máxima alcançada':
-    agent.toNextRank+' sucesso(s) até a próxima promoção'}</small>
+    (3-agent.toNextRank)+'/3 sucessos na graduação · faltam '+agent.toNextRank}</small>
    <div role="progressbar" aria-label={'Progresso de '+agent.codename}
     aria-valuenow={agent.toNextRank===0?3:3-agent.toNextRank}
     aria-valuemin={0} aria-valuemax={3}>
@@ -190,15 +194,24 @@ function AgentRow({agent,operation,houseId,canEdit,officialDate,houseVersion,ava
    <h5>Missão atual</h5>
    <strong>{progress.mission}</strong>
    <small>{missionStatuses[operation.status]??operation.status}</small>
-   <dl>
-    <dt>Tempo de viagem</dt><dd>{progress.travel}</dd>
-    {progress.departure&&<><dt>Partida</dt>
-     <dd>{formatDate(progress.departure)}</dd></>}
-    {progress.arrival&&<><dt>Chegada prevista</dt>
-     <dd>{formatDate(progress.arrival)}</dd></>}
-    <dt>Conclusão prevista</dt>
-    <dd>{progress.remaining}{progress.end&&<small>{formatDate(progress.end)}</small>}</dd>
-   </dl>
+   {stage>=0&&<ol className="spy-mission-stages" aria-label="Etapas da missão">
+    {stages.map((item,index)=><li key={item}
+     aria-current={index===stage?'step':undefined}
+     data-progress={index<stage?'done':index===stage?'current':'upcoming'}>{item}</li>)}
+   </ol>}
+   <p className="spy-agent-next-step" role="status">{progress.remaining}</p>
+   <details className="spy-agent-timeline-details">
+    <summary>Ver datas e percurso</summary>
+    <dl>
+     <dt>Tempo de viagem</dt><dd>{progress.travel}</dd>
+     {progress.departure&&<><dt>Partida</dt>
+      <dd>{formatDate(progress.departure)}</dd></>}
+     {progress.arrival&&<><dt>Chegada prevista</dt>
+      <dd>{formatDate(progress.arrival)}</dd></>}
+     <dt>Conclusão prevista</dt>
+     <dd>{progress.end?formatDate(progress.end):progress.remaining}</dd>
+    </dl>
+   </details>
   </section>}
   <details className="spy-agent-equipment">
    <summary>Equipamentos e melhorias
@@ -237,6 +250,13 @@ export function SpyAgentManagement({houseId,canEdit,admin=false}:{houseId:string
    <p style={{margin:0}}>Não foi possível carregar os agentes desta Casa.</p>
    <small>Confirme o acesso à Casa ou atualize o cadastro.</small>
   </div>}
+  {data&&<p className="spy-agent-overview" role="status">
+   <strong>{data.agents.filter(a=>a.status==='available').length}</strong> disponíveis
+   <span aria-hidden="true"> · </span>
+   <strong>{data.agents.filter(a=>['assigned','traveling','operating','returning','pending_review'].includes(a.status)).length}</strong> em missão
+   <span aria-hidden="true"> · </span>
+   <strong>{data.agents.filter(a=>!['available','assigned','traveling','operating','returning','pending_review','retired'].includes(a.status)).length}</strong> indisponíveis
+  </p>}
   {data&&<div className="spy-agent-grid">
    {data.agents.filter(agent=>agent.status!=='retired').map(agent=>
     <AgentRow key={agent.id} houseId={houseId} agent={agent}
