@@ -59,6 +59,11 @@ jobs:
         run: bunx vitest run src/test/espionage-r5-lote1-lifecycle.test.ts
       - name: R5 Lote 2 — player journey and safe mobile mission planning
         run: bunx vitest run src/test/espionage-r5-lote2-player-journey.test.ts
+      - name: R5 Lote 3 — narrator workflow, priority queue and private dossiers
+        run: >-
+          bunx vitest run
+          src/test/espionage-r5-lote3-narrator-ux.test.ts
+          src/test/espionage-r5-lote3-privacy.test.ts
       - name: Scoped TypeScript verification (spy module and integration)
         run: bunx tsc -p tsconfig.espionage-live.json --noEmit
       - name: Production build without deploying
