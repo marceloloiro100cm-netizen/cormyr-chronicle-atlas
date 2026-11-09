@@ -51,6 +51,8 @@ jobs:
           bunx vitest run
           src/test/espionage-r4-real-server-actions.test.ts
           src/test/espionage-r4-ux-flow.test.ts
+      - name: Validate authorized real-session acceptance runner (syntax only; never write)
+        run: node --check scripts/espionage-authenticated-acceptance.mjs
       - name: Scoped TypeScript verification (spy module and integration)
         run: bunx tsc -p tsconfig.espionage-live.json --noEmit
       - name: Production build without deploying
