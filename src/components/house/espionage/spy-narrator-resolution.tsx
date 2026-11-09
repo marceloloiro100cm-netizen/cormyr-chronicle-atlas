@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useRef,useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {Gavel} from 'lucide-react';
@@ -39,26 +39,48 @@ function NarratorDecision({houseId,operation,agent}:{
  const [reason,setReason]=useState('');
  const [busy,setBusy]=useState(false);
  const [outcome,setOutcome]=useState('');
+ const [dossierWarning,setDossierWarning]=useState('');
  const [error,setError]=useState('');
+ // Reusar a mesma chave após falha de rede evita dupla homologação.
+ const requestKey=useRef<string|null>(null);
  const submit=async(e:React.FormEvent)=>{
   e.preventDefault();if(busy)return;
-  setBusy(true);setError('');setOutcome('');
+  setBusy(true);setError('');setOutcome('');setDossierWarning('');
+  const key=requestKey.current??crypto.randomUUID();
+  requestKey.current=key;
   try{
    const response=await action({data:{
     operationId:operation.id,roll,modifier,discovered,
     guardOverride:guard==='unknown'?null:guard==='yes',
     prisonOverride:prison==='unknown'?null:prison==='yes',
     expectedAgentVersion:agent.version,
-    requestKey:crypto.randomUUID(),reason,
+    requestKey:key,reason,
    }});
+   requestKey.current=null;
    setOutcome('Resultado: '+(outcomeLabels[response.outcome??response.status]??'Missão resolvida')+
     ' · '+response.rank+' (Astúcia '+response.cunning+'; '+response.cunning+' dados de seis faces)'+
     (response.promoted?' · promovido automaticamente':''));
-   await Promise.all([
-    queryClient.invalidateQueries({queryKey:['spy-house-management',houseId]}),
-    queryClient.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
-   ]);
-  }catch{setError('Não foi possível resolver. Exige missão autorizada, viagem concluída e confirmação de guardas/cadeia quando não houver ficha operacional.');}
+   const status=response.intelligenceStatus;
+   setDossierWarning(status==='waiting_catalog'
+    ?'Missão homologada, mas os segredos aguardam fonte oficial. Reprocesse na fila de Dossiês.'
+    :status==='retry_required'
+    ?'Missão homologada, mas a atualização do dossiê não foi confirmada. Consulte e reprocesse a pendência.'
+    :status==='no_success_award'&&response.outcome==='mission_success'
+    ?'Missão bem-sucedida sem prêmio registrado. Verifique a integridade da operação.'
+    :'');
+   // Uma falha de atualização do cache NÃO desfaz o resultado já gravado.
+   // Nunca dizer ao Narrador que a missão falhou após a RPC confirmar êxito.
+   try{
+    await Promise.all([
+     queryClient.invalidateQueries({queryKey:['spy-house-management',houseId]}),
+     queryClient.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
+     queryClient.invalidateQueries({queryKey:['spy-dossiers']}),
+    ]);
+   }catch{
+    setDossierWarning(previous=>previous||
+     'Missão salva, mas a tela não atualizou. Use Atualizar dossiês antes de repetir a operação.');
+   }
+  }catch{setError('Não foi possível confirmar a resolução. Recarregue a missão e tente novamente com a mesma solicitação.');}
   finally{setBusy(false);}
  };
  return <form className="house-ledger" onSubmit={e=>void submit(e)}
@@ -105,6 +127,7 @@ function NarratorDecision({houseId,operation,agent}:{
    <Gavel size={16}/>{busy?'Resolvendo…':'Homologar resultado e atualizar agente'}
   </Button>
   {outcome&&<p role="status">{outcome}</p>}
+  {dossierWarning&&<p role="alert" className="house-warning">{dossierWarning}</p>}
   {error&&<p role="alert">{error}</p>}
  </form>;
 }
