@@ -25,6 +25,8 @@ describe('R4 · jornada de espionagem utilizável numa sessão real',()=>{
   const src=file('src/components/house/espionage/spy-narrator-operations-center.tsx');
   const resolution=file('src/components/house/espionage/spy-narrator-resolution.tsx');
   expect(src).toContain('Resolver agora');
+  expect(src).toContain('Concluir dossiê');
+  expect(src).toContain('retrySpyIntelligence');
   expect(src).toContain('enabled:Boolean(selectedReview)');
   expect(src).toContain('readSpyHouseManagementBrowser(selectedReview!.ownerHouseId)');
   expect(src).toContain('<SpyNarratorResolutionPanel data={houseQuery.data}');
