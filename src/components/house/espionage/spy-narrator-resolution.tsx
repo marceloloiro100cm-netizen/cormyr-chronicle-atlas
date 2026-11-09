@@ -166,7 +166,7 @@ export function SpyNarratorResolutionPanel({data,operationId,onResolved}:{
    {pending.map(o=>{
     const agent=data.agents.find(a=>a.id===o.assetId);
     return agent?<NarratorDecision key={o.id} houseId={data.houseId}
-     operation={o} agent={agent} onResolved={onResolved}/>:null;
+     operation={o} agent={agent} {...(onResolved?{onResolved}:{})}/>:null;
    })}
   </div>
  </section>;
