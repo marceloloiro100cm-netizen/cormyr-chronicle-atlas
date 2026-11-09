@@ -61,7 +61,7 @@ BEGIN
        WHERE house_id='r5-l1-source' AND action='spy_agent_upgrade')<>1
  THEN RAISE EXCEPTION 'R5 melhoria não debitada/registrada atomicamente'; END IF;
  SELECT public.spy_create_agent('r5-l1-source','r5-network','Agente R5','r5-portrait-only-rollback',
-  ARRAY[]::text[],'a2a2a2a2-a2a2-42a2-82a2-a2a2a2a2a2a2') INTO v_retry;
+  ARRAY['forged_documents']::text[],'a2a2a2a2-a2a2-42a2-82a2-a2a2a2a2a2a2') INTO v_retry;
  IF v_retry->>'alreadyApplied'<>'true' OR (v_retry->>'id')::uuid<>v_agent
   OR (SELECT count(*) FROM public.spy_assets WHERE owner_house_id='r5-l1-source')<>1
  THEN RAISE EXCEPTION 'R5 criação duplicada em repetição da chave'; END IF;
