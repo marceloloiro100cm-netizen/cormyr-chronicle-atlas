@@ -87,3 +87,30 @@
  body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-briefing>div{break-inside:avoid;color:#111!important}
  body.spy-dossier-print-active .spy-dossier-sheet .spy-dossier-unknown{color:#555!important}
 }
+
+/* R5 Lote 3 — cobertura visível sem expor valores desconhecidos. */
+.spy-dossier-last-confirmed{display:block;margin-top:6px;font-size:12px;
+ color:var(--muted-foreground);line-height:1.5}
+.spy-dossier-tabs button{min-height:48px;overflow-wrap:anywhere;white-space:normal}
+.spy-dossier-card{min-height:48px;overflow-wrap:anywhere}
+.spy-dossier-admin-table td[data-label]{min-width:0;overflow-wrap:anywhere}
+.spy-dossier-admin-table button,.spy-dossier-pending button{min-height:44px}
+.spy-dossier-report-tools button{min-height:48px}
+@media(max-width:700px){
+ .spy-dossier-admin-table-wrap{overflow:visible}
+ .spy-dossier-admin-table,.spy-dossier-admin-table tbody,
+ .spy-dossier-admin-table tr,.spy-dossier-admin-table td{display:block;width:100%}
+ .spy-dossier-admin-table thead{display:none}
+ .spy-dossier-admin-table tr{border:1px solid var(--border);
+  border-radius:9px;margin-bottom:10px;padding:9px;overflow-wrap:anywhere}
+ .spy-dossier-admin-table td{display:flex;align-items:baseline;
+  justify-content:space-between;gap:10px;padding:8px 3px}
+ .spy-dossier-admin-table td::before{
+  content:attr(data-label);font-size:12px;font-weight:700;flex:0 0 40%;
+  color:var(--muted-foreground)}
+ .spy-dossier-admin-table td[data-label=Ação] button{width:100%;min-height:48px}
+ .spy-dossier-sheet,.spy-dossier-card,.spy-dossier-admin-form{min-width:0}
+ .spy-dossier-admin-form button,.spy-dossier-report-tools button{min-height:48px}
+ .spy-dossier-tabs{display:grid;grid-template-columns:minmax(0,1fr)}
+ .spy-dossier-tabs button{min-width:0;text-align:center}
+}

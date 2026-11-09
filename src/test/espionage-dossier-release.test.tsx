@@ -53,11 +53,11 @@ describe('Dossiês · contrato visual do jogador e ausência de inventário tota
  it('separa Exército e Posses em abas e nunca informa total real',async()=>{
   state.read.mockResolvedValue([dossier]);mount();
   await screen.findAllByText('Casa Harcourt');
-  fireEvent.click(screen.getByRole('button',{name:'Exército'}));
+  fireEvent.click(screen.getByRole('button',{name:/^Exército \(1\)$/}));
   expect(screen.getByText('Guarda de Harcourt')).toBeInTheDocument();
   expect(screen.getByText('Força registrada: 100')).toBeInTheDocument();
   expect(screen.getByText(/quantidade real de unidades militares/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button',{name:'Posses'}));
+  fireEvent.click(screen.getByRole('button',{name:/^Posses \(1\)$/}));
   expect(screen.getByText('Castelo de Harcourt')).toBeInTheDocument();
   expect(screen.queryByText('Guarda de Harcourt')).toBeNull();
   expect(screen.getByText(/quantidade real de posses/)).toBeInTheDocument();
