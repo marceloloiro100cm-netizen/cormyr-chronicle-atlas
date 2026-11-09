@@ -23,6 +23,7 @@ export function spyPlayerMissionSummary(input:{
 }){
  const duration=input.travelRounds===null?null:input.travelRounds+1;
  return {
+  objective:input.objective,
   durationDesdias:duration,
   durationOrdinaryDays:duration===null?null:duration*10,
   travelDesdias:input.travelRounds,
