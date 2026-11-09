@@ -34,8 +34,9 @@ async function isTrue(client,func,label){
  if(r.error)throw new Error(label+': RPC de autorização indisponível.');
  return r.data===true;
 }
-async function rows(client,table){
- const r=await client.from(table).select('id').limit(60);
+async function rows(client,table,column='id'){
+ // battle_house_roster_imports tem chave source_key, não coluna id.
+ const r=await client.from(table).select(column).limit(60);
  if(r.error)throw new Error(table+': RLS/SELECT indisponível.');
  return r.data??[];
 }
@@ -60,6 +61,22 @@ try{
  ]);
  if(playerBattles.length>0)
   throw new Error('P0: jogador consegue ler sessões administrativas.');
+
+ // Prova positiva do isolamento em produção: não depende de sessões de
+ // batalha vazias. Nunca copia para o log nomes, IDs ou dados privados.
+ const [adminMonsters,playerMonsters,adminRoster,playerRoster]=await Promise.all([
+  rows(narrator,'battle_dnd_cormyr_monsters'),
+  rows(player,'battle_dnd_cormyr_monsters'),
+  rows(narrator,'battle_house_roster_imports','source_key'),
+  rows(player,'battle_house_roster_imports','source_key'),
+ ]);
+ if(playerMonsters.length>0||playerRoster.length>0)
+  throw new Error('P0: jogador consegue ler catálogo ou tropas privadas.');
+ if(process.env.BATTLE_E2E_REQUIRE_PRIVATE_FIXTURE==='true'&&
+   (adminMonsters.length===0||adminRoster.length===0))
+  throw new Error('P0: faltam registros privados de referência para comprovar RLS.');
+ if(adminMonsters.length>0&&adminRoster.length>0)
+  process.stdout.write('P0: catálogo e tropas privados: Narrador lê e jogador não lê.\\n');
  const adminSet=new Set(adminInvites.map(x=>x.id));
  if(playerInvites.some(x=>!adminSet.has(x.id)))
   throw new Error('P0: convocações do jogador não constam no escopo do Narrador.');
@@ -70,5 +87,10 @@ try{
  if(adminInvites.length===0)
   process.stdout.write('P0: tabela de convocações vazia; teste cruzado requer convites fictícios de homologação.\\n');
 }finally{
- await Promise.allSettled([narrator.auth.signOut(),player.auth.signOut()]);
+ // signOut() sem scope revoga todas as sessões do usuário em outros dispositivos!
+ // Encerrar exclusivamente os dois tokens temporários emitidos por este teste.
+ await Promise.allSettled([
+  narrator.auth.signOut({scope:'local'}),
+  player.auth.signOut({scope:'local'}),
+ ]);
 }
