@@ -23,7 +23,8 @@ describe('Espionagem · interface renovada e imagem do Narrador',()=>{
  });
  it('oferece vagas totais sem seleção manual de rede e recarrega após criar',()=>{
   const s=source('src/components/house/espionage/spy-create-agent-dialog.tsx');
-  expect(s).toContain('const source=slots[0]');
+  expect(s).toContain('sourceHoldingId?slots.find');
+  expect(s).toContain('Rede de origem do agente');
   expect(s).toContain('totalVacancies=options?.recruitment.reduce(');
   expect(s).not.toContain('<select value={source?.sourceHoldingId');
   expect(s).toContain('sourceHoldingId:source.sourceHoldingId');
