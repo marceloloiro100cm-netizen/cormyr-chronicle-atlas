@@ -21,10 +21,10 @@ export function listGotArchives(store:Store,scope:GotArchiveScope):readonly GotA
   return data.filter((row):row is GotArchiveEntry=>{
    if(!row||typeof row!=='object')return false;
    const x=row as Record<string,unknown>;
-   return typeof x.id==='string'&&safeId(x.id)&&typeof x.label==='string'&&
-    x.label.length>0&&x.label.length<=80&&typeof x.updatedAt==='string'&&
-    Number.isInteger(x.round)&&Number(x.round)>0&&
-    typeof x.phase==='string';
+   return typeof x['id']==='string'&&safeId(x['id'])&&typeof x['label']==='string'&&
+    x['label'].length>0&&x['label'].length<=80&&typeof x['updatedAt']==='string'&&
+    Number.isInteger(x['round'])&&Number(x['round'])>0&&
+    typeof x['phase']==='string';
   }).slice(0,GOT_ARCHIVE_LIMIT);
  }catch{return [];}
 }
