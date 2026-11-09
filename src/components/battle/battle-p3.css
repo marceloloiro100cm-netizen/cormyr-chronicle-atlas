@@ -1,0 +1,13 @@
+.battle-module .battle-objective-editor,
+.battle-module .battle-metrics-panel{border:1px solid #8e856c;border-radius:8px;
+ padding:10px 12px;margin:10px 0;background:rgba(37,46,38,.88);color:#f7eee0}
+.battle-module .battle-objective-editor p{margin:6px 0;font-size:14px;line-height:1.5}
+.battle-module .battle-objective-editor select,
+.battle-module .battle-ai-choice select{min-height:44px;max-width:100%}
+.battle-module .battle-objective-editor button{min-height:44px}
+.battle-module .battle-metrics-panel summary{cursor:pointer;min-height:44px;
+ display:flex;align-items:center;font-weight:600;color:#f9e5bb}
+.battle-module .battle-metrics-content{padding:8px 0 3px;display:grid;gap:5px}
+.battle-module .battle-metrics-content p{margin:0;font-size:14px;line-height:1.5}
+@media(max-width:650px){.battle-module .battle-objective-editor,
+ .battle-module .battle-metrics-panel{padding:10px}}
