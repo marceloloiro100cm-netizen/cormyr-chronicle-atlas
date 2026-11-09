@@ -33,7 +33,7 @@ export const loadSpyRecruitmentOptions=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(input)
  .handler(async({data,context})=>{
-  const rpc=context.supabase.rpc as unknown as Rpc;
+  const rpc=context.supabase.rpc.bind(context.supabase) as unknown as Rpc;
   const result=await rpc('spy_recruitment_options',{p_house:data.houseId});
   if(result.error){
    const denied=/não autorizad|nao autorizad|permission|unauthorized|JWT/i.test(result.error.message);

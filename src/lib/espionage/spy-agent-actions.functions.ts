@@ -35,7 +35,7 @@ export const buySpyAgentUpgrade=createServerFn({method:'POST'})
   // The database function authorizes the House, verifies balance and version
   // under a transaction lock, and writes the ledger. An auxiliary direct
   // sheet read could be blocked by RLS and incorrectly hide the roster.
-  const rpc=context.supabase.rpc as unknown as Rpc;
+  const rpc=context.supabase.rpc.bind(context.supabase) as unknown as Rpc;
   const result=await rpc('spy_buy_agent_upgrade',{
    p_house:data.houseId,p_agent:data.agentId,p_code:data.code,
    p_expected_agent_version:data.expectedAgentVersion,
@@ -52,7 +52,7 @@ export const recruitSpyAgent=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(recruitInput)
  .handler(async({data,context})=>{
-  const rpc=context.supabase.rpc as unknown as Rpc;
+  const rpc=context.supabase.rpc.bind(context.supabase) as unknown as Rpc;
   const result=await rpc('spy_recruit_agent',{
    p_house:data.houseId,p_source_holding:data.sourceHoldingId,
    p_codename:data.codename,p_request_key:data.requestKey,
@@ -89,7 +89,7 @@ export const createSpyAgent=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(createSpyInput)
  .handler(async({data,context})=>{
-  const rpc=context.supabase.rpc as unknown as Rpc;
+  const rpc=context.supabase.rpc.bind(context.supabase) as unknown as Rpc;
   const result=await rpc('spy_create_agent',{
    p_house:data.houseId,p_source_holding:data.sourceHoldingId,
    p_codename:data.codename,p_portrait:data.portraitId,
@@ -112,7 +112,7 @@ export const assignSpyPortrait=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(portraitInput)
  .handler(async({data,context})=>{
-  const rpc=context.supabase.rpc as unknown as Rpc;
+  const rpc=context.supabase.rpc.bind(context.supabase) as unknown as Rpc;
   const result=await rpc('spy_assign_agent_portrait',{
    p_house:data.houseId,p_agent:data.agentId,p_portrait:data.portraitId,
    p_expected_version:data.expectedVersion,
@@ -159,7 +159,7 @@ export const resolveSpyAgentMission=createServerFn({method:'POST'})
  .handler(async({data,context})=>{
   const admin=await context.supabase.rpc('is_campaign_admin');
   if(admin.error||admin.data!==true)throw new Error('Somente o Narrador resolve missões.');
-  const rpc=context.supabase.rpc as unknown as Rpc;
+  const rpc=context.supabase.rpc.bind(context.supabase) as unknown as Rpc;
   const result=await rpc('spy_resolve_agent_mission',{
    p_operation:data.operationId,p_roll:data.roll,p_modifier:data.modifier,
    p_discovered:data.discovered,p_guard_override:data.guardOverride,

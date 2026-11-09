@@ -10,6 +10,7 @@ import type {SpyManagement} from '@/lib/espionage/spy-management.functions';
 import {SpyPortraitPicker} from './spy-portrait-picker';
 import {SpyCreationError} from '@/lib/espionage/spy-creation-diagnostics';
 import '../creation-dialog-theme.css';
+import './spy-agent-creation-ux.css';
 
 /** Unified creation transaction. Do not call recruit and purchase separately:
  * that would leave half-created agents when the House runs out of Wealth.
@@ -20,6 +21,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
  const [open,setOpen]=useState(false);
  const requestKey=useRef<string|null>(null);
  const [name,setName]=useState('');
+ const [sourceHoldingId,setSourceHoldingId]=useState('');
  const [portraitId,setPortraitId]=useState<string|null>(null);
  const [upgrades,setUpgrades]=useState<SpyAgentUpgrade[]>([]);
  const [busy,setBusy]=useState(false);
@@ -34,7 +36,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
   refetchInterval:open?10_000:false,refetchIntervalInBackground:false,
  });
  const slots=options?.recruitment.filter(r=>r.vacancies>0)??[];
- const source=slots[0];
+ const source=sourceHoldingId?slots.find(r=>r.sourceHoldingId===sourceHoldingId):slots[0];
  const totalVacancies=options?.recruitment.reduce((sum,r)=>sum+r.vacancies,0)??0;
  const portraits=options?.portraits??[];
  const cost=upgrades.length;
@@ -44,7 +46,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
   portraits.some(p=>p.id===portraitId&&!p.occupied&&!p.assignedAgentId));
  const valid=Boolean(options&&!loadingOptions&&!optionsError&&source&&name.trim().length>=2&&
   name.trim().length<=80&&pictureOk&&enoughWealth&&!busy);
- const reset=()=>{requestKey.current=null;setName('');setPortraitId(null);setUpgrades([]);
+ const reset=()=>{requestKey.current=null;setSourceHoldingId('');setName('');setPortraitId(null);setUpgrades([]);
   setError('');};
  const toggle=(code:SpyAgentUpgrade,checked:boolean)=>{
   requestKey.current=null;
@@ -111,7 +113,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
        onClick={()=>void refetch()}>Tentar novamente</Button>
      </div>}
      <label className="cormyr-creation-section"><span>Nome do espião <span aria-hidden>*</span></span>
-      <input required autoFocus minLength={2} maxLength={80}
+      <input required autoFocus disabled={busy} minLength={2} maxLength={80}
        placeholder="Ex.: O Corvo" value={name}
        onChange={e=>{requestKey.current=null;setName(e.target.value);}}/>
      </label>
@@ -125,6 +127,23 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
       <small className="house-caption">Ao confirmar um agente, uma vaga da rede com espaço
        é ocupada automaticamente. A disponibilidade é recalculada pelo servidor para a próxima criação.</small>
      </div>
+     {slots.length>0&&<label className="cormyr-creation-section">
+      <span>Rede de origem do agente <span aria-hidden="true">*</span></span>
+      <select aria-label="Rede de origem do agente" value={source?.sourceHoldingId??''}
+       className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground"
+       disabled={busy} onChange={e=>{
+        requestKey.current=null;setError('');setSourceHoldingId(e.target.value);
+       }}>
+       {sourceHoldingId&&!source&&<option value="">Escolha outra Rede disponível</option>}
+       {slots.map(slot=><option key={slot.sourceHoldingId} value={slot.sourceHoldingId}>
+        {slot.name} · {slot.vacancies} {slot.vacancies===1?'vaga livre':'vagas livres'}
+       </option>)}
+      </select>
+      <small className="house-caption">O agente começa no domínio desta Rede.
+       Escolha outra origem para distribuir seus agentes entre diferentes domínios.</small>
+     </label>}
+     {sourceHoldingId&&!source&&<p className="house-warning" role="alert">
+      A Rede selecionada não tem mais vagas. Escolha outra origem antes de criar.</p>}
      {Boolean(options)&&!loadingOptions&&!optionsError&&!slots.length&&<p className="house-caption" role="status">
       Não há vaga livre nesta Casa. É necessário possuir uma Rede de Espiões
       ativa ou construir uma Rede Ampliada para liberar novos agentes.</p>}
@@ -133,7 +152,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
       {(Object.keys(SPY_AGENT_UPGRADES) as SpyAgentUpgrade[]).map(code=>{
        const u=SPY_AGENT_UPGRADES[code];
        return <label key={code} className="cormyr-creation-choice">
-        <input type="checkbox"
+        <input type="checkbox" disabled={busy}
          checked={upgrades.includes(code)}
          onChange={e=>toggle(code,e.target.checked)}/>
         <span><strong>{u.name} — 1 Riqueza</strong>
@@ -149,7 +168,7 @@ export function SpyCreateAgentDialog({houseId,data,canEdit}:{
      </div>
      <div className="cormyr-creation-section cormyr-creation-portraits">
       <SpyPortraitPicker portraits={portraits} selected={portraitId}
-       onChange={id=>{requestKey.current=null;setPortraitId(id);}}/>
+       onChange={id=>{if(busy)return;requestKey.current=null;setPortraitId(id);}}/>
      </div>
      {portraits.length>0&&!pictureOk&&<small role="status">
       Escolha uma foto disponível. As imagens em cinza já estão reservadas por outro agente da campanha.</small>}

@@ -51,7 +51,7 @@ export const loadNarratorSpyHouseDefense=createServerFn({method:'POST'})
   const admin=await context.supabase.rpc('is_campaign_admin');
   if(admin.error||admin.data!==true)
    throw new Error('Somente o Narrador pode consultar a defesa de Casas adversárias.');
-  const rpc=context.supabase.rpc as unknown as Rpc;
+  const rpc=context.supabase.rpc.bind(context.supabase) as unknown as Rpc;
   const lookup=await rpc('spy_narrator_noble_defense_source',{p_house:data.houseId});
   if(lookup.error)throw new Error('Consulta de Defesa de Espionagem indisponível.');
   const metadata=sourceSchema.safeParse(lookup.data);

@@ -16,7 +16,7 @@ export const approveSpyRegionLink=createServerFn({method:'POST'})
   const auth=await context.supabase.rpc('is_campaign_admin');
   if(auth.error||auth.data!==true)
    throw new Error('Somente o Narrador pode homologar rotas.');
-  const rpc=context.supabase.rpc as unknown as Rpc;
+  const rpc=context.supabase.rpc.bind(context.supabase) as unknown as Rpc;
   const result=await rpc('spy_review_region_link',{
    p_id:data.id,p_from:data.fromRegion,p_to:data.toRegion,
    p_passage:data.passage,p_bidirectional:data.bidirectional,

@@ -28,7 +28,7 @@ export const previewSpyMissionOdds=createServerFn({method:'POST'})
  .inputValidator(input)
  .handler(async({data,context})=>{
   type RpcResult={data:unknown;error:{message:string}|null};
-  const rpc=context.supabase.rpc as unknown as
+  const rpc=context.supabase.rpc.bind(context.supabase) as unknown as
    (name:string,args:Record<string,unknown>)=>Promise<RpcResult>;
   const result=await rpc('spy_player_mission_preview',{
    p_house:data.houseId,p_agent:data.agentId,p_target:data.targetHouseId,

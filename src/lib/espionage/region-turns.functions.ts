@@ -13,7 +13,7 @@ export const loadSpyRegionalStrategy=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(z.object({houseId:z.string().trim().min(1).max(100)}).strict())
  .handler(async({data,context})=>{
-  const rpc=context.supabase.rpc as unknown as SpyRegionalRpc;
+  const rpc=context.supabase.rpc.bind(context.supabase) as unknown as SpyRegionalRpc;
   const result=await rpc('spy_get_regional_strategy',{p_house:data.houseId});
   if(result.error)throw new Error('Movimentação regional ainda indisponível para esta Casa.');
   const parsed=spyRegionalStrategySchema.safeParse(result.data);

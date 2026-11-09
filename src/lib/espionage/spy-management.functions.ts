@@ -75,7 +75,7 @@ export const loadSpyHouseManagement=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(input)
  .handler(async({data,context})=>{
-  const rpc=context.supabase.rpc as unknown as Rpc;
+  const rpc=context.supabase.rpc.bind(context.supabase) as unknown as Rpc;
   const result=await rpc('spy_house_management',{p_house:data.houseId});
   if(result.error){
    const denied=/não autorizado|nao autorizado|permission|unauthorized|JWT/i.test(result.error.message);
@@ -118,7 +118,7 @@ export const renameSpyAgent=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(renameSchema)
  .handler(async({data,context})=>{
-  const rpc=context.supabase.rpc as unknown as Rpc;
+  const rpc=context.supabase.rpc.bind(context.supabase) as unknown as Rpc;
   const result=await rpc('spy_rename_agent',{
    p_house:data.houseId,p_agent:data.agentId,
    p_name:data.name,p_expected_version:data.expectedVersion,

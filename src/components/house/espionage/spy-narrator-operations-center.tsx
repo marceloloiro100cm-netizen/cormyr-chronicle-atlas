@@ -1,10 +1,14 @@
 import {useState} from 'react';
-import {useQuery} from '@tanstack/react-query';
+import {useQuery,useQueryClient} from '@tanstack/react-query';
+import {useServerFn} from '@tanstack/react-start';
 import {ClipboardList,RefreshCw} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {formatDate,parseDate} from '@/lib/calendar/harptos';
 import {readSpyNarratorOperationsBrowser,type SpyNarratorOperation}
  from '@/lib/espionage/spy-operations-browser';
+import {readSpyHouseManagementBrowser} from '@/lib/espionage/spy-browser-client';
+import {SpyNarratorResolutionPanel} from './spy-narrator-resolution';
+import {retrySpyIntelligence} from '@/lib/espionage/spy-dossier.functions';
 import './spy-operations-center.css';
 
 const statusLabels:Record<string,string>={
@@ -48,9 +52,41 @@ export function SpyNarratorOperationsCenter(){
  const [search,setSearch]=useState('');
  const [state,setState]=useState('attention');
  const [page,setPage]=useState(1);
+ const [selectedReview,setSelectedReview]=useState<{
+  operationId:string;ownerHouseId:string;
+ }|null>(null);
+ const [recentResolution,setRecentResolution]=useState('');
+ const [retryingDossier,setRetryingDossier]=useState<string|null>(null);
+ const qc=useQueryClient();
+ const retryDossier=useServerFn(retrySpyIntelligence);
+ const finishDossier=async(operationId:string)=>{
+  if(retryingDossier)return;
+  setRetryingDossier(operationId);setRecentResolution('');
+  try{
+   const response=await retryDossier({data:{operationId}});
+   setRecentResolution(response.status==='complete'
+    ?'Descobertas confirmadas. O dossiê está atualizado.'
+    :response.status==='waiting_catalog'
+     ?'Fonte oficial ainda indisponível. O resultado da missão continua salvo.'
+     :'Esta operação não possui prêmio de inteligência a processar.');
+   await Promise.allSettled([
+    qc.invalidateQueries({queryKey:['spy-narrator-operations']}),
+    qc.invalidateQueries({queryKey:['spy-dossiers']}),
+   ]);
+  }catch{
+   setRecentResolution('O dossiê não pôde ser finalizado. Verifique a fonte oficial e a fila do Narrador.');
+  }finally{setRetryingDossier(null);}
+ };
+ const houseQuery=useQuery({
+  queryKey:['spy-house-management',selectedReview?.ownerHouseId],
+  queryFn:()=>readSpyHouseManagementBrowser(selectedReview!.ownerHouseId),
+  enabled:Boolean(selectedReview),staleTime:0,retry:false,
+ });
  const query=useQuery({
   queryKey:['spy-narrator-operations'],
   queryFn:readSpyNarratorOperationsBrowser,retry:false,staleTime:15_000,
+  refetchInterval:30_000,refetchIntervalInBackground:false,
+  refetchOnWindowFocus:'always',refetchOnReconnect:'always',
  });
  const operations=query.data??[];
  const counters=spyOperationCounters(operations);
@@ -111,6 +147,20 @@ export function SpyNarratorOperationsCenter(){
        spyNeedsDossierAttention(o)?'Verifique a fila de Dossiês':
        'Chegada '+dateLabel(o.arrivalKey)+' · fim '+dateLabel(o.investigationEndKey)}</small>
      </div>
+     {o.status==='pending_narrator_review'&&<Button type="button"
+      variant={selectedReview?.operationId===o.operationId?'default':'outline'}
+      className="spy-operation-resolve-button"
+      aria-pressed={selectedReview?.operationId===o.operationId}
+      onClick={()=>{
+       setRecentResolution('');
+       setSelectedReview({operationId:o.operationId,ownerHouseId:o.ownerHouseId});
+      }}>Resolver agora</Button>}
+     {spyNeedsDossierAttention(o)&&<Button type="button"
+      variant="outline" className="spy-operation-resolve-button"
+      disabled={Boolean(retryingDossier)}
+      onClick={()=>void finishDossier(o.operationId)}>
+      {retryingDossier===o.operationId?'Verificando…':'Concluir dossiê'}
+     </Button>}
     </article>)}
    </div>:<p className="house-caption">Nenhuma missão neste filtro.</p>}
    {totalPages>1&&<div className="spy-operations-pages">
@@ -120,8 +170,42 @@ export function SpyNarratorOperationsCenter(){
     <Button type="button" variant="outline" disabled={safePage===totalPages}
      onClick={()=>setPage(n=>n+1)}>Próxima</Button>
    </div>}
-   <small className="house-caption">A central é somente leitura. Resolva missões no painel do agente
-    e pendências no gerenciador de dossiês.</small>
+   {recentResolution&&<p role="status" className="spy-operations-feedback">
+    {recentResolution}</p>}
+   {selectedReview&&<section className="spy-operation-inline-review"
+    aria-label="Resolver missão selecionada">
+    <header className="spy-operation-inline-header">
+     <strong>Homologar missão selecionada</strong>
+     <Button type="button" variant="outline" size="sm"
+      onClick={()=>setSelectedReview(null)}>Fechar</Button>
+    </header>
+    {houseQuery.isPending&&<p role="status">Carregando ficha do agente…</p>}
+    {houseQuery.isError&&<div role="alert">
+     <p>Não foi possível consultar o agente desta Casa.</p>
+     <Button type="button" variant="outline" onClick={()=>void houseQuery.refetch()}>
+      Tentar novamente</Button>
+    </div>}
+    {houseQuery.data&&
+     <SpyNarratorResolutionPanel data={houseQuery.data}
+      operationId={selectedReview.operationId}
+      onResolved={result=>{
+       setSelectedReview(null);
+       setRecentResolution(result.intelligenceStatus==='complete'
+        ?'Missão resolvida e dossiê confirmado.'
+        :result.outcome==='mission_success'
+         ?'Missão resolvida. Verifique o reprocessamento do dossiê.'
+         :'Missão resolvida. Resultado registrado na campanha.');
+       void Promise.allSettled([
+        qc.invalidateQueries({queryKey:['spy-narrator-operations']}),
+        qc.invalidateQueries({queryKey:['spy-dossiers']}),
+       ]);
+      }}/>}
+    {houseQuery.data&&!houseQuery.data.operations.some(o=>
+     o.id===selectedReview.operationId&&o.status==='pending_narrator_review')&&
+     <p role="status">Esta missão não está mais aguardando resolução.</p>}
+   </section>}
+   <small className="house-caption">Resolva missões e confirme descobertas
+    nesta central. Falhas de integridade exigem revisão na fila de dossiês.</small>
   </>}
  </section>;
 }
