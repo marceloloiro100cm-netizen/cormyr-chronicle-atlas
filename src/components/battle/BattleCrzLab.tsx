@@ -6,6 +6,9 @@ import {BattleSquareLegend} from './BattleSquareLegend';
 import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
+import {BattleActionFeedback} from './BattleActionFeedback';
+import {BattleOutcomeSummary} from './BattleOutcomeSummary';
+import {dndNeedsImpasseReview} from '@/lib/battle/ux/dnd-impasse';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
 import {crzHexKey,crzGridToOffset,crzScenario,crzFootprintCells,
  type CrzHex,type CrzSide,type CrzMap}
@@ -368,6 +371,24 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
   crzTrainingReplayAt(session.replay,replayStep),
  [session,replayStep]);
  const report=useMemo(()=>session?crzAfterActionReport(session.replay):null,[session]);
+ const recentAction=frame?[...frame.events].reverse().find(event=>
+  ['MOVED','ATTACK_RESOLVED','RETALIATION_RESOLVED','DEFENDED','WAITED',
+   'SPELL_DAMAGE','SPELL_HEALED','ABILITY_USED'].includes(event.type)):undefined;
+ const recentLabel=recentAction?.type==='ATTACK_RESOLVED'?'Ataque':
+  recentAction?.type==='RETALIATION_RESOLVED'?'Retaliação':
+  recentAction?.type==='MOVED'?'Movimento':
+  recentAction?.type==='DEFENDED'?'Defesa':
+  recentAction?.type==='WAITED'?'Espera':
+  recentAction?.type==='SPELL_DAMAGE'?'Dano mágico':
+  recentAction?.type==='SPELL_HEALED'?'Cura':
+  recentAction?.type==='ABILITY_USED'?'Habilidade':'Ação';
+ const recentDamage=recentAction&&
+  (recentAction.type==='ATTACK_RESOLVED'||recentAction.type==='RETALIATION_RESOLVED')?
+  recentAction.appliedDamage:recentAction?.type==='SPELL_DAMAGE'?
+  recentAction.amount:undefined;
+ const recentLosses=recentAction&&
+  (recentAction.type==='ATTACK_RESOLVED'||recentAction.type==='RETALIATION_RESOLVED'||
+   recentAction.type==='SPELL_DAMAGE')?recentAction.casualties:undefined;
  const objectives=useMemo(()=>frame?crzObservedObjectives(frame):[],[frame]);
  const active=frame?.stacks.find(s=>s.id===frame.activeStackId);
  const inspected=frame?.stacks.find(s=>s.id===selectedId&&crzCapable(s))??
@@ -937,7 +958,17 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
     phase={frame.phase} activeUnit={active?.name} canAct={canAct}
     moves={moves.length} attacks={attacks.length}
     needsSelection={Boolean(canAct&&active&&selectedId!==active.id)}
-    onSelectActive={active?()=>setSelectedId(active.id):undefined}/>
+    onSelectActive={active?()=>setSelectedId(active.id):undefined}
+    hint={dndMode?'Toque no verde para mover ou no inimigo destacado para atacar.':undefined}/>
+   {dndMode&&dndNeedsImpasseReview(frame)&&
+    <details className="battle-impasse-help" aria-label="Revisão de impasse D&D">
+     <summary>Possível impasse · {frame.stagnantRounds} rodadas sem progresso</summary>
+     <p>Sem resultado automático. Reposicione forças ou avance os turnos.
+      O Narrador pode definir empate, vitória ou retirada em
+      "Gerenciar criaturas, reforços e resultado".</p>
+    </details>}
+   {recentAction&&<BattleActionFeedback round={recentAction.round}
+    label={recentLabel} damage={recentDamage} casualties={recentLosses}/>}
    {savedPanel}
    {dndMode&&!sandbox&&isDndBattle(frame)&&frame.phase==='active'&&<details className="battle-surface"
     aria-label="Gerenciamento de tropas durante a batalha D&D">
@@ -1207,8 +1238,19 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
     <span>Clique num inimigo com contorno vermelho para atacar.</span>
    </footer>
    {frame.phase==='completed'&&<div className="crz-victory-banner" role="status">
-    Resultado: {frame.winner?SIDE[frame.winner].name:'Empate'} · {frame.resultReason==='withdrawal'?'retirada':frame.resultReason==='narrator-end'?
-    'encerramento pelo Narrador':frame.resultReason}
+    <BattleOutcomeSummary
+     title={'Resultado: '+(frame.winner?(dndMode?
+      frame.winner==='attacker'?'Atacantes':'Defensores':SIDE[frame.winner].name):'Empate')}
+     round={frame.round}
+     reason={frame.resultReason==='withdrawal'?'Retirada':
+      frame.resultReason==='narrator-end'?'Encerramento pelo Narrador':
+      frame.resultReason??'Concluído'}
+     losses={report?[
+      {label:dndMode?'Atacantes':SIDE.attacker.name,
+       count:report.sides.attacker.casualties},
+      {label:dndMode?'Defensores':SIDE.defender.name,
+       count:report.sides.defender.casualties},
+     ]:[]}/>
    </div>}
   </section>}
  </section>;

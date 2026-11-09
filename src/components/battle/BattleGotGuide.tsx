@@ -14,23 +14,35 @@ const PHASES:readonly {id:Phase;label:string;hint:string}[]=[
 const stepIndex=(phase:Phase)=>PHASES.findIndex(x=>x.id===phase);
 
 /** Guia visual, sem alterar o motor/resultado do livro nem pular fases. */
-export function BattleGotGuide({phase,onQuickPreset}:{
+export function BattleGotGuide({phase,onQuickPreset,hasSiege=true,hasHeroes=true}:{
  phase:Phase;onQuickPreset?:()=>void;
+ hasSiege?:boolean;hasHeroes?:boolean;
 }){
  const current=PHASES.find(x=>x.id===phase)??PHASES[0]!;
- const jump=(id:string)=>document.getElementById(id)?.scrollIntoView({
-  behavior:'smooth',block:'start',
- });
+ const contextualHint=phase==='siege'&&!hasSiege?
+  'Sem máquinas de cerco. Prossiga sem disparos.':
+  (phase==='heroes-first'||phase==='heroes-second')&&!hasHeroes?
+  'Sem heróis em campo. Conclua a fase para continuar.':current.hint;
+ const jump=(id:string)=>{
+  const target=document.getElementById(id);
+  // A preparação foi recolhida nos lotes 1–3; navegação deve abri-la antes do foco.
+  const parent=target?.closest('details');
+  if(parent)parent.open=true;
+  target?.scrollIntoView({behavior:'smooth',block:'start'});
+ };
  return <nav className="got-phase-guide" aria-label="Guia de fases Game of Thrones">
   <div className="got-phase-guide-intro">
    <strong>{current.label}</strong>
-   <p>{current.hint}</p>
+   <p>{contextualHint}</p>
   </div>
   <ol className="got-phase-steps">
    {PHASES.map((step,i)=><li key={step.id}
     className={step.id===phase?'is-current':stepIndex(phase)>i?'is-complete':''}
     aria-current={step.id===phase?'step':undefined}>
     <span aria-hidden="true">{i+1}</span>{step.label}
+    {((step.id==='siege'&&!hasSiege)||
+      ((step.id==='heroes-first'||step.id==='heroes-second')&&!hasHeroes))&&
+      <small title="Sem elementos especiais neste confronto">Sem tropas especiais</small>}
    </li>)}
   </ol>
   {phase==='preparation'&&<div className="got-phase-guide-links" role="group"
@@ -41,7 +53,7 @@ export function BattleGotGuide({phase,onQuickPreset}:{
    {onQuickPreset&&<Button size="sm" variant="outline" onClick={onQuickPreset}>
     Aplicar cenário rápido</Button>}
   </div>}
-  {phase!=='preparation'&&phase!=='finished'&&<div className="got-phase-guide-links">
+  {(phase==='orders'||phase==='siege')&&<div className="got-phase-guide-links">
    <Button size="sm" variant="outline" onClick={()=>jump('got-battle-orders')}>
     Ir ao painel de comandos</Button>
   </div>}

@@ -1,5 +1,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import {BattleTurnCue} from './BattleTurnCue';
+import {BattleActionFeedback} from './BattleActionFeedback';
+import {BattleOutcomeSummary} from './BattleOutcomeSummary';
 import {BattleGotGuide} from './BattleGotGuide';
 import {Button} from '@/components/ui/button';
 import {MilitaryUnitSymbol,militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
@@ -948,11 +950,22 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      {' '}· Iniciativa: {SIDE[battle.first]}</p>
     <p>Ordens restantes: {battle.commanders.map(c=>
      c.name+': '+(battle.ordersRemaining[c.id]??0)).join(' · ')}</p>
-    {battle.phase==='finished'&&<p role="status"><strong>
-     {battle.winner?'Vitória do '+SIDE[battle.winner]:'Confronto sem vencedor'}
-    </strong></p>}
+    {battle.phase==='finished'&&<BattleOutcomeSummary
+     title={battle.winner?'Vitória do '+SIDE[battle.winner]:'Confronto sem vencedor'}
+     round={battle.round}
+     losses={aftermath?[
+      {label:'Atacante',count:aftermath.summary.attacker.destroyedInBattle,
+       unit:'unidades destruídas'},
+      {label:'Defensor',count:aftermath.summary.defender.destroyedInBattle,
+       unit:'unidades destruídas'},
+     ]:[]}/>} 
    </section>
-   <BattleGotGuide phase={battle.phase}/>
+   <BattleGotGuide phase={battle.phase}
+    hasSiege={battle.siege.some(w=>w.health>0)}
+    hasHeroes={battle.heroes.some(h=>h.active)}/>
+   {battle.events.length>0&&<BattleActionFeedback
+    round={battle.events[battle.events.length-1]!.round}
+    label={battle.events[battle.events.length-1]!.text}/>}
    <BattleTurnCue system="got" round={battle.round} phase={battle.phase}
     activeUnit={battle.phase==='orders'?SIDE[battle.turn]:'Fase do livro'}
     canAct={battle.phase!=='finished'}

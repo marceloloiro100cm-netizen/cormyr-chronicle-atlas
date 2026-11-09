@@ -33,3 +33,6 @@
  width:min(100%,270px);min-height:40px
 }
 .battle-got .got-save-actions button{min-height:42px;white-space:normal}
+
+.battle-got .got-phase-steps li small{display:block;font-size:.67rem;line-height:1.2;
+ color:#cdd7c9;margin-left:auto;max-width:95px}
