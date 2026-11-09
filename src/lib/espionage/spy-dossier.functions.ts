@@ -106,8 +106,23 @@ export async function finishSpyIntelligence(
  db:ServerSupabase,operationId:string,
 ):Promise<'complete'|'waiting_catalog'|'no_success_award'>{
  await requireNarrator(db);
+ // A ausência na fila NÃO significa que o prêmio foi aplicado.
+ // Conferir a decisão real impede sucesso sem descobertas persistidas.
+ const stateResult=await db.rpc('spy_intelligence_operation_status',{
+  p_operation:operationId,
+ });
+ if(stateResult.error)throw new Error('Não foi possível verificar o prêmio da missão.');
+ const {status}=z.object({status:z.enum([
+  'complete','waiting_catalog','no_success_award','missing_award',
+  'pending_resolution',
+ ])}).parse(stateResult.data);
+ if(status==='complete'||status==='no_success_award')return status;
+ if(status==='missing_award')
+  throw new Error('Missão concluída com sucesso sem prêmio de inteligência: requer reparo do Narrador.');
+ if(status==='pending_resolution')
+  throw new Error('A missão ainda não foi homologada pelo Narrador.');
  const pending=await pendingByOperation(db,operationId);
- if(!pending)return 'complete'; // already materialized or failed mission
+ if(!pending)throw new Error('Missão aguardando dados sem entrada na fila de reprocessamento.');
  const resources=pending.objective==='house_resources'
   ?await officialResourceSnapshot(db,pending.targetHouseId):null;
  const result=await db.rpc('spy_intelligence_finalize',{
