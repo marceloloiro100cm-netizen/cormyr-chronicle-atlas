@@ -393,6 +393,30 @@ export function BattleSetup({onStart,onBack}:{
   <section className="battle-surface" aria-label="Implantação das unidades">
    <h3>4. Implantação</h3>
    <p>Selecione uma unidade no exército e toque na célula de sua zona. Vermelho: atacante; azul: defensor.</p>
+   {multiMode&&<section className="battle-objective-editor" aria-label="Editor de objetivos P3">
+    <div className="battle-form-row">
+     <Button type="button" variant={editingObjectives?'default':'outline'}
+      aria-pressed={editingObjectives}
+      onClick={()=>{
+       if(!editingObjectives&&objectiveOverrides.length===0&&
+         objectivePreview?.kind==='multi-capture')
+        setObjectiveOverrides([...objectivePreview.positions]);
+       setEditingObjectives(x=>!x);
+      }}>
+      {editingObjectives?'Concluir edição de pontos':'Editar objetivos no mapa'}</Button>
+     <label>Pontos necessários
+      <select aria-label="Pontos exigidos para vitória" value={requiredPositions}
+       onChange={e=>setRequiredPositions(Number(e.target.value))}>
+       {Array.from({length:objectivePreview?.kind==='multi-capture'?
+          objectivePreview.positions.length:3},(_,i)=>i+1).map(n=>
+         <option key={n} value={n}>{n}</option>)}
+      </select>
+     </label>
+    </div>
+    <p className="battle-note">{editingObjectives?
+     'Toque para adicionar ou remover estrelas (2 a 5). Conclua a edição para posicionar unidades.':
+     'As estrelas são pontos de controle. Personalização opcional.'}</p>
+   </section>}
    <p role="status">{positioned} / {units.length} agrupamentos posicionados.</p>
    <div className="battle-form-row">
     <label>Unidade selecionada<select aria-label="Unidade para implantar" value={selected}
@@ -401,11 +425,14 @@ export function BattleSetup({onStart,onBack}:{
     </select></label>
     <Button variant="outline" onClick={automatic}>Posicionar automaticamente</Button>
    </div>
-   <BattleBoard map={map} showZones stacks={units.filter(u=>u.position).map(u=>{
+   <BattleBoard map={map} showZones
+    objectivePositions={objectivePreview?.kind==='multi-capture'?objectivePreview.positions:undefined}
+    objectivePosition={objectivePreview?.kind==='capture'?objectivePreview.position:undefined}
+    stacks={units.filter(u=>u.position).map(u=>{
      const p=tacticalProfile(u.typeId);
      return {id:u.id,side:u.side,name:u.name,position:u.position!,primaryTypeId:u.typeId,
        initialCount:u.count,hpPerSoldier:p.hpPerSoldier,currentHp:u.count*p.hpPerSoldier,moraleState:'steady' as const};
-   })} selectedId={selected} onHexClick={place}/>
+   })} selectedId={selected} onHexClick={editingObjectives?toggleObjective:place}/>
   </section>
   <section className="battle-surface" aria-label="Revisão e início">
    <h3>5. Revisão</h3>
