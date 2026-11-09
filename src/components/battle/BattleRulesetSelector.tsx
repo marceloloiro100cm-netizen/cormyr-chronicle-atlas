@@ -7,9 +7,7 @@ export function BattleRulesetSelector({value,onChange}:{
 }){
  const selected=battleRulesetOption(value);
  return <fieldset className="battle-ruleset-selector" aria-label="Sistema de regras da batalha">
-  <legend>Escolha o sistema de batalha</legend>
-  <p className="battle-ruleset-intro">Os sistemas são independentes. A escolha não converte
-   batalhas anteriores nem modifica as fichas oficiais.</p>
+  <legend>Sistema de combate</legend>
   <div className="battle-ruleset-grid">
    {BATTLE_RULESET_OPTIONS.map(option=><label key={option.id}
     className={'battle-ruleset-card'+(value===option.id?' is-selected':'')}>
@@ -19,21 +17,16 @@ export function BattleRulesetSelector({value,onChange}:{
      <strong>{option.label}</strong>
     </span>
     <span className="battle-ruleset-subtitle">{option.shortName}</span>
-    <span className="battle-ruleset-description">{option.description}</span>
+    <span className="battle-ruleset-description">{option.id==='got'?'Ordens e Disciplina':
+     option.id==='dnd'?'D20, CA e PV':'Movimento e comandantes'}</span>
     <span className="battle-ruleset-status">
-     {option.status==='available'?'Disponível · sistema atual':option.status==='partial'?
-      'Laboratório jogável · regras em evolução':'Em desenvolvimento · próximo lote'}
+     {option.status==='available'?'Disponível':option.status==='partial'?
+      'Em teste':'Em desenvolvimento'}
     </span>
    </label>)}
   </div>
   <p role="status" aria-live="polite" className="battle-note">
-   {selected.status==='available'?
-    'Modo Adaptado selecionado: a preparação e os motores atuais permanecem disponíveis.':
-    selected.status==='partial'?
-     selected.id==='got'?
-     'Game of Thrones selecionado: motor independente disponível para testes; regras avançadas pendentes. Não será substituído pelo Adaptado.':
-     'D&D simplificado selecionado: motor CRZ-5E em tabuleiro quadrado, separado do Adaptado e do Game of Thrones.':
-     'Este sistema ainda não executa combates; nenhuma batalha será substituída silenciosamente pelo Adaptado.'}
+   {selected.label} selecionado · regras independentes.
   </p>
  </fieldset>;
 }

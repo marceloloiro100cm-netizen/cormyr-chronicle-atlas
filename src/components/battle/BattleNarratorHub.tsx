@@ -59,49 +59,31 @@ export function BattleNarratorHub(){
   <header className="battle-header">
    <p className="battle-eyebrow">CORMYR CHRONICLE ATLAS · NARRADOR</p>
    <h1>Módulo de batalha</h1>
-   <p>Simulador tático · sem efeito nas fichas oficiais</p>
-   <p><strong>{rulesetMode==='adapted'?BATTLE_RULES_VERSION+' — regras experimentais.':rulesetMode==='got'?'GOT-CH10-1 — laboratório do livro.':'D&D-CRZ-5E — combate simplificado em quadrados.'}</strong> Nenhuma baixa será lançada nas fichas das casas.</p>
+   <p>Batalhas de treinamento. Nenhuma perda é lançada nas Casas.</p>
   </header>
   {view==='home'&&<div className="battle-home-dashboard">
    <section className="battle-surface battle-home-primary" aria-label="Iniciar batalha">
-    <p className="battle-eyebrow">LABORATÓRIO DO NARRADOR</p>
-    <h2>Prepare seu próximo confronto</h2>
-    <p>Monte os exércitos, escolha o campo, posicione as unidades e conduza o combate.
-     O resultado pertence apenas à simulação.</p>
+    <h2>Nova batalha</h2>
+    <p>Escolha as regras e comece. Ajustes detalhados são opcionais.</p>
     <BattleRulesetSelector value={rulesetMode} onChange={setRulesetMode}/>
     {rulesetMode==='adapted'?<>
-    <div className="battle-home-main-actions">
-     <div className="battle-home-option">
-      <h3>1 · Criar batalha</h3>
-      <p>Modo tático PTE-2.0: dois exércitos, cenários, editor em quadrados,
-       movimento, ataques, moral e relatório.</p>
-      <Button onClick={()=>setView('setup')}>Criar batalha</Button>
-     </div>
-     <div className="battle-home-option">
-      <h3>2 · Batalha rápida</h3>
-      <p>Cruzada V3: selecione forças-modelo e comandantes com retratos;
-       partida local contra IA ou controlada pelo narrador.</p>
-      <Button variant="outline" onClick={()=>setView('crusade')}>Batalha rápida com comandantes</Button>
-     </div>
+    <div className="battle-home-single-action">
+     <Button onClick={()=>setView('setup')}>Criar batalha</Button>
+     <p className="battle-note">Forças-modelo e posicionamento automático disponíveis.</p>
     </div>
-    <p className="battle-note">Roteiro básico: preparar → posicionar → combater → rever o resultado.</p>
     </>:rulesetMode==='got'?<section className="battle-ruleset-pending" aria-label="Guerra do livro">
-     <h3>Guerra dos Tronos RPG · núcleo do capítulo 10</h3>
-     <p>Comandos de Guerra × Disciplina, iniciativa por rodada, ordens, ataque por graus de sucesso, Armadura e Saúde coletiva, desorganização e debandada.</p>
-     <p className="battle-note">Laboratório em desenvolvimento: ainda faltam fases e regras avançadas para equivalência integral ao capítulo 10.</p>
-     <Button onClick={()=>{setResumeGot(false);setView('got');}}>Testar regras do livro</Button>
+     <h3>Guerra dos Tronos</h3>
+     <p>Ordens, Disciplina e combates do livro. Regras especiais em teste.</p>
+     <Button onClick={()=>{setResumeGot(false);setView('got');}}>Criar batalha</Button>
     </section>:<section className="battle-ruleset-pending" aria-label="Preparação do sistema selecionado">
-     <h3>D&D · combate simplificado</h3>
-     <p>Motor CRZ-5E independente, com bônus de ataque, Classe de Armadura,
-      pontos de vida, deslocamento e ações de combate em grade quadrada.</p>
-     <p className="battle-note">Laboratório D&D simplificado: tropas e criaturas-modelo fictícias.
-      Não equivale a todas as regras de D&D 5e e não executa o motor Adaptado.</p>
-     <Button onClick={()=>{setResumeDnd(false);setView('dnd');}}>Iniciar D&D simplificado</Button>
+     <h3>Combate D&D</h3>
+     <p>D20, CA, PV e criaturas. Regras 5e simplificadas.</p>
+     <Button onClick={()=>{setResumeDnd(false);setView('dnd');}}>Criar batalha</Button>
     </section>}
    </section>
    <aside className="battle-home-side" aria-label="Continuação e opções de batalha">
     <section className="battle-surface" aria-label="Continuar batalha">
-     <h3>Continuar batalha</h3>
+     <h3>Continuar</h3>
      {rulesetMode==='adapted'?
       (canSave?<Button variant="outline" onClick={()=>setView('saved')}>Batalhas salvas · Adaptado</Button>:
        <p className="battle-note" role="status">Salvamento Adaptado {storeStatus==='checking'?
@@ -119,8 +101,9 @@ export function BattleNarratorHub(){
       </>}
     </section>
     <details className="battle-surface battle-home-advanced">
-     <summary>Ferramentas avançadas e ajuda</summary>
+     <summary>Mais opções</summary>
      <div className="battle-home-secondary-actions">
+      {rulesetMode==='adapted'&&<Button variant="outline" onClick={()=>setView('crusade')}>Cruzada com comandantes</Button>}
       {rulesetMode==='adapted'&&<Button variant="outline" onClick={()=>setManual(x=>!x)}
        aria-expanded={manual}>Consultar regras</Button>}
       {rulesetMode==='adapted'&&<Button variant="outline" onClick={()=>setShowImport(x=>!x)}
