@@ -25,7 +25,7 @@ describe('Lote 4: fases do livro e preparação acessível',()=>{
   const guide=screen.getByRole('navigation',{name:'Guia de fases Game of Thrones'});
   expect(guide.querySelectorAll('li')).toHaveLength(6);
   expect(guide.querySelector('[aria-current="step"]')).toHaveTextContent('Ordens');
-  expect(screen.getByText(/testar Guerra contra Disciplina/i)).toBeInTheDocument();
+  expect(screen.getByText(/teste Guerra contra Disciplina/i)).toBeInTheDocument();
  });
  it('oferece configuração rápida não destrutiva e navegação na preparação',()=>{
   render(<BattleGotGame onBack={vi.fn()}/>);
