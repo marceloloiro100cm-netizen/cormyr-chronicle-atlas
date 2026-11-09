@@ -4,6 +4,7 @@
  */
 import {z} from 'zod';
 import {crzSealCreature,crzDamageTypeSchema,type CrzAttackProfile,type CrzCreature} from './creatures';
+import {formatDndMetres} from './dnd-metric';
 
 /** Velocidade apenas operacional para fichas que trouxeram 0 pés terrestres
  * e perderam o modo de voo na seleção simplificada. NÃO é dado oficial.
@@ -220,7 +221,7 @@ export function dndCormyrCreature(m:DndCormyrMonster):CrzCreature{
    ...(m.ranged?['Ataque à distância sem limite de alcance no tabuleiro D&D; exige linha de visão.']:[]),
    ...(m.review_source?['Revisão da ficha: '+m.review_source]:[]),
    ...(provisionalFlight?['Deslocamento terrestre 0 na fonte: voo TÁTICO PROVISÓRIO de '+
-     DND_PROVISIONAL_FLY_SPEED_FT+' pés. Valor não é oficial; revisar velocidade e tipo de voo.']:[]),
+     formatDndMetres(DND_PROVISIONAL_FLY_SPEED_FT)+'. Valor não é oficial; revisar velocidade e tipo de voo.']:[]),
   ],
  });
 }
