@@ -2,7 +2,7 @@ import {useEffect,useState,lazy,Suspense} from 'react';
 import {useServerFn} from '@tanstack/react-start';
 import {checkBattlePersistence} from '@/lib/battle/battle-session.functions';
 import {Button} from '@/components/ui/button';
-import {BATTLE_RULES_VERSION,BATTLE_PERSISTENCE_UI_ENABLED,BATTLE_CRZ_TRAINING_UI_ENABLED,BATTLE_V3_LIVE_ENABLED,BATTLE_PLAYERS_ENABLED} from '@/lib/battle/feature-flag';
+import {BATTLE_PERSISTENCE_UI_ENABLED,BATTLE_CRZ_TRAINING_UI_ENABLED,BATTLE_V3_LIVE_ENABLED,BATTLE_PLAYERS_ENABLED} from '@/lib/battle/feature-flag';
 import type {BattleState,Side} from '@/lib/battle/domain/types';
 import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
 import {BattleSetup} from './BattleSetup';

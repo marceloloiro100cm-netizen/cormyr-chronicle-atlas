@@ -609,7 +609,8 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    Ordens, heróis, cerco, formações e pós-batalha estão disponíveis para testes;
    regras excepcionais e parâmetros de fortificações podem exigir decisão do Narrador.
    Nenhuma baixa ou alteração é aplicada às fichas oficiais das Casas.</p>
-  <section className="battle-surface got-save-panel" aria-label="Salvar e retomar teste local">
+  <details className="battle-surface got-save-panel" aria-label="Salvar e retomar teste local">
+   <summary>Salvar ou retomar</summary>
    <div className="got-save-actions">
     {battle&&<Button variant="outline" onClick={saveLocalBattle}>Salvar simulação neste navegador</Button>}
     <Button variant="outline" onClick={loadLocalBattle}>Retomar simulação salva</Button>
@@ -643,8 +644,15 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    <p className="battle-note">Até oito cópias nomeadas por perfil, separadas das
     simulações do jogador e do Narrador. Não substitui backup entre dispositivos.</p>
    {localSaveStatus&&<p role="status">{localSaveStatus}</p>}
-  </section>
+  </details>
   {!battle?<section className="battle-surface got-config" aria-label="Preparar campo de guerra">
+   <div className="battle-simple-launch" aria-label="Início rápido Game of Thrones">
+    <h3>Batalha rápida</h3>
+    <p>{2+extraUnitsPerSide} unidades por lado · mapa {mapSize.width} × {mapSize.height}</p>
+    <Button onClick={start}>Batalhar agora</Button>
+   </div>
+   <details className="battle-advanced-config">
+    <summary>Personalizar tropas, heróis e mapa</summary>
    <BattleGotGuide phase="preparation" onQuickPreset={()=>{
     setSiegeEnabled(false);setFortKind('none');setHeroesEnabled(false);
     setAdvanced(false);setWeather('clear');setVisibility('clear');
@@ -930,6 +938,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      return next;
     })}/>}
    <Button onClick={start}>Iniciar simulação pelo livro</Button>
+   </details>
   </section>:<>
    <section className="battle-surface got-status" aria-label="Estado da guerra" aria-live="polite">
     <h3>{battle.name}</h3>
