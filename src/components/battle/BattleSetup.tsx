@@ -143,9 +143,9 @@ export function BattleSetup({onStart,onBack}:{
      return makeFictionalStack({id:u.id,side:u.side,name:u.name,typeId:u.typeId,
        training:u.training,count:u.count,position:u.position});
    });
+   const objective=makeTacticalObjective(objectiveMode,map);
    const state=makeBattleSetup({id:'lab-'+seed,name,seed,map,
-     controls,stacks,...(makeTacticalObjective(objectiveMode,map)?
-       {objective:makeTacticalObjective(objectiveMode,map)}:{})});
+     controls,stacks,...(objective?{objective}:{})});
    if(!sideNames.attacker.trim()||!sideNames.defender.trim())throw new Error('Nomeie os dois exércitos.');
    onStart(state,displaySideNames,heraldry);
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível preparar a batalha.');}
@@ -168,10 +168,10 @@ export function BattleSetup({onStart,onBack}:{
      makeFictionalStack({id:u.id,side:u.side,name:u.name,typeId:u.typeId,
       training:u.training,count:u.count,position});
    });
+   const objective=makeTacticalObjective(objectiveMode,map);
    const battle=makeBattleSetup({id:'lab-'+seed,name,seed,map,
     controls:{attacker:'human',defender:quickOpponent},stacks,
-    ...(makeTacticalObjective(objectiveMode,map)?
-       {objective:makeTacticalObjective(objectiveMode,map)}:{})});
+    ...(objective?{objective}:{})});
    setError('');onStart(battle,displaySideNames,heraldry);
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível iniciar o confronto.');}
  };
