@@ -79,3 +79,14 @@
  .spy-defense-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
  .spy-defense-overview strong{font-size:21px}
 }
+
+
+/* R4 — alerta de sincronização discreto: não simula alteração no HUB. */
+.spy-mission-sync-alert{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+ padding:10px;border:1px solid var(--border);border-radius:9px;
+ background:var(--card);min-width:0}
+.spy-mission-sync-alert span{flex:1 1 180px;font-size:12px;line-height:1.4}
+.spy-mission-sync-alert button{min-height:44px}
+@media(max-width:640px){
+ .spy-mission-sync-alert button{width:100%;min-height:48px}
+}
