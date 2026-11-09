@@ -6,6 +6,7 @@ import {BattleSquareLegend} from './BattleSquareLegend';
 import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
+import {suggestDndImpassReview} from '@/lib/battle/ux/dnd-impasse';
 import {BattleCommanderPortrait} from './BattleCommanderPortrait';
 import {crzHexKey,crzGridToOffset,crzScenario,crzFootprintCells,
  type CrzHex,type CrzSide,type CrzMap}
@@ -939,7 +940,17 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
     needsSelection={Boolean(canAct&&active&&selectedId!==active.id)}
     onSelectActive={active?()=>setSelectedId(active.id):undefined}/>
    {savedPanel}
-   {dndMode&&!sandbox&&isDndBattle(frame)&&frame.phase==='active'&&<details className="battle-surface"
+   {dndMode&&!sandbox&&frame.phase==='active'&&
+    suggestDndImpassReview(frame.events)&&<div className="battle-impasse-hint"
+     role="note" aria-label="Possível impasse D&D">
+     <strong>Combate sem dano há três rodadas.</strong>
+     <span>Revise o posicionamento ou encerre o confronto manualmente. Não há vencedor automático.</span>
+     <Button size="sm" variant="outline" onClick={()=>{
+      const panel=document.getElementById('battle-dnd-manager') as HTMLDetailsElement|null;
+      if(panel){panel.open=true;panel.scrollIntoView({block:'nearest'});}
+     }}>Revisar impasse</Button>
+    </div>}
+   {dndMode&&!sandbox&&isDndBattle(frame)&&frame.phase==='active'&&<details id="battle-dnd-manager" className="battle-surface"
     aria-label="Gerenciamento de tropas durante a batalha D&D">
     <summary>Gerenciar criaturas, reforços e resultado</summary>
     <p>Altere o efetivo sem encerrar a partida. Cada ajuste é registrado no replay.

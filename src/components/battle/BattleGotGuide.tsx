@@ -14,8 +14,9 @@ const PHASES:readonly {id:Phase;label:string;hint:string}[]=[
 const stepIndex=(phase:Phase)=>PHASES.findIndex(x=>x.id===phase);
 
 /** Guia visual, sem alterar o motor/resultado do livro nem pular fases. */
-export function BattleGotGuide({phase,onQuickPreset}:{
+export function BattleGotGuide({phase,onQuickPreset,hasSiege=true,hasHeroes=true}:{
  phase:Phase;onQuickPreset?:()=>void;
+ hasSiege?:boolean;hasHeroes?:boolean;
 }){
  const current=PHASES.find(x=>x.id===phase)??PHASES[0]!;
  const jump=(id:string)=>document.getElementById(id)?.scrollIntoView({
@@ -27,11 +28,17 @@ export function BattleGotGuide({phase,onQuickPreset}:{
    <p>{current.hint}</p>
   </div>
   <ol className="got-phase-steps">
-   {PHASES.map((step,i)=><li key={step.id}
-    className={step.id===phase?'is-current':stepIndex(phase)>i?'is-complete':''}
-    aria-current={step.id===phase?'step':undefined}>
-    <span aria-hidden="true">{i+1}</span>{step.label}
-   </li>)}
+   {PHASES.map((step,i)=>{
+    const noActions=(step.id==='siege'&&!hasSiege)||
+     ((step.id==='heroes-first'||step.id==='heroes-second')&&!hasHeroes);
+    return <li key={step.id}
+     className={[step.id===phase?'is-current':stepIndex(phase)>i?'is-complete':'',
+      noActions?'is-without-actions':''].filter(Boolean).join(' ')}
+     aria-current={step.id===phase?'step':undefined}>
+     <span aria-hidden="true">{i+1}</span>{step.label}
+     {noActions&&<small>sem ações</small>}
+    </li>;
+   })}
   </ol>
   {phase==='preparation'&&<div className="got-phase-guide-links" role="group"
    aria-label="Navegação da preparação">
@@ -41,11 +48,14 @@ export function BattleGotGuide({phase,onQuickPreset}:{
    {onQuickPreset&&<Button size="sm" variant="outline" onClick={onQuickPreset}>
     Aplicar cenário rápido</Button>}
   </div>}
-  {phase!=='preparation'&&phase!=='finished'&&<div className="got-phase-guide-links">
+  {phase==='orders'&&<div className="got-phase-guide-links">
    <Button size="sm" variant="outline" onClick={()=>jump('got-battle-orders')}>
-    Ir ao painel de comandos</Button>
+    Ver ordens</Button>
   </div>}
-  <p className="got-phase-note">Guia visual: a mudança de fase continua controlada pelas
-   regras de Guerra dos Tronos RPG e pelas decisões do Narrador.</p>
+  <details className="got-phase-rules">
+   <summary>Sobre as fases</summary>
+   <p className="got-phase-note">A sequência permanece regida pelo livro. Fases sem ações
+    ainda são resolvidas pelo motor; o Narrador não as salta manualmente.</p>
+  </details>
  </nav>;
 }

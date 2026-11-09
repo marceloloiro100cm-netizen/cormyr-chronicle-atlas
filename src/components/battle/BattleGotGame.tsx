@@ -267,6 +267,16 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   !['destroyed','escaped','surrendered'].includes(u.condition))??[];
  const selectedTarget=enemy.find(u=>u.id===target)??enemy[0];
  const legalKind:WarOrderKind=selectedUnit?.condition==='routed'?'revive':kind;
+ const simpleOrderKinds:readonly WarOrderKind[]=[
+  'attack','move','charge','defend','ready','rally','retreat','reorganize',
+ ];
+ const availableOrders=Object.entries(ORDER_LABEL)
+  .filter(([id])=>selectedUnit?.condition==='routed'?
+   id==='revive':id!=='revive'&&(id!=='reorganize'||selectedUnit?.condition==='disorganized'))
+  .filter(([id])=>battle?.advancedFormations||
+   !['formation','turn','reverse','suppress','probe','counter-charge','sabotage',
+    'ambush','join','push','split-attack','lightning-attack','trample','envelop',
+    'scorched-earth','pincer','hammer-anvil','climb-walls'].includes(id));
  const order=()=>{
   if(!battle||!commander||!selectedUnit){setError('Selecione um comandante e uma unidade.');return;}
   try{
@@ -952,7 +962,9 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      {battle.winner?'Vitória do '+SIDE[battle.winner]:'Confronto sem vencedor'}
     </strong></p>}
    </section>
-   <BattleGotGuide phase={battle.phase}/>
+   <BattleGotGuide phase={battle.phase}
+    hasSiege={battle.siege.length>0}
+    hasHeroes={battle.heroes.some(h=>h.active)}/>
    <BattleTurnCue system="got" round={battle.round} phase={battle.phase}
     activeUnit={battle.phase==='orders'?SIDE[battle.turn]:'Fase do livro'}
     canAct={battle.phase!=='finished'}
@@ -1464,11 +1476,14 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
       <label>Ordem
        <select aria-label="Ordem do livro" value={legalKind}
         onChange={e=>setKind(e.target.value as WarOrderKind)}>
-        {Object.entries(ORDER_LABEL).filter(([id])=>selectedUnit.condition==='routed'?
-         id==='revive':id!=='revive'&&(id!=='reorganize'||selectedUnit.condition==='disorganized'))
-         .filter(([id])=>battle.advancedFormations||
-          !['formation','turn','reverse','suppress','probe','counter-charge','sabotage','ambush','join','push','split-attack','lightning-attack','trample','envelop','scorched-earth','pincer','hammer-anvil','climb-walls'].includes(id))
-         .map(([id,label])=><option key={id} value={id}>{label}</option>)}
+        <optgroup label="Ordens comuns">
+         {availableOrders.filter(([id])=>simpleOrderKinds.includes(id as WarOrderKind))
+          .map(([id,label])=><option key={id} value={id}>{label}</option>)}
+        </optgroup>
+        <optgroup label="Táticas e manobras">
+         {availableOrders.filter(([id])=>!simpleOrderKinds.includes(id as WarOrderKind))
+          .map(([id,label])=><option key={id} value={id}>{label}</option>)}
+        </optgroup>
        </select>
       </label>
       {legalKind==='ready'&&<div className="got-config-grid">

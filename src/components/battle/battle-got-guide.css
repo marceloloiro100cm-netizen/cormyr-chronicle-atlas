@@ -33,3 +33,14 @@
  width:min(100%,270px);min-height:40px
 }
 .battle-got .got-save-actions button{min-height:42px;white-space:normal}
+
+/* L4: indicar fases sem ações, sem mascarar a sequência real do motor. */
+.battle-got .got-phase-steps li.is-without-actions{border-style:dashed;opacity:.66}
+.battle-got .got-phase-steps li.is-without-actions.is-current{opacity:1}
+.battle-got .got-phase-steps li>small{font-size:.7rem;line-height:1.2}
+.battle-got .got-phase-rules summary{font-size:.82rem;cursor:pointer;color:#e6d6b7}
+.battle-got .got-phase-rules p{margin:.35rem 0 0}
+@media(max-width:540px){
+ .battle-got .got-phase-steps li{min-height:44px}
+ .battle-got .got-phase-steps li>small{display:none}
+}
