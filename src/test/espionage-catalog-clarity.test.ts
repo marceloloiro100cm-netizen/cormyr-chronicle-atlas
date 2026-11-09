@@ -11,7 +11,7 @@ const textFile=(name:string)=>readFileSync(resolve(name),'utf8');
 describe('Espionagem · construções ao final e textos claros',()=>{
  it('ordena defesa, agentes e planejamento antes de construções',()=>{
   const hub=textFile('src/components/house/hub.tsx');
-  const defense=hub.indexOf('<SpyDefensePanel state={state}/>');
+  const defense=hub.indexOf('<SpyDefensePanel state={state} houseId={house.id}/>');
   const agents=hub.indexOf('<SpyAgentManagement houseId={house.id}');
   const planner=hub.indexOf('<SpyRegionalTurnsPanel houseId={house.id}');
   const constructions=hub.indexOf('<HouseAssetCatalog section="spy"');
