@@ -1,7 +1,7 @@
 import {useEffect,useRef} from 'react';
 import {useThree} from '@react-three/fiber';
 import {OrbitControls} from '@react-three/drei';
-import type {OrthographicCamera} from 'three';
+import {MOUSE,TOUCH,type OrthographicCamera} from 'three';
 import type {OrbitControls as OrbitControlsImpl} from 'three-stdlib';
 
 export function CameraRig({width,height,top,zoom,reset}:{width:number;height:number;top:boolean;zoom:number;reset:number}){
@@ -19,5 +19,7 @@ export function CameraRig({width,height,top,zoom,reset}:{width:number;height:num
   controls.current?.target.set(0,0,0);controls.current?.update();invalidate();
  },[camera,size.width,size.height,width,height,top,zoom,reset,invalidate]);
  return <OrbitControls ref={controls} makeDefault enableRotate={false} enableDamping={false}
-  screenSpacePanning enablePan enableZoom minZoom={5} maxZoom={150}/>;
+  screenSpacePanning enablePan enableZoom minZoom={5} maxZoom={150}
+  mouseButtons={{LEFT:MOUSE.PAN,MIDDLE:MOUSE.DOLLY,RIGHT:MOUSE.PAN}}
+  touches={{ONE:TOUCH.PAN,TWO:TOUCH.DOLLY_PAN}}/>;
 }
