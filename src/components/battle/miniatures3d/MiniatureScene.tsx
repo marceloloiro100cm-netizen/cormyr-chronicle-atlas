@@ -3,7 +3,7 @@ import {Canvas,useFrame,useThree} from '@react-three/fiber';
 import {CanvasTexture,LinearFilter,SRGBColorSpace,type Group} from 'three';
 import type {Hex} from '@/lib/battle/domain/types';
 import {hexKey} from '@/lib/battle/geometry/hex';
-import {squareWorldPosition,type VisualToken,type VisualSquareMap} from '@/lib/battle/visual3d/tokens';
+import {squareWorldPosition,type VisualToken,type VisualSquareMap,type VisualFeature} from '@/lib/battle/visual3d/tokens';
 import {RigidModel} from './RigidModels';
 import {CameraRig} from './CameraRig';
 import type {MiniaturePalette} from './palette';
@@ -86,17 +86,65 @@ function Token({token,map,p,selected,active,hovered,target,reduced,compact,onCli
   {(selected||active||hovered||target)&&<mesh position={[0,.125,0]} rotation={[-Math.PI/2,0,0]}>
    <torusGeometry args={[radius+.03,.037,6,24]}/>
    <meshBasicMaterial color={target?p.attack:selected||hovered?p.selection:p.move}/></mesh>}
-  <group scale={scale}><RigidModel kind={token.kind} p={p} compact={compact}/></group>
+  <group scale={scale}><RigidModel kind={token.kind} p={p} compact={compact} cosmeticTint={token.cosmeticTint}/></group>
   <CountSprite value={token.count} p={p}
    at={[0,.22,token.side==='defender'?-radius-.13:radius+.13]}/>
  </group>;
+}
+/** Decorative-only terrain for coastal war maps. No changes to collision, rules or LOS. */
+function TileDecoration({feature,p,occupied}:{
+ feature:VisualFeature;p:MiniaturePalette;occupied:boolean;
+}){
+ if(feature==='road')return <mesh position={[0,.022,0]}>
+  <boxGeometry args={[.92,.035,.24]}/>
+  <meshStandardMaterial color={p.wood} flatShading roughness={1}/></mesh>;
+ if(feature==='bridge')return <group>
+  <mesh position={[0,.09,0]}><boxGeometry args={[.97,.18,.35]}/>
+   <meshStandardMaterial color={p.wood} flatShading/></mesh>
+  {[-.40,.40].map(x=><mesh key={x} position={[x,.19,.19]}>
+   <boxGeometry args={[.08,.24,.07]}/>
+   <meshStandardMaterial color={p.gold} flatShading/></mesh>)}
+ </group>;
+ if(feature==='coast')return <group>
+  <mesh position={[-.28,.01,0]}><boxGeometry args={[.31,.06,.92]}/>
+   <meshStandardMaterial color={p.plain} flatShading/></mesh>
+  <mesh position={[-.04,.02,0]}><boxGeometry args={[.09,.04,.89]}/>
+   <meshStandardMaterial color={p.paper} flatShading/></mesh>
+ </group>;
+ if(feature==='island')return !occupied&&<mesh position={[0,.03,0]} scale={[.34,.13,.37]}>
+  <dodecahedronGeometry args={[1,0]}/>
+  <meshStandardMaterial color={p.forest} flatShading/></mesh>;
+ if(feature==='marsh')return <group>
+  {[-.27,0,.29].map(x=><mesh key={x} position={[x,.008,.18]} rotation={[-Math.PI/2,0,0]}>
+   <planeGeometry args={[.23,.27]}/>
+   <meshBasicMaterial color={p.water} transparent opacity={.8}/></mesh>)}
+  {!occupied&&[0,.3].map(x=><mesh key={x} position={[x,.12,-.26]}>
+   <coneGeometry args={[.05,.21,4]}/>
+   <meshStandardMaterial color={p.forest}/></mesh>)}
+ </group>;
+ if(occupied)return null;
+ if(feature==='wall')return <mesh position={[0,.14,-.32]}>
+  <boxGeometry args={[.92,.28,.23]}/>
+  <meshStandardMaterial color={p.rock} roughness={1} flatShading/></mesh>;
+ if(feature==='ruins')return <group>
+  {[-.24,.17].map((x,i)=><mesh key={x} position={[x,.12,-.25]}>
+   <boxGeometry args={[.22,i?.20:.27,.23]}/>
+   <meshStandardMaterial color={p.rock} flatShading/></mesh>)}
+ </group>;
+ if(feature==='fort')return <group>
+  <mesh position={[0,.12,-.2]}><boxGeometry args={[.58,.26,.3]}/>
+   <meshStandardMaterial color={p.rock} flatShading/></mesh>
+  <mesh position={[0,.35,-.2]}><coneGeometry args={[.25,.23,4]}/>
+   <meshStandardMaterial color={p.wood} flatShading/></mesh>
+ </group>;
+ return null;
 }
 function Field(props:SceneProps){
  const {map,palette:p,tokens,moveKeys=[],attackKeys=[],onHexClick}=props;
  const moves=useMemo(()=>new Set(moveKeys),[moveKeys]);
  const occupied=useMemo(()=>new Set(tokens.flatMap(t=>
   (t.footprintCells?.length?t.footprintCells:[t.position]).map(hexKey))),[tokens]);
- const compact=tokens.length>24;
+ const compact=tokens.length>40;
  const attacks=useMemo(()=>new Set(attackKeys),[attackKeys]);
  return <>
   <color attach="background" args={[p.ground]}/>
@@ -115,6 +163,7 @@ function Field(props:SceneProps){
      <boxGeometry args={[.975,.18,.975]}/>
      <meshStandardMaterial color={p[tile.terrain]} roughness={1} flatShading/>
     </mesh>
+    {tile.feature&&<TileDecoration feature={tile.feature} p={p} occupied={unit}/>}
     {moves.has(key)&&<mesh position={[0,.004,0]} rotation={[-Math.PI/2,0,0]}>
      <planeGeometry args={[.87,.87]}/>
      <meshBasicMaterial color={p.move} transparent opacity={.62}/></mesh>}
