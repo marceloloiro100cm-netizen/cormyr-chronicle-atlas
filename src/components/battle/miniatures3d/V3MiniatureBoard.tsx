@@ -1,4 +1,4 @@
-import {useState,type ComponentProps} from 'react';
+import {useEffect,useState,type ComponentProps} from 'react';
 import {Button} from '@/components/ui/button';
 import {BattleBoard} from '../BattleBoard';
 import {canUseMiniatures,visualTokens} from '@/lib/battle/visual3d/tokens';
@@ -12,6 +12,8 @@ export function V3MiniatureBoard({narrator,sessionEnabled,houses,
  canIssueCommands=false,targetAction='attack',...board}:Props){
  const [three,setThree]=useState(false);const [failed,setFailed]=useState(false);
  const allowed=canUseMiniatures(narrator,sessionEnabled,board.map);
+ // Restore the safe 2D default if Narrator access or the active session ends.
+ useEffect(()=>{if(!allowed)setThree(false);},[allowed]);
  const fallback=<BattleBoard {...board}/>;
  return <>
   {allowed&&<div className="miniatures3d-toolbar" role="group" aria-label="Visão do campo de batalha">
