@@ -172,12 +172,7 @@ export function RigidModel({kind,p,compact=false}:{kind:MiniatureKind;p:Miniatur
  if(isCreatureVisualKind(kind))return <CreatureModel kind={kind} p={p}/>;
  if(kind==='warships')return <Ship p={p}/>;
  if(kind==='cavalry')return <Horse p={p}/>;
- if(kind==='dragon')return <Beast p={p} dragon/>;
- if(kind==='beast')return <Beast p={p}/>;
- if(kind==='construct')return <Construct p={p}/>;
- if(kind==='giant')return <group scale={1.32}><Soldier kind="infantry" p={p}/></group>;
  if(kind==='generic')return <group><Cone at={[0,.48,0]} r={.25} h={.65} color={p.metal}/>
   <Orb at={[0,.88,0]} size={[.12,.12,.12]} color={p.gold}/></group>;
- if(kind==='humanoid')return <Soldier kind="mercenaries" p={p}/>;
  return <Soldier kind={kind} p={p}/>;
 }
