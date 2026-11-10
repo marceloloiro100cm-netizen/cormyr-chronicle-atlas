@@ -7,14 +7,18 @@ import {squareWorldPosition,type VisualToken,type VisualSquareMap} from '@/lib/b
 import {RigidModel} from './RigidModels';
 import {CameraRig} from './CameraRig';
 import {ScenicTile3D} from './ScenicTile3D';
+import type {VisualPendingAction} from '@/lib/battle/visual3d/interaction';
+import type {CameraFocus} from './CameraRig';
 import type {MiniaturePalette} from './palette';
 
 export type SceneProps={
  map:VisualSquareMap;tokens:readonly VisualToken[];selectedId?:string|null;
  activeId?:string|null;hoveredId?:string|null;moveKeys?:readonly string[];
- attackKeys?:readonly string[];onHexClick?:(hex:Hex)=>void;
+ attackKeys?:readonly string[];routeKeys?:readonly string[];pendingHex?:Hex|null;
+ pendingAction?:VisualPendingAction|null;onHexClick?:(hex:Hex)=>void;
  palette:MiniaturePalette;top:boolean;zoom:number;reset:number;
- reducedMotion:boolean;forceDetailed?:boolean;onReady:()=>void;onFailure:()=>void;
+ reducedMotion:boolean;forceDetailed?:boolean;focus?:CameraFocus|null;
+ onReady:()=>void;onFailure:()=>void;
 };
 function Ready({onReady}:{onReady:()=>void}){
  const done=useRef(false);
@@ -93,8 +97,9 @@ function Token({token,map,p,selected,active,hovered,target,reduced,compact,onCli
  </group>;
 }
 function Field(props:SceneProps){
- const {map,palette:p,tokens,moveKeys=[],attackKeys=[],onHexClick}=props;
+ const {map,palette:p,tokens,moveKeys=[],attackKeys=[],routeKeys=[],onHexClick}=props;
  const moves=useMemo(()=>new Set(moveKeys),[moveKeys]);
+ const routes=useMemo(()=>new Set(routeKeys),[routeKeys]);
  const occupied=useMemo(()=>new Set(tokens.flatMap(t=>
   (t.footprintCells?.length?t.footprintCells:[t.position]).map(hexKey))),[tokens]);
  const compact=tokens.length>24&&!props.forceDetailed;
@@ -108,7 +113,7 @@ function Field(props:SceneProps){
   <ambientLight intensity={1.05}/>
   <directionalLight position={[5,12,5]} intensity={1.45}/>
   <CameraRig width={map.width} height={map.height} top={props.top}
-   zoom={props.zoom} reset={props.reset}/>
+   zoom={props.zoom} reset={props.reset} focus={props.focus}/>
   <group>{map.tiles.map(tile=>{
    const key=hexKey(tile);
    const position=squareWorldPosition(map,tile);
@@ -120,9 +125,24 @@ function Field(props:SceneProps){
      <boxGeometry args={[.975,.18,.975]}/>
      <meshStandardMaterial color={p[tile.terrain]} roughness={1} flatShading/>
     </mesh>
-    {moves.has(key)&&<mesh position={[0,.004,0]} rotation={[-Math.PI/2,0,0]}>
+    {routes.has(key)&&<mesh position={[0,.006,0]} rotation={[-Math.PI/2,0,0]}>
+     <planeGeometry args={[.82,.82]}/>
+     <meshBasicMaterial color={p.gold} transparent opacity={.36} depthWrite={false}/></mesh>}
+    {moves.has(key)&&<mesh position={[0,.008,0]} rotation={[-Math.PI/2,0,0]}>
      <planeGeometry args={[.87,.87]}/>
-     <meshBasicMaterial color={p.move} transparent opacity={.62}/></mesh>}
+     <meshBasicMaterial color={p.move} transparent opacity={.62} depthWrite={false}/></mesh>}
+    {props.pendingHex?.q===tile.q&&props.pendingHex?.r===tile.r&&
+     <mesh position={[0,.02,0]} rotation={[-Math.PI/2,0,0]}>
+      <ringGeometry args={[.34,.43,4]}/>
+      <meshBasicMaterial color={p.selection} side={2} depthWrite={false}/>
+     </mesh>}
+    {props.pendingAction?.target.q===tile.q&&
+     props.pendingAction?.target.r===tile.r&&
+     <mesh position={[0,.028,0]} rotation={[-Math.PI/2,0,0]}>
+      <ringGeometry args={[.30,.45,4]}/>
+      <meshBasicMaterial color={props.pendingAction.type==='move'?p.move:p.attack}
+       side={2} depthWrite={false}/>
+     </mesh>}
     {selectedFootprint.has(key)&&<mesh position={[0,.014,0]}
       rotation={[-Math.PI/2,0,0]}>
       <planeGeometry args={[.91,.91]}/>
@@ -134,7 +154,10 @@ function Field(props:SceneProps){
   })}</group>
   {tokens.map(token=><Token key={token.id} token={token} map={map} p={p}
    selected={token.id===props.selectedId} active={token.id===props.activeId}
-   hovered={token.id===props.hoveredId} target={attacks.has(token.id)}
+   hovered={token.id===props.hoveredId}
+   target={attacks.has(token.id)||(props.pendingAction?.type==='attack'&&
+    (token.footprintCells?.length?token.footprintCells:[token.position])
+     .some(h=>h.q===props.pendingAction?.target.q&&h.r===props.pendingAction?.target.r))}
    compact={compact} reduced={props.reducedMotion}
    onClick={()=>onHexClick?.({...token.position})}/>)}
   <Ready onReady={props.onReady}/>
