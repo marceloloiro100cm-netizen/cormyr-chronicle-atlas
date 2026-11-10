@@ -603,6 +603,16 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   previewWarSiegeReadiness(battle,battle.turn,siegeAim,{
    targetHidden:Boolean(siegeTargetUnit?.hidden&&siegeTargetMode==='unit'),
   }):[];
+ const selectMapCell=(x:number,y:number)=>{
+  if(!battle)return;
+  setCoord({x,y});
+  const unit=battle.units.find(u=>u.position.x===x&&u.position.y===y&&
+   !['destroyed','escaped','surrendered'].includes(u.condition));
+  if(unit){
+   if(unit.side===battle.turn)setSelected(unit.id);
+   else setTarget(unit.id);
+  }
+ };
  const battleEvents=battle?.events.filter(e=>eventFilter==='all'||
   (eventFilter==='dice'?Boolean(e.roll):e.side===eventFilter)).slice(-30)??[];
  return <section className="battle-got" aria-label="Batalha pelas regras de Guerra dos Tronos RPG">
