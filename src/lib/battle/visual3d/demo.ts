@@ -29,3 +29,23 @@ export function miniatureCatalog():{map:BattleMap;tokens:VisualToken[]}{
  }));
  return {map,tokens};
 }
+
+/** Synthetic 40/80-piece visual stress scenes. Never reads campaign or rules state.
+ * Used for measured FPS on an actual device, not to claim a benchmark was passed.
+ */
+export function miniatureStressDemo(quantity:40|80):{map:BattleMap;tokens:VisualToken[]}{
+ const base=miniatureDemo().map;
+ const map={...base,id:'miniatures-benchmark-'+quantity,
+  label:'Benchmark visual '+quantity+' miniaturas',
+  tiles:base.tiles.map(tile=>({...tile,terrain:'plain' as const}))};
+ const tokens:Array<VisualToken>=Array.from({length:quantity},(_,i)=>{
+  const kind=CORMYR_MINIATURE_TYPES[i%CORMYR_MINIATURE_TYPES.length]!;
+  return {
+   id:'benchmark-'+i,name:'Tropa de teste '+(i+1),
+   side:i%2===0?'attacker':'defender',
+   position:{q:i%base.width,r:Math.floor(i/base.width)},
+   ...classifyMiniature(kind),count:(i%40)+1,
+  };
+ });
+ return {map,tokens};
+}
