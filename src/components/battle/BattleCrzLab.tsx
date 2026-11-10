@@ -134,6 +134,12 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
 }){
  const [zoom,setZoom]=useState<100|150|200>(100);
  const [focusedKey,setFocusedKey]=useState<string|null>(null);
+ const [hoveredMove,setHoveredMove]=useState<CrzHex|null>(null);
+ const activeStack=state.stacks.find(s=>s.id===state.activeStackId);
+ const ghostCells=hoveredMove&&activeStack&&isDndV3(state)&&
+  moves.some(h=>crzHexKey(h)===crzHexKey(hoveredMove))?
+  crzFootprintCells(state.map,hoveredMove,activeStack.size):[];
+ const ghostKeys=new Set(ghostCells.map(crzHexKey));
  const defaultFocus=crzHexKey(state.stacks.find(s=>s.id===state.activeStackId)?.position??state.map.tiles[0]!);
  const objectivesByHex=new Map(objectives.map(o=>[crzHexKey(o.position),o]));
  const movable=new Set(moves.map(crzHexKey));
@@ -157,6 +163,9 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
    <Button type="button" variant="outline" size="sm" onClick={()=>setZoom(100)}
     disabled={zoom===100}>Ajustar mapa CRZ</Button>
   </div>
+  {ghostCells.length>1&&<p className="crz-map-help" role="status">
+   Prévia de ocupação: {ghostCells.length} quadrados para a criatura ativa.
+  </p>}
   <p className="crz-map-help" id="crz-keyboard-help">Teclado: Tab entra no mapa;
    setas navegam pelas células; Enter ou Espaço executam a ação. Use o zoom
    para ampliar sem alterar o tamanho das tropas.</p>
@@ -192,7 +201,9 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
     return <g key={key} role="button"
      data-crz-hex={key} tabIndex={key===(focusedKey??defaultFocus)?0:-1}
      aria-label={label} aria-describedby="crz-keyboard-help"
-     onFocus={()=>setFocusedKey(key)}
+     onFocus={()=>{setFocusedKey(key);setHoveredMove(isMove?tile:null);}}
+     onMouseEnter={()=>setHoveredMove(isMove?tile:null)}
+     onMouseLeave={()=>setHoveredMove(null)}
      onClick={press} onKeyDown={keyPress}
      className={'crz-map-tile'+(isMove?' crz-map-move':'')+
        (isAttack?' crz-map-attack':'')+(active?' crz-map-active':'')+
@@ -207,6 +218,11 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
        fill={active?'rgba(255,224,153,.25)':'rgba(255,224,153,.15)'}
        stroke={isAttack?'#ff6d54':'#c6aa70'} strokeWidth={isAttack?3:1.5}
        pointerEvents="none"/>}
+      {square&&ghostKeys.has(key)&&<rect data-crz-ghost-footprint="true"
+       x={x-SQUARE_STEP/2+2} y={y-SQUARE_STEP/2+2}
+       width={SQUARE_STEP-4} height={SQUARE_STEP-4}
+       fill="rgba(255,231,157,.18)" stroke="#ffe3a1"
+       strokeWidth={2.5} strokeDasharray="6 3" pointerEvents="none"/>}
       {isMove&&(square?<rect className="crz-valid-overlay"
        x={x-SQUARE_STEP/2} y={y-SQUARE_STEP/2} width={SQUARE_STEP} height={SQUARE_STEP}
        fill="rgba(99,255,116,.24)" pointerEvents="none"/>:
