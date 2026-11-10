@@ -140,6 +140,7 @@ class RigidMiniatureChromiumAcceptance(unittest.TestCase):
         self.snapshot(canvas, "mobile-top-zoom.png")
         (OUTPUT / "mobile-ui.png").write_bytes(section.screenshot())
         self.assertIn("Infantaria",section.locator(".miniatures3d-selected").inner_text())
+        self.assertLessEqual(section.locator(".miniatures3d-sr-only").bounding_box()["width"], 1)
         self.assertEqual(section.locator(".miniatures3d-label").count(), 0)
         self.assertLessEqual(section.locator(".miniatures3d-selected").bounding_box()["height"], 65)
         self.assertLessEqual(
