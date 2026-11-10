@@ -1,5 +1,6 @@
 .miniatures3d {
  --mini-plain:#d4c69e; --mini-forest:#66886b; --mini-hill:#c4a36f; --mini-rock:#787478;
+ --mini-water:#386c83; --mini-settlement:#aa9076;
  --mini-attacker:#416f9b; --mini-defender:#ab5246; --mini-selection:#f9d776;
  --mini-move:#77c68b; --mini-attack:#ed6559; --mini-metal:#a9b8bd; --mini-gold:#c7a254;
  --mini-skin:#e0b391; --mini-wood:#70513a; --mini-goblin:#72ad4b; --mini-cloth:#604862;
@@ -14,3 +15,9 @@
 .miniatures3d-demo {margin-top:1rem;}
 @media(max-width:640px){.miniatures3d-toolbar button{min-height:44px;}.miniatures3d-viewport{height:400px;}.miniatures3d-label{font-size:10px;}}
 @media(prefers-reduced-motion:reduce){.miniatures3d *{transition:none;}}
+/* Lote 4: readable touch targets without covering the tactical HUD. */
+.miniatures3d-toolbar button {min-height:44px;min-width:44px;}
+.miniatures3d-label {max-width:150px;white-space:normal;overflow-wrap:anywhere;}
+.miniatures3d-viewport canvas {display:block;outline-offset:3px;}
+.miniatures3d-viewport:focus-within {outline:2px solid var(--mini-selection);outline-offset:2px;}
+@media (max-width:640px){.miniatures3d-label small{max-width:95px;}.miniatures3d-toolbar{gap:.35rem}}
