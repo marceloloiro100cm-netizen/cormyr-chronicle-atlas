@@ -11,7 +11,7 @@ import {BattleFirstBattleGuide} from '@/components/battle/BattleFirstBattleGuide
 import {BattleMapEditor} from '@/components/battle/BattleMapEditor';
 import {MiniatureDemo} from '@/components/battle/miniatures3d/MiniatureDemo';
 import {MiniatureViewport} from '@/components/battle/miniatures3d/MiniatureViewport';
-import {miniatureCatalog} from '@/lib/battle/visual3d/demo';
+import {miniatureCatalog,miniatureDemo} from '@/lib/battle/visual3d/demo';
 import {BattleReplay,BattleReplayImporter} from '@/components/battle/BattleReplay';
 import {createScenario} from '@/lib/battle/geometry/map-fixtures';
 import {makeTacticalObjective} from '@/lib/battle/domain/objectives';
@@ -26,6 +26,9 @@ function TestHarness(){
  const [map,setMap]=useState(()=>createScenario('plain-open'));
  const [selectedHex,setSelectedHex]=useState('nenhum');
  const [loadCount,setLoadCount]=useState<0|40|80>(0);
+ const [p0Orders,setP0Orders]=useState<string[]>([]);
+ const [p0CanAct,setP0CanAct]=useState(true);
+ const p0Scene=useMemo(()=>miniatureDemo(),[]);
  const loadDemo=useMemo(()=>{
   const {map,tokens}=miniatureCatalog();
   return {map,tokens:Array.from({length:80},(_,i)=>({
@@ -108,6 +111,20 @@ function TestHarness(){
    <h2>Miniaturas 3D · ensaio sintético do Narrador</h2>
    <p>Somente geometria fictícia, sem fichas, autenticação ou acesso ao banco da campanha.</p>
    <MiniatureDemo narrator/>
+  </section>
+  <section id="miniatures-3d-p0" aria-label="Homologação P0 do gerenciamento 3D">
+   <h2>P0 · Câmera e ações seguras do Narrador</h2>
+   <p>Dados e comandos fictícios, sem conexão com motor ou banco.</p>
+   <p data-testid="p0-action-log">Comandos enviados: {p0Orders.join(' | ')||'nenhum'}</p>
+   <button type="button" onClick={()=>setP0CanAct(false)}>Revogar ações legais P0</button>
+   <button type="button" onClick={()=>{setP0CanAct(true);setP0Orders([]);}}>
+    Restaurar ações P0</button>
+   <MiniatureViewport map={p0Scene.map} tokens={p0Scene.tokens}
+    selectedId="demo-infantry" activeId="demo-infantry"
+    moveKeys={p0CanAct?['4,2']:[]} attackKeys={p0CanAct?['demo-goblin']:[]}
+    canIssueCommands={p0CanAct}
+    onHexClick={hex=>setP0Orders(list=>[...list,hexKey(hex)])}
+    fallback={<p>Mapa 2D de segurança no ensaio P0.</p>}/>
   </section>
   <section id="miniatures-3d-load" aria-label="Teste de carga de miniaturas 3D fictícias">
    <h2>Teste de 40 e 80 tokens rígidos</h2>
