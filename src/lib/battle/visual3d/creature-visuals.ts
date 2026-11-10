@@ -69,3 +69,7 @@ export function classifyCreatureArtwork(template:CreatureVisualIdentity):Creatur
  if(family)return {kind:family,fallback:false};
  return {kind:'generic',fallback:true};
 }
+
+export function isCreatureVisualKind(kind:MiniatureKind):kind is CreatureMiniatureKind{
+ return (CREATURE_VISUAL_FAMILIES as readonly string[]).includes(kind);
+}
