@@ -95,6 +95,23 @@ describe('P0 do mapa 3D — segurança e gerenciamento',()=>{
   expect(screen.getByText('Quadrado 3,3 · Planície')).toBeInTheDocument();
   expect(screen.getByText('Unidade: Infantaria (Atacante)')).toBeInTheDocument();
  });
+ it('P2 permite selecionar destino legal pelo teclado, sempre com confirmação',async()=>{
+  const click=vi.fn();show({onHexClick:click});
+  const chooser=screen.getByRole('combobox',{name:'Quadrado do tabuleiro'});
+  fireEvent.change(chooser,{target:{value:'4,2'}});
+  fireEvent.click(screen.getByRole('button',{name:'Inspecionar ou selecionar'}));
+  expect(screen.getByRole('button',{name:'Confirmar movimento'})).toBeInTheDocument();
+  expect(click).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button',{name:'Confirmar movimento'}));
+  expect(click).toHaveBeenCalledOnce();
+  expect(click).toHaveBeenCalledWith({q:4,r:2});
+ });
+ it('P1 diferencia facções e ações por símbolos na legenda',async()=>{
+  show();
+  expect(screen.getByText('● Atacante')).toBeInTheDocument();
+  expect(screen.getByText('■ Defensor')).toBeInTheDocument();
+  expect(screen.getByText('✕ Ataque')).toBeInTheDocument();
+ });
  it('quando o contexto WebGL falha mantém os dados visíveis no 2D',async()=>{
   show();
   fireEvent.click(await screen.findByRole('button',{name:'Falha WebGL mock'}));
