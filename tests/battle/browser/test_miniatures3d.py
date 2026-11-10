@@ -90,11 +90,9 @@ class RigidMiniatureChromiumAcceptance(unittest.TestCase):
         self.assertIn("WebGL", gl["version"])
         self.assertEqual(section.locator(".miniatures3d").get_attribute("data-token-count"), "4")
         self.assertIn("Infantaria", section.locator(".miniatures3d-selected").inner_text())
-        # Drei can omit an off-screen HTML overlay; token source and selected status remain accessible.
-        self.assertGreaterEqual(section.locator(".miniatures3d-label").count(), 3)
-        # UI requirement: never stack label text vertically over the miniature.
-        for label in section.locator(".miniatures3d-label").all():
-            self.assertLessEqual(label.bounding_box()["height"], 45)
+        # Counts are native WebGL sprites; no per-token HTML portal is mounted.
+        self.assertEqual(section.locator(".miniatures3d-label").count(), 0)
+        self.assertLessEqual(section.locator(".miniatures3d-selected").bounding_box()["height"], 65)
         base_hash, colors = self.snapshot(canvas, "desktop-four-isometric.png")
         self.assertGreater(colors, 25)
 
@@ -115,7 +113,8 @@ class RigidMiniatureChromiumAcceptance(unittest.TestCase):
             timeout=10000,
         )
         self.assertEqual(section.locator(".miniatures3d").get_attribute("data-token-count"), "17")
-        self.assertGreaterEqual(section.locator(".miniatures3d-label").count(), 10)
+        self.assertIn("Apoio", section.locator(".miniatures3d-selected").inner_text())
+        self.assertEqual(section.locator(".miniatures3d-label").count(), 0)
         self.snapshot(canvas, "desktop-seventeen.png")
         (OUTPUT / "desktop-seventeen-ui.png").write_bytes(section.screenshot())
         self.assertEqual(page_errors, [], f"Unexpected browser exception: {page_errors}")
@@ -130,8 +129,8 @@ class RigidMiniatureChromiumAcceptance(unittest.TestCase):
         self.snapshot(canvas, "mobile-top-zoom.png")
         (OUTPUT / "mobile-ui.png").write_bytes(section.screenshot())
         self.assertIn("Infantaria",section.locator(".miniatures3d-selected").inner_text())
-        for label in section.locator(".miniatures3d-label").all():
-            self.assertLessEqual(label.bounding_box()["height"], 45)
+        self.assertEqual(section.locator(".miniatures3d-label").count(), 0)
+        self.assertLessEqual(section.locator(".miniatures3d-selected").bounding_box()["height"], 65)
         self.assertLessEqual(
             page.evaluate("document.documentElement.scrollWidth - window.innerWidth"), 5
         )
