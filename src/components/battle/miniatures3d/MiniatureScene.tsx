@@ -10,6 +10,8 @@ import {ScenicTile3D} from './ScenicTile3D';
 import type {VisualPendingAction} from '@/lib/battle/visual3d/interaction';
 import type {CameraFocus} from './CameraRig';
 import type {MiniaturePalette} from './palette';
+import {footprintPerimeter} from '@/lib/battle/visual3d/footprint';
+import {buildMiniaturePerfSample,type MiniaturePerfSample} from '@/lib/battle/visual3d/performance';
 
 export type SceneProps={
  map:VisualSquareMap;tokens:readonly VisualToken[];selectedId?:string|null;
@@ -19,11 +21,56 @@ export type SceneProps={
  palette:MiniaturePalette;top:boolean;zoom:number;reset:number;
  reducedMotion:boolean;forceDetailed?:boolean;focus?:CameraFocus|null;
  onReady:()=>void;onFailure:()=>void;
+ measurePerformance?:boolean;onPerformanceSample?:(sample:MiniaturePerfSample)=>void;
 };
 function Ready({onReady}:{onReady:()=>void}){
  const done=useRef(false);
  useFrame(()=>{if(!done.current){done.current=true;onReady();}});
  return null;
+}
+function PerformanceProbe({active,tokenCount,onSample}:{
+ active:boolean;tokenCount:number;onSample?:(sample:MiniaturePerfSample)=>void;
+}){
+ const current=useRef({start:0,frames:0,drawCalls:0,triangles:0,delivered:false});
+ useEffect(()=>{
+  current.current={start:0,frames:0,drawCalls:0,triangles:0,delivered:false};
+ },[active,tokenCount]);
+ useFrame(({gl,invalidate})=>{
+  if(!active||current.current.delivered)return;
+  const clock=performance.now();
+  const state=current.current;
+  if(!state.start)state.start=clock;
+  state.frames++;
+  state.drawCalls+=gl.info.render.calls;
+  state.triangles+=gl.info.render.triangles;
+  const elapsedMs=clock-state.start;
+  if(elapsedMs>=5000){
+   state.delivered=true;
+   const sample=buildMiniaturePerfSample({
+    elapsedMs,frames:state.frames,tokenCount,
+    totalDrawCalls:state.drawCalls,totalTriangles:state.triangles,
+   });
+   if(sample)onSample?.(sample);
+  }else invalidate();
+ });
+ return null;
+}
+/** Continuous boundary with interior edges omitted. Does not receive clicks. */
+function FootprintBorder({token,map,p}:{
+ token:VisualToken;map:VisualSquareMap;p:MiniaturePalette;
+}){
+ const cells=token.footprintCells??[];
+ if(cells.length<2)return null;
+ return <group>{footprintPerimeter(cells).map((edge,i)=>{
+  const x=edge.q-(map.width-1)/2,z=edge.r-(map.height-1)/2;
+  const horizontal=edge.side==='north'||edge.side==='south';
+  const xx=x+(edge.side==='west'?-0.49:edge.side==='east'?0.49:0);
+  const zz=z+(edge.side==='north'?-0.49:edge.side==='south'?0.49:0);
+  return <mesh key={i} position={[xx,.047,zz]} raycast={()=>{}}>
+   <boxGeometry args={horizontal?[.985,.026,.038]:[.038,.026,.985]}/>
+   <meshBasicMaterial color={p.gold} depthWrite={false}/>
+  </mesh>;
+ })}</group>;
 }
 function tokenLocation(map:VisualSquareMap,t:VisualToken):[number,number,number]{
  const squares=t.footprintCells?.length?t.footprintCells:[t.position];
@@ -86,7 +133,9 @@ function Token({token,map,p,selected,active,hovered,target,reduced,compact,onCli
   {token.flying&&<mesh position={[0,-.10,0]}>
    <cylinderGeometry args={[.035,.035,.68,6]}/>
    <meshStandardMaterial color={p.metal} transparent opacity={.7}/></mesh>}
-  <mesh position={[0,.055,0]}><cylinderGeometry args={[radius,radius+.03,.11,16]}/>
+  <mesh position={[0,.055,0]}>
+   {token.side==='attacker'?<cylinderGeometry args={[radius,radius+.03,.11,12]}/>:
+    <boxGeometry args={[radius*1.8,.11,radius*1.8]}/>}
    <meshStandardMaterial color={p[token.side]} roughness={.5}/></mesh>
   {(selected||active||hovered||target)&&<mesh position={[0,.125,0]} rotation={[-Math.PI/2,0,0]}>
    <torusGeometry args={[radius+.03,.037,6,24]}/>
@@ -158,6 +207,8 @@ function Field(props:SceneProps){
      road={Boolean(tile.road)} bridge={Boolean(tile.bridge)}/>
     </group>;
   })}</group>
+  {tokens.map(token=><FootprintBorder key={'edge-'+token.id}
+   token={token} map={map} p={p}/>)}
   {tokens.map(token=><Token key={token.id} token={token} map={map} p={p}
    selected={token.id===props.selectedId} active={token.id===props.activeId}
    hovered={token.id===props.hoveredId}
@@ -166,12 +217,15 @@ function Field(props:SceneProps){
      .some(h=>h.q===props.pendingAction?.target.q&&h.r===props.pendingAction?.target.r))}
    compact={compact} reduced={props.reducedMotion}
    onClick={()=>onHexClick?.({...token.position})}/>)}
+  <PerformanceProbe active={Boolean(props.measurePerformance)}
+   tokenCount={tokens.length} onSample={props.onPerformanceSample}/>
   <Ready onReady={props.onReady}/>
  </>;
 }
 /** Frame on demand; capped DPR on mobile. Never touch an engine or mutate battle state. */
 export default function MiniatureScene(props:SceneProps){
- return <Canvas orthographic frameloop="demand" dpr={[1,1.35]}
+ return <Canvas orthographic frameloop="demand"
+  dpr={props.tokens.length>=60?[1,1]:props.tokens.length>=40?[1,1.15]:[1,1.35]}
   camera={{position:[14,18,14],zoom:25,near:.1,far:250}}
   gl={{antialias:true,alpha:false,powerPreference:'low-power'}}
   onCreated={({gl})=>{
