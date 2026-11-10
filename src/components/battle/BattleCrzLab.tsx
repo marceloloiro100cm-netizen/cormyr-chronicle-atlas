@@ -799,6 +799,8 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
          <span>{metrics.creatures} criaturas · {metrics.stacks} pilhas</span>
          <span>{metrics.totalHp===null?'PV desconhecidos':metrics.totalHp+' PV estimados'}
           {' · '}CA média {metrics.meanAc===null?'—':metrics.meanAc.toLocaleString('pt-BR')}</span>
+         <span>{metrics.xpTotal===null?'XP/ND incompletos ('+metrics.unknownCr+' sem ND)':
+          metrics.xpTotal.toLocaleString('pt-BR')+' XP base por ND'}</span>
         </div>;
        })}
       </div>
@@ -813,6 +815,12 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
         </div>;
        })}
       </div>
+      <p>XP base por ND é apenas referência para comparar criaturas com ficha conhecida,
+       não um veredito sobre equilíbrio. Sem níveis do grupo e ações, não há classificação
+       oficial de dificuldade do encontro.</p>
+      <p>Voo é abstrato neste simulador: ignora obstáculos do terreno quando permitido,
+       mas não cria altitude vertical nem imunidade a ataques corpo a corpo.
+       Cada quadrado equivale a 3 m.</p>
       <p>As pilhas serão posicionadas automaticamente. As quantidades são independentes
        das unidades oficiais da campanha.</p>
       <Button variant="outline" size="sm" onClick={()=>{
