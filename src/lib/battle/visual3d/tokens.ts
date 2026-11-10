@@ -18,7 +18,9 @@ export type VisualTerrain='plain'|'forest'|'hill'|'rock'|'water'|'settlement'|
  'desert'|'marsh'|'road'|'bridge'|'coast'|'ruins'|'mountain';
 export type VisualSquareMap=Readonly<{
  grid?:'square'|undefined;width:number;height:number;
- tiles:readonly Readonly<Hex&{terrain:VisualTerrain;road?:boolean;bridge?:boolean}>[];
+ tiles:readonly Readonly<Hex&{terrain:VisualTerrain;road?:boolean;bridge?:boolean;
+  /** Optional rule notes supplied by the authoritative engine; never computed by 3D. */
+  ruleNotes?:readonly string[]}>[];
 }>;
 export type VisualStack=Pick<BattleStack,
  'id'|'side'|'name'|'position'|'primaryTypeId'|'initialCount'|'hpPerSoldier'|'currentHp'|'moraleState'> &
