@@ -88,7 +88,14 @@ class RigidMiniatureChromiumAcceptance(unittest.TestCase):
         }""")
         self.assertIsNotNone(gl, "SwiftShader browser did not create a real WebGL2 context")
         self.assertIn("WebGL", gl["version"])
+        page.wait_for_function(
+            "() => document.querySelectorAll('#miniatures-3d-acceptance .miniatures3d-label').length === 4",
+            timeout=10000,
+        )
         self.assertEqual(section.locator(".miniatures3d-label").count(), 4)
+        # UI requirement: never stack label text vertically over the miniature.
+        for label in section.locator(".miniatures3d-label").all():
+            self.assertLessEqual(label.bounding_box()["height"], 45)
         base_hash, colors = self.snapshot(canvas, "desktop-four-isometric.png")
         self.assertGreater(colors, 25)
 
@@ -120,6 +127,8 @@ class RigidMiniatureChromiumAcceptance(unittest.TestCase):
         section.get_by_role("button", name="Superior").tap()
         page.wait_for_timeout(500)
         self.snapshot(canvas, "mobile-top-zoom.png")
+        for label in section.locator(".miniatures3d-label").all():
+            self.assertLessEqual(label.bounding_box()["height"], 45)
         self.assertLessEqual(
             page.evaluate("document.documentElement.scrollWidth - window.innerWidth"), 5
         )
