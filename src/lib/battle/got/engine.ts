@@ -829,6 +829,33 @@ export function issueWarPincer(battle:WarBattle,input:{
   degrees:passed?Math.min(degreesOfSuccess(one.total,d1),
    degreesOfSuccess(two.total,d2)):0};
 }
+/** Prévia da mesma Dificuldade usada na rolagem, sem consumir dados nem ordens. */
+export function previewWarOrderDifficulty(
+ battle:WarBattle,unit:WarUnit,order:Pick<WarOrder,'kind'|'formation'>,
+):Readonly<{difficulty:number;advancedModifier:number;parts:readonly Readonly<{label:string;value:number}>[]}>{
+ const formationDifficulty=battle.advancedFormations&&order.kind==='formation'&&order.formation?
+  WAR_FORMATIONS[order.formation].difficulty:order.kind==='turn'&&battle.advancedFormations?3:0;
+ const formationDiscipline=battle.advancedFormations&&unit.formation?
+  WAR_FORMATIONS[unit.formation].discipline:0;
+ const advancedBase=(WAR_ADVANCED_ORDER_DIFFICULTY as Partial<Record<WarOrder['kind'],number>>)[order.kind]??0;
+ const advancedModifier=order.kind==='climb-walls'&&
+  (unit.laddersDeployed||(!unit.fieldEquipmentConsumed&&
+  ['ladders','siege-tower'].includes(unit.fieldEquipment??'')))?0:advancedBase;
+ const suppression=unit.suppressionRound===battle.round?(unit.suppressionPenalty??0):0;
+ const parts=[
+  {label:'Disciplina base',value:unit.discipline},
+  {label:'Herói incorporado',value:heroUnitDefenseBonus(battle,unit)},
+  {label:'Desorganizações',value:unit.disorganizations*3},
+  {label:'Ordens extras',value:unit.issuedThisRound*3},
+  {label:'Nova formação ou giro',value:formationDifficulty},
+  {label:'Disciplina da formação atual',value:formationDiscipline},
+  {label:'Ordem avançada',value:advancedModifier},
+  {label:'Supressão',value:suppression},
+  {label:'Equipamento',value:warFieldOrderDifficulty(unit)},
+ ];
+ return {difficulty:Math.max(0,parts.reduce((sum,part)=>sum+part.value,0)),
+  advancedModifier,parts:parts.filter(part=>part.value!==0||part.label==='Disciplina base')};
+}
 export function issueWarOrder(battle:WarBattle,input:{
  commanderId:string;unitId:string;order:WarOrder;
 }):WarOrderResult{
@@ -877,22 +904,9 @@ export function issueWarOrder(battle:WarBattle,input:{
    !input.order.testRanks||input.order.testRanks.length!==input.order.targetIds.length||
    !input.order.bonusRanks||input.order.bonusRanks.length!==input.order.targetIds.length))
   throw new Error('Ataque Dividido exige múltiplos alvos e dados alocados.');
- const formationDifficulty=battle.advancedFormations&&input.order.kind==='formation'&&input.order.formation?
-  WAR_FORMATIONS[input.order.formation].difficulty:input.order.kind==='turn'&&battle.advancedFormations?3:0;
- const formationDiscipline=battle.advancedFormations&&unit.formation?
-  WAR_FORMATIONS[unit.formation].discipline:0;
- const advancedBase=(WAR_ADVANCED_ORDER_DIFFICULTY as Partial<Record<WarOrder['kind'],number>>)[input.order.kind]??0;
- const advancedModifier=input.order.kind==='climb-walls'&&
-  (unit.laddersDeployed||(!unit.fieldEquipmentConsumed&&
-  ['ladders','siege-tower'].includes(unit.fieldEquipment??'')))?
-  0:advancedBase;
+ const {difficulty,advancedModifier}=previewWarOrderDifficulty(battle,unit,input.order);
  if(advancedModifier&&!battle.advancedFormations)
   throw new Error('Esta ordem avançada exige regras avançadas habilitadas.');
- const suppression=unit.suppressionRound===battle.round?(unit.suppressionPenalty??0):0;
- const difficulty=Math.max(0,unit.discipline+heroUnitDefenseBonus(battle,unit)+
-  unit.disorganizations*3+unit.issuedThisRound*3+
-  formationDifficulty+formationDiscipline+advancedModifier+suppression+
-  warFieldOrderDifficulty(unit));
  const roll=rollDice(battle.seed,commander.warfare,0,0);
  const passed=roll.total>=difficulty;
  const critical=criticalFailure(roll.total,difficulty);
