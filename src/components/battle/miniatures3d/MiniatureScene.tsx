@@ -113,7 +113,7 @@ function Field(props:SceneProps){
   <ambientLight intensity={1.05}/>
   <directionalLight position={[5,12,5]} intensity={1.45}/>
   <CameraRig width={map.width} height={map.height} top={props.top}
-   zoom={props.zoom} reset={props.reset} focus={props.focus}/>
+   zoom={props.zoom} reset={props.reset} focus={props.focus??null}/>
   <group>{map.tiles.map(tile=>{
    const key=hexKey(tile);
    const position=squareWorldPosition(map,tile);
