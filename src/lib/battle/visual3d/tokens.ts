@@ -8,12 +8,17 @@ export const CORMYR_MINIATURE_TYPES=[
  'warships','levies','raiders',
 ] as const;
 export type CormyrMiniatureType=typeof CORMYR_MINIATURE_TYPES[number];
-export type MiniatureKind=CormyrMiniatureType|'archer'|'goblin'|'dragon'|'undead'|
- 'construct'|'beast'|'giant'|'humanoid'|'generic';
-export type VisualTerrain='plain'|'forest'|'hill'|'rock'|'water'|'settlement';
+export type CreatureMiniatureKind=
+ 'goblin'|'kobold'|'orc'|'dragon'|'undead'|'skeleton'|'zombie'|'spirit'|
+ 'construct'|'beast'|'giant'|'humanoid'|'elemental'|'fiend'|'celestial'|
+ 'aberration'|'ooze'|'plant'|'fey'|'insect'|'spider'|'serpent'|
+ 'troll'|'aquatic'|'swarm';
+export type MiniatureKind=CormyrMiniatureType|'archer'|CreatureMiniatureKind|'generic';
+export type VisualTerrain='plain'|'forest'|'hill'|'rock'|'water'|'settlement'|
+ 'desert'|'marsh'|'road'|'bridge'|'coast'|'ruins'|'mountain';
 export type VisualSquareMap=Readonly<{
  grid?:'square'|undefined;width:number;height:number;
- tiles:readonly Readonly<Hex&{terrain:VisualTerrain}>[];
+ tiles:readonly Readonly<Hex&{terrain:VisualTerrain;road?:boolean;bridge?:boolean}>[];
 }>;
 export type VisualStack=Pick<BattleStack,
  'id'|'side'|'name'|'position'|'primaryTypeId'|'initialCount'|'hpPerSoldier'|'currentHp'|'moraleState'>;
