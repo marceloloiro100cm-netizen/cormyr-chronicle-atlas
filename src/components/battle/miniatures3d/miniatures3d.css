@@ -106,3 +106,31 @@
  .miniatures3d-tactical-stats span{font-size:11px;}
  .miniatures3d-action-confirm strong{flex-basis:100%;}
 }
+
+/* P1 · The same battlefield remains foremost on narrow mobile screens.
+ * Camera controls scroll horizontally instead of covering the map.
+ */
+.miniatures3d-camera-controls {
+ flex-wrap:nowrap;overflow-x:auto;max-width:100%;gap:.35rem;
+ -webkit-overflow-scrolling:touch;scrollbar-width:thin;
+ padding-bottom:.25rem;
+}
+.miniatures3d-camera-controls button{flex-shrink:0;white-space:nowrap;}
+.miniatures3d-terrain-inspector {
+ display:flex;align-items:center;flex-wrap:wrap;gap:.25rem .75rem;
+ margin:.25rem 0;padding:.35rem .6rem;
+ background:var(--mini-ink);color:var(--mini-paper);
+ border-left:3px solid var(--mini-move);font-size:12px;line-height:1.4;
+}
+.miniatures3d-terrain-inspector strong{font-weight:700;}
+.miniatures3d-terrain-inspector button{margin-left:auto;min-height:44px;}
+@media(max-width:640px){
+ .miniatures3d-viewport{height:clamp(320px,57svh,580px);}
+ .miniatures3d-camera-controls {margin:.35rem 0;}
+ .miniatures3d-terrain-inspector{font-size:12px;}
+ .miniatures3d-terrain-inspector strong{flex-basis:100%;}
+ .miniatures3d-terrain-inspector button{margin-left:0;}
+}
+@media(max-height:500px){
+ .miniatures3d-viewport{height:clamp(240px,62svh,440px);}
+}
