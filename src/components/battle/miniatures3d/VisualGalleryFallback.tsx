@@ -1,5 +1,4 @@
 import type {VisualSquareMap,VisualTerrain,VisualToken} from '@/lib/battle/visual3d/tokens';
-import type {Hex} from '@/lib/battle/domain/types';
 
 const terrainColor:Readonly<Record<VisualTerrain,string>>={
  plain:'#bbac8b',forest:'#62876b',hill:'#9f845c',rock:'#67666a',
