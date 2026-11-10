@@ -55,7 +55,7 @@ export function crzVisualMap(state:CrzBattleState):VisualSquareMap{
   tiles:state.map.tiles.map(t=>({q:t.q,r:t.r,terrain:t.terrain}))};
 }
 /** Stable, explicit creature family classification for visual display only. */
-const norm=(text:string)=>text.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();
+const norm=(text:string)=>text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 export type CreatureArt=Readonly<{
  kind:MiniatureKind;fallback:boolean;cosmeticTint?:DragonMiniatureTint;
 }>;
@@ -70,42 +70,42 @@ export function creatureMiniatureKind(template:{
  const type=norm(template.creatureType);
  const text=norm([template.name,...template.tags].join(' '));
  const named=(re:RegExp)=>re.test(text);
- const dragon=type==='dragon'||named(/\\b(dragon|dragao|drake|draco)\\b/);
+ const dragon=type==='dragon'||named(/\b(dragon|dragao|drake|draco|dracolich)\b/);
  if(dragon){
   const cosmeticTint=dragonTintFromName(text);
-  const kind:MiniatureKind=named(/\\b(dracolich|draco-lich)\\b/)?'dracolich':
-   named(/\\b(ancient|anciao|ancia|greatwyrm|elder|antigo)\\b/)?'dragon-elder':
-   named(/\\b(young|jovem|filhote|wyrmling|juvenile)\\b/)?'dragon-young':'dragon';
+  const kind:MiniatureKind=named(/\b(dracolich|draco-lich)\b/)?'dracolich':
+   named(/\b(ancient|anciao|ancia|greatwyrm|elder|antigo)\b/)?'dragon-elder':
+   named(/\b(young|jovem|filhote|wyrmling|juvenile)\b/)?'dragon-young':'dragon';
   return {kind,fallback:false,...(cosmeticTint?{cosmeticTint}:{})};
  }
- if(type==='undead'||named(/\\b(morto.vivo|undead)\\b/)){
-  return {kind:named(/\\b(lich|liches)\\b/)?'lich':
-   named(/\\b(vampire|vampiro)\\b/)?'vampire':
-   named(/\\b(wraith|specter|spectre|espectro|apari[cç]ao|fantasma)\\b/)?'wraith':
-   named(/\\b(skeleton|esqueleto)\\b/)?'skeleton':
-   named(/\\b(zombie|zumbi)\\b/)?'zombie':'undead',fallback:false};
+ if(type==='undead'||named(/\b(morto.vivo|undead)\b/)){
+  return {kind:named(/\b(lich|liches)\b/)?'lich':
+   named(/\b(vampire|vampiro)\b/)?'vampire':
+   named(/\b(wraith|specter|spectre|espectro|apari[cç]ao|fantasma)\b/)?'wraith':
+   named(/\b(skeleton|esqueleto)\b/)?'skeleton':
+   named(/\b(zombie|zumbi)\b/)?'zombie':'undead',fallback:false};
  }
- if(type==='construct'||named(/\\b(constructo|construct|construto)\\b/)){
-  return {kind:named(/\\b(iron.golem|golem.de.ferro)\\b/)?'iron-golem':
-   named(/\\b(stone.golem|golem.de.pedra)\\b/)?'stone-golem':
-   named(/\\b(animated.armor|armadura.animada)\\b/)?'animated-armor':
+ if(type==='construct'||named(/\b(constructo|construct|construto)\b/)){
+  return {kind:named(/\b(iron.golem|golem.de.ferro)\b/)?'iron-golem':
+   named(/\b(stone.golem|golem.de.pedra)\b/)?'stone-golem':
+   named(/\b(animated.armor|armadura.animada)\b/)?'animated-armor':
    'construct',fallback:false};
  }
- if(named(/\\b(hobgoblin)\\b/))return {kind:'hobgoblin',fallback:false};
- if(named(/\\b(bugbear)\\b/))return {kind:'bugbear',fallback:false};
- if(named(/\\b(goblin|goblinoide)\\b/))return {kind:'goblin',fallback:false};
- if(named(/\\b(kobold)\\b/))return {kind:'kobold',fallback:false};
- if(named(/\\b(ogre|ogro)\\b/))return {kind:'ogre',fallback:false};
- if(named(/\\b(troll)\\b/))return {kind:'troll',fallback:false};
- if(named(/\\b(orc|orco)\\b/))return {kind:'orc',fallback:false};
- if(type==='giant'||named(/\\b(gigante|giant)\\b/))return {kind:'giant',fallback:false};
+ if(named(/\b(hobgoblin)\b/))return {kind:'hobgoblin',fallback:false};
+ if(named(/\b(bugbear)\b/))return {kind:'bugbear',fallback:false};
+ if(named(/\b(goblin|goblinoide)\b/))return {kind:'goblin',fallback:false};
+ if(named(/\b(kobold)\b/))return {kind:'kobold',fallback:false};
+ if(named(/\b(ogre|ogro)\b/))return {kind:'ogre',fallback:false};
+ if(named(/\b(troll)\b/))return {kind:'troll',fallback:false};
+ if(named(/\b(orc|orco)\b/))return {kind:'orc',fallback:false};
+ if(type==='giant'||named(/\b(gigante|giant)\b/))return {kind:'giant',fallback:false};
  if(type==='elemental')return {kind:'elemental',fallback:false};
  if(type==='fiend'||type==='demon'||type==='devil')return {kind:'fiend',fallback:false};
  if(type==='celestial')return {kind:'celestial',fallback:false};
  if(type==='beast'||type==='monstrosity'){
-  return {kind:named(/\\b(wolf|lobo|wolves|lobos)\\b/)?'wolf':
-   named(/\\b(bear|urso|ursos)\\b/)?'bear':
-   named(/\\b(spider|aranha)\\b/)?'spider':'beast',fallback:false};
+  return {kind:named(/\b(wolf|lobo|wolves|lobos)\b/)?'wolf':
+   named(/\b(bear|urso|ursos)\b/)?'bear':
+   named(/\b(spider|aranha)\b/)?'spider':'beast',fallback:false};
  }
  if(type==='humanoid')return {kind:'humanoid',fallback:false};
  return {kind:'generic',fallback:true};
