@@ -10,6 +10,7 @@ import {
 } from '@/lib/battle/visual3d/interaction';
 import {readMiniaturePalette,type MiniaturePalette} from './palette';
 import {inspectVisualCell} from '@/lib/battle/visual3d/terrain-inspection';
+import type {MiniaturePerfSample} from '@/lib/battle/visual3d/performance';
 import './miniatures3d.css';
 
 const Scene=lazy(()=>import('./MiniatureScene'));
@@ -28,6 +29,7 @@ class SceneBoundary extends Component<{children:ReactNode;onFailure:()=>void;fal
 type Props=Omit<SceneProps,'palette'|'top'|'zoom'|'reset'|'focus'|'reducedMotion'|'onReady'|'onFailure'|'pendingAction'|'onHexClick'> &{
  fallback:ReactNode;onFailure?:()=>void;onHexClick?:(hex:{q:number;r:number})=>void;
  canIssueCommands?:boolean;targetAction?:'attack'|'ability';
+ contextLabel?:string;
 };
 export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
  targetAction='attack',...props}:Props){
@@ -40,6 +42,11 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
  const [pending,setPending]=useState<VisualPendingAction|null>(null);
  const [message,setMessage]=useState('');
  const [inspected,setInspected]=useState<{q:number;r:number}|null>(null);
+ const [keyboardCell,setKeyboardCell]=useState('');
+ const [measuring,setMeasuring]=useState(false);
+ const [performanceSample,setPerformanceSample]=useState<MiniaturePerfSample|null>(null);
+ const navigationCell=props.map.tiles.find(t=>t.q+','+t.r===keyboardCell)?keyboardCell:
+  (props.map.tiles[0]?props.map.tiles[0].q+','+props.map.tiles[0].r:'');
  const activeToken=props.tokens.find(t=>t.id===props.activeId);
  const focusToken=props.tokens.find(t=>t.id===(props.selectedId??props.activeId));
  const actorId=props.activeId??null;
@@ -110,7 +117,8 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
   data-scene-ready={ready&&!failed?'1':undefined}
   data-token-count={props.tokens.length}
   data-pending-action={validPending?.type??'none'}>
-   {focusToken&&<section className="miniatures3d-selected" aria-label="Resumo tático da unidade" role="status">
+   {props.contextLabel&&<p className="miniatures3d-context" role="status">{props.contextLabel}</p>}
+  {focusToken&&<section className="miniatures3d-selected" aria-label="Resumo tático da unidade" role="status">
     <div className="miniatures3d-selected-title">
      <strong>{focusToken.name}</strong>
      <span>{focusToken.metricLabel??'Soldados'}: {focusToken.count.toLocaleString('pt-BR')}</span>
@@ -118,7 +126,11 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
      {focusToken.id===props.activeId&&<small>Unidade ativa</small>}
     </div>
     {allStats.length>0&&<div className="miniatures3d-tactical-stats">
-     {allStats.map((label,i)=><span key={i}>{label}</span>)}
+     {allStats.slice(0,3).map((label,i)=><span key={i}>{label}</span>)}
+     {allStats.length>3&&<details className="miniatures3d-extra-stats">
+      <summary>Mais informações</summary>
+      {allStats.slice(3).map((label,i)=><span key={i}>{label}</span>)}
+     </details>}
     </div>}
    </section>}
   {failed?<><p role="status">3D indisponível neste dispositivo. Mapa 2D preservado.</p>{fallback}</>:<>
@@ -139,6 +151,10 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
      aria-label="Focar unidade ativa 3D" onClick={focusOnActive}>
      <LocateFixed size={16}/> Focar tropa
     </Button>
+   </div>
+   <div className="miniatures3d-side-legend" aria-label="Legenda visual das peças">
+    <span>● Atacante</span><span>■ Defensor</span>
+    <span>◆ Movimento</span><span>✕ Ataque</span>
    </div>
    <div className="miniatures3d-status-line" role="status">
     {validPending?'Ação aguardando confirmação':
@@ -164,18 +180,55 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
     aria-label="Inspeção do terreno" role="status">
     <strong>Quadrado {inspection.coordinates} · {inspection.terrain}</strong>
     {inspection.features.length>0&&<span>{inspection.features.join(' · ')}</span>}
+    {inspection.effects?.length?<>
+     <strong>Regras do terreno (fonte: motor)</strong>
+     <ul>{inspection.effects.map(effect=><li key={effect}>{effect}</li>)}</ul>
+    </>:null}
     {inspection.occupant&&<span>Unidade: {inspection.occupant} ({inspection.side})</span>}
     <Button variant="ghost" size="sm" aria-label="Fechar inspeção do terreno"
      onClick={()=>setInspected(null)}>Fechar</Button>
    </section>}
    {message&&<p className="miniatures3d-feedback" role="status">{message}</p>}
-   <p className="miniatures3d-sr-only">Para navegação pelo teclado e leitores de tela, use Mapa 2D. No 3D, arraste para percorrer o tabuleiro. Movimentos e ataques legais exigem confirmação.</p>
+   <details className="miniatures3d-keyboard-nav">
+    <summary>Selecionar quadrado pelo teclado</summary>
+    <label>Quadrado do tabuleiro
+     <select aria-label="Quadrado do tabuleiro" value={navigationCell}
+      onChange={event=>setKeyboardCell(event.target.value)}>
+      {props.map.tiles.map(tile=><option key={tile.q+','+tile.r} value={tile.q+','+tile.r}>
+       {tile.q},{tile.r} · {tile.terrain}
+      </option>)}
+     </select>
+    </label>
+    <Button variant="outline" size="sm" disabled={!navigationCell}
+     onClick={()=>{
+      const [q,r]=navigationCell.split(',').map(Number);
+      if(Number.isInteger(q)&&Number.isInteger(r))onCellClick({q,r});
+     }}>Inspecionar ou selecionar</Button>
+    <p>Ações legais exigem confirmação. Para navegação completa por setas, use Mapa 2D.</p>
+   </details>
+   <p className="miniatures3d-sr-only">
+    Arraste para percorrer o tabuleiro 3D ou use o seletor de quadrado acessível.
+    Movimentos e ataques legais exigem confirmação.
+   </p>
+   <div className="miniatures3d-perf-controls">
+    <Button variant="outline" size="sm" disabled={measuring||!ready}
+     onClick={()=>{setPerformanceSample(null);setMeasuring(true);}}>
+     {measuring?'Medindo FPS…':'Medir FPS (5 s)'}
+    </Button>
+    {performanceSample&&<output role="status" aria-label="Resultado FPS da renderização">
+     {performanceSample.fps.toLocaleString('pt-BR')} FPS · {performanceSample.tokenCount} peças ·
+     {performanceSample.averageDrawCalls} chamadas/desenho
+    </output>}
+   </div>
    <div className="miniatures3d-viewport" aria-label="Tabuleiro quadrado com miniaturas 3D">
     {!ready&&<p role="status" className="miniatures3d-status">Preparando miniaturas…</p>}
     {palette&&<ClientOnly fallback={null}><SceneBoundary onFailure={fail} fallback={null}>
      <Suspense fallback={null}><Scene {...props} onHexClick={onCellClick}
       pendingAction={validPending} palette={palette} top={top} zoom={zoom}
       reset={reset} focus={focus} reducedMotion={reduced}
+      measurePerformance={measuring} onPerformanceSample={sample=>{
+       setPerformanceSample(sample);setMeasuring(false);
+      }}
       onReady={()=>setReady(true)} onFailure={fail}/></Suspense>
     </SceneBoundary></ClientOnly>}
    </div>
