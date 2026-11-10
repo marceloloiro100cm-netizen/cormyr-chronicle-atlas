@@ -78,6 +78,23 @@ describe('P0 do mapa 3D — segurança e gerenciamento',()=>{
   expect(screen.getByText(/Mapa centralizado/)).toBeInTheDocument();
   expect(click).not.toHaveBeenCalled();
  });
+ it('P1 inspeciona terreno sem executar uma ação e respeita o cancelamento',async()=>{
+  const click=vi.fn();show({onHexClick:click});
+  fireEvent.click(await screen.findByRole('button',{name:'Destino verde mock'}));
+  expect(screen.getByText('Quadrado 4,2 · Planície')).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Confirmar movimento'})).toBeInTheDocument();
+  expect(click).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button',{name:'Fechar inspeção do terreno'}));
+  expect(screen.queryByText('Quadrado 4,2 · Planície')).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'Cancelar'}));
+  expect(click).not.toHaveBeenCalled();
+ });
+ it('P1 mostra terreno e unidade já presentes no tabuleiro',async()=>{
+  show();
+  fireEvent.click(await screen.findByRole('button',{name:'Inspecionar unidade mock'}));
+  expect(screen.getByText('Quadrado 3,3 · Planície')).toBeInTheDocument();
+  expect(screen.getByText('Unidade: Infantaria (Atacante)')).toBeInTheDocument();
+ });
  it('quando o contexto WebGL falha mantém os dados visíveis no 2D',async()=>{
   show();
   fireEvent.click(await screen.findByRole('button',{name:'Falha WebGL mock'}));
