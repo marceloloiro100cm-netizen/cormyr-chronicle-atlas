@@ -6,10 +6,10 @@ import {MiniatureViewport} from './MiniatureViewport';
 
 type Props=ComponentProps<typeof BattleBoard>&{narrator:boolean;sessionEnabled:boolean;
  houses?:Partial<Record<'attacker'|'defender',string>>;
- canIssueCommands?:boolean;targetAction?:'attack'|'ability'};
+ canIssueCommands?:boolean;targetAction?:'attack'|'ability';contextLabel?:string};
 /** The renderer receives the SAME board props and validated callback; no commands or engines imported. */
 export function V3MiniatureBoard({narrator,sessionEnabled,houses,
- canIssueCommands=false,targetAction='attack',...board}:Props){
+ canIssueCommands=false,targetAction='attack',contextLabel,...board}:Props){
  const [three,setThree]=useState(false);const [failed,setFailed]=useState(false);
  const allowed=canUseMiniatures(narrator,sessionEnabled,board.map);
  // Restore the safe 2D default if Narrator access or the active session ends.
@@ -25,7 +25,7 @@ export function V3MiniatureBoard({narrator,sessionEnabled,houses,
    selectedId={board.selectedId??null} activeId={board.activeId??null} hoveredId={board.hoveredId??null}
    moveKeys={board.moveKeys??[]} attackKeys={board.attackKeys??[]}
    pendingHex={board.pendingHex??null}
-   canIssueCommands={canIssueCommands} targetAction={targetAction}
+   canIssueCommands={canIssueCommands} targetAction={targetAction} contextLabel={contextLabel}
    {...(board.onHexClick?{onHexClick:board.onHexClick}:{})}
    fallback={fallback} onFailure={()=>{setThree(false);setFailed(true);}}/>:fallback}
  </>;
