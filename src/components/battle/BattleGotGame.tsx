@@ -947,10 +947,10 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      <input type="checkbox" checked={alternatePlacement} onChange={e=>{
       setAlternatePlacement(e.target.checked);
       setDeploymentPositions({});
-      setDeploymentSelected('attacker-1');
+      setDeploymentSelected('defender-1');
       setError('');
      }}/>
-     Posicionamento alternado (Atacante / Defensor)
+     Posicionamento alternado (Defensor / Atacante)
     </label>
     {alternatePlacement&&<p className="battle-note" role="status">
      {nextDeploymentSide?
