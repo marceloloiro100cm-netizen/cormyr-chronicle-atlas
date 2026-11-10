@@ -1,6 +1,6 @@
 import type {MiniatureKind} from '@/lib/battle/visual3d/tokens';
 import type {MiniaturePalette} from './palette';
-import {isAdvancedMonsterKind,type DragonMiniatureTint} from '@/lib/battle/visual3d/monster-kinds';
+import {isAdvancedMonsterKind,DRAGON_TINT_COLORS,type DragonMiniatureTint} from '@/lib/battle/visual3d/monster-kinds';
 import {AdvancedMonsterModel} from './AdvancedMonsterModels';
 
 type Point=[number,number,number];
@@ -131,9 +131,10 @@ function Ship({p}:{p:MiniaturePalette}){
   <Block at={[0,.48,.03]} size={[.46,.07,.11]} color={p.gold}/>
  </group>;
 }
-function Beast({p,dragon=false}:{p:MiniaturePalette;dragon?:boolean}){
+function Beast({p,dragon=false,tint}:{p:MiniaturePalette;dragon?:boolean;tint?:DragonMiniatureTint|undefined}){
+ const color=dragon?(tint?DRAGON_TINT_COLORS[tint]:p.goblin):p.wood;
  return <group>
-  <Orb at={[0,.52,0]} size={[.26,.27,.41]} color={dragon?p.goblin:p.wood}/>
+  <Orb at={[0,.52,0]} size={[.26,.27,.41]} color={color}/>
   {[-.19,.19].flatMap(x=>[-.27,.25].map(z=>
    <Block key={x+','+z} at={[x,.25,z]} size={[.11,.40,.10]} color={dragon?p.goblin:p.wood}/>))}
   <Orb at={[0,.70,.39]} size={[.20,.22,.23]} color={dragon?p.goblin:p.wood}/>
@@ -142,7 +143,7 @@ function Beast({p,dragon=false}:{p:MiniaturePalette;dragon?:boolean}){
     rotation={[0,0,-s*.4]}><coneGeometry args={[.23,.64,3]}/>
     <meshStandardMaterial color={p.forest} side={2} flatShading/></mesh>)}
    <Cone at={[0,1.02,.48]} r={.12} h={.33} color={p.gold}/>
-   <Cone at={[0,.54,-.45]} r={.12} h={.55} color={p.goblin} rotation={[Math.PI/2,0,0]}/>
+   <Cone at={[0,.54,-.45]} r={.12} h={.55} color={color} rotation={[Math.PI/2,0,0]}/>
   </>}
  </group>;
 }
@@ -176,7 +177,7 @@ export function RigidModel({kind,p,compact=false,cosmeticTint}:{
   tint={cosmeticTint}/>;
  if(kind==='warships')return <Ship p={p}/>;
  if(kind==='cavalry')return <Horse p={p}/>;
- if(kind==='dragon')return <Beast p={p} dragon/>;
+ if(kind==='dragon')return <Beast p={p} dragon tint={cosmeticTint}/>;
  if(kind==='beast')return <Beast p={p}/>;
  if(kind==='construct')return <Construct p={p}/>;
  if(kind==='giant')return <group scale={1.32}><Soldier kind="infantry" p={p}/></group>;
