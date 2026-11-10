@@ -4,7 +4,7 @@
 export function MiniaturePreparationSummary({mode,width,height,attackers,defenders,
  climate,manualDeployment=false}:{
  mode:'GOT'|'D&D'|'Adaptado';width?:number;height?:number;
- attackers:number;defenders:number;climate?:string;
+ attackers?:number;defenders?:number;climate?:string;
  manualDeployment?:boolean;
 }){
  return <section className="miniatures3d-preflight"
@@ -13,7 +13,8 @@ export function MiniaturePreparationSummary({mode,width,height,attackers,defende
   <div className="miniatures3d-preflight-facts">
    <span>Regras: {mode}</span>
    {width&&height&&<span>Mapa: {width} × {height} quadrados</span>}
-   <span>Equipes: {attackers} atacantes · {defenders} defensores</span>
+   {attackers!==undefined&&defenders!==undefined&&
+    <span>Equipes: {attackers} atacantes · {defenders} defensores</span>}
    {climate&&<span>Condições: {climate}</span>}
   </div>
   <p>{manualDeployment?
