@@ -27,7 +27,7 @@ function Token({token,map,p,selected,active,hovered,target,reduced,onClick}:{tok
   if(Math.abs(pos.x-dest[0])+Math.abs(pos.z-dest[2])>.001)invalidate();
   else pos.set(dest[0],0,dest[2]);
  });
- return <group ref={group} position={initial.current} onClick={e=>{e.stopPropagation();onClick();}} rotation={[0,token.side==='defender'?Math.PI:0,0]}>
+ return <group ref={group} position={initial.current} onClick={e=>{e.stopPropagation();if(e.delta<=6)onClick();}} rotation={[0,token.side==='defender'?Math.PI:0,0]}>
   <mesh position={[0,.055,0]}><cylinderGeometry args={[.40,.43,.11,16]}/><meshStandardMaterial color={p[token.side]} roughness={.5}/></mesh>
   {(selected||active||hovered||target)&&<mesh position={[0,.125,0]} rotation={[-Math.PI/2,0,0]}><torusGeometry args={[.43,.035,6,24]}/><meshBasicMaterial color={target?p.attack:selected||hovered?p.selection:p.move}/></mesh>}
   <RigidModel kind={token.kind} p={p}/>
@@ -60,7 +60,7 @@ function Field(props:SceneProps){
   <TerrainTexture p={p}>{texture=><group>{map.tiles.map(tile=>{
    const key=hexKey(tile);const position=squareWorldPosition(map,tile);
    const occupied=tokens.some(t=>hexKey(t.position)===key);
-   return <group key={key} position={position} onClick={e=>{e.stopPropagation();onHexClick?.({q:tile.q,r:tile.r});}}>
+   return <group key={key} position={position} onClick={e=>{e.stopPropagation();if(e.delta<=6)onHexClick?.({q:tile.q,r:tile.r});}}>
     <mesh position={[0,-.10,0]}><boxGeometry args={[.97,.18,.97]}/><meshStandardMaterial color={p[tile.terrain]} map={texture} roughness={1}/></mesh>
     {moves.has(key)&&<mesh position={[0,.003,0]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[.87,.87]}/><meshBasicMaterial color={p.move} transparent opacity={.65}/></mesh>}
     {!occupied&&tile.terrain==='forest'&&[-.23,.23].map(x=><group key={x} position={[x,0,-.12]}>
