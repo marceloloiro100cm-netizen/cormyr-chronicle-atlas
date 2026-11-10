@@ -25,7 +25,8 @@ export function V3MiniatureBoard({narrator,sessionEnabled,houses,
    selectedId={board.selectedId??null} activeId={board.activeId??null} hoveredId={board.hoveredId??null}
    moveKeys={board.moveKeys??[]} attackKeys={board.attackKeys??[]}
    pendingHex={board.pendingHex??null}
-   canIssueCommands={canIssueCommands} targetAction={targetAction} contextLabel={contextLabel}
+   canIssueCommands={canIssueCommands} targetAction={targetAction}
+   {...(contextLabel!==undefined?{contextLabel}:{})}
    {...(board.onHexClick?{onHexClick:board.onHexClick}:{})}
    fallback={fallback} onFailure={()=>{setThree(false);setFailed(true);}}/>:fallback}
  </>;
