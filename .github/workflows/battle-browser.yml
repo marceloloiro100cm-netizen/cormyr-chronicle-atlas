@@ -21,6 +21,7 @@ jobs:
     env:
       CI: 'true'
       BATTLE_E2E_URL: 'http://127.0.0.1:4173/tests/battle/browser/harness.html'
+      MINIATURE_SCREENSHOT_DIR: '/tmp/cormyr-miniatures-3d'
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -33,7 +34,7 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Install pinned browser runner
         run: |
-          python -m pip install --disable-pip-version-check playwright==1.55.0
+          python -m pip install --disable-pip-version-check playwright==1.55.0 pillow==11.3.0
           python -m playwright install --with-deps chromium
       - name: Test React battle components in isolated Chromium
         run: |
@@ -48,8 +49,16 @@ jobs:
           done
           if [ "$ok" != 1 ]; then cat "$RUNNER_TEMP/battle-browser-vite.log"; exit 1; fi
           python -m unittest discover -s tests/battle/browser -p 'test_*.py' -v || { cat "$RUNNER_TEMP/battle-browser-vite.log"; exit 1; }
+      - name: Preserve software WebGL screenshots for visual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cormyr-miniatures3d-swiftshader
+          path: /tmp/cormyr-miniatures-3d/
+          retention-days: 14
+          if-no-files-found: ignore
       - name: Clarify validation scope
         if: always()
         run: |
           echo '### Batalha — navegação sintética real no Chromium' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Este job testa mapa/editor/replay em dados fictícios e viewport mobile. Não comprova autenticação, RLS real nem deploy.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Este job testa mapa/editor/replay e miniaturas WebGL em SwiftShader com dados fictícios. Não comprova GPU Android real, autenticação, RLS nem deploy.' >> "$GITHUB_STEP_SUMMARY"
