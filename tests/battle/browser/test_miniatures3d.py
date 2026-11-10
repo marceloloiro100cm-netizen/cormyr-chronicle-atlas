@@ -153,6 +153,47 @@ class RigidMiniatureChromiumAcceptance(unittest.TestCase):
         section.get_by_role("button", name="Centralizar câmera 3D").tap()
         self.assertTrue(section.get_by_role("button", name="Isométrica").is_visible())
 
+    def test_lot5_creatures_coast_and_fortress_scenes(self):
+        page = self.page()
+        page_errors = []
+        page.on("pageerror", lambda error: page_errors.append(str(error)))
+        section = self.showcase(page)
+        self.assert_scene_ready(section)
+        canvas = section.locator(".miniatures3d-viewport canvas")
+
+        section.get_by_role("button", name="25 famílias de monstros").click()
+        page.wait_for_function(
+            "() => document.querySelector('#miniatures-3d-acceptance .miniatures3d')?.dataset.tokenCount === '25'"
+        )
+        self.assertIn("Goblin", section.locator(".miniatures3d-selected").inner_text())
+        self.snapshot(canvas, "lot5-creature-families.png")
+
+        section.get_by_role("button", name="Costa e navios").click()
+        page.wait_for_function(
+            "() => document.querySelector('#miniatures-3d-acceptance .miniatures3d')?.dataset.tokenCount === '5'"
+        )
+        self.assertIn("sem movimento", section.locator(".miniatures3d-scenic-note").inner_text())
+        self.assertIn("Navio militar I", section.locator(".miniatures3d-selected").inner_text())
+        self.snapshot(canvas, "lot5-coastal-naval-visual.png")
+
+        section.get_by_role("button", name="Ponte e fortaleza").click()
+        page.wait_for_function(
+            "() => document.querySelector('#miniatures-3d-acceptance .miniatures3d')?.dataset.tokenCount === '4'"
+        )
+        self.assertIn("Guarda da ponte", section.locator(".miniatures3d-selected").inner_text())
+        self.snapshot(canvas, "lot5-ruined-fortress.png")
+        self.assertEqual(page_errors, [], f"3D scene switching should not throw: {page_errors}")
+
+    def test_lot5_scenic_no_webgl_has_readonly_2d_grid(self):
+        page = self.page(deny_webgl=True)
+        section = self.showcase(page)
+        section.get_by_role("button", name="Costa e navios").click()
+        section.get_by_text("3D indisponível neste dispositivo.", exact=False).wait_for()
+        cells = section.locator(".miniatures3d-fallback-grid button")
+        self.assertEqual(cells.count(), 165)
+        self.assertGreaterEqual(cells.filter(has_text="●").count(), 5)
+        self.assertIn("Navio militar I", section.locator(".miniatures3d-selected").inner_text())
+
     def test_80_rigid_tokens_load_without_webgl_crash(self):
         page = self.page()
         section = page.locator("#miniatures-3d-load")
