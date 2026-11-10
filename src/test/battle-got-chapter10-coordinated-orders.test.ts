@@ -105,10 +105,14 @@ describe('P1: prévia da dificuldade de ordens GoT',()=>{
  it('mantém a mesma fórmula no painel e na emissão da ordem sem antecipar dados',()=>{
   const a={...unit('a','attacker',2,3),issuedThisRound:1,
    disorganizations:1,formation:'mob' as const};
-  const battle=scenario([a,unit('enemy','defender',5,3)]);
+  const created=scenario([a,unit('enemy','defender',5,3)]);
+  const battle={...created,units:created.units.map(u=>u.id==='a'?{
+   ...u,issuedThisRound:1,disorganizations:1,formation:'mob' as const,
+  }:u)};
+  const actor=battle.units.find(u=>u.id==='a')!;
   const order={kind:'formation' as const,formation:'shield-wall' as const};
   const snapshot=JSON.stringify(battle);
-  const preview=previewWarOrderDifficulty(battle,a,order);
+  const preview=previewWarOrderDifficulty(battle,actor,order);
   expect(preview.parts).toEqual(expect.arrayContaining([
    {label:'Desorganizações',value:3},
    {label:'Ordens extras',value:3},
