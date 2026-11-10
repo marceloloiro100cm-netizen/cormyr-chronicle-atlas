@@ -57,13 +57,13 @@ export function navalVisualPreview():AdvancedPreview{
   (q,r)=>q===1||q===13?'coast':q===7&&r>=4&&r<=6?'island':undefined);
  const tokens:VisualToken[]=[
   {id:'demo-naval-a1',side:'attacker',name:'Galeão azul',kind:'warships',
-   position:{q:4,r:2},count:1,fallback:false,naval:true},
+   position:{q:4,r:2},count:1,fallback:false,naval:true,navalStyle:'galleon'},
   {id:'demo-naval-a2',side:'attacker',name:'Galera azul',kind:'warships',
-   position:{q:5,r:7},count:1,fallback:false,naval:true},
+   position:{q:5,r:7},count:1,fallback:false,naval:true,navalStyle:'galley'},
   {id:'demo-naval-b1',side:'defender',name:'Galeão vermelho',kind:'warships',
-   position:{q:10,r:3},count:1,fallback:false,naval:true},
+   position:{q:10,r:3},count:1,fallback:false,naval:true,navalStyle:'galleon'},
   {id:'demo-naval-b2',side:'defender',name:'Galera vermelha',kind:'warships',
-   position:{q:10,r:8},count:1,fallback:false,naval:true},
+   position:{q:10,r:8},count:1,fallback:false,naval:true,navalStyle:'galley'},
   {id:'demo-naval-coast',side:'attacker',name:'Marinheiros na costa',kind:'sailors',
    position:{q:1,r:5},count:20,fallback:false},
  ];
