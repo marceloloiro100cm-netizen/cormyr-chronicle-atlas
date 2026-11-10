@@ -9,6 +9,8 @@ import {Button} from '@/components/ui/button';
 import {MilitaryUnitSymbol,militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import {SQUARE_TERRAIN_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
 import {BattleSquareLegend} from './BattleSquareLegend';
+import {MiniatureBoardToggle} from './miniatures3d/MiniatureBoardToggle';
+import {gotVisualMap,gotVisualTokens} from '@/lib/battle/visual3d/adapters';
 import {createWarBattle,issueWarOrder,issueWarPincer,advanceWarRound,warUnitSummary,previewWarMovement,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
 import {beginPersonalInitiative,personalTurnHeroId,delayPersonalTurn} from '@/lib/battle/got/personal-initiative';
@@ -195,6 +197,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
  const [coord,setCoord]=useState({x:4,y:3});
  const [error,setError]=useState('');
  const [mapExpanded,setMapExpanded]=useState(false);
+ const [miniaturesEnabled,setMiniaturesEnabled]=useState(false);
  const [eventFilter,setEventFilter]=useState<'all'|'attacker'|'defender'|'dice'>('all');
  const [aftermathSide,setAftermathSide]=useState<'all'|WarSide>('all');
  const [masterOfArmsSides,setMasterOfArmsSides]=useState<Record<WarSide,boolean>>({
@@ -651,6 +654,9 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    {localSaveStatus&&<p role="status">{localSaveStatus}</p>}
   </details>
   {!battle?<section className="battle-surface got-config" aria-label="Preparar campo de guerra">
+   {!playerSandbox&&<label className="got-check"><input type="checkbox"
+    checked={miniaturesEnabled} onChange={e=>setMiniaturesEnabled(e.target.checked)}/>
+    Habilitar miniaturas 3D nesta sessão (teste, Narrador)</label>
    <div className="battle-simple-launch" aria-label="Início rápido Game of Thrones">
     <h3>Batalha rápida</h3>
     <p>{2+extraUnitsPerSide} unidades por lado · mapa {mapSize.width} × {mapSize.height}</p>
@@ -1358,7 +1364,12 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      </div>
      <p>Clima: {battle.weather} · Visibilidade: {battle.visibility} · Formações avançadas: {battle.advancedFormations?'sim':'não'}</p>
      <p className="battle-note">Terreno do treino: terreno selecionado é destacado no mapa.</p>
-     <div className="got-map" style={{gridTemplateColumns:'repeat('+battle.width+',minmax(0,1fr))'}}>
+     <MiniatureBoardToggle allowed={!playerSandbox&&miniaturesEnabled}
+      map={gotVisualMap(battle)} tokens={gotVisualTokens(battle)}
+      selectedId={selectedUnit?.id??null} activeId={selectedUnit?.id??null}
+      attackKeys={selectedTarget?[selectedTarget.id]:[]}
+      onHexClick={h=>selectMapCell(h.q,h.r)}
+      fallback={<div className="got-map" style={{gridTemplateColumns:'repeat('+battle.width+',minmax(0,1fr))'}}>
       {Array.from({length:battle.width*battle.height},(_,i)=>{
        const x=i%battle.width,y=Math.floor(i/battle.width);
        const occupant=battle.units.find(u=>u.position.x===x&&u.position.y===y&&
@@ -1371,13 +1382,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
         className={'got-cell'+(occupant?' occupied '+occupant.side:'')+(isDestination?' destination':'')+(pathSquares.has(x+':'+y)?' got-route':'')+(terrain!=='plain'?' got-terrain':'')}
         aria-label={'Quadrado '+x+','+y+' · '+terrain+(occupant?' · '+occupant.name+' · '+CONDITION[occupant.condition]:'')}
         title={occupant?.name??terrain+' · '+x+','+y}
-        onClick={()=>{
-         setCoord({x,y});
-         if(occupant){
-          if(occupant.side===battle.turn)setSelected(occupant.id);
-          else setTarget(occupant.id);
-         }
-        }}>
+        onClick={()=>selectMapCell(x,y)}>
         {occupant?<><span className="got-token-frame">
          {militaryUnitSymbolSrc(occupant.typeId)?
           <img className="got-token-art" src={militaryUnitSymbolSrc(occupant.typeId)}
@@ -1387,7 +1392,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
          <span className="got-cell-dot" aria-hidden="true">{terrain==='plain'?'·':'▥'}</span>}
        </button>;
       })}
-     </div>
+     </div>}/>
      <BattleSquareLegend/>
      {inspectedTile&&inspectedEffect&&<div className="got-map-inspector" aria-live="polite">
       <strong>Quadrado {coord.x},{coord.y} · {inspectedTile.terrain}</strong>
