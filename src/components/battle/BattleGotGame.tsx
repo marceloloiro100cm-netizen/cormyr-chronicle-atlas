@@ -53,6 +53,8 @@ import type {WarFormation,WarFacing} from '@/lib/battle/got/formations';
 import {WAR_FORMATIONS} from '@/lib/battle/got/formations';
 import {parseSharedSquareMap,sharedFromGotTiles,sharedToGotTiles,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleGotSourcePicker} from './BattleGotSourcePicker';
+import {BattleGotHouseMatchup} from './BattleGotHouseMatchup';
+import {nextGotAiStep} from '@/lib/battle/got/auto-ai';
 /** Same four portable terrain colors; GOT-only terrain retains its own artwork. */
 const COMMON_GOT_TERRAIN:Readonly<Record<string,string>>={
  plain:SQUARE_TERRAIN_PRESENTATION.plain.color,
@@ -60,7 +62,6 @@ const COMMON_GOT_TERRAIN:Readonly<Record<string,string>>={
  hill:SQUARE_TERRAIN_PRESENTATION.hill.color,
  wall:SQUARE_TERRAIN_PRESENTATION.rock.color,
 };
-import type {Slot} from './BattleGotSourcePicker';
 import './battle-design-tokens.css';
 import './battle-got.css';
 
@@ -188,7 +189,14 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   capturedLandValue:0,survivingFortDefenseValue:0,
   domainHasCommunityOrFort:false,transferredWealthInvestments:0,
  });
- const [officialBySlot,setOfficialBySlot]=useState<Partial<Record<Slot,WarUnit>>>({});
+ const [officialBySlot,setOfficialBySlot]=useState<Record<string,WarUnit>>({});
+ const [houseMatchup,setHouseMatchup]=useState(false);
+ const [showHouseMatchup,setShowHouseMatchup]=useState(false);
+ const [aiRunning,setAiRunning]=useState(false);
+ const [aiStarted,setAiStarted]=useState(false);
+ const [aiSpeed,setAiSpeed]=useState(650);
+ const [aiSteps,setAiSteps]=useState(0);
+ const [aiNotice,setAiNotice]=useState('');
  const [selected,setSelected]=useState('');
  const [target,setTarget]=useState('');
  const [advancedSecondTarget,setAdvancedSecondTarget]=useState('');
@@ -213,13 +221,18 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
  });
  const start=()=>{
   try{
-   const prepared=positionedWarLabDeployments(extraUnitsPerSide,deploymentPositions,
+   const deployed=positionedWarLabDeployments(extraUnitsPerSide,deploymentPositions,
     mapSize.width,mapSize.height);
+   // Confrontos de Casas usam somente unidades copiadas: nunca completam com tropas-modelo.
+   const prepared=houseMatchup?deployed.filter(row=>Boolean(officialBySlot[row.id])):deployed;
+   if(houseMatchup&&(!prepared.some(u=>u.side==='attacker')||
+    !prepared.some(u=>u.side==='defender')))
+    throw new Error('Escolha uma Casa com tropas disponíveis para cada lado.');
    if(!playerSandbox&&siegeEnabled&&officialBySlot['attacker-2']&&
     officialBySlot['attacker-2'].typeId!=='engineers')
     throw new Error('O segundo espaço do atacante deve ter engenheiros para operar o cerco.');
    const units=prepared.map(row=>{
-    const imported=playerSandbox?undefined:officialBySlot[row.id as Slot];
+    const imported=playerSandbox?undefined:officialBySlot[row.id];
     const model=imported?{...imported,side:row.side,position:row.position}:
      modelWarUnit({...row,training,
       typeId:siegeEnabled&&row.id==='attacker-2'?'engineers':types[row.id]??'infantry'});
@@ -272,6 +285,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
     manualMitigation,
    });
    setBattle(recordWarParley(created,parleyChoice,parleyTerms));
+   setAiRunning(false);setAiStarted(false);setAiSteps(0);setAiNotice('');
    setSelected('');setTarget('');setError('');
   }catch(e){setError(e instanceof Error?e.message:'Falha ao preparar a batalha.');}
  };
@@ -509,6 +523,32 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   try{setBattle(advanceWarRound(battle));setSelected('');setTarget('');setError('');}
   catch(e){setError(e instanceof Error?e.message:'Erro ao concluir rodada.');}
  };
+ // Um passo por intervalo preserva a leitura do tabuleiro e a ordem dos turnos.
+ useEffect(()=>{
+  if(!aiRunning||!battle)return;
+  if(battle.phase==='finished'){
+   setAiRunning(false);setAiNotice('Batalha encerrada. Confira o resultado.');return;
+  }
+  if(battle.round>60||aiSteps>=1200){
+   setAiRunning(false);setAiNotice('Limite de segurança atingido. Revise antes de continuar.');return;
+  }
+  const timer=window.setTimeout(()=>{
+   try{
+    const step=nextGotAiStep(battle);
+    if(step.needsNarrator){
+     setAiRunning(false);setAiNotice(step.description);return;
+    }
+    if(step.battle===battle){
+     setAiRunning(false);setAiNotice('Sem progresso possível; a IA foi pausada.');return;
+    }
+    setBattle(step.battle);setAiSteps(v=>v+1);setAiNotice(step.description);
+   }catch(e){
+    setAiRunning(false);
+    setAiNotice(e instanceof Error?e.message:'Falha na próxima ação automática.');
+   }
+  },aiSpeed);
+  return()=>window.clearTimeout(timer);
+ },[aiRunning,battle,aiSpeed,aiSteps]);
  useEffect(()=>{
   if(!resumeFromLibrary)return;
   try{
@@ -653,15 +693,16 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   (eventFilter==='dice'?Boolean(e.roll):e.side===eventFilter)).slice(-30)??[];
  return <section className="battle-got" aria-label="Batalha pelas regras de Guerra dos Tronos RPG">
   <div className="battle-heading">
-   <div><h2>Game of Thrones · regras do livro</h2>
-    <p>Laboratório do capítulo 10 · quadrados de 10 m · uma rodada representa 1 minuto.</p></div>
+   <h2>Game of Thrones · regras do livro</h2>
    <Button variant="outline" onClick={leaveBattle}>Voltar ao módulo</Button>
   </div>
   {playerSandbox&&<p className="battle-note" role="status">Modo de treino do jogador: apenas tropas fictícias. Nenhum acesso a unidades oficiais das Casas.</p>}
-  <p className="battle-note">Laboratório isolado do Adaptado e D&D.
-   Ordens, heróis, cerco, formações e pós-batalha estão disponíveis para testes;
-   regras excepcionais e parâmetros de fortificações podem exigir decisão do Narrador.
-   Nenhuma baixa ou alteração é aplicada às fichas oficiais das Casas.</p>
+  <details className="got-rules-info">
+   <summary>Sobre as regras</summary>
+   <p className="battle-note">Capítulo 10 · quadrados de 10 m · 1 minuto por rodada.
+    Laboratório isolado do Adaptado e D&D. Exceções dependem do Narrador.
+    Nenhuma baixa ou alteração afeta as Casas oficiais.</p>
+  </details>
   <details className="battle-surface got-save-panel" aria-label="Salvar e retomar teste local">
    <summary>Salvar ou retomar</summary>
    <BattleSaveScope system="got"/>
@@ -701,17 +742,38 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   </details>
   {!battle?<section className="battle-surface got-config" aria-label="Preparar campo de guerra">
     <MiniaturePreparationSummary mode="GOT" width={mapSize.width} height={mapSize.height}
-     attackers={preparedDeployments.filter(u=>u.side==='attacker').length}
-     defenders={preparedDeployments.filter(u=>u.side==='defender').length}
+     attackers={houseMatchup?Object.keys(officialBySlot).filter(id=>id.startsWith('attacker-')).length:
+      preparedDeployments.filter(u=>u.side==='attacker').length}
+     defenders={houseMatchup?Object.keys(officialBySlot).filter(id=>id.startsWith('defender-')).length:
+      preparedDeployments.filter(u=>u.side==='defender').length}
      climate={weather+' · '+visibility}
      manualDeployment={Object.keys(deploymentPositions).length>0}/>
    {!playerSandbox&&<label className="got-check"><input type="checkbox"
     checked={miniaturesEnabled} onChange={e=>setMiniaturesEnabled(e.target.checked)}/>
     Habilitar miniaturas 3D nesta sessão (teste, Narrador)</label>}
+   {!playerSandbox&&<>
+    <Button variant="outline" onClick={()=>setShowHouseMatchup(v=>!v)}
+     aria-expanded={showHouseMatchup}>
+     {showHouseMatchup?'Ocultar seleção de Casas':'Escolher Casas nobres'}
+    </Button>
+    {showHouseMatchup&&<BattleGotHouseMatchup width={mapSize.width} height={mapSize.height}
+     onLoaded={({units,extraPerSide,name:matchName})=>{
+      setOfficialBySlot(units);setHouseMatchup(true);setShowHouseMatchup(false);
+      setExtraUnitsPerSide(extraPerSide);setName(matchName);setDeploymentPositions({});
+      setSiegeEnabled(false);setHeroesEnabled(false);setFortKind('none');setError('');
+     }}/>}
+   </>}
    <div className="battle-simple-launch" aria-label="Início rápido Game of Thrones">
     <h3>Batalha rápida</h3>
-    <p>{2+extraUnitsPerSide} unidades por lado · mapa {mapSize.width} × {mapSize.height}</p>
+    <p>{houseMatchup?
+     Object.keys(officialBySlot).filter(id=>id.startsWith('attacker-')).length+
+      ' tropas × '+Object.keys(officialBySlot).filter(id=>id.startsWith('defender-')).length+' tropas':
+     (2+extraUnitsPerSide)+' unidades por lado'} · mapa {mapSize.width} × {mapSize.height}</p>
     <Button onClick={start}>Batalhar agora</Button>
+    {houseMatchup&&<Button variant="outline" onClick={()=>{
+     setHouseMatchup(false);setShowHouseMatchup(false);
+     setOfficialBySlot({});setExtraUnitsPerSide(0);setName('Escaramuça de treinamento');
+    }}>Voltar às tropas-modelo</Button>}
    </div>
    <details className="battle-advanced-config">
     <summary>Personalizar tropas, heróis e mapa</summary>
@@ -1008,7 +1070,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    </div>
    <BattleSquareLegend showActions={false}/>
    <p className="battle-note">Pinte o terreno antes de iniciar; cada quadrado tem 10 metros. Campos com obstáculos não são automaticamente removidos quando contêm tropas.</p>
-   {!playerSandbox&&<BattleGotSourcePicker chosenSlots={officialBySlot} onChoose={(slot,unit)=>
+   {!playerSandbox&&!houseMatchup&&<BattleGotSourcePicker chosenSlots={officialBySlot} onChoose={(slot,unit)=>
     setOfficialBySlot(current=>{
      const next={...current};
      if(unit)next[slot]=unit;
@@ -1056,6 +1118,32 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
        unit:'unidades destruídas'},
      ]:[]}/>} 
    </section>
+   <section className="battle-surface got-ai-panel" aria-label="Controle automático da batalha">
+    <div className="got-ai-heading">
+     <strong>IA · Ambos os lados</strong>
+     <span>{aiRunning?'Atacante e defensor sob controle da IA':
+      aiStarted?'IA pausada':'Controle manual'}</span>
+    </div>
+    <div className="got-ai-actions">
+     <Button disabled={battle.phase==='finished'} onClick={()=>{
+      if(aiRunning){setAiRunning(false);setAiNotice('IA pausada. Você pode intervir.');}
+      else{setAiStarted(true);setAiRunning(true);setAiNotice('IA em execução.');}
+     }}>{aiRunning?'Pausar IA':aiStarted?'Retomar IA':'Iniciar IA'}</Button>
+     {aiStarted&&<Button variant="outline" onClick={()=>{
+      setAiRunning(false);setAiStarted(false);setAiNotice('IA desligada. Continue manualmente.');
+     }}>Parar IA</Button>}
+     <label>Velocidade
+      <select value={aiSpeed} aria-label="Velocidade da IA"
+       onChange={e=>setAiSpeed(Number(e.target.value))}>
+       <option value={1200}>Lenta</option><option value={650}>Normal</option>
+       <option value={250}>Rápida</option>
+      </select>
+     </label>
+    </div>
+    <p className="got-ai-notice" role="status">{aiNotice||
+     'A IA usa as regras disponíveis; decisões excepcionais pausam para o Narrador.'}</p>
+   </section>
+   <fieldset disabled={aiRunning} className="got-manual-controls">
    <BattleGotGuide phase={battle.phase}
     hasSiege={battle.siege.some(w=>w.health>0)}
     hasHeroes={battle.heroes.some(h=>h.active)}/>
@@ -1987,8 +2075,12 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      <strong>#{event.seq} · R{event.round}</strong> {event.text}
      {event.roll&&<small> · Dados [{event.roll.join(', ')}]</small>}
     </li>)}</ol>
-    <Button variant="outline" onClick={()=>setBattle(null)}>Nova simulação</Button>
+    <Button variant="outline" onClick={()=>{
+     setAiRunning(false);setAiStarted(false);setAiSteps(0);setAiNotice('');
+     setBattle(null);
+    }}>Nova simulação</Button>
    </section>
+   </fieldset>
   </>}
   {error&&<p role="alert" className="got-error">{error}</p>}
  </section>;
