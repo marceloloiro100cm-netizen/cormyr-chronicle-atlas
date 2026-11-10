@@ -1,5 +1,14 @@
 # Roadmap
 
+## Miniaturas rígidas 3D — Lotes 2, 3, 4 (10/11/2026)
+- [x] Lote 2: 17 silhuetas militares originais, etiquetas e galeria exclusiva do Narrador.
+- [x] Lote 3: adaptadores visuais GOT e D&D; regras independentes, pegada de monstros, água/assentamentos e voo visual.
+- [x] Lote 4: DPR controlado, frame sob demanda, modelos compactos acima de 24 tokens, zoom/pan e fallback SVG.
+- [x] Testes de projeção/isolamento/permissão adicionados e documentação técnica criada.
+- [ ] Gate de aprovação: Validate + navegador sintético no commit final, verificação real de GPU e toque Android, antes de qualquer merge/deploy.
+- [ ] Sem publicação e sem liberação aos jogadores até validação real.
+
+
 ## Lote 1 — miniaturas rígidas 3D (10/11/2026)
 - [x] Renderer isolado, quatro arquétipos originais, terreno quadrado e câmera.
 - [x] Visão opt-in exclusiva do Narrador no Adaptado V3; fallback 2D e demo isolada.
