@@ -55,7 +55,7 @@ describe('Miniaturas 3D — lotes 2/3/4: projeções sem mutação dos motores',
  });
  it('mantém quadrados ocupados de criatura Enorme e voo em D&D',()=>{
   const map={grid:'square',width:11,height:9,tiles:Array.from({length:99},(_,i)=>({
-   q:i%11,r:Math.floor(i/11),terrain:'plain'}))} as CrzBattleState['map'];
+   q:i%11,r:Math.floor(i/11),terrain:'plain'}))} as unknown as CrzBattleState['map'];
   const stack={id:'draco',name:'Dragão',side:'attacker',position:{q:3,r:3},
    size:'H',alive:1,moraleState:'steady',
    template:{id:'draco|original',name:'Dragão',creatureType:'dragon',tags:[],
