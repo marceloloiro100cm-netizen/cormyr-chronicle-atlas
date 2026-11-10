@@ -12,7 +12,7 @@ export type MiniatureKind=CormyrMiniatureType|'archer'|'goblin'|'dragon'|'undead
  'construct'|'beast'|'giant'|'humanoid'|'generic';
 export type VisualTerrain='plain'|'forest'|'hill'|'rock'|'water'|'settlement';
 export type VisualSquareMap=Readonly<{
- grid?:'square';width:number;height:number;
+ grid?:'square'|undefined;width:number;height:number;
  tiles:readonly Readonly<Hex&{terrain:VisualTerrain}>[];
 }>;
 export type VisualStack=Pick<BattleStack,
