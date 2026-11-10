@@ -59,6 +59,7 @@ const COMMON_GOT_TERRAIN:Readonly<Record<string,string>>={
  wall:SQUARE_TERRAIN_PRESENTATION.rock.color,
 };
 import type {Slot} from './BattleGotSourcePicker';
+import './battle-design-tokens.css';
 import './battle-got.css';
 
 type TypeId=WarModelUnitTypeId;
