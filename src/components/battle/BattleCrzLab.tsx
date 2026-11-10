@@ -1154,6 +1154,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
       <span className="crz-legend-item"><i className="crz-legend-red"/>Ataque legal</span>
      </div>
      <MiniatureBoardToggle allowed={dndMode&&!playerSandbox&&miniaturesEnabled}
+       contextLabel={'Rodada '+frame.round+' · '+(active?teamName(active.side):'Sem unidade ativa')}
       map={crzVisualMap(frame)} tokens={crzVisualTokens(frame)}
       selectedId={selectedId} activeId={frame.activeStackId} hoveredId={hoveredId}
       moveKeys={canAct&&selectedId===active?.id?moves.map(c=>crzHexKey(c.to)):[]}
