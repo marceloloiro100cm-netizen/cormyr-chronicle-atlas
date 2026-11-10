@@ -1,6 +1,8 @@
 .miniatures3d {
  --mini-plain:#d4c69e; --mini-forest:#66886b; --mini-hill:#c4a36f; --mini-rock:#787478;
  --mini-water:#386c83; --mini-settlement:#aa9076;
+ --mini-desert:#b9a073; --mini-marsh:#617d6a; --mini-road:#b7a58d; --mini-bridge:#957a55;
+ --mini-coast:#7c9c99; --mini-ruins:#817d75; --mini-mountain:#8a8f91;
  --mini-attacker:#416f9b; --mini-defender:#ab5246; --mini-selection:#f9d776;
  --mini-move:#77c68b; --mini-attack:#ed6559; --mini-metal:#a9b8bd; --mini-gold:#c7a254;
  --mini-skin:#e0b391; --mini-wood:#70513a; --mini-goblin:#72ad4b; --mini-cloth:#604862;
@@ -54,3 +56,10 @@
  clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;
  white-space:nowrap!important;border:0!important;
 }
+
+/* Miniaturas 3D · Lote 5: visão de catálogo sem alterar regras ou campanhas. */
+.miniatures3d-demo .miniatures3d-scene-nav{display:flex;flex-wrap:wrap;gap:.4rem;margin:.5rem 0;}
+.miniatures3d-demo .miniatures3d-scene-nav button{min-height:44px;}
+.miniatures3d-demo .miniatures3d-scenic-note{font-size:.86rem;line-height:1.45;opacity:.88;}
+.miniatures3d-demo .miniatures3d-fallback-grid{display:grid;gap:2px;padding:.5rem;background:var(--mini-ground);overflow:auto;max-width:100%;}
+.miniatures3d-demo .miniatures3d-fallback-grid button{font-size:.65rem;min-width:24px;min-height:24px;border:1px solid rgba(255,255,255,.16);color:#fff;text-shadow:0 1px #333;}
