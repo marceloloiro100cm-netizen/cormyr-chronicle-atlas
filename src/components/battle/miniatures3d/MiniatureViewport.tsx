@@ -69,7 +69,7 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
  },[]);
  useEffect(()=>{
   if(!palette||ready||failed)return;
-  const timer=setTimeout(fail,20000);return ()=>clearTimeout(timer);
+  const timer=setTimeout(fail,8000);return ()=>clearTimeout(timer);
  },[palette,ready,failed]);
  // Cancel an unconfirmed order when the turn, selected unit or legal actions change.
  useEffect(()=>{setPending(null);},[
@@ -224,7 +224,10 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
     </output>}
    </div>
    <div className="miniatures3d-viewport" aria-label="Tabuleiro quadrado com miniaturas 3D">
-    {!ready&&<p role="status" className="miniatures3d-status">Preparando miniaturas…</p>}
+    {!ready&&<div className="miniatures3d-status" role="status">
+     <span>Preparando miniaturas 3D…</span>
+     <Button variant="outline" size="sm" onClick={fail}>Usar mapa 2D agora</Button>
+    </div>
     {palette&&<ClientOnly fallback={null}><SceneBoundary onFailure={fail} fallback={null}>
      <Suspense fallback={null}><Scene {...props} onHexClick={onCellClick}
       pendingAction={validPending} palette={palette} top={top} zoom={zoom}
