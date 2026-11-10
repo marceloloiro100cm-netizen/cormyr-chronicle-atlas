@@ -9,6 +9,7 @@ vi.mock('./MiniatureScene',()=>({default:({onHexClick,onFailure}:{
  <button onClick={()=>onHexClick({q:4,r:2})}>Destino verde mock</button>
  <button onClick={()=>onHexClick({q:6,r:6})}>Alvo vermelho mock</button>
  <button onClick={()=>onHexClick({q:3,r:3})}>Inspecionar unidade mock</button>
+ <button onClick={()=>onHexClick({q:5,r:5})}>Inspecionar casa ilegal mock</button>
  <button onClick={onFailure}>Falha WebGL mock</button>
  </section>}));
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
@@ -94,6 +95,13 @@ describe('P0 do mapa 3D — segurança e gerenciamento',()=>{
   fireEvent.click(await screen.findByRole('button',{name:'Inspecionar unidade mock'}));
   expect(screen.getByText('Quadrado 3,3 · Planície')).toBeInTheDocument();
   expect(screen.getByText('Unidade: Infantaria (Atacante)')).toBeInTheDocument();
+ });
+ it('UX-2 não envia movimento ao tocar terreno vazio não autorizado',async()=>{
+  const click=vi.fn();show({onHexClick:click});
+  fireEvent.click(await screen.findByRole('button',{name:'Inspecionar casa ilegal mock'}));
+  expect(screen.getByText('Quadrado 5,5 · Planície')).toBeInTheDocument();
+  expect(click).not.toHaveBeenCalled();
+  expect(screen.queryByRole('group',{name:'Confirmar comando 3D'})).toBeNull();
  });
  it('P2 permite selecionar destino legal pelo teclado, sempre com confirmação',async()=>{
   const click=vi.fn();show({onHexClick:click});
