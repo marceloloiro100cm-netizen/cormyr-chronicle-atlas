@@ -7,7 +7,7 @@ import {warShieldWallAllyCover} from './shield-cover';
 import {WAR_SIEGE_CATALOG,warSiegeDamage,warSiegeReloadRemaining,warSiegeTargetInRange} from './siege';
 import type {WarSiegeEngine} from './siege';
 import {fortForUnit,fortDefense,validateWarForts,sabotageFortification,damageWarFortification} from './fortifications';
-import {igniteWarUnit,advanceWarFire,resolveCarriedWildfireRisk} from './siege-fire';
+import {igniteWarUnit,igniteWarOil,advanceWarFire,resolveCarriedWildfireRisk} from './siege-fire';
 import {canSeeWarTarget} from './line-of-sight';
 import {warFieldDefenseBonus,warFieldMovementMetres,warFieldOrderDifficulty,
  warFieldForbidsAttack,warFieldThrowDamage,validateWarFieldEquipment} from './field-equipment';
@@ -662,6 +662,15 @@ function perform(battle:WarBattle,unit:WarUnit,order:WarOrder,degrees:number):Wa
    const damage=payload.wildfire?payload.damage*success:payload.damage;
    next=applyDamage(next,target,damage,unit.name);
    if(payload.wildfire)next=igniteWarUnit(next,target.id,unit.name,7,2);
+   if(unit.fieldEquipment==='boiling-oil'){
+    const current=next.units.find(u=>u.id===target.id);
+    if(current&&['organized','disorganized','routed'].includes(current.condition)){
+     next=replaceUnit(next,{...current,oilSoaked:true});
+     next=log(next,'oil-soaked',target.name+
+      ' ficou coberta de óleo; o efeito extra exige contato com fogo.',unit.side);
+     next=igniteWarOil(next,target.id);
+    }
+   }
   }
   return next;
  }
