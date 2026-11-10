@@ -42,6 +42,7 @@ import {saveGotArchive,listGotArchives,loadGotArchive,deleteGotArchive,
 import {previewWarAftermath} from '@/lib/battle/got/aftermath';
 import {previewWarResourceConsequences} from '@/lib/battle/got/aftermath-resources';
 import {serializeWarAftermathReview} from '@/lib/battle/got/aftermath-review';
+import {recordWarParley,type WarParleyChoice} from '@/lib/battle/got/parley';
 import {WAR_FIELD_EQUIPMENT} from '@/lib/battle/got/field-equipment';
 import type {WarFieldEquipmentId} from '@/lib/battle/got/field-equipment';
 import type {WarResourceScenario} from '@/lib/battle/got/aftermath-resources';
@@ -109,6 +110,8 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
  const [deploymentMode,setDeploymentMode]=useState<'paint'|'deploy'>('paint');
  const [deploymentSelected,setDeploymentSelected]=useState('attacker-1');
  const [alternatePlacement,setAlternatePlacement]=useState(false);
+ const [parleyChoice,setParleyChoice]=useState<WarParleyChoice>('none');
+ const [parleyTerms,setParleyTerms]=useState('');
  const [localSaveStatus,setLocalSaveStatus]=useState('');
  const [lastSavedSnapshot,setLastSavedSnapshot]=useState('');
  const archiveScope=playerSandbox?'player' as const:'narrator' as const;
@@ -237,7 +240,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
     })):[];
    if(modelOneHandUnavailable&&modelOffhand!=='none')
     throw new Error('Não é possível usar arma secundária com uma mão indisponível.');
-   setBattle(createWarBattle({id:'book-lab-'+seed,name,seed,
+   const created=createWarBattle({id:'book-lab-'+seed,name,seed,
     width:mapSize.width,height:mapSize.height,
     strictLineOfSight:strictSightline,
     units,siege,
@@ -267,7 +270,8 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
     })],
     commanders:modelWarCommanders(warfare),tiles,weather,visibility,advancedFormations:advanced,
     manualMitigation,
-   }));
+   });
+   setBattle(recordWarParley(created,parleyChoice,parleyTerms));
    setSelected('');setTarget('');setError('');
   }catch(e){setError(e instanceof Error?e.message:'Falha ao preparar a batalha.');}
  };
@@ -1011,6 +1015,26 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      else delete next[slot];
      return next;
     })}/>}
+   <details className="got-parley-setup">
+    <summary>Parlamento antes da batalha (opcional)</summary>
+    <label>Proposta diplomática
+     <select value={parleyChoice}
+      onChange={e=>setParleyChoice(e.target.value as WarParleyChoice)}>
+      <option value="none">Sem parlamento</option>
+      <option value="truce-proposal">Proposta de trégua</option>
+      <option value="surrender-proposal">Proposta de rendição</option>
+      <option value="betrayal-report">Ataque durante parlamento (Narrador)</option>
+     </select>
+    </label>
+    <label>Termos resumidos
+     <input maxLength={250} value={parleyTerms}
+      onChange={e=>setParleyTerms(e.target.value)}
+      placeholder="Termos ou observações do Narrador"/>
+    </label>
+    <p className="battle-note">Este registro fica no histórico da simulação.
+     Rendição, trégua e eventual perda de Influência são julgadas pelo Narrador,
+     sem alteração automática das Casas.</p>
+   </details>
    <Button onClick={start}>Iniciar simulação pelo livro</Button>
    </details>
   </section>:<>
