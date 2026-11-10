@@ -1,5 +1,10 @@
 # Roadmap
 
+## Lote 1 — miniaturas rígidas 3D (10/11/2026)
+- [ ] Renderer isolado, quatro arquétipos originais, terreno quadrado e câmera.
+- [ ] Visão opt-in exclusiva do Narrador no Adaptado V3; fallback 2D e demo isolada.
+- [ ] Testes puros, fallback/rendering, regressões e verificação visual da prévia; documentação sem publicação.
+
 ## Hub de casa nobre — 24/10 21:38 UTC
 - [x] Pedido26/10 00:34: comparação por fonte/bloco de Everlost e Harcourt disponível; valores reais conferidos na conta do Narrador e12 testes aprovados; posses/tropas intactas, sem publicação.
 - [x] Decisão aplicada: Casa Everlost10/20/20/40/29/80/51 e bloco identificado Harcourt35/50/55/30/40/50/51; cópias de segurança e leitura de retorno confirmadas, posses/tropas vazias e originais preservados;14 testes aprovados, sem publicação.

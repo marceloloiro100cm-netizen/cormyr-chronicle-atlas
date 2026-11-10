@@ -9,7 +9,8 @@ import {livingCount} from '@/lib/battle/domain/morale';
 import {battleReport} from '@/lib/battle/domain/report';
 import {SCENARIOS,type BattleScenarioId} from '@/lib/battle/geometry/map-fixtures';
 import {downloadBattleJson} from '@/lib/battle/serialization/map-io';
-import {BattleBoard} from './BattleBoard';
+import {V3MiniatureBoard} from './miniatures3d/V3MiniatureBoard';
+import {MiniatureDemo} from './miniatures3d/MiniatureDemo';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
 import {BattleActionFeedback} from './BattleActionFeedback';
@@ -47,6 +48,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const [options,setOptions]=useState<V3ScenarioOptions>(initialOptions??defaults);
  const [game,setGame]=useState<V3Game|null>(null);
  const [expanded,setExpanded]=useState(false);
+ const [miniaturesEnabled,setMiniaturesEnabled]=useState(false);
  const [selected,setSelected]=useState<string|null>(null);
  const [hoveredId,setHoveredId]=useState<string|null>(null);
  const [mode,setMode]=useState<Mode>('inspect');
@@ -63,7 +65,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    if(file.size>1_500_000)throw new Error('Replay V3 excede 1,5 MB.');
    const {game:restored}=parseV3ReplayJson(await file.text());
    setOptions(restored.setup);setGame(restored);setSelected(restored.battle.activeUnitId);
-   setMode('inspect');setSkill(null);setExpanded(true);
+   setMode('inspect');setSkill(null);setExpanded(true);setMiniaturesEnabled(false);
    setStatus('Replay V3 verificado e retomado sem alterar as fichas oficiais.');
   }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível recuperar o replay V3.');}
  };
@@ -198,6 +200,11 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       <option value="ai">Inteligência artificial</option><option value="human">Dois comandantes no mesmo dispositivo</option>
     </select></label>
    </div>
+   {narrator&&<>
+    <label className="battle-note"><input type="checkbox" checked={miniaturesEnabled}
+     onChange={e=>setMiniaturesEnabled(e.target.checked)}/> Habilitar miniaturas 3D nesta sessão (teste)</label>
+    <MiniatureDemo narrator={narrator}/>
+   </>}
    {status&&<p role="status">{status}</p>}
    <div className="battle-home-actions"><Button onClick={begin}>Batalhar</Button>
     {onBack&&<Button variant="outline" onClick={onBack}>Voltar</Button>}
@@ -350,7 +357,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       <span> <i className="crusade-v4-green"/> Movimento</span>
       <span> <i className="crusade-v4-red"/> Ataque legal</span>
      </div>
-     <BattleBoard map={battle!.map} stacks={battle!.stacks} activeId={battle!.activeUnitId}
+     <V3MiniatureBoard narrator={narrator} sessionEnabled={miniaturesEnabled}
+      map={game.battle.map} stacks={game.battle.stacks} activeId={game.battle.activeUnitId}
       selectedId={selected} hoveredId={hoveredId} theme="cormyr"
       moveKeys={canAct&&mode==='inspect'&&selected===active?.id?
        moves.map(c=>hexKey(c.to)):[]}

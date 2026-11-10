@@ -38,3 +38,4 @@
 
 - Structured house Drive exports have a dedicated one-way mapping in the existing leased technical-folder executor; private sheet and ledger remain authoritative, with real provider ETags required for stable updates and immutable versions otherwise.
 - House resource views share the same central balance calculation and switch only presentation; chart saturation never changes recorded totals or allocations.
+- Adaptado V3 miniatures are a narrator-only session opt-in renderer under miniatures3d with pure visual3d adapters; shared BattleBoard props/callbacks remain authoritative, default/import is 2D, and isolated demo data never enter engines, saves or campaign storage. The lazy scene marks data-scene-ready after its first frame for browser verification.
