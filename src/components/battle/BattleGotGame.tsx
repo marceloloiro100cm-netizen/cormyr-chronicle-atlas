@@ -35,7 +35,7 @@ import type {WarSiegeKind,WarSiegeAmmo} from '@/lib/battle/got/siege';
 import {modelWarUnit,modelWarCommanders,WAR_MODEL_UNIT_TYPES} from '@/lib/battle/got/models';
 import type {WarModelUnitTypeId} from '@/lib/battle/got/models';
 import {modelWarLabDeployments} from '@/lib/battle/got/lab-deployment';
-import {positionedWarLabDeployments,positionWarLabUnit} from '@/lib/battle/got/lab-positioning';
+import {positionedWarLabDeployments,positionWarLabUnit,nextWarLabDeploymentSide} from '@/lib/battle/got/lab-positioning';
 import {encodeGotLabSave,decodeGotLabSave,GOT_LAB_SAVE_KEY} from '@/lib/battle/got/lab-save';
 import {saveGotArchive,listGotArchives,loadGotArchive,deleteGotArchive,
  type GotArchiveEntry} from '@/lib/battle/got/lab-archive';
@@ -105,6 +105,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
  const [deploymentPositions,setDeploymentPositions]=useState<Readonly<Record<string,WarPosition>>>({});
  const [deploymentMode,setDeploymentMode]=useState<'paint'|'deploy'>('paint');
  const [deploymentSelected,setDeploymentSelected]=useState('attacker-1');
+ const [alternatePlacement,setAlternatePlacement]=useState(false);
  const [localSaveStatus,setLocalSaveStatus]=useState('');
  const [lastSavedSnapshot,setLastSavedSnapshot]=useState('');
  const archiveScope=playerSandbox?'player' as const:'narrator' as const;
@@ -575,6 +576,13 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   }catch{setError('Não foi possível apagar a cópia local.');}
  };
  const preparedDeployments=modelWarLabDeployments(extraUnitsPerSide,mapSize.width,mapSize.height);
+ const nextDeploymentSide=alternatePlacement?nextWarLabDeploymentSide(
+  extraUnitsPerSide,deploymentPositions,mapSize.width,mapSize.height):null;
+ const deploymentChoices=alternatePlacement?
+  preparedDeployments.filter(u=>u.side===nextDeploymentSide&&
+   deploymentPositions[u.id]===undefined):preparedDeployments;
+ const activeDeploymentId=deploymentChoices.some(u=>u.id===deploymentSelected)?
+  deploymentSelected:deploymentChoices[0]?.id??'';
  const aftermath=battle?.phase==='finished'?previewWarAftermath(battle,{
   masterOfArmsBonus:Object.fromEntries(battle.units.filter(u=>masterOfArmsSides[u.side])
    .map(u=>[u.id,1 as const])),
@@ -910,14 +918,29 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      </select>
     </label>
     {deploymentMode==='deploy'&&<label>Tropa selecionada para posicionar
-     <select value={deploymentSelected}
+     <select value={activeDeploymentId} disabled={!deploymentChoices.length}
       onChange={e=>setDeploymentSelected(e.target.value)}>
-      {preparedDeployments.map(u=><option key={u.id} value={u.id}>
+      {deploymentChoices.map(u=><option key={u.id} value={u.id}>
        {u.name} · {SIDE[u.side]}</option>)}
      </select>
     </label>}
    </div>
    {deploymentMode==='deploy'&&<>
+    <label className="got-check">
+     <input type="checkbox" checked={alternatePlacement} onChange={e=>{
+      setAlternatePlacement(e.target.checked);
+      setDeploymentPositions({});
+      setDeploymentSelected('attacker-1');
+      setError('');
+     }}/>
+     Posicionamento alternado (Atacante / Defensor)
+    </label>
+    {alternatePlacement&&<p className="battle-note" role="status">
+     {nextDeploymentSide?
+      'Próxima colocação: '+SIDE[nextDeploymentSide]+'. Selecione uma tropa deste lado.':
+      'Todas as tropas foram posicionadas. Para alterar a sequência, restaure as posições.'}
+     {' '}Ativar ou desativar este modo reinicia apenas as posições manuais.
+    </p>}
     <p className="battle-note">Selecione uma tropa e toque no quadrado de destino.
      Não é permitido sobrepor unidades. O tabuleiro usa {mapSize.width} × {mapSize.height} quadrados.</p>
     <Button variant="outline" onClick={()=>{setDeploymentPositions({});setError('');}}>
@@ -945,8 +968,9 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
         setTiles(prev=>[...prev.filter(t=>t.x!==x||t.y!==y),{x,y,terrain:terrainPaint}]);
        }else{
         try{
+         if(!activeDeploymentId)throw new Error('Todas as tropas já foram posicionadas.');
          setDeploymentPositions(positionWarLabUnit(extraUnitsPerSide,
-          deploymentPositions,deploymentSelected,{x,y},mapSize.width,mapSize.height));
+          deploymentPositions,activeDeploymentId,{x,y},mapSize.width,mapSize.height));
          setError('');
         }catch(e){setError(e instanceof Error?e.message:'Posição inválida.');}
        }
