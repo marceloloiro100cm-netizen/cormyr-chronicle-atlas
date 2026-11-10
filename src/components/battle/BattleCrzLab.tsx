@@ -56,6 +56,7 @@ import './battle-legibility.css';
 import './battle-ui-v4.css';
 import './battle-arena-unified.css';
 import './dnd-lab.css';
+import './battle-design-tokens.css';
 
 type SidePanel='actions'|'objectives'|'report'|'replay';
 const SPELL_LABELS:Readonly<Record<string,string>>={
