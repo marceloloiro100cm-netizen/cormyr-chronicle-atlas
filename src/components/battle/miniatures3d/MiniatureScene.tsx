@@ -218,7 +218,8 @@ function Field(props:SceneProps){
    compact={compact} reduced={props.reducedMotion}
    onClick={()=>onHexClick?.({...token.position})}/>)}
   <PerformanceProbe active={Boolean(props.measurePerformance)}
-   tokenCount={tokens.length} onSample={props.onPerformanceSample}/>
+   tokenCount={tokens.length}
+   {...(props.onPerformanceSample?{onSample:props.onPerformanceSample}:{})}/>
   <Ready onReady={props.onReady}/>
  </>;
 }
