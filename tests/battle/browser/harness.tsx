@@ -9,6 +9,7 @@ import {BattleGotGame} from '@/components/battle/BattleGotGame';
 import {BattleArena} from '@/components/battle/BattleArena';
 import {BattleFirstBattleGuide} from '@/components/battle/BattleFirstBattleGuide';
 import {BattleMapEditor} from '@/components/battle/BattleMapEditor';
+import {MiniatureDemo} from '@/components/battle/miniatures3d/MiniatureDemo';
 import {BattleReplay,BattleReplayImporter} from '@/components/battle/BattleReplay';
 import {createScenario} from '@/lib/battle/geometry/map-fixtures';
 import {makeTacticalObjective} from '@/lib/battle/domain/objectives';
@@ -92,6 +93,11 @@ function TestHarness(){
     sideNames={{attacker:'Atacantes fictícios',defender:'Defensores fictícios'}}
     onExit={()=>setArena('none')}/>}
 
+  </section>
+  <section id="miniatures-3d-acceptance" aria-label="Homologação isolada de miniaturas 3D">
+   <h2>Miniaturas 3D · ensaio sintético do Narrador</h2>
+   <p>Somente geometria fictícia, sem fichas, autenticação ou acesso ao banco da campanha.</p>
+   <MiniatureDemo narrator/>
   </section>
   <section id="interactive-board" aria-label="Tabuleiro interativo de teste">
    <h2>Tabuleiro de seleção</h2>
