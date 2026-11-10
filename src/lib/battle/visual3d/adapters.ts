@@ -7,21 +7,34 @@ import {crzFootprintCells} from '@/lib/crusade/geometry';
 import {dndMilitaryType} from '@/lib/crusade/dnd-military';
 import type {VisualSquareMap,VisualTerrain,VisualToken,MiniatureKind} from './tokens';
 import {classifyMiniature} from './tokens';
+import {classifyCreatureArtwork} from './creature-visuals';
+export {classifyCreatureArtwork} from './creature-visuals';
 
 export function gotVisualTerrain(id:WarTerrainId):VisualTerrain{
- if(['stream','river','small-lake','large-lake','coast'].includes(id))return 'water';
+ if(['stream','river','small-lake','large-lake'].includes(id))return 'water';
  if(['sparse-forest','dense-forest'].includes(id))return 'forest';
- if(['hill','mountain'].includes(id))return 'hill';
- if(['wall','ruins'].includes(id))return 'rock';
+ if(id==='hill')return 'hill';
+ if(id==='mountain')return 'mountain';
+ if(id==='wall')return 'rock';
+ if(id==='ruins')return 'ruins';
  if(['hamlet','small-town','large-town','small-city','large-city'].includes(id))return 'settlement';
+ if(id==='desert')return 'desert';
+ if(id==='marsh')return 'marsh';
+ if(id==='road')return 'road';
+ if(['island','coast'].includes(id))return 'coast';
  return 'plain';
 }
+/** Bridges/roads are only graphic annotations. A river bridge is not treated
+ * as new navigable terrain by the renderer; the GOT engine remains authoritative.
+ */
 export function gotVisualMap(battle:Pick<WarBattle,'width'|'height'|'tiles'>):VisualSquareMap{
- const terrain=new Map(battle.tiles.map(t=>[t.x+','+t.y,gotVisualTerrain(t.terrain)]));
+ const terrain=new Map(battle.tiles.map(t=>[t.x+','+t.y,t] as const));
  return {grid:'square',width:battle.width,height:battle.height,
   tiles:Array.from({length:battle.width*battle.height},(_,i)=>{
-   const q=i%battle.width,r=Math.floor(i/battle.width);
-   return {q,r,terrain:terrain.get(q+','+r)??'plain'};
+   const q=i%battle.width,r=Math.floor(i/battle.width),tile=terrain.get(q+','+r);
+   return {q,r,terrain:tile?.bridge?'bridge':tile?.road?'road':
+     gotVisualTerrain(tile?.terrain??'plain'),
+    ...(tile?.road?{road:true}:{}),...(tile?.bridge?{bridge:true}:{})};
   })};
 }
 export function gotVisualTokens(battle:Pick<WarBattle,'units'>):VisualToken[]{
@@ -44,18 +57,7 @@ export function creatureMiniatureKind(template:{
 }):{kind:MiniatureKind;fallback:boolean}{
  const military=dndMilitaryType(template.id);
  if(military)return classifyMiniature(military);
- const kind=template.creatureType.toLowerCase();
- const tags=template.tags.map(t=>t.toLowerCase());
- const name=template.name.toLowerCase();
- if(tags.some(t=>t.includes('goblin'))||/^(goblin|hobgoblin|bugbear)\b/i.test(name))
-  return {kind:'goblin',fallback:false};
- if(kind==='dragon')return {kind:'dragon',fallback:false};
- if(kind==='undead')return {kind:'undead',fallback:false};
- if(kind==='construct')return {kind:'construct',fallback:false};
- if(kind==='beast'||kind==='monstrosity')return {kind:'beast',fallback:false};
- if(kind==='giant')return {kind:'giant',fallback:false};
- if(kind==='humanoid')return {kind:'humanoid',fallback:false};
- return {kind:'generic',fallback:true};
+ return classifyCreatureArtwork(template);
 }
 export function crzVisualTokens(state:CrzBattleState):VisualToken[]{
  return state.stacks.filter(crzCapable).map(s=>{
