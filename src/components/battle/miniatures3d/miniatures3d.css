@@ -54,3 +54,19 @@
  clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;
  white-space:nowrap!important;border:0!important;
 }
+
+/* Lote 5: minimal extra controls; no interference with tactical HUD. */
+.miniatures3d-gallery-select {display:inline-flex;align-items:center;gap:.4rem;font-size:12px;}
+.miniatures3d-gallery-select select {min-height:44px;max-width:min(46vw,230px);
+ color:var(--mini-paper);background:var(--mini-ground);border:1px solid var(--mini-gold);
+ border-radius:4px;padding:.35rem .6rem;}
+.miniatures3d-preview-note {margin:.3rem 0 .65rem;font-size:13px;color:inherit;}
+.miniatures3d-fallback {padding:.5rem;border:1px solid var(--mini-rock);max-width:100%;}
+.miniatures3d-fallback-scroll {overflow:auto;max-width:100%;}
+.miniatures3d-fallback-grid {display:grid;gap:2px;min-width:480px;}
+.miniatures3d-fallback-grid button {aspect-ratio:1;min-height:30px;color:#fff;font-size:16px;
+ border:1px solid rgba(20,20,20,.32);border-radius:2px;}
+.miniatures3d-fallback-grid button[aria-pressed=true] {outline:3px solid var(--mini-selection);outline-offset:-3px;}
+.miniatures3d-fallback-grid button:disabled {cursor:default;opacity:1;}
+@media(max-width:640px){.miniatures3d-gallery-select{width:100%;justify-content:space-between;}
+ .miniatures3d-gallery-select select{max-width:60vw;}}

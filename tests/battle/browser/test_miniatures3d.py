@@ -165,6 +165,36 @@ class RigidMiniatureChromiumAcceptance(unittest.TestCase):
         section.get_by_role("button", name="Encerrar carga 3D").click()
         self.assertEqual(section.locator(".miniatures3d-viewport canvas").count(), 0)
 
+    def test_monster_families_naval_and_special_scenery_in_webgl(self):
+        page = self.page()
+        errors = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        section = self.showcase(page)
+        picker = section.get_by_label("Monstros e cenários")
+        for value, expected_count, expected_name, picture in (
+            ("monsters-1", "15", "Goblin", "lot5-monsters-1.png"),
+            ("monsters-2", "15", "Dracolich", "lot5-monsters-2.png"),
+            ("naval", "5", "Galeão azul", "lot5-naval.png"),
+            ("special", "3", "Infantaria", "lot5-special.png"),
+        ):
+            picker.select_option(value)
+            wrapper = section.locator('.miniatures3d[data-scene-ready="1"]')
+            wrapper.wait_for(timeout=30000)
+            self.assertEqual(wrapper.get_attribute("data-token-count"), expected_count)
+            self.assertIn(expected_name, section.locator(".miniatures3d-selected").inner_text())
+            self.snapshot(section.locator(".miniatures3d-viewport canvas"), picture)
+        self.assertEqual(errors, [], f"3D scene switching threw exception: {errors}")
+
+    def test_naval_without_webgl_uses_readable_static_2d_gallery(self):
+        page = self.page(deny_webgl=True)
+        section = self.showcase(page)
+        section.get_by_label("Monstros e cenários").select_option("naval")
+        section.get_by_text("3D indisponível neste dispositivo.", exact=False).wait_for()
+        board = section.get_by_label("Galeria visual em 2D")
+        self.assertTrue(board.is_visible())
+        self.assertGreaterEqual(board.get_by_role("button", name="Galeão azul", exact=False).count(), 1)
+        self.assertEqual(section.locator(".miniatures3d-viewport canvas").count(), 0)
+
     def test_no_webgl_preserves_accessible_2d_fallback(self):
         page = self.page(deny_webgl=True)
         section = self.showcase(page)

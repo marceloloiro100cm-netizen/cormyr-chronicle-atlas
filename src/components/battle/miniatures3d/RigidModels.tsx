@@ -1,5 +1,7 @@
 import type {MiniatureKind} from '@/lib/battle/visual3d/tokens';
 import type {MiniaturePalette} from './palette';
+import {isAdvancedMonsterKind,DRAGON_TINT_COLORS,type DragonMiniatureTint} from '@/lib/battle/visual3d/monster-kinds';
+import {AdvancedMonsterModel} from './AdvancedMonsterModels';
 
 type Point=[number,number,number];
 function Block({at,size,color,rotation=[0,0,0]}:{at:Point;size:Point;color:string;rotation?:Point}){
@@ -118,20 +120,35 @@ function Horse({p}:{p:MiniaturePalette}){
   <group position={[0,.57,-.06]} scale={.75}><Soldier kind="infantry" p={p}/></group>
  </group>;
 }
-function Ship({p}:{p:MiniaturePalette}){
+function Ship({p,style='galleon'}:{p:MiniaturePalette;style?:'galleon'|'galley'}){
+ const galley=style==='galley';
  return <group>
-  <mesh position={[0,.30,0]} rotation={[Math.PI/2,0,0]} scale={[.28,.43,.7]}>
+  <mesh position={[0,.30,0]} rotation={[Math.PI/2,0,0]}
+   scale={[galley?0.24:0.28,.43,galley?0.75:0.70]}>
    <cylinderGeometry args={[1,1,1,8,1]}/>
    <meshStandardMaterial color={p.wood} flatShading/></mesh>
-  <Pole at={[0,.82,0]} color={p.ink} height={1.13} r={.025}/>
-  <mesh position={[.04,.88,.0]} rotation={[0,.12,0]}><planeGeometry args={[.48,.67]}/>
+  <Pole at={[0,galley?0.65:0.82,0]} color={p.ink} height={galley?0.80:1.13} r={.025}/>
+  <mesh position={[.04,galley?0.74:0.88,0]} rotation={[0,.12,0]}>
+   <planeGeometry args={galley?[.24,.32]:[.48,.67]}/>
    <meshStandardMaterial color={p.paper} side={2}/></mesh>
   <Block at={[0,.48,.03]} size={[.46,.07,.11]} color={p.gold}/>
+  {galley&&[-1,1].flatMap(side=>[-.35,0,.35].map(z=>
+   <Block key={side+','+z} at={[side*.38,.26,z]}
+    size={[.29,.045,.035]} color={p.paper}
+    rotation={[0,0,side*.18]}/>))}
+  {!galley&&<BoxShipFlag p={p}/>}
  </group>;
 }
-function Beast({p,dragon=false}:{p:MiniaturePalette;dragon?:boolean}){
+function BoxShipFlag({p}:{p:MiniaturePalette}){
  return <group>
-  <Orb at={[0,.52,0]} size={[.26,.27,.41]} color={dragon?p.goblin:p.wood}/>
+  <Pole at={[0,1.12,-.17]} height={.45} color={p.gold} r={.014}/>
+  <Block at={[.12,1.26,-.17]} size={[.25,.13,.015]} color={p.cloth}/>
+ </group>;
+}
+function Beast({p,dragon=false,tint}:{p:MiniaturePalette;dragon?:boolean;tint?:DragonMiniatureTint|undefined}){
+ const color=dragon?(tint?DRAGON_TINT_COLORS[tint]:p.goblin):p.wood;
+ return <group>
+  <Orb at={[0,.52,0]} size={[.26,.27,.41]} color={color}/>
   {[-.19,.19].flatMap(x=>[-.27,.25].map(z=>
    <Block key={x+','+z} at={[x,.25,z]} size={[.11,.40,.10]} color={dragon?p.goblin:p.wood}/>))}
   <Orb at={[0,.70,.39]} size={[.20,.22,.23]} color={dragon?p.goblin:p.wood}/>
@@ -140,7 +157,7 @@ function Beast({p,dragon=false}:{p:MiniaturePalette;dragon?:boolean}){
     rotation={[0,0,-s*.4]}><coneGeometry args={[.23,.64,3]}/>
     <meshStandardMaterial color={p.forest} side={2} flatShading/></mesh>)}
    <Cone at={[0,1.02,.48]} r={.12} h={.33} color={p.gold}/>
-   <Cone at={[0,.54,-.45]} r={.12} h={.55} color={p.goblin} rotation={[Math.PI/2,0,0]}/>
+   <Cone at={[0,.54,-.45]} r={.12} h={.55} color={color} rotation={[Math.PI/2,0,0]}/>
   </>}
  </group>;
 }
@@ -154,7 +171,10 @@ function Construct({p}:{p:MiniaturePalette}){
  </group>;
 }
 /** Sculptural wargame figurines. Exactly one rigid pose per archetype; zero animation rigs. */
-export function RigidModel({kind,p,compact=false}:{kind:MiniatureKind;p:MiniaturePalette;compact?:boolean}){
+export function RigidModel({kind,p,compact=false,cosmeticTint,navalStyle}:{
+ kind:MiniatureKind;p:MiniaturePalette;compact?:boolean;
+ cosmeticTint?:DragonMiniatureTint|undefined;navalStyle?:'galleon'|'galley'|undefined;
+}){
  if(compact){
   const color=kind==='goblin'||kind==='dragon'?p.goblin:
    kind==='warships'||kind==='support'?p.wood:
@@ -167,9 +187,11 @@ export function RigidModel({kind,p,compact=false}:{kind:MiniatureKind;p:Miniatur
     <Block at={[.27,.58,.05]} size={[.05,.45,.05]} color={p.gold}/>}
   </group>;
  }
- if(kind==='warships')return <Ship p={p}/>;
+ if(isAdvancedMonsterKind(kind))return <AdvancedMonsterModel kind={kind} p={p}
+  tint={cosmeticTint}/>;
+ if(kind==='warships')return <Ship p={p} style={navalStyle}/>;
  if(kind==='cavalry')return <Horse p={p}/>;
- if(kind==='dragon')return <Beast p={p} dragon/>;
+ if(kind==='dragon')return <Beast p={p} dragon tint={cosmeticTint}/>;
  if(kind==='beast')return <Beast p={p}/>;
  if(kind==='construct')return <Construct p={p}/>;
  if(kind==='giant')return <group scale={1.32}><Soldier kind="infantry" p={p}/></group>;

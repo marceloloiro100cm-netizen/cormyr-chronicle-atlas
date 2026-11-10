@@ -1,5 +1,6 @@
 import type {BattleMap,BattleStack,Hex} from '../domain/types';
 import {gridKind} from '../geometry/grid';
+import type {MonsterMiniatureKind,DragonMiniatureTint} from './monster-kinds';
 
 /** Canonical military identifiers; never alter house/game profiles to fit artwork. */
 export const CORMYR_MINIATURE_TYPES=[
@@ -8,12 +9,14 @@ export const CORMYR_MINIATURE_TYPES=[
  'warships','levies','raiders',
 ] as const;
 export type CormyrMiniatureType=typeof CORMYR_MINIATURE_TYPES[number];
-export type MiniatureKind=CormyrMiniatureType|'archer'|'goblin'|'dragon'|'undead'|
- 'construct'|'beast'|'giant'|'humanoid'|'generic';
+export type MiniatureKind=CormyrMiniatureType|'archer'|MonsterMiniatureKind|'generic';
 export type VisualTerrain='plain'|'forest'|'hill'|'rock'|'water'|'settlement';
+/** Decorative map features: derived from an existing tile, never a new rule. */
+export type VisualFeature='bridge'|'road'|'wall'|'ruins'|'marsh'|'coast'|'island'|'fort';
+export type VisualTile=Readonly<Hex&{terrain:VisualTerrain;feature?:VisualFeature}>;
 export type VisualSquareMap=Readonly<{
  grid?:'square'|undefined;width:number;height:number;
- tiles:readonly Readonly<Hex&{terrain:VisualTerrain}>[];
+ tiles:readonly VisualTile[];
 }>;
 export type VisualStack=Pick<BattleStack,
  'id'|'side'|'name'|'position'|'primaryTypeId'|'initialCount'|'hpPerSoldier'|'currentHp'|'moraleState'>;
@@ -21,7 +24,9 @@ export type VisualStack=Pick<BattleStack,
 export type VisualToken=Readonly<{
  id:string;side:BattleStack['side'];name:string;position:Hex;kind:MiniatureKind;
  fallback:boolean;count:number;houseLabel?:string;footprint?:number;
- flying?:boolean;naval?:boolean;metricLabel?:'Saúde'|'Vivos'|'Soldados';
+ flying?:boolean;naval?:boolean;navalStyle?:'galleon'|'galley';
+ cosmeticTint?:DragonMiniatureTint;
+ metricLabel?:'Saúde'|'Vivos'|'Soldados';
  footprintCells?:readonly Hex[];
 }>;
 export const isCormyrKind=(typeId:string):typeId is CormyrMiniatureType=>
