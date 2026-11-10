@@ -1158,6 +1158,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
       selectedId={selectedId} activeId={frame.activeStackId} hoveredId={hoveredId}
       moveKeys={canAct&&selectedId===active?.id?moves.map(c=>crzHexKey(c.to)):[]}
       attackKeys={canAct&&selectedId===active?.id?attacks.map(c=>c.targetId):[]}
+      canIssueCommands={canAct&&selectedId===active?.id}
       onHexClick={hex=>{
        const occupied=frame.stacks.find(unit=>crzCapable(unit)&&
         (isDndV3(frame)?crzFootprintCells(frame.map,unit.position,unit.size):
