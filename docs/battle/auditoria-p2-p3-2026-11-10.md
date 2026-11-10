@@ -12,7 +12,7 @@ GoT, D&D V3 e Adaptado seguem motores independentes. D&D: 3 m/quadrado; GoT: 10 
   atacante. Não aplica contra Luta, flanco/retaguarda, protetor derrotado ou fora
   da formação; múltiplos escudos não acumulam. É uma regra digital opcional.
 - Preparação GoT: seleção opcional "Posicionamento alternado" impõe uma colocação
-  Atacante, depois Defensor. A opção reinicia apenas posições manuais; o modo
+  Defensor, depois Atacante. A opção reinicia apenas posições manuais; o modo
   livre não muda. O redutor principal não recebe novas fases nem alterações
   de iniciativa ou salvamento.
 - GoT: Desalojar Escadas requer defesa sobre fortificação e inimigo adjacente com
