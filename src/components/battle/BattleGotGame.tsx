@@ -83,6 +83,7 @@ const ORDER_LABEL:Record<WarOrderKind,string>={
  'fire-special':'Disparar munição especial (uso único)',
  'breach-gate':'Arrombar portão com aríete',
  'discard-equipment':'Abandonar equipamento especial',
+ 'dislodge-ladders':'Desalojar escadas',
 };
 const CONDITION:Record<WarUnit['condition'],string>={
  organized:'Organizada',disorganized:'Desorganizada',routed:'Debandada',
@@ -298,7 +299,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
     kind:legalKind,
     ...(legalKind==='attack'&&attackHeroWithUnit?
      {targetHeroId:unitTargetHeroId||battle.heroes.find(h=>h.side!==battle.turn&&h.active)?.id||''}:{ }),
-    ...(['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop','hammer-anvil','fire-special'].includes(legalKind)&&selectedTarget&&
+    ...(['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop','hammer-anvil','fire-special','dislodge-ladders'].includes(legalKind)&&selectedTarget&&
      !(legalKind==='attack'&&attackHeroWithUnit)?
      {targetId:selectedTarget.id}:{}),
     ...(legalKind==='join'?{targetId:activeUnits.find(u=>u.id!==selectedUnit.id)?.id??''}:{}),
@@ -1593,7 +1594,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
          .map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
        </select>
       </label>}
-      {['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop','split-attack','pincer','hammer-anvil','fire-special'].includes(legalKind)&&
+      {['attack','charge','aggressive-retreat','suppress','probe','ambush','push','envelop','split-attack','pincer','hammer-anvil','fire-special','dislodge-ladders'].includes(legalKind)&&
        !(legalKind==='attack'&&attackHeroWithUnit)&&<>
        <label>Alvo
         <select aria-label="Alvo da ordem" value={selectedTarget?.id??''}
@@ -1665,6 +1666,10 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
          <option key={f.id} value={f.id}>{f.name}</option>)}
        </select>
       </label>}
+      {legalKind==='dislodge-ladders'&&<p className="battle-note">
+       Exige defensor na fortificação e inimigo adjacente com escadas posicionadas.
+       A tropa defensora fica com −5 Defesa contra Pontaria nesta rodada.
+      </p>}
       {legalKind==='join'&&<p className="battle-note">
        Junção: o segundo agrupamento aliado será escolhido automaticamente entre as
        unidades disponíveis. Ambas devem estar feridas e adjacentes.</p>}
