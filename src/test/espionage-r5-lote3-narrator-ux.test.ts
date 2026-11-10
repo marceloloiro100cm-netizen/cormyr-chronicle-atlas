@@ -2,7 +2,7 @@ import {describe,expect,it} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {spyNarratorOperationSchema,type SpyNarratorOperation}
  from '@/lib/espionage/spy-operations-browser';
-import {filterSpyOperations,spyNeedsDossierAttention,
+import {filterSpyOperations,spyDossierAttentionKind,spyNeedsDossierAttention,
  spyNeedsNarratorAction,spyNarratorActionQueue,spyOperationCounters}
  from '@/components/house/espionage/spy-narrator-operations-center';
 
@@ -98,4 +98,27 @@ describe('R5 Lote 3: central do Narrador com pendências prioritárias',()=>{
   expect(css).toContain('content:attr(data-label)');
   expect(css).toContain('min-height:48px');
  });
+ it('R6: somente waiting_catalog admite reprocessamento automático',()=>{
+  const waiting=op(11,{status:'completed',outcome:'success',intelligenceStatus:'waiting_catalog'});
+  const missing=op(12,{status:'completed',outcome:'success',intelligenceStatus:'missing_award'});
+  const unknown=op(13,{status:'completed',outcome:'success',intelligenceStatus:null});
+  const complete=op(14,{status:'completed',outcome:'success',intelligenceStatus:'complete'});
+  const failure=op(15,{status:'completed',outcome:'failure',intelligenceStatus:null});
+  expect(spyDossierAttentionKind(waiting)).toBe('retry');
+  expect(spyDossierAttentionKind(missing)).toBe('integrity');
+  expect(spyDossierAttentionKind(unknown)).toBe('integrity');
+  expect(spyDossierAttentionKind(complete)).toBe('none');
+  expect(spyDossierAttentionKind(failure)).toBe('none');
+  expect(spyNarratorActionQueue([missing,waiting,unknown])).toEqual([waiting,missing,unknown]);
+ });
+ it('R6: falha de integridade não oferece ação de reprocessamento cego',()=>{
+  const src=root('src/components/house/espionage/spy-narrator-operations-center.tsx');
+  expect(src).toContain("spyDossierAttentionKind(o)==='retry'&&<Button");
+  expect(src).toContain("spyDossierAttentionKind(o)==='integrity'&&<Button");
+  expect(src).toContain('Verificar status');
+  expect(src).toContain('Prêmio sem confirmação: revisar integridade');
+  expect(src).toContain('disabled={Boolean(retryingDossier)||query.isError}');
+  expect(src).toContain('A lista pode estar desatualizada');
+ });
+
 });

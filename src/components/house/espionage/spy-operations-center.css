@@ -86,3 +86,20 @@
  .spy-operation-inline-review{padding:10px;scroll-margin-top:64px}
  .spy-operation-inline-review .spy-narrator-form{min-width:0}
 }
+
+/* R6: controles acessíveis e legíveis mesmo em 320 px. */
+.spy-operations-center,.spy-operation-inline-review,.spy-operation-row{min-width:0;max-width:100%;box-sizing:border-box}
+.spy-operations-center input:focus-visible,.spy-operations-center select:focus-visible,
+.spy-operations-center button:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+.spy-operations-center [role="alert"],.spy-operations-center [role="status"]{overflow-wrap:anywhere}
+@media(max-width:375px){
+ .spy-operations-center .house-section-heading{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+ .spy-operations-center .house-section-heading button{width:100%;min-height:48px}
+ .spy-operation-row,.spy-operation-inline-review{padding:10px}
+ .spy-operations-filters,.spy-operations-metrics{min-width:0}
+ .spy-narrator-form input,.spy-narrator-form select,.spy-narrator-form textarea{font-size:16px;min-width:0;max-width:100%}
+ .spy-operation-inline-header{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+}
+@media(prefers-reduced-motion:reduce){
+ .spy-operation-inline-review{scroll-behavior:auto}
+}

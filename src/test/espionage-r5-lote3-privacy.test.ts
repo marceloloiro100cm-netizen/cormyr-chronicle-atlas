@@ -1,6 +1,6 @@
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 const state=vi.hoisted(()=>({
- logged:true,denied:false,rows:[] as unknown[],
+ logged:true,denied:false,transportFailure:false,rows:[] as unknown[],
  calls:[] as Array<{name:string;args:Record<string,unknown>}>,
 }));
 vi.mock('@tanstack/react-start',()=>({
@@ -16,6 +16,7 @@ vi.mock('@/integrations/supabase/client',()=>({
   rpc(this:{rest?:{current:boolean}},name:string,args:Record<string,unknown>){
    if(!this.rest?.current)throw Error('RPC receiver lost');
    state.calls.push({name,args});
+   if(state.transportFailure)throw new Error('SQL confidential test-only: private-house-id');
    return Promise.resolve({
     data:state.denied?null:state.rows,
     error:state.denied?{message:'access denied'}:null,
@@ -38,7 +39,7 @@ const event=()=>({
  dateKey:'1522-01-21',oldSnapshot:null,newSnapshot:{},
 });
 beforeEach(()=>{
- state.logged=true;state.denied=false;state.rows=[];
+ state.logged=true;state.denied=false;state.transportFailure=false;state.rows=[];
  state.calls.length=0;
 });
 describe('R5 Lote 3 · isolamento de dossiê por Casa, defesa em profundidade',()=>{
@@ -88,4 +89,16 @@ describe('R5 Lote 3 · isolamento de dossiê por Casa, defesa em profundidade',(
   state.denied=true;
   await expect(readSpyDossiersBrowser('ashkar')).rejects.toThrow('Não foi possível consultar');
  });
+ it('R6: rejeita Casa vazia e entrada suspeita antes de chamar RPC',async()=>{
+  await expect(readSpyDossiersBrowser('')).rejects.toThrow('Casa inválida');
+  await expect(readSpyDossiersBrowser(' '.repeat(4))).rejects.toThrow('Casa inválida');
+  await expect(readSpyDossiersBrowser('x'.repeat(101))).rejects.toThrow('Casa inválida');
+  expect(state.calls).toHaveLength(0);
+ });
+ it('R6: exceção de rede mantém diagnóstico SQL privado',async()=>{
+  state.transportFailure=true;
+  await expect(readSpyDossiersBrowser('ashkar')).rejects.toThrow('Verifique sua conexão');
+  await expect(readSpyDossiersBrowser('ashkar')).rejects.not.toThrow('private-house-id');
+ });
+
 });

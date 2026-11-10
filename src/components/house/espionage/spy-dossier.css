@@ -113,3 +113,19 @@
  .spy-dossier-admin-table td:last-child:before{display:none}
  .spy-dossier-admin-table td:last-child button{width:100%;min-height:48px}
 }
+
+/* R6: dossiês de leitura e administração acessíveis em celulares pequenos. */
+.spy-dossier-panel,.spy-dossier-sheet,.spy-dossier-admin-form{min-width:0;max-width:100%;box-sizing:border-box}
+.spy-dossier-panel [role="alert"],.spy-dossier-panel [role="status"],
+.spy-dossier-item,.spy-dossier-pending{overflow-wrap:anywhere}
+.spy-dossier-panel button:focus-visible,.spy-dossier-panel select:focus-visible,
+.spy-dossier-panel textarea:focus-visible,.spy-dossier-card:focus-visible{
+ outline:3px solid var(--primary);outline-offset:2px
+}
+@media(max-width:375px){
+ .spy-dossier-list,.spy-dossier-briefing,.spy-dossier-report-tools{grid-template-columns:minmax(0,1fr)}
+ .spy-dossier-admin-table td{grid-template-columns:minmax(0,1fr);gap:4px}
+ .spy-dossier-admin-form input,.spy-dossier-admin-form textarea,
+ .spy-dossier-panel input,.spy-dossier-panel select{font-size:16px;max-width:100%}
+ .spy-dossier-report-tools button,.spy-dossier-card,.spy-dossier-pending button{min-height:48px}
+}

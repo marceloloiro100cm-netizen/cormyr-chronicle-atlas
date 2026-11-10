@@ -183,8 +183,9 @@ export const resolveSpyAgentMission=createServerFn({method:'POST'})
     intelligenceStatus=await finishSpyIntelligence(
      context.supabase as unknown as Parameters<typeof finishSpyIntelligence>[0],
      data.operationId);
-   }catch(error){
-    console.error('Mission adjudicated; dossier retry required',error);
+   }catch{
+    // Jamais registrar payload, ID da operação ou erro SQL: o julgamento já foi gravado.
+    console.error('Mission adjudicated; dossier reconciliation required (details redacted)');
    }
   }else intelligenceStatus='no_success_award';
   return {...parsed.data,intelligenceStatus};

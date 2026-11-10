@@ -22,9 +22,15 @@ const objectiveLabels:Record<string,string>={
 /** Only successful, completed missions can require an intelligence award.
  * Failed/captured/dead operations have no dossier to recover.
  */
+/** Apenas waiting_catalog deve ser reprocessado automaticamente. */
+export type SpyDossierAttentionKind='none'|'retry'|'integrity';
+export const spyDossierAttentionKind=(o:SpyNarratorOperation):SpyDossierAttentionKind=>{
+ if(o.status!=='completed'||o.outcome!=='success'||o.intelligenceStatus==='complete')
+  return 'none';
+ return o.intelligenceStatus==='waiting_catalog'?'retry':'integrity';
+};
 export const spyNeedsDossierAttention=(o:SpyNarratorOperation)=>
- o.status==='completed'&&o.outcome==='success'&&
- o.intelligenceStatus!=='complete';
+ spyDossierAttentionKind(o)!=='none';
 
 export const spyNeedsNarratorAction=(o:SpyNarratorOperation)=>
  o.status==='pending_narrator_review'||spyNeedsDossierAttention(o);
@@ -34,7 +40,9 @@ export const spyNeedsNarratorAction=(o:SpyNarratorOperation)=>
  */
 export function spyNarratorActionQueue(operations:readonly SpyNarratorOperation[]){
  const priority=(o:SpyNarratorOperation)=>
-  o.status==='pending_narrator_review'?0:spyNeedsDossierAttention(o)?1:2;
+  o.status==='pending_narrator_review'?0:
+  spyDossierAttentionKind(o)==='retry'?1:
+  spyDossierAttentionKind(o)==='integrity'?2:3;
  return operations.filter(spyNeedsNarratorAction)
   .sort((a,b)=>priority(a)-priority(b)||
    b.createdAt.localeCompare(a.createdAt)||a.operationId.localeCompare(b.operationId));
@@ -91,8 +99,8 @@ export function SpyNarratorOperationsCenter(){
    setRecentResolution(response.status==='complete'
     ?'Descobertas confirmadas. O dossiê está atualizado.'
     :response.status==='waiting_catalog'
-     ?'Fonte oficial ainda indisponível. O resultado da missão continua salvo.'
-     :'Esta operação não possui prêmio de inteligência a processar.');
+     ?'Missão salva; dossiê pendente de fonte oficial.'
+     :'Prêmio não confirmado. Verifique o histórico antes de tentar novamente.');
    await Promise.allSettled([
     qc.invalidateQueries({queryKey:['spy-narrator-operations']}),
     qc.invalidateQueries({queryKey:['spy-dossiers']}),
@@ -133,7 +141,9 @@ export function SpyNarratorOperationsCenter(){
     Atualizar</Button>
   </header>
   {query.isPending&&<p role="status">Consultando operações da campanha…</p>}
-  {query.isError&&<p role="alert">Operações indisponíveis nesta sessão.
+  {query.isError&&<p role="alert">{query.data
+    ?'A lista pode estar desatualizada. Atualize antes de resolver uma missão.'
+    :'Operações indisponíveis nesta sessão.'}
    <Button type="button" variant="outline" onClick={()=>void query.refetch()}>
     Tentar novamente</Button></p>}
   {query.data&&<>
@@ -164,9 +174,9 @@ export function SpyNarratorOperationsCenter(){
    {state==='attention'&&counters.review+counters.dossier===0&&<p role="status"
     className="spy-operations-idle">Tudo em dia: nenhuma missão ou descoberta
     aguardando o Narrador.</p>}
-   {recentResolution&&<p role="status" className="spy-operations-feedback">
+   {recentResolution&&<p role="status" aria-live="polite" className="spy-operations-feedback">
     {recentResolution}</p>}
-   {selectedReview&&<section className="spy-operation-inline-review"
+   {selectedReview&&!query.isError&&<section className="spy-operation-inline-review"
     ref={reviewRef} tabIndex={-1}
     aria-label="Resolver missão selecionada">
     <header className="spy-operation-inline-header">
@@ -187,8 +197,10 @@ export function SpyNarratorOperationsCenter(){
        setSelectedReview(null);
        setRecentResolution(result.intelligenceStatus==='complete'
         ?'Missão resolvida e dossiê confirmado.'
+        :result.outcome==='mission_success'&&result.intelligenceStatus==='waiting_catalog'
+         ?'Missão salva; dossiê pendente de fonte oficial.'
         :result.outcome==='mission_success'
-         ?'Missão resolvida. Verifique o reprocessamento do dossiê.'
+         ?'Missão salva; prêmio exige verificação pelo Narrador.'
          :'Missão resolvida. Resultado registrado na campanha.');
        void Promise.allSettled([
         qc.invalidateQueries({queryKey:['spy-narrator-operations']}),
@@ -209,23 +221,33 @@ export function SpyNarratorOperationsCenter(){
       <strong>{statusLabels[o.status]??o.status}</strong>
       <small>{o.status==='pending_narrator_review'
        ?'Resultado aguardando a sua decisão':
-       spyNeedsDossierAttention(o)?'Resultado salvo; descobertas pendentes':
+       spyDossierAttentionKind(o)==='retry'
+         ?'Missão salva; dossiê pendente de fonte oficial':
+        spyDossierAttentionKind(o)==='integrity'
+         ?'Prêmio sem confirmação: revisar integridade':
        'Chegada '+dateLabel(o.arrivalKey)+' · fim '+dateLabel(o.investigationEndKey)}</small>
      </div>
      {o.status==='pending_narrator_review'&&<Button type="button"
-      variant={selectedReview?.operationId===o.operationId?'default':'outline'}
+      disabled={query.isError} variant={selectedReview?.operationId===o.operationId?'default':'outline'}
       className="spy-operation-resolve-button"
       aria-pressed={selectedReview?.operationId===o.operationId}
       onClick={()=>{
        setRecentResolution('');
        setSelectedReview({operationId:o.operationId,ownerHouseId:o.ownerHouseId});
       }}>Resolver agora</Button>}
-     {spyNeedsDossierAttention(o)&&<Button type="button"
+     {spyDossierAttentionKind(o)==='retry'&&<Button type="button"
       variant="outline" className="spy-operation-resolve-button"
-      disabled={Boolean(retryingDossier)}
+      disabled={Boolean(retryingDossier)||query.isError}
       onClick={()=>void finishDossier(o.operationId)}>
       {retryingDossier===o.operationId?'Verificando…':'Concluir dossiê'}
      </Button>}
+     {spyDossierAttentionKind(o)==='integrity'&&<Button type="button"
+      variant="outline" className="spy-operation-resolve-button"
+      disabled={query.isFetching}
+      onClick={()=>{
+       setRecentResolution('Prêmio não confirmado. Verifique a decisão e o histórico; não repita o julgamento.');
+       void query.refetch();
+      }}>Verificar status</Button>}
     </article>)}
    </div>:<p className="house-caption">Nenhuma missão neste filtro.</p>}
    {totalPages>1&&<div className="spy-operations-pages">

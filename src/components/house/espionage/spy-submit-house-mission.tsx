@@ -88,7 +88,12 @@ export function SpySubmitHouseMission({houseId,agentId,agentName,
      qc.invalidateQueries({queryKey:['espionage-regional-strategy',houseId]}),
     ]);
    }
-   setError(e instanceof Error?e.message:
+   // A perda de conexão mantém a chave original para uma retentativa idempotente.
+   // Apenas erros conhecidos podem aparecer na interface; erros crus de RPC são reservados.
+   const locationChanged=e instanceof Error&&e.message==='A posição ou a situação do espião mudou.';
+   if(locationChanged){requestKey.current=null;agentVersion.current=null;}
+   setError(e instanceof SpyMissionError?e.message:
+    locationChanged?'A posição ou a situação do espião mudou. Atualize a ficha.':
     'Não foi possível confirmar a missão. Atualize os agentes antes de reenviar.');
   }finally{setBusy(false);}
  };

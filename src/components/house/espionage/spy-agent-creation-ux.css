@@ -73,3 +73,18 @@
   flex-wrap:wrap
  }
 }
+
+/* R6: foco visível, leitura e toque sem rolagem lateral em 320-375 px. */
+.cormyr-creation-dialog--spy{max-width:100%;min-width:0;box-sizing:border-box}
+.cormyr-creation-dialog--spy button:focus-visible,
+.cormyr-creation-dialog--spy input:focus-visible,
+.cormyr-creation-dialog--spy select:focus-visible,
+.cormyr-creation-dialog--spy summary:focus-visible{
+ outline:3px solid var(--primary);outline-offset:2px
+}
+@media(max-width:375px){
+ .cormyr-creation-dialog--spy input,.cormyr-creation-dialog--spy select,
+ .cormyr-creation-dialog--spy textarea{font-size:16px;min-width:0;max-width:100%}
+ .cormyr-creation-dialog--spy button,.cormyr-creation-dialog--spy summary{min-height:48px}
+ .cormyr-creation-dialog--spy .cormyr-creation-summary{overflow-wrap:anywhere}
+}

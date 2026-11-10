@@ -39,7 +39,7 @@ describe('R4 · jornada de espionagem utilizável numa sessão real',()=>{
  it('a conclusão informa claramente quando o prêmio ainda não foi materializado',()=>{
   const src=file('src/components/house/espionage/spy-narrator-operations-center.tsx');
   expect(src).toContain("result.intelligenceStatus==='complete'");
-  expect(src).toContain('Verifique o reprocessamento do dossiê.');
+  expect(src).toContain('Missão salva; dossiê pendente de fonte oficial.');
   const server=file('src/lib/espionage/spy-agent-actions.functions.ts');
   expect(server).toContain("='retry_required';");
   expect(server).toContain("parsed.data.outcome==='mission_success'");
