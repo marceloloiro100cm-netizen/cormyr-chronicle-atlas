@@ -204,8 +204,10 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
     </label>
     <Button variant="outline" size="sm" disabled={!navigationCell}
      onClick={()=>{
-      const [q,r]=navigationCell.split(',').map(Number);
-      if(Number.isInteger(q)&&Number.isInteger(r))onCellClick({q,r});
+      const parts=navigationCell.split(',');
+      const q=Number(parts[0]),r=Number(parts[1]);
+      if(parts.length===2&&Number.isInteger(q)&&Number.isInteger(r))
+       onCellClick({q,r});
      }}>Inspecionar ou selecionar</Button>
     <p>Ações legais exigem confirmação. Para navegação completa por setas, use Mapa 2D.</p>
    </details>
