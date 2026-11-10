@@ -176,7 +176,7 @@ export function SpyNarratorOperationsCenter(){
     aguardando o Narrador.</p>}
    {recentResolution&&<p role="status" aria-live="polite" className="spy-operations-feedback">
     {recentResolution}</p>}
-   {selectedReview&&<section className="spy-operation-inline-review"
+   {selectedReview&&!query.isError&&<section className="spy-operation-inline-review"
     ref={reviewRef} tabIndex={-1}
     aria-label="Resolver missão selecionada">
     <header className="spy-operation-inline-header">
