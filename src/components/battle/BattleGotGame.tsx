@@ -62,7 +62,6 @@ const COMMON_GOT_TERRAIN:Readonly<Record<string,string>>={
  hill:SQUARE_TERRAIN_PRESENTATION.hill.color,
  wall:SQUARE_TERRAIN_PRESENTATION.rock.color,
 };
-import type {Slot} from './BattleGotSourcePicker';
 import './battle-design-tokens.css';
 import './battle-got.css';
 
@@ -192,6 +191,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
  });
  const [officialBySlot,setOfficialBySlot]=useState<Record<string,WarUnit>>({});
  const [houseMatchup,setHouseMatchup]=useState(false);
+ const [showHouseMatchup,setShowHouseMatchup]=useState(false);
  const [aiRunning,setAiRunning]=useState(false);
  const [aiStarted,setAiStarted]=useState(false);
  const [aiSpeed,setAiSpeed]=useState(650);
@@ -749,12 +749,18 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    {!playerSandbox&&<label className="got-check"><input type="checkbox"
     checked={miniaturesEnabled} onChange={e=>setMiniaturesEnabled(e.target.checked)}/>
     Habilitar miniaturas 3D nesta sessão (teste, Narrador)</label>}
-   {!playerSandbox&&<BattleGotHouseMatchup width={mapSize.width} height={mapSize.height}
-    onLoaded={({units,extraPerSide,name:matchName})=>{
-     setOfficialBySlot(units);setHouseMatchup(true);
-     setExtraUnitsPerSide(extraPerSide);setName(matchName);setDeploymentPositions({});
-     setSiegeEnabled(false);setHeroesEnabled(false);setFortKind('none');setError('');
-    }}/>}
+   {!playerSandbox&&<>
+    <Button variant="outline" onClick={()=>setShowHouseMatchup(v=>!v)}
+     aria-expanded={showHouseMatchup}>
+     {showHouseMatchup?'Ocultar seleção de Casas':'Escolher Casas nobres'}
+    </Button>
+    {showHouseMatchup&&<BattleGotHouseMatchup width={mapSize.width} height={mapSize.height}
+     onLoaded={({units,extraPerSide,name:matchName})=>{
+      setOfficialBySlot(units);setHouseMatchup(true);setShowHouseMatchup(false);
+      setExtraUnitsPerSide(extraPerSide);setName(matchName);setDeploymentPositions({});
+      setSiegeEnabled(false);setHeroesEnabled(false);setFortKind('none');setError('');
+     }}/>}
+   </>}
    <div className="battle-simple-launch" aria-label="Início rápido Game of Thrones">
     <h3>Batalha rápida</h3>
     <p>{houseMatchup?
