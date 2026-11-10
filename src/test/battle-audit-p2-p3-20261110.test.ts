@@ -5,6 +5,7 @@ import {modelWarCommanders} from '@/lib/battle/got/models';
 import {previewWarAftermath} from '@/lib/battle/got/aftermath';
 import {previewWarResourceConsequences} from '@/lib/battle/got/aftermath-resources';
 import {serializeWarAftermathReview} from '@/lib/battle/got/aftermath-review';
+import {recordWarParley} from '@/lib/battle/got/parley';
 import {modelWarUnit} from '@/lib/battle/got/models';
 import {nextWarLabDeploymentSide,positionWarLabUnit} from '@/lib/battle/got/lab-positioning';
 
@@ -67,5 +68,24 @@ describe('P2 — relatório de campanha é apenas exportação para revisão',()
   expect(exported.resources.appliedToHouse).toBe(false);
   expect(exported.battle.id).toBe(battle.id);
   expect(JSON.stringify(battle)).toBe(before);
+ });
+});
+
+describe('P2 — parlamento narrativo anterior às ordens',()=>{
+ it('registra proposta sem consumir seed, mudar casas ou emitir rolagens',()=>{
+  const original=createWarBattle({id:'parley-test',name:'Trégua',
+   seed:'seed-parley',width:12,height:7,
+   commanders:modelWarCommanders({attacker:5,defender:4}),
+   units:[unit('att','attacker',2,2),unit('def','defender',9,2)]});
+  const snapshot=JSON.stringify(original);
+  expect(recordWarParley(original,'none')).toBe(original);
+  const proposed=recordWarParley(original,'truce-proposal','Corredor seguro');
+  expect(proposed.events).toHaveLength(1);
+  expect(proposed.events[0]).toMatchObject({kind:'parley',side:null,seq:1});
+  expect(proposed.events[0]?.text).toContain('Corredor seguro');
+  expect(proposed.seed).toBe(original.seed);
+  expect(proposed.units).toBe(original.units);
+  expect(JSON.stringify(original)).toBe(snapshot);
+  expect(()=>recordWarParley(proposed,'betrayal-report')).toThrow(/antes/);
  });
 });
