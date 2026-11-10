@@ -12,6 +12,7 @@ const TERRAIN_LABELS:Readonly<Record<VisualTerrain,string>>={
 };
 export type VisualCellInspection=Readonly<{
  coordinates:string;terrain:string;features:readonly string[];
+ effects?:readonly string[];
  occupant:string|null;side:string|null;
 }>;
 export function inspectVisualCell(map:VisualSquareMap,tokens:readonly VisualToken[],
@@ -27,6 +28,7 @@ export function inspectVisualCell(map:VisualSquareMap,tokens:readonly VisualToke
   coordinates:hex.q+','+hex.r,
   terrain:TERRAIN_LABELS[tile.terrain]??'Terreno',
   features:[...(road?['Estrada']:[]),...(bridge?['Ponte']:[])],
+  ...(tile.ruleNotes?.length?{effects:tile.ruleNotes}:{}),
   occupant:occupant?.name??null,
   side:occupant?(occupant.side==='attacker'?'Atacante':'Defensor'):null,
  };
