@@ -27,10 +27,10 @@ function tokenLocation(map:VisualSquareMap,t:VisualToken):[number,number,number]
  const centerY=squares.reduce((sum,p)=>sum+p.r,0)/squares.length;
  return [centerX-(map.width-1)/2,t.flying?.32:0,centerY-(map.height-1)/2];
 }
-function Token({token,map,p,selected,active,hovered,target,reduced,compact,onClick}:{
+function Token({token,map,p,selected,active,hovered,target,reduced,compact,compactLabels,onClick}:{
  token:VisualToken;map:VisualSquareMap;p:MiniaturePalette;
  selected:boolean;active:boolean;hovered:boolean;target:boolean;
- reduced:boolean;compact:boolean;onClick:()=>void;
+ reduced:boolean;compact:boolean;compactLabels:boolean;onClick:()=>void;
 }){
  const group=useRef<Group>(null);
  const {invalidate}=useThree();
@@ -64,9 +64,11 @@ function Token({token,map,p,selected,active,hovered,target,reduced,compact,onCli
   <group scale={scale}><RigidModel kind={token.kind} p={p} compact={compact}/></group>
   <Html position={[0,.18,token.side==='defender'?-radius-.13:radius+.13]} center
    zIndexRange={[10,0]} style={{pointerEvents:'none'}}>
-   <div className="miniatures3d-label">
-    {token.metricLabel??'Soldados'}: {token.count.toLocaleString('pt-BR')}
-    {(!compact||selected||active)&&<small>{token.name}
+   <div className={'miniatures3d-label'+(selected||active?' is-selected':'')}
+    title={token.name+' · '+(token.metricLabel??'Soldados')+': '+
+      token.count.toLocaleString('pt-BR')}>
+    <strong className="miniatures3d-count">{token.count.toLocaleString('pt-BR')}</strong>
+    {(!compactLabels||selected||active)&&<small>{token.name}
      {token.houseLabel?' · '+token.houseLabel:''}
      {token.fallback?' · genérica':''}
      {token.flying?' · voando':''}</small>}
@@ -80,6 +82,7 @@ function Field(props:SceneProps){
  const occupied=useMemo(()=>new Set(tokens.flatMap(t=>
   (t.footprintCells?.length?t.footprintCells:[t.position]).map(hexKey))),[tokens]);
  const compact=tokens.length>24;
+ const compactLabels=tokens.length>8;
  const attacks=useMemo(()=>new Set(attackKeys),[attackKeys]);
  return <>
   <color attach="background" args={[p.ground]}/>
@@ -118,7 +121,7 @@ function Field(props:SceneProps){
   {tokens.map(token=><Token key={token.id} token={token} map={map} p={p}
    selected={token.id===props.selectedId} active={token.id===props.activeId}
    hovered={token.id===props.hoveredId} target={attacks.has(token.id)}
-   compact={compact} reduced={props.reducedMotion}
+   compact={compact} compactLabels={compactLabels} reduced={props.reducedMotion}
    onClick={()=>onHexClick?.({...token.position})}/>)}
   <Ready onReady={props.onReady}/>
  </>;
