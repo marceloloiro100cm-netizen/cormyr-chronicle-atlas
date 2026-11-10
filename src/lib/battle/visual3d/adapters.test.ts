@@ -33,8 +33,8 @@ describe('Miniaturas 3D — lotes 2/3/4: projeções sem mutação dos motores',
  it('ignora unidades GOT destruídas, exibe navio e preserva Saúde',()=>{
   const unit={id:'cav',name:'Cavalaria',side:'attacker',typeId:'cavalry',
    position:{x:2,y:3},health:6,condition:'organized',naval:false} as WarUnit;
-  const ship={...unit,id:'boat',name:'Galeão',side:'defender',naval:true};
-  const dead={...unit,id:'dead',condition:'destroyed'};
+  const ship={...unit,id:'boat',name:'Galeão',side:'defender',naval:true} as WarUnit;
+  const dead={...unit,id:'dead',condition:'destroyed'} as WarUnit;
   const original=JSON.stringify([unit,ship,dead]);
   const tokens=gotVisualTokens({units:[unit,ship,dead]});
   expect(tokens).toHaveLength(2);
