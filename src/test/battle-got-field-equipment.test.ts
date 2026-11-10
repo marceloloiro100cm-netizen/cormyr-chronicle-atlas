@@ -1,5 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {createWarBattle,issueWarOrder} from '@/lib/battle/got/engine';
+import {igniteWarUnit,advanceWarFire} from '@/lib/battle/got/siege-fire';
 import {makeWarFortification,fortDefense} from '@/lib/battle/got/fortifications';
 import {modelWarCommanders,modelWarUnit} from '@/lib/battle/got/models';
 import {WAR_FIELD_EQUIPMENT,warFieldDefenseBonus,warFieldMovementMetres,
@@ -104,5 +105,41 @@ describe('Capítulo 10 — equipamentos de campo e uso único',()=>{
    seed:'invalid-field',width:12,height:7,
    commanders:b.commanders,units:[illegal,b.units[1]!]}))
    .toThrow(/Cavalaria\/navios/);
+ });
+});
+
+describe('P2 — reação às escadas e óleo com ignição secundária',()=>{
+ it('defensor em muralha desalojará escadas adjacentes e ficará exposto à Pontaria',()=>{
+  const prepared=arena('ladders','defender');
+  const battle={...prepared,phase:'orders' as const,turn:'defender' as const,
+   units:prepared.units.map(u=>u.id==='a'?{
+    ...u,laddersDeployed:true,fieldEquipmentConsumed:true,
+   }:u)};
+  const snapshot=JSON.stringify(battle);
+  const output=issueWarOrder(battle,{commanderId:'leader-defender',
+   unitId:'b',order:{kind:'dislodge-ladders',targetId:'a'}});
+  expect(output.passed).toBe(true);
+  expect(output.battle.units.find(u=>u.id==='a')?.laddersDeployed).toBe(false);
+  expect(output.battle.units.find(u=>u.id==='b')?.ladderDefensePenaltyRound).toBe(battle.round);
+  expect(output.battle.events.some(e=>e.kind==='dislodge-ladders')).toBe(true);
+  expect(JSON.stringify(battle)).toBe(snapshot);
+ });
+ it('óleo fervente não incendeia sozinho, mas fogo acende +1 por 1d6 rodadas',()=>{
+  const oil=order(arena('boiling-oil','attacker'),'fire-special').battle;
+  expect(target(oil).oilSoaked).toBe(true);
+  expect(target(oil).oilIgnition).toBeUndefined();
+  const burning=igniteWarUnit(oil,'b','Fogo de prova',7,1);
+  expect(target(burning).oilSoaked).toBe(false);
+  expect(target(burning).oilIgnition?.remainingRounds).toBeGreaterThanOrEqual(1);
+  expect(target(burning).oilIgnition?.remainingRounds).toBeLessThanOrEqual(6);
+  const step=advanceWarFire(burning,(state,unit,amount)=>({
+   ...state,units:state.units.map(row=>row.id===unit.id?{
+    ...row,health:Math.max(0,row.health-amount),
+   }:row),
+  }));
+  expect(step.events.some(e=>e.kind==='oil-tick')).toBe(true);
+  expect(target(step).health).toBeLessThan(target(burning).health);
+  expect(target(step).oilIgnition?.remainingRounds??0)
+   .toBe((target(burning).oilIgnition?.remainingRounds??1)-1);
  });
 });
