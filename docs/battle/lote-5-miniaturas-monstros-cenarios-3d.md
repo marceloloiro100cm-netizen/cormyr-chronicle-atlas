@@ -26,7 +26,7 @@ O Lote 5 amplia a camada de visualização rígida 3D criada nos lotes 1–4, us
 
 - Adaptador GOT mapeia campos de terreno **sem alterar** `terrainEffect` ou ordens: estrada, ponte sobre rio, muralha, ruínas, pântano, costa e ilha, além dos tipos de superfície anteriores.
 - `MiniatureScene` desenha pontes baixas, estradas, costões, pequenas ilhas, pântanos, pedras e barreiras com geometria estática. São **marcadores visuais**, e jamais geram custo, altura, cobertura ou navegação próprios.
-- Galeria fictícia **Costa naval** usa água, ilhas e quatro embarcações rígidas distintas por lado e marinheiros na costa. Não implementa combate naval oficial. O motor GOT já pode fornecer unidade `naval` e terreno `coast`, mas não há um módulo naval de ações novo.
+- Galeria fictícia **Costa naval** usa água, ilhas e quatro embarcações rígidas com dois perfis de silhueta (galeão de velas e galera com remos), distribuídas entre os lados, e marinheiros na costa. Não implementa combate naval oficial. O motor GOT já pode fornecer unidade `naval` e terreno `coast`, mas não há um módulo naval de ações novo.
 - Galeria fictícia **Terrenos especiais** contém ponte, rio, ruínas, muralha, estrada, miniatura voadora e base de criatura de 4×4 quadrados. São demonstrativos; não salvam nem criam fichas.
 - O mapa 2D continua padrão nos três sistemas e permanece disponível em falha de WebGL. As novas galerias têm fallback 2D com nomes, seleção acessível e superfícies diferenciadas.
 
