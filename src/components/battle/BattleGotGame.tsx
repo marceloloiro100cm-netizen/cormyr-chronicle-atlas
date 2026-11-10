@@ -1437,7 +1437,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
         data-terrain={terrain}
         style={!occupant?{backgroundColor:COMMON_GOT_TERRAIN[terrain]}:undefined}
         className={'got-cell'+(occupant?' occupied '+occupant.side:'')+(isDestination?' destination':'')+(pathSquares.has(x+':'+y)?' got-route':'')+(terrain!=='plain'?' got-terrain':'')}
-        aria-label={'Quadrado '+x+','+y+' · '+terrain+(occupant?' · '+occupant.name+' · '+CONDITION[occupant.condition]:'')}
+        aria-label={'Quadrado '+x+','+y+' · '+terrain+(occupant?' · '+occupant.name+' · '+CONDITION[occupant.condition]+(battle.advancedFormations?' · Frente '+(occupant.facing??'não definida'):''):'')}
         title={occupant?.name??terrain+' · '+x+','+y}
         onClick={()=>selectMapCell(x,y)}>
         {occupant?<><span className="got-token-frame">
@@ -1445,7 +1445,12 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
           <img className="got-token-art" src={militaryUnitSymbolSrc(occupant.typeId)}
            alt="" loading="lazy"/>:
           <strong>{occupant.side==='attacker'?'A':'D'}</strong>}
-         </span><small>{occupant.name.split(' ')[0]}</small></>:
+         </span>
+         {battle.advancedFormations&&occupant.facing&&<span className="got-facing"
+          aria-hidden="true" title={'Frente: '+occupant.facing}>
+          {({north:'↑',east:'→',south:'↓',west:'←'} as const)[occupant.facing]}
+         </span>}
+         <small>{occupant.name.split(' ')[0]}</small></>:
          <span className="got-cell-dot" aria-hidden="true">{terrain==='plain'?'·':'▥'}</span>}
        </button>;
       })}
