@@ -11,7 +11,7 @@ export type WarSide='attacker'|'defender';
 export type WarPosition=Readonly<{x:number;y:number}>;
 export type WarCondition='organized'|'disorganized'|'routed'|'destroyed'|'surrendered'|'escaped';
 export type WarRange='none'|'short'|'long';
-export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'surrender'|'formation'|'turn'|'reverse'|'suppress'|'probe'|'push'|'counter-charge'|'sabotage'|'ambush'|'join'|'split-attack'|'lightning-attack'|'trample'|'envelop'|'scorched-earth'|'pincer'|'hammer-anvil'|'climb-walls'|'fire-special'|'breach-gate'|'discard-equipment';
+export type WarOrderKind='attack'|'charge'|'defend'|'move'|'ready'|'rally'|'revive'|'reorganize'|'retreat'|'aggressive-retreat'|'surrender'|'formation'|'turn'|'reverse'|'suppress'|'probe'|'push'|'counter-charge'|'sabotage'|'ambush'|'join'|'split-attack'|'lightning-attack'|'trample'|'envelop'|'scorched-earth'|'pincer'|'hammer-anvil'|'climb-walls'|'fire-special'|'breach-gate'|'discard-equipment'|'dislodge-ladders';
 export type WarReadyPlan=Readonly<{
  trigger:'enemy-adjacent'|'enemy-routed';
  reaction:'attack'|'move';
@@ -62,6 +62,8 @@ export type WarUnit=Readonly<{
  fieldEquipment?:WarFieldEquipmentId;fieldEquipmentConsumed?:boolean;
  envelopingTargetId?:string|undefined;envelopedBy?:string|undefined;
  laddersDeployed?:boolean;wallClimbedRound?:number;
+ /** Penalidade contra Pontaria no turno em que a unidade desalojou escadas. */
+ ladderDefensePenaltyRound?:number;
  issuedThisRound:number;actedThisRound:boolean;criticalThisRound:boolean;
  source:Readonly<{kind:'model'|'house-readonly';houseId?:string;unitId?:string;version?:number;
   warEffects?:Readonly<{
