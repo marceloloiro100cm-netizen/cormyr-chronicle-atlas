@@ -11,6 +11,7 @@ describe('Espionagem R6 · prontidão offline sem alterar a campanha',()=>{
   expect(ui).toContain("spyDossierAttentionKind(o)==='retry'&&<Button");
   expect(ui).toContain("spyDossierAttentionKind(o)==='integrity'&&<Button");
   expect(ui).toContain('Verificar status');
+  expect(ui).toContain('{selectedReview&&!query.isError&&<section');
   expect(ui).toContain('Prêmio não confirmado');
   expect(ui).toContain('disabled={Boolean(retryingDossier)||query.isError}');
   expect(ui).toContain('aria-live="polite"');
