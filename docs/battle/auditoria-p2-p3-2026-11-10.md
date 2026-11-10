@@ -15,6 +15,10 @@ GoT, D&D V3 e Adaptado seguem motores independentes. D&D: 3 m/quadrado; GoT: 10 
   Defensor, depois Atacante. A opção reinicia apenas posições manuais; o modo
   livre não muda. O redutor principal não recebe novas fases nem alterações
   de iniciativa ou salvamento.
+- Parlamento pré-batalha opcional: registra proposta de trégua, rendição ou
+  relato de traição no histórico, sem consumir dados. Não declara acordo
+  aceito, não encerra a batalha automaticamente e não modifica Influência.
+  Regras de acordo e consequências dependem da decisão do Narrador.
 - GoT: Desalojar Escadas requer defesa sobre fortificação e inimigo adjacente com
   escadas implantadas. Cancela a implantação e deixa o defensor com −5 Defesa contra
   Pontaria somente na mesma rodada. Não consome equipamentos da Casa real.
