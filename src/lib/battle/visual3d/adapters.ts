@@ -1,6 +1,7 @@
 /** Read-only projections. Never import or mutate any battle reducer here. */
 import type {WarBattle} from '../got/types';
-import type {WarTerrainId} from '../got/terrain';
+import type {WarTerrainId,WarTerrainTile,WarVisibility,WarWeather} from '../got/terrain';
+import {terrainEffect,terrainMoveCost} from '../got/terrain';
 import type {CrzBattleState} from '@/lib/crusade/battle-state';
 import {crzCapable} from '@/lib/crusade/battle-state';
 import {crzFootprintCells} from '@/lib/crusade/geometry';
@@ -24,17 +25,35 @@ export function gotVisualTerrain(id:WarTerrainId):VisualTerrain{
  if(['island','coast'].includes(id))return 'coast';
  return 'plain';
 }
+/** Only official GOT terrain metadata is eligible for rules annotation.
+ * This is a summary, not a replacement for orders, situational modifiers or pathfinding.
+ */
+export function gotTerrainNotes(tile:WarTerrainTile,weather?:WarWeather,
+ visibility?:WarVisibility):readonly string[]{
+ const rules=terrainEffect(tile),notes:string[]=[];
+ if(weather&&visibility)notes.push('Custo de entrada: '+terrainMoveCost(tile,visibility,weather)+' casa(s) · considerando clima e visibilidade');
+ else if(rules.slow>0)notes.push('Terreno lento: '+rules.slow+' nível(is) base');
+ if(rules.cover>0)notes.push('Cobertura ao defender: +'+rules.cover);
+ if(rules.highGroundBonusDice>0)notes.push('Vantagem de altura condicional: +'+rules.highGroundBonusDice+' dado(s)');
+ if(rules.blocked)notes.push('Terreno bloqueado · consulte exceções do motor');
+ if(rules.noCavalry)notes.push('Restrição de cavalaria');
+ if(rules.noSiege)notes.push('Restrição de cerco');
+ if(rules.naval)notes.push('Área com regras navais');
+ return notes;
+}
 /** Bridges/roads are only graphic annotations. A river bridge is not treated
  * as new navigable terrain by the renderer; the GOT engine remains authoritative.
  */
-export function gotVisualMap(battle:Pick<WarBattle,'width'|'height'|'tiles'>):VisualSquareMap{
+export function gotVisualMap(battle:Pick<WarBattle,'width'|'height'|'tiles'> &
+ Partial<Pick<WarBattle,'weather'|'visibility'>>):VisualSquareMap{
  const terrain=new Map(battle.tiles.map(t=>[t.x+','+t.y,t] as const));
  return {grid:'square',width:battle.width,height:battle.height,
   tiles:Array.from({length:battle.width*battle.height},(_,i)=>{
    const q=i%battle.width,r=Math.floor(i/battle.width),tile=terrain.get(q+','+r);
    return {q,r,terrain:tile?.bridge?'bridge':tile?.road?'road':
      gotVisualTerrain(tile?.terrain??'plain'),
-    ...(tile?.road?{road:true}:{}),...(tile?.bridge?{bridge:true}:{})};
+    ...(tile?.road?{road:true}:{}),...(tile?.bridge?{bridge:true}:{}),
+    ...(tile?{ruleNotes:gotTerrainNotes(tile,battle.weather,battle.visibility)}:{})};
   })};
 }
 export function gotVisualTokens(battle:Pick<WarBattle,'units'>):VisualToken[]{
