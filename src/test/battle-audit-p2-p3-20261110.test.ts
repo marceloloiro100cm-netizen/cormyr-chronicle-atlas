@@ -1,5 +1,10 @@
 import {describe,expect,it} from 'vitest';
 import {warShieldWallAllyCover} from '@/lib/battle/got/shield-cover';
+import {createWarBattle} from '@/lib/battle/got/engine';
+import {modelWarCommanders} from '@/lib/battle/got/models';
+import {previewWarAftermath} from '@/lib/battle/got/aftermath';
+import {previewWarResourceConsequences} from '@/lib/battle/got/aftermath-resources';
+import {serializeWarAftermathReview} from '@/lib/battle/got/aftermath-review';
 import {modelWarUnit} from '@/lib/battle/got/models';
 import {nextWarLabDeploymentSide,positionWarLabUnit} from '@/lib/battle/got/lab-positioning';
 
@@ -38,5 +43,29 @@ describe('P2 — implantação alternada é apenas preparação',()=>{
   expect(nextWarLabDeploymentSide(0,done)).toBeNull();
   expect(done['attacker-1']).toEqual({x:2,y:2});
   expect(a['attacker-1']).toEqual({x:2,y:2});
+ });
+});
+
+describe('P2 — relatório de campanha é apenas exportação para revisão',()=>{
+ it('contém status pendente e nunca altera recursos ou fichas da simulação',()=>{
+  const initial=createWarBattle({id:'review-123',name:'Treino seguro',
+   seed:'review-seed',width:12,height:7,
+   commanders:modelWarCommanders({attacker:5,defender:4}),
+   units:[unit('att','attacker',2,2),unit('def','defender',9,2)]});
+  const battle={...initial,phase:'finished' as const,winner:'attacker' as const};
+  const before=JSON.stringify(battle);
+  const aftermath=previewWarAftermath(battle);
+  const resources=previewWarResourceConsequences(battle,{
+   occupiedDomain:false,garrisonHeldForThreeMonths:false,
+   capturedLandValue:0,survivingFortDefenseValue:0,
+   domainHasCommunityOrFort:false,transferredWealthInvestments:0,
+  });
+  const exported=JSON.parse(serializeWarAftermathReview(battle,aftermath,resources));
+  expect(exported.status).toBe('PENDING_NARRATOR_APPROVAL');
+  expect(exported.appliedToHouse).toBe(false);
+  expect(exported.aftermath.appliedToHouse).toBe(false);
+  expect(exported.resources.appliedToHouse).toBe(false);
+  expect(exported.battle.id).toBe(battle.id);
+  expect(JSON.stringify(battle)).toBe(before);
  });
 });
