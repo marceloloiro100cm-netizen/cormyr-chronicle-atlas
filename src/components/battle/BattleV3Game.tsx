@@ -358,6 +358,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       <span> <i className="crusade-v4-red"/> Ataque legal</span>
      </div>
      <V3MiniatureBoard narrator={narrator} sessionEnabled={miniaturesEnabled} houses={battleHouseNames}
+      canIssueCommands={canAct&&(mode==='inspect'?selected===active?.id:true)}
+      targetAction={mode==='power'||mode==='skill'?'ability':'attack'}
       map={game.battle.map} stacks={game.battle.stacks} activeId={game.battle.activeUnitId}
       selectedId={selected} hoveredId={hoveredId} theme="cormyr"
       moveKeys={canAct&&mode==='inspect'&&selected===active?.id?
