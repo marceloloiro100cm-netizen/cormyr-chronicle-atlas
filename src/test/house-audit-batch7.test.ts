@@ -4,6 +4,7 @@ import {balances,createUnit,UNIT_TYPES,unitStats} from '@/lib/house/engine';
 import {improveEquipment,houseWeaponBonuses} from '@/lib/house/equipment';
 import {resolveSurvivors,changeUnitState,trainUnit,survivorResult} from '@/lib/house/military';
 import {SIEGE,buySiege,changeSiegeAssignment} from '@/lib/house/siege';
+import {WAR_SIEGE_CATALOG} from '@/lib/battle/got/siege';
 import {CORE_CATALOG} from '@/lib/house/catalog';
 import {purchase} from '@/lib/house/engine';
 const make=()=>{
@@ -93,7 +94,11 @@ describe('Lote 7: equipamentos de cerco',()=>{
  it('catapulta média e quatro equipamentos adicionais aparecem no catálogo de cerco',()=>{
   for(const id of ['medium-catapult','siege-ladders','boiling-water','boiling-oil','wildfire'])
    expect(SIEGE.some(x=>x.id===id)).toBe(true);
-  expect(SIEGE.find(x=>x.id==='medium-catapult')).toMatchObject({cost:2,damage:5,health:20,armor:3,range:400,movement:0});
+  expect(SIEGE.find(x=>x.id==='medium-catapult')).toMatchObject({cost:2,damage:5,health:30,armor:5,range:400,movement:0});
+  const house=SIEGE.find(x=>x.id==='medium-catapult')!;
+  const got=WAR_SIEGE_CATALOG['catapult-medium'];
+  expect({cost:house.cost,damage:house.damage,health:house.health,armor:house.armor,range:house.range,movement:house.movement})
+   .toEqual({cost:got.wealth,damage:got.damage,health:got.maxHealth,armor:got.armor,range:got.rangeMetres,movement:got.movementMetres});
  });
  it('troca operadores no mesmo domínio e destruição não devolve custo',()=>{
   const s=make();s.units=[{...unit(),id:'eng',types:['engineers']},{...unit(),id:'carrier'}];

@@ -6,6 +6,23 @@ const event=(b:WarBattle,side:WarSide|null,kind:string,message:string):WarBattle
  ...b,events:[...b.events,{seq:b.events.length+1,round:b.round,side,
   kind,text:message}],
 });
+/** Óleo fervente só se inflama ao entrar em contato com fogo já ativo.
+ * Um único teste de 1d6 define a duração secundária; impactos repetidos
+ * não multiplicam nem reiniciam o efeito.
+ */
+export function igniteWarOil(battle:WarBattle,targetId:string):WarBattle{
+ const target=battle.units.find(u=>u.id===targetId);
+ if(!target?.oilSoaked||!target.burning||target.oilIgnition||
+  ['destroyed','surrendered','escaped'].includes(target.condition))return battle;
+ const roll=rollDice(battle.seed,1),duration=roll.dice[0]!;
+ const next:WarBattle={...battle,seed:roll.nextSeed,
+  units:battle.units.map(u=>u.id===targetId?{
+   ...u,oilSoaked:false,oilIgnition:{remainingRounds:duration},
+  }:u)};
+ return event(next,target.side,'oil-ignite',target.name+
+  ' teve o óleo fervente incendiado por '+duration+
+  ' rodada(s), +1 dano por rodada.');
+}
 /** Ignite for 2d6 subsequent battle rounds after initial wildfire damage.
  * Repeated hits never shorten an existing fire.
  */
@@ -26,8 +43,9 @@ export function igniteWarUnit(battle:WarBattle,targetId:string,source:string,
  };
  const next:WarBattle={...battle,seed:roll.nextSeed,
   units:battle.units.map(u=>u.id===targetId?{...u,burning}:u)};
- return event(next,target.side,'wildfire-ignite',target.name+
+ const logged=event(next,target.side,'wildfire-ignite',target.name+
   ' incendiou-se por '+burning.remainingRounds+' rodada(s).');
+ return igniteWarOil(logged,targetId);
 }
 /** Step 9/10: resolves only fires burning at the start of this round.
  * One seeded 1d6 check allows routed units to spread wildfire
@@ -66,6 +84,22 @@ export function advanceWarFire(battle:WarBattle,applyDamage:Damage):WarBattle{
      initial.name+' espalhou fogo a '+other.name+'.');
    }
   }
+ }
+ // A ignição secundária do óleo tem seu próprio relógio e nunca
+ // aumenta o dano base do Fogo Selvagem. Unidades destruídas não agem.
+ for(const initial of battle.units.filter(u=>u.oilIgnition&&
+  u.oilIgnition.remainingRounds>0&&
+  !['destroyed','surrendered','escaped'].includes(u.condition))){
+  const current=next.units.find(u=>u.id===initial.id);
+  if(!current?.oilIgnition||['destroyed','surrendered','escaped'].includes(current.condition))continue;
+  const remaining=current.oilIgnition.remainingRounds;
+  next={...next,units:next.units.map(u=>u.id!==current.id?u:{
+   ...u,oilIgnition:remaining>1?{remainingRounds:remaining-1}:undefined,
+  })};
+  next=event(next,current.side,'oil-tick',current.name+
+   ' sofreu +1 de dano por óleo incendiado.');
+  const affected=next.units.find(u=>u.id===initial.id)!;
+  next=applyDamage(next,affected,1,'Óleo fervente incendiado');
  }
  return next;
 }

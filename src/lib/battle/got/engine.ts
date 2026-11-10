@@ -3,10 +3,11 @@ import type {WarBattle,WarCommander,WarCondition,WarEvent,WarOrder,WarOrderResul
 import {terrainAt,terrainEffect,movementSlow,visibilityPenalty,weatherAttackModifier,terrainHighGround,terrainCoverBonus} from './terrain';
 import type {WarTerrainTile,WarWeather,WarVisibility} from './terrain';
 import {WAR_FORMATIONS,formationAllowed,formationMovement,angleAttackBonus,attackAngle} from './formations';
+import {warShieldWallAllyCover} from './shield-cover';
 import {WAR_SIEGE_CATALOG,warSiegeDamage,warSiegeReloadRemaining,warSiegeTargetInRange} from './siege';
 import type {WarSiegeEngine} from './siege';
 import {fortForUnit,fortDefense,validateWarForts,sabotageFortification,damageWarFortification} from './fortifications';
-import {igniteWarUnit,advanceWarFire,resolveCarriedWildfireRisk} from './siege-fire';
+import {igniteWarUnit,igniteWarOil,advanceWarFire,resolveCarriedWildfireRisk} from './siege-fire';
 import {canSeeWarTarget} from './line-of-sight';
 import {warFieldDefenseBonus,warFieldMovementMetres,warFieldOrderDifficulty,
  warFieldForbidsAttack,warFieldThrowDamage,validateWarFieldEquipment} from './field-equipment';
@@ -485,7 +486,9 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  const fortBonus=fort?fortDefense(fort):0;
  const probeBonus=target.probeDefenseRound===battle.round?2:0;
  const defense=(target.defendRoll??target.defense)+cover+formationDefense+
-  fortBonus+probeBonus+warFieldDefenseBonus(target,ranged);
+  warShieldWallAllyCover(battle,attacker,target,ranged)+
+  fortBonus+probeBonus+warFieldDefenseBonus(target,ranged)-
+  (ranged&&target.ladderDefensePenaltyRound===battle.round?5:0);
  const adjustedRoll=Math.max(0,roll.total+weatherAttackModifier(battle.weather));
  const degrees=degreesOfSuccess(adjustedRoll,defense);
  const baseDamage=(ranged?attacker.rangedDamage:attacker.meleeDamage+(options.charge?2:0))+(options.damageBonus??0);
@@ -587,6 +590,17 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
   unit.name+(escaped?' saiu do campo.':' retirou-se até '+pos.x+','+pos.y+'.'),unit.side);
 }
 function perform(battle:WarBattle,unit:WarUnit,order:WarOrder,degrees:number):WarBattle{
+ if(order.kind==='dislodge-ladders'){
+  if(!fortForUnit(battle.fortifications,unit))
+   throw new Error('Desalojar escadas exige um defensor sobre fortificação.');
+  const target=battle.units.find(u=>u.id===order.targetId&&u.side!==unit.side&&
+   u.laddersDeployed&&onBoard(u)&&distance(unit.position,u.position)<=1);
+  if(!target)throw new Error('Selecione inimigo adjacente com escadas posicionadas.');
+  let next=replaceUnit(battle,{...target,laddersDeployed:false});
+  next=replaceUnit(next,{...unit,ladderDefensePenaltyRound:battle.round});
+  return log(next,'dislodge-ladders',unit.name+' desalojou as escadas de '+target.name+
+   '; Defesa −5 contra Pontaria nesta rodada.',unit.side);
+ }
  if(order.kind==='discard-equipment'){
   if(!unit.fieldEquipment||unit.fieldEquipmentConsumed)
    throw new Error('A unidade não possui equipamento a abandonar.');
@@ -648,6 +662,15 @@ function perform(battle:WarBattle,unit:WarUnit,order:WarOrder,degrees:number):Wa
    const damage=payload.wildfire?payload.damage*success:payload.damage;
    next=applyDamage(next,target,damage,unit.name);
    if(payload.wildfire)next=igniteWarUnit(next,target.id,unit.name,7,2);
+   if(unit.fieldEquipment==='boiling-oil'){
+    const current=next.units.find(u=>u.id===target.id);
+    if(current&&['organized','disorganized','routed'].includes(current.condition)){
+     next=replaceUnit(next,{...current,oilSoaked:true});
+     next=log(next,'oil-soaked',target.name+
+      ' ficou coberta de óleo; o efeito extra exige contato com fogo.',unit.side);
+     next=igniteWarOil(next,target.id);
+    }
+   }
   }
   return next;
  }
@@ -829,6 +852,33 @@ export function issueWarPincer(battle:WarBattle,input:{
   degrees:passed?Math.min(degreesOfSuccess(one.total,d1),
    degreesOfSuccess(two.total,d2)):0};
 }
+/** Prévia da mesma Dificuldade usada na rolagem, sem consumir dados nem ordens. */
+export function previewWarOrderDifficulty(
+ battle:WarBattle,unit:WarUnit,order:Pick<WarOrder,'kind'|'formation'>,
+):Readonly<{difficulty:number;advancedModifier:number;parts:readonly Readonly<{label:string;value:number}>[]}>{
+ const formationDifficulty=battle.advancedFormations&&order.kind==='formation'&&order.formation?
+  WAR_FORMATIONS[order.formation].difficulty:order.kind==='turn'&&battle.advancedFormations?3:0;
+ const formationDiscipline=battle.advancedFormations&&unit.formation?
+  WAR_FORMATIONS[unit.formation].discipline:0;
+ const advancedBase=(WAR_ADVANCED_ORDER_DIFFICULTY as Partial<Record<WarOrder['kind'],number>>)[order.kind]??0;
+ const advancedModifier=order.kind==='climb-walls'&&
+  (unit.laddersDeployed||(!unit.fieldEquipmentConsumed&&
+  ['ladders','siege-tower'].includes(unit.fieldEquipment??'')))?0:advancedBase;
+ const suppression=unit.suppressionRound===battle.round?(unit.suppressionPenalty??0):0;
+ const parts=[
+  {label:'Disciplina base',value:unit.discipline},
+  {label:'Herói incorporado',value:heroUnitDefenseBonus(battle,unit)},
+  {label:'Desorganizações',value:unit.disorganizations*3},
+  {label:'Ordens extras',value:unit.issuedThisRound*3},
+  {label:'Nova formação ou giro',value:formationDifficulty},
+  {label:'Disciplina da formação atual',value:formationDiscipline},
+  {label:'Ordem avançada',value:advancedModifier},
+  {label:'Supressão',value:suppression},
+  {label:'Equipamento',value:warFieldOrderDifficulty(unit)},
+ ];
+ return {difficulty:Math.max(0,parts.reduce((sum,part)=>sum+part.value,0)),
+  advancedModifier,parts:parts.filter(part=>part.value!==0||part.label==='Disciplina base')};
+}
 export function issueWarOrder(battle:WarBattle,input:{
  commanderId:string;unitId:string;order:WarOrder;
 }):WarOrderResult{
@@ -877,22 +927,9 @@ export function issueWarOrder(battle:WarBattle,input:{
    !input.order.testRanks||input.order.testRanks.length!==input.order.targetIds.length||
    !input.order.bonusRanks||input.order.bonusRanks.length!==input.order.targetIds.length))
   throw new Error('Ataque Dividido exige múltiplos alvos e dados alocados.');
- const formationDifficulty=battle.advancedFormations&&input.order.kind==='formation'&&input.order.formation?
-  WAR_FORMATIONS[input.order.formation].difficulty:input.order.kind==='turn'&&battle.advancedFormations?3:0;
- const formationDiscipline=battle.advancedFormations&&unit.formation?
-  WAR_FORMATIONS[unit.formation].discipline:0;
- const advancedBase=(WAR_ADVANCED_ORDER_DIFFICULTY as Partial<Record<WarOrder['kind'],number>>)[input.order.kind]??0;
- const advancedModifier=input.order.kind==='climb-walls'&&
-  (unit.laddersDeployed||(!unit.fieldEquipmentConsumed&&
-  ['ladders','siege-tower'].includes(unit.fieldEquipment??'')))?
-  0:advancedBase;
+ const {difficulty,advancedModifier}=previewWarOrderDifficulty(battle,unit,input.order);
  if(advancedModifier&&!battle.advancedFormations)
   throw new Error('Esta ordem avançada exige regras avançadas habilitadas.');
- const suppression=unit.suppressionRound===battle.round?(unit.suppressionPenalty??0):0;
- const difficulty=Math.max(0,unit.discipline+heroUnitDefenseBonus(battle,unit)+
-  unit.disorganizations*3+unit.issuedThisRound*3+
-  formationDifficulty+formationDiscipline+advancedModifier+suppression+
-  warFieldOrderDifficulty(unit));
  const roll=rollDice(battle.seed,commander.warfare,0,0);
  const passed=roll.total>=difficulty;
  const critical=criticalFailure(roll.total,difficulty);

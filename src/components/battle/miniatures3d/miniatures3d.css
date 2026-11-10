@@ -1,5 +1,8 @@
 .miniatures3d {
  --mini-plain:#d4c69e; --mini-forest:#66886b; --mini-hill:#c4a36f; --mini-rock:#787478;
+ --mini-water:#386c83; --mini-settlement:#aa9076;
+ --mini-desert:#b9a073; --mini-marsh:#617d6a; --mini-road:#b7a58d; --mini-bridge:#957a55;
+ --mini-coast:#7c9c99; --mini-ruins:#817d75; --mini-mountain:#8a8f91;
  --mini-attacker:#416f9b; --mini-defender:#ab5246; --mini-selection:#f9d776;
  --mini-move:#77c68b; --mini-attack:#ed6559; --mini-metal:#a9b8bd; --mini-gold:#c7a254;
  --mini-skin:#e0b391; --mini-wood:#70513a; --mini-goblin:#72ad4b; --mini-cloth:#604862;
@@ -14,3 +17,184 @@
 .miniatures3d-demo {margin-top:1rem;}
 @media(max-width:640px){.miniatures3d-toolbar button{min-height:44px;}.miniatures3d-viewport{height:400px;}.miniatures3d-label{font-size:10px;}}
 @media(prefers-reduced-motion:reduce){.miniatures3d *{transition:none;}}
+/* Lote 4: readable touch targets without covering the tactical HUD. */
+.miniatures3d-toolbar button {min-height:44px;min-width:44px;}
+.miniatures3d-label {max-width:150px;white-space:normal;overflow-wrap:anywhere;}
+.miniatures3d-viewport canvas {display:block;outline-offset:3px;}
+.miniatures3d-viewport:focus-within {outline:2px solid var(--mini-selection);outline-offset:2px;}
+@media (max-width:640px){.miniatures3d-label small{max-width:95px;}.miniatures3d-toolbar{gap:.35rem}}
+
+/* Homologação visual: contadores estreitos, sem quebrar nomes por letra. */
+.battle-module .miniatures3d-label {
+ display:inline-flex; flex-direction:column;align-items:center;
+ width:max-content;min-width:30px;max-width:102px;
+ white-space:nowrap;overflow-wrap:normal;word-break:normal;
+ font-size:12px;line-height:1.15;padding:3px 6px;
+}
+.battle-module .miniatures3d-label .miniatures3d-count {font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.battle-module .miniatures3d-label small {
+ display:block;width:auto;max-width:92px;overflow:hidden;text-overflow:ellipsis;
+ white-space:nowrap;word-break:normal;font-size:10px;
+}
+.battle-module .miniatures3d-toolbar button {min-height:44px!important;min-width:44px!important;}
+@media(max-width:640px) {
+ .battle-module .miniatures3d-label {min-width:28px;max-width:88px;padding:3px 5px;}
+ .battle-module .miniatures3d-label small {display:none;}
+ .battle-module .miniatures3d-label.is-selected small {display:block;max-width:78px;}
+}
+
+.battle-module .miniatures3d-selected {
+ margin:0 0 .45rem;padding:.3rem .55rem;border-left:3px solid var(--mini-selection);
+ background:var(--mini-ground);color:var(--mini-paper);font-size:14px;
+ line-height:1.35;white-space:normal;overflow-wrap:normal;
+}
+
+/* Robust in isolated test harness and on pages without global Tailwind reset. */
+.miniatures3d-sr-only {
+ position:absolute!important;width:1px!important;height:1px!important;
+ padding:0!important;margin:-1px!important;overflow:hidden!important;
+ clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;
+ white-space:nowrap!important;border:0!important;
+}
+
+/* Miniaturas 3D · Lote 5: visão de catálogo sem alterar regras ou campanhas. */
+.miniatures3d-demo .miniatures3d-scene-nav{display:flex;flex-wrap:wrap;gap:.4rem;margin:.5rem 0;}
+.miniatures3d-demo .miniatures3d-scene-nav button{min-height:44px;}
+.miniatures3d-demo .miniatures3d-scenic-note{font-size:.86rem;line-height:1.45;opacity:.88;}
+.miniatures3d-demo .miniatures3d-fallback-grid{display:grid;gap:2px;padding:.5rem;background:var(--mini-ground);overflow:auto;max-width:100%;}
+.miniatures3d-demo .miniatures3d-fallback-grid button{font-size:.65rem;min-width:24px;min-height:24px;border:1px solid rgba(255,255,255,.16);color:#fff;text-shadow:0 1px #333;}
+
+/* P0 · Readable command/tactical HUD, without covering the 3D battlefield. */
+.miniatures3d-selected {
+ display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .8rem;
+ border-left:3px solid var(--mini-selection);padding:.48rem .7rem;
+ background:var(--mini-ground);color:var(--mini-paper);
+ min-width:0;font-size:14px;line-height:1.35;
+}
+.miniatures3d-selected-title {
+ display:flex;align-items:center;flex-wrap:wrap;gap:.35rem .55rem;min-width:0;
+}
+.miniatures3d-selected-title strong{font-weight:700;overflow-wrap:break-word;}
+.miniatures3d-selected-title small{color:var(--mini-gold);}
+.miniatures3d-tactical-stats {
+ display:flex;flex-wrap:wrap;gap:.25rem .4rem;min-width:0;
+}
+.miniatures3d-tactical-stats span{
+ border:1px solid var(--mini-rock);border-radius:4px;padding:.15rem .4rem;
+ background:var(--mini-ink);font-size:12px;white-space:normal;
+}
+.miniatures3d-status-line{
+ font-size:12px;color:var(--mini-paper);background:var(--mini-ink);
+ padding:.3rem .6rem;margin:0 0 .25rem;
+}
+.miniatures3d-action-confirm{
+ display:flex;flex-wrap:wrap;align-items:center;gap:.35rem .55rem;
+ padding:.4rem .55rem;border:2px solid var(--mini-selection);
+ border-radius:5px;background:var(--mini-ink);color:var(--mini-paper);
+ font-size:13px;margin:.3rem 0;
+}
+.miniatures3d-action-confirm button{min-height:44px;min-width:44px;}
+.miniatures3d-action-confirm strong{margin-right:auto;max-width:100%;}
+.miniatures3d-feedback{
+ font-size:12px;color:var(--mini-paper);
+ padding:.3rem .55rem;margin:.2rem 0;background:var(--mini-ink);
+}
+.miniatures3d-toolbar button{min-height:44px;min-width:44px;}
+@media(max-width:640px){
+ .miniatures3d-toolbar{gap:.3rem;}
+ .miniatures3d-selected{font-size:13px;padding:.35rem .5rem;}
+ .miniatures3d-tactical-stats span{font-size:11px;}
+ .miniatures3d-action-confirm strong{flex-basis:100%;}
+}
+
+/* P1 · The same battlefield remains foremost on narrow mobile screens.
+ * Camera controls scroll horizontally instead of covering the map.
+ */
+.miniatures3d-camera-controls {
+ flex-wrap:nowrap;overflow-x:auto;max-width:100%;gap:.35rem;
+ -webkit-overflow-scrolling:touch;scrollbar-width:thin;
+ padding-bottom:.25rem;
+}
+.miniatures3d-camera-controls button{flex-shrink:0;white-space:nowrap;}
+.miniatures3d-terrain-inspector {
+ display:flex;align-items:center;flex-wrap:wrap;gap:.25rem .75rem;
+ margin:.25rem 0;padding:.35rem .6rem;
+ background:var(--mini-ink);color:var(--mini-paper);
+ border-left:3px solid var(--mini-move);font-size:12px;line-height:1.4;
+}
+.miniatures3d-terrain-inspector strong{font-weight:700;}
+.miniatures3d-terrain-inspector button{margin-left:auto;min-height:44px;}
+@media(max-width:640px){
+ .miniatures3d-viewport{height:clamp(320px,57svh,580px);}
+ .miniatures3d-camera-controls {margin:.35rem 0;}
+ .miniatures3d-terrain-inspector{font-size:12px;}
+ .miniatures3d-terrain-inspector strong{flex-basis:100%;}
+ .miniatures3d-terrain-inspector button{margin-left:0;}
+}
+@media(max-height:500px){
+ .miniatures3d-viewport{height:clamp(240px,62svh,440px);}
+}
+
+/* UX-2/3: action notation is distinct from faction bases, and the 3D battlefield
+ * takes priority over long tactical sheets in portrait mode.
+ */
+.miniatures3d-context {
+ margin:.2rem 0;padding:.25rem .5rem;background:var(--mini-ink);
+ color:var(--mini-paper);font-size:12px;font-weight:700;
+}
+.miniatures3d-side-legend {display:flex;flex-wrap:wrap;gap:.35rem .85rem;
+ font-size:12px;color:var(--mini-paper);padding:.2rem .6rem;
+ background:var(--mini-ground);}
+.miniatures3d-extra-stats summary{cursor:pointer;color:var(--mini-paper);
+ min-height:32px;display:list-item;}
+.miniatures3d-extra-stats span{display:inline-block;margin:.2rem;}
+.miniatures3d-keyboard-nav{font-size:13px;color:var(--mini-paper);
+ background:var(--mini-ink);padding:.3rem .6rem;}
+.miniatures3d-keyboard-nav summary{cursor:pointer;min-height:32px;}
+.miniatures3d-keyboard-nav label{display:inline-flex;align-items:center;
+ gap:.4rem;margin:.3rem .5rem .3rem 0;}
+.miniatures3d-keyboard-nav select{
+ max-width:180px;min-height:44px;background:var(--mini-paper);
+ color:var(--mini-ink);border-radius:4px;padding:0 .4rem;
+}
+.miniatures3d-keyboard-nav button{min-height:44px;}
+.miniatures3d-keyboard-nav p{font-size:12px;margin:.25rem 0;}
+.miniatures3d-terrain-inspector ul{
+ margin:0;padding-left:1.25rem;flex-basis:100%;
+}
+.miniatures3d-perf-controls{display:flex;flex-wrap:wrap;align-items:center;
+ gap:.55rem;color:var(--mini-paper);font-size:12px;margin:.35rem 0;}
+.miniatures3d-perf-controls button{min-height:44px;}
+.miniatures3d-perf-controls output{font-variant-numeric:tabular-nums;}
+@media(max-width:640px){
+ .miniatures3d{display:flex;flex-direction:column;}
+ .miniatures3d-camera-controls{order:0;}
+ .miniatures3d-viewport{order:1;height:clamp(340px,69svh,760px);}
+ .miniatures3d-context{order:2;}
+ .miniatures3d-selected{order:3;max-height:190px;overflow-y:auto;}
+ .miniatures3d-action-confirm{order:4;position:sticky;bottom:0;z-index:5;}
+ .miniatures3d-status-line{order:5;}
+ .miniatures3d-side-legend{order:6;}
+ .miniatures3d-terrain-inspector{order:7;}
+ .miniatures3d-feedback{order:8;}
+ .miniatures3d-keyboard-nav{order:9;}
+ .miniatures3d-perf-controls{order:10;}
+ .miniatures3d-viewport canvas{touch-action:none;}
+ .miniatures3d-terrain-inspector ul{padding-left:1rem;}
+}
+@media(max-height:500px) and (max-width:960px){
+ .miniatures3d-viewport{height:clamp(220px,75svh,500px);}
+ .miniatures3d-selected{max-height:125px;}
+}
+
+/* Simple narrated preflight outside any live combat controls. */
+.miniatures3d-preflight{
+ border-left:3px solid var(--mini-move,#77c68b);
+ margin:.5rem 0;padding:.55rem .75rem;
+ background:rgba(97,117,103,.10);font-size:13px;line-height:1.45;
+}
+.miniatures3d-preflight h3{font-size:15px;font-weight:700;margin:0 0 .35rem;}
+.miniatures3d-preflight p{margin:.4rem 0 0;}
+.miniatures3d-preflight-facts{display:flex;flex-wrap:wrap;gap:.3rem .7rem;}
+.miniatures3d-preflight-facts span{border:1px solid currentColor;
+ border-radius:4px;opacity:.85;padding:.15rem .4rem;}

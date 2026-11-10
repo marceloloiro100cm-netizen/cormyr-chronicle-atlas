@@ -34,6 +34,19 @@
 .battle-module .got-cell.destination{outline:2px solid #fce19e;outline-offset:-2px}
 .battle-module .got-order-fields{display:flex;flex-direction:column;gap:10px}
 .battle-module .got-order-fields p{margin:2px 0}
+.battle-module .got-order-preview{display:flex;flex-direction:column;gap:5px;padding:12px;
+ border:1px solid var(--battle-ux-border);border-radius:8px;
+ background:var(--battle-ux-surface);color:var(--battle-ux-text);
+ line-height:1.5;overflow-wrap:anywhere}
+.battle-module .got-order-preview strong{font-size:15px}
+.battle-module .got-order-preview span{font-size:13px}
+.battle-module .got-order-preview small{color:var(--battle-ux-muted);font-size:12px}
+.battle-module .got-cell.occupied .got-facing{
+ position:absolute;top:1px;right:1px;font-size:15px;font-weight:800;
+ line-height:1;padding:1px 3px;border-radius:4px;
+ background:rgba(18,29,24,.95);color:var(--battle-ux-focus);
+ border:1px solid var(--battle-ux-border);pointer-events:none}
+.battle-module .got-cell.occupied:focus-visible .got-facing{outline:2px solid var(--battle-ux-focus)}
 .battle-module .got-check{flex-direction:row!important;align-items:center;gap:9px}
 .battle-module .got-check input{accent-color:#f5d089;width:18px;height:18px}
 .battle-module .got-roster{display:grid;gap:7px;max-height:380px;overflow:auto}

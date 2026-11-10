@@ -1,5 +1,6 @@
 import type {BattleMap} from '../domain/types';
-import type {VisualToken} from './tokens';
+import {BATTLE_PROFILES} from '../domain/profiles-v2';
+import {CORMYR_MINIATURE_TYPES,classifyMiniature,type VisualToken} from './tokens';
 /** Artificial visual data. No engine imports, campaign IDs or official sources. */
 export function miniatureDemo():{map:BattleMap;tokens:VisualToken[]}{
  const map:BattleMap={id:'visual-only-demo',schemaVersion:2,grid:'square',width:11,height:9,
@@ -12,5 +13,39 @@ export function miniatureDemo():{map:BattleMap;tokens:VisualToken[]}{
   {id:'demo-cavalry',kind:'cavalry',name:'Cavalaria',side:'defender',position:{q:3,r:6},count:20,fallback:false},
   {id:'demo-goblin',kind:'goblin',name:'Goblin · demo',side:'defender',position:{q:6,r:6},count:1,fallback:false},
  ];
+ return {map,tokens};
+}
+/** Original read-only showcase for every canonical military category. No campaign data. */
+export function miniatureCatalog():{map:BattleMap;tokens:VisualToken[]}{
+ const original=miniatureDemo().map;
+ const tiles=original.tiles.map(tile=>({...tile,terrain:'plain' as const}));
+ const map:BattleMap={...original,id:'military-art-gallery',label:'17 miniaturas militares',tiles};
+ const tokens= CORMYR_MINIATURE_TYPES.map((kind,i)=>({
+  id:'demo-military-'+kind,name:BATTLE_PROFILES.find(p=>p.id===kind)?.name??kind,
+  side:(i<9?'attacker':'defender') as VisualToken['side'],
+  position:{q:1+(i%9),r:i<9?3:6},
+  ...classifyMiniature(kind),count:i+1,
+  ...(kind==='warships'?{naval:true}:{}),
+ }));
+ return {map,tokens};
+}
+
+/** Synthetic 40/80-piece visual stress scenes. Never reads campaign or rules state.
+ * Used for measured FPS on an actual device, not to claim a benchmark was passed.
+ */
+export function miniatureStressDemo(quantity:40|80):{map:BattleMap;tokens:VisualToken[]}{
+ const base=miniatureDemo().map;
+ const map={...base,id:'miniatures-benchmark-'+quantity,
+  label:'Benchmark visual '+quantity+' miniaturas',
+  tiles:base.tiles.map(tile=>({...tile,terrain:'plain' as const}))};
+ const tokens:Array<VisualToken>=Array.from({length:quantity},(_,i)=>{
+  const kind=CORMYR_MINIATURE_TYPES[i%CORMYR_MINIATURE_TYPES.length]!;
+  return {
+   id:'benchmark-'+i,name:'Tropa de teste '+(i+1),
+   side:i%2===0?'attacker':'defender',
+   position:{q:i%base.width,r:Math.floor(i/base.width)},
+   ...classifyMiniature(kind),count:(i%40)+1,
+  };
+ });
  return {map,tokens};
 }

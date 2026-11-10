@@ -4642,10 +4642,6 @@ export type Database = {
         Returns: Json
       }
       spy_get_regional_strategy: { Args: { p_house: string }; Returns: Json }
-      spy_house_counterintelligence: {
-        Args: { p_house: string }
-        Returns: Json
-      }
       spy_house_management: { Args: { p_house: string }; Returns: Json }
       spy_house_mission_timeline: { Args: { p_house: string }; Returns: Json }
       spy_intelligence_admin_action: {
@@ -4669,21 +4665,15 @@ export type Database = {
         Args: { p_operation: string; p_resources?: Json }
         Returns: Json
       }
-      spy_intelligence_operation_status: {
-        Args: { p_operation: string }
-        Returns: Json
-      }
       spy_intelligence_read: { Args: { p_house?: string }; Returns: Json }
       spy_intelligence_source_items: {
         Args: { p_objective: string; p_resources?: Json; p_target: string }
         Returns: Json
       }
-      spy_narrator_incident_history: { Args: never; Returns: Json }
       spy_narrator_noble_defense_source: {
         Args: { p_house: string }
         Returns: Json
       }
-      spy_narrator_operations_dashboard: { Args: never; Returns: Json }
       spy_official_date_key: { Args: never; Returns: string }
       spy_player_mission_preview: {
         Args: { p_agent: string; p_house: string; p_target: string }

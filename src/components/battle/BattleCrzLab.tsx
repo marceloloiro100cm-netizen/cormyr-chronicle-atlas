@@ -3,6 +3,9 @@ import {Button} from '@/components/ui/button';
 import {militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import {SQUARE_TERRAIN_PRESENTATION,SQUARE_SIDE_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
 import {BattleSquareLegend} from './BattleSquareLegend';
+import {MiniatureBoardToggle} from './miniatures3d/MiniatureBoardToggle';
+import {MiniaturePreparationSummary} from './miniatures3d/MiniaturePreparationSummary';
+import {crzVisualMap,crzVisualTokens} from '@/lib/battle/visual3d/adapters';
 import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
@@ -53,6 +56,7 @@ import './battle-legibility.css';
 import './battle-ui-v4.css';
 import './battle-arena-unified.css';
 import './dnd-lab.css';
+import './battle-design-tokens.css';
 
 type SidePanel='actions'|'objectives'|'report'|'replay';
 const SPELL_LABELS:Readonly<Record<string,string>>={
@@ -131,6 +135,12 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
 }){
  const [zoom,setZoom]=useState<100|150|200>(100);
  const [focusedKey,setFocusedKey]=useState<string|null>(null);
+ const [hoveredMove,setHoveredMove]=useState<CrzHex|null>(null);
+ const activeStack=state.stacks.find(s=>s.id===state.activeStackId);
+ const ghostCells=hoveredMove&&activeStack&&isDndV3(state)&&
+  moves.some(h=>crzHexKey(h)===crzHexKey(hoveredMove))?
+  crzFootprintCells(state.map,hoveredMove,activeStack.size):[];
+ const ghostKeys=new Set(ghostCells.map(crzHexKey));
  const defaultFocus=crzHexKey(state.stacks.find(s=>s.id===state.activeStackId)?.position??state.map.tiles[0]!);
  const objectivesByHex=new Map(objectives.map(o=>[crzHexKey(o.position),o]));
  const movable=new Set(moves.map(crzHexKey));
@@ -154,6 +164,9 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
    <Button type="button" variant="outline" size="sm" onClick={()=>setZoom(100)}
     disabled={zoom===100}>Ajustar mapa CRZ</Button>
   </div>
+  {ghostCells.length>1&&<p className="crz-map-help" role="status">
+   Prévia de ocupação: {ghostCells.length} quadrados para a criatura ativa.
+  </p>}
   <p className="crz-map-help" id="crz-keyboard-help">Teclado: Tab entra no mapa;
    setas navegam pelas células; Enter ou Espaço executam a ação. Use o zoom
    para ampliar sem alterar o tamanho das tropas.</p>
@@ -189,7 +202,9 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
     return <g key={key} role="button"
      data-crz-hex={key} tabIndex={key===(focusedKey??defaultFocus)?0:-1}
      aria-label={label} aria-describedby="crz-keyboard-help"
-     onFocus={()=>setFocusedKey(key)}
+     onFocus={()=>{setFocusedKey(key);setHoveredMove(isMove?tile:null);}}
+     onMouseEnter={()=>setHoveredMove(isMove?tile:null)}
+     onMouseLeave={()=>setHoveredMove(null)}
      onClick={press} onKeyDown={keyPress}
      className={'crz-map-tile'+(isMove?' crz-map-move':'')+
        (isAttack?' crz-map-attack':'')+(active?' crz-map-active':'')+
@@ -204,6 +219,11 @@ export function CrzBoard({state,selectedId,hoveredId,moves,attacks,objectives,on
        fill={active?'rgba(255,224,153,.25)':'rgba(255,224,153,.15)'}
        stroke={isAttack?'#ff6d54':'#c6aa70'} strokeWidth={isAttack?3:1.5}
        pointerEvents="none"/>}
+      {square&&ghostKeys.has(key)&&<rect data-crz-ghost-footprint="true"
+       x={x-SQUARE_STEP/2+2} y={y-SQUARE_STEP/2+2}
+       width={SQUARE_STEP-4} height={SQUARE_STEP-4}
+       fill="rgba(255,231,157,.18)" stroke="#ffe3a1"
+       strokeWidth={2.5} strokeDasharray="6 3" pointerEvents="none"/>}
       {isMove&&(square?<rect className="crz-valid-overlay"
        x={x-SQUARE_STEP/2} y={y-SQUARE_STEP/2} width={SQUARE_STEP} height={SQUARE_STEP}
        fill="rgba(99,255,116,.24)" pointerEvents="none"/>:
@@ -269,6 +289,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
   grid:'square',preset:'CRZ-5E',resolution:dndMode?'rolled':'expected'});
  const [session,setSession]=useState<CrzReplaySession|null>(null);
  const [expanded,setExpanded]=useState(false);
+ const [miniaturesEnabled,setMiniaturesEnabled]=useState(false);
  const [replayStep,setReplayStep]=useState<number|null>(null);
  const [panel,setPanel]=useState<SidePanel>('actions');
  const [hoveredId,setHoveredId]=useState<string|null>(null);
@@ -639,6 +660,12 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
    {message&&<p className="crz-status" role="status">{message}</p>}
    {savedPanel}
    <section className="battle-surface" aria-label="Preparar treino CRZ">
+     <MiniaturePreparationSummary mode={dndMode?'D&D':'Adaptado'}
+      {...(options.sharedMap?{width:options.sharedMap.width,height:options.sharedMap.height}:{})}
+      {...(dndMode?{
+       attackers:dndRoster.filter(u=>u.side==='attacker').length,
+       defenders:dndRoster.filter(u=>u.side==='defender').length,
+      }:{})}/>
     {dndMode&&<div className="battle-simple-launch" aria-label="Início rápido D&D">
      <h3>Batalha rápida</h3>
      <p>{dndRoster.filter(x=>x.side==='attacker').length} grupos atacantes ×
@@ -789,6 +816,8 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
          <span>{metrics.creatures} criaturas · {metrics.stacks} pilhas</span>
          <span>{metrics.totalHp===null?'PV desconhecidos':metrics.totalHp+' PV estimados'}
           {' · '}CA média {metrics.meanAc===null?'—':metrics.meanAc.toLocaleString('pt-BR')}</span>
+         <span>{metrics.xpTotal===null?'XP/ND incompletos ('+metrics.unknownCr+' sem ND)':
+          metrics.xpTotal.toLocaleString('pt-BR')+' XP base por ND'}</span>
         </div>;
        })}
       </div>
@@ -803,6 +832,12 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
         </div>;
        })}
       </div>
+      <p>XP base por ND é apenas referência para comparar criaturas com ficha conhecida,
+       não um veredito sobre equilíbrio. Sem níveis do grupo e ações, não há classificação
+       oficial de dificuldade do encontro.</p>
+      <p>Voo é abstrato neste simulador: ignora obstáculos do terreno quando permitido,
+       mas não cria altitude vertical nem imunidade a ataques corpo a corpo.
+       Cada quadrado equivale a 3 m.</p>
       <p>As pilhas serão posicionadas automaticamente. As quantidades são independentes
        das unidades oficiais da campanha.</p>
       <Button variant="outline" size="sm" onClick={()=>{
@@ -921,6 +956,11 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
     </div>
     {!dndMode&&<p className="battle-note">General Tillet · nível {generalProfile.level} · {generalProfile.xp} XP
      de treinamento local. O progresso não altera a Corte nem o exército.</p>}
+    {dndMode&&!playerSandbox&&<label className="battle-note">
+     <input type="checkbox" checked={miniaturesEnabled}
+      onChange={e=>setMiniaturesEnabled(e.target.checked)}/>
+     Habilitar miniaturas 3D nesta sessão (teste, Narrador)
+    </label>}
     <Button onClick={begin}>{dndMode?'Iniciar batalha D&D · d20':'Iniciar treinamento CRZ'}</Button>
     <p className="battle-note">{dndMode?
      'D&D utiliza rolagens de d20, CA e PV por criatura, com pilhas que somam PV e baixas. Iniciativa é rolada uma vez por encontro. Não há compras ou baixas oficiais.':
@@ -1145,11 +1185,24 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
       <span className="crz-legend-item"><i className="crz-legend-green"/>Movimento</span>
       <span className="crz-legend-item"><i className="crz-legend-red"/>Ataque legal</span>
      </div>
-     <CrzBoard state={frame} selectedId={selectedId}
-      hoveredId={hoveredId}
-      moves={canAct&&selectedId===active?.id?moves.map(c=>c.to):[]}
-      attacks={canAct&&selectedId===active?.id?attacks.map(c=>c.targetId):[]}
-      objectives={objectives} onTile={clickHex}/>
+     <MiniatureBoardToggle allowed={dndMode&&!playerSandbox&&miniaturesEnabled}
+       contextLabel={'Rodada '+frame.round+' · '+(active?teamName(active.side):'Sem unidade ativa')}
+      map={crzVisualMap(frame)} tokens={crzVisualTokens(frame)}
+      selectedId={selectedId} activeId={frame.activeStackId} hoveredId={hoveredId}
+      moveKeys={canAct&&selectedId===active?.id?moves.map(c=>crzHexKey(c.to)):[]}
+      attackKeys={canAct&&selectedId===active?.id?attacks.map(c=>c.targetId):[]}
+      canIssueCommands={canAct&&selectedId===active?.id}
+      onHexClick={hex=>{
+       const occupied=frame.stacks.find(unit=>crzCapable(unit)&&
+        (isDndV3(frame)?crzFootprintCells(frame.map,unit.position,unit.size):
+         [unit.position]).some(cell=>crzHexKey(cell)===crzHexKey(hex)));
+       clickHex(occupied?.position??hex);
+      }}
+      fallback={<CrzBoard state={frame} selectedId={selectedId}
+       hoveredId={hoveredId}
+       moves={canAct&&selectedId===active?.id?moves.map(c=>c.to):[]}
+       attacks={canAct&&selectedId===active?.id?attacks.map(c=>c.targetId):[]}
+       objectives={objectives} onTile={clickHex}/>}/>
      {inspected&&<div className="crz-inspect-line">
       <strong>{inspected.name}</strong>
       <span>{teamName(inspected.side)} · {inspected.alive}/{inspected.initialCount} vivos</span>

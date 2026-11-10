@@ -1,9 +1,18 @@
 # Roadmap
 
+## Miniaturas rígidas 3D — Lotes 2, 3, 4 (10/11/2026)
+- [x] Lote 2: 17 silhuetas militares originais, etiquetas e galeria exclusiva do Narrador.
+- [x] Lote 3: adaptadores visuais GOT e D&D; regras independentes, pegada de monstros, água/assentamentos e voo visual.
+- [x] Lote 4: DPR controlado, frame sob demanda, modelos compactos acima de 24 tokens, zoom/pan e fallback SVG.
+- [x] Testes de projeção/isolamento/permissão adicionados e documentação técnica criada.
+- [ ] Gate de aprovação: Validate + navegador sintético no commit final, verificação real de GPU e toque Android, antes de qualquer merge/deploy.
+- [ ] Sem publicação e sem liberação aos jogadores até validação real.
+
+
 ## Lote 1 — miniaturas rígidas 3D (10/11/2026)
-- [ ] Renderer isolado, quatro arquétipos originais, terreno quadrado e câmera.
-- [ ] Visão opt-in exclusiva do Narrador no Adaptado V3; fallback 2D e demo isolada.
-- [ ] Testes puros, fallback/rendering, regressões e verificação visual da prévia; documentação sem publicação.
+- [x] Renderer isolado, quatro arquétipos originais, terreno quadrado e câmera.
+- [x] Visão opt-in exclusiva do Narrador no Adaptado V3; fallback 2D e demo isolada.
+- [ ] Testes automatizados direcionados (59 aprovados no executor inicial) e documentação registrados. Pendente: CI da branch final, visual real, Android e GPU; sem publicação.
 
 ## Hub de casa nobre — 24/10 21:38 UTC
 - [x] Pedido26/10 00:34: comparação por fonte/bloco de Everlost e Harcourt disponível; valores reais conferidos na conta do Narrador e12 testes aprovados; posses/tropas intactas, sem publicação.

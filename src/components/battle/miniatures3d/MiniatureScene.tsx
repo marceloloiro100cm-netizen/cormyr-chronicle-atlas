@@ -1,84 +1,235 @@
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {useEffect,useMemo,useRef} from 'react';
 import {Canvas,useFrame,useThree} from '@react-three/fiber';
-import {Environment,Html,Lightformer} from '@react-three/drei';
-import {CanvasTexture,SRGBColorSpace,type Group} from 'three';
-import type {BattleMap,Hex} from '@/lib/battle/domain/types';
+import {CanvasTexture,LinearFilter,SRGBColorSpace,type Group} from 'three';
+import type {Hex} from '@/lib/battle/domain/types';
 import {hexKey} from '@/lib/battle/geometry/hex';
-import {squareWorldPosition,type VisualToken} from '@/lib/battle/visual3d/tokens';
+import {squareWorldPosition,type VisualToken,type VisualSquareMap} from '@/lib/battle/visual3d/tokens';
 import {RigidModel} from './RigidModels';
 import {CameraRig} from './CameraRig';
+import {ScenicTile3D} from './ScenicTile3D';
+import type {VisualPendingAction} from '@/lib/battle/visual3d/interaction';
+import type {CameraFocus} from './CameraRig';
 import type {MiniaturePalette} from './palette';
+import {footprintPerimeter} from '@/lib/battle/visual3d/footprint';
+import {buildMiniaturePerfSample,type MiniaturePerfSample} from '@/lib/battle/visual3d/performance';
 
-export type SceneProps={map:BattleMap;tokens:readonly VisualToken[];selectedId?:string|null;activeId?:string|null;hoveredId?:string|null;
- moveKeys?:readonly string[];attackKeys?:readonly string[];onHexClick?:(hex:Hex)=>void;
- palette:MiniaturePalette;top:boolean;zoom:number;reset:number;reducedMotion:boolean;onReady:()=>void;onFailure:()=>void};
+export type SceneProps={
+ map:VisualSquareMap;tokens:readonly VisualToken[];selectedId?:string|null;
+ activeId?:string|null;hoveredId?:string|null;moveKeys?:readonly string[];
+ attackKeys?:readonly string[];routeKeys?:readonly string[];pendingHex?:Hex|null;
+ pendingAction?:VisualPendingAction|null;onHexClick?:(hex:Hex)=>void;
+ palette:MiniaturePalette;top:boolean;zoom:number;reset:number;
+ reducedMotion:boolean;forceDetailed?:boolean;focus?:CameraFocus|null;
+ onReady:()=>void;onFailure:()=>void;
+ measurePerformance?:boolean;onPerformanceSample?:(sample:MiniaturePerfSample)=>void;
+};
 function Ready({onReady}:{onReady:()=>void}){
- const done=useRef(false);useFrame(()=>{if(!done.current){done.current=true;onReady();}});return null;
+ const done=useRef(false);
+ useFrame(()=>{if(!done.current){done.current=true;onReady();}});
+ return null;
 }
-function Token({token,map,p,selected,active,hovered,target,reduced,onClick}:{token:VisualToken;map:BattleMap;p:MiniaturePalette;selected:boolean;active:boolean;hovered:boolean;target:boolean;reduced:boolean;onClick:()=>void}){
- const group=useRef<Group>(null);const {invalidate}=useThree();
- const dest=squareWorldPosition(map,token.position);
+function PerformanceProbe({active,tokenCount,onSample}:{
+ active:boolean;tokenCount:number;onSample?:(sample:MiniaturePerfSample)=>void;
+}){
+ const current=useRef({start:0,frames:0,drawCalls:0,triangles:0,delivered:false});
+ useEffect(()=>{
+  current.current={start:0,frames:0,drawCalls:0,triangles:0,delivered:false};
+ },[active,tokenCount]);
+ useFrame(({gl,invalidate})=>{
+  if(!active||current.current.delivered)return;
+  const clock=performance.now();
+  const state=current.current;
+  if(!state.start)state.start=clock;
+  state.frames++;
+  state.drawCalls+=gl.info.render.calls;
+  state.triangles+=gl.info.render.triangles;
+  const elapsedMs=clock-state.start;
+  if(elapsedMs>=5000){
+   state.delivered=true;
+   const sample=buildMiniaturePerfSample({
+    elapsedMs,frames:state.frames,tokenCount,
+    totalDrawCalls:state.drawCalls,totalTriangles:state.triangles,
+   });
+   if(sample)onSample?.(sample);
+  }else invalidate();
+ });
+ return null;
+}
+/** Continuous boundary with interior edges omitted. Does not receive clicks. */
+function FootprintBorder({token,map,p}:{
+ token:VisualToken;map:VisualSquareMap;p:MiniaturePalette;
+}){
+ const cells=token.footprintCells??[];
+ if(cells.length<2)return null;
+ return <group>{footprintPerimeter(cells).map((edge,i)=>{
+  const x=edge.q-(map.width-1)/2,z=edge.r-(map.height-1)/2;
+  const horizontal=edge.side==='north'||edge.side==='south';
+  const xx=x+(edge.side==='west'?-0.49:edge.side==='east'?0.49:0);
+  const zz=z+(edge.side==='north'?-0.49:edge.side==='south'?0.49:0);
+  return <mesh key={i} position={[xx,.047,zz]} raycast={()=>{}}>
+   <boxGeometry args={horizontal?[.985,.026,.038]:[.038,.026,.985]}/>
+   <meshBasicMaterial color={p.gold} depthWrite={false}/>
+  </mesh>;
+ })}</group>;
+}
+function tokenLocation(map:VisualSquareMap,t:VisualToken):[number,number,number]{
+ const squares=t.footprintCells?.length?t.footprintCells:[t.position];
+ const centerX=squares.reduce((sum,p)=>sum+p.q,0)/squares.length;
+ const centerY=squares.reduce((sum,p)=>sum+p.r,0)/squares.length;
+ return [centerX-(map.width-1)/2,t.flying?.32:0,centerY-(map.height-1)/2];
+}
+/** Numeric billboard rendered by WebGL itself; avoids unstable DOM portals per token.
+ * Full name and count remain available in the HTML selection strip and 2D fallback.
+ */
+function CountSprite({value,p,at}:{value:number;p:MiniaturePalette;at:[number,number,number]}){
+ const texture=useMemo(()=>{
+  if(typeof document==='undefined')return null;
+  const canvas=document.createElement('canvas');
+  canvas.width=256;canvas.height=128;
+  const context=canvas.getContext('2d');
+  if(!context)return null;
+  context.fillStyle=p.ink;context.fillRect(9,12,238,104);
+  context.lineWidth=7;context.strokeStyle=p.gold;context.strokeRect(9,12,238,104);
+  context.fillStyle=p.paper;context.font='bold 64px system-ui, sans-serif';
+  context.textAlign='center';context.textBaseline='middle';
+  context.fillText(value.toLocaleString('pt-BR'),128,64,225);
+  const tex=new CanvasTexture(canvas);
+  tex.colorSpace=SRGBColorSpace;tex.minFilter=LinearFilter;tex.magFilter=LinearFilter;
+  return tex;
+ },[value,p.ink,p.gold,p.paper]);
+ useEffect(()=>()=>{texture?.dispose();},[texture]);
+ if(!texture)return null;
+ return <sprite position={at} scale={[.62,.31,1]}>
+  <spriteMaterial map={texture} transparent depthTest={false}
+   depthWrite={false} toneMapped={false}/>
+ </sprite>;
+}
+function Token({token,map,p,selected,active,hovered,target,reduced,compact,onClick}:{
+ token:VisualToken;map:VisualSquareMap;p:MiniaturePalette;
+ selected:boolean;active:boolean;hovered:boolean;target:boolean;
+ reduced:boolean;compact:boolean;onClick:()=>void;
+}){
+ const group=useRef<Group>(null);
+ const {invalidate}=useThree();
+ const dest=tokenLocation(map,token);
  const initial=useRef(dest);
- useEffect(()=>{invalidate();},[dest[0],dest[2],invalidate]);
+ const count=token.footprintCells?.length??1;
+ const span=Math.max(1,Math.round(Math.sqrt(count)));
+ const radius=.40*span;
+ const scale=1+.30*(span-1);
+ useEffect(()=>{invalidate();},[dest[0],dest[1],dest[2],invalidate]);
  useFrame((_,delta)=>{
   if(!group.current)return;
-  const pos=group.current.position;const alpha=reduced?1:1-Math.exp(-12*Math.min(delta,.05));
-  pos.x+=(dest[0]-pos.x)*alpha;pos.z+=(dest[2]-pos.z)*alpha;
-  if(Math.abs(pos.x-dest[0])+Math.abs(pos.z-dest[2])>.001)invalidate();
-  else pos.set(dest[0],0,dest[2]);
+  const pos=group.current.position,alpha=reduced?1:1-Math.exp(-12*Math.min(delta,.05));
+  pos.x+=(dest[0]-pos.x)*alpha;
+  pos.y+=(dest[1]-pos.y)*alpha;
+  pos.z+=(dest[2]-pos.z)*alpha;
+  if(Math.abs(pos.x-dest[0])+Math.abs(pos.y-dest[1])+Math.abs(pos.z-dest[2])>.001)invalidate();
+  else pos.set(...dest);
  });
- return <group ref={group} position={initial.current} onClick={e=>{e.stopPropagation();onClick();}} rotation={[0,token.side==='defender'?Math.PI:0,0]}>
-  <mesh position={[0,.055,0]}><cylinderGeometry args={[.40,.43,.11,16]}/><meshStandardMaterial color={p[token.side]} roughness={.5}/></mesh>
-  {(selected||active||hovered||target)&&<mesh position={[0,.125,0]} rotation={[-Math.PI/2,0,0]}><torusGeometry args={[.43,.035,6,24]}/><meshBasicMaterial color={target?p.attack:selected||hovered?p.selection:p.move}/></mesh>}
-  <RigidModel kind={token.kind} p={p}/>
-  <Html position={[0,.10,token.side==='defender'?-.46:.46]} center zIndexRange={[10,0]} style={{pointerEvents:'none'}}>
-   <div className="miniatures3d-label">{token.count.toLocaleString('pt-BR')}<small>{token.name}{token.fallback?' · genérica':''}</small></div>
-  </Html>
+ return <group ref={group} position={initial.current}
+  onClick={e=>{e.stopPropagation();if(e.delta<=6)onClick();}}
+  rotation={[0,token.side==='defender'?Math.PI:0,0]}>
+  {token.flying&&<mesh position={[0,-.10,0]}>
+   <cylinderGeometry args={[.035,.035,.68,6]}/>
+   <meshStandardMaterial color={p.metal} transparent opacity={.7}/></mesh>}
+  <mesh position={[0,.055,0]}>
+   {token.side==='attacker'?<cylinderGeometry args={[radius,radius+.03,.11,12]}/>:
+    <boxGeometry args={[radius*1.8,.11,radius*1.8]}/>}
+   <meshStandardMaterial color={p[token.side]} roughness={.5}/></mesh>
+  {(selected||active||hovered||target)&&<mesh position={[0,.125,0]} rotation={[-Math.PI/2,0,0]}>
+   <torusGeometry args={[radius+.03,.037,6,24]}/>
+   <meshBasicMaterial color={target?p.attack:selected?p.move:active?p.gold:p.selection}/></mesh>}
+  <group scale={scale}><RigidModel kind={token.kind} p={p} compact={compact}/></group>
+  <CountSprite value={token.count} p={p}
+   at={[0,.22,token.side==='defender'?-radius-.13:radius+.13]}/>
  </group>;
 }
-function TerrainTexture({p,children}:{p:MiniaturePalette;children:(texture:CanvasTexture|null)=>React.ReactNode}){
- const [texture,setTexture]=useState<CanvasTexture|null>(null);
- useEffect(()=>{
-  const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;
-  const ctx=canvas.getContext('2d');if(!ctx)return;
-  ctx.fillStyle=p.paper;ctx.fillRect(0,0,64,64);
-  ctx.globalAlpha=.12;ctx.fillStyle=p.wood;
-  for(let i=0;i<180;i++)ctx.fillRect((i*17)%64,(i*31+Math.floor(i/64)*7)%64,1,2);
-  const tex=new CanvasTexture(canvas);tex.colorSpace=SRGBColorSpace;setTexture(tex);
-  return ()=>tex.dispose();
- },[p]);
- return children(texture);
-}
 function Field(props:SceneProps){
- const {map,palette:p,tokens,moveKeys=[],attackKeys=[],onHexClick}=props;
+ const {map,palette:p,tokens,moveKeys=[],attackKeys=[],routeKeys=[],onHexClick}=props;
  const moves=useMemo(()=>new Set(moveKeys),[moveKeys]);
+ const routes=useMemo(()=>new Set(routeKeys),[routeKeys]);
+ const occupied=useMemo(()=>new Set(tokens.flatMap(t=>
+  (t.footprintCells?.length?t.footprintCells:[t.position]).map(hexKey))),[tokens]);
+ const compact=tokens.length>24&&!props.forceDetailed;
+ const selectedFootprint=useMemo(()=>new Set(tokens.filter(t=>
+  t.id===props.selectedId).flatMap(t=>
+  (t.footprintCells?.length?t.footprintCells:[t.position]).map(hexKey))),
+  [tokens,props.selectedId]);
+ const activeFootprint=useMemo(()=>new Set(tokens.filter(t=>
+  t.id===props.activeId).flatMap(t=>
+  (t.footprintCells?.length?t.footprintCells:[t.position]).map(hexKey))),
+  [tokens,props.activeId]);
+ const attacks=useMemo(()=>new Set(attackKeys),[attackKeys]);
  return <>
   <color attach="background" args={[p.ground]}/>
-  <ambientLight intensity={.7}/><directionalLight position={[5,12,5]} intensity={2}/>
-  <Environment resolution={32}><Lightformer intensity={1.5} position={[0,5,0]} rotation={[-Math.PI/2,0,0]} scale={[12,12,1]}/></Environment>
-  <CameraRig width={map.width} height={map.height} top={props.top} zoom={props.zoom} reset={props.reset}/>
-  <TerrainTexture p={p}>{texture=><group>{map.tiles.map(tile=>{
-   const key=hexKey(tile);const position=squareWorldPosition(map,tile);
-   const occupied=tokens.some(t=>hexKey(t.position)===key);
-   return <group key={key} position={position} onClick={e=>{e.stopPropagation();onHexClick?.({q:tile.q,r:tile.r});}}>
-    <mesh position={[0,-.10,0]}><boxGeometry args={[.97,.18,.97]}/><meshStandardMaterial color={p[tile.terrain]} map={texture} roughness={1}/></mesh>
-    {moves.has(key)&&<mesh position={[0,.003,0]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[.87,.87]}/><meshBasicMaterial color={p.move} transparent opacity={.65}/></mesh>}
-    {!occupied&&tile.terrain==='forest'&&[-.23,.23].map(x=><group key={x} position={[x,0,-.12]}>
-     <mesh position={[0,.09,0]}><cylinderGeometry args={[.035,.04,.18,5]}/><meshStandardMaterial color={p.wood}/></mesh>
-     <mesh position={[0,.27,0]}><coneGeometry args={[.18,.32,6]}/><meshStandardMaterial color={p.forest} flatShading/></mesh>
-    </group>)}
-    {!occupied&&(tile.terrain==='rock'||tile.terrain==='hill')&&<mesh position={[.12,.08,-.12]} scale={[.35,.17,.3]}><dodecahedronGeometry args={[1,0]}/><meshStandardMaterial color={p[tile.terrain]} flatShading/></mesh>}
-   </group>;
-  })}</group>}</TerrainTexture>
-  {tokens.map(token=><Token key={token.id} token={token} map={map} p={p} selected={token.id===props.selectedId}
-   active={token.id===props.activeId} hovered={token.id===props.hoveredId} target={attackKeys.includes(token.id)}
-   reduced={props.reducedMotion} onClick={()=>onHexClick?.({...token.position})}/>)}
+  <ambientLight intensity={1.05}/>
+  <directionalLight position={[5,12,5]} intensity={1.45}/>
+  <CameraRig width={map.width} height={map.height} top={props.top}
+   zoom={props.zoom} reset={props.reset} focus={props.focus??null}/>
+  <group>{map.tiles.map(tile=>{
+   const key=hexKey(tile);
+   const position=squareWorldPosition(map,tile);
+   const unit=occupied.has(key);
+   return <group key={key} position={position} onClick={e=>{
+    e.stopPropagation();if(e.delta<=6)onHexClick?.({q:tile.q,r:tile.r});
+   }}>
+    <mesh position={[0,-.10,0]}>
+     <boxGeometry args={[.975,.18,.975]}/>
+     <meshStandardMaterial color={p[tile.terrain]} roughness={1} flatShading/>
+    </mesh>
+    {routes.has(key)&&<mesh position={[0,.006,0]} rotation={[-Math.PI/2,0,0]}>
+     <planeGeometry args={[.82,.82]}/>
+     <meshBasicMaterial color={p.gold} transparent opacity={.36} depthWrite={false}/></mesh>}
+    {moves.has(key)&&<mesh position={[0,.008,0]} rotation={[-Math.PI/2,0,0]}>
+     <planeGeometry args={[.87,.87]}/>
+     <meshBasicMaterial color={p.move} transparent opacity={.62} depthWrite={false}/></mesh>}
+    {props.pendingHex?.q===tile.q&&props.pendingHex?.r===tile.r&&
+     <mesh position={[0,.02,0]} rotation={[-Math.PI/2,0,0]}>
+      <ringGeometry args={[.34,.43,4]}/>
+      <meshBasicMaterial color={p.selection} side={2} depthWrite={false}/>
+     </mesh>}
+    {props.pendingAction?.target.q===tile.q&&
+     props.pendingAction?.target.r===tile.r&&
+     <mesh position={[0,.028,0]} rotation={[-Math.PI/2,0,0]}>
+      <ringGeometry args={[.30,.45,4]}/>
+      <meshBasicMaterial color={props.pendingAction.type==='move'?p.move:p.attack}
+       side={2} depthWrite={false}/>
+     </mesh>}
+    {(selectedFootprint.has(key)||activeFootprint.has(key))&&
+     <mesh position={[0,.014,0]}
+      rotation={[-Math.PI/2,0,0]}>
+      <planeGeometry args={[.91,.91]}/>
+      <meshBasicMaterial color={selectedFootprint.has(key)?p.move:p.gold}
+       transparent opacity={.28}
+       depthWrite={false}/></mesh>}
+    <ScenicTile3D terrain={tile.terrain} p={p} occupied={unit}
+     road={Boolean(tile.road)} bridge={Boolean(tile.bridge)}/>
+    </group>;
+  })}</group>
+  {tokens.map(token=><FootprintBorder key={'edge-'+token.id}
+   token={token} map={map} p={p}/>)}
+  {tokens.map(token=><Token key={token.id} token={token} map={map} p={p}
+   selected={token.id===props.selectedId} active={token.id===props.activeId}
+   hovered={token.id===props.hoveredId}
+   target={attacks.has(token.id)||(props.pendingAction?.type==='attack'&&
+    (token.footprintCells?.length?token.footprintCells:[token.position])
+     .some(h=>h.q===props.pendingAction?.target.q&&h.r===props.pendingAction?.target.r))}
+   compact={compact} reduced={props.reducedMotion}
+   onClick={()=>onHexClick?.({...token.position})}/>)}
+  <PerformanceProbe active={Boolean(props.measurePerformance)}
+   tokenCount={tokens.length}
+   {...(props.onPerformanceSample?{onSample:props.onPerformanceSample}:{})}/>
   <Ready onReady={props.onReady}/>
  </>;
 }
+/** Frame on demand; capped DPR on mobile. Never touch an engine or mutate battle state. */
 export default function MiniatureScene(props:SceneProps){
- return <Canvas orthographic frameloop="demand" dpr={[1,1.5]} camera={{position:[14,18,14],zoom:25,near:.1,far:250}}
-  gl={{antialias:true,alpha:false}} onCreated={({gl})=>{
+ return <Canvas orthographic frameloop="demand"
+  dpr={props.tokens.length>=60?[1,1]:props.tokens.length>=40?[1,1.15]:[1,1.35]}
+  camera={{position:[14,18,14],zoom:25,near:.1,far:250}}
+  gl={{antialias:true,alpha:false,powerPreference:'low-power'}}
+  onCreated={({gl})=>{
    gl.domElement.addEventListener('webglcontextlost',props.onFailure,{once:true});
   }}><Field {...props}/></Canvas>;
 }

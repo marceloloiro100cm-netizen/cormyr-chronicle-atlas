@@ -9,6 +9,9 @@ import {BattleGotGame} from '@/components/battle/BattleGotGame';
 import {BattleArena} from '@/components/battle/BattleArena';
 import {BattleFirstBattleGuide} from '@/components/battle/BattleFirstBattleGuide';
 import {BattleMapEditor} from '@/components/battle/BattleMapEditor';
+import {MiniatureDemo} from '@/components/battle/miniatures3d/MiniatureDemo';
+import {MiniatureViewport} from '@/components/battle/miniatures3d/MiniatureViewport';
+import {miniatureCatalog,miniatureDemo} from '@/lib/battle/visual3d/demo';
 import {BattleReplay,BattleReplayImporter} from '@/components/battle/BattleReplay';
 import {createScenario} from '@/lib/battle/geometry/map-fixtures';
 import {makeTacticalObjective} from '@/lib/battle/domain/objectives';
@@ -22,6 +25,17 @@ import '@/components/battle/battle.css';
 function TestHarness(){
  const [map,setMap]=useState(()=>createScenario('plain-open'));
  const [selectedHex,setSelectedHex]=useState('nenhum');
+ const [loadCount,setLoadCount]=useState<0|40|80>(0);
+ const [p0Orders,setP0Orders]=useState<string[]>([]);
+ const [p0CanAct,setP0CanAct]=useState(true);
+ const p0Scene=useMemo(()=>miniatureDemo(),[]);
+ const loadDemo=useMemo(()=>{
+  const {map,tokens}=miniatureCatalog();
+  return {map,tokens:Array.from({length:80},(_,i)=>({
+   ...tokens[i%tokens.length]!,id:'stress-'+i,count:i+1,
+   position:{q:i%map.width,r:Math.floor(i/map.width)},
+  }))};
+ },[]);
  const [arena,setArena]=useState<'none'|'v3'|'crz'|'got'|'dnd'|'adapted'|'adapted-goal'|'adapted-p3'>('none');
  const {initial,completed,replay}=useMemo(()=>{
   const field=createScenario('plain-open');
@@ -92,6 +106,34 @@ function TestHarness(){
     sideNames={{attacker:'Atacantes fictícios',defender:'Defensores fictícios'}}
     onExit={()=>setArena('none')}/>}
 
+  </section>
+  <section id="miniatures-3d-acceptance" aria-label="Homologação isolada de miniaturas 3D">
+   <h2>Miniaturas 3D · ensaio sintético do Narrador</h2>
+   <p>Somente geometria fictícia, sem fichas, autenticação ou acesso ao banco da campanha.</p>
+   <MiniatureDemo narrator/>
+  </section>
+  <section id="miniatures-3d-p0" aria-label="Homologação P0 do gerenciamento 3D">
+   <h2>P0 · Câmera e ações seguras do Narrador</h2>
+   <p>Dados e comandos fictícios, sem conexão com motor ou banco.</p>
+   <p data-testid="p0-action-log">Comandos enviados: {p0Orders.join(' | ')||'nenhum'}</p>
+   <button type="button" onClick={()=>setP0CanAct(false)}>Revogar ações legais P0</button>
+   <button type="button" onClick={()=>{setP0CanAct(true);setP0Orders([]);}}>
+    Restaurar ações P0</button>
+   <MiniatureViewport map={p0Scene.map} tokens={p0Scene.tokens}
+    selectedId="demo-infantry" activeId="demo-infantry"
+    moveKeys={p0CanAct?['4,2']:[]} attackKeys={p0CanAct?['demo-goblin']:[]}
+    canIssueCommands={p0CanAct}
+    onHexClick={hex=>setP0Orders(list=>[...list,hexKey(hex)])}
+    fallback={<p>Mapa 2D de segurança no ensaio P0.</p>}/>
+  </section>
+  <section id="miniatures-3d-load" aria-label="Teste de carga de miniaturas 3D fictícias">
+   <h2>Teste de 40 e 80 tokens rígidos</h2>
+   <button type="button" onClick={()=>setLoadCount(40)}>Testar 40 miniaturas</button>
+   <button type="button" onClick={()=>setLoadCount(80)}>Testar 80 miniaturas</button>
+   <button type="button" onClick={()=>setLoadCount(0)}>Encerrar carga 3D</button>
+   {loadCount>0&&<MiniatureViewport map={loadDemo.map}
+    tokens={loadDemo.tokens.slice(0,loadCount)} selectedId="stress-0"
+    fallback={<p>Mapa 3D indisponível no ensaio de carga.</p>}/>}
   </section>
   <section id="interactive-board" aria-label="Tabuleiro interativo de teste">
    <h2>Tabuleiro de seleção</h2>
