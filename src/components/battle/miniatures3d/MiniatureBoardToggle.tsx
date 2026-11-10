@@ -32,7 +32,7 @@ export function MiniatureBoardToggle({allowed,map,tokens,selectedId,activeId,hov
    activeId={activeId??null} hoveredId={hoveredId??null} moveKeys={moveKeys}
    attackKeys={attackKeys} routeKeys={routeKeys} pendingHex={pendingHex}
    canIssueCommands={canIssueCommands} targetAction={targetAction}
-   contextLabel={contextLabel} onHexClick={onHexClick}
+   {...(contextLabel!==undefined?{contextLabel}:{})} onHexClick={onHexClick}
    fallback={fallback} onFailure={()=>{setFailed(true);setView3d(false);}}/>:fallback}
  </>;
 }
