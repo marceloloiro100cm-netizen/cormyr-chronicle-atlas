@@ -154,7 +154,19 @@ function Construct({p}:{p:MiniaturePalette}){
  </group>;
 }
 /** Sculptural wargame figurines. Exactly one rigid pose per archetype; zero animation rigs. */
-export function RigidModel({kind,p}:{kind:MiniatureKind;p:MiniaturePalette}){
+export function RigidModel({kind,p,compact=false}:{kind:MiniatureKind;p:MiniaturePalette;compact?:boolean}){
+ if(compact){
+  const color=kind==='goblin'||kind==='dragon'?p.goblin:
+   kind==='warships'||kind==='support'?p.wood:
+   kind==='undead'?p.paper:kind==='archer'||kind==='scouts'?p.forest:p.metal;
+  return <group>
+   <Block at={[0,.41,0]} size={[.33,.55,.27]} color={color}/>
+   <Orb at={[0,.78,0]} size={[.15,.16,.14]} color={color}/>
+   {['archer','scouts','guerrillas','cavalry','warships','dragon'].includes(kind)?
+    <Pole at={[.25,.70,.05]} height={.75} color={p.wood}/>:
+    <Block at={[.27,.58,.05]} size={[.05,.45,.05]} color={p.gold}/>}
+  </group>;
+ }
  if(kind==='warships')return <Ship p={p}/>;
  if(kind==='cavalry')return <Horse p={p}/>;
  if(kind==='dragon')return <Beast p={p} dragon/>;
