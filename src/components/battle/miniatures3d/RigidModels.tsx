@@ -1,5 +1,7 @@
 import type {MiniatureKind} from '@/lib/battle/visual3d/tokens';
 import type {MiniaturePalette} from './palette';
+import {isCreatureVisualKind} from '@/lib/battle/visual3d/creature-visuals';
+import {CreatureModel} from './CreatureModels';
 
 type Point=[number,number,number];
 function Block({at,size,color,rotation=[0,0,0]}:{at:Point;size:Point;color:string;rotation?:Point}){
@@ -167,6 +169,7 @@ export function RigidModel({kind,p,compact=false}:{kind:MiniatureKind;p:Miniatur
     <Block at={[.27,.58,.05]} size={[.05,.45,.05]} color={p.gold}/>}
   </group>;
  }
+ if(isCreatureVisualKind(kind))return <CreatureModel kind={kind} p={p}/>;
  if(kind==='warships')return <Ship p={p}/>;
  if(kind==='cavalry')return <Horse p={p}/>;
  if(kind==='dragon')return <Beast p={p} dragon/>;
