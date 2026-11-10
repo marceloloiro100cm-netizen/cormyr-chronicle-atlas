@@ -59,6 +59,10 @@ export type WarUnit=Readonly<{
  wildfire?:Readonly<{rounds:number;damage:number}>|undefined;
  /** Fogo persistente de munição especial do capítulo 10. */
  burning?:Readonly<{remainingRounds:number;damagePerRound:number;source:string}>|undefined;
+ /** Óleo fervente aplicado à unidade: só incendeia se houver fonte de fogo. */
+ oilSoaked?:boolean;
+ /** Após ignição, +1 dano por rodada durante 1d6 rodadas. */
+ oilIgnition?:Readonly<{remainingRounds:number}>|undefined;
  fieldEquipment?:WarFieldEquipmentId;fieldEquipmentConsumed?:boolean;
  envelopingTargetId?:string|undefined;envelopedBy?:string|undefined;
  laddersDeployed?:boolean;wallClimbedRound?:number;
