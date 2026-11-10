@@ -89,11 +89,14 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
    return;
   }
   setPending(null);
-  props.onHexClick?.(hex);
   const unit=props.tokens.find(t=>(t.footprintCells?.length?t.footprintCells:[t.position])
    .some(p=>p.q===hex.q&&p.r===hex.r));
-  setMessage(unit?'Selecionado: '+unit.name:
-   'Quadrado '+hex.q+','+hex.r+' selecionado.');
+  // When commanding, empty/hostile illegal squares are inspection-only.
+  // Friendly token selection and GOT planning still use the original callback.
+  if(!canIssueCommands||(unit&&unit.side===activeToken?.side))
+   props.onHexClick?.(hex);
+  setMessage(unit?'Inspecionado: '+unit.name:
+   'Quadrado '+hex.q+','+hex.r+' inspecionado.');
  };
  const confirm=()=>{
   if(!validPending)return;
