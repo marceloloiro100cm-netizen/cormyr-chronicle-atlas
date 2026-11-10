@@ -90,7 +90,7 @@ function Token({token,map,p,selected,active,hovered,target,reduced,compact,onCli
    <meshStandardMaterial color={p[token.side]} roughness={.5}/></mesh>
   {(selected||active||hovered||target)&&<mesh position={[0,.125,0]} rotation={[-Math.PI/2,0,0]}>
    <torusGeometry args={[radius+.03,.037,6,24]}/>
-   <meshBasicMaterial color={target?p.attack:selected||hovered?p.selection:p.move}/></mesh>}
+   <meshBasicMaterial color={target?p.attack:selected?p.move:active?p.gold:p.selection}/></mesh>}
   <group scale={scale}><RigidModel kind={token.kind} p={p} compact={compact}/></group>
   <CountSprite value={token.count} p={p}
    at={[0,.22,token.side==='defender'?-radius-.13:radius+.13]}/>
@@ -104,9 +104,13 @@ function Field(props:SceneProps){
   (t.footprintCells?.length?t.footprintCells:[t.position]).map(hexKey))),[tokens]);
  const compact=tokens.length>24&&!props.forceDetailed;
  const selectedFootprint=useMemo(()=>new Set(tokens.filter(t=>
-  t.id===props.selectedId||t.id===props.activeId).flatMap(t=>
+  t.id===props.selectedId).flatMap(t=>
   (t.footprintCells?.length?t.footprintCells:[t.position]).map(hexKey))),
-  [tokens,props.selectedId,props.activeId]);
+  [tokens,props.selectedId]);
+ const activeFootprint=useMemo(()=>new Set(tokens.filter(t=>
+  t.id===props.activeId).flatMap(t=>
+  (t.footprintCells?.length?t.footprintCells:[t.position]).map(hexKey))),
+  [tokens,props.activeId]);
  const attacks=useMemo(()=>new Set(attackKeys),[attackKeys]);
  return <>
   <color attach="background" args={[p.ground]}/>
@@ -143,10 +147,12 @@ function Field(props:SceneProps){
       <meshBasicMaterial color={props.pendingAction.type==='move'?p.move:p.attack}
        side={2} depthWrite={false}/>
      </mesh>}
-    {selectedFootprint.has(key)&&<mesh position={[0,.014,0]}
+    {(selectedFootprint.has(key)||activeFootprint.has(key))&&
+     <mesh position={[0,.014,0]}
       rotation={[-Math.PI/2,0,0]}>
       <planeGeometry args={[.91,.91]}/>
-      <meshBasicMaterial color={p.selection} transparent opacity={.28}
+      <meshBasicMaterial color={selectedFootprint.has(key)?p.move:p.gold}
+       transparent opacity={.28}
        depthWrite={false}/></mesh>}
     <ScenicTile3D terrain={tile.terrain} p={p} occupied={unit}
      road={Boolean(tile.road)} bridge={Boolean(tile.bridge)}/>
