@@ -93,7 +93,7 @@ describe('Lote 7: equipamentos de cerco',()=>{
  it('catapulta média e quatro equipamentos adicionais aparecem no catálogo de cerco',()=>{
   for(const id of ['medium-catapult','siege-ladders','boiling-water','boiling-oil','wildfire'])
    expect(SIEGE.some(x=>x.id===id)).toBe(true);
-  expect(SIEGE.find(x=>x.id==='medium-catapult')).toMatchObject({cost:2,damage:5,health:20,armor:3,range:400,movement:0});
+  expect(SIEGE.find(x=>x.id==='medium-catapult')).toMatchObject({cost:2,damage:5,health:30,armor:5,range:400,movement:0});
  });
  it('troca operadores no mesmo domínio e destruição não devolve custo',()=>{
   const s=make();s.units=[{...unit(),id:'eng',types:['engineers']},{...unit(),id:'carrier'}];
