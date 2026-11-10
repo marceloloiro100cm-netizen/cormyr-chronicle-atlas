@@ -38,10 +38,12 @@ describe('Miniaturas lotes 2–4: UX e controle de acesso',()=>{
  });
  it('D&D não libera 3D para treino dos jogadores',()=>{
   render(<BattleCrzLab mode="dnd" playerSandbox onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByText('Montar exércitos e ajustar cenário'));
   expect(screen.queryByRole('checkbox',{name:/Habilitar miniaturas 3D/})).toBeNull();
  });
  it('D&D mantém a habilitação 3D restrita ao Narrador',()=>{
   render(<BattleCrzLab mode="dnd" onBack={vi.fn()}/>);
+  fireEvent.click(screen.getByText('Montar exércitos e ajustar cenário'));
   expect(screen.getByRole('checkbox',{name:/Habilitar miniaturas 3D/})).toBeInTheDocument();
  });
 });
