@@ -21,7 +21,8 @@ export type VisualStack=Pick<BattleStack,
 export type VisualToken=Readonly<{
  id:string;side:BattleStack['side'];name:string;position:Hex;kind:MiniatureKind;
  fallback:boolean;count:number;houseLabel?:string;footprint?:number;
- flying?:boolean;naval?:boolean;
+ flying?:boolean;naval?:boolean;metricLabel?:'Saúde'|'Vivos'|'Soldados';
+ footprintCells?:readonly Hex[];
 }>;
 export const isCormyrKind=(typeId:string):typeId is CormyrMiniatureType=>
  (CORMYR_MINIATURE_TYPES as readonly string[]).includes(typeId);
