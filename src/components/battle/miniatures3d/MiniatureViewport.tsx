@@ -55,7 +55,7 @@ export function MiniatureViewport({fallback,onFailure,...props}:Props){
     {' '}{focusToken.count.toLocaleString('pt-BR')}
     {focusToken.houseLabel?' · '+focusToken.houseLabel:''}
    </p>}
-   <p className="sr-only">Para navegação pelo teclado e leitores de tela, use Mapa 2D. No 3D, arraste para percorrer o tabuleiro.</p>
+   <p className="miniatures3d-sr-only">Para navegação pelo teclado e leitores de tela, use Mapa 2D. No 3D, arraste para percorrer o tabuleiro.</p>
    <div className="miniatures3d-viewport" aria-label="Tabuleiro quadrado com miniaturas 3D">
     {!ready&&<p role="status" className="miniatures3d-status">Preparando miniaturas…</p>}
     {palette&&<ClientOnly fallback={null}><SceneBoundary onFailure={fail} fallback={null}>
