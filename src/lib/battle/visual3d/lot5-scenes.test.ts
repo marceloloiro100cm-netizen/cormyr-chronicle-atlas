@@ -21,7 +21,7 @@ describe('Lote 5 — catálogo visual de criaturas D&D',()=>{
   ['Fantasma','undead','spirit'],
   ['Aranha gigante','monstrosity','spider'],
   ['Serpente venenosa','beast','serpent'],
-  ['Enxame de insetos','beast','insect'],
+  ['Enxame de insetos','beast','swarm'],
   ['Troll das cavernas','giant','troll'],
   ['Dragão ancião','dragon','dragon'],
   ['Golem','construct','construct'],
