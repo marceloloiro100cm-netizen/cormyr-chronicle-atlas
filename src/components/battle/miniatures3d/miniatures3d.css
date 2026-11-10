@@ -21,3 +21,22 @@
 .miniatures3d-viewport canvas {display:block;outline-offset:3px;}
 .miniatures3d-viewport:focus-within {outline:2px solid var(--mini-selection);outline-offset:2px;}
 @media (max-width:640px){.miniatures3d-label small{max-width:95px;}.miniatures3d-toolbar{gap:.35rem}}
+
+/* Homologação visual: contadores estreitos, sem quebrar nomes por letra. */
+.battle-module .miniatures3d-label {
+ display:inline-flex; flex-direction:column;align-items:center;
+ width:max-content;min-width:30px;max-width:102px;
+ white-space:nowrap;overflow-wrap:normal;word-break:normal;
+ font-size:12px;line-height:1.15;padding:3px 6px;
+}
+.battle-module .miniatures3d-label .miniatures3d-count {font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.battle-module .miniatures3d-label small {
+ display:block;width:auto;max-width:92px;overflow:hidden;text-overflow:ellipsis;
+ white-space:nowrap;word-break:normal;font-size:10px;
+}
+.battle-module .miniatures3d-toolbar button {min-height:44px!important;min-width:44px!important;}
+@media(max-width:640px) {
+ .battle-module .miniatures3d-label {min-width:28px;max-width:88px;padding:3px 5px;}
+ .battle-module .miniatures3d-label small {display:none;}
+ .battle-module .miniatures3d-label.is-selected small {display:block;max-width:78px;}
+}
