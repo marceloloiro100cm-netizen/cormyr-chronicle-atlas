@@ -194,6 +194,57 @@ class RigidMiniatureChromiumAcceptance(unittest.TestCase):
         self.assertGreaterEqual(cells.filter(has_text="●").count(), 5)
         self.assertIn("Navio militar I", section.locator(".miniatures3d-selected").inner_text())
 
+    def test_p0_camera_pan_perspective_zoom_and_focus_safety(self):
+        page = self.page()
+        errors = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        section = page.locator("#miniatures-3d-p0")
+        canvas = self.assert_scene_ready(section)
+        self.assertIn("nenhum", section.get_by_test_id("p0-action-log").inner_text())
+        self.assertIn("Infantaria", section.locator(".miniatures3d-selected").inner_text())
+
+        before, _ = self.snapshot(canvas, "p0-camera-before.png")
+        bounds = canvas.bounding_box()
+        x = bounds["x"] + bounds["width"] * .5
+        y = bounds["y"] + bounds["height"] * .53
+        page.mouse.move(x, y)
+        page.mouse.down()
+        page.mouse.move(x + 105, y + 60, steps=9)
+        page.mouse.up()
+        page.wait_for_timeout(450)
+        dragged, _ = self.snapshot(canvas, "p0-camera-panned.png")
+        self.assertNotEqual(before, dragged, "Dragging did not pan the camera")
+        self.assertIn("nenhum", section.get_by_test_id("p0-action-log").inner_text(),
+                      "Dragging the camera must not issue a battle command")
+
+        section.get_by_role("button", name="Superior").click()
+        page.wait_for_timeout(350)
+        top_hash, _ = self.snapshot(canvas, "p0-camera-top.png")
+        self.assertNotEqual(dragged, top_hash)
+        section.get_by_role("button", name="Isométrica").click()
+        section.get_by_role("button", name="Ampliar zoom 3D").click()
+        page.wait_for_timeout(350)
+        zoomed_hash, _ = self.snapshot(canvas, "p0-camera-zoomed.png")
+        self.assertNotEqual(zoomed_hash, before)
+
+        section.get_by_role("button", name="Focar unidade ativa 3D").click()
+        self.assertIn("Câmera focada em Infantaria",
+                      section.locator(".miniatures3d-feedback").inner_text())
+        section.get_by_role("button", name="Centralizar câmera 3D").click()
+        self.assertIn("Mapa centralizado",
+                      section.locator(".miniatures3d-feedback").inner_text())
+        self.assertIn("nenhum", section.get_by_test_id("p0-action-log").inner_text())
+        self.assertEqual(errors, [], errors)
+
+    def test_p0_no_webgl_keeps_tactical_selection(self):
+        page = self.page(deny_webgl=True)
+        section = page.locator("#miniatures-3d-p0")
+        section.get_by_text("3D indisponível neste dispositivo.", exact=False).wait_for()
+        self.assertEqual(section.locator(".miniatures3d-viewport canvas").count(), 0)
+        self.assertIn("Infantaria", section.locator(".miniatures3d-selected").inner_text())
+        self.assertIn("Mapa 2D de segurança", section.inner_text())
+        self.assertIn("nenhum", section.get_by_test_id("p0-action-log").inner_text())
+
     def test_80_rigid_tokens_load_without_webgl_crash(self):
         page = self.page()
         section = page.locator("#miniatures-3d-load")
