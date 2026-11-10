@@ -10,9 +10,8 @@ const Scene=lazy(()=>import('./MiniatureScene'));
 export function webGLAvailable():boolean{
  try{
   const canvas=document.createElement('canvas');
-  const gl=canvas.getContext('webgl2');
-  if(!gl)return false;
-  gl.getExtension('WEBGL_lose_context')?.loseContext();return true;
+  return Boolean(canvas.getContext('webgl2'));
+
  }catch{return false;}
 }
 class SceneBoundary extends Component<{children:ReactNode;onFailure:()=>void;fallback:ReactNode},{failed:boolean}>{
@@ -32,9 +31,9 @@ export function MiniatureViewport({fallback,onFailure,...props}:Props){
  useEffect(()=>{
   if(!webGLAvailable()){fail();return;}
   if(wrapper.current)setPalette(readMiniaturePalette(wrapper.current));
-  const query=window.matchMedia('(prefers-reduced-motion: reduce)');
-  const update=()=>setReduced(query.matches);update();query.addEventListener('change',update);
-  return ()=>query.removeEventListener('change',update);
+  const query=typeof window.matchMedia==='function'?window.matchMedia('(prefers-reduced-motion: reduce)'):null;
+  const update=()=>setReduced(Boolean(query?.matches));update();query?.addEventListener?.('change',update);
+  return ()=>query?.removeEventListener?.('change',update);
  },[]);
  useEffect(()=>{
   if(!palette||ready||failed)return;
@@ -49,6 +48,7 @@ export function MiniatureViewport({fallback,onFailure,...props}:Props){
     <Button variant="outline" size="icon" title="Ampliar zoom" aria-label="Ampliar zoom 3D" disabled={zoom>=2.4} onClick={()=>setZoom(v=>Math.min(2.4,v+.2))}><Plus/></Button>
     <Button variant="outline" size="icon" title="Centralizar câmera" aria-label="Centralizar câmera 3D" onClick={()=>{setZoom(1);setTop(false);setReset(v=>v+1);}}><RotateCcw/></Button>
    </div>
+   <p className="sr-only">Para navegação pelo teclado e leitores de tela, use Mapa 2D. No 3D, arraste para percorrer o tabuleiro.</p>
    <div className="miniatures3d-viewport" aria-label="Tabuleiro quadrado com miniaturas 3D">
     {!ready&&<p role="status" className="miniatures3d-status">Preparando miniaturas…</p>}
     {palette&&<ClientOnly fallback={null}><SceneBoundary onFailure={fail} fallback={null}>
