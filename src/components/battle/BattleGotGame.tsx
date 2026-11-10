@@ -656,7 +656,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   {!battle?<section className="battle-surface got-config" aria-label="Preparar campo de guerra">
    {!playerSandbox&&<label className="got-check"><input type="checkbox"
     checked={miniaturesEnabled} onChange={e=>setMiniaturesEnabled(e.target.checked)}/>
-    Habilitar miniaturas 3D nesta sessão (teste, Narrador)</label>
+    Habilitar miniaturas 3D nesta sessão (teste, Narrador)</label>}
    <div className="battle-simple-launch" aria-label="Início rápido Game of Thrones">
     <h3>Batalha rápida</h3>
     <p>{2+extraUnitsPerSide} unidades por lado · mapa {mapSize.width} × {mapSize.height}</p>
