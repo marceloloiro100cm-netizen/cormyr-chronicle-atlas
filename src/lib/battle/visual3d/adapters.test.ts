@@ -47,7 +47,7 @@ describe('Miniaturas 3D — lotes 2/3/4: projeções sem mutação dos motores',
   const creature=(name:string,creatureType:string)=>({id:'a',name,creatureType,tags:[] as string[]});
   expect(creatureMiniatureKind(creature('Goblin arqueiro','humanoid')).kind).toBe('goblin');
   expect(creatureMiniatureKind(creature('Dragão vermelho','dragon')).kind).toBe('dragon');
-  expect(creatureMiniatureKind(creature('Esqueleto','undead')).kind).toBe('undead');
+  expect(creatureMiniatureKind(creature('Esqueleto','undead')).kind).toBe('skeleton');
   expect(creatureMiniatureKind(creature('Golem','construct')).kind).toBe('construct');
   expect(creatureMiniatureKind(creature('Desconhecido','aberration')).fallback).toBe(true);
   expect(creatureMiniatureKind({...creature('Infantaria','humanoid'),id:dndMilitaryTemplateId('infantry')}).kind)
