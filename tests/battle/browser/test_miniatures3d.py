@@ -236,6 +236,19 @@ class RigidMiniatureChromiumAcceptance(unittest.TestCase):
         self.assertIn("nenhum", section.get_by_test_id("p0-action-log").inner_text())
         self.assertEqual(errors, [], errors)
 
+    def test_ux_keyboard_inspection_requires_confirmation(self):
+        page = self.page()
+        section = page.locator("#miniatures-3d-p0")
+        self.assert_scene_ready(section)
+        section.locator(".miniatures3d-keyboard-nav summary").click()
+        chooser = section.get_by_role("combobox", name="Quadrado do tabuleiro")
+        chooser.select_option("4,2")
+        section.get_by_role("button", name="Inspecionar ou selecionar").click()
+        self.assertIn("Quadrado 4,2", section.locator(".miniatures3d-terrain-inspector").inner_text())
+        self.assertIn("nenhum", section.get_by_test_id("p0-action-log").inner_text())
+        section.get_by_role("button", name="Confirmar movimento").click()
+        self.assertIn("4,2", section.get_by_test_id("p0-action-log").inner_text())
+
     def test_p0_no_webgl_keeps_tactical_selection(self):
         page = self.page(deny_webgl=True)
         section = page.locator("#miniatures-3d-p0")
