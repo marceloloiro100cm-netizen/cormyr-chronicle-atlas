@@ -51,5 +51,5 @@ export function nextWarLabDeploymentSide(
  if(!a&&!d)return null;
  const placedA=units.filter(u=>u.side==='attacker'&&placements[u.id]!==undefined).length;
  const placedD=units.filter(u=>u.side==='defender'&&placements[u.id]!==undefined).length;
- return a>0&&(placedA<=placedD||!d)?'attacker':'defender';
+ return d>0&&(placedD<=placedA||!a)?'defender':'attacker';
 }
