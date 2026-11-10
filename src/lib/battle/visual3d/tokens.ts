@@ -1,6 +1,5 @@
 import type {BattleMap,BattleStack,Hex} from '../domain/types';
 import {gridKind} from '../geometry/grid';
-import {livingCount} from '../domain/morale';
 
 export type MiniatureKind='infantry'|'archer'|'cavalry'|'goblin';
 export type VisualStack=Pick<BattleStack,'id'|'side'|'name'|'position'|'primaryTypeId'|'initialCount'|'hpPerSoldier'|'currentHp'|'moraleState'>;
@@ -27,6 +26,7 @@ export function visualTokens(map:BattleMap,stacks:readonly VisualStack[]):Visual
  return stacks.filter(s=>s.currentHp>0&&s.moraleState!=='routed'&&
   Number.isFinite(s.currentHp)&&s.hpPerSoldier>0&&
   map.tiles.some(t=>t.q===s.position.q&&t.r===s.position.r)).map(s=>({
-   id:s.id,side:s.side,name:s.name,position:{...s.position},...classifyMiniature(s.primaryTypeId),count:livingCount(s),
+   id:s.id,side:s.side,name:s.name,position:{...s.position},...classifyMiniature(s.primaryTypeId),
+   count:Math.min(s.initialCount,Math.ceil(s.currentHp/s.hpPerSoldier)),
   }));
 }

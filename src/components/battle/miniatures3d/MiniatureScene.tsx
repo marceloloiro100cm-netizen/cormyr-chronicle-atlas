@@ -11,7 +11,7 @@ import type {MiniaturePalette} from './palette';
 
 export type SceneProps={map:BattleMap;tokens:readonly VisualToken[];selectedId?:string|null;activeId?:string|null;hoveredId?:string|null;
  moveKeys?:readonly string[];attackKeys?:readonly string[];onHexClick?:(hex:Hex)=>void;
- palette:MiniaturePalette;top:boolean;zoom:number;reducedMotion:boolean;onReady:()=>void;onFailure:()=>void};
+ palette:MiniaturePalette;top:boolean;zoom:number;reset:number;reducedMotion:boolean;onReady:()=>void;onFailure:()=>void};
 function Ready({onReady}:{onReady:()=>void}){
  const done=useRef(false);useFrame(()=>{if(!done.current){done.current=true;onReady();}});return null;
 }
@@ -56,7 +56,7 @@ function Field(props:SceneProps){
   <color attach="background" args={[p.ground]}/>
   <ambientLight intensity={.7}/><directionalLight position={[5,12,5]} intensity={2}/>
   <Environment resolution={32}><Lightformer intensity={1.5} position={[0,5,0]} rotation={[-Math.PI/2,0,0]} scale={[12,12,1]}/></Environment>
-  <CameraRig width={map.width} height={map.height} top={props.top} zoom={props.zoom}/>
+  <CameraRig width={map.width} height={map.height} top={props.top} zoom={props.zoom} reset={props.reset}/>
   <TerrainTexture p={p}>{texture=><group>{map.tiles.map(tile=>{
    const key=hexKey(tile);const position=squareWorldPosition(map,tile);
    const occupied=tokens.some(t=>hexKey(t.position)===key);
