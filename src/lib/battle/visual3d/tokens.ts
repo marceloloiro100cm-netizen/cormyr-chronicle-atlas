@@ -21,13 +21,18 @@ export type VisualSquareMap=Readonly<{
  tiles:readonly Readonly<Hex&{terrain:VisualTerrain;road?:boolean;bridge?:boolean}>[];
 }>;
 export type VisualStack=Pick<BattleStack,
- 'id'|'side'|'name'|'position'|'primaryTypeId'|'initialCount'|'hpPerSoldier'|'currentHp'|'moraleState'>;
+ 'id'|'side'|'name'|'position'|'primaryTypeId'|'initialCount'|'hpPerSoldier'|'currentHp'|'moraleState'> &
+ Partial<Pick<BattleStack,'attack'|'defense'|'movementHex'|'armor'>>;
+/** The tactical inspector has display-only text; NEVER infer legal actions here. */
+export type VisualTacticalInfo=Readonly<{
+ health?:string;defense?:string;morale?:string;movement?:string;attack?:string;
+}>;
 /** Optional render-only details. All sizes are visual footprint cells, never metres. */
 export type VisualToken=Readonly<{
  id:string;side:BattleStack['side'];name:string;position:Hex;kind:MiniatureKind;
  fallback:boolean;count:number;houseLabel?:string;footprint?:number;
  flying?:boolean;naval?:boolean;metricLabel?:'Saúde'|'Vivos'|'Soldados';
- footprintCells?:readonly Hex[];
+ footprintCells?:readonly Hex[];tactical?:VisualTacticalInfo;
 }>;
 export const isCormyrKind=(typeId:string):typeId is CormyrMiniatureType=>
  (CORMYR_MINIATURE_TYPES as readonly string[]).includes(typeId);
@@ -55,6 +60,13 @@ export function visualTokens(map:BattleMap,stacks:readonly VisualStack[],
   map.tiles.some(t=>t.q===s.position.q&&t.r===s.position.r)).map(s=>({
    id:s.id,side:s.side,name:s.name,position:{...s.position},...classifyMiniature(s.primaryTypeId),
    count:Math.min(s.initialCount,Math.ceil(s.currentHp/s.hpPerSoldier)),
+   tactical:{
+    health:'PV '+s.currentHp.toLocaleString('pt-BR'),
+    morale:s.moraleState==='steady'?'Moral firme':s.moraleState==='shaken'?'Moral abalada':'Em retirada',
+    ...(s.defense!==undefined?{defense:'Defesa '+s.defense}:{}),
+    ...(s.armor!==undefined?{attack:'Armadura '+s.armor}:{}),
+    ...(s.movementHex!==undefined?{movement:'Movimento '+s.movementHex+' quadrados'}:{}),
+   },
    ...(houses?.[s.side]?{houseLabel:houses[s.side]}:{}),
    ...(s.primaryTypeId==='warships'?{naval:true}:{}),
   }));
