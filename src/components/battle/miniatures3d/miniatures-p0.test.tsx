@@ -105,6 +105,7 @@ describe('P0 do mapa 3D — segurança e gerenciamento',()=>{
  });
  it('P2 permite selecionar destino legal pelo teclado, sempre com confirmação',async()=>{
   const click=vi.fn();show({onHexClick:click});
+  fireEvent.click(screen.getByText('Selecionar quadrado pelo teclado'));
   const chooser=screen.getByRole('combobox',{name:'Quadrado do tabuleiro'});
   fireEvent.change(chooser,{target:{value:'4,2'}});
   fireEvent.click(screen.getByRole('button',{name:'Inspecionar ou selecionar'}));
