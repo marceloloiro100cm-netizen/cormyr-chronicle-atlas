@@ -27,7 +27,7 @@ function Wing({p,rot,color}:{p:V;rot:V;color:string}){
 function ArmedHumanoid({kind,p}:{kind:AdvancedMonsterKind;p:MiniaturePalette}){
  const small=kind==='kobold';
  const massive=['ogre','troll','bugbear'].includes(kind);
- const scale=small?.68:massive?1.25:1;
+ const scale=small?0.68:massive?1.25:1;
  const skin=kind==='orc'||kind==='troll'?p.goblin:kind==='kobold'?p.wood:
   kind==='ogre'||kind==='bugbear'?p.wood:p.skin;
  const armor=kind==='hobgoblin'?p.metal:kind==='orc'?p.ink:p.cloth;
@@ -51,7 +51,7 @@ function ArmedHumanoid({kind,p}:{kind:AdvancedMonsterKind;p:MiniaturePalette}){
   {kind==='kobold'&&<Spike p={[0,.70,-.33]} r={.09} h={.46}
    rot={[Math.PI/2,0,0]} color={skin}/>}
   <Limb p={[.35,.77,.16]} h={.65} color={p.wood}/>
-  <Box p={[.39,.97,.16]} size={[massive?.28:.16,.22,.065]} color={p.metal}/>
+  <Box p={[.39,.97,.16]} size={[massive?0.28:0.16,.22,.065]} color={p.metal}/>
  </group>;
 }
 function UndeadFigure({kind,p}:{kind:AdvancedMonsterKind;p:MiniaturePalette}){
@@ -113,13 +113,13 @@ function AnimalFigure({kind,p}:{kind:AdvancedMonsterKind;p:MiniaturePalette}){
  </group>;
  const wolf=kind==='wolf';
  const color=wolf?p.rock:p.wood;
- return <group scale={wolf?.88:1.2}>
-  <Ball p={[0,.48,-.03]} scale={[wolf?.24:.32,.28,.43]} color={color}/>
+ return <group scale={wolf?0.88:1.2}>
+  <Ball p={[0,.48,-.03]} scale={[wolf?0.24:0.32,.28,.43]} color={color}/>
   {[-1,1].flatMap(x=>[-.28,.28].map(z=><Box key={x+','+z}
    p={[x*.63,.22,z]} size={[.11,.35,.12]} color={color}/>))}
   <Ball p={[0,.67,.39]} scale={[.21,.22,.23]} color={color}/>
   {[-.13,.13].map(x=><Spike key={x} p={[x,.91,.38]}
-   r={wolf?.085:.1} h={wolf?.22:.16} color={color}/>)}
+   r={wolf?0.085:0.1} h={wolf?0.22:0.16} color={color}/>)}
   <Spike p={[0,.47,-.51]} r={.09} h={.40} color={color} rot={[Math.PI/2,0,0]}/>
   <Ball p={[0,.61,.58]} scale={[.11,.09,.13]} color={p.ink}/>
  </group>;
@@ -128,7 +128,7 @@ function DragonFigure({kind,p,tint}:{kind:AdvancedMonsterKind;p:MiniaturePalette
  tint?:DragonMiniatureTint|undefined}){
  const old=kind==='dracolich',elder=kind==='dragon-elder';
  const body=old?p.paper:tint?DRAGON_TINT_COLORS[tint]:p.goblin;
- return <group scale={elder?1.30:kind==='dragon-young'?.85:1.18}>
+ return <group scale={elder?1.30:kind==='dragon-young'?0.85:1.18}>
   <Ball p={[0,.52,0]} scale={[.29,.26,.47]} color={body}/>
   {[-1,1].flatMap(x=>[-.29,.27].map(z=><Box key={x+','+z}
    p={[x*.72,.22,z]} size={[.11,.32,.12]} color={body}/>))}
