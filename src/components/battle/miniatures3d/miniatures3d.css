@@ -63,3 +63,46 @@
 .miniatures3d-demo .miniatures3d-scenic-note{font-size:.86rem;line-height:1.45;opacity:.88;}
 .miniatures3d-demo .miniatures3d-fallback-grid{display:grid;gap:2px;padding:.5rem;background:var(--mini-ground);overflow:auto;max-width:100%;}
 .miniatures3d-demo .miniatures3d-fallback-grid button{font-size:.65rem;min-width:24px;min-height:24px;border:1px solid rgba(255,255,255,.16);color:#fff;text-shadow:0 1px #333;}
+
+/* P0 · Readable command/tactical HUD, without covering the 3D battlefield. */
+.miniatures3d-selected {
+ display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .8rem;
+ border-left:3px solid var(--mini-selection);padding:.48rem .7rem;
+ background:var(--mini-ground);color:var(--mini-paper);
+ min-width:0;font-size:14px;line-height:1.35;
+}
+.miniatures3d-selected-title {
+ display:flex;align-items:center;flex-wrap:wrap;gap:.35rem .55rem;min-width:0;
+}
+.miniatures3d-selected-title strong{font-weight:700;overflow-wrap:break-word;}
+.miniatures3d-selected-title small{color:var(--mini-gold);}
+.miniatures3d-tactical-stats {
+ display:flex;flex-wrap:wrap;gap:.25rem .4rem;min-width:0;
+}
+.miniatures3d-tactical-stats span{
+ border:1px solid var(--mini-rock);border-radius:4px;padding:.15rem .4rem;
+ background:var(--mini-ink);font-size:12px;white-space:normal;
+}
+.miniatures3d-status-line{
+ font-size:12px;color:var(--mini-paper);background:var(--mini-ink);
+ padding:.3rem .6rem;margin:0 0 .25rem;
+}
+.miniatures3d-action-confirm{
+ display:flex;flex-wrap:wrap;align-items:center;gap:.35rem .55rem;
+ padding:.4rem .55rem;border:2px solid var(--mini-selection);
+ border-radius:5px;background:var(--mini-ink);color:var(--mini-paper);
+ font-size:13px;margin:.3rem 0;
+}
+.miniatures3d-action-confirm button{min-height:44px;min-width:44px;}
+.miniatures3d-action-confirm strong{margin-right:auto;max-width:100%;}
+.miniatures3d-feedback{
+ font-size:12px;color:var(--mini-paper);
+ padding:.3rem .55rem;margin:.2rem 0;background:var(--mini-ink);
+}
+.miniatures3d-toolbar button{min-height:44px;min-width:44px;}
+@media(max-width:640px){
+ .miniatures3d-toolbar{gap:.3rem;}
+ .miniatures3d-selected{font-size:13px;padding:.35rem .5rem;}
+ .miniatures3d-tactical-stats span{font-size:11px;}
+ .miniatures3d-action-confirm strong{flex-basis:100%;}
+}
