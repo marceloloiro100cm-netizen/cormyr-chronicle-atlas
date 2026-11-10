@@ -72,6 +72,7 @@ export function MiniatureDemo({narrator}:{narrator:boolean}){
    </div>
    {sceneNotice&&<p className="miniatures3d-scenic-note">{sceneNotice}</p>}
    <MiniatureViewport map={display.map} tokens={display.tokens} selectedId={selected}
+    forceDetailed={view==='creatures'}
     onHexClick={hex=>{
      const token=display.tokens.find(t=>(t.footprintCells?.length?t.footprintCells:
       [t.position]).some(p=>p.q===hex.q&&p.r===hex.r));
