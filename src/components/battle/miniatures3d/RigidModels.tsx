@@ -1,5 +1,7 @@
 import type {MiniatureKind} from '@/lib/battle/visual3d/tokens';
 import type {MiniaturePalette} from './palette';
+import {isAdvancedMonsterKind,type DragonMiniatureTint} from '@/lib/battle/visual3d/monster-kinds';
+import {AdvancedMonsterModel} from './AdvancedMonsterModels';
 
 type Point=[number,number,number];
 function Block({at,size,color,rotation=[0,0,0]}:{at:Point;size:Point;color:string;rotation?:Point}){
@@ -154,7 +156,10 @@ function Construct({p}:{p:MiniaturePalette}){
  </group>;
 }
 /** Sculptural wargame figurines. Exactly one rigid pose per archetype; zero animation rigs. */
-export function RigidModel({kind,p,compact=false}:{kind:MiniatureKind;p:MiniaturePalette;compact?:boolean}){
+export function RigidModel({kind,p,compact=false,cosmeticTint}:{
+ kind:MiniatureKind;p:MiniaturePalette;compact?:boolean;
+ cosmeticTint?:DragonMiniatureTint|undefined;
+}){
  if(compact){
   const color=kind==='goblin'||kind==='dragon'?p.goblin:
    kind==='warships'||kind==='support'?p.wood:
@@ -167,6 +172,8 @@ export function RigidModel({kind,p,compact=false}:{kind:MiniatureKind;p:Miniatur
     <Block at={[.27,.58,.05]} size={[.05,.45,.05]} color={p.gold}/>}
   </group>;
  }
+ if(isAdvancedMonsterKind(kind))return <AdvancedMonsterModel kind={kind} p={p}
+  tint={cosmeticTint}/>;
  if(kind==='warships')return <Ship p={p}/>;
  if(kind==='cavalry')return <Horse p={p}/>;
  if(kind==='dragon')return <Beast p={p} dragon/>;
