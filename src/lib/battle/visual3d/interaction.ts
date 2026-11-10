@@ -39,7 +39,7 @@ export function pendingStillLegal(pending:VisualPendingAction,{
 }):boolean{
  if(!actionEnabled||pending.actorId!==(actorId??null))return false;
  const result=proposeVisualAction({hex:pending.target,tokens,moveKeys,attackKeys,
-  actorId,actionEnabled});
+  actorId:actorId??null,actionEnabled});
  return result!==null&&result.type===pending.type&&result.key===pending.key&&
   result.label===pending.label;
 }
