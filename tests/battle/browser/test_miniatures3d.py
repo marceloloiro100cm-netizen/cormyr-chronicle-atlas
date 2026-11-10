@@ -39,14 +39,14 @@ class RigidMiniatureChromiumAcceptance(unittest.TestCase):
         )
         self.addCleanup(context.close)
         if deny_webgl:
-            context.add_init_script("""() => {
+            context.add_init_script("""
                 const original = HTMLCanvasElement.prototype.getContext;
                 HTMLCanvasElement.prototype.getContext = function(type, ...args) {
                     if (type === 'webgl2' || type === 'webgl' || type === 'experimental-webgl')
                         return null;
                     return original.call(this, type, ...args);
                 };
-            }""")
+            """)
         page = context.new_page()
         page.goto(BASE, wait_until="domcontentloaded", timeout=60000)
         page.locator("#miniatures-3d-acceptance").wait_for(timeout=15000)
