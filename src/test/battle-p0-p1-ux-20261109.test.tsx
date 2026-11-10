@@ -54,6 +54,25 @@ describe('P1: montador D&D informa forças sem inventar equilíbrio',()=>{
   expect(s.attacker).toMatchObject({totalHp:null,meanAc:null,unknown:2});
   expect(s.comparison).toContain('iniciativa');
  });
+ it('resume XP base por ND sem mascarar dados faltantes',()=>{
+  const catalog=[
+   {id:'soldado',hp:10,ac:12,cr:0.125},
+   {id:'monstro',hp:40,ac:18,cr:5},
+   {id:'militar-sem-nd',hp:20,ac:14},
+  ];
+  const complete=summarizeDndEncounter([
+   {side:'attacker',templateId:'soldado',count:4},
+   {side:'attacker',templateId:'monstro',count:1},
+   {side:'defender',templateId:'monstro',count:2},
+  ],catalog);
+  expect(complete.attacker).toMatchObject({xpTotal:1900,unknownCr:0});
+  expect(complete.defender).toMatchObject({xpTotal:3600,unknownCr:0});
+  const incomplete=summarizeDndEncounter([
+   {side:'attacker',templateId:'militar-sem-nd',count:3},
+  ],catalog);
+  expect(incomplete.attacker).toMatchObject({xpTotal:null,unknownCr:3});
+  expect(incomplete.comparison).toMatch(/iniciativa/);
+ });
  it('não aceita efetivo inválido como criatura válida',()=>{
   const s=summarizeDndEncounter([
    {side:'attacker',templateId:'inf',count:-20},
