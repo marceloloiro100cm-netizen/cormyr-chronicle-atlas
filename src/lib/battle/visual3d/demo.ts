@@ -1,5 +1,5 @@
 import type {BattleMap} from '../domain/types';
-import type {VisualToken} from './tokens';
+import {CORMYR_MINIATURE_TYPES,classifyMiniature,type VisualToken} from './tokens';
 /** Artificial visual data. No engine imports, campaign IDs or official sources. */
 export function miniatureDemo():{map:BattleMap;tokens:VisualToken[]}{
  const map:BattleMap={id:'visual-only-demo',schemaVersion:2,grid:'square',width:11,height:9,
@@ -12,5 +12,19 @@ export function miniatureDemo():{map:BattleMap;tokens:VisualToken[]}{
   {id:'demo-cavalry',kind:'cavalry',name:'Cavalaria',side:'defender',position:{q:3,r:6},count:20,fallback:false},
   {id:'demo-goblin',kind:'goblin',name:'Goblin · demo',side:'defender',position:{q:6,r:6},count:1,fallback:false},
  ];
+ return {map,tokens};
+}
+/** Original read-only showcase for every canonical military category. No campaign data. */
+export function miniatureCatalog():{map:BattleMap;tokens:VisualToken[]}{
+ const original=miniatureDemo().map;
+ const tiles=original.tiles.map(tile=>({...tile,terrain:'plain' as const}));
+ const map:BattleMap={...original,id:'military-art-gallery',label:'17 miniaturas militares',tiles};
+ const tokens= CORMYR_MINIATURE_TYPES.map((kind,i)=>({
+  id:'demo-military-'+kind,name:kind.replace(/-/g,' '),
+  side:(i<9?'attacker':'defender') as VisualToken['side'],
+  position:{q:1+(i%9),r:i<9?3:6},
+  ...classifyMiniature(kind),count:i+1,
+  ...(kind==='warships'?{naval:true}:{}),
+ }));
  return {map,tokens};
 }
