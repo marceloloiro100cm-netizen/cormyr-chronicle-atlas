@@ -24,7 +24,8 @@ export type VisualStack=Pick<BattleStack,
 export type VisualToken=Readonly<{
  id:string;side:BattleStack['side'];name:string;position:Hex;kind:MiniatureKind;
  fallback:boolean;count:number;houseLabel?:string;footprint?:number;
- flying?:boolean;naval?:boolean;cosmeticTint?:DragonMiniatureTint;
+ flying?:boolean;naval?:boolean;navalStyle?:'galleon'|'galley';
+ cosmeticTint?:DragonMiniatureTint;
  metricLabel?:'Saúde'|'Vivos'|'Soldados';
  footprintCells?:readonly Hex[];
 }>;
