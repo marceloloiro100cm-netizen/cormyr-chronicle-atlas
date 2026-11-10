@@ -80,7 +80,8 @@ describe('P2 — parlamento narrativo anterior às ordens',()=>{
   const snapshot=JSON.stringify(original);
   expect(recordWarParley(original,'none')).toBe(original);
   const proposed=recordWarParley(original,'truce-proposal','Corredor seguro');
-  expect(proposed.events).toHaveLength(1);
+  expect(proposed.events).toHaveLength(original.events.length+1);
+  expect(proposed.events.slice(1).every(e=>e.kind==='initiative')).toBe(true);
   expect(proposed.events[0]).toMatchObject({kind:'parley',side:null,seq:1});
   expect(proposed.events[0]?.text).toContain('Corredor seguro');
   expect(proposed.seed).toBe(original.seed);
