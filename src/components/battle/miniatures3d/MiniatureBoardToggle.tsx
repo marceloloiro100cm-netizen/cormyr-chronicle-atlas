@@ -22,8 +22,8 @@ export function MiniatureBoardToggle({allowed,map,tokens,selectedId,activeId,hov
     onClick={()=>setView3d(true)}>Miniaturas 3D (teste)</Button>
   </div>}
   {failed&&<p role="status">3D indisponível. A visão 2D permanece disponível.</p>}
-  {show?<MiniatureViewport map={map} tokens={tokens} selectedId={selectedId}
-   activeId={activeId} hoveredId={hoveredId} moveKeys={moveKeys}
+  {show?<MiniatureViewport map={map} tokens={tokens} selectedId={selectedId??null}
+   activeId={activeId??null} hoveredId={hoveredId??null} moveKeys={moveKeys}
    attackKeys={attackKeys} onHexClick={onHexClick}
    fallback={fallback} onFailure={()=>{setFailed(true);setView3d(false);}}/>:fallback}
  </>;
