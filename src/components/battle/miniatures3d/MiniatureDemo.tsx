@@ -1,12 +1,12 @@
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
-import {miniatureCatalog,miniatureDemo} from '@/lib/battle/visual3d/demo';
+import {miniatureCatalog,miniatureDemo,miniatureStressDemo} from '@/lib/battle/visual3d/demo';
 import {scenicDemo,type ScenicDemoId} from '@/lib/battle/visual3d/scenic-demos';
 import type {VisualSquareMap,VisualToken} from '@/lib/battle/visual3d/tokens';
 import {BattleBoard} from '../BattleBoard';
 import {MiniatureViewport} from './MiniatureViewport';
 
-type GalleryView='four'|'military'|ScenicDemoId;
+type GalleryView='four'|'military'|'stress40'|'stress80'|ScenicDemoId;
 function ScenicFallback({map,tokens,onSelect}:{
  map:VisualSquareMap;tokens:readonly VisualToken[];onSelect:(id:string)=>void;
 }){
@@ -37,13 +37,15 @@ export function MiniatureDemo({narrator}:{narrator:boolean}){
  const [demo,setDemo]=useState(miniatureDemo);
  const [selected,setSelected]=useState('demo-infantry');
  const [view,setView]=useState<GalleryView>('four');
- const display=view==='four'?demo:view==='military'?miniatureCatalog():scenicDemo(view);
- const legacy=view==='four'||view==='military';
- const legacyMap=view==='four'?demo.map:miniatureCatalog().map;
+ const display=view==='four'?demo:view==='military'?miniatureCatalog():
+  view==='stress40'?miniatureStressDemo(40):view==='stress80'?miniatureStressDemo(80):scenicDemo(view);
+ const legacy=view==='four'||view==='military'||view==='stress40'||view==='stress80';
+ const legacyMap=display.map;
  if(!narrator)return null;
  const selectView=(next:GalleryView)=>{
   setView(next);
   setSelected(next==='four'?'demo-infantry':next==='military'?'demo-military-support':
+   next==='stress40'||next==='stress80'?'benchmark-0':
    next==='creatures'?'demo-creature-goblin':next==='coast'?'demo-naval-one':'demo-bridge-guard');
  };
  const stacks=legacy?display.tokens.map(t=>({...t,
@@ -61,6 +63,10 @@ export function MiniatureDemo({narrator}:{narrator:boolean}){
      onClick={()=>selectView('military')}>17 unidades</Button>
     <Button variant="outline" aria-pressed={view==='creatures'}
      onClick={()=>selectView('creatures')}>25 famílias de monstros</Button>
+    <Button variant="outline" aria-pressed={view==='stress40'}
+     onClick={()=>selectView('stress40')}>40 peças (teste)</Button>
+    <Button variant="outline" aria-pressed={view==='stress80'}
+     onClick={()=>selectView('stress80')}>80 peças (teste)</Button>
     <Button variant="outline" aria-pressed={view==='coast'}
      onClick={()=>selectView('coast')}>Costa e navios</Button>
     <Button variant="outline" aria-pressed={view==='fortress'}
@@ -71,6 +77,10 @@ export function MiniatureDemo({narrator}:{narrator:boolean}){
     }))}>Mover peça</Button>}
    </div>
    {sceneNotice&&<p className="miniatures3d-scenic-note">{sceneNotice}</p>}
+   {(view==='stress40'||view==='stress80')&&<p className="miniatures3d-scenic-note">
+    Cenário sintético de desempenho: toque em Medir FPS para coletar um resultado
+    neste dispositivo. O resultado não substitui um teste de partida real.
+   </p>}
    <MiniatureViewport map={display.map} tokens={display.tokens} selectedId={selected}
     forceDetailed={view==='creatures'}
     onHexClick={hex=>{
