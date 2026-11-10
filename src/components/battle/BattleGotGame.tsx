@@ -742,8 +742,10 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   </details>
   {!battle?<section className="battle-surface got-config" aria-label="Preparar campo de guerra">
     <MiniaturePreparationSummary mode="GOT" width={mapSize.width} height={mapSize.height}
-     attackers={preparedDeployments.filter(u=>u.side==='attacker').length}
-     defenders={preparedDeployments.filter(u=>u.side==='defender').length}
+     attackers={houseMatchup?Object.keys(officialBySlot).filter(id=>id.startsWith('attacker-')).length:
+      preparedDeployments.filter(u=>u.side==='attacker').length}
+     defenders={houseMatchup?Object.keys(officialBySlot).filter(id=>id.startsWith('defender-')).length:
+      preparedDeployments.filter(u=>u.side==='defender').length}
      climate={weather+' · '+visibility}
      manualDeployment={Object.keys(deploymentPositions).length>0}/>
    {!playerSandbox&&<label className="got-check"><input type="checkbox"
@@ -769,7 +771,8 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      (2+extraUnitsPerSide)+' unidades por lado'} · mapa {mapSize.width} × {mapSize.height}</p>
     <Button onClick={start}>Batalhar agora</Button>
     {houseMatchup&&<Button variant="outline" onClick={()=>{
-     setHouseMatchup(false);setOfficialBySlot({});setExtraUnitsPerSide(0);
+     setHouseMatchup(false);setShowHouseMatchup(false);
+     setOfficialBySlot({});setExtraUnitsPerSide(0);setName('Escaramuça de treinamento');
     }}>Voltar às tropas-modelo</Button>}
    </div>
    <details className="battle-advanced-config">
