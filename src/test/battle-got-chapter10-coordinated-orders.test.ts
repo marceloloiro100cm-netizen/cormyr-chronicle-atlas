@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {createWarBattle,issueWarOrder,issueWarPincer} from '@/lib/battle/got/engine';
+import {createWarBattle,issueWarOrder,issueWarPincer,previewWarOrderDifficulty} from '@/lib/battle/got/engine';
 import {modelWarCommanders,modelWarUnit} from '@/lib/battle/got/models';
 import {makeWarFortification} from '@/lib/battle/got/fortifications';
 import type {WarBattle,WarUnit} from '@/lib/battle/got/types';
@@ -98,5 +98,35 @@ describe('Capítulo 10 — Pinça, Martelo e Bigorna, Escalar muralhas',()=>{
    order:{kind:'climb-walls',fortId:'wall',wallDifficulty:31}}))
    .toThrow(/3 e 30/);
   expect(b.units.find(u=>u.id==='a')?.position).toEqual({x:2,y:2});
+ });
+});
+
+describe('P1: prévia da dificuldade de ordens GoT',()=>{
+ it('mantém a mesma fórmula no painel e na emissão da ordem sem antecipar dados',()=>{
+  const a={...unit('a','attacker',2,3),issuedThisRound:1,
+   disorganizations:1,formation:'mob' as const};
+  const battle=scenario([a,unit('enemy','defender',5,3)]);
+  const order={kind:'formation' as const,formation:'shield-wall' as const};
+  const snapshot=JSON.stringify(battle);
+  const preview=previewWarOrderDifficulty(battle,a,order);
+  expect(preview.parts).toEqual(expect.arrayContaining([
+   {label:'Desorganizações',value:3},
+   {label:'Ordens extras',value:3},
+   {label:'Nova formação ou giro',value:6},
+   {label:'Disciplina da formação atual',value:6},
+  ]));
+  expect(JSON.stringify(battle)).toBe(snapshot);
+  const result=issueWarOrder(battle,{commanderId:'leader-attacker',unitId:'a',order});
+  expect(result.difficulty).toBe(preview.difficulty);
+  expect(result.battle.events.some(e=>e.kind==='command'&&
+   e.difficulty===preview.difficulty)).toBe(true);
+ });
+ it('pula a penalidade de Escalar quando já há escadas apropriadas',()=>{
+  const a={...unit('a','attacker',2,3),fieldEquipment:'ladders' as const};
+  const battle=scenario([a,unit('d','defender',5,3)]);
+  const preview=previewWarOrderDifficulty(battle,a,{kind:'climb-walls'});
+  expect(preview.advancedModifier).toBe(0);
+  expect(battle.turn).toBe('attacker');
+  expect(battle.ordersRemaining['leader-attacker']).toBe(12);
  });
 });
