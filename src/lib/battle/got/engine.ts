@@ -487,7 +487,8 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  const probeBonus=target.probeDefenseRound===battle.round?2:0;
  const defense=(target.defendRoll??target.defense)+cover+formationDefense+
   warShieldWallAllyCover(battle,attacker,target,ranged)+
-  fortBonus+probeBonus+warFieldDefenseBonus(target,ranged);
+  fortBonus+probeBonus+warFieldDefenseBonus(target,ranged)-
+  (ranged&&target.ladderDefensePenaltyRound===battle.round?5:0);
  const adjustedRoll=Math.max(0,roll.total+weatherAttackModifier(battle.weather));
  const degrees=degreesOfSuccess(adjustedRoll,defense);
  const baseDamage=(ranged?attacker.rangedDamage:attacker.meleeDamage+(options.charge?2:0))+(options.damageBonus??0);
@@ -589,6 +590,17 @@ function retreatStep(battle:WarBattle,unit:WarUnit,steps:number,rout:boolean):Wa
   unit.name+(escaped?' saiu do campo.':' retirou-se até '+pos.x+','+pos.y+'.'),unit.side);
 }
 function perform(battle:WarBattle,unit:WarUnit,order:WarOrder,degrees:number):WarBattle{
+ if(order.kind==='dislodge-ladders'){
+  if(!fortForUnit(battle.fortifications,unit))
+   throw new Error('Desalojar escadas exige um defensor sobre fortificação.');
+  const target=battle.units.find(u=>u.id===order.targetId&&u.side!==unit.side&&
+   u.laddersDeployed&&onBoard(u)&&distance(unit.position,u.position)<=1);
+  if(!target)throw new Error('Selecione inimigo adjacente com escadas posicionadas.');
+  let next=replaceUnit(battle,{...target,laddersDeployed:false});
+  next=replaceUnit(next,{...unit,ladderDefensePenaltyRound:battle.round});
+  return log(next,'dislodge-ladders',unit.name+' desalojou as escadas de '+target.name+
+   '; Defesa −5 contra Pontaria nesta rodada.',unit.side);
+ }
  if(order.kind==='discard-equipment'){
   if(!unit.fieldEquipment||unit.fieldEquipmentConsumed)
    throw new Error('A unidade não possui equipamento a abandonar.');
