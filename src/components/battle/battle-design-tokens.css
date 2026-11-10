@@ -1,0 +1,29 @@
+/* P3 — valores semânticos compartilhados. Não substitui nem reordena as folhas
+ * históricas: migração gradual para evitar regressões entre GOT, D&D e Adaptado.
+ * Tokens locais ao módulo, sem afetar o resto do site.
+ */
+.battle-module{
+ --battle-ux-text:#f9efd9;
+ --battle-ux-muted:#e4d1ab;
+ --battle-ux-border:#b7a37c;
+ --battle-ux-surface:#172a26;
+ --battle-ux-focus:#ffdf97;
+ --battle-ux-positive:#abefb2;
+ --battle-ux-warning:#f8d195;
+}
+.battle-module :where(.got-order-preview,.dnd-encounter-summary){
+ overflow-wrap:anywhere;
+ line-height:1.5;
+}
+.battle-module :where(.got-order-preview,.dnd-encounter-summary) :where(small,p){
+ color:var(--battle-ux-muted);
+}
+.battle-module :where(.battle-got,.dnd-config) :where(button,input,select,summary):focus-visible{
+ outline:3px solid var(--battle-ux-focus);
+ outline-offset:3px;
+}
+@media(max-width:640px){
+ .battle-module :where(.battle-got,.dnd-config) :where(button,input,select){
+  min-height:44px;
+ }
+}
