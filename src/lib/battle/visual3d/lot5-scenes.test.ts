@@ -83,8 +83,8 @@ describe('Lote 5 — cenários avançados e naval somente visual',()=>{
  });
  it('ponte, ruínas, costa, pântano e monstro de pegada 4×4 permanecem dados visuais',()=>{
   const scene=ruinedBridgeScene();
-  expect(new Set(scene.map.tiles.map(t=>t.terrain))).toEqual(
-   expect.setContaining(['bridge','water','road','ruins','forest','marsh','mountain','settlement']));
+  expect(Array.from(new Set(scene.map.tiles.map(t=>t.terrain)))).toEqual(
+   expect.arrayContaining(['bridge','water','road','ruins','forest','marsh','mountain','settlement']));
   const dragon=scene.tokens.find(t=>t.kind==='dragon')!;
   expect(dragon.footprintCells).toHaveLength(16);
   expect(dragon.flying).toBe(true);
