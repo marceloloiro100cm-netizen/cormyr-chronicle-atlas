@@ -86,7 +86,7 @@ function Token({token,map,p,selected,active,hovered,target,reduced,compact,onCli
   {(selected||active||hovered||target)&&<mesh position={[0,.125,0]} rotation={[-Math.PI/2,0,0]}>
    <torusGeometry args={[radius+.03,.037,6,24]}/>
    <meshBasicMaterial color={target?p.attack:selected||hovered?p.selection:p.move}/></mesh>}
-  <group scale={scale}><RigidModel kind={token.kind} p={p} compact={compact} cosmeticTint={token.cosmeticTint}/></group>
+  <group scale={scale}><RigidModel kind={token.kind} p={p} compact={compact} cosmeticTint={token.cosmeticTint} navalStyle={token.navalStyle}/></group>
   <CountSprite value={token.count} p={p}
    at={[0,.22,token.side==='defender'?-radius-.13:radius+.13]}/>
  </group>;
