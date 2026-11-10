@@ -10,6 +10,8 @@ import {BattleArena} from '@/components/battle/BattleArena';
 import {BattleFirstBattleGuide} from '@/components/battle/BattleFirstBattleGuide';
 import {BattleMapEditor} from '@/components/battle/BattleMapEditor';
 import {MiniatureDemo} from '@/components/battle/miniatures3d/MiniatureDemo';
+import {MiniatureViewport} from '@/components/battle/miniatures3d/MiniatureViewport';
+import {miniatureCatalog} from '@/lib/battle/visual3d/demo';
 import {BattleReplay,BattleReplayImporter} from '@/components/battle/BattleReplay';
 import {createScenario} from '@/lib/battle/geometry/map-fixtures';
 import {makeTacticalObjective} from '@/lib/battle/domain/objectives';
@@ -23,6 +25,14 @@ import '@/components/battle/battle.css';
 function TestHarness(){
  const [map,setMap]=useState(()=>createScenario('plain-open'));
  const [selectedHex,setSelectedHex]=useState('nenhum');
+ const [loadCount,setLoadCount]=useState<0|40|80>(0);
+ const loadDemo=useMemo(()=>{
+  const {map,tokens}=miniatureCatalog();
+  return {map,tokens:Array.from({length:80},(_,i)=>({
+   ...tokens[i%tokens.length]!,id:'stress-'+i,count:i+1,
+   position:{q:i%map.width,r:Math.floor(i/map.width)},
+  }))};
+ },[]);
  const [arena,setArena]=useState<'none'|'v3'|'crz'|'got'|'dnd'|'adapted'|'adapted-goal'|'adapted-p3'>('none');
  const {initial,completed,replay}=useMemo(()=>{
   const field=createScenario('plain-open');
@@ -98,6 +108,15 @@ function TestHarness(){
    <h2>Miniaturas 3D · ensaio sintético do Narrador</h2>
    <p>Somente geometria fictícia, sem fichas, autenticação ou acesso ao banco da campanha.</p>
    <MiniatureDemo narrator/>
+  </section>
+  <section id="miniatures-3d-load" aria-label="Teste de carga de miniaturas 3D fictícias">
+   <h2>Teste de 40 e 80 tokens rígidos</h2>
+   <button type="button" onClick={()=>setLoadCount(40)}>Testar 40 miniaturas</button>
+   <button type="button" onClick={()=>setLoadCount(80)}>Testar 80 miniaturas</button>
+   <button type="button" onClick={()=>setLoadCount(0)}>Encerrar carga 3D</button>
+   {loadCount>0&&<MiniatureViewport map={loadDemo.map}
+    tokens={loadDemo.tokens.slice(0,loadCount)} selectedId="stress-0"
+    fallback={<p>Mapa 3D indisponível no ensaio de carga.</p>}/>}
   </section>
   <section id="interactive-board" aria-label="Tabuleiro interativo de teste">
    <h2>Tabuleiro de seleção</h2>
