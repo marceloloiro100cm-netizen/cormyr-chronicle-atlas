@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Lote 1 — miniaturas rígidas 3D (10/11/2026)
-- [ ] Renderer isolado, quatro arquétipos originais, terreno quadrado e câmera.
-- [ ] Visão opt-in exclusiva do Narrador no Adaptado V3; fallback 2D e demo isolada.
-- [ ] Testes puros, fallback/rendering, regressões e verificação visual da prévia; documentação sem publicação.
+- [x] Renderer isolado, quatro arquétipos originais, terreno quadrado e câmera.
+- [x] Visão opt-in exclusiva do Narrador no Adaptado V3; fallback 2D e demo isolada.
+- [ ] Testes automatizados direcionados (59 aprovados no executor inicial) e documentação registrados. Pendente: CI da branch final, visual real, Android e GPU; sem publicação.
 
 ## Hub de casa nobre — 24/10 21:38 UTC
 - [x] Pedido26/10 00:34: comparação por fonte/bloco de Everlost e Harcourt disponível; valores reais conferidos na conta do Narrador e12 testes aprovados; posses/tropas intactas, sem publicação.
