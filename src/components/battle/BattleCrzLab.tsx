@@ -644,9 +644,11 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
    {savedPanel}
    <section className="battle-surface" aria-label="Preparar treino CRZ">
      <MiniaturePreparationSummary mode={dndMode?'D&D':'Adaptado'}
-      width={options.sharedMap?.width} height={options.sharedMap?.height}
-      attackers={dndMode?dndRoster.filter(u=>u.side==='attacker').length:undefined}
-      defenders={dndMode?dndRoster.filter(u=>u.side==='defender').length:undefined}/>
+      {...(options.sharedMap?{width:options.sharedMap.width,height:options.sharedMap.height}:{})}
+      {...(dndMode?{
+       attackers:dndRoster.filter(u=>u.side==='attacker').length,
+       defenders:dndRoster.filter(u=>u.side==='defender').length,
+      }:{})}/>
     {dndMode&&<div className="battle-simple-launch" aria-label="Início rápido D&D">
      <h3>Batalha rápida</h3>
      <p>{dndRoster.filter(x=>x.side==='attacker').length} grupos atacantes ×
