@@ -41,6 +41,7 @@ import {saveGotArchive,listGotArchives,loadGotArchive,deleteGotArchive,
  type GotArchiveEntry} from '@/lib/battle/got/lab-archive';
 import {previewWarAftermath} from '@/lib/battle/got/aftermath';
 import {previewWarResourceConsequences} from '@/lib/battle/got/aftermath-resources';
+import {serializeWarAftermathReview} from '@/lib/battle/got/aftermath-review';
 import {WAR_FIELD_EQUIPMENT} from '@/lib/battle/got/field-equipment';
 import type {WarFieldEquipmentId} from '@/lib/battle/got/field-equipment';
 import type {WarResourceScenario} from '@/lib/battle/got/aftermath-resources';
@@ -594,6 +595,20 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    resourceScenario:{...resourceScenario,capturedLandValue:0,
     survivingFortDefenseValue:0,transferredWealthInvestments:0,
     garrisonHeldForThreeMonths:false}):null;
+ const exportCampaignReview=()=>{
+  if(!battle||!aftermath||!projectedResources)return;
+  try{
+   const payload=serializeWarAftermathReview(battle,aftermath,projectedResources);
+   const blob=new Blob([payload],{type:'application/json'});
+   const url=URL.createObjectURL(blob),link=document.createElement('a');
+   link.href=url;
+   link.download='cormyr-revisao-pos-batalha-'+
+    battle.id.replace(/[^a-zA-Z0-9_-]/g,'_')+'.json';
+   link.click();URL.revokeObjectURL(url);
+   setLocalSaveStatus('Relatório exportado para revisão. Nenhuma Casa foi alterada.');
+   setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível exportar o relatório.');}
+ };
  const movePreview=battle&&selectedUnit&&battle.phase==='orders'?
   previewWarMovement(battle,selectedUnit.id,coord,sprint):null;
  const pathSquares=new Set(legalKind==='move'&&movePreview?.legal?
@@ -1775,6 +1790,13 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      glória ou mudança de treinamento é aplicada às fichas oficiais das Casas.</p>
     <p>Glória proposta: Atacante {aftermath?.glory.attacker} ·
      Defensor {aftermath?.glory.defender}.</p>
+    <Button variant="outline" onClick={exportCampaignReview}
+     disabled={!aftermath||!projectedResources}>
+     Exportar relatório para revisão da campanha
+    </Button>
+    <p className="battle-note">Exportação local em JSON: requer avaliação e aprovação
+     explícita do Narrador antes de qualquer transcrição nas Casas. Não aplica
+     automaticamente Glória, sobreviventes ou mudanças econômicas.</p>
     {aftermath&&<div className="got-after-summary">
      {(['attacker','defender'] as const).map(side=><div className="got-unit" key={side}>
       <strong>{SIDE[side]} · balanço militar</strong>
