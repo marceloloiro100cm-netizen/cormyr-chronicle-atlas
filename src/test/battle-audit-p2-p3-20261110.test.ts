@@ -32,14 +32,14 @@ describe('P2 — proteção espacial opcional GoT',()=>{
 
 describe('P2 — implantação alternada é apenas preparação',()=>{
  it('alternância atacante, defensor e mantém posições não alteradas',()=>{
-  expect(nextWarLabDeploymentSide(0,{})).toBe('attacker');
-  const a=positionWarLabUnit(0,{},'attacker-1',{x:2,y:2});
-  expect(nextWarLabDeploymentSide(0,a)).toBe('defender');
-  const d=positionWarLabUnit(0,a,'defender-1',{x:9,y:2});
+  expect(nextWarLabDeploymentSide(0,{})).toBe('defender');
+  const d=positionWarLabUnit(0,{},'defender-1',{x:9,y:2});
   expect(nextWarLabDeploymentSide(0,d)).toBe('attacker');
-  const a2=positionWarLabUnit(0,d,'attacker-2',{x:2,y:4});
-  expect(nextWarLabDeploymentSide(0,a2)).toBe('defender');
-  const done=positionWarLabUnit(0,a2,'defender-2',{x:9,y:4});
+  const a=positionWarLabUnit(0,d,'attacker-1',{x:2,y:2});
+  expect(nextWarLabDeploymentSide(0,a)).toBe('defender');
+  const d2=positionWarLabUnit(0,a,'defender-2',{x:9,y:4});
+  expect(nextWarLabDeploymentSide(0,d2)).toBe('attacker');
+  const done=positionWarLabUnit(0,d2,'attacker-2',{x:2,y:4});
   expect(nextWarLabDeploymentSide(0,done)).toBeNull();
   expect(done['attacker-1']).toEqual({x:2,y:2});
   expect(a['attacker-1']).toEqual({x:2,y:2});
