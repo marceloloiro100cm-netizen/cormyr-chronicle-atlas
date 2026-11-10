@@ -7,11 +7,12 @@ import {MiniatureViewport} from './MiniatureViewport';
 /** Shared presentation switch only. Rules, saves, rolls and permissions stay with parent. */
 export function MiniatureBoardToggle({allowed,map,tokens,selectedId,activeId,hoveredId,
  moveKeys=[],attackKeys=[],routeKeys=[],pendingHex=null,
- canIssueCommands=false,targetAction='attack',onHexClick,fallback}:{
+ canIssueCommands=false,targetAction='attack',contextLabel,onHexClick,fallback}:{
  allowed:boolean;map:VisualSquareMap;tokens:readonly VisualToken[];
  selectedId?:string|null;activeId?:string|null;hoveredId?:string|null;
  moveKeys?:readonly string[];attackKeys?:readonly string[];routeKeys?:readonly string[];
  pendingHex?:Hex|null;canIssueCommands?:boolean;targetAction?:'attack'|'ability';
+ contextLabel?:string;
  onHexClick:(cell:Hex)=>void;fallback:ReactNode;
 }){
  const [view3d,setView3d]=useState(false);
@@ -30,7 +31,8 @@ export function MiniatureBoardToggle({allowed,map,tokens,selectedId,activeId,hov
   {show?<MiniatureViewport map={map} tokens={tokens} selectedId={selectedId??null}
    activeId={activeId??null} hoveredId={hoveredId??null} moveKeys={moveKeys}
    attackKeys={attackKeys} routeKeys={routeKeys} pendingHex={pendingHex}
-   canIssueCommands={canIssueCommands} targetAction={targetAction} onHexClick={onHexClick}
+   canIssueCommands={canIssueCommands} targetAction={targetAction}
+   contextLabel={contextLabel} onHexClick={onHexClick}
    fallback={fallback} onFailure={()=>{setFailed(true);setView3d(false);}}/>:fallback}
  </>;
 }
