@@ -229,7 +229,7 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
     {!ready&&<div className="miniatures3d-status" role="status">
      <span>Preparando miniaturas 3D…</span>
      <Button variant="outline" size="sm" onClick={fail}>Usar mapa 2D agora</Button>
-    </div>
+    </div>}
     {palette&&<ClientOnly fallback={null}><SceneBoundary onFailure={fail} fallback={null}>
      <Suspense fallback={null}><Scene {...props} onHexClick={onCellClick}
       pendingAction={validPending} palette={palette} top={top} zoom={zoom}
