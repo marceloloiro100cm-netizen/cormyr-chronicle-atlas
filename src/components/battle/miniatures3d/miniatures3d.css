@@ -186,3 +186,15 @@
  .miniatures3d-viewport{height:clamp(220px,75svh,500px);}
  .miniatures3d-selected{max-height:125px;}
 }
+
+/* Simple narrated preflight outside any live combat controls. */
+.miniatures3d-preflight{
+ border-left:3px solid var(--mini-move,#77c68b);
+ margin:.5rem 0;padding:.55rem .75rem;
+ background:rgba(97,117,103,.10);font-size:13px;line-height:1.45;
+}
+.miniatures3d-preflight h3{font-size:15px;font-weight:700;margin:0 0 .35rem;}
+.miniatures3d-preflight p{margin:.4rem 0 0;}
+.miniatures3d-preflight-facts{display:flex;flex-wrap:wrap;gap:.3rem .7rem;}
+.miniatures3d-preflight-facts span{border:1px solid currentColor;
+ border-radius:4px;opacity:.85;padding:.15rem .4rem;}
