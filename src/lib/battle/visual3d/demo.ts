@@ -1,4 +1,5 @@
 import type {BattleMap} from '../domain/types';
+import {BATTLE_PROFILES} from '../domain/profiles-v2';
 import {CORMYR_MINIATURE_TYPES,classifyMiniature,type VisualToken} from './tokens';
 /** Artificial visual data. No engine imports, campaign IDs or official sources. */
 export function miniatureDemo():{map:BattleMap;tokens:VisualToken[]}{
@@ -20,7 +21,7 @@ export function miniatureCatalog():{map:BattleMap;tokens:VisualToken[]}{
  const tiles=original.tiles.map(tile=>({...tile,terrain:'plain' as const}));
  const map:BattleMap={...original,id:'military-art-gallery',label:'17 miniaturas militares',tiles};
  const tokens= CORMYR_MINIATURE_TYPES.map((kind,i)=>({
-  id:'demo-military-'+kind,name:kind.replace(/-/g,' '),
+  id:'demo-military-'+kind,name:BATTLE_PROFILES.find(p=>p.id===kind)?.name??kind,
   side:(i<9?'attacker':'defender') as VisualToken['side'],
   position:{q:1+(i%9),r:i<9?3:6},
   ...classifyMiniature(kind),count:i+1,
