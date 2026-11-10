@@ -124,11 +124,11 @@ function Ship({p,style='galleon'}:{p:MiniaturePalette;style?:'galleon'|'galley'}
  const galley=style==='galley';
  return <group>
   <mesh position={[0,.30,0]} rotation={[Math.PI/2,0,0]}
-   scale={[galley?.24:.28,.43,galley?.75:.70]}>
+   scale={[galley?0.24:0.28,.43,galley?0.75:0.70]}>
    <cylinderGeometry args={[1,1,1,8,1]}/>
    <meshStandardMaterial color={p.wood} flatShading/></mesh>
-  <Pole at={[0,galley?.65:.82,0]} color={p.ink} height={galley?.80:1.13} r={.025}/>
-  <mesh position={[.04,galley?.74:.88,0]} rotation={[0,.12,0]}>
+  <Pole at={[0,galley?0.65:0.82,0]} color={p.ink} height={galley?0.80:1.13} r={.025}/>
+  <mesh position={[.04,galley?0.74:0.88,0]} rotation={[0,.12,0]}>
    <planeGeometry args={galley?[.24,.32]:[.48,.67]}/>
    <meshStandardMaterial color={p.paper} side={2}/></mesh>
   <Block at={[0,.48,.03]} size={[.46,.07,.11]} color={p.gold}/>
