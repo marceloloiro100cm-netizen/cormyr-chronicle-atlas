@@ -46,7 +46,8 @@ export function gotVisualTokens(battle:Pick<WarBattle,'units'>):VisualToken[]{
   const art=classifyMiniature(unit.naval?'warships':unit.typeId);
   return {id:unit.id,side:unit.side,name:unit.name,position:{
    q:unit.position.x,r:unit.position.y},...art,
-   count:unit.health,metricLabel:'Saúde',naval:unit.naval};
+   count:unit.health,metricLabel:'Saúde',naval:unit.naval,
+   ...(unit.naval?{navalStyle:/\b(galley|galera)\b/i.test(unit.name)?'galley' as const:'galleon' as const}:{})};
  });
 }
 export function crzVisualMap(state:CrzBattleState):VisualSquareMap{
