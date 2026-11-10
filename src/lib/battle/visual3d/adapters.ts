@@ -34,7 +34,8 @@ export function gotVisualTokens(battle:Pick<WarBattle,'units'>):VisualToken[]{
  });
 }
 export function crzVisualMap(state:CrzBattleState):VisualSquareMap{
- return {grid:state.map.grid,width:state.map.width,height:state.map.height,
+ return {...(state.map.grid==='square'?{grid:'square' as const}:{}),
+  width:state.map.width,height:state.map.height,
   tiles:state.map.tiles.map(t=>({q:t.q,r:t.r,terrain:t.terrain}))};
 }
 /** Stable, explicit creature family classification for visual display only. */
