@@ -12,9 +12,15 @@ export function CameraRig({width,height,top,zoom,reset}:{width:number;height:num
   const extent=Math.max(width,height);
   camera.position.set(top?0:extent,top?extent*2:extent*1.4,top? .001:extent);
   camera.lookAt(0,0,0);
-  // Fit BOTH axes, including mobile portrait. No scene-size dependence on labels.
-  const span=top?Math.max(width,height):width+height;
-  ortho.zoom=Math.min(size.width,size.height)/(span+3)*zoom;
+  // Square maps are projected diagonally by the 45-degree isometric camera.
+  // Fit each visible axis separately; the previous min(width,height)/(width+height)
+  // formula left the board tiny in wide desktop viewports.
+  // These are renderer world units, NOT D&D/GOT movement metres.
+  const projectedWidth=top?width:(width+height)/Math.SQRT2;
+  const projectedHeight=top?height:(width+height)*.72/Math.SQRT2;
+  const fitWidth=size.width/(projectedWidth*1.14+1);
+  const fitHeight=size.height/(projectedHeight*1.14+1);
+  ortho.zoom=Math.max(5,Math.min(150,Math.min(fitWidth,fitHeight)*zoom));
   ortho.updateProjectionMatrix();
   controls.current?.target.set(0,0,0);controls.current?.update();invalidate();
  },[camera,size.width,size.height,width,height,top,zoom,reset,invalidate]);
