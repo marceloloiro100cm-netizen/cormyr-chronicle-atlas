@@ -43,7 +43,15 @@ export function gotVisualTokens(battle:Pick<WarBattle,'units'>):VisualToken[]{
   const art=classifyMiniature(unit.naval?'warships':unit.typeId);
   return {id:unit.id,side:unit.side,name:unit.name,position:{
    q:unit.position.x,r:unit.position.y},...art,
-   count:unit.health,metricLabel:'Saúde',naval:unit.naval};
+   count:unit.health,metricLabel:'Saúde',naval:unit.naval,
+   tactical:{
+    health:'Saúde '+unit.health+'/'+unit.maxHealth,
+    defense:'Defesa '+unit.defense,
+    morale:unit.condition==='organized'?'Organizada':
+     unit.condition==='disorganized'?'Desorganizada':unit.condition==='routed'?
+     'Em retirada':unit.condition,
+    attack:'Dano corpo a corpo '+unit.meleeDamage,
+   }};
  });
 }
 export function crzVisualMap(state:CrzBattleState):VisualSquareMap{
@@ -67,6 +75,12 @@ export function crzVisualTokens(state:CrzBattleState):VisualToken[]{
   const flying=Boolean(s.template.flags.flying);
   return {id:s.id,side:s.side,name:s.name,position:{...s.position},
    ...art,count:s.alive,metricLabel:'Vivos',
+   tactical:{
+    health:'PV '+s.hpPool,
+    defense:'CA '+s.acBase,
+    movement:'Deslocamento '+(s.movementHex*3)+' m',
+    morale:'Vivos '+s.alive+'/'+s.initialCount,
+   },
    footprintCells:footprintCells.map(p=>({q:p.q,r:p.r})),
    flying};
  });
