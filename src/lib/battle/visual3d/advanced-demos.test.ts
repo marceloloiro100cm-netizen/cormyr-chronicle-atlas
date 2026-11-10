@@ -75,6 +75,8 @@ describe('Miniaturas Lote 5 — catálogo modular e cenários visuais',()=>{
   expect(preview.map.grid).toBe('square');
   expect(preview.map.tiles).toHaveLength(165);
   expect(preview.tokens.filter(t=>t.naval)).toHaveLength(4);
+  expect(preview.tokens.filter(t=>t.navalStyle==='galley')).toHaveLength(2);
+  expect(preview.tokens.filter(t=>t.navalStyle==='galleon')).toHaveLength(2);
   expect(preview.tokens.every(t=>preview.map.tiles.some(c=>
    c.q===t.position.q&&c.r===t.position.r))).toBe(true);
   expect(preview.map.tiles.find(t=>t.q===7&&t.r===5)?.feature).toBe('island');
@@ -110,6 +112,7 @@ describe('Miniaturas Lote 5 — catálogo modular e cenários visuais',()=>{
   const tokens=gotVisualTokens({units});
   expect(tokens[0]?.kind).toBe('warships');
   expect(tokens[0]?.naval).toBe(true);
+  expect(tokens[0]?.navalStyle).toBe('galleon');
   expect(tokens[1]?.naval).toBe(false);
   expect(JSON.stringify(units)).toBe(before);
  });
