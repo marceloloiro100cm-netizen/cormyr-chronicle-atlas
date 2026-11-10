@@ -141,6 +141,18 @@ class RigidMiniatureChromiumAcceptance(unittest.TestCase):
         section.get_by_role("button", name="Centralizar câmera 3D").tap()
         self.assertTrue(section.get_by_role("button", name="Isométrica").is_visible())
 
+    def test_80_rigid_tokens_load_without_webgl_crash(self):
+        page = self.page()
+        section = page.locator("#miniatures-3d-load")
+        section.get_by_role("button", name="Testar 80 miniaturas").click()
+        section.locator('.miniatures3d[data-scene-ready="1"]').wait_for(timeout=30000)
+        self.assertEqual(section.locator(".miniatures3d").get_attribute("data-token-count"), "80")
+        canvas = section.locator(".miniatures3d-viewport canvas")
+        self.snapshot(canvas, "desktop-eighty-tokens.png")
+        self.assertIn("Apoio", section.locator(".miniatures3d-selected").inner_text())
+        section.get_by_role("button", name="Encerrar carga 3D").click()
+        self.assertEqual(section.locator(".miniatures3d-viewport canvas").count(), 0)
+
     def test_no_webgl_preserves_accessible_2d_fallback(self):
         page = self.page(deny_webgl=True)
         section = self.showcase(page)
