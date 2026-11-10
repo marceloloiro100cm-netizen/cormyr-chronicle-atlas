@@ -8,6 +8,24 @@ export function ScenicTile3D({terrain,p,occupied=false,road=false,bridge=false}:
 }){
  const isBridge=bridge||terrain==='bridge',isRoad=road||terrain==='road';
  return <group>
+  {/* Small shape markers remain visible even when terrain props are hidden under a base. */}
+  {['forest','marsh','hill','rock','mountain'].includes(terrain)&&
+   <group position={[-.34,.032,-.34]}>
+    {terrain==='forest'?<mesh rotation={[-Math.PI/2,0,0]} raycast={()=>{}}>
+     <coneGeometry args={[.085,.16,5]}/>
+     <meshBasicMaterial color={p.ink}/>
+    </mesh>:terrain==='marsh'?<mesh rotation={[-Math.PI/2,0,0]} raycast={()=>{}}>
+     <torusGeometry args={[.070,.017,4,8]}/>
+     <meshBasicMaterial color={p.paper}/>
+    </mesh>:terrain==='hill'||terrain==='mountain'?
+    <mesh position={[0,.08,0]} raycast={()=>{}}>
+     <coneGeometry args={[.075,.15,3]}/>
+     <meshBasicMaterial color={p.ink}/>
+    </mesh>:<mesh position={[0,.03,0]} raycast={()=>{}}>
+     <boxGeometry args={[.11,.06,.11]}/>
+     <meshBasicMaterial color={p.paper}/>
+    </mesh>}
+   </group>}
   {['water','coast','marsh'].includes(terrain)&&!occupied&&
    [-.23,.17].map((x,i)=><mesh key={i} position={[x,.012,-.15+i*.21]} rotation={[-Math.PI/2,0,0]}>
     <torusGeometry args={[.14,.012,4,12,Math.PI]}/>
