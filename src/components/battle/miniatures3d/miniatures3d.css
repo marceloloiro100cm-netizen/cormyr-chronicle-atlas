@@ -134,3 +134,55 @@
 @media(max-height:500px){
  .miniatures3d-viewport{height:clamp(240px,62svh,440px);}
 }
+
+/* UX-2/3: action notation is distinct from faction bases, and the 3D battlefield
+ * takes priority over long tactical sheets in portrait mode.
+ */
+.miniatures3d-context {
+ margin:.2rem 0;padding:.25rem .5rem;background:var(--mini-ink);
+ color:var(--mini-paper);font-size:12px;font-weight:700;
+}
+.miniatures3d-side-legend {display:flex;flex-wrap:wrap;gap:.35rem .85rem;
+ font-size:12px;color:var(--mini-paper);padding:.2rem .6rem;
+ background:var(--mini-ground);}
+.miniatures3d-extra-stats summary{cursor:pointer;color:var(--mini-paper);
+ min-height:32px;display:list-item;}
+.miniatures3d-extra-stats span{display:inline-block;margin:.2rem;}
+.miniatures3d-keyboard-nav{font-size:13px;color:var(--mini-paper);
+ background:var(--mini-ink);padding:.3rem .6rem;}
+.miniatures3d-keyboard-nav summary{cursor:pointer;min-height:32px;}
+.miniatures3d-keyboard-nav label{display:inline-flex;align-items:center;
+ gap:.4rem;margin:.3rem .5rem .3rem 0;}
+.miniatures3d-keyboard-nav select{
+ max-width:180px;min-height:44px;background:var(--mini-paper);
+ color:var(--mini-ink);border-radius:4px;padding:0 .4rem;
+}
+.miniatures3d-keyboard-nav button{min-height:44px;}
+.miniatures3d-keyboard-nav p{font-size:12px;margin:.25rem 0;}
+.miniatures3d-terrain-inspector ul{
+ margin:0;padding-left:1.25rem;flex-basis:100%;
+}
+.miniatures3d-perf-controls{display:flex;flex-wrap:wrap;align-items:center;
+ gap:.55rem;color:var(--mini-paper);font-size:12px;margin:.35rem 0;}
+.miniatures3d-perf-controls button{min-height:44px;}
+.miniatures3d-perf-controls output{font-variant-numeric:tabular-nums;}
+@media(max-width:640px){
+ .miniatures3d{display:flex;flex-direction:column;}
+ .miniatures3d-camera-controls{order:0;}
+ .miniatures3d-viewport{order:1;height:clamp(340px,69svh,760px);}
+ .miniatures3d-context{order:2;}
+ .miniatures3d-selected{order:3;max-height:190px;overflow-y:auto;}
+ .miniatures3d-action-confirm{order:4;position:sticky;bottom:0;z-index:5;}
+ .miniatures3d-status-line{order:5;}
+ .miniatures3d-side-legend{order:6;}
+ .miniatures3d-terrain-inspector{order:7;}
+ .miniatures3d-feedback{order:8;}
+ .miniatures3d-keyboard-nav{order:9;}
+ .miniatures3d-perf-controls{order:10;}
+ .miniatures3d-viewport canvas{touch-action:none;}
+ .miniatures3d-terrain-inspector ul{padding-left:1rem;}
+}
+@media(max-height:500px) and (max-width:960px){
+ .miniatures3d-viewport{height:clamp(220px,75svh,500px);}
+ .miniatures3d-selected{max-height:125px;}
+}
