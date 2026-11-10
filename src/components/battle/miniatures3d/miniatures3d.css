@@ -40,3 +40,9 @@
  .battle-module .miniatures3d-label small {display:none;}
  .battle-module .miniatures3d-label.is-selected small {display:block;max-width:78px;}
 }
+
+.battle-module .miniatures3d-selected {
+ margin:0 0 .45rem;padding:.3rem .55rem;border-left:3px solid var(--mini-selection);
+ background:var(--mini-ground);color:var(--mini-paper);font-size:14px;
+ line-height:1.35;white-space:normal;overflow-wrap:normal;
+}
