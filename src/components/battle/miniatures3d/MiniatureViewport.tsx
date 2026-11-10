@@ -42,6 +42,11 @@ export function MiniatureViewport({fallback,onFailure,...props}:Props){
  },[palette,ready,failed]);
  return <div ref={wrapper} className="miniatures3d" data-scene-ready={ready&&!failed?'1':undefined}
   data-token-count={props.tokens.length}>
+   {focusToken&&<p className="miniatures3d-selected" role="status">
+    <strong>{focusToken.name}</strong> · {focusToken.metricLabel??'Soldados'}:
+    {' '}{focusToken.count.toLocaleString('pt-BR')}
+    {focusToken.houseLabel?' · '+focusToken.houseLabel:''}
+   </p>}
   {failed?<><p role="status">3D indisponível neste dispositivo. Mapa 2D preservado.</p>{fallback}</>:<>
    <div className="miniatures3d-toolbar" role="group" aria-label="Câmera do mapa 3D">
     <Button variant="outline" aria-pressed={!top} onClick={()=>setTop(false)}>Isométrica</Button>
@@ -50,11 +55,6 @@ export function MiniatureViewport({fallback,onFailure,...props}:Props){
     <Button variant="outline" size="icon" title="Ampliar zoom" aria-label="Ampliar zoom 3D" disabled={zoom>=2.4} onClick={()=>setZoom(v=>Math.min(2.4,v+.2))}><Plus/></Button>
     <Button variant="outline" size="icon" title="Centralizar câmera" aria-label="Centralizar câmera 3D" onClick={()=>{setZoom(1);setTop(false);setReset(v=>v+1);}}><RotateCcw/></Button>
    </div>
-   {focusToken&&<p className="miniatures3d-selected" role="status">
-    <strong>{focusToken.name}</strong> · {focusToken.metricLabel??'Soldados'}:
-    {' '}{focusToken.count.toLocaleString('pt-BR')}
-    {focusToken.houseLabel?' · '+focusToken.houseLabel:''}
-   </p>}
    <p className="miniatures3d-sr-only">Para navegação pelo teclado e leitores de tela, use Mapa 2D. No 3D, arraste para percorrer o tabuleiro.</p>
    <div className="miniatures3d-viewport" aria-label="Tabuleiro quadrado com miniaturas 3D">
     {!ready&&<p role="status" className="miniatures3d-status">Preparando miniaturas…</p>}
