@@ -14,7 +14,7 @@ export type SceneProps={
  activeId?:string|null;hoveredId?:string|null;moveKeys?:readonly string[];
  attackKeys?:readonly string[];onHexClick?:(hex:Hex)=>void;
  palette:MiniaturePalette;top:boolean;zoom:number;reset:number;
- reducedMotion:boolean;onReady:()=>void;onFailure:()=>void;
+ reducedMotion:boolean;forceDetailed?:boolean;onReady:()=>void;onFailure:()=>void;
 };
 function Ready({onReady}:{onReady:()=>void}){
  const done=useRef(false);
@@ -97,7 +97,7 @@ function Field(props:SceneProps){
  const moves=useMemo(()=>new Set(moveKeys),[moveKeys]);
  const occupied=useMemo(()=>new Set(tokens.flatMap(t=>
   (t.footprintCells?.length?t.footprintCells:[t.position]).map(hexKey))),[tokens]);
- const compact=tokens.length>24;
+ const compact=tokens.length>24&&!props.forceDetailed;
  const selectedFootprint=useMemo(()=>new Set(tokens.filter(t=>
   t.id===props.selectedId||t.id===props.activeId).flatMap(t=>
   (t.footprintCells?.length?t.footprintCells:[t.position]).map(hexKey))),
