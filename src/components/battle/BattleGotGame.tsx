@@ -1375,6 +1375,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      <p>Clima: {battle.weather} · Visibilidade: {battle.visibility} · Formações avançadas: {battle.advancedFormations?'sim':'não'}</p>
      <p className="battle-note">Terreno do treino: terreno selecionado é destacado no mapa.</p>
      <MiniatureBoardToggle allowed={!playerSandbox&&miniaturesEnabled}
+       contextLabel={'Rodada '+battle.round+' · '+SIDE[battle.turn]+' · '+battle.phase}
       map={gotVisualMap(battle)} tokens={gotVisualTokens(battle)}
       selectedId={selectedUnit?.id??null} activeId={selectedUnit?.id??null}
       hoveredId={selectedTarget?.id??null}
