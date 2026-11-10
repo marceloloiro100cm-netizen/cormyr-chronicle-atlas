@@ -35,3 +35,21 @@ export function positionWarLabUnit(
  positionedWarLabDeployments(extraPerSide,result,width,height);
  return result;
 }
+
+/** Alternância opcional apenas na preparação. As posições padrão permanecem válidas
+ * até que o Narrador as substitua; nunca muda regras, iniciativa ou persistência.
+ * Retorna null quando todas as tropas já foram posicionadas.
+ */
+export function nextWarLabDeploymentSide(
+ extraPerSide:number,placements:Readonly<Record<string,WarPosition>>,
+ width=12,height=7,
+):'attacker'|'defender'|null{
+ const units=modelWarLabDeployments(extraPerSide,width,height);
+ const missing=(side:'attacker'|'defender')=>units.filter(u=>u.side===side&&
+  placements[u.id]===undefined).length;
+ const a=missing('attacker'),d=missing('defender');
+ if(!a&&!d)return null;
+ const placedA=units.filter(u=>u.side==='attacker'&&placements[u.id]!==undefined).length;
+ const placedD=units.filter(u=>u.side==='defender'&&placements[u.id]!==undefined).length;
+ return a>0&&(placedA<=placedD||!d)?'attacker':'defender';
+}
