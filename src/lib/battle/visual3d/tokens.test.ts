@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {miniatureDemo} from './demo';
-import {canUseMiniatures,classifyMiniature,squareWorldPosition,visualTokens,type VisualStack} from './tokens';
+import {CORMYR_MINIATURE_TYPES,canUseMiniatures,classifyMiniature,squareWorldPosition,visualTokens,type VisualStack} from './tokens';
 import {BATTLE_PROFILES} from '../domain/profiles-v2';
 import {BATTLE_PLAYERS_ENABLED} from '../feature-flag';
 
@@ -16,8 +16,11 @@ describe('Miniaturas: contrato visual puro e acesso',()=>{
   expect(BATTLE_PROFILES.some(p=>String(p.id)==='goblin')).toBe(false);
   const rows=BATTLE_PROFILES.map(p=>({...stack,id:p.id,primaryTypeId:p.id}));
   expect(visualTokens(map,rows)).toHaveLength(17);
-  expect(classifyMiniature('warships')).toEqual({kind:'infantry',fallback:true});
-  expect(classifyMiniature('goblin')).toEqual({kind:'infantry',fallback:true});
+  expect(CORMYR_MINIATURE_TYPES).toHaveLength(17);
+  expect(new Set(CORMYR_MINIATURE_TYPES).size).toBe(17);
+  expect(CORMYR_MINIATURE_TYPES.every(type=>!classifyMiniature(type).fallback)).toBe(true);
+  expect(classifyMiniature('warships')).toEqual({kind:'warships',fallback:false});
+  expect(classifyMiniature('goblin')).toEqual({kind:'generic',fallback:true});
  });
  it('mantém q/r e centro no mapa 11×9',()=>{
   expect(squareWorldPosition(map,{q:0,r:0})).toEqual([-5,0,-4]);
