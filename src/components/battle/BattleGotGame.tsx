@@ -12,7 +12,7 @@ import {BattleSquareLegend} from './BattleSquareLegend';
 import {MiniatureBoardToggle} from './miniatures3d/MiniatureBoardToggle';
 import {MiniaturePreparationSummary} from './miniatures3d/MiniaturePreparationSummary';
 import {gotVisualMap,gotVisualTokens} from '@/lib/battle/visual3d/adapters';
-import {createWarBattle,issueWarOrder,issueWarPincer,advanceWarRound,warUnitSummary,previewWarMovement,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
+import {createWarBattle,issueWarOrder,issueWarPincer,advanceWarRound,warUnitSummary,previewWarMovement,previewWarOrderDifficulty,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
 import {beginPersonalInitiative,personalTurnHeroId,delayPersonalTurn} from '@/lib/battle/got/personal-initiative';
 import {resolvePendingPersonalDamage} from '@/lib/battle/got/personal-injuries';
@@ -275,6 +275,12 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   !['destroyed','escaped','surrendered'].includes(u.condition))??[];
  const selectedTarget=enemy.find(u=>u.id===target)??enemy[0];
  const legalKind:WarOrderKind=selectedUnit?.condition==='routed'?'revive':kind;
+ const selectedHero=battle?.heroes.find(h=>h.id===heroId)??battle?.heroes.find(h=>h.active);
+ const orderPreview=battle?.phase==='orders'&&selectedUnit?
+  previewWarOrderDifficulty(battle,selectedUnit,{
+   kind:legalKind,
+   ...(legalKind==='formation'?{formation}:{}),
+  }):null;
  const order=()=>{
   if(!battle||!commander||!selectedUnit){setError('Selecione um comandante e uma unidade.');return;}
   try{
@@ -1318,6 +1324,11 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
         <option value="agility">Agilidade</option>
        </select>
       </label>}
+      {heroAction==='join'&&<p className="battle-note" role="status">
+       {selectedHero?.role!=='hero'?
+        'Comandante ativo não pode entrar em uma unidade. Primeiro, use Abdicar do comando, se houver sucessor.' :
+        'Entrar na unidade encerra as ações individuais nesta fase. A unidade recebe −3 em Disciplina e +1D em Luta/Pontaria.'}
+      </p>}
       {['join','rally','revive'].includes(heroAction)&&<label>Unidade aliada
        <select value={heroUnitId} onChange={e=>setHeroUnitId(e.target.value)}>
         <option value="">Escolha uma unidade</option>
@@ -1366,7 +1377,8 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
         disabled={Boolean(battle.pendingPersonalDamage)||!personalTurnHeroId(battle)}>
         Atrasar turno pessoal
        </Button>}
-      <Button onClick={heroDo} disabled={Boolean(battle.pendingPersonalDamage)}>Executar ação individual</Button>
+      <Button onClick={heroDo} disabled={Boolean(battle.pendingPersonalDamage)||
+       (heroAction==='join'&&selectedHero?.role!=='hero')}>Executar ação individual</Button>
       <Button variant="outline" onClick={heroFinish} disabled={Boolean(battle.pendingPersonalDamage)}>Concluir cinco rodadas · avançar</Button>
      </div>
     </section>}
@@ -1519,6 +1531,12 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
          .map(([id,label])=><option key={id} value={id}>{label}</option>)}
        </select>
       </label>
+      {orderPreview&&<section className="got-order-preview" aria-label="Prévia do teste da ordem" role="status">
+       <strong>Guerra: {commander.warfare}D · Dificuldade {orderPreview.difficulty}</strong>
+       <span>{orderPreview.parts.map(part=>
+        part.label+': '+(part.value>0?'+':'')+part.value).join(' · ')}</span>
+       <small>Prévia da regra real. Nenhum dado rolado e nenhuma ordem consumida.</small>
+      </section>}
       {legalKind==='ready'&&<div className="got-config-grid">
        <label>Disparar prontidão quando
         <select aria-label="Condição da prontidão" value={readyTrigger}
