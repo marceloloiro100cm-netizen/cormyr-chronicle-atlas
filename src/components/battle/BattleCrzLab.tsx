@@ -3,6 +3,8 @@ import {Button} from '@/components/ui/button';
 import {militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import {SQUARE_TERRAIN_PRESENTATION,SQUARE_SIDE_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
 import {BattleSquareLegend} from './BattleSquareLegend';
+import {MiniatureBoardToggle} from './miniatures3d/MiniatureBoardToggle';
+import {crzVisualMap,crzVisualTokens} from '@/lib/battle/visual3d/adapters';
 import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleExpandedView} from './BattleExpandedView';
 import {BattleTurnCue} from './BattleTurnCue';
@@ -269,6 +271,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
   grid:'square',preset:'CRZ-5E',resolution:dndMode?'rolled':'expected'});
  const [session,setSession]=useState<CrzReplaySession|null>(null);
  const [expanded,setExpanded]=useState(false);
+ const [miniaturesEnabled,setMiniaturesEnabled]=useState(false);
  const [replayStep,setReplayStep]=useState<number|null>(null);
  const [panel,setPanel]=useState<SidePanel>('actions');
  const [hoveredId,setHoveredId]=useState<string|null>(null);
@@ -921,6 +924,11 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
     </div>
     {!dndMode&&<p className="battle-note">General Tillet · nível {generalProfile.level} · {generalProfile.xp} XP
      de treinamento local. O progresso não altera a Corte nem o exército.</p>}
+    {dndMode&&!playerSandbox&&<label className="battle-note">
+     <input type="checkbox" checked={miniaturesEnabled}
+      onChange={e=>setMiniaturesEnabled(e.target.checked)}/>
+     Habilitar miniaturas 3D nesta sessão (teste, Narrador)
+    </label>}
     <Button onClick={begin}>{dndMode?'Iniciar batalha D&D · d20':'Iniciar treinamento CRZ'}</Button>
     <p className="battle-note">{dndMode?
      'D&D utiliza rolagens de d20, CA e PV por criatura, com pilhas que somam PV e baixas. Iniciativa é rolada uma vez por encontro. Não há compras ou baixas oficiais.':
@@ -1145,11 +1153,22 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
       <span className="crz-legend-item"><i className="crz-legend-green"/>Movimento</span>
       <span className="crz-legend-item"><i className="crz-legend-red"/>Ataque legal</span>
      </div>
-     <CrzBoard state={frame} selectedId={selectedId}
-      hoveredId={hoveredId}
-      moves={canAct&&selectedId===active?.id?moves.map(c=>c.to):[]}
-      attacks={canAct&&selectedId===active?.id?attacks.map(c=>c.targetId):[]}
-      objectives={objectives} onTile={clickHex}/>
+     <MiniatureBoardToggle allowed={dndMode&&!playerSandbox&&miniaturesEnabled}
+      map={crzVisualMap(frame)} tokens={crzVisualTokens(frame)}
+      selectedId={selectedId} activeId={frame.activeStackId} hoveredId={hoveredId}
+      moveKeys={canAct&&selectedId===active?.id?moves.map(c=>crzHexKey(c.to)):[]}
+      attackKeys={canAct&&selectedId===active?.id?attacks.map(c=>c.targetId):[]}
+      onHexClick={hex=>{
+       const occupied=frame.stacks.find(unit=>crzCapable(unit)&&
+        (isDndV3(frame)?crzFootprintCells(frame.map,unit.position,unit.size):
+         [unit.position]).some(cell=>crzHexKey(cell)===crzHexKey(hex)));
+       clickHex(occupied?.position??hex);
+      }}
+      fallback={<CrzBoard state={frame} selectedId={selectedId}
+       hoveredId={hoveredId}
+       moves={canAct&&selectedId===active?.id?moves.map(c=>c.to):[]}
+       attacks={canAct&&selectedId===active?.id?attacks.map(c=>c.targetId):[]}
+       objectives={objectives} onTile={clickHex}/>}/>
      {inspected&&<div className="crz-inspect-line">
       <strong>{inspected.name}</strong>
       <span>{teamName(inspected.side)} · {inspected.alive}/{inspected.initialCount} vivos</span>
