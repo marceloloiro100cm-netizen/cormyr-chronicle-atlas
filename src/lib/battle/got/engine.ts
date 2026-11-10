@@ -3,6 +3,7 @@ import type {WarBattle,WarCommander,WarCondition,WarEvent,WarOrder,WarOrderResul
 import {terrainAt,terrainEffect,movementSlow,visibilityPenalty,weatherAttackModifier,terrainHighGround,terrainCoverBonus} from './terrain';
 import type {WarTerrainTile,WarWeather,WarVisibility} from './terrain';
 import {WAR_FORMATIONS,formationAllowed,formationMovement,angleAttackBonus,attackAngle} from './formations';
+import {warShieldWallAllyCover} from './shield-cover';
 import {WAR_SIEGE_CATALOG,warSiegeDamage,warSiegeReloadRemaining,warSiegeTargetInRange} from './siege';
 import type {WarSiegeEngine} from './siege';
 import {fortForUnit,fortDefense,validateWarForts,sabotageFortification,damageWarFortification} from './fortifications';
@@ -485,6 +486,7 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  const fortBonus=fort?fortDefense(fort):0;
  const probeBonus=target.probeDefenseRound===battle.round?2:0;
  const defense=(target.defendRoll??target.defense)+cover+formationDefense+
+  warShieldWallAllyCover(battle,attacker,target,ranged)+
   fortBonus+probeBonus+warFieldDefenseBonus(target,ranged);
  const adjustedRoll=Math.max(0,roll.total+weatherAttackModifier(battle.weather));
  const degrees=degreesOfSuccess(adjustedRoll,defense);
