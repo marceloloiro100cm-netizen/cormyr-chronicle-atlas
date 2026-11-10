@@ -9,6 +9,7 @@ import {
  type VisualPendingAction,
 } from '@/lib/battle/visual3d/interaction';
 import {readMiniaturePalette,type MiniaturePalette} from './palette';
+import {inspectVisualCell} from '@/lib/battle/visual3d/terrain-inspection';
 import './miniatures3d.css';
 
 const Scene=lazy(()=>import('./MiniatureScene'));
@@ -38,6 +39,7 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
  const [focus,setFocus]=useState<CameraFocus|null>(null);
  const [pending,setPending]=useState<VisualPendingAction|null>(null);
  const [message,setMessage]=useState('');
+ const [inspected,setInspected]=useState<{q:number;r:number}|null>(null);
  const activeToken=props.tokens.find(t=>t.id===props.activeId);
  const focusToken=props.tokens.find(t=>t.id===(props.selectedId??props.activeId));
  const actorId=props.activeId??null;
@@ -67,6 +69,7 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
   props.selectedId,props.activeId,moveSignature,attackSignature,canIssueCommands,targetAction,
  ]);
  const onCellClick=(hex:{q:number;r:number})=>{
+  setInspected({q:hex.q,r:hex.r});
   const candidate=proposeVisualAction({
    hex,tokens:props.tokens,moveKeys,attackKeys,
    actorId,actionEnabled:canIssueCommands,
@@ -99,6 +102,7 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
   setFocus(old=>({x:point.x,z:point.z,nonce:(old?.nonce??0)+1}));
   setMessage('Câmera focada em '+t.name+'.');
  };
+ const inspection=inspected?inspectVisualCell(props.map,props.tokens,inspected):null;
  const allStats=focusToken?.tactical?
   Object.values(focusToken.tactical).filter((entry):entry is string=>
    typeof entry==='string'&&entry.length>0):[];
@@ -118,7 +122,7 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
     </div>}
    </section>}
   {failed?<><p role="status">3D indisponível neste dispositivo. Mapa 2D preservado.</p>{fallback}</>:<>
-   <div className="miniatures3d-toolbar" role="group" aria-label="Câmera do mapa 3D">
+   <div className="miniatures3d-toolbar miniatures3d-camera-controls" role="group" aria-label="Câmera do mapa 3D">
     <Button variant="outline" aria-pressed={!top} onClick={()=>setTop(false)}>Isométrica</Button>
     <Button variant="outline" aria-pressed={top} onClick={()=>setTop(true)}>Superior</Button>
     <Button variant="outline" size="icon" title="Reduzir zoom" aria-label="Reduzir zoom 3D"
@@ -156,6 +160,14 @@ export function MiniatureViewport({fallback,onFailure,canIssueCommands=false,
      setPending(null);setMessage('Comando cancelado.');
     }}>Cancelar</Button>
    </div>}
+   {inspection&&<section className="miniatures3d-terrain-inspector"
+    aria-label="Inspeção do terreno" role="status">
+    <strong>Quadrado {inspection.coordinates} · {inspection.terrain}</strong>
+    {inspection.features.length>0&&<span>{inspection.features.join(' · ')}</span>}
+    {inspection.occupant&&<span>Unidade: {inspection.occupant} ({inspection.side})</span>}
+    <Button variant="ghost" size="sm" aria-label="Fechar inspeção do terreno"
+     onClick={()=>setInspected(null)}>Fechar</Button>
+   </section>}
    {message&&<p className="miniatures3d-feedback" role="status">{message}</p>}
    <p className="miniatures3d-sr-only">Para navegação pelo teclado e leitores de tela, use Mapa 2D. No 3D, arraste para percorrer o tabuleiro. Movimentos e ataques legais exigem confirmação.</p>
    <div className="miniatures3d-viewport" aria-label="Tabuleiro quadrado com miniaturas 3D">
