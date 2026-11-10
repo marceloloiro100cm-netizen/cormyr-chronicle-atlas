@@ -40,7 +40,8 @@ export function MiniatureDemo({narrator}:{narrator:boolean}){
  const display=view==='four'?demo:view==='military'?miniatureCatalog():
   view==='stress40'?miniatureStressDemo(40):view==='stress80'?miniatureStressDemo(80):scenicDemo(view);
  const legacy=view==='four'||view==='military'||view==='stress40'||view==='stress80';
- const legacyMap=display.map;
+ const legacyMap=view==='four'?demo.map:view==='stress40'?miniatureStressDemo(40).map:
+  view==='stress80'?miniatureStressDemo(80).map:miniatureCatalog().map;
  if(!narrator)return null;
  const selectView=(next:GalleryView)=>{
   setView(next);
