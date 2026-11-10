@@ -10,6 +10,7 @@ import {MilitaryUnitSymbol,militaryUnitSymbolSrc} from '@/components/house/milit
 import {SQUARE_TERRAIN_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
 import {BattleSquareLegend} from './BattleSquareLegend';
 import {MiniatureBoardToggle} from './miniatures3d/MiniatureBoardToggle';
+import {MiniaturePreparationSummary} from './miniatures3d/MiniaturePreparationSummary';
 import {gotVisualMap,gotVisualTokens} from '@/lib/battle/visual3d/adapters';
 import {createWarBattle,issueWarOrder,issueWarPincer,advanceWarRound,warUnitSummary,previewWarMovement,fireWarSiegeVolley,skipWarSiege,completeWarHeroPhase,executeWarHeroAttackUnit} from '@/lib/battle/got/engine';
 import {executeWarHeroAction,makeModelWarHero} from '@/lib/battle/got/heroes';
@@ -664,6 +665,11 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    {localSaveStatus&&<p role="status">{localSaveStatus}</p>}
   </details>
   {!battle?<section className="battle-surface got-config" aria-label="Preparar campo de guerra">
+    <MiniaturePreparationSummary mode="GOT" width={mapSize.width} height={mapSize.height}
+     attackers={preparedDeployments.filter(u=>u.side==='attacker').length}
+     defenders={preparedDeployments.filter(u=>u.side==='defender').length}
+     climate={weather+' · '+visibility}
+     manualDeployment={Object.keys(deploymentPositions).length>0}/>
    {!playerSandbox&&<label className="got-check"><input type="checkbox"
     checked={miniaturesEnabled} onChange={e=>setMiniaturesEnabled(e.target.checked)}/>
     Habilitar miniaturas 3D nesta sessão (teste, Narrador)</label>}
