@@ -6,6 +6,7 @@ import {hexKey} from '@/lib/battle/geometry/hex';
 import {squareWorldPosition,type VisualToken,type VisualSquareMap} from '@/lib/battle/visual3d/tokens';
 import {RigidModel} from './RigidModels';
 import {CameraRig} from './CameraRig';
+import {ScenicTile3D} from './ScenicTile3D';
 import type {MiniaturePalette} from './palette';
 
 export type SceneProps={
@@ -97,6 +98,10 @@ function Field(props:SceneProps){
  const occupied=useMemo(()=>new Set(tokens.flatMap(t=>
   (t.footprintCells?.length?t.footprintCells:[t.position]).map(hexKey))),[tokens]);
  const compact=tokens.length>24;
+ const selectedFootprint=useMemo(()=>new Set(tokens.filter(t=>
+  t.id===props.selectedId||t.id===props.activeId).flatMap(t=>
+  (t.footprintCells?.length?t.footprintCells:[t.position]).map(hexKey))),
+  [tokens,props.selectedId,props.activeId]);
  const attacks=useMemo(()=>new Set(attackKeys),[attackKeys]);
  return <>
   <color attach="background" args={[p.ground]}/>
@@ -118,18 +123,13 @@ function Field(props:SceneProps){
     {moves.has(key)&&<mesh position={[0,.004,0]} rotation={[-Math.PI/2,0,0]}>
      <planeGeometry args={[.87,.87]}/>
      <meshBasicMaterial color={p.move} transparent opacity={.62}/></mesh>}
-    {!unit&&tile.terrain==='forest'&&[-.21,.21].map(x=>
-     <group key={x} position={[x,0,-.12]}>
-      <mesh position={[0,.07,0]}><cylinderGeometry args={[.03,.04,.16,5]}/>
-       <meshStandardMaterial color={p.wood}/></mesh>
-      <mesh position={[0,.24,0]}><coneGeometry args={[.17,.32,5]}/>
-       <meshStandardMaterial color={p.forest} flatShading/></mesh>
-     </group>)}
-    {!unit&&['rock','hill','settlement'].includes(tile.terrain)&&
-     <mesh position={[.10,.08,-.12]} scale={[.30,.13,.27]}>
-      <dodecahedronGeometry args={[1,0]}/>
-      <meshStandardMaterial color={tile.terrain==='settlement'?p.wood:p[tile.terrain]} flatShading/>
-     </mesh>}
+    {selectedFootprint.has(key)&&<mesh position={[0,.014,0]}
+      rotation={[-Math.PI/2,0,0]}>
+      <planeGeometry args={[.91,.91]}/>
+      <meshBasicMaterial color={p.selection} transparent opacity={.28}
+       depthWrite={false}/></mesh>}
+    <ScenicTile3D terrain={tile.terrain} p={p} occupied={unit}
+     road={Boolean(tile.road)} bridge={Boolean(tile.bridge)}/>
     </group>;
   })}</group>
   {tokens.map(token=><Token key={token.id} token={token} map={map} p={p}
