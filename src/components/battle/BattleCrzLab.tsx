@@ -4,6 +4,7 @@ import {militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
 import {SQUARE_TERRAIN_PRESENTATION,SQUARE_SIDE_PRESENTATION} from '@/lib/battle/geometry/square-presentation';
 import {BattleSquareLegend} from './BattleSquareLegend';
 import {MiniatureBoardToggle} from './miniatures3d/MiniatureBoardToggle';
+import {MiniaturePreparationSummary} from './miniatures3d/MiniaturePreparationSummary';
 import {crzVisualMap,crzVisualTokens} from '@/lib/battle/visual3d/adapters';
 import {parseSharedSquareMap,sharedFromCrzMap,sharedToCrzMap,serializeSharedSquareMap} from '@/lib/battle/geometry/shared-square-map';
 import {BattleExpandedView} from './BattleExpandedView';
@@ -642,6 +643,10 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
    {message&&<p className="crz-status" role="status">{message}</p>}
    {savedPanel}
    <section className="battle-surface" aria-label="Preparar treino CRZ">
+     <MiniaturePreparationSummary mode={dndMode?'D&D':'Adaptado'}
+      width={options.sharedMap?.width} height={options.sharedMap?.height}
+      attackers={dndMode?dndRoster.filter(u=>u.side==='attacker').length:2}
+      defenders={dndMode?dndRoster.filter(u=>u.side==='defender').length:2}/>
     {dndMode&&<div className="battle-simple-launch" aria-label="Início rápido D&D">
      <h3>Batalha rápida</h3>
      <p>{dndRoster.filter(x=>x.side==='attacker').length} grupos atacantes ×
