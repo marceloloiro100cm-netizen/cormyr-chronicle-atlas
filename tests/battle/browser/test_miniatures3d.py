@@ -95,6 +95,17 @@ class RigidMiniatureChromiumAcceptance(unittest.TestCase):
         self.assertLessEqual(section.locator(".miniatures3d-selected").bounding_box()["height"], 65)
         base_hash, colors = self.snapshot(canvas, "desktop-four-isometric.png")
         self.assertGreater(colors, 25)
+        # Detect regression where the isometric board uses only a tiny patch of desktop space.
+        with Image.open(OUTPUT / "desktop-four-isometric.png") as screenshot:
+            rgb = screenshot.convert("RGB")
+            w, h = rgb.size
+            lit = [(x, y) for y in range(0, h, 6) for x in range(0, w, 6)
+                   if sum(rgb.getpixel((x, y))) > 400]
+            self.assertGreater(len(lit), 50)
+            width_fraction = (max(x for x, _ in lit) - min(x for x, _ in lit)) / w
+            height_fraction = (max(y for _, y in lit) - min(y for _, y in lit)) / h
+            self.assertGreaterEqual(width_fraction, .38, width_fraction)
+            self.assertGreaterEqual(height_fraction, .60, height_fraction)
 
         section.get_by_role("button", name="Superior").click()
         page.wait_for_timeout(500)
