@@ -1377,7 +1377,10 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      <MiniatureBoardToggle allowed={!playerSandbox&&miniaturesEnabled}
       map={gotVisualMap(battle)} tokens={gotVisualTokens(battle)}
       selectedId={selectedUnit?.id??null} activeId={selectedUnit?.id??null}
-      attackKeys={selectedTarget?[selectedTarget.id]:[]}
+      hoveredId={selectedTarget?.id??null}
+      routeKeys={Array.from(pathSquares).map(key=>key.replace(':',','))}
+      pendingHex={{q:coord.x,r:coord.y}}
+      canIssueCommands={false}
       onHexClick={h=>selectMapCell(h.q,h.r)}
       fallback={<div className="got-map" style={{gridTemplateColumns:'repeat('+battle.width+',minmax(0,1fr))'}}>
       {Array.from({length:battle.width*battle.height},(_,i)=>{
