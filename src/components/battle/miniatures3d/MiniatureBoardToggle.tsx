@@ -1,4 +1,4 @@
-import {useState,type ReactNode} from 'react';
+import {useEffect,useState,type ReactNode} from 'react';
 import {Button} from '@/components/ui/button';
 import type {Hex} from '@/lib/battle/domain/types';
 import type {VisualSquareMap,VisualToken} from '@/lib/battle/visual3d/tokens';
@@ -16,6 +16,8 @@ export function MiniatureBoardToggle({allowed,map,tokens,selectedId,activeId,hov
 }){
  const [view3d,setView3d]=useState(false);
  const [failed,setFailed]=useState(false);
+ // A permission revocation must not leave the 3D view armed for a later session.
+ useEffect(()=>{if(!allowed)setView3d(false);},[allowed]);
  const show=allowed&&map.grid==='square'&&view3d&&!failed;
  return <>
   {allowed&&map.grid==='square'&&<div className="miniatures3d-toolbar" role="group"
