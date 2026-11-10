@@ -21,6 +21,8 @@
 - **Exceção ao alterar de quatro para 17 tokens:** o Chromium registrou `removeChild: The node to be removed is not a child of this node`, associada aos portais de rótulos HTML. Substituídos por `CountSprite`, um billboard numérico renderizado como textura de canvas dentro de Three.js. Não há mais portais HTML por peça. O painel selecionado permanece fora do canvas.
 - **Campos do catálogo em inglês:** galeria usa agora nomes de `BATTLE_PROFILES` em português, sem duplicar etiquetas ou inventar tipos.
 - **Carga gráfica:** cena de 80 tokens fictícios exercita a via de geometria compacta já implementada. Não equivale a uma medição de FPS; somente garante renderização, inicialização e desmontagem no runner por software.
+- **Tabuleiro pequeno em desktop:** a captura isométrica deixava muito espaço vazio. A câmera ortográfica passou a ajustar a projeção aos dois eixos do viewport; um teste mede a ocupação mínima visual do mapa na captura.
+- **Instrução assistiva visível no harness:** o CSS de teste não inclui todos os utilitários Tailwind. A orientação para leitores de tela recebe classe visualmente oculta independente, com teste de regressão móvel.
 
 ## Critérios obrigatórios para liberar homologação
 
