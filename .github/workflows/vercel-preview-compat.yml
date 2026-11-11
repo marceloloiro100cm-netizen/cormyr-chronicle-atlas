@@ -1,0 +1,41 @@
+name: Vercel Preview Compatibility (no deploy)
+on:
+  pull_request:
+    paths:
+      - 'vite.config.ts'
+      - 'vercel.json'
+      - '.github/workflows/vercel-preview-compat.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview-build:
+    name: TanStack Start / Nitro Vercel build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CORMYR_VERCEL_PREVIEW: '1'
+      NITRO_PRESET: vercel
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.3'
+      - name: Locked install
+        run: bun install --frozen-lockfile
+      - name: TypeScript
+        run: bunx tsc --noEmit
+      - name: Compile Vercel adapter
+        run: bun run build
+      - name: Verify Vercel build output
+        run: |
+          test -f .vercel/output/config.json
+          test -d .vercel/output/functions
+          echo "Vercel Build Output API artifact generated (not deployed)"
