@@ -11,8 +11,10 @@ import {BATTLE_V3_LIVE_ENABLED} from '@/lib/battle/feature-flag';
 import {listLiveV3Matches} from '@/lib/battle/v3/live.functions';
 import {BattleV3LiveArena} from './BattleV3Live';
 import type {V3ScenarioOptions} from '@/lib/battle/v3/engine';
+import './battle.css';
 import './battle-legibility.css';
 import './battle-ui-v4.css';
+import './battle-cleanup.css';
 import './battle-ruleset-selector.css';
 import type {CommanderId} from '@/lib/battle/v3/commanders';
 const PlayerGotGame=lazy(()=>import('./BattleGotGame').then(m=>({default:m.BattleGotGame})));
@@ -50,12 +52,16 @@ export function BattleV3PlayerEntry({houseId}:{houseId:string}){
  const [selected,setSelected]=useState<BattleV3Invitation|null>(null);
  const [selectedLive,setSelectedLive]=useState<string|null>(null);
  if(mode==='training')return <BattleV3Game onBack={()=>setMode('choose')}/>;
- if(mode==='got-training')return <Suspense fallback={<p role="status">Carregando Game of Thrones…</p>}>
-  <PlayerGotGame playerSandbox onBack={()=>setMode('choose')}/>
- </Suspense>;
- if(mode==='dnd-training')return <Suspense fallback={<p role="status">Carregando D&D simplificado…</p>}>
-  <PlayerDndGame mode="dnd" playerSandbox onBack={()=>setMode('choose')}/>
- </Suspense>;
+ if(mode==='got-training')return <main className="battle-module" aria-label="Simulação Game of Thrones do jogador">
+  <Suspense fallback={<p role="status">Carregando Game of Thrones…</p>}>
+   <PlayerGotGame playerSandbox onBack={()=>setMode('choose')}/>
+  </Suspense>
+ </main>;
+ if(mode==='dnd-training')return <main className="battle-module" aria-label="Simulação D&D do jogador">
+  <Suspense fallback={<p role="status">Carregando D&D simplificado…</p>}>
+   <PlayerDndGame mode="dnd" playerSandbox onBack={()=>setMode('choose')}/>
+  </Suspense>
+ </main>;
  if(mode==='live-playing'&&selectedLive)return <BattleV3LiveArena id={selectedLive}
   onBack={()=>{setSelectedLive(null);setMode('choose');}}/>;
  if(mode==='playing'&&selected)return <BattleV3Game key={selected.id}

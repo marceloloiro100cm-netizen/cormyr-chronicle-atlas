@@ -3,8 +3,10 @@ import {Button} from '@/components/ui/button';
 import {BattleRulesetSelector} from './BattleRulesetSelector';
 import {BattleV3Game} from './BattleV3Game';
 import type {BattleRulesetMode} from '@/lib/battle/ruleset-modes';
+import './battle.css';
 import './battle-legibility.css';
 import './battle-ui-v4.css';
+import './battle-cleanup.css';
 import './battle-ruleset-selector.css';
 
 // Explicit sandbox-only components. Never mount the Narrator hub, persistence,
@@ -16,12 +18,16 @@ export function BattleLeonardoSandbox(){
  const [ruleset,setRuleset]=useState<BattleRulesetMode>('got');
  const [active,setActive]=useState<BattleRulesetMode|null>(null);
  if(active==='adapted')return <BattleV3Game onBack={()=>setActive(null)}/>;
- if(active==='got')return <Suspense fallback={<p role="status">Carregando simulação Game of Thrones…</p>}>
-  <GotSandbox playerSandbox onBack={()=>setActive(null)}/>
- </Suspense>;
- if(active==='dnd')return <Suspense fallback={<p role="status">Carregando simulação D&D…</p>}>
-  <DndSandbox mode="dnd" playerSandbox onBack={()=>setActive(null)}/>
- </Suspense>;
+ if(active==='got')return <main className="battle-module" aria-label="Simulação Game of Thrones do usuário">
+  <Suspense fallback={<p role="status">Carregando simulação Game of Thrones…</p>}>
+   <GotSandbox playerSandbox onBack={()=>setActive(null)}/>
+  </Suspense>
+ </main>;
+ if(active==='dnd')return <main className="battle-module" aria-label="Simulação D&D do usuário">
+  <Suspense fallback={<p role="status">Carregando simulação D&D…</p>}>
+   <DndSandbox mode="dnd" playerSandbox onBack={()=>setActive(null)}/>
+  </Suspense>
+ </main>;
  return <main className="battle-module crusade-mode" aria-label="Simulador de batalhas do usuário">
   <header className="battle-header crusade-masthead">
    <p className="battle-eyebrow">CORMYR · ACESSO ESPECIAL</p>
