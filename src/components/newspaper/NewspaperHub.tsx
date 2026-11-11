@@ -112,7 +112,17 @@ export function NewspaperHub({userId,editor}:{
   setBusy(true);setError('');
   try{
    const path=await uploadNewspaperAsset(editionId,file,kind);
-   if(kind==='pdf')setDraft(old=>old?.id===editionId?{...old,pdf_path:path}:old);
+   if(kind==='pdf')setDraft(old=>{
+    if(old?.id!==editionId)return old;
+    // Importação rápida: substituir blocos de exemplo pela página do PDF;
+    // preservar qualquer reportagem ou fotografia já personalizada.
+    const examplesOnly=old.blocks.every(b=>
+      (b.type==='headline'&&['A GAZETA DE CORMYR','ÚLTIMA HORA','Escreva a manchete principal'].includes(b.text))||
+      (b.type==='article'&&b.text.startsWith('Título da notícia'))||
+      (b.type==='quote'&&b.text.startsWith('Uma declaração importante'))||
+      (b.type==='image'&&!b.imagePath));
+    return {...old,pdf_path:path,blocks:examplesOnly?[]:old.blocks};
+   });
    else if(sourceBlock){
     setDraft(old=>old?.id===editionId?{
      ...old,blocks:old.blocks.map(b=>b.id===sourceBlock?{...b,imagePath:path}:b),
