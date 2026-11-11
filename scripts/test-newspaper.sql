@@ -1,7 +1,7 @@
 -- Banco PostgreSQL descartável da CI. Não toca no Supabase real.
 BEGIN;
 DO $checks$
-DECLARE v_id uuid:=gen_random_uuid();v_before int;v_after int;
+DECLARE v_id uuid:=gen_random_uuid();v_before int;v_after int;v_published int;v_archived int;
 BEGIN
  IF to_regclass('public.campaign_newspapers') IS NULL OR
     to_regclass('public.campaign_newspaper_revisions') IS NULL OR
@@ -37,5 +37,14 @@ BEGIN
    SELECT 1 FROM public.campaign_newspaper_revisions
     WHERE newspaper_id=v_id AND previous_version=v_before)
  THEN RAISE EXCEPTION 'Jornal: auditoria ou versão incorreta'; END IF;
+ UPDATE public.campaign_newspapers SET state='published' WHERE id=v_id;
+ SELECT publication_revision INTO v_published FROM public.campaign_newspapers WHERE id=v_id;
+ IF v_published<>1 THEN RAISE EXCEPTION 'Jornal: primeira publicação sem aviso'; END IF;
+ UPDATE public.campaign_newspapers SET state='archived' WHERE id=v_id;
+ SELECT publication_revision INTO v_archived FROM public.campaign_newspapers WHERE id=v_id;
+ IF v_archived<>v_published THEN RAISE EXCEPTION 'Jornal: arquivamento criou aviso falso'; END IF;
+ UPDATE public.campaign_newspapers SET subtitle='Notícia revisada' WHERE id=v_id;
+ SELECT publication_revision INTO v_archived FROM public.campaign_newspapers WHERE id=v_id;
+ IF v_archived<>v_published+1 THEN RAISE EXCEPTION 'Jornal: revisão arquivada sem aviso'; END IF;
 END $checks$;
 ROLLBACK;
