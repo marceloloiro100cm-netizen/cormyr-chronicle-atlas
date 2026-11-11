@@ -275,7 +275,8 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
   onDuplicateBlock={duplicateEditorialBlock}
   onReorderBlock={reorderEditorialBlock}
   onInsertBefore={insertEditorialBefore}
-  onResizeBlock={editBlock}
+  onResizeBlock={(id,patch)=>{const isImage=current?.blocks.some(b=>b.id===id&&b.type==='image');
+   editBlock(id,isImage?{...patch,autoHeight:false}:patch);}}
   onUpload={file=>{void quickUpload(file);}}
   onCancel={()=>{void save('cancelled');}}
   onSignout={()=>onSignout?.()}
