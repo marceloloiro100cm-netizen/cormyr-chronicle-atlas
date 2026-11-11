@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useState} from 'react';
+import {useMemo,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {Plus,FileText,ImagePlus,Newspaper,ArrowUp,ArrowDown,Trash2,Save,Send,Archive,Undo2,Check,Eye,LayoutTemplate} from 'lucide-react';
 import {Button} from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
  createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperStatus,
  NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,validateNewspaperEdition,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperState,
- type NewspaperTemplate,type NewspaperRead,
+ type NewspaperTemplate,
 } from '@/lib/newspaper/model';
 import './newspaper.css';
 
@@ -31,7 +31,7 @@ export function useUnreadNewspaperCount(userId:string,enabled=true){
  return {count,editions,receipts};
 }
 
-function useEditableCopy(edition:NewspaperEdition){
+function cloneEditableEdition(edition:NewspaperEdition){
  return {...edition,blocks:safeNewspaperBlocks(edition.blocks)};
 }
 function safeError(cause:unknown){
@@ -64,7 +64,7 @@ export function NewspaperHub({userId,editor}:{
  const notice=(value:string)=>{setMessage(value);setError('');};
  const open=async(edition:NewspaperEdition)=>{
   if(busy)return;
-  setSelectedId(edition.id);setDraft(useEditableCopy(edition));setBlockId(null);
+  setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));setBlockId(null);
   setEditing(false);setMessage('');setError('');
   if(['published','archived'].includes(edition.state)&&newspaperIsUnread(edition,myReads.get(edition.id))){
    try{await markNewspaperRead(edition.id);await qc.invalidateQueries({queryKey:['campaign-newspaper-reads',userId]});}
@@ -81,7 +81,7 @@ export function NewspaperHub({userId,editor}:{
     campaign_date:dateKey(time.data),title:'Gazeta de Cormyr',template,
     blocks:createNewspaperLayout(template),
    });
-   setSelectedId(edition.id);setDraft(useEditableCopy(edition));
+   setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));
    setBlockId(edition.blocks[0]?.id??null);setEditing(true);
    notice('Nova edição criada como rascunho. Personalize os blocos e salve.');
    await refresh();
@@ -136,7 +136,7 @@ export function NewspaperHub({userId,editor}:{
     template:current.template,font_style:current.font_style,blocks:current.blocks,
     pdf_path:current.pdf_path,state,
    });
-   setDraft(useEditableCopy(result));
+   setDraft(cloneEditableEdition(result));
    if(state!=='draft'){setEditing(false);setBlockId(null);}
    await refresh();
    notice(state==='published'?'Jornal publicado. A edição já aparece aos jogadores como não lida.':
