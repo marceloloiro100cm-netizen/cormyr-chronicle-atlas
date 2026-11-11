@@ -94,7 +94,7 @@ export function BattleGotSourcePicker({onChoose,onChooseMany,chosenSlots}:{
   const viable=roster.filter(battleRosterEligible);
   if(viable.length>14){setError('O mapa aceita até 14 agrupamentos por lado; nenhuma tropa foi omitida automaticamente.');return;}
   if(!viable.length){setError('Esta Casa não possui tropas terrestres disponíveis.');return;}
-  const side:SLOTS[number]['side']=SLOTS.find(s=>s.id===slot)!.side;
+  const side:WarSide=SLOTS.find(s=>s.id===slot)!.side;
   setLoading(true);setError('');
   try{
    const units=await Promise.all(viable.map((u,i)=>getSnapshot({data:{
