@@ -43,7 +43,7 @@ export function privateHouseAsModel(house:PrivateHouse):ModelHouse{
  return {
   id:LEONARDO_PRIVATE_HOUSE_ID,
   name:clean.name+' · Simulação',region:clean.region,
-  subtitle:clean.motto||'Hoste de '+clean.name,
+  subtitle:(clean.motto||'Hoste de '+clean.name).slice(0,50),
   description:clean.description||'Exército particular de treinamento sem vínculo com a campanha.',
   units:clean.units,
  };
