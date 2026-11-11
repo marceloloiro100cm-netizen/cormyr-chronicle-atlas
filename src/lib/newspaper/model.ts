@@ -60,13 +60,13 @@ export function safeNewspaperBlocks(value:unknown):NewspaperBlock[]{
  if(!Array.isArray(value))return[];
  return value.slice(0,80).filter((x):x is Record<string,unknown>=>x!==null&&typeof x==='object')
  .map((x,index)=>({
-  id:typeof x.id==='string'&&x.id.length<100?x.id:`block-${index}`,
-  type:['headline','article','image','quote'].includes(String(x.type))?x.type as NewspaperBlockType:'article',
-  text:typeof x.text==='string'?x.text.slice(0,30000):'',
-  ...(typeof x.imagePath==='string'&&x.imagePath.length<300?{imagePath:x.imagePath}:{}),
-  ...(typeof x.caption==='string'?{caption:x.caption.slice(0,500)}:{}),
-  span:clampNewspaperSpan(Number(x.span)),
-  height:clampNewspaperHeight(Number(x.height)),
+  id:typeof x['id']==='string'&&x['id'].length<100?x['id']:`block-${index}`,
+  type:['headline','article','image','quote'].includes(String(x['type']))?x['type'] as NewspaperBlockType:'article',
+  text:typeof x['text']==='string'?x['text'].slice(0,30000):'',
+  ...(typeof x['imagePath']==='string'&&x['imagePath'].length<300?{imagePath:x['imagePath']}:{}),
+  ...(typeof x['caption']==='string'?{caption:x['caption'].slice(0,500)}:{}),
+  span:clampNewspaperSpan(Number(x['span'])),
+  height:clampNewspaperHeight(Number(x['height'])),
  }));
 }
 export function clampNewspaperSpan(value:number):number{
