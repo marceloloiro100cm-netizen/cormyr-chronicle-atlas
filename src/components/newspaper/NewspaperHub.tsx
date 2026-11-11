@@ -164,7 +164,7 @@ export function NewspaperHub({userId,editor}:{
    ...b,span:pattern[index%pattern.length]!.span,
   })):pattern});
  };
- const readers=current?reads.filter(r=>r.newspaper_id===current.id&&r.read_version>=current.version).length:0;
+ const readers=current?reads.filter(r=>r.newspaper_id===current.id&&r.read_version>=current.publication_revision).length:0;
  const displayEdition=current;
 
  return <section className="newspaper-hub" aria-label="Jornal de Cormyr">
