@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS public.campaign_newspapers (
   blocks jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(blocks) = 'array' AND jsonb_array_length(blocks) <= 80),
   pdf_path text,
   version integer NOT NULL DEFAULT 1 CHECK (version >= 1),
+  publication_revision integer NOT NULL DEFAULT 0 CHECK (publication_revision >= 0),
   created_by uuid NOT NULL DEFAULT auth.uid(),
   updated_by uuid,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -87,6 +88,7 @@ BEGIN
     NEW.created_by := auth.uid();
     NEW.updated_by := auth.uid();
     NEW.version := 1;
+    NEW.publication_revision := 0;
     IF NEW.state <> 'draft' THEN
       RAISE EXCEPTION 'A nova edição deve começar como rascunho.';
     END IF;
@@ -96,6 +98,16 @@ BEGIN
       RAISE EXCEPTION 'Identidade da edição é imutável.';
     END IF;
     NEW.version := OLD.version + 1;
+    NEW.publication_revision := OLD.publication_revision;
+    IF NEW.state IN ('published','archived') AND (
+      OLD.state NOT IN ('published','archived') OR
+      (NEW.state = 'published' AND OLD.state = 'archived') OR
+      ROW(NEW.title,NEW.subtitle,NEW.campaign_date,NEW.template,NEW.font_style,NEW.blocks,NEW.pdf_path)
+        IS DISTINCT FROM
+      ROW(OLD.title,OLD.subtitle,OLD.campaign_date,OLD.template,OLD.font_style,OLD.blocks,OLD.pdf_path)
+    ) THEN
+      NEW.publication_revision := OLD.publication_revision + 1;
+    END IF;
     NEW.updated_by := auth.uid();
   END IF;
   NEW.updated_at := now();
@@ -176,12 +188,12 @@ BEGIN
     public.can_read_campaign_newspaper_player() OR public.can_edit_campaign_newspaper()
   ) THEN RAISE EXCEPTION 'Jornal indisponível.'; END IF;
   INSERT INTO public.campaign_newspaper_reads(newspaper_id,user_id,read_version,read_at)
-   VALUES (v.id,auth.uid(),v.version,now())
+   VALUES (v.id,auth.uid(),v.publication_revision,now())
   ON CONFLICT (newspaper_id,user_id) DO UPDATE
    SET read_version=EXCLUDED.read_version,read_at=now();
-  RETURN v.version;
+  RETURN v.publication_revision;
 END;
-$$;
+$;
 REVOKE ALL ON FUNCTION public.mark_campaign_newspaper_read(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.mark_campaign_newspaper_read(uuid) TO authenticated;
 
