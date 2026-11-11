@@ -134,7 +134,8 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout,onOtherMod
       old.blocks.map(b=>b.id===sourceBlock?{...b,imagePath:path}:b):
       [...old.blocks,{...imageBlock,imagePath:path}],
     }:old);
-    setBlockId(sourceBlock??imageBlock.id);
+    setBlockId(sourceBlock&&current.blocks.some(b=>b.id===sourceBlock&&b.type==='image')?
+     sourceBlock:imageBlock.id);
    }
    notice('Arquivo anexado. Salve o rascunho para registrar a alteração.');
   }catch(cause){setError(safeError(cause));}
@@ -174,6 +175,70 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout,onOtherMod
  };
  const readers=current?reads.filter(r=>r.newspaper_id===current.id&&r.read_version>=current.publication_revision).length:0;
  const displayEdition=current;
+
+
+ const quickUpload=async(file:File)=>{
+  if(!editor||busy)return;
+  const kind=file.type==='application/pdf'?'pdf':'image';
+  if(current){await upload(file,kind);setEditing(true);return;}
+  if(!time.data){setError('Aguarde a data oficial do HUB Temporal.');return;}
+  setBusy(true);setError('');
+  try{
+   const template:'classico'='classico';
+   const base=await createNewspaperEdition({
+    campaign_date:dateKey(time.data),title:'A Folha Sem Selo',
+    template,blocks:[],
+   });
+   const path=await uploadNewspaperAsset(base.id,file,kind);
+   const nextBlock=kind==='image'?{...makeNewspaperBlock('image'),imagePath:path}:null;
+   const result=await updateNewspaperEdition(base,{
+    campaign_date:base.campaign_date,title:base.title,
+    subtitle:'O jornal independente de Cormyr',
+    template,font_style:'classico',blocks:nextBlock?[nextBlock]:[],
+    pdf_path:kind==='pdf'?path:null,state:'draft',
+   });
+   setDraft(cloneEditableEdition(result));setSelectedId(result.id);
+   setBlockId(nextBlock?.id??null);setEditing(true);
+   notice('Arquivo importado em novo rascunho. Revise a página antes de publicar.');
+   await refresh();
+  }catch(cause){setError(safeError(cause));}
+  finally{setBusy(false);}
+ };
+ const editBlock=(id:string,patch:Partial<NewspaperBlock>)=>{
+  modifyBlock(id,patch);setEditing(true);
+ };
+ const addEditorialBlock=(type:NewspaperBlockType,span?:number)=>{
+  if(!current){void newEdition(type);return;}
+  const block=makeNewspaperBlock(type);
+  if(span)block.span=span;
+  setDraft(old=>old?{...old,blocks:[...old.blocks,block]}:old);
+  setBlockId(block.id);setEditing(true);
+ };
+ const removeEditorialBlock=(id:string)=>{
+  if(!current)return;
+  modify({blocks:current.blocks.filter(b=>b.id!==id)});
+  setBlockId(null);setEditing(true);
+ };
+ if(editorial&&editor)return <NewspaperEditorialDesk
+  userId={userId} current={current} history={history} reads={reads}
+  loading={editions.isPending} editing={editing} busy={busy}
+  selectedBlockId={blockId} error={error} message={message}
+  hubDate={time.data?dateKey(time.data):''}
+  onNew={type=>{void newEdition(type);}}
+  onOpen={edition=>{void open(edition);}}
+  onSave={state=>{void save(state);}}
+  onEdit={()=>setEditing(true)}
+  onPreview={()=>setEditing(false)}
+  onPatch={patch=>{modify(patch);setEditing(true);}}
+  onSelectBlock={setBlockId} onPatchBlock={editBlock}
+  onAddBlock={addEditorialBlock} onRemoveBlock={removeEditorialBlock}
+  onMoveBlock={(id,direction)=>{moveBlock(id,direction);setEditing(true);}}
+  onResizeBlock={editBlock}
+  onUpload={file=>{void quickUpload(file);}}
+  onCancel={()=>{void save('cancelled');}}
+  onOtherModules={()=>onOtherModules?.()}
+  onSignout={()=>onSignout?.()}
+ />;
 
  return <section className="newspaper-hub" aria-label="Jornal de Cormyr">
   <header className="newspaper-hub-heading">
