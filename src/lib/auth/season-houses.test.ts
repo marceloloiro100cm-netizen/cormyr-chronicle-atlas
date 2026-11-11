@@ -10,6 +10,13 @@ describe('loadSeasonHouses', () => {
     const r = await loadSeasonHouses({ catalog: ok([...eight, { id: 'x', name: 'NPC' }]), playerHouses: ok(players) });
     expect(r.houses).toHaveLength(8); expect(r.errors).toEqual([]);
   });
+  it('never promotes the Espião identity into the season-two login roster', async () => {
+    const catalog = [...eight, { id:'espiao', name:'Espião' }];
+    const active = [...players, { house_id:'espiao' }];
+    const r = await loadSeasonHouses({catalog:ok(catalog),playerHouses:ok(active)});
+    expect(r.houses).toHaveLength(8);
+    expect(r.houses.some(h=>h.id==='espiao')).toBe(false);
+  });
   it('reports catalog failure independently', async () => {
     const r = await loadSeasonHouses({ catalog: fail('permission denied'), playerHouses: ok(players) });
     expect(r.houses).toEqual([]); expect(r.errors).toHaveLength(1); expect(r.errors[0]).toMatch(/^Lista de casas/);
