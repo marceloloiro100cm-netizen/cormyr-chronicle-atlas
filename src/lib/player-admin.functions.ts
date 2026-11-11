@@ -11,6 +11,8 @@ export const managePlayerAccount=createServerFn({method:'POST'}).middleware([req
   // Acesso especial fora da temporada. Não é uma casa nobre do elenco oficial.
   // A escolha no login nunca substitui os vínculos conferidos por RLS.
   const special=data.houseId==='espiao';
+  if(special&&(data.name.trim().toLocaleLowerCase('pt-BR')!=='leonardo'||data.canEdit||data.canEditAttributes))
+    throw new Error('O perfil Espião aceita somente Leonardo, sem permissões de edição de Casas.');
   const catalog=special?null:await db.from('house_catalog').select('id,name,region,archive_data').eq('id',data.houseId).single();
   if(!special&&(catalog?.error||!catalog?.data))throw new Error('Selecione uma casa do catálogo oficial.');
   if(special){
@@ -47,6 +49,9 @@ export const managePlayerAccount=createServerFn({method:'POST'}).middleware([req
   }
   if(data.password&&userId){const updated=await db.auth.admin.updateUserById(userId,{password:data.password});if(updated.error)throw new Error('O provedor não aceitou a nova senha; o acesso anterior foi preservado.');}
   if(!player&&userId){const found=await db.from('campaign_players').select('*').eq('user_id',userId).maybeSingle();if(found.error)throw new Error('Vínculo duplicado exige revisão administrativa.');player=found.data;}
+  if(special&&player&&(player.roster_house_id!=='espiao'||
+     player.name.trim().toLocaleLowerCase('pt-BR')!=='leonardo'))
+    throw new Error('O e-mail já está vinculado a outro jogador; nenhuma associação foi alterada.');
   const saved=await db.rpc('admin_save_player_account',{p_actor:context.userId,p_player:player?.id??null as unknown as string,p_user:userId??null as unknown as string,p_name:data.name,p_house:data.houseId,p_active:data.active,p_edit:data.canEdit,p_change:data.requireChange,p_folder:data.folderId??null as unknown as string,p_password_set:Boolean(data.password)});
   if(saved.error)throw new Error(data.password?'Senha aceita pelo provedor; cadastro e autorização ficaram pendentes. Tente novamente.':'Conta preservada; cadastro e autorização ficaram pendentes.');
   // Separate grant for RPG point buy; regular can_edit is insufficient.
