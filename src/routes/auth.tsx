@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { CampaignShell } from '@/components/campaign-shell';
 import { oauthReturnPath } from '@/lib/oauth-return-path';
+import { loadSeasonHouses, loginErrorMessage, shouldLeaveAuthPage } from '@/lib/auth/season-houses';
 
 export const Route = createFileRoute('/auth')({
  validateSearch: (search: Record<string, unknown>) => ({
@@ -33,21 +34,23 @@ function Auth() {
  useEffect(() => {
   void supabase.auth.getUser().then(({data})=>{
    if(data.user)void navigate({to:destino});
+  }).catch(()=>{});
+  const {data:sub}=supabase.auth.onAuthStateChange((event,session)=>{
+   if(shouldLeaveAuthPage(event,!!session?.user))void navigate({to:destino});
   });
+  return ()=>sub.subscription.unsubscribe();
  },[navigate,destino]);
- const {data:houses=[]} = useQuery({
+ const housesQuery = useQuery({
   queryKey:['season-houses'],
-  queryFn:async()=>{
-   const [result,players]=await Promise.all([
-    supabase.from('campaign_houses').select('id,name').eq('active',true).eq('season',2).order('name'),
-    supabase.rpc('public_player_houses'),
-   ]);
-   if(result.error)throw result.error;
-   if(players.error)throw players.error;
-   const ids=new Set(players.data.map(p=>p.house_id));
-   return result.data.filter(h=>ids.has(h.id));
-  },
+  retry:1,
+  queryFn:()=>loadSeasonHouses({
+   catalog:()=>supabase.from('campaign_houses').select('id,name').eq('active',true).eq('season',2).order('name'),
+   playerHouses:()=>supabase.rpc('public_player_houses'),
+  }),
  });
+ const houses = housesQuery.data?.houses ?? [];
+ const houseErrors = housesQuery.data?.errors ?? (housesQuery.error ? ['Falha ao consultar as casas.'] : []);
+ const loadingHouses = housesQuery.isPending || housesQuery.isFetching;
  async function submit(event:FormEvent) {
   event.preventDefault();
   setBusy(true);setMessage('');
@@ -58,7 +61,7 @@ function Auth() {
    sessionStorage.setItem('campaign-selected-house',house==='narrador'?'':house);
    await navigate({to:destino});
   }catch(e){
-   setMessage(e instanceof Error?e.message:'Não foi possível entrar.');
+   setMessage(loginErrorMessage(e));
   }finally{setBusy(false);}
  }
  return <CampaignShell publicTime>
@@ -83,6 +86,7 @@ function Auth() {
       <input type="password" minLength={6} required autoComplete="current-password"
        value={password} onChange={e=>setPassword(e.target.value)}/>
      </label>
+     <p className="campaign-hint">A casa é só uma preferência; o acesso vem da sua conta. Você pode entrar por e-mail e senha mesmo sem a lista.</p>
      <Button disabled={busy} type="submit">{busy?'Aguarde…':'Entrar'}</Button>
     </form>
     {message&&<p role="status">{message}</p>}
@@ -90,6 +94,12 @@ function Auth() {
    <section>
     <h2>Casas da segunda temporada</h2>
     <p>Oito casas da lista oficial da campanha.</p>
+    {loadingHouses&&<p role="status">Consultando casas…</p>}
+    {!loadingHouses&&houseErrors.length>0&&<div role="alert">
+     {houseErrors.map(e=><p key={e}>{e}</p>)}
+     <Button type="button" variant="outline" onClick={()=>void housesQuery.refetch()}>Tentar novamente</Button>
+    </div>}
+    {!loadingHouses&&!houseErrors.length&&!houses.length&&<p role="status">Nenhuma casa disponível no momento.</p>}
     <ul className="campaign-roster">{houses.map(h=><li key={h.id}>{h.name}</li>)}</ul>
    </section>
   </div>
