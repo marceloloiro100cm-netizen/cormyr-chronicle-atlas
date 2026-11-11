@@ -74,6 +74,11 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout,onOtherMod
  const notice=(value:string)=>{setMessage(value);setError('');};
  const open=async(edition:NewspaperEdition)=>{
   if(busy)return;
+  const compare=(e:NewspaperEdition)=>JSON.stringify([
+   e.campaign_date,e.title,e.subtitle,e.template,e.font_style,e.blocks,e.pdf_path,e.state,
+  ]);
+  if(edition.id!==selectedId&&current&&selected&&compare(current)!==compare(selected)&&
+   !window.confirm('Há alterações não salvas. Deseja abrir outra edição e descartá-las?'))return;
   setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));setBlockId(null);
   setEditing(false);setMessage('');setError('');
   if(['published','archived'].includes(edition.state)&&newspaperIsUnread(edition,myReads.get(edition.id))){
