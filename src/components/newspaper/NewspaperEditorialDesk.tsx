@@ -1,14 +1,14 @@
 import {useRef,useState} from 'react';
 import {
  BookOpen,BookOpenText,Layers3,CalendarDays,UsersRound,Megaphone,Archive,
- BarChart3,Settings,Feather,FileUp,Eye,Newspaper,Send,FileText,
+ BarChart3,Settings,Feather,FileUp,Eye,Newspaper,
  ImagePlus,Columns3,Quote,TriangleAlert,Plus,Shield,Printer,ChevronDown,
- ArrowUp,ArrowDown,Trash2,Save,CheckCircle2,Circle,LayoutTemplate,
+ ArrowUp,ArrowDown,Trash2,Save,CheckCircle2,Circle,
 } from 'lucide-react';
 import {ChangePasswordButton} from '@/components/change-password';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {formatCampaignPeriod,formatDate,parseDate} from '@/lib/calendar/harptos';
-import {NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,newspaperStatus,newspaperIsUnread,
+import {NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,newspaperStatus,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,
  type NewspaperRead,type NewspaperState,type NewspaperTemplate} from '@/lib/newspaper/model';
 import {NewspaperCanvas} from './NewspaperCanvas';
@@ -185,7 +185,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       <Eye size={22}/> {fullPreview?'Voltar ao painel':'Pré-visualizar'}</button>
      <button type="button" disabled={!current||busy||!materialReady} onClick={()=>props.onSave('published')}>
       <Newspaper size={21}/> Publicar Edição</button>
-     <button type="button" disabled={!current||busy||current.state==='archived'} onClick={()=>props.onSave('archived')}>
+     <button type="button" disabled={!current||busy||current.state!=='published'} onClick={()=>props.onSave('archived')}>
       <Archive size={21}/> Arquivar</button>
      <input ref={fileInput} type="file" hidden accept="application/pdf,.pdf,image/png,image/jpeg,image/webp"
       onChange={event=>{const file=event.target.files?.[0];event.target.value='';if(file)props.onUpload(file);}}/>
@@ -202,7 +202,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         onResize={props.onResizeBlock}/>:
         <ExampleFrontPage date={dateLabel(currentDate)}/>}
        {!current&&<button type="button" className="folha-start-edition"
-        onClick={()=>props.onNew()}>+ Criar primeira edição</button>}
+        onClick={()=>{setSection('capa');props.onNew();}}>+ Criar primeira edição</button>}
       </div>}
 
       {section==='materias'&&<section className="folha-section-content">
@@ -218,7 +218,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       {section==='pautas'&&<section className="folha-section-content">
        <h3>Pautas e rascunhos</h3>
        <p>Use as edições em rascunho como pautas para futuras publicações.</p>
-       <button type="button" className="folha-text-action" disabled={busy} onClick={()=>props.onNew()}>
+       <button type="button" className="folha-text-action" disabled={busy} onClick={()=>{setSection('capa');props.onNew();}}>
         <Plus size={16}/> Nova pauta / edição</button>
        <div className="folha-archive-list">{history.filter(e=>e.state==='draft').map(e=>
         <button type="button" key={e.id} onClick={()=>browseEdition(e)}>
