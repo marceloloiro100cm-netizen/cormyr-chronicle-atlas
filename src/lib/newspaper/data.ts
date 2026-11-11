@@ -20,10 +20,11 @@ export async function getNewspaperReceipts():Promise<NewspaperRead[]>{
  return (data??[]) as NewspaperRead[];
 }
 export async function createNewspaperEdition(input:{
- campaign_date:string;title:string;template:NewspaperTemplate;blocks:NewspaperBlock[];
+ campaign_date:string;title:string;subtitle?:string;template:NewspaperTemplate;blocks:NewspaperBlock[];
 }):Promise<NewspaperEdition>{
  const {data,error}=await db.from('campaign_newspapers').insert({
-  campaign_date:input.campaign_date,title:input.title,template:input.template,
+  campaign_date:input.campaign_date,title:input.title,
+  subtitle:input.subtitle??'',template:input.template,
   blocks:input.blocks,state:'draft',
  }).select('*').single();
  if(error)throw error;
