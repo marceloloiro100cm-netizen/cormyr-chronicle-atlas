@@ -51,7 +51,7 @@ export function PrivateImage({ path, caption, thumbnail = false, zoomable = fals
     zoomable
       ? <ImageViewer src={url} caption={cleanCaption || "Imagem da campanha"}
           triggerClassName="house-crest-trigger" imageClassName="house-crest-image"
-          onImageError={onUnavailable}/>
+          {...(onUnavailable?{onImageError:onUnavailable}:{})}/>
       : <img src={url} alt={cleanCaption || "Retrato do integrante"} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block", borderRadius: "inherit" }} />
   ) : <span role="img" aria-label={error ? "Retrato indisponível" : "Carregando retrato"}><UserRound size={28} aria-hidden="true" /></span>;
   return (

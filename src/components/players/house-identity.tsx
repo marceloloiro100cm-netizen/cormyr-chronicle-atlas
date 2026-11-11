@@ -12,7 +12,7 @@ function HouseIdentityCrest({house}:HouseIdentityProps) {
  const src=[preferred,fallback].find((candidate):candidate is string=>Boolean(candidate)&&!failedSources.includes(candidate))??null;
  return <span className="campaign-house-identity__crest">
   {src?<img src={src} alt={'Brasão da Casa '+house.name} loading="lazy"
-    onError={()=>setFailedSources(current=>current.includes(src)?current:[...current,src])}/>:
+    onError={()=>setFailedSources(current=>src&&!current.includes(src)?[...current,src]:current)}/>:
     <Shield aria-label={'Brasão indisponível para '+house.name} role="img"/>}
  </span>;
 }
