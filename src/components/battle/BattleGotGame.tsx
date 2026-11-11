@@ -215,11 +215,14 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
  const [masterOfArmsSides,setMasterOfArmsSides]=useState<Record<WarSide,boolean>>({
   attacker:false,defender:false,
  });
+ const scenarioSelectionActive=houseArmySide.attacker||houseArmySide.defender;
+ const includeScenarioSlot=(row:{id:string;side:WarSide})=>
+  houseArmySide[row.side]?Boolean(officialBySlot[row.id as Slot]):
+  !scenarioSelectionActive||Number(row.id.split('-').at(-1))<=2;
  const start=()=>{
   try{
    const prepared=positionedWarLabDeployments(extraUnitsPerSide,deploymentPositions,
-    mapSize.width,mapSize.height).filter(row=>
-     !houseArmySide[row.side]||Boolean(officialBySlot[row.id as Slot]));
+    mapSize.width,mapSize.height).filter(includeScenarioSlot);
    if(!playerSandbox&&siegeEnabled&&officialBySlot['attacker-2']&&
     officialBySlot['attacker-2'].typeId!=='engineers')
     throw new Error('O segundo espaço do atacante deve ter engenheiros para operar o cerco.');
@@ -588,7 +591,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   }catch{setError('Não foi possível apagar a cópia local.');}
  };
  const preparedDeployments=modelWarLabDeployments(extraUnitsPerSide,mapSize.width,mapSize.height)
-  .filter(row=>!houseArmySide[row.side]||Boolean(officialBySlot[row.id as Slot]));
+  .filter(includeScenarioSlot);
  const nextDeploymentSide=alternatePlacement?nextWarLabDeploymentSide(
   extraUnitsPerSide,deploymentPositions,mapSize.width,mapSize.height):null;
  const deploymentChoices=alternatePlacement?
