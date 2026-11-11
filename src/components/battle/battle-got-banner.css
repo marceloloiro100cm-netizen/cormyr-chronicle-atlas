@@ -1,0 +1,29 @@
+/* Bandeiras das Casas: flâmula com o brasão e as cores da Casa. Somente apresentação. */
+.battle-module .got-flag{--flag-a:#2f5f8f;--flag-b:#e3c98a;--flag-ink:#fff;--flag-w:34px;
+ position:relative;display:inline-block;flex:0 0 auto;width:var(--flag-w);height:calc(var(--flag-w)*1.42);
+ filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.battle-module .got-flag--xs{--flag-w:16px}
+.battle-module .got-flag--sm{--flag-w:26px}
+.battle-module .got-flag--lg{--flag-w:92px}
+.battle-module .got-flag::before{content:'';position:absolute;left:-8%;right:-8%;top:-3%;height:7%;min-height:2px;
+ border-radius:3px;background:linear-gradient(#f2dca0,#8a6a2c);z-index:2}
+.battle-module .got-flag-cloth{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+ background:var(--flag-b);clip-path:polygon(0 0,100% 0,100% 100%,50% 84%,0 100%);overflow:hidden}
+.battle-module .got-flag-cloth::before{content:'';position:absolute;inset:8% 9% 0;background:
+ linear-gradient(160deg,rgba(255,255,255,.18),transparent 45%,rgba(0,0,0,.22)),var(--flag-a);
+ clip-path:polygon(0 0,100% 0,100% 97%,50% 80%,0 97%)}
+.battle-module .got-flag-cloth b{position:relative;color:var(--flag-ink);font-family:Georgia,'Times New Roman',serif;
+ font-size:calc(var(--flag-w)*.5);line-height:1;margin-bottom:18%}
+.battle-module .got-flag-cloth img{position:absolute;inset:8% 9% 0;width:82%;height:92%;object-fit:cover;
+ object-position:50% 38%;z-index:1;clip-path:polygon(0 0,100% 0,100% 97%,50% 80%,0 97%)}
+.battle-module .got-flag-cloth img+b{display:none}
+.battle-module .got-flag-cloth img[style*="none"]+b{display:block}
+.battle-module .got-banner-title{display:inline-flex;align-items:center;gap:10px;min-width:0}
+.battle-module .got-banner-text{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+.battle-module .got-banner-text strong{font-family:Georgia,'Times New Roman',serif;font-size:17px;letter-spacing:.01em;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.battle-module .got-banner-text small{font-size:12px;opacity:.85}
+@media(prefers-reduced-motion:no-preference){
+ .battle-module .got-flag--lg .got-flag-cloth{animation:got-flag-sway 5s ease-in-out infinite;transform-origin:50% 0}
+}
+@keyframes got-flag-sway{0%,100%{transform:skewX(0)}50%{transform:skewX(-2.2deg)}}

@@ -1,0 +1,152 @@
+/* Batalha GOT enxuta: Casas frente a frente, um painel de comando e pouco texto.
+ * Somente apresentação; carregado depois das demais folhas do modo.
+ */
+.battle-module .battle-got .battle-surface{background:#1c2723;border:1px solid #6f5f3c;border-radius:12px;color:#f3e7cf}
+.battle-module .battle-got .battle-note{color:#d8c7a2}
+.battle-module .battle-got .got-config{max-width:860px;gap:16px;margin:0 auto;width:100%;box-sizing:border-box}
+
+/* Preparação: duas bandeiras e um botão. */
+.battle-module .got-versus{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.battle-module .got-versus-side{display:flex;align-items:center;gap:16px;padding:16px;border-radius:14px;min-width:0;
+ background:linear-gradient(135deg,color-mix(in srgb,var(--flag-a) 34%,#17211d),#17211d 72%);
+ border:2px solid var(--flag-a);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--flag-b) 55%,transparent)}
+.battle-module .got-versus-side.defender{flex-direction:row-reverse;text-align:right;
+ background:linear-gradient(225deg,color-mix(in srgb,var(--flag-a) 34%,#17211d),#17211d 72%)}
+.battle-module .got-versus-fields{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1 1 auto}
+.battle-module .got-versus-role{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#e7d6ae}
+.battle-module .battle-got select.got-versus-house,.battle-module .got-versus-house{font-family:Georgia,'Times New Roman',serif;
+ font-size:19px;font-weight:700;min-height:46px;width:100%;box-sizing:border-box;color:#fff7e3}
+.battle-module .battle-got .got-versus-power{flex-direction:row;align-items:center;gap:8px;font-size:13px}
+.battle-module .got-versus-side.defender .got-versus-power{justify-content:flex-end}
+.battle-module .battle-got .got-versus-power input{width:84px;min-height:36px;box-sizing:border-box;text-align:center}
+.battle-module .got-versus-fields small{font-size:13px;color:#e7d6ae}
+.battle-module .got-versus-mark{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:38px;height:38px;
+ border-radius:50%;display:flex;align-items:center;justify-content:center;background:#17211d;border:2px solid #c9a961;
+ color:#ffe9b8;font-family:Georgia,serif;font-size:22px;line-height:1;pointer-events:none}
+.battle-module .got-launch{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.battle-module .got-seg{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
+.battle-module .got-seg>span{font-size:13px;color:#e7d6ae;margin-right:4px}
+.battle-module .got-seg button{min-height:40px;padding:6px 14px;border-radius:20px;border:1px solid #84775f;background:#1f302a;
+ color:#f3e7cf;font-weight:700;font-size:14px;cursor:pointer}
+.battle-module .got-seg button.is-selected{background:#f6ecd6;color:#2a2117;border-color:#ffe07a}
+.battle-module .battle-got .battle-simple-launch{display:flex;flex-wrap:wrap;gap:10px;margin:0;padding:0;border:0;background:none}
+.battle-module .battle-got .battle-simple-launch button{min-height:48px;min-width:190px;font-size:16px}
+.battle-module .got-official-toggle{align-items:flex-start;gap:10px;padding:10px 12px;border-radius:10px;border:1px dashed #84775f;
+ font-size:13px;line-height:1.45}
+.battle-module .got-official-toggle.is-on{border:2px solid #ffe07a;background:#2b1f1c}
+.battle-module .got-official-toggle strong{color:#ffe07a}
+
+/* Cabeçalho da batalha: as duas Casas e a rodada. */
+.battle-module .battle-got .got-hud{gap:10px 14px;padding:10px 12px}
+.battle-module .got-hud-versus{display:flex;flex-wrap:wrap;gap:10px;flex:1 1 420px;min-width:0}
+.battle-module .got-hud-army{display:flex;align-items:center;flex:1 1 190px;min-width:0;padding:6px 12px 6px 10px;border-radius:10px;
+ background:linear-gradient(90deg,color-mix(in srgb,var(--flag-a) 42%,#17211d),#17211d);
+ border:1px solid color-mix(in srgb,var(--flag-a) 70%,#17211d);opacity:.82}
+.battle-module .got-hud-army.is-turn{opacity:1;border-color:#ffe07a;box-shadow:0 0 0 2px rgba(255,224,122,.45)}
+.battle-module .battle-got .got-hud h3{flex:0 1 auto;font-size:14px;font-weight:600;color:#d8c7a2;font-family:inherit}
+.battle-module .got-hud .got-quick-save{display:flex;gap:6px}
+
+/* Faixa da próxima decisão: uma linha. */
+.battle-module .battle-got .battle-got-phase-dock{padding:8px 12px;border-radius:10px;gap:10px}
+.battle-module .battle-got .battle-got-phase-dock p{margin:0;font-size:13px}
+
+/* Mapa. */
+.battle-module .battle-got .got-map-panel{background:linear-gradient(180deg,#22302a,#1a2420);padding:12px}
+.battle-module .battle-got .got-map-header{margin-bottom:8px}
+.battle-module .battle-got .got-map-header .battle-note{margin:0;font-size:13px}
+.battle-module .battle-got .got-map{max-width:none}
+.battle-module .got-map-more{margin-top:8px}
+.battle-module .got-map-more>summary{min-height:36px;font-size:13px}
+
+/* Painel de comando com as cores da Casa da vez. */
+.battle-module .battle-got .got-command{--flag-a:#416f9b;--flag-b:#e3c98a;border:2px solid var(--flag-a);gap:10px;
+ background:linear-gradient(180deg,color-mix(in srgb,var(--flag-a) 22%,#16231f),#16231f 120px)}
+.battle-module .battle-got .got-command-turn{background:none;padding:0;color:#fff7e3}
+.battle-module .battle-got .got-command-turn .got-banner-text strong{font-size:19px}
+.battle-module .got-command-pips i{border-color:#e7d6ae}
+.battle-module .got-command-chosen{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;
+ background:#1f302a;border:1px solid #ffe07a}
+.battle-module .got-command-chosen>span{display:flex;flex-direction:column;min-width:0}
+.battle-module .got-command-chosen strong{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.battle-module .got-command-chosen small{font-size:12px;color:#e4d1ab}
+.battle-module .got-command-hint{margin:0;font-size:15px;line-height:1.4;color:#fff3cf;font-weight:600}
+.battle-module .battle-got .got-command-order{padding:6px 10px;min-height:40px;font-size:13px;background:#1f302a;color:#f3e7cf;
+ border-color:#6f6652}
+.battle-module .battle-got .got-command-order:hover:not(:disabled):not(.is-selected){background:#2a3d33;border-color:#ffe07a}
+.battle-module .battle-got .got-command-order.is-selected{background:#f6ecd6;color:#2a2117;border-color:#ffe07a}
+.battle-module .battle-got .got-command-footer{justify-content:flex-start}
+.battle-module .got-command-options{flex:1 1 100%;font-size:13px}
+.battle-module .got-command-options>summary{cursor:pointer;color:#d8c7a2;min-height:32px;display:flex;align-items:center}
+.battle-module .got-command-options[open]{display:grid;gap:8px}
+
+/* Exércitos em campo: lado a lado, sob o mapa. */
+.battle-module .got-main-column{display:flex;flex-direction:column;gap:12px;min-width:0}
+.battle-module .battle-got .got-army{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0}
+.battle-module .battle-got .got-army-unit{grid-template-columns:auto minmax(0,1fr) minmax(60px,30%);gap:8px}
+.battle-module .battle-got .got-army-unit .military-unit-symbol--small{width:30px;height:30px}
+.battle-module .battle-got .got-army-unit>span:nth-child(2){display:flex;flex-direction:column;min-width:0}
+.battle-module .battle-got .got-army-bar{grid-column:auto;height:8px}
+@media(min-width:1000px){.battle-module .battle-got[data-phase="orders"] .battle-got-phase-dock{display:none}}
+.battle-module .battle-got .got-army h4{padding:6px 8px;border-radius:8px;color:#fff7e3;
+ background:linear-gradient(90deg,color-mix(in srgb,var(--flag-a) 40%,#17211d),transparent)}
+.battle-module .battle-got .got-army h4 .got-banner-text strong{font-size:15px}
+.battle-module .battle-got .got-army-unit{padding:5px 8px;border-left:4px solid var(--flag-a,#4b5a50)}
+
+/* Resultado. */
+.battle-module .got-result-card{display:flex;align-items:center;gap:18px;padding:18px;border-radius:14px;
+ background:linear-gradient(120deg,color-mix(in srgb,var(--flag-a) 45%,#17211d),#17211d 75%);border:2px solid var(--flag-b)}
+.battle-module .got-result-card.is-draw{background:#1f302a;border-color:#84775f}
+.battle-module .got-result-card>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.battle-module .got-result-card span{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#e7d6ae}
+.battle-module .got-result-card strong{font-family:Georgia,'Times New Roman',serif;font-size:clamp(24px,4vw,38px);line-height:1.1;color:#fff7e3}
+.battle-module .got-result-card small{font-size:14px;color:#e7d6ae}
+.battle-module .got-result-armies{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.battle-module .got-result-armies h4{margin:0 0 6px}
+.battle-module .got-result-armies ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.battle-module .got-result-armies li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;
+ padding:6px 10px;border-radius:8px;background:#1f302a;border-left:4px solid var(--flag-a);font-size:13px}
+.battle-module .got-result-armies li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.battle-module .got-result-armies li small{color:#d8c7a2}
+.battle-module .got-result-armies li b{white-space:nowrap}
+.battle-module .got-result-armies li[data-fate="lost"]{opacity:.75}
+.battle-module .got-result-armies li[data-fate="lost"] b{color:#ff9d92}
+.battle-module .got-result-armies li[data-fate="changed"] b{color:#ffe07a}
+
+/* Registro recolhido. */
+.battle-module .battle-got details.got-events>summary,.battle-module .battle-got .got-save-panel>summary{cursor:pointer;
+ font-weight:700;color:#d8c7a2;min-height:36px;display:flex;align-items:center}
+.battle-module .battle-got details.got-events[open]>summary{margin-bottom:8px}
+
+@media(max-width:730px){
+ .battle-module .got-versus,.battle-module .battle-got .got-army{grid-template-columns:1fr}
+ .battle-module .got-versus-side,.battle-module .got-versus-side.defender{flex-direction:row;text-align:left;padding:12px;gap:12px}
+ .battle-module .got-versus-side.defender .got-versus-power{justify-content:flex-start}
+ .battle-module .got-versus-side .got-flag--lg{--flag-w:60px}
+ .battle-module .got-versus-mark{display:none}
+ .battle-module .got-launch{flex-direction:column;align-items:stretch}
+ .battle-module .battle-got .battle-simple-launch button{width:100%}
+ .battle-module .got-result-armies{grid-template-columns:1fr}
+ .battle-module .got-result-card .got-flag--lg{--flag-w:60px}
+ .battle-module .got-hud-army{flex:1 1 100%}
+}
+.battle-module .battle-got .got-hud h3.is-repeated{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.battle-module .battle-got .got-command.defender .got-command-turn{background:none}
+.battle-module .got-result-armies li.got-result-head{background:none;border-left-color:transparent;padding-top:0;padding-bottom:0;
+ font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#bfae88}
+.battle-module .got-result-armies li.got-result-head span,.battle-module .got-result-armies li.got-result-head b{font-weight:600}
+@media(min-width:1000px){.battle-module .battle-got[data-phase="finished"] .battle-got-phase-dock{display:none}}
+.battle-module .battle-got>.battle-note{color:#5b4a2c;margin:0;font-size:13px}
+@media(max-width:990px){
+ /* No celular a ordem é: mapa, comando, exércitos. */
+ .battle-module .battle-got .got-main-column,.battle-module .battle-got .got-side-column{display:contents}
+ .battle-module .battle-got .got-map-panel{order:1}
+ .battle-module .battle-got #got-battle-orders{order:2;min-width:0}
+ .battle-module .battle-got .got-columns>*>*{order:4}
+ .battle-module .battle-got .got-columns>*>.got-map-panel{order:1}
+ .battle-module .battle-got .got-columns>*>#got-battle-orders{order:2}
+ .battle-module .battle-got .got-columns>*>[aria-label="Exércitos em campo"]{order:3}
+ .battle-module .battle-got[data-phase="orders"] .battle-got-phase-dock{display:flex;flex-direction:row;align-items:center}
+ .battle-module .battle-got[data-phase="orders"] .battle-got-phase-dock p{display:none}
+ .battle-module .battle-got[data-phase="orders"] .battle-got-phase-dock button{width:auto}
+}
+.battle-module .battle-got .got-official-toggle input{flex:0 0 auto;width:18px;height:18px;min-height:0;margin-top:2px}

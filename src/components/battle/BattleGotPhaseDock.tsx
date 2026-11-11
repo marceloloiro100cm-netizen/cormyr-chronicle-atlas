@@ -15,7 +15,7 @@ export function gotNextDecision(phase:Phase,hasSiege:boolean,hasHeroes:boolean):
   hint:hasHeroes?'Resolva as ações pessoais e conclua esta fase.':'Sem heróis ativos. Conclua a fase para prosseguir.',
   button:'Resolver heróis',target:'got-personal-actions'};
  if(phase==='orders')return {
-  title:'Ordens',hint:'Selecione a tropa, escolha uma ordem legal e confirme o teste de Guerra.',
+  title:'Ordens',hint:'Toque em uma tropa e depois no alvo ou no destino.',
   button:'Dar ordem',target:'got-battle-orders'};
  return {title:'Pós-batalha',hint:'Consulte baixas e consequências simuladas, sem alterar as Casas.',
   button:'Ver resultado',target:'got-after-action'};

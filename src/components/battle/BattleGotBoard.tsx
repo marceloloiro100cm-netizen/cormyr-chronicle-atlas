@@ -1,6 +1,7 @@
 import {useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
-import type {WarBattle,WarPosition,WarUnit} from '@/lib/battle/got/types';
+import type {WarBanner,WarBattle,WarPosition,WarSide,WarUnit} from '@/lib/battle/got/types';
+import {bannerStyle} from './BattleGotBanner';
 import type {WarTargetOption} from '@/lib/battle/got/command-preview';
 import {formatWarChance} from '@/lib/battle/got/odds';
 import './battle-got-board.css';
@@ -34,9 +35,11 @@ const leftOf=(x:number,width:number)=>'calc('+x+' * (100% + '+GAP+'px) / '+width
 const topOf=(y:number,height:number)=>'calc('+y+' * (100% + '+GAP+'px) / '+height+')';
 const sizeOf=(count:number)=>'calc((100% - '+(count-1)*GAP+'px) / '+count+')';
 
-export function BattleGotBoard({battle,terrainColors,selectedId,targetId,destination,
+export function BattleGotBoard({battle,banners,terrainColors,selectedId,targetId,destination,
  routeKeys,reachable,targets,needs,lastAction,conditionNames=CONDITION_LABEL,onCell}:{
  battle:WarBattle;
+ /** Bandeira e cores de cada lado: as peças vestem as cores da Casa. */
+ banners:Readonly<Record<WarSide,WarBanner>>;
  terrainColors:Readonly<Record<string,string>>;
  selectedId:string|null;targetId:string|null;destination:WarPosition;
  routeKeys:ReadonlySet<string>;
@@ -44,7 +47,8 @@ export function BattleGotBoard({battle,terrainColors,selectedId,targetId,destina
  reachable:ReadonlySet<string>;
  /** Inimigos que a ordem escolhida pode atingir. */
  targets:ReadonlyMap<string,WarTargetOption>;
- needs:'enemy'|'cell'|'none'|null;
+ /** 'smart': sem ordem escolhida, o mapa mostra movimento e alvos ao mesmo tempo. */
+ needs:'enemy'|'cell'|'none'|'smart'|null;
  lastAction:BoardAction|null;
  conditionNames?:Readonly<Record<WarUnit['condition'],string>>;
  onCell:(x:number,y:number)=>void;
@@ -139,9 +143,13 @@ export function BattleGotBoard({battle,terrainColors,selectedId,targetId,destina
     (!ghost&&option?' is-attackable':'')+
     (!ghost&&shaking.has(unit.id)?' is-hit':'')+
     (!ghost&&unit.side===battle.turn&&battle.phase==='orders'?' is-turn':'')}
-   style={{left:leftOf(unit.position.x,battle.width),top:topOf(unit.position.y,battle.height),
+   style={{...bannerStyle(banners[unit.side]),
+    left:leftOf(unit.position.x,battle.width),top:topOf(unit.position.y,battle.height),
     width:sizeOf(battle.width),height:sizeOf(battle.height)}}>
    <div className="got-tok-body">
+    <span className="got-tok-flag">{banners[unit.side].crest&&
+     <img src={banners[unit.side].crest!} alt="" loading="lazy" draggable={false}
+      onError={e=>{e.currentTarget.style.display='none';}}/>}</span>
     <span className="got-tok-crest">
      {src?<img src={src} alt="" loading="lazy" draggable={false}/>:
       <strong>{unit.side==='attacker'?'A':'D'}</strong>}
@@ -182,7 +190,7 @@ export function BattleGotBoard({battle,terrainColors,selectedId,targetId,destina
     title={occupant?occupant.name+' · Saúde '+occupant.health+'/'+occupant.maxHealth:
      kind+' · '+x+','+y}
     onClick={()=>onCell(x,y)}>
-    {!occupant&&<span className="got-cell-dot" aria-hidden="true">{kind==='plain'?'·':'▥'}</span>}
+    {!occupant&&kind!=='plain'&&<span className="got-cell-dot" aria-hidden="true">▥</span>}
    </button>;
   })}
   <div className="got-board-layer" aria-hidden="true">
