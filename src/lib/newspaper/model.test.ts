@@ -8,7 +8,7 @@ const published={
  id:'00000000-0000-4000-8000-000000000001',edition_no:1,
  campaign_date:'1522-01-01',title:'Gazeta de Cormyr',subtitle:'',
  template:'classico',font_style:'classico',state:'published',blocks:[],
- pdf_path:null,version:2,created_by:'user',updated_at:'',published_at:'',
+ pdf_path:null,version:2,publication_revision:2,created_by:'user',updated_at:'',published_at:'',
  archived_at:null,cancelled_at:null,
 } as NewspaperEdition;
 describe('Jornal de Cormyr',()=>{
@@ -39,6 +39,7 @@ describe('Jornal de Cormyr',()=>{
   expect(newspaperIsUnread(published)).toBe(true);
   expect(newspaperIsUnread(published,{newspaper_id:published.id,user_id:'u',read_version:1,read_at:''})).toBe(true);
   expect(newspaperIsUnread(published,{newspaper_id:published.id,user_id:'u',read_version:2,read_at:''})).toBe(false);
+  expect(newspaperIsUnread({...published,version:3},{newspaper_id:published.id,user_id:'u',read_version:2,read_at:''})).toBe(false);
   expect(newspaperIsUnread({...published,state:'cancelled'})).toBe(false);
   expect(newspaperIsUnread({...published,state:'archived'})).toBe(true);
  });
