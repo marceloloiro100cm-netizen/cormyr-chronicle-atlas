@@ -29,6 +29,7 @@ function Auth() {
  const [email,setEmail] = useState('');
  const [password,setPassword] = useState('');
  const [house,setHouse] = useState('');
+ const [profile,setProfile] = useState<'jogador'|'editor'|'narrador'>('jogador');
  const [message,setMessage] = useState('');
  const [busy,setBusy] = useState(false);
  useEffect(() => {
@@ -58,30 +59,33 @@ function Auth() {
    const {error}=await supabase.auth.signInWithPassword({email,password});
    if(error)throw error;
    // House selection is only a preference, never authorization.
-   sessionStorage.setItem('campaign-selected-house',house==='narrador'?'':house);
+   sessionStorage.setItem('campaign-selected-house',profile==='jogador'?house:'');
    await navigate({to:destino});
   }catch(e){
    const reason=loginErrorMessage(e);
-   setMessage(house==='espiao'&&reason==='E-mail ou senha incorretos.'?
-    'E-mail ou senha incorretos. A opção Leonardo não cria a conta: o Narrador deve ativá-la em Administração → Ativar ou corrigir login de Leonardo.':
-    reason);
+   setMessage(reason);
   }finally{setBusy(false);}
  }
  return <CampaignShell publicTime>
   <p className="campaign-eyebrow">SEGUNDA TEMPORADA · CORMYR</p>
-  <h1>Área dos jogadores</h1>
+  <h1>Portal de Cormyr</h1>
   <div className="campaign-auth-layout">
    <section className="campaign-auth">
-    <h2>Entrar no conselho</h2>
+    <h2>Entrar na campanha</h2>
     <form onSubmit={submit} className="campaign-form">
-     <label>Casa ou Narrador
-      <select value={house} onChange={e=>setHouse(e.target.value)}>
-       <option value="">Escolha sua casa</option>
-       <option value="narrador">Narrador</option>
-       <option value="espiao">Leonardo</option>
-       {houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+     <label>Perfil de acesso
+      <select value={profile} onChange={e=>{setProfile(e.target.value as typeof profile);setHouse('');}}>
+       <option value="jogador">Jogador · Casa nobre</option>
+       <option value="editor">Leonardo · A Folha Sem Selo</option>
+       <option value="narrador">Narrador · Gerenciamento total</option>
       </select>
      </label>
+     {profile==='jogador'&&<label>Casa nobre
+      <select value={house} onChange={e=>setHouse(e.target.value)}>
+       <option value="">Escolha sua casa</option>
+       {houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+      </select>
+     </label>}
      <label>Email
       <input type="email" required autoComplete="email" value={email}
        onChange={e=>setEmail(e.target.value)}/>
@@ -90,7 +94,7 @@ function Auth() {
       <input type="password" minLength={6} required autoComplete="current-password"
        value={password} onChange={e=>setPassword(e.target.value)}/>
      </label>
-     <p className="campaign-hint">A casa é só uma preferência; o acesso vem da sua conta. Você pode entrar por e-mail e senha mesmo sem a lista.</p>
+     <p className="campaign-hint">O perfil e a casa selecionados não concedem permissões. A conta autenticada determina se você acessa o Jornal, sua Casa ou o gerenciamento do Narrador.</p>
      <Button disabled={busy} type="submit">{busy?'Aguarde…':'Entrar'}</Button>
     </form>
     {message&&<p role="status">{message}</p>}
