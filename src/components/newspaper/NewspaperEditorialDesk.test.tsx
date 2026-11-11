@@ -30,7 +30,7 @@ describe('Redação A Folha Sem Selo',()=>{
    'Correspondentes','Anúncios','Arquivo','Leitura e Alcance','Configurações']){
    expect(screen.getByRole('button',{name:title})).toBeInTheDocument();
   }
-  expect(screen.getByRole('button',{name:'Publicar Edição'}).hasAttribute('disabled')).toBe(true);
+  expect(screen.getAllByRole('button',{name:'Publicar Edição'}).every(button=>button.hasAttribute('disabled'))).toBe(true);
   expect(screen.getByText(/PRÉ-VISUALIZAÇÃO ILUSTRATIVA/)).toBeInTheDocument();
  });
  it('abre a redação de matérias com um clique e permite voltar aos outros módulos',()=>{
@@ -59,7 +59,7 @@ describe('Redação A Folha Sem Selo',()=>{
   };
   render(<NewspaperEditorialDesk {...p}/>);
   expect(screen.getByRole('button',{name:'Arquivar'})).toBeDisabled();
-  fireEvent.click(screen.getByRole('button',{name:'Publicar Edição'}));
+  fireEvent.click(screen.getAllByRole('button',{name:'Publicar Edição'})[0]!);
   expect(p.onSave).toHaveBeenCalledWith('published');
  });
 });
