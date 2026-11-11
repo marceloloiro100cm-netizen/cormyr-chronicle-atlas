@@ -97,6 +97,9 @@ BEGIN
        OR NEW.created_by <> OLD.created_by THEN
       RAISE EXCEPTION 'Identidade da edição é imutável.';
     END IF;
+    IF NEW.state='archived' AND OLD.state NOT IN ('published','archived') THEN
+      RAISE EXCEPTION 'Publique esta edição antes de arquivá-la.';
+    END IF;
     NEW.version := OLD.version + 1;
     NEW.publication_revision := OLD.publication_revision;
     IF NEW.state IN ('published','archived') AND (
