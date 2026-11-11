@@ -10,7 +10,7 @@ afterEach(cleanup);
 describe('Cartografia detalhada no planejador de espionagem',()=>{
  it('preserva os seis mapas e as dimensões originais do Narrador',()=>{
   expect(Object.keys(SPY_NOBLE_DETAIL_MAPS).sort()).toEqual(
-   ['crownlands','dragoncoast','ferlin','helmlands','horselands','shieldmark','stonelands','volkumburgh']);
+   ['crownlands','dragoncoast','ferlin','helmlands','horselands','shieldmark','stonelands','swordmark','veilstone','volkumburgh']);
   for(const region of ['crownlands','helmlands','shieldmark']){
    expect(SPY_NOBLE_DETAIL_MAPS[region]).toMatchObject({
     width:1536,height:1024,src:'/maps/espionage/'+region+'.webp'});
@@ -109,6 +109,48 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
    const map=SPY_NOBLE_DETAIL_MAPS[name]!;
    const binary=statSync('public'+map.src);
    expect(binary.size).toBeGreaterThan(200_000);
+  }
+ });
+
+ it('Swordmark e Veilstone usam mapas oficiais e marcadores das Casas nomeadas',()=>{
+  for(const [region,origin,destination,count] of ([
+   ['swordmark','Thundersword','Creth',11],
+   ['veilstone','Ammaeth','Iverson',9]
+  ] as const)){
+   const map=SPY_NOBLE_DETAIL_MAPS[region]!;
+   expect(map).toMatchObject({width:1536,height:1024,src:'/maps/espionage/'+region+'.png'});
+   expect(Object.values(map.houses)).toHaveLength(count);
+   expect(new Set(Object.values(map.houses).map(p=>p.x+','+p.y)).size).toBe(count);
+   for(const {x,y} of Object.values(map.houses)){
+    expect(x).toBeGreaterThan(0);expect(x).toBeLessThan(1536);
+    expect(y).toBeGreaterThan(0);expect(y).toBeLessThan(1024);
+   }
+   expect(spyHouseMapPoint(region,origin)).not.toBeNull();
+   expect(spyHouseMapPoint(region,destination)).not.toBeNull();
+   expect(spyHouseMapPoint(region,'Casa desconhecida')).toBeNull();
+   const {container,unmount}=render(<SpyLocalHouseMap regionId={region}
+    originHouseId={origin.toLowerCase()} originHouseName={origin}
+    destinationHouseId={destination.toLowerCase()} destinationHouseName={destination}
+    plan={null} onSelectRegion={vi.fn()}/>);
+   expect(container.querySelector('img')).toHaveAttribute('src',map.src);
+   expect(container.querySelector('svg.spy-noble-map-overlay'))
+    .toHaveAttribute('viewBox','0 0 1536 1024');
+   expect(container.querySelectorAll('.spy-noble-local-pin')).toHaveLength(2);
+   expect(container.querySelector('.spy-noble-local-route')).not.toBeNull();
+   unmount();
+  }
+ });
+ it('associa o mesmo arquivo de mapa nas visões do Reino e da Espionagem',()=>{
+  const raw=readFileSync('public/cormyr/data.js','utf8');
+  const catalog=JSON.parse(raw.replace(/^window\.CORMYR_DATA\s*=\s*/,'').replace(/;\s*$/,''));
+  for(const region of ['swordmark','veilstone']){
+   const kingdom=catalog.regions.find((r:{name:string})=>
+    nobleMapKey(r.name)===region);
+   expect(kingdom?.map?.src).toBe(SPY_NOBLE_DETAIL_MAPS[region]!.src);
+   const p='public'+SPY_NOBLE_DETAIL_MAPS[region]!.src;
+   const bytes=readFileSync(p);
+   expect(bytes.length).toBeGreaterThan(200_000);
+   expect([...bytes.subarray(0,8)]).toEqual([137,80,78,71,13,10,26,10]);
   }
  });
  it('usa linha fina, marfim e dourado, sem seta vermelha',()=>{

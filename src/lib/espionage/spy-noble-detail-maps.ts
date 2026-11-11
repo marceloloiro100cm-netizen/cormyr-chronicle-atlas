@@ -12,6 +12,8 @@
  * public/maps/espionage/shieldmark.webp (1536 x 1024)
  * public/maps/espionage/ferlin.webp (1183 x 1329)
  * public/maps/espionage/stonelands.webp (1536 x 1024)
+ * public/maps/espionage/swordmark.png (1536 x 1024)
+ * public/maps/espionage/veilstone.png (1536 x 1024)
  */
 export type NobleMapPoint={x:number;y:number};
 export type NobleDetailMap={
@@ -122,6 +124,36 @@ const stonelands:Record<string,NobleMapPoint>={
  hammerfalling:{x:1278,y:479},indesm:{x:1105,y:735},
 };
 
+
+/** Swordmark (11) and Veilstone (9): centers of named noble standards
+ * visible in the Narrator's 1536 x 1024 cartography, 11/11/2026.
+ * Coordinates are illustrative, not authoritative travel distances.
+ */
+const swordmark:Record<string,NobleMapPoint>={
+ thundersword:{x:771,y:107},
+ thistle:{x:413,y:224},
+ ambershield:{x:660,y:310},
+ spurbright:{x:1039,y:241},
+ stoutheart:{x:1173,y:411},
+ kessemer:{x:330,y:427},
+ hargryphon:{x:550,y:554},
+ greenmantle:{x:1043,y:586},
+ longflail:{x:276,y:657},
+ tammarast:{x:554,y:798},
+ creth:{x:955,y:796},
+};
+const veilstone:Record<string,NobleMapPoint>={
+ ammaeth:{x:1048,y:123},
+ tantorn:{x:510,y:234},
+ montgomery:{x:217,y:400},
+ iverson:{x:889,y:354},
+ bracegauntlet:{x:1325,y:433},
+ aris:{x:190,y:636},
+ aldmore:{x:490,y:626},
+ ironcastle:{x:899,y:645},
+ windstag:{x:1251,y:704},
+};
+
 const dragonCoast:Record<string,NobleMapPoint>={
  morler:{x:115,y:240},hardcastle:{x:354,y:278},
  indimber:{x:562,y:291},goldfin:{x:769,y:253},
@@ -152,6 +184,14 @@ const aliases:Record<string,string>={
  silversky:'silversky',
 };
 export const SPY_NOBLE_DETAIL_MAPS:Readonly<Record<string,NobleDetailMap>>={
+ swordmark:{
+  name:'Marca da Espada',src:'/maps/espionage/swordmark.png',
+  width:1536,height:1024,houses:swordmark,
+ },
+ veilstone:{
+  name:'Veilstone',src:'/maps/espionage/veilstone.png',
+  width:1536,height:1024,houses:veilstone,
+ },
  ferlin:{
   name:'Ferlin',src:'/maps/espionage/ferlin.webp',
   width:1183,height:1329,houses:ferlin,
