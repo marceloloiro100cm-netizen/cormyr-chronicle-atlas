@@ -1,9 +1,9 @@
 # Jornal de Cormyr
 
 ## Acesso
-- **Narrador** e **Leonardo** (jogador ativo `Leonardo`, casa especial `espiao`, sem troca obrigatória de senha pendente): podem criar, editar, publicar, cancelar e arquivar todas as edições.
-- **Demais jogadores ativos**: consultam exclusivamente edições publicadas/arquivadas. A abertura confirma a leitura pelo servidor; novas revisões incrementam a versão e voltam a ficar não lidas.
-- Controles da interface são ilustrativos. A autorização verdadeira reside nas políticas RLS e na função de edição do banco.
+- **Narrador** (perfil `narrador`) e **Leonardo** (perfil `editor`, conta ativa, sem troca obrigatória de senha pendente): podem criar, editar, publicar, cancelar e arquivar todas as edições.
+- **Jogadores ativos** (perfil `jogador` com vínculo real à sua Casa): consultam exclusivamente edições publicadas/arquivadas. A abertura confirma a leitura pelo servidor; novas revisões incrementam a versão e voltam a ficar não lidas.
+- Controles da interface são ilustrativos. A autorização verdadeira reside em `campaign_access_profiles`, `current_campaign_profile()` e nas políticas RLS do PostgreSQL. Editor-Chefe não é uma Casa.
 
 ## Experiência
 - Acesse **Jornal** no menu do Narrador ou na barra dos jogadores.
@@ -16,9 +16,9 @@
 
 ## Implantação segura
 1. Confirmar backup/restauração recente do banco Supabase de produção e conferir os vínculos reais de Leonardo; não incluir credenciais no Git.
-2. Aplicar `drizzle/migrations/0111_campaign_newspaper.sql` no **Supabase de homologação** e inspecionar RLS, bucket privado e RPCs. O commit GitHub **não aplica automaticamente** SQL no Supabase.
+2. Aplicar, nesta ordem, `drizzle/migrations/0111_campaign_newspaper.sql` e `drizzle/migrations/0116_campaign_three_access_profiles.sql` no **Supabase de homologação** e inspecionar RLS, bucket privado e RPCs. O commit GitHub **não aplica automaticamente** SQL no Supabase.
 3. Executar CI (Vitest/TypeScript/build/PostgreSQL descartável) e teste manual com três contas: Narrador, Leonardo e jogador comum.
-4. Repetir migração validada em produção com backup e janela de retorno, depois mesclar a branch e liberar via publicação GitHub existente. **Não usar Lovable nem Vercel para publicar**.
+4. Repetir ambas as migrações validadas em produção com backup e janela de retorno, depois mesclar a branch e liberar via publicação GitHub existente. **Não usar Lovable nem Vercel para publicar**.
 5. Validar edição, carregamento privado de imagem/PDF, confirmação de leitura, cancelamento, arquivamento e acesso em celular.
 
 ## Limites atuais
@@ -30,7 +30,7 @@
 
 ## Identidade de Leonardo: A Folha Sem Selo
 - Referência aprovada em 11/11/2026: redação editorial com cabeçalho vinho e dourado, pergaminho envelhecido, menu lateral e ferramentas à direita.
-- Leonardo entra diretamente na tela **Editor-Chefe** ao abrir `/jogadores`. O atalho **Outros módulos de Cormyr** preserva a navegação aos módulos previamente autorizados.
+- Leonardo entra diretamente na tela **Editor-Chefe** ao abrir `/jogadores`, antes do carregamento de Casas. **Não existe atalho para outros módulos**, ficha, Missivas ou simulador de batalhas.
 - Menu lateral: Painel do Jornal, Edição da Capa, Matérias, Pautas, Correspondentes, Anúncios, Arquivo, Leitura e Alcance, Configurações.
 - Ações centrais: Escrever Matéria, Anexar Arquivo, Pré-visualizar, Publicar Edição, Arquivar.
 - Ferramentas: Título, Subtítulo, Imagem, Coluna, Citação e Aviso/Destaque. O painel exibe texto/legenda, alças de redimensionamento e botões para ordenar os blocos.
@@ -38,3 +38,12 @@
 - Quando não houver edição, a capa de exemplo é identificada como **não publicada**. Nenhuma notícia de exemplo é enviada automaticamente.
 - A versão real mantém as manchetes e imagens salvas, com capa compacta para não repetir o nome da Folha no topo e no miolo.
 - As mudanças permanecem isoladas no tema `.folha-editorial`; leitores e o Narrador continuam usando o fluxo de jornal integrado às suas áreas existentes.
+
+
+## Três perfis de autenticação (11/11/2026)
+- **Jogador**: login e acesso à sua Casa e módulos autorizados, com jornal somente para leitura.
+- **Editor-Chefe**: Leonardo acessa A Folha Sem Selo, sem Casa, Ficha, Missivas, Documentos ou Batalhas; sem poder do Narrador.
+- **Narrador**: mantém controle integral da campanha e do Jornal.
+- A migração 0116 desvincula com segurança o antigo `espiao` de Leonardo, preservando a conta de autenticação e o histórico armazenado. O registro legado da falsa casa não é apresentado como Casa da campanha.
+- O formulário administrativo `Gerenciar acesso editorial` cria ou corrige a conta via função de servidor, sem vinculá-la a nenhuma Casa e sem armazenar senhas no código.
+- **Não mesclar esta PR sem aplicar e validar ambas as migrações no Supabase.** Atualizar apenas o front-end deixa o novo resolver de perfis indisponível e impede o login seguro.
