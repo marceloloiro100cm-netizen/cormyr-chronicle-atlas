@@ -3,13 +3,22 @@ import {parseDate} from '@/lib/calendar/harptos';
 export type NewspaperTemplate='classico'|'guerra'|'gazeta';
 export type NewspaperFont='classico'|'editorial'|'condensado';
 export type NewspaperState='draft'|'published'|'archived'|'cancelled';
-export type NewspaperBlockType='headline'|'article'|'image'|'quote';
+export type NewspaperBlockType='headline'|'article'|'image'|'quote'|'notice';
+export type NewspaperImageStyle='vintage'|'woodcut'|'original';
+export type NewspaperTextAlign='left'|'center';
+export const NEWSPAPER_NOTICE_ICONS=['⚜','📜','🏪','⚔','⚠','👑'] as const;
 export type NewspaperBlock={
   id:string;
   type:NewspaperBlockType;
   text:string;
   imagePath?:string;
   caption?:string;
+  subtitle?:string;
+  byline?:string;
+  icon?:string;
+  align?:NewspaperTextAlign;
+  imageStyle?:NewspaperImageStyle;
+  autoHeight?:boolean;
   span:number;
   height:number;
 };
@@ -36,9 +45,10 @@ export const NEWSPAPER_FONTS:{value:NewspaperFont;label:string}[]=[
 
 export function makeNewspaperBlock(type:NewspaperBlockType):NewspaperBlock{
  const id=crypto.randomUUID();
- if(type==='headline')return{id,type,text:'Escreva a manchete principal',span:12,height:110};
- if(type==='image')return{id,type,text:'',caption:'Legenda da fotografia',span:6,height:270};
+ if(type==='headline')return{id,type,text:'Escreva a manchete principal',subtitle:'Uma linha de apoio para a notícia.',align:'left',span:12,height:110};
+ if(type==='image')return{id,type,text:'',caption:'Legenda da fotografia',imageStyle:'vintage',autoHeight:true,span:6,height:270};
  if(type==='quote')return{id,type,text:'Uma declaração importante ganha destaque aqui.',span:6,height:130};
+ if(type==='notice')return{id,type,text:'Notas da Corte\n\nEscreva aqui o comunicado ou anúncio.',icon:'⚜',span:6,height:150};
  return{id,type,text:'Título da notícia\n\nEscreva aqui o conteúdo da reportagem. As colunas se ajustam conforme o espaço disponível.',span:6,height:190};
 }
 export function createNewspaperLayout(template:NewspaperTemplate):NewspaperBlock[]{
@@ -61,14 +71,40 @@ export function safeNewspaperBlocks(value:unknown):NewspaperBlock[]{
  return value.slice(0,80).filter((x):x is Record<string,unknown>=>x!==null&&typeof x==='object')
  .map((x,index)=>({
   id:typeof x['id']==='string'&&x['id'].length<100?x['id']:`block-${index}`,
-  type:['headline','article','image','quote'].includes(String(x['type']))?x['type'] as NewspaperBlockType:'article',
+  type:['headline','article','image','quote','notice'].includes(String(x['type']))?x['type'] as NewspaperBlockType:'article',
   text:typeof x['text']==='string'?x['text'].slice(0,30000):'',
   ...(typeof x['imagePath']==='string'&&x['imagePath'].length<300?{imagePath:x['imagePath']}:{}),
   ...(typeof x['caption']==='string'?{caption:x['caption'].slice(0,500)}:{}),
+  ...(typeof x['subtitle']==='string'?{subtitle:x['subtitle'].slice(0,500)}:{}),
+  ...(typeof x['byline']==='string'?{byline:x['byline'].slice(0,120)}:{}),
+  ...(typeof x['icon']==='string'&&NEWSPAPER_NOTICE_ICONS.some(icon=>icon===x['icon'])?{icon:x['icon']}:{}),
+  ...(x['align']==='center'||x['align']==='left'?{align:x['align'] as NewspaperTextAlign}:{}),
+  ...(x['imageStyle']==='vintage'||x['imageStyle']==='woodcut'||x['imageStyle']==='original'?{imageStyle:x['imageStyle'] as NewspaperImageStyle}:{}),
+  ...(typeof x['autoHeight']==='boolean'?{autoHeight:x['autoHeight']}:{}),
   span:clampNewspaperSpan(Number(x['span'])),
   height:clampNewspaperHeight(Number(x['height'])),
  }));
 }
+/** Deterministic drag-and-drop ordering: existing article IDs and layout stay intact. */
+export function reorderNewspaperBlocks(blocks:readonly NewspaperBlock[],sourceId:string,targetId:string):NewspaperBlock[]{
+ const from=blocks.findIndex(b=>b.id===sourceId);
+ const to=blocks.findIndex(b=>b.id===targetId);
+ if(from<0||to<0||from===to)return [...blocks];
+ const result=[...blocks],moved=result.splice(from,1)[0]!;
+ result.splice(to,0,moved);
+ return result;
+}
+export function insertNewspaperBlockBefore(blocks:readonly NewspaperBlock[],type:NewspaperBlockType,targetId?:string|null){
+ const result=[...blocks];
+ if(result.length>=80)return result;
+ const newBlock=makeNewspaperBlock(type),index=result.findIndex(b=>b.id===targetId);
+ result.splice(index<0?result.length:index,0,newBlock);
+ return result;
+}
+export function duplicateNewspaperBlock(block:NewspaperBlock):NewspaperBlock{
+ return {...block,id:crypto.randomUUID()};
+}
+
 export function clampNewspaperSpan(value:number):number{
  return Number.isFinite(value)?Math.min(12,Math.max(3,Math.round(value))):6;
 }
