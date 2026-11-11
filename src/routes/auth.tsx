@@ -61,7 +61,10 @@ function Auth() {
    sessionStorage.setItem('campaign-selected-house',house==='narrador'?'':house);
    await navigate({to:destino});
   }catch(e){
-   setMessage(loginErrorMessage(e));
+   const reason=loginErrorMessage(e);
+   setMessage(house==='espiao'&&reason==='E-mail ou senha incorretos.'?
+    'E-mail ou senha incorretos. A opção Leonardo não cria a conta: o Narrador deve ativá-la em Administração → Ativar ou corrigir login de Leonardo.':
+    reason);
   }finally{setBusy(false);}
  }
  return <CampaignShell publicTime>
