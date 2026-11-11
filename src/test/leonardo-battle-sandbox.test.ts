@@ -33,6 +33,6 @@ describe('Leonardo — acesso de usuário ao simulador isolado',()=>{
   expect(flags).toContain('BATTLE_PLAYERS_ENABLED=false');
   expect(route).toContain('canUseSpecialBattleSandbox');
   expect(route).toContain('specialBattleAccess');
-  expect(route).toContain('<BattleLeonardoSandbox/>');
+  expect(route).toContain('<BattleLeonardoSandbox userId={data.user.id}/>');
  });
 });
