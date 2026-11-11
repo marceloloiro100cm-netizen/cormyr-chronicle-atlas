@@ -31,6 +31,8 @@ import {SpyNarratorDossiers} from '@/components/house/espionage/spy-dossier-pane
 import {BATTLE_MODULE_ENABLED,BATTLE_PLAYERS_ENABLED} from '@/lib/battle/feature-flag';
 import {BattleNarratorHub} from '@/components/battle/BattleNarratorHub';
 import {BattleV3PlayerEntry} from '@/components/battle/BattleV3PlayerEntry';
+import {BattleLeonardoSandbox} from '@/components/battle/BattleLeonardoSandbox';
+import {canUseSpecialBattleSandbox} from '@/lib/battle/special-user-access';
 
 export const Route=createFileRoute('/_authenticated/jogadores')({head:()=>({meta:[{title:'Conselho dos jogadores — Cormyr Chronicle'},{name:'description',content:'Casas, personagens, documentos e missivas da segunda temporada.'},{property:'og:title',content:'Conselho dos jogadores — Cormyr Chronicle'},{property:'og:description',content:'Painel reservado aos jogadores autorizados da campanha.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary'}]}),component:Players});
 
@@ -133,18 +135,21 @@ function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
   if(error||!data)return <CampaignShell><h1>Não foi possível consultar seu acervo</h1><p role="alert">{error?.message}</p><Button onClick={()=>refresh()}>Tentar novamente</Button></CampaignShell>;
   const me=data.players.find(p=>p.user_id===data.user.id);
   if(me&&!data.admin&&(!me.active||me.require_password_change))return <CampaignShell><h1>{me.active?'Altere sua senha para continuar':'Acesso à campanha inativo'}</h1>{me.require_password_change&&<ChangePassword/>}<Button variant="outline" onClick={signout}>Sair</Button></CampaignShell>;
+  // Identity and membership are read under the authenticated Supabase session;
+  // no login picker choice can grant this special sandbox.
+  const specialBattleAccess=canUseSpecialBattleSandbox(data.admin,me,data.members);
   const authorized=data.admin?data.houses.filter(h=>h.active&&h.season===2):data.houses.filter(h=>data.members.some(m=>m.house_id===h.id&&m.player_id===me?.id));
   const current=data.admin?(authorized.find(h=>h.id===house)??authorized[0]):(authorized.find(h=>h.id===me?.roster_house_id)??authorized[0]);
   const canEdit=data.admin||data.members.some(m=>m.player_id===me?.id&&m.house_id===current?.id&&m.can_edit);
   const unread=unreadReceivedCount(data.letters as LetterRow[],data.replies,data.receipts,data.user.id,data.admin);
   const afterSave=async()=>{await refresh();if(!current)return;try{const result=await sync({data:{houseId:data.admin?'':current.id,importFiles:false}});setMessage(result.message);await refresh();}catch(e){setMessage('Salvo no site · pasta pendente: '+(e instanceof Error?e.message:'Falha no Drive.'));}};
   async function signout(){await qc.cancelQueries();qc.clear();await supabase.auth.signOut();await navigate({to:'/auth',search:{next:'/'},replace:true});}
-  const conselho=!current&&!data.admin?<section><h2>Vínculo aguardando autorização</h2><p>Sua identidade foi autenticada, mas nenhuma casa foi autorizada para esta conta. O administrador precisa cadastrar seu jogador e aprovar o vínculo.</p><p>Identificador da conta: <code>{data.user.id}</code></p><p>Não há acesso a documentos, personagens ou missivas de outras casas.</p></section>:<>
+  const conselho=!current&&!data.admin&&!specialBattleAccess?<section><h2>Vínculo aguardando autorização</h2><p>Sua identidade foi autenticada, mas nenhuma casa foi autorizada para esta conta. O administrador precisa cadastrar seu jogador e aprovar o vínculo.</p><p>Identificador da conta: <code>{data.user.id}</code></p><p>Não há acesso a documentos, personagens ou missivas de outras casas.</p></section>:<>
     <div className="campaign-toolbar">
       {current&&<HouseIdentity house={current}/>}
       {data.admin&&<select aria-label="Selecionar casa para administração" value={current?.id??''} onChange={e=>{setHouse(e.target.value);sessionStorage.setItem('campaign-selected-house',e.target.value);}}>{authorized.map(h=><option value={h.id} key={h.id}>{h.name}</option>)}</select>}
     </div>
-    <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa'],['ficha','Ficha'],['galeria','Galeria'],['calendario','Calendário'],['documentos','Documentos'],...(!data.admin?[['missivas','Missivas']]:[]),...(!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED?[['batalha','Batalha']]:[]),...(data.admin?[['admin','Administração']]:[])].map(([id,label])=><Button key={id} variant={tab===id?'default':'outline'} aria-pressed={tab===id} aria-label={id==='missivas'&&unread>0?`${label}: ${unread} missiva${unread===1?'':'s'} não lida${unread===1?'':'s'}`:undefined} onClick={()=>setTab(id??'casa')}>{label}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}</Button>)}</nav>
+    <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa'],['ficha','Ficha'],['galeria','Galeria'],['calendario','Calendário'],['documentos','Documentos'],...(!data.admin?[['missivas','Missivas']]:[]),...(!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED?[['batalha','Batalha']]:[]),...(!data.admin&&BATTLE_MODULE_ENABLED&&!BATTLE_PLAYERS_ENABLED&&specialBattleAccess?[['batalha','Batalha']]:[]),...(data.admin?[['admin','Administração']]:[])].map(([id,label])=><Button key={id} variant={tab===id?'default':'outline'} aria-pressed={tab===id} aria-label={id==='missivas'&&unread>0?`${label}: ${unread} missiva${unread===1?'':'s'} não lida${unread===1?'':'s'}`:undefined} onClick={()=>setTab(id??'casa')}>{label}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}</Button>)}</nav>
     {tab==='casa'&&current&&<><section><p className="campaign-eyebrow">{current.region} · CASA NOBRE</p><h2>{current.name}</h2><CampaignContent content={narrativeText(current.details)}/></section><CollapsibleText title={<h2>Textos da casa</h2>}><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind!=='document'&&r.kind!=='character'&&!isFichaCasa(r.title,r.content)&&!isFichaPersonagem(r.title,r.content)&&Boolean(narrativeText(r.content)))} narrativeOnly canEdit={canEdit} onSave={afterSave}/></CollapsibleText></>}
     {tab==='galeria'&&current&&<GalleryTab key={current.id} houseId={current.id}
      houseName={current.name} records={data.records.filter(r=>r.house_id===current.id)}/>}
@@ -154,6 +159,7 @@ function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
     {tab==='missivas'&&!data.admin&&<MissivasTab data={data} me={me} onSave={afterSave} onError={setMessage} onManage={id=>{setHouse(id);sessionStorage.setItem('campaign-selected-house',id);setTab('ficha');}}/>}
     {tab==='admin'&&data.admin&&<AdminPanel data={data} onSave={afterSave}/>}
     {tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED&&<BattleV3PlayerEntry houseId={current?.id??''}/>}
+    {tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&!BATTLE_PLAYERS_ENABLED&&specialBattleAccess&&<BattleLeonardoSandbox/>}
     </>;
   if(data.admin&&representing)return <CampaignShell><PlayerRepresentation onReturn={()=>{clearRepresentationQueryCache(qc);setRepresenting(false);void refresh();}}/></CampaignShell>;
   return <CampaignShell><div className="campaign-heading"><div><p className="campaign-eyebrow">SEGUNDA TEMPORADA · CONSELHO</p><h1>{me?.name??(data.admin?'Conselho do mestre':'Área dos jogadores')}</h1></div><div className="campaign-actions">{data.admin&&<select aria-label="Acessar como jogador" defaultValue="" onChange={async e=>{if(!e.target.value)return;const r=await supabase.rpc('start_campaign_representation',{p_player:e.target.value});if(r.error)setMessage(r.error.message);else {clearRepresentationQueryCache(qc);setRepresenting(true);}}}><option value="">Acessar como jogador…</option>{data.players.filter(p=>p.active&&p.user_id!==data.user.id&&p.user_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>}<ChangePasswordButton/><Button variant="outline" onClick={signout}>Sair</Button></div></div>
