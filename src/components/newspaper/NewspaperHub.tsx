@@ -38,9 +38,9 @@ function cloneEditableEdition(edition:NewspaperEdition){
 function safeError(cause:unknown){
  return cause instanceof Error?cause.message:'Não foi possível concluir a operação.';
 }
-export function NewspaperHub({userId,editor,editorial=false,onSignout,onOtherModules}:{
+export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
  userId:string;editor:boolean;editorial?:boolean;
- onSignout?:()=>void;onOtherModules?:()=>void;
+ onSignout?:()=>void;
 }){
  const qc=useQueryClient();
  const time=useCampaignTime();
@@ -250,7 +250,6 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout,onOtherMod
   onResizeBlock={editBlock}
   onUpload={file=>{void quickUpload(file);}}
   onCancel={()=>{void save('cancelled');}}
-  onOtherModules={()=>onOtherModules?.()}
   onSignout={()=>onSignout?.()}
  />;
 
