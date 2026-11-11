@@ -1,4 +1,4 @@
-.battle-square-legend{display:grid;gap:9px;width:100%;padding:10px 12px;
+.battle-square-legend{display:grid;gap:9px;width:100%;box-sizing:border-box;padding:10px 12px;
  margin-top:8px;background:rgba(22,32,32,.86);border:1px solid #ac946c;
  border-radius:8px;color:#fff4dd;font-size:13px;line-height:1.4}
 .battle-square-legend strong{font-weight:700;color:#ffe4b4}

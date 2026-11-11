@@ -1,0 +1,144 @@
+/* Comando tático GOT: três passos claros, com chances e resultado dos dados. */
+.battle-module .got-command{display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:12px;
+ background:#16231f;border:2px solid #416f9b;color:#f9efd9;min-width:0}
+.battle-module .got-command.defender{border-color:#ab5246}
+.battle-module .got-command-turn{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;
+ gap:10px;padding:10px 12px;border-radius:9px;background:#416f9b;color:#fff}
+.battle-module .got-command.defender .got-command-turn{background:#ab5246}
+.battle-module .got-command-turn>div:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.battle-module .got-command-turn strong{font-size:18px;font-family:Georgia,serif}
+.battle-module .got-command-turn span{font-size:13px;opacity:.95}
+.battle-module .got-command-pips{display:flex;align-items:center;gap:5px}
+.battle-module .got-command-pips i{width:14px;height:14px;border-radius:50%;border:2px solid #fff;background:transparent}
+.battle-module .got-command-pips i.is-on{background:#ffe07a;border-color:#ffe07a}
+.battle-module .got-command-pips small{margin-left:4px;font-size:12px;white-space:nowrap}
+.battle-module .got-command-step{display:flex;flex-direction:column;gap:8px}
+.battle-module .got-command-step h4{margin:0;display:flex;align-items:center;gap:8px;font-size:15px;color:#fce9c0}
+.battle-module .got-command-step h4 span{width:22px;height:22px;border-radius:50%;background:#ffe07a;color:#1b1512;
+ display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex:0 0 auto}
+.battle-module .got-command-step p{margin:0}
+.battle-module .got-command-help{font-size:13px;line-height:1.45;color:#e4d1ab}
+.battle-module .got-command-units{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px}
+.battle-module .got-command-unit{display:flex;align-items:center;gap:8px;text-align:left;padding:6px 8px;
+ border-radius:8px;border:1px solid #84775f;background:#1f302a;color:inherit;cursor:pointer;min-height:44px;min-width:0}
+.battle-module .got-command-unit:hover{border-color:#ffe07a}
+.battle-module .got-command-unit.is-selected{border-color:#ffe07a;box-shadow:0 0 0 2px #ffe07a;background:#2a3d33}
+.battle-module .got-command-unit.is-routed{opacity:.75}
+.battle-module .got-command-unit>span{display:flex;flex-direction:column;min-width:0}
+.battle-module .got-command-unit strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.battle-module .got-command-unit small{font-size:11px;color:#e4d1ab;line-height:1.3}
+.battle-module .got-command-unit .military-unit-symbol{flex:0 0 auto}
+.battle-module .got-command-orders{display:flex;flex-wrap:wrap;gap:6px}
+.battle-module .got-command-order{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;min-height:44px;
+ border-radius:8px;border:1px solid #b7a37c;background:#f6ecd6;color:#2a2117;font-weight:700;font-size:14px;cursor:pointer}
+.battle-module .got-command-order:hover:not(:disabled):not(.is-selected){background:#fff6df;border-color:#6b2d2d}
+.battle-module .got-command-order.is-selected{background:#6b2d2d;color:#fff;border-color:#ffe07a;box-shadow:0 0 0 2px #ffe07a}
+.battle-module .got-command-order:disabled{opacity:.5;cursor:not-allowed}
+.battle-module .got-command-odds{display:grid;gap:6px;margin:0}
+.battle-module .got-command-odds>div{display:grid;grid-template-columns:minmax(110px,auto) 1fr;gap:10px;align-items:baseline;
+ padding:7px 10px;border-radius:8px;background:#1f302a;border:1px solid #5d6f62}
+.battle-module .got-command-odds dt{font-size:13px;color:#e4d1ab}
+.battle-module .got-command-odds dd{margin:0;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.battle-module .got-command-odds b{font-size:18px;color:#ffe07a}
+.battle-module .got-command-odds small{font-size:12px;color:#e4d1ab;line-height:1.4}
+.battle-module .got-command-actions,.battle-module .got-command-footer{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.battle-module .got-command-footer{padding-top:10px;border-top:1px solid #4b5a50;justify-content:space-between}
+.battle-module .got-command-step.is-ready{align-items:flex-start;padding:10px;border-radius:9px;background:#2b2a17;border:1px solid #ffe07a}
+.battle-module .got-command-end{animation:got-end-pulse 1.6s ease-in-out infinite}
+.battle-module .got-command-step.is-ai{padding:10px;border-radius:9px;background:#1f302a;font-style:italic}
+.battle-module .got-command-ai{font-size:13px}
+.battle-module .got-command-result{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:9px;
+ border-left:6px solid #b7a37c;background:#1f302a;animation:got-result-in .35s ease-out}
+.battle-module .got-command-result strong{font-size:15px}
+.battle-module .got-command-result>span{font-size:13px;line-height:1.45}
+.battle-module .got-command-result.is-success{border-left-color:#58c26b}
+.battle-module .got-command-result.is-success strong{color:#abefb2}
+.battle-module .got-command-result.is-failure{border-left-color:#e6b93c}
+.battle-module .got-command-result.is-failure strong{color:#f8d195}
+.battle-module .got-command-result.is-critical{border-left-color:#e2493d}
+.battle-module .got-command-result.is-critical strong{color:#ff9d92}
+.battle-module .got-dice{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+.battle-module .got-dice b{width:26px;height:26px;border-radius:6px;background:#f6ecd6;color:#2a2117;display:inline-flex;
+ align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 2px 0 #b7a37c;
+ animation:got-die-in .45s cubic-bezier(.3,1.5,.5,1) backwards}
+.battle-module .got-dice b:nth-child(2){animation-delay:.05s}
+.battle-module .got-dice b:nth-child(3){animation-delay:.1s}
+.battle-module .got-dice b:nth-child(4){animation-delay:.15s}
+.battle-module .got-dice b:nth-child(n+5){animation-delay:.2s}
+.battle-module .got-dice b[data-face="6"]{background:#ffe07a}
+.battle-module .got-dice b[data-face="1"]{background:#e9c1bb}
+.battle-module .got-dice em{font-style:normal;font-size:13px;margin-left:4px;color:#e4d1ab}
+@keyframes got-result-in{from{opacity:0;transform:translateY(-6px)}}
+@keyframes got-die-in{from{opacity:0;transform:translateY(-14px) rotate(-90deg) scale(.6)}}
+@keyframes got-end-pulse{50%{box-shadow:0 0 0 5px rgba(255,224,122,.45)}}
+
+/* Faixa compacta de estado e lista de tropas com barras de Saúde. */
+.battle-module .got-hud{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding:10px 14px;border-radius:10px;
+ background:#16231f;border:1px solid #b7a37c;color:#f9efd9}
+.battle-module .got-hud h3{margin:0;font-size:19px;color:#fce9c0;flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
+.battle-module .got-hud-chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:4px 10px;border-radius:14px;
+ background:#1f302a;border:1px solid #5d6f62;white-space:nowrap}
+.battle-module .got-hud-chip b{color:#ffe07a}
+.battle-module .got-hud-chip.attacker{border-color:#7fb0e0}
+.battle-module .got-hud-chip.defender{border-color:#f2a79b}
+.battle-module .got-hud-mode{font-weight:800;letter-spacing:.02em}
+.battle-module .got-hud-mode.is-official{background:#6b2d2d;border-color:#ffe07a;color:#fff}
+.battle-module .got-army{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.battle-module .got-army section{display:flex;flex-direction:column;gap:6px;min-width:0}
+.battle-module .got-army h4{margin:0;font-size:14px;display:flex;justify-content:space-between;gap:8px}
+.battle-module .got-army h4.attacker{color:#a9cdf0}
+.battle-module .got-army h4.defender{color:#f6b7ad}
+.battle-module .got-army-unit{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center;padding:6px 8px;
+ border-radius:8px;background:#1f302a;border:1px solid #4b5a50;cursor:pointer;color:inherit;text-align:left;min-width:0}
+.battle-module .got-army-unit:hover{border-color:#ffe07a}
+.battle-module .got-army-unit.is-out{opacity:.5;text-decoration:line-through}
+.battle-module .got-army-unit strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.battle-module .got-army-unit small{font-size:11px;color:#e4d1ab;display:block}
+.battle-module .got-army-bar{grid-column:1/-1;height:6px;border-radius:4px;background:#0f1714;overflow:hidden}
+.battle-module .got-army-bar i{display:block;height:100%;background:#58c26b;transition:width .5s}
+.battle-module .got-army-bar i[data-level="mid"]{background:#e6b93c}
+.battle-module .got-army-bar i[data-level="low"]{background:#e2493d}
+.battle-module .got-advanced-panel>summary,.battle-module .got-help-drawer>summary{cursor:pointer;font-weight:700;
+ color:#ffe3ac;min-height:44px;display:flex;align-items:center}
+.battle-module .got-help-drawer{display:grid;gap:10px}
+.battle-module .got-mode-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;border:0;padding:0;margin:0}
+.battle-module .got-mode-picker legend{font-weight:700;color:#fce9c0;padding:0;margin-bottom:6px}
+.battle-module .got-mode-card{display:flex!important;flex-direction:column;gap:4px;padding:12px;border-radius:10px;cursor:pointer;
+ border:2px solid #84775f;background:#1f302a}
+.battle-module .got-mode-card.is-selected{border-color:#ffe07a;background:#2a3d33}
+.battle-module .got-mode-card strong{display:flex;align-items:center;gap:8px;font-size:15px}
+.battle-module .got-mode-card span{font-size:13px;line-height:1.45;color:#e4d1ab}
+.battle-module .got-force-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.battle-module .got-force-card{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:10px;background:#1f302a;
+ border:2px solid #416f9b;min-width:0}
+.battle-module .got-force-card.defender{border-color:#ab5246}
+.battle-module .got-force-card h4{margin:0}
+.battle-module .got-force-list{margin:0;padding-left:18px;font-size:13px;line-height:1.5}
+.battle-module .got-convocation{border:2px solid #ffe07a;border-radius:12px;padding:14px;background:#2b1f1c;display:grid;gap:10px}
+.battle-module .got-convocation h4{margin:0;color:#ffe07a}
+.battle-module .got-convocation table{width:100%;border-collapse:collapse;font-size:13px}
+.battle-module .got-convocation th,.battle-module .got-convocation td{text-align:left;padding:5px 6px;border-bottom:1px solid #5d4a40;
+ vertical-align:top;overflow-wrap:anywhere}
+.battle-module .got-convocation .is-ok{color:#abefb2}
+.battle-module .got-convocation .is-error{color:#ff9d92}
+@media(max-width:730px){
+ .battle-module .got-army,.battle-module .got-mode-picker,.battle-module .got-force-grid{grid-template-columns:1fr}
+ .battle-module .got-command-odds>div{grid-template-columns:1fr}
+ .battle-module .got-command-units{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+ .battle-module .got-command-result,.battle-module .got-dice b,.battle-module .got-command-end{animation:none}
+ .battle-module .got-army-bar i{transition:none}
+}
+
+.battle-module .got-side-column{display:flex;flex-direction:column;gap:12px;min-width:0}
+.battle-module .got-hud .got-quick-save{margin-left:auto}
+.battle-module .got-force-builder{display:flex;flex-direction:column;gap:10px}
+.battle-module .got-force-builder h3{margin:0;color:#fce9c0}
+.battle-module .got-army{margin-top:12px}
+
+.battle-module .battle-got .got-mode-card input[type=radio]{width:18px;height:18px;min-height:0;padding:0;
+ flex:0 0 auto;accent-color:#f5d089}
+.battle-module .battle-got .got-force-card input,.battle-module .battle-got .got-force-card select{box-sizing:border-box}
+.battle-module .got-army{grid-template-columns:1fr;margin-top:0}
+@media(min-width:1500px){.battle-module .got-army{grid-template-columns:repeat(2,minmax(0,1fr))}}
