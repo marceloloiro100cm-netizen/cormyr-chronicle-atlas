@@ -283,3 +283,44 @@
 }
 .house-hub[data-heraldry] .house-official-crest img {display: block; width: 100%; height: 100%; object-fit: contain}
 @media(max-width:650px) {.house-hub[data-heraldry] .house-official-crest {width: 64px; height: 78px; padding: 3px}}
+
+/* Accessible crest interaction in every customized sheet; the viewer keeps zoom + download. */
+.house-hub[data-heraldry] .house-official-crest .house-crest-trigger {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%; padding: 0; border-radius: 7px;
+  cursor: zoom-in;
+}
+.house-hub[data-heraldry] .house-official-crest .house-crest-image {
+  display: block; width: 100%; height: 100%; object-fit: contain;
+}
+.house-hub[data-heraldry] .house-official-crest [role="img"] {
+  display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;
+  color: var(--house-lustre);
+}
+.house-hub:not([data-heraldry]) .house-official-crest {
+  width: 100px; height: 100px; flex: 0 0 100px;
+}
+.house-hub:not([data-heraldry]) .house-official-crest .house-crest-trigger,
+.house-hub:not([data-heraldry]) .house-official-crest .house-crest-image {
+  display: block; width: 100%; height: 100%; object-fit: contain;
+}
+.house-hub[data-heraldry] .house-header > div:first-child:has(img) {
+  width: clamp(100px, 10vw, 136px) !important;
+  height: clamp(114px, 11vw, 156px) !important;
+}
+/* The Silversky and Erdenor emblems must not include parts of lettering in the frame.
+   Keep the source image readable: use updated, properly cropped assets when available. */
+.house-hub[data-heraldry] .house-resource-bar { max-width:100%; min-width:0; overscroll-behavior-x:contain }
+.house-hub[data-heraldry] .house-resource summary {min-height:24px; line-height:1.4}
+.house-hub[data-heraldry] .house-sidebar button {min-width:0; overflow-wrap:anywhere; line-height:1.4}
+.house-hub[data-heraldry] .house-content {overflow-wrap:anywhere}
+.house-hub[data-heraldry] .house-header-actions {flex-wrap:wrap}
+@media(max-width:420px) {
+  .house-hub[data-heraldry] .house-header {min-height:0; align-items:flex-start}
+  .house-hub[data-heraldry] .house-header h2 {font-size:clamp(24px,7vw,33px);overflow-wrap:anywhere}
+  .house-hub[data-heraldry] .house-sidebar nav {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .house-hub[data-heraldry] .house-stat-row {grid-template-columns:1fr}
+  .house-hub[data-heraldry] .house-overview-grid {grid-template-columns:minmax(0,1fr)}
+  .house-hub[data-heraldry] .house-content {padding:12px}
+  .house-hub[data-heraldry] .house-resource-bar {grid-template-columns:repeat(7,minmax(112px,1fr))}
+}

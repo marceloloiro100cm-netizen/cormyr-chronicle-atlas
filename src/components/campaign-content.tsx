@@ -29,7 +29,7 @@ function CampaignMedia({kind,id,title}:{kind:'youtube'|'drive';id:string;title:s
   <p><a href={original} target="_blank" rel="noopener noreferrer">Abrir na origem</a> · A visualização depende das permissões do arquivo.</p>
  </figure>;
 }
-export function PrivateImage({ path, caption, thumbnail = false }: { path: string; caption: string; thumbnail?: boolean }) {
+export function PrivateImage({ path, caption, thumbnail = false, zoomable = false, onUnavailable }: { path: string; caption: string; thumbnail?: boolean; zoomable?: boolean; onUnavailable?: () => void }) {
   const { data, error } = useQuery({
     queryKey: ["private-image", path],
     queryFn: async () => {
@@ -46,8 +46,13 @@ export function PrivateImage({ path, caption, thumbnail = false }: { path: strin
     return () => URL.revokeObjectURL(objectUrl);
   }, [data]);
   const cleanCaption = cleanGalleryTitle(caption);
+  useEffect(() => { if (error && onUnavailable) onUnavailable(); }, [error, onUnavailable]);
   if (thumbnail) return url ? (
-    <img src={url} alt={cleanCaption || "Retrato do integrante"} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block", borderRadius: "inherit" }} />
+    zoomable
+      ? <ImageViewer src={url} caption={cleanCaption || "Imagem da campanha"}
+          triggerClassName="house-crest-trigger" imageClassName="house-crest-image"
+          {...(onUnavailable?{onImageError:onUnavailable}:{})}/>
+      : <img src={url} alt={cleanCaption || "Retrato do integrante"} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block", borderRadius: "inherit" }} />
   ) : <span role="img" aria-label={error ? "Retrato indisponível" : "Carregando retrato"}><UserRound size={28} aria-hidden="true" /></span>;
   return (
     <figure
