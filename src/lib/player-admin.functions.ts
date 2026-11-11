@@ -8,11 +8,33 @@ export const managePlayerAccount=createServerFn({method:'POST'}).middleware([req
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   let player=data.playerId?(await db.from('campaign_players').select('*').eq('id',data.playerId).single()).data:null;
   if(data.playerId&&!player)throw new Error('Jogador não encontrado; nenhuma conta foi alterada.');
-  const catalog=await db.from('house_catalog').select('id,name,region,archive_data').eq('id',data.houseId).single();
-  if(catalog.error||!catalog.data)throw new Error('Selecione uma casa do catálogo oficial.');
-  const campaignHouse=await db.from('campaign_houses').select('id').eq('id',data.houseId).maybeSingle();
+  // Acesso especial fora da temporada. Não é uma casa nobre do elenco oficial.
+  // A escolha no login nunca substitui os vínculos conferidos por RLS.
+  const special=data.houseId==='espiao';
+  const catalog=special?null:await db.from('house_catalog').select('id,name,region,archive_data').eq('id',data.houseId).single();
+  if(!special&&(catalog?.error||!catalog?.data))throw new Error('Selecione uma casa do catálogo oficial.');
+  if(special){
+    const existing=await db.from('house_catalog').select('id,classification,public_reviewed').eq('id','espiao').maybeSingle();
+    if(existing.error)throw new Error('Não foi possível verificar o perfil especial.');
+    if(existing.data&&(existing.data.classification!=='special'||existing.data.public_reviewed))
+      throw new Error('Identificador especial já ocupado por registro público.');
+    if(!existing.data){
+      const inserted=await db.from('house_catalog').insert({
+        id:'espiao',name:'Espião',region:'',classification:'special',archive_data:{},public_reviewed:false,
+      });
+      if(inserted.error)throw new Error('Não foi possível registrar o perfil especial.');
+    }
+  }
+  const campaignHouse=await db.from('campaign_houses').select('id,name,season').eq('id',data.houseId).maybeSingle();
   if(campaignHouse.error)throw new Error('Não foi possível conferir a casa.');
-  if(!campaignHouse.data){const added=await db.from('campaign_houses').insert({id:catalog.data.id,name:catalog.data.name,region:catalog.data.region,season:2,active:true,source:'catalog'});if(added.error)throw new Error('Casa não pôde ser associada à campanha.');}
+  if(special&&campaignHouse.data&&(campaignHouse.data.season!==0||campaignHouse.data.name!=='Espião'))
+    throw new Error('A identidade especial conflita com uma casa existente.');
+  if(!campaignHouse.data){
+    const added=await db.from('campaign_houses').insert(special
+      ?{id:'espiao',name:'Espião',crest:'/house-flags/espiao.svg',region:'',season:0,active:true,source:'special-access'}
+      :{id:catalog!.data!.id,name:catalog!.data!.name,region:catalog!.data!.region,season:2,active:true,source:'catalog'});
+    if(added.error)throw new Error('Casa não pôde ser associada à campanha.');
+  }
   let userId=player?.user_id??null;
   if(data.email){
     const result=await db.auth.admin.listUsers({perPage:1000});if(result.error)throw new Error('Não foi possível consultar as contas.');

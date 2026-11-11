@@ -48,7 +48,7 @@ function Auth() {
    playerHouses:()=>supabase.rpc('public_player_houses'),
   }),
  });
- const houses = housesQuery.data?.houses ?? [];
+ const houses = (housesQuery.data?.houses ?? []).filter(h => h.id !== 'espiao');
  const houseErrors = housesQuery.data?.errors ?? (housesQuery.error ? ['Falha ao consultar as casas.'] : []);
  const loadingHouses = housesQuery.isPending || housesQuery.isFetching;
  async function submit(event:FormEvent) {
@@ -75,6 +75,7 @@ function Auth() {
       <select value={house} onChange={e=>setHouse(e.target.value)}>
        <option value="">Escolha sua casa</option>
        <option value="narrador">Narrador</option>
+       <option value="espiao">Leonardo</option>
        {houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
       </select>
      </label>

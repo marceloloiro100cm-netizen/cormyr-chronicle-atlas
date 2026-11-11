@@ -30,7 +30,7 @@ export async function loadSeasonHouses(src: HouseSource): Promise<SeasonHousesRe
   if (errors.length) return { houses: [], errors };
   const ids = new Set((pl.data as unknown[]).map(p => (p && typeof p === 'object' ? (p as { house_id?: unknown }).house_id : null)).filter((x): x is string => typeof x === 'string'));
   const seen = new Set<string>();
-  const houses = (cat.data as unknown[]).filter(isHouse).filter(h => ids.has(h.id) && !seen.has(h.id) && seen.add(h.id)).map(h => ({ id: h.id, name: h.name }));
+  const houses = (cat.data as unknown[]).filter(isHouse).filter(h => h.id !== 'espiao' && ids.has(h.id) && !seen.has(h.id) && seen.add(h.id)).map(h => ({ id: h.id, name: h.name }));
   return { houses, errors };
 }
 
