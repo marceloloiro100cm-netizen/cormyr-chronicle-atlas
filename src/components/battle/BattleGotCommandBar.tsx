@@ -89,7 +89,8 @@ export function BattleGotCommandBar({battle,banners,commander,ordersLeft,unit,or
     <MilitaryUnitSymbol typeId={unit.typeId} size="small"/>
     <span><strong>{unit.name}</strong>
      <small>Saúde {unit.health}/{unit.maxHealth}
-      {commandOdds?' · obedece '+formatWarChance(commandOdds.success):''}</small></span>
+      {commandOdds?' · obedece '+formatWarChance(commandOdds.success):''}
+      {unit.range!=='none'?' · tiro até '+(unit.range==='long'?'200':'20')+' m':''}</small></span>
    </div>}
    <p className="got-command-hint">{hint}</p>
    {unit&&<div className="got-command-orders" role="group" aria-label="Outras ordens">

@@ -139,3 +139,53 @@ Uma batalha de 9 contra 5 unidades foi jogada inteira com 24 toques. Com "Resolv
 - O Poder sugerido é uma estimativa pela hierarquia pública, não o valor da ficha da Casa.
 - Seis Casas não têm cores no cadastro (Obarskyr, Erdenor, Everlost, Silversky, Montgomery e Brightaxe): recebem um par de cores fixo, escolhido pelo nome. Basta preencher o campo "cores" no cadastro para corrigir.
 - A Convocação oficial ainda usa o seletor de unidades oficiais dentro de "Personalizar", com quatro espaços.
+
+## 7. Terceira rodada (mesmo dia): mapa, peças, aliados e guarnição
+
+### Alcance dos arqueiros
+
+O motor já usava a regra do livro: tiro de longo alcance até 200 m e de curto alcance até 20 m, com 10 m por quadrado. O alcance parecia ilimitado porque o campo padrão tem 120 m de largura, menos que o alcance. O que mudou:
+
+- Três tamanhos de campo (escopo): Pequeno 120 m, Médio 200 m e Grande 280 m. No Grande, os exércitos começam fora do alcance de tiro.
+- Ao escolher uma tropa de tiro, o mapa escurece o que fica além do alcance e o painel mostra "tiro até 200 m".
+- Muralhas e montanhas bloqueiam a linha de tiro por padrão (era uma opção desligada).
+
+### Peças no estilo xadrez
+
+- O tabuleiro virou uma mesa inclinada e cada tropa é uma peça de pé, com silhueta por tipo: peão com lança e escudo (infantaria), peão com arco (arqueiros), cavalo (cavalaria), torre (guarnição), capuz (batedores), coroa (guarda pessoal), navio e outros.
+- O Atacante joga com as peças claras e o Defensor com as escuras. A base de cada peça leva as cores da sua Casa, e a bandeirinha continua.
+- Muralhas, paredes de construções, montanhas e árvores aparecem de pé no mapa.
+- A opção "Habilitar miniaturas 3D nesta sessão" foi removida dos três modos (Game of Thrones, D&D e Adaptado).
+
+Observação técnica: as peças são desenhos vetoriais em perspectiva (CSS 3D), não modelos WebGL. Funcionam em qualquer aparelho, sem carregar o motor 3D.
+
+### Construtor de mapas (`map-builder.ts`, `BattleGotMapBuilder.tsx`)
+
+- Nove cenários prontos: campo aberto, colinas do defensor, travessia do rio, floresta, desfiladeiro, litoral, torre de vigia, castelo e vila murada.
+- Paleta com os 22 terrenos da Tabela 10-3 e as seis construções do capítulo 10 (torre +3, salão +4, castelo pequeno +6, castelo +8, castelo superior +12 e fortificação temporária +1), além de ponte e estrada. Basta escolher a peça e pintar no campo.
+- Cada peça mostra o efeito antes de ser usada, e o mapa montado lista as "regras deste mapa". Os textos são lidos das mesmas tabelas que o motor usa: movimento, cobertura ao Defender, terreno alto, bloqueios e bônus de Defesa das construções entram na batalha sem ajuste manual.
+- O mapa posiciona as tropas: a guarnição começa dentro das construções do seu lado (atiradores primeiro), e ninguém começa sobre rio, mar ou muralha.
+
+### Região, Casa e aliados
+
+- A escolha agora é em dois passos: primeiro a região, depois a Casa.
+- "+ Casa aliada" acrescenta até duas Casas por lado. Cada uma monta a sua força pelo próprio Poder, e as tropas entram com a bandeira, as cores e o nome da Casa que as trouxe. O limite continua em 14 tropas por lado e um só comandante dá as ordens (o de maior Guerra).
+
+### Comando automático de guarnição (`ai-commander.ts`)
+
+- Tropas do defensor dentro de torre ou castelo não saem: arqueiros atiram em quem entra no alcance e, sem alvo, protegem-se atrás das muralhas.
+- Arqueiros do defensor em colina ou montanha também mantêm a posição.
+- Tropas do defensor fora da construção recolhem-se para uma vaga livre ou aguardam junto a ela.
+- Quando o inimigo está quase desfeito (três contra um), a guarnição sai para encerrar a batalha.
+- O comando automático passou a contornar rios e muralhas em busca do portão ou da ponte.
+
+### Verificação desta rodada
+
+- 12 testes novos em `src/test/battle-got-map-allies-20261111.test.ts`: catálogo de terrenos, pintura, capacidade das construções, todos os cenários em todos os tamanhos, posicionamento automático, bônus do castelo no ataque, alcance de 200 m, linha de tiro, aliados e guarnição.
+- Batalhas completas em computador e celular, em campo pequeno, médio e grande, com castelo, rio e aliados.
+
+### Limites conhecidos
+
+- A resolução automática para em 30 rodadas. Um cerco sem armas de cerco pode terminar em impasse, e a tela avisa.
+- As armas de cerco e os heróis continuam no formulário avançado.
+- As construções valem para o lado que as possui: o inimigo não as ocupa.

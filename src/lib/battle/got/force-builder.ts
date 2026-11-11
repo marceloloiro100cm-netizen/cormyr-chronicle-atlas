@@ -61,3 +61,29 @@ export const WAR_FORCE_TIERS=[
  {id:'major',label:'Grande Casa',power:75,hint:'Casa maior: muitas unidades veteranas.'},
 ] as const;
 export type WarForceTierId=typeof WAR_FORCE_TIERS[number]['id'];
+
+export type WarAlliedUnit=WarForceUnit&Readonly<{
+ /** Índice da Casa (0 = principal, 1+ = aliadas) que trouxe a tropa. */
+ owner:number;
+}>;
+export type WarAlliedForce=Readonly<{
+ power:number;spent:number;warfare:number;units:readonly WarAlliedUnit[];
+}>;
+/** Exército de um lado com Casas aliadas: cada Casa monta a sua força pelo
+ * próprio Poder e as tropas entram alternadas até o limite do campo.
+ * Um só comandante dá as ordens (o de maior Guerra), como no livro.
+ */
+export function buildAlliedWarForce(powers:readonly number[]):WarAlliedForce{
+ if(!powers.length)throw new Error('Informe o Poder de ao menos uma Casa.');
+ const forces=powers.map(buildWarForce);
+ const units:WarAlliedUnit[]=[];
+ for(let i=0;units.length<WAR_FORCE_MAX_UNITS&&forces.some(f=>f.units.length>i);i++)
+  forces.forEach((force,owner)=>{
+   const unit=force.units[i];
+   if(unit&&units.length<WAR_FORCE_MAX_UNITS)units.push({...unit,owner});
+  });
+ // Mantém cada Casa agrupada na lista, preservando a ordem de entrada.
+ units.sort((a,b)=>a.owner-b.owner);
+ return {power:forces.reduce((n,f)=>n+f.power,0),spent:units.reduce((n,u)=>n+u.cost,0),
+  warfare:Math.max(...forces.map(f=>f.warfare)),units};
+}

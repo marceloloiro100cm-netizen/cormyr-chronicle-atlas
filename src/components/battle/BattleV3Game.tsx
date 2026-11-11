@@ -48,7 +48,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const [options,setOptions]=useState<V3ScenarioOptions>(initialOptions??defaults);
  const [game,setGame]=useState<V3Game|null>(null);
  const [expanded,setExpanded]=useState(false);
- const [miniaturesEnabled,setMiniaturesEnabled]=useState(false);
+ const miniaturesEnabled=false;
  const [selected,setSelected]=useState<string|null>(null);
  const [hoveredId,setHoveredId]=useState<string|null>(null);
  const [mode,setMode]=useState<Mode>('inspect');
@@ -201,8 +201,6 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     </select></label>
    </div>
    {narrator&&<>
-    <label className="battle-note"><input type="checkbox" checked={miniaturesEnabled}
-     onChange={e=>setMiniaturesEnabled(e.target.checked)}/> Habilitar miniaturas 3D nesta sessão (teste)</label>
     <MiniatureDemo narrator={narrator}/>
    </>}
    {status&&<p role="status">{status}</p>}
