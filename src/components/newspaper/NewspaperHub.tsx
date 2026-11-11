@@ -1,4 +1,4 @@
-import {useMemo,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {Plus,FileText,ImagePlus,Newspaper,ArrowUp,ArrowDown,Trash2,Save,Send,Archive,Undo2,Check,Eye,LayoutTemplate} from 'lucide-react';
 import {Button} from '@/components/ui/button';
@@ -53,6 +53,14 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout,onOtherMod
  const [message,setMessage]=useState('');
  const [error,setError]=useState('');
  const history=editions.data??[];
+ useEffect(()=>{
+  if(!editorial||!editor||selectedId||!editions.data?.length)return;
+  const edition=editions.data.find(e=>e.state==='draft')??editions.data[0];
+  if(!edition)return;
+  setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));
+  setEditing(edition.state==='draft');
+  setBlockId(edition.state==='draft'?edition.blocks[0]?.id??null:null);
+ },[editorial,editor,selectedId,editions.data]);
  const selected=history.find(e=>e.id===selectedId);
  const current=draft?.id===selectedId?draft:selected??null;
  const chosenBlock=current?.blocks.find(x=>x.id===blockId);
@@ -83,7 +91,8 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout,onOtherMod
    const extra=initialBlock?makeNewspaperBlock(initialBlock):null;
    if(extra)blocks.push(extra);
    const edition=await createNewspaperEdition({
-    campaign_date:dateKey(time.data),title:'A Folha Sem Selo',template,blocks,
+    campaign_date:dateKey(time.data),title:'A Folha Sem Selo',
+    subtitle:'O jornal independente de Cormyr',template,blocks,
    });
    setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));
    setBlockId(extra?.id??edition.blocks[0]?.id??null);setEditing(true);
@@ -187,7 +196,7 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout,onOtherMod
    const template:'classico'='classico';
    const base=await createNewspaperEdition({
     campaign_date:dateKey(time.data),title:'A Folha Sem Selo',
-    template,blocks:[],
+    subtitle:'O jornal independente de Cormyr',template,blocks:[],
    });
    const path=await uploadNewspaperAsset(base.id,file,kind);
    const nextBlock=kind==='image'?{...makeNewspaperBlock('image'),imagePath:path}:null;
