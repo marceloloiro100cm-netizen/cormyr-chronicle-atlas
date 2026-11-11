@@ -197,7 +197,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
     <div className={`folha-workspace${fullPreview?' folha-workspace-preview':''}`}>
      <div className="folha-workspace-main">
       {showFrontPage&&<div className="folha-paper-holder">
-       {current?<NewspaperCanvas edition={current} editing={editing&&section==='capa'&&!fullPreview}
+       {current?<NewspaperCanvas edition={current} compactMasthead editing={editing&&section==='capa'&&!fullPreview}
         selectedId={selectedBlockId} onSelect={props.onSelectBlock}
         onResize={props.onResizeBlock}/>:
         <ExampleFrontPage date={dateLabel(currentDate)}/>}
