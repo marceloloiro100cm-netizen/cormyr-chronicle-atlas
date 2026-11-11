@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
+import type {SupabaseClient} from '@supabase/supabase-js';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 export const managePlayerAccount=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({
   playerId:z.string().uuid().optional(),name:z.string().min(1).max(160),email:z.string().email().optional(),password:z.string().min(6).max(200).optional(),houseId:z.string().min(1),active:z.boolean(),canEdit:z.boolean(),canEditAttributes:z.boolean(),requireChange:z.boolean(),folderId:z.string().nullable(),
@@ -90,6 +91,7 @@ export const manageEditorialAccount=createServerFn({method:'POST'})
   const permission=await context.supabase.rpc('is_campaign_admin');
   if(permission.error||permission.data!==true)throw new Error('Somente o Narrador gerencia os perfis de acesso.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
+  const profileDb=db as unknown as SupabaseClient;
   const accounts=await db.auth.admin.listUsers({perPage:1000});
   if(accounts.error||accounts.data.users.length===1000)
    throw new Error('Não foi possível verificar todas as contas do Supabase.');
@@ -134,7 +136,7 @@ export const manageEditorialAccount=createServerFn({method:'POST'})
    ?await db.from('campaign_players').update(details).eq('id',player.id).select('id').single()
    :await db.from('campaign_players').insert({...details,user_id:userId}).select('id').single();
   if(saved.error||!saved.data)throw new Error('Não foi possível manter a identidade autenticada de Leonardo.');
-  const profile=await db.from('campaign_access_profiles').upsert({
+  const profile=await profileDb.from('campaign_access_profiles').upsert({
    user_id:userId,profile:'editor',active:true,
   },{onConflict:'user_id'});
   if(profile.error)throw new Error('Perfil editorial ainda não disponível no banco; aplique a migração 0116.');
@@ -149,6 +151,7 @@ export const inspectLeonardoAccess=createServerFn({method:'POST'})
   const role=await context.supabase.rpc('is_campaign_admin');
   if(role.error||role.data!==true)throw new Error('Acesso restrito ao Narrador.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
+  const profileDb=db as unknown as SupabaseClient;
   const accounts=await db.auth.admin.listUsers({perPage:1000});
   if(accounts.error||accounts.data.users.length===1000)
    throw new Error('Não foi possível conferir todas as contas.');
@@ -157,7 +160,7 @@ export const inspectLeonardoAccess=createServerFn({method:'POST'})
   const [player,profile]=await Promise.all([
    db.from('campaign_players').select('id,name,roster_house_id,active,require_password_change')
     .eq('user_id',account.id).maybeSingle(),
-   db.from('campaign_access_profiles').select('profile,active')
+   profileDb.from('campaign_access_profiles').select('profile,active')
     .eq('user_id',account.id).maybeSingle(),
   ]);
   if(player.error||profile.error)throw new Error('Não foi possível conferir as permissões editoriais.');
