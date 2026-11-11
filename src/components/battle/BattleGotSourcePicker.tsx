@@ -60,7 +60,7 @@ export function BattleGotSourcePicker({onChoose,onChooseMany,chosenSlots}:{
   try{
    const response=await fetchUnits({data:{houseId:id}});
    setSourceStatus(response.sourceStatus);
-   setAssets(response.scenarioAssets);
+   setAssets(response.scenarioAssets??[]);
    if(!['recorded','scenario-roster'].includes(response.sourceStatus)){
     setError('Esta Casa não possui unidades militares válidas nesta fonte. '+(response.warReadiness?.missingEvidence??[]).join(' '));
     return;
@@ -74,7 +74,7 @@ export function BattleGotSourcePicker({onChoose,onChooseMany,chosenSlots}:{
  const importUnit=async()=>{
   if(!selectedUnit||!typeId||!house)return;
   if(!selectedUnit.types.includes(typeId)||!battleRosterEligible(selectedUnit)){
-   setError('Unidade ou tipo oficial inválido.');return;
+   setError('Unidade ou tipo militar inválido.');return;
   }
   const choice=SLOTS.find(x=>x.id===slot)!;
   const duplicate=Object.entries(chosenSlots).some(([key,u])=>key!==slot&&
@@ -86,7 +86,7 @@ export function BattleGotSourcePicker({onChoose,onChooseMany,chosenSlots}:{
     typeId,side:choice.side,position:choice.position,
     ...(typeId==='special'?{rangeOverride}:{})}});
    onChoose(slot,snapshot);
-  }catch(e){setError(e instanceof Error?e.message:'Cópia oficial não autorizada.');}
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível copiar a unidade.');}
   finally{setLoading(false);}
  };
  const importEntireArmy=async()=>{
@@ -138,7 +138,7 @@ export function BattleGotSourcePicker({onChoose,onChooseMany,chosenSlots}:{
      </option>)}
     </select>
    </label>
-   <label>Equipamento / tipo oficial
+   <label>Equipamento / tipo militar
     <select value={typeId} disabled={!selectedUnit||loading}
      onChange={e=>setTypeId(e.target.value)}>
      {(selectedUnit?.types??[]).map(x=><option key={x} value={x}>{x}</option>)}
@@ -179,25 +179,26 @@ export function BattleGotSourcePicker({onChoose,onChooseMany,chosenSlots}:{
    </li>)}</ul>
   </details>}
   <div className="got-roster">
-   {SLOTS.filter(s=>chosenSlots[s.id]).map(s=><div className="got-unit" key={s.id}>
-    <strong>{s.label} · {chosenSlots[s.id]!.name}</strong>
-    <span>{chosenSlots[s.id]!.health}/{chosenSlots[s.id]!.maxHealth} Saúde ·
-     Defesa {chosenSlots[s.id]!.defense} · Disciplina {chosenSlots[s.id]!.discipline}</span>
-    {chosenSlots[s.id]!.source.warEffects&&<details className="got-house-effects-audit">
+   {Object.entries(chosenSlots).filter((entry):entry is [Slot,WarUnit]=>Boolean(entry[1]))
+    .sort(([a],[b])=>a.localeCompare(b,undefined,{numeric:true})).map(([key,unit])=><div className="got-unit" key={key}>
+    <strong>{key.replace('attacker','Atacante').replace('defender','Defensor')} · {unit.name}</strong>
+    <span>{unit.health}/{unit.maxHealth} Saúde ·
+     Defesa {unit.defense} · Disciplina {unit.discipline}</span>
+    {unit.source.warEffects&&<details className="got-house-effects-audit">
      <summary>Proveniência de efeitos da Casa</summary>
-     <p>Posse Mestre de Armas: +{chosenSlots[s.id]!.source.warEffects!.masterOfArmsSurvivorBonus}
+     <p>Posse Mestre de Armas: +{unit.source.warEffects!.masterOfArmsSurvivorBonus}
       em sobreviventes; cálculo automático confirmado pela ficha.</p>
      <p>Defesa de fortificação pendente de posição:
-      +{chosenSlots[s.id]!.source.warEffects!.deferredFortDefense};
-      armadura condicional +{chosenSlots[s.id]!.source.warEffects!.deferredFortArmor}.
+      +{unit.source.warEffects!.deferredFortDefense};
+      armadura condicional +{unit.source.warEffects!.deferredFortArmor}.
       Esses valores não foram somados à Defesa base.</p>
-     <ul>{chosenSlots[s.id]!.source.warEffects!.automatic.map(e=>
+     <ul>{unit.source.warEffects!.automatic.map(e=>
       <li key={e.holdingId}>{e.description}</li>)}</ul>
      <strong>Condições pendentes do Narrador</strong>
-     <ul>{chosenSlots[s.id]!.source.warEffects!.narratorReview.map((item,i)=>
+     <ul>{unit.source.warEffects!.narratorReview.map((item,i)=>
       <li key={i}>{item}</li>)}</ul>
     </details>}
-    <Button variant="outline" onClick={()=>onChoose(s.id,null)}>Voltar à unidade-modelo</Button>
+    <Button variant="outline" onClick={()=>onChoose(key,null)}>Retirar esta unidade do mapa</Button>
    </div>)}
   </div>
   {error&&<p role="alert" className="got-error">{error}</p>}
