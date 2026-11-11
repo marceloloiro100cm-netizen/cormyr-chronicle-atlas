@@ -165,3 +165,6 @@
 .battle-module .got-after-modifiers legend{font-weight:700;padding:0 6px}
 .battle-module .got-review-tasks ul{padding-left:22px;line-height:1.6;margin:6px 0}
 .battle-module .got-resource-rolls p{font-variant-numeric:tabular-nums}
+/* O símbolo da tropa não depende da folha global: sem ela, a imagem abriria no tamanho natural. */
+.battle-module .battle-got .military-unit-symbol--small{width:44px;height:44px;flex:0 0 auto;overflow:hidden}
+.battle-module .battle-got .military-unit-symbol--small .military-unit-artwork{display:block;width:100%;height:100%;object-fit:contain}
