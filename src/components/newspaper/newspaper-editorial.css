@@ -145,6 +145,12 @@
 .folha-paper-holder>.newspaper-page{width:100%;max-width:none;min-height:460px;
  border:0;box-shadow:inset 0 0 30px #7e4d162c;padding:25px 27px}
 .folha-paper-holder .newspaper-masthead{margin-bottom:12px}
+.folha-paper-holder .newspaper-page-folio{
+ display:flex;justify-content:space-between;align-items:center;
+ gap:10px;padding:7px 0;font:700 clamp(.6rem,.9vw,.8rem) Georgia,serif;
+ letter-spacing:.035em;text-align:center
+}
+.folha-paper-holder .newspaper-masthead .newspaper-double-rule{margin-top:5px}
 .folha-paper-holder .newspaper-masthead h1{font-size:clamp(1.35rem,2.1vw,2rem);letter-spacing:.02em;margin:5px 0}
 .folha-paper-holder .newspaper-headline{font-size:clamp(1.7rem,3vw,3.5rem);text-align:left}
 .folha-paper-holder .newspaper-article p{font-size:.94rem}
@@ -320,3 +326,5 @@
 @media(prefers-reduced-motion:reduce){
  .folha-editorial *{scroll-behavior:auto;animation:none!important;transition:none!important}
 }
+
+@media(max-width:480px){.folha-paper-holder .newspaper-page-folio{flex-wrap:wrap;justify-content:center}}
