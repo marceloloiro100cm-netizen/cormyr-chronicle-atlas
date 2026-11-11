@@ -44,35 +44,35 @@
 }
 .house-hub[data-heraldry*="goldfin"] {
   --house-main: #171717; --house-metal: #ddb357; --house-lustre: #ffe3a2;
-  --house-banner: url('/cormyr/assets/dragoncoast-goldfin.webp');
+  --house-banner: url('/house-flags/player-goldfin.webp');
 }
 .house-hub[data-heraldry*="ashkar"] {
   --house-main: #a81e16; --house-metal: #efac53; --house-lustre: #ffd78f;
-  --house-banner: url('/cormyr/assets/dragoncoast-ashkar.webp');
+  --house-banner: url('/house-flags/player-ashkar.webp');
 }
 .house-hub[data-heraldry*="fewmerry"] {
   --house-main: #0a3d90; --house-metal: #eabb4f; --house-lustre: #ffe59a;
-  --house-banner: url('/cormyr/assets/dragoncoast-fewmerry.webp');
+  --house-banner: url('/house-flags/player-fewmerry.webp');
 }
 .house-hub[data-heraldry*="grantass"] {
   --house-main: #53050f; --house-metal: #e5d0bb; --house-lustre: #fff3d9;
-  --house-banner: url('/cormyr/assets/dragoncoast-grantass.webp');
+  --house-banner: url('/house-flags/player-grantass.webp');
 }
 .house-hub[data-heraldry*="harcourt"] {
   --house-main: #bc141c; --house-metal: #f2c35c; --house-lustre: #ffe7a0;
-  --house-banner: url('/cormyr/assets/horselands-harcourt.webp');
+  --house-banner: url('/house-flags/player-harcourt.webp');
 }
 .house-hub[data-heraldry*="everlost"] {
   --house-main: #4b4a48; --house-metal: #bb4d55; --house-lustre: #f0d7d7;
-  --house-banner: url('/cormyr/assets/horselands-everlost.webp');
+  --house-banner: url('/house-flags/player-everlost.webp');
 }
 .house-hub[data-heraldry*="silversky"] {
   --house-main: #102951; --house-metal: #d1d8de; --house-lustre: #f0f5fa;
-  --house-banner: url('/cormyr/assets/horselands-silversky.webp');
+  --house-banner: url('/house-flags/player-silversky.webp');
 }
 .house-hub[data-heraldry*="erdenor"] {
   --house-main: #570f1f; --house-metal: #d5b37e; --house-lustre: #f3dcae;
-  --house-banner: url('/cormyr/assets/horselands-erdenor.webp');
+  --house-banner: url('/house-flags/player-erdenor.webp');
 }
 .house-hub[data-heraldry] .house-header {
   position: relative;
@@ -268,3 +268,18 @@
   .house-hub[data-heraldry] *::before,
   .house-hub[data-heraldry] *::after {transition: none!important; animation: none!important}
 }
+
+/* Uploaded house emblems: decorative only, never a replacement for sheet data. */
+.house-hub[data-heraldry] .house-official-crest {
+  flex: 0 0 auto;
+  width: clamp(100px, 10vw, 136px);
+  height: clamp(114px, 11vw, 156px);
+  padding: 7px;
+  border: 1px solid var(--house-metal);
+  border-radius: 13px;
+  overflow: hidden;
+  background: #100d0bd9;
+  box-shadow: 0 0 0 4px #0d0a0a6b, inset 0 0 25px #0008;
+}
+.house-hub[data-heraldry] .house-official-crest img {display: block; width: 100%; height: 100%; object-fit: contain}
+@media(max-width:650px) {.house-hub[data-heraldry] .house-official-crest {width: 64px; height: 78px; padding: 3px}}
