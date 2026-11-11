@@ -10,7 +10,7 @@ export function HouseIdentity({house}:HouseIdentityProps){
  const preferred=themeKey?`/house-flags/player-${themeKey}.webp`:null;
  const fallback=vassalCrestUrl(house.crest);
  const [failedSources,setFailedSources]=useState<string[]>([]);
- const src=[preferred,fallback].find((candidate):candidate is string=>Boolean(candidate)&&!failedSources.includes(candidate))??null;
+ const src=[preferred,fallback].find((candidate):candidate is string=>typeof candidate==='string'&&candidate.length>0&&!failedSources.includes(candidate))??null;
  return <div className="campaign-house-identity" aria-label={'Casa '+house.name}>
   <span className="campaign-house-identity__crest">
    {src
