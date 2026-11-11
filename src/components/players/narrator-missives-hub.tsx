@@ -7,6 +7,7 @@ import type {Panel} from './panel-data';
 export const NARRATOR_MENU=[
  ['painel','Conselho das casas'],
  ['missivas','Missivas'],
+ ['jornal','Jornal'],
  ['calendario','Hub Temporal'],
  ['dossies','Dossiês de Espionagem'],
  ['batalha','Módulo de batalha'],
