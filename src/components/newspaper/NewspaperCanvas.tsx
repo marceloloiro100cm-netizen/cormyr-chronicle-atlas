@@ -100,10 +100,10 @@ function NewspaperStory({block,editing,onChange}:{
  if(block.type==='quote')return <InlineText tag="blockquote" className="newspaper-quote"
   value={block.text} editing={editing} label="Editar citação"
   onChange={text=>onChange?.({text})}/>;
- if(block.type==='image')return <NewspaperImage block={block} editing={editing} onChange={onChange}/>;
+ if(block.type==='image')return <NewspaperImage block={block} editing={editing} {...(onChange?{onChange}:{})}/>;
  if(block.type==='notice')return <aside className="newspaper-notice-block">
   <span className="newspaper-notice-seal" aria-hidden="true">{block.icon??'⚜'}</span>
-  <div><InlineText tag="h3" value={heading} editing={editing} label="Editar título do aviso"
+  <div><InlineText tag="h3" value={heading??""} editing={editing} label="Editar título do aviso"
    onChange={next=>onChange?.({text:[next,paragraph].join('\n\n')})}/>
    <InlineText tag="p" value={paragraph} editing={editing} label="Editar texto do aviso"
     onChange={next=>onChange?.({text:[heading,next].join('\n\n')})}/></div>
