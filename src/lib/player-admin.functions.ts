@@ -107,6 +107,8 @@ export const manageEditorialAccount=createServerFn({method:'POST'})
   const player=existing.data;
   if(player&&player.name.trim().toLocaleLowerCase('pt-BR')!=='leonardo')
    throw new Error('A conta pertence a outro jogador; não foi convertida.');
+  if(player&&player.roster_house_id&&player.roster_house_id!=='espiao')
+   throw new Error('A conta pertence a uma Casa nobre e não pode ser convertida automaticamente.');
   if(player){
    const {data:links,error:linksError}=await db.from('house_memberships')
     .select('house_id').eq('player_id',player.id);
