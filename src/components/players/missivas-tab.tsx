@@ -234,6 +234,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
   return <div className={'campaign-mail-layout'+(data.admin?' campaign-mail-layout--narrator':'')}>
     {filterHost?createPortal(filterPanel,filterHost):filterPanel}
     <div>
+      {readOnly&&<p className="campaign-status-banner" role="status">Modo consulta: Leonardo pode ler missivas, mas não pode enviar, responder, encaminhar ou agendar mensagens.</p>}
       {!trashMode&&<MailInsights options={options} houseName={houseName} groupHouseIds={groupActive?[...allowed]:undefined} onSelect={row=>setFilters({...empty,origin:row.origin_house_id??'none',court:row.court_member_id?row.origin_house_id+':'+row.court_member_id:'none',unit:row.military_unit_id?row.origin_house_id+':'+row.military_unit_id:'none'})}/>}
       {listing.isPending&&<p role="status">Carregando missivas…</p>}
       {listing.error&&<p role="alert">Não foi possível carregar as missivas. <Button onClick={()=>listing.refetch()}>Tentar novamente</Button></p>}
