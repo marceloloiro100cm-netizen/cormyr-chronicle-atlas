@@ -13,7 +13,11 @@ export function reachableWarCells(battle:WarBattle,unitId:string,sprint=false):
  const unit=battle.units.find(u=>u.id===unitId);
  if(!unit)return [];
  const cells:WarReachableCell[]=[];
- for(let y=0;y<battle.height;y++)for(let x=0;x<battle.width;x++){
+ // Só vale testar quadrados dentro do Movimento da tropa: em campos grandes isto evita
+ // calcular centenas de rotas impossíveis a cada escolha.
+ const reach=Math.ceil(previewWarMovement(battle,unitId,unit.position,sprint).budgetMetres/10);
+ for(let y=Math.max(0,unit.position.y-reach);y<=Math.min(battle.height-1,unit.position.y+reach);y++)
+ for(let x=Math.max(0,unit.position.x-reach);x<=Math.min(battle.width-1,unit.position.x+reach);x++){
   if(x===unit.position.x&&y===unit.position.y)continue;
   // Corrida exige linha reta: evita calcular rotas impossíveis.
   if(sprint&&x!==unit.position.x&&y!==unit.position.y)continue;

@@ -48,7 +48,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const [options,setOptions]=useState<V3ScenarioOptions>(initialOptions??defaults);
  const [game,setGame]=useState<V3Game|null>(null);
  const [expanded,setExpanded]=useState(false);
- const [miniaturesEnabled,setMiniaturesEnabled]=useState(false);
+ const miniaturesEnabled=false;
  const [selected,setSelected]=useState<string|null>(null);
  const [hoveredId,setHoveredId]=useState<string|null>(null);
  const [mode,setMode]=useState<Mode>('inspect');
@@ -65,7 +65,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    if(file.size>1_500_000)throw new Error('Replay V3 excede 1,5 MB.');
    const {game:restored}=parseV3ReplayJson(await file.text());
    setOptions(restored.setup);setGame(restored);setSelected(restored.battle.activeUnitId);
-   setMode('inspect');setSkill(null);setExpanded(true);setMiniaturesEnabled(false);
+   setMode('inspect');setSkill(null);setExpanded(true);
    setStatus('Replay V3 verificado e retomado sem alterar as fichas oficiais.');
   }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível recuperar o replay V3.');}
  };
@@ -201,8 +201,6 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
     </select></label>
    </div>
    {narrator&&<>
-    <label className="battle-note"><input type="checkbox" checked={miniaturesEnabled}
-     onChange={e=>setMiniaturesEnabled(e.target.checked)}/> Habilitar miniaturas 3D nesta sessão (teste)</label>
     <MiniatureDemo narrator={narrator}/>
    </>}
    {status&&<p role="status">{status}</p>}

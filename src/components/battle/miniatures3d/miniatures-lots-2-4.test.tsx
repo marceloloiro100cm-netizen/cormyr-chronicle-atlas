@@ -32,18 +32,18 @@ describe('Miniaturas lotes 2–4: UX e controle de acesso',()=>{
   render(<BattleGotGame onBack={vi.fn()} playerSandbox/>);
   expect(screen.queryByRole('checkbox',{name:/Habilitar miniaturas 3D/})).toBeNull();
  });
- it('GOT permite Narrador habilitar a vista sem iniciar batalha',()=>{
+ it('GOT não oferece mais a habilitação 3D: as peças do tabuleiro são o padrão',()=>{
   render(<BattleGotGame onBack={vi.fn()}/>);
-  expect(screen.getByRole('checkbox',{name:/Habilitar miniaturas 3D/})).toBeInTheDocument();
+  expect(screen.queryByRole('checkbox',{name:/Habilitar miniaturas 3D/})).toBeNull();
  });
  it('D&D não libera 3D para treino dos jogadores',()=>{
   render(<BattleCrzLab mode="dnd" playerSandbox onBack={vi.fn()}/>);
   fireEvent.click(screen.getByText('Montar exércitos e ajustar cenário'));
   expect(screen.queryByRole('checkbox',{name:/Habilitar miniaturas 3D/})).toBeNull();
  });
- it('D&D mantém a habilitação 3D restrita ao Narrador',()=>{
+ it('D&D não oferece mais a habilitação 3D por sessão',()=>{
   render(<BattleCrzLab mode="dnd" onBack={vi.fn()}/>);
   fireEvent.click(screen.getByText('Montar exércitos e ajustar cenário'));
-  expect(screen.getByRole('checkbox',{name:/Habilitar miniaturas 3D/})).toBeInTheDocument();
+  expect(screen.queryByRole('checkbox',{name:/Habilitar miniaturas 3D/})).toBeNull();
  });
 });

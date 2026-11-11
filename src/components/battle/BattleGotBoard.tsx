@@ -1,6 +1,9 @@
 import {useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
-import {militaryUnitSymbolSrc} from '@/components/house/military-unit-symbol';
-import type {WarBanner,WarBattle,WarPosition,WarSide,WarUnit} from '@/lib/battle/got/types';
+import type {WarBanner,WarBattle,WarPosition,WarUnit} from '@/lib/battle/got/types';
+import {WAR_FORT_PROFILES} from '@/lib/battle/got/fortifications';
+import {WAR_TERRAIN_GLYPHS,warTerrainInfo} from '@/lib/battle/got/map-builder';
+import type {WarTerrainId} from '@/lib/battle/got/terrain';
+import {WarPiece} from './BattleGotPiece';
 import {bannerStyle} from './BattleGotBanner';
 import type {WarTargetOption} from '@/lib/battle/got/command-preview';
 import {formatWarChance} from '@/lib/battle/got/odds';
@@ -36,10 +39,12 @@ const topOf=(y:number,height:number)=>'calc('+y+' * (100% + '+GAP+'px) / '+heigh
 const sizeOf=(count:number)=>'calc((100% - '+(count-1)*GAP+'px) / '+count+')';
 
 export function BattleGotBoard({battle,banners,terrainColors,selectedId,targetId,destination,
- routeKeys,reachable,targets,needs,lastAction,conditionNames=CONDITION_LABEL,onCell}:{
+ routeKeys,reachable,targets,needs,shotRange=null,lastAction,conditionNames=CONDITION_LABEL,onCell}:{
  battle:WarBattle;
- /** Bandeira e cores de cada lado: as peças vestem as cores da Casa. */
- banners:Readonly<Record<WarSide,WarBanner>>;
+ /** Bandeira e cores de cada tropa: a base da peça leva as cores da Casa. */
+ banners:Readonly<Record<string,WarBanner>>;
+ /** Alcance de tiro da tropa escolhida, em quadrados: escurece o que fica além. */
+ shotRange?:Readonly<{from:WarPosition;cells:number}>|null;
  terrainColors:Readonly<Record<string,string>>;
  selectedId:string|null;targetId:string|null;destination:WarPosition;
  routeKeys:ReadonlySet<string>;
@@ -115,7 +120,7 @@ export function BattleGotBoard({battle,banners,terrainColors,selectedId,targetId
   }
   const victim=lastAction.targetId?battle.units.find(u=>u.id===lastAction.targetId):null;
   const actor=battle.units.find(u=>u.id===lastAction.actorId);
-  const body=node.firstElementChild as HTMLElement|null;
+  const body=node.querySelector<HTMLElement>('.got-tok-body');
   if(victim&&actor&&body&&typeof body.animate==='function'&&lastAction.kind!=='shoot'){
    const dx=Math.sign(victim.position.x-actor.position.x)*38;
    const dy=Math.sign(victim.position.y-actor.position.y)*38;
@@ -129,7 +134,7 @@ export function BattleGotBoard({battle,banners,terrainColors,selectedId,targetId
   return from&&to?{from:from.position,to:to.position,key:lastAction.seq}:null;
  })():null;
  const renderToken=(unit:WarUnit,ghost=false)=>{
-  const src=militaryUnitSymbolSrc(unit.typeId);
+  const banner=banners[unit.id];
   const ratio=unit.maxHealth?Math.max(0,Math.min(1,unit.health/unit.maxHealth)):0;
   const option=targets.get(unit.id);
   const standing=unit.standing?STANDING_ICON[unit.standing.kind]:undefined;
@@ -143,18 +148,14 @@ export function BattleGotBoard({battle,banners,terrainColors,selectedId,targetId
     (!ghost&&option?' is-attackable':'')+
     (!ghost&&shaking.has(unit.id)?' is-hit':'')+
     (!ghost&&unit.side===battle.turn&&battle.phase==='orders'?' is-turn':'')}
-   style={{...bannerStyle(banners[unit.side]),
+   style={{...(banner?bannerStyle(banner):{}),zIndex:10+unit.position.y,
     left:leftOf(unit.position.x,battle.width),top:topOf(unit.position.y,battle.height),
     width:sizeOf(battle.width),height:sizeOf(battle.height)}}>
-   <div className="got-tok-body">
-    <span className="got-tok-flag">{banners[unit.side].crest&&
-     <img src={banners[unit.side].crest!} alt="" loading="lazy" draggable={false}
+   <div className="got-tok-stand"><div className="got-tok-body">
+    <WarPiece typeId={unit.typeId} tone={unit.side==='attacker'?'light':'dark'}/>
+    <span className="got-tok-flag">{banner?.crest&&
+     <img src={banner.crest} alt="" loading="lazy" draggable={false}
       onError={e=>{e.currentTarget.style.display='none';}}/>}</span>
-    <span className="got-tok-crest">
-     {src?<img src={src} alt="" loading="lazy" draggable={false}/>:
-      <strong>{unit.side==='attacker'?'A':'D'}</strong>}
-    </span>
-    <span className="got-tok-name">{unit.name.split(' ')[0]}</span>
     <span className="got-tok-hp"><i style={{width:Math.round(ratio*100)+'%'}}
      data-level={ratio>0.6?'high':ratio>0.3?'mid':'low'}/></span>
     {unit.condition==='disorganized'&&<span className="got-tok-badge" title="Desorganizada">!</span>}
@@ -165,10 +166,25 @@ export function BattleGotBoard({battle,banners,terrainColors,selectedId,targetId
     {battle.advancedFormations&&unit.facing&&<span className="got-tok-facing">
      {({north:'↑',east:'→',south:'↓',west:'←'} as const)[unit.facing]}</span>}
     {option?.odds&&<span className="got-tok-odds">{formatWarChance(option.odds.success)}</span>}
-   </div>
+   </div></div>
   </div>;
  };
- return <div className={'got-map got-board'+(needs?' needs-'+needs:'')}
+ const forts=useMemo(()=>new Map(battle.fortifications.flatMap(f=>
+  f.cells.map(c=>[c.x+':'+c.y,f] as const))),[battle.fortifications]);
+ const tileFlags=useMemo(()=>new Map(battle.tiles.map(t=>[t.x+':'+t.y,t] as const)),[battle.tiles]);
+ /** Volumes de cenário desenhados de pé, atrás das peças da mesma fileira. */
+ const props=useMemo(()=>[
+  ...battle.tiles.flatMap(t=>t.terrain==='wall'?[{kind:'wall',x:t.x,y:t.y}]:
+   t.terrain==='mountain'?[{kind:'mountain',x:t.x,y:t.y}]:
+   t.terrain==='dense-forest'?[{kind:'forest',x:t.x,y:t.y}]:
+   t.terrain==='sparse-forest'?[{kind:'forest sparse',x:t.x,y:t.y}]:[]),
+  ...battle.fortifications.filter(f=>!f.breached).flatMap(f=>
+   // Só a parede dos fundos: as tropas dentro da construção continuam visíveis.
+   f.cells.filter(c=>!f.cells.some(o=>o.x===c.x&&o.y===c.y-1))
+    .map(c=>({kind:'fort '+f.side,x:c.x,y:c.y}))),
+ ],[battle.tiles,battle.fortifications]);
+ return <div className="got-stage" data-size={battle.width>20?'large':battle.width>12?'medium':'small'}>
+ <div className={'got-map got-board'+(needs?' needs-'+needs:'')}
   style={{gridTemplateColumns:'repeat('+battle.width+',minmax(0,1fr))'}}>
   {Array.from({length:battle.width*battle.height},(_,i)=>{
    const x=i%battle.width,y=Math.floor(i/battle.width),key=x+':'+y;
@@ -177,23 +193,36 @@ export function BattleGotBoard({battle,banners,terrainColors,selectedId,targetId
    const isDestination=destination.x===x&&destination.y===y;
    const canReach=reachable.has(key);
    const canHit=Boolean(occupant&&targets.has(occupant.id));
+   const fort=forts.get(key),flags=tileFlags.get(key);
+   const far=Boolean(shotRange&&Math.max(Math.abs(x-shotRange.from.x),Math.abs(y-shotRange.from.y))>shotRange.cells);
+   const place=warTerrainInfo(kind as WarTerrainId).label+(flags?.bridge?' com ponte':flags?.road?' com estrada':'')+
+    (fort?' · '+WAR_FORT_PROFILES[fort.kind].label+' (Defesa +'+WAR_FORT_PROFILES[fort.kind].defense+')':'');
    return <button key={i} type="button" data-terrain={kind}
+    data-fort={fort&&!fort.breached?fort.side:undefined} data-far={far?'true':undefined}
+    data-bridge={flags?.bridge?'true':undefined}
     data-reach={canReach?'true':undefined} data-hit={canHit?'true':undefined}
     style={{backgroundColor:terrainColors[kind]}}
     className={'got-cell'+(occupant?' occupied '+occupant.side:'')+
      (isDestination?' destination':'')+(routeKeys.has(key)?' got-route':'')+
      (kind!=='plain'?' got-terrain':'')+(canReach?' got-reach':'')+(canHit?' got-hit':'')}
-    aria-label={'Quadrado '+x+','+y+' · '+kind+(occupant?' · '+occupant.name+' · '+
+    aria-label={'Quadrado '+x+','+y+' · '+kind+(fort?' · '+WAR_FORT_PROFILES[fort.kind].label:'')+(occupant?' · '+occupant.name+' · '+
      conditionNames[occupant.condition]+(battle.advancedFormations?' · Frente '+
       (occupant.facing??'não definida'):''):'')+
      (canReach?' · movimento permitido':'')+(canHit?' · alvo permitido':'')}
     title={occupant?occupant.name+' · Saúde '+occupant.health+'/'+occupant.maxHealth:
-     kind+' · '+x+','+y}
+     place}
     onClick={()=>onCell(x,y)}>
-    {!occupant&&kind!=='plain'&&<span className="got-cell-dot" aria-hidden="true">▥</span>}
+    {(kind!=='plain'||flags?.bridge)&&<span className="got-cell-glyph" aria-hidden="true">
+     {flags?.bridge?'╫':WAR_TERRAIN_GLYPHS[kind]}</span>}
+    {fort&&!fort.breached&&<span className="got-cell-fort" aria-hidden="true">
+     +{WAR_FORT_PROFILES[fort.kind].defense}</span>}
    </button>;
   })}
   <div className="got-board-layer" aria-hidden="true">
+   {props.map(prop=><div key={prop.kind+prop.x+':'+prop.y} className={'got-prop '+prop.kind}
+    style={{zIndex:9+prop.y,left:leftOf(prop.x,battle.width),top:topOf(prop.y,battle.height),
+     width:sizeOf(battle.width),height:sizeOf(battle.height)}}>
+    <div className="got-tok-stand"><i/></div></div>)}
    {units.map(u=>renderToken(u))}
    {ghosts.map(g=>renderToken(g.unit,true))}
    {arrow&&<svg key={arrow.key} className="got-board-shot" viewBox={'0 0 '+battle.width+' '+battle.height}
@@ -205,5 +234,6 @@ export function BattleGotBoard({battle,banners,terrainColors,selectedId,targetId
     style={{left:leftOf(n.x,battle.width),top:topOf(n.y,battle.height),
      width:sizeOf(battle.width)}}>{n.text}</span>)}
   </div>
+ </div>
  </div>;
 }

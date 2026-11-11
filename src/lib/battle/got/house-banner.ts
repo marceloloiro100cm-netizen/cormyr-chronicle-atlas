@@ -149,6 +149,24 @@ export function contrastWarBanners(attacker:WarBanner,defender:WarBanner):
  return {attacker,defender:{...defender,primary:flipped,secondary:defender.primary,ink:inkFor(flipped)}};
 }
 /** Bandeiras gravadas na batalha, revalidadas (um salvamento local não é confiável). */
+function cleanBanner(raw:unknown,base:WarBanner):WarBanner{
+ if(!rec(raw))return base;
+ const primary=text(raw['primary'],7),secondary=text(raw['secondary'],7);
+ if(!HEX.test(primary)||!HEX.test(secondary))return base;
+ return {houseId:text(raw['houseId'],80)||null,
+  houseName:text(raw['houseName'],80)||base.houseName,
+  crest:safeCrestPath(raw['crest']),primary,secondary,ink:inkFor(primary)};
+}
+/** Bandeira de cada tropa: a da Casa aliada que a trouxe ou a do seu lado. */
+export function readUnitBanners(battle:Pick<WarBattle,'banners'|'unitBanners'|'units'>|null|undefined):
+ Readonly<Record<string,WarBanner>>{
+ const sides=readWarBanners(battle);
+ const own:unknown=battle?.unitBanners;
+ const result:Record<string,WarBanner>={};
+ for(const unit of battle?.units??[])
+  result[unit.id]=cleanBanner(rec(own)?own[unit.id]:null,sides[unit.side]);
+ return result;
+}
 export function readWarBanners(battle:Pick<WarBattle,'banners'>|null|undefined):
  Readonly<Record<WarSide,WarBanner>>{
  const clean=(side:WarSide):WarBanner=>{
@@ -165,15 +183,17 @@ export function readWarBanners(battle:Pick<WarBattle,'banners'>|null|undefined):
 }
 const ROMAN=['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV'];
 /** "Infantaria II de Phelles": nomes de mesa para tropas montadas pelo Poder. */
-export function bannerUnitNames(rows:readonly Readonly<{id:string;side:WarSide;typeLabel:string}>[],
+export function bannerUnitNames(rows:readonly Readonly<{id:string;side:WarSide;typeLabel:string;
+ /** Bandeira própria da tropa, quando veio de uma Casa aliada. */
+ banner?:WarBanner}>[],
  banners:Readonly<Record<WarSide,WarBanner>>):Readonly<Record<string,string>>{
  const sameHouse=banners.attacker.houseName===banners.defender.houseName;
  const counts=new Map<string,number>(),names:Record<string,string>={};
  for(const row of rows){
-  const key=row.side+'|'+row.typeLabel;
+  const banner=row.banner??banners[row.side];
+  const key=row.side+'|'+banner.houseName+'|'+row.typeLabel;
   const n=(counts.get(key)??0)+1;
   counts.set(key,n);
-  const banner=banners[row.side];
   const owner=banner.houseId&&!sameHouse?'de '+banner.houseName:
    row.side==='attacker'?'atacante':'defensor';
   names[row.id]=row.typeLabel+' '+(ROMAN[n-1]??String(n))+' '+owner;

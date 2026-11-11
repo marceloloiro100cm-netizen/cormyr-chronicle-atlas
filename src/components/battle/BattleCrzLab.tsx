@@ -289,7 +289,7 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
   grid:'square',preset:'CRZ-5E',resolution:dndMode?'rolled':'expected'});
  const [session,setSession]=useState<CrzReplaySession|null>(null);
  const [expanded,setExpanded]=useState(false);
- const [miniaturesEnabled,setMiniaturesEnabled]=useState(false);
+ const miniaturesEnabled=false;
  const [replayStep,setReplayStep]=useState<number|null>(null);
  const [panel,setPanel]=useState<SidePanel>('actions');
  const [hoveredId,setHoveredId]=useState<string|null>(null);
@@ -956,11 +956,6 @@ export function BattleCrzLab({onBack,mode='crz',showSavedOnOpen=false,playerSand
     </div>
     {!dndMode&&<p className="battle-note">General Tillet · nível {generalProfile.level} · {generalProfile.xp} XP
      de treinamento local. O progresso não altera a Corte nem o exército.</p>}
-    {dndMode&&!playerSandbox&&<label className="battle-note">
-     <input type="checkbox" checked={miniaturesEnabled}
-      onChange={e=>setMiniaturesEnabled(e.target.checked)}/>
-     Habilitar miniaturas 3D nesta sessão (teste, Narrador)
-    </label>}
     <Button onClick={begin}>{dndMode?'Iniciar batalha D&D · d20':'Iniciar treinamento CRZ'}</Button>
     <p className="battle-note">{dndMode?
      'D&D utiliza rolagens de d20, CA e PV por criatura, com pilhas que somam PV e baixas. Iniciativa é rolada uma vez por encontro. Não há compras ou baixas oficiais.':

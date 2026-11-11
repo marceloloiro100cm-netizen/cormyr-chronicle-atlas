@@ -125,6 +125,8 @@ export type WarBattle=Readonly<{
  squads?:readonly WarSquad[];
  /** Somente apresentação: bandeira e cores de cada lado. Nunca entra nas regras. */
  banners?:Readonly<Record<WarSide,WarBanner>>;
+ /** Somente apresentação: bandeira de tropas de Casas aliadas, por unidade. */
+ unitBanners?:Readonly<Record<string,WarBanner>>;
  siege:readonly WarSiegeEngine[];siegeCompleted:Readonly<Record<WarSide,boolean>>;
  commanders:readonly WarCommander[];units:readonly WarUnit[];
  ordersRemaining:Readonly<Record<string,number>>;

@@ -150,3 +150,46 @@
  .battle-module .battle-got[data-phase="orders"] .battle-got-phase-dock button{width:auto}
 }
 .battle-module .battle-got .got-official-toggle input{flex:0 0 auto;width:18px;height:18px;min-height:0;margin-top:2px}
+
+/* Região, Casa e aliados. */
+.battle-module .got-versus-side{align-items:flex-start}
+.battle-module .got-versus-slot{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) auto;gap:6px;align-items:center;min-width:0}
+.battle-module .got-versus-slot.is-ally{grid-template-columns:auto minmax(0,1fr) minmax(0,1.25fr) auto auto;padding-top:8px;
+ border-top:1px dashed color-mix(in srgb,var(--flag-a) 60%,#84775f)}
+.battle-module .battle-got .got-versus-slot select{min-height:42px;width:100%;box-sizing:border-box;min-width:0}
+.battle-module .battle-got .got-versus-slot select.got-versus-house{font-size:16px}
+.battle-module .battle-got .got-versus-slot .got-versus-power input{width:64px}
+.battle-module .got-versus-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.battle-module .got-versus-side.defender .got-versus-foot{flex-direction:row-reverse}
+.battle-module .got-versus-add,.battle-module .got-versus-remove{min-height:34px;padding:4px 12px;border-radius:17px;
+ border:1px dashed #b7a37c;background:transparent;color:#ffe9b8;font-weight:700;font-size:13px;cursor:pointer}
+.battle-module .got-versus-remove{padding:4px 9px;border-style:solid}
+.battle-module .got-versus-add:hover,.battle-module .got-versus-remove:hover{background:#2a3d33;border-color:#ffe07a}
+.battle-module .got-versus-side.defender{text-align:left}
+.battle-module .got-versus-side.defender .got-versus-role{text-align:right}
+@media(max-width:730px){
+ .battle-module .got-versus-slot,.battle-module .got-versus-slot.is-ally{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .battle-module .got-versus-slot.is-ally .got-flag{display:none}
+ .battle-module .got-versus-side.defender .got-versus-role{text-align:left}
+}
+.battle-module .got-versus-slot{grid-template-columns:minmax(0,1fr) minmax(0,1.35fr) 62px}
+.battle-module .got-versus-slot.is-ally{grid-template-columns:minmax(0,1fr) minmax(0,1.35fr) 62px 30px}
+.battle-module .got-versus-slot.is-ally .got-flag{display:none}
+.battle-module .got-versus-slot.is-ally select.got-versus-house{border-left:5px solid var(--flag-a)}
+.battle-module .battle-got .got-versus-slot .got-versus-power{flex-direction:column;align-items:stretch;gap:0;font-size:10px;
+ letter-spacing:.08em;text-transform:uppercase;color:#d8c7a2;line-height:1.1}
+.battle-module .battle-got .got-versus-slot .got-versus-power input{width:100%;min-height:30px;padding:2px 4px;font-size:15px}
+.battle-module .got-versus-remove{padding:0;width:30px;height:30px;min-height:0;align-self:end}
+.battle-module .got-versus .got-flag--lg{--flag-w:72px}
+.battle-module .battle-got .got-versus-slot .got-versus-power input{box-sizing:border-box}
+.battle-module .battle-got .got-versus-slot select:not(.got-versus-house){font-size:14px;padding-left:8px;padding-right:4px}
+@media(max-width:730px){
+ .battle-module .got-versus-slot{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr) 52px}
+ .battle-module .got-versus-slot.is-ally{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr) 52px 28px}
+ .battle-module .got-versus .got-flag--lg{--flag-w:54px}
+ .battle-module .got-versus-side,.battle-module .got-versus-side.defender{gap:10px;padding:10px}
+}
+.battle-module .battle-got .got-versus-slot .got-versus-power{min-width:0;overflow:hidden}
+.battle-module .battle-got .got-versus-slot .got-versus-power input{min-width:0;max-width:100%;-moz-appearance:textfield;appearance:textfield}
+.battle-module .battle-got .got-versus-slot .got-versus-power input::-webkit-outer-spin-button,
+.battle-module .battle-got .got-versus-slot .got-versus-power input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
