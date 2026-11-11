@@ -13,6 +13,7 @@ import {
 } from '@/lib/newspaper/data';
 import {
  createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperStatus,
+ reorderNewspaperBlocks,duplicateNewspaperBlock,
  NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,validateNewspaperEdition,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperState,
  type NewspaperTemplate,
@@ -121,6 +122,7 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
  };
  const addBlock=(type:NewspaperBlockType)=>{
   if(!draft)return;
+  if(draft.blocks.length>=80){setError('A edição permite até 80 elementos.');return;}
   const block=makeNewspaperBlock(type);
   modify({blocks:[...draft.blocks,block]});setBlockId(block.id);
  };
@@ -223,10 +225,33 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
  };
  const addEditorialBlock=(type:NewspaperBlockType,span?:number)=>{
   if(!current){void newEdition(type);return;}
+  if(current.blocks.length>=80){setError('A edição permite até 80 elementos.');return;}
   const block=makeNewspaperBlock(type);
   if(span)block.span=span;
   setDraft(old=>old?{...old,blocks:[...old.blocks,block]}:old);
   setBlockId(block.id);setEditing(true);
+ };
+ const reorderEditorialBlock=(fromId:string,toId:string)=>{
+  if(!current)return;
+  modify({blocks:reorderNewspaperBlocks(current.blocks,fromId,toId)});
+  setBlockId(fromId);setEditing(true);
+ };
+ const insertEditorialBefore=(type:NewspaperBlockType,beforeId:string|null)=>{
+  if(!current){void newEdition(type);return;}
+  if(current.blocks.length>=80){setError('A edição permite até 80 elementos.');return;}
+  const block=makeNewspaperBlock(type);
+  const next=[...current.blocks],index=next.findIndex(x=>x.id===beforeId);
+  next.splice(index<0?next.length:index,0,block);
+  modify({blocks:next});setBlockId(block.id);setEditing(true);
+ };
+ const duplicateEditorialBlock=(id:string)=>{
+  if(!current)return;
+  if(current.blocks.length>=80){setError('A edição permite até 80 elementos.');return;}
+  const index=current.blocks.findIndex(b=>b.id===id);
+  if(index<0)return;
+  const block=duplicateNewspaperBlock(current.blocks[index]!);
+  const next=[...current.blocks];next.splice(index+1,0,block);
+  modify({blocks:next});setBlockId(block.id);setEditing(true);
  };
  const removeEditorialBlock=(id:string)=>{
   if(!current)return;
@@ -247,6 +272,9 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
   onSelectBlock={setBlockId} onPatchBlock={editBlock}
   onAddBlock={addEditorialBlock} onRemoveBlock={removeEditorialBlock}
   onMoveBlock={(id,direction)=>{moveBlock(id,direction);setEditing(true);}}
+  onDuplicateBlock={duplicateEditorialBlock}
+  onReorderBlock={reorderEditorialBlock}
+  onInsertBefore={insertEditorialBefore}
   onResizeBlock={editBlock}
   onUpload={file=>{void quickUpload(file);}}
   onCancel={()=>{void save('cancelled');}}
@@ -331,17 +359,19 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
         <button type="button" onClick={()=>addBlock('headline')}><Plus size={14}/> Manchete</button>
         <button type="button" onClick={()=>addBlock('article')}><Plus size={14}/> Texto</button>
         <button type="button" onClick={()=>addBlock('image')}><ImagePlus size={14}/> Imagem</button>
-        <button type="button" onClick={()=>addBlock('quote')}><Plus size={14}/> Destaque</button>
+        <button type="button" onClick={()=>addBlock('quote')}><Plus size={14}/> Citação</button>
+        <button type="button" onClick={()=>addBlock('notice')}><Plus size={14}/> Aviso</button>
        </div>
        <p className="newspaper-editor-tip">Clique em qualquer bloco da página para editar. Arraste ↘ no canto para ajustar o tamanho.</p>
        {chosenBlock&&<div className="newspaper-block-properties">
         <header><strong>{chosenBlock.type==='headline'?'Manchete':chosenBlock.type==='article'?'Reportagem':
-         chosenBlock.type==='image'?'Fotografia':'Destaque'}</strong>
+         chosenBlock.type==='image'?'Fotografia':chosenBlock.type==='notice'?'Aviso':'Destaque'}</strong>
          <div>
           <button type="button" title="Subir" aria-label="Mover bloco para cima"
            onClick={()=>moveBlock(chosenBlock.id,-1)}><ArrowUp size={15}/></button>
           <button type="button" title="Descer" aria-label="Mover bloco para baixo"
            onClick={()=>moveBlock(chosenBlock.id,1)}><ArrowDown size={15}/></button>
+          <button type="button" title="Duplicar" aria-label="Duplicar bloco" onClick={()=>duplicateEditorialBlock(chosenBlock.id)}>⧉</button>
           <button type="button" title="Remover" aria-label="Remover bloco"
            onClick={()=>{modify({blocks:displayEdition.blocks.filter(b=>b.id!==chosenBlock.id)});setBlockId(null);}}><Trash2 size={15}/></button>
          </div>
@@ -363,10 +393,34 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
          <input type="range" min="3" max="12" step="1" value={chosenBlock.span}
           onChange={e=>modifyBlock(chosenBlock.id,{span:Number(e.target.value)})}/>
         </label>
-        {chosenBlock.type==='image'&&<label>Altura da foto
-         <input type="range" min="130" max="650" step="10" value={chosenBlock.height}
-          onChange={e=>modifyBlock(chosenBlock.id,{height:Number(e.target.value)})}/>
-        </label>}
+        {chosenBlock.type==='headline'&&<>
+         <label>Subtítulo da manchete<input value={chosenBlock.subtitle??''}
+          onChange={e=>modifyBlock(chosenBlock.id,{subtitle:e.target.value})}/></label>
+         <label>Alinhamento<select value={chosenBlock.align??'left'}
+          onChange={e=>modifyBlock(chosenBlock.id,{align:e.target.value as 'left'|'center'})}>
+          <option value="left">À esquerda</option><option value="center">Centralizado</option>
+         </select></label>
+        </>}
+        {chosenBlock.type==='article'&&<label>Assinatura do correspondente
+         <input value={chosenBlock.byline??''} maxLength={120}
+          onChange={e=>modifyBlock(chosenBlock.id,{byline:e.target.value})}/></label>}
+        {chosenBlock.type==='notice'&&<label>Selo do aviso
+         <select value={chosenBlock.icon??'⚜'} onChange={e=>modifyBlock(chosenBlock.id,{icon:e.target.value})}>
+          {['⚜','📜','🏪','⚔','⚠','👑'].map(icon=><option key={icon} value={icon}>{icon}</option>)}
+         </select></label>}
+        {chosenBlock.type==='image'&&<>
+         <label>Estilo da gravura<select value={chosenBlock.imageStyle??'vintage'}
+          onChange={e=>modifyBlock(chosenBlock.id,{imageStyle:e.target.value as 'vintage'|'woodcut'|'original'})}>
+          <option value="vintage">Pergaminho</option><option value="woodcut">Xilogravura</option><option value="original">Original</option>
+         </select></label>
+         <label className="newspaper-inline-check"><input type="checkbox"
+          checked={chosenBlock.autoHeight!==false}
+          onChange={e=>modifyBlock(chosenBlock.id,{autoHeight:e.target.checked})}/> Altura automática</label>
+         {chosenBlock.autoHeight===false&&<label>Altura da foto
+          <input type="range" min="130" max="650" step="10" value={chosenBlock.height}
+           onChange={e=>modifyBlock(chosenBlock.id,{height:Number(e.target.value)})}/>
+         </label>}
+        </>}
        </div>}
        <div className="newspaper-editor-divider"/>
        <label className="newspaper-upload"><FileText size={17}/> Anexar jornal em PDF
@@ -381,7 +435,9 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
       <div className="newspaper-preview">
        <NewspaperCanvas edition={displayEdition} editing={editing&&editor}
         selectedId={blockId} onSelect={setBlockId}
-        onResize={(id,size)=>modifyBlock(id,size)}/>
+        onResize={(id,size)=>{modifyBlock(id,size);setEditing(true);}}
+        onChangeBlock={editBlock} onReorderBlock={reorderEditorialBlock}
+        onInsertBlock={insertEditorialBefore}/>
       </div>
      </div>
     </>}
