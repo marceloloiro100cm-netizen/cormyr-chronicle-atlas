@@ -19,7 +19,7 @@ import {BattleCommanderPortrait} from './BattleCommanderPortrait';
 import {BattleHouseBanner,BattleHouseVersus} from './BattleHouseHeraldry';
 import type {BattleHouseDirectoryRow} from '@/lib/battle/adapters/house-directory';
 import {V3_COMMANDERS,commander,type CommanderId} from '@/lib/battle/v3/commanders';
-import {MODEL_HOUSES,modelHouse} from '@/lib/battle/v3/model-houses';
+import {MODEL_HOUSES,modelHouse,type ModelHouse} from '@/lib/battle/v3/model-houses';
 import {createV3Game,v3PlayCommand,v3LegalSkills,v3SkillName,v3UseUnitSkill,
  v3CanUseCommander,v3UseCommander,v3RunAi,type V3Game,type V3ScenarioOptions,
  type V3UnitSkill} from '@/lib/battle/v3/engine';
@@ -38,14 +38,16 @@ const defaults:V3ScenarioOptions={
 };
 /** Interface original de Cormyr: ritmo de turnos e leitura de pilhas inspirados no
  * gênero de batalhas de Cruzada, sem reutilizar arte, ícones ou UI proprietária. */
-export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,invitationName,officialCopies=[],officialHouseNames,officialHouseHeraldry}:{
+export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,invitationName,officialCopies=[],officialHouseNames,officialHouseHeraldry,customHouses=[]}:{
  narrator?:boolean;onBack?:()=>void;
  initialOptions?:V3ScenarioOptions;locked?:boolean;invitationName?:string;
  officialCopies?:readonly BattleStack[];
  officialHouseNames?:Partial<Record<Side,string>>;
  officialHouseHeraldry?:Partial<Record<Side,BattleHouseDirectoryRow>>;
+ customHouses?:readonly ModelHouse[];
 }){
  const [options,setOptions]=useState<V3ScenarioOptions>(initialOptions??defaults);
+ const getHouse=(id:string)=>customHouses.find(h=>h.id===id)??modelHouse(id);
  const [game,setGame]=useState<V3Game|null>(null);
  const [expanded,setExpanded]=useState(false);
  const miniaturesEnabled=false;
@@ -71,7 +73,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  };
  const begin=()=>{
   try{
-   const created=createV3Game(options,narrator?officialCopies:[]);
+   const created=createV3Game(options,narrator?officialCopies:[],customHouses);
    setGame(created);setSelected(created.battle.activeUnitId);setMode('inspect');
    setExpanded(true);
    setStatus('Encontro iniciado. Cada token representa um agrupamento completo.');
@@ -88,8 +90,8 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
  const availableSkills=game?v3LegalSkills(game):[];
  const currentCommander=active&&game?commander(game.commanders[active.side]):null;
  const battleHouseNames:Record<Side,string>={
-  attacker:officialHouseNames?.attacker||modelHouse(options.attackerHouseId).name,
-  defender:officialHouseNames?.defender||modelHouse(options.defenderHouseId).name,
+  attacker:officialHouseNames?.attacker||getHouse(options.attackerHouseId).name,
+  defender:officialHouseNames?.defender||getHouse(options.defenderHouseId).name,
  };
  const canPower=Boolean(game&&canAct&&v3CanUseCommander(game));
  const powerTargets=battle?.stacks.filter(s=>s.currentHp>0&&s.moraleState!=='routed'&&active&&currentCommander&&
@@ -150,7 +152,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    <h2>Forças em confronto</h2>
    <div className="crusade-model-grid">
     {sides.map(s=>{
-     const chosen=modelHouse(s.id==='attacker'?options.attackerHouseId:options.defenderHouseId);
+     const chosen=getHouse(s.id==='attacker'?options.attackerHouseId:options.defenderHouseId);
      const key=s.id==='attacker'?'attackerHouseId':'defenderHouseId';
      const ckey=s.id==='attacker'?'attackerCommander':'defenderCommander';
      const leader=commander(options[ckey]);
@@ -163,7 +165,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
       </div>:
        <label>Casa modelo<select aria-label={'Casa modelo '+s.label} value={options[key]} disabled={locked}
         onChange={e=>update({[key]:e.target.value})}>
-        {MODEL_HOUSES.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+        {[...MODEL_HOUSES,...customHouses].map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
        </select></label>}
       <h3>{sideCopies.length>0?'Exército da Casa selecionada':chosen.subtitle}</h3>
       <p>{sideCopies.length>0?'A casa-modelo deste lado foi substituída por cópias autorizadas, sem alterações na origem.':chosen.description}</p>
@@ -407,7 +409,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
        <li key={game.log.length-i}>
         <strong>Rodada {entry.round}</strong>
         <span>{officialHouseNames?.[entry.side]||
-        modelHouse(entry.side==='attacker'?game.setup.attackerHouseId:game.setup.defenderHouseId).name} · {entry.label}</span>
+        getHouse(entry.side==='attacker'?game.setup.attackerHouseId:game.setup.defenderHouseId).name} · {entry.label}</span>
         {entry.detail&&<small>{entry.detail}</small>}
        </li>)}
      </ol>
