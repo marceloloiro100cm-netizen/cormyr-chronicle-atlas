@@ -6,6 +6,7 @@ import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey,formatDate} from '@/lib/calendar/harptos';
 import {NewspaperCanvas} from './NewspaperCanvas';
+import {NewspaperEditorialDesk} from './NewspaperEditorialDesk';
 import {
  createNewspaperEdition,getNewspaperEditions,getNewspaperReceipts,
  markNewspaperRead,updateNewspaperEdition,uploadNewspaperAsset,
@@ -37,8 +38,9 @@ function cloneEditableEdition(edition:NewspaperEdition){
 function safeError(cause:unknown){
  return cause instanceof Error?cause.message:'Não foi possível concluir a operação.';
 }
-export function NewspaperHub({userId,editor}:{
- userId:string;editor:boolean;
+export function NewspaperHub({userId,editor,editorial=false,onSignout,onOtherModules}:{
+ userId:string;editor:boolean;editorial?:boolean;
+ onSignout?:()=>void;onOtherModules?:()=>void;
 }){
  const qc=useQueryClient();
  const time=useCampaignTime();
@@ -71,18 +73,20 @@ export function NewspaperHub({userId,editor}:{
    catch(cause){setError('O jornal abriu, mas a confirmação de leitura não foi salva: '+safeError(cause));}
   }
  };
- const newEdition=async()=>{
+ const newEdition=async(initialBlock?:NewspaperBlockType)=>{
   if(!editor||busy)return;
   if(!time.data){setError('Aguarde a data oficial do HUB Temporal.');return;}
   setBusy(true);setError('');
   try{
    const template:'classico'='classico';
+   const blocks=createNewspaperLayout(template);
+   const extra=initialBlock?makeNewspaperBlock(initialBlock):null;
+   if(extra)blocks.push(extra);
    const edition=await createNewspaperEdition({
-    campaign_date:dateKey(time.data),title:'Gazeta de Cormyr',template,
-    blocks:createNewspaperLayout(template),
+    campaign_date:dateKey(time.data),title:'A Folha Sem Selo',template,blocks,
    });
    setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));
-   setBlockId(edition.blocks[0]?.id??null);setEditing(true);
+   setBlockId(extra?.id??edition.blocks[0]?.id??null);setEditing(true);
    notice('Nova edição criada como rascunho. Personalize os blocos e salve.');
    await refresh();
   }catch(cause){setError(safeError(cause));}
@@ -123,10 +127,14 @@ export function NewspaperHub({userId,editor}:{
       (b.type==='image'&&!b.imagePath));
     return {...old,pdf_path:path,blocks:examplesOnly?[]:old.blocks};
    });
-   else if(sourceBlock){
+   else if(kind==='image'){
+    const imageBlock=makeNewspaperBlock('image');
     setDraft(old=>old?.id===editionId?{
-     ...old,blocks:old.blocks.map(b=>b.id===sourceBlock?{...b,imagePath:path}:b),
+     ...old,blocks:sourceBlock&&old.blocks.some(b=>b.id===sourceBlock&&b.type==='image')?
+      old.blocks.map(b=>b.id===sourceBlock?{...b,imagePath:path}:b):
+      [...old.blocks,{...imageBlock,imagePath:path}],
     }:old);
+    setBlockId(sourceBlock??imageBlock.id);
    }
    notice('Arquivo anexado. Salve o rascunho para registrar a alteração.');
   }catch(cause){setError(safeError(cause));}
