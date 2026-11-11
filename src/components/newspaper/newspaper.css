@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@600%3B700&family=EB+Garamond:wght@400%3B500%3B600%3B700&family=UnifrakturMaguntia&display=swap");
 /* O Jornal possui cores próprias sem alterar os temas das Casas ou Missivas. */
 .newspaper-hub{
  --news-paper:#f4e7c8;--news-paper-dark:#e5d0a4;--news-ink:#33281a;
@@ -167,7 +167,6 @@
 
 
 /* Interações aproveitadas do protótipo de gráfica antiga, sem substituir dados ou permissões. */
-700&family=EB+Garamond:wght@400;500;600;700&family=UnifrakturMaguntia&display=swap');
 .newspaper-page{font-family:'EB Garamond',Georgia,'Times New Roman',serif;
  background-color:#f3e4c7;
  background-image:radial-gradient(ellipse at 50% 28%,#fff7e6c9,transparent 74%),
