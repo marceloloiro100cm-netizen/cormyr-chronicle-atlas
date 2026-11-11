@@ -152,6 +152,8 @@ function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
   // Identity and membership are read under the authenticated Supabase session;
   // no login picker choice can grant this special sandbox.
   const specialBattleAccess=canUseSpecialBattleSandbox(data.admin,me,data.members);
+  const specialMailReadOnly=!data.admin&&me?.roster_house_id==='espiao'&&
+    data.members.some(m=>m.player_id===me.id&&m.house_id==='espiao');
   const authorized=data.admin?data.houses.filter(h=>h.active&&h.season===2):data.houses.filter(h=>data.members.some(m=>m.house_id===h.id&&m.player_id===me?.id));
   const current=data.admin?(authorized.find(h=>h.id===house)??authorized[0]):(authorized.find(h=>h.id===me?.roster_house_id)??authorized[0]);
   const canEdit=data.admin||data.members.some(m=>m.player_id===me?.id&&m.house_id===current?.id&&m.can_edit);
@@ -170,7 +172,7 @@ function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
     {tab==='calendario'&&<CampaignCalendar/>}
     {tab==='ficha'&&current&&<FichaTab playerId={me?.id} admin={data.admin} npcManager={<NpcHub records={data.records.filter(r=>r.house_id===current.id)} houseId={current.id} playerId={me?.id} admin={data.admin} canEdit={canEdit} onSave={afterSave} renderEditor={row=><RecordEditor row={row} canEdit={canEdit} onSave={afterSave}/>}/>} current={current} records={data.records.filter(r=>r.house_id===current.id)} canEdit={canEdit} onSave={afterSave}/>}
     {tab==='documentos'&&current&&<><h2>Documentos do acervo</h2><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind==='document')} canEdit={canEdit} onSave={afterSave}/>{canEdit&&<RecordForm houseId={current.id} playerId={me?.id} admin={data.admin} onSave={afterSave} kind="document"/>}</>}
-    {tab==='missivas'&&!data.admin&&<MissivasTab data={data} me={me} readOnly={specialBattleAccess} onSave={afterSave} onError={setMessage} onManage={id=>{setHouse(id);sessionStorage.setItem('campaign-selected-house',id);setTab('ficha');}}/>}
+    {tab==='missivas'&&!data.admin&&<MissivasTab data={data} me={me} readOnly={specialMailReadOnly} onSave={afterSave} onError={setMessage} onManage={id=>{setHouse(id);sessionStorage.setItem('campaign-selected-house',id);setTab('ficha');}}/>}
     {tab==='admin'&&data.admin&&<AdminPanel data={data} onSave={afterSave}/>}
     {tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED&&<BattleV3PlayerEntry houseId={current?.id??''}/>}
     {tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&!BATTLE_PLAYERS_ENABLED&&specialBattleAccess&&<BattleLeonardoSandbox userId={data.user.id}/>}
