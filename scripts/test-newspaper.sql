@@ -27,6 +27,7 @@ BEGIN
  IF public.can_edit_campaign_newspaper() IS TRUE
  THEN RAISE EXCEPTION 'Jornal: editor sem autenticação'; END IF;
  -- O trigger gera histórico e versão mesmo para quem contorna a interface.
+ PERFORM set_config('request.jwt.claim.sub',v_id::text,true);
  INSERT INTO public.campaign_newspapers(id,campaign_date,title)
  VALUES(v_id,'1522-01-01','Edição isolada de teste');
  SELECT version INTO v_before FROM public.campaign_newspapers WHERE id=v_id;
