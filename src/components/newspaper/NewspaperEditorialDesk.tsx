@@ -48,6 +48,9 @@ export interface NewspaperEditorialProps{
  onAddBlock:(type:NewspaperBlockType,span?:number)=>void;
  onRemoveBlock:(id:string)=>void;
  onMoveBlock:(id:string,direction:-1|1)=>void;
+ onDuplicateBlock:(id:string)=>void;
+ onReorderBlock:(fromId:string,toId:string)=>void;
+ onInsertBefore:(type:NewspaperBlockType,beforeId:string|null)=>void;
  onResizeBlock:(id:string,patch:Pick<NewspaperBlock,'span'|'height'>)=>void;
  onUpload:(file:File)=>void;
  onCancel:()=>void;
@@ -93,6 +96,13 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  const selectedBlock=current?.blocks.find(b=>b.id===selectedBlockId);
  const articles=current?.blocks.filter(b=>b.type==='article')??[];
  const headlines=current?.blocks.filter(b=>b.type==='headline')??[];
+ const notices=current?.blocks.filter(b=>b.type==='notice')??[];
+ const correspondents=[...new Map(history.flatMap(edition=>edition.blocks.filter(b=>b.type==='article'&&b.byline?.trim())
+  .map(b=>[b.byline!.trim().toLocaleLowerCase('pt-BR'),b.byline!.trim()] as const))).values()];
+ const toolboxDrag=(event:React.DragEvent<HTMLButtonElement>,type:NewspaperBlockType)=>{
+  event.dataTransfer.setData('application/x-cormyr-newspaper-tool',type);
+  event.dataTransfer.effectAllowed='copy';
+ };
  const pdfReady=Boolean(current?.pdf_path);
  const materialReady=Boolean(current&&(current.blocks.some(b=>b.type==='headline'||b.type==='article'||b.imagePath)||pdfReady));
  const countReads=(edition:NewspaperEdition)=>reads.filter(r=>r.newspaper_id===edition.id&&r.read_version>=edition.publication_revision).length;
@@ -198,7 +208,9 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       {showFrontPage&&<div className="folha-paper-holder">
        {current?<NewspaperCanvas edition={current} compactMasthead editing={editing&&section==='capa'&&!fullPreview}
         selectedId={selectedBlockId} onSelect={props.onSelectBlock}
-        onResize={props.onResizeBlock}/>:
+        onResize={props.onResizeBlock}
+        onChangeBlock={props.onPatchBlock} onReorderBlock={props.onReorderBlock}
+        onInsertBlock={props.onInsertBefore}/>:
         <ExampleFrontPage date={dateLabel(currentDate)}/>}
        {!current&&<button type="button" className="folha-start-edition"
         onClick={()=>{setSection('capa');props.onNew();}}>+ Criar primeira edição</button>}
@@ -228,19 +240,26 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
 
       {section==='correspondentes'&&<section className="folha-section-content">
        <h3>Correspondentes</h3>
-       <p>Espaço reservado ao futuro cadastro dos correspondentes da Folha.</p>
-       <div className="folha-future-module"><UsersRound size={35}/><strong>Rede de correspondentes</strong>
-        <span>Este painel está preparado no menu. A gestão de correspondentes será habilitada quando o respectivo módulo for desenvolvido.</span></div>
+       <p>Autores identificados nas reportagens do Jornal. Assine uma matéria para incluí-los aqui.</p>
+       {correspondents.length?<div className="folha-article-list">
+        {correspondents.map(name=><div className="folha-correspondent" key={name}>
+         <UsersRound size={19}/><strong>{name}</strong>
+         <small>{history.reduce((count,edition)=>count+edition.blocks.filter(b=>b.type==='article'&&b.byline?.trim()===name).length,0)} matéria(s) assinada(s)</small>
+        </div>)}
+       </div>:<div className="folha-future-module"><UsersRound size={35}/>
+        <strong>Nenhum correspondente ainda</strong>
+        <span>Abra uma reportagem e preencha “Assinatura do correspondente” na caixa de ferramentas.</span></div>}
       </section>}
 
       {section==='anuncios'&&<section className="folha-section-content">
        <h3>Anúncios e destaques</h3>
        <p>Insira comunicados e anúncios diretamente no jornal.</p>
-       <button type="button" className="folha-text-action" onClick={()=>insert('quote',6)}>
+       <button type="button" className="folha-text-action" onClick={()=>insert('notice',6)}>
         <Plus size={16}/> Inserir anúncio na capa</button>
-       <div className="folha-article-list">{current?.blocks.filter(b=>b.type==='quote').map(b=>
+       <div className="folha-article-list">{notices.map(b=>
         <button type="button" key={b.id} onClick={()=>{openCover();props.onSelectBlock(b.id);}}>
-         <strong>{b.text.slice(0,90)}</strong><small>Citação / destaque</small></button>)}</div>
+         <strong>{b.icon??'⚜'} {b.text.split('\n')[0]}</strong><small>Aviso da edição atual</small></button>)}</div>
+       {!notices.length&&<p className="folha-empty-copy">Nenhum aviso nesta edição.</p>}
       </section>}
 
       {section==='arquivo'&&<section className="folha-section-content">
@@ -288,18 +307,20 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
      {!fullPreview&&<aside className="folha-tool-stack" aria-label="Ferramentas e situação da edição">
       <div className="folha-side-card">
        <h3><Settings size={20}/> Ferramentas da Edição</h3>
-       <p>Escolha um elemento. Na capa, arraste ↘ para ampliar ou reduzir.</p>
+       <p>Clique para inserir ou arraste um elemento para a folha. Escreva diretamente nos textos; puxe ↘ para redimensionar.</p>
        <div className="folha-element-list">
-        <button type="button" onClick={()=>insert('headline')}><span>☷</span> Título</button>
+        <button type="button" draggable onDragStart={e=>toolboxDrag(e,'headline')} onClick={()=>insert('headline')}><span>☷</span> Título</button>
         <button type="button" onClick={()=>{setSection('configuracoes');props.onEdit();}}><span>Tᵗ</span> Subtítulo</button>
-        <button type="button" onClick={()=>insert('image')}><ImagePlus size={17}/> Imagem</button>
-        <button type="button" onClick={()=>insert('article',4)}><Columns3 size={17}/> Coluna</button>
-        <button type="button" onClick={()=>insert('quote')}><Quote size={17}/> Citação</button>
-        <button type="button" onClick={()=>insert('quote',6)}><TriangleAlert size={17}/> Aviso / Destaque</button>
+        <button type="button" draggable onDragStart={e=>toolboxDrag(e,'image')} onClick={()=>insert('image')}><ImagePlus size={17}/> Imagem</button>
+        <button type="button" draggable onDragStart={e=>toolboxDrag(e,'article')} onClick={()=>insert('article',4)}><Columns3 size={17}/> Coluna</button>
+        <button type="button" draggable onDragStart={e=>toolboxDrag(e,'quote')} onClick={()=>insert('quote')}><Quote size={17}/> Citação</button>
+        <button type="button" draggable onDragStart={e=>toolboxDrag(e,'notice')} onClick={()=>insert('notice',6)}><TriangleAlert size={17}/> Aviso / Destaque</button>
        </div>
        {selectedBlock&&editing&&<div className="folha-selected-editor">
         <div className="folha-selected-heading"><strong>Editar elemento</strong>
-         <div><button title="Subir" aria-label="Mover bloco para cima" type="button"
+         <div><button title="Duplicar" aria-label="Duplicar bloco" type="button"
+          onClick={()=>props.onDuplicateBlock(selectedBlock.id)}>⧉</button>
+         <button title="Subir" aria-label="Mover bloco para cima" type="button"
           onClick={()=>props.onMoveBlock(selectedBlock.id,-1)}><ArrowUp size={15}/></button>
          <button title="Descer" aria-label="Mover bloco para baixo" type="button"
           onClick={()=>props.onMoveBlock(selectedBlock.id,1)}><ArrowDown size={15}/></button>
@@ -308,15 +329,41 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         </div>
         {selectedBlock.type==='image'?<>
          <button type="button" className="folha-text-link" onClick={()=>fileInput.current?.click()}>
-          Inserir imagem ou PDF</button>
+          Trocar imagem</button>
          <label>Legenda<input value={selectedBlock.caption??''}
           onChange={e=>props.onPatchBlock(selectedBlock.id,{caption:e.target.value})}/></label>
+         <label>Estilo da gravura<select value={selectedBlock.imageStyle??'vintage'}
+          onChange={e=>props.onPatchBlock(selectedBlock.id,{imageStyle:e.target.value as 'vintage'|'woodcut'|'original'})}>
+          <option value="vintage">Pergaminho</option>
+          <option value="woodcut">Xilogravura</option>
+          <option value="original">Original</option>
+         </select></label>
+         <label className="folha-check-label"><input type="checkbox"
+          checked={selectedBlock.autoHeight!==false}
+          onChange={e=>props.onPatchBlock(selectedBlock.id,{autoHeight:e.target.checked})}/>
+          Altura automática</label>
         </>:<label>Texto<textarea rows={5} value={selectedBlock.text}
          onChange={e=>props.onPatchBlock(selectedBlock.id,{text:e.target.value})}/></label>}
+        {selectedBlock.type==='headline'&&<>
+         <label>Subtítulo<input value={selectedBlock.subtitle??''}
+          onChange={e=>props.onPatchBlock(selectedBlock.id,{subtitle:e.target.value})}/></label>
+         <label>Alinhamento<select value={selectedBlock.align??'left'}
+          onChange={e=>props.onPatchBlock(selectedBlock.id,{align:e.target.value as 'left'|'center'})}>
+          <option value="left">Esquerda</option><option value="center">Centralizado</option>
+         </select></label>
+        </>}
+        {selectedBlock.type==='article'&&<label>Assinatura do correspondente
+         <input maxLength={120} value={selectedBlock.byline??''}
+          onChange={e=>props.onPatchBlock(selectedBlock.id,{byline:e.target.value})}/></label>}
+        {selectedBlock.type==='notice'&&<label>Selo do aviso
+         <select value={selectedBlock.icon??'⚜'}
+          onChange={e=>props.onPatchBlock(selectedBlock.id,{icon:e.target.value})}>
+          {['⚜','📜','🏪','⚔','⚠','👑'].map(icon=><option key={icon} value={icon}>{icon}</option>)}
+         </select></label>}
         <label>Largura ({selectedBlock.span}/12)
          <input type="range" min="3" max="12" value={selectedBlock.span}
           onChange={e=>props.onPatchBlock(selectedBlock.id,{span:Number(e.target.value)})}/></label>
-        {selectedBlock.type==='image'&&<label>Altura da imagem
+        {selectedBlock.type==='image'&&selectedBlock.autoHeight===false&&<label>Altura da imagem
          <input type="range" min="130" max="650" step="10" value={selectedBlock.height}
           onChange={e=>props.onPatchBlock(selectedBlock.id,{height:Number(e.target.value)})}/></label>}
         <button type="button" className="folha-text-action" disabled={busy}
@@ -339,6 +386,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
        disabled={!current||busy||!materialReady} onClick={()=>props.onSave('published')}>
        <Printer size={24}/> Publicar Edição</button>
       {current&&<div className="folha-minor-actions">
+       <button type="button" onClick={()=>window.print()}><Printer size={15}/> Imprimir / Salvar PDF</button>
        {hasUnsavedChanges&&<button type="button" disabled={busy} onClick={()=>props.onSave()}><Save size={15}/> Salvar</button>}
        {current.state!=='cancelled'&&<button type="button" disabled={busy}
         onClick={props.onCancel}>Cancelar envio</button>}
