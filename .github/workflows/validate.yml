@@ -126,6 +126,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f scripts/test-house-management.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-private-campaign-content.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-newspaper.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/test-three-profiles.sql
           # Re-applying our reconciliation must be safe and must not erase history.
           psql -v ON_ERROR_STOP=1 --single-transaction -f drizzle/migrations/0059_reconcile_production_schema.sql
           psql -v ON_ERROR_STOP=1 -f scripts/test-production-reconciliation.sql
