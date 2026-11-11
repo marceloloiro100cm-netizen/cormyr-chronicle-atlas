@@ -131,6 +131,10 @@ function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
   const sync=useServerFn(syncPlayerFolder);
   const refresh=async()=>{await qc.invalidateQueries({queryKey:['campaign-panel']});};
   useEffect(()=>{if(data?.admin)setTab(previous=>previous==='missivas'?'casa':previous);},[data?.admin]);
+  const showLeonardoEditorial=Boolean(data&&!data.admin&&data.players.some(p=>
+    p.user_id===data.user.id&&p.active&&p.roster_house_id==='espiao'&&
+    p.name.trim().toLocaleLowerCase('pt-BR')==='leonardo'));
+  useEffect(()=>{if(showLeonardoEditorial)setTab('jornal');},[showLeonardoEditorial]);
   useEffect(()=>{
     setHouse(sessionStorage.getItem('campaign-selected-house')??'');
     let debounce:ReturnType<typeof setTimeout>|null=null;
@@ -164,6 +168,10 @@ function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
   const unread=unreadReceivedCount(data.letters as LetterRow[],data.replies,data.receipts,data.user.id,data.admin);
   const afterSave=async()=>{await refresh();if(!current)return;try{const result=await sync({data:{houseId:data.admin?'':current.id,importFiles:false}});setMessage(result.message);await refresh();}catch(e){setMessage('Salvo no site · pasta pendente: '+(e instanceof Error?e.message:'Falha no Drive.'));}};
   async function signout(){await qc.cancelQueries();qc.clear();await supabase.auth.signOut();await navigate({to:'/auth',search:{next:'/'},replace:true});}
+  if(newspaperEditor&&!data.admin&&tab==='jornal')
+   return <NewspaperHub userId={data.user.id} editor editorial
+    onSignout={()=>{void signout();}}
+    onOtherModules={()=>setTab('casa')}/>;
   const conselho=!current&&!data.admin&&!specialBattleAccess?<section><h2>Vínculo aguardando autorização</h2><p>Sua identidade foi autenticada, mas nenhuma casa foi autorizada para esta conta. O administrador precisa cadastrar seu jogador e aprovar o vínculo.</p><p>Identificador da conta: <code>{data.user.id}</code></p><p>Não há acesso a documentos, personagens ou missivas de outras casas.</p></section>:<>
     <div className="campaign-toolbar">
       {current&&<HouseIdentity house={current}/>}
