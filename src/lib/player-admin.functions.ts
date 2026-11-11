@@ -55,8 +55,60 @@ export const managePlayerAccount=createServerFn({method:'POST'}).middleware([req
    .eq('player_id',String(saved.data)).eq('house_id',data.houseId).select('player_id').maybeSingle();
   if(permission.error||!permission.data)
     throw new Error('Conta atualizada, mas permissão de atributos pendente de confirmação do Narrador.');
-  return {message:'Jogador e permissões de ficha e point buy atualizados.',playerId:saved.data};
+  if(special){
+    if(!userId)throw new Error('O perfil foi criado sem conta de autenticação. Vincule um e-mail antes de liberar o acesso.');
+    const [confirmed,link]=await Promise.all([
+      db.from('campaign_players').select('user_id,roster_house_id,active,require_password_change')
+       .eq('id',String(saved.data)).single(),
+      db.from('house_memberships').select('house_id,can_edit,can_edit_attributes')
+       .eq('player_id',String(saved.data)).eq('house_id','espiao').maybeSingle(),
+    ]);
+    if(confirmed.error||link.error||confirmed.data?.user_id!==userId||
+      confirmed.data?.roster_house_id!=='espiao'||confirmed.data.active!==true||
+      !link.data||link.data.can_edit||link.data.can_edit_attributes)
+      throw new Error('Conta autenticada, mas vínculo especial incompleto. Revise a associação antes do login.');
+  }
+  return {message:special?'Conta de Leonardo criada ou atualizada e vínculo Espião verificado no banco.':'Jogador e permissões de ficha e point buy atualizados.',playerId:saved.data};
 });
+/** Only the authenticated Narrator may inspect the provisioning of Leonardo.
+ * This endpoint never returns an account identifier, email or password, and
+ * never reveals whether an unauthenticated email exists in Supabase.
+ */
+export const inspectLeonardoAccess=createServerFn({method:'POST'})
+ .middleware([requireSupabaseAuth])
+ .inputValidator(z.object({email:z.string().email()}))
+ .handler(async({data,context})=>{
+  const role=await context.supabase.rpc('is_campaign_admin');
+  if(role.error||role.data!==true)throw new Error('Acesso restrito ao Narrador.');
+  const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
+  const accounts=await db.auth.admin.listUsers({perPage:1000});
+  if(accounts.error||accounts.data.users.length===1000)
+   throw new Error('Não foi possível verificar todas as contas no provedor.');
+  const account=accounts.data.users.find(u=>u.email?.trim().toLowerCase()===data.email.trim().toLowerCase());
+  if(!account)return {state:'missing' as const};
+  const [player,house,catalog]=await Promise.all([
+   db.from('campaign_players').select('id,name,roster_house_id,active,require_password_change')
+    .eq('user_id',account.id).maybeSingle(),
+   db.from('campaign_houses').select('id,name,season,active,crest')
+    .eq('id','espiao').maybeSingle(),
+   db.from('house_catalog').select('id,classification,public_reviewed')
+    .eq('id','espiao').maybeSingle(),
+  ]);
+  if(player.error||house.error||catalog.error)
+   throw new Error('Não foi possível verificar as permissões de Leonardo.');
+  const linked=player.data?await db.from('house_memberships')
+   .select('house_id,can_edit,can_edit_attributes').eq('player_id',player.data.id)
+   .eq('house_id','espiao').maybeSingle():{data:null,error:null};
+  if(linked.error)throw new Error('Não foi possível verificar a associação ao perfil especial.');
+  const ready=Boolean(account.email_confirmed_at)&&player.data?.name.trim().toLocaleLowerCase('pt-BR')==='leonardo'&&
+   player.data.roster_house_id==='espiao'&&player.data.active===true&&
+   house.data?.name==='Espião'&&house.data.season===0&&house.data.active===true&&
+   catalog.data?.classification==='special'&&catalog.data.public_reviewed===false&&
+   Boolean(linked.data)&&!linked.data?.can_edit&&!linked.data?.can_edit_attributes;
+  return {state:ready?'ready' as const:'incomplete' as const,
+   passwordChangeRequired:player.data?.require_password_change??false};
+ });
+
 export const completePasswordChange=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({password:z.string().min(8).max(200)})).handler(async({data,context})=>{
   const update=await context.supabase.auth.updateUser({password:data.password});if(update.error)throw new Error('O provedor não aceitou a alteração.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
