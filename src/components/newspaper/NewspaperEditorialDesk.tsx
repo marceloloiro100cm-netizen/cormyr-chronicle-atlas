@@ -51,7 +51,6 @@ export interface NewspaperEditorialProps{
  onResizeBlock:(id:string,patch:Pick<NewspaperBlock,'span'|'height'>)=>void;
  onUpload:(file:File)=>void;
  onCancel:()=>void;
- onOtherModules:()=>void;
  onSignout:()=>void;
 }
 
@@ -130,10 +129,10 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
    <div className="folha-top-account">
     <button type="button" className="folha-role" aria-expanded={profileOpen}
       onClick={()=>setProfileOpen(value=>!value)}>
-      <UsersRound size={19}/> Editor-Chefe <ChevronDown size={14}/>
+      <UsersRound size={19}/> Leonardo · Editor-Chefe <ChevronDown size={14}/>
     </button>
     {profileOpen&&<div className="folha-account-menu">
-     <button type="button" onClick={()=>{setProfileOpen(false);props.onOtherModules();}}>Outros módulos de Cormyr</button>
+     <p>Acesso exclusivo à redação de A Folha Sem Selo.</p>
     </div>}
     <div className="folha-account-buttons"><ChangePasswordButton/>
      <button className="folha-logout" type="button" onClick={props.onSignout}>Sair</button></div>
@@ -282,7 +281,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         <button type="button" className="folha-text-action" onClick={()=>props.onSave()}>
          <Save size={16}/> Salvar configurações</button>
        </div>:<p className="folha-empty-copy">Crie uma edição antes de ajustar a identidade.</p>}
-       <button type="button" className="folha-text-link" onClick={props.onOtherModules}>Abrir outros módulos de Cormyr</button>
+       
       </section>}
      </div>
 
