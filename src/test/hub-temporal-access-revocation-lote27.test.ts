@@ -18,7 +18,8 @@ vi.mock('@/integrations/supabase/client',()=>({
   auth:{getUser:async()=>{mock.authReads++;return {data:{user:{id:mock.switchAfterFirstRead&&mock.authReads>1?'player-b':mock.userId}},error:null};}},
   rpc:async(name:string)=>{
    mock.fetches.push(name);
-   return {data:mock.admin,error:mock.failRole?{message:'role unavailable'}:null};
+   return {data:name==='current_campaign_profile'?(mock.admin?'narrador':'jogador'):mock.admin,
+    error:mock.failRole?{message:'role unavailable'}:null};
   },
   from:(table:string)=>({
    select:(_columns:string)=>({
@@ -46,7 +47,7 @@ beforeEach(()=>{
 describe('Lote 27 · revogação e alteração de escopo durante sessão',()=>{
  it('aceita associações ordenadas independentemente da ordem de resposta SQL',()=>{
   const first={
-   userId:'player-a',admin:false,playerId:'record',active:true,
+   userId:'player-a',admin:false,profile:'jogador' as const,playerId:'record',active:true,
    passwordChangeRequired:false,
    memberships:[
     {house_id:'b',can_edit:false,can_edit_attributes:false},
@@ -71,8 +72,8 @@ describe('Lote 27 · revogação e alteração de escopo durante sessão',()=>{
   expect(revoked.memberships).toEqual([]);
   mock.members=[{house_id:'evenhand',can_edit:true,can_edit_attributes:true}];
   expect((await loadCampaignAccessScope()).fingerprint).not.toBe(initial.fingerprint);
-  expect(mock.fetches).toEqual(['is_campaign_admin','is_campaign_admin',
-   'is_campaign_admin','is_campaign_admin']);
+  expect(mock.fetches).toEqual(Array.from({length:4},()=>
+   ['is_campaign_admin','current_campaign_profile']).flat());
  });
  it('demover Narrador e inativar jogador invalida o mesmo escopo',async()=>{
   mock.admin=true;
