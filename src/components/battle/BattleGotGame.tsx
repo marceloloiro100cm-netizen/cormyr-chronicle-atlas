@@ -652,16 +652,10 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
  const battleEvents=battle?.events.filter(e=>eventFilter==='all'||
   (eventFilter==='dice'?Boolean(e.roll):e.side===eventFilter)).slice(-30)??[];
  return <section className="battle-got" aria-label="Batalha pelas regras de Guerra dos Tronos RPG">
-  <div className="battle-heading">
-   <div><h2>Game of Thrones · regras do livro</h2>
-    <p>Laboratório do capítulo 10 · quadrados de 10 m · uma rodada representa 1 minuto.</p></div>
-   <Button variant="outline" onClick={leaveBattle}>Voltar ao módulo</Button>
+  <div className="battle-got-toolbar">
+   <Button variant="outline" size="sm" onClick={leaveBattle}>Voltar ao módulo</Button>
   </div>
-  {playerSandbox&&<p className="battle-note" role="status">Modo de treino do jogador: apenas tropas fictícias. Nenhum acesso a unidades oficiais das Casas.</p>}
-  <p className="battle-note">Laboratório isolado do Adaptado e D&D.
-   Ordens, heróis, cerco, formações e pós-batalha estão disponíveis para testes;
-   regras excepcionais e parâmetros de fortificações podem exigir decisão do Narrador.
-   Nenhuma baixa ou alteração é aplicada às fichas oficiais das Casas.</p>
+   {playerSandbox&&<p className="battle-note" role="status">Modo de treino do jogador: apenas tropas fictícias. Nenhum acesso a unidades oficiais das Casas.</p>}
   <details className="battle-surface got-save-panel" aria-label="Salvar e retomar teste local">
    <summary>Salvar ou retomar</summary>
    <BattleSaveScope system="got"/>
