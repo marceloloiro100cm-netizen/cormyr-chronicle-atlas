@@ -1,7 +1,6 @@
 /* Laboratório do livro, isolado do motor Adaptado. */
 .battle-module .battle-got{display:flex;flex-direction:column;gap:14px;color:#f2e6cc;min-width:0}
-.battle-module .battle-got .battle-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.battle-module .battle-got .battle-heading p{margin:5px 0 0}
+.battle-module .battle-got .battle-got-toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:-8px}
 .battle-module .battle-got label{display:flex;flex-direction:column;gap:5px;line-height:1.4}
 .battle-module .battle-got input:not([type=checkbox]),.battle-module .battle-got select{
  background:#18241e;color:#fff4dd;border:1px solid #b7a37c;border-radius:6px;
@@ -65,7 +64,6 @@
  .battle-module .got-config-grid{grid-template-columns:minmax(0,1fr)}
  .battle-module .got-cell small{display:none}
  .battle-module .got-cell.occupied strong{font-size:12px}
- .battle-module .battle-got .battle-heading{align-items:start;flex-direction:column}
 }
 
 .battle-module .got-map.got-paint{max-width:540px}
