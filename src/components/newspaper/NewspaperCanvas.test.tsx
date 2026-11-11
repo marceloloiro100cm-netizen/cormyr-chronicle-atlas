@@ -25,7 +25,7 @@ describe('Jornal: editor visual integrado ao banco',()=>{
  it('edita manchetes diretamente na folha, sem HTML arbitrário',()=>{
   const update=vi.fn();
   render(<NewspaperCanvas edition={edition} editing onChangeBlock={update}/>);
-  const heading=screen.getByRole('heading',{level:2,name:'Manchete inicial'});
+  const heading=screen.getByRole('heading',{level:2,name:'Editar manchete'});
   Object.defineProperty(heading,'innerText',{configurable:true,value:'Nova manchete',writable:true});
   fireEvent.blur(heading);
   expect(update).toHaveBeenCalledWith('head',{text:'Nova manchete'});
