@@ -42,6 +42,7 @@ export const Route=createFileRoute('/_authenticated/jogadores')({head:()=>({meta
  */
 function Players(){
   const qc=useQueryClient();
+  const navigate=useNavigate();
   const scope=useQuery({
     queryKey:CAMPAIGN_ACCESS_SCOPE_KEY,
     queryFn:loadCampaignAccessScope,
@@ -105,6 +106,19 @@ function Players(){
   if(!scope.data||approved!==scope.data.fingerprint)return <p role="status">
     Verificando permissões atuais da campanha…
   </p>;
+  // Mandatory first-login password change precedes all private campaign reads.
+  // A freshly provisioned player cannot rely on loadPanel(), since its RLS
+  // queries may be restricted until the credential is rotated.
+  if(!scope.data.admin&&scope.data.playerId&&
+    (!scope.data.active||scope.data.passwordChangeRequired))
+   return <CampaignShell>
+    <h1>{scope.data.active?'Altere sua senha para continuar':'Acesso à campanha inativo'}</h1>
+    {scope.data.passwordChangeRequired&&scope.data.active&&<ChangePassword/>}
+    <Button variant="outline" onClick={async()=>{
+     await qc.cancelQueries();qc.clear();await supabase.auth.signOut();
+     await navigate({to:'/auth',search:{next:'/'},replace:true});
+    }}>Sair</Button>
+   </CampaignShell>;
   return <PlayersWorkspace key={approved} expectedUserId={scope.data.userId}/>;
 }
 function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
