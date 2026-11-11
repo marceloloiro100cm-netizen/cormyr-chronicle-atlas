@@ -6,6 +6,9 @@ import {battleHouseDirectory} from './house-directory';
 import {adaptOfficialUnit} from './unit-readonly';
 import {assessNpcWarReadiness} from './house-war-effects';
 import {snapshotOfficialWarUnit} from '../got/official-adapter';
+import {modelWarUnit,WAR_MODEL_UNIT_TYPES,type WarModelUnitTypeId} from '../got/models';
+import {findSheetScenarioHouse,sheetScenarioAssets,sheetScenarioRoster} from './sheet-house-scenario';
+import type {SheetScenarioHouse} from './sheet-house-scenario';
 import {importedNpcBattleStack,importedNpcUnitSchema,previewImportedNpc,type ImportedNpcUnit} from './imported-npc-roster';
 
 const sourceQuery=z.object({houseId:z.string().min(1).max(100)}).strict();
@@ -48,6 +51,16 @@ async function readNpcRoster(db:Context['supabase'],houseId:string):Promise<Impo
  if(result.error)throw new Error('O catálogo militar de cenários está indisponível.');
  return ((result.data??[]) as unknown[]).map(raw=>importedNpcUnitSchema.parse(raw));
 }
+/** Resolve nome do catálogo no servidor, sem permitir que o cliente altere a Casa. */
+async function readSheetHouse(db:Context['supabase'],houseId:string):Promise<SheetScenarioHouse|undefined>{
+ const [catalog,campaign]=await Promise.all([
+  db.from('house_catalog').select('name').eq('id',houseId).maybeSingle(),
+  db.from('campaign_houses').select('name').eq('id',houseId).maybeSingle(),
+ ]);
+ if(catalog.error&&campaign.error)throw new Error('Não foi possível consultar a Casa de origem.');
+ const name=catalog.data?.name??campaign.data?.name??houseId;
+ return typeof name==='string'?findSheetScenarioHouse(name):undefined;
+}
 /** Não retorna HouseState nem atributos privados; somente casas sob sessão administrativa. */
 export const listBattleSourceHouses=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
@@ -86,6 +99,8 @@ export const listBattleSourceUnits=createServerFn({method:'POST'})
   const db=context.supabase as unknown as Context['supabase'];
   await requireNarrator(db);
   const record=await readState(db,data.houseId);
+  const sheet=await readSheetHouse(db,data.houseId);
+  const scenarioAssets=sheet?sheetScenarioAssets(sheet):[];
   // Fichas operacionais de jogadores sempre prevalecem sobre propostas NPC.
   if(record&&record.state.units.length){
    const {state,version}=record;
@@ -95,20 +110,21 @@ export const listBattleSourceUnits=createServerFn({method:'POST'})
    }));
    await requireNarrator(db);
    return {houseId:data.houseId,sourceVersion:version,
-    sourceStatus:'recorded' as const,units:roster,
+    sourceStatus:'recorded' as const,units:roster,scenarioAssets,
     warReadiness:assessNpcWarReadiness({hasFullSheet:true,hasScenarioRoster:false})};
   }
-  const archive=await readNpcRoster(db,data.houseId);
+  const sheetRoster=sheet?sheetScenarioRoster(sheet,data.houseId):[];
+  const archive=sheetRoster.length?sheetRoster:await readNpcRoster(db,data.houseId);
   if(archive.length){
    await requireNarrator(db);
    return {houseId:data.houseId,sourceVersion:null,
     sourceStatus:'scenario-roster' as const,
-    units:archive.map(previewImportedNpc),
+    units:archive.map(previewImportedNpc),scenarioAssets,
     warReadiness:assessNpcWarReadiness({hasFullSheet:false,hasScenarioRoster:true})};
   }
   await requireNarrator(db);
   return {houseId:data.houseId,sourceVersion:record?.version??null,
-   sourceStatus:record?'empty' as const:'no-military-sheet' as const,units:[],
+   sourceStatus:record?'empty' as const:'no-military-sheet' as const,units:[],scenarioAssets,
    warReadiness:assessNpcWarReadiness({hasFullSheet:false,hasScenarioRoster:false})};
  });
 /** O cliente envia IDs e decisão, JAMAIS um HouseState. A conversão acontece no servidor. */
@@ -156,14 +172,31 @@ export const previewBattleWarUnit=createServerFn({method:'POST'})
   const db=context.supabase as unknown as Context['supabase'];
   await requireNarrator(db);
   const source=await readState(db,data.houseId);
-  if(!source?.state.units.length)
-   throw new Error('Este modo exige ficha militar oficial completa; rosters de cenário não podem ser convertidos automaticamente.');
-  const unit=source.state.units.find(x=>x.id===data.unitId);
-  if(!unit)throw new Error('Unidade militar oficial não encontrada.');
-  const snapshot=snapshotOfficialWarUnit(source.state,unit,{
-   side:data.side,position:data.position,version:source.version,
-   typeId:data.typeId,
-   ...(data.rangeOverride?{rangeOverride:data.rangeOverride}:{}),
+  if(source?.state.units.length){
+   const unit=source.state.units.find(x=>x.id===data.unitId);
+   if(!unit)throw new Error('Unidade militar oficial não encontrada.');
+   const snapshot=snapshotOfficialWarUnit(source.state,unit,{
+    side:data.side,position:data.position,version:source.version,
+    typeId:data.typeId,
+    ...(data.rangeOverride?{rangeOverride:data.rangeOverride}:{}),
+   });
+   await requireNarrator(db);
+   return snapshot;
+  }
+  // Apenas no modo de simulação: perfis-modelo da tabela oficial e treinamento
+  // registrado, sem alegar que a planilha contenha Saúde/Defesa individuais.
+  const sheet=await readSheetHouse(db,data.houseId);
+  const local=sheet?sheetScenarioRoster(sheet,data.houseId):[];
+  const candidates=local.length?local:await readNpcRoster(db,data.houseId);
+  const row=candidates.find(x=>x.source_key===data.unitId);
+  if(!row)throw new Error('Unidade de cenário indisponível para esta Casa.');
+  if(row.unit_type!==data.typeId||!WAR_MODEL_UNIT_TYPES.some(t=>t.id===data.typeId))
+   throw new Error('Tipo da unidade não corresponde ao registro de origem.');
+  if(row.unit_type==='warships')throw new Error('Navios exigem cenário naval e não entram no mapa terrestre.');
+  const snapshot=modelWarUnit({
+   id:'scenario-'+data.houseId+'-'+row.source_key,name:row.unit_name,
+   side:data.side,position:data.position,typeId:row.unit_type as WarModelUnitTypeId,
+   training:row.training,
   });
   await requireNarrator(db);
   return snapshot;

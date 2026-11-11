@@ -189,6 +189,10 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   domainHasCommunityOrFort:false,transferredWealthInvestments:0,
  });
  const [officialBySlot,setOfficialBySlot]=useState<Partial<Record<Slot,WarUnit>>>({});
+ const [houseArmySide,setHouseArmySide]=useState<Record<WarSide,boolean>>({
+  attacker:false,defender:false,
+ });
+ const [houseArmyNotice,setHouseArmyNotice]=useState('');
  const [selected,setSelected]=useState('');
  const [target,setTarget]=useState('');
  const [advancedSecondTarget,setAdvancedSecondTarget]=useState('');
@@ -211,10 +215,14 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
  const [masterOfArmsSides,setMasterOfArmsSides]=useState<Record<WarSide,boolean>>({
   attacker:false,defender:false,
  });
+ const scenarioSelectionActive=houseArmySide.attacker||houseArmySide.defender;
+ const includeScenarioSlot=(row:{id:string;side:WarSide})=>
+  houseArmySide[row.side]?Boolean(officialBySlot[row.id as Slot]):
+  !scenarioSelectionActive||Number(row.id.split('-').at(-1))<=2;
  const start=()=>{
   try{
    const prepared=positionedWarLabDeployments(extraUnitsPerSide,deploymentPositions,
-    mapSize.width,mapSize.height);
+    mapSize.width,mapSize.height).filter(includeScenarioSlot);
    if(!playerSandbox&&siegeEnabled&&officialBySlot['attacker-2']&&
     officialBySlot['attacker-2'].typeId!=='engineers')
     throw new Error('O segundo espaço do atacante deve ter engenheiros para operar o cerco.');
@@ -582,7 +590,8 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    setLocalSaveStatus('Cópia local apagada.');setError('');
   }catch{setError('Não foi possível apagar a cópia local.');}
  };
- const preparedDeployments=modelWarLabDeployments(extraUnitsPerSide,mapSize.width,mapSize.height);
+ const preparedDeployments=modelWarLabDeployments(extraUnitsPerSide,mapSize.width,mapSize.height)
+  .filter(includeScenarioSlot);
  const nextDeploymentSide=alternatePlacement?nextWarLabDeploymentSide(
   extraUnitsPerSide,deploymentPositions,mapSize.width,mapSize.height):null;
  const deploymentChoices=alternatePlacement?
@@ -704,7 +713,11 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
     Habilitar miniaturas 3D nesta sessão (teste, Narrador)</label>}
    <div className="battle-simple-launch" aria-label="Início rápido Game of Thrones">
     <h3>Batalha rápida</h3>
-    <p>{2+extraUnitsPerSide} unidades por lado · mapa {mapSize.width} × {mapSize.height}</p>
+    <p>{houseArmySide.attacker||houseArmySide.defender?
+      preparedDeployments.filter(u=>u.side==='attacker').length+' atacante(s) · '+
+      preparedDeployments.filter(u=>u.side==='defender').length+' defensor(es)':
+      (2+extraUnitsPerSide)+' unidades por lado'} · mapa {mapSize.width} × {mapSize.height}</p>
+    {houseArmyNotice&&<p role="status" className="battle-note">{houseArmyNotice}</p>}
     <Button onClick={start}>Batalhar agora</Button>
    </div>
    <details className="battle-advanced-config">
@@ -713,6 +726,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
     setSiegeEnabled(false);setFortKind('none');setHeroesEnabled(false);
     setAdvanced(false);setWeather('clear');setVisibility('clear');
     setStrictSightline(false);setExtraUnitsPerSide(0);
+    setHouseArmySide({attacker:false,defender:false});setOfficialBySlot({});setHouseArmyNotice('');
     setError('');setLocalSaveStatus('Configuração rápida aplicada. Confira tropas e mapa antes de iniciar.');
    }}/>
    <h3 id="got-prep-forces">Preparar confronto conforme a escala do livro</h3>
@@ -1008,7 +1022,31 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      if(unit)next[slot]=unit;
      else delete next[slot];
      return next;
-    })}/>}
+    })}
+    onChooseMany={(side,army,metadata)=>{
+     const keys=army.map((_,i)=>(side+'-'+(i+1)) as Slot);
+     setExtraUnitsPerSide(n=>Math.max(n,Math.max(0,army.length-2)));
+     setOfficialBySlot(current=>{
+      const next={...current};
+      for(const key of Object.keys(next))if(key.startsWith(side+'-'))delete next[key as Slot];
+      army.forEach((unit,i)=>{next[keys[i]!]=unit;});
+      return next;
+     });
+     setHouseArmySide(current=>({...current,[side]:true}));
+     // A escolha explícita do exército ativa apenas as propostas DESTE cenário,
+     // nunca registra uma construção ou compra na Casa.
+     if(side==='defender'){
+      const fort=metadata.assets.filter(a=>a.fortDefense>0)
+       .sort((a,b)=>b.fortDefense-a.fortDefense)[0];
+      if(fort&&['tower','hall','small-castle','castle','superior-castle'].includes(fort.catalogId))
+       setFortKind(fort.catalogId as WarFortKind);
+     }
+     setMasterOfArmsSides(current=>({...current,
+      [side]:metadata.assets.some(a=>a.catalogId==='pros-master-of-arms')}));
+     setHouseArmyNotice(metadata.houseName+' carregada no '+(side==='attacker'?'ataque':'defesa')+
+      ' com '+army.length+' agrupamentos ('+metadata.sourceStatus+'). '+
+      'Construções e efeitos propostos só valem nesta simulação; não alteram o site.');
+    }}/>}
    <details className="got-parley-setup">
     <summary>Parlamento antes da batalha (opcional)</summary>
     <label>Proposta diplomática
