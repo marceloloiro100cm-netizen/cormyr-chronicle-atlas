@@ -56,8 +56,11 @@ import {BattleGotSourcePicker} from './BattleGotSourcePicker';
 import {BattleGotBoard,type BoardAction} from './BattleGotBoard';
 import {BattleGotCommandBar,type CommandResult} from './BattleGotCommandBar';
 import {attackableWarTargets,quickWarOrders,reachableWarCells,warCommandOdds,
- type WarQuickOrder} from '@/lib/battle/got/command-preview';
-import {chooseWarAiOrder} from '@/lib/battle/got/ai-commander';
+ type WarQuickOrder,type WarTargetOption} from '@/lib/battle/got/command-preview';
+import {autoResolveWarBattle,chooseWarAiOrder} from '@/lib/battle/got/ai-commander';
+import {bannerUnitNames,contrastWarBanners,houseWarBanner,parsePublicWarHouseScript,readWarBanners,
+ type PublicWarHouse} from '@/lib/battle/got/house-banner';
+import {WarBannerTitle,WarFlag,bannerStyle} from './BattleGotBanner';
 import {buildWarForce,WAR_FORCE_TIERS,type WarForce} from '@/lib/battle/got/force-builder';
 /** Same four portable terrain colors; GOT-only terrain retains its own artwork. */
 const COMMON_GOT_TERRAIN:Readonly<Record<string,string>>={
@@ -69,6 +72,7 @@ const COMMON_GOT_TERRAIN:Readonly<Record<string,string>>={
 import type {Slot} from './BattleGotSourcePicker';
 import './battle-design-tokens.css';
 import './battle-got.css';
+import './battle-got-simple.css';
 
 /** Carregado só quando o Narrador abre uma convocação: é o único trecho que fala com as fichas. */
 const BattleGotConvocation=lazy(()=>import('./BattleGotConvocation')
@@ -229,8 +233,24 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
  });
  // Comando tático: ordem escolhida nos botões, efeitos do tabuleiro e oponente automático.
  const [quickId,setQuickId]=useState('');
- const [fastMode,setFastMode]=useState(false);
- const [aiSide,setAiSide]=useState<WarSide|'none'>('none');
+ /** Desligado por padrão: um toque no mapa já executa a ordem. */
+ const [confirmFirst,setConfirmFirst]=useState(false);
+ const [aiSide,setAiSide]=useState<WarSide|'none'>('defender');
+ // Casas do cadastro público do site: só nome, região, cores e brasão.
+ const [houses,setHouses]=useState<readonly PublicWarHouse[]>([]);
+ const [houseIds,setHouseIds]=useState<Record<WarSide,string>>({attacker:'',defender:''});
+ useEffect(()=>{
+  if(typeof fetch!=='function')return undefined;
+  let alive=true;
+  fetch('/cormyr/data.js').then(r=>r.ok?r.text():'').then(text=>{
+   if(alive&&text)setHouses(parsePublicWarHouseScript(text));
+  }).catch(()=>{/* sem cadastro: seguem os exércitos-modelo */});
+  return()=>{alive=false;};
+ },[]);
+ const setupBanners=useMemo(()=>contrastWarBanners(
+  houseWarBanner(houses.find(h=>h.id===houseIds.attacker)??null,'attacker'),
+  houseWarBanner(houses.find(h=>h.id===houseIds.defender)??null,'defender')),[houses,houseIds]);
+ const houseRegions=useMemo(()=>[...new Set(houses.map(h=>h.region))],[houses]);
  const [lastAction,setLastAction]=useState<BoardAction|null>(null);
  const [commandResult,setCommandResult]=useState<CommandResult|null>(null);
  const actionSeq=useRef(0);
@@ -241,9 +261,9 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
  const [trainingById,setTrainingById]=useState<Readonly<Record<string,WarUnit['training']>>>({});
  const inForce=(row:{id:string;side:WarSide})=>!forces||
   Number(row.id.split('-')[1])<=forces[row.side].units.length;
- const applyForces=()=>{
+ const applyForces=(power:Record<WarSide,number>=forcePower)=>{
   try{
-   const built={attacker:buildWarForce(forcePower.attacker),defender:buildWarForce(forcePower.defender)};
+   const built={attacker:buildWarForce(power.attacker),defender:buildWarForce(power.defender)};
    const nextTypes:Record<string,TypeId>={},nextTraining:Record<string,WarUnit['training']>={};
    for(const side of ['attacker','defender'] as const)built[side].units.forEach((unit,i)=>{
     nextTypes[side+'-'+(i+1)]=unit.typeId;nextTraining[side+'-'+(i+1)]=unit.training;
@@ -252,21 +272,34 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    setWarfare({attacker:built.attacker.warfare,defender:built.defender.warfare});
    setExtraUnitsPerSide(Math.max(built.attacker.units.length,built.defender.units.length)-2);
    setDeploymentPositions({});setAlternatePlacement(false);setError('');
-   setLocalSaveStatus('Exércitos montados pelo Poder: '+built.attacker.units.length+
-    ' unidade(s) atacantes contra '+built.defender.units.length+' defensoras.');
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível montar os exércitos.');}
  };
- const start=()=>{
+ const changePower=(side:WarSide,value:number)=>{
+  const next={...forcePower,[side]:Math.max(0,Math.min(200,Math.trunc(value)||0))};
+  setForcePower(next);applyForces(next);
+ };
+ const chooseHouse=(side:WarSide,id:string)=>{
+  setHouseIds(current=>({...current,[side]:id}));
+  const house=houses.find(h=>h.id===id);
+  if(!house)return;
+  // Porte sugerido pela hierarquia pública da Casa; o Poder continua editável.
+  changePower(side,WAR_FORCE_TIERS.find(t=>t.id===house.tier)?.power??38);
+ };
+ const build=():WarBattle|null=>{
   try{
    const prepared=positionedWarLabDeployments(extraUnitsPerSide,deploymentPositions,
     mapSize.width,mapSize.height);
    if(!playerSandbox&&siegeEnabled&&officialBySlot['attacker-2']&&
     officialBySlot['attacker-2'].typeId!=='engineers')
     throw new Error('O segundo espaço do atacante deve ter engenheiros para operar o cerco.');
-   const units=prepared.filter(inForce).map(row=>{
+   const fielded=prepared.filter(inForce);
+   const typeOf=(id:string):TypeId=>siegeEnabled&&id==='attacker-2'?'engineers':types[id]??'infantry';
+   const named=forces?bannerUnitNames(fielded.map(row=>({id:row.id,side:row.side,
+    typeLabel:OPTIONS.find(o=>o.id===typeOf(row.id))?.label??'Tropa'})),setupBanners):{};
+   const units=fielded.map(row=>{
     const imported=playerSandbox?undefined:officialBySlot[row.id as Slot];
     const model=imported?{...imported,side:row.side,position:row.position}:
-     modelWarUnit({...row,training:trainingById[row.id]??training,
+     modelWarUnit({...row,name:named[row.id]??row.name,training:trainingById[row.id]??training,
       typeId:siegeEnabled&&row.id==='attacker-2'?'engineers':types[row.id]??'infantry'});
     const equipped=row.id==='attacker-1'&&modelFieldEquipment!=='none'?
      {...model,fieldEquipment:modelFieldEquipment}:model;
@@ -285,7 +318,10 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
     })):[];
    if(modelOneHandUnavailable&&modelOffhand!=='none')
     throw new Error('Não é possível usar arma secundária com uma mão indisponível.');
-   const created=createWarBattle({id:'book-lab-'+seed,name,seed,
+   const hasHouse=Boolean(setupBanners.attacker.houseId||setupBanners.defender.houseId);
+   const created=createWarBattle({id:'book-lab-'+seed,
+    name:hasHouse&&name==='Escaramuça de treinamento'?
+     setupBanners.attacker.houseName+' × '+setupBanners.defender.houseName:name,seed,
     width:mapSize.width,height:mapSize.height,
     strictLineOfSight:strictSightline,
     units,siege,
@@ -316,10 +352,19 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
     commanders:modelWarCommanders(warfare),tiles,weather,visibility,advancedFormations:advanced,
     manualMitigation,
    });
-   setBattle(recordWarParley(created,parleyChoice,parleyTerms));
    setSelected('');setTarget('');setError('');
    setQuickId('');setLastAction(null);setCommandResult(null);
-  }catch(e){setError(e instanceof Error?e.message:'Falha ao preparar a batalha.');}
+   return {...recordWarParley(created,parleyChoice,parleyTerms),banners:setupBanners};
+  }catch(e){setError(e instanceof Error?e.message:'Falha ao preparar a batalha.');return null;}
+ };
+ const start=()=>{const created=build();if(created)setBattle(created);};
+ /** Monta a batalha e deixa o comando automático jogar os dois lados até o fim. */
+ const startResolved=()=>{
+  const created=build();
+  if(!created)return;
+  const done=autoResolveWarBattle(created);
+  setBattle(done.battle);
+  if(!done.finished)setError('A batalha não chegou ao fim sozinha. Continue pelas ordens.');
  };
  const commander=battle?.commanders.find(c=>c.side===battle.turn&&c.role==='commander'&&c.active);
  const activeUnits=battle?.units.filter(u=>u.side===battle.turn&&
@@ -561,7 +606,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    const raw=window.localStorage.getItem(saveKey);
    if(!raw){setLocalSaveStatus('Nenhuma batalha GOT salva neste navegador.');return;}
    const loaded=decodeGotLabSave(raw);
-   setBattle(loaded);setSelected('');setTarget('');setLastSavedSnapshot(raw);
+   setBattle(loaded);setSelected('');setTarget('');setLastSavedSnapshot(raw);setAiSide('none');
    setLocalSaveStatus('Batalha retomada · rodada '+loaded.round+'.');
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível retomar GOT.');}
  },[resumeFromLibrary,saveKey]);
@@ -587,7 +632,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    if(battle&&JSON.stringify(battle)!==lastSavedSnapshot&&
     !window.confirm('A batalha atual tem mudanças não salvas. Substituí-la pela cópia escolhida?'))return;
    setBattle(loaded);setLastSavedSnapshot(encodeGotLabSave(loaded));
-   setSelected('');setTarget('');setError('');
+   setSelected('');setTarget('');setError('');setAiSide('none');
    setLocalSaveStatus('Cópia nomeada retomada: '+loaded.name+'.');
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível abrir a cópia.');}
  };
@@ -617,7 +662,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    if(!saved)throw new Error('Nenhuma simulação local foi encontrada neste navegador.');
    if(battle&&!window.confirm('Substituir a simulação atual pela versão salva?'))return;
    const loaded=decodeGotLabSave(saved);
-   setBattle(loaded);setSelected('');setTarget('');setLastSavedSnapshot(saved);setError('');
+   setBattle(loaded);setSelected('');setTarget('');setLastSavedSnapshot(saved);setError('');setAiSide('none');
    setLocalSaveStatus('Simulação retomada. Rodada '+loaded.round+'.');
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível retomar a simulação.');}
  };
@@ -693,19 +738,52 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
  const quickOrders:readonly WarQuickOrder[]=ordering&&chosenUnit?quickWarOrders(chosenUnit):[];
  const quick=quickOrders.find(o=>o.id===quickId)??null;
  const selectedUnitId=chosenUnit?.id??'';
- const reachableKeys=useMemo(()=>new Set(battle&&ordering&&quick?.needs==='cell'&&selectedUnitId?
-  reachableWarCells(battle,selectedUnitId,Boolean(quick.sprint)).map(c=>c.x+':'+c.y):[]),
-  [battle,ordering,quick,selectedUnitId]);
- const targetOptions=useMemo(()=>new Map(battle&&ordering&&quick?.needs==='enemy'&&selectedUnitId?
+ const aiTurn=Boolean(battle&&ordering&&aiSide!=='none'&&battle.turn===aiSide);
+ /** Modo automático: sem ordem escolhida, o mapa oferece mover e atacar ao mesmo tempo. */
+ const smart=Boolean(ordering&&chosenUnit&&!quick&&!aiTurn&&chosenUnit.condition!=='routed');
+ const reachableKeys=useMemo(()=>new Set(battle&&ordering&&selectedUnitId&&
+  (quick?quick.needs==='cell':smart)?
+  reachableWarCells(battle,selectedUnitId,Boolean(quick?.sprint)).map(c=>c.x+':'+c.y):[]),
+  [battle,ordering,quick,smart,selectedUnitId]);
+ /** Para cada inimigo, o melhor ataque disponível: Luta se adjacente, Pontaria se alcança, Carga se não. */
+ const smartAttacks=useMemo(()=>{
+  const found=new Map<string,{option:WarTargetOption;mode:'melee'|'ranged'|'charge'}>();
+  if(!battle||!smart||!chosenUnit)return found;
+  const modes:('melee'|'ranged'|'charge')[]=['melee',
+   ...(chosenUnit.range!=='none'?['ranged' as const]:[]),
+   ...(chosenUnit.range==='none'&&!chosenUnit.naval&&chosenUnit.condition==='organized'?['charge' as const]:[])];
+  for(const mode of modes)for(const option of attackableWarTargets(battle,chosenUnit.id,mode))
+   if(!found.has(option.unitId))found.set(option.unitId,{option,mode});
+  return found;
+ },[battle,smart,chosenUnit]);
+ const targetOptions=useMemo(()=>smart?new Map([...smartAttacks].map(([id,v])=>[id,v.option] as const)):
+  new Map(battle&&ordering&&quick?.needs==='enemy'&&selectedUnitId?
   attackableWarTargets(battle,selectedUnitId,quick.kind==='charge'?'charge':
    quick.ranged?'ranged':'melee').map(t=>[t.unitId,t] as const):[]),
-  [battle,ordering,quick,selectedUnitId]);
- const commandPreview=battle&&ordering&&commander&&chosenUnit&&quick?
-  warCommandOdds(battle,commander,chosenUnit,{kind:quick.kind}):null;
+  [battle,ordering,quick,smart,smartAttacks,selectedUnitId]);
+ /** Ordem que o toque no mapa dispara agora, já com rótulo de mesa. */
+ const mapCommand=(targetId:string,to:WarPosition):{command:WarOrder;label:string}|null=>{
+  if(quick){
+   if(quick.needs==='enemy'&&!targetOptions.has(targetId))return null;
+   if(quick.needs==='cell'&&!reachableKeys.has(to.x+':'+to.y))return null;
+   return {label:quick.label,command:{kind:quick.kind,
+    ...(quick.needs==='enemy'?{targetId}:{}),
+    ...(quick.kind==='attack'?{ranged:Boolean(quick.ranged)}:{}),
+    ...(quick.needs==='cell'?{to,sprint:Boolean(quick.sprint)}:{})}};
+  }
+  if(!smart)return null;
+  const hit=smartAttacks.get(targetId);
+  if(hit)return hit.mode==='charge'?{label:'Carga',command:{kind:'charge',targetId}}:
+   {label:hit.mode==='ranged'?'Atirar':'Atacar',
+    command:{kind:'attack',targetId,ranged:hit.mode==='ranged'}};
+  return reachableKeys.has(to.x+':'+to.y)?{label:'Mover',command:{kind:'move',to,sprint:false}}:null;
+ };
+ const pendingCommand=ordering&&chosenUnit?mapCommand(target,coord):null;
+ const commandPreview=battle&&ordering&&commander&&chosenUnit?
+  warCommandOdds(battle,commander,chosenUnit,{kind:quick?.kind??pendingCommand?.command.kind??'attack'}):null;
  const ordersLeftTotal=battle?Object.values(battle.ordersRemaining).reduce((a,b)=>a+b,0):0;
  const aiDecision=useMemo(()=>battle&&aiSide!=='none'?chooseWarAiOrder(battle,aiSide):null,
   [battle,aiSide]);
- const aiTurn=Boolean(battle&&ordering&&aiSide!=='none'&&battle.turn===aiSide);
  /** Resolve uma ordem no motor e traduz o resultado em efeitos e texto simples. */
  const runOrder=(state:WarBattle,commanderId:string,unit:WarUnit,command:WarOrder,
   label:string,byAi=false)=>{
@@ -739,25 +817,32 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   setSelected('');setTarget('');setQuickId('');setError('');
   setKind('attack');setRanged(false);setSprint(false);
  };
- const issueQuick=(override:{targetId?:string;to?:WarPosition}={})=>{
-  if(!battle||!commander||!chosenUnit||!quick||aiTurn)return;
+ const issueQuick=(override:{targetId?:string;to?:WarPosition;order?:WarQuickOrder}={})=>{
+  if(!battle||!commander||!chosenUnit||aiTurn)return;
   try{
-   const targetId=override.targetId??target;
-   const to=override.to??coord;
-   if(quick.needs==='enemy'&&!targetOptions.has(targetId))
-    throw new Error('Escolha um inimigo destacado em vermelho no mapa.');
-   if(quick.needs==='cell'&&!reachableKeys.has(to.x+':'+to.y))
-    throw new Error('Escolha um quadrado verde no mapa.');
-   const command:WarOrder={kind:quick.kind,
-    ...(quick.needs==='enemy'?{targetId}:{}),
-    ...(quick.kind==='attack'?{ranged:Boolean(quick.ranged)}:{}),
-    ...(quick.needs==='cell'?{to,sprint:Boolean(quick.sprint)}:{})};
-   runOrder(battle,commander.id,chosenUnit,command,quick.label);
+   const direct=override.order??(quick?.needs==='none'?quick:null);
+   const chosen=direct?{label:direct.label,command:{kind:direct.kind} as WarOrder}:
+    mapCommand(override.targetId??target,override.to??coord);
+   if(!chosen)throw new Error('Toque em um inimigo em vermelho ou em um quadrado verde.');
+   runOrder(battle,commander.id,chosenUnit,chosen.command,chosen.label);
   }catch(e){setError(e instanceof Error?e.message:'Ordem não executada.');}
  };
- const pickQuickOrder=(choice:WarQuickOrder)=>{
+ const pickQuickOrder=(choice:WarQuickOrder|null)=>{
+  setTarget('');setError('');
+  if(!choice){setQuickId('');setKind('attack');setRanged(false);setSprint(false);return;}
+  // Ordens sem alvo (Defender, Reagrupar, Retirada) saem no mesmo toque.
+  if(choice.needs==='none'&&!confirmFirst){issueQuick({order:choice});return;}
   setQuickId(choice.id);setKind(choice.kind);setRanged(Boolean(choice.ranged));
-  setSprint(Boolean(choice.sprint));setTarget('');setError('');
+  setSprint(Boolean(choice.sprint));
+ };
+ const resolveToEnd=()=>{
+  if(!battle||battle.phase!=='orders')return;
+  try{
+   const done=autoResolveWarBattle(battle);
+   setBattle(done.battle);setSelected('');setTarget('');setQuickId('');
+   setLastAction(null);setCommandResult(null);
+   setError(done.finished?'':'A batalha não chegou ao fim sozinha. Continue pelas ordens.');
+  }catch(e){setError(e instanceof Error?e.message:'Não foi possível resolver a batalha.');}
  };
  const selectMapCell=(x:number,y:number)=>{
   if(!battle)return;
@@ -771,11 +856,30 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   }
   if(unit){
    setTarget(unit.id);
-   if(fastMode&&quick?.needs==='enemy'&&targetOptions.has(unit.id))issueQuick({targetId:unit.id});
+   if(!confirmFirst&&ordering&&chosenUnit&&targetOptions.has(unit.id))issueQuick({targetId:unit.id});
    return;
   }
-  if(fastMode&&quick?.needs==='cell'&&reachableKeys.has(x+':'+y))issueQuick({to:{x,y}});
+  setTarget('');
+  if(!confirmFirst&&ordering&&chosenUnit&&reachableKeys.has(x+':'+y))issueQuick({targetId:'',to:{x,y}});
  };
+ const roundReady=Boolean(ordering&&(ordersLeftTotal===0||(aiTurn&&!aiDecision)));
+ // Menos cliques: a próxima tropa sem ordem já fica escolhida na vez do jogador.
+ const eventCount=battle?.events.length??0;
+ useEffect(()=>{
+  if(!battle||!ordering||aiTurn||roundReady||chosenUnit)return;
+  if(!commander||(battle.ordersRemaining[commander.id]??0)<1)return;
+  const next=activeUnits.find(u=>u.issuedThisRound===0&&u.condition!=='routed')??
+   activeUnits.find(u=>u.issuedThisRound===0)??activeUnits[0];
+  if(next)setSelected(next.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[eventCount,ordering,aiTurn,roundReady,battle?.turn]);
+ // Sem ordens restantes, a rodada vira sozinha depois de uma pausa curta.
+ useEffect(()=>{
+  if(!roundReady)return undefined;
+  const timer=window.setTimeout(()=>{setQuickId('');setLastAction(null);endRound();},1400);
+  return()=>window.clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[roundReady,eventCount]);
  // Oponente automático: uma ordem por vez, com pausa para o jogador acompanhar.
  useEffect(()=>{
   if(!battle||!aiTurn||!aiDecision)return undefined;
@@ -793,51 +897,62 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
   return()=>window.clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
  },[battle,aiTurn,aiDecision]);
+ const banners=readWarBanners(battle);
  const battleEvents=battle?.events.filter(e=>eventFilter==='all'||
   (eventFilter==='dice'?Boolean(e.roll):e.side===eventFilter)).slice(-30)??[];
- return <section className="battle-got" aria-label="Batalha pelas regras de Guerra dos Tronos RPG">
+ return <section className="battle-got" data-phase={battle?.phase??'setup'}
+  aria-label="Batalha pelas regras de Guerra dos Tronos RPG">
   <div className="battle-got-toolbar">
    <Button variant="outline" size="sm" onClick={leaveBattle}>Voltar ao módulo</Button>
   </div>
-   {playerSandbox&&<p className="battle-note" role="status">Modo de treino do jogador: apenas tropas fictícias. Nenhum acesso a unidades oficiais das Casas.</p>}
-  <details className="battle-surface got-save-panel" aria-label="Salvar e retomar teste local">
-   <summary>Salvar ou retomar</summary>
-   <BattleSaveScope system="got"/>
-   <div className="got-save-actions">
-    {battle&&<Button variant="outline" onClick={saveLocalBattle}>Salvar simulação neste navegador</Button>}
-    <Button variant="outline" onClick={loadLocalBattle}>Retomar simulação salva</Button>
-    <Button variant="outline" onClick={clearLocalBattle}>Apagar cópia salva</Button>
-   </div>
-   <p className="battle-note">Salvamento manual, exclusivo deste navegador. Não publica
-    resultados, não grava em contas nem modifica exércitos ou recursos oficiais.</p>
-   <div className="got-save-actions" role="group" aria-label="Cópias nomeadas Game of Thrones">
-    {battle&&<>
-     <label>Nome da cópia
-      <input aria-label="Nome da cópia GOT" maxLength={80} value={archiveLabel}
-       placeholder={battle.name} onChange={event=>setArchiveLabel(event.target.value)}/>
-     </label>
-     <Button variant="outline" onClick={storeNamedBattle}>
-      Salvar cópia nomeada</Button>
-    </>}
-    {archives.length>0&&<>
-     <label>Cópia disponível
-      <select aria-label="Escolher cópia GOT" value={selectedArchive}
-       onChange={event=>setSelectedArchive(event.target.value)}>
-       <option value="">Escolher uma cópia</option>
-       {archives.map(item=><option value={item.id} key={item.id}>
-        {item.label} · rodada {item.round} · {new Date(item.updatedAt).toLocaleDateString('pt-BR')}
-       </option>)}
-      </select>
-     </label>
-     <Button variant="outline" disabled={!selectedArchive} onClick={restoreNamedBattle}>Retomar cópia nomeada</Button>
-     <Button variant="outline" disabled={!selectedArchive} onClick={removeNamedBattle}>Excluir cópia nomeada</Button>
-    </>}
-   </div>
-   <p className="battle-note">Até oito cópias nomeadas por perfil, separadas das
-    simulações do jogador e do Narrador. Não substitui backup entre dispositivos.</p>
-   {localSaveStatus&&<p role="status">{localSaveStatus}</p>}
-  </details>
+   {playerSandbox&&<p className="battle-note" role="status">Modo de treino do jogador: nada é gravado nas fichas das Casas.</p>}
   {!battle?<section className="battle-surface got-config" aria-label="Preparar campo de guerra">
+   <div className="got-versus" role="group" aria-label="Casas em confronto">
+    {(['attacker','defender'] as const).map(side=><div key={side}
+     className={'got-versus-side '+side} style={bannerStyle(setupBanners[side])}>
+     <WarFlag banner={setupBanners[side]} size="lg"/>
+     <div className="got-versus-fields">
+      <span className="got-versus-role">{SIDE[side]}</span>
+      {houses.length>0?<select className="got-versus-house" aria-label={'Casa · '+SIDE[side]}
+       value={houseIds[side]} onChange={e=>chooseHouse(side,e.target.value)}>
+       <option value="">Escolher Casa…</option>
+       {houseRegions.map(region=><optgroup key={region} label={region}>
+        {houses.filter(h=>h.region===region).map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+       </optgroup>)}
+      </select>:<strong className="got-versus-house">Exército-modelo</strong>}
+      <label className="got-versus-power">Poder
+       <input type="number" min={0} max={200} aria-label={'Poder · '+SIDE[side]}
+        placeholder="livre" value={forces?forcePower[side]:''}
+        onChange={e=>changePower(side,Number(e.target.value))}/>
+      </label>
+      <small>{forces?forces[side].units.length+' tropas · Guerra '+forces[side].warfare:
+       (2+extraUnitsPerSide)+' tropas'}</small>
+     </div>
+    </div>)}
+    <span className="got-versus-mark" aria-hidden="true">×</span>
+   </div>
+   <div className="got-launch">
+    <div className="got-seg" role="group" aria-label="Quem você comanda">
+     <span>Você comanda</span>
+     {([['defender','Atacante'],['attacker','Defensor'],['none','Os dois']] as const).map(([ai,label])=>
+      <button type="button" key={ai} aria-pressed={aiSide===ai}
+       className={aiSide===ai?'is-selected':''} onClick={()=>setAiSide(ai)}>{label}</button>)}
+    </div>
+    <div className="battle-simple-launch" aria-label="Início rápido Game of Thrones">
+     <Button onClick={start}>Batalhar agora</Button>
+     <Button variant="outline" onClick={startResolved}
+      title="O comando automático joga os dois lados e mostra o resultado.">
+      Resolver automaticamente</Button>
+    </div>
+   </div>
+   {!playerSandbox&&<label className={'got-check got-official-toggle'+(officialMode?' is-on':'')}>
+    <input type="checkbox" checked={officialMode} onChange={e=>setOfficialMode(e.target.checked)}/>
+    <span><strong>Convocação oficial</strong> · ao terminar, você confirma e as baixas e o
+     treinamento vão para as fichas das unidades oficiais. Desmarcado, é simulação.</span>
+   </label>}
+   {error&&<p role="alert" className="got-error">{error}</p>}
+   <details className="battle-advanced-config">
+    <summary>Personalizar tropas, heróis e mapa</summary>
     <MiniaturePreparationSummary mode="GOT" width={mapSize.width} height={mapSize.height}
      attackers={preparedDeployments.filter(u=>u.side==='attacker').length}
      defenders={preparedDeployments.filter(u=>u.side==='defender').length}
@@ -846,75 +961,21 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    {!playerSandbox&&<label className="got-check"><input type="checkbox"
     checked={miniaturesEnabled} onChange={e=>setMiniaturesEnabled(e.target.checked)}/>
     Habilitar miniaturas 3D nesta sessão (teste, Narrador)</label>}
-   {!playerSandbox&&<fieldset className="got-mode-picker" aria-label="Tipo de batalha">
-    <legend>Que batalha é esta?</legend>
-    <label className={'got-mode-card'+(!officialMode?' is-selected':'')}>
-     <strong><input type="radio" name="got-battle-mode" checked={!officialMode}
-      onChange={()=>setOfficialMode(false)}/> Simulação</strong>
-     <span>Treino livre. Nada é gravado nas fichas das Casas, mesmo usando tropas oficiais.</span>
-    </label>
-    <label className={'got-mode-card'+(officialMode?' is-selected':'')}>
-     <strong><input type="radio" name="got-battle-mode" checked={officialMode}
-      onChange={()=>setOfficialMode(true)}/> Convocação oficial</strong>
-     <span>Batalha da campanha. Ao terminar, você confirma e o resultado da Tabela 10-6
-      (treinamento, destruição e Saúde) é lançado nas fichas das unidades oficiais.</span>
-    </label>
-   </fieldset>}
-   <section className="got-force-builder" aria-label="Exércitos por Poder da Casa">
-    <h3>Exércitos · Casas de portes diferentes</h3>
-    <p className="battle-note">Informe o Poder de cada Casa: o simulador monta tropas-modelo
-     com os custos do livro (tipo + treinamento). Mais Poder rende mais unidades e melhor treino.</p>
+   {forces&&<div className="got-force-builder" aria-label="Exércitos por Poder da Casa">
     <div className="got-force-grid">
      {(['attacker','defender'] as const).map(side=><div key={side} className={'got-force-card '+side}>
-      <h4>{SIDE[side]}</h4>
-      <label>Porte da Casa
-       <select aria-label={'Porte da Casa · '+SIDE[side]}
-        value={WAR_FORCE_TIERS.find(t=>t.power===forcePower[side])?.id??'custom'}
-        onChange={e=>{
-         const tier=WAR_FORCE_TIERS.find(t=>t.id===e.target.value);
-         if(tier)setForcePower(v=>({...v,[side]:tier.power}));
-        }}>
-        {WAR_FORCE_TIERS.map(t=><option key={t.id} value={t.id}>{t.label} · Poder {t.power}</option>)}
-        <option value="custom">Outro valor</option>
-       </select>
-      </label>
-      <label>Poder
-       <input type="number" min={0} max={200} aria-label={'Poder · '+SIDE[side]}
-        value={forcePower[side]} onChange={e=>setForcePower(v=>({...v,
-         [side]:Math.max(0,Math.min(200,Math.trunc(Number(e.target.value)||0)))}))}/>
-      </label>
-      {forces&&<ul className="got-force-list">
+      <h4>{setupBanners[side].houseName} · {forces[side].spent} de {forces[side].power} de Poder</h4>
+      <ul className="got-force-list">
        {forces[side].units.map((u,i)=><li key={i}>
         {OPTIONS.find(o=>o.id===u.typeId)?.label} · {TRAINING_LABEL[u.training]} ({u.cost})</li>)}
-       <li><strong>Guerra do comandante {forces[side].warfare} · {forces[side].spent} de {forces[side].power} de Poder</strong></li>
-      </ul>}
+      </ul>
      </div>)}
     </div>
-    <div className="got-save-actions">
-     <Button variant="outline" onClick={applyForces}>Montar exércitos por Poder</Button>
-     {forces&&<Button variant="outline" onClick={()=>{setForces(null);setTrainingById({});
-      setExtraUnitsPerSide(0);setDeploymentPositions({});
-      setLocalSaveStatus('Voltou à escaramuça padrão de duas unidades por lado.');}}>
-      Voltar à escaramuça padrão</Button>}
-    </div>
-   </section>
-   <label>Adversário
-    <select aria-label="Adversário da batalha" value={aiSide}
-     onChange={e=>setAiSide(e.target.value as WarSide|'none')}>
-     <option value="none">Eu comando os dois lados</option>
-     <option value="defender">Automático comanda o Defensor</option>
-     <option value="attacker">Automático comanda o Atacante</option>
-    </select>
-   </label>
-   <div className="battle-simple-launch" aria-label="Início rápido Game of Thrones">
-    <h3>Batalha rápida</h3>
-    <p>{forces?forces.attacker.units.length+' unidades atacantes contra '+
-     forces.defender.units.length+' defensoras':(2+extraUnitsPerSide)+' unidades por lado'}
-     {' '}· mapa {mapSize.width} × {mapSize.height}</p>
-    <Button onClick={start}>Batalhar agora</Button>
-   </div>
-   <details className="battle-advanced-config">
-    <summary>Personalizar tropas, heróis e mapa</summary>
+    <Button variant="outline" onClick={()=>{setForces(null);setTrainingById({});
+     setExtraUnitsPerSide(0);setDeploymentPositions({});
+     setLocalSaveStatus('Voltou à escaramuça padrão de duas unidades por lado.');}}>
+     Voltar à escaramuça padrão</Button>
+   </div>}
    <BattleGotGuide phase="preparation" onQuickPreset={()=>{
     setSiegeEnabled(false);setFortKind('none');setHeroesEnabled(false);
     setAdvanced(false);setWeather('clear');setVisibility('clear');
@@ -1239,31 +1300,28 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
    </details>
   </section>:<>
    <section className="got-status got-hud" aria-label="Estado da guerra" aria-live="polite">
-    <h3>{battle.name}</h3>
-    <span className="got-hud-chip">Rodada <b>{battle.round}</b></span>
-    <span className={'got-hud-chip '+(battle.phase==='orders'?battle.turn:'')}>
+    <div className="got-hud-versus">
+     {(['attacker','defender'] as const).map(side=><span key={side} className={'got-hud-army '+side+
+      (battle.phase==='orders'&&battle.turn===side?' is-turn':'')} style={bannerStyle(banners[side])}>
+      <WarBannerTitle banner={banners[side]} detail={battle.units.filter(u=>u.side===side&&
+       (u.condition==='organized'||u.condition==='disorganized')).length+' de '+
+       battle.units.filter(u=>u.side===side).length+' tropas em combate'}/>
+     </span>)}
+    </div>
+    <h3 className={battle.name===banners.attacker.houseName+' × '+banners.defender.houseName?
+     'got-hud-name is-repeated':'got-hud-name'}>{battle.name}</h3>
+    <span className="got-hud-chip">
      {battle.phase==='finished'?'Combate encerrado':
-      battle.phase==='siege'?'Passo 5 · armas de cerco':
+      battle.phase==='siege'?'Armas de cerco':
       battle.phase==='heroes-first'||battle.phase==='heroes-second'?'Ações dos heróis':
-      <>Comanda agora: <b>{SIDE[battle.turn]}</b></>}
+      <>Rodada <b>{battle.round}</b></>}
     </span>
-    {battle.phase!=='finished'&&<span className="got-hud-chip">Iniciativa: {SIDE[battle.first]}</span>}
-    {battle.commanders.filter(c=>c.active).map(c=><span key={c.id}
-     className={'got-hud-chip '+c.side}>{c.name}: <b>{battle.ordersRemaining[c.id]??0}</b> ordem(ns)</span>)}
     <span className={'got-hud-chip got-hud-mode'+(officialMode&&!playerSandbox?' is-official':'')}>
-     {officialMode&&!playerSandbox?'Convocação oficial':'Simulação · não altera fichas'}</span>
-    {battle.phase!=='finished'&&<span className="got-quick-save">
-     <Button variant="outline" onClick={saveLocalBattle}>Salvar batalha</Button>
-    </span>}
-    {battle.phase==='finished'&&<BattleOutcomeSummary
-     title={battle.winner?'Vitória do '+SIDE[battle.winner]:'Confronto sem vencedor'}
-     round={battle.round}
-     losses={aftermath?[
-      {label:'Atacante',count:aftermath.summary.attacker.destroyedInBattle,
-       unit:'unidades destruídas'},
-      {label:'Defensor',count:aftermath.summary.defender.destroyedInBattle,
-       unit:'unidades destruídas'},
-     ]:[]}/>}
+     {officialMode&&!playerSandbox?'Convocação oficial':'Simulação'}</span>
+    <span className="got-quick-save">
+     {battle.phase!=='finished'&&<Button variant="outline" size="sm" onClick={saveLocalBattle}>Salvar batalha</Button>}
+     <Button variant="outline" size="sm" onClick={()=>setBattle(null)}>Nova batalha</Button>
+    </span>
    </section>
    <BattleGotPhaseDock phase={battle.phase}
     hasSiege={battle.siege.some(w=>w.health>0)}
@@ -1639,16 +1697,228 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
       <Button variant="outline" onClick={heroFinish} disabled={Boolean(battle.pendingPersonalDamage)}>Concluir cinco rodadas · avançar</Button>
      </div>
     </section>}
+   {battle.phase==='finished'&&<section id="got-after-action" className="battle-surface got-after" aria-label="Prévia de sobreviventes">
+    <div className={'got-result-card'+(battle.winner?'':' is-draw')}
+     style={bannerStyle(banners[battle.winner??'attacker'])}>
+     {battle.winner&&<WarFlag banner={banners[battle.winner]} size="lg"/>}
+     <div>
+      <span>{battle.winner?'Vitória de':'Confronto'}</span>
+      <strong>{battle.winner?banners[battle.winner].houseName:'sem vencedor'}</strong>
+      <small>Rodada {battle.round}{aftermath?' · Glória '+aftermath.glory.attacker+' a '+
+       aftermath.glory.defender:''}</small>
+     </div>
+    </div>
+    {aftermath&&<div className="got-result-armies">
+     {(['attacker','defender'] as const).map(side=><div key={side} style={bannerStyle(banners[side])}>
+      <h4><WarBannerTitle banner={banners[side]} detail={SIDE[side]}/></h4>
+      <ul><li className="got-result-head" aria-hidden="true">
+       <span>Tropa</span><small>No campo</small><b>Depois da batalha</b></li>
+       {aftermath.survivors.filter(row=>row.side===side).map(row=>
+       <li key={row.unitId} data-fate={row.proposedTraining==='destroyed'?'lost':
+        row.proposedTraining===row.training?'same':'changed'}>
+        <span>{row.unitName}</span>
+        <small>{SURVIVOR_LABEL[row.condition]}</small>
+        <b>{row.proposedTraining==='destroyed'?'Perdida':
+         row.proposedTraining===row.training?TRAINING_LABEL[row.training]:
+         TRAINING_LABEL[row.training]+' → '+TRAINING_LABEL[row.proposedTraining]}</b>
+       </li>)}</ul>
+     </div>)}
+    </div>}
+    {!playerSandbox&&aftermath&&(officialMode?
+     <Suspense fallback={<p role="status">Carregando convocação…</p>}>
+      <BattleGotConvocation battle={battle} aftermath={aftermath}/>
+     </Suspense>:
+     battle.units.some(u=>u.source.kind==='house-readonly')&&<div className="got-convocation">
+      <h4>Esta batalha foi uma simulação</h4>
+      <p>Nenhuma ficha foi alterada. Se este confronto valeu para a campanha, você pode
+       convertê-lo em convocação oficial e lançar o resultado nas fichas das Casas.</p>
+      <Button variant="outline" onClick={()=>setOfficialMode(true)}>
+       Tratar como convocação oficial</Button>
+     </div>)}
+    <details className="got-advanced-panel got-result-more">
+    <summary>Detalhes da Tabela 10-6, Glória e consequências</summary>
+    <h3>Resultado pós-batalha · somente projeção</h3>
+    <p className="battle-note">A tabela de sobreviventes é calculada com dados auditáveis. Nenhuma perda,
+     glória ou mudança de treinamento é aplicada às fichas oficiais das Casas.</p>
+    <BattleOutcomeSummary
+     title={battle.winner?'Vitória do '+SIDE[battle.winner]:'Confronto sem vencedor'}
+     round={battle.round}
+     losses={aftermath?[
+      {label:'Atacante',count:aftermath.summary.attacker.destroyedInBattle,
+       unit:'unidades destruídas'},
+      {label:'Defensor',count:aftermath.summary.defender.destroyedInBattle,
+       unit:'unidades destruídas'},
+     ]:[]}/>
+    <Button variant="outline" onClick={exportCampaignReview}
+     disabled={!aftermath||!projectedResources}>
+     Exportar relatório para revisão da campanha
+    </Button>
+    <p className="battle-note">Exportação local em JSON: requer avaliação e aprovação
+     explícita do Narrador antes de qualquer transcrição nas Casas. Não aplica
+     automaticamente Glória, sobreviventes ou mudanças econômicas.</p>
+    {aftermath&&<div className="got-after-summary">
+     {(['attacker','defender'] as const).map(side=><div className="got-unit" key={side}>
+      <strong>{SIDE[side]} · balanço militar</strong>
+      <span>Início: {aftermath.summary[side].originalUnits} · Organizadas: {aftermath.summary[side].organized}
+       · Desorganizadas: {aftermath.summary[side].disorganized}</span>
+      <span>Debandadas/retiradas: {aftermath.summary[side].routedOrEscaped}
+       · Rendidas: {aftermath.summary[side].surrendered}
+       · Destruídas: {aftermath.summary[side].destroyedInBattle}</span>
+      <span>Proposta: {aftermath.summary[side].proposedDestroyed} destruições ·
+       {aftermath.summary[side].trainingAdvanced} melhorias ·
+       {aftermath.summary[side].trainingReduced} reduções</span>
+      <span>Glória: {aftermath.gloryBreakdown[side].victory} vitória +
+       {aftermath.gloryBreakdown[side].outnumberedBonus} desvantagem numérica +
+       {aftermath.gloryBreakdown[side].defeatConsolation} consolação =
+       {aftermath.glory[side]}</span>
+     </div>)}
+    </div>}
+    <fieldset className="got-after-modifiers">
+     <legend>Mestre de Armas · bônus condicional na Tabela 10-6</legend>
+     <p className="battle-note">Ative +1 apenas se a Casa tiver a posse correspondente.
+      Esta escolha vale somente para o relatório da simulação.</p>
+     {(['attacker','defender'] as const).map(side=><label className="got-check" key={side}>
+      <input type="checkbox" checked={masterOfArmsSides[side]}
+       onChange={e=>setMasterOfArmsSides(prev=>({...prev,[side]:e.target.checked}))}/>
+      Mestre de Armas confirmado: {SIDE[side]} (+1)
+     </label>)}
+    </fieldset>
+    <label>Filtrar resultados das tropas
+     <select value={aftermathSide}
+      onChange={e=>setAftermathSide(e.target.value as 'all'|WarSide)}>
+      <option value="all">Ambos os exércitos</option>
+      <option value="attacker">Atacante</option>
+      <option value="defender">Defensor</option>
+     </select>
+    </label>
+    <div className="got-roster">
+     {(aftermath?.survivors??[]).filter(row=>aftermathSide==='all'||row.side===aftermathSide).map(row=><div className="got-unit" key={row.unitId}>
+      <strong>{row.unitName}</strong><span>Condição: {SURVIVOR_LABEL[row.condition]} · 1d6 = {row.die}
+       · resultado ajustado {row.adjusted}</span>
+      <span>Cálculo: d6 {row.die} + Mestre de Armas {row.masterOfArmsBonus}
+       − Desorganizações adicionais {row.disorganizationPenalty} =
+       {row.adjusted} (limitado a 0–6)</span>
+      <span>Treinamento: {row.steps==='destroyed'?'proposta de destruição':
+       row.steps===0?'inalterado':row.steps>0?'+'+row.steps+' graduação(ões)':
+       row.steps+' graduação(ões)'}</span>
+      <span>Proposta: {TRAINING_LABEL[row.training]} → {row.proposedTraining==='destroyed'?
+       'Destruída':TRAINING_LABEL[row.proposedTraining]} · decisão pendente do Narrador
+       {row.extraRanksAfterElite>0?' · '+row.extraRanksAfterElite+' graduação(ões) extras após Elite':''}</span>
+     </div>)}
+    </div>
+    <h4>Recursos e domínio · proposta do passo 11</h4>
+    {Boolean(battle.scorchedPreview?.length)&&<div className="got-roster">
+     <h4>Terra Arrasada · proprietário dos domínios</h4>
+     <p className="battle-note">Sem dono declarado, perdas de recursos não são atribuídas.</p>
+     {[...new Set((battle.scorchedPreview??[]).map(row=>row.domainId))].map(domain=>
+      <label key={domain}>{domain}
+       <select value={resourceScenario.scorchedDomainOwners?.[domain]??''}
+        onChange={e=>setResourceScenario(s=>{
+         const owners={...s.scorchedDomainOwners};
+         if(!e.target.value)delete owners[domain];
+         else owners[domain]=e.target.value as WarSide;
+         return {...s,scorchedDomainOwners:owners};
+        })}>
+        <option value="">Atribuição pendente</option>
+        <option value="attacker">Atacante</option>
+        <option value="defender">Defensor</option>
+       </select>
+      </label>)}
+    </div>}
+    <p className="battle-note">Aproximação digital das consequências do livro.
+     Não altera saldos, posses ou a situação oficial de nenhuma Casa.</p>
+    <div className="got-config-grid">
+     <label className="got-check"><input type="checkbox"
+      checked={resourceScenario.occupiedDomain}
+      onChange={e=>setResourceScenario(s=>({...s,occupiedDomain:e.target.checked}))}/>
+      O vencedor ocupou um domínio do derrotado
+     </label>
+     {resourceScenario.occupiedDomain&&<>
+      <label className="got-check"><input type="checkbox"
+       checked={resourceScenario.garrisonHeldForThreeMonths}
+       onChange={e=>setResourceScenario(s=>({...s,
+        garrisonHeldForThreeMonths:e.target.checked}))}/>
+       A guarnição manteve o domínio por três meses
+      </label>
+      <label className="got-check"><input type="checkbox"
+       checked={resourceScenario.domainHasCommunityOrFort}
+       onChange={e=>setResourceScenario(s=>({...s,
+        domainHasCommunityOrFort:e.target.checked}))}/>
+       O domínio contém comunidade ou fortaleza
+      </label>
+      <label>Investimento em Terras transferido
+       <input type="number" min={0} max={10000}
+        value={resourceScenario.capturedLandValue}
+        onChange={e=>setResourceScenario(s=>({...s,
+         capturedLandValue:Math.max(0,Math.trunc(Number(e.target.value)||0))}))}/>
+      </label>
+      <label>Defesa da fortaleza sobrevivente
+       <input type="number" min={0} max={10000}
+        value={resourceScenario.survivingFortDefenseValue}
+        onChange={e=>setResourceScenario(s=>({...s,
+         survivingFortDefenseValue:Math.max(0,Math.trunc(Number(e.target.value)||0))}))}/>
+      </label>
+      <label>Investimentos em Riqueza transferidos
+       <input type="number" min={0} max={10000}
+        value={resourceScenario.transferredWealthInvestments}
+        onChange={e=>setResourceScenario(s=>({...s,
+         transferredWealthInvestments:Math.max(0,Math.trunc(Number(e.target.value)||0))}))}/>
+      </label>
+     </>}
+    </div>
+    {projectedResources&&<div className="got-roster">
+     {(['attacker','defender'] as const).map(side=>{
+      const delta=projectedResources[side];
+      return <div className="got-unit" key={side}>
+       <strong>{SIDE[side]} · variação proposta</strong>
+       <span>Lei {delta.law>=0?'+':''}{delta.law} ·
+        População {delta.population>=0?'+':''}{delta.population}</span>
+       <span>Riqueza {delta.wealth>=0?'+':''}{delta.wealth} ·
+        Terras {delta.land>=0?'+':''}{delta.land} ·
+        Defesa {delta.defense>=0?'+':''}{delta.defense}</span>
+      </div>;
+     })}
+     <p>Prisioneiros: {projectedResources.captured.length?
+      projectedResources.captured.map(h=>h.name+' (Status '+h.status+
+       ', resgate proposto '+h.ransomWealth+' Riqueza)').join(' · '):
+      'nenhum registrado'}.</p>
+     <p className="battle-note">{projectedResources.notes.join(' ')}</p>
+     <div className="got-unit">
+      <strong>Ocupação · {projectedResources.occupationReview.status==='secured'?
+       'três meses informados':'não consolidada'}</strong>
+      <span>Terras {projectedResources.occupationReview.land} ·
+       Defesa {projectedResources.occupationReview.defense} ·
+       Riqueza investida {projectedResources.occupationReview.wealth}</span>
+      <span>Proposta pendente de autorização do Narrador; nenhum valor lançado.</span>
+     </div>
+     <details className="got-resource-rolls">
+      <summary>Auditoria dos dados de consequências ({projectedResources.rollLedger.length})</summary>
+      {projectedResources.rollLedger.map(roll=><p key={roll.reason}>
+       {roll.reason}: [{roll.dice.join(', ')}] = {roll.total}</p>)}
+     </details>
+     {projectedResources.approvalItems.length>0&&<div className="got-review-tasks">
+      <strong>Decisões pendentes do Narrador</strong>
+      <ul>{projectedResources.approvalItems.map((item,i)=><li key={i}>{item}</li>)}</ul>
+     </div>}
+     {projectedResources.provisionalOccupationTransfer?
+      <p role="status" className="got-review-alert">Ocupação não consolidada: Terras e Defesa condicionais.</p>:null}
+     {projectedResources.unresolvedScorchedDomains.length>0?
+      <p role="status" className="got-review-alert">Terra Arrasada sem proprietário:
+       {projectedResources.unresolvedScorchedDomains.join(', ')}.</p>:null}
+    </div>}
+    </details>
+   </section>}
    <div className={'got-columns'+(mapExpanded?' got-wide':'')}>
+    <div className="got-main-column">
     <section className="battle-surface got-map-panel" aria-label="Mapa em quadrados">
      <div className="got-map-header">
-      <h3>Tabuleiro · 10 metros por quadrado</h3>
-      <Button variant="outline" onClick={()=>setMapExpanded(x=>!x)}>
+      <p className="battle-note">{battle.weather!=='clear'||battle.visibility!=='clear'||battle.advancedFormations?
+       'Clima: '+WEATHER_LABEL[battle.weather]+' · Visibilidade: '+VISIBILITY_LABEL[battle.visibility]+
+       (battle.advancedFormations?' · Formações e ângulo frontal ativos':''):'Cada quadrado tem 10 metros.'}</p>
+      <Button variant="outline" size="sm" onClick={()=>setMapExpanded(x=>!x)}>
        {mapExpanded?'Restaurar painel lado a lado':'Ampliar o mapa de batalha'}
       </Button>
      </div>
-     <p className="battle-note">Clima: {WEATHER_LABEL[battle.weather]} · Visibilidade: {VISIBILITY_LABEL[battle.visibility]}
-      {battle.advancedFormations?' · Formações e ângulo frontal ativos':''}</p>
      <MiniatureBoardToggle allowed={!playerSandbox&&miniaturesEnabled}
        contextLabel={'Rodada '+battle.round+' · '+SIDE[battle.turn]+' · '+battle.phase}
       map={gotVisualMap(battle)} tokens={gotVisualTokens(battle)}
@@ -1658,15 +1928,17 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
       pendingHex={{q:coord.x,r:coord.y}}
       canIssueCommands={false}
       onHexClick={h=>selectMapCell(h.q,h.r)}
-      fallback={<BattleGotBoard battle={battle} terrainColors={COMMON_GOT_TERRAIN}
-       selectedId={ordering?chosenUnit?.id??null:null}
-       targetId={quick?.needs==='enemy'&&targetOptions.has(target)?target:null}
-       destination={coord} routeKeys={pathSquares} reachable={reachableKeys}
-       targets={targetOptions} needs={ordering&&!aiTurn?quick?.needs??null:null}
+      fallback={<BattleGotBoard battle={battle} banners={banners} terrainColors={COMMON_GOT_TERRAIN}
+       selectedId={ordering&&!aiTurn?chosenUnit?.id??null:null}
+       targetId={targetOptions.has(target)?target:null}
+       destination={confirmFirst||pathSquares.size>0?coord:{x:-1,y:-1}}
+       routeKeys={pathSquares} reachable={reachableKeys}
+       targets={targetOptions} needs={ordering&&!aiTurn?quick?.needs??(smart?'smart':null):null}
        lastAction={lastAction} conditionNames={CONDITION} onCell={selectMapCell}/>}/>
-     <BattleSquareLegend/>
-     {inspectedTile&&inspectedEffect&&<details className="got-advanced-panel">
-      <summary>Terreno do quadrado {coord.x},{coord.y}</summary>
+     <details className="got-advanced-panel got-map-more">
+      <summary>Legenda e terreno</summary>
+      <BattleSquareLegend/>
+      {inspectedTile&&inspectedEffect&&<>
       <div className="got-map-inspector" aria-live="polite">
       <strong>Quadrado {coord.x},{coord.y} · {inspectedTile.terrain}</strong>
       <span>Redução de Movimento do terreno: {movementSlow(inspectedTile,battle.visibility,battle.weather)*10} m por ordem
@@ -1680,43 +1952,14 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
         ' m de orçamento':'Destino indisponível: '+movePreview.reason}
       </span>}
       </div>
-     </details>}
-     <p className="battle-note">Clique em uma tropa sua, escolha a ordem e depois o alvo ou o destino.
-      Tropas destruídas ou fora de campo saem do mapa.</p>
+      </>}
+     </details>
     </section>
-    <div className="got-side-column">
-    {battle.phase==='orders'&&<div id="got-battle-orders">
-     <BattleGotCommandBar battle={battle} commander={commander??null}
-      ordersLeft={commander?battle.ordersRemaining[commander.id]??0:0}
-      units={activeUnits} unit={chosenUnit}
-      orders={quickOrders} activeOrderId={quick?quickId:''}
-      commandOdds={commandPreview?.odds??null}
-      commandDifficulty={commandPreview?.difficulty??null}
-      target={quick?.needs==='enemy'?targetOptions.get(target)??null:null}
-      targetUnit={quick?.needs==='enemy'&&targetOptions.has(target)?
-       battle.units.find(u=>u.id===target)??null:null}
-      destinationLabel={quick?.needs==='cell'&&reachableKeys.has(coord.x+':'+coord.y)&&movePreview?.legal?
-       'Quadrado '+coord.x+','+coord.y+' · '+movePreview.distanceMetres+' m':null}
-      canConfirm={Boolean(quick)&&(quick?.needs==='none'||
-       (quick?.needs==='enemy'&&targetOptions.has(target))||
-       (quick?.needs==='cell'&&reachableKeys.has(coord.x+':'+coord.y)))}
-      fastMode={fastMode} aiSide={aiSide} aiThinking={Boolean(aiDecision)}
-      result={commandResult}
-      roundReady={ordersLeftTotal===0||(aiTurn&&!aiDecision)}
-      onSelectUnit={id=>{if(id!==selected){setQuickId('');setTarget('');}setSelected(id);}}
-      onPickOrder={pickQuickOrder} onConfirm={()=>issueQuick()}
-      onCancel={()=>{setQuickId('');setTarget('');setError('');}}
-      onEndRound={()=>{setQuickId('');setCommandResult(null);setLastAction(null);endRound();}}
-      onToggleFast={setFastMode} onAiSide={setAiSide}/>
-     {error&&<p role="alert" className="got-error">{error}</p>}
-    </div>}
     <section className="battle-surface" aria-label="Exércitos em campo">
      <div className="got-army">
-      {(['attacker','defender'] as const).map(side=><section key={side}>
-       <h4 className={side}><span>{SIDE[side]}</span>
-        <span>{battle.units.filter(u=>u.side===side&&
-         (u.condition==='organized'||u.condition==='disorganized')).length}/
-         {battle.units.filter(u=>u.side===side).length} em combate</span></h4>
+      {(['attacker','defender'] as const).map(side=><section key={side} style={bannerStyle(banners[side])}>
+       <h4 className={side}>
+        <WarBannerTitle banner={banners[side]} detail={SIDE[side]}/></h4>
        {battle.units.filter(u=>u.side===side).map(u=>{
         const out=['destroyed','escaped','surrendered'].includes(u.condition);
         const ratio=u.maxHealth?u.health/u.maxHealth:0;
@@ -1725,8 +1968,7 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
          onClick={()=>selectMapCell(u.position.x,u.position.y)}>
          <MilitaryUnitSymbol typeId={u.typeId} size="small"/>
          <span><strong>{u.name}</strong>
-          <small>{CONDITION[u.condition]} · Saúde {u.health}/{u.maxHealth} ·
-           Defesa {u.defendRoll??u.defense} · VA {u.armor}</small></span>
+          <small>{CONDITION[u.condition]} · Saúde {u.health}/{u.maxHealth}</small></span>
          <span className="got-army-bar"><i style={{width:Math.round(ratio*100)+'%'}}
           data-level={ratio>0.6?'high':ratio>0.3?'mid':'low'}/></span>
         </button>;
@@ -1734,6 +1976,28 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
       </section>)}
      </div>
     </section>
+    </div>
+    <div className="got-side-column">
+    {battle.phase==='orders'&&<div id="got-battle-orders">
+     <BattleGotCommandBar battle={battle} banners={banners} commander={commander??null}
+      ordersLeft={commander?battle.ordersRemaining[commander.id]??0:0}
+      unit={chosenUnit} orders={quickOrders} activeOrderId={quick?quickId:''}
+      commandOdds={commandPreview?.odds??null}
+      commandDifficulty={commandPreview?.difficulty??null}
+      target={targetOptions.get(target)??null}
+      targetUnit={targetOptions.has(target)?battle.units.find(u=>u.id===target)??null:null}
+      pendingLabel={confirmFirst?(quick?.needs==='none'?quick.label:pendingCommand?.label??null):null}
+      canConfirm={Boolean(quick?.needs==='none'||pendingCommand)}
+      confirmFirst={confirmFirst} aiSide={aiSide} aiThinking={Boolean(aiDecision)}
+      result={commandResult} roundReady={roundReady}
+      smartMoves={smart?reachableKeys.size:0} smartTargets={smart?smartAttacks.size:0}
+      canAutoResolve={!battle.heroes.some(h=>h.active)&&!battle.pendingPersonalDamage}
+      onPickOrder={pickQuickOrder} onConfirm={()=>issueQuick()}
+      onCancel={()=>{setQuickId('');setTarget('');setError('');}}
+      onEndRound={()=>{setQuickId('');setCommandResult(null);setLastAction(null);endRound();}}
+      onToggleConfirm={setConfirmFirst} onAiSide={setAiSide} onAutoResolve={resolveToEnd}/>
+     {error&&<p role="alert" className="got-error">{error}</p>}
+    </div>}
     <section id={battle.phase==='orders'?'got-order-form':'got-battle-orders'}
      className="battle-surface got-order-panel" aria-label="Dar ordem de guerra">
      <h3>{battle.phase==='orders'?'Ordens avançadas e fichas':'Comando e Disciplina'}</h3>
@@ -2056,183 +2320,8 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
       battle.phase==='finished'?'Confira as projeções de perdas e Glória; simulações não alteram as Casas.':
       'Resolva as ações dos heróis e avance a fase quando estiver pronta.'}/>
    </details>
-   {battle.phase==='finished'&&<section id="got-after-action" className="battle-surface got-after" aria-label="Prévia de sobreviventes">
-    <h3>Resultado pós-batalha · somente projeção</h3>
-    <p className="battle-note">A tabela de sobreviventes é calculada com dados auditáveis. Nenhuma perda,
-     glória ou mudança de treinamento é aplicada às fichas oficiais das Casas.</p>
-    <p>Glória proposta: Atacante {aftermath?.glory.attacker} ·
-     Defensor {aftermath?.glory.defender}.</p>
-    {!playerSandbox&&aftermath&&(officialMode?
-     <Suspense fallback={<p role="status">Carregando convocação…</p>}>
-      <BattleGotConvocation battle={battle} aftermath={aftermath}/>
-     </Suspense>:
-     battle.units.some(u=>u.source.kind==='house-readonly')&&<div className="got-convocation">
-      <h4>Esta batalha foi uma simulação</h4>
-      <p>Nenhuma ficha foi alterada. Se este confronto valeu para a campanha, você pode
-       convertê-lo em convocação oficial e lançar o resultado nas fichas das Casas.</p>
-      <Button variant="outline" onClick={()=>setOfficialMode(true)}>
-       Tratar como convocação oficial</Button>
-     </div>)}
-    <Button variant="outline" onClick={exportCampaignReview}
-     disabled={!aftermath||!projectedResources}>
-     Exportar relatório para revisão da campanha
-    </Button>
-    <p className="battle-note">Exportação local em JSON: requer avaliação e aprovação
-     explícita do Narrador antes de qualquer transcrição nas Casas. Não aplica
-     automaticamente Glória, sobreviventes ou mudanças econômicas.</p>
-    {aftermath&&<div className="got-after-summary">
-     {(['attacker','defender'] as const).map(side=><div className="got-unit" key={side}>
-      <strong>{SIDE[side]} · balanço militar</strong>
-      <span>Início: {aftermath.summary[side].originalUnits} · Organizadas: {aftermath.summary[side].organized}
-       · Desorganizadas: {aftermath.summary[side].disorganized}</span>
-      <span>Debandadas/retiradas: {aftermath.summary[side].routedOrEscaped}
-       · Rendidas: {aftermath.summary[side].surrendered}
-       · Destruídas: {aftermath.summary[side].destroyedInBattle}</span>
-      <span>Proposta: {aftermath.summary[side].proposedDestroyed} destruições ·
-       {aftermath.summary[side].trainingAdvanced} melhorias ·
-       {aftermath.summary[side].trainingReduced} reduções</span>
-      <span>Glória: {aftermath.gloryBreakdown[side].victory} vitória +
-       {aftermath.gloryBreakdown[side].outnumberedBonus} desvantagem numérica +
-       {aftermath.gloryBreakdown[side].defeatConsolation} consolação =
-       {aftermath.glory[side]}</span>
-     </div>)}
-    </div>}
-    <fieldset className="got-after-modifiers">
-     <legend>Mestre de Armas · bônus condicional na Tabela 10-6</legend>
-     <p className="battle-note">Ative +1 apenas se a Casa tiver a posse correspondente.
-      Esta escolha vale somente para o relatório da simulação.</p>
-     {(['attacker','defender'] as const).map(side=><label className="got-check" key={side}>
-      <input type="checkbox" checked={masterOfArmsSides[side]}
-       onChange={e=>setMasterOfArmsSides(prev=>({...prev,[side]:e.target.checked}))}/>
-      Mestre de Armas confirmado: {SIDE[side]} (+1)
-     </label>)}
-    </fieldset>
-    <label>Filtrar resultados das tropas
-     <select value={aftermathSide}
-      onChange={e=>setAftermathSide(e.target.value as 'all'|WarSide)}>
-      <option value="all">Ambos os exércitos</option>
-      <option value="attacker">Atacante</option>
-      <option value="defender">Defensor</option>
-     </select>
-    </label>
-    <div className="got-roster">
-     {(aftermath?.survivors??[]).filter(row=>aftermathSide==='all'||row.side===aftermathSide).map(row=><div className="got-unit" key={row.unitId}>
-      <strong>{row.unitName}</strong><span>Condição: {SURVIVOR_LABEL[row.condition]} · 1d6 = {row.die}
-       · resultado ajustado {row.adjusted}</span>
-      <span>Cálculo: d6 {row.die} + Mestre de Armas {row.masterOfArmsBonus}
-       − Desorganizações adicionais {row.disorganizationPenalty} =
-       {row.adjusted} (limitado a 0–6)</span>
-      <span>Treinamento: {row.steps==='destroyed'?'proposta de destruição':
-       row.steps===0?'inalterado':row.steps>0?'+'+row.steps+' graduação(ões)':
-       row.steps+' graduação(ões)'}</span>
-      <span>Proposta: {TRAINING_LABEL[row.training]} → {row.proposedTraining==='destroyed'?
-       'Destruída':TRAINING_LABEL[row.proposedTraining]} · decisão pendente do Narrador
-       {row.extraRanksAfterElite>0?' · '+row.extraRanksAfterElite+' graduação(ões) extras após Elite':''}</span>
-     </div>)}
-    </div>
-    <h4>Recursos e domínio · proposta do passo 11</h4>
-    {Boolean(battle.scorchedPreview?.length)&&<div className="got-roster">
-     <h4>Terra Arrasada · proprietário dos domínios</h4>
-     <p className="battle-note">Sem dono declarado, perdas de recursos não são atribuídas.</p>
-     {[...new Set((battle.scorchedPreview??[]).map(row=>row.domainId))].map(domain=>
-      <label key={domain}>{domain}
-       <select value={resourceScenario.scorchedDomainOwners?.[domain]??''}
-        onChange={e=>setResourceScenario(s=>{
-         const owners={...s.scorchedDomainOwners};
-         if(!e.target.value)delete owners[domain];
-         else owners[domain]=e.target.value as WarSide;
-         return {...s,scorchedDomainOwners:owners};
-        })}>
-        <option value="">Atribuição pendente</option>
-        <option value="attacker">Atacante</option>
-        <option value="defender">Defensor</option>
-       </select>
-      </label>)}
-    </div>}
-    <p className="battle-note">Aproximação digital das consequências do livro.
-     Não altera saldos, posses ou a situação oficial de nenhuma Casa.</p>
-    <div className="got-config-grid">
-     <label className="got-check"><input type="checkbox"
-      checked={resourceScenario.occupiedDomain}
-      onChange={e=>setResourceScenario(s=>({...s,occupiedDomain:e.target.checked}))}/>
-      O vencedor ocupou um domínio do derrotado
-     </label>
-     {resourceScenario.occupiedDomain&&<>
-      <label className="got-check"><input type="checkbox"
-       checked={resourceScenario.garrisonHeldForThreeMonths}
-       onChange={e=>setResourceScenario(s=>({...s,
-        garrisonHeldForThreeMonths:e.target.checked}))}/>
-       A guarnição manteve o domínio por três meses
-      </label>
-      <label className="got-check"><input type="checkbox"
-       checked={resourceScenario.domainHasCommunityOrFort}
-       onChange={e=>setResourceScenario(s=>({...s,
-        domainHasCommunityOrFort:e.target.checked}))}/>
-       O domínio contém comunidade ou fortaleza
-      </label>
-      <label>Investimento em Terras transferido
-       <input type="number" min={0} max={10000}
-        value={resourceScenario.capturedLandValue}
-        onChange={e=>setResourceScenario(s=>({...s,
-         capturedLandValue:Math.max(0,Math.trunc(Number(e.target.value)||0))}))}/>
-      </label>
-      <label>Defesa da fortaleza sobrevivente
-       <input type="number" min={0} max={10000}
-        value={resourceScenario.survivingFortDefenseValue}
-        onChange={e=>setResourceScenario(s=>({...s,
-         survivingFortDefenseValue:Math.max(0,Math.trunc(Number(e.target.value)||0))}))}/>
-      </label>
-      <label>Investimentos em Riqueza transferidos
-       <input type="number" min={0} max={10000}
-        value={resourceScenario.transferredWealthInvestments}
-        onChange={e=>setResourceScenario(s=>({...s,
-         transferredWealthInvestments:Math.max(0,Math.trunc(Number(e.target.value)||0))}))}/>
-      </label>
-     </>}
-    </div>
-    {projectedResources&&<div className="got-roster">
-     {(['attacker','defender'] as const).map(side=>{
-      const delta=projectedResources[side];
-      return <div className="got-unit" key={side}>
-       <strong>{SIDE[side]} · variação proposta</strong>
-       <span>Lei {delta.law>=0?'+':''}{delta.law} ·
-        População {delta.population>=0?'+':''}{delta.population}</span>
-       <span>Riqueza {delta.wealth>=0?'+':''}{delta.wealth} ·
-        Terras {delta.land>=0?'+':''}{delta.land} ·
-        Defesa {delta.defense>=0?'+':''}{delta.defense}</span>
-      </div>;
-     })}
-     <p>Prisioneiros: {projectedResources.captured.length?
-      projectedResources.captured.map(h=>h.name+' (Status '+h.status+
-       ', resgate proposto '+h.ransomWealth+' Riqueza)').join(' · '):
-      'nenhum registrado'}.</p>
-     <p className="battle-note">{projectedResources.notes.join(' ')}</p>
-     <div className="got-unit">
-      <strong>Ocupação · {projectedResources.occupationReview.status==='secured'?
-       'três meses informados':'não consolidada'}</strong>
-      <span>Terras {projectedResources.occupationReview.land} ·
-       Defesa {projectedResources.occupationReview.defense} ·
-       Riqueza investida {projectedResources.occupationReview.wealth}</span>
-      <span>Proposta pendente de autorização do Narrador; nenhum valor lançado.</span>
-     </div>
-     <details className="got-resource-rolls">
-      <summary>Auditoria dos dados de consequências ({projectedResources.rollLedger.length})</summary>
-      {projectedResources.rollLedger.map(roll=><p key={roll.reason}>
-       {roll.reason}: [{roll.dice.join(', ')}] = {roll.total}</p>)}
-     </details>
-     {projectedResources.approvalItems.length>0&&<div className="got-review-tasks">
-      <strong>Decisões pendentes do Narrador</strong>
-      <ul>{projectedResources.approvalItems.map((item,i)=><li key={i}>{item}</li>)}</ul>
-     </div>}
-     {projectedResources.provisionalOccupationTransfer?
-      <p role="status" className="got-review-alert">Ocupação não consolidada: Terras e Defesa condicionais.</p>:null}
-     {projectedResources.unresolvedScorchedDomains.length>0?
-      <p role="status" className="got-review-alert">Terra Arrasada sem proprietário:
-       {projectedResources.unresolvedScorchedDomains.join(', ')}.</p>:null}
-    </div>}
-   </section>}
-   <section className="battle-surface got-events" aria-label="Histórico de rolagens">
-    <h3>Registro auditável da batalha</h3>
+   <details className="battle-surface got-events" aria-label="Histórico de rolagens">
+    <summary>Registro da batalha · {battle.events.length} lançamentos</summary>
     <label>Filtrar histórico
      <select value={eventFilter} onChange={e=>setEventFilter(e.target.value as typeof eventFilter)}>
       <option value="all">Todas as ações</option>
@@ -2247,9 +2336,45 @@ export function BattleGotGame({onBack,resumeFromLibrary=false,playerSandbox=fals
      <strong>#{event.seq} · R{event.round}</strong> {event.text}
      {event.roll&&<small> · Dados [{event.roll.join(', ')}]</small>}
     </li>)}</ol>
-    <Button variant="outline" onClick={()=>setBattle(null)}>Nova simulação</Button>
-   </section>
+   </details>
   </>}
-  {error&&!(battle?.phase==='orders')&&<p role="alert" className="got-error">{error}</p>}
+  <details className="battle-surface got-save-panel" aria-label="Salvar e retomar teste local">
+   <summary>Salvar ou retomar</summary>
+   <BattleSaveScope system="got"/>
+   <div className="got-save-actions">
+    {battle&&<Button variant="outline" onClick={saveLocalBattle}>Salvar simulação neste navegador</Button>}
+    <Button variant="outline" onClick={loadLocalBattle}>Retomar simulação salva</Button>
+    <Button variant="outline" onClick={clearLocalBattle}>Apagar cópia salva</Button>
+   </div>
+   <p className="battle-note">Salvamento manual, exclusivo deste navegador. Não publica
+    resultados, não grava em contas nem modifica exércitos ou recursos oficiais.</p>
+   <div className="got-save-actions" role="group" aria-label="Cópias nomeadas Game of Thrones">
+    {battle&&<>
+     <label>Nome da cópia
+      <input aria-label="Nome da cópia GOT" maxLength={80} value={archiveLabel}
+       placeholder={battle.name} onChange={event=>setArchiveLabel(event.target.value)}/>
+     </label>
+     <Button variant="outline" onClick={storeNamedBattle}>
+      Salvar cópia nomeada</Button>
+    </>}
+    {archives.length>0&&<>
+     <label>Cópia disponível
+      <select aria-label="Escolher cópia GOT" value={selectedArchive}
+       onChange={event=>setSelectedArchive(event.target.value)}>
+       <option value="">Escolher uma cópia</option>
+       {archives.map(item=><option value={item.id} key={item.id}>
+        {item.label} · rodada {item.round} · {new Date(item.updatedAt).toLocaleDateString('pt-BR')}
+       </option>)}
+      </select>
+     </label>
+     <Button variant="outline" disabled={!selectedArchive} onClick={restoreNamedBattle}>Retomar cópia nomeada</Button>
+     <Button variant="outline" disabled={!selectedArchive} onClick={removeNamedBattle}>Excluir cópia nomeada</Button>
+    </>}
+   </div>
+   <p className="battle-note">Até oito cópias nomeadas por perfil, separadas das
+    simulações do jogador e do Narrador. Não substitui backup entre dispositivos.</p>
+   {localSaveStatus&&<p role="status">{localSaveStatus}</p>}
+  </details>
+  {error&&battle&&battle.phase!=='orders'&&<p role="alert" className="got-error">{error}</p>}
  </section>;
 }

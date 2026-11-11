@@ -101,3 +101,41 @@ Limite da verificação local: o ambiente em que a mudança foi feita não tinha
 2. Escolher uma Casa real na preparação e trazer o Poder da ficha automaticamente.
 3. Liberar o simulador aos jogadores (`BATTLE_PLAYERS_ENABLED`) depois de uma rodada de teste.
 4. Batalha ao vivo, com o jogador comandando o próprio lado na Convocação (hoje o Narrador executa).
+
+## 6. Segunda rodada (mesmo dia): batalha em poucos toques e identidade das Casas
+
+Pedido: simplificar ao máximo o processo de ponta a ponta e dar a cada Casa a sua bandeira e as suas cores no mapa.
+
+### Revisão do processo, antes e depois
+
+| Etapa | Antes | Depois |
+| --- | --- | --- |
+| Preparar | Ler o resumo técnico, escolher o tipo de batalha, informar o Poder, clicar em "Montar exércitos", escolher o adversário e iniciar | Escolher as duas Casas e tocar em "Batalhar agora" |
+| Dar uma ordem | Tropa, ordem, alvo e confirmar: quatro toques | Tocar no alvo: a tropa da vez já vem escolhida |
+| Virar a rodada | Botão "Concluir rodada" | Automático, depois de uma pausa curta |
+| Batalha inteira | Só jogando ordem a ordem | "Resolver automaticamente" (na preparação) ou "Resolver até o fim" (durante a batalha) |
+| Ver o resultado | No fim da página, depois do mapa e das listas | No topo: bandeira do vencedor e o destino de cada tropa |
+
+Uma batalha de 9 contra 5 unidades foi jogada inteira com 24 toques. Com "Resolver automaticamente", são 3 toques: duas Casas e o botão.
+
+### O que mudou
+
+- **Casas na preparação** (`house-banner.ts`): a lista vem do cadastro público do site (`public/cormyr/data.js`), agrupada por região. Só são lidos nome, região, cores, brasão e hierarquia. Nenhuma ficha é consultada.
+- **Porte sugerido**: ao escolher a Casa, o Poder é preenchido pela hierarquia pública (Coroa 75, Casa regente 55, vassala direta 38, terceiro nível 20) e o exército é montado na hora. O Poder continua editável.
+- **Bandeira e cores** (`BattleGotBanner.tsx`): o brasão da Casa vira uma flâmula. Cada peça no mapa leva a bandeirinha e veste as cores da Casa (fundo na cor principal, borda na secundária). As cores vêm do campo "cores" do cadastro; quando os dois lados ficariam parecidos, o defensor inverte as cores.
+- **Nomes de mesa**: "Infantaria II de Phelles" em vez de "Reforço atacante 3".
+- **Toque inteligente**: sem escolher ordem, inimigo em vermelho ataca (Luta se adjacente, Pontaria se alcança, Carga se não) e quadrado verde move. As outras ordens (Defender, Correr, Reagrupar, Retirada) ficam em uma linha de botões. Quem preferir ver as chances antes liga "Confirmar antes de executar" em Opções.
+- **Resolução automática** (`autoResolveWarBattle`): o comando automático joga os dois lados, pelas mesmas regras e com os mesmos dados auditáveis. O resultado é reproduzível.
+- **Tela enxuta**: cabeçalho com as duas Casas e a rodada; legenda, terreno, registro, salvamento e fichas completas ficam recolhidos; os exércitos ficam sob o mapa, lado a lado.
+- **Convocação oficial**: virou uma única caixa de seleção para o Narrador na preparação.
+
+### Verificação desta rodada
+
+- 10 testes novos em `src/test/battle-got-house-banner-20261111.test.ts`: leitura das cores, cadastro público, contraste entre os lados, revalidação de bandeiras em salvamentos, nomes das tropas, resolução automática reproduzível e prova de que as bandeiras não alteram o resultado.
+- Batalhas completas em computador e celular, com e sem Casas, com confirmação ligada e com resolução automática.
+
+### Limites conhecidos
+
+- O Poder sugerido é uma estimativa pela hierarquia pública, não o valor da ficha da Casa.
+- Seis Casas não têm cores no cadastro (Obarskyr, Erdenor, Everlost, Silversky, Montgomery e Brightaxe): recebem um par de cores fixo, escolhido pelo nome. Basta preencher o campo "cores" no cadastro para corrigir.
+- A Convocação oficial ainda usa o seletor de unidades oficiais dentro de "Personalizar", com quatro espaços.

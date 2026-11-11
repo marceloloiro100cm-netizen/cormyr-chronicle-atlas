@@ -1,4 +1,5 @@
 import {attackableWarTargets,reachableWarCells,warCommandOdds} from './command-preview';
+import {advanceWarRound,issueWarOrder} from './engine';
 import type {WarBattle,WarCommander,WarOrder,WarPosition,WarSide,WarUnit} from './types';
 
 /** Oponente automático para simulações solo. Decide UMA ordem por vez,
@@ -87,4 +88,27 @@ export function chooseWarAiOrder(battle:WarBattle,side:WarSide):WarAiDecision|nu
  const pick=candidates[0]!;
  return {commanderId:commander.id,unitId:pick.unit.id,order:pick.order,
   note:commander.name+' '+pick.note+' ('+pick.unit.name+').'};
+}
+
+export type WarAutoResolution=Readonly<{
+ battle:WarBattle;
+ /** Falso quando a batalha parou antes do fim (heróis, cerco ou limite de rodadas). */
+ finished:boolean;orders:number;
+}>;
+/** Resolve a batalha inteira de uma vez: os dois lados são comandados pelo
+ * oponente automático, ordem a ordem, pelas mesmas regras e dados auditáveis
+ * de uma batalha jogada à mão. Só atua na fase de ordens.
+ */
+export function autoResolveWarBattle(battle:WarBattle,maxRounds=40):WarAutoResolution{
+ let state=battle,orders=0,guard=0;
+ const lastRound=battle.round+Math.max(1,Math.min(200,Math.trunc(maxRounds)));
+ while(state.phase==='orders'&&!state.pendingPersonalDamage&&state.round<lastRound&&guard++<6000){
+  const decision=chooseWarAiOrder(state,state.turn);
+  if(!decision){state=advanceWarRound(state);continue;}
+  state=issueWarOrder(state,decision).battle;
+  orders++;
+  if(state.phase==='orders'&&Object.values(state.ordersRemaining).every(left=>left<1))
+   state=advanceWarRound(state);
+ }
+ return {battle:state,finished:state.phase==='finished',orders};
 }

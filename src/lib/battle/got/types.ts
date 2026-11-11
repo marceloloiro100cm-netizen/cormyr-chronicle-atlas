@@ -123,9 +123,16 @@ export type WarBattle=Readonly<{
   populationDelta:number;wealthDelta:number;
  }>[];
  squads?:readonly WarSquad[];
+ /** Somente apresentação: bandeira e cores de cada lado. Nunca entra nas regras. */
+ banners?:Readonly<Record<WarSide,WarBanner>>;
  siege:readonly WarSiegeEngine[];siegeCompleted:Readonly<Record<WarSide,boolean>>;
  commanders:readonly WarCommander[];units:readonly WarUnit[];
  ordersRemaining:Readonly<Record<string,number>>;
  events:readonly WarEvent[];winner:WarSide|null;
+}>;
+export type WarBanner=Readonly<{
+ houseId:string|null;houseName:string;crest:string|null;
+ /** Cores em hexadecimal: campo da bandeira, detalhe e tinta legível sobre o campo. */
+ primary:string;secondary:string;ink:string;
 }>;
 export type WarOrderResult=Readonly<{battle:WarBattle;passed:boolean;critical:boolean;test:number;difficulty:number;degrees:number}>;
