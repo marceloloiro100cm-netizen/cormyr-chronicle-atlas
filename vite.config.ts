@@ -9,7 +9,7 @@ import tailwindcss from "@tailwindcss/vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 
-const vercelPreview = process.env.VERCEL === "1" || process.env.CORMYR_VERCEL_PREVIEW === "1";
+const vercelPreview = process.env['VERCEL'] === "1" || process.env['CORMYR_VERCEL_PREVIEW'] === "1";
 
 export default vercelPreview
   ? defineViteConfig({
