@@ -46,5 +46,6 @@ describe('Jornal de Cormyr',()=>{
   expect(validateNewspaperEdition({...published,campaign_date:'1522-99-42'})).toMatch(/data/);
   expect(validateNewspaperEdition(published)).toMatch(/Adicione/);
   expect(validateNewspaperEdition({...published,blocks:createNewspaperLayout('classico')})).toBeNull();
+  expect(validateNewspaperEdition({...published,blocks:[],pdf_path:'edition/paper.pdf'})).toBeNull();
  });
 });
