@@ -1,0 +1,285 @@
+/*
+ * Visual personalization of the existing NobleHouseHub.
+ * Never duplicates, hides, replaces or adds gameplay fields. Source data and actions
+ * remain owned by hub.tsx and its children.
+ *
+ * The artwork is a decorative backup from the repository. The canonical crest
+ * in the header remains the existing live image from the house record.
+ */
+.house-hub[data-heraldry] {
+  --house-main: #40232b;
+  --house-metal: #d5b078;
+  --house-lustre: #f5e0a6;
+  --house-ink: #151419;
+  --house-banner: none;
+  --house-surface: #211a1a;
+  --house-rule: var(--house-metal);
+  --background: #181516;
+  --foreground: #f3eadf;
+  --primary: var(--house-metal);
+  --primary-foreground: #171313;
+  --muted-foreground: #c2b6aa;
+  --border: color-mix(in srgb, var(--house-metal) 36%, #302725);
+  --input: #6d5b53;
+  --ring: var(--house-lustre);
+  --accent: #392b29;
+  --accent-foreground: #f2e7d8;
+  --card: #251f1d;
+  --card-foreground: #f3eadf;
+  --popover: #29221e;
+  --popover-foreground: #f3eadf;
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  padding: clamp(12px, 2.3vw, 28px);
+  overflow: clip;
+  border: 1px solid var(--house-metal);
+  border-radius: 18px;
+  color: var(--foreground);
+  background:
+    radial-gradient(ellipse 72% 48% at 92% 5%, color-mix(in srgb, var(--house-main) 66%, transparent), transparent 78%),
+    repeating-linear-gradient(135deg, transparent 0 5px, #ffffff03 5px 6px),
+    linear-gradient(150deg, #241d1d 0%, #141315 55%, #191717 100%);
+  box-shadow: 0 16px 52px #08070738, inset 0 0 0 4px #ffffff04;
+}
+.house-hub[data-heraldry*="goldfin"] {
+  --house-main: #171717; --house-metal: #ddb357; --house-lustre: #ffe3a2;
+  --house-banner: url('/house-flags/player-goldfin.webp');
+}
+.house-hub[data-heraldry*="ashkar"] {
+  --house-main: #a81e16; --house-metal: #efac53; --house-lustre: #ffd78f;
+  --house-banner: url('/house-flags/player-ashkar.webp');
+}
+.house-hub[data-heraldry*="fewmerry"] {
+  --house-main: #0a3d90; --house-metal: #eabb4f; --house-lustre: #ffe59a;
+  --house-banner: url('/house-flags/player-fewmerry.webp');
+}
+.house-hub[data-heraldry*="grantass"] {
+  --house-main: #53050f; --house-metal: #e5d0bb; --house-lustre: #fff3d9;
+  --house-banner: url('/house-flags/player-grantass.webp');
+}
+.house-hub[data-heraldry*="harcourt"] {
+  --house-main: #bc141c; --house-metal: #f2c35c; --house-lustre: #ffe7a0;
+  --house-banner: url('/house-flags/player-harcourt.webp');
+}
+.house-hub[data-heraldry*="everlost"] {
+  --house-main: #4b4a48; --house-metal: #bb4d55; --house-lustre: #f0d7d7;
+  --house-banner: url('/house-flags/player-everlost.webp');
+}
+.house-hub[data-heraldry*="silversky"] {
+  --house-main: #102951; --house-metal: #d1d8de; --house-lustre: #f0f5fa;
+  --house-banner: url('/house-flags/player-silversky.webp');
+}
+.house-hub[data-heraldry*="erdenor"] {
+  --house-main: #570f1f; --house-metal: #d5b37e; --house-lustre: #f3dcae;
+  --house-banner: url('/house-flags/player-erdenor.webp');
+}
+.house-hub[data-heraldry] .house-header {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(15px, 2.4vw, 28px);
+  align-items: center;
+  min-height: 244px;
+  padding: 24px clamp(18px, 3.5vw, 42px);
+  overflow: hidden;
+  border: 1px solid var(--house-metal);
+  border-radius: 14px;
+  background:
+    linear-gradient(95deg, #100f10f5 0%, #181317ed 42%, color-mix(in srgb, var(--house-main) 58%, #141216) 100%);
+  box-shadow: inset 0 0 24px #0008, 0 6px 20px #0003;
+}
+.house-hub[data-heraldry] .house-header::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(10deg, #ffffff06 0 1px, transparent 1px 17px),
+    linear-gradient(110deg, transparent 0 36%, color-mix(in srgb, var(--house-main) 65%, transparent) 100%);
+}
+.house-hub[data-heraldry] .house-header::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: -14%;
+  right: 1%;
+  bottom: -14%;
+  width: min(35%, 340px);
+  pointer-events: none;
+  background-image: var(--house-banner);
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: .39;
+  filter: saturate(1.1);
+  -webkit-mask-image: radial-gradient(ellipse, #000 28%, transparent 79%);
+  mask-image: radial-gradient(ellipse, #000 28%, transparent 79%);
+}
+.house-hub[data-heraldry] .house-header h2 {
+  font-family: Georgia, serif;
+  font-size: clamp(29px, 4vw, 45px);
+  font-weight: 600;
+  color: #f7e9d1;
+  text-shadow: 0 2px 8px #000a;
+}
+.house-hub[data-heraldry] .house-header .campaign-eyebrow {
+  color: var(--house-lustre);
+  letter-spacing: .10em;
+}
+.house-hub[data-heraldry] .house-header p {color: #e1d5c7; font-size: clamp(12px, 1.2vw, 14px)}
+.house-hub[data-heraldry] .house-header > button:first-child,
+.house-hub[data-heraldry] .house-header > div:first-child:has(img) {
+  flex: 0 0 auto;
+  width: clamp(95px, 10vw, 136px) !important;
+  height: clamp(110px, 11vw, 156px) !important;
+  padding: 7px;
+  border: 1px solid var(--house-metal);
+  border-radius: 13px;
+  background: #100d0bd9;
+  box-shadow: 0 0 0 4px #0d0a0a6b, inset 0 0 25px #0008;
+  overflow: hidden;
+}
+.house-hub[data-heraldry] .house-header > div:first-child:has(img) img,
+.house-hub[data-heraldry] .house-header > button:first-child img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.house-hub[data-heraldry] .house-header-actions {
+  align-self: flex-start;
+  margin-left: auto;
+  position: relative;
+  z-index: 2;
+}
+.house-hub[data-heraldry] .house-resource-bar {
+  position: relative;
+  top: auto;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(103px, 1fr));
+  gap: 8px;
+  overflow-x: auto;
+  padding: 16px 0;
+  margin-bottom: 12px;
+  border-bottom: 0;
+  background: transparent;
+}
+.house-hub[data-heraldry] .house-resource {
+  min-width: 103px;
+  border: 1px solid color-mix(in srgb, var(--house-metal) 50%, #302725);
+  border-radius: 10px;
+  padding: 11px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--house-main) 20%, #262021), #181618);
+  box-shadow: inset 0 1px #ffffff12;
+}
+.house-hub[data-heraldry] .house-resource > div {color: var(--house-lustre); font-size: 12px; flex-wrap: wrap}
+.house-hub[data-heraldry] .house-resource > strong {color: #fff0d5; font-size: clamp(22px, 2vw, 29px)}
+.house-hub[data-heraldry] .house-resource small,
+.house-hub[data-heraldry] .house-caption,
+.house-hub[data-heraldry] .house-resource summary {color: #d8cabc}
+.house-hub[data-heraldry] .house-resource details[open] {background: #211b1c; z-index: 2}
+.house-hub[data-heraldry] .house-layout {grid-template-columns: minmax(184px, 216px) minmax(0, 1fr); gap: 18px}
+.house-hub[data-heraldry] .house-sidebar {
+  position: sticky;
+  top: 16px;
+  border: 1px solid color-mix(in srgb, var(--house-metal) 48%, #332a29);
+  border-radius: 13px;
+  background: #211a1bdc;
+  padding: 12px;
+  box-shadow: inset 0 1px #ffffff0c;
+}
+.house-hub[data-heraldry] .house-sidebar nav {gap: 5px}
+.house-hub[data-heraldry] .house-sidebar button {
+  color: #f5ecdf;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font-size: 12px;
+  padding: 11px 10px;
+}
+.house-hub[data-heraldry] .house-sidebar button[aria-current="page"] {
+  background: linear-gradient(110deg, var(--house-main), #272021);
+  border-color: var(--house-metal);
+  color: var(--house-lustre);
+  box-shadow: inset 3px 0 var(--house-lustre);
+}
+.house-hub[data-heraldry] .house-sidebar button:not([aria-current="page"]):hover {background: #ffffff12}
+.house-hub[data-heraldry] .house-content {
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--house-metal) 42%, #332a29);
+  border-radius: 13px;
+  padding: clamp(14px, 2.2vw, 26px);
+  background: #211c1ee8;
+}
+.house-hub[data-heraldry] .house-content .campaign-eyebrow {color: var(--house-lustre)}
+.house-hub[data-heraldry] .house-content h3,
+.house-hub[data-heraldry] .house-content h4,
+.house-hub[data-heraldry] .house-content h5 {color: #f3e4ca}
+.house-hub[data-heraldry] .house-stat-row {gap: 8px; border-bottom-color: #d6b47648}
+.house-hub[data-heraldry] .house-stat-row > div {
+  padding: 13px 10px;
+  border: 1px solid color-mix(in srgb, var(--house-metal) 35%, #2a2527);
+  border-radius: 9px;
+  background: linear-gradient(135deg, #ffffff0a, #0002);
+}
+.house-hub[data-heraldry] .house-stat-row strong {color: var(--house-lustre)}
+.house-hub[data-heraldry] .house-stat-row svg,
+.house-hub[data-heraldry] .house-card > svg {color: var(--house-metal)}
+.house-hub[data-heraldry] .house-stat-row span,
+.house-hub[data-heraldry] .house-plain-list small {color: #d4c6b8}
+.house-hub[data-heraldry] .house-notice {background: #fff8e10c; border-left-color: var(--house-metal)}
+.house-hub[data-heraldry] .house-plain-list li,
+.house-hub[data-heraldry] .house-project {border-color: #e6cba13c}
+.house-hub[data-heraldry] .house-card,
+.house-hub[data-heraldry] .house-catalog-list article {background: #2b2423; border-color: #9a856677}
+.house-hub[data-heraldry] :is(input, textarea, select) {
+  color: #f5ebdf;
+  background-color: #292324;
+  border-color: #9b8466a1;
+}
+.house-hub[data-heraldry] :is(input, textarea)::placeholder {color: #c3b2a5}
+.house-hub[data-heraldry] :is(button, input, textarea, select, summary, a):focus-visible {
+  outline: 3px solid var(--house-lustre);
+  outline-offset: 2px;
+}
+@media(max-width:1100px) {
+  .house-hub[data-heraldry] .house-layout {grid-template-columns: 1fr}
+  .house-hub[data-heraldry] .house-sidebar {position: static; padding: 10px}
+  .house-hub[data-heraldry] .house-sidebar nav {grid-template-columns: repeat(3, minmax(0, 1fr))}
+  .house-hub[data-heraldry] .house-overview-grid {grid-template-columns: 1fr}
+}
+@media(max-width:650px) {
+  .house-hub[data-heraldry] {padding: 10px}
+  .house-hub[data-heraldry] .house-header {min-height: 195px; gap: 12px; padding: 13px}
+  .house-hub[data-heraldry] .house-header::after {right: -9%; width: 42%; opacity: .24}
+  .house-hub[data-heraldry] .house-header > button:first-child,
+  .house-hub[data-heraldry] .house-header > div:first-child:has(img) {width: 64px!important; height: 78px!important}
+  .house-hub[data-heraldry] .house-header-actions {width: 100%; justify-content: flex-start; margin-left: 0}
+  .house-hub[data-heraldry] .house-resource-bar {grid-template-columns: repeat(7, minmax(110px, 1fr))}
+  .house-hub[data-heraldry] .house-sidebar nav {grid-template-columns: repeat(2, minmax(0, 1fr))}
+  .house-hub[data-heraldry] .house-stat-row {grid-template-columns: repeat(3,minmax(0,1fr)); gap: 5px}
+  .house-hub[data-heraldry] .house-stat-row > div {padding: 9px 6px}
+  .house-hub[data-heraldry] .house-stat-row span {font-size: 10px}
+}
+@media(prefers-reduced-motion: reduce) {
+  .house-hub[data-heraldry] *,
+  .house-hub[data-heraldry] *::before,
+  .house-hub[data-heraldry] *::after {transition: none!important; animation: none!important}
+}
+
+/* Uploaded house emblems: decorative only, never a replacement for sheet data. */
+.house-hub[data-heraldry] .house-official-crest {
+  flex: 0 0 auto;
+  width: clamp(100px, 10vw, 136px);
+  height: clamp(114px, 11vw, 156px);
+  padding: 7px;
+  border: 1px solid var(--house-metal);
+  border-radius: 13px;
+  overflow: hidden;
+  background: #100d0bd9;
+  box-shadow: 0 0 0 4px #0d0a0a6b, inset 0 0 25px #0008;
+}
+.house-hub[data-heraldry] .house-official-crest img {display: block; width: 100%; height: 100%; object-fit: contain}
+@media(max-width:650px) {.house-hub[data-heraldry] .house-official-crest {width: 64px; height: 78px; padding: 3px}}
