@@ -9,7 +9,7 @@ function HouseIdentityCrest({house}:HouseIdentityProps) {
  const [failedSources,setFailedSources]=useState<string[]>([]);
  const preferred=heraldicCrestUrl(heraldicHouseKey(house.name));
  const fallback=vassalCrestUrl(house.crest);
- const src=[preferred,fallback].find((candidate):candidate is string=>Boolean(candidate)&&!failedSources.includes(candidate))??null;
+ const src=[preferred,fallback].filter((candidate):candidate is string=>Boolean(candidate)).find(candidate=>!failedSources.includes(candidate))??null;
  return <span className="campaign-house-identity__crest">
   {src?<img src={src} alt={'Brasão da Casa '+house.name} loading="lazy"
     onError={()=>setFailedSources(current=>src&&!current.includes(src)?[...current,src]:current)}/>:
