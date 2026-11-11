@@ -32,7 +32,7 @@ function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Res
   return open?<form className="campaign-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);key.current??=crypto.randomUUID();let richContent;try{richContent=await uploadImages(content,images,key.current);}catch(err){setMessage(err instanceof Error?err.message:'Falha na imagem.');setBusy(false);return;}const draft=(e.nativeEvent as SubmitEvent).submitter?.getAttribute('value')==='draft';const {error}=draft?await datedMail('save_weekly_reply_draft',{p_id:key.current,p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent,p_signed_by:isAdmin?signedBy.trim():null},campaignDate):await datedMail('reply_weekly_message',{p_letter:letterId,p_reply:(replyId??null) as unknown as string,p_content:richContent,p_key:key.current,p_draft:false,p_signed_by:isAdmin?signedBy.trim():null},campaignDate);if(error)setMessage(error.message);else{key.current=null;setContent('');setImages([]);setOpen(false);onSave();}setBusy(false);}}><p role="status">{deliveryWeek?`Previsão de entrega: Semana ${deliveryWeek}. O envio confirma a semana disponível no servidor.`:"Sem semana aberta."}</p><CampaignDatePicker value={campaignDate} referenceDate={currentTime?dateKey(currentTime):undefined} onChange={setCampaignDate}/><label>Resposta<textarea required value={content} onChange={e=>setContent(e.target.value)}/></label>{isAdmin&&<label>Assinado por (NPC / cargo)<input maxLength={120} value={signedBy} onChange={e=>setSignedBy(e.target.value)} placeholder="Ex.: Intendente da Casa"/></label>}<ImagePicker images={images} onChange={setImages} disabled={busy}/><div className="campaign-actions"><Button name="action" value="draft" variant="outline" disabled={busy}>Salvar rascunho</Button><Button disabled={busy||deliveryWeek===null}>{busy?'Salvando…':'Enviar resposta'}</Button></div><p role="status">{message}</p></form>:<Button onClick={()=>setOpen(true)}>{label}</Button>;
 }
 
-export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filterHost}:{data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void;onManage?:(house:string)=>void;groupHouseIds?:string[];filterHost?:HTMLElement|null}){
+export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filterHost,readOnly=false}:{data:Panel;me:Panel['players'][number]|undefined;readOnly?:boolean;onSave:()=>void;onError:(m:string)=>void;onManage?:(house:string)=>void;groupHouseIds?:string[];filterHost?:HTMLElement|null}){
   const empty={number:'',kind:'',answered:'',house:'',read:'',text:'',box:'',origin:'',court:'',unit:'',group:''};
   const [filters,setFilters]=useState(empty);
   const [filtersVisible,setFiltersVisible]=useState(true);
@@ -120,8 +120,8 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
     const threadOpen=threads.has(letter.id);
     const to=mailRecipientLabel(letter,houseName,id=>options?.players?.find(p=>p.id===id)?.name);
     const fromHouse=houseName(letter.origin_house_id??null)??(letter.sender_player_id?houseName(data.players.find(p=>p.id===letter.sender_player_id)?.roster_house_id??null):null);
-    const canDelete=!trashMode&&!letter.deleted_at&&(data.admin||letter.sender_user_id===data.user.id);
-    const canRestoreLetter=trashMode&&Boolean(letter.deleted_at)&&(data.admin||letter.sender_user_id===data.user.id);
+    const canDelete=!readOnly&&!trashMode&&!letter.deleted_at&&(data.admin||letter.sender_user_id===data.user.id);
+    const canRestoreLetter=!readOnly&&trashMode&&Boolean(letter.deleted_at)&&(data.admin||letter.sender_user_id===data.user.id);
     const lastPlayerReply=answers.filter(a=>a.publication_state==='delivered'&&a.author_user_id!==data.user.id)
       .sort((a,b)=>(b.delivered_at??b.created_at).localeCompare(a.delivered_at??a.created_at))[0];
     const housePlayer=data.players.find(p=>p.active&&!p.require_password_change&&p.user_id!==data.user.id&&
@@ -159,8 +159,8 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
               <small>{answer.campaign_date?formatDate(answer.campaign_date):'Sem data histórica informada'} · {syncLabel(answer.sync_state)}</small>
             </header>
             {!trashMode&&answer.publication_state==='draft'&&<div>Rascunho
-              {answer.author_user_id===data.user.id&&!letter.deleted_at&&<ReplyDraftEdit answer={answer} onSave={saved}/>}
-              {answer.author_user_id===data.user.id&&!letter.deleted_at&&<Button size="sm" variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const r=await supabase.rpc('schedule_weekly_reply_draft',{p_id:answer.id});if(r.error)onError(r.error.message);else saved();}}>Programar entrega</Button>}
+              {!readOnly&&answer.author_user_id===data.user.id&&!letter.deleted_at&&<ReplyDraftEdit answer={answer} onSave={saved}/>}
+              {!readOnly&&answer.author_user_id===data.user.id&&!letter.deleted_at&&<Button size="sm" variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const r=await supabase.rpc('schedule_weekly_reply_draft',{p_id:answer.id});if(r.error)onError(r.error.message);else saved();}}>Programar entrega</Button>}
             </div>}
             {!trashMode&&answer.publication_state==='scheduled'&&<p>Aguardando abertura da Semana {answer.delivery_week}</p>}
             <div className="campaign-reply-text"><CampaignContent content={answer.content}/></div>
@@ -172,7 +172,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
                  if(r.error)onError(r.error.message);else saved();}}>Excluir resposta</Button>
              </div>}
             {trashMode&&(data.admin||answer.author_user_id===data.user.id)&&<div className="campaign-actions"><Button size="sm" variant="outline" disabled={Boolean(letter.deleted_at)} title={letter.deleted_at?'Restaure primeiro a missiva original':undefined} onClick={async()=>{if(!confirm('Restaurar esta resposta ao fio da missiva?'))return;const r=await supabase.rpc('restore_letter_reply',{p_id:answer.id,p_version:answer.version??1});if(r.error)onError(r.error.message);else saved();}}>Restaurar resposta</Button>{letter.deleted_at&&<small>Restaure primeiro a missiva original.</small>}</div>}
-            {!trashMode&&!letter.deleted_at&&answer.author_user_id!==data.user.id&&answer.publication_state==='delivered'&&<ReplyForm letterId={letter.id} replyId={answer.id} recipientId={answer.author_user_id} roundRevision={roundRevision} onSave={saved} isAdmin={data.admin}/>}
+            {!readOnly&&!trashMode&&!letter.deleted_at&&answer.author_user_id!==data.user.id&&answer.publication_state==='delivered'&&<ReplyForm letterId={letter.id} replyId={answer.id} recipientId={answer.author_user_id} roundRevision={roundRevision} onSave={saved} isAdmin={data.admin}/>}
           </article>)}
         </section>}
         {(letter.court_member_id||letter.military_unit_id)&&<div className="campaign-eyebrow">{letter.court_member_id&&<p>Corte: {linkName('court',letter.origin_house_id,letter.court_member_id)} · {letter.court_assignment==='order_recipient'?'Destinatário da ordem':'Executor'}</p>}{letter.military_unit_id&&<p>Unidade: {linkName('unit',letter.origin_house_id,letter.military_unit_id)}</p>}</div>}
@@ -193,11 +193,11 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
         {!trashMode&&threadLetters.length>0&&<div className="campaign-thread"><Button size="sm" variant="ghost" aria-expanded={threadOpen} onClick={()=>toggleThread(letter.id)}>{threadOpen?'Ocultar fio da conversa':`Ver relacionadas nesta página (${threadLetters.length} missiva(s) relacionada(s))`}</Button>{threadOpen&&threadLetters.map(other=>{const otherAnswers=viewReplies.filter(r=>r.letter_id===other.id);return <div key={other.id} className="campaign-thread-item"><span className="campaign-eyebrow">{other.letter_number?`Missiva ${other.letter_number} · `:''}{other.letter_kind==='geral'?'Geral':'Reservada'}</span><strong>{other.subject}</strong><small> · De: {other.sender_name} · {other.campaign_date?formatDate(other.campaign_date):date(other.created_at)}</small><CampaignContent content={other.content}/>{otherAnswers.map(a=><div key={a.id} className="campaign-replies"><span className="campaign-eyebrow">Resposta · {mailWeekTimeline(a.creation_week,a.delivery_week,a.publication_state)}</span><br/><strong>{a.author_name}</strong><small> · {date(a.created_at)}</small><CampaignContent content={a.content}/></div>)}</div>;})}</div>}
         {!trashMode&&!letter.deleted_at&&<div className="campaign-actions">
           {!read&&letter.publication_state==='delivered'&&(letter.sender_user_id!==data.user.id||incomingReplies.length>0)&&<Button variant="outline" onClick={async()=>{const {error}=await supabase.rpc('mark_letter_read',{p_id:letter.id});if(error&&error.code!=='23505')onError(error.message);else saved();}}>Marcar como lida</Button>}
-          {(open!==null||data.admin)&&<Button variant="outline" onClick={()=>{if(!replaceMailDraft(data.user.id))return;setCompose(true);setDraft({key:Date.now(),subject:'Enc: '+letter.subject,content:`— Missiva encaminhada —\nDe: ${letter.sender_name} · ${date(letter.created_at)}\nAssunto: ${letter.subject}\n\n${letter.content}`});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Encaminhar</Button>}
+          {!readOnly&&(open!==null||data.admin)&&<Button variant="outline" onClick={()=>{if(!replaceMailDraft(data.user.id))return;setCompose(true);setDraft({key:Date.now(),subject:'Enc: '+letter.subject,content:`— Missiva encaminhada —\nDe: ${letter.sender_name} · ${date(letter.created_at)}\nAssunto: ${letter.subject}\n\n${letter.content}`});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Encaminhar</Button>}
           {canDelete&&<Button variant="outline" onClick={async()=>{if(!confirm('Excluir esta missiva? Ela deixará de aparecer para os jogadores.'))return;const {error}=await supabase.rpc('delete_campaign_letter',{p_id:letter.id});if(error)onError(error.message);else saved();}}>Excluir</Button>}
         </div>}
-        {!trashMode&&!letter.deleted_at&&letter.publication_state==='draft'&&letter.sender_user_id===data.user.id&&<Button variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const result=await supabase.rpc('schedule_letter_draft',{p_id:letter.id,p_week:letter.delivery_week??open??nextLetterNumber(data.letters)});if(result.error)onError(result.error.message);else saved();}}>Programar entrega</Button>}{!trashMode&&!letter.deleted_at&&((data.admin&&letter.publication_state!=='draft')||(letter.publication_state==='draft'&&letter.sender_user_id===data.user.id))&&<LetterEdit letter={letter} onSave={saved}/>}
-        {!trashMode&&!letter.deleted_at&&letter.publication_state==='delivered'&&canAnswer&&replyTarget&&<ReplyForm
+        {!readOnly&&!trashMode&&!letter.deleted_at&&letter.publication_state==='draft'&&letter.sender_user_id===data.user.id&&<Button variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const result=await supabase.rpc('schedule_letter_draft',{p_id:letter.id,p_week:letter.delivery_week??open??nextLetterNumber(data.letters)});if(result.error)onError(result.error.message);else saved();}}>Programar entrega</Button>}{!readOnly&&!trashMode&&!letter.deleted_at&&((data.admin&&letter.publication_state!=='draft')||(letter.publication_state==='draft'&&letter.sender_user_id===data.user.id))&&<LetterEdit letter={letter} onSave={saved}/>}
+        {!readOnly&&!trashMode&&!letter.deleted_at&&letter.publication_state==='delivered'&&canAnswer&&replyTarget&&<ReplyForm
           letterId={letter.id} replyId={letter.sender_user_id===data.user.id?lastPlayerReply?.id:undefined}
           recipientId={replyTarget} roundRevision={roundRevision} onSave={saved} isAdmin={data.admin}
           label={letter.sender_user_id===data.user.id?(lastPlayerReply?'Responder à Casa':'Adicionar complemento'):'Responder'}/>}
@@ -228,7 +228,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
       {groups.some(g=>g.number!==null)&&<nav className="campaign-mail-jump" aria-label="Ir para uma semana de missiva">{groups.filter(g=>g.number!==null).map(g=><button key={g.number} type="button" onClick={()=>document.getElementById('grupo-missiva-'+g.number)?.scrollIntoView({behavior:'smooth',block:'start'})}>Missiva {g.number}</button>)}</nav>}
       <Button variant="outline" onClick={()=>setFilters(empty)}>Limpar filtros</Button>
       <div className="campaign-actions"><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set(visibleIds))}>Expandir todas</Button><Button size="sm" variant="ghost" onClick={()=>setExpanded(new Set())}>Recolher todas</Button></div>
-      {!trashMode&&!data.admin&&open!==null&&<Button onClick={()=>{setDraft({key:Date.now(),subject:'',content:''});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Escrever missiva</Button>}
+      {!readOnly&&!trashMode&&!data.admin&&open!==null&&<Button onClick={()=>{setDraft({key:Date.now(),subject:'',content:''});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Escrever missiva</Button>}
       </div>}
     </aside>;
   return <div className={'campaign-mail-layout'+(data.admin?' campaign-mail-layout--narrator':'')}>
@@ -256,7 +256,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
       {groups.length===0&&<p className="campaign-empty">Nenhuma missiva encontrada.</p>}
       {groups.map(group=><section key={group.number??'sem-numero'} id={group.number!==null?'grupo-missiva-'+group.number:undefined} className="campaign-mail-group">{group.number!==null&&<h3 className="campaign-letter-number">Missiva {group.number}{data.rounds.find(r=>r.number===group.number)?.closed?' · fechada':''}</h3>}{group.letters.map(letter=>card(letter,isRecipient(letter)||data.admin))}</section>)}</>}
 
-      {!trashMode&&!data.admin&&<MailComposer key={draft?.key??0} data={data} me={me} initial={draft} onSave={()=>{setDraft(null);saved();}} onManage={onManage}/>}
+      {!readOnly&&!trashMode&&!data.admin&&<MailComposer key={draft?.key??0} data={data} me={me} initial={draft} onSave={()=>{setDraft(null);saved();}} onManage={onManage}/>}
     </div>
   </div>;
 }
