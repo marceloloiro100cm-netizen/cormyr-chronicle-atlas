@@ -18,6 +18,7 @@ CREATE POLICY account_profile_self_read ON public.campaign_access_profiles FOR S
 
 INSERT INTO public.campaign_access_profiles(user_id,profile,active)
  SELECT p.user_id,'jogador',p.active FROM public.campaign_players p
+ JOIN auth.users a ON a.id=p.user_id
  WHERE p.user_id IS NOT NULL
 ON CONFLICT(user_id) DO NOTHING;
 INSERT INTO public.campaign_access_profiles(user_id,profile,active)
@@ -48,10 +49,21 @@ BEGIN
  END IF;
 END $migrate$;
 
-CREATE OR REPLACE FUNCTION public.is_campaign_editor()
+CREATE OR REPLACE FUNCTION public.is_campaign_editor_identity()
  RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp
 AS $function$
  SELECT auth.uid() IS NOT NULL AND NOT public.is_campaign_admin() AND EXISTS (
+  SELECT 1 FROM public.campaign_access_profiles a
+   WHERE a.user_id=auth.uid() AND a.profile='editor'
+ );
+$function$;
+REVOKE ALL ON FUNCTION public.is_campaign_editor_identity() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.is_campaign_editor_identity() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.is_campaign_editor()
+ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp
+AS $function$
+ SELECT public.is_campaign_editor_identity() AND EXISTS (
   SELECT 1 FROM public.campaign_access_profiles a
   JOIN public.campaign_players p ON p.user_id=a.user_id
   WHERE a.user_id=auth.uid() AND a.profile='editor' AND a.active
@@ -86,12 +98,12 @@ CREATE OR REPLACE FUNCTION public.my_player_id()
  RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp
 AS $function$
  SELECT id FROM public.campaign_players
-  WHERE user_id=auth.uid() AND NOT public.is_campaign_editor();
+  WHERE user_id=auth.uid() AND NOT public.is_campaign_editor_identity();
 $function$;
 CREATE OR REPLACE FUNCTION public.in_campaign_house(h text,edit_required boolean DEFAULT false)
  RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp
 AS $function$
- SELECT NOT public.is_campaign_editor() AND EXISTS(
+ SELECT NOT public.is_campaign_editor_identity() AND EXISTS(
   SELECT 1 FROM public.house_memberships m
   JOIN public.campaign_players p ON p.id=m.player_id
   WHERE p.user_id=auth.uid() AND m.house_id=h
@@ -143,7 +155,7 @@ CREATE OR REPLACE FUNCTION public.block_campaign_editor_mail()
  RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp
 AS $function$
 BEGIN
- IF public.is_campaign_editor() THEN
+ IF public.is_campaign_editor_identity() THEN
   RAISE EXCEPTION 'O perfil Editor-Chefe não possui Missivas.'
    USING ERRCODE='42501';
  END IF;
@@ -160,20 +172,20 @@ CREATE TRIGGER zz_editor_reply_guard BEFORE INSERT OR UPDATE OR DELETE
 
 DROP POLICY IF EXISTS editor_no_letters ON public.campaign_letters;
 CREATE POLICY editor_no_letters ON public.campaign_letters AS RESTRICTIVE
- FOR ALL TO authenticated USING (NOT public.is_campaign_editor())
- WITH CHECK (NOT public.is_campaign_editor());
+ FOR ALL TO authenticated USING (NOT public.is_campaign_editor_identity())
+ WITH CHECK (NOT public.is_campaign_editor_identity());
 DROP POLICY IF EXISTS editor_no_replies ON public.letter_replies;
 CREATE POLICY editor_no_replies ON public.letter_replies AS RESTRICTIVE
- FOR ALL TO authenticated USING (NOT public.is_campaign_editor())
- WITH CHECK (NOT public.is_campaign_editor());
+ FOR ALL TO authenticated USING (NOT public.is_campaign_editor_identity())
+ WITH CHECK (NOT public.is_campaign_editor_identity());
 DROP POLICY IF EXISTS editor_no_letter_receipts ON public.letter_receipts;
 CREATE POLICY editor_no_letter_receipts ON public.letter_receipts AS RESTRICTIVE
- FOR ALL TO authenticated USING (NOT public.is_campaign_editor())
- WITH CHECK (NOT public.is_campaign_editor());
+ FOR ALL TO authenticated USING (NOT public.is_campaign_editor_identity())
+ WITH CHECK (NOT public.is_campaign_editor_identity());
 DROP POLICY IF EXISTS editor_no_house_records ON public.campaign_records;
 CREATE POLICY editor_no_house_records ON public.campaign_records AS RESTRICTIVE
- FOR ALL TO authenticated USING (NOT public.is_campaign_editor())
- WITH CHECK (NOT public.is_campaign_editor());
+ FOR ALL TO authenticated USING (NOT public.is_campaign_editor_identity())
+ WITH CHECK (NOT public.is_campaign_editor_identity());
 
 -- Substitui a autorização do Jornal baseada em nome/casa pela autorização editorial.
 CREATE OR REPLACE FUNCTION public.can_edit_campaign_newspaper()
