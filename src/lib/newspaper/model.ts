@@ -85,12 +85,12 @@ export function newspaperIsUnread(edition:NewspaperEdition,receipt?:NewspaperRea
 export function newspaperStatus(state:NewspaperState):string{
  return {draft:'Rascunho',published:'Publicada',archived:'Arquivada',cancelled:'Envio cancelado'}[state];
 }
-export function validateNewspaperEdition(input:Pick<NewspaperEdition,'title'|'campaign_date'|'blocks'>):string|null{
+export function validateNewspaperEdition(input:Pick<NewspaperEdition,'title'|'campaign_date'|'blocks'|'pdf_path'>):string|null{
  if(!parseDate(input.campaign_date))return 'Escolha uma data válida no HUB Temporal.';
  if(!input.title.trim())return 'Informe o nome do jornal.';
  if(input.title.length>180)return 'O nome deve ter até 180 caracteres.';
  if(input.blocks.length>80)return 'A edição permite até 80 blocos.';
- if(!input.blocks.some(b=>b.type==='headline'||b.type==='article')&&!input.blocks.some(b=>b.imagePath))
-  return 'Adicione pelo menos uma notícia ou imagem.';
+ if(!input.pdf_path&&!input.blocks.some(b=>b.type==='headline'||b.type==='article')&&!input.blocks.some(b=>b.imagePath))
+  return 'Adicione uma notícia, imagem ou PDF.';
  return null;
 }
