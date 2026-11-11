@@ -43,9 +43,9 @@ describe('V3 3D: opt-in e fallback',()=>{
   render(<MiniatureDemo narrator={false}/>);expect(screen.queryByText('Ver protótipo 3D')).toBeNull();
   render(<BattleV3Game/>);expect(screen.queryByRole('checkbox',{name:/Habilitar miniaturas/})).toBeNull();
  });
- it('V3 mantém inspector e arena ampliada, começa em 2D mesmo habilitado',()=>{
+ it('V3 mantém inspector e arena ampliada em 2D, sem a habilitação 3D por sessão',()=>{
   render(<BattleV3Game narrator/>);
-  fireEvent.click(screen.getByRole('checkbox',{name:/Habilitar miniaturas/}));
+  expect(screen.queryByRole('checkbox',{name:/Habilitar miniaturas/})).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'Batalhar'}));
   expect(screen.getByRole('dialog',{name:'Batalha em tela ampliada'})).toBeInTheDocument();
   expect(screen.getByRole('group',{name:/Mapa quadrado com/})).toBeInTheDocument();
