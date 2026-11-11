@@ -19,7 +19,7 @@ function InlineText({tag:Tag,value,editing,onChange,className,style,label}:{
   onKeyDown={(event:KeyboardEvent<HTMLElement>)=>event.stopPropagation()}
   onBlur={event=>{
    if(!editing)return;
-   const text=event.currentTarget.innerText.replace(/\r/g,'').trim();
+   const text=(event.currentTarget.innerText??event.currentTarget.textContent??'').replace(/\r/g,'').trim();
    if(text!==value)onChange(text);
   }}>{value}</Tag>;
 }
