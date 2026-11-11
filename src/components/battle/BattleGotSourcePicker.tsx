@@ -32,6 +32,7 @@ export function BattleGotSourcePicker({onChoose,chosenSlots}:{
  const [slot,setSlot]=useState<Slot>('attacker-1');
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState('');
+ const [sourceStatus,setSourceStatus]=useState<'pending'|'recorded'|'scenario-roster'|'empty'|'no-military-sheet'>('pending');
  const regions=useMemo(()=>battleHouseRegions(houses),[houses]);
  const houseList=useMemo(()=>houses.filter(h=>h.region===region),[houses,region]);
  const selectedUnit=roster.find(u=>u.id===unitId);
@@ -44,23 +45,26 @@ export function BattleGotSourcePicker({onChoose,chosenSlots}:{
   return()=>{current=false;};
  },[fetchHouses]);
  const selectHouse=async(id:string)=>{
-  setHouse(id);setRoster([]);setUnitId('');setTypeId('');setError('');
+  setHouse(id);setRoster([]);setUnitId('');setTypeId('');setError('');setSourceStatus('pending');
   if(!id)return;
   setLoading(true);
   try{
    const response=await fetchUnits({data:{houseId:id}});
+   setSourceStatus(response.sourceStatus);
+   setRoster(response.units);
    if(response.sourceStatus!=='recorded'){
-    setError('Esta Casa não possui ficha militar completa para o motor do livro. '+(response.warReadiness?.missingEvidence??[]).join(' '));
+    setError(response.sourceStatus==='scenario-roster'
+     ?'As tropas desta Casa constam como propostas de cenário. Sua quantidade e treinamento podem ser consultados, mas não há ficha oficial completa para aplicar automaticamente Saúde, Defesa, Disciplina, equipamentos e efeitos de construções pelas regras do livro. Nenhuma proposta será tratada como compra oficial.'
+     :'Não há tropas com ficha militar completa para esta Casa. Os atributos gerais e a narrativa não comprovam unidades, fortificações ou bônus de combate.');
     return;
    }
-   setRoster(response.units);
    const first=response.units.find(battleRosterEligible);
    if(first){setUnitId(first.id);setTypeId(first.types[0]??'');}
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível obter a ficha militar.');}
   finally{setLoading(false);}
  };
  const importUnit=async()=>{
-  if(!selectedUnit||!typeId||!house)return;
+  if(sourceStatus!=='recorded'||!selectedUnit||!typeId||!house)return;
   if(!selectedUnit.types.includes(typeId)||!battleRosterEligible(selectedUnit)){
    setError('Unidade ou tipo oficial inválido.');return;
   }
@@ -85,7 +89,7 @@ export function BattleGotSourcePicker({onChoose,chosenSlots}:{
   <div className="got-config-grid">
    <label>Região
     <select value={region} disabled={loading} onChange={e=>{
-     setRegion(e.target.value);setHouse('');setRoster([]);setUnitId('');setTypeId('');setError('');
+     setRegion(e.target.value);setHouse('');setRoster([]);setUnitId('');setTypeId('');setError('');setSourceStatus('pending');
     }}>
      <option value="">Selecione a região</option>
      {regions.map(x=><option value={x.id} key={x.id}>{x.name}</option>)}
@@ -124,7 +128,14 @@ export function BattleGotSourcePicker({onChoose,chosenSlots}:{
     </select>
    </label>
   </div>
-  <Button disabled={!selectedUnit||!typeId||loading} onClick={()=>void importUnit()}>
+  {sourceStatus==='scenario-roster'&&roster.length>0&&<section className="battle-note" aria-label="Tropas de cenário da Casa">
+   <strong>{roster.length} registros militares de cenário encontrados</strong>
+   <ul>{roster.map(unit=><li key={unit.id}>
+    {unit.name} · {Math.max(0,unit.strength-unit.casualties).toLocaleString('pt-BR')} combatentes · {unit.training} · {unit.sourceStatus??'proposta'}
+   </li>)}</ul>
+   <p>Consulta de proposta, sem aplicação de bônus ou penalidades não comprovados. A aprovação da ficha militar completa é necessária para copiar esta força no modo Livro.</p>
+  </section>}
+  <Button disabled={sourceStatus!=='recorded'||!selectedUnit||!typeId||loading} onClick={()=>void importUnit()}>
    Copiar para teste pelas regras do livro
   </Button>
   <div className="got-roster">
