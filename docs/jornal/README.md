@@ -26,3 +26,15 @@
 - Indicadores da caixa de entrada são atualizados a cada 30 segundos (não há push de notificações do navegador).
 - O leitor de PDF depende do visualizador PDF do navegador; no celular há um link para abrir em tela cheia.
 - Se a migração ainda não foi instalada, a interface retorna um erro explícito em vez de exibir dados de outro módulo.
+
+
+## Identidade de Leonardo: A Folha Sem Selo
+- Referência aprovada em 11/11/2026: redação editorial com cabeçalho vinho e dourado, pergaminho envelhecido, menu lateral e ferramentas à direita.
+- Leonardo entra diretamente na tela **Editor-Chefe** ao abrir `/jogadores`. O atalho **Outros módulos de Cormyr** preserva a navegação aos módulos previamente autorizados.
+- Menu lateral: Painel do Jornal, Edição da Capa, Matérias, Pautas, Correspondentes, Anúncios, Arquivo, Leitura e Alcance, Configurações.
+- Ações centrais: Escrever Matéria, Anexar Arquivo, Pré-visualizar, Publicar Edição, Arquivar.
+- Ferramentas: Título, Subtítulo, Imagem, Coluna, Citação e Aviso/Destaque. O painel exibe texto/legenda, alças de redimensionamento e botões para ordenar os blocos.
+- Pautas usam os rascunhos das edições; Anúncios usam os blocos de destaque. **Correspondentes é apenas a entrada visual para um módulo futuro**, sem simular cadastros ou permissões inexistentes.
+- Quando não houver edição, a capa de exemplo é identificada como **não publicada**. Nenhuma notícia de exemplo é enviada automaticamente.
+- A versão real mantém as manchetes e imagens salvas, com capa compacta para não repetir o nome da Folha no topo e no miolo.
+- As mudanças permanecem isoladas no tema `.folha-editorial`; leitores e o Narrador continuam usando o fluxo de jornal integrado às suas áreas existentes.
