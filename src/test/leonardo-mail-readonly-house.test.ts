@@ -55,7 +55,7 @@ describe('Leonardo: nenhuma missiva de saída',()=>{
  it('bloqueia todos os botões de criação e respostas na interface',()=>{
   const route=source('src/routes/_authenticated/jogadores.tsx');
   const view=source('src/components/players/missivas-tab.tsx');
-  expect(route).toContain('readOnly={specialBattleAccess}');
+  expect(route).toContain('readOnly={specialMailReadOnly}');
   expect(view).toContain('readOnly=false');
   expect(view).toContain('!readOnly&&!trashMode&&!data.admin&&<MailComposer');
   expect(view).toContain('!readOnly&&!trashMode&&!letter.deleted_at&&letter.publication_state');
