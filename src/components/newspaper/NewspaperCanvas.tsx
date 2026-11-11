@@ -38,8 +38,8 @@ function NewspaperStory({block}:{block:NewspaperBlock}){
    <p>{body.join('\n').trim()||'Escreva o conteúdo da reportagem…'}</p>
   </div>;
 }
-export function NewspaperCanvas({edition,editing=false,selectedId,onSelect,onResize}:{
- edition:NewspaperEdition;editing?:boolean;selectedId?:string|null;
+export function NewspaperCanvas({edition,editing=false,compactMasthead=false,selectedId,onSelect,onResize}:{
+ edition:NewspaperEdition;editing?:boolean;compactMasthead?:boolean;selectedId?:string|null;
  onSelect?:(id:string)=>void;
  onResize?:(id:string,dimensions:Pick<NewspaperBlock,'span'|'height'>)=>void;
 }){
@@ -60,10 +60,16 @@ export function NewspaperCanvas({edition,editing=false,selectedId,onSelect,onRes
  return <div className={`newspaper-page newspaper-font-${edition.font_style} newspaper-template-${edition.template}`}>
   <header className="newspaper-masthead">
    <div className="newspaper-rule"/>
-   <p>O CORREIO DO REINO · CORMYR · EDIÇÃO {String(edition.edition_no).padStart(3,'0')}</p>
-   <h1>{edition.title}</h1>
-   <div className="newspaper-meta"><span>{formatDate(edition.campaign_date)}</span><span>Folha oficial da imprensa de Cormyr</span></div>
-   {edition.subtitle&&<h2 className="newspaper-subtitle">{edition.subtitle}</h2>}
+   {compactMasthead?<div className="newspaper-page-folio">
+    <span>ANO II · EDIÇÃO Nº {String(edition.edition_no).padStart(3,'0')}</span>
+    <span>A VOZ LIVRE DE CORMYR</span>
+    <span>{formatDate(edition.campaign_date)}</span>
+   </div>:<>
+    <p>O CORREIO DO REINO · CORMYR · EDIÇÃO {String(edition.edition_no).padStart(3,'0')}</p>
+    <h1>{edition.title}</h1>
+    <div className="newspaper-meta"><span>{formatDate(edition.campaign_date)}</span><span>Folha independente de Cormyr</span></div>
+    {edition.subtitle&&<h2 className="newspaper-subtitle">{edition.subtitle}</h2>}
+   </>}
    <div className="newspaper-double-rule"/>
   </header>
   {edition.blocks.length>0&&<div ref={grid} className="newspaper-grid">
