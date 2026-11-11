@@ -65,7 +65,7 @@ export function BattleV3Game({narrator=false,onBack,initialOptions,locked=false,
    if(file.size>1_500_000)throw new Error('Replay V3 excede 1,5 MB.');
    const {game:restored}=parseV3ReplayJson(await file.text());
    setOptions(restored.setup);setGame(restored);setSelected(restored.battle.activeUnitId);
-   setMode('inspect');setSkill(null);setExpanded(true);setMiniaturesEnabled(false);
+   setMode('inspect');setSkill(null);setExpanded(true);
    setStatus('Replay V3 verificado e retomado sem alterar as fichas oficiais.');
   }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível recuperar o replay V3.');}
  };
