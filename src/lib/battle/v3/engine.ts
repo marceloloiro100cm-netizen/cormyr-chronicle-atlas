@@ -9,7 +9,7 @@ import {livingCount,stateAfterDamage} from '../domain/morale';
 import {battleOutcome} from '../domain/victory';
 import {runAiUntilHuman} from '../domain/ai';
 import {commander,applyCommanderPassive,type CommanderId} from './commanders';
-import {modelHouse} from './model-houses';
+import {modelHouse,type ModelHouse} from './model-houses';
 import {isBattleTrainingCopy} from '../adapters/imported-npc-roster';
 
 export type V3PowerTarget='ally'|'enemy';
@@ -39,14 +39,15 @@ export type V3ScenarioOptions=Readonly<{
 }>;
 const sideList=['attacker','defender'] as const;
 const LINE=new Set(['infantry','garrison','personal-guard','crusaders','mercenaries','levies']);
-export function createV3Game(options:V3ScenarioOptions,officialCopies:readonly BattleStack[]=[]):V3Game{
+export function createV3Game(options:V3ScenarioOptions,officialCopies:readonly BattleStack[]=[],customHouses:readonly ModelHouse[]=[]):V3Game{
+ const getHouse=(id:string)=>customHouses.find(h=>h.id===id)??modelHouse(id);
  if(officialCopies.some(s=>!isBattleTrainingCopy(s)))
   throw new Error('Somente snapshots oficiais autorizados pelo Narrador podem ser importados.');
  if(officialCopies.length>10)throw new Error('Limite de dez agrupamentos de origem.');
  const map=createScenario(options.scenario,11,options.grid??'square');
  const roster:BattleStack[]=[];
  for(const side of sideList){
-  const house=modelHouse(side==='attacker'?options.attackerHouseId:options.defenderHouseId);
+  const house=getHouse(side==='attacker'?options.attackerHouseId:options.defenderHouseId);
   const deployment=map.deployment[side].filter(h=>tileAt(map,h)?.terrain!=='rock')
     .sort((a,b)=>a.r-b.r||a.q-b.q);
   const taken=new Set<string>();
@@ -73,7 +74,7 @@ export function createV3Game(options:V3ScenarioOptions,officialCopies:readonly B
    }));
   });
  }
- const attacker=modelHouse(options.attackerHouseId),defender=modelHouse(options.defenderHouseId);
+ const attacker=getHouse(options.attackerHouseId),defender=getHouse(options.defenderHouseId);
  const draft=makeBattleSetup({
   id:'v3-'+attacker.id+'-'+defender.id+'-'+options.scenario,
   name:attacker.subtitle+' contra '+defender.subtitle,
