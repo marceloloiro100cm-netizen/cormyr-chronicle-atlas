@@ -24,6 +24,12 @@ import {rollPersonalWithFate,consumePersonalFateRoll} from './personal-fate';
 import {assertPersonalTurn,settlePersonalTurn} from './personal-initiative';
 
 const SIDES:readonly WarSide[]=['attacker','defender'];
+/** Texto do registro para leitura na mesa; o estado continua usando os identificadores. */
+const CONDITION_TEXT:Record<WarCondition,string>={organized:'organizada',disorganized:'desorganizada',
+ routed:'em debandada',destroyed:'destruída',surrendered:'rendida',escaped:'fora de campo'};
+const ORDER_TEXT:Partial<Record<WarOrder['kind'],string>>={attack:'Atacar',charge:'Carga',defend:'Defender',
+ move:'Mover',ready:'Prontidão',rally:'Reagrupar',revive:'Reanimar',reorganize:'Reorganizar',
+ retreat:'Retirada','aggressive-retreat':'Retirada agressiva',surrender:'Rendição'};
 const opposite=(side:WarSide):WarSide=>side==='attacker'?'defender':'attacker';
 const inBounds=(battle:Pick<WarBattle,'width'|'height'>,p:WarPosition):boolean=>
  Number.isInteger(p.x)&&Number.isInteger(p.y)&&p.x>=0&&p.y>=0&&p.x<battle.width&&p.y<battle.height;
@@ -275,7 +281,7 @@ function applyDamage(battle:WarBattle,target:WarUnit,amount:number,attackerName:
     standing:disorganizations>=target.ability.endurance?null:target.standing};
   }
  }
- const text=attackerName+' causou '+amount+' de dano em '+target.name+'. Condição: '+updated.condition+'.';
+ const text=attackerName+' causou '+amount+' de dano em '+target.name+'. Condição: '+CONDITION_TEXT[updated.condition]+'.';
  let withUnit=replaceUnit(battle,updated);
  if(!alive(updated)&&(target.envelopedBy||target.envelopingTargetId)){
   withUnit={...withUnit,units:withUnit.units.map(u=>{
@@ -432,11 +438,19 @@ function chooseNearest(battle:WarBattle,unit:WarUnit,ranged:boolean):WarUnit|nul
    (!u.hidden||distance(u.position,unit.position)<=1)&&distance(u.position,unit.position)<=max)
    .sort((a,b)=>distance(a.position,unit.position)-distance(b.position,unit.position)||a.id.localeCompare(b.id))[0]??null;
 }
-function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
- options:{charge?:boolean;penalty?:number;counterCharge?:boolean;
+type WarAttackOptions={charge?:boolean;penalty?:number;counterCharge?:boolean;
   testRank?:number;bonusDice?:number;damageBonus?:number;
   /** Pinça: resolve o acerto sem modificar o alvo até ambos atacarem. */
-  deferDamage?:(damage:number)=>void;}={}):WarBattle{
+  deferDamage?:(damage:number)=>void;};
+type WarAttackSetup=Readonly<{
+ testDice:number;bonusDice:number;penaltyDice:number;
+ defense:number;weatherModifier:number;baseDamage:number;targetArmor:number;
+}>;
+/** Fonte única dos modificadores de um ataque entre unidades (cap. 10).
+ * Usada pela resolução real e pela prévia de interface: nenhum dado é rolado aqui.
+ */
+function attackSetup(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
+ options:WarAttackOptions={}):WarAttackSetup{
  if(!alive(attacker))throw new Error('Esta unidade não pode atacar.');
  if(warFieldForbidsAttack(attacker))
   throw new Error('O equipamento especial impede ataques enquanto estiver transportado.');
@@ -479,8 +493,6 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
  const targetTile=terrainAt(battle.tiles,target.position);
  bonus+=terrainHighGround(attackerTile,targetTile);
  extraPenalty+=visibilityPenalty(battle.visibility,battle.weather,ranged);
- const roll=rollDice(battle.seed,Math.min(15,Math.max(1,(options.testRank??score)+testDice)),bonus,extraPenalty);
- let next:{seed:number}&WarBattle={...battle,seed:roll.nextSeed};
  const cover=terrainCoverBonus(targetTile,ranged,target.defendRoll!==null);
  const fort=fortForUnit(battle.fortifications,target);
  const fortBonus=fort?fortDefense(fort):0;
@@ -489,9 +501,67 @@ function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
   warShieldWallAllyCover(battle,attacker,target,ranged)+
   fortBonus+probeBonus+warFieldDefenseBonus(target,ranged)-
   (ranged&&target.ladderDefensePenaltyRound===battle.round?5:0);
- const adjustedRoll=Math.max(0,roll.total+weatherAttackModifier(battle.weather));
- const degrees=degreesOfSuccess(adjustedRoll,defense);
  const baseDamage=(ranged?attacker.rangedDamage:attacker.meleeDamage+(options.charge?2:0))+(options.damageBonus??0);
+ return {testDice:Math.min(15,Math.max(1,(options.testRank??score)+testDice)),
+  bonusDice:bonus,penaltyDice:extraPenalty,defense,
+  weatherModifier:weatherAttackModifier(battle.weather),baseDamage,targetArmor:target.armor};
+}
+export type WarAttackPreview=Readonly<{
+ legal:boolean;reason:string;
+ /** Dados de teste, de bônus e de penalidade exatamente como a resolução real usará. */
+ testDice:number;bonusDice:number;penaltyDice:number;
+ defense:number;weatherModifier:number;baseDamage:number;targetArmor:number;
+}>;
+/** Prévia sem dados nem mutação de um ataque de Luta/Pontaria já em alcance.
+ * Para Carga, a prévia considera o ataque final (−1D, +2 dano) a partir da
+ * posição atual somente quando o alvo já está adjacente.
+ */
+export function previewWarAttack(battle:WarBattle,attackerId:string,targetId:string,
+ options:{ranged?:boolean;charge?:boolean;penalty?:number}={}):WarAttackPreview{
+ const blank={testDice:0,bonusDice:0,penaltyDice:0,defense:0,weatherModifier:0,baseDamage:0,targetArmor:0};
+ const attacker=battle.units.find(u=>u.id===attackerId);
+ const target=battle.units.find(u=>u.id===targetId);
+ if(!attacker||!target)return {legal:false,reason:'Unidade não encontrada.',...blank};
+ try{
+  const setup=attackSetup(battle,attacker,target,Boolean(options.ranged),{
+   ...(options.charge?{charge:true}:{}),
+   ...(options.penalty?{penalty:options.penalty}:{}),
+  });
+  return {legal:true,reason:'Alvo em alcance.',...setup};
+ }catch(e){
+  return {legal:false,reason:e instanceof Error?e.message:'Ataque indisponível.',...blank};
+ }
+}
+/** Alvos que a ordem Carga alcança agora: adjacentes ou com corredor reto de corrida. */
+export function previewWarChargeReach(battle:WarBattle,attackerId:string,targetId:string):
+ Readonly<{legal:boolean;reason:string;destination:WarPosition|null}>{
+ const actor=battle.units.find(u=>u.id===attackerId);
+ const target=battle.units.find(u=>u.id===targetId);
+ if(!actor||!alive(actor)||!target||target.side===actor.side||!onBoard(target))
+  return {legal:false,reason:'Alvo de carga inválido.',destination:null};
+ if(target.hidden&&distance(actor.position,target.position)>1)
+  return {legal:false,reason:'Unidade escondida.',destination:null};
+ if(distance(actor.position,target.position)<=1)
+  return {legal:true,reason:'Alvo adjacente.',destination:{...actor.position}};
+ const choices=[{x:target.position.x-1,y:target.position.y},
+  {x:target.position.x+1,y:target.position.y},
+  {x:target.position.x,y:target.position.y-1},{x:target.position.x,y:target.position.y+1}];
+ for(const candidate of choices){
+  try{movePath(battle,actor,candidate,true,movementCells(actor,true));
+   return {legal:true,reason:'Corredor de carga disponível.',destination:candidate};
+  }catch{ /* outra posição */ }
+ }
+ return {legal:false,reason:'Carga sem corredor em linha reta.',destination:null};
+}
+function attack(battle:WarBattle,attacker:WarUnit,target:WarUnit,ranged:boolean,
+ options:WarAttackOptions={}):WarBattle{
+ const setup=attackSetup(battle,attacker,target,ranged,options);
+ const roll=rollDice(battle.seed,setup.testDice,setup.bonusDice,setup.penaltyDice);
+ let next:{seed:number}&WarBattle={...battle,seed:roll.nextSeed};
+ const defense=setup.defense;
+ const adjustedRoll=Math.max(0,roll.total+setup.weatherModifier);
+ const degrees=degreesOfSuccess(adjustedRoll,defense);
+ const baseDamage=setup.baseDamage;
  const raw=baseDamage*(degrees+(options.counterCharge&&degrees>0?1:0));
  const damage=Math.max(0,raw-target.armor);
  next=log(next,'attack',attacker.name+' atacou '+target.name+' ('+(ranged?'Pontaria':'Luta')+
@@ -938,7 +1008,7 @@ export function issueWarOrder(battle:WarBattle,input:{
   ordersRemaining:{...battle.ordersRemaining,[commander.id]:battle.ordersRemaining[commander.id]!-1}};
  next=replaceUnit(next,{...unit,issuedThisRound:unit.issuedThisRound+1,actedThisRound:unit.actedThisRound||passed,
   criticalThisRound:unit.criticalThisRound||critical});
- next=log(next,'command',commander.name+' deu ordem '+input.order.kind+' a '+unit.name+
+ next=log(next,'command',commander.name+' deu ordem '+(ORDER_TEXT[input.order.kind]??input.order.kind)+' a '+unit.name+
   ': '+roll.total+' vs Disciplina '+difficulty+(passed?' (sucesso).':critical?' (falha crítica).':' (falha).'),
   unit.side,{roll:roll.dice,total:roll.total,difficulty,degrees});
  if(!passed&&critical&&['retreat','aggressive-retreat'].includes(input.order.kind)){
