@@ -31,7 +31,7 @@ export const managePlayerAccount=createServerFn({method:'POST'}).middleware([req
     throw new Error('A identidade especial conflita com uma casa existente.');
   if(!campaignHouse.data){
     const added=await db.from('campaign_houses').insert(special
-      ?{id:'espiao',name:'Espião',crest:'/house-flags/espiao.jpg',region:'',season:0,active:true,source:'special-access'}
+      ?{id:'espiao',name:'Espião',crest:'/house-flags/espiao.svg',region:'',season:0,active:true,source:'special-access'}
       :{id:catalog!.data!.id,name:catalog!.data!.name,region:catalog!.data!.region,season:2,active:true,source:'catalog'});
     if(added.error)throw new Error('Casa não pôde ser associada à campanha.');
   }
