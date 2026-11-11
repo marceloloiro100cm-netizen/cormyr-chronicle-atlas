@@ -11,7 +11,7 @@ BEGIN
   SELECT 1 FROM public.campaign_players p
   JOIN public.house_memberships m ON m.player_id=p.id
   WHERE p.user_id=auth.uid() AND p.roster_house_id='espiao'
-    AND lower(btrim(p.name))='leonardo' AND m.house_id='espiao'
+    AND m.house_id='espiao'
  ) THEN
   RAISE EXCEPTION 'Leonardo: missivas em modo de consulta, sem envio ou resposta.'
    USING ERRCODE='42501';
