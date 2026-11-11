@@ -1,81 +1,69 @@
 import {useState,type FormEvent} from 'react';
 import {useServerFn} from '@tanstack/react-start';
 import {Button} from '@/components/ui/button';
-import {inspectLeonardoAccess,managePlayerAccount} from '@/lib/player-admin.functions';
-import type {Panel} from './panel-data';
+import {inspectLeonardoAccess,manageEditorialAccount} from '@/lib/player-admin.functions';
 
-/** The login dropdown cannot provision a Supabase identity.
- * This form is visible only in narrator administration. Credentials are
- * submitted only to an authenticated, narrator-gated server function.
+/** O perfil Editor-Chefe é independente de Casas e Missivas.
+ * O Narrador administra identidade e senha, nunca uma filiação fictícia.
  */
-export function LeonardoAccountProvision({players,onSave}:{
- players:Panel['players'];onSave:()=>unknown;
-}){
- const save=useServerFn(managePlayerAccount);
+export function LeonardoAccountProvision({onSave}:{onSave:()=>unknown}){
+ const save=useServerFn(manageEditorialAccount);
  const inspect=useServerFn(inspectLeonardoAccess);
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
  const [busy,setBusy]=useState(false);
  const [message,setMessage]=useState('');
  const [ready,setReady]=useState(false);
- const candidates=players.filter(p=>p.roster_house_id==='espiao'||
-  p.name.trim().toLocaleLowerCase('pt-BR')==='leonardo');
- const existing=candidates.length===1&&candidates[0]?.roster_house_id==='espiao'?
-  candidates[0]:undefined;
- const conflicting=candidates.length>1||(candidates.length===1&&!existing);
- const verify=async()=>{
-  const state=await inspect({data:{email:email.trim()}});
-  setReady(state.state==='ready');
-  if(state.state==='missing')setMessage('Conta ainda não cadastrada neste Supabase. Crie o acesso abaixo.');
-  else if(state.state==='incomplete')setMessage('Conta encontrada, mas o vínculo ou as permissões de Espião estão incompletos. Corrija o acesso abaixo.');
-  else setMessage(state.passwordChangeRequired?
-   'Conta e vínculo confirmados. Leonardo deverá escolher uma nova senha ao entrar.':
-   'Conta e vínculo confirmados no Supabase. Faça o teste de login em uma sessão separada.');
- };
- const run=async(task:()=>Promise<void>)=>{
+ const run=async(action:()=>Promise<void>)=>{
   setBusy(true);setMessage('');setReady(false);
-  try{await task();}
-  catch(cause){setMessage(cause instanceof Error?cause.message:'Não foi possível validar o acesso.');}
+  try{await action();}
+  catch(error){setMessage(error instanceof Error?error.message:'Não foi possível conferir o perfil editorial.');}
   finally{setBusy(false);}
+ };
+ const verify=async()=>{
+  const result=await inspect({data:{email:email.trim()}});
+  setReady(result.state==='ready');
+  if(result.state==='missing')setMessage('Nenhuma conta encontrada. Defina a senha inicial e cadastre Leonardo.');
+  else if(result.state==='incomplete')
+   setMessage('Conta existente, mas o perfil Editor-Chefe ainda não está isolado das Casas.');
+  else setMessage(result.passwordChangeRequired?
+   'Acesso editorial confirmado. Leonardo deverá alterar a senha antes de entrar.':
+   'Acesso editorial confirmado, sem Casa, Ficha ou Missivas.');
  };
  const submit=(event:FormEvent<HTMLFormElement>)=>{
   event.preventDefault();
   void run(async()=>{
-   if(conflicting)throw new Error('Existe um cadastro Leonardo conflitante. Revise-o antes de criar outra conta.');
-   if(password.length<6)throw new Error('Informe a senha inicial do jogador.');
-   const result=await save({data:{
-    ...(existing?{playerId:existing.id}:{}),
-    name:'Leonardo',email:email.trim(),password,
-    houseId:'espiao',active:true,canEdit:false,canEditAttributes:false,
-    requireChange:true,folderId:null,
-   }});
-   setPassword('');await verify();await onSave();
-   setMessage(previous=>previous+' '+result.message);
+   const result=await save({data:{email:email.trim(),...(password?{password}:{})}});
+   setPassword('');
+   await onSave();
+   await verify();
+   setMessage(result.message);
   });
  };
  return <details className="campaign-add">
-  <summary>Ativar ou corrigir login de Leonardo (Espião)</summary>
-  <p className="house-caption">A opção Leonardo no login não cria a conta.
-   Aqui o Narrador registra ou redefine a senha inicial diretamente no Supabase,
-   sem conceder acesso às fichas das Casas ou às funções de Narrador.</p>
+  <summary>Gerenciar acesso editorial · Leonardo (Editor-Chefe)</summary>
+  <p className="house-caption">
+   O Editor-Chefe usa sua própria conta e acessa exclusivamente A Folha Sem Selo.
+   Não possui Casa nobre, ficha, Missivas, batalhas nem permissões do Narrador.
+  </p>
   <form className="campaign-form" onSubmit={submit}>
-   <label>E-mail de Leonardo
+   <label>E-mail do Editor-Chefe
     <input type="email" required autoComplete="off" value={email}
      onChange={e=>{setEmail(e.target.value);setReady(false);}}/>
    </label>
-   <label>Senha inicial (será alterada no primeiro acesso)
-    <input type="password" autoComplete="new-password" minLength={6}
+   <label>Senha (opcional para conta existente)
+    <input type="password" autoComplete="new-password" minLength={8}
      value={password} onChange={e=>setPassword(e.target.value)}/>
    </label>
-   <p className="house-caption">Não compartilhe a senha em documentos ou repositórios.
-    A verificação consulta apenas o Supabase configurado para este ambiente.</p>
-   {conflicting&&<p role="alert">Há um cadastro Leonardo associado a outra Casa
-    ou registros duplicados. Revise-o antes de conceder o acesso.</p>}
+   <p className="house-caption">
+    Em novo cadastro, informe uma senha inicial. Em contas existentes, deixe em branco
+    para manter a senha atual. Nenhuma credencial é salva no GitHub.
+   </p>
    <div className="campaign-actions">
     <Button type="button" variant="outline" disabled={busy||!email.trim()}
-     onClick={()=>void run(verify)}>Verificar cadastro</Button>
-    <Button type="submit" disabled={busy||conflicting||!email.trim()||!password}>
-     {busy?'Conferindo…':'Criar ou corrigir acesso'}
+     onClick={()=>void run(verify)}>Verificar perfil</Button>
+    <Button type="submit" disabled={busy||!email.trim()}>
+     {busy?'Conferindo…':'Ativar ou corrigir Editor-Chefe'}
     </Button>
    </div>
    {message&&<p role={ready?'status':'alert'}>{message}</p>}

@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type {SupabaseClient} from '@supabase/supabase-js';
 import {loadCampaignAccessScope,assertUnchangedAccessScope} from '@/lib/auth/campaign-access-scope';
 
 async function allRows<T>(query:(from:number,to:number)=>PromiseLike<{data:T[]|null;error:unknown}>):Promise<T[]>{
@@ -17,11 +18,15 @@ export async function loadPanel(){
   const replyRows=await allRows((from,to)=>supabase.from('letter_replies').select('id,letter_id,author_user_id,author_player_id,author_name,house_id,recipient_user_id,created_at,delivered_at,publication_state,delivery_week,creation_week,reply_to_id,sync_state,campaign_date,version,updated_at,deleted_at').order('id').range(from,to));
  const replies={data:replyRows.map(r=>({...r,content:''}))};
   const rounds=await supabase.from('letter_rounds').select('*');if(rounds.error)throw rounds.error;
+  const editorialRoles=await (supabase as unknown as SupabaseClient).from('campaign_access_profiles')
+   .select('user_id').eq('profile','editor');
+  if(editorialRoles.error)throw new Error('Perfis editoriais indisponíveis.');
+  const editors=new Set((editorialRoles.data??[]).map(row=>String(row.user_id)));
   // Results may arrive after membership revocation or an auth switch. Never
   // publish mixed-authority rows to React Query without a fresh scope check.
   const after=await loadCampaignAccessScope();
   assertUnchangedAccessScope(before,after);
-  return {user,catalog:catalog.data??[],admin:Boolean(admin),houses:houses.data??[],players:players.data??[],members:members.data??[],records:records.data??[],letters:letters.data??[],receipts:receipts.data??[],replies:replies.data??[],rounds:rounds.data??[]};
+  return {user,catalog:catalog.data??[],admin:Boolean(admin),houses:houses.data??[],players:(players.data??[]).filter(p=>!p.user_id||!editors.has(p.user_id)),members:members.data??[],records:records.data??[],letters:letters.data??[],receipts:receipts.data??[],replies:replies.data??[],rounds:rounds.data??[]};
 }
 
 export type Panel=Awaited<ReturnType<typeof loadPanel>>;

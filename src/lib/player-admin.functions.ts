@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
+import type {SupabaseClient} from '@supabase/supabase-js';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 export const managePlayerAccount=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({
   playerId:z.string().uuid().optional(),name:z.string().min(1).max(160),email:z.string().email().optional(),password:z.string().min(6).max(200).optional(),houseId:z.string().min(1),active:z.boolean(),canEdit:z.boolean(),canEditAttributes:z.boolean(),requireChange:z.boolean(),folderId:z.string().nullable(),
@@ -10,6 +11,7 @@ export const managePlayerAccount=createServerFn({method:'POST'}).middleware([req
   if(data.playerId&&!player)throw new Error('Jogador não encontrado; nenhuma conta foi alterada.');
   // Acesso especial fora da temporada. Não é uma casa nobre do elenco oficial.
   // A escolha no login nunca substitui os vínculos conferidos por RLS.
+  if(data.houseId==='espiao')throw new Error('Leonardo deve ser cadastrado como Editor-Chefe, sem Casa.');
   const special=data.houseId==='espiao';
   if(special&&(data.name.trim().toLocaleLowerCase('pt-BR')!=='leonardo'||data.canEdit||data.canEditAttributes))
     throw new Error('O perfil Espião aceita somente Leonardo, sem permissões de edição de Casas.');
@@ -79,6 +81,71 @@ export const managePlayerAccount=createServerFn({method:'POST'}).middleware([req
  * This endpoint never returns an account identifier, email or password, and
  * never reveals whether an unauthenticated email exists in Supabase.
  */
+/** Independente das Casas: somente o Narrador cadastra ou corrige o Editor-Chefe.
+ * Nunca usa admin_save_player_account, house_catalog ou house_memberships como concessão.
+ */
+export const manageEditorialAccount=createServerFn({method:'POST'})
+ .middleware([requireSupabaseAuth])
+ .inputValidator(z.object({email:z.string().email(),password:z.string().min(8).max(200).optional()}))
+ .handler(async({data,context})=>{
+  const permission=await context.supabase.rpc('is_campaign_admin');
+  if(permission.error||permission.data!==true)throw new Error('Somente o Narrador gerencia os perfis de acesso.');
+  const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
+  const profileDb=db as unknown as SupabaseClient;
+  const accounts=await db.auth.admin.listUsers({perPage:1000});
+  if(accounts.error||accounts.data.users.length===1000)
+   throw new Error('Não foi possível verificar todas as contas do Supabase.');
+  const account=accounts.data.users.find(u=>u.email?.trim().toLowerCase()===data.email.trim().toLowerCase());
+  if(!account&&!data.password)throw new Error('Informe a senha inicial para cadastrar Leonardo.');
+  if(account){
+   const {data:adminRole,error:adminError}=await db.from('user_roles').select('role')
+    .eq('user_id',account.id).eq('role','admin').maybeSingle();
+   if(adminError||adminRole)throw new Error('O Editor-Chefe não pode reutilizar uma conta do Narrador.');
+  }
+  const existing=account?await db.from('campaign_players').select('*').eq('user_id',account.id).maybeSingle():{data:null,error:null};
+  if(existing.error)throw new Error('Não foi possível conferir o cadastro atual.');
+  const player=existing.data;
+  if(player&&player.name.trim().toLocaleLowerCase('pt-BR')!=='leonardo')
+   throw new Error('A conta pertence a outro jogador; não foi convertida.');
+  if(player&&player.roster_house_id&&player.roster_house_id!=='espiao')
+   throw new Error('A conta pertence a uma Casa nobre e não pode ser convertida automaticamente.');
+  if(player){
+   const {data:links,error:linksError}=await db.from('house_memberships')
+    .select('house_id').eq('player_id',player.id);
+   if(linksError||links?.some(link=>link.house_id!=='espiao'))
+    throw new Error('A conta possui vínculos com Casas oficiais. Revise antes de converter.');
+  }
+  let userId=account?.id;
+  if(!userId){
+   const created=await db.auth.admin.createUser({
+    email:data.email.trim(),password:data.password!,email_confirm:true,
+   });
+   if(created.error||!created.data.user)throw new Error('O provedor não aceitou a conta editorial.');
+   userId=created.data.user.id;
+  }else if(data.password){
+   const result=await db.auth.admin.updateUserById(userId,{password:data.password});
+   if(result.error)throw new Error('O provedor não aceitou a atualização da senha.');
+  }
+  if(player){
+   const clear=await db.from('house_memberships').delete().eq('player_id',player.id);
+   if(clear.error)throw new Error('Não foi possível revogar vínculos de Casas; perfil não alterado.');
+  }
+  const details={
+   name:'Leonardo',active:true,roster_house_id:null,folder_id:null,
+   ...(data.password||!player?{require_password_change:true}:{}),
+  };
+  const saved=player
+   ?await db.from('campaign_players').update(details).eq('id',player.id).select('id').single()
+   :await db.from('campaign_players').insert({...details,user_id:userId}).select('id').single();
+  if(saved.error||!saved.data)throw new Error('Não foi possível manter a identidade autenticada de Leonardo.');
+  const profile=await profileDb.from('campaign_access_profiles').upsert({
+   user_id:userId,profile:'editor',active:true,
+  },{onConflict:'user_id'});
+  if(profile.error)throw new Error('Perfil editorial ainda não disponível no banco; aplique a migração 0116.');
+  return {message:'Editor-Chefe autorizado sem Casa, Ficha ou Missivas. A senha e o usuário existentes foram preservados, exceto se foi solicitada uma nova senha.'};
+ });
+
+/** Diagnóstico restrito ao Narrador, sem expor dados de identificação do usuário. */
 export const inspectLeonardoAccess=createServerFn({method:'POST'})
  .middleware([requireSupabaseAuth])
  .inputValidator(z.object({email:z.string().email()}))
@@ -86,30 +153,27 @@ export const inspectLeonardoAccess=createServerFn({method:'POST'})
   const role=await context.supabase.rpc('is_campaign_admin');
   if(role.error||role.data!==true)throw new Error('Acesso restrito ao Narrador.');
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
+  const profileDb=db as unknown as SupabaseClient;
   const accounts=await db.auth.admin.listUsers({perPage:1000});
   if(accounts.error||accounts.data.users.length===1000)
-   throw new Error('Não foi possível verificar todas as contas no provedor.');
+   throw new Error('Não foi possível conferir todas as contas.');
   const account=accounts.data.users.find(u=>u.email?.trim().toLowerCase()===data.email.trim().toLowerCase());
   if(!account)return {state:'missing' as const};
-  const [player,house,catalog]=await Promise.all([
+  const [player,profile]=await Promise.all([
    db.from('campaign_players').select('id,name,roster_house_id,active,require_password_change')
     .eq('user_id',account.id).maybeSingle(),
-   db.from('campaign_houses').select('id,name,season,active,crest')
-    .eq('id','espiao').maybeSingle(),
-   db.from('house_catalog').select('id,classification,public_reviewed')
-    .eq('id','espiao').maybeSingle(),
+   profileDb.from('campaign_access_profiles').select('profile,active')
+    .eq('user_id',account.id).maybeSingle(),
   ]);
-  if(player.error||house.error||catalog.error)
-   throw new Error('Não foi possível verificar as permissões de Leonardo.');
-  const linked=player.data?await db.from('house_memberships')
-   .select('house_id,can_edit,can_edit_attributes').eq('player_id',player.data.id)
-   .eq('house_id','espiao').maybeSingle():{data:null,error:null};
-  if(linked.error)throw new Error('Não foi possível verificar a associação ao perfil especial.');
-  const ready=Boolean(account.email_confirmed_at)&&player.data?.name.trim().toLocaleLowerCase('pt-BR')==='leonardo'&&
-   player.data.roster_house_id==='espiao'&&player.data.active===true&&
-   house.data?.name==='Espião'&&house.data.season===0&&house.data.active===true&&
-   catalog.data?.classification==='special'&&catalog.data.public_reviewed===false&&
-   Boolean(linked.data)&&!linked.data?.can_edit&&!linked.data?.can_edit_attributes;
+  if(player.error||profile.error)throw new Error('Não foi possível conferir as permissões editoriais.');
+  const links=player.data?await db.from('house_memberships').select('house_id')
+   .eq('player_id',player.data.id):{data:[],error:null};
+  if(links.error)throw new Error('Não foi possível conferir vínculos de Casas.');
+  const ready=Boolean(account.email_confirmed_at)&&
+   player.data?.name.trim().toLocaleLowerCase('pt-BR')==='leonardo'&&
+   player.data.roster_house_id===null&&player.data.active===true&&
+   profile.data?.profile==='editor'&&profile.data.active===true&&
+   (links.data?.length??0)===0;
   return {state:ready?'ready' as const:'incomplete' as const,
    passwordChangeRequired:player.data?.require_password_change??false};
  });

@@ -51,26 +51,23 @@ describe('Leonardo: Casa criada para simulação',()=>{
  });
 });
 
-describe('Leonardo: nenhuma missiva de saída',()=>{
- it('bloqueia todos os botões de criação e respostas na interface',()=>{
+describe('Editor-Chefe: nenhuma Missiva, Ficha ou Casa',()=>{
+ it('a interface de Leonardo é exclusivamente o Jornal',()=>{
   const route=source('src/routes/_authenticated/jogadores.tsx');
-  const view=source('src/components/players/missivas-tab.tsx');
-  expect(route).toContain('readOnly={specialMailReadOnly}');
-  expect(view).toContain('readOnly=false');
-  expect(view).toContain('!readOnly&&!trashMode&&!data.admin&&<MailComposer');
-  expect(view).toContain('!readOnly&&!trashMode&&!letter.deleted_at&&letter.publication_state');
-  expect(view).toContain('!readOnly&&!trashMode&&!letter.deleted_at&&answer.author_user_id');
-  expect(view).toContain('Modo consulta: Leonardo');
+  const editor=source('src/components/newspaper/NewspaperEditorialDesk.tsx');
+  expect(route).toContain('<EditorialWorkspace key={approved}');
+  expect(route).not.toContain('specialMailReadOnly');
+  expect(route).not.toContain('<BattleLeonardoSandbox');
+  expect(editor).not.toContain('onOtherModules');
+  expect(editor).not.toContain('Outros módulos de Cormyr');
  });
- it('o banco impede novas missivas e respostas mesmo via RPC',()=>{
-  const sql=source('drizzle/migrations/0115_leonardo_missives_readonly.sql');
-  expect(sql).toContain("p.roster_house_id='espiao'");
-  expect(sql).toContain("m.house_id='espiao'");
-  expect(sql).toContain('auth.uid()');
-  expect(sql).toContain('BEFORE INSERT OR UPDATE');
-  expect(sql).toContain('ON public.campaign_letters');
-  expect(sql).toContain('ON public.letter_replies');
+ it('o banco nega leitura e escrita das cartas, respostas e fichas',()=>{
+  const sql=source('drizzle/migrations/0116_campaign_three_access_profiles.sql');
+  expect(sql).toContain('CREATE POLICY editor_no_letters');
+  expect(sql).toContain('CREATE POLICY editor_no_replies');
+  expect(sql).toContain('CREATE POLICY editor_no_letter_receipts');
+  expect(sql).toContain('CREATE POLICY editor_no_house_records');
+  expect(sql).toContain('BEFORE INSERT OR UPDATE OR DELETE');
   expect(sql).toContain("USING ERRCODE='42501'");
-  expect(sql).not.toMatch(/DELETE FROM public\.campaign_letters/);
  });
 });
