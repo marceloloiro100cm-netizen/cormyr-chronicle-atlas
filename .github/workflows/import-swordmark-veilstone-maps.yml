@@ -1,0 +1,54 @@
+name: Import Swordmark and Veilstone map assets
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/import-swordmark-veilstone-maps.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-maps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download public narrator maps from their official Drive folders
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public/maps/espionage
+          curl --fail --location --silent --show-error --retry 3 \
+            'https://drive.google.com/uc?export=download&id=1dxroI8J6cv8ww0Ea31HIyRl9cyDKFZqR' \
+            --output public/maps/espionage/swordmark.png
+          curl --fail --location --silent --show-error --retry 3 \
+            'https://drive.google.com/uc?export=download&id=15Svb5KI6KH64MZtCMoQ1i9EhN8E8mAFu' \
+            --output public/maps/espionage/veilstone.png
+      - name: Verify PNGs, sizes and source geometry before publishing
+        run: |
+          python3 - <<'PY'
+          import pathlib,struct
+          expected={'swordmark':3869852,'veilstone':4439169}
+          for slug,expected_bytes in expected.items():
+              p=pathlib.Path('public/maps/espionage')/(slug+'.png')
+              data=p.read_bytes()
+              assert len(data)==expected_bytes,(slug,len(data),expected_bytes)
+              assert data[:8]==b'\x89PNG\r\n\x1a\n',slug
+              assert data[12:16]==b'IHDR',slug
+              width,height=struct.unpack('>II',data[16:24])
+              assert (width,height)==(1536,1024),(slug,width,height)
+              print(f'{slug}: valid PNG {width}x{height}, {len(data)} bytes')
+          PY
+      - name: Commit verified map images to GitHub
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/maps/espionage/swordmark.png public/maps/espionage/veilstone.png
+          if git diff --cached --quiet; then
+            echo 'Both images already in GitHub.'
+          else
+            git commit -m 'assets: import official Swordmark and Veilstone maps'
+            git push origin HEAD:main
+          fi
