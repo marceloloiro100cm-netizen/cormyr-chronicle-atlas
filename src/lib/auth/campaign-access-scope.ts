@@ -1,4 +1,7 @@
 import {supabase} from '@/integrations/supabase/client';
+import type {SupabaseClient} from '@supabase/supabase-js';
+
+export type CampaignProfile='jogador'|'editor'|'narrador';
 
 /** Lote 27: verification is read-only and always run under the CURRENT JWT.
  * A membership revocation is not an auth event: old tabs must periodically
@@ -15,6 +18,7 @@ export type ScopeMember={
 export type CampaignAccessScope={
  userId:string;
  admin:boolean;
+ profile:CampaignProfile|null;
  playerId:string|null;
  active:boolean;
  passwordChangeRequired:boolean;
@@ -26,7 +30,7 @@ export function accessScopeFingerprint(scope:Omit<CampaignAccessScope,'fingerpri
  const members=[...scope.memberships]
   .map(x=>[x.house_id,x.can_edit,x.can_edit_attributes] as const)
   .sort((a,b)=>a[0].localeCompare(b[0]));
- return JSON.stringify([scope.userId,scope.admin,scope.playerId,
+ return JSON.stringify([scope.userId,scope.admin,scope.profile,scope.playerId,
   scope.active,scope.passwordChangeRequired,members]);
 }
 
@@ -36,11 +40,17 @@ export async function loadCampaignAccessScope():Promise<CampaignAccessScope>{
  if(userError||!user)throw new Error('Sessão não autorizada.');
  const {data:admin,error:roleError}=await supabase.rpc('is_campaign_admin');
  if(roleError||typeof admin!=='boolean')throw new Error('Permissões do Narrador indisponíveis.');
+ const {data:profileResult,error:profileError}=await (supabase as unknown as SupabaseClient)
+  .rpc('current_campaign_profile');
+ if(profileError)throw new Error('Perfil de acesso da campanha indisponível.');
+ const profile:CampaignProfile|null=profileResult==='jogador'||profileResult==='editor'||profileResult==='narrador'?profileResult:null;
+ if((admin&&profile!=='narrador')||(!admin&&profile==='narrador'))
+  throw new Error('Perfil e autorização administrativa divergentes.');
  const {data:player,error:playerError}=await supabase.from('campaign_players')
   .select('id,active,require_password_change')
   .eq('user_id',user.id).maybeSingle();
  if(playerError)throw new Error('Permissões de jogador indisponíveis.');
- const {data:members,error:memberError}=player
+ const {data:members,error:memberError}=profile==='jogador'&&player
   ?await supabase.from('house_memberships')
    .select('house_id,can_edit,can_edit_attributes')
    .eq('player_id',player.id)
@@ -55,6 +65,7 @@ export async function loadCampaignAccessScope():Promise<CampaignAccessScope>{
  const scope={
   userId:user.id,
   admin,
+  profile,
   playerId:player?.id??null,
   active:player?.active??false,
   passwordChangeRequired:player?.require_password_change??false,
