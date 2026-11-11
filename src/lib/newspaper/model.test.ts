@@ -1,7 +1,8 @@
 import {describe,expect,it} from 'vitest';
 import {
  createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperResize,
- safeNewspaperBlocks,validateNewspaperEdition,type NewspaperEdition,
+ safeNewspaperBlocks,validateNewspaperEdition,reorderNewspaperBlocks,
+ duplicateNewspaperBlock,insertNewspaperBlockBefore,type NewspaperEdition,
 } from './model';
 
 const published={
@@ -34,6 +35,34 @@ describe('Jornal de Cormyr',()=>{
   expect(values[0]?.height).toBe(90);
   expect(values[0]?.text).toContain('<script>');
   expect(values[1]?.type).toBe('article');
+ });
+ it('permite arrastar, inserir e duplicar elementos sem modificar o objeto original',()=>{
+  const a=makeNewspaperBlock('headline'),b=makeNewspaperBlock('article'),c=makeNewspaperBlock('notice');
+  const blocks=[a,b,c];
+  const reordered=reorderNewspaperBlocks(blocks,c.id,a.id);
+  expect(reordered.map(x=>x.id)).toEqual([c.id,a.id,b.id]);
+  expect(blocks.map(x=>x.id)).toEqual([a.id,b.id,c.id]);
+  expect(reorderNewspaperBlocks(blocks,'missing',a.id)).toEqual(blocks);
+  const inserted=insertNewspaperBlockBefore(blocks,'notice',b.id);
+  expect(inserted.map(x=>x.type)).toEqual(['headline','notice','article','notice']);
+  const clone=duplicateNewspaperBlock(c);
+  expect(clone).toEqual({...c,id:clone.id});
+  expect(clone.id).not.toBe(c.id);
+ });
+ it('reaproveita filtros de gravura, selos e assinatura sem executar HTML',()=>{
+  const block=makeNewspaperBlock('notice');
+  expect(block.icon).toBe('⚜');
+  const image=makeNewspaperBlock('image');
+  expect(image.imageStyle).toBe('vintage');
+  expect(image.autoHeight).toBe(true);
+  const parsed=safeNewspaperBlocks([{id:'a',type:'image',text:'',imageStyle:'woodcut',autoHeight:false,span:5,height:190,
+    caption:'Fotografia antiga'},
+   {id:'b',type:'article',text:'Crônica',byline:'Escriba de Arabel',span:6,height:190},
+   {id:'c',type:'notice',text:'Decreto',icon:'<script>',span:6,height:160}]);
+  expect(parsed[0]?.imageStyle).toBe('woodcut');
+  expect(parsed[0]?.autoHeight).toBe(false);
+  expect(parsed[1]?.byline).toBe('Escriba de Arabel');
+  expect(parsed[2]?.icon).toBeUndefined();
  });
  it('notifica nova edição e alterações até leitura da versão atual',()=>{
   expect(newspaperIsUnread(published)).toBe(true);
