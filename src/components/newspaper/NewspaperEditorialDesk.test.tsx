@@ -18,7 +18,7 @@ function fixture():NewspaperEditorialProps{
   onPreview:vi.fn(),onPatch:vi.fn(),onSelectBlock:vi.fn(),
   onPatchBlock:vi.fn(),onAddBlock:vi.fn(),onRemoveBlock:vi.fn(),
   onMoveBlock:vi.fn(),onResizeBlock:vi.fn(),onUpload:vi.fn(),
-  onCancel:vi.fn(),onOtherModules:vi.fn(),onSignout:vi.fn(),
+  onCancel:vi.fn(),onSignout:vi.fn(),
  };
 }
 
@@ -33,13 +33,14 @@ describe('Redação A Folha Sem Selo',()=>{
   expect(screen.getAllByRole('button',{name:'Publicar Edição'}).every(button=>button.hasAttribute('disabled'))).toBe(true);
   expect(screen.getByText(/PRÉ-VISUALIZAÇÃO ILUSTRATIVA/)).toBeInTheDocument();
  });
- it('abre a redação de matérias com um clique e permite voltar aos outros módulos',()=>{
+ it('abre a redação com um clique mas não concede navegação de Casas',()=>{
   const props=fixture();render(<NewspaperEditorialDesk {...props}/>);
   fireEvent.click(screen.getByRole('button',{name:'Escrever Matéria'}));
   expect(props.onNew).toHaveBeenCalledWith('article');
   fireEvent.click(screen.getByRole('button',{name:'Configurações'}));
-  fireEvent.click(screen.getByRole('button',{name:'Abrir outros módulos de Cormyr'}));
-  expect(props.onOtherModules).toHaveBeenCalledOnce();
+  expect(screen.queryByRole('button',{name:/outros módulos de cormyr/i})).not.toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Missivas'})).not.toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Ficha'})).not.toBeInTheDocument();
  });
  it('mostra Pautas e Correspondentes sem prometer dados não implementados',()=>{
   render(<NewspaperEditorialDesk {...fixture()}/>);
