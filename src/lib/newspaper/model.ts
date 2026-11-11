@@ -17,7 +17,7 @@ export type NewspaperEdition={
   id:string;edition_no:number;campaign_date:string;title:string;subtitle:string;
   template:NewspaperTemplate;font_style:NewspaperFont;
   state:NewspaperState;blocks:NewspaperBlock[];pdf_path:string|null;
-  version:number;created_by:string;updated_at:string;published_at:string|null;
+  version:number;publication_revision:number;created_by:string;updated_at:string;published_at:string|null;
   archived_at:string|null;cancelled_at:string|null;
 };
 export type NewspaperRead={newspaper_id:string;user_id:string;read_version:number;read_at:string};
@@ -80,7 +80,8 @@ export function newspaperResize(current:NewspaperBlock,dx:number,dy:number,colum
   height:clampNewspaperHeight(current.height+dy)};
 }
 export function newspaperIsUnread(edition:NewspaperEdition,receipt?:NewspaperRead):boolean{
- return ['published','archived'].includes(edition.state)&&(!receipt||receipt.read_version<edition.version);
+ return ['published','archived'].includes(edition.state)&&edition.publication_revision>0&&
+  (!receipt||receipt.read_version<edition.publication_revision);
 }
 export function newspaperStatus(state:NewspaperState):string{
  return {draft:'Rascunho',published:'Publicada',archived:'Arquivada',cancelled:'Envio cancelado'}[state];
