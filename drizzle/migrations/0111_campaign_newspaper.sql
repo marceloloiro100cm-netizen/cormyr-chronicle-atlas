@@ -135,7 +135,7 @@ CREATE TRIGGER stamp_campaign_newspaper_trigger BEFORE INSERT OR UPDATE
  EXECUTE FUNCTION public.stamp_campaign_newspaper();
 
 CREATE OR REPLACE FUNCTION public.audit_campaign_newspaper()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
 BEGIN
   INSERT INTO public.campaign_newspaper_revisions
     (newspaper_id,previous_version,snapshot,changed_by)
@@ -196,7 +196,7 @@ BEGIN
    SET read_version=EXCLUDED.read_version,read_at=now();
   RETURN v.publication_revision;
 END;
-$;
+$$;
 REVOKE ALL ON FUNCTION public.mark_campaign_newspaper_read(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.mark_campaign_newspaper_read(uuid) TO authenticated;
 
