@@ -1,4 +1,10 @@
-@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@600%3B700&family=EB+Garamond:wght@400%3B500%3B600%3B700&family=UnifrakturMaguntia&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400%3B500%3B600%3B700&display=swap");
+/* Fontes do título e dos cabeçalhos hospedadas no próprio site (licença OFL em /newspaper/fonts):
+   o título gótico aparece já na primeira pintura, sem trocar de fonte nem depender do Google. */
+@font-face{font-family:'UnifrakturMaguntia';font-style:normal;font-weight:400;font-display:block;
+ src:url("/newspaper/fonts/UnifrakturMaguntia-Book.woff") format("woff")}
+@font-face{font-family:'Cinzel';font-style:normal;font-weight:400 900;font-display:block;
+ src:url("/newspaper/fonts/Cinzel-Variable.woff") format("woff")}
 /* O Jornal possui cores próprias sem alterar os temas das Casas ou Missivas. */
 .newspaper-hub{
  --news-paper:#f4e7c8;--news-paper-dark:#e5d0a4;--news-ink:#33281a;
@@ -327,3 +333,14 @@
 /* Blocos de largura total não precisam do fio lateral. */
 .newspaper-story[style*="span 12"]{border-right:0;padding-right:0}
 @media(max-width:480px){.newspaper-page-folio{flex-direction:column;gap:2px}}
+
+/* ---- Melhorias 12/11/2026: recorte por arraste, ferramentas de edição, agenda ---- */
+.newspaper-image-crop{overflow:hidden}
+.newspaper-image-crop img.newspaper-img-fixed{width:100%;object-fit:cover;transition:none}
+.newspaper-image-crop-active{cursor:grab;touch-action:none;outline:2px dashed #7c3b68;outline-offset:-3px}
+.newspaper-image-crop-active:active{cursor:grabbing}
+.newspaper-reading-time{font-weight:600;font-style:italic;letter-spacing:.02em}
+.newspaper-edition-steps{display:flex;gap:8px;flex-wrap:wrap;margin-right:auto}
+.newspaper-edition-steps button{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid #b99a5c;
+ border-radius:5px;background:#2a1a2c;color:#f4dbac;font:.78rem system-ui,sans-serif;cursor:pointer}
+.newspaper-edition-steps button:disabled{opacity:.4;cursor:not-allowed}

@@ -2,13 +2,16 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 import {supabase} from '@/integrations/supabase/client';
 import {publicCampaignTimeProjection} from '@/lib/calendar/public-time';
 import {
- PAPER_BUCKET,COMMISSION_BUCKET,STAFF_BUCKET,ENGRAVINGS_BUCKET,type NewspaperEngraving,safeNewspaperSettings,type NewspaperSettings,safeNewspaperBlocks,type StoryModel,type NewspaperStaffMember,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
+ PAPER_BUCKET,COMMISSION_BUCKET,STAFF_BUCKET,ENGRAVINGS_BUCKET,NEWSPAPER_ENGRAVINGS,type NewspaperEngraving,safeNewspaperSettings,type NewspaperSettings,safeNewspaperBlocks,type StoryModel,type NewspaperStaffMember,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
  type NewspaperTemplate,type NewspaperFont,type NewspaperBlock,
 } from './model';
 
 // Os direitos de acesso são sempre conferidos pelo PostgreSQL (RLS), jamais pela UI.
 const db=supabase as unknown as SupabaseClient;
 export async function getNewspaperEditions():Promise<NewspaperEdition[]>{
+ // Publicação agendada: o banco publica os rascunhos cuja data do Reino chegou. Falha aqui nunca
+ // impede a leitura (por exemplo, antes de a migration 0122 existir).
+ try{await db.rpc('publish_due_campaign_newspapers');}catch{/* segue sem publicar */}
  const {data,error}=await db.from('campaign_newspapers').select('*')
   .order('edition_no',{ascending:false}).limit(300);
  if(error)throw error;
@@ -36,6 +39,7 @@ export async function createNewspaperEdition(input:{
 export async function updateNewspaperEdition(current:NewspaperEdition,input:{
  campaign_date:string;title:string;subtitle:string;template:NewspaperTemplate;
  font_style:NewspaperFont;blocks:NewspaperBlock[];pdf_path:string|null;state:NewspaperState;
+ publish_on?:string|null;
 }):Promise<NewspaperEdition>{
  const {data,error}=await db.from('campaign_newspapers').update(input)
   .eq('id',current.id).eq('version',current.version).select('*').maybeSingle();
@@ -243,10 +247,21 @@ export async function setEngravingInCollection(id:string,inCollection:boolean):P
  const {error}=await db.from('campaign_newspaper_engravings').update({in_collection:inCollection}).eq('id',id);
  if(error)throw error;
 }
-export async function deleteEngraving(id:string,path:string):Promise<void>{
+export async function deleteEngraving(id:string,path:string|null):Promise<void>{
  const {error}=await db.from('campaign_newspaper_engravings').delete().eq('id',id);
  if(error)throw error;
- await db.storage.from(ENGRAVINGS_BUCKET).remove([path]);
+ // Gravuras originais do site não têm arquivo no armazenamento; só as enviadas têm.
+ if(path)await db.storage.from(ENGRAVINGS_BUCKET).remove([path]);
+}
+/** Devolve ao acervo as gravuras originais do site que o Editor-Chefe havia excluído. */
+export async function restoreOriginalEngravings(existing:readonly NewspaperEngraving[]):Promise<number>{
+ const have=new Set(existing.map(e=>e.public_src).filter((v):v is string=>Boolean(v)));
+ const missing=NEWSPAPER_ENGRAVINGS.filter(e=>!have.has(e.src));
+ if(missing.length===0)return 0;
+ const {error}=await db.from('campaign_newspaper_engravings')
+  .insert(missing.map(e=>({name:e.label,public_src:e.src,in_collection:true})));
+ if(error)throw error;
+ return missing.length;
 }
 
 // ---- Configurações do jornal e data pública do HUB ----

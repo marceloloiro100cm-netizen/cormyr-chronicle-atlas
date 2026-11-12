@@ -477,3 +477,22 @@
 /* Em Gravuras do Reino a imagem aparece inteira dentro do quadrado (sem corte). */
 .folha-engraving-square img{object-fit:contain}
 .folha-date-today{display:block;margin-top:6px;font:italic .78rem Georgia,serif;color:#5d3f2a}
+
+/* ---- Melhorias 12/11/2026 ---- */
+.folha-edition-switch .folha-step{padding:6px 8px;display:inline-flex;align-items:center}
+.folha-edit-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;padding:8px 10px;
+ border:1px solid #c9a96d;border-radius:8px;background:#f7e6c0}
+.folha-edit-tools button{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border:1px solid #b38b58;
+ border-radius:6px;background:#fff6dc;color:#3d1f35;font:600 .8rem system-ui,sans-serif;cursor:pointer}
+.folha-edit-tools button:hover:not(:disabled){background:#f0d5a4}
+.folha-edit-tools button:disabled{opacity:.45;cursor:not-allowed}
+.folha-edit-tools-sep{width:1px;align-self:stretch;background:#c9a96d;margin:0 4px}
+.folha-edit-tools small{flex-basis:100%;font:.72rem/1.35 system-ui,sans-serif;color:#6d4f33}
+.folha-word-count,.folha-word-total{font:.74rem system-ui,sans-serif;color:#77563a}
+.folha-schedule{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid #c9a96d}
+.folha-schedule strong{display:flex;align-items:center;gap:6px}
+.folha-schedule p{margin:0;font-size:.8rem}
+.folha-schedule-actions{display:flex;flex-wrap:wrap;gap:6px}
+.folha-schedule-actions button{padding:6px 10px;border:1px solid #b38b58;border-radius:6px;background:#fff6dc;
+ color:#3d1f35;font:600 .78rem system-ui,sans-serif;cursor:pointer}
+.folha-engraving-origin{color:#77563a;font-style:italic}

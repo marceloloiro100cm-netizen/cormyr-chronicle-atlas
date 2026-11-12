@@ -106,15 +106,20 @@
 - Status da Edição: os rótulos estavam trocados ("Pronta para revisão" quando havia conteúdo). Agora: "Pronta para publicar" ou "Falta conteúdo para publicar".
 - Gravuras fixas: `conselho_real.jpg` e `mercado_suzail.jpg` caíram de 1,3 MB para cerca de 350 KB cada; `castelo_cormyr.jpg` tinha só 341 px de largura e foi ampliada para 1024 px (continua sendo a de menor nitidez).
 
-**Melhorias mapeadas, ainda não feitas**
+**Melhorias mapeadas (12/11/2026): feitas em seguida**
 
-1. Trocar `castelo_cormyr.jpg` por uma gravura em alta resolução (pode ser enviada em Gravuras do Reino).
-2. Converter os brasões PNG (770 KB e 297 KB) para WebP, para o jornal abrir mais rápido no celular.
-3. A fonte gótica do título da folha vem do Google Fonts; hospedar o arquivo no próprio site evita o título trocar de fonte durante o carregamento.
-4. Desfazer (Ctrl+Z) na edição da folha; hoje o caminho é o Histórico de revisões.
-5. Contagem de palavras por matéria e aviso de texto muito longo para a coluna.
-6. Agendar publicação para uma data do Reino.
-7. No leitor, navegação "edição anterior / próxima" e botão para voltar ao topo.
-8. Recorte da imagem com arraste (hoje: Topo, Centro, Base).
+1. Gravura do castelo: continua sendo a de menor nitidez (a fonte tem só 341 px). Agora o Editor-Chefe pode excluí-la do acervo e enviar uma melhor em Matérias > Gravuras do Reino. Nenhuma imagem nova foi inventada.
+2. Brasões em WebP: `brasao_folha.webp` (155 KB, antes 770 KB) e `brasao_reino.webp` (60 KB, antes 297 KB).
+3. Fontes do título (UnifrakturMaguntia) e dos cabeçalhos (Cinzel) hospedadas em `public/newspaper/fonts` (licença OFL junto). Só o corpo de texto (EB Garamond) ainda vem do Google Fonts.
+4. Desfazer e refazer (Ctrl+Z, Ctrl+Y ou Ctrl+Shift+Z) para texto, blocos, imagens, data e identidade da edição aberta, até 100 passos; alterações seguidas em menos de 0,8 s (arrastar) contam como um passo. Também há botões na barra acima da folha.
+5. Copiar, recortar e colar blocos: Ctrl+C, Ctrl+X, Ctrl+V (e Ctrl+D duplica, Delete remove) quando o foco está no bloco (clique na borda ou na alça ⠿). Dentro de um texto valem as teclas normais do navegador. Colar aceita bloco copiado (inclusive de outra edição, copiando a imagem), imagem da área de transferência (vira bloco de imagem) e texto simples (vira matéria). Blocos colados nunca herdam o vínculo com notícias contratadas.
+6. Contagem de palavras por bloco, na lista de matérias, no painel do bloco e no total da edição com tempo de leitura; o leitor vê "Leitura: cerca de N min".
+7. Publicação agendada: coluna `publish_on`, escolhida no cartão "Publicação agendada" do Status da Edição. A função `publish_due_campaign_newspapers()` compara a data com o relógio do HUB e publica os rascunhos vencidos; é chamada sempre que alguém carrega a lista de edições (editor ou jogador), então a publicação acontece no primeiro acesso depois da data, não em hora exata. Ela fica registrada nas revisões como ação da conta que carregou a lista.
+8. Navegação entre edições: "Edição anterior / Próxima edição" para o leitor e setas ao lado do seletor de edição na Redação.
+9. Recorte de imagem por arraste: com altura fixa e o bloco selecionado, arraste a imagem na folha; o controle "Ampliação do recorte" vai de 100% a 300%. Topo, Centro e Base continuam como atalhos.
 
-A migration 0121 precisa ser executada no banco (o commit não aplica SQL). Não foi homologada nem teve backup prévio.
+**Acervo de gravuras editável**
+
+As três gravuras originais agora são linhas da tabela `campaign_newspaper_engravings` (coluna `public_src`), aparecem em Gravuras do Reino com a marca "original do Reino" e podem ser mantidas, tiradas do acervo (bolinha) ou excluídas. O botão "Restaurar gravuras originais do Reino" as devolve. Excluir do acervo nunca altera edições já publicadas: o código continua reconhecendo os três arquivos.
+
+A migration 0122 precisa ser executada no banco (o commit não aplica SQL). Não foi homologada nem teve backup prévio.

@@ -29,6 +29,10 @@ export type NewspaperBlock={
   autoHeight?:boolean;
   /** Com altura fixa, qual parte da imagem fica visível (padrão: centro). */
   imageFocus?:NewspaperImageFocus;
+  /** Recorte livre da imagem (arraste): ponto de foco em % e ampliação de 1x a 3x. */
+  focusX?:number;
+  focusY?:number;
+  cropZoom?:number;
   span:number;
   height:number;
 };
@@ -38,6 +42,8 @@ export type NewspaperEdition={
   state:NewspaperState;blocks:NewspaperBlock[];pdf_path:string|null;
   version:number;publication_revision:number;created_by:string;updated_at:string;published_at:string|null;
   archived_at:string|null;cancelled_at:string|null;
+  /** Data do Reino em que o rascunho é publicado sozinho (null: sem agendamento). */
+  publish_on?:string|null;
 };
 /** Versão anterior da edição guardada pelo banco a cada salvamento (só o Editor-Chefe lê). */
 export type NewspaperRevision={
@@ -133,6 +139,9 @@ export function safeNewspaperBlocks(value:unknown):NewspaperBlock[]{
   ...(x['imageStyle']==='vintage'||x['imageStyle']==='woodcut'||x['imageStyle']==='original'?{imageStyle:x['imageStyle'] as NewspaperImageStyle}:{}),
   ...(typeof x['autoHeight']==='boolean'?{autoHeight:x['autoHeight']}:{}),
   ...(x['imageFocus']==='top'||x['imageFocus']==='center'||x['imageFocus']==='bottom'?{imageFocus:x['imageFocus'] as NewspaperImageFocus}:{}),
+  ...(typeof x['focusX']==='number'&&Number.isFinite(x['focusX'])?{focusX:Math.min(100,Math.max(0,x['focusX']))}:{}),
+  ...(typeof x['focusY']==='number'&&Number.isFinite(x['focusY'])?{focusY:Math.min(100,Math.max(0,x['focusY']))}:{}),
+  ...(typeof x['cropZoom']==='number'&&Number.isFinite(x['cropZoom'])?{cropZoom:Math.min(3,Math.max(1,x['cropZoom']))}:{}),
   span:clampNewspaperSpan(Number(x['span'])),
   height:clampNewspaperHeight(Number(x['height'])),
  }));
@@ -220,7 +229,7 @@ export function commissionInEdition(edition:Pick<NewspaperEdition,'blocks'>|null
 export function newspaperIsDirty(draft:NewspaperEdition|null|undefined,saved:NewspaperEdition|null|undefined):boolean{
  if(!draft||!saved||draft.id!==saved.id)return false;
  const pick=(e:NewspaperEdition)=>JSON.stringify([
-  e.campaign_date,e.title,e.subtitle,e.template,e.font_style,e.blocks,e.pdf_path,e.state]);
+  e.campaign_date,e.title,e.subtitle,e.template,e.font_style,e.blocks,e.pdf_path,e.state,e.publish_on??null]);
  return pick(draft)!==pick(saved);
 }
 export function moveNewspaperBlock(blocks:readonly NewspaperBlock[],id:string,direction:-1|1):NewspaperBlock[]{
@@ -313,7 +322,8 @@ export function validateStoryModel(input:{name:string;description:string;blocks:
 export function duplicatedStoryModelName(name:string):string{return `Cópia de ${name}`.slice(0,80);}
 
 // ---- Gravuras do Reino enviadas pelo Editor-Chefe ----
-export type NewspaperEngraving={id:string;name:string;image_path:string;in_collection:boolean;created_at:string};
+/** Gravura do acervo: enviada (image_path no bucket privado) ou original do site (public_src). */
+export type NewspaperEngraving={id:string;name:string;image_path:string|null;public_src:string|null;in_collection:boolean;created_at:string};
 export const ENGRAVINGS_BUCKET='campaign-newspaper-engravings';
 /** Gravuras marcadas para o acervo, na ordem de envio. */
 export function collectionEngravings(list:readonly NewspaperEngraving[]):NewspaperEngraving[]{
