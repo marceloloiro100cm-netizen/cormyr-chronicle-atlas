@@ -91,3 +91,34 @@
 .harptos-chronology-items small{font-size:12px;color:var(--muted-foreground)}
 .harptos-chronology>details>summary{cursor:pointer;font-weight:650}
 #temporal-cronologia{scroll-margin-top:24px}
+
+/* Header do calendário: a rosa dos ventos acompanha a introdução à direita,
+   sem criar uma faixa vazia entre as informações e a legenda. */
+.harptos-intro{
+ display:grid;
+ grid-template-columns:minmax(0,1fr) 148px;
+ column-gap:clamp(16px,3vw,32px);
+ align-items:center;
+ margin-bottom:18px;
+}
+.harptos-intro-copy{min-width:0}
+.harptos-intro-copy>h2{margin-top:0}
+.harptos-intro .harptos-compass{
+ width:148px;
+ height:148px;
+ max-width:100%;
+ justify-self:end;
+ align-self:center;
+ margin:0;
+ flex:none;
+ color:#bda16d;
+}
+.harptos-intro .harptos-months{min-width:0}
+@media(max-width:620px){
+ .harptos-intro{grid-template-columns:minmax(0,1fr) 100px;column-gap:12px;margin-bottom:14px}
+ .harptos-intro .harptos-compass{width:100px;height:100px}
+}
+@media(max-width:380px){
+ .harptos-intro{grid-template-columns:minmax(0,1fr) 72px;column-gap:8px}
+ .harptos-intro .harptos-compass{width:72px;height:72px}
+}
