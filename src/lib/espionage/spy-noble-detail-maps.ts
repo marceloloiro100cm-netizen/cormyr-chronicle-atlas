@@ -14,6 +14,7 @@
  * public/maps/espionage/stonelands.webp (1536 x 1024)
  * public/maps/espionage/swordmark.png (1536 x 1024)
  * public/maps/espionage/veilstone.png (1536 x 1024)
+ * public/maps/espionage/elfhold.jpg (1536 x 1024)
  */
 export type NobleMapPoint={x:number;y:number};
 export type NobleDetailMap={
@@ -129,6 +130,23 @@ const stonelands:Record<string,NobleMapPoint>={
  * visible in the Narrator's 1536 x 1024 cartography, 11/11/2026.
  * Coordinates are illustrative, not authoritative travel distances.
  */
+/** Elfhold: 12 identified standards in the Narrator map (1536 x 1024).
+ * Cartographic placements do not determine official travel duration.
+ */
+const elfhold:Record<string,NobleMapPoint>={
+ thalthallow:{x:354,y:181},
+ drauthglas:{x:693,y:151},
+ sauvrurn:{x:929,y:179},
+ melliholli:{x:1193,y:153},
+ lorelei:{x:297,y:341},
+ tathcrown:{x:348,y:501},
+ haldoneir:{x:319,y:658},
+ arcantlet:{x:584,y:680},
+ vaylan:{x:901,y:408},
+ dagohnlar:{x:1226,y:411},
+ ridinghound:{x:1175,y:593},
+ roaringhorn:{x:1001,y:732},
+};
 const swordmark:Record<string,NobleMapPoint>={
  thundersword:{x:771,y:107},
  thistle:{x:413,y:224},
@@ -184,6 +202,10 @@ const aliases:Record<string,string>={
  silversky:'silversky',
 };
 export const SPY_NOBLE_DETAIL_MAPS:Readonly<Record<string,NobleDetailMap>>={
+ elfhold:{
+  name:'Elfhold',src:'/maps/espionage/elfhold.jpg',
+  width:1536,height:1024,houses:elfhold,
+ },
  swordmark:{
   name:'Marca da Espada',src:'/maps/espionage/swordmark.png',
   width:1536,height:1024,houses:swordmark,

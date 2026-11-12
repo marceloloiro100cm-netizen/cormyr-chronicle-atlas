@@ -10,7 +10,7 @@ afterEach(cleanup);
 describe('Cartografia detalhada no planejador de espionagem',()=>{
  it('preserva os seis mapas e as dimensões originais do Narrador',()=>{
   expect(Object.keys(SPY_NOBLE_DETAIL_MAPS).sort()).toEqual(
-   ['crownlands','dragoncoast','ferlin','helmlands','horselands','shieldmark','stonelands','swordmark','veilstone','volkumburgh']);
+   ['crownlands','dragoncoast','elfhold','ferlin','helmlands','horselands','shieldmark','stonelands','swordmark','veilstone','volkumburgh']);
   for(const region of ['crownlands','helmlands','shieldmark']){
    expect(SPY_NOBLE_DETAIL_MAPS[region]).toMatchObject({
     width:1536,height:1024,src:'/maps/espionage/'+region+'.webp'});
@@ -152,6 +152,44 @@ describe('Cartografia detalhada no planejador de espionagem',()=>{
    expect(bytes.length).toBeGreaterThan(200_000);
    expect([...bytes.subarray(0,8)]).toEqual([137,80,78,71,13,10,26,10]);
   }
+ });
+ it('Elfhold exibe as 12 Casas e compartilha a imagem entre Reino e Espionagem',()=>{
+  const map=SPY_NOBLE_DETAIL_MAPS['elfhold']!;
+  expect(map).toMatchObject({
+   src:'/maps/espionage/elfhold.jpg',width:1536,height:1024,
+  });
+  const names=[
+   'Thalthallow','Drauthglas','Sauvrurn','Melliholli',
+   'Lorelei','Tathcrown','Haldoneir','Arcantlet',
+   'Vaylan','Dagohnlar','Ridinghound','Roaringhorn',
+  ];
+  expect(Object.keys(map.houses)).toHaveLength(12);
+  for(const name of names){
+   const point=spyHouseMapPoint('elfhold',name)!;
+   expect(point).not.toBeNull();
+   expect(point.x).toBeGreaterThan(0);
+   expect(point.x).toBeLessThan(map.width);
+   expect(point.y).toBeGreaterThan(0);
+   expect(point.y).toBeLessThan(map.height);
+  }
+  expect(new Set(Object.values(map.houses).map(p=>p.x+','+p.y)).size).toBe(12);
+  expect(spyHouseMapPoint('elfhold','Casa desconhecida')).toBeNull();
+  const catalog=JSON.parse(readFileSync('public/cormyr/data.js','utf8')
+   .replace(/^window\.CORMYR_DATA\s*=\s*/,'').replace(/;\s*$/,''));
+  expect(catalog.regions.find((region:{name:string})=>region.name==='Elfhold')
+   ?.map?.src).toBe(map.src);
+  const bytes=readFileSync('public'+map.src);
+  expect(bytes.length).toBeGreaterThan(200_000);
+  expect([...bytes.subarray(0,3)]).toEqual([255,216,255]);
+  const {container}=render(<SpyLocalHouseMap regionId="elfhold"
+   originHouseId="vaylan" originHouseName="Vaylan"
+   destinationHouseId="arcantlet" destinationHouseName="Arcantlet"
+   plan={null} onSelectRegion={vi.fn()}/>);
+  expect(container.querySelector('img')).toHaveAttribute('src',map.src);
+  expect(container.querySelector('svg.spy-noble-map-overlay'))
+   .toHaveAttribute('viewBox','0 0 1536 1024');
+  expect(container.querySelectorAll('.spy-noble-local-pin')).toHaveLength(2);
+  expect(container.querySelector('.spy-noble-local-route')).not.toBeNull();
  });
  it('usa linha fina, marfim e dourado, sem seta vermelha',()=>{
   const css=readFileSync('src/components/house/espionage/spy-local-house-map.css','utf8');

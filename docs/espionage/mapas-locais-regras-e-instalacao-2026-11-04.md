@@ -50,3 +50,10 @@ Os mapas devem ser publicados **junto aos arquivos WebP originais otimizados**, 
 Em **Reino e Regiões**, `public/cormyr/data.js` referencia o mesmo ativo da Espionagem, evitando versões conflitantes. O CSS preserva todo o enquadramento para o formato vertical de Ferlin e o horizontal de Stonelands, sem corte. Em Espionagem, as posições dos estandartes são coordenadas de pixels da imagem original e servem apenas de orientação visual. O processo de deslocamento, probabilidades e a regra de mostrar mapa geral quando a região é diferente permanecem inalterados.
 
 A suíte de testes exige os dois WebP antes da integração, para impedir que uma publicação parcial quebre as imagens do atlas. Após anexar os dois arquivos em `public/maps/espionage/`, validar os testes de `src/test/espionage-noble-detail-maps.test.tsx` e o carregamento HTTP 200 dos dois ativos no domínio publicado.
+
+## Elfhold (11/11/2026)
+- Arquivo do Narrador: 1536 × 1024 pixels, codificado como JPEG. Publicado como `public/maps/espionage/elfhold.jpg` (extensão fiel ao conteúdo original).
+- O cadastro de Elfhold em `public/cormyr/data.js` e o planejador em `src/lib/espionage/spy-noble-detail-maps.ts` referenciam **o mesmo arquivo**.
+- As 12 Casas com estandarte identificado foram posicionadas: Thalthallow, Drauthglas, Sauvrurn, Melliholli, Lorelei, Tathcrown, Haldoneir, Arcantlet, Vaylan, Dagohnlar, Ridinghound, Roaringhorn.
+- Os marcadores são ilustrativos e só aparecem para o trajeto local já autorizado. O mapa geral, os cálculos e a homologação de deslocamento permanecem inalterados.
+- Testes de integridade JPEG, proporções, pontos distintos, sincronização de catálogo e rota de Vaylan para Arcantlet.
