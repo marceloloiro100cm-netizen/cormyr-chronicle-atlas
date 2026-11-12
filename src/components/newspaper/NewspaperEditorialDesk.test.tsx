@@ -105,7 +105,7 @@ describe('Redação A Folha Sem Selo',()=>{
   expect(screen.getByLabelText('1 notícia(s) contratada(s) pendente(s)')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:/Anúncios/}));
   expect(screen.getByText('Grande feira em Suzail')).toBeInTheDocument();
-  expect(screen.getByText(/Casa Crownsilver/)).toBeInTheDocument();
+  expect(screen.getByText(/^Casa Crownsilver ·/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Inserir na edição e editar'}));
   expect(p.onInsertCommission).toHaveBeenCalledWith(p.pendingCommissions[0]);
  });

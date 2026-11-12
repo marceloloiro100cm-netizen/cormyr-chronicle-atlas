@@ -358,7 +358,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
        <p>Clique para inserir ou arraste um elemento para a folha. Escreva diretamente nos textos; puxe ↘ para redimensionar.</p>
        <div className="folha-element-list">
         <button type="button" draggable onDragStart={e=>toolboxDrag(e,'headline')} onClick={()=>insert('headline')}><span>☷</span> Título</button>
-        <button type="button" draggable onDragStart={e=>toolboxDrag(e,'subtitle')} onClick={()=>insert('subtitle',12)}><span>Tᵗ</span> Subtítulo</button>
+        <button type="button" draggable onDragStart={e=>toolboxDrag(e,'subtitle')} onClick={()=>insert('subtitle',12)}><span aria-hidden="true">Tᵗ</span> Subtítulo</button>
         <button type="button" draggable onDragStart={e=>toolboxDrag(e,'image')} onClick={()=>insert('image')}><ImagePlus size={17}/> Imagem</button>
         <button type="button" draggable onDragStart={e=>toolboxDrag(e,'article')} onClick={()=>insert('article',4)}><Columns3 size={17}/> Coluna</button>
         <button type="button" draggable onDragStart={e=>toolboxDrag(e,'quote')} onClick={()=>insert('quote')}><Quote size={17}/> Citação</button>
