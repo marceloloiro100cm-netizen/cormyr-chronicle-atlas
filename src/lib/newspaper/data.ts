@@ -1,7 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {supabase} from '@/integrations/supabase/client';
 import {
- PAPER_BUCKET,COMMISSION_BUCKET,STAFF_BUCKET,type NewspaperStaffMember,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
+ PAPER_BUCKET,COMMISSION_BUCKET,STAFF_BUCKET,safeNewspaperBlocks,type StoryModel,type NewspaperStaffMember,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
  type NewspaperTemplate,type NewspaperFont,type NewspaperBlock,
 } from './model';
 
@@ -180,4 +180,30 @@ export async function getPublishedScheduleEvents(year:number,month:number):Promi
  const {data,error}=await db.rpc('get_campaign_schedule_events',{p_year:year,p_month:month});
  if(error)throw error;
  return (data??[]) as {id:string;date:string;title:string;description?:string;kind:'kingdom'}[];
+}
+
+// ---- Modelos de matéria e exclusão do Arquivo ----
+export async function getStoryModels():Promise<StoryModel[]>{
+ const {data,error}=await db.from('campaign_newspaper_story_models').select('*')
+  .order('created_at',{ascending:true}).limit(100);
+ if(error)throw error;
+ return ((data??[]) as {id:string;name:string;description:string;blocks:unknown}[]).map(r=>({
+  id:r.id,name:r.name,description:r.description,builtin:false,blocks:safeNewspaperBlocks(r.blocks),
+ }));
+}
+export async function saveStoryModel(input:{id?:string;name:string;description:string;blocks:NewspaperBlock[]}):Promise<void>{
+ const row={name:input.name.trim(),description:input.description.trim(),blocks:input.blocks,
+  updated_at:new Date().toISOString()};
+ const result=input.id?await db.from('campaign_newspaper_story_models').update(row).eq('id',input.id)
+  :await db.from('campaign_newspaper_story_models').insert(row);
+ if(result.error)throw result.error;
+}
+export async function deleteStoryModel(id:string):Promise<void>{
+ const {error}=await db.from('campaign_newspaper_story_models').delete().eq('id',id);
+ if(error)throw error;
+}
+/** Exclui qualquer edição do Arquivo; o número volta a ficar livre para a próxima. */
+export async function deleteNewspaperEdition(id:string):Promise<void>{
+ const {error}=await db.rpc('delete_campaign_newspaper',{p_newspaper:id});
+ if(error)throw error;
 }

@@ -24,6 +24,7 @@ function fixture():NewspaperEditorialProps{
   hubDate:'1522-01-01',
   pendingCommissions:[],houseNames:new Map(),
   onInsertCommission:vi.fn(),onShowCommission:vi.fn(),onRejectCommission:vi.fn(),
+  storyModels:[],onUseStoryModel:vi.fn(),onSaveStoryModel:vi.fn(async()=>true),onDeleteStoryModel:vi.fn(),onDeleteEdition:vi.fn(),
   staff:[],onSaveStaff:vi.fn(async()=>true),onDeleteStaff:vi.fn(),onWriteAboutDate:vi.fn(),
   revisions:[],onRestoreRevision:vi.fn(),onUseEngraving:vi.fn(),
   dirty:false,onDiscard:vi.fn(),onDeleteDraft:vi.fn(),
@@ -221,5 +222,39 @@ describe('Redação A Folha Sem Selo',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Arquivo'}));
   fireEvent.click(screen.getByRole('button',{name:'Restaurar'}));
   expect(p.onRestoreRevision).toHaveBeenCalledWith(p.revisions[0]);
+ });
+ it('Matérias oferece os 6 modelos, usa um e duplica com novo nome',async()=>{
+  const p=fixture();
+  p.storyModels=[{id:'m1',name:'Meu modelo',description:'',builtin:false,blocks:[]}];
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Matérias'}));
+  expect(screen.getByText('Escolha o modelo que você quer utilizar.')).toBeInTheDocument();
+  expect(screen.getAllByRole('button',{name:'Usar este modelo'})).toHaveLength(7);
+  fireEvent.click(screen.getAllByRole('button',{name:'Usar este modelo'})[0]!);
+  expect(p.onUseStoryModel).toHaveBeenCalledWith(expect.objectContaining({id:'builtin-corte'}));
+  fireEvent.click(screen.getByRole('button',{name:'Duplicar Entrevista'}));
+  const name=screen.getByLabelText('Nome do modelo') as HTMLInputElement;
+  expect(name.value).toBe('Cópia de Entrevista');
+  fireEvent.change(name,{target:{value:'Entrevista da Corte'}});
+  fireEvent.click(screen.getByRole('button',{name:'Salvar modelo'}));
+  await Promise.resolve();
+  expect(p.onSaveStoryModel).toHaveBeenCalledWith(expect.objectContaining({name:'Entrevista da Corte'}));
+ });
+ it('o Arquivo tem lixeira por edição e o selo do aviso é uma fileira de botões',()=>{
+  const p=fixture();
+  const e={
+   id:'00000000-0000-4000-8000-000000000002',edition_no:2,campaign_date:'1522-01-01',
+   title:'A Folha Sem Selo',subtitle:'',template:'classico' as const,font_style:'classico' as const,
+   state:'cancelled' as const,pdf_path:null,version:1,publication_revision:0,created_by:'l',
+   updated_at:'',published_at:null,archived_at:null,cancelled_at:null,
+   blocks:[{id:'n1',type:'notice' as const,text:'Notas\n\nTexto',icon:'⚜',span:6,height:150}],
+  };
+  p.history=[e];p.current={...e,state:'draft'};p.editing=true;p.selectedBlockId='n1';
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Selo ⚠'}));
+  expect(p.onPatchBlock).toHaveBeenCalledWith('n1',{icon:'⚠'});
+  fireEvent.click(screen.getByRole('button',{name:'Arquivo'}));
+  fireEvent.click(screen.getByRole('button',{name:'Excluir edição nº 2'}));
+  expect(p.onDeleteEdition).toHaveBeenCalledWith(e);
  });
 });

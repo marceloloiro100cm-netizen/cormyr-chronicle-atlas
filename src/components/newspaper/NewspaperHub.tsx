@@ -11,7 +11,7 @@ import {CommissionForm,CommissionInbox} from './NewspaperCommissions';
 import {
  copyCommissionImageToEdition,createNewspaperEdition,deleteNewspaperDraft,getHouseNames,getNewspaperCommissions,rejectNewspaperCommission,
  getNewspaperEditions,getNewspaperReceipts,getNewspaperRevisions,getNewspaperStaff,saveNewspaperStaff,
- deleteNewspaperStaff,uploadStaffPhoto,
+ deleteNewspaperStaff,uploadStaffPhoto,getStoryModels,saveStoryModel,deleteStoryModel,deleteNewspaperEdition,
  markNewspaperRead,updateNewspaperEdition,uploadNewspaperAsset,
 } from '@/lib/newspaper/data';
 import {
@@ -20,7 +20,7 @@ import {
  reorderNewspaperBlocks,duplicateNewspaperBlock,
  NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,validateNewspaperEdition,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperState,
- type NewspaperTemplate,type NewspaperRevision,type NewspaperStaffMember,
+ type NewspaperTemplate,type NewspaperRevision,type NewspaperStaffMember,type StoryModel,instantiateStoryModel,
 } from '@/lib/newspaper/model';
 import './newspaper.css';
 
@@ -65,6 +65,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
  const staffQuery=useQuery({queryKey:['campaign-newspaper-staff'],queryFn:getNewspaperStaff,
   enabled:editor&&editorial,staleTime:60_000,retry:false});
  const staff=staffQuery.data??[];
+ const modelsQuery=useQuery({queryKey:['campaign-newspaper-story-models'],queryFn:getStoryModels,
+  enabled:editor&&editorial,staleTime:60_000,retry:false});
+ const storyModels=modelsQuery.data??[];
  const allCommissions=commissionsQuery.data??[];
  const pending=pendingCommissions(allCommissions);
  const houseNames=houseNamesQuery.data??new Map<string,string>();
@@ -376,7 +379,65 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
   const block=current?.blocks.find(b=>b.commissionId===commission.id);
   if(block){setBlockId(block.id);setEditing(true);}
  };
-const writeAboutDate=(title:string,body:string)=>{
+const useStoryModel=async(model:StoryModel)=>{
+  if(!editor||busy)return;
+  const blocks=instantiateStoryModel(model);
+  if(current&&current.state==='draft'){
+   if(current.blocks.length+blocks.length>80){setError('A edição permite até 80 elementos.');return;}
+   setDraft(old=>old?{...old,blocks:[...old.blocks,...blocks]}:old);
+   setBlockId(blocks[0]?.id??null);setEditing(true);
+   notice('Modelo "'+model.name+'" inserido. Clique nos textos e escreva direto na folha.');
+   return;
+  }
+  if(!time.data){setError('Aguarde a data oficial do HUB Temporal.');return;}
+  setBusy(true);setError('');
+  try{
+   const edition=await createNewspaperEdition({
+    campaign_date:dateKey(time.data),title:'A Folha Sem Selo',
+    subtitle:'O jornal independente de Cormyr',template:'classico',blocks,
+   });
+   setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));
+   setBlockId(blocks[0]?.id??null);setEditing(true);
+   notice('Nova edição criada com o modelo "'+model.name+'". Escreva direto na folha.');
+   await refresh();
+  }catch(cause){setError(safeError(cause));}
+  finally{setBusy(false);}
+ };
+ const saveModel=async(input:{id?:string;name:string;description:string;blocks:NewspaperBlock[]}):Promise<boolean>=>{
+  if(!editor||busy)return false;
+  setBusy(true);setError('');
+  try{
+   await saveStoryModel(input);
+   await qc.invalidateQueries({queryKey:['campaign-newspaper-story-models']});
+   notice('Modelo salvo.');return true;
+  }catch(cause){setError(safeError(cause));return false;}
+  finally{setBusy(false);}
+ };
+ const removeModel=async(model:StoryModel)=>{
+  if(!editor||busy)return;
+  if(!window.confirm('Excluir o modelo "'+model.name+'"? As matérias já escritas não mudam.'))return;
+  setBusy(true);setError('');
+  try{
+   await deleteStoryModel(model.id);
+   await qc.invalidateQueries({queryKey:['campaign-newspaper-story-models']});
+   notice('Modelo excluído.');
+  }catch(cause){setError(safeError(cause));}
+  finally{setBusy(false);}
+ };
+ const removeEdition=async(edition:NewspaperEdition)=>{
+  if(!editor||busy)return;
+  const live=edition.state==='published'||edition.state==='archived';
+  if(!window.confirm('Excluir a edição nº '+edition.edition_no+'?'+(live?' Ela já foi publicada: os jogadores deixarão de vê-la.':'')+' Isso não pode ser desfeito e o número '+edition.edition_no+' ficará livre para a próxima edição.'))return;
+  setBusy(true);setError('');
+  try{
+   await deleteNewspaperEdition(edition.id);
+   await refresh();
+   if(selectedId===edition.id){setSelectedId(null);setDraft(null);setBlockId(null);setEditing(false);}
+   notice('Edição nº '+edition.edition_no+' excluída. O número está livre.');
+  }catch(cause){setError(safeError(cause));}
+  finally{setBusy(false);}
+ };
+ const writeAboutDate=(title:string,body:string)=>{
   if(!editor||busy)return;
   const text=`${title}\n\n${body}`;
   if(!current||current.state!=='draft'){void newEdition('article',{text});return;}
@@ -449,6 +510,9 @@ const writeAboutDate=(title:string,body:string)=>{
   onInsertCommission={commission=>{void insertCommission(commission);}}
   onShowCommission={showCommission}
   onRejectCommission={(commission,note)=>{void rejectCommission(commission,note);}}
+  storyModels={storyModels} onUseStoryModel={model=>{void useStoryModel(model);}}
+  onSaveStoryModel={saveModel} onDeleteStoryModel={model=>{void removeModel(model);}}
+  onDeleteEdition={edition=>{void removeEdition(edition);}}
   staff={staff} onSaveStaff={saveStaff} onDeleteStaff={member=>{void removeStaff(member);}}
   onWriteAboutDate={writeAboutDate}
   revisions={revisionsQuery.data??[]} onRestoreRevision={restoreRevision} onUseEngraving={useEngraving}

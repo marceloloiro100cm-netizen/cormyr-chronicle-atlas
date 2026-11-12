@@ -258,3 +258,49 @@ export function sampleNewspaperBlocks(template:NewspaperTemplate):NewspaperBlock
   return {...b,text:`Título da notícia\n\n${lorem}`};
  });
 }
+
+// ---- Modelos de matéria ----
+export type StoryModel={id:string;name:string;description:string;builtin:boolean;blocks:NewspaperBlock[]};
+const modelBlock=(type:NewspaperBlockType,patch:Partial<NewspaperBlock>):NewspaperBlock=>({...makeNewspaperBlock(type),...patch});
+export const BUILTIN_STORY_MODELS:StoryModel[]=[
+ {id:'builtin-corte',name:'Notícia da Corte',description:'Manchete, linha de apoio e texto em largura total.',builtin:true,blocks:[
+  modelBlock('headline',{text:'[Manchete da notícia]',subtitle:'[Linha de apoio: o essencial em uma frase]',span:12}),
+  modelBlock('article',{text:'[Título da matéria]\n\n[Lide: quem, o quê, onde e quando.]\n\n[Desenvolvimento: detalhes, falas e contexto.]',byline:'',span:12,height:220}),
+ ]},
+ {id:'builtin-ultima-hora',name:'Última Hora',description:'Manchete de impacto com texto curto e uma fala em destaque.',builtin:true,blocks:[
+  modelBlock('headline',{text:'ÚLTIMA HORA: [ACONTECIMENTO]',subtitle:'[Onde e quando]',align:'center',span:12}),
+  modelBlock('article',{text:'[Título]\n\n[O que aconteceu, em poucas linhas.]',span:8,height:200}),
+  modelBlock('quote',{text:'“[Declaração de uma testemunha ou autoridade.]”',span:4}),
+ ]},
+ {id:'builtin-reportagem',name:'Reportagem com gravura',description:'Imagem ao lado do texto, ideal para eventos e lugares.',builtin:true,blocks:[
+  modelBlock('image',{caption:'[Legenda da gravura]',span:6}),
+  modelBlock('article',{text:'[Título da reportagem]\n\n[Descreva o lugar ou o evento: o que se viu, quem estava lá e por que importa.]',span:6,height:260}),
+ ]},
+ {id:'builtin-entrevista',name:'Entrevista',description:'Citação de abertura e duas colunas de perguntas e respostas.',builtin:true,blocks:[
+  modelBlock('headline',{text:'[Nome do entrevistado] fala ao jornal',subtitle:'[Cargo ou Casa]',span:12}),
+  modelBlock('quote',{text:'“[A frase mais forte da entrevista.]”',span:12}),
+  modelBlock('article',{text:'[Primeira pergunta]\n\n[Resposta do entrevistado.]',span:6,height:220}),
+  modelBlock('article',{text:'[Segunda pergunta]\n\n[Resposta do entrevistado.]',span:6,height:220}),
+ ]},
+ {id:'builtin-comunicado',name:'Comunicado oficial',description:'Aviso com selo para decretos, editais e anúncios da Coroa.',builtin:true,blocks:[
+  modelBlock('notice',{text:'[Quem comunica]\n\n[Texto do comunicado, edital ou anúncio.]',icon:'📜',span:12,height:170}),
+ ]},
+ {id:'builtin-cronista',name:'Coluna do Cronista',description:'Texto de opinião com subtítulo e fala de apoio ao lado.',builtin:true,blocks:[
+  modelBlock('subtitle',{text:'[Título da coluna]',span:12}),
+  modelBlock('article',{text:'[Assunto da semana]\n\n[Opinião, impressões e rumores do reino.]',byline:'',span:8,height:240}),
+  modelBlock('quote',{text:'“[Frase para destacar.]”',span:4}),
+ ]},
+];
+/** Cópia dos blocos com novos ids, pronta para entrar numa edição. */
+export function instantiateStoryModel(model:Pick<StoryModel,'blocks'>):NewspaperBlock[]{
+ return model.blocks.map(b=>({...b,id:crypto.randomUUID()}));
+}
+export function validateStoryModel(input:{name:string;description:string;blocks:readonly NewspaperBlock[]}):string{
+ if(!input.name.trim())return 'Dê um nome ao modelo.';
+ if(input.name.length>80)return 'O nome aceita até 80 caracteres.';
+ if(input.description.length>200)return 'A descrição aceita até 200 caracteres.';
+ if(input.blocks.length<1)return 'O modelo precisa de pelo menos um bloco.';
+ if(input.blocks.length>12)return 'O modelo aceita até 12 blocos.';
+ return '';
+}
+export function duplicatedStoryModelName(name:string):string{return `Cópia de ${name}`.slice(0,80);}
