@@ -36,9 +36,9 @@ export function ImageViewer({
           />
         </Button>
       </DialogTrigger>
-      <DialogContent className="campaign-theme max-w-[95vw] w-[1100px]">
-        <DialogTitle>{caption || "Imagem da campanha"}</DialogTitle>
-        <div className="campaign-actions">
+      <DialogContent className="campaign-theme image-viewer-dialog w-[1100px] max-w-[95vw] max-h-[94vh] overflow-hidden p-4 sm:p-6">
+        <DialogTitle className="image-viewer-dialog__title">{caption || "Imagem da campanha"}</DialogTitle>
+        <div className="campaign-actions image-viewer-dialog__actions">
           <Button
             size="icon"
             variant="outline"
@@ -48,7 +48,7 @@ export function ImageViewer({
           >
             <Minus />
           </Button>
-          <Button variant="outline" onClick={() => setZoom(1)}>
+          <Button variant="outline" aria-label="Restaurar zoom de 100%" onClick={() => setZoom(1)}>
             {Math.round(zoom * 100)}%
           </Button>
           <Button
@@ -67,8 +67,16 @@ export function ImageViewer({
             </a>
           </Button>
         </div>
-        <div className="max-h-[70vh] overflow-auto">
-          <img src={src} alt={caption} className="max-w-none" style={{ width: `${zoom * 100}%` }} />
+        <div className="image-viewer-dialog__viewport" role="region" aria-label={"Visualização completa: " + (caption || "imagem")}>
+          <img
+            src={src}
+            alt={caption}
+            onError={onImageError}
+            className="image-viewer-dialog__image"
+            style={zoom === 1
+              ? { width: "auto", height: "auto", maxWidth: "100%", maxHeight: "65vh", objectFit: "contain" }
+              : { width: `${zoom * 100}%`, height: "auto", maxWidth: zoom < 1 ? "100%" : "none", maxHeight: zoom < 1 ? "65vh" : "none", objectFit: "contain" }}
+          />
         </div>
       </DialogContent>
     </Dialog>
