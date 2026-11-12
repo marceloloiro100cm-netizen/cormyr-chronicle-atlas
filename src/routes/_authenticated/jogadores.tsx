@@ -27,7 +27,7 @@ import { AdminPanel } from '@/components/players/admin-panel';
 import { MissivasTab } from '@/components/players/missivas-tab';
 import {NewspaperHub,useUnreadNewspaperCount,useUnseenCommissionAnswers} from '@/components/newspaper/NewspaperHub';
 import { HouseIdentity } from '@/components/players/house-identity';
-import {heraldicHouseKey} from '@/lib/house/heraldry';
+import {heraldicHouseKey,type HeraldicHouse} from '@/lib/house/heraldry';
 import { NarratorMissivasHub, NARRATOR_MENU } from '@/components/players/narrator-missives-hub';
 import {SpyNarratorDossiers} from '@/components/house/espionage/spy-dossier-panel';
 import {BATTLE_MODULE_ENABLED,BATTLE_PLAYERS_ENABLED} from '@/lib/battle/feature-flag';
@@ -136,7 +136,7 @@ function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
   const {count:editionsUnread}=useUnreadNewspaperCount(expectedUserId);
   const commissionAnswers=useUnseenCommissionAnswers(expectedUserId);
   const newspaperUnread=editionsUnread+commissionAnswers;
-  const [tab,setTab]=useState('missivas'),[house,setHouse]=useState(''),[message,setMessage]=useState(''),[section,setSection]=useState('painel'),[representing,setRepresenting]=useState(false);
+  const [tab,setTab]=useState('missivas'),[house,setHouse]=useState(''),[message,setMessage]=useState(''),[section,setSection]=useState('painel'),[representing,setRepresenting]=useState(false),[representedTheme,setRepresentedTheme]=useState<HeraldicHouse|null>(null);
   const [mailFilterHost,setMailFilterHost]=useState<HTMLDivElement|null>(null);
   const sync=useServerFn(syncPlayerFolder);
   const refresh=async()=>{await qc.invalidateQueries({queryKey:['campaign-panel']});};
@@ -184,7 +184,7 @@ function PlayersWorkspace({expectedUserId}:{expectedUserId:string}){
     {tab==='admin'&&data.admin&&<AdminPanel data={data} onSave={afterSave}/>}
     {tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED&&<BattleV3PlayerEntry houseId={current?.id??''}/>}
     </>;
-  if(data.admin&&representing)return <CampaignShell><PlayerRepresentation onReturn={()=>{clearRepresentationQueryCache(qc);setRepresenting(false);void refresh();}}/></CampaignShell>;
+  if(data.admin&&representing)return <CampaignShell heraldry={representedTheme}><PlayerRepresentation onHouseTheme={setRepresentedTheme} onReturn={()=>{clearRepresentationQueryCache(qc);setRepresentedTheme(null);setRepresenting(false);void refresh();}}/></CampaignShell>;
   return <CampaignShell heraldry={!data.admin&&current?heraldicHouseKey(current.name):null}><div className="campaign-heading"><div><p className="campaign-eyebrow">SEGUNDA TEMPORADA · CONSELHO</p><h1>{me?.name??(data.admin?'Conselho do mestre':'Área dos jogadores')}</h1></div><div className="campaign-actions">{data.admin&&<select aria-label="Acessar como jogador" defaultValue="" onChange={async e=>{if(!e.target.value)return;const r=await supabase.rpc('start_campaign_representation',{p_player:e.target.value});if(r.error)setMessage(r.error.message);else {clearRepresentationQueryCache(qc);setRepresenting(true);}}}><option value="">Acessar como jogador…</option>{data.players.filter(p=>p.active&&p.user_id!==data.user.id&&p.user_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>}<ChangePasswordButton/><Button variant="outline" onClick={signout}>Sair</Button></div></div>
     {message&&<div className="campaign-status-banner" role="status" aria-live="polite">{message}</div>}
     {data.admin?<div className={'campaign-layout'+(section==='missivas'?' campaign-layout--mail':'')}><div className="campaign-side-column"><aside className="campaign-side" aria-label="Menu do Narrador"><p className="campaign-eyebrow">NARRADOR</p>{NARRATOR_MENU.filter(([id])=>id!=='batalha'||BATTLE_MODULE_ENABLED).map(([id,label])=><button key={id} type="button" className={section===id?'ativo':''} aria-pressed={section===id} aria-label={id==='missivas'&&unread>0?`${label}: ${unread} conversa${unread===1?'':'s'} com correspondência não lida`:undefined} onClick={()=>setSection(id??'painel')}>{label}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}</button>)}</aside>{section==='missivas'&&<div className="narrator-mail-filter-slot" id="narrator-mail-filter-slot" ref={setMailFilterHost}/>}</div><div>{section==='missivas'?<NarratorMissivasHub filterHost={mailFilterHost} data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={id=>{setHouse(id);setTab('ficha');setSection('painel');}}/>:section==='jornal'?<NewspaperHub userId={data.user.id} editor/>:section==='calendario'?<NarratorCalendar/>:section==='dossies'?<SpyNarratorDossiers/>:section==='batalha'&&BATTLE_MODULE_ENABLED?<BattleNarratorHub/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:conselho}</div></div>:conselho}
