@@ -52,3 +52,11 @@ css_extract.txt
 page_content.html
 .security-audit/
 .private-campaign/
+
+# Firebase migration: private exports, service-account credentials and emulator state
+.firebase-migration/
+.firebase/
+*service-account*.json
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
