@@ -56,9 +56,10 @@
  min-width:0;min-height:calc(100vh - 142px);position:relative;overflow:hidden;
  background:
  radial-gradient(ellipse at 50% 0%,#62334e 0,transparent 54%),
+ radial-gradient(ellipse 85% 22% at 50% 93%,#b8864a38 0,transparent 70%),
  linear-gradient(155deg,#37132b,#260e21 70%);
  border:3px double #bc8c54;border-radius:15px;
- padding:20px 10px 180px;box-shadow:inset 0 0 0 4px #3d1c30,inset 0 0 0 5px #8b6238,0 4px 10px #0004;
+ padding:20px 10px 210px;box-shadow:inset 0 0 0 4px #3d1c30,inset 0 0 0 5px #8b6238,0 4px 10px #0004;
  color:#f1d7a9
 }
 .folha-navigation-crest{text-align:center;display:flex;align-items:center;flex-direction:column;
@@ -78,7 +79,7 @@
  background:linear-gradient(100deg,#6b2d50,#492040);
  border:1px solid #b78950;box-shadow:inset 0 0 0 1px #874c4d
 }
-.folha-navigation-emblem{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:min(170px,78%);height:auto;opacity:.96;filter:drop-shadow(0 3px 4px #0007);pointer-events:none}
+.folha-navigation-emblem{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);width:min(236px,86%);height:auto;pointer-events:none;filter:drop-shadow(0 0 12px #e6af5333) drop-shadow(0 3px 3px #000a)}
 .folha-main{min-width:0}
 .folha-masthead{
  background:radial-gradient(ellipse at 45% 14%,#fff3d9,#f0dfbd 65%,#dfc697);
@@ -274,7 +275,7 @@
  .folha-print-press{display:none}
  .folha-layout{grid-template-columns:1fr}
  .folha-navigation{min-height:auto;padding:8px 10px}
- .folha-navigation-crest,.folha-navigation-decors{display:none}
+ .folha-navigation-crest,.folha-navigation-decors,.folha-navigation-emblem{display:none}
  .folha-navigation nav{flex-direction:row;gap:4px;overflow-x:auto;padding:3px}
  .folha-navigation nav button{white-space:nowrap;width:auto;min-height:40px;flex:none}
  .folha-navigation nav button svg{width:17px;height:17px}

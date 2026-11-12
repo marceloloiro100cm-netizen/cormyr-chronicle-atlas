@@ -79,7 +79,7 @@
 
 - **Topo do site**: o banner "Cabeçalho Vintage com Prensa e Brasão" (`public/newspaper/cabecalho_folha.webp`) é o fundo do cabeçalho. O texto agora diz apenas "JORNAL".
 - **Fonte do título**: a fonte escolhida em Configurações (clássico, editorial ou condensado) também vale para o título do topo e para o título do cabeçalho da Redação.
-- **Emblema**: no canto inferior esquerdo do menu, o "Emblema Dourado do Cronista" (`emblema_dourado.webp`) substitui os ícones antigos.
+- **Emblema**: no canto inferior esquerdo do menu, o Emblema Dourado do Cronista (`emblema_integrado.webp`) substitui os ícones antigos. A imagem foi recriada sem a moldura retangular (só livros, pena, tinteiro, pergaminho, selo e o florão), com fundo transparente, para se misturar ao roxo do menu.
 - **Redação**: formulário com rótulos claros, campos com caixa, alinhados, e botão de foto compacto.
 - **Calendário**: abre no mês da data do HUB Temporal, marca o dia de hoje e destaca a semana (dezena) atual. Os eventos públicos agora vêm do RPC `get_newspaper_calendar_events`, que o Editor-Chefe consegue chamar.
 - **Matérias**: clicar num modelo mostra a prévia ao lado, como em Configurações.
