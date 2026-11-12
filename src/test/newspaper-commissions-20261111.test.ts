@@ -102,3 +102,24 @@ describe('Redação, calendário e folio',()=>{
   expect(desk).toContain("label:'Calendário'");
  });
 });
+
+describe('Modelos, lixeira e número da edição',()=>{
+ const sql3=read('drizzle/migrations/0119_newspaper_models_and_delete.sql');
+ it('o número da edição apagada volta a ficar livre',()=>{
+  expect(sql3).toContain('assign_newspaper_edition_no');
+  expect(sql3).toContain('NOT EXISTS (SELECT 1 FROM public.campaign_newspapers n WHERE n.edition_no=g)');
+ });
+ it('só o Editor-Chefe e o Narrador excluem edições e gerenciam modelos',()=>{
+  expect(sql3).toContain("IF auth.uid() IS NULL OR NOT public.can_edit_campaign_newspaper()");
+  expect(sql3).toContain('DELETE FROM public.campaign_newspaper_reads WHERE newspaper_id=p_newspaper');
+  expect(sql3).toContain('USING (public.can_edit_campaign_newspaper())');
+  expect(sql3).not.toMatch(/TO anon/);
+ });
+ it('a interface usa lixeira, selo em botões e a nova legenda de Matérias',()=>{
+  const desk=read('src/components/newspaper/NewspaperEditorialDesk.tsx');
+  expect(desk).toContain('Escolha o modelo que você quer utilizar.');
+  expect(desk).toContain('folha-archive-trash');
+  expect(desk).toContain('folha-icon-picker');
+  expect(desk).not.toContain('Selecione uma reportagem para editar no jornal');
+ });
+});

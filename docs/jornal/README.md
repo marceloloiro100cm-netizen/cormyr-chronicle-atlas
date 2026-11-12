@@ -68,3 +68,9 @@
 - **Anúncios**: bolinha vermelha com o número de pedidos pendentes no menu.
 - **Painel do Jornal**: mostra sempre a última edição publicada; vazio enquanto nada foi publicado. A escrita fica em **Escrever o Jornal** (antes Edição da Capa).
 - **Redação** (antes Correspondentes): corpo de funcionários com foto, nome, especialidade e texto livres (tabela `campaign_newspaper_staff`, migração 0118, só Editor-Chefe e Narrador). A assinatura da matéria é uma caixa de seleção com "Nome, Cargo" desses funcionários.
+
+## Modelos, lixeira e selo do aviso (11/11/2026, migração 0119)
+- **Selo do aviso**: fileira de botões lado a lado; um clique troca o símbolo.
+- **Arquivo**: lixeira em cada edição. A exclusão apaga a edição (leituras e revisões junto) e o número fica livre: a próxima edição recebe o menor número ainda não usado. Pedidos de Casas já publicados nela continuam publicados. Os arquivos de imagem permanecem no armazenamento.
+- **Matérias**: "Escolha o modelo que você quer utilizar." Seis modelos prontos (Notícia da Corte, Última Hora, Reportagem com gravura, Entrevista, Comunicado oficial, Coluna do Cronista). Usar um modelo insere os blocos na edição em rascunho (ou cria uma edição) e o Editor-Chefe só preenche os textos.
+- **Duplicar modelo**: o botão de duplicar abre o editor com o nome "Cópia de X"; renomeie, edite textos, larguras e blocos, e salve. Modelos próprios podem ser editados e excluídos (tabela `campaign_newspaper_story_models`).

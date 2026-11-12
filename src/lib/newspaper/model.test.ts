@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperResize,safeNewspaperBlocks,validateNewspaperEdition,reorderNewspaperBlocks,duplicateNewspaperBlock,insertNewspaperBlockBefore,type NewspaperEdition,commissionInEdition,moveNewspaperBlock,newspaperIsDirty,NEWSPAPER_WIDTH_PRESETS,commissionToBlocks,pendingCommissions,validateCommissionDraft,type NewspaperCommission,NEWSPAPER_ENGRAVINGS,unseenCommissionAnswers,houseCanCommission,COMMISSION_PENDING_LIMIT,staffByline,validateStaffMember,dateStoryDraft,sampleNewspaperBlocks} from './model';
+import {createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperResize,safeNewspaperBlocks,validateNewspaperEdition,reorderNewspaperBlocks,duplicateNewspaperBlock,insertNewspaperBlockBefore,type NewspaperEdition,commissionInEdition,moveNewspaperBlock,newspaperIsDirty,NEWSPAPER_WIDTH_PRESETS,commissionToBlocks,pendingCommissions,validateCommissionDraft,type NewspaperCommission,NEWSPAPER_ENGRAVINGS,unseenCommissionAnswers,houseCanCommission,COMMISSION_PENDING_LIMIT,staffByline,validateStaffMember,dateStoryDraft,sampleNewspaperBlocks,BUILTIN_STORY_MODELS,instantiateStoryModel,validateStoryModel,duplicatedStoryModelName} from './model';
 
 const published={
  id:'00000000-0000-4000-8000-000000000001',edition_no:1,
@@ -180,5 +180,23 @@ describe('Redação, calendário e pré-visualização',()=>{
    expect(blocks.length).toBeGreaterThan(1);
    expect(blocks.every(b=>b.type!=='image'||Boolean(b.imageSrc))).toBe(true);
   }
+ });
+});
+
+describe('Modelos de matéria',()=>{
+ it('traz exatamente 6 modelos prontos, todos válidos',()=>{
+  expect(BUILTIN_STORY_MODELS).toHaveLength(6);
+  for(const m of BUILTIN_STORY_MODELS)expect(validateStoryModel(m)).toBe('');
+  expect(new Set(BUILTIN_STORY_MODELS.map(m=>m.name)).size).toBe(6);
+ });
+ it('usar um modelo gera ids novos a cada vez',()=>{
+  const a=instantiateStoryModel(BUILTIN_STORY_MODELS[0]!),b=instantiateStoryModel(BUILTIN_STORY_MODELS[0]!);
+  expect(a[0]!.id).not.toBe(b[0]!.id);
+  expect(a[0]!.text).toBe(BUILTIN_STORY_MODELS[0]!.blocks[0]!.text);
+ });
+ it('valida nome e limites, e sugere o nome da cópia',()=>{
+  expect(validateStoryModel({name:' ',description:'',blocks:BUILTIN_STORY_MODELS[0]!.blocks})).not.toBe('');
+  expect(validateStoryModel({name:'x',description:'',blocks:[]})).not.toBe('');
+  expect(duplicatedStoryModelName('Entrevista')).toBe('Cópia de Entrevista');
  });
 });

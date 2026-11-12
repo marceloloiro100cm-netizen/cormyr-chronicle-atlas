@@ -9,13 +9,14 @@ import {ChangePasswordButton} from '@/components/change-password';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {formatCampaignPeriod,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,NEWSPAPER_WIDTH_PRESETS,newspaperStatus,safeNewspaperBlocks,
- sampleNewspaperBlocks,dateStoryDraft,staffByline,type NewspaperStaffMember,
+ sampleNewspaperBlocks,dateStoryDraft,staffByline,NEWSPAPER_NOTICE_ICONS,type StoryModel,type NewspaperStaffMember,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,
  type NewspaperCommission,type NewspaperRevision,type NewspaperRead,NEWSPAPER_ENGRAVINGS,type NewspaperState,type NewspaperTemplate} from '@/lib/newspaper/model';
 import {NewspaperCanvas} from './NewspaperCanvas';
 import {CommissionInbox} from './NewspaperCommissions';
 import {NewspaperCalendar} from './NewspaperCalendar';
 import {NewspaperStaff} from './NewspaperStaff';
+import {NewspaperStoryModels} from './NewspaperStoryModels';
 import './newspaper-editorial.css';
 
 const NAV=[
@@ -47,6 +48,13 @@ export interface NewspaperEditorialProps{
  onInsertCommission:(commission:NewspaperCommission)=>void;
  onShowCommission:(commission:NewspaperCommission)=>void;
  onRejectCommission:(commission:NewspaperCommission,note:string)=>void;
+ /** Modelos de matéria personalizados (os 6 prontos vêm do código). */
+ storyModels:StoryModel[];
+ onUseStoryModel:(model:StoryModel)=>void;
+ onSaveStoryModel:(input:{id?:string;name:string;description:string;blocks:NewspaperBlock[]})=>Promise<boolean>;
+ onDeleteStoryModel:(model:StoryModel)=>void;
+ /** Exclui uma edição do Arquivo (o número volta a ficar livre). */
+ onDeleteEdition:(edition:NewspaperEdition)=>void;
  /** Corpo de funcionários da Redação. */
  staff:NewspaperStaffMember[];
  onSaveStaff:(input:{id?:string;name:string;specialty:string;bio:string;photoPath:string|null},photo:File|null)=>Promise<boolean>;
@@ -241,8 +249,11 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       </div>}
 
       {section==='materias'&&<section className="folha-section-content">
-       <h3>Matérias da edição</h3><p>Selecione uma reportagem para editar no jornal.</p>
-       <button type="button" onClick={writeArticle} className="folha-text-action"><Plus size={16}/> Nova matéria</button>
+       <h3>Matérias</h3><p>Escolha o modelo que você quer utilizar.</p>
+       <NewspaperStoryModels custom={props.storyModels} busy={busy}
+        onUse={model=>{setSection('capa');setFullPreview(false);props.onUseStoryModel(model);}}
+        onSave={props.onSaveStoryModel} onDelete={props.onDeleteStoryModel}/>
+       <h4 className="newspaper-commission-heading">Matérias da edição atual</h4>
        {articles.length===0?<p className="folha-empty-copy">Nenhuma matéria nesta edição.</p>:
         <div className="folha-article-list">{articles.map((b,index)=><button type="button" key={b.id}
          onClick={()=>{props.onSelectBlock(b.id);openCover();props.onSelectBlock(b.id);}}>
@@ -288,9 +299,12 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       {section==='arquivo'&&<section className="folha-section-content">
        <h3>Arquivo de edições</h3><p>Consulte e retome edições antigas, inclusive rascunhos e envios cancelados.</p>
        {props.loading?<p role="status">Carregando arquivo…</p>:
-        <div className="folha-archive-list">{history.map(e=><button type="button" key={e.id}
-         onClick={()=>browseEdition(e)}><span>Nº {e.edition_no} · {formatDate(e.campaign_date)}</span>
-         <strong>{e.title}</strong><small>{newspaperStatus(e.state)}</small></button>)}</div>}
+        <div className="folha-archive-list">{history.map(e=><div className="folha-archive-row" key={e.id}>
+         <button type="button" onClick={()=>browseEdition(e)}><span>Nº {e.edition_no} · {formatDate(e.campaign_date)}</span>
+         <strong>{e.title}</strong><small>{newspaperStatus(e.state)}</small></button>
+         <button type="button" className="folha-archive-trash" disabled={busy}
+          aria-label={`Excluir edição nº ${e.edition_no}`} title="Excluir edição"
+          onClick={()=>props.onDeleteEdition(e)}><Trash2 size={18}/></button></div>)}</div>}
        {!props.loading&&history.length===0&&<p className="folha-empty-copy">O arquivo ainda não possui edições.</p>}
        {current&&<div className="folha-revisions">
         <h4 className="newspaper-commission-heading">Histórico de revisões · Nº {current.edition_no}</h4>
@@ -407,11 +421,12 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
           {props.staff.map(m=><option key={m.id} value={staffByline(m)}>{staffByline(m)}</option>)}
          </select>
          {props.staff.length===0&&<small>Cadastre funcionários em Redação para assinar.</small>}</label>}
-        {selectedBlock.type==='notice'&&<label>Selo do aviso
-         <select value={selectedBlock.icon??'⚜'}
-          onChange={e=>props.onPatchBlock(selectedBlock.id,{icon:e.target.value})}>
-          {['⚜','📜','🏪','⚔','⚠','👑'].map(icon=><option key={icon} value={icon}>{icon}</option>)}
-         </select></label>}
+        {selectedBlock.type==='notice'&&<div className="folha-icon-picker" role="group" aria-label="Símbolo / Selo do Aviso">
+         <span>Símbolo / Selo do Aviso:</span>
+         <div>{NEWSPAPER_NOTICE_ICONS.map(icon=><button type="button" key={icon}
+          aria-label={`Selo ${icon}`} aria-pressed={(selectedBlock.icon??'⚜')===icon}
+          onClick={()=>props.onPatchBlock(selectedBlock.id,{icon})}>{icon}</button>)}</div>
+        </div>}
         <div className="newspaper-width-presets" role="group" aria-label="Larguras prontas">
          {NEWSPAPER_WIDTH_PRESETS.map(w=><button type="button" key={w.span}
           aria-pressed={selectedBlock.span===w.span}

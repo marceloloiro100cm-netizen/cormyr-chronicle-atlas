@@ -386,3 +386,26 @@
 .folha-staff-photo-empty{display:grid;place-items:center;background:#e6c275;font:700 1.6rem Georgia,serif}
 .folha-staff-actions{display:flex;gap:4px;align-items:flex-start}
 .folha-staff-actions button{padding:5px;border:1px solid rgba(80,50,20,.4);background:#fff8e6;cursor:pointer}
+
+/* Selo do aviso: botões lado a lado */
+.folha-icon-picker{display:grid;gap:6px;margin:6px 0}
+.folha-icon-picker>div{display:flex;flex-wrap:wrap;gap:6px}
+.folha-icon-picker button{width:40px;height:40px;font-size:1.25rem;border:1px solid #b99867;border-radius:6px;background:#fbf3e4;cursor:pointer}
+.folha-icon-picker button[aria-pressed="true"]{background:#4a2052;box-shadow:0 0 0 2px #e6c275}
+
+/* Arquivo: lixeira ao lado de cada edição */
+.folha-archive-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}
+.folha-archive-trash{display:grid;place-items:center;width:52px;border:1px solid rgba(120,30,30,.5);background:#fff1ee;color:#8c1d18;border-radius:8px;cursor:pointer}
+.folha-archive-trash:hover{background:#f6cfc9}
+
+/* Modelos de matéria */
+.folha-model-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin:10px 0}
+.folha-model-card{display:grid;gap:6px;padding:10px;border:1px solid rgba(80,50,20,.4);background:rgba(255,248,230,.7)}
+.folha-model-card small{opacity:.8}.folha-model-kinds{font-size:.75rem;color:#7e2529}
+.folha-model-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.folha-model-actions>button:not(.folha-text-action){padding:5px;border:1px solid rgba(80,50,20,.4);background:#fff8e6;cursor:pointer}
+.folha-model-editor{display:grid;gap:8px;padding:12px;border:2px solid #ad824f;background:rgba(255,248,230,.85);margin-bottom:12px}
+.folha-model-block{display:grid;gap:4px;padding:8px;border:1px dashed rgba(80,50,20,.45)}
+.folha-model-block-head{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.folha-model-add{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.folha-model-add button{padding:4px 8px;border:1px solid rgba(80,50,20,.4);background:#fff8e6;cursor:pointer}
