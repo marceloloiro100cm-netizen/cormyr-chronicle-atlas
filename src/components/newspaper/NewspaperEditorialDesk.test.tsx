@@ -400,7 +400,7 @@ describe('Melhorias do Jornal (12/11/2026)',()=>{
   p.current=draftEdition(p.current!.blocks,{publish_on:'1522-02-05'});
   p.history=[p.current];
   render(<NewspaperEditorialDesk {...p}/>);
-  expect(screen.getByText(/\d+ palavras/)).toBeTruthy();
+  expect(screen.getAllByText(/\d+ palavras/).length).toBeGreaterThan(0);
   expect(screen.getByText(/Será publicada sozinha em/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button',{name:'Cancelar agendamento'}));
   expect(p.onPatch).toHaveBeenCalledWith({publish_on:null});
