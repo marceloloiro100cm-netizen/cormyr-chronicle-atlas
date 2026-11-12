@@ -859,3 +859,78 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
  .army-unit-card{padding:14px}
  .army-unit-card .army-unit-stat{padding:9px 10px}
 }
+
+/* ImageViewer is rendered through a dialog portal, outside the dark heraldic
+   house panel. Give it its own explicit readable parchment contrast. */
+.campaign-theme.image-viewer-dialog{
+ --background:#faf7f0;
+ --foreground:#2c2330;
+ --primary:#4b304d;
+ --primary-foreground:#fffdf7;
+ --muted-foreground:#514653;
+ --accent:#efe7dc;
+ --accent-foreground:#2c2330;
+ --border:#b8aaa0;
+ display:grid;
+ grid-template-rows:auto auto minmax(0,1fr);
+ min-height:0;
+ background:#faf7f0!important;
+ color:#2c2330!important;
+ border:1px solid #ab9b91;
+}
+.image-viewer-dialog .image-viewer-dialog__title{
+ padding-right:32px;
+ margin:0;
+ color:#34223a!important;
+ font-family:Georgia,serif;
+ font-size:clamp(19px,2.2vw,28px);
+ line-height:1.3;
+ font-weight:600;
+}
+.image-viewer-dialog .image-viewer-dialog__actions{
+ display:flex;
+ align-items:center;
+ justify-content:flex-start;
+ flex-wrap:wrap;
+ gap:8px;
+ margin:0;
+}
+.image-viewer-dialog .image-viewer-dialog__actions :is(button,a){
+ color:#34223a!important;
+ background:#fffaf3!important;
+ border:1px solid #9f8b83!important;
+ opacity:1;
+ font-weight:600;
+}
+.image-viewer-dialog .image-viewer-dialog__actions :is(button,a):hover{
+ background:#e9dccd!important;
+ color:#271a2b!important;
+}
+.image-viewer-dialog > button{
+ color:#34223a!important;
+ opacity:1;
+}
+.image-viewer-dialog .image-viewer-dialog__viewport{
+ min-width:0;
+ min-height:0;
+ overflow:auto;
+ padding:8px;
+ border-radius:6px;
+ border:1px solid #d4c9bf;
+ background:#f5eee4;
+ overscroll-behavior:contain;
+}
+.image-viewer-dialog .image-viewer-dialog__image{
+ display:block;
+ margin:auto;
+ object-fit:contain;
+ object-position:center;
+ border:0;
+ border-radius:0;
+ transform:none;
+}
+@media(max-width:600px){
+ .campaign-theme.image-viewer-dialog{max-height:94dvh;padding:14px}
+ .image-viewer-dialog .image-viewer-dialog__viewport{padding:4px}
+ .image-viewer-dialog .image-viewer-dialog__actions{gap:6px}
+}
