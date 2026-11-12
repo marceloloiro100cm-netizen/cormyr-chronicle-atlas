@@ -13,6 +13,7 @@ import {
  getNewspaperEditions,getNewspaperReceipts,getNewspaperRevisions,getNewspaperStaff,saveNewspaperStaff,
  deleteNewspaperStaff,uploadStaffPhoto,getStoryModels,saveStoryModel,deleteStoryModel,deleteNewspaperEdition,
  markNewspaperRead,updateNewspaperEdition,uploadNewspaperAsset,
+ getNewspaperSettings,saveNewspaperSettings,getPublicHubDate,
  getEngravings,uploadEngraving,setEngravingInCollection,deleteEngraving,copyBucketImageToEdition,
 } from '@/lib/newspaper/data';
 import {
@@ -21,6 +22,7 @@ import {
  reorderNewspaperBlocks,duplicateNewspaperBlock,
  NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,validateNewspaperEdition,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperState,
+ DEFAULT_NEWSPAPER_SETTINGS,validateNewspaperSettings,newEditionDate,type NewspaperSettings,
  type NewspaperTemplate,type NewspaperRevision,type NewspaperEngraving,ENGRAVINGS_BUCKET,type NewspaperStaffMember,type StoryModel,instantiateStoryModel,
 } from '@/lib/newspaper/model';
 import './newspaper.css';
@@ -57,7 +59,15 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
  onSignout?:()=>void;
 }){
  const qc=useQueryClient();
- const time=useCampaignTime();
+ // O perfil do Editor-Chefe não é jogador nem Narrador: a leitura privada do calendário
+ // volta vazia para ele. Na Redação a data oficial vem da leitura pública do HUB Temporal.
+ const time=useCampaignTime(!editorial);
+ const publicDate=useQuery({queryKey:['campaign-newspaper-hub-date'],queryFn:getPublicHubDate,
+  enabled:editor&&(editorial||time.isError),staleTime:15_000,refetchInterval:30_000,retry:1});
+ const hubDate=time.data?dateKey(time.data):publicDate.data??'';
+ const settingsQuery=useQuery({queryKey:['campaign-newspaper-settings'],queryFn:getNewspaperSettings,
+  enabled:editor,staleTime:60_000,retry:false});
+ const settings=settingsQuery.data??DEFAULT_NEWSPAPER_SETTINGS;
  const {count,editions,receipts}=useUnreadNewspaperCount(userId);
  const commissionsQuery=useQuery({queryKey:['campaign-newspaper-commissions',userId],
   queryFn:getNewspaperCommissions,refetchInterval:30_000});
@@ -118,19 +128,27 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
    catch(cause){setError('O jornal abriu, mas a confirmação de leitura não foi salva: '+safeError(cause));}
   }
  };
+ /**
+  * Data e identidade de uma edição nova. O Editor-Chefe escreve sempre: sem a data do HUB em
+  * memória busca na hora e, se a rede falhar, usa a data da edição mais recente (editável depois).
+  */
+ const editionSeed=async()=>{
+  let date=hubDate;
+  if(!date){try{date=await getPublicHubDate();}catch{date='';}}
+  date=newEditionDate(date,editions.data??[]);
+  if(!date)throw new Error('Não foi possível ler a data do HUB Temporal agora. Confira a conexão e tente de novo.');
+  return {campaign_date:date,title:settings.title,subtitle:settings.subtitle,
+   template:settings.template,font_style:settings.font_style};
+ };
  const newEdition=async(initialBlock?:NewspaperBlockType,extraPatch?:Partial<NewspaperBlock>)=>{
   if(!editor||busy)return;
-  if(!time.data){setError('Aguarde a data oficial do HUB Temporal.');return;}
   setBusy(true);setError('');
   try{
-   const template:'classico'='classico';
-   const blocks=createNewspaperLayout(template);
+   const seed=await editionSeed();
+   const blocks=createNewspaperLayout(seed.template);
    const extra=initialBlock?{...makeNewspaperBlock(initialBlock),...(extraPatch??{})}:null;
    if(extra)blocks.push(extra);
-   const edition=await createNewspaperEdition({
-    campaign_date:dateKey(time.data),title:'A Folha Sem Selo',
-    subtitle:'O jornal independente de Cormyr',template,blocks,
-   });
+   const edition=await createNewspaperEdition({...seed,blocks});
    setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));
    setBlockId(extra?.id??edition.blocks[0]?.id??null);setEditing(true);
    notice('Nova edição criada como rascunho. Personalize os blocos e salve.');
@@ -138,6 +156,14 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
   }catch(cause){setError(safeError(cause));}
   finally{setBusy(false);}
  };
+ // Leitor: ao entrar no Jornal, a edição mais recente já abre na tela (uma vez por visita).
+ const autoOpened=useRef(false);
+ useEffect(()=>{
+  if(editor||autoOpened.current||selectedId||!editions.data?.length)return;
+  autoOpened.current=true;
+  void open(editions.data[0]!);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[editor,selectedId,editions.data]);
  const modify=(patch:Partial<NewspaperEdition>)=>setDraft(old=>old?{...old,...patch}:old);
  const modifyBlock=(id:string,patch:Partial<NewspaperBlock>)=>setDraft(old=>old?{
   ...old,blocks:old.blocks.map(b=>b.id===id?{...b,...patch}:b),
@@ -228,20 +254,15 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
   if(!editor||busy)return;
   const kind=file.type==='application/pdf'?'pdf':'image';
   if(current){await upload(file,kind);setEditing(true);return;}
-  if(!time.data){setError('Aguarde a data oficial do HUB Temporal.');return;}
   setBusy(true);setError('');
   try{
-   const template:'classico'='classico';
-   const base=await createNewspaperEdition({
-    campaign_date:dateKey(time.data),title:'A Folha Sem Selo',
-    subtitle:'O jornal independente de Cormyr',template,blocks:[],
-   });
+   const base=await createNewspaperEdition({...(await editionSeed()),blocks:[]});
    const path=await uploadNewspaperAsset(base.id,file,kind);
    const nextBlock=kind==='image'?{...makeNewspaperBlock('image'),imagePath:path}:null;
    const result=await updateNewspaperEdition(base,{
     campaign_date:base.campaign_date,title:base.title,
-    subtitle:'O jornal independente de Cormyr',
-    template,font_style:'classico',blocks:nextBlock?[nextBlock]:[],
+    subtitle:base.subtitle,
+    template:base.template,font_style:base.font_style,blocks:nextBlock?[nextBlock]:[],
     pdf_path:kind==='pdf'?path:null,state:'draft',
    });
    setDraft(cloneEditableEdition(result));setSelectedId(result.id);
@@ -300,11 +321,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
    let base:NewspaperEdition;
    if(current&&current.state==='draft')base=cloneEditableEdition(current);
    else{
-    if(!time.data)throw new Error('Aguarde a data oficial do HUB Temporal.');
-    const created=await createNewspaperEdition({
-     campaign_date:dateKey(time.data),title:'A Folha Sem Selo',
-     subtitle:'O jornal independente de Cormyr',template:'classico',blocks:[],
-    });
+    const created=await createNewspaperEdition({...(await editionSeed()),blocks:[]});
     base=cloneEditableEdition(created);
    }
    const already=base.blocks.find(b=>b.commissionId===commission.id);
@@ -393,13 +410,9 @@ const useStoryModel=async(model:StoryModel)=>{
    notice('Modelo "'+model.name+'" inserido. Clique nos textos e escreva direto na folha.');
    return;
   }
-  if(!time.data){setError('Aguarde a data oficial do HUB Temporal.');return;}
   setBusy(true);setError('');
   try{
-   const edition=await createNewspaperEdition({
-    campaign_date:dateKey(time.data),title:'A Folha Sem Selo',
-    subtitle:'O jornal independente de Cormyr',template:'classico',blocks,
-   });
+   const edition=await createNewspaperEdition({...(await editionSeed()),blocks});
    setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));
    setBlockId(blocks[0]?.id??null);setEditing(true);
    notice('Nova edição criada com o modelo "'+model.name+'". Escreva direto na folha.');
@@ -474,7 +487,7 @@ const useStoryModel=async(model:StoryModel)=>{
   finally{setBusy(false);}
  };
  const useEngraving=(src:string,label:string)=>{
-  if(!current)return;
+  if(!current){void newEdition('image',{imageSrc:src,caption:label});return;}
   const target=current.blocks.find(b=>b.id===blockId&&b.type==='image');
   if(target){
    setDraft(old=>old?{...old,blocks:old.blocks.map(b=>{
@@ -522,14 +535,19 @@ const useStoryModel=async(model:StoryModel)=>{
   finally{setBusy(false);}
  };
  const useStoredEngraving=async(item:NewspaperEngraving)=>{
-  if(!editor||busy||!current||current.state!=='draft'){
-   if(!current)setError('Crie uma edição antes de usar uma gravura.');else setError('Reabra a edição como rascunho para usar uma gravura.');
-   return;
-  }
+  if(!editor||busy)return;
+  if(current&&current.state!=='draft'){setError('Reabra a edição como rascunho para usar uma gravura.');return;}
   setBusy(true);setError('');
   try{
-   const imagePath=await copyBucketImageToEdition(ENGRAVINGS_BUCKET,current.id,item.image_path);
-   const target=current.blocks.find(b=>b.id===blockId&&b.type==='image');
+   let base=current;
+   if(!base){
+    const seed=await editionSeed();
+    base=cloneEditableEdition(await createNewspaperEdition({...seed,blocks:createNewspaperLayout(seed.template)}));
+    setSelectedId(base.id);setDraft(base);
+    await refresh();
+   }
+   const imagePath=await copyBucketImageToEdition(ENGRAVINGS_BUCKET,base.id,item.image_path);
+   const target=base.blocks.find(b=>b.id===blockId&&b.type==='image');
    if(target){
     setDraft(old=>old?{...old,blocks:old.blocks.map(b=>{
      if(b.id!==target.id)return b;
@@ -538,11 +556,27 @@ const useStoryModel=async(model:StoryModel)=>{
     })}:old);
     setEditing(true);notice('Gravura aplicada na imagem selecionada.');return;
    }
-   if(current.blocks.length>=80)throw new Error('A edição permite até 80 elementos.');
+   if(base.blocks.length>=80)throw new Error('A edição permite até 80 elementos.');
    const block={...makeNewspaperBlock('image'),imagePath,caption:item.name};
    setDraft(old=>old?{...old,blocks:[...old.blocks,block]}:old);
    setBlockId(block.id);setEditing(true);notice('Gravura inserida na folha.');
   }catch(cause){setError(safeError(cause));}
+  finally{setBusy(false);}
+ };
+ const saveSettings=async(input:NewspaperSettings):Promise<boolean>=>{
+  if(!editor||busy)return false;
+  const problem=validateNewspaperSettings(input);
+  if(problem){setError(problem);return false;}
+  setBusy(true);setError('');
+  try{
+   const saved=await saveNewspaperSettings(input);
+   qc.setQueryData(['campaign-newspaper-settings'],saved);
+   const applies=current?.state==='draft';
+   if(applies){setDraft(old=>old?{...old,...saved}:old);setEditing(true);}
+   notice(applies?'Configurações salvas. O rascunho aberto já usa o novo estilo; salve a edição para registrar.':
+    'Configurações salvas. Valem para as próximas edições.');
+   return true;
+  }catch(cause){setError(safeError(cause));return false;}
   finally{setBusy(false);}
  };
  const restoreRevision=(revision:NewspaperRevision)=>{
@@ -564,7 +598,7 @@ const useStoryModel=async(model:StoryModel)=>{
   userId={userId} current={current} history={history} reads={reads}
   loading={editions.isPending} editing={editing} busy={busy}
   selectedBlockId={blockId} error={error} message={message}
-  hubDate={time.data?dateKey(time.data):''}
+  hubDate={hubDate} settings={settings} onSaveSettings={saveSettings}
   pendingCommissions={pending} houseNames={houseNames}
   onInsertCommission={commission=>{void insertCommission(commission);}}
   onShowCommission={showCommission}
@@ -603,8 +637,8 @@ const useStoryModel=async(model:StoryModel)=>{
   <header className="newspaper-hub-heading">
    <p className="newspaper-kicker">A IMPRENSA DO REINO</p>
    <h2>Jornal de Cormyr</h2>
-   <p>{editor?'Redação e arquivo de edições — Narrador e Leonardo.':'As notícias que atravessam Cormyr, impressas em papel e história.'}</p>
-   {editor&&<Button onClick={()=>void newEdition()} disabled={busy||time.isPending}><Plus size={16}/> Nova edição</Button>}
+   <p>{editor?'Redação e arquivo de edições: Narrador e Leonardo.':'As notícias que atravessam Cormyr, impressas em papel e história.'}</p>
+   {editor&&<Button onClick={()=>void newEdition()} disabled={busy}><Plus size={16}/> Nova edição</Button>}
   </header>
   {error&&<p className="newspaper-alert" role="alert">{error}</p>}
   {message&&<p className="newspaper-notice" role="status">{message}</p>}
@@ -671,7 +705,7 @@ const useStoryModel=async(model:StoryModel)=>{
         maxLength={240} placeholder="Ex.: Notícias da corte e das fronteiras"
         onChange={e=>modify({subtitle:e.target.value})}/></label>
        <CampaignDatePicker value={displayEdition.campaign_date}
-        referenceDate={time.data?dateKey(time.data):undefined}
+        referenceDate={hubDate||undefined}
         onChange={value=>modify({campaign_date:value})}/>
        <label>Modelo de página<select value={displayEdition.template}
         onChange={e=>changeTemplate(e.target.value as NewspaperTemplate)}>
@@ -761,7 +795,7 @@ const useStoryModel=async(model:StoryModel)=>{
        <Button disabled={busy} onClick={()=>void save()}><Check size={16}/> Salvar alterações</Button>
       </aside>}
       <div className="newspaper-preview">
-       <NewspaperCanvas edition={displayEdition} editing={editing&&editor}
+       <NewspaperCanvas compactMasthead edition={displayEdition} editing={editing&&editor}
         selectedId={blockId} onSelect={setBlockId}
         onResize={(id,size)=>{modifyBlock(id,size);setEditing(true);}}
         onChangeBlock={editBlock} onReorderBlock={reorderEditorialBlock}

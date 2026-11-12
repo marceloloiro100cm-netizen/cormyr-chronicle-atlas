@@ -314,3 +314,16 @@
 
 .newspaper-commission-news{display:grid;gap:6px;padding:10px;border:1px solid rgba(120,80,20,.45);background:rgba(255,243,205,.6)}
 [contenteditable="true"][data-newspaper-inline]:is(h1,h2){outline:1px dashed rgba(120,80,20,.5);outline-offset:3px}
+
+/* ---- Pente fino (12/11/2026) ---- */
+/* Cabeçalho da folha: número da edição e data aparecem uma vez só, na mesma linha. */
+.newspaper-page-folio{display:flex;justify-content:space-between;align-items:center;gap:10px;
+ padding:7px 0;font:700 clamp(.62rem,1vw,.82rem) Georgia,serif;letter-spacing:.06em}
+/* Altura automática: a imagem aparece inteira, sem corte; imagens altas encolhem na proporção. */
+.newspaper-image-open img.newspaper-img-auto{width:auto;max-width:100%;height:auto;max-height:650px;
+ margin-inline:auto;object-fit:contain}
+/* Na edição, a alça de redimensionar ganha espaço próprio e não cobre assinatura nem legenda. */
+.newspaper-story-editable{padding-bottom:38px}
+/* Blocos de largura total não precisam do fio lateral. */
+.newspaper-story[style*="span 12"]{border-right:0;padding-right:0}
+@media(max-width:480px){.newspaper-page-folio{flex-direction:column;gap:2px}}

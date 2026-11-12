@@ -1,7 +1,8 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {supabase} from '@/integrations/supabase/client';
+import {publicCampaignTimeProjection} from '@/lib/calendar/public-time';
 import {
- PAPER_BUCKET,COMMISSION_BUCKET,STAFF_BUCKET,ENGRAVINGS_BUCKET,type NewspaperEngraving,safeNewspaperBlocks,type StoryModel,type NewspaperStaffMember,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
+ PAPER_BUCKET,COMMISSION_BUCKET,STAFF_BUCKET,ENGRAVINGS_BUCKET,type NewspaperEngraving,safeNewspaperSettings,type NewspaperSettings,safeNewspaperBlocks,type StoryModel,type NewspaperStaffMember,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
  type NewspaperTemplate,type NewspaperFont,type NewspaperBlock,
 } from './model';
 
@@ -21,10 +22,12 @@ export async function getNewspaperReceipts():Promise<NewspaperRead[]>{
 }
 export async function createNewspaperEdition(input:{
  campaign_date:string;title:string;subtitle?:string;template:NewspaperTemplate;blocks:NewspaperBlock[];
+ font_style?:NewspaperFont;
 }):Promise<NewspaperEdition>{
  const {data,error}=await db.from('campaign_newspapers').insert({
   campaign_date:input.campaign_date,title:input.title,
   subtitle:input.subtitle??'',template:input.template,
+  ...(input.font_style?{font_style:input.font_style}:{}),
   blocks:input.blocks,state:'draft',
  }).select('*').single();
  if(error)throw error;
@@ -244,4 +247,30 @@ export async function deleteEngraving(id:string,path:string):Promise<void>{
  const {error}=await db.from('campaign_newspaper_engravings').delete().eq('id',id);
  if(error)throw error;
  await db.storage.from(ENGRAVINGS_BUCKET).remove([path]);
+}
+
+// ---- Configurações do jornal e data pública do HUB ----
+/** Configurações salvas; sem linha no banco devolve null (a tela usa o padrão). */
+export async function getNewspaperSettings():Promise<NewspaperSettings|null>{
+ const {data,error}=await db.from('campaign_newspaper_settings').select('title,subtitle,template,font_style').maybeSingle();
+ if(error)throw error;
+ return data?safeNewspaperSettings(data):null;
+}
+export async function saveNewspaperSettings(input:NewspaperSettings):Promise<NewspaperSettings>{
+ const {data,error}=await db.from('campaign_newspaper_settings').upsert({
+  id:true,title:input.title.trim(),subtitle:input.subtitle,template:input.template,font_style:input.font_style,
+  updated_at:new Date().toISOString(),
+ },{onConflict:'id'}).select('title,subtitle,template,font_style').single();
+ if(error)throw error;
+ return safeNewspaperSettings(data);
+}
+/**
+ * Data oficial já publicada do HUB Temporal, pela leitura pública.
+ * O perfil do Editor-Chefe não é jogador nem Narrador, então a leitura privada do
+ * calendário (campaign_access_active) devolve vazio para ele; esta leitura é a que vale na Redação.
+ */
+export async function getPublicHubDate():Promise<string>{
+ const {data,error}=await db.rpc('get_public_campaign_time');
+ if(error)throw error;
+ return publicCampaignTimeProjection(data).date;
 }

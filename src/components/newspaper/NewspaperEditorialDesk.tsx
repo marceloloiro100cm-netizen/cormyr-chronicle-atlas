@@ -9,9 +9,10 @@ import {ChangePasswordButton} from '@/components/change-password';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {formatCampaignPeriod,formatDate,parseDate} from '@/lib/calendar/harptos';
 import {NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,NEWSPAPER_WIDTH_PRESETS,newspaperStatus,safeNewspaperBlocks,
- sampleNewspaperBlocks,dateStoryDraft,staffByline,NEWSPAPER_NOTICE_ICONS,type StoryModel,type NewspaperStaffMember,
+ sampleNewspaperBlocks,dateStoryDraft,NEWSPAPER_IMAGE_FOCUS,staffByline,NEWSPAPER_NOTICE_ICONS,type StoryModel,type NewspaperStaffMember,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,
- type NewspaperCommission,type NewspaperRevision,type NewspaperEngraving,collectionEngravings,type NewspaperRead,NEWSPAPER_ENGRAVINGS,type NewspaperState,type NewspaperTemplate} from '@/lib/newspaper/model';
+ type NewspaperCommission,type NewspaperRevision,type NewspaperEngraving,collectionEngravings,
+ type NewspaperSettings,storyModelPreviewEdition,type NewspaperRead,NEWSPAPER_ENGRAVINGS,type NewspaperState,type NewspaperTemplate} from '@/lib/newspaper/model';
 import {NewspaperCanvas} from './NewspaperCanvas';
 import {CommissionInbox} from './NewspaperCommissions';
 import {NewspaperCalendar} from './NewspaperCalendar';
@@ -43,6 +44,9 @@ export interface NewspaperEditorialProps{
  selectedBlockId:string|null;
  error:string;message:string;
  hubDate:string;
+ /** Identidade do jornal: vale sem edição aberta e define a fonte do título do site. */
+ settings:NewspaperSettings;
+ onSaveSettings:(input:NewspaperSettings)=>Promise<boolean>;
  /** Notícias contratadas pelas Casas, ainda não publicadas. */
  pendingCommissions:NewspaperCommission[];
  houseNames:Map<string,string>;
@@ -104,6 +108,11 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  const [profileOpen,setProfileOpen]=useState(false);
  const [fullPreview,setFullPreview]=useState(false);
  const [showEngravings,setShowEngravings]=useState(false);
+ // Rascunho local das Configurações: a prévia e o título do site mudam na hora; o banco só ao salvar.
+ const [settingsDraft,setSettingsDraft]=useState<NewspaperSettings|null>(null);
+ const identity=settingsDraft??props.settings;
+ const settingsDirty=settingsDraft!==null&&JSON.stringify(settingsDraft)!==JSON.stringify(props.settings);
+ const patchSettings=(patch:Partial<NewspaperSettings>)=>setSettingsDraft({...identity,...patch});
  const fileInput=useRef<HTMLInputElement>(null);
  const selectedBlock=current?.blocks.find(b=>b.id===selectedBlockId);
  const articles=current?.blocks.filter(b=>b.type==='article')??[];
@@ -119,7 +128,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
   const edition=list[0];
   return edition?{...edition,blocks:safeNewspaperBlocks(edition.blocks)}:null;
  },[history]);
- const previewBlocks=useMemo(()=>current?sampleNewspaperBlocks(current.template):[],[current?.template]);
+ const previewBlocks=useMemo(()=>sampleNewspaperBlocks(identity.template),[identity.template]);
  const pdfReady=Boolean(current?.pdf_path);
  const materialReady=Boolean(current&&(current.blocks.some(b=>b.type==='headline'||b.type==='article'||b.imagePath||b.imageSrc)||pdfReady));
  const countReads=(edition:NewspaperEdition)=>reads.filter(r=>r.newspaper_id===edition.id&&r.read_version>=edition.publication_revision).length;
@@ -145,11 +154,11 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
 
  const currentDate=current?.campaign_date??props.hubDate;
  return <div className="folha-editorial" aria-label="Redação A Folha Sem Selo">
-  <header className={`folha-topbar folha-font-${props.current?.font_style??'classico'}`}>
+  <header className={`folha-topbar folha-font-${identity.font_style}`}>
    <div className="folha-top-brand">
     <p><span aria-hidden="true">✦</span> JORNAL</p>
-    <h1>A Folha Sem Selo</h1>
-    <span className="folha-top-slogan">— O jornal independente de Cormyr —</span>
+    <h1>{identity.title}</h1>
+    {identity.subtitle&&<span className="folha-top-slogan">{identity.subtitle}</span>}
    </div>
    <div className="folha-top-account">
     <button type="button" className="folha-role" aria-expanded={profileOpen}
@@ -185,8 +194,8 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
    <main className="folha-main">
     <div className="folha-masthead">
      <img className="folha-sigil-img" src="/newspaper/brasao_folha.png" alt="" aria-hidden="true"/>
-     <div className={`folha-masthead-title folha-font-${props.current?.font_style??'classico'}`}><h2>A Folha Sem Selo</h2>
-      <p>✧ O JORNAL INDEPENDENTE DE CORMYR ✧</p></div>
+     <div className={`folha-masthead-title folha-font-${identity.font_style}`}><h2>{identity.title}</h2>
+      {identity.subtitle&&<p>✧ {identity.subtitle.toUpperCase()} ✧</p>}</div>
      <div className="folha-date">
       <label>Edição / Hub Temporal</label>
       <button type="button" className="folha-date-button" aria-expanded={dateOpen}
@@ -202,11 +211,14 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         <button type="button" disabled={busy} onClick={()=>{setSection('capa');props.onNew();}}>
          Próxima edição</button>
        </div>
+       <small className="folha-date-today" role="status">{props.hubDate?`Hoje no Reino: ${formatDate(props.hubDate)}`:
+        'Lendo a data do HUB Temporal…'}</small>
        {dateOpen&&<div className="folha-date-flyout">
        <strong>{current?'Data desta edição':'Data oficial do HUB Temporal'}</strong>
        {current?<CampaignDatePicker value={current.campaign_date}
         referenceDate={props.hubDate} onChange={value=>props.onPatch({campaign_date:value})}/>:
-        <p>Crie uma edição para selecionar a data do jornal.</p>}
+        <p>{props.hubDate?`Hoje é ${formatDate(props.hubDate)}. A próxima edição nasce com esta data; depois de criada, você pode trocar aqui.`:
+         'Lendo a data do HUB Temporal. Você já pode escrever: a edição recebe a data assim que ela chegar.'}</p>}
       </div>}
      </div>
     </div>
@@ -342,27 +354,32 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       </section>}
 
       {section==='configuracoes'&&<section className="folha-section-content">
-       <h3>Configurações editoriais</h3><p>Altere a identidade desta edição e a composição da página.</p>
-       <div className="folha-settings-layout">{current?<div className="folha-settings">
-        <label>Nome do jornal<input maxLength={180} value={current.title}
-         onChange={e=>props.onPatch({title:e.target.value})}/></label>
-        <label>Subtítulo<input maxLength={240} value={current.subtitle}
-         onChange={e=>props.onPatch({subtitle:e.target.value})}/></label>
-        <label>Modelo<select value={current.template}
-         onChange={e=>props.onPatch({template:e.target.value as NewspaperTemplate})}>
+       <h3>Configurações editoriais</h3>
+       <p>Identidade do jornal. Vale para o título do site, para as próximas edições e para o rascunho aberto. Não precisa ter edição criada.</p>
+       <div className="folha-settings-layout"><form className="folha-settings"
+        onSubmit={e=>{e.preventDefault();void props.onSaveSettings(identity).then(ok=>{if(ok)setSettingsDraft(null);});}}>
+        <label>Nome do jornal<input maxLength={180} value={identity.title}
+         onChange={e=>patchSettings({title:e.target.value})}/></label>
+        <label>Subtítulo<input maxLength={240} value={identity.subtitle}
+         onChange={e=>patchSettings({subtitle:e.target.value})}/></label>
+        <label>Modelo<select value={identity.template}
+         onChange={e=>patchSettings({template:e.target.value as NewspaperTemplate})}>
          {NEWSPAPER_TEMPLATES.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
-        <label>Fonte<select value={current.font_style}
-         onChange={e=>props.onPatch({font_style:e.target.value as NewspaperEdition['font_style']})}>
+        <label>Fonte<select value={identity.font_style}
+         onChange={e=>patchSettings({font_style:e.target.value as NewspaperSettings['font_style']})}>
          {NEWSPAPER_FONTS.map(f=><option key={f.value} value={f.value}>{f.label}</option>)}</select></label>
-        <button type="button" className="folha-text-action" onClick={()=>props.onSave()}>
+        <button type="submit" className="folha-text-action" disabled={busy||!settingsDirty}>
          <Save size={16}/> Salvar configurações</button>
-       </div>:<p className="folha-empty-copy">Crie uma edição antes de ajustar a identidade.</p>}
-       {current&&<div className="folha-settings-preview" aria-label="Pré-visualização do modelo e da fonte">
+        <small className="folha-settings-state" role="status">{settingsDirty?
+         'Alterações ainda não salvas.':'Configurações salvas.'}</small>
+       </form>
+       <div className="folha-settings-preview" aria-label="Pré-visualização do modelo e da fonte">
         <strong>Pré-visualização</strong>
-        <small>{NEWSPAPER_TEMPLATES.find(t=>t.value===current.template)?.description} · {NEWSPAPER_FONTS.find(f=>f.value===current.font_style)?.label}</small>
+        <small>{NEWSPAPER_TEMPLATES.find(t=>t.value===identity.template)?.description} · {NEWSPAPER_FONTS.find(f=>f.value===identity.font_style)?.label}</small>
         <div className="folha-settings-preview-frame"><div className="folha-settings-preview-page">
-         <NewspaperCanvas compactMasthead edition={{...current,blocks:previewBlocks,pdf_path:null}}/>
-        </div></div></div>}</div>
+         <NewspaperCanvas compactMasthead edition={storyModelPreviewEdition(previewBlocks,identity.font_style,
+          {title:identity.title,subtitle:identity.subtitle,template:identity.template,campaign_date:currentDate})}/>
+        </div></div></div></div>
       </section>}
      </div>
 
@@ -449,9 +466,18 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         <label>Largura ({selectedBlock.span}/12)
          <input type="range" min="3" max="12" value={selectedBlock.span}
           onChange={e=>props.onPatchBlock(selectedBlock.id,{span:Number(e.target.value)})}/></label>
-        {selectedBlock.type==='image'&&selectedBlock.autoHeight===false&&<label>Altura da imagem
-         <input type="range" min="130" max="650" step="10" value={selectedBlock.height}
-          onChange={e=>props.onPatchBlock(selectedBlock.id,{height:Number(e.target.value)})}/></label>}
+        {selectedBlock.type==='image'&&selectedBlock.autoHeight===false&&<>
+         <label>Altura da imagem
+          <input type="range" min="130" max="650" step="10" value={selectedBlock.height}
+           onChange={e=>props.onPatchBlock(selectedBlock.id,{height:Number(e.target.value)})}/></label>
+         <div className="newspaper-width-presets" role="group" aria-label="Enquadramento da imagem">
+          <span>Mostrar:</span>
+          {NEWSPAPER_IMAGE_FOCUS.map(f=><button type="button" key={f.value}
+           aria-pressed={(selectedBlock.imageFocus??'center')===f.value}
+           onClick={()=>props.onPatchBlock(selectedBlock.id,{imageFocus:f.value})}>{f.label}</button>)}
+         </div>
+         <small className="folha-field-hint">Com altura fixa a imagem é recortada para caber. Marque Altura automática para vê-la inteira.</small>
+        </>}
         <button type="button" className="folha-text-action" disabled={busy}
          onClick={()=>props.onSave()}><Save size={15}/> Salvar</button>
        </div>}
@@ -461,10 +487,10 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
        <div><CheckCircle2 size={18} className={articles.length?'folha-ok':'folha-pending'}/>
         <span>Matérias: {articles.length}</span></div>
        <div><CheckCircle2 size={18} className={current?'folha-ok':'folha-pending'}/>
-        <span>{current?'Edição em andamento':'Aguardando criação'}</span></div>
+        <span>{current?'Edição em andamento':'Sem edição aberta: escreva para começar'}</span></div>
        <div>{materialReady?<CheckCircle2 size={18} className="folha-ok"/>:
          <Circle size={18} className="folha-pending"/>}
-        <span>{materialReady?'Pronta para revisão':'Pronta para publicação'}</span></div>
+        <span>{materialReady?'Pronta para publicar':'Falta conteúdo para publicar'}</span></div>
        {current&&<p>{newspaperStatus(current.state)} · Nº {current.edition_no}</p>}
        {current&&<p>{headlines.length} manchete(s) · {pdfReady?'PDF anexado':'Sem PDF'}</p>}
       </div>

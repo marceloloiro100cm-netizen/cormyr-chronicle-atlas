@@ -7,6 +7,10 @@ export type NewspaperBlockType='headline'|'subtitle'|'article'|'image'|'quote'|'
 export type NewspaperImageStyle='vintage'|'woodcut'|'original';
 export type NewspaperTextAlign='left'|'center';
 export const NEWSPAPER_NOTICE_ICONS=['⚜','📜','🏪','⚔','⚠','👑'] as const;
+export type NewspaperImageFocus='top'|'center'|'bottom';
+export const NEWSPAPER_IMAGE_FOCUS:{value:NewspaperImageFocus;label:string}[]=[
+ {value:'top',label:'Topo'},{value:'center',label:'Centro'},{value:'bottom',label:'Base'},
+];
 export type NewspaperBlock={
   id:string;
   type:NewspaperBlockType;
@@ -23,6 +27,8 @@ export type NewspaperBlock={
   align?:NewspaperTextAlign;
   imageStyle?:NewspaperImageStyle;
   autoHeight?:boolean;
+  /** Com altura fixa, qual parte da imagem fica visível (padrão: centro). */
+  imageFocus?:NewspaperImageFocus;
   span:number;
   height:number;
 };
@@ -126,6 +132,7 @@ export function safeNewspaperBlocks(value:unknown):NewspaperBlock[]{
   ...(x['align']==='center'||x['align']==='left'?{align:x['align'] as NewspaperTextAlign}:{}),
   ...(x['imageStyle']==='vintage'||x['imageStyle']==='woodcut'||x['imageStyle']==='original'?{imageStyle:x['imageStyle'] as NewspaperImageStyle}:{}),
   ...(typeof x['autoHeight']==='boolean'?{autoHeight:x['autoHeight']}:{}),
+  ...(x['imageFocus']==='top'||x['imageFocus']==='center'||x['imageFocus']==='bottom'?{imageFocus:x['imageFocus'] as NewspaperImageFocus}:{}),
   span:clampNewspaperSpan(Number(x['span'])),
   height:clampNewspaperHeight(Number(x['height'])),
  }));
@@ -253,7 +260,7 @@ export function sampleNewspaperBlocks(template:NewspaperTemplate):NewspaperBlock
  const lorem='O texto de exemplo mostra como as colunas se ajustam ao espaço e como a fonte escolhida aparece na leitura da edição.';
  return blocks.map(b=>{
   if(b.type==='headline')return {...b,text:template==='guerra'?'ÚLTIMA HORA':'A COROA REAFIRMA ALIANÇAS NO NORTE',subtitle:'Uma linha de apoio para a manchete'};
-  if(b.type==='image')return {...b,imageSrc:'/newspaper/gravuras/castelo_cormyr.jpg',caption:'Legenda da fotografia'};
+  if(b.type==='image')return {...b,imageSrc:'/newspaper/gravuras/conselho_real.jpg',caption:'Legenda da fotografia'};
   if(b.type==='quote')return {...b,text:'Uma declaração importante ganha destaque aqui.'};
   return {...b,text:`Título da notícia\n\n${lorem}`};
  });
@@ -313,11 +320,40 @@ export function collectionEngravings(list:readonly NewspaperEngraving[]):Newspap
  return list.filter(e=>e.in_collection);
 }
 /** Edição fictícia só para pré-visualizar um modelo de matéria (imagens vazias ganham uma gravura). */
-export function storyModelPreviewEdition(blocks:readonly NewspaperBlock[],font:NewspaperFont='classico'):NewspaperEdition{
+export function storyModelPreviewEdition(blocks:readonly NewspaperBlock[],font:NewspaperFont='classico',
+ identity:{title?:string;subtitle?:string;template?:NewspaperTemplate;campaign_date?:string}={}):NewspaperEdition{
  return {
-  id:'preview',edition_no:1,campaign_date:'1522-01-01',title:'A Folha Sem Selo',subtitle:'',
-  template:'classico',font_style:font,state:'draft',pdf_path:null,version:1,publication_revision:0,
+  id:'preview',edition_no:1,campaign_date:identity.campaign_date||'1522-01-01',title:identity.title||'A Folha Sem Selo',subtitle:identity.subtitle??'',
+  template:identity.template??'classico',font_style:font,state:'draft',pdf_path:null,version:1,publication_revision:0,
   created_by:'',updated_at:'',published_at:null,archived_at:null,cancelled_at:null,
-  blocks:blocks.map(b=>b.type==='image'&&!b.imagePath&&!b.imageSrc?{...b,imageSrc:NEWSPAPER_ENGRAVINGS[0]!.src}:b),
+  blocks:blocks.map(b=>b.type==='image'&&!b.imagePath&&!b.imageSrc?{...b,imageSrc:NEWSPAPER_ENGRAVINGS[1]!.src}:b),
  };
+}
+
+// ---- Configurações do jornal (valem sem edição aberta) ----
+export type NewspaperSettings={title:string;subtitle:string;template:NewspaperTemplate;font_style:NewspaperFont};
+export const DEFAULT_NEWSPAPER_SETTINGS:NewspaperSettings={
+ title:'A Folha Sem Selo',subtitle:'O jornal independente de Cormyr',template:'classico',font_style:'classico',
+};
+/** Aceita só valores conhecidos; qualquer campo estranho volta ao padrão. */
+export function safeNewspaperSettings(value:unknown):NewspaperSettings{
+ const row=(value&&typeof value==='object'?value:{}) as Partial<Record<keyof NewspaperSettings,unknown>>;
+ const title=typeof row.title==='string'&&row.title.trim()?row.title.slice(0,180):DEFAULT_NEWSPAPER_SETTINGS.title;
+ const subtitle=typeof row.subtitle==='string'?row.subtitle.slice(0,240):DEFAULT_NEWSPAPER_SETTINGS.subtitle;
+ const template=NEWSPAPER_TEMPLATES.some(t=>t.value===row.template)?row.template as NewspaperTemplate:'classico';
+ const font_style=NEWSPAPER_FONTS.some(f=>f.value===row.font_style)?row.font_style as NewspaperFont:'classico';
+ return {title,subtitle,template,font_style};
+}
+export function validateNewspaperSettings(input:NewspaperSettings):string|null{
+ if(!input.title.trim())return 'Dê um nome ao jornal.';
+ if(input.title.length>180)return 'O nome do jornal permite até 180 caracteres.';
+ if(input.subtitle.length>240)return 'O subtítulo permite até 240 caracteres.';
+ return null;
+}
+/**
+ * Data para uma edição nova: a data oficial do HUB; se faltar, a da edição mais recente.
+ * Nunca inventa uma data: sem nenhuma das duas devolve vazio.
+ */
+export function newEditionDate(hubDate:string,history:readonly Pick<NewspaperEdition,'campaign_date'>[]):string{
+ return hubDate||history[0]?.campaign_date||'';
 }

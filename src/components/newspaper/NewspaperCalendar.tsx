@@ -46,7 +46,12 @@ export function NewspaperCalendar({referenceDate,onWriteAbout}:{
    <span>{label}</span>{count>0&&<i className="folha-cal-dot" aria-hidden="true"/>}</button>;
  };
  const chosen=onDay(selected);
+ const awayFromToday=Boolean(today)&&(today!.year!==year||today!.month!==month||selected!==todayKey);
+ // Sem a data oficial o calendário não chuta um mês: espera a leitura do HUB Temporal.
+ if(!today)return <p className="folha-empty-copy" role="status">Lendo a data oficial do HUB Temporal…</p>;
  return <div className="folha-calendar">
+  <p className="folha-cal-now"><span>Hoje no Reino: <strong>{formatDate(todayKey)}</strong></span>
+   {awayFromToday&&<button type="button" onClick={()=>{setYear(today.year);setMonth(today.month);setSelected(todayKey);}}>Voltar para hoje</button>}</p>
   <div className="folha-cal-head">
    <button type="button" onClick={()=>go(-1)} disabled={year===1&&month===0}>Mês anterior</button>
    <strong>{MONTHS[month]} · {MONTH_DETAILS[month]![0]} · {year} CV</strong>

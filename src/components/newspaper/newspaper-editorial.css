@@ -1,4 +1,4 @@
-/* A Folha Sem Selo — espaço independente de Leonardo, baseado no protótipo aprovado.
+/* A Folha Sem Selo: espaço independente de Leonardo, baseado no protótipo aprovado.
    Todos os seletores ficam sob .folha-editorial para preservar os demais módulos. */
 .folha-editorial{
  --folha-wine:#3b142d;--folha-wine-deep:#250d20;--folha-plum:#56223e;
@@ -18,29 +18,35 @@
 .folha-editorial button:focus-visible,.folha-editorial a:focus-visible{
  outline:3px solid #d8a450;outline-offset:3px
 }
+/* Cabeçalho: faixa contínua (fundo que repete), cantos e arte central na mesma escala.
+   Nada estica: em telas largas sobra faixa lisa, a arte mantém a proporção. */
 .folha-topbar{
- min-height:clamp(118px,11.3vw,190px);padding:10px clamp(22px,4.2vw,70px);
+ height:clamp(138px,10.6vw,176px);padding:0 clamp(58px,4.8vw,92px);
  display:flex;align-items:center;justify-content:space-between;gap:20px;
- position:relative;isolation:isolate;
- border-bottom:5px ridge #a67a3c;
+ position:relative;isolation:isolate;overflow:hidden;
+ border-bottom:4px ridge #a67a3c;
  box-shadow:0 5px 11px #371e143e;
- background:#2a0f22 url('/newspaper/cabecalho_folha.webp') center/100% 100% no-repeat;
+ background:
+  url('/newspaper/cab_esq.webp') left center/auto 100% no-repeat,
+  url('/newspaper/cab_dir.webp') right center/auto 100% no-repeat,
+  url('/newspaper/cab_centro.webp') center/auto 100% no-repeat,
+  #250011 url('/newspaper/cab_fundo.png') center/auto 100% repeat-x;
  color:var(--folha-gold-soft)
 }
-.folha-topbar::after{content:none;position:absolute;inset:0;z-index:-1;opacity:.38;
- background:radial-gradient(ellipse at 70% 16%,#e9b572 0%,transparent 31%),
- linear-gradient(90deg,transparent 35%,#f9ddaa20 57%,transparent 80%)}
-.folha-top-brand{position:relative;z-index:1;min-width:240px}
-.folha-top-brand p{margin:0;letter-spacing:.12em;font:bold .78rem Georgia,serif;color:#e8c588}
-.folha-top-brand p span{color:#e6af53;font-size:1.5rem;vertical-align:middle}
-.folha-top-brand h1{font:italic 700 clamp(2rem,3vw,3.15rem)/1 Georgia,serif;letter-spacing:-.04em;
- margin:1px 0;color:#f4dca9;text-shadow:0 2px 3px #180512}
-.folha-top-slogan{display:block;font:italic 1rem Georgia,serif;color:#ead0a3}
-.folha-print-press{position:absolute;top:8px;left:55%;transform:translateX(-50%);
- display:flex;align-items:flex-end;gap:13px;color:#d7b57c55;filter:drop-shadow(0 5px 2px #0006)}
-.folha-top-account{position:relative;z-index:3;display:flex;align-items:end;flex-direction:column;gap:9px}
+.folha-top-brand{position:relative;z-index:1;min-width:0;max-width:min(31%,430px)}
+/* Véu escuro atrás do título: mantém a leitura quando a arte central chega perto, em telas médias. */
+.folha-top-brand::before{content:"";position:absolute;inset:-14px -46px -14px -30px;z-index:-1;pointer-events:none;
+ background:radial-gradient(ellipse at 38% 50%,#250011e6 0,#250011b0 48%,transparent 74%)}
+.folha-top-brand p{margin:0;letter-spacing:.16em;font:bold .72rem Georgia,serif;color:#e8c588}
+.folha-top-brand p span{color:#e6af53;font-size:1.05rem;vertical-align:-1px;margin-right:3px}
+.folha-top-brand h1{font:italic 700 clamp(1.7rem,2.75vw,2.75rem)/1.02 Georgia,serif;letter-spacing:-.03em;
+ margin:2px 0 3px;color:#f4dca9;text-shadow:0 2px 4px #000c;overflow-wrap:anywhere}
+.folha-top-slogan{display:flex;align-items:center;gap:8px;font:italic clamp(.74rem,1vw,.92rem) Georgia,serif;color:#ead0a3;
+ text-shadow:0 1px 3px #000c}
+.folha-top-slogan::before,.folha-top-slogan::after{content:"";flex:0 0 18px;height:1px;background:#d4a864}
+.folha-top-account{position:relative;z-index:3;display:flex;align-items:end;flex-direction:column;gap:7px}
 .folha-role{display:flex;align-items:center;justify-content:center;gap:12px;
- min-width:208px;padding:8px 18px;background:#3b102c;border:1px solid #a67b4b;
+ min-width:208px;padding:6px 16px;background:#3b102ce6;border:1px solid #a67b4b;
  color:#fae9d0;border-radius:9px;font-weight:bold!important;box-shadow:inset 0 0 9px #9d713d55}
 .folha-account-menu{position:absolute;top:42px;right:0;background:#f2deb7;
  border:1px solid #8e673c;border-radius:7px;padding:7px;box-shadow:0 6px 20px #0005}
@@ -85,7 +91,7 @@
  background:radial-gradient(ellipse at 45% 14%,#fff3d9,#f0dfbd 65%,#dfc697);
  border:4px double #a78051;border-radius:9px 9px 2px 2px;
  min-height:130px;padding:13px 18px;
- display:grid;grid-template-columns:100px minmax(280px,1fr) minmax(230px,285px);
+ display:grid;grid-template-columns:auto minmax(280px,1fr) minmax(230px,285px);
  gap:20px;align-items:center;position:relative;
  box-shadow:inset 0 0 28px #78502c4a,0 2px 5px #0003;
 }
@@ -143,11 +149,7 @@
 .folha-paper-holder>.newspaper-page{width:100%;max-width:none;min-height:460px;
  border:0;box-shadow:inset 0 0 30px #7e4d162c;padding:25px 27px}
 .folha-paper-holder .newspaper-masthead{margin-bottom:12px}
-.folha-paper-holder .newspaper-page-folio{
- display:flex;justify-content:space-between;align-items:center;
- gap:10px;padding:7px 0;font:700 clamp(.6rem,.9vw,.8rem) Georgia,serif;
- letter-spacing:.035em;text-align:center
-}
+.folha-paper-holder .newspaper-page-folio{font-size:clamp(.6rem,.9vw,.8rem)}
 .folha-paper-holder .newspaper-masthead .newspaper-double-rule{margin-top:5px}
 .folha-paper-holder .newspaper-masthead h1{font-size:clamp(1.35rem,2.1vw,2rem);letter-spacing:.02em;margin:5px 0}
 .folha-paper-holder .newspaper-headline{font-size:clamp(1.7rem,3vw,3.5rem);text-align:left}
@@ -264,7 +266,7 @@
  .folha-layout{grid-template-columns:225px minmax(0,1fr);gap:10px;padding:9px}
  .folha-navigation nav button{font-size:.9rem;padding:8px 10px}
  .folha-workspace{grid-template-columns:minmax(0,1fr) 260px;gap:9px}
- .folha-masthead{grid-template-columns:72px minmax(0,1fr) 245px;gap:12px}
+ .folha-masthead{grid-template-columns:auto minmax(0,1fr) 245px;gap:12px}
  .folha-sigil{width:69px;height:82px}
  .folha-masthead-title h2{font-size:clamp(1.85rem,3.8vw,3.7rem)}
  .folha-toolbar{gap:7px}.folha-toolbar button{padding:10px 6px;font-size:.85rem}
@@ -281,12 +283,18 @@
  .folha-navigation nav button svg{width:17px;height:17px}
  .folha-workspace{grid-template-columns:minmax(0,1fr) 240px}
 }
+@media(max-width:1240px){
+ .folha-topbar{background-position:left center,right center,68% center,center}
+ .folha-top-brand{max-width:min(34%,330px)}
+}
 @media(max-width:760px){
- .folha-topbar{padding:13px;align-items:flex-start;flex-direction:column}
- .folha-top-brand h1{font-size:2.2rem}
+ .folha-topbar{height:auto;padding:14px;align-items:flex-start;flex-direction:column;
+  background:linear-gradient(120deg,#2a0718,#3a1226 55%,#250011);border-top:2px solid #d4a864}
+ .folha-top-brand{max-width:100%}
+ .folha-top-brand h1{font-size:2.1rem}
  .folha-top-account{width:100%;align-items:flex-start;flex-direction:row;justify-content:space-between}
  .folha-role{min-width:unset}
- .folha-masthead{grid-template-columns:57px minmax(0,1fr);padding:10px;gap:8px}
+ .folha-masthead{grid-template-columns:auto minmax(0,1fr);padding:10px;gap:8px}
  .folha-sigil{width:51px;height:65px}.folha-sigil svg:first-child{width:36px}
  .folha-sigil svg:last-child{left:18px;top:22px;width:19px}
  .folha-masthead-title h2{font-size:clamp(1.9rem,6.9vw,3.3rem)}
@@ -325,7 +333,7 @@
  .folha-editorial *{scroll-behavior:auto;animation:none!important;transition:none!important}
 }
 
-@media(max-width:480px){.folha-paper-holder .newspaper-page-folio{flex-wrap:wrap;justify-content:center}}
+
 
 .folha-nav-count{margin-left:auto;min-width:22px;padding:1px 7px;border-radius:999px;
  background:#c62828;color:#fff;box-shadow:0 0 0 2px rgba(198,40,40,.35);font:700 .78rem system-ui,sans-serif;text-align:center}
@@ -348,15 +356,18 @@
 
 /* Brasão de A Folha Sem Selo (sem moldura, já recortado sobre fundo transparente) */
 .folha-crest-img{width:92px;height:auto;filter:drop-shadow(0 3px 3px rgba(0,0,0,.55))}
-.folha-sigil-img{height:104px;width:auto;filter:drop-shadow(0 3px 4px rgba(60,30,10,.45))}
-@media (max-width:760px){.folha-sigil-img{height:70px}}
+/* O brasão ocupa a altura útil do retângulo do título, sem passar das linhas da base. */
+.folha-sigil-img{height:clamp(118px,11.5vw,158px);width:auto;margin:-2px 4px 6px 6px;filter:drop-shadow(0 3px 4px rgba(60,30,10,.45))}
+@media (max-width:1370px){.folha-sigil-img{height:clamp(104px,10vw,132px)}}
+@media (max-width:760px){.folha-sigil-img{height:72px;margin:0}}
 
 /* Configurações com pré-visualização ao lado */
 .folha-settings-layout{display:grid;grid-template-columns:minmax(260px,320px) minmax(0,1fr);gap:22px;align-items:start}
 .folha-settings-preview{display:grid;gap:6px}
 .folha-settings-preview small{opacity:.8}
-.folha-settings-preview-frame{height:520px;overflow:hidden;border:1px solid rgba(80,50,20,.4);background:#f4e8cc}
-.folha-settings-preview-page{width:166%;transform:scale(.6);transform-origin:top left;pointer-events:none}
+/* A prévia rola dentro da moldura: nada do modelo fica cortado. */
+.folha-settings-preview-frame{max-height:560px;overflow-y:auto;border:1px solid rgba(80,50,20,.4);background:#f4e8cc}
+.folha-settings-preview-page{zoom:.6;pointer-events:none}
 @media (max-width:900px){.folha-settings-layout{grid-template-columns:1fr}}
 .folha-latest-label{margin:0 0 8px;font-weight:700;letter-spacing:.04em}
 .folha-panel-empty{display:grid;justify-items:center;gap:10px;padding:40px 12px;text-align:center}
@@ -408,14 +419,10 @@
 .folha-model-add{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .folha-model-add button{padding:4px 8px;border:1px solid rgba(80,50,20,.4);background:#fff8e6;cursor:pointer}
 
-/* ---- Cabeçalho com banner: o título segue a fonte escolhida em Configurações ---- */
-.folha-top-brand h1{text-shadow:0 2px 4px #000c}
+/* ---- O título segue a fonte escolhida em Configurações ---- */
 .folha-font-classico h1,.folha-font-classico h2{font-family:"Times New Roman",Times,serif}
 .folha-font-editorial h1,.folha-font-editorial h2{font-family:Georgia,"Times New Roman",serif}
 .folha-font-condensado h1,.folha-font-condensado h2{font-family:Impact,"Arial Narrow",sans-serif;letter-spacing:.01em;font-style:normal}
-.folha-top-brand{max-width:min(36%,460px)}
-.folha-top-account{background:#2a0f22cc;padding:8px 12px;border-radius:10px;border:1px solid #a67b4b88}
-@media (max-width:900px){.folha-topbar{background-size:cover;background-position:center}}
 
 /* ---- Redação: formulário claro, campos alinhados ---- */
 .folha-staff-form{display:grid;gap:14px;max-width:560px;padding:16px;border:2px solid #ad824f;background:rgba(255,248,230,.85);border-radius:8px}
@@ -456,3 +463,17 @@
 .folha-dot{width:22px;height:22px;border-radius:50%;border:2px solid #7e2529;background:#fffdf5;padding:0}
 .folha-dot.on{background:radial-gradient(circle,#7e2529 0 45%,#fffdf5 50%)}
 .folha-engraving-grid button>.folha-engraving-placeholder{background:#e9d7aa}
+
+/* ---- Pente fino (12/11/2026) ---- */
+.folha-cal-now{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin:0;
+ padding:7px 10px;border:1px solid #ad824f;border-radius:6px;background:#fff8e6;font-size:.9rem}
+.folha-cal-now button{padding:4px 10px;border:1px solid #7e2529;border-radius:5px;background:#7e2529;color:#fff3d6;font-weight:700;cursor:pointer}
+.folha-cal-head strong{font-size:1.05rem}
+.folha-cal-day{min-height:46px}
+.folha-field-hint{display:block;font-size:.74rem;line-height:1.35;color:#77563a;margin:2px 0 8px}
+.newspaper-width-presets>span{align-self:center;font-size:.8rem;font-weight:700;margin-right:2px}
+.folha-settings-state{display:block;margin-top:6px;font-size:.78rem;color:#77563a}
+.folha-cal-events>.folha-text-action{justify-self:start}
+/* Em Gravuras do Reino a imagem aparece inteira dentro do quadrado (sem corte). */
+.folha-engraving-square img{object-fit:contain}
+.folha-date-today{display:block;margin-top:6px;font:italic .78rem Georgia,serif;color:#5d3f2a}
