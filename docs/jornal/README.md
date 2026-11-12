@@ -57,6 +57,6 @@
 - Login: o perfil do Editor-Chefe aparece como "A Folha Sem Selo".
 - **Recusar pedido**: em Anúncios, o Editor-Chefe escreve uma nota obrigatória e recusa. A Riqueza (1) é devolvida com lançamento no livro-caixa e a Casa vê a nota no Jornal.
 - **Excluir rascunho**: apenas rascunhos (RPC `delete_campaign_newspaper_draft`). As revisões do rascunho são apagadas; pedidos que estavam nele voltam às pendências. O número da edição excluída não é reutilizado (coluna de identidade).
-- **Facilidades do modelo da Gazeta**: botões de largura (1/4, 1/3, 1/2, 2/3, Total), bloco Subtítulo, seletor de edições e "Próxima edição" no topo, "Descartar alterações" com aviso ao fechar a página, setas subir/descer em cada bloco e leões heráldicos no cabeçalho.
+- **Facilidades do modelo da Gazeta**: botões de largura (1/4, 1/3, 1/2, 2/3, Total), bloco Subtítulo, seletor de edições e "Próxima edição" no topo, "Descartar alterações" com aviso ao fechar a página, setas subir/descer em cada bloco e brasão do reino (dragão púrpura) no título da folha e brasão do jornal na Redação.
 
 - **Seis facilidades extras**: acervo de gravuras, nome e lema editáveis na folha, histórico de revisões com restauração (Arquivo), salvamento automático de rascunhos, aviso ao jogador (contador no Jornal e botão Entendi) e limite de 3 pedidos pendentes por Casa. Mesma migração 0117.

@@ -168,7 +168,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
   <div className="folha-layout">
    <aside className="folha-navigation" aria-label="Menu de redação">
     <div className="folha-navigation-crest">
-     <div className="folha-crest-icon"><Shield size={51}/><Feather size={27}/></div>
+     <img className="folha-crest-img" src="/newspaper/brasao_folha.png" alt="Brasão de A Folha Sem Selo"/>
      <strong>REDAÇÃO<br/>DA FOLHA</strong><span>❧ ❦ ❧</span>
     </div>
     <nav>{NAV.map(item=>{
@@ -187,7 +187,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
 
    <main className="folha-main">
     <div className="folha-masthead">
-     <div className="folha-sigil" aria-hidden="true"><Shield size={63}/><Feather size={26}/></div>
+     <img className="folha-sigil-img" src="/newspaper/brasao_folha.png" alt="" aria-hidden="true"/>
      <div className="folha-masthead-title"><h2>A Folha Sem Selo</h2>
       <p>✧ O JORNAL INDEPENDENTE DE CORMYR ✧</p></div>
      <div className="folha-date">

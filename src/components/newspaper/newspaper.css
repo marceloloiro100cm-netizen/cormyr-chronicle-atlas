@@ -296,7 +296,8 @@
 .newspaper-commission-empty{margin:8px 0 14px}
 
 /* Facilidades do modelo: leões no cabeçalho, setas no bloco e subtítulo */
-.newspaper-lion{height:clamp(44px,7vw,92px);width:auto;flex:none;mix-blend-mode:multiply}
+.newspaper-crest{height:clamp(52px,8vw,104px);width:auto;flex:none;filter:drop-shadow(0 1px 1px rgba(60,35,10,.35))}
+.newspaper-crest-mirror{transform:scaleX(-1)}
 .newspaper-subhead{margin:0;font:italic 600 1.2rem Georgia,serif;border-bottom:1px solid #bda074;padding-bottom:4px}
 .newspaper-move-buttons{position:absolute;top:4px;right:34px;display:flex;gap:2px;z-index:3}
 .newspaper-move-buttons button{width:24px;height:24px;border:1px solid #b99867;border-radius:4px;
