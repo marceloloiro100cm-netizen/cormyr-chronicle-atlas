@@ -139,3 +139,28 @@ describe('YouTube catalogue and pending recordings',()=>{
   expect(publicFile('extras.js')).not.toContain("cancioneiro:'Cancioneiro'");
  });
 });
+
+describe('Region page in the new format',()=>{
+ it('labels the region leader from its classification and exposes map and music controls',()=>{
+  const app=publicFile('app.js');
+  expect(app).toContain('regionRankLabel(region,major)');
+  expect(app).toContain("kind==='crown'");
+  expect(app).toContain('data-map-expand');
+  expect(app).toContain('download="${esc(map.filename)}"');
+  expect(app).toContain('data-region-play');
+  expect(app).toContain('data-region-playlist');
+  expect(app).toContain('rel="noopener noreferrer"');
+  const player=publicFile('music-player.js');
+  expect(player).toContain('window.CORMYR_BARD');
+  expect(player).toContain('pauseVideo');
+  expect(player).toContain('cormyr:bard-state');
+ });
+ it('every region leader house resolves to Major House except Phelles',()=>{
+  const raw=publicFile('data.js').replace(/^window\.CORMYR_DATA\s*=\s*/,'').replace(/;\s*$/,'');
+  const data=JSON.parse(raw) as {regions:{name:string;major:string;houses:{name:string}[]}[]};
+  const horselands=data.regions.find(r=>r.name==='Horselands');
+  expect(horselands?.major).toBe('Mantlepard');
+  expect(horselands?.houses).toHaveLength(18);
+  expect(data.regions.filter(r=>r.major==='Phelles')).toHaveLength(1);
+ });
+});
