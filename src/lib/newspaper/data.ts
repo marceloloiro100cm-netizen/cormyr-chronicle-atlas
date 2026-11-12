@@ -1,7 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {supabase} from '@/integrations/supabase/client';
 import {
- PAPER_BUCKET,COMMISSION_BUCKET,STAFF_BUCKET,safeNewspaperBlocks,type StoryModel,type NewspaperStaffMember,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
+ PAPER_BUCKET,COMMISSION_BUCKET,STAFF_BUCKET,ENGRAVINGS_BUCKET,type NewspaperEngraving,safeNewspaperBlocks,type StoryModel,type NewspaperStaffMember,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
  type NewspaperTemplate,type NewspaperFont,type NewspaperBlock,
 } from './model';
 
@@ -98,7 +98,10 @@ export async function commissionNewspaperStory(input:{
 }
 /** O Editor-Chefe copia a imagem do pedido para a pasta da edição, onde os leitores têm acesso. */
 export async function copyCommissionImageToEdition(editionId:string,commissionPath:string):Promise<string>{
- const {data,error}=await db.storage.from(COMMISSION_BUCKET).download(commissionPath);
+ return copyBucketImageToEdition(COMMISSION_BUCKET,editionId,commissionPath);
+}
+export async function copyBucketImageToEdition(bucket:string,editionId:string,commissionPath:string):Promise<string>{
+ const {data,error}=await db.storage.from(bucket).download(commissionPath);
  if(error||!data)throw error??new Error('Não foi possível ler a imagem do pedido.');
  const extension=commissionPath.slice(commissionPath.lastIndexOf('.'));
  const path=`${editionId}/${crypto.randomUUID()}${extension}`;
@@ -177,7 +180,7 @@ export async function deleteNewspaperStaff(id:string,photoPath:string|null):Prom
 // ---- Calendário público para pautas ----
 /** Eventos que o Narrador já publicou para o mês; nunca missivas nem dados de Casas. */
 export async function getPublishedScheduleEvents(year:number,month:number):Promise<{id:string;date:string;title:string;description?:string;kind:'kingdom'}[]>{
- const {data,error}=await db.rpc('get_campaign_schedule_events',{p_year:year,p_month:month});
+ const {data,error}=await db.rpc('get_newspaper_calendar_events',{p_year:year,p_month:month});
  if(error)throw error;
  return (data??[]) as {id:string;date:string;title:string;description?:string;kind:'kingdom'}[];
 }
@@ -206,4 +209,39 @@ export async function deleteStoryModel(id:string):Promise<void>{
 export async function deleteNewspaperEdition(id:string):Promise<void>{
  const {error}=await db.rpc('delete_campaign_newspaper',{p_newspaper:id});
  if(error)throw error;
+}
+
+// ---- Gravuras do Reino ----
+export async function getEngravings():Promise<NewspaperEngraving[]>{
+ const {data,error}=await db.from('campaign_newspaper_engravings').select('*')
+  .order('created_at',{ascending:true}).limit(300);
+ if(error)throw error;
+ return (data??[]) as NewspaperEngraving[];
+}
+export async function uploadEngraving(file:File,name:string):Promise<void>{
+ if(file.size>5*1024*1024)throw new Error('A gravura deve ter no máximo 5 MB.');
+ const ext={'image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp'}[file.type];
+ if(!ext)throw new Error('Envie PNG, JPG ou WebP.');
+ const path=`${crypto.randomUUID()}${ext}`;
+ const {error}=await db.storage.from(ENGRAVINGS_BUCKET).upload(path,file,{
+  upsert:false,contentType:file.type,cacheControl:'3600',
+ });
+ if(error)throw error;
+ const label=name.trim()||file.name.replace(/\.[^.]+$/,'').slice(0,80)||'Gravura';
+ const result=await db.from('campaign_newspaper_engravings').insert({name:label.slice(0,80),image_path:path});
+ if(result.error){await db.storage.from(ENGRAVINGS_BUCKET).remove([path]);throw result.error;}
+}
+export async function signedEngravingImage(path:string):Promise<string>{
+ const {data,error}=await db.storage.from(ENGRAVINGS_BUCKET).createSignedUrl(path,3600);
+ if(error||!data?.signedUrl)throw error??new Error('Gravura temporariamente indisponível.');
+ return data.signedUrl;
+}
+export async function setEngravingInCollection(id:string,inCollection:boolean):Promise<void>{
+ const {error}=await db.from('campaign_newspaper_engravings').update({in_collection:inCollection}).eq('id',id);
+ if(error)throw error;
+}
+export async function deleteEngraving(id:string,path:string):Promise<void>{
+ const {error}=await db.from('campaign_newspaper_engravings').delete().eq('id',id);
+ if(error)throw error;
+ await db.storage.from(ENGRAVINGS_BUCKET).remove([path]);
 }

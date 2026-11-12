@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {Copy,Pencil,Plus,Trash2,X} from 'lucide-react';
-import {
+import {NewspaperCanvas} from './NewspaperCanvas';
+import {storyModelPreviewEdition,
  BUILTIN_STORY_MODELS,NEWSPAPER_WIDTH_PRESETS,duplicatedStoryModelName,makeNewspaperBlock,
  validateStoryModel,type NewspaperBlock,type NewspaperBlockType,type StoryModel,
 } from '@/lib/newspaper/model';
@@ -19,6 +20,9 @@ export function NewspaperStoryModels({custom,busy,onUse,onSave,onDelete}:{
 }){
  const [draft,setDraft]=useState<Draft|null>(null);
  const [error,setError]=useState('');
+ const [previewId,setPreviewId]=useState(BUILTIN_STORY_MODELS[0]!.id);
+ const all=[...BUILTIN_STORY_MODELS,...custom];
+ const previewModel=all.find(m=>m.id===previewId)??all[0]!;
  const edit=(model:StoryModel)=>{
   setError('');
   setDraft({id:model.id,name:model.name,description:model.description,blocks:model.blocks.map(b=>({...b}))});
@@ -37,12 +41,14 @@ export function NewspaperStoryModels({custom,busy,onUse,onSave,onDelete}:{
   const ok=await onSave({...(draft.id?{id:draft.id}:{}),name:draft.name,description:draft.description,blocks:draft.blocks});
   if(ok)setDraft(null);
  };
- const card=(model:StoryModel)=><article key={model.id} className="folha-model-card">
-  <strong>{model.name}</strong>
+ const card=(model:StoryModel)=><article key={model.id} className={`folha-model-card${model.id===previewModel.id?' selected':''}`}
+  onClick={()=>setPreviewId(model.id)}>
+  <button type="button" className="folha-model-pick" aria-pressed={model.id===previewModel.id}
+   onClick={()=>setPreviewId(model.id)}><strong>{model.name}</strong></button>
   <small>{model.description||'Modelo personalizado'}</small>
   <span className="folha-model-kinds">{model.blocks.map(b=>TYPE_LABEL[b.type]).join(' · ')}</span>
   <div className="folha-model-actions">
-   <button type="button" className="folha-text-action" disabled={busy} onClick={()=>onUse(model)}>Usar este modelo</button>
+   <button type="button" className="folha-text-action" disabled={busy} onClick={e=>{e.stopPropagation();onUse(model);}}>Usar este modelo</button>
    <button type="button" aria-label={`Duplicar ${model.name}`} title="Duplicar" disabled={busy}
     onClick={()=>duplicate(model)}><Copy size={15}/></button>
    {!model.builtin&&<>
@@ -88,6 +94,14 @@ export function NewspaperStoryModels({custom,busy,onUse,onSave,onDelete}:{
     <button type="submit" className="folha-text-action" disabled={busy}>Salvar modelo</button>
    </div>
   </form>}
-  <div className="folha-model-grid">{[...BUILTIN_STORY_MODELS,...custom].map(card)}</div>
+  <div className="folha-models-layout">
+   <div className="folha-model-grid">{all.map(card)}</div>
+   <div className="folha-settings-preview" aria-label={`Prévia do modelo ${previewModel.name}`}>
+    <strong>Prévia: {previewModel.name}</strong>
+    <small>{previewModel.description||'Modelo personalizado'}</small>
+    <div className="folha-settings-preview-frame"><div className="folha-settings-preview-page">
+     <NewspaperCanvas compactMasthead edition={storyModelPreviewEdition(previewModel.blocks)}/>
+    </div></div></div>
+  </div>
  </div>;
 }
