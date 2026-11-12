@@ -367,3 +367,41 @@
   .music-links .music-catalogue-track{grid-template-columns:minmax(0,1fr)}
   .music-links .bard-preview-button{width:100%}
 }
+
+/* Regiões: novo formato (mapa, texto e bandeira com trilha) */
+.region-stage{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(170px,210px);gap:20px;align-items:start;margin-bottom:25px}
+.region-stage>*{min-width:0}
+.region-stage .region-map{margin:0;padding:16px}
+.region-stage .region-map-heading{margin-bottom:10px}
+.region-stage .region-map-heading h3{font-size:20px}
+.region-stage .region-map-figure img{max-height:360px;width:auto;max-width:100%;object-fit:contain}
+.region-stage .region-map-figure a{display:block;cursor:zoom-in}
+.region-stage .region-map-figure figcaption{font-size:13px}
+.region-map-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.region-map-actions .quiet{flex:1 1 auto;min-height:44px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.region-stage .region-overview{display:block;margin:0;padding:24px 26px}
+.region-stage .region-description{font-size:17px;line-height:1.6;color:var(--ink)}
+.region-stage-banner{display:grid;gap:12px;justify-items:center;padding:16px;background:#fff;border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:9px}
+.region-stage-banner .region-banner{width:100%;max-width:150px;height:auto;aspect-ratio:134/190}
+.region-banner-controls{display:grid;gap:8px;width:100%}
+.region-banner-button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--plum);border-radius:8px;background:#fff;color:var(--plum);font:600 14px var(--sans);text-decoration:none;cursor:pointer}
+.region-banner-button:hover{background:#f4edf8}
+.region-banner-button:focus-visible,.region-map-actions .quiet:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.region-banner-button[aria-pressed="true"]{background:var(--plum);color:#fff}
+.region-banner-status,.region-banner-note{margin:0;text-align:center;color:var(--muted)}
+@media(max-width:1280px){
+ .region-stage{grid-template-columns:minmax(200px,260px) minmax(0,1fr)}
+ .region-stage-banner{grid-column:1/-1;grid-template-columns:96px minmax(0,1fr);justify-items:stretch;align-items:center}
+ .region-stage-banner .region-banner{width:96px;max-width:96px}
+ .region-banner-controls{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .region-banner-status,.region-banner-note{grid-column:2}
+}
+@media(max-width:760px){
+ .region-stage{grid-template-columns:minmax(0,1fr)}
+ .region-stage-banner{order:-1;grid-template-columns:72px minmax(0,1fr)}
+ .region-stage-banner .region-banner{width:72px;max-width:72px}
+ .region-banner-controls{grid-template-columns:minmax(0,1fr)}
+ .region-stage .region-overview{padding:20px 16px}
+ .region-stage .region-map-figure img{max-height:300px}
+}
+@media print{.region-stage-banner .region-banner-controls,.region-banner-status,.region-map-actions{display:none!important}}

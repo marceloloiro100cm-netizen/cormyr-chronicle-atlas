@@ -23,13 +23,13 @@
   153:'O YouTube não reconheceu a identificação de origem do reprodutor. Abra o vídeo diretamente no YouTube.'
  };
  function message(value){status.textContent=value;}
- function stop(){
+ let stop=function(){
   sequence++;
   if(activePlayer){try{activePlayer.destroy();}catch{/* old player already gone */}activePlayer=null;}
   container.replaceChildren();
   panel.hidden=true;lyrics.hidden=true;lyrics.textContent='';
   source.hidden=true;source.removeAttribute('href');message('');
- }
+ };
  function loadApi(){
   if(window.YT?.Player)return Promise.resolve(window.YT);
   if(apiPromise)return apiPromise;
@@ -54,12 +54,14 @@
   }).catch(error=>{apiPromise=null;throw error;});
   return apiPromise;
  }
- function createFrame(video){
+ function createFrame(video,autoplay){
   const frame=document.createElement('iframe');
   const params=new URLSearchParams({
    enablejsapi:'1',origin:window.location.origin,playsinline:'1',rel:'0'
   });
-  frame.src='https://www.youtube-nocookie.com/embed/'+video.id+'?'+params.toString();
+  if(autoplay)params.set('autoplay','1');
+  if(video.playlistId)params.set('list',video.playlistId);
+  frame.src='https://www.youtube-nocookie.com/embed/'+(video.playlistId?'videoseries':video.id)+'?'+params.toString();
   frame.title='Bardo da Corte: '+title.textContent;
   frame.referrerPolicy='strict-origin-when-cross-origin';
   frame.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';
@@ -67,41 +69,81 @@
   frame.loading='eager';
   return frame;
  }
- close.addEventListener('click',stop);
- window.addEventListener('pagehide',stop);
- document.addEventListener('click',async event=>{
-  const button=event.target?.closest?.('button[data-bard-preview]');
-  if(!button)return;
+ close.addEventListener('click',()=>stop());
+ window.addEventListener('pagehide',()=>stop());
+ let currentUrl='',currentState='stopped';
+ function setState(value){
+  currentState=value;
+  document.dispatchEvent(new CustomEvent('cormyr:bard-state',{detail:{state:value,url:currentUrl}}));
+ }
+ const baseStop=stop;
+ stop=function(){baseStop();currentUrl='';setState('stopped');};
+ async function open(video,label,url,autoplay){
   window.CORMYR_CLOSE_PLAYLIST?.();
-  event.preventDefault();
-  const video=youtube.parse(button.dataset.bardPreview);
-  if(!video)return;
   stop();const request=sequence;
-  const linked=button.closest('.music-actions')?.querySelector('a.music-button[href]');
-  title.textContent=button.dataset.bardTitle||linked?.querySelector('span:nth-child(2)')?.childNodes[0]?.textContent?.trim()||'Música de Cormyr';
-  source.href=video.watchUrl;source.hidden=false;
+  currentUrl=url||video.watchUrl;
+  title.textContent=label||'Música de Cormyr';
+  source.href=video.playlistId?currentUrl:video.watchUrl;source.hidden=false;
   panel.hidden=false;
+  setState('loading');
   message('Carregando o reprodutor do YouTube…');
   try{
    const YT=await loadApi();
    if(request!==sequence)return;
-   const frame=createFrame(video);
+   const frame=createFrame(video,autoplay);
    container.replaceChildren(frame);
    activePlayer=new YT.Player(frame,{
     events:{
-     onReady:()=>{if(request===sequence)message('Player pronto. Toque em reproduzir no vídeo.');},
-     onError:e=>{if(request===sequence)message((messages[e.data]||'Falha desconhecida no reprodutor do YouTube.')+' Use “Abrir no YouTube”.');},
-     onAutoplayBlocked:()=>{if(request===sequence)message('Reprodução automática bloqueada. Toque em reproduzir no vídeo.');},
+     onReady:()=>{
+      if(request!==sequence)return;
+      if(autoplay){try{activePlayer.playVideo();}catch{/* player not ready */}message('Iniciando a reprodução…');}
+      else message('Player pronto. Toque em reproduzir no vídeo.');
+     },
+     onError:e=>{if(request===sequence){message((messages[e.data]||'Falha desconhecida no reprodutor do YouTube.')+' Use “Abrir no YouTube”.');setState('error');}},
+     onAutoplayBlocked:()=>{if(request===sequence){message('Reprodução automática bloqueada. Toque em reproduzir no vídeo.');setState('paused');}},
      onStateChange:e=>{
       if(request!==sequence)return;
-      if(e.data===1)message('Reproduzindo pelo YouTube.');
-      else if(e.data===2)message('Reprodução pausada.');
-      else if(e.data===0)message('Música finalizada.');
+      if(e.data===1){message('Reproduzindo pelo YouTube.');setState('playing');}
+      else if(e.data===2){message('Reprodução pausada.');setState('paused');}
+      else if(e.data===0){message('Música finalizada.');setState('ended');}
      }
     }
    });
   }catch(error){
-   if(request===sequence){container.replaceChildren();message('Não foi possível iniciar o reprodutor. Use “Abrir no YouTube”.');}
+   if(request===sequence){container.replaceChildren();message('Não foi possível iniciar o reprodutor. Use “Abrir no YouTube”.');setState('error');}
   }
+ }
+ window.CORMYR_BARD={
+  state:()=>currentState,
+  url:()=>currentUrl,
+  stop,
+  play(url,label){
+   const video=youtube.parse(url);
+   if(!video)return false;
+   open(video,label,video.watchUrl,true);return true;
+  },
+  playPlaylist(playlistUrl,label){
+   let id='';
+   try{id=new URL(playlistUrl).searchParams.get('list')||'';}catch{id='';}
+   if(!/^[A-Za-z0-9_-]{10,}$/.test(id))return false;
+   open({playlistId:id,watchUrl:playlistUrl},label,playlistUrl,true);return true;
+  },
+  toggle(){
+   if(!activePlayer)return false;
+   try{
+    if(currentState==='playing')activePlayer.pauseVideo();else activePlayer.playVideo();
+    return true;
+   }catch{return false;}
+  }
+ };
+ document.addEventListener('click',event=>{
+  const button=event.target?.closest?.('button[data-bard-preview]');
+  if(!button)return;
+  event.preventDefault();
+  const video=youtube.parse(button.dataset.bardPreview);
+  if(!video)return;
+  const linked=button.closest('.music-actions')?.querySelector('a.music-button[href]');
+  const label=button.dataset.bardTitle||linked?.querySelector('span:nth-child(2)')?.childNodes[0]?.textContent?.trim()||'Música de Cormyr';
+  open(video,label,video.watchUrl,false);
  });
 })();
