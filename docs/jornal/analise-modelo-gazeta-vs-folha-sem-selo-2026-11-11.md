@@ -19,7 +19,7 @@ O Jornal real já cobre as funções do modelo e vai além (dados reais, permiss
 | Altura/zoom/estilo da imagem | Altura, automático, 3 filtros, lightbox com zoom | Altura, automático, 3 filtros, lightbox com zoom | Equivalente |
 | Acervo de gravuras do Reino + URL | Sim | Não (somente envio de arquivo, bucket privado) | Lacuna deliberada pela privacidade; acervo poderia voltar |
 | Cabeçalho editável (data, lema, nº) | Sim, inline | Data pelo calendário Harptos do HUB; nº automático; lema fixo; título em Configurações | Real é mais seguro, menos direto |
-| Leões heráldicos no cabeçalho | Imagens leao_esq/leao_dir | Símbolo ⚜ | Os arquivos do modelo não foram portados |
+| Leões heráldicos no cabeçalho | Imagens leao_esq/leao_dir | Brasão do reino (dragão púrpura) dos dois lados do título; brasão do jornal na Redação | Substituídos a pedido do Editor-Chefe |
 | Hub Temporal (lista de edições) + Próxima Edição | Seletor e botão | Seletor de data só da edição aberta; trocar de edição pelo Arquivo; "Nova pauta / edição" | Lacuna de usabilidade |
 | Barra de 5 ações | Escrever, Anexar PDF, Pré-visualizar, Publicar, Arquivar | Igual (Anexar aceita PDF ou imagem) | Equivalente |
 | Salvar rascunho / Cancelar envio | Salvar; Cancelar = descartar alterações | Salvar; Cancelar envio = ocultar a edição dos jogadores | Significados diferentes; falta "Descartar alterações" |

@@ -74,3 +74,12 @@ describe('Seis facilidades extras',()=>{
   expect(read('src/routes/_authenticated/jogadores.tsx')).toContain('useUnseenCommissionAnswers');
  });
 });
+
+describe('Brasões do jornal',()=>{
+ it('o título usa o brasão do reino e a Redação usa o brasão do jornal',()=>{
+  const canvas=read('src/components/newspaper/NewspaperCanvas.tsx');
+  expect(canvas).toContain('/newspaper/brasao_reino.png');
+  expect(canvas).not.toContain('leao_');
+  expect(read('src/components/newspaper/NewspaperEditorialDesk.tsx')).toContain('/newspaper/brasao_folha.png');
+ });
+});
