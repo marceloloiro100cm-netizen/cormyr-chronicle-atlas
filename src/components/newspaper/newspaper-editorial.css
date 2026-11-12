@@ -554,3 +554,34 @@
  .folha-navigation{padding-bottom:20px}
  .folha-crest-img{width:clamp(56px,9vh,92px)}
 }
+
+/* Tipografias gótica e romana: usam fontes já hospedadas no site (Fraktur, Cinzel, Garamond). */
+.folha-font-gotica h1,.folha-font-gotica h2{font-family:'UnifrakturMaguntia','Cinzel',Georgia,serif;font-style:normal;letter-spacing:0;font-weight:400}
+.folha-font-romana h1,.folha-font-romana h2{font-family:'Cinzel',Georgia,serif;font-style:normal;letter-spacing:.04em;font-weight:700}
+
+/* Escrita: situação do salvamento, conferência antes de publicar, menu "/", atalhos e esboço */
+.folha-save-status{margin-left:auto;font:700 .78rem Georgia,serif;color:#31502e;padding:3px 9px;border-radius:999px;
+ background:#e6ecd0;border:1px solid #8a9962;white-space:nowrap}
+.folha-save-dirty{color:#6b4a12;background:#f4e6c0;border-color:#b78a3a}
+.folha-save-saving{color:#4a3a1c;background:#eadfc3;border-color:#a68757}
+.folha-save-failed{color:#74251c;background:#fae3c8;border-color:#a96050}
+.folha-notice-action{margin-left:12px;padding:3px 10px;border:1px solid #6e8a57;border-radius:6px;background:#fff9e6;font-weight:700;color:#31502e}
+.folha-check{padding:12px 15px;border:1px solid #b78a3a;border-radius:8px;background:#fbf0d2;margin:0 0 12px;color:#4a3114}
+.folha-check ul{margin:8px 0;padding-left:20px;display:grid;gap:4px}
+.folha-check-actions{display:flex;flex-wrap:wrap;gap:8px}
+.folha-slash-backdrop{position:fixed;inset:0;z-index:60;background:#1f0b1a99;display:grid;place-items:center;padding:16px}
+.folha-slash-menu{width:min(380px,100%);max-height:90vh;overflow:auto;background:#f5e6c4;border:2px solid #a67b4b;border-radius:10px;
+ padding:12px;display:grid;gap:6px;box-shadow:0 12px 32px #0007;color:#3a2418}
+.folha-slash-menu button[role="menuitem"]{display:grid;gap:1px;text-align:left;padding:8px 10px;border:1px solid #b99867;border-radius:7px;background:#fff6e1}
+.folha-slash-menu button[role="menuitem"]:hover,.folha-slash-menu button[role="menuitem"]:focus-visible{background:#f0d9a6;border-color:#6b2d50}
+.folha-slash-menu button[role="menuitem"] span{font-weight:700}
+.folha-slash-menu small{color:#5d3f2a}
+.folha-slash-foot{text-align:center;margin-top:2px}
+.folha-shortcut-help dl{margin:0;display:grid;gap:6px}
+.folha-shortcut-help dl>div{display:grid;grid-template-columns:minmax(120px,40%) 1fr;gap:10px;align-items:baseline}
+.folha-shortcut-help dt{font:700 .8rem ui-monospace,monospace;background:#fff6e1;border:1px solid #b99867;border-radius:5px;padding:2px 6px}
+.folha-shortcut-help dd{margin:0;font-size:.9rem}
+.folha-outline summary{cursor:pointer;font-weight:700;display:flex;align-items:center;gap:7px}
+.folha-outline ol{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:3px;max-height:260px;overflow:auto}
+.folha-outline li button{width:100%;text-align:left;padding:5px 8px;border:1px solid transparent;border-radius:6px;background:transparent;font-size:.86rem;color:inherit}
+.folha-outline li button:hover,.folha-outline li button[aria-current="true"]{background:#f0d9a6;border-color:#b78a3a}

@@ -27,7 +27,7 @@ import {
 } from '@/lib/newspaper/model';
 import {movePreservingPinned,reorderPreservingPinned,resizeWithReflow} from '@/lib/newspaper/layout';
 import {
- canRedo,canUndo,emptyHistory,insertBlocksAfter,needsImageCopy,parseClipboardBlocks,recordSnapshot,
+ canRedo,canUndo,convertBlock,emptyHistory,insertBlocksAfter,needsImageCopy,parseClipboardBlocks,recordSnapshot,
  redoHistory,serializeBlocks,snapshotOf,textToArticleBlock,undoHistory,type EditHistory,
 } from '@/lib/newspaper/editing';
 import './newspaper.css';
@@ -96,6 +96,13 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
  const [blockId,setBlockId]=useState<string|null>(null);
  const [busy,setBusy]=useState(false);
  const autosaving=useRef(false);
+ const [saveStatus,setSaveStatus]=useState<'idle'|'saving'|'saved'|'failed'>('idle');
+ const [savedAt,setSavedAt]=useState('');
+ const [retryTick,setRetryTick]=useState(0);
+ const retryTimer=useRef<number|undefined>(undefined);
+ const [discardBackup,setDiscardBackup]=useState<NewspaperEdition|null>(null);
+ const discardTimer=useRef<number|undefined>(undefined);
+ useEffect(()=>()=>{window.clearTimeout(retryTimer.current);window.clearTimeout(discardTimer.current);},[]);
  const [message,setMessage]=useState('');
  const [error,setError]=useState('');
  const history=editions.data??[];
@@ -231,6 +238,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
     ...(current.publish_on!==undefined?{publish_on:state==='draft'?current.publish_on:null}:{}),
    });
    setDraft(cloneEditableEdition(result));
+   setSaveStatus('saved');setSavedAt(new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
    if(state!=='draft'){setEditing(false);setBlockId(null);}
    await refresh();
    notice(state==='published'?'Jornal publicado. A edição já aparece aos jogadores como não lida.':
@@ -373,7 +381,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
   if(!editorial||!editor||!dirty||busy||!draft||draft.state!=='draft')return;
   const timer=window.setTimeout(()=>{
    if(autosaving.current||validateNewspaperEdition(draft))return;
-   autosaving.current=true;
+   autosaving.current=true;setSaveStatus('saving');
    void updateNewspaperEdition(draft,{
     campaign_date:draft.campaign_date,title:draft.title.trim(),subtitle:draft.subtitle,
     template:draft.template,font_style:draft.font_style,blocks:draft.blocks,
@@ -381,12 +389,20 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
    }).then(result=>{
     // Só atualiza a versão: o que foi digitado durante o envio continua no rascunho.
     setDraft(old=>old&&old.id===result.id?{...old,version:result.version}:old);
-    setMessage('Rascunho salvo automaticamente às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.');
+    const at=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    setSaveStatus('saved');setSavedAt(at);
+    setMessage('Rascunho salvo automaticamente às '+at+'.');
     return Promise.all([refresh(),qc.invalidateQueries({queryKey:['campaign-newspaper-revisions',result.id]})]);
-   }).catch(()=>undefined).finally(()=>{autosaving.current=false;});
+   }).catch(()=>{
+    // Falha visível e nova tentativa em 20 s (enquanto houver alterações não salvas).
+    setSaveStatus('failed');
+    window.clearTimeout(retryTimer.current);
+    retryTimer.current=window.setTimeout(()=>setRetryTick(tick=>tick+1),20_000);
+   }).finally(()=>{autosaving.current=false;});
   },8000);
   return()=>window.clearTimeout(timer);
- },[editorial,editor,dirty,busy,draft]);
+ },[editorial,editor,dirty,busy,draft,retryTick]);
+ useEffect(()=>{setSaveStatus('idle');setSavedAt('');},[selectedId]);
  useEffect(()=>{
   if(!dirty||!editor)return;
   const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};
@@ -394,10 +410,28 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
   return()=>window.removeEventListener('beforeunload',warn);
  },[dirty,editor]);
  const discardChanges=()=>{
-  if(!selected||!dirty)return;
-  if(!window.confirm('Descartar as alterações não salvas desta edição?'))return;
+  if(!selected||!dirty||!draft)return;
+  // Sem janela de confirmação: descarta já e oferece "Desfazer descarte" por 10 s.
+  setDiscardBackup(draft);
+  window.clearTimeout(discardTimer.current);
+  discardTimer.current=window.setTimeout(()=>setDiscardBackup(null),10_000);
   setDraft(cloneEditableEdition(selected));setBlockId(null);setEditing(selected.state==='draft');
   notice('Alterações descartadas. A edição voltou à última versão salva.');
+ };
+ const restoreDiscard=()=>{
+  if(!discardBackup)return;
+  window.clearTimeout(discardTimer.current);
+  setDraft(discardBackup);setDiscardBackup(null);setEditing(true);
+  notice('Alterações recuperadas.');
+ };
+ const convertEditorialBlock=(id:string,type:NewspaperBlockType)=>{
+  if(!current)return;
+  const block=current.blocks.find(b=>b.id===id);
+  if(!block)return;
+  if(block.pinned){setError('Bloco fixo: destrave o cadeado antes de transformar.');return;}
+  const next=convertBlock(block,type);
+  if(!next)return;
+  modify({blocks:current.blocks.map(b=>b.id===id?next:b)});setEditing(true);
  };
  const deleteDraft=async()=>{
   if(!editor||busy||!current||current.state!=='draft')return;
@@ -705,6 +739,9 @@ const useStoryModel=async(model:StoryModel)=>{
   canUndo={canUndo(history_)} canRedo={canRedo(history_)} canPasteBlock={blockClip.current!==''}
   onUndo={undo} onRedo={redo} onCopyBlock={copyBlock} onCutBlock={cutBlock}
   onPasteBlock={(text,files)=>{void pasteBlocks(text,files);}}
+  saveState={{status:saveStatus,...(savedAt?{at:savedAt}:{}),dirty}}
+  canRestoreDiscard={discardBackup!==null} onRestoreDiscard={restoreDiscard}
+  onConvertBlock={convertEditorialBlock}
   dirty={dirty} onDiscard={discardChanges} onDeleteDraft={()=>{void deleteDraft();}}
   onNew={type=>{void newEdition(type);}}
   onOpen={edition=>{void open(edition);}}

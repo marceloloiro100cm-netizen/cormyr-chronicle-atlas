@@ -4,7 +4,7 @@ import {
  BarChart3,Settings,Feather,FileUp,Eye,Newspaper,
  ImagePlus,Columns3,Quote,TriangleAlert,Plus,Printer,ChevronDown,
  ArrowUp,ArrowDown,Trash2,Save,CheckCircle2,Circle,
- Undo2,Redo2,Copy,Scissors,ClipboardPaste,CalendarClock,ChevronLeft,ChevronRight,
+ Undo2,Redo2,Copy,Scissors,ClipboardPaste,CalendarClock,ChevronLeft,ChevronRight,Keyboard,List,
 } from 'lucide-react';
 import {ChangePasswordButton} from '@/components/change-password';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
@@ -15,9 +15,11 @@ import {NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,NEWSPAPER_WIDTH_PRESETS,newspaperSta
  type NewspaperCommission,type NewspaperRevision,type NewspaperEngraving,collectionEngravings,
  type NewspaperSettings,storyModelPreviewEdition,type NewspaperRead,type NewspaperState,type NewspaperTemplate} from '@/lib/newspaper/model';
 import {
- blockFocus,blockWords,clampCropZoom,editionWords,readingMinutes,validateSchedule,wordsLabel,
+ CONVERTIBLE_LABELS,blockFocus,blockSummary,blockWords,clampCropZoom,editionWords,publicationIssues,readingMinutes,
+ saveStatusText,validateSchedule,wordsLabel,type PublicationIssue,type SaveState,
 } from '@/lib/newspaper/editing';
 import {useNewspaperShortcuts} from './useNewspaperShortcuts';
+import {NewspaperShortcutHelp,NewspaperSlashMenu} from './NewspaperKeyboardUi';
 import {NewspaperCanvas} from './NewspaperCanvas';
 import {CommissionInbox} from './NewspaperCommissions';
 import {NewspaperCalendar} from './NewspaperCalendar';
@@ -94,6 +96,13 @@ export interface NewspaperEditorialProps{
  onPasteBlock:(text:string,files:File[])=>void;
  /** Há alterações ainda não salvas. */
  dirty:boolean;
+ /** Situação do salvamento automático, mostrada junto das ferramentas de edição. */
+ saveState:SaveState;
+ /** Depois de descartar, o Editor-Chefe tem alguns segundos para recuperar as alterações. */
+ canRestoreDiscard:boolean;
+ onRestoreDiscard:()=>void;
+ /** Transforma um bloco de texto em outro tipo sem perder o que foi escrito. */
+ onConvertBlock:(id:string,type:NewspaperBlockType)=>void;
  onDiscard:()=>void;
  onDeleteDraft:()=>void;
  onNew:(type?:NewspaperBlockType)=>void;
@@ -129,6 +138,9 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  const settingsDirty=settingsDraft!==null&&JSON.stringify(settingsDraft)!==JSON.stringify(props.settings);
  const patchSettings=(patch:Partial<NewspaperSettings>)=>setSettingsDraft({...identity,...patch});
  const [scheduleOpen,setScheduleOpen]=useState(false);
+ const [checkOpen,setCheckOpen]=useState(false);
+ const [slashOpen,setSlashOpen]=useState(false);
+ const [helpOpen,setHelpOpen]=useState(false);
  const [scheduleError,setScheduleError]=useState('');
  const fileInput=useRef<HTMLInputElement>(null);
  const selectedBlock=current?.blocks.find(b=>b.id===selectedBlockId);
@@ -173,8 +185,29 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  const totalWords=current?editionWords(current.blocks):0;
  const minutes=readingMinutes(totalWords);
  const editingSheet=section==='capa'&&editing&&Boolean(current)&&!fullPreview;
+ const publishIssues=useMemo<PublicationIssue[]>(()=>current?publicationIssues(current.blocks):[],[current]);
+ /** Conferência antes de publicar: se houver pendências, mostra a lista e deixa publicar mesmo assim. */
+ const requestPublish=()=>{
+  if(publishIssues.length===0){setCheckOpen(false);props.onSave('published');return;}
+  setCheckOpen(true);
+ };
+ const goToBlock=(id:string)=>{
+  setSection('capa');setFullPreview(false);setCheckOpen(false);
+  props.onSelectBlock(id);if(!editing)props.onEdit();
+  window.setTimeout(()=>{
+   const el=Array.from(document.querySelectorAll<HTMLElement>('[data-block-id]')).find(node=>node.dataset.blockId===id);
+   el?.scrollIntoView?.({block:'center',behavior:'smooth'});el?.focus();
+  },60);
+ };
+ const slashInsert=(type:NewspaperBlockType)=>{
+  setSlashOpen(false);
+  const index=current?current.blocks.findIndex(b=>b.id===selectedBlockId):-1;
+  const beforeId=current&&index>=0?current.blocks[index+1]?.id??null:null;
+  props.onInsertBefore(type,beforeId);
+ };
  useNewspaperShortcuts({
-  active:editingSheet,selectedId:selectedBlockId,
+  active:editingSheet&&!slashOpen&&!helpOpen,selectedId:selectedBlockId,
+  onSlash:()=>setSlashOpen(true),onHelp:()=>setHelpOpen(true),
   onUndo:props.onUndo,onRedo:props.onRedo,onCopy:props.onCopyBlock,onCut:props.onCutBlock,
   onPaste:props.onPasteBlock,onRemove:props.onRemoveBlock,onDuplicate:props.onDuplicateBlock,
  });
@@ -271,7 +304,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       <FileUp size={22}/> Anexar Arquivo</button>
      <button type="button" onClick={()=>{setSection('painel');setFullPreview(x=>!x);props.onPreview();}}>
       <Eye size={22}/> {fullPreview?'Voltar ao painel':'Pré-visualizar'}</button>
-     <button type="button" disabled={!current||busy||!materialReady} onClick={()=>props.onSave('published')}>
+     <button type="button" disabled={!current||busy||!materialReady} onClick={requestPublish}>
       <Newspaper size={21}/> Publicar Edição</button>
      <button type="button" disabled={!current||busy||current.state!=='published'} onClick={()=>props.onSave('archived')}>
       <Archive size={21}/> Arquivar</button>
@@ -280,7 +313,16 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
     </div>
 
     {props.error&&<div className="folha-alert" role="alert">{props.error}</div>}
-    {props.message&&<div className="folha-notice" role="status">{props.message}</div>}
+    {props.message&&<div className="folha-notice" role="status">{props.message}
+     {props.canRestoreDiscard&&<button type="button" className="folha-notice-action" onClick={props.onRestoreDiscard}>Desfazer descarte</button>}</div>}
+    {checkOpen&&current&&publishIssues.length>0&&<div className="folha-check" role="alertdialog" aria-label="Conferência antes de publicar">
+     <strong>Antes de publicar, confira {publishIssues.length===1?'1 ponto':`${publishIssues.length} pontos`}:</strong>
+     <ul>{publishIssues.map((issue,index)=><li key={index}>{issue.blockId?
+      <button type="button" className="folha-text-link" onClick={()=>goToBlock(issue.blockId!)}>{issue.text}</button>:issue.text}</li>)}</ul>
+     <div className="folha-check-actions">
+      <button type="button" className="folha-text-action" onClick={()=>setCheckOpen(false)}>Voltar e corrigir</button>
+      <button type="button" className="folha-text-action" disabled={busy} onClick={()=>{setCheckOpen(false);props.onSave('published');}}>Publicar mesmo assim</button>
+     </div></div>}
 
     <div className={`folha-workspace${fullPreview?' folha-workspace-preview':''}`}>
      <div className="folha-workspace-main">
@@ -304,7 +346,9 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
          title="Recortar o bloco selecionado (Ctrl+X)"><Scissors size={16}/> Recortar</button>
         <button type="button" disabled={!props.canPasteBlock} onClick={()=>props.onPasteBlock('',[])}
          title="Colar depois do bloco selecionado (Ctrl+V)"><ClipboardPaste size={16}/> Colar</button>
-        <small>Clique na borda de um bloco (ou na alça ⠿) e use Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D ou Delete. Dentro de um texto, as teclas valem para o texto.</small>
+        <button type="button" onClick={()=>setHelpOpen(true)} title="Lista de atalhos (?)"><Keyboard size={16}/> Atalhos</button>
+        <span className={`folha-save-status folha-save-${props.saveState.status}${props.saveState.dirty?' folha-save-dirty':''}`} role="status">{saveStatusText(props.saveState)}</span>
+        <small>Clique na borda de um bloco (ou na alça ⠿) e use Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D ou Delete. Tecle / para inserir bloco e ? para ver todos os atalhos.</small>
        </div>}
        {current?<NewspaperCanvas edition={current} compactMasthead editing={editing}
         selectedId={selectedBlockId} onSelect={props.onSelectBlock}
@@ -317,6 +361,8 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
          <button type="button" className="folha-start-edition" disabled={busy}
           onClick={()=>props.onNew()}>+ Criar primeira edição</button></div>}
       </div>}
+      {slashOpen&&<NewspaperSlashMenu onClose={()=>setSlashOpen(false)} onPick={slashInsert}/>}
+      {helpOpen&&<NewspaperShortcutHelp onClose={()=>setHelpOpen(false)}/>}
 
       {section==='materias'&&<section className="folha-section-content">
        <h3>Matérias</h3><p>Escolha o modelo que você quer utilizar.</p>
@@ -517,6 +563,11 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
           {props.staff.map(m=><option key={m.id} value={staffByline(m)}>{staffByline(m)}</option>)}
          </select>
          {props.staff.length===0&&<small>Cadastre funcionários em Redação para assinar.</small>}</label>}
+        {selectedBlock.type!=='image'&&<label>Transformar em
+         <select value={selectedBlock.type} disabled={selectedBlock.pinned}
+          onChange={e=>props.onConvertBlock(selectedBlock.id,e.target.value as NewspaperBlockType)}>
+          {CONVERTIBLE_LABELS.map(item=><option key={item.value} value={item.value}>{item.label}</option>)}
+         </select></label>}
         {selectedBlock.type==='notice'&&<div className="folha-icon-picker" role="group" aria-label="Símbolo / Selo do Aviso">
          <span>Símbolo / Selo do Aviso:</span>
          <div>{NEWSPAPER_NOTICE_ICONS.map(icon=><button type="button" key={icon}
@@ -555,6 +606,12 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
          onClick={()=>props.onSave()}><Save size={15}/> Salvar</button>
        </div>}
       </div>
+      {current&&current.blocks.length>0&&<div className="folha-side-card">
+       <details className="folha-outline">
+        <summary><List size={17}/> Esboço da edição ({current.blocks.length})</summary>
+        <ol>{current.blocks.map(b=><li key={b.id}><button type="button" aria-current={b.id===selectedBlockId?'true':undefined}
+         onClick={()=>goToBlock(b.id)}>{blockSummary(b)}</button></li>)}</ol>
+       </details></div>}
       <div className="folha-side-card folha-status-card">
        <h3><Newspaper size={19}/> Status da Edição</h3>
        <div><CheckCircle2 size={18} className={articles.length?'folha-ok':'folha-pending'}/>
@@ -584,7 +641,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
        </div>}
       </div>
       <button type="button" className="folha-publish-button"
-       disabled={!current||busy||!materialReady} onClick={()=>props.onSave('published')}>
+       disabled={!current||busy||!materialReady} onClick={requestPublish}>
        <Printer size={24}/> Publicar Edição</button>
       {current&&<div className="folha-minor-actions">
        <button type="button" onClick={()=>window.print()}><Printer size={15}/> Imprimir / Salvar PDF</button>

@@ -143,3 +143,76 @@ describe('publicação agendada',()=>{
   expect(validateSchedule('1522-10-12','')).toBeNull();
  });
 });
+
+import {
+ CONVERTIBLE_LABELS,FIELD_LIMITS,blockSummary,convertBlock,normalizeFieldText,pastedPlainText,publicationIssues,saveStatusText,
+} from './editing';
+describe('colar e digitar nos campos da folha',()=>{
+ it('cola sempre como texto puro e junta as linhas em campos de uma linha',()=>{
+  expect(pastedPlainText('Um\r\ntítulo\n\nlongo',true)).toBe('Um título longo');
+  expect(pastedPlainText('a  \n\n\n\nb c',false)).toBe('a\n\nb c');
+ });
+ it('normaliza o texto ao sair do campo',()=>{
+  expect(normalizeFieldText('  Manchete\ncom quebra \r',true)).toBe('Manchete com quebra');
+  expect(normalizeFieldText(' Linha 1\nLinha 2 ',false)).toBe('Linha 1\nLinha 2');
+ });
+});
+describe('conferência antes de publicar',()=>{
+ it('aponta todos os blocos recém-criados porque ainda têm texto de exemplo',()=>{
+  for(const type of ['headline','article','image','quote','notice'] as const){
+   const issues=publicationIssues([makeNewspaperBlock(type)]);
+   expect(issues.length,type).toBeGreaterThan(0);
+  }
+ });
+ it('não aponta nada em blocos bem preenchidos',()=>{
+  const headline={...makeNewspaperBlock('headline'),text:'Rei declara paz nas Marcas'};
+  const article={...makeNewspaperBlock('article'),text:'Paz nas Marcas\n\nO rei assinou o tratado ontem.'};
+  const photo={...makeNewspaperBlock('image'),imageSrc:'/newspaper/gravuras/castelo_cormyr.jpg',caption:'O castelo ao amanhecer'};
+  expect(publicationIssues([headline,article,photo])).toEqual([]);
+ });
+ it('avisa de manchete longa, matéria sem texto e foto sem imagem',()=>{
+  const long={...makeNewspaperBlock('headline'),text:'x'.repeat(FIELD_LIMITS.headline+1)};
+  const title={...makeNewspaperBlock('article'),text:'Só título'};
+  const photo={...makeNewspaperBlock('image'),caption:'Com legenda'};
+  const texts=publicationIssues([long,title,photo]).map(i=>i.text).join('|');
+  expect(texts).toMatch(/manchete com 91 caracteres/);
+  expect(texts).toMatch(/falta o texto/);
+  expect(texts).toMatch(/fotografia sem imagem/);
+ });
+});
+describe('transformar bloco',()=>{
+ it('matéria vira manchete e volta sem perder o texto',()=>{
+  const article={...makeNewspaperBlock('article'),text:'Paz\n\nO rei assinou.',dropCap:true};
+  const headline=convertBlock(article,'headline')!;
+  expect(headline.type).toBe('headline');
+  expect(headline.text).toBe('Paz');
+  expect(headline.subtitle).toBe('O rei assinou.');
+  expect('dropCap' in headline).toBe(false);
+  const back=convertBlock(headline,'article')!;
+  expect(back.text).toBe('Paz\n\nO rei assinou.');
+ });
+ it('aviso ganha selo e citação vira texto de uma linha',()=>{
+  const quote={...makeNewspaperBlock('quote'),text:'Linha um\nlinha dois'};
+  const notice=convertBlock(quote,'notice')!;
+  expect(notice.icon).toBe('⚜');
+  expect(convertBlock(notice,'quote')!.text).toBe('Linha um linha dois');
+ });
+ it('não converte fotografia nem para o mesmo tipo',()=>{
+  expect(convertBlock(makeNewspaperBlock('image'),'article')).toBeNull();
+  expect(convertBlock(makeNewspaperBlock('article'),'image' as never)).toBeNull();
+  expect(convertBlock(makeNewspaperBlock('article'),'article')).toBeNull();
+  expect(CONVERTIBLE_LABELS.map(l=>l.value)).not.toContain('image');
+ });
+});
+describe('situação do salvamento',()=>{
+ it('descreve cada estado em português',()=>{
+  expect(saveStatusText({status:'saving',dirty:true})).toBe('Salvando…');
+  expect(saveStatusText({status:'failed',dirty:true})).toMatch(/Falha ao salvar/);
+  expect(saveStatusText({status:'idle',dirty:true})).toBe('Alterações ainda não salvas');
+  expect(saveStatusText({status:'saved',at:'14:02',dirty:false})).toBe('Salvo às 14:02');
+  expect(saveStatusText({status:'idle',dirty:false})).toBe('Tudo salvo');
+ });
+ it('resume o bloco para o esboço',()=>{
+  expect(blockSummary({...makeNewspaperBlock('headline'),text:'Uma manchete'})).toBe('Manchete: Uma manchete');
+ });
+});

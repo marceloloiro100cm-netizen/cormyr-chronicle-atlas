@@ -153,3 +153,92 @@ export function validateSchedule(publishOn:string,hubDate:string):string|null{
  return null;
 }
 export const KNOWN_FESTIVAL_IDS:readonly string[]=FESTIVALS.map(f=>f.id);
+
+// ---- Texto digitado e colado nos campos da folha ----
+/**
+ * Texto de uma colagem: sempre texto puro. Em campos de uma linha (manchete, títulos) as quebras
+ * viram espaço; nos demais, linhas em branco repetidas viram uma só.
+ */
+export function pastedPlainText(raw:string,singleLine:boolean):string{
+ const text=raw.replace(/\r\n?/g,'\n').replace(/[ ​]/g,' ');
+ if(singleLine)return text.replace(/\s*\n+\s*/g,' ').replace(/ {2,}/g,' ').trim();
+ return text.replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+/** Texto guardado ao sair do campo: sem retorno de carro; em campos de uma linha, sem quebras. */
+export function normalizeFieldText(raw:string,singleLine:boolean):string{
+ const text=raw.replace(/\r/g,'');
+ return singleLine?text.replace(/\s*\n+\s*/g,' ').trim():text.trim();
+}
+/** Tamanhos sugeridos (só avisam, nunca bloqueiam): o titular longo quebra a diagramação. */
+export const FIELD_LIMITS={headline:90,subhead:120,deck:160,title:80} as const;
+
+// ---- Conferência antes de publicar ----
+export type PublicationIssue={blockId:string|null;text:string};
+/** Textos de exemplo que makeNewspaperBlock() cria: ficam no teste junto com ele. */
+const SAMPLE_PREFIXES:Partial<Record<NewspaperBlock['type'],string>>={
+ headline:'Escreva a manchete principal',
+ article:'Escreva aqui o conteúdo da reportagem',
+ notice:'Escreva aqui o comunicado',
+ quote:'Uma declaração importante',
+ subtitle:'Linha fina que complementa',
+};
+export function publicationIssues(blocks:readonly NewspaperBlock[]):PublicationIssue[]{
+ const issues:PublicationIssue[]=[];
+ blocks.forEach((block,index)=>{
+  const where=`Bloco ${index+1}`;
+  if(block.type==='image'){
+   if(!block.imagePath&&!block.imageSrc)issues.push({blockId:block.id,text:`${where}: fotografia sem imagem.`});
+   else if(!block.caption?.trim()||block.caption.startsWith('Legenda da fotografia'))
+    issues.push({blockId:block.id,text:`${where}: a fotografia está sem legenda própria.`});
+   return;
+  }
+  const sample=SAMPLE_PREFIXES[block.type];
+  const [first='',...rest]=block.text.split('\n');
+  const body=rest.join('\n').trim();
+  if(!block.text.trim()){issues.push({blockId:block.id,text:`${where}: texto vazio.`});return;}
+  if(sample&&block.text.includes(sample)){issues.push({blockId:block.id,text:`${where}: ainda está com o texto de exemplo.`});return;}
+  if((block.type==='article'||block.type==='notice')&&!body)
+   issues.push({blockId:block.id,text:`${where}: só tem título, falta o texto.`});
+  if(block.type==='headline'&&first.trim().length>FIELD_LIMITS.headline)
+   issues.push({blockId:block.id,text:`${where}: manchete com ${first.trim().length} caracteres (o ideal é até ${FIELD_LIMITS.headline}).`});
+ });
+ return issues;
+}
+
+// ---- Transformar um bloco de texto em outro tipo, sem perder o que foi escrito ----
+export function convertBlock(block:NewspaperBlock,type:NewspaperBlock['type']):NewspaperBlock|null{
+ if(block.type==='image'||type==='image'||block.type===type)return null;
+ const parts=block.type==='headline'?[block.text,block.subtitle??'']
+  :block.type==='article'||block.type==='notice'?block.text.split(/\n\s*\n/):[block.text];
+ const clean=parts.map(part=>part.trim()).filter(Boolean);
+ const next:NewspaperBlock={...block,type,text:''};
+ delete next.subtitle;
+ if(type!=='notice')delete next.icon;
+ if(type!=='article'){delete next.dropCap;delete next.byline;}
+ if(type==='headline'){next.text=(clean[0]??'').replace(/\s*\n+\s*/g,' ');
+  const deck=clean.slice(1).join(' ').replace(/\s*\n+\s*/g,' ');next.subtitle=deck;}
+ else if(type==='article'||type==='notice')next.text=clean.join('\n\n');
+ else next.text=clean.join(' ').replace(/\s*\n+\s*/g,' ');
+ if(type==='notice'&&!next.icon)next.icon='⚜';
+ return next;
+}
+export const CONVERTIBLE_LABELS:{value:NewspaperBlock['type'];label:string}[]=[
+ {value:'headline',label:'Manchete'},{value:'subtitle',label:'Subtítulo'},{value:'article',label:'Matéria'},
+ {value:'quote',label:'Citação'},{value:'notice',label:'Aviso'},
+];
+
+// ---- Situação do salvamento ----
+export type SaveState={status:'idle'|'saving'|'saved'|'failed';at?:string;dirty:boolean};
+export function saveStatusText(state:SaveState):string{
+ if(state.status==='saving')return 'Salvando…';
+ if(state.status==='failed')return 'Falha ao salvar. Tentando de novo em instantes.';
+ if(state.dirty)return 'Alterações ainda não salvas';
+ return state.at?`Salvo às ${state.at}`:'Tudo salvo';
+}
+export function blockSummary(block:NewspaperBlock):string{
+ const labels:Record<NewspaperBlock['type'],string>={headline:'Manchete',subtitle:'Subtítulo',article:'Matéria',
+  image:'Fotografia',quote:'Citação',notice:'Aviso'};
+ const head=block.type==='image'?(block.caption??''):(block.text.split('\n')[0]??'');
+ const short=head.trim().length>38?head.trim().slice(0,37)+'…':head.trim();
+ return `${labels[block.type]}${short?`: ${short}`:''}`;
+}

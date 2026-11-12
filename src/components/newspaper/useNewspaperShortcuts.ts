@@ -12,6 +12,9 @@ export interface NewspaperShortcutHandlers{
  onPaste:(text:string,files:File[])=>void;
  onRemove:(id:string)=>void;
  onDuplicate:(id:string)=>void;
+ /** Tecla "/": abre o menu de inserção. Tecla "?": abre a lista de atalhos. */
+ onSlash?:()=>void;
+ onHelp?:()=>void;
 }
 
 /** Campos de texto cuidam do próprio Ctrl+Z/C/X/V; a folha cuida disso quando o foco está num bloco. */
@@ -26,7 +29,8 @@ function hasTextSelection():boolean{
 
 /**
  * Atalhos da folha para BLOCOS: Ctrl+Z / Ctrl+Y (ou Ctrl+Shift+Z) desfazer e refazer,
- * Ctrl+C / Ctrl+X / Ctrl+V copiar, recortar e colar, Ctrl+D duplicar e Delete remover.
+ * Ctrl+C / Ctrl+X / Ctrl+V copiar, recortar e colar, Ctrl+D duplicar, Delete remover,
+ * "/" inserir bloco e "?" ajuda.
  * Dentro de um texto em edição valem as teclas normais do navegador.
  */
 export function useNewspaperShortcuts(handlers:NewspaperShortcutHandlers):void{
@@ -40,6 +44,8 @@ export function useNewspaperShortcuts(handlers:NewspaperShortcutHandlers):void{
    const h=ref.current,mod=event.ctrlKey||event.metaKey,key=event.key.toLowerCase();
    if(mod&&key==='z'){event.preventDefault();if(event.shiftKey)h.onRedo();else h.onUndo();return;}
    if(mod&&key==='y'){event.preventDefault();h.onRedo();return;}
+   if(!mod&&!event.altKey&&event.key==='/'&&h.onSlash){event.preventDefault();h.onSlash();return;}
+   if(!mod&&!event.altKey&&event.key==='?'&&h.onHelp){event.preventDefault();h.onHelp();return;}
    if(!h.selectedId)return;
    if(mod&&key==='d'){event.preventDefault();h.onDuplicate(h.selectedId);return;}
    if(!mod&&!event.altKey&&event.key==='Delete'){
