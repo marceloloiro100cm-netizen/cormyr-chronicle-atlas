@@ -161,7 +161,7 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
   <header className="newspaper-masthead">
    <div className="newspaper-rule"/>
    {compactMasthead?<div className="newspaper-page-folio">
-    <span>ANO II · EDIÇÃO Nº {String(edition.edition_no).padStart(3,'0')}</span>
+    <span>EDIÇÃO Nº {String(edition.edition_no).padStart(3,'0')}</span>
     <span>A VOZ LIVRE DE CORMYR</span>
     <span>{formatDate(edition.campaign_date)}</span>
    </div>:<p>O CORREIO DO REINO · CORMYR · EDIÇÃO {String(edition.edition_no).padStart(3,'0')}</p>}

@@ -83,3 +83,22 @@ describe('Brasões do jornal',()=>{
   expect(read('src/components/newspaper/NewspaperEditorialDesk.tsx')).toContain('/newspaper/brasao_folha.png');
  });
 });
+
+describe('Redação, calendário e folio',()=>{
+ const sql2=read('drizzle/migrations/0118_newspaper_staff.sql');
+ it('a Redação é restrita ao Editor-Chefe e ao Narrador',()=>{
+  expect(sql2).toContain('USING (public.can_edit_campaign_newspaper())');
+  expect(sql2).toContain("bucket_id='campaign-newspaper-staff' AND public.can_edit_campaign_newspaper()");
+  expect(sql2).not.toMatch(/TO anon/);
+ });
+ it('o folio mostra só o número da edição e o calendário usa eventos públicos',()=>{
+  expect(read('src/components/newspaper/NewspaperCanvas.tsx')).not.toContain('ANO II');
+  const cal=read('src/components/newspaper/NewspaperCalendar.tsx');
+  expect(cal).toContain('annualEvents');
+  expect(cal).not.toContain('calendar_mail_events');
+  const desk=read('src/components/newspaper/NewspaperEditorialDesk.tsx');
+  expect(desk).toContain("label:'Escrever o Jornal'");
+  expect(desk).toContain("label:'Redação'");
+  expect(desk).toContain("label:'Calendário'");
+ });
+});

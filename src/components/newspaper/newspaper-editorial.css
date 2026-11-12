@@ -330,7 +330,7 @@
 @media(max-width:480px){.folha-paper-holder .newspaper-page-folio{flex-wrap:wrap;justify-content:center}}
 
 .folha-nav-count{margin-left:auto;min-width:22px;padding:1px 7px;border-radius:999px;
- background:#e6c275;color:#2b1a0d;font:700 .78rem system-ui,sans-serif;text-align:center}
+ background:#c62828;color:#fff;box-shadow:0 0 0 2px rgba(198,40,40,.35);font:700 .78rem system-ui,sans-serif;text-align:center}
 
 .folha-edition-switch{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .folha-edition-switch select{flex:1;min-width:170px;padding:6px 8px;border:1px solid #b99867;
@@ -352,3 +352,37 @@
 .folha-crest-img{width:92px;height:auto;filter:drop-shadow(0 3px 3px rgba(0,0,0,.55))}
 .folha-sigil-img{height:104px;width:auto;filter:drop-shadow(0 3px 4px rgba(60,30,10,.45))}
 @media (max-width:760px){.folha-sigil-img{height:70px}}
+
+/* Configurações com pré-visualização ao lado */
+.folha-settings-layout{display:grid;grid-template-columns:minmax(260px,320px) minmax(0,1fr);gap:22px;align-items:start}
+.folha-settings-preview{display:grid;gap:6px}
+.folha-settings-preview small{opacity:.8}
+.folha-settings-preview-frame{height:520px;overflow:hidden;border:1px solid rgba(80,50,20,.4);background:#f4e8cc}
+.folha-settings-preview-page{width:166%;transform:scale(.6);transform-origin:top left;pointer-events:none}
+@media (max-width:900px){.folha-settings-layout{grid-template-columns:1fr}}
+.folha-latest-label{margin:0 0 8px;font-weight:700;letter-spacing:.04em}
+.folha-panel-empty{display:grid;justify-items:center;gap:10px;padding:40px 12px;text-align:center}
+
+/* Calendário de pautas */
+.folha-calendar{display:grid;gap:8px}
+.folha-cal-head{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.folha-cal-head button{padding:6px 10px;border:1px solid rgba(80,50,20,.4);background:#fff8e6;cursor:pointer}
+.folha-cal-row{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px}
+.folha-cal-festivals{display:flex;gap:6px;flex-wrap:wrap}
+.folha-cal-day{position:relative;min-height:42px;padding:4px;border:1px solid rgba(80,50,20,.35);background:#fff8e6;cursor:pointer}
+.folha-cal-selected{background:#e6c275;font-weight:700}
+.folha-cal-dot{position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:#7e2529}
+.folha-cal-events{display:grid;gap:8px;margin-top:6px}
+.folha-cal-event{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;padding:8px;border:1px solid rgba(80,50,20,.3)}
+.folha-cal-event p{margin:4px 0 0;font-size:.85rem}
+
+/* Redação (funcionários) */
+.folha-staff{display:grid;gap:12px}
+.folha-staff-form{display:grid;gap:8px;max-width:520px}
+.folha-staff-list{display:grid;gap:10px}
+.folha-staff-card{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:12px;padding:10px;border:1px solid rgba(80,50,20,.35);background:rgba(255,248,230,.6)}
+.folha-staff-card small{display:block;opacity:.8}.folha-staff-card em{font-size:.8rem;opacity:.75}
+.folha-staff-photo{width:72px;height:72px;object-fit:cover;border:2px solid #ad824f}
+.folha-staff-photo-empty{display:grid;place-items:center;background:#e6c275;font:700 1.6rem Georgia,serif}
+.folha-staff-actions{display:flex;gap:4px;align-items:flex-start}
+.folha-staff-actions button{padding:5px;border:1px solid rgba(80,50,20,.4);background:#fff8e6;cursor:pointer}

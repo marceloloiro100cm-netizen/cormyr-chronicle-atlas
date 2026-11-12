@@ -10,7 +10,8 @@ import {NewspaperEditorialDesk} from './NewspaperEditorialDesk';
 import {CommissionForm,CommissionInbox} from './NewspaperCommissions';
 import {
  copyCommissionImageToEdition,createNewspaperEdition,deleteNewspaperDraft,getHouseNames,getNewspaperCommissions,rejectNewspaperCommission,
- getNewspaperEditions,getNewspaperReceipts,getNewspaperRevisions,
+ getNewspaperEditions,getNewspaperReceipts,getNewspaperRevisions,getNewspaperStaff,saveNewspaperStaff,
+ deleteNewspaperStaff,uploadStaffPhoto,
  markNewspaperRead,updateNewspaperEdition,uploadNewspaperAsset,
 } from '@/lib/newspaper/data';
 import {
@@ -19,7 +20,7 @@ import {
  reorderNewspaperBlocks,duplicateNewspaperBlock,
  NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,validateNewspaperEdition,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperState,
- type NewspaperTemplate,type NewspaperRevision,
+ type NewspaperTemplate,type NewspaperRevision,type NewspaperStaffMember,
 } from '@/lib/newspaper/model';
 import './newspaper.css';
 
@@ -61,6 +62,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
   queryFn:getNewspaperCommissions,refetchInterval:30_000});
  const houseNamesQuery=useQuery({queryKey:['campaign-newspaper-house-names'],
   queryFn:getHouseNames,enabled:editor,staleTime:10*60*1000});
+ const staffQuery=useQuery({queryKey:['campaign-newspaper-staff'],queryFn:getNewspaperStaff,
+  enabled:editor&&editorial,staleTime:60_000,retry:false});
+ const staff=staffQuery.data??[];
  const allCommissions=commissionsQuery.data??[];
  const pending=pendingCommissions(allCommissions);
  const houseNames=houseNamesQuery.data??new Map<string,string>();
@@ -107,14 +111,14 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
    catch(cause){setError('O jornal abriu, mas a confirmação de leitura não foi salva: '+safeError(cause));}
   }
  };
- const newEdition=async(initialBlock?:NewspaperBlockType)=>{
+ const newEdition=async(initialBlock?:NewspaperBlockType,extraPatch?:Partial<NewspaperBlock>)=>{
   if(!editor||busy)return;
   if(!time.data){setError('Aguarde a data oficial do HUB Temporal.');return;}
   setBusy(true);setError('');
   try{
    const template:'classico'='classico';
    const blocks=createNewspaperLayout(template);
-   const extra=initialBlock?makeNewspaperBlock(initialBlock):null;
+   const extra=initialBlock?{...makeNewspaperBlock(initialBlock),...(extraPatch??{})}:null;
    if(extra)blocks.push(extra);
    const edition=await createNewspaperEdition({
     campaign_date:dateKey(time.data),title:'A Folha Sem Selo',
@@ -372,6 +376,38 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
   const block=current?.blocks.find(b=>b.commissionId===commission.id);
   if(block){setBlockId(block.id);setEditing(true);}
  };
+const writeAboutDate=(title:string,body:string)=>{
+  if(!editor||busy)return;
+  const text=`${title}\n\n${body}`;
+  if(!current||current.state!=='draft'){void newEdition('article',{text});return;}
+  if(current.blocks.length>=80){setError('A edição permite até 80 elementos.');return;}
+  const block={...makeNewspaperBlock('article'),text};
+  setDraft(old=>old?{...old,blocks:[...old.blocks,block]}:old);
+  setBlockId(block.id);setEditing(true);
+  notice('Matéria criada com o título da data. Escreva o texto direto na folha.');
+ };
+ const saveStaff=async(input:{id?:string;name:string;specialty:string;bio:string;photoPath:string|null},photo:File|null):Promise<boolean>=>{
+  if(!editor||busy)return false;
+  setBusy(true);setError('');
+  try{
+   const photoPath=photo?await uploadStaffPhoto(photo):input.photoPath;
+   await saveNewspaperStaff({...input,photoPath});
+   await qc.invalidateQueries({queryKey:['campaign-newspaper-staff']});
+   notice('Funcionário salvo na Redação.');return true;
+  }catch(cause){setError(safeError(cause));return false;}
+  finally{setBusy(false);}
+ };
+ const removeStaff=async(member:NewspaperStaffMember)=>{
+  if(!editor||busy)return;
+  if(!window.confirm('Remover '+member.name+' da Redação? As matérias já assinadas mantêm o nome.'))return;
+  setBusy(true);setError('');
+  try{
+   await deleteNewspaperStaff(member.id,member.photo_path);
+   await qc.invalidateQueries({queryKey:['campaign-newspaper-staff']});
+   notice('Funcionário removido da Redação.');
+  }catch(cause){setError(safeError(cause));}
+  finally{setBusy(false);}
+ };
  const useEngraving=(src:string,label:string)=>{
   if(!current)return;
   const target=current.blocks.find(b=>b.id===blockId&&b.type==='image');
@@ -413,6 +449,8 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
   onInsertCommission={commission=>{void insertCommission(commission);}}
   onShowCommission={showCommission}
   onRejectCommission={(commission,note)=>{void rejectCommission(commission,note);}}
+  staff={staff} onSaveStaff={saveStaff} onDeleteStaff={member=>{void removeStaff(member);}}
+  onWriteAboutDate={writeAboutDate}
   revisions={revisionsQuery.data??[]} onRestoreRevision={restoreRevision} onUseEngraving={useEngraving}
   dirty={dirty} onDiscard={discardChanges} onDeleteDraft={()=>{void deleteDraft();}}
   onNew={type=>{void newEdition(type);}}
