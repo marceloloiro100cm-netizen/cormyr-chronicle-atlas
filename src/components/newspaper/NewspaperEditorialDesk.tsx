@@ -195,7 +195,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
   setSection('capa');setFullPreview(false);setCheckOpen(false);
   props.onSelectBlock(id);if(!editing)props.onEdit();
   window.setTimeout(()=>{
-   const el=Array.from(document.querySelectorAll<HTMLElement>('[data-block-id]')).find(node=>node.dataset.blockId===id);
+   const el=Array.from(document.querySelectorAll<HTMLElement>('[data-block-id]')).find(node=>node.dataset['blockId']===id);
    el?.scrollIntoView?.({block:'center',behavior:'smooth'});el?.focus();
   },60);
  };
