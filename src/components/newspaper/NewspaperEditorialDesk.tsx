@@ -179,7 +179,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         <span className="folha-nav-count" aria-label={`${props.pendingCommissions.length} notícia(s) contratada(s) pendente(s)`}>
          {props.pendingCommissions.length}</span>}</button>;
     })}</nav>
-    <img className="folha-navigation-emblem" src="/newspaper/emblema_dourado.webp" alt="" aria-hidden="true"/>
+    <img className="folha-navigation-emblem" src="/newspaper/emblema_integrado.webp" alt="" aria-hidden="true"/>
    </aside>
 
    <main className="folha-main">

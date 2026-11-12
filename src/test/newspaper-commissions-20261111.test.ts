@@ -137,7 +137,7 @@ describe('Gravuras do Reino e calendário do Editor-Chefe',()=>{
   const desk=read('src/components/newspaper/NewspaperEditorialDesk.tsx');
   const css=read('src/components/newspaper/newspaper-editorial.css');
   expect(desk).not.toContain('SEGUNDA TEMPORADA');
-  expect(desk).toContain('emblema_dourado.webp');
+  expect(desk).toContain('emblema_integrado.webp');
   expect(css).toContain('cabecalho_folha.webp');
   expect(desk).toContain('folha-font-');
  });
