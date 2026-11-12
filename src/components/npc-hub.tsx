@@ -1,6 +1,8 @@
-import {isNarrativeNpc} from '@/lib/house/narrative-npc';
+import {isNarrativeNpc,COURT_NPC_ARCHIVED_MARKER} from '@/lib/house/narrative-npc';
+import {loadHouseHub} from '@/lib/house/house.functions';
+import {useServerFn} from '@tanstack/react-start';
 import { useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, UserRound } from 'lucide-react';
+import { ChevronDown, UserRound, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { CampaignContent, ImagePicker, PrivateImage, uploadImages, type PendingImage } from '@/components/campaign-content';
@@ -21,9 +23,35 @@ export function CollapsibleText({ title, children }: { title: ReactNode; childre
 export function NpcHub({ records, houseId, playerId, admin, canEdit, onSave, renderEditor }: { records: RecordRow[]; houseId: string; playerId?: string | undefined; admin: boolean; canEdit: boolean; onSave: () => unknown; renderEditor: (row: RecordRow) => ReactNode }) {
   const npcs = records.filter(isNarrativeNpc).map(r => ({ row: r, ...parseNpc(r.title, r.content) })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   const [aberto, setAberto] = useState<string | null>(null);
+  const [archiving,setArchiving]=useState<string|null>(null),[archiveMessage,setArchiveMessage]=useState('');
+  const load=useServerFn(loadHouseHub);
+  async function archiveNpc(row:RecordRow){
+    if(!window.confirm('Excluir "'+row.title+'" da Corte? A ficha deixará de aparecer nas listas, mas o histórico de versões será preservado para recuperação.'))return;
+    setArchiving(row.id);setArchiveMessage('');
+    try{
+      // Never strand a live Court appointment or vassal relationship.
+      const sheet=await load({data:{houseId}});
+      if(sheet.state.court.some(m=>m.npcId===row.id)||
+         sheet.state.vassals?.some(v=>v.npcIds?.includes(row.id))){
+        setArchiveMessage('Remova primeiro os vínculos deste personagem em Corte e Vassalos. Nenhum registro foi excluído.');
+        return;
+      }
+      const {error}=await supabase.rpc('save_campaign_record',{
+        p_id:row.id,p_version:row.version,p_title:row.title,
+        p_content:COURT_NPC_ARCHIVED_MARKER,
+      });
+      if(error)throw error;
+      setAberto(current=>current===row.id?null:current);
+      setArchiveMessage('Integrante excluído da lista ativa. Histórico preservado.');
+      await onSave();
+    }catch(error){
+      setArchiveMessage(error instanceof Error?error.message:'Não foi possível excluir o integrante.');
+    }finally{setArchiving(null);}
+  }
   return <section className="campaign-npc-hub">
     <div className="campaign-npc-head"><h2>Corte</h2><span className="campaign-npc-count" aria-label={`${npcs.length} integrantes da Corte`}>{npcs.length} {npcs.length === 1 ? 'integrante' : 'integrantes'}</span></div>
     {canEdit && <NpcForm houseId={houseId} playerId={playerId} admin={admin} onSave={onSave} />}
+    {archiveMessage&&<p role="status" aria-live="polite" className="house-caption">{archiveMessage}</p>}
     {npcs.length === 0 ? <p className="campaign-empty">Nenhum integrante da Corte cadastrado.</p> : <ul className="campaign-npc-list">{npcs.map(n => <li key={n.row.id} className={aberto === n.row.id ? 'aberto' : ''}>
       <div className="campaign-npc-row">
         <span className="campaign-npc-photo">{n.foto ? <PrivateImage path={n.foto} caption={n.nome} thumbnail /> : <UserRound size={28} aria-hidden="true" />}</span>
@@ -32,7 +60,7 @@ export function NpcHub({ records, houseId, playerId, admin, canEdit, onSave, ren
           <ChevronDown size={18} className="campaign-npc-chevron" aria-hidden="true" />
         </button>
       </div>
-      {aberto === n.row.id && <div className="campaign-npc-detail">{n.descricao ? <CampaignContent content={n.row.content} /> : <p className="campaign-empty">Sem descrição.</p>}{canEdit && renderEditor(n.row)}</div>}
+      {aberto === n.row.id && <div className="campaign-npc-detail">{n.descricao ? <CampaignContent content={n.row.content} /> : <p className="campaign-empty">Sem descrição.</p>}{canEdit && renderEditor(n.row)}{canEdit&&<Button type="button" size="sm" variant="outline" disabled={archiving!==null} onClick={()=>void archiveNpc(n.row)} aria-label={'Excluir '+n.nome+' da Corte'}><Trash2 size={15}/>Excluir da Corte</Button>}</div>}
     </li>)}</ul>}
   </section>;
 }
