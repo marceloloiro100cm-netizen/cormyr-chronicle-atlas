@@ -47,3 +47,16 @@
 - A migração 0116 desvincula com segurança o antigo `espiao` de Leonardo, preservando a conta de autenticação e o histórico armazenado. O registro legado da falsa casa não é apresentado como Casa da campanha.
 - O formulário administrativo `Gerenciar acesso editorial` cria ou corrige a conta via função de servidor, sem vinculá-la a nenhuma Casa e sem armazenar senhas no código.
 - **Não mesclar esta PR sem aplicar e validar ambas as migrações no Supabase.** Atualizar apenas o front-end deixa o novo resolver de perfis indisponível e impede o login seguro.
+
+
+## Notícias contratadas (11/11/2026, migração 0117)
+- **Jogador**: na aba Jornal, "Contratar notícia" (1 de Riqueza permanente). Escreve título e texto e anexa uma imagem opcional (PNG, JPG ou WebP, até 5 MB).
+- **Editor-Chefe**: em Anúncios vê os pedidos pendentes, insere na edição em rascunho, edita o texto na folha e publica. Ao publicar, o pedido sai das pendências automaticamente (gatilho `settle_newspaper_commissions`).
+- Implantação: aplicar `drizzle/migrations/0117_newspaper_commissions.sql` depois de 0111 e 0116 (homologação primeiro). Sem a migração, o formulário do jogador fica oculto.
+- Análise comparativa com o modelo: `analise-modelo-gazeta-vs-folha-sem-selo-2026-11-11.md`.
+- Login: o perfil do Editor-Chefe aparece como "A Folha Sem Selo".
+- **Recusar pedido**: em Anúncios, o Editor-Chefe escreve uma nota obrigatória e recusa. A Riqueza (1) é devolvida com lançamento no livro-caixa e a Casa vê a nota no Jornal.
+- **Excluir rascunho**: apenas rascunhos (RPC `delete_campaign_newspaper_draft`). As revisões do rascunho são apagadas; pedidos que estavam nele voltam às pendências. O número da edição excluída não é reutilizado (coluna de identidade).
+- **Facilidades do modelo da Gazeta**: botões de largura (1/4, 1/3, 1/2, 2/3, Total), bloco Subtítulo, seletor de edições e "Próxima edição" no topo, "Descartar alterações" com aviso ao fechar a página, setas subir/descer em cada bloco e leões heráldicos no cabeçalho.
+
+- **Seis facilidades extras**: acervo de gravuras, nome e lema editáveis na folha, histórico de revisões com restauração (Arquivo), salvamento automático de rascunhos, aviso ao jogador (contador no Jornal e botão Entendi) e limite de 3 pedidos pendentes por Casa. Mesma migração 0117.

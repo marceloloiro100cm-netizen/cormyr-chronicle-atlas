@@ -1,9 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {
- createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperResize,
- safeNewspaperBlocks,validateNewspaperEdition,reorderNewspaperBlocks,
- duplicateNewspaperBlock,insertNewspaperBlockBefore,type NewspaperEdition,
-} from './model';
+import {createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperResize,safeNewspaperBlocks,validateNewspaperEdition,reorderNewspaperBlocks,duplicateNewspaperBlock,insertNewspaperBlockBefore,type NewspaperEdition,commissionInEdition,moveNewspaperBlock,newspaperIsDirty,NEWSPAPER_WIDTH_PRESETS,commissionToBlocks,pendingCommissions,validateCommissionDraft,type NewspaperCommission,NEWSPAPER_ENGRAVINGS,unseenCommissionAnswers,houseCanCommission,COMMISSION_PENDING_LIMIT} from './model';
 
 const published={
  id:'00000000-0000-4000-8000-000000000001',edition_no:1,
@@ -77,5 +73,91 @@ describe('Jornal de Cormyr',()=>{
   expect(validateNewspaperEdition(published)).toMatch(/Adicione/);
   expect(validateNewspaperEdition({...published,blocks:createNewspaperLayout('classico')})).toBeNull();
   expect(validateNewspaperEdition({...published,blocks:[],pdf_path:'edition/paper.pdf'})).toBeNull();
+ });
+});
+
+describe('Notícias contratadas pelas Casas',()=>{
+ const commission:NewspaperCommission={
+  id:'11111111-1111-4111-8111-111111111111',house_id:'crownsilver',requested_by:'u',
+  title:'Grande feira em Suzail',body:'A Casa anuncia uma feira de três dias na capital.',
+  image_path:null,cost_wealth:1,state:'pending',request_key:'k',newspaper_id:null,
+  created_at:'2026-11-11T10:00:00Z',published_at:null,rejection_note:null,rejected_at:null,seen_at:null,
+ };
+ it('exige título e texto antes de gastar Riqueza',()=>{
+  expect(validateCommissionDraft({title:'',body:'texto suficiente aqui'})).toMatch(/título/i);
+  expect(validateCommissionDraft({title:'Feira',body:'curto'})).toMatch(/texto/i);
+  expect(validateCommissionDraft({title:'Feira',body:'texto suficiente aqui'})).toBeNull();
+ });
+ it('converte o pedido em reportagem editável com título na primeira linha',()=>{
+  const [article,photo]=commissionToBlocks(commission,undefined,'Casa Crownsilver');
+  expect(photo).toBeUndefined();
+  expect(article?.type).toBe('article');
+  expect(article?.text.split('\n')[0]).toBe('Grande feira em Suzail');
+  expect(article?.commissionId).toBe(commission.id);
+  expect(article?.byline).toContain('Casa Crownsilver');
+ });
+ it('acrescenta a fotografia ligada ao mesmo pedido quando há imagem',()=>{
+  const blocks=commissionToBlocks(commission,'edicao/foto.jpg');
+  expect(blocks.map(b=>b.type)).toEqual(['article','image']);
+  expect(blocks[1]?.imagePath).toBe('edicao/foto.jpg');
+  expect(blocks.every(b=>b.commissionId===commission.id)).toBe(true);
+ });
+ it('mantém o vínculo ao salvar e rejeita identificadores inválidos',()=>{
+  const [article]=commissionToBlocks(commission);
+  expect(safeNewspaperBlocks([article])[0]?.commissionId).toBe(commission.id);
+  expect(safeNewspaperBlocks([{...article,commissionId:'<script>'}])[0]?.commissionId).toBeUndefined();
+ });
+ it('lista só pendentes, do mais antigo ao mais novo, e detecta o pedido na edição',()=>{
+  const older={...commission,id:'22222222-2222-4222-8222-222222222222',created_at:'2026-11-10T10:00:00Z'};
+  const done={...commission,id:'33333333-3333-4333-8333-333333333333',state:'published' as const};
+  expect(pendingCommissions([commission,done,older]).map(c=>c.id)).toEqual([older.id,commission.id]);
+  expect(commissionInEdition({blocks:commissionToBlocks(commission)},commission.id)).toBe(true);
+  expect(commissionInEdition({blocks:[]},commission.id)).toBe(false);
+  expect(commissionInEdition(null,commission.id)).toBe(false);
+ });
+});
+
+describe('Facilidades herdadas do modelo da Gazeta',()=>{
+ it('cria bloco de subtítulo e preserva o tipo ao salvar',()=>{
+  const sub=makeNewspaperBlock('subtitle');
+  expect(sub.span).toBe(12);
+  expect(safeNewspaperBlocks([sub])[0]?.type).toBe('subtitle');
+ });
+ it('oferece larguras prontas dentro das 12 colunas',()=>{
+  expect(NEWSPAPER_WIDTH_PRESETS.map(p=>p.span)).toEqual([3,4,6,8,12]);
+ });
+ it('detecta alterações não salvas e move blocos',()=>{
+  const saved={...published,state:'draft',blocks:[makeNewspaperBlock('headline')]} as NewspaperEdition;
+  expect(newspaperIsDirty(saved,saved)).toBe(false);
+  expect(newspaperIsDirty({...saved,title:'Outro'},saved)).toBe(true);
+  const [a,b]=[makeNewspaperBlock('article'),makeNewspaperBlock('quote')];
+  expect(moveNewspaperBlock([a,b],a.id,1).map(x=>x.id)).toEqual([b.id,a.id]);
+  expect(moveNewspaperBlock([a,b],a.id,-1).map(x=>x.id)).toEqual([a.id,b.id]);
+ });
+});
+
+describe('Acervo, avisos e limite por Casa',()=>{
+ const base={requested_by:'u',title:'Titulo',body:'Texto longo o bastante',image_path:null,cost_wealth:1,
+  request_key:'k',newspaper_id:null,created_at:'',published_at:null,rejection_note:null,rejected_at:null,seen_at:null};
+ const c=(id:string,house:string,state:'pending'|'published'|'rejected',seen:string|null=null):NewspaperCommission=>
+  ({...base,id,house_id:house,state,seen_at:seen});
+ it('aceita só gravuras do acervo fixo',()=>{
+  const ok=NEWSPAPER_ENGRAVINGS[0]!.src;
+  const [a,b]=safeNewspaperBlocks([
+   {...makeNewspaperBlock('image'),imageSrc:ok},
+   {...makeNewspaperBlock('image'),imageSrc:'https://evil.example/x.png'},
+  ]);
+  expect(a?.imageSrc).toBe(ok);
+  expect(b?.imageSrc).toBeUndefined();
+ });
+ it('conta respostas ainda não vistas somente da própria Casa',()=>{
+  const list=[c('1','a','published'),c('2','a','rejected','2026-11-11'),c('3','b','published'),c('4','a','pending')];
+  expect(unseenCommissionAnswers(list,'a').map(x=>x.id)).toEqual(['1']);
+ });
+ it('bloqueia novo pedido ao atingir o limite de pendentes',()=>{
+  const full=Array.from({length:COMMISSION_PENDING_LIMIT},(_,i)=>c(String(i),'a','pending'));
+  expect(houseCanCommission(full,'a')).toBe(false);
+  expect(houseCanCommission(full,'b')).toBe(true);
+  expect(houseCanCommission([...full.slice(1),c('x','a','published')],'a')).toBe(true);
  });
 });

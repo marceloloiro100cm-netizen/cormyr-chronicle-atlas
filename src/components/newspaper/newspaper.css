@@ -254,9 +254,62 @@
   width:100%!important;max-width:100%!important;margin:0!important;padding:8mm!important;
   box-shadow:none!important;border:0!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}
  .newspaper-page .newspaper-canvas-tip,.newspaper-drag-handle,
- .newspaper-resize-handle,.newspaper-drop-end,.newspaper-lightbox,.newspaper-image-open:focus-visible{
+ .newspaper-resize-handle,.newspaper-move-buttons,.newspaper-drop-end,.newspaper-lightbox,.newspaper-image-open:focus-visible{
   display:none!important}
  .newspaper-page .newspaper-story{break-inside:avoid;page-break-inside:avoid}
  .newspaper-image-open{cursor:default}
  .newspaper-photo img{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
+
+/* Notícias contratadas pelas Casas (1 de Riqueza) */
+.newspaper-commission{display:grid;gap:12px;margin:0 0 16px;padding:14px 16px;
+ border:1px solid #b99867;border-radius:8px;background:rgba(251,243,228,.85);color:#2b1a0d}
+.newspaper-commission>header{display:flex;flex-wrap:wrap;align-items:center;
+ justify-content:space-between;gap:10px}
+.newspaper-commission>header>div{display:grid;gap:3px}
+.newspaper-commission>header strong{display:flex;align-items:center;gap:7px;font:700 1.05rem Georgia,serif}
+.newspaper-commission>header span{font-size:.88rem;color:#5a422e}
+.newspaper-commission-form{display:grid;gap:10px}
+.newspaper-commission-form label{display:grid;gap:4px;font-weight:700;font-size:.9rem}
+.newspaper-commission-form input:not([type=file]),.newspaper-commission-form textarea{
+ width:100%;padding:8px 10px;border:1px solid #b99867;border-radius:6px;background:#fffaf0;
+ font:1rem Georgia,serif;color:#2b1a0d}
+.newspaper-commission-form textarea{min-height:160px;resize:vertical;line-height:1.5}
+.newspaper-commission-form small{justify-self:end;color:#765c44;font-weight:400}
+.newspaper-commission-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.newspaper-commission-list{display:grid;gap:6px;border-top:1px solid #d5bc92;padding-top:10px}
+.newspaper-commission-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;
+ font-size:.92rem}
+.newspaper-commission-row small{color:#765c44}
+.newspaper-commission-inbox{display:grid;gap:12px;margin:12px 0 20px}
+.newspaper-commission-card{display:grid;gap:8px;padding:12px;border:1px solid #c5a676;
+ border-radius:8px;background:#fbf3e4;color:#2b1a0d}
+.newspaper-commission-card header{display:grid;gap:2px}
+.newspaper-commission-card header strong{font:700 1.08rem Georgia,serif}
+.newspaper-commission-card header small{color:#765c44}
+.newspaper-commission-card p{margin:0;line-height:1.5;white-space:pre-wrap}
+.newspaper-commission-thumb{width:100%;max-height:190px;object-fit:cover;border-radius:6px;
+ border:1px solid #967344}
+.newspaper-commission-thumb-empty{display:grid;place-items:center;min-height:70px;
+ background:#eadcc0;color:#765c44;font-style:italic}
+.newspaper-commission-heading{margin:18px 0 4px;font:700 1.02rem Georgia,serif}
+.newspaper-commission-empty{margin:8px 0 14px}
+
+/* Facilidades do modelo: leões no cabeçalho, setas no bloco e subtítulo */
+.newspaper-lion{height:clamp(44px,7vw,92px);width:auto;flex:none;mix-blend-mode:multiply}
+.newspaper-subhead{margin:0;font:italic 600 1.2rem Georgia,serif;border-bottom:1px solid #bda074;padding-bottom:4px}
+.newspaper-move-buttons{position:absolute;top:4px;right:34px;display:flex;gap:2px;z-index:3}
+.newspaper-move-buttons button{width:24px;height:24px;border:1px solid #b99867;border-radius:4px;
+ background:#fbf3e4;color:#4a2052;font-size:.85rem;line-height:1;cursor:pointer}
+.newspaper-move-buttons button:hover{background:#efdeb8}
+.newspaper-width-presets{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}
+.newspaper-width-presets button{padding:3px 9px;border:1px solid #b99867;border-radius:5px;
+ background:#f4e5c9;font-size:.8rem;cursor:pointer}
+.newspaper-width-presets button[aria-pressed=true]{background:#4a2052;color:#fbf3e4;border-color:#4a2052}
+.newspaper-commission-reject{display:grid;gap:6px;width:100%}
+.newspaper-commission-reject textarea{width:100%;min-height:70px;padding:7px 9px;border:1px solid #b99867;
+ border-radius:6px;background:#fffaf0;font:.95rem Georgia,serif}
+.newspaper-commission-rejected{color:#7a1f1f}
+
+.newspaper-commission-news{display:grid;gap:6px;padding:10px;border:1px solid rgba(120,80,20,.45);background:rgba(255,243,205,.6)}
+[contenteditable="true"][data-newspaper-inline]:is(h1,h2){outline:1px dashed rgba(120,80,20,.5);outline-offset:3px}
