@@ -123,3 +123,22 @@ describe('Modelos, lixeira e número da edição',()=>{
   expect(desk).not.toContain('Selecione uma reportagem para editar no jornal');
  });
 });
+
+describe('Gravuras do Reino e calendário do Editor-Chefe',()=>{
+ const sql4=read('drizzle/migrations/0120_newspaper_engravings_calendar.sql');
+ it('gravuras e calendário só para o Editor-Chefe e o Narrador',()=>{
+  expect(sql4).toContain('campaign_newspaper_engravings');
+  expect(sql4).toContain('USING (public.can_edit_campaign_newspaper())');
+  expect(sql4).toContain('get_newspaper_calendar_events');
+  expect(sql4).toContain('published_date IS NOT NULL');
+  expect(sql4).not.toMatch(/TO anon/);
+ });
+ it('a tela usa o banner, só Jornal e o emblema dourado',()=>{
+  const desk=read('src/components/newspaper/NewspaperEditorialDesk.tsx');
+  const css=read('src/components/newspaper/newspaper-editorial.css');
+  expect(desk).not.toContain('SEGUNDA TEMPORADA');
+  expect(desk).toContain('emblema_dourado.webp');
+  expect(css).toContain('cabecalho_folha.webp');
+  expect(desk).toContain('folha-font-');
+ });
+});

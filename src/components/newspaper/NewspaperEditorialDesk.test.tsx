@@ -1,5 +1,6 @@
 import {describe,expect,it,vi} from 'vitest';
 import {fireEvent,render,screen} from '@testing-library/react';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {NewspaperEditorialDesk,type NewspaperEditorialProps} from './NewspaperEditorialDesk';
 
 vi.mock('@/components/change-password',()=>({
@@ -8,6 +9,7 @@ vi.mock('@/components/change-password',()=>({
 vi.mock('@/lib/newspaper/data',()=>({
  signedCommissionImage:vi.fn(async()=>'blob:imagem-da-casa'),
  signedNewspaperAsset:vi.fn(async()=>'blob:imagem'),
+ signedEngravingImage:vi.fn(async()=>'blob:gravura'),
 }));
 vi.mock('./NewspaperCalendar',()=>({
  NewspaperCalendar:({onWriteAbout}:{onWriteAbout:(date:string,title?:string)=>void})=>
@@ -25,6 +27,7 @@ function fixture():NewspaperEditorialProps{
   pendingCommissions:[],houseNames:new Map(),
   onInsertCommission:vi.fn(),onShowCommission:vi.fn(),onRejectCommission:vi.fn(),
   storyModels:[],onUseStoryModel:vi.fn(),onSaveStoryModel:vi.fn(async()=>true),onDeleteStoryModel:vi.fn(),onDeleteEdition:vi.fn(),
+  engravings:[],onUploadEngraving:vi.fn(async()=>true),onToggleEngraving:vi.fn(),onDeleteEngraving:vi.fn(),onUseStoredEngraving:vi.fn(),
   staff:[],onSaveStaff:vi.fn(async()=>true),onDeleteStaff:vi.fn(),onWriteAboutDate:vi.fn(),
   revisions:[],onRestoreRevision:vi.fn(),onUseEngraving:vi.fn(),
   dirty:false,onDiscard:vi.fn(),onDeleteDraft:vi.fn(),
@@ -257,5 +260,28 @@ describe('Redação A Folha Sem Selo',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Arquivo'}));
   fireEvent.click(screen.getByRole('button',{name:'Excluir edição nº 2'}));
   expect(p.onDeleteEdition).toHaveBeenCalledWith(e);
+ });
+ it('o topo diz só Jornal e Gravuras do Reino controla o acervo pela bolinha',()=>{
+  const p=fixture();
+  const item={id:'g1',name:'Torre de Suzail',image_path:'a.png',in_collection:true,created_at:''};
+  const off={id:'g2',name:'Praça velha',image_path:'b.png',in_collection:false,created_at:''};
+  p.engravings=[item,off];
+  render(<QueryClientProvider client={new QueryClient()}><NewspaperEditorialDesk {...p}/></QueryClientProvider>);
+  expect(screen.queryByText(/SEGUNDA TEMPORADA/)).toBeNull();
+  expect(screen.getAllByText(/JORNAL/).length).toBeGreaterThan(0);
+  expect(screen.getByRole('button',{name:'Usar gravura: Torre de Suzail'})).toBeTruthy();
+  expect(screen.queryByRole('button',{name:'Usar gravura: Praça velha'})).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'Matérias'}));
+  fireEvent.click(screen.getByRole('button',{name:/Gravuras do Reino/}));
+  fireEvent.click(screen.getByRole('switch',{name:'Praça velha: aparece no acervo'}));
+  expect(p.onToggleEngraving).toHaveBeenCalledWith(off,true);
+  fireEvent.click(screen.getByRole('button',{name:'Excluir gravura Torre de Suzail'}));
+  expect(p.onDeleteEngraving).toHaveBeenCalledWith(item);
+ });
+ it('clicar num modelo de matéria mostra a prévia ao lado',()=>{
+  render(<NewspaperEditorialDesk {...fixture()}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Matérias'}));
+  fireEvent.click(screen.getByRole('button',{name:'Entrevista'}));
+  expect(screen.getByLabelText(/Prévia do modelo Entrevista/)).toBeTruthy();
  });
 });

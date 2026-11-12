@@ -19,17 +19,15 @@
  outline:3px solid #d8a450;outline-offset:3px
 }
 .folha-topbar{
- min-height:116px;padding:10px 28px 12px;
+ min-height:clamp(118px,11.3vw,190px);padding:10px clamp(22px,4.2vw,70px);
  display:flex;align-items:center;justify-content:space-between;gap:20px;
  position:relative;isolation:isolate;
  border-bottom:5px ridge #a67a3c;
  box-shadow:0 5px 11px #371e143e;
- background:
-  linear-gradient(90deg,#260d20ec 0%,#3a1a2bd9 28%,#41251874 56%,#311226e8 100%),
-  repeating-linear-gradient(178deg,#512d1c 0 5px,#382015 5px 10px,#42251b 10px 18px);
+ background:#2a0f22 url('/newspaper/cabecalho_folha.webp') center/100% 100% no-repeat;
  color:var(--folha-gold-soft)
 }
-.folha-topbar::after{content:"";position:absolute;inset:0;z-index:-1;opacity:.38;
+.folha-topbar::after{content:none;position:absolute;inset:0;z-index:-1;opacity:.38;
  background:radial-gradient(ellipse at 70% 16%,#e9b572 0%,transparent 31%),
  linear-gradient(90deg,transparent 35%,#f9ddaa20 57%,transparent 80%)}
 .folha-top-brand{position:relative;z-index:1;min-width:240px}
@@ -80,8 +78,7 @@
  background:linear-gradient(100deg,#6b2d50,#492040);
  border:1px solid #b78950;box-shadow:inset 0 0 0 1px #874c4d
 }
-.folha-navigation-decors{display:flex;gap:14px;align-items:end;position:absolute;
- bottom:18px;left:24px;color:#d7a766a8;transform:rotate(-13deg)}
+.folha-navigation-emblem{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:min(170px,78%);height:auto;opacity:.96;filter:drop-shadow(0 3px 4px #0007);pointer-events:none}
 .folha-main{min-width:0}
 .folha-masthead{
  background:radial-gradient(ellipse at 45% 14%,#fff3d9,#f0dfbd 65%,#dfc697);
@@ -344,7 +341,7 @@
 .folha-engravings small{opacity:.75}
 .folha-engraving-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .folha-engraving-grid button{display:grid;gap:3px;padding:4px;border:1px solid rgba(80,50,20,.35);background:rgba(255,248,230,.6);cursor:pointer;font-size:.7rem}
-.folha-engraving-grid img{width:100%;aspect-ratio:4/3;object-fit:cover;filter:sepia(.5)}
+.folha-engraving-grid img,.folha-engraving-grid .folha-engraving-placeholder{width:100%;aspect-ratio:1/1;object-fit:cover;filter:sepia(.5)}
 .folha-revision-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
 .folha-revision-list li{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:6px 8px;border:1px solid rgba(80,50,20,.3)}
 
@@ -409,3 +406,52 @@
 .folha-model-block-head{display:flex;gap:8px;align-items:center;justify-content:space-between}
 .folha-model-add{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .folha-model-add button{padding:4px 8px;border:1px solid rgba(80,50,20,.4);background:#fff8e6;cursor:pointer}
+
+/* ---- Cabeçalho com banner: o título segue a fonte escolhida em Configurações ---- */
+.folha-top-brand h1{text-shadow:0 2px 4px #000c}
+.folha-font-classico h1,.folha-font-classico h2{font-family:"Times New Roman",Times,serif}
+.folha-font-editorial h1,.folha-font-editorial h2{font-family:Georgia,"Times New Roman",serif}
+.folha-font-condensado h1,.folha-font-condensado h2{font-family:Impact,"Arial Narrow",sans-serif;letter-spacing:.01em;font-style:normal}
+.folha-top-brand{max-width:min(36%,460px)}
+.folha-top-account{background:#2a0f22cc;padding:8px 12px;border-radius:10px;border:1px solid #a67b4b88}
+@media (max-width:900px){.folha-topbar{background-size:cover;background-position:center}}
+
+/* ---- Redação: formulário claro, campos alinhados ---- */
+.folha-staff-form{display:grid;gap:14px;max-width:560px;padding:16px;border:2px solid #ad824f;background:rgba(255,248,230,.85);border-radius:8px}
+.folha-staff-form>label,.folha-engraving-upload>label:not(.folha-file-button){display:grid;gap:5px;font-weight:700;font-size:.88rem;color:#4b1f25}
+.folha-staff-form input:not([type="file"]),.folha-staff-form textarea,
+.folha-engraving-upload input:not([type="file"]){width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid #8e673c;border-radius:6px;background:#fffdf5;font:400 .95rem Georgia,serif;color:#2c1a12}
+.folha-staff-form textarea{resize:vertical;min-height:110px}
+.folha-staff-form input:focus,.folha-staff-form textarea:focus{outline:2px solid #d8a450;outline-offset:1px}
+.folha-staff-form .newspaper-upload,.folha-file-button{display:inline-flex;align-items:center;gap:8px;justify-self:start;width:auto;padding:7px 12px;font-size:.85rem;font-weight:700;border:1px dashed #97784c;border-radius:7px;background:#f7ecd5;cursor:pointer;position:relative;overflow:hidden;max-width:100%}
+.folha-staff-form .newspaper-upload input,.folha-file-button input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;font-size:0}
+.folha-staff-form .newspaper-commission-actions{display:flex;gap:10px;justify-content:flex-end}
+
+/* ---- Calendário: hoje e semana atual ---- */
+.folha-cal-row{position:relative}
+.folha-cal-week{background:#e6c27555;outline:2px solid #ad824f;outline-offset:2px;border-radius:4px;margin-top:14px}
+.folha-cal-week-label{position:absolute;top:-14px;left:0;font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7e2529}
+.folha-cal-today{border:2px solid #7e2529;font-weight:700}
+.folha-cal-today::after{content:"Hoje";position:absolute;bottom:1px;left:0;right:0;text-align:center;font-size:.55rem;color:#7e2529;text-transform:uppercase}
+
+/* ---- Matérias: prévia ao lado e Gravuras do Reino ---- */
+.folha-models-layout{display:grid;grid-template-columns:minmax(240px,340px) minmax(0,1fr);gap:20px;align-items:start}
+.folha-models-layout .folha-model-grid{grid-template-columns:1fr}
+.folha-model-card{cursor:pointer}
+.folha-model-card.selected{border:2px solid #7e2529;background:#fff3d6}
+.folha-model-pick{text-align:left;border:0;background:transparent;padding:0;font:inherit;color:inherit}
+@media (max-width:900px){.folha-models-layout{grid-template-columns:1fr}}
+.folha-section-tools{margin:6px 0 10px}
+.folha-engravings-manager{display:grid;gap:10px;padding:14px;margin-bottom:14px;border:2px solid #ad824f;background:rgba(255,248,230,.85);border-radius:8px}
+.folha-engraving-upload{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.folha-engraving-upload>label:not(.folha-file-button){flex:1 1 220px}
+.folha-engraving-library{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.folha-engraving-tile{margin:0;display:grid;gap:5px;padding:6px;border:1px solid rgba(80,50,20,.4);background:#fff8e6}
+.folha-engraving-square{aspect-ratio:1/1;overflow:hidden;background:#e9d7aa}
+.folha-engraving-square img,.folha-engraving-placeholder{width:100%;height:100%;object-fit:cover;display:block}
+.folha-engraving-tile figcaption{font-size:.78rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.folha-engraving-controls{display:flex;justify-content:space-between;align-items:center}
+.folha-engraving-controls>button:not(.folha-dot){padding:4px;border:1px solid rgba(80,50,20,.4);background:#fff8e6}
+.folha-dot{width:22px;height:22px;border-radius:50%;border:2px solid #7e2529;background:#fffdf5;padding:0}
+.folha-dot.on{background:radial-gradient(circle,#7e2529 0 45%,#fffdf5 50%)}
+.folha-engraving-grid button>.folha-engraving-placeholder{background:#e9d7aa}

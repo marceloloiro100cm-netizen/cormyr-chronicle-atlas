@@ -13,6 +13,7 @@ import {
  getNewspaperEditions,getNewspaperReceipts,getNewspaperRevisions,getNewspaperStaff,saveNewspaperStaff,
  deleteNewspaperStaff,uploadStaffPhoto,getStoryModels,saveStoryModel,deleteStoryModel,deleteNewspaperEdition,
  markNewspaperRead,updateNewspaperEdition,uploadNewspaperAsset,
+ getEngravings,uploadEngraving,setEngravingInCollection,deleteEngraving,copyBucketImageToEdition,
 } from '@/lib/newspaper/data';
 import {
  commissionToBlocks,newspaperIsDirty,pendingCommissions,type NewspaperCommission,
@@ -20,7 +21,7 @@ import {
  reorderNewspaperBlocks,duplicateNewspaperBlock,
  NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,validateNewspaperEdition,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperState,
- type NewspaperTemplate,type NewspaperRevision,type NewspaperStaffMember,type StoryModel,instantiateStoryModel,
+ type NewspaperTemplate,type NewspaperRevision,type NewspaperEngraving,ENGRAVINGS_BUCKET,type NewspaperStaffMember,type StoryModel,instantiateStoryModel,
 } from '@/lib/newspaper/model';
 import './newspaper.css';
 
@@ -68,6 +69,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
  const modelsQuery=useQuery({queryKey:['campaign-newspaper-story-models'],queryFn:getStoryModels,
   enabled:editor&&editorial,staleTime:60_000,retry:false});
  const storyModels=modelsQuery.data??[];
+ const engravingsQuery=useQuery({queryKey:['campaign-newspaper-engravings'],queryFn:getEngravings,
+  enabled:editor&&editorial,staleTime:60_000,retry:false});
+ const engravings=engravingsQuery.data??[];
  const allCommissions=commissionsQuery.data??[];
  const pending=pendingCommissions(allCommissions);
  const houseNames=houseNamesQuery.data??new Map<string,string>();
@@ -486,6 +490,61 @@ const useStoryModel=async(model:StoryModel)=>{
   setBlockId(block.id);setEditing(true);
   notice('Gravura inserida na folha.');
  };
+ const uploadEngravingFile=async(file:File,name:string):Promise<boolean>=>{
+  if(!editor||busy)return false;
+  setBusy(true);setError('');
+  try{
+   await uploadEngraving(file,name);
+   await qc.invalidateQueries({queryKey:['campaign-newspaper-engravings']});
+   notice('Gravura guardada em Gravuras do Reino e disponível no acervo.');return true;
+  }catch(cause){setError(safeError(cause));return false;}
+  finally{setBusy(false);}
+ };
+ const toggleEngraving=async(item:NewspaperEngraving,inCollection:boolean)=>{
+  if(!editor||busy)return;
+  setBusy(true);setError('');
+  try{
+   await setEngravingInCollection(item.id,inCollection);
+   await qc.invalidateQueries({queryKey:['campaign-newspaper-engravings']});
+   notice(inCollection?'Gravura aparece no acervo.':'Gravura fora do acervo; continua em Gravuras do Reino.');
+  }catch(cause){setError(safeError(cause));}
+  finally{setBusy(false);}
+ };
+ const removeEngraving=async(item:NewspaperEngraving)=>{
+  if(!editor||busy)return;
+  if(!window.confirm('Excluir a gravura '+item.name+'? Edições que já a usam mantêm a própria cópia.'))return;
+  setBusy(true);setError('');
+  try{
+   await deleteEngraving(item.id,item.image_path);
+   await qc.invalidateQueries({queryKey:['campaign-newspaper-engravings']});
+   notice('Gravura excluída.');
+  }catch(cause){setError(safeError(cause));}
+  finally{setBusy(false);}
+ };
+ const useStoredEngraving=async(item:NewspaperEngraving)=>{
+  if(!editor||busy||!current||current.state!=='draft'){
+   if(!current)setError('Crie uma edição antes de usar uma gravura.');else setError('Reabra a edição como rascunho para usar uma gravura.');
+   return;
+  }
+  setBusy(true);setError('');
+  try{
+   const imagePath=await copyBucketImageToEdition(ENGRAVINGS_BUCKET,current.id,item.image_path);
+   const target=current.blocks.find(b=>b.id===blockId&&b.type==='image');
+   if(target){
+    setDraft(old=>old?{...old,blocks:old.blocks.map(b=>{
+     if(b.id!==target.id)return b;
+     const {imageSrc:_removed,...rest}=b;
+     return {...rest,imagePath,caption:b.caption&&b.caption!=='Legenda da fotografia'?b.caption:item.name};
+    })}:old);
+    setEditing(true);notice('Gravura aplicada na imagem selecionada.');return;
+   }
+   if(current.blocks.length>=80)throw new Error('A edição permite até 80 elementos.');
+   const block={...makeNewspaperBlock('image'),imagePath,caption:item.name};
+   setDraft(old=>old?{...old,blocks:[...old.blocks,block]}:old);
+   setBlockId(block.id);setEditing(true);notice('Gravura inserida na folha.');
+  }catch(cause){setError(safeError(cause));}
+  finally{setBusy(false);}
+ };
  const restoreRevision=(revision:NewspaperRevision)=>{
   if(!current||current.state==='published'||current.state==='archived'){
    setError('Reabra a edição como rascunho antes de restaurar uma versão.');return;
@@ -513,6 +572,10 @@ const useStoryModel=async(model:StoryModel)=>{
   storyModels={storyModels} onUseStoryModel={model=>{void useStoryModel(model);}}
   onSaveStoryModel={saveModel} onDeleteStoryModel={model=>{void removeModel(model);}}
   onDeleteEdition={edition=>{void removeEdition(edition);}}
+  engravings={engravings} onUploadEngraving={uploadEngravingFile}
+  onToggleEngraving={(item,value)=>{void toggleEngraving(item,value);}}
+  onDeleteEngraving={item=>{void removeEngraving(item);}}
+  onUseStoredEngraving={item=>{void useStoredEngraving(item);}}
   staff={staff} onSaveStaff={saveStaff} onDeleteStaff={member=>{void removeStaff(member);}}
   onWriteAboutDate={writeAboutDate}
   revisions={revisionsQuery.data??[]} onRestoreRevision={restoreRevision} onUseEngraving={useEngraving}

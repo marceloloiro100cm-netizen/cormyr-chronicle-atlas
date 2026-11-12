@@ -1,6 +1,6 @@
 import {useMemo,useRef,useState} from 'react';
 import {
- BookOpen,BookOpenText,Layers3,CalendarDays,UsersRound,Megaphone,Archive,
+ BookOpen,Layers3,CalendarDays,UsersRound,Megaphone,Archive,
  BarChart3,Settings,Feather,FileUp,Eye,Newspaper,
  ImagePlus,Columns3,Quote,TriangleAlert,Plus,Printer,ChevronDown,
  ArrowUp,ArrowDown,Trash2,Save,CheckCircle2,Circle,
@@ -11,12 +11,13 @@ import {formatCampaignPeriod,formatDate,parseDate} from '@/lib/calendar/harptos'
 import {NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,NEWSPAPER_WIDTH_PRESETS,newspaperStatus,safeNewspaperBlocks,
  sampleNewspaperBlocks,dateStoryDraft,staffByline,NEWSPAPER_NOTICE_ICONS,type StoryModel,type NewspaperStaffMember,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,
- type NewspaperCommission,type NewspaperRevision,type NewspaperRead,NEWSPAPER_ENGRAVINGS,type NewspaperState,type NewspaperTemplate} from '@/lib/newspaper/model';
+ type NewspaperCommission,type NewspaperRevision,type NewspaperEngraving,collectionEngravings,type NewspaperRead,NEWSPAPER_ENGRAVINGS,type NewspaperState,type NewspaperTemplate} from '@/lib/newspaper/model';
 import {NewspaperCanvas} from './NewspaperCanvas';
 import {CommissionInbox} from './NewspaperCommissions';
 import {NewspaperCalendar} from './NewspaperCalendar';
 import {NewspaperStaff} from './NewspaperStaff';
 import {NewspaperStoryModels} from './NewspaperStoryModels';
+import {NewspaperEngravings,StoredEngravingImage} from './NewspaperEngravings';
 import './newspaper-editorial.css';
 
 const NAV=[
@@ -55,6 +56,12 @@ export interface NewspaperEditorialProps{
  onDeleteStoryModel:(model:StoryModel)=>void;
  /** Exclui uma edição do Arquivo (o número volta a ficar livre). */
  onDeleteEdition:(edition:NewspaperEdition)=>void;
+ /** Gravuras do Reino enviadas pelo Editor-Chefe. */
+ engravings:NewspaperEngraving[];
+ onUploadEngraving:(file:File,name:string)=>Promise<boolean>;
+ onToggleEngraving:(item:NewspaperEngraving,inCollection:boolean)=>void;
+ onDeleteEngraving:(item:NewspaperEngraving)=>void;
+ onUseStoredEngraving:(item:NewspaperEngraving)=>void;
  /** Corpo de funcionários da Redação. */
  staff:NewspaperStaffMember[];
  onSaveStaff:(input:{id?:string;name:string;specialty:string;bio:string;photoPath:string|null},photo:File|null)=>Promise<boolean>;
@@ -96,6 +103,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  const [dateOpen,setDateOpen]=useState(false);
  const [profileOpen,setProfileOpen]=useState(false);
  const [fullPreview,setFullPreview]=useState(false);
+ const [showEngravings,setShowEngravings]=useState(false);
  const fileInput=useRef<HTMLInputElement>(null);
  const selectedBlock=current?.blocks.find(b=>b.id===selectedBlockId);
  const articles=current?.blocks.filter(b=>b.type==='article')??[];
@@ -137,13 +145,12 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
 
  const currentDate=current?.campaign_date??props.hubDate;
  return <div className="folha-editorial" aria-label="Redação A Folha Sem Selo">
-  <header className="folha-topbar">
+  <header className={`folha-topbar folha-font-${props.current?.font_style??'classico'}`}>
    <div className="folha-top-brand">
-    <p><span aria-hidden="true">✦</span> SEGUNDA TEMPORADA · JORNAL</p>
+    <p><span aria-hidden="true">✦</span> JORNAL</p>
     <h1>A Folha Sem Selo</h1>
     <span className="folha-top-slogan">— O jornal independente de Cormyr —</span>
    </div>
-   <div className="folha-print-press" aria-hidden="true"><Printer size={74}/><BookOpenText size={38}/></div>
    <div className="folha-top-account">
     <button type="button" className="folha-role" aria-expanded={profileOpen}
       onClick={()=>setProfileOpen(value=>!value)}>
@@ -172,15 +179,13 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         <span className="folha-nav-count" aria-label={`${props.pendingCommissions.length} notícia(s) contratada(s) pendente(s)`}>
          {props.pendingCommissions.length}</span>}</button>;
     })}</nav>
-    <div className="folha-navigation-decors" aria-hidden="true">
-     <BookOpen size={68}/><Feather size={72}/>
-    </div>
+    <img className="folha-navigation-emblem" src="/newspaper/emblema_dourado.webp" alt="" aria-hidden="true"/>
    </aside>
 
    <main className="folha-main">
     <div className="folha-masthead">
      <img className="folha-sigil-img" src="/newspaper/brasao_folha.png" alt="" aria-hidden="true"/>
-     <div className="folha-masthead-title"><h2>A Folha Sem Selo</h2>
+     <div className={`folha-masthead-title folha-font-${props.current?.font_style??'classico'}`}><h2>A Folha Sem Selo</h2>
       <p>✧ O JORNAL INDEPENDENTE DE CORMYR ✧</p></div>
      <div className="folha-date">
       <label>Edição / Hub Temporal</label>
@@ -250,6 +255,11 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
 
       {section==='materias'&&<section className="folha-section-content">
        <h3>Matérias</h3><p>Escolha o modelo que você quer utilizar.</p>
+       <div className="folha-section-tools">
+        <button type="button" className="folha-text-action" aria-pressed={showEngravings}
+         onClick={()=>setShowEngravings(v=>!v)}><ImagePlus size={16}/> Gravuras do Reino</button></div>
+       {showEngravings&&<NewspaperEngravings items={props.engravings} busy={busy}
+        onUpload={props.onUploadEngraving} onToggle={props.onToggleEngraving} onDelete={props.onDeleteEngraving}/>}
        <NewspaperStoryModels custom={props.storyModels} busy={busy}
         onUse={model=>{setSection('capa');setFullPreview(false);props.onUseStoryModel(model);}}
         onSave={props.onSaveStoryModel} onDelete={props.onDeleteStoryModel}/>
@@ -374,7 +384,11 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         <div className="folha-engraving-grid">{NEWSPAPER_ENGRAVINGS.map(e=>
          <button type="button" key={e.src} aria-label={'Usar gravura: '+e.label} title={e.label}
           onClick={()=>{setSection('capa');setFullPreview(false);props.onUseEngraving(e.src,e.label);}}>
-          <img src={e.src} alt="" loading="lazy"/><span>{e.label}</span></button>)}</div>
+          <img src={e.src} alt="" loading="lazy"/><span>{e.label}</span></button>)}
+         {collectionEngravings(props.engravings).map(e=>
+          <button type="button" key={e.id} aria-label={'Usar gravura: '+e.name} title={e.name}
+           onClick={()=>{setSection('capa');setFullPreview(false);props.onUseStoredEngraving(e);}}>
+           <StoredEngravingImage path={e.image_path}/><span>{e.name}</span></button>)}</div>
        </div>
        {selectedBlock&&editing&&<div className="folha-selected-editor">
         <div className="folha-selected-heading"><strong>Editar elemento</strong>

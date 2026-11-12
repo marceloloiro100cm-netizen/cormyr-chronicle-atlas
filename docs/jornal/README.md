@@ -74,3 +74,14 @@
 - **Arquivo**: lixeira em cada edição. A exclusão apaga a edição (leituras e revisões junto) e o número fica livre: a próxima edição recebe o menor número ainda não usado. Pedidos de Casas já publicados nela continuam publicados. Os arquivos de imagem permanecem no armazenamento.
 - **Matérias**: "Escolha o modelo que você quer utilizar." Seis modelos prontos (Notícia da Corte, Última Hora, Reportagem com gravura, Entrevista, Comunicado oficial, Coluna do Cronista). Usar um modelo insere os blocos na edição em rascunho (ou cria uma edição) e o Editor-Chefe só preenche os textos.
 - **Duplicar modelo**: o botão de duplicar abre o editor com o nome "Cópia de X"; renomeie, edite textos, larguras e blocos, e salve. Modelos próprios podem ser editados e excluídos (tabela `campaign_newspaper_story_models`).
+
+## Visual, Gravuras do Reino e calendário (11/11/2026)
+
+- **Topo do site**: o banner "Cabeçalho Vintage com Prensa e Brasão" (`public/newspaper/cabecalho_folha.webp`) é o fundo do cabeçalho. O texto agora diz apenas "JORNAL".
+- **Fonte do título**: a fonte escolhida em Configurações (clássico, editorial ou condensado) também vale para o título do topo e para o título do cabeçalho da Redação.
+- **Emblema**: no canto inferior esquerdo do menu, o "Emblema Dourado do Cronista" (`emblema_dourado.webp`) substitui os ícones antigos.
+- **Redação**: formulário com rótulos claros, campos com caixa, alinhados, e botão de foto compacto.
+- **Calendário**: abre no mês da data do HUB Temporal, marca o dia de hoje e destaca a semana (dezena) atual. Os eventos públicos agora vêm do RPC `get_newspaper_calendar_events`, que o Editor-Chefe consegue chamar.
+- **Matérias**: clicar num modelo mostra a prévia ao lado, como em Configurações.
+- **Gravuras do Reino** (botão em Matérias): o Editor-Chefe envia imagens, que aparecem quadradas, com lixeira e uma bolinha. Bolinha marcada: a gravura aparece no Acervo de gravuras. Desmarcada: continua guardada em Gravuras do Reino, mas some do acervo. Ao usar, a imagem é copiada para a pasta da edição.
+- **Migration 0120** (`drizzle/migrations/0120_newspaper_engravings_calendar.sql`): tabela e bucket privados das gravuras e o RPC do calendário. O commit no GitHub não aplica SQL: é preciso executá-la no banco. Não foi homologada nem tem backup prévio.

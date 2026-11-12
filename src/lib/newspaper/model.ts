@@ -304,3 +304,20 @@ export function validateStoryModel(input:{name:string;description:string;blocks:
  return '';
 }
 export function duplicatedStoryModelName(name:string):string{return `Cópia de ${name}`.slice(0,80);}
+
+// ---- Gravuras do Reino enviadas pelo Editor-Chefe ----
+export type NewspaperEngraving={id:string;name:string;image_path:string;in_collection:boolean;created_at:string};
+export const ENGRAVINGS_BUCKET='campaign-newspaper-engravings';
+/** Gravuras marcadas para o acervo, na ordem de envio. */
+export function collectionEngravings(list:readonly NewspaperEngraving[]):NewspaperEngraving[]{
+ return list.filter(e=>e.in_collection);
+}
+/** Edição fictícia só para pré-visualizar um modelo de matéria (imagens vazias ganham uma gravura). */
+export function storyModelPreviewEdition(blocks:readonly NewspaperBlock[],font:NewspaperFont='classico'):NewspaperEdition{
+ return {
+  id:'preview',edition_no:1,campaign_date:'1522-01-01',title:'A Folha Sem Selo',subtitle:'',
+  template:'classico',font_style:font,state:'draft',pdf_path:null,version:1,publication_revision:0,
+  created_by:'',updated_at:'',published_at:null,archived_at:null,cancelled_at:null,
+  blocks:blocks.map(b=>b.type==='image'&&!b.imagePath&&!b.imageSrc?{...b,imageSrc:NEWSPAPER_ENGRAVINGS[0]!.src}:b),
+ };
+}
