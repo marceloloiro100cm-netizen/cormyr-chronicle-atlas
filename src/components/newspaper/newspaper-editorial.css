@@ -510,3 +510,47 @@
 .folha-audit-compare p{margin:0 0 6px;white-space:pre-wrap;font-size:.86rem}
 .folha-audit-summary{font:600 .8rem system-ui,sans-serif;color:#6d4f33}
 @media(max-width:700px){.folha-audit-compare{grid-template-columns:1fr}}
+
+/* Topo adaptável: a faixa, o título, o brasão e os controles acompanham a largura E a altura da janela.
+   Em notebook (por volta de 1366x768) tudo fica mais compacto, em telas grandes volta ao tamanho cheio.
+   Só vale acima de 760 px; abaixo disso o layout de celular acima continua mandando. */
+@media(min-width:761px){
+ .folha-topbar{height:clamp(84px,min(8.2vw,15vh),160px);padding:0 clamp(34px,4.2vw,92px);gap:14px}
+ .folha-top-brand p{font-size:clamp(.58rem,.75vw,.72rem)}
+ .folha-top-brand h1{font-size:clamp(1.25rem,min(2.5vw,4.6vh),2.75rem);margin:1px 0 2px}
+ .folha-top-slogan{font-size:clamp(.62rem,.85vw,.92rem)}
+ .folha-top-account{gap:clamp(3px,.6vh,7px)}
+ .folha-role{min-width:clamp(150px,13vw,208px);padding:clamp(3px,.6vh,6px) clamp(8px,1vw,16px);gap:8px;
+  font-size:clamp(.76rem,.95vw,1rem)}
+ .folha-account-menu{top:calc(100% + 4px)}
+ .folha-account-buttons button{padding:clamp(4px,.7vh,8px) clamp(8px,1vw,15px)!important;
+  font-size:clamp(.72rem,.85vw,.89rem)!important}
+ .folha-masthead{min-height:clamp(84px,min(8.6vw,15vh),130px);padding:clamp(7px,1.2vh,13px) clamp(10px,1.3vw,18px);
+  gap:clamp(10px,1.4vw,20px)}
+ .folha-sigil-img{height:clamp(72px,min(8vw,14vh),158px);margin:0 2px 4px 4px}
+ .folha-masthead-title h2{font-size:clamp(1.55rem,min(3.3vw,6.4vh),4.6rem)}
+ .folha-masthead-title p{margin:clamp(3px,.9vh,11px) 0 0;font-size:clamp(.58rem,.85vw,.98rem)}
+ .folha-date{padding-left:clamp(10px,1.2vw,19px)}
+ .folha-date>label{margin-bottom:clamp(3px,.8vh,9px);font-size:clamp(.68rem,.8vw,.8rem)}
+ .folha-date-button{padding:clamp(5px,.9vh,11px) 10px;font-size:clamp(.78rem,.9vw,.9rem)}
+ .folha-toolbar{margin:clamp(8px,1.5vh,15px) 0}
+ .folha-toolbar button{padding:clamp(7px,1.2vh,12px) 8px}
+}
+/* Janelas baixas (notebooks, janelas partidas): corta o que só enfeita para sobrar espaço ao trabalho. */
+@media(min-width:761px) and (max-height:820px){
+ .folha-navigation-emblem{display:none}
+ .folha-top-brand::before{inset:-8px -36px -8px -20px}
+}
+@media(min-width:761px){
+ /* Coluna da data enxuta: a data numa linha só (reticências se faltar espaço), dicas menores. */
+ .folha-date-button span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .folha-date-today{margin-top:clamp(2px,.5vh,6px);font-size:clamp(.68rem,.78vw,.78rem)}
+ .folha-navigation{min-height:calc(100vh - clamp(84px,min(8.2vw,15vh),160px))}
+ .folha-navigation-crest{gap:clamp(3px,.8vh,8px);padding-bottom:clamp(6px,1.4vh,16px);margin-bottom:clamp(6px,1.2vh,13px)}
+ .folha-navigation-crest strong{font-size:clamp(1.05rem,1.3vw,1.4rem)}
+ .folha-navigation nav button{min-height:clamp(36px,5vh,44px);padding-top:clamp(5px,.9vh,9px);padding-bottom:clamp(5px,.9vh,9px)}
+}
+@media(min-width:761px) and (max-height:820px){
+ .folha-navigation{padding-bottom:20px}
+ .folha-crest-img{width:clamp(56px,9vh,92px)}
+}
