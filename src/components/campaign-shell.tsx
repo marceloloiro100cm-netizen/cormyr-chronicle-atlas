@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { HeraldicHouse } from '@/lib/house/heraldry';
 import {useQuery} from '@tanstack/react-query';
 import { LanguageSwitcher } from './language-switcher';
 import { useTranslation } from '@/lib/i18n/context';
@@ -29,12 +30,12 @@ function PublicClock(){
   `Crônicas do Reino · ${clock.data.period}`:
   clock.isError?'Data oficial indisponível':'Consultando data oficial…'}</small>;
 }
-export function CampaignShell({ children,publicTime=false }: {
- children:ReactNode;publicTime?:boolean;
+export function CampaignShell({ children,publicTime=false,heraldry=null }: {
+ children:ReactNode;publicTime?:boolean;heraldry?:HeraldicHouse|null;
 }) {
  const {t}=useTranslation();
 
-  return <div className="campaign-theme min-h-screen bg-background text-foreground">
+  return <div className="campaign-theme min-h-screen bg-background text-foreground" data-house-theme={heraldry??undefined}>
     <header className="campaign-top">
       <a href="/cormyr/index.html" className="campaign-brand"><img src="/cormyr/assets/cormyr.jpg" alt="Brasão de Cormyr" /><span>Cormyr <em>Chronicle</em>{publicTime?<PublicClock/>:<PrivateClock/>}</span></a>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginLeft: 'auto' }}>
