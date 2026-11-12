@@ -2,6 +2,7 @@ import {useEffect,useRef,useState,type CSSProperties,type DragEvent,type Keyboar
 import {useQuery} from '@tanstack/react-query';
 import {formatDate} from '@/lib/calendar/harptos';
 import {signedNewspaperAsset} from '@/lib/newspaper/data';
+import {blockFocus,editionWords,panFocus,readingMinutes} from '@/lib/newspaper/editing';
 import {newspaperResize,type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperImageStyle} from '@/lib/newspaper/model';
 
 const BLOCK_DRAG_MIME='application/x-cormyr-newspaper-block';
@@ -23,8 +24,8 @@ function InlineText({tag:Tag,value,editing,onChange,className,style,label}:{
    if(text!==value)onChange(text);
   }}>{value}</Tag>;
 }
-function NewspaperImage({block,editing,onChange}:{
- block:NewspaperBlock;editing:boolean;onChange?:(patch:Partial<NewspaperBlock>)=>void;
+function NewspaperImage({block,editing,selected=false,onChange}:{
+ block:NewspaperBlock;editing:boolean;selected?:boolean;onChange?:(patch:Partial<NewspaperBlock>)=>void;
 }){
  const path=block.imagePath;
  const asset=useQuery({queryKey:['newspaper-asset',path],queryFn:()=>signedNewspaperAsset(path!),
@@ -39,14 +40,42 @@ function NewspaperImage({block,editing,onChange}:{
   return()=>window.removeEventListener('keydown',key);
  },[lightbox]);
  const style:NewspaperImageStyle=block.imageStyle??'vintage';
+ const fixed=block.autoHeight===false;
+ const focus=blockFocus(block),cropZoom=block.cropZoom??1;
+ // Recorte por arraste: só na edição, com o bloco selecionado e altura fixa.
+ const canCrop=editing&&selected&&fixed&&Boolean(onChange);
+ const pan=useRef<{x:number;y:number;px:number;py:number;moved:boolean}|null>(null);
+ const startPan=(event:React.PointerEvent<HTMLButtonElement>)=>{
+  if(!canCrop)return;
+  pan.current={x:focus.x,y:focus.y,px:event.clientX,py:event.clientY,moved:false};
+  event.currentTarget.setPointerCapture?.(event.pointerId);
+ };
+ const movePan=(event:React.PointerEvent<HTMLButtonElement>)=>{
+  const start=pan.current;
+  if(!start)return;
+  const dx=event.clientX-start.px,dy=event.clientY-start.py;
+  if(!start.moved&&Math.hypot(dx,dy)<4)return;
+  start.moved=true;
+  const box=event.currentTarget.getBoundingClientRect();
+  const next=panFocus({x:start.x,y:start.y},dx,dy,{width:box.width,height:box.height},cropZoom);
+  onChange?.({focusX:next.x,focusY:next.y});
+ };
  return <figure className="newspaper-photo">
-  {src?<button className="newspaper-image-open" type="button"
-   onClick={event=>{event.stopPropagation();setZoom(1);setLightbox(true);}}
-   title="Ampliar fotografia" aria-label="Ampliar fotografia">
-    <img className={`newspaper-filter-${style} ${block.autoHeight!==false?'newspaper-img-auto':'newspaper-img-fixed'}`} src={src}
-     alt={block.caption||'Fotografia da edição'}
-     style={block.autoHeight!==false?undefined:{height:Math.max(130,block.height-44),
-      objectPosition:block.imageFocus==='top'?'center top':block.imageFocus==='bottom'?'center bottom':'center'}}/>
+  {src?<button className={`newspaper-image-open${fixed?' newspaper-image-crop':''}${canCrop?' newspaper-image-crop-active':''}`} type="button"
+   onPointerDown={startPan} onPointerMove={movePan}
+   onPointerUp={()=>{window.setTimeout(()=>{pan.current=null;},0);}}
+   onPointerCancel={()=>{pan.current=null;}}
+   onClick={event=>{
+    event.stopPropagation();
+    if(pan.current?.moved){event.preventDefault();return;}
+    setZoom(1);setLightbox(true);
+   }}
+   title={canCrop?'Arraste para escolher o recorte':'Ampliar fotografia'} aria-label={canCrop?'Arrastar para recortar a fotografia':'Ampliar fotografia'}>
+    <img className={`newspaper-filter-${style} ${fixed?'newspaper-img-fixed':'newspaper-img-auto'}`} src={src}
+     alt={block.caption||'Fotografia da edição'} draggable={false}
+     style={fixed?{height:Math.max(130,block.height-44),
+      objectPosition:`${focus.x}% ${focus.y}%`,
+      ...(cropZoom>1?{transform:`scale(${cropZoom})`,transformOrigin:`${focus.x}% ${focus.y}%`}:{})}:undefined}/>
    </button>:<div className="newspaper-photo-placeholder" role="status">
     {path&&asset.isError?'Imagem indisponível':path?'Carregando fotografia…':'Adicione uma fotografia na Redação'}
    </div>}
@@ -86,8 +115,8 @@ function NewspaperPdf({path}:{path:string}){
    <p className="newspaper-pdf-mobile-hint">No celular, utilize “Abrir PDF em tela cheia” para ampliar o texto.</p>
   </section>;
 }
-function NewspaperStory({block,editing,onChange}:{
- block:NewspaperBlock;editing:boolean;onChange?:(patch:Partial<NewspaperBlock>)=>void;
+function NewspaperStory({block,editing,selected=false,onChange}:{
+ block:NewspaperBlock;editing:boolean;selected?:boolean;onChange?:(patch:Partial<NewspaperBlock>)=>void;
 }){
  const [heading,...body]=block.text.split('\n');
  const paragraph=body.join('\n').trim();
@@ -104,7 +133,7 @@ function NewspaperStory({block,editing,onChange}:{
  if(block.type==='quote')return <InlineText tag="blockquote" className="newspaper-quote"
   value={block.text} editing={editing} label="Editar citação"
   onChange={text=>onChange?.({text})}/>;
- if(block.type==='image')return <NewspaperImage block={block} editing={editing} {...(onChange?{onChange}:{})}/>;
+ if(block.type==='image')return <NewspaperImage block={block} editing={editing} selected={selected} {...(onChange?{onChange}:{})}/>;
  if(block.type==='notice')return <aside className="newspaper-notice-block">
   <span className="newspaper-notice-seal" aria-hidden="true">{block.icon??'⚜'}</span>
   <div><InlineText tag="h3" value={heading??""} editing={editing} label="Editar título do aviso"
@@ -134,6 +163,7 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
  onChangeEdition?:(patch:Partial<Pick<NewspaperEdition,'title'|'subtitle'>>)=>void;
 }){
  const grid=useRef<HTMLDivElement|null>(null);
+ const minutes=readingMinutes(editionWords(edition.blocks));
  const drag=useRef<{id:string;startX:number;startY:number;block:NewspaperBlock;column:number}|null>(null);
  const [dragOver,setDragOver]=useState<string|null>(null);
  const startResize=(event:React.PointerEvent<HTMLButtonElement>,block:NewspaperBlock)=>{
@@ -164,12 +194,13 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
    {compactMasthead?<div className="newspaper-page-folio">
     <span>EDIÇÃO Nº {String(edition.edition_no).padStart(3,'0')}</span>
     <span>{formatDate(edition.campaign_date)}</span>
+    {!editing&&minutes>0&&<span className="newspaper-reading-time">Leitura: cerca de {minutes} min</span>}
    </div>:<p>O CORREIO DO REINO · CORMYR · EDIÇÃO {String(edition.edition_no).padStart(3,'0')}</p>}
    <div className="newspaper-page-masthead">
-    <img className="newspaper-crest" src="/newspaper/brasao_reino.png" alt="" aria-hidden="true"/>
+    <img className="newspaper-crest" src="/newspaper/brasao_reino.webp" alt="" aria-hidden="true"/>
     <InlineText tag="h1" value={edition.title} editing={editing&&Boolean(onChangeEdition)}
      label="Editar nome do jornal" onChange={title=>{if(title)onChangeEdition?.({title});}}/>
-    <img className="newspaper-crest newspaper-crest-mirror" src="/newspaper/brasao_reino.png" alt="" aria-hidden="true"/>
+    <img className="newspaper-crest newspaper-crest-mirror" src="/newspaper/brasao_reino.webp" alt="" aria-hidden="true"/>
    </div>
    {!compactMasthead&&<div className="newspaper-meta"><span>{formatDate(edition.campaign_date)}</span><span>Folha independente de Cormyr</span></div>}
    {(edition.subtitle||(editing&&onChangeEdition))&&<InlineText tag="h2" className="newspaper-subtitle"
@@ -203,7 +234,7 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
         event.dataTransfer.setData(BLOCK_DRAG_MIME,block.id);
         event.dataTransfer.effectAllowed='move';
        }}>⠿</button>}
-      <NewspaperStory block={block} editing={editing}
+      <NewspaperStory block={block} editing={editing} selected={selectedId===block.id}
        onChange={patch=>onChangeBlock?.(block.id,patch)}/>
       {editing&&onMoveBlock&&<div className="newspaper-move-buttons">
        <button type="button" aria-label="Mover bloco para cima" title="Subir"

@@ -2,18 +2,22 @@ import {useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {ImagePlus,Trash2} from 'lucide-react';
 import {signedEngravingImage} from '@/lib/newspaper/data';
-import type {NewspaperEngraving} from '@/lib/newspaper/model';
+import {NEWSPAPER_ENGRAVINGS,type NewspaperEngraving} from '@/lib/newspaper/model';
 
-export function StoredEngravingImage({path,alt=''}:{path:string;alt?:string}){
- const url=useQuery({queryKey:['newspaper-engraving-url',path],queryFn:()=>signedEngravingImage(path),
-  staleTime:45*60*1000,retry:false});
+/** Mostra a gravura do acervo: original do site (src direto) ou enviada (link assinado do armazenamento). */
+export function StoredEngravingImage({item,alt=''}:{item:Pick<NewspaperEngraving,'image_path'|'public_src'>;alt?:string}){
+ const path=item.image_path;
+ const url=useQuery({queryKey:['newspaper-engraving-url',path],queryFn:()=>signedEngravingImage(path!),
+  enabled:Boolean(path)&&!item.public_src,staleTime:45*60*1000,retry:false});
+ if(item.public_src)return <img src={item.public_src} alt={alt} loading="lazy"/>;
  if(url.data)return <img src={url.data} alt={alt} loading="lazy"/>;
  return <div className="folha-engraving-placeholder" aria-hidden="true"/>;
 }
 
 /** Gravuras do Reino: o Editor-Chefe envia imagens quadradas e escolhe quais aparecem no acervo. */
-export function NewspaperEngravings({items,busy,onUpload,onToggle,onDelete}:{
+export function NewspaperEngravings({items,busy,onUpload,onToggle,onDelete,onRestore}:{
  items:NewspaperEngraving[];busy:boolean;
+ onRestore:()=>void;
  onUpload:(file:File,name:string)=>Promise<boolean>;
  onToggle:(item:NewspaperEngraving,inCollection:boolean)=>void;
  onDelete:(item:NewspaperEngraving)=>void;
@@ -29,7 +33,10 @@ export function NewspaperEngravings({items,busy,onUpload,onToggle,onDelete}:{
  };
  return <section className="folha-engravings-manager" aria-label="Gravuras do Reino">
   <h4>Gravuras do Reino</h4>
-  <p className="folha-empty-copy">Envie imagens para o Acervo de gravuras. A bolinha marca se a gravura aparece no acervo; desmarcada, ela continua guardada aqui.</p>
+  <p className="folha-empty-copy">Este é o Acervo de gravuras: tudo o que aparece na Folha fica aqui, inclusive as originais do Reino. A bolinha marca se a gravura aparece no acervo da folha; desmarcada, ela continua guardada aqui. A lixeira exclui a gravura (edições já publicadas não mudam).</p>
+  {NEWSPAPER_ENGRAVINGS.some(e=>!items.some(i=>i.public_src===e.src))&&
+   <button type="button" className="folha-text-link" disabled={busy} onClick={onRestore}>
+    Restaurar gravuras originais do Reino</button>}
   <form className="folha-engraving-upload" onSubmit={e=>{e.preventDefault();void submit();}}>
    <label>Nome da gravura<input value={name} maxLength={80} placeholder="Ex.: Torre de Suzail"
     onChange={e=>setName(e.target.value)}/></label>
@@ -41,8 +48,8 @@ export function NewspaperEngravings({items,busy,onUpload,onToggle,onDelete}:{
   {error&&<p className="newspaper-alert" role="alert">{error}</p>}
   {items.length===0?<p className="folha-empty-copy">Nenhuma gravura enviada ainda.</p>:
    <div className="folha-engraving-library">{items.map(item=><figure key={item.id} className="folha-engraving-tile">
-    <div className="folha-engraving-square"><StoredEngravingImage path={item.image_path} alt={item.name}/></div>
-    <figcaption>{item.name}</figcaption>
+    <div className="folha-engraving-square"><StoredEngravingImage item={item} alt={item.name}/></div>
+    <figcaption>{item.name}{item.public_src&&<small className="folha-engraving-origin"> · original do Reino</small>}</figcaption>
     <div className="folha-engraving-controls">
      <button type="button" role="switch" className={`folha-dot${item.in_collection?' on':''}`}
       aria-checked={item.in_collection} aria-label={`${item.name}: aparece no acervo`}

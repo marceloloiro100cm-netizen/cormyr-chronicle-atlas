@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
-import {Plus,FileText,ImagePlus,Newspaper,ArrowUp,ArrowDown,Trash2,Save,Send,Archive,Undo2,Check,Eye,LayoutTemplate} from 'lucide-react';
+import {Plus,FileText,ImagePlus,Newspaper,ArrowUp,ArrowDown,Trash2,Save,Send,Archive,Undo2,Check,Eye,LayoutTemplate,ChevronLeft,ChevronRight} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
@@ -14,7 +14,7 @@ import {
  deleteNewspaperStaff,uploadStaffPhoto,getStoryModels,saveStoryModel,deleteStoryModel,deleteNewspaperEdition,
  markNewspaperRead,updateNewspaperEdition,uploadNewspaperAsset,
  getNewspaperSettings,saveNewspaperSettings,getPublicHubDate,
- getEngravings,uploadEngraving,setEngravingInCollection,deleteEngraving,copyBucketImageToEdition,
+ getEngravings,uploadEngraving,setEngravingInCollection,deleteEngraving,copyBucketImageToEdition,restoreOriginalEngravings,
 } from '@/lib/newspaper/data';
 import {
  commissionToBlocks,newspaperIsDirty,pendingCommissions,type NewspaperCommission,
@@ -23,8 +23,12 @@ import {
  NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,validateNewspaperEdition,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperState,
  DEFAULT_NEWSPAPER_SETTINGS,validateNewspaperSettings,newEditionDate,type NewspaperSettings,
- type NewspaperTemplate,type NewspaperRevision,type NewspaperEngraving,ENGRAVINGS_BUCKET,type NewspaperStaffMember,type StoryModel,instantiateStoryModel,
+ type NewspaperTemplate,type NewspaperRevision,type NewspaperEngraving,ENGRAVINGS_BUCKET,PAPER_BUCKET,type NewspaperStaffMember,type StoryModel,instantiateStoryModel,
 } from '@/lib/newspaper/model';
+import {
+ canRedo,canUndo,emptyHistory,insertBlocksAfter,needsImageCopy,parseClipboardBlocks,recordSnapshot,
+ redoHistory,serializeBlocks,snapshotOf,textToArticleBlock,undoHistory,type EditHistory,
+} from '@/lib/newspaper/editing';
 import './newspaper.css';
 
 export function useUnreadNewspaperCount(userId:string,enabled=true){
@@ -227,6 +231,8 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
     campaign_date:current.campaign_date,title:current.title.trim(),subtitle:current.subtitle,
     template:current.template,font_style:current.font_style,blocks:current.blocks,
     pdf_path:current.pdf_path,state,
+    // Só rascunhos ficam agendados; ao publicar, cancelar ou arquivar o agendamento é limpo.
+    ...(current.publish_on!==undefined?{publish_on:state==='draft'?current.publish_on:null}:{}),
    });
    setDraft(cloneEditableEdition(result));
    if(state!=='draft'){setEditing(false);setBlockId(null);}
@@ -248,6 +254,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
  };
  const readers=current?reads.filter(r=>r.newspaper_id===current.id&&r.read_version>=current.publication_revision).length:0;
  const displayEdition=current;
+ const displayIndex=displayEdition?history.findIndex(e=>e.id===displayEdition.id):-1;
+ const olderEdition=displayIndex>=0?history[displayIndex+1]:undefined;
+ const newerEdition=displayIndex>0?history[displayIndex-1]:undefined;
 
 
  const quickUpload=async(file:File)=>{
@@ -537,6 +546,9 @@ const useStoryModel=async(model:StoryModel)=>{
  const useStoredEngraving=async(item:NewspaperEngraving)=>{
   if(!editor||busy)return;
   if(current&&current.state!=='draft'){setError('Reabra a edição como rascunho para usar uma gravura.');return;}
+  // Gravura original do Reino: arquivo fixo do site, sem cópia no armazenamento.
+  if(item.public_src){useEngraving(item.public_src,item.name);return;}
+  if(!item.image_path){setError('Esta gravura não tem imagem.');return;}
   setBusy(true);setError('');
   try{
    let base=current;
@@ -546,7 +558,7 @@ const useStoryModel=async(model:StoryModel)=>{
     setSelectedId(base.id);setDraft(base);
     await refresh();
    }
-   const imagePath=await copyBucketImageToEdition(ENGRAVINGS_BUCKET,base.id,item.image_path);
+   const imagePath=await copyBucketImageToEdition(ENGRAVINGS_BUCKET,base.id,item.image_path!);
    const target=base.blocks.find(b=>b.id===blockId&&b.type==='image');
    if(target){
     setDraft(old=>old?{...old,blocks:old.blocks.map(b=>{
@@ -562,6 +574,73 @@ const useStoryModel=async(model:StoryModel)=>{
    setBlockId(block.id);setEditing(true);notice('Gravura inserida na folha.');
   }catch(cause){setError(safeError(cause));}
   finally{setBusy(false);}
+ };
+ const restoreEngravings=async()=>{
+  if(!editor||busy)return;
+  setBusy(true);setError('');
+  try{
+   const added=await restoreOriginalEngravings(engravings);
+   await qc.invalidateQueries({queryKey:['campaign-newspaper-engravings']});
+   notice(added>0?'Gravuras originais do Reino de volta ao acervo.':'As gravuras originais já estão no acervo.');
+  }catch(cause){setError(safeError(cause));}
+  finally{setBusy(false);}
+ };
+ // ---- Desfazer / refazer e copiar / colar blocos ----
+ const [history_,setHistory_]=useState<EditHistory>(emptyHistory);
+ const blockClip=useRef('');
+ useEffect(()=>{
+  if(!editor||!draft)return;
+  setHistory_(old=>recordSnapshot(old,draft.id,snapshotOf(draft),Date.now()));
+ },[editor,draft]);
+ const applySnapshot=(result:{history:EditHistory;snapshot:ReturnType<typeof snapshotOf>}|null,label:string)=>{
+  if(!result)return;
+  setHistory_(result.history);
+  setDraft(old=>old?{...old,...result.snapshot}:old);
+  setEditing(true);notice(label);
+ };
+ const undo=()=>applySnapshot(undoHistory(history_),'Alteração desfeita. Ctrl+Y refaz.');
+ const redo=()=>applySnapshot(redoHistory(history_),'Alteração refeita.');
+ const copyBlock=(id:string):string|null=>{
+  const block=current?.blocks.find(b=>b.id===id);
+  if(!block)return null;
+  const text=serializeBlocks([block]);
+  blockClip.current=text;
+  void navigator.clipboard?.writeText(text).catch(()=>undefined);
+  notice('Bloco copiado. Cole com Ctrl+V ou no botão Colar.');
+  return text;
+ };
+ const cutBlock=(id:string):string|null=>{
+  const text=copyBlock(id);
+  if(text===null)return null;
+  removeEditorialBlock(id);
+  notice('Bloco recortado. Cole com Ctrl+V ou desfaça com Ctrl+Z.');
+  return text;
+ };
+ const pasteBlocks=async(text:string,files:File[])=>{
+  if(!current||!editor)return;
+  if(current.state!=='draft'&&current.state!=='cancelled'){setError('Reabra a edição como rascunho para colar.');return;}
+  const image=files[0];
+  if(image){void quickUpload(image);return;}
+  const source=text.trim()?text:blockClip.current;
+  const parsed=parseClipboardBlocks(source);
+  const added=parsed??(text.trim()?[textToArticleBlock(text)].filter((b):b is NewspaperBlock=>b!==null):[]);
+  if(added.length===0){setError('Não há nada para colar. Copie um bloco primeiro.');return;}
+  if(current.blocks.length+added.length>80){setError('A edição permite até 80 elementos.');return;}
+  const edition=current;
+  const prepared:NewspaperBlock[]=[];
+  let lostImages=0;
+  for(const block of added){
+   if(needsImageCopy(block,edition.id)){
+    try{prepared.push({...block,imagePath:await copyBucketImageToEdition(PAPER_BUCKET,edition.id,block.imagePath!)});}
+    catch{const {imagePath:_lost,...rest}=block;prepared.push(rest);lostImages++;}
+   }else prepared.push(block);
+  }
+  const inserted=insertBlocksAfter(draft?.blocks??edition.blocks,blockId,prepared);
+  if(!inserted.ok){setError('A edição permite até 80 elementos.');return;}
+  setDraft(old=>old?.id===edition.id?{...old,blocks:inserted.blocks}:old);
+  setBlockId(prepared[0]?.id??null);setEditing(true);
+  notice(lostImages>0?'Bloco colado, mas a imagem de outra edição não pôde ser copiada.':
+   parsed?'Bloco colado depois do selecionado.':'Texto colado como nova matéria.');
  };
  const saveSettings=async(input:NewspaperSettings):Promise<boolean>=>{
   if(!editor||busy)return false;
@@ -610,9 +689,13 @@ const useStoryModel=async(model:StoryModel)=>{
   onToggleEngraving={(item,value)=>{void toggleEngraving(item,value);}}
   onDeleteEngraving={item=>{void removeEngraving(item);}}
   onUseStoredEngraving={item=>{void useStoredEngraving(item);}}
+  engravingsLoading={engravingsQuery.isPending} onRestoreEngravings={()=>{void restoreEngravings();}}
   staff={staff} onSaveStaff={saveStaff} onDeleteStaff={member=>{void removeStaff(member);}}
   onWriteAboutDate={writeAboutDate}
-  revisions={revisionsQuery.data??[]} onRestoreRevision={restoreRevision} onUseEngraving={useEngraving}
+  revisions={revisionsQuery.data??[]} onRestoreRevision={restoreRevision}
+  canUndo={canUndo(history_)} canRedo={canRedo(history_)} canPasteBlock={blockClip.current!==''}
+  onUndo={undo} onRedo={redo} onCopyBlock={copyBlock} onCutBlock={cutBlock}
+  onPasteBlock={(text,files)=>{void pasteBlocks(text,files);}}
   dirty={dirty} onDiscard={discardChanges} onDeleteDraft={()=>{void deleteDraft();}}
   onNew={type=>{void newEdition(type);}}
   onOpen={edition=>{void open(edition);}}
@@ -672,6 +755,14 @@ const useStoryModel=async(model:StoryModel)=>{
      <p>{editor?'Crie uma edição com modelo pronto, edite os blocos e publique em poucos cliques.':'Selecione uma edição à esquerda para começar a leitura.'}</p>
     </div>:<>
      <div className="newspaper-workspace-bar">
+      <div className="newspaper-edition-steps">
+       <button type="button" disabled={busy||!olderEdition} onClick={()=>{if(olderEdition)void open(olderEdition);}}
+        title={olderEdition?`Nº ${olderEdition.edition_no}`:'Esta é a edição mais antiga'}>
+        <ChevronLeft size={15}/> Edição anterior</button>
+       <button type="button" disabled={busy||!newerEdition} onClick={()=>{if(newerEdition)void open(newerEdition);}}
+        title={newerEdition?`Nº ${newerEdition.edition_no}`:'Esta é a edição mais recente'}>
+        Próxima edição <ChevronRight size={15}/></button>
+      </div>
       <div><span>EDIÇÃO Nº {displayEdition.edition_no}</span>
        <strong>{newspaperStatus(displayEdition.state)}</strong>
        {editor&&['published','archived'].includes(displayEdition.state)&&

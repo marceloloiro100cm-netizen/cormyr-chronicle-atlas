@@ -56,4 +56,23 @@ describe('Jornal: editor visual integrado ao banco',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Fechar ✕'}));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
  });
+ it('altura fixa usa o recorte livre (foco e ampliação); altura automática mostra a imagem inteira',()=>{
+  const crop:NewspaperEdition={...edition,blocks:edition.blocks.map(b=>b.type==='image'?
+   {...b,autoHeight:false,focusX:20,focusY:80,cropZoom:1.5}:b)};
+  const {unmount}=render(<NewspaperCanvas edition={crop} editing={false}/>);
+  const img=screen.getByRole('img',{name:'Castelo de Cormyr'});
+  expect(img).toHaveClass('newspaper-img-fixed');
+  expect((img as HTMLElement).style.objectPosition).toBe('20% 80%');
+  expect((img as HTMLElement).style.transform).toBe('scale(1.5)');
+  unmount();
+  render(<NewspaperCanvas edition={edition} editing={false}/>);
+  expect(screen.getByRole('img',{name:'Castelo de Cormyr'})).toHaveClass('newspaper-img-auto');
+ });
+ it('mostra o tempo de leitura a quem lê, mas não durante a edição',()=>{
+  const {unmount}=render(<NewspaperCanvas edition={edition} compactMasthead/>);
+  expect(screen.getByText(/Leitura: cerca de 1 min/)).toBeInTheDocument();
+  unmount();
+  render(<NewspaperCanvas edition={edition} compactMasthead editing/>);
+  expect(screen.queryByText(/Leitura: cerca de/)).toBeNull();
+ });
 });

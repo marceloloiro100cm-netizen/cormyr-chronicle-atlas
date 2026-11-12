@@ -31,7 +31,10 @@ function fixture():NewspaperEditorialProps{
   storyModels:[],onUseStoryModel:vi.fn(),onSaveStoryModel:vi.fn(async()=>true),onDeleteStoryModel:vi.fn(),onDeleteEdition:vi.fn(),
   engravings:[],onUploadEngraving:vi.fn(async()=>true),onToggleEngraving:vi.fn(),onDeleteEngraving:vi.fn(),onUseStoredEngraving:vi.fn(),
   staff:[],onSaveStaff:vi.fn(async()=>true),onDeleteStaff:vi.fn(),onWriteAboutDate:vi.fn(),
-  revisions:[],onRestoreRevision:vi.fn(),onUseEngraving:vi.fn(),
+  revisions:[],onRestoreRevision:vi.fn(),
+  engravingsLoading:false,onRestoreEngravings:vi.fn(),
+  canUndo:false,canRedo:false,canPasteBlock:false,onUndo:vi.fn(),onRedo:vi.fn(),
+  onCopyBlock:vi.fn(()=>'texto'),onCutBlock:vi.fn(()=>'texto'),onPasteBlock:vi.fn(),
   dirty:false,onDiscard:vi.fn(),onDeleteDraft:vi.fn(),
   onNew:vi.fn(),onOpen:vi.fn(),onSave:vi.fn(),onEdit:vi.fn(),
   onPreview:vi.fn(),onPatch:vi.fn(),onSelectBlock:vi.fn(),
@@ -222,9 +225,12 @@ describe('Redação A Folha Sem Selo',()=>{
   p.revisions=[{id:9,newspaper_id:p.current.id,previous_version:3,changed_at:'2026-11-11T12:00:00Z',
    snapshot:{title:'Antigo',blocks:[]}}];
   p.editing=true;
-  render(<NewspaperEditorialDesk {...p}/>);
+  const original={id:'o3',name:'Mercado de Suzail',image_path:null,public_src:'/newspaper/gravuras/mercado_suzail.jpg',
+   in_collection:true,created_at:''};
+  p.engravings=[original];
+  render(<QueryClientProvider client={new QueryClient()}><NewspaperEditorialDesk {...p}/></QueryClientProvider>);
   fireEvent.click(screen.getByRole('button',{name:'Usar gravura: Mercado de Suzail'}));
-  expect(p.onUseEngraving).toHaveBeenCalledWith('/newspaper/gravuras/mercado_suzail.jpg','Mercado de Suzail');
+  expect(p.onUseStoredEngraving).toHaveBeenCalledWith(original);
   fireEvent.click(screen.getByRole('button',{name:'Arquivo'}));
   fireEvent.click(screen.getByRole('button',{name:'Restaurar'}));
   expect(p.onRestoreRevision).toHaveBeenCalledWith(p.revisions[0]);
@@ -266,8 +272,8 @@ describe('Redação A Folha Sem Selo',()=>{
  });
  it('o topo diz só Jornal e Gravuras do Reino controla o acervo pela bolinha',()=>{
   const p=fixture();
-  const item={id:'g1',name:'Torre de Suzail',image_path:'a.png',in_collection:true,created_at:''};
-  const off={id:'g2',name:'Praça velha',image_path:'b.png',in_collection:false,created_at:''};
+  const item={id:'g1',name:'Torre de Suzail',image_path:'a.png',public_src:null,in_collection:true,created_at:''};
+  const off={id:'g2',name:'Praça velha',image_path:'b.png',public_src:null,in_collection:false,created_at:''};
   p.engravings=[item,off];
   render(<QueryClientProvider client={new QueryClient()}><NewspaperEditorialDesk {...p}/></QueryClientProvider>);
   expect(screen.queryByText(/SEGUNDA TEMPORADA/)).toBeNull();
@@ -304,5 +310,110 @@ describe('Redação A Folha Sem Selo',()=>{
   render(<NewspaperEditorialDesk {...fixture()}/>);
   expect(screen.getByText('Falta conteúdo para publicar')).toBeInTheDocument();
   expect(screen.queryByText('Pronta para publicação')).toBeNull();
+ });
+});
+
+function draftEdition(blocks:NewspaperEditorialProps['history'][number]['blocks'],extra:Partial<NewspaperEditorialProps['history'][number]>={}){
+ return {
+  id:'00000000-0000-4000-8000-000000000001',edition_no:3,campaign_date:'1522-01-01',
+  title:'A Folha Sem Selo',subtitle:'',template:'classico' as const,font_style:'classico' as const,
+  state:'draft' as const,pdf_path:null,version:4,publication_revision:0,created_by:'l',
+  updated_at:'',published_at:null,archived_at:null,cancelled_at:null,blocks,...extra,
+ };
+}
+function editingFixture(){
+ const p=fixture();
+ p.current=draftEdition([{id:'b1',type:'article',text:'Título\n\nUma frase com sete palavras aqui hoje',span:6,height:190}]);
+ p.history=[p.current];p.editing=true;p.selectedBlockId='b1';
+ return p;
+}
+
+describe('Melhorias do Jornal (12/11/2026)',()=>{
+ it('o acervo da folha mostra só o que está no banco e permite restaurar as originais',()=>{
+  const p=fixture();
+  render(<QueryClientProvider client={new QueryClient()}><NewspaperEditorialDesk {...p}/></QueryClientProvider>);
+  expect(screen.queryByRole('button',{name:'Usar gravura: Castelo de Cormyr'})).toBeNull();
+  expect(screen.getByText(/Acervo vazio/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button',{name:'Matérias'}));
+  fireEvent.click(screen.getByRole('button',{name:/Gravuras do Reino/}));
+  fireEvent.click(screen.getByRole('button',{name:'Restaurar gravuras originais do Reino'}));
+  expect(p.onRestoreEngravings).toHaveBeenCalled();
+ });
+ it('gravuras originais aparecem no gerenciador e podem ser excluídas',()=>{
+  const p=fixture();
+  const original={id:'o1',name:'Castelo de Cormyr',image_path:null,public_src:'/newspaper/gravuras/castelo_cormyr.jpg',
+   in_collection:true,created_at:''};
+  p.engravings=[original];
+  render(<QueryClientProvider client={new QueryClient()}><NewspaperEditorialDesk {...p}/></QueryClientProvider>);
+  fireEvent.click(screen.getByRole('button',{name:'Matérias'}));
+  fireEvent.click(screen.getByRole('button',{name:/Gravuras do Reino/}));
+  expect(screen.getByText(/original do Reino/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button',{name:'Excluir gravura Castelo de Cormyr'}));
+  expect(p.onDeleteEngraving).toHaveBeenCalledWith(original);
+ });
+ it('barra de ferramentas: desfazer, refazer, copiar, recortar e colar',()=>{
+  const p=editingFixture();p.canUndo=true;p.canRedo=true;p.canPasteBlock=true;
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.click(screen.getByRole('button',{name:/Desfazer/}));
+  fireEvent.click(screen.getByRole('button',{name:/Refazer/}));
+  fireEvent.click(screen.getByRole('button',{name:/Copiar/}));
+  fireEvent.click(screen.getByRole('button',{name:/Recortar/}));
+  fireEvent.click(screen.getByRole('button',{name:/Colar/}));
+  expect(p.onUndo).toHaveBeenCalled();expect(p.onRedo).toHaveBeenCalled();
+  expect(p.onCopyBlock).toHaveBeenCalledWith('b1');expect(p.onCutBlock).toHaveBeenCalledWith('b1');
+  expect(p.onPasteBlock).toHaveBeenCalledWith('',[]);
+ });
+ it('atalhos de teclado valem para o bloco, mas não dentro de um texto',()=>{
+  const p=editingFixture();
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.keyDown(document.body,{key:'z',ctrlKey:true});
+  fireEvent.keyDown(document.body,{key:'z',ctrlKey:true,shiftKey:true});
+  fireEvent.keyDown(document.body,{key:'y',ctrlKey:true});
+  fireEvent.keyDown(document.body,{key:'d',ctrlKey:true});
+  fireEvent.keyDown(document.body,{key:'Delete'});
+  expect(p.onUndo).toHaveBeenCalledTimes(1);
+  expect(p.onRedo).toHaveBeenCalledTimes(2);
+  expect(p.onDuplicateBlock).toHaveBeenCalledWith('b1');
+  expect(p.onRemoveBlock).toHaveBeenCalledWith('b1');
+  // Dentro de um campo de texto o navegador cuida do próprio Ctrl+Z.
+  const area=screen.getAllByRole('textbox')[0]!;
+  fireEvent.keyDown(area,{key:'z',ctrlKey:true});
+  expect(p.onUndo).toHaveBeenCalledTimes(1);
+ });
+ it('Ctrl+C, Ctrl+X e Ctrl+V trabalham com blocos',()=>{
+  const p=editingFixture();
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  const setData=vi.fn();
+  fireEvent.copy(document.body,{clipboardData:{setData}});
+  expect(p.onCopyBlock).toHaveBeenCalledWith('b1');
+  expect(setData).toHaveBeenCalledWith('text/plain','texto');
+  fireEvent.cut(document.body,{clipboardData:{setData}});
+  expect(p.onCutBlock).toHaveBeenCalledWith('b1');
+  fireEvent.paste(document.body,{clipboardData:{files:[],getData:()=>'CORMYR-FOLHA-BLOCOS:v1\n[]'}});
+  expect(p.onPasteBlock).toHaveBeenCalledWith('CORMYR-FOLHA-BLOCOS:v1\n[]',[]);
+ });
+ it('mostra palavras da edição e agenda ou cancela a publicação',()=>{
+  const p=editingFixture();
+  p.current=draftEdition(p.current!.blocks,{publish_on:'1522-02-05'});
+  p.history=[p.current];
+  render(<NewspaperEditorialDesk {...p}/>);
+  expect(screen.getAllByText(/\d+ palavras/).length).toBeGreaterThan(0);
+  expect(screen.getByText(/Será publicada sozinha em/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button',{name:'Cancelar agendamento'}));
+  expect(p.onPatch).toHaveBeenCalledWith({publish_on:null});
+ });
+ it('troca para a edição anterior e a seguinte com as setas',()=>{
+  const p=editingFixture();
+  const older=draftEdition([],{id:'00000000-0000-4000-8000-000000000002',edition_no:2});
+  const newer=draftEdition([],{id:'00000000-0000-4000-8000-000000000003',edition_no:4});
+  p.history=[newer,p.current!,older];
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Ver edição anterior'}));
+  expect(p.onOpen).toHaveBeenCalledWith(older);
+  fireEvent.click(screen.getByRole('button',{name:'Ver edição seguinte'}));
+  expect(p.onOpen).toHaveBeenCalledWith(newer);
  });
 });

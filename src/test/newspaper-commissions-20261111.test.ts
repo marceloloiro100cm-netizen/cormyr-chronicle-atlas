@@ -78,9 +78,9 @@ describe('Seis facilidades extras',()=>{
 describe('Brasões do jornal',()=>{
  it('o título usa o brasão do reino e a Redação usa o brasão do jornal',()=>{
   const canvas=read('src/components/newspaper/NewspaperCanvas.tsx');
-  expect(canvas).toContain('/newspaper/brasao_reino.png');
+  expect(canvas).toContain('/newspaper/brasao_reino.webp');
   expect(canvas).not.toContain('leao_');
-  expect(read('src/components/newspaper/NewspaperEditorialDesk.tsx')).toContain('/newspaper/brasao_folha.png');
+  expect(read('src/components/newspaper/NewspaperEditorialDesk.tsx')).toContain('/newspaper/brasao_folha.webp');
  });
 });
 
@@ -168,5 +168,52 @@ describe('Pente fino: data do HUB, configurações sem edição e cabeçalho con
   expect(canvas).toContain('newspaper-img-auto');
   expect(canvas).toContain('!compactMasthead&&<div className="newspaper-meta"');
   expect(hub).toContain('<NewspaperCanvas compactMasthead edition={displayEdition}');
+ });
+});
+
+describe('Melhorias do Jornal: acervo editável, agendamento, atalhos e recursos',()=>{
+ const m=read('drizzle/migrations/0122_newspaper_acervo_and_schedule.sql');
+ const desk=read('src/components/newspaper/NewspaperEditorialDesk.tsx');
+ const data=read('src/lib/newspaper/data.ts');
+ const editing=read('src/lib/newspaper/editing.ts');
+ it('a migration roda numa transação e não abre nada para visitantes',()=>{
+  expect(m.trim().startsWith('--')).toBe(true);
+  expect(m).toMatch(/^BEGIN;/m);expect(m).toMatch(/^COMMIT;/m);
+  expect(m).not.toMatch(/TO anon/);
+ });
+ it('as gravuras originais viram linhas do acervo, com origem exclusiva e caminho restrito',()=>{
+  expect(m).toContain('ALTER COLUMN image_path DROP NOT NULL');
+  expect(m).toContain('CHECK ((image_path IS NOT NULL) <> (public_src IS NOT NULL))');
+  expect(m).toContain("'^/newspaper/gravuras/[A-Za-z0-9_.-]+$'");
+  for(const f of ['castelo_cormyr.jpg','conselho_real.jpg','mercado_suzail.jpg'])expect(m).toContain('/newspaper/gravuras/'+f);
+  expect(m).toContain('ON CONFLICT DO NOTHING');
+ });
+ it('a folha deixou de listar gravuras fixas: só o acervo do banco aparece',()=>{
+  expect(desk).not.toContain('NEWSPAPER_ENGRAVINGS.map');
+  expect(data).toContain('restoreOriginalEngravings');
+  expect(read('src/lib/newspaper/model.ts')).toContain('NEWSPAPER_ENGRAVINGS');
+ });
+ it('a publicação agendada é decidida pelo relógio do HUB, nunca pelo chamador',()=>{
+  expect(m).toContain('publish_due_campaign_newspapers');
+  expect(m).toContain('SECURITY DEFINER');
+  expect(m).toContain('FROM public.campaign_calendar');
+  expect(m).toContain("WHERE state = 'draft' AND publish_on IS NOT NULL");
+  expect(m).toContain('REVOKE ALL ON FUNCTION public.publish_due_campaign_newspapers() FROM PUBLIC, anon');
+  expect(data).toContain("db.rpc('publish_due_campaign_newspapers')");
+  expect(editing).toContain('date.year*100000+date.month*1000+inMonth');
+  expect(m).toContain('substr(p,1,4)::bigint*100000 + (substr(p,6,2)::int-1)*1000 + substr(p,9,2)::int*2');
+ });
+ it('atalhos de Ctrl+Z, Y, C, X, V e D valem para blocos e deixam o texto com o navegador',()=>{
+  const hook=read('src/components/newspaper/useNewspaperShortcuts.ts');
+  for(const e of ["'copy'","'cut'","'paste'","'keydown'"])expect(hook).toContain(e);
+  expect(hook).toContain('isTextTarget(event.target)');
+  expect(desk).toContain('useNewspaperShortcuts');
+ });
+ it('os brasões são WebP, as fontes do título são do próprio site e não há PNG sobrando',()=>{
+  expect(desk).toContain('/newspaper/brasao_folha.webp');
+  const css=read('src/components/newspaper/newspaper.css');
+  expect(css).toContain('/newspaper/fonts/UnifrakturMaguntia-Book.woff');
+  expect(css).toContain('/newspaper/fonts/Cinzel-Variable.woff');
+  expect(css.split('\n')[0]).not.toContain('UnifrakturMaguntia');
  });
 });
