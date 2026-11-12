@@ -138,7 +138,35 @@ describe('Gravuras do Reino e calendário do Editor-Chefe',()=>{
   const css=read('src/components/newspaper/newspaper-editorial.css');
   expect(desk).not.toContain('SEGUNDA TEMPORADA');
   expect(desk).toContain('emblema_integrado.webp');
-  expect(css).toContain('cabecalho_folha.webp');
+  expect(css).toContain('cab_centro.webp');
   expect(desk).toContain('folha-font-');
+ });
+});
+
+describe('Pente fino: data do HUB, configurações sem edição e cabeçalho contínuo',()=>{
+ const sql5=read('drizzle/migrations/0121_newspaper_settings.sql');
+ const hub=read('src/components/newspaper/NewspaperHub.tsx');
+ const css=read('src/components/newspaper/newspaper-editorial.css');
+ it('o Editor-Chefe lê a data pela projeção pública e nunca fica travado esperando o HUB',()=>{
+  expect(read('src/lib/newspaper/data.ts')).toContain("db.rpc('get_public_campaign_time')");
+  expect(hub).toContain('useCampaignTime(!editorial)');
+  expect(hub).not.toContain('Aguarde a data oficial do HUB Temporal');
+ });
+ it('as configurações têm tabela própria, só para quem edita o jornal',()=>{
+  expect(sql5).toContain('campaign_newspaper_settings');
+  expect(sql5).toContain('USING (public.can_edit_campaign_newspaper())');
+  expect(sql5).not.toMatch(/TO anon/);
+ });
+ it('o cabeçalho é uma faixa contínua, sem imagem esticada',()=>{
+  expect(css).toContain('cab_fundo.png');
+  expect(css).toContain('cab_centro.webp');
+  expect(css).not.toContain('cabecalho_folha.webp');
+  expect(css).not.toContain('100% 100%');
+ });
+ it('a folha mostra a data uma vez e a imagem inteira na altura automática',()=>{
+  const canvas=read('src/components/newspaper/NewspaperCanvas.tsx');
+  expect(canvas).toContain('newspaper-img-auto');
+  expect(canvas).toContain('!compactMasthead&&<div className="newspaper-meta"');
+  expect(hub).toContain('<NewspaperCanvas compactMasthead edition={displayEdition}');
  });
 });

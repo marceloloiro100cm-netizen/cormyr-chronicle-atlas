@@ -54,10 +54,11 @@ export async function getCampaignTime(): Promise<CampaignTimeSnapshot> {
 /** Hook compartilhado por Calendário, Narrador, Casas, painel e Cabeçalho.
  * A invalidação Realtime existente e o fallback de polling usam a mesma chave.
  */
-export function useCampaignTime(){
+export function useCampaignTime(enabled=true){
  return useQuery({
   queryKey:CAMPAIGN_TIME_QUERY_KEY,
   queryFn:getCampaignTime,
+  enabled,
   refetchInterval:CAMPAIGN_TIME_REFRESH_MS,
  });
 }

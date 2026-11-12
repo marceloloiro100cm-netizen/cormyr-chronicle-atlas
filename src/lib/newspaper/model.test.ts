@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperResize,safeNewspaperBlocks,validateNewspaperEdition,reorderNewspaperBlocks,duplicateNewspaperBlock,insertNewspaperBlockBefore,type NewspaperEdition,commissionInEdition,moveNewspaperBlock,newspaperIsDirty,NEWSPAPER_WIDTH_PRESETS,commissionToBlocks,pendingCommissions,validateCommissionDraft,type NewspaperCommission,NEWSPAPER_ENGRAVINGS,unseenCommissionAnswers,houseCanCommission,COMMISSION_PENDING_LIMIT,staffByline,validateStaffMember,dateStoryDraft,sampleNewspaperBlocks,BUILTIN_STORY_MODELS,instantiateStoryModel,validateStoryModel,duplicatedStoryModelName} from './model';
+import {createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperResize,safeNewspaperBlocks,validateNewspaperEdition,reorderNewspaperBlocks,duplicateNewspaperBlock,insertNewspaperBlockBefore,type NewspaperEdition,commissionInEdition,moveNewspaperBlock,newspaperIsDirty,NEWSPAPER_WIDTH_PRESETS,commissionToBlocks,pendingCommissions,validateCommissionDraft,type NewspaperCommission,NEWSPAPER_ENGRAVINGS,unseenCommissionAnswers,houseCanCommission,COMMISSION_PENDING_LIMIT,staffByline,validateStaffMember,dateStoryDraft,sampleNewspaperBlocks,BUILTIN_STORY_MODELS,instantiateStoryModel,validateStoryModel,duplicatedStoryModelName,safeNewspaperSettings,validateNewspaperSettings,newEditionDate,DEFAULT_NEWSPAPER_SETTINGS,storyModelPreviewEdition} from './model';
 
 const published={
  id:'00000000-0000-4000-8000-000000000001',edition_no:1,
@@ -198,5 +198,31 @@ describe('Modelos de matéria',()=>{
   expect(validateStoryModel({name:' ',description:'',blocks:BUILTIN_STORY_MODELS[0]!.blocks})).not.toBe('');
   expect(validateStoryModel({name:'x',description:'',blocks:[]})).not.toBe('');
   expect(duplicatedStoryModelName('Entrevista')).toBe('Cópia de Entrevista');
+ });
+});
+
+describe('Configurações do jornal e data da edição nova',()=>{
+ it('aceita só modelo e fonte conhecidos e nunca deixa o nome vazio',()=>{
+  expect(safeNewspaperSettings(null)).toEqual(DEFAULT_NEWSPAPER_SETTINGS);
+  expect(safeNewspaperSettings({title:'  ',subtitle:7,template:'x',font_style:'y'})).toEqual({...DEFAULT_NEWSPAPER_SETTINGS});
+  expect(safeNewspaperSettings({title:'Gazeta',subtitle:'',template:'guerra',font_style:'condensado'}))
+   .toEqual({title:'Gazeta',subtitle:'',template:'guerra',font_style:'condensado'});
+  expect(validateNewspaperSettings({...DEFAULT_NEWSPAPER_SETTINGS,title:' '})).toMatch(/nome/);
+  expect(validateNewspaperSettings(DEFAULT_NEWSPAPER_SETTINGS)).toBeNull();
+ });
+ it('a edição nova usa a data do HUB; sem ela, a da edição mais recente; nunca inventa',()=>{
+  expect(newEditionDate('1522-10-11',[{campaign_date:'1522-09-01'}])).toBe('1522-10-11');
+  expect(newEditionDate('',[{campaign_date:'1522-09-01'}])).toBe('1522-09-01');
+  expect(newEditionDate('',[])).toBe('');
+ });
+ it('guarda o enquadramento da imagem e descarta valores estranhos',()=>{
+  const base={id:'a',type:'image',text:'',span:6,height:200};
+  expect(safeNewspaperBlocks([{...base,imageFocus:'top'}])[0]!.imageFocus).toBe('top');
+  expect(safeNewspaperBlocks([{...base,imageFocus:'diagonal'}])[0]!.imageFocus).toBeUndefined();
+ });
+ it('a prévia de modelo leva a identidade do jornal e preenche imagens vazias',()=>{
+  const e=storyModelPreviewEdition([makeNewspaperBlock('image')],'editorial',{title:'Gazeta',template:'guerra'});
+  expect(e.title).toBe('Gazeta');expect(e.template).toBe('guerra');expect(e.font_style).toBe('editorial');
+  expect(e.blocks[0]!.imageSrc).toBeTruthy();
  });
 });

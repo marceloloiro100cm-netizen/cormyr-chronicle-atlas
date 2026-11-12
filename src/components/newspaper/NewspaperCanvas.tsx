@@ -43,9 +43,10 @@ function NewspaperImage({block,editing,onChange}:{
   {src?<button className="newspaper-image-open" type="button"
    onClick={event=>{event.stopPropagation();setZoom(1);setLightbox(true);}}
    title="Ampliar fotografia" aria-label="Ampliar fotografia">
-    <img className={`newspaper-filter-${style}`} src={src}
+    <img className={`newspaper-filter-${style} ${block.autoHeight!==false?'newspaper-img-auto':'newspaper-img-fixed'}`} src={src}
      alt={block.caption||'Fotografia da edição'}
-     style={block.autoHeight!==false?{maxHeight:650,height:'auto'}:{height:Math.max(130,block.height-44)}}/>
+     style={block.autoHeight!==false?undefined:{height:Math.max(130,block.height-44),
+      objectPosition:block.imageFocus==='top'?'center top':block.imageFocus==='bottom'?'center bottom':'center'}}/>
    </button>:<div className="newspaper-photo-placeholder" role="status">
     {path&&asset.isError?'Imagem indisponível':path?'Carregando fotografia…':'Adicione uma fotografia na Redação'}
    </div>}
@@ -162,7 +163,6 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
    <div className="newspaper-rule"/>
    {compactMasthead?<div className="newspaper-page-folio">
     <span>EDIÇÃO Nº {String(edition.edition_no).padStart(3,'0')}</span>
-    <span>A VOZ LIVRE DE CORMYR</span>
     <span>{formatDate(edition.campaign_date)}</span>
    </div>:<p>O CORREIO DO REINO · CORMYR · EDIÇÃO {String(edition.edition_no).padStart(3,'0')}</p>}
    <div className="newspaper-page-masthead">
@@ -171,7 +171,7 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
      label="Editar nome do jornal" onChange={title=>{if(title)onChangeEdition?.({title});}}/>
     <img className="newspaper-crest newspaper-crest-mirror" src="/newspaper/brasao_reino.png" alt="" aria-hidden="true"/>
    </div>
-   <div className="newspaper-meta"><span>{formatDate(edition.campaign_date)}</span><span>Folha independente de Cormyr</span></div>
+   {!compactMasthead&&<div className="newspaper-meta"><span>{formatDate(edition.campaign_date)}</span><span>Folha independente de Cormyr</span></div>}
    {(edition.subtitle||(editing&&onChangeEdition))&&<InlineText tag="h2" className="newspaper-subtitle"
     value={edition.subtitle} editing={editing&&Boolean(onChangeEdition)}
     label="Editar lema do jornal" onChange={subtitle=>onChangeEdition?.({subtitle})}/>}
@@ -227,6 +227,6 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
     Arraste um elemento da caixa de ferramentas até aqui ou clique nele para adicionar
    </div>}
   {edition.pdf_path&&<NewspaperPdf path={edition.pdf_path}/>}
-  <footer className="newspaper-colophon">A FOLHA SEM SELO · A VOZ LIVRE DE CORMYR</footer>
+  <footer className="newspaper-colophon">{edition.title.toUpperCase()} · A VOZ LIVRE DE CORMYR</footer>
  </div>;
 }

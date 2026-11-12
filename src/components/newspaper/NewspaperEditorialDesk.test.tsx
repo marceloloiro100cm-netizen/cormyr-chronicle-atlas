@@ -24,6 +24,8 @@ function fixture():NewspaperEditorialProps{
   userId:'leonardo',current:null,history:[],reads:[],loading:false,
   editing:false,busy:false,selectedBlockId:null,error:'',message:'',
   hubDate:'1522-01-01',
+  settings:{title:'A Folha Sem Selo',subtitle:'O jornal independente de Cormyr',template:'classico',font_style:'classico'},
+  onSaveSettings:vi.fn(async()=>true),
   pendingCommissions:[],houseNames:new Map(),
   onInsertCommission:vi.fn(),onShowCommission:vi.fn(),onRejectCommission:vi.fn(),
   storyModels:[],onUseStoryModel:vi.fn(),onSaveStoryModel:vi.fn(async()=>true),onDeleteStoryModel:vi.fn(),onDeleteEdition:vi.fn(),
@@ -92,6 +94,7 @@ describe('Redação A Folha Sem Selo',()=>{
    state:'draft',pdf_path:null,version:1,publication_revision:0,created_by:'l',
    updated_at:'',published_at:null,archived_at:null,cancelled_at:null,blocks:[],
   };
+  p.settings={...p.settings,template:'guerra',font_style:'condensado'};
   render(<NewspaperEditorialDesk {...p}/>);
   fireEvent.click(screen.getByRole('button',{name:'Configurações'}));
   expect(screen.getByLabelText('Pré-visualização do modelo e da fonte')).toBeInTheDocument();
@@ -283,5 +286,23 @@ describe('Redação A Folha Sem Selo',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Matérias'}));
   fireEvent.click(screen.getByRole('button',{name:'Entrevista'}));
   expect(screen.getByLabelText(/Prévia do modelo Entrevista/)).toBeTruthy();
+ });
+ it('as Configurações funcionam sem edição aberta e mudam a fonte do título do site',async()=>{
+  const p=fixture();
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Configurações'}));
+  expect(screen.queryByText(/Crie uma edição antes/)).toBeNull();
+  const title=screen.getByRole('heading',{level:1,name:'A Folha Sem Selo'});
+  expect(title.closest('header')?.className).toContain('folha-font-classico');
+  fireEvent.change(screen.getByLabelText('Fonte'),{target:{value:'condensado'}});
+  expect(title.closest('header')?.className).toContain('folha-font-condensado');
+  expect(screen.getByText('Alterações ainda não salvas.')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:/Salvar configurações/}));
+  expect(p.onSaveSettings).toHaveBeenCalledWith(expect.objectContaining({font_style:'condensado',title:'A Folha Sem Selo'}));
+ });
+ it('o status não se contradiz: sem conteúdo avisa o que falta',()=>{
+  render(<NewspaperEditorialDesk {...fixture()}/>);
+  expect(screen.getByText('Falta conteúdo para publicar')).toBeInTheDocument();
+  expect(screen.queryByText('Pronta para publicação')).toBeNull();
  });
 });

@@ -85,3 +85,36 @@
 - **Matérias**: clicar num modelo mostra a prévia ao lado, como em Configurações.
 - **Gravuras do Reino** (botão em Matérias): o Editor-Chefe envia imagens, que aparecem quadradas, com lixeira e uma bolinha. Bolinha marcada: a gravura aparece no Acervo de gravuras. Desmarcada: continua guardada em Gravuras do Reino, mas some do acervo. Ao usar, a imagem é copiada para a pasta da edição.
 - **Migration 0120** (`drizzle/migrations/0120_newspaper_engravings_calendar.sql`): tabela e bucket privados das gravuras e o RPC do calendário. O commit no GitHub não aplica SQL: é preciso executá-la no banco. Não foi homologada nem tem backup prévio.
+
+## Pente fino: data do HUB, configurações livres e cabeçalho refeito (12/11/2026)
+
+**Causa da "Data indisponível" e do aviso "Aguarde a data oficial do HUB Temporal".** O perfil do Editor-Chefe foi isolado dos jogadores: `my_player_id()` ignora de propósito a identidade de editor, então `campaign_access_active()` é falso para ele. A tabela `campaign_calendar` só libera leitura com essa regra, e por isso `get_campaign_calendar` voltava vazio na Redação. Sem data, o Jornal bloqueava a criação de edição e o calendário caía em Hammer de 1 CV. Nada foi afrouxado nas permissões: a Redação passou a ler a data pela projeção pública que já existia (`get_public_campaign_time`, só ano, mês, dia e festival).
+
+- **Escrever sempre**: Escrever Matéria, Anexar Arquivo, modelos, gravuras e notícias contratadas criam a edição na hora. Se a data ainda não estiver em memória, o Jornal busca antes de criar. O aviso antigo deixou de existir.
+- **Data no canto e no Calendário**: o seletor mostra a data oficial e a linha "Hoje no Reino". O Calendário abre no mês atual, marca hoje e a semana, tem o botão "Voltar para hoje" e, enquanto a data não chega, avisa que está lendo em vez de mostrar um mês errado.
+- **Configurações sem edição**: nome, subtítulo, modelo e fonte agora são a identidade do jornal (tabela `campaign_newspaper_settings`, migration 0121). Valem para o título do site, para as próximas edições e para o rascunho aberto. A prévia muda na hora; o banco só grava em "Salvar configurações".
+- **Brasão do título**: ocupa a altura útil do retângulo, com margem para não encostar nas linhas.
+- **Cabeçalho**: a arte foi refeita em quatro peças (`cab_fundo.png`, `cab_esq.webp`, `cab_centro.webp`, `cab_dir.webp`). A faixa roxa é contínua, os cantos ficam nas pontas e a cena central mantém a proporção. Nada estica nem aparece recortado; em telas médias a cena desloca para a direita e o título ganha um véu escuro para leitura.
+
+**Outros ajustes do pente fino**
+
+- Folha: número da edição e data aparecem uma vez só (antes a data vinha duas vezes e havia três lemas). O rodapé usa o nome do jornal.
+- Leitor: a folha que o jogador lê é a mesma da pré-visualização do Editor-Chefe, e a edição mais recente já abre ao entrar no Jornal.
+- Imagens: na altura automática a imagem aparece inteira (imagens altas eram cortadas em 650 px). Na altura fixa há o controle "Mostrar: Topo, Centro, Base". Em Gravuras do Reino a miniatura quadrada mostra a imagem inteira.
+- Edição: a alça de redimensionar não cobre mais a assinatura nem a legenda; blocos de largura total não têm fio lateral.
+- Prévias de Configurações e de Matérias rolam dentro da moldura, sem cortar o fim do modelo.
+- Status da Edição: os rótulos estavam trocados ("Pronta para revisão" quando havia conteúdo). Agora: "Pronta para publicar" ou "Falta conteúdo para publicar".
+- Gravuras fixas: `conselho_real.jpg` e `mercado_suzail.jpg` caíram de 1,3 MB para cerca de 350 KB cada; `castelo_cormyr.jpg` tinha só 341 px de largura e foi ampliada para 1024 px (continua sendo a de menor nitidez).
+
+**Melhorias mapeadas, ainda não feitas**
+
+1. Trocar `castelo_cormyr.jpg` por uma gravura em alta resolução (pode ser enviada em Gravuras do Reino).
+2. Converter os brasões PNG (770 KB e 297 KB) para WebP, para o jornal abrir mais rápido no celular.
+3. A fonte gótica do título da folha vem do Google Fonts; hospedar o arquivo no próprio site evita o título trocar de fonte durante o carregamento.
+4. Desfazer (Ctrl+Z) na edição da folha; hoje o caminho é o Histórico de revisões.
+5. Contagem de palavras por matéria e aviso de texto muito longo para a coluna.
+6. Agendar publicação para uma data do Reino.
+7. No leitor, navegação "edição anterior / próxima" e botão para voltar ao topo.
+8. Recorte da imagem com arraste (hoje: Topo, Centro, Base).
+
+A migration 0121 precisa ser executada no banco (o commit não aplica SQL). Não foi homologada nem teve backup prévio.
