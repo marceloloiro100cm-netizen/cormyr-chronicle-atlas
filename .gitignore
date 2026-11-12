@@ -60,3 +60,8 @@ page_content.html
 firebase-debug.log*
 firestore-debug.log*
 ui-debug.log*
+
+# Local PostgreSQL extraction / backup material; never publish private exports
+*.backup
+*.dump
+__pycache__/
