@@ -360,3 +360,18 @@
 .newspaper-story-pinned .newspaper-lock-button{left:0}
 .newspaper-dropcap::first-letter{font-family:'UnifrakturMaguntia','Cinzel',Georgia,serif;float:left;
  font-size:3.2em;line-height:.78;padding:.05em .09em 0 0;color:#5b2547}
+
+/* Tipografias gótica e romana (edição e leitura) */
+.newspaper-font-gotica{font-family:'EB Garamond',Georgia,serif}
+.newspaper-font-gotica .newspaper-headline,.newspaper-font-gotica .newspaper-article h3,.newspaper-font-gotica .newspaper-notice-block h3{font-family:'UnifrakturMaguntia','Cinzel',Georgia,serif;font-weight:400;letter-spacing:0}
+.newspaper-font-romana{font-family:Georgia,'Times New Roman',serif}
+.newspaper-font-romana .newspaper-headline,.newspaper-font-romana .newspaper-article h3,.newspaper-font-romana .newspaper-notice-block h3{font-family:'Cinzel',Georgia,serif;font-weight:700;letter-spacing:.03em}
+.newspaper-font-romana .newspaper-page-masthead h1{font-family:'Cinzel',Georgia,serif!important}
+
+/* Campos vazios da folha: texto de apoio e altura mínima para achar onde escrever */
+[contenteditable="true"][data-newspaper-inline][data-placeholder]:empty{min-height:1.4em;cursor:text}
+[contenteditable="true"][data-newspaper-inline][data-placeholder]:empty::before{content:attr(data-placeholder);opacity:.45;font-style:italic;pointer-events:none}
+[contenteditable="true"][data-newspaper-inline]:focus{outline:2px solid rgba(120,60,30,.55);outline-offset:3px}
+.newspaper-inline-count{display:block;font:600 .68rem system-ui,sans-serif;color:#6b5a3e;text-align:right;margin:2px 0 4px}
+.newspaper-inline-count-over{color:#9a2a1c}
+@media print{.newspaper-inline-count{display:none}}

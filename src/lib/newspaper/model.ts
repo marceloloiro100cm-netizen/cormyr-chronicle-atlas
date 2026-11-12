@@ -1,7 +1,7 @@
 import {formatDate,parseDate,MONTHS} from '@/lib/calendar/harptos';
 
 export type NewspaperTemplate='classico'|'guerra'|'gazeta';
-export type NewspaperFont='classico'|'editorial'|'condensado';
+export type NewspaperFont='classico'|'editorial'|'condensado'|'gotica'|'romana';
 export type NewspaperState='draft'|'published'|'archived'|'cancelled';
 export type NewspaperBlockType='headline'|'subtitle'|'article'|'image'|'quote'|'notice';
 export type NewspaperImageStyle='vintage'|'woodcut'|'original';
@@ -99,6 +99,8 @@ export const NEWSPAPER_FONTS:{value:NewspaperFont;label:string}[]=[
  {value:'classico',label:'Clássica · Times'},
  {value:'editorial',label:'Editorial · Georgia'},
  {value:'condensado',label:'Imprensa · Impact'},
+ {value:'gotica',label:'Gótica · Fraktur e Garamond'},
+ {value:'romana',label:'Romana · Cinzel e Georgia'},
 ];
 
 export function makeNewspaperBlock(type:NewspaperBlockType):NewspaperBlock{

@@ -2,6 +2,7 @@ import {describe,expect,it,vi} from 'vitest';
 import {fireEvent,render,screen} from '@testing-library/react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {NewspaperEditorialDesk,type NewspaperEditorialProps} from './NewspaperEditorialDesk';
+import {makeNewspaperBlock,type NewspaperBlock,type NewspaperEdition} from '@/lib/newspaper/model';
 
 vi.mock('@/components/change-password',()=>({
  ChangePasswordButton:()=> <button type="button">Alterar senha</button>,
@@ -36,6 +37,7 @@ function fixture():NewspaperEditorialProps{
   canUndo:false,canRedo:false,canPasteBlock:false,onUndo:vi.fn(),onRedo:vi.fn(),
   onCopyBlock:vi.fn(()=>'texto'),onCutBlock:vi.fn(()=>'texto'),onPasteBlock:vi.fn(),
   dirty:false,onDiscard:vi.fn(),onDeleteDraft:vi.fn(),
+  saveState:{status:'idle',dirty:false},canRestoreDiscard:false,onRestoreDiscard:vi.fn(),onConvertBlock:vi.fn(),
   onNew:vi.fn(),onOpen:vi.fn(),onSave:vi.fn(),onEdit:vi.fn(),
   onPreview:vi.fn(),onPatch:vi.fn(),onSelectBlock:vi.fn(),
   onPatchBlock:vi.fn(),onAddBlock:vi.fn(),onRemoveBlock:vi.fn(),
@@ -448,5 +450,47 @@ describe('Relatório de revisão: bloco fixo, capitular e auditoria',()=>{
   expect(screen.getByText('Texto original e agressivo')).toBeTruthy();
   expect(screen.getByText(/Texto suavizado pelo editor/)).toBeTruthy();
   expect(screen.getByText(/1 de Riqueza/)).toBeTruthy();
+ });
+});
+
+describe('Jornal: escrita guiada',()=>{
+ const draft=(blocks:NewspaperBlock[]):NewspaperEdition=>({
+  id:'00000000-0000-4000-8000-000000000009',edition_no:1,campaign_date:'1522-01-01',
+  title:'A Folha Sem Selo',subtitle:'',template:'classico',font_style:'classico',state:'draft',blocks,
+  pdf_path:null,version:1,publication_revision:0,created_by:'leonardo',
+  updated_at:'',published_at:null,archived_at:null,cancelled_at:null,
+ });
+ it('confere a edição antes de publicar e permite publicar mesmo assim',()=>{
+  const p=fixture();p.current=draft([makeNewspaperBlock('headline')]);
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getAllByRole('button',{name:'Publicar Edição'})[0]!);
+  expect(p.onSave).not.toHaveBeenCalled();
+  expect(screen.getByRole('alertdialog',{name:'Conferência antes de publicar'})).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Publicar mesmo assim'}));
+  expect(p.onSave).toHaveBeenCalledWith('published');
+ });
+ it('mostra a situação do salvamento e o esboço da edição',()=>{
+  const p=fixture();p.current=draft([{...makeNewspaperBlock('headline'),text:'Rei declara paz'}]);
+  p.editing=true;p.saveState={status:'failed',dirty:true};
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  expect(screen.getByText(/Falha ao salvar/)).toBeInTheDocument();
+  expect(screen.getByText('Manchete: Rei declara paz')).toBeInTheDocument();
+ });
+ it('oferece desfazer o descarte de alterações',()=>{
+  const p=fixture();p.message='Alterações descartadas.';p.canRestoreDiscard=true;
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Desfazer descarte'}));
+  expect(p.onRestoreDiscard).toHaveBeenCalled();
+ });
+ it('abre o menu "/" e insere o bloco escolhido depois do selecionado',()=>{
+  const p=fixture();
+  const a={...makeNewspaperBlock('headline'),id:'a',text:'Primeira'},b={...makeNewspaperBlock('article'),id:'b',text:'T\n\nCorpo'};
+  p.current=draft([a,b]);p.editing=true;p.selectedBlockId='a';
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.keyDown(window,{key:'/'});
+  fireEvent.click(screen.getByRole('menuitem',{name:/Citação/}));
+  expect(p.onInsertBefore).toHaveBeenCalledWith('quote','b');
  });
 });

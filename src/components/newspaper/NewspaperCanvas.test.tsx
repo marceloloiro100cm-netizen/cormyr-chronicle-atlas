@@ -100,3 +100,32 @@ describe('Jornal: editor visual integrado ao banco',()=>{
   expect(container.querySelectorAll('.newspaper-dropcap')).toHaveLength(1);
  });
 });
+
+describe('Jornal: campos da folha mais seguros',()=>{
+ it('cola só texto puro e não deixa a formatação de fora entrar',()=>{
+  render(<NewspaperCanvas edition={edition} editing onChangeBlock={vi.fn()}/>);
+  const heading=screen.getByRole('heading',{level:2,name:'Editar manchete'});
+  const exec=vi.fn(()=>true);
+  Object.defineProperty(document,'execCommand',{configurable:true,value:exec});
+  const clipboardData={getData:(type:string)=>type==='text/plain'?'Texto\ncolado':'<b>html</b>'};
+  fireEvent.paste(heading,{clipboardData});
+  expect(exec).toHaveBeenCalledWith('insertText',false,'Texto colado');
+ });
+ it('Enter na manchete confirma o campo e Esc devolve o foco ao bloco',()=>{
+  render(<NewspaperCanvas edition={edition} editing onChangeBlock={vi.fn()}/>);
+  const heading=screen.getByRole('heading',{level:2,name:'Editar manchete'});
+  const block=screen.getByRole('group',{name:'Editar bloco headline'});
+  heading.focus();
+  fireEvent.keyDown(heading,{key:'Enter'});
+  expect(document.activeElement).toBe(block);
+  (document.activeElement as HTMLElement).blur();
+  heading.focus();
+  fireEvent.keyDown(heading,{key:'Escape'});
+  expect(document.activeElement).toBe(block);
+ });
+ it('mostra texto de apoio no campo vazio e a contagem da manchete',()=>{
+  render(<NewspaperCanvas edition={{...edition,blocks:[{...edition.blocks[0]!,text:''}]}} editing onChangeBlock={vi.fn()}/>);
+  expect(screen.getByRole('heading',{level:2,name:'Editar manchete'})).toHaveAttribute('data-placeholder','Escreva a manchete');
+  expect(screen.getByText(/0\/90 caracteres/)).toBeInTheDocument();
+ });
+});

@@ -141,3 +141,21 @@ A migration 0122 precisa ser executada no banco (o commit não aplica SQL). Não
 - **Exportar PDF direto da folha (estilo pdfme)**: a biblioteca não está no projeto e uma captura da folha (html2canvas/pdfme) sai rasterizada ou com aparência diferente da tela, além de esbarrar nos links assinados das imagens. "Imprimir / Salvar PDF" já gera PDF com texto selecionável idêntico à folha. Anexar o PDF gerado também duplicaria o conteúdo, porque um PDF anexado entra como fac-símile.
 - **Percentuais de completude (84% para 96%)**: não têm critério de medida no relatório; não foram usados.
 - **Erros factuais do relatório** (nada foi feito a partir deles): cita um `usePublicHubDate` que não existe (a leitura é `getPublicHubDate`); diz que a Casa paga "moedas de ouro (PO)", mas o pedido custa 1 de Riqueza; menciona "lixeira com restauração" de edições, que não existe (excluir edição é definitivo; só as revisões podem ser restauradas); chama a aba de "Pedidos de Jogadores" e o botão de "Aceitar & Enviar aos Blocos", que no site são Anúncios e "Inserir na edição"; e descreve um protótipo que não está no repositório.
+
+## Melhorias da escrita (12/11/2026, migração 0123)
+
+Vieram do relatório analítico da parte de escrita. Tudo no editor do Editor-Chefe:
+
+- **Colar sempre como texto puro** nos campos da folha; em manchete, títulos e legendas as quebras de linha viram espaço.
+- **Enter** confirma o campo nos títulos de uma linha; **Esc** sai do campo e devolve o foco ao bloco; **Tab** segue para o próximo campo.
+- **Texto de apoio** (placeholder) e altura mínima nos campos vazios.
+- **Contador** de caracteres na manchete (90), subtítulo (120), linha de apoio (160) e títulos (80). Só avisa, nunca bloqueia.
+- **Situação do salvamento** fixa na barra de edição: Salvo às HH:MM, Alterações ainda não salvas, Salvando, Falha ao salvar. Falhas do salvamento automático tentam de novo em 20 s.
+- **Conferência antes de publicar:** texto de exemplo, matéria só com título, fotografia sem imagem ou sem legenda, manchete longa. Cada ponto leva ao bloco; dá para publicar mesmo assim.
+- **Tecla /** abre o menu de inserção (setas, Enter, Esc); **tecla ?** abre a lista de atalhos.
+- **Transformar em** (painel Editar elemento): manchete, subtítulo, matéria, citação ou aviso, sem perder o texto. Fotografia não se transforma.
+- **Esboço da edição:** lista clicável dos blocos.
+- **Descartar alterações** não pede mais confirmação: descarta e oferece **Desfazer descarte** por 10 s.
+- **Duas novas tipografias** em Configurações: *Gótica* (Fraktur nos títulos, Garamond no texto) e *Romana* (Cinzel nos títulos, Georgia no texto), com as fontes que o site já hospeda. A migração **0123** amplia a lista permitida de `font_style` nas duas tabelas.
+
+Não aplicado de propósito: `role="textbox"` nos campos (apagaria a semântica de título e quebraria a leitura por leitor de tela), negrito/itálico dentro do texto e troca de biblioteca de edição.

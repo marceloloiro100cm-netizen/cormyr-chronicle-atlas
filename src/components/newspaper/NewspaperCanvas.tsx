@@ -2,27 +2,71 @@ import {useEffect,useRef,useState,type CSSProperties,type DragEvent,type Keyboar
 import {useQuery} from '@tanstack/react-query';
 import {formatDate} from '@/lib/calendar/harptos';
 import {signedNewspaperAsset} from '@/lib/newspaper/data';
-import {blockFocus,editionWords,panFocus,readingMinutes} from '@/lib/newspaper/editing';
+import {FIELD_LIMITS,blockFocus,editionWords,normalizeFieldText,panFocus,pastedPlainText,readingMinutes} from '@/lib/newspaper/editing';
 import {newspaperResize,type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperImageStyle} from '@/lib/newspaper/model';
 
 const BLOCK_DRAG_MIME='application/x-cormyr-newspaper-block';
 const TOOL_DRAG_MIME='application/x-cormyr-newspaper-tool';
 
-function InlineText({tag:Tag,value,editing,onChange,className,style,label}:{
+function InlineText({tag:Tag,value,editing,onChange,className,style,label,single=false,placeholder,limit}:{
  tag:'h1'|'h2'|'h3'|'p'|'blockquote'|'figcaption';
  value:string;editing:boolean;onChange:(next:string)=>void;
  className?:string;style?:CSSProperties;label:string;
+ /** Campo de uma linha (manchete, títulos): Enter confirma em vez de quebrar a linha. */
+ single?:boolean;
+ /** Texto de apoio mostrado enquanto o campo está vazio. */
+ placeholder?:string;
+ /** Tamanho sugerido: só avisa na contagem, nunca impede de escrever. */
+ limit?:number;
 }){
- return <Tag className={className} style={style}
+ const [count,setCount]=useState(value.length);
+ useEffect(()=>setCount(value.length),[value]);
+ const field=<Tag className={className} style={style}
   contentEditable={editing} suppressContentEditableWarning
   spellCheck={editing} aria-label={editing?label:undefined}
   data-newspaper-inline={editing?'true':undefined}
-  onKeyDown={(event:KeyboardEvent<HTMLElement>)=>event.stopPropagation()}
+  {...(editing&&placeholder?{'data-placeholder':placeholder}:{})}
+  onInput={event=>{if(limit)setCount(normalizeFieldText(event.currentTarget.innerText??'',single).length);}}
+  onPaste={event=>{
+   // Sempre texto puro: formatação vinda do Word, de sites ou do Docs não entra na folha.
+   if(!editing)return;
+   event.preventDefault();
+   const text=pastedPlainText(event.clipboardData.getData('text/plain'),single);
+   if(!text)return;
+   if(typeof document.execCommand!=='function'||!document.execCommand('insertText',false,text)){
+    const selection=window.getSelection();
+    if(selection&&selection.rangeCount){
+     const range=selection.getRangeAt(0);range.deleteContents();
+     const node=document.createTextNode(text);range.insertNode(node);
+     range.setStartAfter(node);range.collapse(true);selection.removeAllRanges();selection.addRange(range);
+    }
+   }
+   if(limit)setCount(normalizeFieldText(event.currentTarget.innerText??'',single).length);
+  }}
+  onKeyDown={(event:KeyboardEvent<HTMLElement>)=>{
+   event.stopPropagation();
+   if(!editing||event.nativeEvent.isComposing)return;
+   if(event.key==='Escape'){
+    // Esc sai do campo e devolve o foco ao bloco (assim as setas e Ctrl+C voltam a valer nele).
+    event.preventDefault();
+    const block=event.currentTarget.closest<HTMLElement>('[role="group"]');
+    event.currentTarget.blur();block?.focus();
+    return;
+   }
+   if(single&&event.key==='Enter'){
+    event.preventDefault();
+    const block=event.currentTarget.closest<HTMLElement>('[role="group"]');
+    event.currentTarget.blur();block?.focus();
+   }
+  }}
   onBlur={event=>{
    if(!editing)return;
-   const text=(event.currentTarget.innerText??event.currentTarget.textContent??'').replace(/\r/g,'').trim();
+   const text=normalizeFieldText(event.currentTarget.innerText??event.currentTarget.textContent??'',single);
    if(text!==value)onChange(text);
   }}>{value}</Tag>;
+ if(!editing||!limit)return field;
+ return <>{field}<small className={`newspaper-inline-count${count>limit?' newspaper-inline-count-over':''}`}
+  aria-live="polite">{count}/{limit} caracteres{count>limit?' · passou do tamanho sugerido':''}</small></>;
 }
 function NewspaperImage({block,editing,selected=false,onChange}:{
  block:NewspaperBlock;editing:boolean;selected?:boolean;onChange?:(patch:Partial<NewspaperBlock>)=>void;
@@ -80,7 +124,7 @@ function NewspaperImage({block,editing,selected=false,onChange}:{
     {path&&asset.isError?'Imagem indisponível':path?'Carregando fotografia…':'Adicione uma fotografia na Redação'}
    </div>}
   <InlineText tag="figcaption" value={block.caption??''} editing={editing}
-   label="Editar legenda da fotografia" onChange={caption=>onChange?.({caption})}/>
+   label="Editar legenda da fotografia" single placeholder="Legenda da fotografia" onChange={caption=>onChange?.({caption})}/>
   {lightbox&&src&&<div className="newspaper-lightbox" role="presentation"
    onMouseDown={event=>{if(event.target===event.currentTarget)setLightbox(false);}}>
    <div className="newspaper-lightbox-dialog" role="dialog" aria-modal="true"
@@ -123,29 +167,32 @@ function NewspaperStory({block,editing,selected=false,onChange}:{
  if(block.type==='headline')return <div className="newspaper-headline-block">
   <InlineText tag="h2" className="newspaper-headline" value={block.text} editing={editing}
    style={{textAlign:block.align??'left'}} label="Editar manchete"
+   single placeholder="Escreva a manchete" limit={FIELD_LIMITS.headline}
    onChange={text=>onChange?.({text})}/>
   {(block.subtitle!==undefined||editing)&&<InlineText tag="p" className="newspaper-deck"
    value={block.subtitle??''} editing={editing} label="Editar subtítulo da manchete"
+   single placeholder="Uma linha de apoio" limit={FIELD_LIMITS.deck}
    onChange={subtitle=>onChange?.({subtitle})}/>}
  </div>;
  if(block.type==='subtitle')return <InlineText tag="h3" className="newspaper-subhead" value={block.text}
-  editing={editing} label="Editar subtítulo" onChange={text=>onChange?.({text})}/>;
+  editing={editing} label="Editar subtítulo" single placeholder="Escreva o subtítulo" limit={FIELD_LIMITS.subhead} onChange={text=>onChange?.({text})}/>;
  if(block.type==='quote')return <InlineText tag="blockquote" className="newspaper-quote"
-  value={block.text} editing={editing} label="Editar citação"
+  value={block.text} editing={editing} label="Editar citação" single placeholder="Escreva a citação"
   onChange={text=>onChange?.({text})}/>;
  if(block.type==='image')return <NewspaperImage block={block} editing={editing} selected={selected} {...(onChange?{onChange}:{})}/>;
  if(block.type==='notice')return <aside className="newspaper-notice-block">
   <span className="newspaper-notice-seal" aria-hidden="true">{block.icon??'⚜'}</span>
   <div><InlineText tag="h3" value={heading??""} editing={editing} label="Editar título do aviso"
+   single placeholder="Título do aviso" limit={FIELD_LIMITS.title}
    onChange={next=>onChange?.({text:[next,paragraph].join('\n\n')})}/>
-   <InlineText tag="p" value={paragraph} editing={editing} label="Editar texto do aviso"
+   <InlineText tag="p" value={paragraph} editing={editing} label="Editar texto do aviso" placeholder="Escreva o comunicado"
     onChange={next=>onChange?.({text:[heading,next].join('\n\n')})}/></div>
  </aside>;
  return <article className="newspaper-article">
   <InlineText tag="h3" value={heading||'Título da notícia'} editing={editing}
-   label="Editar título da reportagem"
+   label="Editar título da reportagem" single placeholder="Título da notícia" limit={FIELD_LIMITS.title}
    onChange={next=>onChange?.({text:[next,paragraph].join('\n\n')})}/>
-  <InlineText tag="p" value={paragraph} editing={editing} label="Editar texto da reportagem"
+  <InlineText tag="p" value={paragraph} editing={editing} label="Editar texto da reportagem" placeholder="Escreva a reportagem"
    {...(block.dropCap?{className:'newspaper-dropcap'}:{})}
    onChange={next=>onChange?.({text:[heading,next].join('\n\n')})}/>
   {block.byline&&<p className="newspaper-byline">Por {block.byline}</p>}
@@ -205,20 +252,20 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
    <div className="newspaper-page-masthead">
     <img className="newspaper-crest" src="/newspaper/brasao_reino.webp" alt="" aria-hidden="true"/>
     <InlineText tag="h1" value={edition.title} editing={editing&&Boolean(onChangeEdition)}
-     label="Editar nome do jornal" onChange={title=>{if(title)onChangeEdition?.({title});}}/>
+     label="Editar nome do jornal" single onChange={title=>{if(title)onChangeEdition?.({title});}}/>
     <img className="newspaper-crest newspaper-crest-mirror" src="/newspaper/brasao_reino.webp" alt="" aria-hidden="true"/>
    </div>
    {!compactMasthead&&<div className="newspaper-meta"><span>{formatDate(edition.campaign_date)}</span><span>Folha independente de Cormyr</span></div>}
    {(edition.subtitle||(editing&&onChangeEdition))&&<InlineText tag="h2" className="newspaper-subtitle"
     value={edition.subtitle} editing={editing&&Boolean(onChangeEdition)}
-    label="Editar lema do jornal" onChange={subtitle=>onChangeEdition?.({subtitle})}/>}
+    label="Editar lema do jornal" single onChange={subtitle=>onChangeEdition?.({subtitle})}/>}
    <div className="newspaper-double-rule"/>
   </header>
   {editing&&<p className="newspaper-canvas-tip">Clique nos textos para escrever · Arraste ⠿ para mudar a ordem · Puxe ↘ para redimensionar</p>}
   {edition.blocks.length>0&&<div ref={grid} className="newspaper-grid"
    onDragOver={event=>{if(editing)event.preventDefault();}}
    onDrop={event=>drop(event,null)}>
-   {edition.blocks.map(block=><div key={block.id}
+   {edition.blocks.map(block=><div key={block.id} data-block-id={block.id}
      className={`newspaper-story newspaper-story-${block.type}${editing?' newspaper-story-editable':''}${selectedId===block.id?' newspaper-story-selected':''}${block.pinned?' newspaper-story-pinned':''}${dragOver===block.id?' newspaper-drag-over':''}`}
      style={{gridColumn:`span ${block.span}`}}
      onClick={()=>editing&&onSelect?.(block.id)}
