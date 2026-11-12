@@ -60,3 +60,11 @@
 - **Facilidades do modelo da Gazeta**: botões de largura (1/4, 1/3, 1/2, 2/3, Total), bloco Subtítulo, seletor de edições e "Próxima edição" no topo, "Descartar alterações" com aviso ao fechar a página, setas subir/descer em cada bloco e brasão do reino (dragão púrpura) no título da folha e brasão do jornal na Redação.
 
 - **Seis facilidades extras**: acervo de gravuras, nome e lema editáveis na folha, histórico de revisões com restauração (Arquivo), salvamento automático de rascunhos, aviso ao jogador (contador no Jornal e botão Entendi) e limite de 3 pedidos pendentes por Casa. Mesma migração 0117.
+
+## Ajustes de 11/11/2026 (noite, migração 0118)
+- **Configurações**: ao trocar Modelo ou Fonte, uma pré-visualização da página aparece ao lado.
+- **Folio**: o cabeçalho mostra somente "Edição Nº X" (o ano já está na data).
+- **Calendário** (antes Pautas): mês de Harptos com eventos públicos (festas, estações e eventos publicados pelo Narrador; nunca missivas). "Escrever sobre a data" cria a matéria "Dia de X" já preenchida.
+- **Anúncios**: bolinha vermelha com o número de pedidos pendentes no menu.
+- **Painel do Jornal**: mostra sempre a última edição publicada; vazio enquanto nada foi publicado. A escrita fica em **Escrever o Jornal** (antes Edição da Capa).
+- **Redação** (antes Correspondentes): corpo de funcionários com foto, nome, especialidade e texto livres (tabela `campaign_newspaper_staff`, migração 0118, só Editor-Chefe e Narrador). A assinatura da matéria é uma caixa de seleção com "Nome, Cargo" desses funcionários.

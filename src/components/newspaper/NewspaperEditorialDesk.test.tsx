@@ -9,6 +9,10 @@ vi.mock('@/lib/newspaper/data',()=>({
  signedCommissionImage:vi.fn(async()=>'blob:imagem-da-casa'),
  signedNewspaperAsset:vi.fn(async()=>'blob:imagem'),
 }));
+vi.mock('./NewspaperCalendar',()=>({
+ NewspaperCalendar:({onWriteAbout}:{onWriteAbout:(date:string,title?:string)=>void})=>
+  <button type="button" onClick={()=>onWriteAbout('1522-01-01','Midwinter')}>Escrever sobre a data</button>,
+}));
 vi.mock('./NewspaperCanvas',()=>({
  NewspaperCanvas:()=> <div data-testid="newspaper-canvas">Página da edição</div>,
 }));
@@ -20,6 +24,7 @@ function fixture():NewspaperEditorialProps{
   hubDate:'1522-01-01',
   pendingCommissions:[],houseNames:new Map(),
   onInsertCommission:vi.fn(),onShowCommission:vi.fn(),onRejectCommission:vi.fn(),
+  staff:[],onSaveStaff:vi.fn(async()=>true),onDeleteStaff:vi.fn(),onWriteAboutDate:vi.fn(),
   revisions:[],onRestoreRevision:vi.fn(),onUseEngraving:vi.fn(),
   dirty:false,onDiscard:vi.fn(),onDeleteDraft:vi.fn(),
   onNew:vi.fn(),onOpen:vi.fn(),onSave:vi.fn(),onEdit:vi.fn(),
@@ -35,12 +40,12 @@ describe('Redação A Folha Sem Selo',()=>{
  it('mostra a identidade, ações principais e os nove itens de navegação',()=>{
   render(<NewspaperEditorialDesk {...fixture()}/>);
   expect(screen.getByRole('heading',{level:1,name:'A Folha Sem Selo'})).toBeInTheDocument();
-  for(const title of ['Painel do Jornal','Edição da Capa','Matérias','Pautas',
-   'Correspondentes','Anúncios','Arquivo','Leitura e Alcance','Configurações']){
+  for(const title of ['Painel do Jornal','Escrever o Jornal','Matérias','Calendário',
+   'Redação','Anúncios','Arquivo','Leitura e Alcance','Configurações']){
    expect(screen.getByRole('button',{name:title})).toBeInTheDocument();
   }
   expect(screen.getAllByRole('button',{name:'Publicar Edição'}).every(button=>button.hasAttribute('disabled'))).toBe(true);
-  expect(screen.getByText(/PRÉ-VISUALIZAÇÃO ILUSTRATIVA/)).toBeInTheDocument();
+  expect(screen.getByText('Nenhuma edição publicada ainda')).toBeInTheDocument();
  });
  it('abre a redação com um clique mas não concede navegação de Casas',()=>{
   const props=fixture();render(<NewspaperEditorialDesk {...props}/>);
@@ -51,12 +56,42 @@ describe('Redação A Folha Sem Selo',()=>{
   expect(screen.queryByRole('button',{name:'Missivas'})).not.toBeInTheDocument();
   expect(screen.queryByRole('button',{name:'Ficha'})).not.toBeInTheDocument();
  });
- it('mostra Pautas e Correspondentes sem dados inventados',()=>{
-  render(<NewspaperEditorialDesk {...fixture()}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Pautas'}));
-  expect(screen.getByText('Nenhum rascunho registrado.')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button',{name:'Correspondentes'}));
-  expect(screen.getByText(/Nenhum correspondente ainda/)).toBeInTheDocument();
+ it('mostra a Redação vazia e o calendário escreve sobre a data',()=>{
+  const p=fixture();
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Redação'}));
+  expect(screen.getByText(/Nenhum funcionário ainda/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Calendário'}));
+  fireEvent.click(screen.getByRole('button',{name:'Escrever sobre a data'}));
+  expect(p.onWriteAboutDate).toHaveBeenCalledWith('Dia de Midwinter',expect.stringContaining('Escreva aqui'));
+ });
+ it('a assinatura é uma caixa com os membros da Redação (Nome e Cargo)',()=>{
+  const p=fixture();
+  p.staff=[{id:'s1',name:'Elaine Vox',specialty:'Cronista da Corte',bio:'',photo_path:null,created_at:'',updated_at:''}];
+  p.current={
+   id:'00000000-0000-4000-8000-000000000001',edition_no:3,campaign_date:'1522-01-01',
+   title:'A Folha Sem Selo',subtitle:'',template:'classico',font_style:'classico',
+   state:'draft',pdf_path:null,version:1,publication_revision:0,created_by:'l',
+   updated_at:'',published_at:null,archived_at:null,cancelled_at:null,
+   blocks:[{id:'b1',type:'article',text:'Título\n\nTexto',span:6,height:190}],
+  };
+  p.editing=true;p.selectedBlockId='b1';
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.change(screen.getByLabelText(/Assinatura do correspondente/),{target:{value:'Elaine Vox, Cronista da Corte'}});
+  expect(p.onPatchBlock).toHaveBeenCalledWith('b1',{byline:'Elaine Vox, Cronista da Corte'});
+ });
+ it('mostra a pré-visualização do modelo e da fonte nas Configurações',()=>{
+  const p=fixture();
+  p.current={
+   id:'00000000-0000-4000-8000-000000000001',edition_no:3,campaign_date:'1522-01-01',
+   title:'A Folha Sem Selo',subtitle:'',template:'guerra',font_style:'condensado',
+   state:'draft',pdf_path:null,version:1,publication_revision:0,created_by:'l',
+   updated_at:'',published_at:null,archived_at:null,cancelled_at:null,blocks:[],
+  };
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Configurações'}));
+  expect(screen.getByLabelText('Pré-visualização do modelo e da fonte')).toBeInTheDocument();
+  expect(screen.getAllByText(/Imprensa · Impact/).length).toBeGreaterThan(1);
  });
  it('permite duplicar, formatar gravuras e adicionar aviso sem trocar de perfil',()=>{
   const p=fixture();
@@ -69,7 +104,7 @@ describe('Redação A Folha Sem Selo',()=>{
   };
   p.editing=true;p.selectedBlockId='image1';
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Edição da Capa'}));
+  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
   fireEvent.click(screen.getByRole('button',{name:'Duplicar bloco'}));
   expect(p.onDuplicateBlock).toHaveBeenCalledWith('image1');
   fireEvent.change(screen.getByLabelText('Estilo da gravura'),{target:{value:'woodcut'}});
@@ -162,7 +197,7 @@ describe('Redação A Folha Sem Selo',()=>{
   };
   p.editing=true;p.selectedBlockId='b1';
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Edição da Capa'}));
+  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
   fireEvent.click(screen.getByRole('button',{name:'2/3'}));
   expect(p.onPatchBlock).toHaveBeenCalledWith('b1',{span:8});
   fireEvent.click(screen.getByRole('button',{name:'Subtítulo'}));

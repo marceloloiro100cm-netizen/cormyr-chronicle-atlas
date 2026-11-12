@@ -1,7 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {supabase} from '@/integrations/supabase/client';
 import {
- PAPER_BUCKET,COMMISSION_BUCKET,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
+ PAPER_BUCKET,COMMISSION_BUCKET,STAFF_BUCKET,type NewspaperStaffMember,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
  type NewspaperTemplate,type NewspaperFont,type NewspaperBlock,
 } from './model';
 
@@ -135,4 +135,49 @@ export async function getNewspaperRevisions(id:string):Promise<NewspaperRevision
 export async function markCommissionsSeen(houseId:string):Promise<void>{
  const {error}=await db.rpc('mark_newspaper_commissions_seen',{p_house:houseId});
  if(error)throw error;
+}
+
+// ---- Redação (corpo de funcionários) ----
+export async function getNewspaperStaff():Promise<NewspaperStaffMember[]>{
+ const {data,error}=await db.from('campaign_newspaper_staff').select('*')
+  .order('name',{ascending:true}).limit(200);
+ if(error)throw error;
+ return (data??[]) as NewspaperStaffMember[];
+}
+export async function uploadStaffPhoto(file:File):Promise<string>{
+ if(file.size>5*1024*1024)throw new Error('A foto deve ter no máximo 5 MB.');
+ const ext={'image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp'}[file.type];
+ if(!ext)throw new Error('Envie PNG, JPG ou WebP.');
+ const path=`${crypto.randomUUID()}${ext}`;
+ const {error}=await db.storage.from(STAFF_BUCKET).upload(path,file,{
+  upsert:false,contentType:file.type,cacheControl:'3600',
+ });
+ if(error)throw error;
+ return path;
+}
+export async function signedStaffPhoto(path:string):Promise<string>{
+ const {data,error}=await db.storage.from(STAFF_BUCKET).createSignedUrl(path,3600);
+ if(error||!data?.signedUrl)throw error??new Error('Foto temporariamente indisponível.');
+ return data.signedUrl;
+}
+export async function saveNewspaperStaff(input:{
+ id?:string;name:string;specialty:string;bio:string;photoPath:string|null;
+}):Promise<void>{
+ const row={name:input.name.trim(),specialty:input.specialty.trim(),bio:input.bio.trim(),
+  photo_path:input.photoPath,updated_at:new Date().toISOString()};
+ const result=input.id?await db.from('campaign_newspaper_staff').update(row).eq('id',input.id)
+  :await db.from('campaign_newspaper_staff').insert(row);
+ if(result.error)throw result.error;
+}
+export async function deleteNewspaperStaff(id:string,photoPath:string|null):Promise<void>{
+ const {error}=await db.from('campaign_newspaper_staff').delete().eq('id',id);
+ if(error)throw error;
+ if(photoPath)await db.storage.from(STAFF_BUCKET).remove([photoPath]);
+}
+// ---- Calendário público para pautas ----
+/** Eventos que o Narrador já publicou para o mês; nunca missivas nem dados de Casas. */
+export async function getPublishedScheduleEvents(year:number,month:number):Promise<{id:string;date:string;title:string;description?:string;kind:'kingdom'}[]>{
+ const {data,error}=await db.rpc('get_campaign_schedule_events',{p_year:year,p_month:month});
+ if(error)throw error;
+ return (data??[]) as {id:string;date:string;title:string;description?:string;kind:'kingdom'}[];
 }

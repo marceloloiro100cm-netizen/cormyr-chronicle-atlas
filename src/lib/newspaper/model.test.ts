@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperResize,safeNewspaperBlocks,validateNewspaperEdition,reorderNewspaperBlocks,duplicateNewspaperBlock,insertNewspaperBlockBefore,type NewspaperEdition,commissionInEdition,moveNewspaperBlock,newspaperIsDirty,NEWSPAPER_WIDTH_PRESETS,commissionToBlocks,pendingCommissions,validateCommissionDraft,type NewspaperCommission,NEWSPAPER_ENGRAVINGS,unseenCommissionAnswers,houseCanCommission,COMMISSION_PENDING_LIMIT} from './model';
+import {createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperResize,safeNewspaperBlocks,validateNewspaperEdition,reorderNewspaperBlocks,duplicateNewspaperBlock,insertNewspaperBlockBefore,type NewspaperEdition,commissionInEdition,moveNewspaperBlock,newspaperIsDirty,NEWSPAPER_WIDTH_PRESETS,commissionToBlocks,pendingCommissions,validateCommissionDraft,type NewspaperCommission,NEWSPAPER_ENGRAVINGS,unseenCommissionAnswers,houseCanCommission,COMMISSION_PENDING_LIMIT,staffByline,validateStaffMember,dateStoryDraft,sampleNewspaperBlocks} from './model';
 
 const published={
  id:'00000000-0000-4000-8000-000000000001',edition_no:1,
@@ -159,5 +159,26 @@ describe('Acervo, avisos e limite por Casa',()=>{
   expect(houseCanCommission(full,'a')).toBe(false);
   expect(houseCanCommission(full,'b')).toBe(true);
   expect(houseCanCommission([...full.slice(1),c('x','a','published')],'a')).toBe(true);
+ });
+});
+
+describe('Redação, calendário e pré-visualização',()=>{
+ it('a assinatura junta nome e cargo',()=>{
+  expect(staffByline({name:' Elaine Vox ',specialty:'Cronista da Corte'})).toBe('Elaine Vox, Cronista da Corte');
+  expect(staffByline({name:'Elaine Vox',specialty:''})).toBe('Elaine Vox');
+  expect(validateStaffMember({name:'  ',specialty:'',bio:''})).not.toBe('');
+  expect(validateStaffMember({name:'A',specialty:'',bio:''})).toBe('');
+ });
+ it('prepara o título "Dia de X" para escrever sobre a data',()=>{
+  expect(dateStoryDraft('1522-01-05','Tyr · Ver a Justiça').title).toBe('Dia de Tyr · Ver a Justiça');
+  expect(dateStoryDraft('1522-01-05').title).toBe('Dia 5 de Hammer');
+  expect(dateStoryDraft('1522-01-05').body).toContain('Escreva aqui');
+ });
+ it('cada modelo tem página de exemplo com texto e gravura própria',()=>{
+  for(const t of ['classico','guerra','gazeta'] as const){
+   const blocks=sampleNewspaperBlocks(t);
+   expect(blocks.length).toBeGreaterThan(1);
+   expect(blocks.every(b=>b.type!=='image'||Boolean(b.imageSrc))).toBe(true);
+  }
  });
 });

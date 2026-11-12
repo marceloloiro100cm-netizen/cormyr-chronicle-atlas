@@ -1,4 +1,4 @@
-import {parseDate} from '@/lib/calendar/harptos';
+import {formatDate,parseDate,MONTHS} from '@/lib/calendar/harptos';
 
 export type NewspaperTemplate='classico'|'guerra'|'gazeta';
 export type NewspaperFont='classico'|'editorial'|'condensado';
@@ -221,4 +221,40 @@ export function moveNewspaperBlock(blocks:readonly NewspaperBlock[],id:string,di
  if(index<0||next<0||next>=list.length)return list;
  [list[index],list[next]]=[list[next]!,list[index]!];
  return list;
+}
+
+// ---- Redação: corpo de funcionários ----
+export type NewspaperStaffMember={
+  id:string;name:string;specialty:string;bio:string;photo_path:string|null;
+  created_at:string;updated_at:string;
+};
+export const STAFF_BUCKET='campaign-newspaper-staff';
+/** Assinatura das matérias: Nome e Cargo (a especialidade faz as vezes de cargo). */
+export function staffByline(member:Pick<NewspaperStaffMember,'name'|'specialty'>):string{
+ const name=member.name.trim(),role=member.specialty.trim();
+ return role?`${name}, ${role}`:name;
+}
+export function validateStaffMember(input:{name:string;specialty:string;bio:string}):string{
+ if(!input.name.trim())return 'Informe o nome do funcionário.';
+ if(input.name.length>120||input.specialty.length>120)return 'Nome e especialidade aceitam até 120 caracteres.';
+ if(input.bio.length>3000)return 'O texto aceita até 3000 caracteres.';
+ return '';
+}
+/** Título e abertura prontos para "Escrever sobre a data" a partir do calendário. */
+export function dateStoryDraft(date:string,eventTitle?:string):{title:string;body:string}{
+ const parsed=parseDate(date);
+ const label=formatDate(date);
+ const title=eventTitle?`Dia de ${eventTitle}`:parsed&&!parsed.festival?`Dia ${parsed.day} de ${MONTHS[parsed.month]}`:`Dia de ${label}`;
+ return {title,body:`${label}. Escreva aqui a notícia sobre a data.`};
+}
+/** Página de exemplo para pré-visualizar modelo e fonte nas Configurações. */
+export function sampleNewspaperBlocks(template:NewspaperTemplate):NewspaperBlock[]{
+ const blocks=createNewspaperLayout(template);
+ const lorem='O texto de exemplo mostra como as colunas se ajustam ao espaço e como a fonte escolhida aparece na leitura da edição.';
+ return blocks.map(b=>{
+  if(b.type==='headline')return {...b,text:template==='guerra'?'ÚLTIMA HORA':'A COROA REAFIRMA ALIANÇAS NO NORTE',subtitle:'Uma linha de apoio para a manchete'};
+  if(b.type==='image')return {...b,imageSrc:'/newspaper/gravuras/castelo_cormyr.jpg',caption:'Legenda da fotografia'};
+  if(b.type==='quote')return {...b,text:'Uma declaração importante ganha destaque aqui.'};
+  return {...b,text:`Título da notícia\n\n${lorem}`};
+ });
 }

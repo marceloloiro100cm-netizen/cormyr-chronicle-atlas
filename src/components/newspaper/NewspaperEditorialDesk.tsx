@@ -1,26 +1,29 @@
-import {useRef,useState} from 'react';
+import {useMemo,useRef,useState} from 'react';
 import {
  BookOpen,BookOpenText,Layers3,CalendarDays,UsersRound,Megaphone,Archive,
  BarChart3,Settings,Feather,FileUp,Eye,Newspaper,
- ImagePlus,Columns3,Quote,TriangleAlert,Plus,Shield,Printer,ChevronDown,
+ ImagePlus,Columns3,Quote,TriangleAlert,Plus,Printer,ChevronDown,
  ArrowUp,ArrowDown,Trash2,Save,CheckCircle2,Circle,
 } from 'lucide-react';
 import {ChangePasswordButton} from '@/components/change-password';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {formatCampaignPeriod,formatDate,parseDate} from '@/lib/calendar/harptos';
-import {NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,NEWSPAPER_WIDTH_PRESETS,newspaperStatus,
+import {NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,NEWSPAPER_WIDTH_PRESETS,newspaperStatus,safeNewspaperBlocks,
+ sampleNewspaperBlocks,dateStoryDraft,staffByline,type NewspaperStaffMember,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,
  type NewspaperCommission,type NewspaperRevision,type NewspaperRead,NEWSPAPER_ENGRAVINGS,type NewspaperState,type NewspaperTemplate} from '@/lib/newspaper/model';
 import {NewspaperCanvas} from './NewspaperCanvas';
 import {CommissionInbox} from './NewspaperCommissions';
+import {NewspaperCalendar} from './NewspaperCalendar';
+import {NewspaperStaff} from './NewspaperStaff';
 import './newspaper-editorial.css';
 
 const NAV=[
  {id:'painel',label:'Painel do Jornal',icon:BookOpen},
- {id:'capa',label:'Edição da Capa',icon:Feather},
+ {id:'capa',label:'Escrever o Jornal',icon:Feather},
  {id:'materias',label:'Matérias',icon:Layers3},
- {id:'pautas',label:'Pautas',icon:CalendarDays},
- {id:'correspondentes',label:'Correspondentes',icon:UsersRound},
+ {id:'calendario',label:'Calendário',icon:CalendarDays},
+ {id:'redacao',label:'Redação',icon:UsersRound},
  {id:'anuncios',label:'Anúncios',icon:Megaphone},
  {id:'arquivo',label:'Arquivo',icon:Archive},
  {id:'alcance',label:'Leitura e Alcance',icon:BarChart3},
@@ -44,6 +47,12 @@ export interface NewspaperEditorialProps{
  onInsertCommission:(commission:NewspaperCommission)=>void;
  onShowCommission:(commission:NewspaperCommission)=>void;
  onRejectCommission:(commission:NewspaperCommission,note:string)=>void;
+ /** Corpo de funcionários da Redação. */
+ staff:NewspaperStaffMember[];
+ onSaveStaff:(input:{id?:string;name:string;specialty:string;bio:string;photoPath:string|null},photo:File|null)=>Promise<boolean>;
+ onDeleteStaff:(member:NewspaperStaffMember)=>void;
+ /** Calendário: cria (ou abre) a matéria "Dia de X" já preenchida. */
+ onWriteAboutDate:(title:string,body:string)=>void;
  /** Versões anteriores desta edição, guardadas pelo banco a cada salvamento. */
  revisions:NewspaperRevision[];
  onRestoreRevision:(revision:NewspaperRevision)=>void;
@@ -73,35 +82,6 @@ export interface NewspaperEditorialProps{
  onSignout:()=>void;
 }
 
-function ExampleFrontPage({date}:{date:string}){
- return <article className="folha-demo-paper" aria-label="Exemplo ilustrativo de uma edição, ainda não publicada">
-  <div className="folha-demo-folio"><span>ANO II · EDIÇÃO DE EXEMPLO</span><span>A VOZ LIVRE DE CORMYR</span><span>{date}</span></div>
-  <div className="folha-demo-main">
-   <div><h2>A COROA REAFIRMA ALIANÇAS NO NORTE</h2>
-    <p>Enviado real retorna de longa missão com novos acordos comerciais.</p></div>
-   <div className="folha-demo-engraving" aria-hidden="true"><Shield size={76}/><span>✦ CORMYR ✦</span></div>
-  </div>
-  <div className="folha-demo-storygrid">
-   <div className="folha-demo-illustration">
-    <img src="/cormyr/assets/crownlands-phelles.webp" alt="Ilustração heráldica da Coroa de Cormyr"/>
-    <p>Correspondência da corte e das terras do reino</p>
-   </div>
-   <p className="folha-demo-copy"><span>A</span> comitiva real concluiu uma série de encontros com lideranças do Norte, fortalecendo laços de comércio e defesa. Segundo fontes do palácio, os acordos deverão trazer estabilidade à região nas próximas estações.</p>
-   <div className="folha-demo-other"><h3>OUTRAS NOTÍCIAS</h3>
-    <p>■ Hillmarch resiste ao cerco de seis meses</p>
-    <p>■ Movimentações em Arabel preocupam mercadores</p>
-    <p>■ Novas obras em Stonecastle ampliam a enfermaria</p>
-   </div>
-  </div>
-  <div className="folha-demo-bottom">
-   <div><strong>Comércio em Alta</strong><span>Feiras movimentam a Costa do Dragão</span></div>
-   <div><strong>Tensões Militares</strong><span>Reforços nas fronteiras das Helmlands</span></div>
-   <div><strong>Da Corte</strong><span>O Conselho Real reúne-se em Suzail</span></div>
-  </div>
-  <p className="folha-demo-watermark">PRÉ-VISUALIZAÇÃO ILUSTRATIVA · NÃO PUBLICADA</p>
- </article>;
-}
-
 export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  const {current,history,reads,editing,busy,selectedBlockId}=props;
  const [section,setSection]=useState<Section>('painel');
@@ -113,12 +93,17 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  const articles=current?.blocks.filter(b=>b.type==='article')??[];
  const headlines=current?.blocks.filter(b=>b.type==='headline')??[];
  const notices=current?.blocks.filter(b=>b.type==='notice')??[];
- const correspondents=[...new Map(history.flatMap(edition=>edition.blocks.filter(b=>b.type==='article'&&b.byline?.trim())
-  .map(b=>[b.byline!.trim().toLocaleLowerCase('pt-BR'),b.byline!.trim()] as const))).values()];
  const toolboxDrag=(event:React.DragEvent<HTMLButtonElement>,type:NewspaperBlockType)=>{
   event.dataTransfer.setData('application/x-cormyr-newspaper-tool',type);
   event.dataTransfer.effectAllowed='copy';
  };
+ const latestPublished=useMemo(()=>{
+  const list=history.filter(e=>e.state==='published'||e.state==='archived')
+   .sort((a,b)=>b.edition_no-a.edition_no);
+  const edition=list[0];
+  return edition?{...edition,blocks:safeNewspaperBlocks(edition.blocks)}:null;
+ },[history]);
+ const previewBlocks=useMemo(()=>current?sampleNewspaperBlocks(current.template):[],[current?.template]);
  const pdfReady=Boolean(current?.pdf_path);
  const materialReady=Boolean(current&&(current.blocks.some(b=>b.type==='headline'||b.type==='article'||b.imagePath||b.imageSrc)||pdfReady));
  const countReads=(edition:NewspaperEdition)=>reads.filter(r=>r.newspaper_id===edition.id&&r.read_version>=edition.publication_revision).length;
@@ -137,12 +122,11 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
   setSection(value);setFullPreview(false);
   if(value==='capa'&&current)props.onEdit();
  };
- const browseEdition=(edition:NewspaperEdition)=>{props.onOpen(edition);setSection('painel');setFullPreview(false);};
+ const browseEdition=(edition:NewspaperEdition)=>{props.onOpen(edition);setSection('capa');setFullPreview(false);};
  const hasUnsavedChanges=current&&editing;
  const availableHistory=history.filter(e=>e.state!=='cancelled');
  const totalViews=history.reduce((total,edition)=>total+countReads(edition),0);
 
- const showFrontPage=section==='painel'||section==='capa';
  const currentDate=current?.campaign_date??props.hubDate;
  return <div className="folha-editorial" aria-label="Redação A Folha Sem Selo">
   <header className="folha-topbar">
@@ -234,16 +218,26 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
 
     <div className={`folha-workspace${fullPreview?' folha-workspace-preview':''}`}>
      <div className="folha-workspace-main">
-      {showFrontPage&&<div className="folha-paper-holder">
-       {current?<NewspaperCanvas edition={current} compactMasthead editing={editing&&section==='capa'&&!fullPreview}
+      {section==='painel'&&<div className="folha-paper-holder">
+       {fullPreview&&current?<NewspaperCanvas edition={current} compactMasthead/>:
+        latestPublished?<>
+         <p className="folha-latest-label">Última edição publicada · Nº {latestPublished.edition_no}</p>
+         <NewspaperCanvas edition={latestPublished} compactMasthead/></>:
+        <div className="folha-future-module folha-panel-empty">
+         <Newspaper size={35}/><strong>Nenhuma edição publicada ainda</strong>
+         <span>Quando você publicar, a última edição aparece aqui. Para escrever, use Escrever o Jornal.</span></div>}
+      </div>}
+      {section==='capa'&&<div className="folha-paper-holder">
+       {current?<NewspaperCanvas edition={current} compactMasthead editing={editing}
         selectedId={selectedBlockId} onSelect={props.onSelectBlock}
         onResize={props.onResizeBlock}
         onChangeBlock={props.onPatchBlock} onReorderBlock={props.onReorderBlock}
         onInsertBlock={props.onInsertBefore} onMoveBlock={props.onMoveBlock}
         onChangeEdition={props.onPatch}/>:
-        <ExampleFrontPage date={dateLabel(currentDate)}/>}
-       {!current&&<button type="button" className="folha-start-edition"
-        onClick={()=>{setSection('capa');props.onNew();}}>+ Criar primeira edição</button>}
+        <div className="folha-future-module folha-panel-empty">
+         <Feather size={35}/><strong>Nenhuma edição em andamento</strong>
+         <button type="button" className="folha-start-edition" disabled={busy}
+          onClick={()=>props.onNew()}>+ Criar primeira edição</button></div>}
       </div>}
 
       {section==='materias'&&<section className="folha-section-content">
@@ -256,29 +250,20 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
          <small>{b.span}/12 colunas</small></button>)}</div>}
       </section>}
 
-      {section==='pautas'&&<section className="folha-section-content">
-       <h3>Pautas e rascunhos</h3>
-       <p>Use as edições em rascunho como pautas para futuras publicações.</p>
-       <button type="button" className="folha-text-action" disabled={busy} onClick={()=>{setSection('capa');props.onNew();}}>
-        <Plus size={16}/> Nova pauta / edição</button>
-       <div className="folha-archive-list">{history.filter(e=>e.state==='draft').map(e=>
-        <button type="button" key={e.id} onClick={()=>browseEdition(e)}>
-         <span>RASCUNHO · {formatDate(e.campaign_date)}</span><strong>{e.title}</strong>
-        </button>)}</div>
-       {!history.some(e=>e.state==='draft')&&<p className="folha-empty-copy">Nenhum rascunho registrado.</p>}
+      {section==='calendario'&&<section className="folha-section-content">
+       <h3>Calendário</h3>
+       <p>Eventos públicos do mês: festas do reino, estações e o que o Narrador já publicou. Escolha um dia e clique em Escrever sobre a data.</p>
+       <NewspaperCalendar referenceDate={props.hubDate}
+        onWriteAbout={(date,title)=>{
+         const draft=dateStoryDraft(date,title);
+         setSection('capa');setFullPreview(false);props.onWriteAboutDate(draft.title,draft.body);
+        }}/>
       </section>}
 
-      {section==='correspondentes'&&<section className="folha-section-content">
-       <h3>Correspondentes</h3>
-       <p>Autores identificados nas reportagens do Jornal. Assine uma matéria para incluí-los aqui.</p>
-       {correspondents.length?<div className="folha-article-list">
-        {correspondents.map(name=><div className="folha-correspondent" key={name}>
-         <UsersRound size={19}/><strong>{name}</strong>
-         <small>{history.reduce((count,edition)=>count+edition.blocks.filter(b=>b.type==='article'&&b.byline?.trim()===name).length,0)} matéria(s) assinada(s)</small>
-        </div>)}
-       </div>:<div className="folha-future-module"><UsersRound size={35}/>
-        <strong>Nenhum correspondente ainda</strong>
-        <span>Abra uma reportagem e preencha “Assinatura do correspondente” na caixa de ferramentas.</span></div>}
+      {section==='redacao'&&<section className="folha-section-content">
+       <h3>Redação</h3>
+       <p>O corpo de funcionários de A Folha Sem Selo. Todos os campos são livres; Nome e Especialidade aparecem na assinatura das matérias.</p>
+       <NewspaperStaff staff={props.staff} busy={busy} onSave={props.onSaveStaff} onDelete={props.onDeleteStaff}/>
       </section>}
 
       {section==='anuncios'&&<section className="folha-section-content">
@@ -334,7 +319,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
 
       {section==='configuracoes'&&<section className="folha-section-content">
        <h3>Configurações editoriais</h3><p>Altere a identidade desta edição e a composição da página.</p>
-       {current?<div className="folha-settings">
+       <div className="folha-settings-layout">{current?<div className="folha-settings">
         <label>Nome do jornal<input maxLength={180} value={current.title}
          onChange={e=>props.onPatch({title:e.target.value})}/></label>
         <label>Subtítulo<input maxLength={240} value={current.subtitle}
@@ -348,7 +333,12 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         <button type="button" className="folha-text-action" onClick={()=>props.onSave()}>
          <Save size={16}/> Salvar configurações</button>
        </div>:<p className="folha-empty-copy">Crie uma edição antes de ajustar a identidade.</p>}
-       
+       {current&&<div className="folha-settings-preview" aria-label="Pré-visualização do modelo e da fonte">
+        <strong>Pré-visualização</strong>
+        <small>{NEWSPAPER_TEMPLATES.find(t=>t.value===current.template)?.description} · {NEWSPAPER_FONTS.find(f=>f.value===current.font_style)?.label}</small>
+        <div className="folha-settings-preview-frame"><div className="folha-settings-preview-page">
+         <NewspaperCanvas compactMasthead edition={{...current,blocks:previewBlocks,pdf_path:null}}/>
+        </div></div></div>}</div>
       </section>}
      </div>
 
@@ -409,8 +399,14 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
          </select></label>
         </>}
         {selectedBlock.type==='article'&&<label>Assinatura do correspondente
-         <input maxLength={120} value={selectedBlock.byline??''}
-          onChange={e=>props.onPatchBlock(selectedBlock.id,{byline:e.target.value})}/></label>}
+         <select value={selectedBlock.byline??''}
+          onChange={e=>props.onPatchBlock(selectedBlock.id,{byline:e.target.value})}>
+          <option value="">Sem assinatura</option>
+          {selectedBlock.byline&&!props.staff.some(m=>staffByline(m)===selectedBlock.byline)&&
+           <option value={selectedBlock.byline}>{selectedBlock.byline}</option>}
+          {props.staff.map(m=><option key={m.id} value={staffByline(m)}>{staffByline(m)}</option>)}
+         </select>
+         {props.staff.length===0&&<small>Cadastre funcionários em Redação para assinar.</small>}</label>}
         {selectedBlock.type==='notice'&&<label>Selo do aviso
          <select value={selectedBlock.icon??'⚜'}
           onChange={e=>props.onPatchBlock(selectedBlock.id,{icon:e.target.value})}>
