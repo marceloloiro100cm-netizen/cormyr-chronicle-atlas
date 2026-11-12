@@ -111,7 +111,7 @@
  font-size:clamp(.62rem,1.1vw,.82rem);font-weight:700}
 .newspaper-subtitle{font:700 clamp(1rem,2vw,1.55rem) Georgia,serif;margin:10px 0}
 .newspaper-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px;
- align-items:start}
+ align-items:stretch}
 .newspaper-story{position:relative;min-width:0;padding:8px 10px 12px 0;
  border-right:1px solid #b4a17b;overflow-wrap:anywhere}
 .newspaper-story:last-child{border-right:0}
@@ -260,7 +260,7 @@
   width:100%!important;max-width:100%!important;margin:0!important;padding:8mm!important;
   box-shadow:none!important;border:0!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}
  .newspaper-page .newspaper-canvas-tip,.newspaper-drag-handle,
- .newspaper-resize-handle,.newspaper-move-buttons,.newspaper-drop-end,.newspaper-lightbox,.newspaper-image-open:focus-visible{
+ .newspaper-resize-handle,.newspaper-edge-handle,.newspaper-lock-button,.newspaper-move-buttons,.newspaper-drop-end,.newspaper-lightbox,.newspaper-image-open:focus-visible{
   display:none!important}
  .newspaper-page .newspaper-story{break-inside:avoid;page-break-inside:avoid}
  .newspaper-image-open{cursor:default}
@@ -344,3 +344,19 @@
 .newspaper-edition-steps button{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid #b99a5c;
  border-radius:5px;background:#2a1a2c;color:#f4dbac;font:.78rem system-ui,sans-serif;cursor:pointer}
 .newspaper-edition-steps button:disabled{opacity:.4;cursor:not-allowed}
+
+/* ---- Relatório de revisão (12/11/2026): refluxo, bloco fixo, capitular, colunas niveladas ---- */
+/* As colunas da fileira têm a mesma altura: o fio entre elas vai de ponta a ponta. */
+.newspaper-edge-handle{position:absolute;right:-5px;top:34px;bottom:44px;width:10px;padding:0;border:0;
+ background:transparent;cursor:col-resize;touch-action:none;z-index:2}
+.newspaper-edge-handle::after{content:"";position:absolute;left:3px;top:0;bottom:0;width:4px;border-radius:2px;
+ background:#ab8b4b;opacity:0;transition:opacity .15s}
+.newspaper-story-editable:hover .newspaper-edge-handle::after,.newspaper-edge-handle:hover::after,
+.newspaper-edge-handle:focus-visible::after{opacity:.85}
+.newspaper-lock-button{position:absolute;top:0;left:36px;z-index:3;width:28px;height:25px;display:grid;place-items:center;
+ border:1px solid #b38b58;border-radius:3px;background:#f0d5a4;font-size:.85rem;line-height:1;cursor:pointer}
+.newspaper-lock-button[aria-pressed="true"]{background:#e3b64f;border-color:#8c6420}
+.newspaper-story-pinned{box-shadow:inset 0 0 0 2px #c9a24a}
+.newspaper-story-pinned .newspaper-lock-button{left:0}
+.newspaper-dropcap::first-letter{font-family:'UnifrakturMaguntia','Cinzel',Georgia,serif;float:left;
+ font-size:3.2em;line-height:.78;padding:.05em .09em 0 0;color:#5b2547}

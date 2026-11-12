@@ -123,3 +123,21 @@
 As três gravuras originais agora são linhas da tabela `campaign_newspaper_engravings` (coluna `public_src`), aparecem em Gravuras do Reino com a marca "original do Reino" e podem ser mantidas, tiradas do acervo (bolinha) ou excluídas. O botão "Restaurar gravuras originais do Reino" as devolve. Excluir do acervo nunca altera edições já publicadas: o código continua reconhecendo os três arquivos.
 
 A migration 0122 precisa ser executada no banco (o commit não aplica SQL). Não foi homologada nem teve backup prévio.
+
+## Relatório de revisão (PDF de 12/11/2026): o que entrou e o que ficou de fora
+
+**Implementado**
+
+- **Refluxo ao redimensionar**: ao puxar a lateral (nova alça de largura) ou o canto de um bloco, a fileira continua fechada em 12 colunas. As colunas que faltam saem do vizinho da direita e, depois, da esquerda, nunca deixando ninguém abaixo de 3 colunas e nunca tirando de um bloco fixo. Se os vizinhos não puderem ceder, o bloco só cresce até onde a fileira cabe. Encolher não mexe nos vizinhos, e arrastar de volta devolve as colunas. Os botões de largura e o controle numérico continuam livres (permitem, de propósito, um bloco ocupar a linha toda).
+- **Fixar bloco**: cadeado em cada bloco e caixa no painel. Bloco fixo não arrasta, não sobe nem desce, não redimensiona e não é removido; o texto continua editável. Ao mover os outros, ele fica no mesmo lugar da lista. A cópia de um bloco fixo nasce solta.
+- **Auditoria das notícias contratadas** (Arquivo): pedido pago ao lado do texto publicado, com selo Publicado integralmente, Editado pelo Editor-Chefe, Recusado e reembolsado, Publicado sem o texto na folha ou Edição não encontrada. Não grava nada: o pedido original já é imutável no banco.
+- **Letra capitular** gótica por matéria (caixa no painel, desligada por padrão).
+- **Colunas niveladas**: os blocos da mesma fileira passam a ter a mesma altura, então o fio entre colunas vai de ponta a ponta.
+
+**Não implementado, e por quê**
+
+- **Menu de botão direito para Fixar**: o botão direito dentro de um texto abre a correção ortográfica do navegador, não existe no toque (celular, tablet) e ninguém o descobre sozinho. No lugar, cadeado visível e caixa no painel.
+- **Pilha de desfazer com 10 passos**: já existe, com 100 passos, desde o PR #392.
+- **Exportar PDF direto da folha (estilo pdfme)**: a biblioteca não está no projeto e uma captura da folha (html2canvas/pdfme) sai rasterizada ou com aparência diferente da tela, além de esbarrar nos links assinados das imagens. "Imprimir / Salvar PDF" já gera PDF com texto selecionável idêntico à folha. Anexar o PDF gerado também duplicaria o conteúdo, porque um PDF anexado entra como fac-símile.
+- **Percentuais de completude (84% para 96%)**: não têm critério de medida no relatório; não foram usados.
+- **Erros factuais do relatório** (nada foi feito a partir deles): cita um `usePublicHubDate` que não existe (a leitura é `getPublicHubDate`); diz que a Casa paga "moedas de ouro (PO)", mas o pedido custa 1 de Riqueza; menciona "lixeira com restauração" de edições, que não existe (excluir edição é definitivo; só as revisões podem ser restauradas); chama a aba de "Pedidos de Jogadores" e o botão de "Aceitar & Enviar aos Blocos", que no site são Anúncios e "Inserir na edição"; e descreve um protótipo que não está no repositório.

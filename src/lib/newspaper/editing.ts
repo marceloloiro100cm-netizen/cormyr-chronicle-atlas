@@ -67,7 +67,7 @@ export function parseClipboardBlocks(text:string):NewspaperBlock[]|null{
  try{
   const raw:unknown=JSON.parse(text.slice(BLOCK_CLIPBOARD_MARK.length));
   return safeNewspaperBlocks(raw).slice(0,CLIPBOARD_BLOCK_LIMIT).map(block=>{
-   const {commissionId:_unlinked,...rest}=block;
+   const {commissionId:_unlinked,pinned:_loose,...rest}=block;
    return {...rest,id:crypto.randomUUID()};
   });
  }catch{return null;}

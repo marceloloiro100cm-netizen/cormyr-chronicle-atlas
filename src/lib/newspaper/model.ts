@@ -33,6 +33,10 @@ export type NewspaperBlock={
   focusX?:number;
   focusY?:number;
   cropZoom?:number;
+  /** Bloco fixo: posição e tamanho travados (o texto continua editável). */
+  pinned?:boolean;
+  /** Letra capitular gótica na primeira letra do texto da matéria. */
+  dropCap?:boolean;
   span:number;
   height:number;
 };
@@ -142,6 +146,8 @@ export function safeNewspaperBlocks(value:unknown):NewspaperBlock[]{
   ...(typeof x['focusX']==='number'&&Number.isFinite(x['focusX'])?{focusX:Math.min(100,Math.max(0,x['focusX']))}:{}),
   ...(typeof x['focusY']==='number'&&Number.isFinite(x['focusY'])?{focusY:Math.min(100,Math.max(0,x['focusY']))}:{}),
   ...(typeof x['cropZoom']==='number'&&Number.isFinite(x['cropZoom'])?{cropZoom:Math.min(3,Math.max(1,x['cropZoom']))}:{}),
+  ...(x['pinned']===true?{pinned:true}:{}),
+  ...(x['dropCap']===true?{dropCap:true}:{}),
   span:clampNewspaperSpan(Number(x['span'])),
   height:clampNewspaperHeight(Number(x['height'])),
  }));
@@ -163,7 +169,9 @@ export function insertNewspaperBlockBefore(blocks:readonly NewspaperBlock[],type
  return result;
 }
 export function duplicateNewspaperBlock(block:NewspaperBlock):NewspaperBlock{
- return {...block,id:crypto.randomUUID()};
+ // A cópia nasce solta: só o bloco original fica fixo.
+ const {pinned:_pinned,...rest}=block;
+ return {...rest,id:crypto.randomUUID()};
 }
 
 export function clampNewspaperSpan(value:number):number{
