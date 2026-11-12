@@ -54,3 +54,21 @@ histórico não foi fornecido nesta execução; o anexo atual é o estudo PDF.
 Referências técnicas:
 - https://firebase.google.com/docs/hosting/cloud-run
 - https://firebase.google.com/docs/auth/admin/import-users
+
+## Aplicativo cadastrado em 12/11/2026
+
+O proprietário cadastrou o aplicativo Web Cormyr Chronicle Atlas no projeto
+`cormyr` (número `477785088395`) e forneceu a configuração pública do SDK.
+Ela está em `src/integrations/firebase/public-config.ts`, ainda sem inicialização
+ou troca do backend ativo. Analytics não foi inicializado. O bucket informado
+na configuração não comprova provisionamento do Storage.
+
+A conexão do ChatGPT com Firebase falhou. Alternativa operacional: Cloud Shell
+no console Firebase, autenticado pelo próprio proprietário. Primeiro diagnóstico
+somente leitura: `firebase apps:list --project cormyr`. Não enviar tokens,
+chaves de conta de serviço ou senhas pelo chat. O resultado desse comando não
+concede acesso a este agente; implantação futura exige configurar CI com
+identidade federada ou executar os comandos no Cloud Shell autenticado.
+
+O projeto `cormyr` não foi classificado como homologação ou produção. Nenhum
+alias default de deploy foi criado para evitar publicação implícita nele.
