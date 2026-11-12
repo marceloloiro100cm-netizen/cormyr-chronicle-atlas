@@ -74,7 +74,7 @@
  let currentUrl='',currentState='stopped';
  function setState(value){
   currentState=value;
-  document.dispatchEvent(new CustomEvent('cormyr:bard-state',{detail:{state:value,url:currentUrl}}));
+  try{if(typeof CustomEvent==='function')document.dispatchEvent(new CustomEvent('cormyr:bard-state',{detail:{state:value,url:currentUrl}}));}catch{/* listeners are optional */}
  }
  const baseStop=stop;
  stop=function(){baseStop();currentUrl='';setState('stopped');};

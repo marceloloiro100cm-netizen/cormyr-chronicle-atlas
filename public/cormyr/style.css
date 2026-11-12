@@ -369,9 +369,13 @@
 }
 
 /* Regiões: novo formato (mapa, texto e bandeira com trilha) */
-.region-stage{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(170px,210px);gap:20px;align-items:start;margin-bottom:25px}
+#kingdom-music{display:none!important}
+.region-hero{margin:8px 0 18px}
+.region-hero-eyebrow{margin:0 0 4px;font:700 12px var(--sans);letter-spacing:.06em;color:var(--plum)}
+.region-gothic{margin:0 0 12px;font:400 clamp(40px,6vw,64px)/1.05 'UnifrakturMaguntia','Old English Text MT',Georgia,serif;color:#1d1426}
+.region-stage{display:grid;grid-template-columns:minmax(190px,250px) minmax(0,1fr) minmax(190px,240px);gap:18px;align-items:start;margin-bottom:34px}
 .region-stage>*{min-width:0}
-.region-stage .region-map{margin:0;padding:16px}
+.region-stage .region-map{margin:0;padding:16px;background:#fbf6ec;border-color:#e6dcc9;border-radius:10px}
 .region-stage .region-map-heading{margin-bottom:10px}
 .region-stage .region-map-heading h3{font-size:20px}
 .region-stage .region-map-figure img{max-height:360px;width:auto;max-width:100%;object-fit:contain}
@@ -379,29 +383,43 @@
 .region-stage .region-map-figure figcaption{font-size:13px}
 .region-map-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .region-map-actions .quiet{flex:1 1 auto;min-height:44px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
-.region-stage .region-overview{display:block;margin:0;padding:24px 26px}
+.region-stage .region-overview{display:block;margin:0;padding:26px 28px;background:#fbf6ec;border:1px solid #e6dcc9;border-top:1px solid #e6dcc9;border-radius:10px}
+.region-stage .region-meta{margin:0 0 16px;font:400 24px/1.2 Georgia,serif;color:#261b2d}
+.region-stage .region-meta strong{font-weight:700}
 .region-stage .region-description{font-size:17px;line-height:1.6;color:var(--ink)}
-.region-stage-banner{display:grid;gap:12px;justify-items:center;padding:16px;background:#fff;border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:9px}
-.region-stage-banner .region-banner{width:100%;max-width:150px;height:auto;aspect-ratio:134/190}
-.region-banner-controls{display:grid;gap:8px;width:100%}
-.region-banner-button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--plum);border-radius:8px;background:#fff;color:var(--plum);font:600 14px var(--sans);text-decoration:none;cursor:pointer}
-.region-banner-button:hover{background:#f4edf8}
-.region-banner-button:focus-visible,.region-map-actions .quiet:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
-.region-banner-button[aria-pressed="true"]{background:var(--plum);color:#fff}
-.region-banner-status,.region-banner-note{margin:0;text-align:center;color:var(--muted)}
+/* bandeira heráldica */
+.region-pennant{margin-top:-34px;justify-self:end;width:100%;max-width:240px;filter:drop-shadow(0 10px 14px rgba(36,19,52,.35))}
+.pennant-wood,.pennant-gold,.pennant-body{clip-path:polygon(50% 0,56% 4.5%,100% 7%,100% 85%,50% 100%,0 85%,0 7%,44% 4.5%)}
+.pennant-wood{padding:30px 9px 22px;background:repeating-linear-gradient(95deg,#8a5630 0 6px,#6d4020 6px 11px,#9a6638 11px 16px)}
+.pennant-gold{padding:5px;background:linear-gradient(135deg,#f6e2a0,#b58e4e 45%,#f6e2a0 70%,#9c7433)}
+.pennant-body{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 10px 56px;background:linear-gradient(#2b1c19,#1a1013)}
+.pennant-crest{width:100%;border:3px solid #c9a24f;border-radius:6px;overflow:hidden;background:#f0b400;line-height:0}
+.pennant-crest .region-banner{display:block;width:100%;height:auto;aspect-ratio:134/190;object-fit:cover;background:none;border-radius:0}
+.pennant-crest .crest-missing{min-height:200px}
+.region-banner-controls{display:flex;align-items:stretch;justify-content:center;width:100%}
+.region-banner-button{position:relative;display:flex;align-items:center;justify-content:center;flex:1 1 0;min-height:44px;padding:6px;border:0;background:transparent;color:#e7d3a0;text-decoration:none;cursor:pointer}
+.region-banner-button+.region-banner-button{border-left:1px solid rgba(231,211,160,.35)}
+.region-banner-button:hover{color:#fff;background:rgba(255,255,255,.08)}
+.region-banner-button:focus-visible{outline:3px solid #f6e2a0;outline-offset:-3px}
+.region-banner-button.is-play .pennant-icon{display:grid;place-items:center;width:38px;height:38px;border:2px solid currentColor;border-radius:50%;font-size:16px;line-height:1}
+.region-banner-button[aria-pressed="true"]{color:#fff}
+.pennant-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pennant-fleur{position:absolute;left:0;right:0;bottom:22px;text-align:center;color:#c9a24f;font-size:26px;line-height:1}
+.pennant-body{position:relative}
+.region-banner-status,.region-banner-note{margin:0;text-align:center;color:#e7d3a0;font-size:12px;padding:0 6px}
 @media(max-width:1280px){
- .region-stage{grid-template-columns:minmax(200px,260px) minmax(0,1fr)}
- .region-stage-banner{grid-column:1/-1;grid-template-columns:96px minmax(0,1fr);justify-items:stretch;align-items:center}
- .region-stage-banner .region-banner{width:96px;max-width:96px}
- .region-banner-controls{grid-template-columns:repeat(3,minmax(0,1fr))}
- .region-banner-status,.region-banner-note{grid-column:2}
+ .region-stage{grid-template-columns:minmax(170px,220px) minmax(0,1fr) minmax(160px,190px)}
+ .region-stage .region-meta{font-size:21px}
 }
-@media(max-width:760px){
+@media(max-width:900px){
+ .region-stage{grid-template-columns:minmax(0,1fr) minmax(150px,180px)}
+ .region-stage-map{grid-column:1/-1;order:3}
+ .region-pennant{margin-top:0}
+}
+@media(max-width:560px){
  .region-stage{grid-template-columns:minmax(0,1fr)}
- .region-stage-banner{order:-1;grid-template-columns:72px minmax(0,1fr)}
- .region-stage-banner .region-banner{width:72px;max-width:72px}
- .region-banner-controls{grid-template-columns:minmax(0,1fr)}
+ .region-pennant{justify-self:center;order:-1;max-width:200px}
  .region-stage .region-overview{padding:20px 16px}
  .region-stage .region-map-figure img{max-height:300px}
 }
-@media print{.region-stage-banner .region-banner-controls,.region-banner-status,.region-map-actions{display:none!important}}
+@media print{.region-pennant,.region-map-actions,#region-change{display:none!important}}
