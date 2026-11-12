@@ -23,11 +23,13 @@ export function HouseHeaderCrest({houseName,theme,crest,privatePath}:Props){
   triggerClassName="house-crest-trigger"
   imageClassName="house-crest-image"
   onImageError={()=>setFailed(previous=>previous.includes(src)?previous:[...previous,src])}/>;
+ // Use the complete crest uploaded to the House folder first. The thematic flag
+ // is decorative, not a substitute for a registered full-resolution coat of arms.
  return <div className="house-official-crest">
-  {official&&!failed.includes(official)?showImage(official):
-   privatePath&&!privateFailed?
+  {privatePath&&!privateFailed?
     <PrivateImage path={privatePath} caption={caption} thumbnail zoomable onUnavailable={()=>setPrivateFailed(true)}/>:
    original&&!failed.includes(original)?showImage(original):
+   official&&!failed.includes(official)?showImage(official):
     <Shield role="img" aria-label={'Brasão indisponível para '+houseName}/>}
  </div>;
 }
