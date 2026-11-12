@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {Plus,FileText,ImagePlus,Newspaper,ArrowUp,ArrowDown,Trash2,Save,Send,Archive,Undo2,Check,Eye,LayoutTemplate} from 'lucide-react';
 import {Button} from '@/components/ui/button';
@@ -7,16 +7,19 @@ import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey,formatDate} from '@/lib/calendar/harptos';
 import {NewspaperCanvas} from './NewspaperCanvas';
 import {NewspaperEditorialDesk} from './NewspaperEditorialDesk';
+import {CommissionForm,CommissionInbox} from './NewspaperCommissions';
 import {
- createNewspaperEdition,getNewspaperEditions,getNewspaperReceipts,
+ copyCommissionImageToEdition,createNewspaperEdition,deleteNewspaperDraft,getHouseNames,getNewspaperCommissions,rejectNewspaperCommission,
+ getNewspaperEditions,getNewspaperReceipts,getNewspaperRevisions,
  markNewspaperRead,updateNewspaperEdition,uploadNewspaperAsset,
 } from '@/lib/newspaper/data';
 import {
+ commissionToBlocks,newspaperIsDirty,pendingCommissions,type NewspaperCommission,
  createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperStatus,
  reorderNewspaperBlocks,duplicateNewspaperBlock,
  NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,validateNewspaperEdition,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperState,
- type NewspaperTemplate,
+ type NewspaperTemplate,type NewspaperRevision,
 } from '@/lib/newspaper/model';
 import './newspaper.css';
 
@@ -33,24 +36,40 @@ export function useUnreadNewspaperCount(userId:string,enabled=true){
  return {count,editions,receipts};
 }
 
+/** Respostas (publicação ou recusa) que a Casa ainda não viu: alimenta o aviso na aba Jornal. */
+export function useUnseenCommissionAnswers(userId:string,enabled=true){
+ const query=useQuery({queryKey:['campaign-newspaper-commissions',userId],
+  queryFn:getNewspaperCommissions,enabled,refetchInterval:30_000});
+ return (query.data??[]).filter(c=>c.state!=='pending'&&!c.seen_at).length;
+}
 function cloneEditableEdition(edition:NewspaperEdition){
  return {...edition,blocks:safeNewspaperBlocks(edition.blocks)};
 }
 function safeError(cause:unknown){
  return cause instanceof Error?cause.message:'Não foi possível concluir a operação.';
 }
-export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
+export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
  userId:string;editor:boolean;editorial?:boolean;
+ /** Casa do jogador: habilita "Contratar notícia" (1 de Riqueza). */
+ houseId?:string;
  onSignout?:()=>void;
 }){
  const qc=useQueryClient();
  const time=useCampaignTime();
  const {count,editions,receipts}=useUnreadNewspaperCount(userId);
+ const commissionsQuery=useQuery({queryKey:['campaign-newspaper-commissions',userId],
+  queryFn:getNewspaperCommissions,refetchInterval:30_000});
+ const houseNamesQuery=useQuery({queryKey:['campaign-newspaper-house-names'],
+  queryFn:getHouseNames,enabled:editor,staleTime:10*60*1000});
+ const allCommissions=commissionsQuery.data??[];
+ const pending=pendingCommissions(allCommissions);
+ const houseNames=houseNamesQuery.data??new Map<string,string>();
  const [selectedId,setSelectedId]=useState<string|null>(null);
  const [draft,setDraft]=useState<NewspaperEdition|null>(null);
  const [editing,setEditing]=useState(false);
  const [blockId,setBlockId]=useState<string|null>(null);
  const [busy,setBusy]=useState(false);
+ const autosaving=useRef(false);
  const [message,setMessage]=useState('');
  const [error,setError]=useState('');
  const history=editions.data??[];
@@ -71,6 +90,7 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
  const refresh=()=>Promise.all([
   qc.invalidateQueries({queryKey:['campaign-newspapers',userId]}),
   qc.invalidateQueries({queryKey:['campaign-newspaper-reads',userId]}),
+  qc.invalidateQueries({queryKey:['campaign-newspaper-commissions',userId]}),
  ]);
  const notice=(value:string)=>{setMessage(value);setError('');};
  const open=async(edition:NewspaperEdition)=>{
@@ -158,7 +178,7 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
   finally{setBusy(false);}
  };
  const save=async(nextState?:NewspaperState)=>{
-  if(!editor||!current||busy)return;
+  if(!editor||!current||busy||autosaving.current)return;
   const state=nextState??current.state;
   const problem=validateNewspaperEdition(current);
   // Permite cancelar mesmo uma edição ainda incompleta.
@@ -258,11 +278,143 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
   modify({blocks:current.blocks.filter(b=>b.id!==id)});
   setBlockId(null);setEditing(true);
  };
+ /**
+  * Traz uma notícia contratada para a edição em rascunho (ou abre um novo rascunho),
+  * copiando a imagem para a pasta da edição. O texto fica editável direto na folha.
+  */
+ const insertCommission=async(commission:NewspaperCommission)=>{
+  if(!editor||busy)return;
+  setBusy(true);setError('');
+  try{
+   let base:NewspaperEdition;
+   if(current&&current.state==='draft')base=cloneEditableEdition(current);
+   else{
+    if(!time.data)throw new Error('Aguarde a data oficial do HUB Temporal.');
+    const created=await createNewspaperEdition({
+     campaign_date:dateKey(time.data),title:'A Folha Sem Selo',
+     subtitle:'O jornal independente de Cormyr',template:'classico',blocks:[],
+    });
+    base=cloneEditableEdition(created);
+   }
+   const already=base.blocks.find(b=>b.commissionId===commission.id);
+   if(already){setSelectedId(base.id);setDraft(base);setBlockId(already.id);setEditing(true);return;}
+   const imagePath=commission.image_path?
+    await copyCommissionImageToEdition(base.id,commission.image_path):undefined;
+   const blocks=commissionToBlocks(commission,imagePath,houseNames.get(commission.house_id));
+   if(base.blocks.length+blocks.length>80)throw new Error('A edição permite até 80 elementos.');
+   const next={...base,blocks:[...base.blocks,...blocks]};
+   setSelectedId(next.id);setDraft(next);setBlockId(blocks[0]?.id??null);setEditing(true);
+   notice('Notícia inserida. Edite o texto direto na folha e clique em Publicar Edição: ela sai das pendências ao publicar.');
+   await refresh();
+  }catch(cause){setError(safeError(cause));}
+  finally{setBusy(false);}
+ };
+ const rejectCommission=async(commission:NewspaperCommission,note:string)=>{
+  if(!editor||busy)return;
+  setBusy(true);setError('');
+  try{
+   await rejectNewspaperCommission(commission.id,note);
+   await Promise.all([refresh(),qc.invalidateQueries({queryKey:['noble-house']})]);
+   notice('Pedido recusado. A Casa recebeu a nota e 1 de Riqueza foi devolvida.');
+  }catch(cause){setError(safeError(cause));}
+  finally{setBusy(false);}
+ };
+ const dirty=newspaperIsDirty(draft,selected);
+ const revisionsQuery=useQuery({queryKey:['campaign-newspaper-revisions',current?.id],
+  queryFn:()=>getNewspaperRevisions(current!.id),enabled:Boolean(editorial&&editor&&current?.id),
+  staleTime:20_000,retry:false});
+ // Salvamento automático: só rascunhos, depois de 8 s sem digitar, e em silêncio se a edição
+ // ainda estiver incompleta (o botão Salvar continua mostrando o motivo).
+ useEffect(()=>{
+  if(!editorial||!editor||!dirty||busy||!draft||draft.state!=='draft')return;
+  const timer=window.setTimeout(()=>{
+   if(autosaving.current||validateNewspaperEdition(draft))return;
+   autosaving.current=true;
+   void updateNewspaperEdition(draft,{
+    campaign_date:draft.campaign_date,title:draft.title.trim(),subtitle:draft.subtitle,
+    template:draft.template,font_style:draft.font_style,blocks:draft.blocks,
+    pdf_path:draft.pdf_path,state:'draft',
+   }).then(result=>{
+    // Só atualiza a versão: o que foi digitado durante o envio continua no rascunho.
+    setDraft(old=>old&&old.id===result.id?{...old,version:result.version}:old);
+    setMessage('Rascunho salvo automaticamente às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.');
+    return Promise.all([refresh(),qc.invalidateQueries({queryKey:['campaign-newspaper-revisions',result.id]})]);
+   }).catch(()=>undefined).finally(()=>{autosaving.current=false;});
+  },8000);
+  return()=>window.clearTimeout(timer);
+ },[editorial,editor,dirty,busy,draft]);
+ useEffect(()=>{
+  if(!dirty||!editor)return;
+  const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};
+  window.addEventListener('beforeunload',warn);
+  return()=>window.removeEventListener('beforeunload',warn);
+ },[dirty,editor]);
+ const discardChanges=()=>{
+  if(!selected||!dirty)return;
+  if(!window.confirm('Descartar as alterações não salvas desta edição?'))return;
+  setDraft(cloneEditableEdition(selected));setBlockId(null);setEditing(selected.state==='draft');
+  notice('Alterações descartadas. A edição voltou à última versão salva.');
+ };
+ const deleteDraft=async()=>{
+  if(!editor||busy||!current||current.state!=='draft')return;
+  if(!window.confirm('Excluir este rascunho? Ele será apagado de vez. Notícias contratadas que estavam nele voltam às pendências.'))return;
+  const removedId=current.id;
+  setBusy(true);setError('');
+  try{
+   await deleteNewspaperDraft(removedId);
+   await refresh();
+   setSelectedId(null);setDraft(null);setBlockId(null);setEditing(false);
+   notice('Rascunho excluído. Você pode começar uma nova edição.');
+  }catch(cause){setError(safeError(cause));}
+  finally{setBusy(false);}
+ };
+ const showCommission=(commission:NewspaperCommission)=>{
+  const block=current?.blocks.find(b=>b.commissionId===commission.id);
+  if(block){setBlockId(block.id);setEditing(true);}
+ };
+ const useEngraving=(src:string,label:string)=>{
+  if(!current)return;
+  const target=current.blocks.find(b=>b.id===blockId&&b.type==='image');
+  if(target){
+   setDraft(old=>old?{...old,blocks:old.blocks.map(b=>{
+    if(b.id!==target.id)return b;
+    const {imagePath:_removed,...rest}=b;
+    return {...rest,imageSrc:src,caption:b.caption&&b.caption!=='Legenda da fotografia'?b.caption:label};
+   })}:old);
+   setEditing(true);notice('Gravura aplicada. Ela é fixa do site e não consome armazenamento.');return;
+  }
+  if(current.blocks.length>=80){setError('A edição permite até 80 elementos.');return;}
+  const block={...makeNewspaperBlock('image'),imageSrc:src,caption:label};
+  setDraft(old=>old?{...old,blocks:[...old.blocks,block]}:old);
+  setBlockId(block.id);setEditing(true);
+  notice('Gravura inserida na folha.');
+ };
+ const restoreRevision=(revision:NewspaperRevision)=>{
+  if(!current||current.state==='published'||current.state==='archived'){
+   setError('Reabra a edição como rascunho antes de restaurar uma versão.');return;
+  }
+  const snap=revision.snapshot;
+  if(!window.confirm('Restaurar a versão '+revision.previous_version+'? O conteúdo atual será substituído na tela e você poderá salvar ou descartar.'))return;
+  setDraft(old=>old?{...old,
+   title:typeof snap.title==='string'?snap.title:old.title,
+   subtitle:typeof snap.subtitle==='string'?snap.subtitle:old.subtitle,
+   campaign_date:typeof snap.campaign_date==='string'?snap.campaign_date:old.campaign_date,
+   blocks:safeNewspaperBlocks(snap.blocks),
+  }:old);
+  setBlockId(null);setEditing(true);
+  notice('Versão '+revision.previous_version+' restaurada na tela. Salve para confirmar ou descarte para voltar.');
+ };
  if(editorial&&editor)return <NewspaperEditorialDesk
   userId={userId} current={current} history={history} reads={reads}
   loading={editions.isPending} editing={editing} busy={busy}
   selectedBlockId={blockId} error={error} message={message}
   hubDate={time.data?dateKey(time.data):''}
+  pendingCommissions={pending} houseNames={houseNames}
+  onInsertCommission={commission=>{void insertCommission(commission);}}
+  onShowCommission={showCommission}
+  onRejectCommission={(commission,note)=>{void rejectCommission(commission,note);}}
+  revisions={revisionsQuery.data??[]} onRestoreRevision={restoreRevision} onUseEngraving={useEngraving}
+  dirty={dirty} onDiscard={discardChanges} onDeleteDraft={()=>{void deleteDraft();}}
   onNew={type=>{void newEdition(type);}}
   onOpen={edition=>{void open(edition);}}
   onSave={state=>{void save(state);}}
@@ -291,6 +443,14 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
   </header>
   {error&&<p className="newspaper-alert" role="alert">{error}</p>}
   {message&&<p className="newspaper-notice" role="status">{message}</p>}
+  {!editor&&houseId&&!commissionsQuery.isError&&<CommissionForm houseId={houseId} userId={userId} commissions={allCommissions}/>}
+  {editor&&pending.length>0&&<section className="newspaper-commission" aria-label="Notícias contratadas pendentes">
+   <header><div><strong>Notícias contratadas pendentes ({pending.length})</strong>
+    <span>Insira na edição em rascunho, edite o texto e publique. Ao publicar, saem desta lista.</span></div></header>
+   <CommissionInbox commissions={pending} houseNames={houseNames} edition={current} busy={busy}
+    onInsert={commission=>{void insertCommission(commission);}} onShow={showCommission}
+    onReject={(commission,note)=>{void rejectCommission(commission,note);}}/>
+  </section>}
   <div className="newspaper-hub-layout">
    <aside className="newspaper-edition-list" aria-label="Histórico de jornais">
     <h3>{editor?'Edições e histórico':'Edições recebidas'} {count>0&&!editor&&<span className="newspaper-new-count">{count} nova(s)</span>}</h3>
@@ -327,8 +487,10 @@ export function NewspaperHub({userId,editor,editorial=false,onSignout}:{
         <Button disabled={busy} onClick={()=>void save('published')}><Send size={15}/> Salvar republicação</Button>}
        {['published'].includes(displayEdition.state)&&
         <Button variant="outline" disabled={busy} onClick={()=>void save('archived')}><Archive size={15}/> Arquivar</Button>}
-       {displayEdition.state!=='cancelled'&&
+       {displayEdition.state!=='cancelled'&&displayEdition.state!=='draft'&&
         <Button variant="outline" disabled={busy} onClick={()=>void save('cancelled')}>Cancelar envio</Button>}
+       {displayEdition.state==='draft'&&
+        <Button variant="outline" disabled={busy} onClick={()=>void deleteDraft()}><Trash2 size={15}/> Excluir rascunho</Button>}
        {displayEdition.state==='cancelled'&&
         <Button variant="outline" disabled={busy} onClick={()=>{modify({state:'draft'});setEditing(true);notice('Edição preparada para reabertura. Clique em Salvar.');}}><Undo2 size={15}/> Reabrir</Button>}
        {displayEdition.state==='archived'&&

@@ -8,7 +8,7 @@ const BLOCK_DRAG_MIME='application/x-cormyr-newspaper-block';
 const TOOL_DRAG_MIME='application/x-cormyr-newspaper-tool';
 
 function InlineText({tag:Tag,value,editing,onChange,className,style,label}:{
- tag:'h2'|'h3'|'p'|'blockquote'|'figcaption';
+ tag:'h1'|'h2'|'h3'|'p'|'blockquote'|'figcaption';
  value:string;editing:boolean;onChange:(next:string)=>void;
  className?:string;style?:CSSProperties;label:string;
 }){
@@ -29,6 +29,7 @@ function NewspaperImage({block,editing,onChange}:{
  const path=block.imagePath;
  const asset=useQuery({queryKey:['newspaper-asset',path],queryFn:()=>signedNewspaperAsset(path!),
   enabled:Boolean(path),staleTime:45*60*1000,retry:false});
+ const src=path?asset.data:block.imageSrc;
  const [lightbox,setLightbox]=useState(false);
  const [zoom,setZoom]=useState(1);
  useEffect(()=>{
@@ -39,18 +40,18 @@ function NewspaperImage({block,editing,onChange}:{
  },[lightbox]);
  const style:NewspaperImageStyle=block.imageStyle??'vintage';
  return <figure className="newspaper-photo">
-  {asset.data?<button className="newspaper-image-open" type="button"
+  {src?<button className="newspaper-image-open" type="button"
    onClick={event=>{event.stopPropagation();setZoom(1);setLightbox(true);}}
    title="Ampliar fotografia" aria-label="Ampliar fotografia">
-    <img className={`newspaper-filter-${style}`} src={asset.data}
+    <img className={`newspaper-filter-${style}`} src={src}
      alt={block.caption||'Fotografia da edição'}
      style={block.autoHeight!==false?{maxHeight:650,height:'auto'}:{height:Math.max(130,block.height-44)}}/>
    </button>:<div className="newspaper-photo-placeholder" role="status">
-    {asset.isError?'Imagem indisponível':path?'Carregando fotografia…':'Adicione uma fotografia na Redação'}
+    {path&&asset.isError?'Imagem indisponível':path?'Carregando fotografia…':'Adicione uma fotografia na Redação'}
    </div>}
   <InlineText tag="figcaption" value={block.caption??''} editing={editing}
    label="Editar legenda da fotografia" onChange={caption=>onChange?.({caption})}/>
-  {lightbox&&asset.data&&<div className="newspaper-lightbox" role="presentation"
+  {lightbox&&src&&<div className="newspaper-lightbox" role="presentation"
    onMouseDown={event=>{if(event.target===event.currentTarget)setLightbox(false);}}>
    <div className="newspaper-lightbox-dialog" role="dialog" aria-modal="true"
     aria-label="Ampliação da gravura">
@@ -63,7 +64,7 @@ function NewspaperImage({block,editing,onChange}:{
      <button type="button" onClick={()=>setLightbox(false)}>Fechar ✕</button>
     </div>
     <div className="newspaper-lightbox-stage">
-     <img className={`newspaper-filter-${style}`} src={asset.data}
+     <img className={`newspaper-filter-${style}`} src={src}
       alt={block.caption||'Fotografia ampliada'} style={{transform:`scale(${zoom})`}}/>
     </div>
     {block.caption&&<p>{block.caption}</p>}
@@ -97,6 +98,8 @@ function NewspaperStory({block,editing,onChange}:{
    value={block.subtitle??''} editing={editing} label="Editar subtítulo da manchete"
    onChange={subtitle=>onChange?.({subtitle})}/>}
  </div>;
+ if(block.type==='subtitle')return <InlineText tag="h3" className="newspaper-subhead" value={block.text}
+  editing={editing} label="Editar subtítulo" onChange={text=>onChange?.({text})}/>;
  if(block.type==='quote')return <InlineText tag="blockquote" className="newspaper-quote"
   value={block.text} editing={editing} label="Editar citação"
   onChange={text=>onChange?.({text})}/>;
@@ -118,13 +121,16 @@ function NewspaperStory({block,editing,onChange}:{
  </article>;
 }
 export function NewspaperCanvas({edition,editing=false,compactMasthead=false,selectedId,onSelect,onResize,
- onChangeBlock,onReorderBlock,onInsertBlock}:{
+ onChangeBlock,onReorderBlock,onInsertBlock,onMoveBlock,onChangeEdition}:{
  edition:NewspaperEdition;editing?:boolean;compactMasthead?:boolean;selectedId?:string|null;
  onSelect?:(id:string)=>void;
  onResize?:(id:string,dimensions:Pick<NewspaperBlock,'span'|'height'>)=>void;
  onChangeBlock?:(id:string,patch:Partial<NewspaperBlock>)=>void;
  onReorderBlock?:(fromId:string,toId:string)=>void;
  onInsertBlock?:(type:NewspaperBlockType,beforeId:string|null)=>void;
+ onMoveBlock?:(id:string,direction:-1|1)=>void;
+ /** Edita o título e o lema direto no cabeçalho da folha. */
+ onChangeEdition?:(patch:Partial<Pick<NewspaperEdition,'title'|'subtitle'>>)=>void;
 }){
  const grid=useRef<HTMLDivElement|null>(null);
  const drag=useRef<{id:string;startX:number;startY:number;block:NewspaperBlock;column:number}|null>(null);
@@ -147,7 +153,7 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
   const moving=event.dataTransfer.getData(BLOCK_DRAG_MIME);
   if(moving&&targetId&&moving!==targetId){onReorderBlock?.(moving,targetId);return;}
   const type=event.dataTransfer.getData(TOOL_DRAG_MIME);
-  if(['headline','article','image','quote','notice'].includes(type)){
+  if(['headline','subtitle','article','image','quote','notice'].includes(type)){
    onInsertBlock?.(type as NewspaperBlockType,targetId);
   }
  };
@@ -160,12 +166,15 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
     <span>{formatDate(edition.campaign_date)}</span>
    </div>:<p>O CORREIO DO REINO · CORMYR · EDIÇÃO {String(edition.edition_no).padStart(3,'0')}</p>}
    <div className="newspaper-page-masthead">
-    <span aria-hidden="true">⚜</span>
-    <h1>{edition.title}</h1>
-    <span aria-hidden="true">⚜</span>
+    <img className="newspaper-lion" src="/newspaper/leao_esq.png" alt="" aria-hidden="true"/>
+    <InlineText tag="h1" value={edition.title} editing={editing&&Boolean(onChangeEdition)}
+     label="Editar nome do jornal" onChange={title=>{if(title)onChangeEdition?.({title});}}/>
+    <img className="newspaper-lion" src="/newspaper/leao_dir.png" alt="" aria-hidden="true"/>
    </div>
    <div className="newspaper-meta"><span>{formatDate(edition.campaign_date)}</span><span>Folha independente de Cormyr</span></div>
-   {edition.subtitle&&<h2 className="newspaper-subtitle">{edition.subtitle}</h2>}
+   {(edition.subtitle||(editing&&onChangeEdition))&&<InlineText tag="h2" className="newspaper-subtitle"
+    value={edition.subtitle} editing={editing&&Boolean(onChangeEdition)}
+    label="Editar lema do jornal" onChange={subtitle=>onChangeEdition?.({subtitle})}/>}
    <div className="newspaper-double-rule"/>
   </header>
   {editing&&<p className="newspaper-canvas-tip">Clique nos textos para escrever · Arraste ⠿ para mudar a ordem · Puxe ↘ para redimensionar</p>}
@@ -196,6 +205,12 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
        }}>⠿</button>}
       <NewspaperStory block={block} editing={editing}
        onChange={patch=>onChangeBlock?.(block.id,patch)}/>
+      {editing&&onMoveBlock&&<div className="newspaper-move-buttons">
+       <button type="button" aria-label="Mover bloco para cima" title="Subir"
+        onClick={event=>{event.stopPropagation();onMoveBlock(block.id,-1);}}>↑</button>
+       <button type="button" aria-label="Mover bloco para baixo" title="Descer"
+        onClick={event=>{event.stopPropagation();onMoveBlock(block.id,1);}}>↓</button>
+      </div>}
       {editing&&<button type="button" className="newspaper-resize-handle"
         aria-label="Arrastar para aumentar ou diminuir o bloco"
         title="Arraste para mudar largura e altura"

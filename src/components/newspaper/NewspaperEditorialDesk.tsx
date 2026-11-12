@@ -8,10 +8,11 @@ import {
 import {ChangePasswordButton} from '@/components/change-password';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {formatCampaignPeriod,formatDate,parseDate} from '@/lib/calendar/harptos';
-import {NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,newspaperStatus,
+import {NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,NEWSPAPER_WIDTH_PRESETS,newspaperStatus,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,
- type NewspaperRead,type NewspaperState,type NewspaperTemplate} from '@/lib/newspaper/model';
+ type NewspaperCommission,type NewspaperRevision,type NewspaperRead,NEWSPAPER_ENGRAVINGS,type NewspaperState,type NewspaperTemplate} from '@/lib/newspaper/model';
 import {NewspaperCanvas} from './NewspaperCanvas';
+import {CommissionInbox} from './NewspaperCommissions';
 import './newspaper-editorial.css';
 
 const NAV=[
@@ -37,6 +38,21 @@ export interface NewspaperEditorialProps{
  selectedBlockId:string|null;
  error:string;message:string;
  hubDate:string;
+ /** Notícias contratadas pelas Casas, ainda não publicadas. */
+ pendingCommissions:NewspaperCommission[];
+ houseNames:Map<string,string>;
+ onInsertCommission:(commission:NewspaperCommission)=>void;
+ onShowCommission:(commission:NewspaperCommission)=>void;
+ onRejectCommission:(commission:NewspaperCommission,note:string)=>void;
+ /** Versões anteriores desta edição, guardadas pelo banco a cada salvamento. */
+ revisions:NewspaperRevision[];
+ onRestoreRevision:(revision:NewspaperRevision)=>void;
+ /** Aplica uma gravura do acervo no bloco de imagem selecionado (ou insere uma nova). */
+ onUseEngraving:(src:string,label:string)=>void;
+ /** Há alterações ainda não salvas. */
+ dirty:boolean;
+ onDiscard:()=>void;
+ onDeleteDraft:()=>void;
  onNew:(type?:NewspaperBlockType)=>void;
  onOpen:(edition:NewspaperEdition)=>void;
  onSave:(state?:NewspaperState)=>void;
@@ -104,7 +120,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
   event.dataTransfer.effectAllowed='copy';
  };
  const pdfReady=Boolean(current?.pdf_path);
- const materialReady=Boolean(current&&(current.blocks.some(b=>b.type==='headline'||b.type==='article'||b.imagePath)||pdfReady));
+ const materialReady=Boolean(current&&(current.blocks.some(b=>b.type==='headline'||b.type==='article'||b.imagePath||b.imageSrc)||pdfReady));
  const countReads=(edition:NewspaperEdition)=>reads.filter(r=>r.newspaper_id===edition.id&&r.read_version>=edition.publication_revision).length;
  const dateLabel=(value:string)=>{const d=parseDate(value);return d?formatCampaignPeriod(d):'Data indisponível';};
  const openCover=()=>{
@@ -159,7 +175,10 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
      const Icon=item.icon;return <button type="button" key={item.id}
        aria-current={section===item.id?'page':undefined}
        className={section===item.id?'active':''}
-       onClick={()=>chooseSection(item.id)}><Icon size={21}/>{item.label}</button>;
+       onClick={()=>chooseSection(item.id)}><Icon size={21}/>{item.label}
+       {item.id==='anuncios'&&props.pendingCommissions.length>0&&
+        <span className="folha-nav-count" aria-label={`${props.pendingCommissions.length} notícia(s) contratada(s) pendente(s)`}>
+         {props.pendingCommissions.length}</span>}</button>;
     })}</nav>
     <div className="folha-navigation-decors" aria-hidden="true">
      <BookOpen size={68}/><Feather size={72}/>
@@ -176,7 +195,17 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       <button type="button" className="folha-date-button" aria-expanded={dateOpen}
        onClick={()=>setDateOpen(value=>!value)}><CalendarDays size={16}/>
        <span>{dateLabel(currentDate)}</span><ChevronDown size={16}/></button>
-      {dateOpen&&<div className="folha-date-flyout">
+      <div className="folha-edition-switch">
+        <select aria-label="Trocar de edição" value={current?.id??''} disabled={busy||props.loading}
+         onChange={e=>{const next=history.find(x=>x.id===e.target.value);if(next)browseEdition(next);}}>
+         {!current&&<option value="">Sem edição aberta</option>}
+         {history.map(e=><option key={e.id} value={e.id}>
+          Nº {e.edition_no} · {dateLabel(e.campaign_date)} · {newspaperStatus(e.state)}</option>)}
+        </select>
+        <button type="button" disabled={busy} onClick={()=>{setSection('capa');props.onNew();}}>
+         Próxima edição</button>
+       </div>
+       {dateOpen&&<div className="folha-date-flyout">
        <strong>{current?'Data desta edição':'Data oficial do HUB Temporal'}</strong>
        {current?<CampaignDatePicker value={current.campaign_date}
         referenceDate={props.hubDate} onChange={value=>props.onPatch({campaign_date:value})}/>:
@@ -210,7 +239,8 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         selectedId={selectedBlockId} onSelect={props.onSelectBlock}
         onResize={props.onResizeBlock}
         onChangeBlock={props.onPatchBlock} onReorderBlock={props.onReorderBlock}
-        onInsertBlock={props.onInsertBefore}/>:
+        onInsertBlock={props.onInsertBefore} onMoveBlock={props.onMoveBlock}
+        onChangeEdition={props.onPatch}/>:
         <ExampleFrontPage date={dateLabel(currentDate)}/>}
        {!current&&<button type="button" className="folha-start-edition"
         onClick={()=>{setSection('capa');props.onNew();}}>+ Criar primeira edição</button>}
@@ -252,7 +282,15 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       </section>}
 
       {section==='anuncios'&&<section className="folha-section-content">
-       <h3>Anúncios e destaques</h3>
+       <h3>Anúncios e notícias contratadas</h3>
+       <h4 className="newspaper-commission-heading">Notícias contratadas pelas Casas ({props.pendingCommissions.length} pendente(s))</h4>
+       <p>As Casas pagam 1 de Riqueza, escrevem o texto e enviam a imagem. Insira na edição, edite o texto na folha e publique: ao publicar, a notícia sai das pendências.</p>
+       <CommissionInbox commissions={props.pendingCommissions} houseNames={props.houseNames}
+        edition={current} busy={busy}
+        onInsert={commission=>{setSection('capa');setFullPreview(false);props.onInsertCommission(commission);}}
+        onShow={commission=>{setSection('capa');setFullPreview(false);props.onShowCommission(commission);}}
+        onReject={props.onRejectCommission}/>
+       <h4 className="newspaper-commission-heading">Avisos e destaques</h4>
        <p>Insira comunicados e anúncios diretamente no jornal.</p>
        <button type="button" className="folha-text-action" onClick={()=>insert('notice',6)}>
         <Plus size={16}/> Inserir anúncio na capa</button>
@@ -269,6 +307,16 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
          onClick={()=>browseEdition(e)}><span>Nº {e.edition_no} · {formatDate(e.campaign_date)}</span>
          <strong>{e.title}</strong><small>{newspaperStatus(e.state)}</small></button>)}</div>}
        {!props.loading&&history.length===0&&<p className="folha-empty-copy">O arquivo ainda não possui edições.</p>}
+       {current&&<div className="folha-revisions">
+        <h4 className="newspaper-commission-heading">Histórico de revisões · Nº {current.edition_no}</h4>
+        <p>Cada salvamento guarda a versão anterior. Restaure uma delas na tela e depois salve ou descarte.</p>
+        {props.revisions.length===0?<p className="folha-empty-copy">Ainda não há versões anteriores desta edição.</p>:
+         <ul className="folha-revision-list">{props.revisions.map(r=><li key={r.id}>
+          <span>Versão {r.previous_version} · {new Date(r.changed_at).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</span>
+          <small>{(r.snapshot.blocks?.length??0)} elemento(s)</small>
+          <button type="button" disabled={busy||current.state==='published'||current.state==='archived'}
+           onClick={()=>props.onRestoreRevision(r)}>Restaurar</button></li>)}</ul>}
+       </div>}
       </section>}
 
       {section==='alcance'&&<section className="folha-section-content">
@@ -310,11 +358,19 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
        <p>Clique para inserir ou arraste um elemento para a folha. Escreva diretamente nos textos; puxe ↘ para redimensionar.</p>
        <div className="folha-element-list">
         <button type="button" draggable onDragStart={e=>toolboxDrag(e,'headline')} onClick={()=>insert('headline')}><span>☷</span> Título</button>
-        <button type="button" onClick={()=>{setSection('configuracoes');props.onEdit();}}><span>Tᵗ</span> Subtítulo</button>
+        <button type="button" draggable onDragStart={e=>toolboxDrag(e,'subtitle')} onClick={()=>insert('subtitle',12)}><span>Tᵗ</span> Subtítulo</button>
         <button type="button" draggable onDragStart={e=>toolboxDrag(e,'image')} onClick={()=>insert('image')}><ImagePlus size={17}/> Imagem</button>
         <button type="button" draggable onDragStart={e=>toolboxDrag(e,'article')} onClick={()=>insert('article',4)}><Columns3 size={17}/> Coluna</button>
         <button type="button" draggable onDragStart={e=>toolboxDrag(e,'quote')} onClick={()=>insert('quote')}><Quote size={17}/> Citação</button>
         <button type="button" draggable onDragStart={e=>toolboxDrag(e,'notice')} onClick={()=>insert('notice',6)}><TriangleAlert size={17}/> Aviso / Destaque</button>
+       </div>
+       <div className="folha-engravings">
+        <strong>Acervo de gravuras do Reino</strong>
+        <small>{selectedBlock?.type==='image'&&editing?'Aplica na imagem selecionada.':'Insere uma imagem nova na folha.'}</small>
+        <div className="folha-engraving-grid">{NEWSPAPER_ENGRAVINGS.map(e=>
+         <button type="button" key={e.src} aria-label={'Usar gravura: '+e.label} title={e.label}
+          onClick={()=>{setSection('capa');setFullPreview(false);props.onUseEngraving(e.src,e.label);}}>
+          <img src={e.src} alt="" loading="lazy"/><span>{e.label}</span></button>)}</div>
        </div>
        {selectedBlock&&editing&&<div className="folha-selected-editor">
         <div className="folha-selected-heading"><strong>Editar elemento</strong>
@@ -360,6 +416,11 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
           onChange={e=>props.onPatchBlock(selectedBlock.id,{icon:e.target.value})}>
           {['⚜','📜','🏪','⚔','⚠','👑'].map(icon=><option key={icon} value={icon}>{icon}</option>)}
          </select></label>}
+        <div className="newspaper-width-presets" role="group" aria-label="Larguras prontas">
+         {NEWSPAPER_WIDTH_PRESETS.map(w=><button type="button" key={w.span}
+          aria-pressed={selectedBlock.span===w.span}
+          onClick={()=>props.onPatchBlock(selectedBlock.id,{span:w.span})}>{w.label}</button>)}
+        </div>
         <label>Largura ({selectedBlock.span}/12)
          <input type="range" min="3" max="12" value={selectedBlock.span}
           onChange={e=>props.onPatchBlock(selectedBlock.id,{span:Number(e.target.value)})}/></label>
@@ -388,7 +449,10 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       {current&&<div className="folha-minor-actions">
        <button type="button" onClick={()=>window.print()}><Printer size={15}/> Imprimir / Salvar PDF</button>
        {hasUnsavedChanges&&<button type="button" disabled={busy} onClick={()=>props.onSave()}><Save size={15}/> Salvar</button>}
-       {current.state!=='cancelled'&&<button type="button" disabled={busy}
+       {props.dirty&&<button type="button" disabled={busy} onClick={props.onDiscard}>Descartar alterações</button>}
+       {current.state==='draft'&&<button type="button" disabled={busy}
+        onClick={props.onDeleteDraft}><Trash2 size={15}/> Excluir rascunho</button>}
+       {current.state!=='cancelled'&&current.state!=='draft'&&<button type="button" disabled={busy}
         onClick={props.onCancel}>Cancelar envio</button>}
        {current.state==='cancelled'&&<button type="button" disabled={busy}
         onClick={()=>{props.onPatch({state:'draft'});props.onEdit();}}>Reabrir rascunho</button>}

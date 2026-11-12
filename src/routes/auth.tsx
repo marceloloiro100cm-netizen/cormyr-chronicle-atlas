@@ -76,7 +76,7 @@ function Auth() {
      <label>Perfil de acesso
       <select value={profile} onChange={e=>{setProfile(e.target.value as typeof profile);setHouse('');}}>
        <option value="jogador">Jogador · Casa nobre</option>
-       <option value="editor">Leonardo · A Folha Sem Selo</option>
+       <option value="editor">A Folha Sem Selo</option>
        <option value="narrador">Narrador · Gerenciamento total</option>
       </select>
      </label>
