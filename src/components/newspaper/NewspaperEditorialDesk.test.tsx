@@ -232,6 +232,7 @@ describe('Redação A Folha Sem Selo',()=>{
   expect(screen.getAllByRole('button',{name:'Usar este modelo'})).toHaveLength(7);
   fireEvent.click(screen.getAllByRole('button',{name:'Usar este modelo'})[0]!);
   expect(p.onUseStoryModel).toHaveBeenCalledWith(expect.objectContaining({id:'builtin-corte'}));
+  fireEvent.click(screen.getByRole('button',{name:'Matérias'}));
   fireEvent.click(screen.getByRole('button',{name:'Duplicar Entrevista'}));
   const name=screen.getByLabelText('Nome do modelo') as HTMLInputElement;
   expect(name.value).toBe('Cópia de Entrevista');
