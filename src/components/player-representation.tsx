@@ -21,7 +21,8 @@ export function PlayerRepresentation({onReturn,onHouseTheme}:{onReturn:()=>void;
  async function read(){const r=await supabase.rpc('campaign_representation_action',{p_action:'read',p_args:{}});if(r.error){setMessage(r.error.message);return;}setPanel(r.data as unknown as Panel);}
  useEffect(()=>{read();},[]);
  useEffect(()=>{
-  const selected=panel?.houses.find(h=>h.id===(representedHouse||panel.houses[0]?.id));
+  const houses=panel?.houses??[];
+  const selected=houses.find(h=>h.id===(representedHouse||houses[0]?.id));
   onHouseTheme?.(selected?heraldicHouseKey(selected.name):null);
  },[panel,representedHouse,onHouseTheme]);
  async function action(name:string,args:Json,campaignDate?:string){setBusy(true);try{const r=await (campaignDate?datedMail('representation',{p_action:name,p_args:args},campaignDate):supabase.rpc('campaign_representation_action',{p_action:name,p_args:args}));if(r.error)throw r.error;setMessage('Ação administrativa registrada.');await read();}catch(error){setMessage(error instanceof Error?error.message:'Não foi possível executar.');}finally{setBusy(false);}}
