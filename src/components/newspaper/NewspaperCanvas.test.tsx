@@ -75,4 +75,28 @@ describe('Jornal: editor visual integrado ao banco',()=>{
   render(<NewspaperCanvas edition={edition} compactMasthead editing/>);
   expect(screen.queryByText(/Leitura: cerca de/)).toBeNull();
  });
+ it('bloco fixo mostra o cadeado e perde alça, setas e redimensionamento; o texto segue editável',()=>{
+  const fixed:NewspaperEdition={...edition,blocks:edition.blocks.map(b=>b.id==='text'?{...b,pinned:true}:b)};
+  render(<NewspaperCanvas edition={fixed} editing onChangeBlock={vi.fn()} onMoveBlock={vi.fn()} onResize={vi.fn()}/>);
+  const block=screen.getByRole('group',{name:'Editar bloco article'});
+  expect(block).toHaveClass('newspaper-story-pinned');
+  expect(screen.getByRole('button',{name:'Destravar bloco fixo'})).toBeInTheDocument();
+  expect(block.querySelector('.newspaper-resize-handle')).toBeNull();
+  expect(block.querySelector('.newspaper-edge-handle')).toBeNull();
+  expect(block.querySelector('.newspaper-drag-handle')).toBeNull();
+  expect(block.querySelector('.newspaper-move-buttons')).toBeNull();
+  expect(screen.getByRole('heading',{level:3,name:'Editar título da reportagem'})).toHaveAttribute('contenteditable','true');
+ });
+ it('o cadeado alterna a fixação e a lateral redimensiona só a largura, a partir dos blocos do início do arraste',()=>{
+  const change=vi.fn(),resize=vi.fn();
+  render(<NewspaperCanvas edition={edition} editing onChangeBlock={change} onResize={resize}/>);
+  fireEvent.click(screen.getAllByRole('button',{name:'Fixar bloco'})[1]!);
+  expect(change).toHaveBeenCalledWith('text',{pinned:true});
+  expect(screen.getAllByRole('button',{name:'Arrastar a lateral para mudar a largura do bloco'}).length).toBe(3);
+ });
+ it('letra capitular só marca o primeiro parágrafo da matéria que a pediu',()=>{
+  const cap:NewspaperEdition={...edition,blocks:edition.blocks.map(b=>b.id==='text'?{...b,dropCap:true}:b)};
+  const {container}=render(<NewspaperCanvas edition={cap}/>);
+  expect(container.querySelectorAll('.newspaper-dropcap')).toHaveLength(1);
+ });
 });

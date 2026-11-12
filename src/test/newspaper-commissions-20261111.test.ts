@@ -217,3 +217,33 @@ describe('Melhorias do Jornal: acervo editável, agendamento, atalhos e recursos
   expect(css.split('\n')[0]).not.toContain('UnifrakturMaguntia');
  });
 });
+
+describe('Relatório de revisão: o que foi aceito e o que ficou de fora',()=>{
+ const canvas=read('src/components/newspaper/NewspaperCanvas.tsx');
+ const css=read('src/components/newspaper/newspaper.css');
+ const hub=read('src/components/newspaper/NewspaperHub.tsx');
+ it('bloco fixo é um botão visível, não um menu de botão direito (que quebra a correção ortográfica e o toque)',()=>{
+  expect(canvas).toContain('newspaper-lock-button');
+  expect(canvas).not.toContain('onContextMenu');
+  expect(hub).toContain('movePreservingPinned');
+  expect(hub).toContain('reorderPreservingPinned');
+  expect(hub).toContain('Bloco fixo: destrave o cadeado antes de remover.');
+ });
+ it('o refluxo vale só para o arraste; presets e controle numérico continuam livres',()=>{
+  expect(hub).toContain('resizeWithReflow(source,id,patch)');
+  expect(canvas).toContain('base:edition.blocks');
+ });
+ it('as colunas da fileira têm a mesma altura e a letra capitular usa a fonte hospedada',()=>{
+  expect(css).toMatch(/\.newspaper-grid\{[^}]*align-items:stretch/);
+  expect(css).toContain('.newspaper-dropcap::first-letter');
+ });
+ it('a exportação da folha segue pelo recurso de impressão do navegador, sem biblioteca nova de captura',()=>{
+  const pkg=read('package.json');
+  for(const lib of ['pdfme','html2canvas','html2pdf'])expect(pkg).not.toContain(lib);
+  expect(read('src/components/newspaper/NewspaperEditorialDesk.tsx')).toContain('window.print()');
+ });
+ it('a auditoria não grava nada: só compara o pedido (imutável) com a folha',()=>{
+  const audit=read('src/lib/newspaper/audit.ts');
+  expect(audit).not.toMatch(/supabase|\.rpc\(|\.from\(/);
+ });
+});

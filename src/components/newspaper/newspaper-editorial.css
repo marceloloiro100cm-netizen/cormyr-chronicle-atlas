@@ -496,3 +496,17 @@
 .folha-schedule-actions button{padding:6px 10px;border:1px solid #b38b58;border-radius:6px;background:#fff6dc;
  color:#3d1f35;font:600 .78rem system-ui,sans-serif;cursor:pointer}
 .folha-engraving-origin{color:#77563a;font-style:italic}
+
+/* ---- Auditoria das notícias contratadas ---- */
+.folha-audit-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.folha-audit-list details{border:1px solid #c9a96d;border-radius:8px;background:#fff6dc}
+.folha-audit-list summary{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:9px 12px;cursor:pointer}
+.folha-audit-list summary small{flex-basis:100%;color:#6d4f33}
+.folha-audit-badge{padding:2px 9px;border-radius:999px;font:700 .72rem system-ui,sans-serif;background:#e8d6ab;color:#3d1f35}
+.folha-audit-integral{background:#cfe3c2}.folha-audit-edited{background:#f1d28d}
+.folha-audit-rejected{background:#e7bdb5}.folha-audit-missing,.folha-audit-no-edition{background:#ddd}
+.folha-audit-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:0 12px 12px}
+.folha-audit-compare h5{margin:0 0 4px;font:700 .8rem system-ui,sans-serif;text-transform:uppercase;color:#6d4f33}
+.folha-audit-compare p{margin:0 0 6px;white-space:pre-wrap;font-size:.86rem}
+.folha-audit-summary{font:600 .8rem system-ui,sans-serif;color:#6d4f33}
+@media(max-width:700px){.folha-audit-compare{grid-template-columns:1fr}}

@@ -21,6 +21,7 @@ import {useNewspaperShortcuts} from './useNewspaperShortcuts';
 import {NewspaperCanvas} from './NewspaperCanvas';
 import {CommissionInbox} from './NewspaperCommissions';
 import {NewspaperCalendar} from './NewspaperCalendar';
+import {NewspaperAudit} from './NewspaperAudit';
 import {NewspaperStaff} from './NewspaperStaff';
 import {NewspaperStoryModels} from './NewspaperStoryModels';
 import {NewspaperEngravings,StoredEngravingImage} from './NewspaperEngravings';
@@ -54,6 +55,8 @@ export interface NewspaperEditorialProps{
  onSaveSettings:(input:NewspaperSettings)=>Promise<boolean>;
  /** Notícias contratadas pelas Casas, ainda não publicadas. */
  pendingCommissions:NewspaperCommission[];
+ /** Todos os pedidos (inclusive publicados e recusados) para a auditoria. */
+ commissions:NewspaperCommission[];
  houseNames:Map<string,string>;
  onInsertCommission:(commission:NewspaperCommission)=>void;
  onShowCommission:(commission:NewspaperCommission)=>void;
@@ -107,7 +110,7 @@ export interface NewspaperEditorialProps{
  onDuplicateBlock:(id:string)=>void;
  onReorderBlock:(fromId:string,toId:string)=>void;
  onInsertBefore:(type:NewspaperBlockType,beforeId:string|null)=>void;
- onResizeBlock:(id:string,patch:Pick<NewspaperBlock,'span'|'height'>)=>void;
+ onResizeBlock:(id:string,patch:{span?:number;height?:number},base:readonly NewspaperBlock[])=>void;
  onUpload:(file:File)=>void;
  onCancel:()=>void;
  onSignout:()=>void;
@@ -379,6 +382,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
           aria-label={`Excluir edição nº ${e.edition_no}`} title="Excluir edição"
           onClick={()=>props.onDeleteEdition(e)}><Trash2 size={18}/></button></div>)}</div>}
        {!props.loading&&history.length===0&&<p className="folha-empty-copy">O arquivo ainda não possui edições.</p>}
+       <NewspaperAudit commissions={props.commissions} editions={history} houseNames={props.houseNames}/>
        {current&&<div className="folha-revisions">
         <h4 className="newspaper-commission-heading">Histórico de revisões · Nº {current.edition_no}</h4>
         <p>Cada salvamento guarda a versão anterior. Restaure uma delas na tela e depois salve ou descarte.</p>
@@ -463,13 +467,17 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         <div className="folha-selected-heading"><strong>Editar elemento</strong>
          <div><button title="Duplicar" aria-label="Duplicar bloco" type="button"
           onClick={()=>props.onDuplicateBlock(selectedBlock.id)}>⧉</button>
-         <button title="Subir" aria-label="Mover bloco para cima" type="button"
+         <button title="Subir" aria-label="Mover bloco para cima" type="button" disabled={selectedBlock.pinned}
           onClick={()=>props.onMoveBlock(selectedBlock.id,-1)}><ArrowUp size={15}/></button>
-         <button title="Descer" aria-label="Mover bloco para baixo" type="button"
+         <button title="Descer" aria-label="Mover bloco para baixo" type="button" disabled={selectedBlock.pinned}
           onClick={()=>props.onMoveBlock(selectedBlock.id,1)}><ArrowDown size={15}/></button>
-         <button title="Remover" aria-label="Remover bloco" type="button"
+         <button title={selectedBlock.pinned?'Bloco fixo: destrave para remover':'Remover'} aria-label="Remover bloco" type="button"
+          disabled={selectedBlock.pinned}
           onClick={()=>props.onRemoveBlock(selectedBlock.id)}><Trash2 size={15}/></button></div>
         </div>
+        <label className="folha-check-label"><input type="checkbox" checked={Boolean(selectedBlock.pinned)}
+         onChange={e=>props.onPatchBlock(selectedBlock.id,{pinned:e.target.checked})}/>
+         Fixar bloco (trava posição e tamanho; o texto continua editável)</label>
         {selectedBlock.type==='image'?<>
          <button type="button" className="folha-text-link" onClick={()=>fileInput.current?.click()}>
           Trocar imagem</button>
@@ -496,6 +504,10 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
           <option value="left">Esquerda</option><option value="center">Centralizado</option>
          </select></label>
         </>}
+        {selectedBlock.type==='article'&&<label className="folha-check-label"><input type="checkbox"
+         checked={Boolean(selectedBlock.dropCap)}
+         onChange={e=>props.onPatchBlock(selectedBlock.id,{dropCap:e.target.checked})}/>
+         Letra capitular (primeira letra grande e gótica)</label>}
         {selectedBlock.type==='article'&&<label>Assinatura do correspondente
          <select value={selectedBlock.byline??''}
           onChange={e=>props.onPatchBlock(selectedBlock.id,{byline:e.target.value})}>
@@ -513,15 +525,15 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         </div>}
         <div className="newspaper-width-presets" role="group" aria-label="Larguras prontas">
          {NEWSPAPER_WIDTH_PRESETS.map(w=><button type="button" key={w.span}
-          aria-pressed={selectedBlock.span===w.span}
+          aria-pressed={selectedBlock.span===w.span} disabled={selectedBlock.pinned}
           onClick={()=>props.onPatchBlock(selectedBlock.id,{span:w.span})}>{w.label}</button>)}
         </div>
         <label>Largura ({selectedBlock.span}/12)
-         <input type="range" min="3" max="12" value={selectedBlock.span}
+         <input type="range" min="3" max="12" value={selectedBlock.span} disabled={selectedBlock.pinned}
           onChange={e=>props.onPatchBlock(selectedBlock.id,{span:Number(e.target.value)})}/></label>
         {selectedBlock.type==='image'&&selectedBlock.autoHeight===false&&<>
          <label>Altura da imagem
-          <input type="range" min="130" max="650" step="10" value={selectedBlock.height}
+          <input type="range" min="130" max="650" step="10" value={selectedBlock.height} disabled={selectedBlock.pinned}
            onChange={e=>props.onPatchBlock(selectedBlock.id,{height:Number(e.target.value)})}/></label>
          <div className="newspaper-width-presets" role="group" aria-label="Enquadramento da imagem">
           <span>Mostrar:</span>

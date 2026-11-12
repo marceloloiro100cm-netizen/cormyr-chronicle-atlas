@@ -19,12 +19,13 @@ import {
 import {
  commissionToBlocks,newspaperIsDirty,pendingCommissions,type NewspaperCommission,
  createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperStatus,
- reorderNewspaperBlocks,duplicateNewspaperBlock,
+ duplicateNewspaperBlock,
  NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,validateNewspaperEdition,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperState,
  DEFAULT_NEWSPAPER_SETTINGS,validateNewspaperSettings,newEditionDate,type NewspaperSettings,
  type NewspaperTemplate,type NewspaperRevision,type NewspaperEngraving,ENGRAVINGS_BUCKET,PAPER_BUCKET,type NewspaperStaffMember,type StoryModel,instantiateStoryModel,
 } from '@/lib/newspaper/model';
+import {movePreservingPinned,reorderPreservingPinned,resizeWithReflow} from '@/lib/newspaper/layout';
 import {
  canRedo,canUndo,emptyHistory,insertBlocksAfter,needsImageCopy,parseClipboardBlocks,recordSnapshot,
  redoHistory,serializeBlocks,snapshotOf,textToArticleBlock,undoHistory,type EditHistory,
@@ -172,14 +173,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
  const modifyBlock=(id:string,patch:Partial<NewspaperBlock>)=>setDraft(old=>old?{
   ...old,blocks:old.blocks.map(b=>b.id===id?{...b,...patch}:b),
  }:old);
+ // Blocos fixos nunca mudam de lugar: os outros passam por cima deles.
  const moveBlock=(id:string,direction:-1|1)=>{
-  setDraft(old=>{
-   if(!old)return old;const blocks=[...old.blocks],index=blocks.findIndex(b=>b.id===id);
-   const next=index+direction;
-   if(index<0||next<0||next>=blocks.length)return old;
-   [blocks[index],blocks[next]]=[blocks[next]!,blocks[index]!];
-   return {...old,blocks};
-  });
+  setDraft(old=>old?{...old,blocks:movePreservingPinned(old.blocks,id,direction)}:old);
  };
  const addBlock=(type:NewspaperBlockType)=>{
   if(!draft)return;
@@ -294,7 +290,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
  };
  const reorderEditorialBlock=(fromId:string,toId:string)=>{
   if(!current)return;
-  modify({blocks:reorderNewspaperBlocks(current.blocks,fromId,toId)});
+  modify({blocks:reorderPreservingPinned(current.blocks,fromId,toId)});
   setBlockId(fromId);setEditing(true);
  };
  const insertEditorialBefore=(type:NewspaperBlockType,beforeId:string|null)=>{
@@ -314,8 +310,19 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
   const next=[...current.blocks];next.splice(index+1,0,block);
   modify({blocks:next});setBlockId(block.id);setEditing(true);
  };
+ /** Largura e altura com refluxo: a fileira continua fechada em 12 colunas e blocos fixos não cedem espaço. */
+ const resizeBlock=(id:string,patch:{span?:number;height?:number},base?:readonly NewspaperBlock[])=>{
+  const source=base??current?.blocks;
+  if(!source)return;
+  let next=resizeWithReflow(source,id,patch);
+  // Puxar a altura de uma foto desliga a altura automática; só a largura não mexe nela.
+  if(patch.height!==undefined&&source.some(b=>b.id===id&&b.type==='image'))
+   next=next.map(b=>b.id===id?{...b,autoHeight:false}:b);
+  modify({blocks:next});setEditing(true);
+ };
  const removeEditorialBlock=(id:string)=>{
   if(!current)return;
+  if(current.blocks.some(b=>b.id===id&&b.pinned)){setError('Bloco fixo: destrave o cadeado antes de remover.');return;}
   modify({blocks:current.blocks.filter(b=>b.id!==id)});
   setBlockId(null);setEditing(true);
  };
@@ -610,6 +617,7 @@ const useStoryModel=async(model:StoryModel)=>{
   return text;
  };
  const cutBlock=(id:string):string|null=>{
+  if(current?.blocks.some(b=>b.id===id&&b.pinned)){setError('Bloco fixo: destrave o cadeado antes de recortar. Copiar continua liberado.');return null;}
   const text=copyBlock(id);
   if(text===null)return null;
   removeEditorialBlock(id);
@@ -692,6 +700,7 @@ const useStoryModel=async(model:StoryModel)=>{
   engravingsLoading={engravingsQuery.isPending} onRestoreEngravings={()=>{void restoreEngravings();}}
   staff={staff} onSaveStaff={saveStaff} onDeleteStaff={member=>{void removeStaff(member);}}
   onWriteAboutDate={writeAboutDate}
+  commissions={allCommissions}
   revisions={revisionsQuery.data??[]} onRestoreRevision={restoreRevision}
   canUndo={canUndo(history_)} canRedo={canRedo(history_)} canPasteBlock={blockClip.current!==''}
   onUndo={undo} onRedo={redo} onCopyBlock={copyBlock} onCutBlock={cutBlock}
@@ -709,8 +718,7 @@ const useStoryModel=async(model:StoryModel)=>{
   onDuplicateBlock={duplicateEditorialBlock}
   onReorderBlock={reorderEditorialBlock}
   onInsertBefore={insertEditorialBefore}
-  onResizeBlock={(id,patch)=>{const isImage=current?.blocks.some(b=>b.id===id&&b.type==='image');
-   editBlock(id,isImage?{...patch,autoHeight:false}:patch);}}
+  onResizeBlock={resizeBlock}
   onUpload={file=>{void quickUpload(file);}}
   onCancel={()=>{void save('cancelled');}}
   onSignout={()=>onSignout?.()}
@@ -826,7 +834,7 @@ const useStoryModel=async(model:StoryModel)=>{
            onClick={()=>moveBlock(chosenBlock.id,1)}><ArrowDown size={15}/></button>
           <button type="button" title="Duplicar" aria-label="Duplicar bloco" onClick={()=>duplicateEditorialBlock(chosenBlock.id)}>⧉</button>
           <button type="button" title="Remover" aria-label="Remover bloco"
-           onClick={()=>{modify({blocks:displayEdition.blocks.filter(b=>b.id!==chosenBlock.id)});setBlockId(null);}}><Trash2 size={15}/></button>
+           onClick={()=>removeEditorialBlock(chosenBlock.id)}><Trash2 size={15}/></button>
          </div>
         </header>
         {chosenBlock.type!=='image'&&<label>Conteúdo
@@ -888,7 +896,7 @@ const useStoryModel=async(model:StoryModel)=>{
       <div className="newspaper-preview">
        <NewspaperCanvas compactMasthead edition={displayEdition} editing={editing&&editor}
         selectedId={blockId} onSelect={setBlockId}
-        onResize={(id,size)=>{modifyBlock(id,size);setEditing(true);}}
+        onResize={resizeBlock}
         onChangeBlock={editBlock} onReorderBlock={reorderEditorialBlock}
         onInsertBlock={insertEditorialBefore}/>
       </div>

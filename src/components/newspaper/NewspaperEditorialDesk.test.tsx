@@ -26,7 +26,7 @@ function fixture():NewspaperEditorialProps{
   hubDate:'1522-01-01',
   settings:{title:'A Folha Sem Selo',subtitle:'O jornal independente de Cormyr',template:'classico',font_style:'classico'},
   onSaveSettings:vi.fn(async()=>true),
-  pendingCommissions:[],houseNames:new Map(),
+  pendingCommissions:[],commissions:[],houseNames:new Map(),
   onInsertCommission:vi.fn(),onShowCommission:vi.fn(),onRejectCommission:vi.fn(),
   storyModels:[],onUseStoryModel:vi.fn(),onSaveStoryModel:vi.fn(async()=>true),onDeleteStoryModel:vi.fn(),onDeleteEdition:vi.fn(),
   engravings:[],onUploadEngraving:vi.fn(async()=>true),onToggleEngraving:vi.fn(),onDeleteEngraving:vi.fn(),onUseStoredEngraving:vi.fn(),
@@ -415,5 +415,38 @@ describe('Melhorias do Jornal (12/11/2026)',()=>{
   expect(p.onOpen).toHaveBeenCalledWith(older);
   fireEvent.click(screen.getByRole('button',{name:'Ver edição seguinte'}));
   expect(p.onOpen).toHaveBeenCalledWith(newer);
+ });
+});
+
+describe('Relatório de revisão: bloco fixo, capitular e auditoria',()=>{
+ it('fixar um bloco trava mover, remover e largura; a letra capitular liga por matéria',()=>{
+  const p=editingFixture();
+  p.current=draftEdition([{id:'b1',type:'article',text:'Título\n\nCorpo do texto',span:6,height:190,pinned:true}]);
+  p.history=[p.current];
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  expect((screen.getByRole('button',{name:'Remover bloco'}) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole('button',{name:'Mover bloco para cima'}) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole('button',{name:'2/3'}) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('checkbox',{name:/Fixar bloco/}));
+  expect(p.onPatchBlock).toHaveBeenCalledWith('b1',{pinned:false});
+  fireEvent.click(screen.getByRole('checkbox',{name:/Letra capitular/}));
+  expect(p.onPatchBlock).toHaveBeenCalledWith('b1',{dropCap:true});
+ });
+ it('a auditoria mostra pedido pago e texto publicado lado a lado',()=>{
+  const p=fixture();
+  const edition=draftEdition([{id:'a',type:'article',text:'Festa na corte\n\nTexto suavizado pelo editor',span:6,height:190,
+   commissionId:'11111111-1111-4111-8111-111111111111'}],{state:'published' as const});
+  p.history=[edition];p.houseNames=new Map([['h1','Casa Crownsilver']]);
+  p.commissions=[{id:'11111111-1111-4111-8111-111111111111',house_id:'h1',requested_by:'u',title:'Festa na corte',
+   body:'Texto original e agressivo',image_path:null,cost_wealth:1,state:'published',request_key:'k',
+   newspaper_id:edition.id,created_at:'2026-11-01T10:00:00Z',published_at:'2026-11-02T10:00:00Z',
+   rejection_note:null,rejected_at:null,seen_at:null}];
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Arquivo'}));
+  expect(screen.getByText('Editado pelo Editor-Chefe')).toBeTruthy();
+  expect(screen.getByText('Texto original e agressivo')).toBeTruthy();
+  expect(screen.getByText(/Texto suavizado pelo editor/)).toBeTruthy();
+  expect(screen.getByText(/1 de Riqueza/)).toBeTruthy();
  });
 });
