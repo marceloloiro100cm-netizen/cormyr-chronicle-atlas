@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { isNarrativeNpc } from "@/lib/house/narrative-npc";
+import { isNarrativeNpc, isArchivedCourtNpc } from "@/lib/house/narrative-npc";
 import { useState } from "react";
 import {useQuery} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
@@ -68,7 +68,7 @@ export function FichaTab({
   const fichaLorde = records.find((r) => isFichaPersonagem(r.title, r.content)&&!parseChronicleSheet(r.content));
   const npcs = records.filter(
     (r) =>
-      r.kind === "character" && !isFichaPersonagem(r.title, r.content) && !portraitPath(r.content),
+      r.kind === "character" && !isArchivedCourtNpc(r) && !isFichaPersonagem(r.title, r.content) && !portraitPath(r.content),
   );
   return (
     <section>
