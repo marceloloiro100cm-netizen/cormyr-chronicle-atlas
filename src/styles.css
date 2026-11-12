@@ -934,3 +934,146 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
  .image-viewer-dialog .image-viewer-dialog__viewport{padding:4px}
  .image-viewer-dialog .image-viewer-dialog__actions{gap:6px}
 }
+
+/* Player-wide house heraldry. Scope strictly to signed-in house workspaces.
+   Narrator, public sign-in, image zoom modal, and editorial workspace stay unchanged. */
+.campaign-theme[data-house-theme]{
+ --house-page-main:#40232b;
+ --house-page-metal:#d5b078;
+ --house-page-lustre:#f5e0a6;
+ --house-page-banner:none;
+ --background:#171315;
+ --foreground:#f3e9dc;
+ --primary:var(--house-page-metal);
+ --primary-foreground:#1a1513;
+ --muted-foreground:#d2c2b2;
+ --card:#261f21;
+ --card-foreground:#f3e9dc;
+ --accent:#35292a;
+ --accent-foreground:#fff3dc;
+ --border:color-mix(in srgb,var(--house-page-metal) 35%,#3b3031);
+ --input:#90775f;
+ --ring:var(--house-page-lustre);
+ --campaign-gold:var(--house-page-metal);
+ --campaign-purple:#191417;
+ --campaign-paper:#261f21;
+ --campaign-light:#35292a;
+ isolation:isolate;
+ position:relative;
+ overflow-x:clip;
+ background:linear-gradient(125deg,#161316 0%,#231a1c 42%,color-mix(in srgb,var(--house-page-main) 24%,#171315) 100%)!important;
+ color:var(--foreground);
+}
+.campaign-theme[data-house-theme="goldfin"]{--house-page-main:#171717;--house-page-metal:#ddb357;--house-page-lustre:#ffe3a2;--house-page-banner:url('/house-flags/player-goldfin.webp')}
+.campaign-theme[data-house-theme="ashkar"]{--house-page-main:#a81e16;--house-page-metal:#efac53;--house-page-lustre:#ffd78f;--house-page-banner:url('/house-flags/player-ashkar.webp')}
+.campaign-theme[data-house-theme="fewmerry"]{--house-page-main:#0a3d90;--house-page-metal:#eabb4f;--house-page-lustre:#ffe59a;--house-page-banner:url('/house-flags/player-fewmerry.webp')}
+.campaign-theme[data-house-theme="grantass"]{--house-page-main:#53050f;--house-page-metal:#e5d0bb;--house-page-lustre:#fff3d9;--house-page-banner:url('/house-flags/player-grantass.webp')}
+.campaign-theme[data-house-theme="harcourt"]{--house-page-main:#bc141c;--house-page-metal:#f2c35c;--house-page-lustre:#ffe7a0;--house-page-banner:url('/house-flags/player-harcourt.webp')}
+.campaign-theme[data-house-theme="everlost"]{--house-page-main:#4b4a48;--house-page-metal:#bb6c73;--house-page-lustre:#f0d7d7;--house-page-banner:url('/house-flags/player-everlost.webp')}
+.campaign-theme[data-house-theme="silversky"]{--house-page-main:#102951;--house-page-metal:#d1d8de;--house-page-lustre:#f0f5fa;--house-page-banner:url('/house-flags/player-silversky.webp')}
+.campaign-theme[data-house-theme="erdenor"]{--house-page-main:#570f1f;--house-page-metal:#d5b37e;--house-page-lustre:#f3dcae;--house-page-banner:url('/house-flags/player-erdenor.webp')}
+.campaign-theme[data-house-theme]::before{
+ content:'';
+ position:absolute;
+ top:115px;right:0;
+ width:min(48vw,640px);height:min(72vw,650px);
+ background:var(--house-page-banner) center / contain no-repeat;
+ opacity:.10;
+ pointer-events:none;
+ z-index:0;
+}
+.campaign-theme[data-house-theme]>.campaign-top,
+.campaign-theme[data-house-theme]>.campaign-main{position:relative;z-index:1}
+.campaign-theme[data-house-theme]>.campaign-top{
+ background:linear-gradient(100deg,#141015,color-mix(in srgb,var(--house-page-main) 37%,#191417));
+ border-bottom:2px solid var(--house-page-metal);
+ color:#f4e9dc;
+}
+.campaign-theme[data-house-theme] .campaign-main{
+ width:100%;
+ max-width:1320px;
+ min-height:calc(100vh - 100px);
+}
+.campaign-theme[data-house-theme] .campaign-heading{
+ padding:16px clamp(14px,2vw,26px);
+ border:1px solid var(--border);
+ border-radius:12px;
+ background:linear-gradient(115deg,#211a1eec,color-mix(in srgb,var(--house-page-main) 23%,#211a1e));
+}
+.campaign-theme[data-house-theme] .campaign-heading h1{
+ color:#f8eddf;
+ text-shadow:0 1px 3px #0007;
+}
+.campaign-theme[data-house-theme] .campaign-eyebrow{color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .campaign-toolbar{
+ padding:16px clamp(12px,1.8vw,22px);
+ margin:18px 0;
+ border:1px solid var(--border);
+ border-radius:10px;
+ background:#231c20e8;
+}
+.campaign-theme[data-house-theme] .campaign-house-identity__name{
+ color:#f6e6cc;
+}
+.campaign-theme[data-house-theme] .campaign-house-identity__crest{
+ padding:4px;
+ background:#130f12;
+ border:1px solid var(--house-page-metal);
+ border-radius:8px;
+}
+.campaign-theme[data-house-theme] .campaign-house-identity__crest img{
+ object-fit:contain;
+ object-position:center;
+}
+.campaign-theme[data-house-theme] .campaign-tabs{
+ padding-bottom:13px;
+ border-color:var(--border);
+}
+.campaign-theme[data-house-theme] .campaign-tabs button{
+ border:1px solid var(--border);
+ min-height:43px;
+}
+.campaign-theme[data-house-theme] .campaign-tabs button[aria-pressed="false"]{
+ background:#241c20;
+ color:#f0e5d8;
+}
+.campaign-theme[data-house-theme] .campaign-tabs button[aria-pressed="true"]{
+ background:var(--house-page-metal);
+ border-color:var(--house-page-metal);
+ color:#1d1514;
+ font-weight:700;
+}
+.campaign-theme[data-house-theme] :is(.campaign-record,.campaign-letter,.ficha-card,.campaign-npc-list>li){
+ border-color:var(--border);
+ background:#292125;
+ color:#f3e8da;
+}
+.campaign-theme[data-house-theme] :is(.campaign-record,.campaign-letter,.ficha-card) h3{
+ color:var(--house-page-lustre);
+}
+.campaign-theme[data-house-theme] .campaign-record .text-muted-foreground{
+ color:#ccbdad;
+}
+.campaign-theme[data-house-theme] :is(.campaign-add,.campaign-collapse-head,.campaign-project){
+ border-color:var(--border);
+}
+.campaign-theme[data-house-theme] :is(input,select,textarea){
+ background:#32282c;
+ color:#fbf1e5;
+ border-color:#9e886e;
+}
+.campaign-theme[data-house-theme] :is(input,textarea)::placeholder{color:#c5b5a6}
+.campaign-theme[data-house-theme] :is(button,a,input,select,textarea,summary):focus-visible{
+ outline:3px solid var(--house-page-lustre);
+ outline-offset:2px;
+}
+.campaign-theme[data-house-theme] .campaign-npc-hub .campaign-npc-name,
+.campaign-theme[data-house-theme] .campaign-npc-hub .campaign-npc-detail{color:#f3e9da}
+.campaign-theme[data-house-theme] .campaign-npc-hub .campaign-npc-photo{background:#181318}
+@media(max-width:650px){
+ .campaign-theme[data-house-theme]::before{width:70vw;height:70vw;top:128px;opacity:.06}
+ .campaign-theme[data-house-theme] .campaign-main{padding:22px 12px 42px}
+ .campaign-theme[data-house-theme] .campaign-heading{padding:12px}
+ .campaign-theme[data-house-theme] .campaign-toolbar{padding:12px;margin:12px 0}
+ .campaign-theme[data-house-theme] .campaign-tabs{gap:6px}
+}
