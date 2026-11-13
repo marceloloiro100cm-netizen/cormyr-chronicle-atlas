@@ -62,7 +62,7 @@ hash_dump() {
   pg_dump -d "$1" "$2" --no-owner --no-acl |
     sed -E \
       -e '/^\\(un)?restrict [[:alnum:]]+$/d' \
-      -e '/^ALTER TABLE (ONLY )?[^;]+ ALTER COLUMN [^;]+ SET \\(pg_attver=[0-9]+\\);$/d' |
+      -e '/^ALTER TABLE (ONLY )?[^;]+ ALTER COLUMN [^;]+ SET \(pg_attver=[0-9]+\);$/d' |
     sha256sum | cut -d ' ' -f 1
 }
 schema_before="$(hash_dump mail_test --schema-only)"
