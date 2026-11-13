@@ -15,6 +15,15 @@ env:
     availability:
       - RUNTIME
 
+# Only these files are needed by the publicly served holding process.
+# Exclude .output/public and legacy Supabase browser bundles from rollout
+# while cloud data/auth permissions are still being migrated.
+outputFiles:
+  serverApp:
+    include:
+      - scripts/apphosting
+      - package.json
+
 scripts:
   buildCommand: npm run build:apphosting
   runCommand: node scripts/apphosting/preview-server.mjs
