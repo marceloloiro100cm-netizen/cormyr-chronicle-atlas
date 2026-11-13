@@ -4,6 +4,7 @@
  * Never log source row content, IDs, email, message text, document paths or hashes.
  */
 import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
@@ -17,7 +18,8 @@ const digest = value=>createHash('sha256').update(value).digest('hex');
 const fail = message => {throw new Error('Private archive verification failed: '+message);};
 
 function equalJson(a,b) {
-  return digest(JSON.stringify(a))===digest(JSON.stringify(b));
+  // Firestore may return object keys in a different order from the source.
+  return isDeepStrictEqual(a,b);
 }
 
 export async function verifyPrivateArchiveInEmulator(plan, db) {
@@ -95,16 +97,12 @@ export async function verifyPrivateArchiveInEmulator(plan, db) {
         let restored;
         try {restored=JSON.parse(bytes.toString('utf8'));}
         catch {fail('large row reconstruction is not valid JSON');}
-        if (!equalJson(restored,expected.chunks.length
-            ? plan.plannedRows.find(r=>r.tableDigest===expected.tableDigest && r.docId===expected.docId)?.payload?.rawValues
-            : undefined)) {
-          // plan's large row contains only metadata: validate against trusted
-          // reconstructed source-row digest by retrieving source raw values
-          // from chunk plan and comparing their exact byte-level representation.
-          const expectedBytes=Buffer.concat(expected.chunks
-            .map(chunk=>Buffer.from(chunk.payload.dataBase64,'base64')));
-          if (!expectedBytes.equals(bytes)) fail('large row mismatch');
+        if (!Array.isArray(restored) ||
+            restored.length!==expectedTable.payload.columns.length ||
+            digest(JSON.stringify(expectedTable.payload.columns.map((column,i)=>[column,restored[i]])))!==expectedHeader.sourceRowSha256) {
+          fail('large row original source digest mismatch');
         }
+
       }
       verifiedRows++;
     }
