@@ -27,7 +27,7 @@ const TABLES=[
 ];
 const STATES=new Set(['draft','published','archived','cancelled']);
 const TEMPLATES=new Set(['classico','guerra','gazeta']);
-const FONTS=new Set(['classico','editorial','condensado','moderno','serifado']);
+const FONTS=new Set(['classico','editorial','condensado','gotica','romana']);
 const PUBLISHED=new Set(['published','archived']);
 const MAX_DOC=850*1024;
 const MAX_BATCH_BYTES=4*1024*1024;
@@ -89,12 +89,14 @@ export function planNewspaperEmulator(tables,snapshotId){
     const state=row.state,template=row.template,font=row.font_style;
     const title=row.title,subtitle=row.subtitle;
     const pdf=optionalText(row.pdf_path);
+    const scheduled=optionalText(row.publish_on);
     if(!editionNo||editionNumbers.has(editionNo)||
        version==null||revision==null||
        !STATES.has(state)||!TEMPLATES.has(template)||!FONTS.has(font)||
        typeof title!=='string'||!title.trim()||title.length>180||
        typeof subtitle!=='string'||subtitle.length>240||
        !dateString(row.campaign_date)||
+       scheduled===undefined||(scheduled!==null&&!dateString(scheduled))||
        !Array.isArray(blocks)||blocks.length>80 ||
        pdf===undefined||(pdf!==null&&(
          pdf.length>300 || !pdf.startsWith(row.id+'/')||!pdf.endsWith('.pdf')
@@ -106,7 +108,7 @@ export function planNewspaperEmulator(tables,snapshotId){
       sourceId:row.id,editionNo,version,publicationRevision:revision,
       campaignDate:row.campaign_date,title,subtitle,template,
       fontStyle:font,state,blocks,pdfPath:pdf,
-      publishedAt:optionalText(row.published_at),
+      publishOn:scheduled,publishedAt:optionalText(row.published_at),
       updatedAt:optionalText(row.updated_at),
       migratedReadOnly:true,
     };
