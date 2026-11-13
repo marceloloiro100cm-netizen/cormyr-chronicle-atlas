@@ -55,10 +55,14 @@ if [[ "$existing" != "0" ]]; then
   exit 2
 fi
 
-# Remove SOMENTE tokens aleatórios de pg_dump (\restrict/\unrestrict).
+# Remove apenas tokens aleatórios do pg_dump e versões internas pg_attver
+# (recriadas no restore; PostgreSQL ignora SET pg_attver). Comparar todo
+# o restante do DDL, dados e relógio sem normalizações adicionais.
 hash_dump() {
   pg_dump -d "$1" "$2" --no-owner --no-acl |
-    sed -E '/^\\(un)?restrict [[:alnum:]]+$/d' |
+    sed -E \
+      -e '/^\\(un)?restrict [[:alnum:]]+$/d' \
+      -e '/^ALTER TABLE (ONLY )?[^;]+ ALTER COLUMN [^;]+ SET \(pg_attver=[0-9]+\);$/d' |
     sha256sum | cut -d ' ' -f 1
 }
 schema_before="$(hash_dump mail_test --schema-only)"
@@ -98,7 +102,17 @@ clock_restored="$(psql -XAtq -v ON_ERROR_STOP=1 -d "$restore_db" \
 if [[ "$schema_before" != "$schema_restored" ||
       "$data_before" != "$data_restored" ||
       "$clock_before" != "$clock_restored" ]]; then
-  echo "BLOQUEADO: schema, dados ou relógio divergiram na restauração." >&2
+  # Only comparisons are published; never reveal fixture rows or private values.
+  [[ "$schema_before" == "$schema_restored" ]] && schema_state=equal || schema_state=diverged
+  [[ "$data_before" == "$data_restored" ]] && data_state=equal || data_state=diverged
+  [[ "$clock_before" == "$clock_restored" ]] && clock_state=equal || clock_state=diverged
+  echo "BLOQUEADO: divergência no restore isolado. schema=$schema_state dados=$data_state relogio=$clock_state" >&2
+  if [[ "$schema_state" == "diverged" ]]; then
+    # Only fixture schema headings; actual SQL bodies/row contents stay in ephemeral temp.
+    pg_dump -d mail_test --schema-only --no-owner --no-acl > "$tmp/source-schema.sql"
+    pg_dump -d "$restore_db" --schema-only --no-owner --no-acl > "$tmp/restore-schema.sql"
+    python3 scripts/temporal-schema-diff.py "$tmp/source-schema.sql" "$tmp/restore-schema.sql" >&2
+  fi
   exit 2
 fi
 
