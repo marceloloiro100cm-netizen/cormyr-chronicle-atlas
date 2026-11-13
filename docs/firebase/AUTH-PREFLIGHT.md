@@ -186,3 +186,27 @@ Também não é permitido renomear automaticamente `provider` ou
 `provider_id`: alias de formato não garante equivalência de credenciais
 ou configuração do provedor. Execute o diagnóstico somente no backup
 privado, confirme o tipo e então aprove explicitamente o mapeamento.
+
+## Namespace Supabase detectado no backup — próximo diagnóstico (13/11)
+
+A identidade não mapeada tem um nome que contém `:`. Isso, por si só,
+não comprova provedor SAML ou OAuth personalizado. O classificador agora
+reconhece **somente os prefixos públicos** abaixo sem imprimir o sufixo:
+
+- `namespaced-sso-saml`: a documentação Supabase atribui `sso:<uuid>`
+  às identidades SAML; migrar o UID não recria o provedor nem o login SSO.
+- `namespaced-custom-oauth-oidc`: identidades de provedores personalizados
+  podem usar `custom:<nome>`; exige integrar o provedor no destino e
+  testar o retorno/autenticação.
+- `namespaced-or-colon`: formato desconhecido; requer avaliação privada
+  antes de qualquer alteração.
+
+Para consultar: atualizar a branch, depois executar
+`node scripts/firebase/diagnose-auth-identities.mjs "$NORMALIZED"`.
+Não imprimir o campo `provider` inteiro nem os identificadores e não forçar
+mapeamento de SSO/SAML para OAuth Google. A lista de 14 usuários permanece
+íntegra e sem importação, com 1 identidade externa sob investigação.
+
+Fontes:
+https://supabase.com/docs/guides/auth/enterprise-sso/auth-sso-saml
+https://supabase.com/docs/guides/auth/custom-oauth-providers
