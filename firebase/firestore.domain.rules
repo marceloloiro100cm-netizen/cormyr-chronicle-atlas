@@ -66,6 +66,24 @@ service cloud.firestore {
       }
     }
 
+    match /migrationTemporalStage/{snapshot} {
+      allow read, write: if false;
+      match /calendar/{calendarId} {
+        // Read-only Harptos projection. Even a narrator cannot change
+        // the canonical clock via the client SDK.
+        allow get: if calendarId == 'current' && (narrator(snapshot) || player(snapshot));
+        allow list, create, update, delete: if false;
+      }
+      match /tables/{tableId}/{document=**} {
+        // Temporal operations and audits may reveal private actions.
+        // Keep all history inaccessible, including to the narrator client.
+        allow read, write: if false;
+      }
+      match /tables/{tableId} {
+        allow read, write: if false;
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
