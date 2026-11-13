@@ -235,6 +235,7 @@ export async function writePrivateArchiveToEmulator(plan, db) {
   const root = db.collection(PRIVATE_COLLECTION).doc(plan.snapshotId);
   let batch = db.batch();
   let pending = 0;
+  let pendingBytes = 0;
   let writes = 0;
   const flush = async () => {
     if (!pending) return;
@@ -242,11 +243,21 @@ export async function writePrivateArchiveToEmulator(plan, db) {
     writes += pending;
     batch = db.batch();
     pending = 0;
+    pendingBytes = 0;
   };
   async function enqueue(ref, payload) {
+    // Firestore commits have a 10 MiB request limit in addition to the
+    // per-document 1 MiB limit. Stay below 4 MiB uncompressed JSON per batch.
+    const docBytes = Buffer.byteLength(JSON.stringify(payload), 'utf8');
+    if (docBytes + 8192 > MAX_DOC_ESTIMATE) {
+      throw new Error('Private archive document exceeds conservative size limit');
+    }
+    if (pending && (pending >= 100 || pendingBytes + docBytes > 4 * 1024 * 1024)) {
+      await flush();
+    }
     batch.set(ref, payload);
     pending++;
-    if (pending >= 200) await flush();
+    pendingBytes += docBytes;
   }
   // Status is "incomplete" until every document commit succeeded.
   await root.set({
