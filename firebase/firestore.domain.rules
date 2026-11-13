@@ -78,6 +78,16 @@ service cloud.firestore {
       }
     }
 
+    match /migrationMailHistoryStage/{snapshot} {
+      // All reply contents, read receipts, drafts, delivery schedules,
+      // revisions and narrator notes remain server-only. Even narrator
+      // clients must use a separately permission-checked backend.
+      allow read, write: if false;
+      match /{document=**} {
+        allow read, write: if false;
+      }
+    }
+
     match /migrationTemporalStage/{snapshot} {
       allow read, write: if false;
       match /calendar/{calendarId} {
