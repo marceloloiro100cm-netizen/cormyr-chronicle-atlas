@@ -19,8 +19,8 @@ missivas jamais devem receber ACL pública no bucket.
 
 ## 1. Uma autorização inicial do proprietário
 
-1. Em <https://console.firebase.google.com/project/cormyr/storage>, confirmar
-   se Storage está provisionado e **copiar o nome real do bucket**.
+1. Em <https://console.firebase.google.com/project/cormyr/storage>, confirmar que Storage está provisionado. Nome confirmado pelo proprietário:
+   `gs://cormyr.firebasestorage.app`.
 2. No Google Cloud IAM, criar uma conta de serviço exclusiva para migração, sem
    chave JSON; conceder apenas os privilégios de objeto necessários no bucket
    de staging (leitura de metadados e criação de objetos). Conceder à conta
@@ -66,7 +66,7 @@ node scripts/firebase/import-drive-storage.mjs \
   --manifest-drive-id 196MdMZ6rSuUTkBmhn2yLq1Mf98El9F9T \
   --drive-folder 1EFO4v06s6P7CQa-R7Jpqe0t1hbETrmER \
   --execute --allow-partial --limit 10 \
-  --project cormyr --destination NOME_EXATO_DO_BUCKET
+  --project cormyr --destination cormyr.firebasestorage.app
 ```
 
 Verificar no console Storage apenas os objetos em
