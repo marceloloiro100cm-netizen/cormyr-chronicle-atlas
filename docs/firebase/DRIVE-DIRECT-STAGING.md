@@ -26,10 +26,13 @@ missivas jamais devem receber ACL pública no bucket.
    de staging (leitura de metadados e criação de objetos). Conceder à conta
    do operador permissão de geração de token nessa conta de serviço.
    Habilitar Drive API e Service Account Credentials API no projeto.
-3. No Drive, compartilhar **como leitor** a pasta-mãe
-   <https://drive.google.com/drive/folders/1u3WveF0_RlfSuUoTtsGs_onTq5EHperF>
-   com o e-mail da conta de serviço, para incluir a pasta `campaign-images`
-   e o arquivo `campaign-images.manifest.json`.
+3. A conta de serviço `cormyr-migration@cormyr.iam.gserviceaccount.com` já foi criada
+   sem chave JSON. Em 12/11, o arquivo `campaign-images.manifest.json` teve leitura
+   concedida e verificada diretamente pelo conector Google Drive.
+   **Pendente:** compartilhar SOMENTE a pasta de imagens
+   <https://drive.google.com/drive/folders/1EFO4v06s6P7CQa-R7Jpqe0t1hbETrmER>
+   com a mesma conta, papel `Leitor`, para incluir suas subpastas.
+   Evitar conceder acesso à pasta-mãe `Site` inteira, que contém outras informações.
 
 Não compartilhar credenciais, arquivos de chave ou access tokens pelo chat.
 
@@ -39,7 +42,7 @@ Com a conta do proprietário, no Cloud Shell do Google Cloud:
 
 ```bash
 gcloud config set project cormyr
-gcloud auth application-default login --impersonate-service-account=EMAIL_DA_CONTA_DE_SERVICO
+gcloud auth application-default login --impersonate-service-account=cormyr-migration@cormyr.iam.gserviceaccount.com
 git clone https://github.com/marceloloiro100cm-netizen/cormyr-chronicle-atlas.git
 cd cormyr-chronicle-atlas
 git fetch origin feat/firebase-storage-staging-import-20261112
