@@ -32,6 +32,9 @@ async function run() {
       {table:'public.house_memberships',columns:['player_id','house_id'],rows:[
         {player_id:'p1',house_id:'h1'},
       ]},
+      {table:'public.campaign_letters',columns:['id','content'],rows:[
+        {id:'large-synthetic',content:'Coração 🐉'.repeat(110000)},
+      ]},
     ];
     const entries=[];
     for(let i=0;i<tables.length;i++) {
@@ -48,37 +51,56 @@ async function run() {
     }));
 
     const plan=await loadPrivateArchivePlan(dir);
-    assert.equal(plan.summary.archivedPublicRows,3);
+    assert.equal(plan.summary.archivedPublicRows,4);
+    assert.equal(plan.summary.chunkedRows,1);
     assert.equal(plan.summary.ignoredNonPublicRows,1);
     const db=getFirestore(app);
     const imported=await main(['--normalized',dir,'--execute-emulator'],{
       db,env:process.env,projectId,silent:true,
     });
-    assert.equal(imported.emulatorWrites,7);
+    assert.equal(imported.emulatorWrites,9+plan.summary.totalChunks);
     const rootRef=db.collection('migrationPrivateSnapshots').doc(plan.snapshotId);
     const status=await rootRef.get();
     assert.equal(status.get('status'),'complete');
     const tableSnapshot=await rootRef.collection('tables').get();
-    assert.equal(tableSnapshot.docs.length,2);
+    assert.equal(tableSnapshot.docs.length,3);
     let totalRows=0;
     for(const table of tableSnapshot.docs){
       const rows=await table.ref.collection('rows').get();
       totalRows+=rows.size;
     }
-    assert.equal(totalRows,3);
+    assert.equal(totalRows,4);
+    // Verify every byte of the oversized row can be reconstructed in Firestore.
+    const large = plan.plannedRows.find(row=>row.payload.chunked);
+    assert.ok(large);
+    const largeRef=rootRef.collection('tables').doc(large.tableDigest)
+      .collection('rows').doc(large.docId);
+    const header=await largeRef.get();
+    assert.equal(header.get('chunked'),true);
+    const chunkSnapshot=await largeRef.collection('chunks').orderBy('index').get();
+    assert.equal(chunkSnapshot.size,plan.summary.totalChunks);
+    const bytes=Buffer.concat(chunkSnapshot.docs.map(doc=>{
+      const part=Buffer.from(doc.get('dataBase64'),'base64');
+      assert.equal(digest(part),doc.get('sha256'));
+      return part;
+    }));
+    assert.equal(digest(bytes),header.get('rawValuesSha256'));
+    assert.deepEqual(JSON.parse(bytes.toString('utf8')),
+      ['large-synthetic','Coração 🐉'.repeat(110000)]);
 
     // Re-run with identical input: all document paths remain stable.
     const replay=await main(['--normalized',dir,'--execute-emulator'],{
       db,env:process.env,projectId,silent:true,
     });
-    assert.equal(replay.archivedPublicRows,3);
+    assert.equal(replay.archivedPublicRows,4);
     const replayTables=await rootRef.collection('tables').get();
     let replayRows=0;
     for(const table of replayTables.docs){
       replayRows+=(await table.ref.collection('rows').get()).size;
     }
-    assert.equal(replayRows,3);
-    console.log('Synthetic Firestore emulator snapshot: 3 public rows, repeat import idempotent, 0 Auth records copied.');
+    assert.equal(replayRows,4);
+    assert.equal((await largeRef.collection('chunks').get()).size,plan.summary.totalChunks);
+    console.log('Synthetic emulator snapshot: 4 public rows, 1 large chunked record, idempotent replay, 0 Auth rows.');
   }finally {
     await deleteApp(app);
     await rm(root,{recursive:true,force:true});

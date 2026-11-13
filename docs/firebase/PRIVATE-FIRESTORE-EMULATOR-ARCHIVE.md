@@ -13,7 +13,7 @@ O script `scripts/firebase/stage-firestore-emulator.mjs`:
 - não importa `auth.*`, `storage.*`, `vault.*` ou outros esquemas, para nunca tratar senhas, identities ou caminhos de arquivos como documentos da aplicação;
 - preserva os valores como strings/null conforme o PostgreSQL COPY, a ordem das colunas, as linhas duplicadas e hashes de cada linha;
 - usa IDs determinísticos por tabela, ID original ou conteúdo (quando chave composta/ausente);
-- bloqueia linhas maiores que a margem conservadora de 850 KiB, IDs duplicados e dados corrompidos antes de gravar qualquer documento;
+- preserva linhas maiores que 850 KiB em documentos-filhos de até 300 KiB de dados brutos, codificados em Base64, com SHA-256 e número de sequência, sem truncar o conteúdo; ainda bloqueia IDs duplicados e dados corrompidos;
 - separa cada snapshot por hash de seu manifesto;
 - marca o snapshot como `incomplete` durante a gravação e `complete` somente após todas as gravações bem-sucedidas;
 - não escreve na nuvem: o modo de execução exige explicitamente `FIRESTORE_EMULATOR_HOST` com loopback e o projeto `demo-cormyr-migration`.
@@ -73,7 +73,7 @@ npx firebase emulators:exec --only firestore \
   "node scripts/firebase/stage-firestore-emulator.mjs --normalized $NORMALIZED --execute-emulator"
 ~~~
 
-**Importante:** uma execução de emulator não é produção nem uma instância hospedada em nuvem. Se o Firebase CLI exigir Java, instalar a versão suportada pelo CLI. Se o emulador retornar erro ou houver linha superdimensionada, **não** forçar a importação. O arquivo exportado dos emuladores contém dados privados: manter fora de GitHub, compartilhamentos ou logs públicos.
+**Importante:** uma execução de emulator não é produção nem uma instância hospedada em nuvem. Se o Firebase CLI exigir Java, instalar a versão suportada pelo CLI. Se o emulador retornar erro ou persistirem questões de integridade, **não** forçar a importação. O arquivo exportado dos emuladores contém dados privados: manter fora de GitHub, compartilhamentos ou logs públicos.
 
 Não executar importação Auth ou Firestore no projeto real `cormyr` com esse script; ele recusa projetos que não são `demo-cormyr-migration`.
 
@@ -105,3 +105,46 @@ Em 13/11, o workflow de teste confirmou:
 Essa verificação usa dados sintéticos, não o backup privado de 12/11.
 Ainda é necessário rodar a auditoria no backup real antes de declarar o
 lote de dados concluído.
+
+## Resultado das auditorias reais em 13/11 — e correção do registro grande
+
+A execução no Cloud Shell, usando o backup privado existente, indicou:
+
+| Verificação | Resultado |
+| --- | ---: |
+| Total de tabelas no manifesto | 148 |
+| Tabelas `public.*` para arquivamento no emulador | 97 |
+| Linhas `public.*` para arquivamento | 3.440 |
+| Tabelas dos demais esquemas, arquivamento bloqueado | 50 |
+| Linhas dos demais esquemas, excluídas deste fluxo | 1.754 |
+| Tabelas sem coluna de ID explícita | 28 |
+| Linhas acima da margem do documento Firestore | 1 (antes da correção) |
+| Vínculos de acesso órfãos ou incoerentes | 0 |
+| Contas Auth sem perfil explícito | 2 (revisar sem criar perfil automaticamente) |
+| Perfis: narrador / editor / jogador | 1 / 1 / 10 |
+| Gravações na nuvem | 0 |
+
+O resultado anterior somava 147 tabelas incluídas ou ignoradas (97 + 50)
+entre as 148 da origem porque **a tabela pública que continha a linha
+superdimensionada foi excluída por completo do plano**, não apenas sua
+linha grande. A versão com fragmentação deve restaurar essa tabela e
+todos os seus registros, portanto o total de linhas públicas poderá
+ser maior que 3.440; ainda não há número real confirmado.
+
+O importador inicialmente bloqueou `emulatorPlanValid: false` porque
+uma linha ultrapassava a margem conservadora de 850 KiB. A versão
+corrigida divide a serialização JSON dos valores dessa linha em bytes UTF-8
+de 300 KiB, preserva SHA-256 por fragmento e do conjunto, e armazena
+metadados de ordem e integridade no documento-pai. Não descarta, reduz,
+transforma ou imprime o valor da linha. O snapshot somente recebe
+`status: complete` após a gravação dos fragmentos.
+
+O mesmo backup deve ser reavaliado após a correção, com saída esperada
+`issues.oversizedRows: 0`, `chunkedRows: 1` e
+`emulatorPlanValid: true`, caso não haja outras anomalias.
+**Não afirmar êxito com o backup real antes dessa execução**.
+
+As duas contas sem perfil explícito não são automaticamente um erro:
+podem representar contas inativas ou especiais; essa lacuna de
+mapeamento deve ser revisada antes da migração definitiva de autorização.
+O modo de importação para emulador não concede acesso a nenhuma delas.
