@@ -21,6 +21,31 @@ const CATEGORIES = new Set([
   'phone', 'saml', 'sso', 'discord', 'gitlab', 'bitbucket',
   'twitch', 'slack', 'spotify', 'linkedin',
 ]);
+// Publicly-known provider labels only. This is diagnostic classification,
+// never an authorization to remap or silently change an OAuth subject.
+const KNOWN_FIREBASE_IDS = new Set([
+  'google.com', 'github.com', 'facebook.com', 'apple.com',
+  'twitter.com', 'microsoft.com', 'yahoo.com',
+]);
+const KNOWN_NON_OAUTH = new Set([
+  'phone', 'saml', 'sso', 'anonymous', 'oidc', 'custom', 'password', 'magiclink',
+]);
+export function classifyProviderFormat(raw) {
+  if (typeof raw !== 'string' || !raw) return 'missing-or-invalid';
+  if (KNOWN_FIREBASE_IDS.has(raw)) return 'firebase-id:' + raw;
+  const normalized = raw.trim().toLowerCase();
+  if (Object.hasOwn(MAPPABLE, normalized)) return 'case-or-space-variant:' + normalized;
+  if (KNOWN_FIREBASE_IDS.has(normalized)) return 'firebase-id-case-or-space-variant';
+  if (KNOWN_NON_OAUTH.has(normalized)) return 'known-non-oauth:' + normalized;
+  if (raw.includes('@')) return 'email-like-or-at-sign';
+  if (raw.includes(':')) return 'namespaced-or-colon';
+  if (raw.includes('/')) return 'path-or-slash';
+  if (raw.includes('.')) return 'dotted-unknown';
+  if (/\\s/.test(raw)) return 'whitespace-unknown';
+  if (!/^[a-z0-9_-]+$/.test(raw)) return 'uppercase-symbol-or-unicode';
+  return 'plain-unknown';
+}
+
 const REASONS = Object.freeze([
   'sourceAccountMissing',
   'providerNotSupported',
@@ -43,6 +68,7 @@ export function diagnoseIdentityMappings(users, identities) {
   const issuesByReason = Object.fromEntries(REASONS.map(key => [key, 0]));
   const unmappedByProviderCategory = {};
   const allExternalByProviderCategory = {};
+  const unmappedByFormat = {};
   let externalIdentities = 0;
   let mappedExternalIdentities = 0;
   let unmappedExternalIdentities = 0;
@@ -51,7 +77,8 @@ export function diagnoseIdentityMappings(users, identities) {
     externalIdentities++;
     const category = categoryOf(identity.provider);
     increment(allExternalByProviderCategory, category);
-    const providerId = MAPPABLE[identity.provider];
+    const providerId = Object.hasOwn(MAPPABLE, identity.provider)
+      ? MAPPABLE[identity.provider] : undefined;
     const ownerId = identity.user_id;
     const externalSubject = identity.provider_id;
     let reason = null;
@@ -70,6 +97,7 @@ export function diagnoseIdentityMappings(users, identities) {
     if (reason) {
       increment(issuesByReason, reason);
       increment(unmappedByProviderCategory, category);
+      increment(unmappedByFormat, classifyProviderFormat(identity.provider));
       unmappedExternalIdentities++;
     } else {
       mappedExternalIdentities++;
@@ -83,6 +111,7 @@ export function diagnoseIdentityMappings(users, identities) {
     issuesByReason,
     allExternalByProviderCategory,
     unmappedByProviderCategory,
+    unmappedByFormat,
     noPersonalDataPrinted: true,
     firebaseWrites: 0,
     readyForImport: false,
