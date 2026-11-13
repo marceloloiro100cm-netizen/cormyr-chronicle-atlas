@@ -56,11 +56,17 @@ async function run(){
       {id:'letterB',sender_user_id:'narrator',sender_player_id:null,recipient_player_id:null,recipient_house_id:'houseB',subject:'Secret B',content:'Content B',created_at:'2026-11-12 19:00:00+00'},
       {id:'letterSent',sender_user_id:'alice',sender_player_id:'playerAlice',recipient_player_id:'playerBob',recipient_house_id:null,subject:'Sent A to B',content:'Content C',created_at:'2026-11-12 20:00:00+00'},
       {id:'letterEditor',sender_user_id:'editor',sender_player_id:'playerEditor',recipient_player_id:null,recipient_house_id:'houseB',subject:'Old editor mail',content:'Editor must not read',created_at:'2026-11-12 21:00:00+00'},
+      {id:'legacyNoRecipient',sender_user_id:'alice',sender_player_id:'playerAlice',recipient_player_id:null,recipient_house_id:null,subject:'Quarantined 1',content:'Opaque text one',created_at:'2026-11-12 22:00:00+00'},
+      {id:'legacyBothRecipients',sender_user_id:'narrator',sender_player_id:null,recipient_player_id:'playerAlice',recipient_house_id:'houseB',subject:'Quarantined 2',content:'Opaque text two',created_at:'2026-11-12 23:00:00+00'},
     ]),
   ];
   const plan=buildTypedDomainPlan(source,snapshot);
   assert.equal(plan.summary.planValid,true);
   assert.equal(plan.summary.accountsWithoutProfile,1);
+  assert.equal(plan.summary.typedCollections.lettersQuarantine,2);
+  assert.equal(plan.summary.typedCollections.letters,4);
+  assert.equal(plan.summary.letterCoverage.source,6);
+  assert.equal(plan.summary.letterCoverage.complete,true);
   const adminApp=initializeApp({projectId},'cormyr-domain-test-admin');
   const adminDb=getFirestore(adminApp);
   const rules=await readFile('firebase/firestore.domain.rules','utf8');
@@ -72,7 +78,7 @@ async function run(){
       plan.docs[type].find(entry=>entry.payload.id===key)?.id);
   try{
     const result=await writeTypedDomainToEmulator(plan,adminDb);
-    assert.equal(result.emulatorWrites,17); // root markers + 3 houses + 3 players + 5 access + 4 letters
+    assert.equal(result.emulatorWrites,19); // root markers + 3 houses + 3 players + 5 access + 4 letters + 2 quarantine
     const alice=env.authenticatedContext('alice').firestore();
     const bob=env.authenticatedContext('bob').firestore();
     const narrator=env.authenticatedContext('narrator').firestore();
@@ -103,6 +109,23 @@ async function run(){
     await assertFails(getDoc(ref(unknown,'letters','letterA')));
     await assertFails(getDoc(ref(anon,'letters','letterA')));
 
+    // A quarantine letter is never authorized, including narrator/admin:
+    // neither a missing recipient nor a double recipient may leak through
+    // the old sender/house rule as if it were an addressed letter.
+    const quarantined=plan.docs.lettersQuarantine.map(entry=>entry.id);
+    assert.equal(quarantined.length,2);
+    const quarantineRef=(db,id)=>doc(db,'migrationDomainStage',snapshot,'lettersQuarantine',id);
+    for(const id of quarantined){
+      for(const ctx of [alice,bob,narrator,editor,unknown,anon]){
+        await assertFails(getDoc(quarantineRef(ctx,id)));
+      }
+      await assertFails(setDoc(quarantineRef(narrator,id),{recipientPlayerId:'playerAlice'}));
+      await assertFails(setDoc(quarantineRef(alice,id),{content:'rewrite'}));
+    }
+    await assertFails(getDocs(collection(narrator,'migrationDomainStage',snapshot,'lettersQuarantine')));
+    await assertFails(getDocs(collection(alice,'migrationDomainStage',snapshot,'lettersQuarantine')));
+    await assertFails(getDocs(collection(editor,'migrationDomainStage',snapshot,'lettersQuarantine')));
+
     // Domain stage is *read only* to every Firebase client, including narrator.
     await assertFails(setDoc(ref(narrator,'letters','letterA'),{content:'forged'}));
     await assertFails(setDoc(ref(editor,'access','editor'),{profile:'narrador',admin:true}));
@@ -120,7 +143,7 @@ async function run(){
     await assertFails(getDoc(ref(alice,'letters','letterA')));
     await assertSucceeds(getDoc(ref(alice,'letters','letterSent')));
 
-    console.log('Typed Firestore emulator: houses/players/access/letters staged; cross-house, editor, unprofiled, role-forgery, writes and revocation denied.');
+    console.log('Typed Firestore emulator: four domain views staged; ambiguous letters quarantined; reader/writer denial, cross-house isolation, role forgery and revocation verified.');
   }finally{
     await env.cleanup();
     await deleteApp(adminApp);
