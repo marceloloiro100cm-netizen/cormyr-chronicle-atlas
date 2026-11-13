@@ -60,7 +60,8 @@ function canRead(letter,actor){
   if(!letter||typeof letter.senderUid!=='string'||
      typeof letter.subject!=='string'||typeof letter.content!=='string'||
      typeof letter.createdAt!=='string'||!ISO.test(letter.createdAt)||
-     typeof letter.deletedAt==='undefined')return false;
+     typeof letter.deletedAt==='undefined'||
+     letter.publicationState!=='delivered')return false;
   const player=typeof letter.recipientPlayerId==='string'&&letter.recipientPlayerId.length>0;
   const house=typeof letter.recipientHouseId==='string'&&letter.recipientHouseId.length>0;
   if(player===house)return false;
