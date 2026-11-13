@@ -70,7 +70,8 @@ export function buildAuthImportPlan(users, identities, sourceAudit) {
 
   for (const identity of identities) {
     if (!identity?.provider || identity.provider === 'email') continue;
-    const providerId = PROVIDERS[identity.provider];
+    const providerId = Object.hasOwn(PROVIDERS, identity.provider)
+      ? PROVIDERS[identity.provider] : undefined;
     const owner = byUid.get(identity.user_id);
     const providerUid = identity.provider_id;
     if (!owner || !providerId || typeof providerUid !== 'string' || !providerUid ||
