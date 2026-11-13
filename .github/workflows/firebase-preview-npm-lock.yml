@@ -1,0 +1,47 @@
+name: Prepare npm lock for Firebase preview (one-time)
+on:
+  push:
+    branches:
+      - deploy/firebase-preview-20261113
+    paths:
+      - .github/workflows/firebase-preview-npm-lock.yml
+  workflow_dispatch:
+
+# This action only updates the dedicated preview branch.
+# No GitHub secrets, service-account credentials or Lovable tokens.
+permissions:
+  contents: write
+
+jobs:
+  generate-npm-lock:
+    if: github.repository == 'marceloloiro100cm-netizen/cormyr-chronicle-atlas' && github.ref == 'refs/heads/deploy/firebase-preview-20261113'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: deploy/firebase-preview-20261113
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate deterministic npm-compatible lockfile
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          test -s package-lock.json
+          node -e "const p=require('./package.json');const lock=require('./package-lock.json'); if(lock.name!==p.name || lock.packages[''].name!==p.name) process.exit(1)"
+      - name: Commit generated lock only to preview branch
+        run: |
+          if git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+            echo "Already tracked, no bootstrap required."
+            exit 0
+          fi
+          git add -- package-lock.json
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(apphosting): add npm lockfile for Firebase buildpack"
+          git push origin HEAD:refs/heads/deploy/firebase-preview-20261113
