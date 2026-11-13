@@ -98,7 +98,11 @@ clock_restored="$(psql -XAtq -v ON_ERROR_STOP=1 -d "$restore_db" \
 if [[ "$schema_before" != "$schema_restored" ||
       "$data_before" != "$data_restored" ||
       "$clock_before" != "$clock_restored" ]]; then
-  echo "BLOQUEADO: schema, dados ou relógio divergiram na restauração." >&2
+  # Only comparisons are published; never reveal fixture rows or private values.
+  [[ "$schema_before" == "$schema_restored" ]] && schema_state=equal || schema_state=diverged
+  [[ "$data_before" == "$data_restored" ]] && data_state=equal || data_state=diverged
+  [[ "$clock_before" == "$clock_restored" ]] && clock_state=equal || clock_state=diverged
+  echo "BLOQUEADO: divergência no restore isolado. schema=$schema_state dados=$data_state relogio=$clock_state" >&2
   exit 2
 fi
 
