@@ -103,6 +103,12 @@ if [[ "$schema_before" != "$schema_restored" ||
   [[ "$data_before" == "$data_restored" ]] && data_state=equal || data_state=diverged
   [[ "$clock_before" == "$clock_restored" ]] && clock_state=equal || clock_state=diverged
   echo "BLOQUEADO: divergência no restore isolado. schema=$schema_state dados=$data_state relogio=$clock_state" >&2
+  if [[ "$schema_state" == "diverged" ]]; then
+    # Only fixture schema headings; actual SQL bodies/row contents stay in ephemeral temp.
+    pg_dump -d mail_test --schema-only --no-owner --no-acl > "$tmp/source-schema.sql"
+    pg_dump -d "$restore_db" --schema-only --no-owner --no-acl > "$tmp/restore-schema.sql"
+    python3 scripts/temporal-schema-diff.py "$tmp/source-schema.sql" "$tmp/restore-schema.sql" >&2
+  fi
   exit 2
 fi
 
