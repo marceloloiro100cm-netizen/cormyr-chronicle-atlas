@@ -144,11 +144,12 @@ async function run(){
     assert.deepEqual(await commands.listReplies({
       idToken:token('alice'),letterId:sent.ids[0],
     }),[]);
-    assert.deepEqual(await commands.listReplies({
+    const ownScheduled=await commands.listReplies({
       idToken:token('bob'),letterId:sent.ids[0],
-    }),[assert.objectContaining({
-      id:pending.id,publicationState:'scheduled',
-    })]);
+    });
+    assert.equal(ownScheduled.length,1);
+    assert.equal(ownScheduled[0].id,pending.id);
+    assert.equal(ownScheduled[0].publicationState,'scheduled');
     await assert.rejects(reply('dave',key(7),sent.ids[0]),MailCommandDenied);
     await assert.rejects(reply('alice',key(7),sent.ids[0]),MailCommandDenied);
     await assert.rejects(reply('charlie',key(7),sent.ids[0],{
