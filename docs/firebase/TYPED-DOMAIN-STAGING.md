@@ -112,3 +112,61 @@ node "$ROOT/scripts/firebase/stage-typed-domain-emulator.mjs" --normalized \
 em um worktree limpo do commit baixado em vez de usar o caminho direto.
 Manter `planValid:false` até resolver ou isolar com segurança as
 referências; não usar `--execute-emulator` enquanto houver bloqueios.
+
+## Lote 1.2 — Preservação das 15 missivas com destinatário indefinido
+
+O diagnóstico final, executado sobre o backup privado, confirmou 15 casos
+**exclusivamente** na categoria `letterRecipientShapeInvalid`. Os demais
+vínculos estão íntegros:
+
+- 116 linhas em `public.campaign_letters`;
+- 101 correspondências com exatamente um destino (Casa ou jogador);
+- 15 com **zero ou dois** campos de destinatário preenchidos;
+- zero problemas de remetente, jogador, Casa, perfil, duplicação ou flags.
+
+A auditoria por categoria anterior **não diferencia** os casos sem destinatário
+dos casos com dois destinatários. O importador agora retorna `recipientShapes`,
+com contagens anônimas `missingBoth` e `bothPresent`, sem revelar nomes,
+IDs, assuntos ou conteúdos.
+
+A coleção `lettersQuarantine` é separada de `letters`. Para cada registro
+nessa coleção, preserva a linha SQL normalizada inteira (`columns` e
+`rawValues`, strings/null, inclusive valores históricos), com ID de
+documento determinístico. Não atribui destinatário nem reescreve conteúdo.
+
+**Acesso à quarentena:** as regras do emulador têm uma cláusula explícita
+`allow read, write: if false`, para todos os usuários, inclusive narrador,
+editor e jogadores. Nenhuma carta em quarentena entra na coleção de missivas
+endereçadas. A futura revisão deverá ser feita offline por administrador
+autorizado, sem abrir uma rota pública de acesso.
+
+A conversão só poderá prosseguir quando:
+- `issues` for integralmente zero;
+- `letterCoverage.complete` for `true`;
+- `letterCoverage.source == letterCoverage.addressed + letterCoverage.quarantined`;
+- todas as tabelas obrigatórias estiverem presentes;
+- documentos couberem nos limites conservadores;
+- `planValid:true` em teste privado.
+
+O fato de `planValid:true` autorizar a cópia **somente ao Firestore Emulator**
+não libera publicação, distribuição dessas cartas ou importação em nuvem.
+`readyForCloudImport:false` permanece, e os dois usuários sem perfil não
+recebem direitos automaticamente.
+
+### Verificação no Cloud Shell
+
+Depois do merge, execute o dry-run sem acesso cloud:
+
+```bash
+ROOT="$HOME/cormyr-chronicle-atlas"
+git -C "$ROOT" fetch origin main
+WORK="/tmp/cormyr-letters-audit-$(date +%s)-$$"
+git -C "$ROOT" worktree add --detach "$WORK" FETCH_HEAD
+node "$WORK/scripts/firebase/stage-typed-domain-emulator.mjs" \
+  --normalized "$ROOT/.firebase-migration/inspecao-12nov-E4pokAhB/normalized"
+```
+
+Resultado esperado de reconciliação: **116 = 101 + 15**. Os valores de
+`recipientShapes` devem somar 15, mas a distribuição exata ainda não é
+conhecida até executar o novo dry-run no backup real. Não enviar conteúdo
+ou IDs das missivas para o GitHub ou para logs públicos.
