@@ -37,6 +37,21 @@ export function buildTypedDomainPlan(tables,snapshotId){
   const rows=name=>byName.get(name)?.rows||[];
   const issues={duplicateIds:0,orphanLinks:0,invalidValues:0,roleConflicts:0,
     editorHouseConflicts:0,oversizedDocuments:0};
+  // Aggregate relationship defects only. Never emit UIDs, player/house IDs,
+  // letter IDs, personal names, correspondence content, or per-row hashes.
+  const orphanLinksByType={
+    adminRoleMissingAuth:0, accessProfileMissingAuth:0,
+    playerMissingAuth:0, rosterHouseNotInSnapshot:0,
+    membershipMissingPlayer:0, membershipMissingHouse:0,
+    membershipPlayerWithoutAuth:0,
+    letterSenderMissingAuth:0, letterRecipientMissingPlayer:0,
+    letterRecipientMissingHouse:0, letterRecipientShapeInvalid:0,
+  };
+  const orphan=(kind)=>{
+    if(!Object.hasOwn(orphanLinksByType,kind))throw Error('Invalid aggregate category');
+    issues.orphanLinks++;
+    orphanLinksByType[kind]++;
+  };
   const seen=new Map();
   const unique=(domain,id)=>{
     if(!safeId(id)){issues.invalidValues++;return false;}
@@ -51,13 +66,13 @@ export function buildTypedDomainPlan(tables,snapshotId){
   const adminIds=new Set();
   for(const a of rows('public.user_roles')){
     if(a.role!=='admin')continue;
-    if(!authIds.has(a.user_id)){issues.orphanLinks++;continue;}
+    if(!authIds.has(a.user_id)){orphan('adminRoleMissingAuth');continue;}
     adminIds.add(a.user_id);
   }
   const profiles=new Map();
   for(const row of rows('public.campaign_access_profiles')){
     if(!unique('profiles',row.user_id))continue;
-    if(!authIds.has(row.user_id)){issues.orphanLinks++;continue;}
+    if(!authIds.has(row.user_id)){orphan('accessProfileMissingAuth');continue;}
     if(!['narrador','editor','jogador'].includes(row.profile)||
        truth(row.active)===null){issues.invalidValues++;continue;}
     profiles.set(row.user_id,{profile:row.profile,active:truth(row.active)});
@@ -96,12 +111,12 @@ export function buildTypedDomainPlan(tables,snapshotId){
       issues.invalidValues++;continue;
     }
     const userId=row.user_id||null;
-    if(userId&&!authIds.has(userId)){issues.orphanLinks++;continue;}
+    if(userId&&!authIds.has(userId)){orphan('playerMissingAuth');continue;}
     if(userId&&playerByUid.has(userId)){issues.duplicateIds++;continue;}
     const rosterHouseId=row.roster_house_id||null;
     if(rosterHouseId&&!houseIds.has(rosterHouseId)){
       // A legacy roster pointer is not permission, but it must resolve.
-      issues.orphanLinks++;
+      orphan('rosterHouseNotInSnapshot');
     }
     const player={id:row.id,userId,name:row.name,active,
       requirePasswordChange,rosterHouseId};
@@ -113,9 +128,9 @@ export function buildTypedDomainPlan(tables,snapshotId){
   for(const row of rows('public.house_memberships')){
     const player=playersById.get(row.player_id);
     const houseId=row.house_id;
-    if(!player||!houseIds.has(houseId)||!player.userId){
-      issues.orphanLinks++;continue;
-    }
+    if(!player){orphan('membershipMissingPlayer');continue;}
+    if(!houseIds.has(houseId)){orphan('membershipMissingHouse');continue;}
+    if(!player.userId){orphan('membershipPlayerWithoutAuth');continue;}
     const canEdit=truth(row.can_edit);
     const attr=row.can_edit_attributes==null?false:truth(row.can_edit_attributes);
     if(canEdit===null||attr===null){issues.invalidValues++;continue;}
@@ -161,9 +176,17 @@ export function buildTypedDomainPlan(tables,snapshotId){
     const senderUid=row.sender_user_id;
     const toPlayer=row.recipient_player_id||null;
     const toHouse=row.recipient_house_id||null;
-    if(!authIds.has(senderUid)||Boolean(toPlayer)===Boolean(toHouse)||
-       (toPlayer&&!playersById.has(toPlayer))||(toHouse&&!houseIds.has(toHouse))){
-      issues.orphanLinks++;continue;
+    if(!authIds.has(senderUid)){
+      orphan('letterSenderMissingAuth');continue;
+    }
+    if(Boolean(toPlayer)===Boolean(toHouse)){
+      orphan('letterRecipientShapeInvalid');continue;
+    }
+    if(toPlayer&&!playersById.has(toPlayer)){
+      orphan('letterRecipientMissingPlayer');continue;
+    }
+    if(toHouse&&!houseIds.has(toHouse)){
+      orphan('letterRecipientMissingHouse');continue;
     }
     const createdAt=isoDate(row.created_at);
     if(!createdAt||typeof row.subject!=='string'||typeof row.content!=='string'){
@@ -192,6 +215,14 @@ export function buildTypedDomainPlan(tables,snapshotId){
     typedCollections:Object.fromEntries(Object.entries(docs).map(([k,v])=>[k,v.length])),
     accountsWithoutProfile,
     missingRequiredTables:missingRequired,
+    sourceRowCounts:{
+      authAccounts:rows('auth.users').length,
+      houses:rows('public.campaign_houses').length,
+      players:rows('public.campaign_players').length,
+      memberships:rows('public.house_memberships').length,
+      letters:rows('public.campaign_letters').length,
+    },
+    orphanLinksByType,
     issues,
     planValid:count===0&&missingRequired.length===0,
     firebaseCloudWrites:0,

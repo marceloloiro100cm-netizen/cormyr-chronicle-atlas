@@ -68,3 +68,47 @@ Esse comando usa o modelo de homologação, não importa contas Auth nem altera 
 6. Realizar reconciliação final com a origem ativa e planejamento de corte/rollback; o site continua operando na origem.
 
 **Não disponibilizar regras de homologação como regras de produção** nem fazer a integração por copiar estes documentos diretamente para coleções públicas.
+
+## Auditoria real de 13/11: 15 referências não resolvidas
+
+O usuário executou o dry-run tipado contra o backup privado já validado
+e obteve **11 Casas**, **11 jogadores**, **14 contas**, **101 missivas
+convertíveis**, **2 contas sem perfil** e **15 vínculos órfãos**.
+A versão original não distinguia o tipo de referência inválida e
+encerrava corretamente com `planValid:false`. Nenhuma gravação cloud.
+
+Foi incluído `orphanLinksByType`, um **diagnóstico por categoria,
+somente agregado**, separado em:
+
+- referências administrativas ou de perfil sem conta no backup;
+- jogador sem conta e referência de Casa do elenco não resolvida;
+- associação sem ficha, Casa ou usuário;
+- remetente de missiva sem conta de Auth;
+- destinatário de missiva sem jogador ou Casa;
+- formato de destinatário inválido.
+
+O relatório também exibe `sourceRowCounts` para detectar eventual
+diferença entre linhas da tabela e linhas convertidas. Ele **não revela
+identificadores, nomes, assuntos, conteúdo de missivas ou hashes por
+registro**. Nenhuma linha é apagada do backup original.
+
+Não presumir que as 15 anomalias são missivas de usuários excluídos,
+nem que os perfis faltantes devam receber acesso. A saída indicará
+qual tratamento seguro é necessário: mapear a identidade original quando
+possível, preservar correspondência histórica em quarentena sem
+conceder permissões, ou diferenciar uma referência de exibição
+não autorizativa de um vínculo de acesso obrigatório.
+
+No Cloud Shell, após integrar a atualização ao GitHub:
+
+```bash
+ROOT="$HOME/cormyr-chronicle-atlas"
+git -C "$ROOT" fetch origin main
+node "$ROOT/scripts/firebase/stage-typed-domain-emulator.mjs" --normalized \
+  "$ROOT/.firebase-migration/inspecao-12nov-E4pokAhB/normalized"
+```
+
+**Atenção:** se o checkout principal estiver desatualizado, executar
+em um worktree limpo do commit baixado em vez de usar o caminho direto.
+Manter `planValid:false` até resolver ou isolar com segurança as
+referências; não usar `--execute-emulator` enquanto houver bloqueios.

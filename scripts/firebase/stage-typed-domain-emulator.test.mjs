@@ -125,3 +125,53 @@ test('incomplete required tables block the complete domain view',()=>{
   assert.equal(plan.summary.planValid,false);
   assert.ok(plan.summary.missingRequiredTables.includes('public.campaign_access_profiles'));
 });
+
+
+test('aggregate 15 dangling historical letter senders without leaking identities',()=>{
+  const tables=syntheticDomainTables();
+  const letters=tables.find(t=>t.table==='public.campaign_letters');
+  for(let i=0;i<15;i++){
+    letters.rows.push({
+      id:'legacy-'+i,
+      sender_user_id:'historical-deleted-uid-'+i,
+      sender_player_id:null,
+      recipient_player_id:null,
+      recipient_house_id:'house-a',
+      subject:'historical private subject '+i,
+      content:'historical private content '+i,
+      created_at:'2026-11-11 10:00:00+00',
+    });
+  }
+  const report=buildTypedDomainPlan(tables,hash).summary;
+  assert.equal(report.planValid,false);
+  assert.equal(report.issues.orphanLinks,15);
+  assert.equal(report.orphanLinksByType.letterSenderMissingAuth,15);
+  assert.equal(report.sourceRowCounts.letters,19);
+  assert.equal(report.typedCollections.letters,4);
+  assert.equal(
+    Object.values(report.orphanLinksByType).reduce((n,x)=>n+x,0),
+    report.issues.orphanLinks
+  );
+  const output=JSON.stringify(report);
+  assert.ok(!output.includes('historical-deleted-uid'));
+  assert.ok(!output.includes('historical private subject'));
+  assert.equal(report.firebaseCloudWrites,0);
+});
+
+test('categorizes missing roster, house, membership and recipient separately',()=>{
+  const a=syntheticDomainTables();
+  a.find(x=>x.table==='public.campaign_players').rows[0].roster_house_id='retired-house';
+  a.find(x=>x.table==='public.house_memberships').rows.push({
+    player_id:'player-a',house_id:'deleted-house',can_edit:'t',
+  });
+  a.find(x=>x.table==='public.campaign_letters').rows[0].recipient_player_id='deleted-player';
+  a.find(x=>x.table==='public.campaign_letters').rows[1].recipient_house_id='deleted-house';
+  const s=buildTypedDomainPlan(a,hash).summary;
+  assert.equal(s.planValid,false);
+  assert.equal(s.orphanLinksByType.rosterHouseNotInSnapshot,1);
+  assert.equal(s.orphanLinksByType.membershipMissingHouse,1);
+  assert.equal(s.orphanLinksByType.letterRecipientMissingPlayer,1);
+  assert.equal(s.orphanLinksByType.letterRecipientMissingHouse,1);
+  assert.equal(s.issues.orphanLinks,4);
+  assert.equal(s.firebaseCloudWrites,0);
+});
