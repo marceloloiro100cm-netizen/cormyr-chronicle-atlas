@@ -33,14 +33,19 @@ service cloud.firestore {
         && scope(snapshot).admin == false;
     }
     function readLetter(snapshot) {
-      return narrator(snapshot) ||
-        (player(snapshot) && (
-          resource.data.senderUid == request.auth.uid ||
-          (resource.data.recipientPlayerId != null &&
-            resource.data.recipientPlayerId == scope(snapshot).playerId) ||
-          (resource.data.recipientHouseId != null &&
-            resource.data.recipientHouseId in scope(snapshot).memberHouseIds)
-        ));
+      // Historical deletes must never become visible to a player merely
+      // because the minimal migration view omitted the deletion flag.
+      return resource.data.keys().hasAll(['deletedAt']) &&
+        ((resource.data.recipientPlayerId != null) !=
+          (resource.data.recipientHouseId != null)) &&
+        (narrator(snapshot) ||
+          (resource.data.deletedAt == null && player(snapshot) && (
+            resource.data.senderUid == request.auth.uid ||
+            (resource.data.recipientPlayerId != null &&
+              resource.data.recipientPlayerId == scope(snapshot).playerId) ||
+            (resource.data.recipientHouseId != null &&
+              resource.data.recipientHouseId in scope(snapshot).memberHouseIds)
+          )));
     }
 
     match /migrationDomainStage/{snapshot} {
