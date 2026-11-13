@@ -59,6 +59,9 @@ test('distinguishes public provider aliases and format differences without echoi
   assert.equal(classifyProviderFormat(' GOOGLE '), 'case-or-space-variant:google');
   assert.equal(classifyProviderFormat('phone'), 'known-non-oauth:phone');
   assert.equal(classifyProviderFormat('auth:private-tenant-id'), 'namespaced-or-colon');
+  assert.equal(classifyProviderFormat('sso:secret-tenant-uuid'), 'namespaced-sso-saml');
+  assert.equal(classifyProviderFormat('custom:confidential-auth-config'), 'namespaced-custom-oauth-oidc');
+  assert.equal(classifyProviderFormat('sso:'), 'namespaced-or-colon');
   assert.equal(classifyProviderFormat('person@example.invalid'), 'email-like-or-at-sign');
   assert.equal(classifyProviderFormat('unlisted.private-domain'), 'dotted-unknown');
   assert.equal(classifyProviderFormat('unknown id'), 'whitespace-unknown');
