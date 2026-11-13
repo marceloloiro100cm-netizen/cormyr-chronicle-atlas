@@ -49,14 +49,16 @@ jobs:
           gcloud auth print-access-token --quiet >/dev/null
           work="$(mktemp -d)"
           trap 'rm -rf "$work"' EXIT
-          if ! gcloud storage ls --recursive               'gs://cormyr-migration-homolog-477785088395/campaign-images/'               >"$work/images.txt" 2>"$work/error.txt"; then
+          if ! gcloud storage ls --recursive \
+              'gs://cormyr-migration-homolog-477785088395/campaign-images/' \
+              >"$work/images.txt" 2>"$work/error.txt"; then
             echo "::error::Reader could not enumerate images in isolated homologation."
             exit 1
           fi
           total="$(grep -c '^gs://' "$work/images.txt" || true)"
           echo "Images visible in private homologation: $total"
-          if [[ "$total" -ne 779 ]]; then
-            echo "::warning::Expected historical inventory 779; verify new source delta before production cutover."
+          if [[ "$total" -ne 986 ]]; then
+            echo "::warning::Current copied inventory baseline is 986, check changes since migration and verify object hashes before cutover."
           fi
           test "$total" -gt 0 || {
             echo "::error::No homologation images copied yet; run owner Cloud Shell transfer first."
