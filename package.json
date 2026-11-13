@@ -11,7 +11,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:apphosting": "CORMYR_BUILD_TARGET=firebase NITRO_PRESET=node_server vite build && node scripts/apphosting/verify-node-output.mjs",
+    "start:apphosting-preview": "node scripts/apphosting/preview-server.mjs"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -108,5 +110,8 @@
     "typescript-eslint": "^8.56.1",
     "vite": "8.1.5",
     "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": "22"
   }
 }

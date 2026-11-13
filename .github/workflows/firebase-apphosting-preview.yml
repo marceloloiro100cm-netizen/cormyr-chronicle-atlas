@@ -1,0 +1,47 @@
+name: Firebase App Hosting preview — Node and lockdown
+on:
+  pull_request:
+    branches:
+      - deploy/firebase-preview-20261113
+    paths:
+      - apphosting.yaml
+      - package.json
+      - vite.config.ts
+      - scripts/apphosting/**
+      - .github/workflows/firebase-apphosting-preview.yml
+  push:
+    branches:
+      - deploy/firebase-preview-20261113
+    paths:
+      - apphosting.yaml
+      - package.json
+      - vite.config.ts
+      - scripts/apphosting/**
+      - .github/workflows/firebase-apphosting-preview.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview-locked-and-node-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate safe preview server
+        run: |
+          node --check scripts/apphosting/preview-server.mjs
+          node --check scripts/apphosting/preview-server.test.mjs
+          node --test scripts/apphosting/preview-server.test.mjs
+      - name: Install repository dependencies
+        run: npm install --no-package-lock
+      - name: Build TanStack Start SSR for Node.js, not Cloudflare
+        run: npm run build:apphosting
+      - name: Check preview lock remains configured
+        run: |
+          node -e "const fs=require('fs');const f=fs.readFileSync('apphosting.yaml','utf8');if(!f.includes('CORMYR_PREVIEW_LOCKED')||!f.includes('preview-server.mjs'))process.exit(1)"
+          node scripts/verify-public-repo.mjs
