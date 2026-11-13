@@ -290,7 +290,10 @@ export function createEmulatorMailCommands({db,auth,snapshotId,env=process.env})
       if(replyToId&&(!ancestor.exists||
          ancestor.data()?.letterId!==letterId||
          ancestor.data()?.publicationState!=='delivered'||
-         ancestor.data()?.deletedAt!==null))deny();
+         ancestor.data()?.deletedAt!==null||
+         (fresh.role!=='narrador'&&
+           ancestor.data()?.authorUid!==fresh.uid&&
+           ancestor.data()?.recipientUid!==fresh.uid)))deny();
       const recipientUid=ancestor?ancestor.data().authorUid:letter.senderUid;
       if(recipientUid===fresh.uid)deny();
       if(fresh.role==='jogador'&&parent.source==='runtime'&&
@@ -299,6 +302,7 @@ export function createEmulatorMailCommands({db,auth,snapshotId,env=process.env})
       const recipient=await t.get(access.doc(recipientUid));
       if(!recipient.exists)deny();
       const recipientScope=scope(recipientUid,recipient.data());
+      if(parent.source==='runtime'&&!canSee(letter,recipientScope))deny();
       if(recipientScope.role==='jogador'&&!canReadImported({
         publicationState:'delivered',deletedAt:null,senderUid:letter.senderUid,
         recipientPlayerId:letter.recipientPlayerId,
