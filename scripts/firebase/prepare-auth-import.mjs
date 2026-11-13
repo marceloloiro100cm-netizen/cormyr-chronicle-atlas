@@ -35,6 +35,9 @@ export function buildAuthImportPlan(users, identities, sourceAudit) {
   let verifiedEmailCount = 0;
   let mappedExternalIdentities = 0;
   let unmappedExternalIdentities = 0;
+  let deferredCustomIdentities = 0;
+  const customOwners = new Set();
+  const seenOAuthSubjects = new Set();
 
   for (const user of users) {
     const uid = user?.id;
@@ -74,12 +77,31 @@ export function buildAuthImportPlan(users, identities, sourceAudit) {
       ? PROVIDERS[identity.provider] : undefined;
     const owner = byUid.get(identity.user_id);
     const providerUid = identity.provider_id;
+    // A Supabase custom OAuth/OIDC namespace is NOT a Firebase providerId.
+    // Preserve the account, defer only its OAuth link, and require a separate
+    // tested sign-in path before any migration writes.
+    if (identity.provider.startsWith('custom:') && identity.provider.length > 7) {
+      if (!owner || typeof providerUid !== 'string' || !providerUid ||
+          providerUid.length > 256) {
+        unmappedExternalIdentities++;
+      } else {
+        deferredCustomIdentities++;
+        customOwners.add(identity.user_id);
+      }
+      continue;
+    }
     if (!owner || !providerId || typeof providerUid !== 'string' || !providerUid ||
         providerUid.length > 256) {
       unmappedExternalIdentities++;
       continue;
     }
     const existing = owner.providerData || [];
+    const externalKey = JSON.stringify([providerId, providerUid]);
+    if (seenOAuthSubjects.has(externalKey)) {
+      unmappedExternalIdentities++;
+      continue;
+    }
+    seenOAuthSubjects.add(externalKey);
     if (existing.some(item => item.providerId === providerId && item.uid === providerUid)) {
       unmappedExternalIdentities++;
       continue;
@@ -88,6 +110,16 @@ export function buildAuthImportPlan(users, identities, sourceAudit) {
     mappedExternalIdentities++;
   }
 
+  let customAccountsWithoutAlternativeSignIn = 0;
+  for (const uid of customOwners) {
+    const account = byUid.get(uid);
+    if (!account?.passwordHash && !account?.providerData?.length) {
+      customAccountsWithoutAlternativeSignIn++;
+    }
+  }
+  if (customAccountsWithoutAlternativeSignIn) {
+    issues.push('A custom-provider account has no independent imported password/OAuth sign-in');
+  }
   if (records.length !== users.length) issues.push('Not every source account has a valid import record');
   if (unmappedExternalIdentities) issues.push('External identity mapping is incomplete or unsupported');
   if (sourceAudit?.unsupportedHashCount || sourceAudit?.duplicateUidCount ||
@@ -95,7 +127,7 @@ export function buildAuthImportPlan(users, identities, sourceAudit) {
       sourceAudit?.invalidUidCount || !sourceAudit?.providersVerified) {
     issues.push('Source Authentication audit did not pass all identifier/provider checks');
   }
-  if (sourceAudit?.externalProviderIdentityCount !== mappedExternalIdentities + unmappedExternalIdentities) {
+  if (sourceAudit?.externalProviderIdentityCount !== mappedExternalIdentities + unmappedExternalIdentities + deferredCustomIdentities) {
     issues.push('External identity count differs from private backup audit');
   }
   return {
@@ -109,6 +141,9 @@ export function buildAuthImportPlan(users, identities, sourceAudit) {
       verifiedEmailCount,
       mappedExternalIdentities,
       unmappedExternalIdentities,
+      deferredCustomIdentities,
+      customAccountsWithoutAlternativeSignIn,
+      deferredCustomIdentityRequiresManualRelink: deferredCustomIdentities > 0,
       issues: [...new Set(issues)],
       dryRunOnly: true,
       readyForLiveImport: false,
@@ -130,7 +165,7 @@ export async function loadPrivateAuthPlan(normalized) {
 }
 
 function parseArgs(argv) {
-  const flags = new Set(['--execute', '--confirm-source-reconciled', '--confirm-provider-signin-configured']);
+  const flags = new Set(['--execute', '--confirm-source-reconciled', '--confirm-provider-signin-configured', '--confirm-custom-identity-deferred']);
   const parsed = {};
   for (let i = 0; i < argv.length; i++) {
     const option = argv[i];
@@ -163,6 +198,7 @@ export async function run(argv, options = {}) {
   }
   if (summary.issues.length || summary.importCandidates !== summary.sourceUsers ||
       !args['--confirm-source-reconciled'] || !args['--confirm-provider-signin-configured'] ||
+      (summary.deferredCustomIdentities > 0 && !args['--confirm-custom-identity-deferred']) ||
       args['--expected-sql-sha256'] !== sourceSqlSha256) {
     throw new Error('Import blocked: source, providers, or explicit operator acknowledgments incomplete');
   }
