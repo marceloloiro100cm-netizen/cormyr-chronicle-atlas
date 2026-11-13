@@ -21,12 +21,7 @@ bash /tmp/cormyr-gcp-setup/scripts/firebase/configure-github-oidc-readonly.sh
 
 O script pode criar e ativar as APIs de IAM, um pool/provedor OIDC e a conta de serviço **sem permissões de dados**. Repetir a configuração reconhece os recursos existentes e recusa uma condição de confiança incompatível. Exige privilégios IAM do proprietário; não solicitar senhas nem JSON privados ao ChatGPT.
 
-A saída exibirá duas variáveis **não secretas**:
-
-- `CORMYR_GCP_WIF_PROVIDER` — caminho do provedor WIF
-- `CORMYR_GCP_READONLY_SA` — e-mail da conta de serviço
-
-Configure em **GitHub → repositório Cormyr → Settings → Secrets and variables → Actions → Variables → New repository variable**. Estas são variáveis, **não** os valores de senha ou de uma chave de serviço.
+**Estado confirmado em 13/11:** o proprietário executou o script no Cloud Shell; o provedor `github-main`, o pool `cormyr-gh-migration` e a conta de serviço `cormyr-gh-reader` foram criados. O workflow já usa os identificadores **não secretos** da conexão, sem precisar configurar variáveis manualmente no GitHub.
 
 Depois de revisar e integrar o PR, abra **Actions → Cormyr Firebase - verify GCP identity (no data access) → Run workflow (branch main)**.
 
