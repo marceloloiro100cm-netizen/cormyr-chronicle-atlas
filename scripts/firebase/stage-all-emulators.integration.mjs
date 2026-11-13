@@ -30,6 +30,8 @@ async function run(){
     assert.equal(result.typedCollections.players,1);
     assert.equal(result.typedCollections.access,2);
     assert.equal(result.temporalHistoryRows,1);
+    assert.equal(result.archivedMailHistoryRows,0);
+    assert.equal(result.deliveredReplies,0);
     const counts=await auth.listUsers(1000);
     assert.equal(counts.users.length,2);
     assert.ok(counts.users.every(u=>!u.customClaims||!Object.keys(u.customClaims).length));
@@ -39,6 +41,9 @@ async function run(){
     assert.equal(status.data().authUsers,2);
     const newspaper=await db.collection('migrationNewspaperStage').doc(HASH).get();
     assert.equal(newspaper.data().status,'complete');
+    const mail=await db.collection('migrationMailHistoryStage').doc(HASH).get();
+    assert.equal(mail.data().status,'complete');
+    assert.equal(mail.data().archiveRows,0);
     await assert.rejects(executeUnifiedEmulator(plan,db,auth,process.env),/already contains/);
     console.log('Unified demo emulators: private archive, domains, Harptos, newspaper and Auth staged; second import refused.');
   }finally{
