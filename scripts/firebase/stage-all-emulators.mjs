@@ -121,6 +121,11 @@ export async function executeUnifiedEmulator(plan,db,auth,env=process.env) {
   // Never reuse a partially staged snapshot or overwrite past evidence.
   const current=await Promise.all(refs.map(ref=>ref.get()));
   if(current.some(doc=>doc.exists))throw Error('Emulator already contains this source snapshot');
+  // Reject an existing Auth destination BEFORE the first Firestore write.
+  // importAuthIntoEmulator checks again immediately before its own write.
+  const authCurrent=await auth.listUsers(1);
+  if(authCurrent.users.length||authCurrent.pageToken)
+    throw Error('Emulator Auth destination already contains accounts');
   const batchRoot=refs[4];
   await batchRoot.set({
     status:'incomplete',scope:'emulator-only',formatVersion:1,
