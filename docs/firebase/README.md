@@ -1,74 +1,98 @@
-# Migração Cormyr para Firebase — lote 1
+# Cormyr Chronicle Atlas — migração para Firebase
 
-Status: preparação implementada, sem migração de dados ou alteração de produção.
-Origem: main em 12/11/2026. Não utilizar tokens ou geração Lovable.
+**Atualizado em 13/11/2026.** Esta documentação acompanha a migração
+sem interromper a origem Lovable/Supabase. Todo desenvolvimento e
+versionamento passam pelo GitHub, **sem gastar tokens Lovable**.
 
-## Evidência do código
+## Estado observado
 
-`source-inventory.json` é reproduzível com `node scripts/firebase-inventory.mjs`.
-Encontrados 89 arquivos SQL, 61 candidatos a tabelas, 144 nomes de funções SQL
-(distintos, sem distinguir overloads) e 104 arquivos de aplicação acoplados.
-São declarações históricas, não objetos comprovadamente ativos no banco.
-O estudo de 21 tabelas/8 RPCs é insuficiente como lista de exportação.
-Inventariar também Hub Temporal, espionagem, calendário, permissões, jornal e batalhas.
-Não versionar conteúdo do banco, usuários, missivas, hashes de senha ou notas GM.
+| Frente | Situação comprovada | O que ainda falta |
+| --- | --- | --- |
+| Backup PostgreSQL | Snapshot privado normalizado com 148 tabelas; 5.209 linhas auditadas historicamente | Comparar com a origem ativa antes do corte |
+| Firestore Emulator: arquivo bruto | 98 tabelas públicas, 3.455 documentos, 1 registro grande em 6 fragmentos; round-trip passou | Converter os demais domínios; não é dado de produção cloud |
+| Modelo tipado inicial | 11 Casas, 11 jogadores, 14 acessos, 101 missivas endereçadas e 15 em quarentena | Backend transacional, regras e integração com o app |
+| Storage de homologação | 986 objetos copiados no bucket privado e leitura restrita GitHub validada | Verificar novos arquivos e hashes na reconciliação final |
+| Firebase Authentication | 14 candidatos de origem (13 BCRYPT, um sem senha); fluxo de importação para emulador implementado e testado com dados sintéticos | Executar contra backup real, verificar login, OAuth/SSO e importar cloud só com segurança |
+| Hub Temporal | Projeção Harptos + histórico privado implementados para emulador, testes específicos aprovados | Rodar com snapshot real; portar operações atômicas e consumidores |
+| Cobertura de módulos | Auditoria agregada de todas as tabelas implementada | Executar sobre snapshot real, expandir módulos |
+| Hospedagem | Backend App Hosting `cormyr-preview` criado, primeiro build falhou; branch de preview corrigida | **Publicação suspensa pelo proprietário**, tratar posteriormente |
 
-## Ferramentas deste lote
+Os testes com Auth/Firestore Emulator **não** são prova de login real
+ou migração para a nuvem. Os dois usuários sem perfil explícito não
+recebem permissões automaticamente. Um vínculo customizado de
+OAuth/OIDC permanece pendente de reconciliação.
 
-- `node scripts/firebase-inventory.mjs`: inventário estático, somente leitura, sem credenciais.
-- `node scripts/firebase-backup-manifest.mjs /caminho/backup`: hashes SHA-256 de todos os arquivos locais, sem modificar originais. Salvar saída FORA da pasta de entrada. Rodar apenas sobre backup imutável; arquivo mudando durante leitura não constitui evidência válida.
-- `node --test scripts/firebase-*.test.mjs`: regressões das ferramentas.
-- `firebase/firebase.json`: configuração isolada dos emuladores, sem projeto real ou deploy.
-- Firestore/Storage negam todo acesso de clientes inicialmente. Não são regras finais; Admin SDK continua sujeito a IAM, não a Security Rules.
+A origem atual continua operando. O projeto Firebase `cormyr` não
+deve ser tratado como uma réplica pronta para os jogadores.
 
-Após instalar Firebase CLI em ambiente autenticado:
-`firebase emulators:start --project demo-cormyr-migration --config firebase/firebase.json`
-Esse comando ainda não foi executado neste lote. Não publicar regras de bloqueio em projeto existente.
+## Artefatos e executáveis atuais
 
-## Correções necessárias ao estudo
+- `docs/firebase/PRIVATE-FIRESTORE-EMULATOR-ARCHIVE.md`: backup bruto
+  preservado no Firestore Emulator.
+- `docs/firebase/TYPED-DOMAIN-STAGING.md`: modelos de Casas, jogadores,
+  missivas e matriz de permissões por Casa.
+- `docs/firebase/AUTH-EMULATOR-MIGRATION.md`: importação de Auth com
+  BCRYPT e OAuth em emulador, sem conexão cloud.
+- `docs/firebase/TEMPORAL-EMULATOR-STAGING.md`: calendário Harptos e
+  histórico temporal privado.
+- `docs/firebase/MIGRATION-COVERAGE.md`: contagens por domínio sem
+  apresentar percentual fictício de funcionalidades prontas.
+- `docs/firebase/STORAGE-SCOPED-ACCESS-HOMOLOGATION.md`: bucket privado
+  das 986 imagens.
+- `firebase/firestore.rules` e `firebase/storage.rules`: **deny all**
+  na configuração de produção; não publicar regras temporárias.
+- `firebase/firestore.domain.rules`: regras estritas de emulador para
+  autorização e leitura de projeções, sem escrita por SDK cliente.
 
-1. Imagens privadas permanecem privadas. Não gerar download tokens permanentes ou URLs públicas para missivas, respostas e registros. Manter referências estáveis e verificar leitura em servidor; somente acervo público pode usar cache público.
-2. Claims não bastam para revogação imediata. Preservar checagem autoritativa de usuário, representação e associação; seleção de Casa não concede acesso.
-3. Usuários: preservar UID e importar hashes apenas depois de verificar algoritmo e disponibilidade no export real. BCRYPT é suportado pelo Firebase, mas preservação de senhas ainda não foi demonstrada neste projeto.
-4. Contagens do PDF são referências antigas. Export atual deve incluir catálogo SQL real, dados, Auth, políticas, triggers, funções, grants e TODOS os binários Storage, inclusive históricos.
-5. Não prometer custo zero. SSR, builds, saída de dados e região precisam de medição e orçamento; alertas de orçamento não bloqueiam gasto.
-6. TanStack Start usa servidor. Candidato de hospedagem: Firebase Hosting + Cloud Run, a validar com build Nitro independente. Upload do diretório estático sozinho não migra o sistema autenticado.
-7. Há dois adaptadores Drive dependentes do proxy Lovable. Acesso direto exige identidade Google com permissão nas pastas; conta de serviço não herda acesso do usuário. Preservar IDs, ETags, leases e outbox.
+## Critérios de aceite para trocar de backend
 
-## Ordem de execução e critérios
+1. **Fonte íntegra:** reconciliação final com PostgreSQL/Storage ativos,
+   sem perder novos registros ou anexos após o snapshot de 12/11.
+2. **Identidades:** UIDs preservados, logins BCRYPT/OAuth/SSO validados,
+   contas especiais explicitamente classificadas, rollback seguro.
+3. **Autorização:** regras por Casa com testes anônimo, membro, outra
+   Casa, narrador e editor. Nenhuma missiva cruzada; editor não envia.
+4. **Modelos e regras:** converter todas as tabelas de aplicação
+   pertinentes e reimplementar operações RPC/SQL transacionais,
+   restrições e validações; conservar históricos e vínculos.
+5. **Jogabilidade:** testar missivas, calendário, construções, avanço do
+   tempo, combate, espionagem, jornal, fichas e efeitos em campanhas.
+6. **Operação cloud:** preparar IAM mínimo, credenciais OIDC, regras,
+   Storage privado e rotinas de backup/recuperação, sem segredos no Git.
+7. **Corte:** ensaio de homologação, plano de congelamento/delta,
+   controle de concorrência, comparação automatizada, rollback e
+   somente então mudança de DNS/hospedagem.
 
-1. Conectar Firebase, identificar projeto homologação e projeto produção, confirmar região e faturamento. Configurar orçamento e CI com identidade federada, sem chaves no repositório.
-2. Obter backup privado atualizado e binários; comparar lista/contagem com origem. Gerar manifesto, verificar hashes e realizar restauração de teste. Não desligar origem nesta etapa.
-3. Implementar build independente de Lovable, runtime Cloud Run e adaptadores Firebase isolados. Testar SSR, arquivo estático e rotas protegidas em homologação.
-4. Migrar Auth e autorização, depois casas/fichas, missivas e mídias, Hub Temporal/espionagem, jornal/batalha e Drive. Migradores idempotentes com dry-run, checkpoint e validação; detectar documentos acima do limite Firestore, não truncar JSON.
-5. Cobrir emuladores com matriz de acessos: anônimo, jogador, outra Casa, narrador e editor. Preservar editor sem envio de missivas e simulações sem impacto nas Casas reais. Testar revogação, entrega por rodada, operações concorrentes e repetidas.
-6. Reconciliar IDs, contagens, versões, conteúdo, hashes, tesouro, ledger, estado temporal e anexos. Executar fluxos reais em homologação.
-7. Preparar freeze de escrita, export delta e rollback. Trocar domínio somente após aceite de reconciliação. Encerrar Lovable após estabilidade e cópia recuperável; nenhuma escrita dupla sem protocolo de reconciliação.
+**Enquanto qualquer etapa acima estiver pendente, não desligar a origem
+nem publicar o app funcional com acesso a dados reais.**
 
-## Pendências externas
+## Procedimento de auditoria no Cloud Shell
 
-Firebase ainda não conectado nesta execução. Não foi criado projeto, ativado faturamento,
-exportado banco de produção, executado emulador ou publicado site. O backup citado no
-histórico não foi fornecido nesta execução; o anexo atual é o estudo PDF.
+A pasta privada normalizada já existente poderá ser usada, sem
+reexportar nada para repetir as auditorias:
 
-Referências técnicas:
-- https://firebase.google.com/docs/hosting/cloud-run
-- https://firebase.google.com/docs/auth/admin/import-users
+```bash
+ROOT="$HOME/cormyr-chronicle-atlas"
+git -C "$ROOT" fetch origin main
+WORK="/tmp/cormyr-migration-review-$(date +%s)-$$"
+git -C "$ROOT" worktree add --detach "$WORK" FETCH_HEAD
+N="$ROOT/.firebase-migration/inspecao-12nov-E4pokAhB/normalized"
 
-## Aplicativo cadastrado em 12/11/2026
+node "$WORK/scripts/firebase/stage-auth-emulator.mjs" --normalized "$N"
+node "$WORK/scripts/firebase/stage-temporal-emulator.mjs" --normalized "$N"
+node "$WORK/scripts/firebase/audit-migration-coverage.mjs" "$N"
+```
 
-O proprietário cadastrou o aplicativo Web Cormyr Chronicle Atlas no projeto
-`cormyr` (número `477785088395`) e forneceu a configuração pública do SDK.
-Ela está em `src/integrations/firebase/public-config.ts`, ainda sem inicialização
-ou troca do backend ativo. Analytics não foi inicializado. O bucket informado
-na configuração não comprova provisionamento do Storage.
+Os relatórios retornam somente contagens e razões de bloqueio; não
+imprimem nomes, UIDs ou textos privados. Não rodar opções de execução
+em nuvem. Nenhum dos comandos acima altera origem ou Firebase.
 
-A conexão do ChatGPT com Firebase falhou. Alternativa operacional: Cloud Shell
-no console Firebase, autenticado pelo próprio proprietário. Primeiro diagnóstico
-somente leitura: `firebase apps:list --project cormyr`. Não enviar tokens,
-chaves de conta de serviço ou senhas pelo chat. O resultado desse comando não
-concede acesso a este agente; implantação futura exige configurar CI com
-identidade federada ou executar os comandos no Cloud Shell autenticado.
+## Limites
 
-O projeto `cormyr` não foi classificado como homologação ou produção. Nenhum
-alias default de deploy foi criado para evitar publicação implícita nele.
+O código de UI do site ainda contém adaptadores do Supabase e
+integrações de Drive que precisam ser removidos gradativamente,
+com isolamento e validação. O GitHub não substitui acesso autenticado
+ao Cloud Shell ou uma conexão ao banco de origem. Sem isso não se
+pode comprovar delta, aplicar IAM ou executar importação cloud.
+
+**A publicação de teste e a vinculação de domínio foram pausadas.**
