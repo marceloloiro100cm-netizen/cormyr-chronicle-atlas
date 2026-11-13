@@ -37,10 +37,10 @@ export function syntheticDomainTables() {
       {player_id:'player-b',house_id:'house-b',can_edit:'t',can_edit_attributes:'t'},
     ]),
     tab('public.campaign_letters',[
-      {id:'letter-ab',sender_user_id:'player-a-uid',sender_player_id:'player-a',recipient_player_id:'player-b',recipient_house_id:null,subject:'private subject AB',content:'private message AB',created_at:'2026-11-12 10:00:00+00'},
-      {id:'letter-to-a',sender_user_id:'narrator-uid',sender_player_id:null,recipient_player_id:null,recipient_house_id:'house-a',subject:'private house A',content:'secret A',created_at:'2026-11-12 11:00:00+00'},
-      {id:'letter-to-b',sender_user_id:'narrator-uid',sender_player_id:null,recipient_player_id:null,recipient_house_id:'house-b',subject:'private house B',content:'secret B',created_at:'2026-11-12 12:00:00+00'},
-      {id:'letter-editor',sender_user_id:'editor-uid',sender_player_id:'editor-player',recipient_player_id:null,recipient_house_id:'house-b',subject:'legacy editor mail',content:'must not be readable by editor',created_at:'2026-11-12 13:00:00+00'},
+      {id:'letter-ab',sender_user_id:'player-a-uid',sender_player_id:'player-a',recipient_player_id:'player-b',recipient_house_id:null,subject:'private subject AB',content:'private message AB',publication_state:'delivered',created_at:'2026-11-12 10:00:00+00'},
+      {id:'letter-to-a',sender_user_id:'narrator-uid',sender_player_id:null,recipient_player_id:null,recipient_house_id:'house-a',subject:'private house A',content:'secret A',publication_state:'delivered',created_at:'2026-11-12 11:00:00+00'},
+      {id:'letter-to-b',sender_user_id:'narrator-uid',sender_player_id:null,recipient_player_id:null,recipient_house_id:'house-b',subject:'private house B',content:'secret B',publication_state:'delivered',created_at:'2026-11-12 12:00:00+00'},
+      {id:'letter-editor',sender_user_id:'editor-uid',sender_player_id:'editor-player',recipient_player_id:null,recipient_house_id:'house-b',subject:'legacy editor mail',content:'must not be readable by editor',publication_state:'delivered',created_at:'2026-11-12 13:00:00+00'},
     ]),
   ];
 }
@@ -127,13 +127,13 @@ test('both null and both populated recipients are preserved in private quarantin
     id:'unaddressed-legacy',sender_user_id:'player-a-uid',sender_player_id:'player-a',
     recipient_player_id:null,recipient_house_id:null,
     subject:'private to narrator?',content:'secret unaddressed',
-    created_at:'2026-11-12 14:00:00+00',
+    publication_state:'delivered',created_at:'2026-11-12 14:00:00+00',
   });
   table.rows.push({
     id:'double-legacy',sender_user_id:'player-a-uid',sender_player_id:'player-a',
     recipient_player_id:'player-b',recipient_house_id:'house-a',
     subject:'private ambiguous',content:'secret ambiguous',
-    created_at:'2026-11-12 15:00:00+00',
+    publication_state:'delivered',created_at:'2026-11-12 15:00:00+00',
   });
   const plan=buildTypedDomainPlan(a,hash);
   assert.equal(plan.summary.planValid,true);
@@ -171,7 +171,7 @@ test('quarantine does not bypass missing sender, oversize, invalid rows or dupli
   letters.rows.push({
     id:'missing-sender-quarantine',sender_user_id:'deleted-uid',sender_player_id:null,
     recipient_player_id:null,recipient_house_id:null,subject:'old',content:'text',
-    created_at:'2026-11-12 16:00:00+00',
+    publication_state:'delivered',created_at:'2026-11-12 16:00:00+00',
   });
   let summary=buildTypedDomainPlan(t,hash).summary;
   assert.equal(summary.planValid,false);
@@ -212,7 +212,7 @@ test('aggregate 15 dangling historical letter senders without leaking identities
       recipient_house_id:'house-a',
       subject:'historical private subject '+i,
       content:'historical private content '+i,
-      created_at:'2026-11-11 10:00:00+00',
+      publication_state:'delivered',created_at:'2026-11-11 10:00:00+00',
     });
   }
   const report=buildTypedDomainPlan(tables,hash).summary;
