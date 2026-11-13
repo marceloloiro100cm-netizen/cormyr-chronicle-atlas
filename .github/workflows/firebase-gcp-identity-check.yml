@@ -2,6 +2,10 @@ name: Cormyr Firebase - verify GCP identity (no data access)
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/firebase-gcp-identity-check.yml'
 
 permissions:
   id-token: write
