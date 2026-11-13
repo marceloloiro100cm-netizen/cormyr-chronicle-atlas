@@ -15,7 +15,8 @@ const date=i=>new Date(Date.UTC(2026,10,13,14,i)).toISOString();
 const letter=(senderUid,recipientPlayerId,recipientHouseId,subject,i,deletedAt=null)=>({
   sourceId:'synthetic-'+i,senderUid,senderPlayerId:null,
   senderName:'Fictício',recipientPlayerId,recipientHouseId,
-  subject,content:'Synthetic-only correspondence',createdAt:date(i),deletedAt,
+  subject,content:'Synthetic-only correspondence',publicationState:'delivered',
+  createdAt:date(i),deletedAt,
 });
 
 async function run(){
