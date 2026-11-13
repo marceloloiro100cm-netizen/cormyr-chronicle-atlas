@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {initializeApp,deleteApp} from 'firebase-admin/app';
-import {getFirestore} from 'firebase-admin/firestore';
+import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
 import {collection,doc,getDoc,getDocs,setDoc} from 'firebase/firestore';
 import {createEmulatorInbox,InboxDenied} from './letter-inbox-service.mjs';
@@ -91,8 +91,10 @@ async function run(){
     await assertFails(getDoc(doc(narrator,'migrationDomainStage',SHA,
       'lettersQuarantine',ID.quarantine)));
     // A legacy document without deletion flag must not become readable.
+    await letters.doc(ID.one).update({deletedAt:FieldValue.delete()});
+    await assertFails(getDoc(ref(alice,ID.one)));
+    assert.equal(await inbox.getLetter({idToken:'synthetic:alice',id:ID.one}),null);
     await letters.doc(ID.one).update({deletedAt:null});
-    await letters.doc(ID.one).update({deletedAt:requireNoField()});
     // Revoke membership: backend and direct client both change immediately.
     await access.doc('alice').update({memberHouseIds:[]});
     assert.deepEqual((await all('alice')).map(x=>x.subject),['to player B']);
@@ -102,10 +104,6 @@ async function run(){
     await env.cleanup();
     await deleteApp(app);
   }
-}
-function requireNoField(){
-  // Imported from Admin SDK once Firebase Admin is installed for this test.
-  return undefined;
 }
 run().catch(()=>{
   console.error('Private mail inbox emulator integration failed (no personal data printed).');
