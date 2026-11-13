@@ -124,10 +124,12 @@ A execução no Cloud Shell, usando o backup privado existente, indicou:
 | Perfis: narrador / editor / jogador | 1 / 1 / 10 |
 | Gravações na nuvem | 0 |
 
-A soma das categorias de tabelas informada é 147, enquanto o total do
-manifesto é 148. O script não inclui tabelas inválidas no arquivamento;
-é necessário comparar a saída `issues` e verificar o eventual registro
-extra antes de aprovar o mapa final.
+O resultado anterior somava 147 tabelas incluídas ou ignoradas (97 + 50)
+entre as 148 da origem porque **a tabela pública que continha a linha
+superdimensionada foi excluída por completo do plano**, não apenas sua
+linha grande. A versão com fragmentação deve restaurar essa tabela e
+todos os seus registros, portanto o total de linhas públicas poderá
+ser maior que 3.440; ainda não há número real confirmado.
 
 O importador inicialmente bloqueou `emulatorPlanValid: false` porque
 uma linha ultrapassava a margem conservadora de 850 KiB. A versão
