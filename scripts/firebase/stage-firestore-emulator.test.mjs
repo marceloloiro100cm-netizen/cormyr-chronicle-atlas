@@ -68,7 +68,7 @@ test('document IDs remain stable when rows reorder and duplicate keyless rows ex
   assert.equal(new Set(ids(a)).size,3);
 });
 
-test('duplicated explicit IDs or oversized rows fail before any write', async () => {
+test('duplicated explicit IDs fail before any write; large rows are losslessly chunked', async () => {
   const duplicate = buildPrivateArchivePlan([
     table('public.campaign_letters',['id','content'],[
       {id:'x',content:'private'},
@@ -86,8 +86,27 @@ test('duplicated explicit IDs or oversized rows fail before any write', async ()
       {id:'x',content:'A'.repeat(860*1024)},
     ]),
   ],hash);
-  assert.equal(tooLarge.summary.issues.oversizedRows,1);
-  assert.equal(tooLarge.summary.emulatorPlanValid,false);
+  assert.equal(tooLarge.summary.issues.oversizedRows,0);
+  assert.equal(tooLarge.summary.chunkedRows,1);
+  assert.equal(tooLarge.summary.emulatorPlanValid,true);
+  assert.ok(tooLarge.summary.totalChunks>=3);
+  assert.equal(tooLarge.plannedRows[0].payload.chunked,true);
+
+  const written = new FakeDb();
+  const result=await writePrivateArchiveToEmulator(tooLarge,written);
+  assert.equal(result.chunksStored,tooLarge.summary.totalChunks);
+  const chunkDocs=written.writes.filter(w=>w.path.includes('/chunks/'));
+  assert.equal(chunkDocs.length,tooLarge.summary.totalChunks);
+  assert.ok(chunkDocs.every(w=>Buffer.byteLength(JSON.stringify(w.payload))<850*1024));
+  const reconstructed=Buffer.concat(chunkDocs
+    .sort((a,b)=>a.payload.index-b.payload.index)
+    .map(w=>{
+      const bytes=Buffer.from(w.payload.dataBase64,'base64');
+      assert.equal(sha(bytes),w.payload.sha256);
+      return bytes;
+    }));
+  assert.equal(sha(reconstructed),tooLarge.plannedRows[0].payload.rawValuesSha256);
+  assert.deepEqual(JSON.parse(reconstructed.toString('utf8')), ['x','A'.repeat(860*1024)]);
 });
 
 test('non-string COPY data and invalid table names never become valid plans', () => {
@@ -175,4 +194,32 @@ test('private manifest SHA validation and explicit dry-run versus demo emulator 
   }finally{
     await rm(root,{recursive:true,force:true});
   }
+});
+
+
+test('large Unicode rows are chunked without UTF-8 corruption, and replay IDs are stable', async () => {
+  const value='Olá 🐉'.repeat(125000);
+  const records=() => [table('public.campaign_letters',['id','content'],
+    [{id:'secret-row',content:value}])];
+  const a=buildPrivateArchivePlan(records(),hash);
+  const b=buildPrivateArchivePlan(records(),hash);
+  assert.equal(a.summary.emulatorPlanValid,true);
+  assert.equal(a.summary.chunkedRows,1);
+  assert.equal(a.plannedRows[0].docId,b.plannedRows[0].docId);
+  assert.deepEqual(a.plannedRows[0].chunks.map(x=>x.docId),
+    b.plannedRows[0].chunks.map(x=>x.docId));
+  const parts=a.plannedRows[0].chunks.map(x=>Buffer.from(x.payload.dataBase64,'base64'));
+  const bytes=Buffer.concat(parts);
+  assert.equal(sha(bytes),a.plannedRows[0].payload.rawValuesSha256);
+  assert.deepEqual(JSON.parse(bytes.toString('utf8')),['secret-row',value]);
+
+  const db=new FakeDb();
+  await writePrivateArchiveToEmulator(a,db);
+  const firstIds=new Set(db.writes.map(w=>w.path));
+  await writePrivateArchiveToEmulator(a,db);
+  assert.deepEqual(new Set(db.writes.map(w=>w.path)),firstIds);
+  const summary=JSON.stringify(a.summary);
+  assert.ok(!summary.includes('secret-row'));
+  assert.ok(!summary.includes('Olá'));
+  assert.equal(a.summary.cloudWrites,0);
 });
