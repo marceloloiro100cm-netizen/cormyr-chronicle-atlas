@@ -177,7 +177,7 @@ function parseArgs(argv) {
     parsed[option] = argv[++i];
   }
   if (!parsed['--normalized'] || !parsed['--project']) {
-    throw new Error('Usage: node scripts/firebase/prepare-auth-import.mjs --normalized PRIVATE_DIR --project PROJECT [--execute --expected-sql-sha256 SHA --confirm-source-reconciled --confirm-provider-signin-configured]');
+    throw new Error('Usage: node scripts/firebase/prepare-auth-import.mjs --normalized PRIVATE_DIR --project PROJECT [--execute --expected-sql-sha256 SHA --confirm-source-reconciled --confirm-provider-signin-configured --confirm-custom-identity-deferred]');
   }
   if (!/^[a-z][a-z0-9-]{4,29}$/.test(parsed['--project'])) throw new Error('Invalid project ID');
   return parsed;
