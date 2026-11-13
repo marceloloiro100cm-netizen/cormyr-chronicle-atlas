@@ -41,7 +41,7 @@ export function classifyProviderFormat(raw) {
   if (raw.includes(':')) return 'namespaced-or-colon';
   if (raw.includes('/')) return 'path-or-slash';
   if (raw.includes('.')) return 'dotted-unknown';
-  if (/\\s/.test(raw)) return 'whitespace-unknown';
+  if (/\s/.test(raw)) return 'whitespace-unknown';
   if (!/^[a-z0-9_-]+$/.test(raw)) return 'uppercase-symbol-or-unicode';
   return 'plain-unknown';
 }
