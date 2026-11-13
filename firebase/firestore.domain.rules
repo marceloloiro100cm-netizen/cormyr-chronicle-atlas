@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // EMULATOR-ONLY preview, never deploy these to the cloud.
+    // Production firebase/firestore.rules remains DENY ALL.
+    function signedIn() {
+      return request.auth != null;
+    }
+    function accessPath(snapshot) {
+      return /databases/$(database)/documents/migrationDomainStage/$(snapshot)/access/$(request.auth.uid);
+    }
+    function hasScope(snapshot) {
+      return signedIn() && exists(accessPath(snapshot));
+    }
+    function scope(snapshot) {
+      return get(accessPath(snapshot)).data;
+    }
+    function narrator(snapshot) {
+      return hasScope(snapshot) && scope(snapshot).active == true
+        && scope(snapshot).profile == 'narrador'
+        && scope(snapshot).admin == true;
+    }
+    function player(snapshot) {
+      return hasScope(snapshot) && scope(snapshot).active == true
+        && scope(snapshot).profile == 'jogador'
+        && scope(snapshot).admin == false
+        && scope(snapshot).requirePasswordChange == false;
+    }
+    function readLetter(snapshot) {
+      return narrator(snapshot) ||
+        (player(snapshot) && (
+          resource.data.senderUid == request.auth.uid ||
+          (resource.data.recipientPlayerId != null &&
+            resource.data.recipientPlayerId == scope(snapshot).playerId) ||
+          (resource.data.recipientHouseId != null &&
+            resource.data.recipientHouseId in scope(snapshot).memberHouseIds)
+        ));
+    }
+
+    match /migrationDomainStage/{snapshot} {
+      allow read, write: if false;
+      match /houses/{house} {
+        // Only a deliberately minimal house view is staged; no internal details.
+        allow get, list: if resource.data.active == true || narrator(snapshot);
+        allow create, update, delete: if false;
+      }
+      match /players/{playerId} {
+        allow get: if narrator(snapshot) || (player(snapshot) &&
+          resource.data.userId == request.auth.uid);
+        allow list, create, update, delete: if false;
+      }
+      match /access/{uid} {
+        allow get: if signedIn() && uid == request.auth.uid;
+        allow list, create, update, delete: if false;
+      }
+      match /letters/{letterId} {
+        // Never allow collection enumeration: list/send/reply is a privileged
+        // backend operation that must verify roles at request time.
+        allow get: if readLetter(snapshot);
+        allow list, create, update, delete: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
