@@ -57,7 +57,7 @@ export async function fetchPrivateBackup(drive, driveId, outputPath, expectedSha
 }
 
 export async function main(argv) {
-  if (argv.length !== 5 || argv[0]!=='--drive-file-id' || argv[2]!=='--output' ) {
+  if (argv.length !== 6 || argv[0]!=='--drive-file-id' || argv[2]!=='--output' ) {
     throw new Error('Usage: node scripts/firebase/fetch-private-backup.mjs --drive-file-id ID --output .firebase-migration/FILE.backup.zip [--expected-sha256 HEX]');
   }
   const [,,output,flag,hash] = argv;
