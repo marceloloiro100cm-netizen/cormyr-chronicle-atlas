@@ -17,12 +17,13 @@ import {
 import {buildTypedDomainPlan,writeTypedDomainToEmulator} from './stage-typed-domain-emulator.mjs';
 import {planTemporalEmulator,stageTemporalEmulator} from './stage-temporal-emulator.mjs';
 import {planNewspaperEmulator,stageNewspaperEmulator} from './stage-newspaper-emulator.mjs';
+import {planMailHistory,stageMailHistory} from './stage-mail-history-emulator.mjs';
 import {planAuthEmulator,assertAuthEmulatorOnly,importAuthIntoEmulator} from './stage-auth-emulator.mjs';
 
 const PROJECT='demo-cormyr-migration';
 const ROOT='migrationUnifiedStage';
 
-function safeSummary({archive,typed,temporal,newspaper,auth}) {
+function safeSummary({archive,typed,temporal,newspaper,mailHistory,auth}) {
   const stages={
     rawArchive:{
       valid:archive.summary.emulatorPlanValid,
@@ -54,6 +55,15 @@ function safeSummary({archive,typed,temporal,newspaper,auth}) {
       historyRows:newspaper.summary.archivedSourceRows,
       missingTables:newspaper.summary.missingTables,
       issues:newspaper.summary.issues,
+    },
+    mailHistory:{
+      valid:mailHistory.summary.planValid,
+      sourceTables:mailHistory.summary.sourceTables,
+      sourceHistoryRows:mailHistory.summary.sourceHistoryRows,
+      deliveredReplies:mailHistory.summary.deliveredReplies,
+      privatelyArchivedReplies:mailHistory.summary.privatelyArchivedReplies,
+      missingTables:mailHistory.summary.missingTables,
+      issues:mailHistory.summary.issues,
     },
     auth:{
       valid:auth.summary.preflightValid,
@@ -88,6 +98,7 @@ export function planUnifiedEmulator(tables,snapshotId) {
   const typed=buildTypedDomainPlan(tables,snapshotId);
   const temporal=planTemporalEmulator(tables,snapshotId);
   const newspaper=planNewspaperEmulator(tables,snapshotId);
+  const mailHistory=planMailHistory(tables,snapshotId);
   const auth=planAuthEmulator(
     byName.get('auth.users')||[],
     byName.get('auth.identities')||[],
@@ -95,10 +106,10 @@ export function planUnifiedEmulator(tables,snapshotId) {
   );
   const missingAuthTables=['auth.users','auth.identities','public.campaign_access_profiles']
     .filter(t=>!byName.has(t));
-  const summary=safeSummary({archive,typed,temporal,newspaper,auth});
+  const summary=safeSummary({archive,typed,temporal,newspaper,mailHistory,auth});
   summary.missingAuthTables=missingAuthTables;
   if(missingAuthTables.length)summary.readyForEmulatorStage=false;
-  return {snapshotId,archive,typed,temporal,newspaper,auth,summary};
+  return {snapshotId,archive,typed,temporal,newspaper,mailHistory,auth,summary};
 }
 
 export async function loadUnifiedEmulatorPlan(dir) {
@@ -116,6 +127,7 @@ export async function executeUnifiedEmulator(plan,db,auth,env=process.env) {
     db.collection('migrationDomainStage').doc(plan.snapshotId),
     db.collection('migrationTemporalStage').doc(plan.snapshotId),
     db.collection('migrationNewspaperStage').doc(plan.snapshotId),
+    db.collection('migrationMailHistoryStage').doc(plan.snapshotId),
     db.collection(ROOT).doc(plan.snapshotId),
   ];
   // Never reuse a partially staged snapshot or overwrite past evidence.
@@ -126,7 +138,7 @@ export async function executeUnifiedEmulator(plan,db,auth,env=process.env) {
   const authCurrent=await auth.listUsers(1);
   if(authCurrent.users.length||authCurrent.pageToken)
     throw Error('Emulator Auth destination already contains accounts');
-  const batchRoot=refs[4];
+  const batchRoot=refs[5];
   await batchRoot.set({
     status:'incomplete',scope:'emulator-only',formatVersion:1,
     private:true,
@@ -135,6 +147,7 @@ export async function executeUnifiedEmulator(plan,db,auth,env=process.env) {
   const typed=await writeTypedDomainToEmulator(plan.typed,db);
   const temporal=await stageTemporalEmulator(plan.temporal,db,env);
   const newspaper=await stageNewspaperEmulator(plan.newspaper,db,env);
+  const mailHistory=await stageMailHistory(plan.mailHistory,db,env);
   // Import Auth last; this refuses any existing destination accounts.
   const importedAuth=await importAuthIntoEmulator(plan.auth,auth,env);
   await batchRoot.set({
@@ -145,6 +158,8 @@ export async function executeUnifiedEmulator(plan,db,auth,env=process.env) {
     quarantineLetters:typed.typedCollections.lettersQuarantine,
     calendarProjected:temporal.calendarProjected,
     publishedNewspapers:newspaper.publishedEditions,
+    archivedMailHistoryRows:mailHistory.archiveRows,
+    deliveredReplies:mailHistory.deliveredReplies,
     authUsers:importedAuth.imported,
   });
   return {
@@ -153,6 +168,8 @@ export async function executeUnifiedEmulator(plan,db,auth,env=process.env) {
     typedCollections:typed.typedCollections,
     temporalHistoryRows:temporal.temporalHistoryRows,
     newspaperHistoryRows:newspaper.archivedSourceRows,
+    archivedMailHistoryRows:mailHistory.archiveRows,
+    deliveredReplies:mailHistory.deliveredReplies,
     authImported:importedAuth.imported,
     authVerified:importedAuth.verified,
     cloudWrites:0,readyForCloudImport:false,readyForCutover:false,
