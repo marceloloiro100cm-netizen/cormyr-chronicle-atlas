@@ -26,7 +26,7 @@ test('consolidates 4 Firestore models and 1 Auth plan with no cloud access',()=>
   assert.equal(plan.summary.readyForCloudImport,false);
   assert.equal(plan.summary.readyForCutover,false);
   assert.ok(!JSON.stringify(plan.summary).includes('narrator@example.com'));
-  assert.ok(!JSON.stringify(plan.summary).includes('$2b
+  assert.ok(!JSON.stringify(plan.summary).includes('passwordHash'));
 });
 
 test('any missing domain table blocks ALL emulator writes',()=>{
