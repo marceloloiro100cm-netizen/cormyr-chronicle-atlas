@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import test from 'node:test';
-import { fetchPrivateBackup } from './fetch-private-backup.mjs';
+import { fetchPrivateBackup, parseArgs } from './fetch-private-backup.mjs';
 
 const digest = value=>createHash('sha256').update(value).digest('hex');
 const zip = Buffer.from([0x50,0x4b,0x03,0x04,1,2,3,4]);
@@ -28,4 +28,14 @@ test('fetches only into private ignored directory, validates SHA and does not ov
     process.chdir(previous);
     await rm(dir,{recursive:true,force:true});
   }
+});
+
+test('CLI accepts exactly six flags and values with a SHA-256', () => {
+  const good=['--drive-file-id','fileId987654321','--output',
+    '.firebase-migration/backup-12nov.backup.zip','--expected-sha256',digest(zip)];
+  assert.deepEqual(parseArgs(good),{
+    driveFileId:'fileId987654321',output:good[3],hash:digest(zip),
+  });
+  assert.throws(()=>parseArgs(good.slice(0,5)),/Usage/);
+  assert.throws(()=>parseArgs([...good.slice(0,4),'--unexpected',digest(zip)]),/Usage/);
 });
