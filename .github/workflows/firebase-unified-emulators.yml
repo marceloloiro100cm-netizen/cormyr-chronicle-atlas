@@ -1,0 +1,58 @@
+name: Firebase unified Auth and Firestore emulator migration
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/stage-all-emulators*.mjs'
+      - 'firebase/firebase-all.json'
+      - 'docs/firebase/UNIFIED-EMULATOR-STAGING.md'
+      - '.github/workflows/firebase-unified-emulators.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/stage-all-emulators*.mjs'
+      - 'firebase/firebase-all.json'
+      - '.github/workflows/firebase-unified-emulators.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  one-pass-plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate source preflight and fail-closed implementation
+        run: |
+          node --check scripts/firebase/stage-all-emulators.mjs
+          node --check scripts/firebase/stage-all-emulators.integration.mjs
+          node --test scripts/firebase/stage-all-emulators.test.mjs
+          node scripts/verify-public-repo.mjs
+
+  both-emulators-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install LOCAL Auth and Firestore emulators only
+        run: npm install --no-save --package-lock=false firebase-tools@15.35.0 firebase-admin@14.5.1
+      - name: Verify full synthetic migration and refuse second import
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+          FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+        run: |
+          npx firebase emulators:exec --only firestore,auth \
+            --project demo-cormyr-migration \
+            --config firebase/firebase-all.json \
+            "node scripts/firebase/stage-all-emulators.integration.mjs"
