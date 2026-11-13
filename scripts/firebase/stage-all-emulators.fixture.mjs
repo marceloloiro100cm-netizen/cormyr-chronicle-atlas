@@ -15,8 +15,8 @@ const newspaperNames=[
 ];
 export function syntheticSource(){
   const users=[
-    {id:'narrator',email:'narrator@example.invalid',encrypted_password:BCRYPT},
-    {id:'player',email:'player@example.invalid',encrypted_password:BCRYPT},
+    {id:'narrator',email:'narrator@example.com',encrypted_password:BCRYPT},
+    {id:'player',email:'player@example.com',encrypted_password:BCRYPT},
   ];
   const tables=[
     t('auth.users',users),
