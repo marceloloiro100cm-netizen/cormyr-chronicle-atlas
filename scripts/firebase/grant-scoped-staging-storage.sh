@@ -27,7 +27,7 @@ project_number="$(gcloud projects describe "$PROJECT" --format='value(projectNum
 gcloud iam service-accounts describe "$READ_SA" --project="$PROJECT" >/dev/null ||
   fail "Conta reader nao encontrada"
 
-source_meta="$(gcloud storage buckets describe "gs://${SOURCE_BUCKET}" --format=json)" ||
+source_meta="$(gcloud storage buckets describe "gs://${SOURCE_BUCKET}" --raw --format=json)" ||
   fail "Bucket original nao acessivel"
 source_location="$(SOURCE_META="$source_meta" python3 - <<'PY'
 import json,os
@@ -52,17 +52,17 @@ if ! gcloud storage buckets describe "gs://${DEST_BUCKET}" >/dev/null 2>&1; then
     fail "Nao foi possivel criar o bucket de homologacao"
 fi
 
-dest_meta="$(gcloud storage buckets describe "gs://${DEST_BUCKET}" --format=json)" ||
+dest_meta="$(gcloud storage buckets describe "gs://${DEST_BUCKET}" --raw --format=json)" ||
   fail "Bucket destino inacessivel"
 DEST_META="$dest_meta" PROJECT_NUMBER="$EXPECTED_PROJECT_NUMBER" SOURCE_LOCATION="$source_location" \
 python3 - <<'PY' || fail "Destino existe mas nao atende as restricoes de privacidade"
 import json,os
 data=json.loads(os.environ['DEST_META'])
 cfg=data.get('iamConfiguration',{})
-assert str(data.get('projectNumber'))==os.environ['PROJECT_NUMBER'], 'Wrong owner'
-assert cfg.get('uniformBucketLevelAccess',{}).get('enabled') is True, 'Non-uniform bucket'
-assert cfg.get('publicAccessPrevention')=='enforced', 'Public access prevention missing'
-assert str(data.get('location','')).upper()==os.environ['SOURCE_LOCATION'], 'Wrong location'
+assert str(data.get('projectNumber'))==os.environ['PROJECT_NUMBER'], 'Unexpected or missing project owner in raw bucket metadata'
+assert cfg.get('uniformBucketLevelAccess',{}).get('enabled') is True, 'Uniform access missing in raw metadata'
+assert cfg.get('publicAccessPrevention')=='enforced', 'Public-access prevention missing in raw metadata'
+assert str(data.get('location','')).upper()==os.environ['SOURCE_LOCATION'], 'Bucket location mismatch'
 PY
 
 # Separate non-destructive GitHub writer for the sandbox; never give access to
