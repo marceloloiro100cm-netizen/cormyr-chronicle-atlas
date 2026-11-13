@@ -182,7 +182,7 @@ export async function main(args,options={}){
     }
   }
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)){
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
   main(process.argv.slice(2)).catch(()=>{
     console.error('Temporal emulator staging blocked. No private values printed.');
     process.exitCode=1;
