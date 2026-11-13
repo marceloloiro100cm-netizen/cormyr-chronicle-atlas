@@ -52,6 +52,20 @@ export async function listDriveTree(drive, rootFolderId) {
   return { found, folderCount: seen.size };
 }
 
+export async function getManifestFromDrive(drive, id) {
+  if (!/^[A-Za-z0-9_-]{10,}$/.test(id)) throw new Error('Invalid Drive manifest ID');
+  const response = await drive.files.get({ fileId: id, alt: 'media', supportsAllDrives: true },
+    { responseType: 'stream' });
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of response.data) {
+    size += chunk.length;
+    if (size > 8 * 1024 * 1024) throw new Error('Drive manifest too large');
+    chunks.push(Buffer.from(chunk));
+  }
+  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+
 export async function getVerifiedDriveFile(drive, item, folder) {
   const response = await drive.files.get({ fileId: item.driveId, alt: 'media', supportsAllDrives: true },
     { responseType: 'stream' });
@@ -99,13 +113,14 @@ function argsOf(values) {
   for (let i = 0; i < values.length; i++) {
     const key = values[i];
     if (key === '--execute' || key === '--allow-partial') { args[key] = true; continue; }
-    if (!['--manifest', '--drive-folder', '--project', '--destination', '--limit'].includes(key) || !values[i+1]) {
+    if (!['--manifest', '--manifest-drive-id', '--drive-folder', '--project', '--destination', '--limit'].includes(key) || !values[i+1]) {
       throw new Error('Invalid argument: ' + key);
     }
     args[key] = values[++i];
   }
-  if (!args['--manifest'] || !/^[A-Za-z0-9_-]{10,}$/.test(args['--drive-folder'] ?? '')) {
-    throw new Error('Required --manifest and --drive-folder (ID)');
+  if (Boolean(args['--manifest']) === Boolean(args['--manifest-drive-id']) ||
+    !/^[A-Za-z0-9_-]{10,}$/.test(args['--drive-folder'] ?? '')) {
+    throw new Error('Required --drive-folder and exactly one of --manifest or --manifest-drive-id');
   }
   if (args['--execute'] && (!args['--project'] || !args['--destination'])) {
     throw new Error('Required --project and --destination for uploads');
@@ -118,13 +133,16 @@ function argsOf(values) {
 
 export async function main(values) {
   const args = argsOf(values);
-  const manifest = validateManifest(JSON.parse(await readFile(args['--manifest'], 'utf8')));
   const { google } = await import('googleapis');
   const auth = new google.auth.GoogleAuth({ scopes: [
     'https://www.googleapis.com/auth/drive.readonly',
     'https://www.googleapis.com/auth/cloud-platform',
   ] });
   const drive = google.drive({ version: 'v3', auth });
+  const data = args['--manifest-drive-id']
+    ? await getManifestFromDrive(drive, args['--manifest-drive-id'])
+    : JSON.parse(await readFile(args['--manifest'], 'utf8'));
+  const manifest = validateManifest(data);
   const tree = await listDriveTree(drive, args['--drive-folder']);
   const plan = planDrive(manifest, tree.found);
   const report = { manifestComplete: manifest.complete, manifestItems: manifest.files.length,
