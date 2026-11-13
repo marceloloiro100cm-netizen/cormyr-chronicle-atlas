@@ -140,7 +140,7 @@ export function buildPrivateArchivePlan(tables, snapshotHash) {
   };
 }
 
-export async function loadPrivateArchivePlan(normalizedDir) {
+export async function loadVerifiedPrivateTables(normalizedDir) {
   const root = await realpath(resolve(normalizedDir));
   const rootStat = await lstat(root);
   if (!rootStat.isDirectory()) throw new Error('Invalid private normalized directory');
@@ -184,7 +184,12 @@ export async function loadPrivateArchivePlan(normalizedDir) {
   const identity = sha256(JSON.stringify(
     manifest.tables.map(entry => [entry.table, entry.sha256]).sort((a,b)=>a[0].localeCompare(b[0]))
   ));
-  return buildPrivateArchivePlan(tables, identity);
+  return { tables, snapshotHash: identity };
+}
+
+export async function loadPrivateArchivePlan(normalizedDir) {
+  const { tables, snapshotHash } = await loadVerifiedPrivateTables(normalizedDir);
+  return buildPrivateArchivePlan(tables, snapshotHash);
 }
 
 export async function writePrivateArchiveToEmulator(plan, db) {
