@@ -210,3 +210,58 @@ mapeamento de SSO/SAML para OAuth Google. A lista de 14 usuários permanece
 Fontes:
 https://supabase.com/docs/guides/auth/enterprise-sso/auth-sso-saml
 https://supabase.com/docs/guides/auth/custom-oauth-providers
+
+## Resolução do quarto vínculo — `custom:` confirmado
+
+A nova auditoria de 13/11 confirmou `namespaced-custom-oauth-oidc: 1`.
+Isso identifica **um único vínculo OAuth/OIDC personalizado** no backup
+Supabase, além de três vínculos Google. O prefixo sozinho não comprova que o
+provedor seja OIDC: também pode ser OAuth 2.0 sem OIDC.
+
+No importador, o vínculo `custom:` **não é incluído em
+`providerData` como se fosse `google.com` ou `oidc.*`**.
+A conta continua com o mesmo UID, e sua senha BCRYPT (quando existente)
+continua disponível para uma futura importação. O vínculo personalizado
+é registrado **somente como contagem de pendência**, sem sufixos ou subjects.
+Para um eventual corte real, o operador deverá configurar e testar
+explicitamente o provedor ou aprovar uma forma alternativa de login;
+uma conta sem senha e sem outra forma de login bloqueia a importação.
+
+A primeira verificação a fazer é **descobrir se a conta com vínculo
+personalizado possui BCRYPT ou outro provedor aproveitável**. O script
+abaixo não acessa Firebase ou Supabase online e só retorna agregados:
+
+```bash
+cd /tmp/cormyr-auth-check
+git fetch origin feat/firebase-auth-preflight-20261112
+git checkout --detach FETCH_HEAD
+node scripts/firebase/audit-auth-signin-coverage.mjs "$NORMALIZED"
+```
+
+Interpretação:
+- `customAccountsWithBcrypt > 0`: existe pelo menos uma conta custom
+  que já possui senha; testar o login por senha após a importação em homologação.
+- `customPasswordlessWithKnownOauth > 0`: conta sem senha possui outro
+  provedor reconhecido, mas esse login também precisa estar configurado e testado.
+- `customPasswordlessWithoutKnownOauth > 0`: a conta depende de um fluxo
+  de recuperação ou configuração do provedor antes de ser migrada sem interrupção.
+
+`prepare-auth-import.mjs` mantém o *dry-run* por padrão. Quando existe um
+vínculo custom com alternativa de login, o relatório retorna
+`deferredCustomIdentities`, `customAccountsWithoutAlternativeSignIn`,
+`deferredCustomIdentityRequiresManualRelink` e bloqueios.
+O modo de execução, **que NÃO deve ser utilizado nesta fase**, exige,
+além das demais verificações de fonte/segurança, o consentimento explícito
+`--confirm-custom-identity-deferred` quando há vínculo adiado.
+Esse consentimento não ativa OAuth nem importa permissões de Casas.
+
+Para reativar um provedor OIDC no Firebase, é necessário verificar a
+compatibilidade OIDC e os requisitos do Authentication with Identity Platform,
+incluindo mudanças de cobrança. Um provedor apenas OAuth2 não deve ser
+tratado automaticamente como OIDC. Custo e troca do fluxo de login
+necessitam aceite separado.
+
+Fontes oficiais:
+- https://supabase.com/docs/guides/auth/custom-oauth-providers
+- https://firebase.google.com/docs/auth/admin/import-users
+- https://firebase.google.com/docs/auth/web/openid-connect
