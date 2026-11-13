@@ -55,10 +55,14 @@ if [[ "$existing" != "0" ]]; then
   exit 2
 fi
 
-# Remove SOMENTE tokens aleatórios de pg_dump (\restrict/\unrestrict).
+# Remove apenas tokens aleatórios do pg_dump e versões internas pg_attver
+# (recriadas no restore; PostgreSQL ignora SET pg_attver). Comparar todo
+# o restante do DDL, dados e relógio sem normalizações adicionais.
 hash_dump() {
   pg_dump -d "$1" "$2" --no-owner --no-acl |
-    sed -E '/^\\(un)?restrict [[:alnum:]]+$/d' |
+    sed -E \
+      -e '/^\\(un)?restrict [[:alnum:]]+$/d' \
+      -e '/^ALTER TABLE (ONLY )?[^;]+ ALTER COLUMN [^;]+ SET \\(pg_attver=[0-9]+\\);$/d' |
     sha256sum | cut -d ' ' -f 1
 }
 schema_before="$(hash_dump mail_test --schema-only)"
