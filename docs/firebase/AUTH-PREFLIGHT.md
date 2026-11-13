@@ -121,3 +121,45 @@ os UIDs e o plano de recuperação. Isso evita sobrescrita ou duplicação de co
 Mesmo importadas, as contas não passam a ter acesso automático aos módulos:
 os direitos de Casa, narrador e editor devem ser implementados no backend
 com regras de segurança e testados separadamente. Sessões Supabase não migram.
+
+## Identidade externa sem mapeamento — diagnóstico privado de causa
+
+Em 13/11, o dry-run identificou 14/14 contas preparadas, 13 hashes BCRYPT,
+uma conta sem senha e **3 de 4** identidades externas mapeadas. A identidade
+restante é uma pendência de provedor, vínculo ou identificador. Não
+presumir qual é a causa e não trocar automaticamente `provider_id` por
+`auth.identities.id`: esses campos representam conceitos diferentes.
+
+O diagnóstico não contém qualquer UID, email, hash, nome, subject ou dado
+do `identity_data`, e não acessa o Firebase.
+
+```bash
+cd /tmp/cormyr-auth-check
+git fetch origin feat/firebase-auth-preflight-20261112
+git checkout --detach FETCH_HEAD
+node scripts/firebase/diagnose-auth-identities.mjs "$NORMALIZED"
+```
+
+A saída informa o **motivo agregado**:
+`sourceAccountMissing`, `providerNotSupported`,
+`providerSubjectMissingOrInvalid` ou `providerSubjectDuplicate`.
+Os tipos de provedor são exibidos somente em categorias permitidas;
+um valor inesperado vira `other`, sem reproduzir o texto original.
+
+- Provedor não suportado (por exemplo telefone, SAML ou Discord):
+  projetar uma migração de login própria, não fingir que é Google.
+- Vínculo a usuário ausente: reconciliar `auth.identities.user_id`
+  contra `auth.users.id` da exportação final.
+- Subject ausente ou inválido: verificar `provider_id` localmente,
+  sem colar identificadores pessoais no GitHub ou ChatGPT.
+- Subject duplicado: revisar se o mesmo vínculo externo está associado
+  a contas diferentes; não escolher uma conta automaticamente.
+
+O Firebase permite importar BCRYPT e contas sem senha, mas não resolve
+por si só o acesso OAuth nem as permissões de Casa. Antes de importar,
+é necessária reconciliação com a origem ativa e uma estratégia de login
+verificada para os usuários afetados.
+
+Documentação de referência:
+https://supabase.com/docs/guides/auth/identities
+https://firebase.google.com/docs/auth/admin/import-users
