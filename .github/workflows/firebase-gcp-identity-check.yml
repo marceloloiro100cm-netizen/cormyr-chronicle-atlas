@@ -1,0 +1,59 @@
+name: Cormyr Firebase - verify GCP identity (no data access)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: cormyr-firebase-gcp-identity
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check Google Cloud connection configuration
+        env:
+          WIF_PROVIDER: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          READONLY_SA: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$WIF_PROVIDER" || -z "$READONLY_SA" ]]; then
+            echo "::error::Verify the configured Workload Identity provider and service account in the repository workflow."
+            exit 1
+          fi
+          if [[ "$WIF_PROVIDER" != projects/*/locations/global/workloadIdentityPools/*/providers/* ]]; then
+            echo "::error::Invalid workload identity provider format."
+            exit 1
+          fi
+          if [[ "$READONLY_SA" != *@cormyr.iam.gserviceaccount.com ]]; then
+            echo "::error::Unexpected service account project."
+            exit 1
+          fi
+
+      - name: Exchange temporary GitHub identity for Google credentials
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+
+      - name: Install Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: cormyr
+
+      - name: Confirm identity exchange without reading campaign data
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Expose no credential strings or private data.
+          gcloud auth print-access-token --quiet >/dev/null
+          test "$(gcloud config get-value project 2>/dev/null)" = "cormyr"
+          echo "GCP identity federation: OK; project: cormyr."
+          echo "No storage, Firestore, Authentication, database or production writes performed."
