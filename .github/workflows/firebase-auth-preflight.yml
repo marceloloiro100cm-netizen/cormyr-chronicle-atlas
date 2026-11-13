@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/firebase/audit-auth-backup*.mjs'
+      - 'scripts/firebase/audit-auth-destination*.mjs'
       - '.github/workflows/firebase-auth-preflight.yml'
       - 'docs/firebase/AUTH-PREFLIGHT.md'
   workflow_dispatch:
@@ -19,5 +20,6 @@ jobs:
         with:
           node-version: '24'
       - run: node --check scripts/firebase/audit-auth-backup.mjs
-      - run: node --test scripts/firebase/audit-auth-backup.test.mjs
+      - run: node --test scripts/firebase/audit-auth-backup.test.mjs scripts/firebase/audit-auth-destination.test.mjs
+      - run: node --check scripts/firebase/audit-auth-destination.mjs
       - run: node scripts/verify-public-repo.mjs
