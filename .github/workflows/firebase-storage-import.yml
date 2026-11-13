@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/firebase/import-storage*.mjs'
+      - 'scripts/firebase/import-drive-storage*.mjs'
       - '.github/workflows/firebase-storage-import.yml'
   workflow_dispatch:
 permissions:
@@ -16,4 +17,5 @@ jobs:
         with:
           node-version: '22'
       - run: node --check scripts/firebase/import-storage.mjs
-      - run: node --test scripts/firebase/import-storage.test.mjs
+      - run: node --check scripts/firebase/import-drive-storage.mjs
+      - run: node --test scripts/firebase/import-storage.test.mjs scripts/firebase/import-drive-storage.test.mjs
