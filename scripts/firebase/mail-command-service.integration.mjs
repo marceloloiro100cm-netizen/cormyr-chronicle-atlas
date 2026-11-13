@@ -33,7 +33,7 @@ async function run(){
       history.set({status:'complete'}),
     ]);
     await temporal.collection('calendar').doc('current').set({
-      calendarType:'harptos',lastRound:0,version:1,
+      calendarType:'harptos',lastRound:null,version:1,
       year:1522,month:10,day:13,tenday:2,
     });
     for(const [uid,role,playerId,houses,edit] of [
