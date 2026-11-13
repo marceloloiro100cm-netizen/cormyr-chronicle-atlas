@@ -170,8 +170,11 @@ export function buildTypedDomainPlan(tables,snapshotId){
     }});
   }
 
-  const letters=[];
-  for(const row of rows('public.campaign_letters')){
+  const letters=[], lettersQuarantine=[];
+  const sourceLetters=rows('public.campaign_letters');
+  const letterColumns=byName.get('public.campaign_letters')?.columns;
+  const recipientShapes={missingBoth:0,bothPresent:0};
+  for(const row of sourceLetters){
     if(!unique('letters',row.id))continue;
     const senderUid=row.sender_user_id;
     const toPlayer=row.recipient_player_id||null;
@@ -179,8 +182,30 @@ export function buildTypedDomainPlan(tables,snapshotId){
     if(!authIds.has(senderUid)){
       orphan('letterSenderMissingAuth');continue;
     }
-    if(Boolean(toPlayer)===Boolean(toHouse)){
-      orphan('letterRecipientShapeInvalid');continue;
+    const invalidShape=Boolean(toPlayer)===Boolean(toHouse);
+    // An ambiguous address must NEVER grant sender/house/recipient access.
+    // Preserve the entire raw PostgreSQL COPY row in a separate collection
+    // denied to ALL client SDKs, including the narrator.
+    // This is not a semantic reinterpretation or silent dropping of a letter.
+    if(invalidShape){
+      const shape=toPlayer?'bothPresent':'missingBoth';
+      recipientShapes[shape]++;
+      if(!Array.isArray(letterColumns)||!letterColumns.length||
+         !letterColumns.every(column=>Object.hasOwn(row,column) &&
+           (row[column]===null||typeof row[column]==='string'))){
+        issues.invalidValues++;continue;
+      }
+      lettersQuarantine.push({
+        id:idOf('letter',row.id),
+        payload:{
+          sourceTable:'public.campaign_letters',
+          encoding:'postgres-copy-text-or-null',
+          recipientShape:shape,
+          columns:letterColumns,
+          rawValues:letterColumns.map(column=>row[column]),
+        },
+      });
+      continue;
     }
     if(toPlayer&&!playersById.has(toPlayer)){
       orphan('letterRecipientMissingPlayer');continue;
@@ -204,7 +229,11 @@ export function buildTypedDomainPlan(tables,snapshotId){
     }});
   }
 
-  const docs={houses,players,access,letters};
+  const docs={houses,players,access,letters,lettersQuarantine};
+  // A valid staging plan must preserve ALL source letters either as addressed
+  // letters or in the deny-all quarantine. Remaining defects stay blockers.
+  const letterCoverageComplete=
+    letters.length+lettersQuarantine.length===sourceLetters.length;
   for(const group of Object.values(docs))for(const entry of group){
     if(objBytes(entry.payload)+8192>850*1024)issues.oversizedDocuments++;
   }
@@ -223,11 +252,18 @@ export function buildTypedDomainPlan(tables,snapshotId){
       letters:rows('public.campaign_letters').length,
     },
     orphanLinksByType,
+    recipientShapes,
+    letterCoverage:{
+      source:sourceLetters.length,
+      addressed:letters.length,
+      quarantined:lettersQuarantine.length,
+      complete:letterCoverageComplete,
+    },
     issues,
-    planValid:count===0&&missingRequired.length===0,
+    planValid:count===0&&missingRequired.length===0&&letterCoverageComplete,
     firebaseCloudWrites:0,
     readyForCloudImport:false,
-    securityNotes:'Read-only staged data; no client mutations or automatic role assignment.',
+    securityNotes:'Unaddressed or ambiguous letters are stored losslessly in a deny-all quarantine. No client mutations or automatic role assignment.',
   };
   return {snapshotId,docs,summary};
 }

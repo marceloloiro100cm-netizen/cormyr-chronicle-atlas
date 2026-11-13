@@ -49,7 +49,7 @@ test('type conversion, no leaked passwords or public house internal details',()=
   const plan=buildTypedDomainPlan(syntheticDomainTables(),hash);
   assert.equal(plan.summary.planValid,true);
   assert.equal(plan.summary.accountsWithoutProfile,1);
-  assert.deepEqual(plan.summary.typedCollections,{houses:3,players:3,access:5,letters:4});
+  assert.deepEqual(plan.summary.typedCollections,{houses:3,players:3,access:5,letters:4,lettersQuarantine:0});
   const house=plan.docs.houses.find(x=>x.payload.sourceId==='house-a').payload;
   assert.equal(house.active,true);
   assert.equal(house.season,2);
@@ -117,6 +117,79 @@ test('invalid source flags and oversized content fail closed',()=>{
   assert.equal(plan.summary.planValid,false);
   assert.ok(plan.summary.issues.invalidValues>0);
   assert.equal(plan.summary.issues.oversizedDocuments,1);
+});
+
+
+test('both null and both populated recipients are preserved in private quarantine',()=>{
+  const a=syntheticDomainTables();
+  const table=a.find(t=>t.table==='public.campaign_letters');
+  table.rows.push({
+    id:'unaddressed-legacy',sender_user_id:'player-a-uid',sender_player_id:'player-a',
+    recipient_player_id:null,recipient_house_id:null,
+    subject:'private to narrator?',content:'secret unaddressed',
+    created_at:'2026-11-12 14:00:00+00',
+  });
+  table.rows.push({
+    id:'double-legacy',sender_user_id:'player-a-uid',sender_player_id:'player-a',
+    recipient_player_id:'player-b',recipient_house_id:'house-a',
+    subject:'private ambiguous',content:'secret ambiguous',
+    created_at:'2026-11-12 15:00:00+00',
+  });
+  const plan=buildTypedDomainPlan(a,hash);
+  assert.equal(plan.summary.planValid,true);
+  assert.equal(plan.summary.typedCollections.letters,4);
+  assert.equal(plan.summary.typedCollections.lettersQuarantine,2);
+  assert.deepEqual(plan.summary.recipientShapes,{missingBoth:1,bothPresent:1});
+  assert.deepEqual(plan.summary.letterCoverage,{
+    source:6,addressed:4,quarantined:2,complete:true,
+  });
+  assert.equal(plan.summary.issues.orphanLinks,0);
+  assert.equal(plan.summary.accountsWithoutProfile,1);
+  assert.equal(plan.summary.firebaseCloudWrites,0);
+
+  const privateCopies=plan.docs.lettersQuarantine;
+  assert.ok(privateCopies.every(item=>item.payload.sourceTable==='public.campaign_letters'));
+  const sourceTable=a.find(t=>t.table==='public.campaign_letters');
+  for(const original of sourceTable.rows.slice(-2)){
+    const item=privateCopies.find(entry=>entry.id===plan.docs.lettersQuarantine
+      .find(candidate=>candidate.payload.rawValues[
+        candidate.payload.columns.indexOf('id')]===original.id)?.id);
+    assert.ok(item);
+    const reconstructed=Object.fromEntries(item.payload.columns.map((key,i)=>
+      [key,item.payload.rawValues[i]]));
+    assert.deepEqual(reconstructed,original);
+    assert.ok(!plan.docs.letters.some(letter=>letter.payload.sourceId===original.id));
+  }
+  const output=JSON.stringify(plan.summary);
+  assert.ok(!output.includes('private ambiguous'));
+  assert.ok(!output.includes('secret unaddressed'));
+});
+
+test('quarantine does not bypass missing sender, oversize, invalid rows or duplicate IDs',()=>{
+  const t=syntheticDomainTables();
+  const letters=t.find(x=>x.table==='public.campaign_letters');
+  letters.rows.push({
+    id:'missing-sender-quarantine',sender_user_id:'deleted-uid',sender_player_id:null,
+    recipient_player_id:null,recipient_house_id:null,subject:'old',content:'text',
+    created_at:'2026-11-12 16:00:00+00',
+  });
+  let summary=buildTypedDomainPlan(t,hash).summary;
+  assert.equal(summary.planValid,false);
+  assert.equal(summary.orphanLinksByType.letterSenderMissingAuth,1);
+  assert.equal(summary.typedCollections.lettersQuarantine,0);
+  assert.equal(summary.letterCoverage.complete,false);
+
+  letters.rows.at(-1).sender_user_id='player-a-uid';
+  letters.rows.at(-1).content='x'.repeat(860*1024);
+  summary=buildTypedDomainPlan(t,hash).summary;
+  assert.equal(summary.planValid,false);
+  assert.equal(summary.issues.oversizedDocuments,1);
+
+  letters.rows.at(-1).content='text';
+  letters.rows.at(-1).id='letter-ab';
+  summary=buildTypedDomainPlan(t,hash).summary;
+  assert.equal(summary.planValid,false);
+  assert.equal(summary.issues.duplicateIds,1);
 });
 
 test('incomplete required tables block the complete domain view',()=>{
