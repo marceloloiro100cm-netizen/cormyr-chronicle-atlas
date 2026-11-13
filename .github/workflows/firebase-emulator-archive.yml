@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/firebase/stage-firestore-emulator*.mjs'
+      - 'scripts/firebase/verify-firestore-emulator*.mjs'
       - 'scripts/firebase/audit-private-access-graph*.mjs'
       - 'docs/firebase/PRIVATE-FIRESTORE-EMULATOR-ARCHIVE.md'
       - '.github/workflows/firebase-emulator-archive.yml'
@@ -10,6 +11,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/firebase/stage-firestore-emulator*.mjs'
+      - 'scripts/firebase/verify-firestore-emulator*.mjs'
       - '.github/workflows/firebase-emulator-archive.yml'
   workflow_dispatch:
 
@@ -28,6 +30,7 @@ jobs:
       - name: Check strict archive importer syntax
         run: |
           node --check scripts/firebase/stage-firestore-emulator.mjs
+          node --check scripts/firebase/verify-firestore-emulator.mjs
           node --check scripts/firebase/audit-private-access-graph.mjs
       - name: Synthetic dry run and fake Firestore emulator tests
         run: node --test scripts/firebase/stage-firestore-emulator.test.mjs scripts/firebase/audit-private-access-graph.test.mjs
