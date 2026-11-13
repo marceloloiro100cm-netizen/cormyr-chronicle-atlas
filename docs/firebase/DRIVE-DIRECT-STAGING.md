@@ -36,6 +36,28 @@ missivas jamais devem receber ACL pública no bucket.
 
 Não compartilhar credenciais, arquivos de chave ou access tokens pelo chat.
 
+## Verificação confirmada em 12/11/2026
+
+- A conta `cormyr-migration@cormyr.iam.gserviceaccount.com` está ativa e sem chaves JSON
+  (captura do proprietário).
+- As permissões de leitor no manifesto e na pasta `campaign-images` foram
+  confirmadas via Google Drive (metadados de permissão).
+- O proprietário informou ter salvo os papéis Storage Object Creator e
+  Storage Object Viewer no bucket `gs://cormyr.firebasestorage.app`.
+  Ainda não foi possível testar o IAM do bucket com uma chamada GCS autenticada.
+- Não há upload autenticado concluído no Firebase nesta etapa.
+
+**Executar primeiro apenas o dry-run abaixo.** Copiar nenhum token/senha para
+issues, chats ou GitHub. O operador precisa de permissão
+`roles/iam.serviceAccountTokenCreator` **na conta de serviço** para usar
+`--impersonate-service-account`. Essa permissão não é a mesma que os
+papéis de objetos concedidos no bucket.
+
+O comando `gcloud services enable` somente deve ser usado com ciência de
+que habilitar APIs é uma alteração no projeto; para a rotina são necessárias
+`drive.googleapis.com` e `iamcredentials.googleapis.com`. Não habilitar
+faturamento automaticamente.
+
 ## 2. Cloud Shell com credenciais temporárias
 
 Com a conta do proprietário, no Cloud Shell do Google Cloud:
