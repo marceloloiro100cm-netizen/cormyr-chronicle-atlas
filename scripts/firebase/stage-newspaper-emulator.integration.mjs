@@ -7,7 +7,7 @@ import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/ru
 import {getDoc,getDocs,setDoc,doc,collection} from 'firebase/firestore';
 import {assertEmulatorOnly} from './stage-firestore-emulator.mjs';
 import {planNewspaperEmulator,stageNewspaperEmulator} from './stage-newspaper-emulator.mjs';
-import {syntheticNewspaperSource} from './stage-newspaper-emulator.test.mjs';
+import {syntheticNewspaperSource} from './newspaper-fixtures.mjs';
 
 const HASH=createHash('sha256').update('synthetic-newspaper-rules').digest('hex');
 const PROJECT='demo-cormyr-migration';
