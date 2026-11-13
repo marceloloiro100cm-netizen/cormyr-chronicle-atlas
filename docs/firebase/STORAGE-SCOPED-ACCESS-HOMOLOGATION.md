@@ -91,3 +91,23 @@ Fontes:
 - https://docs.cloud.google.com/storage/docs/uniform-bucket-level-access
 - https://docs.cloud.google.com/sdk/gcloud/reference/storage/cp
 - https://docs.cloud.google.com/iam/docs/roles-permissions/storage
+
+## Correção de formato de metadados (13/11/2026)
+
+Na execução inicial da estratégia de bucket separado, o Cloud Shell criou
+`gs://cormyr-migration-homolog-477785088395`, mas a validação em Python
+interrompeu com `AssertionError: Wrong owner`. **Isso não comprova** que
+o bucket pertença a outro projeto: o comando `gcloud storage buckets describe`
+normaliza os nomes dos atributos e pode omitir `projectNumber` do formato
+exibido. A verificação esperava exatamente o nome da API JSON.
+
+O script passou a usar `gcloud storage buckets describe --raw --format=json`
+para verificar os valores originais da API: `projectNumber`,
+`iamConfiguration.uniformBucketLevelAccess.enabled`,
+`iamConfiguration.publicAccessPrevention` e `location`. **Não** removemos
+a conferência da titularidade; um bucket de outro projeto ou com segurança
+insuficiente continua bloqueado.
+
+É seguro repetir o script atualizado: ele detecta o bucket privado já
+existente, confere suas propriedades e só então aplica papéis restritos.
+A etapa anterior falhou **antes** de conceder IAM ou copiar objetos.
