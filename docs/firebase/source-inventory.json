@@ -1,0 +1,5173 @@
+{
+  "formatVersion": 1,
+  "scope": "static-source-only",
+  "productionVerified": false,
+  "summary": {
+    "migrationFiles": 89,
+    "tableCandidates": 61,
+    "functionCandidates": 144,
+    "coupledSourceFiles": 104
+  },
+  "packages": {
+    "@lovable.dev/cloud-auth-js": "^1.1.2",
+    "@lovable.dev/mcp-js": "^3.3.0",
+    "@supabase/supabase-js": "^2.118.0",
+    "@lovable.dev/vite-tanstack-config": "2.26.5",
+    "drizzle-kit": "0.x",
+    "drizzle-orm": "0.x",
+    "postgres": "^3.4.9"
+  },
+  "tables": [
+    "public.archive_source_review",
+    "public.campaign_access_profiles",
+    "public.campaign_admin_audit",
+    "public.campaign_calendar",
+    "public.campaign_calendar_audit",
+    "public.campaign_characters",
+    "public.campaign_houses",
+    "public.campaign_letter_consequences",
+    "public.campaign_letters",
+    "public.campaign_migration_backups",
+    "public.campaign_newspaper_commissions",
+    "public.campaign_newspaper_engravings",
+    "public.campaign_newspaper_reads",
+    "public.campaign_newspaper_revisions",
+    "public.campaign_newspaper_settings",
+    "public.campaign_newspaper_staff",
+    "public.campaign_newspaper_story_models",
+    "public.campaign_newspapers",
+    "public.campaign_players",
+    "public.campaign_private_gm_content",
+    "public.campaign_private_vassal_workbooks",
+    "public.campaign_records",
+    "public.campaign_representation_sessions",
+    "public.campaign_schedule_event_audit",
+    "public.campaign_schedule_events",
+    "public.campaign_temporal_consumers",
+    "public.campaign_temporal_deliveries",
+    "public.campaign_temporal_delivery_resolutions",
+    "public.campaign_temporal_effect_checkpoints",
+    "public.campaign_time_operations",
+    "public.campaign_translations",
+    "public.character_registry_audit",
+    "public.character_relations",
+    "public.character_review_queue",
+    "public.character_source_links",
+    "public.character_year_transitions",
+    "public.drive_sync_bindings",
+    "public.drive_sync_files",
+    "public.drive_sync_inbox",
+    "public.house_catalog",
+    "public.house_memberships",
+    "public.letter_receipts",
+    "public.letter_replies",
+    "public.letter_reply_versions",
+    "public.letter_rounds",
+    "public.letter_versions",
+    "public.mail_submissions",
+    "public.narrator_mail_notes",
+    "public.noble_house_drive_exports",
+    "public.noble_house_gm_notes",
+    "public.noble_house_ledger",
+    "public.noble_house_rule_overrides",
+    "public.noble_house_sheets",
+    "public.noble_house_source_links",
+    "public.noble_house_workbook_imports",
+    "public.profiles",
+    "public.public_archive_roots",
+    "public.record_versions",
+    "public.sync_conflicts",
+    "public.sync_outbox",
+    "public.user_roles"
+  ],
+  "functions": [
+    "public.admin_save_player_account",
+    "public.advance_calendar_round",
+    "public.apply_calendar_months",
+    "public.apply_drive_record",
+    "public.apply_letter_consequence",
+    "public.assign_newspaper_edition_no",
+    "public.audit_campaign_newspaper",
+    "public.audit_character_year_transition",
+    "public.audit_letter_edit",
+    "public.audit_reply_edit",
+    "public.block_campaign_editor_mail",
+    "public.block_espiao_outgoing_mail",
+    "public.calendar_mail_events",
+    "public.campaign_access_active",
+    "public.campaign_date_in_month",
+    "public.campaign_representation_action",
+    "public.can_edit_campaign_newspaper",
+    "public.can_edit_record",
+    "public.can_export_mail",
+    "public.can_read_campaign_newspaper_asset",
+    "public.can_read_campaign_newspaper_player",
+    "public.can_read_letter",
+    "public.can_read_letter_as",
+    "public.can_read_public_gallery_image",
+    "public.can_read_record",
+    "public.can_read_reply",
+    "public.can_read_reply_as",
+    "public.can_read_reply_version",
+    "public.character_age_state",
+    "public.claim_drive_binding",
+    "public.commit_noble_house_operation",
+    "public.commit_noble_house_source",
+    "public.create_player_profile",
+    "public.current_campaign_profile",
+    "public.dated_mail_action",
+    "public.delete_campaign_letter",
+    "public.delete_campaign_newspaper",
+    "public.delete_campaign_newspaper_draft",
+    "public.delete_letter_reply",
+    "public.drive_resolution_requeue",
+    "public.edit_campaign_letter",
+    "public.edit_letter_draft",
+    "public.edit_letter_reply",
+    "public.edit_linked_mail_draft",
+    "public.enforce_campaign_mail_date",
+    "public.enqueue_campaign_temporal_consumers",
+    "public.get_campaign_calendar",
+    "public.get_campaign_chronology",
+    "public.get_campaign_schedule_drafts",
+    "public.get_campaign_schedule_events",
+    "public.get_campaign_time_history",
+    "public.get_character_age_dashboard",
+    "public.get_character_registry_hub",
+    "public.get_character_year_transitions",
+    "public.get_house_character_ages",
+    "public.get_newspaper_calendar_events",
+    "public.get_public_campaign_time",
+    "public.get_temporal_consumer_dashboard",
+    "public.get_temporal_release_preflight",
+    "public.guard_campaign_editor_house",
+    "public.guard_campaign_editor_roster",
+    "public.harptos_advance_desdia",
+    "public.harptos_calendar_ordinal",
+    "public.harptos_from_ordinary_index",
+    "public.harptos_ordinary_index",
+    "public.harptos_time_key",
+    "public.import_character_source_candidates",
+    "public.in_campaign_house",
+    "public.is_campaign_admin",
+    "public.is_campaign_editor",
+    "public.is_campaign_editor_identity",
+    "public.letter_recipient",
+    "public.mail_compose_options",
+    "public.mail_enqueue",
+    "public.mail_insights",
+    "public.mail_insights_grouped",
+    "public.mail_overview_grouped",
+    "public.mail_page",
+    "public.mail_recipient_read",
+    "public.mail_trash_page",
+    "public.mark_campaign_newspaper_read",
+    "public.mark_letter_read",
+    "public.mark_newspaper_commissions_seen",
+    "public.my_player_id",
+    "public.newspaper_commission_story",
+    "public.newspaper_date_ordinal",
+    "public.newspaper_reject_commission",
+    "public.noble_house_export_pending",
+    "public.open_letter_round",
+    "public.player_send_letter",
+    "public.player_send_letter_to",
+    "public.prepare_letter_week",
+    "public.preview_campaign_time_change",
+    "public.preview_house_time_impacts",
+    "public.public_player_houses",
+    "public.publish_campaign_schedule",
+    "public.publish_campaign_schedule_confirmed",
+    "public.publish_campaign_time_change",
+    "public.publish_due_campaign_newspapers",
+    "public.record_audit_enqueue",
+    "public.replay_temporal_delivery",
+    "public.reply_campaign_letter",
+    "public.reply_current_week",
+    "public.reply_delivery_week",
+    "public.reply_marks_letter_unread",
+    "public.reply_weekly_message",
+    "public.require_house_mail_recipient",
+    "public.resolve_campaign_time_target",
+    "public.resolve_drive_import",
+    "public.resolve_temporal_delivery",
+    "public.restore_campaign_letter",
+    "public.restore_letter_reply",
+    "public.reverse_letter_consequence",
+    "public.review_character_source",
+    "public.save_campaign_character",
+    "public.save_campaign_record",
+    "public.save_campaign_schedule_event",
+    "public.save_character_relation",
+    "public.save_imported_source",
+    "public.save_letter_batch_drafts",
+    "public.save_letter_draft",
+    "public.save_weekly_reply_draft",
+    "public.schedule_letter_draft",
+    "public.schedule_weekly_reply_draft",
+    "public.send_campaign_letter",
+    "public.send_campaign_letter_batch",
+    "public.send_campaign_message",
+    "public.send_linked_mail",
+    "public.set_campaign_calendar",
+    "public.set_letter_round",
+    "public.set_round_harptos_period",
+    "public.settle_newspaper_commissions",
+    "public.stage_campaign_character_sources",
+    "public.stamp_campaign_newspaper",
+    "public.start_campaign_representation",
+    "public.stop_campaign_representation",
+    "public.sync_campaign_calendar_week",
+    "public.temporal_season_crossings",
+    "public.valid_campaign_date",
+    "public.validate_campaign_image_refs",
+    "public.validate_mail_links",
+    "public.validate_weekly_message",
+    "public.version_letter_draft",
+    "public.weekly_message_defaults"
+  ],
+  "migrations": [
+    {
+      "path": "drizzle/migrations/0000_season_two_player_area.sql",
+      "tables": [
+        "public.campaign_houses",
+        "public.campaign_letters",
+        "public.campaign_players",
+        "public.campaign_records",
+        "public.house_memberships",
+        "public.letter_receipts",
+        "public.letter_replies",
+        "public.profiles",
+        "public.record_versions",
+        "public.sync_conflicts",
+        "public.sync_outbox",
+        "public.user_roles"
+      ],
+      "functions": [
+        "public.can_edit_record",
+        "public.can_read_letter",
+        "public.can_read_record",
+        "public.create_player_profile",
+        "public.in_campaign_house",
+        "public.is_campaign_admin",
+        "public.letter_recipient",
+        "public.mail_enqueue",
+        "public.my_player_id",
+        "public.record_audit_enqueue",
+        "public.reply_campaign_letter",
+        "public.save_campaign_record",
+        "public.send_campaign_letter"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0001_campaign_rpc_hardening.sql",
+      "tables": [],
+      "functions": [
+        "public.send_campaign_message"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0002_official_roster_fields.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0003_drive_sync_executor.sql",
+      "tables": [
+        "public.drive_sync_bindings",
+        "public.drive_sync_files",
+        "public.drive_sync_inbox"
+      ],
+      "functions": [
+        "public.claim_drive_binding",
+        "public.resolve_drive_import"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0004_drive_record_transaction.sql",
+      "tables": [],
+      "functions": [
+        "public.apply_drive_record"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0005_drive_resolution_requeue.sql",
+      "tables": [],
+      "functions": [
+        "public.drive_resolution_requeue"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0006_letter_numbering_and_kinds.sql",
+      "tables": [],
+      "functions": [
+        "public.player_send_letter",
+        "public.reply_campaign_letter",
+        "public.send_campaign_letter_batch"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0007_reply_author_mestre.sql",
+      "tables": [],
+      "functions": [
+        "public.reply_campaign_letter"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0008_player_letter_private.sql",
+      "tables": [],
+      "functions": [
+        "public.player_send_letter"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0009_letters_allow_player_sender.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0010_private_campaign_images_and_sources.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0011_imported_source_version_guard.sql",
+      "tables": [],
+      "functions": [
+        "public.save_imported_source"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0012_validate_private_image_references.sql",
+      "tables": [],
+      "functions": [
+        "public.validate_campaign_image_refs"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0013_narrator_letter_management.sql",
+      "tables": [
+        "public.letter_versions"
+      ],
+      "functions": [
+        "public.audit_letter_edit",
+        "public.edit_campaign_letter"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0014_house_id_fk_cascade.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0015_correct_house_spellings.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0016_letter_rounds_delete_player_mail.sql",
+      "tables": [
+        "public.letter_rounds"
+      ],
+      "functions": [
+        "public.can_read_letter",
+        "public.delete_campaign_letter",
+        "public.open_letter_round",
+        "public.player_send_letter",
+        "public.player_send_letter_to",
+        "public.reply_campaign_letter",
+        "public.set_letter_round"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0017_campaign_weekly_delivery_privacy.sql",
+      "tables": [
+        "public.campaign_migration_backups"
+      ],
+      "functions": [
+        "public.can_read_letter",
+        "public.can_read_reply",
+        "public.prepare_letter_week",
+        "public.reply_campaign_letter",
+        "public.reply_weekly_message",
+        "public.save_letter_draft",
+        "public.schedule_letter_draft",
+        "public.set_letter_round",
+        "public.weekly_message_defaults"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0018_weekly_delivery_validation.sql",
+      "tables": [],
+      "functions": [
+        "public.schedule_letter_draft",
+        "public.validate_weekly_message"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0019_active_players_public_catalog.sql",
+      "tables": [
+        "public.campaign_admin_audit",
+        "public.house_catalog"
+      ],
+      "functions": [
+        "public.campaign_access_active",
+        "public.can_read_letter",
+        "public.can_read_reply",
+        "public.in_campaign_house",
+        "public.my_player_id",
+        "public.public_player_houses"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0020_drive_technical_folder_mapping.sql",
+      "tables": [
+        "public.archive_source_review",
+        "public.public_archive_roots"
+      ],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0021_public_gallery_image_access.sql",
+      "tables": [],
+      "functions": [
+        "public.can_read_public_gallery_image"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0022_weekly_rpc_and_catalog_boundaries.sql",
+      "tables": [],
+      "functions": [
+        "public.delete_campaign_letter",
+        "public.open_letter_round",
+        "public.schedule_letter_draft"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0023_transactional_player_registration.sql",
+      "tables": [],
+      "functions": [
+        "public.admin_save_player_account",
+        "public.save_letter_batch_drafts"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0024_reply_draft_lifecycle.sql",
+      "tables": [],
+      "functions": [
+        "public.save_weekly_reply_draft",
+        "public.schedule_weekly_reply_draft"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0025_audited_narrator_representation.sql",
+      "tables": [
+        "public.campaign_representation_sessions"
+      ],
+      "functions": [
+        "public.campaign_representation_action",
+        "public.start_campaign_representation",
+        "public.stop_campaign_representation"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0026_house_members_read_delivered_replies.sql",
+      "tables": [],
+      "functions": [
+        "public.can_read_reply"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0027_reply_marks_letter_unread.sql",
+      "tables": [],
+      "functions": [
+        "public.reply_marks_letter_unread"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0028_restrict_letter_rounds_read.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0029_reply_uses_current_week.sql",
+      "tables": [],
+      "functions": [
+        "public.reply_current_week"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0030_reply_keeps_scheduled_delivery_week.sql",
+      "tables": [],
+      "functions": [
+        "public.reply_current_week"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0031_noble_house_private_management.sql",
+      "tables": [
+        "public.noble_house_gm_notes",
+        "public.noble_house_ledger",
+        "public.noble_house_rule_overrides",
+        "public.noble_house_sheets"
+      ],
+      "functions": [
+        "public.commit_noble_house_operation"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0032_noble_house_drive_exports.sql",
+      "tables": [
+        "public.noble_house_drive_exports"
+      ],
+      "functions": [
+        "public.noble_house_export_pending"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0033_noble_house_source_links.sql",
+      "tables": [
+        "public.noble_house_source_links"
+      ],
+      "functions": [
+        "public.commit_noble_house_source"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0034_noble_source_authorized_player_records.sql",
+      "tables": [],
+      "functions": [
+        "public.commit_noble_house_source"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0035_missivas_lifecycle_and_audience.sql",
+      "tables": [],
+      "functions": [
+        "public.can_export_mail",
+        "public.can_read_letter",
+        "public.can_read_letter_as",
+        "public.can_read_reply",
+        "public.can_read_reply_as",
+        "public.edit_letter_draft",
+        "public.mark_letter_read",
+        "public.player_send_letter_to",
+        "public.reply_delivery_week",
+        "public.reply_weekly_message",
+        "public.save_letter_draft",
+        "public.save_weekly_reply_draft",
+        "public.schedule_letter_draft",
+        "public.schedule_weekly_reply_draft",
+        "public.send_campaign_letter_batch",
+        "public.version_letter_draft"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0036_seed_legacy_houses_state.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0037_mail_recipients_and_assignments.sql",
+      "tables": [
+        "public.mail_submissions"
+      ],
+      "functions": [
+        "public.edit_linked_mail_draft",
+        "public.mail_compose_options",
+        "public.mail_insights",
+        "public.mail_page",
+        "public.mail_recipient_read",
+        "public.schedule_letter_draft",
+        "public.send_linked_mail",
+        "public.validate_mail_links"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0038_harptos_calendar.sql",
+      "tables": [
+        "public.campaign_calendar",
+        "public.campaign_calendar_audit"
+      ],
+      "functions": [
+        "public.advance_calendar_round",
+        "public.apply_calendar_months",
+        "public.calendar_mail_events",
+        "public.dated_mail_action",
+        "public.enforce_campaign_mail_date",
+        "public.get_campaign_calendar",
+        "public.set_campaign_calendar",
+        "public.valid_campaign_date"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0039_house_commander_transaction.sql",
+      "tables": [],
+      "functions": [
+        "public.commit_noble_house_operation",
+        "public.mail_compose_options"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0040_complete_pending_preview_schema.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0041_campaign_translations.sql",
+      "tables": [
+        "public.campaign_translations"
+      ],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0041_seed_complete_noble_house_possessions.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0042_reconcile_house_workbooks.sql",
+      "tables": [
+        "public.noble_house_workbook_imports"
+      ],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0043_narrator_calendar_publishing.sql",
+      "tables": [
+        "public.campaign_schedule_event_audit",
+        "public.campaign_schedule_events"
+      ],
+      "functions": [
+        "public.get_campaign_schedule_drafts",
+        "public.get_campaign_schedule_events",
+        "public.publish_campaign_schedule",
+        "public.save_campaign_schedule_event",
+        "public.sync_campaign_calendar_week"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0044_calendar_confirmed_publication.sql",
+      "tables": [],
+      "functions": [
+        "public.publish_campaign_schedule_confirmed"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0045_calendar_realtime_subscription.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0046_historical_letter_addressee.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0047_mail_regional_group_filters.sql",
+      "tables": [],
+      "functions": [
+        "public.mail_insights_grouped",
+        "public.mail_overview_grouped",
+        "public.mail_page"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0048_reply_week_consistency.sql",
+      "tables": [],
+      "functions": [
+        "public.reply_current_week",
+        "public.reply_weekly_message",
+        "public.schedule_weekly_reply_draft"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0049_mail_sequential_rounds.sql",
+      "tables": [],
+      "functions": [
+        "public.set_letter_round"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0050_mail_narrator_filters.sql",
+      "tables": [],
+      "functions": [
+        "public.mail_page"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0051_mail_pending_privacy_search_metrics.sql",
+      "tables": [],
+      "functions": [
+        "public.can_read_reply_as",
+        "public.mail_page"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0052_mail_reply_versions_addenda_sync.sql",
+      "tables": [
+        "public.letter_reply_versions"
+      ],
+      "functions": [
+        "public.audit_letter_edit",
+        "public.audit_reply_edit",
+        "public.can_export_mail",
+        "public.can_read_reply_as",
+        "public.delete_letter_reply",
+        "public.edit_letter_reply",
+        "public.reply_weekly_message",
+        "public.save_weekly_reply_draft",
+        "public.schedule_weekly_reply_draft",
+        "public.set_letter_round",
+        "public.weekly_message_defaults"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0053_mail_individuals_representation_receipts.sql",
+      "tables": [],
+      "functions": [
+        "public.campaign_representation_action",
+        "public.can_read_reply_version",
+        "public.reply_marks_letter_unread",
+        "public.reply_weekly_message",
+        "public.save_letter_batch_drafts"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0054_mail_parent_privacy_legacy.sql",
+      "tables": [],
+      "functions": [
+        "public.can_export_mail",
+        "public.can_read_reply_as",
+        "public.reply_weekly_message",
+        "public.send_campaign_letter"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0055_narrator_mail_notes.sql",
+      "tables": [
+        "public.narrator_mail_notes"
+      ],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0056_round_harptos_period.sql",
+      "tables": [],
+      "functions": [
+        "public.set_round_harptos_period"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0057_mail_npc_signatures.sql",
+      "tables": [],
+      "functions": [
+        "public.dated_mail_action",
+        "public.reply_weekly_message",
+        "public.send_linked_mail"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0058_house_attribute_permissions_and_crests.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0059_reconcile_production_schema.sql",
+      "tables": [
+        "public.campaign_translations",
+        "public.letter_reply_versions",
+        "public.narrator_mail_notes"
+      ],
+      "functions": [
+        "public.audit_letter_edit",
+        "public.audit_reply_edit",
+        "public.campaign_representation_action",
+        "public.can_export_mail",
+        "public.can_read_reply_as",
+        "public.can_read_reply_version",
+        "public.delete_letter_reply",
+        "public.edit_letter_reply",
+        "public.reply_marks_letter_unread",
+        "public.save_letter_batch_drafts",
+        "public.save_weekly_reply_draft",
+        "public.send_campaign_letter",
+        "public.set_letter_round",
+        "public.set_round_harptos_period",
+        "public.weekly_message_defaults"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0060_hub_temporal_atomic_publication.sql",
+      "tables": [
+        "public.campaign_time_operations"
+      ],
+      "functions": [
+        "public.get_campaign_time_history",
+        "public.harptos_advance_desdia",
+        "public.harptos_calendar_ordinal",
+        "public.harptos_from_ordinary_index",
+        "public.harptos_ordinary_index",
+        "public.harptos_time_key",
+        "public.preview_campaign_time_change",
+        "public.publish_campaign_time_change",
+        "public.resolve_campaign_time_target"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0061_public_campaign_time_projection.sql",
+      "tables": [],
+      "functions": [
+        "public.get_public_campaign_time"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0062_canonical_character_registry.sql",
+      "tables": [
+        "public.campaign_characters",
+        "public.character_registry_audit",
+        "public.character_relations",
+        "public.character_review_queue",
+        "public.character_source_links"
+      ],
+      "functions": [
+        "public.get_character_registry_hub",
+        "public.import_character_source_candidates",
+        "public.review_character_source",
+        "public.save_campaign_character",
+        "public.save_character_relation",
+        "public.stage_campaign_character_sources"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0063_annual_character_ages.sql",
+      "tables": [
+        "public.character_year_transitions"
+      ],
+      "functions": [
+        "public.audit_character_year_transition",
+        "public.character_age_state",
+        "public.get_character_age_dashboard",
+        "public.get_character_year_transitions",
+        "public.get_house_character_ages"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0064_mail_chronology_integration.sql",
+      "tables": [],
+      "functions": [
+        "public.calendar_mail_events",
+        "public.campaign_date_in_month",
+        "public.get_campaign_chronology"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0065_house_temporal_months.sql",
+      "tables": [],
+      "functions": [
+        "public.apply_calendar_months",
+        "public.preview_house_time_impacts"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0066_temporal_consumer_outbox.sql",
+      "tables": [
+        "public.campaign_temporal_consumers",
+        "public.campaign_temporal_deliveries",
+        "public.campaign_temporal_delivery_resolutions",
+        "public.campaign_temporal_effect_checkpoints"
+      ],
+      "functions": [
+        "public.enqueue_campaign_temporal_consumers",
+        "public.get_temporal_consumer_dashboard",
+        "public.replay_temporal_delivery",
+        "public.resolve_temporal_delivery"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0067_temporal_release_preflight.sql",
+      "tables": [],
+      "functions": [
+        "public.enqueue_campaign_temporal_consumers",
+        "public.get_temporal_release_preflight",
+        "public.temporal_season_crossings"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0068_mail_consequences.sql",
+      "tables": [
+        "public.campaign_letter_consequences"
+      ],
+      "functions": [
+        "public.apply_letter_consequence",
+        "public.reverse_letter_consequence"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0069_mail_trash_restore.sql",
+      "tables": [],
+      "functions": [
+        "public.delete_letter_reply",
+        "public.mail_trash_page",
+        "public.restore_campaign_letter",
+        "public.restore_letter_reply"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0071_harcourt_mail_filters.sql",
+      "tables": [],
+      "functions": [
+        "public.mail_page"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0072_house_only_correspondence.sql",
+      "tables": [],
+      "functions": [
+        "public.require_house_mail_recipient"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0073_player_to_narrator_house_mediation.sql",
+      "tables": [],
+      "functions": [
+        "public.require_house_mail_recipient",
+        "public.send_linked_mail"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0074_mediator_copies_view.sql",
+      "tables": [],
+      "functions": [
+        "public.mail_page"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0075_fix_player_account_role_check.sql",
+      "tables": [],
+      "functions": [
+        "public.admin_save_player_account"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0076_private_campaign_content.sql",
+      "tables": [
+        "public.campaign_private_gm_content",
+        "public.campaign_private_vassal_workbooks"
+      ],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0077_revoke_anonymous_calendar_table_grants.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0110_special_spy_identity.sql",
+      "tables": [],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0111_campaign_newspaper.sql",
+      "tables": [
+        "public.campaign_newspaper_reads",
+        "public.campaign_newspaper_revisions",
+        "public.campaign_newspapers"
+      ],
+      "functions": [
+        "public.audit_campaign_newspaper",
+        "public.can_edit_campaign_newspaper",
+        "public.can_read_campaign_newspaper_asset",
+        "public.can_read_campaign_newspaper_player",
+        "public.mark_campaign_newspaper_read",
+        "public.stamp_campaign_newspaper"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0115_leonardo_missives_readonly.sql",
+      "tables": [],
+      "functions": [
+        "public.block_espiao_outgoing_mail"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0116_campaign_three_access_profiles.sql",
+      "tables": [
+        "public.campaign_access_profiles"
+      ],
+      "functions": [
+        "public.block_campaign_editor_mail",
+        "public.can_edit_campaign_newspaper",
+        "public.can_read_campaign_newspaper_player",
+        "public.current_campaign_profile",
+        "public.guard_campaign_editor_house",
+        "public.guard_campaign_editor_roster",
+        "public.in_campaign_house",
+        "public.is_campaign_editor",
+        "public.is_campaign_editor_identity",
+        "public.my_player_id"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0117_newspaper_commissions.sql",
+      "tables": [
+        "public.campaign_newspaper_commissions"
+      ],
+      "functions": [
+        "public.delete_campaign_newspaper_draft",
+        "public.mark_newspaper_commissions_seen",
+        "public.newspaper_commission_story",
+        "public.newspaper_reject_commission",
+        "public.settle_newspaper_commissions"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0118_newspaper_staff.sql",
+      "tables": [
+        "public.campaign_newspaper_staff"
+      ],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0119_newspaper_models_and_delete.sql",
+      "tables": [
+        "public.campaign_newspaper_story_models"
+      ],
+      "functions": [
+        "public.assign_newspaper_edition_no",
+        "public.delete_campaign_newspaper"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0120_newspaper_engravings_calendar.sql",
+      "tables": [
+        "public.campaign_newspaper_engravings"
+      ],
+      "functions": [
+        "public.get_newspaper_calendar_events"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0121_newspaper_settings.sql",
+      "tables": [
+        "public.campaign_newspaper_settings"
+      ],
+      "functions": []
+    },
+    {
+      "path": "drizzle/migrations/0122_newspaper_acervo_and_schedule.sql",
+      "tables": [],
+      "functions": [
+        "public.newspaper_date_ordinal",
+        "public.publish_due_campaign_newspapers"
+      ]
+    },
+    {
+      "path": "drizzle/migrations/0123_newspaper_more_fonts.sql",
+      "tables": [],
+      "functions": []
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "src/components/calendar/calendar.tsx",
+      "matches": [
+        {
+          "line": 5,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 27,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 28,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/calendar/chronology.tsx",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 16,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/calendar/narrator-calendar.tsx",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 35,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 63,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 79,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 92,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 101,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 125,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 164,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/calendar/narrator-character-ages.tsx",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 18,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 29,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/calendar/narrator-character-registry.tsx",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 5,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 26,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 93,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 104,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 132,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 164,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 206,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/calendar/realtime.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 10,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 38,
+          "kinds": [
+            "supabase",
+            "realtime"
+          ]
+        },
+        {
+          "line": 87,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/calendar/temporal-consumer-hub.tsx",
+      "matches": [
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 25,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 34,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 55,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 75,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/campaign-content.tsx",
+      "matches": [
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 36,
+          "kinds": [
+            "supabase",
+            "storage"
+          ]
+        },
+        {
+          "line": 235,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 249,
+          "kinds": [
+            "supabase",
+            "storage"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/character-v2/coin-wallet.tsx",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 28,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 56,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 68,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 74,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/drive-sync-admin.tsx",
+      "matches": [
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 12,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 15,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/gm-panels.tsx",
+      "matches": [
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 16,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/house/character-editor.tsx",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 24,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 27,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 29,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/house/drive-status.tsx",
+      "matches": [
+        {
+          "line": 6,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 13,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/house/gm-notes.tsx",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 5,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 14,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 27,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/house/kingdom-dashboard.tsx",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 14,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 17,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 18,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/house/source-comparison.tsx",
+      "matches": [
+        {
+          "line": 6,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 13,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/house/vassal-sheet-preview.tsx",
+      "matches": [
+        {
+          "line": 11,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 58,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/npc-hub.tsx",
+      "matches": [
+        {
+          "line": 6,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 11,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 39,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 73,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 77,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/player-representation.tsx",
+      "matches": [
+        {
+          "line": 6,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 13,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 21,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 28,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 29,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/players/admin-panel.tsx",
+      "matches": [
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 15,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 20,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/players/ficha-tab.tsx",
+      "matches": [
+        {
+          "line": 9,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 48,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/players/gallery-tab.tsx",
+      "matches": [
+        {
+          "line": 6,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 25,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 28,
+          "kinds": [
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/players/letter-consequences.tsx",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 46,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 63,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 78,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/players/mail-compose.tsx",
+      "matches": [
+        {
+          "line": 8,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 18,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/players/missivas-tab.tsx",
+      "matches": [
+        {
+          "line": 8,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 27,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 68,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 75,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 163,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 171,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 174,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 195,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 197,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 199,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 204,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 253,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 272,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 281,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 286,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 307,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/players/narrator-mail-notes.tsx",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 21,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 32,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/players/narrator-missives-hub.tsx",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 44,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/players/panel-data.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 10,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 13,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 16,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 18,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 20,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 21,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/players/records.tsx",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 15,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 16,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 21,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/components/players/shared.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/integrations/lovable/index.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 4,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 5,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 32,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/integrations/supabase/auth-attacher.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 9,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/integrations/supabase/auth-middleware.ts",
+      "matches": [
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 6,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 15,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 26,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 30,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 38,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 39,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 41,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 43,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 44,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 77,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 78,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 79,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 82,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 95,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 106,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/integrations/supabase/client.server.ts",
+      "matches": [
+        {
+          "line": 5,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 7,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 13,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 24,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 28,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 34,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 35,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 37,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 39,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 40,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 47,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 49,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 59,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 63,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 65,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 67,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 68,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/integrations/supabase/client.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 5,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 12,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 14,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 15,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 19,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 20,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 21,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 32,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 36,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 56,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 57,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 59,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 61,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 62,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 69,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 71,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 81,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 83,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 84,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 85,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 87,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 88,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/integrations/supabase/previewAuthStorage.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "storage"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/integrations/supabase/public-config.ts",
+      "matches": [
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 5,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 9,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 10,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/archive-update.server.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 7,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 8,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 15,
+          "kinds": [
+            "storage"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/auth/campaign-access-scope.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 39,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 41,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 43,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 44,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 49,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 54,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 62,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 110,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/battle/adapters/readonly-source.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 19,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 23,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 24,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 28,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 44,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 55,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 86,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 118,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 156,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/battle/battle-session.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 25,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 36,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 39,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 40,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 84,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 96,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 119,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 126,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 127,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 128,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 143,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 168,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 169,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 170,
+          "kinds": [
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/battle/v3/invitations.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 36,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 41,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 52,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 66,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 85,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/battle/v3/live.functions.ts",
+      "matches": [
+        {
+          "line": 7,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 47,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 51,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 61,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 77,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 90,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 102,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 103,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 116,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 134,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 157,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 158,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/calendar/campaign-time.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 49,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/calendar/mail.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 4,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/campaign.functions.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 9,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 11,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 14,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 22,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 25,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 27,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 33,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 35,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 43,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 46,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 47,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 53,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 54,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 56,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 60,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 61,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 62,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/character-v2/migration.functions.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 16,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 17,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 20,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 26,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 47,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 48,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/crusade/dnd-cormyr-private-loader.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 12,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 17,
+          "kinds": [
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/crusade/dnd-private-custom.ts",
+      "matches": [
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 7,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 13,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 14,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/crusade/dnd-private-overrides.ts",
+      "matches": [
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 8,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 14,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 38,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/crusade/dnd-private-sessions.ts",
+      "matches": [
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 10,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 16,
+          "kinds": [
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/crusade/dnd-verified-sources.ts",
+      "matches": [
+        {
+          "line": 6,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 31,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/drive-adapter.server.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 6,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 38,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 39,
+          "kinds": [
+            "supabase",
+            "storage"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/drive-executor.server.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 29,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 48,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 85,
+          "kinds": [
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/drive-library.server.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 7,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 9,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 39,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 50,
+          "kinds": [
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/drive-organization.server.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 6,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 7,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 11,
+          "kinds": [
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/espionage/region-review.functions.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 16,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 19,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/espionage/region-turns.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 16,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/espionage/spy-agent-actions.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 38,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 55,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 92,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 117,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 164,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 166,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 184,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/espionage/spy-browser-client.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 16,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 26,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 28,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 58,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/espionage/spy-dossier.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 6,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 44,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 49,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 103,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 108,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 122,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 139,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 153,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 167,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 169,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 175,
+          "kinds": [
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/espionage/spy-house-targets.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 24,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/espionage/spy-management.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 78,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 90,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 121,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/espionage/spy-mission-preview.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 31,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 48,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/espionage/spy-narrator-house-defense.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 51,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 54,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 62,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/espionage/spy-operations-browser.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 32,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 36,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/espionage/spy-recruitment.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 36,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/espionage/spy-target-browser.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 10,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 12,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 32,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 45,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 70,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 85,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/espionage/spy-target-defense.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 39,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 41,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 48,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/house/drive-adapter.server.ts",
+      "matches": [
+        {
+          "line": 5,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 9,
+          "kinds": [
+            "lovable"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/house/drive-export.server.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/house/drive.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 6,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 8,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 17,
+          "kinds": [
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/house/house.functions.ts",
+      "matches": [
+        {
+          "line": 6,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 26,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 31,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 39,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 43,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 48,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 49,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 60,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 61,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 62,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 96,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 101,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 102,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 117,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 120,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 125,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 129,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 135,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 148,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 221,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 330,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 333,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 361,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 386,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 537,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 562,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 563,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 571,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 576,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 577,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/house/source-link.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 9,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 10,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 11,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 13,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 26,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 38,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 39,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 40,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 44,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 48,
+          "kinds": [
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/house/vassal-workbook.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 17,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 20,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 21,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 40,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 41,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/i18n/i18n.functions.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 5,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 6,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 19,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 20,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 69,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 79,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 81,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/mcp/index.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 11,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 12,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 21,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/mcp/supabase.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 4,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 8,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 10,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 11,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 12,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/mcp/tools/editar-documento.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 17,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/mcp/tools/escrever-missiva.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 26,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/mcp/tools/ler-documento.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 12,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/mcp/tools/listar-casas.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 11,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/mcp/tools/listar-documentos.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 12,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/mcp/tools/listar-missivas.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 10,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/mcp/tools/opcoes-missivas.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 25,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/mcp/tools/responder-missiva.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 12,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 15,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/newspaper/data.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 10,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 14,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 51,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 60,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 67,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 84,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 91,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 99,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 111,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 115,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 128,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 133,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 146,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 162,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 169,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 185,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 190,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 217,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 233,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 239,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 242,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 254,
+          "kinds": [
+            "storage"
+          ]
+        },
+        {
+          "line": 288,
+          "kinds": [
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/player-admin.functions.ts",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 8,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 9,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 57,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 91,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 93,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 153,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 155,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 182,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 183,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/lib/player-sync.functions.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 6,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 7,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 10,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 12,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 13,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 19,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 20,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/__root.tsx",
+      "matches": [
+        {
+          "line": 15,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 128,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/_authenticated/jogadores.tsx",
+      "matches": [
+        {
+          "line": 6,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 118,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 128,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 147,
+          "kinds": [
+            "supabase",
+            "realtime"
+          ]
+        },
+        {
+          "line": 157,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 169,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 188,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/_authenticated/route.tsx",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/[.]lovable.oauth.consent.tsx",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 40,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 47,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 58,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 59,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/[.well-known]/oauth-protected-resource.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 8,
+          "kinds": [
+            "lovable"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/api/public/catalog.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 6,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 7,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 10,
+          "kinds": [
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/api/public/gallery-image.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 8,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 9,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 11,
+          "kinds": [
+            "rpc"
+          ]
+        },
+        {
+          "line": 12,
+          "kinds": [
+            "storage"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/api/public/gm-content.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 19,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 20,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/api/public/jobs/drive-sync.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 8,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 10,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 12,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/api/public/time.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 14,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 15,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 27,
+          "kinds": [
+            "rpc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/api/public/translations.ts",
+      "matches": [
+        {
+          "line": 2,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 18,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 19,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/auth.tsx",
+      "matches": [
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 36,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 39,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 48,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 49,
+          "kinds": [
+            "supabase",
+            "rpc"
+          ]
+        },
+        {
+          "line": 59,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/mcp.ts",
+      "matches": [
+        {
+          "line": 1,
+          "kinds": [
+            "lovable"
+          ]
+        },
+        {
+          "line": 8,
+          "kinds": [
+            "lovable"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/routes/reset-password.tsx",
+      "matches": [
+        {
+          "line": 3,
+          "kinds": [
+            "supabase"
+          ]
+        },
+        {
+          "line": 7,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/start.ts",
+      "matches": [
+        {
+          "line": 4,
+          "kinds": [
+            "supabase"
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Not a live schema or backup. CREATE candidates can include objects later dropped.",
+    "Dynamic SQL and computed RPC/table names require manual review.",
+    "Auth users, storage binaries, RLS, triggers, grants and row counts require a private live export."
+  ]
+}
