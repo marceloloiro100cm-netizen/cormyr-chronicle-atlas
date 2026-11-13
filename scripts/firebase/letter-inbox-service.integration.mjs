@@ -10,12 +10,14 @@ import {assertEmulatorOnly} from './stage-firestore-emulator.mjs';
 const PROJECT='demo-cormyr-migration';
 const SHA='e'.repeat(64);
 const ID={one:'a'.repeat(64),two:'b'.repeat(64),third:'c'.repeat(64),
-  deleted:'d'.repeat(64),quarantine:'f'.repeat(64)};
+  deleted:'d'.repeat(64),quarantine:'f'.repeat(64),
+  draft:'0'.repeat(64),scheduled:'1'.repeat(64)};
 const date=i=>new Date(Date.UTC(2026,10,13,14,i)).toISOString();
 const letter=(senderUid,recipientPlayerId,recipientHouseId,subject,i,deletedAt=null)=>({
   sourceId:'synthetic-'+i,senderUid,senderPlayerId:null,
   senderName:'Fictício',recipientPlayerId,recipientHouseId,
-  subject,content:'Synthetic-only correspondence',createdAt:date(i),deletedAt,
+  subject,content:'Synthetic-only correspondence',publicationState:'delivered',
+  createdAt:date(i),deletedAt,
 });
 
 async function run(){
@@ -47,6 +49,12 @@ async function run(){
     await letters.doc(ID.two).set(letter('narrator',null,'hb','for hb',2));
     await letters.doc(ID.third).set(letter('alice','pb',null,'to player B',3));
     await letters.doc(ID.deleted).set(letter('alice',null,'hb','deleted',4,date(5)));
+    await letters.doc(ID.draft).set({
+      ...letter('alice','pb',null,'private draft',6),publicationState:'draft',
+    });
+    await letters.doc(ID.scheduled).set({
+      ...letter('alice','pb',null,'future delivery',7),publicationState:'scheduled',
+    });
     await root.collection('lettersQuarantine').doc(ID.quarantine).set({
       sourceTable:'public.campaign_letters',rawValues:['opaque-private-test'],
       recipientShape:'missingBoth',
@@ -71,6 +79,8 @@ async function run(){
     }
     assert.equal(await inbox.getLetter({idToken:'synthetic:alice',id:ID.two}),null);
     assert.equal(await inbox.getLetter({idToken:'synthetic:alice',id:ID.quarantine}),null);
+    assert.equal(await inbox.getLetter({idToken:'synthetic:alice',id:ID.draft}),null);
+    assert.equal(await inbox.getLetter({idToken:'synthetic:narrator',id:ID.scheduled}),null);
     const paged=await inbox.listLetters({idToken:'synthetic:alice',pageSize:1});
     assert.ok(paged.nextCursor);
     assert.equal((await inbox.listLetters({idToken:'synthetic:alice',
@@ -84,6 +94,10 @@ async function run(){
     await assertSucceeds(getDoc(ref(alice,ID.one)));
     await assertFails(getDoc(ref(bob,ID.one)));
     await assertFails(getDoc(ref(alice,ID.deleted)));
+    await assertFails(getDoc(ref(alice,ID.draft)));
+    await assertFails(getDoc(ref(narrator,ID.draft)));
+    await assertFails(getDoc(ref(bob,ID.scheduled)));
+    await assertFails(getDoc(ref(narrator,ID.scheduled)));
     await assertSucceeds(getDoc(ref(narrator,ID.deleted)));
     await assertFails(getDoc(ref(editor,ID.one)));
     await assertFails(getDocs(collection(narrator,'migrationDomainStage',SHA,'letters')));

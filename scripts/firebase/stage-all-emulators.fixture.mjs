@@ -13,6 +13,11 @@ const newspaperNames=[
   'campaign_newspaper_staff','campaign_newspaper_story_models',
   'campaign_newspaper_engravings','campaign_newspaper_settings',
 ];
+const mailNames=[
+  'letter_replies','letter_receipts','letter_versions',
+  'letter_reply_versions','letter_rounds','mail_submissions',
+  'narrator_mail_notes','campaign_letter_consequences',
+];
 export function syntheticSource(){
   const users=[
     {id:'narrator',email:'narrator@example.com',encrypted_password:BCRYPT},
@@ -47,6 +52,7 @@ export function syntheticSource(){
     }]),
     ...temporalNames.map(x=>t('public.'+x,[],['id'])),
     ...newspaperNames.map(x=>t('public.'+x,[],['id'])),
+    ...mailNames.map(x=>t('public.'+x,[],['id'])),
   ];
   return tables;
 }

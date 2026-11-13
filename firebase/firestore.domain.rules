@@ -35,7 +35,8 @@ service cloud.firestore {
     function readLetter(snapshot) {
       // Historical deletes must never become visible to a player merely
       // because the minimal migration view omitted the deletion flag.
-      return resource.data.keys().hasAll(['deletedAt']) &&
+      return resource.data.keys().hasAll(['deletedAt','publicationState']) &&
+        resource.data.publicationState == 'delivered' &&
         ((resource.data.recipientPlayerId != null) !=
           (resource.data.recipientHouseId != null)) &&
         (narrator(snapshot) ||
@@ -73,6 +74,16 @@ service cloud.firestore {
       match /lettersQuarantine/{letterId} {
         // Destination ambiguity: deny even narrator/admin and any direct get,
         // collection list or client write. Review requires offline tools.
+        allow read, write: if false;
+      }
+    }
+
+    match /migrationMailHistoryStage/{snapshot} {
+      // All reply contents, read receipts, drafts, delivery schedules,
+      // revisions and narrator notes remain server-only. Even narrator
+      // clients must use a separately permission-checked backend.
+      allow read, write: if false;
+      match /{document=**} {
         allow read, write: if false;
       }
     }
