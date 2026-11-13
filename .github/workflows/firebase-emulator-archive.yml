@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/firebase/stage-firestore-emulator*.mjs'
+      - 'scripts/firebase/audit-private-access-graph*.mjs'
       - 'docs/firebase/PRIVATE-FIRESTORE-EMULATOR-ARCHIVE.md'
       - '.github/workflows/firebase-emulator-archive.yml'
   push:
@@ -25,8 +26,10 @@ jobs:
         with:
           node-version: '24'
       - name: Check strict archive importer syntax
-        run: node --check scripts/firebase/stage-firestore-emulator.mjs
+        run: |
+          node --check scripts/firebase/stage-firestore-emulator.mjs
+          node --check scripts/firebase/audit-private-access-graph.mjs
       - name: Synthetic dry run and fake Firestore emulator tests
-        run: node --test scripts/firebase/stage-firestore-emulator.test.mjs
+        run: node --test scripts/firebase/stage-firestore-emulator.test.mjs scripts/firebase/audit-private-access-graph.test.mjs
       - name: Check public repository for private backup files
         run: node scripts/verify-public-repo.mjs
