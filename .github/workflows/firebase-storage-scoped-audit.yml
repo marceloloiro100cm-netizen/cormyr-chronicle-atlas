@@ -1,0 +1,89 @@
+name: Firebase Storage - verify scoped staging access
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/firebase-storage-scoped-audit.yml'
+      - 'scripts/firebase/grant-scoped-staging-storage.sh'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/firebase-storage-scoped-audit.yml'
+      - 'scripts/firebase/grant-scoped-staging-storage.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  check-script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Cloud Shell configuration syntax
+        shell: bash
+        run: bash -n scripts/firebase/grant-scoped-staging-storage.sh
+
+  audit-scoped-access:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Authenticate only as scoped Storage reader
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: cormyr
+
+      - name: Audit private homologation images only
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud auth print-access-token --quiet >/dev/null
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          if ! gcloud storage ls --recursive \
+              'gs://cormyr-migration-homolog-477785088395/campaign-images/' \
+              >"$work/images.txt" 2>"$work/error.txt"; then
+            echo "::error::Reader could not enumerate images in isolated homologation."
+            exit 1
+          fi
+          total="$(grep -c '^gs://' "$work/images.txt" || true)"
+          echo "Images visible in private homologation: $total"
+          if [[ "$total" -ne 986 ]]; then
+            echo "::warning::Current copied inventory baseline is 986, check changes since migration and verify object hashes before cutover."
+          fi
+          test "$total" -gt 0 || {
+            echo "::error::No homologation images copied yet; run owner Cloud Shell transfer first."
+            exit 1
+          }
+          echo "Isolated read-only scope confirmed; source bucket never accessed by GitHub."
+
+  verify-writer-identity:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Authenticate as isolated staging uploader
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-stager@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: cormyr
+      - name: Validate temporary credentials without writing
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud auth print-access-token --quiet >/dev/null
+          test "$(gcloud config get-value project 2>/dev/null)" = "cormyr"
+          echo "Staging uploader identity authenticated. No IAM, objects or databases modified."
