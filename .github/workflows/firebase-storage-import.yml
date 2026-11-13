@@ -1,0 +1,19 @@
+name: Firebase Storage staging import tests
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/import-storage*.mjs'
+      - '.github/workflows/firebase-storage-import.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check scripts/firebase/import-storage.mjs
+      - run: node --test scripts/firebase/import-storage.test.mjs
