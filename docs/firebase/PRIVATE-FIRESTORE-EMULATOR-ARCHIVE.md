@@ -59,7 +59,7 @@ Se o script de arquivo retornar `emulatorPlanValid: true`, o proprietário poder
 cd /tmp/cormyr-firestore-archive
 
 # Ferramentas instaladas apenas no worktree de testes; sem editar o lockfile:
-npm install --no-save --package-lock=false firebase-admin firebase-tools
+npm install --no-save --package-lock=false firebase-admin@14.5.1 firebase-tools@15.35.0
 
 # Mantém o backup privado e o estado exportado fora do GitHub:
 mkdir -p "$HOME/cormyr-chronicle-atlas/.firebase-migration/firestore-emulator-export"
@@ -92,3 +92,16 @@ Referências oficiais:
 - https://firebase.google.com/docs/emulator-suite/connect_firestore
 - https://firebase.google.com/docs/emulator-suite/connect_and_prototype
 - https://docs.cloud.google.com/firestore/quotas
+
+## Teste real com o emulador (CI)
+
+Em 13/11, o workflow de teste confirmou:
+- Importação de 3 linhas públicas fictícias no Firestore Emulator real;
+- Exclusão de 1 registro Auth fictício do arquivo Firestore;
+- Repetição da importação sem duplicar documentos;
+- Marcador `complete` depois das gravações;
+- Nenhuma interação com Firebase de produção.
+
+Essa verificação usa dados sintéticos, não o backup privado de 12/11.
+Ainda é necessário rodar a auditoria no backup real antes de declarar o
+lote de dados concluído.
