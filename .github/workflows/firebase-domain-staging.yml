@@ -1,0 +1,61 @@
+name: Firebase typed domain staging and security
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/stage-typed-domain-emulator*.mjs'
+      - 'firebase/firestore.domain.rules'
+      - 'firebase/firebase-domain.json'
+      - 'docs/firebase/TYPED-DOMAIN-STAGING.md'
+      - '.github/workflows/firebase-domain-staging.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/stage-typed-domain-emulator*.mjs'
+      - 'firebase/firestore.domain.rules'
+      - 'firebase/firebase-domain.json'
+      - '.github/workflows/firebase-domain-staging.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  typed-domain-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax
+        run: |
+          node --check scripts/firebase/stage-typed-domain-emulator.mjs
+          node --check scripts/firebase/stage-typed-domain-emulator.integration.mjs
+      - name: Synthetic typed conversion tests
+        run: node --test scripts/firebase/stage-typed-domain-emulator.test.mjs
+      - name: Public-repository private-data gate
+        run: node scripts/verify-public-repo.mjs
+
+  typed-domain-rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned tools for LOCAL emulators only
+        run: npm install --no-save --package-lock=false firebase-tools@15.35.0 firebase-admin@14.5.1 firebase@13.3.0 @firebase/rules-unit-testing@6.0.0
+      - name: Run role, access and cross-house rules tests on emulator
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+        run: |
+          npx firebase emulators:exec --only firestore \
+            --project demo-cormyr-migration \
+            --config firebase/firebase-domain.json \
+            "node scripts/firebase/stage-typed-domain-emulator.integration.mjs"
