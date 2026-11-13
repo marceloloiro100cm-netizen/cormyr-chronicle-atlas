@@ -56,16 +56,21 @@ export async function fetchPrivateBackup(drive, driveId, outputPath, expectedSha
   }
 }
 
-export async function main(argv) {
-  if (argv.length !== 6 || argv[0]!=='--drive-file-id' || argv[2]!=='--output' ) {
-    throw new Error('Usage: node scripts/firebase/fetch-private-backup.mjs --drive-file-id ID --output .firebase-migration/FILE.backup.zip [--expected-sha256 HEX]');
+export function parseArgs(argv) {
+  if (argv.length !== 6 || argv[0] !== '--drive-file-id' ||
+      argv[2] !== '--output' || argv[4] !== '--expected-sha256' ||
+      !ID.test(argv[1]) || !SHA.test(argv[5])) {
+    throw new Error('Usage: node scripts/firebase/fetch-private-backup.mjs --drive-file-id ID --output .firebase-migration/FILE.backup.zip --expected-sha256 HEX');
   }
-  const [,,output,flag,hash] = argv;
-  if (flag !== '--expected-sha256' || !SHA.test(hash)) throw new Error('Expected SHA-256 required');
+  return { driveFileId: argv[1], output: argv[3], hash: argv[5] };
+}
+
+export async function main(argv) {
+  const { driveFileId, output, hash } = parseArgs(argv);
   const { google } = await import('googleapis');
   const auth = new google.auth.GoogleAuth({scopes:['https://www.googleapis.com/auth/drive.readonly']});
   const drive = google.drive({version:'v3',auth});
-  const result=await fetchPrivateBackup(drive,argv[1],output,hash);
+  const result=await fetchPrivateBackup(drive,driveFileId,output,hash);
   process.stdout.write(JSON.stringify(result,null,2)+'\n');
 }
 
