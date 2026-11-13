@@ -41,10 +41,10 @@ export function planMailHistory(tables,snapshotId){
   const letterRows=byTable.get('public.campaign_letters')?.rows||[];
   const users=new Set((byTable.get('auth.users')?.rows||[]).map(r=>r.id));
   const letters=new Map(letterRows.filter(r=>validId(r.id)).map(r=>[r.id,r]));
-  const issues={duplicateReplyIds:0,unaccountedReplies:0,oversizedProjection:0};
+  const issues={duplicateReplyIds:0,unaccountedReplies:0};
   const privateReasons={
     draft:0,scheduled:0,deleted:0,missingParent:0,
-    unpublishedParent:0,unresolvedRecipient:0,invalidProjection:0,
+    unpublishedParent:0,unresolvedRecipient:0,invalidProjection:0,oversized:0,
   };
   const replies=[],seen=new Set();
   let privateReplyRows=0;
@@ -87,9 +87,8 @@ export function planMailHistory(tables,snapshotId){
       migratedReadOnly:true,
     };
     if(objBytes(payload)+8192>850*1024){
-      issues.oversizedProjection++;
       privateReplyRows++;
-      privateReasons.invalidProjection++;
+      privateReasons.oversized++;
       continue;
     }
     replies.push({id:digest('reply:'+r.id),payload});
