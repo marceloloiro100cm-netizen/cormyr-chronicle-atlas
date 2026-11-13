@@ -11,7 +11,7 @@ const PROJECT='demo-cormyr-migration';
 const SHA='e'.repeat(64);
 const ID={one:'a'.repeat(64),two:'b'.repeat(64),third:'c'.repeat(64),
   deleted:'d'.repeat(64),quarantine:'f'.repeat(64),
-  draft:'g'.repeat(64),scheduled:'h'.repeat(64)};
+  draft:'0'.repeat(64),scheduled:'1'.repeat(64)};
 const date=i=>new Date(Date.UTC(2026,10,13,14,i)).toISOString();
 const letter=(senderUid,recipientPlayerId,recipientHouseId,subject,i,deletedAt=null)=>({
   sourceId:'synthetic-'+i,senderUid,senderPlayerId:null,
