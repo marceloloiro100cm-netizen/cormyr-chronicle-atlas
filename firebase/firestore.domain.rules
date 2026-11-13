@@ -26,6 +26,12 @@ service cloud.firestore {
         && scope(snapshot).admin == false
         && scope(snapshot).requirePasswordChange == false;
     }
+    function newspaperEditor(snapshot) {
+      // Separate newsroom role. No house/mail access is inherited.
+      return hasScope(snapshot) && scope(snapshot).active == true
+        && scope(snapshot).profile == 'editor'
+        && scope(snapshot).admin == false;
+    }
     function readLetter(snapshot) {
       return narrator(snapshot) ||
         (player(snapshot) && (
@@ -80,6 +86,35 @@ service cloud.firestore {
         allow read, write: if false;
       }
       match /tables/{tableId} {
+        allow read, write: if false;
+      }
+    }
+
+    match /migrationNewspaperStage/{snapshot} {
+      allow read, write: if false;
+      match /published/{editionId} {
+        // This collection has only published or archived editions.
+        // No drafts may be written by a client SDK.
+        allow get, list: if narrator(snapshot) || player(snapshot)
+                         || newspaperEditor(snapshot);
+        allow create, update, delete: if false;
+      }
+      match /privateEditions/{editionId} {
+        // Only narrator and newsroom editor may read drafts/cancellations.
+        allow get, list: if narrator(snapshot) || newspaperEditor(snapshot);
+        allow create, update, delete: if false;
+      }
+      match /settings/{settingsId} {
+        allow get: if settingsId == 'current' &&
+          (narrator(snapshot) || newspaperEditor(snapshot));
+        allow list, create, update, delete: if false;
+      }
+      match /archive/{archiveId}/{document=**} {
+        // Complete raw source including drafts, receipts, commissioned
+        // stories and staff. Never expose even to editor via client SDK.
+        allow read, write: if false;
+      }
+      match /archive/{archiveId} {
         allow read, write: if false;
       }
     }

@@ -1,0 +1,59 @@
+name: Firebase newspaper read-only staging and security
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/stage-newspaper-emulator*.mjs'
+      - 'scripts/firebase/newspaper-fixtures.mjs'
+      - 'firebase/firestore.domain.rules'
+      - 'docs/firebase/NEWSPAPER-EMULATOR-STAGING.md'
+      - '.github/workflows/firebase-newspaper-staging.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/stage-newspaper-emulator*.mjs'
+      - 'scripts/firebase/newspaper-fixtures.mjs'
+      - 'firebase/firestore.domain.rules'
+      - '.github/workflows/firebase-newspaper-staging.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  newspaper-plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check local-only importer and source projection
+        run: |
+          node --check scripts/firebase/stage-newspaper-emulator.mjs
+          node --check scripts/firebase/stage-newspaper-emulator.integration.mjs
+          node --test scripts/firebase/stage-newspaper-emulator.test.mjs
+          node scripts/verify-public-repo.mjs
+
+  newspaper-rules-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install local Firestore Emulator and SDK
+        run: npm install --no-save --package-lock=false firebase-tools@15.35.0 firebase-admin@14.5.1 firebase@13.3.0 @firebase/rules-unit-testing@6.0.0
+      - name: Verify published/draft/roles rules on emulator
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+        run: |
+          npx firebase emulators:exec --only firestore \
+            --project demo-cormyr-migration \
+            --config firebase/firebase-domain.json \
+            "node scripts/firebase/stage-newspaper-emulator.integration.mjs"
