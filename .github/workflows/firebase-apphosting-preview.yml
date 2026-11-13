@@ -32,14 +32,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
       - name: Validate safe preview server
         run: |
           node --check scripts/apphosting/preview-server.mjs
           node --check scripts/apphosting/preview-server.test.mjs
           node --test scripts/apphosting/preview-server.test.mjs
       - name: Install repository dependencies
-        run: npm ci
+        run: npm install --no-package-lock
       - name: Build TanStack Start SSR for Node.js, not Cloudflare
         run: npm run build:apphosting
       - name: Check preview lock remains configured
