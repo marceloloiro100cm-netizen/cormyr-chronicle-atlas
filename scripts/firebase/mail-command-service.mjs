@@ -8,6 +8,7 @@
  */
 import {createHash} from 'node:crypto';
 import {assertEmulatorOnly} from './stage-firestore-emulator.mjs';
+import {validateHarptosDate} from './stage-temporal-emulator.mjs';
 
 const PROJECT='demo-cormyr-migration';
 const HASH=/^[a-f0-9]{64}$/;
@@ -19,8 +20,19 @@ const now=()=>new Date().toISOString();
 const deny=()=>{throw new MailCommandDenied();};
 const validText=(v,max=MAX_CONTENT)=>typeof v==='string'&&
   v.trim().length>0&&Buffer.byteLength(v,'utf8')<=max;
-const dateKey=v=>typeof v==='string'&&
-  /^(?:[1-9]\d{0,3})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|30)$/.test(v);
+const dateKey=v=>{
+  if(typeof v!=='string')return false;
+  const regular=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  if(regular)return validateHarptosDate(
+    Number(regular[1]),Number(regular[2])-1,Number(regular[3]),null);
+  const festivals=/^(\d{4})-F-(midwinter|greengrass|midsummer|shieldmeet|highharvestide|feast-moon)$/.exec(v);
+  if(!festivals)return false;
+  const month={
+    midwinter:0,greengrass:3,midsummer:6,shieldmeet:6,
+    highharvestide:8,'feast-moon':10,
+  }[festivals[2]];
+  return validateHarptosDate(Number(festivals[1]),month,1,festivals[2]);
+};
 const id=v=>typeof v==='string'&&HASH.test(v);
 const key=v=>typeof v==='string'&&KEY.test(v);
 const canSee=(record,actor)=>{
