@@ -573,6 +573,60 @@ export function createEmulatorMailCommands({db,auth,snapshotId,env=process.env})
     }).map(doc=>preview({id:doc.id,...doc.data()}))
       .sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
   }
+  /**
+   * Runtime read receipts are per account, never per House. Narrator may
+   * acknowledge only mail explicitly addressed to the Narrator, rather
+   * than marking arbitrary monitored correspondence on behalf of players.
+   */
+  async function markRead({idToken,letterId}={}){
+    const actor=await identify(idToken);
+    if(!id(letterId))throw Error('Invalid letter id');
+    const receiptRef=runtime.collection('readReceipts')
+      .doc(digest(letterId+':'+actor.uid));
+    return db.runTransaction(async t=>{
+      const {actor:fresh}=await inTransaction(t,actor);
+      const [letter,receipt]=await Promise.all([
+        t.get(letters.doc(letterId)),t.get(receiptRef),
+      ]);
+      if(!letter.exists)deny();
+      const record=letter.data();
+      if(record.publicationState!=='delivered'||record.deletedAt!==null||
+         record.senderUid===fresh.uid)deny();
+      const reader=record.recipientKind==='narrator'
+        ?fresh.role==='narrador'
+        :fresh.role==='jogador'&&(
+          (record.recipientKind==='house'&&
+            fresh.memberHouseIds.has(record.recipientHouseId))||
+          (record.recipientKind==='player'&&
+            fresh.playerId===record.recipientPlayerId));
+      if(!reader)deny();
+      if(receipt.exists){
+        if(receipt.data()?.letterId!==letterId||
+           receipt.data()?.viewerUid!==fresh.uid)deny();
+        return {recorded:true,alreadyRecorded:true};
+      }
+      t.create(receiptRef,{
+        schemaVersion:1,letterId,viewerUid:fresh.uid,
+        readAt:now(),runtime:true,
+      });
+      return {recorded:true,alreadyRecorded:false};
+    });
+  }
+  async function listReceipts({idToken,letterId}={}){
+    const actor=await identify(idToken);
+    if(!id(letterId))throw Error('Invalid letter id');
+    const letter=await letters.doc(letterId).get();
+    if(!letter.exists||letter.data()?.publicationState!=='delivered'||
+       letter.data()?.deletedAt!==null||
+       (actor.role!=='narrador'&&letter.data()?.senderUid!==actor.uid))
+      deny();
+    const rows=await runtime.collection('readReceipts')
+      .where('letterId','==',letterId).limit(MAX_SCAN+1).get();
+    if(rows.size>MAX_SCAN)throw Error('Receipt preview scan limit reached');
+    return rows.docs.map(doc=>({
+      viewerUid:doc.data().viewerUid,readAt:doc.data().readAt,
+    })).sort((a,b)=>a.readAt.localeCompare(b.readAt));
+  }
   async function note({idToken,letterId,text,requestKey}={}){
     const actor=await identify(idToken);
     if(actor.role!=='narrador')deny();
@@ -599,6 +653,7 @@ export function createEmulatorMailCommands({db,auth,snapshotId,env=process.env})
   }
   return Object.freeze({
     initialize,send,reply,editDraft,scheduleDraft,
-    changeTrash,openRound,closeRound,list,get,listReplies,note,
+    changeTrash,openRound,closeRound,list,get,listReplies,
+    markRead,listReceipts,note,
   });
 }
