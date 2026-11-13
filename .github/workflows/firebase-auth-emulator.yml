@@ -1,0 +1,53 @@
+name: Firebase Auth private emulator migration
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/stage-auth-emulator*.mjs'
+      - 'firebase/firebase-auth.json'
+      - 'docs/firebase/AUTH-EMULATOR-MIGRATION.md'
+      - '.github/workflows/firebase-auth-emulator.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/stage-auth-emulator*.mjs'
+      - 'firebase/firebase-auth.json'
+      - '.github/workflows/firebase-auth-emulator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  auth-offline-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Parse source, reject cloud access and run synthetic private Auth tests
+        run: |
+          node --check scripts/firebase/stage-auth-emulator.mjs
+          node --check scripts/firebase/stage-auth-emulator.integration.mjs
+          node --test scripts/firebase/stage-auth-emulator.test.mjs
+          node scripts/verify-public-repo.mjs
+
+  auth-emulator-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Firebase Auth emulator and Admin SDK
+        run: npm install --no-save --package-lock=false firebase-tools@15.35.0 firebase-admin@14.5.1
+      - name: Import fake accounts into local Authentication emulator only
+        env:
+          FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+        run: |
+          npx firebase emulators:exec --only auth \
+            --project demo-cormyr-migration \
+            --config firebase/firebase-auth.json \
+            "node scripts/firebase/stage-auth-emulator.integration.mjs"
