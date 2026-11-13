@@ -123,13 +123,13 @@ export function createEmulatorInbox({db,auth,snapshotId,env=process.env}){
     if(actor.role==='narrador') {
       await collect(letters);
     }else{
+      if(actor.memberHouseIds.size>126)throw Error('Too many house memberships');
       const operations=[
         collect(letters.where('senderUid','==',actor.uid)),
         collect(letters.where('recipientPlayerId','==',actor.playerId)),
         ...[...actor.memberHouseIds].map(house=>
           collect(letters.where('recipientHouseId','==',house))),
       ];
-      if(operations.length>128)throw Error('Too many house memberships');
       await Promise.all(operations);
     }
     const seen=new Map();
