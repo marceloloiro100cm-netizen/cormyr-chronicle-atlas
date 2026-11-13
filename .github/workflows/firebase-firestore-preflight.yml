@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/firebase/audit-firestore-backup*.mjs'
+      - 'scripts/firebase/compare-backup-snapshots*.mjs'
       - 'docs/firebase/FIRESTORE-DATA-PREFLIGHT.md'
       - '.github/workflows/firebase-firestore-preflight.yml'
   workflow_dispatch:
@@ -17,5 +18,6 @@ jobs:
         with:
           node-version: '24'
       - run: node --check scripts/firebase/audit-firestore-backup.mjs
-      - run: node --test scripts/firebase/audit-firestore-backup.test.mjs
+      - run: node --check scripts/firebase/compare-backup-snapshots.mjs
+      - run: node --test scripts/firebase/audit-firestore-backup.test.mjs scripts/firebase/compare-backup-snapshots.test.mjs
       - run: node scripts/verify-public-repo.mjs
