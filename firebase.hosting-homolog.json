@@ -1,0 +1,19 @@
+{
+  "hosting": {
+    "public": ".output/public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "cormyr-web-homolog",
+          "region": "us-central1"
+        }
+      }
+    ]
+  }
+}
