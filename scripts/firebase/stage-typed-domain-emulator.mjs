@@ -215,7 +215,11 @@ export function buildTypedDomainPlan(tables,snapshotId){
     }
     const createdAt=isoDate(row.created_at);
     const deletedAt=row.deleted_at==null?null:isoDate(row.deleted_at);
+    // A letter can be a private draft or scheduled for a future round.
+    // Never infer that the absence of a delivery state means delivered.
+    const publicationState=row.publication_state;
     if(!createdAt||(row.deleted_at!=null&&!deletedAt)||
+       !['draft','scheduled','delivered'].includes(publicationState)||
        typeof row.subject!=='string'||typeof row.content!=='string'){
       issues.invalidValues++;continue;
     }
@@ -230,6 +234,7 @@ export function buildTypedDomainPlan(tables,snapshotId){
       content:row.content,
       createdAt,
       deletedAt,
+      publicationState,
     }});
   }
 
