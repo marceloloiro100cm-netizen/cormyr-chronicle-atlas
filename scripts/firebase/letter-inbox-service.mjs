@@ -152,5 +152,39 @@ export function createEmulatorInbox({db,auth,snapshotId,env=process.env}){
     if(!doc.exists||!canRead(doc.data(),actor))return null;
     return safeView(doc);
   }
-  return Object.freeze({listLetters,getLetter});
+  /**
+   * Server-only delivered replies; NO draft/scheduled, deleted or stranger
+   * correspondence. A House membership alone cannot expose a reply addressed
+   * to a different individual within that House.
+   */
+  async function listReplies({idToken,letterId}={}){
+    const actor=await authorize(idToken);
+    if(typeof letterId!=='string'||!HASH.test(letterId))
+      throw new Error('Invalid letter id');
+    const parent=await letters.doc(letterId).get();
+    if(!parent.exists||!canRead(parent.data(),actor))return null;
+    const history=db.collection('migrationMailHistoryStage').doc(snapshotId);
+    const current=await history.get();
+    if(!current.exists||current.data()?.status!=='complete')deny();
+    const results=await history.collection('replies')
+      .where('letterId','==',letterId).limit(MAX_SCAN+1).get();
+    if(results.size>MAX_SCAN)throw Error('Reply set exceeds preview scan limit');
+    const visible=[];
+    for(const doc of results.docs){
+      const reply=doc.data();
+      if(!HASH.test(doc.id)||reply?.letterId!==letterId||
+         reply.publicationState!=='delivered'||reply.deletedAt!==null||
+         !ISO.test(reply.createdAt)||typeof reply.content!=='string'||
+         typeof reply.authorName!=='string')continue;
+      if(actor.role!=='narrador'&&reply.authorUid!==actor.uid&&
+         reply.recipientUid!==actor.uid)continue;
+      visible.push({
+        id:doc.id,authorName:reply.authorName,content:reply.content,
+        createdAt:reply.createdAt,version:reply.version,
+      });
+    }
+    return visible.sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||
+      a.id.localeCompare(b.id));
+  }
+  return Object.freeze({listLetters,getLetter,listReplies});
 }
