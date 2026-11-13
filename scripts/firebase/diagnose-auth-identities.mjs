@@ -38,6 +38,10 @@ export function classifyProviderFormat(raw) {
   if (KNOWN_FIREBASE_IDS.has(normalized)) return 'firebase-id-case-or-space-variant';
   if (KNOWN_NON_OAUTH.has(normalized)) return 'known-non-oauth:' + normalized;
   if (raw.includes('@')) return 'email-like-or-at-sign';
+  // Supabase reserves sso:<provider uuid> for SAML and custom:<id> for
+  // custom OAuth/OIDC. Output only the public prefix, never the suffix.
+  if (raw.startsWith('sso:') && raw.length > 4) return 'namespaced-sso-saml';
+  if (raw.startsWith('custom:') && raw.length > 7) return 'namespaced-custom-oauth-oidc';
   if (raw.includes(':')) return 'namespaced-or-colon';
   if (raw.includes('/')) return 'path-or-slash';
   if (raw.includes('.')) return 'dotted-unknown';
