@@ -5,6 +5,7 @@ on:
       - 'scripts/firebase/audit-auth-backup*.mjs'
       - 'scripts/firebase/audit-auth-destination*.mjs'
       - 'scripts/firebase/prepare-auth-import*.mjs'
+      - 'scripts/firebase/diagnose-auth-identities*.mjs'
       - '.github/workflows/firebase-auth-preflight.yml'
       - 'docs/firebase/AUTH-PREFLIGHT.md'
   workflow_dispatch:
@@ -21,7 +22,8 @@ jobs:
         with:
           node-version: '24'
       - run: node --check scripts/firebase/audit-auth-backup.mjs
-      - run: node --test scripts/firebase/audit-auth-backup.test.mjs scripts/firebase/audit-auth-destination.test.mjs scripts/firebase/prepare-auth-import.test.mjs
+      - run: node --test scripts/firebase/audit-auth-backup.test.mjs scripts/firebase/audit-auth-destination.test.mjs scripts/firebase/prepare-auth-import.test.mjs scripts/firebase/diagnose-auth-identities.test.mjs
       - run: node --check scripts/firebase/audit-auth-destination.mjs
       - run: node --check scripts/firebase/prepare-auth-import.mjs
+      - run: node --check scripts/firebase/diagnose-auth-identities.mjs
       - run: node scripts/verify-public-repo.mjs
