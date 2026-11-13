@@ -49,7 +49,7 @@ test('type conversion, no leaked passwords or public house internal details',()=
   const plan=buildTypedDomainPlan(syntheticDomainTables(),hash);
   assert.equal(plan.summary.planValid,true);
   assert.equal(plan.summary.accountsWithoutProfile,1);
-  assert.deepEqual(plan.summary.typedCollections,{houses:3,players:3,access:5,letters:4});
+  assert.deepEqual(plan.summary.typedCollections,{houses:3,players:3,access:5,letters:4,lettersQuarantine:0});
   const house=plan.docs.houses.find(x=>x.payload.sourceId==='house-a').payload;
   assert.equal(house.active,true);
   assert.equal(house.season,2);
