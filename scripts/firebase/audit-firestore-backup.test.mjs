@@ -54,6 +54,37 @@ test('audits normalized files without outputting private data, and checks SHA-25
   } finally { await rm(dir,{recursive:true,force:true}); }
 });
 
+
+test('summarizes storage by known media buckets without disclosing object names', async () => {
+  const dir=await mkdtemp(join(tmpdir(),'cormyr-storage-count-'));
+  try {
+    const rows=[
+      {id:'private-1',bucket_id:'campaign-images',name:'PRIVATE-IMAGE.jpg'},
+      {id:'private-2',bucket_id:'campaign-newspapers',name:'PRIVATE-JOURNAL.jpg'},
+      {id:'private-3',bucket_id:'campaign-newspaper-staff',name:'PRIVATE-STAFF.jpg'},
+      {id:'private-4',bucket_id:'unlisted-secret-bucket',name:'PRIVATE-SECRET.jpg'},
+    ];
+    const payload=Buffer.from(JSON.stringify({
+      sourceTable:'storage.objects', columns:['id','bucket_id','name'], rows,
+    }));
+    await writeFile(join(dir,'000.json'),payload);
+    await writeFile(join(dir,'manifest.json'),JSON.stringify({
+      formatVersion:1,valueEncoding:'postgres-copy-text-or-null',
+      tables:[{table:'storage.objects',file:'000.json',rows:rows.length,
+        sha256:createHash('sha256').update(payload).digest('hex')}],
+    }));
+    const result=await auditNormalizedBackup(dir);
+    assert.equal(result.storageReferences.total,4);
+    assert.equal(result.storageReferences.campaignImages,1);
+    assert.equal(result.storageReferences.campaignNewspapers,1);
+    assert.equal(result.storageReferences.campaignNewspaperStaff,1);
+    assert.equal(result.storageReferences.other,1);
+    assert.equal(result.storageReferences.tablePresent,true);
+    assert.ok(!JSON.stringify(result).includes('PRIVATE-'));
+    assert.ok(!JSON.stringify(result).includes('unlisted-secret-bucket'));
+  } finally { await rm(dir,{recursive:true,force:true}); }
+});
+
 test('rejects symlink tables even when source content is otherwise valid', async () => {
   const dir=await mkdtemp(join(tmpdir(),'cormyr-firestore-symlink-'));
   try {
