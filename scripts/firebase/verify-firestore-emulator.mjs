@@ -23,6 +23,8 @@ function equalJson(a,b) {
 }
 
 export async function verifyPrivateArchiveInEmulator(plan, db) {
+  // Enforce emulator-only even for imported library callers, not only CLI.
+  assertEmulatorOnly(process.env,DEMO_PROJECT);
   if (!plan?.summary?.emulatorPlanValid ||
       !/^[a-f0-9]{64}$/.test(plan.snapshotId)) {
     fail('invalid source plan');
