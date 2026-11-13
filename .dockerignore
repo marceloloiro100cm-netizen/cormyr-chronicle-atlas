@@ -1,0 +1,25 @@
+# Prevent source backups, tokens, and secrets from entering Docker context.
+.git
+.github
+node_modules
+.output
+dist
+.firebase
+.firebase-migration
+.temporal-audit
+.private-campaign
+.security-audit
+.env
+.env.*
+!.env.example
+*.backup
+*.dump
+*.private.sql
+*.private.json
+*service-account*.json
+*credentials*.json
+*.pem
+*.p12
+*.pfx
+**/__pycache__
+**/*.log
