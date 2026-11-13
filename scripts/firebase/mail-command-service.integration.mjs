@@ -87,6 +87,16 @@ async function run(){
     await assert.rejects(send('alice',key(1),['h:hb','narrator'],'ha'),MailCommandDenied);
     await assert.rejects(send('narrator',key(1),['narrator'],null),MailCommandDenied);
     await assert.rejects(send('alice',key(1),['h:hb'],'ha'),/No open mail round/);
+    await assert.rejects(send('alice',key(30),['h:hb'],'ha',{
+      asDraft:true,campaignDate:'1522-02-31',
+    }),/Invalid mail request/);
+    await assert.rejects(send('alice',key(31),['h:hb'],'ha',{
+      asDraft:true,campaignDate:'1522-F-shieldmeet',
+    }),/Invalid mail request/);
+    const festival=await send('alice',key(32),['h:hb'],'ha',{
+      asDraft:true,campaignDate:'1520-F-shieldmeet',
+    });
+    assert.equal(festival.state,'draft');
     const draft=await send('alice',key(2),['h:hb'],'ha',{asDraft:true});
     assert.equal(draft.state,'draft');
     assert.equal((await send('alice',key(2),['h:hb'],'ha',{asDraft:true}))
