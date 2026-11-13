@@ -17,6 +17,7 @@ const TABLE = /^[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*$/;
 const SAFE_FILE = /^[0-9]{3,}\.json$/;
 const MAX_FILE = 256 * 1024 * 1024;
 const MAX_DOC_ESTIMATE = 850 * 1024;
+const CHUNK_RAW_BYTES = 300 * 1024; // Base64 chunks stay far below Firestore 1 MiB docs.
 const DEMO_PROJECT = 'demo-cormyr-migration';
 const PRIVATE_COLLECTION = 'migrationPrivateSnapshots';
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -49,6 +50,8 @@ export function buildPrivateArchivePlan(tables, snapshotHash) {
   let ignoredNonPublicTables = 0;
   let ignoredNonPublicRows = 0;
   let keylessTables = 0;
+  let chunkedRows = 0;
+  let totalChunks = 0;
 
   for (const { table, columns, rows } of tables) {
     if (typeof table !== 'string' || !TABLE.test(table) || tableNames.has(table)) {
@@ -99,11 +102,42 @@ export function buildPrivateArchivePlan(tables, snapshotHash) {
         rawValues: columns.map(key => row[key]),
         encoding: 'postgres-copy-text-or-null',
       };
-      // Allow generous overhead below Firestore's hard 1 MiB limit.
-      if (Buffer.byteLength(JSON.stringify(doc), 'utf8') + 8192 > MAX_DOC_ESTIMATE) {
-        issues.oversizedRows++; invalidInTable = true; continue;
+      // Preserve a large source row byte-for-byte in a deterministic series
+      // of child documents. Never truncate or fit it into one Firestore doc.
+      // The row parent stores a digest and chunk count; subdocuments contain
+      // base64-encoded slices of the JSON UTF-8 bytes of rawValues.
+      const estimatedBytes = Buffer.byteLength(JSON.stringify(doc), 'utf8') + 8192;
+      if (estimatedBytes > MAX_DOC_ESTIMATE) {
+        const rawBytes = Buffer.from(JSON.stringify(doc.rawValues), 'utf8');
+        const chunks = [];
+        for (let start = 0; start < rawBytes.length; start += CHUNK_RAW_BYTES) {
+          const bytes = rawBytes.subarray(start, start + CHUNK_RAW_BYTES);
+          const index = chunks.length;
+          chunks.push({
+            docId: String(index).padStart(6, '0'),
+            payload: {
+              index, byteLength: bytes.length, sha256: sha256(bytes),
+              dataBase64: bytes.toString('base64'), encoding: 'base64-utf8-json',
+            },
+          });
+        }
+        if (!chunks.length) {
+          issues.oversizedRows++; invalidInTable = true; continue;
+        }
+        chunkedRows++;
+        totalChunks += chunks.length;
+        tableDocsForRows.push({
+          tableDigest, docId, chunks,
+          payload: {
+            sourceRowSha256: rowHash, encoding: 'postgres-copy-text-or-null',
+            chunked: true, chunkCount: chunks.length,
+            rawValuesByteLength: rawBytes.length,
+            rawValuesSha256: sha256(rawBytes),
+          },
+        });
+      } else {
+        tableDocsForRows.push({ tableDigest, docId, chunks: [], payload: doc });
       }
-      tableDocsForRows.push({ tableDigest, docId, payload: doc });
     }
     if (invalidInTable) continue;
     tableDocs.push({
@@ -126,6 +160,8 @@ export function buildPrivateArchivePlan(tables, snapshotHash) {
     ignoredNonPublicTables,
     ignoredNonPublicRows,
     keylessTables,
+    chunkedRows,
+    totalChunks,
     issues,
     sourceLiveReconciled: false,
     cloudWrites: 0,
@@ -226,6 +262,9 @@ export async function writePrivateArchiveToEmulator(plan, db) {
   for (const row of plan.plannedRows) {
     const ref = root.collection('tables').doc(row.tableDigest).collection('rows').doc(row.docId);
     await enqueue(ref, row.payload);
+    for (const chunk of row.chunks || []) {
+      await enqueue(ref.collection('chunks').doc(chunk.docId), chunk.payload);
+    }
   }
   await flush();
   await root.set({
@@ -238,6 +277,8 @@ export async function writePrivateArchiveToEmulator(plan, db) {
   return {
     snapshotCreated: true, archivedPublicTables: plan.summary.archivedPublicTables,
     archivedPublicRows: plan.summary.archivedPublicRows,
+    chunkedRows: plan.summary.chunkedRows,
+    chunksStored: plan.summary.totalChunks,
     emulatorWrites: writes, cloudWrites: 0, readyForCloudImport: false,
   };
 }
