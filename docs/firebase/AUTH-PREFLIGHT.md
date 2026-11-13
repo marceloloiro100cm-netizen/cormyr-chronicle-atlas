@@ -90,9 +90,9 @@ possui senha e quatro identidades são externas. A auditoria de destino
 confirmou zero contas e zero colisões naquele momento, **mas não garante**
 que a origem está atualizada nem que os provedores OAuth estão configurados.
 
-No mesmo Cloud Shell, com a pasta \`normalized\` privada identificada:
+No mesmo Cloud Shell, com a pasta `normalized` privada identificada:
 
-\`\`\`bash
+```bash
 cd ~/cormyr-chronicle-atlas
 git fetch origin feat/firebase-auth-preflight-20261112
 git -C /tmp/cormyr-auth-check fetch origin feat/firebase-auth-preflight-20261112
@@ -103,7 +103,7 @@ NORMALIZED="$(find "$HOME/cormyr-chronicle-atlas/.firebase-migration" \
 NORMALIZED="$(dirname "$NORMALIZED")"
 node scripts/firebase/prepare-auth-import.mjs \
   --normalized "$NORMALIZED" --project cormyr
-\`\`\`
+```
 
 Este comando não acessa o Firebase: confere hashes, contas sem senha,
 identidades externas e vínculo de cada identidade ao UID de origem. O resultado
