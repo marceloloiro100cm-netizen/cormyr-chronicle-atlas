@@ -52,12 +52,12 @@ async function run(){
       {player_id:'playerBob',house_id:'houseB',can_edit:'t',can_edit_attributes:'t'},
     ]),
     tab('public.campaign_letters',[
-      {id:'letterA',sender_user_id:'narrator',sender_player_id:null,recipient_player_id:null,recipient_house_id:'houseA',subject:'Secret A',content:'Content A',created_at:'2026-11-12 18:00:00+00'},
-      {id:'letterB',sender_user_id:'narrator',sender_player_id:null,recipient_player_id:null,recipient_house_id:'houseB',subject:'Secret B',content:'Content B',created_at:'2026-11-12 19:00:00+00'},
-      {id:'letterSent',sender_user_id:'alice',sender_player_id:'playerAlice',recipient_player_id:'playerBob',recipient_house_id:null,subject:'Sent A to B',content:'Content C',created_at:'2026-11-12 20:00:00+00'},
-      {id:'letterEditor',sender_user_id:'editor',sender_player_id:'playerEditor',recipient_player_id:null,recipient_house_id:'houseB',subject:'Old editor mail',content:'Editor must not read',created_at:'2026-11-12 21:00:00+00'},
-      {id:'legacyNoRecipient',sender_user_id:'alice',sender_player_id:'playerAlice',recipient_player_id:null,recipient_house_id:null,subject:'Quarantined 1',content:'Opaque text one',created_at:'2026-11-12 22:00:00+00'},
-      {id:'legacyBothRecipients',sender_user_id:'narrator',sender_player_id:null,recipient_player_id:'playerAlice',recipient_house_id:'houseB',subject:'Quarantined 2',content:'Opaque text two',created_at:'2026-11-12 23:00:00+00'},
+      {id:'letterA',sender_user_id:'narrator',sender_player_id:null,recipient_player_id:null,recipient_house_id:'houseA',subject:'Secret A',content:'Content A',publication_state:'delivered',created_at:'2026-11-12 18:00:00+00'},
+      {id:'letterB',sender_user_id:'narrator',sender_player_id:null,recipient_player_id:null,recipient_house_id:'houseB',subject:'Secret B',content:'Content B',publication_state:'delivered',created_at:'2026-11-12 19:00:00+00'},
+      {id:'letterSent',sender_user_id:'alice',sender_player_id:'playerAlice',recipient_player_id:'playerBob',recipient_house_id:null,subject:'Sent A to B',content:'Content C',publication_state:'delivered',created_at:'2026-11-12 20:00:00+00'},
+      {id:'letterEditor',sender_user_id:'editor',sender_player_id:'playerEditor',recipient_player_id:null,recipient_house_id:'houseB',subject:'Old editor mail',content:'Editor must not read',publication_state:'delivered',created_at:'2026-11-12 21:00:00+00'},
+      {id:'legacyNoRecipient',sender_user_id:'alice',sender_player_id:'playerAlice',recipient_player_id:null,recipient_house_id:null,subject:'Quarantined 1',content:'Opaque text one',publication_state:'delivered',created_at:'2026-11-12 22:00:00+00'},
+      {id:'legacyBothRecipients',sender_user_id:'narrator',sender_player_id:null,recipient_player_id:'playerAlice',recipient_house_id:'houseB',subject:'Quarantined 2',content:'Opaque text two',publication_state:'delivered',created_at:'2026-11-12 23:00:00+00'},
     ]),
   ];
   const plan=buildTypedDomainPlan(source,snapshot);
