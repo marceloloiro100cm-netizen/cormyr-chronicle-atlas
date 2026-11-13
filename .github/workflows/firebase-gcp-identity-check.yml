@@ -1,0 +1,59 @@
+name: Cormyr Firebase - verify GCP identity (no data access)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: cormyr-firebase-gcp-identity
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check Google Cloud connection configuration
+        env:
+          WIF_PROVIDER: ${{ vars.CORMYR_GCP_WIF_PROVIDER }}
+          READONLY_SA: ${{ vars.CORMYR_GCP_READONLY_SA }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$WIF_PROVIDER" || -z "$READONLY_SA" ]]; then
+            echo "::error::Configure CORMYR_GCP_WIF_PROVIDER and CORMYR_GCP_READONLY_SA as GitHub Actions repository variables."
+            exit 1
+          fi
+          if [[ "$WIF_PROVIDER" != projects/*/locations/global/workloadIdentityPools/*/providers/* ]]; then
+            echo "::error::Invalid workload identity provider format."
+            exit 1
+          fi
+          if [[ "$READONLY_SA" != *@cormyr.iam.gserviceaccount.com ]]; then
+            echo "::error::Unexpected service account project."
+            exit 1
+          fi
+
+      - name: Exchange temporary GitHub identity for Google credentials
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.CORMYR_GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.CORMYR_GCP_READONLY_SA }}
+          project_id: cormyr
+
+      - name: Install Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: cormyr
+
+      - name: Confirm identity exchange without reading campaign data
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Expose no credential strings or private data.
+          gcloud auth print-access-token --quiet >/dev/null
+          test "$(gcloud config get-value project 2>/dev/null)" = "cormyr"
+          echo "GCP identity federation: OK; project: cormyr."
+          echo "No storage, Firestore, Authentication, database or production writes performed."
