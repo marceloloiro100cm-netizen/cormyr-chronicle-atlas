@@ -82,3 +82,42 @@ projeto, também bloqueia por segurança.
 houver conflito de UID/e-mail, não utilizar `Auth.importUsers` diretamente:
 essa API pode substituir um UID existente ou criar contas duplicadas por e-mail.
 Resolver a divergência com revisão privada antes de qualquer escrita.
+
+## Plano de importação seguro — dry-run primeiro
+
+O backup atual identificou 14 contas, das quais 13 possuem BCRYPT, uma não
+possui senha e quatro identidades são externas. A auditoria de destino
+confirmou zero contas e zero colisões naquele momento, **mas não garante**
+que a origem está atualizada nem que os provedores OAuth estão configurados.
+
+No mesmo Cloud Shell, com a pasta \`normalized\` privada identificada:
+
+\`\`\`bash
+cd ~/cormyr-chronicle-atlas
+git fetch origin feat/firebase-auth-preflight-20261112
+git -C /tmp/cormyr-auth-check fetch origin feat/firebase-auth-preflight-20261112
+git -C /tmp/cormyr-auth-check checkout --detach FETCH_HEAD
+cd /tmp/cormyr-auth-check
+NORMALIZED="$(find "$HOME/cormyr-chronicle-atlas/.firebase-migration" \
+  -type f -path '*/normalized/manifest.json' -print -quit)"
+NORMALIZED="$(dirname "$NORMALIZED")"
+node scripts/firebase/prepare-auth-import.mjs \
+  --normalized "$NORMALIZED" --project cormyr
+\`\`\`
+
+Este comando não acessa o Firebase: confere hashes, contas sem senha,
+identidades externas e vínculo de cada identidade ao UID de origem. O resultado
+contém apenas quantidades, problemas e estado de prontidão; nunca divulga
+identificadores, e-mails nem hashes.
+
+A função de execução real existe exclusivamente para o corte controlado e é
+bloqueada até que o operador **tenha realizado** reconciliação com exportação
+final do banco ativo, revisado vínculos OAuth e preparado regras de acesso,
+com confirmações explícitas e SHA-256 do dump correspondente. Antes de
+qualquer gravação, ela verifica que a lista do Auth de destino está vazia.
+Se a importação for parcialmente bem-sucedida, **não repetir** sem investigar
+os UIDs e o plano de recuperação. Isso evita sobrescrita ou duplicação de contas.
+
+Mesmo importadas, as contas não passam a ter acesso automático aos módulos:
+os direitos de Casa, narrador e editor devem ser implementados no backend
+com regras de segurança e testados separadamente. Sessões Supabase não migram.
