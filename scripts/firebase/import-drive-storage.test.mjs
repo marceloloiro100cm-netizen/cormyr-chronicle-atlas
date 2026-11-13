@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import test from 'node:test';
 import { validateManifest } from './import-storage.mjs';
-import { listDriveTree, planDrive, getVerifiedDriveFile, stageFromDrive } from './import-drive-storage.mjs';
+import { listDriveTree, planDrive, getManifestFromDrive, getVerifiedDriveFile, stageFromDrive } from './import-drive-storage.mjs';
 
 const sha = text => createHash('sha256').update(text).digest('hex');
 
@@ -71,4 +71,13 @@ test('skips already verified staging objects without downloading private Drive f
   } };
   const results = await stageFromDrive(drive, bucket, { bucket: 'campaign-images' }, [good], 1);
   assert.deepEqual(results, { uploaded: 0, existing: 1, downloadedAndHashed: 0, processed: 1 });
+});
+
+test('reads manifest through Drive without a local export', async () => {
+  const source = JSON.stringify({ version: 1, bucket: 'campaign-images', complete: false, files: [] });
+  const drive = { files: { get: async () => ({ data: Readable.from([Buffer.from(source)]) }) } };
+  const result = await getManifestFromDrive(drive, '196MdMZ6rSuUTkBmhn2yLq1Mf98El9F9T');
+  assert.equal(result.bucket, 'campaign-images');
+  assert.deepEqual(result.files, []);
+  await assert.rejects(getManifestFromDrive(drive, '../bad'), /Invalid Drive manifest ID/);
 });
