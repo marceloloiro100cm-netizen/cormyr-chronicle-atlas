@@ -48,3 +48,37 @@ Referência oficial: https://firebase.google.com/docs/auth/admin/import-users
 
 **Este lote apenas avalia a viabilidade do backup. Não concede
 permissões, não cria usuários e não muda o login dos jogadores.**
+
+## Nova etapa: verificar colisões no destino Firebase (somente leitura)
+
+A auditoria de backup acima não inspeciona contas existentes no projeto Firebase.
+O script `scripts/firebase/audit-auth-destination.mjs` compara, sem escrita,
+UIDs e e-mails do backup privado com a listagem paginada do Authentication.
+O relatório omite todos os identificadores individuais. Ele **sempre** retorna
+`readyForImport: false`: a decisão de importar depende também das quatro
+identidades externas, da conta sem senha, das associações de Casa e de uma
+reconciliação final com o banco ativo.
+
+No Cloud Shell, com a variável `NORMALIZED` apontando para a pasta privada que
+contém `manifest.json`:
+
+```bash
+# Dependência do Admin SDK apenas no ambiente de trabalho, sem gravar lockfile.
+npm install --no-save --package-lock=false firebase-admin
+
+# Consulta somente leitura ao projeto cormyr: NÃO importa nenhum usuário.
+node scripts/firebase/audit-auth-destination.mjs \\
+  --normalized "$NORMALIZED" \\
+  --project cormyr
+```
+
+Exige credenciais Google de aplicação autorizadas no Cloud Shell; nunca colocar
+um JSON de conta de serviço no GitHub. Não executar com
+`FIREBASE_AUTH_EMULATOR_HOST` configurado: o script recusa interpretar
+um emulador como destino real. Se `GOOGLE_CLOUD_PROJECT` apontar para outro
+projeto, também bloqueia por segurança.
+
+**Bloqueio absoluto para importação:** se o destino não estiver vazio, ou se
+houver conflito de UID/e-mail, não utilizar `Auth.importUsers` diretamente:
+essa API pode substituir um UID existente ou criar contas duplicadas por e-mail.
+Resolver a divergência com revisão privada antes de qualquer escrita.
