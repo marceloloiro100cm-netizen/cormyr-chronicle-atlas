@@ -265,3 +265,40 @@ Fontes oficiais:
 - https://supabase.com/docs/guides/auth/custom-oauth-providers
 - https://firebase.google.com/docs/auth/admin/import-users
 - https://firebase.google.com/docs/auth/web/openid-connect
+
+## Confirmação da cobertura de login (13/11/2026)
+
+O proprietário executou `audit-auth-signin-coverage.mjs` sobre o backup
+privado normalizado e confirmou **somente as seguintes contagens agregadas**:
+
+| Verificação | Resultado |
+|---|---:|
+| Contas de origem | 14 |
+| Com BCRYPT | 13 |
+| Sem senha | 1 |
+| Sem senha, com OAuth conhecido | 1 |
+| Sem senha, sem OAuth conhecido | 0 |
+| Vínculos `custom:` | 1 |
+| Contas com `custom:` e BCRYPT | 1 |
+| Contas `custom:` sem senha, sem OAuth alternativo | 0 |
+| Identidades Google reconhecidas | 3 |
+| Identidades órfãs ou desconhecidas | 0 |
+| Gravações Firebase nesta auditoria | 0 |
+
+**Conclusão limitada:** a conta com `custom:` possui BCRYPT no backup;
+a única conta sem senha tem OAuth conhecido. Não há conta sem
+alternativa *identificada no backup*, mas isso **não comprova que o
+login alternativo funciona no Firebase**.
+
+**Ainda bloqueia a importação:**
+1. O backup de 12/11 não foi reconciliado com o banco ativo nem com
+   alterações posteriores de usuários, permissões, revogações e Casas.
+2. Provedores OAuth/Google, fluxos de login e recuperação de senha
+   ainda não foram testados na homologação Firebase.
+3. As regras por Casa, narrador, editor e acesso a dados privados
+   ainda dependem da migração de autorização.
+4. `custom:` requer decisão explícita de adiamento e eventual
+   reconfiguração do provedor; o vínculo não migra automaticamente.
+
+A auditoria **não autoriza** usar `--execute` nem fazer cutover.
+A importação deve permanecer desligada até o aceite dos bloqueios.
