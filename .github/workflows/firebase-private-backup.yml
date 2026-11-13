@@ -1,0 +1,21 @@
+name: Firebase private Drive backup fetch
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/fetch-private-backup*.mjs'
+      - 'docs/firebase/PRIVATE-BACKUP-FETCH.md'
+      - '.github/workflows/firebase-private-backup.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check scripts/firebase/fetch-private-backup.mjs
+      - run: node --test scripts/firebase/fetch-private-backup.test.mjs
+      - run: node scripts/verify-public-repo.mjs
