@@ -128,8 +128,38 @@ async function run(){
       idToken:token('narrator'),letterId:sent.ids[0],
     })).subject,'Synthetic title');
 
+    assert.deepEqual(await commands.markRead({
+      idToken:token('bob'),letterId:sent.ids[0],
+    }),{recorded:true,alreadyRecorded:false});
+    assert.deepEqual(await commands.markRead({
+      idToken:token('bob'),letterId:sent.ids[0],
+    }),{recorded:true,alreadyRecorded:true});
+    assert.equal((await commands.markRead({
+      idToken:token('charlie'),letterId:sent.ids[0],
+    })).recorded,true);
+    await assert.rejects(commands.markRead({
+      idToken:token('alice'),letterId:sent.ids[0],
+    }),MailCommandDenied);
+    await assert.rejects(commands.markRead({
+      idToken:token('dave'),letterId:sent.ids[0],
+    }),MailCommandDenied);
+    await assert.rejects(commands.markRead({
+      idToken:token('narrator'),letterId:sent.ids[0],
+    }),MailCommandDenied);
+    assert.equal((await commands.listReceipts({
+      idToken:token('alice'),letterId:sent.ids[0],
+    })).length,2);
+    await assert.rejects(commands.listReceipts({
+      idToken:token('bob'),letterId:sent.ids[0],
+    }),MailCommandDenied);
     const toMaster=await send('alice',key(5),['narrator'],'ha');
     assert.equal(toMaster.state,'delivered');
+    assert.equal((await commands.markRead({
+      idToken:token('narrator'),letterId:toMaster.ids[0],
+    })).recorded,true);
+    await assert.rejects(commands.markRead({
+      idToken:token('bob'),letterId:toMaster.ids[0],
+    }),MailCommandDenied);
     assert.equal((await commands.list({idToken:token('bob')})).length,1);
     const edited=await commands.editDraft({
       idToken:token('alice'),id:draft.ids[0],kind:'letter',version:1,
