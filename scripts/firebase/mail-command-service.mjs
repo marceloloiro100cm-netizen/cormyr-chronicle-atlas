@@ -228,8 +228,7 @@ export function createEmulatorMailCommands({db,auth,snapshotId,env=process.env})
         (deliveryRound??(state.openRound??state.lastRound+1)):
         state.openRound);
       if(!asDraft&&fresh.role==='narrador'&&
-        (week<=state.lastRound||
-         (state.openRound!==null&&week<state.openRound)))deny();
+        (week<(state.openRound??state.lastRound+1)))deny();
       if(!asDraft&&(!Number.isInteger(week)||week<1))deny();
       const publicationState=asDraft?'draft':
         (state.openRound!==null&&week===state.openRound?'delivered':'scheduled');
@@ -392,7 +391,7 @@ export function createEmulatorMailCommands({db,auth,snapshotId,env=process.env})
         if(!eligibleToSend(fresh,doc.data().originHouseId))deny();
         round=fresh.role==='narrador'?
           (deliveryRound??state.openRound??state.lastRound+1):state.openRound;
-        if(fresh.role==='narrador'&&round<=state.lastRound)deny();
+        if(fresh.role==='narrador'&&round<(state.openRound??state.lastRound+1))deny();
       }else{
         const recipient=await t.get(access.doc(doc.data().recipientUid));
         if(!recipient.exists)deny();
