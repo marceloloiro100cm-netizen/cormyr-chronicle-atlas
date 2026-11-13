@@ -1,0 +1,38 @@
+name: Firebase site runtime (homologation only)
+on:
+  pull_request:
+    paths:
+      - 'vite.firebase.config.ts'
+      - 'Dockerfile.firebase'
+      - '.dockerignore'
+      - 'firebase.hosting-homolog.json'
+      - 'scripts/firebase/verify-node-build.mjs'
+      - '.github/workflows/firebase-site-runtime.yml'
+      - 'docs/firebase/SITE-HOSTING.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-ssr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.3'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Build without Lovable Vite wrapper
+        env:
+          NITRO_PRESET: node_server
+        run: bunx vite build --config vite.firebase.config.ts
+      - name: Smoke-test SSR on localhost
+        run: node scripts/firebase/verify-node-build.mjs
+      - name: Verify public repository privacy
+        run: node scripts/verify-public-repo.mjs
