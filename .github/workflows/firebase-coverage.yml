@@ -1,0 +1,31 @@
+name: Firebase complete source coverage audit
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/audit-migration-coverage*.mjs'
+      - '.github/workflows/firebase-coverage.yml'
+      - 'docs/firebase/MIGRATION-COVERAGE.md'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/audit-migration-coverage*.mjs'
+      - '.github/workflows/firebase-coverage.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify aggregate migration inventory
+        run: |
+          node --check scripts/firebase/audit-migration-coverage.mjs
+          node --test scripts/firebase/audit-migration-coverage.test.mjs
+          node scripts/verify-public-repo.mjs
