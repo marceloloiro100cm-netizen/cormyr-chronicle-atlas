@@ -45,7 +45,7 @@ export function compareDestination(sourceUsers, destinationUsers, sourceAudit) {
   return {
     formatVersion: 1,
     scope: 'private-backup-versus-firebase-auth-readonly',
-    projectVerifiedByCaller: true,
+    explicitProjectIdProvided: true,
     sourceUsers: sourceUsers.length,
     destinationUsers: destinationUsers.length,
     destinationEmpty,
