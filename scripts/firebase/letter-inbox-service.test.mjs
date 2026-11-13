@@ -17,18 +17,24 @@ function fixture(){
   }));
   const letters=[
     {id:ident('a'),senderUid:'narrator',senderName:'Mestre',senderPlayerId:null,
-      recipientPlayerId:null,recipientHouseId:'a',subject:'A',content:'house A secret',createdAt:when(1),deletedAt:null},
+      recipientPlayerId:null,recipientHouseId:'a',subject:'A',content:'house A secret',publicationState:'delivered',createdAt:when(1),deletedAt:null},
     {id:ident('b'),senderUid:'narrator',senderName:'Mestre',senderPlayerId:null,
-      recipientPlayerId:null,recipientHouseId:'b',subject:'B',content:'house B secret',createdAt:when(2),deletedAt:null},
+      recipientPlayerId:null,recipientHouseId:'b',subject:'B',content:'house B secret',publicationState:'delivered',createdAt:when(2),deletedAt:null},
     {id:ident('c'),senderUid:'alice',senderName:'A',senderPlayerId:'pa',
-      recipientPlayerId:'pb',recipientHouseId:null,subject:'A to B',content:'reply',createdAt:when(3),deletedAt:null},
+      recipientPlayerId:'pb',recipientHouseId:null,subject:'A to B',content:'reply',publicationState:'delivered',createdAt:when(3),deletedAt:null},
     {id:ident('d'),senderUid:'alice',senderName:'A',senderPlayerId:'pa',
-      recipientPlayerId:null,recipientHouseId:'b',subject:'deleted',content:'should not show',createdAt:when(4),
+      recipientPlayerId:null,recipientHouseId:'b',subject:'deleted',content:'should not show',publicationState:'delivered',createdAt:when(4),
       deletedAt:when(5)},
     {id:ident('e'),senderUid:'alice',senderName:'A',senderPlayerId:'pa',
-      recipientPlayerId:null,recipientHouseId:null,subject:'bad both null',content:'quarantine mistake',createdAt:when(6),deletedAt:null},
+      recipientPlayerId:null,recipientHouseId:null,subject:'bad both null',content:'quarantine mistake',publicationState:'delivered',createdAt:when(6),deletedAt:null},
+    {id:ident('g'),senderUid:'alice',senderName:'A',senderPlayerId:'pa',
+      recipientPlayerId:'pb',recipientHouseId:null,subject:'draft private',
+      content:'should not show',publicationState:'draft',createdAt:when(8),deletedAt:null},
+    {id:ident('h'),senderUid:'alice',senderName:'A',senderPlayerId:'pa',
+      recipientPlayerId:'pb',recipientHouseId:null,subject:'scheduled private',
+      content:'should not show',publicationState:'scheduled',createdAt:when(9),deletedAt:null},
     {id:ident('f'),senderUid:'alice',senderName:'A',senderPlayerId:'pa',
-      recipientPlayerId:'pb',recipientHouseId:'b',subject:'bad double',content:'quarantine mistake',createdAt:when(7),deletedAt:null},
+      recipientPlayerId:'pb',recipientHouseId:'b',subject:'bad double',content:'quarantine mistake',publicationState:'delivered',createdAt:when(7),deletedAt:null},
   ];
   const disabled=new Set();
   let status='complete';
