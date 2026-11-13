@@ -1,0 +1,32 @@
+name: Firebase Firestore private emulator archive
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/stage-firestore-emulator*.mjs'
+      - 'docs/firebase/PRIVATE-FIRESTORE-EMULATOR-ARCHIVE.md'
+      - '.github/workflows/firebase-emulator-archive.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/stage-firestore-emulator*.mjs'
+      - '.github/workflows/firebase-emulator-archive.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-private-emulator-archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check strict archive importer syntax
+        run: node --check scripts/firebase/stage-firestore-emulator.mjs
+      - name: Synthetic dry run and fake Firestore emulator tests
+        run: node --test scripts/firebase/stage-firestore-emulator.test.mjs
+      - name: Check public repository for private backup files
+        run: node scripts/verify-public-repo.mjs
