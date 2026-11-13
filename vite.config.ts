@@ -7,7 +7,21 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 
+// Keep the existing Lovable/Cloudflare build unchanged. Only the separate
+// Firebase preview build switches Nitro to a standalone Node.js server.
+const isFirebaseAppHostingBuild = process.env.CORMYR_BUILD_TARGET === "firebase";
+
 export default defineConfig({
+  ...(isFirebaseAppHostingBuild
+    ? { nitro: {
+        preset: "node_server",
+        output: {
+          dir: ".output",
+          serverDir: ".output/server",
+          publicDir: ".output/public",
+        },
+      } }
+    : {}),
   vite: {
     plugins: [mcpPlugin()],
   },
