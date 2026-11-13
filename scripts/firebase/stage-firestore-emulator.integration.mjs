@@ -10,6 +10,7 @@ import {join} from 'node:path';
 import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getFirestore} from 'firebase-admin/firestore';
 import {loadPrivateArchivePlan,main,assertEmulatorOnly} from './stage-firestore-emulator.mjs';
+import {verifyPrivateArchiveInEmulator} from './verify-firestore-emulator.mjs';
 
 const digest = value=>createHash('sha256').update(value).digest('hex');
 
@@ -100,7 +101,24 @@ async function run() {
     }
     assert.equal(replayRows,4);
     assert.equal((await largeRef.collection('chunks').get()).size,plan.summary.totalChunks);
-    console.log('Synthetic emulator snapshot: 4 public rows, 1 large chunked record, idempotent replay, 0 Auth rows.');
+    const verification=await verifyPrivateArchiveInEmulator(plan,db);
+    assert.equal(verification.verificationPassed,true);
+    assert.equal(verification.verifiedRows,4);
+    assert.equal(verification.verifiedTables,3);
+    assert.equal(verification.verifiedChunkedRows,1);
+    assert.equal(verification.verifiedChunks,plan.summary.totalChunks);
+    assert.equal(verification.cloudWrites,0);
+
+    // A single changed byte, even in a deeply nested large-row chunk,
+    // must make the full source-to-emulator audit fail closed.
+    const corruptRef=largeRef.collection('chunks').doc(large.chunks[0].docId);
+    await corruptRef.update({dataBase64:'QUJD'});
+    await assert.rejects(
+      verifyPrivateArchiveInEmulator(plan,db),
+      /Private archive verification failed/
+    );
+    console.log('Synthetic emulator: all 4 rows matched source; large row checksum passed; deliberate corruption detected.');
+
   }finally {
     await deleteApp(app);
     await rm(root,{recursive:true,force:true});

@@ -148,3 +148,68 @@ As duas contas sem perfil explícito não são automaticamente um erro:
 podem representar contas inativas ou especiais; essa lacuna de
 mapeamento deve ser revisada antes da migração definitiva de autorização.
 O modo de importação para emulador não concede acesso a nenhuma delas.
+
+## Importação verdadeira do backup privado concluída — 13/11/2026
+
+O proprietário compartilhou a confirmação do Cloud Shell após o importador
+corrigido e a exportação do emulador. Saída observada (apenas agregados):
+
+| Métrica do emulador | Total |
+| --- | ---: |
+| `snapshotCreated` | `true` |
+| Tabelas públicas preservadas | **98** |
+| Registros públicos preservados | **3.455** |
+| Registros grandes fragmentados | **1** |
+| Fragmentos do registro grande | **6** |
+| Gravações no emulador | **3.561** |
+| Gravações em nuvem | **0** |
+| `readyForCloudImport` | `false` |
+
+O Firestore Emulator encerrou com código 0 e exportou os dados para a pasta
+privada `firestore-emulator-20261113-185922`. Isso prova que a carga inicial
+foi concluída, mas não garante ainda que todos os documentos do arquivo
+recarregado correspondam byte a byte à origem nem implementa o modelo final
+do site.
+
+### Verificação independente do round-trip a partir da exportação
+
+O script `scripts/firebase/verify-firestore-emulator.mjs` faz a comparação
+integral do snapshot em modo **somente leitura**, no emulador local
+(`demo-cormyr-migration`).
+
+Confere a contagem de tabelas, os documentos de cada tabela, todas as
+3.455 linhas, metadados e valores, os seis fragmentos do registro grande,
+SHA-256 de cada fragmento e do valor reconstruído, e os hashes originais
+calculados com as colunas da fonte. Rejeita documentos ausentes,
+adicionais ou alterados e nunca escreve no emulador ou na nuvem.
+Retorna somente contagens e resultado, sem IDs, nomes, missivas ou valores.
+
+Na pasta de trabalho `/tmp/cormyr-migration-audit-...`, ou em um novo
+worktree atualizado com `main`:
+
+~~~bash
+cd ~/cormyr-chronicle-atlas
+git fetch origin main
+git worktree add --detach /tmp/cormyr-roundtrip-check FETCH_HEAD
+cd /tmp/cormyr-roundtrip-check
+npm install --no-save --package-lock=false firebase-admin@14.5.1 firebase-tools@15.35.0
+
+NORMALIZED="$HOME/cormyr-chronicle-atlas/.firebase-migration/inspecao-12nov-E4pokAhB/normalized"
+EXPORTED="$HOME/cormyr-chronicle-atlas/.firebase-migration/firestore-emulator-20261113-185922"
+test -f "$NORMALIZED/manifest.json" || exit 1
+test -d "$EXPORTED" || exit 1
+export FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+
+npx firebase emulators:exec --only firestore \
+  --project demo-cormyr-migration \
+  --config firebase/firebase.json \
+  --import "$EXPORTED" \
+  "node scripts/firebase/verify-firestore-emulator.mjs --normalized '$NORMALIZED'"
+~~~
+
+**Nunca enviar o diretório exportado ou o manifesto privado para
+GitHub público.** A verificação não cria ou migra usuários de Auth nem
+publica regras Firestore. Após aprovação, priorizar converter as tabelas
+`public.*` para modelos tipados e regras de acesso equivalentes ao
+PostgreSQL; isso exige avaliação dos 2 usuários sem perfil explícito,
+teste por Casa e reconciliação final da origem ativa antes do corte.
