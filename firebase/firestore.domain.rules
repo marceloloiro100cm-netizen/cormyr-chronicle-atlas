@@ -59,6 +59,11 @@ service cloud.firestore {
         allow get: if readLetter(snapshot);
         allow list, create, update, delete: if false;
       }
+      match /lettersQuarantine/{letterId} {
+        // Destination ambiguity: deny even narrator/admin and any direct get,
+        // collection list or client write. Review requires offline tools.
+        allow read, write: if false;
+      }
     }
 
     match /{document=**} {
