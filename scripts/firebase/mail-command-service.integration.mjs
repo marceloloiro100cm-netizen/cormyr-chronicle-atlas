@@ -15,6 +15,7 @@ const key=i=>'test-idempotent-'+i;
 const date='1522-11-13';
 const iso='2026-11-13T14:00:00.000Z';
 const refId=i=>i.repeat(64);
+let phase='initial';
 async function run(){
   assertEmulatorOnly(process.env,PROJECT);
   const app=initializeApp({projectId:PROJECT},'full-mail-runtime-ci');
@@ -97,6 +98,7 @@ async function run(){
       asDraft:true,campaignDate:'1520-F-shieldmeet',
     });
     assert.equal(festival.state,'draft');
+    phase='initial-sends';
     const draft=await send('alice',key(2),['h:hb'],'ha',{asDraft:true});
     assert.equal(draft.state,'draft');
     assert.equal((await send('alice',key(2),['h:hb'],'ha',{asDraft:true}))
@@ -116,6 +118,7 @@ async function run(){
     await assert.rejects(commands.openRound({
       idToken:token('narrator'),number:2,
     }),MailCommandDenied);
+    phase='open-round-and-send';
     const sent=await send('alice',key(4),['h:hb'],'ha');
     assert.equal(sent.state,'delivered');
     assert.equal((await send('alice',key(4),['h:hb'],'ha')).duplicate,true);
@@ -178,6 +181,7 @@ async function run(){
       idToken:token('alice'),id:draft.ids[0],kind:'letter',version:3,
       subject:'Cannot edit',content:'Already sent',
     }),MailCommandDenied);
+    phase='threaded-replies';
     const pending=await reply('bob',key(6),sent.ids[0]);
     assert.equal(pending.state,'scheduled');
     assert.equal(pending.week,2);
@@ -257,6 +261,7 @@ async function run(){
     }),null);
     await drop.update({memberHouseIds:['hb'],editHouseIds:['hb']});
 
+    phase='round-advance';
     const close=await commands.closeRound({
       idToken:token('narrator'),number:1,
     });
@@ -276,6 +281,7 @@ async function run(){
       idToken:token('narrator'),number:4,
     }),MailCommandDenied);
 
+    phase='legacy-history';
     const legacyId=hash('letter:legacy-1');
     await domain.collection('letters').doc(legacyId).set({
       sourceId:'legacy-1',senderUid:'narrator',senderName:'Narrator',
@@ -294,6 +300,7 @@ async function run(){
     const historical=(await domain.collection('letters').doc(legacyId).get()).data();
     assert.equal(historical.content,'Old preserved value');
 
+    phase='firestore-rules';
     for(const client of [
       env.authenticatedContext('alice').firestore(),
       env.authenticatedContext('bob').firestore(),
@@ -322,6 +329,6 @@ async function run(){
   }
 }
 run().catch(e=>{
-  console.error('Firebase mail E2E failed (synthetic-only):',e?.name||'Unknown');
+  console.error('Firebase mail E2E failed (synthetic-only):',phase,e?.name||'Unknown',String(e?.stack||'').split('\n').slice(1,5).join(' | '));
   process.exitCode=1;
 });
