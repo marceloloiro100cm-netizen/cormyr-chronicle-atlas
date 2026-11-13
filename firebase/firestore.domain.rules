@@ -35,7 +35,8 @@ service cloud.firestore {
     function readLetter(snapshot) {
       // Historical deletes must never become visible to a player merely
       // because the minimal migration view omitted the deletion flag.
-      return resource.data.keys().hasAll(['deletedAt']) &&
+      return resource.data.keys().hasAll(['deletedAt','publicationState']) &&
+        resource.data.publicationState == 'delivered' &&
         ((resource.data.recipientPlayerId != null) !=
           (resource.data.recipientHouseId != null)) &&
         (narrator(snapshot) ||
