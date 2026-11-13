@@ -9,6 +9,7 @@
  * Historical ambiguous letters remain in deny-all lettersQuarantine.
  * No send, reply, edit or delete endpoints are exposed.
  */
+import {createHash} from 'node:crypto';
 import {assertEmulatorOnly} from './stage-firestore-emulator.mjs';
 
 const DEMO='demo-cormyr-migration';
@@ -186,5 +187,58 @@ export function createEmulatorInbox({db,auth,snapshotId,env=process.env}){
     return visible.sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||
       a.id.localeCompare(b.id));
   }
-  return Object.freeze({listLetters,getLetter,listReplies});
+
+  /**
+   * Emulator-only, server-authorized receipt. This does not mark a house as
+   * collectively having read a letter: each permitted recipient records only
+   * their own acknowledgement. Sender, narrator by override, and editor
+   * cannot generate another person's read receipt.
+   *
+   * The original imported archive and typed letter remain immutable. The
+   * receipt lives in a separate deny-all runtime namespace.
+   */
+  async function markLetterRead({idToken,letterId}={}){
+    const actor=await authorize(idToken);
+    if(actor.role!=='jogador')deny();
+    if(typeof letterId!=='string'||!HASH.test(letterId))
+      throw new Error('Invalid letter id');
+    if(typeof db.runTransaction!=='function')
+      throw new Error('Firestore transactions unavailable');
+    const receiptId=createHash('sha256')
+      .update(letterId+':'+actor.uid).digest('hex');
+    const receiptRef=db.collection('migrationMailRuntimeStage').doc(snapshotId)
+      .collection('readReceipts').doc(receiptId);
+    return db.runTransaction(async transaction=>{
+      // Re-read the authorization snapshot inside the transaction: a
+      // membership revoked between token verification and commit must fail.
+      const [stage,scope,parent,existing]=await Promise.all([
+        transaction.get(root),
+        transaction.get(access.doc(actor.uid)),
+        transaction.get(letters.doc(letterId)),
+        transaction.get(receiptRef),
+      ]);
+      if(!stage.exists||stage.data()?.status!=='complete'||!scope.exists)
+        deny();
+      const current=normalizeAccess(actor.uid,scope.data());
+      if(current.role!=='jogador'||!parent.exists)deny();
+      const letter=parent.data();
+      if(!canRead(letter,current)||letter.deletedAt!==null||
+         letter.senderUid===actor.uid)deny();
+      const direct=letter.recipientPlayerId===current.playerId;
+      const house=typeof letter.recipientHouseId==='string'&&
+        current.memberHouseIds.has(letter.recipientHouseId);
+      if(!direct&&!house)deny();
+      if(existing.exists){
+        if(existing.data()?.viewerUid!==actor.uid||
+           existing.data()?.letterId!==letterId)deny();
+        return {recorded:true,alreadyRecorded:true};
+      }
+      transaction.create(receiptRef,{
+        schemaVersion:1,letterId,viewerUid:actor.uid,
+        readAt:new Date().toISOString(),
+      });
+      return {recorded:true,alreadyRecorded:false};
+    });
+  }
+  return Object.freeze({listLetters,getLetter,listReplies,markLetterRead});
 }
