@@ -82,7 +82,7 @@ async function run(){
     for(const entry of saved.docs){
       const record=entry.data();
       assert.equal(record.schemaVersion,1);
-      assert.match(record.readAt,/^\\d{4}-/);
+      assert.match(record.readAt,/^\d{4}-/);
       assert.equal(record.letterId===ID.house||record.letterId===ID.direct,true);
       assert.equal(record.viewerUid==='alice'||record.viewerUid==='bob',true);
     }
