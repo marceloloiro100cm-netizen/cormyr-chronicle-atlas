@@ -8,7 +8,7 @@ import {
 const HASH=createHash('sha256').update('fully-synthetic-private-backup').digest('hex');
 import {syntheticSource} from './stage-all-emulators.fixture.mjs';
 
-test('consolidates 4 Firestore models and 1 Auth plan with no cloud access',()=>{
+test('consolidates 5 Firestore models and 1 Auth plan with no cloud access',()=>{
   const tables=syntheticSource();
   const plan=planUnifiedEmulator(tables,HASH);
   assert.equal(plan.summary.readyForEmulatorStage,true);
@@ -21,6 +21,8 @@ test('consolidates 4 Firestore models and 1 Auth plan with no cloud access',()=>
   assert.equal(plan.summary.stages.temporal.calendarProjected,true);
   assert.equal(plan.summary.stages.temporal.historyTables,7);
   assert.equal(plan.summary.stages.newspaper.historyTables,8);
+  assert.equal(plan.summary.stages.mailHistory.sourceTables,8);
+  assert.equal(plan.summary.stages.mailHistory.sourceHistoryRows,0);
   assert.equal(plan.summary.stages.auth.importCandidates,2);
   assert.equal(plan.summary.cloudWrites,0);
   assert.equal(plan.summary.readyForCloudImport,false);
@@ -69,6 +71,6 @@ test('existing Auth account blocks all Firestore writes in unified flow',async()
     FIRESTORE_EMULATOR_HOST:'127.0.0.1:8080',
     FIREBASE_AUTH_EMULATOR_HOST:'127.0.0.1:9099',
   }),/destination already contains/);
-  assert.equal(reads,5);
+  assert.equal(reads,6);
   assert.equal(writes,0);
 });
