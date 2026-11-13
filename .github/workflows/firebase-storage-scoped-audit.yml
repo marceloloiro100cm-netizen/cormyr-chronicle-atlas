@@ -42,38 +42,27 @@ jobs:
         with:
           project_id: cormyr
 
-      - name: Audit existing campaign images without exposing object names
+      - name: Audit private homologation images only
         shell: bash
         run: |
           set -euo pipefail
           gcloud auth print-access-token --quiet >/dev/null
           work="$(mktemp -d)"
           trap 'rm -rf "$work"' EXIT
-          if ! gcloud storage ls --recursive               'gs://cormyr.firebasestorage.app/migration-staging/campaign-images/'               >"$work/source-objects.txt" 2>"$work/error.txt"; then
-            echo "::error::Reader could not enumerate scoped migration-staging images."
-            echo "::error::Review managed-folder permissions; no broad Storage access should be added."
+          if ! gcloud storage ls --recursive               'gs://cormyr-migration-homolog-477785088395/campaign-images/'               >"$work/images.txt" 2>"$work/error.txt"; then
+            echo "::error::Reader could not enumerate images in isolated homologation."
             exit 1
           fi
-          total="$(grep -c '^gs://' "$work/source-objects.txt" || true)"
-          echo "Objects visible in campaign-images staging: $total"
+          total="$(grep -c '^gs://' "$work/images.txt" || true)"
+          echo "Images visible in private homologation: $total"
+          if [[ "$total" -ne 779 ]]; then
+            echo "::warning::Expected historical inventory 779; verify new source delta before production cutover."
+          fi
           test "$total" -gt 0 || {
-            echo "::error::No staging images visible to scoped reader."
+            echo "::error::No homologation images copied yet; run owner Cloud Shell transfer first."
             exit 1
           }
-          if [[ "$total" -ne 779 ]]; then
-            echo "::warning::Count differs from 779 previously confirmed; perform private inventory reconciliation."
-          fi
-          echo "Source read-only scope verified. No private object paths printed."
-
-      - name: Verify isolated staging bucket is readable
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! gcloud storage ls 'gs://cormyr-migration-homolog-477785088395/'               >/dev/null 2>&1; then
-            echo "::error::Homologation bucket is not accessible to scoped reader."
-            exit 1
-          fi
-          echo "Isolated homologation bucket readable. No objects changed."
+          echo "Isolated read-only scope confirmed; source bucket never accessed by GitHub."
 
   verify-writer-identity:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
