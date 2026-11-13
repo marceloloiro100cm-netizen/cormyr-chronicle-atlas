@@ -205,7 +205,7 @@ export function createEmulatorInbox({db,auth,snapshotId,env=process.env}){
     if(typeof db.runTransaction!=='function')
       throw new Error('Firestore transactions unavailable');
     const receiptId=createHash('sha256')
-      .update(letterId+'\\0'+actor.uid).digest('hex');
+      .update(letterId+':'+actor.uid).digest('hex');
     const receiptRef=db.collection('migrationMailRuntimeStage').doc(snapshotId)
       .collection('readReceipts').doc(receiptId);
     return db.runTransaction(async transaction=>{
