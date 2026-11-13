@@ -1,0 +1,61 @@
+name: Firebase mail read receipts (private emulator)
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/letter-inbox-service.mjs'
+      - 'scripts/firebase/letter-read-receipts.integration.mjs'
+      - 'scripts/firebase/letter-inbox-service.test.mjs'
+      - 'firebase/firestore.domain.rules'
+      - 'docs/firebase/MAIL-RECEIPTS.md'
+      - '.github/workflows/firebase-read-receipts.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/letter-inbox-service.mjs'
+      - 'scripts/firebase/letter-read-receipts.integration.mjs'
+      - 'scripts/firebase/letter-inbox-service.test.mjs'
+      - 'firebase/firestore.domain.rules'
+      - '.github/workflows/firebase-read-receipts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  receipt-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify syntax, existing authorization regressions and public repository
+        run: |
+          node --check scripts/firebase/letter-inbox-service.mjs
+          node --check scripts/firebase/letter-read-receipts.integration.mjs
+          node --test scripts/firebase/letter-inbox-service.test.mjs
+          node scripts/verify-public-repo.mjs
+
+  receipt-firestore-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install disposable emulator dependencies
+        run: npm install --no-save --package-lock=false firebase-tools@15.35.0 firebase-admin@14.5.1 firebase@13.3.0 @firebase/rules-unit-testing@6.0.0
+      - name: Test real Firestore transactions and Security Rules locally
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+        run: |
+          npx firebase emulators:exec --only firestore \
+            --project demo-cormyr-migration \
+            --config firebase/firebase-domain.json \
+            "node scripts/firebase/letter-read-receipts.integration.mjs"
