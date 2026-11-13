@@ -341,7 +341,7 @@ export function createEmulatorMailCommands({db,auth,snapshotId,env=process.env})
           'Narrador':'Jogador',subject:null,content,
         campaignDate,recipientKind:'player',recipientPlayerId:recipientScope.playerId,
         recipientHouseId:null,
-        requestKey,requestFingerprint,source:'firebase-runtime',
+        requestKey,requestFingerprint:fingerprint,source:'firebase-runtime',
         createdAt:stamp,updatedAt:stamp,
         deliveredAt:publicationState==='delivered'?stamp:null,
         publicationState,deliveryRound:week,creationRound:state.openRound,
