@@ -18,13 +18,13 @@ jobs:
     steps:
       - name: Check Google Cloud connection configuration
         env:
-          WIF_PROVIDER: ${{ vars.CORMYR_GCP_WIF_PROVIDER }}
-          READONLY_SA: ${{ vars.CORMYR_GCP_READONLY_SA }}
+          WIF_PROVIDER: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          READONLY_SA: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
         shell: bash
         run: |
           set -euo pipefail
           if [[ -z "$WIF_PROVIDER" || -z "$READONLY_SA" ]]; then
-            echo "::error::Configure CORMYR_GCP_WIF_PROVIDER and CORMYR_GCP_READONLY_SA as GitHub Actions repository variables."
+            echo "::error::Verify the configured Workload Identity provider and service account in the repository workflow."
             exit 1
           fi
           if [[ "$WIF_PROVIDER" != projects/*/locations/global/workloadIdentityPools/*/providers/* ]]; then
@@ -39,8 +39,8 @@ jobs:
       - name: Exchange temporary GitHub identity for Google credentials
         uses: google-github-actions/auth@v3
         with:
-          workload_identity_provider: ${{ vars.CORMYR_GCP_WIF_PROVIDER }}
-          service_account: ${{ vars.CORMYR_GCP_READONLY_SA }}
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
           project_id: cormyr
 
       - name: Install Google Cloud SDK
