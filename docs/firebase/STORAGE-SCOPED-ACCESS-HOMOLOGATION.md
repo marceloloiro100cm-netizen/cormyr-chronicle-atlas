@@ -1,57 +1,93 @@
-# Cormyr / Firebase — Storage com IAM restrito e homologação separada
+# Cormyr — Storage privado de homologação (compatível com ACLs antigas)
 
-## Escopo e status
+## Bloqueio detectado e solução
 
-**Mudança preparada no GitHub, ainda não aplicada ao Google Cloud.** Necessário um comando autenticado do proprietário no Cloud Shell para criar os recursos e conceder os papéis. A conta GitHub atual só consegue trocar identidade temporária; não recebeu direitos IAM para conceder papéis a si própria.
+A execução do proprietário em 13/11/2026 confirmou que o bucket original
+`gs://cormyr.firebasestorage.app` **não usa uniform bucket-level access**.
+Por isso a versão anterior do script interrompeu a operação **antes de
+conceder qualquer permissão**. Essa proteção foi correta: habilitar acesso
+uniforme na origem desativaria ACLs individuais e poderia comprometer
+arquivos usados pela aplicação atual.
 
-O acesso configurado pelo script é:
+A estratégia foi modificada. **O script NÃO altera configuração, ACL ou IAM
+do bucket original.** A conta Google do proprietário, já autenticada no
+Cloud Shell, faz uma cópia somente dos objetos existentes em
+`migration-staging/campaign-images` para um bucket privado, com
+`--no-clobber --no-preserve-acl`. Não há remoção de arquivos de origem.
 
-| Identidade | Origem: `gs://cormyr.firebasestorage.app/migration-staging/` | Destino: `gs://cormyr-migration-homolog-477785088395/` |
+## Papéis de menor privilégio
+
+| Identidade | Bucket de origem | Bucket privado de homologação |
 | --- | --- | --- |
-| `cormyr-gh-reader@cormyr.iam.gserviceaccount.com` | `roles/storage.objectViewer` **somente na pasta gerenciada** | `roles/storage.objectViewer` |
-| `cormyr-gh-stager@cormyr.iam.gserviceaccount.com` | `roles/storage.objectViewer` **somente na pasta gerenciada** | `roles/storage.objectCreator` + `roles/storage.objectViewer` |
+| `cormyr-gh-reader@cormyr.iam.gserviceaccount.com` | **Nenhum papel novo** | `roles/storage.objectViewer` |
+| `cormyr-gh-stager@cormyr.iam.gserviceaccount.com` | **Nenhum papel novo** | `roles/storage.objectCreator` + `roles/storage.objectViewer` |
 
-A nova identidade `cormyr-gh-stager` reutiliza o mesmo provedor Workload Identity Federation limitado ao ID imutável do repositório e `refs/heads/main`. Nenhuma das contas recebe `roles/editor`, `roles/owner`, `roles/storage.admin` nem permissões de Auth/Firestore.
+O bucket privado é `gs://cormyr-migration-homolog-477785088395`, criado
+na mesma região da origem, com acesso uniforme e bloqueio de acesso público.
+A conta `cormyr-gh-stager` recebe apenas permissão de criação e leitura:
+não pode sobrescrever ou excluir os objetos anteriores.
 
-O diretório de **origem** já contém 779 imagens em staging. O script cria um recurso de *managed folder* para limitar concessões ao prefixo de migração; não mexe em conteúdo ou ACLs da produção. Se o bucket não tiver **uniform bucket-level access**, o script **para sem alterá-lo**, pois habilitar essa opção poderia afetar o acesso de jogadores. O novo bucket privado usa a mesma localização do bucket de origem, acesso uniforme e prevenção de acesso público. Ele pode gerar cobrança de armazenamento e operações futuras, mesmo sem upload automático.
+O provedor OIDC anterior só aceita GitHub repo ID `1436424408` na
+branch `main`. A migração não recebe permissões de Firebase Auth, Firestore,
+IAM geral, funções administrativas ou deploy de produção.
 
-## Único comando de autorização, após revisar o PR
+## Executar no Cloud Shell
 
-No Cloud Shell do projeto `cormyr`, a partir do repositório já presente:
+O proprietário deve atualizar o script de uma branch de PR **ainda não
+integrada** e executar uma vez:
 
 ~~~bash
 cd ~/cormyr-chronicle-atlas
 git fetch origin feat/firebase-storage-scoped-access-20261113
-git worktree add --detach /tmp/cormyr-storage-iam FETCH_HEAD
-bash /tmp/cormyr-storage-iam/scripts/firebase/grant-scoped-staging-storage.sh
+git show FETCH_HEAD:scripts/firebase/grant-scoped-staging-storage.sh \
+  > /tmp/cormyr-storage-iam.sh
+bash -n /tmp/cormyr-storage-iam.sh && bash /tmp/cormyr-storage-iam.sh
 ~~~
 
-O script concede **somente** as permissões descritas. Ele:
+O comando cria o bucket privado e a conta restrita, aplica IAM **apenas
+no novo bucket**, copia as imagens via sessão do proprietário no Cloud
+Shell e verifica contagens sem mostrar nomes de objetos no terminal.
 
-1. Compara o número real do projeto com `477785088395` e confirma a conta já vinculada.
-2. Verifica o acesso uniforme e a localização do bucket de origem; não altera a configuração antiga.
-3. Cria a pasta gerenciada `migration-staging/` caso não exista.
-4. Cria ou valida o bucket de homologação, garantindo o projeto proprietário, acesso privado e localização correta.
-5. Cria a conta restrita `cormyr-gh-stager` e as permissões apenas nos recursos relevantes.
-6. Confere as políticas IAM ao final sem imprimir nomes dos arquivos nem dados pessoais.
+Ao copiar, usa `--no-clobber` para nunca sobrescrever arquivos já
+transferidos e `--no-preserve-acl` para não copiar ACLs antigas ao
+bucket de acesso uniforme. O script armazena logs com nomes de objetos
+apenas em diretório temporário privado e os elimina ao finalizar.
 
-Não usar tokens do Lovable, chaves JSON ou privilégios de `roles/owner` para as contas do GitHub.
+Não publicar logs de cópia, nomes de arquivos privados, JSONs de
+credenciais ou backups em PRs ou no chat. Uma segunda execução não
+deve sobrescrever dados: se houve cópia parcial, o script detecta
+diferença na contagem e exige análise antes da homologação.
 
-## Validação no GitHub
+## GitHub Actions
 
-Depois de aplicar as permissões e integrar o PR, o workflow **Firebase Storage - verify scoped staging access** é executado no push da configuração a `main`. Também pode ser acionado manualmente em Actions.
+Com o script executado, integrar o PR. O workflow
+**Firebase Storage - verify scoped staging access** checa a nova
+conta e só lista o bucket **privado de homologação**, sem acessar
+o bucket original por GitHub. Mostra apenas a contagem total e
+compara com a referência histórica de 779 objetos.
 
-- Conta *reader*: autenticação Google Cloud e contagem agregada dos arquivos dentro do prefixo de imagens. Diferenças com a referência de 779 geram alerta para reconciliação, sem imprimir os nomes.
-- Conta *reader*: teste de leitura do bucket de homologação.
-- Conta *stager*: troca de credenciais temporárias e confirmação do projeto, **sem upload**.
-- Os PRs executam apenas `bash -n`; não recebem autorização de Cloud porque a federação exige a branch `main`.
+Se a contagem divergir, nenhuma imagem é excluída nem corrigida
+automaticamente. Uma cópia de 779 objetos não significa que o
+Storage atual esteja congelado — ainda haverá reconciliação final
+do delta antes do corte.
 
-Se a listagem falhar, **não conceder `roles/storage.objectViewer` no projeto inteiro** para contornar. Investigar o suporte de listagem por pasta gerenciada ou usar auditoria por objetos explicitamente relacionados ao manifesto.
+## Limites que permanecem
 
-## Próximo lote
+O backup PostgreSQL existente já foi auditado (5.209 registros);
+Auth tem 14 candidatos, dos quais 13 com BCRYPT e 1 com Google,
+com um vínculo `custom:` adiado. Essas contas e os documentos
+**ainda não foram importados** no Firebase.
 
-Com os testes IAM aprovados, preparar transferência idempotente dos objetos para o bucket privado (sem overwrite, usando `ifGenerationMatch: 0` e leitura de verificação) e migração dos dados para emuladores Firestore/Auth antes de criar políticas finais.
+Os emuladores Firebase locais estão configurados no repositório;
+isso não equivale a um projeto Firebase de homologação com Auth,
+Firestore e regras autorizadas. Essas fases terão contas de serviço
+específicas, validação de acesso por Casa e importadores idempotentes.
 
-Os emuladores Auth, Firestore e Storage já estão configurados no arquivo `firebase/firebase.json`, com regras de cliente fechadas em `firebase/firestore.rules` e `firebase/storage.rules`. Esse ambiente de testes é **local**, não um Firebase Authentication/Firestore em nuvem já liberado. A criação de um projeto Firebase de homologação separado e a ativação de billing/serviços que geram custos exigirão aprovação de escopo antes de acontecerem.
+Criar e armazenar dados no novo bucket pode gerar custos de
+armazenamento e operações. Não alterar DNS, não desligar a origem,
+não publicar regras de cliente permissivas e não usar tokens Lovable.
 
-**Não executar importação Auth, Firestore ou deploy em produção com a conta de staging.** Os 14 UIDs preparados e 5.209 registros auditados ainda não foram importados; o delta da origem e as autorizações por Casa continuam pendentes.
+Fontes:
+- https://docs.cloud.google.com/storage/docs/uniform-bucket-level-access
+- https://docs.cloud.google.com/sdk/gcloud/reference/storage/cp
+- https://docs.cloud.google.com/iam/docs/roles-permissions/storage
