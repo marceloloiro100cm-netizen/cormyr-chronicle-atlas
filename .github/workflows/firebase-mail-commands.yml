@@ -1,0 +1,58 @@
+name: Firebase full mail commands (private emulator)
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/mail-command-service.mjs'
+      - 'scripts/firebase/mail-command-service.integration.mjs'
+      - 'firebase/firestore.domain.rules'
+      - 'docs/firebase/MAIL-COMMANDS-EMULATOR.md'
+      - '.github/workflows/firebase-mail-commands.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/mail-command-service.mjs'
+      - 'scripts/firebase/mail-command-service.integration.mjs'
+      - 'firebase/firestore.domain.rules'
+      - '.github/workflows/firebase-mail-commands.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mail-runtime-static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Static checks and public repository review
+        run: |
+          node --check scripts/firebase/mail-command-service.mjs
+          node --check scripts/firebase/mail-command-service.integration.mjs
+          node scripts/verify-public-repo.mjs
+
+  mail-runtime-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install disposable Firebase Emulator dependencies
+        run: npm install --no-save --package-lock=false firebase-tools@15.35.0 firebase-admin@14.5.1 firebase@13.3.0 @firebase/rules-unit-testing@6.0.0
+      - name: Test mail lifecycle and Firebase Security Rules in emulator
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+        run: |
+          npx firebase emulators:exec --only firestore \
+            --project demo-cormyr-migration \
+            --config firebase/firebase-domain.json \
+            "node scripts/firebase/mail-command-service.integration.mjs"
