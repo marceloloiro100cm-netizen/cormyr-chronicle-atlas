@@ -89,9 +89,9 @@ service cloud.firestore {
     }
 
     match /migrationMailRuntimeStage/{snapshot} {
-      // Per-recipient acknowledgements are created transactionally by the
-      // verified server only. No client SDK, including narrator/editor, may
-      // enumerate, forge, read, update or delete an individual receipt.
+      // All letters, replies, rounds, receipts, private notes, and audit
+      // trails written by the emulator-only backend are never accessible
+      // through the untrusted client SDK, including narrator/editor.
       allow read, write: if false;
       match /{document=**} {
         allow read, write: if false;
