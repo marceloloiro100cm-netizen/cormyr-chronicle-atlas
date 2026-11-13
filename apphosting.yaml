@@ -1,0 +1,20 @@
+# Cormyr App Hosting preview; NEVER point live domain to this backend.
+# The application still contains legacy Supabase/Lovable integration.
+# Until Firebase auth/data migration is complete, only the safe holding
+# server is exposed. Do not change runCommand to the Nitro server yet.
+runConfig:
+  minInstances: 0
+  maxInstances: 1
+  concurrency: 20
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  - variable: CORMYR_PREVIEW_LOCKED
+    value: "1"
+    availability:
+      - RUNTIME
+
+scripts:
+  buildCommand: npm run build:apphosting
+  runCommand: node scripts/apphosting/preview-server.mjs
