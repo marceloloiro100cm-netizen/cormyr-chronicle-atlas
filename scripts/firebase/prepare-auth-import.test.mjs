@@ -80,3 +80,75 @@ test('banned users remain disabled in import candidate', () => {
   assert.equal(records[0].disabled, true);
   assert.equal(summary.disabledCount, 1);
 });
+
+
+test('custom OAuth on bcrypt account is deferred without inventing a Firebase provider', () => {
+  const users = [{ id: 'person-a', email: 'a@example.invalid', encrypted_password: bcrypt }];
+  const identities = [
+    { user_id: 'person-a', provider: 'custom:private-idp', provider_id: 'secret-subject' },
+  ];
+  const { records, summary } = buildAuthImportPlan(users, identities, {
+    ...audit, externalProviderIdentityCount: 1,
+  });
+  assert.equal(summary.importCandidates, 1);
+  assert.equal(summary.deferredCustomIdentities, 1);
+  assert.equal(summary.unmappedExternalIdentities, 0);
+  assert.equal(summary.customAccountsWithoutAlternativeSignIn, 0);
+  assert.equal(summary.deferredCustomIdentityRequiresManualRelink, true);
+  assert.equal(summary.issues.length, 0);
+  assert.equal(summary.readyForLiveImport, false);
+  assert.equal(records[0].providerData, undefined);
+  assert.ok(!JSON.stringify(summary).includes('private-idp'));
+  assert.ok(!JSON.stringify(summary).includes('secret-subject'));
+});
+
+test('custom-only passwordless account still blocks bulk auth import', () => {
+  const users = [{ id: 'person-a', email: 'a@example.invalid', encrypted_password: null }];
+  const identities = [
+    { user_id: 'person-a', provider: 'custom:private-idp', provider_id: 'secret-subject' },
+  ];
+  const { records, summary } = buildAuthImportPlan(users, identities, {
+    ...audit, externalProviderIdentityCount: 1,
+  });
+  assert.equal(records.length, 1);
+  assert.equal(summary.deferredCustomIdentities, 1);
+  assert.equal(summary.customAccountsWithoutAlternativeSignIn, 1);
+  assert.equal(summary.passwordlessCount, 1);
+  assert.ok(summary.issues.some(issue => issue.includes('no independent')));
+  assert.equal(summary.readyForLiveImport, false);
+});
+
+test('custom passwordless account with Google fallback remains deferred and requires verification', () => {
+  const users = [{ id: 'person-a', email: 'a@example.invalid', encrypted_password: '' }];
+  const identities = [
+    { user_id: 'person-a', provider: 'custom:private-idp', provider_id: 'secret-subject' },
+    { user_id: 'person-a', provider: 'google', provider_id: 'google-subject' },
+  ];
+  const { records, summary } = buildAuthImportPlan(users, identities, {
+    ...audit, externalProviderIdentityCount: 2,
+  });
+  assert.equal(summary.deferredCustomIdentities, 1);
+  assert.equal(summary.customAccountsWithoutAlternativeSignIn, 0);
+  assert.equal(summary.mappedExternalIdentities, 1);
+  assert.equal(summary.issues.length, 0);
+  assert.equal(records[0].providerData[0].providerId, 'google.com');
+  assert.equal(summary.readyForLiveImport, false);
+});
+
+test('same provider subject on two source accounts is never imported twice', () => {
+  const users = [
+    { id: 'person-a', email: 'a@example.invalid', encrypted_password: bcrypt },
+    { id: 'person-b', email: 'b@example.invalid', encrypted_password: bcrypt },
+  ];
+  const identities = [
+    { user_id: 'person-a', provider: 'google', provider_id: 'same-subject' },
+    { user_id: 'person-b', provider: 'google', provider_id: 'same-subject' },
+  ];
+  const { summary } = buildAuthImportPlan(users, identities, {
+    ...audit, externalProviderIdentityCount: 2,
+  });
+  assert.equal(summary.mappedExternalIdentities, 1);
+  assert.equal(summary.unmappedExternalIdentities, 1);
+  assert.ok(summary.issues.length);
+  assert.equal(summary.readyForLiveImport, false);
+});
