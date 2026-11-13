@@ -6,6 +6,7 @@ on:
     paths:
       - apphosting.yaml
       - package.json
+      - package-lock.json
       - vite.config.ts
       - scripts/apphosting/**
       - .github/workflows/firebase-apphosting-preview.yml
@@ -15,6 +16,7 @@ on:
     paths:
       - apphosting.yaml
       - package.json
+      - package-lock.json
       - vite.config.ts
       - scripts/apphosting/**
       - .github/workflows/firebase-apphosting-preview.yml
@@ -38,7 +40,7 @@ jobs:
           node --check scripts/apphosting/preview-server.test.mjs
           node --test scripts/apphosting/preview-server.test.mjs
       - name: Install repository dependencies
-        run: npm install --no-package-lock
+        run: npm ci --no-audit --no-fund
       - name: Build TanStack Start SSR for Node.js, not Cloudflare
         run: npm run build:apphosting
       - name: Check preview lock remains configured
