@@ -214,18 +214,22 @@ export function buildTypedDomainPlan(tables,snapshotId){
       orphan('letterRecipientMissingHouse');continue;
     }
     const createdAt=isoDate(row.created_at);
-    if(!createdAt||typeof row.subject!=='string'||typeof row.content!=='string'){
+    const deletedAt=row.deleted_at==null?null:isoDate(row.deleted_at);
+    if(!createdAt||(row.deleted_at!=null&&!deletedAt)||
+       typeof row.subject!=='string'||typeof row.content!=='string'){
       issues.invalidValues++;continue;
     }
     letters.push({id:idOf('letter',row.id),payload:{
       sourceId:row.id,
       senderUid,
       senderPlayerId:row.sender_player_id||null,
+      senderName:typeof row.sender_name==='string'?row.sender_name:null,
       recipientPlayerId:toPlayer,
       recipientHouseId:toHouse,
       subject:row.subject,
       content:row.content,
       createdAt,
+      deletedAt,
     }});
   }
 
