@@ -111,3 +111,29 @@ insuficiente continua bloqueado.
 É seguro repetir o script atualizado: ele detecta o bucket privado já
 existente, confere suas propriedades e só então aplica papéis restritos.
 A etapa anterior falhou **antes** de conceder IAM ou copiar objetos.
+
+## Aplicação confirmada pelo Cloud Shell em 13/11/2026
+
+Após a correção dos metadados RAW, o proprietário executou o script
+com sucesso no projeto `cormyr` e informou as seguintes evidências do
+terminal:
+
+- Conta de serviço `cormyr-gh-stager` criada, com vinculação à identidade GitHub.
+- Papéis privados de staging aplicados.
+- **986** objetos encontrados em
+  `gs://cormyr.firebasestorage.app/migration-staging/campaign-images/`.
+- **986** objetos copiados para
+  `gs://cormyr-migration-homolog-477785088395/campaign-images/`.
+- Script informou `SUCESSO` e nenhuma ACL de origem foi alterada.
+
+O valor **779** era a contagem do manifesto anterior e **não** mais a
+contagem integral do prefixo `migration-staging/campaign-images/`.
+O total atual é **207 objetos maior**. Não afirmar automaticamente que
+são 207 imagens novas do usuário: é necessária comparação de caminhos,
+gerações e checksums para esclarecer a diferença.
+
+**Aceite obtido somente para criação do bucket, aplicação de IAM no
+destino e cópia por contagem.** Não existe prova de igualdade de bytes
+de cada objeto, nem de que a origem em produção esteja congelada.
+O workflow de leitura do bucket privado deve passar após merge.
+Auth e Firestore continuam sem importação.
