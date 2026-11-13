@@ -72,6 +72,13 @@ export async function auditNormalizedBackup(directory) {
       manifest.valueEncoding !== 'postgres-copy-text-or-null' ||
       !Array.isArray(manifest.tables)) throw new Error('Unsupported normalized export manifest');
   const results = [];
+  // Keep bucket identifiers and object paths private. Only expose aggregates for
+  // the three known campaign media buckets and one combined 'other' category.
+  const storageReferences = {
+    tablePresent: false, total: 0, campaignImages: 0,
+    campaignNewspapers: 0, campaignNewspaperStaff: 0,
+    other: 0, missingBucket: 0,
+  };
   const visitedFiles = new Set();
   const visitedTables = new Set();
   for (const entry of manifest.tables) {
@@ -102,6 +109,21 @@ export async function auditNormalizedBackup(directory) {
       throw new Error('Table manifest content mismatch');
     }
     const stats = auditTable(entry.table, data.columns, data.rows);
+    if (entry.table === 'storage.objects') {
+      storageReferences.tablePresent = true;
+      storageReferences.total = data.rows.length;
+      if (!data.columns.includes('bucket_id')) {
+        throw new Error('Storage objects missing bucket reference');
+      }
+      for (const row of data.rows) {
+        const key = row.bucket_id;
+        if (key === 'campaign-images') storageReferences.campaignImages++;
+        else if (key === 'campaign-newspapers') storageReferences.campaignNewspapers++;
+        else if (key === 'campaign-newspaper-staff') storageReferences.campaignNewspaperStaff++;
+        else if (key === null || key === '') storageReferences.missingBucket++;
+        else storageReferences.other++;
+      }
+    }
     results.push({ table: entry.table, domain: domainOf(entry.table), ...stats });
   }
   const totals = {
@@ -118,6 +140,7 @@ export async function auditNormalizedBackup(directory) {
     noFirebaseWrites: true, readyForImport: false,
     sizeEstimateCaveat: 'COPY strings are not typed Firestore values; overhead not included. Any near-limit row needs mapping.',
     totals,
+    storageReferences,
     domains: [...new Set(results.map(x=>x.domain))].sort().map(domain=>({
       domain, tables: results.filter(x=>x.domain===domain).length,
       rows: results.filter(x=>x.domain===domain).reduce((sum,x)=>sum+x.rows,0),
