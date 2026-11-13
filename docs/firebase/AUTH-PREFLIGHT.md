@@ -163,3 +163,26 @@ verificada para os usuários afetados.
 Documentação de referência:
 https://supabase.com/docs/guides/auth/identities
 https://firebase.google.com/docs/auth/admin/import-users
+
+## Diagnóstico de formatos de nome do provedor (13/11)
+
+O filtro inicial de texto identificou uma entrada com nome que não corresponde a
+`[a-z][a-z0-9_-]*` e imprimiu `provedor_personalizado`. **Isso não
+significa que exista login personalizado:** o filtro também recusa pontos,
+dois-pontos, espaços e letras maiúsculas.
+
+`diagnose-auth-identities.mjs` agora inclui o campo `unmappedByFormat`
+com **classes seguras**, incluindo:
+
+- `firebase-id:google.com` e outras aliases públicas reconhecidas;
+- `case-or-space-variant:<nome público>`;
+- `known-non-oauth:<tipo público>`;
+- `email-like-or-at-sign`, `namespaced-or-colon`,
+  `dotted-unknown`, `whitespace-unknown`,
+  `uppercase-symbol-or-unicode`, `plain-unknown`.
+
+O nome original de provedores desconhecidos **nunca** vai para os logs.
+Também não é permitido renomear automaticamente `provider` ou
+`provider_id`: alias de formato não garante equivalência de credenciais
+ou configuração do provedor. Execute o diagnóstico somente no backup
+privado, confirme o tipo e então aprove explicitamente o mapeamento.
