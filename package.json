@@ -17,9 +17,6 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "overrides": {
-    "rolldown": "1.2.1"
-  },
   "dependencies": {
     "@hookform/resolvers": "^6.0.2",
     "@lovable.dev/mcp-js": "^3.3.0",
