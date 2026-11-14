@@ -188,7 +188,7 @@ export function handleNewspaperTextareaTab(event:KeyboardEvent<HTMLTextAreaEleme
  event.stopPropagation();
  const input=event.currentTarget;
  const result=indentNewspaperText(input.value,input.selectionStart,input.selectionEnd);
- if(input.maxLength>=0&&result.text.length>input.maxLength)return;
+ if(input.hasAttribute('maxlength')&&input.maxLength>=0&&result.text.length>input.maxLength)return;
  onChange(result.text);
  queueMicrotask(()=>{
   if(input.isConnected&&document.activeElement===input){
