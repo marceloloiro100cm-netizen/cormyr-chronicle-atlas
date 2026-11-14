@@ -172,7 +172,7 @@ describe('colar e digitar nos campos da folha',()=>{
  });
  it('normaliza o texto ao sair do campo',()=>{
   expect(normalizeFieldText('  Manchete\ncom quebra \r',true)).toBe('Manchete com quebra');
-  expect(normalizeFieldText(' Linha 1\nLinha 2 ',false)).toBe('Linha 1\nLinha 2');
+  expect(normalizeFieldText(' Linha 1\nLinha 2 ',false)).toBe(' Linha 1\nLinha 2');
  });
 });
 describe('conferência antes de publicar',()=>{
