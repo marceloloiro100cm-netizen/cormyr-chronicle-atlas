@@ -1,0 +1,11 @@
+# Orca - configuracao conservadora para o Cormyr Chronicle Atlas.
+# Cada agente deve iniciar em um worktree distinto.
+# Segredos, .env, bancos e caches NAO sao compartilhados automaticamente.
+scripts:
+  setup: |
+    npm ci --no-audit --no-fund
+setupAgentStartupPolicy: wait-for-setup
+defaultTabs:
+  - title: Agente
+  - title: Estado do Git
+    command: git status --short --branch
