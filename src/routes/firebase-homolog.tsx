@@ -5,6 +5,7 @@ import {
   verifyFirebaseHomologationToken,
 } from '@/integrations/auth/firebase-homologation';
 import { loginErrorMessage } from '@/lib/auth/season-houses';
+import { FirebaseDomainPreview } from '@/components/firebase/FirebaseDomainPreview';
 
 export const Route = createFileRoute('/firebase-homolog')({
   component: FirebaseHomolog,
@@ -82,6 +83,7 @@ function FirebaseHomolog() {
       <button type="button" className="mt-4 rounded border px-4 py-2" onClick={signOut}>
         Encerrar sessão de teste
       </button>
+      <FirebaseDomainPreview />
     </section>}
     {configured && !verified && <form onSubmit={submit} className="mt-6 space-y-4">
       <label className="block">E-mail
