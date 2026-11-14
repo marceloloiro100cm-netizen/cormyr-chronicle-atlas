@@ -4,6 +4,7 @@ on:
     paths:
       - 'scripts/firebase/newspaper-*.mjs'
       - 'scripts/firebase/schedule-core.mjs'
+      - 'scripts/firebase/house-wealth-core.mjs'
       - 'scripts/firebase/stage-newspaper-*emulator*.mjs'
       - 'firebase/firestore.domain.rules'
       - 'docs/firebase/NEWSPAPER-EMULATOR.md'
@@ -13,6 +14,7 @@ on:
     paths:
       - 'scripts/firebase/newspaper-*.mjs'
       - 'scripts/firebase/schedule-core.mjs'
+      - 'scripts/firebase/house-wealth-core.mjs'
       - 'scripts/firebase/stage-newspaper-*emulator*.mjs'
       - 'firebase/firestore.domain.rules'
       - '.github/workflows/firebase-newspaper.yml'
