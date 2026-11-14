@@ -1,0 +1,60 @@
+name: Firebase noble houses (private emulator)
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/noble-house-*.mjs'
+      - 'scripts/firebase/stage-noble-house-emulator*.mjs'
+      - 'firebase/firestore.domain.rules'
+      - 'docs/firebase/NOBLE-HOUSE-EMULATOR.md'
+      - '.github/workflows/firebase-noble-house.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/noble-house-*.mjs'
+      - 'scripts/firebase/stage-noble-house-emulator*.mjs'
+      - 'firebase/firestore.domain.rules'
+      - '.github/workflows/firebase-noble-house.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  noble-house-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax
+        run: |
+          for f in scripts/firebase/noble-house-core.mjs scripts/firebase/noble-house-service.mjs scripts/firebase/noble-house-service.integration.mjs scripts/firebase/stage-noble-house-emulator.mjs; do node --check "$f"; done
+      - name: Unit tests
+        run: node --test scripts/firebase/noble-house-core.test.mjs scripts/firebase/stage-noble-house-emulator.test.mjs
+      - name: Public-repository private-data gate
+        run: node scripts/verify-public-repo.mjs
+
+  noble-house-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned tools for LOCAL emulators only
+        run: npm install --no-save --package-lock=false firebase-tools@15.35.0 firebase-admin@14.5.1 firebase@13.3.0 @firebase/rules-unit-testing@6.0.0
+      - name: Transactional commit and rules tests on emulator
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+        run: |
+          npx firebase emulators:exec --only firestore \
+            --project demo-cormyr-migration \
+            --config firebase/firebase-domain.json \
+            "node scripts/firebase/noble-house-service.integration.mjs"

@@ -78,6 +78,28 @@ service cloud.firestore {
       }
     }
 
+    match /migrationNobleHouseStage/{snapshot} {
+      allow read, write: if false;
+      // Writes only through the server-side transactional service.
+      match /sheets/{docId} {
+        allow get: if (narrator(snapshot) || (player(snapshot) &&
+          resource.data.houseId in scope(snapshot).memberHouseIds));
+        allow list, create, update, delete: if false;
+      }
+      match /ledger/{docId} {
+        allow get: if (narrator(snapshot) || (player(snapshot) &&
+          resource.data.houseId in scope(snapshot).memberHouseIds));
+        allow list, create, update, delete: if false;
+      }
+      match /ruleOverrides/{docId} {
+        allow get: if narrator(snapshot) || player(snapshot);
+        allow list, create, update, delete: if false;
+      }
+      match /gmNotes/{docId} {
+        allow read, write: if false;
+      }
+    }
+
     match /migrationMailHistoryStage/{snapshot} {
       // All reply contents, read receipts, drafts, delivery schedules,
       // revisions and narrator notes remain server-only. Even narrator
