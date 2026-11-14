@@ -2,6 +2,8 @@ name: Firebase unified historical and live mailbox (private emulator)
 on:
   pull_request:
     paths:
+      - 'scripts/firebase/mail-http*.mjs'
+      - 'scripts/firebase/serve-mail-emulator.mjs'
       - 'scripts/firebase/mail-unified-service.mjs'
       - 'scripts/firebase/mail-unified-service.integration.mjs'
       - 'scripts/firebase/letter-inbox-service.mjs'
@@ -12,6 +14,8 @@ on:
   push:
     branches: [main]
     paths:
+      - 'scripts/firebase/mail-http*.mjs'
+      - 'scripts/firebase/serve-mail-emulator.mjs'
       - 'scripts/firebase/mail-unified-service.mjs'
       - 'scripts/firebase/mail-unified-service.integration.mjs'
       - 'scripts/firebase/letter-inbox-service.mjs'
@@ -35,7 +39,8 @@ jobs:
           node --check scripts/firebase/mail-unified-service.mjs
           node --check scripts/firebase/mail-unified-service.integration.mjs
           node --check scripts/firebase/letter-inbox-service.mjs
-          node --test scripts/firebase/letter-inbox-service.test.mjs
+          node --test scripts/firebase/letter-inbox-service.test.mjs scripts/firebase/mail-http-handler.test.mjs
+          node --check scripts/firebase/serve-mail-emulator.mjs
           node scripts/verify-public-repo.mjs
 
   unified-emulator:
@@ -56,7 +61,7 @@ jobs:
         env:
           FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
         run: |
-          npx firebase emulators:exec --only firestore \
+          npx firebase emulators:exec --only auth,firestore \
             --project demo-cormyr-migration \
-            --config firebase/firebase-domain.json \
-            "node scripts/firebase/mail-unified-service.integration.mjs"
+            --config firebase/firebase-all.json \
+            "node scripts/firebase/mail-unified-service.integration.mjs && node scripts/firebase/mail-http-server.integration.mjs"
