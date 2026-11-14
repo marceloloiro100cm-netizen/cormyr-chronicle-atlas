@@ -72,7 +72,14 @@ export async function verifyFirebaseHomologationToken(
       credentials: 'omit',
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (response.ok) return 'verified';
+    if (response.ok) {
+      // A 200 HTML fallback or another route must never be mistaken for
+      // successful Firebase authentication.
+      const body: unknown = await response.json();
+      return body !== null && typeof body === 'object' &&
+        'authenticated' in body && body.authenticated === true
+        ? 'verified' : 'unavailable';
+    }
     return response.status === 401 ? 'denied' : 'unavailable';
   } catch {
     return 'unavailable';
