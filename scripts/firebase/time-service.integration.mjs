@@ -79,7 +79,7 @@ async function run(){
 
     // A malformed house sheet aborts the entire change, including the calendar.
     await sheet('casa-bad',{month:'x'});
-    assert.equal(await code(svc.publish(N,{version:5,key:K2,mode:'advance',count:1})),'invalid_sheet');
+    assert.equal(await code(svc.publish(N,{version:5,key:K2,mode:'advance',count:3})),'invalid_sheet');
     assert.equal((await svc.getCalendar(A)).version,5);
     assert.equal((await stage.collection('operations').get()).size,1);
     await adminDb.collection(NOBLE).doc(snap).collection('sheets').doc(sheetDocId('casa-bad')).delete();
