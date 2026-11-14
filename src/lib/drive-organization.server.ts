@@ -2,9 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { createDriveAdapter } from './drive-adapter.server';
 import { envelopeSchema } from './drive-sync';
+import { googleConfigured, googleUrl, withGoogleAuth } from './google-api.server';
 export async function organizeTechnicalFolders(db:SupabaseClient<Database>,actor:string) {
- const key=process.env['GOOGLE_DRIVE_API_KEY'],bearer=process.env['LOVABLE_API_KEY'];if(!key||!bearer)throw new Error('Conexão do Drive indisponível.');
- async function call(path:string,init:RequestInit={}){const headers=new Headers(init.headers);headers.set('Authorization',`Bearer ${bearer}`);headers.set('X-Connection-Api-Key',key??'');const response=await fetch('https://connector-gateway.lovable.dev/google_drive/drive/v3'+path,{...init,headers,signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('Drive não confirmou a organização: '+response.status);return response;}
+ if(!googleConfigured())throw new Error('Conexão do Drive indisponível.');
+ async function call(path:string,init:RequestInit={}){const headers=await withGoogleAuth(new Headers(init.headers));const response=await fetch(googleUrl('google_drive','/drive/v3'+path),{...init,headers,signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('Drive não confirmou a organização: '+response.status);return response;}
  const result=await db.from('drive_sync_bindings').select('*').eq('scope','player').eq('enabled',true).eq('privacy_reviewed',true).eq('runtime_authorized',true);if(result.error)throw result.error;
  const adapter=createDriveAdapter();let moved=0,folders=0;
  for(const binding of result.data){

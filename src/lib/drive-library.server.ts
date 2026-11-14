@@ -2,11 +2,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { imageToken } from './campaign-content';
 import { read, utils } from 'xlsx';
+import { googleConfigured, googleUrl, withGoogleAuth } from './google-api.server';
 type FileInfo={id:string;name:string;mimeType:string;modifiedTime:string;size?:string};
 async function gateway(service:'google_drive'|'google_docs',path:string) {
-  const key=process.env[service==='google_drive'?'GOOGLE_DRIVE_API_KEY':'GOOGLE_DOCS_API_KEY'],bearer=process.env['LOVABLE_API_KEY'];
-  if(!key||!bearer)throw new Error('Conexão '+service+' indisponível.');
-  const response=await fetch(`https://connector-gateway.lovable.dev/${service}${path}`,{headers:{Authorization:`Bearer ${bearer}`,'X-Connection-Api-Key':key},signal:AbortSignal.timeout(15000)});
+  if(!googleConfigured())throw new Error('Conexão '+service+' indisponível.');
+  const response=await fetch(googleUrl(service,path),{headers:await withGoogleAuth(new Headers()),signal:AbortSignal.timeout(15000)});
   if(!response.ok){const body=await response.text();console.error(`Drive library [${response.status}]: ${body}`);throw new Error(`Google respondeu ${response.status}: ${body}`);}return response;
 }
 export function docsText(value:unknown):string {

@@ -2,8 +2,7 @@
 
 Site da campanha de Cormyr, com acervo público e Conselho dos Jogadores da segunda temporada.
 
-- Site: https://cormyr-chronicle-atlas.lovable.app
-- Editor e publicação: https://lovable.dev/projects/bdc007de-2bdf-4e28-8df8-b09ce46f884c
+- Hospedagem: Firebase App Hosting (`apphosting.yaml`). O editor Lovable não é mais usado; veja `docs/firebase/LEAVING-LOVABLE.md`.
 - Branch principal: `main`.
 
 ## Estrutura
@@ -21,7 +20,7 @@ Site da campanha de Cormyr, com acervo público e Conselho dos Jogadores da segu
 | `drizzle/migrations/` | Migrações SQL de esquema, sem dados privados de campanha |
 | `src/test/` | Testes unitários, de componentes e de integração |
 
-Stack: React 19, TypeScript, TanStack Start, Vite, Tailwind, Supabase/PostgreSQL e Drizzle. O build usa a configuração gerenciada da Lovable. A rota `/` encaminha ao acervo estático; a área autenticada fica em `/jogadores`.
+Stack: React 19, TypeScript, TanStack Start, Vite, Tailwind, Supabase/PostgreSQL e Drizzle. O build usa `vite.config.ts` próprio, com Nitro em saída Node. A rota `/` encaminha ao acervo estático; a área autenticada fica em `/jogadores`.
 
 ## Desenvolvimento
 
@@ -48,11 +47,11 @@ bun run build
 2. Faça as alterações e abra um pull request.
 3. Confira o workflow **Validate** e revise o resultado.
 4. Integre na `main`, mantendo o histórico existente.
-5. Confira a sincronização no editor Lovable e use **Publish changes** para atualizar o site publicado.
+5. O rollout no Firebase App Hosting parte da branch ativa do backend; confira o resultado no console do Firebase.
 
 O workflow roda em pull requests, pushes para `main` e execução manual. Ele não publica, não aplica migrações e não recebe credenciais administrativas do banco. Para exigir aprovação dos checks antes do merge, configure uma regra de proteção da branch no GitHub.
 
-A sincronização segue a branch ativa da integração Lovable. Não renomeie ou desconecte o repositório sem revisar essa integração. Não use force push nem reescreva commits já enviados sem plano coordenado de recuperação do Lovable. A remoção dos arquivos do estado atual **não remove automaticamente** segredos de commits antigos.
+Não use force push nem reescreva commits já enviados sem plano coordenado, pois o App Hosting acompanha a branch ativa. A remoção dos arquivos do estado atual **não remove automaticamente** segredos de commits antigos.
 
 ## Banco, credenciais e testes de integração
 
@@ -80,4 +79,4 @@ A remoção de conteúdo da branch atual **não apaga histórico Git, forks, clo
 Cormyr Chronicle Atlas é um projeto de fã não oficial, sem endosso da Wizards of the Coast. Forgotten Realms e materiais relacionados pertencem a seus respectivos titulares. Materiais originais da campanha permanecem sujeitos aos direitos de seus autores. Este aviso não concede licença para reproduzir conteúdo de livros não abertos.
 
 ### Inicialização pública do Supabase
-O navegador necessita de uma URL de projeto e de uma **chave publicável**, que não é senha, não é `service_role` e sempre é observável pelo cliente HTTP. `src/integrations/supabase/public-config.ts` guarda somente estes dois valores não secretos como fallback para builds do Lovable sem `VITE_*`. Qualquer privilégio real depende de sessão autenticada, RLS e verificações do servidor. Nunca coloque dados pessoais, chaves de servidor ou senhas nesse módulo.
+O navegador necessita de uma URL de projeto e de uma **chave publicável**, que não é senha, não é `service_role` e sempre é observável pelo cliente HTTP. `src/integrations/supabase/public-config.ts` guarda somente estes dois valores não secretos como fallback para builds sem `VITE_*`. Qualquer privilégio real depende de sessão autenticada, RLS e verificações do servidor. Nunca coloque dados pessoais, chaves de servidor ou senhas nesse módulo.

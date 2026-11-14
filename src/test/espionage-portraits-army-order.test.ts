@@ -53,7 +53,7 @@ describe('Galeria do Drive, criação de unidades e construções adquiridas pri
   expect(local).toHaveLength(20);
   expect(local.some(p=>p.src.includes('drive.google.com'))).toBe(false);
   for(const p of local){
-   expect(p.src).toBe('https://cormyr-chronicle-atlas.lovable.app/spy-portraits/'+p.id.slice('espiao-'.length)+'.jpg');
+   expect(p.src).toBe('/spy-portraits/'+p.id.slice('espiao-'.length)+'.jpg');
    expect(existsSync(resolve('public/spy-portraits/'+p.id.slice('espiao-'.length)+'.jpg'))).toBe(true);
   }
   const picker=src('src/components/house/espionage/spy-portrait-picker.tsx');
