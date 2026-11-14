@@ -7,3 +7,7 @@ Primeira peça da integração do app. **Nada disso está ligado**: `src/start.t
 - `auth-seam.test.ts`: testes com `fetch` simulado.
 
 Próximos passos: verificação do ID token no servidor (hoje o middleware valida JWT do Supabase), adaptador por domínio e a troca do `attachSupabaseAuth` atrás da trava, sempre com testes E2E por papel.
+
+## Verificação do ID token no servidor
+
+`src/integrations/auth/firebase-id-token.server.ts` verifica ID tokens do Firebase sem dependência nova: só RS256 (rejeita `none` e HS256), assinatura contra o JWKS do `securetoken` (injetado; `cachedSecuretokenJwks` respeita o `max-age` e falha fechado), `iss` e `aud` do projeto, `exp`, `iat`, `auth_time` (tolerância de 60 s) e `sub`. Devolve `uid`, e-mail e `emailVerified`. Ainda não está ligado a nenhum middleware.
