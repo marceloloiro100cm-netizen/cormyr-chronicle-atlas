@@ -79,8 +79,12 @@ async function run(){
     });
     await domain.collection('letters').doc(legacyId.ha).set(
       legacy('narrator','ha',null,'Old House A',1));
-    await domain.collection('letters').doc(legacyId.hb).set(
-      legacy('alice','hb',null,'Old House B',2));
+    await domain.collection('letters').doc(legacyId.hb).set({
+      ...legacy('alice','hb',null,'Old House B',2),
+      campaignDate:'1520-F-shieldmeet',creationRound:3,deliveryRound:4,
+      letterNumber:4,letterKind:'reservada',originHouseId:'ha',
+      version:2,deliveredAt:iso(2),
+    });
     await domain.collection('letters').doc(legacyId.direct).set(
       legacy('narrator',null,'pc','Private Charlie',3));
     await domain.collection('letters').doc(legacyId.draft).set(
@@ -199,6 +203,13 @@ async function run(){
     });
     assert.equal(bobThread.letter.source,'imported');
     assert.equal(bobThread.letter.readOnly,true);
+    assert.equal(bobThread.letter.campaignDate,'1520-F-shieldmeet');
+    assert.equal(bobThread.letter.creationRound,3);
+    assert.equal(bobThread.letter.deliveryRound,4);
+    assert.equal(bobThread.letter.letterNumber,4);
+    assert.equal(bobThread.letter.letterKind,'reservada');
+    assert.equal(bobThread.letter.originHouseId,'ha');
+    assert.equal(bobThread.letter.version,2);
     assert.deepEqual(bobThread.replies.map(x=>x.content),
       ['Only Bob can read this reply']);
     const charlieThread=await mailbox.getThread({
