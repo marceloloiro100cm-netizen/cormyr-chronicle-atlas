@@ -29,7 +29,7 @@ describe('Firebase homologation client (never a production backend switch)', () 
     expect(state.size).toBe(0);
   });
   it('attaches the Firebase token only to the isolated verification endpoint', async () => {
-    const fetcher = vi.fn(async () => new Response('{}', { status: 200 }));
+    const fetcher = vi.fn(async () => new Response('{"authenticated":true}', { status: 200 }));
     expect(await verifyFirebaseHomologationToken('jwt', fetcher as never)).toBe('verified');
     expect(fetcher).toHaveBeenCalledWith('/api/firebase-auth-verify', {
       method: 'GET', cache: 'no-store', credentials: 'omit',
@@ -37,6 +37,12 @@ describe('Firebase homologation client (never a production backend switch)', () 
     });
     expect(await verifyFirebaseHomologationToken('', fetcher as never)).toBe('denied');
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it('does not treat an HTML 200 fallback as successful verification', async () => {
+    const html = vi.fn(async () => new Response('<html>OK</html>', { status: 200 }));
+    expect(await verifyFirebaseHomologationToken('jwt', html as never)).toBe('unavailable');
+    const wrong = vi.fn(async () => new Response('{"authenticated":false}', { status: 200 }));
+    expect(await verifyFirebaseHomologationToken('jwt', wrong as never)).toBe('unavailable');
   });
   it('does not use Supabase fallback when the Firebase token fails', async () => {
     const fail = vi.fn(async () => new Response('{}', { status: 401 }));
