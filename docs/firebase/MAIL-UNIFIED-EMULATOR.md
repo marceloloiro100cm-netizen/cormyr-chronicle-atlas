@@ -101,3 +101,20 @@ editor sem acesso e proibição de leitura/escrita pelo SDK cliente.
 
 Não declarar o sistema pronto para jogadores, desligar a origem,
 alterar DNS ou abrir regras de produção com base neste lote.
+
+
+## Fidelidade de datas e semanas históricas
+
+A projeção tipada passa a preservar os metadados válidos da origem:
+`campaignDate` (Harptos, inclusive Shieldmeet nos anos adequados),
+`creationRound`, `deliveryRound`, `letterNumber`,
+`letterKind`, `originHouseId`, `version` e `deliveredAt`.
+A caixa unificada devolve estes campos nas consultas e fios.
+Para um campo opcional que não existe no backup, retorna `null`,
+nunca uma semana ou data suposta. Dados historicamente inválidos
+continuam no arquivo bruto privado e aparecem somente como
+**contadores agregados** em `metadataWarnings`.
+
+Não se converte data Harptos para data gregoriana. Não se utiliza
+metadado histórico como permissão de acesso nem para publicar cartas
+agendadas da origem.
