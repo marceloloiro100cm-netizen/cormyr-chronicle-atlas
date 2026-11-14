@@ -11,3 +11,7 @@ Próximos passos: verificação do ID token no servidor (hoje o middleware valid
 ## Anexador de bearer
 
 `src/integrations/auth/bearer-attacher.ts` escolhe o token pela trava (`selectAuthBackend`) e não cai no outro backend quando o escolhido falha. Não está registrado em `src/start.ts`.
+
+## Verificação do ID token no servidor
+
+`src/integrations/auth/firebase-id-token.server.ts` verifica ID tokens do Firebase sem dependência nova: só RS256 (rejeita `none` e HS256), assinatura contra o JWKS do `securetoken` (injetado; `cachedSecuretokenJwks` respeita o `max-age` e falha fechado), `iss` e `aud` do projeto, `exp`, `iat`, `auth_time` (tolerância de 60 s) e `sub`. Devolve `uid`, e-mail e `emailVerified`. Ainda não está ligado a nenhum middleware.
