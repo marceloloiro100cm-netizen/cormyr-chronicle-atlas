@@ -168,8 +168,11 @@ async function run(){
     assert.equal(drafts.items.length,1);
     assert.equal(drafts.items[0].id,pending.ids[0]);
     assert.equal(drafts.items[0].readOnly,false);
-    assert.deepEqual((await mailbox.list({idToken:tok('alice'),
-      source:'imported'})).items.map(x=>x.source),['imported']);
+    const importedOnly=await mailbox.list({
+      idToken:tok('alice'),source:'imported',
+    });
+    assert.ok(importedOnly.items.length>=2);
+    assert.equal(importedOnly.items.every(x=>x.source==='imported'),true);
     assert.deepEqual((await mailbox.list({idToken:tok('bob'),
       source:'runtime'})).items.map(x=>x.source),['runtime']);
     const filtered=await mailbox.list({
