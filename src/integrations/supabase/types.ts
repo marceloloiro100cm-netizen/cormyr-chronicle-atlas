@@ -447,6 +447,27 @@ export type Database = {
           },
         ]
       }
+      campaign_access_profiles: {
+        Row: {
+          active: boolean
+          assigned_at: string
+          profile: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          assigned_at?: string
+          profile: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          assigned_at?: string
+          profile?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       campaign_admin_audit: {
         Row: {
           action: string
@@ -910,6 +931,337 @@ export type Database = {
           id?: string
           reason?: string
           snapshot?: Json
+        }
+        Relationships: []
+      }
+      campaign_newspaper_commissions: {
+        Row: {
+          body: string
+          cost_wealth: number
+          created_at: string
+          house_id: string
+          id: string
+          image_path: string | null
+          newspaper_id: string | null
+          published_at: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_note: string | null
+          request_key: string
+          requested_by: string
+          seen_at: string | null
+          state: string
+          title: string
+        }
+        Insert: {
+          body: string
+          cost_wealth?: number
+          created_at?: string
+          house_id: string
+          id?: string
+          image_path?: string | null
+          newspaper_id?: string | null
+          published_at?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_note?: string | null
+          request_key: string
+          requested_by: string
+          seen_at?: string | null
+          state?: string
+          title: string
+        }
+        Update: {
+          body?: string
+          cost_wealth?: number
+          created_at?: string
+          house_id?: string
+          id?: string
+          image_path?: string | null
+          newspaper_id?: string | null
+          published_at?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_note?: string | null
+          request_key?: string
+          requested_by?: string
+          seen_at?: string | null
+          state?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_newspaper_commissions_house_id_fkey"
+            columns: ["house_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_newspaper_commissions_newspaper_id_fkey"
+            columns: ["newspaper_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_newspapers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_newspaper_engravings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          image_path: string | null
+          in_collection: boolean
+          name: string
+          public_src: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_path?: string | null
+          in_collection?: boolean
+          name: string
+          public_src?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_path?: string | null
+          in_collection?: boolean
+          name?: string
+          public_src?: string | null
+        }
+        Relationships: []
+      }
+      campaign_newspaper_reads: {
+        Row: {
+          newspaper_id: string
+          read_at: string
+          read_version: number
+          user_id: string
+        }
+        Insert: {
+          newspaper_id: string
+          read_at?: string
+          read_version: number
+          user_id: string
+        }
+        Update: {
+          newspaper_id?: string
+          read_at?: string
+          read_version?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_newspaper_reads_newspaper_id_fkey"
+            columns: ["newspaper_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_newspapers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_newspaper_revisions: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: number
+          newspaper_id: string
+          previous_version: number
+          snapshot: Json
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: never
+          newspaper_id: string
+          previous_version: number
+          snapshot: Json
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: never
+          newspaper_id?: string
+          previous_version?: number
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_newspaper_revisions_newspaper_id_fkey"
+            columns: ["newspaper_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_newspapers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_newspaper_settings: {
+        Row: {
+          font_style: string
+          id: boolean
+          subtitle: string
+          template: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          font_style?: string
+          id?: boolean
+          subtitle?: string
+          template?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          font_style?: string
+          id?: boolean
+          subtitle?: string
+          template?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      campaign_newspaper_staff: {
+        Row: {
+          bio: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          photo_path: string | null
+          sort_order: number
+          specialty: string
+          updated_at: string
+        }
+        Insert: {
+          bio?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          photo_path?: string | null
+          sort_order?: number
+          specialty?: string
+          updated_at?: string
+        }
+        Update: {
+          bio?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          photo_path?: string | null
+          sort_order?: number
+          specialty?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      campaign_newspaper_story_models: {
+        Row: {
+          blocks: Json
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          blocks?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          blocks?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      campaign_newspapers: {
+        Row: {
+          archived_at: string | null
+          blocks: Json
+          campaign_date: string
+          cancelled_at: string | null
+          created_at: string
+          created_by: string
+          edition_no: number
+          font_style: string
+          id: string
+          pdf_path: string | null
+          publication_revision: number
+          publish_on: string | null
+          published_at: string | null
+          state: string
+          subtitle: string
+          template: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          archived_at?: string | null
+          blocks?: Json
+          campaign_date: string
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string
+          edition_no?: number
+          font_style?: string
+          id?: string
+          pdf_path?: string | null
+          publication_revision?: number
+          publish_on?: string | null
+          published_at?: string | null
+          state?: string
+          subtitle?: string
+          template?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          archived_at?: string | null
+          blocks?: Json
+          campaign_date?: string
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string
+          edition_no?: number
+          font_style?: string
+          id?: string
+          pdf_path?: string | null
+          publication_revision?: number
+          publish_on?: string | null
+          published_at?: string | null
+          state?: string
+          subtitle?: string
+          template?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
         }
         Relationships: []
       }
@@ -4144,6 +4496,7 @@ export type Database = {
         Args: { p_action: string; p_args: Json }
         Returns: Json
       }
+      can_edit_campaign_newspaper: { Args: never; Returns: boolean }
       can_edit_record: {
         Args: { r: Database["public"]["Tables"]["campaign_records"]["Row"] }
         Returns: boolean
@@ -4152,6 +4505,11 @@ export type Database = {
         Args: { p_id: string; p_type: string; p_viewer: string }
         Returns: boolean
       }
+      can_read_campaign_newspaper_asset: {
+        Args: { p_path: string }
+        Returns: boolean
+      }
+      can_read_campaign_newspaper_player: { Args: never; Returns: boolean }
       can_read_letter: {
         Args: { l: Database["public"]["Tables"]["campaign_letters"]["Row"] }
         Returns: boolean
@@ -4222,11 +4580,20 @@ export type Database = {
         }
         Returns: Json
       }
+      current_campaign_profile: { Args: never; Returns: string }
       dated_mail_action: {
         Args: { p_action: string; p_args: Json; p_date: string }
         Returns: Json
       }
       delete_campaign_letter: { Args: { p_id: string }; Returns: undefined }
+      delete_campaign_newspaper: {
+        Args: { p_newspaper: string }
+        Returns: undefined
+      }
+      delete_campaign_newspaper_draft: {
+        Args: { p_newspaper: string }
+        Returns: undefined
+      }
       delete_letter_reply: {
         Args: { p_id: string; p_version: number }
         Returns: undefined
@@ -4287,6 +4654,10 @@ export type Database = {
         Returns: Json
       }
       get_house_character_ages: { Args: { p_house: string }; Returns: Json }
+      get_newspaper_calendar_events: {
+        Args: { p_month: number; p_year: number }
+        Returns: Json
+      }
       get_public_campaign_time: { Args: never; Returns: Json }
       get_temporal_consumer_dashboard: {
         Args: { p_limit?: number }
@@ -4322,6 +4693,8 @@ export type Database = {
         Returns: boolean
       }
       is_campaign_admin: { Args: never; Returns: boolean }
+      is_campaign_editor: { Args: never; Returns: boolean }
+      is_campaign_editor_identity: { Args: never; Returns: boolean }
       letter_recipient: {
         Args: { l: Database["public"]["Tables"]["campaign_letters"]["Row"] }
         Returns: boolean
@@ -4339,8 +4712,35 @@ export type Database = {
         Args: { p_filters?: Json; p_page?: number; p_size?: number }
         Returns: Json
       }
+      mark_campaign_newspaper_read: {
+        Args: { p_newspaper: string }
+        Returns: number
+      }
+      mark_campaign_newspaper_unread: {
+        Args: { p_newspaper: string }
+        Returns: undefined
+      }
       mark_letter_read: { Args: { p_id: string }; Returns: undefined }
+      mark_newspaper_commissions_seen: {
+        Args: { p_house: string }
+        Returns: number
+      }
       my_player_id: { Args: never; Returns: string }
+      newspaper_commission_story: {
+        Args: {
+          p_body: string
+          p_house: string
+          p_image_path: string
+          p_key: string
+          p_title: string
+        }
+        Returns: Json
+      }
+      newspaper_date_ordinal: { Args: { p: string }; Returns: number }
+      newspaper_reject_commission: {
+        Args: { p_commission: string; p_note: string }
+        Returns: Json
+      }
       open_letter_round: { Args: never; Returns: number }
       player_send_letter: {
         Args: { p_content: string; p_key: string; p_subject: string }
@@ -4406,6 +4806,7 @@ export type Database = {
         }
         Returns: Json
       }
+      publish_due_campaign_newspapers: { Args: never; Returns: number }
       replay_temporal_delivery: { Args: { p_id: string }; Returns: Json }
       reply_campaign_letter: {
         Args: { p_content: string; p_key: string; p_letter: string }
