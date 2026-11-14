@@ -146,6 +146,27 @@ describe('Jornal: editor visual integrado ao banco',()=>{
 });
 
 describe('Jornal: campos da folha mais seguros',()=>{
+ it('Tab dentro do corpo da reportagem insere recuo e preserva o texto ao sair',()=>{
+  const patch=vi.fn();
+  const {container}=render(<NewspaperCanvas edition={edition} editing onChangeBlock={patch}/>);
+  const paragraph=container.querySelector('.newspaper-article p') as HTMLParagraphElement;
+  const original=document.execCommand;
+  Object.defineProperty(document,'execCommand',{configurable:true,value:()=>false});
+  try{
+   const node=paragraph.firstChild!;
+   const selection=window.getSelection()!;
+   const range=document.createRange();
+   range.setStart(node,0);range.collapse(true);
+   selection.removeAllRanges();selection.addRange(range);
+   const result=fireEvent.keyDown(paragraph,{key:'Tab'});
+   expect(result).toBe(false);
+   expect(paragraph.textContent).toBe('    O relato do reino');
+   fireEvent.blur(paragraph);
+   expect(patch).toHaveBeenCalledWith('text',{text:'Crônica\n\n    O relato do reino'});
+   selection.removeAllRanges();
+  }finally{Object.defineProperty(document,'execCommand',{configurable:true,value:original});}
+ });
+
  it('cola só texto puro e não deixa a formatação de fora entrar',()=>{
   render(<NewspaperCanvas edition={edition} editing onChangeBlock={vi.fn()}/>);
   const heading=screen.getByRole('heading',{level:2,name:'Editar manchete'});

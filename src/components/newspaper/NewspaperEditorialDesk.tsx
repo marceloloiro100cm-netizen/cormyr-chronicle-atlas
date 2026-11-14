@@ -16,7 +16,7 @@ import {NEWSPAPER_FONTS,NEWSPAPER_TYPEFACES,NEWSPAPER_TEMPLATES,NEWSPAPER_WIDTH_
  type NewspaperSettings,storyModelPreviewEdition,type NewspaperRead,type NewspaperState,type NewspaperTemplate} from '@/lib/newspaper/model';
 import {
  CONVERTIBLE_LABELS,blockFocus,blockSummary,blockWords,clampCropZoom,editionWords,publicationIssues,readingMinutes,
- saveStatusText,validateSchedule,wordsLabel,type PublicationIssue,type SaveState,
+ handleNewspaperTextareaTab,saveStatusText,validateSchedule,wordsLabel,type PublicationIssue,type SaveState,
 } from '@/lib/newspaper/editing';
 import {useNewspaperShortcuts} from './useNewspaperShortcuts';
 import {NewspaperShortcutHelp,NewspaperSlashMenu} from './NewspaperKeyboardUi';
@@ -554,8 +554,9 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
           onChange={e=>props.onPatchBlock(selectedBlock.id,{autoHeight:e.target.checked})}/>
           Altura automática</label>
         </>:<label>Texto<textarea rows={5} value={selectedBlock.text}
-         onChange={e=>props.onPatchBlock(selectedBlock.id,{text:e.target.value})}/>
-         <small className="folha-word-count">{wordsLabel(blockWords(selectedBlock))}</small></label>}
+         onChange={e=>props.onPatchBlock(selectedBlock.id,{text:e.target.value})}
+         onKeyDown={e=>handleNewspaperTextareaTab(e,text=>props.onPatchBlock(selectedBlock.id,{text}))}/>
+         <small className="folha-word-count">{wordsLabel(blockWords(selectedBlock))} · Tab insere recuo</small></label>}
         {selectedBlock.type==='headline'&&<>
          <label>Subtítulo<input value={selectedBlock.subtitle??''}
           onChange={e=>props.onPatchBlock(selectedBlock.id,{subtitle:e.target.value})}/></label>

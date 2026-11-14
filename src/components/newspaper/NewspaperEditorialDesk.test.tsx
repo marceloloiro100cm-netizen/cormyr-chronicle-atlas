@@ -356,6 +356,17 @@ function editingFixture(){
 }
 
 describe('Melhorias do Jornal (12/11/2026)',()=>{
+ it('Tab recua texto no painel do escritor sem mudar de campo',()=>{
+  const p=editingFixture();
+  render(<NewspaperEditorialDesk {...p}/>);
+  const input=screen.getByRole('textbox',{name:'Texto'}) as HTMLTextAreaElement;
+  input.focus();input.setSelectionRange(7,7);
+  const result=fireEvent.keyDown(input,{key:'Tab'});
+  expect(result).toBe(false);
+  expect(p.onPatchBlock).toHaveBeenCalledWith('b1',{text:'Título\n    \nUma frase com sete palavras aqui hoje'});
+  expect(document.activeElement).toBe(input);
+ });
+
  it('o acervo da folha mostra só o que está no banco e permite restaurar as originais',()=>{
   const p=fixture();
   render(<QueryClientProvider client={new QueryClient()}><NewspaperEditorialDesk {...p}/></QueryClientProvider>);

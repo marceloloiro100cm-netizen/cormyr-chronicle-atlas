@@ -27,7 +27,7 @@ import {
 } from '@/lib/newspaper/model';
 import {movePreservingPinned,reorderPreservingPinned,resizeWithReflow} from '@/lib/newspaper/layout';
 import {
- canRedo,canUndo,convertBlock,emptyHistory,insertBlocksAfter,needsImageCopy,parseClipboardBlocks,recordSnapshot,
+ canRedo,canUndo,convertBlock,emptyHistory,handleNewspaperTextareaTab,insertBlocksAfter,needsImageCopy,parseClipboardBlocks,recordSnapshot,
  redoHistory,serializeBlocks,snapshotOf,textToArticleBlock,undoHistory,type EditHistory,
 } from '@/lib/newspaper/editing';
 import './newspaper.css';
@@ -877,6 +877,7 @@ const useStoryModel=async(model:StoryModel)=>{
         {chosenBlock.type!=='image'&&<label>Conteúdo
          <textarea rows={chosenBlock.type==='article'?8:4} value={chosenBlock.text}
           onChange={e=>modifyBlock(chosenBlock.id,{text:e.target.value})}
+          onKeyDown={e=>handleNewspaperTextareaTab(e,text=>modifyBlock(chosenBlock.id,{text}))}
           placeholder={chosenBlock.type==='article'?'Título na primeira linha, depois o texto':''}/>
         </label>}
         {chosenBlock.type!=='image'&&<div role="group" aria-label="Tipografia do bloco">

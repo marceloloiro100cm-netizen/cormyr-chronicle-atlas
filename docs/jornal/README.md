@@ -179,3 +179,9 @@ Não aplicado de propósito: `role="textbox"` nos campos (apagaria a semântica 
 - Leitura: matérias e imagens não recebem contorno, fundo de card, destaque de bloco fixo nem seleção do editor; tipografia e espaçamento das colunas são refinados sem mudar a ordem e o conteúdo salvos.
 - Avisos/contato preservam uma **única borda fina** e fundo suave; citações recebem um fio horizontal; no celular, os itens são separados por linhas discretas.
 - Edição: seleção, alças, cadeado e tipografia seguem disponíveis e sem mudança de permissões ou persistência.
+
+
+## Recuo com Tab (14/11/2026)
+- A tecla **Tab** insere quatro espaços no cursor nos campos de texto do jornal (painel do escritor, editor legado, modelos de matérias, notícias contratadas, notas e biografias da equipe). Com linhas selecionadas, acrescenta recuo em cada linha sem apagar o conteúdo.
+- Durante a edição direta da folha, Tab insere recuo apenas em textos multilinha, como reportagens e avisos; em títulos de linha única mantém a navegação entre campos. Shift+Tab continua permitindo navegar para o campo anterior.
+- O recuo inicial do parágrafo deixa de ser removido na normalização e na leitura da edição; a publicação mantém os espaços persistidos sem migração de banco.

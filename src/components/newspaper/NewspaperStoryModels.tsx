@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {Copy,Pencil,Plus,Trash2,X} from 'lucide-react';
 import {NewspaperCanvas} from './NewspaperCanvas';
+import {handleNewspaperTextareaTab} from '@/lib/newspaper/editing';
 import {storyModelPreviewEdition,
  BUILTIN_STORY_MODELS,NEWSPAPER_WIDTH_PRESETS,duplicatedStoryModelName,makeNewspaperBlock,
  validateStoryModel,type NewspaperBlock,type NewspaperBlockType,type StoryModel,
@@ -75,7 +76,8 @@ export function NewspaperStoryModels({custom,busy,onUse,onSave,onDelete}:{
       onClick={()=>setDraft({...draft,blocks:draft.blocks.filter(x=>x.id!==b.id)})}><X size={14}/></button></div>
     {b.type!=='image'&&<textarea rows={b.type==='article'||b.type==='notice'?4:2} value={b.text}
      aria-label={`Texto do bloco ${TYPE_LABEL[b.type]}`}
-     onChange={e=>patchBlock(b.id,{text:e.target.value})}/>}
+     onChange={e=>patchBlock(b.id,{text:e.target.value})}
+     onKeyDown={e=>handleNewspaperTextareaTab(e,text=>patchBlock(b.id,{text}))}/>}
     {b.type==='headline'&&<input value={b.subtitle??''} aria-label="Linha de apoio da manchete"
      onChange={e=>patchBlock(b.id,{subtitle:e.target.value})}/>}
     {b.type==='image'&&<input value={b.caption??''} aria-label="Legenda da imagem"

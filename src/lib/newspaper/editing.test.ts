@@ -1,7 +1,7 @@
 import {describe,expect,it} from 'vitest';
 import {
  BLOCK_CLIPBOARD_MARK,HISTORY_COALESCE_MS,HISTORY_LIMIT,blockFocus,blockWords,canRedo,canUndo,clampCropZoom,
- countWords,dateOrdinal,editionWords,emptyHistory,insertBlocksAfter,isScheduleDue,needsImageCopy,panFocus,
+ countWords,dateOrdinal,editionWords,emptyHistory,indentNewspaperText,insertBlocksAfter,isScheduleDue,needsImageCopy,normalizeFieldText,panFocus,
  parseClipboardBlocks,readingMinutes,recordSnapshot,redoHistory,sameSnapshot,serializeBlocks,textToArticleBlock,
  undoHistory,validateSchedule,type DraftSnapshot,
 } from './editing';
@@ -12,6 +12,24 @@ const snap=(title:string,blocks:NewspaperBlock[]=[]):DraftSnapshot=>({
 });
 const T=100000;
 
+describe('recuo de parágrafos do jornal',()=>{
+ it('insere quatro espaços na posição do cursor sem apagar texto',()=>{
+  expect(indentNewspaperText('Reino antigo',6,6)).toEqual({
+   text:'Reino     antigo',selectionStart:10,selectionEnd:10,
+  });
+ });
+ it('recua todas as linhas selecionadas sem substituir o texto',()=>{
+  expect(indentNewspaperText('Título\nPrimeira\nSegunda',7,23)).toEqual({
+   text:'Título\n    Primeira\n    Segunda',selectionStart:11,selectionEnd:31,
+  });
+ });
+ it('preserva o recuo do primeiro parágrafo ao salvar e carregar',()=>{
+  const body='    Primeiro parágrafo\n\n    Segundo parágrafo';
+  expect(normalizeFieldText(body,false)).toBe(body);
+  const saved=safeNewspaperBlocks([{id:'a',type:'article',text:'Título\n\n'+body,span:6,height:200}]);
+  expect(saved[0]!.text).toBe('Título\n\n'+body);
+ });
+});
 describe('desfazer e refazer',()=>{
  it('começa sem passos e registra cada alteração distante no tempo',()=>{
   let h=recordSnapshot(emptyHistory(),'e1',snap('A'),T);

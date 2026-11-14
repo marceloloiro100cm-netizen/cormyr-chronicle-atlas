@@ -2,6 +2,7 @@ import {useRef,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {ImagePlus,Megaphone,Send} from 'lucide-react';
 import {Button} from '@/components/ui/button';
+import {handleNewspaperTextareaTab} from '@/lib/newspaper/editing';
 import {
  commissionNewspaperStory,markCommissionsSeen,signedCommissionImage,uploadCommissionImage,
 } from '@/lib/newspaper/data';
@@ -92,7 +93,8 @@ export function CommissionForm({houseId,userId,commissions}:{
    <label>Texto
     <textarea rows={7} value={body} maxLength={6000}
      placeholder="Escreva a notícia como ela deve aparecer no jornal."
-     onChange={e=>setBody(e.target.value)}/>
+     onChange={e=>setBody(e.target.value)}
+     onKeyDown={e=>handleNewspaperTextareaTab(e,setBody)}/>
     <small>{body.length}/6000</small></label>
    <label className="newspaper-upload"><ImagePlus size={17}/> {file?file.name:'Anexar imagem (opcional)'}
     <input type="file" accept="image/png,image/jpeg,image/webp"
@@ -134,6 +136,7 @@ function CommissionCard({commission:c,houseName,edition,busy,onInsert,onShow,onR
   {rejecting?<div className="newspaper-commission-reject">
    <label>Nota para a Casa (explique o motivo; a Riqueza será devolvida)
     <textarea value={note} maxLength={1000} onChange={e=>setNote(e.target.value)}
+     onKeyDown={e=>handleNewspaperTextareaTab(e,setNote)}
      placeholder="Ex.: A notícia revela segredos da Coroa e não pode circular."/></label>
    <div className="newspaper-commission-actions">
     <Button type="button" variant="outline" disabled={busy}

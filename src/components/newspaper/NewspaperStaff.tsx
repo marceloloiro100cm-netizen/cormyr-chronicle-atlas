@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {ImagePlus,Pencil,Trash2,UserPlus} from 'lucide-react';
 import {signedStaffPhoto} from '@/lib/newspaper/data';
+import {handleNewspaperTextareaTab} from '@/lib/newspaper/editing';
 import {staffByline,validateStaffMember,type NewspaperStaffMember} from '@/lib/newspaper/model';
 
 function StaffPhoto({path,name}:{path:string|null;name:string}){
@@ -48,7 +49,8 @@ export function NewspaperStaff({staff,busy,onSave,onDelete}:{
    <label>Especialidade<input value={specialty} maxLength={120}
     placeholder="Ex.: Correspondente de guerra" onChange={e=>setSpecialty(e.target.value)}/></label>
    <label>Texto<textarea rows={5} value={bio} maxLength={3000}
-    placeholder="Apresentação livre do funcionário." onChange={e=>setBio(e.target.value)}/></label>
+    placeholder="Apresentação livre do funcionário." onChange={e=>setBio(e.target.value)}
+    onKeyDown={e=>handleNewspaperTextareaTab(e,setBio)}/></label>
    <label className="newspaper-upload"><ImagePlus size={17}/> {photo?photo.name:'Foto (opcional)'}
     <input type="file" accept="image/png,image/jpeg,image/webp"
      onChange={e=>{setPhoto(e.target.files?.[0]??null);e.target.value='';}}/></label>

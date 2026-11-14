@@ -2,7 +2,7 @@ import {useEffect,useRef,useState,type CSSProperties,type DragEvent,type Keyboar
 import {useQuery} from '@tanstack/react-query';
 import {formatDate} from '@/lib/calendar/harptos';
 import {signedNewspaperAsset} from '@/lib/newspaper/data';
-import {FIELD_LIMITS,blockFocus,editionWords,normalizeFieldText,panFocus,pastedPlainText,readingMinutes} from '@/lib/newspaper/editing';
+import {FIELD_LIMITS,NEWSPAPER_PARAGRAPH_INDENT,blockFocus,editionWords,normalizeFieldText,panFocus,pastedPlainText,readingMinutes} from '@/lib/newspaper/editing';
 import {newspaperResize,newspaperTypefaceFamily,type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperImageStyle} from '@/lib/newspaper/model';
 
 const BLOCK_DRAG_MIME='application/x-cormyr-newspaper-block';
@@ -51,6 +51,23 @@ function InlineText({tag:Tag,value,editing,onChange,className,style,label,single
     event.preventDefault();
     const block=event.currentTarget.closest<HTMLElement>('[role="group"]');
     event.currentTarget.blur();block?.focus();
+    return;
+   }
+   if(!single&&event.key==='Tab'&&!event.shiftKey&&!event.ctrlKey&&!event.altKey&&!event.metaKey){
+    event.preventDefault();
+    const selection=window.getSelection();
+    if(selection?.rangeCount&&event.currentTarget.contains(selection.anchorNode)){
+     if(typeof document.execCommand!=='function'||
+      !document.execCommand('insertText',false,NEWSPAPER_PARAGRAPH_INDENT)){
+      const range=selection.getRangeAt(0);
+      range.deleteContents();
+      const node=document.createTextNode(NEWSPAPER_PARAGRAPH_INDENT);
+      range.insertNode(node);
+      range.setStartAfter(node);range.collapse(true);
+      selection.removeAllRanges();selection.addRange(range);
+     }
+     if(limit)setCount(normalizeFieldText(event.currentTarget.innerText??event.currentTarget.textContent??'',single).length);
+    }
     return;
    }
    if(single&&event.key==='Enter'){
@@ -163,7 +180,7 @@ function NewspaperStory({block,editing,selected=false,onChange}:{
  block:NewspaperBlock;editing:boolean;selected?:boolean;onChange?:(patch:Partial<NewspaperBlock>)=>void;
 }){
  const [heading,...body]=block.text.split('\n');
- const paragraph=body.join('\n').trim();
+ const paragraph=body.join('\n').replace(/^\n+/,'').trimEnd();
  const titleStyle:CSSProperties={fontFamily:newspaperTypefaceFamily(block.titleFont)};
  const bodyStyle:CSSProperties={fontFamily:newspaperTypefaceFamily(block.bodyFont)};
  if(block.type==='headline')return <div className="newspaper-headline-block">
