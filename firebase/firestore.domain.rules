@@ -173,6 +173,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /migrationTimeEngineStage/{snapshot}/{document=**} {
+      // Calendar, operation history and audit are server-only; the Hub
+      // Temporal service is the single writer. No client access.
+      allow read, write: if false;
+    }
+
     match /migrationRecordStage/{snapshot} {
       allow read, write: if false;
       // Records and versions are written only by the server-side service.

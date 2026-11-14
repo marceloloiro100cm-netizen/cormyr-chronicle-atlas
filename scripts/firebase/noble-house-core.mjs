@@ -6,9 +6,10 @@
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_STATE_BYTES=900_000;
 const MAX_TEXT=20_000;
-// unit/unit_state resolve commanders against campaign_records, which is not
-// modeled yet. They fail closed until the records slice exists.
-const SUPPORTED=new Set(['sheet','resource','possession','luck','action','vassal','note','edit']);
+// In SQL only unit/unit_state get special handling (commander resolution
+// against campaign_records, not modeled yet): they fail closed. Any other
+// action name is free text, exactly as in commit_noble_house_operation.
+const UNSUPPORTED=new Set(['unit','unit_state']);
 
 export class NobleHouseError extends Error {
   constructor(code,message){super(message);this.name='NobleHouseError';this.code=code;}
@@ -37,28 +38,33 @@ export const canReadHouse=(actor,houseId)=>
 
 export function validateOperationRequest(request){
   if(!request||typeof request!=='object')fail('invalid','Pedido inválido');
-  const {houseId,operationKey,action,explanation,rule,month,version,state}=request;
+  const {houseId,operationKey,action,explanation,rule,version,state}=request;
   if(typeof houseId!=='string'||!houseId||houseId.length>512)fail('invalid','Casa inválida');
   if(typeof operationKey!=='string'||!UUID.test(operationKey))
     fail('invalid','Chave de operação inválida');
   if(typeof action!=='string'||!action||action.length>64)fail('invalid','Ação inválida');
-  if(!SUPPORTED.has(action))fail('unsupported','Ação ainda não suportada');
+  if(UNSUPPORTED.has(action))fail('unsupported','Ação ainda não suportada');
   for(const [name,value] of [['explanation',explanation],['rule',rule]]){
     if(value!==undefined&&value!==null&&
        (typeof value!=='string'||value.length>MAX_TEXT))
       fail('invalid','Texto inválido: '+name);
   }
   if(!Number.isInteger(version)||version<0)fail('invalid','Versão inválida');
-  if(month!==undefined&&month!==null&&!Number.isInteger(month))
-    fail('invalid','Mês deve ser inteiro');
   if(!state||typeof state!=='object'||Array.isArray(state))fail('invalid','Estado inválido');
   if(state.houseId!==houseId)fail('invalid','Estado não pertence à casa');
   if(!(state.schemaVersion===1||state.schemaVersion==='1'))
     fail('invalid','Versão de esquema não suportada');
   if(Buffer.byteLength(JSON.stringify(state),'utf8')>MAX_STATE_BYTES)
     fail('invalid','Ficha grande demais');
+  // The ledger month comes from the state itself: (p_state->>'month')::integer.
+  let stateMonth=null;
+  if(state.month!==undefined&&state.month!==null){
+    const t=String(state.month);
+    if(!/^-?\d+$/.test(t))fail('invalid','Mês da ficha deve ser inteiro');
+    stateMonth=Number(t);
+  }
   return {houseId,operationKey,action,explanation:explanation??'',rule:rule??'',
-    month:month??null,version,state};
+    month:stateMonth,version,state};
 }
 
 /**
