@@ -15,3 +15,7 @@ Próximos passos: verificação do ID token no servidor (hoje o middleware valid
 ## Verificação do ID token no servidor
 
 `src/integrations/auth/firebase-id-token.server.ts` verifica ID tokens do Firebase sem dependência nova: só RS256 (rejeita `none` e HS256), assinatura contra o JWKS do `securetoken` (injetado; `cachedSecuretokenJwks` respeita o `max-age` e falha fechado), `iss` e `aud` do projeto, `exp`, `iat`, `auth_time` (tolerância de 60 s) e `sub`. Devolve `uid`, e-mail e `emailVerified`. Ainda não está ligado a nenhum middleware.
+
+## Autenticação de servidor
+
+`firebase-auth-core.server.ts` aplica as mesmas regras de cabeçalho do `requireSupabaseAuth` (mesmas mensagens) e devolve `userId` e `firebaseClaims`. `firebase-auth-middleware.server.ts` (`requireFirebaseAuth`, lê `FIREBASE_PROJECT_ID`) não está registrado em lugar nenhum e não fornece cliente Supabase: funções Firebase usarão os serviços de domínio do Firestore.
