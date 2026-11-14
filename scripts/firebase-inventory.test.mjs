@@ -11,6 +11,6 @@ test('inventory includes later modules and never represents source candidates as
   const result = await inventory(process.cwd());
   assert.equal(result.productionVerified, false);
   assert.ok(result.tables.includes('public.campaign_newspaper_staff'));
-  assert.ok(result.dependencies.some(d => d.path === 'src/lib/house/drive-adapter.server.ts'));
+  assert.ok(result.dependencies.some(d => d.path === 'src/lib/mcp/index.ts'));
   assert.ok(result.dependencies.every(d => d.matches.every(m => Object.keys(m).join(',') === 'line,kinds')));
 });

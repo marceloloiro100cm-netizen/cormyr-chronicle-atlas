@@ -2,10 +2,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@/integrations/supabase/types';
 import { docsText } from './drive-library.server';
 import { isPublicArchiveFile, isPrincipalArchiveDocument } from './archive-policy';
+import { googleConfigured, googleUrl, withGoogleAuth } from './google-api.server';
 type File={id:string;name:string;mimeType:string;modifiedTime:string;size?:string};
 export async function updatePublicArchive(db:SupabaseClient<Database>) {
- const bearer=process.env['LOVABLE_API_KEY'],drive=process.env['GOOGLE_DRIVE_API_KEY'],docs=process.env['GOOGLE_DOCS_API_KEY'];if(!bearer||!drive||!docs)throw new Error('Conexão do acervo indisponível.');
- async function call(service:string,path:string){const response=await fetch(`https://connector-gateway.lovable.dev/${service}${path}`,{headers:{Authorization:`Bearer ${bearer}`,'X-Connection-Api-Key':service==='google_docs'?docs??'':drive??''},signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error(`Consulta do acervo falhou: ${response.status}`);return response;}
+ if(!googleConfigured())throw new Error('Conexão do acervo indisponível.');
+ async function call(service:string,path:string){const response=await fetch(googleUrl(service,path),{headers:await withGoogleAuth(new Headers()),signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error(`Consulta do acervo falhou: ${response.status}`);return response;}
  const selected=await db.from('house_catalog').select('*').eq('public_reviewed',true).not('source_folder_id','is',null).order('updated_at',{ascending:true}).limit(8);if(selected.error)throw selected.error;
  let texts=0,images=0,failed=0;const errors:string[]=[];
  for(const house of selected.data){try{

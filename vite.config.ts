@@ -1,19 +1,31 @@
-// @lovable.dev/vite-tanstack-config already includes the following — do NOT add them manually
-// or the app will break with duplicate plugins:
-//   - TanStack devtools (dev-only, first), tanstackStart, viteReact, tailwindcss, tsConfigPaths,
-//     nitro (build-only using cloudflare as a default target), VITE_* env injection, @ path alias,
-//     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
-// You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
-import { defineConfig } from "@lovable.dev/vite-tanstack-config";
-import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
+// Configuração Vite própria (antes: @lovable.dev/vite-tanstack-config).
+// Ordem dos plugins: TanStack Start, React, Tailwind, aliases do tsconfig e Nitro.
+// O alvo do Nitro é Node (node-server), usado pelo Firebase App Hosting / Cloud Run.
+// Se necessário, force com NITRO_PRESET=node-server no ambiente de build.
+import { defineConfig } from "vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import viteTsConfigPaths from "vite-tsconfig-paths";
+import { nitro } from "nitro/vite";
 
 export default defineConfig({
-  vite: {
-    plugins: [mcpPlugin()],
-  },
-  tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
-    server: { entry: "server" },
+  plugins: [
+    // Redireciona a entrada de servidor do TanStack Start para src/server.ts
+    // (nosso wrapper de erros de SSR); o Nitro empacota a partir dela.
+    tanstackStart({ server: { entry: "server" } }),
+    viteReact(),
+    tailwindcss(),
+    viteTsConfigPaths({ projects: ["./tsconfig.json"] }),
+    nitro(),
+  ],
+  resolve: {
+    dedupe: [
+      "react",
+      "react-dom",
+      "@tanstack/react-router",
+      "@tanstack/react-start",
+      "@tanstack/react-query",
+    ],
   },
 });

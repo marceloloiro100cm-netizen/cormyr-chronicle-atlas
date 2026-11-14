@@ -11,7 +11,7 @@ import {
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { reportClientError } from "../lib/error-reporting";
 import { supabase } from '@/integrations/supabase/client';
 import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { I18nProvider } from '@/lib/i18n/context';
@@ -43,7 +43,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reportClientError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   return (
@@ -84,12 +84,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Cormyr Web" },
       { name: "description", content: "Cormyr Web — Crônicas do Reino" },
-      { name: "author", content: "Lovable" },
+      { name: "author", content: "Cormyr Web" },
       { property: "og:title", content: "Cormyr Web" },
       { property: "og:description", content: "Cormyr Web — Crônicas do Reino" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {

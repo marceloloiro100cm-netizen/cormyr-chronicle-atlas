@@ -25,7 +25,7 @@ describe('exportação da casa preserva compras',()=>{
   await exportHouseVersion(a,'technical',next,{fileId:'stable',hash:await houseExportHash(previous),version:1});expect(write).toHaveBeenCalledWith('technical',next,'stable','real');
  });
  it('nunca autoriza sobrescrita com hash sintético; usa versão imutável',async()=>{
-  vi.stubEnv('GOOGLE_DRIVE_API_KEY','test');vi.stubEnv('LOVABLE_API_KEY','test');
+  vi.stubEnv('GOOGLE_ACCESS_TOKEN','fixture');
   const d=document(2);const calls:{path:string;method:string;body:string}[]=[];
   const request=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
    const path=String(input);calls.push({path,method:init?.method??'GET',body:typeof init?.body==='string'?init.body:''});
@@ -38,7 +38,7 @@ describe('exportação da casa preserva compras',()=>{
   try {await createHouseExportAdapter(request).write('technical',d,'stable','sha256:fake');expect(calls.some(c=>c.method==='PATCH')).toBe(false);expect(calls.find(c=>c.method==='POST')?.body).toContain('cormyr-house-ashkar-v2-');}finally{vi.unstubAllEnvs();}
  });
  it('atualiza arquivo estável sem ETag por PATCH, sem criar duplicatas',async()=>{
-  vi.stubEnv('GOOGLE_DRIVE_API_KEY','test');vi.stubEnv('LOVABLE_API_KEY','test');
+  vi.stubEnv('GOOGLE_ACCESS_TOKEN','fixture');
   const d=document(2);const calls:{path:string;method:string;headers:Headers}[]=[];
   const request=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
    const path=String(input);calls.push({path,method:init?.method??'GET',headers:new Headers(init?.headers)});
@@ -52,7 +52,7 @@ describe('exportação da casa preserva compras',()=>{
   }finally{vi.unstubAllEnvs();}
  });
  it('bloqueia arquivo fora da pasta técnica autorizada',async()=>{
-  vi.stubEnv('GOOGLE_DRIVE_API_KEY','test');vi.stubEnv('LOVABLE_API_KEY','test');
+  vi.stubEnv('GOOGLE_ACCESS_TOKEN','fixture');
   try {const a=createHouseExportAdapter(async()=>Response.json({parents:['other'],mimeType:'application/json'}));await expect(a.read('file','technical')).rejects.toThrow('fora da pasta');}finally{vi.unstubAllEnvs();}
  });
 });

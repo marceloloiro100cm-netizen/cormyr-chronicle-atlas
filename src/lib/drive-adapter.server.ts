@@ -1,14 +1,12 @@
 import { envelopeSchema, filename, canonical, digest, type DriveAdapter, type RemoteFile } from './drive-sync';
 import { contentParts } from './campaign-content';
-const GATEWAY_URL='https://connector-gateway.lovable.dev/google_drive';
+import { googleConfigured, googleUrl, withGoogleAuth } from './google-api.server';
 export class DriveError extends Error { constructor(public status:number,public detail:string){super(`Google Drive: erro ${status}`);} }
 export function createDriveAdapter(request:typeof fetch=fetch):DriveAdapter {
-  const key=process.env['GOOGLE_DRIVE_API_KEY'],bearer=process.env['LOVABLE_API_KEY'];
-  if(!key||!bearer)throw new Error('Credenciais runtime do Google Drive indisponíveis.');
-  const runtimeKey=key,runtimeBearer=bearer;
+  if(!googleConfigured())throw new Error('Credenciais do Google Drive indisponíveis.');
   async function call(path:string,init:RequestInit={}){
-    const headers=new Headers(init.headers);headers.set('Authorization',`Bearer ${runtimeBearer}`);headers.set('X-Connection-Api-Key',runtimeKey);
-    const res=await request(GATEWAY_URL+path,{...init,headers,signal:AbortSignal.timeout(8000)});
+    const headers=await withGoogleAuth(new Headers(init.headers));
+    const res=await request(googleUrl('google_drive',path),{...init,headers,signal:AbortSignal.timeout(8000)});
     if(!res.ok){const body=await res.text();console.error(`Drive [${res.status}]: ${body}`);throw new DriveError(res.status,body);}
     return res;
   }

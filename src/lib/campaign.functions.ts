@@ -21,10 +21,9 @@ export const retryFolderSync = createServerFn({ method: 'POST' })
   .handler(async ({ context }) => {
     const { data: admin } = await context.supabase.rpc('is_campaign_admin');
     if (!admin) throw new Error('Acesso restrito ao administrador.');
-    const key = process.env['GOOGLE_DRIVE_API_KEY'];
-    const bearer = process.env['LOVABLE_API_KEY'];
-    if (!key || !bearer) return { connected: false, message: 'Credenciais do Google Drive indisponíveis. A fila permanece preservada.' };
-    const response = await fetch('https://connector-gateway.lovable.dev/google_drive/drive/v3/about?fields=storageQuota(limit,usage)', { headers: { Authorization: `Bearer ${bearer}`, 'X-Connection-Api-Key': key } });
+    const { googleConfigured, googleUrl, withGoogleAuth } = await import('@/lib/google-api.server');
+    if (!googleConfigured()) return { connected: false, message: 'Credenciais do Google Drive indisponíveis. A fila permanece preservada.' };
+    const response = await fetch(googleUrl('google_drive', '/drive/v3/about?fields=storageQuota(limit,usage)'), { headers: await withGoogleAuth(new Headers()) });
     if (!response.ok) {
       const body = await response.text();
       console.error(`Drive verification failed [${response.status}]: ${body}`);

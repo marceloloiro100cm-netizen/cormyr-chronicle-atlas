@@ -1,4 +1,5 @@
 import { auth, defineMcp } from '@lovable.dev/mcp-js';
+import { PUBLIC_SUPABASE_URL } from '@/integrations/supabase/public-config';
 import listarCasasTool from './tools/listar-casas';
 import listarDocumentosTool from './tools/listar-documentos';
 import lerDocumentoTool from './tools/ler-documento';
@@ -9,7 +10,7 @@ import opcoesMissivasTool from './tools/opcoes-missivas';
 import responderMissivaTool from './tools/responder-missiva';
 
 // Vite inlines the stable ref; the published SUPABASE_URL may be a proxy.
-const projectRef = import.meta.env['VITE_SUPABASE_PROJECT_ID'] ?? 'project-ref-unset';
+const projectRef = import.meta.env['VITE_SUPABASE_PROJECT_ID'] ?? new URL(PUBLIC_SUPABASE_URL).hostname.split('.')[0];
 
 export default defineMcp({
   name: 'cormyr-chronicle-atlas',

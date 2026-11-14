@@ -1,0 +1,51 @@
+# Firebase App Hosting: configuração de execução e ambiente.
+# Nenhum valor secreto fica neste arquivo (o repositório é público).
+# Crie cada segredo uma vez: firebase apphosting:secrets:set NOME
+runConfig:
+  cpu: 1
+  memoryMiB: 512
+  minInstances: 0
+  maxInstances: 3
+  concurrency: 80
+
+env:
+  # Build com saída Node (não Cloudflare).
+  - variable: NITRO_PRESET
+    value: node-server
+    availability:
+      - BUILD
+
+  # Servidor: acesso privilegiado ao Supabase (somente servidor).
+  - variable: SUPABASE_SERVICE_ROLE_KEY
+    secret: SUPABASE_SERVICE_ROLE_KEY
+    availability:
+      - RUNTIME
+
+  # Callbacks agendados (Cloud Scheduler envia Authorization: Bearer <segredo>).
+  - variable: CRON_SECRET
+    secret: CRON_SECRET
+    availability:
+      - RUNTIME
+
+  # Google Drive/Docs: crie os segredos abaixo e remova o comentário da opção escolhida.
+  # Opção A, conta de serviço:
+  # - variable: GOOGLE_SERVICE_ACCOUNT_JSON
+  #   secret: GOOGLE_SERVICE_ACCOUNT_JSON
+  #   availability:
+  #     - RUNTIME
+  # Opção B, OAuth da conta do Narrador:
+  # - variable: GOOGLE_OAUTH_CLIENT_ID
+  #   secret: GOOGLE_OAUTH_CLIENT_ID
+  #   availability:
+  #     - RUNTIME
+  # - variable: GOOGLE_OAUTH_CLIENT_SECRET
+  #   secret: GOOGLE_OAUTH_CLIENT_SECRET
+  #   availability:
+  #     - RUNTIME
+  # - variable: GOOGLE_OAUTH_REFRESH_TOKEN
+  #   secret: GOOGLE_OAUTH_REFRESH_TOKEN
+  #   availability:
+  #     - RUNTIME
+
+# SUPABASE_URL e a chave publicável têm valores padrão públicos em
+# src/integrations/supabase/public-config.ts; defina variáveis apenas para substituí-los.
