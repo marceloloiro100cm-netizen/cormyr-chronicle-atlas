@@ -199,6 +199,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /migrationBattleStage/{snapshot}/{document=**} {
+      // Saved simulation sessions and events, scenarios, V3 invitations and
+      // live matches, house roster imports and the private D&D stores:
+      // server-only. The battle service authorizes from the server-side
+      // access scope; selecting a house is never permission.
+      allow read, write: if false;
+    }
+
     match /migrationDriveSyncStage/{snapshot}/{document=**} {
       // Bindings, file mappings, review inbox and outbox: server-only. The
       // Drive runner and the administrator service are the only writers.

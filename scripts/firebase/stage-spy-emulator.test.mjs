@@ -27,7 +27,9 @@ const withRows=(table,rows)=>base().map(t=>t.table===table?{...t,rows}:t);
 test('imports the whole agents slice with full coverage', () => {
   const p=buildSpyAgentsPlan(base(),SNAP);
   assert.equal(p.summary.planValid,true);
-  assert.deepEqual(p.summary.stagedCounts,{assets:1,history:1,upgrades:1,removals:0,portraits:1,locations:1,operations:1,segments:1,events:1});
+  assert.deepEqual(p.summary.stagedCounts,{assets:1,history:1,upgrades:1,removals:0,portraits:1,locations:1,operations:1,segments:1,events:1,
+    catalog:0,nobleStats:0,decisions:0,timeline:0,
+    dossiers:0,findings:0,awards:0,intelEvents:0,adminAudit:0});
   assert.deepEqual(p.docs.operations[0].payload.requestedFields,['a','b']);
   assert.equal(p.docs.assets[0].payload.rulesVersion,'cormyr-agent-tiers-v1');
   assert.equal(p.docs.upgrades[0].id,U(1)+':ace_in_the_hole');
@@ -52,4 +54,56 @@ test('text[] parsing and count-only summary', () => {
   assert.deepEqual(textArray(''),[]);assert.equal(textArray('x'),undefined);
   const s=JSON.stringify(buildSpyAgentsPlan(base(),SNAP).summary);
   assert.ok(!s.includes('Sombra'));
+});
+
+test('stages the mission tables (catalog, stats, timeline, decisions)', () => {
+  const extra=[
+    tab('public.house_catalog',[{id:'t',name:'Casa T',classification:'noble',region:'Crownlands',public_reviewed:'t',archive_data:'{}'}]),
+    tab('public.spy_noble_house_stats',[{house_id:'t',house_name:'T',law:'25',region_id:'crownlands'}]),
+    tab('public.spy_mission_timeline',[{operation_id:U(2),owner_house_id:'hA',agent_id:U(1),departure_key:'1522-01-01',
+      arrival_key:'1522-01-11',investigation_end_key:'1522-01-21',origin_region:'ferlin',destination_region:'swordmark',
+      travel_rounds:'1',travel_days:'10',route:'[{"fromRegion":"ferlin","toRegion":"swordmark","passage":"land_neighbor"}]',
+      source_location_id:'loc1',destination_location_id:'loc1',source_calendar_version:'1',created_at:'2026-01-02 00:00:00+00'}]),
+    tab('public.spy_mission_decisions',[{id:U(20),operation_id:U(2),resolution:'success',modifiers:'{"roll":9}',difficulty:'9',
+      target_law:'25',law_source:'official_spreadsheet',rule_version:'v',reviewer:U(9),rationale:'ok',created_at:'2026-01-03 00:00:00+00'}]),
+  ];
+  const p=buildSpyAgentsPlan([...base(),...extra],SNAP);
+  assert.equal(p.summary.planValid,true);
+  assert.deepEqual([p.docs.catalog.length,p.docs.nobleStats.length,p.docs.timeline.length,p.docs.decisions.length],[1,1,1,1]);
+  assert.equal(p.docs.catalog[0].payload.publicReviewed,true);assert.equal(p.docs.catalog[0].payload.archive_data,undefined);
+  assert.equal(p.docs.nobleStats[0].payload.law,25);assert.equal(p.docs.timeline[0].payload.route.length,1);
+  assert.equal(p.docs.decisions[0].payload.modifiers.roll,9);
+  const bad=extra[2].rows[0];
+  assert.equal(buildSpyAgentsPlan([...base(),tab('public.spy_mission_timeline',[{...bad,travel_days:'11'}])],SNAP).summary.planValid,false);
+  assert.equal(buildSpyAgentsPlan([...base(),tab('public.spy_mission_timeline',[{...bad,operation_id:U(60)}])],SNAP)
+    .summary.issues.orphanLinks>0,true);
+});
+
+test('stages intelligence dossiers, findings, awards, events and audit', () => {
+  const D=U(40);
+  const extra=[
+    tab('public.spy_noble_house_stats',[{house_id:'t',house_name:'T',law:'25',region_id:'crownlands',defense:'7',influence:'3',
+      lands:'4',power:'5',population:'6',wealth:'8'}]),
+    tab('public.spy_intelligence_dossiers',[{id:D,owner_house_id:'hA',target_house_id:'t',created_at:'2026-01-01 00:00:00+00',updated_at:'2026-01-02 00:00:00+00'}]),
+    tab('public.spy_intelligence_findings',[{id:U(41),dossier_id:D,objective:'house_resources',subject_key:'wealth',
+      value_snapshot:'{"value":8,"source":"official_noble_stats"}',discovered_operation_id:U(2),verified_operation_id:'',
+      discovered_date_key:'1522-01-03',verified_date_key:'1522-01-03',discovered_at:'2026-01-03 00:00:00+00',verified_at:'2026-01-03 00:00:00+00'}]),
+    tab('public.spy_intelligence_mission_awards',[{operation_id:U(2),dossier_id:D,objective:'house_resources',success_degrees:'1',
+      reveal_capacity:'4',revealed_count:'1',refreshed_count:'0',processing_state:'complete',campaign_date_key:'1522-01-03',created_at:'2026-01-03 00:00:00+00'}]),
+    tab('public.spy_intelligence_events',[{id:U(42),dossier_id:D,operation_id:U(2),objective:'house_resources',subject_key:'wealth',
+      event_type:'revealed',previous_snapshot:'',new_snapshot:'{"value":8}',campaign_date_key:'1522-01-03',calendar_version:'1',created_at:'2026-01-03 00:00:00+00'}]),
+    tab('public.spy_intelligence_admin_audit',[{id:U(43),dossier_id:D,objective:'house_resources',subject_key:'wealth',action:'revoke',
+      before_snapshot:'{"value":8}',after_snapshot:'',campaign_date_key:'1522-01-04',reason:'motivo suficiente',actor:U(9),created_at:'2026-01-04 00:00:00+00'}]),
+  ];
+  const p=buildSpyAgentsPlan([...base(),...extra],SNAP);
+  assert.equal(p.summary.planValid,true);
+  assert.deepEqual(['dossiers','findings','awards','intelEvents','adminAudit'].map(k=>p.docs[k].length),[1,1,1,1,1]);
+  assert.equal(p.docs.nobleStats[0].payload.wealth,8);assert.equal(p.docs.findings[0].payload.verifiedOperationId,null);
+  assert.equal(p.docs.intelEvents[0].payload.previousSnapshot,null);
+  const f=extra[2].rows[0];
+  assert.equal(buildSpyAgentsPlan([...base(),extra[1],tab('public.spy_intelligence_findings',[{...f,subject_key:'bogus'}])],SNAP).summary.planValid,false);
+  assert.equal(buildSpyAgentsPlan([...base(),extra[1],tab('public.spy_intelligence_findings',[{...f,dossier_id:U(99)}])],SNAP)
+    .summary.issues.orphanLinks>0,true);
+  assert.equal(buildSpyAgentsPlan([...base(),extra[1],tab('public.spy_intelligence_mission_awards',[{...extra[3].rows[0],reveal_capacity:'2'}])],SNAP).summary.planValid,false);
+  assert.equal(buildSpyAgentsPlan([...base(),extra[1],tab('public.spy_intelligence_admin_audit',[{...extra[5].rows[0],reason:'curto'}])],SNAP).summary.planValid,false);
 });
