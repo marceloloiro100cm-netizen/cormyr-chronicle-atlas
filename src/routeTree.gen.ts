@@ -12,11 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as FirebaseHomologRouteImport } from './routes/firebase-homolog'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedJogadoresRouteImport } from './routes/_authenticated/jogadores'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as ApiFirebaseAuthVerifyRouteImport } from './routes/api/firebase-auth-verify'
 import { Route as ApiPublicCatalogRouteImport } from './routes/api/public/catalog'
 import { Route as ApiPublicGalleryImageRouteImport } from './routes/api/public/gallery-image'
 import { Route as ApiPublicGmContentRouteImport } from './routes/api/public/gm-content'
@@ -36,6 +38,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FirebaseHomologRoute = FirebaseHomologRouteImport.update({
+  id: '/firebase-homolog',
+  path: '/firebase-homolog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -62,6 +69,11 @@ const AuthenticatedJogadoresRoute = AuthenticatedJogadoresRouteImport.update({
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFirebaseAuthVerifyRoute = ApiFirebaseAuthVerifyRouteImport.update({
+  id: '/api/firebase-auth-verify',
+  path: '/api/firebase-auth-verify',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicCatalogRoute = ApiPublicCatalogRouteImport.update({
@@ -98,11 +110,13 @@ const ApiPublicJobsDriveSyncRoute = ApiPublicJobsDriveSyncRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/firebase-homolog': typeof FirebaseHomologRoute
   '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/jogadores': typeof AuthenticatedJogadoresRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/firebase-auth-verify': typeof ApiFirebaseAuthVerifyRoute
   '/api/public/catalog': typeof ApiPublicCatalogRoute
   '/api/public/gallery-image': typeof ApiPublicGalleryImageRoute
   '/api/public/gm-content': typeof ApiPublicGmContentRoute
@@ -113,11 +127,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/firebase-homolog': typeof FirebaseHomologRoute
   '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/jogadores': typeof AuthenticatedJogadoresRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/firebase-auth-verify': typeof ApiFirebaseAuthVerifyRoute
   '/api/public/catalog': typeof ApiPublicCatalogRoute
   '/api/public/gallery-image': typeof ApiPublicGalleryImageRoute
   '/api/public/gm-content': typeof ApiPublicGmContentRoute
@@ -130,11 +146,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/firebase-homolog': typeof FirebaseHomologRoute
   '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/jogadores': typeof AuthenticatedJogadoresRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/firebase-auth-verify': typeof ApiFirebaseAuthVerifyRoute
   '/api/public/catalog': typeof ApiPublicCatalogRoute
   '/api/public/gallery-image': typeof ApiPublicGalleryImageRoute
   '/api/public/gm-content': typeof ApiPublicGmContentRoute
@@ -147,11 +165,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/firebase-homolog'
     | '/mcp'
     | '/reset-password'
     | '/.well-known/oauth-protected-resource'
     | '/jogadores'
     | '/.lovable/oauth/consent'
+    | '/api/firebase-auth-verify'
     | '/api/public/catalog'
     | '/api/public/gallery-image'
     | '/api/public/gm-content'
@@ -162,11 +182,13 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/firebase-homolog'
     | '/mcp'
     | '/reset-password'
     | '/.well-known/oauth-protected-resource'
     | '/jogadores'
     | '/.lovable/oauth/consent'
+    | '/api/firebase-auth-verify'
     | '/api/public/catalog'
     | '/api/public/gallery-image'
     | '/api/public/gm-content'
@@ -178,11 +200,13 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/firebase-homolog'
     | '/mcp'
     | '/reset-password'
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/jogadores'
     | '/.lovable/oauth/consent'
+    | '/api/firebase-auth-verify'
     | '/api/public/catalog'
     | '/api/public/gallery-image'
     | '/api/public/gm-content'
@@ -195,10 +219,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  FirebaseHomologRoute: typeof FirebaseHomologRoute
   McpRoute: typeof McpRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  ApiFirebaseAuthVerifyRoute: typeof ApiFirebaseAuthVerifyRoute
   ApiPublicCatalogRoute: typeof ApiPublicCatalogRoute
   ApiPublicGalleryImageRoute: typeof ApiPublicGalleryImageRoute
   ApiPublicGmContentRoute: typeof ApiPublicGmContentRoute
@@ -228,6 +254,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/firebase-homolog': {
+      id: '/firebase-homolog'
+      path: '/firebase-homolog'
+      fullPath: '/firebase-homolog'
+      preLoaderRoute: typeof FirebaseHomologRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -263,6 +296,13 @@ declare module '@tanstack/react-router' {
       path: '/.lovable/oauth/consent'
       fullPath: '/.lovable/oauth/consent'
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/firebase-auth-verify': {
+      id: '/api/firebase-auth-verify'
+      path: '/api/firebase-auth-verify'
+      fullPath: '/api/firebase-auth-verify'
+      preLoaderRoute: typeof ApiFirebaseAuthVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/catalog': {
@@ -325,11 +365,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  FirebaseHomologRoute: FirebaseHomologRoute,
   McpRoute: McpRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  ApiFirebaseAuthVerifyRoute: ApiFirebaseAuthVerifyRoute,
   ApiPublicCatalogRoute: ApiPublicCatalogRoute,
   ApiPublicGalleryImageRoute: ApiPublicGalleryImageRoute,
   ApiPublicGmContentRoute: ApiPublicGmContentRoute,
