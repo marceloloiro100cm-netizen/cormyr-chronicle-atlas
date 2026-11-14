@@ -170,6 +170,29 @@ service cloud.firestore {
     match /migrationScheduleStage/{snapshot}/{document=**} {
       // Drafts are never client-readable; published snapshots are served by
       // the server-side service. No client access, including narrator.
+    match /migrationRecordStage/{snapshot} {
+      allow read, write: if false;
+      // Records and versions are written only by the server-side service.
+      // The editor identity is excluded because player() requires profile jogador.
+      match /records/{docId} {
+        allow get: if narrator(snapshot) || (player(snapshot) && (
+          (resource.data.visibility == 'player' &&
+            resource.data.playerId == scope(snapshot).playerId) ||
+          (resource.data.visibility == 'house' &&
+            resource.data.houseId in scope(snapshot).memberHouseIds)));
+        allow list, create, update, delete: if false;
+      }
+      match /versions/{docId} {
+        allow get: if narrator(snapshot) || (player(snapshot) && (
+          (resource.data.visibility == 'player' &&
+            resource.data.playerId == scope(snapshot).playerId) ||
+          (resource.data.visibility == 'house' &&
+            resource.data.houseId in scope(snapshot).memberHouseIds)));
+        allow list, create, update, delete: if false;
+      }
+    match /migrationCharacterStage/{snapshot}/{document=**} {
+      // Canonical registry is Narrator-only and written only by the
+      // server-side service; clients (including narrator) get no access.
       allow read, write: if false;
     }
 
