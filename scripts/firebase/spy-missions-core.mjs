@@ -21,6 +21,7 @@ const keyOk=k=>typeof k==='string'&&UUID.test(k);
 const intAt=(v,min)=>Number.isInteger(v)&&v>=min;
 const TARGET_CLASSES=new Set(['noble','major','royal']);
 const OBJECTIVES=new Set(['house_resources','army','possessions']);
+const objectiveOf=o=>OBJECTIVES.has((o.requestedFields||[])[0])?o.requestedFields[0]:'house_resources';
 const RANK_NAMES=['Verde','Treinada','Veterana','Elite'];
 
 /* --------------------------------- regions -------------------------------- */
@@ -82,9 +83,10 @@ const dateKeyOf=c=>calendarStamp(c).dateKey;
  * spy_submit_house_mission (0102). `existingOp`/`existingTimeline` are the
  * rows already using the key in this house; `keyEvent` is any event using it.
  */
-export function startMission({actor,houseId,agent,target,destination,expectedAgentVersion,expectedCalendarVersion,key,
+export function startMission({actor,houseId,agent,target,destination,objective='house_resources',expectedAgentVersion,expectedCalendarVersion,key,
   existingOp,existingTimeline,keyEvent,agentLocation,locations,hasOpenOperation,calendar,newId,now}){
   requireWrite(actor,houseId);
+  if(!OBJECTIVES.has(objective))fail('invalid','Objetivo de espionagem inválido');
   if(typeof houseId!=='string'||!houseId||!agent||typeof target?.id!=='string'||typeof destination!=='string'||
      !destination.trim()||!intAt(expectedAgentVersion,1)||!intAt(expectedCalendarVersion,1)||!keyOk(key))
     fail('invalid','Dados da missão incompletos');
@@ -93,10 +95,13 @@ export function startMission({actor,houseId,agent,target,destination,expectedAge
   if(existingOp){
     if(existingOp.assetId!==agent.id||existingOp.targetId!==targetId||existingOp.targetType!=='house')
       fail('conflict','Chave da missão já utilizada');
+    const f=existingOp.requestedFields||[];
+    if(!(f.length===1&&f[0]===objective)&&!(f.length===1&&f[0]==='house_overview'&&objective==='house_resources'))
+      fail('conflict','Objetivo diverge da solicitação original');
     if(existingOp.status==='cancelled'||existingOp.status==='completed')fail('conflict','Esta missão já foi encerrada');
     const t=existingTimeline;
     return {alreadyApplied:true,result:{operationId:existingOp.id,agentId:agent.id,targetHouseId:targetId,
-      status:existingOp.status,alreadyApplied:true,calendarVersion:existingOp.sourceCalendarVersion,
+      status:existingOp.status,objective,alreadyApplied:true,calendarVersion:existingOp.sourceCalendarVersion,
       departureKey:t?.departureKey??null,arrivalKey:t?.arrivalKey??null,investigationEndsKey:t?.investigationEndKey??null,
       travelDays:t?.travelDays??null}};
   }
@@ -119,7 +124,7 @@ export function startMission({actor,houseId,agent,target,destination,expectedAge
   const status=path.rounds===0?'operating':'traveling';
   const at=now||new Date().toISOString();
   const operation={id:newId(),assetId:agent.id,ownerHouseId:houseId,missionKind:'house_recon',targetType:'house',targetId,
-    status,operationKey:key,requestedFields:['house_overview'],rulesVersion:RULES_VERSION,
+    status,operationKey:key,requestedFields:[objective],rulesVersion:RULES_VERSION,
     sourceCalendarVersion:stamp.version,version:1,createdBy:actor.uid,createdAt:at};
   const timeline={operationId:operation.id,ownerHouseId:houseId,agentId:agent.id,departureKey:departure,arrivalKey:arrival,
     investigationEndKey:end,originRegion:origin,destinationRegion:dest,travelRounds:path.rounds,travelDays:path.rounds*10,
@@ -132,7 +137,7 @@ export function startMission({actor,houseId,agent,target,destination,expectedAge
     reason:'Missão de espionagem iniciada imediatamente contra '+target.name+'; origem '+origin+'; destino '+dest+
       '; viagem '+path.rounds+' désdias; chegada '+arrival+'; fim previsto da investigação '+end});
   return {alreadyApplied:false,operation,timeline,agent:newAgent,event,
-    result:{operationId:operation.id,agentId:agent.id,targetHouseId:targetId,status,alreadyApplied:false,
+    result:{operationId:operation.id,agentId:agent.id,targetHouseId:targetId,status,objective,alreadyApplied:false,
       calendarVersion:stamp.version,departureKey:departure,arrivalKey:arrival,investigationEndsKey:end,
       travelDays:path.rounds*10}};
 }
@@ -208,7 +213,8 @@ export function houseTimeline({actor,houseId,timelines,operations,catalog}){
     .map(t=>{const o=ops.get(t.operationId);return {operationId:t.operationId,agentId:t.agentId,
       operationVersion:o?o.version:null,departureKey:t.departureKey,arrivalKey:t.arrivalKey,
       investigationEndKey:t.investigationEndKey,originRegion:t.originRegion,destinationRegion:t.destinationRegion,
-      travelDays:t.travelDays,targetHouseName:o?(cat.get(o.targetId)?.name??null):null};});
+      travelDays:t.travelDays,targetHouseName:o?(cat.get(o.targetId)?.name??null):null,
+      objective:o?objectiveOf(o):'house_resources'};});
 }
 
 /* ------------------------- law, defense and preview ----------------------- */
