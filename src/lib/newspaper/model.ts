@@ -280,6 +280,8 @@ export function moveNewspaperBlock(blocks:readonly NewspaperBlock[],id:string,di
 // ---- Redação: corpo de funcionários ----
 export type NewspaperStaffMember={
   id:string;name:string;specialty:string;bio:string;photo_path:string|null;
+  /** Posição escolhida pelo Editor-Chefe (0 = primeiro). Ausente em dados antigos. */
+  sort_order?:number;
   created_at:string;updated_at:string;
 };
 export const STAFF_BUCKET='campaign-newspaper-staff';
@@ -287,6 +289,18 @@ export const STAFF_BUCKET='campaign-newspaper-staff';
 export function staffByline(member:Pick<NewspaperStaffMember,'name'|'specialty'>):string{
  const name=member.name.trim(),role=member.specialty.trim();
  return role?`${name}, ${role}`:name;
+}
+/** Equipe na ordem do Editor-Chefe; empates e dados antigos caem em ordem alfabética. */
+export function orderStaff<T extends Pick<NewspaperStaffMember,'name'|'sort_order'>>(staff:readonly T[]):T[]{
+ return [...staff].sort((a,b)=>(a.sort_order??0)-(b.sort_order??0)||a.name.localeCompare(b.name,'pt-BR'));
+}
+/** Leva o funcionário `id` para a posição de `targetId`, mantendo os demais na sequência. */
+export function moveStaffMember<T extends {id:string}>(staff:readonly T[],id:string,targetId:string):T[]{
+ const list=[...staff],from=list.findIndex(m=>m.id===id),to=list.findIndex(m=>m.id===targetId);
+ if(from<0||to<0||from===to)return list;
+ const [item]=list.splice(from,1);
+ list.splice(to,0,item!);
+ return list;
 }
 export function validateStaffMember(input:{name:string;specialty:string;bio:string}):string{
  if(!input.name.trim())return 'Informe o nome do funcionário.';

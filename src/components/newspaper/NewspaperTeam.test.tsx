@@ -26,4 +26,8 @@ describe('Conheça Nossa Equipe (visão do jogador)',()=>{
   const {container}=render(<NewspaperTeam staff={[]}/>);
   expect(container).toBeEmptyDOMElement();
  });
+ it('mostra na ordem definida pelo Editor-Chefe, não por nome',()=>{
+  render(<NewspaperTeam staff={[member({id:'1',name:'Ana',sort_order:2}),member({id:'2',name:'Zeca',sort_order:0}),member({id:'3',name:'Bia',sort_order:1})]}/>);
+  expect(screen.getAllByRole('listitem').map(li=>li.querySelector('strong')?.textContent)).toEqual(['Zeca','Bia','Ana']);
+ });
 });

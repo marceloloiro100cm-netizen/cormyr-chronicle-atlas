@@ -1,5 +1,5 @@
 import {StaffPhoto} from './NewspaperStaff';
-import {type NewspaperStaffMember} from '@/lib/newspaper/model';
+import {orderStaff,type NewspaperStaffMember} from '@/lib/newspaper/model';
 
 /** Visão do jogador: a equipe da Redação cadastrada pelo Editor-Chefe, somente leitura. */
 export function NewspaperTeam({staff,loading=false}:{staff:NewspaperStaffMember[];loading?:boolean}){
@@ -10,7 +10,7 @@ export function NewspaperTeam({staff,loading=false}:{staff:NewspaperStaffMember[
    <h3>Conheça Nossa Equipe</h3>
   </header>
   {loading?<p role="status">Carregando a equipe…</p>:
-   <ul className="folha-team-list">{staff.map(m=><li key={m.id} className="folha-team-card">
+   <ul className="folha-team-list">{orderStaff(staff).map(m=><li key={m.id} className="folha-team-card">
     <StaffPhoto path={m.photo_path} name={m.name}/>
     <div>
      <strong>{m.name}</strong>

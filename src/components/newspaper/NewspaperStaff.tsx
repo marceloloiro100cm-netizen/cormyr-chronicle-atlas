@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
-import {ImagePlus,Pencil,Trash2,UserPlus} from 'lucide-react';
+import {ArrowDown,ArrowUp,GripVertical,ImagePlus,Pencil,Trash2,UserPlus} from 'lucide-react';
 import {signedStaffPhoto} from '@/lib/newspaper/data';
 import {handleNewspaperTextareaTab} from '@/lib/newspaper/editing';
 import {staffByline,validateStaffMember,type NewspaperStaffMember} from '@/lib/newspaper/model';
@@ -14,11 +14,17 @@ export function StaffPhoto({path,name}:{path:string|null;name:string}){
 }
 
 /** Corpo de funcionários da Redação: foto, nome, especialidade e texto, todos campos livres. */
-export function NewspaperStaff({staff,busy,onSave,onDelete}:{
+export function NewspaperStaff({staff,busy,onSave,onDelete,onReorder}:{
  staff:NewspaperStaffMember[];busy:boolean;
  onSave:(input:{id?:string;name:string;specialty:string;bio:string;photoPath:string|null},photo:File|null)=>Promise<boolean>;
  onDelete:(member:NewspaperStaffMember)=>void;
+ /** Leva o funcionário `id` para a posição de `targetId`; a ordem é a que os jogadores veem. */
+ onReorder?:(id:string,targetId:string)=>void;
 }){
+ const [dragId,setDragId]=useState<string|null>(null);
+ const [overId,setOverId]=useState<string|null>(null);
+ const canReorder=Boolean(onReorder)&&staff.length>1;
+ const endDrag=()=>{setDragId(null);setOverId(null);};
  const [editing,setEditing]=useState<NewspaperStaffMember|'new'|null>(null);
  const [name,setName]=useState('');
  const [specialty,setSpecialty]=useState('');
@@ -62,7 +68,21 @@ export function NewspaperStaff({staff,busy,onSave,onDelete}:{
   </form>}
   {staff.length===0&&editing===null?<div className="folha-future-module"><strong>Nenhum funcionário ainda</strong>
    <span>Cadastre o corpo da Redação. Eles aparecem na assinatura das matérias.</span></div>:
-   <div className="folha-staff-list">{staff.map(m=><article key={m.id} className="folha-staff-card">
+   <div className="folha-staff-list">{staff.map((m,index)=><article key={m.id}
+    className={`folha-staff-card${dragId===m.id?' folha-staff-dragging':''}${overId===m.id&&dragId&&dragId!==m.id?' folha-staff-over':''}`}
+    onDragOver={e=>{if(!dragId)return;e.preventDefault();e.dataTransfer.dropEffect='move';setOverId(m.id);}}
+    onDrop={e=>{e.preventDefault();if(dragId&&dragId!==m.id)onReorder?.(dragId,m.id);endDrag();}}>
+    {canReorder&&<div className="folha-staff-order">
+     <button type="button" className="folha-staff-grip" draggable={!busy} disabled={busy}
+      aria-label={`Arrastar ${m.name} para mudar a ordem`} title="Arraste para mudar a ordem"
+      onDragStart={e=>{setDragId(m.id);e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',m.id);
+       const card=e.currentTarget.closest('article');if(card)e.dataTransfer.setDragImage(card,24,24);}}
+      onDragEnd={endDrag}><GripVertical size={16}/></button>
+     <button type="button" aria-label={`Subir ${m.name}`} disabled={busy||index===0}
+      onClick={()=>onReorder?.(m.id,staff[index-1]!.id)}><ArrowUp size={14}/></button>
+     <button type="button" aria-label={`Descer ${m.name}`} disabled={busy||index===staff.length-1}
+      onClick={()=>onReorder?.(m.id,staff[index+1]!.id)}><ArrowDown size={14}/></button>
+    </div>}
     <StaffPhoto path={m.photo_path} name={m.name}/>
     <div><strong>{m.name}</strong>{m.specialty&&<small>{m.specialty}</small>}
      {m.bio&&<p>{m.bio}</p>}

@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperResize,safeNewspaperBlocks,validateNewspaperEdition,reorderNewspaperBlocks,duplicateNewspaperBlock,insertNewspaperBlockBefore,type NewspaperEdition,commissionInEdition,moveNewspaperBlock,newspaperIsDirty,NEWSPAPER_WIDTH_PRESETS,commissionToBlocks,pendingCommissions,validateCommissionDraft,type NewspaperCommission,NEWSPAPER_ENGRAVINGS,unseenCommissionAnswers,houseCanCommission,COMMISSION_PENDING_LIMIT,staffByline,validateStaffMember,dateStoryDraft,sampleNewspaperBlocks,BUILTIN_STORY_MODELS,instantiateStoryModel,validateStoryModel,duplicatedStoryModelName,safeNewspaperSettings,validateNewspaperSettings,newEditionDate,DEFAULT_NEWSPAPER_SETTINGS,storyModelPreviewEdition} from './model';
+import {createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperResize,safeNewspaperBlocks,validateNewspaperEdition,reorderNewspaperBlocks,duplicateNewspaperBlock,insertNewspaperBlockBefore,type NewspaperEdition,commissionInEdition,moveNewspaperBlock,newspaperIsDirty,NEWSPAPER_WIDTH_PRESETS,commissionToBlocks,pendingCommissions,validateCommissionDraft,type NewspaperCommission,NEWSPAPER_ENGRAVINGS,unseenCommissionAnswers,houseCanCommission,COMMISSION_PENDING_LIMIT,staffByline,validateStaffMember,orderStaff,moveStaffMember,dateStoryDraft,sampleNewspaperBlocks,BUILTIN_STORY_MODELS,instantiateStoryModel,validateStoryModel,duplicatedStoryModelName,safeNewspaperSettings,validateNewspaperSettings,newEditionDate,DEFAULT_NEWSPAPER_SETTINGS,storyModelPreviewEdition} from './model';
 
 const published={
  id:'00000000-0000-4000-8000-000000000001',edition_no:1,
@@ -224,5 +224,20 @@ describe('Configurações do jornal e data da edição nova',()=>{
   const e=storyModelPreviewEdition([makeNewspaperBlock('image')],'editorial',{title:'Gazeta',template:'guerra'});
   expect(e.title).toBe('Gazeta');expect(e.template).toBe('guerra');expect(e.font_style).toBe('editorial');
   expect(e.blocks[0]!.imageSrc).toBeTruthy();
+ });
+});
+
+describe('Redação: ordem manual da equipe',()=>{
+ const m=(id:string,name:string,sort_order?:number)=>({id,name,...(sort_order===undefined?{}:{sort_order})});
+ it('ordena pela posição do Editor-Chefe e desempata por nome',()=>{
+  expect(orderStaff([m('c','Carla',2),m('a','Ana',0),m('b','Bia',1)]).map(x=>x.id)).toEqual(['a','b','c']);
+  expect(orderStaff([m('b','Bia'),m('a','Ana')]).map(x=>x.id)).toEqual(['a','b']);
+ });
+ it('leva um funcionário para a posição de outro sem perder ninguém',()=>{
+  const list=[m('a','Ana'),m('b','Bia'),m('c','Carla'),m('d','Duda')];
+  expect(moveStaffMember(list,'d','b').map(x=>x.id)).toEqual(['a','d','b','c']);
+  expect(moveStaffMember(list,'a','c').map(x=>x.id)).toEqual(['b','c','a','d']);
+  expect(moveStaffMember(list,'a','a').map(x=>x.id)).toEqual(['a','b','c','d']);
+  expect(moveStaffMember(list,'x','a').map(x=>x.id)).toEqual(['a','b','c','d']);
  });
 });

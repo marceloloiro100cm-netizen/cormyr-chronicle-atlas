@@ -12,7 +12,7 @@ import {CommissionForm,CommissionInbox} from './NewspaperCommissions';
 import {
  copyCommissionImageToEdition,createNewspaperEdition,deleteNewspaperDraft,getHouseNames,getNewspaperCommissions,rejectNewspaperCommission,
  getNewspaperEditions,getNewspaperReceipts,getNewspaperRevisions,getNewspaperStaff,saveNewspaperStaff,
- deleteNewspaperStaff,uploadStaffPhoto,getStoryModels,saveStoryModel,deleteStoryModel,deleteNewspaperEdition,
+ deleteNewspaperStaff,reorderNewspaperStaff,uploadStaffPhoto,getStoryModels,saveStoryModel,deleteStoryModel,deleteNewspaperEdition,
  markNewspaperRead,markNewspaperUnread,updateNewspaperEdition,uploadNewspaperAsset,
  getNewspaperSettings,saveNewspaperSettings,getPublicHubDate,
  getEngravings,uploadEngraving,setEngravingInCollection,deleteEngraving,copyBucketImageToEdition,restoreOriginalEngravings,
@@ -24,7 +24,7 @@ import {
  NEWSPAPER_FONTS,NEWSPAPER_TYPEFACES,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,validateNewspaperEdition,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperState,
  DEFAULT_NEWSPAPER_SETTINGS,validateNewspaperSettings,newEditionDate,type NewspaperSettings,
- type NewspaperTemplate,type NewspaperRevision,type NewspaperEngraving,ENGRAVINGS_BUCKET,PAPER_BUCKET,type NewspaperStaffMember,type StoryModel,instantiateStoryModel,
+ type NewspaperTemplate,type NewspaperRevision,type NewspaperEngraving,ENGRAVINGS_BUCKET,PAPER_BUCKET,type NewspaperStaffMember,orderStaff,moveStaffMember,type StoryModel,instantiateStoryModel,
 } from '@/lib/newspaper/model';
 import {movePreservingPinned,reorderPreservingPinned,resizeWithReflow} from '@/lib/newspaper/layout';
 import {
@@ -81,7 +81,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
   queryFn:getHouseNames,enabled:editor,staleTime:10*60*1000});
  const staffQuery=useQuery({queryKey:['campaign-newspaper-staff'],queryFn:getNewspaperStaff,
   enabled:editorial?editor:!editor,staleTime:60_000,retry:false});
- const staff=staffQuery.data??[];
+ const staff=useMemo(()=>orderStaff(staffQuery.data??[]),[staffQuery.data]);
  const modelsQuery=useQuery({queryKey:['campaign-newspaper-story-models'],queryFn:getStoryModels,
   enabled:editor&&editorial,staleTime:60_000,retry:false});
  const storyModels=modelsQuery.data??[];
@@ -528,11 +528,21 @@ const useStoryModel=async(model:StoryModel)=>{
   setBusy(true);setError('');
   try{
    const photoPath=photo?await uploadStaffPhoto(photo):input.photoPath;
-   await saveNewspaperStaff({...input,photoPath});
+   await saveNewspaperStaff({...input,photoPath,...(input.id?{}:{sortOrder:staff.reduce((m,x)=>Math.max(m,(x.sort_order??0)+1),0)})});
    await qc.invalidateQueries({queryKey:['campaign-newspaper-staff']});
    notice('Funcionário salvo na Redação.');return true;
   }catch(cause){setError(safeError(cause));return false;}
   finally{setBusy(false);}
+ };
+ const reorderStaff=async(id:string,targetId:string)=>{
+  if(!editor||busy)return;
+  const next=moveStaffMember(staff,id,targetId);
+  if(next.every((m,i)=>m.id===staff[i]?.id))return;
+  const ordered=next.map((m,i)=>({...m,sort_order:i}));
+  qc.setQueryData(['campaign-newspaper-staff'],ordered);
+  try{await reorderNewspaperStaff(ordered.map(m=>m.id));}
+  catch(cause){setError('Não foi possível salvar a nova ordem da equipe: '+safeError(cause));}
+  await qc.invalidateQueries({queryKey:['campaign-newspaper-staff']});
  };
  const removeStaff=async(member:NewspaperStaffMember)=>{
   if(!editor||busy)return;
@@ -742,6 +752,7 @@ const useStoryModel=async(model:StoryModel)=>{
   onUseStoredEngraving={item=>{void useStoredEngraving(item);}}
   engravingsLoading={engravingsQuery.isPending} onRestoreEngravings={()=>{void restoreEngravings();}}
   staff={staff} onSaveStaff={saveStaff} onDeleteStaff={member=>{void removeStaff(member);}}
+  onReorderStaff={(id,targetId)=>{void reorderStaff(id,targetId);}}
   onWriteAboutDate={writeAboutDate}
   commissions={allCommissions}
   revisions={revisionsQuery.data??[]} onRestoreRevision={restoreRevision}

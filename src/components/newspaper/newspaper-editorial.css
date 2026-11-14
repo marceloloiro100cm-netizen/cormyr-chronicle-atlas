@@ -597,3 +597,20 @@
 .folha-team-role{display:block;font-style:italic;opacity:.8;margin-bottom:4px}
 .folha-team-card p{margin:0;font-family:Garamond,"EB Garamond",Georgia,serif;white-space:pre-line;line-height:1.45}
 @media (max-width:520px){.folha-team-card{grid-template-columns:64px minmax(0,1fr)}.folha-team-card .folha-staff-photo{width:64px;height:64px}}
+
+/* Ordem da equipe (Editor-Chefe): alça de arrastar e setas */
+.folha-staff-card:has(.folha-staff-order){grid-template-columns:34px 72px minmax(0,1fr) auto}
+.folha-staff-order{display:flex;flex-direction:column;gap:3px;align-items:center}
+.folha-staff-order button{padding:3px;border:1px solid rgba(80,50,20,.4);background:#fff8e6;cursor:pointer;line-height:0}
+.folha-staff-order button:disabled{opacity:.4;cursor:default}
+.folha-staff-grip{cursor:grab!important}
+.folha-staff-dragging{opacity:.45}
+.folha-staff-over{outline:2px dashed #ad824f;outline-offset:2px}
+
+/* Conheça Nossa Equipe: tinta escura sobre papel claro (a página do jogador é escura) */
+.folha-team{background:#f4e9cb;color:#2b1d10}
+.folha-team .newspaper-kicker{color:#7a5a2e}
+.folha-team h3{color:#2b1d10}
+.folha-team-card strong{color:#2b1d10}
+.folha-team-role{color:#5b3f1f;opacity:1}
+.folha-team-card p{color:#3a2a18}

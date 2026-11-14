@@ -155,7 +155,7 @@ export async function markCommissionsSeen(houseId:string):Promise<void>{
 // ---- Redação (corpo de funcionários) ----
 export async function getNewspaperStaff():Promise<NewspaperStaffMember[]>{
  const {data,error}=await db.from('campaign_newspaper_staff').select('*')
-  .order('name',{ascending:true}).limit(200);
+  .order('sort_order',{ascending:true}).order('name',{ascending:true}).limit(200);
  if(error)throw error;
  return (data??[]) as NewspaperStaffMember[];
 }
@@ -176,13 +176,20 @@ export async function signedStaffPhoto(path:string):Promise<string>{
  return data.signedUrl;
 }
 export async function saveNewspaperStaff(input:{
- id?:string;name:string;specialty:string;bio:string;photoPath:string|null;
+ id?:string;name:string;specialty:string;bio:string;photoPath:string|null;sortOrder?:number;
 }):Promise<void>{
  const row={name:input.name.trim(),specialty:input.specialty.trim(),bio:input.bio.trim(),
   photo_path:input.photoPath,updated_at:new Date().toISOString()};
  const result=input.id?await db.from('campaign_newspaper_staff').update(row).eq('id',input.id)
-  :await db.from('campaign_newspaper_staff').insert(row);
+  :await db.from('campaign_newspaper_staff').insert({...row,sort_order:input.sortOrder??0});
  if(result.error)throw result.error;
+}
+/** Grava a nova ordem da equipe: a posição na lista vira o sort_order de cada funcionário. */
+export async function reorderNewspaperStaff(ids:readonly string[]):Promise<void>{
+ const results=await Promise.all(ids.map((id,index)=>
+  db.from('campaign_newspaper_staff').update({sort_order:index}).eq('id',id)));
+ const failed=results.find(r=>r.error);
+ if(failed?.error)throw failed.error;
 }
 export async function deleteNewspaperStaff(id:string,photoPath:string|null):Promise<void>{
  const {error}=await db.from('campaign_newspaper_staff').delete().eq('id',id);

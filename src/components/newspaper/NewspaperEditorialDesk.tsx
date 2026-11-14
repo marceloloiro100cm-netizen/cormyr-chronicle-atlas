@@ -83,6 +83,7 @@ export interface NewspaperEditorialProps{
  staff:NewspaperStaffMember[];
  onSaveStaff:(input:{id?:string;name:string;specialty:string;bio:string;photoPath:string|null},photo:File|null)=>Promise<boolean>;
  onDeleteStaff:(member:NewspaperStaffMember)=>void;
+ onReorderStaff?:(id:string,targetId:string)=>void;
  /** Calendário: cria (ou abre) a matéria "Dia de X" já preenchida. */
  onWriteAboutDate:(title:string,body:string)=>void;
  /** Versões anteriores desta edição, guardadas pelo banco a cada salvamento. */
@@ -396,7 +397,8 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       {section==='redacao'&&<section className="folha-section-content">
        <h3>Redação</h3>
        <p>O corpo de funcionários de A Folha Sem Selo. Todos os campos são livres; Nome e Especialidade aparecem na assinatura das matérias.</p>
-       <NewspaperStaff staff={props.staff} busy={busy} onSave={props.onSaveStaff} onDelete={props.onDeleteStaff}/>
+       <NewspaperStaff staff={props.staff} busy={busy} onSave={props.onSaveStaff} onDelete={props.onDeleteStaff}
+        {...(props.onReorderStaff?{onReorder:props.onReorderStaff}:{})}/>
       </section>}
 
       {section==='anuncios'&&<section className="folha-section-content">
