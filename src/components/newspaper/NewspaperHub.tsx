@@ -882,12 +882,12 @@ const useStoryModel=async(model:StoryModel)=>{
         {chosenBlock.type!=='image'&&<div role="group" aria-label="Tipografia do bloco">
          {chosenBlock.type!=='quote'&&<label>Fonte do título
           <select aria-label="Fonte do título" value={chosenBlock.titleFont??'padrao'}
-           onChange={e=>modifyBlock(chosenBlock.id,{titleFont:e.target.value as NewspaperBlock['titleFont']})}>
+           onChange={e=>modifyBlock(chosenBlock.id,{titleFont:e.target.value as NonNullable<NewspaperBlock['titleFont']>})}>
            {NEWSPAPER_TYPEFACES.map(f=><option key={f.value} value={f.value}>{f.label}</option>)}
           </select></label>}
          {chosenBlock.type!=='subtitle'&&<label>Fonte do texto
           <select aria-label="Fonte do texto" value={chosenBlock.bodyFont??'padrao'}
-           onChange={e=>modifyBlock(chosenBlock.id,{bodyFont:e.target.value as NewspaperBlock['bodyFont']})}>
+           onChange={e=>modifyBlock(chosenBlock.id,{bodyFont:e.target.value as NonNullable<NewspaperBlock['bodyFont']>})}>
            {NEWSPAPER_TYPEFACES.map(f=><option key={f.value} value={f.value}>{f.label}</option>)}
           </select></label>}
         </div>}

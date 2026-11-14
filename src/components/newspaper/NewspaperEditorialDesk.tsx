@@ -528,12 +528,12 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         {selectedBlock.type!=='image'&&<div className="folha-typeface-controls" role="group" aria-label="Tipografia do bloco">
          {selectedBlock.type!=='quote'&&<label>Fonte do título
           <select aria-label="Fonte do título" value={selectedBlock.titleFont??'padrao'}
-           onChange={e=>props.onPatchBlock(selectedBlock.id,{titleFont:e.target.value as NewspaperBlock['titleFont']})}>
+           onChange={e=>props.onPatchBlock(selectedBlock.id,{titleFont:e.target.value as NonNullable<NewspaperBlock['titleFont']>})}>
            {NEWSPAPER_TYPEFACES.map(f=><option key={f.value} value={f.value}>{f.label}</option>)}
           </select></label>}
          {selectedBlock.type!=='subtitle'&&<label>Fonte do texto
           <select aria-label="Fonte do texto" value={selectedBlock.bodyFont??'padrao'}
-           onChange={e=>props.onPatchBlock(selectedBlock.id,{bodyFont:e.target.value as NewspaperBlock['bodyFont']})}>
+           onChange={e=>props.onPatchBlock(selectedBlock.id,{bodyFont:e.target.value as NonNullable<NewspaperBlock['bodyFont']>})}>
            {NEWSPAPER_TYPEFACES.map(f=><option key={f.value} value={f.value}>{f.label}</option>)}
           </select></label>}
          <small className="folha-field-hint">Fontes independentes, salvas nesta edição e visíveis aos leitores.</small>
