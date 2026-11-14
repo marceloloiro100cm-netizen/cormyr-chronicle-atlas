@@ -7,3 +7,7 @@ Primeira peça da integração do app. **Nada disso está ligado**: `src/start.t
 - `auth-seam.test.ts`: testes com `fetch` simulado.
 
 Próximos passos: verificação do ID token no servidor (hoje o middleware valida JWT do Supabase), adaptador por domínio e a troca do `attachSupabaseAuth` atrás da trava, sempre com testes E2E por papel.
+
+## Anexador de bearer
+
+`src/integrations/auth/bearer-attacher.ts` escolhe o token pela trava (`selectAuthBackend`) e não cai no outro backend quando o escolhido falha. Não está registrado em `src/start.ts`.
