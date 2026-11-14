@@ -51,6 +51,11 @@ export async function markNewspaperRead(id:string):Promise<void>{
  const {error}=await db.rpc('mark_campaign_newspaper_read',{p_newspaper:id});
  if(error)throw error;
 }
+/** O leitor devolve a edição a "não lida": apaga só o próprio recibo, e o aviso volta. */
+export async function markNewspaperUnread(id:string):Promise<void>{
+ const {error}=await db.rpc('mark_campaign_newspaper_unread',{p_newspaper:id});
+ if(error)throw error;
+}
 export async function uploadNewspaperAsset(editionId:string,file:File,kind:'pdf'|'image'):Promise<string>{
  if(file.size>15*1024*1024)throw new Error('O arquivo deve ter no máximo 15 MB.');
  const types=kind==='pdf'?['application/pdf']:['image/png','image/jpeg','image/webp'];

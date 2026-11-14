@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
-import {Plus,FileText,ImagePlus,Newspaper,ArrowUp,ArrowDown,Trash2,Save,Send,Archive,Undo2,Check,Eye,LayoutTemplate,ChevronLeft,ChevronRight} from 'lucide-react';
+import {Plus,FileText,ImagePlus,Newspaper,ArrowUp,ArrowDown,Trash2,Save,Send,Archive,Undo2,Check,Eye,LayoutTemplate,ChevronLeft,ChevronRight,EyeOff} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
@@ -13,7 +13,7 @@ import {
  copyCommissionImageToEdition,createNewspaperEdition,deleteNewspaperDraft,getHouseNames,getNewspaperCommissions,rejectNewspaperCommission,
  getNewspaperEditions,getNewspaperReceipts,getNewspaperRevisions,getNewspaperStaff,saveNewspaperStaff,
  deleteNewspaperStaff,uploadStaffPhoto,getStoryModels,saveStoryModel,deleteStoryModel,deleteNewspaperEdition,
- markNewspaperRead,updateNewspaperEdition,uploadNewspaperAsset,
+ markNewspaperRead,markNewspaperUnread,updateNewspaperEdition,uploadNewspaperAsset,
  getNewspaperSettings,saveNewspaperSettings,getPublicHubDate,
  getEngravings,uploadEngraving,setEngravingInCollection,deleteEngraving,copyBucketImageToEdition,restoreOriginalEngravings,
 } from '@/lib/newspaper/data';
@@ -177,6 +177,14 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
   void open(editions.data[0]!);
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[editor,selectedId,editions.data]);
+ const markUnread=async(edition:NewspaperEdition)=>{
+  setError('');
+  try{
+   await markNewspaperUnread(edition.id);
+   await qc.invalidateQueries({queryKey:['campaign-newspaper-reads',userId]});
+   notice('Edição marcada como não lida. O aviso permanece até você abri-la de novo.');
+  }catch(cause){setError('Não foi possível marcar como não lida: '+safeError(cause));}
+ };
  const modify=(patch:Partial<NewspaperEdition>)=>setDraft(old=>old?{...old,...patch}:old);
  const modifyBlock=(id:string,patch:Partial<NewspaperBlock>)=>setDraft(old=>old?{
   ...old,blocks:old.blocks.map(b=>b.id===id?{...b,...patch}:b),
@@ -814,6 +822,12 @@ const useStoryModel=async(model:StoryModel)=>{
        {editor&&['published','archived'].includes(displayEdition.state)&&
         <small><Eye size={14}/> {readers} leitura(s) confirmada(s) desta versão</small>}
       </div>
+      {!editor&&['published','archived'].includes(displayEdition.state)&&
+       !newspaperIsUnread(displayEdition,myReads.get(displayEdition.id))&&
+       <div className="newspaper-action-buttons">
+        <Button variant="outline" onClick={()=>{void markUnread(displayEdition);}}>
+         <EyeOff size={15}/> Marcar como não lida</Button>
+       </div>}
       {editor&&<div className="newspaper-action-buttons">
        {!editing&&<Button variant="outline" onClick={()=>{setEditing(true);setBlockId(displayEdition.blocks[0]?.id??null);}}>Editar edição</Button>}
        {editing&&<Button variant="outline" disabled={busy} onClick={()=>void save()}><Save size={15}/> Salvar</Button>}
