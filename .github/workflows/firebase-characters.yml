@@ -1,0 +1,60 @@
+name: Firebase character registry (private emulator)
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/character-*.mjs'
+      - 'scripts/firebase/stage-characters-emulator*.mjs'
+      - 'firebase/firestore.domain.rules'
+      - 'docs/firebase/CHARACTERS-EMULATOR.md'
+      - '.github/workflows/firebase-characters.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/character-*.mjs'
+      - 'scripts/firebase/stage-characters-emulator*.mjs'
+      - 'firebase/firestore.domain.rules'
+      - '.github/workflows/firebase-characters.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  characters-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax
+        run: |
+          for f in scripts/firebase/character-core.mjs scripts/firebase/character-service.mjs scripts/firebase/character-service.integration.mjs scripts/firebase/stage-characters-emulator.mjs; do node --check "$f"; done
+      - name: Unit tests
+        run: node --test scripts/firebase/character-core.test.mjs scripts/firebase/stage-characters-emulator.test.mjs
+      - name: Public-repository private-data gate
+        run: node scripts/verify-public-repo.mjs
+
+  characters-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned tools for LOCAL emulators only
+        run: npm install --no-save --package-lock=false firebase-tools@15.35.0 firebase-admin@14.5.1 firebase@13.3.0 @firebase/rules-unit-testing@6.0.0
+      - name: Transactional commit and rules tests on emulator
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+        run: |
+          npx firebase emulators:exec --only firestore \
+            --project demo-cormyr-migration \
+            --config firebase/firebase-domain.json \
+            "node scripts/firebase/character-service.integration.mjs"

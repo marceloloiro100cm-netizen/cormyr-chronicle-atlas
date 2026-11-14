@@ -167,6 +167,12 @@ service cloud.firestore {
       }
     }
 
+    match /migrationCharacterStage/{snapshot}/{document=**} {
+      // Canonical registry is Narrator-only and written only by the
+      // server-side service; clients (including narrator) get no access.
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
