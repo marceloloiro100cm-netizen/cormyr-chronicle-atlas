@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { assertEmulatorOnly, loadVerifiedPrivateTables } from './stage-firestore-emulator.mjs';
+import {validateHarptosDate} from './stage-temporal-emulator.mjs';
 
 const DEMO='demo-cormyr-migration';
 const ROOT='migrationDomainStage';
@@ -29,6 +30,25 @@ const isoDate=v=>{
 };
 const objBytes=o=>Buffer.byteLength(JSON.stringify(o),'utf8');
 
+const positiveMeta=v=>v==null||v===''?null:
+  (typeof v==='string'&&/^[1-9]\d*$/.test(v)&&
+   Number.isSafeInteger(Number(v))&&Number(v)<=2147483647
+    ?Number(v):null);
+const harptosMeta=v=>{
+  if(typeof v!=='string'||!v||v.length>40)return null;
+  const m=/^(\d{4})-(?:(\d{2})-(\d{2})|F-(midwinter|greengrass|midsummer|shieldmeet|highharvestide|feast-moon))$/.exec(v);
+  if(!m)return null;
+  if(m[4]){
+    const month={midwinter:0,greengrass:3,midsummer:6,shieldmeet:6,
+      highharvestide:8,'feast-moon':10}[m[4]];
+    return validateHarptosDate(Number(m[1]),month,1,m[4])?v:null;
+  }
+  return validateHarptosDate(
+    Number(m[1]),Number(m[2])-1,Number(m[3]),null)?v:null;
+};
+const optionalId=v=>v==null||v===''?null:safeId(v)?v:null;
+
+
 export function buildTypedDomainPlan(tables,snapshotId){
   if(!Array.isArray(tables)||!/^[a-f0-9]{64}$/.test(snapshotId))
     throw new Error('Invalid verified source data');
@@ -37,6 +57,10 @@ export function buildTypedDomainPlan(tables,snapshotId){
   const rows=name=>byName.get(name)?.rows||[];
   const issues={duplicateIds:0,orphanLinks:0,invalidValues:0,roleConflicts:0,
     editorHouseConflicts:0,oversizedDocuments:0};
+  // Metadata is diagnostic, not a permission and not a reason to lose a
+  // valid addressed letter; the complete raw value remains in the archive.
+  const metadataWarnings={campaignDate:0,round:0,kind:0,version:0,
+    originHouse:0,deliveryTimestamp:0};
   // Aggregate relationship defects only. Never emit UIDs, player/house IDs,
   // letter IDs, personal names, correspondence content, or per-row hashes.
   const orphanLinksByType={
@@ -223,6 +247,29 @@ export function buildTypedDomainPlan(tables,snapshotId){
        typeof row.subject!=='string'||typeof row.content!=='string'){
       issues.invalidValues++;continue;
     }
+    const campaignDate=harptosMeta(row.campaign_date);
+    const creationRound=positiveMeta(row.creation_week);
+    const deliveryRound=positiveMeta(row.delivery_week);
+    const letterNumber=positiveMeta(row.letter_number);
+    const version=positiveMeta(row.version);
+    const originHouseId=optionalId(row.origin_house_id);
+    const kind=['geral','reservada'].includes(row.letter_kind)?
+      row.letter_kind:null;
+    const deliveredAt=row.delivered_at==null?null:isoDate(row.delivered_at);
+    if(row.campaign_date!=null&&row.campaign_date!==''&&!campaignDate)
+      metadataWarnings.campaignDate++;
+    for(const [v,n] of [
+      [row.creation_week,creationRound],[row.delivery_week,deliveryRound],
+      [row.letter_number,letterNumber],
+    ])if(v!=null&&v!==''&&n===null)metadataWarnings.round++;
+    if(row.letter_kind!=null&&row.letter_kind!==''&&!kind)
+      metadataWarnings.kind++;
+    if(row.version!=null&&row.version!==''&&version===null)
+      metadataWarnings.version++;
+    if(row.origin_house_id!=null&&row.origin_house_id!==''&&originHouseId===null)
+      metadataWarnings.originHouse++;
+    if(row.delivered_at!=null&&row.delivered_at!==''&&!deliveredAt)
+      metadataWarnings.deliveryTimestamp++;
     letters.push({id:idOf('letter',row.id),payload:{
       sourceId:row.id,
       senderUid,
@@ -235,6 +282,8 @@ export function buildTypedDomainPlan(tables,snapshotId){
       createdAt,
       deletedAt,
       publicationState,
+      campaignDate,creationRound,deliveryRound,letterNumber,
+      letterKind:kind,originHouseId,version,deliveredAt,
     }});
   }
 
@@ -262,6 +311,7 @@ export function buildTypedDomainPlan(tables,snapshotId){
     },
     orphanLinksByType,
     recipientShapes,
+    metadataWarnings,
     letterCoverage:{
       source:sourceLetters.length,
       addressed:letters.length,

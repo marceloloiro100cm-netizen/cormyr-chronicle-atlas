@@ -82,6 +82,14 @@ function safeView(doc,actor){
     recipientHouseId:r.recipientHouseId??null,
     deleted:Boolean(r.deletedAt),
     senderIsViewer:r.senderUid===actor.uid,
+    campaignDate:r.campaignDate??null,
+    creationRound:r.creationRound??null,
+    deliveryRound:r.deliveryRound??null,
+    letterNumber:r.letterNumber??null,
+    letterKind:r.letterKind??null,
+    originHouseId:r.originHouseId??null,
+    deliveredAt:r.deliveredAt??null,
+    version:r.version??null,
   };
 }
 

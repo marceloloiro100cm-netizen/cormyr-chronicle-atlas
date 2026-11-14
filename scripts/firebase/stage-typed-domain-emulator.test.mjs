@@ -248,3 +248,39 @@ test('categorizes missing roster, house, membership and recipient separately',()
   assert.equal(s.issues.orphanLinks,4);
   assert.equal(s.firebaseCloudWrites,0);
 });
+
+
+test('retains validated Harptos and weekly metadata without inventing invalid historical dates',()=>{
+  const tables=syntheticDomainTables();
+  const rows=tables.find(t=>t.table==='public.campaign_letters').rows;
+  Object.assign(rows[0],{
+    campaign_date:'1520-F-shieldmeet',
+    creation_week:'3',delivery_week:'4',
+    letter_number:'4',letter_kind:'reservada',origin_house_id:'house-a',
+    version:'7',delivered_at:'2026-11-12 10:05:00+00',
+  });
+  Object.assign(rows[1],{
+    campaign_date:'1522-F-shieldmeet',
+    creation_week:'not-a-week',letter_kind:'unknown-kind',
+  });
+  const plan=buildTypedDomainPlan(tables,hash);
+  assert.equal(plan.summary.planValid,true);
+  assert.equal(plan.summary.letterCoverage.complete,true);
+  const first=plan.docs.letters.find(x=>x.payload.sourceId==='letter-ab').payload;
+  assert.equal(first.campaignDate,'1520-F-shieldmeet');
+  assert.equal(first.creationRound,3);
+  assert.equal(first.deliveryRound,4);
+  assert.equal(first.letterNumber,4);
+  assert.equal(first.letterKind,'reservada');
+  assert.equal(first.originHouseId,'house-a');
+  assert.equal(first.version,7);
+  assert.equal(first.deliveredAt,'2026-11-12T10:05:00.000Z');
+  const second=plan.docs.letters.find(x=>x.payload.sourceId==='letter-to-a').payload;
+  assert.equal(second.campaignDate,null);
+  assert.equal(second.creationRound,null);
+  assert.equal(second.letterKind,null);
+  assert.equal(plan.summary.metadataWarnings.campaignDate,1);
+  assert.equal(plan.summary.metadataWarnings.round,1);
+  assert.equal(plan.summary.metadataWarnings.kind,1);
+  assert.equal(plan.summary.typedCollections.letters,4);
+});
