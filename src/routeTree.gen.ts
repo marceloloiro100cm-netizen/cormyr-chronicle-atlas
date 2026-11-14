@@ -18,6 +18,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedJogadoresRouteImport } from './routes/_authenticated/jogadores'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as ApiFirebaseDomainRouteImport } from './routes/api/firebase-domain'
 import { Route as ApiFirebaseAuthVerifyRouteImport } from './routes/api/firebase-auth-verify'
 import { Route as ApiPublicCatalogRouteImport } from './routes/api/public/catalog'
 import { Route as ApiPublicGalleryImageRouteImport } from './routes/api/public/gallery-image'
@@ -71,6 +72,11 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiFirebaseDomainRoute = ApiFirebaseDomainRouteImport.update({
+  id: '/api/firebase-domain',
+  path: '/api/firebase-domain',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiFirebaseAuthVerifyRoute = ApiFirebaseAuthVerifyRouteImport.update({
   id: '/api/firebase-auth-verify',
   path: '/api/firebase-auth-verify',
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/jogadores': typeof AuthenticatedJogadoresRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/firebase-domain': typeof ApiFirebaseDomainRoute
   '/api/firebase-auth-verify': typeof ApiFirebaseAuthVerifyRoute
   '/api/public/catalog': typeof ApiPublicCatalogRoute
   '/api/public/gallery-image': typeof ApiPublicGalleryImageRoute
@@ -133,6 +140,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/jogadores': typeof AuthenticatedJogadoresRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/firebase-domain': typeof ApiFirebaseDomainRoute
   '/api/firebase-auth-verify': typeof ApiFirebaseAuthVerifyRoute
   '/api/public/catalog': typeof ApiPublicCatalogRoute
   '/api/public/gallery-image': typeof ApiPublicGalleryImageRoute
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/jogadores': typeof AuthenticatedJogadoresRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/firebase-domain': typeof ApiFirebaseDomainRoute
   '/api/firebase-auth-verify': typeof ApiFirebaseAuthVerifyRoute
   '/api/public/catalog': typeof ApiPublicCatalogRoute
   '/api/public/gallery-image': typeof ApiPublicGalleryImageRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/jogadores'
     | '/.lovable/oauth/consent'
+    | '/api/firebase-domain'
     | '/api/firebase-auth-verify'
     | '/api/public/catalog'
     | '/api/public/gallery-image'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/jogadores'
     | '/.lovable/oauth/consent'
+    | '/api/firebase-domain'
     | '/api/firebase-auth-verify'
     | '/api/public/catalog'
     | '/api/public/gallery-image'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/jogadores'
     | '/.lovable/oauth/consent'
+    | '/api/firebase-domain'
     | '/api/firebase-auth-verify'
     | '/api/public/catalog'
     | '/api/public/gallery-image'
@@ -224,6 +236,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  ApiFirebaseDomainRoute: typeof ApiFirebaseDomainRoute
   ApiFirebaseAuthVerifyRoute: typeof ApiFirebaseAuthVerifyRoute
   ApiPublicCatalogRoute: typeof ApiPublicCatalogRoute
   ApiPublicGalleryImageRoute: typeof ApiPublicGalleryImageRoute
@@ -296,6 +309,13 @@ declare module '@tanstack/react-router' {
       path: '/.lovable/oauth/consent'
       fullPath: '/.lovable/oauth/consent'
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/firebase-domain': {
+      id: '/api/firebase-domain'
+      path: '/api/firebase-domain'
+      fullPath: '/api/firebase-domain'
+      preLoaderRoute: typeof ApiFirebaseDomainRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/firebase-auth-verify': {
@@ -371,6 +391,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  ApiFirebaseDomainRoute: ApiFirebaseDomainRoute,
   ApiFirebaseAuthVerifyRoute: ApiFirebaseAuthVerifyRoute,
   ApiPublicCatalogRoute: ApiPublicCatalogRoute,
   ApiPublicGalleryImageRoute: ApiPublicGalleryImageRoute,
