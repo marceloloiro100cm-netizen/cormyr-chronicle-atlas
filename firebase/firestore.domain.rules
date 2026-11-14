@@ -185,6 +185,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /migrationDriveSyncStage/{snapshot}/{document=**} {
+      // Bindings, file mappings, review inbox and outbox: server-only. The
+      // Drive runner and the administrator service are the only writers.
+      allow read, write: if false;
+    }
+
     match /migrationRecordStage/{snapshot} {
       allow read, write: if false;
       // Records and versions are written only by the server-side service.

@@ -1,0 +1,60 @@
+name: Firebase Drive sync (private emulator)
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/drive-*.mjs'
+      - 'scripts/firebase/stage-drive-emulator*.mjs'
+      - 'firebase/firestore.domain.rules'
+      - 'docs/firebase/DRIVE-SYNC-EMULATOR.md'
+      - '.github/workflows/firebase-drive-sync.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/drive-*.mjs'
+      - 'scripts/firebase/stage-drive-emulator*.mjs'
+      - 'firebase/firestore.domain.rules'
+      - '.github/workflows/firebase-drive-sync.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drive-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax
+        run: |
+          for f in scripts/firebase/drive-core.mjs scripts/firebase/drive-service.mjs scripts/firebase/drive-service.integration.mjs scripts/firebase/stage-drive-emulator.mjs; do node --check "$f"; done
+      - name: Unit tests
+        run: node --test scripts/firebase/drive-core.test.mjs scripts/firebase/stage-drive-emulator.test.mjs scripts/firebase/stage-records-emulator.test.mjs
+      - name: Public-repository private-data gate
+        run: node scripts/verify-public-repo.mjs
+
+  drive-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned tools for LOCAL emulators only
+        run: npm install --no-save --package-lock=false firebase-tools@15.35.0 firebase-admin@14.5.1 firebase@13.3.0 @firebase/rules-unit-testing@6.0.0
+      - name: Transactional commit and rules tests on emulator
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+        run: |
+          npx firebase emulators:exec --only firestore \
+            --project demo-cormyr-migration \
+            --config firebase/firebase-domain.json \
+            "node scripts/firebase/drive-service.integration.mjs"

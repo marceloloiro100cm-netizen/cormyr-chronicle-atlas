@@ -7,6 +7,7 @@ import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {assertEmulatorOnly,loadVerifiedPrivateTables} from './stage-firestore-emulator.mjs';
 import {SYNC_STATES} from './record-core.mjs';
+import {postgrestTimestamp} from './drive-core.mjs';
 
 const DEMO='demo-cormyr-migration';
 export const ROOT='migrationRecordStage';
@@ -54,6 +55,8 @@ export function buildRecordPlan(tables,snapshotId){
     const payload={id:r.id,houseId:nz(r.house_id),playerId:nz(r.player_id),visibility:r.visibility,
       kind:r.kind,title:r.title,content:r.content??'',version,createdBy:nz(r.created_by),
       updatedBy:nz(r.updated_by),createdAt:iso(r.created_at),updatedAt:iso(r.updated_at),
+      // Original text, so Drive envelopes of unchanged rows stay byte-identical.
+      createdAtText:postgrestTimestamp(r.created_at),updatedAtText:postgrestTimestamp(r.updated_at),
       syncState:r.sync_state||'pending',lastSyncedAt:iso(r.last_synced_at),
       sourceFileId:nz(r.source_file_id),sourceModifiedAt:nz(r.source_modified_at)};
     recById.set(r.id,payload);
