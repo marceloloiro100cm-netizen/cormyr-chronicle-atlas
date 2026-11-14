@@ -359,6 +359,7 @@ describe('Melhorias do Jornal (12/11/2026)',()=>{
  it('Tab recua texto no painel do escritor sem mudar de campo',()=>{
   const p=editingFixture();
   render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
   const input=screen.getByRole('textbox',{name:'Texto'}) as HTMLTextAreaElement;
   input.focus();input.setSelectionRange(7,7);
   const result=fireEvent.keyDown(input,{key:'Tab'});
