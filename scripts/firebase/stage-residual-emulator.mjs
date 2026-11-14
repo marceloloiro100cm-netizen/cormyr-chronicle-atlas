@@ -24,6 +24,10 @@ const T={
 const HASH=/^[a-f0-9]{64}$/;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_DOC=900*1024;
+const CHUNK_THRESHOLD=400*1024,CHUNK_CHARS=150000;
+export const chunkText=t=>{const out=[];for(let i=0;i<t.length;i+=CHUNK_CHARS)out.push(t.slice(i,i+CHUNK_CHARS));return out;};
+/** Inverse of the chunking: chunks may arrive in any order. */
+export const joinChunks=chunks=>[...chunks].sort((a,b)=>a.index-b.index).map(c=>c.text).join('');
 const sha=s=>createHash('sha256').update(s).digest('hex');
 export const idOf=(...parts)=>sha(parts.join('\u0000'));
 const int=v=>v==null||v===''?null:/^-?\d+$/.test(v)?Number(v):NaN;
@@ -45,7 +49,7 @@ export function buildResidualPlan(tables,snapshotId){
   const by=new Map(tables.map(t=>[t.table,t]));
   const rows=n=>by.get(n)?.rows||[];
   const issues={duplicateIds:0,invalidValues:0,oversizedDocuments:0};
-  const docs=Object.fromEntries(Object.keys(T).map(k=>[k,[]]));
+  const docs=Object.fromEntries([...Object.keys(T),'backupChunks'].map(k=>[k,[]]));
   const seen=new Set();
   const once=k=>{if(seen.has(k)){issues.duplicateIds++;return false;}seen.add(k);return true;};
   const bad=()=>{issues.invalidValues++;};
@@ -62,7 +66,12 @@ export function buildResidualPlan(tables,snapshotId){
     const snap=jsonText(r.snapshot);
     if(!UUID.test(r.id||'')||!r.reason||snap===undefined){bad();continue;}
     if(!once('b:'+r.id))continue;
-    push('backups',r.id,{id:r.id,reason:r.reason,snapshotJson:snap,createdAt:iso(r.created_at)});
+    if(Buffer.byteLength(snap,'utf8')>CHUNK_THRESHOLD){
+      // Large snapshots are split by characters into separate documents (Firestore limit is 1 MiB).
+      const parts=chunkText(snap);
+      push('backups',r.id,{id:r.id,reason:r.reason,snapshotJson:null,snapshotChunks:parts.length,createdAt:iso(r.created_at)});
+      parts.forEach((text,i)=>push('backupChunks',r.id+':'+i,{backupId:r.id,index:i,text}));
+    }else push('backups',r.id,{id:r.id,reason:r.reason,snapshotJson:snap,snapshotChunks:0,createdAt:iso(r.created_at)});
   }
   for(const r of rows(T.profiles)){
     if(!UUID.test(r.id||'')){bad();continue;}
@@ -113,7 +122,7 @@ export function buildResidualPlan(tables,snapshotId){
   const missionLinksMatchCore=!hasLinks||(stored.size===core.size&&[...core].every(e=>stored.has(e)));
   return {snapshotId,docs,summary:{
     planValid:complete&&Object.values(issues).every(n=>n===0)&&missionLinksMatchCore,
-    sourceCounts:src,stagedCounts:counts,coverageComplete:complete,missionLinksMatchCore,issues}};
+    sourceCounts:src,stagedCounts:{...counts,backupChunks:docs.backupChunks.length},coverageComplete:complete,missionLinksMatchCore,issues}};
 }
 
 export async function loadResidualPlan(dir){

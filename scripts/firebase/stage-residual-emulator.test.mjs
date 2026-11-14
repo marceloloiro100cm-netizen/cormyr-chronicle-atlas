@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildResidualPlan} from './stage-residual-emulator.mjs';
+import {buildResidualPlan,joinChunks} from './stage-residual-emulator.mjs';
 import {LINKS} from './spy-missions-core.mjs';
 
 const SNAP='b'.repeat(64);
@@ -44,6 +44,19 @@ test('invalid values, duplicates and oversized documents are counted',()=>{
   assert.equal(mk(t=>{t[6].rows[0].status='nope';}).issues.invalidValues,1);
   assert.equal(mk(t=>{t[5].rows[0].actor='x';}).planValid,false);
   assert.equal(mk(t=>{t[7].rows[0].archived_snapshot=JSON.stringify({big:'x'.repeat(950*1024)});}).issues.oversizedDocuments,1);
+});
+test('a large backup snapshot is split into chunks and rebuilt exactly',()=>{
+  const t=fixture();
+  const big=JSON.stringify({text:'é'.repeat(600*1024)});
+  t[1].rows[0].snapshot=big;
+  const p=buildResidualPlan(t,SNAP);
+  assert.equal(p.summary.planValid,true,JSON.stringify(p.summary));
+  const main=p.docs.backups[0].payload;
+  assert.equal(main.snapshotJson,null);assert.ok(main.snapshotChunks>1);
+  assert.equal(p.docs.backupChunks.length,main.snapshotChunks);
+  assert.equal(p.summary.stagedCounts.backups,1);
+  assert.equal(joinChunks(p.docs.backupChunks.map(c=>c.payload).reverse()),big);
+  for(const c of p.docs.backupChunks)assert.ok(Buffer.byteLength(JSON.stringify(c.payload))<900*1024);
 });
 test('summary never carries row content',()=>{
   const s=JSON.stringify(buildResidualPlan(fixture(),SNAP).summary);

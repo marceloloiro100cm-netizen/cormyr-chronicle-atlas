@@ -13,3 +13,7 @@ node scripts/firebase/stage-residual-emulator.mjs --normalized DIR
 ## O que fica de fora de propósito
 
 Não são dados de domínio a migrar: `cron.*` (o job vira Cloud Scheduler, pendência do proprietário), tabelas de migração (`*.schema_migrations`, `drizzle`), `realtime.*` e `vault.*`, e a sessão do Auth (`auth.refresh_tokens`, `auth.sessions`, `auth.mfa_amr_claims`: os usuários entram de novo). `storage.objects` e `storage.buckets` seguem o fluxo de Storage (`STORAGE-EXPORT.md`).
+
+## Snapshots grandes
+
+Um snapshot de `campaign_migration_backups` passa do limite de 1 MiB do Firestore. Acima de 400 KiB o texto JSON é dividido por caracteres em `backupChunks/<id>:<n>`, e o documento principal guarda `snapshotChunks`. `joinChunks` reconstrói o texto exato.
