@@ -1,0 +1,27 @@
+name: Firebase storage access core
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/storage-access-core*.mjs'
+      - 'docs/firebase/STORAGE-ACCESS.md'
+      - '.github/workflows/firebase-storage-access.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  storage-access-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax
+        run: node --check scripts/firebase/storage-access-core.mjs
+      - name: Unit tests
+        run: node --test scripts/firebase/storage-access-core.test.mjs
+      - name: Public-repository private-data gate
+        run: node scripts/verify-public-repo.mjs
