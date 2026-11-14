@@ -388,7 +388,7 @@
 .region-stage .region-meta strong{font-weight:700}
 .region-stage .region-description{font-size:17px;line-height:1.6;color:var(--ink)}
 /* bandeira heráldica */
-.region-pennant{margin-top:-34px;justify-self:end;width:100%;max-width:240px;filter:drop-shadow(0 10px 14px rgba(36,19,52,.35))}
+.region-pennant{margin-top:calc(-50px - clamp(40px,6vw,64px));justify-self:end;width:100%;max-width:240px;filter:drop-shadow(0 10px 14px rgba(36,19,52,.35))}
 .pennant-wood,.pennant-gold,.pennant-body{clip-path:polygon(50% 0,56% 4.5%,100% 7%,100% 85%,50% 100%,0 85%,0 7%,44% 4.5%)}
 .pennant-wood{padding:30px 9px 22px;background:repeating-linear-gradient(95deg,#8a5630 0 6px,#6d4020 6px 11px,#9a6638 11px 16px)}
 .pennant-gold{padding:5px;background:linear-gradient(135deg,#f6e2a0,#b58e4e 45%,#f6e2a0 70%,#9c7433)}
@@ -423,3 +423,12 @@
  .region-stage .region-map-figure img{max-height:300px}
 }
 @media print{.region-pennant,.region-map-actions,#region-change{display:none!important}}
+
+/* Região: título "Casas de X", abas e botão de download numa só faixa, abaixo do estágio */
+.region-list-head{margin:0 0 6px}
+.region-list-head .house-heading{margin:0 0 12px}
+.region-list-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:#fafafd}
+.region-list-bar #region-toolbar-slot{min-width:0}
+.region-list-bar .region-view-toolbar{padding:0;border:0;border-radius:0;background:none}
+.region-list-bar .region-download-bar{margin:0 0 0 auto;justify-content:flex-end}
+@media(max-width:600px){.region-list-bar{padding:10px}.region-list-bar #region-toolbar-slot{flex:1 1 100%}.region-list-bar .region-download-bar{margin:0;width:100%;justify-content:stretch}.region-list-bar .region-download{flex:1}}
