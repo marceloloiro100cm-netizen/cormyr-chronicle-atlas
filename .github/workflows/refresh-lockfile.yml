@@ -1,5 +1,10 @@
 name: Refresh lockfile
 on:
+  # Dispara no push da branch (workflow_dispatch exige o arquivo na branch padrão).
+  # O commit do lockfile altera só bun.lock, que não está nos filtros: sem laço.
+  push:
+    branches: ['chore/leave-lovable', 'feat/firebase-phase2a']
+    paths: ['package.json', '.github/workflows/refresh-lockfile.yml']
   workflow_dispatch:
 
 permissions:
