@@ -132,6 +132,13 @@ function targetParts(date){
   if(date.slice(5,7)==='F-'){const f=date.slice(7);return {year,month:FESTIVAL_MONTH[f],day:30,festival:f};}
   return {year,month:Number(date.slice(5,7))-1,day:Number(date.slice(8,10)),festival:null};
 }
+/** audit_character_year_transition: one auditable event per year boundary crossed. */
+export function yearTransitions({fromYear,toYear,calendarVersion}){
+  if(fromYear===toYear)return [];
+  const delta=toYear>fromYear?1:-1,out=[];
+  for(let i=fromYear;i!==toYear;i+=delta)out.push({calendarVersion,fromYear:i,toYear:i+delta});
+  return out;
+}
 const signatureOf=r=>createHash('sha256').update(JSON.stringify({
   version:r.version,mode:r.mode,date:r.date??null,count:r.count??1,
   reason:r.reason??'',backdate:r.allowBackdate===true})).digest('hex');
@@ -166,7 +173,8 @@ export function planTimeChange({calendar,existingOp,request,actorUid,houses,adva
     reason:'Hub Temporal · '+r.mode+' · operação '+r.key+(trimmed?' · '+trimmed.slice(0,500):''),createdAt:at};
   const operation={id:r.key,actor:actorUid,requestHash:signature,expectedVersion:r.version,mode:r.mode,
     fromDate,toDate,beforeState:calendar,afterState:saved,reason:trimmed.slice(0,500),createdAt:at};
-  return {duplicate:false,calendar:saved,operation,calendarAudit,houseWrites,preview,
+  const transitions=yearTransitions({fromYear:calendar.year,toYear:t.year,calendarVersion:saved.version});
+  return {duplicate:false,calendar:saved,operation,calendarAudit,houseWrites,preview,transitions,
     scheduleReason:'Publicação temporal '+r.key,
     result:{...saved,duplicate:false,operationKey:r.key}};
 }

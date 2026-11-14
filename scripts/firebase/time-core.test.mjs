@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {planTimeChange,previewHouseTimeImpacts,reconcileSheetState,reconcileHouseMonths,TimeError} from './time-core.mjs';
+import {yearTransitions,planTimeChange,previewHouseTimeImpacts,reconcileSheetState,reconcileHouseMonths,TimeError} from './time-core.mjs';
 
 const K='11111111-1111-4111-8111-111111111111';
 const cal={year:1520,month:0,day:15,festival:null,autoAdvance:true,version:4,publishedWeek:9,publishedAt:null};
@@ -90,4 +90,13 @@ test('house impact preview classifies houses',()=>{
   assert.equal(p.eligible,2);assert.equal(p.project_candidates,1);assert.equal(p.target_month,base+2);
   assert.equal(previewHouseTimeImpacts({calendar:cal,targetDate:'1520-01-15',houses:[sheet('a')]}).houses[0].status,'historical');
   assert.equal(code(()=>previewHouseTimeImpacts({calendar:cal,targetDate:'1531-01-01',houses})),'invalid');
+});
+
+test('year transitions: one per boundary, both directions, none inside a year',()=>{
+  assert.deepEqual(yearTransitions({fromYear:1520,toYear:1520,calendarVersion:5}),[]);
+  assert.deepEqual(yearTransitions({fromYear:1520,toYear:1522,calendarVersion:5}),
+    [{calendarVersion:5,fromYear:1520,toYear:1521},{calendarVersion:5,fromYear:1521,toYear:1522}]);
+  assert.deepEqual(yearTransitions({fromYear:1520,toYear:1519,calendarVersion:5}),[{calendarVersion:5,fromYear:1520,toYear:1519}]);
+  assert.equal(plan({request:{date:'1521-02-10'}}).transitions.length,1);
+  assert.equal(plan().transitions.length,0);
 });

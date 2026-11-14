@@ -8,6 +8,7 @@ import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/ru
 import {doc,getDoc,getDocs,collection,setDoc} from 'firebase/firestore';
 import {assertEmulatorOnly} from './stage-firestore-emulator.mjs';
 import {buildNobleHousePlan,writeNobleHouseToEmulator,sheetDocId,ledgerDocId,ROOT,idOf} from './stage-noble-house-emulator.mjs';
+import {ROOT as RECORDS} from './stage-records-emulator.mjs';
 import {createEmulatorNobleHouseService} from './noble-house-service.mjs';
 
 const sha=s=>createHash('sha256').update(s).digest('hex');
@@ -54,7 +55,6 @@ async function run(){
     assert.equal(await code(svc.commit('synthetic:viewer',req('houseA',4,3))),'denied');
     assert.equal(await code(svc.commit('synthetic:bob',req('houseA',5,3))),'denied');
     assert.equal(await code(svc.commit('bad-token',req('houseA',6,3))),'denied');
-    assert.equal(await code(svc.commit('synthetic:alice',req('houseA',7,3,{action:'unit'}))),'unsupported');
     assert.equal(await code(svc.commit('synthetic:bob',req('houseB',1,1,{operationKey:K(1)}))),null);
     // Same key reused by a different actor on the same house is rejected.
     assert.equal(await code(svc.commit('synthetic:narrator',req('houseA',1,3))),'conflict');
@@ -67,6 +67,29 @@ async function run(){
     assert.equal(sheet.data().version,4);
     const led=await adminDb.collection(ROOT).doc(snap).collection('ledger').doc(ledgerDocId('houseA',K(1))).get();
     assert.equal(led.data().beforeState.x,0);
+
+    // Unit commanders: a house NPC is reused, a new one is created atomically with the sheet.
+    const recs=adminDb.collection(RECORDS).doc(snap).collection('records');
+    await recs.doc('npc1').set({id:'npc1',houseId:'houseA',playerId:null,visibility:'house',kind:'character',
+      title:'Ser Álvaro',content:'',version:1,createdAt:'2026-01-01T00:00:00.000Z',updatedAt:'2026-01-01T00:00:00.000Z'});
+    const unitReq=(n,version,units,action='unit')=>req('houseA',n,version,{action,state:{...st('houseA',n),units}});
+    assert.equal(await code(svc.commit('synthetic:viewer',unitReq(4,4,[{id:'u1',name:'Lanceiros',commanderName:'ser alvaro'}]))),'denied');
+    assert.equal((await recs.get()).size,1);
+    const u1=await svc.commit('synthetic:alice',unitReq(5,4,[{id:'u1',name:'Lanceiros',commanderName:'ser alvaro'}]));
+    assert.equal(u1.version,5);
+    assert.equal(u1.state.court.length,1);assert.equal(u1.state.court[0].npcId,'npc1');
+    assert.equal((await recs.get()).size,1); // reused, nothing created
+    const u2=await svc.commit('synthetic:alice',unitReq(6,5,[{id:'u1',name:'Lanceiros',commanderName:'ser alvaro',commanderId:u1.state.court[0].id},
+      {id:'u2',name:'Arqueiros',commanderName:'Lady Brenna'}],'unit_state'));
+    assert.equal(u2.version,6);
+    assert.equal((await recs.get()).size,2);
+    const made=(await recs.where('title','==','Lady Brenna').get()).docs[0].data();
+    assert.equal(made.visibility,'house');assert.equal(made.kind,'character');assert.equal(made.createdBy,'alice');
+    assert.equal(u2.state.units[1].commanderId,u2.state.court.find(m=>m.npcId===made.id).id);
+    assert.equal((await adminDb.collection(RECORDS).doc(snap).collection('versions').get()).size,1);
+    // A stale version creates no record (the version check runs first).
+    assert.equal(await code(svc.commit('synthetic:alice',unitReq(7,5,[{id:'u3',name:'C',commanderName:'Outro Nome'}]))),'conflict');
+    assert.equal((await recs.get()).size,2);
 
     const c=uid=>env.authenticatedContext(uid).firestore();
     const ref=(db,type,id)=>doc(db,ROOT,snap,type,id);

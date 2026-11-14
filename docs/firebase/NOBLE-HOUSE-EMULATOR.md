@@ -16,3 +16,6 @@ As ações `unit` e `unit_state` (resolução de comandante em `campaign_records
 node scripts/firebase/stage-noble-house-emulator.mjs --normalized <DIR_PRIVADO>
 ```
 Imprime apenas contagens e problemas agregados. Com emulador ativo, acrescente `--execute-emulator`.
+
+## Comandantes das unidades (complemento da Fase 2)
+As ações `unit` e `unit_state` resolvem os comandantes depois da checagem de versão, na mesma transação da ficha: um registro de personagem visível à Casa com o mesmo nome (sem acento nem caixa, o mais antigo primeiro, nunca uma "Ficha ...") é reaproveitado; se não existir, é criado com visibilidade da Casa e entra uma versão no histórico. O integrante da corte "Comandante de Exército" é criado uma única vez por pessoa. Nomes privados nunca são copiados para a ficha compartilhada.

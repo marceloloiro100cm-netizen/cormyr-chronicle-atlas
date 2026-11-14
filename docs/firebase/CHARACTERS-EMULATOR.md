@@ -15,3 +15,6 @@ Somente emulador local (`demo-cormyr-migration`). Não toca produção nem o Sup
 ```
 node scripts/firebase/stage-characters-emulator.mjs --normalized <DIR_PRIVADO>
 ```
+
+## Idades por Casa (complemento da Fase 2)
+`houseAges(idToken, casa)` porta `get_house_character_ages`: o ano vem do calendário oficial, nunca do cliente. O Narrador vê todas as pessoas vinculadas a fichas de personagem da Casa; o jogador membro vê as vinculadas a registros visíveis à Casa e as próprias de jogador (registro, vínculo e pessoa precisam ter a mesma visibilidade e ele precisa ser o dono). Quem não é membro da Casa é negado.

@@ -8,6 +8,7 @@ import {assertEmulatorOnly} from './stage-firestore-emulator.mjs';
 import {ROOT} from './stage-time-engine-emulator.mjs';
 import {ROOT as NOBLE_ROOT,sheetDocId,ledgerDocId} from './stage-noble-house-emulator.mjs';
 import {ROOT as SCHEDULE_ROOT} from './stage-schedule-emulator.mjs';
+import {ROOT as CHARACTER_ROOT} from './stage-characters-emulator.mjs';
 import {publishScheduleSnapshots} from './schedule-core.mjs';
 import {previewTimeChange} from './harptos-core.mjs';
 import {planTimeChange,previewHouseTimeImpacts,requireNarratorScope,TimeError} from './time-core.mjs';
@@ -26,6 +27,7 @@ export function createEmulatorTimeService({db,auth,snapshotId,env=process.env}){
   const ledger=db.collection(NOBLE_ROOT).doc(snapshotId).collection('ledger');
   const events=db.collection(SCHEDULE_ROOT).doc(snapshotId).collection('events');
   const scheduleAudit=db.collection(SCHEDULE_ROOT).doc(snapshotId).collection('audit');
+  const transitionsCol=db.collection(CHARACTER_ROOT).doc(snapshotId).collection('transitions');
   const access=db.collection('migrationDomainStage').doc(snapshotId).collection('access');
   const uidOf=async token=>{
     try{return (await auth.verifyIdToken(token)).uid;}catch{throw new TimeError('denied','Acesso não autorizado');}
@@ -72,6 +74,13 @@ export function createEmulatorTimeService({db,auth,snapshotId,env=process.env}){
         const plan=planTimeChange({calendar,existingOp:opSnap.exists?opSnap.data():null,request,actorUid:uid,
           houses,advanceLedger,newKey:()=>randomUUID()});
         if(plan.duplicate)return plan.result;
+        // ON CONFLICT DO NOTHING per (calendar version, from, to): read before any write.
+        const fresh=[];
+        for(const t of plan.transitions){
+          const q=await tx.get(transitionsCol.where('calendarVersion','==',t.calendarVersion)
+            .where('fromYear','==',t.fromYear).where('toYear','==',t.toYear).limit(1));
+          if(q.empty)fresh.push(t);
+        }
         const sched=publishScheduleSnapshots({events:evSnap.docs.map(d=>d.data()),actorUid:uid,reason:plan.scheduleReason});
         for(const w of plan.houseWrites){
           tx.set(sheets.doc(sheetDocId(w.houseId)),w.sheet);
@@ -80,6 +89,7 @@ export function createEmulatorTimeService({db,auth,snapshotId,env=process.env}){
         for(const e of sched.updated)tx.set(events.doc(e.id),e);
         for(const a of sched.audits)tx.set(scheduleAudit.doc(randomUUID()),{eventId:a.eventId,actor:a.actor,
           changedAt:new Date().toISOString(),reason:a.reason,beforeState:a.before??null,afterState:a.after??null});
+        for(const t of fresh)tx.set(transitionsCol.doc(randomUUID()),{...t,actor:uid,createdAt:new Date().toISOString()});
         tx.set(calRef,plan.calendar);
         tx.set(opsCol.doc(key),{id:key,...plan.operation});
         tx.set(auditCol.doc(randomUUID()),plan.calendarAudit);

@@ -17,3 +17,6 @@ Somente emulador local (`demo-cormyr-migration`). Não toca produção nem o Sup
 node scripts/firebase/stage-time-engine-emulator.mjs --normalized <DIR_PRIVADO>
 ```
 Imprime apenas contagens agregadas.
+
+## Transições anuais
+Cada fronteira de ano cruzada por uma mudança de data grava um evento auditável (versão do calendário, ano de origem e destino, ator) em `migrationCharacterStage/<snapshot>/transitions`, uma vez por trio, na mesma transação da publicação (equivalente ao gatilho `audit_character_year_transition`).
