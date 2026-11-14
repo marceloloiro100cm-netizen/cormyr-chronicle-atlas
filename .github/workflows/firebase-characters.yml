@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/firebase/character-*.mjs'
+      - 'scripts/firebase/house-ages-*.mjs'
       - 'scripts/firebase/stage-characters-emulator*.mjs'
       - 'firebase/firestore.domain.rules'
       - 'docs/firebase/CHARACTERS-EMULATOR.md'
@@ -11,6 +12,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/firebase/character-*.mjs'
+      - 'scripts/firebase/house-ages-*.mjs'
       - 'scripts/firebase/stage-characters-emulator*.mjs'
       - 'firebase/firestore.domain.rules'
       - '.github/workflows/firebase-characters.yml'
@@ -30,9 +32,9 @@ jobs:
           node-version: '24'
       - name: Syntax
         run: |
-          for f in scripts/firebase/character-core.mjs scripts/firebase/character-service.mjs scripts/firebase/character-service.integration.mjs scripts/firebase/stage-characters-emulator.mjs; do node --check "$f"; done
+          for f in scripts/firebase/character-core.mjs scripts/firebase/house-ages-core.mjs scripts/firebase/character-service.mjs scripts/firebase/character-service.integration.mjs scripts/firebase/stage-characters-emulator.mjs; do node --check "$f"; done
       - name: Unit tests
-        run: node --test scripts/firebase/character-core.test.mjs scripts/firebase/stage-characters-emulator.test.mjs
+        run: node --test scripts/firebase/character-core.test.mjs scripts/firebase/house-ages-core.test.mjs scripts/firebase/stage-characters-emulator.test.mjs
       - name: Public-repository private-data gate
         run: node scripts/verify-public-repo.mjs
 

@@ -15,7 +15,7 @@ import {createEmulatorTimeService} from './time-service.mjs';
 const sha=s=>createHash('sha256').update(s).digest('hex');
 const tab=(table,rows)=>({table,rows,columns:rows.length?Object.keys(rows[0]):[]});
 const K1='11111111-1111-4111-8111-111111111111',K2='22222222-2222-4222-8222-222222222222',
-  K3='33333333-3333-4333-8333-333333333333',E1='44444444-4444-4444-8444-444444444444';
+  K3='33333333-3333-4333-8333-333333333333',K4='77777777-7777-4777-8777-777777777777',E1='44444444-4444-4444-8444-444444444444';
 const BASE=12*1520;
 
 async function run(){
@@ -90,9 +90,17 @@ async function run(){
     assert.equal(back.housesReconciled,0);assert.equal(back.version,6);
     assert.equal((await adminDb.collection(NOBLE).doc(snap).collection('sheets').doc(sheetDocId('casa-a')).get()).data().version,2);
 
+    // Crossing a year boundary records exactly one auditable transition, once per calendar version.
+    const fwd=await svc.publish(N,{version:6,key:K4,mode:'set',date:'1521-02-10'});
+    assert.equal(fwd.version,7);assert.equal(fwd.housesReconciled,1);
+    const trans=await adminDb.collection('migrationCharacterStage').doc(snap).collection('transitions').get();
+    assert.equal(trans.size,1);
+    assert.deepEqual([trans.docs[0].data().fromYear,trans.docs[0].data().toYear,trans.docs[0].data().calendarVersion],[1520,1521,7]);
+    assert.equal(trans.docs[0].data().actor,'narrator');
+
     const hist=await svc.history(N);
-    assert.equal(hist.length,2);assert.equal(await code(svc.history(A)),'denied');
-    assert.equal((await stage.collection('audit').get()).size,2);
+    assert.equal(hist.length,3);assert.equal(await code(svc.history(A)),'denied');
+    assert.equal((await stage.collection('audit').get()).size,3);
 
     for(const db of [env.authenticatedContext('narrator').firestore(),env.authenticatedContext('alice').firestore(),
         env.unauthenticatedContext().firestore()]){

@@ -7,7 +7,7 @@ import {getFirestore} from 'firebase-admin/firestore';
 import {initializeTestEnvironment,assertFails} from '@firebase/rules-unit-testing';
 import {doc,getDoc,getDocs,collection,setDoc} from 'firebase/firestore';
 import {assertEmulatorOnly} from './stage-firestore-emulator.mjs';
-import {buildCharacterPlan,writeCharactersToEmulator,ROOT} from './stage-characters-emulator.mjs';
+import {buildCharacterPlan,writeCharactersToEmulator,ROOT,linkDocId} from './stage-characters-emulator.mjs';
 import {createEmulatorCharacterService} from './character-service.mjs';
 
 const sha=s=>createHash('sha256').update(s).digest('hex');
@@ -74,6 +74,24 @@ async function run(){
     const row=dash.characters.find(r=>r.id===C1);
     assert.equal(row.before.status,'ok');assert.equal(row.before.age,20);assert.equal(row.after.age,21);
     assert.equal(await code(svc.ageDashboard(A,{year:1520,targetYear:1521})),'denied');
+
+    // get_house_character_ages: the year is the official calendar's; visibility follows record, link and person.
+    await adminDb.collection('migrationTimeEngineStage').doc(snap).collection('calendar').doc('current').set({year:1520});
+    const people=adminDb.collection(ROOT).doc(snap).collection('characters');
+    await people.doc('cH').set({id:'cH',displayName:'Pessoa H',houseId:'houseA',visibility:'house',ownerUserId:null,
+      reviewStatus:'reviewed',confidence:'confirmed',birthYear:1500,baselineAge:null,baselineYear:null,agePolicy:'year_turn',
+      aliveStatus:'alive',deathYear:null,version:1});
+    const recs=adminDb.collection('migrationRecordStage').doc(snap).collection('records');
+    await recs.doc('rH').set({id:'rH',houseId:'houseA',playerId:null,visibility:'house',kind:'character',title:'T',content:'',version:1});
+    await recs.doc('rG').set({id:'rG',houseId:'houseA',playerId:null,visibility:'gm',kind:'character',title:'T',content:'',version:1});
+    const lk=(c,r,v)=>adminDb.collection(ROOT).doc(snap).collection('links').doc(linkDocId('campaign_record',r))
+      .set({characterId:c,sourceKind:'campaign_record',sourceKey:r,sourceVisibility:v});
+    await lk('cH','rH','house');await lk(C1,'rG','gm');
+    const mine=await svc.houseAges(A,'houseA');
+    assert.deepEqual(mine.map(x=>[x.record_id,x.age,x.status,x.as_of_year]),[['rH',20,'ok',1520]]);
+    assert.equal((await svc.houseAges(N,'houseA')).length,2);
+    assert.equal(await code(svc.houseAges(A,'houseB')),'denied');
+    assert.equal(await code(svc.houseAges('bad','houseA')),'denied');
 
     const audit=await adminDb.collection(ROOT).doc(snap).collection('audit').get();
     assert.equal(audit.size,4); // create, update, relation, link

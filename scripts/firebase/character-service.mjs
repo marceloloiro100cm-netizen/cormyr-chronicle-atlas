@@ -6,6 +6,9 @@
 import {randomUUID} from 'node:crypto';
 import {assertEmulatorOnly} from './stage-firestore-emulator.mjs';
 import {ROOT,idOf,linkDocId,relationDocId} from './stage-characters-emulator.mjs';
+import {ROOT as RECORD_ROOT} from './stage-records-emulator.mjs';
+import {ROOT as TIME_ROOT} from './stage-time-engine-emulator.mjs';
+import {houseCharacterAges} from './house-ages-core.mjs';
 import {requireNarrator,applyCharacterSave,validateRelation,applyReviewAction,
   characterAgeState,CharacterError} from './character-core.mjs';
 
@@ -96,6 +99,23 @@ export function createEmulatorCharacterService({db,auth,snapshotId,env=process.e
           sourceKind:queueItem.sourceKind,sourceKey:queueItem.sourceKey,
           beforeState:queueItem,afterState:{...queueItem,status:r.status},reason:r.note});
         return {status:r.status,characterId:r.characterId};
+      });
+    },
+    /** get_house_character_ages: year comes from the official calendar, never from the client. */
+    async houseAges(idToken,houseId){
+      const uid=await uidOf(idToken);
+      if(typeof houseId!=='string'||!houseId)throw new CharacterError('invalid','Casa inválida');
+      return db.runTransaction(async tx=>{
+        const [acc,cal,chars,links,recs]=await Promise.all([
+          tx.get(domain.collection('access').doc(uid)),
+          tx.get(db.collection(TIME_ROOT).doc(snapshotId).collection('calendar').doc('current')),
+          tx.get(col('characters')),tx.get(col('links')),
+          tx.get(db.collection(RECORD_ROOT).doc(snapshotId).collection('records')
+            .where('houseId','==',houseId).where('kind','==','character'))]);
+        if(!cal.exists)throw new CharacterError('invalid','Calendário oficial indisponível');
+        return houseCharacterAges({uid,raw:acc.data(),houseId,year:cal.data().year,
+          characters:chars.docs.map(d=>d.data()),links:links.docs.map(d=>d.data()),
+          records:recs.docs.map(d=>d.data())});
       });
     },
     async ageDashboard(idToken,{year,targetYear,limit=300}){
