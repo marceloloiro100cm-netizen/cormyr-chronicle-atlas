@@ -44,6 +44,17 @@ const config = resolveHomologationConfig(
   import.meta.env['VITE_FIREBASE_PROJECT_ID'],
 );
 
+/** The Firebase Auth Emulator can only be chosen by an explicit local dev build. */
+export function resolveHomologationEmulatorHost(
+  projectId: string | undefined,
+  development: boolean,
+  host: string | undefined,
+): string | undefined {
+  return development && projectId === 'demo-cormyr-migration' &&
+    /^(?:127\\.0\\.0\\.1|localhost|\\[::1\\]):(?:[1-9][0-9]{1,4})$/.test(host ?? '')
+    ? host : undefined;
+}
+
 export function firebaseHomologationConfigured(): boolean {
   return config !== null;
 }
@@ -51,9 +62,14 @@ export function firebaseHomologationConfigured(): boolean {
 let auth: ReturnType<typeof createFirebaseRestAuth> | null = null;
 export function firebaseHomologationAuth(): ReturnType<typeof createFirebaseRestAuth> | null {
   if (!config || typeof window === 'undefined') return null;
+  const emulatorHost=resolveHomologationEmulatorHost(
+    config.projectId,import.meta.env.DEV,
+    import.meta.env['VITE_FIREBASE_AUTH_EMULATOR_HOST'],
+  );
   auth ??= createFirebaseRestAuth({
     apiKey: config.apiKey,
     storage: sessionTokenStorage(window.sessionStorage),
+    ...(emulatorHost ? {emulatorHost} : {}),
   });
   return auth;
 }
