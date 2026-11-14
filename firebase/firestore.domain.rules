@@ -187,6 +187,96 @@ service cloud.firestore {
             resource.data.houseId in scope(snapshot).memberHouseIds)));
         allow list, create, update, delete: if false;
       }
+    }
+
+    match /migrationCharacterStage/{snapshot}/{document=**} {
+      // Canonical registry is Narrator-only and written only by the
+      // server-side service; clients (including narrator) get no access.
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+        allow read, write: if false;
+      }
+    }
+
+    match /migrationMailRuntimeStage/{snapshot} {
+      // All letters, replies, rounds, receipts, private notes, and audit
+      // trails written by the emulator-only backend are never accessible
+      // through the untrusted client SDK, including narrator/editor.
+      allow read, write: if false;
+      match /{document=**} {
+        allow read, write: if false;
+      }
+    }
+
+    match /migrationTemporalStage/{snapshot} {
+      allow read, write: if false;
+      match /calendar/{calendarId} {
+        // Read-only Harptos projection. Even a narrator cannot change
+        // the canonical clock via the client SDK.
+        allow get: if calendarId == 'current' && (narrator(snapshot) || player(snapshot));
+        allow list, create, update, delete: if false;
+      }
+      match /tables/{tableId}/{document=**} {
+        // Temporal operations and audits may reveal private actions.
+        // Keep all history inaccessible, including to the narrator client.
+        allow read, write: if false;
+      }
+      match /tables/{tableId} {
+        allow read, write: if false;
+      }
+    }
+
+    match /migrationNewspaperStage/{snapshot} {
+      allow read, write: if false;
+      match /published/{editionId} {
+        // This collection has only published or archived editions.
+        // No drafts may be written by a client SDK.
+        allow get, list: if narrator(snapshot) || player(snapshot)
+                         || newspaperEditor(snapshot);
+        allow create, update, delete: if false;
+      }
+      match /privateEditions/{editionId} {
+        // Only narrator and newsroom editor may read drafts/cancellations.
+        allow get, list: if narrator(snapshot) || newspaperEditor(snapshot);
+        allow create, update, delete: if false;
+      }
+      match /settings/{settingsId} {
+        allow get: if settingsId == 'current' &&
+          (narrator(snapshot) || newspaperEditor(snapshot));
+        allow list, create, update, delete: if false;
+      }
+      match /archive/{archiveId}/{document=**} {
+        // Complete raw source including drafts, receipts, commissioned
+        // stories and staff. Never expose even to editor via client SDK.
+        allow read, write: if false;
+      }
+      match /archive/{archiveId} {
+        allow read, write: if false;
+      }
+    }
+
+    match /migrationRecordStage/{snapshot} {
+      allow read, write: if false;
+      // Records and versions are written only by the server-side service.
+      // The editor identity is excluded because player() requires profile jogador.
+      match /records/{docId} {
+        allow get: if narrator(snapshot) || (player(snapshot) && (
+          (resource.data.visibility == 'player' &&
+            resource.data.playerId == scope(snapshot).playerId) ||
+          (resource.data.visibility == 'house' &&
+            resource.data.houseId in scope(snapshot).memberHouseIds)));
+        allow list, create, update, delete: if false;
+      }
+      match /versions/{docId} {
+        allow get: if narrator(snapshot) || (player(snapshot) && (
+          (resource.data.visibility == 'player' &&
+            resource.data.playerId == scope(snapshot).playerId) ||
+          (resource.data.visibility == 'house' &&
+            resource.data.houseId in scope(snapshot).memberHouseIds)));
+        allow list, create, update, delete: if false;
+      }
     match /migrationCharacterStage/{snapshot}/{document=**} {
       // Canonical registry is Narrator-only and written only by the
       // server-side service; clients (including narrator) get no access.
