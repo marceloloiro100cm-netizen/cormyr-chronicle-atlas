@@ -17,7 +17,9 @@ export default defineConfig({
     viteReact(),
     tailwindcss(),
     viteTsConfigPaths({ projects: ["./tsconfig.json"] }),
-    nitro(),
+    // Saída em dist/ (padrão exigido pela publicação Lovable); o Firebase
+    // App Hosting aponta para dist/server/index.mjs em apphosting.yaml.
+    nitro({ output: { dir: "dist" } }),
   ],
   resolve: {
     dedupe: [
