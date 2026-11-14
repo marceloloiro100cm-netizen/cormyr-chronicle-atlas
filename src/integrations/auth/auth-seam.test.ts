@@ -26,14 +26,14 @@ describe('firebase rest auth', () => {
     const a = createFirebaseRestAuth({ apiKey: 'k', fetch: f as never, emulatorHost: '127.0.0.1:9099', now: () => 0 });
     const s = await a.signInWithPassword('a@b.c', 'pw');
     expect(s).toEqual({ uid: 'u1', idToken: 'id1', expiresAt: 3_600_000 });
-    expect(String(f.mock.calls[0][0])).toBe('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=k');
+    expect(String((f.mock.calls as unknown[][])[0]?.[0])).toBe('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=k');
     expect(await a.getToken()).toBe('id1');
     expect(f).toHaveBeenCalledTimes(1);
   });
   it('uses production hosts without an emulator', async () => {
     const f = vi.fn(async () => json(200, signIn));
     await createFirebaseRestAuth({ apiKey: 'k', fetch: f as never }).signInWithPassword('a', 'b');
-    expect(String(f.mock.calls[0][0])).toMatch(/^https:\/\/identitytoolkit\.googleapis\.com\//);
+    expect(String((f.mock.calls as unknown[][])[0]?.[0])).toMatch(/^https:\/\/identitytoolkit\.googleapis\.com\//);
   });
   it('maps credential errors to a code without leaking the message tail', async () => {
     const a = createFirebaseRestAuth({ apiKey: 'k', fetch: (async () => json(400, { error: { message: 'INVALID_LOGIN_CREDENTIALS : detail' } })) as never });
@@ -53,7 +53,7 @@ describe('firebase rest auth', () => {
     expect([x, y]).toEqual(['id2', 'id2']);
     expect(f).toHaveBeenCalledTimes(2);
     expect(storage.get()).toBe('r2');
-    expect(String(f.mock.calls[1][1]?.body)).toBe('grant_type=refresh_token&refresh_token=r1');
+    expect(String(((f.mock.calls as unknown[][])[1]?.[1] as RequestInit).body)).toBe('grant_type=refresh_token&refresh_token=r1');
   });
   it('drops the session when the refresh token is rejected but keeps it on network errors', async () => {
     let t = 0; const storage = memoryStorage(); let mode: 'ok' | 'net' | 'bad' = 'ok';

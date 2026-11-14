@@ -18,6 +18,11 @@ export interface FirebaseRestAuthOptions {
   skewMs?: number;
 }
 export interface FirebaseSession { uid: string; idToken: string; expiresAt: number }
+interface Raw {
+  error?: { message?: unknown };
+  localId?: unknown; idToken?: unknown; refreshToken?: unknown; expiresIn?: unknown;
+  user_id?: unknown; id_token?: unknown; refresh_token?: unknown; expires_in?: unknown;
+}
 export class FirebaseAuthError extends Error {
   readonly code: string;
   constructor(code: string) { super(code); this.name = 'FirebaseAuthError'; this.code = code; }
@@ -46,14 +51,14 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
   const listeners = new Set<(s: FirebaseSession | null) => void>();
   const emit = () => listeners.forEach(l => l(session));
 
-  async function post(url: string, init: RequestInit): Promise<Record<string, unknown>> {
+  async function post(url: string, init: RequestInit): Promise<Raw> {
     let res: Response;
     try { res = await f(url, init); } catch { throw new FirebaseAuthError('NETWORK'); }
-    let body: Record<string, unknown> = {};
-    try { body = await res.json() as Record<string, unknown>; } catch { /* empty body */ }
+    let body: Raw = {};
+    try { body = await res.json() as Raw; } catch { /* empty body */ }
     if (!res.ok) {
-      const msg = (body.error as { message?: unknown } | undefined)?.message;
-      throw new FirebaseAuthError(typeof msg === 'string' ? msg.split(' ')[0] : 'UNKNOWN');
+      const msg = body.error?.message;
+      throw new FirebaseAuthError(typeof msg === 'string' ? (msg.split(' ')[0] || 'UNKNOWN') : 'UNKNOWN');
     }
     return body;
   }
