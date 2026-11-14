@@ -9,6 +9,7 @@ import {ROOT} from './stage-spy-emulator.mjs';
 import {ROOT as NOBLE_ROOT,sheetDocId} from './stage-noble-house-emulator.mjs';
 import {ROOT as TIME_ROOT} from './stage-time-engine-emulator.mjs';
 import * as core from './spy-missions-core.mjs';
+import {awardOnDecision,findingDocId as core2FindingDocId} from './spy-intel-core.mjs';
 
 const {SpyError}=core;
 const PROJECT='demo-cormyr-migration';
@@ -24,7 +25,8 @@ export function createEmulatorSpyMissionsService({db,auth,snapshotId,env=process
   const C=n=>stage.collection(n);
   const assets=C('assets'),history=C('history'),upgrades=C('upgrades'),locations=C('locations'),operations=C('operations'),
     segments=C('segments'),events=C('events'),catalog=C('catalog'),nobleStats=C('nobleStats'),decisions=C('decisions'),
-    timeline=C('timeline');
+    timeline=C('timeline'),dossiers=C('dossiers'),findings=C('findings'),awards=C('awards'),intelEvents=C('intelEvents');
+  const findingDocId=core2FindingDocId;
   const access=db.collection('migrationDomainStage').doc(snapshotId).collection('access');
   const sheets=db.collection(NOBLE_ROOT).doc(snapshotId).collection('sheets');
   const calendar=db.collection(TIME_ROOT).doc(snapshotId).collection('calendar').doc('current');
@@ -43,7 +45,7 @@ export function createEmulatorSpyMissionsService({db,auth,snapshotId,env=process
   const putEvent=(tx,e)=>tx.set(events.doc(e.requestKey),e);
 
   return {
-    async startMission(idToken,{houseId,agentId,targetHouseId,destination,expectedAgentVersion,expectedCalendarVersion,key}){
+    async startMission(idToken,{houseId,agentId,targetHouseId,destination,objective,expectedAgentVersion,expectedCalendarVersion,key}){
       return run(idToken,async(tx,actor)=>{
         const h=String(houseId);core.requireWrite(actor,h);
         const k=keyOf(key),a=String(agentId),t=String(targetHouseId);
@@ -52,7 +54,8 @@ export function createEmulatorSpyMissionsService({db,auth,snapshotId,env=process
         const agentRow=data(agent);
         const existingOp=ops.find(o=>o.ownerHouseId===h&&o.operationKey===k)||null;
         const existingTimeline=existingOp?data(await tx.get(timeline.doc(existingOp.id))):null;
-        const r=core.startMission({actor,houseId:h,agent:agentRow,target:data(target),destination,expectedAgentVersion,
+        const r=core.startMission({actor,houseId:h,agent:agentRow,target:data(target),destination,
+          objective:objective===undefined?'house_resources':objective,expectedAgentVersion,
           expectedCalendarVersion,key:k,existingOp,existingTimeline,keyEvent,
           agentLocation:agentRow&&agentRow.currentLocationId?locs.find(l=>l.id===agentRow.currentLocationId)||null:null,
           locations:locs,hasOpenOperation:ops.some(o=>o.ownerHouseId===h&&OPEN(o)),calendar:data(cal),newId:randomUUID});
@@ -122,7 +125,11 @@ export function createEmulatorSpyMissionsService({db,auth,snapshotId,env=process
         const [agent,prev,segs,ups,target,cal]=await Promise.all([tx.get(assets.doc(op.assetId)),
           k?docs(tx,history.where('requestKey','==',k)):[],docs(tx,segments.where('operationId','==',op.id)),
           docs(tx,upgrades.where('agentId','==',op.assetId)),tx.get(catalog.doc(op.targetId)),tx.get(calendar)]);
-        const [sheet,stats]=await Promise.all([sheetOf(tx,op.targetId),tx.get(nobleStats.doc(op.targetId))]);
+        const [sheet,stats,pairDossier,awardDoc]=await Promise.all([sheetOf(tx,op.targetId),tx.get(nobleStats.doc(op.targetId)),
+          docs(tx,dossiers.where('ownerHouseId','==',op.ownerHouseId).where('targetHouseId','==',op.targetId)),
+          tx.get(awards.doc(op.id))]);
+        const dossier=pairDossier[0]||null;
+        const known=dossier?await docs(tx,findings.where('dossierId','==',dossier.id)):[];
         const r=core.resolveMission({actor,operation:op,agent:data(agent),previousHistory:prev[0]||null,segments:segs,
           upgrades:ups,target:data(target),sheet,stats:data(stats),roll,modifier,discovered,guardOverride,prisonOverride,
           expectedVersion,key:k,reason,calendar:data(cal),newId:randomUUID});
@@ -132,7 +139,16 @@ export function createEmulatorSpyMissionsService({db,auth,snapshotId,env=process
         r.history.forEach(x=>tx.set(history.doc(x.id),x));
         tx.set(decisions.doc(r.decision.id),r.decision);
         putEvent(tx,r.event);
-        return r.result;
+        const prize=awardOnDecision({decision:r.decision,operation:r.operation,dossier,findings:known,awardExists:awardDoc.exists,
+          stats:data(stats),sheet,calendar:data(cal),newId:randomUUID});
+        if(prize){
+          tx.set(dossiers.doc(prize.dossier.id),prize.dossier);
+          if(prize.award)tx.set(awards.doc(prize.award.operationId),prize.award);
+          prize.findings.forEach(f=>tx.set(findings.doc(findingDocId(f.dossierId,f.objective,f.subjectKey)),f));
+          prize.events.forEach(e=>tx.set(intelEvents.doc(e.id),e));
+        }
+        return {...r.result,intelligence:prize&&prize.award?{status:prize.award.processingState,
+          revealed:prize.award.revealedCount,refreshed:prize.award.refreshedCount}:null};
       });
     },
     async counterintelligence(idToken,houseId){
@@ -146,9 +162,9 @@ export function createEmulatorSpyMissionsService({db,auth,snapshotId,env=process
     async narratorOperations(idToken){
       return run(idToken,async(tx,actor)=>{
         if(actor.role!=='narrador')throw new SpyError('denied','Painel de operações exclusivo do Narrador');
-        const [ops,cat,allAssets,tls,decs]=await Promise.all([docs(tx,operations),docs(tx,catalog),docs(tx,assets),
-          docs(tx,timeline),docs(tx,decisions)]);
-        return core.narratorOperations({actor,operations:ops,catalog:cat,assets:allAssets,timelines:tls,decisions:decs});
+        const [ops,cat,allAssets,tls,decs,aws]=await Promise.all([docs(tx,operations),docs(tx,catalog),docs(tx,assets),
+          docs(tx,timeline),docs(tx,decisions),docs(tx,awards)]);
+        return core.narratorOperations({actor,operations:ops,catalog:cat,assets:allAssets,timelines:tls,decisions:decs,awards:aws});
       });
     },
     async incidentHistory(idToken){

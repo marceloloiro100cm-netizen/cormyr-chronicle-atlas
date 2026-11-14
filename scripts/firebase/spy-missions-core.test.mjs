@@ -57,7 +57,9 @@ test('start: travels with timeline, agent and event', () => {
   assert.equal(r.timeline.departureKey,'1522-01-05');assert.equal(r.timeline.arrivalKey,'1522-01-15');
   assert.equal(r.timeline.investigationEndKey,'1522-01-25');assert.equal(r.timeline.travelDays,10);
   assert.equal(r.event.requestKey,K(1));assert.equal(r.event.eventType,'mission_started');
-  assert.equal(r.operation.requestedFields[0],'house_overview');
+  assert.equal(r.operation.requestedFields[0],'house_resources');
+  assert.equal(start({objective:'army'}).operation.requestedFields[0],'army');
+  assert.equal(code(()=>start({objective:'gold'})),'invalid');
 });
 
 test('start: same region starts operating at once and moves the agent', () => {
@@ -72,6 +74,8 @@ test('start: idempotent replay and key reuse', () => {
   assert.equal(again.alreadyApplied,true);assert.equal(again.result.arrivalKey,'1522-01-15');
   assert.equal(code(()=>start({existingOp:{...first.operation,targetId:'other'}})),'conflict');
   assert.equal(code(()=>start({existingOp:{...first.operation,status:'cancelled'}})),'conflict');
+  assert.equal(code(()=>start({objective:'army',existingOp:first.operation})),'conflict');
+  assert.equal(start({existingOp:{...first.operation,requestedFields:['house_overview']},existingTimeline:first.timeline}).alreadyApplied,true);
 });
 
 test('cancel: frees the agent, versions, replay and denial', () => {
