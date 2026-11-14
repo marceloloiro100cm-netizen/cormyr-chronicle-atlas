@@ -110,6 +110,25 @@ WHERE image_url LIKE 'https://cormyr-chronicle-atlas.lovable.app/spy-portraits/%
 Depois aplique o `UPDATE` de `LEAVING-LOVABLE.md`. Este repositório não executa
 SQL por conta própria.
 
+## Pendência registrada em 14/11/2026: Supabase sem acesso direto
+
+O projeto Supabase usado pelo app não aparece em nenhuma conta Supabase do
+proprietário (provável Lovable Cloud), então a chave `service_role` não foi
+obtida. Decisão do proprietário: subir o site agora **sem os dados do
+Supabase** e resolver o acesso depois.
+
+- `SUPABASE_SERVICE_ROLE_KEY` foi criado com um **valor provisório**, só para o
+  build e a execução do backend `cormyr-preview` passarem.
+- Enquanto for provisório, tudo que usa o Supabase com privilégio de servidor
+  (área do Narrador, jobs, missivas, sincronização do Drive) **não funciona**.
+  O site estático em `/cormyr/` continua disponível.
+- Para resolver: obter a chave real (ou transferir o banco para uma conta
+  Supabase própria), criar uma nova versão do segredo com o mesmo comando
+  `firebase apphosting:secrets:set SUPABASE_SERVICE_ROLE_KEY --project cormyr`
+  e criar um novo lançamento.
+- Não executar o SQL dos retratos de espiões (passo 7) enquanto o banco não
+  estiver acessível.
+
 ## Verificação após o rollout
 
 1. `/` redireciona para `/cormyr/` e o arquivo estático carrega.
