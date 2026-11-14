@@ -192,6 +192,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /migrationSpyStage/{snapshot}/{document=**} {
+      // Espionage agents, history, upgrades, removals, portraits, locations
+      // and operations: server-only. The spy service authorizes from the
+      // server-side access scope; selecting a house is never permission.
+      allow read, write: if false;
+    }
+
     match /migrationDriveSyncStage/{snapshot}/{document=**} {
       // Bindings, file mappings, review inbox and outbox: server-only. The
       // Drive runner and the administrator service are the only writers.

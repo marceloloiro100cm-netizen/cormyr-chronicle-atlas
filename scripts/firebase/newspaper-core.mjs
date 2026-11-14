@@ -6,6 +6,7 @@
  * service feeds data in and persists what comes out.
  */
 import {isCampaignDate} from './schedule-core.mjs';
+import {wealthAvailable,setPermanentWealth,wealthInt as int} from './house-wealth-core.mjs';
 
 export const STATES=new Set(['draft','published','archived','cancelled']);
 export const PUBLISHED=new Set(['published','archived']);
@@ -15,8 +16,6 @@ export const COMMISSION_STATES=new Set(['pending','published','rejected']);
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PUBLIC_SRC=/^\/newspaper\/gravuras\/[A-Za-z0-9_.-]+$/;
 const FESTIVAL_ORD={midwinter:0,greengrass:3000,midsummer:6000,shieldmeet:6000,highharvestide:8000,'feast-moon':10000};
-const REGION_WEALTH={crownlands:10,veilstone:15,shieldmark:10,helmlands:5,horselands:15,dragoncoast:20,
-  swordmarch:15,swordmark:15,ferlin:10,stonelands:15,elfhold:15,volkumburgh:10};
 export const MAX_PENDING_PER_HOUSE=3;
 
 export class NewspaperError extends Error {
@@ -192,41 +191,8 @@ export function dueEditions({editions,today}){
     ((Array.isArray(e.blocks)?e.blocks.length:0)>0||e.pdfPath!=null));
 }
 
-/* ------------------------- Wealth of a noble house ------------------------ */
-
-const text=v=>v==null?null:typeof v==='object'?JSON.stringify(v):String(v);
-const int=v=>{
-  if(v==null)return null;
-  const t=String(v).trim();
-  if(!/^[+-]?\d+$/.test(t))fail('invalid','Valor de Riqueza inválido na ficha');
-  return Number(t);
-};
-const arr=v=>Array.isArray(v)?v:[];
-const allocated=h=>{
-  const ac=h&&h.allocatedCosts;
-  if(isObj(ac)&&'wealth' in ac)return int(ac.wealth)??0;
-  return arr(h&&h.costs).reduce((s,c)=>s+(c&&c.resource==='wealth'&&c.mode==='allocation'?(int(c.amount)??0):0),0);
-};
-/** Conservative available Wealth (same arithmetic as the SQL of 0092/0117). */
-export function wealthAvailable(state){
-  const region=state.regionalApplied===true||text(state.regionalApplied)==='true'
-    ?(text(state.method)!==null&&text(state.method)!=='import'
-      ?REGION_WEALTH[String(state.identity&&state.identity.region||'').replace(/ /g,'').toLowerCase()]||0:0):0;
-  const consequences=arr(state.mailConsequences).filter(m=>m&&text(m.active)==='true')
-    .reduce((s,m)=>s+(int(m.changes&&m.changes.wealth)??0),0);
-  const holdings=arr(state.holdings);
-  const alloc=holdings.filter(h=>h&&['active','building'].includes(h.status)).reduce((s,h)=>s+allocated(h),0);
-  const units=arr(state.units).filter(u=>u&&(text(u.destroyed)??'false')!=='true').reduce((s,u)=>s+allocated(u),0);
-  const destroyed=holdings.filter(h=>h&&h.status==='destroyed'&&(text(h.lostAllocation)??'false')!=='true')
-    .reduce((s,h)=>s+allocated(h),0);
-  const oldPerm=int(state.permanent&&state.permanent.wealth)??0;
-  const total=(int(state.base&&state.base.wealth)??0)+oldPerm+region+consequences;
-  return {available:total-alloc-units-destroyed,oldPerm};
-}
-/** jsonb_set(...,create_missing=false): only an existing key is replaced. */
-const setPermanentWealth=(state,value)=>
-  isObj(state.permanent)&&'wealth' in state.permanent
-    ?{...state,permanent:{...state.permanent,wealth:value}}:state;
+/* Wealth arithmetic is shared with the espionage purchases (house-wealth-core.mjs). */
+export {wealthAvailable};
 
 /* ------------------------------ commissions ------------------------------ */
 
