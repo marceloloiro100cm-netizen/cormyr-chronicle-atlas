@@ -187,6 +187,10 @@ service cloud.firestore {
             resource.data.houseId in scope(snapshot).memberHouseIds)));
         allow list, create, update, delete: if false;
       }
+    match /migrationCharacterStage/{snapshot}/{document=**} {
+      // Canonical registry is Narrator-only and written only by the
+      // server-side service; clients (including narrator) get no access.
+      allow read, write: if false;
     }
 
     match /{document=**} {
