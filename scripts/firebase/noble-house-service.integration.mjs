@@ -73,13 +73,13 @@ async function run(){
     await recs.doc('npc1').set({id:'npc1',houseId:'houseA',playerId:null,visibility:'house',kind:'character',
       title:'Ser Álvaro',content:'',version:1,createdAt:'2026-01-01T00:00:00.000Z',updatedAt:'2026-01-01T00:00:00.000Z'});
     const unitReq=(n,version,units,action='unit')=>req('houseA',n,version,{action,state:{...st('houseA',n),units}});
-    assert.equal(await code(svc.commit('synthetic:viewer',unitReq(20,4,[{id:'u1',name:'Lanceiros',commanderName:'ser alvaro'}]))),'denied');
+    assert.equal(await code(svc.commit('synthetic:viewer',unitReq(4,4,[{id:'u1',name:'Lanceiros',commanderName:'ser alvaro'}]))),'denied');
     assert.equal((await recs.get()).size,1);
-    const u1=await svc.commit('synthetic:alice',unitReq(21,4,[{id:'u1',name:'Lanceiros',commanderName:'ser alvaro'}]));
+    const u1=await svc.commit('synthetic:alice',unitReq(5,4,[{id:'u1',name:'Lanceiros',commanderName:'ser alvaro'}]));
     assert.equal(u1.version,5);
     assert.equal(u1.state.court.length,1);assert.equal(u1.state.court[0].npcId,'npc1');
     assert.equal((await recs.get()).size,1); // reused, nothing created
-    const u2=await svc.commit('synthetic:alice',unitReq(22,5,[{id:'u1',name:'Lanceiros',commanderName:'ser alvaro',commanderId:u1.state.court[0].id},
+    const u2=await svc.commit('synthetic:alice',unitReq(6,5,[{id:'u1',name:'Lanceiros',commanderName:'ser alvaro',commanderId:u1.state.court[0].id},
       {id:'u2',name:'Arqueiros',commanderName:'Lady Brenna'}],'unit_state'));
     assert.equal(u2.version,6);
     assert.equal((await recs.get()).size,2);
@@ -88,7 +88,7 @@ async function run(){
     assert.equal(u2.state.units[1].commanderId,u2.state.court.find(m=>m.npcId===made.id).id);
     assert.equal((await adminDb.collection(RECORDS).doc(snap).collection('versions').get()).size,1);
     // A stale version creates no record (the version check runs first).
-    assert.equal(await code(svc.commit('synthetic:alice',unitReq(23,5,[{id:'u3',name:'C',commanderName:'Outro Nome'}]))),'conflict');
+    assert.equal(await code(svc.commit('synthetic:alice',unitReq(7,5,[{id:'u3',name:'C',commanderName:'Outro Nome'}]))),'conflict');
     assert.equal((await recs.get()).size,2);
 
     const c=uid=>env.authenticatedContext(uid).firestore();
