@@ -40,6 +40,8 @@ test('rejects untrusted requests before reaching auth or Firestore',async()=>{
     [{body:JSON.stringify({snapshotId:'2'.repeat(64)})},400],
     [{body:JSON.stringify({admin:true})},400],
     [{body:'{"__proto__":{"admin":true}}'},400],
+    [{url:origin+'/api/firebase-mail/login',body:'{"email":"test@example.invalid","password":"test","host":"evil.example"}'},400],
+    [{url:origin+'/api/firebase-mail/login',body:'{"email":"","password":""}'},400],
     [{body:'x'.repeat(MAX_MAIL_BODY+1)},413],
   ];
   const before=authCalls;

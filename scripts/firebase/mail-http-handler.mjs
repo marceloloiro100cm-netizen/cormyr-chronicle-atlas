@@ -5,6 +5,8 @@ import {createEmulatorMailCommands} from './mail-command-service.mjs';
 
 export const MAX_MAIL_BODY=256*1024;
 const routes={
+  login:['identity','login',['email','password']],
+  session:['commands','session',[]],
   list:['mailbox','list',['pageSize','cursor','folder','source','query']],
   thread:['mailbox','getThread',['letterId']],
   read:['mailbox','markRead',['letterId']],
@@ -67,7 +69,7 @@ export function createEmulatorMailHttpHandler({db,auth,snapshotId,origin,env=pro
       if(!url.pathname.startsWith('/api/firebase-mail/')||!Object.hasOwn(routes,action))
         return failure(404,'not_found');
       const bearer=request.headers.get('authorization');
-      if(!bearer||!/^Bearer [^\s]{1,10000}$/.test(bearer))
+      if(action!=='login'&&(!bearer||!/^Bearer [^\s]{1,10000}$/.test(bearer)))
         return failure(401,'authentication_required');
       if(request.headers.get('content-type')?.split(';')[0].trim()!=='application/json')
         return failure(415,'json_required');
@@ -89,6 +91,24 @@ export function createEmulatorMailHttpHandler({db,auth,snapshotId,origin,env=pro
       if(!body||typeof body!=='object'||Array.isArray(body)||
          Object.keys(body).some(k=>!allowed.includes(k)))
         return failure(400,'invalid_request');
+      if(action==='login'){
+        if(typeof body.email!=='string'||!body.email.trim()||body.email.length>254||
+           typeof body.password!=='string'||!body.password||body.password.length>4096)
+          return failure(400,'invalid_request');
+        // Fixed, startup-validated loopback destination. No account creation,
+        // credential logging, real API key or refresh-token persistence.
+        const login=await fetch(`http://${env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo-key`,{
+          method:'POST',headers:{'content-type':'application/json'},
+          body:JSON.stringify({email:body.email.trim(),password:body.password,returnSecureToken:true}),
+          signal:AbortSignal.timeout(10000),redirect:'error',
+        });
+        if(!login.ok)return failure(401,'login_failed');
+        const result=await login.json();
+        if(typeof result.idToken!=='string'||!result.idToken)return failure(500,'internal_error');
+        // Check application access before handing a token to the browser.
+        const session=await services.commands.session({idToken:result.idToken});
+        return mailResponse(200,{data:{idToken:result.idToken,expiresIn:Number(result.expiresIn),session},sourceMode:'emulator-only'});
+      }
       const result=await services[service][method]({...body,idToken:bearer.slice(7)});
       if(result===null)return failure(404,'not_found');
       return mailResponse(200,{data:result,sourceMode:'emulator-only'});

@@ -1,6 +1,7 @@
 /** Explicit local-only entrypoint; never imported by the production app. */
 import {createServer} from 'node:http';
 import {Readable} from 'node:stream';
+import {readFile} from 'node:fs/promises';
 import {assertLocalMailEnvironment,createEmulatorMailHttpHandler,mailResponse} from './mail-http-handler.mjs';
 
 async function main(){
@@ -17,6 +18,12 @@ async function main(){
   const handle=createEmulatorMailHttpHandler({
     db:getFirestore(app),auth:getAuth(app),snapshotId,origin,
   });
+  const assetPaths=new Map([
+    ['/','index.html'],['/mail-ui.mjs','mail-ui.mjs'],['/mail-ui.css','mail-ui.css'],
+  ]);
+  const assets=new Map(await Promise.all([...assetPaths].map(async([path,file])=>[
+    path,await readFile(new URL('./mail-web/'+file,import.meta.url)),
+  ])));
   const server=createServer(async(req,res)=>{
     let response;
     try{
@@ -27,7 +34,15 @@ async function main(){
           method:req.method,headers:req.headers,
           ...(['GET','HEAD'].includes(req.method)?{}:{body:Readable.toWeb(req),duplex:'half'}),
         });
-        response=await handle(request);
+        const url=new URL(request.url);
+        if(url.origin===origin&&req.method==='GET'&&!url.search&&assets.has(url.pathname)){
+          const type=url.pathname.endsWith('.mjs')?'text/javascript':url.pathname.endsWith('.css')?'text/css':'text/html';
+          response=new Response(assets.get(url.pathname),{headers:{
+            'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store',
+            'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',
+            'Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+          }});
+        }else response=await handle(request);
       }
     }catch{response=mailResponse(500,{error:'internal_error'});}
     res.writeHead(response.status,Object.fromEntries(response.headers));

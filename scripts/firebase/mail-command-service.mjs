@@ -150,6 +150,32 @@ export function createEmulatorMailCommands({db,auth,snapshotId,env=process.env})
     if(fresh.role!==actor.role)deny();
     return {actor:fresh,state:state.data()};
   }
+  /** Minimal form options, from current server permissions, never token claims. */
+  async function session({idToken}={}){
+    const actor=await identify(idToken);
+    return db.runTransaction(async t=>{
+      const [ready,current,runtimeDoc,houses]=await Promise.all([
+        t.get(domain),t.get(access.doc(actor.uid)),t.get(runtime),
+        t.get(domain.collection('houses').where('active','==',true)
+          .where('season','==',2).limit(MAX_SCAN+1)),
+      ]);
+      if(!ready.exists||ready.data()?.status!=='complete'||!current.exists)deny();
+      const fresh=scope(actor.uid,current.data());
+      if(fresh.role!==actor.role||houses.size>MAX_SCAN)deny();
+      const options=houses.docs.map(d=>d.data()).filter(h=>
+        typeof h.sourceId==='string'&&typeof h.name==='string')
+        .map(h=>({id:h.sourceId,name:h.name}))
+        .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+      const readyToUse=runtimeDoc.exists&&runtimeDoc.data()?.status==='active';
+      const state=readyToUse?runtimeDoc.data():null;
+      return {role:fresh.role,initialized:readyToUse,
+        canCompose:fresh.role==='narrador'||options.some(h=>fresh.editHouseIds.has(h.id)),
+        originHouses:options.filter(h=>fresh.editHouseIds.has(h.id)),
+        recipientHouses:options,
+        openRound:state?.openRound??null,lastRound:state?.lastRound??null,
+      };
+    });
+  }
   /**
    * Narrator explicitly initializes a distinct TEST runtime. The source
    * Harptos clock and historical imported letters are never mutated.
@@ -655,7 +681,7 @@ export function createEmulatorMailCommands({db,auth,snapshotId,env=process.env})
     });
   }
   return Object.freeze({
-    initialize,send,reply,editDraft,scheduleDraft,
+    session,initialize,send,reply,editDraft,scheduleDraft,
     changeTrash,openRound,closeRound,list,get,listReplies,
     markRead,listReceipts,note,
   });

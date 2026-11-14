@@ -21,6 +21,7 @@ node scripts/firebase/serve-mail-emulator.mjs
 ```
 
 O servidor escuta exclusivamente em `http://127.0.0.1:8787`.
+Abra esse endereço no navegador para usar a interface de Missivas de teste.
 `CORMYR_MAIL_PORT` permite outra porta local. O snapshot é configuração
 servidora; nunca é selecionado pelo cliente. Não encaminhar esse serviço
 por túnel público. Ele exige ambos os emuladores e projeto demo fixo.
@@ -28,12 +29,17 @@ por túnel público. Ele exige ambos os emuladores e projeto demo fixo.
 ## Contrato
 
 Todas as chamadas usam `POST /api/firebase-mail/<ação>`, JSON e
-`Authorization: Bearer <ID token do Auth Emulator>`. Não use tokens reais.
+`Authorization: Bearer <ID token do Auth Emulator>`. A única exceção é
+`login`, que recebe e-mail e senha da conta de homologação, autentica no
+Auth Emulator local e verifica o perfil da aplicação antes de devolver
+um token. Não use tokens reais.
 O serviço verifica revogação, conta habilitada, perfil e vínculos atuais.
 Cookies, claims de administrador e seleção de Casa não concedem autoridade.
 
 | Ação | Uso |
 | --- | --- |
+| `login` | Autenticar conta existente do Auth Emulator, sem criar conta |
+| `session` | Papel, Casas remetentes autorizadas, destinatários e rodada atuais |
 | `list` | Caixa histórica + runtime; filtros, busca e cursor |
 | `thread` | Carta e respostas visíveis |
 | `read` | Recibo individual idempotente |
@@ -59,6 +65,36 @@ As respostas têm `Cache-Control: no-store`. Não há CORS aberto.
 O servidor rejeita Host/Origin divergentes e o handler recusa parâmetros na
 URL. As Rules permanecem deny-all para o runtime, sem acesso SDK cliente.
 
+## Interface de homologação
+
+`scripts/firebase/mail-web/` contém a tela local, servida na mesma origem
+da API. Não carrega scripts de CDN, não usa Supabase nem importa módulos
+Admin SDK no navegador. O servidor entrega somente três arquivos fixos;
+não oferece navegação de diretórios ou leitura arbitrária de arquivos.
+
+Fluxos disponíveis: login e saída, listagem por pasta/origem, busca e
+paginação, abertura de conversa, recibo individual, composição para Casa
+ou Narrador, rascunho, edição versionada, envio do rascunho e resposta.
+O Narrador pode preparar o runtime e abrir/encerrar suas rodadas de teste.
+O servidor fornece os controles e opções conforme o perfil atual; a
+autorização continua sendo revalidada em cada operação.
+
+Tokens ficam somente em memória, não em cookies/localStorage/sessionStorage.
+Não há renovação automática: ao expirar, a sessão e o conteúdo visível são
+limpos. A saída também limpa formulários e mensagens. Uma recusa de
+autorização encerra a sessão. Os textos são renderizados por `textContent`,
+com política CSP restrita à mesma origem, sem executar HTML da missiva.
+Os envios reutilizam a chave quando o mesmo conteúdo é reenviado após
+falha de conexão. A data é Harptos e nunca um campo gregoriano `type=date`.
+
+É uma interface local independente para homologar os fluxos migrados.
+Ainda **não substitui** `src/components/players/missivas-tab.tsx` ou o
+login principal. Não há upload/renderização de anexos, painel de efeitos,
+notas privadas, lixeira/restauração, seleção de resposta individual ou
+edição de rascunhos de respostas nesta interface. As operações já presentes
+na API permanecem disponíveis, mas não devem ser confundidas com paridade
+completa da tela de produção.
+
 ## Validação
 
 - Testes unitários da fronteira HTTP: origem, corpo, token, campos proibidos,
@@ -68,11 +104,15 @@ URL. As Rules permanecem deny-all para o runtime, sem acesso SDK cliente.
 - Servidor HTTP real com Auth + Firestore Emulator: login com usuário fictício,
   envio do Narrador, isolamento entre Casas, recibos, editor recusado,
   token inválido, vínculo revogado e conta desabilitada.
+- Navegador Chromium: login de jogador, criação/edição/envio de rascunho,
+  resposta entregue após avanço de rodada pelo Narrador, filtros, saída,
+  recusa de editor, texto HTML não executado, ausência de requests externos
+  e largura de tela de 390 px sem rolagem horizontal.
 - CI existente `firebase-mail-unified.yml` executa os três níveis.
 
 ## Pendências para uso no site
 
-Conectar a interface e o login Firebase; migrar anexos e permissões Storage;
+Integrar a interface e o login ao aplicativo principal; migrar anexos e permissões Storage;
 portar consequências nas Casas, representação do Narrador e Hub Temporal
 canônico; reconciliar dados da origem; homologar e publicar somente depois.
 As rodadas deste serviço ainda não avançam o Hub Temporal. Não declarar

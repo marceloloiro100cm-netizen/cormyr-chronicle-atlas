@@ -78,7 +78,23 @@ try{
   assert.equal((await call('read','http-alice',{letterId})).status,200);
   assert.equal((await call('list','http-editor')).status,403);
   assert.equal((await call('list','missing')).status,403);
+  const session=await call('session','http-alice');
+  assert.equal(session.data.role,'jogador');
+  assert.deepEqual(session.data.originHouses.map(h=>h.id),['ha']);
+  assert.equal('uid' in session.data,false);
+  const invalidLogin=await call('login','missing',{email:'http-alice@example.invalid',password:'wrong-password'});
+  assert.equal(invalidLogin.status,401);
+  const validLogin=await call('login','missing',{email:'http-alice@example.invalid',password:'Synthetic-only-Password-42!'});
+  assert.equal(validLogin.status,200);
+  assert.equal(typeof validLogin.data.idToken,'string');
+  assert.equal('refreshToken' in validLogin.data,false);
+  phase='browser';
+  const {verifyMailBrowser}=await import('./mail-browser.integration.mjs');
+  await verifyMailBrowser({revokeMembership:()=>domain.collection('access').doc('http-alice')
+    .update({memberHouseIds:[],editHouseIds:[]})});
+  phase='revocation';
   await domain.collection('access').doc('http-alice').update({memberHouseIds:[],editHouseIds:[]});
+  assert.deepEqual((await call('session','http-alice')).data.originHouses,[]);
   assert.equal((await call('thread','http-alice',{letterId})).status,404);
   await auth.updateUser('http-gm',{disabled:true});
   assert.equal((await call('list','http-gm')).status,403);
