@@ -48,7 +48,9 @@ export function buildRecordPlan(tables,snapshotId){
     if((r.house_id&&!houses.has(r.house_id))||(r.player_id&&!players.has(r.player_id))){
       issues.orphanLinks++;continue;}
     if(!once('r:'+r.id))continue;
-    if(r.source_file_id&&!once('s:'+r.source_file_id+'|'+(r.player_id||'')))continue;
+    // Source index is UNIQUE(source_file_id,player_id): NULL player_id values
+    // are distinct in PostgreSQL, so only owned imports can collide.
+    if(r.source_file_id&&r.player_id&&!once('s:'+r.source_file_id+'|'+r.player_id))continue;
     const payload={id:r.id,houseId:nz(r.house_id),playerId:nz(r.player_id),visibility:r.visibility,
       kind:r.kind,title:r.title,content:r.content??'',version,createdBy:nz(r.created_by),
       updatedBy:nz(r.updated_by),createdAt:iso(r.created_at),updatedAt:iso(r.updated_at),

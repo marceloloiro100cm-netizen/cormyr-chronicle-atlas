@@ -33,6 +33,14 @@ test('bad visibility links, orphans and duplicate source files are reported',()=
   assert.equal(p.summary.issues.duplicateIds,1);
   assert.ok(!JSON.stringify(p.summary).includes('ghost'));
 });
+test('same Drive file without player is allowed (NULLs are distinct in the source index)',()=>{
+  const t=base();
+  t[2].rows.push(rec('77777777-7777-4777-8777-777777777777',{source_file_id:'f2',house_id:'h1'}));
+  t[2].rows.push(rec('88888888-8888-4888-8888-888888888888',{source_file_id:'f2',house_id:'h1'}));
+  const p=buildRecordPlan(t,SNAP);
+  assert.equal(p.summary.issues.duplicateIds,0);
+  assert.equal(p.summary.planValid,true);
+});
 test('missing table blocks',()=>{
   assert.equal(buildRecordPlan(base().slice(0,2),SNAP).summary.planValid,false);
 });
