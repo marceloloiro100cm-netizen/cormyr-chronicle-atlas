@@ -585,3 +585,15 @@
 .folha-outline ol{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:3px;max-height:260px;overflow:auto}
 .folha-outline li button{width:100%;text-align:left;padding:5px 8px;border:1px solid transparent;border-radius:6px;background:transparent;font-size:.86rem;color:inherit}
 .folha-outline li button:hover,.folha-outline li button[aria-current="true"]{background:#f0d9a6;border-color:#b78a3a}
+
+/* Conheça Nossa Equipe (visão do jogador) */
+.folha-team{margin-top:24px;padding:18px 20px;border:1px solid rgba(80,50,20,.45);background:rgba(255,248,230,.7);border-radius:6px}
+.folha-team header{text-align:center;margin-bottom:14px}
+.folha-team h3{margin:0;font-family:"Old English Text MT","UnifrakturCook",Georgia,serif;font-size:1.6rem}
+.folha-team-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px 22px}
+.folha-team-card{display:grid;grid-template-columns:84px minmax(0,1fr);gap:12px;align-items:start;padding-top:12px;border-top:1px solid rgba(80,50,20,.3)}
+.folha-team-card .folha-staff-photo{width:84px;height:84px}
+.folha-team-card strong{display:block;font-family:Garamond,"EB Garamond",Georgia,serif;font-size:1.1rem}
+.folha-team-role{display:block;font-style:italic;opacity:.8;margin-bottom:4px}
+.folha-team-card p{margin:0;font-family:Garamond,"EB Garamond",Georgia,serif;white-space:pre-line;line-height:1.45}
+@media (max-width:520px){.folha-team-card{grid-template-columns:64px minmax(0,1fr)}.folha-team-card .folha-staff-photo{width:64px;height:64px}}

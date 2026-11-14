@@ -5,6 +5,7 @@ import {Button} from '@/components/ui/button';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey,formatDate} from '@/lib/calendar/harptos';
+import {NewspaperTeam} from './NewspaperTeam';
 import {NewspaperCanvas} from './NewspaperCanvas';
 import {NewspaperEditorialDesk} from './NewspaperEditorialDesk';
 import {CommissionForm,CommissionInbox} from './NewspaperCommissions';
@@ -79,7 +80,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
  const houseNamesQuery=useQuery({queryKey:['campaign-newspaper-house-names'],
   queryFn:getHouseNames,enabled:editor,staleTime:10*60*1000});
  const staffQuery=useQuery({queryKey:['campaign-newspaper-staff'],queryFn:getNewspaperStaff,
-  enabled:editor&&editorial,staleTime:60_000,retry:false});
+  enabled:editorial?editor:!editor,staleTime:60_000,retry:false});
  const staff=staffQuery.data??[];
  const modelsQuery=useQuery({queryKey:['campaign-newspaper-story-models'],queryFn:getStoryModels,
   enabled:editor&&editorial,staleTime:60_000,retry:false});
@@ -954,5 +955,6 @@ const useStoryModel=async(model:StoryModel)=>{
     </>}
    </div>
   </div>
+  {!editor&&!staffQuery.isError&&<NewspaperTeam staff={staff} loading={staffQuery.isPending}/>}
  </section>;
 }

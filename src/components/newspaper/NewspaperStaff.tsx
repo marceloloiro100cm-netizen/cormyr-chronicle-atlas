@@ -5,7 +5,7 @@ import {signedStaffPhoto} from '@/lib/newspaper/data';
 import {handleNewspaperTextareaTab} from '@/lib/newspaper/editing';
 import {staffByline,validateStaffMember,type NewspaperStaffMember} from '@/lib/newspaper/model';
 
-function StaffPhoto({path,name}:{path:string|null;name:string}){
+export function StaffPhoto({path,name}:{path:string|null;name:string}){
  const photo=useQuery({queryKey:['newspaper-staff-photo',path],queryFn:()=>signedStaffPhoto(path!),
   enabled:Boolean(path),staleTime:45*60*1000,retry:false});
  if(photo.data)return <img className="folha-staff-photo" src={photo.data} alt={`Foto de ${name}`}/>;
