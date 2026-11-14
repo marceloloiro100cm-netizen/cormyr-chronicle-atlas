@@ -39,7 +39,7 @@ describe('Galeria do Drive, criação de unidades e construções adquiridas pri
   expect(spyPortraitManifest).toHaveLength(20);
   expect(new Set(spyPortraitManifest.map(p=>p.id)).size).toBe(20);
   expect(spyPortraitManifest.some(p=>/referencia/i.test(p.label))).toBe(false);
-  expect(spyPortraitManifest.every(p=>p.src.startsWith('https://'))).toBe(true);
+  expect(spyPortraitManifest.every(p=>p.src.startsWith('/spy-portraits/') && !p.src.includes('..'))).toBe(true);
   expect(spyPortraitManifest.map(p=>p.sort))
    .toEqual(Array.from({length:20},(_,i)=>i+1));
   const sql=src('docs/espionage/sql/0098_populate_spy_portraits_from_drive.sql');
