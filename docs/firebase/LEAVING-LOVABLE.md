@@ -70,8 +70,13 @@ Esta fase não executa SQL por conta própria.
 
 - O repositório é público: nunca commite segredos. Tudo sensível fica em
   Secret Manager.
-- O App Hosting instala dependências com npm (não há `package-lock.json`, por
-  decisão do projeto). As versões críticas estão fixas em `package.json`.
+- O App Hosting instala dependências com `npm ci`. Sem `package-lock.json`, o
+  buildpack gera um lock incompleto (falta o `rolldown`) e o build falha; por
+  isso o `package-lock.json` agora é versionado, gerado com `npm install`
+  completo em Node 24 e validado com `npm ci` e com o build `node-server`. O
+  `bun.lock` continua sendo usado pelo CI. **Sempre que o `package.json`
+  mudar, regenere o `package-lock.json`** (`npm install` e depois `npm ci` para
+  conferir) e commite os dois lockfiles.
 - O Supabase atual segue como fonte de verdade. Se ele for um projeto gerenciado
   pelo Lovable Cloud, confirme que você tem acesso direto ao painel e à chave
   `service_role` antes de desligar qualquer coisa no Lovable.
