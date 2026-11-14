@@ -166,3 +166,9 @@ Não aplicado de propósito: `role="textbox"` nos campos (apagaria a semântica 
 - Catálogo: Padrão da edição, **Old English Text MT**, **Garamond**, UnifrakturMaguntia, Cinzel, Georgia e Times New Roman. A opção Padrão mantém a tipografia histórica.
 - As duas escolhas ficam nos campos opcionais `titleFont` e `bodyFont` de `campaign_newspapers.blocks` (JSON). Não há migração SQL ou alteração no `font_style` legado; a apresentação para leitores e a impressão respeitam as mesmas escolhas.
 - **Licença:** Old English Text MT e Garamond são tentadas a partir do sistema do visitante; não foram redistribuídos arquivos proprietários. Old English Text MT usa UnifrakturMaguntia (OFL, hospedada em `public/newspaper/fonts`) quando ausente; Garamond usa EB Garamond/Georgia, já configuradas no CSS.
+
+
+## Rodapé do jornal (14/11/2026)
+- O texto final da folha deixa de ser o lema fixo "A VOZ LIVRE DE CORMYR": passa a mostrar **nome da edição · subtítulo da edição**. Se o subtítulo estiver vazio, não mostra separador.
+- O subtítulo definido em Configurações já é transferido ao rascunho aberto e aos novos jornais por `NewspaperHub`. Salve a edição após salvar as Configurações para persistir o novo subtítulo na folha lida pelos jogadores.
+- Edições antigas continuam com o subtítulo nelas registrado; não se altera retroativamente o conteúdo publicado.

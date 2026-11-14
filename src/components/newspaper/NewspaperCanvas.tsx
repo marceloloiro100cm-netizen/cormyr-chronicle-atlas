@@ -326,6 +326,7 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
     Arraste um elemento da caixa de ferramentas até aqui ou clique nele para adicionar
    </div>}
   {edition.pdf_path&&<NewspaperPdf path={edition.pdf_path}/>}
-  <footer className="newspaper-colophon">{edition.title.toUpperCase()} · A VOZ LIVRE DE CORMYR</footer>
+  <footer className="newspaper-colophon">{edition.title.toUpperCase()}
+   {edition.subtitle.trim()&&<> · {edition.subtitle.trim().toUpperCase()}</>}</footer>
  </div>;
 }

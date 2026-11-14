@@ -22,6 +22,18 @@ const edition:NewspaperEdition={
 };
 
 describe('Jornal: editor visual integrado ao banco',()=>{
+ it('usa o subtítulo da edição no rodapé em vez do lema fixo, inclusive ao alterá-lo',()=>{
+  const {container,rerender}=render(<NewspaperCanvas edition={edition}/>);
+  const footer=container.querySelector('.newspaper-colophon');
+  expect(footer).toHaveTextContent('A FOLHA SEM SELO · CRÔNICAS DO REINO');
+  expect(footer).not.toHaveTextContent('A VOZ LIVRE DE CORMYR');
+  rerender(<NewspaperCanvas edition={{...edition,subtitle:'Notícias de todo o reino'}}/>);
+  expect(footer).toHaveTextContent('A FOLHA SEM SELO · NOTÍCIAS DE TODO O REINO');
+  rerender(<NewspaperCanvas edition={{...edition,subtitle:''}}/>);
+  expect(footer).toHaveTextContent('A FOLHA SEM SELO');
+  expect(footer).not.toHaveTextContent(' · ');
+ });
+
  it('separa fonte do título e do corpo, persistindo na estrutura JSON',()=>{
   const blocks=safeNewspaperBlocks([{...edition.blocks[1],titleFont:'old-english',bodyFont:'garamond'}]);
   expect(blocks[0]).toMatchObject({titleFont:'old-english',bodyFont:'garamond'});

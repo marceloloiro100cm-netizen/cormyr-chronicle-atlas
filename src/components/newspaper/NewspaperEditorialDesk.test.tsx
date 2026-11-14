@@ -312,6 +312,14 @@ describe('Redação A Folha Sem Selo',()=>{
   expect(p.onPatchBlock).toHaveBeenCalledWith('b1',{titleFont:'old-english'});
   expect(p.onPatchBlock).toHaveBeenCalledWith('b1',{bodyFont:'garamond'});
  });
+ it('salva o subtítulo configurado para aparecer na folha, sem texto fixo',async()=>{
+  const p=fixture();
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Configurações'}));
+  fireEvent.change(screen.getByLabelText('Subtítulo'),{target:{value:'Notícias do Reino'}});
+  fireEvent.click(screen.getByRole('button',{name:/Salvar configurações/}));
+  expect(p.onSaveSettings).toHaveBeenCalledWith(expect.objectContaining({subtitle:'Notícias do Reino'}));
+ });
  it('as Configurações funcionam sem edição aberta e mudam a fonte do título do site',async()=>{
   const p=fixture();
   render(<NewspaperEditorialDesk {...p}/>);
