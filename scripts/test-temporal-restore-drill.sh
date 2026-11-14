@@ -98,6 +98,10 @@ clock_restored="$(psql -XAtq -v ON_ERROR_STOP=1 -d "$restore_db" \
 if [[ "$schema_before" != "$schema_restored" ||
       "$data_before" != "$data_restored" ||
       "$clock_before" != "$clock_restored" ]]; then
+  # Diagnóstico de comparação sem exibir dados, dumps ou segredos da fixture.
+  [[ "$schema_before" == "$schema_restored" ]] || echo "DIAGNOSTICO: hash do schema difere apos pg_restore." >&2
+  [[ "$data_before" == "$data_restored" ]] || echo "DIAGNOSTICO: hash dos dados difere apos pg_restore." >&2
+  [[ "$clock_before" == "$clock_restored" ]] || echo "DIAGNOSTICO: relogio canonico difere apos pg_restore." >&2
   echo "BLOQUEADO: schema, dados ou relógio divergiram na restauração." >&2
   exit 2
 fi
