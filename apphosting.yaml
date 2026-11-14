@@ -1,6 +1,12 @@
 # Firebase App Hosting: configuração de execução e ambiente.
 # Nenhum valor secreto fica neste arquivo (o repositório é público).
 # Crie cada segredo uma vez: firebase apphosting:secrets:set NOME
+# Comandos explícitos: o framework (TanStack Start + Nitro) não é um dos detectados
+# automaticamente pelo App Hosting. A saída do Nitro (node-server) fica em .output/.
+scripts:
+  buildCommand: npm run build
+  runCommand: node .output/server/index.mjs
+
 runConfig:
   cpu: 1
   memoryMiB: 512
