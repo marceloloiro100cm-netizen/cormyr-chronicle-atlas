@@ -11,7 +11,7 @@ do Firestore e do Storage (continuam "deny all").
 - `apphosting.yaml` na raiz, com `NITRO_PRESET=node-server` no build.
 - `scripts.buildCommand` e `scripts.runCommand` explícitos (o framework não é
   detectado automaticamente pelo App Hosting). A saída do Nitro é
-  `.output/server/index.mjs`, a mesma do `npm run start`.
+  `dist/server/index.mjs`, a mesma do `npm run start`.
 - `SUPABASE_SERVICE_ROLE_KEY` e `CRON_SECRET` referenciados só em tempo de
   execução. Credenciais do Google ainda comentadas (escolha pendente).
 - Retratos de espiões locais em `public/spy-portraits/`.
