@@ -86,8 +86,9 @@ editor sem acesso e proibição de leitura/escrita pelo SDK cliente.
 
 - Interface dos jogadores e narrador continua usando chamadas Supabase
   (em `src/components/players/missivas-tab.tsx` e `mail-compose.tsx`).
-- Não há API HTTP/endpoints e autenticação Firebase Cloud ligados ao
-  front-end. O novo serviço não deve ser importado no browser.
+- Existe API HTTP local autenticada pelos emuladores, documentada em
+  `MAIL-HTTP-EMULATOR.md`. Ainda não há endpoints publicados nem autenticação
+  Firebase Cloud ligados ao front-end. O serviço não deve ser importado no browser.
 - Consequências nas fichas, estornos, Corte, unidades, representantes
   do Narrador, assinatura de NPC e anexos de imagens ainda demandam
   implementação equivalente com autorização e auditoria.

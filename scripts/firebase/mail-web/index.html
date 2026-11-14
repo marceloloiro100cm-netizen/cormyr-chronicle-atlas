@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Missivas · Cormyr</title>
+  <link rel="stylesheet" href="/mail-ui.css"><script type="module" src="/mail-ui.mjs"></script>
+</head>
+<body>
+  <div class="test-banner">AMBIENTE DE TESTE · Correspondência de homologação · Sem efeito na campanha oficial</div>
+  <header><div><span class="eyebrow">CORMYR · CORRESPONDÊNCIA</span><h1>Missivas</h1></div>
+    <div id="identity" hidden><span id="role"></span><button id="logout" class="quiet">Sair</button></div></header>
+  <main>
+    <p id="notice" role="status" aria-live="polite"></p>
+    <section id="login-panel" class="login card">
+      <span class="eyebrow">ACESSO À HOMOLOGAÇÃO</span><h2>Entre na correspondência</h2>
+      <p>Use uma conta preparada para este ambiente de teste.</p>
+      <form id="login-form">
+        <label>E-mail<input id="email" type="email" autocomplete="username" required maxlength="254"></label>
+        <label>Senha<input id="password" type="password" autocomplete="current-password" required maxlength="4096"></label>
+        <button type="submit">Entrar</button>
+      </form>
+    </section>
+    <section id="workspace" hidden>
+      <div class="toolbar"><p id="round-status"></p><div class="actions">
+        <button id="initialize" hidden>Preparar correspondência de teste</button>
+        <button id="round-action" class="quiet" hidden></button>
+        <button id="refresh" class="quiet">Atualizar</button><button id="new-letter">Escrever missiva</button>
+      </div></div>
+      <section id="composer" class="card" hidden aria-labelledby="compose-title">
+        <div class="section-heading"><h2 id="compose-title">Nova missiva</h2><button id="cancel-compose" class="quiet">Fechar composição</button></div>
+        <form id="compose-form">
+          <div class="form-grid"><label id="origin-label">Casa remetente<select aria-label="Casa remetente" id="origin-house"></select></label>
+          <label>Destinatário<select aria-label="Destinatário" id="recipient" required></select></label></div>
+          <label>Data de Harptos<input id="compose-date" required placeholder="1522-01-01" aria-describedby="date-help"></label>
+          <p id="date-help" class="hint">Ano-mês-dia, com meses de 01 a 12 e dias de 01 a 30. Festivais: ano-F-midwinter, greengrass, midsummer, shieldmeet, highharvestide ou feast-moon.</p>
+          <label>Assunto<input id="subject" required maxlength="180"></label>
+          <label>Mensagem<textarea id="content" rows="7" required maxlength="100000"></textarea></label>
+          <div class="actions"><button type="submit" name="intent" value="draft" class="quiet">Salvar rascunho</button><button type="submit" name="intent" value="send">Enviar missiva</button></div>
+        </form>
+      </section>
+      <div class="mail-layout">
+        <section class="card inbox" aria-labelledby="inbox-title">
+          <h2 id="inbox-title">Correspondência</h2>
+          <form id="filters" class="filters">
+            <label>Pasta<select aria-label="Pasta" id="folder"><option value="all">Todas</option><option value="received">Recebidas</option><option value="sent">Enviadas</option><option value="drafts">Rascunhos</option><option value="scheduled">Programadas</option></select></label>
+            <label>Origem<select aria-label="Origem" id="source"><option value="all">Todo o acervo</option><option value="imported">Histórico importado</option><option value="runtime">Novas missivas</option></select></label>
+            <label class="search">Buscar<input id="query" type="search" maxlength="120" placeholder="Assunto ou conteúdo"></label><button class="quiet" type="submit">Filtrar</button>
+          </form>
+          <div id="letters" aria-live="polite"></div>
+          <div class="pagination"><button id="previous" class="quiet" disabled>Anterior</button><span id="page-label"></span><button id="next" class="quiet" disabled>Próxima</button></div>
+        </section>
+        <section id="thread" class="card thread" aria-label="Missiva selecionada"><p class="empty">Selecione uma missiva para ler a conversa.</p></section>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

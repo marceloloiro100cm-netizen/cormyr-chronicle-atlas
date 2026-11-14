@@ -9,6 +9,7 @@ import {
   createEmulatorUnifiedMailbox,UnifiedMailboxDenied,
 } from './mail-unified-service.mjs';
 import {createEmulatorMailCommands} from './mail-command-service.mjs';
+import {createEmulatorMailHttpHandler} from './mail-http-handler.mjs';
 import {assertEmulatorOnly} from './stage-firestore-emulator.mjs';
 
 const PROJECT='demo-cormyr-migration';
@@ -258,11 +259,56 @@ async function run(){
       idToken:tok('alice'),letterId:legacyId.hb,
     }));
 
+    phase='http-boundary';
+    const http=createEmulatorMailHttpHandler({db,auth,snapshotId:SNAPSHOT,
+      origin:'http://127.0.0.1:8787',env:{...process.env,
+        FIREBASE_AUTH_EMULATOR_HOST:'127.0.0.1:9099'}});
+    const httpCall=async(action,uid,body={})=>{
+      const response=await http(new Request('http://127.0.0.1:8787/api/firebase-mail/'+action,{
+        method:'POST',headers:{'content-type':'application/json',
+          authorization:'Bearer '+tok(uid)},body:JSON.stringify(body)}));
+      assert.equal(response.headers.get('cache-control'),'no-store');
+      return {status:response.status,...await response.json()};
+    };
+    const httpList=await httpCall('list','bob');
+    assert.equal(httpList.status,200);
+    assert.equal(httpList.data.items.length,2);
+    assert.equal((await httpCall('list','editor')).status,403);
+    assert.equal((await httpCall('thread','bob',{letterId:legacyId.ha})).status,404);
+    assert.equal((await httpCall('open-round','alice',{number:2})).status,403);
+    assert.equal((await httpCall('list','bob',{snapshotId:SNAPSHOT})).status,400);
+    const httpDraft={requestKey:'http-draft-idempotency',originHouseId:'ha',
+      recipients:['h:hb'],subject:'HTTP draft',content:'Synthetic HTTP content',
+      campaignDate:harptos,asDraft:true};
+    const created=await httpCall('send','alice',httpDraft);
+    assert.equal(created.status,200);
+    const httpId=created.data.ids[0];
+    assert.equal((await httpCall('send','alice',httpDraft)).data.duplicate,true);
+    assert.equal((await httpCall('send','alice',{...httpDraft,content:'Different'})).status,409);
+    assert.equal((await httpCall('thread','bob',{letterId:httpId})).status,404);
+    assert.equal((await httpCall('edit-draft','alice',{
+      id:httpId,version:1,subject:'Edited HTTP',content:'Edited synthetic body',
+    })).status,200);
+    assert.equal((await httpCall('edit-draft','alice',{
+      id:httpId,version:1,subject:'Stale HTTP',content:'Stale body',
+    })).status,409);
+    assert.equal((await httpCall('schedule-draft','alice',{id:httpId,version:2})).status,200);
+    assert.equal((await httpCall('thread','bob',{letterId:httpId})).status,200);
+    assert.equal((await httpCall('read','bob',{letterId:httpId})).data.recorded,true);
+    assert.equal((await httpCall('reply','bob',{letterId:httpId,
+      requestKey:'http-reply-idempotency',content:'HTTP reply',campaignDate:harptos,
+    })).status,200);
+    assert.equal((await httpCall('note','alice',{letterId:httpId,
+      requestKey:'http-note-denied',text:'No authority',
+    })).status,403);
+
     phase='revocation';
     const bobAccess=domain.collection('access').doc('bob');
     await bobAccess.update({memberHouseIds:[],editHouseIds:[]});
     const afterRevoke=await mailbox.list({idToken:tok('bob')});
     assert.deepEqual(afterRevoke.items,[]);
+    assert.deepEqual((await httpCall('list','bob')).data.items,[]);
+    assert.equal((await httpCall('read','bob',{letterId:httpId})).status,403);
     assert.equal(await mailbox.getThread({
       idToken:tok('bob'),letterId:legacyId.hb,
     }),null);
