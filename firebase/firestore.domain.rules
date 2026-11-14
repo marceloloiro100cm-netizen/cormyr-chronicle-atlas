@@ -185,6 +185,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /migrationNewspaperRuntimeStage/{snapshot}/{document=**} {
+      // Editions, audit revisions, read receipts, commissions, staff, story
+      // models, engravings and settings: server-only. The newspaper service
+      // authorizes editors and readers from the server-side access scope.
+      allow read, write: if false;
+    }
+
     match /migrationDriveSyncStage/{snapshot}/{document=**} {
       // Bindings, file mappings, review inbox and outbox: server-only. The
       // Drive runner and the administrator service are the only writers.
