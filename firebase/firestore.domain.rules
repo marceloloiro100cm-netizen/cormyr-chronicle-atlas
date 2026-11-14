@@ -179,6 +179,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /migrationPrivateGmStage/{snapshot}/{document=**} {
+      // Narrator-private content, vassal workbooks, representation sessions
+      // and the administrative audit: server-only. No client access at all.
+      allow read, write: if false;
+    }
+
     match /migrationRecordStage/{snapshot} {
       allow read, write: if false;
       // Records and versions are written only by the server-side service.
