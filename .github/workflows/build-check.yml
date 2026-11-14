@@ -32,3 +32,5 @@ jobs:
         run: bun run build
       - name: Confirm Node server output
         run: test -f .output/server/index.mjs
+      - name: Newspaper typography component tests
+        run: bun run test -- src/components/newspaper/NewspaperCanvas.test.tsx src/components/newspaper/NewspaperEditorialDesk.test.tsx
