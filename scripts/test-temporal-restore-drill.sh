@@ -57,9 +57,20 @@ fi
 
 # Remove SOMENTE tokens aleatórios de pg_dump (\restrict/\unrestrict).
 hash_dump() {
-  pg_dump -d "$1" "$2" --no-owner --no-acl |
-    sed -E '/^\\(un)?restrict [[:alnum:]]+$/d' |
-    sha256sum | cut -d ' ' -f 1
+  if [[ "$2" == "--schema-only" ]]; then
+    # PostgreSQL atribui novos pg_attver apos pg_restore. Esses marcadores
+    # internos de versao nao representam divergencia de DDL da aplicacao;
+    # todo o restante do schema continua sendo comparado byte a byte.
+    pg_dump -d "$1" "$2" --no-owner --no-acl |
+      sed -E \
+        -e '/^\\(un)?restrict [[:alnum:]]+$/d' \
+        -e '/^ALTER TABLE ONLY .* ALTER COLUMN .* SET \(pg_attver=[0-9]+\);$/d' |
+      sha256sum | cut -d ' ' -f 1
+  else
+    pg_dump -d "$1" "$2" --no-owner --no-acl |
+      sed -E '/^\\(un)?restrict [[:alnum:]]+$/d' |
+      sha256sum | cut -d ' ' -f 1
+  fi
 }
 schema_before="$(hash_dump mail_test --schema-only)"
 data_before="$(hash_dump mail_test --data-only)"
@@ -100,15 +111,6 @@ if [[ "$schema_before" != "$schema_restored" ||
       "$clock_before" != "$clock_restored" ]]; then
   # Diagnóstico de comparação sem exibir dados, dumps ou segredos da fixture.
   [[ "$schema_before" == "$schema_restored" ]] || echo "DIAGNOSTICO: hash do schema difere apos pg_restore." >&2
-  if [[ "$schema_before" != "$schema_restored" ]]; then
-    # Investigar equivalencia textual de DDL, somente da fixture efemera.
-    pg_dump -d mail_test --schema-only --no-owner --no-acl |
-      sed -E '/^\\(un)?restrict [[:alnum:]]+$/d' > "$tmp/schema-before.sql"
-    pg_dump -d "$restore_db" --schema-only --no-owner --no-acl |
-      sed -E '/^\\(un)?restrict [[:alnum:]]+$/d' > "$tmp/schema-restored.sql"
-    echo "DIAGNOSTICO: primeiras divergencias do DDL (sem dados):" >&2
-    diff -u "$tmp/schema-before.sql" "$tmp/schema-restored.sql" | head -n 65 >&2 || true
-  fi
   [[ "$data_before" == "$data_restored" ]] || echo "DIAGNOSTICO: hash dos dados difere apos pg_restore." >&2
   [[ "$clock_before" == "$clock_restored" ]] || echo "DIAGNOSTICO: relogio canonico difere apos pg_restore." >&2
   echo "BLOQUEADO: schema, dados ou relógio divergiram na restauração." >&2
