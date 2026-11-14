@@ -34,3 +34,12 @@
 - House resource views share the same central balance calculation and switch only presentation; chart saturation never changes recorded totals or allocations.
 - Adaptado V3 miniatures are a narrator-only session opt-in renderer under miniatures3d with pure visual3d adapters; shared BattleBoard props/callbacks remain authoritative, default/import is 2D, and isolated demo data never enter engines, saves or campaign storage. The lazy scene marks data-scene-ready after its first frame for browser verification.
 - GOT battle banners (house flag, colors, suggested tier) derive only from the public archive catalog in public/cormyr/data.js; they are presentation data stored on the battle, are revalidated when a save is restored and never read house sheets or change rules.
+
+## Orca — operação multiagente (Codex, Claude Code e Antigravity)
+
+- Leia `docs/orca/README.md` ao trabalhar pelo Orca. Cada agente deve usar um **worktree e branch exclusivos**; jamais altere a `main` diretamente ou trabalhe na pasta de outro agente.
+- Antes de editar arquivos compartilhados (lockfiles, infraestrutura, autenticação, `apphosting.yaml`, `AGENTS.md`), coordene com os demais agentes e designe um único responsável.
+- Não use tokens, créditos ou editor do Lovable. Mudanças de código devem ser versionadas no GitHub e integradas somente por Pull Request revisado e com verificações aprovadas.
+- Não faça force push, merge automático, deploy em produção, execução de migrações SQL ou alterações em Supabase/RLS, Firebase/Firestore/Auth/Storage sem aprovação explícita para essa operação.
+- Não copie segredos, chaves ou `.env` de produção para worktrees. Prefira testes locais ou em homologação isolada e apresente evidências sem expor dados privados.
+- Conclua a tarefa com escopo, arquivos modificados, testes realizados, riscos, dependências e link do PR; informe bloqueios em vez de assumir permissão.
