@@ -2,7 +2,7 @@ name: Validate
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, 'chore/leave-lovable']
   workflow_dispatch:
 
 permissions:
