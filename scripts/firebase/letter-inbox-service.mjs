@@ -72,7 +72,7 @@ function canRead(letter,actor){
     (player&&letter.recipientPlayerId===actor.playerId)||
     (house&&actor.memberHouseIds.has(letter.recipientHouseId));
 }
-function safeView(doc){
+function safeView(doc,actor){
   const r=doc.data();
   return {
     id:doc.id,subject:r.subject,content:r.content,createdAt:r.createdAt,
@@ -81,6 +81,7 @@ function safeView(doc){
     recipientPlayerId:r.recipientPlayerId??null,
     recipientHouseId:r.recipientHouseId??null,
     deleted:Boolean(r.deletedAt),
+    senderIsViewer:r.senderUid===actor.uid,
   };
 }
 
@@ -137,7 +138,7 @@ export function createEmulatorInbox({db,auth,snapshotId,env=process.env}){
     const seen=new Map();
     for(const batch of snapshots)for(const doc of batch.docs){
       if(!HASH.test(doc.id))continue;
-      if(canRead(doc.data(),actor))seen.set(doc.id,safeView(doc));
+      if(canRead(doc.data(),actor))seen.set(doc.id,safeView(doc,actor));
     }
     let items=[...seen.values()].sort(compare);
     if(after)items=items.filter(row=>compare(row,after)>0);
@@ -151,7 +152,7 @@ export function createEmulatorInbox({db,auth,snapshotId,env=process.env}){
     if(typeof id!=='string'||!HASH.test(id))throw Error('Invalid letter id');
     const doc=await letters.doc(id).get();
     if(!doc.exists||!canRead(doc.data(),actor))return null;
-    return safeView(doc);
+    return safeView(doc,actor);
   }
   /**
    * Server-only delivered replies; NO draft/scheduled, deleted or stranger
