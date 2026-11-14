@@ -59,3 +59,13 @@ se contiver observações não previstas no formato agregado.
 
 Não instalar ou publicar esse sistema via Lovable. A hospedagem ficou
 suspensa a pedido do proprietário.
+
+## Cobertura por stager (tabela a tabela)
+
+`scripts/firebase/audit-stager-coverage.mjs` cruza o backup privado normalizado com os `stage-*-emulator.mjs` e diz quais tabelas algum stager já consome e quais não. Imprime só contagens e nomes de tabelas (esquema), nunca linhas. Uma tabela "consumida" ainda não significa função reimplementada, e `readyForCutover` continua `false`.
+
+```bash
+node "$WORK/scripts/firebase/audit-stager-coverage.mjs" "$NORMALIZED"
+```
+
+A lista `unconsumed` mostra, em ordem decrescente de linhas, o que falta transformar.
