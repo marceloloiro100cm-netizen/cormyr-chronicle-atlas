@@ -27,7 +27,7 @@ test('state must match house, schema 1 (number or string), integer month',()=>{
   const run=o=>()=>applyNobleHouseOperation({actor:alice,request:req(o),currentSheet:null,existingLedger:null});
   assert.equal(code(run({state:{houseId:'h2',schemaVersion:1}})),'invalid');
   assert.equal(code(run({state:{houseId:'h1',schemaVersion:2}})),'invalid');
-  assert.equal(code(run({month:1.5})),'invalid');
+  assert.equal(code(run({state:{houseId:'h1',schemaVersion:1,month:1.5}})),'invalid');
   assert.equal(code(run({operationKey:'nope'})),'invalid');
   assert.doesNotThrow(run({state:{houseId:'h1',schemaVersion:'1'}}));
 });
@@ -45,6 +45,12 @@ test('idempotency: same actor+action duplicates, otherwise key reuse conflicts',
   const led={actor:'a',action:'sheet',version:1};
   assert.deepEqual(applyNobleHouseOperation({actor:alice,request:req(),currentSheet:{state:{},version:1},existingLedger:led}),{duplicate:true,version:1});
   assert.equal(code(()=>applyNobleHouseOperation({actor:alice,request:req({action:'resource'}),currentSheet:{state:{},version:1},existingLedger:led})),'conflict');
+});
+test('ledger month comes from state; free-form actions are accepted',()=>{
+  const r=applyNobleHouseOperation({actor:alice,request:req({action:'calendar_advance',state:{houseId:'h1',schemaVersion:1,month:'6100'}}),currentSheet:null,existingLedger:null});
+  assert.equal(r.ledger.campaignMonth,6100);
+  const n=applyNobleHouseOperation({actor:alice,request:req({action:'qualquer_acao'}),currentSheet:null,existingLedger:null});
+  assert.equal(n.ledger.campaignMonth,null);
 });
 test('unit actions fail closed until records exist',()=>{
   assert.equal(code(()=>applyNobleHouseOperation({actor:alice,request:req({action:'unit'}),currentSheet:null,existingLedger:null})),'unsupported');
