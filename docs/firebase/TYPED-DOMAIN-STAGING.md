@@ -170,3 +170,19 @@ Resultado esperado de reconciliação: **116 = 101 + 15**. Os valores de
 `recipientShapes` devem somar 15, mas a distribuição exata ainda não é
 conhecida até executar o novo dry-run no backup real. Não enviar conteúdo
 ou IDs das missivas para o GitHub ou para logs públicos.
+
+
+## Projeção temporal das missivas históricas
+
+O importador mantém, além dos campos de entrega e destinatário,
+`campaignDate` de Harptos, `creationRound`,
+`deliveryRound`, `letterNumber`, `letterKind`,
+`originHouseId`, `version` e `deliveredAt`,
+quando os valores da origem forem válidos.
+
+Campos opcionais ausentes permanecem `null`. Valores malformados
+não são inventados, não se transformam em datas gregorianas e são
+contabilizados sem dados pessoais em `metadataWarnings`. A
+versão original completa continua no arquivo privado.
+A validade dos metadados não concede acesso à carta nem autoriza
+sincronização temporal automática.
