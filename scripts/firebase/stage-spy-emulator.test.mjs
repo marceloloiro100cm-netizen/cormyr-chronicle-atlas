@@ -27,7 +27,8 @@ const withRows=(table,rows)=>base().map(t=>t.table===table?{...t,rows}:t);
 test('imports the whole agents slice with full coverage', () => {
   const p=buildSpyAgentsPlan(base(),SNAP);
   assert.equal(p.summary.planValid,true);
-  assert.deepEqual(p.summary.stagedCounts,{assets:1,history:1,upgrades:1,removals:0,portraits:1,locations:1,operations:1,segments:1,events:1});
+  assert.deepEqual(p.summary.stagedCounts,{assets:1,history:1,upgrades:1,removals:0,portraits:1,locations:1,operations:1,segments:1,events:1,
+    catalog:0,nobleStats:0,decisions:0,timeline:0});
   assert.deepEqual(p.docs.operations[0].payload.requestedFields,['a','b']);
   assert.equal(p.docs.assets[0].payload.rulesVersion,'cormyr-agent-tiers-v1');
   assert.equal(p.docs.upgrades[0].id,U(1)+':ace_in_the_hole');
@@ -52,4 +53,27 @@ test('text[] parsing and count-only summary', () => {
   assert.deepEqual(textArray(''),[]);assert.equal(textArray('x'),undefined);
   const s=JSON.stringify(buildSpyAgentsPlan(base(),SNAP).summary);
   assert.ok(!s.includes('Sombra'));
+});
+
+test('stages the mission tables (catalog, stats, timeline, decisions)', () => {
+  const extra=[
+    tab('public.house_catalog',[{id:'t',name:'Casa T',classification:'noble',region:'Crownlands',public_reviewed:'t',archive_data:'{}'}]),
+    tab('public.spy_noble_house_stats',[{house_id:'t',house_name:'T',law:'25',region_id:'crownlands'}]),
+    tab('public.spy_mission_timeline',[{operation_id:U(2),owner_house_id:'hA',agent_id:U(1),departure_key:'1522-01-01',
+      arrival_key:'1522-01-11',investigation_end_key:'1522-01-21',origin_region:'ferlin',destination_region:'swordmark',
+      travel_rounds:'1',travel_days:'10',route:'[{"fromRegion":"ferlin","toRegion":"swordmark","passage":"land_neighbor"}]',
+      source_location_id:'loc1',destination_location_id:'loc1',source_calendar_version:'1',created_at:'2026-01-02 00:00:00+00'}]),
+    tab('public.spy_mission_decisions',[{id:U(20),operation_id:U(2),resolution:'success',modifiers:'{"roll":9}',difficulty:'9',
+      target_law:'25',law_source:'official_spreadsheet',rule_version:'v',reviewer:U(9),rationale:'ok',created_at:'2026-01-03 00:00:00+00'}]),
+  ];
+  const p=buildSpyAgentsPlan([...base(),...extra],SNAP);
+  assert.equal(p.summary.planValid,true);
+  assert.deepEqual([p.docs.catalog.length,p.docs.nobleStats.length,p.docs.timeline.length,p.docs.decisions.length],[1,1,1,1]);
+  assert.equal(p.docs.catalog[0].payload.publicReviewed,true);assert.equal(p.docs.catalog[0].payload.archive_data,undefined);
+  assert.equal(p.docs.nobleStats[0].payload.law,25);assert.equal(p.docs.timeline[0].payload.route.length,1);
+  assert.equal(p.docs.decisions[0].payload.modifiers.roll,9);
+  const bad=extra[2].rows[0];
+  assert.equal(buildSpyAgentsPlan([...base(),tab('public.spy_mission_timeline',[{...bad,travel_days:'11'}])],SNAP).summary.planValid,false);
+  assert.equal(buildSpyAgentsPlan([...base(),tab('public.spy_mission_timeline',[{...bad,operation_id:U(60)}])],SNAP)
+    .summary.issues.orphanLinks>0,true);
 });

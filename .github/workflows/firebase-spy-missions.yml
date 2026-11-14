@@ -1,0 +1,64 @@
+name: Firebase espionage missions (private emulator)
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/spy-*.mjs'
+      - 'scripts/firebase/harptos-core.mjs'
+      - 'scripts/firebase/stage-spy-emulator*.mjs'
+      - 'scripts/firebase/house-wealth-core.mjs'
+      - 'firebase/firestore.domain.rules'
+      - 'docs/firebase/SPY-MISSIONS-EMULATOR.md'
+      - '.github/workflows/firebase-spy-missions.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/spy-*.mjs'
+      - 'scripts/firebase/harptos-core.mjs'
+      - 'scripts/firebase/stage-spy-emulator*.mjs'
+      - 'scripts/firebase/house-wealth-core.mjs'
+      - 'firebase/firestore.domain.rules'
+      - '.github/workflows/firebase-spy-missions.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  spy-missions-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax
+        run: |
+          for f in scripts/firebase/spy-agents-core.mjs scripts/firebase/spy-missions-core.mjs scripts/firebase/spy-missions-service.mjs scripts/firebase/spy-missions-service.integration.mjs scripts/firebase/stage-spy-emulator.mjs scripts/firebase/house-wealth-core.mjs; do node --check "$f"; done
+      - name: Unit tests
+        run: node --test scripts/firebase/spy-agents-core.test.mjs scripts/firebase/spy-missions-core.test.mjs scripts/firebase/harptos-core.test.mjs scripts/firebase/stage-spy-emulator.test.mjs
+      - name: Public-repository private-data gate
+        run: node scripts/verify-public-repo.mjs
+
+  spy-missions-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned tools for LOCAL emulators only
+        run: npm install --no-save --package-lock=false firebase-tools@15.35.0 firebase-admin@14.5.1 firebase@13.3.0 @firebase/rules-unit-testing@6.0.0
+      - name: Transactional commit and rules tests on emulator
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+        run: |
+          npx firebase emulators:exec --only firestore \
+            --project demo-cormyr-migration \
+            --config firebase/firebase-domain.json \
+            "node scripts/firebase/spy-missions-service.integration.mjs"
