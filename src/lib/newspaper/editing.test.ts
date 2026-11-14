@@ -163,7 +163,7 @@ describe('publicação agendada',()=>{
 });
 
 import {
- CONVERTIBLE_LABELS,FIELD_LIMITS,blockSummary,convertBlock,normalizeFieldText,pastedPlainText,publicationIssues,saveStatusText,
+ CONVERTIBLE_LABELS,FIELD_LIMITS,blockSummary,convertBlock,pastedPlainText,publicationIssues,saveStatusText,
 } from './editing';
 describe('colar e digitar nos campos da folha',()=>{
  it('cola sempre como texto puro e junta as linhas em campos de uma linha',()=>{
