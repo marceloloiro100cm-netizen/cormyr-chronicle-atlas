@@ -9,7 +9,7 @@ import {
 import {ChangePasswordButton} from '@/components/change-password';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {formatCampaignPeriod,formatDate,parseDate} from '@/lib/calendar/harptos';
-import {NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,NEWSPAPER_WIDTH_PRESETS,newspaperStatus,safeNewspaperBlocks,
+import {NEWSPAPER_FONTS,NEWSPAPER_TYPEFACES,NEWSPAPER_TEMPLATES,NEWSPAPER_WIDTH_PRESETS,newspaperStatus,safeNewspaperBlocks,
  sampleNewspaperBlocks,dateStoryDraft,NEWSPAPER_IMAGE_FOCUS,staffByline,NEWSPAPER_NOTICE_ICONS,type StoryModel,type NewspaperStaffMember,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,
  type NewspaperCommission,type NewspaperRevision,type NewspaperEngraving,collectionEngravings,
@@ -466,9 +466,10 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         <label>Modelo<select value={identity.template}
          onChange={e=>patchSettings({template:e.target.value as NewspaperTemplate})}>
          {NEWSPAPER_TEMPLATES.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
-        <label>Fonte<select value={identity.font_style}
+        <label>Estilo geral (cabeçalho e padrão)<select value={identity.font_style}
          onChange={e=>patchSettings({font_style:e.target.value as NewspaperSettings['font_style']})}>
          {NEWSPAPER_FONTS.map(f=><option key={f.value} value={f.value}>{f.label}</option>)}</select></label>
+        <small className="folha-field-hint">Para escolher fontes distintas de título e texto, abra Escrever o Jornal e selecione uma manchete ou matéria.</small>
         <button type="submit" className="folha-text-action" disabled={busy||!settingsDirty}>
          <Save size={16}/> Salvar configurações</button>
         <small className="folha-settings-state" role="status">{settingsDirty?
@@ -524,6 +525,19 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         <label className="folha-check-label"><input type="checkbox" checked={Boolean(selectedBlock.pinned)}
          onChange={e=>props.onPatchBlock(selectedBlock.id,{pinned:e.target.checked})}/>
          Fixar bloco (trava posição e tamanho; o texto continua editável)</label>
+        {selectedBlock.type!=='image'&&<div className="folha-typeface-controls" role="group" aria-label="Tipografia do bloco">
+         {selectedBlock.type!=='quote'&&<label>Fonte do título
+          <select aria-label="Fonte do título" value={selectedBlock.titleFont??'padrao'}
+           onChange={e=>props.onPatchBlock(selectedBlock.id,{titleFont:e.target.value as NewspaperBlock['titleFont']})}>
+           {NEWSPAPER_TYPEFACES.map(f=><option key={f.value} value={f.value}>{f.label}</option>)}
+          </select></label>}
+         {selectedBlock.type!=='subtitle'&&<label>Fonte do texto
+          <select aria-label="Fonte do texto" value={selectedBlock.bodyFont??'padrao'}
+           onChange={e=>props.onPatchBlock(selectedBlock.id,{bodyFont:e.target.value as NewspaperBlock['bodyFont']})}>
+           {NEWSPAPER_TYPEFACES.map(f=><option key={f.value} value={f.value}>{f.label}</option>)}
+          </select></label>}
+         <small className="folha-field-hint">Fontes independentes, salvas nesta edição e visíveis aos leitores.</small>
+        </div>}
         {selectedBlock.type==='image'?<>
          <button type="button" className="folha-text-link" onClick={()=>fileInput.current?.click()}>
           Trocar imagem</button>

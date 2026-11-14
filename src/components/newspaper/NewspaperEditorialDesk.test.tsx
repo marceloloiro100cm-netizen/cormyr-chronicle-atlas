@@ -295,6 +295,23 @@ describe('Redação A Folha Sem Selo',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Entrevista'}));
   expect(screen.getByLabelText(/Prévia do modelo Entrevista/)).toBeTruthy();
  });
+ it('permite fontes independentes para título e texto no editor',()=>{
+  const p=fixture();
+  p.current={
+   id:'00000000-0000-4000-8000-000000000007',edition_no:2,campaign_date:'1522-01-01',
+   title:'A Folha Sem Selo',subtitle:'',template:'classico',font_style:'classico',
+   state:'draft',pdf_path:null,version:1,publication_revision:0,created_by:'editor',
+   updated_at:'',published_at:null,archived_at:null,cancelled_at:null,
+   blocks:[{id:'b1',type:'article',text:'Título\n\nTexto',span:6,height:190}],
+  };
+  p.editing=true;p.selectedBlockId='b1';
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.change(screen.getByLabelText('Fonte do título'),{target:{value:'old-english'}});
+  fireEvent.change(screen.getByLabelText('Fonte do texto'),{target:{value:'garamond'}});
+  expect(p.onPatchBlock).toHaveBeenCalledWith('b1',{titleFont:'old-english'});
+  expect(p.onPatchBlock).toHaveBeenCalledWith('b1',{bodyFont:'garamond'});
+ });
  it('as Configurações funcionam sem edição aberta e mudam a fonte do título do site',async()=>{
   const p=fixture();
   render(<NewspaperEditorialDesk {...p}/>);
@@ -302,7 +319,7 @@ describe('Redação A Folha Sem Selo',()=>{
   expect(screen.queryByText(/Crie uma edição antes/)).toBeNull();
   const title=screen.getByRole('heading',{level:1,name:'A Folha Sem Selo'});
   expect(title.closest('header')?.className).toContain('folha-font-classico');
-  fireEvent.change(screen.getByLabelText('Fonte'),{target:{value:'condensado'}});
+  fireEvent.change(screen.getByLabelText('Estilo geral (cabeçalho e padrão)'),{target:{value:'condensado'}});
   expect(title.closest('header')?.className).toContain('folha-font-condensado');
   expect(screen.getByText('Alterações ainda não salvas.')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:/Salvar configurações/}));

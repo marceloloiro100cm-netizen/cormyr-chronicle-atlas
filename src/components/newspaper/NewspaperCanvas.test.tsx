@@ -1,7 +1,7 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {NewspaperCanvas} from './NewspaperCanvas';
-import type {NewspaperEdition} from '@/lib/newspaper/model';
+import {safeNewspaperBlocks,type NewspaperEdition} from '@/lib/newspaper/model';
 
 vi.mock('@tanstack/react-query',()=>({useQuery:()=>({data:'https://example.org/photo.png',isError:false})}));
 vi.mock('@/lib/newspaper/data',()=>({signedNewspaperAsset:vi.fn()}));
@@ -22,6 +22,13 @@ const edition:NewspaperEdition={
 };
 
 describe('Jornal: editor visual integrado ao banco',()=>{
+ it('separa fonte do título e do corpo, persistindo na estrutura JSON',()=>{
+  const blocks=safeNewspaperBlocks([{...edition.blocks[1],titleFont:'old-english',bodyFont:'garamond'}]);
+  expect(blocks[0]).toMatchObject({titleFont:'old-english',bodyFont:'garamond'});
+  const {container}=render(<NewspaperCanvas edition={{...edition,blocks}}/>);
+  expect(container.querySelector('.newspaper-article h3')).toHaveStyle({fontFamily:'"Old English Text MT","UnifrakturMaguntia","Cinzel",Georgia,serif'});
+  expect(container.querySelector('.newspaper-article p')).toHaveStyle({fontFamily:'Garamond,"EB Garamond",Georgia,serif'});
+ });
  it('edita manchetes diretamente na folha, sem HTML arbitrário',()=>{
   const update=vi.fn();
   render(<NewspaperCanvas edition={edition} editing onChangeBlock={update}/>);

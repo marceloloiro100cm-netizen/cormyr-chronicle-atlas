@@ -2,6 +2,29 @@ import {formatDate,parseDate,MONTHS} from '@/lib/calendar/harptos';
 
 export type NewspaperTemplate='classico'|'guerra'|'gazeta';
 export type NewspaperFont='classico'|'editorial'|'condensado'|'gotica'|'romana';
+/** Tipografia por bloco: a opção padrão preserva a aparência de edições anteriores. */
+export type NewspaperTypeface='padrao'|'old-english'|'garamond'|'fraktur'|'cinzel'|'georgia'|'times';
+export const NEWSPAPER_TYPEFACES:{value:NewspaperTypeface;label:string}[]=[
+ {value:'padrao',label:'Padrão da edição'},
+ {value:'old-english',label:'Old English Text MT'},
+ {value:'garamond',label:'Garamond'},
+ {value:'fraktur',label:'UnifrakturMaguntia'},
+ {value:'cinzel',label:'Cinzel'},
+ {value:'georgia',label:'Georgia'},
+ {value:'times',label:'Times New Roman'},
+];
+/** Fontes do sistema têm substitutos legais quando não estão instaladas. */
+const TYPEFACE_FAMILIES:Record<Exclude<NewspaperTypeface,'padrao'>,string>={
+ 'old-english':'"Old English Text MT","UnifrakturMaguntia","Cinzel",Georgia,serif',
+ garamond:'Garamond,"EB Garamond",Georgia,serif',
+ fraktur:'"UnifrakturMaguntia","Cinzel",Georgia,serif',
+ cinzel:'Cinzel,Georgia,serif',
+ georgia:'Georgia,"Times New Roman",serif',
+ times:'"Times New Roman",Times,serif',
+};
+export function newspaperTypefaceFamily(value?:NewspaperTypeface):string|undefined{
+ return value&&value!=='padrao'?TYPEFACE_FAMILIES[value]:undefined;
+}
 export type NewspaperState='draft'|'published'|'archived'|'cancelled';
 export type NewspaperBlockType='headline'|'subtitle'|'article'|'image'|'quote'|'notice';
 export type NewspaperImageStyle='vintage'|'woodcut'|'original';
@@ -37,6 +60,9 @@ export type NewspaperBlock={
   pinned?:boolean;
   /** Letra capitular gótica na primeira letra do texto da matéria. */
   dropCap?:boolean;
+  /** Tipografia escolhida para o título e o texto deste bloco. */
+  titleFont?:NewspaperTypeface;
+  bodyFont?:NewspaperTypeface;
   span:number;
   height:number;
 };
@@ -150,6 +176,8 @@ export function safeNewspaperBlocks(value:unknown):NewspaperBlock[]{
   ...(typeof x['cropZoom']==='number'&&Number.isFinite(x['cropZoom'])?{cropZoom:Math.min(3,Math.max(1,x['cropZoom']))}:{}),
   ...(x['pinned']===true?{pinned:true}:{}),
   ...(x['dropCap']===true?{dropCap:true}:{}),
+  ...(NEWSPAPER_TYPEFACES.some(f=>f.value===x['titleFont'])?{titleFont:x['titleFont'] as NewspaperTypeface}:{}),
+  ...(NEWSPAPER_TYPEFACES.some(f=>f.value===x['bodyFont'])?{bodyFont:x['bodyFont'] as NewspaperTypeface}:{}),
   span:clampNewspaperSpan(Number(x['span'])),
   height:clampNewspaperHeight(Number(x['height'])),
  }));

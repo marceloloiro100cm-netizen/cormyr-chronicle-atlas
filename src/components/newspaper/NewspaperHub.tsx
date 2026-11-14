@@ -20,7 +20,7 @@ import {
  commissionToBlocks,newspaperIsDirty,pendingCommissions,type NewspaperCommission,
  createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperStatus,
  duplicateNewspaperBlock,
- NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,validateNewspaperEdition,
+ NEWSPAPER_FONTS,NEWSPAPER_TYPEFACES,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,validateNewspaperEdition,
  type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperState,
  DEFAULT_NEWSPAPER_SETTINGS,validateNewspaperSettings,newEditionDate,type NewspaperSettings,
  type NewspaperTemplate,type NewspaperRevision,type NewspaperEngraving,ENGRAVINGS_BUCKET,PAPER_BUCKET,type NewspaperStaffMember,type StoryModel,instantiateStoryModel,
@@ -879,6 +879,18 @@ const useStoryModel=async(model:StoryModel)=>{
           onChange={e=>modifyBlock(chosenBlock.id,{text:e.target.value})}
           placeholder={chosenBlock.type==='article'?'Título na primeira linha, depois o texto':''}/>
         </label>}
+        {chosenBlock.type!=='image'&&<div role="group" aria-label="Tipografia do bloco">
+         {chosenBlock.type!=='quote'&&<label>Fonte do título
+          <select aria-label="Fonte do título" value={chosenBlock.titleFont??'padrao'}
+           onChange={e=>modifyBlock(chosenBlock.id,{titleFont:e.target.value as NewspaperBlock['titleFont']})}>
+           {NEWSPAPER_TYPEFACES.map(f=><option key={f.value} value={f.value}>{f.label}</option>)}
+          </select></label>}
+         {chosenBlock.type!=='subtitle'&&<label>Fonte do texto
+          <select aria-label="Fonte do texto" value={chosenBlock.bodyFont??'padrao'}
+           onChange={e=>modifyBlock(chosenBlock.id,{bodyFont:e.target.value as NewspaperBlock['bodyFont']})}>
+           {NEWSPAPER_TYPEFACES.map(f=><option key={f.value} value={f.value}>{f.label}</option>)}
+          </select></label>}
+        </div>}
         {chosenBlock.type==='image'&&<>
          <label className="newspaper-upload">Inserir fotografia
           <input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy}

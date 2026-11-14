@@ -159,3 +159,10 @@ Vieram do relatório analítico da parte de escrita. Tudo no editor do Editor-Ch
 - **Duas novas tipografias** em Configurações: *Gótica* (Fraktur nos títulos, Garamond no texto) e *Romana* (Cinzel nos títulos, Georgia no texto), com as fontes que o site já hospeda. A migração **0123** amplia a lista permitida de `font_style` nas duas tabelas.
 
 Não aplicado de propósito: `role="textbox"` nos campos (apagaria a semântica de título e quebraria a leitura por leitor de tela), negrito/itálico dentro do texto e troca de biblioteca de edição.
+
+
+## Fontes independentes por matéria (14/11/2026)
+- Em **Escrever o Jornal**, selecione a manchete, reportagem, subtítulo, citação ou aviso. No painel **Editar elemento**, defina **Fonte do título** e **Fonte do texto** separadamente. O editor do Narrador também oferece esses controles.
+- Catálogo: Padrão da edição, **Old English Text MT**, **Garamond**, UnifrakturMaguntia, Cinzel, Georgia e Times New Roman. A opção Padrão mantém a tipografia histórica.
+- As duas escolhas ficam nos campos opcionais `titleFont` e `bodyFont` de `campaign_newspapers.blocks` (JSON). Não há migração SQL ou alteração no `font_style` legado; a apresentação para leitores e a impressão respeitam as mesmas escolhas.
+- **Licença:** Old English Text MT e Garamond são tentadas a partir do sistema do visitante; não foram redistribuídos arquivos proprietários. Old English Text MT usa UnifrakturMaguntia (OFL, hospedada em `public/newspaper/fonts`) quando ausente; Garamond usa EB Garamond/Georgia, já configuradas no CSS.

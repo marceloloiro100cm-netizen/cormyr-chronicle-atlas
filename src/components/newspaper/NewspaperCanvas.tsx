@@ -3,7 +3,7 @@ import {useQuery} from '@tanstack/react-query';
 import {formatDate} from '@/lib/calendar/harptos';
 import {signedNewspaperAsset} from '@/lib/newspaper/data';
 import {FIELD_LIMITS,blockFocus,editionWords,normalizeFieldText,panFocus,pastedPlainText,readingMinutes} from '@/lib/newspaper/editing';
-import {newspaperResize,type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperImageStyle} from '@/lib/newspaper/model';
+import {newspaperResize,newspaperTypefaceFamily,type NewspaperBlock,type NewspaperBlockType,type NewspaperEdition,type NewspaperImageStyle} from '@/lib/newspaper/model';
 
 const BLOCK_DRAG_MIME='application/x-cormyr-newspaper-block';
 const TOOL_DRAG_MIME='application/x-cormyr-newspaper-tool';
@@ -164,35 +164,37 @@ function NewspaperStory({block,editing,selected=false,onChange}:{
 }){
  const [heading,...body]=block.text.split('\n');
  const paragraph=body.join('\n').trim();
+ const titleStyle:CSSProperties={fontFamily:newspaperTypefaceFamily(block.titleFont)};
+ const bodyStyle:CSSProperties={fontFamily:newspaperTypefaceFamily(block.bodyFont)};
  if(block.type==='headline')return <div className="newspaper-headline-block">
   <InlineText tag="h2" className="newspaper-headline" value={block.text} editing={editing}
-   style={{textAlign:block.align??'left'}} label="Editar manchete"
+   style={{...titleStyle,textAlign:block.align??'left'}} label="Editar manchete"
    single placeholder="Escreva a manchete" limit={FIELD_LIMITS.headline}
    onChange={text=>onChange?.({text})}/>
-  {(block.subtitle!==undefined||editing)&&<InlineText tag="p" className="newspaper-deck"
+  {(block.subtitle!==undefined||editing)&&<InlineText tag="p" className="newspaper-deck" style={bodyStyle}
    value={block.subtitle??''} editing={editing} label="Editar subtítulo da manchete"
    single placeholder="Uma linha de apoio" limit={FIELD_LIMITS.deck}
    onChange={subtitle=>onChange?.({subtitle})}/>}
  </div>;
- if(block.type==='subtitle')return <InlineText tag="h3" className="newspaper-subhead" value={block.text}
+ if(block.type==='subtitle')return <InlineText tag="h3" className="newspaper-subhead" style={titleStyle} value={block.text}
   editing={editing} label="Editar subtítulo" single placeholder="Escreva o subtítulo" limit={FIELD_LIMITS.subhead} onChange={text=>onChange?.({text})}/>;
- if(block.type==='quote')return <InlineText tag="blockquote" className="newspaper-quote"
+ if(block.type==='quote')return <InlineText tag="blockquote" className="newspaper-quote" style={bodyStyle}
   value={block.text} editing={editing} label="Editar citação" single placeholder="Escreva a citação"
   onChange={text=>onChange?.({text})}/>;
  if(block.type==='image')return <NewspaperImage block={block} editing={editing} selected={selected} {...(onChange?{onChange}:{})}/>;
  if(block.type==='notice')return <aside className="newspaper-notice-block">
   <span className="newspaper-notice-seal" aria-hidden="true">{block.icon??'⚜'}</span>
-  <div><InlineText tag="h3" value={heading??""} editing={editing} label="Editar título do aviso"
+  <div><InlineText tag="h3" value={heading??""} style={titleStyle} editing={editing} label="Editar título do aviso"
    single placeholder="Título do aviso" limit={FIELD_LIMITS.title}
    onChange={next=>onChange?.({text:[next,paragraph].join('\n\n')})}/>
-   <InlineText tag="p" value={paragraph} editing={editing} label="Editar texto do aviso" placeholder="Escreva o comunicado"
+   <InlineText tag="p" value={paragraph} style={bodyStyle} editing={editing} label="Editar texto do aviso" placeholder="Escreva o comunicado"
     onChange={next=>onChange?.({text:[heading,next].join('\n\n')})}/></div>
  </aside>;
  return <article className="newspaper-article">
-  <InlineText tag="h3" value={heading||'Título da notícia'} editing={editing}
+  <InlineText tag="h3" value={heading||'Título da notícia'} style={titleStyle} editing={editing}
    label="Editar título da reportagem" single placeholder="Título da notícia" limit={FIELD_LIMITS.title}
    onChange={next=>onChange?.({text:[next,paragraph].join('\n\n')})}/>
-  <InlineText tag="p" value={paragraph} editing={editing} label="Editar texto da reportagem" placeholder="Escreva a reportagem"
+  <InlineText tag="p" value={paragraph} style={bodyStyle} editing={editing} label="Editar texto da reportagem" placeholder="Escreva a reportagem"
    {...(block.dropCap?{className:'newspaper-dropcap'}:{})}
    onChange={next=>onChange?.({text:[heading,next].join('\n\n')})}/>
   {block.byline&&<p className="newspaper-byline">Por {block.byline}</p>}
