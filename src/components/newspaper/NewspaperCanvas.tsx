@@ -243,7 +243,7 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
    onInsertBlock?.(type as NewspaperBlockType,targetId);
   }
  };
- return <div className={`newspaper-page newspaper-font-${edition.font_style} newspaper-template-${edition.template}`}>
+ return <div className={`newspaper-page ${editing?'newspaper-page-editing':'newspaper-page-reading'} newspaper-font-${edition.font_style} newspaper-template-${edition.template}`}>
   <header className="newspaper-masthead">
    <div className="newspaper-rule"/>
    {compactMasthead?<div className="newspaper-page-folio">
@@ -268,7 +268,7 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
    onDragOver={event=>{if(editing)event.preventDefault();}}
    onDrop={event=>drop(event,null)}>
    {edition.blocks.map(block=><div key={block.id} data-block-id={block.id}
-     className={`newspaper-story newspaper-story-${block.type}${editing?' newspaper-story-editable':''}${selectedId===block.id?' newspaper-story-selected':''}${block.pinned?' newspaper-story-pinned':''}${dragOver===block.id?' newspaper-drag-over':''}`}
+     className={`newspaper-story newspaper-story-${block.type}${editing?' newspaper-story-editable':''}${editing&&selectedId===block.id?' newspaper-story-selected':''}${editing&&block.pinned?' newspaper-story-pinned':''}${dragOver===block.id?' newspaper-drag-over':''}`}
      style={{gridColumn:`span ${block.span}`}}
      onClick={()=>editing&&onSelect?.(block.id)}
      onKeyDown={event=>{

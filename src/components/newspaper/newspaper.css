@@ -375,3 +375,79 @@
 .newspaper-inline-count{display:block;font:600 .68rem system-ui,sans-serif;color:#6b5a3e;text-align:right;margin:2px 0 4px}
 .newspaper-inline-count-over{color:#9a2a1c}
 @media print{.newspaper-inline-count{display:none}}
+
+
+/* ---- Leitura publicada: a grelha de diagramação não deve parecer um conjunto de cards. ---- */
+/* O modo de edição conserva bordas, seleção, alças e destaque de blocos fixos. */
+.newspaper-page-reading .newspaper-grid{
+ column-gap:clamp(16px,2.4vw,30px);
+ row-gap:clamp(14px,2.1vw,25px);
+ align-items:start;
+}
+.newspaper-page-reading .newspaper-grid>.newspaper-story{
+ padding:2px 0 12px;
+ margin:0;
+ border:0;
+ outline:0;
+ box-shadow:none;
+ background:transparent;
+ min-width:0;
+}
+.newspaper-page-reading .newspaper-article h3{
+ border:0;
+ padding:0;
+ margin:0 0 12px;
+ line-height:1.22;
+ text-wrap:balance;
+}
+.newspaper-page-reading .newspaper-article p:not(.newspaper-byline){
+ line-height:1.48;
+}
+.newspaper-page-reading .newspaper-byline{
+ margin-top:14px!important;
+ padding-top:4px;
+}
+/* O aviso é a única caixa editorial: borda simples, sem segundo quadro do bloco. */
+.newspaper-page-reading .newspaper-story-notice{
+ padding:2px 0 10px;
+}
+.newspaper-page-reading .newspaper-notice-block{
+ border:1px solid #a98b5e;
+ background:rgba(233,205,155,.19);
+ padding:clamp(12px,1.6vw,18px);
+ gap:12px;
+}
+.newspaper-page-reading .newspaper-notice-block h3{
+ border:0;
+ margin:0 0 9px;
+ padding:0;
+ line-height:1.28;
+}
+.newspaper-page-reading .newspaper-notice-block p{
+ line-height:1.48;
+}
+.newspaper-page-reading .newspaper-story-quote .newspaper-quote{
+ border-block:1px solid #aa906a;
+ padding:15px 8px;
+}
+/* Em telas estreitas, separar reportagens com fio horizontal, nunca cartões. */
+@media(max-width:760px){
+ .newspaper-page-reading .newspaper-grid{
+  column-gap:0;
+  row-gap:0;
+ }
+ .newspaper-page-reading .newspaper-grid>.newspaper-story{
+  border:0;
+  border-bottom:1px solid rgba(132,103,66,.36);
+  padding:15px 0 19px;
+ }
+ .newspaper-page-reading .newspaper-grid>.newspaper-story:last-child{
+  border-bottom:0;
+ }
+}
+@media print{
+ .newspaper-page-reading .newspaper-grid>.newspaper-story{
+  break-inside:avoid;
+  page-break-inside:avoid;
+ }
+}

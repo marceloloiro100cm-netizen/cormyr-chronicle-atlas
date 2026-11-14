@@ -172,3 +172,10 @@ Não aplicado de propósito: `role="textbox"` nos campos (apagaria a semântica 
 - O texto final da folha deixa de ser o lema fixo "A VOZ LIVRE DE CORMYR": passa a mostrar **nome da edição · subtítulo da edição**. Se o subtítulo estiver vazio, não mostra separador.
 - O subtítulo definido em Configurações já é transferido ao rascunho aberto e aos novos jornais por `NewspaperHub`. Salve a edição após salvar as Configurações para persistir o novo subtítulo na folha lida pelos jogadores.
 - Edições antigas continuam com o subtítulo nelas registrado; não se altera retroativamente o conteúdo publicado.
+
+
+## Leitura limpa (14/11/2026)
+- A folha usa `newspaper-page-editing` durante a diagramação e `newspaper-page-reading` na visualização do leitor e na pré-visualização.
+- Leitura: matérias e imagens não recebem contorno, fundo de card, destaque de bloco fixo nem seleção do editor; tipografia e espaçamento das colunas são refinados sem mudar a ordem e o conteúdo salvos.
+- Avisos/contato preservam uma **única borda fina** e fundo suave; citações recebem um fio horizontal; no celular, os itens são separados por linhas discretas.
+- Edição: seleção, alças, cadeado e tipografia seguem disponíveis e sem mudança de permissões ou persistência.

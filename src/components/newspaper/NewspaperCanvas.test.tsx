@@ -22,6 +22,31 @@ const edition:NewspaperEdition={
 };
 
 describe('Jornal: editor visual integrado ao banco',()=>{
+ it('mantém a folha limpa na leitura e os blocos selecionáveis somente na edição',()=>{
+  const pinned={...edition,blocks:edition.blocks.map(b=>({...b,pinned:true}))};
+  const {container,rerender}=render(<NewspaperCanvas edition={pinned} editing={false} selectedId="text"/>);
+  const page=container.querySelector('.newspaper-page');
+  const article=container.querySelector('[data-block-id="text"]');
+  expect(page).toHaveClass('newspaper-page-reading');
+  expect(page).not.toHaveClass('newspaper-page-editing');
+  expect(article).not.toHaveClass('newspaper-story-selected');
+  expect(article).not.toHaveClass('newspaper-story-pinned');
+  expect(article).not.toHaveAttribute('tabindex');
+  expect(container.querySelector('.newspaper-drag-handle')).toBeNull();
+  rerender(<NewspaperCanvas edition={pinned} editing selectedId="text" onChangeBlock={vi.fn()}/>);
+  expect(page).toHaveClass('newspaper-page-editing');
+  expect(article).toHaveClass('newspaper-story-selected');
+  expect(article).toHaveClass('newspaper-story-pinned');
+  expect(article).toHaveAttribute('tabindex','0');
+ });
+ it('conserva avisos como um único destaque na folha publicada',()=>{
+  const notice={...edition,blocks:[{id:'notice',type:'notice' as const,text:'PARA NOS CONTATAR\\n\\nProcure a redação.',span:12,height:140}]};
+  const {container}=render(<NewspaperCanvas edition={notice}/>);
+  expect(container.querySelector('.newspaper-page')).toHaveClass('newspaper-page-reading');
+  expect(container.querySelector('.newspaper-story-notice .newspaper-notice-block')).toBeInTheDocument();
+  expect(container.querySelector('.newspaper-story-notice')).not.toHaveClass('newspaper-story-editable');
+ });
+
  it('usa o subtítulo da edição no rodapé em vez do lema fixo, inclusive ao alterá-lo',()=>{
   const {container,rerender}=render(<NewspaperCanvas edition={edition}/>);
   const footer=container.querySelector('.newspaper-colophon');
