@@ -207,6 +207,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /migrationResidualStage/{snapshot}/{document=**} {
+      // Archival residue (mission-link graph, migration backups, profiles,
+      // archive review, Drive exports, source links, workbook imports, legacy
+      // spy seed): server-only; no client reads it.
+      allow read, write: if false;
+    }
+
     match /migrationDriveSyncStage/{snapshot}/{document=**} {
       // Bindings, file mappings, review inbox and outbox: server-only. The
       // Drive runner and the administrator service are the only writers.

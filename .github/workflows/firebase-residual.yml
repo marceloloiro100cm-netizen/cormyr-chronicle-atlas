@@ -1,0 +1,29 @@
+name: Firebase residual stage (private emulator)
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/stage-residual-emulator*.mjs'
+      - 'scripts/firebase/spy-missions-core.mjs'
+      - 'firebase/firestore.domain.rules'
+      - 'docs/firebase/RESIDUAL-STAGE.md'
+      - '.github/workflows/firebase-residual.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  residual-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax
+        run: node --check scripts/firebase/stage-residual-emulator.mjs
+      - name: Unit tests
+        run: node --test scripts/firebase/stage-residual-emulator.test.mjs
+      - name: Public-repository private-data gate
+        run: node scripts/verify-public-repo.mjs
