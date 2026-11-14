@@ -51,7 +51,7 @@ export function resolveHomologationEmulatorHost(
   host: string | undefined,
 ): string | undefined {
   return development && projectId === 'demo-cormyr-migration' &&
-    /^(?:127\\.0\\.0\\.1|localhost|\\[::1\\]):(?:[1-9][0-9]{1,4})$/.test(host ?? '')
+    /^(?:127\.0\.0\.1|localhost|\[::1\]):(?:[1-9][0-9]{1,4})$/.test(host ?? '')
     ? host : undefined;
 }
 
