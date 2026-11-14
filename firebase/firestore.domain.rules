@@ -173,6 +173,38 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /migrationTimeEngineStage/{snapshot}/{document=**} {
+      // Calendar, operation history and audit are server-only; the Hub
+      // Temporal service is the single writer. No client access.
+      allow read, write: if false;
+    }
+
+    match /migrationPrivateGmStage/{snapshot}/{document=**} {
+      // Narrator-private content, vassal workbooks, representation sessions
+      // and the administrative audit: server-only. No client access at all.
+      allow read, write: if false;
+    }
+
+    match /migrationNewspaperRuntimeStage/{snapshot}/{document=**} {
+      // Editions, audit revisions, read receipts, commissions, staff, story
+      // models, engravings and settings: server-only. The newspaper service
+      // authorizes editors and readers from the server-side access scope.
+      allow read, write: if false;
+    }
+
+    match /migrationSpyStage/{snapshot}/{document=**} {
+      // Espionage agents, history, upgrades, removals, portraits, locations
+      // and operations: server-only. The spy service authorizes from the
+      // server-side access scope; selecting a house is never permission.
+      allow read, write: if false;
+    }
+
+    match /migrationDriveSyncStage/{snapshot}/{document=**} {
+      // Bindings, file mappings, review inbox and outbox: server-only. The
+      // Drive runner and the administrator service are the only writers.
+      allow read, write: if false;
+    }
+
     match /migrationRecordStage/{snapshot} {
       allow read, write: if false;
       // Records and versions are written only by the server-side service.

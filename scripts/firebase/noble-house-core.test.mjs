@@ -27,7 +27,7 @@ test('state must match house, schema 1 (number or string), integer month',()=>{
   const run=o=>()=>applyNobleHouseOperation({actor:alice,request:req(o),currentSheet:null,existingLedger:null});
   assert.equal(code(run({state:{houseId:'h2',schemaVersion:1}})),'invalid');
   assert.equal(code(run({state:{houseId:'h1',schemaVersion:2}})),'invalid');
-  assert.equal(code(run({month:1.5})),'invalid');
+  assert.equal(code(run({state:{houseId:'h1',schemaVersion:1,month:1.5}})),'invalid');
   assert.equal(code(run({operationKey:'nope'})),'invalid');
   assert.doesNotThrow(run({state:{houseId:'h1',schemaVersion:'1'}}));
 });
@@ -46,6 +46,50 @@ test('idempotency: same actor+action duplicates, otherwise key reuse conflicts',
   assert.deepEqual(applyNobleHouseOperation({actor:alice,request:req(),currentSheet:{state:{},version:1},existingLedger:led}),{duplicate:true,version:1});
   assert.equal(code(()=>applyNobleHouseOperation({actor:alice,request:req({action:'resource'}),currentSheet:{state:{},version:1},existingLedger:led})),'conflict');
 });
-test('unit actions fail closed until records exist',()=>{
+test('ledger month comes from state; free-form actions are accepted',()=>{
+  const r=applyNobleHouseOperation({actor:alice,request:req({action:'calendar_advance',state:{houseId:'h1',schemaVersion:1,month:'6100'}}),currentSheet:null,existingLedger:null});
+  assert.equal(r.ledger.campaignMonth,6100);
+  const n=applyNobleHouseOperation({actor:alice,request:req({action:'qualquer_acao'}),currentSheet:null,existingLedger:null});
+  assert.equal(n.ledger.campaignMonth,null);
+});
+test('unit actions need the commander context',()=>{
   assert.equal(code(()=>applyNobleHouseOperation({actor:alice,request:req({action:'unit'}),currentSheet:null,existingLedger:null})),'unsupported');
+});
+const ids=(()=>{let n=0;return ()=>'cmd-'+(++n);})();
+const unitReq=(units,court,action='unit')=>req({action,state:{houseId:'h1',schemaVersion:1,units,...(court?{court}:{})}});
+const ctx=houseRecords=>({houseRecords,newId:ids});
+const NPC={id:'npc-old',houseId:'h1',kind:'character',visibility:'house',title:'  Ser Álvaro ',createdAt:'2026-01-01T00:00:00.000Z'};
+test('commander: reuses a house NPC (accent and case insensitive, oldest first) and adds a court member once',()=>{
+  const dup={...NPC,id:'npc-new',createdAt:'2026-02-01T00:00:00.000Z'};
+  const r=applyNobleHouseOperation({actor:alice,request:unitReq([{id:'u1',name:'Lanceiros',commanderName:'ser alvaro'}]),
+    currentSheet:null,existingLedger:null,commanderContext:ctx([dup,NPC])});
+  assert.equal(r.newRecords.length,0);
+  const court=r.sheet.state.court;
+  assert.equal(court.length,1);assert.equal(court[0].npcId,'npc-old');assert.equal(court[0].role,'Comandante de Exército');
+  assert.equal(r.sheet.state.units[0].commanderId,court[0].id);
+  assert.equal(r.ledger.afterState.units[0].commanderId,court[0].id);
+});
+test('commander: creates a house NPC once for repeated names; ficha records and other visibility are never reused',()=>{
+  const pool=[{...NPC,title:'Ficha Ser Álvaro',id:'f'},{...NPC,id:'p',visibility:'player'},{...NPC,id:'o',houseId:'h2'},{...NPC,id:'k',kind:'document'}];
+  const r=applyNobleHouseOperation({actor:alice,request:unitReq([{id:'u1',name:'A',commanderName:'Ser Álvaro'},
+    {id:'u2',name:'B',commanderName:'SER ALVARO'}]),currentSheet:null,existingLedger:null,commanderContext:ctx(pool)});
+  assert.equal(r.newRecords.length,1);
+  const n=r.newRecords[0];
+  assert.equal(n.visibility,'house');assert.equal(n.kind,'character');assert.equal(n.houseId,'h1');
+  assert.equal(n.title,'Ser Álvaro');assert.equal(n.content,'Comandante da unidade A');assert.equal(n.createdBy,alice.uid);
+  assert.equal(r.sheet.state.court.length,1);
+  assert.equal(r.sheet.state.units[1].commanderId,r.sheet.state.court[0].id);
+});
+test('commander: unchanged commander or empty name does not touch records or court',()=>{
+  const current={state:{houseId:'h1',schemaVersion:1,units:[{id:'u1',commanderName:'Ser Álvaro',commanderId:'m1'}]},version:1};
+  const r=applyNobleHouseOperation({actor:alice,request:{...unitReq([{id:'u1',name:'A',commanderName:'Ser Álvaro',commanderId:'m1'},
+    {id:'u2',name:'B',commanderName:'  '}],null,'unit_state'),version:1},currentSheet:current,existingLedger:null,commanderContext:ctx([])});
+  assert.equal(r.newRecords.length,0);
+  assert.equal('court' in r.sheet.state,false);
+  assert.equal(r.sheet.state.units[0].commanderId,'m1');
+});
+test('commander: invalid units and the version check come first',()=>{
+  assert.equal(code(()=>applyNobleHouseOperation({actor:alice,request:unitReq('x'),currentSheet:null,existingLedger:null,commanderContext:ctx([])})),'invalid');
+  assert.equal(code(()=>applyNobleHouseOperation({actor:alice,request:{...unitReq([{id:'u',commanderName:'X'}]),version:3},
+    currentSheet:{state:{},version:1},existingLedger:null,commanderContext:ctx([])})),'conflict');
 });
