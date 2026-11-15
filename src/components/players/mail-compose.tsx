@@ -82,9 +82,10 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  {data.admin&&<label>Assinado por (NPC / cargo)<input maxLength={120} value={draft.signedBy??''} placeholder="Ex.: Conselho de Elversult" onChange={e=>change({...draft,signedBy:e.target.value})}/></label>}
  <label className="mail-compose-subject">Assunto<input required value={draft.subject} onChange={e=>change({...draft,subject:e.target.value})}/></label>
  <label className="mail-compose-text">Missiva<textarea required rows={9} value={draft.content}
+   aria-describedby="mail-compose-indent-hint"
    onChange={e=>change({...draft,content:e.target.value})}
-   onKeyDown={e=>handleTextareaTab(e,content=>change({...draft,content}))}/>
-   <small>Tab insere recuo; Shift+Tab volta ao campo anterior.</small></label>
+   onKeyDown={e=>handleTextareaTab(e,content=>change({...draft,content}))}/></label>
+ <small id="mail-compose-indent-hint">Tab insere recuo; Shift+Tab volta ao campo anterior.</small>
  <MailLinkFields value={draft.links} onChange={links=>change({...draft,links})} options={options??{players:[],houses:[]}} onManage={onManage}/>
  <ImagePicker images={draft.images} onChange={images=>change({...draft,images})} disabled={busy}/>
  <p>{data.admin?`Entrega prevista: Semana ${draft.week||suggested}.`:current?`Entrega na Semana ${current}.`:'Sem semana aberta. Você pode salvar rascunhos.'}</p>
