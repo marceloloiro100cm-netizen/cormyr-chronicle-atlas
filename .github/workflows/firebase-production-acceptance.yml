@@ -1,0 +1,58 @@
+name: Firebase production public data and anonymous access acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase-production-acceptance-smoke*.mjs'
+      - '.github/workflows/firebase-production-acceptance.yml'
+      - 'docs/firebase/PRODUCTION-ACCESS-ACCEPTANCE.md'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase-production-acceptance-smoke*.mjs'
+      - '.github/workflows/firebase-production-acceptance.yml'
+      - 'docs/firebase/PRODUCTION-ACCESS-ACCEPTANCE.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify the public and private-denial contracts offline
+        run: node --test scripts/firebase-production-acceptance-smoke.test.mjs
+      - name: Verify public repository privacy
+        run: node scripts/verify-public-repo.mjs
+
+  public-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test real public data routes and anonymous 401 denials — never log bodies
+        id: probe
+        continue-on-error: true
+        run: node scripts/firebase-production-acceptance-smoke.mjs
+      - name: Record precise production acceptance status without bypassing cutover safeguards
+        if: always()
+        env:
+          OUTCOME: ${{ steps.probe.outcome }}
+        run: |
+          if [ "$OUTCOME" = "success" ]; then
+            echo "Public API and anonymous denial boundaries passed." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "One or more public or anonymous access boundaries failed." >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::Cormyr production access is not validated for player release."
+          fi
+          echo "No real user login, House permissions, private missives, Cloud database or service-role secret was tested." >> "$GITHUB_STEP_SUMMARY"
+          echo "Cutover remains NO_GO. Supabase continues as source of truth." >> "$GITHUB_STEP_SUMMARY"
