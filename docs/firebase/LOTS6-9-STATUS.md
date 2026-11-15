@@ -1,5 +1,7 @@
 # Lotes 6–9 — Pré-corte Firebase, entrega técnica de 15/11/2026
 
+> **Atualização de referência — 15/11/2026:** os estados e números abaixo são o inventário histórico da data de origem deste documento, **não** o inventário do último commit. O repositório agora possui serviços de emulador de Casas, personagens, registros, calendário, missivas, Jornal, espionagem, batalha, Storage e outros domínios, com 20 integrações sintéticas agrupadas em `docs/firebase/CROSS-DOMAIN-ACCEPTANCE.md`. O monitoramento público confirmou `/api/firebase-auth-verify` em HTTP **503 esperado** (não 404), com App Hosting publicado. Consulte `docs/firebase/EXECUTION-18-ITEMS.md` para os itens 6, 9 e 11–26. A migração **Firebase Cloud** permanece não comprovada; o site continua usando Supabase para login/dados e `readyForCutover=false`.
+
 Esta entrega adiciona **contratos e verificações seguras** à base da migração. Os quatro lotes receberam trabalho de código, mas **não estão finalizados de ponta a ponta**. Toda aplicação real permanece em Supabase e o corte permanece proibido até reconciliação e homologação Cloud.
 
 ## Lote 6 — Adaptador de leitura (entrega implementada)
