@@ -89,3 +89,20 @@ jobs:
           project_id: cormyr
       - name: Reconcile actual GCS objects against gcloud virtual directory entries
         run: node scripts/firebase/verify-storage-homologation.mjs --staging-only-readonly
+      - name: Compare fixed intermediate source and staging GCS metadata when permitted
+        id: source_comparison
+        continue-on-error: true
+        run: node scripts/firebase/verify-storage-homologation.mjs --readonly-live
+      - name: Record exact limitations of the source comparison
+        if: always()
+        env:
+          COMPARE_OUTCOME: ${{ steps.source_comparison.outcome }}
+        run: |
+          if [ "$COMPARE_OUTCOME" = "success" ]; then
+            echo "Intermediate image source and staging GCS inventories match by size/CRC32C (MD5 where available)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Intermediate-source comparison was unavailable or did not match. Inspect authorized source access and inventories without granting new permissions automatically."
+            echo "Intermediate source and destination have not been proven equal." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "This does not compare the original live Supabase bytes, other four media buckets, user-specific access or frozen-source state." >> "$GITHUB_STEP_SUMMARY"
+          echo "readyForCutover=false; cloudWrites=0." >> "$GITHUB_STEP_SUMMARY"
