@@ -4,7 +4,7 @@
 
 ## Verificação automatizada sem credenciais
 
-O workflow `Firebase production public data and anonymous access acceptance` executa `node scripts/firebase-production-acceptance-smoke.mjs`. Sem cookies, JWT, chaves privadas, contas de jogadores ou dados sensíveis, verifica:
+O workflow `Firebase production public data and anonymous access acceptance` executa `node scripts/firebase-production-acceptance-smoke.mjs`. Ele também é disparado em **todo push da `main`**, além de alterações nas rotas/autorizações nos pull requests. Sem cookies, JWT, chaves privadas, contas de jogadores ou dados sensíveis, verifica:
 
 - `/auth` — HTTP 200 HTML ao final de até quatro redirecionamentos GET no mesmo domínio; o destino final precisa permanecer em `/auth` ou `/auth/`; redirects externos são recusados;
 - `/api/public/time` — HTTP 200 JSON (a RPC pública precisa estar disponível);
@@ -14,6 +14,8 @@ O workflow `Firebase production public data and anonymous access acceptance` exe
 - `/api/public/jobs/drive-sync` — HTTP 401 sem Authorization; envia deliberadamente um POST com `kind` **inválido**, que não pode iniciar sincronização, mesmo em caso de falha da checagem de autorização;
 - `/api/firebase-auth-verify` — HTTP 503 JSON, pois só a homologação do Firebase está desativada;
 - Health GET do Supabase Auth legado, apenas como sinal **informativo**. Um HTTP 401 sem chave não comprova login nem queda do serviço; o relatório distingue gateway alcançável de saúde confirmada.
+
+**Limite temporal do monitoramento:** o workflow é disparado pelo push, e o Firebase pode ainda estar realizando o rollout. Assim, um teste verde comprova somente a revisão que atendia o domínio naquele instante, **não** necessariamente o commit recém-integrado. A confirmação de versão publicada exige o check separado `App Hosting - Rollout` e, quando necessário, repetir o smoke após sua conclusão. Nenhum teste aprovado nesta etapa autoriza migração ou desativação do Supabase.
 
 **Nenhum corpo HTTP retornado é lido ou registrado em logs.** O resultado mostra apenas nome do teste, método, status HTTP e booleano de aceite. Falhas reais ficam explícitas no resumo do workflow, mesmo quando o job de diagnóstico é informativo.
 
