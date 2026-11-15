@@ -38,6 +38,21 @@ describe('Firebase homologation client (never a production backend switch)', () 
     expect(tokens.get()).toBeNull();
     expect(state.size).toBe(0);
   });
+  it('retains refresh rotation in memory when browser storage denies access', () => {
+    const blocked = {
+      getItem: (_key: string): string | null => { throw new Error('storage blocked'); },
+      setItem: (_key: string, _value: string) => { throw new Error('storage blocked'); },
+      removeItem: (_key: string) => { throw new Error('storage blocked'); },
+    };
+    const tokens = sessionTokenStorage(blocked);
+    expect(tokens.get()).toBeNull();
+    tokens.set('refresh-1');
+    expect(tokens.get()).toBe('refresh-1');
+    tokens.set('refresh-2');
+    expect(tokens.get()).toBe('refresh-2');
+    tokens.set(null);
+    expect(tokens.get()).toBeNull();
+  });
   it('attaches the Firebase token only to the isolated verification endpoint', async () => {
     const fetcher = vi.fn(async () => new Response('{"authenticated":true}', { status: 200 }));
     expect(await verifyFirebaseHomologationToken('jwt', fetcher as never)).toBe('verified');
