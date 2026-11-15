@@ -24,6 +24,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Secure PGDMP extraction tests
+        run: python3 -m unittest discover -s scripts/firebase -p 'test_extract_private_pg_backup.py'
       - name: Syntax and data privacy invariants
         run: |
           node --check scripts/firebase/lot3-reconcile-backups.mjs
