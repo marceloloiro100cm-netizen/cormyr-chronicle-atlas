@@ -119,3 +119,20 @@ obrigatório.
 
 É seguro repetir em novas exportações privadas, sem commit ou upload dos
 arquivos para o repositório público.
+
+
+## Checagem auxiliar na nuvem — apenas metadados do staging intermediário
+
+Quando a rotina de leitura do bucket privado roda na `main`, ela agora tenta
+também o comando existente `--readonly-live` com **a mesma identidade OIDC
+somente leitura**, sem nova permissão ou mudança de IAM. Se a conta não puder
+listar o prefixo de origem intermediária, ou se houver divergência de CRC32C,
+tamanho, caminhos relativos ou MD5 disponível, o resumo do Actions registra
+a ausência de comprovação; isso nunca autoriza criar bucket, copiar arquivos
+ou flexibilizar permissões. O diagnóstico não imprime paths ou checksums
+individuais.
+
+Mesmo com resultado positivo, a comparação cobre **somente**
+`migration-staging/campaign-images/` versus o destino isolado em GCS.
+Ela não prova igualdade com o Supabase Storage vivo, nem os quatro outros
+buckets, nem regras e ACLs por Casa. O corte definitivo permanece bloqueado.
