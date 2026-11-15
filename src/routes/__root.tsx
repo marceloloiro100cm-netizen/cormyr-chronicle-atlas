@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
   type ErrorComponentProps,
+  redirect,
 } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -16,6 +17,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { I18nProvider } from '@/lib/i18n/context';
 import {decideSessionBoundary,clearSessionQueryCache} from '@/lib/auth/session-boundary';
+
+// Temporary archive-only mode for the 2026-11-15 Lovable exit.
+// Disable only after Firebase Auth/Firestore production acceptance.
+const CORMYR_ARCHIVE_ONLY = true;
+
 
 function NotFoundComponent() {
   return (
@@ -78,6 +84,13 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  // Guard at the router boundary, before private route loaders can call
+  // the legacy backend. The public archive is served as static files.
+  beforeLoad: ({ location }) => {
+    if (CORMYR_ARCHIVE_ONLY && location.pathname !== '/') {
+      throw redirect({ to: '/' });
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -124,6 +137,7 @@ function RootComponent() {
   const knownUserId=useRef<string|null|undefined>(undefined);
   const [sessionEpoch,setSessionEpoch]=useState(0);
   useEffect(() => {
+    if (CORMYR_ARCHIVE_ONLY) return;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event,session) => {
       const decision=decideSessionBoundary(knownUserId.current,event,session?.user?.id);
       if(decision.reason==='ignored')return;
