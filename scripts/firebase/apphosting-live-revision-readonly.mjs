@@ -163,7 +163,7 @@ function appendPublicationSummary(report){
     '- Uma comparação diferente de MATCH pode apenas indicar rollout ainda em curso; conferir o check App Hosting - Rollout antes de concluir.',
     '',
   ];
-  appendFileSync(destination,lines.join('\\n')+'\\n');
+  appendFileSync(destination,lines.join('\n')+'\n');
 }
 
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
