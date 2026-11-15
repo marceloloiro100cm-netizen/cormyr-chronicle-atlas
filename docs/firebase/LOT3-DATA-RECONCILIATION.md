@@ -18,6 +18,24 @@ A conexão Supabase disponível na conversa não enumerou projetos acessíveis. 
 
 Os resultados são **somente contagens e nomes de tabelas**; não exibir UIDs, e-mails, credenciais, textos de missivas, IDs individuais nem hashes por linha. A ferramenta não lê segredos, não altera Postgres, não grava no Firestore nem usa endpoints remotos.
 
+## ZIP privado já localizado no Google Drive
+
+Foi localizado o arquivo `cormyr-chronicle-atlas_261112.backup.zip` (backup de 12/11/2026). O ZIP contém um único arquivo PostgreSQL no formato `PGDMP`; isso **não** demonstra que a origem atual continua igual. Antes de processar, mantenha-o em diretório privado e use o extrator exclusivo:
+
+```bash
+set -euo pipefail
+umask 077
+mkdir -p "$HOME/cormyr-chronicle-atlas/.firebase-migration"
+chmod 700 "$HOME/cormyr-chronicle-atlas/.firebase-migration"
+python3 scripts/firebase/extract-private-pg-backup.py \\
+  --zip "$HOME/cormyr-chronicle-atlas/.firebase-migration/cormyr-chronicle-atlas_261112.backup.zip" \\
+  --output "$HOME/cormyr-chronicle-atlas/.firebase-migration/cormyr-chronicle-atlas_261112.backup"
+```
+
+O extrator exige um membro único, nome seguro, cabeçalho PostgreSQL, CRC do ZIP válido, diretório `0700` e arquivo novo `0600`. Não sobrescreve, não envia dados ao GitHub, não conecta ao banco e não imprime conteúdo privado.
+
+**Proteção do backup:** a metadata da cópia no Drive indicou compartilhamento por link com permissão de leitura pública (`anyone/reader`). Revisar e restringir esse acesso; este PR não altera a partilha. Evitar novos links públicos para dumps que podem conter credenciais e correspondência privada.
+
 ## Execução com backups privados no Cloud Shell
 
 Usar um diretório local protegido (`umask 077` e permissões restritas) e duas exportações da **mesma origem**: um baseline íntegro e uma exportação nova. Para extrair o segundo dump:
