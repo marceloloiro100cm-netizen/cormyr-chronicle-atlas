@@ -10,6 +10,7 @@ const CHECKS = [
   { name: 'staticAtlas', path: '/cormyr/index.html', kind: 'html' },
   { name: 'loginPage', path: '/auth', kind: 'html' },
   { name: 'spyPortrait', path: '/spy-portraits/tillet.jpg', kind: 'image' },
+  { name: 'publicApiRoute', path: '/api/public/translations', kind: 'validationError' },
   { name: 'firebaseAuthGate', path: '/api/firebase-auth-verify', kind: 'closedGate' },
 ];
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
@@ -53,6 +54,11 @@ export function classifyResponse(kind, response) {
   if (kind === 'image') {
     return response.status === 200 && contentType.startsWith('image/');
   }
+  // Missing locale is rejected by the public route before any database access.
+  // A 404 here indicates the route itself is not available in the deployment.
+  if (kind === 'validationError') {
+    return response.status === 400 && contentType.startsWith('application/json');
+  }
   // Disabled/unauthenticated by default: a 200 here is never proof of safety.
   // Both 401 (denied) and 503 (explicitly disabled) are acceptable.
   if (kind === 'closedGate') {
@@ -81,6 +87,9 @@ export async function smokeAppHosting({ fetcher = fetch } = {}) {
   return {
     origin: OFFICIAL_ORIGIN,
     publicationSmokePassed: checks.every(c => c.passed),
+    serverRoutesPublished: checks.filter(c =>
+      c.name === 'publicApiRoute' || c.name === 'firebaseAuthGate'
+    ).every(c => c.passed),
     firebaseCloudMigrationVerified: false,
     readyForCutover: false,
     checks,
