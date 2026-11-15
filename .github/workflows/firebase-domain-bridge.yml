@@ -1,0 +1,47 @@
+name: Firebase domain bridge (local emulator boundary)
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  domain-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Emulator-only domain boundary and house access tests
+        run: |
+          node --test scripts/firebase/domain-http-handler.test.mjs
+          node --test scripts/firebase/house-view-service.test.mjs
+
+  emulator-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install throwaway emulator dependencies
+        run: npm install --no-save --package-lock=false --legacy-peer-deps firebase-tools@15.35.0 firebase-admin@14.5.1
+      - name: Authenticated House access acceptance on real Firestore Emulator
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+          FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+        run: |
+          npx firebase emulators:exec --only firestore,auth \
+            --project demo-cormyr-migration \
+            --config firebase/firebase-all.json \
+            "node scripts/firebase/domain-bridge.integration.mjs"
