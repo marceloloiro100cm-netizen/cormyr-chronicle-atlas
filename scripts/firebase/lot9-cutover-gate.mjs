@@ -30,7 +30,13 @@ export function evaluateLot9CutoverGate({sourceSafety, externalEvidence = {}}) {
   if(!externalEvidence||typeof externalEvidence!=='object'||Array.isArray(externalEvidence))
     throw Error('Invalid private readiness evidence');
   const checked=Object.create(null);
-  for(const name of CUTOVER_REQUIREMENTS)checked[name]=externalEvidence[name]===true;
+  // Only a directly supplied data property can be considered self-reported.
+  // Inherited values or getters must not manufacture evidence of a safe cutover.
+  for(const name of CUTOVER_REQUIREMENTS){
+    const descriptor=Object.getOwnPropertyDescriptor(externalEvidence,name);
+    checked[name]=descriptor!==undefined&&Object.hasOwn(descriptor,'value')&&
+      descriptor.value===true;
+  }
   const missing=CUTOVER_REQUIREMENTS.filter(k=>!checked[k]);
   const isClaimedComplete=missing.length===0;
   return {
