@@ -53,7 +53,7 @@ export function modulesForGroup(name){
 export function validateIsolatedExecution(group,env){
   const modules=modulesForGroup(group);
   assertEmulatorOnly(env,PROJECT);
-  if(!/^(127\\.0\\.0\\.1|localhost|\\[::1\\]):9099$/.test(env.FIREBASE_AUTH_EMULATOR_HOST||''))
+  if(!/^(127\.0\.0\.1|localhost|\[::1\]):9099$/.test(env.FIREBASE_AUTH_EMULATOR_HOST||''))
     throw Error('Local Auth Emulator is mandatory');
   return modules;
 }
