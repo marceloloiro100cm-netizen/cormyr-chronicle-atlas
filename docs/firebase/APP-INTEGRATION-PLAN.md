@@ -1,5 +1,7 @@
 # Integração do app: inventário e plano (Fase 2, etapa 2)
 
+> **Atualização de referência — 15/11/2026:** os estados e números abaixo são o inventário histórico da data de origem deste documento, **não** o inventário do último commit. O repositório agora possui serviços de emulador de Casas, personagens, registros, calendário, missivas, Jornal, espionagem, batalha, Storage e outros domínios, com 20 integrações sintéticas agrupadas em `docs/firebase/CROSS-DOMAIN-ACCEPTANCE.md`. O monitoramento público confirmou `/api/firebase-auth-verify` em HTTP **503 esperado** (não 404), com App Hosting publicado. Consulte `docs/firebase/EXECUTION-18-ITEMS.md` para os itens 6, 9 e 11–26. A migração **Firebase Cloud** permanece não comprovada; o site continua usando Supabase para login/dados e `readyForCutover=false`.
+
 Levantamento de tudo que `src/` usa do Supabase (90 arquivos, fora dos testes), para trocar módulo a módulo por serviços Firebase atrás de um adaptador.
 
 ## O que o app usa hoje
