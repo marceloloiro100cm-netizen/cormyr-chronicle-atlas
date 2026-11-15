@@ -32,11 +32,13 @@ jobs:
         run: |
           node --check scripts/firebase/verify-storage-homologation.mjs
           node --check scripts/firebase/google-drive-read-adapter.mjs
+          node --check scripts/firebase/probe-google-drive-homologation.mjs
           node --check scripts/firebase/serve-jobs-emulator.mjs
       - name: Verify read-only media and Drive boundaries plus cron auth
         run: |
           node --test scripts/firebase/verify-storage-homologation.test.mjs \
             scripts/firebase/google-drive-read-adapter.test.mjs \
+            scripts/firebase/probe-google-drive-homologation.test.mjs \
             scripts/firebase/serve-jobs-emulator.test.mjs
       - name: Reject private data in public repository
         run: node scripts/verify-public-repo.mjs
