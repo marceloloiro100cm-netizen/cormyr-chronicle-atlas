@@ -1,0 +1,44 @@
+name: Firebase App Hosting domain smoke (read-only)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - scripts/firebase-apphosting-smoke.mjs
+      - scripts/firebase-apphosting-smoke.test.mjs
+      - .github/workflows/firebase-apphosting-domain-smoke.yml
+  push:
+    branches: [main]
+    paths:
+      - scripts/firebase-apphosting-smoke.mjs
+      - scripts/firebase-apphosting-smoke.test.mjs
+      - .github/workflows/firebase-apphosting-domain-smoke.yml
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify atlas.cormyr.com.br without credentials or write operations
+        id: probe
+        continue-on-error: true
+        run: node scripts/firebase-apphosting-smoke.mjs
+      - name: Make pending DNS visible without blocking code review
+        if: always()
+        env:
+          PROBE_OUTCOME: ${{ steps.probe.outcome }}
+        run: |
+          if [ "$PROBE_OUTCOME" = "success" ]; then
+            echo "Domain smoke passed. This does NOT validate Firebase data migration." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Domain smoke not confirmed (DNS/SSL/app publication may still be pending)." >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::Public domain smoke pending; no cutover is authorized."
+          fi
+          echo "Firebase Cloud migration and cutover readiness remain unverified." >> "$GITHUB_STEP_SUMMARY"
