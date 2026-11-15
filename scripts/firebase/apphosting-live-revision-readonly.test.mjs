@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   APPHOSTING_API,inspectAppHostingReadOnly,classifyServingRevision,classifyTrafficSplit,
+  validatedServingBuildPath,AUDITED_PROJECT_NUMBER,
 } from './apphosting-live-revision-readonly.mjs';
 
 const SHA='a'.repeat(40);
@@ -242,7 +243,48 @@ test('bounded traffic diagnostics expose only shapes, never raw references',()=>
   assert.equal(classifyTrafficSplit({percent:100,build:p+'/builds/build-12'},p).buildRefShape,
     'EXACT_BACKEND_RESOURCE');
   assert.equal(classifyTrafficSplit({percent:100,build:'projects/477785088395/locations/us-east4/backends/cormyr-preview/builds/build-12'},p).buildRefShape,
-    'SAME_BACKEND_OTHER_PROJECT_ALIAS');
+    'KNOWN_PROJECT_NUMBER_ALIAS');
   assert.equal(classifyTrafficSplit({percent:0,build:'build-12'},p).buildRefShape,
     'SHORT_BUILD_ID');
+});
+
+test('numeric project resource alias selects only the same Cormyr backend build',async()=>{
+  const numericBuild='projects/'+AUDITED_PROJECT_NUMBER+
+    '/locations/us-east4/backends/cormyr-preview/builds/build-12';
+  const values={
+    ...fixture,
+    [p+'/traffic']:{
+      ...fixture[p+'/traffic'],
+      current:{splits:[{build:numericBuild,percent:100}]},
+    },
+  };
+  const requested=[];
+  const report=await inspectAppHostingReadOnly({
+    tokenProvider:async()=> 'ephemeral-only-token',
+    fetcher:async url=>{
+      requested.push(url);
+      const data=values[url.slice((APPHOSTING_API+'/').length)];
+      return new Response(JSON.stringify(data??{}),{status:data?200:404});
+    },
+  });
+  assert.equal(report.backends[0].splitDiagnostics[0].buildRefShape,
+    'KNOWN_PROJECT_NUMBER_ALIAS');
+  assert.equal(report.backends[0].servingBuildSelected,true);
+  assert.equal(report.domainServingCommit,SHA);
+  assert.equal(report.auditComplete,true);
+  assert.equal(classifyServingRevision(report,SHA).comparison,'MATCH');
+  assert.ok(requested.includes(APPHOSTING_API+'/'+p+'/builds/build-12'));
+  assert.ok(requested.every(url=>url.startsWith(APPHOSTING_API+'/projects/cormyr/')));
+});
+
+test('unrecognized project number or different backend is not silently trusted',()=>{
+  const invalid=[
+    'projects/123456789/locations/us-east4/backends/cormyr-preview/builds/build-12',
+    'projects/'+AUDITED_PROJECT_NUMBER+'/locations/us-central1/backends/cormyr-preview/builds/build-12',
+    'projects/'+AUDITED_PROJECT_NUMBER+'/locations/us-east4/backends/another-backend/builds/build-12',
+    'projects/'+AUDITED_PROJECT_NUMBER+'/locations/us-east4/backends/cormyr-preview/builds/../../secrets',
+    'projects/'+AUDITED_PROJECT_NUMBER+'/locations/us-east4/backends/cormyr-preview/builds/build-12?token=hidden',
+  ];
+  for(const resource of invalid)
+    assert.equal(validatedServingBuildPath(resource,p),null);
 });
