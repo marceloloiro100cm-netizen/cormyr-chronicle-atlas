@@ -14,16 +14,20 @@ export interface KeyValueStore {
 const REFRESH_KEY = 'cormyr:firebase-homologation:refresh';
 
 export function sessionTokenStorage(store: KeyValueStore): TokenStorage {
+  // Some browsers block sessionStorage entirely (including reads). Keep a
+  // tab-local fallback so token rotation still works during homologation.
+  let fallback: string | null = null;
   return {
     get() {
-      try { return store.getItem(REFRESH_KEY); } catch { return null; }
+      try { return store.getItem(REFRESH_KEY); } catch { return fallback; }
     },
     set(value) {
+      fallback = value;
       try {
         if (value === null) store.removeItem(REFRESH_KEY);
         else store.setItem(REFRESH_KEY, value);
       } catch {
-        // Private browsing may deny storage. Authentication then lasts only in memory.
+        // The fallback is memory-only and disappears when this page closes.
       }
     },
   };
