@@ -1,0 +1,32 @@
+name: Firebase Lote 3 - private backup reconciliation
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/lot3-reconcile-backups*.mjs'
+      - '.github/workflows/firebase-lot3-reconciliation.yml'
+      - 'docs/firebase/LOT3-DATA-RECONCILIATION.md'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/lot3-reconcile-backups*.mjs'
+      - '.github/workflows/firebase-lot3-reconciliation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safe-offline-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax and data privacy invariants
+        run: |
+          node --check scripts/firebase/lot3-reconcile-backups.mjs
+          node --test scripts/firebase/lot3-reconcile-backups.test.mjs
+      - name: Public repository private-data gate
+        run: node scripts/verify-public-repo.mjs
