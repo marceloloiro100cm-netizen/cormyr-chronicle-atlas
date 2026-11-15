@@ -78,6 +78,52 @@ test('Supabase health is advisory and cannot by itself authorize player cutover'
   }});
   assert.equal(report.publicReadinessPassed,true);
   assert.equal(report.advisoryAuthEndpointPassed,false);
+  assert.equal(report.legacyAuthGatewayReachable,false);
   assert.equal(report.readyForPlayers,false);
   assert.equal(report.checks.find(x=>x.name==='legacySupabaseAuthHealth').reason,'transport_unavailable');
+});
+
+test('a canonical same-origin login redirect is followed without sending credentials',async()=>{
+  const seen=[];
+  const report=await probeProductionBoundaries({fetcher:async(url,opts)=>{
+    seen.push({url,opts});
+    if(url===PRODUCTION_ORIGIN+'/auth'){
+      return new Response(null,{status:307,headers:{location:'/auth/'}});
+    }
+    const entry=PROBES.find(x=>url===new URL(x.path,x.origin).href||
+      (x.name==='loginPage'&&url===PRODUCTION_ORIGIN+'/auth/'));
+    assert.ok(entry);
+    return makeResponse(entry);
+  }});
+  assert.equal(report.publicReadinessPassed,true);
+  assert.equal(report.checks.find(x=>x.name==='loginPage').redirects,1);
+  assert.equal(seen.length,PROBES.length+1);
+  assert.ok(seen.every(x=>x.opts.credentials==='omit'));
+});
+
+test('a login redirected outside /auth cannot be mistaken for a valid login',async()=>{
+  const report=await probeProductionBoundaries({fetcher:async(url)=>{
+    if(url===PRODUCTION_ORIGIN+'/auth')
+      return new Response(null,{status:307,headers:{location:'/cormyr/'}});
+    const entry=PROBES.find(x=>url===new URL(x.path,x.origin).href);
+    return entry?makeResponse(entry):new Response('homepage',{status:200,
+      headers:{'content-type':'text/html'}});
+  }});
+  assert.equal(report.publicReadinessPassed,false);
+  assert.equal(report.checks.find(x=>x.name==='loginPage').status,200);
+  assert.equal(report.checks.find(x=>x.name==='loginPage').passed,false);
+});
+
+test('cross-origin login redirect is blocked without fetching attacker URL',async()=>{
+  const calls=[];
+  const report=await probeProductionBoundaries({fetcher:async url=>{
+    calls.push(url);
+    if(url===PRODUCTION_ORIGIN+'/auth')return new Response(null,{status:302,
+      headers:{location:'https://untrusted.example/capture'}});
+    const entry=PROBES.find(x=>url===new URL(x.path,x.origin).href);
+    return makeResponse(entry);
+  }});
+  assert.equal(report.publicReadinessPassed,false);
+  assert.equal(report.checks.find(x=>x.name==='loginPage').reason,'transport_unavailable');
+  assert.ok(calls.every(url=>!url.startsWith('https://untrusted.example/')));
 });
