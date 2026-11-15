@@ -37,3 +37,43 @@ O workflow `Firebase production public data and anonymous access acceptance` exe
 - Login com redirecionamento de HTTP 307/302 só é aceito se terminar na própria rota de login; redirecionamento para a home, outro domínio ou loop é falha do aceite.
 
 O site pode ser anunciado como **portal publicado para testes** após o smoke público, não como migração 100% completa enquanto os portões funcionais não passarem.
+
+## Homologação individual dos três perfis (página protegida)
+
+A partir desta revisão, cada usuário autenticado pode abrir
+`https://atlas.cormyr.com.br/diagnostico` pelo link **Verificar meu acesso** no cabeçalho do seu painel.
+
+O diagnóstico, executado somente no navegador da conta conectada, chama
+`loadCampaignAccessScope` (inclui revalidação da identidade), e consulta
+apenas os valores booleanos das funções já existentes
+`campaign_access_active`, `is_campaign_editor`,
+`can_edit_campaign_newspaper` e, para um jogador com vínculo,
+`in_campaign_house` da **própria Casa**. Após as consultas, valida
+novamente o usuário antes de mostrar o relatório.
+
+A página exibe **somente** o resultado dos checks, sem e-mails, UIDs,
+nomes de Casas, nomes de usuários, dados de missivas, documentos, listas
+de jogadores, JWTs ou respostas privadas. A atualização é manual;
+nenhuma mutação é executada. Uma RPC indisponível gera estado
+**inconclusivo** — nunca libera permissões.
+
+Critérios exibidos:
+- Narrador: acesso ativo, papel administrativo e permissão para gerenciar o Jornal;
+- Editor-chefe: acesso ativo, identidade editorial e direito de editar o Jornal, sem autoridade de Narrador;
+- Jogador: acesso ativo, senha regular, vínculo com Casa, RPC positiva para leitura da própria Casa e ausência de identidade editorial/administrativa.
+
+O diagnóstico **não comprova** isolamento entre jogadores de Casas diferentes,
+acesso a dados privados do Narrador, entrega de missivas, escrita de jornal,
+integridade do Drive, service role real ou importação de Firebase Cloud. Não
+use o resultado de um único jogador como evidência para todos os jogadores.
+
+### Aceite manual sem compartilhar credenciais
+
+1. Autentique-se como Jogador A e abra `/diagnostico`; observe o relatório e faça logout.
+2. Repita com Narrador e Editor-chefe, recarregando a página após trocar de conta.
+3. Para testar isolamento entre Casas, use **uma segunda conta de homologação** de Casa B em ambiente autorizado; verifique acesso cruzado **sem copiar o conteúdo** para o chat ou issues públicos.
+4. Se algum check ficar inconclusivo ou reprovado, guarde apenas o nome do check e o estado; nunca publique usuário, token ou dados da Casa.
+
+Os 3 logins no domínio Firebase foram relatados pelo proprietário em 15/11/2026.
+Isso comprova autenticação manual nesses perfis, mas não a segregação
+dos dados entre contas ou a configuração da chave privilegiada.
