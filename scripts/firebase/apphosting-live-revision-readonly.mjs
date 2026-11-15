@@ -19,6 +19,41 @@ const validBuild=(resource,backend)=>typeof resource==='string'&&
   /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(resource.slice((backend+'/builds/').length));
 const sha40=x=>typeof x==='string'&&/^[a-f0-9]{40}$/.test(x)?x:null;
 
+/**
+ * Bounded metadata only: never emit raw build references, which could carry
+ * arbitrary provider strings. Diagnose the mismatch with a shape enum.
+ */
+export function classifyTrafficSplit(split,backend){
+  const build=split?.build;
+  let buildRefShape='MISSING_OR_NON_STRING';
+  if(typeof build==='string'){
+    if(validBuild(build,backend)){
+      buildRefShape='EXACT_BACKEND_RESOURCE';
+    }else if(build.startsWith(backend+'/builds/')){
+      buildRefShape='INVALID_BUILD_ID';
+    }else if(/^projects\/[^/]+\/locations\/[^/]+\/backends\/[^/]+\/builds\/[^/]+$/.test(build)){
+      const parts=build.split('/');
+      const expected=backend.split('/');
+      buildRefShape=parts[3]===expected[3]&&parts[5]===expected[5]
+        ?'SAME_BACKEND_OTHER_PROJECT_ALIAS':'OTHER_BACKEND_RESOURCE';
+    }else if(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(build)){
+      buildRefShape='SHORT_BUILD_ID';
+    }else if(/^builds\/[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(build)){
+      buildRefShape='RELATIVE_BUILD_RESOURCE';
+    }else{
+      buildRefShape='OTHER_OR_UNTRUSTED_REFERENCE';
+    }
+  }
+  const percent=split?.percent;
+  return {
+    buildRefShape,
+    percentType:typeof percent,
+    percentClass:percent===100||percent==='100'?'ONE_HUNDRED':
+      percent===0||percent==='0'?'ZERO':'OTHER_OR_MISSING',
+  };
+}
+
+
 export async function inspectAppHostingReadOnly({
   fetcher=fetch, tokenProvider=()=>execFileSync('gcloud',['auth','print-access-token','--quiet'],
     {encoding:'utf8',stdio:['ignore','pipe','ignore'],timeout:10000}).trim(),
@@ -71,6 +106,8 @@ export async function inspectAppHostingReadOnly({
         :null;
       const currentSplits=traffic.status===200&&Array.isArray(traffic.data.current?.splits)
         ?traffic.data.current.splits:[];
+      const splitDiagnostics=currentSplits.slice(0,5)
+        .map(split=>classifyTrafficSplit(split,name));
       // Google REST may serialize an int64 percent field as the canonical decimal string.
       const validServing=currentSplits.filter(s=>(s?.percent===100||s?.percent==='100')&&validBuild(s.build,name));
       // Only one 100%-traffic build is conclusive; no fallback from historical
@@ -91,6 +128,7 @@ export async function inspectAppHostingReadOnly({
         trafficHttpStatus:traffic.status,
         rolloutsHttpStatus:rollouts.status,
         servingTrafficSplitCount:currentSplits.length,
+        splitDiagnostics,
         servingBuildSelected:serving!==null,
         servingBuildHttpStatus:servedBuild?.status??null,
         automaticRolloutsEnabled:policy?policy.disabled!==true:null,
@@ -107,9 +145,13 @@ export async function inspectAppHostingReadOnly({
     scope:'APPHOSTING_METADATA_READ_ONLY',
     project:AUDITED_PROJECT,domain:AUDITED_DOMAIN,
     locations,backends,matchingBackends:attached.length,
+    // A 200 on metadata endpoints does not prove which build is serving.
+    // Report a complete audit only when the attached domain has a resolved
+    // 100% serving build and a source SHA.
     auditComplete:locations.every(l=>l.httpStatus===200&&!l.incomplete)&&
-      backends.every(b=>b.domainsReadable&&b.trafficReadable&&b.rolloutsReadable&&
-        (!b.servingBuildSelected||b.servingBuildHttpStatus===200)),
+      backends.every(b=>b.domainsReadable&&b.trafficReadable&&b.rolloutsReadable)&&
+      attached.length===1&&attached[0].servingBuildSelected&&
+      attached[0].servingBuildHttpStatus===200&&attached[0].servedCommit!==null,
     readPermissionRequired:locations.some(l=>l.httpStatus===401||l.httpStatus===403)||
       backends.some(b=>[401,403].includes(b.domainsHttpStatus)||
         [401,403].includes(b.trafficHttpStatus)||
@@ -159,6 +201,9 @@ function appendPublicationSummary(report){
     '- Rollouts automáticos: '+(state.automaticRolloutsEnabled===null?
       'desconhecidos':state.automaticRolloutsEnabled?'ativados':'desativados'),
     '- Consulta completa: '+(report.auditComplete?'sim':'não'),
+    '- Formato do split ativo (metadados sem IDs): '+
+      (report.backends?.find(b=>b.domainAttached)?.splitDiagnostics
+        ?.map(d=>d.percentType+'/'+d.percentClass+'/'+d.buildRefShape).join('; ')??'desconhecido'),
     '- Permissão de leitura pendente: '+(state.readPermissionRequired?'sim':'não'),
     '- Firebase Cloud/dados/Auth migrados: **não comprovado**. Corte definitivo: **NO_GO**.',
     '- Uma comparação diferente de MATCH pode apenas indicar rollout ainda em curso; conferir o check App Hosting - Rollout antes de concluir.',
