@@ -90,7 +90,7 @@ test('truncated backend list is not treated as an exhaustive inventory',async()=
 });
 
 test('an empty region (no backends property) is valid; numeric build IDs are supported',async()=>{
-  const numericalBuild='${p}/builds/123e4567-e89b-12d3-a456-426614174000';
+  const numericalBuild=`${p}/builds/123e4567-e89b-12d3-a456-426614174000`;
   const values={
     ...fixture,
     [`${p}/traffic`]:{
