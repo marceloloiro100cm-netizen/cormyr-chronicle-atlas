@@ -1,0 +1,89 @@
+name: Firebase Lote 4 - media Drive and jobs
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/verify-storage-homologation*.mjs'
+      - 'scripts/firebase/google-drive-read-adapter*.mjs'
+      - 'scripts/firebase/serve-jobs-emulator*.mjs'
+      - 'docs/firebase/LOT4-MEDIA-DRIVE-JOBS.md'
+      - '.github/workflows/firebase-lot4-media-drive-jobs.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/verify-storage-homologation*.mjs'
+      - 'scripts/firebase/google-drive-read-adapter*.mjs'
+      - 'scripts/firebase/serve-jobs-emulator*.mjs'
+      - '.github/workflows/firebase-lot4-media-drive-jobs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safe-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check syntax of Lote 4 modules
+        run: |
+          node --check scripts/firebase/verify-storage-homologation.mjs
+          node --check scripts/firebase/google-drive-read-adapter.mjs
+          node --check scripts/firebase/serve-jobs-emulator.mjs
+      - name: Verify read-only media and Drive boundaries plus cron auth
+        run: |
+          node --test scripts/firebase/verify-storage-homologation.test.mjs \
+            scripts/firebase/google-drive-read-adapter.test.mjs \
+            scripts/firebase/serve-jobs-emulator.test.mjs
+      - name: Reject private data in public repository
+        run: node scripts/verify-public-repo.mjs
+
+  local-emulator-domains:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned disposable emulators
+        run: npm install --no-save --package-lock=false firebase-tools@15.35.0 firebase-admin@14.5.1 firebase@13.3.0 @firebase/rules-unit-testing@6.0.0
+      - name: Drive transactional rules and scheduled job idempotency
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+        run: |
+          npx firebase emulators:exec --only firestore \
+            --project demo-cormyr-migration \
+            --config firebase/firebase-domain.json \
+            "node scripts/firebase/drive-service.integration.mjs && node scripts/firebase/scheduled-jobs.integration.mjs"
+
+  private-staging-readonly:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Authenticate to private bucket with scoped viewer only
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: cormyr
+      - name: Validate checksum metadata in private staging without source access
+        run: node scripts/firebase/verify-storage-homologation.mjs --staging-only-readonly
