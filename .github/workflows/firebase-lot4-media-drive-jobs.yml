@@ -87,33 +87,5 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v3
         with:
           project_id: cormyr
-      - name: Validate checksum metadata in private staging without source access
-        id: api
-        continue-on-error: true
+      - name: Reconcile actual GCS objects against gcloud virtual directory entries
         run: node scripts/firebase/verify-storage-homologation.mjs --staging-only-readonly
-      - name: Independently count private destination with gcloud without logging names
-        id: cli
-        shell: bash
-        run: |
-          set -euo pipefail
-          work="$(mktemp -d)"
-          chmod 700 "$work"
-          trap 'rm -rf "$work"' EXIT
-          if ! gcloud storage ls --recursive \
-              'gs://cormyr-migration-homolog-477785088395/campaign-images/' \
-              >"$work/objects" 2>"$work/errors"; then
-            echo "::error::Unable to enumerate private staging with scoped reader"
-            exit 1
-          fi
-          total="$(grep -c '^gs://' "$work/objects" || true)"
-          echo "Gcloud private-staging prefix objects: $total"
-          echo "total=$total" >>"$GITHUB_OUTPUT"
-      - name: Enforce documented historical baseline in both independent listings
-        if: always()
-        shell: bash
-        run: |
-          if [[ "${{ steps.api.outcome }}" != "success" ||
-                "${{ steps.cli.outputs.total }}" != "986" ]]; then
-            echo "::error::Private staging inventory does not match historical baseline: reconcile before accepting Storage"
-            exit 1
-          fi

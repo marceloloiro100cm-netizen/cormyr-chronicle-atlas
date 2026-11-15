@@ -11,7 +11,7 @@ export const SOURCE={bucket:'cormyr.firebasestorage.app',prefix:'migration-stagi
 export const DESTINATION={bucket:'cormyr-migration-homolog-477785088395',prefix:'campaign-images/'};
 const BASE='https://storage.googleapis.com/storage/v1/b/';
 const MAX_ITEMS=50_000;
-export const HISTORICAL_STAGING_BASELINE=986;
+export const HISTORICAL_GCLOUD_ENTRY_COUNT=986;
 const CRC=/^[A-Za-z0-9+/]{6}==$/;
 function cleanItem(item,prefix) {
   if(!item||typeof item.name!=='string'||!item.name.startsWith(prefix))
@@ -109,25 +109,62 @@ export async function listGcsPrefix({bucket,prefix},accessToken,fetcher=fetch){
   }
   return items;
 }
-/** Metadata checks are not source byte equality. Historical count is a review gate. */
-export function summarizePrivateStaging(inventory){
-  if(!Array.isArray(inventory)||inventory.length>MAX_ITEMS)
+/**
+ * Reconcile API objects with CLI output without logging any private paths.
+ * 'gcloud storage ls --recursive' may include virtual directory entries;
+ * those are NOT GCS objects unless the JSON API also lists the exact key.
+ */
+export function summarizePrivateStaging(inventory,cliText){
+  if(!Array.isArray(inventory)||inventory.length>MAX_ITEMS||
+     typeof cliText!=='string'||cliText.length>50_000_000)
     throw Error('Invalid staging inventory');
   let destinationBytes=0;
-  const keys=new Set();
+  const apiKeys=new Set();
   for(const item of inventory){
     const checked=cleanItem(item,DESTINATION.prefix);
-    if(keys.has(checked.relative))throw Error('Duplicate staging object');
-    keys.add(checked.relative);
+    if(apiKeys.has(checked.relative))throw Error('Duplicate staging object');
+    apiKeys.add(checked.relative);
     destinationBytes+=Number(checked.size);
   }
+  const uri='gs://'+DESTINATION.bucket+'/'+DESTINATION.prefix;
+  let cliEntries=0,cliPseudoFolders=0,cliDuplicateFileEntries=0,unexpectedEntries=0;
+  const cliObjects=new Set();
+  for(const line of cliText.split(/\r?\n/)){
+    const raw=line.trim();
+    if(!raw)continue;
+    if(!raw.startsWith(uri)){
+      if(raw.startsWith('gs://'))unexpectedEntries++;
+      continue;
+    }
+    cliEntries++;
+    let name=raw.slice(uri.length);
+    // CLI output can show headings ending in ':' or virtual directories.
+    if(name.endsWith('/:'))name=name.slice(0,-1);
+    if(name.endsWith(':')||name.endsWith('/')&&!apiKeys.has(name)){
+      cliPseudoFolders++;
+      continue;
+    }
+    if(!name||name.includes('..')||name.includes('\\')||name.startsWith('/')||
+       name.length>1024){
+      unexpectedEntries++;
+      continue;
+    }
+    if(cliObjects.has(name))cliDuplicateFileEntries++;
+    else cliObjects.add(name);
+  }
+  let onlyInCli=0,onlyInApi=0;
+  for(const k of cliObjects)if(!apiKeys.has(k))onlyInCli++;
+  for(const k of apiKeys)if(!cliObjects.has(k))onlyInApi++;
+  const listingMethodsAgree=inventory.length>0&&onlyInApi===0&&onlyInCli===0&&
+    cliDuplicateFileEntries===0&&unexpectedEntries===0;
   return {
     scope:'READ-ONLY-PRIVATE-STAGING-METADATA',
-    destinationObjects:inventory.length,
-    historicalBaselineObjects:HISTORICAL_STAGING_BASELINE,
-    matchesHistoricalBaseline:inventory.length===HISTORICAL_STAGING_BASELINE,
-    destinationBytes,
-    crc32cMetadataValidated:true,
+    destinationObjects:inventory.length,destinationBytes,
+    cliEntries,cliPseudoFolders,cliUniqueObjectEntries:cliObjects.size,
+    cliDuplicateFileEntries,unexpectedEntries,onlyInApi,onlyInCli,
+    historicalReportedGcloudEntries:HISTORICAL_GCLOUD_ENTRY_COUNT,
+    matchesHistoricalEntryCount:cliEntries===HISTORICAL_GCLOUD_ENTRY_COUNT,
+    listingMethodsAgree,crc32cMetadataValidated:true,
     sourceCompared:false,sourceFrozen:false,readyForCutover:false,
     cloudWrites:0,
   };
@@ -152,10 +189,16 @@ async function main(args){
   }).trim();
   if(args[0]==='--staging-only-readonly'){
     const inventory=await listGcsPrefix(DESTINATION,token);
-    const report=summarizePrivateStaging(inventory);
+    const cli=execFileSync('gcloud',['storage','ls','--recursive',
+      'gs://'+DESTINATION.bucket+'/'+DESTINATION.prefix],{
+      encoding:'utf8',stdio:['ignore','pipe','ignore'],
+      timeout:120_000,maxBuffer:50_000_000,
+    });
+    const report=summarizePrivateStaging(inventory,cli);
     process.stdout.write(JSON.stringify(report,null,2)+'\n');
-    // An older 779-object manifest cannot silently pass as 986 copied objects.
-    if(!report.matchesHistoricalBaseline)process.exitCode=1;
+    // Check true object equivalence and the historical CLI *entry* count.
+    if(!report.listingMethodsAgree||!report.matchesHistoricalEntryCount)
+      process.exitCode=1;
     return;
   }
   const result=await verifyStorageReadOnly({token});

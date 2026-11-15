@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SOURCE,DESTINATION,compareStorageCopies,listGcsPrefix,verifyStorageReadOnly,summarizePrivateStaging,HISTORICAL_STAGING_BASELINE}
+import {SOURCE,DESTINATION,compareStorageCopies,listGcsPrefix,verifyStorageReadOnly,summarizePrivateStaging,HISTORICAL_GCLOUD_ENTRY_COUNT}
   from './verify-storage-homologation.mjs';
 const CRC='AAAAAA==',CRC2='AQAAAA==';
 const obj=(prefix,path,crc32c=CRC,size='1024')=>({
@@ -66,15 +66,34 @@ test('unauthorized or cyclic pagination fails without writing data',async()=>{
  await assert.rejects(listGcsPrefix(SOURCE,'test-token-long-enough',cyclic));
 });
 
-test('historical 986-object staging inventory must not silently accept 779',()=>{
- const sample=Array.from({length:779},(_,i)=>obj(DESTINATION.prefix+'nested/',`file-${i}.webp`));
- const report=summarizePrivateStaging(sample);
- assert.equal(HISTORICAL_STAGING_BASELINE,986);
+test('CLI 986 entries may contain 207 virtual folders and only 779 real GCS objects',()=>{
+ const sample=Array.from({length:779},(_,i)=>obj(DESTINATION.prefix+'nested/','file-'+i+'.webp'));
+ const prefix='gs://'+DESTINATION.bucket+'/'+DESTINATION.prefix;
+ const real=sample.map(x=>'gs://'+DESTINATION.bucket+'/'+x.name);
+ const folders=Array.from({length:207},(_,i)=>prefix+'virtual-dir-'+i+'/');
+ const report=summarizePrivateStaging(sample,[...real,...folders].join('\n'));
+ assert.equal(HISTORICAL_GCLOUD_ENTRY_COUNT,986);
  assert.equal(report.destinationObjects,779);
- assert.equal(report.historicalBaselineObjects,986);
- assert.equal(report.matchesHistoricalBaseline,false);
+ assert.equal(report.cliEntries,986);
+ assert.equal(report.cliPseudoFolders,207);
+ assert.equal(report.cliUniqueObjectEntries,779);
+ assert.equal(report.onlyInCli,0);
+ assert.equal(report.onlyInApi,0);
+ assert.equal(report.listingMethodsAgree,true);
+ assert.equal(report.matchesHistoricalEntryCount,true);
  assert.equal(report.readyForCutover,false);
  assert.equal(report.sourceCompared,false);
  assert.equal(report.cloudWrites,0);
- assert.ok(!JSON.stringify(report).includes('nested/'));
+ assert.equal(JSON.stringify(report).includes('nested/'),false);
+});
+test('real missing or extra objects remain blocked, independent of virtual folders',()=>{
+ const prefix='gs://'+DESTINATION.bucket+'/'+DESTINATION.prefix;
+ const onlyApi=[obj(DESTINATION.prefix,'a.webp')];
+ const none=summarizePrivateStaging(onlyApi,prefix+'other.webp');
+ assert.equal(none.listingMethodsAgree,false);
+ assert.equal(none.onlyInCli,1);
+ assert.equal(none.onlyInApi,1);
+ const missing=summarizePrivateStaging(onlyApi,prefix+'virtual/');
+ assert.equal(missing.listingMethodsAgree,false);
+ assert.equal(missing.cliPseudoFolders,1);
 });
