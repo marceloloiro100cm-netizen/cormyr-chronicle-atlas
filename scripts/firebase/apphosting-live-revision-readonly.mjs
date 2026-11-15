@@ -9,6 +9,8 @@ import {pathToFileURL} from 'node:url';
 
 export const APPHOSTING_API='https://firebaseapphosting.googleapis.com/v1';
 export const AUDITED_PROJECT='cormyr';
+// Verified numeric project alias from the already configured GitHub GCP OIDC provider.
+export const AUDITED_PROJECT_NUMBER='477785088395';
 export const AUDITED_DOMAIN='atlas.cormyr.com.br';
 export const AUDITED_REGIONS=Object.freeze(['us-east4','us-central1']);
 
@@ -18,6 +20,20 @@ const validBuild=(resource,backend)=>typeof resource==='string'&&
   resource.startsWith(backend+'/builds/')&&
   /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(resource.slice((backend+'/builds/').length));
 const sha40=x=>typeof x==='string'&&/^[a-f0-9]{40}$/.test(x)?x:null;
+/**
+ * The Firebase API can return a numeric project resource even when queried
+ * by the project ID. Only the known project number may alias this backend.
+ * Canonicalize the build GET back to the same approved cormyr backend.
+ */
+export function validatedServingBuildPath(resource,backend){
+  if(validBuild(resource,backend))return resource;
+  if(typeof resource!=='string')return null;
+  const prefix='projects/'+AUDITED_PROJECT_NUMBER+'/';
+  if(!resource.startsWith(prefix))return null;
+  const canonical='projects/'+AUDITED_PROJECT+'/'+resource.slice(prefix.length);
+  return validBuild(canonical,backend)?canonical:null;
+}
+
 
 /**
  * Bounded metadata only: never emit raw build references, which could carry
@@ -29,6 +45,8 @@ export function classifyTrafficSplit(split,backend){
   if(typeof build==='string'){
     if(validBuild(build,backend)){
       buildRefShape='EXACT_BACKEND_RESOURCE';
+    }else if(validatedServingBuildPath(build,backend)){
+      buildRefShape='KNOWN_PROJECT_NUMBER_ALIAS';
     }else if(build.startsWith(backend+'/builds/')){
       buildRefShape='INVALID_BUILD_ID';
     }else if(/^projects\/[^/]+\/locations\/[^/]+\/backends\/[^/]+\/builds\/[^/]+$/.test(build)){
@@ -109,11 +127,12 @@ export async function inspectAppHostingReadOnly({
       const splitDiagnostics=currentSplits.slice(0,5)
         .map(split=>classifyTrafficSplit(split,name));
       // Google REST may serialize an int64 percent field as the canonical decimal string.
-      const validServing=currentSplits.filter(s=>(s?.percent===100||s?.percent==='100')&&validBuild(s.build,name));
+      const validServing=currentSplits.filter(s=>
+        (s?.percent===100||s?.percent==='100')&&validatedServingBuildPath(s.build,name));
       // Only one 100%-traffic build is conclusive; no fallback from historical
       // rollout to the current revision, which may differ after rollback.
       const serving=validServing.length===1?validServing[0]:null;
-      const servedBuild=serving?await request(serving.build):null;
+      const servedBuild=serving?await request(validatedServingBuildPath(serving.build,name)):null;
       const codebase=servedBuild?.status===200?servedBuild.data.source?.codebase:null;
       const policy=traffic.status===200?traffic.data.rolloutPolicy:null;
       const releases=rollouts.status===200&&Array.isArray(rollouts.data.rollouts)
