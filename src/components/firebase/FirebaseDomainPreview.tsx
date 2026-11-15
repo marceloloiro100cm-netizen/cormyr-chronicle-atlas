@@ -60,7 +60,7 @@ export function FirebaseDomainPreview(){
         args:selected.args(houseId.trim(),year,month),
       });
       // Avoid huge JSON renders on a low-memory browser. No local persistence.
-      const value=JSON.stringify(data,null,2);
+      const value=JSON.stringify(data??null,null,2) ?? 'null';
       setResult(value.length>30_000
         ?value.slice(0,30_000)+'\\n[resultado truncado na visualização]' : value);
     }catch(e){
