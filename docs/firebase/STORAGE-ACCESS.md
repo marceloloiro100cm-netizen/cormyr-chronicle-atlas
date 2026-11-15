@@ -11,6 +11,12 @@
 
 Os predicados que dependem de outros domínios entram como `facts` resolvidos por quem chama: `referencedByReadableContent` (carta entregue e legível, resposta ou registro legível que cita `[cormyr-image:<caminho>|`), `crestHouseId` (Casa cuja ficha tem `identity.crestPath` igual ao caminho), `publicGalleryImage`, `canEditNewspaper`, `newspaperAssetReadable` e `newspaperAssetUploadAllowed`.
 
+## Serviço (emulador)
+
+`storage-access-service.mjs` expõe `authorize({idToken,op,bucket,name})`, que devolve `true` ou lança `StorageAccessError('denied')`. Ele verifica o ID token, resolve o ator a partir de `access` e `players` do estágio, e resolve sozinho `canEditNewspaper` (Narrador ou Leonardo da Casa `espiao`) e `crestHouseId` (ficha da Casa com `identity.crestPath` idêntico ao caminho). Sem token, só vale a leitura da galeria pública; token inválido é negação, nunca anônimo.
+
+Os demais fatos entram por `resolvers` injetados: `referencedByReadableContent`, `publicGalleryImage`, `newspaperAssetReadable`, `newspaperAssetUploadAllowed`. Resolver ausente vale `false`, então o serviço só pode negar a mais. Teste de integração no emulador: `storage-access-service.integration.mjs` (job `storage-access-emulator`).
+
 ## O que falta
 
-O serviço que resolve esses fatos a partir dos estágios do Firestore e emite URLs assinadas ou leituras. Ele depende do fluxo de importação do Storage e do adaptador de domínio, então não foi escrito nesta fatia. Sem ele, o núcleo não é chamado por nada.
+Implementar os quatro resolvers sobre os estágios de cartas, registros, galeria e jornal, a importação real dos objetos de Storage e a emissão de URLs assinadas. Nada aqui toca produção.
