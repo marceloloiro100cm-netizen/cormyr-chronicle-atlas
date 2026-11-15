@@ -7,7 +7,12 @@ import {useEffect,useRef,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
 import {Button} from '@/components/ui/button';
-import {ImagePicker,uploadImages,type PendingImage} from '@/components/campaign-content';
+import {ImagePicker,uploadImages} from '@/components/campaign-content';
+import {handleTextareaTab} from '@/lib/text/textarea-indent';
+import {
+ readMailComposerDraft,writeMailComposerDraft,discardMailComposerDraft,
+ hasUnsavedMailComposerDraft,type MailComposerDraft,
+} from '@/lib/mail/draft-cache';
 import type {Panel} from './panel-data';
 import {MailRecipientPicker} from './mail-recipients';
 import {MailPeriodNotice} from './mail-period-notice';
@@ -35,19 +40,21 @@ export function MailLinkFields({value,onChange,options,onManage}:{value:MailLink
  <details className="mail-link-note"><summary>Sobre os vínculos</summary><p className="text-muted-foreground text-sm">Membro e unidade são opcionais. Os vínculos não executam ordens nem alteram o exército. A identificação privada só aparece a quem tem acesso à ficha.</p></details>
  </fieldset>;
 }
-type Draft={campaignDate:string;subject:string;content:string;targets:string[];links:MailLinks;week:string;signedBy:string;images:PendingImage[]};
-const drafts=new Map<string,Draft>();
-export function replaceMailDraft(userId:string){const current=drafts.get(userId+':mail-compose');return !current||(!current.subject&&!current.content)||window.confirm('Substituir o texto da missiva ainda não enviada?');}
+export function replaceMailDraft(userId:string){
+ return !hasUnsavedMailComposerDraft(userId+':mail-compose')||
+   window.confirm('Substituir o texto da missiva ainda não enviada?');
+}
 export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Panel['players'][number]|undefined;initial?:{subject:string;content:string}|null;onSave:()=>void;onManage?:((house:string)=>void)|undefined}){
  const {data:options,error,refetch}=useMailOptions();
  const {data:campaignTime}=useCampaignTime();
  const scope=data.user.id+':mail-compose';
- const [draft,setDraft]=useState<Draft>(()=>{const seed=initial?{subject:initial.subject,content:initial.content,targets:[],links:{...emptyLinks},week:'',campaignDate:'',signedBy:'',images:[]}:drafts.get(scope)??{subject:'',content:'',targets:[],links:{...emptyLinks},week:'',campaignDate:'',signedBy:'',images:[]};return {...seed,targets:seed.targets.filter(target=>target==='narrator'||target.startsWith('h:'))};});
+ const [draft,setDraft]=useState<MailComposerDraft>(()=>{const seed=initial?{subject:initial.subject,content:initial.content,targets:[],links:{...emptyLinks},week:'',campaignDate:'',signedBy:'',images:[]}:readMailComposerDraft(scope)??{subject:'',content:'',targets:[],links:{...emptyLinks},week:'',campaignDate:'',signedBy:'',images:[]};return {...seed,targets:seed.targets.filter(target=>target==='narrator'||target.startsWith('h:'))};});
  const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
  const key=useRef<string|null>(null);
- const change=(next:Draft)=>{setDraft(next);drafts.set(scope,next);};
+ const change=(next:MailComposerDraft)=>{setDraft(next);writeMailComposerDraft(scope,next);};
+ useEffect(()=>{writeMailComposerDraft(scope,draft);},[scope]);
  useEffect(()=>{const house=options?.houses?.[0];if(options?.houses?.length===1&&house&&!draft.links.origin)change({...draft,links:{...draft.links,origin:house.id}});},[options]);
- useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{const d=drafts.get(scope);if(d?.content||d?.subject){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[scope]);
+ useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(hasUnsavedMailComposerDraft(scope)){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[scope]);
  const current=data.rounds.find(r=>r.status==='open')?.number??null;
  const suggested=suggestNextLetterWeek(data.rounds);
  return <section id="nova-missiva" className="mail-compose-panel"><h2>Escrever missiva</h2>
@@ -62,7 +69,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  if(r.error)throw r.error;
  const result=r.data as unknown as {ids:string[];state:string;week:number|null;duplicate:boolean};
  setMessage(mailSubmissionStatus(result));
- key.current=null;drafts.delete(scope);setDraft({...draft,subject:'',content:'',images:[]});onSave();
+ key.current=null;discardMailComposerDraft(scope);setDraft({...draft,subject:'',content:'',images:[]});onSave();
  }catch(err){setMessage(err instanceof Error?err.message:typeof err==='object'&&err&&'message'in err?String(err.message):'Não foi possível salvar. Seu texto foi preservado.');}finally{setBusy(false);}}}>
  <fieldset disabled={busy} className="campaign-form mail-compose-body"><legend>Composição da missiva</legend>
  <MailRecipientPicker data={data} me={me} targets={draft.targets} onChange={targets=>change({...draft,targets})}/>
@@ -74,7 +81,11 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  </div>
  {data.admin&&<label>Assinado por (NPC / cargo)<input maxLength={120} value={draft.signedBy??''} placeholder="Ex.: Conselho de Elversult" onChange={e=>change({...draft,signedBy:e.target.value})}/></label>}
  <label className="mail-compose-subject">Assunto<input required value={draft.subject} onChange={e=>change({...draft,subject:e.target.value})}/></label>
- <label className="mail-compose-text">Missiva<textarea required rows={9} value={draft.content} onChange={e=>change({...draft,content:e.target.value})}/></label>
+ <label className="mail-compose-text">Missiva<textarea required rows={9} value={draft.content}
+   aria-describedby="mail-compose-indent-hint"
+   onChange={e=>change({...draft,content:e.target.value})}
+   onKeyDown={e=>handleTextareaTab(e,content=>change({...draft,content}))}/></label>
+ <small id="mail-compose-indent-hint">Tab insere recuo; Shift+Tab volta ao campo anterior.</small>
  <MailLinkFields value={draft.links} onChange={links=>change({...draft,links})} options={options??{players:[],houses:[]}} onManage={onManage}/>
  <ImagePicker images={draft.images} onChange={images=>change({...draft,images})} disabled={busy}/>
  <p>{data.admin?`Entrega prevista: Semana ${draft.week||suggested}.`:current?`Entrega na Semana ${current}.`:'Sem semana aberta. Você pode salvar rascunhos.'}</p>

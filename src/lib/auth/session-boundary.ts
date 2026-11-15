@@ -1,3 +1,4 @@
+import {clearMailComposerDrafts} from '@/lib/mail/draft-cache';
 /**
  * Hub Temporal · Lote 26: separação entre identidades na mesma aba.
  *
@@ -71,6 +72,8 @@ export function decideSessionBoundary(
 export function clearSessionQueryCache(
  cache:Pick<import('@tanstack/react-query').QueryClient,'clear'>,
 ):void{
+ // Drafts are volatile and must not survive sign-out, account swap or role reset.
+ clearMailComposerDrafts();
  cache.clear();
 }
 
