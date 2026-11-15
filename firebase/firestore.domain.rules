@@ -10,7 +10,13 @@ service cloud.firestore {
       return /databases/$(database)/documents/migrationDomainStage/$(snapshot)/access/$(request.auth.uid);
     }
     function hasScope(snapshot) {
-      return signedIn() && exists(accessPath(snapshot));
+      // A valid token is insufficient: verify the currently active server-
+      // staged identity and require completion of the password reset.
+      // Never authorize from a roster affiliation or caller-provided claims.
+      return signedIn() && exists(accessPath(snapshot))
+        && get(accessPath(snapshot)).data.userId == request.auth.uid
+        && get(accessPath(snapshot)).data.active == true
+        && get(accessPath(snapshot)).data.requirePasswordChange == false;
     }
     function scope(snapshot) {
       return get(accessPath(snapshot)).data;

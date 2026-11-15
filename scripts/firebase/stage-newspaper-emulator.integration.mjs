@@ -26,8 +26,10 @@ async function run(){
     const db=getFirestore(app);
     const access=db.collection('migrationDomainStage').doc(HASH).collection('access');
     const entries=[
-      ['narrator',{profile:'narrador',active:true,admin:true}],
-      ['editor',{profile:'editor',active:true,admin:false}],
+      ['narrator',{profile:'narrador',active:true,admin:true,requirePasswordChange:false}],
+      ['editor',{profile:'editor',active:true,admin:false,requirePasswordChange:false}],
+      ['locked-narrator',{profile:'narrador',active:true,admin:true,requirePasswordChange:true}],
+      ['locked-editor',{profile:'editor',active:true,admin:false,requirePasswordChange:true}],
       ['alice',{profile:'jogador',active:true,admin:false,requirePasswordChange:false}],
       ['bob',{profile:'jogador',active:true,admin:false,requirePasswordChange:false}],
       ['inactive',{profile:'jogador',active:false,admin:false,requirePasswordChange:false}],
@@ -42,6 +44,8 @@ async function run(){
     const actors={
       narrator:env.authenticatedContext('narrator').firestore(),
       editor:env.authenticatedContext('editor',{admin:true}).firestore(),
+      lockedNarrator:env.authenticatedContext('locked-narrator',{admin:true}).firestore(),
+      lockedEditor:env.authenticatedContext('locked-editor',{admin:true}).firestore(),
       alice:env.authenticatedContext('alice').firestore(),
       bob:env.authenticatedContext('bob').firestore(),
       inactive:env.authenticatedContext('inactive').firestore(),
@@ -57,7 +61,7 @@ async function run(){
       await assertSucceeds(getDoc(url(actors[who],'published',pub)));
       await assertSucceeds(getDocs(coll(actors[who],'published')));
     }
-    for(const who of ['inactive','unknown','anon']){
+    for(const who of ['inactive','unknown','anon','lockedNarrator','lockedEditor']){
       await assertFails(getDoc(url(actors[who],'published',pub)));
       await assertFails(getDocs(coll(actors[who],'published')));
     }
@@ -66,7 +70,7 @@ async function run(){
       await assertSucceeds(getDocs(coll(actors[who],'privateEditions')));
       await assertSucceeds(getDoc(url(actors[who],'settings','current')));
     }
-    for(const who of ['alice','bob','inactive','unknown','anon']){
+    for(const who of ['alice','bob','inactive','unknown','anon','lockedNarrator','lockedEditor']){
       await assertFails(getDoc(url(actors[who],'privateEditions',draft)));
       await assertFails(getDocs(coll(actors[who],'privateEditions')));
       await assertFails(getDoc(url(actors[who],'settings','current')));
