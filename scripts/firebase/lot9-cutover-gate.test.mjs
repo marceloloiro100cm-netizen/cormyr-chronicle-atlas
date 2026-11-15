@@ -47,3 +47,36 @@ test('repository is blocked if auth wiring, deny-all rules or secret controls ch
  assert.throws(()=>evaluateLot9CutoverGate({sourceSafety:{...safe,safeToMergeCode:false}}),/safety preflight failed/);
  assert.throws(()=>evaluateLot9CutoverGate({sourceSafety:safe,externalEvidence:null}),/Invalid/);
 });
+
+test('prototype-chain evidence cannot claim all critical release gates have passed',()=>{
+ const complete=Object.fromEntries(CUTOVER_REQUIREMENTS.map(k=>[k,true]));
+ const forged=Object.create(complete);
+ const report=evaluateLot9CutoverGate({sourceSafety:safe,externalEvidence:forged});
+ assert.equal(report.selfReportedComplete,false);
+ assert.deepEqual(report.missing,CUTOVER_REQUIREMENTS);
+ assert.equal(report.eligibleForHumanAudit,false);
+ assert.equal(report.readyForCutover,false);
+ assert.equal(report.productionReleaseAuthorized,false);
+});
+
+test('accessor properties cannot manufacture evidence or run side effects',()=>{
+ let executed=0;
+ const object=Object.fromEntries(CUTOVER_REQUIREMENTS.map(k=>[k,true]));
+ Object.defineProperty(object,'allFirestoreDomainsReconciled',{
+   enumerable:true,configurable:true,
+   get(){executed++;return true;},
+ });
+ const report=evaluateLot9CutoverGate({sourceSafety:safe,externalEvidence:object});
+ assert.equal(executed,0);
+ assert.deepEqual(report.missing,['allFirestoreDomainsReconciled']);
+ assert.equal(report.readyForCutover,false);
+});
+
+test('false or non-boolean values are never considered reliable evidence',()=>{
+ const all=Object.fromEntries(CUTOVER_REQUIREMENTS.map(k=>[k,true]));
+ all.ownerExplicitlyApprovedCutover='true';
+ all.realCloudRoleE2EPassed=1;
+ const report=evaluateLot9CutoverGate({sourceSafety:safe,externalEvidence:all});
+ assert.deepEqual(report.missing,['realCloudRoleE2EPassed','ownerExplicitlyApprovedCutover']);
+ assert.equal(report.decision,'NO_GO');
+});
