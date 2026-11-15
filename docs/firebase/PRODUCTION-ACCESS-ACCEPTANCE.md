@@ -6,14 +6,14 @@
 
 O workflow `Firebase production public data and anonymous access acceptance` executa `node scripts/firebase-production-acceptance-smoke.mjs`. Sem cookies, JWT, chaves privadas, contas de jogadores ou dados sensíveis, verifica:
 
-- `/auth` — HTTP 200 HTML;
+- `/auth` — HTTP 200 HTML ao final de até quatro redirecionamentos GET no mesmo domínio; o destino final precisa permanecer em `/auth` ou `/auth/`; redirects externos são recusados;
 - `/api/public/time` — HTTP 200 JSON (a RPC pública precisa estar disponível);
 - `/api/public/catalog` — HTTP 200 JSON;
 - `/api/public/translations?locale=en` — HTTP 200 JSON;
 - `/api/public/gm-content` — HTTP 401 JSON sem Authorization;
 - `/api/public/jobs/drive-sync` — HTTP 401 sem Authorization; envia deliberadamente um POST com `kind` **inválido**, que não pode iniciar sincronização, mesmo em caso de falha da checagem de autorização;
 - `/api/firebase-auth-verify` — HTTP 503 JSON, pois só a homologação do Firebase está desativada;
-- Health GET do Supabase Auth legado, apenas como sinal **informativo**.
+- Health GET do Supabase Auth legado, apenas como sinal **informativo**. Um HTTP 401 sem chave não comprova login nem queda do serviço; o relatório distingue gateway alcançável de saúde confirmada.
 
 **Nenhum corpo HTTP retornado é lido ou registrado em logs.** O resultado mostra apenas nome do teste, método, status HTTP e booleano de aceite. Falhas reais ficam explícitas no resumo do workflow, mesmo quando o job de diagnóstico é informativo.
 
@@ -33,6 +33,7 @@ O workflow `Firebase production public data and anonymous access acceptance` exe
 - `campaignTime`, `publicCatalog` ou `publicTranslations` com **503**: rota publicada mas a origem pública Supabase/RPC não está atendendo; verificar disponibilidade do projeto, variáveis públicas, RLS e erro do backend, sem conceder acesso amplo.
 - `privateGmAnonymousDenied` diferente de **401**: investigar imediatamente fronteira de autorização; não expor conteúdo privado.
 - `cronAnonymousDenied` **500**: CRON_SECRET provavelmente ausente ou falha de configuração; não ativar Cloud Scheduler.
-- Supabase Auth health fora do ar: diagnóstico do provedor; não provar login apenas pela presença da página `/auth`.
+- Supabase Auth health em HTTP 401 sem chave: gateway alcançável, porém saúde da autenticação ainda não confirmada; não provar login apenas pela presença da página `/auth`.
+- Login com redirecionamento de HTTP 307/302 só é aceito se terminar na própria rota de login; redirecionamento para a home, outro domínio ou loop é falha do aceite.
 
 O site pode ser anunciado como **portal publicado para testes** após o smoke público, não como migração 100% completa enquanto os portões funcionais não passarem.
