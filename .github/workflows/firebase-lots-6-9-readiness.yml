@@ -1,0 +1,61 @@
+name: Firebase Lotes 6–9 - pre-cutover safety and contracts
+
+on:
+  pull_request:
+    paths:
+      - 'src/integrations/backend/firebase-read-adapter*'
+      - 'src/components/firebase/FirebaseDomainPreview.tsx'
+      - 'scripts/firebase/lot7-*'
+      - 'scripts/firebase/lot8-*'
+      - 'scripts/firebase/lot9-*'
+      - 'scripts/firebase/lot5-role-security.integration.mjs'
+      - '.github/workflows/firebase-lots-6-9-readiness.yml'
+      - 'docs/firebase/LOTS6-9-STATUS.md'
+  push:
+    branches: [main]
+    paths:
+      - 'src/integrations/backend/firebase-read-adapter*'
+      - 'src/components/firebase/FirebaseDomainPreview.tsx'
+      - 'scripts/firebase/lot7-*'
+      - 'scripts/firebase/lot8-*'
+      - 'scripts/firebase/lot9-*'
+      - 'scripts/firebase/lot5-role-security.integration.mjs'
+      - '.github/workflows/firebase-lots-6-9-readiness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Confirm syntax and unit tests without accessing Cloud credentials
+        run: |
+          node --check scripts/firebase/lot7-cloud-destination-preflight.mjs
+          node --check scripts/firebase/lot8-http-role-acceptance.mjs
+          node --check scripts/firebase/lot9-cutover-gate.mjs
+          node --test scripts/firebase/lot7-cloud-destination-preflight.test.mjs scripts/firebase/lot8-http-role-acceptance.test.mjs scripts/firebase/lot9-cutover-gate.test.mjs
+          node scripts/firebase/lot9-cutover-gate.mjs
+      - name: Protect public repository from private data
+        run: node scripts/verify-public-repo.mjs
+  preview-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.3'
+      - name: Install locked app dependencies
+        run: bun install --frozen-lockfile
+      - name: Read-only Firebase domain adapter and older bridge contracts
+        run: bunx vitest run src/integrations/backend/firebase-read-adapter.test.ts src/integrations/backend/firebase-domain-client.test.ts

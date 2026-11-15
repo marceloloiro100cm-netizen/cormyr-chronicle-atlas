@@ -6,6 +6,7 @@ on:
       - 'firebase/firestore.rules'
       - 'firebase/storage.rules'
       - 'scripts/firebase/lot5-*.mjs'
+      - 'scripts/firebase/lot8-*.mjs'
       - '.github/workflows/firebase-lot5-security-e2e.yml'
       - 'docs/firebase/LOT5-SECURITY-E2E.md'
   push:
@@ -15,6 +16,7 @@ on:
       - 'firebase/firestore.rules'
       - 'firebase/storage.rules'
       - 'scripts/firebase/lot5-*.mjs'
+      - 'scripts/firebase/lot8-*.mjs'
       - '.github/workflows/firebase-lot5-security-e2e.yml'
   workflow_dispatch:
 
