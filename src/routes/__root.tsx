@@ -18,9 +18,7 @@ import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { I18nProvider } from '@/lib/i18n/context';
 import {decideSessionBoundary,clearSessionQueryCache} from '@/lib/auth/session-boundary';
 
-// Temporary archive-only mode for the 2026-11-15 Lovable exit.
-// Disable only after Firebase Auth/Firestore production acceptance.
-const CORMYR_ARCHIVE_ONLY = true;
+import { CORMYR_ARCHIVE_ONLY } from '@/lib/archive-only';
 
 
 function NotFoundComponent() {
