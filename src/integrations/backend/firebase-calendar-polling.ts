@@ -18,9 +18,9 @@ export function validateFirebaseCalendarVersion(value:unknown):FirebaseCalendarV
   if(!value||typeof value!=='object'||Array.isArray(value))
     throw Error('Calendário Firebase inválido.');
   const v=value as Record<string,unknown>;
-  if(!Number.isSafeInteger(v.year)||!Number.isSafeInteger(v.month)||
-    !Number.isSafeInteger(v.day)||!Number.isSafeInteger(v.version)||
-    (v.version as number)<0||(v.festival!==null&&typeof v.festival!=='string'))
+  if(!Number.isSafeInteger(v['year'])||!Number.isSafeInteger(v['month'])||
+    !Number.isSafeInteger(v['day'])||!Number.isSafeInteger(v['version'])||
+    (v['version'] as number)<0||(v['festival']!==null&&typeof v['festival']!=='string'))
     throw Error('Calendário Firebase inválido.');
   const row=v as FirebaseCalendarVersion;
   const parsed=parseDate(dateKey(row));
