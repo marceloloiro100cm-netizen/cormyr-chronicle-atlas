@@ -16,6 +16,15 @@ Fatia técnica implementada em branch de homologação. O sistema ativo continua
 
 Já havia registro de **986 objetos** copiados em 13/11/2026 do prefixo original `migration-staging/campaign-images/` para o bucket privado de homologação, mas isso prova somente quantidade, não igualdade de bytes.
 
+### Evidência nova: divergência entre inventários
+
+Na execução autenticada do workflow depois do PR #466, a API JSON do Google Cloud Storage enumerou **779** objetos em `campaign-images/` do bucket privado, totalizando **2.107.760.075 bytes**, com metadados CRC32C presentes e válidos. A referência histórica era **986**, diferença de **207 objetos**. **Isso NÃO prova que 207 arquivos foram apagados ou perderam conteúdo**: origem ainda não foi lida pelo agente e é preciso verificar também o método de listagem e o prefixo efetivo.
+
+A correção acrescenta um portão que marca `matchesHistoricalBaseline=false` quando o total não é 986, provoca falha do job privado e lista o destino novamente por `gcloud storage ls --recursive`, sem revelar nomes nos logs. A comparação é **somente leitura**. A análise dos bytes entre origem e destino requer executar `--readonly-live` no Cloud Shell com credencial do proprietário.
+
+Não usar a referência histórica como inventário final após o freeze: se a origem tiver mudado legitimamente, produzir novo inventário assinado/validado, reconciliar as diferenças e só então atualizar o baseline com evidência.
+
+
 O workflow **Firebase Lote 4 - media Drive and jobs**, na `main`, autentica a conta de serviço limitada `cormyr-gh-reader` somente no bucket privado e confere os campos CRC32C dos objetos existentes. Os resultados incluem contagens e tamanho total em bytes, nunca nomes.
 
 Para comparar **origem x destino**, o proprietário pode executar no Cloud Shell (sessão previamente autorizada a listar ambos):
