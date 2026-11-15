@@ -17,7 +17,7 @@ test('all domains have unique, fixed synthetic integration scripts',()=>{
     ['houses','communications','strategy','operations','security']);
   const all=Object.values(DOMAIN_GROUPS).flat();
   assert.equal(new Set(all).size,all.length);
-  assert.ok(all.every(name=>/^[a-z][a-z-]*\.integration\.mjs$/.test(name)));
+  assert.ok(all.every(name=>/^[a-z][a-z0-9-]*\.integration\.mjs$/.test(name)));
   assert.ok(all.includes('mail-command-service.integration.mjs'));
   assert.ok(all.includes('lot5-role-security.integration.mjs'));
   assert.ok(all.includes('storage-resolvers.integration.mjs'));
