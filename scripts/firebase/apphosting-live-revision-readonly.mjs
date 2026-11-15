@@ -71,7 +71,8 @@ export async function inspectAppHostingReadOnly({
         :null;
       const currentSplits=traffic.status===200&&Array.isArray(traffic.data.current?.splits)
         ?traffic.data.current.splits:[];
-      const validServing=currentSplits.filter(s=>s?.percent===100&&validBuild(s.build,name));
+      // Google REST may serialize an int64 percent field as the canonical decimal string.
+      const validServing=currentSplits.filter(s=>(s?.percent===100||s?.percent==='100')&&validBuild(s.build,name));
       // Only one 100%-traffic build is conclusive; no fallback from historical
       // rollout to the current revision, which may differ after rollback.
       const serving=validServing.length===1?validServing[0]:null;
