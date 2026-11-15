@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/firebase-production-acceptance-smoke*.mjs'
+      - 'scripts/firebase-production-public-latency*.mjs'
       - '.github/workflows/firebase-production-acceptance.yml'
       - 'docs/firebase/PRODUCTION-ACCESS-ACCEPTANCE.md'
       - 'src/routes/**'
@@ -61,3 +62,31 @@ jobs:
           echo "No real user login, House permissions, private missives, Cloud database or service-role secret was tested." >> "$GITHUB_STEP_SUMMARY"
           echo "Cutover remains NO_GO. Supabase continues as source of truth." >> "$GITHUB_STEP_SUMMARY"
           echo "These HTTP probes verify whichever revision is serving when the test runs, not necessarily the just-pushed commit." >> "$GITHUB_STEP_SUMMARY"
+
+  public-latency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify no-credential nine-request performance contracts
+        run: node --test scripts/firebase-production-public-latency.test.mjs
+      - name: Measure bounded read-only API latency — no response bodies
+        id: latency
+        continue-on-error: true
+        run: node scripts/firebase-production-public-latency.mjs
+      - name: Record the limits of these public, anonymous measurements
+        if: always()
+        env:
+          OUTCOME: ${{ steps.latency.outcome }}
+        run: |
+          if [ "$OUTCOME" = "success" ]; then
+            echo "Nine public API requests passed latency measurement." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::One or more public API latency checks failed."
+            echo "Public API requests failed the anonymous latency probe." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "Numbers measure the GitHub runner only, not user-perceived latency or authenticated Firebase Cloud performance." >> "$GITHUB_STEP_SUMMARY"
+          echo "readyForCutover=false; no production writes or private data reads." >> "$GITHUB_STEP_SUMMARY"
