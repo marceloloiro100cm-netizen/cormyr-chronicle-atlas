@@ -1,41 +1,13 @@
 import {useState} from 'react';
-import {
-  callFirebaseDomain,domainPreviewConfigured,type MigratedDomain,
-} from '@/integrations/backend/firebase-domain-client';
+import {callFirebaseDomain,domainPreviewConfigured} from '@/integrations/backend/firebase-domain-client';
+import {READ_SURFACES,readFirebaseSurface} from '@/integrations/backend/firebase-read-adapter';
 
 /**
  * This workbench is isolated from the active Cormyr player workspace.
  * Operations offered here are read-only. The emulator services enforce all
  * permissions on the server for each request.
  */
-type ReadAction={
-  title:string;
-  domain:MigratedDomain;
-  action:string;
-  house?:boolean;
-  period?:boolean;
-  args:(houseId:string,year:number,month:number)=>unknown[];
-};
-const actions:ReadAction[]=[
-  {title:'Perfil e vínculos',domain:'access',action:'getProfile',args:()=>[]},
-  {title:'Catálogo de Casas',domain:'houses',action:'listHouses',args:()=>[]},
-  {title:'Ficha da Casa',domain:'houses',action:'getHouse',house:true,args:h=>[h]},
-  {title:'Registros',domain:'records',action:'listRecords',args:()=>[{}]},
-  {title:'Idades de personagens',domain:'characters',action:'houseAges',house:true,args:h=>[h]},
-  {title:'Agenda publicada',domain:'schedule',action:'getPublished',period:true,
-    args:(_h,y,m)=>[{year:y,month:m}]},
-  {title:'Calendário oficial',domain:'time',action:'getCalendar',args:()=>[]},
-  {title:'Missivas recebidas e enviadas',domain:'mailbox',action:'list',
-    args:()=>[{folder:'all',source:'all',pageSize:10,cursor:null,query:''}]},
-  {title:'Estado do correio',domain:'mailCommands',action:'session',args:()=>[{}]},
-  {title:'Edições do Jornal',domain:'newspaper',action:'listEditions',args:()=>[]},
-  {title:'Espiões da Casa',domain:'spyAgents',action:'houseManagement',house:true,args:h=>[h]},
-  {title:'Missões de espionagem',domain:'spyMissions',action:'houseTimeline',house:true,args:h=>[h]},
-  {title:'Dossiês de inteligência',domain:'spyIntel',action:'read',house:true,args:h=>[h]},
-  {title:'Batalhas',domain:'battle',action:'liveList',args:()=>[]},
-  {title:'Conteúdo do Narrador',domain:'privateGm',action:'listGmContent',args:()=>[]},
-  {title:'Vínculos do Google Drive',domain:'drive',action:'listBindings',args:()=>[]},
-];
+const actions=READ_SURFACES;
 
 export function FirebaseDomainPreview(){
   const [index,setIndex]=useState(0);
@@ -50,15 +22,15 @@ export function FirebaseDomainPreview(){
 
   async function run(){
     if(pending||!enabled)return;
-    if(selected.house&&!houseId.trim()){
+    if('house' in selected&&selected.house&&!houseId.trim()){
       setError('Informe o identificador da Casa autorizada.');return;
     }
     setPending(true);setError('');setResult('');
     try{
-      const data=await callFirebaseDomain({
-        domain:selected.domain,action:selected.action,
-        args:selected.args(houseId.trim(),year,month),
-      });
+      const data=await readFirebaseSurface(selected.key,
+        {houseId,year,month},
+        {enabled,invoke:callFirebaseDomain},
+      );
       // Avoid huge JSON renders on a low-memory browser. No local persistence.
       const value=JSON.stringify(data??null,null,2) ?? 'null';
       setResult(value.length>30_000
@@ -84,12 +56,12 @@ export function FirebaseDomainPreview(){
             {actions.map((a,i)=><option key={a.title} value={i}>{a.title}</option>)}
           </select>
         </label>
-        {selected.house&&<label className="block">Identificador oficial da Casa
+        {'house' in selected&&selected.house&&<label className="block">Identificador oficial da Casa
           <input className="mt-1 block w-full rounded border p-2" value={houseId}
             maxLength={512} onChange={e=>setHouseId(e.target.value)}
             placeholder="Ex.: nome/código da Casa autorizado"/>
         </label>}
-        {selected.period&&<div className="flex gap-3">
+        {'period' in selected&&selected.period&&<div className="flex gap-3">
           <label>Ano
             <input className="ml-2 w-24 rounded border p-2" type="number"
               min={1} max={9999} value={year}
