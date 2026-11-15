@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  APPHOSTING_API,inspectAppHostingReadOnly,classifyServingRevision,
+  APPHOSTING_API,inspectAppHostingReadOnly,classifyServingRevision,classifyTrafficSplit,
 } from './apphosting-live-revision-readonly.mjs';
 
 const SHA='a'.repeat(40);
@@ -206,4 +206,43 @@ test('malformed percentage strings cannot claim a live 100 percent revision',asy
   });
   assert.equal(report.domainServingCommit,null);
   assert.equal(classifyServingRevision(report,SHA).comparison,'INCONCLUSIVE');
+});
+
+test('unresolved traffic cannot be marked an audited active commit',async()=>{
+  const values={
+    ...fixture,
+    [p+'/traffic']:{
+      ...fixture[p+'/traffic'],
+      current:{splits:[{build:'builds/old-build',percent:100}]},
+    },
+  };
+  const report=await inspectAppHostingReadOnly({
+    tokenProvider:async()=> 'ephemeral-only-token',
+    fetcher:async url=>{
+      const data=values[url.slice((APPHOSTING_API+'/').length)];
+      return new Response(JSON.stringify(data??{}),{status:data?200:404});
+    },
+  });
+  assert.equal(report.backends[0].splitDiagnostics[0].buildRefShape,'RELATIVE_BUILD_RESOURCE');
+  assert.equal(report.auditComplete,false);
+  assert.equal(report.domainServingCommit,null);
+  assert.equal(classifyServingRevision(report,SHA).comparison,'INCONCLUSIVE');
+});
+
+test('bounded traffic diagnostics expose only shapes, never raw references',()=>{
+  const backend=p;
+  const secretLike='https://private.invalid/?token=HIDDEN_VALUE';
+  const report=classifyTrafficSplit({percent:'100',build:secretLike},backend);
+  assert.deepEqual(report,{
+    buildRefShape:'OTHER_OR_UNTRUSTED_REFERENCE',
+    percentType:'string',
+    percentClass:'ONE_HUNDRED',
+  });
+  assert.ok(!JSON.stringify(report).includes('HIDDEN_VALUE'));
+  assert.equal(classifyTrafficSplit({percent:100,build:p+'/builds/build-12'},p).buildRefShape,
+    'EXACT_BACKEND_RESOURCE');
+  assert.equal(classifyTrafficSplit({percent:100,build:'projects/477785088395/locations/us-east4/backends/cormyr-preview/builds/build-12'},p).buildRefShape,
+    'SAME_BACKEND_OTHER_PROJECT_ALIAS');
+  assert.equal(classifyTrafficSplit({percent:0,build:'build-12'},p).buildRefShape,
+    'SHORT_BUILD_ID');
 });
