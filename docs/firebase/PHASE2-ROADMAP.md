@@ -1,5 +1,7 @@
 # Fase 2: roadmap de migração de dados e serviços (Supabase para Firebase)
 
+> **Atualização de referência — 15/11/2026:** os estados e números abaixo são o inventário histórico da data de origem deste documento, **não** o inventário do último commit. O repositório agora possui serviços de emulador de Casas, personagens, registros, calendário, missivas, Jornal, espionagem, batalha, Storage e outros domínios, com 20 integrações sintéticas agrupadas em `docs/firebase/CROSS-DOMAIN-ACCEPTANCE.md`. O monitoramento público confirmou `/api/firebase-auth-verify` em HTTP **503 esperado** (não 404), com App Hosting publicado. Consulte `docs/firebase/EXECUTION-18-ITEMS.md` para os itens 6, 9 e 11–26. A migração **Firebase Cloud** permanece não comprovada; o site continua usando Supabase para login/dados e `readyForCutover=false`.
+
 **Atualizado em 14/11/2026.** Base: `docs/firebase/source-inventory.json`
 (inventário estático: 61 tabelas e 144 funções SQL candidatas) cruzado com os
 scripts de `scripts/firebase/`. Este documento não afirma que algo está pronto
