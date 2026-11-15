@@ -1,4 +1,5 @@
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
+import {watchFirebaseCalendar} from '@/integrations/backend/firebase-calendar-polling';
 import {callFirebaseDomain,domainPreviewConfigured} from '@/integrations/backend/firebase-domain-client';
 import {READ_SURFACES,readFirebaseSurface} from '@/integrations/backend/firebase-read-adapter';
 
@@ -17,8 +18,20 @@ export function FirebaseDomainPreview(){
   const [pending,setPending]=useState(false);
   const [result,setResult]=useState('');
   const [error,setError]=useState('');
+  const [watching,setWatching]=useState(false);
   const selected=actions[index]!;
   const enabled=domainPreviewConfigured();
+
+  useEffect(()=>{
+    if(!enabled||!watching||selected.key!=='calendar')return;
+    const monitor=watchFirebaseCalendar({
+      read:()=>readFirebaseSurface('calendar',{},
+        {enabled:true,invoke:callFirebaseDomain}),
+      onSnapshot:calendar=>{setResult(JSON.stringify(calendar,null,2));setError('');},
+      onError:message=>setError(message),
+    });
+    return ()=>monitor.stop();
+  },[enabled,watching,selected.key]);
 
   async function run(){
     if(pending||!enabled)return;
@@ -77,6 +90,10 @@ export function FirebaseDomainPreview(){
           onClick={()=>void run()}>
           {pending?'Consultando…':'Consultar módulo Firebase'}
         </button>
+        {selected.key==='calendar'&&<button type="button"
+          className="rounded border px-4 py-2" onClick={()=>setWatching(v=>!v)}>
+          {watching?'Parar acompanhamento':'Acompanhar calendário (15 s)'}
+        </button>}
         {error&&<p role="alert">{error}</p>}
         {result&&<pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded border p-3 text-xs"
           aria-label="Resultado autorizado do módulo">{result}</pre>}
