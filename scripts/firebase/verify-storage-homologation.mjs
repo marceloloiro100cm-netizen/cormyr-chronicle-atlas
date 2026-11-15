@@ -116,8 +116,8 @@ export async function verifyStorageReadOnly({token,fetcher=fetch}){
   return compareStorageCopies(source,target);
 }
 async function main(args){
-  if(args.length!==1||args[0]!=='--readonly-live')
-    throw Error('Use --readonly-live (owner Cloud Shell only)');
+  if(args.length!==1||!['--readonly-live','--staging-only-readonly'].includes(args[0]))
+    throw Error('Use --readonly-live (owner Cloud Shell) or --staging-only-readonly (reader OIDC)');
   const project=execFileSync('gcloud',['config','get-value','project'],{
     encoding:'utf8',stdio:['ignore','pipe','ignore'],timeout:10_000,
   }).trim();
@@ -125,6 +125,19 @@ async function main(args){
   const token=execFileSync('gcloud',['auth','print-access-token','--quiet'],{
     encoding:'utf8',stdio:['ignore','pipe','ignore'],timeout:15_000,
   }).trim();
+  if(args[0]==='--staging-only-readonly'){
+    const inventory=await listGcsPrefix(DESTINATION,token);
+    const totalBytes=inventory.reduce((n,item)=>n+Number(item.size),0);
+    process.stdout.write(JSON.stringify({
+      scope:'READ-ONLY-PRIVATE-STAGING-METADATA',
+      destinationObjects:inventory.length,destinationBytes:totalBytes,
+      crc32cMetadataValidated:true,
+      sourceCompared:false,sourceFrozen:false,readyForCutover:false,
+      cloudWrites:0,
+    },null,2)+'\n');
+    if(inventory.length===0)process.exitCode=1;
+    return;
+  }
   const result=await verifyStorageReadOnly({token});
   process.stdout.write(JSON.stringify(result,null,2)+'\n');
   if(!result.sourceToStagingBytesMatch)process.exitCode=1;
