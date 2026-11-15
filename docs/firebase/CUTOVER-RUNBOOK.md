@@ -14,7 +14,7 @@ Plano para a troca definitiva da origem (Supabase) pelo Firebase. **Nada aqui fo
 | 6 | Storage verificado | Objetos, hashes e permissões (`STORAGE-EXPORT.md`, `STORAGE-SCOPED-ACCESS-HOMOLOGATION.md`) | Parcial |
 | 7 | Rotinas agendadas | Job de `publishDue` (jornal) e `advanceMissions` (espionagem) no Cloud Scheduler | **Pendência do proprietário** |
 | 8 | Segredos e credenciais | `SUPABASE_SERVICE_ROLE_KEY` real, credenciais do Google Drive | **Pendência do proprietário** |
-| 9 | Domínio definitivo e URLs de redirecionamento do Supabase Auth | Domínio decidido e URLs cadastradas | **Pendência do proprietário** |
+| 9 | Domínio definitivo e URLs de redirecionamento do Supabase Auth | Domínio decidido e URLs cadastradas | Domínio definido: `https://atlas.cormyr.com.br` (smoke externo de 15/11: estático, login e retrato 200). **Falta** a revisão publicada incluir a rota de Auth (issue #472) e confirmar as URLs de redirecionamento do Supabase Auth |
 
 Enquanto os portões 3 a 9 não forem cumpridos, o corte não deve ser agendado.
 
@@ -63,3 +63,9 @@ Só após um período de observação combinado (sugestão: 14 dias sem rollback
 ## 8. O que este plano ainda não cobre
 
 Mapeamento dos UIDs do Auth para a nuvem, adaptadores por domínio e E2E por papel (portões 3 a 5), e a decisão do proprietário sobre domínio e hospedagem final.
+
+## Registro de 15/11/2026: domínio e revisão publicada
+
+- O domínio `atlas.cormyr.com.br` responde (home, `/auth`, retrato e rota pública 200 ou 400 previsto).
+- A auditoria somente leitura do App Hosting encontrou um único backend, `cormyr-preview` (us-east4), com o domínio associado, branch `main`, último rollout `SUCCEEDED` e **rollouts automáticos desativados**. A API não permitiu provar qual commit recebe o tráfego (`domainServingCommit: null`).
+- `/api/firebase-auth-verify` continua 404 no domínio, embora a `main` tenha a rota. O quadro é compatível com uma revisão antiga em tráfego. A ação é do proprietário: criar um novo rollout a partir da `main` (Console do App Hosting, ou `firebase apphosting:rollouts:create cormyr-preview --git-branch main`) e repetir o smoke do domínio. Nada foi alterado por esta auditoria.
