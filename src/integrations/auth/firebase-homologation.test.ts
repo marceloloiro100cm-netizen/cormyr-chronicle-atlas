@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  resolveHomologationConfig, sessionTokenStorage, verifyFirebaseHomologationToken,
+  resolveHomologationConfig, resolveHomologationEmulatorHost, sessionTokenStorage, verifyFirebaseHomologationToken,
 } from './firebase-homologation';
 
 describe('Firebase homologation client (never a production backend switch)', () => {
@@ -12,6 +12,16 @@ describe('Firebase homologation client (never a production backend switch)', () 
     expect(resolveHomologationConfig('true', 'key', 'cormyr')).toEqual({
       apiKey: 'key', projectId: 'cormyr',
     });
+  });
+  it('only permits a loopback Auth Emulator with the fixed demo project in dev', () => {
+    expect(resolveHomologationEmulatorHost('demo-cormyr-migration',true,'127.0.0.1:9099'))
+      .toBe('127.0.0.1:9099');
+    expect(resolveHomologationEmulatorHost('cormyr',true,'127.0.0.1:9099'))
+      .toBeUndefined();
+    expect(resolveHomologationEmulatorHost('demo-cormyr-migration',false,'127.0.0.1:9099'))
+      .toBeUndefined();
+    expect(resolveHomologationEmulatorHost('demo-cormyr-migration',true,'evil.example:9099'))
+      .toBeUndefined();
   });
   it('holds refresh credentials only in the injected browser session storage', () => {
     const state = new Map<string, string>();
