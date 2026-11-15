@@ -228,7 +228,15 @@ async function main(){
     await deleteApp(app);
   }
 }
-main().catch(()=>{
-  console.error('Lot 5 emulator role-security acceptance failed; no private records or user identifiers logged.');
+main().catch(error=>{
+  // Only the static source line and exception type; never render source data,
+  // document paths, UIDs, token values or full Firebase error strings.
+  const line=String(error?.stack??'').match(/lot5-role-security\\.integration\\.mjs:(\\d+):/);
+  console.error('Lot 5 synthetic security acceptance failure:',{
+    kind:typeof error?.name==='string'?error.name.slice(0,50):'unknown',
+    sourceLine:line?.[1]??'unknown',
+    numericExpected:typeof error?.expected==='number'?error.expected:null,
+    numericActual:typeof error?.actual==='number'?error.actual:null,
+  });
   process.exitCode=1;
 });
