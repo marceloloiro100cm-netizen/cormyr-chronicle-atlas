@@ -27,18 +27,23 @@ async function checkBooleanRpc(
   }catch{return null;}
 }
 
+async function checkOwnHouse(houseId:string):Promise<RoleSelfAuditSignal>{
+  try{
+    const {data,error}=await supabase.rpc('in_campaign_house',{
+      h:houseId,edit_required:false,
+    });
+    return !error&&typeof data==='boolean'?data:null;
+  }catch{return null;}
+}
+
 async function loadCurrentSessionDiagnostics():Promise<RoleSelfAuditReport>{
   const scope=await loadCampaignAccessScope();
+  const ownHouseId=scope.profile==='jogador'?scope.memberships[0]?.house_id:undefined;
   const [campaignActive,editorIdentity,newspaperEdit,ownHouseConfirmed]=await Promise.all([
     checkBooleanRpc('campaign_access_active'),
     checkBooleanRpc('is_campaign_editor'),
     checkBooleanRpc('can_edit_campaign_newspaper'),
-    scope.profile==='jogador'&&scope.memberships.length>0
-      ?supabase.rpc('in_campaign_house',{
-        h:scope.memberships[0].house_id,edit_required:false,
-      }).then(({data,error}):RoleSelfAuditSignal=>
-        !error&&typeof data==='boolean'?data:null).catch(()=>null)
-      :Promise.resolve(null),
+    ownHouseId?checkOwnHouse(ownHouseId):Promise.resolve(null),
   ]);
 
   // Access and membership may be revoked during the network round trips.
