@@ -58,8 +58,6 @@ export function evaluateRoleSelfAudit(e:RoleSelfAuditEvidence):RoleSelfAuditRepo
       add('non-admin','Editor sem autoridade administrativa',equals(e.admin,false));
       add('editor','Identidade editorial reconhecida pelo servidor',equals(e.editorIdentity,true));
       add('newspaper','Permissão editorial do Jornal',equals(e.newspaperEdit,true));
-      add('house-isolation','Editor sem vínculo com Casas nobres',
-        e.houseMembershipCount===0?'approved':'denied');
     }else{
       add('non-admin','Jogador sem autoridade administrativa',equals(e.admin,false));
       add('player','Conta de jogador ativa e senha regular',
