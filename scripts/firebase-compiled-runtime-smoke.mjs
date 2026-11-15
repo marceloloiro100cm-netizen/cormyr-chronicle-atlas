@@ -2,6 +2,9 @@
  * Prove the compiled Nitro (node-server) artifact actually serves the routes
  * which are expected on Firebase App Hosting. No Cloud calls, authentication,
  * database queries or user data required.
+ * In emergency archive-only mode all legacy API routes return HTTP 503;
+ * restore the previous public translation-validation expectation only when
+ * the Firebase native backend is activated and accepted in production.
  */
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -9,7 +12,7 @@ import { pathToFileURL } from 'node:url';
 
 export const EXPECTED_ROUTES = Object.freeze([
   {path:'/api/firebase-auth-verify', status:503, kind:'json'},
-  {path:'/api/public/translations', status:400, kind:'json'},
+  {path:'/api/public/translations', status:503, kind:'json'},
   {path:'/cormyr/index.html', status:200, kind:'html'},
   {path:'/spy-portraits/tillet.jpg', status:200, kind:'image'},
 ]);
