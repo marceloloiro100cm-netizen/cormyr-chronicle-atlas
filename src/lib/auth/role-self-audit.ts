@@ -67,6 +67,7 @@ export function evaluateRoleSelfAudit(e:RoleSelfAuditEvidence):RoleSelfAuditRepo
       add('house-access','Permissão de leitura da própria Casa confirmada',
         equals(e.ownHouseConfirmed,true));
       add('editor','Jogador sem identidade de Editor-chefe',equals(e.editorIdentity,false));
+      add('newspaper','Jogador sem permissão de edição do Jornal',equals(e.newspaperEdit,false));
     }
   }
   return {
