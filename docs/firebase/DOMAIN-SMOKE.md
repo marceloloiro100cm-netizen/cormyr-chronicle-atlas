@@ -9,6 +9,7 @@ O script `scripts/firebase-apphosting-smoke.mjs` realiza **somente requisições
 - `/cormyr/index.html`: HTML da parte pública;
 - `/auth`: página SSR de login;
 - `/spy-portraits/tillet.jpg`: uma imagem estática do repositório;
+- `/api/public/translations`: sem `locale`, deve devolver **400 JSON** antes de qualquer consulta ao banco; serve como teste de publicação de rotas SSR;
 - `/api/firebase-auth-verify`: **deve recusar** acesso não autenticado (401) ou estar desativado explicitamente (503), com JSON.
 
 Executar em ambiente com DNS e HTTPS públicos:
