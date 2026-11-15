@@ -79,3 +79,43 @@ O componente de domínio já testa idempotência, Narrador autorizado e resultad
 5. Validar end-to-end no Firebase Cloud e preservar rollback. Não desativar Supabase, não alterar SQL/RLS da origem e não publicar regras permissivas.
 
 **Status:** código e testes de homologação avançados; as operações Cloud, Storage completo, Drive com escrita e Scheduler ainda não foram concluídos. Não contar os 9 pontos percentuais inteiros do Lote 4.
+
+
+## Auditoria local dos ZIPs privados contra o manifesto
+
+Para os arquivos exportados anteriormente em ZIP, a verificação abaixo usa
+**somente Python padrão em máquina local**, nunca envia arquivos ou caminhos ao
+GitHub, Firebase, Drive ou qualquer API. Os testes de CI usam apenas dados
+fictícios, nunca os ZIPs privados da campanha.
+
+```bash
+python3 scripts/firebase/audit-local-media-coverage.py \
+  --manifest "/CAMINHO-PRIVADO/campaign-images.manifest.json" \
+  --campaign-images-zip "/CAMINHO-PRIVADO/bucket-campaign-images-files.zip" \
+  --campaign-images-zip "/CAMINHO-PRIVADO/bucket-campaign-images-files (1).zip" \
+  --campaign-newspapers-zip "/CAMINHO-PRIVADO/bucket-campaign-newspapers-files.zip" \
+  --campaign-newspaper-staff-zip "/CAMINHO-PRIVADO/bucket-campaign-newspaper-staff-files.zip"
+```
+
+Adicione um `--campaign-images-zip` por arquivo até incluir todos os volumes.
+Os outros dois buckets suportados são
+`--campaign-newspaper-commissions-zip` e
+`--campaign-newspaper-engravings-zip`, quando houver arquivos disponíveis.
+
+O auditor valida o manifesto SHA-256, rejeita referências duplicadas ou
+inseguras, lê integralmente os ZIPs e verifica CRC32 e hash dos bytes sem
+extraí-los. Pode identificar a mesma imagem referenciada por diferentes
+caminhos mediante hash idêntico; isso **não** comprova a associação original
+do caminho nem autoriza importar ou liberar leitura por Casa.
+
+A saída contém somente contagens agregadas por bucket, nunca nomes, IDs,
+paths privados, checksums individuais ou conteúdos. Um manifesto com
+`complete=false` sempre impede `imageArchiveCoverageComplete=true`,
+mesmo quando os ZIPs cobrem todas as entradas conhecidas. Buckets sem
+manifesto próprio só recebem verificação local de integridade, não de
+cobertura. O retorno não significa igualdade dos bytes no destino GCS, nem
+congelamento da origem ou aceite das ACLs: `readyForCutover=false` permanece
+obrigatório.
+
+É seguro repetir em novas exportações privadas, sem commit ou upload dos
+arquivos para o repositório público.
