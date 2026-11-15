@@ -12,7 +12,7 @@ const fixture=Object.freeze({
   }]},
   [`${p}/traffic`]:{current:{splits:[{build:`${p}/builds/build-12`,percent:100}]},
     rolloutPolicy:{disabled:false,codebaseBranch:'main'}},
-  [`${p}/rollouts?pageSize=20&orderBy=createTime%20desc`]:{
+  [`${p}/rollouts?pageSize=20`]:{
     rollouts:[{state:'SUCCEEDED',build:`${p}/builds/build-12`}]},
   [`${p}/builds/build-12`]:{
     state:'READY',source:{codebase:{hash:SHA,author:{email:'private@example.com'}}}},
@@ -39,6 +39,9 @@ test('actual traffic build determines Git revision; no private author data expos
   assert.equal(report.backends[0].automaticRolloutsEnabled,true);
   assert.equal(report.backends[0].liveBranch,'main');
   assert.equal(report.backends[0].latestRolloutState,'SUCCEEDED');
+  assert.equal(report.backends[0].rolloutsHttpStatus,200);
+  assert.equal(report.backends[0].servingBuildHttpStatus,200);
+  assert.equal(report.backends[0].servingBuildSelected,true);
   assert.equal(report.readyForCutover,false);
   assert.equal(report.cloudWrites,0);
   assert.ok(!JSON.stringify(report).includes('private@example.com'));
@@ -84,4 +87,62 @@ test('truncated backend list is not treated as an exhaustive inventory',async()=
   assert.equal(report.auditComplete,false);
   assert.equal(report.backends.length,0);
   assert.equal(report.locations[0].incomplete,true);
+});
+
+test('an empty region (no backends property) is valid; numeric build IDs are supported',async()=>{
+  const numericalBuild=`${p}/builds/123e4567-e89b-12d3-a456-426614174000`;
+  const values={
+    ...fixture,
+    [`${p}/traffic`]:{
+      current:{splits:[{build:numericalBuild,percent:100}]},
+      rolloutPolicy:{disabled:true,codebaseBranch:'main'},
+    },
+    [numericalBuild]:{state:'READY',source:{codebase:{hash:SHA}}},
+    ['projects/cormyr/locations/us-central1/backends?pageSize=40']:{},
+  };
+  const report=await inspectAppHostingReadOnly({
+    tokenProvider:async()=> 'ephemeral-only-token',
+    fetcher:async url=>{
+      const data=values[url.slice((APPHOSTING_API+'/').length)];
+      return new Response(JSON.stringify(data??{}),{status:data?200:404});
+    },
+  });
+  assert.equal(report.auditComplete,true);
+  assert.equal(report.locations[1].incomplete,undefined);
+  assert.equal(report.matchingBackends,1);
+  assert.equal(report.domainServingCommit,SHA);
+  assert.equal(report.backends[0].automaticRolloutsEnabled,false);
+  assert.equal(report.backends[0].servingBuildHttpStatus,200);
+});
+
+test('rollout list HTTP 400 is not mislabeled an IAM denial; serving traffic remains independently verifiable',async()=>{
+  const report=await inspectAppHostingReadOnly({
+    tokenProvider:async()=> 'ephemeral-only-token',
+    fetcher:async url=>{
+      if(url.includes('/rollouts?'))return new Response('unsupported filter',{status:400});
+      const key=url.slice((APPHOSTING_API+'/').length);
+      return Response.json(fixture[key]??{});
+    },
+  });
+  assert.equal(report.auditComplete,false);
+  assert.equal(report.readPermissionRequired,false);
+  assert.equal(report.backends[0].rolloutsHttpStatus,400);
+  assert.equal(report.domainServingCommit,SHA);
+  assert.equal(report.backends[0].servingBuildSelected,true);
+});
+
+test('permission denial on rollouts is separately visible and never leaks response body',async()=>{
+  const report=await inspectAppHostingReadOnly({
+    tokenProvider:async()=> 'ephemeral-only-token',
+    fetcher:async url=>{
+      if(url.includes('/rollouts?'))return new Response('PRIVATE_ACCESS_DETAIL',{status:403});
+      const key=url.slice((APPHOSTING_API+'/').length);
+      return Response.json(fixture[key]??{});
+    },
+  });
+  assert.equal(report.auditComplete,false);
+  assert.equal(report.readPermissionRequired,true);
+  assert.equal(report.backends[0].rolloutsHttpStatus,403);
+  assert.equal(report.domainServingCommit,SHA);
+  assert.ok(!JSON.stringify(report).includes('PRIVATE_ACCESS_DETAIL'));
 });
