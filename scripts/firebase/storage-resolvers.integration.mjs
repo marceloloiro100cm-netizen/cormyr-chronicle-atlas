@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getFirestore} from 'firebase-admin/firestore';
 import {assertEmulatorOnly} from './stage-firestore-emulator.mjs';
-import {buildStoragePlan,writeStorageToEmulator} from './stage-storage-references-emulator.mjs';
+import {buildStoragePlan,writeStorageToEmulator,ROOT as STORAGE} from './stage-storage-references-emulator.mjs';
 import {ROOT as NEWS} from './stage-newspaper-runtime-emulator.mjs';
 import {ROOT as REC} from './stage-records-emulator.mjs';
 import {letterDocId,replyDocId} from './storage-references-core.mjs';
@@ -47,6 +47,14 @@ async function run(){
     ],snap);
     assert.equal(plan.summary.planValid,true);
     await writeStorageToEmulator(plan,db);
+    const indexed=db.collection(STORAGE).doc(snap);
+    const previousRoot=(await indexed.get()).data();
+    const previousRefs=(await indexed.collection('refs').get()).size;
+    // The same snapshot cannot be overwritten with an incomplete or altered
+    // index even when the caller mistakenly retries the whole import.
+    await assert.rejects(()=>writeStorageToEmulator(plan,db),/already exists|ALREADY_EXISTS/i);
+    assert.deepEqual((await indexed.get()).data(),previousRoot);
+    assert.equal((await indexed.collection('refs').get()).size,previousRefs);
     const letter=(o)=>({senderUid:'narrator',subject:'s',content:'c',createdAt:'2026-01-01T00:00:00.000Z',
       deletedAt:null,recipientPlayerId:null,recipientHouseId:null,...o});
     await domain.collection('letters').doc(letterDocId('L1')).set(letter({publicationState:'delivered',recipientHouseId:'hA'}));
