@@ -21,11 +21,8 @@ env:
     availability:
       - BUILD
 
-  # Servidor: acesso privilegiado ao Supabase (somente servidor).
-  - variable: SUPABASE_SERVICE_ROLE_KEY
-    secret: SUPABASE_SERVICE_ROLE_KEY
-    availability:
-      - RUNTIME
+  # Archive-only phase: legacy Supabase service-role is no longer injected.
+  # Do not restore this credential when the Firebase domain migration resumes.
 
   # Callbacks agendados (Cloud Scheduler envia Authorization: Bearer <segredo>).
   - variable: CRON_SECRET
@@ -53,5 +50,4 @@ env:
   #   availability:
   #     - RUNTIME
 
-# SUPABASE_URL e a chave publicável têm valores padrão públicos em
-# src/integrations/supabase/public-config.ts; defina variáveis apenas para substituí-los.
+# Configuração de autenticação e dados será substituída pelo Firebase na fase 2.
