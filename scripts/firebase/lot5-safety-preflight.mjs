@@ -12,9 +12,8 @@ export function evaluateLot5Safety({firestoreRules,storageRules,appStart,apphost
     throw Error('Missing repository security inputs');
   // Only a single blanket DENY ALL is permitted in the production rules.
   const denyOnly=rules=>{
-    const allows=rules.split(/\r?\n/).map(x=>x.trim())
-      .filter(x=>/^allow\s/.test(x));
-    return allows.length===1&&/^allow read, write:\s*if false;/.test(allows[0]);
+    const allows=[...rules.matchAll(/\\ballow\\s+[^;]+;/g)].map(x=>x[0].replace(/\\s+/g,' ').trim());
+    return allows.length===1&&allows[0]==='allow read, write: if false;';
   };
   const checks={
     productionFirestoreDenyAll:denyOnly(firestoreRules),
