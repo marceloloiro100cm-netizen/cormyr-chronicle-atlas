@@ -54,7 +54,7 @@ const SHORTCUTS:[string,string][]=[
  ['?','Abrir esta lista'],
  ['Esc (dentro do texto)','Sair do campo e voltar ao bloco'],
  ['Enter (manchete e títulos)','Confirmar o campo (nas matérias, Enter cria nova linha)'],
- ['Tab / Shift+Tab','Ir ao próximo campo ou voltar'],
+ ['Tab / Shift+Tab','No corpo do texto: recuar parágrafo / voltar ao campo anterior'],
 ];
 export function NewspaperShortcutHelp({onClose}:{onClose:()=>void}){
  const close=useRef<HTMLButtonElement>(null);
