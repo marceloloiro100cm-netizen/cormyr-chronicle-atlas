@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SOURCE,DESTINATION,compareStorageCopies,listGcsPrefix,verifyStorageReadOnly}
+import {SOURCE,DESTINATION,compareStorageCopies,listGcsPrefix,verifyStorageReadOnly,summarizePrivateStaging,HISTORICAL_STAGING_BASELINE}
   from './verify-storage-homologation.mjs';
 const CRC='AAAAAA==',CRC2='AQAAAA==';
 const obj=(prefix,path,crc32c=CRC,size='1024')=>({
@@ -64,4 +64,17 @@ test('unauthorized or cyclic pagination fails without writing data',async()=>{
  await assert.rejects(listGcsPrefix(SOURCE,'test-token-long-enough',fail));
  const cyclic=async()=>Response.json({items:[],nextPageToken:'repeat'});
  await assert.rejects(listGcsPrefix(SOURCE,'test-token-long-enough',cyclic));
+});
+
+test('historical 986-object staging inventory must not silently accept 779',()=>{
+ const sample=Array.from({length:779},(_,i)=>obj(DESTINATION.prefix+'nested/',`file-${i}.webp`));
+ const report=summarizePrivateStaging(sample);
+ assert.equal(HISTORICAL_STAGING_BASELINE,986);
+ assert.equal(report.destinationObjects,779);
+ assert.equal(report.historicalBaselineObjects,986);
+ assert.equal(report.matchesHistoricalBaseline,false);
+ assert.equal(report.readyForCutover,false);
+ assert.equal(report.sourceCompared,false);
+ assert.equal(report.cloudWrites,0);
+ assert.ok(!JSON.stringify(report).includes('nested/'));
 });
