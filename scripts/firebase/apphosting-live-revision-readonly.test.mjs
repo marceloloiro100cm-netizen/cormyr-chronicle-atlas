@@ -166,3 +166,44 @@ test('observed traffic comparison never authorizes cutover or mistakes lag for s
     ...base,matchingBackends:0,domainServingCommit:null,backends:[],
   },SHA).comparison,'INCONCLUSIVE');
 });
+
+test('Google REST canonical int64 string percent selects the live build',async()=>{
+  const values={
+    ...fixture,
+    [p+'/traffic']:{
+      ...fixture[p+'/traffic'],
+      current:{splits:[{build:p+'/builds/build-12',percent:'100'}]},
+    },
+  };
+  const report=await inspectAppHostingReadOnly({
+    tokenProvider:async()=> 'ephemeral-only-token',
+    fetcher:async url=>{
+      const key=url.slice((APPHOSTING_API+'/').length);
+      const data=values[key];
+      return new Response(JSON.stringify(data??{}),{status:data?200:404});
+    },
+  });
+  assert.equal(report.backends[0].servingBuildSelected,true);
+  assert.equal(report.domainServingCommit,SHA);
+  assert.equal(classifyServingRevision(report,SHA).comparison,'MATCH');
+});
+
+test('malformed percentage strings cannot claim a live 100 percent revision',async()=>{
+  const values={
+    ...fixture,
+    [p+'/traffic']:{
+      ...fixture[p+'/traffic'],
+      current:{splits:[{build:p+'/builds/build-12',percent:'0100'}]},
+    },
+  };
+  const report=await inspectAppHostingReadOnly({
+    tokenProvider:async()=> 'ephemeral-only-token',
+    fetcher:async url=>{
+      const key=url.slice((APPHOSTING_API+'/').length);
+      const data=values[key];
+      return new Response(JSON.stringify(data??{}),{status:data?200:404});
+    },
+  });
+  assert.equal(report.domainServingCommit,null);
+  assert.equal(classifyServingRevision(report,SHA).comparison,'INCONCLUSIVE');
+});
