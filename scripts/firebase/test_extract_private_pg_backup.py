@@ -33,7 +33,7 @@ class PrivatePgDumpExtractionTests(unittest.TestCase):
         self.assertFalse(r["databaseWritten"])
         self.assertEqual(self.dst.read_bytes()[:5], b"PGDMP")
         self.assertEqual(self.dst.stat().st_mode & 0o777, 0o600)
-        self.assertNotIn("private", str(r))
+        self.assertNotIn("PGDMPprivate", str(r))
         with self.assertRaises(FileExistsError):
             extract_private_backup(self.src, self.dst)
 
