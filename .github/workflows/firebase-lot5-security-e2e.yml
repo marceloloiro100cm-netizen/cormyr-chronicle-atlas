@@ -56,8 +56,9 @@ jobs:
       - name: Narrator, player, editor and anonymous E2E security matrix on Firestore Emulator
         env:
           FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+          FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
         run: |
-          npx firebase emulators:exec --only firestore \
+          npx firebase emulators:exec --only firestore,auth \
             --project demo-cormyr-migration \
-            --config firebase/firebase-domain.json \
+            --config firebase/firebase-all.json \
             "node scripts/firebase/lot5-role-security.integration.mjs"
