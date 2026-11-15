@@ -1,0 +1,43 @@
+name: Firebase Storage private ZIP coverage (offline)
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/audit-local-media-coverage.py'
+      - 'scripts/firebase/test_audit_local_media_coverage.py'
+      - 'docs/firebase/LOT4-MEDIA-DRIVE-JOBS.md'
+      - '.github/workflows/firebase-storage-offline-coverage.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/audit-local-media-coverage.py'
+      - 'scripts/firebase/test_audit_local_media_coverage.py'
+      - '.github/workflows/firebase-storage-offline-coverage.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify archive scanner syntax and safety with synthetic ZIP files
+        run: |
+          python3 -m py_compile scripts/firebase/audit-local-media-coverage.py
+          python3 -m unittest discover -s scripts/firebase -p 'test_audit_local_media_coverage.py' -v
+      - name: Verify public repository contains no private campaign backup
+        run: node scripts/verify-public-repo.mjs
+      - name: Limit the meaning of this check
+        if: always()
+        run: |
+          echo "Only synthetic ZIP fixtures are used in CI. No campaign files, Auth data or GCS object names are uploaded." >> "$GITHUB_STEP_SUMMARY"
+          echo "An archive integrity audit does not prove live source freshness, path mapping, Firebase Cloud byte equivalence or player access." >> "$GITHUB_STEP_SUMMARY"
+          echo "readyForCutover=false; no Cloud writes." >> "$GITHUB_STEP_SUMMARY"
