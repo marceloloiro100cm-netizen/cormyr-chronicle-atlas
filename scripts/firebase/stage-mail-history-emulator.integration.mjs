@@ -35,6 +35,20 @@ async function run(){
     assert.equal(result.archiveRows,16);
     assert.equal(result.cloudWrites,0);
     await assert.rejects(stageMailHistory(plan,db,process.env),/already exists/);
+    // Two simultaneous snapshot imports are mutually exclusive. One succeeds,
+    // the other fails before overwriting any private archived letter or reply.
+    const raceHash=createHash('sha256').update('synthetic-mail-history-concurrent-v1').digest('hex');
+    const racePlan=planMailHistory(syntheticMailHistory(),raceHash);
+    const concurrent=await Promise.allSettled([
+      stageMailHistory(racePlan,db,process.env),
+      stageMailHistory(racePlan,db,process.env),
+    ]);
+    assert.equal(concurrent.filter(x=>x.status==='fulfilled').length,1);
+    assert.equal(concurrent.filter(x=>x.status==='rejected').length,1);
+    const raceRoot=(await db.collection('migrationMailHistoryStage').doc(raceHash).get()).data();
+    assert.equal(raceRoot.status,'complete');
+    assert.equal(raceRoot.deliveredReplies,1);
+    assert.equal(raceRoot.privatelyArchivedReplies,7);
 
     const domain=db.collection('migrationDomainStage').doc(HASH);
     await domain.set({status:'complete'});
