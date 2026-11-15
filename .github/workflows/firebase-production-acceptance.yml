@@ -6,12 +6,16 @@ on:
       - 'scripts/firebase-production-acceptance-smoke*.mjs'
       - '.github/workflows/firebase-production-acceptance.yml'
       - 'docs/firebase/PRODUCTION-ACCESS-ACCEPTANCE.md'
+      - 'src/routes/**'
+      - 'src/components/players/**'
+      - 'src/components/newspaper/**'
+      - 'src/lib/auth/**'
+      - 'src/integrations/supabase/**'
+      - 'apphosting.yaml'
+  # Changes to the live app must be checked even if the smoke script itself
+  # was not touched. A push smoke is advisory while a rollout is in progress.
   push:
     branches: [main]
-    paths:
-      - 'scripts/firebase-production-acceptance-smoke*.mjs'
-      - '.github/workflows/firebase-production-acceptance.yml'
-      - 'docs/firebase/PRODUCTION-ACCESS-ACCEPTANCE.md'
   workflow_dispatch:
 
 permissions:
@@ -56,3 +60,4 @@ jobs:
           fi
           echo "No real user login, House permissions, private missives, Cloud database or service-role secret was tested." >> "$GITHUB_STEP_SUMMARY"
           echo "Cutover remains NO_GO. Supabase continues as source of truth." >> "$GITHUB_STEP_SUMMARY"
+          echo "These HTTP probes verify whichever revision is serving when the test runs, not necessarily the just-pushed commit." >> "$GITHUB_STEP_SUMMARY"
