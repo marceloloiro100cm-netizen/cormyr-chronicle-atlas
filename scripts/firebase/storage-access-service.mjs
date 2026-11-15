@@ -79,12 +79,12 @@ export function createEmulatorStorageAccessService({db,auth,snapshotId,resolvers
       if(actor){
         facts.canEditNewspaper=scope.canEdit===true;
         if(bucket===BUCKETS.images&&op==='read'){
-          facts.referencedByReadableContent=await ask('referencedByReadableContent',{...base,actor});
+          facts.referencedByReadableContent=await ask('referencedByReadableContent',{...base,actor,scope});
           facts.crestHouseId=(await crestHouseOf(name))??undefined;
         }
         if(bucket===BUCKETS.newspapers){
-          if(op==='read')facts.newspaperAssetReadable=await ask('newspaperAssetReadable',{...base,actor});
-          if(op==='upload')facts.newspaperAssetUploadAllowed=await ask('newspaperAssetUploadAllowed',{...base,actor});
+          if(op==='read')facts.newspaperAssetReadable=await ask('newspaperAssetReadable',{...base,actor,scope});
+          if(op==='upload')facts.newspaperAssetUploadAllowed=await ask('newspaperAssetUploadAllowed',{...base,actor,scope});
         }
       }
       if(!canAccess({actor,op,bucket,name,facts}))throw deny();

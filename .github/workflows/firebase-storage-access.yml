@@ -2,7 +2,9 @@ name: Firebase storage access core
 on:
   pull_request:
     paths:
-      - 'scripts/firebase/storage-access-*.mjs'
+      - 'scripts/firebase/storage-*.mjs'
+      - 'scripts/firebase/stage-storage-*.mjs'
+      - 'scripts/firebase/record-core.mjs'
       - 'scripts/firebase/newspaper-core.mjs'
       - 'firebase/firestore.domain.rules'
       - 'docs/firebase/STORAGE-ACCESS.md'
@@ -23,9 +25,9 @@ jobs:
           node-version: '24'
       - name: Syntax
         run: |
-          for f in scripts/firebase/storage-access-core.mjs scripts/firebase/storage-access-service.mjs scripts/firebase/storage-access-service.integration.mjs; do node --check "$f"; done
+          for f in scripts/firebase/storage-access-core.mjs scripts/firebase/storage-access-service.mjs scripts/firebase/storage-access-service.integration.mjs scripts/firebase/storage-references-core.mjs scripts/firebase/stage-storage-references-emulator.mjs scripts/firebase/storage-resolvers.mjs scripts/firebase/storage-resolvers.integration.mjs; do node --check "$f"; done
       - name: Unit tests
-        run: node --test scripts/firebase/storage-access-core.test.mjs
+        run: node --test scripts/firebase/storage-access-core.test.mjs scripts/firebase/storage-references-core.test.mjs
       - name: Public-repository private-data gate
         run: node scripts/verify-public-repo.mjs
 
@@ -50,4 +52,4 @@ jobs:
           npx firebase emulators:exec --only firestore \
             --project demo-cormyr-migration \
             --config firebase/firebase-domain.json \
-            "node scripts/firebase/storage-access-service.integration.mjs"
+            "node scripts/firebase/storage-access-service.integration.mjs && node scripts/firebase/storage-resolvers.integration.mjs"
