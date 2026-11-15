@@ -48,6 +48,9 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
   const key = encodeURIComponent(opts.apiKey);
   let session: FirebaseSession | null = null;
   let inflight: Promise<FirebaseSession | null> | null = null;
+  // Invalidate outstanding network requests when the identity changes or logs out.
+  // A delayed refresh must never restore a signed-out or replaced session.
+  let sessionVersion = 0;
   const listeners = new Set<(s: FirebaseSession | null) => void>();
   const emit = () => listeners.forEach(l => l(session));
 
@@ -62,7 +65,8 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
     }
     return body;
   }
-  const accept = (uid: unknown, idToken: unknown, refresh: unknown, expiresIn: unknown): FirebaseSession => {
+  const accept = (uid: unknown, idToken: unknown, refresh: unknown, expiresIn: unknown, version: number): FirebaseSession => {
+    if (version !== sessionVersion) throw new FirebaseAuthError('STALE_SESSION');
     const secs = Number(expiresIn);
     if (typeof uid !== 'string' || typeof idToken !== 'string' || typeof refresh !== 'string' || !Number.isFinite(secs) || secs <= 0)
       throw new FirebaseAuthError('BAD_RESPONSE');
@@ -73,35 +77,46 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
   };
 
   async function refresh(): Promise<FirebaseSession | null> {
+    const version = sessionVersion;
     const rt = storage.get();
-    if (!rt) { session = null; return null; }
+    if (!rt) { if (version === sessionVersion) { session = null; emit(); } return null; }
     try {
       const b = await post(`${origin('securetoken.googleapis.com')}/v1/token?key=${key}`, {
         method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
         body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(rt)}`,
       });
-      return accept(b.user_id, b.id_token, b.refresh_token, b.expires_in);
+      // A different login or sign-out may have happened during the request.
+      if (version !== sessionVersion || storage.get() !== rt) return null;
+      return accept(b.user_id, b.id_token, b.refresh_token, b.expires_in, version);
     } catch (e) {
-      // A rejected refresh token ends the session; a network error keeps it for a retry.
-      if (e instanceof FirebaseAuthError && e.code !== 'NETWORK') { storage.set(null); session = null; emit(); }
+      // Never allow an old refresh failure to revoke a newer identity.
+      if (version === sessionVersion && storage.get() === rt &&
+          e instanceof FirebaseAuthError && e.code !== 'NETWORK') {
+        storage.set(null); session = null; emit();
+      }
       throw e;
     }
   }
 
   return {
     async signInWithPassword(email, password) {
+      const version = ++sessionVersion;
+      inflight = null;
       const b = await post(`${origin('identitytoolkit.googleapis.com')}/v1/accounts:signInWithPassword?key=${key}`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email, password, returnSecureToken: true }),
       });
-      return accept(b.localId, b.idToken, b.refreshToken, b.expiresIn);
+      return accept(b.localId, b.idToken, b.refreshToken, b.expiresIn, version);
     },
-    signOut() { storage.set(null); session = null; emit(); },
+    signOut() { ++sessionVersion; inflight = null; storage.set(null); session = null; emit(); },
     current: () => session,
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     async getToken() {
       if (session && session.expiresAt - now() > skew) return session.idToken;
-      inflight ??= refresh().finally(() => { inflight = null; });
+      if (!inflight) {
+        const task = refresh().finally(() => { if (inflight === task) inflight = null; });
+        inflight = task;
+      }
       try { return (await inflight)?.idToken ?? null; } catch { return null; }
     },
   };

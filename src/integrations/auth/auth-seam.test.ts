@@ -77,6 +77,57 @@ describe('firebase rest auth', () => {
     expect(storage.get()).toBeNull(); expect(await a.getToken()).toBeNull(); expect(fn).toHaveBeenLastCalledWith(null);
     off();
   });
+  it('does not restore a session after sign-out while a refresh is in flight', async () => {
+    let t = 0; const storage = memoryStorage();
+    let complete!: (response: Response) => void;
+    const pending = new Promise<Response>(resolve => { complete = resolve; });
+    const f = vi.fn(async (url: unknown) => String(url).includes('securetoken')
+      ? pending : json(200, signIn));
+    const a = createFirebaseRestAuth({ apiKey: 'k', fetch: f as never, storage, now: () => t });
+    await a.signInWithPassword('a', 'b');
+    t = 4_000_000;
+    const oldRefresh = a.getToken();
+    a.signOut();
+    complete(json(200, { user_id: 'u1', id_token: 'stale', refresh_token: 'stale-refresh', expires_in: '3600' }));
+    expect(await oldRefresh).toBeNull();
+    expect(a.current()).toBeNull();
+    expect(storage.get()).toBeNull();
+    expect(await a.getToken()).toBeNull();
+  });
+  it('does not let an old failed refresh revoke a newer login', async () => {
+    let t = 0; const storage = memoryStorage();
+    let complete!: (response: Response) => void;
+    const pending = new Promise<Response>(resolve => { complete = resolve; });
+    let logins = 0;
+    const f = vi.fn(async (url: unknown) => {
+      if (String(url).includes('securetoken')) return pending;
+      logins += 1;
+      return json(200, logins === 1 ? signIn :
+        { localId: 'u2', idToken: 'new-id', refreshToken: 'new-refresh', expiresIn: '3600' });
+    });
+    const a = createFirebaseRestAuth({ apiKey: 'k', fetch: f as never, storage, now: () => t });
+    await a.signInWithPassword('a', 'b');
+    t = 4_000_000;
+    const oldRefresh = a.getToken();
+    await a.signInWithPassword('new', 'password');
+    complete(json(400, { error: { message: 'TOKEN_EXPIRED' } }));
+    expect(await oldRefresh).toBeNull();
+    expect(a.current()?.uid).toBe('u2');
+    expect(storage.get()).toBe('new-refresh');
+    expect(await a.getToken()).toBe('new-id');
+  });
+  it('ignores a login response arriving after the user has signed out', async () => {
+    const storage = memoryStorage();
+    let complete!: (response: Response) => void;
+    const pending = new Promise<Response>(resolve => { complete = resolve; });
+    const a = createFirebaseRestAuth({ apiKey: 'k', fetch: (async () => pending) as never, storage });
+    const oldLogin = a.signInWithPassword('a', 'b');
+    a.signOut();
+    complete(json(200, signIn));
+    await expect(oldLogin).rejects.toMatchObject({ code: 'STALE_SESSION' });
+    expect(storage.get()).toBeNull();
+    expect(a.current()).toBeNull();
+  });
   it('rejects malformed responses', async () => {
     const a = createFirebaseRestAuth({ apiKey: 'k', fetch: (async () => json(200, { localId: 'u' })) as never });
     await expect(a.signInWithPassword('a', 'b')).rejects.toMatchObject({ code: 'BAD_RESPONSE' });
