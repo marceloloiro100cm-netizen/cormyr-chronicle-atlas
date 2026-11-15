@@ -12,7 +12,7 @@ test('the compiled runtime checks actual Firebase and existing SSR endpoint cont
     '/cormyr/index.html','/spy-portraits/tillet.jpg',
   ]);
   assert.equal(EXPECTED_ROUTES[0].status,503);
-  assert.equal(EXPECTED_ROUTES[1].status,400);
+  assert.equal(EXPECTED_ROUTES[1].status,503);
 });
 
 test('Firebase homologation endpoint must be explicitly disabled in production',()=>{
@@ -24,9 +24,10 @@ test('Firebase homologation endpoint must be explicitly disabled in production',
   assert.equal(classifyCompiledRoute(auth,response(503,'text/html')),false);
 });
 
-test('public SSR validation route must exist, not be replaced by SPA fallback',()=>{
+test('legacy public SSR route must be unavailable during archive-only cutover',()=>{
   const api=EXPECTED_ROUTES[1];
-  assert.equal(classifyCompiledRoute(api,response(400,'application/json')),true);
+  assert.equal(classifyCompiledRoute(api,response(503,'application/json')),true);
+  assert.equal(classifyCompiledRoute(api,response(400,'application/json')),false);
   assert.equal(classifyCompiledRoute(api,response(200,'text/html')),false);
   assert.equal(classifyCompiledRoute(api,response(404,'application/json')),false);
 });

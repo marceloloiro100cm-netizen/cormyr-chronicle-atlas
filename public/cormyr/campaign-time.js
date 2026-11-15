@@ -3,6 +3,7 @@
 (function(){
  const current=document.getElementById('public-campaign-current-time');
  if(!current)return;
+ if(window.CORMYR_ARCHIVE_ONLY){current.textContent='Calendário em manutenção';return;}
  let lastVersion=-1;
  const FALLBACK='Calendário oficial indisponível';
  function render(data){

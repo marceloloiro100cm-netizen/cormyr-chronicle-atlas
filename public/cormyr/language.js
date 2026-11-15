@@ -165,6 +165,7 @@
     const request = ++generation;
     dictionary = {};
     if (locale === 'pt') { translateRegionNarrative(); return; }
+    if (window.CORMYR_ARCHIVE_ONLY) { translateRegionNarrative(); return; }
     try {
       const response = await fetch('/api/public/translations?locale=' + encodeURIComponent(locale));
       if (!response.ok) return;

@@ -2,6 +2,25 @@ import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/r
 
 import { renderErrorPage } from "./lib/error-page";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
+import { shouldBlockLegacyRequest, ARCHIVE_UNAVAILABLE_MESSAGE } from "@/lib/archive-only";
+
+/**
+ * Archive-only request boundary. Keep this ahead of all request and serverFn
+ * middleware to avoid executing old Supabase, OAuth, Drive, or write handlers.
+ * Static /cormyr/ files are not intercepted.
+ */
+const archiveOnlyMiddleware = createMiddleware().server(({ request, handlerType, next }) => {
+  const pathname = new URL(request.url).pathname;
+  if (!shouldBlockLegacyRequest(pathname, handlerType)) return next();
+  return Response.json(
+    { error: 'legacy_backend_paused', message: ARCHIVE_UNAVAILABLE_MESSAGE },
+    { status: 503, headers: {
+      'Cache-Control': 'no-store, max-age=0',
+      'X-Content-Type-Options': 'nosniff',
+      'Retry-After': '3600',
+    } },
+  );
+});
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -27,5 +46,5 @@ const csrfMiddleware = createCsrfMiddleware({
 
 export const startInstance = createStart(() => ({
   functionMiddleware: [attachSupabaseAuth],
-  requestMiddleware: [errorMiddleware, csrfMiddleware],
+  requestMiddleware: [archiveOnlyMiddleware, errorMiddleware, csrfMiddleware],
 }));

@@ -2,6 +2,8 @@
 // server before starting app.js. Visitors and players receive nothing.
 (function(){
   const start=()=>{const s=document.createElement('script');s.src='app.js';document.body.appendChild(s);};
+  // Do not read or send legacy JWTs while the Council is offline.
+  if (window.CORMYR_ARCHIVE_ONLY) { start(); return; }
   let tok=null;
   try{const raw=localStorage.getItem('sb-qkdznngbkwodsbpkpoax-auth-token');tok=raw&&JSON.parse(raw).access_token;}catch(e){}
   if(!tok){start();return;}
