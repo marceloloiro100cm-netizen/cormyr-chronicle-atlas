@@ -43,7 +43,7 @@ export async function proxyFirebaseDomainRequest(
     return response(401,'authentication_required');
   if(mode==='domain'&&request.method!=='POST')return response(405,'method_not_allowed');
   if(mode==='identity'&&request.method!=='GET')return response(405,'method_not_allowed');
-  if(mode==='domain'&&request.headers.get('content-type')?.split(';')[0].trim()!=='application/json')
+  if(mode==='domain'&&request.headers.get('content-type')?.split(';')[0]?.trim()!=='application/json')
     return response(415,'json_required');
   if(request.headers.has('content-encoding'))return response(415,'unsupported_encoding');
   let body:string|undefined;
