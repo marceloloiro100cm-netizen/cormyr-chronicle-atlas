@@ -56,6 +56,12 @@ test('validates media content type and requires closed Firebase auth gate', () =
   assert.equal(classifyResponse('html', html()), true);
   assert.equal(classifyResponse('image', image()), true);
   assert.equal(classifyResponse('image', html()), false);
+  assert.equal(classifyResponse('validationError', new Response('{"error":"Idioma inválido"}', {
+    status: 400, headers: { 'content-type': 'application/json' },
+  })), true);
+  assert.equal(classifyResponse('validationError', new Response('Not Found', {
+    status: 404, headers: { 'content-type': 'text/plain' },
+  })), false);
   assert.equal(classifyResponse('closedGate', closed()), true);
   assert.equal(classifyResponse('closedGate', new Response('{}', {
     status: 401, headers: { 'content-type': 'application/json' },
@@ -71,6 +77,9 @@ test('valid deployment smoke never asserts database or Firebase cutover readines
   const fetcher = async (url, options) => {
     paths.push({ url, options });
     if (url.endsWith('/spy-portraits/tillet.jpg')) return image();
+    if (url.endsWith('/api/public/translations')) return new Response('{}', {
+      status: 400, headers: { 'content-type': 'application/json' },
+    });
     if (url.endsWith('/api/firebase-auth-verify')) return closed();
     return html();
   };
@@ -78,7 +87,8 @@ test('valid deployment smoke never asserts database or Firebase cutover readines
   assert.equal(result.publicationSmokePassed, true);
   assert.equal(result.firebaseCloudMigrationVerified, false);
   assert.equal(result.readyForCutover, false);
-  assert.equal(result.checks.length, 4);
+  assert.equal(result.serverRoutesPublished, true);
+  assert.equal(result.checks.length, 5);
   assert.ok(paths.every(({ options }) => !Object.keys(options.headers).some(k =>
     k.toLowerCase() === 'authorization' || k.toLowerCase() === 'cookie')));
 });
