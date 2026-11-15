@@ -18,7 +18,9 @@ export function buildStoragePlan(tables,snapshotId){
   if(!Array.isArray(tables)||!/^[a-f0-9]{64}$/.test(snapshotId))throw new Error('Invalid verified source data');
   const by=new Map(tables.map(t=>[t.table,t]));
   const rows=n=>by.get(n)?.rows||[];
-  const missingTables=[T.letters,T.records].filter(n=>!by.has(n));
+  // Missing replies or reviewed catalog data must not silently produce an
+  // apparently complete index with missing readable image references.
+  const missingTables=Object.values(T).filter(n=>!by.has(n));
   const idx=buildReferenceIndex({letters:rows(T.letters),replies:rows(T.replies),
     records:rows(T.records),catalog:rows(T.catalog)});
   const refs=[...idx.refs].map(([path,v])=>({id:pathDocId(path),payload:{path,...v}}));
@@ -33,7 +35,9 @@ export async function writeStorageToEmulator(plan,db){
   assertEmulatorOnly(process.env,DEMO);
   if(!plan?.summary?.planValid)throw new Error('Storage plan blocked before writes');
   const root=db.collection(ROOT).doc(plan.snapshotId);
-  await root.set({status:'incomplete',formatVersion:1,private:true});
+  // Atomic create: a second import of the same verified snapshot must fail
+  // without overwriting historical reference indexes or gallery permissions.
+  await root.create({status:'incomplete',formatVersion:1,private:true});
   let written=1,batch=db.batch(),pending=0;
   const flush=async()=>{if(!pending)return;await batch.commit();written+=pending;batch=db.batch();pending=0;};
   for(const [type,items] of Object.entries(plan.docs))for(const item of items){

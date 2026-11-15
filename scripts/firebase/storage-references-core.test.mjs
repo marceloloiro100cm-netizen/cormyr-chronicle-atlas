@@ -32,6 +32,7 @@ test('buildReferenceIndex maps paths to hashed source ids and keeps reviewed gal
 test('buildStoragePlan stores ids and paths only and blocks on invalid gallery or missing tables',()=>{
   const ok=buildStoragePlan([
     tab('public.campaign_letters',[{id:'L1',content:'[cormyr-image:u/a.png|]'}]),
+    tab('public.letter_replies',[]),
     tab('public.campaign_records',[{id:'r1',content:'sem imagem'}]),
     tab('public.house_catalog',[{public_reviewed:'t',gallery:'[{"path":"g/1.png"}]'}]),
   ],SNAP);
@@ -41,6 +42,26 @@ test('buildStoragePlan stores ids and paths only and blocks on invalid gallery o
   assert.equal(ok.docs.refs[0].id,pathDocId('u/a.png'));
   assert.ok(!JSON.stringify(ok.docs).includes('sem imagem'));
   assert.equal(buildStoragePlan([tab('public.campaign_letters',[])],SNAP).summary.planValid,false);
+  const noReplies=buildStoragePlan([
+    tab('public.campaign_letters',[]),
+    tab('public.campaign_records',[]),
+    tab('public.house_catalog',[]),
+  ],SNAP);
+  assert.deepEqual(noReplies.summary.missingTables,1);
+  assert.equal(noReplies.summary.planValid,false);
+  const noCatalog=buildStoragePlan([
+    tab('public.campaign_letters',[]),
+    tab('public.letter_replies',[]),
+    tab('public.campaign_records',[]),
+  ],SNAP);
+  assert.equal(noCatalog.summary.planValid,false);
+  const allEmpty=buildStoragePlan([
+    tab('public.campaign_letters',[]),
+    tab('public.letter_replies',[]),
+    tab('public.campaign_records',[]),
+    tab('public.house_catalog',[]),
+  ],SNAP);
+  assert.equal(allEmpty.summary.planValid,true);
   assert.equal(buildStoragePlan([tab('public.campaign_letters',[]),tab('public.campaign_records',[]),
     tab('public.house_catalog',[{public_reviewed:'t',gallery:'{"a":1}'}])],SNAP).summary.planValid,false);
   assert.throws(()=>buildStoragePlan([],'x'));
