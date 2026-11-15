@@ -62,10 +62,12 @@ jobs:
           node --input-type=module -e 'import {readFileSync,appendFileSync} from "node:fs"; const a=JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/temporal-final-acceptance.json","utf8")); if(!a.static_contract_ok||a.production_release_authorized!==false||a.go_no_go!=="NO_GO"||a.sql_executed!==false) process.exit(2); appendFileSync(process.env.GITHUB_STEP_SUMMARY,"\\n### Aceite final do Hub Temporal\\n"+a.inspected_surfaces+" superfícies e "+a.required_regressions+" testes obrigatórios inspecionados. **NO_GO** até comprovação externa das migrações e backup.\\n");'
       - name: Unit and component tests
         run: bun run test
+      # TanStack Router generates src/routeTree.gen.ts during build.
+      # Type-checking before generation reads a stale route union on new pages.
+      - name: Production build and route type generation
+        run: bun run build
       - name: TypeScript verification
         run: bunx tsc --noEmit
-      - name: Production build
-        run: bun run build
 
   mail-database:
     runs-on: ubuntu-latest
