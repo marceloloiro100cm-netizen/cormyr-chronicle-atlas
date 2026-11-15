@@ -3,8 +3,6 @@
  * Cloud Scheduler is NOT configured by this file and must NOT be pointed at it.
  */
 import {createServer} from 'node:http';
-import {initializeApp,deleteApp} from 'firebase-admin/app';
-import {getFirestore} from 'firebase-admin/firestore';
 import {assertEmulatorOnly} from './stage-firestore-emulator.mjs';
 import {createEmulatorJobs,createJobsHandler} from './scheduled-jobs-handler.mjs';
 
@@ -39,6 +37,8 @@ async function main(){
      !Number.isInteger(port)||port<1024||port>65535)
     throw Error('Explicit snapshot, narrator, strong secret and valid port required');
   const origin='http://127.0.0.1:'+port;
+  const {initializeApp,deleteApp}=await import('firebase-admin/app');
+  const {getFirestore}=await import('firebase-admin/firestore');
   const app=initializeApp({projectId:PROJECT},'cormyr-local-jobs');
   const jobs=createEmulatorJobs({
     db:getFirestore(app),snapshotId,actorUid,env,
