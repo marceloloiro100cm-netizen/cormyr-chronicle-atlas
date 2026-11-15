@@ -37,7 +37,7 @@ const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'
   else if(/^evento-(mundanos|misticos)-\d+$/.test(h)){const [,kind,id]=h.match(/^evento-(mundanos|misticos)-(\d+)$/);state.view='eventos';state.kind=kind;state.query='';state.theme='';state.deepEvent=+id;}
  }
  readHash();regionSelect.value=state.region;
- fetch('/api/public/catalog',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Catálogo indisponível');return r.json();}).then(result=>{
+ if(!window.CORMYR_ARCHIVE_ONLY)fetch('/api/public/catalog',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Catálogo indisponível');return r.json();}).then(result=>{
   for(const item of result.playerHouses||[])PLAYER_HOUSES.add(item.house_id);
   for(const item of result.houses||[]){const h=data.regions.flatMap(r=>r.houses).find(h=>h.nobleId===item.id);if(h){h.catalogClassification=item.classification;h.gallery=item.gallery||[];h.publicNarrative=item.narrative_text;}}
   renderRegion();renderNobility();
