@@ -17,7 +17,7 @@ Executar em ambiente com DNS e HTTPS públicos:
 node scripts/firebase-apphosting-smoke.mjs
 ```
 
-Também existe o workflow manual **Firebase App Hosting domain smoke (read-only)** em **Actions → Run workflow → main**, sem segredos. A execução sai com erro se algo não responder como esperado; o retorno JSON mantém apenas códigos HTTP e nomes de verificações. Se DNS ou certificado estiverem pendentes, aparecerá `transport_unavailable`; o workflow pode ser repetido depois da propagação.
+Também existe o workflow **Firebase App Hosting domain smoke (read-only)** em **Actions → Run workflow → main**, sem segredos. Ele roda automaticamente nos PRs que modificam o verificador e no merge desses arquivos na `main`. A checagem HTTP em Actions é *informativa*, pois a propagação DNS ainda pode estar pendente: a etapa registra falhas e avisos sem bloquear a aprovação do código. Em execução direta pela CLI, o comando retorna código de saída 1 se não verificar publicação; o JSON mantém apenas códigos HTTP e nomes de verificações. Se DNS ou certificado estiverem pendentes, aparecerá `transport_unavailable`; repetir a verificação após a propagação.
 
 ## Limitações
 
