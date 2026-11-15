@@ -136,3 +136,11 @@ Mesmo com resultado positivo, a comparação cobre **somente**
 `migration-staging/campaign-images/` versus o destino isolado em GCS.
 Ela não prova igualdade com o Supabase Storage vivo, nem os quatro outros
 buckets, nem regras e ACLs por Casa. O corte definitivo permanece bloqueado.
+
+
+Se a tentativa de comparação falhar, o verificador emite apenas uma
+**categoria segura**, por exemplo `SOURCE_GCS_HTTP_403`,
+`DESTINATION_GCS_HTTP_401` ou `SOURCE_INVENTORY_UNAVAILABLE`.
+Isso distingue falta de acesso à origem de outras falhas estruturais sem
+registrar corpos de resposta HTTP, objetos, paths, IDs privados ou tokens.
+Um código HTTP não prova perda de objetos; não conceder IAM automaticamente.

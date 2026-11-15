@@ -91,7 +91,14 @@ export async function listGcsPrefix({bucket,prefix},accessToken,fetcher=fetch){
       method:'GET',headers:{Authorization:'Bearer '+accessToken},
       cache:'no-store',redirect:'error',signal:AbortSignal.timeout(20_000),
     });
-    if(!response.ok)throw Error('Private Storage listing unavailable');
+    if(!response.ok){
+      // Only a bounded HTTP category may reach logs; never read a provider
+      // response body that might contain object names or account details.
+      const known=[400,401,403,404,408,429,500,502,503,504].includes(response.status);
+      const error=new Error('Private Storage listing unavailable');
+      error.auditCode='GCS_HTTP_'+(known?String(response.status):'OTHER');
+      throw error;
+    }
     const body=await response.json();
     if(!body||typeof body!=='object'||!Array.isArray(body.items??[]))
       throw Error('Invalid GCS listing');
@@ -171,10 +178,22 @@ export function summarizePrivateStaging(inventory,cliText){
 }
 
 export async function verifyStorageReadOnly({token,fetcher=fetch}){
-  const [source,target]=await Promise.all([
-    listGcsPrefix(SOURCE,token,fetcher),
-    listGcsPrefix(DESTINATION,token,fetcher),
-  ]);
+  const inventory=async (scope,locator)=>{
+    try{
+      return await listGcsPrefix(locator,token,fetcher);
+    }catch(error){
+      // Re-throw only allowlisted status and scope, not arbitrary exception
+      // messages from provider responses, file names or caller data.
+      const status=typeof error?.auditCode==='string'&&
+        /^GCS_HTTP_(?:400|401|403|404|408|429|500|502|503|504|OTHER)$/.test(error.auditCode)
+        ?error.auditCode:'INVENTORY_UNAVAILABLE';
+      const safe=new Error('Private Storage inventory not verified');
+      safe.auditCode=scope+'_'+status;
+      throw safe;
+    }
+  };
+  const source=await inventory('SOURCE',SOURCE);
+  const target=await inventory('DESTINATION',DESTINATION);
   return compareStorageCopies(source,target);
 }
 async function main(args){
@@ -206,7 +225,11 @@ async function main(args){
   if(!result.sourceToStagingBytesMatch)process.exitCode=1;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)
-  main(process.argv.slice(2)).catch(()=>{
-    console.error('Private Storage integrity audit blocked; no object names, credentials or contents printed.');
+  main(process.argv.slice(2)).catch(error=>{
+    const safeCode=typeof error?.auditCode==='string'&&
+      /^(?:(?:SOURCE|DESTINATION)_(?:GCS_HTTP_(?:400|401|403|404|408|429|500|502|503|504|OTHER)|INVENTORY_UNAVAILABLE)|GCS_HTTP_(?:400|401|403|404|408|429|500|502|503|504|OTHER))$/.test(error.auditCode)
+      ?error.auditCode:'AUDIT_NOT_VERIFIED';
+    console.error('Private Storage integrity audit blocked: '+safeCode+
+      '. No object names, credentials, provider response bodies or contents printed.');
     process.exitCode=2;
   });
