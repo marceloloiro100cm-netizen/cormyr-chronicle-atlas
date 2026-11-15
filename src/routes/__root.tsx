@@ -1,3 +1,7 @@
+// Temporary archive-only mode for the 2026-11-15 Lovable exit.
+// Disable only after Firebase Auth/Firestore production acceptance.
+const CORMYR_ARCHIVE_ONLY = true;
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -124,6 +128,7 @@ function RootComponent() {
   const knownUserId=useRef<string|null|undefined>(undefined);
   const [sessionEpoch,setSessionEpoch]=useState(0);
   useEffect(() => {
+    if (CORMYR_ARCHIVE_ONLY) return;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event,session) => {
       const decision=decideSessionBoundary(knownUserId.current,event,session?.user?.id);
       if(decision.reason==='ignored')return;
@@ -146,6 +151,27 @@ function RootComponent() {
     });
     return () => subscription.unsubscribe();
   }, [router, queryClient]);
+
+  // Keep / serving the public /cormyr/ archive, but pause every protected
+  // application screen until Firestore/Auth are migrated and verified.
+  if (CORMYR_ARCHIVE_ONLY && router.state.location.pathname !== '/') {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-6 py-16 text-foreground">
+        <section className="w-full max-w-xl rounded-xl border border-input bg-card p-8 text-center shadow-sm">
+          <p className="mb-3 text-sm uppercase tracking-widest text-muted-foreground">Cormyr Chronicle Atlas</p>
+          <h1 className="mb-4 text-2xl font-semibold">Conselho em manutenção</h1>
+          <p className="mb-6 text-muted-foreground">
+            O acervo público permanece disponível. Missivas, calendário privado,
+            fichas e demais funcionalidades do Conselho estão temporariamente
+            indisponíveis durante a migração para Firebase.
+          </p>
+          <a href="/cormyr/" className="inline-flex rounded-md bg-primary px-5 py-3 font-medium text-primary-foreground">
+            Consultar o acervo público
+          </a>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
