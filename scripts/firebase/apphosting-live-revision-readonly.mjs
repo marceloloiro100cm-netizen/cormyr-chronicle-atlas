@@ -4,6 +4,7 @@
  * Prints only public source revisions and aggregate backend/domain states.
  */
 import {execFileSync} from 'node:child_process';
+import {appendFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 
 export const APPHOSTING_API='https://firebaseapphosting.googleapis.com/v1';
@@ -118,9 +119,57 @@ export async function inspectAppHostingReadOnly({
   };
 }
 
+
+/**
+ * Compare the live build observed at audit time to the triggering main push.
+ * A rollout may still be in progress: NOT_YET_MATCHING is diagnostic, not
+ * a deployment failure or permission to change traffic.
+ */
+export function classifyServingRevision(report,expectedSha){
+  const expected=sha40(expectedSha);
+  const served=sha40(report?.domainServingCommit);
+  const backend=report?.matchingBackends===1?
+    report?.backends?.find(b=>b.domainAttached===true):null;
+  const complete=report?.auditComplete===true&&backend!==null&&backend!==undefined;
+  const comparison=!complete||!served?'INCONCLUSIVE':
+    !expected?'NO_EXPECTED_COMMIT':
+    expected===served?'MATCH':'NOT_YET_MATCHING';
+  return {
+    comparison,
+    expectedCommit:expected,
+    servingCommit:served,
+    servingBranch:backend?.liveBranch??null,
+    automaticRolloutsEnabled:backend?.automaticRolloutsEnabled??null,
+    readPermissionRequired:report?.readPermissionRequired===true,
+    readyForCutover:false,
+  };
+}
+
+function appendPublicationSummary(report){
+  const destination=process.env.GITHUB_STEP_SUMMARY;
+  if(!destination)return;
+  const state=classifyServingRevision(report,process.env.GITHUB_SHA);
+  const lines=[
+    '### Firebase App Hosting — revisão publicada (somente leitura)',
+    '- Commit deste push: '+(state.expectedCommit??'não confirmado'),
+    '- Commit efetivamente em tráfego: '+(state.servingCommit??'não confirmado'),
+    '- Comparação no instante da auditoria: **'+state.comparison+'**',
+    '- Branch configurada: '+(state.servingBranch??'desconhecida'),
+    '- Rollouts automáticos: '+(state.automaticRolloutsEnabled===null?
+      'desconhecidos':state.automaticRolloutsEnabled?'ativados':'desativados'),
+    '- Consulta completa: '+(report.auditComplete?'sim':'não'),
+    '- Permissão de leitura pendente: '+(state.readPermissionRequired?'sim':'não'),
+    '- Firebase Cloud/dados/Auth migrados: **não comprovado**. Corte definitivo: **NO_GO**.',
+    '- Uma comparação diferente de MATCH pode apenas indicar rollout ainda em curso; conferir o check App Hosting - Rollout antes de concluir.',
+    '',
+  ];
+  appendFileSync(destination,lines.join('\\n')+'\\n');
+}
+
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   inspectAppHostingReadOnly().then(report=>{
     process.stdout.write(JSON.stringify(report,null,2)+'\n');
+    appendPublicationSummary(report);
     if(report.readPermissionRequired)
       console.error('One or more App Hosting metadata reads returned HTTP 401/403. Verify project-level access without expanding roles.');
     if(!report.auditComplete)
