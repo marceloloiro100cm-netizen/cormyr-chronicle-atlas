@@ -97,3 +97,57 @@ test('real missing or extra objects remain blocked, independent of virtual folde
  assert.equal(missing.listingMethodsAgree,false);
  assert.equal(missing.cliPseudoFolders,1);
 });
+
+
+test('denied intermediate source reports only a safe status and never raw provider text',async()=>{
+ const privateBody='PRIVATE_OBJECT_PATH_AND_TOKEN_SHOULD_NOT_LEAK';
+ const fetcher=async url=>new URL(url).pathname.includes(
+   encodeURIComponent(SOURCE.bucket))
+   ?new Response(privateBody,{status:403})
+   :Response.json({items:dst});
+ await assert.rejects(
+   verifyStorageReadOnly({token:'test-token-long-enough',fetcher}),
+   error=>{
+     assert.equal(error.auditCode,'SOURCE_GCS_HTTP_403');
+     assert.ok(!JSON.stringify(error).includes(privateBody));
+     assert.ok(!String(error).includes(privateBody));
+     return true;
+   }
+ );
+});
+
+test('destination GCS denial is distinguishable, without assuming source parity',async()=>{
+ const fetcher=async url=>new URL(url).pathname.includes(
+   encodeURIComponent(SOURCE.bucket))
+   ?Response.json({items:src})
+   :new Response('PRIVATE_DESTINATION_DETAILS',{status:401});
+ await assert.rejects(
+   verifyStorageReadOnly({token:'test-token-long-enough',fetcher}),
+   error=>{
+     assert.equal(error.auditCode,'DESTINATION_GCS_HTTP_401');
+     assert.ok(!String(error).includes('PRIVATE_DESTINATION_DETAILS'));
+     return true;
+   }
+ );
+});
+
+test('unknown HTTP code and malformed source metadata are redacted reason categories',async()=>{
+ const badStatus=async()=>new Response('PRIVATE_PROVIDER_MESSAGE',{status:418});
+ await assert.rejects(
+   verifyStorageReadOnly({token:'test-token-long-enough',fetcher:badStatus}),
+   error=>{
+     assert.equal(error.auditCode,'SOURCE_GCS_HTTP_OTHER');
+     assert.ok(!String(error).includes('PRIVATE_PROVIDER_MESSAGE'));
+     return true;
+   }
+ );
+ const badCrc=async()=>Response.json({items:[{...src[0],crc32c:'PRIVATE-INVALID'}]});
+ await assert.rejects(
+   verifyStorageReadOnly({token:'test-token-long-enough',fetcher:badCrc}),
+   error=>{
+     assert.equal(error.auditCode,'SOURCE_INVENTORY_UNAVAILABLE');
+     assert.ok(!String(error).includes('PRIVATE-INVALID'));
+     return true;
+   }
+ );
+});
