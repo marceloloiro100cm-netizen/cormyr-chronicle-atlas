@@ -127,8 +127,15 @@ export async function stageMailHistory(plan,db,env=process.env){
   if(!plan?.summary?.planValid||!SHA.test(plan.snapshotId))
     throw Error('Mail-history source plan invalid');
   const root=db.collection(ROOT).doc(plan.snapshotId);
-  if((await root.get()).exists)throw Error('Mail-history snapshot already exists');
-  await root.set({status:'incomplete',private:true,formatVersion:1});
+  // Reserve the snapshot atomically before staging even one protected reply.
+  // Concurrent retries must not overwrite a previous private archive.
+  try{
+    await root.create({status:'incomplete',private:true,formatVersion:1});
+  }catch(error){
+    if(error?.code===6||error?.code==='already-exists')
+      throw Error('Mail-history snapshot already exists');
+    throw error;
+  }
   let written=1,pending=0,bytes=0,batch=db.batch();
   const flush=async()=>{
     if(!pending)return;
