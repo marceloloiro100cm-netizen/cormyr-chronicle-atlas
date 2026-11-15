@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
   type ErrorComponentProps,
+  redirect,
 } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -83,6 +84,13 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  // Guard at the router boundary, before private route loaders can call
+  // the legacy backend. The public archive is served as static files.
+  beforeLoad: ({ location }) => {
+    if (CORMYR_ARCHIVE_ONLY && location.pathname !== '/') {
+      throw redirect({ to: '/' });
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -152,27 +160,6 @@ function RootComponent() {
     });
     return () => subscription.unsubscribe();
   }, [router, queryClient]);
-
-  // Keep / serving the public /cormyr/ archive, but pause every protected
-  // application screen until Firestore/Auth are migrated and verified.
-  if (CORMYR_ARCHIVE_ONLY && router.state.location.pathname !== '/') {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-background px-6 py-16 text-foreground">
-        <section className="w-full max-w-xl rounded-xl border border-input bg-card p-8 text-center shadow-sm">
-          <p className="mb-3 text-sm uppercase tracking-widest text-muted-foreground">Cormyr Chronicle Atlas</p>
-          <h1 className="mb-4 text-2xl font-semibold">Conselho em manutenção</h1>
-          <p className="mb-6 text-muted-foreground">
-            O acervo público permanece disponível. Missivas, calendário privado,
-            fichas e demais funcionalidades do Conselho estão temporariamente
-            indisponíveis durante a migração para Firebase.
-          </p>
-          <a href="/cormyr/" className="inline-flex rounded-md bg-primary px-5 py-3 font-medium text-primary-foreground">
-            Consultar o acervo público
-          </a>
-        </section>
-      </main>
-    );
-  }
 
   return (
     <QueryClientProvider client={queryClient}>
