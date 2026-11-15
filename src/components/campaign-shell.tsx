@@ -39,7 +39,10 @@ export function CampaignShell({ children,publicTime=false,heraldry=null }: {
     <header className="campaign-top">
       <a href="/cormyr/index.html" className="campaign-brand"><img src="/cormyr/assets/cormyr.jpg" alt="Brasão de Cormyr" /><span>Cormyr <em>Chronicle</em>{publicTime?<PublicClock/>:<PrivateClock/>}</span></a>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginLeft: 'auto' }}>
-        <nav><a href="/cormyr/index.html">{t('nav.kingdomAndRegions')}</a></nav>
+        <nav style={{display:'flex',gap:'0.8rem',alignItems:'center'}}>
+          <a href="/cormyr/index.html">{t('nav.kingdomAndRegions')}</a>
+          {!publicTime&&<a href="/diagnostico">Verificar meu acesso</a>}
+        </nav>
         <LanguageSwitcher />
       </div>
     </header>
