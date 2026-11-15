@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  APPHOSTING_API,inspectAppHostingReadOnly,
+  APPHOSTING_API,inspectAppHostingReadOnly,classifyServingRevision,
 } from './apphosting-live-revision-readonly.mjs';
 
 const SHA='a'.repeat(40);
@@ -145,4 +145,24 @@ test('permission denial on rollouts is separately visible and never leaks respon
   assert.equal(report.backends[0].rolloutsHttpStatus,403);
   assert.equal(report.domainServingCommit,SHA);
   assert.ok(!JSON.stringify(report).includes('PRIVATE_ACCESS_DETAIL'));
+});
+
+test('observed traffic comparison never authorizes cutover or mistakes lag for success',()=>{
+  const base={
+    auditComplete:true,matchingBackends:1,domainServingCommit:SHA,
+    readPermissionRequired:false,
+    backends:[{domainAttached:true,liveBranch:'main',automaticRolloutsEnabled:true}],
+  };
+  assert.deepEqual(
+    classifyServingRevision(base,SHA).comparison,'MATCH');
+  assert.equal(
+    classifyServingRevision(base,'b'.repeat(40)).comparison,'NOT_YET_MATCHING');
+  assert.equal(
+    classifyServingRevision(base,undefined).comparison,'NO_EXPECTED_COMMIT');
+  const incomplete=classifyServingRevision({...base,auditComplete:false},SHA);
+  assert.equal(incomplete.comparison,'INCONCLUSIVE');
+  assert.equal(incomplete.readyForCutover,false);
+  assert.equal(classifyServingRevision({
+    ...base,matchingBackends:0,domainServingCommit:null,backends:[],
+  },SHA).comparison,'INCONCLUSIVE');
 });

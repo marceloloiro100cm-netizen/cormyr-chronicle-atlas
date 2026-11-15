@@ -5,11 +5,10 @@ on:
     paths:
       - 'scripts/firebase/apphosting-live-revision-readonly*.mjs'
       - '.github/workflows/firebase-apphosting-live-revision-readonly.yml'
+  # Every change to main can trigger an App Hosting rollout; audit each source revision.
+  # This is advisory while the rollout may be in progress, never a cutover gate.
   push:
     branches: [main]
-    paths:
-      - 'scripts/firebase/apphosting-live-revision-readonly*.mjs'
-      - '.github/workflows/firebase-apphosting-live-revision-readonly.yml'
   workflow_dispatch:
 
 permissions:
