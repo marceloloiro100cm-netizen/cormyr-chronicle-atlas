@@ -50,6 +50,7 @@ describe('production session self-audit (read-only, no private data)',()=>{
   it('does not promote another profile to Narrator or editorial privileges',()=>{
     expect(evaluateRoleSelfAudit({...editor,admin:true}).passed).toBe(false);
     expect(evaluateRoleSelfAudit({...player,admin:true}).passed).toBe(false);
+    expect(evaluateRoleSelfAudit({...player,newspaperEdit:true}).passed).toBe(false);
     expect(evaluateRoleSelfAudit({...player,editorIdentity:true}).passed).toBe(false);
     expect(evaluateRoleSelfAudit({...narrator,admin:false}).passed).toBe(false);
   });
