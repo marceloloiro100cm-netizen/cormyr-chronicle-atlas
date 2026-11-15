@@ -39,6 +39,25 @@ export function productionProbeRequest(probe){
   return {url:url.href,options};
 }
 
+const SAME_ORIGIN_REDIRECTS=new Set([301,302,303,307,308]);
+
+/** Only GET redirects within the same trusted origin are followed. */
+export async function requestProbeWithRedirects(probe,fetcher){
+  const {url,options}=productionProbeRequest(probe);
+  let target=new URL(url);
+  for(let hops=0;hops<=4;hops++){
+    const response=await fetcher(target.href,options);
+    if(!SAME_ORIGIN_REDIRECTS.has(response.status)||probe.method!=='GET')
+      return {response,finalPath:target.pathname,redirectHops:hops};
+    const location=response.headers.get('location');
+    if(!location)throw Error('missing_redirect_location');
+    const next=new URL(location,target);
+    if(next.origin!==probe.origin)throw Error('cross_origin_redirect_blocked');
+    target=next;
+  }
+  throw Error('too_many_redirects');
+}
+
 export function classifyProductionProbe(probe,response){
   const contentType=(response.headers.get('content-type')||'').toLowerCase();
   const typeGood=probe.type==='any'||
@@ -51,13 +70,16 @@ export async function probeProductionBoundaries({fetcher=fetch}={}){
   const checks=[];
   for(const probe of PROBES){
     try{
-      const {url,options}=productionProbeRequest(probe);
-      const response=await fetcher(url,options);
+      const {response,finalPath,redirectHops}=await requestProbeWithRedirects(probe,fetcher);
       // Intentionally do NOT read or print response bodies: public catalogue,
       // public time and translations may contain campaign details.
+      const expectedLoginPath=probe.name!=='loginPage'||
+        finalPath==='/auth'||finalPath==='/auth/';
       checks.push({
         name:probe.name,method:probe.method,required:probe.required,
-        status:response.status,passed:classifyProductionProbe(probe,response),
+        status:response.status,
+        redirects:redirectHops,
+        passed:classifyProductionProbe(probe,response)&&expectedLoginPath,
       });
     }catch{
       checks.push({name:probe.name,method:probe.method,required:probe.required,
@@ -70,6 +92,8 @@ export async function probeProductionBoundaries({fetcher=fetch}={}){
     legacyAuthEndpoint:LEGACY_AUTH_ORIGIN,
     publicReadinessPassed:checks.filter(x=>x.required).every(x=>x.passed),
     advisoryAuthEndpointPassed:checks.find(x=>x.name==='legacySupabaseAuthHealth')?.passed??false,
+    legacyAuthGatewayReachable:[200,401].includes(
+      checks.find(x=>x.name==='legacySupabaseAuthHealth')?.status),
     userLoginProven:false,
     narratorLoginProven:false,
     houseScopedAccessProven:false,
