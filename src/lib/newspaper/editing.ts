@@ -1,4 +1,4 @@
-import type {KeyboardEvent} from 'react';
+import {handleTextareaTab,indentTextSelection,PARAGRAPH_INDENT} from '@/lib/text/textarea-indent';
 import {FESTIVALS,parseDate} from '@/lib/calendar/harptos';
 import {
  safeNewspaperBlocks,type NewspaperBlock,type NewspaperEdition,type NewspaperImageFocus,
@@ -155,47 +155,10 @@ export function validateSchedule(publishOn:string,hubDate:string):string|null{
 }
 export const KNOWN_FESTIVAL_IDS:readonly string[]=FESTIVALS.map(f=>f.id);
 
-// ---- Recuo de parágrafos na redação (espaços preservados em HTML e no JSON) ----
-export const NEWSPAPER_PARAGRAPH_INDENT='    ';
-/** Insere quatro espaços no cursor; com seleção, recua as linhas sem apagar texto. */
-export function indentNewspaperText(text:string,start:number,end:number):{
- text:string;selectionStart:number;selectionEnd:number;
-}{
- const begin=Math.max(0,Math.min(text.length,start));
- const finish=Math.max(begin,Math.min(text.length,end));
- if(begin===finish){
-  const next=text.slice(0,begin)+NEWSPAPER_PARAGRAPH_INDENT+text.slice(begin);
-  const cursor=begin+NEWSPAPER_PARAGRAPH_INDENT.length;
-  return {text:next,selectionStart:cursor,selectionEnd:cursor};
- }
- const lineStart=text.lastIndexOf('\n',begin-1)+1;
- const segment=text.slice(lineStart,finish);
- // Seleção terminada imediatamente após uma quebra não recua a linha seguinte.
- const indented=NEWSPAPER_PARAGRAPH_INDENT+segment.replace(/\n(?!$)/g,'\n'+NEWSPAPER_PARAGRAPH_INDENT);
- const lines=1+(segment.match(/\n(?!$)/g)?.length??0);
- return {
-  text:text.slice(0,lineStart)+indented+text.slice(finish),
-  selectionStart:begin+NEWSPAPER_PARAGRAPH_INDENT.length,
-  selectionEnd:finish+lines*NEWSPAPER_PARAGRAPH_INDENT.length,
- };
-}
-/** Tab insere recuo na caixa de texto; Shift+Tab mantém a navegação do teclado. */
-export function handleNewspaperTextareaTab(event:KeyboardEvent<HTMLTextAreaElement>,
- onChange:(value:string)=>void):void{
- if(event.key!=='Tab'||event.shiftKey||event.ctrlKey||event.altKey||event.metaKey||
-  event.nativeEvent.isComposing)return;
- event.preventDefault();
- event.stopPropagation();
- const input=event.currentTarget;
- const result=indentNewspaperText(input.value,input.selectionStart,input.selectionEnd);
- if(input.hasAttribute('maxlength')&&input.maxLength>=0&&result.text.length>input.maxLength)return;
- onChange(result.text);
- queueMicrotask(()=>{
-  if(input.isConnected&&document.activeElement===input){
-   input.setSelectionRange(result.selectionStart,result.selectionEnd);
-  }
- });
-}
+// ---- Recuo de parágrafos na redação (compartilhado com missivas e documentos) ----
+export const NEWSPAPER_PARAGRAPH_INDENT=PARAGRAPH_INDENT;
+export const indentNewspaperText=indentTextSelection;
+export const handleNewspaperTextareaTab=handleTextareaTab;
 
 // ---- Texto digitado e colado nos campos da folha ----
 /**
