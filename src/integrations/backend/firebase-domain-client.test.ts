@@ -17,7 +17,7 @@ describe('Firebase domain client',()=>{
     {getToken:async()=> 'firebase-token',fetcher:fetcher as never},
   );
   expect(r.year).toBe(1522);
-  expect(fetcher.mock.calls[0]?.[0]).toBe('/api/firebase-domain');
+  expect((fetcher.mock.calls as unknown[][])[0]?.[0]).toBe('/api/firebase-domain');
  });
  it('does not silently fall back to Supabase when unavailable',async()=>{
   const fetcher=vi.fn();
