@@ -13,6 +13,7 @@ import {doc,collection,getDoc,getDocs,setDoc,updateDoc,deleteDoc} from 'firebase
 import {assertEmulatorOnly} from './stage-firestore-emulator.mjs';
 import {createEmulatorDomainHttpHandler} from './domain-http-handler.mjs';
 import {createEmulatorHouseViewService} from './house-view-service.mjs';
+import {assessLot8HttpRoleMatrix} from './lot8-http-role-acceptance.mjs';
 import {sheetDocId} from './stage-noble-house-emulator.mjs';
 
 const PROJECT='demo-cormyr-migration';
@@ -192,9 +193,14 @@ async function main(){
     const handler=createEmulatorDomainHttpHandler({
       services:{access:view,houses:view},auth,env:process.env,origin,
     });
+    const observedHttp=[];
+    let acceptancePhase='baseline';
     const assertHttp=async(uid,action,house,status)=>{
       const response=await httpStatus(handler,uid,'houses',action,house?[house]:[]);
       assert.equal(response.status,status,uid+':'+action);
+      if(action==='getHouse'){
+        observedHttp.push({phase:acceptancePhase,actor:uid??'anonymous',house,status:response.status});
+      }
       if(response.status!==200){
         const body=await response.text();
         assert.equal(body.includes('ONLY-A')||body.includes('ONLY-B'),false);
@@ -212,6 +218,7 @@ async function main(){
     await assertHttp(null,'getHouse',A,401);
 
     // Role revocation takes effect on the very next HTTP request AND SDK read.
+    acceptancePhase='revoked';
     await access.doc('alice').update({memberHouseIds:[],editHouseIds:[],rosterHouseId:A});
     await assertFails(getDoc(sheet('alice',A)));
     await assertHttp('alice','getHouse',A,403);
@@ -222,7 +229,10 @@ async function main(){
     await assertFails(getDoc(edition('editor','privateEditions','draft')));
     // Ensure client claims cannot independently restore deactivated access.
     assert.equal(ctx.editor!==undefined,true);
-    console.log('Lot 5: synthetic role matrix, Firestore rules, cross-house privacy, impersonation, signed-in claims, live revocation and denied client writes PASS.');
+    const acceptance=assessLot8HttpRoleMatrix(observedHttp);
+    assert.equal(acceptance.emulatorAcceptancePass,true,'Lote 8 missing or invalid HTTP role outcomes');
+    assert.equal(acceptance.readyForCutover,false);
+    console.log('Lot 5/8: synthetic role matrix, Firestore rules, cross-house privacy, impersonation, signed-in claims, live revocation and denied client writes PASS.');
   }finally{
     await testEnv.cleanup();
     await deleteApp(app);
