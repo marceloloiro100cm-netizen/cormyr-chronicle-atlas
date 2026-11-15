@@ -11,6 +11,7 @@ export const SOURCE={bucket:'cormyr.firebasestorage.app',prefix:'migration-stagi
 export const DESTINATION={bucket:'cormyr-migration-homolog-477785088395',prefix:'campaign-images/'};
 const BASE='https://storage.googleapis.com/storage/v1/b/';
 const MAX_ITEMS=50_000;
+export const HISTORICAL_STAGING_BASELINE=986;
 const CRC=/^[A-Za-z0-9+/]{6}==$/;
 function cleanItem(item,prefix) {
   if(!item||typeof item.name!=='string'||!item.name.startsWith(prefix))
@@ -108,6 +109,30 @@ export async function listGcsPrefix({bucket,prefix},accessToken,fetcher=fetch){
   }
   return items;
 }
+/** Metadata checks are not source byte equality. Historical count is a review gate. */
+export function summarizePrivateStaging(inventory){
+  if(!Array.isArray(inventory)||inventory.length>MAX_ITEMS)
+    throw Error('Invalid staging inventory');
+  let destinationBytes=0;
+  const keys=new Set();
+  for(const item of inventory){
+    const checked=cleanItem(item,DESTINATION.prefix);
+    if(keys.has(checked.relative))throw Error('Duplicate staging object');
+    keys.add(checked.relative);
+    destinationBytes+=Number(checked.size);
+  }
+  return {
+    scope:'READ-ONLY-PRIVATE-STAGING-METADATA',
+    destinationObjects:inventory.length,
+    historicalBaselineObjects:HISTORICAL_STAGING_BASELINE,
+    matchesHistoricalBaseline:inventory.length===HISTORICAL_STAGING_BASELINE,
+    destinationBytes,
+    crc32cMetadataValidated:true,
+    sourceCompared:false,sourceFrozen:false,readyForCutover:false,
+    cloudWrites:0,
+  };
+}
+
 export async function verifyStorageReadOnly({token,fetcher=fetch}){
   const [source,target]=await Promise.all([
     listGcsPrefix(SOURCE,token,fetcher),
@@ -127,15 +152,10 @@ async function main(args){
   }).trim();
   if(args[0]==='--staging-only-readonly'){
     const inventory=await listGcsPrefix(DESTINATION,token);
-    const totalBytes=inventory.reduce((n,item)=>n+Number(item.size),0);
-    process.stdout.write(JSON.stringify({
-      scope:'READ-ONLY-PRIVATE-STAGING-METADATA',
-      destinationObjects:inventory.length,destinationBytes:totalBytes,
-      crc32cMetadataValidated:true,
-      sourceCompared:false,sourceFrozen:false,readyForCutover:false,
-      cloudWrites:0,
-    },null,2)+'\n');
-    if(inventory.length===0)process.exitCode=1;
+    const report=summarizePrivateStaging(inventory);
+    process.stdout.write(JSON.stringify(report,null,2)+'\n');
+    // An older 779-object manifest cannot silently pass as 986 copied objects.
+    if(!report.matchesHistoricalBaseline)process.exitCode=1;
     return;
   }
   const result=await verifyStorageReadOnly({token});
