@@ -27,7 +27,7 @@ set -euo pipefail
 umask 077
 mkdir -p "$HOME/cormyr-chronicle-atlas/.firebase-migration"
 chmod 700 "$HOME/cormyr-chronicle-atlas/.firebase-migration"
-python3 scripts/firebase/extract-private-pg-backup.py \\
+python3 scripts/firebase/extract_private_pg_backup.py \\
   --zip "$HOME/cormyr-chronicle-atlas/.firebase-migration/cormyr-chronicle-atlas_261112.backup.zip" \\
   --output "$HOME/cormyr-chronicle-atlas/.firebase-migration/cormyr-chronicle-atlas_261112.backup"
 ```
