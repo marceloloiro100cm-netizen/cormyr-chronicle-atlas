@@ -37,9 +37,12 @@ async function jsonInput(request:Request):Promise<Record<string,unknown>>{
 }
 async function handle(request:Request):Promise<Response>{
   const snapshotId=process.env['CORMYR_FIREBASE_SNAPSHOT_ID']??'';
-  const enabled=process.env['CORMYR_FIREBASE_CLOUD_TREASURY_ENABLED']==='true'&&
-    process.env['CORMYR_FIREBASE_CLOUD_READ_ENABLED']==='true';
-  if(!enabled||!/^[a-f0-9]{64}$/.test(snapshotId)||
+  const cloudReadEnabled=process.env['CORMYR_FIREBASE_CLOUD_READ_ENABLED']==='true';
+  const writeEnabled=cloudReadEnabled&&
+    process.env['CORMYR_FIREBASE_CLOUD_TREASURY_ENABLED']==='true';
+  const readEnabled=cloudReadEnabled&&
+    process.env['CORMYR_FIREBASE_CLOUD_TREASURY_READ_ENABLED']==='true';
+  if((!writeEnabled&&!readEnabled)||!/^[a-f0-9]{64}$/.test(snapshotId)||
      process.env['FIRESTORE_EMULATOR_HOST']||
      process.env['FIREBASE_AUTH_EMULATOR_HOST'])
     return failure(503,'firebase_cloud_treasury_disabled');
@@ -53,9 +56,15 @@ async function handle(request:Request):Promise<Response>{
     return failure(401,'authentication_required');
   try{
     const body=await jsonInput(request);
-    if(body['action']!=='status'&&body['action']!=='adjust')
+    if(body['action']!=='status'&&body['action']!=='adjust'&&
+       body['action']!=='summary')
       return failure(400,'invalid_action');
-    if(body['action']==='status'&&
+    // A read-only deployment cannot route even a legitimate narrator write.
+    if(body['action']==='summary'&&!readEnabled)
+      return failure(503,'firebase_cloud_treasury_read_disabled');
+    if(body['action']!=='summary'&&!writeEnabled)
+      return failure(503,'firebase_cloud_treasury_write_disabled');
+    if((body['action']==='status'||body['action']==='summary')&&
        Object.keys(body).some(k=>!['action','houseId'].includes(k)))
       return failure(400,'invalid_request');
     if(body['action']==='adjust'&&
@@ -80,7 +89,9 @@ async function handle(request:Request):Promise<Response>{
     const token=authorization.slice(7);
     const result=body['action']==='status'
       ?await service.status(token,body['houseId'])
-      :await service.adjust(token,{
+      :body['action']==='summary'
+        ?await service.summary(token,body['houseId'])
+        :await service.adjust(token,{
         requestKey:body['requestKey'],houseId:body['houseId'],
         expectedVersion:body['expectedVersion'],delta:body['delta'],
         reason:body['reason'],

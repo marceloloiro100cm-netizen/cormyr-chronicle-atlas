@@ -42,6 +42,8 @@ type PaperStatus={enabled:boolean;canPublish:boolean;readOnly:boolean};
 type PaperReply={id:string;editionNo:number;duplicate:boolean;state:string};
 type TreasuryStatus={enabled:boolean;canAdjust:boolean;readOnly:boolean;
   balance:number|null;version:number|null};
+type TreasurySummary={available:boolean;readOnly:true;
+  balance:number|null;version:number|null};
 type TreasuryReply={id:string;duplicate:boolean;houseId:string;
   balance:number;version:number};
 type SpyAgent={id:string;codename:string;status:string;missionSuccesses:number};
@@ -185,6 +187,7 @@ function FirebaseAccess(){
   const [paperStatus,setPaperStatus]=useState<PaperStatus|null>(null);
   const [paperTitle,setPaperTitle]=useState('');
   const [treasuryStatus,setTreasuryStatus]=useState<TreasuryStatus|null>(null);
+  const [treasurySummary,setTreasurySummary]=useState<TreasurySummary|null>(null);
   const [treasuryDelta,setTreasuryDelta]=useState('');
   const [treasuryReason,setTreasuryReason]=useState('');
   const [treasuryKey,setTreasuryKey]=useState<string|null>(null);
@@ -262,22 +265,27 @@ function FirebaseAccess(){
   async function selectHouse(id:string){
     setBusy(true);setMessage('');setHouse(null);
     setAgents(null);setDossiers(null);
-    setTreasuryStatus(null);setTreasuryDelta('');setTreasuryReason('');
+    setTreasuryStatus(null);setTreasurySummary(null);
+    setTreasuryDelta('');setTreasuryReason('');
     setTreasuryKey(typeof crypto!=='undefined'&&
       typeof crypto.randomUUID==='function'?crypto.randomUUID():null);
     try{
-      const [selected,spy,intelligence,treasury]=await Promise.all([
+      const [selected,spy,intelligence,treasury,summary]=await Promise.all([
         readCloud<HouseView>('getHouse',id),
         readCloud<{items:SpyAgent[]}>('listSpyAgents',id).catch(()=>null),
         readCloud<SpyDossierCatalog>('listSpyDossiers',id).catch(()=>null),
         view?.profile==='narrador'
           ?cloudTreasury<TreasuryStatus>({action:'status',houseId:id}).catch(()=>null)
           :Promise.resolve(null),
+        view?.profile==='jogador'
+          ?cloudTreasury<TreasurySummary>({action:'summary',houseId:id}).catch(()=>null)
+          :Promise.resolve(null),
       ]);
       setHouse(selected);
       setAgents(spy?.items??null);
       setDossiers(intelligence);
       setTreasuryStatus(treasury);
+      setTreasurySummary(summary);
     }catch(e){setMessage(e instanceof Error?e.message:'Falha na leitura da Casa.');}
     finally{setBusy(false);}
   }
@@ -420,7 +428,8 @@ function FirebaseAccess(){
     setMailRecipientHouse('');setMailSubject('');setMailContent('');setEmail('');
     setPassword('');setMessage('');setReplyLetter(null);
     setReplyContent('');setReplyKey(null);
-    setTreasuryStatus(null);setTreasuryDelta('');setTreasuryReason('');
+    setTreasuryStatus(null);setTreasurySummary(null);
+    setTreasuryDelta('');setTreasuryReason('');
     setTreasuryKey(null);
   }
 
@@ -467,6 +476,28 @@ function FirebaseAccess(){
         </select>
         {house&&<FirebaseHouseSheet sheet={house}/>}
         {house&&<FirebaseHouseResources houseName={house.name} state={house.state}/>}
+        {house&&view.profile==='jogador'&&
+          <section aria-label="Tesouro operacional da Casa"
+            className="rounded border border-current/25 p-4 space-y-2">
+            <h2 className="text-lg font-semibold">Tesouro operacional</h2>
+            {treasurySummary?.available&&
+             treasurySummary.balance!==null&&
+             treasurySummary.version!==null
+              ?<>
+                <p>Saldo conciliado: <strong>
+                  {treasurySummary.balance.toLocaleString('pt-BR')}
+                </strong></p>
+                <p className="text-sm">Versão operacional: {treasurySummary.version}</p>
+                <p className="text-xs">
+                  Consulta da sua Casa no Firebase, sem acesso a lançamentos.
+                  O Tesouro do snapshot é preservado separadamente.
+                </p>
+              </>
+              :<p className="text-sm">
+                O saldo operacional ainda não foi homologado para consulta.
+                O Tesouro histórico permanece disponível na ficha.
+              </p>}
+          </section>}
         {house&&view.profile==='narrador'&&
           <section className="rounded border border-current/25 p-4 space-y-3">
             <h2 className="text-lg font-semibold">Tesouro operacional · Narrador</h2>

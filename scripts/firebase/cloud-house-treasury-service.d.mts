@@ -4,6 +4,9 @@ export class CloudTreasuryError extends Error {
   constructor(code:string,status?:number);
 }
 export interface CloudTreasuryRuntime {
+  summary(token:string,houseId:unknown):Promise<{
+    available:boolean;readOnly:true;balance:number|null;version:number|null;
+  }>;
   status(token:string,houseId:unknown):Promise<{
     enabled:boolean;canAdjust:boolean;readOnly:boolean;
     balance:number|null;version:number|null;

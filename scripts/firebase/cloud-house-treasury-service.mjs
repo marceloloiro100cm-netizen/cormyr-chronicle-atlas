@@ -40,13 +40,35 @@ function validateInput(v){
 }
 const rootsReady=(docs)=>docs.every(d=>d.exists&&
   d.data()?.status==='complete'&&d.data()?.private===true);
-const runtimeReady=(cfg,snapshot,calendar)=>
+const runtimeReady=(cfg,snapshot,calendar,mode='adjust')=>
   cfg?.status==='active'&&cfg.private===true&&
   cfg.sourceSnapshotId===snapshot&&cfg.sourceSnapshotReconciled===true&&
-  cfg.applicationEnabled===true&&cfg.treasuryWriteApproved===true&&
+  cfg.applicationEnabled===true&&
+  (mode==='summary'?cfg.treasuryReadApproved===true:
+    cfg.treasuryWriteApproved===true)&&
   cfg.treasurySeededVerified===true&&
   validInt(cfg.calendarVersion,1,2147483647)&&
   cfg.calendarVersion===calendar.version;
+function authorized(actor,uid,houseId,mode){
+  if(actor?.userId!==uid||actor?.active!==true||
+     actor?.requirePasswordChange!==false)
+    fail(mode==='summary'?'access_denied':'narrator_only',403);
+  if(actor.profile==='narrador'&&actor.admin===true){
+    if(!Array.isArray(actor.memberHouseIds)||actor.memberHouseIds.length!==0||
+       !Array.isArray(actor.editHouseIds)||actor.editHouseIds.length!==0)
+      fail('invalid_access_scope',403);
+    return;
+  }
+  if(mode!=='summary'||actor.profile!=='jogador'||
+     actor.admin!==false||!validId(actor.playerId)||
+     !Array.isArray(actor.memberHouseIds)||
+     !Array.isArray(actor.editHouseIds)||
+     actor.memberHouseIds.length>250||actor.editHouseIds.length>250||
+     actor.memberHouseIds.some(v=>!validId(v))||
+     actor.editHouseIds.some(v=>!validId(v)||!actor.memberHouseIds.includes(v))||
+     !actor.memberHouseIds.includes(houseId))
+    fail(mode==='summary'?'access_denied':'narrator_only',403);
+}
 function checkCalendar(c){
   if(!validInt(c?.version,1,2147483647)||
      !validInt(c?.year,1,9999)||
@@ -95,7 +117,7 @@ export function createFirebaseCloudTreasury({
       fail('authentication_required',401);
     return decoded.uid;
   }
-  async function approve(tx,uid,houseId){
+  async function approve(tx,uid,houseId,mode='adjust'){
     const houseRef=stage.collection('houses').doc(hash('house:'+houseId));
     const sheetRef=nobleStage.collection('sheets')
       .doc(hash('noble-sheet:'+houseId));
@@ -108,14 +130,11 @@ export function createFirebaseCloudTreasury({
       tx.get(runtime),tx.get(houseRef),tx.get(sheetRef),tx.get(treasuryRef),
     ]);
     const actor=docs[4]?.data();
-    if(actor?.userId!==uid||actor?.active!==true||
-       actor?.requirePasswordChange!==false||
-       actor?.profile!=='narrador'||actor?.admin!==true)
-      fail('narrator_only',403);
+    authorized(actor,uid,houseId,mode);
     if(!rootsReady(docs.slice(0,4)))
       fail('migration_stage_not_ready',503);
     const campaignDate=checkCalendar(docs[5]?.data());
-    if(!runtimeReady(docs[6]?.data(),snapshotId,docs[5].data()))
+    if(!runtimeReady(docs[6]?.data(),snapshotId,docs[5].data(),mode))
       fail('treasury_runtime_not_approved',503);
     const house=docs[7]?.data(),sheet=docs[8]?.data(),entry=docs[9]?.data();
     if(!docs[7]?.exists||!house||house.sourceId!==houseId||
@@ -131,6 +150,22 @@ export function createFirebaseCloudTreasury({
     return {treasuryRef,treasury:entry,campaignDate};
   }
   return {
+    async summary(idToken,houseId){
+      const uid=await actorUid(idToken);
+      if(!validId(houseId))fail('invalid_house',400);
+      try{
+        return await db.runTransaction(async tx=>{
+          const {treasury:t}=await approve(tx,uid,houseId,'summary');
+          // Never return another House's identity, ledger or private audit.
+          return {available:true,readOnly:true,balance:t.balance,
+            version:t.version};
+        });
+      }catch(e){
+        if(e instanceof CloudTreasuryError&&e.status===503)
+          return {available:false,readOnly:true,balance:null,version:null};
+        throw e;
+      }
+    },
     async status(idToken,houseId){
       const uid=await actorUid(idToken);
       if(!validId(houseId))fail('invalid_house',400);

@@ -242,3 +242,102 @@ test('Missing canonical calendar and compromised account stop writes',async()=>{
   f.records.set(f.access,{...f.records.get(f.access),requirePasswordChange:true});
   await denied(()=>f.service().adjust(token,req()),'narrator_only',403);
 });
+
+
+test('Player sees only own reconciled Treasury, without mutation access',async()=>{
+  const f=fixture('jogador');
+  f.records.set(f.access,{
+    ...f.records.get(f.access),playerId:'player-a',
+    memberHouseIds:['house-a'],editHouseIds:['house-a'],
+  });
+  f.records.set(f.runtime,{
+    ...f.records.get(f.runtime),treasuryReadApproved:true,
+    treasuryWriteApproved:false,
+  });
+  const before=new Map([...f.records]);
+  const own=await f.service().summary(token,'house-a');
+  assert.deepEqual(own,{
+    available:true,readOnly:true,balance:120,version:0,
+  });
+  await denied(()=>f.service().summary(token,'house-b'),'access_denied',403);
+  await denied(()=>f.service().status(token,'house-a'),'narrator_only',403);
+  await denied(()=>f.service().adjust(token,req()),'narrator_only',403);
+  for(const [key,value] of before)assert.deepEqual(f.records.get(key),value);
+  assert.equal([...f.records].filter(([k])=>k.includes('/houseTreasuryAudits/')).length,0);
+});
+
+test('Read-only approval is separate from Treasury writing approval',async()=>{
+  const f=fixture();
+  const runtime=f.records.get(f.runtime);
+  f.records.set(f.runtime,{...runtime,treasuryReadApproved:false});
+  assert.deepEqual(await f.service().summary(token,'house-a'),{
+    available:false,readOnly:true,balance:null,version:null,
+  });
+  // Narrator writes remain governed by the independent write authorization.
+  const allowed=await f.service().adjust(token,req());
+  assert.equal(allowed.balance,108);
+  f.records.set(f.runtime,{
+    ...runtime,treasuryReadApproved:true,treasuryWriteApproved:false,
+  });
+  assert.deepEqual(await f.service().summary(token,'house-a'),{
+    available:true,readOnly:true,balance:108,version:1,
+  });
+  await denied(()=>f.service().adjust(token,req({
+    expectedVersion:1,requestKey:'treasury-request-002',
+  })),'treasury_runtime_not_approved',503);
+});
+
+test('Player cannot list another House, claim narrator, or use malformed scope',async()=>{
+  const f=fixture('jogador');
+  const base=f.records.get(f.access);
+  f.records.set(f.runtime,{
+    ...f.records.get(f.runtime),treasuryReadApproved:true,
+  });
+  const allowed={...base,playerId:'player-a',
+    memberHouseIds:['house-a'],editHouseIds:[]};
+  for(const variant of [
+    {...allowed,memberHouseIds:['house-b'],editHouseIds:['house-a']},
+    {...allowed,memberHouseIds:'house-a'},
+    {...allowed,memberHouseIds:['../admin']},
+    {...allowed,playerId:null},
+    {...allowed,admin:true},
+    {...allowed,requirePasswordChange:true},
+    {...allowed,active:false},
+  ]){
+    f.records.set(f.access,variant);
+    await denied(()=>f.service().summary(token,'house-a'),'access_denied',403);
+  }
+  f.records.set(f.access,allowed);
+  await denied(()=>f.service().summary(token,'house-b'),'access_denied',403);
+  await denied(()=>f.service().summary(token,'../other'),'invalid_house',400);
+  const editor=fixture('editor');
+  editor.records.set(editor.runtime,{
+    ...editor.records.get(editor.runtime),treasuryReadApproved:true,
+  });
+  await denied(()=>editor.service().summary(token,'house-a'),'access_denied',403);
+});
+
+test('Read summary is fail-closed until source is reconciled and owner account active',async()=>{
+  const f=fixture('jogador');
+  f.records.set(f.access,{
+    ...f.records.get(f.access),playerId:'player-a',
+    memberHouseIds:['house-a'],editHouseIds:[],
+  });
+  f.records.set(f.runtime,{
+    ...f.records.get(f.runtime),treasuryReadApproved:true,
+    treasurySeededVerified:false,
+  });
+  assert.deepEqual(await f.service().summary(token,'house-a'),{
+    available:false,readOnly:true,balance:null,version:null,
+  });
+  f.records.set(f.runtime,{
+    ...f.records.get(f.runtime),treasurySeededVerified:true,
+  });
+  f.records.delete(f.treasury('house-a'));
+  assert.deepEqual(await f.service().summary(token,'house-a'),{
+    available:false,readOnly:true,balance:null,version:null,
+  });
+  f.auth.getUser=async uid=>({uid,disabled:true});
+  await denied(()=>f.service().summary(token,'house-a'),
+    'authentication_required',401);
+});
