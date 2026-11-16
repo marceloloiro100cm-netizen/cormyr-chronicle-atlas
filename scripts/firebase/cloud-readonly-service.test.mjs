@@ -207,3 +207,61 @@ test('Incomplete protected newspaper and spy stages fail closed',async()=>{
   await rejects(()=>f.service().listSpyAgents(token,'house-a'),
     'migration_stage_not_ready',503);
 });
+
+test('Approved Cloud messages merge only with recipient House, sender or narrator',async()=>{
+  const f=fixture('jogador');
+  const root='campaignCloudRuntime/'+snapshot;
+  f.docs.set(root,{
+    status:'active',private:true,sourceSnapshotId:snapshot,
+    sourceSnapshotReconciled:true,mailWriteApproved:true,applicationEnabled:true,
+  });
+  function add(id,data){
+    f.docs.set(root+'/letters/'+id,{
+      id,source:'firebase-cloud',senderUid:'external-author',
+      senderName:'Jogador',subject:'CLOUD '+id,content:'private '+id,
+      createdAt:'2026-11-16T01:00:00.000Z',
+      deliveredAt:'2026-11-16T01:00:00.000Z',
+      campaignDate:'1522-01-10',publicationState:'delivered',
+      deletedAt:null,recipientPlayerId:null,recipientHouseId:'house-a',
+      recipientKind:'house',...data,
+    });
+  }
+  add('to-a',{});
+  add('to-b',{recipientHouseId:'house-b'});
+  add('own-sent',{senderUid:'user-1',recipientHouseId:'house-b'});
+  add('to-gm',{senderUid:'user-1',recipientKind:'narrator',
+    recipientHouseId:null});
+  add('deleted',{deletedAt:'2026-11-16T02:00:00Z'});
+  add('draft',{publicationState:'draft'});
+  const player=(await f.service().listMailbox(token)).items.map(x=>x.id);
+  assert.equal(player.includes('to-a'),true);
+  assert.equal(player.includes('own-sent'),true);
+  assert.equal(player.includes('to-gm'),true);
+  assert.equal(player.includes('to-b'),false);
+  assert.equal(player.includes('deleted'),false);
+  assert.equal(player.includes('draft'),false);
+  const narrator=fixture('narrador');
+  for(const [key,value] of f.docs)
+    if(key.startsWith(root))narrator.docs.set(key,value);
+  const gm=(await narrator.service().listMailbox(token)).items.map(x=>x.id);
+  assert.equal(gm.includes('to-b'),true);
+  assert.equal(gm.includes('to-gm'),true);
+});
+
+test('Unapproved Cloud runtime never leaks messages through historical mailbox',async()=>{
+  const f=fixture();
+  const root='campaignCloudRuntime/'+snapshot;
+  f.docs.set(root,{
+    status:'active',private:true,sourceSnapshotId:snapshot,
+    sourceSnapshotReconciled:false,mailWriteApproved:true,
+    applicationEnabled:true,
+  });
+  f.docs.set(root+'/letters/hidden',{
+    id:'hidden',source:'firebase-cloud',senderUid:'user-1',
+    subject:'HIDDEN',content:'private',createdAt:'2026-11-16T00:00:00Z',
+    publicationState:'delivered',deletedAt:null,recipientKind:'narrator',
+    recipientHouseId:null,recipientPlayerId:null,
+  });
+  const messages=(await f.service().listMailbox(token)).items;
+  assert.equal(messages.some(x=>x.id==='hidden'),false);
+});
