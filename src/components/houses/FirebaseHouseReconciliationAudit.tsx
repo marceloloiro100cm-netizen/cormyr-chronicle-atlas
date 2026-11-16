@@ -18,7 +18,7 @@ const explanation:Record<HouseReconciliationStatus,string>={
   economy_invalid:'Regras de recursos ou estado operacional inválidos.',
   seed_consistent:'Seed operacional consistente com a origem histórica.',
   operational_document_consistent:
-    'Documento operacional internamente consistente; histórico de eventos ainda não auditado.',
+    'Documento operacional consistente; resta validar a reexecução econômica das compras.',
 };
 
 export function FirebaseHouseReconciliationAudit({houseId,report}:{
@@ -62,6 +62,46 @@ export function FirebaseHouseReconciliationAudit({houseId,report}:{
           <dd>{report.writeGateApproved?'Flag privada marcada':'Não autorizada'}</dd>
         </div>
       </dl>
+      <div className="rounded border border-current/20 p-3 space-y-2 text-sm">
+        <h3 className="font-semibold">Cadeia de eventos de construções</h3>
+        {!report.constructionLedger
+          ?<p role="status">
+            Encadeamento não verificado ou indisponível.
+            Nenhuma conclusão automática foi registrada.
+          </p>
+          :<>
+            <p role="status">
+              {report.constructionLedger.verifiedHashChain
+                ?'Encadeamento de hashes e versões conferido.'
+                :'Inconsistência na sequência de eventos: '+
+                  report.constructionLedger.status}
+            </p>
+            <p>
+              Eventos encontrados: {report.constructionLedger.eventsTotal}
+              {' · '}Versão operacional: {report.constructionLedger.lastVersion}
+            </p>
+            {report.constructionLedger.verifiedHashChain&&
+              report.constructionLedger.entries.length>0&&
+              <details className="rounded border border-current/15 p-2">
+                <summary className="cursor-pointer">
+                  Últimas {report.constructionLedger.entries.length} operações
+                </summary>
+                <ol className="mt-2 space-y-1">
+                  {report.constructionLedger.entries.map(event=>
+                    <li key={event.version}>
+                      Versão {event.version}: {event.itemId}
+                      {' · '}Data da campanha: {event.campaignDate}
+                    </li>)}
+                </ol>
+              </details>}
+            {report.constructionLedger.truncated&&
+              <p>Exibidos somente os últimos 25 eventos verificados.</p>}
+            <p className="opacity-75">
+              Encadeamento verificado não significa reexecução das compras,
+              cálculo histórico completo ou aprovação de produção.
+            </p>
+          </>}
+      </div>
       <p className="text-sm opacity-75">
         A consistência deste documento não comprova as permissões IAM,
         a reconciliação completa dos eventos nem os testes com usuários reais.
