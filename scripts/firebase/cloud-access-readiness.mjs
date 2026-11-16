@@ -55,7 +55,14 @@ export async function inspectFirebaseCloudReadiness({
     try{
       response=await fetcher(url,{
         method:'GET',redirect:'error',cache:'no-store',credentials:'omit',
-        headers:{Authorization:'Bearer '+token},
+        // Cloud Shell OAuth tokens may have no implicit quota project.
+        // Explicitly charge Identity Toolkit reads to the fixed Firebase
+        // project; do not expose a caller-controlled billing project.
+        headers:{
+          Authorization:'Bearer '+token,
+          ...(u.hostname==='identitytoolkit.googleapis.com'
+            ?{'X-Goog-User-Project':PROJECT}:{}),
+        },
         signal:AbortSignal.timeout(12000),
       });
     }catch{return {status:null,data:null,errorStatus:null};}
