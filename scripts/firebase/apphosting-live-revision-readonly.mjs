@@ -138,6 +138,31 @@ export async function inspectAppHostingReadOnly({
       const releases=rollouts.status===200&&Array.isArray(rollouts.data.rollouts)
         ?rollouts.data.rollouts:[];
       releases.sort((a,b)=>String(b?.createTime??'').localeCompare(String(a?.createTime??'')));
+      // Fetch only the five newest referenced builds in this fixed backend.
+      // Report bounded status enums/codes; never emit Google error messages,
+      // Cloud resource links, build logs, IAM details or authentication tokens.
+      const recentRollouts=[];
+      for(const rollout of releases.slice(0,5)){
+        const buildPath=validatedServingBuildPath(rollout?.build,name);
+        const buildInfo=buildPath?await request(buildPath):null;
+        const data=buildInfo?.status===200?buildInfo.data:null;
+        const state=typeof rollout?.state==='string'?rollout.state:null;
+        const buildState=typeof data?.state==='string'?data.state:null;
+        const code=rollout?.error?.code;
+        const errorSource=typeof data?.errors?.[0]?.errorSource==='string'
+          ?data.errors[0].errorSource:null;
+        recentRollouts.push({
+          rolloutState:state,
+          rolloutErrorCode:Number.isInteger(code)&&code>=0&&code<=99?code:null,
+          buildState,
+          buildHttpStatus:buildInfo?.status??null,
+          buildCommit:sha40(data?.source?.codebase?.hash),
+          buildErrorSource:errorSource&&/^[A-Z_]{1,50}$/.test(errorSource)
+            ?errorSource:null,
+          buildErrorCount:Array.isArray(data?.errors)
+            ?Math.min(data.errors.length,100):0,
+        });
+      }
       backends.push({
         backendId:name.slice((prefix+'/').length),region,domainAttached,
         domainsReadable:domains.status===200,
@@ -156,6 +181,7 @@ export async function inspectAppHostingReadOnly({
         servedCommit:sha40(codebase?.hash),
         rolloutCountSampled:releases.length,
         latestRolloutState:typeof releases[0]?.state==='string'?releases[0].state:null,
+        recentRollouts,
       });
     }
   }
@@ -224,6 +250,8 @@ function appendPublicationSummary(report){
       (report.backends?.find(b=>b.domainAttached)?.splitDiagnostics
         ?.map(d=>d.percentType+'/'+d.percentClass+'/'+d.buildRefShape).join('; ')??'desconhecido'),
     '- Permissão de leitura pendente: '+(state.readPermissionRequired?'sim':'não'),
+    '- Rollouts recentes (estados e códigos, sem mensagens): '+JSON.stringify(
+      report.backends?.find(b=>b.domainAttached)?.recentRollouts??[]),
     '- Firebase Cloud/dados/Auth migrados: **não comprovado**. Corte definitivo: **NO_GO**.',
     '- Uma comparação diferente de MATCH pode apenas indicar rollout ainda em curso; conferir o check App Hosting - Rollout antes de concluir.',
     '',
