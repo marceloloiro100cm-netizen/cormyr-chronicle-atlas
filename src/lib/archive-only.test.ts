@@ -10,13 +10,13 @@ describe('Firebase archive-only cutover', () => {
     ['/api/public/catalog', 'router'],
     ['/api/public/time', 'router'],
     ['/api/public/translations', 'router'],
-    ['/api/public/gm-content', 'router'],
     ['/api/public/jobs/drive-sync', 'router'],
     ['/api/firebase-auth-verify', 'router'],
     ['/api/firebase-domain', 'router'],
     ['/api/firebase-cloud-read', 'serverFn'],
     ['/api/firebase-cloud-mail', 'serverFn'],
     ['/api/firebase-cloud-newspaper', 'serverFn'],
+    ['/api/public/gm-content', 'serverFn'],
     ['/mcp', 'router'],
     ['/.well-known/oauth-protected-resource', 'router'],
     ['/jogadores', 'serverFn'],
@@ -34,6 +34,7 @@ describe('Firebase archive-only cutover', () => {
     ['/api/firebase-cloud-read', 'router'],
     ['/api/firebase-cloud-mail', 'router'],
     ['/api/firebase-cloud-newspaper', 'router'],
+    ['/api/public/gm-content', 'router'],
     ['/unrelated', 'router'],
   ])('keeps public static route %s reachable', (pathname, type) => {
     expect(shouldBlockLegacyRequest(pathname, type)).toBe(false);

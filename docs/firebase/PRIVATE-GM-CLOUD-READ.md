@@ -49,3 +49,7 @@ e `adventures`, jamais a estrutura inteira importada.
 **Status operacional:** código preparado, dados/importação e
 revisão real pendentes; `readyForPlayers=false` e
 `readyForCutover=false`. Ver issue #513.
+
+## Integração da interface Firebase (16/11/2026)
+
+O portal `/firebase-access` agora apresenta a seção **Eventos e aventuras do Narrador** somente após o perfil retornar `narrador` no serviço Cloud. O botão de consulta monta os componentes sob demanda. O token vem do mesmo cliente Firebase Auth da sessão do piloto; `gm-panels.tsx` não consulta `supabase.auth.getSession`. A rota `/api/public/gm-content` tem uma exceção estrita no modo de acervo, mas continua exigindo o Firebase Auth do usuário, revogação, perfil Narrador, aprovação Cloud e flag privada; não concede acesso a jogadores ou anônimos. Os dados permanecem indisponíveis até importação e homologação reais. Este PR não ativa flags e não altera IAM ou dados.
