@@ -318,6 +318,17 @@ export function createFirebaseCloudConstruction({
           version:operationVersion+1,sourceSheetVersion:sheetVersion,
           sourceStateHash:origin,beforeStateHash:operation['stateHash'],
           afterStateHash:nextHash,costs:costData,dice,
+          // Replay contract v1 records normalized purchase inputs. Existing
+          // historical events are immutable and remain non-replayable unless
+          // independently evidenced; never synthesize missing inputs.
+          replaySchemaVersion:1,catalogVersion:item.version,
+          replayInput:{
+            name:req.name,
+            ...(req.parentId?{parentId:req.parentId}:{}),
+            ...(req.supportId?{supportId:req.supportId}:{}),
+            ...(req.replaceId?{replaceId:req.replaceId}:{}),
+            ...(req.weaponSpecialty?{weaponSpecialty:req.weaponSpecialty}:{}),
+          },
           campaignDate:calendar.date,createdAt,
         });
         return {id:eventId,holdingId,houseId:req.houseId,
