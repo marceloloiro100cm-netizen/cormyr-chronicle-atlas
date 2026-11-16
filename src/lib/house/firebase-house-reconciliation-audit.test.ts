@@ -54,17 +54,34 @@ function fixture(){
     stateHash:sourceHash,version:0,state:structuredClone(state),
     secret:'never leak this private value',
   });
-  type Ref={path:string;collection:(name:string)=>{doc:(id:string)=>Ref}};
+  type Query={kind:'query';prefix:string;houseId:string;max:number};
+  type Ref={path:string;collection:(name:string)=>Ref;
+    doc:(id:string)=>Ref;
+    where:(field:string,op:string,houseId:string)=>{limit:(n:number)=>Query}};
   const ref=(path:string):Ref=>({
-    path,collection:(name:string)=>({doc:(id:string)=>ref(path+'/'+name+'/'+id)}),
+    path,collection:(name:string)=>ref(path+'/'+name),
+    doc:(id:string)=>ref(path+'/'+id),
+    where:(field:string,op:string,houseId:string)=>{
+      if(field!=='houseId'||op!=='==')throw Error('unscoped query');
+      return {limit:(max:number)=>({kind:'query',prefix:path,houseId,max})};
+    },
   });
   let writes=0,reads=0;
   const db={
-    collection:(name:string)=>({doc:(id:string)=>ref(name+'/'+id)}),
+    collection:(name:string)=>ref(name),
     runTransaction:async <T>(fn:(tx:unknown)=>Promise<T>):Promise<T>=>
       fn({
-        get:async(x:Ref)=>{
+        get:async(x:Ref|Query)=>{
           reads++;
+          if('kind' in x){
+            const rows=[...docs].filter(([p,v])=>
+              p.startsWith(x.prefix+'/')&&v['houseId']===x.houseId)
+              .slice(0,x.max);
+            return {size:rows.length,docs:rows.map(([path,value])=>({
+              id:path.slice(x.prefix.length+1),
+              data:()=>structuredClone(value),
+            }))};
+          }
           return {exists:docs.has(x.path),
             data:()=>structuredClone(docs.get(x.path))};
         },
@@ -118,6 +135,8 @@ describe('Firebase — Narrador: diagnóstico de reconciliação',()=>{
     expect(result.operationalVersion).toBe(0);
     expect(result.documentIntegrityConfirmed).toBe(true);
     expect(result.auditHistoryVerified).toBe(false);
+    expect(result.constructionLedger?.status).toBe('verified_hash_chain');
+    expect(result.constructionLedger?.eventsTotal).toBe(0);
     expect(result.readyForCutover).toBe(false);
     expect(result.readGateApproved).toBe(false);
     expect(result.writeGateApproved).toBe(false);
@@ -190,6 +209,46 @@ describe('Firebase — Narrador: diagnóstico de reconciliação',()=>{
     expect(result.status).toBe('operational_document_consistent');
     expect(result.auditHistoryVerified).toBe(false);
     expect(result.readyForCutover).toBe(false);
+  });
+  it('detecta evento ausente para versão operacional um',async()=>{
+    const f=fixture(),original=f.docs.get(f.op)!;
+    f.docs.set(f.op,{...original,version:1,
+      lastConstructionEventId:'e'.repeat(64)});
+    const report=await f.service().inspect(token,'house-a');
+    expect(report.status).toBe('operational_document_consistent');
+    expect(report.constructionLedger?.status).toBe('missing_or_extra_events');
+    expect(report.constructionLedger?.verifiedHashChain).toBe(false);
+    expect(report.auditHistoryVerified).toBe(false);
+    expect(f.writes()).toBe(0);
+  });
+  it('valida encadeamento de um evento mas não finge reexecutar a compra',async()=>{
+    const f=fixture(),original=f.docs.get(f.op)!;
+    const state=structuredClone(original['state']) as HouseState;
+    state.identity.notes='alteração operacional representada por evento sintético';
+    const before=constructionStateHash(f.state),after=constructionStateHash(state);
+    const requestKey='key_12345678';
+    const id=hash('construction-purchase:'+uid+':'+requestKey);
+    f.docs.set(f.op,{...original,version:1,state,stateHash:after,
+      lastConstructionEventId:id});
+    f.docs.set(f.runtime+'/houseConstructionAudits/'+id,{
+      id,action:'purchase',actorUid:uid,requestKey,
+      requestFingerprint:hash('request'),holdingId:hash('construction-holding:'+id),
+      houseId:'house-a',sourceSnapshotId:snapshot,sourceSheetVersion:3,
+      sourceStateHash:before,beforeStateHash:before,afterStateHash:after,
+      version:1,expectedVersion:0,itemId:'tower',domainId:'d1',
+      costs:[{resource:'defense',amount:10,mode:'allocation'}],
+      dice:[2],campaignDate:'1522-02-10',
+      createdAt:'2026-11-16T12:00:00.000Z',
+      actorPrivateNote:'private-not-for-browser',
+    });
+    const report=await f.service().inspect(token,'house-a');
+    expect(report.constructionLedger?.status).toBe('verified_hash_chain');
+    expect(report.constructionLedger?.entries[0]?.itemId).toBe('tower');
+    expect(report.constructionLedger?.economicReplayVerified).toBe(false);
+    expect(report.auditHistoryVerified).toBe(false);
+    expect(JSON.stringify(report)).not.toContain('private-not-for-browser');
+    expect(JSON.stringify(report)).not.toContain(uid);
+    expect(f.writes()).toBe(0);
   });
   it('distingue runtime pendente, stage incompleto e calendário incorreto',async()=>{
     const f=fixture();
