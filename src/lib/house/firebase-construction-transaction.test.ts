@@ -2,6 +2,8 @@ import {describe,it,expect} from 'vitest';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {newHouseState} from './types';
+import {verifyConstructionEconomicReplay}
+  from './firebase-construction-economic-replay';
 import {
   createFirebaseCloudConstruction,CloudConstructionError,
   constructionStateHash,
@@ -152,6 +154,17 @@ describe('Firebase Cloud — compra transacional bloqueada por padrão',()=>{
     expect(audit['houseId']).toBe('house-a');
     expect(audit['dice']).toEqual(Array(10).fill(2));
     expect(audit['beforeStateHash']).toBe(audit['sourceStateHash']);
+    expect(audit['replaySchemaVersion']).toBe(1);
+    expect(audit['replayInput']).toEqual({name:'Torre de Vigilância'});
+    const replay=verifyConstructionEconomicReplay([{
+      id:result.id,data:()=>audit,
+    }],{
+      sourceState:f.source,operationalState:state,
+      houseId:'house-a',houseName:'Evenhand',
+      sourceSheetVersion:3,ledgerVerified:true,
+    });
+    expect(replay.status).toBe('verified_purchase_replay');
+    expect(replay.readyForCutover).toBe(false);
     expect(f.writes()).toBe(2);
   });
   it('replay idempotente não cria segunda obra; key e CAS conflitantes falham',async()=>{
