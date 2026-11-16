@@ -35,6 +35,8 @@ export async function inspectFirebaseCloudReadiness({
   const token=await tokenProvider();
   if(typeof token!=='string'||token.length<10)throw Error('temporary_oidc_unavailable');
   const request=async (url,{statusOnly=false}={})=>{
+    if(url===AUTH_CONFIG&&!statusOnly)
+      throw Error('sensitive_config_body_forbidden');
     if(typeof url!=='string'||!url.startsWith(FIRESTORE) && url!==AUTH && url!==AUTH_NUMBER && url!==AUTH_CONFIG)
       throw Error('untrusted_cloud_destination');
     const u=new URL(url);
@@ -71,7 +73,7 @@ export async function inspectFirebaseCloudReadiness({
       if(!body||typeof body!=='object'||Array.isArray(body))
         return {status:200,data:null,errorStatus:null};
       return {status:200,data:body,errorStatus:null};
-    }catch{return {status:200,data:null};}
+    }catch{return {status:200,data:null,errorStatus:null};}
   };
   const root=await request(FIRESTORE+'migrationDomainStage?pageSize=2&mask.fieldPaths=status&mask.fieldPaths=private');
   const entries=Array.isArray(root.data?.documents)?root.data.documents:[];
