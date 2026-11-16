@@ -66,6 +66,33 @@ function fixture(overrides={}){
   return {run,d,requests};
 }
 
+test('supplemental GM, Drive, public and Storage stages are inspected only by masked status',async()=>{
+  const names=[
+    'migrationPrivateGmStage','migrationDriveSyncStage',
+    'migrationPublicContentStage','migrationStorageStage',
+  ];
+  const extra=Object.fromEntries(names.map(name=>[
+    PREFIX+name+'/'+HASH+'?mask.fieldPaths=status&mask.fieldPaths=private',
+    {fields:{...fields(),secret:{stringValue:'DO_NOT_LOG_SECRET'}}},
+  ]));
+  const f=fixture(extra);
+  const report=await f.run();
+  assert.equal(report.auxiliaryStageCoverage,4);
+  assert.equal(report.auxiliaryStagesVerified,4);
+  assert.equal(report.auxiliaryStagesComplete,true);
+  assert.equal(report.releaseDecision,'NO_GO');
+  assert.equal(report.readyForCutover,false);
+  assert.equal(report.writes,0);
+  assert.ok(!JSON.stringify(report).includes('DO_NOT_LOG_SECRET'));
+  for(const name of names){
+    const request=f.requests.find(x=>x.url.includes('/'+name+'/'));
+    assert.ok(request);
+    assert.ok(request.url.endsWith('mask.fieldPaths=private'));
+    assert.equal(request.options.method,'GET');
+  }
+  assert.ok(!f.requests.some(x=>/\/content\/|\/bindings\/|\/players\/|\/gallery\//.test(x.url)));
+});
+
 test('Cloud-only OIDC readiness summarizes 6 stages and disabled accounts without data leaks',async()=>{
   const f=fixture();
   const report=await f.run();
