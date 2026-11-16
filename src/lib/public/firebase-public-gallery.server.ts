@@ -76,35 +76,35 @@ export async function readApprovedPublicGalleryImage(
     return unavailable();
 
   const runtime=(await db.collection('campaignCloudRuntime').doc(snapshotId).get()).data();
-  if(!record(runtime)||runtime.status!=='active'||runtime.private!==true||
-     runtime.sourceSnapshotId!==snapshotId||
-     runtime.sourceSnapshotReconciled!==true||
-     runtime.applicationEnabled!==true||
-     runtime.publicGalleryApproved!==true||
-     runtime.publicGalleryBucket!==bucketName||
-     !Number.isSafeInteger(runtime.galleryVersion)||
-     typeof runtime.galleryVersion!=='number'||runtime.galleryVersion<1||
-     runtime.galleryVersion!==runtime.publishedGalleryVersion)return unavailable();
+  if(!record(runtime)||runtime['status']!=='active'||runtime['private']!==true||
+     runtime['sourceSnapshotId']!==snapshotId||
+     runtime['sourceSnapshotReconciled']!==true||
+     runtime['applicationEnabled']!==true||
+     runtime['publicGalleryApproved']!==true||
+     runtime['publicGalleryBucket']!==bucketName||
+     !Number.isSafeInteger(runtime['galleryVersion'])||
+     typeof runtime['galleryVersion']!=='number'||runtime['galleryVersion']<1||
+     runtime['galleryVersion']!==runtime['publishedGalleryVersion'])return unavailable();
 
   const stageRef=db.collection('migrationPublicContentStage').doc(snapshotId);
   const stage=(await stageRef.get()).data();
-  if(!record(stage)||stage.status!=='complete'||stage.private!==true||
-     stage.sourceSnapshotId!==snapshotId)return unavailable();
+  if(!record(stage)||stage['status']!=='complete'||stage['private']!==true||
+     stage['sourceSnapshotId']!==snapshotId)return unavailable();
 
   const imageRef=stageRef.collection('gallery').doc(galleryDocId(path));
   const image=(await imageRef.get()).data();
   if(!record(image))return notFound();
   const storagePath='campaign-images/'+path;
-  if(image.status!=='approved'||image.publicReviewed!==true||
-     image.sourceSnapshotId!==snapshotId||
-     image.version!==runtime.galleryVersion||
-     image.path!==path||image.bucketName!==bucketName||
-     image.storagePath!==storagePath||
-     typeof image.sha256!=='string'||!SHA.test(image.sha256)||
-     !Number.isSafeInteger(image.sizeBytes)||
-     typeof image.sizeBytes!=='number'||
-     image.sizeBytes<1||image.sizeBytes>MAX_BYTES||
-     typeof image.contentType!=='string'||!TYPES.has(image.contentType))
+  if(image['status']!=='approved'||image['publicReviewed']!==true||
+     image['sourceSnapshotId']!==snapshotId||
+     image['version']!==runtime['galleryVersion']||
+     image['path']!==path||image['bucketName']!==bucketName||
+     image['storagePath']!==storagePath||
+     typeof image['sha256']!=='string'||!SHA.test(image['sha256'])||
+     !Number.isSafeInteger(image['sizeBytes'])||
+     typeof image['sizeBytes']!=='number'||
+     image['sizeBytes']<1||image['sizeBytes']>MAX_BYTES||
+     typeof image['contentType']!=='string'||!TYPES.has(image['contentType']))
     return notFound();
 
   const file=bucket.file(storagePath);
@@ -112,13 +112,13 @@ export async function readApprovedPublicGalleryImage(
   const size=metadata?.size;
   const n=typeof size==='string'&&/^\d{1,9}$/.test(size)?
     Number(size):size;
-  if(n!==image.sizeBytes||metadata?.contentType!==image.contentType)
+  if(n!==image['sizeBytes']||metadata?.contentType!==image['contentType'])
     return unavailable();
   const [data]=await file.download();
-  if(!(data instanceof Uint8Array)||data.length!==image.sizeBytes||
-     data.length>MAX_BYTES||!validSignature(data,image.contentType))
+  if(!(data instanceof Uint8Array)||data.length!==image['sizeBytes']||
+     data.length>MAX_BYTES||!validSignature(data,image['contentType']))
     return unavailable();
   const digest=createHash('sha256').update(data).digest('hex');
-  if(digest!==image.sha256)return unavailable();
-  return {contentType:image.contentType,data};
+  if(digest!==image['sha256'])return unavailable();
+  return {contentType:image['contentType'],data};
 }
