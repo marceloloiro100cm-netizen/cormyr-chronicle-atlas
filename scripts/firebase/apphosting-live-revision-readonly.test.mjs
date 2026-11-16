@@ -288,3 +288,38 @@ test('unrecognized project number or different backend is not silently trusted',
   for(const resource of invalid)
     assert.equal(validatedServingBuildPath(resource,p),null);
 });
+
+test('failed rollout diagnosis reports only safe build state and numeric error code',async()=>{
+  const failedBuild=p+'/builds/build-failure';
+  const secret='SERVICE_SECRET_DONT_PRINT';
+  const values={
+    ...fixture,
+    [p+'/rollouts?pageSize=20']:{rollouts:[
+      {state:'FAILED',build:failedBuild,createTime:'2026-11-16T10:00:00Z',
+        error:{code:9,message:secret}},
+      {state:'SUCCEEDED',build:p+'/builds/build-12',createTime:'2026-11-15T10:00:00Z'}
+    ]},
+    [failedBuild]:{
+      state:'FAILED',source:{codebase:{hash:'b'.repeat(40)}},
+      errors:[{errorSource:'CLOUD_BUILD',error:{message:secret}}],
+    },
+  };
+  const requests=[];
+  const report=await inspectAppHostingReadOnly({
+    tokenProvider:async()=> 'ephemeral-only-token',
+    fetcher:async(url,options)=>{
+      requests.push({url,method:options.method});
+      const value=values[url.slice((APPHOSTING_API+'/').length)];
+      return new Response(JSON.stringify(value??{}),{status:value?200:404});
+    },
+  });
+  assert.equal(report.domainServingCommit,SHA);
+  assert.equal(report.backends[0].recentRollouts[0].rolloutState,'FAILED');
+  assert.equal(report.backends[0].recentRollouts[0].buildState,'FAILED');
+  assert.equal(report.backends[0].recentRollouts[0].rolloutErrorCode,9);
+  assert.equal(report.backends[0].recentRollouts[0].buildErrorSource,'CLOUD_BUILD');
+  assert.equal(report.backends[0].recentRollouts[0].buildCommit,'b'.repeat(40));
+  assert.ok(!JSON.stringify(report).includes(secret));
+  assert.ok(requests.every(x=>x.method==='GET'&&
+    x.url.startsWith(APPHOSTING_API+'/projects/cormyr/')));
+});
