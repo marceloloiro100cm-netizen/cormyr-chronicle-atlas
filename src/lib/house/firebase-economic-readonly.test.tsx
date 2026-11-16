@@ -4,8 +4,8 @@ import {newHouseState} from './types';
 import {balances} from './engine';
 import {calculateFirebaseHouseEconomy,verifiedEconomicState}
   from './firebase-economic-readonly';
-import {FirebaseHouseEconomyPlanner}
-  from '@/components/houses/FirebaseHouseEconomyPlanner';
+import {FirebaseHouseBalances}
+  from '@/components/houses/FirebaseHouseBalances';
 
 afterEach(cleanup);
 function fixture(){
@@ -56,7 +56,7 @@ describe('Firebase economic balances use canonical rules',()=>{
   });
   it('renders canonical amounts but no second construction or purchasing form',()=>{
     const s=fixture();
-    const {container}=render(<FirebaseHouseEconomyPlanner
+    const {container}=render(<FirebaseHouseBalances
       houseName="Evenhand" state={s}/>);
     expect(screen.getByText('Balanço consolidado dos recursos')).toBeInTheDocument();
     expect(screen.getByText('Total, alocação e saldo disponível · Evenhand')).toBeInTheDocument();
@@ -66,10 +66,10 @@ describe('Firebase economic balances use canonical rules',()=>{
   });
   it('malformed snapshot fails closed and hostile House name is escaped',()=>{
     const s=fixture();
-    const {container,rerender}=render(<FirebaseHouseEconomyPlanner
+    const {container,rerender}=render(<FirebaseHouseBalances
       houseName="Evenhand" state={{...s,units:null}}/>);
     expect(screen.getByRole('status')).toHaveTextContent('Apuração indisponível');
-    rerender(<FirebaseHouseEconomyPlanner houseName="<img src=x onerror=alert(1)>"
+    rerender(<FirebaseHouseBalances houseName="<img src=x onerror=alert(1)>"
       state={s}/>);
     expect(screen.getByText('Total, alocação e saldo disponível · <img src=x onerror=alert(1)>'))
       .toBeInTheDocument();
@@ -84,7 +84,7 @@ describe('Firebase economic balances use canonical rules',()=>{
       costs:[{resource:'wealth',mode:'allocation',amount:8}],
       effects:[],ruleVersion:'test',status:'active',
     });
-    render(<FirebaseHouseEconomyPlanner houseName="Evenhand" state={s}/>);
+    render(<FirebaseHouseBalances houseName="Evenhand" state={s}/>);
     expect(screen.getByRole('status')).toHaveTextContent('saldo disponível negativo');
     expect(calculateFirebaseHouseEconomy(s)?.balances.available.wealth).toBe(-8);
   });
