@@ -20,6 +20,9 @@ Não existe fallback para Supabase nem ação de escrita no painel.
   destruídas, somente quando os valores estão presentes e válidos).
 - Por unidade: tipo, treinamento, comandantes, situação, saúde,
   experiência, baixas, habilidades e categorias de equipamento.
+- Exibe a insígnia militar oficial das 17 categorias quando disponível em
+  `/assets/military-units/` (arquivo local do próprio repositório).
+  Nenhuma URL de imagens externa ou Supabase é carregada.
 
 O painel **nunca** substitui dados ausentes por zero: exibe
 `Não informado`. Não converte números arbitrariamente de pés/libras;
