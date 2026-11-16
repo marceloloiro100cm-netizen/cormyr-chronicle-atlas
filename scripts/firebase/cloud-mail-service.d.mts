@@ -19,6 +19,11 @@ export interface CloudMailRuntime {
   send(idToken:string,input:unknown):Promise<{
     id:string;duplicate:boolean;state:string;deliveryRound:number;
   }>;
+  reply(idToken:string,input:{
+    requestKey:unknown;letterId:unknown;content:unknown;
+  }):Promise<{
+    id:string;duplicate:boolean;state:string;deliveryRound:number;
+  }>;
   markRead(idToken:string,input:unknown):Promise<{
     recorded:boolean;alreadyRecorded:boolean;readAt:string;
   }>;
