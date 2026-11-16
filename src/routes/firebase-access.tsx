@@ -40,6 +40,10 @@ type EditionSummary={id:string;title:string;subtitle:string;editionNo:number;
 type Edition={id:string;title:string;subtitle:string;blocks:unknown[];editionNo:number;campaignDate?:string|null};
 type PaperStatus={enabled:boolean;canPublish:boolean;readOnly:boolean};
 type PaperReply={id:string;editionNo:number;duplicate:boolean;state:string};
+type TreasuryStatus={enabled:boolean;canAdjust:boolean;readOnly:boolean;
+  balance:number|null;version:number|null};
+type TreasuryReply={id:string;duplicate:boolean;houseId:string;
+  balance:number;version:number};
 type SpyAgent={id:string;codename:string;status:string;missionSuccesses:number};
 type SpyFinding={objective:'house_resources'|'army'|'possessions';
   subjectKey:string;valueSnapshot:Record<string,unknown>;
@@ -141,6 +145,27 @@ async function cloudPaper<T>(body:Record<string,unknown>):Promise<T>{
   return (bodyValue as {result:T}).result;
 }
 
+async function cloudTreasury<T>(input:Record<string,unknown>):Promise<T>{
+  const token=await firebaseAuth()?.getToken();
+  if(!token)throw Error('Entre novamente com sua conta Firebase.');
+  const response=await fetch('/api/firebase-cloud-treasury',{
+    method:'POST',credentials:'omit',cache:'no-store',
+    headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+    body:JSON.stringify(input),
+  });
+  if(!response.ok)throw Error(
+    response.status===409
+      ?'Versão de Tesouro desatualizada ou chave de lançamento já utilizada.'
+      :response.status===403?'Somente o Narrador autorizado pode registrar esta operação.'
+      :response.status===400?'Lançamento inválido: confira valor e justificativa.'
+      :'Tesouro operacional não autorizado ou indisponível no Firebase.'
+  );
+  const payload:unknown=await response.json();
+  if(!payload||typeof payload!=='object'||!('result' in payload))
+    throw Error('Resposta inválida do serviço de Tesouro.');
+  return (payload as {result:T}).result;
+}
+
 function FirebaseAccess(){
   const [configured]=useState(()=>firebaseAuth()!==null);
   const [email,setEmail]=useState('');
@@ -159,6 +184,10 @@ function FirebaseAccess(){
   const [mailStatus,setMailStatus]=useState<MailStatus|null>(null);
   const [paperStatus,setPaperStatus]=useState<PaperStatus|null>(null);
   const [paperTitle,setPaperTitle]=useState('');
+  const [treasuryStatus,setTreasuryStatus]=useState<TreasuryStatus|null>(null);
+  const [treasuryDelta,setTreasuryDelta]=useState('');
+  const [treasuryReason,setTreasuryReason]=useState('');
+  const [treasuryKey,setTreasuryKey]=useState<string|null>(null);
   const [paperSubtitle,setPaperSubtitle]=useState('');
   const [paperArticle,setPaperArticle]=useState('');
   const [paperKey,setPaperKey]=useState<string|null>(()=>{
@@ -233,15 +262,22 @@ function FirebaseAccess(){
   async function selectHouse(id:string){
     setBusy(true);setMessage('');setHouse(null);
     setAgents(null);setDossiers(null);
+    setTreasuryStatus(null);setTreasuryDelta('');setTreasuryReason('');
+    setTreasuryKey(typeof crypto!=='undefined'&&
+      typeof crypto.randomUUID==='function'?crypto.randomUUID():null);
     try{
-      const [selected,spy,intelligence]=await Promise.all([
+      const [selected,spy,intelligence,treasury]=await Promise.all([
         readCloud<HouseView>('getHouse',id),
         readCloud<{items:SpyAgent[]}>('listSpyAgents',id).catch(()=>null),
         readCloud<SpyDossierCatalog>('listSpyDossiers',id).catch(()=>null),
+        view?.profile==='narrador'
+          ?cloudTreasury<TreasuryStatus>({action:'status',houseId:id}).catch(()=>null)
+          :Promise.resolve(null),
       ]);
       setHouse(selected);
       setAgents(spy?.items??null);
       setDossiers(intelligence);
+      setTreasuryStatus(treasury);
     }catch(e){setMessage(e instanceof Error?e.message:'Falha na leitura da Casa.');}
     finally{setBusy(false);}
   }
@@ -287,6 +323,33 @@ function FirebaseAccess(){
     }catch(e){
       // Preserve the same retry key and draft if the server is unavailable.
       setMessage(e instanceof Error?e.message:'Não foi possível responder.');
+    }finally{setBusy(false);}
+  }
+
+  async function submitTreasury(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();
+    if(busy||!house||view?.profile!=='narrador'||
+       !treasuryStatus?.canAdjust||treasuryStatus.version===null||
+       !treasuryKey)return;
+    const delta=Number(treasuryDelta);
+    if(!Number.isSafeInteger(delta)||delta===0||Math.abs(delta)>10000||
+       !treasuryReason.trim())return;
+    setBusy(true);setMessage('');
+    try{
+      const result=await cloudTreasury<TreasuryReply>({
+        action:'adjust',houseId:house.id,requestKey:treasuryKey,
+        expectedVersion:treasuryStatus.version,delta,reason:treasuryReason,
+      });
+      setTreasuryStatus({...treasuryStatus,balance:result.balance,
+        version:result.version});
+      setMessage(result.duplicate?'Lançamento já registrado.':
+        'Lançamento registrado no Tesouro operacional Firebase.');
+      setTreasuryDelta('');setTreasuryReason('');
+      setTreasuryKey(typeof crypto!=='undefined'&&
+        typeof crypto.randomUUID==='function'?crypto.randomUUID():null);
+    }catch(e){
+      // Preserve the request key and input to permit safe network retries.
+      setMessage(e instanceof Error?e.message:'Falha no lançamento do Tesouro.');
     }finally{setBusy(false);}
   }
 
@@ -357,6 +420,8 @@ function FirebaseAccess(){
     setMailRecipientHouse('');setMailSubject('');setMailContent('');setEmail('');
     setPassword('');setMessage('');setReplyLetter(null);
     setReplyContent('');setReplyKey(null);
+    setTreasuryStatus(null);setTreasuryDelta('');setTreasuryReason('');
+    setTreasuryKey(null);
   }
 
   return <main className="mx-auto max-w-4xl p-6 space-y-5 text-foreground">
@@ -402,6 +467,49 @@ function FirebaseAccess(){
         </select>
         {house&&<FirebaseHouseSheet sheet={house}/>}
         {house&&<FirebaseHouseResources houseName={house.name} state={house.state}/>}
+        {house&&view.profile==='narrador'&&
+          <section className="rounded border border-current/25 p-4 space-y-3">
+            <h2 className="text-lg font-semibold">Tesouro operacional · Narrador</h2>
+            <p className="text-xs">
+              O Tesouro do snapshot histórico não é editado. O lançamento
+              separado exige saldo inicial e versão reconciliados no Firebase.
+              Não modifica Defesa, Influência, Terras, Lei, População, Poder,
+              Riqueza ou construções.
+            </p>
+            {!treasuryStatus?.canAdjust||treasuryStatus.version===null
+              ?<p className="text-sm">
+                Alterações de Tesouro bloqueadas até homologação do Firebase Cloud.
+              </p>
+              :<>
+                <p className="text-sm">
+                  Saldo operacional registrado: <strong>
+                    {treasuryStatus.balance?.toLocaleString('pt-BR')}
+                  </strong> · Versão {treasuryStatus.version}
+                </p>
+                <form onSubmit={submitTreasury} className="space-y-2">
+                  <label className="block text-sm">Variação do Tesouro
+                    <input type="number" required step={1} min={-10000}
+                      max={10000} value={treasuryDelta}
+                      onChange={e=>setTreasuryDelta(e.target.value)}
+                      className="mt-1 block w-full rounded border p-2"
+                      placeholder="Ex.: -10 ou 20"/>
+                  </label>
+                  <label className="block text-sm">Justificativa
+                    <textarea required rows={3} maxLength={500}
+                      value={treasuryReason}
+                      onChange={e=>setTreasuryReason(e.target.value)}
+                      className="mt-1 block w-full rounded border p-2"/>
+                  </label>
+                  <button type="submit" className="rounded border px-4 py-2"
+                    disabled={busy||!treasuryKey||!treasuryReason.trim()||
+                      !Number.isSafeInteger(Number(treasuryDelta))||
+                      !Number(treasuryDelta)||
+                      Math.abs(Number(treasuryDelta))>10000}>
+                    {busy?'Registrando…':'Registrar lançamento'}
+                  </button>
+                </form>
+              </>}
+          </section>}
         {house&&<FirebaseArmyRoster houseName={house.name} state={house.state}/>}
         {house&&<FirebaseHoldingsRoster houseName={house.name} state={house.state}/>}
         {house&&<FirebaseHouseCourtDomains houseName={house.name} state={house.state}/>}
