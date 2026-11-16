@@ -41,9 +41,10 @@ describe('CORMYR produção: calendário de login e configurações públicas',(
  });
  it('a API pública mantém apenas cinco campos e ignora identidade do visitante',()=>{
   const endpoint=source('src/routes/api/public/time.ts');
-  expect(endpoint).toContain('resolvePublicSupabase');
-  expect(endpoint).toContain("db.rpc('get_public_campaign_time')");
-  expect(endpoint).toContain('publicCampaignTimeProjection(data)');
+  expect(endpoint).toContain('readApprovedFirebasePublicTime');
+  expect(endpoint).toContain("CORMYR_FIREBASE_PUBLIC_TIME_ENABLED");
+  expect(endpoint).not.toContain('resolvePublicSupabase');
+  expect(endpoint).not.toContain('SUPABASE_');
   expect(endpoint).not.toContain('service_role');
   const value=publicCampaignTimeProjection({year:1522,month:9,day:11,
    festival:null,version:2,private_note:'never show',updated_by:'private'});

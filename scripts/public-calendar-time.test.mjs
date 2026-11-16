@@ -20,9 +20,10 @@ test('Atlas usa apenas endpoint público, sem token persistido e sem credenciais
  assert.match(script,/document\.hidden/);
  assert.match(script,/no-store/);
 });
-test('projeção é whitelist mínima com RLS privada preservada',()=>{
- assert.match(route,/get_public_campaign_time/);
- assert.doesNotMatch(route,/SUPABASE_SERVICE_ROLE_KEY/);
+test('rota pública usa Firebase e preserva o arquivo SQL histórico sem reativá-lo',()=>{
+ assert.match(route,/readApprovedFirebasePublicTime/);
+ assert.match(route,/CORMYR_FIREBASE_PUBLIC_TIME_ENABLED/);
+ assert.doesNotMatch(route,/get_public_campaign_time|resolvePublicSupabase|SUPABASE_URL|SUPABASE_SERVICE_ROLE_KEY/);
  assert.match(migration,/REVOKE ALL ON FUNCTION public\.get_public_campaign_time/);
  assert.match(migration,/TO anon,authenticated/);
  assert.doesNotMatch(migration,/GRANT SELECT ON public\.campaign_calendar TO anon/);
