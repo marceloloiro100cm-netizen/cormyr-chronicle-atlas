@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { CampaignShell } from '@/components/campaign-shell';
 import { oauthReturnPath } from '@/lib/oauth-return-path';
-import { loadSeasonHouses, loginErrorMessage, shouldLeaveAuthPage } from '@/lib/auth/season-houses';
+import { loadFirebasePublicSeasonHouses, loginErrorMessage, shouldLeaveAuthPage } from '@/lib/auth/season-houses';
 
 export const Route = createFileRoute('/auth')({
  validateSearch: (search: Record<string, unknown>) => ({
@@ -44,10 +44,7 @@ function Auth() {
  const housesQuery = useQuery({
   queryKey:['season-houses'],
   retry:1,
-  queryFn:()=>loadSeasonHouses({
-   catalog:()=>supabase.from('campaign_houses').select('id,name').eq('active',true).eq('season',2).order('name'),
-   playerHouses:()=>supabase.rpc('public_player_houses'),
-  }),
+  queryFn:()=>loadFirebasePublicSeasonHouses(),
  });
  const houses = (housesQuery.data?.houses ?? []).filter(h => h.id !== 'espiao');
  const houseErrors = housesQuery.data?.errors ?? (housesQuery.error ? ['Falha ao consultar as casas.'] : []);
