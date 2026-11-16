@@ -94,7 +94,7 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
           d?.sourceLiveReconciled===true&&d?.readyForCutover===true);
       }
       return {authenticated:true,profile,memberHouseIds,editHouseIds,
-        mailWriteAvailable,readOnly:!mailWriteAvailable,
+        mailWriteAvailable,readOnly:true,
         snapshotReconciliationPending:!mailWriteAvailable};
     },
     async listHouses(idToken){
