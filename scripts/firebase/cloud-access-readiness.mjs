@@ -12,6 +12,7 @@ import {pathToFileURL} from 'node:url';
 const PROJECT='cormyr';
 const FIRESTORE='https://firestore.googleapis.com/v1/projects/cormyr/databases/(default)/documents/';
 const AUTH='https://identitytoolkit.googleapis.com/v1/projects/cormyr/accounts:batchGet?maxResults=1000';
+const AUTH_NUMBER='https://identitytoolkit.googleapis.com/v1/projects/477785088395/accounts:batchGet?maxResults=1000';
 const HASH=/^[a-f0-9]{64}$/;
 const STAGES=Object.freeze([
   'migrationDomainStage','migrationAuthStage','migrationTimeEngineStage',
@@ -28,12 +29,13 @@ export async function inspectFirebaseCloudReadiness({
   const token=await tokenProvider();
   if(typeof token!=='string'||token.length<10)throw Error('temporary_oidc_unavailable');
   const request=async url=>{
-    if(typeof url!=='string'||!url.startsWith(FIRESTORE) && url!==AUTH)
+    if(typeof url!=='string'||!url.startsWith(FIRESTORE) && url!==AUTH && url!==AUTH_NUMBER)
       throw Error('untrusted_cloud_destination');
     const u=new URL(url);
     if(!((u.hostname==='firestore.googleapis.com'&&u.pathname.startsWith(
       '/v1/projects/cormyr/databases/(default)/documents/'))||
-      u.hostname==='identitytoolkit.googleapis.com'&&url===AUTH))
+      u.hostname==='identitytoolkit.googleapis.com'&&
+        (url===AUTH||url===AUTH_NUMBER)))
       throw Error('untrusted_cloud_destination');
     let response;
     try{
@@ -91,7 +93,12 @@ export async function inspectFirebaseCloudReadiness({
       boolean(v?.mailEnabled)&&string(v?.sourceSnapshotId)===snapshotId,
     };
   }
-  const auth=await request(AUTH);
+  const firstAuth=await request(AUTH);
+  // If a valid project-ID request gets HTTP 400, try only the known numeric
+  // alias (no arbitrary URL/project IDs). Never expose the error body.
+  const numberAuth=firstAuth.status===400?await request(AUTH_NUMBER):null;
+  const auth=firstAuth.status===200?firstAuth:
+    numberAuth?.status===200?numberAuth:firstAuth;
   const users=Array.isArray(auth.data?.users)?auth.data.users:[];
   const accountListComplete=auth.status===200&&
     !auth.data?.nextPageToken&&users.length<=1000;
@@ -106,12 +113,14 @@ export async function inspectFirebaseCloudReadiness({
       [...new Set(stageResults.map(x=>String(x.code)))].map(code=>
         [code,stageResults.filter(x=>String(x.code)===code).length])),
     mailRuntimeHttpStatus:runtime.code,mailRuntimeEnabled:runtime.enabled,
-    authHttpStatus:auth.status,authListComplete:accountListComplete,
+    authHttpStatus:auth.status,authProjectNumberHttpStatus:numberAuth?.status??null,
+    authListComplete:accountListComplete,
     accounts:accountListComplete?users.length:null,
     disabledAccounts:accountListComplete?users.filter(x=>x.disabled===true).length:null,
     requiresFirestoreReadPermission:root.status===403||
       stageResults.some(x=>x.code===403)||runtime.code===403,
-    requiresFirebaseAuthReadPermission:auth.status===403,
+    requiresFirebaseAuthReadPermission:auth.status===403||
+      numberAuth?.status===403,
     writes:0,cloudRoleE2EVerified:false,readyForCutover:false,
   };
 }
