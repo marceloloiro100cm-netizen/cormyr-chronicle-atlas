@@ -168,9 +168,9 @@ export function createFirebaseHouseReconciliationAudit({
            house['season']!==2)
           return report('house_unavailable');
         const sheet=docs[6]?.data();
-        if(!docs[6]?.exists||!record(sheet)||sheet['selectedHouseId']!==selectedHouseId||
+        if(!docs[6]?.exists||!record(sheet)||sheet['houseId']!==selectedHouseId||
            !integer(sheet['version'])||!record(sheet['state'])||
-           sheet['state']['selectedHouseId']!==selectedHouseId)
+           sheet['state']['houseId']!==selectedHouseId)
           return report('sheet_unavailable');
         const sourceVersion=sheet['version'];
         const calendar=officialMonth(docs[7]?.data());
@@ -183,14 +183,14 @@ export function createFirebaseHouseReconciliationAudit({
         const operation=docs[9]?.data();
         if(!docs[9]?.exists)
           return report('operational_missing',sourceVersion,null,config);
-        if(!record(operation)||operation['selectedHouseId']!==selectedHouseId||
+        if(!record(operation)||operation['houseId']!==selectedHouseId||
            operation['status']!=='active'||operation['private']!==true||
            operation['sourceSnapshotId']!==snapshotId||
            operation['sourceReconciled']!==true||
            operation['seedVerified']!==true||
            !integer(operation['version'])||
            !record(operation['state'])||
-           operation['state']['selectedHouseId']!==selectedHouseId)
+           operation['state']['houseId']!==selectedHouseId)
           return report('operational_unverified',sourceVersion,null,config);
         const operationalVersion=operation['version'];
         if(operation['sourceSheetVersion']!==sourceVersion)
