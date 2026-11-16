@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DOMPurify from 'dompurify';
-import { supabase } from '@/integrations/supabase/client';
+import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
 import { Button } from '@/components/ui/button';
 import { drawRandomEvent } from '@/lib/events/random';
 
@@ -13,14 +13,18 @@ function useGmContent() {
   return useQuery({
     queryKey: ['gm-content'],
     queryFn: async (): Promise<GmContent> => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Sessão expirada.');
-      const res = await fetch('/api/public/gm-content', { headers: { Authorization: `Bearer ${session.access_token}` } });
+      const token = await firebasePilotAuth()?.getToken();
+      if (!token) throw new Error('Entre com sua conta Firebase do Narrador.');
+      const res = await fetch('/api/public/gm-content', {
+        credentials:'omit',cache:'no-store',
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.status === 403) throw new Error('Este acervo é exclusivo do Narrador.');
       if (!res.ok) throw new Error('Não foi possível carregar o acervo do Narrador.');
       return res.json() as Promise<GmContent>;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    gcTime: 0,
   });
 }
 
