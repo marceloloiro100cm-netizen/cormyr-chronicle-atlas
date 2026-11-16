@@ -30,3 +30,33 @@ Jamais imprimir `error.message`, `error.details`, `users[]`, e-mails, UIDs, conf
 - Mesmo `Auth = 200` e `Firestore = 200` não liberam a migração sem todos os testes de perfis, snapshots e transações.
 
 O workflow executa testes sintéticos no PR e reexecuta a sondagem real somente após merge na `main`, usando a identidade OIDC já configurada. Não utiliza Cloud Shell nem Supabase.
+
+
+## Evidência Cloud Shell — 16/11/2026
+
+Uma auditoria executada com a **conta operadora do Cloud Shell**, e não com o
+service account do GitHub Actions, encontrou:
+
+- Firestore HTTP 200, os seis estágios históricos completos, três dos quatro
+  auxiliares completos; **`migrationPublicContentStage` ausente (HTTP 404)**;
+- `campaignMailRuntime` e `campaignCloudRuntime` ausentes (HTTP 404);
+- Identity Toolkit API habilitada; `testIamPermissions` retornou
+  `firebaseauth.users.get` e `firebaseauth.configs.get` como permitidas;
+- O primeiro probe do Firebase Auth **sem** `X-Goog-User-Project` retornou
+  HTTP 403, inclusive para a leitura da configuração, embora a conta tenha
+  `roles/owner`;
+- Repetidas com `X-Goog-User-Project: cormyr`, **a listagem e a configuração
+  retornaram HTTP 200**. Foram observadas **14 contas, todas desativadas**, sem
+  página seguinte.
+
+O cabeçalho foi adicionado **somente** aos GETs de Identity Toolkit da
+auditoria com quota project fixo `cormyr`. Não é uma autorização para conceder
+IAM, não é importação de contas e não deve permitir configurar outro projeto de
+quota por variável não confiável. A identidade GitHub OIDC tem permissões
+independentes e **precisa ser verificada por um novo workflow em `main`**.
+
+A auditoria também trata qualquer estágio auxiliar ausente como bloqueio
+`AUXILIARY_STAGES_UNVERIFIED`, mantendo `NO_GO` explícito. O catálogo público
+não deve ser criado com dados de demonstração, o Auth não deve ser ativado em
+massa e nenhum runtime operacional deve ser inicializado antes de
+reconciliação real e aceitação por perfil.

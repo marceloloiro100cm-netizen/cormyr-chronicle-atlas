@@ -14,6 +14,10 @@ const stageNames=[
   'migrationDomainStage','migrationAuthStage','migrationTimeEngineStage',
   'migrationNobleHouseStage','migrationNewspaperRuntimeStage','migrationSpyStage',
 ];
+const auxiliaryStageNames=[
+  'migrationPrivateGmStage','migrationDriveSyncStage',
+  'migrationPublicContentStage','migrationStorageStage',
+];
 const stage=id=>PREFIX+id+'/'+HASH+'?mask.fieldPaths=status&mask.fieldPaths=private';
 const listing=PREFIX+'migrationDomainStage?pageSize=2&mask.fieldPaths=status&mask.fieldPaths=private';
 const runtime=PREFIX+'campaignMailRuntime/'+HASH+
@@ -31,6 +35,7 @@ function fixture(overrides={}){
         fields:fields()}]}],
     ...stageNames.filter(x=>x!=='migrationDomainStage')
       .map(x=>[stage(x),{fields:fields()}]),
+    ...auxiliaryStageNames.map(x=>[stage(x),{fields:fields()}]),
     [runtime,{fields:{
       ...fields('active'),
       sourceSnapshotId:{stringValue:HASH},
@@ -116,6 +121,53 @@ test('Cloud-only OIDC readiness summarizes 6 stages and disabled accounts withou
   assert.ok(f.requests.every(x=>x.options.method==='GET'&&
     x.options.credentials==='omit'&&x.options.redirect==='error'));
   assert.ok(f.requests.every(x=>x.url.startsWith(PREFIX)||x.url===AUTH));
+  const authRequest=f.requests.find(x=>x.url===AUTH);
+  assert.equal(authRequest.options.headers['X-Goog-User-Project'],'cormyr');
+  assert.equal(authRequest.options.headers.Authorization,
+    'Bearer EPHEMERAL_TEST_TOKEN_SECRET');
+  assert.ok(f.requests.filter(x=>x.url.startsWith(PREFIX))
+    .every(x=>!('X-Goog-User-Project' in x.options.headers)));
+});
+
+test('missing public-content stage is an explicit no-cutover blocker',async()=>{
+  const f=fixture();
+  f.d.delete(stage('migrationPublicContentStage'));
+  const report=await f.run();
+  assert.equal(report.auxiliaryStageCoverage,4);
+  assert.equal(report.auxiliaryStagesVerified,3);
+  assert.equal(report.auxiliaryStagesComplete,false);
+  assert.equal(report.auxiliaryStageHttpStatusCounts['404'],1);
+  assert.ok(report.blockingCodes.includes('AUXILIARY_STAGES_UNVERIFIED'));
+  assert.equal(report.authListComplete,true);
+  assert.equal(report.accounts,14);
+  assert.equal(report.readyForCutover,false);
+});
+
+test('Auth quota-project header reproduces Cloud Shell fix with no IAM writes',async()=>{
+  const requests=[];
+  const report=await inspectFirebaseCloudReadiness({
+    tokenProvider:async()=> 'EPHEMERAL_TEST_TOKEN_SECRET',
+    fetcher:async(url,options)=>{
+      requests.push({url,options});
+      if(url===AUTH){
+        if(options.headers['X-Goog-User-Project']!=='cormyr')
+          return Response.json({error:{status:'PERMISSION_DENIED'}},
+            {status:403});
+        return Response.json({users:Array.from({length:14},()=>({
+          localId:'NEVER_LOG_UID',disabled:true,
+        }))});
+      }
+      return new Response('HIDDEN_DATA',{status:403});
+    },
+  });
+  assert.equal(report.authHttpStatus,200);
+  assert.equal(report.accounts,14);
+  assert.equal(report.disabledAccounts,14);
+  assert.equal(report.authListComplete,true);
+  assert.equal(report.firestoreHttpStatus,403);
+  assert.equal(report.readyForCutover,false);
+  assert.ok(requests.every(x=>x.options.method==='GET'));
+  assert.ok(!JSON.stringify(report).includes('NEVER_LOG_UID'));
 });
 
 test('missing Firestore/Auth permissions return only HTTP codes and retain NO_GO',async()=>{
