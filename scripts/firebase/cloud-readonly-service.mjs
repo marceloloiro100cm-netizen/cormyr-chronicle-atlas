@@ -6,6 +6,7 @@
  * This deliberately does not enable game writes, Drive, schedules or cutover.
  */
 import {createHash} from 'node:crypto';
+import {canAcknowledgeMail,mailReceiptId} from './cloud-mail-receipt-core.mjs';
 
 const SNAPSHOT=/^[a-f0-9]{64}$/;
 const SAFE_ID=/^[^/\u0000-\u001f]{1,128}$/;
@@ -158,12 +159,37 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
               scope.memberHouseIds.includes(v.recipientHouseId));
         }).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||
           String(a.sourceId??a.id).localeCompare(String(b.sourceId??b.id)));
-      const items=visible.slice(0,30).map(v=>({
-        id:v.sourceId??v.id,subject:v.subject,content:v.content,
-        senderName:v.senderName??null,
-        recipientHouseId:v.recipientHouseId??null,
-        createdAt:v.createdAt,campaignDate:v.campaignDate??null,
-        deliveredAt:v.deliveredAt??null,
+      const items=await Promise.all(visible.slice(0,30).map(async v=>{
+        const source=v.source==='firebase-cloud'?'firebase-cloud':'imported';
+        const id=v.sourceId??v.id;
+        const canMarkRead=liveStatus.exists&&
+          liveStatus.data()?.status==='active'&&
+          liveStatus.data()?.private===true&&
+          liveStatus.data()?.sourceSnapshotId===snapshotId&&
+          liveStatus.data()?.sourceSnapshotReconciled===true&&
+          liveStatus.data()?.mailWriteApproved===true&&
+          liveStatus.data()?.applicationEnabled===true&&
+          canAcknowledgeMail({
+            uid:scope.uid,role:scope.profile,playerId:scope.playerId,
+            memberHouses:scope.memberHouseIds,
+          },v,source,id);
+        let readAt=null;
+        if(canMarkRead){
+          const receipt=await liveRoot.collection('mailReadReceipts')
+            .doc(mailReceiptId(scope.uid,source,id)).get();
+          const row=receipt.data();
+          if(receipt.exists&&row?.viewerUid===scope.uid&&
+             row?.source===source&&row?.letterId===id&&
+             typeof row?.readAt==='string')readAt=row.readAt;
+        }
+        return {
+          id,source,subject:v.subject,content:v.content,
+          senderName:v.senderName??null,
+          recipientHouseId:v.recipientHouseId??null,
+          createdAt:v.createdAt,campaignDate:v.campaignDate??null,
+          deliveredAt:v.deliveredAt??null,
+          canMarkRead:Boolean(canMarkRead),readAt,
+        };
       }));
       if(Buffer.byteLength(JSON.stringify(items),'utf8')>700_000)
         deny('mailbox_response_too_large',503);
