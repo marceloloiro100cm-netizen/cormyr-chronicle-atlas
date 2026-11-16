@@ -13,8 +13,9 @@ import {previewHouseConstruction} from './firebase-construction-quote';
 import {calculateFirebaseHouseEconomy,verifiedEconomicState}
   from './firebase-economic-readonly';
 import {monthFromHarptosDate} from '@/lib/calendar/house-time-impact';
-import {validateHarptosDate,harptosKey}
-  from '../../../scripts/firebase/stage-temporal-emulator.mjs';
+// The canonical Harptos implementation is a JS-only module.
+// @ts-expect-error This .mjs has no TypeScript declarations.
+import {validateHarptosDate,harptosKey} from '../../../scripts/firebase/stage-temporal-emulator.mjs';
 
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
@@ -157,7 +158,7 @@ export function createFirebaseCloudConstruction({
   clock=()=>new Date().toISOString(),roll=sides=>randomInt(1,sides+1),
 }:Options){
   if(enabled!==true||projectId!=='cormyr'||!SHA.test(snapshotId)||
-     env.FIRESTORE_EMULATOR_HOST||env.FIREBASE_AUTH_EMULATOR_HOST||
+     env['FIRESTORE_EMULATOR_HOST']||env['FIREBASE_AUTH_EMULATOR_HOST']||
      typeof db?.runTransaction!=='function'||
      typeof auth?.verifyIdToken!=='function'||
      typeof auth?.getUser!=='function')
@@ -212,35 +213,46 @@ export function createFirebaseCloudConstruction({
         if(!runtimeReady(docs[6]?.data(),snapshotId,calendar.version))
           return fail('construction_runtime_not_approved',503);
         const house=docs[7]?.data();
-        if(!docs[7]?.exists||house?.sourceId!==req.houseId||
-           house?.active!==true||house?.season!==2)
+        if(!docs[7]?.exists||!record(house)||house['sourceId']!==req.houseId||
+           house['active']!==true||house['season']!==2||
+           typeof house['name']!=='string')
           return fail('house_unavailable',404);
         const sheet=docs[8]?.data();
-        if(!docs[8]?.exists||sheet?.houseId!==req.houseId||
-           !version(sheet.version)||!record(sheet.state)||
-           sheet.state.houseId!==req.houseId)
+        if(!docs[8]?.exists||!record(sheet)||sheet['houseId']!==req.houseId||
+           !version(sheet['version'])||!record(sheet['state'])||
+           sheet['state']['houseId']!==req.houseId)
           return fail('house_sheet_unavailable',503);
-        const origin=digest(sheet.state);
+        const sheetVersion=sheet['version'] as number;
+        const origin=digest(sheet['state']);
         const operation=docs[9]?.data();
-        if(!docs[9]?.exists)
+        if(!docs[9]?.exists||!record(operation))
           return fail('construction_source_not_reconciled',503);
-        readyOperational(operation,req.houseId,snapshotId,sheet.version,origin);
+        readyOperational(operation,req.houseId,snapshotId,sheetVersion,origin);
+        const operationVersion=operation['version'] as number;
+        if(!record(operation['state']))
+          return fail('construction_source_not_reconciled',503);
 
         if(docs[10]?.exists){
           const audit=docs[10].data();
-          if(audit?.actorUid!==uid||audit?.houseId!==req.houseId||
-             audit?.requestFingerprint!==fingerprint||
-             audit?.sourceSnapshotId!==snapshotId)
+          if(!record(audit)||audit['actorUid']!==uid||
+             audit['houseId']!==req.houseId||
+             audit['requestFingerprint']!==fingerprint||
+             audit['sourceSnapshotId']!==snapshotId)
             return fail('construction_request_key_conflict',409);
           // A retry may return the original result, never create another holding.
-          return {id:eventId,holdingId:audit.holdingId,
-            houseId:req.houseId,version:audit.version,
-            campaignDate:audit.campaignDate,duplicate:true,
-            dice:audit.dice};
+          if(!safeId(audit['holdingId'])||!version(audit['version'])||
+             typeof audit['campaignDate']!=='string'||
+             !Array.isArray(audit['dice'])||
+             audit['dice'].some(v=>!Number.isSafeInteger(v)||v<1||v>100))
+            return fail('construction_audit_invalid',503);
+          return {id:eventId,holdingId:audit['holdingId'],
+            houseId:req.houseId,version:audit['version'],
+            campaignDate:audit['campaignDate'],duplicate:true,
+            dice:audit['dice']};
         }
-        if(req.expectedVersion!==operation.version)
+        if(req.expectedVersion!==operationVersion)
           return fail('construction_version_conflict',409);
-        const state=verifiedEconomicState(operation.state);
+        const state=verifiedEconomicState(operation['state']);
         if(!state||state.phase!=='active'||state.month!==calendar.month)
           return fail('construction_calendar_conflict',409);
         const item=findItem(req.itemId);
@@ -258,7 +270,7 @@ export function createFirebaseCloudConstruction({
         let costData;
         try{
           const preview=previewHouseConstruction(
-            state,choice,house.name,sheet.version);
+            state,choice,house['name'],sheetVersion);
           if(!preview.purchaseEligibleByRules)
             return fail('construction_rule_blocked',409);
           const count=item.duration.dice??0,sides=item.duration.sides??6;
@@ -295,21 +307,21 @@ export function createFirebaseCloudConstruction({
         if(typeof createdAt!=='string'||!Number.isFinite(Date.parse(createdAt)))
           return fail('invalid_server_clock',503);
         tx.update(operationalRef,{
-          state:candidate,version:operation.version+1,
+          state:candidate,version:operationVersion+1,
           stateHash:nextHash,lastConstructionEventId:eventId,updatedAt:createdAt,
         });
         tx.create(auditRef,{
           id:eventId,action:'purchase',actorUid:uid,houseId:req.houseId,
           sourceSnapshotId:snapshotId,requestKey:req.requestKey,
           requestFingerprint:fingerprint,holdingId,itemId:item.id,
-          domainId:req.domainId,expectedVersion:operation.version,
-          version:operation.version+1,sourceSheetVersion:sheet.version,
-          sourceStateHash:origin,beforeStateHash:operation.stateHash,
+          domainId:req.domainId,expectedVersion:operationVersion,
+          version:operationVersion+1,sourceSheetVersion:sheetVersion,
+          sourceStateHash:origin,beforeStateHash:operation['stateHash'],
           afterStateHash:nextHash,costs:costData,dice,
           campaignDate:calendar.date,createdAt,
         });
         return {id:eventId,holdingId,houseId:req.houseId,
-          version:operation.version+1,campaignDate:calendar.date,
+          version:operationVersion+1,campaignDate:calendar.date,
           duplicate:false,dice};
       });
     },
