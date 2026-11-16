@@ -20,7 +20,7 @@ const STAGES=Object.freeze([
 const boolean=v=>v?.booleanValue===true;
 const string=v=>typeof v?.stringValue==='string'?v.stringValue:null;
 const nonnegativeInt=v=>typeof v?.integerValue==='string'&&
-  /^(?:0|[1-9]\\d*)$/.test(v.integerValue)&&
+  /^(?:0|[1-9][0-9]*)$/.test(v.integerValue)&&
   Number.isSafeInteger(Number(v.integerValue))
     ?Number(v.integerValue):null;
 
