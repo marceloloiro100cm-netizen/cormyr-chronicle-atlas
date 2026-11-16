@@ -73,6 +73,13 @@ test('joins private Auth accounts to access docs by exact UID and produces only 
   assert.deepEqual(report.profileCounts,{
     narrador:1,jogador:1,editor:1,other:0,
   });
+  assert.deepEqual(report.structurallyEligibleByProfile,{
+    narrador:1,jogador:1,editor:1,other:0,
+  });
+  assert.deepEqual(report.structurallyIneligibleByProfile,{
+    narrador:0,jogador:0,editor:0,other:0,
+  });
+  assert.ok(Object.values(report.blockingReasonCounts).every(n=>n===0));
   assert.equal(report.releaseDecision,'NO_GO');
   assert.equal(report.readyForCutover,false);
   assert.equal(report.writes,0);
@@ -149,4 +156,70 @@ test('unknown or duplicate UID and incomplete access pagination are fail-closed'
   assert.equal(b.linkedAccounts,null);
   assert.equal(b.readyForCutover,false);
   assert.ok(!JSON.stringify(b).includes('PRIVATE_PAGE_TOKEN'));
+});
+
+
+test('aggregate role diagnostics explain structural blockers without exposing identities',async()=>{
+  const moreUids=['PRIVATE_FOUR','PRIVATE_FIVE'];
+  const f=fixture({
+    auth:{users:[...uids,...moreUids].map(localId=>({
+      localId,email:'NO_EXPORT@example.test',disabled:true,
+    }))},
+    access:{documents:[
+      accessRow(uids[0],'narrador',{admin:field.bool(false)}),
+      accessRow(uids[1],'jogador',{
+        active:field.bool(false),
+        memberHouseIds:field.list([]),editHouseIds:field.list([]),
+      }),
+      accessRow(uids[2],'editor',{
+        requirePasswordChange:field.bool(true),
+        memberHouseIds:field.list(['PRIVATE_HOUSE_A']),
+        editHouseIds:field.list(['PRIVATE_HOUSE_B']),
+      }),
+      accessRow(moreUids[0],'none',{
+        profile:{nullValue:null},
+      }),
+      accessRow(moreUids[1],'observer'),
+    ]},
+  });
+  const report=await f.run();
+  assert.deepEqual(report.profileCounts,{
+    narrador:1,jogador:1,editor:1,other:2,
+  });
+  assert.deepEqual(report.structurallyEligibleByProfile,{
+    narrador:0,jogador:0,editor:0,other:0,
+  });
+  assert.deepEqual(report.structurallyIneligibleByProfile,{
+    narrador:1,jogador:1,editor:1,other:2,
+  });
+  assert.deepEqual(report.blockingReasonCounts,{
+    missingProfile:1,unrecognizedProfile:1,
+    accessInactiveOrInvalid:1,passwordChangePendingOrInvalid:1,
+    adminFlagMismatch:1,invalidHouseLists:0,
+    editScopeOutsideMembership:1,playerWithoutHouse:1,
+    editorWithHouse:1,
+  });
+  assert.equal(report.structurallyEligibleProfiles,0);
+  assert.equal(report.linkedAccounts,5);
+  assert.equal(report.readyForCutover,false);
+  assert.equal(report.writes,0);
+  const safe=JSON.stringify(report);
+  for(const val of [...uids,...moreUids,'PRIVATE_HOUSE_A',
+    'PRIVATE_HOUSE_B','NO_EXPORT@example.test','SENSITIVE_EPHEMERAL_OPERATOR_TOKEN']){
+    assert.ok(!safe.includes(val));
+  }
+});
+
+test('incomplete Auth or access pages do not report reason breakdowns',async()=>{
+  for(const opts of [
+    {auth:{users:[{localId:uids[0],disabled:true}],
+      nextPageToken:'PRIVATE_TOKEN'}},
+    {statuses:{access:403}},
+  ]){
+    const report=await fixture(opts).run();
+    assert.equal(report.blockingReasonCounts,null);
+    assert.equal(report.structurallyEligibleByProfile,null);
+    assert.equal(report.structurallyIneligibleByProfile,null);
+    assert.equal(report.readyForCutover,false);
+  }
 });
