@@ -80,14 +80,16 @@ const normalBalances=(v:Balance)=>
  * Never coerce a missing array or permanent resource to an empty/zero value.
  */
 export function verifiedEconomicState(raw:Raw):HouseState|null{
+  const base=object(raw.base)?raw.base:null;
+  const permanent=object(raw.permanent)?raw.permanent:null;
   if(!object(raw)||raw.schemaVersion!==1||!text(raw.houseId)||
      !['draft','review','active'].includes(String(raw.phase))||
      !['budget','roll','import'].includes(String(raw.method))||
      !integer(raw.month)||Number(raw.month)<0||
      !object(raw.identity)||typeof raw.identity.region!=='string'||
      typeof raw.regionalApplied!=='boolean'||
-     !object(raw.base)||!object(raw.permanent)||
-     !RESOURCE_KEYS.every(r=>integer(raw.base?.[r])&&integer(raw.permanent?.[r]))||
+     !base||!permanent||
+     !RESOURCE_KEYS.every(r=>integer(base[r])&&integer(permanent[r]))||
      !boundedList(raw.domains,100,domain)||
      !boundedList(raw.holdings,600,holding)||
      !boundedList(raw.units,600,unit)||
@@ -104,7 +106,7 @@ export function verifiedEconomicState(raw:Raw):HouseState|null{
      (raw.vassals!==undefined&&!boundedList(raw.vassals,200,vassal)))
     return null;
   // Full state is only used as an input to the ORIGINAL canonical functions.
-  return raw as HouseState;
+  return raw as unknown as HouseState;
 }
 
 export function calculateFirebaseHouseEconomy(raw:Raw):EconomicSnapshot|null{
