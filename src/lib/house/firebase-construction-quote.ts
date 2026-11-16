@@ -38,7 +38,7 @@ function validate(input:unknown):QuotePreviewInput{
      ['parentId','supportId','replaceId'].some(k=>
        input[k]!==undefined&&!safeId(input[k])))
     throw new ConstructionPreviewError('invalid_quote_request');
-  return input as QuotePreviewInput;
+  return input as unknown as QuotePreviewInput;
 }
 function stateReady(v:unknown,houseId:string):v is HouseState{
   if(!record(v)||v['schemaVersion']!==1||v['houseId']!==houseId||
@@ -55,9 +55,12 @@ function stateReady(v:unknown,houseId:string):v is HouseState{
      v['units'].length>400||v['fortunes'].length>500||
      v['projects'].length>500)return false;
   if(v['domains'].some(d=>!record(d)||!safeId(d['id'])||
+    typeof d['name']!=='string'||
     typeof d['terrain']!=='string'||!Array.isArray(d['features'])))return false;
   if(v['holdings'].some(h=>!record(h)||!safeId(h['id'])||
-     typeof h['source']!=='string'||!Array.isArray(h['costs'])||
+     !safeId(h['domainId'])||!safeId(h['itemId'])||
+     typeof h['name']!=='string'||typeof h['source']!=='string'||
+     !Array.isArray(h['costs'])||
      !Array.isArray(h['effects'])||
      !['active','building','destroyed','abandoned','sold','cancelled']
        .includes(h['status'] as string)))return false;
@@ -82,17 +85,23 @@ export function previewHouseConstruction(
     throw new ConstructionPreviewError('item_not_found',404);
   if(!state.domains.some(d=>d.id===req.domainId))
     throw new ConstructionPreviewError('domain_not_found',404);
-  if(req.parentId&&!state.holdings.some(h=>h.id===req.parentId))
+  // Never simulate a refund or discount against another domain by
+  // supplying a forged replaceId, parentId or supportId.
+  const inDomain=(id:string)=>state.holdings.some(h=>
+    h.id===id&&h.domainId===req.domainId&&
+    ['active','building'].includes(h.status));
+  if(req.parentId&&!inDomain(req.parentId))
     throw new ConstructionPreviewError('parent_not_found',404);
-  if(req.supportId&&!state.holdings.some(h=>h.id===req.supportId))
+  if(req.supportId&&!inDomain(req.supportId))
     throw new ConstructionPreviewError('support_not_found',404);
-  if(req.replaceId&&!state.holdings.some(h=>h.id===req.replaceId))
+  if(req.replaceId&&!inDomain(req.replaceId))
     throw new ConstructionPreviewError('replacement_not_found',404);
   try{
     const data=quote(item,state,req.domainId,req.parentId,
       req.supportId,req.replaceId);
-    if(!finiteResults(data as unknown as RecordLike))
-      throw Error('invalid computed balances');
+    if(!finiteResults(data as unknown as RecordLike)||
+       data.discounts.length>30||data.errors.length>20)
+      throw Error('invalid or excessive computed results');
     const errors=data.errors.map(v=>String(v).slice(0,300)).slice(0,20);
     return {
       houseId:req.houseId,houseName:houseName.slice(0,180),
