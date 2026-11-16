@@ -46,8 +46,10 @@ function fixture(overrides:Record<string,unknown>={}){
     },
     collection:(name:string)=>({doc:(id:string)=>doc(path+'/'+name+'/'+id)}),
   });
-  const db=({collection:(name:string)=>({doc:(id:string)=>doc(name+'/'+id)})}
-    as unknown as Firestore);
+  const fakeDb={collection:(name:string)=>({
+    doc:(id:string)=>doc(name+'/'+id),
+  })};
+  const db=fakeDb as unknown as Firestore;
   const opts={db,projectId:'cormyr',snapshotId:HASH,enabled:true,env:{}};
   return {
     opts,reads,docs,
