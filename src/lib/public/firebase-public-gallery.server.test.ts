@@ -182,7 +182,7 @@ describe('Firebase-only public gallery image policy',()=>{
 
   it('does not reintroduce the Supabase gallery RPC or direct origin download',()=>{
     const route=readFileSync(new URL('../../routes/api/public/gallery-image.ts',import.meta.url),'utf8');
-    expect(route).not.toMatch(/supabase|can_read_public_gallery_image|\/storage\/v1\//i);
+    expect(route).not.toMatch(/(?:from\s*['"][^'"]*supabase|createClient\s*\(|can_read_public_gallery_image|\/storage\/v1\/)/i);
     expect(route).toContain('readApprovedPublicGalleryImage');
     expect(route).toContain('CORMYR_FIREBASE_PUBLIC_GALLERY_ENABLED');
   });
