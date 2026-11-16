@@ -8,7 +8,7 @@ import {createFirebaseCloudReadonly}
 import {constructionStateHash} from './firebase-construction-transaction';
 import {calculateFirebaseHouseEconomy,verifiedEconomicState} from './firebase-economic-readonly';
 import {monthFromHarptosDate} from '@/lib/calendar/house-time-impact';
-import {RESOURCE_KEYS,type Resource,type Resources} from './types';
+import {RESOURCE_KEYS,type Resources} from './types';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 
@@ -42,7 +42,7 @@ export type OperationalEconomyView={
 export type OperationalEconomyUnavailable={available:false;readOnly:true};
 export type OperationalEconomyResponse=OperationalEconomyView|OperationalEconomyUnavailable;
 
-function sanitizedEconomy(source:Record<string,unknown>,stateRaw:unknown,
+function sanitizedEconomy(stateRaw:unknown,
   houseName:string,version:number,sourceSheetVersion:number,
   calendarVersion:number,updatedAt:unknown):OperationalEconomyView|null{
   const state=object(stateRaw)?verifiedEconomicState(stateRaw):null;
@@ -118,22 +118,22 @@ export function createFirebaseOperationalHouseRead({
         timeStage.get(),timeStage.collection('calendar').doc('current').get(),
         runtimeRef.get(),opRef.get(),
       ]);
-      if(!time.exists||time.data()?.status!=='complete'||
-         time.data()?.private!==true)return {available:false,readOnly:true};
+      if(!time.exists||time.data()?['status']!=='complete'||
+         time.data()?['private']!==true)return {available:false,readOnly:true};
       const date=calendar.data();
-      if(!calendar.exists||!date||!number(date.version)||
-         !number(date.year)||date.year===0||
-         !number(date.month)||date.month>11||
-         !number(date.day)||date.day===0||date.day>30)
+      if(!calendar.exists||!date||!number(date['version'])||
+         !number(date['year'])||date['year']===0||
+         !number(date['month'])||date['month']>11||
+         !number(date['day'])||date['day']===0||date['day']>30)
         return {available:false,readOnly:true};
       const cfg=runtime.data();
-      if(!runtime.exists||cfg?.status!=='active'||cfg.private!==true||
-         cfg.sourceSnapshotId!==snapshotId||
-         cfg.sourceSnapshotReconciled!==true||
-         cfg.applicationEnabled!==true||
-         cfg.constructionReadApproved!==true||
-         cfg.constructionSeededVerified!==true||
-         cfg.calendarVersion!==date.version)
+      if(!runtime.exists||cfg?['status']!=='active'||cfg['private']!==true||
+         cfg['sourceSnapshotId']!==snapshotId||
+         cfg['sourceSnapshotReconciled']!==true||
+         cfg['applicationEnabled']!==true||
+         cfg['constructionReadApproved']!==true||
+         cfg['constructionSeededVerified']!==true||
+         cfg['calendarVersion']!==date['version'])
         return {available:false,readOnly:true};
       const v=op.data();
       if(!op.exists||!object(v)||v['status']!=='active'||v['private']!==true||
@@ -145,15 +145,15 @@ export function createFirebaseOperationalHouseRead({
       try{
         origin=constructionStateHash(house.state);
         actual=constructionStateHash(v['state']);
-        month=monthFromHarptosDate({year:date.year,month:date.month});
+        month=monthFromHarptosDate({year:date['year'],month:date['month']});
       }catch{return {available:false,readOnly:true};}
       if(v['sourceStateHash']!==origin||v['stateHash']!==actual||
          (v['version']===0&&actual!==origin)||
          v['state']['houseId']!==house.id||
          v['state']['month']!==month)
         return {available:false,readOnly:true};
-      const projection=sanitizedEconomy(house.state,v['state'],house.name,
-        v['version'],house.version,date.version,v['updatedAt']);
+      const projection=sanitizedEconomy(v['state'],house.name,
+        v['version'] as number,house.version,date['version'],v['updatedAt']);
       if(!projection)return {available:false,readOnly:true};
       return projection;
     },
