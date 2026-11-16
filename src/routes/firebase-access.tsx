@@ -8,6 +8,7 @@ import {FirebaseHouseSheet} from '@/components/houses/FirebaseHouseSheet';
 import {FirebaseArmyRoster} from '@/components/houses/FirebaseArmyRoster';
 import {FirebaseHoldingsRoster} from '@/components/houses/FirebaseHoldingsRoster';
 import {FirebaseHouseCourtDomains} from '@/components/houses/FirebaseHouseCourtDomains';
+import {FirebaseHouseResources} from '@/components/houses/FirebaseHouseResources';
 
 /**
  * Firebase-only pilot: read-only, no Supabase, no emulator and no direct
@@ -315,6 +316,7 @@ function FirebaseAccess(){
               <option key={h.id} value={h.id}>{h.name}</option>)}
         </select>
         {house&&<FirebaseHouseSheet sheet={house}/>}
+        {house&&<FirebaseHouseResources houseName={house.name} state={house.state}/>}
         {house&&<FirebaseArmyRoster houseName={house.name} state={house.state}/>}
         {house&&<FirebaseHoldingsRoster houseName={house.name} state={house.state}/>}
         {house&&<FirebaseHouseCourtDomains houseName={house.name} state={house.state}/>}
