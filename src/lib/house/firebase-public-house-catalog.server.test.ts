@@ -136,9 +136,15 @@ describe('Firebase Cloud: catálogo público somente depois de revisão e aprova
     for(const [key,value] of invalid){
       const s=setup({runtimeData:{[key]:value}});
       await blocked(s.read);
-      // A bad runtime must never reveal or even query the private source.
-      if(key!=='publicCatalogExpectedReviewedCount'||value!==3)
-        expect(s.reads).toEqual([runtime]);
+      // Local validation can stop immediately for invalid approval metadata.
+      // Plausible published counts or House IDs need a private read to be
+      // rejected against the actual imported source; no data is returned.
+      const requiresSourceCrossCheck=
+        (key==='publicCatalogExpectedReviewedCount'&&value===3)||
+        (key==='publicCatalogPlayerHouseIds'&&
+          Array.isArray(value)&&value.includes('h-hidden'));
+      if(!requiresSourceCrossCheck)expect(s.reads).toEqual([runtime]);
+      else expect(s.reads[0]).toBe(runtime);
     }
   });
   it('recusa etapas históricas incompletas, incomparáveis ou ausentes',async()=>{
@@ -153,7 +159,11 @@ describe('Firebase Cloud: catálogo público somente depois de revisão e aprova
     ]){
       const s=setup(opts);
       await blocked(s.read);
-      expect(s.reads).not.toContain(spyCatalog+'?limit=251');
+      // An incorrect *but plausible* source count is discovered after
+      // bounded collection reads; missing/incomplete roots stop sooner.
+      if('spyRoot' in opts&&'counts' in (opts.spyRoot??{}))
+        expect(s.reads).toContain(spyCatalog+'?limit=251');
+      else expect(s.reads).not.toContain(spyCatalog+'?limit=251');
     }
   });
   it('recusa documentos duplicados, alterados, não revisados ou conteúdo malformado',async()=>{
