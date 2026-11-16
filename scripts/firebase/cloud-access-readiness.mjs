@@ -19,6 +19,10 @@ const STAGES=Object.freeze([
 ]);
 const boolean=v=>v?.booleanValue===true;
 const string=v=>typeof v?.stringValue==='string'?v.stringValue:null;
+const nonnegativeInt=v=>typeof v?.integerValue==='string'&&
+  /^(?:0|[1-9]\\d*)$/.test(v.integerValue)&&
+  Number.isSafeInteger(Number(v.integerValue))
+    ?Number(v.integerValue):null;
 
 export async function inspectFirebaseCloudReadiness({
   tokenProvider=()=>execFileSync('gcloud',['auth','print-access-token','--quiet'],
@@ -82,13 +86,33 @@ export async function inspectFirebaseCloudReadiness({
   }
   let runtime={code:null,enabled:false};
   if(snapshotId){
-    const res=await request(FIRESTORE+'campaignMailRuntime/'+snapshotId+
-      '?mask.fieldPaths=status&mask.fieldPaths=private&mask.fieldPaths=sourceLiveReconciled&mask.fieldPaths=applicationEnabled&mask.fieldPaths=mailEnabled&mask.fieldPaths=sourceSnapshotId');
+    // Read the *actual* operational namespace from PR #505. Other
+    // prototype namespaces are not authority for campaign mail.
+    const [res,calendar]=await Promise.all([
+      request(FIRESTORE+'campaignCloudRuntime/'+snapshotId+
+        '?mask.fieldPaths=status&mask.fieldPaths=private'+
+        '&mask.fieldPaths=sourceSnapshotReconciled'+
+        '&mask.fieldPaths=applicationEnabled'+
+        '&mask.fieldPaths=mailWriteApproved'+
+        '&mask.fieldPaths=sourceSnapshotId'+
+        '&mask.fieldPaths=openRound'+
+        '&mask.fieldPaths=calendarVersion'),
+      request(FIRESTORE+'migrationTimeEngineStage/'+snapshotId+
+        '/calendar/current?mask.fieldPaths=version'),
+    ]);
     const v=res.data?.fields;
+    const round=nonnegativeInt(v?.openRound);
+    const runtimeCalendarVersion=nonnegativeInt(v?.calendarVersion);
+    const actualVersion=nonnegativeInt(calendar.data?.fields?.version);
     runtime={code:res.status,enabled:
+      res.status===200&&calendar.status===200&&
       string(v?.status)==='active'&&boolean(v?.private)&&
-      boolean(v?.sourceLiveReconciled)&&boolean(v?.applicationEnabled)&&
-      boolean(v?.mailEnabled)&&string(v?.sourceSnapshotId)===snapshotId,
+      boolean(v?.sourceSnapshotReconciled)&&
+      boolean(v?.applicationEnabled)&&
+      boolean(v?.mailWriteApproved)&&
+      string(v?.sourceSnapshotId)===snapshotId&&
+      round!==null&&round>=1&&actualVersion!==null&&
+      runtimeCalendarVersion===actualVersion,
     };
   }
   const auth=await request(AUTH);
