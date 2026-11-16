@@ -5,11 +5,13 @@ on:
   pull_request:
     paths:
       - 'scripts/firebase/cloud-access-readiness*.mjs'
+      - 'scripts/firebase/cloud-role-linkage-readonly*.mjs'
       - '.github/workflows/firebase-cloud-access-readiness.yml'
   push:
     branches: [main]
     paths:
       - 'scripts/firebase/cloud-access-readiness*.mjs'
+      - 'scripts/firebase/cloud-role-linkage-readonly*.mjs'
       - '.github/workflows/firebase-cloud-access-readiness.yml'
 
 permissions:
@@ -25,7 +27,9 @@ jobs:
         with:
           node-version: '24'
       - name: Synthetic Firebase Cloud readiness access contract
-        run: node --test scripts/firebase/cloud-access-readiness.test.mjs
+        run: |
+          node --test scripts/firebase/cloud-access-readiness.test.mjs
+          node --test scripts/firebase/cloud-role-linkage-readonly.test.mjs
       - name: Public repository privacy verification
         run: node scripts/verify-public-repo.mjs
 
