@@ -51,6 +51,12 @@ describe('Firebase Cloud — cronograma de construções autorizado',()=>{
     },calendar);
     expect(incomplete.rows[0]?.timing).toBe('unverified');
     expect(incomplete.rows[0]?.deadline).toBeNull();
+    const draft=readFirebaseConstructionSchedule({
+      month:0,projects:[{id:'p',name:'Obra',status:'building',
+        start:0,duration:1,modifier:0}],
+    },calendar);
+    expect(draft.houseMonth).toBeNull();
+    expect(draft.rows[0]?.timing).toBe('unverified');
     render(<FirebaseConstructionSchedule houseName="Evenhand"
       state={state} calendar={null}/>);
     expect(screen.getByText(/Calendário ou referência temporal/))
