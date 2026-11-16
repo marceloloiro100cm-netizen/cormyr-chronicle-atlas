@@ -14,7 +14,7 @@ export type RosterUnit={
   equipment:string[];skills:{label:string;level:number}[];
 };
 type Roster={units:RosterUnit[];total:number;limited:boolean;
-  active:number;knownStrength:number|null;knownAvailable:number|null};
+  active:number|null;knownStrength:number|null;knownAvailable:number|null};
 const LEGACY_SKILLS:Record<string,string>={
   athletics:'Atletismo',endurance:'Vigor',fighting:'Luta',
   marksmanship:'Pontaria',warfare:'Guerra',awareness:'Percepção',
@@ -66,7 +66,7 @@ export function readFirebaseMilitaryRoster(state:Record<string,unknown>):Roster{
   });
   return {
     units,total:raw.length,limited:raw.length>list.length,
-    active:units.filter(u=>!u.destroyed).length,
+    active:units.length===raw.length?units.filter(u=>!u.destroyed).length:null,
     knownStrength:units.length===raw.length&&units.every(u=>u.strength!==null)
       ?units.reduce((n,u)=>n+(u.strength??0),0):null,
     knownAvailable:units.length===raw.length&&units.every(u=>u.available!==null)
