@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import {readFileSync} from 'node:fs';
 import { loadSeasonHouses, loadFirebasePublicSeasonHouses, loginErrorMessage, shouldLeaveAuthPage } from './season-houses';
 const ok = (data: unknown) => () => Promise.resolve({ data, error: null });
 const fail = (message: string) => () => Promise.resolve({ data: null, error: { message } });
@@ -58,6 +59,13 @@ describe('login helpers', () => {
 });
 
 describe('seletor de Casas · API pública Firebase',()=>{
+  it('o portal não consulta diretamente o catálogo/RPC Supabase para escolha visual',()=>{
+    const source=readFileSync('src/routes/auth.tsx','utf8');
+    expect(source).toContain('loadFirebasePublicSeasonHouses()');
+    expect(source).not.toContain("supabase.from('campaign_houses')");
+    expect(source).not.toContain("supabase.rpc('public_player_houses')");
+  });
+
   const success=()=>Response.json({houses:[...eight,{id:'npc',name:'Casa NPC'}],playerHouses:players});
 
   it('consulta apenas o catálogo público com GET sem cookies ou Authorization',async()=>{
