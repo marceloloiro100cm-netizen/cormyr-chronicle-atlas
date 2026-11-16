@@ -6,6 +6,7 @@ import {FirebaseNewspaperReader} from '@/components/newspaper/FirebaseNewspaperR
 import {FirebaseCalendarSnapshot} from '@/components/calendar/FirebaseCalendarSnapshot';
 import {FirebaseHouseSheet} from '@/components/houses/FirebaseHouseSheet';
 import {FirebaseArmyRoster} from '@/components/houses/FirebaseArmyRoster';
+import {FirebaseHoldingsRoster} from '@/components/houses/FirebaseHoldingsRoster';
 
 /**
  * Firebase-only pilot: read-only, no Supabase, no emulator and no direct
@@ -314,6 +315,7 @@ function FirebaseAccess(){
         </select>
         {house&&<FirebaseHouseSheet sheet={house}/>}
         {house&&<FirebaseArmyRoster houseName={house.name} state={house.state}/>}
+        {house&&<FirebaseHoldingsRoster houseName={house.name} state={house.state}/>}
       </div>}
       {agents&&house&&<section className="rounded border p-4 space-y-2">
         <h2 className="text-lg font-semibold">Agentes da Casa</h2>
