@@ -21,7 +21,7 @@ describe('Firebase Cloud — histórico e vassalagem da Casa',()=>{
     ]);
     expect(d.vassals.entries[0]?.influencePenalty).toBe(2);
     const {container}=render(<FirebaseHouseChronicle houseName="Evenhand" state={state}/>);
-    fireEvent.click(screen.getByText('Eventos de Fortuna'));
+    fireEvent.click(screen.getByText('Eventos de Fortuna',{selector:'summary'}));
     fireEvent.click(screen.getByText('Ações da Casa'));
     fireEvent.click(screen.getByText('Vassalagem'));
     expect(screen.getByText('Fartura')).toBeInTheDocument();
@@ -80,6 +80,7 @@ describe('Firebase Cloud — histórico e vassalagem da Casa',()=>{
     const {container}=render(<FirebaseHouseChronicle houseName="Evenhand"
       state={{fortunes,actions,vassals}}/>);
     expect(container.querySelectorAll('article')).toHaveLength(140);
+    container.querySelectorAll('summary').forEach(s=>fireEvent.click(s));
     expect(screen.getAllByRole('status')).toHaveLength(3);
   });
   it('não modifica snapshots ou planilhas de vassalos',()=>{
