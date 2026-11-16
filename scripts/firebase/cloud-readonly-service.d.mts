@@ -10,6 +10,10 @@ export interface FirebaseCloudReadonly {
   listHouses(idToken:string):Promise<unknown>;
   getHouse(idToken:string,houseId:unknown):Promise<unknown>;
   getCalendar(idToken:string):Promise<unknown>;
+  listMailbox(idToken:string):Promise<unknown>;
+  listNewspaper(idToken:string):Promise<unknown>;
+  getNewspaper(idToken:string,editionId:unknown):Promise<unknown>;
+  listSpyAgents(idToken:string,houseId:unknown):Promise<unknown>;
 }
 
 export function createFirebaseCloudReadonly(config:{

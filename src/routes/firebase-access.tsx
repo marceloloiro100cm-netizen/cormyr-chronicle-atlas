@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {useEffect,useState,type FormEvent} from 'react';
-import {createFirebaseRestAuth,type FirebaseSession} from '@/integrations/auth/firebase-rest-auth';
+import {createFirebaseRestAuth} from '@/integrations/auth/firebase-rest-auth';
+import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
 
 /**
  * Firebase-only pilot: read-only, no Supabase, no emulator and no direct
@@ -19,12 +20,22 @@ type House={id:string;name:string;castle:string|null;crest:string|null};
 type HouseView={id:string;name:string;castle:string|null;crest:string|null;
   state:Record<string,unknown>;version:number;readOnly:boolean};
 type Calendar={year:number;month:number;day:number;festival:string|null;version:number};
+type MailEntry={id:string;subject:string;content:string;senderName:string|null;
+  recipientHouseId:string|null;createdAt:string;campaignDate:string|null};
+type Inbox={items:MailEntry[];totalVisible:number;truncated:boolean};
+type EditionSummary={id:string;title:string;subtitle:string;editionNo:number;
+  publishedAt:string;campaignDate:string|null};
+type Edition={id:string;title:string;subtitle:string;blocks:unknown[];editionNo:number};
+type SpyAgent={id:string;codename:string;status:string;missionSuccesses:number};
+
 let singleton:Auth|null=null;
 
 function firebaseAuth():Auth|null{
   if(typeof window==='undefined')return null;
-  const key=import.meta.env['VITE_FIREBASE_API_KEY'] as string|undefined;
-  const project=import.meta.env['VITE_FIREBASE_PROJECT_ID'] as string|undefined;
+  // Firebase Web configuration is public by design; use the owner's project
+  // identifiers without requiring any secret or Cloud Shell environment.
+  const key=FIREBASE_PUBLIC_CONFIG.apiKey;
+  const project=FIREBASE_PUBLIC_CONFIG.projectId;
   if(!key||project!=='cormyr')return null;
   if(singleton)return singleton;
   const storageKey='cormyr:firebase-cloud-pilot:refresh';
@@ -45,14 +56,15 @@ function firebaseAuth():Auth|null{
   return singleton;
 }
 
-async function readCloud<T>(action:'session'|'listHouses'|'getHouse'|'getCalendar',
-  houseId?:string):Promise<T>{
+async function readCloud<T>(action:'session'|'listHouses'|'getHouse'|'getCalendar'|
+  'listMailbox'|'listNewspaper'|'getNewspaper'|'listSpyAgents',
+  houseId?:string,editionId?:string):Promise<T>{
   const token=await firebaseAuth()?.getToken();
   if(!token)throw Error('Entre novamente com sua conta Firebase.');
   const response=await fetch('/api/firebase-cloud-read',{
     method:'POST',credentials:'omit',cache:'no-store',
     headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
-    body:JSON.stringify({action,...(houseId?{houseId}:{})}),
+    body:JSON.stringify({action,...(houseId?{houseId}:{}),...(editionId?{editionId}:{})}),
   });
   if(!response.ok)throw Error(response.status===403
     ? 'Seu perfil não tem permissão para esta consulta.'
@@ -74,17 +86,26 @@ function FirebaseAccess(){
   const [houses,setHouses]=useState<House[]>([]);
   const [house,setHouse]=useState<HouseView|null>(null);
   const [calendar,setCalendar]=useState<Calendar|null>(null);
+  const [inbox,setInbox]=useState<Inbox|null>(null);
+  const [editions,setEditions]=useState<EditionSummary[]>([]);
+  const [edition,setEdition]=useState<Edition|null>(null);
+  const [agents,setAgents]=useState<SpyAgent[]|null>(null);
 
   async function load(){
     const profile=await readCloud<SessionView>('session');
     setView(profile);
-    const [catalog,date]=await Promise.all([
+    const [catalog,date,letters,papers]=await Promise.all([
       readCloud<House[]>('listHouses'),
       profile.profile==='editor'
-        ?Promise.resolve(null):readCloud<Calendar>('getCalendar'),
+        ?Promise.resolve(null):readCloud<Calendar>('getCalendar').catch(()=>null),
+      profile.profile==='editor'
+        ?Promise.resolve(null):readCloud<Inbox>('listMailbox').catch(()=>null),
+      readCloud<{items:EditionSummary[]}>('listNewspaper').catch(()=>null),
     ]);
     setHouses(catalog);
     setCalendar(date);
+    setInbox(letters);
+    setEditions(papers?.items??[]);
   }
 
   useEffect(()=>{
@@ -116,14 +137,28 @@ function FirebaseAccess(){
 
   async function selectHouse(id:string){
     setBusy(true);setMessage('');setHouse(null);
-    try{setHouse(await readCloud<HouseView>('getHouse',id));}
-    catch(e){setMessage(e instanceof Error?e.message:'Falha na leitura da Casa.');}
+    try{
+      const [selected,spy]=await Promise.all([
+        readCloud<HouseView>('getHouse',id),
+        readCloud<{items:SpyAgent[]}>('listSpyAgents',id).catch(()=>null),
+      ]);
+      setHouse(selected);
+      setAgents(spy?.items??null);
+    }catch(e){setMessage(e instanceof Error?e.message:'Falha na leitura da Casa.');}
+    finally{setBusy(false);}
+  }
+
+  async function openEdition(id:string){
+    setBusy(true);setMessage('');setEdition(null);
+    try{setEdition(await readCloud<Edition>('getNewspaper',undefined,id));}
+    catch(e){setMessage(e instanceof Error?e.message:'Jornal indisponível.');}
     finally{setBusy(false);}
   }
 
   function signOut(){
     firebaseAuth()?.signOut();
-    setView(null);setHouse(null);setHouses([]);setCalendar(null);setEmail('');
+    setView(null);setHouse(null);setHouses([]);setCalendar(null);
+    setInbox(null);setEditions([]);setEdition(null);setAgents(null);setEmail('');
     setPassword('');setMessage('');
   }
 
@@ -177,6 +212,40 @@ function FirebaseAccess(){
           </details>
         </article>}
       </div>}
+      {agents&&house&&<section className="rounded border p-4 space-y-2">
+        <h2 className="text-lg font-semibold">Agentes da Casa</h2>
+        {agents.length===0?<p>Não há agentes neste snapshot.</p>:
+          <ul className="space-y-1">{agents.map(a=><li key={a.id}>
+            {a.codename} — {a.status} · {a.missionSuccesses} sucessos
+          </li>)}</ul>}
+      </section>}
+      {inbox&&<section className="rounded border p-4 space-y-2">
+        <h2 className="text-lg font-semibold">Missivas entregues</h2>
+        <p className="text-xs">Exibindo {inbox.items.length} de {inbox.totalVisible}
+          {inbox.truncated?' · Mais cartas disponíveis no acervo':''}</p>
+        {inbox.items.map(m=><details key={m.id} className="border-t py-2">
+          <summary className="cursor-pointer">{m.subject}
+            {' '}· {m.campaignDate??m.createdAt.slice(0,10)}</summary>
+          <p className="whitespace-pre-wrap text-sm">{m.content}</p>
+        </details>)}
+      </section>}
+      <section className="rounded border p-4 space-y-2">
+        <h2 className="text-lg font-semibold">A Folha Sem Selo</h2>
+        {editions.length===0?<p>Nenhuma edição publicada disponível.</p>:
+          <ul>{editions.map(e=><li key={e.id} className="py-1">
+            <button type="button" disabled={busy}
+              className="underline text-left" onClick={()=>void openEdition(e.id)}>
+              Edição {e.editionNo} — {e.title}
+            </button>
+          </li>)}</ul>}
+        {edition&&<article className="border-t pt-3">
+          <h3 className="font-semibold">{edition.title}</h3>
+          <p>{edition.subtitle}</p>
+          <pre className="mt-2 text-xs whitespace-pre-wrap break-words">
+            {JSON.stringify(edition.blocks,null,2)}
+          </pre>
+        </article>}
+      </section>
     </section>}
     {message&&<p role="alert" className="text-sm">{message}</p>}
   </main>;

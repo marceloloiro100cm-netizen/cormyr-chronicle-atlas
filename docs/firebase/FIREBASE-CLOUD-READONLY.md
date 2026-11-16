@@ -27,7 +27,7 @@ e jamais recorrem a ele em caso de erro.
 - `CORMYR_FIREBASE_SNAPSHOT_ID`: hash SHA-256 do snapshot privado validado,
   configurado SOMENTE no backend.
 - `CORMYR_FIREBASE_CLOUD_READ_ENABLED=true`: libera exclusivamente as
-  quatro operações de leitura. Ausente/falso = HTTP 503.
+  oito operações de leitura. Ausente/falso = HTTP 503.
 - Firebase Admin usa a identidade IAM do App Hosting no projeto fixo
   `cormyr`, sem credenciais JSON no código.
 
@@ -47,6 +47,25 @@ com corpo máximo de 2 KiB. Exemplos de corpo:
 ```json
 {"action":"getCalendar"}
 ```
+
+A API também oferece `listMailbox`, `listNewspaper`, `getNewspaper`
+e `listSpyAgents` para o portal `/firebase-access`. O roteador mantém
+as demais telas legadas em arquivo e abre **somente** a página piloto.
+A página usa a configuração Web pública já registrada em
+`src/integrations/firebase/public-config.ts` (nenhum segredo).
+
+- Missivas: somente cartas entregues, endereçadas sem ambiguidade e não
+  excluídas; Narrador, remetente ou destinatário verificado no backend.
+  Máximo de 30 por leitura; histórico complementar ainda não incorporado.
+- Jornal: apenas edições publicadas/arquivadas, sem rascunhos,
+  cancelamentos ou histórico de revisão; o conteúdo é exibido como texto,
+  nunca injetado como HTML.
+- Espionagem: somente agentes da Casa autorizada ou Narrador, sem
+  compartilhar as operações e dossiês secretos de outras Casas.
+- Não há comandos de escrita nesse gateway; compras, correio, avanço de
+  calendário, publicação do Jornal e missões continuam bloqueados.
+- Limites explícitos de tamanho, coleção e token ajudam a evitar respostas
+  excessivas e falham com negação em casos desconhecidos.
 
 A chave da Casa jamais é uma autorização; a conferência é sempre feita
 contra `migrationDomainStage/<snapshot>/access/<uid>` no servidor.

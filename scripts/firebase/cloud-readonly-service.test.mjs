@@ -8,7 +8,8 @@ const hash=s=>createHash('sha256').update(s).digest('hex');
 const d=value=>({exists:value!==undefined,data:()=>value});
 const scope=(profile,extra={})=>({
   userId:'user-1',profile,active:true,admin:profile==='narrador',
-  requirePasswordChange:false,memberHouseIds:profile==='jogador'?['house-a']:[],
+  requirePasswordChange:false,playerId:profile==='jogador'?'player-a':null,
+  memberHouseIds:profile==='jogador'?['house-a']:[],
   editHouseIds:[],...extra,
 });
 
@@ -16,7 +17,8 @@ function fixture(profile='jogador',extra={}){
   const docs=new Map();
   const stage=name=>docs.set(name+'/'+snapshot,{status:'complete',private:true});
   for(const name of ['migrationDomainStage','migrationAuthStage',
-    'migrationNobleHouseStage','migrationTimeEngineStage'])stage(name);
+    'migrationNobleHouseStage','migrationTimeEngineStage',
+    'migrationNewspaperRuntimeStage','migrationSpyStage'])stage(name);
   docs.set('migrationDomainStage/'+snapshot+'/access/user-1',scope(profile,extra));
   docs.set('migrationDomainStage/'+snapshot+'/houses/'+hash('house:house-a'),{
     sourceId:'house-a',name:'House A',active:true,castle:'A Keep',season:2
@@ -30,6 +32,36 @@ function fixture(profile='jogador',extra={}){
   docs.set('migrationTimeEngineStage/'+snapshot+'/calendar/current',{
     year:1522,month:1,day:10,festival:null,version:5
   });
+  const addLetter=(id,overrides={})=>docs.set(
+    'migrationDomainStage/'+snapshot+'/letters/'+hash('letter:'+id),{
+      sourceId:id,subject:'Letter '+id,content:'Message '+id,
+      createdAt:'2026-11-15T12:00:00Z',deletedAt:null,
+      publicationState:'delivered',senderUid:'user-other',
+      recipientHouseId:'house-a',recipientPlayerId:null,
+      ...overrides,
+    });
+  addLetter('to-a');
+  addLetter('to-b',{recipientHouseId:'house-b'});
+  addLetter('to-person',{recipientHouseId:null,recipientPlayerId:'player-a'});
+  addLetter('own-sent',{senderUid:'user-1',recipientHouseId:'house-b'});
+  addLetter('draft',{publicationState:'draft'});
+  addLetter('deleted',{deletedAt:'2026-11-16T00:00:00Z'});
+  addLetter('ambiguous',{recipientHouseId:'house-a',recipientPlayerId:'player-a'});
+  const paperRoot='migrationNewspaperRuntimeStage/'+snapshot+'/editions/';
+  docs.set(paperRoot+'published',{
+    id:'published',editionNo:2,title:'A Folha Sem Selo',subtitle:'Capa',
+    state:'published',blocks:[{text:'Edição pública'}],
+    publishedAt:'2026-11-15T13:00:00Z',cancelledAt:null,
+  });
+  docs.set(paperRoot+'private',{
+    id:'private',editionNo:3,title:'Rascunho secreto',subtitle:'Não divulgar',
+    state:'draft',blocks:[{text:'Privado'}],publishedAt:null,cancelledAt:null,
+  });
+  const spies='migrationSpyStage/'+snapshot+'/assets/';
+  docs.set(spies+'own',{id:'own',codename:'Agente A',ownerHouseId:'house-a',
+    status:'available',missionSuccesses:3,portraitId:null});
+  docs.set(spies+'other',{id:'other',codename:'Agente B',ownerHouseId:'house-b',
+    status:'operating',missionSuccesses:1,portraitId:null});
   const node=path=>({
     collection:name=>node(path?path+'/'+name:name),
     doc:id=>node(path+'/'+id),
@@ -128,4 +160,50 @@ test('Invalid group scopes are not trusted, and missing house sheet fails closed
   f.docs.set('migrationDomainStage/'+snapshot+'/access/user-1',scope('jogador'));
   f.docs.delete('migrationNobleHouseStage/'+snapshot+'/sheets/'+hash('noble-sheet:house-a'));
   await rejects(()=>f.service().getHouse(token,'house-a'),'house_sheet_unavailable',404);
+});
+
+test('Mailbox includes delivered own correspondence and excludes other-house, drafts, deleted and ambiguous',async()=>{
+  const f=fixture('jogador');
+  const messages=await f.service().listMailbox(token);
+  assert.equal(messages.totalVisible,3);
+  assert.equal(messages.items.length,3);
+  assert.deepEqual(new Set(messages.items.map(m=>m.id)),
+    new Set(['to-a','to-person','own-sent']));
+  assert.ok(messages.items.every(m=>!('publicationState' in m)));
+  const editor=fixture('editor');
+  await rejects(()=>editor.service().listMailbox(token),'access_denied',403);
+});
+
+test('Newspaper reveals published contents but never drafts or revisions',async()=>{
+  const f=fixture('jogador');
+  const summary=await f.service().listNewspaper(token);
+  assert.equal(summary.items.length,1);
+  assert.equal(summary.items[0].id,'published');
+  const paper=await f.service().getNewspaper(token,'published');
+  assert.deepEqual(paper.blocks,[{text:'Edição pública'}]);
+  await rejects(()=>f.service().getNewspaper(token,'private'),'edition_unavailable',404);
+  await rejects(()=>f.service().getNewspaper(token,'/private'),'invalid_edition',400);
+});
+
+test('Spy agent list requires authorized house; editorial user is denied',async()=>{
+  const f=fixture('jogador');
+  const mine=await f.service().listSpyAgents(token,'house-a');
+  assert.equal(mine.items.length,1);
+  assert.equal(mine.items[0].codename,'Agente A');
+  await rejects(()=>f.service().listSpyAgents(token,'house-b'),'access_denied',403);
+  const editor=fixture('editor');
+  await rejects(()=>editor.service().listSpyAgents(token,'house-a'),'access_denied',403);
+  const narrator=fixture('narrador');
+  assert.equal((await narrator.service().listSpyAgents(token,'house-b')).items.length,1);
+});
+
+test('Incomplete protected newspaper and spy stages fail closed',async()=>{
+  const f=fixture();
+  f.docs.set('migrationNewspaperRuntimeStage/'+snapshot,
+    {status:'incomplete',private:true});
+  await rejects(()=>f.service().listNewspaper(token),'migration_stage_not_ready',503);
+  f.docs.set('migrationSpyStage/'+snapshot,
+    {status:'incomplete',private:true});
+  await rejects(()=>f.service().listSpyAgents(token,'house-a'),
+    'migration_stage_not_ready',503);
 });
