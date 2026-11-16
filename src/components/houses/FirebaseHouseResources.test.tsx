@@ -71,6 +71,18 @@ describe('Firebase Cloud — recursos e Tesouro por Casa',()=>{
     expect(screen.getByText('<img src=x onerror=attack()>')).toBeInTheDocument();
     expect(container.querySelector('script,img')).toBeNull();
   });
+  it('trata nomes de propriedades herdadas como texto, sem renderizar funções ou objetos',()=>{
+    const unusual=readFirebaseHouseResources({
+      method:'constructor',phase:'toString',
+    });
+    expect(unusual.method).toBe('constructor');
+    expect(unusual.phase).toBe('toString');
+    const {container}=render(<FirebaseHouseResources houseName="Evenhand"
+      state={{method:'__proto__',phase:'constructor'}}/>);
+    expect(screen.getByText('__proto__')).toBeInTheDocument();
+    expect(screen.getByText('constructor')).toBeInTheDocument();
+    expect(container.querySelector('button,form,input')).toBeNull();
+  });
   it('não modifica o snapshot ao preparar a apresentação',()=>{
     const original=structuredClone(state);
     readFirebaseHouseResources(state);
