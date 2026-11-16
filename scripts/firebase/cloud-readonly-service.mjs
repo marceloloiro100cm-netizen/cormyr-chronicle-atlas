@@ -7,6 +7,7 @@
  */
 import {createHash} from 'node:crypto';
 import {canAcknowledgeMail,mailReceiptId} from './cloud-mail-receipt-core.mjs';
+import {cloudReplyRoute} from './cloud-mail-reply-core.mjs';
 
 const SNAPSHOT=/^[a-f0-9]{64}$/;
 const SAFE_ID=/^[^/\u0000-\u001f]{1,128}$/;
@@ -204,6 +205,17 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
           createdAt:v.createdAt,campaignDate:v.campaignDate??null,
           deliveredAt:v.deliveredAt??null,
           canMarkRead:Boolean(canMarkRead),readAt,
+          // Only the current authorized recipient can initiate a reply.
+          canReply:Boolean(liveStatus.exists&&
+            liveStatus.data()?.status==='active'&&
+            liveStatus.data()?.private===true&&
+            liveStatus.data()?.sourceSnapshotId===snapshotId&&
+            liveStatus.data()?.sourceSnapshotReconciled===true&&
+            liveStatus.data()?.mailWriteApproved===true&&
+            liveStatus.data()?.applicationEnabled===true&&
+            cloudReplyRoute({
+              uid:scope.uid,role:scope.profile,editHouses:scope.editHouseIds,
+            },v,snapshotId)),
         };
       }));
       if(Buffer.byteLength(JSON.stringify(items),'utf8')>700_000)
