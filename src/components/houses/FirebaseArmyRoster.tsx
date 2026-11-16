@@ -62,8 +62,8 @@ export function readFirebaseMilitaryRoster(state:Record<string,unknown>):Roster{
       situation:asText(value.situation),
       origin:asText(value.origin),
       health:count(value.health),xp:count(value.xp),
-      equipment:Array.isArray(value.equipment)
-        ?value.equipment.filter((x):x is string=>typeof x==='string').slice(0,20):[],
+      equipment:Array.isArray(value['equipment'])
+        ?value['equipment'].filter((x):x is string=>typeof x==='string').slice(0,20):[],
       skills:skillList,
     }];
   });
