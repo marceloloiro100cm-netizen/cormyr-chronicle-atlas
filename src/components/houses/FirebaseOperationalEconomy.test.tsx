@@ -13,9 +13,10 @@ const view:OperationalEconomyView={
     available:{...zeros,defense:60}},
   holdingsTotal:1,projectsTotal:1,partial:false,
   holdings:[{id:'h1',itemId:'tower',name:'<img src=x onerror=attack()>',
-    domainId:'d1',status:'building'}],
+    domainId:'d1',domainName:'Vale',status:'building'}],
   projects:[{id:'p1',name:'Torre nova',holdingId:'h1',
-    status:'building',start:18265,duration:3,modifier:0}],
+    holdingName:'Torre do Vale',status:'building',
+    start:18265,duration:3,modifier:0}],
 };
 describe('Firebase — visão operacional da Casa',()=>{
   it('mostra recursos atualizados sem controles de compra',()=>{
@@ -26,6 +27,7 @@ describe('Firebase — visão operacional da Casa',()=>{
     expect(screen.getByText('90')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Posses atualizadas · 1 exibidas'));
     expect(screen.getByText('<img src=x onerror=attack()>')).toBeInTheDocument();
+    expect(screen.getByText('Domínio: Vale')).toBeInTheDocument();
     expect(container.querySelector('img')).toBeNull();
     expect(container.querySelector('button')).toBeNull();
     expect(container.querySelector('form')).toBeNull();

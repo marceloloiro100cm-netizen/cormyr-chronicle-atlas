@@ -111,7 +111,9 @@ describe('Firebase Cloud — economia operacional somente leitura',()=>{
     expect(result.holdingsTotal).toBe(1);
     expect(result.projectsTotal).toBe(1);
     expect(result.holdings[0]?.name).toBe('Torre do Vale');
+    expect(result.holdings[0]?.domainName).toBe('Vale');
     expect(result.projects[0]?.name).toBe('Torre do Vale');
+    expect(result.projects[0]?.holdingName).toBe('Torre do Vale');
     const serialized=JSON.stringify(result);
     for(const secret of ['NÃO EXPOR','privateMetadata','adminUid',
       'sourceStateHash','actorUid','origem sigilosa','treasury','UID'])
@@ -158,6 +160,24 @@ describe('Firebase Cloud — economia operacional somente leitura',()=>{
     await denies(()=>f.service().getHouse(token,'house-a'),
       'operational_economy_unavailable',503);
     f.docs.set(f.op,{...op,version:0});
+    await denies(()=>f.service().getHouse(token,'house-a'),
+      'operational_economy_unavailable',503);
+    expect(f.writes()).toBe(0);
+  });
+  it('não publica projetos com identidade ou situação indefinida',async()=>{
+    const f=fixture(),original=f.docs.get(f.op)!;
+    const invalid=structuredClone(original);
+    const state=invalid['state'] as typeof f.state;
+    state.projects[0]!.name='';
+    invalid['stateHash']=constructionStateHash(state);
+    f.docs.set(f.op,invalid);
+    await denies(()=>f.service().getHouse(token,'house-a'),
+      'operational_economy_unavailable',503);
+    const wrong=structuredClone(original);
+    (wrong['state'] as typeof f.state).projects[0]!.status='cancelled';
+    (wrong['state'] as typeof f.state).projects[0]!.id='';
+    wrong['stateHash']=constructionStateHash(wrong['state']);
+    f.docs.set(f.op,wrong);
     await denies(()=>f.service().getHouse(token,'house-a'),
       'operational_economy_unavailable',503);
     expect(f.writes()).toBe(0);

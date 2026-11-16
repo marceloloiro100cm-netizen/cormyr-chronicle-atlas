@@ -4,7 +4,8 @@
 
 O portal `/firebase-access` agora inclui um painel próprio **Economia operacional · Firebase**, sem substituir ou reescrever a ficha histórica. O endpoint `POST /api/firebase-operational-economy` recebe apenas `{"action":"getHouse","houseId":"..."}` via Firebase Auth e retorna uma projeção **somente leitura** do documento operacional autenticado da Casa.
 
-A resposta divulga exclusivamente: identificador da Casa, versões da ficha de origem e operacional, mês canônico; sete recursos (total, alocado, comprometido, disponível), totais de posses/projetos e até 100 registros reduzidos de cada tipo (ID, nome, status e vínculos não sensíveis). Nunca retorna `state` inteiro, auditoria, UIDs, `sourceStateHash`, notas privadas, registros de corte ou espionagem, dados de outra Casa ou atributos de jogadores.
+A resposta divulga exclusivamente: identificador da Casa, versões da ficha de origem e operacional, mês canônico; sete recursos (total, alocado, comprometido, disponível), totais de posses/projetos e até 100 registros reduzidos de cada tipo (ID, nome, status e vínculos não sensíveis).
+Os vínculos apresentam o nome do domínio da posse e o nome da posse associada ao projeto **somente a partir do estado da própria Casa já autorizado**, sem consultas externas. Nunca retorna `state` inteiro, auditoria, UIDs, `sourceStateHash`, notas privadas, registros de corte ou espionagem, dados de outra Casa ou atributos de jogadores.
 
 ## Portões de leitura independentes
 
@@ -25,6 +26,7 @@ A resposta divulga exclusivamente: identificador da Casa, versões da ficha de o
 ## Testes
 
 - `src/lib/house/firebase-operational-economy-read.test.ts`: saldo pós-compra em estado sintético, privacidade, ausência de mutação, autorização Narrador/Jogador/Editor, cross-House, fontes adulteradas, flags independentes e calendário.
+- Integridade complementar: projeto sem ID, nome, estado conhecido ou prazo inteiro é recusado mesmo quando o hash do documento é válido; nomes dos vínculos são derivados exclusivamente do mesmo snapshot.
 - `src/components/houses/FirebaseOperationalEconomy.test.tsx`: apresentação, falha fechada por Casa, renderização segura de texto e ausência de botões de compra.
 
 ## Sem alteração de produção
