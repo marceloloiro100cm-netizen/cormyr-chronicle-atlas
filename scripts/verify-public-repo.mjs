@@ -33,7 +33,7 @@ const firebasePrivateGm=gm.includes('readFirebaseNarratorContent')&&
   privateGm.includes('migrationPrivateGmStage')&&
   privateGm.includes('privateGmReadApproved')&&
   privateGm.includes('createFirebaseCloudReadonly')&&
-  privateGm.includes("role.profile!=='narrador'")&&
+  privateGm.includes("role['profile']!=='narrador'")&&
   privateGm.includes('sourceSnapshotReconciled')&&
   privateGm.includes('gm:atlas');
 if(gm.includes('gm-content.json')||(!legacyPrivateGm&&!firebasePrivateGm))
