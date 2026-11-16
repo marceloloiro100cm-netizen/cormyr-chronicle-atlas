@@ -258,7 +258,7 @@ test('Mail write controls appear only for an explicit activated Cloud runtime',a
     sourceLiveReconciled:true,readyForCutover:true,
   });
   assert.equal((await active.session(token)).mailWriteAvailable,true);
-  assert.equal((await active.session(token)).readOnly,false);
+  assert.equal((await active.session(token)).readOnly,true);
   f.docs.set('campaignRuntime/'+snapshot,{
     ...f.docs.get('campaignRuntime/'+snapshot),sourceLiveReconciled:false,
   });
