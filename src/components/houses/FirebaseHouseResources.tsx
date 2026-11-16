@@ -123,13 +123,13 @@ export function FirebaseHouseResources({houseName,state}:{
       </p>}
     <p className="text-sm">
       Base e permanente são parcelas registradas, não o saldo disponível.
-      A apuração oficial também depende de construções, exército, bônus,
-      consequências de missivas e regras vigentes; por segurança, este
-      painel não calcula ou presume esses valores.
+      O quadro seguinte mostra a apuração oficial apenas quando a ficha
+      completa pode ser validada pelo motor de regras original.
     </p>
     <p className="text-xs opacity-70">
-      Consulta somente leitura. Não permite compras, ajustes de recursos,
-      lançamentos no Tesouro ou alterações na ficha.
+      Este quadro preserva os valores históricos e não permite mutações.
+      Lançamentos do Tesouro operacional, quando autorizados, são registrados
+      separadamente e não substituem o snapshot desta ficha.
     </p>
   </section>;
 }
