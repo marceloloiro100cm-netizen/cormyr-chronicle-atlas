@@ -1,5 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {useEffect,useState,type FormEvent} from 'react';
+import {runFirebaseRoleSelfAcceptance}
+  from '@/lib/auth/firebase-role-self-acceptance';
 import {createFirebaseRestAuth} from '@/integrations/auth/firebase-rest-auth';
 import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
 import {FirebaseNewspaperReader} from '@/components/newspaper/FirebaseNewspaperReader';
@@ -234,6 +236,8 @@ function FirebaseAccess(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
   const [view,setView]=useState<SessionView|null>(null);
+  const [roleCheck,setRoleCheck]=useState<
+    Awaited<ReturnType<typeof runFirebaseRoleSelfAcceptance>>|null>(null);
   const [houses,setHouses]=useState<House[]>([]);
   const [house,setHouse]=useState<HouseView|null>(null);
   const [calendar,setCalendar]=useState<Calendar|null>(null);
@@ -309,7 +313,7 @@ function FirebaseAccess(){
 
   async function submit(event:FormEvent){
     event.preventDefault();
-    setBusy(true);setMessage('');
+    setBusy(true);setMessage('');setRoleCheck(null);
     try{
       const auth=firebaseAuth();
       if(!auth)throw Error('Configuração Firebase indisponível.');
@@ -320,6 +324,23 @@ function FirebaseAccess(){
       firebaseAuth()?.signOut();
       setView(null);
       setMessage('Não foi possível autorizar este acesso no Firebase. Confira sua conta e as permissões.');
+    }finally{setBusy(false);}
+  }
+
+  async function checkOwnRole(){
+    if(!view)return;
+    setBusy(true);setRoleCheck(null);
+    try{
+      const token=await firebaseAuth()?.getToken();
+      if(!token)throw Error('Sessão Firebase indisponível.');
+      const report=await runFirebaseRoleSelfAcceptance({
+        token,session:view,houses,
+      });
+      setRoleCheck(report);
+    }catch{
+      setRoleCheck({passed:false,scope:view.profile,checks:[
+        {label:'Verificação indisponível',passed:false,httpStatus:null},
+      ]});
     }finally{setBusy(false);}
   }
 
@@ -488,7 +509,7 @@ function FirebaseAccess(){
 
   function signOut(){
     firebaseAuth()?.signOut();
-    setView(null);setHouse(null);setHouseReconciliation(null);
+    setView(null);setHouse(null);setHouseReconciliation(null);setRoleCheck(null);
     setHouses([]);setCalendar(null);
     setInbox(null);setEditions([]);setEdition(null);setAgents(null);
     setDossiers(null);
@@ -533,6 +554,29 @@ function FirebaseAccess(){
         <button type="button" className="rounded border px-3 py-1"
           onClick={signOut}>Sair</button>
       </div>
+      <section className="rounded border border-current/25 p-3 space-y-2"
+        aria-label="Teste de isolamento Firebase da conta atual">
+        <h2 className="font-semibold">Homologação de acesso desta conta</h2>
+        <p className="text-xs">Comprova respostas reais do Firebase, incluindo
+          bloqueio anônimo e acesso ou recusa entre Casas. Não libera
+          automaticamente outros jogadores ou a produção.</p>
+        <button type="button" disabled={busy}
+          className="rounded border px-3 py-1 text-sm"
+          onClick={()=>void checkOwnRole()}>Testar permissões agora</button>
+        {roleCheck&&<div role="status" className="text-sm space-y-1">
+          <p><strong>{roleCheck.passed
+            ?'Esta conta passou nos testes.'
+            :'Acesso desta conta não homologado.'}</strong></p>
+          <ul className="list-disc pl-5">
+            {roleCheck.checks.map((check,index)=><li key={index}>
+              {check.passed?'Aprovado':'Pendente'}: {check.label}
+              {check.httpStatus!==null?' (HTTP '+check.httpStatus+')':''}
+            </li>)}
+          </ul>
+          <p className="text-xs">O relatório fica somente nesta sessão,
+            não grava tokens, UIDs ou conteúdo de outras Casas.</p>
+        </div>}
+      </section>
       {view.profile==='narrador'&&
         <FirebaseHouseReconciliationOverview houses={houses}
           inspect={cloudHouseReconciliation}
