@@ -34,6 +34,46 @@ export async function loadSeasonHouses(src: HouseSource): Promise<SeasonHousesRe
   return { houses, errors };
 }
 
+
+/**
+ * Public House selector from the single, approved Firebase catalogue API.
+ * The selector is visual only: server-side Firebase Auth / House access rules
+ * never trust the selected ID or the profile chosen in the login form.
+ * No Supabase RPC, credentials, cookies or bearer tokens are sent.
+ */
+export async function loadFirebasePublicSeasonHouses(
+  fetcher:typeof fetch=fetch,
+):Promise<SeasonHousesResult>{
+  const unavailable:SeasonHousesResult={
+    houses:[],errors:['Lista pública de Casas indisponível no momento.'],
+  };
+  try{
+    const response=await fetcher('/api/public/catalog',{
+      method:'GET',credentials:'omit',cache:'no-store',redirect:'error',
+      headers:{Accept:'application/json'},
+    });
+    const type=response.headers.get('content-type')?.toLowerCase()??'';
+    const length=response.headers.get('content-length');
+    if(!response.ok||!type.startsWith('application/json')||
+       (length!==null&&(!/^\\d+$/.test(length)||Number(length)>700_000)))
+      return unavailable;
+    const payload:unknown=await response.json();
+    if(!payload||typeof payload!=='object'||Array.isArray(payload))
+      return unavailable;
+    const value=payload as {houses?:unknown;playerHouses?:unknown};
+    if(!Array.isArray(value.houses)||value.houses.length>250||
+       !Array.isArray(value.playerHouses)||value.playerHouses.length>250)
+      return unavailable;
+    return loadSeasonHouses({
+      catalog:()=>Promise.resolve({data:value.houses,error:null}),
+      playerHouses:()=>Promise.resolve({data:value.playerHouses,error:null}),
+    });
+  }catch{
+    // Never echo error bodies, provider details, UIDs or Authorization values.
+    return unavailable;
+  }
+}
+
 export function loginErrorMessage(raw: unknown): string {
   const msg = raw instanceof Error ? raw.message : String((raw as { message?: unknown })?.message ?? raw ?? '');
   if (/invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.';
