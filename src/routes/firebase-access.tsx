@@ -1,5 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
-import {useEffect,useState,type FormEvent} from 'react';
+import {useEffect,useRef,useState,type FormEvent} from 'react';
 import {createFirebaseRestAuth} from '@/integrations/auth/firebase-rest-auth';
 import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
 
@@ -27,6 +27,8 @@ type EditionSummary={id:string;title:string;subtitle:string;editionNo:number;
   publishedAt:string;campaignDate:string|null};
 type Edition={id:string;title:string;subtitle:string;blocks:unknown[];editionNo:number};
 type SpyAgent={id:string;codename:string;status:string;missionSuccesses:number};
+type ComposeStatus={ready:boolean;canCompose:boolean;originHouseIds:string[];readOnly:boolean};
+type MailSent={id:string;duplicate:boolean;delivered:boolean};
 
 let singleton:Auth|null=null;
 
@@ -76,6 +78,26 @@ async function readCloud<T>(action:'session'|'listHouses'|'getHouse'|'getCalenda
   return (body as {result:T}).result;
 }
 
+async function mailCloud<T>(payload:Record<string,unknown>):Promise<T>{
+  const token=await firebaseAuth()?.getToken();
+  if(!token)throw Error('É necessário entrar novamente com o Firebase Auth.');
+  const response=await fetch('/api/firebase-cloud-mail',{
+    method:'POST',credentials:'omit',cache:'no-store',
+    headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+    body:JSON.stringify(payload),
+  });
+  if(!response.ok){
+    if(response.status===429)throw Error('Aguarde alguns segundos antes de enviar outra carta.');
+    if(response.status===409)throw Error('Este pedido foi alterado. Revise a mensagem.');
+    if(response.status===403)throw Error('Você não possui autorização para enviar esta missiva.');
+    throw Error('Envio Firebase ainda não liberado ou indisponível.');
+  }
+  const data:unknown=await response.json();
+  if(!data||typeof data!=='object'||!('result' in data))
+    throw Error('Resposta inválida do Firebase.');
+  return (data as {result:T}).result;
+}
+
 function FirebaseAccess(){
   const [configured]=useState(()=>firebaseAuth()!==null);
   const [email,setEmail]=useState('');
@@ -90,6 +112,12 @@ function FirebaseAccess(){
   const [editions,setEditions]=useState<EditionSummary[]>([]);
   const [edition,setEdition]=useState<Edition|null>(null);
   const [agents,setAgents]=useState<SpyAgent[]|null>(null);
+  const [compose,setCompose]=useState<ComposeStatus|null>(null);
+  const [mailOrigin,setMailOrigin]=useState('');
+  const [mailRecipient,setMailRecipient]=useState('');
+  const [mailSubject,setMailSubject]=useState('');
+  const [mailBody,setMailBody]=useState('');
+  const operationKey=useRef<string|null>(null);
 
   async function load(){
     const profile=await readCloud<SessionView>('session');
@@ -106,6 +134,7 @@ function FirebaseAccess(){
     setCalendar(date);
     setInbox(letters);
     setEditions(papers?.items??[]);
+    setCompose(await mailCloud<ComposeStatus>({action:'status'}).catch(()=>null));
   }
 
   useEffect(()=>{
@@ -148,6 +177,28 @@ function FirebaseAccess(){
     finally{setBusy(false);}
   }
 
+  async function submitMail(event:FormEvent){
+    event.preventDefault();
+    if(!compose?.canCompose||busy)return;
+    setBusy(true);setMessage('');
+    try{
+      // Keep one stable key across network retries to prevent double send.
+      operationKey.current??=crypto.randomUUID();
+      const status=await mailCloud<MailSent>({
+        action:'send',requestKey:operationKey.current,
+        originHouseId:view?.profile==='narrador'?null:mailOrigin,
+        recipient:mailRecipient,subject:mailSubject,content:mailBody,
+      });
+      if(!status.delivered)throw Error('A missiva não foi confirmada.');
+      operationKey.current=null;
+      setMailSubject('');setMailBody('');
+      setInbox(await readCloud<Inbox>('listMailbox'));
+      setMessage('Missiva entregue pelo Firebase.');
+    }catch(e){
+      setMessage(e instanceof Error?e.message:'Não foi possível enviar a missiva.');
+    }finally{setBusy(false);}
+  }
+
   async function openEdition(id:string){
     setBusy(true);setMessage('');setEdition(null);
     try{setEdition(await readCloud<Edition>('getNewspaper',undefined,id));}
@@ -158,15 +209,17 @@ function FirebaseAccess(){
   function signOut(){
     firebaseAuth()?.signOut();
     setView(null);setHouse(null);setHouses([]);setCalendar(null);
-    setInbox(null);setEditions([]);setEdition(null);setAgents(null);setEmail('');
+    setInbox(null);setEditions([]);setEdition(null);setAgents(null);
+    setCompose(null);setMailOrigin('');setMailRecipient('');setMailSubject('');
+    setMailBody('');operationKey.current=null;setEmail('');
     setPassword('');setMessage('');
   }
 
   return <main className="mx-auto max-w-4xl p-6 space-y-5 text-foreground">
     <header className="space-y-2">
       <h1 className="text-2xl font-semibold">Cormyr — acesso Firebase</h1>
-      <p className="text-sm">Prévia somente leitura. Sem Supabase. Os dados vêm de um
-        snapshot privado e ainda não são atualizados em tempo real.</p>
+      <p className="text-sm">Portal exclusivo Firebase. As consultas históricas vêm de
+        um snapshot privado; o envio de novas missivas exige liberação operacional independente.</p>
     </header>
     {!configured&&<p role="alert">A configuração pública do Firebase Auth ainda
       não foi disponibilizada neste ambiente.</p>}
@@ -219,6 +272,45 @@ function FirebaseAccess(){
             {a.codename} — {a.status} · {a.missionSuccesses} sucessos
           </li>)}</ul>}
       </section>}
+      {compose?.ready&&compose.canCompose&&<form onSubmit={submitMail}
+        className="rounded border p-4 space-y-3">
+        <h2 className="text-lg font-semibold">Escrever missiva</h2>
+        {view?.profile==='jogador'&&<label className="block text-sm">
+          Casa remetente
+          <select required className="block w-full rounded border p-2"
+            value={mailOrigin} disabled={busy}
+            onChange={e=>{setMailOrigin(e.target.value);operationKey.current=null;}}>
+            <option value="">Escolha uma Casa autorizada</option>
+            {houses.filter(h=>compose.originHouseIds.includes(h.id))
+              .map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+        </label>}
+        <label className="block text-sm">Destinatário
+          <select required className="block w-full rounded border p-2"
+            value={mailRecipient} disabled={busy}
+            onChange={e=>{setMailRecipient(e.target.value);operationKey.current=null;}}>
+            <option value="">Escolha o destinatário</option>
+            {view?.profile==='jogador'&&<option value="narrator">Narrador</option>}
+            {houses.map(h=><option key={h.id} value={`h:${h.id}`}>{h.name}</option>)}
+          </select>
+        </label>
+        <label className="block text-sm">Assunto
+          <input className="block w-full rounded border p-2" required
+            maxLength={180} value={mailSubject} disabled={busy}
+            onChange={e=>{setMailSubject(e.target.value);operationKey.current=null;}}/>
+        </label>
+        <label className="block text-sm">Mensagem
+          <textarea className="block w-full min-h-40 rounded border p-2" required
+            maxLength={12000} value={mailBody} disabled={busy}
+            onChange={e=>{setMailBody(e.target.value);operationKey.current=null;}}/>
+        </label>
+        <p className="text-xs">A missiva é entregue individualmente; ainda não
+          há envio múltiplo nem agendamento neste portal.</p>
+        <button type="submit" disabled={busy||
+          !mailRecipient||!mailSubject.trim()||!mailBody.trim()||
+          view?.profile==='jogador'&&!mailOrigin}
+          className="rounded border px-4 py-2">{busy?'Enviando…':'Enviar missiva'}</button>
+      </form>}
       {inbox&&<section className="rounded border p-4 space-y-2">
         <h2 className="text-lg font-semibold">Missivas entregues</h2>
         <p className="text-xs">Exibindo {inbox.items.length} de {inbox.totalVisible}
