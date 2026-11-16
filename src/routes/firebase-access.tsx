@@ -13,6 +13,8 @@ import {FirebaseConstructionQuote,type ConstructionQuoteView}
 import {FirebaseHouseCourtDomains} from '@/components/houses/FirebaseHouseCourtDomains';
 import {FirebaseHouseResources} from '@/components/houses/FirebaseHouseResources';
 import {FirebaseHouseBalances} from '@/components/houses/FirebaseHouseBalances';
+import {FirebaseOperationalHouseEconomy} from '@/components/houses/FirebaseOperationalHouseEconomy';
+import type {OperationalEconomyResponse} from '@/lib/house/firebase-operational-house-read';
 import {FirebaseHouseChronicle} from '@/components/houses/FirebaseHouseChronicle';
 
 /**
@@ -172,6 +174,21 @@ async function cloudTreasury<T>(input:Record<string,unknown>):Promise<T>{
   return (payload as {result:T}).result;
 }
 
+async function cloudOperationalHouseEconomy(houseId:string):Promise<OperationalEconomyResponse>{
+  const token=await firebaseAuth()?.getToken();
+  if(!token)throw Error('Entre novamente com sua conta Firebase.');
+  const response=await fetch('/api/firebase-cloud-house-economy',{
+    method:'POST',credentials:'omit',cache:'no-store',
+    headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+    body:JSON.stringify({action:'summary',houseId}),
+  });
+  if(!response.ok)throw Error('Leitura econômica operacional indisponível.');
+  const body:unknown=await response.json();
+  if(!body||typeof body!=='object'||!('result' in body))
+    throw Error('Resposta operacional inválida.');
+  return (body as {result:OperationalEconomyResponse}).result;
+}
+
 async function cloudHouseQuote(input:Record<string,unknown>):Promise<ConstructionQuoteView>{
   const token=await firebaseAuth()?.getToken();
   if(!token)throw Error('Entre novamente com sua conta Firebase.');
@@ -200,6 +217,7 @@ function FirebaseAccess(){
   const [view,setView]=useState<SessionView|null>(null);
   const [houses,setHouses]=useState<House[]>([]);
   const [house,setHouse]=useState<HouseView|null>(null);
+  const [operationalEconomy,setOperationalEconomy]=useState<OperationalEconomyResponse|null>(null);
   const [calendar,setCalendar]=useState<Calendar|null>(null);
   const [inbox,setInbox]=useState<Inbox|null>(null);
   const [editions,setEditions]=useState<EditionSummary[]>([]);
@@ -286,14 +304,14 @@ function FirebaseAccess(){
   }
 
   async function selectHouse(id:string){
-    setBusy(true);setMessage('');setHouse(null);
+    setBusy(true);setMessage('');setHouse(null);setOperationalEconomy(null);
     setAgents(null);setDossiers(null);
     setTreasuryStatus(null);setTreasurySummary(null);
     setTreasuryDelta('');setTreasuryReason('');
     setTreasuryKey(typeof crypto!=='undefined'&&
       typeof crypto.randomUUID==='function'?crypto.randomUUID():null);
     try{
-      const [selected,spy,intelligence,treasury,summary]=await Promise.all([
+      const [selected,spy,intelligence,treasury,summary,economy]=await Promise.all([
         readCloud<HouseView>('getHouse',id),
         readCloud<{items:SpyAgent[]}>('listSpyAgents',id).catch(()=>null),
         readCloud<SpyDossierCatalog>('listSpyDossiers',id).catch(()=>null),
@@ -303,12 +321,14 @@ function FirebaseAccess(){
         view?.profile==='jogador'
           ?cloudTreasury<TreasurySummary>({action:'summary',houseId:id}).catch(()=>null)
           :Promise.resolve(null),
+        cloudOperationalHouseEconomy(id).catch(()=>null),
       ]);
       setHouse(selected);
       setAgents(spy?.items??null);
       setDossiers(intelligence);
       setTreasuryStatus(treasury);
       setTreasurySummary(summary);
+      setOperationalEconomy(economy);
     }catch(e){setMessage(e instanceof Error?e.message:'Falha na leitura da Casa.');}
     finally{setBusy(false);}
   }
@@ -443,7 +463,8 @@ function FirebaseAccess(){
 
   function signOut(){
     firebaseAuth()?.signOut();
-    setView(null);setHouse(null);setHouses([]);setCalendar(null);
+    setView(null);setHouse(null);setOperationalEconomy(null);
+    setHouses([]);setCalendar(null);
     setInbox(null);setEditions([]);setEdition(null);setAgents(null);
     setDossiers(null);
     setMailStatus(null);setPaperStatus(null);setPaperTitle('');
@@ -500,6 +521,7 @@ function FirebaseAccess(){
         {house&&<FirebaseHouseSheet sheet={house}/>}
         {house&&<FirebaseHouseResources houseName={house.name} state={house.state}/>}
         {house&&<FirebaseHouseBalances houseName={house.name} state={house.state}/>}
+        {house&&<FirebaseOperationalHouseEconomy summary={operationalEconomy}/>}
         {house&&view.profile==='jogador'&&
           <section aria-label="Tesouro operacional da Casa"
             className="rounded border border-current/25 p-4 space-y-2">
