@@ -137,21 +137,21 @@ describe('Firebase Cloud — compra transacional bloqueada por padrão',()=>{
     expect(result.version).toBe(1);
     expect(result.dice).toEqual(Array(10).fill(2));
     const op=f.docs.get(f.opPath)!;
-    expect(op.version).toBe(1);
-    const state=op.state as typeof f.source;
+    expect(op['version']).toBe(1);
+    const state=op['state'] as typeof f.source;
     expect(state.holdings).toHaveLength(1);
     expect(state.holdings[0]?.itemId).toBe('tower');
     expect(state.holdings[0]?.status).toBe('building');
     expect(state.projects).toHaveLength(1);
-    expect(op.stateHash).toBe(constructionStateHash(state));
+    expect(op['stateHash']).toBe(constructionStateHash(state));
     expect(f.docs.get(root('migrationNobleHouseStage')+
       '/sheets/'+id('noble-sheet:house-a'))).toEqual(original);
     const audit=f.docs.get(root('campaignCloudRuntime')+
       '/houseConstructionAudits/'+result.id)!;
-    expect(audit.actorUid).toBe(uid);
-    expect(audit.houseId).toBe('house-a');
-    expect(audit.dice).toEqual(Array(10).fill(2));
-    expect(audit.beforeStateHash).toBe(audit.sourceStateHash);
+    expect(audit['actorUid']).toBe(uid);
+    expect(audit['houseId']).toBe('house-a');
+    expect(audit['dice']).toEqual(Array(10).fill(2));
+    expect(audit['beforeStateHash']).toBe(audit['sourceStateHash']);
     expect(f.writes()).toBe(2);
   });
   it('replay idempotente não cria segunda obra; key e CAS conflitantes falham',async()=>{
@@ -196,8 +196,8 @@ describe('Firebase Cloud — compra transacional bloqueada por padrão',()=>{
       'construction_runtime_not_approved',503);
     f.docs.set(root('campaignCloudRuntime'),runtime);
     const changed=structuredClone(op);
-    (changed.state as typeof f.source).month--;
-    changed.stateHash=constructionStateHash(changed.state);
+    (changed['state'] as typeof f.source).month--;
+    changed['stateHash']=constructionStateHash(changed['state']);
     f.docs.set(f.opPath,changed);
     await rejected(()=>f.service().purchase('long-firebase-token',f.input()),
       'construction_source_not_reconciled',503);
