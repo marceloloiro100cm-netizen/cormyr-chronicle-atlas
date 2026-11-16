@@ -215,7 +215,7 @@ test('Cloud runtime delivered mail is visible only to sender, Narrator and desti
   f.docs.set('campaignRuntime/'+snapshot,{
     status:'active',mode:'firebase-only',private:true,
     sourceSnapshotId:snapshot,writesEnabled:true,
-    sourceLiveReconciled:true,readyForCutover:true,
+    sourceLiveReconciled:true,readyForCutover:true,calendarVersion:5,
   });
   const root='campaignRuntime/'+snapshot+'/letters/';
   const make=(id,target,source={})=>({
@@ -255,7 +255,7 @@ test('Mail write controls appear only for an explicit activated Cloud runtime',a
   f.docs.set('campaignRuntime/'+snapshot,{
     status:'active',mode:'firebase-only',private:true,
     sourceSnapshotId:snapshot,writesEnabled:true,
-    sourceLiveReconciled:true,readyForCutover:true,
+    sourceLiveReconciled:true,readyForCutover:true,calendarVersion:5,
   });
   assert.equal((await active.session(token)).mailWriteAvailable,true);
   assert.equal((await active.session(token)).readOnly,true);
