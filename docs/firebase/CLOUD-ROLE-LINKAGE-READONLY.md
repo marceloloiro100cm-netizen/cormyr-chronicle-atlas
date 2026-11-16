@@ -32,14 +32,16 @@ temporário permanece na memória do processo e não é gravado.
 ## Limites de segurança
 
 - Consultas estritamente GET: listagem de metadados de **um único** snapshot,
-  listagem de no máximo 1000 contas Auth e listagem de no máximo 1000
-  documentos de perfil do snapshot.
+  listagem de no máximo 1000 contas Auth, listagem de no máximo 1000
+  documentos de perfil e até 250 documentos de Casas no mesmo snapshot.
 - A chamada Identity Toolkit usa `X-Goog-User-Project: cormyr`. O Firestore
   conserva o cabeçalho padrão; nenhuma URL, projeto ou snapshot externo é
   fornecido por argumentos.
 - A leitura de perfis aplica máscara somente aos campos `userId`, `profile`,
   `active`, `admin`, `requirePasswordChange`, `memberHouseIds` e
-  `editHouseIds`; não lê conteúdo narrativo, cartas, finanças ou mídia.
+  `editHouseIds`; a quarta leitura usa somente `sourceId`, `active` e
+  `season` das Casas; não lê nomes, brasões, conteúdo narrativo, cartas,
+  finanças ou mídia.
 - A saída apresenta apenas contagens por categoria. Não divulga hash de
   snapshot, UID, nomes, e-mails, IDs de Casas, token ou mensagens de erro.
 - Páginas incompletas, UIDs inválidos/duplicados, snapshot inexistente ou
@@ -90,7 +92,35 @@ em mais de uma categoria e a soma não precisa ser quatro. A definição
 de aptidão estrutural não exige que a conta Auth esteja habilitada: é
 um diagnóstico da projeção histórica, não uma autorização de login.
 
-O diagnóstico mantém exatamente três consultas GET limitadas, sem
+O diagnóstico utiliza no máximo quatro consultas GET limitadas, sem
 dados individuais na saída; os novos campos ficam \`null\` caso a leitura
 ou paginação seja inconclusiva. A alteração não importa, escreve ou
 ativa contas e não autoriza publicação.
+
+
+## Integridade referencial das Casas — verificação adicional
+
+Depois da reconciliação de 14/14 UIDs, a auditoria agora consulta
+\`migrationDomainStage/{snapshotId}/houses\` com **até 250 documentos**,
+mascarados para apenas \`sourceId\`, \`active\` e \`season\`. Não exibe os
+identificadores.
+
+O relatório acrescenta:
+
+- \`houseCatalogHttpStatus\` e \`houseReferenceAuditComplete\`;
+- \`houseCatalogCount\` e \`activeSeason2Houses\`;
+- \`playerHouseReferencesTotal\`: quantidade de vínculos nas listas
+  \`memberHouseIds\` das contas com perfil \`jogador\`;
+- \`unresolvedPlayerHouseReferences\`: vínculos para Casas ausentes,
+  inativas ou de outra temporada;
+- \`playersWithUnresolvedHouseReferences\`: número de jogadores afetados,
+  sem informar suas identidades.
+
+Documentos de Casa malformados, origem duplicada, paginação incompleta
+ou HTTP diferente de 200 deixam esses indicadores como \`null\` e
+\`houseReferenceAuditComplete=false\`, sem afirmar integridade.
+
+A mera existência de uma Casa ativa não prova que o jogador tenha
+autorização atual: só a reconciliação administrativa e testes reais por
+perfil podem confirmar isso. Nenhum resultado gera ativação automática
+de login, publicação ou flag de runtime.
