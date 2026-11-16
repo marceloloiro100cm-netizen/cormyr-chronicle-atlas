@@ -392,3 +392,42 @@ test('Spy dossier output has a bounded response size',async()=>{
   await rejects(()=>f.service().listSpyDossiers(token,'house-a'),
     'spy_dossier_response_too_large',503);
 });
+
+
+test('Cloud editions are readable only after separate runtime approval and remain isolated from drafts',async()=>{
+  const f=fixture('editor');
+  const runtime='campaignCloudRuntime/'+snapshot;
+  const published=runtime+'/publishedNewspapers/cloud-allowed';
+  const draft=runtime+'/publishedNewspapers/cloud-hidden';
+  const approved={
+    status:'active',private:true,sourceSnapshotId:snapshot,
+    sourceSnapshotReconciled:true,applicationEnabled:true,
+    newspaperWriteApproved:true,newspaperSequenceReconciled:true,
+  };
+  f.docs.set(runtime,approved);
+  f.docs.set(published,{
+    id:'cloud-allowed',source:'firebase-cloud',sourceSnapshotId:snapshot,
+    title:'Nova Folha',subtitle:'Notícias de Cormyr',editionNo:4,
+    publishedAt:'2026-11-16T14:00:00Z',cancelledAt:null,
+    state:'published',blocks:[{type:'article',text:'Edição Nova'}],
+  });
+  f.docs.set(draft,{
+    id:'cloud-hidden',source:'firebase-cloud',sourceSnapshotId:snapshot,
+    title:'Segredo Editorial',editionNo:5,state:'draft',publishedAt:null,
+    blocks:[{type:'article',text:'Nunca revelar'}],
+  });
+  let list=await f.service().listNewspaper(token);
+  assert.ok(list.items.some(e=>e.id==='published'));
+  assert.ok(list.items.some(e=>e.id==='cloud-allowed'));
+  assert.ok(!list.items.some(e=>e.id==='cloud-hidden'));
+  const open=await f.service().getNewspaper(token,'cloud-allowed');
+  assert.equal(open.blocks[0].text,'Edição Nova');
+  await rejects(()=>f.service().getNewspaper(token,'cloud-hidden'),'edition_unavailable',404);
+  f.docs.set(runtime,{...approved,newspaperWriteApproved:false});
+  list=await f.service().listNewspaper(token);
+  assert.ok(!list.items.some(e=>e.id==='cloud-allowed'));
+  await rejects(()=>f.service().getNewspaper(token,'cloud-allowed'),'edition_unavailable',404);
+  f.docs.set(runtime,{...approved,sourceSnapshotId:'other-snapshot'});
+  list=await f.service().listNewspaper(token);
+  assert.ok(!list.items.some(e=>e.id==='cloud-allowed'));
+});
