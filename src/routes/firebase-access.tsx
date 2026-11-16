@@ -141,6 +141,7 @@ function FirebaseAccess(){
     setEditions(papers?.items??[]);
     setMailStatus(mail);
     setOriginHouseId(mail?.originHouseIds?.[0]??'');
+    setMailRecipientKind('house');
     setMailRecipientHouse(catalog[0]?.id??'');
   }
 
@@ -221,16 +222,19 @@ function FirebaseAccess(){
     firebaseAuth()?.signOut();
     setView(null);setHouse(null);setHouses([]);setCalendar(null);
     setInbox(null);setEditions([]);setEdition(null);setAgents(null);
-    setMailStatus(null);setOriginHouseId('');setMailRecipientHouse('');
-    setMailSubject('');setMailContent('');setEmail('');
+    setMailStatus(null);setOriginHouseId('');setMailRecipientKind('house');
+    setMailRecipientHouse('');setMailSubject('');setMailContent('');setEmail('');
     setPassword('');setMessage('');
   }
 
   return <main className="mx-auto max-w-4xl p-6 space-y-5 text-foreground">
     <header className="space-y-2">
       <h1 className="text-2xl font-semibold">Cormyr — acesso Firebase</h1>
-      <p className="text-sm">Prévia somente leitura. Sem Supabase. Os dados vêm de um
-        snapshot privado e ainda não são atualizados em tempo real.</p>
+      <p className="text-sm">Acesso exclusivamente Firebase.
+        As fichas, o jornal e a espionagem usam dados preservados do snapshot.
+        {mailStatus?.canSend
+          ?' O envio de missivas foi autorizado para esta rodada.'
+          :' A escrita permanece bloqueada até a homologação dos serviços Cloud.'}</p>
     </header>
     {!configured&&<p role="alert">A configuração pública do Firebase Auth ainda
       não foi disponibilizada neste ambiente.</p>}
