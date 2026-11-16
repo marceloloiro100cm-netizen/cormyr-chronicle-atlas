@@ -25,6 +25,10 @@ const STAGES=Object.freeze([
   'migrationDomainStage','migrationAuthStage','migrationTimeEngineStage',
   'migrationNobleHouseStage','migrationNewspaperRuntimeStage','migrationSpyStage',
 ]);
+const AUX_STAGES=Object.freeze([
+  'migrationPrivateGmStage','migrationDriveSyncStage',
+  'migrationPublicContentStage','migrationStorageStage',
+]);
 const boolean=v=>v?.booleanValue===true;
 const number=v=>Number.isSafeInteger(Number(v?.integerValue))?Number(v.integerValue):null;
 const string=v=>typeof v?.stringValue==='string'?v.stringValue:null;
@@ -106,6 +110,18 @@ export async function inspectFirebaseCloudReadiness({
       });
     }
   }
+  const auxiliaryStages=[];
+  if(snapshotId){
+    // Only masked root metadata. Never read private GM events, Drive paths,
+    // player accounts, Storage object names, hashes or other payloads.
+    for(const stage of AUX_STAGES){
+      const res=await request(FIRESTORE+stage+'/'+snapshotId+
+        '?mask.fieldPaths=status&mask.fieldPaths=private');
+      auxiliaryStages.push({stage,code:res.status,verified:
+        string(res.data?.fields?.status)==='complete'&&
+        boolean(res.data?.fields?.private)});
+    }
+  }
   let runtime={code:null,enabled:false};
   if(snapshotId){
     const res=await request(FIRESTORE+'campaignMailRuntime/'+snapshotId+
@@ -179,6 +195,13 @@ export async function inspectFirebaseCloudReadiness({
     stageHttpStatusCounts:Object.fromEntries(
       [...new Set(stageResults.map(x=>String(x.code)))].map(code=>
         [code,stageResults.filter(x=>String(x.code)===code).length])),
+    auxiliaryStageCoverage:auxiliaryStages.length,
+    auxiliaryStagesVerified:auxiliaryStages.filter(x=>x.verified).length,
+    auxiliaryStageHttpStatusCounts:Object.fromEntries(
+      [...new Set(auxiliaryStages.map(x=>String(x.code)))].map(code=>
+        [code,auxiliaryStages.filter(x=>String(x.code)===code).length])),
+    auxiliaryStagesComplete:auxiliaryStages.length===AUX_STAGES.length&&
+      auxiliaryStages.every(x=>x.verified),
     mailRuntimeHttpStatus:runtime.code,mailRuntimeEnabled:runtime.enabled,
     operationalRuntimeHttpStatus:operational.code,
     operationalRuntimeReconciled:operational.reconciled,
@@ -222,6 +245,9 @@ export function formatCloudReadinessSummary(report){
     '| --- | --- |',
     '| Firestore da migração | HTTP '+http(report?.firestoreHttpStatus)+' |',
     '| Estágios históricos | '+ok(report?.singleVerifiedSnapshot)+' |',
+    '| Estágios GM, Drive, catálogo público e Storage | '+
+      String(report?.auxiliaryStagesVerified??0)+'/'+
+      String(report?.auxiliaryStageCoverage??0)+' verificados |',
     '| Runtime de missivas | HTTP '+http(report?.mailRuntimeHttpStatus)+' · '+ok(report?.mailRuntimeEnabled)+' |',
     '| Runtime operacional das Casas | HTTP '+http(report?.operationalRuntimeHttpStatus)+' · '+ok(report?.operationalRuntimeReconciled)+' |',
     '| Firebase Auth | HTTP '+http(report?.authHttpStatus)+' · '+ok(report?.authListComplete)+' |',
