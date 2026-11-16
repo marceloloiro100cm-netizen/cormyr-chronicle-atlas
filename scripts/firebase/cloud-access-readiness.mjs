@@ -178,6 +178,8 @@ export async function inspectFirebaseCloudReadiness({
   // No "GO" path exists until IAM, profile isolation, production Firestore
   // reconciliation and player acceptance are verified independently.
   const stagesVerified=stageResults.filter(x=>x.verified).length;
+  const auxiliaryStagesComplete=auxiliaryStages.length===AUX_STAGES.length&&
+    auxiliaryStages.every(x=>x.verified);
   const stagesComplete=Boolean(singleRoot&&
     stageResults.length===STAGES.length&&stagesVerified===STAGES.length);
   const blockers=[];
@@ -185,6 +187,8 @@ export async function inspectFirebaseCloudReadiness({
   else if(root.status!==200)blockers.push('FIRESTORE_STAGE_READ_UNCONFIRMED');
   else if(!singleRoot)blockers.push('SNAPSHOT_UNVERIFIED');
   else if(!stagesComplete)blockers.push('MIGRATION_STAGES_UNVERIFIED');
+  if(snapshotId&&!auxiliaryStagesComplete)
+    blockers.push('AUXILIARY_STAGES_UNVERIFIED');
   if(snapshotId){
     if(!runtime.enabled)blockers.push('MAIL_RUNTIME_UNVERIFIED');
     if(!operational.reconciled)
@@ -207,8 +211,7 @@ export async function inspectFirebaseCloudReadiness({
     auxiliaryStageHttpStatusCounts:Object.fromEntries(
       [...new Set(auxiliaryStages.map(x=>String(x.code)))].map(code=>
         [code,auxiliaryStages.filter(x=>String(x.code)===code).length])),
-    auxiliaryStagesComplete:auxiliaryStages.length===AUX_STAGES.length&&
-      auxiliaryStages.every(x=>x.verified),
+    auxiliaryStagesComplete,
     mailRuntimeHttpStatus:runtime.code,mailRuntimeEnabled:runtime.enabled,
     operationalRuntimeHttpStatus:operational.code,
     operationalRuntimeReconciled:operational.reconciled,
@@ -232,6 +235,7 @@ export async function inspectFirebaseCloudReadiness({
 const BLOCKING_CODES=new Set([
   'FIRESTORE_OIDC_DENIED','FIRESTORE_STAGE_READ_UNCONFIRMED',
   'SNAPSHOT_UNVERIFIED','MIGRATION_STAGES_UNVERIFIED',
+  'AUXILIARY_STAGES_UNVERIFIED',
   'MAIL_RUNTIME_UNVERIFIED','OPERATIONAL_RUNTIME_UNVERIFIED',
   'RUNTIME_AUDITS_AWAIT_SNAPSHOT','AUTH_LIST_UNAVAILABLE',
   'AUTH_LIST_INCOMPLETE','CLOUD_ROLE_E2E_PENDING',
