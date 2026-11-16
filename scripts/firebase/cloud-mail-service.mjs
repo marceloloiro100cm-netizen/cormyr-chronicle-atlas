@@ -14,6 +14,7 @@
 import {createHash} from 'node:crypto';
 import {validateHarptosDate} from './stage-temporal-emulator.mjs';
 import {canAcknowledgeMail,mailReceiptId,validMailIdentity} from './cloud-mail-receipt-core.mjs';
+import {cloudReplyRoute} from './cloud-mail-reply-core.mjs';
 
 const SNAPSHOT=/^[a-f0-9]{64}$/;
 const SAFE_ID=/^[^/\u0000-\u001f]{1,128}$/;
@@ -149,6 +150,71 @@ export function createFirebaseCloudMail({
     return {actor,date:campaignDate,round:live.data().openRound};
   }
 
+
+  // All Cloud writes use the same atomic idempotency, House validation,
+  // rate limit and immutable migration-source safeguards.
+  async function persist(tx,{uid,actor,date,round,req,replyToId=null}){
+    if(actor.role==='narrador'){
+      if(req.originHouseId!==null||req.recipientKind!=='house')
+        deny('recipient_not_allowed');
+    }else if(!actor.editHouses.includes(req.originHouseId)){
+      deny('origin_house_not_authorized');
+    }
+    const fingerprint=hash(JSON.stringify(replyToId?{...req,replyToId}:req));
+    const id=hash('cloud-mail:'+uid+':'+req.requestKey);
+    const ref=letters.doc(id);
+    const audit=audits.doc(id);
+        const houseIds=[req.originHouseId,req.recipientKind==='house'
+          ?req.recipientHouseId:null].filter(Boolean);
+        const houseRefs=[...new Set(houseIds)].map(x=>
+          stage.collection('houses').doc(hash('house:'+x)));
+        const found=await Promise.all(houseRefs.map(r=>tx.get(r)));
+        if(found.some((d,i)=>!d.exists||d.data()?.active!==true||
+           d.data()?.season!==2||
+           d.data()?.sourceId!==[...new Set(houseIds)][i]))
+          deny('house_unavailable',404);
+
+        const limitRef=limits.doc(hash('mail-count:'+uid+':'+round));
+        const [previous,counter]=await Promise.all([
+          tx.get(ref),tx.get(limitRef),
+        ]);
+        if(previous.exists){
+          if(previous.data()?.senderUid!==uid||
+             previous.data()?.requestFingerprint!==fingerprint)
+            deny('request_key_conflict',409);
+          return {id,duplicate:true,state:previous.data().publicationState,
+            deliveryRound:previous.data().deliveryRound};
+        }
+        const n=counter.exists?counter.data()?.count:0;
+        if(!Number.isInteger(n)||n<0||n>=MAX_MAIL_PER_ROUND)
+          deny('mail_round_limit',429);
+        const timestamp=clock();
+        if(typeof timestamp!=='string'||!Number.isFinite(Date.parse(timestamp)))
+          deny('invalid_server_clock',503);
+        tx.create(ref,{
+          id,source:'firebase-cloud',sourceSnapshotId:snapshotId,
+          requestKey:req.requestKey,requestFingerprint:fingerprint,
+          senderUid:uid,senderPlayerId:actor.playerId,
+          senderName:actor.role==='narrador'?'Narrador':'Jogador',
+          originHouseId:req.originHouseId,
+          recipientKind:req.recipientKind,
+          recipientHouseId:req.recipientKind==='house'?req.recipientHouseId:null,
+          recipientPlayerId:null,
+          ...(replyToId?{replyToId,threadRootId:replyToId}:{}),
+          subject:req.subject,content:req.content,
+          createdAt:timestamp,deliveredAt:timestamp,
+          campaignDate:date,creationRound:round,deliveryRound:round,
+          publicationState:'delivered',deletedAt:null,version:1,
+        });
+        tx.create(audit,{action:replyToId?'reply':'send',actorUid:uid,letterId:id,
+          ...(replyToId?{replyToId}:{}),
+          requestFingerprint:fingerprint,occurredAt:timestamp});
+        if(counter.exists)tx.update(limitRef,{count:n+1});
+        else tx.create(limitRef,{count:1,round,actorUid:uid});
+        return {id,duplicate:false,state:'delivered',deliveryRound:round};
+
+  }
+
   return {
     async status(idToken){
       const uid=await uidFromToken(idToken);
@@ -219,65 +285,38 @@ export function createFirebaseCloudMail({
       const req=validateRequest(input);
       if(req.recipientKind==='narrator'&&req.originHouseId===null)
         deny('invalid_origin_house',400);
-      const fingerprint=hash(JSON.stringify(req));
-      const id=hash('cloud-mail:'+uid+':'+req.requestKey);
-      const ref=letters.doc(id);
-      const audit=audits.doc(id);
       return db.runTransaction(async tx=>{
         const {actor,date,round}=await readyTransaction(tx,uid);
-        if(actor.role==='narrador'){
-          if(req.originHouseId!==null||req.recipientKind!=='house')
-            deny('recipient_not_allowed');
-        }else{
-          if(!actor.editHouses.includes(req.originHouseId))
-            deny('origin_house_not_authorized');
-        }
-        const houseIds=[req.originHouseId,req.recipientKind==='house'
-          ?req.recipientHouseId:null].filter(Boolean);
-        const houseRefs=[...new Set(houseIds)].map(x=>
-          stage.collection('houses').doc(hash('house:'+x)));
-        const found=await Promise.all(houseRefs.map(r=>tx.get(r)));
-        if(found.some((d,i)=>!d.exists||d.data()?.active!==true||
-           d.data()?.season!==2||
-           d.data()?.sourceId!==[...new Set(houseIds)][i]))
-          deny('house_unavailable',404);
+        return persist(tx,{uid,actor,date,round,req});
+      });
+    },
 
-        const limitRef=limits.doc(hash('mail-count:'+uid+':'+round));
-        const [previous,counter]=await Promise.all([
-          tx.get(ref),tx.get(limitRef),
-        ]);
-        if(previous.exists){
-          if(previous.data()?.senderUid!==uid||
-             previous.data()?.requestFingerprint!==fingerprint)
-            deny('request_key_conflict',409);
-          return {id,duplicate:true,state:previous.data().publicationState,
-            deliveryRound:previous.data().deliveryRound};
-        }
-        const n=counter.exists?counter.data()?.count:0;
-        if(!Number.isInteger(n)||n<0||n>=MAX_MAIL_PER_ROUND)
-          deny('mail_round_limit',429);
-        const timestamp=clock();
-        if(typeof timestamp!=='string'||!Number.isFinite(Date.parse(timestamp)))
-          deny('invalid_server_clock',503);
-        tx.create(ref,{
-          id,source:'firebase-cloud',sourceSnapshotId:snapshotId,
-          requestKey:req.requestKey,requestFingerprint:fingerprint,
-          senderUid:uid,senderPlayerId:actor.playerId,
-          senderName:actor.role==='narrador'?'Narrador':'Jogador',
-          originHouseId:req.originHouseId,
-          recipientKind:req.recipientKind,
-          recipientHouseId:req.recipientKind==='house'?req.recipientHouseId:null,
-          recipientPlayerId:null,
-          subject:req.subject,content:req.content,
-          createdAt:timestamp,deliveredAt:timestamp,
-          campaignDate:date,creationRound:round,deliveryRound:round,
-          publicationState:'delivered',deletedAt:null,version:1,
+    async reply(idToken,input){
+      const uid=await uidFromToken(idToken);
+      if(!input||typeof input!=='object'||Array.isArray(input)||
+         Object.keys(input).some(k=>!['requestKey','letterId','content'].includes(k))||
+         typeof input.letterId!=='string'||!SNAPSHOT.test(input.letterId)||
+         typeof input.requestKey!=='string'||!REQUEST_KEY.test(input.requestKey)||
+         !validText(input.content,MAX_CONTENT_BYTES))
+        deny('invalid_reply_request',400);
+      return db.runTransaction(async tx=>{
+        const {actor,date,round}=await readyTransaction(tx,uid);
+        const original=await tx.get(letters.doc(input.letterId));
+        const route=original.exists
+          ?cloudReplyRoute(actor,original.data(),snapshotId):null;
+        if(!route||original.data()?.id!==input.letterId)
+          deny('reply_not_authorized',403);
+        // Subject and delivery address come solely from the original letter.
+        const base=original.data().subject;
+        const prefix=/^Re:\s/i.test(base)?'':'Re: ';
+        const chars=Array.from(base);
+        while(chars.length&&Buffer.byteLength(prefix+chars.join(''),'utf8')>
+              MAX_SUBJECT_BYTES)chars.pop();
+        const req=validateRequest({
+          requestKey:input.requestKey,...route,
+          subject:prefix+chars.join(''),content:input.content,
         });
-        tx.create(audit,{action:'send',actorUid:uid,letterId:id,
-          requestFingerprint:fingerprint,occurredAt:timestamp});
-        if(counter.exists)tx.update(limitRef,{count:n+1});
-        else tx.create(limitRef,{count:1,round,actorUid:uid});
-        return {id,duplicate:false,state:'delivered',deliveryRound:round};
+        return persist(tx,{uid,actor,date,round,req,replyToId:input.letterId});
       });
     },
   };

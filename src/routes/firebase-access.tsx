@@ -30,7 +30,8 @@ type HouseView={id:string;name:string;castle:string|null;crest:string|null;
 type Calendar={year:number;month:number;day:number;festival:string|null;version:number};
 type MailEntry={id:string;source:'imported'|'firebase-cloud';subject:string;
   content:string;senderName:string|null;recipientHouseId:string|null;
-  createdAt:string;campaignDate:string|null;canMarkRead:boolean;readAt:string|null};
+  createdAt:string;campaignDate:string|null;canMarkRead:boolean;readAt:string|null;
+  canReply:boolean};
 type Inbox={items:MailEntry[];totalVisible:number;truncated:boolean};
 type MailStatus={enabled:boolean;canSend:boolean;originHouseIds:string[];readOnly:boolean};
 type MailReply={id:string;duplicate:boolean;state:string;deliveryRound:number};
@@ -169,6 +170,9 @@ function FirebaseAccess(){
   const [mailRecipientHouse,setMailRecipientHouse]=useState('');
   const [mailSubject,setMailSubject]=useState('');
   const [mailContent,setMailContent]=useState('');
+  const [replyLetter,setReplyLetter]=useState<MailEntry|null>(null);
+  const [replyContent,setReplyContent]=useState('');
+  const [replyKey,setReplyKey]=useState<string|null>(null);
   const [mailKey,setMailKey]=useState<string|null>(()=>
     typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'
       ?crypto.randomUUID():null);
@@ -264,6 +268,28 @@ function FirebaseAccess(){
     }finally{setBusy(false);}
   }
 
+  async function sendReply(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();
+    if(busy||!replyLetter?.canReply||!mailStatus?.canSend||!replyKey||
+       !replyContent.trim())return;
+    setBusy(true);setMessage('');
+    try{
+      const result=await cloudMail<MailReply>({
+        action:'reply',requestKey:replyKey,letterId:replyLetter.id,
+        content:replyContent,
+      });
+      setMessage(result.duplicate
+        ?'Esta resposta já havia sido enviada.'
+        :'Resposta enviada pelo Firebase.');
+      setReplyLetter(null);setReplyContent('');setReplyKey(null);
+      try{setInbox(await readCloud<Inbox>('listMailbox'));}
+      catch{setMessage('Resposta enviada. Atualize a caixa postal para vê-la.');}
+    }catch(e){
+      // Preserve the same retry key and draft if the server is unavailable.
+      setMessage(e instanceof Error?e.message:'Não foi possível responder.');
+    }finally{setBusy(false);}
+  }
+
   async function sendMail(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
     if(!mailKey||!mailStatus?.canSend||!view)return;
@@ -329,7 +355,8 @@ function FirebaseAccess(){
     setMailStatus(null);setPaperStatus(null);setPaperTitle('');
     setPaperSubtitle('');setPaperArticle('');setOriginHouseId('');setMailRecipientKind('house');
     setMailRecipientHouse('');setMailSubject('');setMailContent('');setEmail('');
-    setPassword('');setMessage('');
+    setPassword('');setMessage('');setReplyLetter(null);
+    setReplyContent('');setReplyKey(null);
   }
 
   return <main className="mx-auto max-w-4xl p-6 space-y-5 text-foreground">
@@ -487,6 +514,16 @@ function FirebaseAccess(){
             {m.subject}{' '}· {m.campaignDate??m.createdAt.slice(0,10)}
           </summary>
           <p className="whitespace-pre-wrap text-sm">{m.content}</p>
+          {m.canReply&&mailStatus?.canSend&&
+            <button type="button" disabled={busy}
+              className="mt-2 rounded border px-3 py-1 text-sm"
+              onClick={()=>{
+                setReplyLetter(m);setReplyContent('');setMessage('');
+                setReplyKey(typeof crypto!=='undefined'&&
+                  typeof crypto.randomUUID==='function'?crypto.randomUUID():null);
+              }}>
+              Responder
+            </button>}
           {m.canMarkRead&&<div className="mt-2">
             {m.readAt?<p className="text-xs">Lida em {new Date(m.readAt).toLocaleString('pt-BR')}</p>:
               <button type="button" className="rounded border px-3 py-1 text-sm"
@@ -495,6 +532,28 @@ function FirebaseAccess(){
               </button>}
           </div>}
         </details>)}
+        {replyLetter&&replyLetter.canReply&&mailStatus?.canSend&&
+          <form onSubmit={sendReply} className="space-y-3 border-t pt-3">
+            <h3 className="font-semibold">Responder: {replyLetter.subject}</h3>
+            <p className="text-xs">Destino definido pelo Firebase a partir da missiva original.</p>
+            <label className="block text-sm">Texto da resposta
+              <textarea rows={5} required maxLength={18000}
+                className="block w-full rounded border p-2"
+                value={replyContent}
+                onChange={e=>setReplyContent(e.target.value)}/>
+            </label>
+            <div className="flex gap-2">
+              <button type="submit" className="rounded border px-4 py-2"
+                disabled={busy||!replyKey||!replyContent.trim()}>
+                {busy?'Respondendo…':'Enviar resposta'}
+              </button>
+              <button type="button" className="rounded border px-4 py-2"
+                disabled={busy}
+                onClick={()=>{setReplyLetter(null);setReplyContent('');setReplyKey(null);}}>
+                Cancelar
+              </button>
+            </div>
+          </form>}
       </section>}
       <section className="rounded border p-4 space-y-2">
         <h2 className="text-lg font-semibold">A Folha Sem Selo</h2>
