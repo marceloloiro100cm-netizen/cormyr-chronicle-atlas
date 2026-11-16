@@ -41,7 +41,9 @@ export function readFirebaseConstructionSchedule(
 ):ConstructionScheduleView{
   const raw=state['projects'];
   const officialMonth=calendarMonth(date);
-  const houseMonth=positive(state['month']);
+  // Month zero is the unsynchronized draft sentinel, never campaign time.
+  const storedMonth=positive(state['month']);
+  const houseMonth=storedMonth!==null&&storedMonth>0?storedMonth:null;
   if(!Array.isArray(raw))return {
     available:false,total:null,partial:false,officialMonth,houseMonth,
     rows:[],dueCount:null,
