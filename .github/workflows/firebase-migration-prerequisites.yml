@@ -1,0 +1,60 @@
+name: Firebase private GM and Drive prerequisites — read-only OIDC
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/firebase/cloud-migration-prerequisites*.mjs'
+      - '.github/workflows/firebase-migration-prerequisites.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/cloud-migration-prerequisites*.mjs'
+      - '.github/workflows/firebase-migration-prerequisites.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify read-only Cloud prerequisite contract
+        run: node --test scripts/firebase/cloud-migration-prerequisites.test.mjs
+      - name: Privacy gate
+        run: node scripts/verify-public-repo.mjs
+
+  cloud-audit:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Existing short-lived read-only GCP OIDC identity
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: cormyr
+      - name: Inspect only status and approval of Firebase private stages
+        run: node scripts/firebase/cloud-migration-prerequisites.mjs
+      - name: Preserve strict release block
+        if: always()
+        run: |
+          echo 'This audit is read-only. No Firestore, Auth, IAM, Drive, Storage, DNS or App Hosting writes.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Real accounts, source hashes and House-isolation E2E are NOT verified by this audit.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'readyForPlayers=false and readyForCutover=false.' >> "$GITHUB_STEP_SUMMARY"
