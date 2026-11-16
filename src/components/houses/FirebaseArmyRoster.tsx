@@ -6,7 +6,15 @@
 import {TRAINING,UNIT_TYPES} from '@/lib/house/engine';
 import {militaryUnitSymbolSrc,unitSymbolType} from '@/components/house/military-unit-symbol';
 
-type Value=Record<string,unknown>;
+// Explicit optional fields keep imported records flexible while honoring
+// noPropertyAccessFromIndexSignature in the repository's strict TS config.
+type Value=Record<string,unknown>&{
+  units?:unknown;types?:unknown;training?:unknown;strength?:unknown;
+  casualties?:unknown;destroyed?:unknown;skills?:unknown;id?:unknown;
+  name?:unknown;equipmentTypeId?:unknown;commanderName?:unknown;
+  situation?:unknown;origin?:unknown;health?:unknown;xp?:unknown;
+  equipment?:unknown;
+};
 export type RosterUnit={
   id:string;name:string;typeNames:string[];training:string;symbolSrc:string|null;
   strength:number|null;casualties:number|null;available:number|null;
@@ -29,7 +37,7 @@ const count=(v:unknown):number|null=>
 const obj=(v:unknown):v is Value=>
   v!==null&&typeof v==='object'&&!Array.isArray(v);
 
-export function readFirebaseMilitaryRoster(state:Record<string,unknown>):Roster{
+export function readFirebaseMilitaryRoster(state:Value):Roster{
   const raw=Array.isArray(state.units)?state.units:[];
   const list=raw.slice(0,150);
   const units:RosterUnit[]=list.flatMap((value,index)=>{
@@ -78,7 +86,7 @@ export function readFirebaseMilitaryRoster(state:Record<string,unknown>):Roster{
 }
 
 export function FirebaseArmyRoster({houseName,state}:{
-  houseName:string;state:Record<string,unknown>;
+  houseName:string;state:Value;
 }){
   const roster=readFirebaseMilitaryRoster(state);
   return <section aria-label={`Exército da Casa ${houseName}`}
