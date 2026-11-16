@@ -190,7 +190,8 @@ export async function inspectFirebaseCloudReadiness({
     accounts:accountListComplete?users.length:null,
     disabledAccounts:accountListComplete?users.filter(x=>x.disabled===true).length:null,
     requiresFirestoreReadPermission:root.status===403||
-      stageResults.some(x=>x.code===403)||runtime.code===403,
+      stageResults.some(x=>x.code===403)||runtime.code===403||
+      operational.code===403,
     requiresFirebaseAuthReadPermission:auth.status===403||
       numberAuth?.status===403,
     releaseDecision:'NO_GO',blockingCodes:blockers,
