@@ -6,6 +6,8 @@ export class CloudAccessError extends Error {
 }
 
 export interface FirebaseCloudReadonly {
+  /** Server-only. No matching HTTP action may expose this identity. */
+  authorize(idToken:string):Promise<{uid:string;profile:'jogador'|'editor'|'narrador';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]}>;
   session(idToken:string):Promise<unknown>;
   listHouses(idToken:string):Promise<unknown>;
   getHouse(idToken:string,houseId:unknown):Promise<unknown>;
