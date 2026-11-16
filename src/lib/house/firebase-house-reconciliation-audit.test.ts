@@ -4,6 +4,9 @@ import type {Firestore} from 'firebase-admin/firestore';
 import type {Auth} from 'firebase-admin/auth';
 import {newHouseState,type HouseState} from './types';
 import {constructionStateHash} from './firebase-construction-transaction';
+import {findItem} from './catalog';
+import {purchase} from './engine';
+import {previewHouseConstruction} from './firebase-construction-quote';
 import {
   createFirebaseHouseReconciliationAudit,HouseReconciliationAuditError,
 } from './firebase-house-reconciliation-audit';
@@ -245,9 +248,57 @@ describe('Firebase — Narrador: diagnóstico de reconciliação',()=>{
     expect(report.constructionLedger?.status).toBe('verified_hash_chain');
     expect(report.constructionLedger?.entries[0]?.itemId).toBe('tower');
     expect(report.constructionLedger?.economicReplayVerified).toBe(false);
+    expect(report.economicReplay?.status).toBe('missing_replay_metadata');
     expect(report.auditHistoryVerified).toBe(false);
     expect(JSON.stringify(report)).not.toContain('private-not-for-browser');
     expect(JSON.stringify(report)).not.toContain(uid);
+    expect(f.writes()).toBe(0);
+  });
+  it('reexecuta uma compra real somente após validar ledger e metadados',async()=>{
+    const f=fixture(),original=f.docs.get(f.op)!;
+    const uid='narrator-1',requestKey='request-1234567';
+    const req={requestKey,houseId:'house-a',expectedVersion:0,
+      itemId:'tower',domainId:'d1',name:'Torre de Vigilância'};
+    const eventId=hash('construction-purchase:'+uid+':'+requestKey);
+    const holdingId=hash('construction-holding:'+eventId);
+    const item=findItem('tower');
+    if(!item)throw Error('Catalog item absent');
+    const dice=Array(item.duration.dice??0).fill(2) as number[];
+    const quote=previewHouseConstruction(f.state,{
+      houseId:'house-a',itemId:'tower',domainId:'d1',
+    },'Evenhand',3);
+    const purchased=purchase(f.state,item,{
+      id:holdingId,domainId:'d1',name:req.name,dice,
+    });
+    const state=JSON.parse(JSON.stringify(purchased)) as HouseState;
+    const before=constructionStateHash(f.state);
+    const after=constructionStateHash(state);
+    f.docs.set(f.op,{...original,version:1,state,stateHash:after,
+      lastConstructionEventId:eventId});
+    const path=f.runtime+'/houseConstructionAudits/'+eventId;
+    f.docs.set(path,{
+      id:eventId,action:'purchase',actorUid:uid,requestKey,
+      requestFingerprint:constructionStateHash({uid,...req}),
+      holdingId,houseId:'house-a',sourceSnapshotId:snapshot,
+      sourceSheetVersion:3,sourceStateHash:before,
+      beforeStateHash:before,afterStateHash:after,
+      version:1,expectedVersion:0,itemId:'tower',domainId:'d1',
+      costs:quote.costs,dice,campaignDate:'1522-02-10',
+      createdAt:'2026-11-16T12:00:00.000Z',
+      replaySchemaVersion:1,catalogRuleVersion:item.version,
+      purchaseInput:req,actorPrivateNotes:'não expor',
+    });
+    const copies=structuredClone([...f.docs]);
+    const result=await f.service().inspect(token,'house-a');
+    expect(result.constructionLedger?.status).toBe('verified_hash_chain');
+    expect(result.economicReplay?.status).toBe('verified');
+    expect(result.economicReplay?.replayedEvents).toBe(1);
+    expect(result.economicReplay?.economicReplayVerified).toBe(true);
+    expect(result.auditHistoryVerified).toBe(false);
+    expect(result.readyForCutover).toBe(false);
+    expect(JSON.stringify(result)).not.toContain('não expor');
+    expect(JSON.stringify(result)).not.toContain('narrator-1');
+    expect([...f.docs]).toEqual(copies);
     expect(f.writes()).toBe(0);
   });
   it('distingue runtime pendente, stage incompleto e calendário incorreto',async()=>{
