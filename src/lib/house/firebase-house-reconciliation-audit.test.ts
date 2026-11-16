@@ -245,6 +245,8 @@ describe('Firebase — Narrador: diagnóstico de reconciliação',()=>{
     expect(report.constructionLedger?.status).toBe('verified_hash_chain');
     expect(report.constructionLedger?.entries[0]?.itemId).toBe('tower');
     expect(report.constructionLedger?.economicReplayVerified).toBe(false);
+    expect(report.economicReplay?.status).toBe('legacy_inputs_missing');
+    expect(report.economicReplay?.purchaseEventsReplayed).toBe(0);
     expect(report.auditHistoryVerified).toBe(false);
     expect(JSON.stringify(report)).not.toContain('private-not-for-browser');
     expect(JSON.stringify(report)).not.toContain(uid);
