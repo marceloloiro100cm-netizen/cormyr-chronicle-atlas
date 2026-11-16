@@ -392,3 +392,38 @@ test('Spy dossier output has a bounded response size',async()=>{
   await rejects(()=>f.service().listSpyDossiers(token,'house-a'),
     'spy_dossier_response_too_large',503);
 });
+
+
+test('Cloud inbox exposes reply control only for the receiving House, not senders or foreign Houses',async()=>{
+  const f=fixture('jogador');
+  const root='campaignCloudRuntime/'+snapshot;
+  f.docs.set(root,{
+    status:'active',private:true,sourceSnapshotId:snapshot,
+    sourceSnapshotReconciled:true,mailWriteApproved:true,applicationEnabled:true,
+  });
+  const add=(tag,changes={})=>{
+    const id=hash('reply:'+tag);
+    f.docs.set(root+'/letters/'+id,{
+      id,source:'firebase-cloud',sourceSnapshotId:snapshot,
+      senderUid:'player-b',originHouseId:'house-b',
+      recipientKind:'house',recipientHouseId:'house-a',recipientPlayerId:null,
+      publicationState:'delivered',deletedAt:null,
+      subject:'Carta '+tag,content:'Texto',
+      createdAt:'2026-11-16T12:00:00Z',...changes,
+    });
+    return id;
+  };
+  const incoming=add('incoming');
+  const outgoing=add('own',{senderUid:'user-1',recipientHouseId:'house-b',
+    originHouseId:'house-a'});
+  const foreign=add('foreign',{recipientHouseId:'house-b',originHouseId:'house-a'});
+  const draft=add('draft',{publicationState:'draft'});
+  const mailbox=await f.service().listMailbox(token);
+  assert.equal(mailbox.items.find(x=>x.id===incoming).canReply,true);
+  assert.equal(mailbox.items.find(x=>x.id===outgoing).canReply,false);
+  assert.equal(mailbox.items.some(x=>x.id===foreign),false);
+  assert.equal(mailbox.items.some(x=>x.id===draft),false);
+  assert.ok(mailbox.items.filter(x=>x.source==='imported').every(x=>x.canReply===false));
+  f.docs.set(root,{...f.docs.get(root),sourceSnapshotReconciled:false});
+  assert.ok((await f.service().listMailbox(token)).items.every(x=>x.canReply===false));
+});
