@@ -53,8 +53,8 @@ export function readFirebaseHouseResources(state:Snapshot):FirebaseResourceSnaps
     rows,baseComplete:rows.every(r=>r.base!==null),
     permanentComplete:rows.every(r=>r.permanent!==null),
     treasury:treasuryValue(state.treasury),budget:count(state.budget),
-    method:method?(METHODS[method]??method):null,
-    phase:phase?(PHASES[phase]??phase):null,
+    method:method?(Object.hasOwn(METHODS,method)?METHODS[method]??method:method):null,
+    phase:phase?(Object.hasOwn(PHASES,phase)?PHASES[phase]??phase:phase):null,
     month:count(state.month),
     region:cleanText(identity?.['region'],150),
     regionalApplied:typeof state.regionalApplied==='boolean'
