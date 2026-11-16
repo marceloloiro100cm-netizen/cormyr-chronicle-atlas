@@ -23,6 +23,8 @@ type Calendar={year:number;month:number;day:number;festival:string|null;version:
 type MailEntry={id:string;subject:string;content:string;senderName:string|null;
   recipientHouseId:string|null;createdAt:string;campaignDate:string|null};
 type Inbox={items:MailEntry[];totalVisible:number;truncated:boolean};
+type MailStatus={enabled:boolean;canSend:boolean;originHouseIds:string[];readOnly:boolean};
+type MailReply={id:string;duplicate:boolean;state:string;deliveryRound:number};
 type EditionSummary={id:string;title:string;subtitle:string;editionNo:number;
   publishedAt:string;campaignDate:string|null};
 type Edition={id:string;title:string;subtitle:string;blocks:unknown[];editionNo:number};
@@ -76,6 +78,26 @@ async function readCloud<T>(action:'session'|'listHouses'|'getHouse'|'getCalenda
   return (body as {result:T}).result;
 }
 
+async function cloudMail<T>(body:Record<string,unknown>):Promise<T>{
+  const token=await firebaseAuth()?.getToken();
+  if(!token)throw Error('Entre novamente com sua conta Firebase.');
+  const response=await fetch('/api/firebase-cloud-mail',{
+    method:'POST',credentials:'omit',cache:'no-store',
+    headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+    body:JSON.stringify(body),
+  });
+  if(!response.ok)throw Error(
+    response.status===409?'Essa chave já pertence a outra missiva.':
+    response.status===403?'Seu perfil não está autorizado a enviar essa missiva.':
+    response.status===429?'Limite de missivas desta rodada atingido.':
+    'Envio Firebase ainda não liberado ou indisponível.'
+  );
+  const raw:unknown=await response.json();
+  if(!raw||typeof raw!=='object'||!('result' in raw))
+    throw Error('Resposta inválida do serviço de missivas.');
+  return (raw as {result:T}).result;
+}
+
 function FirebaseAccess(){
   const [configured]=useState(()=>firebaseAuth()!==null);
   const [email,setEmail]=useState('');
@@ -90,22 +112,36 @@ function FirebaseAccess(){
   const [editions,setEditions]=useState<EditionSummary[]>([]);
   const [edition,setEdition]=useState<Edition|null>(null);
   const [agents,setAgents]=useState<SpyAgent[]|null>(null);
+  const [mailStatus,setMailStatus]=useState<MailStatus|null>(null);
+  const [originHouseId,setOriginHouseId]=useState('');
+  const [mailRecipientKind,setMailRecipientKind]=useState<'house'|'narrator'>('house');
+  const [mailRecipientHouse,setMailRecipientHouse]=useState('');
+  const [mailSubject,setMailSubject]=useState('');
+  const [mailContent,setMailContent]=useState('');
+  const [mailKey,setMailKey]=useState<string|null>(()=>
+    typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'
+      ?crypto.randomUUID():null);
 
   async function load(){
     const profile=await readCloud<SessionView>('session');
     setView(profile);
-    const [catalog,date,letters,papers]=await Promise.all([
+    const [catalog,date,letters,papers,mail]=await Promise.all([
       readCloud<House[]>('listHouses'),
       profile.profile==='editor'
         ?Promise.resolve(null):readCloud<Calendar>('getCalendar').catch(()=>null),
       profile.profile==='editor'
         ?Promise.resolve(null):readCloud<Inbox>('listMailbox').catch(()=>null),
       readCloud<{items:EditionSummary[]}>('listNewspaper').catch(()=>null),
+      profile.profile==='editor'
+        ?Promise.resolve(null):cloudMail<MailStatus>({action:'status'}).catch(()=>null),
     ]);
     setHouses(catalog);
     setCalendar(date);
     setInbox(letters);
     setEditions(papers?.items??[]);
+    setMailStatus(mail);
+    setOriginHouseId(mail?.originHouseIds?.[0]??'');
+    setMailRecipientHouse(catalog[0]?.id??'');
   }
 
   useEffect(()=>{
@@ -155,10 +191,38 @@ function FirebaseAccess(){
     finally{setBusy(false);}
   }
 
+  async function sendMail(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();
+    if(!mailKey||!mailStatus?.canSend||!view)return;
+    setBusy(true);setMessage('');
+    try{
+      const result=await cloudMail<MailReply>({
+        action:'send',requestKey:mailKey,
+        originHouseId:view.profile==='narrador'?null:originHouseId,
+        recipientKind:mailRecipientKind,
+        recipientHouseId:mailRecipientKind==='house'?mailRecipientHouse:null,
+        subject:mailSubject,content:mailContent,
+      });
+      setMessage(result.duplicate
+        ?'Esta missiva já havia sido enviada.'
+        :'Missiva enviada pelo Firebase nesta rodada.');
+      setMailSubject('');setMailContent('');
+      setMailKey(typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'
+        ?crypto.randomUUID():null);
+      const updated=await readCloud<Inbox>('listMailbox');
+      setInbox(updated);
+    }catch(e){
+      // Preserve the idempotency key and draft for a safe retry.
+      setMessage(e instanceof Error?e.message:'Não foi possível enviar.');
+    }finally{setBusy(false);}
+  }
+
   function signOut(){
     firebaseAuth()?.signOut();
     setView(null);setHouse(null);setHouses([]);setCalendar(null);
-    setInbox(null);setEditions([]);setEdition(null);setAgents(null);setEmail('');
+    setInbox(null);setEditions([]);setEdition(null);setAgents(null);
+    setMailStatus(null);setOriginHouseId('');setMailRecipientHouse('');
+    setMailSubject('');setMailContent('');setEmail('');
     setPassword('');setMessage('');
   }
 
@@ -218,6 +282,55 @@ function FirebaseAccess(){
           <ul className="space-y-1">{agents.map(a=><li key={a.id}>
             {a.codename} — {a.status} · {a.missionSuccesses} sucessos
           </li>)}</ul>}
+      </section>}
+      {view.profile!=='editor'&&<section className="rounded border p-4 space-y-2">
+        <h2 className="text-lg font-semibold">Escrever missiva</h2>
+        {!mailStatus?.canSend&&<p className="text-sm">
+          O envio ficará disponível após a autorização do Firebase Cloud.
+          Você ainda pode consultar as cartas preservadas.
+        </p>}
+        {mailStatus?.canSend&&<form onSubmit={sendMail} className="space-y-3">
+          {view.profile==='jogador'&&<label className="block text-sm">
+            Casa remetente
+            <select required className="block w-full rounded border p-2"
+              value={originHouseId}
+              onChange={e=>setOriginHouseId(e.target.value)}>
+              {houses.filter(h=>mailStatus.originHouseIds.includes(h.id))
+                .map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+          </label>}
+          <label className="block text-sm">Destino
+            <select className="block w-full rounded border p-2"
+              value={mailRecipientKind}
+              onChange={e=>setMailRecipientKind(e.target.value as 'house'|'narrator')}>
+              <option value="house">Outra Casa</option>
+              {view.profile==='jogador'&&<option value="narrator">Narrador</option>}
+            </select>
+          </label>
+          {mailRecipientKind==='house'&&<label className="block text-sm">Casa destinatária
+            <select className="block w-full rounded border p-2" required
+              value={mailRecipientHouse}
+              onChange={e=>setMailRecipientHouse(e.target.value)}>
+              {houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+          </label>}
+          <label className="block text-sm">Assunto
+            <input className="block w-full rounded border p-2" required
+              maxLength={180} value={mailSubject}
+              onChange={e=>setMailSubject(e.target.value)}/>
+          </label>
+          <label className="block text-sm">Texto da missiva
+            <textarea rows={6} className="block w-full rounded border p-2" required
+              maxLength={18000} value={mailContent}
+              onChange={e=>setMailContent(e.target.value)}/>
+          </label>
+          <button type="submit" className="rounded border px-4 py-2"
+            disabled={busy||!mailKey||!mailSubject.trim()||!mailContent.trim()||
+              (view.profile==='jogador'&&!originHouseId)||
+              (mailRecipientKind==='house'&&!mailRecipientHouse)}>
+            {busy?'Enviando…':'Enviar missiva'}
+          </button>
+        </form>}
       </section>}
       {inbox&&<section className="rounded border p-4 space-y-2">
         <h2 className="text-lg font-semibold">Missivas entregues</h2>
