@@ -14,8 +14,10 @@ const stageNames=[
 ];
 const stage=id=>PREFIX+id+'/'+HASH+'?mask.fieldPaths=status&mask.fieldPaths=private';
 const listing=PREFIX+'migrationDomainStage?pageSize=2&mask.fieldPaths=status&mask.fieldPaths=private';
-const runtime=PREFIX+'campaignMailRuntime/'+HASH+
-  '?mask.fieldPaths=status&mask.fieldPaths=private&mask.fieldPaths=sourceLiveReconciled&mask.fieldPaths=applicationEnabled&mask.fieldPaths=mailEnabled&mask.fieldPaths=sourceSnapshotId';
+const runtime=PREFIX+'campaignCloudRuntime/'+HASH+
+  '?mask.fieldPaths=status&mask.fieldPaths=private&mask.fieldPaths=sourceSnapshotReconciled&mask.fieldPaths=applicationEnabled&mask.fieldPaths=mailWriteApproved&mask.fieldPaths=sourceSnapshotId&mask.fieldPaths=openRound&mask.fieldPaths=calendarVersion';
+const calendar=PREFIX+'migrationTimeEngineStage/'+HASH+
+  '/calendar/current?mask.fieldPaths=version';
 function fixture(overrides={}){
   const d=new Map([
     [listing,
@@ -26,10 +28,13 @@ function fixture(overrides={}){
     [runtime,{fields:{
       ...fields('active'),
       sourceSnapshotId:{stringValue:HASH},
-      sourceLiveReconciled:{booleanValue:true},
+      sourceSnapshotReconciled:{booleanValue:true},
       applicationEnabled:{booleanValue:true},
-      mailEnabled:{booleanValue:true},
+      mailWriteApproved:{booleanValue:true},
+      openRound:{integerValue:'2'},
+      calendarVersion:{integerValue:'8'},
     }}],
+    [calendar,{fields:{version:{integerValue:'8'}}}],
     [AUTH,{users:Array.from({length:14},(_,i)=>({
       localId:'DO_NOT_LOG_UID_'+i,disabled:true,email:'private@example.org',
     }))}],
@@ -107,8 +112,9 @@ test('incomplete protected stage and inactive runtime cannot be released',async(
   f.d.set(stage('migrationAuthStage'),{fields:fields('incomplete')});
   f.d.set(runtime,{fields:{
     ...fields('active'),sourceSnapshotId:{stringValue:HASH},
-    sourceLiveReconciled:{booleanValue:false},
-    applicationEnabled:{booleanValue:false},mailEnabled:{booleanValue:false},
+    sourceSnapshotReconciled:{booleanValue:false},
+    applicationEnabled:{booleanValue:false},mailWriteApproved:{booleanValue:false},
+    openRound:{integerValue:'2'},calendarVersion:{integerValue:'8'},
   }});
   const report=await f.run();
   assert.equal(report.singleVerifiedSnapshot,false);
