@@ -1,6 +1,4 @@
 import {createFileRoute} from '@tanstack/react-router';
-import {applicationDefault,getApps,initializeApp} from 'firebase-admin/app';
-import {getStorage} from 'firebase-admin/storage';
 import {publicContentFirestore} from '@/lib/public/firebase-public-content-admin.server';
 import {
   PublicGalleryError,readApprovedPublicGalleryImage,validPublicGalleryPath,
@@ -42,6 +40,10 @@ export async function getFirebasePublicGalleryImage(request:Request):Promise<Res
     return fail(503);
 
   try{
+    const [{applicationDefault,getApps,initializeApp},{getStorage}]=
+      await Promise.all([
+        import('firebase-admin/app'),import('firebase-admin/storage'),
+      ]);
     const name='cormyr-public-gallery';
     const app=getApps().find(item=>item.name===name)??initializeApp({
       credential:applicationDefault(),projectId:'cormyr',
