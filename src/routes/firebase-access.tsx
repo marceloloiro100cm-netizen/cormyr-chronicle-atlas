@@ -9,6 +9,7 @@ import {FirebaseArmyRoster} from '@/components/houses/FirebaseArmyRoster';
 import {FirebaseHoldingsRoster} from '@/components/houses/FirebaseHoldingsRoster';
 import {FirebaseHouseCourtDomains} from '@/components/houses/FirebaseHouseCourtDomains';
 import {FirebaseHouseResources} from '@/components/houses/FirebaseHouseResources';
+import {FirebaseHouseEconomyPlanner} from '@/components/houses/FirebaseHouseEconomyPlanner';
 import {FirebaseHouseChronicle} from '@/components/houses/FirebaseHouseChronicle';
 
 /**
@@ -476,6 +477,7 @@ function FirebaseAccess(){
         </select>
         {house&&<FirebaseHouseSheet sheet={house}/>}
         {house&&<FirebaseHouseResources houseName={house.name} state={house.state}/>}
+        {house&&<FirebaseHouseEconomyPlanner houseName={house.name} state={house.state}/>}
         {house&&view.profile==='jogador'&&
           <section aria-label="Tesouro operacional da Casa"
             className="rounded border border-current/25 p-4 space-y-2">
