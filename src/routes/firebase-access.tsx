@@ -7,6 +7,8 @@ import {FirebaseCalendarSnapshot} from '@/components/calendar/FirebaseCalendarSn
 import {FirebaseHouseSheet} from '@/components/houses/FirebaseHouseSheet';
 import {FirebaseArmyRoster} from '@/components/houses/FirebaseArmyRoster';
 import {FirebaseHoldingsRoster} from '@/components/houses/FirebaseHoldingsRoster';
+import {FirebaseConstructionQuote,type ConstructionQuoteView}
+  from '@/components/houses/FirebaseConstructionQuote';
 import {FirebaseHouseCourtDomains} from '@/components/houses/FirebaseHouseCourtDomains';
 import {FirebaseHouseResources} from '@/components/houses/FirebaseHouseResources';
 import {FirebaseHouseChronicle} from '@/components/houses/FirebaseHouseChronicle';
@@ -164,6 +166,25 @@ async function cloudTreasury<T>(input:Record<string,unknown>):Promise<T>{
   if(!payload||typeof payload!=='object'||!('result' in payload))
     throw Error('Resposta inválida do serviço de Tesouro.');
   return (payload as {result:T}).result;
+}
+
+async function cloudHouseQuote(input:Record<string,unknown>):Promise<ConstructionQuoteView>{
+  const token=await firebaseAuth()?.getToken();
+  if(!token)throw Error('Entre novamente com sua conta Firebase.');
+  const response=await fetch('/api/firebase-cloud-house-quote',{
+    method:'POST',credentials:'omit',cache:'no-store',
+    headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+    body:JSON.stringify({action:'quote',...input}),
+  });
+  if(!response.ok)throw Error(response.status===403
+    ?'Seu perfil não pode consultar a ficha desta Casa.'
+    :response.status===404?'Item, domínio ou posse não localizado.'
+    :response.status===503?'Ficha ou simulador Firebase indisponível.'
+    :'Dados inválidos para a simulação.');
+  const raw:unknown=await response.json();
+  if(!raw||typeof raw!=='object'||!('result' in raw))
+    throw Error('Simulação Firebase com resposta inválida.');
+  return (raw as {result:ConstructionQuoteView}).result;
 }
 
 function FirebaseAccess(){
@@ -512,6 +533,10 @@ function FirebaseAccess(){
           </section>}
         {house&&<FirebaseArmyRoster houseName={house.name} state={house.state}/>}
         {house&&<FirebaseHoldingsRoster houseName={house.name} state={house.state}/>}
+        {house&&<FirebaseConstructionQuote
+          key={house.id} houseId={house.id} state={house.state}
+          onQuote={cloudHouseQuote}/>}
+
         {house&&<FirebaseHouseCourtDomains houseName={house.name} state={house.state}/>}
         {house&&<FirebaseHouseChronicle houseName={house.name} state={house.state}/>}
       </div>}
