@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {useEffect,useState,type FormEvent} from 'react';
-import {createFirebaseRestAuth,type FirebaseSession} from '@/integrations/auth/firebase-rest-auth';
+import {createFirebaseRestAuth} from '@/integrations/auth/firebase-rest-auth';
+import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
 
 /**
  * Firebase-only pilot: read-only, no Supabase, no emulator and no direct
@@ -31,8 +32,10 @@ let singleton:Auth|null=null;
 
 function firebaseAuth():Auth|null{
   if(typeof window==='undefined')return null;
-  const key=import.meta.env['VITE_FIREBASE_API_KEY'] as string|undefined;
-  const project=import.meta.env['VITE_FIREBASE_PROJECT_ID'] as string|undefined;
+  // Firebase Web configuration is public by design; use the owner's project
+  // identifiers without requiring any secret or Cloud Shell environment.
+  const key=FIREBASE_PUBLIC_CONFIG.apiKey;
+  const project=FIREBASE_PUBLIC_CONFIG.projectId;
   if(!key||project!=='cormyr')return null;
   if(singleton)return singleton;
   const storageKey='cormyr:firebase-cloud-pilot:refresh';
