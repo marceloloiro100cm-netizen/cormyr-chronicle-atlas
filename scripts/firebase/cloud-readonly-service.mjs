@@ -122,24 +122,46 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
     async listMailbox(idToken){
       const scope=await scopeFor(idToken);
       if(scope.profile==='editor')deny('access_denied',403);
-      const snap=await db.collection('migrationDomainStage')
-        .doc(snapshotId).collection('letters').get();
-      if(snap.size>500)deny('mailbox_requires_pagination',503);
-      const visible=snap.docs.map(d=>d.data()).filter(v=>{
-        if(!v||v.publicationState!=='delivered'||v.deletedAt!==null||
-           typeof v.sourceId!=='string'||typeof v.subject!=='string'||
-           typeof v.content!=='string'||typeof v.createdAt!=='string'||
-           Boolean(v.recipientPlayerId)===Boolean(v.recipientHouseId))return false;
-        return scope.profile==='narrador'||
-          v.senderUid===scope.uid||
-          (scope.playerId!==null&&v.recipientPlayerId===scope.playerId)||
-          (typeof v.recipientHouseId==='string'&&
-            scope.memberHouseIds.includes(v.recipientHouseId));
-      }).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||
-        a.sourceId.localeCompare(b.sourceId));
+      const root=db.collection('migrationDomainStage').doc(snapshotId);
+      const imported=await root.collection('letters').get();
+      if(imported.size>500)deny('mailbox_requires_pagination',503);
+      let cloudMessages=[];
+      // Historical import is immutable. Newly authored messages only appear
+      // after the separately approved Cloud runtime is fully reconciled.
+      const liveRoot=db.collection('campaignCloudRuntime').doc(snapshotId);
+      const liveStatus=await liveRoot.get();
+      if(liveStatus.exists&&liveStatus.data()?.status==='active'&&
+         liveStatus.data()?.private===true&&
+         liveStatus.data()?.sourceSnapshotId===snapshotId&&
+         liveStatus.data()?.sourceSnapshotReconciled===true&&
+         liveStatus.data()?.mailWriteApproved===true&&
+         liveStatus.data()?.applicationEnabled===true){
+        const live=await liveRoot.collection('letters').get();
+        if(live.size>500)deny('mailbox_requires_pagination',503);
+        cloudMessages=live.docs.map(d=>d.data());
+      }
+      const visible=[...imported.docs.map(d=>d.data()),...cloudMessages]
+        .filter(v=>{
+          if(!v||v.publicationState!=='delivered'||v.deletedAt!==null||
+             typeof (v.sourceId??v.id)!=='string'||
+             typeof v.subject!=='string'||typeof v.content!=='string'||
+             typeof v.createdAt!=='string')return false;
+          const narratorAddressed=v.source==='firebase-cloud'&&
+            v.recipientKind==='narrator'&&
+            v.recipientPlayerId===null&&v.recipientHouseId===null;
+          if(!narratorAddressed&&
+             Boolean(v.recipientPlayerId)===Boolean(v.recipientHouseId))
+            return false;
+          return scope.profile==='narrador'||v.senderUid===scope.uid||
+            (scope.playerId!==null&&v.recipientPlayerId===scope.playerId)||
+            (typeof v.recipientHouseId==='string'&&
+              scope.memberHouseIds.includes(v.recipientHouseId));
+        }).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||
+          String(a.sourceId??a.id).localeCompare(String(b.sourceId??b.id)));
       const items=visible.slice(0,30).map(v=>({
-        id:v.sourceId,subject:v.subject,content:v.content,
-        senderName:v.senderName??null,recipientHouseId:v.recipientHouseId??null,
+        id:v.sourceId??v.id,subject:v.subject,content:v.content,
+        senderName:v.senderName??null,
+        recipientHouseId:v.recipientHouseId??null,
         createdAt:v.createdAt,campaignDate:v.campaignDate??null,
         deliveredAt:v.deliveredAt??null,
       }));
