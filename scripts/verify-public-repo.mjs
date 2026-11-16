@@ -24,8 +24,20 @@ if(/updateUserById\s*\(|createUser\s*\(|signInWithPassword\s*\(/.test(admin))
 if(!admin.includes('ADMIN_SETUP_USER_ID'))
  violations.push('scripts/setup-admin.ts lacks explicit existing-account identifier');
 const gm=readFileSync('src/routes/api/public/gm-content.ts','utf8');
-if(gm.includes('gm-content.json')||!gm.includes('campaign_private_gm_content'))
- violations.push('GM endpoint is not exclusively backed by private storage');
+const privateGm=readFileSync('src/lib/public/firebase-private-gm.server.ts','utf8');
+const legacyPrivateGm=gm.includes('campaign_private_gm_content')&&
+  gm.includes('is_campaign_admin')&&gm.includes('Authorization');
+const firebasePrivateGm=gm.includes('readFirebaseNarratorContent')&&
+  gm.includes('CORMYR_FIREBASE_PRIVATE_GM_ENABLED')&&
+  !/from\s*['"][^'"]*supabase|resolvePublicSupabase|createClient\s*\(/i.test(gm)&&
+  privateGm.includes('migrationPrivateGmStage')&&
+  privateGm.includes('privateGmReadApproved')&&
+  privateGm.includes('createFirebaseCloudReadonly')&&
+  privateGm.includes("role.profile!=='narrador'")&&
+  privateGm.includes('sourceSnapshotReconciled')&&
+  privateGm.includes('gm:atlas');
+if(gm.includes('gm-content.json')||(!legacyPrivateGm&&!firebasePrivateGm))
+  violations.push('GM endpoint is not exclusively backed by private storage');
 const source=readFileSync('drizzle/migrations/0042_reconcile_house_workbooks.sql','utf8');
 if(!source.includes('$workbooks$[]$workbooks$'))
  violations.push('Historical migration still contains actual house state');
