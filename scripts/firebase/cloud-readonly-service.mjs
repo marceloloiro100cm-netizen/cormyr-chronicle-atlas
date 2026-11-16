@@ -72,7 +72,12 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
     const editHouseIds=cleanHouses(v.editHouseIds);
     if(editHouseIds.some(id=>!memberHouseIds.includes(id)))deny('invalid_access_scope',403);
     if(v.profile==='editor'&&memberHouseIds.length)deny('invalid_access_scope',403);
-    return {uid:token.uid,profile:v.profile,memberHouseIds,editHouseIds};
+    const playerId=v.playerId;
+    if(playerId!==null&&playerId!==undefined&&
+       (typeof playerId!=='string'||!SAFE_ID.test(playerId)))
+      deny('invalid_access_scope',403);
+    return {uid:token.uid,profile:v.profile,playerId:playerId??null,
+      memberHouseIds,editHouseIds};
   }
 
   return {
@@ -113,6 +118,92 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       return {id:houseId,name:h.name,castle:h.castle??null,crest:h.crest??null,
         state:s.state,version:s.version,readOnly:true,
         snapshotReconciliationPending:true};
+    },
+    async listMailbox(idToken){
+      const scope=await scopeFor(idToken);
+      if(scope.profile==='editor')deny('access_denied',403);
+      const snap=await db.collection('migrationDomainStage')
+        .doc(snapshotId).collection('letters').get();
+      if(snap.size>500)deny('mailbox_requires_pagination',503);
+      const visible=snap.docs.map(d=>d.data()).filter(v=>{
+        if(!v||v.publicationState!=='delivered'||v.deletedAt!==null||
+           typeof v.sourceId!=='string'||typeof v.subject!=='string'||
+           typeof v.content!=='string'||typeof v.createdAt!=='string'||
+           Boolean(v.recipientPlayerId)===Boolean(v.recipientHouseId))return false;
+        return scope.profile==='narrador'||
+          v.senderUid===scope.uid||
+          (scope.playerId!==null&&v.recipientPlayerId===scope.playerId)||
+          (typeof v.recipientHouseId==='string'&&
+            scope.memberHouseIds.includes(v.recipientHouseId));
+      }).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||
+        a.sourceId.localeCompare(b.sourceId));
+      const items=visible.slice(0,30).map(v=>({
+        id:v.sourceId,subject:v.subject,content:v.content,
+        senderName:v.senderName??null,recipientHouseId:v.recipientHouseId??null,
+        createdAt:v.createdAt,campaignDate:v.campaignDate??null,
+        deliveredAt:v.deliveredAt??null,
+      }));
+      if(Buffer.byteLength(JSON.stringify(items),'utf8')>700_000)
+        deny('mailbox_response_too_large',503);
+      return {items,totalVisible:visible.length,truncated:visible.length>30,
+        readOnly:true,snapshotReconciliationPending:true};
+    },
+    async listNewspaper(idToken){
+      await scopeFor(idToken);
+      await stageReady('migrationNewspaperRuntimeStage');
+      const snap=await db.collection('migrationNewspaperRuntimeStage')
+        .doc(snapshotId).collection('editions').get();
+      if(snap.size>100)deny('newspaper_response_too_large',503);
+      const items=snap.docs.map(d=>d.data()).filter(v=>
+        v&&['published','archived'].includes(v.state)&&
+        typeof v.id==='string'&&typeof v.title==='string'&&
+        Number.isInteger(v.editionNo)&&
+        typeof v.publishedAt==='string'&&v.cancelledAt==null
+      ).sort((a,b)=>b.editionNo-a.editionNo)
+        .map(v=>({id:v.id,title:v.title,subtitle:v.subtitle??'',
+          editionNo:v.editionNo,state:v.state,publishedAt:v.publishedAt,
+          campaignDate:v.campaignDate??null}));
+      return {items,readOnly:true,snapshotReconciliationPending:true};
+    },
+    async getNewspaper(idToken,editionId){
+      await scopeFor(idToken);
+      if(typeof editionId!=='string'||!SAFE_ID.test(editionId))
+        deny('invalid_edition',400);
+      await stageReady('migrationNewspaperRuntimeStage');
+      const snap=await get(db,'migrationNewspaperRuntimeStage',snapshotId,
+        'editions',editionId);
+      const v=snap.data();
+      if(!snap.exists||!v||!['published','archived'].includes(v.state)||
+         typeof v.publishedAt!=='string'||v.cancelledAt!=null)
+        deny('edition_unavailable',404);
+      if(!Array.isArray(v.blocks)||typeof v.title!=='string')
+        deny('edition_unavailable',503);
+      const result={id:v.id,title:v.title,subtitle:v.subtitle??'',
+        editionNo:v.editionNo,state:v.state,blocks:v.blocks,
+        publishedAt:v.publishedAt,campaignDate:v.campaignDate??null,
+        readOnly:true,snapshotReconciliationPending:true};
+      if(Buffer.byteLength(JSON.stringify(result),'utf8')>700_000)
+        deny('edition_response_too_large',503);
+      return result;
+    },
+    async listSpyAgents(idToken,houseId){
+      const scope=await scopeFor(idToken);
+      if(typeof houseId!=='string'||!SAFE_ID.test(houseId))
+        deny('invalid_house',400);
+      if(scope.profile!=='narrador'&&
+         !(scope.profile==='jogador'&&scope.memberHouseIds.includes(houseId)))
+        deny('access_denied',403);
+      await stageReady('migrationSpyStage');
+      const snap=await db.collection('migrationSpyStage')
+        .doc(snapshotId).collection('assets').get();
+      if(snap.size>500)deny('spy_response_too_large',503);
+      const items=snap.docs.map(d=>d.data()).filter(v=>
+        v&&v.ownerHouseId===houseId&&typeof v.id==='string'&&
+        typeof v.codename==='string'
+      ).map(v=>({id:v.id,codename:v.codename,status:v.status,
+        missionSuccesses:v.missionSuccesses,portraitId:v.portraitId??null}))
+        .sort((a,b)=>a.codename.localeCompare(b.codename));
+      return {items,readOnly:true,snapshotReconciliationPending:true};
     },
     async getCalendar(idToken){
       const scope=await scopeFor(idToken);
