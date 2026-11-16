@@ -7,6 +7,7 @@ import {FirebaseCalendarSnapshot} from '@/components/calendar/FirebaseCalendarSn
 import {FirebaseHouseSheet} from '@/components/houses/FirebaseHouseSheet';
 import {FirebaseArmyRoster} from '@/components/houses/FirebaseArmyRoster';
 import {FirebaseHoldingsRoster} from '@/components/houses/FirebaseHoldingsRoster';
+import {FirebaseConstructionSchedule} from '@/components/houses/FirebaseConstructionSchedule';
 import {FirebaseConstructionQuote,type ConstructionQuoteView}
   from '@/components/houses/FirebaseConstructionQuote';
 import {FirebaseHouseCourtDomains} from '@/components/houses/FirebaseHouseCourtDomains';
@@ -566,6 +567,8 @@ function FirebaseAccess(){
           </section>}
         {house&&<FirebaseArmyRoster houseName={house.name} state={house.state}/>}
         {house&&<FirebaseHoldingsRoster houseName={house.name} state={house.state}/>}
+        {house&&<FirebaseConstructionSchedule houseName={house.name}
+          state={house.state} calendar={calendar}/>}
         {house&&<FirebaseConstructionQuote
           key={house.id} houseId={house.id} state={house.state}
           onQuote={cloudHouseQuote}/>}
