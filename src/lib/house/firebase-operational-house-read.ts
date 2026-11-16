@@ -118,8 +118,8 @@ export function createFirebaseOperationalHouseRead({
         timeStage.get(),timeStage.collection('calendar').doc('current').get(),
         runtimeRef.get(),opRef.get(),
       ]);
-      if(!time.exists||time.data()?['status']!=='complete'||
-         time.data()?['private']!==true)return {available:false,readOnly:true};
+      if(!time.exists||time.data()?.['status']!=='complete'||
+         time.data()?.['private']!==true)return {available:false,readOnly:true};
       const date=calendar.data();
       if(!calendar.exists||!date||!number(date['version'])||
          !number(date['year'])||date['year']===0||
@@ -127,7 +127,7 @@ export function createFirebaseOperationalHouseRead({
          !number(date['day'])||date['day']===0||date['day']>30)
         return {available:false,readOnly:true};
       const cfg=runtime.data();
-      if(!runtime.exists||cfg?['status']!=='active'||cfg['private']!==true||
+      if(!runtime.exists||cfg?.['status']!=='active'||cfg['private']!==true||
          cfg['sourceSnapshotId']!==snapshotId||
          cfg['sourceSnapshotReconciled']!==true||
          cfg['applicationEnabled']!==true||
