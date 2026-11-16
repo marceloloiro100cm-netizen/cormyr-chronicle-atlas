@@ -219,8 +219,9 @@ function FirebaseAccess(){
   return <main className="mx-auto max-w-4xl p-6 space-y-5 text-foreground">
     <header className="space-y-2">
       <h1 className="text-2xl font-semibold">Cormyr — acesso Firebase</h1>
-      <p className="text-sm">Prévia somente leitura. Sem Supabase. Os dados vêm de um
-        snapshot privado e ainda não são atualizados em tempo real.</p>
+      <p className="text-sm">Sem Supabase. {view?.mailWriteAvailable
+        ?'Missivas operacionais habilitadas no Firebase; os demais módulos permanecem em leitura.'
+        :'Prévia somente leitura de um snapshot privado, ainda não atualizado em tempo real.'}</p>
     </header>
     {!configured&&<p role="alert">A configuração pública do Firebase Auth ainda
       não foi disponibilizada neste ambiente.</p>}
