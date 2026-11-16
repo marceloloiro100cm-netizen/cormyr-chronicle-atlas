@@ -65,3 +65,30 @@ Testes:
 - `firebase-construction-ledger-verification.test.ts`: cenários de cadeia íntegra, fraude no UID/ID/posse, alterações de hash, eventos faltantes, extras, fora de ordem, relógio, dados, custos e limite.
 - `firebase-house-reconciliation-audit.test.ts`: leitura transacional privativa do Narrador com ledger zero ou um evento, bloqueio de lacunas e não divulgação de UID.
 - `FirebaseHouseReconciliationAudit.test.tsx`: apresentação segura de verificação parcial, sem controles de compra ou autorização.
+
+
+## Reexecução econômica canônica (nova etapa)
+
+A transação de reconciliação agora também pode **reexecutar** as compras registradas, desde que a cadeia privada de hashes esteja íntegra. O verificador importa o catálogo e o motor oficial de construções, começa com a ficha histórica original, recalcula uma cotação por compra, verifica os custos efetivos e aplica a operação com as rolagens de dados gravadas pelo servidor. Compara o hash completo do resultado de **cada** operação e o hash final da ficha operacional. Nenhuma alteração é persistida.
+
+### Novos eventos (contrato de auditoria)
+
+O serviço de compras (que **permanece desligado**) grava adicionalmente em cada novo evento de auditoria privado:
+
+- \`replaySchemaVersion: 1\` — versão do contrato;
+- \`catalogVersion\` — versão exata da regra do item;
+- \`replayInput\` — nome normalizado e apenas vínculos opcionais permitidos: \`parentId\`, \`supportId\`, \`replaceId\` e \`weaponSpecialty\`.
+
+Esses campos **não** aparecem na resposta pública ou nos resultados do Narrador. O verificador reconstitui a impressão digital da requisição original \`sha256({uid,...request})\` com o hash canônico normalizado; qualquer modificação dos parâmetros, catálogo ou custos falha fechada. Os eventos históricos sem \`replayInput\` são imutáveis e retornam \`legacy_inputs_missing\`; não são considerados comprovados por inferência.
+
+### Limites e garantia
+
+- Somente o Narrador administrador, com Firebase Auth revogado verificado, pode iniciar o diagnóstico — mesma rota e mesma flag desligada do PR #538.
+- Só há replay se a cadeia do PR #539 estiver íntegra; limite conservador de **50 compras por Casa** por consulta. Histórico maior resulta em \`replay_limit_exceeded\`, não em resultado parcial válido.
+- Os resultados \`verified_purchase_replay\`, \`legacy_inputs_missing\`, \`recorded_cost_mismatch\`, \`catalog_version_changed\`, \`request_fingerprint_mismatch\`, \`replayed_state_mismatch\` e \`final_state_mismatch\` distinguem reexecução verificada de condições não auditadas.
+- \`economicReplayVerified\` refere-se somente à reconstrução de eventos de **compra de construção pelo catálogo atual correspondente**. Não comprova validade histórica de credenciais, permissões IAM, efeitos de eventos fora do motor de compras, evolução temporal não registrada nem integridade das fontes externas.
+- \`auditHistoryVerified\` geral e \`readyForCutover\` permanecem **false**, inclusive se a reexecução terminar com sucesso. Nenhuma habilitação de compra, nova importação, mudança de IAM, regra ou flag ocorre neste PR.
+
+### Validação
+
+A suíte \`firebase-construction-economic-replay.test.ts\` usa o motor GoT para gerar um resultado legítimo com duração aleatória fixada no teste, refaz a compra e compara os hashes. Testes de falha cobrem eventos legados sem entradas, adulteração de nomes e vínculos, catálogos diferentes, custo incorreto, estados divergentes e limite de processamento. Os testes transacionais do próprio serviço de compra também comprovam que novos eventos gerados podem ser reproduzidos a partir do snapshot histórico, sem escrita adicional.
