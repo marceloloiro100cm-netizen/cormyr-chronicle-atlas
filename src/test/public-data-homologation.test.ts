@@ -15,9 +15,15 @@ describe('Homologação · catálogo e traduções públicos com privilégio mí
  });
  it('não inclui arquivo integral no JSON do catálogo público',()=>{
   const route=read('src/routes/api/public/catalog.ts');
-  expect(route).toContain("select('id,name,region,classification,updated_at,gallery,narrative_text')");
-  expect(route).not.toContain("'id,name,region,classification,archive_data");
-  expect(route).toContain("playerHouses:players.data");
+  expect(route).toContain('readApprovedFirebaseHouseCatalog');
+  expect(route).toContain("CORMYR_FIREBASE_PUBLIC_CATALOG_ENABLED");
+  expect(route).not.toContain('resolvePublicSupabase');
+  expect(route).not.toContain('SUPABASE_');
+  const projection=read('src/lib/house/firebase-public-house-catalog.server.ts');
+  expect(projection).toContain("updated_at:null,gallery:[],narrative_text:null");
+  expect(projection).toContain("d['publicReviewed']!==true");
+  expect(projection).toContain('publicCatalogApproved');
+  expect(projection).not.toContain('archive_data');
  });
  it('limita tanto a rota pública como a função server-side das traduções',()=>{
   const route=read('src/routes/api/public/translations.ts');
