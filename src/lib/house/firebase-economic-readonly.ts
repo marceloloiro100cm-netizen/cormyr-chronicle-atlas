@@ -1,17 +1,10 @@
-/** Read-only Firebase House economy. All numeric projections use the
- * existing Cormyr/GoT rules in engine.ts, NEVER a secondary approximation.
- * A missing or malformed snapshot fails closed rather than substituting 0.
+/** Read-only Firebase House resource balance, using the canonical GoT engine.
+ * Missing or malformed historical data fails closed: no invented balances.
  */
-import {balances,quote,type Balance} from './engine';
-import {CORE_CATALOG} from './catalog';
-import {RESOURCE_KEYS,type CatalogItem,type HouseState,type Resources} from './types';
+import {balances,type Balance} from './engine';
+import {RESOURCE_KEYS,type HouseState} from './types';
 
 type Raw=Record<string,unknown>;
-export type QuotePreview={
-  itemId:string;itemName:string;source:string;pending:string|null;
-  costs:CatalogItem['costs'];discounts:{source:string;resource:string;amount:number}[];
-  before:Resources;after:Resources;errors:string[];available:boolean;
-};
 export type EconomicSnapshot={
   houseId:string;month:number;balances:Balance;domains:{id:string;name:string}[];
 };
@@ -120,32 +113,3 @@ export function calculateFirebaseHouseEconomy(raw:Raw):EconomicSnapshot|null{
   }catch{return null;}
 }
 
-const QUOTABLE=new Set(['fortification','estate','settlement']);
-export const ECONOMY_QUOTE_ITEMS=CORE_CATALOG
-  .filter(item=>QUOTABLE.has(item.category))
-  .map(item=>({id:item.id,name:item.name,category:item.category,source:item.source}));
-
-export function previewFirebaseHouseConstruction(
-  raw:Raw,itemId:string,domainId:string,
-):QuotePreview|null{
-  const state=verifiedEconomicState(raw);
-  const item=CORE_CATALOG.find(i=>i.id===itemId&&QUOTABLE.has(i.category));
-  if(!state||!item||!state.domains.some(d=>d.id===domainId))return null;
-  if(!calculateFirebaseHouseEconomy(raw))return null;
-  try{
-    const result=quote(item,state,domainId);
-    if(!RESOURCE_KEYS.every(r=>numeric(result.before[r])&&numeric(result.after[r]))||
-       !result.costs.every(c=>cost(c)))return null;
-    return{
-      itemId:item.id,itemName:item.name,source:item.source,
-      pending:item.pending??null,costs:result.costs,
-      discounts:result.discounts.map(d=>({
-        source:d.source,resource:d.resource,amount:d.amount,
-      })),before:result.before,after:result.after,
-      errors:result.errors,
-      // A quote can be possible by rules and still be NOT authorized
-      // for purchase: no mutation or runtime approval is made here.
-      available:result.errors.length===0&&!item.pending,
-    };
-  }catch{return null;}
-}
