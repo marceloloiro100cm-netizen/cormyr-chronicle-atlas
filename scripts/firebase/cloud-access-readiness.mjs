@@ -13,6 +13,12 @@ const PROJECT='cormyr';
 const FIRESTORE='https://firestore.googleapis.com/v1/projects/cormyr/databases/(default)/documents/';
 const AUTH='https://identitytoolkit.googleapis.com/v1/projects/cormyr/accounts:batchGet?maxResults=1000';
 const AUTH_NUMBER='https://identitytoolkit.googleapis.com/v1/projects/477785088395/accounts:batchGet?maxResults=1000';
+const AUTH_CONFIG='https://identitytoolkit.googleapis.com/admin/v2/projects/cormyr/config';
+// Only canonical Google RPC status identifiers, never provider error messages.
+const SAFE_ERROR_STATUSES=new Set([
+  'INVALID_ARGUMENT','FAILED_PRECONDITION','PERMISSION_DENIED',
+  'UNAUTHENTICATED','NOT_FOUND','UNAVAILABLE','RESOURCE_EXHAUSTED',
+]);
 const HASH=/^[a-f0-9]{64}$/;
 const STAGES=Object.freeze([
   'migrationDomainStage','migrationAuthStage','migrationTimeEngineStage',
@@ -28,14 +34,14 @@ export async function inspectFirebaseCloudReadiness({
 }={}){
   const token=await tokenProvider();
   if(typeof token!=='string'||token.length<10)throw Error('temporary_oidc_unavailable');
-  const request=async url=>{
-    if(typeof url!=='string'||!url.startsWith(FIRESTORE) && url!==AUTH && url!==AUTH_NUMBER)
+  const request=async (url,{statusOnly=false}={})=>{
+    if(typeof url!=='string'||!url.startsWith(FIRESTORE) && url!==AUTH && url!==AUTH_NUMBER && url!==AUTH_CONFIG)
       throw Error('untrusted_cloud_destination');
     const u=new URL(url);
     if(!((u.hostname==='firestore.googleapis.com'&&u.pathname.startsWith(
       '/v1/projects/cormyr/databases/(default)/documents/'))||
       u.hostname==='identitytoolkit.googleapis.com'&&
-        (url===AUTH||url===AUTH_NUMBER)))
+        (url===AUTH||url===AUTH_NUMBER||url===AUTH_CONFIG)))
       throw Error('untrusted_cloud_destination');
     let response;
     try{
@@ -44,13 +50,27 @@ export async function inspectFirebaseCloudReadiness({
         headers:{Authorization:'Bearer '+token},
         signal:AbortSignal.timeout(12000),
       });
-    }catch{return {status:null,data:null};}
-    if(response.status!==200)return {status:response.status,data:null};
+    }catch{return {status:null,data:null,errorStatus:null};}
+    // This endpoint may return credentials/providers in its JSON body.
+    // Never even deserialize the configuration: status only.
+    if(statusOnly)return {status:response.status,data:null,errorStatus:null};
+    if(response.status!==200){
+      let errorStatus=null;
+      // Google structured error.status contains a public RPC enum. Discard
+      // message, details, request IDs, payloads, tokens and identities.
+      try{
+        const err=await response.json();
+        const value=err?.error?.status;
+        if(typeof value==='string'&&SAFE_ERROR_STATUSES.has(value))
+          errorStatus=value;
+      }catch{/* HTTP code still sufficient if not JSON. */}
+      return {status:response.status,data:null,errorStatus};
+    }
     try{
       const body=await response.json();
       if(!body||typeof body!=='object'||Array.isArray(body))
-        return {status:200,data:null};
-      return {status:200,data:body};
+        return {status:200,data:null,errorStatus:null};
+      return {status:200,data:body,errorStatus:null};
     }catch{return {status:200,data:null};}
   };
   const root=await request(FIRESTORE+'migrationDomainStage?pageSize=2&mask.fieldPaths=status&mask.fieldPaths=private');
@@ -99,6 +119,12 @@ export async function inspectFirebaseCloudReadiness({
   const numberAuth=firstAuth.status===400?await request(AUTH_NUMBER):null;
   const auth=firstAuth.status===200?firstAuth:
     numberAuth?.status===200?numberAuth:firstAuth;
+  // One additional fixed GET can distinguish accessible project Auth config
+  // from the users endpoint's unexplained HTTP 400. Requires configs.get,
+  // not a reason to grant new permissions; never read config contents.
+  const identityConfig=firstAuth.status===400&&
+    numberAuth?.status!==200
+      ?await request(AUTH_CONFIG,{statusOnly:true}):null;
   const users=Array.isArray(auth.data?.users)?auth.data.users:[];
   const accountListComplete=auth.status===200&&
     !auth.data?.nextPageToken&&users.length<=1000;
@@ -114,6 +140,9 @@ export async function inspectFirebaseCloudReadiness({
         [code,stageResults.filter(x=>String(x.code)===code).length])),
     mailRuntimeHttpStatus:runtime.code,mailRuntimeEnabled:runtime.enabled,
     authHttpStatus:auth.status,authProjectNumberHttpStatus:numberAuth?.status??null,
+    authRpcStatus:auth.errorStatus??null,
+    authProjectNumberRpcStatus:numberAuth?.errorStatus??null,
+    identityConfigHttpStatus:identityConfig?.status??null,
     authListComplete:accountListComplete,
     accounts:accountListComplete?users.length:null,
     disabledAccounts:accountListComplete?users.filter(x=>x.disabled===true).length:null,
