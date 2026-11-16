@@ -9,8 +9,8 @@ import {createFirebaseCloudReadonly,CloudAccessError}
 import type {Firestore} from 'firebase-admin/firestore';
 
 type AuthPort={
-  verifyIdToken:(token:string,checkRevoked?:boolean)=>Promise<unknown>;
-  getUser:(uid:string)=>Promise<unknown>;
+  verifyIdToken:(token:string,checkRevoked:boolean)=>Promise<{uid:string}>;
+  getUser:(uid:string)=>Promise<{uid:string;disabled:boolean}>;
 };
 type Config={
   db:Firestore;auth:AuthPort;snapshotId:string;projectId:string;
