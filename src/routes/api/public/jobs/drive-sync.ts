@@ -1,14 +1,80 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { authenticateCronRequest } from '@/integrations/supabase/cron-auth';
+import {createFileRoute} from '@tanstack/react-router';
+import {
+  isAuthorizedFirebaseDriveJob,inspectApprovedFirebaseDriveStage,
+} from '@/lib/drive/firebase-cloud-drive-job.server';
 
-export const Route=createFileRoute('/api/public/jobs/drive-sync')({server:{handlers:{POST:async({request})=>{
-  const failure=await authenticateCronRequest(request);if(failure)return failure;
-  const body:unknown=await request.json();
-  if(!body||typeof body!=='object'||!('kind' in body)||body.kind!=='reconcile')return new Response('Invalid request',{status:400});
-  const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
-  const {runDriveSync}=await import('@/lib/drive-executor.server');
-  const sync=await runDriveSync(supabaseAdmin);
-  const {updatePublicArchive}=await import('@/lib/archive-update.server');
-  let archive;try{archive=await updatePublicArchive(supabaseAdmin);}catch(error){archive={error:error instanceof Error?error.message:'Acervo indisponível'};}
-  return Response.json({sync,archive},{headers:{'Cache-Control':'no-store'}});
-}}}});
+const HEADERS={
+  'Cache-Control':'private, no-store, max-age=0',
+  'X-Content-Type-Options':'nosniff',
+  'Vary':'Authorization',
+};
+const fail=(status:number,error:string)=>Response.json({error},
+  {status,headers:HEADERS});
+
+/**
+ * Replaces the previous Supabase cron executor. The existing 'reconcile'
+ * request fails explicitly until the Firebase Drive transactional service
+ * and its Cloud Scheduler identity have been accepted. It NEVER returns
+ * success for an unexecuted sync.
+ */
+export async function handleFirebaseDriveSync(request:Request):Promise<Response>{
+  if(!isAuthorizedFirebaseDriveJob(request,
+    process.env['CRON_SECRET'],process.env['CRON_SECRET_PREVIOUS']))
+    return fail(401,'unauthorized');
+  const u=new URL(request.url);
+  if(request.method!=='POST'||u.search||
+     request.headers.has('cookie')||
+     request.headers.get('sec-fetch-site')==='cross-site'||
+     (request.headers.has('origin')&&request.headers.get('origin')!==u.origin))
+    return fail(403,'forbidden');
+  if(request.headers.get('content-type')?.split(';')[0]?.trim()!=='application/json'||
+     request.headers.has('content-encoding'))
+    return fail(415,'json_required');
+  let raw='';
+  try{
+    const reader=request.body?.getReader();
+    if(!reader)return fail(400,'invalid_request');
+    const chunks:Uint8Array[]=[];let total=0;
+    while(true){
+      const {done,value}=await reader.read();
+      if(done)break;
+      total+=value.byteLength;
+      if(total>256){await reader.cancel();return fail(413,'request_too_large');}
+      chunks.push(value);
+    }
+    raw=Buffer.concat(chunks).toString('utf8');
+  }catch{return fail(400,'invalid_request');}
+  let kind:unknown;
+  try{
+    const payload:unknown=JSON.parse(raw);
+    if(!payload||typeof payload!=='object'||Array.isArray(payload)||
+       Object.keys(payload).length!==1||!Object.hasOwn(payload,'kind'))
+      return fail(400,'invalid_request');
+    kind=(payload as {kind:unknown}).kind;
+  }catch{return fail(400,'invalid_request');}
+  if(kind==='reconcile')return fail(503,'firebase_drive_write_not_authorized');
+  if(kind!=='audit')return fail(400,'invalid_request');
+  const snapshotId=process.env['CORMYR_FIREBASE_SNAPSHOT_ID']??'';
+  if(process.env['CORMYR_FIREBASE_DRIVE_AUDIT_ENABLED']!=='true'||
+     !/^[a-f0-9]{64}$/.test(snapshotId)||
+     process.env['FIRESTORE_EMULATOR_HOST']||
+     process.env['FIREBASE_AUTH_EMULATOR_HOST'])
+    return fail(503,'firebase_drive_audit_disabled');
+  try{
+    const [{applicationDefault,getApps,initializeApp},{getFirestore}]=
+      await Promise.all([
+        import('firebase-admin/app'),import('firebase-admin/firestore'),
+      ]);
+    const name='cormyr-drive-cloud-audit';
+    const app=getApps().find(a=>a.name===name)??initializeApp({
+      credential:applicationDefault(),projectId:'cormyr',
+    },name);
+    const status=await inspectApprovedFirebaseDriveStage({
+      db:getFirestore(app),projectId:'cormyr',snapshotId,enabled:true,
+    });
+    return Response.json(status,{headers:HEADERS});
+  }catch{return fail(503,'firebase_drive_audit_unavailable');}
+}
+export const Route=createFileRoute('/api/public/jobs/drive-sync')({
+  server:{handlers:{POST:async({request})=>handleFirebaseDriveSync(request)}},
+});
