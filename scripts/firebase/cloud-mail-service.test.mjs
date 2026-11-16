@@ -226,3 +226,130 @@ test('Harptos festival yields the canonical, fixed campaign date',async()=>{
   const row=f.records.get('campaignCloudRuntime/'+snapshot+'/letters/'+r.id);
   assert.equal(row.campaignDate,'1522-F-midwinter');
 });
+
+test('Imported delivered mail records an individual receipt without changing migration snapshot',async()=>{
+  const f=fixture();
+  const importedId='historical-001';
+  const path='migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+importedId);
+  const value={
+    sourceId:importedId,publicationState:'delivered',deletedAt:null,
+    senderUid:'external-author',recipientHouseId:'house-a',
+    recipientPlayerId:null,subject:'Carta antiga',content:'Texto',
+    createdAt:'2026-11-15T10:00:00Z',
+  };
+  f.records.set(path,value);
+  const before=[...f.records].filter(([key])=>key.startsWith('migration'));
+  const first=await f.service().markRead(sampleToken,{
+    source:'imported',letterId:importedId,
+  });
+  assert.equal(first.recorded,true);
+  assert.equal(first.alreadyRecorded,false);
+  assert.equal(first.readAt,'2026-11-16T12:34:56.000Z');
+  const second=await f.service().markRead(sampleToken,{
+    source:'imported',letterId:importedId,
+  });
+  assert.equal(second.alreadyRecorded,true);
+  assert.equal(second.readAt,first.readAt);
+  const reads=[...f.records].filter(([key])=>
+    key.startsWith('campaignCloudRuntime/'+snapshot+'/mailReadReceipts/'));
+  assert.equal(reads.length,1);
+  assert.equal(reads[0][1].viewerUid,'player-1');
+  assert.deepEqual([...f.records].filter(([key])=>key.startsWith('migration')),before);
+});
+
+test('A player cannot mark unrelated, sent, deleted or draft letters as read',async()=>{
+  const f=fixture();
+  const root='migrationDomainStage/'+snapshot+'/letters/';
+  const base={
+    publicationState:'delivered',deletedAt:null,
+    senderUid:'other-author',recipientPlayerId:null,
+    recipientHouseId:'house-b',
+  };
+  for(const [id,changes] of [
+    ['other-house',{}],
+    ['own-sent',{senderUid:'player-1',recipientHouseId:'house-a'}],
+    ['draft',{publicationState:'draft',recipientHouseId:'house-a'}],
+    ['deleted',{deletedAt:'2026-11-16T10:00:00Z',recipientHouseId:'house-a'}],
+    ['ambiguous',{recipientPlayerId:'player-source-id',recipientHouseId:'house-a'}],
+  ])f.records.set(root+h('letter:'+id),{...base,sourceId:id,...changes});
+  for(const id of ['other-house','own-sent','draft','deleted','ambiguous']){
+    await rejects(()=>f.service().markRead(sampleToken,{
+      source:'imported',letterId:id,
+    }),'access_denied',403);
+  }
+  assert.equal([...f.records].filter(([k])=>k.includes('mailReadReceipts/')).length,0);
+});
+
+test('Firebase Cloud runtime letters use separate source and reject forged source',async()=>{
+  const f=fixture();
+  const id=h('cloud-letter');
+  const path='campaignCloudRuntime/'+snapshot+'/letters/'+id;
+  f.records.set(path,{
+    id,source:'firebase-cloud',publicationState:'delivered',
+    deletedAt:null,senderUid:'other-author',recipientKind:'house',
+    recipientHouseId:'house-a',recipientPlayerId:null,
+  });
+  const first=await f.service().markRead(sampleToken,{
+    source:'firebase-cloud',letterId:id,
+  });
+  assert.equal(first.alreadyRecorded,false);
+  await rejects(()=>f.service().markRead(sampleToken,{
+    source:'imported',letterId:id,
+  }),'access_denied',403);
+  await rejects(()=>f.service().markRead(sampleToken,{
+    source:'firebase-cloud',letterId:'../private',
+  }),'invalid_receipt_request',400);
+  await rejects(()=>f.service().markRead(sampleToken,{
+    source:'firebase-cloud',letterId:id,uid:'another',
+  }),'invalid_receipt_request',400);
+  const root='campaignCloudRuntime/'+snapshot;
+  f.records.set(root,{...f.records.get(root),mailWriteApproved:false});
+  await rejects(()=>f.service().markRead(sampleToken,{
+    source:'firebase-cloud',letterId:id,
+  }),'mail_runtime_not_approved',503);
+});
+
+test('Narrator may acknowledge narrator-addressed Cloud mail, not player-house mail',async()=>{
+  const f=fixture('narrador');
+  const root='campaignCloudRuntime/'+snapshot+'/letters/';
+  const directId=h('to-narrator');
+  const houseId=h('to-house');
+  for(const [id,kind] of [[directId,'narrator'],[houseId,'house']]){
+    f.records.set(root+id,{
+      id,source:'firebase-cloud',publicationState:'delivered',deletedAt:null,
+      senderUid:'player-other',recipientKind:kind,
+      recipientHouseId:kind==='narrator'?null:'house-a',
+      recipientPlayerId:null,
+    });
+  }
+  assert.equal((await f.service().markRead(sampleToken,{
+    source:'firebase-cloud',letterId:directId,
+  })).recorded,true);
+  await rejects(()=>f.service().markRead(sampleToken,{
+    source:'firebase-cloud',letterId:houseId,
+  }),'access_denied',403);
+  const editor=fixture('editor');
+  editor.records.set(root+directId,f.records.get(root+directId));
+  await rejects(()=>editor.service().markRead(sampleToken,{
+    source:'firebase-cloud',letterId:directId,
+  }),'access_denied',403);
+});
+
+test('Revoked account and in-transaction membership change fail closed on read receipt',async()=>{
+  const f=fixture();
+  const id='membership-check';
+  f.records.set('migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+id),{
+    sourceId:id,publicationState:'delivered',deletedAt:null,
+    senderUid:'someone-else',recipientPlayerId:null,recipientHouseId:'house-a',
+  });
+  f.auth.getUser=async uid=>({uid,disabled:true});
+  await rejects(()=>f.service().markRead(sampleToken,{source:'imported',letterId:id}),
+    'authentication_required',401);
+  f.auth.getUser=async uid=>({uid,disabled:false});
+  f.records.set('migrationDomainStage/'+snapshot+'/access/player-1',{
+    ...f.records.get('migrationDomainStage/'+snapshot+'/access/player-1'),
+    memberHouseIds:[],editHouseIds:[],
+  });
+  await rejects(()=>f.service().markRead(sampleToken,{source:'imported',letterId:id}),
+    'access_denied',403);
+});
