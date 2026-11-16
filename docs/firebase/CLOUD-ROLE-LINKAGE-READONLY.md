@@ -61,3 +61,36 @@ bloqueio: vinculação dos 14 Auth UIDs à projeção de acesso efetivamente pre
 no Firestore.
 
 Testes sintéticos: `node --test scripts/firebase/cloud-role-linkage-readonly.test.mjs`.
+
+
+## Resultado real de 16/11/2026 e análise das pendências
+
+A execução anterior pela conta operadora confirmou **14/14** contas
+vinculadas por UID ao snapshot privado, **0** contas sem vínculo,
+**0** documentos de perfil excedentes e **0** documentos malformados.
+A distribuição observada foi **1 narrador, 10 jogadores, 1 editor e
+2 perfis classificados como \`other\`**. Dez contas passaram na triagem
+estrutural inicial, quatro não; todas as 14 contas Auth continuam
+desativadas.
+
+**Esses quatro casos não devem ser corrigidos no escuro.** A triagem
+anterior só contabilizava o total de falhas. Esta revisão mantém os
+mesmos critérios de compatibilidade e acrescenta:
+
+- \`structurallyEligibleByProfile\` e
+  \`structurallyIneligibleByProfile\`: subtotais de Narrador, Jogador,
+  Editor e Outros;
+- \`blockingReasonCounts\`: contagens de perfis ausentes ou desconhecidos,
+  acesso inativo, exigência de mudança de senha, divergência da flag
+  \`admin\`, listas de Casas inválidas, edição fora do escopo de membro,
+  Jogador sem Casa e Editor indevidamente vinculado a Casa.
+
+**Os motivos não são mutuamente exclusivos.** Uma conta pode figurar
+em mais de uma categoria e a soma não precisa ser quatro. A definição
+de aptidão estrutural não exige que a conta Auth esteja habilitada: é
+um diagnóstico da projeção histórica, não uma autorização de login.
+
+O diagnóstico mantém exatamente três consultas GET limitadas, sem
+dados individuais na saída; os novos campos ficam \`null\` caso a leitura
+ou paginação seja inconclusiva. A alteração não importa, escreve ou
+ativa contas e não autoriza publicação.
