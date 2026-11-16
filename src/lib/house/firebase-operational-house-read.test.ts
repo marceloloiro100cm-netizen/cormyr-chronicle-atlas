@@ -160,6 +160,13 @@ describe('Firebase Cloud — economia operacional privada',()=>{
     expect(await f.service().summary(token,'house-a'))
       .toEqual({available:false,readOnly:true});
   });
+  it('rejeita datas de festival inválidas mesmo com versão conciliada',async()=>{
+    const f=fixture();
+    const ref=root('migrationTimeEngineStage')+'/calendar/current';
+    f.docs.set(ref,{year:1522,month:6,day:1,festival:'shieldmeet',version:5});
+    const output=await f.service().summary(token,'house-a');
+    expect(output).toEqual({available:false,readOnly:true});
+  });
   it('projeta recursos, posses e projetos após evento operacional',async()=>{
     const f=fixture();
     const op=structuredClone(f.docs.get(f.opPath)!);
