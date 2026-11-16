@@ -9,6 +9,8 @@ import {createHash} from 'node:crypto';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {constructionStateHash} from './firebase-construction-transaction';
+import {verifyConstructionLedger,CONSTRUCTION_LEDGER_LIMIT,
+  type ConstructionLedgerResult} from './firebase-construction-ledger-verification';
 import {calculateFirebaseHouseEconomy} from './firebase-economic-readonly';
 import {monthFromHarptosDate} from '@/lib/calendar/house-time-impact';
 // @ts-expect-error Harptos source is a shared .mjs without TS declarations.
@@ -48,6 +50,7 @@ export type HouseReconciliationReport={
   readGateApproved:boolean;writeGateApproved:boolean;
   documentIntegrityConfirmed:boolean;
   auditHistoryVerified:false;readyForCutover:false;readOnly:true;
+  constructionLedger:ConstructionLedgerResult|null;
 };
 
 const stageComplete=(v:unknown):boolean=>
@@ -149,7 +152,8 @@ export function createFirebaseHouseReconciliationAudit({
         const report=(status:HouseReconciliationStatus,
           sourceVersion:number|null=null,
           operationalVersion:number|null=null,
-          runtimeData:unknown=null):HouseReconciliationReport=>({
+          runtimeData:unknown=null,
+          constructionLedger:ConstructionLedgerResult|null=null):HouseReconciliationReport=>({
           houseId:selectedHouseId,houseName:typeof house?.['name']==='string'
             ?house['name'].slice(0,160):'Casa não identificada',
           status,sourceVersion,operationalVersion,
@@ -159,6 +163,7 @@ export function createFirebaseHouseReconciliationAudit({
             status==='seed_consistent'||status==='operational_document_consistent',
           // A hash match does not certify the full event ledger or IAM.
           auditHistoryVerified:false,readyForCutover:false,readOnly:true,
+          constructionLedger,
         });
 
         if(docs.slice(0,4).some(d=>!d.exists||!stageComplete(d.data())))
@@ -217,10 +222,31 @@ export function createFirebaseHouseReconciliationAudit({
            !sourceValid(operation['state'],selectedHouseId))
           return report('economy_invalid',
             sourceVersion,operationalVersion,config);
-        // Valid hashes and resource rules do not prove transaction history.
+        // A full House-scoped bounded query is required: never assert an
+        // audit based only on a truncated page or the final state hash.
+        // A Firestore query failure leaves the diagnostic unverified.
+        let ledger:ConstructionLedgerResult|null=null;
+        try{
+          const query=runtime.collection('houseConstructionAudits')
+            .where('houseId','==',selectedHouseId)
+            .limit(CONSTRUCTION_LEDGER_LIMIT+1);
+          const events=await tx.get(query);
+          ledger=verifyConstructionLedger(events.docs.map(d=>({
+            id:d.id,data:()=>d.data(),
+          })),{
+            houseId:selectedHouseId,snapshotId,
+            sourceSheetVersion:sourceVersion,
+            sourceHash, currentHash:operationalHash,
+            operationalVersion,
+            lastConstructionEventId:operation['lastConstructionEventId'],
+          });
+        }catch{
+          // Never return unverified event rows or silently claim success.
+          ledger=null;
+        }
         return report(operationalVersion===0?'seed_consistent':
           'operational_document_consistent',
-          sourceVersion,operationalVersion,config);
+          sourceVersion,operationalVersion,config,ledger);
       });
     },
   };
