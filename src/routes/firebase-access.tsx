@@ -9,6 +9,7 @@ import {FirebaseArmyRoster} from '@/components/houses/FirebaseArmyRoster';
 import {FirebaseHoldingsRoster} from '@/components/houses/FirebaseHoldingsRoster';
 import {FirebaseHouseCourtDomains} from '@/components/houses/FirebaseHouseCourtDomains';
 import {FirebaseHouseResources} from '@/components/houses/FirebaseHouseResources';
+import {FirebaseHouseChronicle} from '@/components/houses/FirebaseHouseChronicle';
 
 /**
  * Firebase-only pilot: read-only, no Supabase, no emulator and no direct
@@ -320,6 +321,7 @@ function FirebaseAccess(){
         {house&&<FirebaseArmyRoster houseName={house.name} state={house.state}/>}
         {house&&<FirebaseHoldingsRoster houseName={house.name} state={house.state}/>}
         {house&&<FirebaseHouseCourtDomains houseName={house.name} state={house.state}/>}
+        {house&&<FirebaseHouseChronicle houseName={house.name} state={house.state}/>}
       </div>}
       {agents&&house&&<section className="rounded border p-4 space-y-2">
         <h2 className="text-lg font-semibold">Agentes da Casa</h2>
