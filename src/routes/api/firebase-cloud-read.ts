@@ -59,8 +59,9 @@ async function handle(request:Request):Promise<Response>{
   if(!bearer||!/^Bearer [^\s]{10,10000}$/.test(bearer))
     return error(401,'authentication_required');
   try{
-    const payload=await boundedJson(request) as {action?:unknown;houseId?:unknown};
-    if(!['session','listHouses','getHouse','getCalendar'].includes(String(payload.action)))
+    const payload=await boundedJson(request) as {action?:unknown;houseId?:unknown;editionId?:unknown};
+    if(!['session','listHouses','getHouse','getCalendar',
+      'listMailbox','listNewspaper','getNewspaper','listSpyAgents'].includes(String(payload.action)))
       return error(400,'invalid_action');
     // Firebase Admin uses the App Hosting service account, not a JSON key in source.
     const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=await Promise.all([
@@ -77,13 +78,18 @@ async function handle(request:Request):Promise<Response>{
       enabled:true,
     });
     const token=bearer.slice(7);
-    const result=payload.action==='session'
-      ? await service.session(token)
-      : payload.action==='listHouses'
-        ? await service.listHouses(token)
-        : payload.action==='getCalendar'
-          ? await service.getCalendar(token)
-          : await service.getHouse(token,payload.houseId);
+    let result:unknown;
+    switch(payload.action){
+      case 'session':result=await service.session(token);break;
+      case 'listHouses':result=await service.listHouses(token);break;
+      case 'getCalendar':result=await service.getCalendar(token);break;
+      case 'getHouse':result=await service.getHouse(token,payload.houseId);break;
+      case 'listMailbox':result=await service.listMailbox(token);break;
+      case 'listNewspaper':result=await service.listNewspaper(token);break;
+      case 'getNewspaper':result=await service.getNewspaper(token,payload.editionId);break;
+      case 'listSpyAgents':result=await service.listSpyAgents(token,payload.houseId);break;
+      default:return error(400,'invalid_action');
+    }
     return Response.json({result},{status:200,headers});
   }catch(e){
     if(e instanceof CloudAccessError)return error(e.status,e.code);
