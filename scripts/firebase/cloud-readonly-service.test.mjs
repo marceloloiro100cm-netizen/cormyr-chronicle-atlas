@@ -74,7 +74,8 @@ function fixture(profile='jogador',extra={}){
       if(entries.length)return {size:entries.length,
         docs:entries.map(([,value])=>d(value))};
       // Empty Firestore collections still return QuerySnapshot.docs=[].
-      if(path.endsWith('/letters')||path.endsWith('/mailReadReceipts'))
+      if(path.endsWith('/letters')||path.endsWith('/mailReadReceipts')||
+         path.endsWith('/dossiers')||path.endsWith('/findings'))
         return {size:0,docs:[]};
       return d(undefined);
     }
@@ -303,4 +304,91 @@ test('Cloud inbox returns only the viewer own receipt; never another user status
   const blocked=await f.service().listMailbox(token);
   assert.equal(blocked.items.find(v=>v.id===id).canMarkRead,false);
   assert.equal(blocked.items.find(v=>v.id===id).readAt,null);
+});
+
+
+test('Spy dossiers expose own House verified findings, not foreign House secrets',async()=>{
+  const f=fixture('jogador');
+  const root='migrationSpyStage/'+snapshot+'/';
+  f.docs.set(root+'dossiers/dos-a',{
+    id:'dos-a',ownerHouseId:'house-a',targetHouseId:'house-b',
+    createdAt:'2026-11-15T12:00:00Z',
+  });
+  f.docs.set(root+'dossiers/dos-b',{
+    id:'dos-b',ownerHouseId:'house-b',targetHouseId:'house-a',
+  });
+  f.docs.set(root+'findings/f-a',{
+    id:'f-a',dossierId:'dos-a',objective:'house_resources',
+    subjectKey:'wealth',valueSnapshot:{wealth:7},
+    discoveredDateKey:'1522-01-10',verifiedDateKey:'1522-01-10',
+  });
+  f.docs.set(root+'findings/f-b',{
+    id:'f-b',dossierId:'dos-b',objective:'army',
+    subjectKey:'secret-army',valueSnapshot:{units:999},
+    verifiedDateKey:'1522-01-11',
+  });
+  f.docs.set(root+'findings/f-draft',{
+    id:'f-draft',dossierId:'missing-dossier',objective:'possessions',
+    subjectKey:'gm-unreleased',valueSnapshot:{secret:'never deliver'},
+  });
+  f.docs.set(root+'adminAudit/audit-1',{
+    id:'audit-1',dossierId:'dos-a',
+    secretGmNote:'SECRET_GM_AUDIT_DONT_INCLUDE',
+  });
+  const result=await f.service().listSpyDossiers(token,'house-a');
+  assert.equal(result.ownerHouseId,'house-a');
+  assert.deepEqual(result.items.map(d=>d.targetHouseId),['house-b']);
+  assert.equal(result.items[0].findings.length,1);
+  assert.deepEqual(result.items[0].findings[0].valueSnapshot,{wealth:7});
+  assert.ok(!JSON.stringify(result).includes('secret-army'));
+  assert.ok(!JSON.stringify(result).includes('SECRET_GM_AUDIT_DONT_INCLUDE'));
+  assert.ok(!JSON.stringify(result).includes('gm-unreleased'));
+  await rejects(()=>f.service().listSpyDossiers(token,'house-b'),'access_denied',403);
+  await rejects(()=>f.service().listSpyDossiers(token,'../secret'),'invalid_house',400);
+  const editor=fixture('editor');
+  await rejects(()=>editor.service().listSpyDossiers(token,'house-a'),'access_denied',403);
+  const gm=fixture('narrador');
+  for(const [path,value] of f.docs)
+    if(path.startsWith(root))gm.docs.set(path,value);
+  const ownGM=await gm.service().listSpyDossiers(token,'house-b');
+  assert.deepEqual(ownGM.items.map(d=>d.targetHouseId),['house-a']);
+  assert.equal(ownGM.items[0].findings[0].subjectKey,'secret-army');
+});
+
+test('Spy dossier query fails closed when stage is incomplete or House inactive',async()=>{
+  const f=fixture('jogador');
+  f.docs.set('migrationSpyStage/'+snapshot,{status:'incomplete',private:true});
+  await rejects(()=>f.service().listSpyDossiers(token,'house-a'),
+    'migration_stage_not_ready',503);
+  f.docs.set('migrationSpyStage/'+snapshot,{status:'complete',private:true});
+  f.docs.set('migrationDomainStage/'+snapshot+'/houses/'+hash('house:house-a'),{
+    sourceId:'house-a',active:false,
+  });
+  await rejects(()=>f.service().listSpyDossiers(token,'house-a'),
+    'house_unavailable',404);
+});
+
+test('Spy dossier returns empty without exposing unpublished operations',async()=>{
+  const f=fixture('jogador');
+  const root='migrationSpyStage/'+snapshot+'/';
+  f.docs.set(root+'operations/private',{
+    id:'private',ownerHouseId:'house-a',secretMission:'underway',
+  });
+  const result=await f.service().listSpyDossiers(token,'house-a');
+  assert.deepEqual(result.items,[]);
+  assert.ok(!JSON.stringify(result).includes('underway'));
+});
+
+test('Spy dossier output has a bounded response size',async()=>{
+  const f=fixture('jogador');
+  const root='migrationSpyStage/'+snapshot+'/';
+  f.docs.set(root+'dossiers/dos',{
+    id:'dos',ownerHouseId:'house-a',targetHouseId:'house-b',
+  });
+  for(let i=0;i<9;i++)f.docs.set(root+'findings/'+i,{
+    id:'f'+i,dossierId:'dos',objective:'possessions',
+    subjectKey:'item-'+i,valueSnapshot:{description:'A'.repeat(31000)},
+  });
+  await rejects(()=>f.service().listSpyDossiers(token,'house-a'),
+    'spy_dossier_response_too_large',503);
 });
