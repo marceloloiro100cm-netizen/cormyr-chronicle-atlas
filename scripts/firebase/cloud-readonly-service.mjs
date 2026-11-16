@@ -81,6 +81,8 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
   }
 
   return {
+    /** Internal server-only authorization. Never exposed as an HTTP action. */
+    authorize:scopeFor,
     async session(idToken){
       const {profile,memberHouseIds}=await scopeFor(idToken);
       return {authenticated:true,profile,memberHouseIds,readOnly:true,
@@ -137,15 +139,45 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
             scope.memberHouseIds.includes(v.recipientHouseId));
       }).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||
         a.sourceId.localeCompare(b.sourceId));
-      const items=visible.slice(0,30).map(v=>({
+      const historical=visible.map(v=>({
         id:v.sourceId,subject:v.subject,content:v.content,
         senderName:v.senderName??null,recipientHouseId:v.recipientHouseId??null,
         createdAt:v.createdAt,campaignDate:v.campaignDate??null,
-        deliveredAt:v.deliveredAt??null,
+        deliveredAt:v.deliveredAt??null,source:'imported',
       }));
+      // Operational messages are never stored in migration* collections.
+      // Ignore missing/unapproved runtime roots; historical reads still work.
+      const runtime=db.collection('campaignMailRuntime').doc(snapshotId);
+      const ready=await runtime.get();
+      let live=[];
+      if(ready.exists&&ready.data()?.status==='active'&&
+         ready.data()?.private===true&&ready.data()?.applicationEnabled===true&&
+         ready.data()?.mailEnabled===true&&
+         ready.data()?.sourceSnapshotId===snapshotId&&
+         ready.data()?.sourceLiveReconciled===true){
+        const current=await runtime.collection('letters').get();
+        if(current.size>500)deny('mailbox_requires_pagination',503);
+        live=current.docs.map(d=>d.data()).filter(v=>
+          v?.source==='firebase-cloud'&&v?.publicationState==='delivered'&&
+          v.deletedAt===null&&typeof v.id==='string'&&
+          typeof v.subject==='string'&&typeof v.content==='string'&&
+          typeof v.createdAt==='string'&&
+          (v.recipientKind==='house'||v.recipientKind==='narrator')&&
+          (scope.profile==='narrador'||v.senderUid===scope.uid||
+            (v.recipientKind==='house'&&scope.memberHouseIds.includes(v.recipientHouseId)))
+        ).map(v=>({
+          id:v.id,subject:v.subject,content:v.content,
+          senderName:v.senderName??null,recipientHouseId:v.recipientHouseId??null,
+          createdAt:v.createdAt,campaignDate:v.campaignDate??null,
+          deliveredAt:v.deliveredAt??null,source:'firebase-cloud',
+        }));
+      }
+      const all=[...historical,...live].sort((a,b)=>
+        b.createdAt.localeCompare(a.createdAt)||a.id.localeCompare(b.id));
+      const items=all.slice(0,30);
       if(Buffer.byteLength(JSON.stringify(items),'utf8')>700_000)
         deny('mailbox_response_too_large',503);
-      return {items,totalVisible:visible.length,truncated:visible.length>30,
+      return {items,totalVisible:all.length,truncated:all.length>30,
         readOnly:true,snapshotReconciliationPending:true};
     },
     async listNewspaper(idToken){
