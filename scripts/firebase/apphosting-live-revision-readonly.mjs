@@ -80,7 +80,7 @@ export async function inspectAppHostingReadOnly({
   if(typeof token!=='string'||token.length<12)throw Error('oidc_identity_unavailable');
   const request=async path=>{
     // Never accept caller-provided URLs or hosts.
-    if(!/^projects\/cormyr\/locations\/(?:us-east4|us-central1)\/backends(?:\/[a-z0-9-]+(?:\/(?:domains|rollouts|traffic|builds\/[a-z0-9-]+))?)?(?:\?.*)?$/.test(path))
+    if(!/^projects\/cormyr\/locations\/(?:us-east4|us-central1)\/backends(?:\/[a-z0-9-]+(?:\/(?:domains|rollouts|traffic|builds|builds\/[a-z0-9-]+))?)?(?:\?.*)?$/.test(path))
       throw Error('untrusted_apphosting_resource');
     const response=await fetcher(APPHOSTING_API+'/'+path,{
       method:'GET',redirect:'error',credentials:'omit',cache:'no-store',
@@ -113,11 +113,12 @@ export async function inspectAppHostingReadOnly({
       const name=backend?.name;
       if(typeof name!=='string'||!name.startsWith(prefix+'/')||
          !idPattern.test(name.slice((prefix+'/').length)))continue;
-      const [domains,traffic,rollouts]=await Promise.all([
+      const [domains,traffic,rollouts,builds]=await Promise.all([
         request(name+'/domains?pageSize=100'),
         request(name+'/traffic'),
         // Ordering is done locally; avoid a server-side orderBy incompatibility.
         request(name+'/rollouts?pageSize=20'),
+        request(name+'/builds?pageSize=20'),
       ]);
       const domainAttached=domains.status===200&&Array.isArray(domains.data.domains)
         ?domains.data.domains.some(d=>d?.name===name+'/domains/'+AUDITED_DOMAIN&&!d.disabled)
@@ -163,6 +164,25 @@ export async function inspectAppHostingReadOnly({
             ?Math.min(data.errors.length,100):0,
         });
       }
+      const receivedBuilds=builds.status===200&&Array.isArray(builds.data.builds)
+        ?builds.data.builds:[];
+      receivedBuilds.sort((a,b)=>String(b?.createTime??'').localeCompare(String(a?.createTime??'')));
+      // Failed builds can be absent from rollouts entirely. Only emit safe
+      // state/error-source enums and revision SHAs, not error messages.
+      const recentBuilds=receivedBuilds.slice(0,12).filter(b=>
+        validatedServingBuildPath(b?.name,name)!==null).map(b=>{
+        const e=Array.isArray(b.errors)?b.errors[0]:null;
+        const errorCode=e?.error?.code;
+        const source=typeof e?.errorSource==='string'?e.errorSource:null;
+        return {
+          state:typeof b.state==='string'?b.state:null,
+          sourceCommit:sha40(b.source?.codebase?.hash),
+          errorCount:Array.isArray(b.errors)?Math.min(b.errors.length,100):0,
+          errorCode:Number.isInteger(errorCode)&&errorCode>=0&&errorCode<=99
+            ?errorCode:null,
+          errorSource:source&&/^[A-Z_]{1,50}$/.test(source)?source:null,
+        };
+      });
       backends.push({
         backendId:name.slice((prefix+'/').length),region,domainAttached,
         domainsReadable:domains.status===200,
@@ -182,6 +202,9 @@ export async function inspectAppHostingReadOnly({
         rolloutCountSampled:releases.length,
         latestRolloutState:typeof releases[0]?.state==='string'?releases[0].state:null,
         recentRollouts,
+        buildsHttpStatus:builds.status,
+        buildsReadable:builds.status===200,
+        recentBuilds,
       });
     }
   }
@@ -252,6 +275,8 @@ function appendPublicationSummary(report){
     '- Permissão de leitura pendente: '+(state.readPermissionRequired?'sim':'não'),
     '- Rollouts recentes (estados e códigos, sem mensagens): '+JSON.stringify(
       report.backends?.find(b=>b.domainAttached)?.recentRollouts??[]),
+    '- Builds recentes (estados e códigos, sem mensagens): '+JSON.stringify(
+      report.backends?.find(b=>b.domainAttached)?.recentBuilds??[]),
     '- Firebase Cloud/dados/Auth migrados: **não comprovado**. Corte definitivo: **NO_GO**.',
     '- Uma comparação diferente de MATCH pode apenas indicar rollout ainda em curso; conferir o check App Hosting - Rollout antes de concluir.',
     '',

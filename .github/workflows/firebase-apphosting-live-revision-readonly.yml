@@ -25,6 +25,12 @@ jobs:
           node-version: '24'
       - name: Read-only App Hosting REST contract tests (offline)
         run: node --test scripts/firebase/apphosting-live-revision-readonly.test.mjs
+      - name: Verify npm install matches Firebase App Hosting
+        run: npm ci --no-audit --no-fund
+      - name: Verify npm build matches Firebase App Hosting
+        env:
+          NITRO_PRESET: node-server
+        run: npm run build
       - name: Public repository privacy gate
         run: node scripts/verify-public-repo.mjs
 

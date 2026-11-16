@@ -323,3 +323,41 @@ test('failed rollout diagnosis reports only safe build state and numeric error c
   assert.ok(requests.every(x=>x.method==='GET'&&
     x.url.startsWith(APPHOSTING_API+'/projects/cormyr/')));
 });
+
+test('failed App Hosting builds are visible when no rollout exists',async()=>{
+  const secret='DO_NOT_PRINT_BUILD_EXCEPTION_SECRET';
+  const failed=p+'/builds/build-new-failure';
+  const values={
+    ...fixture,
+    [p+'/builds?pageSize=20']:{builds:[
+      {name:failed,state:'FAILED',createTime:'2026-11-16T10:11:00Z',
+        source:{codebase:{hash:'c'.repeat(40)}},
+        errors:[{errorSource:'CLOUD_BUILD',
+          error:{code:13,message:secret,details:[secret]}}]},
+      {name:p+'/builds/build-12',state:'READY',
+        createTime:'2026-11-15T10:11:00Z',source:{codebase:{hash:SHA}}},
+      {name:'projects/other/locations/us-east4/backends/bad/builds/evil',
+        state:'FAILED',errors:[{error:{message:secret}}]},
+    ]},
+  };
+  const calls=[];
+  const report=await inspectAppHostingReadOnly({
+    tokenProvider:async()=> 'ephemeral-only-token',
+    fetcher:async(url,options)=>{
+      calls.push({url,method:options.method});
+      const v=values[url.slice((APPHOSTING_API+'/').length)];
+      return new Response(JSON.stringify(v??{}),{status:v?200:404});
+    },
+  });
+  const backend=report.backends[0];
+  assert.equal(backend.buildsReadable,true);
+  assert.equal(backend.buildsHttpStatus,200);
+  assert.equal(backend.recentBuilds.length,2);
+  assert.equal(backend.recentBuilds[0].state,'FAILED');
+  assert.equal(backend.recentBuilds[0].errorSource,'CLOUD_BUILD');
+  assert.equal(backend.recentBuilds[0].errorCode,13);
+  assert.equal(backend.recentBuilds[0].sourceCommit,'c'.repeat(40));
+  assert.ok(!JSON.stringify(report).includes(secret));
+  assert.ok(calls.every(x=>x.method==='GET'&&
+    x.url.startsWith(APPHOSTING_API+'/projects/cormyr/')));
+});
