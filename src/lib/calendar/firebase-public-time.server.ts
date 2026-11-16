@@ -30,7 +30,7 @@ export async function readApprovedFirebasePublicTime({
   env?:NodeJS.ProcessEnv;
 }):Promise<PublicCampaignTime>{
   if(enabled!==true||projectId!=='cormyr'||!HASH.test(snapshotId)||
-     env.FIRESTORE_EMULATOR_HOST||env.FIREBASE_AUTH_EMULATOR_HOST||
+     env['FIRESTORE_EMULATOR_HOST']||env['FIREBASE_AUTH_EMULATOR_HOST']||
      !db||typeof db.collection!=='function')return unavailable();
 
   // Active private runtime provides the explicit public release decision.
@@ -38,32 +38,32 @@ export async function readApprovedFirebasePublicTime({
   const runtimeRef=db.collection('campaignCloudRuntime').doc(snapshotId);
   const runtime=await runtimeRef.get();
   const controls=runtime.exists?runtime.data():null;
-  if(!controls||controls.status!=='active'||controls.private!==true||
-     controls.sourceSnapshotId!==snapshotId||
-     controls.sourceSnapshotReconciled!==true||
-     controls.applicationEnabled!==true||
-     controls.publicTimeApproved!==true||
-     !Number.isSafeInteger(controls.publishedTimeVersion)||
-     controls.publishedTimeVersion<1||
-     controls.calendarVersion!==controls.publishedTimeVersion)
+  if(!controls||controls['status']!=='active'||controls['private']!==true||
+     controls['sourceSnapshotId']!==snapshotId||
+     controls['sourceSnapshotReconciled']!==true||
+     controls['applicationEnabled']!==true||
+     controls['publicTimeApproved']!==true||
+     !Number.isSafeInteger(controls['publishedTimeVersion'])||
+     controls['publishedTimeVersion']<1||
+     controls['calendarVersion']!==controls['publishedTimeVersion'])
     return unavailable();
 
   const stageRef=db.collection('migrationTimeEngineStage').doc(snapshotId);
   const stage=await stageRef.get();
   const stageData=stage.exists?stage.data():null;
-  if(!stageData||stageData.status!=='complete'||stageData.private!==true)
+  if(!stageData||stageData['status']!=='complete'||stageData['private']!==true)
     return unavailable();
 
   const snapshot=await stageRef.collection('calendar').doc('current').get();
   const record=snapshot.exists?snapshot.data():null;
-  if(!record||record.version!==controls.publishedTimeVersion)
+  if(!record||record['version']!==controls['publishedTimeVersion'])
     return unavailable();
   try{
     // Whitelist exactly year/month/day/festival/version and derived labels.
     // Never include snapshot hashes, house data, notes or metadata.
     return publicCampaignTimeProjection({
-      year:record.year,month:record.month,day:record.day,
-      festival:record.festival??null,version:record.version,
+      year:record['year'],month:record['month'],day:record['day'],
+      festival:record['festival']??null,version:record['version'],
     });
   }catch{return unavailable();}
 }
