@@ -122,3 +122,54 @@ test('invalid token cannot initiate any cloud request',async()=>{
     fetcher:async()=>{throw Error('must not call');},
   }),/temporary_oidc_unavailable/);
 });
+
+test('HTTP 400 Auth response triggers only fixed numeric-project alias, reports IAM 403 accurately',async()=>{
+  const calls=[];
+  const number='https://identitytoolkit.googleapis.com/v1/projects/477785088395/accounts:batchGet?maxResults=1000';
+  const report=await inspectFirebaseCloudReadiness({
+    tokenProvider:async()=> 'EPHEMERAL_TEST_TOKEN_SECRET',
+    fetcher:async(url,options)=>{
+      calls.push({url,options});
+      if(url===AUTH)return new Response('PRIVATE_AUTH_400',{status:400});
+      if(url===number)return new Response('PRIVATE_AUTH_403',{status:403});
+      return new Response('PRIVATE_FIRESTORE_403',{status:403});
+    },
+  });
+  assert.equal(report.authHttpStatus,400);
+  assert.equal(report.authProjectNumberHttpStatus,403);
+  assert.equal(report.requiresFirebaseAuthReadPermission,true);
+  assert.equal(report.firestoreHttpStatus,403);
+  assert.equal(report.readyForCutover,false);
+  assert.equal(calls.length,3);
+  assert.ok(calls.every(x=>x.options.method==='GET'));
+  const text=JSON.stringify(report);
+  for(const x of ['PRIVATE_AUTH_400','PRIVATE_AUTH_403','PRIVATE_FIRESTORE_403',
+    'EPHEMERAL_TEST_TOKEN_SECRET'])
+    assert.ok(!text.includes(x));
+});
+
+test('numeric alias may return aggregate users without exposing identifiers',async()=>{
+  const num='https://identitytoolkit.googleapis.com/v1/projects/477785088395/accounts:batchGet?maxResults=1000';
+  const f=fixture();
+  f.d.delete(AUTH);
+  const oldFetch=f.requests;
+  const report=await inspectFirebaseCloudReadiness({
+    tokenProvider:async()=> 'EPHEMERAL_TEST_TOKEN_SECRET',
+    fetcher:async(url,options)=>{
+      oldFetch.push({url,options});
+      if(url===AUTH)return new Response('',{status:400});
+      if(url===num)return Response.json({users:[
+        {localId:'PRIVATE_USER_A',disabled:true},
+        {localId:'PRIVATE_USER_B',disabled:false},
+      ]});
+      const value=f.d.get(url);
+      return new Response(JSON.stringify(value??{}),{status:value?200:404});
+    },
+  });
+  assert.equal(report.authHttpStatus,200);
+  assert.equal(report.authProjectNumberHttpStatus,200);
+  assert.equal(report.accounts,2);
+  assert.equal(report.disabledAccounts,1);
+  assert.equal(report.readyForCutover,false);
+  assert.ok(!JSON.stringify(report).includes('PRIVATE_USER_A'));
+});
