@@ -51,8 +51,7 @@ function fixture(custom:Record<string,unknown>={},profile='narrador'){
   return {reads,docs,opts,run:()=>readApprovedFirebasePrivateGmContent(opts,TOKEN)};
 }
 async function denied(p:Promise<unknown>,status:401|403|503){
-  await expect(p).rejects.toMatchObject({name:'PrivateGmCloudError',status}
-    satisfies Partial<PrivateGmCloudError>);
+  await expect(p).rejects.toMatchObject({name:'PrivateGmCloudError',status});
 }
 describe('Firebase-only narrator GM material',()=>{
   it('returns only events/adventures with independently verified narrator identity',async()=>{
