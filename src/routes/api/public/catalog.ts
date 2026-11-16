@@ -1,13 +1,34 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { createClient } from '@supabase/supabase-js';
-import {resolvePublicSupabase} from '@/integrations/supabase/public-config';
-import type { Database } from '@/integrations/supabase/types';
-export const Route=createFileRoute('/api/public/catalog')({server:{handlers:{GET:async()=>{
-  const {url,key}=resolvePublicSupabase(process.env['SUPABASE_URL'],
-    process.env['SUPABASE_PUBLISHABLE_KEY']);
-  if(!url||!key)return Response.json({error:'Catálogo temporariamente indisponível'},{status:503});
-  const db=createClient<Database>(url,key,{auth:{persistSession:false},global:{fetch:(input,init)=>{const headers=new Headers(init?.headers);if(key.startsWith('sb_')&&headers.get('Authorization')===`Bearer ${key}`)headers.delete('Authorization');headers.set('apikey',key);return fetch(input,{...init,headers});}}});
-  const [catalog,players]=await Promise.all([db.from('house_catalog').select('id,name,region,classification,updated_at,gallery,narrative_text'),db.rpc('public_player_houses')]);
-  if(catalog.error||players.error)return Response.json({error:'Não foi possível atualizar o catálogo'},{status:503});
-  return Response.json({houses:catalog.data,playerHouses:players.data},{headers:{'Cache-Control':'no-store'}});
-}}}});
+import {createFileRoute} from '@tanstack/react-router';
+import {publicContentFirestore}
+  from '@/lib/public/firebase-public-content-admin.server';
+import {readApprovedFirebasePublicCatalog}
+  from '@/lib/public/firebase-public-content.server';
+
+const HEADERS={
+  'Cache-Control':'no-store, max-age=0',
+  'X-Content-Type-Options':'nosniff',
+};
+
+/** Only a separately approved and reconciled Firebase public projection. */
+async function readPublicCatalog():Promise<Response>{
+  const snapshotId=process.env['CORMYR_FIREBASE_SNAPSHOT_ID']??'';
+  if(process.env['CORMYR_FIREBASE_PUBLIC_CATALOG_ENABLED']!=='true'||
+     !/^[a-f0-9]{64}$/.test(snapshotId)||
+     process.env['FIRESTORE_EMULATOR_HOST']||
+     process.env['FIREBASE_AUTH_EMULATOR_HOST'])
+    return Response.json({error:'Catálogo temporariamente indisponível'},
+      {status:503,headers:HEADERS});
+  try{
+    const result=await readApprovedFirebasePublicCatalog({
+      db:await publicContentFirestore(),snapshotId,
+      enabled:true,projectId:'cormyr',
+    });
+    return Response.json(result,{status:200,headers:HEADERS});
+  }catch{
+    return Response.json({error:'Catálogo temporariamente indisponível'},
+      {status:503,headers:HEADERS});
+  }
+}
+export const Route=createFileRoute('/api/public/catalog')({
+  server:{handlers:{GET:async()=>readPublicCatalog()}},
+});
