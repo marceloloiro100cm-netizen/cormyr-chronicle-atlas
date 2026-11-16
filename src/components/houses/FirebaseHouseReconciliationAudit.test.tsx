@@ -11,6 +11,7 @@ const base:HouseReconciliationReport={
   readGateApproved:false,writeGateApproved:false,
   documentIntegrityConfirmed:true,auditHistoryVerified:false,
   readyForCutover:false,readOnly:true,constructionLedger:null,
+  economicReplay:null,
 };
 describe('Firebase — painel de reconciliação Narrador',()=>{
   it('não inventa resultado quando auditoria privada está desabilitada',()=>{
@@ -46,6 +47,29 @@ describe('Firebase — painel de reconciliação Narrador',()=>{
     expect(screen.getByText(/não significa reexecução das compras/))
       .toBeInTheDocument();
     expect(screen.getByText('Ainda não realizada')).toBeInTheDocument();
+    expect(container.querySelector('button')).toBeNull();
+  });
+  it('exibe eventos antigos sem inventar verificação econômica',()=>{
+    const legacy:HouseReconciliationReport={...base,economicReplay:{
+      status:'legacy_inputs_missing',economicReplayVerified:false,
+      purchaseEventsReplayed:0,readyForCutover:false,readOnly:true,
+    }};
+    render(<FirebaseHouseReconciliationAudit houseId="house-a"
+      report={legacy}/>);
+    expect(screen.getByText(/Eventos antigos não contêm os parâmetros/))
+      .toBeInTheDocument();
+  });
+  it('separa replay válido de aprovação de produção',()=>{
+    const valid:HouseReconciliationReport={...base,economicReplay:{
+      status:'verified_purchase_replay',economicReplayVerified:true,
+      purchaseEventsReplayed:1,readyForCutover:false,readOnly:true,
+    }};
+    const {container}=render(<FirebaseHouseReconciliationAudit
+      houseId="house-a" report={valid}/>);
+    expect(screen.getByText(/Compras reexecutadas pelo motor canônico/))
+      .toBeInTheDocument();
+    expect(screen.getByText(/não certifica contas, permissões/))
+      .toBeInTheDocument();
     expect(container.querySelector('button')).toBeNull();
   });
   it('bloqueia renderização do resultado de outra Casa',()=>{
