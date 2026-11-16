@@ -17,6 +17,8 @@ import {FirebaseOperationalEconomy,type OperationalEconomyView}
   from '@/components/houses/FirebaseOperationalEconomy';
 import {FirebaseHouseChronicle} from '@/components/houses/FirebaseHouseChronicle';
 import {FirebaseHouseReconciliationAudit} from '@/components/houses/FirebaseHouseReconciliationAudit';
+import {FirebaseHouseReconciliationOverview}
+  from '@/components/houses/FirebaseHouseReconciliationOverview';
 import type {HouseReconciliationReport} from '@/lib/house/firebase-house-reconciliation-audit';
 
 /**
@@ -531,6 +533,10 @@ function FirebaseAccess(){
         <button type="button" className="rounded border px-3 py-1"
           onClick={signOut}>Sair</button>
       </div>
+      {view.profile==='narrador'&&
+        <FirebaseHouseReconciliationOverview houses={houses}
+          inspect={cloudHouseReconciliation}
+          onSelectHouse={id=>{void selectHouse(id);}}/>}
       {calendar&&<FirebaseCalendarSnapshot date={calendar}/>} 
       {view.profile!=='editor'&&<div className="space-y-2">
         <label className="block text-sm">Consultar Casa autorizada</label>
