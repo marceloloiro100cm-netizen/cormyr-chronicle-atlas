@@ -86,12 +86,20 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       let mailWriteAvailable=false;
       if(env.CORMYR_FIREBASE_CLOUD_MAIL_WRITE_ENABLED==='true'&&
          (profile==='narrador'||editHouseIds.length>0)){
-        const root=await db.collection('campaignRuntime').doc(snapshotId).get();
+        const [root,calendarRoot,calendar]=await Promise.all([
+          db.collection('campaignRuntime').doc(snapshotId).get(),
+          db.collection('migrationTimeEngineStage').doc(snapshotId).get(),
+          get(db,'migrationTimeEngineStage',snapshotId,'calendar','current'),
+        ]);
         const d=root.data();
         mailWriteAvailable=Boolean(root.exists&&d?.status==='active'&&
           d?.mode==='firebase-only'&&d?.private===true&&
           d?.sourceSnapshotId===snapshotId&&d?.writesEnabled===true&&
-          d?.sourceLiveReconciled===true&&d?.readyForCutover===true);
+          d?.sourceLiveReconciled===true&&d?.readyForCutover===true&&
+          calendarRoot.exists&&calendarRoot.data()?.status==='complete'&&
+          calendarRoot.data()?.private===true&&calendar.exists&&
+          Number.isInteger(d?.calendarVersion)&&
+          d.calendarVersion===calendar.data()?.version);
       }
       return {authenticated:true,profile,memberHouseIds,editHouseIds,
         mailWriteAvailable,readOnly:true,
