@@ -19,6 +19,9 @@ export interface CloudMailRuntime {
   send(idToken:string,input:unknown):Promise<{
     id:string;duplicate:boolean;state:string;deliveryRound:number;
   }>;
+  markRead(idToken:string,input:unknown):Promise<{
+    recorded:boolean;alreadyRecorded:boolean;readAt:string;
+  }>;
 }
 export function createFirebaseCloudMail(options:{
   db:{collection(name:string):any;runTransaction<T>(fn:(tx:any)=>Promise<T>):Promise<T>};
