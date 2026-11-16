@@ -25,7 +25,7 @@ export function FirebaseOperationalEconomy({houseName,houseId,data}:{
   houseName:string;houseId:string;data:OperationalEconomyView|null;
 }){
   const ready=data?.houseId===houseId;
-  return <section aria-label={\`Economia operacional da Casa \${houseName}\`}
+  return <section aria-label={`Economia operacional da Casa ${houseName}`}
     className="rounded-lg border border-current/25 p-4 space-y-4">
     <header className="space-y-1">
       <h2 className="text-lg font-semibold">Economia operacional · Firebase</h2>
