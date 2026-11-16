@@ -124,21 +124,22 @@ export function createFirebaseHouseReconciliationAudit({
       if(person.uid!==token.uid||person.disabled===true)
         fail('authentication_required',401);
       return token.uid;
-    }catch{fail('authentication_required',401);}
+    }catch{return fail('authentication_required',401);}
   }
   return {
     async inspect(idToken:string,houseId:unknown):
       Promise<HouseReconciliationReport>{
       const uid=await uidFor(idToken);
       if(!validId(houseId))fail('invalid_house',400);
+      const selectedHouseId=houseId as string;
       const refs=[
         domain,access,time,noble,
         domain.collection('access').doc(uid),
-        domain.collection('houses').doc(digest('house:'+houseId)),
-        noble.collection('sheets').doc(digest('noble-sheet:'+houseId)),
+        domain.collection('houses').doc(digest('house:'+selectedHouseId)),
+        noble.collection('sheets').doc(digest('noble-sheet:'+selectedHouseId)),
         time.collection('calendar').doc('current'),
         runtime,
-        runtime.collection('houseEconomies').doc(digest('house:'+houseId)),
+        runtime.collection('houseEconomies').doc(digest('house:'+selectedHouseId)),
       ];
       return db.runTransaction(async tx=>{
         const docs=await Promise.all(refs.map(ref=>tx.get(ref)));
@@ -149,7 +150,7 @@ export function createFirebaseHouseReconciliationAudit({
           sourceVersion:number|null=null,
           operationalVersion:number|null=null,
           runtimeData:unknown=null):HouseReconciliationReport=>({
-          houseId,houseName:typeof house?.['name']==='string'
+          houseId:selectedHouseId,houseName:typeof house?.['name']==='string'
             ?house['name'].slice(0,160):'Casa não identificada',
           status,sourceVersion,operationalVersion,
           readGateApproved:approvedRead(runtimeData),
@@ -163,18 +164,18 @@ export function createFirebaseHouseReconciliationAudit({
         if(docs.slice(0,4).some(d=>!d.exists||!stageComplete(d.data())))
           return report('stage_incomplete');
         if(!docs[5]?.exists||!record(house)||
-           house['sourceId']!==houseId||house['active']!==true||
+           house['sourceId']!==selectedHouseId||house['active']!==true||
            house['season']!==2)
           return report('house_unavailable');
         const sheet=docs[6]?.data();
-        if(!docs[6]?.exists||!record(sheet)||sheet['houseId']!==houseId||
+        if(!docs[6]?.exists||!record(sheet)||sheet['selectedHouseId']!==selectedHouseId||
            !integer(sheet['version'])||!record(sheet['state'])||
-           sheet['state']['houseId']!==houseId)
+           sheet['state']['selectedHouseId']!==selectedHouseId)
           return report('sheet_unavailable');
         const sourceVersion=sheet['version'];
         const calendar=officialMonth(docs[7]?.data());
         if(!calendar)return report('calendar_unavailable',sourceVersion);
-        if(!sourceValid(sheet['state'],houseId))
+        if(!sourceValid(sheet['state'],selectedHouseId))
           return report('source_invalid',sourceVersion);
         const config=docs[8]?.data();
         if(!configuredRuntime(config,snapshotId,calendar.version))
@@ -182,14 +183,14 @@ export function createFirebaseHouseReconciliationAudit({
         const operation=docs[9]?.data();
         if(!docs[9]?.exists)
           return report('operational_missing',sourceVersion,null,config);
-        if(!record(operation)||operation['houseId']!==houseId||
+        if(!record(operation)||operation['selectedHouseId']!==selectedHouseId||
            operation['status']!=='active'||operation['private']!==true||
            operation['sourceSnapshotId']!==snapshotId||
            operation['sourceReconciled']!==true||
            operation['seedVerified']!==true||
            !integer(operation['version'])||
            !record(operation['state'])||
-           operation['state']['houseId']!==houseId)
+           operation['state']['selectedHouseId']!==selectedHouseId)
           return report('operational_unverified',sourceVersion,null,config);
         const operationalVersion=operation['version'];
         if(operation['sourceSheetVersion']!==sourceVersion)
@@ -213,7 +214,7 @@ export function createFirebaseHouseReconciliationAudit({
           return report('calendar_mismatch',
             sourceVersion,operationalVersion,config);
         if(operation['state']['phase']!=='active'||
-           !sourceValid(operation['state'],houseId))
+           !sourceValid(operation['state'],selectedHouseId))
           return report('economy_invalid',
             sourceVersion,operationalVersion,config);
         // Valid hashes and resource rules do not prove transaction history.
