@@ -55,7 +55,7 @@ export async function loadFirebasePublicSeasonHouses(
     const type=response.headers.get('content-type')?.toLowerCase()??'';
     const length=response.headers.get('content-length');
     if(!response.ok||!type.startsWith('application/json')||
-       (length!==null&&(!/^\\d+$/.test(length)||Number(length)>700_000)))
+       (length!==null&&(!/^[0-9]+$/.test(length)||Number(length)>700_000)))
       return unavailable;
     const payload:unknown=await response.json();
     if(!payload||typeof payload!=='object'||Array.isArray(payload))
