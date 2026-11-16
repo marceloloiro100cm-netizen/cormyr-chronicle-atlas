@@ -131,5 +131,11 @@ export function FirebaseHouseResources({houseName,state}:{
       Consulta somente leitura. Não permite compras, ajustes de recursos,
       lançamentos no Tesouro ou alterações na ficha.
     </p>
+    <p className="text-sm">
+      <a href="/firebase-treasury-history"
+        className="underline underline-offset-2">
+        Consultar lançamentos auditados do Tesouro
+      </a>
+    </p>
   </section>;
 }
