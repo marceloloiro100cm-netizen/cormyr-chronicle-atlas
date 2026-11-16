@@ -1,0 +1,48 @@
+name: Firebase production role matrix — read-only acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/firebase/production-role-readonly-acceptance*.mjs'
+      - '.github/workflows/firebase-production-role-readonly.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate read-only role acceptance contract
+        run: node --test scripts/firebase/production-role-readonly-acceptance.test.mjs
+      - name: Privacy gate
+        run: node scripts/verify-public-repo.mjs
+
+  real-roles:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check Narrator and mutually isolated House access
+        env:
+          CORMYR_E2E_HOUSE_A: ${{ secrets.CORMYR_E2E_HOUSE_A }}
+          CORMYR_E2E_HOUSE_B: ${{ secrets.CORMYR_E2E_HOUSE_B }}
+          CORMYR_E2E_NARRATOR_TOKEN: ${{ secrets.CORMYR_E2E_NARRATOR_TOKEN }}
+          CORMYR_E2E_PLAYER_A_TOKEN: ${{ secrets.CORMYR_E2E_PLAYER_A_TOKEN }}
+          CORMYR_E2E_PLAYER_B_TOKEN: ${{ secrets.CORMYR_E2E_PLAYER_B_TOKEN }}
+        run: node scripts/firebase/production-role-readonly-acceptance.mjs
+      - name: Keep players gated regardless of result
+        if: always()
+        run: |
+          echo 'Tests only read selected Houses through the authorized Firebase Cloud endpoint.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No mail writes, account changes, data imports or cutover. readyForPlayers=false.' >> "$GITHUB_STEP_SUMMARY"
