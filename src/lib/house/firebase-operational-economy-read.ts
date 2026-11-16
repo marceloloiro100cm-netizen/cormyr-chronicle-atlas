@@ -82,6 +82,25 @@ function projectEconomy(state:Record<string,unknown>,houseId:string,
   const projects=state['projects'];
   if(!Array.isArray(holdings)||!Array.isArray(projects))
     return reject('operational_economy_unavailable',503);
+  // The canonical economic validator checks costs; project identity and
+  // lifecycle must also be complete before the UI presents operational facts.
+  const holdingStatuses=new Set([
+    'active','building','destroyed','abandoned','sold','cancelled',
+  ]);
+  const projectStatuses=new Set(['building','completed','cancelled']);
+  if(holdings.some(h=>!object(h)||!safeId(h['id'])||
+      !safeId(h['itemId'])||!safeId(h['domainId'])||
+      typeof h['name']!=='string'||!h['name'].trim()||
+      !holdingStatuses.has(String(h['status'])))||
+     projects.some(p=>!object(p)||!safeId(p['id'])||
+      !safeId(p['holdingId'])||typeof p['name']!=='string'||
+      !p['name'].trim()||!projectStatuses.has(String(p['status']))||
+      !integer(p['start'],0,10000000)||
+      !integer(p['duration'],0,10000000)||
+      !integer(p['modifier'],-10000,10000)))
+    return reject('operational_economy_unavailable',503);
+  const domainNames=new Map(computed.domains.map(d=>[d.id,d.name]));
+  const holdingNames=new Map(holdings.map(h=>[h.id,h.name]));
   const result={
     houseId,version,sourceSheetVersion,calendarMonth,
     readOnly:true as const,
@@ -95,11 +114,14 @@ function projectEconomy(state:Record<string,unknown>,houseId:string,
     holdings:holdings.slice(0,100).map(h=>({
       id:brief(h.id,128),itemId:brief(h.itemId,128),
       name:brief(h.name),domainId:brief(h.domainId,128),
+      domainName:brief(domainNames.get(h.domainId)??'Domínio não identificado'),
       status:brief(h.status,32),
     })),
     projects:projects.slice(0,100).map(p=>({
       id:brief(p.id,128),name:brief(p.name),
-      holdingId:brief(p.holdingId,128),status:brief(p.status,32),
+      holdingId:brief(p.holdingId,128),
+      holdingName:brief(holdingNames.get(p.holdingId)??'Posse não identificada'),
+      status:brief(p.status,32),
       start:p.start,duration:p.duration,modifier:p.modifier,
     })),
     partial:holdings.length>100||projects.length>100,
