@@ -27,7 +27,8 @@ export function shouldBlockLegacyRequest(pathname: string, handlerType?: string)
   if (!CORMYR_ARCHIVE_ONLY) return false;
   // This separate Firebase Cloud endpoint enforces Admin Auth, per-house scope
   // and a server-only feature flag. All legacy and emulator APIs remain blocked.
-  if (pathname === '/api/firebase-cloud-read' && handlerType !== 'serverFn') return false;
+  if ((pathname === '/api/firebase-cloud-read' ||
+    pathname === '/api/firebase-cloud-mail') && handlerType !== 'serverFn') return false;
   return handlerType === 'serverFn' ||
     pathname === '/mcp' ||
     pathname === '/.well-known/oauth-protected-resource' ||
