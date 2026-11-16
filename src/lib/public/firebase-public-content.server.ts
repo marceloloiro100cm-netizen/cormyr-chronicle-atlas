@@ -28,11 +28,13 @@ const version=(v:unknown)=>Number.isSafeInteger(v)&&
   typeof v==='number'&&v>=1;
 const maxPayload=650_000;
 const withinBudget=(v:unknown)=>Buffer.byteLength(JSON.stringify(v),'utf8')<=maxPayload;
-const baseOptions=(args:Options)=>args.enabled===true&&
-  args.projectId==='cormyr'&&SHA.test(args.snapshotId)&&
-  !args.env?.['FIRESTORE_EMULATOR_HOST']&&
-  !args.env?.['FIREBASE_AUTH_EMULATOR_HOST']&&
-  !!args.db&&typeof args.db.collection==='function';
+const baseOptions=(args:Options)=>{
+  const env=args.env??process.env;
+  return args.enabled===true&&
+    args.projectId==='cormyr'&&SHA.test(args.snapshotId)&&
+    !env['FIRESTORE_EMULATOR_HOST']&&!env['FIREBASE_AUTH_EMULATOR_HOST']&&
+    !!args.db&&typeof args.db.collection==='function';
+};
 
 type Options={
   db:Firestore;
