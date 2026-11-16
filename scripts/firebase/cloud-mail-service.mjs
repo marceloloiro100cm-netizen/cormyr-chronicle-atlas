@@ -13,6 +13,7 @@
  */
 import {createHash} from 'node:crypto';
 import {validateHarptosDate} from './stage-temporal-emulator.mjs';
+import {canAcknowledgeMail,mailReceiptId,validMailIdentity} from './cloud-mail-receipt-core.mjs';
 
 const SNAPSHOT=/^[a-f0-9]{64}$/;
 const SAFE_ID=/^[^/\u0000-\u001f]{1,128}$/;
@@ -115,6 +116,7 @@ export function createFirebaseCloudMail({
   const letters=runtime.collection('letters');
   const audits=runtime.collection('mailAudits');
   const limits=runtime.collection('mailSenderRoundCounts');
+  const readReceipts=runtime.collection('mailReadReceipts');
 
   async function uidFromToken(idToken){
     if(typeof idToken!=='string'||idToken.length<10||idToken.length>10000)
@@ -174,6 +176,42 @@ export function createFirebaseCloudMail({
         canSend:Boolean(writable&&(actor.role==='narrador'||actor.editHouses.length>0)),
         originHouseIds:actor.editHouses,
         readOnly:!writable};
+    },
+
+    async markRead(idToken,input){
+      const uid=await uidFromToken(idToken);
+      const source=input?.source;
+      const letterId=input?.letterId;
+      if(!input||typeof input!=='object'||Array.isArray(input)||
+         Object.keys(input).some(k=>!['source','letterId'].includes(k))||
+         !validMailIdentity(source,letterId))
+        deny('invalid_receipt_request',400);
+      const receiptId=mailReceiptId(uid,source,letterId);
+      const target=source==='imported'
+        ?stage.collection('letters').doc(hash('letter:'+letterId))
+        :letters.doc(letterId);
+      const receipt=readReceipts.doc(receiptId);
+      return db.runTransaction(async tx=>{
+        const {actor}=await readyTransaction(tx,uid);
+        const [mail,previous]=await Promise.all([tx.get(target),tx.get(receipt)]);
+        if(!mail.exists||!canAcknowledgeMail(actor,mail.data(),source,letterId))
+          deny('access_denied',403);
+        if(previous.exists){
+          const row=previous.data();
+          if(row?.viewerUid!==uid||row?.source!==source||
+             row?.letterId!==letterId||typeof row?.readAt!=='string')
+            deny('invalid_existing_receipt',409);
+          return {recorded:true,alreadyRecorded:true,readAt:row.readAt};
+        }
+        const readAt=clock();
+        if(typeof readAt!=='string'||!Number.isFinite(Date.parse(readAt)))
+          deny('invalid_server_clock',503);
+        tx.create(receipt,{
+          source,letterId,viewerUid:uid,readAt,
+          schemaVersion:1,
+        });
+        return {recorded:true,alreadyRecorded:false,readAt};
+      });
     },
 
     async send(idToken,input){

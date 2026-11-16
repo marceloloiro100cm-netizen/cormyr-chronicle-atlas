@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {createFirebaseCloudReadonly,CloudAccessError} from './cloud-readonly-service.mjs';
+import {mailReceiptId} from './cloud-mail-receipt-core.mjs';
 
 const snapshot='a'.repeat(64);
 const hash=s=>createHash('sha256').update(s).digest('hex');
@@ -72,6 +73,9 @@ function fixture(profile='jogador',extra={}){
       );
       if(entries.length)return {size:entries.length,
         docs:entries.map(([,value])=>d(value))};
+      // Empty Firestore collections still return QuerySnapshot.docs=[].
+      if(path.endsWith('/letters')||path.endsWith('/mailReadReceipts'))
+        return {size:0,docs:[]};
       return d(undefined);
     }
   });
@@ -264,4 +268,39 @@ test('Unapproved Cloud runtime never leaks messages through historical mailbox',
   });
   const messages=(await f.service().listMailbox(token)).items;
   assert.equal(messages.some(x=>x.id==='hidden'),false);
+});
+
+test('Cloud inbox returns only the viewer own receipt; never another user status',async()=>{
+  const f=fixture('jogador');
+  const root='campaignCloudRuntime/'+snapshot;
+  f.docs.set(root,{
+    status:'active',private:true,sourceSnapshotId:snapshot,
+    sourceSnapshotReconciled:true,mailWriteApproved:true,applicationEnabled:true,
+  });
+  const id='to-a';
+  const wrongId=mailReceiptId('other-viewer','imported',id);
+  f.docs.set(root+'/mailReadReceipts/'+wrongId,{
+    source:'imported',letterId:id,viewerUid:'other-viewer',
+    readAt:'2026-11-16T10:00:00.000Z',
+  });
+  const first=await f.service().listMailbox(token);
+  const mail=first.items.find(v=>v.id===id);
+  assert.equal(mail.source,'imported');
+  assert.equal(mail.canMarkRead,true);
+  assert.equal(mail.readAt,null);
+  const own=mailReceiptId('user-1','imported',id);
+  f.docs.set(root+'/mailReadReceipts/'+own,{
+    source:'imported',letterId:id,viewerUid:'user-1',
+    readAt:'2026-11-16T11:00:00.000Z',
+  });
+  const second=await f.service().listMailbox(token);
+  assert.equal(second.items.find(v=>v.id===id).readAt,
+    '2026-11-16T11:00:00.000Z');
+  const outgoing=second.items.find(v=>v.id==='own-sent');
+  assert.equal(outgoing.canMarkRead,false);
+  assert.equal(outgoing.readAt,null);
+  f.docs.set(root,{...f.docs.get(root),mailWriteApproved:false});
+  const blocked=await f.service().listMailbox(token);
+  assert.equal(blocked.items.find(v=>v.id===id).canMarkRead,false);
+  assert.equal(blocked.items.find(v=>v.id===id).readAt,null);
 });

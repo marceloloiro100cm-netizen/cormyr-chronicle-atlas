@@ -60,7 +60,7 @@ async function handle(request:Request){
     return error(401,'authentication_required');
   try{
     const payload=await parseBoundedJson(request);
-    if(!['status','send'].includes(String(payload['action'])))
+    if(!['status','send','markRead'].includes(String(payload['action'])))
       return error(400,'invalid_action');
     const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
       await Promise.all([
@@ -77,9 +77,20 @@ async function handle(request:Request){
       enabled:true,
     });
     const token=authHeader.slice(7);
-    const result=payload['action']==='status'
-      ?await mail.status(token)
-      :await mail.send(token,payload);
+    let result:unknown;
+    if(payload['action']==='status'){
+      if(Object.keys(payload).length!==1)return error(400,'invalid_request');
+      result=await mail.status(token);
+    }else if(payload['action']==='markRead'){
+      if(Object.keys(payload).some(key=>
+        !['action','source','letterId'].includes(key)))
+        return error(400,'invalid_request');
+      result=await mail.markRead(token,{
+        source:payload['source'],letterId:payload['letterId'],
+      });
+    }else{
+      result=await mail.send(token,payload);
+    }
     return Response.json({result},{status:200,headers});
   }catch(e){
     if(e instanceof CloudMailError)return error(e.status,e.code);
