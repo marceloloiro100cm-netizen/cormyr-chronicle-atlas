@@ -169,8 +169,8 @@ export function replayConstructionEconomy(
       });
       // Production uses this exact JSON roundtrip before hashing.
       const next=JSON.parse(JSON.stringify(purchased)) as unknown;
-      if(!object(next)||!verifiedEconomicState(next))
-        return report('purchase_rejected',total,count);
+      const typed=object(next)?verifiedEconomicState(next):null;
+      if(!typed)return report('purchase_rejected',total,count);
       const computed=calculateFirebaseHouseEconomy(next);
       if(!computed||
          Object.values(computed.balances.available).some(x=>x<0))
@@ -178,7 +178,7 @@ export function replayConstructionEconomy(
       const hash=constructionStateHash(next);
       if(hash!==audit['afterStateHash'])
         return report('replay_state_mismatch',total,count);
-      state=next as typeof state;
+      state=typed;
       count++;
     }catch{
       return report('purchase_rejected',total,count);
