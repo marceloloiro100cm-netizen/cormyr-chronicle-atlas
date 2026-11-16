@@ -48,8 +48,9 @@ function validReplayInput(value:unknown):value is ConstructionPurchaseRequest{
     optionalId(value['parentId'])&&optionalId(value['supportId'])&&
     optionalId(value['replaceId'])&&optionalSpec(value['weaponSpecialty']);
 }
+export const MAX_ECONOMIC_REPLAY_EVENTS=50;
 export type EconomicReplayStatus=
-  'verified'|'hash_chain_unverified'|'source_invalid'|
+  'verified'|'hash_chain_unverified'|'source_invalid'|'replay_limit_exceeded'|
   'missing_replay_metadata'|'event_payload_invalid'|
   'request_fingerprint_mismatch'|'catalog_version_changed'|
   'quote_mismatch'|'purchase_rejected'|'replay_state_mismatch'|
@@ -80,6 +81,13 @@ export function replayConstructionEconomy(
   chain?:ConstructionLedgerResult,
 ):EconomicReplayResult{
   const total=events.length;
+  // This is an interactive Narrator read. Hash-chain verification supports
+  // more events, but a synchronous GoT-engine replay is deliberately bounded.
+  // Never treat a partial replay as valid. A paged audited replay is a later
+  // operator-controlled task.
+  if(total>MAX_ECONOMIC_REPLAY_EVENTS||
+     context.operationalVersion>MAX_ECONOMIC_REPLAY_EVENTS)
+    return report('replay_limit_exceeded',total,0);
   const initial=object(context.sourceState)
     ?verifiedEconomicState(context.sourceState):null;
   const final=object(context.operationalState)
