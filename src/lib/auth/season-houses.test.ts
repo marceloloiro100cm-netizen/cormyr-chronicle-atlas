@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { loadSeasonHouses, loginErrorMessage, shouldLeaveAuthPage } from './season-houses';
+import { loadSeasonHouses, loadFirebasePublicSeasonHouses, loginErrorMessage, shouldLeaveAuthPage } from './season-houses';
 const ok = (data: unknown) => () => Promise.resolve({ data, error: null });
 const fail = (message: string) => () => Promise.resolve({ data: null, error: { message } });
 const eight = Array.from({ length: 8 }, (_, i) => ({ id: `h${i}`, name: `Casa ${i}` }));
@@ -54,5 +54,73 @@ describe('login helpers', () => {
     expect(shouldLeaveAuthPage('SIGNED_IN', false)).toBe(false);
     expect(shouldLeaveAuthPage('TOKEN_REFRESHED', true)).toBe(false);
     expect(shouldLeaveAuthPage('INITIAL_SESSION', false)).toBe(false);
+  });
+});
+
+describe('seletor de Casas · API pública Firebase',()=>{
+  const success=()=>Response.json({houses:[...eight,{id:'npc',name:'Casa NPC'}],playerHouses:players});
+
+  it('consulta apenas o catálogo público com GET sem cookies ou Authorization',async()=>{
+    const fetcher=vi.fn(async()=>success()) as unknown as typeof fetch;
+    const result=await loadFirebasePublicSeasonHouses(fetcher);
+    expect(result.houses).toEqual(eight);
+    expect(result.errors).toEqual([]);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    const [path,options]=vi.mocked(fetcher).mock.calls[0]!;
+    expect(path).toBe('/api/public/catalog');
+    expect(options).toMatchObject({
+      method:'GET',credentials:'omit',cache:'no-store',
+      redirect:'error',headers:{Accept:'application/json'},
+    });
+    expect(JSON.stringify(options)).not.toMatch(/Authorization|Bearer|token|supabase/i);
+  });
+
+  it('recusa publicação desativada (503) sem tentar RPC ou mostrar detalhes internos',async()=>{
+    const fetcher=vi.fn(async()=>Response.json({
+      error:'private_firestore_document',
+    },{status:503})) as unknown as typeof fetch;
+    const result=await loadFirebasePublicSeasonHouses(fetcher);
+    expect(result.houses).toEqual([]);
+    expect(result.errors).toEqual(['Lista pública de Casas indisponível no momento.']);
+    expect(JSON.stringify(result)).not.toContain('private_firestore_document');
+  });
+
+  it('rejeita HTML, conteúdo inválido e respostas maiores que o orçamento',async()=>{
+    for(const response of [
+      new Response('<html>login</html>',{
+        status:200,headers:{'Content-Type':'text/html'},
+      }),
+      Response.json({houses:[...eight]}, {status:200}),
+      Response.json({houses:'invalid',playerHouses:players}),
+      new Response(JSON.stringify({houses:eight,playerHouses:players}),{
+        headers:{'Content-Type':'application/json','Content-Length':'999999'},
+      }),
+    ]){
+      const fetcher=vi.fn(async()=>response) as unknown as typeof fetch;
+      const result=await loadFirebasePublicSeasonHouses(fetcher);
+      expect(result.houses).toEqual([]);
+      expect(result.errors).toHaveLength(1);
+    }
+  });
+
+  it('recusa redirecionamento/rede indisponível e depois pode repetir',async()=>{
+    const fetcher=vi.fn()
+      .mockRejectedValueOnce(new Error('AUTH_PRIVATE_KEY_SECRET'))
+      .mockResolvedValueOnce(success()) as unknown as typeof fetch;
+    const failed=await loadFirebasePublicSeasonHouses(fetcher);
+    expect(failed.errors).toHaveLength(1);
+    expect(JSON.stringify(failed)).not.toContain('AUTH_PRIVATE_KEY_SECRET');
+    const retried=await loadFirebasePublicSeasonHouses(fetcher);
+    expect(retried.houses).toHaveLength(8);
+    expect(retried.errors).toEqual([]);
+  });
+
+  it('não promove a Casa Espião nem Casas fora da lista pública de jogadores',async()=>{
+    const payload={houses:[...eight,{id:'espiao',name:'Espião'}],
+      playerHouses:[...players,{house_id:'espiao'},{house_id:'unlisted'}]};
+    const fetcher=vi.fn(async()=>Response.json(payload)) as unknown as typeof fetch;
+    const result=await loadFirebasePublicSeasonHouses(fetcher);
+    expect(result.houses).toEqual(eight);
+    expect(result.houses.map(h=>h.id)).not.toContain('espiao');
   });
 });
