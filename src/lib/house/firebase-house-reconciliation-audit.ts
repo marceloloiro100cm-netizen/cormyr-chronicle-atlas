@@ -9,6 +9,9 @@ import {createHash} from 'node:crypto';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {constructionStateHash} from './firebase-construction-transaction';
+import {verifyConstructionEconomicReplay,
+  type ConstructionEconomicReplayResult}
+  from './firebase-construction-economic-replay';
 import {verifyConstructionLedger,CONSTRUCTION_LEDGER_LIMIT,
   type ConstructionLedgerResult} from './firebase-construction-ledger-verification';
 import {calculateFirebaseHouseEconomy} from './firebase-economic-readonly';
@@ -51,6 +54,7 @@ export type HouseReconciliationReport={
   documentIntegrityConfirmed:boolean;
   auditHistoryVerified:false;readyForCutover:false;readOnly:true;
   constructionLedger:ConstructionLedgerResult|null;
+  economicReplay:ConstructionEconomicReplayResult|null;
 };
 
 const stageComplete=(v:unknown):boolean=>
@@ -153,7 +157,8 @@ export function createFirebaseHouseReconciliationAudit({
           sourceVersion:number|null=null,
           operationalVersion:number|null=null,
           runtimeData:unknown=null,
-          constructionLedger:ConstructionLedgerResult|null=null):HouseReconciliationReport=>({
+          constructionLedger:ConstructionLedgerResult|null=null,
+          economicReplay:ConstructionEconomicReplayResult|null=null):HouseReconciliationReport=>({
           houseId:selectedHouseId,houseName:typeof house?.['name']==='string'
             ?house['name'].slice(0,160):'Casa não identificada',
           status,sourceVersion,operationalVersion,
@@ -163,7 +168,7 @@ export function createFirebaseHouseReconciliationAudit({
             status==='seed_consistent'||status==='operational_document_consistent',
           // A hash match does not certify the full event ledger or IAM.
           auditHistoryVerified:false,readyForCutover:false,readOnly:true,
-          constructionLedger,
+          constructionLedger,economicReplay,
         });
 
         if(docs.slice(0,4).some(d=>!d.exists||!stageComplete(d.data())))
@@ -226,27 +231,39 @@ export function createFirebaseHouseReconciliationAudit({
         // audit based only on a truncated page or the final state hash.
         // A Firestore query failure leaves the diagnostic unverified.
         let ledger:ConstructionLedgerResult|null=null;
+        let economicReplay:ConstructionEconomicReplayResult|null=null;
         try{
           const query=runtime.collection('houseConstructionAudits')
             .where('houseId','==',selectedHouseId)
             .limit(CONSTRUCTION_LEDGER_LIMIT+1);
           const events=await tx.get(query);
-          ledger=verifyConstructionLedger(events.docs.map(d=>({
+          const rows=events.docs.map(d=>({
             id:d.id,data:()=>d.data(),
-          })),{
+          }));
+          ledger=verifyConstructionLedger(rows,{
             houseId:selectedHouseId,snapshotId,
             sourceSheetVersion:sourceVersion,
             sourceHash, currentHash:operationalHash,
             operationalVersion,
             lastConstructionEventId:operation['lastConstructionEventId'],
           });
+          if(ledger.verifiedHashChain){
+            economicReplay=verifyConstructionEconomicReplay(rows,{
+              sourceState:sheet['state'],
+              operationalState:operation['state'],
+              houseId:selectedHouseId,
+              houseName:typeof house['name']==='string'?house['name']:'',
+              sourceSheetVersion:sourceVersion,
+              ledgerVerified:true,
+            });
+          }
         }catch{
           // Never return unverified event rows or silently claim success.
-          ledger=null;
+          ledger=null;economicReplay=null;
         }
         return report(operationalVersion===0?'seed_consistent':
           'operational_document_consistent',
-          sourceVersion,operationalVersion,config,ledger);
+          sourceVersion,operationalVersion,config,ledger,economicReplay);
       });
     },
   };
