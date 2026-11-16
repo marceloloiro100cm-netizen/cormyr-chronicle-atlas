@@ -43,7 +43,7 @@ describe('Firebase Cloud — cronograma de construções autorizado',()=>{
   });
   it('não estima datas sem calendário ou modificador registrado',()=>{
     const noCalendar=readFirebaseConstructionSchedule(state,null);
-    expect(noCalendar.dueCount).toBe(0);
+    expect(noCalendar.dueCount).toBeNull();
     expect(noCalendar.rows[0]?.timing).toBe('unverified');
     const incomplete=readFirebaseConstructionSchedule({
       month,projects:[{id:'1',name:'Obra sem modificador',status:'building',
