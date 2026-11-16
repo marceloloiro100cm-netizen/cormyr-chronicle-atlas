@@ -23,9 +23,9 @@ describe('Firebase Cloud — unidades militares por Casa',()=>{
     expect(data.active).toBe(2);
     expect(data.knownStrength).toBe(180);
     expect(data.knownAvailable).toBe(165);
-    expect(data.units[0].available).toBe(87);
-    expect(data.units[0].symbolSrc).toMatch(/^\/assets\/military-units\//);
-    expect(data.units[1].available).toBe(78);
+    expect(data.units[0]!.available).toBe(87);
+    expect(data.units[0]!.symbolSrc).toMatch(/^\/assets\/military-units\//);
+    expect(data.units[1]!.available).toBe(78);
   });
 
   it('apresenta unidades, comandante e habilidades sem permitir alterações',()=>{
@@ -52,9 +52,9 @@ describe('Firebase Cloud — unidades militares por Casa',()=>{
     ]});
     expect(d.knownAvailable).toBeNull();
     expect(d.knownStrength).toBeNull();
-    expect(d.units[0].available).toBeNull();
-    expect(d.units[1].available).toBeNull();
-    expect(d.units[1].typeNames).toEqual(['unknown']);
+    expect(d.units[0]!.available).toBeNull();
+    expect(d.units[1]!.available).toBeNull();
+    expect(d.units[1]!.typeNames).toEqual(['unknown']);
   });
 
   it('unidade destruída não integra efetivo disponível',()=>{
