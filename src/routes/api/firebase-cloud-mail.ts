@@ -60,7 +60,7 @@ async function handle(request:Request){
     return error(401,'authentication_required');
   try{
     const payload=await parseBoundedJson(request);
-    if(!['status','send','markRead'].includes(String(payload['action'])))
+    if(!['status','send','markRead','reply'].includes(String(payload['action'])))
       return error(400,'invalid_action');
     const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
       await Promise.all([
@@ -87,6 +87,15 @@ async function handle(request:Request){
         return error(400,'invalid_request');
       result=await mail.markRead(token,{
         source:payload['source'],letterId:payload['letterId'],
+      });
+    }else if(payload['action']==='reply'){
+      if(Object.keys(payload).some(key=>
+        !['action','requestKey','letterId','content'].includes(key)))
+        return error(400,'invalid_request');
+      result=await mail.reply(token,{
+        requestKey:payload['requestKey'],
+        letterId:payload['letterId'],
+        content:payload['content'],
       });
     }else{
       result=await mail.send(token,payload);
