@@ -34,11 +34,11 @@ export async function readFirebaseNarratorContent(
 
   // The established Cloud Auth service checks token revocation and disabled
   // users, migration stage readiness, trusted profile/admin and role scope.
-  const role=await createFirebaseCloudReadonly({
+  const role:unknown=await createFirebaseCloudReadonly({
     db:config.db,auth:config.auth,snapshotId:config.snapshotId,
     projectId:'cormyr',enabled:true,env,
   }).session(idToken);
-  if(role.profile!=='narrador')return fail(403,'access_denied');
+  if(!object(role)||role['profile']!=='narrador')return fail(403,'access_denied');
 
   const root=config.db.collection('campaignCloudRuntime').doc(config.snapshotId);
   const state=(await root.get()).data();
