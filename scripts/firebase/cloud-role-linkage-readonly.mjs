@@ -82,6 +82,8 @@ export async function inspectCloudRoleLinkage({
     disabledAccounts:authComplete?users.filter(v=>v.disabled===true).length:null,
     linkedAccounts:null,unlinkedAccounts:null,unmatchedAccessDocuments:null,
     profileCounts:null,structurallyEligibleProfiles:null,
+    structurallyEligibleByProfile:null,structurallyIneligibleByProfile:null,
+    blockingReasonCounts:null,
     writes:0,cloudRoleE2EVerified:false,
     releaseDecision:'NO_GO',readyForCutover:false,
   };
