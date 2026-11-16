@@ -18,7 +18,7 @@ import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { I18nProvider } from '@/lib/i18n/context';
 import {decideSessionBoundary,clearSessionQueryCache} from '@/lib/auth/session-boundary';
 
-import { CORMYR_ARCHIVE_ONLY } from '@/lib/archive-only';
+import { CORMYR_ARCHIVE_ONLY, isFirebasePilotPage } from '@/lib/archive-only';
 
 
 function NotFoundComponent() {
@@ -88,7 +88,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     // The new Firebase-only pilot is independently guarded by Firebase
     // Admin access and a disabled-by-default server flag. Legacy game routes
     // remain in archive-only mode with no Supabase fallback.
-    const firebasePilotPath = location.pathname === '/firebase-access';
+    const firebasePilotPath = isFirebasePilotPage(location.pathname);
     if (CORMYR_ARCHIVE_ONLY && location.pathname !== '/' && !firebasePilotPath) {
       throw redirect({ to: '/' });
     }
