@@ -84,8 +84,9 @@ function fixture(profile='jogador',extra={}){
     async getUser(){return {uid:'user-1',disabled:false};}
   };
   const db={collection:name=>node(name)};
-  const service=()=>createFirebaseCloudReadonly({
-    auth,db,snapshotId:snapshot,projectId:'cormyr',enabled:true,env:{}
+  const service=(options={})=>createFirebaseCloudReadonly({
+    auth,db,snapshotId:snapshot,projectId:'cormyr',enabled:true,env:{},
+    ...options,
   });
   return {docs,auth,db,service};
 }
@@ -126,6 +127,7 @@ test('Player can see own house, not other houses, with read-only state',async()=
   const srv=f.service();
   assert.deepEqual(await srv.session(token),{
     authenticated:true,profile:'jogador',memberHouseIds:['house-a'],
+    editHouseIds:[],mailWriteAvailable:false,
     readOnly:true,snapshotReconciliationPending:true
   });
   const house=await srv.getHouse(token,'house-a');
@@ -206,4 +208,59 @@ test('Incomplete protected newspaper and spy stages fail closed',async()=>{
     {status:'incomplete',private:true});
   await rejects(()=>f.service().listSpyAgents(token,'house-a'),
     'migration_stage_not_ready',503);
+});
+
+test('Cloud runtime delivered mail is visible only to sender, Narrator and destination House',async()=>{
+  const f=fixture('jogador');
+  f.docs.set('campaignRuntime/'+snapshot,{
+    status:'active',mode:'firebase-only',private:true,
+    sourceSnapshotId:snapshot,writesEnabled:true,
+    sourceLiveReconciled:true,readyForCutover:true,
+  });
+  const root='campaignRuntime/'+snapshot+'/letters/';
+  const make=(id,target,source={})=>({
+    id,subject:'Runtime '+id,content:'Secret '+id,senderUid:'other-user',
+    recipientKind:'house',recipientHouseId:target,
+    publicationState:'delivered',deletedAt:null,
+    createdAt:'2026-11-16T12:00:00.000Z',deliveredAt:'2026-11-16T12:00:00.000Z',
+    campaignDate:{year:1522,month:1,day:12,festival:null,calendarVersion:8},
+    ...source,
+  });
+  f.docs.set(root+'a',make('a','house-a'));
+  f.docs.set(root+'b',make('b','house-b'));
+  f.docs.set(root+'sent',make('sent',null,{senderUid:'user-1',
+    recipientKind:'narrator'}));
+  f.docs.set(root+'draft',make('draft','house-a',{publicationState:'draft'}));
+  f.docs.set(root+'deleted',make('deleted','house-a',{
+    deletedAt:'2026-11-16T12:00:00.000Z'}));
+  const inbox=await f.service().listMailbox(token);
+  assert.equal(inbox.totalVisible,5);
+  assert.deepEqual(new Set(inbox.items.filter(m=>m.id==='a'||m.id==='sent').map(m=>m.id)),
+    new Set(['a','sent']));
+  assert.equal(inbox.items.some(m=>m.id==='b'||m.id==='draft'||m.id==='deleted'),false);
+  assert.equal(inbox.items.find(m=>m.id==='a').campaignDate,'1522-02-12');
+  const narrator=fixture('narrador');
+  for(const [k,v] of f.docs)if(k.startsWith('campaignRuntime/'))
+    narrator.docs.set(k,v);
+  const adminInbox=await narrator.service().listMailbox(token);
+  assert.equal(adminInbox.items.some(m=>m.id==='b'),true);
+});
+
+test('Mail write controls appear only for an explicit activated Cloud runtime',async()=>{
+  const f=fixture('jogador',{editHouseIds:['house-a']});
+  const active=f.service({
+    env:{CORMYR_FIREBASE_CLOUD_MAIL_WRITE_ENABLED:'true'},
+  });
+  assert.equal((await active.session(token)).mailWriteAvailable,false);
+  f.docs.set('campaignRuntime/'+snapshot,{
+    status:'active',mode:'firebase-only',private:true,
+    sourceSnapshotId:snapshot,writesEnabled:true,
+    sourceLiveReconciled:true,readyForCutover:true,
+  });
+  assert.equal((await active.session(token)).mailWriteAvailable,true);
+  assert.equal((await active.session(token)).readOnly,false);
+  f.docs.set('campaignRuntime/'+snapshot,{
+    ...f.docs.get('campaignRuntime/'+snapshot),sourceLiveReconciled:false,
+  });
+  assert.equal((await active.session(token)).mailWriteAvailable,false);
 });
