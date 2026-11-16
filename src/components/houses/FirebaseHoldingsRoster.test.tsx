@@ -22,7 +22,7 @@ describe('Firebase Cloud — posses por Casa',()=>{
     const {container}=render(<FirebaseHoldingsRoster houseName="Evenhand" state={state}/>);
     expect(screen.getByRole('heading',{name:'Posses e construções'})).toBeInTheDocument();
     expect(screen.getByText('Torre do Rio')).toBeInTheDocument();
-    expect(screen.getByText('Vale do Immerflow',{exact:false}).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Local: Vale do Immerflow/)).toBeInTheDocument();
     fireEvent.click(screen.getByText('Projetos vinculados · 1'));
     expect(screen.getByText(/Escavação · building/)).toBeInTheDocument();
     expect(container.querySelector('button')).toBeNull();
