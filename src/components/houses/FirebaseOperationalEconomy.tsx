@@ -7,8 +7,9 @@ export type OperationalEconomyView={
   balances:Record<'total'|'allocated'|'committed'|'available',
     Record<Resource,number>>;
   holdingsTotal:number;projectsTotal:number;partial:boolean;
-  holdings:{id:string;itemId:string;name:string;domainId:string;status:string}[];
-  projects:{id:string;name:string;holdingId:string;status:string;
+  holdings:{id:string;itemId:string;name:string;domainId:string;
+    domainName:string;status:string}[];
+  projects:{id:string;name:string;holdingId:string;holdingName:string;status:string;
     start:number;duration:number;modifier:number}[];
 };
 const STATUS:Record<string,string>={
@@ -85,6 +86,7 @@ export function FirebaseOperationalEconomy({houseName,houseId,data}:{
               className="border-t border-current/15 pt-2 text-sm">
               <strong className="break-words">{h.name}</strong>
               {' · '}{STATUS[h.status]??'Estado não identificado'}
+              <p className="text-xs opacity-75">Domínio: {h.domainName}</p>
             </li>)}
           </ul>
         </details>
@@ -98,6 +100,7 @@ export function FirebaseOperationalEconomy({houseName,houseId,data}:{
               <strong className="break-words">{p.name}</strong>
               {' · '}{STATUS[p.status]??'Estado não identificado'}
               {' · '}Prazo registrado: {p.duration} mês(es)
+              <p className="text-xs opacity-75">Posse: {p.holdingName}</p>
             </li>)}
           </ul>
         </details>
