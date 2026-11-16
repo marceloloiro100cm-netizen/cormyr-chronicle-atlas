@@ -60,7 +60,9 @@ describe('CORMYR produção: calendário de login e configurações públicas',(
   expect(server).toContain("process.env['SUPABASE_SERVICE_ROLE_KEY']");
   expect(server).not.toContain('PUBLIC_SUPABASE_PUBLISHABLE_KEY');
   const privateGM=source('src/routes/api/public/gm-content.ts');
-  expect(privateGM).toContain('is_campaign_admin');
-  expect(privateGM).toContain('campaign_private_gm_content');
+  expect(privateGM).toContain('readApprovedFirebasePrivateGmContent');
+  expect(privateGM).toContain('CORMYR_FIREBASE_PRIVATE_GM_ENABLED');
+  expect(privateGM).not.toContain('is_campaign_admin');
+  expect(privateGM).not.toContain('resolvePublicSupabase');
  });
 });
