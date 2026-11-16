@@ -62,7 +62,9 @@ describe('Firebase Cloud — recursos e Tesouro por Casa',()=>{
     expect(Object.keys(data)).not.toContain('total');
     const {container}=render(<FirebaseHouseResources houseName="Evenhand" state={state}/>);
     expect(container.textContent).toContain('não o saldo disponível');
-    expect(container.querySelector('form,button,input,[contenteditable],a')).toBeNull();
+    expect(container.querySelector('form,button,input,[contenteditable]')).toBeNull();
+    const link=screen.getByRole('link',{name:'Consultar lançamentos auditados do Tesouro'});
+    expect(link).toHaveAttribute('href','/firebase-treasury-history');
   });
   it('exibe conteúdo como texto e nunca executa HTML da fonte',()=>{
     const {container}=render(<FirebaseHouseResources houseName="Evenhand"
