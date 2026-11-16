@@ -3,6 +3,7 @@ import {useEffect,useState,type FormEvent} from 'react';
 import {createFirebaseRestAuth} from '@/integrations/auth/firebase-rest-auth';
 import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
 import {FirebaseNewspaperReader} from '@/components/newspaper/FirebaseNewspaperReader';
+import {FirebaseCalendarSnapshot} from '@/components/calendar/FirebaseCalendarSnapshot';
 
 /**
  * Firebase-only pilot: read-only, no Supabase, no emulator and no direct
@@ -281,9 +282,7 @@ function FirebaseAccess(){
         <button type="button" className="rounded border px-3 py-1"
           onClick={signOut}>Sair</button>
       </div>
-      {calendar&&<p>Calendário: {calendar.day}/{calendar.month+1}/{calendar.year}
-        {calendar.festival?' · '+calendar.festival:''}
-        {' '}· versão {calendar.version}</p>}
+      {calendar&&<FirebaseCalendarSnapshot date={calendar}/>} 
       {view.profile!=='editor'&&<div className="space-y-2">
         <label className="block text-sm">Consultar Casa autorizada</label>
         <select className="max-w-md rounded border p-2" value={house?.id??''}
