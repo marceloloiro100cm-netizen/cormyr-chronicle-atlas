@@ -82,6 +82,8 @@ export async function inspectCloudRoleLinkage({
     disabledAccounts:authComplete?users.filter(v=>v.disabled===true).length:null,
     linkedAccounts:null,unlinkedAccounts:null,unmatchedAccessDocuments:null,
     profileCounts:null,structurallyEligibleProfiles:null,
+    structurallyEligibleByProfile:null,structurallyIneligibleByProfile:null,
+    blockingReasonCounts:null,
     writes:0,cloudRoleE2EVerified:false,
     releaseDecision:'NO_GO',readyForCutover:false,
   };
@@ -109,23 +111,57 @@ export async function inspectCloudRoleLinkage({
     byUid.set(id,doc.fields);
   }
   const profiles={narrador:0,jogador:0,editor:0,other:0};
+  const eligibleByProfile={narrador:0,jogador:0,editor:0,other:0};
+  const ineligibleByProfile={narrador:0,jogador:0,editor:0,other:0};
+  // Counts are not mutually exclusive: a single access document can fail
+  // multiple independent structural checks. Never log the affected UID.
+  const blockingReasonCounts={
+    missingProfile:0,unrecognizedProfile:0,
+    accessInactiveOrInvalid:0,passwordChangePendingOrInvalid:0,
+    adminFlagMismatch:0,invalidHouseLists:0,
+    editScopeOutsideMembership:0,playerWithoutHouse:0,
+    editorWithHouse:0,
+  };
   let linked=0,eligible=0;
   for(const uid of ids){
     const v=byUid.get(uid);
     if(!v)continue;
     linked++;
     const role=fieldString(v.profile);
-    if(PROFILE_TYPES.includes(role))profiles[role]++;
-    else profiles.other++;
+    const recognized=PROFILE_TYPES.includes(role);
+    const category=recognized?role:'other';
+    profiles[category]++;
+    const failures=[];
+    if(!recognized)
+      failures.push(role===null?'missingProfile':'unrecognizedProfile');
+    if(v.active?.booleanValue!==true)
+      failures.push('accessInactiveOrInvalid');
+    if(v.requirePasswordChange?.booleanValue!==false)
+      failures.push('passwordChangePendingOrInvalid');
+    if(recognized){
+      const adminValid=role==='narrador'
+        ?v.admin?.booleanValue===true
+        :v.admin?.booleanValue===false;
+      if(!adminValid)failures.push('adminFlagMismatch');
+    }
     const members=fieldArray(v.memberHouseIds);
     const edits=fieldArray(v.editHouseIds);
-    if(!members||!edits||!edits.every(x=>members.includes(x)))continue;
-    const roleValid=role==='narrador'?fieldBool(v.admin):
-      (role==='jogador'||role==='editor')&&v.admin?.booleanValue===false;
-    const houseValid=role==='jogador'?members.length>0:
-      role==='editor'?members.length===0:true;
-    if(roleValid&&houseValid&&fieldBool(v.active)&&
-       v.requirePasswordChange?.booleanValue===false)eligible++;
+    if(!members||!edits)failures.push('invalidHouseLists');
+    else {
+      if(!edits.every(x=>members.includes(x)))
+        failures.push('editScopeOutsideMembership');
+      if(role==='jogador'&&members.length===0)
+        failures.push('playerWithoutHouse');
+      if(role==='editor'&&members.length!==0)
+        failures.push('editorWithHouse');
+    }
+    if(failures.length===0){
+      eligible++;
+      eligibleByProfile[category]++;
+    }else{
+      ineligibleByProfile[category]++;
+      for(const reason of failures)blockingReasonCounts[reason]++;
+    }
   }
   return {
     ...base,accessHttpStatus:access.status,accessListComplete:true,
@@ -133,6 +169,9 @@ export async function inspectCloudRoleLinkage({
     unmatchedAccessDocuments:accessDocs.length-linked,
     malformedAccessDocuments:malformedDocs,
     profileCounts:profiles,structurallyEligibleProfiles:eligible,
+    structurallyEligibleByProfile:eligibleByProfile,
+    structurallyIneligibleByProfile:ineligibleByProfile,
+    blockingReasonCounts,
   };
 }
 
