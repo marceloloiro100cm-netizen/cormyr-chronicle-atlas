@@ -82,9 +82,20 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
 
   return {
     async session(idToken){
-      const {profile,memberHouseIds}=await scopeFor(idToken);
-      return {authenticated:true,profile,memberHouseIds,readOnly:true,
-        snapshotReconciliationPending:true};
+      const {profile,memberHouseIds,editHouseIds}=await scopeFor(idToken);
+      let mailWriteAvailable=false;
+      if(env.CORMYR_FIREBASE_CLOUD_MAIL_WRITE_ENABLED==='true'&&
+         (profile==='narrador'||editHouseIds.length>0)){
+        const root=await db.collection('campaignRuntime').doc(snapshotId).get();
+        const d=root.data();
+        mailWriteAvailable=Boolean(root.exists&&d?.status==='active'&&
+          d?.mode==='firebase-only'&&d?.private===true&&
+          d?.sourceSnapshotId===snapshotId&&d?.writesEnabled===true&&
+          d?.sourceLiveReconciled===true&&d?.readyForCutover===true);
+      }
+      return {authenticated:true,profile,memberHouseIds,editHouseIds,
+        mailWriteAvailable,readOnly:!mailWriteAvailable,
+        snapshotReconciliationPending:!mailWriteAvailable};
     },
     async listHouses(idToken){
       await scopeFor(idToken);
@@ -125,7 +136,43 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       const snap=await db.collection('migrationDomainStage')
         .doc(snapshotId).collection('letters').get();
       if(snap.size>500)deny('mailbox_requires_pagination',503);
-      const visible=snap.docs.map(d=>d.data()).filter(v=>{
+      // Runtime mail is stored separately from immutable imported letters.
+      const runtimeRoot=await db.collection('campaignRuntime').doc(snapshotId).get();
+      const rootData=runtimeRoot.data();
+      const runtimeReady=runtimeRoot.exists&&rootData?.status==='active'&&
+        rootData?.private===true&&rootData?.mode==='firebase-only'&&
+        rootData?.sourceSnapshotId===snapshotId&&
+        rootData?.writesEnabled===true&&
+        rootData?.sourceLiveReconciled===true&&rootData?.readyForCutover===true;
+      let runtimeRows=[];
+      if(runtimeReady){
+        const mail=await db.collection('campaignRuntime').doc(snapshotId)
+          .collection('letters').get();
+        if(mail.size>1000)deny('mailbox_requires_pagination',503);
+        runtimeRows=mail.docs.map(doc=>doc.data()).filter(v=>{
+          if(!v||typeof v.id!=='string'||
+             typeof v.subject!=='string'||typeof v.content!=='string'||
+             typeof v.createdAt!=='string'||v.deletedAt!==null||
+             v.publicationState!=='delivered')return false;
+          return scope.profile==='narrador'||v.senderUid===scope.uid||
+            (v.recipientKind==='house'&&
+              scope.memberHouseIds.includes(v.recipientHouseId));
+        }).map(v=>({
+          sourceId:v.id,subject:v.subject,content:v.content,
+          senderName:v.senderName??null,
+          recipientHouseId:v.recipientHouseId??null,
+          createdAt:v.createdAt,deliveredAt:v.deliveredAt??null,
+          campaignDate:v.campaignDate&&
+            Number.isInteger(v.campaignDate.year)&&
+            Number.isInteger(v.campaignDate.month)&&
+            Number.isInteger(v.campaignDate.day)
+              ?String(v.campaignDate.year)+'-'+
+                String(v.campaignDate.month+1).padStart(2,'0')+'-'+
+                String(v.campaignDate.day).padStart(2,'0')
+              :null,
+        }));
+      }
+      const imported=snap.docs.map(d=>d.data()).filter(v=>{
         if(!v||v.publicationState!=='delivered'||v.deletedAt!==null||
            typeof v.sourceId!=='string'||typeof v.subject!=='string'||
            typeof v.content!=='string'||typeof v.createdAt!=='string'||
@@ -135,8 +182,10 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
           (scope.playerId!==null&&v.recipientPlayerId===scope.playerId)||
           (typeof v.recipientHouseId==='string'&&
             scope.memberHouseIds.includes(v.recipientHouseId));
-      }).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||
-        a.sourceId.localeCompare(b.sourceId));
+      });
+      const visible=[...imported,...runtimeRows].sort(
+        (a,b)=>b.createdAt.localeCompare(a.createdAt)||
+          a.sourceId.localeCompare(b.sourceId));
       const items=visible.slice(0,30).map(v=>({
         id:v.sourceId,subject:v.subject,content:v.content,
         senderName:v.senderName??null,recipientHouseId:v.recipientHouseId??null,
