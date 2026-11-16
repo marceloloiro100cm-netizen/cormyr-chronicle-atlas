@@ -1,48 +1,40 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { createClient } from '@supabase/supabase-js';
-import {resolvePublicSupabase} from '@/integrations/supabase/public-config';
-import type { Database } from '@/integrations/supabase/types';
-import {PUBLIC_TRANSLATION_ENTITY_TYPES} from '@/lib/i18n/public-translations';
+import {createFileRoute} from '@tanstack/react-router';
+import {publicContentFirestore}
+  from '@/lib/public/firebase-public-content-admin.server';
+import {readApprovedFirebasePublicTranslations}
+  from '@/lib/public/firebase-public-content.server';
 
-const SUPPORTED = ['en', 'es', 'de'];
+const SUPPORTED=['en','es','de'];
+const HEADERS={
+  'Cache-Control':'no-store, max-age=0',
+  'X-Content-Type-Options':'nosniff',
+};
 
-
-/** Read only pre-approved public content translations. Never expose private record translations. */
-export const Route = createFileRoute('/api/public/translations')({
-  server: {
-    handlers: {
-      GET: async ({ request }) => {
-        const locale = new URL(request.url).searchParams.get('locale');
-        if (!locale || !SUPPORTED.includes(locale))
-          return Response.json({ error: 'Idioma inválido' }, { status: 400 });
-        const {url,key}=resolvePublicSupabase(process.env['SUPABASE_URL'],
-    process.env['SUPABASE_PUBLISHABLE_KEY']);
-        if (!url || !key)
-          return Response.json({ translations: {} }, { headers: { 'Cache-Control': 'no-store' } });
-        const db = createClient<Database>(url, key, {
-          auth: { persistSession: false },
-          global: { fetch: (input, init) => {
-            const headers = new Headers(init?.headers);
-            if (key.startsWith('sb_') && headers.get('Authorization') === `Bearer ${key}`)
-              headers.delete('Authorization');
-            headers.set('apikey', key);
-            return fetch(input, { ...init, headers });
-          } },
-        });
-        const { data, error } = await db
-          .from('campaign_translations')
-          .select('entity_type,entity_id,field_name,translated_text')
-          .eq('locale', locale)
-          .in('entity_type', [...PUBLIC_TRANSLATION_ENTITY_TYPES])
-          .limit(5000);
-        if (error)
-          return Response.json({ error: 'Traduções indisponíveis' }, { status: 503 });
-        const translations: Record<string, string> = {};
-        for (const row of data ?? []) {
-          translations[`${row.entity_type}:${row.entity_id}:${row.field_name}`] = row.translated_text;
-        }
-        return Response.json({ translations }, { headers: { 'Cache-Control': 'no-store' } });
-      },
-    },
-  },
+/** Firebase-only; no archive, narrator text or translation DB is public by default. */
+async function readPublicTranslations(request:Request):Promise<Response>{
+  const params=new URL(request.url).searchParams;
+  const locale=params.get('locale');
+  if(params.size!==1||!locale||!SUPPORTED.includes(locale))
+    return Response.json({error:'Idioma inválido'},
+      {status:400,headers:HEADERS});
+  const snapshotId=process.env['CORMYR_FIREBASE_SNAPSHOT_ID']??'';
+  if(process.env['CORMYR_FIREBASE_PUBLIC_TRANSLATIONS_ENABLED']!=='true'||
+     !/^[a-f0-9]{64}$/.test(snapshotId)||
+     process.env['FIRESTORE_EMULATOR_HOST']||
+     process.env['FIREBASE_AUTH_EMULATOR_HOST'])
+    return Response.json({error:'Traduções indisponíveis'},
+      {status:503,headers:HEADERS});
+  try{
+    const result=await readApprovedFirebasePublicTranslations({
+      db:await publicContentFirestore(),snapshotId,
+      enabled:true,projectId:'cormyr',locale,
+    });
+    return Response.json(result,{status:200,headers:HEADERS});
+  }catch{
+    return Response.json({error:'Traduções indisponíveis'},
+      {status:503,headers:HEADERS});
+  }
+}
+export const Route=createFileRoute('/api/public/translations')({
+  server:{handlers:{GET:async({request})=>readPublicTranslations(request)}},
 });
