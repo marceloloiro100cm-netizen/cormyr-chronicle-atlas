@@ -24,6 +24,7 @@ describe('Firebase Cloud — unidades militares por Casa',()=>{
     expect(data.knownStrength).toBe(180);
     expect(data.knownAvailable).toBe(165);
     expect(data.units[0].available).toBe(87);
+    expect(data.units[0].symbolSrc).toMatch(/^\/assets\/military-units\//);
     expect(data.units[1].available).toBe(78);
   });
 
@@ -74,7 +75,12 @@ describe('Firebase Cloud — unidades militares por Casa',()=>{
     expect(screen.getByText('Comandante: <img src=x onerror=attack()>'))
       .toBeInTheDocument();
     expect(container.querySelector('script')).toBeNull();
-    expect(container.querySelector('img')).toBeNull();
+    // Only the 17 project-provided unit emblems are legitimate images.
+    expect(container.querySelectorAll('img').length).toBe(1);
+    for(const img of container.querySelectorAll('img')){
+      expect(img.getAttribute('src')).toMatch(/^\/assets\/military-units\//);
+      expect(img.getAttribute('onerror')).toBeNull();
+    }
   });
 
   it('limita renderização sem truncar nem modificar os dados originais',()=>{
