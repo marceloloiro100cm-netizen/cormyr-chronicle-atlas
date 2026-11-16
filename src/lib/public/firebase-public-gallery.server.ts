@@ -115,7 +115,8 @@ export async function readApprovedPublicGalleryImage(
   if(n!==image['sizeBytes']||metadata?.contentType!==image['contentType'])
     return unavailable();
   const [data]=await file.download();
-  if(!(data instanceof Uint8Array)||data.length!==image['sizeBytes']||
+  if(!(Buffer.isBuffer(data)||data instanceof Uint8Array)||
+     data.length!==image['sizeBytes']||
      data.length>MAX_BYTES||!validSignature(data,image['contentType']))
     return unavailable();
   const digest=createHash('sha256').update(data).digest('hex');
