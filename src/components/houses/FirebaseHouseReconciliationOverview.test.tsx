@@ -115,7 +115,8 @@ describe('Firebase — resumo das Casas exclusivo do Narrador',()=>{
       houses={houses.slice(0,1)}
       inspect={inspect} onSelectHouse={open}/>);
     fireEvent.click(screen.getByRole('button',{name:'Abrir ficha'}));
-    expect(open).toHaveBeenCalledExactlyOnceWith('house-1');
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledWith('house-1');
     expect(inspect).not.toHaveBeenCalled();
   });
 });
