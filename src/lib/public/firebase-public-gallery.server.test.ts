@@ -100,7 +100,7 @@ describe('Firebase-only public gallery image policy',()=>{
   });
 
   it('denies invalid or traversing paths before reading any data',async()=>{
-    for(const path of ['',undefined,'public-house/house-a/../secret',
+    for(const path of ['',null,'public-house/house-a/../secret',
       'public-house/%2e%2e/asset','public-house/h/a.svg',
       'public-house/h/a/b','public-house/h/é']){
       const f=fixture();
@@ -181,7 +181,7 @@ describe('Firebase-only public gallery image policy',()=>{
   });
 
   it('does not reintroduce the Supabase gallery RPC or direct origin download',()=>{
-    const route=readFileSync(new URL('../../routes/api/public/gallery-image.ts',import.meta.url),'utf8');
+    const route=readFileSync('src/routes/api/public/gallery-image.ts','utf8');
     expect(route).not.toMatch(/(?:from\s*['"][^'"]*supabase|createClient\s*\(|can_read_public_gallery_image|\/storage\/v1\/)/i);
     expect(route).toContain('readApprovedPublicGalleryImage');
     expect(route).toContain('CORMYR_FIREBASE_PUBLIC_GALLERY_ENABLED');
