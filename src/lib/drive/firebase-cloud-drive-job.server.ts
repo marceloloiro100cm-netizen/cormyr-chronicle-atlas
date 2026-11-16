@@ -15,8 +15,9 @@ export function isAuthorizedFirebaseDriveJob(request:Request,
   if(!safe(current)||previous!==undefined&&!safe(previous))return false;
   const m=/^Bearer ([^\s,]{32,512})$/.exec(
     request.headers.get('authorization')??'');
-  if(!m)return false;
-  const received=hash(m[1]);
+  const token=m?.[1];
+  if(!token)return false;
+  const received=hash(token);
   const now=timingSafeEqual(received,hash(current));
   const old=timingSafeEqual(received,hash(safe(previous)?previous:current));
   return now||old;
