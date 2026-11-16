@@ -85,7 +85,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   // Guard at the router boundary, before private route loaders can call
   // the legacy backend. The public archive is served as static files.
   beforeLoad: ({ location }) => {
-    if (CORMYR_ARCHIVE_ONLY && location.pathname !== '/') {
+    // The new Firebase-only pilot is independently guarded by Firebase
+    // Admin access and a disabled-by-default server flag. Legacy game routes
+    // remain in archive-only mode with no Supabase fallback.
+    const firebasePilotPath = location.pathname === '/firebase-access';
+    if (CORMYR_ARCHIVE_ONLY && location.pathname !== '/' && !firebasePilotPath) {
       throw redirect({ to: '/' });
     }
   },
