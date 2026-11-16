@@ -3,6 +3,7 @@ import {useEffect,useState,type FormEvent} from 'react';
 import {firebasePilotAuth as firebaseAuth} from '@/lib/auth/firebase-pilot-session';
 import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
 import {FirebaseNewspaperReader} from '@/components/newspaper/FirebaseNewspaperReader';
+import {GmEventos,GmAventuras} from '@/components/gm-panels';
 import {FirebaseCalendarSnapshot} from '@/components/calendar/FirebaseCalendarSnapshot';
 import {FirebaseHouseSheet} from '@/components/houses/FirebaseHouseSheet';
 import {FirebaseArmyRoster} from '@/components/houses/FirebaseArmyRoster';
@@ -205,6 +206,7 @@ function FirebaseAccess(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
   const [view,setView]=useState<SessionView|null>(null);
+  const [narratorLibraryOpen,setNarratorLibraryOpen]=useState(false);
   const [houses,setHouses]=useState<House[]>([]);
   const [house,setHouse]=useState<HouseView|null>(null);
   const [calendar,setCalendar]=useState<Calendar|null>(null);
@@ -244,6 +246,7 @@ function FirebaseAccess(){
   async function load(){
     const profile=await readCloud<SessionView>('session');
     setView(profile);
+    setNarratorLibraryOpen(false);
     const [catalog,date,letters,papers,mail,publishing]=await Promise.all([
       readCloud<House[]>('listHouses'),
       profile.profile==='editor'
@@ -504,6 +507,22 @@ function FirebaseAccess(){
         <button type="button" className="rounded border px-3 py-1"
           onClick={signOut}>Sair</button>
       </div>
+      {view.profile==='narrador'&&
+        <section aria-label="Acervo reservado do Narrador"
+          className="rounded border border-current/25 p-4 space-y-3">
+          <h2 className="font-semibold">Eventos e aventuras do Narrador</h2>
+          <p className="text-sm">Dados privados do Firebase, disponíveis somente
+            após a aprovação da migração e da conta autenticada.</p>
+          <button type="button" className="rounded border px-3 py-1 text-sm"
+            aria-expanded={narratorLibraryOpen}
+            onClick={()=>setNarratorLibraryOpen(v=>!v)}>
+            {narratorLibraryOpen?'Fechar acervo':'Consultar acervo privado'}
+          </button>
+          {narratorLibraryOpen&&<div className="space-y-4">
+            <GmEventos/>
+            <GmAventuras/>
+          </div>}
+        </section>}
       {view.profile==='narrador'&&
         <FirebaseHouseReconciliationOverview houses={houses}
           inspect={cloudHouseReconciliation}
