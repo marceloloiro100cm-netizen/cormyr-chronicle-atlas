@@ -2,7 +2,8 @@ import {createFileRoute} from '@tanstack/react-router';
 import {useEffect,useState,type FormEvent} from 'react';
 import {runFirebaseRoleSelfAcceptance}
   from '@/lib/auth/firebase-role-self-acceptance';
-import {createFirebaseRestAuth} from '@/integrations/auth/firebase-rest-auth';
+import {firebasePilotAuth as firebaseAuth} from '@/lib/auth/firebase-pilot-session';
+import {GmEventos,GmAventuras} from '@/components/gm-panels';
 import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
 import {FirebaseNewspaperReader} from '@/components/newspaper/FirebaseNewspaperReader';
 import {FirebaseCalendarSnapshot} from '@/components/calendar/FirebaseCalendarSnapshot';
@@ -33,7 +34,6 @@ export const Route=createFileRoute('/firebase-access')({
   head:()=>({meta:[{title:'Acesso Firebase — Cormyr'}]}),
 });
 
-type Auth=ReturnType<typeof createFirebaseRestAuth>;
 type SessionView={authenticated:boolean;profile:'jogador'|'narrador'|'editor';
   memberHouseIds:string[];readOnly:boolean;snapshotReconciliationPending:boolean};
 type House={id:string;name:string;castle:string|null;crest:string|null};
@@ -71,34 +71,6 @@ function spyValue(value:unknown):string {
   if(typeof value==='string')return value.slice(0,2000);
   if(typeof value==='number'||typeof value==='boolean')return String(value);
   try{return JSON.stringify(value).slice(0,2000);}catch{return 'Registro não disponível';}
-}
-
-let singleton:Auth|null=null;
-
-function firebaseAuth():Auth|null{
-  if(typeof window==='undefined')return null;
-  // Firebase Web configuration is public by design; use the owner's project
-  // identifiers without requiring any secret or Cloud Shell environment.
-  const key=FIREBASE_PUBLIC_CONFIG.apiKey;
-  const project=FIREBASE_PUBLIC_CONFIG.projectId;
-  if(!key||project!=='cormyr')return null;
-  if(singleton)return singleton;
-  const storageKey='cormyr:firebase-cloud-pilot:refresh';
-  let memory:string|null=null;
-  singleton=createFirebaseRestAuth({
-    apiKey:key,
-    storage:{
-      get(){try{return window.sessionStorage.getItem(storageKey);}catch{return memory;}},
-      set(value){
-        memory=value;
-        try{
-          if(value===null)window.sessionStorage.removeItem(storageKey);
-          else window.sessionStorage.setItem(storageKey,value);
-        }catch{/* Session remains tab-local in memory. */}
-      },
-    },
-  });
-  return singleton;
 }
 
 async function readCloud<T>(action:'session'|'listHouses'|'getHouse'|'getCalendar'|
@@ -236,6 +208,7 @@ function FirebaseAccess(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
   const [view,setView]=useState<SessionView|null>(null);
+  const [narratorLibraryOpen,setNarratorLibraryOpen]=useState(false);
   const [roleCheck,setRoleCheck]=useState<
     Awaited<ReturnType<typeof runFirebaseRoleSelfAcceptance>>|null>(null);
   const [houses,setHouses]=useState<House[]>([]);
@@ -277,6 +250,7 @@ function FirebaseAccess(){
   async function load(){
     const profile=await readCloud<SessionView>('session');
     setView(profile);
+    setNarratorLibraryOpen(false);
     const [catalog,date,letters,papers,mail,publishing]=await Promise.all([
       readCloud<House[]>('listHouses'),
       profile.profile==='editor'
@@ -510,6 +484,7 @@ function FirebaseAccess(){
   function signOut(){
     firebaseAuth()?.signOut();
     setView(null);setHouse(null);setHouseReconciliation(null);setRoleCheck(null);
+    setNarratorLibraryOpen(false);
     setHouses([]);setCalendar(null);
     setInbox(null);setEditions([]);setEdition(null);setAgents(null);
     setDossiers(null);
@@ -577,6 +552,22 @@ function FirebaseAccess(){
             não grava tokens, UIDs ou conteúdo de outras Casas.</p>
         </div>}
       </section>
+      {view.profile==='narrador'&&
+        <section aria-label="Acervo reservado do Narrador"
+          className="rounded border border-current/25 p-4 space-y-3">
+          <h2 className="font-semibold">Eventos e aventuras do Narrador</h2>
+          <p className="text-sm">Conteúdo privado do Firebase, liberado apenas
+            após a revisão dos dados e autorização desta conta.</p>
+          <button type="button" className="rounded border px-3 py-1 text-sm"
+            aria-expanded={narratorLibraryOpen}
+            onClick={()=>setNarratorLibraryOpen(v=>!v)}>
+            {narratorLibraryOpen?'Fechar acervo':'Consultar acervo privado'}
+          </button>
+          {narratorLibraryOpen&&<div className="space-y-4">
+            <GmEventos/>
+            <GmAventuras/>
+          </div>}
+        </section>}
       {view.profile==='narrador'&&
         <FirebaseHouseReconciliationOverview houses={houses}
           inspect={cloudHouseReconciliation}
