@@ -14,6 +14,10 @@ function fake(pageStatus=200,gatewayStatus=503,gatewayCode='firebase_cloud_read_
       return Response.json({error:gatewayCode},{
         status:gatewayStatus,headers:{'Cache-Control':'private, no-store'},
       });
+    if(url===ORIGIN+PATHS[2])
+      return Response.json({error:'firebase_cloud_mail_disabled'},{
+        status:503,headers:{'Cache-Control':'private, no-store'},
+      });
     throw Error('unapproved_destination');
   };
   return {calls,fetcher};
@@ -24,11 +28,12 @@ test('new Firebase Cloud pilot and disabled gateway give safe public readiness',
   const result=await probeCloudPilot(fetcher);
   assert.equal(result.verified,true);
   assert.equal(result.readyForCutover,false);
-  assert.deepEqual(result.checks.map(x=>x.status),[200,503]);
-  assert.deepEqual(calls.map(x=>x.method),['GET','POST']);
+  assert.deepEqual(result.checks.map(x=>x.status),[200,503,503]);
+  assert.deepEqual(calls.map(x=>x.method),['GET','POST','POST']);
   assert.ok(calls.every(x=>x.credentials==='omit'));
   assert.ok(calls.every(x=>x.url.startsWith(ORIGIN+'/')));
   assert.equal(calls[1].body,JSON.stringify({action:'session'}));
+  assert.equal(calls[2].body,JSON.stringify({action:'status'}));
 });
 
 test('authenticated-only mode accepts anonymous rejection 401, no data exposed',async()=>{
@@ -54,5 +59,18 @@ test('pilot redirect or missing page fails public acceptance',async()=>{
 test('HTTP transport errors are inconclusive, not success',async()=>{
   const result=await probeCloudPilot(async()=>{throw Error('no_network');});
   assert.equal(result.verified,false);
-  assert.deepEqual(result.checks.map(x=>x.status),[null,null]);
+  assert.deepEqual(result.checks.map(x=>x.status),[null,null,null]);
+});
+
+test('Cloud mail cannot pass the public smoke with anonymous HTTP 200',async()=>{
+  const {fetcher}=fake();
+  const broken=async(url,opts)=>{
+    if(url===ORIGIN+PATHS[2])return Response.json({result:{canSend:true}},{
+      status:200,headers:{'Cache-Control':'no-store'},
+    });
+    return fetcher(url,opts);
+  };
+  const report=await probeCloudPilot(broken);
+  assert.equal(report.verified,false);
+  assert.equal(report.checks[2].passed,false);
 });

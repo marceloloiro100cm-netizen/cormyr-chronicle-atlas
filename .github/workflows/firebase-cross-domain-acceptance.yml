@@ -34,7 +34,7 @@ jobs:
       - name: Validate synthetic-only execution and release gates
         run: |
           node --check scripts/firebase/full-domain-emulator-acceptance.mjs
-          node --test scripts/firebase/full-domain-emulator-acceptance.test.mjs scripts/firebase/lot9-cutover-gate.test.mjs scripts/firebase/cloud-readonly-service.test.mjs
+          node --test scripts/firebase/full-domain-emulator-acceptance.test.mjs scripts/firebase/lot9-cutover-gate.test.mjs scripts/firebase/cloud-readonly-service.test.mjs scripts/firebase/cloud-mail-service.test.mjs
           node scripts/firebase/lot9-cutover-gate.mjs
           node scripts/verify-public-repo.mjs
 
