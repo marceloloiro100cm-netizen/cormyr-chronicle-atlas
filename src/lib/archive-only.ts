@@ -7,6 +7,14 @@
  */
 export const CORMYR_ARCHIVE_ONLY = true as const;
 
+/**
+ * Exact router carve-out for the separate Firebase-only pilot. This does NOT
+ * grant any authentication, database access, or write capability.
+ */
+export function isFirebasePilotPage(pathname: string): boolean {
+  return pathname === '/firebase-access';
+}
+
 /** Tested boundary for server calls that still target legacy services. */
 export function shouldBlockLegacyRequest(pathname: string, handlerType?: string): boolean {
   if (!CORMYR_ARCHIVE_ONLY) return false;
