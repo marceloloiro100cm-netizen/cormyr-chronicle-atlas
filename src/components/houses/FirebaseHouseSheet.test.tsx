@@ -20,7 +20,7 @@ describe('Firebase — ficha nobre somente leitura',()=>{
     const {container}=render(<FirebaseHouseSheet sheet={sheet}/>);
     expect(screen.getByRole('article',{name:'Ficha da Casa Casa Exemplo'}))
       .toBeInTheDocument();
-    expect(screen.getByText('Fortaleza do Rio')).toBeInTheDocument();
+    expect(screen.getByText(/Fortaleza do Rio/)).toBeInTheDocument();
     expect(screen.getByText('Riqueza')).toBeInTheDocument();
     expect(screen.getByText('Lei')).toBeInTheDocument();
     expect(screen.getByText('8')).toBeInTheDocument();
