@@ -1,15 +1,76 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { createClient } from '@supabase/supabase-js';
-import {resolvePublicSupabase} from '@/integrations/supabase/public-config';
-import type { Database } from '@/integrations/supabase/types';
-export const Route=createFileRoute('/api/public/gallery-image')({server:{handlers:{GET:async({request})=>{
- const query=new URL(request.url).searchParams,path=query.get('path')??'';
- if(!/^public-house\/[a-z0-9-]+\/[a-zA-Z0-9_-]+$/.test(path))return new Response('Imagem indisponível',{status:404});
- const {url,key}=resolvePublicSupabase(process.env['SUPABASE_URL'],
-    process.env['SUPABASE_PUBLISHABLE_KEY']);if(!url||!key)return new Response('Indisponível',{status:503});
- const db=createClient<Database>(url,key,{auth:{persistSession:false},global:{fetch:(i,n)=>{const h=new Headers(n?.headers);if(key.startsWith('sb_')&&h.get('Authorization')===`Bearer ${key}`)h.delete('Authorization');h.set('apikey',key);return fetch(i,{...n,headers:h});}}});
- const allowed=await db.rpc('can_read_public_gallery_image',{p_path:path});if(allowed.error||!allowed.data)return new Response('Imagem indisponível',{status:404});
- const image=await db.storage.from('campaign-images').download(path);if(image.error)return new Response('Imagem indisponível',{status:404});
- const headers=new Headers({'Content-Type':image.data.type,'Cache-Control':'public, max-age=86400'});if(query.has('download'))headers.set('Content-Disposition',`attachment; filename*=UTF-8''${encodeURIComponent((query.get('name')??'imagem').replace(/[\r\n]/g,''))}`);
- return new Response(image.data,{headers});
-}}}});
+import {createFileRoute} from '@tanstack/react-router';
+import {publicContentFirestore} from '@/lib/public/firebase-public-content-admin.server';
+import {
+  PublicGalleryError,readApprovedPublicGalleryImage,validPublicGalleryPath,
+  type PublicGalleryBucket,
+} from '@/lib/public/firebase-public-gallery.server';
+
+const HEADERS={
+  'Cache-Control':'no-store, max-age=0',
+  'X-Content-Type-Options':'nosniff',
+};
+const fail=(status:404|503)=>new Response(
+  status===404?'Imagem indisponível':'Galeria temporariamente indisponível',
+  {status,headers:{...HEADERS,'Content-Type':'text/plain; charset=utf-8'}},
+);
+
+/**
+ * Public only after per-image review, exact snapshot/version approval and
+ * byte-level SHA-256 verification against a separately migrated private bucket.
+ * No legacy Supabase RPC, credentials, redirect or fallback.
+ */
+export async function getFirebasePublicGalleryImage(request:Request):Promise<Response>{
+  const u=new URL(request.url);
+  const q=u.searchParams;
+  if(u.search.length>800||q.getAll('path').length!==1||
+     [...q.keys()].some(key=>!['path','download','name'].includes(key))||
+     q.getAll('download').length>1||q.getAll('name').length>1||
+     (!q.has('download')&&q.has('name')))
+    return fail(404);
+  const path=q.get('path');
+  if(!validPublicGalleryPath(path))return fail(404);
+
+  const snapshotId=process.env['CORMYR_FIREBASE_SNAPSHOT_ID']??'';
+  const bucketName=process.env['CORMYR_FIREBASE_PUBLIC_GALLERY_BUCKET']??'';
+  if(process.env['CORMYR_FIREBASE_PUBLIC_GALLERY_ENABLED']!=='true'||
+     !/^[a-f0-9]{64}$/.test(snapshotId)||
+     !/^cormyr-[a-z0-9-]{1,120}$/.test(bucketName)||
+     process.env['FIRESTORE_EMULATOR_HOST']||
+     process.env['FIREBASE_AUTH_EMULATOR_HOST'])
+    return fail(503);
+
+  try{
+    const [{applicationDefault,getApps,initializeApp},{getStorage}]=
+      await Promise.all([
+        import('firebase-admin/app'),import('firebase-admin/storage'),
+      ]);
+    const name='cormyr-public-gallery';
+    const app=getApps().find(item=>item.name===name)??initializeApp({
+      credential:applicationDefault(),projectId:'cormyr',
+    },name);
+    const result=await readApprovedPublicGalleryImage({
+      db:await publicContentFirestore(),
+      bucket:getStorage(app).bucket(bucketName) as unknown as PublicGalleryBucket,
+      enabled:true,projectId:'cormyr',snapshotId,bucketName,
+    },path);
+    const headers:Record<string,string>={
+      ...HEADERS,'Content-Type':result.contentType,
+      'Content-Length':String(result.data.length),
+    };
+    if(q.has('download')){
+      const requested=q.get('name')??'';
+      const filename=/^[A-Za-z0-9 _.-]{1,100}$/.test(requested)?
+        requested:'imagem';
+      headers['Content-Disposition']=
+        "attachment; filename*=UTF-8''"+encodeURIComponent(filename);
+    }
+    return new Response(new Uint8Array(result.data),{status:200,headers});
+  }catch(e){
+    if(e instanceof PublicGalleryError)return fail(e.status);
+    // No disclosure of object names, storage permissions or source metadata.
+    return fail(503);
+  }
+}
+export const Route=createFileRoute('/api/public/gallery-image')({
+  server:{handlers:{GET:async({request})=>getFirebasePublicGalleryImage(request)}},
+});
