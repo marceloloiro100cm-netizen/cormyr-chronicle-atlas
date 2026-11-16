@@ -209,7 +209,7 @@ describe('Firebase Cloud — compra transacional bloqueada por padrão',()=>{
     await rejected(()=>s.purchase('long-firebase-token',
       f.input({dice:[6,6],costs:[{resource:'defense',amount:0}]})),
       'invalid_construction_request',400);
-    const state=f.docs.get(f.opPath)!.state as typeof f.source;
+    const state=f.docs.get(f.opPath)!['state'] as typeof f.source;
     state.holdings.push({
       id:'another-holding',itemId:'tower',name:'Torre do norte',domainId:'d2',
       costs:[],effects:[],ruleVersion:'2026',source:'teste',status:'active',
