@@ -34,14 +34,22 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Install throwaway emulator dependencies
-        run: npm install --no-save --package-lock=false --legacy-peer-deps firebase-tools@15.35.0 firebase-admin@14.5.1
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.3'
+      - name: Install locked application dependencies
+        run: bun install --frozen-lockfile
+      - name: Install throwaway emulator CLI outside the repository
+        run: |
+          mkdir -p "$RUNNER_TEMP/cormyr-firebase-cli"
+          npm install --prefix "$RUNNER_TEMP/cormyr-firebase-cli" \
+            --no-save --package-lock=false firebase-tools@15.35.0
       - name: Authenticated House access acceptance on real Firestore Emulator
         env:
           FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
           FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
         run: |
-          npx firebase emulators:exec --only firestore,auth \
+          "$RUNNER_TEMP/cormyr-firebase-cli/node_modules/.bin/firebase" emulators:exec --only firestore,auth \
             --project demo-cormyr-migration \
             --config firebase/firebase-all.json \
             "node scripts/firebase/domain-bridge.integration.mjs"
