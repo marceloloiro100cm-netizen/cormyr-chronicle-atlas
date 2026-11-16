@@ -48,6 +48,21 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       deny('migration_stage_not_ready',503);
   }
 
+  async function publishedCloudNewspaperRoot(){
+    const root=db.collection('campaignCloudRuntime').doc(snapshotId);
+    const doc=await root.get();
+    const v=doc.data();
+    // Imported snapshots are independent. Only published items from an
+    // explicitly approved and reconciled Cloud runtime may become visible.
+    if(!doc.exists||v?.status!=='active'||v.private!==true||
+       v.sourceSnapshotId!==snapshotId||
+       v.sourceSnapshotReconciled!==true||
+       v.applicationEnabled!==true||v.newspaperWriteApproved!==true||
+       v.newspaperSequenceReconciled!==true)
+      return null;
+    return root;
+  }
+
   async function scopeFor(idToken){
     if(typeof idToken!=='string'||idToken.length<10||idToken.length>10000)
       deny('authentication_required',401);
@@ -202,7 +217,21 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       const snap=await db.collection('migrationNewspaperRuntimeStage')
         .doc(snapshotId).collection('editions').get();
       if(snap.size>100)deny('newspaper_response_too_large',503);
-      const items=snap.docs.map(d=>d.data()).filter(v=>
+      const runtime=await publishedCloudNewspaperRoot();
+      let newEditions=[];
+      if(runtime){
+        const cloud=await runtime.collection('publishedNewspapers').get();
+        if(cloud.size>100)deny('newspaper_response_too_large',503);
+        newEditions=cloud.docs.map(d=>d.data()).filter(v=>
+          v&&v.source==='firebase-cloud'&&
+          v.sourceSnapshotId===snapshotId&&
+          typeof v.id==='string'&&v.id.startsWith('cloud-')&&
+          v.state==='published'&&
+          typeof v.title==='string'&&Number.isInteger(v.editionNo)&&
+          typeof v.publishedAt==='string'&&v.cancelledAt===null
+        );
+      }
+      const items=[...snap.docs.map(d=>d.data()),...newEditions].filter(v=>
         v&&['published','archived'].includes(v.state)&&
         typeof v.id==='string'&&typeof v.title==='string'&&
         Number.isInteger(v.editionNo)&&
@@ -218,9 +247,18 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       if(typeof editionId!=='string'||!SAFE_ID.test(editionId))
         deny('invalid_edition',400);
       await stageReady('migrationNewspaperRuntimeStage');
-      const snap=await get(db,'migrationNewspaperRuntimeStage',snapshotId,
-        'editions',editionId);
+      const cloudId=editionId.startsWith('cloud-');
+      const runtime=cloudId?await publishedCloudNewspaperRoot():null;
+      if(cloudId&&!runtime)deny('edition_unavailable',404);
+      const snap=cloudId
+        ?await runtime.collection('publishedNewspapers').doc(editionId).get()
+        :await get(db,'migrationNewspaperRuntimeStage',snapshotId,
+          'editions',editionId);
       const v=snap.data();
+      if(cloudId&&(!v||v.source!=='firebase-cloud'||
+         v.sourceSnapshotId!==snapshotId||v.id!==editionId||
+         v.state!=='published'))
+        deny('edition_unavailable',404);
       if(!snap.exists||!v||!['published','archived'].includes(v.state)||
          typeof v.publishedAt!=='string'||v.cancelledAt!=null)
         deny('edition_unavailable',404);
