@@ -150,14 +150,26 @@ export function createFirebaseCloudMail({
   return {
     async status(idToken){
       const uid=await uidFromToken(idToken);
-      const doc=await access.doc(uid).get();
+      const [doc,domain,authRoot,temporal,cal,live]=await Promise.all([
+        access.doc(uid).get(),stage.get(),authStage.get(),timeStage.get(),
+        timeStage.collection('calendar').doc('current').get(),runtime.get(),
+      ]);
       const actor=accessOf(uid,doc.data());
-      // Do not expose runtime metadata, UIDs or unreconciled documents.
-      const live=await runtime.get();
-      const writable=live.exists&&live.data()?.status==='active'&&
-        live.data()?.sourceSnapshotReconciled===true&&
-        live.data()?.mailWriteApproved===true&&
-        live.data()?.applicationEnabled===true;
+      // No snapshot metadata, UIDs or incomplete sources go to the caller.
+      const rootsReady=[domain,authRoot,temporal].every(d=>
+        d.exists&&d.data()?.status==='complete'&&d.data()?.private===true);
+      const dateValid=cal.exists&&Number.isInteger(cal.data()?.version)&&
+        Number.isInteger(cal.data()?.year)&&
+        Number.isInteger(cal.data()?.month)&&
+        Number.isInteger(cal.data()?.day)&&
+        validateHarptosDate(cal.data().year,cal.data().month,
+          cal.data().day,cal.data().festival??null);
+      const v=live.data();
+      const writable=rootsReady&&dateValid&&live.exists&&v?.status==='active'&&
+        v.private===true&&v.sourceSnapshotId===snapshotId&&
+        v.sourceSnapshotReconciled===true&&v.mailWriteApproved===true&&
+        v.applicationEnabled===true&&Number.isInteger(v.openRound)&&
+        v.openRound>=1&&v.calendarVersion===cal.data().version;
       return {enabled:Boolean(writable),
         canSend:Boolean(writable&&(actor.role==='narrador'||actor.editHouses.length>0)),
         originHouseIds:actor.editHouses,
