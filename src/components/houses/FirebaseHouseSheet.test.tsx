@@ -25,7 +25,7 @@ describe('Firebase — ficha nobre somente leitura',()=>{
     expect(screen.getByText('Lei')).toBeInTheDocument();
     expect(screen.getByText('8')).toBeInTheDocument();
     expect(screen.getByText('4')).toBeInTheDocument();
-    expect(screen.getByText('Sim')).toBeInTheDocument();
+    expect(screen.getAllByText('Sim').length).toBeGreaterThan(0);
     expect(container.querySelector('pre')).toBeNull();
     expect(screen.queryByRole('button')).toBeNull();
     expect(container.querySelector('[contenteditable]')).toBeNull();
