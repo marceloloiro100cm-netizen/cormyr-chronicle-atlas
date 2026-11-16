@@ -256,7 +256,86 @@ export function classifyServingRevision(report,expectedSha){
   };
 }
 
-function appendPublicationSummary(report){
+/**
+ * Observe one public GitHub main commit reaching the 100%-traffic build.
+ * Inspections remain existing GET-only App Hosting metadata calls. The
+ * periodic recheck is bounded, can be cancelled by the GitHub job timeout,
+ * and NEVER performs a rollout. A MATCH describes only the inspection time.
+ *
+ * Retrying an already known wrong branch, disabled rollout policy or denied
+ * read would waste time and could mislead the operator.
+ */
+export async function observeServingRevision({
+  inspect=()=>inspectAppHostingReadOnly(),
+  pause=ms=>new Promise(resolve=>setTimeout(resolve,ms)),
+  expectedSha,
+  maxAttempts=6,
+  intervalMs=20_000,
+}={}){
+  if(!Number.isSafeInteger(maxAttempts)||maxAttempts<1||maxAttempts>6||
+     !Number.isSafeInteger(intervalMs)||intervalMs<0||intervalMs>30_000||
+     typeof inspect!=='function'||typeof pause!=='function')
+    throw Error('invalid_revision_observation_options');
+  let report=null;
+  let revision=null;
+  let attempts=0;
+  let stopReason='INCONCLUSIVE';
+  for(let attempt=0;attempt<maxAttempts;attempt++){
+    report=await inspect();
+    attempts++;
+    revision=classifyServingRevision(report,expectedSha);
+    if(revision.comparison==='MATCH'){
+      stopReason='MATCH_OBSERVED';
+      break;
+    }
+    if(revision.readPermissionRequired){
+      stopReason='READ_PERMISSION_REQUIRED';
+      break;
+    }
+    if(revision.comparison==='NO_EXPECTED_COMMIT'){
+      stopReason='NO_EXPECTED_COMMIT';
+      break;
+    }
+    // The serving backend and its deployment policy must be known before
+    // further polling. INCONCLUSIVE without a backend is not rollout evidence.
+    const backend=report?.matchingBackends===1?
+      report.backends?.find(b=>b.domainAttached===true):null;
+    if(!backend){
+      stopReason='SERVING_BACKEND_UNCONFIRMED';
+      break;
+    }
+    if(revision.servingBranch!=='main'){
+      stopReason='BRANCH_NOT_MAIN_OR_UNCONFIRMED';
+      break;
+    }
+    if(revision.automaticRolloutsEnabled!==true){
+      stopReason='AUTOMATIC_ROLLOUT_DISABLED_OR_UNCONFIRMED';
+      break;
+    }
+    if(attempt===maxAttempts-1){
+      stopReason='OBSERVATION_WINDOW_EXHAUSTED';
+      break;
+    }
+    stopReason='OBSERVATION_WINDOW_EXHAUSTED';
+    await pause(intervalMs);
+  }
+  return {
+    report,
+    observation:{
+      attempts,
+      maxAttempts,
+      comparison:revision?.comparison??'INCONCLUSIVE',
+      stopReason,
+      matchingCommitObserved:revision?.comparison==='MATCH',
+      // Matching code cannot prove migrated Cloud data or player access.
+      cloudDataMigratedVerified:false,
+      readyForCutover:false,
+      writes:0,
+    },
+  };
+}
+
+function appendPublicationSummary(report,observation=null){
   const destination=process.env.GITHUB_STEP_SUMMARY;
   if(!destination)return;
   const state=classifyServingRevision(report,process.env.GITHUB_SHA);
@@ -265,6 +344,9 @@ function appendPublicationSummary(report){
     '- Commit deste push: '+(state.expectedCommit??'não confirmado'),
     '- Commit efetivamente em tráfego: '+(state.servingCommit??'não confirmado'),
     '- Comparação no instante da auditoria: **'+state.comparison+'**',
+    '- Observações somente leitura: '+(observation?.attempts??1)+
+      ' · Motivo de parada: '+(observation?.stopReason??'SINGLE_CHECK')+
+      ' · Mesmo MATCH não autoriza cutover.',
     '- Branch configurada: '+(state.servingBranch??'desconhecida'),
     '- Rollouts automáticos: '+(state.automaticRolloutsEnabled===null?
       'desconhecidos':state.automaticRolloutsEnabled?'ativados':'desativados'),
@@ -285,15 +367,17 @@ function appendPublicationSummary(report){
 }
 
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
-  inspectAppHostingReadOnly().then(report=>{
-    process.stdout.write(JSON.stringify(report,null,2)+'\n');
-    appendPublicationSummary(report);
-    if(report.readPermissionRequired)
-      console.error('One or more App Hosting metadata reads returned HTTP 401/403. Verify project-level access without expanding roles.');
-    if(!report.auditComplete)
-      console.error('App Hosting metadata audit is incomplete; inspect reported per-endpoint status codes. No rollout was created.');
-  }).catch(()=>{
-    console.error('App Hosting read-only inspection unavailable. No IAM, data or rollout changes made.');
-    process.exitCode=1;
-  });
+  observeServingRevision({expectedSha:process.env.GITHUB_SHA})
+    .then(({report,observation})=>{
+      process.stdout.write(JSON.stringify({...report,publicationObservation:observation},
+        null,2)+'\n');
+      appendPublicationSummary(report,observation);
+      if(report.readPermissionRequired)
+        console.error('One or more App Hosting metadata reads returned HTTP 401/403. Verify project-level access without expanding roles.');
+      if(!report.auditComplete)
+        console.error('App Hosting metadata audit is incomplete; inspect reported per-endpoint status codes. No rollout was created.');
+    }).catch(()=>{
+      console.error('App Hosting read-only inspection unavailable. No IAM, data or rollout changes made.');
+      process.exitCode=1;
+    });
 }

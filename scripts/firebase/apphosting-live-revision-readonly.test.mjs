@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   APPHOSTING_API,inspectAppHostingReadOnly,classifyServingRevision,classifyTrafficSplit,
+  observeServingRevision,
   validatedServingBuildPath,AUDITED_PROJECT_NUMBER,
 } from './apphosting-live-revision-readonly.mjs';
 
@@ -360,4 +361,141 @@ test('failed App Hosting builds are visible when no rollout exists',async()=>{
   assert.ok(!JSON.stringify(report).includes(secret));
   assert.ok(calls.every(x=>x.method==='GET'&&
     x.url.startsWith(APPHOSTING_API+'/projects/cormyr/')));
+});
+
+
+const servingFixture=(hash,{
+  complete=true,rolloutsEnabled=true,branch='main',permissions=false,
+}={})=>({
+  auditComplete:complete,
+  matchingBackends:1,
+  domainServingCommit:hash,
+  readPermissionRequired:permissions,
+  backends:[{
+    domainAttached:true,
+    liveBranch:branch,
+    automaticRolloutsEnabled:rolloutsEnabled,
+  }],
+  cloudDataMigratedVerified:false,
+  readyForCutover:false,
+  cloudWrites:0,
+});
+
+test('bounded App Hosting observation confirms only an actually serving expected SHA',async()=>{
+  const requested=[];
+  const waits=[];
+  const expected='f'.repeat(40);
+  const served=['a'.repeat(40),'b'.repeat(40),expected];
+  const result=await observeServingRevision({
+    expectedSha:expected,
+    inspect:async()=>{
+      const r=servingFixture(served[requested.length]);
+      requested.push(r);
+      return r;
+    },
+    pause:async ms=>{waits.push(ms);},
+  });
+  assert.equal(result.observation.attempts,3);
+  assert.deepEqual(waits,[20_000,20_000]);
+  assert.equal(requested.length,3);
+  assert.equal(result.report.domainServingCommit,expected);
+  assert.equal(result.observation.comparison,'MATCH');
+  assert.equal(result.observation.stopReason,'MATCH_OBSERVED');
+  assert.equal(result.observation.matchingCommitObserved,true);
+  assert.equal(result.observation.readyForCutover,false);
+  assert.equal(result.observation.cloudDataMigratedVerified,false);
+  assert.equal(result.observation.writes,0);
+});
+
+test('a stale revision never becomes a verified deployment by retrying',async()=>{
+  let reads=0;
+  let waits=0;
+  const output=await observeServingRevision({
+    expectedSha:'b'.repeat(40),maxAttempts:4,intervalMs:0,
+    inspect:async()=>{reads++;return servingFixture('a'.repeat(40));},
+    pause:async ms=>{assert.equal(ms,0);waits++;},
+  });
+  assert.equal(reads,4);
+  assert.equal(waits,3);
+  assert.equal(output.observation.attempts,4);
+  assert.equal(output.observation.stopReason,'OBSERVATION_WINDOW_EXHAUSTED');
+  assert.equal(output.observation.comparison,'NOT_YET_MATCHING');
+  assert.equal(output.observation.matchingCommitObserved,false);
+  assert.equal(output.report.domainServingCommit,'a'.repeat(40));
+  assert.equal(output.observation.readyForCutover,false);
+});
+
+test('disabled rollouts and wrong source branch stop after one GET-only audit',async()=>{
+  for(const cfg of [
+    {rolloutsEnabled:false,branch:'main',
+      reason:'AUTOMATIC_ROLLOUT_DISABLED_OR_UNCONFIRMED'},
+    {rolloutsEnabled:true,branch:'staging',
+      reason:'BRANCH_NOT_MAIN_OR_UNCONFIRMED'},
+    {rolloutsEnabled:null,branch:'main',
+      reason:'AUTOMATIC_ROLLOUT_DISABLED_OR_UNCONFIRMED'},
+  ]){
+    let reads=0;
+    let sleeps=0;
+    const output=await observeServingRevision({
+      expectedSha:'b'.repeat(40),
+      inspect:async()=>{reads++;return servingFixture('a'.repeat(40),cfg);},
+      pause:async()=>{sleeps++;},
+    });
+    assert.equal(reads,1);
+    assert.equal(sleeps,0);
+    assert.equal(output.observation.stopReason,cfg.reason);
+    assert.equal(output.observation.readyForCutover,false);
+  }
+});
+
+test('unknown backend, denied IAM and invalid expected SHA do not trigger retry',async()=>{
+  const examples=[
+    {report:{auditComplete:false,matchingBackends:0,backends:[],
+      domainServingCommit:null,readPermissionRequired:false},
+      expected:'a'.repeat(40),reason:'SERVING_BACKEND_UNCONFIRMED'},
+    {report:servingFixture('a'.repeat(40),{permissions:true}),
+      expected:'b'.repeat(40),reason:'READ_PERMISSION_REQUIRED'},
+    {report:servingFixture('a'.repeat(40)),
+      expected:'not-a-sha',reason:'NO_EXPECTED_COMMIT'},
+  ];
+  for(const {report,expected,reason} of examples){
+    let reads=0;
+    const output=await observeServingRevision({
+      expectedSha:expected,
+      inspect:async()=>{reads++;return report;},
+      pause:async()=>{throw Error('unexpected repeated audit');},
+    });
+    assert.equal(reads,1);
+    assert.equal(output.observation.attempts,1);
+    assert.equal(output.observation.stopReason,reason);
+    assert.equal(output.observation.matchingCommitObserved,false);
+  }
+});
+
+test('transient unresolved serving build can be polled only for a known main backend',async()=>{
+  const incomplete=servingFixture(null,{complete:false});
+  let reads=0;
+  const output=await observeServingRevision({
+    expectedSha:'c'.repeat(40),intervalMs:0,
+    inspect:async()=>{reads++;return reads===1?incomplete:
+      servingFixture('c'.repeat(40));},
+    pause:async()=>{},
+  });
+  assert.equal(output.observation.attempts,2);
+  assert.equal(output.observation.matchingCommitObserved,true);
+  assert.equal(output.observation.stopReason,'MATCH_OBSERVED');
+});
+
+test('bounded poll options reject unbounded or malformed intervals',async()=>{
+  for(const opts of [
+    {maxAttempts:0},{maxAttempts:7},{maxAttempts:2.5},
+    {intervalMs:-1},{intervalMs:30_001},{intervalMs:Infinity},
+    {inspect:null},{pause:null},
+  ]){
+    await assert.rejects(()=>observeServingRevision({
+      ...opts,expectedSha:SHA,inspect:opts.inspect??(opts.inspect===null?null:
+        async()=>servingFixture(SHA)),
+      pause:opts.pause??(opts.pause===null?null:async()=>{}),
+    }),/invalid_revision_observation_options/);
+  }
 });

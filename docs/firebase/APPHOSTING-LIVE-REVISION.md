@@ -29,3 +29,27 @@ Documentação de permissões: https://firebase.google.com/docs/projects/iam/rol
 - Sem permissão/nenhum backend em regiões examinadas: diagnóstico incompleto, não concluir que o projeto não tem backend.
 
 O workflow **não cria, promove ou reverte rollouts**, não concede IAM, não altera o domínio e não toca no Supabase. O cutover definitivo continua subordinado a `CUTOVER-RUNBOOK.md`.
+
+## Confirmação limitada da revisão publicada após push (PR #547)
+
+Antes, a auditoria fazia uma leitura única imediatamente após o push. Era possível encontrar a revisão anterior em tráfego enquanto o App Hosting ainda compilava a nova, sem distinguir um atraso normal de uma implantação permanentemente pendente.
+
+Agora, no job `live-readonly` (somente `main`), o script observa o **commit do push** (`GITHUB_SHA`) e consulta somente metadados App Hosting, no máximo **6 vezes**, com intervalo fixo de **20 segundos** entre tentativas (até cinco intervalos). Não existem consultas em segundo plano após o encerramento do job.
+
+Cada leitura exige o backend real associado a `atlas.cormyr.com.br`, a divisão de tráfego atual com **100% em uma build** e o hash publicado da build, sem inferir pelo último rollout criado.
+
+A auditoria encerra antecipadamente se:
+- A build em tráfego corresponder exatamente ao commit do push (`MATCH_OBSERVED`);
+- A API negar leitura (`READ_PERMISSION_REQUIRED`);
+- Não houver backend associado de forma conclusiva (`SERVING_BACKEND_UNCONFIRMED`);
+- A branch configurada não for `main` (`BRANCH_NOT_MAIN_OR_UNCONFIRMED`);
+- O rollout automático estiver desativado ou não confirmado (`AUTOMATIC_ROLLOUT_DISABLED_OR_UNCONFIRMED`);
+- Não houver SHA esperado válido (`NO_EXPECTED_COMMIT`).
+
+Se o commit não aparecer dentro do limite, termina com `OBSERVATION_WINDOW_EXHAUSTED` e a classificação `NOT_YET_MATCHING` ou `INCONCLUSIVE`. Isso **não significa implantação concluída nem necessariamente falha definitiva**: a construção pode demorar mais que a janela. É preciso verificar o estado real do App Hosting.
+
+O `GITHUB_STEP_SUMMARY` apresenta quantidade de observações, motivo de parada, SHA esperado e SHA servido. Não coleta senhas, tokens, e-mails, identidades, Firestore, Storage ou conteúdo de Casas; **não altera tráfego, rollouts, IAM, contas ou configuração de hosting**.
+
+Um `MATCH` confirma somente o commit que estava recebendo tráfego **no momento da consulta**. Não confirma autenticação, reconciliação de dados, direitos dos perfis ou cutover: `cloudDataMigratedVerified=false`, `readyForCutover=false` e `cloudWrites=0` permanecem.
+
+A suíte sintética `apphosting-live-revision-readonly.test.mjs` cobre correspondência tardia, ausência de match, bloqueios por IAM, branch e política, limite de tentativas, SHA inválido e transição de build temporariamente inconclusiva.
