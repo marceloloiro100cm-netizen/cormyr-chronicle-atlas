@@ -8,6 +8,8 @@ import {createFirebaseCloudReadonly}
 import {constructionStateHash} from './firebase-construction-transaction';
 import {calculateFirebaseHouseEconomy,verifiedEconomicState} from './firebase-economic-readonly';
 import {monthFromHarptosDate} from '@/lib/calendar/house-time-impact';
+// @ts-expect-error The canonical Harptos helper has no .mjs declaration.
+import {validateHarptosDate} from '../../../scripts/firebase/stage-temporal-emulator.mjs';
 import {RESOURCE_KEYS,type Resources} from './types';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
@@ -124,7 +126,9 @@ export function createFirebaseOperationalHouseRead({
       if(!calendar.exists||!date||!number(date['version'])||
          !number(date['year'])||date['year']===0||
          !number(date['month'])||date['month']>11||
-         !number(date['day'])||date['day']===0||date['day']>30)
+         !number(date['day'])||date['day']===0||date['day']>30||
+         !validateHarptosDate(date['year'],date['month'],
+           date['day'],date['festival']??null))
         return {available:false,readOnly:true};
       const cfg=runtime.data();
       if(!runtime.exists||cfg?.['status']!=='active'||cfg['private']!==true||
