@@ -318,6 +318,10 @@ export function createFirebaseCloudConstruction({
           version:operationVersion+1,sourceSheetVersion:sheetVersion,
           sourceStateHash:origin,beforeStateHash:operation['stateHash'],
           afterStateHash:nextHash,costs:costData,dice,
+          // v1 replay proof: complete normalized canonical purchase input.
+          // Remains private in Firestore, never returned to players.
+          replaySchemaVersion:1,catalogRuleVersion:item.version,
+          purchaseInput:req,
           campaignDate:calendar.date,createdAt,
         });
         return {id:eventId,holdingId,houseId:req.houseId,

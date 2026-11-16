@@ -10,7 +10,7 @@ const base:HouseReconciliationReport={
   sourceVersion:3,operationalVersion:0,
   readGateApproved:false,writeGateApproved:false,
   documentIntegrityConfirmed:true,auditHistoryVerified:false,
-  readyForCutover:false,readOnly:true,constructionLedger:null,
+  readyForCutover:false,readOnly:true,constructionLedger:null,economicReplay:null,
 };
 describe('Firebase — painel de reconciliação Narrador',()=>{
   it('não inventa resultado quando auditoria privada está desabilitada',()=>{
@@ -31,6 +31,10 @@ describe('Firebase — painel de reconciliação Narrador',()=>{
   });
   it('diferencia cadeia conferida de reexecução econômica',()=>{
     const audited:HouseReconciliationReport={...base,
+      economicReplay:{
+        status:'missing_replay_metadata',economicReplayVerified:false,
+        eventsTotal:1,replayedEvents:0,readyForCutover:false,readOnly:true,
+      },
       constructionLedger:{
         status:'verified_hash_chain',verifiedHashChain:true,
         economicReplayVerified:false,auditHistoryVerified:true,
@@ -43,10 +47,28 @@ describe('Firebase — painel de reconciliação Narrador',()=>{
       houseId="house-a" report={audited}/>);
     expect(screen.getByText(/Encadeamento de hashes e versões conferido/))
       .toBeInTheDocument();
-    expect(screen.getByText(/não significa reexecução das compras/))
+    expect(screen.getByText(/Metadados históricos insuficientes/))
       .toBeInTheDocument();
     expect(screen.getByText('Ainda não realizada')).toBeInTheDocument();
     expect(container.querySelector('button')).toBeNull();
+  });
+  it('demonstra replay determinístico sem alegar permissão de produção',()=>{
+    const data:HouseReconciliationReport={...base,
+      constructionLedger:{
+        status:'verified_hash_chain',verifiedHashChain:true,
+        economicReplayVerified:false,auditHistoryVerified:true,
+        readyForCutover:false,readOnly:true,eventsTotal:1,lastVersion:1,
+        entries:[],truncated:false,
+      },
+      economicReplay:{status:'verified',economicReplayVerified:true,
+        eventsTotal:1,replayedEvents:1,readyForCutover:false,readOnly:true},
+    };
+    render(<FirebaseHouseReconciliationAudit houseId="house-a" report={data}/>);
+    expect(screen.getByText('Reexecução econômica determinística conferida.'))
+      .toBeInTheDocument();
+    expect(screen.getByText(/Mesmo a reexecução íntegra não comprova IAM/))
+      .toBeInTheDocument();
+    expect(screen.getByText('Ainda não realizada')).toBeInTheDocument();
   });
   it('bloqueia renderização do resultado de outra Casa',()=>{
     render(<FirebaseHouseReconciliationAudit

@@ -151,6 +151,12 @@ describe('Firebase Cloud — compra transacional bloqueada por padrão',()=>{
     expect(audit['actorUid']).toBe(uid);
     expect(audit['houseId']).toBe('house-a');
     expect(audit['dice']).toEqual(Array(10).fill(2));
+    expect(audit['replaySchemaVersion']).toBe(1);
+    expect(audit['catalogRuleVersion']).toBe(state.holdings[0]?.ruleVersion);
+    expect(audit['purchaseInput']).toEqual(f.input());
+    expect(audit['requestFingerprint']).toBe(constructionStateHash({
+      uid,...f.input(),
+    }));
     expect(audit['beforeStateHash']).toBe(audit['sourceStateHash']);
     expect(f.writes()).toBe(2);
   });

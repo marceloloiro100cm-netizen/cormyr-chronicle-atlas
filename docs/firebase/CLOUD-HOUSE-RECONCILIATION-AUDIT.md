@@ -65,3 +65,21 @@ Testes:
 - `firebase-construction-ledger-verification.test.ts`: cenários de cadeia íntegra, fraude no UID/ID/posse, alterações de hash, eventos faltantes, extras, fora de ordem, relógio, dados, custos e limite.
 - `firebase-house-reconciliation-audit.test.ts`: leitura transacional privativa do Narrador com ledger zero ou um evento, bloqueio de lacunas e não divulgação de UID.
 - `FirebaseHouseReconciliationAudit.test.tsx`: apresentação segura de verificação parcial, sem controles de compra ou autorização.
+
+
+## Reexecução econômica determinística (complemento)
+
+O diagnóstico privado do Narrador agora tenta reproduzir eventos de compras usando os mesmos módulos canônicos de orçamento e regras: `previewHouseConstruction`, `findItem`, `purchase`, `calculateFirebaseHouseEconomy` e `constructionStateHash`.
+
+**Dados exigidos:** os novos eventos criados pelo servidor incluem `replaySchemaVersion=1`, `catalogRuleVersion=item.version` e `purchaseInput` com o pedido normalizado completo (nome escolhido, casa, item, domínio, versão esperada, chave idempotente e vínculos opcionais de posse e especialidade). Esses campos são gravados apenas no registro privado do Firestore, não no retorno para Jogador.
+
+**Fluxo seguro:** exige antes a cadeia de hashes íntegra, começa da ficha histórica imutável, verifica o fingerprint original `sha256(JSON canônico de {uid,...purchaseInput})`, compara catálogo atual com a versão de regra registrada, recalcula a prévia e custos, reutiliza somente os dados de duração que foram sorteados pelo servidor e invoca o motor de compras. Após cada compra, confirma o hash intermediário. A última etapa deve reproduzir o mesmo estado operacional.
+
+**Limitações essenciais:**
+- Eventos antigos sem `purchaseInput` e `catalogRuleVersion` retornam `missing_replay_metadata`. Não se deve inferir parâmetros olhando as posses atuais, editar os eventos antigos ou marcar replay como aprovado.
+- Uma alteração posterior das regras do catálogo resulta em `catalog_version_changed`; não se tenta substituir regras históricas inexistentes.
+- Modificações operacionais efetuadas por outros módulos sem eventos de compras correspondentes podem gerar divergência: não se normaliza nem corrige silenciosamente o estado real.
+- `economicReplayVerified=true` apenas comprova reprodução **com a versão atual e identificada do motor** dos eventos completos fornecidos na mesma transação. Não comprova proveniência assinada, permissões de usuários antigos, IAM, prontidão de autenticação, sincronização de outros módulos ou cutover.
+- `auditHistoryVerified=false` (aprovação global), `readyForCutover=false` e nenhuma flag de compras alterada.
+
+Os testes sintéticos exercitam uma compra de torre usando o motor real, casos sem metadados, fingerprint adulterado, custos divergentes, mudança de catálogo, estado inventado e relatórios não autorizados. A implementação **não acessa Supabase, não exige Cloud Shell e não grava dados reais**.

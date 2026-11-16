@@ -97,9 +97,30 @@ export function FirebaseHouseReconciliationAudit({houseId,report}:{
             {report.constructionLedger.truncated&&
               <p>Exibidos somente os últimos 25 eventos verificados.</p>}
             <p className="opacity-75">
-              Encadeamento verificado não significa reexecução das compras,
-              cálculo histórico completo ou aprovação de produção.
+              Encadeamento de hashes não comprova os custos econômicos.
             </p>
+            <div className="border-t border-current/15 pt-2 space-y-1">
+              <h4 className="font-semibold">Reexecução do motor econômico</h4>
+              {!report.economicReplay
+                ?<p role="status">Reexecução não realizada ou indisponível.</p>
+                :<>
+                  <p role="status">
+                    {report.economicReplay.economicReplayVerified
+                      ?'Reexecução econômica determinística conferida.'
+                      :report.economicReplay.status==='missing_replay_metadata'
+                        ?'Metadados históricos insuficientes para reexecutar.'
+                        :'Reexecução não confirmada: '+
+                          report.economicReplay.status}
+                  </p>
+                  <p>Compras reproduzidas: {report.economicReplay.replayedEvents}
+                    {' de '}{report.economicReplay.eventsTotal}
+                  </p>
+                </>}
+              <p className="opacity-75">
+                Mesmo a reexecução íntegra não comprova IAM,
+                autenticidade das contas ou liberação de produção.
+              </p>
+            </div>
           </>}
       </div>
       <p className="text-sm opacity-75">
