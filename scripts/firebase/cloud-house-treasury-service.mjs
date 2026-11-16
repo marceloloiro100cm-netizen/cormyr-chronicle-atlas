@@ -52,7 +52,7 @@ const runtimeReady=(cfg,snapshot,calendar,mode='adjust')=>
 function authorized(actor,uid,houseId,mode){
   if(actor?.userId!==uid||actor?.active!==true||
      actor?.requirePasswordChange!==false)
-    fail('access_denied',403);
+    fail(mode==='summary'?'access_denied':'narrator_only',403);
   if(actor.profile==='narrador'&&actor.admin===true){
     if(!Array.isArray(actor.memberHouseIds)||actor.memberHouseIds.length!==0||
        !Array.isArray(actor.editHouseIds)||actor.editHouseIds.length!==0)
