@@ -1,6 +1,24 @@
 import type {HouseReconciliationReport,HouseReconciliationStatus}
   from '@/lib/house/firebase-house-reconciliation-audit';
 
+import type {ConstructionEconomicReplayStatus}
+  from '@/lib/house/firebase-construction-economic-replay';
+
+const replayExplanation:Record<ConstructionEconomicReplayStatus,string>={
+  verified_purchase_replay:'Compras reexecutadas pelo motor canônico e estados conferidos.',
+  hash_chain_not_verified:'A cadeia de hashes precisa ser verificada primeiro.',
+  replay_limit_exceeded:'Histórico acima do limite de reexecução automática.',
+  source_unusable:'Ficha de origem indisponível para reexecução.',
+  legacy_inputs_missing:'Eventos antigos não contêm os parâmetros necessários.',
+  invalid_replay_inputs:'Parâmetros de compra registrados são inválidos.',
+  request_fingerprint_mismatch:'Parâmetros divergem da impressão digital da requisição.',
+  catalog_version_changed:'Versão do catálogo diferente da compra histórica.',
+  construction_rules_changed:'Regras da construção divergiram ou não podem ser reproduzidas.',
+  recorded_cost_mismatch:'Custos recalculados diferem dos custos registrados.',
+  replayed_state_mismatch:'Estado recalculado não corresponde ao hash do evento.',
+  final_state_mismatch:'Estado final recalculado difere da ficha operacional.',
+};
+
 const explanation:Record<HouseReconciliationStatus,string>={
   stage_incomplete:'Etapa de migração privada ainda incompleta.',
   house_unavailable:'Casa inexistente, inativa ou fora do recorte homologado.',
@@ -99,6 +117,22 @@ export function FirebaseHouseReconciliationAudit({houseId,report}:{
             <p className="opacity-75">
               Encadeamento verificado não significa reexecução das compras,
               cálculo histórico completo ou aprovação de produção.
+            </p>
+          </>}
+      </div>
+      <div className="rounded border border-current/20 p-3 space-y-2 text-sm">
+        <h3 className="font-semibold">Reexecução econômica das compras</h3>
+        {!report.economicReplay
+          ?<p role="status">Reexecução ainda não disponível ou não verificada.</p>
+          :<>
+            <p role="status">
+              {replayExplanation[report.economicReplay.status]??
+                'Reexecução não confirmada.'}
+            </p>
+            <p>Compras reexecutadas: {report.economicReplay.purchaseEventsReplayed}</p>
+            <p className="opacity-75">
+              Mesmo a reexecução concluída não certifica contas, permissões
+              IAM, outros eventos ou liberação da migração.
             </p>
           </>}
       </div>
