@@ -83,3 +83,10 @@ O diagnóstico privado do Narrador agora tenta reproduzir eventos de compras usa
 - `auditHistoryVerified=false` (aprovação global), `readyForCutover=false` e nenhuma flag de compras alterada.
 
 Os testes sintéticos exercitam uma compra de torre usando o motor real, casos sem metadados, fingerprint adulterado, custos divergentes, mudança de catálogo, estado inventado e relatórios não autorizados. A implementação **não acessa Supabase, não exige Cloud Shell e não grava dados reais**.
+
+
+## Limite de custo do replay administrativo
+
+A verificação criptográfica do ledger permanece capaz de examinar até 500 eventos por Casa, mas a **reexecução pelo motor econômico** foi limitada a **50 compras por requisição** para proteger a latência, memória e CPU da rota administrativa. Um histórico com 51 ou mais eventos recebe `replay_limit_exceeded`, com `economicReplayVerified=false` e `replayedEvents=0`; o sistema não aceita uma reexecução parcial como prova de sucesso. Históricos extensos exigirão uma rotina futura de replay auditado em lotes, com checkpoints imutáveis e autorização específica do operador.
+
+A limitação não altera dados, configurações, flags, snapshot, índices, IAM ou permissões, nem afeta a verificação anterior da cadeia de hashes. Compras reais continuam desligadas.
