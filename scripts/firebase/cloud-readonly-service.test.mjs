@@ -395,7 +395,7 @@ test('Spy dossier output has a bounded response size',async()=>{
 
 
 test('Cloud inbox exposes reply control only for the receiving House, not senders or foreign Houses',async()=>{
-  const f=fixture('jogador');
+  const f=fixture('jogador',{editHouseIds:['house-a']});
   const root='campaignCloudRuntime/'+snapshot;
   f.docs.set(root,{
     status:'active',private:true,sourceSnapshotId:snapshot,
