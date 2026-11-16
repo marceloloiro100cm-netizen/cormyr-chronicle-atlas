@@ -58,7 +58,7 @@ async function handler(request:Request):Promise<Response>{
     return fail(401,'authentication_required');
   try{
     const body=await limitedBody(request);
-    if(!['status','send'].includes(String(body.action)))
+    if(!['status','send'].includes(String(body['action'])))
       return fail(400,'invalid_action');
     const [{getApps,initializeApp,applicationDefault},{getAuth},{getFirestore}]=
       await Promise.all([
@@ -76,7 +76,7 @@ async function handler(request:Request):Promise<Response>{
     });
     const idToken=header.slice(7);
     let result:unknown;
-    if(body.action==='status'){
+    if(body['action']==='status'){
       if(Object.keys(body).length!==1)return fail(400,'invalid_request');
       result=await service.status(idToken);
     }else{
