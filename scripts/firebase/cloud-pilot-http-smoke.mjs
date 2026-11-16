@@ -7,7 +7,7 @@
 import {pathToFileURL} from 'node:url';
 
 export const ORIGIN='https://atlas.cormyr.com.br';
-export const PATHS=Object.freeze(['/firebase-access','/api/firebase-cloud-read']);
+export const PATHS=Object.freeze(['/firebase-access','/api/firebase-cloud-read','/api/firebase-cloud-mail']);
 const SAFE_CODES=new Set(['firebase_cloud_read_disabled','authentication_required']);
 function output(name,status,passed){return {name,status,passed};}
 
@@ -39,6 +39,22 @@ export async function probeCloudPilot(fetcher=fetch){
       (res.headers.get('cache-control')||'').includes('no-store');
     results.push(output('unauthenticatedCloudReadDenied',res.status,Boolean(passed)));
   }catch{results.push(output('unauthenticatedCloudReadDenied',null,false));}
+  try{
+    // Never submit a real message or pass credentials in the public smoke.
+    const res=await fetcher(ORIGIN+PATHS[2],{
+      method:'POST',redirect:'manual',credentials:'omit',cache:'no-store',
+      headers:{Accept:'application/json','Content-Type':'application/json'},
+      body:JSON.stringify({action:'status'}),
+      signal:AbortSignal.timeout(12000),
+    });
+    let parsed;
+    try{parsed=await res.json();}catch{parsed=null;}
+    const code=parsed?.error;
+    const accepted=res.status===503&&code==='firebase_cloud_mail_disabled'||
+      res.status===401&&code==='authentication_required';
+    results.push(output('unauthenticatedCloudMailDenied',res.status,
+      Boolean(accepted&&(res.headers.get('cache-control')||'').includes('no-store'))));
+  }catch{results.push(output('unauthenticatedCloudMailDenied',null,false));}
   return {
     scope:'FIREBASE_CLOUD_PUBLIC_ANONYMOUS_SMOKE',
     origin:ORIGIN,verified:results.every(x=>x.passed),
