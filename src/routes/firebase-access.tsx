@@ -16,6 +16,8 @@ import {FirebaseHouseBalances} from '@/components/houses/FirebaseHouseBalances';
 import {FirebaseOperationalEconomy,type OperationalEconomyView}
   from '@/components/houses/FirebaseOperationalEconomy';
 import {FirebaseHouseChronicle} from '@/components/houses/FirebaseHouseChronicle';
+import {FirebaseHouseReconciliationAudit} from '@/components/houses/FirebaseHouseReconciliationAudit';
+import type {HouseReconciliationReport} from '@/lib/house/firebase-house-reconciliation-audit';
 
 /**
  * Firebase-only pilot: read-only, no Supabase, no emulator and no direct
@@ -174,6 +176,21 @@ async function cloudTreasury<T>(input:Record<string,unknown>):Promise<T>{
   return (payload as {result:T}).result;
 }
 
+async function cloudHouseReconciliation(houseId:string):Promise<HouseReconciliationReport>{
+  const token=await firebaseAuth()?.getToken();
+  if(!token)throw Error('Entre novamente com sua conta Firebase.');
+  const response=await fetch('/api/firebase-house-reconciliation-audit',{
+    method:'POST',credentials:'omit',cache:'no-store',
+    headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+    body:JSON.stringify({action:'inspect',houseId}),
+  });
+  if(!response.ok)throw Error('Diagnóstico de reconciliação indisponível.');
+  const raw:unknown=await response.json();
+  if(!raw||typeof raw!=='object'||!('result' in raw))
+    throw Error('Diagnóstico com resposta inválida.');
+  return (raw as {result:HouseReconciliationReport}).result;
+}
+
 async function cloudOperationalEconomy(houseId:string):Promise<OperationalEconomyView>{
   const token=await firebaseAuth()?.getToken();
   if(!token)throw Error('Entre novamente com sua conta Firebase.');
@@ -229,6 +246,7 @@ function FirebaseAccess(){
   const [treasuryStatus,setTreasuryStatus]=useState<TreasuryStatus|null>(null);
   const [treasurySummary,setTreasurySummary]=useState<TreasurySummary|null>(null);
   const [operationalEconomy,setOperationalEconomy]=useState<OperationalEconomyView|null>(null);
+  const [houseReconciliation,setHouseReconciliation]=useState<HouseReconciliationReport|null>(null);
   const [treasuryDelta,setTreasuryDelta]=useState('');
   const [treasuryReason,setTreasuryReason]=useState('');
   const [treasuryKey,setTreasuryKey]=useState<string|null>(null);
@@ -307,12 +325,12 @@ function FirebaseAccess(){
     setBusy(true);setMessage('');setHouse(null);
     setAgents(null);setDossiers(null);
     setTreasuryStatus(null);setTreasurySummary(null);
-    setOperationalEconomy(null);
+    setOperationalEconomy(null);setHouseReconciliation(null);
     setTreasuryDelta('');setTreasuryReason('');
     setTreasuryKey(typeof crypto!=='undefined'&&
       typeof crypto.randomUUID==='function'?crypto.randomUUID():null);
     try{
-      const [selected,spy,intelligence,treasury,summary,operational]=await Promise.all([
+      const [selected,spy,intelligence,treasury,summary,operational,audit]=await Promise.all([
         readCloud<HouseView>('getHouse',id),
         readCloud<{items:SpyAgent[]}>('listSpyAgents',id).catch(()=>null),
         readCloud<SpyDossierCatalog>('listSpyDossiers',id).catch(()=>null),
@@ -324,6 +342,8 @@ function FirebaseAccess(){
           :Promise.resolve(null),
         view?.profile==='editor'?Promise.resolve(null)
           :cloudOperationalEconomy(id).catch(()=>null),
+        view?.profile==='narrador'
+          ?cloudHouseReconciliation(id).catch(()=>null):Promise.resolve(null),
       ]);
       setHouse(selected);
       setAgents(spy?.items??null);
@@ -331,6 +351,7 @@ function FirebaseAccess(){
       setTreasuryStatus(treasury);
       setTreasurySummary(summary);
       setOperationalEconomy(operational?.houseId===selected.id?operational:null);
+      setHouseReconciliation(audit?.houseId===selected.id?audit:null);
     }catch(e){setMessage(e instanceof Error?e.message:'Falha na leitura da Casa.');}
     finally{setBusy(false);}
   }
@@ -465,7 +486,8 @@ function FirebaseAccess(){
 
   function signOut(){
     firebaseAuth()?.signOut();
-    setView(null);setHouse(null);setHouses([]);setCalendar(null);
+    setView(null);setHouse(null);setHouseReconciliation(null);
+    setHouses([]);setCalendar(null);
     setInbox(null);setEditions([]);setEdition(null);setAgents(null);
     setDossiers(null);
     setMailStatus(null);setPaperStatus(null);setPaperTitle('');
@@ -524,6 +546,9 @@ function FirebaseAccess(){
         {house&&<FirebaseHouseBalances houseName={house.name} state={house.state}/>}
         {house&&<FirebaseOperationalEconomy houseName={house.name}
           houseId={house.id} data={operationalEconomy}/>}
+        {house&&view.profile==='narrador'&&
+          <FirebaseHouseReconciliationAudit houseId={house.id}
+            report={houseReconciliation}/>}
         {house&&view.profile==='jogador'&&
           <section aria-label="Tesouro operacional da Casa"
             className="rounded border border-current/25 p-4 space-y-2">
