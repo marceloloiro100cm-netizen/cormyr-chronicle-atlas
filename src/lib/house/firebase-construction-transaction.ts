@@ -48,6 +48,8 @@ function normalized(v:unknown):unknown{
 }
 const serialize=(v:unknown)=>JSON.stringify(normalized(v));
 const digest=(v:unknown)=>hash(serialize(v));
+/** For offline seed reconciliation; never exported through a public API. */
+export const constructionStateHash=(v:unknown):string=>digest(v);
 
 export type ConstructionPurchaseRequest={
   requestKey:string;houseId:string;expectedVersion:number;
