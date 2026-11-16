@@ -133,6 +133,7 @@ describe('Firebase — Narrador: diagnóstico de reconciliação',()=>{
     const original=structuredClone([...f.docs]);
     const result=await f.service().inspect(token,'house-a');
     expect(result.status).toBe('seed_consistent');
+    expect(result.seedPreflightStatus).toBe('existing_document_requires_review');
     expect(result.houseName).toBe('Evenhand');
     expect(result.sourceVersion).toBe(3);
     expect(result.operationalVersion).toBe(0);
@@ -171,6 +172,9 @@ describe('Firebase — Narrador: diagnóstico de reconciliação',()=>{
     f.docs.delete(f.op);
     const pending=await f.service().inspect(token,'house-a');
     expect(pending.status).toBe('operational_missing');
+    expect(pending.seedPreflightStatus).toBe('ready_for_operator_review');
+    expect(JSON.stringify(pending)).not.toContain('sourceStateHash');
+    expect(JSON.stringify(pending)).not.toContain('identity');
     expect(pending.readyForCutover).toBe(false);
   });
   it('reconhece hash da origem alterado, hash operacional e versão divergentes',async()=>{

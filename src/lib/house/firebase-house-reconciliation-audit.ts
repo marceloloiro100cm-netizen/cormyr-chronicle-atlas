@@ -9,6 +9,9 @@ import {createHash} from 'node:crypto';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {constructionStateHash} from './firebase-construction-transaction';
+import {prepareHouseEconomySeedDraft,
+  type HouseEconomySeedPreflightStatus}
+  from './firebase-economy-seed-preflight';
 import {replayConstructionEconomy,type EconomicReplayResult}
   from './firebase-construction-economic-replay';
 import {verifyConstructionLedger,CONSTRUCTION_LEDGER_LIMIT,
@@ -53,6 +56,7 @@ export type HouseReconciliationReport={
   documentIntegrityConfirmed:boolean;
   auditHistoryVerified:false;readyForCutover:false;readOnly:true;
   constructionLedger:ConstructionLedgerResult|null;
+  seedPreflightStatus?:HouseEconomySeedPreflightStatus|null;
   economicReplay:EconomicReplayResult|null;
 };
 
@@ -152,6 +156,7 @@ export function createFirebaseHouseReconciliationAudit({
         // Role checked before interpreting any private source or runtime.
         narrator(docs[4]?.data(),uid);
         const house=docs[5]?.data();
+        let seedPreflightStatus:HouseEconomySeedPreflightStatus|null=null;
         const report=(status:HouseReconciliationStatus,
           sourceVersion:number|null=null,
           operationalVersion:number|null=null,
@@ -167,7 +172,7 @@ export function createFirebaseHouseReconciliationAudit({
             status==='seed_consistent'||status==='operational_document_consistent',
           // A hash match does not certify the full event ledger or IAM.
           auditHistoryVerified:false,readyForCutover:false,readOnly:true,
-          constructionLedger,economicReplay,
+          constructionLedger,economicReplay,seedPreflightStatus,
         });
 
         if(docs.slice(0,4).some(d=>!d.exists||!stageComplete(d.data())))
@@ -186,6 +191,14 @@ export function createFirebaseHouseReconciliationAudit({
         if(!calendar)return report('calendar_unavailable',sourceVersion);
         if(!sourceValid(sheet['state'],selectedHouseId))
           return report('source_invalid',sourceVersion);
+        // Only a sanitized status reaches the narrator's JSON response.
+        // The private proposed Firestore draft is NEVER returned or written.
+        seedPreflightStatus=prepareHouseEconomySeedDraft({
+          snapshotId,houseId:selectedHouseId,
+          sourceSheetVersion:sourceVersion,
+          calendarMonth:calendar.month,sourceState:sheet['state'],
+          existingDocumentPresent:docs[9]?.exists===true,
+        }).status;
         const config=docs[8]?.data();
         if(!configuredRuntime(config,snapshotId,calendar.version))
           return report('runtime_unreconciled',sourceVersion,null,config);
