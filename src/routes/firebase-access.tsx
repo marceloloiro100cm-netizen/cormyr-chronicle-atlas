@@ -20,8 +20,9 @@ type House={id:string;name:string;castle:string|null;crest:string|null};
 type HouseView={id:string;name:string;castle:string|null;crest:string|null;
   state:Record<string,unknown>;version:number;readOnly:boolean};
 type Calendar={year:number;month:number;day:number;festival:string|null;version:number};
-type MailEntry={id:string;subject:string;content:string;senderName:string|null;
-  recipientHouseId:string|null;createdAt:string;campaignDate:string|null};
+type MailEntry={id:string;source:'imported'|'firebase-cloud';subject:string;
+  content:string;senderName:string|null;recipientHouseId:string|null;
+  createdAt:string;campaignDate:string|null;canMarkRead:boolean;readAt:string|null};
 type Inbox={items:MailEntry[];totalVisible:number;truncated:boolean};
 type MailStatus={enabled:boolean;canSend:boolean;originHouseIds:string[];readOnly:boolean};
 type MailReply={id:string;duplicate:boolean;state:string;deliveryRound:number};
@@ -192,6 +193,21 @@ function FirebaseAccess(){
     finally{setBusy(false);}
   }
 
+  async function markMailRead(item:MailEntry){
+    if(busy||!item.canMarkRead||item.readAt)return;
+    setBusy(true);setMessage('');
+    try{
+      await cloudMail<{recorded:boolean;readAt:string}>({
+        action:'markRead',source:item.source,letterId:item.id,
+      });
+      const updated=await readCloud<Inbox>('listMailbox');
+      setInbox(updated);
+      setMessage('Leitura registrada no Firebase.');
+    }catch{
+      setMessage('Não foi possível registrar a leitura. A mensagem original foi preservada.');
+    }finally{setBusy(false);}
+  }
+
   async function sendMail(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
     if(!mailKey||!mailStatus?.canSend||!view)return;
@@ -346,10 +362,22 @@ function FirebaseAccess(){
         <h2 className="text-lg font-semibold">Missivas entregues</h2>
         <p className="text-xs">Exibindo {inbox.items.length} de {inbox.totalVisible}
           {inbox.truncated?' · Mais cartas disponíveis no acervo':''}</p>
-        {inbox.items.map(m=><details key={m.id} className="border-t py-2">
-          <summary className="cursor-pointer">{m.subject}
-            {' '}· {m.campaignDate??m.createdAt.slice(0,10)}</summary>
+        {inbox.items.map(m=><details key={m.source+':'+m.id}
+          className="border-t py-2">
+          <summary className="cursor-pointer">
+            {m.canMarkRead&&!m.readAt&&<span className="mr-2 font-semibold">
+              Nova
+            </span>}
+            {m.subject}{' '}· {m.campaignDate??m.createdAt.slice(0,10)}
+          </summary>
           <p className="whitespace-pre-wrap text-sm">{m.content}</p>
+          {m.canMarkRead&&<div className="mt-2">
+            {m.readAt?<p className="text-xs">Lida em {new Date(m.readAt).toLocaleString('pt-BR')}</p>:
+              <button type="button" className="rounded border px-3 py-1 text-sm"
+                disabled={busy} onClick={()=>void markMailRead(m)}>
+                Marcar como lida
+              </button>}
+          </div>}
         </details>)}
       </section>}
       <section className="rounded border p-4 space-y-2">
