@@ -55,10 +55,10 @@ describe('Firebase Drive Scheduler read-only boundary',()=>{
   });
   it('rejects unpublished runtime, incomplete staging and corrupt counts',async()=>{
     for(const patch of [
-      {'campaignCloudRuntime/'+SNAP:null},
-      {'campaignCloudRuntime/'+SNAP:{driveAuditApproved:true}},
-      {'migrationDriveSyncStage/'+SNAP:null},
-      {'migrationDriveSyncStage/'+SNAP:{status:'complete',private:true,
+      {['campaignCloudRuntime/'+SNAP]:null},
+      {['campaignCloudRuntime/'+SNAP]:{driveAuditApproved:true}},
+      {['migrationDriveSyncStage/'+SNAP]:null},
+      {['migrationDriveSyncStage/'+SNAP]:{status:'complete',private:true,
         formatVersion:1,counts:{bindings:-1,files:2,inbox:0,outbox:0,conflicts:0}}},
     ]){
       const f=fixture(patch);
