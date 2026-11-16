@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CORMYR_ARCHIVE_ONLY, shouldBlockLegacyRequest } from './archive-only';
+import { CORMYR_ARCHIVE_ONLY, shouldBlockLegacyRequest, isFirebasePilotPage } from './archive-only';
 
 describe('Firebase archive-only cutover', () => {
   it('keeps the emergency archive mode on until Firebase production acceptance', () => {
@@ -33,6 +33,14 @@ describe('Firebase archive-only cutover', () => {
     ['/unrelated', 'router'],
   ])('keeps public static route %s reachable', (pathname, type) => {
     expect(shouldBlockLegacyRequest(pathname, type)).toBe(false);
+  });
+
+  it('permits exactly the Firebase-only pilot page, never a legacy or nested path', () => {
+    expect(isFirebasePilotPage('/firebase-access')).toBe(true);
+    expect(isFirebasePilotPage('/auth')).toBe(false);
+    expect(isFirebasePilotPage('/jogadores')).toBe(false);
+    expect(isFirebasePilotPage('/firebase-access/extra')).toBe(false);
+    expect(isFirebasePilotPage('/api/firebase-cloud-read')).toBe(false);
   });
 
   it('does not confuse path prefixes', () => {
