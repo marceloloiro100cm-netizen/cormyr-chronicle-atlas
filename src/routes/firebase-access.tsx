@@ -210,10 +210,16 @@ function FirebaseAccess(){
       setMailSubject('');setMailContent('');
       setMailKey(typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'
         ?crypto.randomUUID():null);
-      const updated=await readCloud<Inbox>('listMailbox');
-      setInbox(updated);
+      // Refresh failures must never turn a successful send into a
+      // misleading failure (which could invite a duplicate new submission).
+      try{
+        const updated=await readCloud<Inbox>('listMailbox');
+        setInbox(updated);
+      }catch{
+        setMessage('Missiva enviada. Atualize a caixa postal para vê-la.');
+      }
     }catch(e){
-      // Preserve the idempotency key and draft for a safe retry.
+      // Preserve the original idempotency key and draft on send failure.
       setMessage(e instanceof Error?e.message:'Não foi possível enviar.');
     }finally{setBusy(false);}
   }
