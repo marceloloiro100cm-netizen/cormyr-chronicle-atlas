@@ -15,6 +15,13 @@ export function isFirebasePilotPage(pathname: string): boolean {
   return pathname === '/firebase-access';
 }
 
+/** Legacy login/bookmark paths route only to the Firebase-authenticated pilot.
+ * All other legacy routes remain archive-only, with no Supabase fallback.
+ */
+export function shouldRedirectToFirebasePilot(pathname: string): boolean {
+  return pathname === '/auth' || pathname === '/jogadores';
+}
+
 /** Tested boundary for server calls that still target legacy services. */
 export function shouldBlockLegacyRequest(pathname: string, handlerType?: string): boolean {
   if (!CORMYR_ARCHIVE_ONLY) return false;
