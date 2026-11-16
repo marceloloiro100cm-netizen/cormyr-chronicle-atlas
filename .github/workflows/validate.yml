@@ -31,7 +31,7 @@ jobs:
       - name: Validate public archive
         run: node --test scripts/*.test.mjs
       - name: Firebase Cloud editorial and published-reader contract
-        run: node --test scripts/firebase/cloud-newspaper-service.test.mjs scripts/firebase/cloud-readonly-service.test.mjs
+        run: node --test scripts/firebase/cloud-newspaper-service.test.mjs scripts/firebase/cloud-readonly-service.test.mjs scripts/firebase/cloud-house-treasury-service.test.mjs
       - name: Migration ledger audit (report only, never deploy)
         run: |
           node scripts/temporal-migration-audit.mjs --report > "$RUNNER_TEMP/temporal-migration-audit.json"
