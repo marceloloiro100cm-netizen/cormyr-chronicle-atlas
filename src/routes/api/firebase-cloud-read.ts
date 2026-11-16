@@ -61,7 +61,8 @@ async function handle(request:Request):Promise<Response>{
   try{
     const payload=await boundedJson(request) as {action?:unknown;houseId?:unknown;editionId?:unknown};
     if(!['session','listHouses','getHouse','getCalendar',
-      'listMailbox','listNewspaper','getNewspaper','listSpyAgents'].includes(String(payload.action)))
+      'listMailbox','listNewspaper','getNewspaper','listSpyAgents',
+      'listSpyDossiers'].includes(String(payload.action)))
       return error(400,'invalid_action');
     // Firebase Admin uses the App Hosting service account, not a JSON key in source.
     const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=await Promise.all([
@@ -88,6 +89,7 @@ async function handle(request:Request):Promise<Response>{
       case 'listNewspaper':result=await service.listNewspaper(token);break;
       case 'getNewspaper':result=await service.getNewspaper(token,payload.editionId);break;
       case 'listSpyAgents':result=await service.listSpyAgents(token,payload.houseId);break;
+      case 'listSpyDossiers':result=await service.listSpyDossiers(token,payload.houseId);break;
       default:return error(400,'invalid_action');
     }
     return Response.json({result},{status:200,headers});

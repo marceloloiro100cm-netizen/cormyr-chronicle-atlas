@@ -14,6 +14,7 @@ export interface FirebaseCloudReadonly {
   listNewspaper(idToken:string):Promise<unknown>;
   getNewspaper(idToken:string,editionId:unknown):Promise<unknown>;
   listSpyAgents(idToken:string,houseId:unknown):Promise<unknown>;
+  listSpyDossiers(idToken:string,houseId:unknown):Promise<unknown>;
 }
 
 export function createFirebaseCloudReadonly(config:{

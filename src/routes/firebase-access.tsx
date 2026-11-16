@@ -31,6 +31,19 @@ type EditionSummary={id:string;title:string;subtitle:string;editionNo:number;
   publishedAt:string;campaignDate:string|null};
 type Edition={id:string;title:string;subtitle:string;blocks:unknown[];editionNo:number;campaignDate?:string|null};
 type SpyAgent={id:string;codename:string;status:string;missionSuccesses:number};
+type SpyFinding={objective:'house_resources'|'army'|'possessions';
+  subjectKey:string;valueSnapshot:Record<string,unknown>;
+  discoveredDateKey:string|null;verifiedDateKey:string|null};
+type SpyDossier={id:string;targetHouseId:string;findings:SpyFinding[]};
+type SpyDossierCatalog={ownerHouseId:string;items:SpyDossier[];readOnly:boolean};
+const spyCategory=(key:SpyFinding['objective'])=>
+  key==='house_resources'?'Recursos':key==='army'?'Exército':'Posses';
+function spyValue(value:unknown):string {
+  if(value===null||value===undefined)return 'Não informado';
+  if(typeof value==='string')return value.slice(0,2000);
+  if(typeof value==='number'||typeof value==='boolean')return String(value);
+  try{return JSON.stringify(value).slice(0,2000);}catch{return 'Registro não disponível';}
+}
 
 let singleton:Auth|null=null;
 
@@ -61,7 +74,7 @@ function firebaseAuth():Auth|null{
 }
 
 async function readCloud<T>(action:'session'|'listHouses'|'getHouse'|'getCalendar'|
-  'listMailbox'|'listNewspaper'|'getNewspaper'|'listSpyAgents',
+  'listMailbox'|'listNewspaper'|'getNewspaper'|'listSpyAgents'|'listSpyDossiers',
   houseId?:string,editionId?:string):Promise<T>{
   const token=await firebaseAuth()?.getToken();
   if(!token)throw Error('Entre novamente com sua conta Firebase.');
@@ -114,6 +127,7 @@ function FirebaseAccess(){
   const [editions,setEditions]=useState<EditionSummary[]>([]);
   const [edition,setEdition]=useState<Edition|null>(null);
   const [agents,setAgents]=useState<SpyAgent[]|null>(null);
+  const [dossiers,setDossiers]=useState<SpyDossierCatalog|null>(null);
   const [mailStatus,setMailStatus]=useState<MailStatus|null>(null);
   const [originHouseId,setOriginHouseId]=useState('');
   const [mailRecipientKind,setMailRecipientKind]=useState<'house'|'narrator'>('house');
@@ -176,13 +190,16 @@ function FirebaseAccess(){
 
   async function selectHouse(id:string){
     setBusy(true);setMessage('');setHouse(null);
+    setAgents(null);setDossiers(null);
     try{
-      const [selected,spy]=await Promise.all([
+      const [selected,spy,intelligence]=await Promise.all([
         readCloud<HouseView>('getHouse',id),
         readCloud<{items:SpyAgent[]}>('listSpyAgents',id).catch(()=>null),
+        readCloud<SpyDossierCatalog>('listSpyDossiers',id).catch(()=>null),
       ]);
       setHouse(selected);
       setAgents(spy?.items??null);
+      setDossiers(intelligence);
     }catch(e){setMessage(e instanceof Error?e.message:'Falha na leitura da Casa.');}
     finally{setBusy(false);}
   }
@@ -245,6 +262,7 @@ function FirebaseAccess(){
     firebaseAuth()?.signOut();
     setView(null);setHouse(null);setHouses([]);setCalendar(null);
     setInbox(null);setEditions([]);setEdition(null);setAgents(null);
+    setDossiers(null);
     setMailStatus(null);setOriginHouseId('');setMailRecipientKind('house');
     setMailRecipientHouse('');setMailSubject('');setMailContent('');setEmail('');
     setPassword('');setMessage('');
@@ -310,6 +328,44 @@ function FirebaseAccess(){
             {a.codename} — {a.status} · {a.missionSuccesses} sucessos
           </li>)}</ul>}
       </section>}
+      {dossiers&&house&&dossiers.ownerHouseId===house.id&&
+        <section className="rounded border p-4 space-y-3">
+          <h2 className="text-lg font-semibold">Dossiês de Espionagem</h2>
+          <p className="text-xs">Apenas informações já descobertas pela
+            Casa selecionada. Consulta preservada, sem novas missões.</p>
+          {dossiers.items.length===0
+            ?<p>Nenhum dossiê de inteligência registrado para esta Casa.</p>
+            :<div className="space-y-2">{dossiers.items.map(d=>{
+              const name=houses.find(h=>h.id===d.targetHouseId)?.name
+                ??'Casa investigada';
+              return <details key={d.id} className="rounded border p-3">
+                <summary className="cursor-pointer font-semibold">
+                  {name} — Segredos {d.findings.length}
+                </summary>
+                {d.findings.length===0
+                  ?<p className="pt-2 text-sm">Ainda não há segredos descobertos.</p>
+                  :<ul className="space-y-3 pt-3">{d.findings.map((finding,i)=>
+                    <li key={finding.objective+':'+finding.subjectKey+':'+i}
+                      className="border-t pt-2 text-sm">
+                      <p className="font-semibold">
+                        {spyCategory(finding.objective)} · {finding.subjectKey}
+                      </p>
+                      <dl className="mt-1 space-y-1">
+                        {Object.entries(finding.valueSnapshot).map(([key,value])=>
+                          <div key={key} className="break-words">
+                            <dt className="inline font-medium">{key}: </dt>
+                            <dd className="inline whitespace-pre-wrap">
+                              {spyValue(value)}
+                            </dd>
+                          </div>)}
+                      </dl>
+                      {finding.verifiedDateKey&&
+                        <p className="mt-2 text-xs">Última verificação:
+                          {' '}{finding.verifiedDateKey}</p>}
+                    </li>)}</ul>}
+              </details>;
+            })}</div>}
+        </section>}
       {view.profile!=='editor'&&<section className="rounded border p-4 space-y-2">
         <h2 className="text-lg font-semibold">Escrever missiva</h2>
         {!mailStatus?.canSend&&<p className="text-sm">

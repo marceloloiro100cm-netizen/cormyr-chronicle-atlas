@@ -253,6 +253,65 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
         .sort((a,b)=>a.codename.localeCompare(b.codename));
       return {items,readOnly:true,snapshotReconciliationPending:true};
     },
+    async listSpyDossiers(idToken,houseId){
+      // Server-side scope, not claims provided by the browser. An editor
+      // has no access. Players can request ONLY their own Houses.
+      const scope=await scopeFor(idToken);
+      if(typeof houseId!=='string'||!SAFE_ID.test(houseId))
+        deny('invalid_house',400);
+      if(scope.profile!=='narrador'&&
+         !(scope.profile==='jogador'&&scope.memberHouseIds.includes(houseId)))
+        deny('access_denied',403);
+      await stageReady('migrationSpyStage');
+      const owner=await get(db,'migrationDomainStage',snapshotId,
+        'houses',digest('house:'+houseId));
+      if(!owner.exists||owner.data()?.sourceId!==houseId||
+         owner.data()?.active!==true)deny('house_unavailable',404);
+      const base=db.collection('migrationSpyStage').doc(snapshotId);
+      const dossiers=await base.collection('dossiers').get();
+      if(dossiers.size>500)deny('spy_dossier_catalog_too_large',503);
+      const owned=dossiers.docs.map(d=>d.data()).filter(v=>
+        v&&typeof v.id==='string'&&SAFE_ID.test(v.id)&&
+        v.ownerHouseId===houseId&&
+        typeof v.targetHouseId==='string'&&SAFE_ID.test(v.targetHouseId)&&
+        v.targetHouseId!==houseId);
+      if(owned.length>50)deny('spy_dossier_catalog_too_large',503);
+      // Never inspect adminAudit, operational missions or foreign dossiers
+      // in the response. Findings represent intelligence ALREADY REVEALED
+      // to a particular dossier, not unpublished investigation details.
+      const ownedIds=new Set(owned.map(d=>d.id));
+      const findings=await base.collection('findings').get();
+      if(findings.size>600)deny('spy_findings_catalog_too_large',503);
+      const byDossier=new Map(owned.map(d=>[d.id,[]]));
+      for(const doc of findings.docs){
+        const v=doc.data();
+        if(!v||!ownedIds.has(v.dossierId)||
+           typeof v.subjectKey!=='string'||v.subjectKey.length>160||
+           !['house_resources','army','possessions'].includes(v.objective)||
+           !v.valueSnapshot||typeof v.valueSnapshot!=='object'||
+           Array.isArray(v.valueSnapshot))continue;
+        const value={
+          objective:v.objective,subjectKey:v.subjectKey,
+          valueSnapshot:v.valueSnapshot,
+          discoveredDateKey:typeof v.discoveredDateKey==='string'
+            ?v.discoveredDateKey:null,
+          verifiedDateKey:typeof v.verifiedDateKey==='string'
+            ?v.verifiedDateKey:null,
+        };
+        byDossier.get(v.dossierId).push(value);
+      }
+      const items=owned.map(d=>({
+        id:d.id,targetHouseId:d.targetHouseId,
+        findings:(byDossier.get(d.id)||[]).sort((a,b)=>
+          a.objective.localeCompare(b.objective)||
+          a.subjectKey.localeCompare(b.subjectKey)),
+      })).sort((a,b)=>a.targetHouseId.localeCompare(b.targetHouseId));
+      const result={ownerHouseId:houseId,items,readOnly:true,
+        snapshotReconciliationPending:true};
+      if(Buffer.byteLength(JSON.stringify(result),'utf8')>240_000)
+        deny('spy_dossier_response_too_large',503);
+      return result;
+    },
     async getCalendar(idToken){
       const scope=await scopeFor(idToken);
       if(scope.profile==='editor')deny('access_denied',403);
