@@ -353,3 +353,147 @@ test('Revoked account and in-transaction membership change fail closed on read r
   await rejects(()=>f.service().markRead(sampleToken,{source:'imported',letterId:id}),
     'access_denied',403);
 });
+
+
+test('Recipient House replies atomically to author House without client routing',async()=>{
+  const f=fixture();
+  const originalId=h('received-from-b');
+  const root='campaignCloudRuntime/'+snapshot+'/';
+  const incoming={
+    id:originalId,source:'firebase-cloud',sourceSnapshotId:snapshot,
+    publicationState:'delivered',deletedAt:null,senderUid:'writer-b',
+    originHouseId:'house-b',recipientKind:'house',
+    recipientHouseId:'house-a',recipientPlayerId:null,
+    subject:'Convite de outro feudo',content:'Saudações',
+  };
+  f.records.set(root+'letters/'+originalId,incoming);
+  const before=[...f.records].filter(([p])=>p.startsWith('migration'));
+  const first=await f.service().reply(sampleToken,{
+    requestKey:'reply-to-b-001',letterId:originalId,content:'Recebido com honra',
+  });
+  assert.equal(first.duplicate,false);
+  const written=f.records.get(root+'letters/'+first.id);
+  assert.equal(written.replyToId,originalId);
+  assert.equal(written.originHouseId,'house-a');
+  assert.equal(written.recipientKind,'house');
+  assert.equal(written.recipientHouseId,'house-b');
+  assert.equal(written.subject,'Re: Convite de outro feudo');
+  assert.equal(written.content,'Recebido com honra');
+  assert.equal(f.records.get(root+'mailAudits/'+first.id).action,'reply');
+  const second=await f.service().reply(sampleToken,{
+    requestKey:'reply-to-b-001',letterId:originalId,content:'Recebido com honra',
+  });
+  assert.equal(second.duplicate,true);
+  assert.equal(first.id,second.id);
+  await rejects(()=>f.service().reply(sampleToken,{
+    requestKey:'reply-to-b-001',letterId:originalId,content:'Texto diferente',
+  }),'request_key_conflict',409);
+  assert.equal(f.records.get(root+'mailSenderRoundCounts/'+h('mail-count:player-1:3')).count,1);
+  assert.deepEqual([...f.records].filter(([p])=>p.startsWith('migration')),before);
+});
+
+test('Narrator replies only to a letter addressed to Narrator',async()=>{
+  const f=fixture('narrador'),id=h('house-to-gm');
+  const root='campaignCloudRuntime/'+snapshot+'/';
+  f.records.set(root+'letters/'+id,{
+    id,source:'firebase-cloud',sourceSnapshotId:snapshot,
+    publicationState:'delivered',deletedAt:null,senderUid:'player-other',
+    originHouseId:'house-a',recipientKind:'narrator',
+    recipientHouseId:null,recipientPlayerId:null,
+    subject:'Petição',content:'Solicitamos audiência',
+  });
+  const response=await f.service().reply(sampleToken,{
+    requestKey:'narrator-reply-1',letterId:id,content:'Audiência concedida',
+  });
+  const letter=f.records.get(root+'letters/'+response.id);
+  assert.equal(letter.originHouseId,null);
+  assert.equal(letter.recipientKind,'house');
+  assert.equal(letter.recipientHouseId,'house-a');
+  assert.equal(letter.replyToId,id);
+});
+
+test('Reply rejects forged direction, foreign House, sent, draft and deleted letters',async()=>{
+  const f=fixture(),root='campaignCloudRuntime/'+snapshot+'/letters/';
+  const cases=[
+    ['foreign-house',{recipientHouseId:'house-b'}],
+    ['sender',{senderUid:'player-1'}],
+    ['draft',{publicationState:'draft'}],
+    ['deleted',{deletedAt:'2026-11-16T11:00:00Z'}],
+    ['foreign-snapshot',{sourceSnapshotId:'b'.repeat(64)}],
+    ['source-imported',{source:'imported'}],
+    ['different-recipient',{recipientKind:'narrator',recipientHouseId:null}],
+    ['invalid-origin',{originHouseId:'../danger'}],
+    ['same-house',{originHouseId:'house-a'}],
+  ];
+  const base={
+    source:'firebase-cloud',sourceSnapshotId:snapshot,
+    publicationState:'delivered',deletedAt:null,senderUid:'external-player',
+    originHouseId:'house-b',recipientKind:'house',recipientHouseId:'house-a',
+    recipientPlayerId:null,subject:'Pedido',content:'Responda',
+  };
+  for(const [k,override] of cases){
+    const id=h(k);
+    f.records.set(root+id,{...base,...override,id});
+    await rejects(()=>f.service().reply(sampleToken,{
+      requestKey:'reply-'+k+'-01',letterId:id,content:'Resposta',
+    }),'reply_not_authorized');
+  }
+  await rejects(()=>f.service().reply(sampleToken,{
+    requestKey:'reply-missing-1',letterId:h('missing'),content:'Resposta',
+  }),'reply_not_authorized');
+  assert.equal([...f.records].filter(([k])=>k.includes('/mailAudits/')).length,0);
+});
+
+test('Reply refuses extra browser-selected destinations, bad IDs and missing edit scope',async()=>{
+  const f=fixture();
+  const id=h('reply-scope'),root='campaignCloudRuntime/'+snapshot+'/';
+  f.records.set(root+'letters/'+id,{
+    id,source:'firebase-cloud',sourceSnapshotId:snapshot,
+    publicationState:'delivered',deletedAt:null,senderUid:'other',
+    originHouseId:'house-b',recipientKind:'house',recipientHouseId:'house-a',
+    recipientPlayerId:null,subject:'Hello',content:'World',
+  });
+  for(const input of [
+    {requestKey:'reply-scope-1',letterId:id,content:'Okay',recipientHouseId:'house-c'},
+    {requestKey:'reply-scope-1',letterId:'../hidden',content:'Okay'},
+    {requestKey:'reply-scope-1',letterId:id,content:''},
+    {requestKey:'short',letterId:id,content:'Okay'},
+  ])await rejects(()=>f.service().reply(sampleToken,input),'invalid_reply_request',400);
+  const access='migrationDomainStage/'+snapshot+'/access/player-1';
+  f.records.set(access,{...f.records.get(access),
+    memberHouseIds:['house-a'],editHouseIds:[]});
+  await rejects(()=>f.service().reply(sampleToken,{
+    requestKey:'reply-scope-2',letterId:id,content:'Okay',
+  }),'reply_not_authorized');
+  const editor=fixture('editor');
+  editor.records.set(root+'letters/'+id,f.records.get(root+'letters/'+id));
+  await rejects(()=>editor.service().reply(sampleToken,{
+    requestKey:'reply-editor-1',letterId:id,content:'Okay',
+  }),'access_denied');
+});
+
+test('Reply fails closed on runtime revocation and cannot bypass round limits',async()=>{
+  const f=fixture(),id=h('reply-gated'),root='campaignCloudRuntime/'+snapshot+'/';
+  f.records.set(root+'letters/'+id,{
+    id,source:'firebase-cloud',sourceSnapshotId:snapshot,
+    publicationState:'delivered',deletedAt:null,senderUid:'writer-b',
+    originHouseId:'house-b',recipientKind:'house',recipientHouseId:'house-a',
+    recipientPlayerId:null,subject:'Convite',content:'Olá',
+  });
+  const live=f.records.get(root.slice(0,-1));
+  f.records.set(root.slice(0,-1),{...live,sourceSnapshotReconciled:false});
+  await rejects(()=>f.service().reply(sampleToken,{
+    requestKey:'reply-gated-1',letterId:id,content:'Resposta',
+  }),'mail_runtime_not_approved',503);
+  f.records.set(root.slice(0,-1),live);
+  f.records.set(root+'mailSenderRoundCounts/'+h('mail-count:player-1:3'),{
+    count:100,round:3,actorUid:'player-1',
+  });
+  await rejects(()=>f.service().reply(sampleToken,{
+    requestKey:'reply-gated-1',letterId:id,content:'Resposta',
+  }),'mail_round_limit',429);
+  f.auth.getUser=async(uid)=>({uid,disabled:true});
+  await rejects(()=>f.service().reply(sampleToken,{
+    requestKey:'reply-gated-1',letterId:id,content:'Resposta',
+  }),'authentication_required',401);
+});
