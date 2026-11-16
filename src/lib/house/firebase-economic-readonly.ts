@@ -16,7 +16,7 @@ export type EconomicSnapshot={
   houseId:string;month:number;balances:Balance;domains:{id:string;name:string}[];
 };
 const object=(v:unknown):v is Raw=>v!==null&&typeof v==='object'&&!Array.isArray(v);
-const text=(v:unknown):v is string=>typeof v==='string'&&v.length>0&&v.length<=300;
+const text=(v:unknown):v is string=>typeof v==='string'&&v['length']>0&&v['length']<=300;
 const numeric=(v:unknown):v is number=>typeof v==='number'&&
   Number.isFinite(v)&&Math.abs(v)<=100000;
 const integer=(v:unknown):v is number=>numeric(v)&&Number.isSafeInteger(v);
@@ -27,52 +27,52 @@ const resourceValues=(v:unknown,optional=false):boolean=>{
   if(!object(v))return false;
   return Object.entries(v).every(([k,n])=>key(k)&&integer(n));
 };
-const cost=(v:unknown):boolean=>object(v)&&key(v.resource)&&
-  (v.mode==='allocation'||v.mode==='permanent')&&
-  integer(v.amount)&&Number(v.amount)>=0;
+const cost=(v:unknown):boolean=>object(v)&&key(v['resource'])&&
+  (v['mode']==='allocation'||v['mode']==='permanent')&&
+  integer(v['amount'])&&Number(v['amount'])>=0;
 const costs=(v:unknown):boolean=>Array.isArray(v)&&
-  v.length<=100&&v.every(cost);
+  v['length']<=100&&v['every'](cost);
 const effect=(v:unknown):boolean=>object(v)&&
-  typeof v.kind==='string'&&typeof v.description==='string'&&
-  (v.amount===undefined||numeric(v.amount))&&
-  (v.resource===undefined||key(v.resource))&&
-  (v.target===undefined||typeof v.target==='string')&&
-  (v.seasons===undefined||(Array.isArray(v.seasons)&&v.seasons.every(
+  typeof v['kind']==='string'&&typeof v['description']==='string'&&
+  (v['amount']===undefined||numeric(v['amount']))&&
+  (v['resource']===undefined||key(v['resource']))&&
+  (v['target']===undefined||typeof v['target']==='string')&&
+  (v['seasons']===undefined||(Array.isArray(v['seasons'])&&v['seasons'].every(
     (s:unknown)=>['winter','spring','summer','autumn'].includes(String(s)))))&&
-  (v.maxResource===undefined||(object(v.maxResource)&&
-    key(v.maxResource.resource)&&numeric(v.maxResource.maximum)));
+  (v['maxResource']===undefined||(object(v['maxResource'])&&
+    key(v['maxResource']['resource'])&&numeric(v['maxResource']['maximum'])));
 const holding=(v:unknown):boolean=>object(v)&&
-  text(v.id)&&text(v.itemId)&&typeof v.name==='string'&&
-  typeof v.domainId==='string'&&typeof v.source==='string'&&
-  typeof v.status==='string'&&
-  ['active','building','destroyed','abandoned','sold','cancelled'].includes(v.status)&&
-  costs(v.costs)&&Array.isArray(v.effects)&&v.effects.length<=100&&
-  v.effects.every(effect)&&resourceValues(v.allocatedCosts,true)&&
-  (v.lostAllocation===undefined||typeof v.lostAllocation==='boolean')&&
-  (v.parentId===undefined||typeof v.parentId==='string');
+  text(v['id'])&&text(v['itemId'])&&typeof v['name']==='string'&&
+  typeof v['domainId']==='string'&&typeof v['source']==='string'&&
+  typeof v['status']==='string'&&
+  ['active','building','destroyed','abandoned','sold','cancelled'].includes(v['status'])&&
+  costs(v['costs'])&&Array.isArray(v['effects'])&&v['effects'].length<=100&&
+  v['effects'].every(effect)&&resourceValues(v['allocatedCosts'],true)&&
+  (v['lostAllocation']===undefined||typeof v['lostAllocation']==='boolean')&&
+  (v['parentId']===undefined||typeof v['parentId']==='string');
 const unit=(v:unknown):boolean=>object(v)&&
-  (v.destroyed===undefined||typeof v.destroyed==='boolean')&&
-  costs(v.costs)&&resourceValues(v.allocatedCosts,true);
+  (v['destroyed']===undefined||typeof v['destroyed']==='boolean')&&
+  costs(v['costs'])&&resourceValues(v['allocatedCosts'],true);
 const domain=(v:unknown):boolean=>object(v)&&
-  text(v.id)&&typeof v.name==='string'&&v.name.length<=300&&
-  typeof v.terrain==='string'&&
-  Array.isArray(v.features)&&v.features.every((f:unknown)=>typeof f==='string')&&
-  (v.community===undefined||typeof v.community==='string');
+  text(v['id'])&&typeof v['name']==='string'&&v['name'].length<=300&&
+  typeof v['terrain']==='string'&&
+  Array.isArray(v['features'])&&v['features'].every((f:unknown)=>typeof f==='string')&&
+  (v['community']===undefined||typeof v['community']==='string');
 const vassal=(v:unknown):boolean=>object(v)&&
-  ['proposed','approved','ended'].includes(String(v.status))&&
-  (v.influencePenalty===undefined||numeric(v.influencePenalty));
+  ['proposed','approved','ended'].includes(String(v['status']))&&
+  (v['influencePenalty']===undefined||numeric(v['influencePenalty']));
 const consequence=(v:unknown):boolean=>object(v)&&
-  typeof v.active==='boolean'&&resourceValues(v.changes,true);
+  typeof v['active']==='boolean'&&resourceValues(v['changes'],true);
 const history=(v:unknown):boolean=>{
   if(v===undefined||v===null)return true;
-  return object(v)&&typeof v.applied==='boolean'&&
-    Array.isArray(v.events)&&v.events.length<=200&&
-    v.events.every((e:unknown)=>object(e)&&resourceValues(e.changes));
+  return object(v)&&typeof v['applied']==='boolean'&&
+    Array.isArray(v['events'])&&v['events'].length<=200&&
+    v['events'].every((e:unknown)=>object(e)&&resourceValues(e['changes']));
 };
 const creationBonus=(v:unknown):boolean=>object(v)&&
-  key(v.resource)&&integer(v.die)&&Number(v.die)>=1&&Number(v.die)<=6;
+  key(v['resource'])&&integer(v['die'])&&Number(v['die'])>=1&&Number(v['die'])<=6;
 const boundedList=(v:unknown,max:number,valid:(v:unknown)=>boolean)=>
-  Array.isArray(v)&&v.length<=max&&v.every(valid);
+  Array.isArray(v)&&v['length']<=max&&v['every'](valid);
 const normalBalances=(v:Balance)=>
   Object.values(v).every(row=>RESOURCE_KEYS.every(r=>numeric(row[r])));
 
@@ -80,30 +80,30 @@ const normalBalances=(v:Balance)=>
  * Never coerce a missing array or permanent resource to an empty/zero value.
  */
 export function verifiedEconomicState(raw:Raw):HouseState|null{
-  const base=object(raw.base)?raw.base:null;
-  const permanent=object(raw.permanent)?raw.permanent:null;
-  if(!object(raw)||raw.schemaVersion!==1||!text(raw.houseId)||
-     !['draft','review','active'].includes(String(raw.phase))||
-     !['budget','roll','import'].includes(String(raw.method))||
-     !integer(raw.month)||Number(raw.month)<0||
-     !object(raw.identity)||typeof raw.identity.region!=='string'||
-     typeof raw.regionalApplied!=='boolean'||
+  const base=object(raw['base'])?raw['base']:null;
+  const permanent=object(raw['permanent'])?raw['permanent']:null;
+  if(!object(raw)||raw['schemaVersion']!==1||!text(raw['houseId'])||
+     !['draft','review','active'].includes(String(raw['phase']))||
+     !['budget','roll','import'].includes(String(raw['method']))||
+     !integer(raw['month'])||Number(raw['month'])<0||
+     !object(raw['identity'])||typeof raw['identity']['region']!=='string'||
+     typeof raw['regionalApplied']!=='boolean'||
      !base||!permanent||
      !RESOURCE_KEYS.every(r=>integer(base[r])&&integer(permanent[r]))||
-     !boundedList(raw.domains,100,domain)||
-     !boundedList(raw.holdings,600,holding)||
-     !boundedList(raw.units,600,unit)||
-     !boundedList(raw.projects,600,object)||
-     !boundedList(raw.court,600,object)||
-     !boundedList(raw.fortunes,600,object)||
-     !boundedList(raw.actions,600,object)||
-     !boundedList(raw.importSources,250,x=>typeof x==='string')||
-     !history(raw.creationHistory)||
-     (raw.creationBonusesApplied!==undefined&&
-      typeof raw.creationBonusesApplied!=='boolean')||
-     (raw.creationBonuses!==undefined&&!boundedList(raw.creationBonuses,200,creationBonus))||
-     (raw.mailConsequences!==undefined&&!boundedList(raw.mailConsequences,600,consequence))||
-     (raw.vassals!==undefined&&!boundedList(raw.vassals,200,vassal)))
+     !boundedList(raw['domains'],100,domain)||
+     !boundedList(raw['holdings'],600,holding)||
+     !boundedList(raw['units'],600,unit)||
+     !boundedList(raw['projects'],600,object)||
+     !boundedList(raw['court'],600,object)||
+     !boundedList(raw['fortunes'],600,object)||
+     !boundedList(raw['actions'],600,object)||
+     !boundedList(raw['importSources'],250,x=>typeof x==='string')||
+     !history(raw['creationHistory'])||
+     (raw['creationBonusesApplied']!==undefined&&
+      typeof raw['creationBonusesApplied']!=='boolean')||
+     (raw['creationBonuses']!==undefined&&!boundedList(raw['creationBonuses'],200,creationBonus))||
+     (raw['mailConsequences']!==undefined&&!boundedList(raw['mailConsequences'],600,consequence))||
+     (raw['vassals']!==undefined&&!boundedList(raw['vassals'],200,vassal)))
     return null;
   // Full state is only used as an input to the ORIGINAL canonical functions.
   return raw as unknown as HouseState;
