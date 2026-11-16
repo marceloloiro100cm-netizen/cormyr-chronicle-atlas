@@ -8,6 +8,14 @@ const PREFIX='projects/cormyr/databases/(default)/documents/migrationDomainStage
 const AUTH='https://identitytoolkit.googleapis.com/v1/projects/cormyr/accounts:batchGet?maxResults=1000';
 const rootUrl=BASE+'migrationDomainStage?pageSize=2&mask.fieldPaths=status&mask.fieldPaths=private';
 const accessPrefix=BASE+'migrationDomainStage/'+HASH+'/access?';
+const housesPrefix=BASE+'migrationDomainStage/'+HASH+'/houses?';
+const houseDoc=(id,active=true,season=2)=>({
+  name:PREFIX+HASH+'/houses/'+('a'.repeat(63)+String(id.length%10)),
+  fields:{
+    sourceId:{stringValue:id},active:{booleanValue:active},
+    season:{integerValue:String(season)},
+  },
+});
 const field={
   text:v=>({stringValue:v}),
   bool:v=>({booleanValue:v}),
@@ -37,6 +45,7 @@ function fixture({
     accessRow(uids[1],'jogador'),
     accessRow(uids[2],'editor'),
   ]},
+  houses={documents:[houseDoc('PRIVATE_HOUSE_ID')]},
   statuses={},
 }={}){
   const requests=[];
@@ -44,8 +53,10 @@ function fixture({
     requests.push({url,options});
     const data=url===rootUrl?root:
       url===AUTH?auth:
-      url.startsWith(accessPrefix)?access:undefined;
-    const status=statuses[url===rootUrl?'root':url===AUTH?'auth':'access']??
+      url.startsWith(accessPrefix)?access:
+      url.startsWith(housesPrefix)?houses:undefined;
+    const status=statuses[url===rootUrl?'root':url===AUTH?'auth':
+      url.startsWith(accessPrefix)?'access':'houses']??
       (data===undefined?404:200);
     if(status!==200)return new Response('PRIVATE_GOOGLE_ERROR_MESSAGE',{status});
     return Response.json(data);
@@ -80,10 +91,17 @@ test('joins private Auth accounts to access docs by exact UID and produces only 
     narrador:0,jogador:0,editor:0,other:0,
   });
   assert.ok(Object.values(report.blockingReasonCounts).every(n=>n===0));
+  assert.equal(report.houseCatalogHttpStatus,200);
+  assert.equal(report.houseReferenceAuditComplete,true);
+  assert.equal(report.houseCatalogCount,1);
+  assert.equal(report.activeSeason2Houses,1);
+  assert.equal(report.playerHouseReferencesTotal,1);
+  assert.equal(report.unresolvedPlayerHouseReferences,0);
+  assert.equal(report.playersWithUnresolvedHouseReferences,0);
   assert.equal(report.releaseDecision,'NO_GO');
   assert.equal(report.readyForCutover,false);
   assert.equal(report.writes,0);
-  assert.equal(f.requests.length,3);
+  assert.equal(f.requests.length,4);
   assert.ok(f.requests.every(x=>x.options.method==='GET'&&
     x.options.credentials==='omit'&&x.options.redirect==='error'));
   assert.equal(f.requests.find(x=>x.url===AUTH)
@@ -221,5 +239,36 @@ test('incomplete Auth or access pages do not report reason breakdowns',async()=>
     assert.equal(report.structurallyEligibleByProfile,null);
     assert.equal(report.structurallyIneligibleByProfile,null);
     assert.equal(report.readyForCutover,false);
+  }
+});
+
+
+test('unresolved, inactive and wrong-season House links are only reported in aggregate',async()=>{
+  const f=fixture({
+    houses:{documents:[houseDoc('PRIVATE_HOUSE_ID',false,2)]},
+  });
+  const report=await f.run();
+  assert.equal(report.houseReferenceAuditComplete,true);
+  assert.equal(report.houseCatalogCount,1);
+  assert.equal(report.activeSeason2Houses,0);
+  assert.equal(report.playerHouseReferencesTotal,1);
+  assert.equal(report.unresolvedPlayerHouseReferences,1);
+  assert.equal(report.playersWithUnresolvedHouseReferences,1);
+  assert.equal(report.releaseDecision,'NO_GO');
+  assert.ok(!JSON.stringify(report).includes('PRIVATE_HOUSE_ID'));
+});
+
+test('incomplete House list keeps reference metrics unknown, not falsely zero',async()=>{
+  for(const config of [
+    {statuses:{houses:403}},
+    {houses:{documents:[],nextPageToken:'PRIVATE_PAGE_TOKEN'}},
+    {houses:{documents:[houseDoc('PRIVATE_HOUSE_ID'),houseDoc('PRIVATE_HOUSE_ID')]}},
+  ]){
+    const report=await fixture(config).run();
+    assert.equal(report.houseReferenceAuditComplete,false);
+    assert.equal(report.unresolvedPlayerHouseReferences,null);
+    assert.equal(report.playersWithUnresolvedHouseReferences,null);
+    assert.equal(report.readyForCutover,false);
+    assert.ok(!JSON.stringify(report).includes('PRIVATE_PAGE_TOKEN'));
   }
 });
