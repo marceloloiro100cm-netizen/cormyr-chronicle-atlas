@@ -15,14 +15,26 @@ describe('Homologação · catálogo e traduções públicos com privilégio mí
  });
  it('não inclui arquivo integral no JSON do catálogo público',()=>{
   const route=read('src/routes/api/public/catalog.ts');
-  expect(route).toContain("select('id,name,region,classification,updated_at,gallery,narrative_text')");
-  expect(route).not.toContain("'id,name,region,classification,archive_data");
-  expect(route).toContain("playerHouses:players.data");
+  expect(route).toContain('readApprovedFirebasePublicCatalog');
+  expect(route).toContain('CORMYR_FIREBASE_PUBLIC_CATALOG_ENABLED');
+  expect(route).not.toContain('resolvePublicSupabase');
+  expect(route).not.toContain('archive_data');
+  const service=read('src/lib/public/firebase-public-content.server.ts');
+  expect(service).toContain('publicReviewed');
+  expect(service).toContain('playerHouses');
+  expect(service).not.toContain('createClient');
  });
  it('limita tanto a rota pública como a função server-side das traduções',()=>{
   const route=read('src/routes/api/public/translations.ts');
   const fn=read('src/lib/i18n/i18n.functions.ts');
-  expect(route).toContain(".in('entity_type', [...PUBLIC_TRANSLATION_ENTITY_TYPES])");
+  expect(route).toContain('readApprovedFirebasePublicTranslations');
+  expect(route).toContain('CORMYR_FIREBASE_PUBLIC_TRANSLATIONS_ENABLED');
+  expect(route).not.toContain('resolvePublicSupabase');
+  const service=read('src/lib/public/firebase-public-content.server.ts');
+  expect(service).toContain('PUBLIC_TRANSLATION_ENTITY_TYPES');
+  expect(service).toContain('publicReviewed');
+  // Legacy authenticated editor workflow is still pending its own migration;
+  // it must not be reopened as an anonymous Firebase API.
   expect(fn).toContain(".in('entity_type', [...PUBLIC_TRANSLATION_ENTITY_TYPES])");
   expect(fn).toContain("!isPublicTranslationEntityType(data.entityType)");
   expect(fn).not.toContain(".eq('locale', data.locale);");
