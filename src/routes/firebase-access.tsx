@@ -2,6 +2,7 @@ import {createFileRoute} from '@tanstack/react-router';
 import {useEffect,useState,type FormEvent} from 'react';
 import {createFirebaseRestAuth} from '@/integrations/auth/firebase-rest-auth';
 import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
+import {FirebaseNewspaperReader} from '@/components/newspaper/FirebaseNewspaperReader';
 
 /**
  * Firebase-only pilot: read-only, no Supabase, no emulator and no direct
@@ -28,7 +29,7 @@ type MailStatus={enabled:boolean;canSend:boolean;originHouseIds:string[];readOnl
 type MailReply={id:string;duplicate:boolean;state:string;deliveryRound:number};
 type EditionSummary={id:string;title:string;subtitle:string;editionNo:number;
   publishedAt:string;campaignDate:string|null};
-type Edition={id:string;title:string;subtitle:string;blocks:unknown[];editionNo:number};
+type Edition={id:string;title:string;subtitle:string;blocks:unknown[];editionNo:number;campaignDate?:string|null};
 type SpyAgent={id:string;codename:string;status:string;missionSuccesses:number};
 
 let singleton:Auth|null=null;
@@ -389,13 +390,9 @@ function FirebaseAccess(){
               Edição {e.editionNo} — {e.title}
             </button>
           </li>)}</ul>}
-        {edition&&<article className="border-t pt-3">
-          <h3 className="font-semibold">{edition.title}</h3>
-          <p>{edition.subtitle}</p>
-          <pre className="mt-2 text-xs whitespace-pre-wrap break-words">
-            {JSON.stringify(edition.blocks,null,2)}
-          </pre>
-        </article>}
+        {edition&&<div className="border-t pt-4">
+          <FirebaseNewspaperReader edition={edition}/>
+        </div>}
       </section>
     </section>}
     {message&&<p role="alert" className="text-sm">{message}</p>}
