@@ -50,16 +50,19 @@ function section<T>(raw:unknown,limit:number,
   return{entries,total:raw.length,partial:raw.length>limit||invalid,invalid};
 }
 export function readFirebaseHouseChronicle(state:Source):HouseChronicle{
-  const fortunes=section(state['fortunes'],40,f=>({
-    month:safeMonth(f['month']),
-    resource:resourceName(f['resource']),
-    outcome:safeText(f['outcome'],500),
-    result:safeAmount(f['result']),
-    changes:asObj(f['changes'])?RESOURCE_KEYS.flatMap(k=>{
-      const amount=safeAmount(f['changes'][k]);
-      return amount===null?[]:[{name:RESOURCE_NAMES[k],amount}];
-    }):[],
-  }));
+  const fortunes=section(state['fortunes'],40,f=>{
+    const changes=asObj(f['changes'])?f['changes']:null;
+    return {
+      month:safeMonth(f['month']),
+      resource:resourceName(f['resource']),
+      outcome:safeText(f['outcome'],500),
+      result:safeAmount(f['result']),
+      changes:changes?RESOURCE_KEYS.flatMap(k=>{
+        const amount=safeAmount(changes[k]);
+        return amount===null?[]:[{name:RESOURCE_NAMES[k],amount}];
+      }):[],
+    };
+  });
   const actions=section(state['actions'],60,a=>({
     month:safeMonth(a['month']),
     type:safeText(a['type'],100),
