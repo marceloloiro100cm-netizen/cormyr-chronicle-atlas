@@ -64,5 +64,15 @@ describe('CORMYR produção: calendário de login e configurações públicas',(
   expect(privateGM).toContain('CORMYR_FIREBASE_PRIVATE_GM_ENABLED');
   expect(privateGM).not.toContain('is_campaign_admin');
   expect(privateGM).not.toContain('resolvePublicSupabase');
+  const gmUi=source('src/components/gm-panels.tsx');
+  expect(gmUi).toContain('firebasePilotAuth');
+  expect(gmUi).not.toContain('supabase.auth.getSession');
+  const pilot=source('src/routes/firebase-access.tsx');
+  expect(pilot).toContain('<GmEventos/>');
+  expect(pilot).toContain('<GmAventuras/>');
+  expect(pilot).toContain('runFirebaseRoleSelfAcceptance');
+  expect(pilot).toContain("view.profile==='narrador'");
+  const archive=source('src/lib/archive-only.ts');
+  expect(archive).toContain("pathname === '/api/public/gm-content'");
  });
 });
