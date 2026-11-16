@@ -7,6 +7,7 @@
  * passwords, snapshot hash, Firestore document names or remote errors.
  */
 import {execFileSync} from 'node:child_process';
+import {appendFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 
 const PROJECT='cormyr';
@@ -25,6 +26,7 @@ const STAGES=Object.freeze([
   'migrationNobleHouseStage','migrationNewspaperRuntimeStage','migrationSpyStage',
 ]);
 const boolean=v=>v?.booleanValue===true;
+const number=v=>Number.isSafeInteger(Number(v?.integerValue))?Number(v.integerValue):null;
 const string=v=>typeof v?.stringValue==='string'?v.stringValue:null;
 
 export async function inspectFirebaseCloudReadiness({
@@ -115,6 +117,25 @@ export async function inspectFirebaseCloudReadiness({
       boolean(v?.mailEnabled)&&string(v?.sourceSnapshotId)===snapshotId,
     };
   }
+  let operational={code:null,reconciled:false};
+  if(snapshotId){
+    // Fixed, masked, read-only runtime metadata. Never fetch House economies,
+    // private audit events, balances, UIDs, flags or the entire document.
+    const res=await request(FIRESTORE+'campaignCloudRuntime/'+snapshotId+
+      '?mask.fieldPaths=status&mask.fieldPaths=private'+
+      '&mask.fieldPaths=sourceSnapshotId'+
+      '&mask.fieldPaths=sourceSnapshotReconciled'+
+      '&mask.fieldPaths=applicationEnabled'+
+      '&mask.fieldPaths=calendarVersion');
+    const v=res.data?.fields;
+    operational={code:res.status,reconciled:
+      string(v?.status)==='active'&&boolean(v?.private)&&
+      string(v?.sourceSnapshotId)===snapshotId&&
+      boolean(v?.sourceSnapshotReconciled)&&
+      boolean(v?.applicationEnabled)&&
+      number(v?.calendarVersion)!==null&&
+      number(v?.calendarVersion)>=1};
+  }
   const firstAuth=await request(AUTH);
   // If a valid project-ID request gets HTTP 400, try only the known numeric
   // alias (no arbitrary URL/project IDs). Never expose the error body.
@@ -130,17 +151,37 @@ export async function inspectFirebaseCloudReadiness({
   const users=Array.isArray(auth.data?.users)?auth.data.users:[];
   const accountListComplete=auth.status===200&&
     !auth.data?.nextPageToken&&users.length<=1000;
+  // Explicitly distinguish a green inspection job from production readiness.
+  // No "GO" path exists until IAM, profile isolation, production Firestore
+  // reconciliation and player acceptance are verified independently.
+  const stagesVerified=stageResults.filter(x=>x.verified).length;
+  const stagesComplete=Boolean(singleRoot&&
+    stageResults.length===STAGES.length&&stagesVerified===STAGES.length);
+  const blockers=[];
+  if(root.status===403)blockers.push('FIRESTORE_OIDC_DENIED');
+  else if(root.status!==200)blockers.push('FIRESTORE_STAGE_READ_UNCONFIRMED');
+  else if(!singleRoot)blockers.push('SNAPSHOT_UNVERIFIED');
+  else if(!stagesComplete)blockers.push('MIGRATION_STAGES_UNVERIFIED');
+  if(snapshotId){
+    if(!runtime.enabled)blockers.push('MAIL_RUNTIME_UNVERIFIED');
+    if(!operational.reconciled)
+      blockers.push('OPERATIONAL_RUNTIME_UNVERIFIED');
+  }else blockers.push('RUNTIME_AUDITS_AWAIT_SNAPSHOT');
+  if(auth.status!==200)blockers.push('AUTH_LIST_UNAVAILABLE');
+  else if(!accountListComplete)blockers.push('AUTH_LIST_INCOMPLETE');
+  blockers.push('CLOUD_ROLE_E2E_PENDING');
   return {
     project:PROJECT,scope:'FIREBASE_CLOUD_ACCESS_READ_ONLY',
     firestoreHttpStatus:root.status,
-    singleVerifiedSnapshot:Boolean(singleRoot&&
-      stageResults.every(s=>s.verified)),
+    singleVerifiedSnapshot:stagesComplete,
     stageCoverage:stageResults.length,
-    stagesVerified:stageResults.filter(x=>x.verified).length,
+    stagesVerified,
     stageHttpStatusCounts:Object.fromEntries(
       [...new Set(stageResults.map(x=>String(x.code)))].map(code=>
         [code,stageResults.filter(x=>String(x.code)===code).length])),
     mailRuntimeHttpStatus:runtime.code,mailRuntimeEnabled:runtime.enabled,
+    operationalRuntimeHttpStatus:operational.code,
+    operationalRuntimeReconciled:operational.reconciled,
     authHttpStatus:auth.status,authProjectNumberHttpStatus:numberAuth?.status??null,
     authRpcStatus:auth.errorStatus??null,
     authProjectNumberRpcStatus:numberAuth?.errorStatus??null,
@@ -149,14 +190,56 @@ export async function inspectFirebaseCloudReadiness({
     accounts:accountListComplete?users.length:null,
     disabledAccounts:accountListComplete?users.filter(x=>x.disabled===true).length:null,
     requiresFirestoreReadPermission:root.status===403||
-      stageResults.some(x=>x.code===403)||runtime.code===403,
+      stageResults.some(x=>x.code===403)||runtime.code===403||
+      operational.code===403,
     requiresFirebaseAuthReadPermission:auth.status===403||
       numberAuth?.status===403,
+    releaseDecision:'NO_GO',blockingCodes:blockers,
     writes:0,cloudRoleE2EVerified:false,readyForCutover:false,
   };
+}
+
+const BLOCKING_CODES=new Set([
+  'FIRESTORE_OIDC_DENIED','FIRESTORE_STAGE_READ_UNCONFIRMED',
+  'SNAPSHOT_UNVERIFIED','MIGRATION_STAGES_UNVERIFIED',
+  'MAIL_RUNTIME_UNVERIFIED','OPERATIONAL_RUNTIME_UNVERIFIED',
+  'RUNTIME_AUDITS_AWAIT_SNAPSHOT','AUTH_LIST_UNAVAILABLE',
+  'AUTH_LIST_INCOMPLETE','CLOUD_ROLE_E2E_PENDING',
+]);
+/** Strictly allowlisted GitHub Summary: no source IDs, errors or documents. */
+export function formatCloudReadinessSummary(report){
+  const http=value=>Number.isInteger(value)&&value>=100&&value<=599
+    ?String(value):'indisponível';
+  const ok=value=>value===true?'Conferido':'Pendente';
+  const blocks=Array.isArray(report?.blockingCodes)
+    ?report.blockingCodes.filter(v=>BLOCKING_CODES.has(v)):[];
+  return [
+    '## Firebase Cloud — NO-GO para cutover',
+    '',
+    '> Um workflow verde confirma somente que a auditoria foi executada; **não** aprova publicação, compras ou ativação de contas.',
+    '',
+    '| Evidência privada (somente status) | Resultado |',
+    '| --- | --- |',
+    '| Firestore da migração | HTTP '+http(report?.firestoreHttpStatus)+' |',
+    '| Estágios históricos | '+ok(report?.singleVerifiedSnapshot)+' |',
+    '| Runtime de missivas | HTTP '+http(report?.mailRuntimeHttpStatus)+' · '+ok(report?.mailRuntimeEnabled)+' |',
+    '| Runtime operacional das Casas | HTTP '+http(report?.operationalRuntimeHttpStatus)+' · '+ok(report?.operationalRuntimeReconciled)+' |',
+    '| Firebase Auth | HTTP '+http(report?.authHttpStatus)+' · '+ok(report?.authListComplete)+' |',
+    '| Testes reais de isolamento de perfis | Pendente |',
+    '| Cutover | **NÃO AUTORIZADO** |',
+    '',
+    'Motivos de bloqueio (códigos predefinidos): '+(blocks.length?blocks.join(', '):'CLOUD_ROLE_E2E_PENDING')+'.',
+    '',
+    'Nenhum dado, UID, e-mail, hash, token, documento privado ou mensagem de erro do Google é publicado aqui.',
+    '',
+  ].join('\n');
 }
 
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   const output=await inspectFirebaseCloudReadiness();
   process.stdout.write(JSON.stringify(output,null,2)+'\n');
+  if(process.env.GITHUB_STEP_SUMMARY){
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+      formatCloudReadinessSummary(output),'utf8');
+  }
 }

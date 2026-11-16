@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {inspectFirebaseCloudReadiness} from './cloud-access-readiness.mjs';
+import {inspectFirebaseCloudReadiness,formatCloudReadinessSummary}
+  from './cloud-access-readiness.mjs';
 
 const HASH='a'.repeat(64);
 const PREFIX='https://firestore.googleapis.com/v1/projects/cormyr/databases/(default)/documents/';
@@ -17,6 +18,12 @@ const stage=id=>PREFIX+id+'/'+HASH+'?mask.fieldPaths=status&mask.fieldPaths=priv
 const listing=PREFIX+'migrationDomainStage?pageSize=2&mask.fieldPaths=status&mask.fieldPaths=private';
 const runtime=PREFIX+'campaignMailRuntime/'+HASH+
   '?mask.fieldPaths=status&mask.fieldPaths=private&mask.fieldPaths=sourceLiveReconciled&mask.fieldPaths=applicationEnabled&mask.fieldPaths=mailEnabled&mask.fieldPaths=sourceSnapshotId';
+const operational=PREFIX+'campaignCloudRuntime/'+HASH+
+  '?mask.fieldPaths=status&mask.fieldPaths=private'+
+  '&mask.fieldPaths=sourceSnapshotId'+
+  '&mask.fieldPaths=sourceSnapshotReconciled'+
+  '&mask.fieldPaths=applicationEnabled'+
+  '&mask.fieldPaths=calendarVersion';
 function fixture(overrides={}){
   const d=new Map([
     [listing,
@@ -30,6 +37,13 @@ function fixture(overrides={}){
       sourceLiveReconciled:{booleanValue:true},
       applicationEnabled:{booleanValue:true},
       mailEnabled:{booleanValue:true},
+    }}],
+    [operational,{fields:{
+      ...fields('active'),
+      sourceSnapshotId:{stringValue:HASH},
+      sourceSnapshotReconciled:{booleanValue:true},
+      applicationEnabled:{booleanValue:true},
+      calendarVersion:{integerValue:'2'},
     }}],
     [AUTH,{users:Array.from({length:14},(_,i)=>({
       localId:'DO_NOT_LOG_UID_'+i,disabled:true,email:'private@example.org',
@@ -61,6 +75,10 @@ test('Cloud-only OIDC readiness summarizes 6 stages and disabled accounts withou
   assert.equal(report.accounts,14);
   assert.equal(report.disabledAccounts,14);
   assert.equal(report.mailRuntimeEnabled,true);
+  assert.equal(report.operationalRuntimeHttpStatus,200);
+  assert.equal(report.operationalRuntimeReconciled,true);
+  assert.equal(report.releaseDecision,'NO_GO');
+  assert.deepEqual(report.blockingCodes,['CLOUD_ROLE_E2E_PENDING']);
   assert.equal(report.writes,0);
   assert.equal(report.readyForCutover,false);
   const summary=JSON.stringify(report);
@@ -87,6 +105,12 @@ test('missing Firestore/Auth permissions return only HTTP codes and retain NO_GO
   assert.equal(report.identityConfigHttpStatus,null);
   assert.equal(report.requiresFirestoreReadPermission,true);
   assert.equal(report.requiresFirebaseAuthReadPermission,true);
+  assert.equal(report.operationalRuntimeHttpStatus,null);
+  assert.equal(report.operationalRuntimeReconciled,false);
+  assert.deepEqual(report.blockingCodes,[
+    'FIRESTORE_OIDC_DENIED','RUNTIME_AUDITS_AWAIT_SNAPSHOT',
+    'AUTH_LIST_UNAVAILABLE','CLOUD_ROLE_E2E_PENDING',
+  ]);
   assert.equal(report.singleVerifiedSnapshot,false);
   assert.equal(report.readyForCutover,false);
   assert.ok(!JSON.stringify(report).includes('DO_NOT_LOG_GOOGLE_ERROR_DETAILS'));
@@ -263,4 +287,87 @@ test('Auth config probe is not attempted for Auth 403 or 200',async()=>{
     else assert.equal(report.authRpcStatus,null);
     assert.equal(report.readyForCutover,false);
   }
+});
+
+
+test('operational Cloud runtime missing or unreconciled blocks GO without disclosing flags',async()=>{
+  for(const replacement of [
+    {fields:{...fields('active'),sourceSnapshotId:{stringValue:HASH},
+      sourceSnapshotReconciled:{booleanValue:false},
+      applicationEnabled:{booleanValue:true},
+      calendarVersion:{integerValue:'2'}}},
+    {fields:{...fields('active'),sourceSnapshotId:{stringValue:'b'.repeat(64)},
+      sourceSnapshotReconciled:{booleanValue:true},
+      applicationEnabled:{booleanValue:true},
+      calendarVersion:{integerValue:'2'}}},
+    {fields:{...fields('active'),sourceSnapshotId:{stringValue:HASH},
+      sourceSnapshotReconciled:{booleanValue:true},
+      applicationEnabled:{booleanValue:true},
+      calendarVersion:{integerValue:'0'}}},
+  ]){
+    const f=fixture({[operational]:replacement});
+    const report=await f.run();
+    assert.equal(report.operationalRuntimeHttpStatus,200);
+    assert.equal(report.operationalRuntimeReconciled,false);
+    assert.ok(report.blockingCodes.includes('OPERATIONAL_RUNTIME_UNVERIFIED'));
+    assert.equal(report.releaseDecision,'NO_GO');
+    assert.equal(report.readyForCutover,false);
+    assert.ok(!JSON.stringify(report).includes(HASH));
+  }
+});
+
+test('Firestore runtime read 403 stays pending even if historic snapshot and Auth are valid',async()=>{
+  const f=fixture();
+  const report=await inspectFirebaseCloudReadiness({
+    tokenProvider:async()=> 'EPHEMERAL_TEST_TOKEN_SECRET',
+    fetcher:async(url,options)=>{
+      assert.equal(options.method,'GET');
+      if(url===operational)return new Response('SECRET_ERROR_BODY',{status:403});
+      const value=f.d.get(url);
+      return value===undefined?new Response('',{status:404}):Response.json(value);
+    },
+  });
+  assert.equal(report.singleVerifiedSnapshot,true);
+  assert.equal(report.operationalRuntimeHttpStatus,403);
+  assert.equal(report.operationalRuntimeReconciled,false);
+  assert.equal(report.authListComplete,true);
+  assert.equal(report.requiresFirestoreReadPermission,true);
+  assert.ok(report.blockingCodes.includes('OPERATIONAL_RUNTIME_UNVERIFIED'));
+  assert.equal(report.readyForCutover,false);
+  assert.ok(!JSON.stringify(report).includes('SECRET_ERROR_BODY'));
+});
+
+test('a successful probe with all synthetic gates still cannot approve real cutover',async()=>{
+  const f=fixture();
+  const report=await f.run();
+  assert.equal(report.singleVerifiedSnapshot,true);
+  assert.equal(report.mailRuntimeEnabled,true);
+  assert.equal(report.operationalRuntimeReconciled,true);
+  assert.equal(report.authListComplete,true);
+  assert.equal(report.cloudRoleE2EVerified,false);
+  assert.equal(report.readyForCutover,false);
+  assert.equal(report.releaseDecision,'NO_GO');
+  assert.deepEqual(report.blockingCodes,['CLOUD_ROLE_E2E_PENDING']);
+});
+
+test('GitHub Actions summary is deterministic NO-GO and discards untrusted strings',async()=>{
+  const f=fixture();
+  const report=await f.run();
+  const summary=formatCloudReadinessSummary(report);
+  assert.match(summary,/NO-GO para cutover/);
+  assert.match(summary,/NÃO AUTORIZADO/);
+  assert.match(summary,/Runtime operacional das Casas \| HTTP 200/);
+  assert.match(summary,/CLOUD_ROLE_E2E_PENDING/);
+  for(const sensitive of ['EPHEMERAL_TEST_TOKEN_SECRET',HASH,
+    'DO_NOT_LOG_UID','private@example.org']){
+    assert.ok(!summary.includes(sensitive));
+  }
+  const tainted=formatCloudReadinessSummary({
+    firestoreHttpStatus:'INJECTED_PRIVATE_EMAIL',
+    authHttpStatus:'INJECTED_TOKEN',
+    blockingCodes:['INJECTED_UID','FIRESTORE_OIDC_DENIED'],
+  });
+  assert.ok(!tainted.includes('INJECTED_'));
+  assert.match(tainted,/FIRESTORE_OIDC_DENIED/);
+  assert.match(tainted,/NÃO AUTORIZADO/);
 });
