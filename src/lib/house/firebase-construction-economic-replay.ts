@@ -171,7 +171,7 @@ export function replayConstructionEconomy(
       const next=JSON.parse(JSON.stringify(purchased)) as unknown;
       const typed=object(next)?verifiedEconomicState(next):null;
       if(!typed)return report('purchase_rejected',total,count);
-      const computed=calculateFirebaseHouseEconomy(next);
+      const computed=calculateFirebaseHouseEconomy(next as Record<string,unknown>);
       if(!computed||
          Object.values(computed.balances.available).some(x=>x<0))
         return report('purchase_rejected',total,count);
