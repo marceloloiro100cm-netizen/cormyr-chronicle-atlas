@@ -18,9 +18,10 @@ Sem token: 401. Jogador/editor: 403. Falta de qualquer aprovação: 503.
 
 Flag extra `CORMYR_FIREBASE_PRIVATE_GM_ENABLED=true` e a flag de leitura
 existente `CORMYR_FIREBASE_CLOUD_READ_ENABLED=true` são necessárias.
-Nenhuma foi habilitada neste PR. O componente legado
-`src/components/gm-panels.tsx` ainda usa a sessão Supabase; não considerar
-a interface do Narrador migrada até integrar o Firebase Auth do aplicativo.
+Nenhuma foi habilitada neste PR. O componente `gm-panels.tsx` passou a
+usar o token Firebase do piloto `/firebase-access`, compartilhado na mesma
+aba, e o painel do Narrador agora oferece Eventos e Aventuras sob clique.
+Ainda faltam a aprovação do estágio privado e a homologação real.
 
 ## Etapa 2 — callback agendado do Drive
 
