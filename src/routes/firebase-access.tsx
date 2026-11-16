@@ -4,6 +4,7 @@ import {createFirebaseRestAuth} from '@/integrations/auth/firebase-rest-auth';
 import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
 import {FirebaseNewspaperReader} from '@/components/newspaper/FirebaseNewspaperReader';
 import {FirebaseCalendarSnapshot} from '@/components/calendar/FirebaseCalendarSnapshot';
+import {FirebaseHouseSheet} from '@/components/houses/FirebaseHouseSheet';
 
 /**
  * Firebase-only pilot: read-only, no Supabase, no emulator and no direct
@@ -310,15 +311,7 @@ function FirebaseAccess(){
             view.memberHouseIds.includes(h.id)).map(h=>
               <option key={h.id} value={h.id}>{h.name}</option>)}
         </select>
-        {house&&<article className="rounded border p-4 space-y-2">
-          <h2 className="text-lg font-semibold">{house.name}</h2>
-          <p>{house.castle??'Sem castelo cadastrado'} · Versão {house.version}</p>
-          <details><summary className="cursor-pointer">Consultar ficha preservada</summary>
-            <pre className="mt-2 overflow-auto whitespace-pre-wrap break-all text-xs">
-              {JSON.stringify(house.state,null,2)}
-            </pre>
-          </details>
-        </article>}
+        {house&&<FirebaseHouseSheet sheet={house}/>}
       </div>}
       {agents&&house&&<section className="rounded border p-4 space-y-2">
         <h2 className="text-lg font-semibold">Agentes da Casa</h2>
