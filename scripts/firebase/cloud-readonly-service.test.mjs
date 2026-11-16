@@ -207,3 +207,39 @@ test('Incomplete protected newspaper and spy stages fail closed',async()=>{
   await rejects(()=>f.service().listSpyAgents(token,'house-a'),
     'migration_stage_not_ready',503);
 });
+
+test('Operational Cloud letters enforce House isolation and narrator visibility',async()=>{
+  const f=fixture('jogador',{editHouseIds:['house-a']});
+  const root='campaignMailRuntime/'+snapshot;
+  f.docs.set(root,{
+    status:'active',private:true,applicationEnabled:true,mailEnabled:true,
+    sourceSnapshotId:snapshot,sourceLiveReconciled:true,
+  });
+  const make=(id,changes={})=>f.docs.set(root+'/letters/'+id,{
+    id,source:'firebase-cloud',publicationState:'delivered',
+    deletedAt:null,subject:'Nova '+id,content:'Mensagem '+id,
+    senderUid:'other-uid',recipientKind:'house',recipientHouseId:'house-a',
+    createdAt:'2026-11-16T10:00:00.000Z',...changes,
+  });
+  make('for-a');
+  make('for-b',{recipientHouseId:'house-b'});
+  make('to-narrator',{recipientKind:'narrator',recipientHouseId:null});
+  make('sent-by-me',{senderUid:'user-1',recipientHouseId:'house-b'});
+  make('deleted',{deletedAt:'2026-11-16T11:00:00Z'});
+  make('draft',{publicationState:'draft'});
+  const player=await f.service().listMailbox(token);
+  assert.equal(player.totalVisible,5);
+  assert.deepEqual(new Set(player.items.filter(i=>i.source==='firebase-cloud')
+    .map(i=>i.id)),new Set(['for-a','sent-by-me']));
+  const narrator=fixture('narrador');
+  for(const [path,value] of f.docs)if(path.startsWith(root+'/')||path===root)
+    narrator.docs.set(path,value);
+  const gm=await narrator.service().listMailbox(token);
+  assert.ok(gm.items.some(i=>i.id==='for-b'));
+  assert.ok(gm.items.some(i=>i.id==='to-narrator'));
+  assert.ok(!gm.items.some(i=>i.id==='draft'||i.id==='deleted'));
+  f.docs.set(root,{...f.docs.get(root),sourceLiveReconciled:false});
+  const blocked=await f.service().listMailbox(token);
+  assert.equal(blocked.totalVisible,3);
+  assert.ok(blocked.items.every(i=>i.source==='imported'));
+});
