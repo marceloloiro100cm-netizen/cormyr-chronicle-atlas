@@ -87,6 +87,7 @@ describe('Firebase Cloud — unidades militares por Casa',()=>{
     expect(d.units.length).toBe(150);
     expect(d.limited).toBe(true);
     expect(d.knownAvailable).toBeNull();
+    expect(d.active).toBeNull();
     expect(state.units.length).toBe(154);
     const {container}=render(<FirebaseArmyRoster houseName="Evenhand" state={state}/>);
     expect(screen.getByRole('status')).toHaveTextContent('limite de exibição');
