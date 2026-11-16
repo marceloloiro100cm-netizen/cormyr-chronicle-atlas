@@ -15,7 +15,8 @@ export const Route=createFileRoute('/firebase-access')({
 
 type Auth=ReturnType<typeof createFirebaseRestAuth>;
 type SessionView={authenticated:boolean;profile:'jogador'|'narrador'|'editor';
-  memberHouseIds:string[];readOnly:boolean;snapshotReconciliationPending:boolean};
+  memberHouseIds:string[];editHouseIds:string[];mailWriteAvailable:boolean;
+  readOnly:boolean;snapshotReconciliationPending:boolean};
 type House={id:string;name:string;castle:string|null;crest:string|null};
 type HouseView={id:string;name:string;castle:string|null;crest:string|null;
   state:Record<string,unknown>;version:number;readOnly:boolean};
@@ -90,6 +91,11 @@ function FirebaseAccess(){
   const [editions,setEditions]=useState<EditionSummary[]>([]);
   const [edition,setEdition]=useState<Edition|null>(null);
   const [agents,setAgents]=useState<SpyAgent[]|null>(null);
+  const [mailOrigin,setMailOrigin]=useState('');
+  const [mailRecipient,setMailRecipient]=useState('');
+  const [mailSubject,setMailSubject]=useState('');
+  const [mailContent,setMailContent]=useState('');
+  const [lastMailKey,setLastMailKey]=useState<string|null>(null);
 
   async function load(){
     const profile=await readCloud<SessionView>('session');
@@ -135,6 +141,52 @@ function FirebaseAccess(){
     }finally{setBusy(false);}
   }
 
+  async function sendFirebaseMail(event:FormEvent){
+    event.preventDefault();
+    if(!view?.mailWriteAvailable||busy)return;
+    if(!mailRecipient||!mailSubject.trim()||!mailContent.trim()){
+      setMessage('Preencha o destinatário, assunto e conteúdo.');
+      return;
+    }
+    if(view.profile==='jogador'&&!view.editHouseIds.includes(mailOrigin)){
+      setMessage('Selecione uma Casa em que tenha permissão de escrita.');
+      return;
+    }
+    const toNarrator=mailRecipient==='narrator';
+    const auth=firebaseAuth();
+    const token=await auth?.getToken();
+    if(!token){setMessage('Sua sessão Firebase expirou. Entre novamente.');return;}
+    setBusy(true);setMessage('');
+    const key=lastMailKey??window.crypto.randomUUID();
+    setLastMailKey(key);
+    try{
+      const res=await fetch('/api/firebase-cloud-mail',{
+        method:'POST',credentials:'omit',cache:'no-store',
+        headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+        body:JSON.stringify({
+          action:'send',
+          request:{
+            requestKey:key,
+            originHouseId:view.profile==='narrador'?null:mailOrigin,
+            recipientHouseId:toNarrator?null:mailRecipient,
+            toNarrator,subject:mailSubject,content:mailContent,
+          },
+        }),
+      });
+      if(!res.ok){
+        throw Error(res.status===429?'Limite de envio atingido. Tente novamente depois.':
+          res.status===409?'Esta chave de envio já pertence a outra mensagem.':
+          res.status===403?'Você não tem permissão para enviar esta missiva.':
+          'Envio Firebase indisponível. Nenhuma nova tentativa automática foi feita.');
+      }
+      setLastMailKey(null);setMailSubject('');setMailContent('');
+      setMessage('Missiva registrada com sucesso no Firebase.');
+      try{await load();}catch{/* A carta já foi confirmada pelo servidor. */}
+    }catch(error){
+      setMessage(error instanceof Error?error.message:'Não foi possível confirmar o envio.');
+    }finally{setBusy(false);}
+  }
+
   async function selectHouse(id:string){
     setBusy(true);setMessage('');setHouse(null);
     try{
@@ -160,6 +212,8 @@ function FirebaseAccess(){
     setView(null);setHouse(null);setHouses([]);setCalendar(null);
     setInbox(null);setEditions([]);setEdition(null);setAgents(null);setEmail('');
     setPassword('');setMessage('');
+    setMailOrigin('');setMailRecipient('');setMailSubject('');
+    setMailContent('');setLastMailKey(null);
   }
 
   return <main className="mx-auto max-w-4xl p-6 space-y-5 text-foreground">
@@ -218,6 +272,49 @@ function FirebaseAccess(){
           <ul className="space-y-1">{agents.map(a=><li key={a.id}>
             {a.codename} — {a.status} · {a.missionSuccesses} sucessos
           </li>)}</ul>}
+      </section>}
+      {view.mailWriteAvailable&&view.profile!=='editor'&&<section
+        className="rounded border p-4 space-y-3">
+        <h2 className="text-lg font-semibold">Escrever missiva</h2>
+        <p className="text-xs">Envio registrado diretamente no Firebase.
+          Não é possível editar ou cancelar uma carta já entregue.</p>
+        <form onSubmit={sendFirebaseMail} className="space-y-3">
+          {view.profile==='jogador'&&<label className="block text-sm">
+            Casa remetente
+            <select required value={mailOrigin} disabled={busy}
+              onChange={e=>{setMailOrigin(e.target.value);setLastMailKey(null);}}
+              className="block rounded border p-2 w-full">
+              <option value="">Escolha sua Casa</option>
+              {houses.filter(h=>view.editHouseIds.includes(h.id)).map(h=>
+                <option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+          </label>}
+          <label className="block text-sm">Destinatário
+            <select required value={mailRecipient} disabled={busy}
+              onChange={e=>{setMailRecipient(e.target.value);setLastMailKey(null);}}
+              className="block rounded border p-2 w-full">
+              <option value="">Escolha o destinatário</option>
+              {view.profile==='jogador'&&
+                <option value="narrator">Narrador</option>}
+              {houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+          </label>
+          <label className="block text-sm">Assunto
+            <input required maxLength={180} value={mailSubject} disabled={busy}
+              onChange={e=>{setMailSubject(e.target.value);setLastMailKey(null);}}
+              className="block w-full rounded border p-2"/>
+          </label>
+          <label className="block text-sm">Conteúdo da missiva
+            <textarea required rows={5} maxLength={10000} value={mailContent}
+              disabled={busy} onChange={e=>{
+                setMailContent(e.target.value);setLastMailKey(null);
+              }} className="block w-full rounded border p-2"/>
+          </label>
+          <button type="submit" disabled={busy}
+            className="rounded border px-4 py-2">
+            {busy?'Enviando…':'Enviar missiva'}
+          </button>
+        </form>
       </section>}
       {inbox&&<section className="rounded border p-4 space-y-2">
         <h2 className="text-lg font-semibold">Missivas entregues</h2>
