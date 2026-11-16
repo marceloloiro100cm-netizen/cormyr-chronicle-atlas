@@ -10,7 +10,7 @@ const base:HouseReconciliationReport={
   sourceVersion:3,operationalVersion:0,
   readGateApproved:false,writeGateApproved:false,
   documentIntegrityConfirmed:true,auditHistoryVerified:false,
-  readyForCutover:false,readOnly:true,
+  readyForCutover:false,readOnly:true,constructionLedger:null,
 };
 describe('Firebase — painel de reconciliação Narrador',()=>{
   it('não inventa resultado quando auditoria privada está desabilitada',()=>{
@@ -28,6 +28,25 @@ describe('Firebase — painel de reconciliação Narrador',()=>{
     expect(screen.getByText('Ainda não realizada')).toBeInTheDocument();
     expect(screen.getAllByText('Não autorizada')).toHaveLength(2);
     expect(screen.getByText(/Não autoriza ativar compras/)).toBeInTheDocument();
+  });
+  it('diferencia cadeia conferida de reexecução econômica',()=>{
+    const audited:HouseReconciliationReport={...base,
+      constructionLedger:{
+        status:'verified_hash_chain',verifiedHashChain:true,
+        economicReplayVerified:false,auditHistoryVerified:true,
+        readyForCutover:false,readOnly:true,eventsTotal:1,lastVersion:1,
+        entries:[{version:1,itemId:'tower',campaignDate:'1522-02-10'}],
+        truncated:false,
+      },
+    };
+    const {container}=render(<FirebaseHouseReconciliationAudit
+      houseId="house-a" report={audited}/>);
+    expect(screen.getByText(/Encadeamento de hashes e versões conferido/))
+      .toBeInTheDocument();
+    expect(screen.getByText(/não significa reexecução das compras/))
+      .toBeInTheDocument();
+    expect(screen.getByText('Ainda não realizada')).toBeInTheDocument();
+    expect(container.querySelector('button')).toBeNull();
   });
   it('bloqueia renderização do resultado de outra Casa',()=>{
     render(<FirebaseHouseReconciliationAudit
