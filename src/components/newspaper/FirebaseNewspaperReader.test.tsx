@@ -24,7 +24,7 @@ describe('Firebase Cloud — jornal publicado para leitura',()=>{
     expect(screen.getByRole('heading',{name:'A Nova Gazeta'}))
       .toBeInTheDocument();
     expect(screen.getByText('A primavera chegou.')).toBeInTheDocument();
-    expect(screen.getByText('Crônicas do reino').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Crônicas do reino').length).toBeGreaterThan(0);
     expect(container.querySelector('pre')).toBeNull();
     expect(container.querySelector('[contenteditable]')).toBeNull();
     expect(container.querySelector('.newspaper-drag-handle')).toBeNull();
