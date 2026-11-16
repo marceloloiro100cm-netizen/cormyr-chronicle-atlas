@@ -25,8 +25,8 @@ export function FirebaseConstructionQuote({houseId,state,onQuote}:{
   houseId:string;state:Record<string,unknown>;
   onQuote:(body:Record<string,unknown>)=>Promise<ConstructionQuoteView>;
 }){
-  const domains=useMemo(()=>asRows(state.domains),[state.domains]);
-  const holdings=useMemo(()=>asRows(state.holdings),[state.holdings]);
+  const domains=useMemo(()=>asRows(state['domains']),[state['domains']]);
+  const holdings=useMemo(()=>asRows(state['holdings']),[state['holdings']]);
   const [category,setCategory]=useState('fortification');
   const [itemId,setItemId]=useState('');
   const [domainId,setDomainId]=useState('');
