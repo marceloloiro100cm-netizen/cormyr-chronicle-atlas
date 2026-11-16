@@ -5,7 +5,8 @@ import {findItem} from './catalog';
 import {purchase} from './engine';
 import {previewHouseConstruction} from './firebase-construction-quote';
 import {constructionStateHash} from './firebase-construction-transaction';
-import {replayConstructionEconomy} from './firebase-construction-economic-replay';
+import {replayConstructionEconomy,MAX_ECONOMIC_REPLAY_EVENTS}
+  from './firebase-construction-economic-replay';
 
 const id=(v:string)=>createHash('sha256').update(v).digest('hex');
 const snapshot='c'.repeat(64),actorUid='narrator-1';
@@ -136,6 +137,25 @@ describe('Firebase: replay econômico somente leitura',()=>{
     expect(replayConstructionEconomy([f.doc()],{
       ...f.context,operationalVersion:2,
     }).status).toBe('hash_chain_unverified');
+  });
+  it('limita replay administrativo sem processar eventos nem afirmar sucesso',()=>{
+    const f=fixture();
+    const rows=Array.from({length:MAX_ECONOMIC_REPLAY_EVENTS+1},
+      ()=>f.doc());
+    const before=structuredClone(f.context);
+    const report=replayConstructionEconomy(rows,{
+      ...f.context,operationalVersion:rows.length,
+    });
+    expect(report).toEqual({
+      status:'replay_limit_exceeded',
+      economicReplayVerified:false,eventsTotal:rows.length,
+      replayedEvents:0,readyForCutover:false,readOnly:true,
+    });
+    expect(f.context).toEqual(before);
+    const single=replayConstructionEconomy([f.doc()],{
+      ...f.context,operationalVersion:MAX_ECONOMIC_REPLAY_EVENTS+1,
+    });
+    expect(single.status).toBe('replay_limit_exceeded');
   });
   it('rejeita estado histórico não validado, nunca altera ou normaliza dados',()=>{
     const f=fixture();

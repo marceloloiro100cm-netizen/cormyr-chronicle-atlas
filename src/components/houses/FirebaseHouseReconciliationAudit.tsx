@@ -109,6 +109,8 @@ export function FirebaseHouseReconciliationAudit({houseId,report}:{
                       ?'Reexecução econômica determinística conferida.'
                       :report.economicReplay.status==='missing_replay_metadata'
                         ?'Metadados históricos insuficientes para reexecutar.'
+                        :report.economicReplay.status==='replay_limit_exceeded'
+                          ?'Histórico acima do limite de 50 compras: exige replay auditado em lotes.'
                         :'Reexecução não confirmada: '+
                           report.economicReplay.status}
                   </p>

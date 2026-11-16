@@ -70,6 +70,26 @@ describe('Firebase — painel de reconciliação Narrador',()=>{
       .toBeInTheDocument();
     expect(screen.getByText('Ainda não realizada')).toBeInTheDocument();
   });
+  it('mostra limitação do replay em lote sem certificar economia',()=>{
+    const data:HouseReconciliationReport={...base,
+      constructionLedger:{
+        status:'verified_hash_chain',verifiedHashChain:true,
+        economicReplayVerified:false,auditHistoryVerified:true,
+        readyForCutover:false,readOnly:true,eventsTotal:51,lastVersion:51,
+        entries:[],truncated:false,
+      },
+      economicReplay:{
+        status:'replay_limit_exceeded',economicReplayVerified:false,
+        eventsTotal:51,replayedEvents:0,readyForCutover:false,readOnly:true,
+      },
+    };
+    const {container}=render(<FirebaseHouseReconciliationAudit
+      houseId="house-a" report={data}/>);
+    expect(screen.getByText(/Histórico acima do limite de 50 compras/))
+      .toBeInTheDocument();
+    expect(screen.getByText('Ainda não realizada')).toBeInTheDocument();
+    expect(container.querySelector('button')).toBeNull();
+  });
   it('bloqueia renderização do resultado de outra Casa',()=>{
     render(<FirebaseHouseReconciliationAudit
       houseId="house-b" report={base}/>);
