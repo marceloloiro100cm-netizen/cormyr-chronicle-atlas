@@ -43,3 +43,25 @@ A enumeração é por Casa e não representa um percentual real das Casas sem ex
 - `src/components/houses/FirebaseHouseReconciliationAudit.test.tsx`: resultado não habilitado, status seguro, separação entre Casas, ausência de botões de compra/ativação.
 
 As verificações ocorrem por GitHub Actions no ambiente de testes isolados; o código de auditoria permanece **inativo por padrão** após merge.
+
+
+## Verificação do encadeamento de compras (complemento)
+
+O diagnóstico autorizado do Narrador também executa, na **mesma transação de leitura**, uma consulta privada de eventos `campaignCloudRuntime/<snapshot>/houseConstructionAudits` filtrada por `houseId`. Exige todos os eventos da versão operacional (limite defensivo de 500; mais registros exigem paginação administrativa antes da auditoria, e **não** passam automaticamente). O cliente recebe apenas status, total e até 25 eventos resumidos com versão, item e data fictícia da campanha.
+
+A função pura `verifyConstructionLedger` exige:
+
+1. Nenhum evento duplicado, omitido ou acrescentado em relação à versão operacional atual; cada evento corresponde à Casa e ao snapshot.
+2. Identificação idempotente correta: `sha256('construction-purchase:'+actorUid+':'+requestKey)` e posse `sha256('construction-holding:'+eventId)`; verifica os hashes sem retornar UID ou chave ao navegador.
+3. Versões 1…N completas, cada `expectedVersion=version-1`, e `beforeStateHash` ligado ao `afterStateHash` da etapa anterior.
+4. O primeiro hash corresponde à origem histórica, o último ao hash do estado operacional; `lastConstructionEventId` referencia o evento final.
+5. Atributos essenciais do evento (tipo, ID do catálogo/domínio, custos finitos, dados, data Harptos registrada, data do servidor e metadados de origem) estruturalmente válidos.
+
+`verifiedHashChain=true` significa **apenas** que a cadeia criptográfica e de versões está completa e autoconsistente. **Não prova** a reexecução do motor `quote/purchase` em cada versão, os efeitos econômicos históricos, a autenticidade de atores antigos, IAM ou uma mudança real no banco. O campo `economicReplayVerified` permanece sempre `false`, o `auditHistoryVerified` geral permanece `false`, `readyForCutover=false` e compras seguem bloqueadas. Não existe busca entre Casas, gravação de eventos ou modificação de snapshot.
+
+A consulta falha fechada se faltar permissão, índice, estado, eventos ou houver versão/hashes divergentes. Um erro de consulta exibe "não verificado", jamais "aprovado".
+
+Testes:
+- `firebase-construction-ledger-verification.test.ts`: cenários de cadeia íntegra, fraude no UID/ID/posse, alterações de hash, eventos faltantes, extras, fora de ordem, relógio, dados, custos e limite.
+- `firebase-house-reconciliation-audit.test.ts`: leitura transacional privativa do Narrador com ledger zero ou um evento, bloqueio de lacunas e não divulgação de UID.
+- `FirebaseHouseReconciliationAudit.test.tsx`: apresentação segura de verificação parcial, sem controles de compra ou autorização.
