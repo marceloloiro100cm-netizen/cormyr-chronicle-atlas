@@ -4,10 +4,11 @@
  * House. All numeric totals are computed from existing source fields only.
  */
 import {TRAINING,UNIT_TYPES} from '@/lib/house/engine';
+import {militaryUnitSymbolSrc,unitSymbolType} from '@/components/house/military-unit-symbol';
 
 type Value=Record<string,unknown>;
 export type RosterUnit={
-  id:string;name:string;typeNames:string[];training:string;
+  id:string;name:string;typeNames:string[];training:string;symbolSrc:string|null;
   strength:number|null;casualties:number|null;available:number|null;
   destroyed:boolean;commander:string|null;situation:string|null;
   origin:string|null;health:number|null;xp:number|null;
@@ -54,7 +55,9 @@ export function readFirebaseMilitaryRoster(state:Record<string,unknown>):Roster{
     return [{
       id:asText(value.id,128)??`row-${index}`,
       name:asText(value.name,150)??`Unidade ${index+1}`,
-      typeNames,training,strength,casualties,available,destroyed,
+      typeNames,training,symbolSrc:militaryUnitSymbolSrc(unitSymbolType(
+        types,typeof value.equipmentTypeId==='string'?value.equipmentTypeId:undefined
+      ))??null,strength,casualties,available,destroyed,
       commander:asText(value.commanderName),
       situation:asText(value.situation),
       origin:asText(value.origin),
@@ -104,12 +107,17 @@ export function FirebaseArmyRoster({houseName,state}:{
           <article key={unit.id+':'+index}
             className="rounded border border-current/20 p-3 space-y-2">
             <div className="flex items-start justify-between gap-2">
-              <div>
-                <h3 className="font-semibold break-words">{unit.name}</h3>
-                <p className="text-xs opacity-80">
-                  {unit.typeNames.join(' / ')||'Tipo não informado'}
-                  {' '}· {unit.training}
-                </p>
+              <div className="flex items-start gap-3 min-w-0">
+                {unit.symbolSrc&&<img src={unit.symbolSrc} loading="lazy"
+                  alt={`Símbolo militar de ${unit.name}`}
+                  className="h-12 w-12 shrink-0 rounded object-cover"/>}
+                <div className="min-w-0">
+                  <h3 className="font-semibold break-words">{unit.name}</h3>
+                  <p className="text-xs opacity-80">
+                    {unit.typeNames.join(' / ')||'Tipo não informado'}
+                    {' '}· {unit.training}
+                  </p>
+                </div>
               </div>
               {unit.destroyed&&
                 <span className="rounded border px-2 py-1 text-xs">Destruída</span>}
