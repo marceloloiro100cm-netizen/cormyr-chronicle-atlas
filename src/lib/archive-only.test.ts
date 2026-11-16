@@ -16,6 +16,7 @@ describe('Firebase archive-only cutover', () => {
     ['/api/firebase-domain', 'router'],
     ['/api/firebase-cloud-read', 'serverFn'],
     ['/api/firebase-cloud-mail', 'serverFn'],
+    ['/api/firebase-cloud-newspaper', 'serverFn'],
     ['/mcp', 'router'],
     ['/.well-known/oauth-protected-resource', 'router'],
     ['/jogadores', 'serverFn'],
@@ -32,6 +33,7 @@ describe('Firebase archive-only cutover', () => {
     ['/spy-portraits/tillet.jpg', 'router'],
     ['/api/firebase-cloud-read', 'router'],
     ['/api/firebase-cloud-mail', 'router'],
+    ['/api/firebase-cloud-newspaper', 'router'],
     ['/unrelated', 'router'],
   ])('keeps public static route %s reachable', (pathname, type) => {
     expect(shouldBlockLegacyRequest(pathname, type)).toBe(false);

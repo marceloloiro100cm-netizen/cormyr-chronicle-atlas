@@ -37,6 +37,8 @@ type MailReply={id:string;duplicate:boolean;state:string;deliveryRound:number};
 type EditionSummary={id:string;title:string;subtitle:string;editionNo:number;
   publishedAt:string;campaignDate:string|null};
 type Edition={id:string;title:string;subtitle:string;blocks:unknown[];editionNo:number;campaignDate?:string|null};
+type PaperStatus={enabled:boolean;canPublish:boolean;readOnly:boolean};
+type PaperReply={id:string;editionNo:number;duplicate:boolean;state:string};
 type SpyAgent={id:string;codename:string;status:string;missionSuccesses:number};
 type SpyFinding={objective:'house_resources'|'army'|'possessions';
   subjectKey:string;valueSnapshot:Record<string,unknown>;
@@ -120,6 +122,24 @@ async function cloudMail<T>(body:Record<string,unknown>):Promise<T>{
   return (raw as {result:T}).result;
 }
 
+async function cloudPaper<T>(body:Record<string,unknown>):Promise<T>{
+  const token=await firebaseAuth()?.getToken();
+  if(!token)throw Error('Entre novamente com sua conta Firebase.');
+  const response=await fetch('/api/firebase-cloud-newspaper',{
+    method:'POST',credentials:'omit',cache:'no-store',
+    headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+    body:JSON.stringify(body),
+  });
+  if(!response.ok)throw Error(response.status===409
+    ?'Esta chave já foi usada para outra edição.'
+    :response.status===403?'Seu perfil não tem permissão para publicar.'
+    :'Publicação do jornal ainda não autorizada ou indisponível.');
+  const bodyValue:unknown=await response.json();
+  if(!bodyValue||typeof bodyValue!=='object'||!('result' in bodyValue))
+    throw Error('Resposta inválida do serviço editorial.');
+  return (bodyValue as {result:T}).result;
+}
+
 function FirebaseAccess(){
   const [configured]=useState(()=>firebaseAuth()!==null);
   const [email,setEmail]=useState('');
@@ -136,6 +156,14 @@ function FirebaseAccess(){
   const [agents,setAgents]=useState<SpyAgent[]|null>(null);
   const [dossiers,setDossiers]=useState<SpyDossierCatalog|null>(null);
   const [mailStatus,setMailStatus]=useState<MailStatus|null>(null);
+  const [paperStatus,setPaperStatus]=useState<PaperStatus|null>(null);
+  const [paperTitle,setPaperTitle]=useState('');
+  const [paperSubtitle,setPaperSubtitle]=useState('');
+  const [paperArticle,setPaperArticle]=useState('');
+  const [paperKey,setPaperKey]=useState<string|null>(()=>{
+    return typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'
+      ?crypto.randomUUID():null;
+  });
   const [originHouseId,setOriginHouseId]=useState('');
   const [mailRecipientKind,setMailRecipientKind]=useState<'house'|'narrator'>('house');
   const [mailRecipientHouse,setMailRecipientHouse]=useState('');
@@ -148,7 +176,7 @@ function FirebaseAccess(){
   async function load(){
     const profile=await readCloud<SessionView>('session');
     setView(profile);
-    const [catalog,date,letters,papers,mail]=await Promise.all([
+    const [catalog,date,letters,papers,mail,publishing]=await Promise.all([
       readCloud<House[]>('listHouses'),
       profile.profile==='editor'
         ?Promise.resolve(null):readCloud<Calendar>('getCalendar').catch(()=>null),
@@ -157,12 +185,15 @@ function FirebaseAccess(){
       readCloud<{items:EditionSummary[]}>('listNewspaper').catch(()=>null),
       profile.profile==='editor'
         ?Promise.resolve(null):cloudMail<MailStatus>({action:'status'}).catch(()=>null),
+      profile.profile==='jogador'
+        ?Promise.resolve(null):cloudPaper<PaperStatus>({action:'status'}).catch(()=>null),
     ]);
     setHouses(catalog);
     setCalendar(date);
     setInbox(letters);
     setEditions(papers?.items??[]);
     setMailStatus(mail);
+    setPaperStatus(publishing);
     setOriginHouseId(mail?.originHouseIds?.[0]??'');
     setMailRecipientKind('house');
     setMailRecipientHouse(catalog[0]?.id??'');
@@ -265,12 +296,38 @@ function FirebaseAccess(){
     }finally{setBusy(false);}
   }
 
+  async function publishPaper(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();
+    if(!paperStatus?.canPublish||!paperKey||busy)return;
+    setBusy(true);setMessage('');
+    try{
+      const result=await cloudPaper<PaperReply>({
+        action:'publish',requestKey:paperKey,title:paperTitle,
+        subtitle:paperSubtitle,article:paperArticle,
+      });
+      setMessage(result.duplicate
+        ?`Edição ${result.editionNo} já estava publicada no Firebase.`
+        :`Edição ${result.editionNo} publicada no Firebase.`);
+      setPaperTitle('');setPaperSubtitle('');setPaperArticle('');
+      setPaperKey(typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'
+        ?crypto.randomUUID():null);
+      try{
+        const available=await readCloud<{items:EditionSummary[]}>('listNewspaper');
+        setEditions(available.items);
+      }catch{setMessage('Edição publicada. Atualize a lista para vê-la.');}
+    }catch(e){
+      // Preserve draft and request key on failure to avoid duplicate editions.
+      setMessage(e instanceof Error?e.message:'Publicação não concluída.');
+    }finally{setBusy(false);}
+  }
+
   function signOut(){
     firebaseAuth()?.signOut();
     setView(null);setHouse(null);setHouses([]);setCalendar(null);
     setInbox(null);setEditions([]);setEdition(null);setAgents(null);
     setDossiers(null);
-    setMailStatus(null);setOriginHouseId('');setMailRecipientKind('house');
+    setMailStatus(null);setPaperStatus(null);setPaperTitle('');
+    setPaperSubtitle('');setPaperArticle('');setOriginHouseId('');setMailRecipientKind('house');
     setMailRecipientHouse('');setMailSubject('');setMailContent('');setEmail('');
     setPassword('');setMessage('');
   }
@@ -452,6 +509,37 @@ function FirebaseAccess(){
           <FirebaseNewspaperReader edition={edition}/>
         </div>}
       </section>
+      {(view.profile==='editor'||view.profile==='narrador')&&
+        <section className="rounded border p-4 space-y-3">
+          <h2 className="text-lg font-semibold">Publicar A Folha Sem Selo</h2>
+          {!paperStatus?.canPublish
+            ?<p className="text-sm">Publicação de novas edições bloqueada até a
+              aprovação editorial e a reconciliação do Firebase Cloud.</p>
+            :<form onSubmit={publishPaper} className="space-y-3">
+              <label className="block text-sm">Título da edição
+                <input required maxLength={180} value={paperTitle}
+                  onChange={e=>setPaperTitle(e.target.value)}
+                  className="mt-1 block w-full rounded border p-2"/>
+              </label>
+              <label className="block text-sm">Subtítulo
+                <input maxLength={280} value={paperSubtitle}
+                  onChange={e=>setPaperSubtitle(e.target.value)}
+                  className="mt-1 block w-full rounded border p-2"/>
+              </label>
+              <label className="block text-sm">Artigo principal
+                <textarea required rows={8} maxLength={12000}
+                  value={paperArticle} onChange={e=>setPaperArticle(e.target.value)}
+                  className="mt-1 block w-full rounded border p-2"/>
+              </label>
+              <button type="submit" className="rounded border px-4 py-2"
+                disabled={busy||!paperKey||!paperTitle.trim()||!paperArticle.trim()}>
+                {busy?'Publicando…':'Publicar edição'}
+              </button>
+              <p className="text-xs">Publicação imediata e permanente.
+                Esta primeira etapa usa artigo em texto simples, sem revisão
+                de rascunhos nem anexos privados.</p>
+            </form>}
+        </section>}
     </section>}
     {message&&<p role="alert" className="text-sm">{message}</p>}
   </main>;
