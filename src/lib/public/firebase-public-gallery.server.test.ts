@@ -175,7 +175,7 @@ describe('Firebase-only public gallery image policy',()=>{
     const html=fixture({bytes:Buffer.from('<html>attack</html>')});
     await denied(html.run(),503);
     const changed=Buffer.from(B);
-    changed[changed.length-1]^=1;
+    changed[changed.length-1]=(changed[changed.length-1]??0)^1;
     const wrongHash=fixture({bytes:changed});
     await denied(wrongHash.run(),503);
   });
