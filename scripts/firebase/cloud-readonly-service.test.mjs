@@ -73,6 +73,9 @@ function fixture(profile='jogador',extra={}){
       );
       if(entries.length)return {size:entries.length,
         docs:entries.map(([,value])=>d(value))};
+      // Empty Firestore collections still return QuerySnapshot.docs=[].
+      if(path.endsWith('/letters')||path.endsWith('/mailReadReceipts'))
+        return {size:0,docs:[]};
       return d(undefined);
     }
   });
