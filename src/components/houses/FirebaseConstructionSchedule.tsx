@@ -89,7 +89,9 @@ export function readFirebaseConstructionSchedule(
   }
   return {
     available:true,total:raw.length,partial,officialMonth,houseMonth,rows,
-    dueCount:partial?null:rows.filter(p=>p.timing==='due_for_review').length,
+    dueCount:partial||officialMonth===null||houseMonth===null||
+      rows.some(p=>p.status==='building'&&p.timing==='unverified')
+      ?null:rows.filter(p=>p.timing==='due_for_review').length,
   };
 }
 
