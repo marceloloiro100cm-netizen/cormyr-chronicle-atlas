@@ -39,7 +39,7 @@ describe('Homologação · catálogo e traduções públicos com privilégio mí
   expect(fn).toContain("projectFirebaseDynamicTranslations");
   expect(fn).toContain("CORMYR_FIREBASE_PUBLIC_TRANSLATIONS_ENABLED");
   expect(fn).toContain("!isPublicTranslationEntityType(data.entityType)");
-  expect(fn).toContain("data.locale === 'pt'");
+  expect(fn).toMatch(/data\.locale\s*===\s*'pt'/);
   expect(fn).not.toContain("supabase");
   expect(fn).not.toContain("SUPABASE_");
   expect(fn).not.toContain("createClient");
