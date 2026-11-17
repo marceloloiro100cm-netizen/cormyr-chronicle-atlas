@@ -10,6 +10,10 @@ import {executeAllExistingAuthTestAccounts,safePreflightFailureCode}
 
 const safeCount=n=>Number.isSafeInteger(n)&&n>=0&&n<=1000?n:null;
 const safeHttp=n=>Number.isSafeInteger(n)&&n>=100&&n<=599?n:null;
+const AUX_STAGE_NAMES=new Set([
+  'migrationPrivateGmStage','migrationDriveSyncStage',
+  'migrationPublicContentStage','migrationStorageStage',
+]);
 
 /** Inspect a provider exception locally, but never print its message. */
 export function classifyOperatorCredentialError(error){
@@ -21,6 +25,11 @@ export function classifyOperatorCredentialError(error){
 export function evaluateOperatorEvidence({cloud=null,authPreview=null,authError=null,cloudError=false}={}){
   const stages=cloud?.singleVerifiedSnapshot===true&&cloud?.stagesVerified===6;
   const auxiliary=cloud?.auxiliaryStagesComplete===true&&cloud?.auxiliaryStagesVerified===4;
+  // The source supplies fixed stage identifiers, never Firestore document IDs.
+  const auxiliaryPendingStages=Array.isArray(cloud?.auxiliaryPendingStages)
+    ?[...new Set(cloud.auxiliaryPendingStages.filter(name=>
+      typeof name==='string'&&AUX_STAGE_NAMES.has(name)))]
+    :[];
   const authValid=authPreview?.mode==='preview'&&
     authPreview.accounts===14&&authPreview.linkedAccounts===14&&
     authPreview.authUpdatesAttempted===0&&authPreview.authUsersEnabled===0&&
@@ -62,6 +71,7 @@ export function evaluateOperatorEvidence({cloud=null,authPreview=null,authError=
     authRestHttpStatus:safeHttp(cloud?.authHttpStatus),
     privateStagesVerified:safeCount(cloud?.stagesVerified),
     auxiliaryStagesVerified:safeCount(cloud?.auxiliaryStagesVerified),
+    auxiliaryPendingStages,
     privateStagesComplete:stages,auxiliaryStagesComplete:auxiliary,
     mailRuntimeVerified:mail,operationalRuntimeVerified:runtime,
     authUpdatesAttempted:0,firestoreWrites:0,roleWrites:0,
@@ -93,6 +103,10 @@ export function safeOperatorSummary(report){
     '| Perfis/Casas incompletos | '+n(report?.pendingRoleOrHouse)+' |',
     '| Estágios privados | '+n(report?.privateStagesVerified)+'/6 |',
     '| Estágios auxiliares | '+n(report?.auxiliaryStagesVerified)+'/4 |',
+    '| Estágios auxiliares pendentes | '+
+      (Array.isArray(report?.auxiliaryPendingStages)
+        ?report.auxiliaryPendingStages.filter(v=>AUX_STAGE_NAMES.has(v)).join(', ')||'Nenhum identificado'
+        :'Não identificado')+' |',
     '| Correio operacional | '+yes(report?.mailRuntimeVerified)+' |',
     '| Runtime de Casas | '+yes(report?.operationalRuntimeVerified)+' |',
     '| Aceite real de jogadores e Casas | Pendente |',
