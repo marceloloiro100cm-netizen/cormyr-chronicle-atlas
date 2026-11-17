@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: cormyr-disabled-runtime-draft-${{ github.ref }}
+  group: cormyr-disabled-runtime-draft-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -44,14 +44,57 @@ jobs:
         run: |
           node --test scripts/firebase/cloud-runtime-draft-bootstrap.test.mjs
           node --test scripts/firebase/cloud-runtime-source-preflight.test.mjs
+          node --test scripts/firebase/cloud-runtime-workflow-guard.test.mjs
       - name: Public repository privacy gate
         run: node scripts/verify-public-repo.mjs
 
-  protected-bootstrap:
-    name: Protected OIDC — preview or create two disabled Firestore roots
+  readonly-preview:
+    name: Unprotected OIDC — read-only runtime source diagnosis
     if: >-
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'workflow_dispatch'
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && inputs.mode == 'preview'))
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GOOGLE_CLOUD_PROJECT: cormyr
+      CORMYR_RUNTIME_DRAFT_MODE: preview
+      CORMYR_RUNTIME_DRAFT_CONFIRMATION: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.3'
+      - name: Obtain short-lived credentials for existing READ-ONLY identity
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+      - name: Install locked Firebase Admin dependency
+        run: bun install --frozen-lockfile
+      - name: Inspect sources without writes, roles or content
+        run: node scripts/firebase/cloud-runtime-draft-bootstrap.mjs
+      - name: Never confuse read-only observation with authorization
+        if: always()
+        run: |
+          echo 'Readonly Firebase inventory from least-privilege OIDC only.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'A failed inventory may mean missing IAM READ permissions, not unsafe Cloud configuration.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'This job cannot create runtime documents or enable any player access.' >> "$GITHUB_STEP_SUMMARY"
+
+  protected-bootstrap:
+    name: Protected OIDC — create two DISABLED Firestore roots
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.mode == 'apply'
     needs: contract
     environment: firebase-auth-test-activation
     runs-on: ubuntu-latest
@@ -61,7 +104,7 @@ jobs:
       id-token: write
     env:
       GOOGLE_CLOUD_PROJECT: cormyr
-      CORMYR_RUNTIME_DRAFT_MODE: ${{ inputs.mode }}
+      CORMYR_RUNTIME_DRAFT_MODE: apply
       CORMYR_RUNTIME_DRAFT_CONFIRMATION: ${{ inputs.confirmation }}
       CORMYR_AUTH_TEST_OPERATOR: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
     steps:
