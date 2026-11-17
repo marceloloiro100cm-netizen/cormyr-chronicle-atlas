@@ -27,3 +27,22 @@ pending. No Firestore, Storage, IAM, DNS, secrets or user accounts changed.
 
 A passing build and emulator test suite is necessary but never sufficient for
 `readyForPlayers` or `readyForCutover`.
+
+## Read-only Firebase routes enabled at archive boundary
+
+The archive-only boundary now passes only **four additional read-only
+Firebase-specific API paths** through to their independent server guards:
+`/api/firebase-cloud-house-quote`,
+`/api/firebase-operational-economy`,
+`/api/firebase-house-reconciliation-audit` and
+`/api/firebase-treasury-audit`.
+
+Each endpoint is still controlled by Firebase flags, snapshot checks,
+Firebase Auth token verification, House/Narrator scope and reconciled
+runtime checks. The migration does **not** enable any of those flags or
+populate any runtime. Their current 503 responses remain expected.
+
+The treasury adjustment, construction purchase, local emulator,
+legacy backend, and every serverFn route remain blocked by
+`shouldBlockLegacyRequest`. This is API wiring, not production
+readiness or authorization to write.

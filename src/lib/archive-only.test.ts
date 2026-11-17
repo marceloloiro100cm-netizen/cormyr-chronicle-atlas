@@ -40,6 +40,27 @@ describe('Firebase archive-only cutover', () => {
     expect(shouldBlockLegacyRequest(pathname, type)).toBe(false);
   });
 
+  it.each([
+    '/api/firebase-cloud-house-quote',
+    '/api/firebase-operational-economy',
+    '/api/firebase-house-reconciliation-audit',
+    '/api/firebase-treasury-audit',
+  ])('allows independent read-only Firebase route %s without opening serverFns', pathname => {
+    expect(shouldBlockLegacyRequest(pathname, 'router')).toBe(false);
+    expect(shouldBlockLegacyRequest(pathname, 'serverFn')).toBe(true);
+    expect(shouldBlockLegacyRequest(pathname + '/unexpected', 'router')).toBe(true);
+  });
+
+  it.each([
+    '/api/firebase-cloud-treasury',
+    '/api/firebase-cloud-construction',
+    '/api/firebase-domain',
+    '/api/firebase-auth-verify',
+  ])('continues to block non-approved Firebase route %s', pathname => {
+    expect(shouldBlockLegacyRequest(pathname, 'router')).toBe(true);
+    expect(shouldBlockLegacyRequest(pathname, 'serverFn')).toBe(true);
+  });
+
   it('permits exactly the Firebase-only pilot page, never a legacy or nested path', () => {
     expect(isFirebasePilotPage('/firebase-access')).toBe(true);
     expect(isFirebasePilotPage('/auth')).toBe(false);

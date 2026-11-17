@@ -30,6 +30,12 @@ export function shouldBlockLegacyRequest(pathname: string, handlerType?: string)
   if ((pathname === '/api/firebase-cloud-read' ||
        pathname === '/api/firebase-cloud-mail' ||
        pathname === '/api/firebase-cloud-newspaper' ||
+       // These four are READ ONLY, with separate runtime flags, Firebase
+       // token validation, strict per-House access and deny-by-default rules.
+       pathname === '/api/firebase-cloud-house-quote' ||
+       pathname === '/api/firebase-operational-economy' ||
+       pathname === '/api/firebase-house-reconciliation-audit' ||
+       pathname === '/api/firebase-treasury-audit' ||
        pathname === '/api/public/gm-content') && handlerType !== 'serverFn') return false;
   return handlerType === 'serverFn' ||
     pathname === '/mcp' ||
