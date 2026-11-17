@@ -10,8 +10,10 @@ import {planReviewedPublicContent} from './public-content-review-plan.mjs';
 const HASH=/^[a-f0-9]{64}$/;
 const safe=code=>{throw Error('reviewed_public_stage_'+code);};
 const short=v=>typeof v==='string'&&v.length>0&&v.length<=160;
-const rootComplete=doc=>doc?.exists===true&&
-  doc.data()?.status==='complete'&&doc.data()?.private===true;
+const rootComplete=(doc,snapshotId)=>doc?.exists===true&&
+  doc.data()?.status==='complete'&&doc.data()?.private===true&&
+  (doc.data()?.sourceSnapshotId===undefined||
+   doc.data()?.sourceSnapshotId===snapshotId);
 
 export function preflightReviewedPublicStage(source){
   const reviewed=planReviewedPublicContent(source);
@@ -26,7 +28,12 @@ export function preflightReviewedPublicStage(source){
 
 export async function publishReviewedPublicStage({
   db,source,expectedSnapshotId,approvalDigest,explicitApproval=false,
+  projectId,env=process.env,
 }={}){
+  // Reviewed content alone never authorizes the Cloud environment.
+  if(projectId!=='cormyr'||env?.FIRESTORE_EMULATOR_HOST||
+     env?.FIREBASE_AUTH_EMULATOR_HOST)
+    safe('cloud_environment_unverified');
   // Never invoke an Admin transaction without all independent approvals.
   if(explicitApproval!==true||!HASH.test(expectedSnapshotId??'')||
      !HASH.test(approvalDigest??'')||
@@ -52,7 +59,8 @@ export async function publishReviewedPublicStage({
     const [domainSnap,storageSnap,existing,houseSnaps]=await Promise.all([
       tx.get(domain),tx.get(storage),tx.get(root),tx.get(houseQuery),
     ]);
-    if(!rootComplete(domainSnap)||!rootComplete(storageSnap))
+    if(!rootComplete(domainSnap,expectedSnapshotId)||
+       !rootComplete(storageSnap,expectedSnapshotId))
       safe('source_stages_unverified');
     if(existing?.exists!==false)safe('destination_not_empty');
     if(!Array.isArray(houseSnaps?.docs)||houseSnaps.docs.length===0||
