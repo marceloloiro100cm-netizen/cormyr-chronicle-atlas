@@ -90,6 +90,12 @@ test('checked-in public data is scanned without cloud or personal data',()=>{
   assert.equal(r.historyReferences,170);
   assert.equal(r.withoutHistoryReference,2);
   assert.equal(r.crestReferences,172);
+  // The checked-in archive has no malformed referenced file as of this fix.
+  // Two houses intentionally lack a history reference; do not fabricate one.
+  assert.equal(r.historyVerified,170);
+  assert.equal(r.historyUnverified,0);
+  assert.equal(r.crestVerified,172);
+  assert.equal(r.crestUnverified,0);
   assert.equal(r.releaseDecision,'NO_GO');
   assert.equal(r.cloudReads,0);
   assert.equal(r.cloudWrites,0);
