@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {bootstrapDisabledCloudRuntimes} from './cloud-runtime-draft-bootstrap.mjs';
+import {bootstrapDisabledCloudRuntimes,classifyRuntimeDraftFailure}
+  from './cloud-runtime-draft-bootstrap.mjs';
 
 const ID='a'.repeat(64);
 const STAGES=['migrationDomainStage','migrationAuthStage',
@@ -138,4 +139,26 @@ test('wrong project, emulator, mode fail before reads',async()=>{
     }),/runtime_draft_invalid_configuration/);
   }
   assert.equal(f.stats().reads,0);
+});
+
+test('protected diagnostics expose only fixed error categories',()=>{
+  assert.equal(classifyRuntimeDraftFailure({code:7,message:'private UID'}),'firestore_permission_denied');
+  assert.equal(classifyRuntimeDraftFailure({code:'permission-denied'}),'firestore_permission_denied');
+  assert.equal(classifyRuntimeDraftFailure({code:14}),'firestore_unavailable');
+  assert.equal(classifyRuntimeDraftFailure({code:10}),'firestore_transaction_aborted');
+  assert.equal(classifyRuntimeDraftFailure(new Error('runtime_draft_destination_exists')),'destination_exists');
+  assert.equal(classifyRuntimeDraftFailure(new Error('SECRET_MAIL_USER_EMAIL')),'unknown_failure');
+});
+test('diagnostic phase callbacks receive only fixed phases, no source data',async()=>{
+  const f=fixture();
+  const phases=[];
+  const r=await bootstrapDisabledCloudRuntimes({
+    db:f.db,projectId:'cormyr',mode:'preview',env:{},
+    onPhase:label=>phases.push(label),
+  });
+  assert.equal(r.documentsCreated,0);
+  assert.deepEqual(phases,[
+    'initialization','snapshot_inventory','historical_source_preflight','completed',
+  ]);
+  assert.ok(!JSON.stringify(phases).includes(ID));
 });
