@@ -20,11 +20,11 @@ export function evaluateLot5Safety({firestoreRules,storageRules,appStart,apphost
     productionStorageDenyAll:denyOnly(storageRules),
     // Archive mode is safer without a browser-side Supabase session fetch.
     // Reinstating it can accidentally call the departed source during login.
-    legacyAuthDetached:/functionMiddleware:\\s*\\[\\s*\\]/.test(appStart)&&
-      !/\\battachSupabaseAuth\\b/.test(appStart),
+    legacyAuthDetached:/functionMiddleware:\s*\[\s*\]/.test(appStart)&&
+      !/\battachSupabaseAuth\b/.test(appStart),
     // The gate must remain installed ahead of all other request middleware.
-    archiveServerFnsBlocked:/requestMiddleware:\\s*\\[\\s*archiveOnlyMiddleware\\s*,/.test(appStart)&&
-      /shouldBlockLegacyRequest\\(pathname,\\s*handlerType\\)/.test(appStart),
+    archiveServerFnsBlocked:/requestMiddleware:\s*\[\s*archiveOnlyMiddleware\s*,/.test(appStart)&&
+      /shouldBlockLegacyRequest\(pathname,\s*handlerType\)/.test(appStart),
     noProductionFirebaseDomainBridge:!apphosting.includes('FIREBASE_DOMAIN_HOMOLOGATION_ENABLED'),
     noProductionFirebaseDomainPreview:!apphosting.includes('VITE_FIREBASE_DOMAIN_HOMOLOGATION'),
     cloudCredentialsNotCommitted:!/\b(private_key|client_secret|refresh_token):\s*["']?[A-Za-z0-9+/=]{20}/i
