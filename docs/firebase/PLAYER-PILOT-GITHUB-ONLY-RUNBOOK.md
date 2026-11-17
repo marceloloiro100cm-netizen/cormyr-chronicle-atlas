@@ -76,10 +76,13 @@ funcional verdadeiro; não podem ser satisfeitas pela conta OIDC atual.
   `campaignCloudRuntime` fictício ou `applicationEnabled=true`
   apenas para destravar interfaces.
 - **Firebase Auth:** validar provedores/senhas, vínculo de perfis e
-  controle de credenciais, ativando **individualmente** o Narrador e
-  dois jogadores de Casas distintas para homologação. Não habilitar
-  as 14 contas em lote. As duas contas sem perfil e os dois jogadores
-  sem Casa permanecem bloqueados até decisão administrativa.
+  controle de credenciais. **Decisão expressa de 17/11/2026:**
+  preparar a habilitação das **14 contas existentes para teste**, depois
+  de conferir a identidade administrativa, os 14 vínculos e o snapshot
+  real. O workflow manual dedicado está documentado em
+  `ENABLE-ALL-14-TEST-ACCOUNTS.md`. As duas contas sem perfil e os dois
+  jogadores sem Casa podem autenticar após a habilitação, mas continuam
+  sem acesso válido de campanha enquanto seus vínculos não forem corrigidos.
 - **Escopo por usuário:** testar Narrador, Jogador A, Jogador B, Editor
   e anônimo. Casa própria 200; Casa alheia 403; anônimo 401;
   Editor sem ficha privada 403. Registrar somente resultados e códigos,
@@ -131,8 +134,11 @@ permissões internas. A autorização de publicação continua pendente:
 `readyForPlayers=false`, `readyForCutover=false`.
 
 Quando o acesso administrativo ao Firebase retornar, a prioridade
-será executar a **Etapa B** com um Narrador e dois jogadores de teste,
-e não repetir a migração histórica inteira.
+será conferir e ativar as **14 contas existentes de uma vez na operação
+manual autorizada**, sem alterar seus perfis ou Casas. O proprietário
+testará todos os acessos; os quatro cadastros estruturalmente pendentes
+devem falhar fechados nos módulos privados, e os serviços operacionais
+só podem ser liberados depois de reconciliação e testes E2E.
 
 
 ## Verificação pública de isolamento anônimo no GitHub
