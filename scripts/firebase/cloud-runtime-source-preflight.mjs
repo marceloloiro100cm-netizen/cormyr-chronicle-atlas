@@ -24,7 +24,9 @@ const stageComplete=(doc,snapshotId)=>{
 const calendarValid=doc=>{
   if(doc?.exists!==true)return false;
   const d=doc.data();
-  return d?.calendarType==='harptos'&&
+  // The Cloud TimeEngine projection may omit calendarType; the legacy
+  // migration's other temporal projection sets it explicitly.
+  return (d?.calendarType===undefined||d.calendarType==='harptos')&&
     Number.isSafeInteger(d.year)&&d.year>=1&&d.year<=9999&&
     Number.isSafeInteger(d.month)&&Number.isSafeInteger(d.day)&&
     Number.isSafeInteger(d.version)&&d.version>=1&&
