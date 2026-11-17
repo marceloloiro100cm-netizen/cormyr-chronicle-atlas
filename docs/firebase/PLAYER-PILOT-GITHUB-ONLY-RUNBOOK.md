@@ -45,10 +45,14 @@ encontrou HTTP 403 no Firestore e HTTP 400 na lista do Firebase Auth.
    correio. Os sinais são descritivos, não autorizam escrita e são
    calculados sem identificadores privados ou exposição de hashes.
 2. **Serviços/contratos.** `scripts/firebase/player-pilot-preflight.mjs`
-   consulta por GET anônimo quatro rotas do site oficial, sem ler corpos
-   HTTP, sem cookies e sem seguir redirecionamentos. O relatório jamais
-   retorna `readyForPlayers=true`. Testes sintéticos verificam que
-   respostas 503 e 302 não são consideradas sucesso.
+   consulta por GET anônimo quatro rotas públicas do site e testa mais
+   quatro APIs privadas com POST sem credenciais e com ação **impossível**,
+   sem argumentos de jogo. Não lê corpos HTTP nem segue redirecionamentos.
+   Código 503 significa serviço desativado (fechado), não prova de login;
+   somente 401 comprova o bloqueio de Auth neste tipo de requisição.
+   Resposta 200, 3xx, 400, falha de rede ou código desconhecido em uma
+   API privada reprovam o monitoramento. O relatório jamais retorna
+   `readyForPlayers=true`.
 3. **CI e integração.** Executar
    `Firebase player pilot — GitHub-only preflight` e os workflows
    existentes `Validate`, `Build check`,
@@ -129,3 +133,30 @@ permissões internas. A autorização de publicação continua pendente:
 Quando o acesso administrativo ao Firebase retornar, a prioridade
 será executar a **Etapa B** com um Narrador e dois jogadores de teste,
 e não repetir a migração histórica inteira.
+
+
+## Verificação pública de isolamento anônimo no GitHub
+
+A partir deste lote, o workflow `Firebase player pilot — GitHub-only preflight`
+executa em **todo push à main**, mesmo quando o push não modifica a
+interface do piloto. O teste efetua no máximo oito chamadas fixas:
+
+- Quatro GET anônimos à página piloto, relógio público, catálogo e traduções.
+- Quatro POST anônimos às APIs de leitura de Casas, missivas, Jornal e
+  Tesouro, sempre com `action` que **não existe** na implementação e sem
+  quaisquer dados de Casa, quantias, conteúdos, tokens ou credenciais.
+
+O monitoramento só considera um endpoint privado *fechado nesta consulta*
+com HTTP **401, 403 ou 503**. A API pode retornar 503 por estar desligada:
+isso **não** comprova o isolamento real quando o runtime estiver habilitado.
+A prova mais forte desta sondagem limitada é HTTP **401** em todas as quatro
+APIs; mesmo assim, provas reais com usuários de Casas distintas seguem
+obrigatórias antes de liberar jogadores.
+
+O job **falha** se uma rota privada devolver 200, 3xx, 400, outro status
+ou não responder; não é permitido interpretar isso como acesso seguro.
+As sondagens não executam mutações e nunca leem/registram o corpo das
+respostas. O resultado continua `NO_GO` para liberação geral.
+
+Não utilizar esta verificação para forçar implantação, habilitar Auth,
+abrir permissões do Firestore ou alterar o runtime.
