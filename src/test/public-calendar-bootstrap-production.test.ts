@@ -32,7 +32,12 @@ describe('CORMYR produção: calendário de login e configurações públicas',(
  });
  it('o painel autenticado preserva apenas o RPC e Realtime autorizados',()=>{
   const shell=source('src/components/campaign-shell.tsx');
-  const privateClock=shell.split('function PrivateClock()')[1]!.split('function PublicClock()')[0]!;
+  const privateClockShell=shell.split('function PrivateClock()')[1]!.split('function PublicClock()')[0]!;
+  expect(privateClockShell).toContain('<PrivateClockBody/>');
+  expect(shell).toContain("lazy(()=>import('./campaign-private-clock'))");
+  expect(shell).not.toContain('@/lib/calendar/campaign-time');
+  expect(shell).not.toContain('@/components/calendar/realtime');
+  const privateClock=source('src/components/campaign-private-clock.tsx');
   expect(privateClock).toContain('useCampaignTime()');
   expect(privateClock).toContain('useCampaignCalendarRealtime()');
   expect(source('src/lib/calendar/campaign-time.ts')).toContain("supabase.rpc('get_campaign_calendar')");

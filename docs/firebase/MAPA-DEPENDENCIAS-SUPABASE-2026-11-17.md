@@ -19,6 +19,8 @@ O build das páginas públicas ainda inclui o cliente Supabase, por estas cadeia
 
 O cliente é um Proxy que só cria a conexão quando usado, então nenhuma chamada sai para o Supabase nessas páginas. Para tirar o Supabase do bundle público basta separar `draft-cache` de `campaign-content` e mover `PrivateClock` para um arquivo próprio.
 
+**Atualização (17/11, noite):** a cadeia de `auth.tsx` foi cortada. O relógio privado foi para `src/components/campaign-private-clock.tsx`, carregado sob demanda só na área autenticada. A segunda cadeia não inclui código de verdade: `draft-cache` importa de `campaign-content` apenas um tipo, que some no build. Uma análise das importações estáticas a partir de `/`, `/auth`, `/reset-password`, `/firebase-access`, `/firebase-homolog` e `/firebase-treasury-history` não alcança mais o cliente Supabase; resta só o `import()` preguiçoso de `__root.tsx`, que não roda no modo arquivo.
+
 - `src/components/calendar/realtime.ts`
 - `src/components/campaign-content.tsx`
 - `src/integrations/supabase/client.ts`
@@ -161,7 +163,7 @@ Observação: o Lote 5 (`scripts/firebase/lot5-safety-preflight.mjs`) só verifi
 
 ## Ordem sugerida de remoção
 
-1. Os 4 arquivos sem referência (seção 3).
-2. Tirar o Supabase do bundle público (seção 1).
+1. ~~Os 4 arquivos sem referência (seção 3).~~ Feito em 17/11.
+2. ~~Tirar o Supabase do bundle público (seção 1).~~ Feito em 17/11.
 3. Depois que o piloto de leitura estiver no ar e aceito, apagar `/jogadores` inteiro e os domínios da seção 2 que já têm substituto de leitura.
 4. Por último, `src/integrations/supabase/`, a dependência `@supabase/supabase-js` e os testes associados, junto com o desligamento do projeto Supabase.
