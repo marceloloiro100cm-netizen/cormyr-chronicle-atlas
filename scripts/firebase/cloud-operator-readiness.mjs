@@ -14,7 +14,7 @@ const safeHttp=n=>Number.isSafeInteger(n)&&n>=100&&n<=599?n:null;
 /** Inspect a provider exception locally, but never print its message. */
 export function classifyOperatorCredentialError(error){
   const msg=typeof error?.message==='string'?error.message:'';
-  return /iam\\.serviceAccounts\\.getAccessToken/.test(msg)?
+  return /iam\.serviceAccounts\.getAccessToken/.test(msg)?
     'oidc_impersonation_denied':'oidc_credential_unavailable';
 }
 
