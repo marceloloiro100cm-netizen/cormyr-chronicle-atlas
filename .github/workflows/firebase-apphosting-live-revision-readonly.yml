@@ -1,14 +1,8 @@
 name: Firebase App Hosting - live revision read-only audit
 
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/apphosting-live-revision-readonly*.mjs'
-      - '.github/workflows/firebase-apphosting-live-revision-readonly.yml'
-  # Every change to main can trigger an App Hosting rollout; audit each source revision.
-  # This is advisory while the rollout may be in progress, never a cutover gate.
-  push:
-    branches: [main]
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

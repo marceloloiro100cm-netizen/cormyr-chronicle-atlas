@@ -1,27 +1,7 @@
 name: Firebase time engine (private emulator)
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/time-*.mjs'
-      - 'scripts/firebase/harptos-*.mjs'
-      - 'scripts/firebase/noble-house-core*.mjs'
-      - 'scripts/firebase/harptos-*.mjs'
-      - 'scripts/firebase/noble-house-core*.mjs'
-      - 'scripts/firebase/stage-time-engine-emulator*.mjs'
-      - 'firebase/firestore.domain.rules'
-      - 'docs/firebase/TIME-ENGINE-EMULATOR.md'
-      - '.github/workflows/firebase-time-engine.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/firebase/time-*.mjs'
-      - 'scripts/firebase/harptos-*.mjs'
-      - 'scripts/firebase/noble-house-core*.mjs'
-      - 'scripts/firebase/harptos-*.mjs'
-      - 'scripts/firebase/noble-house-core*.mjs'
-      - 'scripts/firebase/stage-time-engine-emulator*.mjs'
-      - 'firebase/firestore.domain.rules'
-      - '.github/workflows/firebase-time-engine.yml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

@@ -1,26 +1,8 @@
 name: Firebase Lotes 6–9 - pre-cutover safety and contracts
 
 on:
-  pull_request:
-    paths:
-      - 'src/integrations/backend/firebase-read-adapter*'
-      - 'src/components/firebase/FirebaseDomainPreview.tsx'
-      - 'scripts/firebase/lot7-*'
-      - 'scripts/firebase/lot8-*'
-      - 'scripts/firebase/lot9-*'
-      - 'scripts/firebase/lot5-role-security.integration.mjs'
-      - '.github/workflows/firebase-lots-6-9-readiness.yml'
-      - 'docs/firebase/LOTS6-9-STATUS.md'
-  push:
-    branches: [main]
-    paths:
-      - 'src/integrations/backend/firebase-read-adapter*'
-      - 'src/components/firebase/FirebaseDomainPreview.tsx'
-      - 'scripts/firebase/lot7-*'
-      - 'scripts/firebase/lot8-*'
-      - 'scripts/firebase/lot9-*'
-      - 'scripts/firebase/lot5-role-security.integration.mjs'
-      - '.github/workflows/firebase-lots-6-9-readiness.yml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

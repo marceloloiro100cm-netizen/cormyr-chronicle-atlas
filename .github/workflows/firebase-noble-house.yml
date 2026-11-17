@@ -1,19 +1,7 @@
 name: Firebase noble houses (private emulator)
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/noble-house-*.mjs'
-      - 'scripts/firebase/stage-noble-house-emulator*.mjs'
-      - 'firebase/firestore.domain.rules'
-      - 'docs/firebase/NOBLE-HOUSE-EMULATOR.md'
-      - '.github/workflows/firebase-noble-house.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/firebase/noble-house-*.mjs'
-      - 'scripts/firebase/stage-noble-house-emulator*.mjs'
-      - 'firebase/firestore.domain.rules'
-      - '.github/workflows/firebase-noble-house.yml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

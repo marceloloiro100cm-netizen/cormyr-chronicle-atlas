@@ -1,14 +1,7 @@
 name: Firebase storage access core
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/storage-*.mjs'
-      - 'scripts/firebase/stage-storage-*.mjs'
-      - 'scripts/firebase/record-core.mjs'
-      - 'scripts/firebase/newspaper-core.mjs'
-      - 'firebase/firestore.domain.rules'
-      - 'docs/firebase/STORAGE-ACCESS.md'
-      - '.github/workflows/firebase-storage-access.yml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

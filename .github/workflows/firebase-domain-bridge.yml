@@ -1,8 +1,7 @@
 name: Firebase domain bridge (local emulator boundary)
 on:
-  pull_request:
-  push:
-    branches: [main]
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

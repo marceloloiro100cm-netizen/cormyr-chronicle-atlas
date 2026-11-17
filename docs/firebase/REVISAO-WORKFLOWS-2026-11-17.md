@@ -7,8 +7,16 @@ verificação. Vários auditores têm `releaseDecision=NO_GO` fixo no código, o
 seja, nunca podem aprovar nada sozinhos. Isso cria um ciclo: cada rodada
 acrescenta mais checagens, e a migração em si não avança.
 
-Este documento só recomenda. **Nenhum workflow foi apagado ou desligado
-neste PR**: a decisão é do proprietário.
+**Aplicado em 17/11/2026 (noite), a pedido do proprietário:** 24 workflows
+passaram a rodar só manualmente (`workflow_dispatch`); nenhum foi apagado.
+Para não perder cobertura, o `validate.yml` agora roda todos os testes
+unitários de `scripts/firebase/*.test.mjs` em todo PR. Ficaram automáticos,
+por terem testes de integração que não existem em outro lugar:
+`firebase-mail-history`, `firebase-mail-unified`, `firebase-read-receipts`,
+`firebase-newspaper-staging`, `firebase-temporal-staging` e
+`firebase-storage-offline-coverage` (testes em Python).
+Para reativar um workflow, devolva os gatilhos `push`/`pull_request` no
+arquivo; o histórico do Git guarda os originais.
 
 ## Manter (essenciais)
 
@@ -28,15 +36,15 @@ Rodam testes de emulador de um domínio que já estão cobertos pelo
 `firebase-cross-domain-acceptance.yml` ou pelo `firebase-unified-emulators.yml`.
 Sugestão: passar para `workflow_dispatch` (só manual) ou apagar.
 
-- Missivas: `firebase-mail-commands`, `firebase-mail-history`,
-  `firebase-mail-inbox`, `firebase-mail-unified`, `firebase-read-receipts`
+- Missivas: `firebase-mail-commands`, `firebase-mail-inbox`
+  (`mail-history`, `mail-unified` e `read-receipts` continuam automáticos)
 - Espionagem: `firebase-spy-agents`, `firebase-spy-intel`, `firebase-spy-missions`
-- Jornal: `firebase-newspaper`, `firebase-newspaper-staging`
-- Calendário: `firebase-time-engine`, `firebase-temporal-staging`
+- Jornal: `firebase-newspaper` (`newspaper-staging` continua automático)
+- Calendário: `firebase-time-engine` (`temporal-staging` continua automático)
 - Casas e registros: `firebase-noble-house`, `firebase-characters`,
   `firebase-records`, `firebase-private-gm`, `firebase-schedule`, `firebase-residual`
-- Storage: `firebase-storage-access`, `firebase-storage-offline-coverage`,
-  `firebase-storage-scoped-audit`
+- Storage: `firebase-storage-access`, `firebase-storage-scoped-audit`
+  (`firebase-storage-offline-coverage` continua automático)
 
 ## Passar para manual (`workflow_dispatch`)
 
