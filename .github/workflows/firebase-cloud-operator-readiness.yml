@@ -1,0 +1,86 @@
+name: Firebase Cloud — protected operator migration audit (read-only)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/cloud-operator-readiness*.mjs'
+      - '.github/workflows/firebase-cloud-operator-readiness.yml'
+  pull_request:
+    paths:
+      - 'scripts/firebase/cloud-operator-readiness*.mjs'
+      - '.github/workflows/firebase-cloud-operator-readiness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cormyr-operator-readiness-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  synthetic:
+    name: Offline verification (no Cloud credentials)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify read-only evidence and negative cases
+        run: |
+          node --test scripts/firebase/cloud-operator-readiness.test.mjs
+          node --test scripts/firebase/auth-enable-all-test-accounts.test.mjs
+      - name: Public-repo privacy gate
+        run: node scripts/verify-public-repo.mjs
+
+  operator-audit:
+    name: Protected OIDC snapshot, Auth and runtime audit — never write
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    environment: firebase-auth-test-activation
+    needs: synthetic
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GOOGLE_CLOUD_PROJECT: cormyr
+      CORMYR_AUTH_ACTIVATION_MODE: preview
+      CORMYR_AUTH_TEST_OPERATOR: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.3'
+      - name: Require separate administrative OIDC identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$CORMYR_AUTH_TEST_OPERATOR" ] || [ "$CORMYR_AUTH_TEST_OPERATOR" = 'cormyr-gh-reader@cormyr.iam.gserviceaccount.com' ]; then
+            echo 'Dedicated protected operator is not configured.'
+            exit 2
+          fi
+      - name: Obtain temporary GitHub OIDC credentials (protected environment)
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
+          project_id: cormyr
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: cormyr
+      - name: Install locked Firebase Admin dependency
+        run: bun install --frozen-lockfile
+      - name: Verify Cloud stages and all 14 accounts without writing
+        run: node scripts/firebase/cloud-operator-readiness.mjs
+      - name: Explicitly retain NO_GO until Cloud E2E and fresh delta acceptance
+        if: always()
+        run: |
+          echo 'This job used preview mode and a read-only Auth facade; no user flag, IAM, Firestore or runtime was modified.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'A green audit is not permission to release players or cut over. Real per-House E2E is mandatory.' >> "$GITHUB_STEP_SUMMARY"
