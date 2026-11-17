@@ -14,7 +14,8 @@ export function projectFirebaseDynamicTranslations(
 ):Record<string,string>{
   const empty:Record<string,string>={};
   if(entityType!==undefined&&!isPublicTranslationEntityType(entityType)||
-     !record(response)||!record(response.translations))return empty;
+     !record(response)||!Object.hasOwn(response,'translations')||
+     !record(response.translations))return empty;
   const entries=Object.entries(response.translations);
   if(entries.length>5000)return empty;
   const result:Record<string,string>=Object.create(null);
