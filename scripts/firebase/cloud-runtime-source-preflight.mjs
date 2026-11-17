@@ -21,6 +21,27 @@ const stageComplete=(doc,snapshotId)=>{
   return data?.status==='complete'&&data?.private===true&&
     (data.sourceSnapshotId===undefined||data.sourceSnapshotId===snapshotId);
 };
+/** Read exact, disabled-only bootstrap fields. Existence is NOT activation. */
+const privatePending=(doc,id)=>{
+  if(doc?.exists!==true)return false;
+  const d=doc.data();
+  return d?.status==='pending'&&d.private===true&&
+    d.sourceSnapshotId===id&&d.applicationEnabled===false;
+};
+const mailDraftVerified=(doc,id)=>{
+  if(!privatePending(doc,id))return false;
+  const d=doc.data();
+  return d.sourceLiveReconciled===false&&d.mailEnabled===false&&
+    !Object.hasOwn(d,'openRound')&&!Object.hasOwn(d,'calendarVersion');
+};
+const houseDraftVerified=(doc,id)=>{
+  if(!privatePending(doc,id))return false;
+  const d=doc.data();
+  return d.sourceSnapshotReconciled===false&&
+    d.mailWriteApproved===false&&d.publicCatalogApproved===false&&
+    d.publicTranslationsApproved===false&&d.publicTimeApproved===false&&
+    !Object.hasOwn(d,'openRound')&&!Object.hasOwn(d,'calendarVersion');
+};
 const calendarValid=doc=>{
   if(doc?.exists!==true)return false;
   const d=doc.data();
@@ -57,8 +78,12 @@ export async function inspectCloudRuntimeSources({db,snapshotId}={}){
     name,stageComplete(docs[index],snapshotId),
   ]));
   const calendar=docs[ALL.length];
-  const mailExists=docs[ALL.length+1]?.exists===true;
-  const houseExists=docs[ALL.length+2]?.exists===true;
+  const mailDoc=docs[ALL.length+1];
+  const houseDoc=docs[ALL.length+2];
+  const mailExists=mailDoc?.exists===true;
+  const houseExists=houseDoc?.exists===true;
+  const mailDraftConfirmed=mailDraftVerified(mailDoc,snapshotId);
+  const houseDraftConfirmed=houseDraftVerified(houseDoc,snapshotId);
   const requiredStagesVerified=CORE.every(name=>stages[name]===true);
   const auxiliaryStagesVerified=AUX.filter(name=>stages[name]===true).length;
   const validCalendar=stages.migrationTimeEngineStage===true&&
@@ -76,6 +101,9 @@ export async function inspectCloudRuntimeSources({db,snapshotId}={}){
       calendar.data().lastRound>=1,
     mailRuntimeExists:mailExists,
     houseRuntimeExists:houseExists,
+    mailDraftConfirmed,
+    houseDraftConfirmed,
+    disabledDraftsConfirmed:mailDraftConfirmed&&houseDraftConfirmed,
     // Neither a historical lastRound nor a calendar version tells us the
     // CURRENT open round without a separate live-source reconciliation.
     currentRoundApproved:false,

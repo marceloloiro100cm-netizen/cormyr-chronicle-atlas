@@ -149,6 +149,8 @@ test('optional live-source probe is sanitized and never issues authorization',as
   const probe={
     sourceStagesVerified:6,auxiliaryStagesVerified:3,
     calendarDocumentVerified:true,calendarHasHistoricalRound:true,
+    houseDraftConfirmed:true,mailDraftConfirmed:true,
+    disabledDraftsConfirmed:true,
     sensitiveCalendar:'PRIVATE_CALENDAR_DATE',
     sensitiveHouse:'PRIVATE_HOUSE_ID',
   };
@@ -162,6 +164,9 @@ test('optional live-source probe is sanitized and never issues authorization',as
   assert.equal(pre.completeAuxiliaryStages,3);
   assert.equal(pre.calendarDocumentVerified,true);
   assert.equal(pre.historicalRoundFound,true);
+  assert.equal(pre.houseDraftConfirmed,true);
+  assert.equal(pre.mailDraftConfirmed,true);
+  assert.equal(pre.disabledDraftsConfirmed,true);
   assert.equal(pre.currentRoundApproved,false);
   assert.equal(pre.ready,false);
   assert.equal(report.readyForPlayers,false);
@@ -201,4 +206,18 @@ test('OIDC token denial has a stable code and never exposes provider details',()
   const published=JSON.stringify(report)+safeOperatorSummary(report);
   assert.ok(!published.includes('PRIVATE_SERVICE_ACCOUNT'));
   assert.ok(!published.includes('GOOGLE_TOKEN'));
+});
+
+test('a created inactive runtime never becomes a release authorization',()=>{
+  const r=evaluateOperatorEvidence({
+    cloud:cloud(),authPreview:auth(),
+    runtimeSources:{houseDraftConfirmed:true,mailDraftConfirmed:true,
+      disabledDraftsConfirmed:true},
+  });
+  const pre=r.fourBlocks.operations.sourcePreflight;
+  assert.equal(pre.disabledDraftsConfirmed,true);
+  assert.equal(pre.ready,false);
+  assert.equal(r.readyForPlayers,false);
+  assert.equal(r.releaseDecision,'NO_GO');
+  assert.match(safeOperatorSummary(r),/inativo e íntegro/);
 });

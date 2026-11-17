@@ -62,6 +62,9 @@ export function evaluateOperatorEvidence({
         completeAuxiliaryStages:safeCount(runtimeSources?.auxiliaryStagesVerified),
         calendarDocumentVerified:runtimeSources?.calendarDocumentVerified===true,
         historicalRoundFound:runtimeSources?.calendarHasHistoricalRound===true,
+        houseDraftConfirmed:runtimeSources?.houseDraftConfirmed===true,
+        mailDraftConfirmed:runtimeSources?.mailDraftConfirmed===true,
+        disabledDraftsConfirmed:runtimeSources?.disabledDraftsConfirmed===true,
         currentRoundApproved:false,
         ready:false,
       },
@@ -176,6 +179,10 @@ export function safeOperatorSummary(report){
       yes(report?.fourBlocks?.operations?.sourcePreflight?.checked)+' |',
     '| Calendário privado histórico verificado | '+
       yes(report?.fourBlocks?.operations?.sourcePreflight?.calendarDocumentVerified)+' |',
+    '| Runtime de Casas criado, inativo e íntegro | '+
+      yes(report?.fourBlocks?.operations?.sourcePreflight?.houseDraftConfirmed)+' |',
+    '| Runtime de Missivas criado, inativo e íntegro | '+
+      yes(report?.fourBlocks?.operations?.sourcePreflight?.mailDraftConfirmed)+' |',
     '| Rodada atual aprovada | **Não — depende da fonte atual** |',
     '| Operação Cloud: correio e Casas (HTTP) | '+
       (Number.isInteger(report?.fourBlocks?.operations?.mailRuntimeHttpStatus)
