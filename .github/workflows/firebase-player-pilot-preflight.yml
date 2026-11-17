@@ -9,14 +9,9 @@ on:
       - 'src/routes/firebase-access.tsx'
       - 'docs/firebase/PLAYER-PILOT-GITHUB-ONLY-RUNBOOK.md'
       - '.github/workflows/firebase-player-pilot-preflight.yml'
+  # Inspect the deployed public/anonymous boundary after EVERY main update.
   push:
     branches: [main]
-    paths:
-      - 'scripts/firebase/player-pilot-preflight*.mjs'
-      - 'src/lib/auth/firebase-pilot-readiness-ui*'
-      - 'src/routes/firebase-access.tsx'
-      - 'docs/firebase/PLAYER-PILOT-GITHUB-ONLY-RUNBOOK.md'
-      - '.github/workflows/firebase-player-pilot-preflight.yml'
 
 permissions:
   contents: read
@@ -30,7 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Validate the fixed anonymous GET contract and deny-by-default release decision
+      - name: Validate fixed GETs, impossible anonymous POSTs and fail-closed release decisions
         run: node --test scripts/firebase/player-pilot-preflight.test.mjs
       - name: Verify public repository does not expose privileged data
         run: node scripts/verify-public-repo.mjs
@@ -45,10 +40,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Inspect published portal and public routes (GET only, no credentials)
+      - name: Inspect public GET routes and denial of invalid anonymous POSTs
         run: node scripts/firebase/player-pilot-preflight.mjs
       - name: Keep launch blocked until operator and cross-user acceptance
         if: always()
         run: |
-          echo 'Result is advisory: green CI is never a GO decision.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'No Auth enablement, IAM changes, Cloud writes, DNS edits, traffic promotion or rollbacks were attempted.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Green CI confirms only public reachability and anonymous denial at the inspected time; never a GO decision.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'POST probes use impossible actions and no credentials; no real commands, Auth enablement, IAM changes, Cloud writes, DNS edits, traffic promotion or rollbacks were attempted.' >> "$GITHUB_STEP_SUMMARY"
