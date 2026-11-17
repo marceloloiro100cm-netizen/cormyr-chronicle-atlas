@@ -362,6 +362,51 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
         deny('spy_dossier_response_too_large',503);
       return result;
     },
+    async listHouseBattles(idToken,houseId){
+      // Historic match summaries only: never return orders, replays or hashes.
+      const scope=await scopeFor(idToken);
+      if(typeof houseId!=='string'||!SAFE_ID.test(houseId))
+        deny('invalid_house',400);
+      if(scope.profile!=='narrador'&&
+         !(scope.profile==='jogador'&&scope.memberHouseIds.includes(houseId)))
+        deny('access_denied',403);
+      await stageReady('migrationBattleStage');
+      const selected=await get(db,'migrationDomainStage',snapshotId,
+        'houses',digest('house:'+houseId));
+      if(!selected.exists||selected.data()?.sourceId!==houseId||
+         selected.data()?.active!==true)
+        deny('house_unavailable',404);
+      const live=await db.collection('migrationBattleStage')
+        .doc(snapshotId).collection('live').get();
+      if(!Array.isArray(live.docs)||live.size>250)
+        deny('battle_catalog_too_large',503);
+      const safe=s=>typeof s==='string'&&SAFE_ID.test(s);
+      const items=live.docs.map(d=>d.data()).filter(v=>
+        v&&safe(v.id)&&safe(v.attackerHouseId)&&
+        safe(v.defenderHouseId)&&v.attackerHouseId!==v.defenderHouseId&&
+        (v.attackerHouseId===houseId||v.defenderHouseId===houseId)&&
+        typeof v.title==='string'&&v.title.trim().length>=5&&
+        v.title.length<=120&&['active','completed','closed'].includes(v.status)&&
+        Number.isSafeInteger(v.stateVersion)&&
+        v.stateVersion>=0&&v.stateVersion<=1500
+      ).map(v=>({
+        id:v.id,title:v.title,status:v.status,
+        stateVersion:v.stateVersion,
+        attackerHouseId:v.attackerHouseId,defenderHouseId:v.defenderHouseId,
+        createdAt:typeof v.createdAt==='string'&&
+          v.createdAt.length<=48&&Number.isFinite(Date.parse(v.createdAt))
+          ?v.createdAt:null,
+      })).sort((a,b)=>(b.createdAt??'').localeCompare(a.createdAt??'')||
+        a.id.localeCompare(b.id));
+      const response={
+        houseId,items:items.slice(0,50),totalVisible:items.length,
+        truncated:items.length>50,readOnly:true,
+        snapshotReconciliationPending:true,
+      };
+      if(Buffer.byteLength(JSON.stringify(response),'utf8')>40_000)
+        deny('battle_response_too_large',503);
+      return response;
+    },
     async getCalendar(idToken){
       const scope=await scopeFor(idToken);
       if(scope.profile==='editor')deny('access_denied',403);
