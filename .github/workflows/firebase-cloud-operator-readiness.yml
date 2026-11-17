@@ -20,7 +20,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: cormyr-operator-readiness-${{ github.ref }}
+  # Isolate revisions and manual approvals: an older pending protected
+  # read-only audit must not stall fresh offline contracts on main.
+  group: cormyr-operator-readiness-${{ github.event_name }}-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
