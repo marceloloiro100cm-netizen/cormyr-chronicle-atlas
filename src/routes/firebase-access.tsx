@@ -5,6 +5,7 @@ import {runFirebaseRoleSelfAcceptance}
 import {firebasePilotAuth as firebaseAuth} from '@/lib/auth/firebase-pilot-session';
 import {firebasePilotLoginFailure} from '@/lib/auth/firebase-pilot-login-feedback';
 import {canApplyPilotResourceLoad,loadFirebasePilotResources} from '@/lib/auth/firebase-pilot-resource-loader';
+import {canApplyPilotPrivateResult} from '@/lib/auth/firebase-pilot-private-result';
 import {describeFirebasePilotSignals} from '@/lib/auth/firebase-pilot-readiness-ui';
 import {GmEventos,GmAventuras} from '@/components/gm-panels';
 import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
@@ -219,6 +220,8 @@ function FirebaseAccess(){
   const [message,setMessage]=useState('');
   const [view,setView]=useState<SessionView|null>(null);
   const loadGeneration=useRef(0);
+  const houseRequestVersion=useRef(0);
+  const editionRequestVersion=useRef(0);
   const [houseCatalogAvailable,setHouseCatalogAvailable]=useState(true);
   const [narratorLibraryOpen,setNarratorLibraryOpen]=useState(false);
   const [roleCheck,setRoleCheck]=useState<
@@ -383,6 +386,15 @@ function FirebaseAccess(){
   }
 
   async function selectHouse(id:string){
+    const requestVersion=++houseRequestVersion.current;
+    const sessionVersion=loadGeneration.current;
+    const uid=firebaseAuth()?.current()?.uid;
+    if(!uid)return;
+    const current=()=>canApplyPilotPrivateResult({
+      requestVersion,activeRequestVersion:houseRequestVersion.current,
+      sessionVersion,activeSessionVersion:loadGeneration.current,
+      uid,currentUid:firebaseAuth()?.current()?.uid,
+    });
     setBusy(true);setMessage('');setHouse(null);
     setAgents(null);setDossiers(null);setBattles(null);
     setTreasuryStatus(null);setTreasurySummary(null);
@@ -408,6 +420,7 @@ function FirebaseAccess(){
         view?.profile==='editor'?Promise.resolve(null)
           :readCloud<BattleOverview>('listHouseBattles',id).catch(()=>null),
       ]);
+      if(!current())return;
       setHouse(selected);
       setAgents(spy?.items??null);
       setDossiers(intelligence);
@@ -416,15 +429,27 @@ function FirebaseAccess(){
       setTreasurySummary(summary);
       setOperationalEconomy(operational?.houseId===selected.id?operational:null);
       setHouseReconciliation(audit?.houseId===selected.id?audit:null);
-    }catch(e){setMessage(e instanceof Error?e.message:'Falha na leitura da Casa.');}
-    finally{setBusy(false);}
+    }catch(e){if(current())setMessage(e instanceof Error?e.message:'Falha na leitura da Casa.');}
+    finally{if(current())setBusy(false);}
   }
 
   async function openEdition(id:string){
+    const requestVersion=++editionRequestVersion.current;
+    const sessionVersion=loadGeneration.current;
+    const uid=firebaseAuth()?.current()?.uid;
+    if(!uid)return;
+    const current=()=>canApplyPilotPrivateResult({
+      requestVersion,activeRequestVersion:editionRequestVersion.current,
+      sessionVersion,activeSessionVersion:loadGeneration.current,
+      uid,currentUid:firebaseAuth()?.current()?.uid,
+    });
     setBusy(true);setMessage('');setEdition(null);
-    try{setEdition(await readCloud<Edition>('getNewspaper',undefined,id));}
-    catch(e){setMessage(e instanceof Error?e.message:'Jornal indisponível.');}
-    finally{setBusy(false);}
+    try{
+      const article=await readCloud<Edition>('getNewspaper',undefined,id);
+      if(current())setEdition(article);
+    }catch(e){
+      if(current())setMessage(e instanceof Error?e.message:'Jornal indisponível.');
+    }finally{if(current())setBusy(false);}
   }
 
   async function markMailRead(item:MailEntry){
@@ -550,13 +575,16 @@ function FirebaseAccess(){
 
   function signOut(){
     loadGeneration.current++;
+    houseRequestVersion.current++;
+    editionRequestVersion.current++;
     firebaseAuth()?.signOut();
     setView(null);setHouse(null);setHouseReconciliation(null);setRoleCheck(null);
     setNarratorLibraryOpen(false);
     setHouseCatalogAvailable(true);
     setHouses([]);setCalendar(null);
     setInbox(null);setEditions([]);setEdition(null);setAgents(null);
-    setDossiers(null);
+    setDossiers(null);setBattles(null);
+    setOperationalEconomy(null);
     setMailStatus(null);setPaperStatus(null);setPaperTitle('');
     setPaperSubtitle('');setPaperArticle('');setOriginHouseId('');setMailRecipientKind('house');
     setMailRecipientHouse('');setMailSubject('');setMailContent('');setEmail('');
@@ -565,6 +593,8 @@ function FirebaseAccess(){
     setTreasuryStatus(null);setTreasurySummary(null);
     setTreasuryDelta('');setTreasuryReason('');
     setTreasuryKey(null);
+    setPaperKey(null);setMailKey(null);
+    setBusy(false);
   }
 
   const pilotStatus=view?describeFirebasePilotSignals({
