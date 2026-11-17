@@ -15,17 +15,18 @@ export function projectFirebaseDynamicTranslations(
   const empty:Record<string,string>={};
   if(entityType!==undefined&&!isPublicTranslationEntityType(entityType)||
      !record(response)||!Object.hasOwn(response,'translations')||
-     !record(response.translations))return empty;
-  const entries=Object.entries(response.translations);
+     !record(response['translations']))return empty;
+  const entries=Object.entries(response['translations']);
   if(entries.length>5000)return empty;
   const result:Record<string,string>=Object.create(null);
   for(const [key,value] of entries){
     const parts=key.split(':');
-    if(parts.length!==3||!isPublicTranslationEntityType(parts[0])||
-       !KEY.test(parts[1])||!KEY.test(parts[2])||
+    const [type,id,field]=parts;
+    if(parts.length!==3||!type||!id||!field||
+       !isPublicTranslationEntityType(type)||!KEY.test(id)||!KEY.test(field)||
        typeof value!=='string'||value.length===0||value.length>12000)
       return empty;
-    if(entityType===undefined||parts[0]===entityType)result[key]=value;
+    if(entityType===undefined||type===entityType)result[key]=value;
   }
   return {...result};
 }

@@ -58,7 +58,7 @@ export const upsertTranslationsBatch=createServerFn({method:'POST'})
       translated_text:z.string(),
     })).max(1000),
   }))
-  .handler(async()=>{
+  .handler(async():Promise<{message:string}>=>{
     throw new Error(
       'Edicao de traducoes desabilitada ate a homologacao do editor Firebase.',
     );
