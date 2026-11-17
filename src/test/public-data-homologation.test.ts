@@ -33,18 +33,21 @@ describe('Homologação · catálogo e traduções públicos com privilégio mí
   const service=read('src/lib/public/firebase-public-content.server.ts');
   expect(service).toContain('PUBLIC_TRANSLATION_ENTITY_TYPES');
   expect(service).toContain('publicReviewed');
-  // Legacy authenticated editor workflow is still pending its own migration;
-  // it must not be reopened as an anonymous Firebase API.
-  expect(fn).toContain(".in('entity_type', [...PUBLIC_TRANSLATION_ENTITY_TYPES])");
+  // The server function must now use the same approved Firebase projection
+  // as the anonymous route and never fall back to the old database.
+  expect(fn).toContain("readApprovedFirebasePublicTranslations");
+  expect(fn).toContain("projectFirebaseDynamicTranslations");
+  expect(fn).toContain("CORMYR_FIREBASE_PUBLIC_TRANSLATIONS_ENABLED");
   expect(fn).toContain("!isPublicTranslationEntityType(data.entityType)");
-  expect(fn).not.toContain(".eq('locale', data.locale);");
-  expect(fn).toContain("createClient<Database>(url,key");
-  expect(fn).toContain("auth:{persistSession:false,autoRefreshToken:false}");
-  const anonymousReader=fn.slice(fn.indexOf('export const loadDynamicTranslations'),
-   fn.indexOf('export const upsertTranslationsBatch'));
-  expect(anonymousReader).not.toContain("supabaseAdmin");
-  expect(fn).toContain("supabaseAdmin"); // legitimate narrator-only upsert
-  expect(fn).toContain("cache:'no-store'");
+  expect(fn).toContain("data.locale === 'pt'");
+  expect(fn).not.toContain("supabase");
+  expect(fn).not.toContain("SUPABASE_");
+  expect(fn).not.toContain("createClient");
+  expect(fn).not.toContain("campaign_translations");
+  const disabledEditor=fn.slice(fn.indexOf('export const upsertTranslationsBatch'));
+  expect(disabledEditor).toContain("Edicao de traducoes desabilitada");
+  expect(disabledEditor).not.toContain(".upsert(");
+  expect(disabledEditor).not.toContain("requireSupabaseAuth");
  });
  it('mantém a leitura da ficha autenticada do vassalo, mas tira archive_data do papel anon',()=>{
   const sql=read('docs/security/sql/2026_11_04_homolog_public_read_boundaries.sql');
