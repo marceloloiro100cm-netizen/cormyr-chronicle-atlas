@@ -15,7 +15,7 @@ permissions:
 
 # A later main push supersedes an older verification. Neither job changes Cloud.
 concurrency:
-  group: firebase-apphosting-convergence-main
+  group: firebase-apphosting-convergence-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
