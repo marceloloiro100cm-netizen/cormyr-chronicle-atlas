@@ -20,6 +20,7 @@ const source=()=>({
 });
 function fakeDb({
   targetExists=false,sourceVerified=true,storageVerified=true,
+  sourceSnapshotMismatch=false,
   houseRows=[
     {sourceId:'house_a',name:'House A',active:true,season:2,secret:'DO_NOT_LOG'},
     {sourceId:'house_b',name:'House B',active:true,season:2},
@@ -50,9 +51,11 @@ function fakeDb({
         async get(ref){
           if(ref.kind==='query')return {docs:houseRows.map(row=>({data:()=>structuredClone(row)}))};
           if(ref.path.startsWith('migrationDomainStage/'))
-            return {exists:true,data:()=>({status:sourceVerified?'complete':'pending',private:true})};
+            return {exists:true,data:()=>({status:sourceVerified?'complete':'pending',private:true,
+              sourceSnapshotId:sourceSnapshotMismatch?'b'.repeat(64):SNAP})};
           if(ref.path.startsWith('migrationStorageStage/'))
-            return {exists:true,data:()=>({status:storageVerified?'complete':'pending',private:true})};
+            return {exists:true,data:()=>({status:storageVerified?'complete':'pending',private:true,
+              sourceSnapshotId:sourceSnapshotMismatch?'b'.repeat(64):SNAP})};
           if(ref.path.startsWith('migrationPublicContentStage/'))
             return {exists:targetExists};
           throw Error('unexpected read');
@@ -66,7 +69,7 @@ function fakeDb({
   return {db,entries,calls};
 }
 const inputs=(f,s=source())=>({
-  db:f.db,source:s,expectedSnapshotId:SNAP,
+  db:f.db,source:s,expectedSnapshotId:SNAP,projectId:'cormyr',env:{},
   approvalDigest:preflightReviewedPublicStage(s).approvalDigest,
   explicitApproval:true,
 });
@@ -113,6 +116,7 @@ test('unreviewed records, wrong digest and absent approval write nothing',async(
 test('mismatched real source, incomplete stages or existing destination abort all creates',async()=>{
   for(const change of [
     {targetExists:true},{sourceVerified:false},{storageVerified:false},
+    {sourceSnapshotMismatch:true},
     {houseRows:[{sourceId:'house_a',name:'House A',active:true,season:2}]},
     {houseRows:[
       {sourceId:'house_a',name:'House A',active:true,season:2},
@@ -141,4 +145,19 @@ test('digest changes when a reviewed public field changes, not from private fiel
   const invalid=source();
   invalid.houses[0].publicReviewed=false;
   assert.equal(preflightReviewedPublicStage(invalid).approvalDigest,null);
+});
+
+test('wrong Cloud project and emulators never run the public write',async()=>{
+  const f=fakeDb();
+  for(const changes of [
+    {projectId:'other'}, {projectId:undefined},
+    {env:{FIRESTORE_EMULATOR_HOST:'127.0.0.1:8080'}},
+    {env:{FIREBASE_AUTH_EMULATOR_HOST:'127.0.0.1:9099'}},
+  ]){
+    await assert.rejects(()=>publishReviewedPublicStage({
+      ...inputs(f),...changes,
+    }),/reviewed_public_stage_cloud_environment_unverified/);
+  }
+  assert.equal(f.calls.length,0);
+  assert.equal(f.entries.length,0);
 });
