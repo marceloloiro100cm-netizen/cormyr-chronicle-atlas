@@ -37,7 +37,8 @@ describe('Espionagem · interface renovada e imagem do Narrador',()=>{
   expect(auth).not.toContain('A seleção da casa não concede acesso.');
   expect(auth).not.toContain('Continue with Lovable');
   expect(auth).not.toContain('Entrar com Google');
-  expect(auth).toContain('supabase.auth.signInWithPassword');
+  expect(auth).toContain('auth.signInWithPassword(email.trim(),password)');
+  expect(auth).not.toContain('supabase.auth.signInWithPassword');
   const creation=source('src/components/house/espionage/spy-create-agent-dialog.tsx');
   const portrait=source('src/components/house/espionage/spy-portrait-picker.tsx');
   expect(creation).not.toContain('O recrutamento, a reserva da foto e o desconto');

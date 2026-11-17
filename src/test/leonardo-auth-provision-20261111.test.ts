@@ -3,12 +3,17 @@ import {readFileSync} from 'node:fs';
 const source=(path:string)=>readFileSync(path,'utf8');
 
 describe('Cormyr: Jogador, Editor-Chefe e Narrador',()=>{
- it('mostra três perfis e só oferece seleção de Casa a Jogadores',()=>{
+ it('o login Firebase não concede perfil ou Casa escolhidos pelo navegador',()=>{
   const auth=source('src/routes/auth.tsx');
-  expect(auth).toContain('<option value="jogador">');
-  expect(auth).toContain('<option value="editor">');
-  expect(auth).toContain('<option value="narrador">');
-  expect(auth).toContain("profile==='jogador'&&<label>Casa nobre");
+  const pilot=source('src/routes/firebase-access.tsx');
+  expect(auth).toContain('firebasePilotAuth');
+  expect(auth).toContain("navigate({to:'/firebase-access'})");
+  expect(auth).not.toContain('<option value="jogador">');
+  expect(auth).not.toContain('<option value="editor">');
+  expect(auth).not.toContain('<option value="narrador">');
+  expect(auth).not.toContain('campaign-selected-house');
+  expect(pilot).toContain("view.profile==='editor'");
+  expect(pilot).toContain("view.profile==='narrador'");
   expect(auth).not.toContain('<option value="espiao">Leonardo</option>');
  });
  it('a identidade editorial não carrega o painel ou as fichas de Casas',()=>{
