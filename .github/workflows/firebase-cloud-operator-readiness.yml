@@ -41,7 +41,11 @@ jobs:
     # One-shot push trigger schedules an approval request; GitHub protected
     # environment STILL requires the human reviewer. Routine pushes run
     # only synthetic tests and cannot invoke the Cloud operator.
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.head_commit.message == 'ci(firebase): request one protected Cloud operator preview'))
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' &&
+        github.event.head_commit.message == 'ci(firebase): request one protected Cloud operator preview'))
     environment: firebase-auth-test-activation
     needs: synthetic
     runs-on: ubuntu-latest
