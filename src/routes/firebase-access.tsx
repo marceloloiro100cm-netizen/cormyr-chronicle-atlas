@@ -60,6 +60,13 @@ type TreasurySummary={available:boolean;readOnly:true;
 type TreasuryReply={id:string;duplicate:boolean;houseId:string;
   balance:number;version:number};
 type SpyAgent={id:string;codename:string;status:string;missionSuccesses:number};
+type BattleSummary={
+  id:string;title:string;status:'active'|'completed'|'closed';
+  stateVersion:number;attackerHouseId:string;defenderHouseId:string;
+  createdAt:string|null;
+};
+type BattleOverview={houseId:string;items:BattleSummary[];
+  totalVisible:number;truncated:boolean;readOnly:true;};
 type SpyFinding={objective:'house_resources'|'army'|'possessions';
   subjectKey:string;valueSnapshot:Record<string,unknown>;
   discoveredDateKey:string|null;verifiedDateKey:string|null};
@@ -75,7 +82,7 @@ function spyValue(value:unknown):string {
 }
 
 async function readCloud<T>(action:'session'|'listHouses'|'getHouse'|'getCalendar'|
-  'listMailbox'|'listNewspaper'|'getNewspaper'|'listSpyAgents'|'listSpyDossiers',
+  'listMailbox'|'listNewspaper'|'getNewspaper'|'listSpyAgents'|'listSpyDossiers'|'listHouseBattles',
   houseId?:string,editionId?:string):Promise<T>{
   const token=await firebaseAuth()?.getToken();
   if(!token)throw Error('Entre novamente com sua conta Firebase.');
@@ -220,6 +227,7 @@ function FirebaseAccess(){
   const [edition,setEdition]=useState<Edition|null>(null);
   const [agents,setAgents]=useState<SpyAgent[]|null>(null);
   const [dossiers,setDossiers]=useState<SpyDossierCatalog|null>(null);
+  const [battles,setBattles]=useState<BattleOverview|null>(null);
   const [mailStatus,setMailStatus]=useState<MailStatus|null>(null);
   const [paperStatus,setPaperStatus]=useState<PaperStatus|null>(null);
   const [paperTitle,setPaperTitle]=useState('');
@@ -321,14 +329,14 @@ function FirebaseAccess(){
 
   async function selectHouse(id:string){
     setBusy(true);setMessage('');setHouse(null);
-    setAgents(null);setDossiers(null);
+    setAgents(null);setDossiers(null);setBattles(null);
     setTreasuryStatus(null);setTreasurySummary(null);
     setOperationalEconomy(null);setHouseReconciliation(null);
     setTreasuryDelta('');setTreasuryReason('');
     setTreasuryKey(typeof crypto!=='undefined'&&
       typeof crypto.randomUUID==='function'?crypto.randomUUID():null);
     try{
-      const [selected,spy,intelligence,treasury,summary,operational,audit]=await Promise.all([
+      const [selected,spy,intelligence,treasury,summary,operational,audit,battleList]=await Promise.all([
         readCloud<HouseView>('getHouse',id),
         readCloud<{items:SpyAgent[]}>('listSpyAgents',id).catch(()=>null),
         readCloud<SpyDossierCatalog>('listSpyDossiers',id).catch(()=>null),
@@ -342,10 +350,13 @@ function FirebaseAccess(){
           :cloudOperationalEconomy(id).catch(()=>null),
         view?.profile==='narrador'
           ?cloudHouseReconciliation(id).catch(()=>null):Promise.resolve(null),
+        view?.profile==='editor'?Promise.resolve(null)
+          :readCloud<BattleOverview>('listHouseBattles',id).catch(()=>null),
       ]);
       setHouse(selected);
       setAgents(spy?.items??null);
       setDossiers(intelligence);
+      setBattles(battleList?.houseId===selected.id?battleList:null);
       setTreasuryStatus(treasury);
       setTreasurySummary(summary);
       setOperationalEconomy(operational?.houseId===selected.id?operational:null);
@@ -686,6 +697,32 @@ function FirebaseAccess(){
               </>}
           </section>}
         {house&&<FirebaseArmyRoster houseName={house.name} state={house.state}/>}
+        {house&&<section aria-label="Batalhas registradas da Casa"
+          className="rounded-lg border border-current/25 p-4 space-y-3">
+          <h2 className="text-lg font-semibold">Batalhas registradas</h2>
+          {!battles?<p className="text-sm">
+            Batalhas do Firebase ainda não disponíveis para consulta.
+          </p>:battles.items.length===0?<p className="text-sm">
+            Nenhuma batalha registrada para esta Casa.
+          </p>:<ul className="space-y-2">
+            {battles.items.map(b=><li key={b.id}
+              className="rounded border border-current/20 p-3">
+              <p className="font-semibold">{b.title}</p>
+              <p className="text-sm opacity-75">
+                {b.status==='active'?'Em andamento':
+                  b.status==='completed'?'Concluída':'Encerrada'}
+                {' '}· versão {b.stateVersion}
+              </p>
+            </li>)}
+          </ul>}
+          {battles?.truncated&&<p className="text-sm">
+            Lista parcial: existem mais registros no histórico preservado.
+          </p>}
+          <p className="text-xs opacity-75">
+            Apenas confrontos envolvendo esta Casa, sem ordens,
+            replays ou ações de combate.
+          </p>
+        </section>}
         {house&&<FirebaseHoldingsRoster houseName={house.name} state={house.state}/>}
         {house&&<FirebaseConstructionSchedule houseName={house.name}
           state={house.state} calendar={calendar}/>}
