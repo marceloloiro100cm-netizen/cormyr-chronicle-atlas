@@ -63,7 +63,11 @@ export async function inspectCloudReadonlyBoundaries(fetcher=fetch){
       passed=passed&&
         (response.headers.get('cache-control')??'').includes('no-store');
     }catch{/* unreachable is not verified */}
-    checks.push({name,status,code:passed?code:null,passed:Boolean(passed)});
+    const category=passed?'expected_guard':
+      code==='legacy_backend_paused'?'legacy_boundary_still_active':
+      code===null?'missing_or_unsafe_json_response':'unexpected_safe_error';
+    checks.push({name,status,code:passed?code:null,category,
+      passed:Boolean(passed)});
   }
   for(const [name,path] of CLOSED_ROUTES){
     let status=null,passed=false;

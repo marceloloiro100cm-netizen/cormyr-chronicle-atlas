@@ -71,6 +71,17 @@ test('generic maintenance response cannot masquerade as the Firebase endpoint',a
     assert.ok(!JSON.stringify(report).includes('SECRET_PERSONAL_DETAILS'));
   }
 });
+test('old archive responses are explicitly classified without exposing bodies',async()=>{
+  const r=await inspectCloudReadonlyBoundaries(async url=>
+    READ_ROUTES.some(x=>ORIGIN+x[1]===url)
+      ?response(503,'legacy_backend_paused')
+      :response(503,'legacy_backend_paused'));
+  assert.equal(r.verified,false);
+  assert.ok(r.checks.slice(0,4).every(c=>
+    c.category==='legacy_boundary_still_active'));
+  assert.equal(r.legacyWritesBlocked,true);
+});
+
 test('writes that start responding 401 or 400 are not mistaken as archive-locked',async()=>{
   for(const status of [401,400,200,302]){
     const r=await inspectCloudReadonlyBoundaries(async url=>

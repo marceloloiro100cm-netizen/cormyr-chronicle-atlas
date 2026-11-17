@@ -17,6 +17,12 @@ on:
       - '.github/workflows/firebase-cloud-readonly-boundary-smoke.yml'
       - 'src/lib/archive-only.ts'
   workflow_dispatch:
+  # Public smoke is meaningful only after App Hosting verifies that the
+  # corresponding main revision actually reached atlas.cormyr.com.br.
+  workflow_run:
+    workflows: ['Firebase App Hosting — verify main is actually serving']
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -36,7 +42,7 @@ jobs:
         run: node scripts/verify-public-repo.mjs
 
   live-anonymous-denials:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
     needs: safety-contract
     runs-on: ubuntu-latest
     timeout-minutes: 6
