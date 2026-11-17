@@ -35,6 +35,7 @@ export function memoryStorage(): TokenStorage {
 
 export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthTokenProvider & {
   signInWithPassword(email: string, password: string): Promise<FirebaseSession>;
+  requestPasswordReset(email: string): Promise<void>;
   signOut(): void;
   current(): FirebaseSession | null;
   subscribe(fn: (s: FirebaseSession | null) => void): () => void;
@@ -107,6 +108,18 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
         body: JSON.stringify({ email, password, returnSecureToken: true }),
       });
       return accept(b.localId, b.idToken, b.refreshToken, b.expiresIn, version);
+    },
+    async requestPasswordReset(email) {
+      if (typeof email !== 'string' || email.length > 254 ||
+          !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))
+        throw new FirebaseAuthError('INVALID_EMAIL');
+      // Public Firebase Auth REST endpoint. No redirect URL, no session
+      // mutation and no custom backend. The UI must not reveal whether this
+      // address belongs to an existing account.
+      await post(`${origin('identitytoolkit.googleapis.com')}/v1/accounts:sendOobCode?key=${key}`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ requestType: 'PASSWORD_RESET', email }),
+      });
     },
     signOut() { ++sessionVersion; inflight = null; storage.set(null); session = null; emit(); },
     current: () => session,

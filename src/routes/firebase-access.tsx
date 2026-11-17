@@ -310,6 +310,23 @@ function FirebaseAccess(){
     }finally{setBusy(false);}
   }
 
+  async function requestPasswordReset(){
+    if(!email.trim()){
+      setMessage('Informe seu e-mail para solicitar a recuperação de senha.');
+      return;
+    }
+    setBusy(true);
+    try{
+      await firebaseAuth()?.requestPasswordReset(email.trim());
+    }catch{
+      // Intentionally the same message for missing users, disabled accounts,
+      // provider errors and network failures. Never enumerate Auth emails.
+    }finally{
+      setBusy(false);
+      setMessage('Se a conta existir e a recuperação estiver disponível, você receberá um e-mail com as instruções. Verifique também a caixa de spam.');
+    }
+  }
+
   async function checkOwnRole(){
     if(!view)return;
     setBusy(true);setRoleCheck(null);
@@ -542,6 +559,11 @@ function FirebaseAccess(){
       </label>
       <button type="submit" disabled={busy}
         className="rounded border px-4 py-2">{busy?'Verificando…':'Entrar com Firebase'}</button>
+      <button type="button" disabled={busy||!email.trim()}
+        onClick={()=>void requestPasswordReset()}
+        className="ml-2 rounded border px-4 py-2 disabled:opacity-50">
+        Recuperar senha
+      </button>
     </form>}
     {view&&<section className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
