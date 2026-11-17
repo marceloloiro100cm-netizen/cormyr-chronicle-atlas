@@ -208,6 +208,8 @@ export async function inspectFirebaseCloudReadiness({
         [code,stageResults.filter(x=>String(x.code)===code).length])),
     auxiliaryStageCoverage:auxiliaryStages.length,
     auxiliaryStagesVerified:auxiliaryStages.filter(x=>x.verified).length,
+    // Fixed collection labels only; never reveal document IDs, content or provider errors.
+    auxiliaryPendingStages:auxiliaryStages.filter(x=>!x.verified).map(x=>x.stage),
     auxiliaryStageHttpStatusCounts:Object.fromEntries(
       [...new Set(auxiliaryStages.map(x=>String(x.code)))].map(code=>
         [code,auxiliaryStages.filter(x=>String(x.code)===code).length])),
