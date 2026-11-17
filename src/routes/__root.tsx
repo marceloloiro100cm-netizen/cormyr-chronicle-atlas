@@ -13,7 +13,6 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportClientError } from "../lib/error-reporting";
-import { supabase } from '@/integrations/supabase/client';
 import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { I18nProvider } from '@/lib/i18n/context';
 import {decideSessionBoundary,clearSessionQueryCache} from '@/lib/auth/session-boundary';
@@ -145,7 +144,14 @@ function RootComponent() {
   const [sessionEpoch,setSessionEpoch]=useState(0);
   useEffect(() => {
     if (CORMYR_ARCHIVE_ONLY) return;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event,session) => {
+    // Keep the discontinued provider entirely out of the active Firebase
+    // archive bundle. This import is reached only after a separately audited
+    // legacy-mode reversal, never during the Firebase pilot.
+    let active = true;
+    let unsubscribe: (() => void) | null = null;
+    void import('@/integrations/supabase/client').then(({ supabase }) => {
+      if (!active) return;
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event,session) => {
       const decision=decideSessionBoundary(knownUserId.current,event,session?.user?.id);
       if(decision.reason==='ignored')return;
       knownUserId.current=decision.userId;
@@ -164,8 +170,15 @@ function RootComponent() {
         const next=sessionStorage.getItem('campaign-oauth-next');
         if(next){sessionStorage.removeItem('campaign-oauth-next');void router.navigate({to:oauthReturnPath(next)});}
       }
+      });
+      unsubscribe = () => subscription.unsubscribe();
+    }).catch(() => {
+      // No alternate Auth provider is automatically selected on failure.
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
   }, [router, queryClient]);
 
   return (

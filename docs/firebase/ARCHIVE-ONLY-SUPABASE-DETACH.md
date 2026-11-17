@@ -46,3 +46,16 @@ The treasury adjustment, construction purchase, local emulator,
 legacy backend, and every serverFn route remain blocked by
 `shouldBlockLegacyRequest`. This is API wiring, not production
 readiness or authorization to write.
+
+## Archive entrypoint no longer eagerly imports Supabase
+
+`src/routes/__root.tsx` also formerly imported the Supabase browser client
+at module load, even when the archive guard skipped all legacy auth effects.
+That import is now **lazy and reached only if archive mode is explicitly
+disabled in a future separately reviewed release**. The Firebase pilot does
+not import or execute it. A source-level regression test verifies this.
+
+The legacy client source remains versioned for rollback analysis; this does
+not mean it is active in the archive build. The Firebase pilot still needs
+real Cloud Auth, profiles, operational data and cross-House authorization
+acceptance before launch.

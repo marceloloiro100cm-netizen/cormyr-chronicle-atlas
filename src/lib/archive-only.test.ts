@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { CORMYR_ARCHIVE_ONLY, shouldBlockLegacyRequest, isFirebasePilotPage, shouldRedirectToFirebasePilot } from './archive-only';
 
+import { readFileSync } from 'node:fs';
+
 describe('Firebase archive-only cutover', () => {
+  it('does not eagerly import the retired Supabase session provider into the archive entrypoint', () => {
+    const source = readFileSync(new URL('../routes/__root.tsx', import.meta.url), 'utf8');
+    expect(source).not.toMatch(/import\\s*\\{\\s*supabase\\s*\\}\\s*from/);
+    expect(source).toContain('if (CORMYR_ARCHIVE_ONLY) return;');
+    expect(source).toContain("void import('@/integrations/supabase/client')");
+  });
+
   it('keeps the emergency archive mode on until Firebase production acceptance', () => {
     expect(CORMYR_ARCHIVE_ONLY).toBe(true);
   });
