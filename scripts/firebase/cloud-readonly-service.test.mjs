@@ -19,7 +19,7 @@ function fixture(profile='jogador',extra={}){
   const stage=name=>docs.set(name+'/'+snapshot,{status:'complete',private:true});
   for(const name of ['migrationDomainStage','migrationAuthStage',
     'migrationNobleHouseStage','migrationTimeEngineStage',
-    'migrationNewspaperRuntimeStage','migrationSpyStage'])stage(name);
+    'migrationNewspaperRuntimeStage','migrationSpyStage','migrationBattleStage'])stage(name);
   docs.set('migrationDomainStage/'+snapshot+'/access/user-1',scope(profile,extra));
   docs.set('migrationDomainStage/'+snapshot+'/houses/'+hash('house:house-a'),{
     sourceId:'house-a',name:'House A',active:true,castle:'A Keep',season:2
@@ -75,7 +75,7 @@ function fixture(profile='jogador',extra={}){
         docs:entries.map(([,value])=>d(value))};
       // Empty Firestore collections still return QuerySnapshot.docs=[].
       if(path.endsWith('/letters')||path.endsWith('/mailReadReceipts')||
-         path.endsWith('/dossiers')||path.endsWith('/findings'))
+         path.endsWith('/dossiers')||path.endsWith('/findings')||path.endsWith('/live'))
         return {size:0,docs:[]};
       return d(undefined);
     }
@@ -464,4 +464,80 @@ test('Cloud inbox exposes reply control only for the receiving House, not sender
   assert.ok(mailbox.items.filter(x=>x.source==='imported').every(x=>x.canReply===false));
   f.docs.set(root,{...f.docs.get(root),sourceSnapshotReconciled:false});
   assert.ok((await f.service().listMailbox(token)).items.every(x=>x.canReply===false));
+});
+
+test('Battle summaries expose only authorized participating House, never replay state',async()=>{
+  const f=fixture('jogador');
+  const root='migrationBattleStage/'+snapshot+'/';
+  f.docs.set(root+'live/own',{
+    id:'own',title:'Batalha na Fronteira',status:'active',
+    attackerHouseId:'house-a',defenderHouseId:'house-b',
+    stateVersion:3,createdAt:'2026-11-16T10:00:00Z',
+    stateHash:'SECRET_HASH_DO_NOT_DISPLAY',
+    tacticalOrders:'SECRET_ORDERS_DO_NOT_DISPLAY',
+  });
+  f.docs.set(root+'live/foreign',{
+    id:'foreign',title:'Batalha Estrangeira',status:'active',
+    attackerHouseId:'house-b',defenderHouseId:'house-c',
+    stateVersion:2,createdAt:'2026-11-16T12:00:00Z',
+  });
+  f.docs.set(root+'live/invalid',{
+    id:'invalid',title:'Batalha incompleta',status:'hidden',
+    attackerHouseId:'house-a',defenderHouseId:'house-b',
+    stateVersion:1,
+  });
+  f.docs.set(root+'liveReplays/own',{
+    matchId:'own',json:'SECRET_REPLAY_DO_NOT_DISPLAY'
+  });
+  const result=await f.service().listHouseBattles(token,'house-a');
+  assert.equal(result.houseId,'house-a');
+  assert.deepEqual(result.items.map(x=>x.id),['own']);
+  assert.equal(result.readOnly,true);
+  assert.equal(result.totalVisible,1);
+  for(const secret of ['SECRET_HASH','SECRET_ORDERS','SECRET_REPLAY',
+    'Batalha Estrangeira']){
+    assert.ok(!JSON.stringify(result).includes(secret));
+  }
+  await rejects(()=>f.service().listHouseBattles(token,'house-b'),
+    'access_denied',403);
+  await rejects(()=>f.service().listHouseBattles(token,'../foreign'),
+    'invalid_house',400);
+  const editor=fixture('editor');
+  await rejects(()=>editor.service().listHouseBattles(token,'house-a'),
+    'access_denied',403);
+  const gm=fixture('narrador');
+  for(const [key,value] of f.docs){
+    if(key.startsWith(root))gm.docs.set(key,value);
+  }
+  const narratorResult=await gm.service().listHouseBattles(token,'house-b');
+  assert.deepEqual(narratorResult.items.map(x=>x.id),['foreign','own']);
+});
+
+test('Battle stage is mandatory; empty verified stage shows empty overview',async()=>{
+  const f=fixture();
+  const root='migrationBattleStage/'+snapshot;
+  f.docs.set(root,{status:'incomplete',private:true});
+  await rejects(()=>f.service().listHouseBattles(token,'house-a'),
+    'migration_stage_not_ready',503);
+  f.docs.set(root,{status:'complete',private:true});
+  const result=await f.service().listHouseBattles(token,'house-a');
+  assert.equal(result.totalVisible,0);
+  assert.deepEqual(result.items,[]);
+  f.docs.set('migrationDomainStage/'+snapshot+'/houses/'+hash('house:house-a'),
+    {sourceId:'house-a',active:false});
+  await rejects(()=>f.service().listHouseBattles(token,'house-a'),
+    'house_unavailable',404);
+});
+
+test('Oversized battle catalog fails closed instead of exposing unbounded rows',async()=>{
+  const f=fixture();
+  const root='migrationBattleStage/'+snapshot+'/live/';
+  for(let i=0;i<251;i++){
+    f.docs.set(root+i,{
+      id:'match-'+i,title:'Exercito nao homologado',status:'active',
+      stateVersion:0,attackerHouseId:'house-a',defenderHouseId:'house-b',
+    });
+  }
+  await rejects(()=>f.service().listHouseBattles(token,'house-a'),
+    'battle_catalog_too_large',503);
 });
