@@ -1,6 +1,6 @@
 /**
  * Cloud Shell operator audit for Auth -> private Firestore access linkage.
- * Exactly three bounded GETs, fixed project, no writes or public identities.
+ * At most four bounded GETs, fixed project, no writes or public identities.
  * Prints only aggregates; never print raw Google errors, UIDs, emails,
  * snapshot hashes, house IDs, tokens or record content.
  */
@@ -15,6 +15,7 @@ const HASH=/^[a-f0-9]{64}$/;
 const PROFILE_TYPES=['narrador','jogador','editor'];
 const MASK=['userId','profile','active','admin','requirePasswordChange',
   'memberHouseIds','editHouseIds'];
+const HOUSE_FIELDS=['sourceId','active','season'];
 const validUid=id=>typeof id==='string'&&id.length>0&&id.length<=128&&
   !/[/\u0000-\u001f\u007f]/.test(id);
 const fieldString=v=>typeof v?.stringValue==='string'?v.stringValue:null;
@@ -84,6 +85,10 @@ export async function inspectCloudRoleLinkage({
     profileCounts:null,structurallyEligibleProfiles:null,
     structurallyEligibleByProfile:null,structurallyIneligibleByProfile:null,
     blockingReasonCounts:null,
+    houseCatalogHttpStatus:null,houseReferenceAuditComplete:false,
+    houseCatalogCount:null,activeSeason2Houses:null,
+    playerHouseReferencesTotal:null,unresolvedPlayerHouseReferences:null,
+    playersWithUnresolvedHouseReferences:null,
     writes:0,cloudRoleE2EVerified:false,
     releaseDecision:'NO_GO',readyForCutover:false,
   };
@@ -163,7 +168,7 @@ export async function inspectCloudRoleLinkage({
       for(const reason of failures)blockingReasonCounts[reason]++;
     }
   }
-  return {
+  const summary={
     ...base,accessHttpStatus:access.status,accessListComplete:true,
     linkedAccounts:linked,unlinkedAccounts:users.length-linked,
     unmatchedAccessDocuments:accessDocs.length-linked,
@@ -172,6 +177,61 @@ export async function inspectCloudRoleLinkage({
     structurallyEligibleByProfile:eligibleByProfile,
     structurallyIneligibleByProfile:ineligibleByProfile,
     blockingReasonCounts,
+  };
+  // Resolve actual player House references against the private, same-snapshot
+  // House projection. Only active season-two House IDs count as resolvable.
+  // No House names, castles, crests or source IDs are emitted in the report.
+  const houseQuery=new URLSearchParams({pageSize:'250'});
+  for(const field of HOUSE_FIELDS)houseQuery.append('mask.fieldPaths',field);
+  const houseList=await request(ROOT+'migrationDomainStage/'+snapshotId+
+    '/houses?'+houseQuery.toString());
+  const houseDocs=Array.isArray(houseList.body?.documents)?
+    houseList.body.documents:[];
+  const houseListComplete=houseList.status===200&&!!houseList.body&&
+    !houseList.body.nextPageToken&&houseDocs.length<=250;
+  if(!houseListComplete)return {
+    ...summary,houseCatalogHttpStatus:houseList.status,
+  };
+  const seenHouses=new Set();
+  const validActiveHouses=new Set();
+  for(const doc of houseDocs){
+    const id=fieldString(doc?.fields?.sourceId);
+    const name=doc?.name;
+    if(!validUid(id)||seenHouses.has(id)||
+       typeof name!=='string'||
+       !name.startsWith(PREFIX+snapshotId+'/houses/')||
+       !HASH.test(name.slice((PREFIX+snapshotId+'/houses/').length))||
+       typeof doc?.fields?.active?.booleanValue!=='boolean'||
+       !/^(0|[1-9][0-9]*)$/.test(doc?.fields?.season?.integerValue??'')){
+      return {...summary,houseCatalogHttpStatus:houseList.status};
+    }
+    seenHouses.add(id);
+    if(fieldBool(doc.fields.active)&&doc.fields.season.integerValue==='2')
+      validActiveHouses.add(id);
+  }
+  let referenceCount=0,unresolvedCount=0,unresolvedPlayers=0;
+  for(const uid of ids){
+    const v=byUid.get(uid);
+    if(!v||fieldString(v.profile)!=='jogador')continue;
+    const members=fieldArray(v.memberHouseIds);
+    if(!members)continue; // Previously reported as invalidHouseLists.
+    let missing=false;
+    for(const houseId of members){
+      referenceCount++;
+      if(!validActiveHouses.has(houseId)){
+        unresolvedCount++;
+        missing=true;
+      }
+    }
+    if(missing)unresolvedPlayers++;
+  }
+  return {
+    ...summary,houseCatalogHttpStatus:houseList.status,
+    houseReferenceAuditComplete:true,houseCatalogCount:seenHouses.size,
+    activeSeason2Houses:validActiveHouses.size,
+    playerHouseReferencesTotal:referenceCount,
+    unresolvedPlayerHouseReferences:unresolvedCount,
+    playersWithUnresolvedHouseReferences:unresolvedPlayers,
   };
 }
 
