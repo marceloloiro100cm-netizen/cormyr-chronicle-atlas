@@ -6,11 +6,13 @@ on:
     paths:
       - 'scripts/firebase/cloud-operator-readiness*.mjs'
       - 'scripts/firebase/cloud-runtime-source-preflight*.mjs'
+      - 'scripts/firebase/public-archive-coverage-readonly*.mjs'
       - '.github/workflows/firebase-cloud-operator-readiness.yml'
   pull_request:
     paths:
       - 'scripts/firebase/cloud-operator-readiness*.mjs'
       - 'scripts/firebase/cloud-runtime-source-preflight*.mjs'
+      - 'scripts/firebase/public-archive-coverage-readonly*.mjs'
       - '.github/workflows/firebase-cloud-operator-readiness.yml'
   workflow_dispatch:
 
@@ -35,6 +37,7 @@ jobs:
         run: |
           node --test scripts/firebase/cloud-operator-readiness.test.mjs
           node --test scripts/firebase/cloud-runtime-source-preflight.test.mjs
+          node --test scripts/firebase/public-archive-coverage-readonly.test.mjs
           node --test scripts/firebase/auth-enable-all-test-accounts.test.mjs
       - name: Public-repo privacy gate
         run: node scripts/verify-public-repo.mjs
