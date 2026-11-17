@@ -36,6 +36,7 @@ export function memoryStorage(): TokenStorage {
 export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthTokenProvider & {
   signInWithPassword(email: string, password: string): Promise<FirebaseSession>;
   requestPasswordReset(email: string): Promise<void>;
+  confirmPasswordReset(oobCode: string, newPassword: string): Promise<void>;
   signOut(): void;
   current(): FirebaseSession | null;
   subscribe(fn: (s: FirebaseSession | null) => void): () => void;
@@ -120,6 +121,19 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ requestType: 'PASSWORD_RESET', email }),
       });
+    },
+    async confirmPasswordReset(oobCode, newPassword) {
+      if (typeof oobCode !== 'string' ||
+          !/^[A-Za-z0-9_-]{8,4096}$/.test(oobCode))
+        throw new FirebaseAuthError('INVALID_RESET_CODE');
+      if (typeof newPassword !== 'string' ||
+          newPassword.length < 8 || newPassword.length > 128)
+        throw new FirebaseAuthError('WEAK_PASSWORD');
+      await post(`${origin('identitytoolkit.googleapis.com')}/v1/accounts:resetPassword?key=${key}`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ oobCode, newPassword }),
+      });
+      // Resetting a password must NOT create a session or trust any provider role.
     },
     signOut() { ++sessionVersion; inflight = null; storage.set(null); session = null; emit(); },
     current: () => session,

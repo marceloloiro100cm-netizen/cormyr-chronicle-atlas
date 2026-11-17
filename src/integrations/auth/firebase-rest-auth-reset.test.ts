@@ -52,4 +52,42 @@ describe('Firebase cloud pilot password recovery',()=>{
     expect(storage.get()).toBeNull();
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
+
+  it('confirms an OOB password reset only through Identity Toolkit and does not create a session',async()=>{
+    const calls:{url:string;init:RequestInit}[]=[];
+    const fetcher=vi.fn(async(url:string,init:RequestInit)=>{
+      calls.push({url,init});
+      return new Response('{"requestType":"PASSWORD_RESET"}',{status:200});
+    });
+    const storage=memoryStorage();
+    const auth=createFirebaseRestAuth({apiKey:'public-test',
+      fetch:fetcher as unknown as typeof fetch,storage});
+    const subscribed=vi.fn();
+    auth.subscribe(subscribed);
+    const code='VALID_CODE_EXAMPLE_12345';
+    await auth.confirmPasswordReset(code,'new-long-password');
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.url).toBe('https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=public-test');
+    expect(calls[0]!.init.method).toBe('POST');
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({
+      oobCode:code,newPassword:'new-long-password',
+    });
+    expect(storage.get()).toBeNull();
+    expect(auth.current()).toBeNull();
+    expect(subscribed).not.toHaveBeenCalled();
+  });
+  it('rejects malformed codes and weak passwords locally without any network requests',async()=>{
+    const fetcher=vi.fn();
+    const auth=createFirebaseRestAuth({apiKey:'public-test',
+      fetch:fetcher as unknown as typeof fetch});
+    for(const code of ['', 'bad', '../escape', 'has spaces', 'x'.repeat(4097)]){
+      await expect(auth.confirmPasswordReset(code,'new-long-password'))
+        .rejects.toMatchObject({code:'INVALID_RESET_CODE'});
+    }
+    for(const password of ['', 'short', 'x'.repeat(129)]){
+      await expect(auth.confirmPasswordReset('VALID_CODE_EXAMPLE_12345',password))
+        .rejects.toMatchObject({code:'WEAK_PASSWORD'});
+    }
+    expect(fetcher).not.toHaveBeenCalled();
+  });
 });
