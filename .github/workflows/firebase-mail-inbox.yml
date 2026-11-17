@@ -1,19 +1,7 @@
 name: Firebase private mail inbox read backend
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/letter-inbox-service*.mjs'
-      - 'scripts/firebase/stage-typed-domain-emulator.mjs'
-      - 'firebase/firestore.domain.rules'
-      - 'docs/firebase/MAIL-INBOX-EMULATOR.md'
-      - '.github/workflows/firebase-mail-inbox.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/firebase/letter-inbox-service*.mjs'
-      - 'scripts/firebase/stage-typed-domain-emulator.mjs'
-      - 'firebase/firestore.domain.rules'
-      - '.github/workflows/firebase-mail-inbox.yml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

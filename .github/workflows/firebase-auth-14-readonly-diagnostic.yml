@@ -1,15 +1,9 @@
 name: Firebase Auth 14 accounts — read-only diagnosis
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/firebase-auth-14-readonly-diagnostic.yml'
-      - 'scripts/firebase/auth-enable-all-test-accounts*.mjs'
-  pull_request:
-    paths:
-      - '.github/workflows/firebase-auth-14-readonly-diagnostic.yml'
-      - 'scripts/firebase/auth-enable-all-test-accounts*.mjs'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
+  workflow_dispatch:
 
 permissions:
   contents: read

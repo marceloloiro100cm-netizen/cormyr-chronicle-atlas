@@ -1,15 +1,7 @@
 name: Firebase complete source coverage audit
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/audit-migration-coverage*.mjs'
-      - '.github/workflows/firebase-coverage.yml'
-      - 'docs/firebase/MIGRATION-COVERAGE.md'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/firebase/audit-migration-coverage*.mjs'
-      - '.github/workflows/firebase-coverage.yml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

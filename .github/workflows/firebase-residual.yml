@@ -1,12 +1,7 @@
 name: Firebase residual stage (private emulator)
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/stage-residual-emulator*.mjs'
-      - 'scripts/firebase/spy-missions-core.mjs'
-      - 'firebase/firestore.domain.rules'
-      - 'docs/firebase/RESIDUAL-STAGE.md'
-      - '.github/workflows/firebase-residual.yml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

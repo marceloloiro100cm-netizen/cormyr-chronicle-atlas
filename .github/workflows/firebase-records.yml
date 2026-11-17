@@ -1,19 +1,7 @@
 name: Firebase campaign records (private emulator)
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/record-*.mjs'
-      - 'scripts/firebase/stage-records-emulator*.mjs'
-      - 'firebase/firestore.domain.rules'
-      - 'docs/firebase/RECORDS-EMULATOR.md'
-      - '.github/workflows/firebase-records.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/firebase/record-*.mjs'
-      - 'scripts/firebase/stage-records-emulator*.mjs'
-      - 'firebase/firestore.domain.rules'
-      - '.github/workflows/firebase-records.yml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

@@ -1,19 +1,7 @@
 name: Firebase full mail commands (private emulator)
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/mail-command-service.mjs'
-      - 'scripts/firebase/mail-command-service.integration.mjs'
-      - 'firebase/firestore.domain.rules'
-      - 'docs/firebase/MAIL-COMMANDS-EMULATOR.md'
-      - '.github/workflows/firebase-mail-commands.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/firebase/mail-command-service.mjs'
-      - 'scripts/firebase/mail-command-service.integration.mjs'
-      - 'firebase/firestore.domain.rules'
-      - '.github/workflows/firebase-mail-commands.yml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

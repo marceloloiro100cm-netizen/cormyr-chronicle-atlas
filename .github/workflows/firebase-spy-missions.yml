@@ -1,23 +1,7 @@
 name: Firebase espionage missions (private emulator)
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/spy-*.mjs'
-      - 'scripts/firebase/harptos-core.mjs'
-      - 'scripts/firebase/stage-spy-emulator*.mjs'
-      - 'scripts/firebase/house-wealth-core.mjs'
-      - 'firebase/firestore.domain.rules'
-      - 'docs/firebase/SPY-MISSIONS-EMULATOR.md'
-      - '.github/workflows/firebase-spy-missions.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/firebase/spy-*.mjs'
-      - 'scripts/firebase/harptos-core.mjs'
-      - 'scripts/firebase/stage-spy-emulator*.mjs'
-      - 'scripts/firebase/house-wealth-core.mjs'
-      - 'firebase/firestore.domain.rules'
-      - '.github/workflows/firebase-spy-missions.yml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

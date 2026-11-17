@@ -1,23 +1,7 @@
 name: Firebase newspaper (A Folha Sem Selo) (private emulator)
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/newspaper-*.mjs'
-      - 'scripts/firebase/schedule-core.mjs'
-      - 'scripts/firebase/house-wealth-core.mjs'
-      - 'scripts/firebase/stage-newspaper-*emulator*.mjs'
-      - 'firebase/firestore.domain.rules'
-      - 'docs/firebase/NEWSPAPER-EMULATOR.md'
-      - '.github/workflows/firebase-newspaper.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/firebase/newspaper-*.mjs'
-      - 'scripts/firebase/schedule-core.mjs'
-      - 'scripts/firebase/house-wealth-core.mjs'
-      - 'scripts/firebase/stage-newspaper-*emulator*.mjs'
-      - 'firebase/firestore.domain.rules'
-      - '.github/workflows/firebase-newspaper.yml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

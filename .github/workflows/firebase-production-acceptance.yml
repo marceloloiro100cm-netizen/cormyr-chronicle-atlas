@@ -1,22 +1,8 @@
 name: Firebase production public data and anonymous access acceptance
 
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase-production-acceptance-smoke*.mjs'
-      - 'scripts/firebase-production-public-latency*.mjs'
-      - '.github/workflows/firebase-production-acceptance.yml'
-      - 'docs/firebase/PRODUCTION-ACCESS-ACCEPTANCE.md'
-      - 'src/routes/**'
-      - 'src/components/players/**'
-      - 'src/components/newspaper/**'
-      - 'src/lib/auth/**'
-      - 'src/integrations/supabase/**'
-      - 'apphosting.yaml'
-  # Changes to the live app must be checked even if the smoke script itself
-  # was not touched. A push smoke is advisory while a rollout is in progress.
-  push:
-    branches: [main]
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

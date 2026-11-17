@@ -1,30 +1,8 @@
 name: Firebase — 18 requested items evidence gates
 
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/**'
-      - 'src/integrations/backend/**'
-      - 'src/lib/auth/**'
-      - 'docs/firebase/EXECUTION-18-ITEMS.md'
-      - 'docs/firebase/PHASE2-ROADMAP.md'
-      - 'docs/firebase/APP-INTEGRATION-PLAN.md'
-      - 'docs/firebase/LOTS6-9-STATUS.md'
-      - 'firebase/firestore.rules'
-      - 'firebase/storage.rules'
-      - 'src/start.ts'
-      - 'apphosting.yaml'
-      - '.github/workflows/firebase-18-item-execution.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/firebase/**'
-      - 'src/integrations/backend/**'
-      - 'docs/firebase/EXECUTION-18-ITEMS.md'
-      - 'firebase/firestore.rules'
-      - 'firebase/storage.rules'
-      - 'src/start.ts'
-      - 'apphosting.yaml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

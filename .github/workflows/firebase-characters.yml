@@ -1,21 +1,7 @@
 name: Firebase character registry (private emulator)
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/character-*.mjs'
-      - 'scripts/firebase/house-ages-*.mjs'
-      - 'scripts/firebase/stage-characters-emulator*.mjs'
-      - 'firebase/firestore.domain.rules'
-      - 'docs/firebase/CHARACTERS-EMULATOR.md'
-      - '.github/workflows/firebase-characters.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/firebase/character-*.mjs'
-      - 'scripts/firebase/house-ages-*.mjs'
-      - 'scripts/firebase/stage-characters-emulator*.mjs'
-      - 'firebase/firestore.domain.rules'
-      - '.github/workflows/firebase-characters.yml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

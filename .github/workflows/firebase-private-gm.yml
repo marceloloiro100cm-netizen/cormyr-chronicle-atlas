@@ -1,19 +1,7 @@
 name: Firebase private GM content (private emulator)
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/private-gm-*.mjs'
-      - 'scripts/firebase/stage-private-gm-emulator*.mjs'
-      - 'firebase/firestore.domain.rules'
-      - 'docs/firebase/PRIVATE-GM-EMULATOR.md'
-      - '.github/workflows/firebase-private-gm.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/firebase/private-gm-*.mjs'
-      - 'scripts/firebase/stage-private-gm-emulator*.mjs'
-      - 'firebase/firestore.domain.rules'
-      - '.github/workflows/firebase-private-gm.yml'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

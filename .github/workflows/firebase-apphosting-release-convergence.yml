@@ -1,13 +1,8 @@
 name: Firebase App Hosting — verify main is actually serving
 
 on:
-  pull_request:
-    paths:
-      - 'scripts/firebase/apphosting-release-convergence*.mjs'
-      - 'scripts/firebase/apphosting-live-revision-readonly*.mjs'
-      - '.github/workflows/firebase-apphosting-release-convergence.yml'
-  push:
-    branches: [main]
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

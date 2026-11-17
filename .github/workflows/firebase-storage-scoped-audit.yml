@@ -1,15 +1,8 @@
 name: Firebase Storage - verify scoped staging access
 
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/firebase-storage-scoped-audit.yml'
-      - 'scripts/firebase/grant-scoped-staging-storage.sh'
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/firebase-storage-scoped-audit.yml'
-      - 'scripts/firebase/grant-scoped-staging-storage.sh'
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
 
 permissions:

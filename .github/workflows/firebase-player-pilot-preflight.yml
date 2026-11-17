@@ -1,17 +1,9 @@
 name: Firebase player pilot — GitHub-only preflight
 
 on:
+  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
+  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'scripts/firebase/player-pilot-preflight*.mjs'
-      - 'src/lib/auth/firebase-pilot-readiness-ui*'
-      - 'src/routes/firebase-access.tsx'
-      - 'docs/firebase/PLAYER-PILOT-GITHUB-ONLY-RUNBOOK.md'
-      - '.github/workflows/firebase-player-pilot-preflight.yml'
-  # Inspect the deployed public/anonymous boundary after EVERY main update.
-  push:
-    branches: [main]
 
 permissions:
   contents: read
