@@ -92,12 +92,17 @@ export function planAllExistingAuthTestAccounts({users,accessDocs,houses}={}){
   }
   const roleCounts={narrador:0,jogador:0,editor:0,other:0};
   let pendingRoleOrHouse=0;
+  let missingProfiles=0;
+  let playersWithoutHouse=0;
   let inactiveAccess=0;
   let passwordResetPending=0;
   for(const uid of userIds){
     const v=accessByUser.get(uid);
     const role=profile(v.profile);
     roleCounts[role]++;
+    if(role==='other')missingProfiles++;
+    if(role==='jogador'&&v.memberHouseIds.length===0)
+      playersWithoutHouse++;
     if(role==='other'||
        role==='jogador'&&v.memberHouseIds.length===0)
       pendingRoleOrHouse++;
@@ -118,7 +123,8 @@ export function planAllExistingAuthTestAccounts({users,accessDocs,houses}={}){
       accounts:users.length,linkedAccounts:accessByUser.size,
       toEnable:uidToEnable.length,alreadyEnabled:users.length-uidToEnable.length,
       profileCounts:roleCounts,
-      pendingRoleOrHouse,inactiveAccess,passwordResetPending,
+      pendingRoleOrHouse,missingProfiles,playersWithoutHouse,
+      inactiveAccess,passwordResetPending,
       houseCatalogCount:allHouses.size,
       activeSeason2Houses:activeHouses.size,
       firestoreWrites:0,profilesModified:0,houseAssignmentsModified:0,
@@ -227,6 +233,8 @@ export function safeActivationSummary(r){
     '- Conclusão da habilitação Auth: **'+yes(r?.activationComplete)+'**',
     '- Perfis ou Casas incompletos (ainda sem permissão de jogo): '+
       num(r?.pendingRoleOrHouse),
+    '- Contas sem perfil: '+num(r?.missingProfiles),
+    '- Jogadores sem Casa: '+num(r?.playersWithoutHouse),
     '- Vínculos de acesso inativos: '+num(r?.inactiveAccess),
     '- Mudança de perfis, Casas, Firestore ou permissões: **nenhuma**',
     '- Jogo liberado: **NÃO**, requer runtimes e aceite real.',

@@ -25,6 +25,11 @@ test('valid aggregate evidence is still NO_GO for players and cutover',()=>{
   assert.equal(r.readyForCutover,false);
   assert.equal(r.releaseDecision,'NO_GO');
   assert.ok(r.blockingCodes.includes('CROSS_HOUSE_CLOUD_E2E_PENDING'));
+  assert.equal(r.fourBlocks.publicContent.ready,false);
+  assert.equal(r.fourBlocks.operations.ready,false);
+  assert.equal(r.fourBlocks.playerAccess.ready,false);
+  assert.equal(r.fourBlocks.acceptance.ready,false);
+  assert.equal(r.fourBlocks.acceptance.authenticatedCloudRoleE2EVerified,false);
   const publicOutput=JSON.stringify(r)+safeOperatorSummary(r);
   for(const sensitive of ['SECRET_CLOUD_SNAPSHOT','SECRET_AUTH_UID'])
     assert.ok(!publicOutput.includes(sensitive));
@@ -44,6 +49,45 @@ test('operator reports only safe auxiliary stage names',()=>{
   assert.ok(!safeOperatorSummary(r).includes('PRIVATE_HOUSE_ID'));
 });
 
+test('four independent Cloud blocks report only safe aggregate evidence',()=>{
+  const c=cloud();
+  c.publicContentStageHttpStatus=404;
+  c.publicContentStageVerified=false;
+  c.mailRuntimeHttpStatus=404;
+  c.operationalRuntimeHttpStatus=404;
+  const a=auth();
+  a.missingProfiles=2;
+  a.playersWithoutHouse=2;
+  a.toEnable=0;
+  a.alreadyEnabled=14;
+  const r=evaluateOperatorEvidence({cloud:c,authPreview:a});
+  assert.equal(r.fourBlocks.publicContent.stageHttpStatus,404);
+  assert.equal(r.fourBlocks.publicContent.stageVerified,false);
+  assert.equal(r.fourBlocks.operations.mailRuntimeHttpStatus,404);
+  assert.equal(r.fourBlocks.operations.houseRuntimeHttpStatus,404);
+  assert.equal(r.fourBlocks.playerAccess.authAccountsEnabled,true);
+  assert.equal(r.fourBlocks.playerAccess.missingProfiles,2);
+  assert.equal(r.fourBlocks.playerAccess.playersWithoutHouse,2);
+  assert.equal(r.fourBlocks.playerAccess.inactiveAccess,3);
+  assert.equal(r.fourBlocks.playerAccess.passwordResetPending,2);
+  assert.equal(r.fourBlocks.acceptance.ready,false);
+  assert.equal(r.readyForPlayers,false);
+  const output=JSON.stringify(r)+safeOperatorSummary(r);
+  for(const secret of ['SECRET_CLOUD_SNAPSHOT','SECRET_AUTH_UID',
+    'PRIVATE_HOUSE_123'])assert.ok(!output.includes(secret));
+});
+test('malformed stage HTTP and missing inventory fail closed',()=>{
+  const c=cloud();
+  c.publicContentStageHttpStatus='PRIVATE_HOUSE_123';
+  c.mailRuntimeHttpStatus=999;
+  const r=evaluateOperatorEvidence({cloud:c,authError:'auth_inventory_request_failed'});
+  assert.equal(r.fourBlocks.publicContent.stageHttpStatus,null);
+  assert.equal(r.fourBlocks.operations.mailRuntimeHttpStatus,null);
+  assert.equal(r.fourBlocks.playerAccess.missingProfiles,null);
+  assert.equal(r.fourBlocks.playerAccess.authAccountsEnabled,false);
+  assert.equal(r.readyForPlayers,false);
+  assert.ok(!JSON.stringify(r).includes('PRIVATE_HOUSE_123'));
+});
 test('partial users or unexpected update makes Auth evidence invalid',()=>{
   for(const change of [
     v=>{v.accounts=13;},v=>{v.linkedAccounts=13;},

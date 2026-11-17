@@ -208,6 +208,11 @@ export async function inspectFirebaseCloudReadiness({
         [code,stageResults.filter(x=>String(x.code)===code).length])),
     auxiliaryStageCoverage:auxiliaryStages.length,
     auxiliaryStagesVerified:auxiliaryStages.filter(x=>x.verified).length,
+    // Public stage status is a fixed collection metadata probe, not content.
+    publicContentStageHttpStatus:auxiliaryStages.find(x=>
+      x.stage==='migrationPublicContentStage')?.code??null,
+    publicContentStageVerified:auxiliaryStages.some(x=>
+      x.stage==='migrationPublicContentStage'&&x.verified),
     // Fixed collection labels only; never reveal document IDs, content or provider errors.
     auxiliaryPendingStages:auxiliaryStages.filter(x=>!x.verified).map(x=>x.stage),
     auxiliaryStageHttpStatusCounts:Object.fromEntries(

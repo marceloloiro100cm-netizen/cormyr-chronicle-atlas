@@ -39,6 +39,35 @@ export function evaluateOperatorEvidence({cloud=null,authPreview=null,authError=
     authPreview.toEnable+authPreview.alreadyEnabled===14;
   const mail=cloud?.mailRuntimeEnabled===true;
   const runtime=cloud?.operationalRuntimeReconciled===true;
+  const publicStage=cloud?.publicContentStageVerified===true;
+  // Four independent, fail-closed production gates. These are not approvals.
+  const fourBlocks={
+    publicContent:{
+      stageHttpStatus:safeHttp(cloud?.publicContentStageHttpStatus),
+      stageVerified:publicStage,perRecordPublicReviewVerified:false,
+      ready:false,
+    },
+    operations:{
+      mailRuntimeHttpStatus:safeHttp(cloud?.mailRuntimeHttpStatus),
+      houseRuntimeHttpStatus:safeHttp(cloud?.operationalRuntimeHttpStatus),
+      mailVerified:mail,houseVerified:runtime,
+      sourceDeltaReconciled:false,ready:false,
+    },
+    playerAccess:{
+      authAccountsEnabled:authValid&&authPreview.toEnable===0,
+      missingProfiles:authValid?safeCount(authPreview.missingProfiles):null,
+      playersWithoutHouse:authValid?safeCount(authPreview.playersWithoutHouse):null,
+      inactiveAccess:authValid?safeCount(authPreview.inactiveAccess):null,
+      passwordResetPending:authValid?safeCount(authPreview.passwordResetPending):null,
+      ready:false,
+    },
+    acceptance:{
+      authenticatedCloudRoleE2EVerified:false,
+      crossHouseIsolationVerified:false,
+      gameplayWriteAndReloadVerified:false,
+      ready:false,
+    },
+  };
   const blockingCodes=[];
   if(authError==='oidc_impersonation_denied')
     blockingCodes.push('OIDC_OPERATOR_IMPERSONATION_DENIED');
@@ -74,6 +103,7 @@ export function evaluateOperatorEvidence({cloud=null,authPreview=null,authError=
     auxiliaryPendingStages,
     privateStagesComplete:stages,auxiliaryStagesComplete:auxiliary,
     mailRuntimeVerified:mail,operationalRuntimeVerified:runtime,
+    fourBlocks,
     authUpdatesAttempted:0,firestoreWrites:0,roleWrites:0,
     sourceLiveReconciliationVerified:false,storageVerified:false,
     crossHouseE2EVerified:false,readyForPlayers:false,readyForCutover:false,
@@ -107,9 +137,24 @@ export function safeOperatorSummary(report){
       (Array.isArray(report?.auxiliaryPendingStages)
         ?report.auxiliaryPendingStages.filter(v=>AUX_STAGE_NAMES.has(v)).join(', ')||'Nenhum identificado'
         :'Não identificado')+' |',
+    '| Conteúdo público: estágio | '+
+      (Number.isInteger(report?.fourBlocks?.publicContent?.stageHttpStatus)
+        ?'HTTP '+report.fourBlocks.publicContent.stageHttpStatus:'Indisponível')+
+      ' · '+yes(report?.fourBlocks?.publicContent?.stageVerified)+' |',
+    '| Contas sem perfil | '+n(report?.fourBlocks?.playerAccess?.missingProfiles)+' |',
+    '| Jogadores sem Casa | '+n(report?.fourBlocks?.playerAccess?.playersWithoutHouse)+' |',
+    '| Acessos de campanha inativos | '+n(report?.fourBlocks?.playerAccess?.inactiveAccess)+' |',
+    '| Trocas de senha pendentes | '+n(report?.fourBlocks?.playerAccess?.passwordResetPending)+' |',
     '| Correio operacional | '+yes(report?.mailRuntimeVerified)+' |',
     '| Runtime de Casas | '+yes(report?.operationalRuntimeVerified)+' |',
-    '| Aceite real de jogadores e Casas | Pendente |',
+    '| Operação Cloud: correio e Casas (HTTP) | '+
+      (Number.isInteger(report?.fourBlocks?.operations?.mailRuntimeHttpStatus)
+        ?report.fourBlocks.operations.mailRuntimeHttpStatus:'?')+' / '+
+      (Number.isInteger(report?.fourBlocks?.operations?.houseRuntimeHttpStatus)
+        ?report.fourBlocks.operations.houseRuntimeHttpStatus:'?')+' |',
+    '| Revisão pública por registro | Não verificada |',
+    '| E2E autenticado entre Casas | Não verificado |',
+    '| Gravação e recarga real de missivas/calendário | Não verificada |',
     '| Liberação da campanha | **NÃO AUTORIZADA** |',
     '',
     'Código de erro Auth (categoria segura): '+err,

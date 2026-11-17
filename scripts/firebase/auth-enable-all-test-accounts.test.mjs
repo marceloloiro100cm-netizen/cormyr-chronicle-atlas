@@ -97,6 +97,8 @@ test('all 14 can be planned without silently granting invalid profiles or Houses
   assert.equal(plan.summary.profileCounts.editor,1);
   assert.equal(plan.summary.profileCounts.other,2);
   assert.equal(plan.summary.pendingRoleOrHouse,4);
+  assert.equal(plan.summary.missingProfiles,2);
+  assert.equal(plan.summary.playersWithoutHouse,2);
   assert.equal(plan.summary.firestoreWrites,0);
   assert.equal(plan.summary.readyForPlayers,false);
   const publicReport=JSON.stringify(plan.summary);
