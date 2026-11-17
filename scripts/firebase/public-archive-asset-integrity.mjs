@@ -3,7 +3,7 @@
  * point to readable files in this Git checkout. No Cloud access or private data.
  * Existence and JSON parsing NEVER imply narrative review or authorization.
  */
-import {appendFileSync, lstatSync, readFileSync, realpathSync} from 'node:fs';
+import {appendFileSync, closeSync, lstatSync, openSync, readFileSync, readSync, realpathSync} from 'node:fs';
 import {isAbsolute, relative, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {parsePublicArchivePayload} from './public-archive-coverage-readonly.mjs';
@@ -84,6 +84,31 @@ function localAsset(root,ref,pattern,maxSize){
   }catch{return null;}
 }
 
+/** Header-only signature check; this does not claim full image decoding. */
+export function hasMatchingImageSignature(bytes,ref){
+  if(!(bytes instanceof Uint8Array)||typeof ref!=='string')return false;
+  const b=Buffer.from(bytes);
+  const lower=ref.toLowerCase();
+  if(lower.endsWith('.webp'))
+    return b.length>=12&&b.toString('ascii',0,4)==='RIFF'&&
+      b.toString('ascii',8,12)==='WEBP';
+  if(lower.endsWith('.png'))
+    return b.length>=8&&b.subarray(0,8).equals(
+      Buffer.from([137,80,78,71,13,10,26,10]));
+  if(lower.endsWith('.jpg')||lower.endsWith('.jpeg'))
+    return b.length>=3&&b[0]===255&&b[1]===216&&b[2]===255;
+  return false;
+}
+function imageFileSignature(file,ref){
+  let fd=null;
+  try{
+    fd=openSync(file,'r');
+    const header=Buffer.alloc(12);
+    const read=readSync(fd,header,0,12,0);
+    return hasMatchingImageSignature(header.subarray(0,read),ref);
+  }catch{return false;}
+  finally{if(fd!==null)closeSync(fd);}
+}
 export function inspectPublicAssetInventory({root=PUBLIC_ROOT}={}){
   if(root!==PUBLIC_ROOT&&
      (typeof root!=='string'||!isAbsolute(root)))fail('root_invalid');
@@ -104,7 +129,10 @@ export function inspectPublicAssetInventory({root=PUBLIC_ROOT}={}){
           data.text.length<=1_000_000;
       }catch{return false;}
     },
-    checkCrest:ref=>localAsset(root,ref,CREST,10_000_000)!==null,
+    checkCrest:ref=>{
+      const file=localAsset(root,ref,CREST,10_000_000);
+      return file!==null&&imageFileSignature(file,ref);
+    },
   });
 }
 
@@ -120,7 +148,7 @@ export function safeAssetSummary(report){
     '| Histórias ausentes/inválidas | '+n(report?.historyUnverified)+' |',
     '| Casas sem referência de história | '+n(report?.withoutHistoryReference)+' |',
     '| Brasões referenciados | '+n(report?.crestReferences)+' |',
-    '| Brasões encontrados | '+n(report?.crestVerified)+' |',
+    '| Brasões presentes com assinatura de imagem válida | '+n(report?.crestVerified)+' |',
     '| Brasões ausentes/inválidos | '+n(report?.crestUnverified)+' |',
     '| Revisão editorial | **Pendente** |',
     '| Publicação de dados no Firebase | **Nenhuma** |',
