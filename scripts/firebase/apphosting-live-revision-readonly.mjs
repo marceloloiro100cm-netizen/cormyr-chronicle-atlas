@@ -272,7 +272,7 @@ export async function observeServingRevision({
   maxAttempts=6,
   intervalMs=20_000,
 }={}){
-  if(!Number.isSafeInteger(maxAttempts)||maxAttempts<1||maxAttempts>6||
+  if(!Number.isSafeInteger(maxAttempts)||maxAttempts<1||maxAttempts>16||
      !Number.isSafeInteger(intervalMs)||intervalMs<0||intervalMs>30_000||
      typeof inspect!=='function'||typeof pause!=='function')
     throw Error('invalid_revision_observation_options');
