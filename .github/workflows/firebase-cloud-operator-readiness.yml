@@ -42,6 +42,7 @@ jobs:
           node --test scripts/firebase/cloud-runtime-source-preflight.test.mjs
           node --test scripts/firebase/public-archive-coverage-readonly.test.mjs
           node --test scripts/firebase/public-archive-asset-integrity.test.mjs
+          node scripts/firebase/public-archive-asset-integrity.mjs
           node --test scripts/firebase/auth-enable-all-test-accounts.test.mjs
       - name: Public-repo privacy gate
         run: node scripts/verify-public-repo.mjs
