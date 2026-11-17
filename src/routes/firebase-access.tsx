@@ -4,6 +4,7 @@ import {runFirebaseRoleSelfAcceptance}
   from '@/lib/auth/firebase-role-self-acceptance';
 import {firebasePilotAuth as firebaseAuth} from '@/lib/auth/firebase-pilot-session';
 import {firebasePilotLoginFailure} from '@/lib/auth/firebase-pilot-login-feedback';
+import {loadFirebasePilotResources} from '@/lib/auth/firebase-pilot-resource-loader';
 import {describeFirebasePilotSignals} from '@/lib/auth/firebase-pilot-readiness-ui';
 import {GmEventos,GmAventuras} from '@/components/gm-panels';
 import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
@@ -217,6 +218,7 @@ function FirebaseAccess(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
   const [view,setView]=useState<SessionView|null>(null);
+  const [houseCatalogAvailable,setHouseCatalogAvailable]=useState(true);
   const [narratorLibraryOpen,setNarratorLibraryOpen]=useState(false);
   const [roleCheck,setRoleCheck]=useState<
     Awaited<ReturnType<typeof runFirebaseRoleSelfAcceptance>>|null>(null);
@@ -258,30 +260,33 @@ function FirebaseAccess(){
       ?crypto.randomUUID():null);
 
   async function load(){
+    // Only the server-side Firebase "session" result can authorize a profile.
+    // Independent read-only modules are optional and never grant permissions.
     const profile=await readCloud<SessionView>('session');
+    if(profile?.authenticated!==true||
+       !['jogador','narrador','editor'].includes(profile.profile))
+      throw Error('Firebase session not authorized');
+    const resources=await loadFirebasePilotResources(profile.profile,{
+      listHouses:()=>readCloud<House[]>('listHouses'),
+      getCalendar:()=>readCloud<Calendar>('getCalendar'),
+      listMailbox:()=>readCloud<Inbox>('listMailbox'),
+      listNewspaper:()=>readCloud<{items:EditionSummary[]}>('listNewspaper'),
+      mailStatus:()=>cloudMail<MailStatus>({action:'status'}),
+      publishingStatus:()=>cloudPaper<PaperStatus>({action:'status'}),
+    });
+    // Apply the snapshot only after server Auth has been verified.
     setView(profile);
     setNarratorLibraryOpen(false);
-    const [catalog,date,letters,papers,mail,publishing]=await Promise.all([
-      readCloud<House[]>('listHouses'),
-      profile.profile==='editor'
-        ?Promise.resolve(null):readCloud<Calendar>('getCalendar').catch(()=>null),
-      profile.profile==='editor'
-        ?Promise.resolve(null):readCloud<Inbox>('listMailbox').catch(()=>null),
-      readCloud<{items:EditionSummary[]}>('listNewspaper').catch(()=>null),
-      profile.profile==='editor'
-        ?Promise.resolve(null):cloudMail<MailStatus>({action:'status'}).catch(()=>null),
-      profile.profile==='jogador'
-        ?Promise.resolve(null):cloudPaper<PaperStatus>({action:'status'}).catch(()=>null),
-    ]);
-    setHouses(catalog);
-    setCalendar(date);
-    setInbox(letters);
-    setEditions(papers?.items??[]);
-    setMailStatus(mail);
-    setPaperStatus(publishing);
-    setOriginHouseId(mail?.originHouseIds?.[0]??'');
+    setHouses(resources.houses);
+    setHouseCatalogAvailable(resources.houseCatalogAvailable);
+    setCalendar(resources.calendar);
+    setInbox(resources.inbox);
+    setEditions(resources.newspaper?.items??[]);
+    setMailStatus(resources.mailStatus);
+    setPaperStatus(resources.publishing);
+    setOriginHouseId(resources.mailStatus?.originHouseIds?.[0]??'');
     setMailRecipientKind('house');
-    setMailRecipientHouse(catalog[0]?.id??'');
+    setMailRecipientHouse(resources.houses[0]?.id??'');
   }
 
   useEffect(()=>{
@@ -312,6 +317,16 @@ function FirebaseAccess(){
       firebaseAuth()?.signOut();
       setView(null);
       setMessage(firebasePilotLoginFailure(authenticatedByFirebase));
+    }finally{setBusy(false);}
+  }
+
+  async function retryHouseCatalog(){
+    setBusy(true);
+    try{await load();}
+    catch{
+      // Only a revoked/invalid server-side session aborts the pilot entirely.
+      signOut();
+      setMessage('Sua sessão Firebase não pôde ser confirmada. Entre novamente.');
     }finally{setBusy(false);}
   }
 
@@ -519,6 +534,7 @@ function FirebaseAccess(){
     firebaseAuth()?.signOut();
     setView(null);setHouse(null);setHouseReconciliation(null);setRoleCheck(null);
     setNarratorLibraryOpen(false);
+    setHouseCatalogAvailable(true);
     setHouses([]);setCalendar(null);
     setInbox(null);setEditions([]);setEdition(null);setAgents(null);
     setDossiers(null);
@@ -570,6 +586,17 @@ function FirebaseAccess(){
         Recuperar senha
       </button>
     </form>}
+    {view&&!houseCatalogAvailable&&<section role="status"
+      aria-label="Catálogo de Casas temporariamente indisponível"
+      className="rounded border border-current/25 p-4 space-y-2">
+      <p className="text-sm">Sua sessão Firebase foi validada, mas o
+        catálogo de Casas está indisponível nesta consulta. As funções
+        que dependem das Casas continuam bloqueadas; os demais módulos
+        autorizados podem ser consultados.</p>
+      <button type="button" disabled={busy}
+        className="rounded border px-3 py-1 text-sm disabled:opacity-50"
+        onClick={()=>void retryHouseCatalog()}>Tentar carregar Casas novamente</button>
+    </section>}
     {view&&<section className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <p>Perfil validado: <strong>{view.profile}</strong></p>

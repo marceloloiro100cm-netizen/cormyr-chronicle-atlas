@@ -166,3 +166,9 @@ respostas. O resultado continua `NO_GO` para liberação geral.
 
 Não utilizar esta verificação para forçar implantação, habilitar Auth,
 abrir permissões do Firestore ou alterar o runtime.
+
+## Falha parcial e reconsulta no portal de jogadores (17/11/2026)
+
+O portal agora autentica primeiro a sessão com o backend Firebase. Em seguida, consulta os módulos opcionais separadamente. Se `listHouses` estiver temporariamente indisponível, **não desloga** uma sessão realmente confirmada: exibe aviso claro, lista vazia *somente para a apresentação* e oferece retry. Uma lista vazia válida não é tratada como erro. Calendário, correio e jornal continuam sujeitos às suas próprias verificações e podem permanecer acessíveis conforme o perfil, sem acessar outra Casa ou fallback Supabase. Perfis sem sessão Firebase confirmada continuam proibidos.
+
+Testes específicos: `src/lib/auth/firebase-pilot-resource-loader.test.ts`. O comportamento não ativa usuários nem elimina a necessidade de reconciliação Cloud e testes reais entre Casas.
