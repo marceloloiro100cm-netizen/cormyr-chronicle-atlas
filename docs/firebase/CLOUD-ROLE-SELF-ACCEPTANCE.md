@@ -51,3 +51,6 @@ Condições antes de disponibilizar aos jogadores:
 A tela `/firebase-access` agora permite solicitar redefinição por e-mail diretamente ao Firebase Auth (`accounts:sendOobCode` com `PASSWORD_RESET`). O botão só atua sobre o e-mail digitado, sem gerar autenticação, sem expor token ou armazenar endereço em logs. A mensagem exibida é idêntica em sucesso e falha, para não revelar se uma conta existe. Não há `continueUrl` arbitrária ou redirecionamento controlado pelo cliente.
 
 Esse recurso não ativa contas desabilitadas, não garante a entrega do e-mail e não modifica a associação de Casas. Deve-se homologar o remetente/modelo de e-mail e os domínios autorizados no console Firebase antes do uso público. A liberação da campanha continua `NO_GO`.
+
+## Mensagens distintas de Auth e habilitação de Cloud
+A tela de acesso identifica separadamente falha no login Firebase (senha, conta ou configuração) e falha posterior na consulta do perfil pelo serviço Cloud (flag, disponibilidade ou permissão de Casa). A mensagem não revela estado interno de Auth nem dados de outra Casa. Se a etapa de Cloud falha, a sessão é encerrada sem permitir ações de jogo. O novo teste `firebase-pilot-login-feedback.test.ts` preserva essa distinção.

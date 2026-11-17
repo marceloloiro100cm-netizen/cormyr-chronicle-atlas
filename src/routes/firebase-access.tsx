@@ -3,6 +3,7 @@ import {useEffect,useState,type FormEvent} from 'react';
 import {runFirebaseRoleSelfAcceptance}
   from '@/lib/auth/firebase-role-self-acceptance';
 import {firebasePilotAuth as firebaseAuth} from '@/lib/auth/firebase-pilot-session';
+import {firebasePilotLoginFailure} from '@/lib/auth/firebase-pilot-login-feedback';
 import {describeFirebasePilotSignals} from '@/lib/auth/firebase-pilot-readiness-ui';
 import {GmEventos,GmAventuras} from '@/components/gm-panels';
 import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
@@ -297,16 +298,20 @@ function FirebaseAccess(){
   async function submit(event:FormEvent){
     event.preventDefault();
     setBusy(true);setMessage('');setRoleCheck(null);
+    let authenticatedByFirebase=false;
     try{
       const auth=firebaseAuth();
       if(!auth)throw Error('Configuração Firebase indisponível.');
       await auth.signInWithPassword(email,password);
+      authenticatedByFirebase=true;
       setPassword('');
       await load();
     }catch{
+      // Sign-in and server-side campaign permission are separate steps.
+      // Keep the token out of storage if the game access check fails.
       firebaseAuth()?.signOut();
       setView(null);
-      setMessage('Não foi possível autorizar este acesso no Firebase. Confira sua conta e as permissões.');
+      setMessage(firebasePilotLoginFailure(authenticatedByFirebase));
     }finally{setBusy(false);}
   }
 
