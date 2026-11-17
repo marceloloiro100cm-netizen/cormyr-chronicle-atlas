@@ -8,11 +8,11 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: 'Audit or request protected Auth operation'
+        description: 'Audit, protected operator audit or Auth operation'
         type: choice
         required: true
         default: audit
-        options: [audit, auth-preview, auth-activate]
+        options: [audit, operator-audit, auth-preview, auth-activate]
 
 permissions:
   contents: read
@@ -41,7 +41,7 @@ jobs:
             const CONTROL_ISSUE = 568;
             const CONFIRMATION = 'ENABLE_ALL_14_CORMYR_TEST_ACCOUNTS';
             const AUTH_WORKFLOW = '.github/workflows/firebase-auth-enable-all-test-accounts.yml';
-            const titleFormat = /^Cormyr Ops \| (audit|auth-preview|auth-activate|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
+            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-activate|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
             const {owner, repo} = context.repo;
             if (owner + '/' + repo !== REPO || Number(process.env.GITHUB_RUN_ATTEMPT) !== 1) {
               core.info('Untrusted context or retry: no remote action');
@@ -51,7 +51,7 @@ jobs:
             if (context.eventName === 'schedule') operation = 'audit';
             else if (context.eventName === 'workflow_dispatch') {
               operation = context.payload.inputs?.task;
-              if (!['audit', 'auth-preview', 'auth-activate'].includes(operation)) {
+              if (!['audit', 'operator-audit', 'auth-preview', 'auth-activate'].includes(operation)) {
                 core.info('Unknown manual command: no action');
                 return;
               }
@@ -74,6 +74,8 @@ jobs:
             const tasks = operation === 'audit' ? [
               ['firebase-apphosting-release-convergence.yml', {}],
               ['firebase-cloud-access-readiness.yml', {}],
+            ] : operation === 'operator-audit' ? [
+              ['firebase-cloud-operator-readiness.yml', {}],
             ] : operation === 'auth-preview' ? [
               ['firebase-auth-enable-all-test-accounts.yml', {mode:'preview'}],
             ] : operation === 'auth-activate' ? [
@@ -85,6 +87,7 @@ jobs:
               const allowed = new Set([
                 'firebase-apphosting-release-convergence.yml',
                 'firebase-cloud-access-readiness.yml',
+                'firebase-cloud-operator-readiness.yml',
                 'firebase-auth-enable-all-test-accounts.yml',
               ]);
               for (const [workflow_id, inputs] of tasks) {
@@ -95,8 +98,8 @@ jobs:
                 core.info('Requested allowlisted workflow: ' + workflow_id);
                 await core.summary.addRaw('- Requested: ' + workflow_id + '\n').write();
               }
-              if (operation.startsWith('auth-'))
-                await core.summary.addRaw('Protected firebase-auth-test-activation approval remains mandatory.\n').write();
+              if (operation.startsWith('auth-') || operation === 'operator-audit')
+                await core.summary.addRaw('Protected firebase-auth-test-activation approval remains mandatory for Auth and operator audits.\n').write();
               return;
             }
             if (!operation.startsWith('cancel-auth:')) return;
