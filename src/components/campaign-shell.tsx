@@ -1,19 +1,17 @@
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import type { HeraldicHouse } from '@/lib/house/heraldry';
 import {useQuery} from '@tanstack/react-query';
 import { LanguageSwitcher } from './language-switcher';
 import { useTranslation } from '@/lib/i18n/context';
-import {campaignTimeView,useCampaignTime} from '@/lib/calendar/campaign-time';
-import {useCampaignCalendarRealtime} from '@/components/calendar/realtime';
 import {publicCampaignTimeProjection} from '@/lib/calendar/public-time';
 
+// Carregado sob demanda: mantém o cliente Supabase fora do bundle público.
+const PrivateClockBody=lazy(()=>import('./campaign-private-clock'));
 /** O relógio completo só é consultado após a autenticação. */
 function PrivateClock(){
- const clock=useCampaignTime();
- useCampaignCalendarRealtime();
- return <small aria-live="polite">{clock.data&&!clock.isError?
-  `Crônicas do Reino · ${campaignTimeView(clock.data).period}`:
-  clock.isError?'Data oficial indisponível':'Consultando data oficial…'}</small>;
+ return <Suspense fallback={<small aria-live="polite">Consultando data oficial…</small>}>
+  <PrivateClockBody/>
+ </Suspense>;
 }
 /** A página de login nunca chama RPC privado ou assina Realtime do calendário. */
 function PublicClock(){

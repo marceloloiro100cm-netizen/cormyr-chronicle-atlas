@@ -6,7 +6,7 @@ Levantamento feito por análise de importações a partir das rotas públicas at
 |---|---|---|
 | Alcançados pelas rotas ativas | 5 | Importados, mas não executam no modo arquivo (ver abaixo) |
 | Só usados pela área antiga `/jogadores` | 63 | `/jogadores` redireciona para `/firebase-access`; código morto em produção |
-| Órfãos (nenhuma rota importa) | 10 | Podem ser removidos sem efeito em produção |
+| Fora das rotas (nenhuma rota alcança) | 10 | 4 sem nenhuma referência; 6 ainda citados por código antigo ou testes |
 | Testes | 41 | Cobrem o código antigo; saem junto com ele |
 
 ## 1. Alcançados pelas rotas ativas
@@ -18,6 +18,8 @@ O build das páginas públicas ainda inclui o cliente Supabase, por estas cadeia
 - `auth.tsx` > `components/campaign-shell.tsx` > `components/calendar/realtime.ts` e `lib/calendar/campaign-time.ts` (usados só pelo relógio privado; as páginas públicas usam `PublicClock`).
 
 O cliente é um Proxy que só cria a conexão quando usado, então nenhuma chamada sai para o Supabase nessas páginas. Para tirar o Supabase do bundle público basta separar `draft-cache` de `campaign-content` e mover `PrivateClock` para um arquivo próprio.
+
+**Atualização (17/11, noite):** a cadeia de `auth.tsx` foi cortada. O relógio privado foi para `src/components/campaign-private-clock.tsx`, carregado sob demanda só na área autenticada. A segunda cadeia não inclui código de verdade: `draft-cache` importa de `campaign-content` apenas um tipo, que some no build. Uma análise das importações estáticas a partir de `/`, `/auth`, `/reset-password`, `/firebase-access`, `/firebase-homolog` e `/firebase-treasury-history` não alcança mais o cliente Supabase; resta só o `import()` preguiçoso de `__root.tsx`, que não roda no modo arquivo.
 
 - `src/components/calendar/realtime.ts`
 - `src/components/campaign-content.tsx`
@@ -137,24 +139,31 @@ Substituto no Firebase: `FirebaseNewspaperReader` e `/api/firebase-cloud-newspap
 
 - `src/lib/newspaper/data.ts`
 
-## 3. Órfãos
+## 3. Fora das rotas
 
-Nenhuma rota importa estes arquivos. Remoção segura numa próxima limpeza (conferir antes se algum teste os importa).
+Nenhuma rota alcança estes arquivos, mas uma conferência posterior (17/11, 19h) mostrou que nem todos são órfãos de verdade.
 
-- `src/components/calendar/chronology.tsx`
+**Sem nenhuma referência no código, nos testes ou nos workflows** (removidos neste PR):
+
 - `src/components/calendar/narrator-character-registry.tsx`
 - `src/components/drive-sync-admin.tsx`
 - `src/integrations/supabase/auth-attacher.ts`
-- `src/lib/character-v2/migration.functions.ts`
-- `src/lib/espionage/region-review.functions.ts`
 - `src/lib/espionage/region-turns.functions.ts`
-- `src/lib/espionage/spy-mission-preview.functions.ts`
-- `src/lib/espionage/spy-narrator-house-defense.functions.ts`
-- `src/lib/espionage/spy-target-defense.functions.ts`
+
+**Ainda importados por componentes antigos de `/jogadores` ou lidos por testes** (sair junto com a área antiga, não antes):
+
+- `src/components/calendar/chronology.tsx` (missivas, calendário e 6 testes)
+- `src/lib/character-v2/migration.functions.ts` (`narrator-review.tsx`)
+- `src/lib/espionage/region-review.functions.ts` (painel de rotas e teste)
+- `src/lib/espionage/spy-mission-preview.functions.ts` (teste de probabilidade)
+- `src/lib/espionage/spy-narrator-house-defense.functions.ts` (painel de defesa e teste)
+- `src/lib/espionage/spy-target-defense.functions.ts` (prévia de defesa e teste)
+
+Observação: o Lote 5 (`scripts/firebase/lot5-safety-preflight.mjs`) só verifica que `src/start.ts` não registra `attachSupabaseAuth`; a remoção do arquivo não afeta essa verificação.
 
 ## Ordem sugerida de remoção
 
-1. Órfãos (seção 3).
-2. Tirar o Supabase do bundle público (seção 1).
+1. ~~Os 4 arquivos sem referência (seção 3).~~ Feito em 17/11.
+2. ~~Tirar o Supabase do bundle público (seção 1).~~ Feito em 17/11.
 3. Depois que o piloto de leitura estiver no ar e aceito, apagar `/jogadores` inteiro e os domínios da seção 2 que já têm substituto de leitura.
 4. Por último, `src/integrations/supabase/`, a dependência `@supabase/supabase-js` e os testes associados, junto com o desligamento do projeto Supabase.
