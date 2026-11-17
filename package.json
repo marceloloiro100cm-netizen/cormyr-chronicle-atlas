@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^6.0.2",
-    "@lovable.dev/mcp-js": "^3.3.0",
     "@noble/hashes": "^2.4.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",

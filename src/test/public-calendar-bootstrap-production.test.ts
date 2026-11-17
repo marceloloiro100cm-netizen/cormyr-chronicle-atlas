@@ -29,7 +29,6 @@ describe('CORMYR produção: calendário de login e configurações públicas',(
   expect(shell).toContain('publicTime?<PublicClock/>:<PrivateClock/>');
   expect(source('src/routes/auth.tsx')).toContain('<CampaignShell publicTime>');
   expect(source('src/routes/reset-password.tsx')).toContain('<CampaignShell publicTime>');
-  expect(source('src/routes/[.]lovable.oauth.consent.tsx')).toContain('<CampaignShell publicTime>');
  });
  it('o painel autenticado preserva apenas o RPC e Realtime autorizados',()=>{
   const shell=source('src/components/campaign-shell.tsx');

@@ -13,11 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as FirebaseHomologRouteImport } from './routes/firebase-homolog'
-import { Route as McpRouteImport } from './routes/mcp'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedJogadoresRouteImport } from './routes/_authenticated/jogadores'
-import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiFirebaseDomainRouteImport } from './routes/api/firebase-domain'
 import { Route as ApiFirebaseAuthVerifyRouteImport } from './routes/api/firebase-auth-verify'
 import { Route as ApiPublicCatalogRouteImport } from './routes/api/public/catalog'
@@ -46,31 +43,15 @@ const FirebaseHomologRoute = FirebaseHomologRouteImport.update({
   path: '/firebase-homolog',
   getParentRoute: () => rootRouteImport,
 } as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const AuthenticatedJogadoresRoute = AuthenticatedJogadoresRouteImport.update({
   id: '/jogadores',
   path: '/jogadores',
   getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
-  id: '/.lovable/oauth/consent',
-  path: '/.lovable/oauth/consent',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiFirebaseDomainRoute = ApiFirebaseDomainRouteImport.update({
   id: '/api/firebase-domain',
@@ -117,11 +98,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/firebase-homolog': typeof FirebaseHomologRoute
-  '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/jogadores': typeof AuthenticatedJogadoresRoute
-  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/firebase-domain': typeof ApiFirebaseDomainRoute
   '/api/firebase-auth-verify': typeof ApiFirebaseAuthVerifyRoute
   '/api/public/catalog': typeof ApiPublicCatalogRoute
@@ -135,11 +113,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/firebase-homolog': typeof FirebaseHomologRoute
-  '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/jogadores': typeof AuthenticatedJogadoresRoute
-  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/firebase-domain': typeof ApiFirebaseDomainRoute
   '/api/firebase-auth-verify': typeof ApiFirebaseAuthVerifyRoute
   '/api/public/catalog': typeof ApiPublicCatalogRoute
@@ -155,11 +130,8 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/firebase-homolog': typeof FirebaseHomologRoute
-  '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/jogadores': typeof AuthenticatedJogadoresRoute
-  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/firebase-domain': typeof ApiFirebaseDomainRoute
   '/api/firebase-auth-verify': typeof ApiFirebaseAuthVerifyRoute
   '/api/public/catalog': typeof ApiPublicCatalogRoute
@@ -175,11 +147,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/firebase-homolog'
-    | '/mcp'
     | '/reset-password'
-    | '/.well-known/oauth-protected-resource'
     | '/jogadores'
-    | '/.lovable/oauth/consent'
     | '/api/firebase-domain'
     | '/api/firebase-auth-verify'
     | '/api/public/catalog'
@@ -193,11 +162,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/firebase-homolog'
-    | '/mcp'
     | '/reset-password'
-    | '/.well-known/oauth-protected-resource'
     | '/jogadores'
-    | '/.lovable/oauth/consent'
     | '/api/firebase-domain'
     | '/api/firebase-auth-verify'
     | '/api/public/catalog'
@@ -212,11 +178,8 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/firebase-homolog'
-    | '/mcp'
     | '/reset-password'
-    | '/.well-known/oauth-protected-resource'
     | '/_authenticated/jogadores'
-    | '/.lovable/oauth/consent'
     | '/api/firebase-domain'
     | '/api/firebase-auth-verify'
     | '/api/public/catalog'
@@ -232,10 +195,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   FirebaseHomologRoute: typeof FirebaseHomologRoute
-  McpRoute: typeof McpRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiFirebaseDomainRoute: typeof ApiFirebaseDomainRoute
   ApiFirebaseAuthVerifyRoute: typeof ApiFirebaseAuthVerifyRoute
   ApiPublicCatalogRoute: typeof ApiPublicCatalogRoute
@@ -276,25 +236,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FirebaseHomologRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/jogadores': {
@@ -303,13 +249,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/jogadores'
       preLoaderRoute: typeof AuthenticatedJogadoresRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/.lovable/oauth/consent': {
-      id: '/.lovable/oauth/consent'
-      path: '/.lovable/oauth/consent'
-      fullPath: '/.lovable/oauth/consent'
-      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/api/firebase-domain': {
       id: '/api/firebase-domain'
@@ -386,11 +325,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   FirebaseHomologRoute: FirebaseHomologRoute,
-  McpRoute: McpRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  Char91DotwellKnownChar93OauthProtectedResourceRoute:
-    Char91DotwellKnownChar93OauthProtectedResourceRoute,
-  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiFirebaseDomainRoute: ApiFirebaseDomainRoute,
   ApiFirebaseAuthVerifyRoute: ApiFirebaseAuthVerifyRoute,
   ApiPublicCatalogRoute: ApiPublicCatalogRoute,
