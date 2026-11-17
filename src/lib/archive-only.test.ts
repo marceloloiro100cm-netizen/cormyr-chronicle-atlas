@@ -70,16 +70,17 @@ describe('Firebase archive-only cutover', () => {
     expect(shouldBlockLegacyRequest(pathname, 'serverFn')).toBe(true);
   });
 
-  it('permits exactly the Firebase-only pilot page, never a legacy or nested path', () => {
-    expect(isFirebasePilotPage('/firebase-access')).toBe(true);
-    expect(isFirebasePilotPage('/auth')).toBe(false);
-    expect(isFirebasePilotPage('/jogadores')).toBe(false);
-    expect(isFirebasePilotPage('/firebase-access/extra')).toBe(false);
-    expect(isFirebasePilotPage('/api/firebase-cloud-read')).toBe(false);
+  it('permits only exact Firebase login, reset and independently secured pilot pages', () => {
+    for(const p of ['/auth','/reset-password','/firebase-access'])
+      expect(isFirebasePilotPage(p)).toBe(true);
+    for(const p of ['/jogadores','/auth/extra','/reset-password/extra',
+      '/firebase-access/extra','/diagnostico','/api/firebase-cloud-read'])
+      expect(isFirebasePilotPage(p)).toBe(false);
   });
 
-  it('routes only legacy login and player bookmarks to the Firebase pilot', () => {
-    expect(shouldRedirectToFirebasePilot('/auth')).toBe(true);
+  it('routes legacy player bookmarks to the Firebase pilot, without bypassing login', () => {
+    expect(shouldRedirectToFirebasePilot('/auth')).toBe(false);
+    expect(shouldRedirectToFirebasePilot('/reset-password')).toBe(false);
     expect(shouldRedirectToFirebasePilot('/jogadores')).toBe(true);
     expect(shouldRedirectToFirebasePilot('/diagnostico')).toBe(false);
     expect(shouldRedirectToFirebasePilot('/api/firebase-cloud-read')).toBe(false);

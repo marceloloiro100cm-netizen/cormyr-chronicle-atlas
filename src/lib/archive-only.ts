@@ -8,18 +8,20 @@
 export const CORMYR_ARCHIVE_ONLY = true as const;
 
 /**
- * Exact router carve-out for the separate Firebase-only pilot. This does NOT
- * grant any authentication, database access, or write capability.
+ * Exact router carve-out for the Firebase-only public login, one-time
+ * password-reset form and server-verified pilot page. These routes do not
+ * grant authorization and do not open any legacy server functions.
  */
 export function isFirebasePilotPage(pathname: string): boolean {
-  return pathname === '/firebase-access';
+  return pathname === '/firebase-access' ||
+    pathname === '/auth' ||pathname === '/reset-password';
 }
 
-/** Legacy login/bookmark paths route only to the Firebase-authenticated pilot.
- * All other legacy routes remain archive-only, with no Supabase fallback.
+/** Legacy player bookmarks route to Firebase; never to the retired backend.
+ * /auth is now a real Firebase-only login form and is NOT redirected.
  */
 export function shouldRedirectToFirebasePilot(pathname: string): boolean {
-  return pathname === '/auth' || pathname === '/jogadores';
+  return pathname === '/jogadores';
 }
 
 /** Tested boundary for server calls that still target legacy services. */

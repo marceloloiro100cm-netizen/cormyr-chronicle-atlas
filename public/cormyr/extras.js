@@ -1,4 +1,4 @@
-(function(){let admin=false;
+(function(){
   const data=window.CORMYR_DATA||{};const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const KIND_LABELS={reino:'Tema do reino',regiao:'Músicas de região',casa:'Músicas de casa',populares:'Músicas Populares'};
   const KIND_ORDER=['reino','regiao','casa','populares'];
@@ -87,18 +87,10 @@
       playlistButton.textContent='Fechar playlist';
     });
   }
-  const hideGm=()=>{if(admin)return;if(!document.getElementById('view-eventos').hidden||!document.getElementById('view-aventura').hidden||['eventos','aventura'].includes((typeof state!=='undefined'&&state.view))||/^#(eventos|aventura|evento-)/.test(location.hash))document.querySelector('[data-view=reino]')?.click();};
+  const hideGm=()=>{if(!document.getElementById('view-eventos').hidden||!document.getElementById('view-aventura').hidden||['eventos','aventura'].includes((typeof state!=='undefined'&&state.view))||/^#(eventos|aventura|evento-)/.test(location.hash))document.querySelector('[data-view=reino]')?.click();};
   
-  // Archive-only: never read legacy JWT or contact Supabase directly.
-  if (window.CORMYR_ARCHIVE_ONLY) {
-    setTimeout(hideGm, 0);
-    window.addEventListener('hashchange', () => setTimeout(hideGm, 0));
-    return;
-  }
-  try{const raw=localStorage.getItem('sb-qkdznngbkwodsbpkpoax-auth-token');const tok=raw&&JSON.parse(raw).access_token;
-    if(tok){const btn=document.getElementById('login-button');if(btn){btn.textContent='Área dos jogadores';btn.href='/jogadores';}
-      fetch('https://qkdznngbkwodsbpkpoax.supabase.co/rest/v1/rpc/is_campaign_admin',{method:'POST',headers:{apikey:'sb_publishable_jToB9fTbM4C9-cDEhZN8TQ_q3wq4XUm',Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:'{}'}).then(r=>r.ok?r.json():false).then(ok=>{admin=ok===true;if(admin)document.querySelectorAll('[data-narrator]').forEach(b=>b.hidden=false);else hideGm();});
-    }else setTimeout(hideGm,300);
-  }catch(e){setTimeout(hideGm,300);}
-  window.addEventListener('hashchange',()=>{if(!admin)setTimeout(hideGm,0);});
+  // Historical public pages never authorize a narrator from browser state.
+  // Authentication and roles are checked by the Firebase-only server portal.
+  setTimeout(hideGm,0);
+  window.addEventListener('hashchange',()=>setTimeout(hideGm,0));
 })();
