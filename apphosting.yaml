@@ -32,16 +32,16 @@ env:
 
   # Piloto de leitura (somente leitura do snapshot importado no Firestore).
   # Passo a passo: docs/firebase/ATIVAR-PILOTO-LEITURA.md
-  # Crie o segredo ANTES de descomentar, senão o rollout falha:
+  # O segredo precisa existir antes deste bloco ir para a main, senão o rollout falha:
   #   firebase apphosting:secrets:set CORMYR_FIREBASE_SNAPSHOT_ID --project cormyr
-  # - variable: CORMYR_FIREBASE_CLOUD_READ_ENABLED
-  #   value: "true"
-  #   availability:
-  #     - RUNTIME
-  # - variable: CORMYR_FIREBASE_SNAPSHOT_ID
-  #   secret: CORMYR_FIREBASE_SNAPSHOT_ID
-  #   availability:
-  #     - RUNTIME
+  - variable: CORMYR_FIREBASE_CLOUD_READ_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+  - variable: CORMYR_FIREBASE_SNAPSHOT_ID
+    secret: CORMYR_FIREBASE_SNAPSHOT_ID
+    availability:
+      - RUNTIME
 
   # Google Drive/Docs: crie os segredos abaixo e remova o comentário da opção escolhida.
   # Opção A, conta de serviço:
