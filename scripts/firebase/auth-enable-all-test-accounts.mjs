@@ -28,6 +28,26 @@ const failed=code=>{
   throw Error('activation_preflight_'+code);
 };
 
+/** Preserve a fixed, privacy-safe failure label, never provider error bodies. */
+export function safePreflightFailureCode(error){
+  const msg=typeof error?.message==='string'?error.message:'';
+  const match=/^activation_preflight_([a-z_]{1,80})$/.exec(msg);
+  return match?.[1]??'unclassified_cloud_or_runtime_error';
+}
+
+const readWithSafeDiagnostic=async (phase,read)=>{
+  try{return await read();}
+  catch(error){
+    const code=String(error?.code??'').toLowerCase();
+    const kind=code==='7'||code.includes('permission')?
+      'permission_denied':
+      code==='16'||code.includes('credential')||
+      code.includes('unauthenticated')?'authentication_failed':
+      'request_failed';
+    failed(phase+'_'+kind);
+  }
+};
+
 /** Pure, all-or-nothing inventory validation. Keep returned UIDs private. */
 export function planAllExistingAuthTestAccounts({users,accessDocs,houses}={}){
   if(!Array.isArray(users)||users.length!==EXPECTED_AUTH_ACCOUNTS||
@@ -122,23 +142,23 @@ export async function executeAllExistingAuthTestAccounts({
      typeof auth.updateUser!=='function'||typeof auth.getUser!=='function'||
      !db||typeof db.collection!=='function')
     failed('admin_identity_not_configured');
-  const inventory=await auth.listUsers(1000);
+  const inventory=await readWithSafeDiagnostic('auth_inventory',()=>auth.listUsers(1000));
   if(inventory.pageToken)failed('auth_list_incomplete');
 
-  const root=await db.collection('migrationDomainStage').limit(2).get();
+  const root=await readWithSafeDiagnostic('domain_snapshot',()=>db.collection('migrationDomainStage').limit(2).get());
   if(root.docs?.length!==1)failed('snapshot_unverified');
   const snapshot=root.docs[0];
   if(!SNAP.test(snapshot.id)||snapshot.data()?.status!=='complete'||
      snapshot.data()?.private!==true)failed('snapshot_unverified');
 
-  const stage=await db.collection('migrationAuthStage').doc(snapshot.id).get();
+  const stage=await readWithSafeDiagnostic('auth_stage',()=>db.collection('migrationAuthStage').doc(snapshot.id).get());
   if(!stage.exists||stage.data()?.status!=='complete'||
      stage.data()?.private!==true)failed('auth_stage_unverified');
 
-  const access=await db.collection('migrationDomainStage')
-    .doc(snapshot.id).collection('access').get();
-  const houses=await db.collection('migrationDomainStage')
-    .doc(snapshot.id).collection('houses').get();
+  const access=await readWithSafeDiagnostic('access_inventory',()=>db.collection('migrationDomainStage')
+    .doc(snapshot.id).collection('access').get());
+  const houses=await readWithSafeDiagnostic('house_inventory',()=>db.collection('migrationDomainStage')
+    .doc(snapshot.id).collection('houses').get());
   const reviewed=planAllExistingAuthTestAccounts({
     users:inventory.users,
     accessDocs:access.docs.map(doc=>({id:doc.id,data:doc.data()})),
@@ -239,10 +259,12 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
         safeActivationSummary(report)+'\n');
     if(report.mode==='activate'&&!report.activationComplete)
       process.exitCode=2;
-  }catch{
-    // Provider error messages can include PII: never propagate them.
+  }catch(error){
+    // Emit a static phase/code only; never propagate sensitive provider details.
     process.stderr.write(
-      'Firebase Auth test activation preflight failed. No successful activation was verified.\n');
+      'Firebase Auth test activation preflight failed ['+
+      safePreflightFailureCode(error)+
+      ']. No successful activation was verified.\n');
     process.exitCode=2;
   }
 }
