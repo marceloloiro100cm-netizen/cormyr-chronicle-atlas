@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   EXPECTED_AUTH_ACCOUNTS,ACTIVATION_PHRASE,
   planAllExistingAuthTestAccounts,executeAllExistingAuthTestAccounts,
-  safeActivationSummary,
+  safeActivationSummary,safePreflightFailureCode,
 } from './auth-enable-all-test-accounts.mjs';
 
 const SNAP='a'.repeat(64);
@@ -202,4 +202,44 @@ test('GitHub summary never includes UIDs, private notes or error messages',()=>{
     assert.ok(!summary.includes(secret));
   assert.ok(summary.includes('14'));
   assert.ok(summary.includes('NÃO'));
+});
+
+test('preflight errors give only safe phase codes and never provider details',async()=>{
+  const f=fakeEnvironment();
+  f.auth.listUsers=async()=>{throw Object.assign(
+    Error('PRIVATE_ACCOUNT_INFORMATION'),{code:'permission-denied'});
+  };
+  await assert.rejects(
+    ()=>executeAllExistingAuthTestAccounts({
+      auth:f.auth,db:f.db,mode:'preview',
+    }),err=>{
+      assert.equal(safePreflightFailureCode(err),
+        'auth_inventory_permission_denied');
+      assert.ok(!String(err.message).includes('PRIVATE_ACCOUNT_INFORMATION'));
+      return true;
+    });
+  assert.equal(safePreflightFailureCode(
+    Error('PRIVATE_ACCOUNT_INFORMATION')),
+    'unclassified_cloud_or_runtime_error');
+  assert.equal(safePreflightFailureCode(
+    Error('activation_preflight_access_schema_invalid')),
+    'access_schema_invalid');
+});
+
+test('preflight diagnostics distinguish Firestore read denial without leaking details',async()=>{
+  const f=fakeEnvironment();
+  f.db.collection=()=>({
+    limit:()=>({get:async()=>{throw Object.assign(
+      Error('PRIVATE_FIRESTORE_PATH'),{code:7});
+    }}),
+  });
+  await assert.rejects(
+    ()=>executeAllExistingAuthTestAccounts({
+      auth:f.auth,db:f.db,mode:'preview',
+    }),err=>{
+      assert.equal(safePreflightFailureCode(err),
+        'domain_snapshot_permission_denied');
+      assert.ok(!String(err.message).includes('PRIVATE_FIRESTORE_PATH'));
+      return true;
+    });
 });
