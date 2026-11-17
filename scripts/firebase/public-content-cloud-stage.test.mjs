@@ -34,7 +34,8 @@ function fakeDb({
     doc(id){
       const value=collection(path).doc(id);
       return {...value,collection(name){
-        return {limit(n){
+        const nested=collection(value.path+'/'+name);
+        return {...nested,limit(n){
           assert.equal(n,251);
           return {kind:'query',path:value.path+'/'+name};
         }};
