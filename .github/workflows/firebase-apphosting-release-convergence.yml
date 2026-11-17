@@ -1,0 +1,66 @@
+name: Firebase App Hosting — verify main is actually serving
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/apphosting-release-convergence*.mjs'
+      - 'scripts/firebase/apphosting-live-revision-readonly*.mjs'
+      - '.github/workflows/firebase-apphosting-release-convergence.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A later main push supersedes an older verification. Neither job changes Cloud.
+concurrency:
+  group: firebase-apphosting-convergence-main
+  cancel-in-progress: true
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Exact serving SHA and bounded polling contract
+        run: |
+          node --test scripts/firebase/apphosting-live-revision-readonly.test.mjs
+          node --test scripts/firebase/apphosting-release-convergence.test.mjs
+      - name: Verify no private data in public repo
+        run: node scripts/verify-public-repo.mjs
+
+  main-serving-convergence:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: offline-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Authenticate short-lived existing read-only OIDC identity
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: cormyr
+      - name: Verify 100% of atlas.cormyr.com.br traffic serves this main SHA
+        run: node scripts/firebase/apphosting-release-convergence.mjs
+      - name: Preserve NO_GO for player release regardless of deployment status
+        if: always()
+        run: |
+          echo 'This workflow verifies only that a source SHA is served; it never authorizes user login or Cloud writes.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'A stale revision is a failed observation, not a reason to force a rollout or expand IAM.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Firebase player launch remains NO_GO pending Auth, operational data and per-house E2E.' >> "$GITHUB_STEP_SUMMARY"
