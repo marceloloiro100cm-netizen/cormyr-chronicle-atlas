@@ -44,26 +44,35 @@ Script:
 - Nunca grava Firestore, Storage, App Hosting, DNS, IAM, Supabase,
   backups, conteúdo de missivas ou configurações de runtime.
 
-## Pré-requisito administrativo ainda não atendido
+## Pré-requisito administrativo — OIDC validado, inventário ainda bloqueado
 
-A identidade atual do GitHub,
+A identidade de **somente leitura** do GitHub,
 `cormyr-gh-reader@cormyr.iam.gserviceaccount.com`,
-é de **leitura**. Não possui permissão confirmada para ativar usuários.
-Nunca ampliar privilégios dessa identidade somente para destravar o job.
+não deve receber permissão de atualizar usuários. O teste read-only de
+17/11/2026 confirmou autenticação OIDC, mas a listagem Auth falhou com
+`auth_inventory_permission_denied` nessa identidade específica.
 
-Para executar somente pelo GitHub, a conta proprietária precisará criar
-ou autorizar **uma identidade OIDC separada**, com acesso estritamente
-necessário para `firebaseauth.users.get`,
+A variável protegida `CORMYR_FIREBASE_AUTH_TEST_OPERATOR` já foi
+observada apontando para uma identidade distinta,
+`cormyr-technical-admin@cormyr.iam.gserviceaccount.com`. Na execução
+#2, a autenticação OIDC dessa operadora foi bem-sucedida; o teste estava
+em modo **preview**, falhou no preflight de inventário e não habilitou
+nenhuma conta. O log antigo não distinguia a fase do erro. Não inferir
+que a falha de permissão da *leitora* seja também a causa da falha da
+*operadora*.
+
+É necessário comprovar que a operadora possui as permissões estritamente
+necessárias para `firebaseauth.users.get`,
 `firebaseauth.users.update` e leitura do Firestore histórico usado
-no pré-teste. Referências oficiais:
+no pré-teste, sem conceder papéis amplos. Referências oficiais:
 - Firebase Auth IAM: https://firebase.google.com/docs/projects/iam/permissions
 - Gerenciar usuários Firebase: https://firebase.google.com/docs/auth/admin/manage-users
 
-É necessário vinculá-la ao provedor GitHub OIDC do projeto **cormyr**
-e configurar uma variável de ambiente do GitHub Actions,
-`CORMYR_FIREBASE_AUTH_TEST_OPERATOR`, com o e-mail da identidade
-dedicada. O workflow usa a identidade curta por OIDC, **não** um
-arquivo JSON de service account, token salvo, senha ou segredo no Git.
+A identidade dedicada já está vinculada ao provedor GitHub OIDC do
+projeto **cormyr** e está configurada via variável
+`CORMYR_FIREBASE_AUTH_TEST_OPERATOR`. O workflow usa credenciais
+temporárias por OIDC, **não** chave permanente de service account.
+Autenticação OIDC confirmada não equivale a autorização no Auth/Firestore.
 
 Recomenda-se configurar em **Settings → Environments** a proteção do
 ambiente `firebase-auth-test-activation`, exigindo revisor autorizado
@@ -94,6 +103,20 @@ ou troca de senha pendente continuam barrados pelo serviço. As rotas privadas
 precisam passar pelo aceite de Narrador, Casas diferentes, Editor e anônimos,
 além de missivas e calendário persistidos, antes de liberar jogo de verdade.
 
-**Status atual:** implementação GitHub pronta para CI, mas a
-ativação real depende de credencial administrativa OIDC distinta.
-Nunca declarar 14/14 habilitados com base somente em PR ou testes sintéticos.
+**Status verificado em 17/11/2026:**
+- Workflow #2: aprovação de ambiente e OIDC administrativo funcionaram;
+  `mode=preview` falhou no preflight (código específico ocultado pela
+  versão anterior do script). Nenhum sucesso de ativação foi verificado.
+- Workflow #3: ainda à espera de aprovação e usando a revisão antiga.
+  Não confundir essa execução com o diagnóstico novo.
+- Diagnóstico read-only #1: contratos sintéticos passaram; OIDC da conta
+  leitora funcionou e a consulta real de Auth retornou
+  `auth_inventory_permission_denied`. Essa conta não é a operadora.
+- A correção `460ac8b` e o teste `02afad7` expõem somente códigos fixos
+  de fase, sem mensagens do provedor. Novo preview real da operadora
+  depende da revisão do ambiente protegido.
+- Contas habilitadas: **não confirmado**; lançamento de jogadores:
+  **NO_GO**.
+
+Nunca declarar 14/14 habilitados com base somente em PR ou testes
+sintéticos, nem desproteger o ambiente para contornar aprovação.
