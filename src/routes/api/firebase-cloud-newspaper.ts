@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseCloudNewspaper,CloudNewspaperError}
   from '../../../scripts/firebase/cloud-newspaper-service.mjs';
+import {crossOriginRejected} from '@/lib/server/request-origin';
 
 /** Strictly gated Cloud-only publication, never writes migration snapshots. */
 const headers={
@@ -46,8 +47,7 @@ async function handle(request:Request):Promise<Response>{
     return fail(503,'firebase_cloud_newspaper_disabled');
   const url=new URL(request.url);
   if(url.search||request.headers.has('cookie')||
-     request.headers.get('sec-fetch-site')==='cross-site'||
-     (request.headers.has('origin')&&request.headers.get('origin')!==url.origin))
+     crossOriginRejected(request))
     return fail(403,'access_denied');
   const token=request.headers.get('authorization')??'';
   if(!/^Bearer [^\s]{10,10000}$/.test(token))

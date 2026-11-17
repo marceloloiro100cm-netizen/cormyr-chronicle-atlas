@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseTreasuryAudit,CloudTreasuryAuditError}
   from '../../../scripts/firebase/cloud-treasury-audit-service.mjs';
+import {crossOriginRejected} from '@/lib/server/request-origin';
 
 const headers={
   'Cache-Control':'private, no-store, max-age=0',
@@ -42,8 +43,7 @@ async function handle(request:Request):Promise<Response>{
     return fail(503,'firebase_treasury_audit_disabled');
   const url=new URL(request.url);
   if(url.search||request.headers.has('cookie')||
-     request.headers.get('sec-fetch-site')==='cross-site'||
-     (request.headers.has('origin')&&request.headers.get('origin')!==url.origin))
+     crossOriginRejected(request))
     return fail(403,'access_denied');
   const header=request.headers.get('authorization')??'';
   if(!/^Bearer [^\s]{10,10000}$/.test(header))

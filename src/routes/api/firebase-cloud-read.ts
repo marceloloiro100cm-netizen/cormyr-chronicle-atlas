@@ -1,5 +1,6 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseCloudReadonly,CloudAccessError} from '../../../scripts/firebase/cloud-readonly-service.mjs';
+import {crossOriginRejected} from '@/lib/server/request-origin';
 
 /**
  * Read-only Firebase CLOUD route. This is NOT the emulator proxy and contains
@@ -52,8 +53,7 @@ async function handle(request:Request):Promise<Response>{
     return error(503,'firebase_cloud_read_disabled');
   const u=new URL(request.url);
   if(u.search||request.headers.has('cookie')||
-     request.headers.get('sec-fetch-site')==='cross-site'||
-     (request.headers.has('origin')&&request.headers.get('origin')!==u.origin))
+     crossOriginRejected(request))
     return error(403,'access_denied');
   const bearer=request.headers.get('authorization');
   if(!bearer||!/^Bearer [^\s]{10,10000}$/.test(bearer))

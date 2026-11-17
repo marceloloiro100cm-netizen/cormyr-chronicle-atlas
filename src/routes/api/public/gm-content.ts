@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {readApprovedFirebasePrivateGmContent,PrivateGmCloudError}
   from '@/lib/private-gm/firebase-private-gm-cloud.server';
+import {crossOriginRejected} from '@/lib/server/request-origin';
 
 const HEADERS={
   'Content-Type':'application/json; charset=utf-8',
@@ -22,8 +23,7 @@ export async function getFirebasePrivateGmContent(request:Request):Promise<Respo
     return fail(503);
   const url=new URL(request.url);
   if(url.search||request.headers.has('cookie')||
-     request.headers.get('sec-fetch-site')==='cross-site'||
-     (request.headers.has('origin')&&request.headers.get('origin')!==url.origin))
+     crossOriginRejected(request))
     return fail(403);
   const bearer=request.headers.get('authorization')??'';
   if(!/^Bearer [^\s]{10,10000}$/.test(bearer))return fail(401);

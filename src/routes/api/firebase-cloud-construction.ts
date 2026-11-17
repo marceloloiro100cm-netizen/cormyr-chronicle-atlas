@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseCloudConstruction,CloudConstructionError}
   from '@/lib/house/firebase-construction-transaction';
+import {crossOriginRejected} from '@/lib/server/request-origin';
 
 /** Operational writes are disabled until two independent explicit gates:
  * server environment and reconciled Firestore runtime. No browser Firestore.
@@ -48,8 +49,7 @@ async function handle(request:Request):Promise<Response>{
     return failure(503,'firebase_cloud_construction_disabled');
   const url=new URL(request.url);
   if(url.search||request.headers.has('cookie')||
-     request.headers.get('sec-fetch-site')==='cross-site'||
-     (request.headers.has('origin')&&request.headers.get('origin')!==url.origin))
+     crossOriginRejected(request))
     return failure(403,'access_denied');
   const bearer=request.headers.get('authorization')??'';
   if(!/^Bearer [^\s]{10,10000}$/.test(bearer))

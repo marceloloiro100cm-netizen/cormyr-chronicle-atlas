@@ -3,6 +3,7 @@ import {createFirebaseCloudReadonly,CloudAccessError}
   from '../../../scripts/firebase/cloud-readonly-service.mjs';
 import {ConstructionPreviewError,previewHouseConstruction}
   from '../../lib/house/firebase-construction-quote';
+import {crossOriginRejected} from '@/lib/server/request-origin';
 
 /** Read-only building quote from a permission-scoped House snapshot.
  * No direct browser Firestore access, no economic mutations, no Cloud Shell.
@@ -48,8 +49,7 @@ async function handle(request:Request):Promise<Response>{
     return failure(503,'firebase_cloud_read_disabled');
   const url=new URL(request.url);
   if(url.search||request.headers.has('cookie')||
-     request.headers.get('sec-fetch-site')==='cross-site'||
-     (request.headers.has('origin')&&request.headers.get('origin')!==url.origin))
+     crossOriginRejected(request))
     return failure(403,'access_denied');
   const bearer=request.headers.get('authorization')??'';
   if(!/^Bearer [^\s]{10,10000}$/.test(bearer))
