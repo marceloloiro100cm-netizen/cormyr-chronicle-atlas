@@ -6,12 +6,14 @@ on:
     paths:
       - 'scripts/firebase/cloud-access-readiness*.mjs'
       - 'scripts/firebase/cloud-role-linkage-readonly*.mjs'
+      - 'scripts/firebase/public-content-review-plan*.mjs'
       - '.github/workflows/firebase-cloud-access-readiness.yml'
   push:
     branches: [main]
     paths:
       - 'scripts/firebase/cloud-access-readiness*.mjs'
       - 'scripts/firebase/cloud-role-linkage-readonly*.mjs'
+      - 'scripts/firebase/public-content-review-plan*.mjs'
       - '.github/workflows/firebase-cloud-access-readiness.yml'
 
 permissions:
@@ -30,6 +32,7 @@ jobs:
         run: |
           node --test scripts/firebase/cloud-access-readiness.test.mjs
           node --test scripts/firebase/cloud-role-linkage-readonly.test.mjs
+          node --test scripts/firebase/public-content-review-plan.test.mjs
       - name: Public repository privacy verification
         run: node scripts/verify-public-repo.mjs
 
