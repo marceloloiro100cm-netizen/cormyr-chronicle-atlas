@@ -25,8 +25,9 @@ function fixture({missing=['migrationPublicContentStage'],
         lastRound:2,privateValue:'NEVER_OUTPUT',
       })};
     const [name]=path.split('/');
-    if(name==='campaignCloudRuntime')return {exists:existingHouse};
-    if(name==='campaignMailRuntime')return {exists:existingMail};
+    // Real Firestore snapshots always expose data(), even for unexpected roots.
+    if(name==='campaignCloudRuntime')return {exists:existingHouse,data:()=>({})};
+    if(name==='campaignMailRuntime')return {exists:existingMail,data:()=>({})};
     if(STAGES.includes(name))return {exists:!missing.includes(name),
       data:()=>({status:'complete',private:true,sourceSnapshotId:ID,
         privateValue:'NEVER_OUTPUT'})};
