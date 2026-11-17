@@ -136,6 +136,7 @@ test('missing public-content stage is an explicit no-cutover blocker',async()=>{
   assert.equal(report.auxiliaryStageCoverage,4);
   assert.equal(report.auxiliaryStagesVerified,3);
   assert.equal(report.auxiliaryStagesComplete,false);
+  assert.deepEqual(report.auxiliaryPendingStages,['migrationPublicContentStage']);
   assert.equal(report.auxiliaryStageHttpStatusCounts['404'],1);
   assert.ok(report.blockingCodes.includes('AUXILIARY_STAGES_UNVERIFIED'));
   assert.equal(report.authListComplete,true);
