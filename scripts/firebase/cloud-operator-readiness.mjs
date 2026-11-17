@@ -5,6 +5,7 @@
 import {appendFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {inspectFirebaseCloudReadiness} from './cloud-access-readiness.mjs';
+import {inspectCloudRuntimeSources} from './cloud-runtime-source-preflight.mjs';
 import {executeAllExistingAuthTestAccounts,safePreflightFailureCode}
   from './auth-enable-all-test-accounts.mjs';
 
@@ -22,7 +23,10 @@ export function classifyOperatorCredentialError(error){
     'oidc_impersonation_denied':'oidc_credential_unavailable';
 }
 
-export function evaluateOperatorEvidence({cloud=null,authPreview=null,authError=null,cloudError=false}={}){
+export function evaluateOperatorEvidence({
+  cloud=null,authPreview=null,authError=null,cloudError=false,
+  runtimeSources=null,runtimeSourceError=false,
+}={}){
   const stages=cloud?.singleVerifiedSnapshot===true&&cloud?.stagesVerified===6;
   const auxiliary=cloud?.auxiliaryStagesComplete===true&&cloud?.auxiliaryStagesVerified===4;
   // The source supplies fixed stage identifiers, never Firestore document IDs.
@@ -51,7 +55,17 @@ export function evaluateOperatorEvidence({cloud=null,authPreview=null,authError=
       mailRuntimeHttpStatus:safeHttp(cloud?.mailRuntimeHttpStatus),
       houseRuntimeHttpStatus:safeHttp(cloud?.operationalRuntimeHttpStatus),
       mailVerified:mail,houseVerified:runtime,
-      sourceDeltaReconciled:false,ready:false,
+      sourceDeltaReconciled:false,
+      sourcePreflight:{
+        checked:runtimeSources!==null&&!runtimeSourceError,
+        completeStages:safeCount(runtimeSources?.sourceStagesVerified),
+        completeAuxiliaryStages:safeCount(runtimeSources?.auxiliaryStagesVerified),
+        calendarDocumentVerified:runtimeSources?.calendarDocumentVerified===true,
+        historicalRoundFound:runtimeSources?.calendarHasHistoricalRound===true,
+        currentRoundApproved:false,
+        ready:false,
+      },
+      ready:false,
     },
     playerAccess:{
       authAccountsEnabled:authValid&&authPreview.toEnable===0,
@@ -103,6 +117,7 @@ export function evaluateOperatorEvidence({cloud=null,authPreview=null,authError=
     auxiliaryPendingStages,
     privateStagesComplete:stages,auxiliaryStagesComplete:auxiliary,
     mailRuntimeVerified:mail,operationalRuntimeVerified:runtime,
+    runtimeSourceProbeFailed:runtimeSourceError===true,
     fourBlocks,
     authUpdatesAttempted:0,firestoreWrites:0,roleWrites:0,
     sourceLiveReconciliationVerified:false,storageVerified:false,
@@ -110,14 +125,24 @@ export function evaluateOperatorEvidence({cloud=null,authPreview=null,authError=
     releaseDecision:'NO_GO',blockingCodes,
   };
 }
-export async function inspectOperatorEvidence({readCloud,previewAuth}={}){
+export async function inspectOperatorEvidence({
+  readCloud,previewAuth,readRuntimeSources,
+}={}){
   if(typeof readCloud!=='function'||typeof previewAuth!=='function')
     throw Error('two_read_probes_required');
   let cloud=null,authPreview=null,authError=null,cloudError=false;
+  let runtimeSources=null,runtimeSourceError=false;
   try{cloud=await readCloud();}catch{cloudError=true;}
   try{authPreview=await previewAuth();}
   catch(e){authError=safePreflightFailureCode(e);}
-  return evaluateOperatorEvidence({cloud,authPreview,authError,cloudError});
+  if(typeof readRuntimeSources==='function'){
+    try{runtimeSources=await readRuntimeSources();}
+    catch{runtimeSourceError=true;}
+  }
+  return evaluateOperatorEvidence({
+    cloud,authPreview,authError,cloudError,
+    runtimeSources,runtimeSourceError,
+  });
 }
 export function safeOperatorSummary(report){
   const n=v=>safeCount(v)??'desconhecido';
@@ -147,6 +172,11 @@ export function safeOperatorSummary(report){
     '| Trocas de senha pendentes | '+n(report?.fourBlocks?.playerAccess?.passwordResetPending)+' |',
     '| Correio operacional | '+yes(report?.mailRuntimeVerified)+' |',
     '| Runtime de Casas | '+yes(report?.operationalRuntimeVerified)+' |',
+    '| Pré-validação de fontes operacionais | '+
+      yes(report?.fourBlocks?.operations?.sourcePreflight?.checked)+' |',
+    '| Calendário privado histórico verificado | '+
+      yes(report?.fourBlocks?.operations?.sourcePreflight?.calendarDocumentVerified)+' |',
+    '| Rodada atual aprovada | **Não — depende da fonte atual** |',
     '| Operação Cloud: correio e Casas (HTTP) | '+
       (Number.isInteger(report?.fourBlocks?.operations?.mailRuntimeHttpStatus)
         ?report.fourBlocks.operations.mailRuntimeHttpStatus:'?')+' / '+
@@ -203,6 +233,15 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
             updateUser:neverWrite,getUser:neverWrite},
           db:getFirestore(app),mode:'preview',confirmation:'',
         }),
+        readRuntimeSources:async()=>{
+          const db=getFirestore(app);
+          const query=await db.collection('migrationDomainStage').limit(2).get();
+          if(query.docs.length!==1||!/^[a-f0-9]{64}$/.test(query.docs[0].id)||
+             query.docs[0].data()?.status!=='complete'||
+             query.docs[0].data()?.private!==true)
+            throw Error('runtime_source_snapshot_unverified');
+          return inspectCloudRuntimeSources({db,snapshotId:query.docs[0].id});
+        },
       });
     }
     process.stdout.write(JSON.stringify(report,null,2)+'\n');

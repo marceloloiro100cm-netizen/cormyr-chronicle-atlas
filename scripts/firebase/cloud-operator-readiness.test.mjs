@@ -144,6 +144,41 @@ test('Auth preflight failure exposes only fixed error classification',async()=>{
   assert.equal(unknown.authPreflightFailure,'unclassified_cloud_or_runtime_error');
   assert.ok(!JSON.stringify(unknown).includes('PRIVATE_ACCOUNT_EMAIL'));
 });
+
+test('optional live-source probe is sanitized and never issues authorization',async()=>{
+  const probe={
+    sourceStagesVerified:6,auxiliaryStagesVerified:3,
+    calendarDocumentVerified:true,calendarHasHistoricalRound:true,
+    sensitiveCalendar:'PRIVATE_CALENDAR_DATE',
+    sensitiveHouse:'PRIVATE_HOUSE_ID',
+  };
+  const report=await inspectOperatorEvidence({
+    readCloud:async()=>cloud(),previewAuth:async()=>auth(),
+    readRuntimeSources:async()=>probe,
+  });
+  const pre=report.fourBlocks.operations.sourcePreflight;
+  assert.equal(pre.checked,true);
+  assert.equal(pre.completeStages,6);
+  assert.equal(pre.completeAuxiliaryStages,3);
+  assert.equal(pre.calendarDocumentVerified,true);
+  assert.equal(pre.historicalRoundFound,true);
+  assert.equal(pre.currentRoundApproved,false);
+  assert.equal(pre.ready,false);
+  assert.equal(report.readyForPlayers,false);
+  const output=JSON.stringify(report)+safeOperatorSummary(report);
+  assert.ok(!output.includes('PRIVATE_CALENDAR_DATE'));
+  assert.ok(!output.includes('PRIVATE_HOUSE_ID'));
+});
+test('a failed third probe never leaks provider detail',async()=>{
+  const report=await inspectOperatorEvidence({
+    readCloud:async()=>cloud(),previewAuth:async()=>auth(),
+    readRuntimeSources:async()=>{throw Error('SECRET_PROVIDER_ERROR');},
+  });
+  assert.equal(report.runtimeSourceProbeFailed,true);
+  assert.equal(report.fourBlocks.operations.sourcePreflight.checked,false);
+  assert.equal(report.readyForCutover,false);
+  assert.ok(!JSON.stringify(report).includes('SECRET_PROVIDER_ERROR'));
+});
 test('no implicit provider or cloud access',async()=>{
   await assert.rejects(inspectOperatorEvidence({
     readCloud:async()=>cloud()}),/two_read_probes_required/);

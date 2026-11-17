@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - 'scripts/firebase/cloud-operator-readiness*.mjs'
+      - 'scripts/firebase/cloud-runtime-source-preflight*.mjs'
       - '.github/workflows/firebase-cloud-operator-readiness.yml'
   pull_request:
     paths:
       - 'scripts/firebase/cloud-operator-readiness*.mjs'
+      - 'scripts/firebase/cloud-runtime-source-preflight*.mjs'
       - '.github/workflows/firebase-cloud-operator-readiness.yml'
   workflow_dispatch:
 
@@ -32,6 +34,7 @@ jobs:
       - name: Verify read-only evidence and negative cases
         run: |
           node --test scripts/firebase/cloud-operator-readiness.test.mjs
+          node --test scripts/firebase/cloud-runtime-source-preflight.test.mjs
           node --test scripts/firebase/auth-enable-all-test-accounts.test.mjs
       - name: Public-repo privacy gate
         run: node scripts/verify-public-repo.mjs
