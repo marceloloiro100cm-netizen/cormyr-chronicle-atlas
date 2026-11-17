@@ -5,7 +5,7 @@ import {evaluateLot5Safety} from './lot5-safety-preflight.mjs';
 const base={
   firestoreRules:"rules_version = '2'; service cloud.firestore { match /databases/{database}/documents { match /{document=**} { allow read, write: if false; } } }",
   storageRules:"rules_version = '2'; service firebase.storage { match /b/{bucket}/o { match /{path=**} { allow read, write: if false; } } }",
-  appStart:"export const startInstance=createStart(()=>({functionMiddleware: [attachSupabaseAuth]}));",
+  appStart:"export const startInstance=createStart(()=>({functionMiddleware: [],requestMiddleware:[archiveOnlyMiddleware,errorMiddleware,csrfMiddleware]})); const archived=shouldBlockLegacyRequest(pathname, handlerType);",
   apphosting:"env:\n  - variable: CRON_SECRET\n    secret: CRON_SECRET\n",
 };
 test('production deny-all and origin backend remain unchanged while cloud cutover is blocked',()=>{
@@ -25,6 +25,16 @@ test('accidental Firestore or Storage permission grants block release',()=>{
    .checks.productionFirestoreDenyAll,false);
  assert.equal(evaluateLot5Safety({...base,
    storageRules:base.storageRules+'\nallow read: if true;'})
+   .safeToMergeCode,false);
+});
+test('a legacy Supabase middleware or missing archive gate blocks release',()=>{
+ const legacy=base.appStart.replace('functionMiddleware: []',
+   'functionMiddleware: [attachSupabaseAuth]');
+ assert.equal(evaluateLot5Safety({...base,appStart:legacy}).safeToMergeCode,false);
+ assert.equal(evaluateLot5Safety({...base,appStart:
+   base.appStart.replace('archiveOnlyMiddleware,','')}).safeToMergeCode,false);
+ assert.equal(evaluateLot5Safety({...base,appStart:
+   base.appStart.replace('shouldBlockLegacyRequest','bypassLegacyRequest')})
    .safeToMergeCode,false);
 });
 test('premature backend switch or App Hosting emulator switches block release',()=>{

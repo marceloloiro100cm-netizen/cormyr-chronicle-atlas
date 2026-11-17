@@ -7,7 +7,7 @@ import {
 
 const safe={safeToMergeCode:true,checks:{
  productionFirestoreDenyAll:true,productionStorageDenyAll:true,
- supabaseStillActiveUntilCutover:true,noProductionFirebaseDomainBridge:true,
+ legacyAuthDetached:true,archiveServerFnsBlocked:true,noProductionFirebaseDomainBridge:true,
  noProductionFirebaseDomainPreview:true,cloudCredentialsNotCommitted:true,
 }};
 const inspector=async()=>safe;

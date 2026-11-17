@@ -1,7 +1,6 @@
 import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/react-start";
 
 import { renderErrorPage } from "./lib/error-page";
-import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
 import { shouldBlockLegacyRequest, ARCHIVE_UNAVAILABLE_MESSAGE } from "@/lib/archive-only";
 
 /**
@@ -45,6 +44,9 @@ const csrfMiddleware = createCsrfMiddleware({
 });
 
 export const startInstance = createStart(() => ({
-  functionMiddleware: [attachSupabaseAuth],
+  // No legacy Supabase token fetch in archive-only mode. Firebase pilot
+  // authenticates directly against its separate, server-verified Cloud API.
+  // Old serverFns remain blocked by archiveOnlyMiddleware (before handlers).
+  functionMiddleware: [],
   requestMiddleware: [archiveOnlyMiddleware, errorMiddleware, csrfMiddleware],
 }));
