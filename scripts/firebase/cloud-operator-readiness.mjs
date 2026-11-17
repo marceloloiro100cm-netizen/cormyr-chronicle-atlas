@@ -6,6 +6,7 @@ import {appendFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {inspectFirebaseCloudReadiness} from './cloud-access-readiness.mjs';
 import {inspectCloudRuntimeSources} from './cloud-runtime-source-preflight.mjs';
+import {inspectPublicArchiveCoverage} from './public-archive-coverage-readonly.mjs';
 import {executeAllExistingAuthTestAccounts,safePreflightFailureCode}
   from './auth-enable-all-test-accounts.mjs';
 
@@ -49,6 +50,18 @@ export function evaluateOperatorEvidence({
     publicContent:{
       stageHttpStatus:safeHttp(cloud?.publicContentStageHttpStatus),
       stageVerified:publicStage,perRecordPublicReviewVerified:false,
+      // Only exact public-name candidates; matching is NEVER review approval.
+      archiveCoverage:{
+        checked:runtimeSources?.archiveCoverage?.checked===true,
+        archivedHouses:safeCount(runtimeSources?.archiveCoverage?.archivedHouses),
+        archivedRegions:safeCount(runtimeSources?.archiveCoverage?.archivedRegions),
+        sourceHouses:safeCount(runtimeSources?.archiveCoverage?.sourceHouses),
+        activeSourceHouses:safeCount(runtimeSources?.archiveCoverage?.activeSourceHouses),
+        exactMatches:safeCount(runtimeSources?.archiveCoverage?.exactMatches),
+        ambiguousMatches:safeCount(runtimeSources?.archiveCoverage?.ambiguousMatches),
+        unmatchedActive:safeCount(runtimeSources?.archiveCoverage?.unmatchedActive),
+        reviewApproved:false,ready:false,
+      },
       ready:false,
     },
     operations:{
@@ -165,6 +178,13 @@ export function safeOperatorSummary(report){
       (Array.isArray(report?.auxiliaryPendingStages)
         ?report.auxiliaryPendingStages.filter(v=>AUX_STAGE_NAMES.has(v)).join(', ')||'Nenhum identificado'
         :'Não identificado')+' |',
+    '| Acervo público comparado ao snapshot (somente nomes) | '+
+      yes(report?.fourBlocks?.publicContent?.archiveCoverage?.checked)+' |',
+    '| Casas ativas com correspondência exata de nome | '+
+      n(report?.fourBlocks?.publicContent?.archiveCoverage?.exactMatches)+' / '+
+      n(report?.fourBlocks?.publicContent?.archiveCoverage?.activeSourceHouses)+' |',
+    '| Casas ativas sem correspondência | '+
+      n(report?.fourBlocks?.publicContent?.archiveCoverage?.unmatchedActive)+' |',
     '| Conteúdo público: estágio | '+
       (Number.isInteger(report?.fourBlocks?.publicContent?.stageHttpStatus)
         ?'HTTP '+report.fourBlocks.publicContent.stageHttpStatus:'Indisponível')+
@@ -247,7 +267,13 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
              query.docs[0].data()?.status!=='complete'||
              query.docs[0].data()?.private!==true)
             throw Error('runtime_source_snapshot_unverified');
-          return inspectCloudRuntimeSources({db,snapshotId:query.docs[0].id});
+          const snapshotId=query.docs[0].id;
+          const base=await inspectCloudRuntimeSources({db,snapshotId});
+          let archiveCoverage=null;
+          try{
+            archiveCoverage=await inspectPublicArchiveCoverage({db,snapshotId});
+          }catch{/* Review remains pending; suppress source and provider detail. */}
+          return {...base,archiveCoverage};
         },
       });
     }

@@ -151,6 +151,12 @@ test('optional live-source probe is sanitized and never issues authorization',as
     calendarDocumentVerified:true,calendarHasHistoricalRound:true,
     houseDraftConfirmed:true,mailDraftConfirmed:true,
     disabledDraftsConfirmed:true,
+    archiveCoverage:{
+      checked:true,archivedHouses:172,archivedRegions:11,
+      sourceHouses:11,activeSourceHouses:10,exactMatches:8,
+      ambiguousMatches:0,unmatchedActive:2,
+      privateData:'NEVER_PRINT_PRIVATE_HOUSE',
+    },
     sensitiveCalendar:'PRIVATE_CALENDAR_DATE',
     sensitiveHouse:'PRIVATE_HOUSE_ID',
   };
@@ -220,4 +226,32 @@ test('a created inactive runtime never becomes a release authorization',()=>{
   assert.equal(r.readyForPlayers,false);
   assert.equal(r.releaseDecision,'NO_GO');
   assert.match(safeOperatorSummary(r),/inativo e íntegro/);
+});
+
+test('protected archive matching is coverage only and does not publish content',()=>{
+  const r=evaluateOperatorEvidence({
+    cloud:cloud(),authPreview:auth(),
+    runtimeSources:{archiveCoverage:{
+      checked:true,archivedHouses:172,archivedRegions:11,
+      sourceHouses:11,activeSourceHouses:10,exactMatches:8,
+      ambiguousMatches:0,unmatchedActive:2,
+      privateValue:'HIDDEN_PERSONAL',
+    }},
+  });
+  const coverage=r.fourBlocks.publicContent.archiveCoverage;
+  assert.equal(coverage.checked,true);
+  assert.equal(coverage.exactMatches,8);
+  assert.equal(coverage.unmatchedActive,2);
+  assert.equal(coverage.reviewApproved,false);
+  assert.equal(coverage.ready,false);
+  assert.equal(r.readyForPlayers,false);
+  assert.equal(r.releaseDecision,'NO_GO');
+  assert.ok(!JSON.stringify(r).includes('HIDDEN_PERSONAL'));
+  assert.match(safeOperatorSummary(r),/somente nomes/);
+});
+test('missing/invalid archive coverage does not silently become zero',()=>{
+  const r=evaluateOperatorEvidence({cloud:cloud(),authPreview:auth()});
+  assert.equal(r.fourBlocks.publicContent.archiveCoverage.checked,false);
+  assert.equal(r.fourBlocks.publicContent.archiveCoverage.exactMatches,null);
+  assert.equal(r.fourBlocks.publicContent.archiveCoverage.reviewApproved,false);
 });
