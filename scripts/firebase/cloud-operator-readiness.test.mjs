@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {evaluateOperatorEvidence,inspectOperatorEvidence,safeOperatorSummary}
+import {evaluateOperatorEvidence,inspectOperatorEvidence,safeOperatorSummary,
+  classifyOperatorCredentialError}
   from './cloud-operator-readiness.mjs';
 
 const cloud=()=>({singleVerifiedSnapshot:true,stagesVerified:6,
@@ -87,4 +88,23 @@ test('Auth preflight failure exposes only fixed error classification',async()=>{
 test('no implicit provider or cloud access',async()=>{
   await assert.rejects(inspectOperatorEvidence({
     readCloud:async()=>cloud()}),/two_read_probes_required/);
+});
+test('OIDC token denial has a stable code and never exposes provider details',()=>{
+  const original=Error('Permission iam.serviceAccounts.getAccessToken denied for PRIVATE_SERVICE_ACCOUNT');
+  assert.equal(classifyOperatorCredentialError(original),'oidc_impersonation_denied');
+  const generic=Error('PRIVATE_IDENTITY_EMAIL and GOOGLE_TOKEN');
+  assert.equal(classifyOperatorCredentialError(generic),'oidc_credential_unavailable');
+  const report=evaluateOperatorEvidence({
+    cloudError:true,authError:classifyOperatorCredentialError(original),
+  });
+  assert.ok(report.blockingCodes.includes('OIDC_OPERATOR_IMPERSONATION_DENIED'));
+  assert.equal(report.authInventoryValid,false);
+  assert.equal(report.disabledAccounts,null);
+  assert.equal(report.readyForPlayers,false);
+  assert.equal(report.readyForCutover,false);
+  assert.equal(report.releaseDecision,'NO_GO');
+  assert.equal(report.authUpdatesAttempted,0);
+  const published=JSON.stringify(report)+safeOperatorSummary(report);
+  assert.ok(!published.includes('PRIVATE_SERVICE_ACCOUNT'));
+  assert.ok(!published.includes('GOOGLE_TOKEN'));
 });

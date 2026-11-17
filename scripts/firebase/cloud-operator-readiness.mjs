@@ -11,6 +11,13 @@ import {executeAllExistingAuthTestAccounts,safePreflightFailureCode}
 const safeCount=n=>Number.isSafeInteger(n)&&n>=0&&n<=1000?n:null;
 const safeHttp=n=>Number.isSafeInteger(n)&&n>=100&&n<=599?n:null;
 
+/** Inspect a provider exception locally, but never print its message. */
+export function classifyOperatorCredentialError(error){
+  const msg=typeof error?.message==='string'?error.message:'';
+  return /iam\\.serviceAccounts\\.getAccessToken/.test(msg)?
+    'oidc_impersonation_denied':'oidc_credential_unavailable';
+}
+
 export function evaluateOperatorEvidence({cloud=null,authPreview=null,authError=null,cloudError=false}={}){
   const stages=cloud?.singleVerifiedSnapshot===true&&cloud?.stagesVerified===6;
   const auxiliary=cloud?.auxiliaryStagesComplete===true&&cloud?.auxiliaryStagesVerified===4;
@@ -24,6 +31,10 @@ export function evaluateOperatorEvidence({cloud=null,authPreview=null,authError=
   const mail=cloud?.mailRuntimeEnabled===true;
   const runtime=cloud?.operationalRuntimeReconciled===true;
   const blockingCodes=[];
+  if(authError==='oidc_impersonation_denied')
+    blockingCodes.push('OIDC_OPERATOR_IMPERSONATION_DENIED');
+  else if(authError==='oidc_credential_unavailable')
+    blockingCodes.push('OIDC_OPERATOR_CREDENTIAL_UNAVAILABLE');
   if(cloudError)blockingCodes.push('CLOUD_READ_FAILED');
   if(!stages)blockingCodes.push('PRIVATE_SNAPSHOT_STAGES_UNVERIFIED');
   if(!auxiliary)blockingCodes.push('AUXILIARY_STAGES_UNVERIFIED');
@@ -98,24 +109,43 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
     process.stderr.write('Invalid read-only audit configuration.\n');
     process.exitCode=2;
   }else{
-    const report=await inspectOperatorEvidence({
-      readCloud:()=>inspectFirebaseCloudReadiness(),
-      previewAuth:async()=>{
-        const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]
-          =await Promise.all([import('firebase-admin/app'),
-            import('firebase-admin/auth'),import('firebase-admin/firestore')]);
-        const name='cormyr-protected-readonly-audit';
-        const app=getApps().find(a=>a.name===name)??initializeApp({
-          credential:applicationDefault(),projectId:'cormyr'},name);
-        const real=getAuth(app);
-        const neverWrite=()=>{throw Error('read_only_audit');};
-        return executeAllExistingAuthTestAccounts({
-          auth:{listUsers:(...args)=>real.listUsers(...args),
+    // The Firebase Admin ADC credential can obtain the same temporary
+    // GitHub WIF impersonation token as gcloud. Never invoke a shell or
+    // publish provider errors, IAM details, tokens or account identifiers.
+    const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]
+      =await Promise.all([import('firebase-admin/app'),
+        import('firebase-admin/auth'),import('firebase-admin/firestore')]);
+    const credential=applicationDefault();
+    let credentialError=null;
+    try{
+      const token=await credential.getAccessToken();
+      if(typeof token?.access_token!=='string'||token.access_token.length<10)
+        throw Error('missing_access_token');
+    }catch(error){credentialError=classifyOperatorCredentialError(error);}
+    let report;
+    if(credentialError){
+      report=evaluateOperatorEvidence({
+        cloudError:true,authError:credentialError,
+      });
+    }else{
+      const name='cormyr-protected-readonly-audit';
+      const app=getApps().find(a=>a.name===name)??initializeApp({
+        credential,projectId:'cormyr'},name);
+      const neverWrite=()=>{throw Error('read_only_audit');};
+      report=await inspectOperatorEvidence({
+        readCloud:()=>inspectFirebaseCloudReadiness({
+          tokenProvider:async()=>{
+            const token=await credential.getAccessToken();
+            return token.access_token;
+          },
+        }),
+        previewAuth:()=>executeAllExistingAuthTestAccounts({
+          auth:{listUsers:(...args)=>getAuth(app).listUsers(...args),
             updateUser:neverWrite,getUser:neverWrite},
           db:getFirestore(app),mode:'preview',confirmation:'',
-        });
-      },
-    });
+        }),
+      });
+    }
     process.stdout.write(JSON.stringify(report,null,2)+'\n');
     if(process.env.GITHUB_STEP_SUMMARY)
       appendFileSync(process.env.GITHUB_STEP_SUMMARY,safeOperatorSummary(report));
