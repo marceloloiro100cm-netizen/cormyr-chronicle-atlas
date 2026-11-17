@@ -35,3 +35,11 @@ export async function loadFirebasePilotResources<H,C,I,P,M,Q>(
     calendar,inbox,newspaper,mailStatus,publishing,
   };
 }
+
+/** A pending request can apply only if no sign-out, re-login or retry
+ * invalidated its generation. Does not authorize a Firebase user by itself.
+ */
+export function canApplyPilotResourceLoad(started:number,current:number):boolean{
+  return Number.isSafeInteger(started)&&started>0&&
+    Number.isSafeInteger(current)&&started===current;
+}

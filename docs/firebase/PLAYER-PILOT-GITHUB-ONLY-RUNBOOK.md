@@ -172,3 +172,7 @@ abrir permissões do Firestore ou alterar o runtime.
 O portal agora autentica primeiro a sessão com o backend Firebase. Em seguida, consulta os módulos opcionais separadamente. Se `listHouses` estiver temporariamente indisponível, **não desloga** uma sessão realmente confirmada: exibe aviso claro, lista vazia *somente para a apresentação* e oferece retry. Uma lista vazia válida não é tratada como erro. Calendário, correio e jornal continuam sujeitos às suas próprias verificações e podem permanecer acessíveis conforme o perfil, sem acessar outra Casa ou fallback Supabase. Perfis sem sessão Firebase confirmada continuam proibidos.
 
 Testes específicos: `src/lib/auth/firebase-pilot-resource-loader.test.ts`. O comportamento não ativa usuários nem elimina a necessidade de reconciliação Cloud e testes reais entre Casas.
+
+## Proteção contra respostas atrasadas de sessões anteriores
+
+Cada carregamento do piloto utiliza uma geração local. Ao sair, trocar de login, desmontar a página ou iniciar uma nova tentativa, a geração anterior é invalidada. Antes de aplicar qualquer conteúdo, a interface confirma a geração e o UID atual do Firebase Auth. Respostas antigas não podem restaurar fichas, saldos, espionagem ou batalha depois do logout. A atualização válida também limpa documentos antigos de Casa antes de apresentar os novos dados. O teste `canApplyPilotResourceLoad` cobre invalidação de gerações. Isso não concede permissão extra a nenhum usuário.

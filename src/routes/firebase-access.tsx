@@ -1,10 +1,10 @@
 import {createFileRoute} from '@tanstack/react-router';
-import {useEffect,useState,type FormEvent} from 'react';
+import {useEffect,useRef,useState,type FormEvent} from 'react';
 import {runFirebaseRoleSelfAcceptance}
   from '@/lib/auth/firebase-role-self-acceptance';
 import {firebasePilotAuth as firebaseAuth} from '@/lib/auth/firebase-pilot-session';
 import {firebasePilotLoginFailure} from '@/lib/auth/firebase-pilot-login-feedback';
-import {loadFirebasePilotResources} from '@/lib/auth/firebase-pilot-resource-loader';
+import {canApplyPilotResourceLoad,loadFirebasePilotResources} from '@/lib/auth/firebase-pilot-resource-loader';
 import {describeFirebasePilotSignals} from '@/lib/auth/firebase-pilot-readiness-ui';
 import {GmEventos,GmAventuras} from '@/components/gm-panels';
 import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
@@ -218,6 +218,7 @@ function FirebaseAccess(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
   const [view,setView]=useState<SessionView|null>(null);
+  const loadGeneration=useRef(0);
   const [houseCatalogAvailable,setHouseCatalogAvailable]=useState(true);
   const [narratorLibraryOpen,setNarratorLibraryOpen]=useState(false);
   const [roleCheck,setRoleCheck]=useState<
@@ -260,6 +261,9 @@ function FirebaseAccess(){
       ?crypto.randomUUID():null);
 
   async function load(){
+    const generation=++loadGeneration.current;
+    const expectedUid=firebaseAuth()?.current()?.uid;
+    if(!expectedUid)throw Error('Firebase session unavailable');
     // Only the server-side Firebase "session" result can authorize a profile.
     // Independent read-only modules are optional and never grant permissions.
     const profile=await readCloud<SessionView>('session');
@@ -274,7 +278,21 @@ function FirebaseAccess(){
       mailStatus:()=>cloudMail<MailStatus>({action:'status'}),
       publishingStatus:()=>cloudPaper<PaperStatus>({action:'status'}),
     });
-    // Apply the snapshot only after server Auth has been verified.
+    // A stale response must never repopulate another user's private views
+    // after sign-out, a fresh login, a retry, or an unmounted page.
+    if(!canApplyPilotResourceLoad(generation,loadGeneration.current)||
+       firebaseAuth()?.current()?.uid!==expectedUid)return;
+    // Never reuse a previously loaded House-scoped document or response.
+    setHouse(null);
+    setHouseReconciliation(null);
+    setOperationalEconomy(null);
+    setTreasuryStatus(null);
+    setTreasurySummary(null);
+    setAgents(null);
+    setDossiers(null);
+    setBattles(null);
+    setEdition(null);
+    setRoleCheck(null);
     setView(profile);
     setNarratorLibraryOpen(false);
     setHouses(resources.houses);
@@ -294,14 +312,15 @@ function FirebaseAccess(){
     void firebaseAuth()?.getToken().then(async token=>{
       if(!token||!current)return;
       try{await load();}catch{
-        if(current){firebaseAuth()?.signOut();setView(null);}
+        if(current){signOut();}
       }
     });
-    return ()=>{current=false;};
+    return ()=>{current=false;loadGeneration.current++;};
   },[]);
 
   async function submit(event:FormEvent){
     event.preventDefault();
+    loadGeneration.current++;
     setBusy(true);setMessage('');setRoleCheck(null);
     let authenticatedByFirebase=false;
     try{
@@ -314,8 +333,7 @@ function FirebaseAccess(){
     }catch{
       // Sign-in and server-side campaign permission are separate steps.
       // Keep the token out of storage if the game access check fails.
-      firebaseAuth()?.signOut();
-      setView(null);
+      signOut();
       setMessage(firebasePilotLoginFailure(authenticatedByFirebase));
     }finally{setBusy(false);}
   }
@@ -531,6 +549,7 @@ function FirebaseAccess(){
   }
 
   function signOut(){
+    loadGeneration.current++;
     firebaseAuth()?.signOut();
     setView(null);setHouse(null);setHouseReconciliation(null);setRoleCheck(null);
     setNarratorLibraryOpen(false);

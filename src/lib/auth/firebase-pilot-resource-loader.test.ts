@@ -1,5 +1,5 @@
 import {describe,expect,it,vi} from 'vitest';
-import {loadFirebasePilotResources} from './firebase-pilot-resource-loader';
+import {canApplyPilotResourceLoad,loadFirebasePilotResources} from './firebase-pilot-resource-loader';
 
 const makeLoaders=()=>{
   const listHouses=vi.fn(async()=>[{id:'house-1'}]);
@@ -68,5 +68,15 @@ describe('Firebase pilot optional reads keep verified session separate',()=>{
     expect(result.newspaper).toBeNull();
     expect(result.mailStatus).toEqual({enabled:false});
     expect(JSON.stringify(result)).not.toMatch(/PRIVATE_LETTER|PRIVATE_EDITION/);
+  });
+});
+
+describe('stale private reads can never revive a signed-out session',()=>{
+  it('rejects completion from a former session or earlier retry',()=>{
+    expect(canApplyPilotResourceLoad(1,1)).toBe(true);
+    expect(canApplyPilotResourceLoad(1,2)).toBe(false);
+    expect(canApplyPilotResourceLoad(3,4)).toBe(false);
+    expect(canApplyPilotResourceLoad(0,0)).toBe(false);
+    expect(canApplyPilotResourceLoad(Number.NaN,1)).toBe(false);
   });
 });
