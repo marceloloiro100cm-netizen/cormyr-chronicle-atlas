@@ -1,0 +1,54 @@
+name: Firebase player pilot — GitHub-only preflight
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/firebase/player-pilot-preflight*.mjs'
+      - 'src/lib/auth/firebase-pilot-readiness-ui*'
+      - 'src/routes/firebase-access.tsx'
+      - 'docs/firebase/PLAYER-PILOT-GITHUB-ONLY-RUNBOOK.md'
+      - '.github/workflows/firebase-player-pilot-preflight.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/player-pilot-preflight*.mjs'
+      - 'src/lib/auth/firebase-pilot-readiness-ui*'
+      - 'src/routes/firebase-access.tsx'
+      - 'docs/firebase/PLAYER-PILOT-GITHUB-ONLY-RUNBOOK.md'
+      - '.github/workflows/firebase-player-pilot-preflight.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate the fixed anonymous GET contract and deny-by-default release decision
+        run: node --test scripts/firebase/player-pilot-preflight.test.mjs
+      - name: Verify public repository does not expose privileged data
+        run: node scripts/verify-public-repo.mjs
+
+  public-preflight:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    needs: contract
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Inspect published portal and public routes (GET only, no credentials)
+        run: node scripts/firebase/player-pilot-preflight.mjs
+      - name: Keep launch blocked until operator and cross-user acceptance
+        if: always()
+        run: |
+          echo 'Result is advisory: green CI is never a GO decision.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No Auth enablement, IAM changes, Cloud writes, DNS edits, traffic promotion or rollbacks were attempted.' >> "$GITHUB_STEP_SUMMARY"

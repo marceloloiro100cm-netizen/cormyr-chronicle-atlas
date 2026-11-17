@@ -3,6 +3,7 @@ import {useEffect,useState,type FormEvent} from 'react';
 import {runFirebaseRoleSelfAcceptance}
   from '@/lib/auth/firebase-role-self-acceptance';
 import {firebasePilotAuth as firebaseAuth} from '@/lib/auth/firebase-pilot-session';
+import {describeFirebasePilotSignals} from '@/lib/auth/firebase-pilot-readiness-ui';
 import {GmEventos,GmAventuras} from '@/components/gm-panels';
 import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
 import {FirebaseNewspaperReader} from '@/components/newspaper/FirebaseNewspaperReader';
@@ -498,6 +499,14 @@ function FirebaseAccess(){
     setTreasuryKey(null);
   }
 
+  const pilotStatus=view?describeFirebasePilotSignals({
+    profile:view.profile,sessionConfirmed:view.authenticated===true,
+    snapshotReconciliationPending:view.snapshotReconciliationPending===true,
+    roleSelfTestPassed:roleCheck?.passed===true,
+    houseLoaded:house!==null,calendarLoaded:calendar!==null,
+    mailboxLoaded:inbox!==null,mailCanSend:mailStatus?.canSend===true,
+  }):null;
+
   return <main className="mx-auto max-w-4xl p-6 space-y-5 text-foreground">
     <header className="space-y-2">
       <h1 className="text-2xl font-semibold">Cormyr — acesso Firebase</h1>
@@ -529,6 +538,27 @@ function FirebaseAccess(){
         <button type="button" className="rounded border px-3 py-1"
           onClick={signOut}>Sair</button>
       </div>
+      {pilotStatus&&<section className="rounded border border-current/25 p-4 space-y-3"
+        aria-label="Situação dos serviços desta sessão">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold">Situação do acesso</h2>
+          <p className="text-sm">Homologação em andamento. Estes indicadores
+            representam apenas as consultas realizadas nesta sessão; não
+            autorizam a abertura geral da campanha.</p>
+        </div>
+        <ul className="space-y-2 text-sm">
+          {pilotStatus.signals.map(signal=><li key={signal.key}
+            className="border-t border-current/15 pt-2">
+            <span className="font-medium">{signal.label}: </span>
+            <span>{signal.status==='conferido'?'Conferido nesta sessão':
+              signal.status==='nao-aplicavel'?'Não se aplica':'Pendente'}</span>
+            <p className="text-xs opacity-75">{signal.detail}</p>
+          </li>)}
+        </ul>
+        <p className="text-xs font-medium">A liberação dos jogadores depende de
+          aceite real entre contas diferentes, reconciliação e persistência
+          das ações. Nenhum resultado aqui habilita usuários.</p>
+      </section>}
       <section className="rounded border border-current/25 p-3 space-y-2"
         aria-label="Teste de isolamento Firebase da conta atual">
         <h2 className="font-semibold">Homologação de acesso desta conta</h2>
