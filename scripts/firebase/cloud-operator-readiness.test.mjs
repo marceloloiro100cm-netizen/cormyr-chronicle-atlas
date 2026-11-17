@@ -29,6 +29,21 @@ test('valid aggregate evidence is still NO_GO for players and cutover',()=>{
   for(const sensitive of ['SECRET_CLOUD_SNAPSHOT','SECRET_AUTH_UID'])
     assert.ok(!publicOutput.includes(sensitive));
 });
+test('operator reports only safe auxiliary stage names',()=>{
+  const c=cloud();
+  c.auxiliaryStagesVerified=3;
+  c.auxiliaryStagesComplete=false;
+  c.auxiliaryPendingStages=[
+    'migrationPublicContentStage','PRIVATE_HOUSE_ID','migrationPublicContentStage',
+  ];
+  const r=evaluateOperatorEvidence({cloud:c,authPreview:auth()});
+  assert.deepEqual(r.auxiliaryPendingStages,['migrationPublicContentStage']);
+  assert.ok(r.blockingCodes.includes('AUXILIARY_STAGES_UNVERIFIED'));
+  assert.match(safeOperatorSummary(r),/migrationPublicContentStage/);
+  assert.ok(!JSON.stringify(r).includes('PRIVATE_HOUSE_ID'));
+  assert.ok(!safeOperatorSummary(r).includes('PRIVATE_HOUSE_ID'));
+});
+
 test('partial users or unexpected update makes Auth evidence invalid',()=>{
   for(const change of [
     v=>{v.accounts=13;},v=>{v.linkedAccounts=13;},
