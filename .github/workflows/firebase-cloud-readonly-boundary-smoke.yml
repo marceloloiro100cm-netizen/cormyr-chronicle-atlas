@@ -1,0 +1,54 @@
+name: Firebase Cloud — readonly House route safety smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/cloud-readonly-boundary-smoke*.mjs'
+      - '.github/workflows/firebase-cloud-readonly-boundary-smoke.yml'
+      - 'src/lib/archive-only.ts'
+      - 'src/routes/api/firebase-cloud-house-quote.ts'
+      - 'src/routes/api/firebase-operational-economy.ts'
+      - 'src/routes/api/firebase-house-reconciliation-audit.ts'
+      - 'src/routes/api/firebase-treasury-audit.ts'
+  pull_request:
+    paths:
+      - 'scripts/firebase/cloud-readonly-boundary-smoke*.mjs'
+      - '.github/workflows/firebase-cloud-readonly-boundary-smoke.yml'
+      - 'src/lib/archive-only.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safety-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify exact no-op requests and safe failure handling
+        run: node --test scripts/firebase/cloud-readonly-boundary-smoke.test.mjs
+      - name: Check public repository
+        run: node scripts/verify-public-repo.mjs
+
+  live-anonymous-denials:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: safety-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify new read guards and legacy write denial on live domain
+        run: node scripts/firebase/cloud-readonly-boundary-smoke.mjs
+      - name: Keep authenticated play and writes disabled
+        if: always()
+        run: |
+          echo 'These anonymous no-op denials are not actual Firebase user tests or approval to migrate data.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No credentials, tokens, account activation, Firestore writes, DNS updates or IAM changes are performed.' >> "$GITHUB_STEP_SUMMARY"
