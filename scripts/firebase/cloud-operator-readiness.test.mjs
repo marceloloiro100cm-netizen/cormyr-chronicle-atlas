@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {evaluateOperatorEvidence,inspectOperatorEvidence,safeOperatorSummary,
-  classifyOperatorCredentialError}
+  classifyOperatorCredentialError,summarizeRoleLinkageEvidence}
   from './cloud-operator-readiness.mjs';
 
 const cloud=()=>({singleVerifiedSnapshot:true,stagesVerified:6,
@@ -254,4 +254,59 @@ test('missing/invalid archive coverage does not silently become zero',()=>{
   assert.equal(r.fourBlocks.publicContent.archiveCoverage.checked,false);
   assert.equal(r.fourBlocks.publicContent.archiveCoverage.exactMatches,null);
   assert.equal(r.fourBlocks.publicContent.archiveCoverage.reviewApproved,false);
+});
+
+test('Cloud role linkage yields sanitized per-cause aggregates, never identities',()=>{
+  const source={
+    scope:'FIREBASE_ROLE_LINKAGE_READ_ONLY',singleVerifiedSnapshot:true,
+    authListComplete:true,accessListComplete:true,
+    houseReferenceAuditComplete:true,accounts:14,linkedAccounts:14,
+    writes:0,structurallyEligibleProfiles:10,
+    unresolvedPlayerHouseReferences:2,privateUid:'NEVER_EXPOSE_UID',
+    blockingReasonCounts:{
+      missingProfile:2,unrecognizedProfile:0,
+      accessInactiveOrInvalid:4,passwordChangePendingOrInvalid:2,
+      adminFlagMismatch:0,invalidHouseLists:0,
+      editScopeOutsideMembership:0,playerWithoutHouse:2,
+      editorWithHouse:0,privateSecret:'PRIVATE_ERROR',
+    },
+    structurallyEligibleByProfile:{narrador:1,jogador:8,editor:1,other:0},
+  };
+  const a=summarizeRoleLinkageEvidence(source);
+  assert.equal(a.checked,true);
+  assert.equal(a.eligible,10);
+  assert.equal(a.blockingReasonCounts.missingProfile,2);
+  assert.equal(a.blockingReasonCounts.playerWithoutHouse,2);
+  assert.equal(a.unresolvedHouseReferences,2);
+  assert.equal(a.ready,false);
+  const report=evaluateOperatorEvidence({cloud:cloud(),authPreview:auth(),roleLinkage:source});
+  assert.equal(report.fourBlocks.playerAccess.linkageDiagnostics.checked,true);
+  assert.equal(report.readyForPlayers,false);
+  assert.equal(report.releaseDecision,'NO_GO');
+  const out=JSON.stringify(report)+safeOperatorSummary(report);
+  for(const s of ['PRIVATE_ERROR','NEVER_EXPOSE_UID'])assert.ok(!out.includes(s));
+});
+test('unexpected role report structure is fail closed, with no sensitive fields',()=>{
+  for(const source of [
+    {scope:'WRONG',privateUid:'SECRET_UID'},
+    {scope:'FIREBASE_ROLE_LINKAGE_READ_ONLY',accounts:14,linkedAccounts:14,
+      privateUid:'SECRET_UID'},
+  ]){
+    const a=summarizeRoleLinkageEvidence(source);
+    assert.equal(a.checked,false);
+    assert.equal(a.eligible,null);
+    assert.ok(!JSON.stringify(a).includes('SECRET_UID'));
+  }
+});
+test('linkage audit failure does not hide other evidence or release players',async()=>{
+  const r=await inspectOperatorEvidence({
+    readCloud:async()=>cloud(),
+    previewAuth:async()=>auth(),
+    readRoleLinkage:async()=>{throw Error('SECRET_PROVIDER_ERROR');},
+  });
+  assert.equal(r.authInventoryValid,true);
+  assert.equal(r.fourBlocks.playerAccess.linkageDiagnostics.checked,false);
+  assert.ok(r.blockingCodes.includes('ROLE_LINKAGE_DIAGNOSIS_INCOMPLETE'));
+  assert.equal(r.readyForPlayers,false);
+  assert.ok(!JSON.stringify(r).includes('SECRET_PROVIDER_ERROR'));
 });

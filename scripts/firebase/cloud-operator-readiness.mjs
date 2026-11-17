@@ -7,11 +7,52 @@ import {pathToFileURL} from 'node:url';
 import {inspectFirebaseCloudReadiness} from './cloud-access-readiness.mjs';
 import {inspectCloudRuntimeSources} from './cloud-runtime-source-preflight.mjs';
 import {inspectPublicArchiveCoverage} from './public-archive-coverage-readonly.mjs';
+import {inspectCloudRoleLinkage} from './cloud-role-linkage-readonly.mjs';
 import {executeAllExistingAuthTestAccounts,safePreflightFailureCode}
   from './auth-enable-all-test-accounts.mjs';
 
 const safeCount=n=>Number.isSafeInteger(n)&&n>=0&&n<=1000?n:null;
 const safeHttp=n=>Number.isSafeInteger(n)&&n>=100&&n<=599?n:null;
+const ROLE_TYPES=Object.freeze(['narrador','jogador','editor','other']);
+const ROLE_REASONS=Object.freeze([
+  'missingProfile','unrecognizedProfile','accessInactiveOrInvalid',
+  'passwordChangePendingOrInvalid','adminFlagMismatch',
+  'invalidHouseLists','editScopeOutsideMembership',
+  'playerWithoutHouse','editorWithHouse',
+]);
+/** Extract only validated aggregate data; never forward UIDs or private values. */
+export function summarizeRoleLinkageEvidence(report){
+  const checked=report?.scope==='FIREBASE_ROLE_LINKAGE_READ_ONLY'&&
+    report.singleVerifiedSnapshot===true&&
+    report.authListComplete===true&&report.accessListComplete===true&&
+    report.houseReferenceAuditComplete===true&&
+    report.accounts===14&&report.linkedAccounts===14&&
+    report.writes===0;
+  if(!checked)return {
+    checked:false,accounts:null,eligible:null,
+    blockingReasonCounts:null,eligibleByProfile:null,
+    unresolvedHouseReferences:null,ready:false,
+  };
+  const reasons=Object.fromEntries(ROLE_REASONS.map(k=>[
+    k,safeCount(report.blockingReasonCounts?.[k]),
+  ]));
+  const eligibleByProfile=Object.fromEntries(ROLE_TYPES.map(k=>[
+    k,safeCount(report.structurallyEligibleByProfile?.[k]),
+  ]));
+  const complete=Object.values(reasons).every(v=>v!==null)&&
+    Object.values(eligibleByProfile).every(v=>v!==null)&&
+    safeCount(report.structurallyEligibleProfiles)!==null&&
+    safeCount(report.unresolvedPlayerHouseReferences)!==null;
+  return {
+    checked:complete,accounts:14,
+    eligible:complete?report.structurallyEligibleProfiles:null,
+    blockingReasonCounts:complete?reasons:null,
+    eligibleByProfile:complete?eligibleByProfile:null,
+    unresolvedHouseReferences:complete?report.unresolvedPlayerHouseReferences:null,
+    // Structural eligibility is NOT production authorization.
+    ready:false,
+  };
+}
 const AUX_STAGE_NAMES=new Set([
   'migrationPrivateGmStage','migrationDriveSyncStage',
   'migrationPublicContentStage','migrationStorageStage',
@@ -27,6 +68,7 @@ export function classifyOperatorCredentialError(error){
 export function evaluateOperatorEvidence({
   cloud=null,authPreview=null,authError=null,cloudError=false,
   runtimeSources=null,runtimeSourceError=false,
+  roleLinkage=null,roleLinkageError=false,
 }={}){
   const stages=cloud?.singleVerifiedSnapshot===true&&cloud?.stagesVerified===6;
   const auxiliary=cloud?.auxiliaryStagesComplete===true&&cloud?.auxiliaryStagesVerified===4;
@@ -85,6 +127,9 @@ export function evaluateOperatorEvidence({
     },
     playerAccess:{
       authAccountsEnabled:authValid&&authPreview.toEnable===0,
+      linkageDiagnostics:roleLinkageError
+        ?summarizeRoleLinkageEvidence()
+        :summarizeRoleLinkageEvidence(roleLinkage),
       missingProfiles:authValid?safeCount(authPreview.missingProfiles):null,
       playersWithoutHouse:authValid?safeCount(authPreview.playersWithoutHouse):null,
       inactiveAccess:authValid?safeCount(authPreview.inactiveAccess):null,
@@ -112,6 +157,8 @@ export function evaluateOperatorEvidence({
   if(authValid&&authPreview.toEnable>0)blockingCodes.push('AUTH_ACCOUNTS_STILL_DISABLED');
   if(authValid&&authPreview.pendingRoleOrHouse>0)
     blockingCodes.push('ROLES_OR_HOUSE_LINKS_INCOMPLETE');
+  if(roleLinkageError||roleLinkage&&!summarizeRoleLinkageEvidence(roleLinkage).checked)
+    blockingCodes.push('ROLE_LINKAGE_DIAGNOSIS_INCOMPLETE');
   blockingCodes.push('SOURCE_DELTA_AND_STORAGE_UNVERIFIED');
   blockingCodes.push('CROSS_HOUSE_CLOUD_E2E_PENDING');
   blockingCodes.push('PRODUCTION_RUNTIME_ACCEPTANCE_PENDING');
@@ -142,12 +189,13 @@ export function evaluateOperatorEvidence({
   };
 }
 export async function inspectOperatorEvidence({
-  readCloud,previewAuth,readRuntimeSources,
+  readCloud,previewAuth,readRuntimeSources,readRoleLinkage,
 }={}){
   if(typeof readCloud!=='function'||typeof previewAuth!=='function')
     throw Error('two_read_probes_required');
   let cloud=null,authPreview=null,authError=null,cloudError=false;
   let runtimeSources=null,runtimeSourceError=false;
+  let roleLinkage=null,roleLinkageError=false;
   try{cloud=await readCloud();}catch{cloudError=true;}
   try{authPreview=await previewAuth();}
   catch(e){authError=safePreflightFailureCode(e);}
@@ -155,9 +203,13 @@ export async function inspectOperatorEvidence({
     try{runtimeSources=await readRuntimeSources();}
     catch{runtimeSourceError=true;}
   }
+  if(typeof readRoleLinkage==='function'){
+    try{roleLinkage=await readRoleLinkage();}
+    catch{roleLinkageError=true;}
+  }
   return evaluateOperatorEvidence({
     cloud,authPreview,authError,cloudError,
-    runtimeSources,runtimeSourceError,
+    runtimeSources,runtimeSourceError,roleLinkage,roleLinkageError,
   });
 }
 export function safeOperatorSummary(report){
@@ -193,6 +245,14 @@ export function safeOperatorSummary(report){
     '| Jogadores sem Casa | '+n(report?.fourBlocks?.playerAccess?.playersWithoutHouse)+' |',
     '| Acessos de campanha inativos | '+n(report?.fourBlocks?.playerAccess?.inactiveAccess)+' |',
     '| Trocas de senha pendentes | '+n(report?.fourBlocks?.playerAccess?.passwordResetPending)+' |',
+    '| Diagnóstico privado de perfis e Casas | '+
+      yes(report?.fourBlocks?.playerAccess?.linkageDiagnostics?.checked)+' |',
+    '| Contas estruturalmente elegíveis (não liberadas) | '+
+      n(report?.fourBlocks?.playerAccess?.linkageDiagnostics?.eligible)+' |',
+    '| Referências a Casas inválidas ou desatualizadas | '+
+      n(report?.fourBlocks?.playerAccess?.linkageDiagnostics?.unresolvedHouseReferences)+' |',
+    ...ROLE_REASONS.map(k=>'| Motivo: '+k+' | '+
+      n(report?.fourBlocks?.playerAccess?.linkageDiagnostics?.blockingReasonCounts?.[k])+' |'),
     '| Correio operacional | '+yes(report?.mailRuntimeVerified)+' |',
     '| Runtime de Casas | '+yes(report?.operationalRuntimeVerified)+' |',
     '| Pré-validação de fontes operacionais | '+
@@ -259,6 +319,12 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
           auth:{listUsers:(...args)=>getAuth(app).listUsers(...args),
             updateUser:neverWrite,getUser:neverWrite},
           db:getFirestore(app),mode:'preview',confirmation:'',
+        }),
+        readRoleLinkage:()=>inspectCloudRoleLinkage({
+          tokenProvider:async()=>{
+            const token=await credential.getAccessToken();
+            return token.access_token;
+          },
         }),
         readRuntimeSources:async()=>{
           const db=getFirestore(app);
