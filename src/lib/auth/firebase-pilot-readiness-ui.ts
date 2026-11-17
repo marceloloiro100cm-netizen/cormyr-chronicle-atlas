@@ -6,7 +6,7 @@
 export type FirebasePilotProfile='jogador'|'editor'|'narrador';
 export type FirebasePilotSignalStatus='conferido'|'pendente'|'nao-aplicavel';
 export type FirebasePilotSignal={
-  key:'session'|'isolation'|'house'|'calendar'|'mail';
+  key:'session'|'isolation'|'house'|'calendar'|'mail'|'snapshot';
   label:string;
   status:FirebasePilotSignalStatus;
   detail:string;
@@ -64,7 +64,7 @@ export function describeFirebasePilotSignals(input:FirebasePilotSignalInput):{
   // Historical migration snapshots are not live-reconciled operational state.
   // Even when every individual signal is green, never advertise public GO.
   if(input.snapshotReconciliationPending)
-    signals.push({key:'session',label:'Reconciliação do snapshot',
+    signals.push({key:'snapshot',label:'Reconciliação do snapshot',
       status:'pendente',detail:'O acervo histórico não foi homologado como estado operacional.'});
   return {signals,readyForPlayers:false,readyForCutover:false};
 }
