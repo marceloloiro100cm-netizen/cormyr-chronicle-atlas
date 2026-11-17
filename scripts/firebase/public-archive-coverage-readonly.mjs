@@ -34,7 +34,7 @@ export function summarizePublicArchiveCoverage({archive,sourceHouses}={}){
   if(!archive||!Array.isArray(archive.regions)||
      !Array.isArray(sourceHouses)||sourceHouses.length===0||
      sourceHouses.length>250)failed('source_unverified');
-  const publicCounts=new Map();
+  const publicCounts=new Map(),publicByName=new Map();
   let archivedHouses=0;
   for(const region of archive.regions){
     if(!region||!validName(region.name)||
@@ -44,33 +44,62 @@ export function summarizePublicArchiveCoverage({archive,sourceHouses}={}){
       if(!house||!validName(house.name))failed('public_house_invalid');
       const name=normalize(house.name);
       publicCounts.set(name,(publicCounts.get(name)??0)+1);
+      if(!publicByName.has(name))publicByName.set(name,{
+        region:house.region===region.name&&validName(house.region),
+        classification:validName(house.hierarchy?.kind)&&
+          house.hierarchy.kind.length<=100,
+        crest:typeof house.crest==='string'&&
+          /^assets\/[A-Za-z0-9/_-]+\.(webp|png|jpe?g)$/i.test(house.crest),
+        history:typeof house.historyPath==='string'&&
+          /^histories\/[A-Za-z0-9/_-]+\.json$/i.test(house.historyPath),
+        directDescription:validName(house.description),
+      });
       archivedHouses++;
     }
   }
   if(archivedHouses===0||archivedHouses>5000)
     failed('public_inventory_invalid');
-  const sourceIds=new Set();
-  let active=0,exact=0,ambiguous=0,unmatched=0;
-  for(const house of sourceHouses){
-    if(!house||!validName(house.name)||
-       typeof house.sourceId!=='string'||house.sourceId.length<1||
-       house.sourceId.length>128||sourceIds.has(house.sourceId)||
-       typeof house.active!=='boolean'||
-       !Number.isSafeInteger(house.season))
+  const sourceIds=new Set(),sourceCounts=new Map();
+  for(const h of sourceHouses){
+    if(!h||!validName(h.name)||typeof h.sourceId!=='string'||
+       h.sourceId.length<1||h.sourceId.length>128||
+       sourceIds.has(h.sourceId)||typeof h.active!=='boolean'||
+       !Number.isSafeInteger(h.season))
       failed('private_source_invalid');
-    sourceIds.add(house.sourceId);
+    sourceIds.add(h.sourceId);
+    if(h.active===true&&h.season===2){
+      const name=normalize(h.name);
+      sourceCounts.set(name,(sourceCounts.get(name)??0)+1);
+    }
+  }
+  let active=0,exact=0,ambiguous=0,unmatched=0;
+  const candidateFields={region:0,classification:0,crest:0,
+    historyReference:0,directDescription:0};
+  for(const house of sourceHouses){
     if(house.active!==true||house.season!==2)continue;
     active++;
-    const matches=publicCounts.get(normalize(house.name))??0;
-    if(matches===1)exact++;
-    else if(matches>1)ambiguous++;
-    else unmatched++;
+    const name=normalize(house.name);
+    const matches=publicCounts.get(name)??0;
+    if(matches===0){unmatched++;continue;}
+    // A name is a candidate ONLY when unique on BOTH sides.
+    if(matches!==1||sourceCounts.get(name)!==1){
+      ambiguous++;continue;
+    }
+    exact++;
+    const fields=publicByName.get(name);
+    if(fields.region)candidateFields.region++;
+    if(fields.classification)candidateFields.classification++;
+    if(fields.crest)candidateFields.crest++;
+    if(fields.history)candidateFields.historyReference++;
+    if(fields.directDescription)candidateFields.directDescription++;
   }
   return {
     scope:'FIREBASE_PUBLIC_ARCHIVE_NAME_COVERAGE_READ_ONLY',
     checked:true,archivedRegions:archive.regions.length,archivedHouses,
     sourceHouses:sourceHouses.length,activeSourceHouses:active,
     exactMatches:exact,ambiguousMatches:ambiguous,unmatchedActive:unmatched,
+    // Published archive fields available for manual review, NOT approved data.
+    candidateFields,
     // Coverage is NOT review or evidence of matching public/private fields.
     reviewApproved:false,ready:false,cloudWrites:0,
     readyForPlayers:false,releaseDecision:'NO_GO',

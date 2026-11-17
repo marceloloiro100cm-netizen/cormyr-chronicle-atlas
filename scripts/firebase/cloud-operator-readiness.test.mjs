@@ -310,3 +310,26 @@ test('linkage audit failure does not hide other evidence or release players',asy
   assert.equal(r.readyForPlayers,false);
   assert.ok(!JSON.stringify(r).includes('SECRET_PROVIDER_ERROR'));
 });
+
+test('public archive candidate field metadata is sanitized, never reviewed',()=>{
+  const r=evaluateOperatorEvidence({
+    cloud:cloud(),authPreview:auth(),
+    runtimeSources:{
+      archiveCoverage:{
+        checked:true,archivedHouses:172,archivedRegions:11,sourceHouses:11,
+        activeSourceHouses:10,exactMatches:10,ambiguousMatches:0,
+        unmatchedActive:0,candidateFields:{
+          region:10,classification:10,crest:10,historyReference:9,
+          directDescription:0,secret:'VERY_PRIVATE',
+        },
+      },
+    },
+  });
+  const candidates=r.fourBlocks.publicContent.archiveCoverage.candidateFields;
+  assert.equal(candidates.region,10);
+  assert.equal(candidates.historyReference,9);
+  assert.equal(r.fourBlocks.publicContent.archiveCoverage.reviewApproved,false);
+  assert.equal(r.readyForPlayers,false);
+  assert.ok(!JSON.stringify(r).includes('VERY_PRIVATE'));
+  assert.match(safeOperatorSummary(r),/Histórias com referência pública/);
+});

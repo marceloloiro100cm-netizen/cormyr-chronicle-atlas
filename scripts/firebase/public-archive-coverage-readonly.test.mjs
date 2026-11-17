@@ -101,3 +101,46 @@ test('protected read-only probe fetches only same-snapshot private houses',async
   assert.equal(result.reviewApproved,false);
   assert.ok(!JSON.stringify(result).includes(SNAP));
 });
+
+test('duplicate active private names never count as exact identity matches',()=>{
+  const archive={regions:[{name:'Helmlands',houses:[
+    {name:'Evenhand',region:'Helmlands',
+      hierarchy:{kind:'major'},crest:'assets/helmlands-evenhand.webp',
+      historyPath:'histories/evenhand.json'},
+  ]}]};
+  const result=summarizePublicArchiveCoverage({archive,sourceHouses:[
+    {sourceId:'unique-private-a',name:'Evenhand',active:true,season:2},
+    {sourceId:'unique-private-b',name:'Evenhand',active:true,season:2},
+  ]});
+  assert.equal(result.exactMatches,0);
+  assert.equal(result.ambiguousMatches,2);
+  assert.equal(result.candidateFields.region,0);
+  assert.equal(result.reviewApproved,false);
+  assert.equal(result.readyForPlayers,false);
+});
+test('only unambiguous source names contribute to review field availability',()=>{
+  const archive={regions:[{name:'Helmlands',houses:[{
+    name:'Evenhand',region:'Helmlands',
+    hierarchy:{kind:'major'},crest:'assets/helmlands-evenhand.webp',
+    historyPath:'histories/evenhand.json',
+    description:'PUBLIC ARCHIVE STORY',
+  },{
+    name:'Phelles',region:'WRONG REGION',
+    hierarchy:{kind:'crown'},crest:'../private/crest.webp',
+    historyPath:'histories/../../private.json',
+  }]}]};
+  const rows=[
+    {sourceId:'src-1',name:'Evenhand',active:true,season:2},
+    {sourceId:'src-2',name:'Phelles',active:true,season:2},
+  ];
+  const r=summarizePublicArchiveCoverage({archive,sourceHouses:rows});
+  assert.equal(r.exactMatches,2);
+  assert.deepEqual(r.candidateFields,{
+    region:1,classification:2,crest:1,historyReference:1,
+    directDescription:1,
+  });
+  assert.equal(r.reviewApproved,false);
+  assert.equal(r.releaseDecision,'NO_GO');
+  for(const secret of ['src-1','src-2','PUBLIC ARCHIVE STORY','Evenhand'])
+    assert.ok(!JSON.stringify(r).includes(secret));
+});

@@ -102,6 +102,10 @@ export function evaluateOperatorEvidence({
         exactMatches:safeCount(runtimeSources?.archiveCoverage?.exactMatches),
         ambiguousMatches:safeCount(runtimeSources?.archiveCoverage?.ambiguousMatches),
         unmatchedActive:safeCount(runtimeSources?.archiveCoverage?.unmatchedActive),
+        candidateFields:Object.fromEntries(
+          ['region','classification','crest','historyReference',
+            'directDescription'].map(k=>[k,
+              safeCount(runtimeSources?.archiveCoverage?.candidateFields?.[k])])),
         reviewApproved:false,ready:false,
       },
       ready:false,
@@ -237,6 +241,14 @@ export function safeOperatorSummary(report){
       n(report?.fourBlocks?.publicContent?.archiveCoverage?.activeSourceHouses)+' |',
     '| Casas ativas sem correspondência | '+
       n(report?.fourBlocks?.publicContent?.archiveCoverage?.unmatchedActive)+' |',
+    '| Casas com região localizada no acervo (a revisar) | '+
+      n(report?.fourBlocks?.publicContent?.archiveCoverage?.candidateFields?.region)+' |',
+    '| Casas com classificação localizada (a revisar) | '+
+      n(report?.fourBlocks?.publicContent?.archiveCoverage?.candidateFields?.classification)+' |',
+    '| Brasões com referência pública (a revisar) | '+
+      n(report?.fourBlocks?.publicContent?.archiveCoverage?.candidateFields?.crest)+' |',
+    '| Histórias com referência pública (a revisar) | '+
+      n(report?.fourBlocks?.publicContent?.archiveCoverage?.candidateFields?.historyReference)+' |',
     '| Conteúdo público: estágio | '+
       (Number.isInteger(report?.fourBlocks?.publicContent?.stageHttpStatus)
         ?'HTTP '+report.fourBlocks.publicContent.stageHttpStatus:'Indisponível')+
