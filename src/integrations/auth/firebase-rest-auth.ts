@@ -111,7 +111,7 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
     },
     async requestPasswordReset(email) {
       if (typeof email !== 'string' || email.length > 254 ||
-          !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
         throw new FirebaseAuthError('INVALID_EMAIL');
       // Public Firebase Auth REST endpoint. No redirect URL, no session
       // mutation and no custom backend. The UI must not reveal whether this
