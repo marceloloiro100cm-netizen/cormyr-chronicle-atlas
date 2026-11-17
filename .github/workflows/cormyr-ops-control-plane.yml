@@ -8,11 +8,11 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: 'Audit, protected operator audit or Auth operation'
+        description: 'Audit, Auth or protected disabled runtime draft'
         type: choice
         required: true
         default: audit
-        options: [audit, operator-audit, auth-preview, auth-activate]
+        options: [audit, operator-audit, auth-preview, auth-activate, runtime-draft]
 
 permissions:
   contents: read
@@ -41,7 +41,7 @@ jobs:
             const CONTROL_ISSUE = 568;
             const CONFIRMATION = 'ENABLE_ALL_14_CORMYR_TEST_ACCOUNTS';
             const AUTH_WORKFLOW = '.github/workflows/firebase-auth-enable-all-test-accounts.yml';
-            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-activate|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
+            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-activate|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
             const {owner, repo} = context.repo;
             if (owner + '/' + repo !== REPO || Number(process.env.GITHUB_RUN_ATTEMPT) !== 1) {
               core.info('Untrusted context or retry: no remote action');
@@ -51,7 +51,7 @@ jobs:
             if (context.eventName === 'schedule') operation = 'audit';
             else if (context.eventName === 'workflow_dispatch') {
               operation = context.payload.inputs?.task;
-              if (!['audit', 'operator-audit', 'auth-preview', 'auth-activate'].includes(operation)) {
+              if (!['audit', 'operator-audit', 'auth-preview', 'auth-activate', 'runtime-draft'].includes(operation)) {
                 core.info('Unknown manual command: no action');
                 return;
               }
@@ -76,6 +76,10 @@ jobs:
               ['firebase-cloud-access-readiness.yml', {}],
             ] : operation === 'operator-audit' ? [
               ['firebase-cloud-operator-readiness.yml', {}],
+            ] : operation === 'runtime-draft' ? [
+              ['firebase-cloud-runtime-drafts.yml', {
+                mode:'apply', confirmation:'CREATE_DISABLED_CORMYR_RUNTIME_DRAFTS',
+              }],
             ] : operation === 'auth-preview' ? [
               ['firebase-auth-enable-all-test-accounts.yml', {mode:'preview'}],
             ] : operation === 'auth-activate' ? [
@@ -89,6 +93,7 @@ jobs:
                 'firebase-cloud-access-readiness.yml',
                 'firebase-cloud-operator-readiness.yml',
                 'firebase-auth-enable-all-test-accounts.yml',
+                'firebase-cloud-runtime-drafts.yml',
               ]);
               for (const [workflow_id, inputs] of tasks) {
                 if (!allowed.has(workflow_id)) throw new Error('Workflow not allowlisted');
@@ -98,8 +103,8 @@ jobs:
                 core.info('Requested allowlisted workflow: ' + workflow_id);
                 await core.summary.addRaw('- Requested: ' + workflow_id + '\n').write();
               }
-              if (operation.startsWith('auth-') || operation === 'operator-audit')
-                await core.summary.addRaw('Protected firebase-auth-test-activation approval remains mandatory for Auth and operator audits.\n').write();
+              if (operation.startsWith('auth-') || operation === 'operator-audit' || operation === 'runtime-draft')
+                await core.summary.addRaw('Protected firebase-auth-test-activation approval remains mandatory for Auth, operator audits and disabled runtime drafts.\n').write();
               return;
             }
             if (!operation.startsWith('cancel-auth:')) return;
@@ -120,6 +125,6 @@ jobs:
       - name: Preserve protected changes and publication gates
         if: always()
         run: |
-          echo 'No workflow here can modify Auth, Firestore, runtime, rules, IAM, secrets or production directly.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Controller never writes Cloud. Protected runtime-draft can create only two disabled Firestore root documents.' >> "$GITHUB_STEP_SUMMARY"
           echo 'Protected Auth activation still requires separate GitHub environment review.' >> "$GITHUB_STEP_SUMMARY"
           echo 'A dispatch request is NOT evidence that a downstream job succeeded.' >> "$GITHUB_STEP_SUMMARY"
