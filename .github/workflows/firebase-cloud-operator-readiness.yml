@@ -7,12 +7,20 @@ on:
       - 'scripts/firebase/cloud-operator-readiness*.mjs'
       - 'scripts/firebase/cloud-runtime-source-preflight*.mjs'
       - 'scripts/firebase/public-archive-coverage-readonly*.mjs'
+      - 'scripts/firebase/public-archive-asset-integrity*.mjs'
+      - 'public/cormyr/data.js'
+      - 'public/cormyr/histories/**'
+      - 'public/cormyr/assets/**'
       - '.github/workflows/firebase-cloud-operator-readiness.yml'
   pull_request:
     paths:
       - 'scripts/firebase/cloud-operator-readiness*.mjs'
       - 'scripts/firebase/cloud-runtime-source-preflight*.mjs'
       - 'scripts/firebase/public-archive-coverage-readonly*.mjs'
+      - 'scripts/firebase/public-archive-asset-integrity*.mjs'
+      - 'public/cormyr/data.js'
+      - 'public/cormyr/histories/**'
+      - 'public/cormyr/assets/**'
       - '.github/workflows/firebase-cloud-operator-readiness.yml'
   workflow_dispatch:
 
