@@ -53,3 +53,33 @@ O `GITHUB_STEP_SUMMARY` apresenta quantidade de observações, motivo de parada,
 Um `MATCH` confirma somente o commit que estava recebendo tráfego **no momento da consulta**. Não confirma autenticação, reconciliação de dados, direitos dos perfis ou cutover: `cloudDataMigratedVerified=false`, `readyForCutover=false` e `cloudWrites=0` permanecem.
 
 A suíte sintética `apphosting-live-revision-readonly.test.mjs` cobre correspondência tardia, ausência de match, bloqueios por IAM, branch e política, limite de tentativas, SHA inválido e transição de build temporariamente inconclusiva.
+
+
+## Verificação independente da revisão em tráfego — GitHub-only, 17/11/2026
+
+A auditoria pós-merge do PR #564 encontrou o domínio atlas.cormyr.com.br
+associado ao backend correto, branch main e rollout automático habilitado.
+Entretanto, o commit servido era
+4f752797da5bcc98cea23d03c72a281c87518301 enquanto o push atual
+apontava para 370860e90b74eaed414322da33c0d91624a7c49a.
+A auditoria curta terminou sem conseguir confirmar o novo build em tráfego.
+
+O novo workflow "Firebase App Hosting — verify main is actually serving"
+é disparado por todo push à main e por acionamento manual na aba Actions.
+Usa somente o OIDC de leitura já existente, sem novos IAM, segredos ou Cloud Shell.
+
+- Até 16 consultas separadas por 20 segundos, todas GET de metadados App Hosting.
+- Encerra cedo em MATCH, erro IAM, branch errada, rollout desativado
+  ou backend inconclusivo.
+- SÓ termina com sucesso se o SHA esperado estiver efetivamente servindo
+  100% do tráfego no instante da leitura, e nunca pelo simples build verde.
+- Sem match dentro do período, o job falha; um rollout lento pode ainda
+  terminar depois e pode ser reconferido manualmente, sem forçar implantação.
+- Novos pushes à main cancelam o auditor anterior, sem tocar no pipeline
+  de implantação, usuários, dados, IAM ou tráfego.
+
+Essa é confirmação de **versão publicada**, não de prontidão para jogar.
+Mesmo MATCH implica readyForPlayers=false, readyForCutover=false, NO_GO.
+A pré-verificação pública ainda revelou HTTP 503 em calendário, catálogo
+e traduções; 14/14 contas Auth estavam desativadas na última leitura real.
+Esses bloqueios não são resolvidos pelo novo check e permanecem separados.

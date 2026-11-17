@@ -488,7 +488,7 @@ test('transient unresolved serving build can be polled only for a known main bac
 
 test('bounded poll options reject unbounded or malformed intervals',async()=>{
   for(const opts of [
-    {maxAttempts:0},{maxAttempts:7},{maxAttempts:2.5},
+    {maxAttempts:0},{maxAttempts:17},{maxAttempts:2.5},
     {intervalMs:-1},{intervalMs:30_001},{intervalMs:Infinity},
     {inspect:null},{pause:null},
   ]){
@@ -498,4 +498,22 @@ test('bounded poll options reject unbounded or malformed intervals',async()=>{
       pause:opts.pause??(opts.pause===null?null:async()=>{}),
     }),/invalid_revision_observation_options/);
   }
+});
+
+
+test('extended convergence remains bounded and does not treat stale build as release',async()=>{
+  const served='a'.repeat(40);
+  const expected='b'.repeat(40);
+  let inspections=0,sleeps=0;
+  const result=await observeServingRevision({
+    expectedSha:expected,maxAttempts:16,intervalMs:0,
+    inspect:async()=>{inspections++;return servingFixture(served);},
+    pause:async()=>{sleeps++;},
+  });
+  assert.equal(inspections,16);
+  assert.equal(sleeps,15);
+  assert.equal(result.observation.matchingCommitObserved,false);
+  assert.equal(result.observation.stopReason,'OBSERVATION_WINDOW_EXHAUSTED');
+  assert.equal(result.observation.readyForCutover,false);
+  assert.equal(result.observation.writes,0);
 });
