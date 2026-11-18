@@ -1,3 +1,4 @@
+import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 /** Cloud-only noble House Treasury adjustments, authorized to the Narrator.
  * Imported migration stages are immutable. An independently reconciled
  * operational Treasury document MUST exist before any write.
@@ -133,8 +134,9 @@ export function createFirebaseCloudTreasury({
     authorized(actor,uid,houseId,mode);
     if(!rootsReady(docs.slice(0,4)))
       fail('migration_stage_not_ready',503);
-    const campaignDate=checkCalendar(docs[5]?.data());
-    if(!runtimeReady(docs[6]?.data(),snapshotId,docs[5].data(),mode))
+    const calendar=effectiveCloudCalendar(docs[5]?.data(),docs[6]?.data(),snapshotId);
+    const campaignDate=checkCalendar(calendar);
+    if(!runtimeReady(docs[6]?.data(),snapshotId,calendar,mode))
       fail('treasury_runtime_not_approved',503);
     const house=docs[7]?.data(),sheet=docs[8]?.data(),entry=docs[9]?.data();
     if(!docs[7]?.exists||!house||house.sourceId!==houseId||
@@ -223,3 +225,4 @@ export function createFirebaseCloudTreasury({
     },
   };
 }
+

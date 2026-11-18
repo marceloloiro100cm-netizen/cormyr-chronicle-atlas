@@ -1,3 +1,4 @@
+import {effectiveCloudCalendar} from '../../../scripts/firebase/cloud-operational-calendar.mjs';
 /**
  * Safe, per-House operational economy read. No Firestore response bodies from
  * private documents are forwarded: only an allowlisted projection is returned.
@@ -178,7 +179,7 @@ export function createFirebaseOperationalEconomyRead({
         authorize(docs[4]?.data(),uid,houseId);
         if(!docs.slice(0,4).every(d=>d.exists&&ready(d.data())))
           return reject('migration_stage_not_ready',503);
-        const calendar=validCalendar(docs[5]?.data());
+        const calendar=validCalendar(effectiveCloudCalendar(docs[5]?.data(),docs[6]?.data(),snapshotId));
         if(!runtimeReady(docs[6]?.data(),snapshotId,calendar.version))
           return reject('operational_economy_read_unapproved',503);
         const house=docs[7]?.data();
@@ -216,3 +217,4 @@ export function createFirebaseOperationalEconomyRead({
     },
   };
 }
+

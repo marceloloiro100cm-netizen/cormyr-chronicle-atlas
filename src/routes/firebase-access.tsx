@@ -1,3 +1,4 @@
+import {FirebaseHouseActivation} from '@/components/houses/FirebaseHouseActivation';
 import {FirebaseEditorialDesk} from '@/components/newspaper/FirebaseEditorialDesk';
 import {createFileRoute} from '@tanstack/react-router';
 import {useEffect,useRef,useState,type FormEvent} from 'react';
@@ -753,6 +754,8 @@ function FirebaseAccess(){
               <option key={h.id} value={h.id}>{h.name}</option>)}
         </select>
         {house&&<FirebaseHouseSheet sheet={house}/>}
+        {house&&view.profile==='narrador'&&<FirebaseHouseActivation key={house.id}
+          houseId={house.id} houseName={house.name} onActivated={()=>{void selectHouse(house.id);}}/>}
         {house&&<FirebaseHouseResources houseName={house.name} state={house.state}/>}
         {house&&<FirebaseHouseBalances houseName={house.name} state={house.state}/>}
         {house&&<FirebaseOperationalEconomy houseName={house.name}
