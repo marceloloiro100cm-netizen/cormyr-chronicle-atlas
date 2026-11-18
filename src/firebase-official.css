@@ -1,0 +1,300 @@
+
+/*
+ * Cormyr Chronicle — Firebase-only official campaign workspace.
+ * Uses the heraldic burgundy / gold / parchment identity from CampaignShell.
+ * No legacy auth, Supabase, API changes or runtime toggles in this stylesheet.
+ */
+.firebase-official{
+  --fo-night:#21142b;
+  --fo-purple:#34203d;
+  --fo-purple-light:#50335b;
+  --fo-gold:#c7a96b;
+  --fo-paper:#fcf9f2;
+  --fo-canvas:#f1ebdf;
+  --fo-ink:#30263a;
+  --fo-muted:#716978;
+  --fo-line:#dcd1bd;
+  min-height:100vh;
+  background:var(--fo-canvas);
+  color:var(--fo-ink);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  line-height:1.55;
+}
+.firebase-official *{box-sizing:border-box}
+.firebase-official button{cursor:pointer}
+.firebase-official button:disabled{cursor:not-allowed;opacity:.62}
+.firebase-official a{color:inherit}
+.firebase-official :is(a,button,input,select,textarea,summary):focus-visible{
+  outline:3px solid #9772ad;
+  outline-offset:3px;
+}
+.firebase-official-top{
+  min-height:91px;
+  background:linear-gradient(116deg,#21142b,#321c3c 76%,#402448);
+  border-bottom:3px solid var(--fo-gold);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:20px;
+  padding:12px clamp(20px,3.7vw,70px);
+  color:#f9f0df;
+  box-shadow:0 8px 28px #20122928;
+}
+.firebase-official-brand{
+  display:inline-flex;align-items:center;gap:15px;min-width:0;text-decoration:none;
+  font:clamp(23px,2.1vw,29px)/1.1 Georgia,'Times New Roman',serif;
+  letter-spacing:.015em;
+}
+.firebase-official-brand img{width:54px;height:64px;object-fit:contain;filter:drop-shadow(0 2px 6px #0005)}
+.firebase-official-brand em{color:#e1c58c;font-style:normal}
+.firebase-official-brand small{
+  display:block;
+  font:11px/1.55 system-ui,sans-serif;
+  margin-top:7px;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:#d6c6d4;
+}
+.firebase-official-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:13px;flex-wrap:wrap}
+.firebase-official-kingdom{text-decoration:none;font-size:13px;opacity:.88}
+.firebase-official-kingdom:hover{text-decoration:underline;opacity:1}
+.firebase-official-profile{
+  display:inline-flex;align-items:center;gap:7px;color:#f5e6c6;
+  border-left:1px solid #a08aa155;padding-left:15px;
+  font-size:13px;font-weight:600;
+}
+.firebase-official-profile svg{color:var(--fo-gold)}
+.firebase-official-exit{
+  display:inline-flex;align-items:center;gap:8px;padding:9px 14px;
+  border:1px solid #d0b48f88;border-radius:6px;
+  background:#fff1;color:#f6eada;font-size:13px;
+}
+.firebase-official-exit:hover{background:#fff2;border-color:#e2c68e}
+.firebase-official-layout{min-height:calc(100vh - 91px);display:grid;grid-template-columns:258px minmax(0,1fr)}
+.firebase-official-sidebar{
+  min-width:0;
+  background:linear-gradient(165deg,#301c39,#21142b 77%);
+  border-right:1px solid #b298ba33;
+  padding:33px 17px 25px;
+  color:#ece0f0;
+  display:flex;flex-direction:column;align-items:stretch;
+  position:sticky;top:0;align-self:start;
+  min-height:calc(100vh - 91px);
+  box-shadow:inset -4px 0 0 #a17c4c18;
+}
+.firebase-official-seal{
+  height:61px;width:61px;margin:0 auto 15px;border-radius:50%;
+  display:grid;place-items:center;color:#f1ddaf;
+  background:radial-gradient(circle at 40% 30%,#74547a,#2b1a33 70%);
+  border:1px solid #d3b27fbb;
+  box-shadow:0 0 0 5px #d3b27f18,0 6px 18px #10081588;
+}
+.firebase-official-sidebar-kicker{text-align:center;color:#d2b98c;font:700 10px/1.5 system-ui;letter-spacing:.22em}
+.firebase-official-sidebar-role{text-align:center;font:19px/1.3 Georgia,serif;margin:6px 0 17px;color:#fff1d9}
+.firebase-official-sidebar-rule{height:1px;background:linear-gradient(90deg,transparent,#bc9a65,transparent);margin:0 14px 20px}
+.firebase-official-menu{display:flex;flex-direction:column;gap:5px}
+.firebase-official-menu-item{
+  display:flex;gap:13px;align-items:center;width:100%;
+  min-height:46px;padding:11px 13px;border:1px solid transparent;
+  background:transparent;color:#dacedf;border-radius:7px;
+  font:500 14px/1.3 system-ui;text-align:left;transition:background .14s,border-color .14s;
+}
+.firebase-official-menu-item svg{color:#c3a87a;flex:none}
+.firebase-official-menu-item:hover{background:#ffffff14;color:#fff}
+.firebase-official-menu-item[aria-current='page']{
+  color:#fff8e9;background:linear-gradient(90deg,#9a785a47,#ffffff13);
+  border-color:#b9945688;
+  box-shadow:inset 3px 0 0 #d8b878;
+}
+.firebase-official-menu-item[aria-current='page'] svg{color:#efd29b}
+.firebase-official-sidebar-bottom{
+  margin-top:auto;padding-top:32px;color:#ad97b3;
+  display:flex;gap:9px;align-items:center;justify-content:center;
+  text-align:center;font:italic 12px/1.6 Georgia,serif;
+}
+.firebase-official-ornament{font-size:18px;color:var(--fo-gold)}
+.firebase-official-main{min-width:0;width:100%;max-width:1550px;padding:36px clamp(20px,3.4vw,54px) 65px}
+.firebase-official-pagehead{border-bottom:1px solid var(--fo-line);padding-bottom:20px;margin-bottom:25px}
+.firebase-official-breadcrumb{
+  color:#886c45;letter-spacing:.13em;font:800 10px/1.5 system-ui;
+  text-transform:uppercase;margin:0 0 10px;
+}
+.firebase-official-breadcrumb span{color:#b5a897;margin:0 9px}
+.firebase-official-pagehead h1{
+  font:normal clamp(30px,3.2vw,43px)/1.17 Georgia,serif;
+  letter-spacing:-.018em;color:#38213f;margin:0 0 8px;
+}
+.firebase-official-pagehead>p:last-child{margin:0;color:var(--fo-muted);font-size:14px}
+.firebase-official-pagecontent{max-width:1150px;min-width:0}
+.firebase-official-pagecontent .firebase-module:not([hidden]){
+  padding:clamp(17px,2.2vw,28px);
+  margin:0 0 20px;
+  border:1px solid var(--fo-line);
+  border-top:3px solid #baa077;
+  border-radius:10px;
+  background:var(--fo-paper);
+  box-shadow:0 5px 24px #4630390b;
+}
+.firebase-official-pagecontent .firebase-module h2{
+  color:#3a2543;
+  font:normal 26px/1.25 Georgia,serif;
+  margin-top:2px;
+}
+.firebase-official-pagecontent .firebase-module h3{
+  color:#4b3451;
+  font:normal 20px/1.3 Georgia,serif;
+}
+.firebase-official-pagecontent .firebase-module :is(input,textarea,select){
+  background:#fffcf6;color:#30263a;border-color:#bfb2a6;
+  accent-color:#573864;
+}
+.firebase-official-pagecontent .firebase-module :is(input,textarea,select):focus{
+  border-color:#8c7094;
+}
+.firebase-official-pagecontent .firebase-module :is(button[type='submit'],button:not([type])){
+  border-color:#a38b6c;
+}
+.firebase-official-pagecontent .firebase-module :is(button,select,summary){
+  transition:border-color .14s,background-color .14s;
+}
+.firebase-official-pagecontent .firebase-module button:hover:not(:disabled){border-color:#937044}
+.firebase-official-pagecontent .firebase-module .border{border-color:#d8cdbd}
+.firebase-official-pagecontent .firebase-module .text-foreground{color:var(--fo-ink)}
+.firebase-official-pagecontent .firebase-module summary{cursor:pointer}
+.firebase-official [hidden]{display:none!important}
+.firebase-official-auth{
+  max-width:600px;margin:clamp(45px,7vh,105px) auto;
+  padding:35px;background:var(--fo-paper);
+  border:1px solid var(--fo-line);border-top:4px solid var(--fo-gold);
+  border-radius:12px;box-shadow:0 14px 48px #24142c17;
+}
+.firebase-official-auth h1{
+  font:normal 35px/1.2 Georgia,serif;
+  color:#38213f;margin:0 0 8px;
+}
+.firebase-official-auth p{color:#716579;margin-bottom:23px}
+.firebase-official-auth form{display:grid;gap:14px}
+.firebase-official-auth label{display:grid;gap:7px;font-weight:600;font-size:13px}
+.firebase-official-auth input{
+  min-height:45px;padding:11px;border:1px solid var(--fo-line);
+  border-radius:5px;background:#fff;color:var(--fo-ink);
+}
+.firebase-official-auth button{
+  padding:11px 17px;border-radius:5px;
+  border:1px solid #99816b;color:#392743;
+}
+.firebase-official-auth button[type='submit']{
+  background:#45284e;color:#f8eddc;border-color:#45284e;
+}
+.firebase-official-auth .firebase-auth-buttons{display:flex;gap:10px;flex-wrap:wrap}
+.firebase-official-auth .firebase-auth-buttons button{min-height:44px}
+.firebase-official-home{display:grid;gap:24px}
+.firebase-official-hero{
+  min-height:247px;position:relative;overflow:hidden;
+  display:grid;grid-template-columns:minmax(0,1fr) 140px;gap:20px;
+  align-items:center;padding:clamp(25px,4vw,42px);
+  background:linear-gradient(120deg,#30213b 0%,#51324d 65%,#6d4a52 100%);
+  color:#f9f0e7;border:1px solid #ab8254;border-radius:12px;
+  box-shadow:0 13px 30px #30243a24;
+}
+.firebase-official-hero::after{
+  content:"";position:absolute;inset:9px;
+  border:1px solid #ddbf8544;pointer-events:none;border-radius:7px;
+}
+.firebase-official-hero-kicker{
+  font:800 11px/1.4 system-ui;letter-spacing:.19em;color:#dbbf8d;margin:0 0 13px;
+}
+.firebase-official-hero h2{font:normal clamp(27px,3vw,36px)/1.22 Georgia,serif;margin:0 0 13px}
+.firebase-official-hero p:not(.firebase-official-hero-kicker){max-width:590px;color:#ebdbe8;font-size:14px}
+.firebase-official-hero-cta{
+  margin-top:12px;background:#d9b976;color:#2b1c2e;border:1px solid #edcf99;
+  border-radius:5px;padding:11px 17px;font-weight:700;font-size:13px;
+  position:relative;z-index:2;
+}
+.firebase-official-hero-cta:hover{background:#f0d49d}
+.firebase-official-hero-insignia{display:grid;place-items:center;opacity:.86}
+.firebase-official-hero-insignia img{width:135px;height:150px;object-fit:contain;filter:drop-shadow(0 9px 11px #0007)}
+.firebase-official-quickstats{display:flex;gap:10px;flex-wrap:wrap}
+.firebase-official-quickstats>div{
+  display:flex;align-items:center;gap:9px;min-height:43px;
+  color:#514358;background:#faf6ed;border:1px solid #dfd2bc;
+  border-radius:7px;padding:9px 13px;font-size:12px;
+}
+.firebase-official-quickstats svg{color:#8c7049}
+.firebase-official-section-title{font:normal 25px/1.2 Georgia,serif;color:#3d2942;margin:5px 0 -6px}
+.firebase-official-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.firebase-official-destination{
+  min-width:0;min-height:196px;text-align:left;
+  background:var(--fo-paper);color:var(--fo-ink);
+  border:1px solid var(--fo-line);border-top:3px solid #b89b68;border-radius:9px;
+  padding:19px;box-shadow:0 5px 18px #3424390c;
+  display:flex;flex-direction:column;align-items:flex-start;gap:7px;
+}
+.firebase-official-destination:hover{
+  border-color:#b59158;transform:translateY(-2px);
+  box-shadow:0 11px 25px #3424391d;
+}
+.firebase-official-destination-icon{
+  height:38px;width:43px;display:grid;place-items:center;
+  background:#e9dfcc;color:#664667;border-radius:7px;
+  margin-bottom:3px;
+}
+.firebase-official-destination-title{
+  font:normal 21px/1.25 Georgia,serif;color:#36223e;
+}
+.firebase-official-destination-subtitle{font-size:12px;color:#786d7d}
+.firebase-official-destination-go{
+  margin-top:auto;font-size:12px;font-weight:700;
+  color:#795e3b;display:flex;align-items:center;gap:9px;
+}
+.firebase-official-settings-link{
+  justify-self:start;display:flex;align-items:center;gap:9px;
+  font-size:12px;color:#5e5166;text-decoration:underline;
+}
+.firebase-official-module-note{
+  border-left:3px solid #b89b68;background:#f8f0e2;
+  padding:15px 18px;color:#675a67;font-size:13px;border-radius:5px;
+}
+@media(max-width:1150px){
+  .firebase-official-layout{grid-template-columns:215px minmax(0,1fr)}
+  .firebase-official-sidebar{padding-inline:10px}
+  .firebase-official-main{padding:27px 24px 55px}
+  .firebase-official-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:800px){
+  .firebase-official-top{padding:12px 16px}
+  .firebase-official-layout{display:block}
+  .firebase-official-sidebar{
+    min-height:0;position:static;display:block;
+    border-bottom:2px solid #a98658;padding:12px;
+  }
+  .firebase-official-seal,.firebase-official-sidebar-kicker,
+  .firebase-official-sidebar-role,.firebase-official-sidebar-rule,
+  .firebase-official-sidebar-bottom{display:none}
+  .firebase-official-menu{display:flex;overflow-x:auto;flex-direction:row;gap:7px;padding:4px 0}
+  .firebase-official-menu-item{
+    flex:0 0 auto;width:auto;min-height:42px;
+    padding:9px 12px;white-space:nowrap;
+  }
+  .firebase-official-menu-item svg{width:16px;height:16px}
+  .firebase-official-main{padding:25px 15px 45px}
+  .firebase-official-kingdom{display:none}
+}
+@media(max-width:520px){
+  .firebase-official-brand{font-size:19px;gap:8px}
+  .firebase-official-brand img{width:37px;height:49px}
+  .firebase-official-brand small{font-size:9px;letter-spacing:.05em}
+  .firebase-official-profile{display:none}
+  .firebase-official-top-actions{gap:5px}
+  .firebase-official-exit{padding:8px 9px}
+  .firebase-official-main{padding:20px 10px 35px}
+  .firebase-official-pagehead h1{font-size:30px}
+  .firebase-official-hero{grid-template-columns:1fr;padding:23px}
+  .firebase-official-hero-insignia{display:none}
+  .firebase-official-cards{grid-template-columns:1fr}
+  .firebase-official-destination{min-height:142px}
+  .firebase-official-auth{margin:25px 10px;padding:24px}
+}
+@media(prefers-reduced-motion:reduce){
+  .firebase-official *{scroll-behavior:auto!important;transition:none!important}
+}
