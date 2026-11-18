@@ -177,6 +177,34 @@ export function summarizePrivateStaging(inventory,cliText){
   };
 }
 
+/** A public-safe audit summary: only aggregate counts, never object paths. */
+export function safeStagingSummary(report){
+  const n=value=>Number.isSafeInteger(value)&&value>=0&&value<=10_000_000_000
+    ?String(value):'indisponível';
+  const agree=report?.listingMethodsAgree===true;
+  return [
+    '## Firebase Storage — homologação, auditoria somente leitura',
+    '',
+    '| Prova | Resultado |','| --- | --- |',
+    '| Objetos reais no inventário GCS | '+n(report?.destinationObjects)+' |',
+    '| Bytes totais no inventário GCS | '+n(report?.destinationBytes)+' |',
+    '| Entradas únicas de objetos no CLI | '+n(report?.cliUniqueObjectEntries)+' |',
+    '| Pseudopastas (não são objetos) | '+n(report?.cliPseudoFolders)+' |',
+    '| Divergências API apenas / CLI apenas | '+
+      n(report?.onlyInApi)+' / '+n(report?.onlyInCli)+' |',
+    '| Entradas duplicadas do CLI | '+
+      n(report?.cliDuplicateFileEntries)+' |',
+    '| API e CLI concordam | **'+(agree?'SIM':'NÃO')+'** |',
+    '| Entradas CLI iguais ao histórico (986) | '+
+      (report?.matchesHistoricalEntryCount===true?'Sim':'Não — referência antiga, não bloqueante')+' |',
+    '| Comparação atual com origem | **NÃO EFETUADA** |',
+    '| Liberação de jogadores/cutover | **NÃO AUTORIZADA** |',
+    '',
+    'A contagem histórica inclui entradas virtuais e não autoriza migração.',
+    'Nenhuma credencial, caminho de objeto ou arquivo foi publicado.',
+  ].join('\n');
+}
+
 export async function verifyStorageReadOnly({token,fetcher=fetch}){
   const inventory=async (scope,locator)=>{
     try{
@@ -215,9 +243,14 @@ async function main(args){
     });
     const report=summarizePrivateStaging(inventory,cli);
     process.stdout.write(JSON.stringify(report,null,2)+'\n');
-    // Check true object equivalence and the historical CLI *entry* count.
-    if(!report.listingMethodsAgree||!report.matchesHistoricalEntryCount)
-      process.exitCode=1;
+    if(process.env.GITHUB_STEP_SUMMARY){
+      const {appendFileSync}=await import('node:fs');
+      appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+        safeStagingSummary(report)+'\n','utf8');
+    }
+    // Old CLI count 986 includes virtual directories and is NOT a stable
+    // object-integrity invariant. A mismatch is informational only.
+    if(!report.listingMethodsAgree)process.exitCode=1;
     return;
   }
   const result=await verifyStorageReadOnly({token});

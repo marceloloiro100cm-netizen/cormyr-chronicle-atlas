@@ -1,8 +1,19 @@
 name: Firebase Storage - verify scoped staging access
 
 on:
-  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
-  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
+  # Trigger new metadata audit after relevant changes. Only the scoped GCS
+  # reader runs automatically; writer-identity verification stays manual.
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/verify-storage-homologation.mjs'
+      - 'scripts/firebase/verify-storage-homologation.test.mjs'
+      - '.github/workflows/firebase-storage-scoped-audit.yml'
+  pull_request:
+    paths:
+      - 'scripts/firebase/verify-storage-homologation.mjs'
+      - 'scripts/firebase/verify-storage-homologation.test.mjs'
+      - '.github/workflows/firebase-storage-scoped-audit.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,9 +25,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate Cloud Shell configuration syntax
-        shell: bash
-        run: bash -n scripts/firebase/grant-scoped-staging-storage.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify read-only inventory and privacy contracts (offline)
+        run: |
+          bash -n scripts/firebase/grant-scoped-staging-storage.sh
+          node --test scripts/firebase/verify-storage-homologation.test.mjs
+          node scripts/verify-public-repo.mjs
 
   audit-scoped-access:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -35,32 +51,20 @@ jobs:
         with:
           project_id: cormyr
 
-      - name: Audit private homologation images only
-        shell: bash
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Compare JSON API object metadata against CLI (staging only)
+        run: node scripts/firebase/verify-storage-homologation.mjs --staging-only-readonly
+      - name: Retain independent live source and cutover gates
+        if: always()
         run: |
-          set -euo pipefail
-          gcloud auth print-access-token --quiet >/dev/null
-          work="$(mktemp -d)"
-          trap 'rm -rf "$work"' EXIT
-          if ! gcloud storage ls --recursive \
-              'gs://cormyr-migration-homolog-477785088395/campaign-images/' \
-              >"$work/images.txt" 2>"$work/error.txt"; then
-            echo "::error::Reader could not enumerate images in isolated homologation."
-            exit 1
-          fi
-          total="$(grep -c '^gs://' "$work/images.txt" || true)"
-          echo "Images visible in private homologation: $total"
-          if [[ "$total" -ne 986 ]]; then
-            echo "::warning::Current copied inventory baseline is 986, check changes since migration and verify object hashes before cutover."
-          fi
-          test "$total" -gt 0 || {
-            echo "::error::No homologation images copied yet; run owner Cloud Shell transfer first."
-            exit 1
-          }
-          echo "Isolated read-only scope confirmed; source bucket never accessed by GitHub."
+          echo 'Only staging metadata is read: no object downloads, source bucket access, IAM changes, uploads or deletes.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Source-vs-staging checksums and current live delta remain separate requirements; readyForCutover=false.' >> "$GITHUB_STEP_SUMMARY"
 
   verify-writer-identity:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # A privileged uploader must never be touched by automatic push audits.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
