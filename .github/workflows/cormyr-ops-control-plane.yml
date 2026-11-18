@@ -5,6 +5,16 @@ on:
     types: [edited]
   schedule:
     - cron: '23 10 * * *'
+  workflow_run:
+    workflows:
+      - 'Firebase cross-domain acceptance — isolated emulator'
+      - 'Firebase unified historical and live mailbox (private emulator)'
+      - 'Firebase mail read receipts (private emulator)'
+      - 'Firebase typed domain staging and security'
+      - 'Firebase Cloud — protected operator migration audit (read-only)'
+      - 'Firebase App Hosting — verify main is actually serving'
+      - 'Firebase Cloud access readiness — read-only OIDC'
+    types: [completed]
   workflow_dispatch:
     inputs:
       task:
@@ -12,7 +22,7 @@ on:
         type: choice
         required: true
         default: audit
-        options: [audit, operator-audit, auth-preview, auth-activate, auth-deletion-audit, auth-inventory-audit, runtime-draft]
+        options: [audit, operator-audit, auth-preview, auth-activate, auth-deletion-audit, auth-inventory-audit, verify-emulators, runtime-draft]
 
 permissions:
   contents: read
@@ -41,7 +51,7 @@ jobs:
             const CONTROL_ISSUE = 568;
             const CONFIRMATION = 'ENABLE_ALL_14_CORMYR_TEST_ACCOUNTS';
             const AUTH_WORKFLOW = '.github/workflows/firebase-auth-enable-all-test-accounts.yml';
-            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-activate|auth-deletion-audit|auth-inventory-audit|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
+            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-activate|auth-deletion-audit|auth-inventory-audit|verify-emulators|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
             const {owner, repo} = context.repo;
             if (owner + '/' + repo !== REPO || Number(process.env.GITHUB_RUN_ATTEMPT) !== 1) {
               core.info('Untrusted context or retry: no remote action');
@@ -51,7 +61,7 @@ jobs:
             if (context.eventName === 'schedule') operation = 'audit';
             else if (context.eventName === 'workflow_dispatch') {
               operation = context.payload.inputs?.task;
-              if (!['audit', 'operator-audit', 'auth-preview', 'auth-activate', 'auth-deletion-audit', 'auth-inventory-audit', 'runtime-draft'].includes(operation)) {
+              if (!['audit', 'operator-audit', 'auth-preview', 'auth-activate', 'auth-deletion-audit', 'auth-inventory-audit', 'verify-emulators', 'runtime-draft'].includes(operation)) {
                 core.info('Unknown manual command: no action');
                 return;
               }
@@ -76,6 +86,11 @@ jobs:
               ['firebase-cloud-access-readiness.yml', {}],
             ] : operation === 'operator-audit' ? [
               ['firebase-cloud-operator-readiness.yml', {}],
+            ] : operation === 'verify-emulators' ? [
+              ['firebase-cross-domain-acceptance.yml', {}],
+              ['firebase-mail-unified.yml', {}],
+              ['firebase-read-receipts.yml', {}],
+              ['firebase-domain-staging.yml', {}],
             ] : operation === 'auth-inventory-audit' ? [
               ['firebase-auth-inventory-readonly.yml', {}],
             ] : operation === 'auth-deletion-audit' ? [
@@ -100,6 +115,10 @@ jobs:
                 'firebase-cloud-runtime-drafts.yml',
                 'firebase-auth-deletion-readonly.yml',
                 'firebase-auth-inventory-readonly.yml',
+                'firebase-cross-domain-acceptance.yml',
+                'firebase-mail-unified.yml',
+                'firebase-read-receipts.yml',
+                'firebase-domain-staging.yml',
               ]);
               for (const [workflow_id, inputs] of tasks) {
                 if (!allowed.has(workflow_id)) throw new Error('Workflow not allowlisted');
@@ -134,3 +153,52 @@ jobs:
           echo 'Controller never writes Cloud. Protected runtime-draft can create only two disabled Firestore root documents.' >> "$GITHUB_STEP_SUMMARY"
           echo 'Protected Auth activation still requires separate GitHub environment review.' >> "$GITHUB_STEP_SUMMARY"
           echo 'A dispatch request is NOT evidence that a downstream job succeeded.' >> "$GITHUB_STEP_SUMMARY"
+
+  report-verifications:
+    name: Report completed read-only and synthetic acceptance jobs
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'workflow_dispatch' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == 'marceloloiro100cm-netizen/cormyr-chronicle-atlas'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const allowed = Object.freeze({
+              'Firebase cross-domain acceptance — isolated emulator':'Emulador: matriz geral de Casas/segurança',
+              'Firebase unified historical and live mailbox (private emulator)':'Emulador: caixa de Missivas integrada',
+              'Firebase mail read receipts (private emulator)':'Emulador: comprovantes de leitura',
+              'Firebase typed domain staging and security':'Emulador: perfis e regras entre Casas',
+              'Firebase Cloud — protected operator migration audit (read-only)':'Cloud: auditoria operacional protegida (somente leitura)',
+              'Firebase App Hosting — verify main is actually serving':'Cloud: revisão atendida pelo App Hosting',
+              'Firebase Cloud access readiness — read-only OIDC':'Cloud: disponibilidade de fontes por OIDC'
+            });
+            const run=context.payload.workflow_run;
+            if (!run || !Object.hasOwn(allowed,run.name)) return;
+            const expected='marceloloiro100cm-netizen/cormyr-chronicle-atlas';
+            if (context.repo.owner+'/'+context.repo.repo!==expected ||
+                run.head_repository?.full_name!==expected ||
+                run.head_branch!=='main'||run.event!=='workflow_dispatch') return;
+            const verdict=['success','failure','cancelled','timed_out','skipped'].includes(run.conclusion)
+              ? run.conclusion:'unknown';
+            const url='https://github.com/'+expected+'/actions/runs/'+Number(run.id);
+            const lines=[
+              '### Resultado automático de execução — '+allowed[run.name],
+              '',
+              'GitHub Actions: '+url,
+              '',
+              'Conclusão: **'+verdict+'**',
+              '',
+              'Este registro prova apenas a conclusão do workflow. Testes em emulador não comprovam acesso real em produção. Uma auditoria somente de leitura não autoriza gravações nem libera jogadores.',
+              '',
+              '**Decisão da campanha: NO_GO até aceite real independente.**'
+            ];
+            await github.rest.issues.createComment({
+              ...context.repo,issue_number:582,body:lines.join('\\n')
+            });
