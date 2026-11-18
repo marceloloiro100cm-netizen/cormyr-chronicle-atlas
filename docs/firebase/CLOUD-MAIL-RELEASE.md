@@ -35,6 +35,8 @@ Configuração do **servidor** App Hosting, não do navegador:
 3. `CORMYR_FIREBASE_CLOUD_MAIL_ENABLED=true`:
    habilita o endpoint de envio, que continua bloqueado até o gate abaixo.
 
+Os documentos `campaignCloudRuntime/<hash>` e
+`campaignMailRuntime/<hash>` precisam de aprovação **independente**.
 O documento `campaignCloudRuntime/<hash>` precisa ser **criado por uma
 operação administrativa independente**, após reconciliação das fontes e
 verificação real das contas/permissões. O aplicativo jamais o cria
@@ -52,6 +54,16 @@ automaticamente. Campos exatos requeridos:
   "calendarVersion": 1
 }
 ```
+
+O documento adicional `campaignMailRuntime/<hash>` deve ter
+`status: "active"`, `private: true`, `sourceSnapshotId` idêntico,
+`sourceLiveReconciled: true`, `applicationEnabled: true`,
+`mailEnabled: true` e `openRound`/`calendarVersion` iguais ao runtime
+operacional e ao calendário verificado. Se qualquer um dos dois runtimes
+estiver pendente, ausente ou divergente, `status` informa `canSend:false`
+e as transações de `send`, `reply` e `markRead` respondem 503.
+Essa exigência protege o estado inicial `pending` criado pelo bootstrap.
+Nenhum desses campos é alterado automaticamente pela API.
 
 **Os números no exemplo são ilustrativos; o valor de `openRound` e
 `calendarVersion` deve vir do calendário atual verificado no Cloud,
