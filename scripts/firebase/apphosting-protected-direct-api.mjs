@@ -127,6 +127,64 @@ export async function requestExactAppHostingRollout({
   };
 }
 
+/**
+ * Read only the denied-permission flags from Cloud Audit Logs after a
+ * confirmed App Hosting build 403. Never return entries, identities, paths,
+ * timestamps, request objects, provider messages or arbitrary permissions.
+ * The logging API call is a query (POST entries:list), not a Cloud mutation.
+ */
+export async function inspectAppHostingBuildDenial({
+  accessToken,fetcher=fetch,now=new Date(),
+}={}){
+  const result={scope:'CORMYR_APPHOSTING_DENIAL_AUDIT_READ_ONLY',
+    auditHttpStatus:null,matchingDeniedPermissions:[],
+    auditEvidenceFound:false,cloudWrites:0};
+  if(typeof accessToken!=='string'||accessToken.length<12||
+     typeof fetcher!=='function'||!(now instanceof Date)||
+     !Number.isFinite(now.getTime()))return result;
+  const since=new Date(now.getTime()-10*60*1000).toISOString();
+  const filter='timestamp>="'+since+'" AND '+
+    'protoPayload.serviceName="firebaseapphosting.googleapis.com" AND '+
+    'protoPayload.status.code=7';
+  let response;
+  try{
+    response=await fetcher('https://logging.googleapis.com/v2/entries:list',{
+      method:'POST',redirect:'error',cache:'no-store',
+      headers:{Authorization:'Bearer '+accessToken,
+        'Content-Type':'application/json'},
+      body:JSON.stringify({resourceNames:['projects/cormyr'],filter,
+        orderBy:'timestamp desc',pageSize:20}),
+      signal:AbortSignal.timeout(15000),
+    });
+  }catch{return result;}
+  if(!Number.isSafeInteger(response?.status))return result;
+  result.auditHttpStatus=[200,400,401,403,404,429,500,503].includes(response.status)
+    ?response.status:null;
+  if(response.status!==200)return result;
+  let body;
+  try{body=await response.json();}catch{return result;}
+  if(!Array.isArray(body?.entries)||body.entries.length>20)return result;
+  const allowed=new Set([
+    'firebaseapphosting.builds.create','firebaseapphosting.builds.get',
+    'firebaseapphosting.rollouts.create',
+    'serviceusage.services.use','cloudbuild.builds.create',
+  ]);
+  const denied=new Set();
+  for(const entry of body.entries){
+    const payload=entry?.protoPayload;
+    if(payload?.serviceName!=='firebaseapphosting.googleapis.com'||
+       payload?.status?.code!==7||!Array.isArray(payload.authorizationInfo))
+      continue;
+    result.auditEvidenceFound=true;
+    for(const info of payload.authorizationInfo){
+      if(info?.granted===false&&allowed.has(info.permission))
+        denied.add(info.permission);
+    }
+  }
+  result.matchingDeniedPermissions=[...denied].sort();
+  return result;
+}
+
 export async function runProtectedAppHostingRelease(env=process.env){
   const sha=env.VERIFIED_SHA,runId=env.GITHUB_RUN_ID;
   if(sha!==env.GITHUB_SHA||env.GITHUB_REF!=='refs/heads/main'||
@@ -144,11 +202,22 @@ export async function runProtectedAppHostingRelease(env=process.env){
   console.log(JSON.stringify(summary));
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
-  runProtectedAppHostingRelease().catch(e=>{
+  runProtectedAppHostingRelease().catch(async e=>{
     const message=typeof e?.message==='string'?e.message:'';
     const code=/^apphosting_direct_[a-z0-9_]{1,80}$/.test(message)
       ?message:'apphosting_direct_unavailable';
     console.error(code);
+    if(code.startsWith('apphosting_direct_build_create_http_403')){
+      try{
+        const {applicationDefault}=await import('firebase-admin/app');
+        const credential=applicationDefault();
+        const accessToken=(await credential.getAccessToken())?.access_token;
+        const report=await inspectAppHostingBuildDenial({accessToken});
+        console.error(JSON.stringify(report));
+      }catch{
+        console.error('apphosting_denial_audit_unavailable');
+      }
+    }
     process.exitCode=2;
   });
 }
