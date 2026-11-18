@@ -193,10 +193,37 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
           memberHouseIds:!badScope&&member?[...member]:[],
           editHouseIds:!badScope&&edit?[...edit]:[]});
       }
+      // A deleted Auth identity still exists in the IMMUTABLE historic access
+      // archive. Reconcile the complete 13/14 or 14/14 live identity set before
+      // showing any private pending row; never revive the deleted identity.
+      let inventory;
+      try{
+        if(typeof auth.listUsers!=='function')throw Error('missing_inventory_reader');
+        inventory=await auth.listUsers(1000);
+      }catch{deny('access_inventory_unverified',503);}
+      if(!Array.isArray(inventory?.users)||inventory.pageToken||
+         ![13,14].includes(inventory.users.length))
+        deny('access_inventory_unverified',503);
+      const liveByUid=new Map();
+      for(const u of inventory.users){
+        if(!u||typeof u.uid!=='string'||!SAFE_ID.test(u.uid)||
+           u.disabled!==false||!seen.has(u.uid)||liveByUid.has(u.uid))
+          deny('access_inventory_unverified',503);
+        liveByUid.set(u.uid,u);
+      }
+      if(liveByUid.size!==inventory.users.length||
+         seen.size-liveByUid.size>1)
+        deny('access_inventory_unverified',503);
+      const archivedHistoricalAccess=seen.size-liveByUid.size;
+      const currentCandidates=candidates.filter(c=>liveByUid.has(c.uid));
+      const currentCounts={inactive:0,missingProfile:0,playerWithoutHouse:0,
+        passwordChangePending:0,invalidScope:0};
+      for(const c of currentCandidates)
+        for(const issue of c.issues)currentCounts[issue]++;
       // All lookups must succeed before returning any private row.
       let items;
       try{
-        items=await Promise.all(candidates.map(async c=>{
+        items=await Promise.all(currentCandidates.map(async c=>{
           const u=await auth.getUser(c.uid);
           if(u?.uid!==c.uid)throw Error('auth_access_inventory_mismatch');
           const email=typeof u.email==='string'&&
@@ -205,8 +232,10 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
           return {...c,email,authDisabled:u.disabled===true};
         }));
       }catch{deny('access_inventory_unverified',503);}
-      return {readOnly:true,sourceImmutable:true,accountsChecked:14,
-        pendingAccounts:items.length,issues:counts,items,
+      return {readOnly:true,sourceImmutable:true,
+        historicalAccountsChecked:14,accountsChecked:liveByUid.size,
+        archivedHistoricalAccess,deletionIdentityApproved:false,
+        pendingAccounts:items.length,issues:currentCounts,items,
         authWrites:0,firestoreWrites:0,
         readyForRemediation:false,readyForPlayers:false};
     },
