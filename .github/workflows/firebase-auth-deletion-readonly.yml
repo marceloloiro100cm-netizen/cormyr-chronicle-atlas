@@ -31,6 +31,9 @@ jobs:
         run: |
           node --test scripts/firebase/auth-deletion-reconciliation.test.mjs
           node --test scripts/firebase/cloud-auth-deletion-readonly.test.mjs
+          node --test scripts/firebase/lot8-http-role-acceptance.test.mjs
+          node --test scripts/firebase/cloud-readonly-boundary-smoke.test.mjs
+          node --test scripts/firebase/player-pilot-preflight.test.mjs
       - name: Check public repository for secrets
         run: node scripts/verify-public-repo.mjs
 
