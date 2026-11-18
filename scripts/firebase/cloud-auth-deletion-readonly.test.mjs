@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {auditProtectedAuthDeletion,safeDeletionSummary,safeDeletionFailureCode}
+import {auditProtectedAuthDeletion,safeDeletionSummary,safeDeletionFailureCode,\n  safeDeletionFailureSummary}
   from './cloud-auth-deletion-readonly.mjs';
 const fixture=()=>{
   const historic=Array.from({length:14},(_,i)=>({
@@ -55,4 +55,19 @@ test('sanitized failure diagnostics exclude identifiers and untrusted provider t
   assert.equal(safeDeletionFailureCode(
     Error('Google user not found uid_13@example.invalid')),
   'verification_unavailable');
+});
+
+test('failed protected reconciliation produces privacy-safe mobile summary',()=>{
+  const detail='auth_deletion_reconciliation_approved_deletion_still_present';
+  const summary=safeDeletionFailureSummary(Error(detail));
+  assert.match(summary,/approved_deletion_still_present/);
+  assert.match(summary,/BLOQUEADA/);
+  assert.match(summary,/NÃO AUTORIZADA/);
+  assert.match(summary,/0 \/ 0/);
+  assert.ok(!summary.includes('uid_13'));
+  const untrusted=safeDeletionFailureSummary(
+    Error('Google provider error user uid_13@example.invalid'));
+  assert.match(untrusted,/verification_unavailable/);
+  assert.ok(!untrusted.includes('uid_13'));
+  assert.ok(!untrusted.includes('Google provider'));
 });
