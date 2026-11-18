@@ -32,8 +32,8 @@ describe('Firebase narrator pending-account panel is private and read-only',()=>
     expect(service).toContain("if(viewer.profile!=='narrador')deny('access_denied',403)");
     expect(component).toContain('manualReviewConfirmed:true');
     expect(component).toContain('Validar proposta sem aplicar');
-    expect(component).toContain('result.decisionApplied!==false');
-    expect(component).toContain('result.firestoreWrites!==0');
+    expect(component).toContain('report.decisionApplied!==false');
+    expect(component).toContain('report.firestoreWrites!==0');
     expect(component).not.toMatch(/(?:setDoc|updateDoc|updateUser|writeBatch)\s*\(/);
     expect(component).toContain("profile:'jogador'|'editor';");
     expect(component).not.toContain('<option value="narrador">');
