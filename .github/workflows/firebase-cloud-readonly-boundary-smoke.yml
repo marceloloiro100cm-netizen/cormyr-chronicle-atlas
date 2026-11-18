@@ -11,11 +11,19 @@ on:
       - 'src/routes/api/firebase-operational-economy.ts'
       - 'src/routes/api/firebase-house-reconciliation-audit.ts'
       - 'src/routes/api/firebase-treasury-audit.ts'
+      - 'src/routes/api/firebase-cloud-read.ts'
+      - 'src/routes/api/firebase-cloud-mail.ts'
+      - 'src/routes/api/firebase-cloud-newspaper.ts'
+      - 'src/routes/api/firebase-cloud-treasury.ts'
   pull_request:
     paths:
       - 'scripts/firebase/cloud-readonly-boundary-smoke*.mjs'
       - '.github/workflows/firebase-cloud-readonly-boundary-smoke.yml'
       - 'src/lib/archive-only.ts'
+      - 'src/routes/api/firebase-cloud-read.ts'
+      - 'src/routes/api/firebase-cloud-mail.ts'
+      - 'src/routes/api/firebase-cloud-newspaper.ts'
+      - 'src/routes/api/firebase-cloud-treasury.ts'
   workflow_dispatch:
   # Public smoke is meaningful only after App Hosting verifies that the
   # corresponding main revision actually reached atlas.cormyr.com.br.
@@ -51,7 +59,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Verify new read guards and legacy write denial on live domain
+      - name: Verify anonymous guards on Cloud mail, newspaper, treasury and legacy routes
         run: node scripts/firebase/cloud-readonly-boundary-smoke.mjs
       - name: Keep authenticated play and writes disabled
         if: always()
