@@ -26,7 +26,8 @@ import {FirebaseHouseChronicle} from '@/components/houses/FirebaseHouseChronicle
 import {FirebaseHouseReconciliationAudit} from '@/components/houses/FirebaseHouseReconciliationAudit';
 import {FirebaseHouseReconciliationOverview}
   from '@/components/houses/FirebaseHouseReconciliationOverview';
-import {FirebasePendingAccessReview,type PendingAccessReview}
+import {FirebasePendingAccessReview,type PendingAccessReview,
+  type PendingDecisionProposal,type PendingDecisionPreview}
   from '@/components/firebase/FirebasePendingAccessReview';
 import type {HouseReconciliationReport} from '@/lib/house/firebase-house-reconciliation-audit';
 
@@ -42,7 +43,8 @@ export const Route=createFileRoute('/firebase-access')({
 
 type SessionView={authenticated:boolean;profile:'jogador'|'narrador'|'editor';
   memberHouseIds:string[];readOnly:boolean;snapshotReconciliationPending:boolean};
-type House={id:string;name:string;castle:string|null;crest:string|null};
+type House={id:string;name:string;castle:string|null;crest:string|null;
+  season:number|null};
 type HouseView={id:string;name:string;castle:string|null;crest:string|null;
   state:Record<string,unknown>;version:number;readOnly:boolean};
 type Calendar={year:number;month:number;day:number;festival:string|null;version:number};
@@ -86,15 +88,18 @@ function spyValue(value:unknown):string {
   try{return JSON.stringify(value).slice(0,2000);}catch{return 'Registro não disponível';}
 }
 
-async function readCloud<T>(action:'session'|'listAccessRemediation'|'listHouses'|'getHouse'|'getCalendar'|
+async function readCloud<T>(action:'session'|'listAccessRemediation'|
+  'previewAccessRemediation'|'listHouses'|'getHouse'|'getCalendar'|
   'listMailbox'|'listNewspaper'|'getNewspaper'|'listSpyAgents'|'listSpyDossiers'|'listHouseBattles',
-  houseId?:string,editionId?:string):Promise<T>{
+  houseId?:string,editionId?:string,
+  remediation?:{targetUid:string;proposal:PendingDecisionProposal}):Promise<T>{
   const token=await firebaseAuth()?.getToken();
   if(!token)throw Error('Entre novamente com sua conta Firebase.');
   const response=await fetch('/api/firebase-cloud-read',{
     method:'POST',credentials:'omit',cache:'no-store',
     headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
-    body:JSON.stringify({action,...(houseId?{houseId}:{}),...(editionId?{editionId}:{})}),
+    body:JSON.stringify({action,...(houseId?{houseId}:{}),
+      ...(editionId?{editionId}:{}),...(remediation??{})}),
   });
   if(!response.ok)throw Error(response.status===403
     ? 'Seu perfil não tem permissão para esta consulta.'
@@ -701,7 +706,12 @@ function FirebaseAccess(){
       {view.profile==='narrador'&&
         <FirebasePendingAccessReview
           inspect={()=>readCloud<PendingAccessReview>('listAccessRemediation')}
-          resolveHouseName={id=>houses.find(h=>h.id===id)?.name??'Casa não localizada'}/>}
+          resolveHouseName={id=>houses.find(h=>h.id===id)?.name??'Casa não localizada'}
+          availableHouses={houses.filter(h=>h.season===2)
+            .map(h=>({id:h.id,name:h.name}))}
+          plan={(uid,proposal)=>readCloud<PendingDecisionPreview>(
+            'previewAccessRemediation',undefined,undefined,
+            {targetUid:uid,proposal})}/>}
       {view.profile==='narrador'&&
         <section aria-label="Acervo reservado do Narrador"
           className="rounded border border-current/25 p-4 space-y-3">
