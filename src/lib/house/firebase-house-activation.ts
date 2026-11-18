@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {prepareHouseEconomySeedDraft} from './firebase-economy-seed-preflight';
+import {monthFromHarptosDate} from '../calendar/house-time-impact';
 import {effectiveCloudCalendar} from '../../../scripts/firebase/cloud-operational-calendar.mjs';
 const hash=(s:string)=>createHash('sha256').update(s).digest('hex');
 const id=(s:unknown):s is string=>typeof s==='string'&&/^[^/\u0000-\u001f\u007f]{1,128}$/.test(s);
@@ -77,14 +78,14 @@ export function createFirebaseHouseActivation({db,auth,snapshotId,enabled=false,
         return {status:complete?'already_initialized':'existing_document_requires_review',houseId,preview:null,sourceHash:null};
       }
       const plan=prepareHouseEconomySeedDraft({snapshotId,houseId,
-        sourceSheetVersion:sheet['version'],calendarMonth:calendar.year*12+calendar.month+1,
+        sourceSheetVersion:sheet['version'],calendarMonth:monthFromHarptosDate(calendar),
         sourceState:sheet['state'],existingDocumentPresent:false});
       const balance=sheet['state']['treasury'];
       if(plan.status!=='ready_for_operator_review'||!plan.draft||!plan.preview)
         return {status:plan.status,houseId,preview:null,sourceHash:null};
       if(typeof balance!=='number'||!Number.isSafeInteger(balance)||balance<0||balance>1000000000)
         return {status:'treasury_invalid',houseId,preview:null,sourceHash:null};
-      const preview={...plan.preview,treasury:balance,calendarMonth:calendar.year*12+calendar.month+1};
+      const preview={...plan.preview,treasury:balance,calendarMonth:monthFromHarptosDate(calendar)};
       if(!activate)return {status:'ready_for_operator_review',houseId,preview,sourceHash:plan.draft.sourceStateHash};
       if(input['expectedSourceVersion']!==sheet['version']||
          input['expectedSourceHash']!==plan.draft.sourceStateHash)

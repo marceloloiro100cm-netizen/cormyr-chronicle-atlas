@@ -19,7 +19,7 @@ function fixture(profile='narrador'){
     calendar:{year:1522,month:0,day:11,festival:null,version:6}});
   docs.set('migrationTimeEngineStage/'+snapshot+'/calendar/current',{year:1522,month:0,day:1,festival:null,version:5});
   docs.set('migrationDomainStage/'+snapshot+'/houses/'+hash('house:house-a'),{sourceId:'house-a',active:true,season:2});
-  const source=newHouseState('house-a','Ferlin',1522*12+1);
+  const source=newHouseState('house-a','Ferlin',1522*12);
   source.phase='active';source.method='import';source.treasury=42;
   for(const key of Object.keys(source.base) as (keyof typeof source.base)[])source.base[key]=120;
   source.domains=[{id:'d1',name:'Vale',terrain:'plains',features:[],notes:''}];

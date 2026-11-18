@@ -209,7 +209,7 @@ it('reads against the operational calendar version while preserving the imported
   f.docs.set(f.runtime,{...f.docs.get(f.runtime),calendarSource:'operational',
     calendarVersion:6,calendar:{year:1522,month:1,day:20,festival:null,version:6}});
   const result=await f.service().getHouse(token,'house-a');
-  expect(result.calendarMonth).toBe(1522*12+2);
+  expect(result.calendarMonth).toBe(1522*12+1);
   expect(f.docs.get(root('migrationTimeEngineStage')+'/calendar/current')?.['version']).toBe(5);
 });
 
