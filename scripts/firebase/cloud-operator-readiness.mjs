@@ -223,6 +223,21 @@ export async function inspectOperatorEvidence({
     runtimeSources,runtimeSourceError,roleLinkage,roleLinkageError,
   });
 }
+/**
+ * Audit execution is successful when independent protected source probes
+ * completed. It is NOT a release decision: missing public review, disabled
+ * operational runtimes and pending accounts still keep NO_GO.
+ * An unavailable mandatory source or missing identity inventory remains a
+ * technical failure, never a synthetic success.
+ */
+export function operatorAuditObservationComplete(report){
+  return report?.authInventoryValid===true&&
+    report?.privateStagesComplete===true&&
+    report?.runtimeSourceProbeFailed===false&&
+    report?.fourBlocks?.operations?.sourcePreflight?.checked===true&&
+    report?.fourBlocks?.playerAccess?.linkageDiagnostics?.checked===true;
+}
+
 export function safeOperatorSummary(report){
   const n=v=>safeCount(v)??'desconhecido';
   const yes=v=>v===true?'Conferido':'Pendente';
@@ -293,6 +308,8 @@ export function safeOperatorSummary(report){
     '| Revisão pública por registro | Não verificada |',
     '| E2E autenticado entre Casas | Não verificado |',
     '| Gravação e recarga real de missivas/calendário | Não verificada |',
+    '| Auditoria administrativa executada | '+
+      yes(operatorAuditObservationComplete(report))+' |',
     '| Liberação da campanha | **NÃO AUTORIZADA** |',
     '',
     'Código de erro Auth (categoria segura): '+err,
@@ -367,7 +384,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
     process.stdout.write(JSON.stringify(report,null,2)+'\n');
     if(process.env.GITHUB_STEP_SUMMARY)
       appendFileSync(process.env.GITHUB_STEP_SUMMARY,safeOperatorSummary(report));
-    if(!report.authInventoryValid||!report.privateStagesComplete||
-      !report.auxiliaryStagesComplete)process.exitCode=2;
+    // A missing stage is a verified NO_GO blocker, not a failed inspection.
+    // Only missing mandatory evidence causes this audit job itself to fail.
+    if(!operatorAuditObservationComplete(report))process.exitCode=2;
   }
 }
