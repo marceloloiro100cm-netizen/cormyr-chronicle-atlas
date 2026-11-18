@@ -96,8 +96,6 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
        (typeof playerId!=='string'||!SAFE_ID.test(playerId)))
       deny('invalid_access_scope',403);
     if(v.profile==='jogador'){
-      if(typeof playerId!=='string'||!SAFE_ID.test(playerId))
-        deny('invalid_access_scope',403);
       const houses=db.collection('migrationDomainStage').doc(snapshotId)
         .collection('houses');
       const houseDocuments=await Promise.all(memberHouseIds.map(id=>
