@@ -555,8 +555,9 @@ test('Spy dossier query fails closed when stage is incomplete or House inactive'
   f.docs.set('migrationDomainStage/'+snapshot+'/houses/'+hash('house:house-a'),{
     sourceId:'house-a',active:false,
   });
+  // The global membership guard denies stale scope BEFORE the spy route.
   await rejects(()=>f.service().listSpyDossiers(token,'house-a'),
-    'house_unavailable',404);
+    'invalid_access_scope',403);
 });
 
 test('Spy dossier returns empty without exposing unpublished operations',async()=>{
@@ -717,8 +718,9 @@ test('Battle stage is mandatory; empty verified stage shows empty overview',asyn
   assert.deepEqual(result.items,[]);
   f.docs.set('migrationDomainStage/'+snapshot+'/houses/'+hash('house:house-a'),
     {sourceId:'house-a',active:false});
+  // The global membership guard denies stale scope BEFORE battle data.
   await rejects(()=>f.service().listHouseBattles(token,'house-a'),
-    'house_unavailable',404);
+    'invalid_access_scope',403);
 });
 
 test('Oversized battle catalog fails closed instead of exposing unbounded rows',async()=>{
