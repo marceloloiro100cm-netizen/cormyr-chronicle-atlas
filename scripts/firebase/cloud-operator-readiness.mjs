@@ -11,6 +11,7 @@ import {inspectCloudRuntimeSources} from './cloud-runtime-source-preflight.mjs';
 import {inspectPublicAssetInventory} from './public-archive-asset-integrity.mjs';
 import {verifyStorageReadOnly} from './verify-storage-homologation.mjs';
 import {inspectPublicArchiveCoverage} from './public-archive-coverage-readonly.mjs';
+import {inspectPublicReviewCandidates} from './public-review-candidates.mjs';
 import {inspectCloudRoleLinkage} from './cloud-role-linkage-readonly.mjs';
 import {executeAllExistingAuthTestAccounts,safePreflightFailureCode}
   from './auth-enable-all-test-accounts.mjs';
@@ -113,6 +114,21 @@ export function evaluateOperatorEvidence({
             'directDescription'].map(k=>[k,
               safeCount(runtimeSources?.archiveCoverage?.candidateFields?.[k])])),
         reviewApproved:false,ready:false,
+      },
+      editorialCandidates:{
+        checked:runtimeSources?.reviewCandidates?.scope===
+          'CORMYR_PRIVATE_PUBLIC_REVIEW_CANDIDATES_READ_ONLY'&&
+          runtimeSources.reviewCandidates.checked===true,
+        activeHouses:safeCount(runtimeSources?.reviewCandidates?.activeHouses),
+        matched:safeCount(runtimeSources?.reviewCandidates?.matched),
+        unmatched:safeCount(runtimeSources?.reviewCandidates?.unmatched),
+        ambiguous:safeCount(runtimeSources?.reviewCandidates?.ambiguous),
+        invalidArchiveFields:safeCount(
+          runtimeSources?.reviewCandidates?.invalidArchiveFields),
+        privateDraftPrepared:runtimeSources?.reviewCandidates?.scope===
+          'CORMYR_PRIVATE_PUBLIC_REVIEW_CANDIDATES_READ_ONLY'&&
+          runtimeSources.reviewCandidates.candidatePlanComplete===true,
+        approved:false,ready:false,
       },
       assetInventory:{
         checked:publicAssets?.scope==='CORMYR_PUBLIC_ARCHIVE_ASSET_INVENTORY_OFFLINE'&&
@@ -341,6 +357,14 @@ export function safeOperatorSummary(report){
       n(report?.fourBlocks?.publicContent?.assetInventory?.validCrests)+' |',
     '| Histórias válidas do acervo público | '+
       n(report?.fourBlocks?.publicContent?.assetInventory?.validHistories)+' |',
+    '| Dez Casas: candidatos editoriais preparados | '+
+      yes(report?.fourBlocks?.publicContent?.editorialCandidates?.privateDraftPrepared)+' |',
+    '| Casas candidatas por correspondência exata | '+
+      n(report?.fourBlocks?.publicContent?.editorialCandidates?.matched)+' / '+
+      n(report?.fourBlocks?.publicContent?.editorialCandidates?.activeHouses)+' |',
+    '| Ambiguidades ou falta de campos públicos | '+
+      n(report?.fourBlocks?.publicContent?.editorialCandidates?.ambiguous)+' / '+
+      n(report?.fourBlocks?.publicContent?.editorialCandidates?.invalidArchiveFields)+' |',
     '| Conteúdo público: estágio | '+
       (Number.isInteger(report?.fourBlocks?.publicContent?.stageHttpStatus)
         ?'HTTP '+report.fourBlocks.publicContent.stageHttpStatus:'Indisponível')+
@@ -464,11 +488,14 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
             throw Error('runtime_source_snapshot_unverified');
           const snapshotId=query.docs[0].id;
           const base=await inspectCloudRuntimeSources({db,snapshotId});
-          let archiveCoverage=null;
+          let archiveCoverage=null,reviewCandidates=null;
           try{
             archiveCoverage=await inspectPublicArchiveCoverage({db,snapshotId});
-          }catch{/* Review remains pending; suppress source and provider detail. */}
-          return {...base,archiveCoverage};
+          }catch{/* A missing public match is not a release approval. */}
+          try{
+            reviewCandidates=await inspectPublicReviewCandidates({db,snapshotId});
+          }catch{/* Do not expose private House IDs or provider exceptions. */}
+          return {...base,archiveCoverage,reviewCandidates};
         },
       });
     }
