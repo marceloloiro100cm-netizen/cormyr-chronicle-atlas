@@ -19,7 +19,10 @@ export default defineConfig({
     viteTsConfigPaths({ projects: ["./tsconfig.json"] }),
     // Saída em dist/ (padrão exigido pela publicação Lovable); o Firebase
     // App Hosting aponta para dist/server/index.mjs em apphosting.yaml.
-    nitro({ output: { dir: "dist" } }),
+    // firebase-admin não funciona empacotado pelo Rolldown (erro
+    // "reading 'SDK_VERSION'" em produção): é rastreado e copiado para
+    // dist/server/node_modules, carregado em runtime como pacote Node.
+    nitro({ output: { dir: "dist" }, traceDeps: ["firebase-admin"] }),
   ],
   resolve: {
     dedupe: [
