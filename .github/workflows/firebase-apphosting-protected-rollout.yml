@@ -24,6 +24,16 @@ jobs:
     outputs:
       verified_sha: ${{ steps.check.outputs.verified_sha }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify direct API release protections
+        run: |
+          node --check scripts/firebase/apphosting-protected-direct-api.mjs
+          node --test scripts/firebase/apphosting-protected-direct-api.test.mjs
       - name: Verify exact main SHA and required green push workflows
         id: check
         uses: actions/github-script@v7
@@ -88,14 +98,18 @@ jobs:
           workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
           service_account: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
           project_id: cormyr
-      - name: Manually request exactly the verified main commit in Firebase App Hosting
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.3'
+      - name: Install locked Firebase Admin dependency
+        run: bun install --frozen-lockfile
+      - name: Request exact verified commit directly through App Hosting REST
         shell: bash
         run: |
           set -euo pipefail
-          # No deploy to Vercel, no static Firebase Hosting or Cloud Run bypass.
-          # App Hosting creates the build and rollout for this exact Git commit.
-          npx --yes firebase-tools@15.2.0 apphosting:rollouts:create cormyr-preview \
-            --project cormyr --git-commit "$VERIFIED_SHA" --non-interactive
+          # Keeps all App Hosting IAM checks; avoids only unrelated
+          # Firebase CLI Service Usage API visibility preflight.
+          node scripts/firebase/apphosting-protected-direct-api.mjs
       - name: Keep release decision independent
         if: always()
         run: |
