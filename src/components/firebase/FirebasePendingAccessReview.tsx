@@ -10,6 +10,7 @@ type Issue='inactive'|'missingProfile'|'playerWithoutHouse'|
 export type PendingAccessReview={
   readOnly:true;sourceImmutable:true;accountsChecked:number;
   historicalAccountsChecked:14;archivedHistoricalAccess:0|1;
+  archivedIdentityUid:string|null;
   deletionIdentityApproved:false;
   pendingAccounts:number;
   issues:Record<Issue,number>;
@@ -204,7 +205,9 @@ export function FirebasePendingAccessReview({
   const [report,setReport]=useState<PendingAccessReview|null>(null);
   const [pending,setPending]=useState(false);
   const [error,setError]=useState(false);
+  const [showArchivedUid,setShowArchivedUid]=useState(false);
   async function run(){
+    setShowArchivedUid(false);
     if(pending)return;
     setPending(true);setError(false);setReport(null);
     try{
@@ -214,6 +217,11 @@ export function FirebasePendingAccessReview({
          ![13,14].includes(result.accountsChecked)||
          result.archivedHistoricalAccess!==14-result.accountsChecked||
          result.deletionIdentityApproved!==false||
+         (result.archivedHistoricalAccess===1
+           ?typeof result.archivedIdentityUid!=='string'||
+            !result.archivedIdentityUid.length||
+            result.items.some(item=>item.uid===result.archivedIdentityUid)
+           :result.archivedIdentityUid!==null)||
          !Array.isArray(result.items)||
          result.pendingAccounts!==result.items.length||
          result.firestoreWrites!==0||result.authWrites!==0)
@@ -241,11 +249,22 @@ export function FirebasePendingAccessReview({
       <p className="text-sm">Contas atuais conferidas: {report.accountsChecked}
         {' '}de {report.historicalAccountsChecked} registros históricos.
         Cadastros atuais que exigem revisão: {report.pendingAccounts}.</p>
-      {report.archivedHistoricalAccess===1&&<p className="text-xs">
-        Uma identidade existe apenas no histórico de migração e não aparece
-        como conta atual. Ela não será reativada nem proposta para ajuste;
-        a confirmação de sua exclusão é uma auditoria separada.
-      </p>}
+      {report.archivedHistoricalAccess===1&&<div className="space-y-2 rounded border border-current/20 p-3 text-sm">
+        <p>Uma identidade consta apenas no histórico e não está no Auth atual.
+          Isso não comprova que a exclusão foi autorizada.</p>
+        <button type="button" onClick={()=>setShowArchivedUid(v=>!v)}
+          className="rounded border px-3 py-2 text-sm">
+          {showArchivedUid?'Ocultar UID histórico':'Revelar UID histórico (somente Narrador)'}
+        </button>
+        {showArchivedUid&&<div className="space-y-2">
+          <p>Confira o identificador com o registro privado de exclusão autorizado,
+            antes de utilizá-lo no segredo protegido do GitHub.</p>
+          <code className="block break-all select-all">{report.archivedIdentityUid}</code>
+          <p className="text-xs">Não envie o UID em conversas, issues ou logs.
+            O valor do segredo precisa ser um array JSON contendo somente
+            esse UID, após sua confirmação independente.</p>
+        </div>}
+      </div>}
       {report.items.length===0?<p className="text-sm">
         Nenhum cadastro pendente neste inventário. A liberação do jogo
         ainda requer aceite operacional independente.
