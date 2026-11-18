@@ -1,4 +1,4 @@
-name: Firebase Auth — enable all 14 existing accounts for testing
+name: Firebase Auth — legacy 14-account preflight (preview only)
 
 on:
   pull_request:
@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Preview (no changes) or activate all 14 existing Auth accounts'
+        description: 'Historical 14-account preflight (read-only; obsolete after deletion)'
         required: true
         type: choice
-        options: [preview, activate]
+        options: [preview]
         default: preview
       confirmation:
-        description: 'For activate, type exactly ENABLE_ALL_14_CORMYR_TEST_ACCOUNTS'
+        description: 'Unused in preview-only mode'
         required: false
         type: string
 
@@ -41,8 +41,8 @@ jobs:
         run: node scripts/verify-public-repo.mjs
 
   operator:
-    name: Activate or preview 14 existing users (manual, approved OIDC identity)
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    name: Legacy preflight only — no Auth writes
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'preview'
     needs: contract
     environment: firebase-auth-test-activation
     runs-on: ubuntu-latest
@@ -51,8 +51,8 @@ jobs:
       contents: read
       id-token: write
     env:
-      CORMYR_AUTH_ACTIVATION_MODE: ${{ inputs.mode }}
-      CORMYR_AUTH_ACTIVATION_CONFIRMATION: ${{ inputs.confirmation }}
+      CORMYR_AUTH_ACTIVATION_MODE: preview
+      CORMYR_AUTH_ACTIVATION_CONFIRMATION: ''
       CORMYR_AUTH_TEST_OPERATOR: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
       GOOGLE_CLOUD_PROJECT: cormyr
     steps:
@@ -72,11 +72,6 @@ jobs:
             echo 'Dedicated Firebase Auth operator identity not configured. No accounts changed.'
             exit 2
           fi
-          if [ "$CORMYR_AUTH_ACTIVATION_MODE" = 'activate' ] && \
-             [ "$CORMYR_AUTH_ACTIVATION_CONFIRMATION" != 'ENABLE_ALL_14_CORMYR_TEST_ACCOUNTS' ]; then
-            echo 'Explicit activation confirmation missing. No accounts changed.'
-            exit 2
-          fi
       - name: Authenticate existing GitHub workload identity with dedicated operator
         uses: google-github-actions/auth@v3
         with:
@@ -85,11 +80,11 @@ jobs:
           project_id: cormyr
       - name: Install already locked Firebase Admin dependency
         run: bun install --frozen-lockfile
-      - name: Validate and optionally enable all 14 matching users
+      - name: Historical preview only (will fail closed on 13-user Auth)
         run: node scripts/firebase/auth-enable-all-test-accounts.mjs
       - name: Retain limited outcome on GitHub
         if: always()
         run: |
-          echo 'All 14 account test enablement affects ONLY disabled flags in Firebase Authentication.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Legacy historical preview only. Auth activation is disabled for the 13-user production inventory.' >> "$GITHUB_STEP_SUMMARY"
           echo 'Profiles, House membership, active access state, Cloud runtimes and app availability remain unchanged.' >> "$GITHUB_STEP_SUMMARY"
           echo 'Activation success is NOT campaign release or cross-House E2E acceptance.' >> "$GITHUB_STEP_SUMMARY"
