@@ -61,7 +61,7 @@ async function handle(request:Request):Promise<Response>{
     return error(401,'authentication_required');
   try{
     const payload=await boundedJson(request) as {action?:unknown;houseId?:unknown;editionId?:unknown};
-    if(!['session','listHouses','getHouse','getCalendar',
+    if(!['session','listAccessRemediation','listHouses','getHouse','getCalendar',
       'listMailbox','listNewspaper','getNewspaper','listSpyAgents',
       'listSpyDossiers','listHouseBattles'].includes(String(payload.action)))
       return error(400,'invalid_action');
@@ -83,6 +83,8 @@ async function handle(request:Request):Promise<Response>{
     let result:unknown;
     switch(payload.action){
       case 'session':result=await service.session(token);break;
+      case 'listAccessRemediation':
+        result=await service.listAccessRemediation(token);break;
       case 'listHouses':result=await service.listHouses(token);break;
       case 'getCalendar':result=await service.getCalendar(token);break;
       case 'getHouse':result=await service.getHouse(token,payload.houseId);break;
