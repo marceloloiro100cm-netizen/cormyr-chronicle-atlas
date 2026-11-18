@@ -248,6 +248,61 @@ test('Narrator pending access report fails closed on partial or spoofed inventor
   await rejects(()=>f.service().listAccessRemediation(token),'access_denied',403);
 });
 
+test('narrator dry-run uses server House catalog and never changes access',async()=>{
+  const f=fixture('narrador');
+  const root='migrationDomainStage/'+snapshot;
+  f.docs.set(root+'/access/account-2',{
+    userId:'account-2',profile:null,active:false,
+    admin:false,requirePasswordChange:true,
+    memberHouseIds:[],editHouseIds:[],playerId:null,
+  });
+  for(let i=2;i<10;i++)f.docs.set(root+'/houses/'+hash('house:house-'+i),{
+    sourceId:'house-'+i,name:'House '+i,active:true,season:2,
+  });
+  f.docs.set(root+'/houses/'+hash('house:old'),{
+    sourceId:'house-old',name:'Old House',active:false,season:1,
+  });
+  const original=JSON.stringify([...f.docs]);
+  f.auth.getUser=async uid=>({uid,disabled:false,
+    email:uid+'@example.invalid'});
+  const decision={profile:'jogador',active:true,
+    memberHouseIds:['house-a'],editHouseIds:['house-a'],
+    manualReviewConfirmed:true};
+  const r=await f.service().previewAccessRemediation(token,'account-2',decision);
+  assert.equal(r.mode,'preview-only');
+  assert.equal(r.checked,true);
+  assert.equal(r.proposedProfile,'jogador');
+  assert.equal(r.proposedMemberHouseCount,1);
+  assert.equal(r.requiresPasswordResetProof,true);
+  assert.equal(r.passwordFlagCleared,false);
+  assert.equal(r.adminGranted,false);
+  assert.equal(r.roleGranted,false);
+  assert.equal(r.decisionApplied,false);
+  assert.equal(r.firestoreWrites,0);
+  assert.equal(r.authWrites,0);
+  assert.equal(r.readyForPlayers,false);
+  assert.ok(r.blockingCodes.includes('PASSWORD_RESET_PROOF_PENDING'));
+  assert.ok(!JSON.stringify(r).includes('account-2'));
+  assert.ok(!JSON.stringify(r).includes('house-a'));
+  assert.equal(JSON.stringify([...f.docs]),original);
+  await rejects(()=>f.service().previewAccessRemediation(
+    token,'account-2',{...decision,admin:true}),
+    'invalid_access_decision',400);
+  await rejects(()=>f.service().previewAccessRemediation(
+    token,'account-2',{...decision,memberHouseIds:['house-old'],
+      editHouseIds:[]}),
+    'invalid_access_decision',400);
+  await rejects(()=>f.service().previewAccessRemediation(
+    token,'user-1',decision),
+    'invalid_access_decision',400);
+  const player=fixture('jogador');
+  await rejects(()=>player.service().previewAccessRemediation(
+    token,'account-2',decision),'access_denied',403);
+  const editor=fixture('editor');
+  await rejects(()=>editor.service().previewAccessRemediation(
+    token,'account-2',decision),'access_denied',403);
+});
+
 test('Mailbox includes delivered own correspondence and excludes other-house, drafts, deleted and ambiguous',async()=>{
   const f=fixture('jogador');
   const messages=await f.service().listMailbox(token);
