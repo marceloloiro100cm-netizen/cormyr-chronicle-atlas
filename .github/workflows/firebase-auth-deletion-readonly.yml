@@ -21,6 +21,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Check audit source syntax
+        run: |
+          node --check scripts/firebase/auth-deletion-reconciliation.mjs
+          node --check scripts/firebase/auth-deletion-reconciliation.test.mjs
+          node --check scripts/firebase/cloud-auth-deletion-readonly.mjs
+          node --check scripts/firebase/cloud-auth-deletion-readonly.test.mjs
       - name: Test private reconciliation without credentials
         run: |
           node --test scripts/firebase/auth-deletion-reconciliation.test.mjs
