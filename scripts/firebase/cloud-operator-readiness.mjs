@@ -115,6 +115,9 @@ export function evaluateOperatorEvidence({
   const safeLinkage=roleLinkageError
     ?summarizeRoleLinkageEvidence():summarizeRoleLinkageEvidence(roleLinkage);
   const isCountOnly=countOnlyAuthValid&&!legacyAuthValid;
+  const roleLinkageConsistent=authValid&&safeLinkage.checked&&
+    safeLinkage.accounts===(isCountOnly?13:14)&&
+    safeLinkage.historicAccessNotInAuth===(isCountOnly?1:0);
   const mail=cloud?.mailRuntimeEnabled===true;
   const runtime=cloud?.operationalRuntimeReconciled===true;
   const mailWriteGatesAligned=cloud?.mailWriteGatesAligned===true;
@@ -256,8 +259,10 @@ export function evaluateOperatorEvidence({
   if(legacyAuthValid&&authPreview.toEnable>0)blockingCodes.push('AUTH_ACCOUNTS_STILL_DISABLED');
   if(legacyAuthValid&&authPreview.pendingRoleOrHouse>0)
     blockingCodes.push('ROLES_OR_HOUSE_LINKS_INCOMPLETE');
-  if(roleLinkageError||roleLinkage&&!summarizeRoleLinkageEvidence(roleLinkage).checked)
+  if(roleLinkageError||roleLinkage&&!safeLinkage.checked)
     blockingCodes.push('ROLE_LINKAGE_DIAGNOSIS_INCOMPLETE');
+  if(safeLinkage.checked&&!roleLinkageConsistent)
+    blockingCodes.push('ROLE_LINKAGE_INVENTORY_MISMATCH');
   if(storageComparison?.scope!=='read-only-gcs-prefix-integrity'||
      storageComparison.sourceToStagingBytesMatch!==true)
     blockingCodes.push('STORAGE_COPY_COMPARISON_UNVERIFIED');
@@ -274,6 +279,7 @@ export function evaluateOperatorEvidence({
     historicalAccessRecords:authValid?14:null,
     historicalAuthDifferenceObserved:isCountOnly?1:authValid?0:null,
     deletionIdentityApproved:false,
+    roleLinkageConsistent,
     disabledAccounts:legacyAuthValid?authPreview.toEnable:
       countOnlyAuthValid?0:null,
     pendingRoleOrHouse:legacyAuthValid?safeCount(authPreview.pendingRoleOrHouse):
@@ -365,7 +371,8 @@ export function operatorAuditObservationComplete(report){
     report?.privateStagesComplete===true&&
     report?.runtimeSourceProbeFailed===false&&
     report?.fourBlocks?.operations?.sourcePreflight?.checked===true&&
-    report?.fourBlocks?.playerAccess?.linkageDiagnostics?.checked===true;
+    report?.fourBlocks?.playerAccess?.linkageDiagnostics?.checked===true&&
+    report?.roleLinkageConsistent===true;
 }
 
 export function safeOperatorSummary(report){
@@ -438,6 +445,8 @@ export function safeOperatorSummary(report){
     '| Trocas de senha pendentes | '+n(report?.fourBlocks?.playerAccess?.passwordResetPending)+' |',
     '| Diagnóstico privado de perfis e Casas | '+
       yes(report?.fourBlocks?.playerAccess?.linkageDiagnostics?.checked)+' |',
+    '| Inventários Auth e vínculos coincidem | '+
+      yes(report?.roleLinkageConsistent)+' |',
     '| Contas estruturalmente elegíveis (não liberadas) | '+
       n(report?.fourBlocks?.playerAccess?.linkageDiagnostics?.eligible)+' |',
     '| Referências a Casas inválidas ou desatualizadas | '+
