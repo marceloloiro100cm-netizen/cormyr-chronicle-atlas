@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseCloudReadonly,CloudAccessError} from '../../../scripts/firebase/cloud-readonly-service.mjs';
 import {crossOriginRejected} from '@/lib/server/request-origin';
+import {cloudReadFailureCategory} from '@/lib/server/cloud-read-error-category';
 
 /**
  * Read-only Firebase CLOUD route. This is NOT the emulator proxy and contains
@@ -96,14 +97,11 @@ async function handle(request:Request):Promise<Response>{
     return Response.json({result},{status:200,headers});
   }catch(e){
     if(e instanceof CloudAccessError)return error(e.status,e.code);
-    // Never disclose IAM errors, Firestore IDs, Firebase UIDs or tokens to the
-    // browser. The private server log keeps only the error class, code and a
-    // short message, so operators can diagnose runtime/IAM failures.
-    const err=e as {name?:unknown;code?:unknown;message?:unknown};
-    console.error('[firebase-cloud-read] unexpected',
-      String(err?.name??'Error').slice(0,60),
-      String(err?.code??'').slice(0,60),
-      String(err?.message??'').replace(/\s+/g,' ').slice(0,240));
+    // Firebase provider messages may contain Firestore paths, account IDs or
+    // personal details. Even Cloud Logging must never receive raw exceptions.
+    // Only emit a fixed, allowlisted diagnostic category.
+    console.error('[firebase-cloud-read] unavailable',
+      cloudReadFailureCategory(e));
     return error(503,'firebase_cloud_unavailable');
   }
 }
