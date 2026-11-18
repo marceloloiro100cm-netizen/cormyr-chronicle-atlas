@@ -37,6 +37,7 @@ export type PendingDecisionPreview={
   proposedActive:boolean;
   proposedMemberHouseCount:number;
   proposedEditHouseCount:number;
+  proposalFingerprint:string;
   changedFields:string[];
   requiresPasswordResetProof:boolean;
   authAccountDisabled:boolean;
@@ -99,7 +100,8 @@ function PendingAccessDecisionForm({
       if(report.scope!=='CORMYR_NARRATOR_ACCESS_REMEDIATION_DRY_RUN'||
          report.mode!=='preview-only'||report.decisionApplied!==false||
          report.firestoreWrites!==0||report.authWrites!==0||
-         report.readyForPlayers!==false||report.releaseDecision!=='NO_GO')
+         report.readyForPlayers!==false||report.releaseDecision!=='NO_GO'||
+         !/^[a-f0-9]{64}$/.test(report.proposalFingerprint))
         throw Error('invalid_dry_run');
       setResult(report);
     }catch{setError(true);}
