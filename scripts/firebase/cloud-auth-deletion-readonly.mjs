@@ -16,7 +16,7 @@ export async function auditProtectedAuthDeletion({
   auth,db,approvedDeletedUids,
 }={}){
   if(!auth||typeof auth.listUsers!=='function'||!db||
-     typeof db.collection!=='function)fail('configuration_invalid');
+     typeof db.collection!=='function')fail('configuration_invalid');
   const users=await auth.listUsers(1000);
   if(!Array.isArray(users?.users)||users.pageToken)
     fail('auth_inventory_incomplete');
