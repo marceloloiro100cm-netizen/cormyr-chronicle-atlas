@@ -10,8 +10,9 @@ Acesso de um jogador é concedido somente se:
 - O Firebase ID token e a conta Auth forem válidos, habilitados e não revogados.
 - O documento de acesso histórico estiver ativo, exigir nenhuma troca de senha
   e tiver o perfil `jogador` sem privilégio administrativo.
-- `playerId` existir, houver ao menos uma Casa e os conjuntos de membro e
-  edição não tiverem duplicatas, formatos inválidos ou edição fora do escopo.
+- Houver ao menos uma Casa e os conjuntos de membro e edição não tiverem
+  duplicatas, formatos inválidos ou edição fora do escopo. O `playerId` segue
+  opcional nos registros históricos, mas é validado quando fornecido.
 - **Cada Casa de membro** tiver seu documento oficial de nome determinístico
   `sha256('house:' + id)`, com `sourceId` idêntico, `active: true` e
   `season: 2`. Casa ausente, inativa, de temporada anterior ou substituída
