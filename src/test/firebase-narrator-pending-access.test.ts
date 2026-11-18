@@ -25,6 +25,19 @@ describe('Firebase narrator pending-account panel is private and read-only',()=>
     expect(api).toContain("'Cache-Control':'private, no-store, max-age=0'");
     expect(api).toContain("crossOriginRejected(request)");
   });
+  it('previews only after explicit identity review and never sends admin or password status',()=>{
+    expect(route).toContain("'previewAccessRemediation'");
+    expect(route).toContain("readCloud<PendingDecisionPreview>");
+    expect(api).toContain("service.previewAccessRemediation(");
+    expect(service).toContain("if(viewer.profile!=='narrador')deny('access_denied',403)");
+    expect(component).toContain('manualReviewConfirmed:true');
+    expect(component).toContain('Validar proposta sem aplicar');
+    expect(component).toContain('report.decisionApplied!==false');
+    expect(component).toContain('report.firestoreWrites!==0');
+    expect(component).not.toMatch(/(?:setDoc|updateDoc|updateUser|writeBatch)\s*\(/);
+    expect(component).toContain("profile:'jogador'|'editor';");
+    expect(component).not.toContain('<option value="narrador">');
+  });
   it('does not offer an implicit user-role or password approval button',()=>{
     expect(component).toContain('consulta privada');
     expect(component).not.toMatch(/Ativar conta|Salvar perfil|Confirmar senha alterada/);

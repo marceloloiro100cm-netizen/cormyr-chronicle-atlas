@@ -60,8 +60,10 @@ async function handle(request:Request):Promise<Response>{
   if(!bearer||!/^Bearer [^\s]{10,10000}$/.test(bearer))
     return error(401,'authentication_required');
   try{
-    const payload=await boundedJson(request) as {action?:unknown;houseId?:unknown;editionId?:unknown};
-    if(!['session','listAccessRemediation','listHouses','getHouse','getCalendar',
+    const payload=await boundedJson(request) as {action?:unknown;houseId?:unknown;editionId?:unknown;
+      targetUid?:unknown;proposal?:unknown};
+    if(!['session','listAccessRemediation','previewAccessRemediation','listHouses',
+      'getHouse','getCalendar',
       'listMailbox','listNewspaper','getNewspaper','listSpyAgents',
       'listSpyDossiers','listHouseBattles'].includes(String(payload.action)))
       return error(400,'invalid_action');
@@ -85,6 +87,9 @@ async function handle(request:Request):Promise<Response>{
       case 'session':result=await service.session(token);break;
       case 'listAccessRemediation':
         result=await service.listAccessRemediation(token);break;
+      case 'previewAccessRemediation':
+        result=await service.previewAccessRemediation(
+          token,payload.targetUid,payload.proposal);break;
       case 'listHouses':result=await service.listHouses(token);break;
       case 'getCalendar':result=await service.getCalendar(token);break;
       case 'getHouse':result=await service.getHouse(token,payload.houseId);break;
