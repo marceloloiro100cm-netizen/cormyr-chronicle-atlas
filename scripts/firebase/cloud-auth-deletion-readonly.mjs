@@ -34,6 +34,21 @@ export async function auditProtectedAuthDeletion({
   });
   return {scope:'CORMYR_AUTH_DELETION_READ_ONLY',...result};
 }
+/** An allowlisted diagnostic code, never a provider message or identity. */
+export function safeDeletionFailureCode(error){
+  const code=typeof error?.message==='string'?error.message:'';
+  const allowed=new Set([
+    'inventory_unverified','historical_ids_invalid','historical_access_invalid',
+    'live_ids_invalid','live_auth_invalid','remaining_account_disabled',
+    'approval_invalid','protected_or_unknown_deletion',
+    'approved_deletion_still_present','unexpected_missing_account',
+    'unexpected_new_account','count_mismatch',
+  ]);
+  const prefix='auth_deletion_reconciliation_';
+  const reason=code.startsWith(prefix)?code.slice(prefix.length):'';
+  return allowed.has(reason)?reason:'verification_unavailable';
+}
+
 export function safeDeletionSummary(report){
   const num=n=>Number.isSafeInteger(n)&&n>=0&&n<=1000?n:'?';
   return ['## Cormyr — reconciliação privada Auth (somente leitura)',
@@ -73,8 +88,9 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
     process.stdout.write(JSON.stringify(report)+'\n');
     if(process.env.GITHUB_STEP_SUMMARY)
       appendFileSync(process.env.GITHUB_STEP_SUMMARY,safeDeletionSummary(report));
-  }catch{
-    process.stderr.write('Protected Auth reconciliation did not verify. No changes applied.\n');
+  }catch(error){
+    process.stderr.write('Protected Auth reconciliation did not verify. Reason: '+
+      safeDeletionFailureCode(error)+'. No changes applied.\n');
     process.exitCode=2;
   }
 }
