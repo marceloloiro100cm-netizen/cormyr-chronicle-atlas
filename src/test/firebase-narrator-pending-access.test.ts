@@ -42,7 +42,10 @@ describe('Firebase narrator pending-account panel is private and read-only',()=>
     expect(component).toContain('result.historicalAccountsChecked!==14');
     expect(component).toContain('result.archivedHistoricalAccess!==14-result.accountsChecked');
     expect(component).toContain('result.deletionIdentityApproved!==false');
-    expect(component).toContain('identidade existe apenas no histórico');
+    expect(component).toContain('Uma identidade consta apenas no histórico');
+    expect(component).toContain('Revelar UID histórico (somente Narrador)');
+    expect(component).toContain('showArchivedUid&&');
+    expect(service).toContain('archivedIdentityUid');
     expect(service).toContain('archivedHistoricalAccess');
     expect(service).toContain('currentCandidates');
   });
