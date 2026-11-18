@@ -112,6 +112,14 @@ export function evaluateOperatorEvidence({
           ['region','classification','crest','historyReference',
             'directDescription'].map(k=>[k,
               safeCount(runtimeSources?.archiveCoverage?.candidateFields?.[k])])),
+        candidateAssetVerification:{
+          checked:runtimeSources?.archiveCoverage?.assetVerification?.checked===true,
+          crests:safeCount(runtimeSources?.archiveCoverage?.assetVerification?.uniqueSeason2MatchesWithValidCrests),
+          histories:safeCount(runtimeSources?.archiveCoverage?.assetVerification?.uniqueSeason2MatchesWithValidHistories),
+          bothValid:safeCount(runtimeSources?.archiveCoverage?.assetVerification?.uniqueSeason2MatchesWithBothValid),
+          unverified:safeCount(runtimeSources?.archiveCoverage?.assetVerification?.uniqueSeason2MatchesWithUnverifiedAssets),
+          reviewApproved:false,
+        },
         reviewApproved:false,ready:false,
       },
       assetInventory:{
@@ -335,6 +343,16 @@ export function safeOperatorSummary(report){
       n(report?.fourBlocks?.publicContent?.archiveCoverage?.candidateFields?.crest)+' |',
     '| Histórias com referência pública (a revisar) | '+
       n(report?.fourBlocks?.publicContent?.archiveCoverage?.candidateFields?.historyReference)+' |',
+    '| Arquivos candidatos das Casas ativas conferidos | '+
+      yes(report?.fourBlocks?.publicContent?.archiveCoverage?.candidateAssetVerification?.checked)+' |',
+    '| Casas ativas com brasão íntegro | '+
+      n(report?.fourBlocks?.publicContent?.archiveCoverage?.candidateAssetVerification?.crests)+' |',
+    '| Casas ativas com história íntegra | '+
+      n(report?.fourBlocks?.publicContent?.archiveCoverage?.candidateAssetVerification?.histories)+' |',
+    '| Casas ativas com ambos os arquivos íntegros | '+
+      n(report?.fourBlocks?.publicContent?.archiveCoverage?.candidateAssetVerification?.bothValid)+' |',
+    '| Casas ativas com algum arquivo pendente | '+
+      n(report?.fourBlocks?.publicContent?.archiveCoverage?.candidateAssetVerification?.unverified)+' |',
     '| Arquivos públicos inspecionados (sem aprovação editorial) | '+
       yes(report?.fourBlocks?.publicContent?.assetInventory?.checked)+' |',
     '| Brasões válidos do acervo público | '+
