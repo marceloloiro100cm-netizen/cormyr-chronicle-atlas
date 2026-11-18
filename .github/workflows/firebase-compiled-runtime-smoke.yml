@@ -59,5 +59,11 @@ jobs:
         env:
           NITRO_PRESET: node-server
         run: node scripts/firebase-compiled-runtime-smoke.mjs
+      - name: Inspect live Cloud read boundary after main push (anonymous, read-only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          # This is diagnostic: App Hosting may still be rolling out this SHA.
+          # The summary distinguishes a 401 Auth guard from a 503 disabled gate.
+          node scripts/firebase/player-pilot-preflight.mjs
       - name: Ensure no private artifacts entered the public repository
         run: node scripts/verify-public-repo.mjs
