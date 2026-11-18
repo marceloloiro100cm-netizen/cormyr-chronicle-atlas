@@ -65,7 +65,7 @@ test('private proposal strictly respects pending accounts, ten active Houses and
   const clean=JSON.stringify(r.summary)+safe(r.summary);
   for(const item of ['account-2','house-2','O Narrador conferiu',
     r.privatePlan.fingerprint,snapshot])assert.ok(!clean.includes(item));
-  assert.match(safe(r.summary),/Aprovação registrada e aplicada \\| \\*\\*NÃO\\*\\*/);
+  assert.ok(safe(r.summary).includes('| Aprovação registrada e aplicada | **NÃO** |'));
 });
 
 test('never change historical password reset requirement or activate pending reset',()=>{
