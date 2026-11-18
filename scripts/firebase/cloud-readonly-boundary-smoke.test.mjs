@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   inspectCloudReadonlyBoundaries,formatCloudReadonlyBoundarySummary,
-  READ_ROUTES,CLOSED_ROUTES,ORIGIN,
+  READ_ROUTES,CLOUD_ROUTES,CLOSED_ROUTES,ORIGIN,
 } from './cloud-readonly-boundary-smoke.mjs';
 
 const response=(status,error,headers={})=>new Response(
@@ -20,32 +20,60 @@ const safeCall=(options)=>{
   assert.equal(options.body,
     '{"action":"__cormyr_readonly_probe_invalid_action__"}');
 };
-test('exact four read-only routes and three closed writes are checked without credentials',async()=>{
+test('four read-only, three gated Cloud and four archive-closed routes reject anonymous probes',async()=>{
   const calls=[];
   const report=await inspectCloudReadonlyBoundaries(async(url,options)=>{
     calls.push(url);safeCall(options);
     const read=READ_ROUTES.find(x=>ORIGIN+x[1]===url);
-    return read?response(503,read[2]):response(503,'legacy_backend_paused');
+    const cloud=CLOUD_ROUTES.find(x=>ORIGIN+x[1]===url);
+    return read?response(503,read[2]):
+      cloud?response(503,cloud[2]):response(503,'legacy_backend_paused');
   });
   assert.deepEqual(calls,
-    [...READ_ROUTES,...CLOSED_ROUTES].map(x=>ORIGIN+x[1]));
-  assert.equal(report.requests,7);
+    [...READ_ROUTES,...CLOUD_ROUTES,...CLOSED_ROUTES]
+      .map(x=>ORIGIN+x[1]));
+  assert.equal(report.requests,11);
   assert.equal(report.verified,true);
   assert.equal(report.readonlyRoutesReachOwnGuards,true);
+  assert.equal(report.cloudPrivateRoutesProtected,true);
   assert.equal(report.legacyWritesBlocked,true);
   assert.equal(report.readyForPlayers,false);
   assert.equal(report.readyForCutover,false);
   assert.equal(report.writes,0);
+  assert.ok(report.checks.some(x=>
+    x.name==='treasuryArchiveLocked'&&x.passed===true));
   assert.match(formatCloudReadonlyBoundarySummary(report),/NÃO AUTORIZADA/);
 });
 test('when deployed read feature is enabled, authenticated guard 401 is accepted',async()=>{
   const r=await inspectCloudReadonlyBoundaries(async url=>
-    READ_ROUTES.some(x=>ORIGIN+x[1]===url)?
+    [...READ_ROUTES,...CLOUD_ROUTES].some(x=>ORIGIN+x[1]===url)?
       response(401,'authentication_required'):
       response(503,'legacy_backend_paused'));
   assert.equal(r.verified,true);
   assert.equal(r.accountActivationVerified,false);
   assert.equal(r.realCloudRoleE2EVerified,false);
+  assert.equal(r.cloudPrivateRoutesProtected,true);
+});
+test('Cloud mail and newspaper never accept a legacy or unexpected response',async()=>{
+  for(const denied of [
+    ()=>response(503,'legacy_backend_paused'),
+    ()=>response(400,'invalid_action'),
+    ()=>response(200,'PRIVATE_LETTER'),
+    ()=>response(401,'other_authentication'),
+    ()=>response(503,'wrong_feature_flag'),
+  ]){
+    const report=await inspectCloudReadonlyBoundaries(async url=>{
+      const read=READ_ROUTES.find(x=>ORIGIN+x[1]===url);
+      const cloud=CLOUD_ROUTES.find(x=>ORIGIN+x[1]===url);
+      return read?response(503,read[2]):
+        cloud&&cloud[0]==='firebaseCloudMail'?denied():
+        cloud?response(503,cloud[2]):response(503,'legacy_backend_paused');
+    });
+    assert.equal(report.cloudPrivateRoutesProtected,false);
+    assert.equal(report.verified,false);
+    assert.equal(report.readyForPlayers,false);
+    assert.ok(!JSON.stringify(report).includes('PRIVATE_LETTER'));
+  }
 });
 test('generic maintenance response cannot masquerade as the Firebase endpoint',async()=>{
   for(const wrong of [
@@ -79,6 +107,7 @@ test('old archive responses are explicitly classified without exposing bodies',a
   assert.equal(r.verified,false);
   assert.ok(r.checks.slice(0,4).every(c=>
     c.category==='legacy_boundary_still_active'));
+  assert.equal(r.cloudPrivateRoutesProtected,false);
   assert.equal(r.legacyWritesBlocked,true);
 });
 

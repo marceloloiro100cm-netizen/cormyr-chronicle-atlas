@@ -1,6 +1,7 @@
 /**
  * Anonymous, no-op verification of the four independently gated Firebase
- * Cloud READ routes and three legacy/WRITE routes still blocked by archive mode.
+ * Cloud READ routes, three private Cloud routes and four legacy/WRITE routes
+ * (including treasury) still blocked by archive mode.
  * Never authenticates, sends a valid action, or reads private documents.
  */
 import {appendFileSync} from 'node:fs';
@@ -13,10 +14,19 @@ export const READ_ROUTES=Object.freeze([
   ['houseReconciliation','/api/firebase-house-reconciliation-audit','house_reconciliation_audit_disabled'],
   ['treasuryAudit','/api/firebase-treasury-audit','firebase_treasury_audit_disabled'],
 ]);
+// Only these three Cloud routes bypass archive mode, requiring either a
+// disabled feature flag (503) or a Firebase ID token (401).
+// Every probe sends an impossible action without credentials.
+export const CLOUD_ROUTES=Object.freeze([
+  ['firebaseCloudSession','/api/firebase-cloud-read','firebase_cloud_read_disabled'],
+  ['firebaseCloudMail','/api/firebase-cloud-mail','firebase_cloud_mail_disabled'],
+  ['firebaseCloudNewspaper','/api/firebase-cloud-newspaper','firebase_cloud_newspaper_disabled'],
+]);
 export const CLOSED_ROUTES=Object.freeze([
   ['constructionPurchase','/api/firebase-cloud-construction'],
   ['treasuryAdjustment','/api/firebase-cloud-treasury'],
   ['legacyEmulatorBridge','/api/firebase-domain'],
+  ['treasuryArchiveLocked','/api/firebase-cloud-treasury'],
 ]);
 const IMPOSSIBLE_ACTION='__cormyr_readonly_probe_invalid_action__';
 const BODY=JSON.stringify({action:IMPOSSIBLE_ACTION});
@@ -69,6 +79,27 @@ export async function inspectCloudReadonlyBoundaries(fetcher=fetch){
     checks.push({name,status,code:passed?code:null,category,
       passed:Boolean(passed)});
   }
+  for(const [name,path,disabledCode] of CLOUD_ROUTES){
+    let status=null,code=null,passed=false;
+    try{
+      const response=await fetcher(ORIGIN+path,{
+        method:'POST',redirect:'manual',credentials:'omit',cache:'no-store',
+        headers:{'Content-Type':'application/json',Accept:'application/json'},
+        body:BODY,signal:AbortSignal.timeout(12000),
+      });
+      status=safeStatus(response.status);
+      if(status===401||status===503){
+        code=await safeErrorCode(response);
+        passed=(status===401&&code==='authentication_required')||
+          (status===503&&code===disabledCode);
+      }
+      passed=passed&&
+        (response.headers.get('cache-control')??'').includes('no-store');
+    }catch{/* missing Cloud boundary is not accepted */ }
+    checks.push({name,status,code:passed?code:null,
+      category:passed?'expected_guard':'cloud_boundary_not_verified',
+      passed:Boolean(passed)});
+  }
   for(const [name,path] of CLOSED_ROUTES){
     let status=null,passed=false;
     try{
@@ -90,7 +121,9 @@ export async function inspectCloudReadonlyBoundaries(fetcher=fetch){
     origin:ORIGIN,requests:checks.length,
     readonlyRoutesReachOwnGuards:checks.slice(0,READ_ROUTES.length)
       .every(x=>x.passed),
-    legacyWritesBlocked:checks.slice(READ_ROUTES.length)
+    cloudPrivateRoutesProtected:checks.slice(READ_ROUTES.length,
+      READ_ROUTES.length+CLOUD_ROUTES.length).every(x=>x.passed),
+    legacyWritesBlocked:checks.slice(READ_ROUTES.length+CLOUD_ROUTES.length)
       .every(x=>x.passed),
     verified:checks.every(x=>x.passed),
     checks,accountActivationVerified:false,realCloudRoleE2EVerified:false,
@@ -99,7 +132,8 @@ export async function inspectCloudReadonlyBoundaries(fetcher=fetch){
   };
 }
 export function formatCloudReadonlyBoundarySummary(report){
-  const checkNames=[...READ_ROUTES,...CLOSED_ROUTES].map(x=>x[0]);
+  const checkNames=[...READ_ROUTES,...CLOUD_ROUTES,...CLOSED_ROUTES]
+    .map(x=>x[0]);
   const rows=checkNames.map(name=>{
     const c=Array.isArray(report?.checks)?
       report.checks.find(x=>x?.name===name):null;
@@ -115,7 +149,9 @@ export function formatCloudReadonlyBoundarySummary(report){
     '',
     'Leituras bloqueadas por flags ou por autenticação: '+
       (report?.readonlyRoutesReachOwnGuards===true?'Confirmado':'Pendente'),
-    'Escritas e ponte legada interrompidas: '+
+    'Leitura Cloud, missivas e jornal exigem Auth ou flag fechada: '+
+      (report?.cloudPrivateRoutesProtected===true?'Confirmado':'Pendente'),
+    'Tesouro operacional, demais escritas e ponte legada interrompidos: '+
       (report?.legacyWritesBlocked===true?'Confirmado':'Pendente'),
     'Liberação de jogadores: NÃO AUTORIZADA (NO_GO).',
     'Somente POSTs anônimos com uma ação impossível, sem credenciais,',

@@ -12,6 +12,8 @@ on:
       - 'src/lib/server/request-origin.ts'
       - 'src/routes/api/firebase-cloud-read.ts'
       - 'src/routes/api/firebase-cloud-mail.ts'
+      - 'src/routes/api/firebase-cloud-newspaper.ts'
+      - 'src/routes/api/firebase-cloud-treasury.ts'
       - 'scripts/firebase/cloud-readonly-service.mjs'
       - 'scripts/firebase/cloud-mail-service.mjs'
       - 'scripts/firebase/cloud-mail-runtime-approval.mjs'
