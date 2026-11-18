@@ -13,7 +13,7 @@ const fixture=()=>{
     assert.equal(name,'migrationDomainStage');
     return {
       limit:()=>({get:async()=>({docs:[{id:'a'.repeat(64),
-        data:()=>({private:true,status:'complete'})]})}),
+        data:()=>({private:true,status:'complete'})}]})}),
       doc:()=>({collection:(child)=>{
         assert.equal(child,'access');
         return {get:async()=>({docs:historic.map(d=>({
