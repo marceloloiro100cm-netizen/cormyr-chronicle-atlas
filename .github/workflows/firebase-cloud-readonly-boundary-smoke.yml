@@ -59,7 +59,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Verify anonymous guards on Cloud mail, newspaper, treasury and legacy routes
+      - name: Verify anonymous Cloud guards and archive-locked treasury
         run: node scripts/firebase/cloud-readonly-boundary-smoke.mjs
       - name: Keep authenticated play and writes disabled
         if: always()
