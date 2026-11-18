@@ -1,3 +1,4 @@
+import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 /**
  * Cormyr Firebase Cloud — fail-closed transactional mail.
  *
@@ -149,7 +150,7 @@ export function createFirebaseCloudMail({
         deny('migration_stage_not_ready',503);
     if(!calendar.exists||!Number.isInteger(calendar.data()?.version))
       deny('calendar_unavailable',503);
-    const campaignDate=campaignDateOf(calendar.data());
+    const campaignDate=campaignDateOf(effectiveCloudCalendar(calendar.data(),live.data(),snapshotId));
     const actor=accessOf(uid,scopeDoc.data());
     // Every active player membership is verified against its exact House
     // document INSIDE the same transaction as mail authorization.
@@ -329,3 +330,4 @@ export function createFirebaseCloudMail({
     },
   };
 }
+

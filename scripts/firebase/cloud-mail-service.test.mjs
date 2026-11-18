@@ -91,6 +91,21 @@ async function rejects(fn,code,status=403){
     e.code===code&&e.status===status);
 }
 
+test('mail records the published operational date and round, preserving the import',async()=>{
+  const f=fixture();
+  const runtime='campaignCloudRuntime/'+snapshot;
+  const calendar={year:1522,month:1,day:20,festival:null,version:6};
+  f.records.set(runtime,{...f.records.get(runtime),calendarSource:'operational',calendar,
+    calendarVersion:6,openRound:8});
+  const gate='campaignMailRuntime/'+snapshot;
+  f.records.set(gate,{...f.records.get(gate),calendarVersion:6,openRound:8});
+  assert.equal((await f.service().status(sampleToken)).canSend,true);
+  const sent=await f.service().send(sampleToken,req());
+  assert.equal(sent.deliveryRound,8);
+  assert.equal(f.records.get(runtime+'/letters/'+sent.id).campaignDate,'1522-02-20');
+  assert.equal(f.records.get('migrationTimeEngineStage/'+snapshot+'/calendar/current').version,5);
+});
+
 test('Service is Cloud-only, explicit off by default and denies emulators',()=>{
   const {db,auth}=fixture();
   const p={db,auth,snapshotId:snapshot,projectId:'cormyr',env:{}};
@@ -566,3 +581,4 @@ test('Reply fails closed on runtime revocation and cannot bypass round limits',a
     requestKey:'reply-gated-1',letterId:id,content:'Resposta',
   }),'authentication_required',401);
 });
+

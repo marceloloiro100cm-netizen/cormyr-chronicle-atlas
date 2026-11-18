@@ -1,10 +1,9 @@
 /**
  * Narrator-only Firebase proposal of the campaign's next official week.
  *
- * This is a PRIVATE PENDING DRAFT, never an active calendar publication.
- * The immutable migrationTimeEngineStage source, House resources, operational
- * runtimes, inbox and player permissions are never modified by this module.
- * A separate reconciled approval flow must publish the campaign clock.
+ * Saving is a private pending draft. Publishing explicitly initializes the operational clock.
+ * The immutable import and House resources are preserved. One-time publication
+ * adopts the imported source and opens a separate operational runtime with an audit.
  */
 import {randomUUID} from 'node:crypto';
 import {validateHarptosDate} from './stage-temporal-emulator.mjs';
@@ -130,14 +129,101 @@ export function createFirebaseNarratorWeekDraft({
     editable:true,calendarPublished:false,mailEnabled:false,
   });
   return {
+
+    /** One-time baseline launch, explicitly selected by the authenticated narrator. */
+    async publish(token,request){
+      const uid=await authenticate(token);
+      if(!request||request.adoptFirebaseSource!==true||
+         !whole(request.expectedDraftVersion,1,2147483647)||
+         Object.keys(request).some(k=>!['adoptFirebaseSource','expectedDraftVersion'].includes(k)))
+        deny('launch_confirmation_required',400);
+      return db.runTransaction(async tx=>{
+        const state=await readState(tx,uid);
+        const cloud=db.collection('campaignCloudRuntime').doc(snapshotId);
+        const mail=db.collection('campaignMailRuntime').doc(snapshotId);
+        const paper=db.collection('migrationNewspaperRuntimeStage').doc(snapshotId);
+        const [liveDoc,mailDoc,paperDoc,editionsDoc]=await Promise.all([
+          tx.get(cloud),tx.get(mail),tx.get(paper),
+          tx.get(paper.collection('editions').limit(101)),
+        ]);
+        const live=liveDoc.data(),gate=mailDoc.data();
+        if(live?.launchDraftVersion===request.expectedDraftVersion&&
+           live?.calendarSource==='operational'&&live?.status==='active'&&
+           live?.applicationEnabled===true&&live?.sourceSnapshotReconciled===true&&
+           live?.mailWriteApproved===true&&live?.private===true&&
+           live?.sourceSnapshotId===snapshotId&&
+           gate?.applicationEnabled===true&&gate?.mailEnabled===true&&
+           gate?.sourceLiveReconciled===true&&gate?.private===true&&
+           gate?.sourceSnapshotId===snapshotId&&
+           gate?.status==='active'&&gate?.openRound===live?.openRound&&
+           gate?.calendarVersion===live?.calendarVersion)
+          return {published:true,duplicate:true,calendar:live.calendar,openRound:live.openRound};
+        if(!state.draft||state.draft.draftVersion!==request.expectedDraftVersion||
+           state.draft.expectedCalendarVersion!==state.calendar.version)
+          deny('draft_version_conflict',409);
+        // A launch cannot overwrite an already running campaign or advance game effects.
+        if(!liveDoc.exists||!mailDoc.exists||
+           live?.status!=='pending'||gate?.status!=='pending'||
+           live.private!==true||gate.private!==true||
+           live.applicationEnabled!==false||gate.applicationEnabled!==false||
+           live.sourceSnapshotId!==snapshotId||gate.sourceSnapshotId!==snapshotId)
+          deny('campaign_already_started_or_invalid',409);
+        if(!complete(paperDoc,snapshotId)||!Array.isArray(editionsDoc.docs)||
+           editionsDoc.docs.length>100)deny('newspaper_source_not_ready',503);
+        let maxEdition=0;
+        for(const doc of editionsDoc.docs){
+          const edition=doc.data();
+          if(!whole(edition?.editionNo,0,99999998))
+            deny('newspaper_sequence_invalid',503);
+          maxEdition=Math.max(maxEdition,edition.editionNo);
+        }
+        const d=state.draft.proposedDate;
+        if(!calendarOkay({...d,version:state.calendar.version})||
+           !whole(state.draft.proposedOpenRound,1,2147483647)||
+           state.calendar.version>=2147483647)
+          deny('draft_invalid_source',503);
+        const calendar={year:d.year,month:d.month,day:d.day,
+          festival:d.festival??null,version:state.calendar.version+1};
+        const at=now();
+        if(!Number.isFinite(Date.parse(at)))deny('draft_clock_invalid',503);
+        const next={...live,status:'active',applicationEnabled:true,
+          sourceSnapshotReconciled:true,sourceAuthority:'owner_adopted_firebase',
+          calendarSource:'operational',calendar,calendarVersion:calendar.version,
+          openRound:state.draft.proposedOpenRound,mailWriteApproved:true,
+          publicTimeApproved:true,publishedTimeVersion:calendar.version,
+          newspaperWriteApproved:true,newspaperSequenceReconciled:true,
+          newspaperImportedMaxEditionNo:maxEdition,nextNewspaperEditionNo:maxEdition+1,
+          launchDraftVersion:state.draft.draftVersion,launchedAt:at,launchedBy:uid};
+        tx.set(cloud,next);
+        tx.set(mail,{...gate,status:'active',applicationEnabled:true,
+          sourceLiveReconciled:true,mailEnabled:true,
+          calendarVersion:calendar.version,openRound:next.openRound,
+          launchedAt:at,launchedBy:uid});
+        tx.create(audit.doc(newId()),{action:'launch_firebase_campaign',
+          actorUid:uid,at,sourceAuthority:'owner_adopted_firebase',
+          previousCloudRuntime:live,previousMailRuntime:gate,
+          draftVersion:state.draft.draftVersion,calendar,openRound:next.openRound});
+        return {published:true,duplicate:false,calendar,openRound:next.openRound};
+      });
+    },
     async get(token){
       const uid=await authenticate(token);
-      return db.runTransaction(async tx=>publicView(await readState(tx,uid)));
+      return db.runTransaction(async tx=>{
+        const state=await readState(tx,uid);
+        const runtime=await tx.get(db.collection('campaignCloudRuntime').doc(snapshotId));
+        const live=runtime.data();
+        const launched=live?.status==='active'&&live?.calendarSource==='operational'&&
+          live?.sourceSnapshotId===snapshotId&&live?.applicationEnabled===true;
+        return {...publicView(state),editable:!launched,calendarPublished:launched,
+          mailEnabled:launched&&live.mailWriteApproved===true};
+      });
     },
     async save(token,request){
       const uid=await authenticate(token);
       return db.runTransaction(async tx=>{
         const state=await readState(tx,uid);
+        const runtime=await tx.get(db.collection('campaignCloudRuntime').doc(snapshotId));
+        if(runtime.data()?.status==='active')deny('campaign_already_started_or_invalid',409);
         const proposal=planNarratorWeekDraft({
           archivedCalendar:state.calendar,previous:state.draft,
           request,actorUid:uid,at:now(),
@@ -157,3 +243,4 @@ export function createFirebaseNarratorWeekDraft({
     },
   };
 }
+

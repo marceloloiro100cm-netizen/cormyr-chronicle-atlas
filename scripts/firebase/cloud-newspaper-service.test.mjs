@@ -75,6 +75,17 @@ async function denied(fn,code,status){
   await assert.rejects(fn,e=>e instanceof CloudNewspaperError&&
     e.code===code&&e.status===status);
 }
+test('editor publishes with the operational date without changing the archived date',async()=>{
+  const f=fixture();
+  f.records.set(f.runtime,{...f.records.get(f.runtime),calendarSource:'operational',
+    calendar:{year:1522,month:1,day:20,festival:null,version:6},calendarVersion:6});
+  assert.equal((await f.service().status(token)).canPublish,true);
+  await f.service().publish(token,input());
+  const edition=[...f.records].find(([key])=>key.includes('/publishedNewspapers/'))[1];
+  assert.equal(edition.campaignDate,'1522-02-20');
+  assert.equal(f.records.get(f.calendar).version,5);
+});
+
 test('fails closed without flag or with emulator or wrong project',()=>{
   const f=fixture();
   const cfg={db:f.db,auth:f.auth,snapshotId:snapshot,projectId:'cormyr',env:{}};
@@ -170,3 +181,4 @@ test('strict request shape, byte bounds and forged claims are rejected',async()=
   await denied(()=>s.publish('invalid-token',input()),'authentication_required',401);
   assert.equal([...f.records].filter(([k])=>k.includes('publishedNewspapers')).length,0);
 });
+

@@ -1,3 +1,4 @@
+import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 /**
  * Firebase Cloud-only newspaper publishing. Preserves imported editions.
  *
@@ -105,7 +106,7 @@ export function createFirebaseCloudNewspaper({
       tx.get(domain.collection('access').doc(uid)),tx.get(runtime),
     ]);
     readyRoots(docs.slice(0,4));
-    const cal=docs[4]?.data();
+    const cal=effectiveCloudCalendar(docs[4]?.data(),docs[6]?.data(),snapshotId);
     const date=calendarKey(cal);
     authorized(uid,docs[5]?.data());
     readyRuntime(docs[6]?.data(),snapshotId,cal);
@@ -126,7 +127,7 @@ export function createFirebaseCloudNewspaper({
       let available=false;
       if(rootsOk){
         try{
-          const cal=documents[4].data();
+          const cal=effectiveCloudCalendar(documents[4].data(),documents[5].data(),snapshotId);
           calendarKey(cal);
           readyRuntime(documents[5].data(),snapshotId,cal);
           available=true;
@@ -171,3 +172,4 @@ export function createFirebaseCloudNewspaper({
     },
   };
 }
+

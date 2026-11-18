@@ -1,3 +1,4 @@
+import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 /**
  * One shared, fail-closed approval predicate for Cloud mailbox reads and
  * writes. Historical imported mail remains separately readable by its
@@ -8,6 +9,7 @@
  * No data reads, writes or provider calls happen in this module.
  */
 export function cloudMailRuntimeApproved(live,mail,calendar,snapshotId){
+  calendar=effectiveCloudCalendar(calendar,live,snapshotId);
   return Boolean(
     live?.status==='active'&&live.private===true&&
     live.sourceSnapshotId===snapshotId&&
@@ -26,3 +28,4 @@ export function cloudMailRuntimeApproved(live,mail,calendar,snapshotId){
     mail.calendarVersion===calendar.version
   );
 }
+

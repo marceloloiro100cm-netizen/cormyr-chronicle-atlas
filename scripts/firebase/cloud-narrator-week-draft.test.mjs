@@ -67,6 +67,7 @@ function fixture({profile='narrador',active=true,disabled=false}={}){
   const ref=path=>({
     path,collection(name){return ref(path+'/'+name);},
     doc(name){return ref(path+'/'+name);},
+    limit(n){return {...ref(path),query:true,max:n};},
   });
   const db={
     collection(name){return ref(name);},
@@ -74,6 +75,7 @@ function fixture({profile='narrador',active=true,disabled=false}={}){
       const writes=[];
       const tx={
         async get(r){
+          if(r.query)return {docs:[...data].filter(([p])=>p.startsWith(r.path+'/')).slice(0,r.max).map(([p,v])=>({id:p.split('/').at(-1),data:()=>v}))};
           const value=data.get(r.path);
           return {exists:value!==undefined,data:()=>value};
         },
@@ -135,3 +137,58 @@ test('service refuses absent flags, invalid project and emulators',()=>{
     projectId:'other',snapshotId:HASH,enabled:true,
   }),'draft_service_disabled',503);
 });
+
+function readyLaunch(config={}){
+  const f=fixture(config);
+  f.data.set('campaignCloudRuntime/'+HASH,{status:'pending',private:true,
+    sourceSnapshotId:HASH,applicationEnabled:false,mailWriteApproved:false});
+  f.data.set('campaignMailRuntime/'+HASH,{status:'pending',private:true,
+    sourceSnapshotId:HASH,applicationEnabled:false,mailEnabled:false});
+  f.data.set('migrationNewspaperRuntimeStage/'+HASH,{status:'complete',private:true});
+  f.data.set('migrationNewspaperRuntimeStage/'+HASH+'/editions/imported',
+    {editionNo:7});
+  return f;
+}
+test('launch publishes selected baseline, mail and newspaper sequence atomically; import unchanged',async()=>{
+  const {service,data}=readyLaunch();
+  const historicalBefore=JSON.stringify(data.get('migrationTimeEngineStage/'+HASH+'/calendar/current'));
+  await service.save('valid-token',request);
+  // Fixture audit ID is fixed: use a different slot for the launch audit.
+  data.delete('campaignNarratorDrafts/'+HASH+'/calendarAudit/audit-1');
+  const result=await service.publish('valid-token',{expectedDraftVersion:1,adoptFirebaseSource:true});
+  assert.equal(result.calendar.day,11);
+  assert.equal(result.calendar.version,5);
+  assert.equal(result.openRound,3);
+  assert.equal(JSON.stringify(data.get('migrationTimeEngineStage/'+HASH+'/calendar/current')),historicalBefore);
+  const runtime=data.get('campaignCloudRuntime/'+HASH);
+  assert.equal(runtime.mailWriteApproved,true);
+  assert.equal(runtime.nextNewspaperEditionNo,8);
+  assert.equal(runtime.sourceAuthority,'owner_adopted_firebase');
+  assert.equal(data.get('campaignMailRuntime/'+HASH).openRound,3);
+  const again=await service.publish('valid-token',{expectedDraftVersion:1,adoptFirebaseSource:true});
+  assert.equal(again.duplicate,true);
+  assert.equal((await service.get('valid-token')).editable,false);
+  await assert.rejects(service.save('valid-token',{...request,expectedDraftVersion:1}),e=>e.status===409);
+});
+test('launch rejects missing confirmation, stale draft, wrong role and existing active runtime',async()=>{
+  for(const config of [{profile:'jogador'},{profile:'editor'},{disabled:true}]){
+    const {service}=readyLaunch(config);
+    await assert.rejects(service.publish('valid-token',{expectedDraftVersion:1,adoptFirebaseSource:true}));
+  }
+  const {service,data}=readyLaunch();
+  await service.save('valid-token',request);
+  await assert.rejects(service.publish('valid-token',{expectedDraftVersion:1}),e=>e.status===400);
+  await assert.rejects(service.publish('valid-token',{expectedDraftVersion:2,adoptFirebaseSource:true}),e=>e.status===409);
+  data.set('campaignCloudRuntime/'+HASH,{status:'active'});
+  await assert.rejects(service.publish('valid-token',{expectedDraftVersion:1,adoptFirebaseSource:true}),e=>e.status===409);
+  assert.equal(data.get('campaignMailRuntime/'+HASH).applicationEnabled,false);
+});
+test('invalid imported edition sequence aborts without partial runtime writes',async()=>{
+  const {service,data}=readyLaunch();
+  await service.save('valid-token',request);
+  data.set('migrationNewspaperRuntimeStage/'+HASH+'/editions/imported',{editionNo:'7'});
+  await assert.rejects(service.publish('valid-token',{expectedDraftVersion:1,adoptFirebaseSource:true}),e=>e.status===503);
+  assert.equal(data.get('campaignCloudRuntime/'+HASH).status,'pending');
+  assert.equal(data.get('campaignMailRuntime/'+HASH).status,'pending');
+});
+

@@ -1,3 +1,4 @@
+import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 /**
  * Cormyr: Firebase Cloud-only, read-only campaign access.
  *
@@ -586,7 +587,8 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       await stageReady('migrationTimeEngineStage');
       const doc=await get(db,'migrationTimeEngineStage',snapshotId,
         'calendar','current');
-      const d=doc.data();
+      const live=await db.collection('campaignCloudRuntime').doc(snapshotId).get();
+      const d=effectiveCloudCalendar(doc.data(),live.data(),snapshotId);
       if(!doc.exists||!Number.isInteger(d?.year)||!Number.isInteger(d?.month)||
          !Number.isInteger(d?.day)||!Number.isInteger(d?.version))
         deny('calendar_unavailable',503);
@@ -596,3 +598,4 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
     },
   };
 }
+

@@ -33,13 +33,13 @@ import {FirebasePendingAccessReview,type PendingAccessReview,
 import type {HouseReconciliationReport} from '@/lib/house/firebase-house-reconciliation-audit';
 
 /**
- * Firebase-only pilot: read-only, no Supabase, no emulator and no direct
- * browser access to private Firestore migration collections.
+ * Firebase campaign workspace. Server-side role checks protect each operation;
+ * the browser never accesses private Firestore migration collections directly.
  */
 export const Route=createFileRoute('/firebase-access')({
   ssr:false,
   component:FirebaseAccess,
-  head:()=>({meta:[{title:'Acesso Firebase — Cormyr'}]}),
+  head:()=>({meta:[{title:'Campanha — Cormyr'}]}),
 });
 
 type SessionView={authenticated:boolean;profile:'jogador'|'narrador'|'editor';
@@ -615,12 +615,16 @@ function FirebaseAccess(){
 
   return <main className="mx-auto max-w-4xl p-6 space-y-5 text-foreground">
     <header className="space-y-2">
-      <h1 className="text-2xl font-semibold">Cormyr — acesso Firebase</h1>
-      <p className="text-sm">Acesso exclusivamente Firebase.
-        As fichas, o jornal e a espionagem usam dados preservados do snapshot.
-        {mailStatus?.canSend
-          ?' O envio de missivas foi autorizado para esta rodada.'
-          :' A escrita permanece bloqueada até a homologação dos serviços Cloud.'}</p>
+      <h1 className="text-2xl font-semibold">Cormyr — Campanha</h1>
+      <p className="text-sm">Fichas das Casas, correspondência, calendário e A Folha Sem Selo.</p>
+      {view&&<nav aria-label="Módulos da campanha" className="flex flex-wrap gap-2 pt-2">
+        {view.profile!=='editor'&&<a className="rounded border px-3 py-2" href="#casas">Casas nobres</a>}
+        {view.profile!=='editor'&&<a className="rounded border px-3 py-2" href="#missivas">Missivas</a>}
+        <a className="rounded border px-3 py-2" href="#calendario">Calendário</a>
+        <a className="rounded border px-3 py-2" href="#jornal">A Folha Sem Selo</a>
+        {view.profile==='narrador'&&<a className="rounded border px-3 py-2" href="#hub">Configurar HUB</a>}
+        <a className="rounded border px-3 py-2" href="#meu-acesso">Meu acesso</a>
+      </nav>}
     </header>
     {!configured&&<p role="alert">A configuração pública do Firebase Auth ainda
       não foi disponibilizada neste ambiente.</p>}
@@ -636,7 +640,7 @@ function FirebaseAccess(){
           value={password} onChange={e=>setPassword(e.target.value)}/>
       </label>
       <button type="submit" disabled={busy}
-        className="rounded border px-4 py-2">{busy?'Verificando…':'Entrar com Firebase'}</button>
+        className="rounded border px-4 py-2">{busy?'Verificando…':'Entrar'}</button>
       <button type="button" disabled={busy||!email.trim()}
         onClick={()=>void requestPasswordReset()}
         className="ml-2 rounded border px-4 py-2 disabled:opacity-50">
@@ -656,16 +660,18 @@ function FirebaseAccess(){
     </section>}
     {view&&<section className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <p>Perfil validado: <strong>{view.profile}</strong></p>
+        <p>Perfil validado: <strong>{view.profile==='editor'?'Editor-chefe':view.profile==='narrador'?'Narrador':'Casa nobre'}</strong></p>
         <button type="button" className="rounded border px-3 py-1"
           onClick={signOut}>Sair</button>
       </div>
-      {view.profile==='narrador'&&<FirebaseNarratorWeekDraft/>}
+      {view.profile==='narrador'&&<div id="hub" className="scroll-mt-4"><FirebaseNarratorWeekDraft/></div>}
+      <details id="meu-acesso" className="rounded border p-4 space-y-3">
+        <summary className="cursor-pointer font-semibold">Meu acesso e diagnóstico dos serviços</summary>
       {pilotStatus&&<section className="rounded border border-current/25 p-4 space-y-3"
         aria-label="Situação dos serviços desta sessão">
         <div className="space-y-1">
           <h2 className="text-lg font-semibold">Situação do acesso</h2>
-          <p className="text-sm">Homologação em andamento. Estes indicadores
+          <p className="text-sm">Estes indicadores
             representam apenas as consultas realizadas nesta sessão; não
             autorizam a abertura geral da campanha.</p>
         </div>
@@ -714,6 +720,7 @@ function FirebaseAccess(){
           plan={(uid,proposal)=>readCloud<PendingDecisionPreview>(
             'previewAccessRemediation',undefined,undefined,
             {targetUid:uid,proposal})}/>}
+      </details>
       {view.profile==='narrador'&&
         <section aria-label="Acervo reservado do Narrador"
           className="rounded border border-current/25 p-4 space-y-3">
@@ -734,8 +741,8 @@ function FirebaseAccess(){
         <FirebaseHouseReconciliationOverview houses={houses}
           inspect={cloudHouseReconciliation}
           onSelectHouse={id=>{void selectHouse(id);}}/>}
-      {calendar&&<FirebaseCalendarSnapshot date={calendar}/>} 
-      {view.profile!=='editor'&&<div className="space-y-2">
+      {calendar&&<div id="calendario" className="scroll-mt-4"><FirebaseCalendarSnapshot date={calendar}/></div>} 
+      {view.profile!=='editor'&&<div id="casas" className="space-y-2 scroll-mt-4">
         <label className="block text-sm">Consultar Casa autorizada</label>
         <select className="max-w-md rounded border p-2" value={house?.id??''}
           disabled={busy} onChange={e=>{if(e.target.value)void selectHouse(e.target.value);}}>
@@ -899,10 +906,10 @@ function FirebaseAccess(){
               </details>;
             })}</div>}
         </section>}
-      {view.profile!=='editor'&&<section className="rounded border p-4 space-y-2">
+      {view.profile!=='editor'&&<section id="missivas" className="rounded border p-4 space-y-2 scroll-mt-4">
         <h2 className="text-lg font-semibold">Escrever missiva</h2>
         {!mailStatus?.canSend&&<p className="text-sm">
-          O envio ficará disponível após a autorização do Firebase Cloud.
+          O envio ficará disponível após o Narrador publicar a configuração inicial no HUB.
           Você ainda pode consultar as cartas preservadas.
         </p>}
         {mailStatus?.canSend&&<form onSubmit={sendMail} className="space-y-3">
@@ -1002,7 +1009,7 @@ function FirebaseAccess(){
             </div>
           </form>}
       </section>}
-      <section className="rounded border p-4 space-y-2">
+      <section id="jornal" className="rounded border p-4 space-y-2 scroll-mt-4">
         <h2 className="text-lg font-semibold">A Folha Sem Selo</h2>
         {editions.length===0?<p>Nenhuma edição publicada disponível.</p>:
           <ul>{editions.map(e=><li key={e.id} className="py-1">
@@ -1019,8 +1026,7 @@ function FirebaseAccess(){
         <section className="rounded border p-4 space-y-3">
           <h2 className="text-lg font-semibold">Publicar A Folha Sem Selo</h2>
           {!paperStatus?.canPublish
-            ?<p className="text-sm">Publicação de novas edições bloqueada até a
-              aprovação editorial e a reconciliação do Firebase Cloud.</p>
+            ?<p className="text-sm">A publicação fica disponível após o Narrador abrir a campanha no HUB. Se a campanha já foi aberta, atualize sua sessão.</p>
             :<form onSubmit={publishPaper} className="space-y-3">
               <label className="block text-sm">Título da edição
                 <input required maxLength={180} value={paperTitle}
@@ -1050,3 +1056,4 @@ function FirebaseAccess(){
     {message&&<p role="alert" className="text-sm">{message}</p>}
   </main>;
 }
+
