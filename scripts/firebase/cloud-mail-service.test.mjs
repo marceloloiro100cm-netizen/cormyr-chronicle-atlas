@@ -103,6 +103,39 @@ test('Service is Cloud-only, explicit off by default and denies emulators',()=>{
     snapshotId:'invalid'}),/cloud_mail_disabled/);
 });
 
+test('No player mail operations survive missing, inactive or old-season Houses',async()=>{
+  const f=fixture('jogador');
+  const access='migrationDomainStage/'+snapshot+'/access/player-1';
+  const house='migrationDomainStage/'+snapshot+'/houses/'+h('house:house-a');
+  const originalAccess=f.records.get(access);
+  const originalHouse=f.records.get(house);
+  for(const changes of [
+    {memberHouseIds:[],editHouseIds:[]},
+    {memberHouseIds:['house-a','house-a'],editHouseIds:['house-a']},
+    {memberHouseIds:['house-missing'],editHouseIds:['house-missing']},
+    {memberHouseIds:['house-a'],editHouseIds:['house-a','house-a']},
+  ]){
+    f.records.set(access,{...originalAccess,...changes});
+    await rejects(()=>f.service().status(sampleToken),'access_denied');
+    await rejects(()=>f.service().send(sampleToken,req()),'access_denied');
+    await rejects(()=>f.service().markRead(sampleToken,{
+      source:'imported',letterId:'historical-001',
+    }),'access_denied');
+  }
+  f.records.set(access,originalAccess);
+  for(const changes of [
+    {active:false},{season:1},{sourceId:'house-b'},
+  ]){
+    f.records.set(house,{...originalHouse,...changes});
+    await rejects(()=>f.service().status(sampleToken),'access_denied');
+    await rejects(()=>f.service().send(sampleToken,req()),'access_denied');
+  }
+  f.records.delete(house);
+  await rejects(()=>f.service().send(sampleToken,req()),'access_denied');
+  assert.equal([...f.records].some(([key])=>
+    key.startsWith('campaignCloudRuntime/'+snapshot+'/letters/')),false);
+});
+
 test('The enabled owner can send once; retries do not double-send or double-count',async()=>{
   const {records,service}=fixture();
   const before=[...records].filter(([k])=>k.startsWith('migration'));
