@@ -6,25 +6,31 @@ import {preflightReviewedPublicStage,publishReviewedPublicStage}
 const SNAP='a'.repeat(64);
 const source=()=>({
   snapshotId:SNAP,catalogVersion:4,translationsVersion:3,
-  houses:[
-    {id:'house_a',name:'House A',region:'Region',
-      classification:'Major',updated_at:null,gallery:[],
-      narrative_text:'Reviewed public story',active:true,season:2,
-      publicReviewed:true,privateBank:9999},
-    {id:'house_b',name:'House B',region:'Region',
-      classification:'Minor',updated_at:null,gallery:[],
-      narrative_text:null,active:true,season:2,publicReviewed:true},
-  ],
+  houses:Array.from({length:10},(_,i)=>{
+    const key=String.fromCharCode(97+i);
+    return {id:'house_'+key,name:'House '+key.toUpperCase(),
+      region:'Region',classification:i===0?'Major':'Minor',
+      updated_at:null,gallery:[],
+      narrative_text:i===0?'Reviewed public story':null,
+      active:true,season:2,publicReviewed:true,
+      ...(i===0?{privateBank:9999}:{}),
+    };
+  }),
   playerHouses:[{house_id:'house_a'},{house_id:'house_b'}],
-  translationsByLocale:{en:[],es:[],de:[]},
+  translationsByLocale:Object.fromEntries(['en','es','de'].map(locale=>[
+    locale,[{entity_type:'house',entity_id:'house_a',field_name:'name',
+      translated_text:'Reviewed '+locale+' public label',publicReviewed:true}],
+  ])),
 });
 function fakeDb({
   targetExists=false,sourceVerified=true,storageVerified=true,
   sourceSnapshotMismatch=false,
-  houseRows=[
-    {sourceId:'house_a',name:'House A',active:true,season:2,secret:'DO_NOT_LOG'},
-    {sourceId:'house_b',name:'House B',active:true,season:2},
-  ],
+  houseRows=Array.from({length:10},(_,i)=>({
+    sourceId:'house_'+String.fromCharCode(97+i),
+    name:'House '+String.fromCharCode(65+i),
+    active:true,season:2,
+    ...(i===0?{secret:'DO_NOT_LOG'}:{}),
+  })),
 }={}){
   const entries=[],calls=[];
   const collection=(path)=>({
@@ -118,10 +124,11 @@ test('mismatched real source, incomplete stages or existing destination abort al
     {targetExists:true},{sourceVerified:false},{storageVerified:false},
     {sourceSnapshotMismatch:true},
     {houseRows:[{sourceId:'house_a',name:'House A',active:true,season:2}]},
-    {houseRows:[
-      {sourceId:'house_a',name:'House A',active:true,season:2},
-      {sourceId:'house_b',name:'OLD NAME',active:true,season:2},
-    ]},
+    {houseRows:Array.from({length:10},(_,i)=>({
+      sourceId:'house_'+String.fromCharCode(97+i),
+      name:i===1?'OLD NAME':'House '+String.fromCharCode(65+i),
+      active:true,season:2,
+    }))},
   ]){
     const f=fakeDb(change);
     await assert.rejects(()=>publishReviewedPublicStage(inputs(f)),
@@ -157,6 +164,28 @@ test('wrong Cloud project and emulators never run the public write',async()=>{
     await assert.rejects(()=>publishReviewedPublicStage({
       ...inputs(f),...changes,
     }),/reviewed_public_stage_cloud_environment_unverified/);
+  }
+  assert.equal(f.calls.length,0);
+  assert.equal(f.entries.length,0);
+});
+
+test('publication requires ten reviewed Houses and nonempty en/es/de review',async()=>{
+  const f=fakeDb(),baseline=source();
+  const valid=preflightReviewedPublicStage(baseline);
+  assert.equal(valid.summary.reviewPlanValid,true);
+  assert.match(valid.approvalDigest,/^[a-f0-9]{64}$/);
+  for(const change of [
+    current=>{current.houses.pop();},
+    current=>{current.translationsByLocale.en=[];},
+    current=>{current.translationsByLocale.es=[];},
+    current=>{current.translationsByLocale.de=[];},
+    current=>{current.translationsByLocale.en[0].publicReviewed=false;},
+  ]){
+    const current=source();change(current);
+    assert.equal(preflightReviewedPublicStage(current).approvalDigest,null);
+    await assert.rejects(()=>publishReviewedPublicStage({
+      ...inputs(f,current),approvalDigest:valid.approvalDigest,
+    }),/reviewed_public_stage_review_plan_invalid/);
   }
   assert.equal(f.calls.length,0);
   assert.equal(f.entries.length,0);
