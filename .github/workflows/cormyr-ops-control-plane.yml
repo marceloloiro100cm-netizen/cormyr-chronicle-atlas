@@ -26,7 +26,7 @@ on:
         type: choice
         required: true
         default: audit
-        options: [audit, operator-audit, auth-preview, auth-deletion-audit, auth-inventory-audit, verify-emulators, verify-build, verify-pilot, runtime-preview, runtime-draft]
+        options: [status-audit, audit, operator-audit, auth-preview, auth-deletion-audit, auth-inventory-audit, verify-emulators, verify-build, verify-pilot, runtime-preview, runtime-draft]
 
 permissions:
   contents: read
@@ -49,6 +49,7 @@ jobs:
     permissions:
       actions: write
       contents: read
+      issues: write
     steps:
       - name: Only allow audited requests via the fixed control issue
         uses: actions/github-script@v7
@@ -57,7 +58,7 @@ jobs:
             const REPO = 'marceloloiro100cm-netizen/cormyr-chronicle-atlas';
             const CONTROL_ISSUE = 568;
             const AUTH_WORKFLOW = '.github/workflows/firebase-auth-enable-all-test-accounts.yml';
-            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-deletion-audit|auth-inventory-audit|verify-emulators|verify-build|verify-pilot|runtime-preview|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
+            const titleFormat = /^Cormyr Ops \| (status-audit|audit|operator-audit|auth-preview|auth-deletion-audit|auth-inventory-audit|verify-emulators|verify-build|verify-pilot|runtime-preview|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
             const {owner, repo} = context.repo;
             if (owner + '/' + repo !== REPO || Number(process.env.GITHUB_RUN_ATTEMPT) !== 1) {
               core.info('Untrusted context or retry: no remote action');
@@ -67,7 +68,7 @@ jobs:
             if (context.eventName === 'schedule') operation = 'audit';
             else if (context.eventName === 'workflow_dispatch') {
               operation = context.payload.inputs?.task;
-              if (!['audit', 'operator-audit', 'auth-preview', 'auth-deletion-audit', 'auth-inventory-audit', 'verify-emulators', 'verify-build', 'verify-pilot', 'runtime-preview', 'runtime-draft'].includes(operation)) {
+              if (!['status-audit', 'audit', 'operator-audit', 'auth-preview', 'auth-deletion-audit', 'auth-inventory-audit', 'verify-emulators', 'verify-build', 'verify-pilot', 'runtime-preview', 'runtime-draft'].includes(operation)) {
                 core.info('Unknown manual command: no action');
                 return;
               }
@@ -87,6 +88,55 @@ jobs:
               }
               operation = match[1];
             } else return;
+            if (operation === 'status-audit') {
+              const ids=[
+                ['firebase-cloud-operator-readiness.yml','Cloud OIDC protegido'],
+                ['firebase-auth-deletion-readonly.yml','Identidade da exclusão'],
+                ['firebase-cloud-runtime-drafts.yml','Calendário/runtimes (prévia)'],
+                ['firebase-apphosting-release-convergence.yml','App Hosting'],
+                ['firebase-cloud-access-readiness.yml','Acesso Cloud somente leitura'],
+                ['validate.yml','Validate geral'],
+                ['build-check.yml','Build App Hosting'],
+                ['firebase-cross-domain-acceptance.yml','Casas e domínios (emulador)'],
+                ['firebase-mail-unified.yml','Missivas integradas (emulador)'],
+                ['firebase-read-receipts.yml','Leitura de Missivas (emulador)'],
+                ['firebase-player-pilot-preflight.yml','Piloto público anônimo']
+              ];
+              const safeStatus=new Set(['queued','in_progress','waiting','pending','requested','completed']);
+              const safeOutcome=new Set(['success','failure','cancelled','timed_out','skipped','neutral','action_required']);
+              const lines=[
+                '## Cormyr — status real de GitHub Actions (metadados públicos)',
+                '',
+                'Consulta somente leitura de runs já existentes na branch main. Nenhum workflow foi disparado por esta verificação.',
+                ''
+              ];
+              const results=await Promise.all(ids.map(async([filename,label])=>{
+                try{
+                  const x=await github.rest.actions.listWorkflowRuns({
+                    owner,repo,workflow_id:filename,branch:'main',per_page:3
+                  });
+                  const runs=Array.isArray(x.data.workflow_runs)?x.data.workflow_runs:[];
+                  return {label,runs:runs.slice(0,2).map(run=>({
+                    id:Number(run.id),
+                    status:safeStatus.has(run.status)?run.status:'unknown',
+                    conclusion:safeOutcome.has(run.conclusion)?run.conclusion:'n/a'
+                  }))};
+                }catch{return {label,runs:null};}
+              }));
+              for(const item of results){
+                if(item.runs===null){lines.push('- **'+item.label+':** consulta indisponível');continue;}
+                if(!item.runs.length){lines.push('- **'+item.label+':** nenhum run localizado');continue;}
+                lines.push('- **'+item.label+':** '+item.runs.map(run=>
+                  '[#'+run.id+'](https://github.com/'+REPO+'/actions/runs/'+run.id+') '+
+                  run.status+'/'+run.conclusion).join(' · '));
+              }
+              lines.push('','Resultados de emulador e de build não autorizam o jogo. Jobs protegidos em waiting exigem aprovação do ambiente. Liberação: NO_GO.');
+              await github.rest.issues.createComment({
+                owner,repo,issue_number:582,body:lines.join('\n')
+              });
+              core.info('Published public-safe existing run status in issue 582');
+              return;
+            }
             const tasks = operation === 'audit' ? [
               ['firebase-apphosting-release-convergence.yml', {}],
               ['firebase-cloud-access-readiness.yml', {}],
