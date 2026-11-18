@@ -1,6 +1,6 @@
 /** Public Web SDK identifiers supplied by the project owner.
  * This configuration does not grant administrative access and is not yet
- * connected to the application's active Supabase authentication or data layer.
+ * itself a grant of access to the Firebase Auth or Firestore data layer.
  * Analytics initialization is intentionally deferred.
  */
 export const FIREBASE_PUBLIC_CONFIG = Object.freeze({
