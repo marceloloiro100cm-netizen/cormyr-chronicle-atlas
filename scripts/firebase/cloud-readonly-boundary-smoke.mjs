@@ -20,12 +20,12 @@ export const CLOUD_ROUTES=Object.freeze([
   ['firebaseCloudSession','/api/firebase-cloud-read','firebase_cloud_read_disabled'],
   ['firebaseCloudMail','/api/firebase-cloud-mail','firebase_cloud_mail_disabled'],
   ['firebaseCloudNewspaper','/api/firebase-cloud-newspaper','firebase_cloud_newspaper_disabled'],
-  ['firebaseCloudTreasury','/api/firebase-cloud-treasury','firebase_cloud_treasury_disabled'],
 ]);
 export const CLOSED_ROUTES=Object.freeze([
   ['constructionPurchase','/api/firebase-cloud-construction'],
   ['treasuryAdjustment','/api/firebase-cloud-treasury'],
   ['legacyEmulatorBridge','/api/firebase-domain'],
+  ['treasuryArchiveLocked','/api/firebase-cloud-treasury'],
 ]);
 const IMPOSSIBLE_ACTION='__cormyr_readonly_probe_invalid_action__';
 const BODY=JSON.stringify({action:IMPOSSIBLE_ACTION});
@@ -148,9 +148,9 @@ export function formatCloudReadonlyBoundarySummary(report){
     '',
     'Leituras bloqueadas por flags ou por autenticação: '+
       (report?.readonlyRoutesReachOwnGuards===true?'Confirmado':'Pendente'),
-    'Leituras, missivas, jornal e tesouro Cloud exigem Auth ou flag fechada: '+
+    'Leitura Cloud, missivas e jornal exigem Auth ou flag fechada: '+
       (report?.cloudPrivateRoutesProtected===true?'Confirmado':'Pendente'),
-    'Escritas e ponte legada interrompidas: '+
+    'Tesouro operacional, demais escritas e ponte legada interrompidos: '+
       (report?.legacyWritesBlocked===true?'Confirmado':'Pendente'),
     'Liberação de jogadores: NÃO AUTORIZADA (NO_GO).',
     'Somente POSTs anônimos com uma ação impossível, sem credenciais,',
