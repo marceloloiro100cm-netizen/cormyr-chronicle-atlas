@@ -26,7 +26,7 @@ describe('Firebase narrator pending-account panel is private and read-only',()=>
     expect(api).toContain("crossOriginRejected(request)");
   });
   it('does not offer an implicit user-role or password approval button',()=>{
-    expect(component).toContain('Consulta');
+    expect(component).toContain('consulta privada');
     expect(component).not.toMatch(/Ativar conta|Salvar perfil|Confirmar senha alterada/);
     expect(component).toContain('nenhuma decisão é aplicada');
   });
