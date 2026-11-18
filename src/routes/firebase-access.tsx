@@ -1,4 +1,7 @@
 import {FirebaseEditorialDesk} from '@/components/newspaper/FirebaseEditorialDesk';
+import {FirebaseOfficialFrame,FirebaseOfficialHome,type FirebaseOfficialModule}
+  from '@/components/firebase/FirebaseOfficialFrame';
+import '../firebase-official.css';
 import {createFileRoute} from '@tanstack/react-router';
 import {useEffect,useRef,useState,type FormEvent} from 'react';
 import {runFirebaseRoleSelfAcceptance}
@@ -228,6 +231,8 @@ function FirebaseAccess(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
   const [view,setView]=useState<SessionView|null>(null);
+  const [activeModule,setActiveModule]=useState<FirebaseOfficialModule>('inicio');
+  const selectedRole=useRef<SessionView['profile']|null>(null);
   const loadGeneration=useRef(0);
   const houseRequestVersion=useRef(0);
   const editionRequestVersion=useRef(0);
@@ -305,6 +310,11 @@ function FirebaseAccess(){
     setBattles(null);
     setEdition(null);
     setRoleCheck(null);
+    if(selectedRole.current!==profile.profile){
+      setActiveModule(profile.profile==='narrador'?'hub':
+        profile.profile==='editor'?'jornal':'casas');
+      selectedRole.current=profile.profile;
+    }
     setView(profile);
     setNarratorLibraryOpen(false);
     setHouses(resources.houses);
@@ -614,22 +624,15 @@ function FirebaseAccess(){
     mailboxLoaded:inbox!==null,mailCanSend:mailStatus?.canSend===true,
   }):null;
 
-  return <main className="mx-auto max-w-4xl p-6 space-y-5 text-foreground">
-    <header className="space-y-2">
-      <h1 className="text-2xl font-semibold">Cormyr — Campanha</h1>
-      <p className="text-sm">Fichas das Casas, correspondência, calendário e A Folha Sem Selo.</p>
-      {view&&<nav aria-label="Módulos da campanha" className="flex flex-wrap gap-2 pt-2">
-        {view.profile!=='editor'&&<a className="rounded border px-3 py-2" href="#casas">Casas nobres</a>}
-        {view.profile!=='editor'&&<a className="rounded border px-3 py-2" href="#missivas">Missivas</a>}
-        <a className="rounded border px-3 py-2" href="#calendario">Calendário</a>
-        <a className="rounded border px-3 py-2" href="#jornal">A Folha Sem Selo</a>
-        {view.profile==='narrador'&&<a className="rounded border px-3 py-2" href="#hub">Configurar HUB</a>}
-        <a className="rounded border px-3 py-2" href="#meu-acesso">Meu acesso</a>
-      </nav>}
-    </header>
+  return <FirebaseOfficialFrame profile={view?.profile??null}
+    active={activeModule} onSelect={setActiveModule} onSignOut={signOut}>
+    {!view&&<div className="firebase-official-auth-intro">
+      <h1>Portões de Cormyr</h1>
+      <p>Entre com suas credenciais Firebase para acessar o Conselho e os registros da campanha.</p>
+    </div>}
     {!configured&&<p role="alert">A configuração pública do Firebase Auth ainda
       não foi disponibilizada neste ambiente.</p>}
-    {configured&&!view&&<form onSubmit={submit} className="max-w-sm space-y-3">
+    {configured&&!view&&<form onSubmit={submit} className="firebase-auth-form">
       <label className="block text-sm">E-mail
         <input type="email" required autoComplete="email"
           className="block w-full rounded border p-2"
@@ -648,7 +651,8 @@ function FirebaseAccess(){
         Recuperar senha
       </button>
     </form>}
-    {view&&!houseCatalogAvailable&&<section role="status"
+    {view&&!houseCatalogAvailable&&
+      (activeModule==='inicio'||activeModule==='casas')&&<section role="status"
       aria-label="Catálogo de Casas temporariamente indisponível"
       className="rounded border border-current/25 p-4 space-y-2">
       <p className="text-sm">Sua sessão Firebase foi validada, mas o
@@ -660,14 +664,17 @@ function FirebaseAccess(){
         onClick={()=>void retryHouseCatalog()}>Tentar carregar Casas novamente</button>
     </section>}
     {view&&<section className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <p>Perfil validado: <strong>{view.profile==='editor'?'Editor-chefe':view.profile==='narrador'?'Narrador':'Casa nobre'}</strong></p>
-        <button type="button" className="rounded border px-3 py-1"
-          onClick={signOut}>Sair</button>
-      </div>
-      {view.profile==='narrador'&&<div id="hub" className="scroll-mt-4"><FirebaseNarratorWeekDraft/></div>}
-      <details id="meu-acesso" className="rounded border p-4 space-y-3">
-        <summary className="cursor-pointer font-semibold">Meu acesso e diagnóstico dos serviços</summary>
+      {activeModule==='inicio'&&<FirebaseOfficialHome
+        profile={view.profile} onSelect={setActiveModule}
+        mailAvailable={mailStatus?.canSend===true}
+        hasCalendar={calendar!==null}
+        hasHouses={houseCatalogAvailable&&houses.length>0}/>}
+      {view.profile==='narrador'&&<div id="hub"
+        className="firebase-module" hidden={activeModule!=='hub'}>
+        <FirebaseNarratorWeekDraft/></div>}
+      <section id="meu-acesso" className="firebase-module space-y-3"
+        hidden={activeModule!=='meu-acesso'}>
+        <h2>Meu acesso e diagnóstico dos serviços</h2>
       {pilotStatus&&<section className="rounded border border-current/25 p-4 space-y-3"
         aria-label="Situação dos serviços desta sessão">
         <div className="space-y-1">
@@ -721,10 +728,11 @@ function FirebaseAccess(){
           plan={(uid,proposal)=>readCloud<PendingDecisionPreview>(
             'previewAccessRemediation',undefined,undefined,
             {targetUid:uid,proposal})}/>}
-      </details>
+      </section>
       {view.profile==='narrador'&&
         <section aria-label="Acervo reservado do Narrador"
-          className="rounded border border-current/25 p-4 space-y-3">
+          hidden={activeModule!=='administracao'}
+          className="firebase-module space-y-3">
           <h2 className="font-semibold">Eventos e aventuras do Narrador</h2>
           <p className="text-sm">Conteúdo privado do Firebase, liberado apenas
             após a revisão dos dados e autorização desta conta.</p>
@@ -738,12 +746,19 @@ function FirebaseAccess(){
             <GmAventuras/>
           </div>}
         </section>}
-      {view.profile==='narrador'&&
+      {view.profile==='narrador'&&<div
+        className="firebase-module" hidden={activeModule!=='administracao'}>
         <FirebaseHouseReconciliationOverview houses={houses}
           inspect={cloudHouseReconciliation}
-          onSelectHouse={id=>{void selectHouse(id);}}/>}
-      {calendar&&<div id="calendario" className="scroll-mt-4"><FirebaseCalendarSnapshot date={calendar}/></div>} 
-      {view.profile!=='editor'&&<div id="casas" className="space-y-2 scroll-mt-4">
+          onSelectHouse={id=>{setActiveModule('casas');void selectHouse(id);}}/>
+      </div>}
+      <div id="calendario" className="firebase-module"
+        hidden={activeModule!=='calendario'}>
+        {calendar?<FirebaseCalendarSnapshot date={calendar}/>:
+          <p role="status">O calendário ainda não está disponível nesta sessão Firebase.</p>}
+      </div>
+      {view.profile!=='editor'&&<div id="casas"
+        className="firebase-module space-y-2" hidden={activeModule!=='casas'}>
         <label className="block text-sm">Consultar Casa autorizada</label>
         <select className="max-w-md rounded border p-2" value={house?.id??''}
           disabled={busy} onChange={e=>{if(e.target.value)void selectHouse(e.target.value);}}>
@@ -862,7 +877,8 @@ function FirebaseAccess(){
         {house&&<FirebaseHouseCourtDomains houseName={house.name} state={house.state}/>}
         {house&&<FirebaseHouseChronicle houseName={house.name} state={house.state}/>}
       </div>}
-      {agents&&house&&<section className="rounded border p-4 space-y-2">
+      {agents&&house&&<section className="firebase-module space-y-2"
+        hidden={activeModule!=='casas'}>
         <h2 className="text-lg font-semibold">Agentes da Casa</h2>
         {agents.length===0?<p>Não há agentes neste snapshot.</p>:
           <ul className="space-y-1">{agents.map(a=><li key={a.id}>
@@ -870,7 +886,8 @@ function FirebaseAccess(){
           </li>)}</ul>}
       </section>}
       {dossiers&&house&&dossiers.ownerHouseId===house.id&&
-        <section className="rounded border p-4 space-y-3">
+        <section className="firebase-module space-y-3"
+          hidden={activeModule!=='casas'}>
           <h2 className="text-lg font-semibold">Dossiês de Espionagem</h2>
           <p className="text-xs">Apenas informações já descobertas pela
             Casa selecionada. Consulta preservada, sem novas missões.</p>
@@ -907,7 +924,8 @@ function FirebaseAccess(){
               </details>;
             })}</div>}
         </section>}
-      {view.profile!=='editor'&&<section id="missivas" className="rounded border p-4 space-y-2 scroll-mt-4">
+      {view.profile!=='editor'&&<section id="missivas"
+        className="firebase-module space-y-2" hidden={activeModule!=='missivas'}>
         <h2 className="text-lg font-semibold">Escrever missiva</h2>
         {!mailStatus?.canSend&&<p className="text-sm">
           O envio ficará disponível após o Narrador publicar a configuração inicial no HUB.
@@ -956,7 +974,8 @@ function FirebaseAccess(){
           </button>
         </form>}
       </section>}
-      {inbox&&<section className="rounded border p-4 space-y-2">
+      {inbox&&<section className="firebase-module space-y-2"
+        hidden={activeModule!=='missivas'}>
         <h2 className="text-lg font-semibold">Missivas entregues</h2>
         <p className="text-xs">Exibindo {inbox.items.length} de {inbox.totalVisible}
           {inbox.truncated?' · Mais cartas disponíveis no acervo':''}</p>
@@ -1010,7 +1029,8 @@ function FirebaseAccess(){
             </div>
           </form>}
       </section>}
-      <section id="jornal" className="rounded border p-4 space-y-2 scroll-mt-4">
+      <section id="jornal" className="firebase-module space-y-2"
+        hidden={activeModule!=='jornal'}>
         <h2 className="text-lg font-semibold">A Folha Sem Selo</h2>
         {editions.length===0?<p>Nenhuma edição publicada disponível.</p>:
           <ul>{editions.map(e=><li key={e.id} className="py-1">
@@ -1034,7 +1054,7 @@ function FirebaseAccess(){
           A redação será aberta após o Narrador publicar a configuração inicial no HUB.
         </p>)}
     </section>}
-    {message&&<p role="alert" className="text-sm">{message}</p>}
-  </main>;
+    {message&&<p role="alert" className="firebase-official-module-note">{message}</p>}
+  </FirebaseOfficialFrame>;
 }
 
