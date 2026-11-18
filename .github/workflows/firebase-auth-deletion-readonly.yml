@@ -34,6 +34,9 @@ jobs:
           node --test scripts/firebase/lot8-http-role-acceptance.test.mjs
           node --test scripts/firebase/cloud-readonly-boundary-smoke.test.mjs
           node --test scripts/firebase/player-pilot-preflight.test.mjs
+          node --test scripts/firebase/cloud-mail-service.test.mjs
+          node --test scripts/firebase/cloud-runtime-source-preflight.test.mjs
+          node --test scripts/firebase/cloud-role-linkage-readonly.test.mjs
       - name: Check public repository for secrets
         run: node scripts/verify-public-repo.mjs
 
