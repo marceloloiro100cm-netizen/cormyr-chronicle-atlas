@@ -275,16 +275,17 @@ test('Mail runtime mismatch hides new mail and disables receipts/replies',async(
     sourceSnapshotReconciled:true,mailWriteApproved:true,applicationEnabled:true,
   });
   approveCloudMailbox(f);
-  f.docs.set(root+'/letters/cloud-visible',{
-    id:'cloud-visible',source:'firebase-cloud',senderUid:'player-b',
+  const visibleId=hash('reply:cloud-visible');
+  f.docs.set(root+'/letters/'+visibleId,{
+    id:visibleId,source:'firebase-cloud',senderUid:'player-b',
     originHouseId:'house-b',recipientKind:'house',recipientHouseId:'house-a',
     recipientPlayerId:null,publicationState:'delivered',deletedAt:null,
     subject:'TEST_PRIVATE_CLOUD_MAIL',content:'TEST_PRIVATE_CLOUD_CONTENT',
     createdAt:'2026-11-16T12:00:00Z',
   });
   const positive=(await f.service().listMailbox(token));
-  assert.equal(positive.items.some(x=>x.id==='cloud-visible'),true);
-  assert.equal(positive.items.find(x=>x.id==='cloud-visible').canReply,true);
+  assert.equal(positive.items.some(x=>x.id===visibleId),true);
+  assert.equal(positive.items.find(x=>x.id===visibleId).canReply,true);
   assert.equal(positive.items.find(x=>x.id==='to-a').canMarkRead,true);
   const approved=f.docs.get(mailRoot);
   for(const [key,value] of [
@@ -294,7 +295,7 @@ test('Mail runtime mismatch hides new mail and disables receipts/replies',async(
   ]){
     f.docs.set(mailRoot,{...approved,[key]:value});
     const blocked=await f.service().listMailbox(token);
-    assert.equal(blocked.items.some(x=>x.id==='cloud-visible'),false);
+    assert.equal(blocked.items.some(x=>x.id===visibleId),false);
     assert.equal(blocked.items.find(x=>x.id==='to-a').canMarkRead,false);
     assert.equal(blocked.items.find(x=>x.id==='to-a').readAt,null);
     assert.equal(blocked.items.some(x=>x.canReply===true),false);
@@ -305,11 +306,11 @@ test('Mail runtime mismatch hides new mail and disables receipts/replies',async(
   }
   f.docs.delete(mailRoot);
   assert.equal((await f.service().listMailbox(token)).items.some(x=>
-    x.id==='cloud-visible'),false);
+    x.id===visibleId),false);
   f.docs.set(mailRoot,approved);
   f.docs.set(root,{...f.docs.get(root),calendarVersion:4});
   assert.equal((await f.service().listMailbox(token)).items.some(x=>
-    x.id==='cloud-visible'),false);
+    x.id===visibleId),false);
 });
 
 test('Unapproved Cloud runtime never leaks messages through historical mailbox',async()=>{
