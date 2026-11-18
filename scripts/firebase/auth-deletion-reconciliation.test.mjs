@@ -55,3 +55,9 @@ test('reject approved deletion that still carries any House permission',()=>{
     assert.throws(()=>reconcile(f));
   }
 });
+
+test('reject deletion of a historical editor even when House lists are empty',()=>{
+  const f=fixtures();
+  f.historicalAccess[13].data.profile='editor';
+  assert.throws(()=>reconcile(f));
+});
