@@ -20,7 +20,7 @@ const safeCall=(options)=>{
   assert.equal(options.body,
     '{"action":"__cormyr_readonly_probe_invalid_action__"}');
 };
-test('four read-only, four gated Cloud and three closed legacy routes reject anonymous probes',async()=>{
+test('four read-only, three gated Cloud and four archive-closed routes reject anonymous probes',async()=>{
   const calls=[];
   const report=await inspectCloudReadonlyBoundaries(async(url,options)=>{
     calls.push(url);safeCall(options);
@@ -40,6 +40,8 @@ test('four read-only, four gated Cloud and three closed legacy routes reject ano
   assert.equal(report.readyForPlayers,false);
   assert.equal(report.readyForCutover,false);
   assert.equal(report.writes,0);
+  assert.ok(report.checks.some(x=>
+    x.name==='treasuryArchiveLocked'&&x.passed===true));
   assert.match(formatCloudReadonlyBoundarySummary(report),/NÃO AUTORIZADA/);
 });
 test('when deployed read feature is enabled, authenticated guard 401 is accepted',async()=>{
@@ -52,7 +54,7 @@ test('when deployed read feature is enabled, authenticated guard 401 is accepted
   assert.equal(r.realCloudRoleE2EVerified,false);
   assert.equal(r.cloudPrivateRoutesProtected,true);
 });
-test('Cloud mail, newspaper and treasury never accept a legacy or unexpected response',async()=>{
+test('Cloud mail and newspaper never accept a legacy or unexpected response',async()=>{
   for(const denied of [
     ()=>response(503,'legacy_backend_paused'),
     ()=>response(400,'invalid_action'),
