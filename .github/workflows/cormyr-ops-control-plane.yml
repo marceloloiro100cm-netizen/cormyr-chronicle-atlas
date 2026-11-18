@@ -225,11 +225,27 @@ jobs:
                     ['waiting','pending','queued','requested','in_progress'].includes(run.status));
                   if (active) {
                     const safeId=Number(active.id);
-                    core.info('Protected audit already pending: '+workflow_id+
-                      ' run #'+safeId+'. No duplicate requested.');
-                    await core.summary.addRaw('- Existing protected run: '+
-                      workflow_id+' #'+safeId+' (no new dispatch)\\n').write();
-                    continue;
+                    // Only replace an obsolete READ-ONLY operator request.
+                    // Never cancel an Auth mutation or a current protected job.
+                    const ageMs=Date.now()-Date.parse(active.created_at||'');
+                    const staleReadOnly=operation==='operator-audit'&&
+                      workflow_id==='firebase-cloud-operator-readiness.yml'&&
+                      ['waiting','pending'].includes(active.status)&&
+                      active.head_sha!==context.sha&&
+                      Number.isFinite(ageMs)&&ageMs>=30*60*1000;
+                    if(staleReadOnly){
+                      await github.rest.actions.cancelWorkflowRun({
+                        owner,repo,run_id:safeId
+                      });
+                      core.info('Cancelled obsolete read-only operator audit #'+safeId+
+                        ' before requesting the latest main revision.');
+                    }else{
+                      core.info('Protected audit already pending: '+workflow_id+
+                        ' run #'+safeId+'. No duplicate requested.');
+                      await core.summary.addRaw('- Existing protected run: '+
+                        workflow_id+' #'+safeId+' (no new dispatch)\\n').write();
+                      continue;
+                    }
                   }
                 }
                 await github.rest.actions.createWorkflowDispatch({
