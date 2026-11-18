@@ -15,6 +15,7 @@ on:
       - 'Firebase App Hosting — verify main is actually serving'
       - 'Firebase App Hosting - live revision read-only audit'
       - 'Firebase Storage - verify scoped staging access'
+      - 'Firebase Storage - source to staging checksum proof (read-only)'
       - 'Firebase Cloud access readiness — read-only OIDC'
       - 'Validate'
       - 'Build check'
@@ -104,7 +105,8 @@ jobs:
                 ['firebase-mail-unified.yml','Missivas integradas (emulador)'],
                 ['firebase-read-receipts.yml','Leitura de Missivas (emulador)'],
                 ['firebase-player-pilot-preflight.yml','Piloto público anônimo'],
-                ['firebase-storage-scoped-audit.yml','Storage: destino de homologação']
+                ['firebase-storage-scoped-audit.yml','Storage: destino de homologação'],
+                ['firebase-storage-source-copy-readonly.yml','Storage: origem × homologação (metadados)']
               ];
               const safeStatus=new Set(['queued','in_progress','waiting','pending','requested','completed']);
               const safeOutcome=new Set(['success','failure','cancelled','timed_out','skipped','neutral','action_required']);
