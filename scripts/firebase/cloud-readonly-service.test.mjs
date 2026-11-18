@@ -857,3 +857,29 @@ test('Narrator pending-account review rejects unlinked or disabled current Auth 
   await rejects(()=>f.service().listAccessRemediation(token),
     'access_inventory_unverified',503);
 });
+
+test('historical privileged deletion is never silently archived in narrator review',async()=>{
+  for(const protectedField of ['admin','profile','memberHouseIds','editHouseIds']){
+    const f=fixture('narrador');
+    const prefix='migrationDomainStage/'+snapshot+'/access/';
+    for(let i=2;i<=14;i++)
+      f.docs.set(prefix+'account-'+i,{
+        userId:'account-'+i,profile:'jogador',active:true,admin:false,
+        requirePasswordChange:false,playerId:null,
+        memberHouseIds:[],editHouseIds:[],
+      });
+    const absent=f.docs.get(prefix+'account-14');
+    if(protectedField==='admin')absent.admin=true;
+    if(protectedField==='profile')absent.profile='editor';
+    if(protectedField==='memberHouseIds')absent.memberHouseIds=['house-a'];
+    if(protectedField==='editHouseIds')absent.editHouseIds=['house-a'];
+    f.docs.set(prefix+'account-14',absent);
+    const original=f.auth.listUsers;
+    f.auth.listUsers=async()=>({
+      users:(await original()).users.filter(u=>u.uid!=='account-14'),
+    });
+    f.auth.getUser=async uid=>({uid,disabled:false});
+    await rejects(()=>f.service().listAccessRemediation(token),
+      'access_inventory_unverified',503);
+  }
+});
