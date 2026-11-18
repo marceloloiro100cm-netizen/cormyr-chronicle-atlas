@@ -19,6 +19,17 @@ describe('Atlas público: entrada Firebase visível, sem ponte Supabase',()=>{
     expect(extras).not.toContain("btn.href='/jogadores'");
     expect(extras).toContain('window.addEventListener');
   });
+  it('homologação e bancada não orientam mais retorno ao provedor legado',()=>{
+    const homolog=read('src/routes/firebase-homolog.tsx');
+    const workbench=read('src/components/firebase/FirebaseDomainPreview.tsx');
+    const config=read('src/integrations/firebase/public-config.ts');
+    expect(homolog).toContain('Voltar ao portal Firebase do Atlas');
+    expect(homolog).toContain('href="/auth"');
+    expect(homolog).not.toContain('pelo Supabase');
+    expect(workbench).toContain('não concede acesso à campanha');
+    expect(workbench).not.toContain('login Supabase');
+    expect(config).not.toContain('active Supabase authentication');
+  });
   it('preserva bloqueios de rotas antigas e APIs mesmo abrindo login e recuperação',()=>{
     const root=read('src/routes/__root.tsx');
     const gate=read('src/lib/archive-only.ts');

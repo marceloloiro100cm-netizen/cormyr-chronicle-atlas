@@ -58,7 +58,7 @@ export function FirebaseDomainPreview(){
     <h2 className="text-lg font-semibold">Módulos Firebase · homologação isolada</h2>
     <p className="my-2 text-sm">
       Esta bancada consulta apenas os serviços no Firebase Emulator local.
-      Não altera o site atual, não importa dados e não substitui o login Supabase.
+      Não importa dados e não concede acesso à campanha ou permissões além das verificadas no Firebase.
       Somente leituras são oferecidas aqui; as permissões são conferidas no servidor.
     </p>
     {!enabled?<p role="status">A bancada de módulos não está habilitada neste ambiente.</p>:

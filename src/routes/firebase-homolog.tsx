@@ -101,7 +101,7 @@ function FirebaseHomolog() {
     </form>}
     {message && <p role="alert" className="mt-4">{message}</p>}
     <p className="mt-8 text-sm"><a className="underline" href="/auth">
-      Voltar ao acesso normal pelo Supabase
+      Voltar ao portal Firebase do Atlas
     </a></p>
   </main>;
 }
