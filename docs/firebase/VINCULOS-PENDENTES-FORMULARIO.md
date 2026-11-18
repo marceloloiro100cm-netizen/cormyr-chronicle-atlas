@@ -42,20 +42,42 @@ Regras que o sistema exige (senão a conta continua com acesso negado):
 - **narrador:** `admin` verdadeiro.
 - Para ler qualquer coisa: `active` verdadeiro e `requirePasswordChange` falso.
 
-## Como aplicar depois de decidir
+## Conferência direta pelo Narrador no Atlas
 
-Para cada linha, editar o documento `access/<UID>` no Console do Firestore:
+Na área `/firebase-access`, o Narrador autenticado possui o painel
+**Acessos pendentes — consulta privada**. Ao clicar em **Conferir cadastros
+no Firebase**, o servidor:
 
-1. `profile`, `memberHouseIds`, `editHouseIds` e `admin` conforme o formulário;
-2. `active` para `true` se a resposta foi "sim";
-3. `requirePasswordChange` para `false` **somente depois** de o jogador
-   trocar a senha em `/reset-password`.
+1. Verifica o token e o perfil de Narrador/admin no Firebase;
+2. Confere o inventário fechado das 14 contas;
+3. Busca somente os cadastros com problemas, incluindo e-mail e UID para
+   identificar a conta corretamente;
+4. Expõe os vínculos atuais ao Narrador exclusivamente nessa sessão,
+   sem logar ou armazenar as identidades no navegador.
 
-**Lacuna conhecida:** a troca de senha pelo Firebase (`/reset-password`)
-não altera `requirePasswordChange` sozinha. Por enquanto, o Narrador precisa
-mudar esse campo à mão após confirmar com o jogador. Automatizar isso é um
-item de código separado.
+**A consulta não modifica nenhuma conta nem libera acesso.** O editor,
+os jogadores e usuários anônimos recebem acesso negado.
 
-Depois de aplicar, rode de novo a auditoria protegida
-(`firebase-cloud-operator-readiness`) para confirmar que os vínculos
-incompletos chegaram a zero.
+## Como aprovar os próximos ajustes
+
+Preencha a tabela acima **fora do repositório público** e confirme com
+cada titular seu perfil e sua Casa. Conserve essa decisão em ambiente privado.
+Duas contas ainda podem requerer redefinição de senha em `/reset-password`.
+
+**Não edite diretamente** os documentos da coleção
+`migrationDomainStage/{snapshot}/access`: eles fazem parte do snapshot
+histórico de migração e devem permanecer imutáveis. A correção efetiva exige
+que o runtime passe a consultar uma fonte operacional de acesso com escrita
+protegida, reconciliação de origem e aprovação administrativa específica.
+Até essa fonte estar implantada, uma decisão de formulário **não** libera
+o usuário; alterar apenas o Firebase Auth também não concede permissões
+de campanha.
+
+A alteração de `requirePasswordChange` só pode ser efetuada após prova
+confiável de troca de senha pelo titular. Não deduza essa prova de um login
+ou de uma confirmação verbal sem verificar a operação.
+
+Após uma correção operacional aprovada, execute novamente a auditoria
+protegida `firebase-cloud-operator-readiness`; verifique cada vínculo e
+não libere gravação de missivas ou calendário sem os testes autenticados
+entre Casas.
