@@ -27,6 +27,7 @@ test('previews a real but incomplete player with NO write or privilege',()=>{
   assert.deepEqual(plan.changedFields,
     ['active','memberHouseIds','editHouseIds']);
   assert.equal(plan.proposedMemberHouseCount,1);
+  assert.match(plan.proposalFingerprint,/^[a-f0-9]{64}$/);
   assert.equal(plan.decisionApplied,false);
   assert.equal(plan.adminGranted,false);
   assert.equal(plan.authWrites,0);
@@ -88,4 +89,25 @@ test('broken source, duplicate catalog and unexpected active house count deny',(
   const incomplete=input();incomplete.houseCatalog=houses.slice(2);
   assert.throws(()=>planNarratorAccessRemediation(incomplete),
     /house_catalog_unverified/);
+});
+
+test('fingerprint is stable for set order and changes for identity or permissions',()=>{
+  const original=planNarratorAccessRemediation(input());
+  const repeat=planNarratorAccessRemediation(input());
+  assert.equal(original.proposalFingerprint,repeat.proposalFingerprint);
+  const differentHouse=planNarratorAccessRemediation(input(current(),
+    next({memberHouseIds:['house-2'],editHouseIds:['house-2']})));
+  assert.notEqual(original.proposalFingerprint,differentHouse.proposalFingerprint);
+  const differentActor=input();
+  differentActor.actorUid='narrator-2';
+  assert.notEqual(original.proposalFingerprint,
+    planNarratorAccessRemediation(differentActor).proposalFingerprint);
+  const reordered=planNarratorAccessRemediation(input(current(),
+    next({memberHouseIds:['house-2','house-1'],
+      editHouseIds:['house-2','house-1']})));
+  const sameSet=planNarratorAccessRemediation(input(current(),
+    next({memberHouseIds:['house-1','house-2'],
+      editHouseIds:['house-1','house-2']})));
+  assert.equal(reordered.proposalFingerprint,sameSet.proposalFingerprint);
+  assert.equal(original.decisionApplied,false);
 });
