@@ -112,11 +112,16 @@ jobs:
                 'Consulta somente leitura de runs já existentes na branch main. Nenhum workflow foi disparado por esta verificação.',
                 ''
               ];
+              const manualProtected=new Set([
+                'firebase-cloud-operator-readiness.yml',
+                'firebase-auth-deletion-readonly.yml',
+                'firebase-cloud-runtime-drafts.yml',
+              ]);
               const results=await Promise.all(ids.map(async([filename,label])=>{
                 try{
-                  const x=await github.rest.actions.listWorkflowRuns({
-                    owner,repo,workflow_id:filename,branch:'main',per_page:3
-                  });
+                  const args={owner,repo,workflow_id:filename,branch:'main',per_page:3};
+                  if(manualProtected.has(filename))args.event='workflow_dispatch';
+                  const x=await github.rest.actions.listWorkflowRuns(args);
                   const runs=Array.isArray(x.data.workflow_runs)?x.data.workflow_runs:[];
                   return {label,runs:runs.slice(0,2).map(run=>({
                     id:Number(run.id),
@@ -132,7 +137,8 @@ jobs:
                   '[#'+run.id+'](https://github.com/'+REPO+'/actions/runs/'+run.id+') '+
                   run.status+'/'+run.conclusion).join(' · '));
               }
-              lines.push('','Resultados de emulador e de build não autorizam o jogo. Jobs protegidos em waiting exigem aprovação do ambiente. Liberação: NO_GO.');
+              lines.push('','Para Cloud protegido, exclusão de Auth e runtimes, a lista acima filtra apenas execuções manuais; verifique os jobs internos (um run verde pode ter etapa protegida ignorada).',
+                'Resultados de emulador e de build não autorizam o jogo. Jobs protegidos em waiting exigem aprovação do ambiente. Liberação: NO_GO.');
               await github.rest.issues.createComment({
                 owner,repo,issue_number:582,body:lines.join('\n')
               });
