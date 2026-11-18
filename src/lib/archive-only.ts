@@ -31,6 +31,8 @@ export function shouldBlockLegacyRequest(pathname: string, handlerType?: string)
   // and a server-only feature flag. All legacy and emulator APIs remain blocked.
   if ((pathname === '/api/firebase-cloud-read' ||
        pathname === '/api/firebase-cloud-mail' ||
+       // Firebase narrator-only pending week proposal; never a calendar publish.
+       pathname === '/api/firebase-narrator-week' ||
        pathname === '/api/firebase-cloud-newspaper' ||
        // These four are READ ONLY, with separate runtime flags, Firebase
        // token validation, strict per-House access and deny-by-default rules.
