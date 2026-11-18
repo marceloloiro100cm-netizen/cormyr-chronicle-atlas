@@ -58,7 +58,7 @@ export function safeDeletionFailureSummary(error){
     '| Reconciliação Auth | **BLOQUEADA** |',
     '| Motivo seguro | `'+code+'` |',
     '| Modificações Auth / Firestore | 0 / 0 |',
-    '| Liberação de jogadores | **NÃO AUTORIZADA** |',''].join('\\n').replaceAll('\\n','\n');
+    '| Liberação de jogadores | **NÃO AUTORIZADA** |',''].join('\n');
 }
 
 export function safeDeletionSummary(report){
