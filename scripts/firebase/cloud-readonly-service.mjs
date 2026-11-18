@@ -148,7 +148,7 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
         if(house.active===true&&house.season===2)
           validHouseIds.add(house.sourceId);
       }
-      const seen=new Set(),candidates=[];
+      const seen=new Set(),historicalAccessByUid=new Map(),candidates=[];
       const counts={inactive:0,missingProfile:0,playerWithoutHouse:0,
         passwordChangePending:0,invalidScope:0};
       for(const doc of records.docs){
@@ -158,6 +158,7 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
            typeof doc.id==='string'&&doc.id!==v.userId)
           deny('access_inventory_unverified',503);
         seen.add(v.userId);
+        historicalAccessByUid.set(v.userId,v);
         const profile=['narrador','jogador','editor'].includes(v.profile)
           ?v.profile:null;
         const issues=[];
@@ -215,6 +216,17 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
          seen.size-liveByUid.size>1)
         deny('access_inventory_unverified',503);
       const archivedHistoricalAccess=seen.size-liveByUid.size;
+      for(const [uid,row] of historicalAccessByUid){
+        if(liveByUid.has(uid))continue;
+        // A missing Auth record can be archived-only in this private review
+        // only when it had no administrative, editorial or House privileges.
+        if(row.admin!==false||row.profile==='narrador'||
+           row.profile==='editor'||!Array.isArray(row.memberHouseIds)||
+           row.memberHouseIds.length!==0||
+           !Array.isArray(row.editHouseIds)||
+           row.editHouseIds.length!==0)
+          deny('access_inventory_unverified',503);
+      }
       const currentCandidates=candidates.filter(c=>liveByUid.has(c.uid));
       const currentCounts={inactive:0,missingProfile:0,playerWithoutHouse:0,
         passwordChangePending:0,invalidScope:0};
