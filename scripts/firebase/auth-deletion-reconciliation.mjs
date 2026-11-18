@@ -33,7 +33,7 @@ export function reconcileAuthorizedAuthDeletions({
   }
   const live=unique(liveAuth.map(x=>x?.uid),'live_ids_invalid');
   if(liveAuth.some(x=>typeof x.disabled!=='boolean'))fail('live_auth_invalid');
-  const deleted=unique(approvedDeletedUids,'approval_invalid');
+  // The previous protected audit confirmed all imported accounts enabled.\n  // An unexpected disabled survivor must never be hidden by a 13/14 count.\n  const disabledRemaining=liveAuth.filter(u=>u.disabled===true).length;\n  if(disabledRemaining!==0)fail('remaining_account_disabled');\n  const deleted=unique(approvedDeletedUids,'approval_invalid');
   // Exactly one previously authorized legacy deletion; never infer bulk approval.
   if(deleted.size!==1||live.size!==13)fail('approval_invalid');
   for(const uid of deleted){
@@ -56,7 +56,7 @@ export function reconcileAuthorizedAuthDeletions({
     fail('count_mismatch');
   return Object.freeze({
     checked:true, historicalAccounts:historic.size,liveAccounts:live.size,
-    authorizedDeletionsVerified:deleted.size,unexpectedMissing:0,
+    authorizedDeletionsVerified:deleted.size,disabledRemaining:0,unexpectedMissing:0,
     unexpectedNew:0,authWrites:0,firestoreWrites:0,
     readyForPlayers:false,releaseDecision:'NO_GO',
   });
