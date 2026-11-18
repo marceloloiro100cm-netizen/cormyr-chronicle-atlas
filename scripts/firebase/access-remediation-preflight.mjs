@@ -24,10 +24,13 @@ const validIds=v=>Array.isArray(v)&&v.length<=250&&
   v.every(x=>typeof x==='string'&&ID.test(x))&&
   new Set(v).size===v.length;
 const equal=(a,b)=>a.length===b.length&&a.every((id,i)=>id===b[i]);
-const pending=v=>v.active===false||v.requirePasswordChange===true||
-  v.profile==null||
+const pending=(v,activeHouses)=>v.active===false||
+  v.requirePasswordChange===true||v.profile==null||
   v.profile==='jogador'&&v.memberHouseIds.length===0||
-  v.editHouseIds.some(id=>!v.memberHouseIds.includes(id));
+  v.profile==='editor'&&v.memberHouseIds.length!==0||
+  v.memberHouseIds.some(id=>!activeHouses.has(id))||
+  v.editHouseIds.some(id=>!v.memberHouseIds.includes(id)||
+    !activeHouses.has(id));
 const n=v=>Number.isSafeInteger(v)&&v>=0&&v<=250?v:'indisponível';
 
 /**
@@ -68,7 +71,7 @@ export function planPrivateAccessRemediation({
        (v.profile!=='narrador'&&v.admin!==false))
       fail('access_inventory_invalid');
     source.set(row.id,v);
-    if(pending(v))pendingAtSource++;
+    if(pending(v,activeHouseIds))pendingAtSource++;
   }
 
   const seen=new Set(),proposals=[];
@@ -85,7 +88,7 @@ export function planPrivateAccessRemediation({
       fail('decision_unverified');
     seen.add(proposed.uid);
     const current=source.get(proposed.uid);
-    if(!current||!pending(current)||current.profile==='narrador')
+    if(!current||!pending(current,activeHouseIds)||current.profile==='narrador')
       fail('account_not_pending_or_privileged');
     if(proposed.profile!=='jogador'&&proposed.profile!=='editor')
       fail('unsupported_role_change');
