@@ -13,6 +13,26 @@ const SHA=/^[a-f0-9]{40}$/;
 const RUN=/^[1-9][0-9]{7,13}$/;
 const fail=code=>{throw Error('apphosting_direct_'+code);};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+// Only fixed Google RPC reason labels may reach public Actions logs.
+// Never include provider messages, arbitrary metadata, service identities or URLs.
+const SAFE_REASONS=new Set([
+  'IAM_PERMISSION_DENIED','ACCESS_TOKEN_SCOPE_INSUFFICIENT',
+  'SERVICE_DISABLED','CONSUMER_INVALID','ORG_RESTRICTION',
+  'SECURITY_POLICY_VIOLATED','API_KEY_INVALID','LOCATION_POLICY_VIOLATED',
+]);
+export function classifyAppHostingDenial(response,status){
+  if(status!==403||!response||typeof response!=='object')return null;
+  const error=response.error;
+  if(!error||typeof error!=='object')return null;
+  const details=Array.isArray(error.details)?error.details:[];
+  for(const d of details){
+    if(!d||typeof d!=='object'||d['@type']!==
+       'type.googleapis.com/google.rpc.ErrorInfo')continue;
+    if(SAFE_REASONS.has(d.reason))return d.reason.toLowerCase();
+  }
+  if(error.status==='PERMISSION_DENIED')return 'permission_denied_unspecified';
+  return null;
+}
 
 export async function requestExactAppHostingRollout({
   sha,runId,fetcher=fetch,accessToken,wait=sleep,
@@ -45,6 +65,13 @@ export async function requestExactAppHostingRollout({
       if(!data||typeof data!=='object'||Array.isArray(data))
         fail('invalid_response');
     }
+    if(reply.status===403){
+      // A denied response is untrusted. Parse only for allowlisted RPC reason.
+      let denial=null;
+      try{denial=await reply.json();}catch{/* Opaque denial. */}
+      return {status:reply.status,data:null,
+        denialReason:classifyAppHostingDenial(denial,reply.status)};
+    }
     return {status:reply.status,data};
   };
   const traffic=await call(BACKEND+'/traffic');
@@ -60,7 +87,9 @@ export async function requestExactAppHostingRollout({
   );
   if(createBuild.status!==409&&
      (createBuild.status<200||createBuild.status>=300))
-    fail('build_create_http_'+createBuild.status);
+    fail('build_create_http_'+createBuild.status+
+      (createBuild.status===403&&createBuild.denialReason
+        ?'_'+createBuild.denialReason:''));
   if(createBuild.status!==409&&
      typeof createBuild.data.name!=='string')
     fail('build_operation_unverified');
