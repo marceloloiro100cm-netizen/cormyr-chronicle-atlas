@@ -183,6 +183,44 @@ test('optional live-source probe is sanitized and never issues authorization',as
   assert.ok(!output.includes('PRIVATE_CALENDAR_DATE'));
   assert.ok(!output.includes('PRIVATE_HOUSE_ID'));
 });
+test('private ten-House candidate review appears as counts, never as approval',async()=>{
+  const source={
+    sourceStagesVerified:6,auxiliaryStagesVerified:3,
+    reviewCandidates:{
+      scope:'CORMYR_PRIVATE_PUBLIC_REVIEW_CANDIDATES_READ_ONLY',
+      checked:true,activeHouses:10,matched:10,unmatched:0,ambiguous:0,
+      invalidArchiveFields:0,candidatePlanComplete:true,
+      privateDraft:{houses:[{id:'PRIVATE_HOUSE_ID',name:'PRIVATE_HOUSE'}]},
+    },
+  };
+  const report=evaluateOperatorEvidence({
+    cloud:cloud(),authPreview:auth(),runtimeSources:source,
+  });
+  const candidates=report.fourBlocks.publicContent.editorialCandidates;
+  assert.equal(candidates.checked,true);
+  assert.equal(candidates.activeHouses,10);
+  assert.equal(candidates.matched,10);
+  assert.equal(candidates.privateDraftPrepared,true);
+  assert.equal(candidates.approved,false);
+  assert.equal(candidates.ready,false);
+  assert.equal(report.fourBlocks.publicContent.ready,false);
+  assert.equal(report.readyForPlayers,false);
+  const log=JSON.stringify(report)+safeOperatorSummary(report);
+  for(const forbidden of ['PRIVATE_HOUSE_ID','PRIVATE_HOUSE'])
+    assert.equal(log.includes(forbidden),false);
+  assert.match(safeOperatorSummary(report),
+    /Dez Casas: candidatos editoriais preparados/);
+  const forged=evaluateOperatorEvidence({
+    cloud:cloud(),authPreview:auth(),
+    runtimeSources:{reviewCandidates:{
+      checked:true,candidatePlanComplete:true,
+      activeHouses:10,matched:10,scope:'UNTRUSTED_PRIVATE_REPORT',
+    }},
+  });
+  assert.equal(forged.fourBlocks.publicContent.editorialCandidates.checked,false);
+  assert.equal(forged.fourBlocks.publicContent.editorialCandidates.privateDraftPrepared,false);
+});
+
 test('a failed third probe never leaks provider detail',async()=>{
   const report=await inspectOperatorEvidence({
     readCloud:async()=>cloud(),previewAuth:async()=>auth(),
