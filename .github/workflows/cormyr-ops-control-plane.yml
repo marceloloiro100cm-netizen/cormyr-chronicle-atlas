@@ -17,6 +17,7 @@ on:
       - 'Validate'
       - 'Build check'
       - 'Firebase player pilot — GitHub-only preflight'
+      - 'Firebase Cloud — bootstrap disabled runtime drafts'
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -25,7 +26,7 @@ on:
         type: choice
         required: true
         default: audit
-        options: [audit, operator-audit, auth-preview, auth-deletion-audit, auth-inventory-audit, verify-emulators, verify-build, verify-pilot, runtime-draft]
+        options: [audit, operator-audit, auth-preview, auth-deletion-audit, auth-inventory-audit, verify-emulators, verify-build, verify-pilot, runtime-preview, runtime-draft]
 
 permissions:
   contents: read
@@ -54,7 +55,7 @@ jobs:
             const REPO = 'marceloloiro100cm-netizen/cormyr-chronicle-atlas';
             const CONTROL_ISSUE = 568;
             const AUTH_WORKFLOW = '.github/workflows/firebase-auth-enable-all-test-accounts.yml';
-            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-deletion-audit|auth-inventory-audit|verify-emulators|verify-build|verify-pilot|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
+            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-deletion-audit|auth-inventory-audit|verify-emulators|verify-build|verify-pilot|runtime-preview|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
             const {owner, repo} = context.repo;
             if (owner + '/' + repo !== REPO || Number(process.env.GITHUB_RUN_ATTEMPT) !== 1) {
               core.info('Untrusted context or retry: no remote action');
@@ -64,7 +65,7 @@ jobs:
             if (context.eventName === 'schedule') operation = 'audit';
             else if (context.eventName === 'workflow_dispatch') {
               operation = context.payload.inputs?.task;
-              if (!['audit', 'operator-audit', 'auth-preview', 'auth-deletion-audit', 'auth-inventory-audit', 'verify-emulators', 'verify-build', 'verify-pilot', 'runtime-draft'].includes(operation)) {
+              if (!['audit', 'operator-audit', 'auth-preview', 'auth-deletion-audit', 'auth-inventory-audit', 'verify-emulators', 'verify-build', 'verify-pilot', 'runtime-preview', 'runtime-draft'].includes(operation)) {
                 core.info('Unknown manual command: no action');
                 return;
               }
@@ -103,6 +104,8 @@ jobs:
               ['firebase-auth-inventory-readonly.yml', {}],
             ] : operation === 'auth-deletion-audit' ? [
               ['firebase-auth-deletion-readonly.yml', {}],
+            ] : operation === 'runtime-preview' ? [
+              ['firebase-cloud-runtime-drafts.yml', {mode:'preview'}],
             ] : operation === 'runtime-draft' ? [
               ['firebase-cloud-runtime-drafts.yml', {
                 mode:'apply', confirmation:'CREATE_DISABLED_CORMYR_RUNTIME_DRAFTS',
@@ -187,7 +190,8 @@ jobs:
               'Firebase Cloud access readiness — read-only OIDC':'Cloud: disponibilidade de fontes por OIDC',
               'Validate':'CI: contratos, TypeScript, build e testes de componentes',
               'Build check':'CI: saída do Firebase App Hosting e tipografia do Jornal',
-              'Firebase player pilot — GitHub-only preflight':'Site: leitura pública e bloqueios de visitante anônimo'
+              'Firebase player pilot — GitHub-only preflight':'Site: leitura pública e bloqueios de visitante anônimo',
+              'Firebase Cloud — bootstrap disabled runtime drafts':'Cloud: pré-validação de fontes e runtimes (prévia, somente leitura)'
             });
             const run=context.payload.workflow_run;
             if (!run || !Object.hasOwn(allowed,run.name)) return;
