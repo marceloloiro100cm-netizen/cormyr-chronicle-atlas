@@ -9,6 +9,8 @@ export interface FirebaseCloudReadonly {
   session(idToken:string):Promise<unknown>;
   /** Narrator-only, on-demand read of unresolved accounts. Never mutates. */
   listAccessRemediation(idToken:string):Promise<unknown>;
+  /** Nonmutating preview with current server-verified profile and House data. */
+  previewAccessRemediation(idToken:string,targetUid:unknown,proposal:unknown):Promise<unknown>;
   listHouses(idToken:string):Promise<unknown>;
   getHouse(idToken:string,houseId:unknown):Promise<unknown>;
   getCalendar(idToken:string):Promise<unknown>;
