@@ -137,6 +137,36 @@ test('Firebase ID token, enabled account and active scope required on each call'
   await rejects(()=>f.service().session(token),'migration_stage_not_ready',503);
 });
 
+test('stale, absent and duplicated House memberships deny every private Cloud read',async()=>{
+  const f=fixture('jogador');
+  const scopePath='migrationDomainStage/'+snapshot+'/access/user-1';
+  const housePath='migrationDomainStage/'+snapshot+'/houses/'+hash('house:house-a');
+  const raw=f.docs.get(scopePath),original=f.docs.get(housePath);
+  for(const bad of [
+    {...raw,memberHouseIds:[],editHouseIds:[]},
+    {...raw,memberHouseIds:['house-a','house-a'],editHouseIds:[]},
+    {...raw,memberHouseIds:['unknown-house'],editHouseIds:[]},
+    {...raw,memberHouseIds:['house-a'],editHouseIds:['house-a','house-a']},
+  ]){
+    f.docs.set(scopePath,bad);
+    await rejects(()=>f.service().session(token),'invalid_access_scope',403);
+    await rejects(()=>f.service().listMailbox(token),'invalid_access_scope',403);
+  }
+  f.docs.set(scopePath,raw);
+  for(const changes of [
+    {active:false},{season:1},{sourceId:'house-b'},
+  ]){
+    f.docs.set(housePath,{...original,...changes});
+    await rejects(()=>f.service().session(token),'invalid_access_scope',403);
+    await rejects(()=>f.service().getHouse(token,'house-a'),'invalid_access_scope',403);
+  }
+  f.docs.delete(housePath);
+  await rejects(()=>f.service().session(token),'invalid_access_scope',403);
+  const narrator=fixture('narrador');
+  // A narrator has no House membership, but remains separately authorized.
+  assert.equal((await narrator.service().session(token)).profile,'narrador');
+});
+
 test('Player can see own house, not other houses, with read-only state',async()=>{
   const f=fixture();
   const srv=f.service();
@@ -246,6 +276,34 @@ test('Narrator pending access report fails closed on partial or spoofed inventor
   // Even the Narrator cannot inspect when their account is suspended.
   f.docs.set(root+'user-1',scope('narrador',{active:false}));
   await rejects(()=>f.service().listAccessRemediation(token),'access_denied',403);
+});
+
+test('Narrator remediation identifies deactivated or outdated House memberships',async()=>{
+  const f=fixture('narrador');
+  const root='migrationDomainStage/'+snapshot+'/access/';
+  for(let i=2;i<=14;i++){
+    const uid='player-'+i;
+    f.docs.set(root+uid,{
+      userId:uid,profile:'jogador',admin:false,active:true,
+      requirePasswordChange:false,playerId:uid,
+      memberHouseIds:['house-a'],editHouseIds:['house-a'],
+    });
+  }
+  f.auth.getUser=async uid=>({uid,email:uid+'@example.invalid',disabled:false});
+  const base=await f.service().listAccessRemediation(token);
+  assert.equal(base.issues.invalidScope,0);
+  assert.equal(base.pendingAccounts,0);
+  const housePath='migrationDomainStage/'+snapshot+'/houses/'+hash('house:house-a');
+  const current=f.docs.get(housePath);
+  f.docs.set(housePath,{...current,season:1});
+  const report=await f.service().listAccessRemediation(token);
+  assert.equal(report.issues.invalidScope,13);
+  assert.equal(report.pendingAccounts,13);
+  assert.ok(report.items.every(item=>item.issues.includes('invalidScope')));
+  assert.equal(report.firestoreWrites,0);
+  assert.equal(report.authWrites,0);
+  f.docs.set(housePath,{...current,active:false});
+  assert.equal((await f.service().listAccessRemediation(token)).issues.invalidScope,13);
 });
 
 test('Mailbox includes delivered own correspondence and excludes other-house, drafts, deleted and ambiguous',async()=>{
@@ -496,8 +554,9 @@ test('Spy dossier query fails closed when stage is incomplete or House inactive'
   f.docs.set('migrationDomainStage/'+snapshot+'/houses/'+hash('house:house-a'),{
     sourceId:'house-a',active:false,
   });
+  // The global membership guard denies stale scope BEFORE the spy route.
   await rejects(()=>f.service().listSpyDossiers(token,'house-a'),
-    'house_unavailable',404);
+    'invalid_access_scope',403);
 });
 
 test('Spy dossier returns empty without exposing unpublished operations',async()=>{
@@ -658,8 +717,9 @@ test('Battle stage is mandatory; empty verified stage shows empty overview',asyn
   assert.deepEqual(result.items,[]);
   f.docs.set('migrationDomainStage/'+snapshot+'/houses/'+hash('house:house-a'),
     {sourceId:'house-a',active:false});
+  // The global membership guard denies stale scope BEFORE battle data.
   await rejects(()=>f.service().listHouseBattles(token,'house-a'),
-    'house_unavailable',404);
+    'invalid_access_scope',403);
 });
 
 test('Oversized battle catalog fails closed instead of exposing unbounded rows',async()=>{

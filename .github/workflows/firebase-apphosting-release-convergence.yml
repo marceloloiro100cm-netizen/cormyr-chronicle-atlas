@@ -17,6 +17,7 @@ on:
       - 'scripts/firebase/cloud-readonly-service.mjs'
       - 'scripts/firebase/cloud-mail-service.mjs'
       - 'scripts/firebase/cloud-mail-runtime-approval.mjs'
+      - 'scripts/firebase/cloud-season2-house-scope*.mjs'
       - 'scripts/firebase-compiled-runtime-smoke.mjs'
       - '.github/workflows/firebase-apphosting-release-convergence.yml'
   workflow_dispatch:

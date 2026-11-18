@@ -16,6 +16,7 @@ import {validateHarptosDate} from './stage-temporal-emulator.mjs';
 import {canAcknowledgeMail,mailReceiptId,validMailIdentity} from './cloud-mail-receipt-core.mjs';
 import {cloudReplyRoute} from './cloud-mail-reply-core.mjs';
 import {cloudMailRuntimeApproved} from './cloud-mail-runtime-approval.mjs';
+import {activeSeason2HouseScopeValid} from './cloud-season2-house-scope.mjs';
 
 const SNAPSHOT=/^[a-f0-9]{64}$/;
 const SAFE_ID=/^[^/\u0000-\u001f]{1,128}$/;
@@ -125,6 +126,16 @@ export function createFirebaseCloudMail({
       deny('authentication_required',401);
     return decoded.uid;
   }
+  async function verifyMemberHouses(actor,read){
+    if(actor.role!=='jogador')return;
+    const documents=await Promise.all(actor.memberHouses.map(id=>
+      read(stage.collection('houses').doc(hash('house:'+id)))));
+    if(!activeSeason2HouseScopeValid({
+      memberHouseIds:actor.memberHouses,
+      editHouseIds:actor.editHouses,
+      houseDocuments:documents,
+    }))deny('access_denied',403);
+  }
   async function readyTransaction(tx,uid){
     const [domain,authRoot,temporal,scopeDoc,calendar,live,mailGate]=await Promise.all([
       tx.get(stage),tx.get(authStage),tx.get(timeStage),
@@ -140,6 +151,9 @@ export function createFirebaseCloudMail({
       deny('calendar_unavailable',503);
     const campaignDate=campaignDateOf(calendar.data());
     const actor=accessOf(uid,scopeDoc.data());
+    // Every active player membership is verified against its exact House
+    // document INSIDE the same transaction as mail authorization.
+    await verifyMemberHouses(actor,ref=>tx.get(ref));
     if(!cloudMailRuntimeApproved(live.data(),mailGate.data(),
       calendar.data(),snapshotId))deny('mail_runtime_not_approved',503);
     return {actor,date:campaignDate,round:live.data().openRound};
@@ -219,6 +233,7 @@ export function createFirebaseCloudMail({
         mailRuntime.get(),
       ]);
       const actor=accessOf(uid,doc.data());
+      await verifyMemberHouses(actor,ref=>ref.get());
       // No snapshot metadata, UIDs or incomplete sources go to the caller.
       const rootsReady=[domain,authRoot,temporal].every(d=>
         d.exists&&d.data()?.status==='complete'&&d.data()?.private===true);

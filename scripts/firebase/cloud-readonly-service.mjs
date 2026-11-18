@@ -9,6 +9,7 @@ import {createHash} from 'node:crypto';
 import {canAcknowledgeMail,mailReceiptId} from './cloud-mail-receipt-core.mjs';
 import {cloudReplyRoute} from './cloud-mail-reply-core.mjs';
 import {cloudMailRuntimeApproved} from './cloud-mail-runtime-approval.mjs';
+import {activeSeason2HouseScopeValid} from './cloud-season2-house-scope.mjs';
 
 const SNAPSHOT=/^[a-f0-9]{64}$/;
 const SAFE_ID=/^[^/\u0000-\u001f]{1,128}$/;
@@ -94,6 +95,18 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
     if(playerId!==null&&playerId!==undefined&&
        (typeof playerId!=='string'||!SAFE_ID.test(playerId)))
       deny('invalid_access_scope',403);
+    if(v.profile==='jogador'){
+      const houses=db.collection('migrationDomainStage').doc(snapshotId)
+        .collection('houses');
+      const houseDocuments=await Promise.all(memberHouseIds.map(id=>
+        houses.doc(digest('house:'+id)).get()));
+      // The historical membership list is not an authorization source
+      // until each entry is proven to be an active season-2 House.
+      if(!activeSeason2HouseScopeValid({
+        memberHouseIds:v.memberHouseIds,
+        editHouseIds:v.editHouseIds,houseDocuments,
+      }))deny('invalid_access_scope',403);
+    }
     return {uid:token.uid,profile:v.profile,playerId:playerId??null,
       memberHouseIds,editHouseIds};
   }
@@ -116,6 +129,23 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
         .doc(snapshotId).collection('access').get();
       if(!Array.isArray(records?.docs)||records.docs.length!==14)
         deny('access_inventory_unverified',503);
+      const houses=await db.collection('migrationDomainStage')
+        .doc(snapshotId).collection('houses').get();
+      if(!Array.isArray(houses?.docs)||houses.docs.length===0||
+         houses.docs.length>250)deny('access_inventory_unverified',503);
+      const validHouseIds=new Set(),allHouseIds=new Set();
+      for(const doc of houses.docs){
+        const house=doc.data();
+        if(!house||typeof house.sourceId!=='string'||
+           !SAFE_ID.test(house.sourceId)||
+           typeof house.active!=='boolean'||
+           !Number.isSafeInteger(house.season)||
+           allHouseIds.has(house.sourceId))
+          deny('access_inventory_unverified',503);
+        allHouseIds.add(house.sourceId);
+        if(house.active===true&&house.season===2)
+          validHouseIds.add(house.sourceId);
+      }
       const seen=new Set(),candidates=[];
       const counts={inactive:0,missingProfile:0,playerWithoutHouse:0,
         passwordChangePending:0,invalidScope:0};
@@ -136,6 +166,10 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
           member.some(id=>typeof id!=='string'||!SAFE_ID.test(id))||
           edit.some(id=>typeof id!=='string'||!SAFE_ID.test(id))||
           edit.some(id=>!member.includes(id))||
+          member.some(id=>!validHouseIds.has(id))||
+          edit.some(id=>!validHouseIds.has(id))||
+          new Set(member).size!==member.length||
+          new Set(edit).size!==edit.length||
           profile==='editor'&&member.length!==0||
           typeof v.admin!=='boolean'||
           profile==='narrador'&&v.admin!==true||
