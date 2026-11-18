@@ -597,6 +597,8 @@ function FirebaseAccess(){
     houseRequestVersion.current++;
     editionRequestVersion.current++;
     firebaseAuth()?.signOut();
+    selectedRole.current=null;
+    setActiveModule('inicio');
     setView(null);setHouse(null);setHouseReconciliation(null);setRoleCheck(null);
     setNarratorLibraryOpen(false);
     setHouseCatalogAvailable(true);
