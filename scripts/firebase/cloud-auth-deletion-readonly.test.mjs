@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {auditProtectedAuthDeletion,safeDeletionSummary}
+import {auditProtectedAuthDeletion,safeDeletionSummary,safeDeletionFailureCode}
   from './cloud-auth-deletion-readonly.mjs';
 const fixture=()=>{
   const historic=Array.from({length:14},(_,i)=>({
@@ -43,4 +43,16 @@ test('incomplete Auth page fails closed',async()=>{
 test('missing private authorization fails closed',async()=>{
   await assert.rejects(auditProtectedAuthDeletion({...fixture(),
     approvedDeletedUids:[]}));
+});
+
+test('sanitized failure diagnostics exclude identifiers and untrusted provider text',()=>{
+  assert.equal(safeDeletionFailureCode(
+    Error('auth_deletion_reconciliation_approved_deletion_still_present')),
+  'approved_deletion_still_present');
+  assert.equal(safeDeletionFailureCode(
+    Error('auth_deletion_reconciliation_unexpected_missing_account')),
+  'unexpected_missing_account');
+  assert.equal(safeDeletionFailureCode(
+    Error('Google user not found uid_13@example.invalid')),
+  'verification_unavailable');
 });
