@@ -43,6 +43,26 @@ env:
     availability:
       - RUNTIME
 
+  # Feature entrypoints for staged GO. All remain fail-closed unless
+  # the independent Firestore stage, editorial review and live runtime
+  # approvals are present. These flags alone cannot publish or write.
+  - variable: CORMYR_FIREBASE_PUBLIC_CATALOG_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+  - variable: CORMYR_FIREBASE_PUBLIC_TRANSLATIONS_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+  - variable: CORMYR_FIREBASE_PUBLIC_TIME_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+  - variable: CORMYR_FIREBASE_CLOUD_MAIL_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+
   # Narrator-only House reconciliation diagnostics. Strictly read-only:
   # every request checks Firebase Auth, admin role and current House scope.
   # This enables investigation, NOT operational seeding, publication or GO.
