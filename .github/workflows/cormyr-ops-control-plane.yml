@@ -168,11 +168,9 @@ jobs:
 
   report-verifications:
     name: Report completed read-only and synthetic acceptance jobs
-    if: >-
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.event == 'workflow_dispatch' &&
-      github.event.workflow_run.head_branch == 'main' &&
-      github.event.workflow_run.head_repository.full_name == 'marceloloiro100cm-netizen/cormyr-chronicle-atlas'
+    # Evaluate the event payload inside the script so a missing optional
+    # workflow_run field does not silently skip this evidence job.
+    if: github.event_name == 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 4
     permissions:
