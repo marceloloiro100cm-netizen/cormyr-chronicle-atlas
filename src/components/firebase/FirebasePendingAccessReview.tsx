@@ -38,6 +38,7 @@ export type PendingDecisionPreview={
   proposedMemberHouseCount:number;
   proposedEditHouseCount:number;
   proposalFingerprint:string;
+  sourceFingerprint:string;
   changedFields:string[];
   requiresPasswordResetProof:boolean;
   authAccountDisabled:boolean;
@@ -101,7 +102,8 @@ function PendingAccessDecisionForm({
          report.mode!=='preview-only'||report.decisionApplied!==false||
          report.firestoreWrites!==0||report.authWrites!==0||
          report.readyForPlayers!==false||report.releaseDecision!=='NO_GO'||
-         !/^[a-f0-9]{64}$/.test(report.proposalFingerprint))
+         !/^[a-f0-9]{64}$/.test(report.proposalFingerprint)||
+         !/^[a-f0-9]{64}$/.test(report.sourceFingerprint))
         throw Error('invalid_dry_run');
       setResult(report);
     }catch{setError(true);}
