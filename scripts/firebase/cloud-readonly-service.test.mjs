@@ -94,6 +94,17 @@ function fixture(profile='jogador',extra={}){
   });
   return {docs,auth,db,service};
 }
+/** Fixtures must explicitly approve BOTH runtime roots before Cloud mail appears. */
+function approveCloudMailbox(f){
+  const root='campaignCloudRuntime/'+snapshot;
+  if(!f.docs.has(root))throw Error('cloud_runtime_fixture_missing');
+  f.docs.set(root,{...f.docs.get(root),openRound:3,calendarVersion:5});
+  f.docs.set('campaignMailRuntime/'+snapshot,{
+    status:'active',private:true,sourceSnapshotId:snapshot,
+    sourceLiveReconciled:true,applicationEnabled:true,mailEnabled:true,
+    openRound:3,calendarVersion:5,
+  });
+}
 const token='firebase-id-token-example';
 const rejects=async(fn,code,status)=>{
   await assert.rejects(fn,error=>
@@ -220,6 +231,7 @@ test('Approved Cloud messages merge only with recipient House, sender or narrato
     status:'active',private:true,sourceSnapshotId:snapshot,
     sourceSnapshotReconciled:true,mailWriteApproved:true,applicationEnabled:true,
   });
+  approveCloudMailbox(f);
   function add(id,data){
     f.docs.set(root+'/letters/'+id,{
       id,source:'firebase-cloud',senderUid:'external-author',
@@ -247,10 +259,57 @@ test('Approved Cloud messages merge only with recipient House, sender or narrato
   assert.equal(player.includes('draft'),false);
   const narrator=fixture('narrador');
   for(const [key,value] of f.docs)
-    if(key.startsWith(root))narrator.docs.set(key,value);
+    if(key.startsWith(root)||key==='campaignMailRuntime/'+snapshot)
+      narrator.docs.set(key,value);
   const gm=(await narrator.service().listMailbox(token)).items.map(x=>x.id);
   assert.equal(gm.includes('to-b'),true);
   assert.equal(gm.includes('to-gm'),true);
+});
+
+test('Mail runtime mismatch hides new mail and disables receipts/replies',async()=>{
+  const f=fixture('jogador',{editHouseIds:['house-a']});
+  const root='campaignCloudRuntime/'+snapshot;
+  const mailRoot='campaignMailRuntime/'+snapshot;
+  f.docs.set(root,{
+    status:'active',private:true,sourceSnapshotId:snapshot,
+    sourceSnapshotReconciled:true,mailWriteApproved:true,applicationEnabled:true,
+  });
+  approveCloudMailbox(f);
+  f.docs.set(root+'/letters/cloud-visible',{
+    id:'cloud-visible',source:'firebase-cloud',senderUid:'player-b',
+    originHouseId:'house-b',recipientKind:'house',recipientHouseId:'house-a',
+    recipientPlayerId:null,publicationState:'delivered',deletedAt:null,
+    subject:'TEST_PRIVATE_CLOUD_MAIL',content:'TEST_PRIVATE_CLOUD_CONTENT',
+    createdAt:'2026-11-16T12:00:00Z',
+  });
+  const positive=(await f.service().listMailbox(token));
+  assert.equal(positive.items.some(x=>x.id==='cloud-visible'),true);
+  assert.equal(positive.items.find(x=>x.id==='cloud-visible').canReply,true);
+  assert.equal(positive.items.find(x=>x.id==='to-a').canMarkRead,true);
+  const approved=f.docs.get(mailRoot);
+  for(const [key,value] of [
+    ['status','pending'],['sourceLiveReconciled',false],
+    ['mailEnabled',false],['calendarVersion',4],
+    ['openRound',4],['sourceSnapshotId','b'.repeat(64)],
+  ]){
+    f.docs.set(mailRoot,{...approved,[key]:value});
+    const blocked=await f.service().listMailbox(token);
+    assert.equal(blocked.items.some(x=>x.id==='cloud-visible'),false);
+    assert.equal(blocked.items.find(x=>x.id==='to-a').canMarkRead,false);
+    assert.equal(blocked.items.find(x=>x.id==='to-a').readAt,null);
+    assert.equal(blocked.items.some(x=>x.canReply===true),false);
+    assert.equal(blocked.items.some(x=>x.id==='to-a'),true);
+    const body=JSON.stringify(blocked);
+    assert.equal(body.includes('TEST_PRIVATE_CLOUD_MAIL'),false);
+    assert.equal(body.includes('TEST_PRIVATE_CLOUD_CONTENT'),false);
+  }
+  f.docs.delete(mailRoot);
+  assert.equal((await f.service().listMailbox(token)).items.some(x=>
+    x.id==='cloud-visible'),false);
+  f.docs.set(mailRoot,approved);
+  f.docs.set(root,{...f.docs.get(root),calendarVersion:4});
+  assert.equal((await f.service().listMailbox(token)).items.some(x=>
+    x.id==='cloud-visible'),false);
 });
 
 test('Unapproved Cloud runtime never leaks messages through historical mailbox',async()=>{
@@ -278,6 +337,7 @@ test('Cloud inbox returns only the viewer own receipt; never another user status
     status:'active',private:true,sourceSnapshotId:snapshot,
     sourceSnapshotReconciled:true,mailWriteApproved:true,applicationEnabled:true,
   });
+  approveCloudMailbox(f);
   const id='to-a';
   const wrongId=mailReceiptId('other-viewer','imported',id);
   f.docs.set(root+'/mailReadReceipts/'+wrongId,{
@@ -439,6 +499,7 @@ test('Cloud inbox exposes reply control only for the receiving House, not sender
     status:'active',private:true,sourceSnapshotId:snapshot,
     sourceSnapshotReconciled:true,mailWriteApproved:true,applicationEnabled:true,
   });
+  approveCloudMailbox(f);
   const add=(tag,changes={})=>{
     const id=hash('reply:'+tag);
     f.docs.set(root+'/letters/'+id,{
