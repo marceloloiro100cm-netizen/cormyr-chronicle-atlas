@@ -65,6 +65,8 @@ test('failed protected reconciliation produces privacy-safe mobile summary',()=>
   assert.match(summary,/BLOQUEADA/);
   assert.match(summary,/NÃO AUTORIZADA/);
   assert.match(summary,/0 \/ 0/);
+  assert.ok(summary.includes('\n| Reconciliação Auth |'));
+  assert.ok(!summary.includes('\\n|'));
   assert.ok(!summary.includes('uid_13'));
   const untrusted=safeDeletionFailureSummary(
     Error('Google provider error user uid_13@example.invalid'));
