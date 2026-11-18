@@ -63,3 +63,21 @@ test('protected reader checks root and never emits source identities',async()=>{
     auth:{listUsers:async()=>({users:f.liveUsers,pageToken:'next'})},db,
   }));
 });
+
+test('an unchanged 14-account inventory does not impersonate an approved deletion',()=>{
+  const f=fixture();
+  const report=compareHistoricalAuthInventory({...f,
+    liveUsers:f.historicalAccess.map(x=>({uid:x.id,disabled:false}))});
+  assert.equal(report.liveAccounts,14);
+  assert.equal(report.exactOneMissingObserved,false);
+  assert.equal(report.deletionIdentityApproved,false);
+});
+test('unexpected account with a missing historical account never looks reconciled',()=>{
+  const f=fixture();
+  const report=compareHistoricalAuthInventory({...f,
+    liveUsers:[...f.liveUsers.slice(0,12),{uid:'new_user',disabled:false}]});
+  assert.equal(report.liveAccounts,13);
+  assert.equal(report.missingHistoricalAccounts,2);
+  assert.equal(report.unexpectedLiveAccounts,1);
+  assert.equal(report.exactOneMissingObserved,false);
+});
