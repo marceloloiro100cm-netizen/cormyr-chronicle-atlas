@@ -16,6 +16,7 @@ on:
       - 'Firebase Cloud access readiness — read-only OIDC'
       - 'Validate'
       - 'Build check'
+      - 'Firebase player pilot — GitHub-only preflight'
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -24,7 +25,7 @@ on:
         type: choice
         required: true
         default: audit
-        options: [audit, operator-audit, auth-preview, auth-activate, auth-deletion-audit, auth-inventory-audit, verify-emulators, verify-build, runtime-draft]
+        options: [audit, operator-audit, auth-preview, auth-activate, auth-deletion-audit, auth-inventory-audit, verify-emulators, verify-build, verify-pilot, runtime-draft]
 
 permissions:
   contents: read
@@ -54,7 +55,7 @@ jobs:
             const CONTROL_ISSUE = 568;
             const CONFIRMATION = 'ENABLE_ALL_14_CORMYR_TEST_ACCOUNTS';
             const AUTH_WORKFLOW = '.github/workflows/firebase-auth-enable-all-test-accounts.yml';
-            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-activate|auth-deletion-audit|auth-inventory-audit|verify-emulators|verify-build|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
+            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-activate|auth-deletion-audit|auth-inventory-audit|verify-emulators|verify-build|verify-pilot|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
             const {owner, repo} = context.repo;
             if (owner + '/' + repo !== REPO || Number(process.env.GITHUB_RUN_ATTEMPT) !== 1) {
               core.info('Untrusted context or retry: no remote action');
@@ -64,7 +65,7 @@ jobs:
             if (context.eventName === 'schedule') operation = 'audit';
             else if (context.eventName === 'workflow_dispatch') {
               operation = context.payload.inputs?.task;
-              if (!['audit', 'operator-audit', 'auth-preview', 'auth-activate', 'auth-deletion-audit', 'auth-inventory-audit', 'verify-emulators', 'verify-build', 'runtime-draft'].includes(operation)) {
+              if (!['audit', 'operator-audit', 'auth-preview', 'auth-activate', 'auth-deletion-audit', 'auth-inventory-audit', 'verify-emulators', 'verify-build', 'verify-pilot', 'runtime-draft'].includes(operation)) {
                 core.info('Unknown manual command: no action');
                 return;
               }
@@ -89,6 +90,8 @@ jobs:
               ['firebase-cloud-access-readiness.yml', {}],
             ] : operation === 'operator-audit' ? [
               ['firebase-cloud-operator-readiness.yml', {}],
+            ] : operation === 'verify-pilot' ? [
+              ['firebase-player-pilot-preflight.yml', {}],
             ] : operation === 'verify-build' ? [
               ['validate.yml', {}],
               ['build-check.yml', {}],
@@ -127,6 +130,7 @@ jobs:
                 'firebase-domain-staging.yml',
                 'validate.yml',
                 'build-check.yml',
+                'firebase-player-pilot-preflight.yml',
               ]);
               for (const [workflow_id, inputs] of tasks) {
                 if (!allowed.has(workflow_id)) throw new Error('Workflow not allowlisted');
@@ -187,7 +191,8 @@ jobs:
               'Firebase App Hosting — verify main is actually serving':'Cloud: revisão atendida pelo App Hosting',
               'Firebase Cloud access readiness — read-only OIDC':'Cloud: disponibilidade de fontes por OIDC',
               'Validate':'CI: contratos, TypeScript, build e testes de componentes',
-              'Build check':'CI: saída do Firebase App Hosting e tipografia do Jornal'
+              'Build check':'CI: saída do Firebase App Hosting e tipografia do Jornal',
+              'Firebase player pilot — GitHub-only preflight':'Site: leitura pública e bloqueios de visitante anônimo'
             });
             const run=context.payload.workflow_run;
             if (!run || !Object.hasOwn(allowed,run.name)) return;
