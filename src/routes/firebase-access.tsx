@@ -1034,7 +1034,6 @@ function FirebaseAccess(){
           A redação será aberta após o Narrador publicar a configuração inicial no HUB.
         </p>)}
     </section>}
-    </section>}
     {message&&<p role="alert" className="text-sm">{message}</p>}
   </main>;
 }
