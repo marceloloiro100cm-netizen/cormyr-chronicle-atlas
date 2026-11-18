@@ -38,7 +38,7 @@ for(const [path,expected] of Object.entries(originals)){
 }
 
 test('Narrator historic navigation includes every original section',()=>{
-  const code=readFileSync(resolve(root,'src/components/players/narrator-missivas-hub.tsx'),'utf8');
+  const code=readFileSync(resolve(root,'src/components/players/narrator-missives-hub.tsx'),'utf8');
   for(const key of [
     "['painel','Conselho das casas']",
     "['missivas','Missivas']",
