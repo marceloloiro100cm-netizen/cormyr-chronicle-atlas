@@ -35,6 +35,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      issues: write
       id-token: write
     env:
       GOOGLE_CLOUD_PROJECT: cormyr
@@ -54,7 +55,31 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
       - name: Read only current Auth and immutable source inventory
+        id: inventory
         run: node scripts/firebase/cloud-auth-inventory-readonly.mjs
       - name: Explicitly preserve release gate
         if: always()
         run: echo 'Counting historical differences never approves the deleted identity or enables gameplay.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Record audited run outcome without identities
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          AUTH_AUDIT_OUTCOME: ${{ steps.inventory.outcome }}
+        with:
+          script: |
+            if (context.repo.owner !== 'marceloloiro100cm-netizen' ||
+                context.repo.repo !== 'cormyr-chronicle-atlas') return;
+            const outcome = process.env.AUTH_AUDIT_OUTCOME === 'success'
+              ? 'AUDITORIA REAL CONCLUÍDA (inventário agregado; NÃO aprova exclusão)'
+              : 'AUDITORIA NÃO CONCLUÍDA (verificar aprovação/etapas do workflow)';
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              '### Evidência automatizada: inventário Auth protegido',
+              `Resultado da etapa de leitura: **${outcome}**`,
+              `Execução GitHub Actions: ${runUrl}`,
+              'Sem UIDs, e-mails, nomes de Casas ou dados privados.',
+              'A decisão de liberação continua **NO_GO** até aceite separado.'
+            ].join('\\n\\n');
+            await github.rest.issues.createComment({
+              ...context.repo,issue_number:582,body,
+            });
