@@ -25,7 +25,7 @@ const validIds=v=>Array.isArray(v)&&v.length<=250&&
   new Set(v).size===v.length;
 const equal=(a,b)=>a.length===b.length&&a.every((id,i)=>id===b[i]);
 const pending=v=>v.active===false||v.requirePasswordChange===true||
-  v.profile===null||
+  v.profile==null||
   v.profile==='jogador'&&v.memberHouseIds.length===0||
   v.editHouseIds.some(id=>!v.memberHouseIds.includes(id));
 const n=v=>Number.isSafeInteger(v)&&v>=0&&v<=250?v:'indisponível';
@@ -59,7 +59,7 @@ export function planPrivateAccessRemediation({
     const v=row?.data;
     if(!row||!ID.test(row.id??'')||!v||
        v.userId!==row.id||source.has(row.id)||
-       !(v.profile===null||PROFILE.has(v.profile))||
+       !(v.profile===null||v.profile===undefined||PROFILE.has(v.profile))||
        typeof v.active!=='boolean'||
        typeof v.requirePasswordChange!=='boolean'||
        typeof v.admin!=='boolean'||
@@ -91,7 +91,7 @@ export function planPrivateAccessRemediation({
       fail('unsupported_role_change');
     // An existing player cannot be reassigned to the editorial role, nor
     // vice versa. Only previously null profiles may be newly classified.
-    if(current.profile!==null&&current.profile!==proposed.profile)
+    if(current.profile!=null&&current.profile!==proposed.profile)
       fail('role_escalation_rejected');
     if(typeof proposed.active!=='boolean'||!validIds(proposed.memberHouseIds)||
        !validIds(proposed.editHouseIds))
@@ -117,13 +117,13 @@ export function planPrivateAccessRemediation({
     if(!changed)fail('decision_has_no_change');
     if(current.active===false&&proposed.active===true)wouldActivate++;
     if(current.active===true&&proposed.active===false)wouldDeactivate++;
-    if(current.profile===null)profilesCompleted++;
+    if(current.profile==null)profilesCompleted++;
     if(!equal(current.memberHouseIds,proposed.memberHouseIds)||
        !equal(current.editHouseIds,proposed.editHouseIds))membershipChanged++;
     if(current.requirePasswordChange)passwordResetStillPending++;
     proposals.push({
       uid:proposed.uid,
-      before:{profile:current.profile,active:current.active,
+      before:{profile:current.profile??null,active:current.active,
         requirePasswordChange:current.requirePasswordChange,
         memberHouseIds:[...current.memberHouseIds],
         editHouseIds:[...current.editHouseIds]},
