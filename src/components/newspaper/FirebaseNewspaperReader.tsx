@@ -7,11 +7,13 @@
  * adapter, never by Supabase.
  */
 import type {ReactNode} from 'react';
+import {newspaperTypefaceFamily,NEWSPAPER_TYPEFACES,type NewspaperTypeface} from '@/lib/newspaper/model';
 
 type DisplayKind='headline'|'subtitle'|'article'|'quote'|'notice'|'image';
 export type DisplayBlock={
   id:string;type:DisplayKind;text:string;subtitle:string;
   byline:string;caption:string;imageSrc:string|null;
+  titleFont?:NewspaperTypeface;bodyFont?:NewspaperTypeface;span?:number;
 };
 export type NewspaperEditionRead={
   id:string;title:string;subtitle:string;editionNo:number;blocks:unknown[];
@@ -44,6 +46,9 @@ export function safePublishedBlocks(input:unknown):DisplayBlock[]{
     return [{
       id:typeof b['id']==='string'&&b['id'].length<=120?b['id']:String(index),
       type,text,subtitle,byline,caption,imageSrc,
+      ...(NEWSPAPER_TYPEFACES.some(f=>f.value===b['titleFont'])?{titleFont:b['titleFont'] as NewspaperTypeface}:{}),
+      ...(NEWSPAPER_TYPEFACES.some(f=>f.value===b['bodyFont'])?{bodyFont:b['bodyFont'] as NewspaperTypeface}:{}),
+      ...(typeof b['span']==='number'&&[3,4,6,8,12].includes(b['span'])?{span:b['span']}:{}),
     }];
   });
 }
@@ -52,13 +57,13 @@ function NewspaperBlock({item}:{item:DisplayBlock}):ReactNode{
   switch(item.type){
     case 'headline':
       return <section className="border-b border-[#a58a60] pb-4">
-        <h3 className="font-serif text-2xl sm:text-3xl font-bold leading-tight">
+        <h3 style={{fontFamily:newspaperTypefaceFamily(item.titleFont)}} className="font-serif text-2xl sm:text-3xl font-bold leading-tight">
           {item.text}
         </h3>
         {item.subtitle&&<p className="mt-1 italic">{item.subtitle}</p>}
       </section>;
     case 'subtitle':
-      return <h3 className="font-serif text-xl font-semibold border-b
+      return <h3 style={{fontFamily:newspaperTypefaceFamily(item.titleFont)}} className="font-serif text-xl font-semibold border-b
         border-[#b4a083] pb-1">{item.text}</h3>;
     case 'quote':
       return <blockquote className="border-l-2 border-[#7c543a] pl-4 italic
@@ -67,7 +72,7 @@ function NewspaperBlock({item}:{item:DisplayBlock}):ReactNode{
       const [heading,...parts]=item.text.split('\n');
       return <aside className="my-4 border-y-2 border-[#95744a] py-4
         text-center font-serif">
-        <h3 className="font-bold uppercase tracking-wider">{heading}</h3>
+        <h3 style={{fontFamily:newspaperTypefaceFamily(item.titleFont)}} className="font-bold uppercase tracking-wider">{heading}</h3>
         {parts.join('\n').trim()&&
           <p className="mt-2 whitespace-pre-wrap">{parts.join('\n').trim()}</p>}
       </aside>;
@@ -88,8 +93,8 @@ function NewspaperBlock({item}:{item:DisplayBlock}):ReactNode{
     default:{
       const [heading,...body]=item.text.split('\n');
       const story=body.join('\n').trim();
-      return <article className="font-serif">
-        <h3 className="text-lg font-bold leading-snug">{heading}</h3>
+      return <article style={{fontFamily:newspaperTypefaceFamily(item.bodyFont)}} className="font-serif">
+        <h3 style={{fontFamily:newspaperTypefaceFamily(item.titleFont)}} className="text-lg font-bold leading-snug">{heading}</h3>
         {story&&<p className="mt-2 whitespace-pre-wrap text-justify
           leading-relaxed">{story}</p>}
         {item.byline&&<p className="mt-1 text-right text-xs italic">
@@ -117,11 +122,14 @@ export function FirebaseNewspaperReader({edition}:{edition:NewspaperEditionRead}
         uppercase tracking-wider">Edição {edition.editionNo}
         {edition.campaignDate?' · '+edition.campaignDate:''}</p>
     </header>
-    <div className="mt-6 space-y-5">
+    <div className="mt-6 grid grid-cols-12 gap-5">
       {items.length===0
-        ?<p className="text-center italic">Sem textos publicados nesta edição.</p>
-        :items.map((item,i)=><NewspaperBlock
-          key={item.id+':'+i} item={item}/>)}
+        ?<p className="col-span-12 text-center italic">Sem textos publicados nesta edição.</p>
+        :items.map((item,i)=><div key={item.id+':'+i}
+          className={'col-span-12 '+({3:'sm:col-span-3',4:'sm:col-span-4',6:'sm:col-span-6',8:'sm:col-span-8',12:'sm:col-span-12'}[item.span as 3|4|6|8|12]??'')}
+          style={{fontFamily:newspaperTypefaceFamily(item.bodyFont)}}>
+          <NewspaperBlock item={item}/>
+        </div>)}
     </div>
     <footer className="mt-8 border-t-4 border-double border-[#8a6745]
       pt-3 text-center text-xs uppercase tracking-widest">
@@ -129,3 +137,4 @@ export function FirebaseNewspaperReader({edition}:{edition:NewspaperEditionRead}
     </footer>
   </article>;
 }
+

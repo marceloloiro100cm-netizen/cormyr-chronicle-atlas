@@ -1,3 +1,4 @@
+import {FirebaseEditorialDesk} from '@/components/newspaper/FirebaseEditorialDesk';
 import {createFileRoute} from '@tanstack/react-router';
 import {useEffect,useRef,useState,type FormEvent} from 'react';
 import {runFirebaseRoleSelfAcceptance}
@@ -1023,35 +1024,15 @@ function FirebaseAccess(){
         </div>}
       </section>
       {(view.profile==='editor'||view.profile==='narrador')&&
-        <section className="rounded border p-4 space-y-3">
-          <h2 className="text-lg font-semibold">Publicar A Folha Sem Selo</h2>
-          {!paperStatus?.canPublish
-            ?<p className="text-sm">A publicação fica disponível após o Narrador abrir a campanha no HUB. Se a campanha já foi aberta, atualize sua sessão.</p>
-            :<form onSubmit={publishPaper} className="space-y-3">
-              <label className="block text-sm">Título da edição
-                <input required maxLength={180} value={paperTitle}
-                  onChange={e=>setPaperTitle(e.target.value)}
-                  className="mt-1 block w-full rounded border p-2"/>
-              </label>
-              <label className="block text-sm">Subtítulo
-                <input maxLength={280} value={paperSubtitle}
-                  onChange={e=>setPaperSubtitle(e.target.value)}
-                  className="mt-1 block w-full rounded border p-2"/>
-              </label>
-              <label className="block text-sm">Artigo principal
-                <textarea required rows={8} maxLength={12000}
-                  value={paperArticle} onChange={e=>setPaperArticle(e.target.value)}
-                  className="mt-1 block w-full rounded border p-2"/>
-              </label>
-              <button type="submit" className="rounded border px-4 py-2"
-                disabled={busy||!paperKey||!paperTitle.trim()||!paperArticle.trim()}>
-                {busy?'Publicando…':'Publicar edição'}
-              </button>
-              <p className="text-xs">Publicação imediata e permanente.
-                Esta primeira etapa usa artigo em texto simples, sem revisão
-                de rascunhos nem anexos privados.</p>
-            </form>}
-        </section>}
+        (paperStatus?.canPublish?<FirebaseEditorialDesk onChanged={()=>{
+          const generation=loadGeneration.current;
+          setEdition(null);
+          void readCloud<{items:EditionSummary[]}>('listNewspaper').then(result=>{
+            if(generation===loadGeneration.current)setEditions(result.items);
+          }).catch(()=>{});
+        }}/>:<p className="rounded border p-4 text-sm">
+          A redação será aberta após o Narrador publicar a configuração inicial no HUB.
+        </p>)}
     </section>}
     {message&&<p role="alert" className="text-sm">{message}</p>}
   </main>;
