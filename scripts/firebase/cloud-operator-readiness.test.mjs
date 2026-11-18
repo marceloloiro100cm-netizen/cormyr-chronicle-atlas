@@ -7,6 +7,7 @@ import {evaluateOperatorEvidence,inspectOperatorEvidence,safeOperatorSummary,
 const cloud=()=>({singleVerifiedSnapshot:true,stagesVerified:6,
   auxiliaryStagesComplete:true,auxiliaryStagesVerified:4,
   mailRuntimeEnabled:true,operationalRuntimeReconciled:true,
+  mailWriteGatesAligned:true,historicalCalendarVersionVerified:true,
   firestoreHttpStatus:200,authHttpStatus:200,
   privateSecret:'SECRET_CLOUD_SNAPSHOT'});
 const auth=()=>({mode:'preview',accounts:14,linkedAccounts:14,toEnable:14,
@@ -27,6 +28,7 @@ test('valid aggregate evidence is still NO_GO for players and cutover',()=>{
   assert.ok(r.blockingCodes.includes('CROSS_HOUSE_CLOUD_E2E_PENDING'));
   assert.equal(r.fourBlocks.publicContent.ready,false);
   assert.equal(r.fourBlocks.operations.ready,false);
+  assert.equal(r.fourBlocks.operations.mailWriteGatesAligned,true);
   assert.equal(r.fourBlocks.playerAccess.ready,false);
   assert.equal(r.fourBlocks.acceptance.ready,false);
   assert.equal(r.fourBlocks.acceptance.authenticatedCloudRoleE2EVerified,false);
@@ -190,6 +192,19 @@ test('a failed third probe never leaks provider detail',async()=>{
   assert.equal(report.readyForCutover,false);
   assert.ok(!JSON.stringify(report).includes('SECRET_PROVIDER_ERROR'));
 });
+test('operator report never treats independent runtime mismatch as mail acceptance',()=>{
+  const r=evaluateOperatorEvidence({
+    cloud:{...cloud(),mailWriteGatesAligned:false},authPreview:auth(),
+  });
+  assert.equal(r.fourBlocks.operations.mailWriteGatesAligned,false);
+  assert.ok(r.blockingCodes.includes('MAIL_WRITE_GATES_UNALIGNED'));
+  assert.equal(r.readyForPlayers,false);
+  assert.equal(r.releaseDecision,'NO_GO');
+  const summary=safeOperatorSummary(r);
+  assert.match(summary,/Rodada e versão do calendário alinhadas/);
+  assert.ok(!summary.includes('SECRET_CLOUD_SNAPSHOT'));
+});
+
 test('no implicit provider or cloud access',async()=>{
   await assert.rejects(inspectOperatorEvidence({
     readCloud:async()=>cloud()}),/two_read_probes_required/);

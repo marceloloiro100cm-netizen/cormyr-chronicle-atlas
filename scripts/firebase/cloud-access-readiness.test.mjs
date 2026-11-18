@@ -21,13 +21,17 @@ const auxiliaryStageNames=[
 const stage=id=>PREFIX+id+'/'+HASH+'?mask.fieldPaths=status&mask.fieldPaths=private';
 const listing=PREFIX+'migrationDomainStage?pageSize=2&mask.fieldPaths=status&mask.fieldPaths=private';
 const runtime=PREFIX+'campaignMailRuntime/'+HASH+
-  '?mask.fieldPaths=status&mask.fieldPaths=private&mask.fieldPaths=sourceLiveReconciled&mask.fieldPaths=applicationEnabled&mask.fieldPaths=mailEnabled&mask.fieldPaths=sourceSnapshotId';
+  '?mask.fieldPaths=status&mask.fieldPaths=private&mask.fieldPaths=sourceLiveReconciled&mask.fieldPaths=applicationEnabled&mask.fieldPaths=mailEnabled&mask.fieldPaths=sourceSnapshotId'+
+  '&mask.fieldPaths=openRound&mask.fieldPaths=calendarVersion';
 const operational=PREFIX+'campaignCloudRuntime/'+HASH+
   '?mask.fieldPaths=status&mask.fieldPaths=private'+
   '&mask.fieldPaths=sourceSnapshotId'+
   '&mask.fieldPaths=sourceSnapshotReconciled'+
   '&mask.fieldPaths=applicationEnabled'+
-  '&mask.fieldPaths=calendarVersion';
+  '&mask.fieldPaths=calendarVersion'+
+  '&mask.fieldPaths=openRound&mask.fieldPaths=mailWriteApproved';
+const calendar=PREFIX+'migrationTimeEngineStage/'+HASH+
+  '/calendar/current?mask.fieldPaths=version';
 function fixture(overrides={}){
   const d=new Map([
     [listing,
@@ -42,6 +46,7 @@ function fixture(overrides={}){
       sourceLiveReconciled:{booleanValue:true},
       applicationEnabled:{booleanValue:true},
       mailEnabled:{booleanValue:true},
+      openRound:{integerValue:'3'},calendarVersion:{integerValue:'2'},
     }}],
     [operational,{fields:{
       ...fields('active'),
@@ -49,7 +54,10 @@ function fixture(overrides={}){
       sourceSnapshotReconciled:{booleanValue:true},
       applicationEnabled:{booleanValue:true},
       calendarVersion:{integerValue:'2'},
+      openRound:{integerValue:'3'},mailWriteApproved:{booleanValue:true},
     }}],
+    [calendar,{fields:{version:{integerValue:'2'},
+      secretDate:{stringValue:'NEVER_LOG_PRIVATE_CALENDAR_DATE'}}}],
     [AUTH,{users:Array.from({length:14},(_,i)=>({
       localId:'DO_NOT_LOG_UID_'+i,disabled:true,email:'private@example.org',
     }))}],
@@ -109,6 +117,9 @@ test('Cloud-only OIDC readiness summarizes 6 stages and disabled accounts withou
   assert.equal(report.mailRuntimeEnabled,true);
   assert.equal(report.operationalRuntimeHttpStatus,200);
   assert.equal(report.operationalRuntimeReconciled,true);
+  assert.equal(report.historicalCalendarHttpStatus,200);
+  assert.equal(report.historicalCalendarVersionVerified,true);
+  assert.equal(report.mailWriteGatesAligned,true);
   assert.equal(report.releaseDecision,'NO_GO');
   assert.deepEqual(report.blockingCodes,['CLOUD_ROLE_E2E_PENDING']);
   assert.equal(report.writes,0);
@@ -121,6 +132,8 @@ test('Cloud-only OIDC readiness summarizes 6 stages and disabled accounts withou
   assert.ok(f.requests.every(x=>x.options.method==='GET'&&
     x.options.credentials==='omit'&&x.options.redirect==='error'));
   assert.ok(f.requests.every(x=>x.url.startsWith(PREFIX)||x.url===AUTH));
+  assert.ok(f.requests.some(x=>x.url===calendar));
+  assert.ok(!JSON.stringify(report).includes('NEVER_LOG_PRIVATE_CALENDAR_DATE'));
   const authRequest=f.requests.find(x=>x.url===AUTH);
   assert.equal(authRequest.options.headers['X-Goog-User-Project'],'cormyr');
   assert.equal(authRequest.options.headers.Authorization,
@@ -371,6 +384,43 @@ test('Auth config probe is not attempted for Auth 403 or 200',async()=>{
   }
 });
 
+
+test('independent runtime gates must agree on round, version and calendar',async()=>{
+  const baseline=fixture();
+  const originalMail=baseline.d.get(runtime);
+  const originalHouse=baseline.d.get(operational);
+  const originalCalendar=baseline.d.get(calendar);
+  for(const [which,change] of [
+    ['mail',{openRound:{integerValue:'4'}}],
+    ['mail',{calendarVersion:{integerValue:'3'}}],
+    ['mail',{mailEnabled:{booleanValue:false}}],
+    ['house',{openRound:{integerValue:'4'}}],
+    ['house',{mailWriteApproved:{booleanValue:false}}],
+    ['calendar',{version:{integerValue:'9'}}],
+  ]){
+    const f=fixture();
+    const path=which==='mail'?runtime:which==='house'?operational:calendar;
+    const original=which==='mail'?originalMail:
+      which==='house'?originalHouse:originalCalendar;
+    f.d.set(path,{fields:{...original.fields,...change}});
+    const result=await f.run();
+    assert.equal(result.mailWriteGatesAligned,false);
+    assert.ok(result.blockingCodes.includes('MAIL_WRITE_GATES_UNALIGNED'));
+    assert.equal(result.readyForCutover,false);
+    assert.equal(result.releaseDecision,'NO_GO');
+    const output=JSON.stringify(result)+formatCloudReadinessSummary(result);
+    for(const secret of [HASH,'NEVER_LOG_PRIVATE_CALENDAR_DATE',
+      'EPHEMERAL_TEST_TOKEN_SECRET'])assert.ok(!output.includes(secret));
+  }
+  const noCalendar=fixture();
+  noCalendar.d.delete(calendar);
+  const missing=await noCalendar.run();
+  assert.equal(missing.historicalCalendarHttpStatus,404);
+  assert.equal(missing.mailWriteGatesAligned,false);
+  assert.ok(missing.blockingCodes.includes('MAIL_WRITE_GATES_UNALIGNED'));
+  assert.ok(noCalendar.requests.every(x=>x.options.method==='GET'));
+  assert.equal(missing.writes,0);
+});
 
 test('operational Cloud runtime missing or unreconciled blocks GO without disclosing flags',async()=>{
   for(const replacement of [

@@ -129,18 +129,21 @@ export async function inspectFirebaseCloudReadiness({
         boolean(res.data?.fields?.private)});
     }
   }
-  let runtime={code:null,enabled:false};
+  let runtime={code:null,enabled:false,round:null,calendarVersion:null};
   if(snapshotId){
     const res=await request(FIRESTORE+'campaignMailRuntime/'+snapshotId+
-      '?mask.fieldPaths=status&mask.fieldPaths=private&mask.fieldPaths=sourceLiveReconciled&mask.fieldPaths=applicationEnabled&mask.fieldPaths=mailEnabled&mask.fieldPaths=sourceSnapshotId');
+      '?mask.fieldPaths=status&mask.fieldPaths=private&mask.fieldPaths=sourceLiveReconciled&mask.fieldPaths=applicationEnabled&mask.fieldPaths=mailEnabled&mask.fieldPaths=sourceSnapshotId'+
+      '&mask.fieldPaths=openRound&mask.fieldPaths=calendarVersion');
     const v=res.data?.fields;
     runtime={code:res.status,enabled:
       string(v?.status)==='active'&&boolean(v?.private)&&
       boolean(v?.sourceLiveReconciled)&&boolean(v?.applicationEnabled)&&
       boolean(v?.mailEnabled)&&string(v?.sourceSnapshotId)===snapshotId,
+      round:number(v?.openRound),calendarVersion:number(v?.calendarVersion),
     };
   }
-  let operational={code:null,reconciled:false};
+  let operational={code:null,reconciled:false,round:null,
+    calendarVersion:null,mailWriteApproved:false};
   if(snapshotId){
     // Fixed, masked, read-only runtime metadata. Never fetch House economies,
     // private audit events, balances, UIDs, flags or the entire document.
@@ -149,7 +152,8 @@ export async function inspectFirebaseCloudReadiness({
       '&mask.fieldPaths=sourceSnapshotId'+
       '&mask.fieldPaths=sourceSnapshotReconciled'+
       '&mask.fieldPaths=applicationEnabled'+
-      '&mask.fieldPaths=calendarVersion');
+      '&mask.fieldPaths=calendarVersion'+
+      '&mask.fieldPaths=openRound&mask.fieldPaths=mailWriteApproved');
     const v=res.data?.fields;
     operational={code:res.status,reconciled:
       string(v?.status)==='active'&&boolean(v?.private)&&
@@ -157,8 +161,29 @@ export async function inspectFirebaseCloudReadiness({
       boolean(v?.sourceSnapshotReconciled)&&
       boolean(v?.applicationEnabled)&&
       number(v?.calendarVersion)!==null&&
-      number(v?.calendarVersion)>=1};
+      number(v?.calendarVersion)>=1,
+      round:number(v?.openRound),calendarVersion:number(v?.calendarVersion),
+      mailWriteApproved:boolean(v?.mailWriteApproved)};
   }
+  // Read one fixed numeric calendar field, never the private Harptos date.
+  // The historical snapshot cannot establish which round is currently open.
+  let calendar={code:null,version:null};
+  if(snapshotId){
+    const res=await request(FIRESTORE+'migrationTimeEngineStage/'+snapshotId+
+      '/calendar/current?mask.fieldPaths=version');
+    calendar={code:res.status,version:number(res.data?.fields?.version)};
+  }
+  // This mirrors the runtime's independent Cloud + mail gates; it is only
+  // metadata consistency, not proof of a live-source delta or permission E2E.
+  const mailWriteGatesAligned=Boolean(
+    runtime.enabled&&operational.reconciled&&
+    operational.mailWriteApproved&&
+    Number.isSafeInteger(runtime.round)&&runtime.round>=1&&
+    runtime.round===operational.round&&
+    Number.isSafeInteger(runtime.calendarVersion)&&
+    runtime.calendarVersion>=1&&
+    runtime.calendarVersion===operational.calendarVersion&&
+    runtime.calendarVersion===calendar.version);
   const firstAuth=await request(AUTH);
   // If a valid project-ID request gets HTTP 400, try only the known numeric
   // alias (no arbitrary URL/project IDs). Never expose the error body.
@@ -193,6 +218,7 @@ export async function inspectFirebaseCloudReadiness({
     if(!runtime.enabled)blockers.push('MAIL_RUNTIME_UNVERIFIED');
     if(!operational.reconciled)
       blockers.push('OPERATIONAL_RUNTIME_UNVERIFIED');
+    if(!mailWriteGatesAligned)blockers.push('MAIL_WRITE_GATES_UNALIGNED');
   }else blockers.push('RUNTIME_AUDITS_AWAIT_SNAPSHOT');
   if(auth.status!==200)blockers.push('AUTH_LIST_UNAVAILABLE');
   else if(!accountListComplete)blockers.push('AUTH_LIST_INCOMPLETE');
@@ -222,6 +248,10 @@ export async function inspectFirebaseCloudReadiness({
     mailRuntimeHttpStatus:runtime.code,mailRuntimeEnabled:runtime.enabled,
     operationalRuntimeHttpStatus:operational.code,
     operationalRuntimeReconciled:operational.reconciled,
+    historicalCalendarHttpStatus:calendar.code,
+    historicalCalendarVersionVerified:Number.isSafeInteger(calendar.version)&&
+      calendar.version>=1,
+    mailWriteGatesAligned,
     authHttpStatus:auth.status,authProjectNumberHttpStatus:numberAuth?.status??null,
     authRpcStatus:auth.errorStatus??null,
     authProjectNumberRpcStatus:numberAuth?.errorStatus??null,
@@ -244,7 +274,8 @@ const BLOCKING_CODES=new Set([
   'SNAPSHOT_UNVERIFIED','MIGRATION_STAGES_UNVERIFIED',
   'AUXILIARY_STAGES_UNVERIFIED',
   'MAIL_RUNTIME_UNVERIFIED','OPERATIONAL_RUNTIME_UNVERIFIED',
-  'RUNTIME_AUDITS_AWAIT_SNAPSHOT','AUTH_LIST_UNAVAILABLE',
+  'RUNTIME_AUDITS_AWAIT_SNAPSHOT','MAIL_WRITE_GATES_UNALIGNED',
+  'AUTH_LIST_UNAVAILABLE',
   'AUTH_LIST_INCOMPLETE','CLOUD_ROLE_E2E_PENDING',
 ]);
 /** Strictly allowlisted GitHub Summary: no source IDs, errors or documents. */
@@ -268,6 +299,8 @@ export function formatCloudReadinessSummary(report){
       String(report?.auxiliaryStageCoverage??0)+' verificados |',
     '| Runtime de missivas | HTTP '+http(report?.mailRuntimeHttpStatus)+' · '+ok(report?.mailRuntimeEnabled)+' |',
     '| Runtime operacional das Casas | HTTP '+http(report?.operationalRuntimeHttpStatus)+' · '+ok(report?.operationalRuntimeReconciled)+' |',
+    '| Versão histórica do calendário | HTTP '+http(report?.historicalCalendarHttpStatus)+' · '+ok(report?.historicalCalendarVersionVerified)+' |',
+    '| Aprovações de correio, Casas, rodada e calendário alinhadas | '+ok(report?.mailWriteGatesAligned)+' |',
     '| Firebase Auth | HTTP '+http(report?.authHttpStatus)+' · '+ok(report?.authListComplete)+' |',
     '| Testes reais de isolamento de perfis | Pendente |',
     '| Cutover | **NÃO AUTORIZADO** |',

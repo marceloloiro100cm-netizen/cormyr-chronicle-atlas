@@ -86,6 +86,7 @@ export function evaluateOperatorEvidence({
     authPreview.toEnable+authPreview.alreadyEnabled===14;
   const mail=cloud?.mailRuntimeEnabled===true;
   const runtime=cloud?.operationalRuntimeReconciled===true;
+  const mailWriteGatesAligned=cloud?.mailWriteGatesAligned===true;
   const publicStage=cloud?.publicContentStageVerified===true;
   // Four independent, fail-closed production gates. These are not approvals.
   const fourBlocks={
@@ -114,6 +115,8 @@ export function evaluateOperatorEvidence({
       mailRuntimeHttpStatus:safeHttp(cloud?.mailRuntimeHttpStatus),
       houseRuntimeHttpStatus:safeHttp(cloud?.operationalRuntimeHttpStatus),
       mailVerified:mail,houseVerified:runtime,
+      mailWriteGatesAligned,
+      calendarMetadataVerified:cloud?.historicalCalendarVersionVerified===true,
       sourceDeltaReconciled:false,
       sourcePreflight:{
         checked:runtimeSources!==null&&!runtimeSourceError,
@@ -157,6 +160,7 @@ export function evaluateOperatorEvidence({
   if(!auxiliary)blockingCodes.push('AUXILIARY_STAGES_UNVERIFIED');
   if(!mail)blockingCodes.push('MAIL_RUNTIME_UNVERIFIED');
   if(!runtime)blockingCodes.push('OPERATIONAL_RUNTIME_UNVERIFIED');
+  if(!mailWriteGatesAligned)blockingCodes.push('MAIL_WRITE_GATES_UNALIGNED');
   if(!authValid)blockingCodes.push('AUTH_INVENTORY_UNVERIFIED');
   if(authValid&&authPreview.toEnable>0)blockingCodes.push('AUTH_ACCOUNTS_STILL_DISABLED');
   if(authValid&&authPreview.pendingRoleOrHouse>0)
@@ -184,6 +188,7 @@ export function evaluateOperatorEvidence({
     auxiliaryPendingStages,
     privateStagesComplete:stages,auxiliaryStagesComplete:auxiliary,
     mailRuntimeVerified:mail,operationalRuntimeVerified:runtime,
+    mailWriteGatesAligned,
     runtimeSourceProbeFailed:runtimeSourceError===true,
     fourBlocks,
     authUpdatesAttempted:0,firestoreWrites:0,roleWrites:0,
@@ -267,6 +272,8 @@ export function safeOperatorSummary(report){
       n(report?.fourBlocks?.playerAccess?.linkageDiagnostics?.blockingReasonCounts?.[k])+' |'),
     '| Correio operacional | '+yes(report?.mailRuntimeVerified)+' |',
     '| Runtime de Casas | '+yes(report?.operationalRuntimeVerified)+' |',
+    '| Rodada e versão do calendário alinhadas entre runtimes | '+
+      yes(report?.fourBlocks?.operations?.mailWriteGatesAligned)+' |',
     '| Pré-validação de fontes operacionais | '+
       yes(report?.fourBlocks?.operations?.sourcePreflight?.checked)+' |',
     '| Calendário privado histórico verificado | '+
