@@ -13,8 +13,10 @@ import {verifyStorageReadOnly} from './verify-storage-homologation.mjs';
 import {inspectPublicArchiveCoverage} from './public-archive-coverage-readonly.mjs';
 import {inspectPublicReviewCandidates} from './public-review-candidates.mjs';
 import {inspectCloudRoleLinkage} from './cloud-role-linkage-readonly.mjs';
-import {executeAllExistingAuthTestAccounts,safePreflightFailureCode}
+import {safePreflightFailureCode}
   from './auth-enable-all-test-accounts.mjs';
+import {inspectProtectedAuthInventory}
+  from './cloud-auth-inventory-readonly.mjs';
 
 const safeCount=n=>Number.isSafeInteger(n)&&n>=0&&n<=1000?n:null;
 const safeHttp=n=>Number.isSafeInteger(n)&&n>=100&&n<=599?n:null;
@@ -27,12 +29,20 @@ const ROLE_REASONS=Object.freeze([
 ]);
 /** Extract only validated aggregate data; never forward UIDs or private values. */
 export function summarizeRoleLinkageEvidence(report){
+  const historicFourteen=report?.accounts===14&&
+    report?.linkedAccounts===14;
+  // Historical access remains 14 documents after exactly one deleted Auth
+  // identity. This comparison does not approve WHICH account was removed.
+  const liveThirteen=report?.accounts===13&&
+    report?.linkedAccounts===13&&
+    report?.unlinkedAccounts===0&&
+    report?.unmatchedAccessDocuments===1&&
+    report?.disabledAccounts===0;
   const checked=report?.scope==='FIREBASE_ROLE_LINKAGE_READ_ONLY'&&
     report.singleVerifiedSnapshot===true&&
     report.authListComplete===true&&report.accessListComplete===true&&
     report.houseReferenceAuditComplete===true&&
-    report.accounts===14&&report.linkedAccounts===14&&
-    report.writes===0;
+    (historicFourteen||liveThirteen)&&report.writes===0;
   if(!checked)return {
     checked:false,accounts:null,eligible:null,
     blockingReasonCounts:null,eligibleByProfile:null,
@@ -49,7 +59,9 @@ export function summarizeRoleLinkageEvidence(report){
     safeCount(report.structurallyEligibleProfiles)!==null&&
     safeCount(report.unresolvedPlayerHouseReferences)!==null;
   return {
-    checked:complete,accounts:14,
+    checked:complete,accounts:complete?report.accounts:null,
+    historicAccessNotInAuth:complete?(liveThirteen?1:0):null,
+    deletionIdentityApproved:false,
     eligible:complete?report.structurallyEligibleProfiles:null,
     blockingReasonCounts:complete?reasons:null,
     eligibleByProfile:complete?eligibleByProfile:null,
