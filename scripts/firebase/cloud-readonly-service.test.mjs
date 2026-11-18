@@ -277,7 +277,8 @@ test('Mail runtime mismatch hides new mail and disables receipts/replies',async(
   approveCloudMailbox(f);
   const visibleId=hash('reply:cloud-visible');
   f.docs.set(root+'/letters/'+visibleId,{
-    id:visibleId,source:'firebase-cloud',senderUid:'player-b',
+    id:visibleId,source:'firebase-cloud',sourceSnapshotId:snapshot,
+    senderUid:'player-b',
     originHouseId:'house-b',recipientKind:'house',recipientHouseId:'house-a',
     recipientPlayerId:null,publicationState:'delivered',deletedAt:null,
     subject:'TEST_PRIVATE_CLOUD_MAIL',content:'TEST_PRIVATE_CLOUD_CONTENT',
