@@ -76,8 +76,17 @@ async function publishedStage(args:Options,dataset:'catalog'|'translations'){
   const stageRef=args.db.collection('migrationPublicContentStage').doc(args.snapshotId);
   const stage=await stageRef.get();
   const data=stage.exists?stage.data():null;
+  // A complete migration marker is not itself editorial approval.
+  // Require the exact reviewed publication marker and matching stage
+  // version, independently of the runtime's feature and dataset flags.
+  const stageVersion=dataset==='catalog'?'catalogVersion':'translationsVersion';
   if(!data||data['status']!=='complete'||data['private']!==true||
-     data['sourceSnapshotId']!==args.snapshotId)return unavailable();
+     data['sourceSnapshotId']!==args.snapshotId||
+     data['publicReviewApproved']!==true||
+     typeof data['reviewDigest']!=='string'||!SHA.test(data['reviewDigest'])||
+     !version(data[stageVersion])||
+     data[stageVersion]!==control[published])
+    return unavailable();
   return {root:stageRef,approvedVersion:control[published] as number};
 }
 
