@@ -44,7 +44,7 @@ export const Route=createFileRoute('/firebase-access')({
 type SessionView={authenticated:boolean;profile:'jogador'|'narrador'|'editor';
   memberHouseIds:string[];readOnly:boolean;snapshotReconciliationPending:boolean};
 type House={id:string;name:string;castle:string|null;crest:string|null;
-  season:number|null};
+  season?:number|null};
 type HouseView={id:string;name:string;castle:string|null;crest:string|null;
   state:Record<string,unknown>;version:number;readOnly:boolean};
 type Calendar={year:number;month:number;day:number;festival:string|null;version:number};
