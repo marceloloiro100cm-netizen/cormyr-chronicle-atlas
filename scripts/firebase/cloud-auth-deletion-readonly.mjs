@@ -49,6 +49,18 @@ export function safeDeletionFailureCode(error){
   return allowed.has(reason)?reason:'verification_unavailable';
 }
 
+/** A failed protected check must remain visible in the run summary, without IDs. */
+export function safeDeletionFailureSummary(error){
+  const code=safeDeletionFailureCode(error);
+  return ['## Cormyr — reconciliação privada Auth (somente leitura)',
+    '',
+    '| Verificação | Resultado |','| --- | --- |',
+    '| Reconciliação Auth | **BLOQUEADA** |',
+    '| Motivo seguro | `'+code+'` |',
+    '| Modificações Auth / Firestore | 0 / 0 |',
+    '| Liberação de jogadores | **NÃO AUTORIZADA** |',''].join('\\n').replaceAll('\\n','\n');
+}
+
 export function safeDeletionSummary(report){
   const num=n=>Number.isSafeInteger(n)&&n>=0&&n<=1000?n:'?';
   return ['## Cormyr — reconciliação privada Auth (somente leitura)',
@@ -89,6 +101,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
     if(process.env.GITHUB_STEP_SUMMARY)
       appendFileSync(process.env.GITHUB_STEP_SUMMARY,safeDeletionSummary(report));
   }catch(error){
+    if(process.env.GITHUB_STEP_SUMMARY)
+      appendFileSync(process.env.GITHUB_STEP_SUMMARY,safeDeletionFailureSummary(error));
     process.stderr.write('Protected Auth reconciliation did not verify. Reason: '+
       safeDeletionFailureCode(error)+'. No changes applied.\n');
     process.exitCode=2;
