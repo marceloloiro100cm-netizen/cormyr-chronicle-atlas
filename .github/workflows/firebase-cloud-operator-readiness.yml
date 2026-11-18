@@ -132,7 +132,7 @@ jobs:
       contents: read
       issues: write
     env:
-      OFFLINE_RESULT: \${{ needs.synthetic.result }}
+      OFFLINE_RESULT: ${{ needs.synthetic.result }}
     steps:
       - uses: actions/github-script@v7
         with:
@@ -161,7 +161,7 @@ jobs:
       contents: read
       issues: write
     env:
-      PROTECTED_RESULT: \${{ needs.operator-audit.result }}
+      PROTECTED_RESULT: ${{ needs.operator-audit.result }}
     steps:
       - uses: actions/github-script@v7
         with:
