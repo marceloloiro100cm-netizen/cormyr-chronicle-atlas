@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {auditProtectedAuthDeletion,safeDeletionSummary,safeDeletionFailureCode,\n  safeDeletionFailureSummary}
+import {auditProtectedAuthDeletion,safeDeletionSummary,safeDeletionFailureCode,
+  safeDeletionFailureSummary}
   from './cloud-auth-deletion-readonly.mjs';
 const fixture=()=>{
   const historic=Array.from({length:14},(_,i)=>({
