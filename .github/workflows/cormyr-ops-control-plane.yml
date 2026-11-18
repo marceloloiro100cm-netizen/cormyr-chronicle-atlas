@@ -29,7 +29,7 @@ on:
         type: choice
         required: true
         default: audit
-        options: [status-audit, apphosting-diagnostic, storage-staging-audit, storage-source-audit, audit, operator-audit, auth-preview, auth-deletion-audit, auth-inventory-audit, verify-emulators, verify-build, verify-pilot, runtime-preview, runtime-draft]
+        options: [status-audit, apphosting-diagnostic, storage-staging-audit, storage-source-audit, audit, operator-audit, auth-preview, auth-deletion-audit, auth-inventory-audit, verify-emulators, verify-build, verify-pilot, runtime-preview, runtime-draft, deploy-main]
 
 permissions:
   contents: read
@@ -61,7 +61,7 @@ jobs:
             const REPO = 'marceloloiro100cm-netizen/cormyr-chronicle-atlas';
             const CONTROL_ISSUE = 568;
             const AUTH_WORKFLOW = '.github/workflows/firebase-auth-enable-all-test-accounts.yml';
-            const titleFormat = /^Cormyr Ops \| (status-audit|apphosting-diagnostic|storage-staging-audit|storage-source-audit|audit|operator-audit|auth-preview|auth-deletion-audit|auth-inventory-audit|verify-emulators|verify-build|verify-pilot|runtime-preview|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
+            const titleFormat = /^Cormyr Ops \| (status-audit|apphosting-diagnostic|storage-staging-audit|storage-source-audit|audit|operator-audit|auth-preview|auth-deletion-audit|auth-inventory-audit|verify-emulators|verify-build|verify-pilot|runtime-preview|runtime-draft|deploy-main|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
             const {owner, repo} = context.repo;
             if (owner + '/' + repo !== REPO || Number(process.env.GITHUB_RUN_ATTEMPT) !== 1) {
               core.info('Untrusted context or retry: no remote action');
@@ -71,7 +71,7 @@ jobs:
             if (context.eventName === 'schedule') operation = 'audit';
             else if (context.eventName === 'workflow_dispatch') {
               operation = context.payload.inputs?.task;
-              if (!['status-audit', 'apphosting-diagnostic', 'storage-staging-audit', 'storage-source-audit', 'audit', 'operator-audit', 'auth-preview', 'auth-deletion-audit', 'auth-inventory-audit', 'verify-emulators', 'verify-build', 'verify-pilot', 'runtime-preview', 'runtime-draft'].includes(operation)) {
+              if (!['status-audit', 'apphosting-diagnostic', 'storage-staging-audit', 'storage-source-audit', 'audit', 'operator-audit', 'auth-preview', 'auth-deletion-audit', 'auth-inventory-audit', 'verify-emulators', 'verify-build', 'verify-pilot', 'runtime-preview', 'runtime-draft', 'deploy-main'].includes(operation)) {
                 core.info('Unknown manual command: no action');
                 return;
               }
@@ -149,7 +149,11 @@ jobs:
               core.info('Published public-safe existing run status in issue 582');
               return;
             }
-            const tasks = operation === 'storage-source-audit' ? [
+            const tasks = operation === 'deploy-main' ? [
+              ['firebase-apphosting-protected-rollout.yml', {
+                confirmation:'DEPLOY_VERIFIED_CORMYR_MAIN'
+              }],
+            ] : operation === 'storage-source-audit' ? [
               ['firebase-storage-source-copy-readonly.yml', {}],
             ] : operation === 'storage-staging-audit' ? [
               ['firebase-storage-scoped-audit.yml', {}],
@@ -188,6 +192,7 @@ jobs:
             ] : [];
             if (tasks.length) {
               const allowed = new Set([
+                'firebase-apphosting-protected-rollout.yml',
                 'firebase-apphosting-release-convergence.yml',
                 'firebase-apphosting-live-revision-readonly.yml',
                 'firebase-storage-scoped-audit.yml',
@@ -207,6 +212,7 @@ jobs:
                 'firebase-player-pilot-preflight.yml',
               ]);
               const protectedRuns = new Set([
+                'firebase-apphosting-protected-rollout.yml',
                 'firebase-cloud-operator-readiness.yml',
                 'firebase-auth-deletion-readonly.yml',
                 'firebase-auth-inventory-readonly.yml',
