@@ -37,7 +37,11 @@ export function reconcileAuthorizedAuthDeletions({
   if(deleted.size===0||deleted.size>14)fail('approval_invalid');
   for(const uid of deleted){
     const record=historicalAccess.find(x=>x.id===uid);
-    if(!record||record.data.admin!==false||record.data.profile==='narrador')
+    if(!record||record.data.admin!==false||record.data.profile==='narrador'||
+       !Array.isArray(record.data.memberHouseIds)||
+       record.data.memberHouseIds.length!==0||
+       !Array.isArray(record.data.editHouseIds)||
+       record.data.editHouseIds.length!==0)
       fail('protected_or_unknown_deletion');
     if(live.has(uid))fail('approved_deletion_still_present');
   }
