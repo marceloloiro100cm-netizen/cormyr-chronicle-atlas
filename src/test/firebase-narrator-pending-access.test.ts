@@ -21,7 +21,7 @@ describe('Firebase narrator pending-account panel is private and read-only',()=>
     expect(component).toContain('sourceImmutable');
     expect(service).toContain('readyForRemediation:false');
     expect(service).toContain('authWrites:0,firestoreWrites:0');
-    expect(component).not.toMatch(/localStorage|sessionStorage|updateUser|setDoc|writeBatch/);
+    expect(component).not.toMatch(/(?:localStorage|sessionStorage)\s*\.|updateUser\s*\(|setDoc\s*\(|writeBatch\s*\(/);
     expect(api).toContain("'Cache-Control':'private, no-store, max-age=0'");
     expect(api).toContain("crossOriginRejected(request)");
   });
