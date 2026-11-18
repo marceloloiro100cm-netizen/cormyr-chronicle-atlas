@@ -42,6 +42,7 @@ export function safeDeletionSummary(report){
     '| Contas no histórico imutável | '+num(report?.historicalAccounts)+' |',
     '| Contas Auth atuais | '+num(report?.liveAccounts)+' |',
     '| Exclusões autorizadas verificadas | '+num(report?.authorizedDeletionsVerified)+' |',
+    '| Contas remanescentes desativadas | '+num(report?.disabledRemaining)+' |',
     '| Exclusões inesperadas | '+num(report?.unexpectedMissing)+' |',
     '| Contas inesperadas | '+num(report?.unexpectedNew)+' |',
     '| Modificações Auth / Firestore | 0 / 0 |',
