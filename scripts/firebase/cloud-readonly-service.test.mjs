@@ -66,6 +66,7 @@ function fixture(profile='jogador',extra={}){
   const node=path=>({
     collection:name=>node(path?path+'/'+name:name),
     doc:id=>node(path+'/'+id),
+    limit:n=>{assert.ok(n>0&&n<=251);return node(path);},
     async get(){
       if(docs.has(path))return d(docs.get(path));
       const entries=[...docs].filter(([key])=>
