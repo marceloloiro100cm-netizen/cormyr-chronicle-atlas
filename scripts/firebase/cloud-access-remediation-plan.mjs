@@ -19,10 +19,20 @@ const fail=code=>{throw Error('access_remediation_preview_'+code);};
 const orderedEqual=(a,b)=>JSON.stringify([...a].sort())===
   JSON.stringify([...b].sort());
 
-/** Opaque proof of which proposal was previewed, NOT approval or write authority. */
-const proposalFingerprint=({snapshotId,actorUid,targetUid,profile,active,members,edits})=>
+/** Bind previews to the exact historical access state observed server-side. */
+const sourceFingerprint=({snapshotId,sourceAccess,authUser})=>
   createHash('sha256').update(JSON.stringify([
-    'cormyr-access-preview-v1',snapshotId,actorUid,targetUid,
+    'cormyr-access-source-v1',snapshotId,sourceAccess.userId,
+    sourceAccess.profile??null,sourceAccess.active,sourceAccess.admin,
+    sourceAccess.requirePasswordChange,sourceAccess.playerId??null,
+    [...sourceAccess.memberHouseIds].sort(),[...sourceAccess.editHouseIds].sort(),
+    authUser.uid,authUser.disabled,
+  ])).digest('hex');
+
+/** Opaque proof of which proposal was previewed, NOT approval or write authority. */
+const proposalFingerprint=({snapshotId,actorUid,targetUid,sourceDigest,profile,active,members,edits})=>
+  createHash('sha256').update(JSON.stringify([
+    'cormyr-access-preview-v2',snapshotId,actorUid,targetUid,sourceDigest,
     profile,active,[...members].sort(),[...edits].sort(),
   ])).digest('hex');
 
@@ -93,6 +103,8 @@ export function planNarratorAccessRemediation({
     adjustments.push('editHouseIds');
   if(sourceAccess.admin!==false)adjustments.push('admin');
 
+  const sourceDigest=sourceFingerprint({snapshotId,sourceAccess,authUser});
+
   // Do not change password status, even in the proposed state.
   // Never produce a write-ready authorization from this preflight.
   const blockers=['SOURCE_LIVE_DELTA_NOT_RECONCILED',
@@ -111,8 +123,9 @@ export function planNarratorAccessRemediation({
     proposedEditHouseCount:edits.length,
     // A later mutation must independently re-check identity, source version,
     // House catalog, password proof and explicit narrator authorization.
+    sourceFingerprint:sourceDigest,
     proposalFingerprint:proposalFingerprint({snapshotId,actorUid,targetUid,
-      profile:proposal.profile,active:proposal.active,members,edits}),
+      sourceDigest,profile:proposal.profile,active:proposal.active,members,edits}),
     changedFields:adjustments,
     requiresPasswordResetProof:sourceAccess.requirePasswordChange,
     authAccountDisabled:authUser.disabled,
