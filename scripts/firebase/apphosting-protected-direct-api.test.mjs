@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {requestExactAppHostingRollout,classifyAppHostingDenial} from './apphosting-protected-direct-api.mjs';
+import {requestExactAppHostingRollout,classifyAppHostingDenial,inspectAppHostingBuildDenial} from './apphosting-protected-direct-api.mjs';
 
 const sha='a'.repeat(40);
 const runId='44382536371';
@@ -133,4 +133,70 @@ test('unstructured or unfamiliar denied reasons fail closed without provider dat
     assert.ok(reason===null||reason==='permission_denied_unspecified');
     assert.ok(!String(reason).includes('PRIVATE'));
   }
+});
+
+test('Cloud Audit Logs query is fixed read-only scope and exposes only denied permission flags',async()=>{
+  const calls=[],source={
+    entries:[{
+      insertId:'PRIVATE_LOG_ID',resource:{labels:{project_id:'PRIVATE_PROJECT'}},
+      protoPayload:{serviceName:'firebaseapphosting.googleapis.com',
+        status:{code:7,message:'PRIVATE_PROVIDER_ERROR'},
+        authenticationInfo:{principalEmail:'PRIVATE_EMAIL'},
+        authorizationInfo:[
+          {permission:'firebaseapphosting.builds.create',granted:false,
+            resource:'PRIVATE_RESOURCE'},
+          {permission:'untrusted.private.access',granted:false},
+          {permission:'cloudbuild.builds.create',granted:true},
+        ],
+      },
+    }],
+  };
+  const fetcher=async(url,options)=>{
+    calls.push({url,method:options.method,headers:options.headers,
+      request:JSON.parse(options.body)});
+    return Response.json(source);
+  };
+  const result=await inspectAppHostingBuildDenial({
+    accessToken:'synthetic-auth-token',fetcher,
+    now:new Date('2026-11-18T21:00:00.000Z'),
+  });
+  assert.deepEqual(calls.map(c=>[c.url,c.method]),[
+    ['https://logging.googleapis.com/v2/entries:list','POST']]);
+  assert.deepEqual(calls[0].request.resourceNames,['projects/cormyr']);
+  assert.equal(calls[0].request.pageSize,20);
+  assert.ok(calls[0].request.filter.includes('2026-11-18T20:50:00.000Z'));
+  assert.equal(result.auditHttpStatus,200);
+  assert.equal(result.auditEvidenceFound,true);
+  assert.deepEqual(result.matchingDeniedPermissions,
+    ['firebaseapphosting.builds.create']);
+  assert.equal(result.cloudWrites,0);
+  const output=JSON.stringify(result);
+  for(const secret of ['PRIVATE','synthetic-auth-token','untrusted.private'])
+    assert.ok(!output.includes(secret));
+});
+
+test('Cloud Audit Logs reader fails closed for denied, unavailable or malformed audit',async()=>{
+  for(const response of [
+    Response.json({error:{message:'PRIVATE_ERROR'}},{status:403}),
+    Response.json({entries:[{protoPayload:{
+      serviceName:'other.googleapis.com',status:{code:7},
+      authorizationInfo:[{permission:'firebaseapphosting.builds.create',granted:false}],
+    }}]}),
+    Response.json({entries:[{protoPayload:{
+      serviceName:'firebaseapphosting.googleapis.com',status:{code:0},
+      authorizationInfo:[{permission:'firebaseapphosting.builds.create',granted:false}],
+    }}]}),
+    Response.json({entries:'PRIVATE_INVALID'}),
+  ]){
+    const report=await inspectAppHostingBuildDenial({
+      accessToken:'synthetic-auth-token',fetcher:async()=>response,
+    });
+    assert.deepEqual(report.matchingDeniedPermissions,[]);
+    assert.ok(!JSON.stringify(report).includes('PRIVATE'));
+    assert.equal(report.cloudWrites,0);
+  }
+  const missing=await inspectAppHostingBuildDenial({accessToken:'bad',
+    fetcher:async()=>{throw Error('unexpected network request');}});
+  assert.equal(missing.auditHttpStatus,null);
+  assert.equal(missing.auditEvidenceFound,false);
 });
