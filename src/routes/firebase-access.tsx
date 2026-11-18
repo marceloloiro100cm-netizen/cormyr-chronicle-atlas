@@ -11,6 +11,7 @@ import {GmEventos,GmAventuras} from '@/components/gm-panels';
 import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
 import {FirebaseNewspaperReader} from '@/components/newspaper/FirebaseNewspaperReader';
 import {FirebaseCalendarSnapshot} from '@/components/calendar/FirebaseCalendarSnapshot';
+import {FirebaseNarratorWeekDraft} from '@/components/calendar/FirebaseNarratorWeekDraft';
 import {FirebaseHouseSheet} from '@/components/houses/FirebaseHouseSheet';
 import {FirebaseArmyRoster} from '@/components/houses/FirebaseArmyRoster';
 import {FirebaseHoldingsRoster} from '@/components/houses/FirebaseHoldingsRoster';
@@ -659,6 +660,7 @@ function FirebaseAccess(){
         <button type="button" className="rounded border px-3 py-1"
           onClick={signOut}>Sair</button>
       </div>
+      {view.profile==='narrador'&&<FirebaseNarratorWeekDraft/>}
       {pilotStatus&&<section className="rounded border border-current/25 p-4 space-y-3"
         aria-label="Situação dos serviços desta sessão">
         <div className="space-y-1">
