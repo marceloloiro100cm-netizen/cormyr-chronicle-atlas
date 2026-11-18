@@ -38,7 +38,7 @@ export function reconcileAuthorizedAuthDeletions({
   if(deleted.size!==1||live.size!==13)fail('approval_invalid');
   for(const uid of deleted){
     const record=historicalAccess.find(x=>x.id===uid);
-    if(!record||record.data.admin!==false||record.data.profile==='narrador'||
+    if(!record||record.data.admin!==false||(record.data.profile==='narrador'||record.data.profile==='editor')||
        !Array.isArray(record.data.memberHouseIds)||
        record.data.memberHouseIds.length!==0||
        !Array.isArray(record.data.editHouseIds)||
