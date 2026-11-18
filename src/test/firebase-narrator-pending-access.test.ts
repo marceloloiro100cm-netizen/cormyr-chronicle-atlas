@@ -38,6 +38,14 @@ describe('Firebase narrator pending-account panel is private and read-only',()=>
     expect(component).toContain("profile:'jogador'|'editor';");
     expect(component).not.toContain('<option value="narrador">');
   });
+  it('distinguishes 13 live users from 14 immutable historic records',()=>{
+    expect(component).toContain('result.historicalAccountsChecked!==14');
+    expect(component).toContain('result.archivedHistoricalAccess!==14-result.accountsChecked');
+    expect(component).toContain('result.deletionIdentityApproved!==false');
+    expect(component).toContain('identidade existe apenas no histórico');
+    expect(service).toContain('archivedHistoricalAccess');
+    expect(service).toContain('currentCandidates');
+  });
   it('does not offer an implicit user-role or password approval button',()=>{
     expect(component).toContain('consulta privada');
     expect(component).not.toMatch(/Ativar conta|Salvar perfil|Confirmar senha alterada/);
