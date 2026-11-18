@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SOURCE,DESTINATION,compareStorageCopies,listGcsPrefix,verifyStorageReadOnly,summarizePrivateStaging,HISTORICAL_GCLOUD_ENTRY_COUNT}
+import {SOURCE,DESTINATION,compareStorageCopies,listGcsPrefix,verifyStorageReadOnly,summarizePrivateStaging,safeStagingSummary,HISTORICAL_GCLOUD_ENTRY_COUNT}
   from './verify-storage-homologation.mjs';
 const CRC='AAAAAA==',CRC2='AQAAAA==';
 const obj=(prefix,path,crc32c=CRC,size='1024')=>({
@@ -86,6 +86,35 @@ test('CLI 986 entries may contain 207 virtual folders and only 779 real GCS obje
  assert.equal(report.cloudWrites,0);
  assert.equal(JSON.stringify(report).includes('nested/'),false);
 });
+test('historical count drift is informational when API and CLI match',()=>{
+ const inventory=[obj(DESTINATION.prefix,'public/story.webp',CRC2,'16')];
+ const listing='gs://'+DESTINATION.bucket+'/'+DESTINATION.prefix+'public/story.webp';
+ const report=summarizePrivateStaging(inventory,listing);
+ assert.equal(report.listingMethodsAgree,true);
+ assert.equal(report.matchesHistoricalEntryCount,false);
+ assert.equal(report.destinationObjects,1);
+ assert.equal(report.destinationBytes,16);
+ assert.equal(report.sourceCompared,false);
+ const summary=safeStagingSummary(report);
+ assert.match(summary,/API e CLI concordam \\| \\*\\*SIM\\*\\*/);
+ assert.match(summary,/não bloqueante/);
+ assert.match(summary,/NÃO EFETUADA/);
+ assert.match(summary,/NÃO AUTORIZADA/);
+ assert.ok(!summary.includes('public/story.webp'));
+ assert.ok(!summary.includes(DESTINATION.bucket));
+});
+test('sanitized report never prints untrusted object names or numbers',()=>{
+ const summary=safeStagingSummary({
+   listingMethodsAgree:false,destinationObjects:'PRIVATE_OBJECT_NAME',
+   destinationBytes:NaN,cliUniqueObjectEntries:-1,cliPseudoFolders:Infinity,
+   onlyInApi:'PRIVATE_INFO',onlyInCli:2,cliDuplicateFileEntries:3,
+   matchesHistoricalEntryCount:false,
+ });
+ for(const secret of ['PRIVATE_OBJECT_NAME','PRIVATE_INFO','NaN','Infinity'])
+   assert.ok(!summary.includes(secret));
+ assert.match(summary,/API e CLI concordam \\| \\*\\*NÃO\\*\\*/);
+});
+
 test('real missing or extra objects remain blocked, independent of virtual folders',()=>{
  const prefix='gs://'+DESTINATION.bucket+'/'+DESTINATION.prefix;
  const onlyApi=[obj(DESTINATION.prefix,'a.webp')];
