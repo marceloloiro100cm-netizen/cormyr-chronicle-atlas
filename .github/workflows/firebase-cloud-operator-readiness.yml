@@ -7,6 +7,7 @@ on:
       - 'scripts/firebase/cloud-operator-readiness*.mjs'
       - 'scripts/firebase/cloud-runtime-source-preflight*.mjs'
       - 'scripts/firebase/public-archive-coverage-readonly*.mjs'
+      - 'scripts/firebase/public-review-candidates*.mjs'
       - 'scripts/firebase/public-archive-asset-integrity*.mjs'
       - 'public/cormyr/data.js'
       - 'public/cormyr/histories/**'
@@ -17,6 +18,7 @@ on:
       - 'scripts/firebase/cloud-operator-readiness*.mjs'
       - 'scripts/firebase/cloud-runtime-source-preflight*.mjs'
       - 'scripts/firebase/public-archive-coverage-readonly*.mjs'
+      - 'scripts/firebase/public-review-candidates*.mjs'
       - 'scripts/firebase/public-archive-asset-integrity*.mjs'
       - 'public/cormyr/data.js'
       - 'public/cormyr/histories/**'
@@ -49,6 +51,7 @@ jobs:
           node --test scripts/firebase/cloud-role-linkage-readonly.test.mjs
           node --test scripts/firebase/cloud-runtime-source-preflight.test.mjs
           node --test scripts/firebase/public-archive-coverage-readonly.test.mjs
+          node --test scripts/firebase/public-review-candidates.test.mjs
           node --test scripts/firebase/public-archive-asset-integrity.test.mjs
           node scripts/firebase/public-archive-asset-integrity.mjs
           node --test scripts/firebase/auth-enable-all-test-accounts.test.mjs
