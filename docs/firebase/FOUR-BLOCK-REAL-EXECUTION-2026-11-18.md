@@ -12,6 +12,12 @@ O operador protegido coleta metadados dos dois escopos fixos em
 - Origem: `gs://cormyr.firebasestorage.app/migration-staging/campaign-images/`
 - Homologação: `gs://cormyr-migration-homolog-477785088395/campaign-images/`
 
+A primeira tentativa é feita automaticamente pela identidade de leitura
+de escopo mínimo (`.github/workflows/firebase-storage-source-copy-readonly.yml`),
+sem revisão humana nem ampliação de IAM. Se a origem não autorizar esse leitor,
+o job falha de forma explícita e o operador protegido pode repetir a prova
+com a identidade administrativa já configurada após aprovação do ambiente.
+
 A comparação exige os mesmos caminhos relativos, tamanhos e CRC32C e,
 quando ambos os objetos oferecem MD5, compara também MD5. Relatório com
 contagens e códigos de erro pré-definidos. Não imprime nomes, paths, tokens
