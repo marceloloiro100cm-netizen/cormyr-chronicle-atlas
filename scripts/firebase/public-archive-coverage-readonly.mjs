@@ -30,10 +30,15 @@ export function parsePublicArchivePayload(source){
 }
 
 /** Only fixed aggregate counts are returned: no names, IDs or source rows. */
-export function summarizePublicArchiveCoverage({archive,sourceHouses}={}){
+export function summarizePublicArchiveCoverage({
+  archive,sourceHouses,assetChecks=null,
+}={}){
   if(!archive||!Array.isArray(archive.regions)||
      !Array.isArray(sourceHouses)||sourceHouses.length===0||
      sourceHouses.length>250)failed('source_unverified');
+  if(assetChecks!==null&&
+     (typeof assetChecks?.crest!=='function'||
+      typeof assetChecks?.history!=='function'))failed('asset_checks_invalid');
   const publicCounts=new Map(),publicByName=new Map();
   let archivedHouses=0;
   for(const region of archive.regions){
@@ -53,6 +58,8 @@ export function summarizePublicArchiveCoverage({archive,sourceHouses}={}){
         history:typeof house.historyPath==='string'&&
           /^histories\/[A-Za-z0-9/_-]+\.json$/i.test(house.historyPath),
         directDescription:validName(house.description),
+        crestReference:house.crest,
+        historyReference:house.historyPath,
       });
       archivedHouses++;
     }
@@ -75,6 +82,16 @@ export function summarizePublicArchiveCoverage({archive,sourceHouses}={}){
   let active=0,exact=0,ambiguous=0,unmatched=0;
   const candidateFields={region:0,classification:0,crest:0,
     historyReference:0,directDescription:0};
+  const assetVerification={
+    checked:assetChecks!==null,
+    uniqueSeason2MatchesWithValidCrests:assetChecks?0:null,
+    uniqueSeason2MatchesWithValidHistories:assetChecks?0:null,
+    uniqueSeason2MatchesWithBothValid:assetChecks?0:null,
+    uniqueSeason2MatchesWithUnverifiedAssets:assetChecks?0:null,
+  };
+  const safeCheck=(fn,path)=>{
+    try{return fn(path)===true;}catch{return false;}
+  };
   for(const house of sourceHouses){
     if(house.active!==true||house.season!==2)continue;
     active++;
@@ -92,6 +109,17 @@ export function summarizePublicArchiveCoverage({archive,sourceHouses}={}){
     if(fields.crest)candidateFields.crest++;
     if(fields.history)candidateFields.historyReference++;
     if(fields.directDescription)candidateFields.directDescription++;
+    if(assetChecks){
+      const crestOk=fields.crest&&
+        safeCheck(assetChecks.crest,fields.crestReference);
+      const historyOk=fields.history&&
+        safeCheck(assetChecks.history,fields.historyReference);
+      if(crestOk)assetVerification.uniqueSeason2MatchesWithValidCrests++;
+      if(historyOk)assetVerification.uniqueSeason2MatchesWithValidHistories++;
+      if(crestOk&&historyOk)
+        assetVerification.uniqueSeason2MatchesWithBothValid++;
+      else assetVerification.uniqueSeason2MatchesWithUnverifiedAssets++;
+    }
   }
   return {
     scope:'FIREBASE_PUBLIC_ARCHIVE_NAME_COVERAGE_READ_ONLY',
@@ -99,8 +127,9 @@ export function summarizePublicArchiveCoverage({archive,sourceHouses}={}){
     sourceHouses:sourceHouses.length,activeSourceHouses:active,
     exactMatches:exact,ambiguousMatches:ambiguous,unmatchedActive:unmatched,
     // Published archive fields available for manual review, NOT approved data.
-    candidateFields,
-    // Coverage is NOT review or evidence of matching public/private fields.
+    candidateFields,assetVerification,
+    // Verified files are still only public archive candidates, not
+    // reviewed/private-identity-approved game data.
     reviewApproved:false,ready:false,cloudWrites:0,
     readyForPlayers:false,releaseDecision:'NO_GO',
   };
@@ -120,7 +149,15 @@ export async function inspectPublicArchiveCoverage({db,snapshotId}={}){
   if(!Array.isArray(query?.docs)||query.docs.length===0||
      query.docs.length>250)failed('source_inventory_unverified');
   const archive=parsePublicArchivePayload(readFileSync(archiveFile,'utf8'));
+  // Lazy import breaks the integrity module's parser dependency cycle.
+  // Both checks inspect only files in the checked-in public archive.
+  const {verifyPublicHistoryAsset,verifyPublicCrestAsset}
+    =await import('./public-archive-asset-integrity.mjs');
   return summarizePublicArchiveCoverage({
     archive,sourceHouses:query.docs.map(doc=>doc.data()),
+    assetChecks:{
+      crest:verifyPublicCrestAsset,
+      history:verifyPublicHistoryAsset,
+    },
   });
 }
