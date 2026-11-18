@@ -6,7 +6,6 @@ on:
     paths:
       - 'scripts/firebase/cloud-operator-readiness*.mjs'
       - 'scripts/firebase/cloud-auth-inventory-readonly*.mjs'
-      - 'scripts/firebase/cloud-auth-inventory-readonly*.mjs'
       - 'scripts/firebase/auth-deletion-reconciliation*.mjs'
       - 'scripts/firebase/cloud-runtime-source-preflight*.mjs'
       - 'scripts/firebase/public-archive-coverage-readonly*.mjs'
@@ -50,9 +49,11 @@ jobs:
           node-version: '24'
       - name: Verify read-only evidence and negative cases
         run: |
+          node --check scripts/firebase/auth-deletion-reconciliation.mjs
+          node --check scripts/firebase/cloud-auth-deletion-readonly.mjs
+          node --test scripts/firebase/cloud-auth-deletion-readonly.test.mjs
           node --test scripts/firebase/auth-deletion-reconciliation.test.mjs
           node --check scripts/firebase/cloud-operator-readiness.mjs
-          node --test scripts/firebase/cloud-auth-inventory-readonly.test.mjs
           node --test scripts/firebase/cloud-auth-inventory-readonly.test.mjs
           node --test scripts/firebase/cloud-operator-readiness.test.mjs
           node --test scripts/firebase/cloud-role-linkage-readonly.test.mjs
