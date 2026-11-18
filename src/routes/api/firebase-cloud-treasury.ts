@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseCloudTreasury,CloudTreasuryError}
   from '../../../scripts/firebase/cloud-house-treasury-service.mjs';
+import {crossOriginRejected} from '@/lib/server/request-origin';
 
 /** Firestore Admin only. This endpoint never changes imported migration
  * snapshots or auto-provisions operational balances. */
@@ -48,8 +49,7 @@ async function handle(request:Request):Promise<Response>{
     return failure(503,'firebase_cloud_treasury_disabled');
   const url=new URL(request.url);
   if(url.search||request.headers.has('cookie')||
-     request.headers.get('sec-fetch-site')==='cross-site'||
-     (request.headers.has('origin')&&request.headers.get('origin')!==url.origin))
+     crossOriginRejected(request))
     return failure(403,'access_denied');
   const authorization=request.headers.get('authorization')??'';
   if(!/^Bearer [^\s]{10,10000}$/.test(authorization))

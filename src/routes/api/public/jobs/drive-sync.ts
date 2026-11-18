@@ -2,6 +2,7 @@ import {createFileRoute} from '@tanstack/react-router';
 import {
   isAuthorizedFirebaseDriveJob,inspectApprovedFirebaseDriveStage,
 } from '@/lib/drive/firebase-cloud-drive-job.server';
+import {crossOriginRejected} from '@/lib/server/request-origin';
 
 const HEADERS={
   'Cache-Control':'private, no-store, max-age=0',
@@ -24,8 +25,7 @@ export async function handleFirebaseDriveSync(request:Request):Promise<Response>
   const u=new URL(request.url);
   if(request.method!=='POST'||u.search||
      request.headers.has('cookie')||
-     request.headers.get('sec-fetch-site')==='cross-site'||
-     (request.headers.has('origin')&&request.headers.get('origin')!==u.origin))
+     crossOriginRejected(request))
     return fail(403,'forbidden');
   if(request.headers.get('content-type')?.split(';')[0]?.trim()!=='application/json'||
      request.headers.has('content-encoding'))

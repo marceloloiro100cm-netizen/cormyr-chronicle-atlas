@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseCloudMail,CloudMailError}
   from '../../../scripts/firebase/cloud-mail-service.mjs';
+import {crossOriginRejected} from '@/lib/server/request-origin';
 
 /**
  * Firebase CLOUD-only mail commands.
@@ -52,8 +53,7 @@ async function handle(request:Request){
     return error(503,'firebase_cloud_mail_disabled');
   const url=new URL(request.url);
   if(url.search||request.headers.has('cookie')||
-     request.headers.get('sec-fetch-site')==='cross-site'||
-     (request.headers.has('origin')&&request.headers.get('origin')!==url.origin))
+     crossOriginRejected(request))
     return error(403,'access_denied');
   const authHeader=request.headers.get('authorization')??'';
   if(!/^Bearer [^\s]{10,10000}$/.test(authHeader))

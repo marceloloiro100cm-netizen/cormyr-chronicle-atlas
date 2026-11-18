@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseOperationalEconomyRead,CloudEconomyReadError}
   from '@/lib/house/firebase-operational-economy-read';
+import {crossOriginRejected} from '@/lib/server/request-origin';
 
 /** Gated read-only projection; does not enable purchase operations. */
 const headers={
@@ -45,8 +46,7 @@ async function handle(request:Request):Promise<Response>{
     return failure(503,'operational_economy_read_disabled');
   const url=new URL(request.url);
   if(url.search||request.headers.has('cookie')||
-     request.headers.get('sec-fetch-site')==='cross-site'||
-     (request.headers.has('origin')&&request.headers.get('origin')!==url.origin))
+     crossOriginRejected(request))
     return failure(403,'access_denied');
   const bearer=request.headers.get('authorization')??'';
   if(!/^Bearer [^\s]{10,10000}$/.test(bearer))
