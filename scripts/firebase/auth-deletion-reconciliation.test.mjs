@@ -61,3 +61,9 @@ test('reject deletion of a historical editor even when House lists are empty',()
   f.historicalAccess[13].data.profile='editor';
   assert.throws(()=>reconcile(f));
 });
+
+test('disabled surviving account invalidates proof even when count matches',()=>{
+  const f=fixtures();
+  f.liveAuth[0].disabled=true;
+  assert.throws(()=>reconcile(f),/remaining_account_disabled/);
+});
