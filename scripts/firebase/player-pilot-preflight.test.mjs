@@ -50,6 +50,7 @@ test('fixed eight anonymous requests: GET public, impossible POST private',async
   assert.equal(report.publicContentAvailable,true);
   assert.equal(report.privateEndpointsFailClosedNow,true);
   assert.equal(report.privateAuthGuardVerified,false);
+  assert.equal(report.cloudReadAuthGuardVerified,false);
   assert.equal(report.readyForPlayers,false);
   assert.equal(report.readyForCutover,false);
   assert.equal(report.releaseDecision,'NO_GO');
@@ -91,6 +92,7 @@ test('all active private endpoints returning 401 prove only anonymous denials',a
   });
   assert.equal(report.privateEndpointsFailClosedNow,true);
   assert.equal(report.privateAuthGuardVerified,true);
+  assert.equal(report.cloudReadAuthGuardVerified,true);
   assert.equal(report.readyForPlayers,false);
   assert.equal(report.accountActivationVerified,false);
 });
