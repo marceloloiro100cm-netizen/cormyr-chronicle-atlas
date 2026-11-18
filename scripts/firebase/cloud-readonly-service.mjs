@@ -8,6 +8,7 @@
 import {createHash} from 'node:crypto';
 import {canAcknowledgeMail,mailReceiptId} from './cloud-mail-receipt-core.mjs';
 import {cloudReplyRoute} from './cloud-mail-reply-core.mjs';
+import {cloudMailRuntimeApproved} from './cloud-mail-runtime-approval.mjs';
 
 const SNAPSHOT=/^[a-f0-9]{64}$/;
 const SAFE_ID=/^[^/\u0000-\u001f]{1,128}$/;
@@ -146,13 +147,16 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       // Historical import is immutable. Newly authored messages only appear
       // after the separately approved Cloud runtime is fully reconciled.
       const liveRoot=db.collection('campaignCloudRuntime').doc(snapshotId);
-      const liveStatus=await liveRoot.get();
-      if(liveStatus.exists&&liveStatus.data()?.status==='active'&&
-         liveStatus.data()?.private===true&&
-         liveStatus.data()?.sourceSnapshotId===snapshotId&&
-         liveStatus.data()?.sourceSnapshotReconciled===true&&
-         liveStatus.data()?.mailWriteApproved===true&&
-         liveStatus.data()?.applicationEnabled===true){
+      const [liveStatus,mailGate,calendar]=await Promise.all([
+        liveRoot.get(),
+        db.collection('campaignMailRuntime').doc(snapshotId).get(),
+        db.collection('migrationTimeEngineStage').doc(snapshotId)
+          .collection('calendar').doc('current').get(),
+      ]);
+      const cloudMailApproved=liveStatus.exists&&mailGate.exists&&
+        calendar.exists&&cloudMailRuntimeApproved(liveStatus.data(),
+          mailGate.data(),calendar.data(),snapshotId);
+      if(cloudMailApproved){
         const live=await liveRoot.collection('letters').get();
         if(live.size>500)deny('mailbox_requires_pagination',503);
         cloudMessages=live.docs.map(d=>d.data());
@@ -178,14 +182,7 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       const items=await Promise.all(visible.slice(0,30).map(async v=>{
         const source=v.source==='firebase-cloud'?'firebase-cloud':'imported';
         const id=v.sourceId??v.id;
-        const canMarkRead=liveStatus.exists&&
-          liveStatus.data()?.status==='active'&&
-          liveStatus.data()?.private===true&&
-          liveStatus.data()?.sourceSnapshotId===snapshotId&&
-          liveStatus.data()?.sourceSnapshotReconciled===true&&
-          liveStatus.data()?.mailWriteApproved===true&&
-          liveStatus.data()?.applicationEnabled===true&&
-          canAcknowledgeMail({
+        const canMarkRead=cloudMailApproved&&canAcknowledgeMail({
             uid:scope.uid,role:scope.profile,playerId:scope.playerId,
             memberHouses:scope.memberHouseIds,
           },v,source,id);
@@ -206,14 +203,7 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
           deliveredAt:v.deliveredAt??null,
           canMarkRead:Boolean(canMarkRead),readAt,
           // Only the current authorized recipient can initiate a reply.
-          canReply:Boolean(liveStatus.exists&&
-            liveStatus.data()?.status==='active'&&
-            liveStatus.data()?.private===true&&
-            liveStatus.data()?.sourceSnapshotId===snapshotId&&
-            liveStatus.data()?.sourceSnapshotReconciled===true&&
-            liveStatus.data()?.mailWriteApproved===true&&
-            liveStatus.data()?.applicationEnabled===true&&
-            cloudReplyRoute({
+          canReply:Boolean(cloudMailApproved&&cloudReplyRoute({
               uid:scope.uid,role:scope.profile,editHouses:scope.editHouseIds,
             },v,snapshotId)),
         };
