@@ -9,6 +9,8 @@ type Issue='inactive'|'missingProfile'|'playerWithoutHouse'|
   'passwordChangePending'|'invalidScope';
 export type PendingAccessReview={
   readOnly:true;sourceImmutable:true;accountsChecked:number;
+  historicalAccountsChecked:14;archivedHistoricalAccess:0|1;
+  deletionIdentityApproved:false;
   pendingAccounts:number;
   issues:Record<Issue,number>;
   items:Array<{
@@ -208,7 +210,11 @@ export function FirebasePendingAccessReview({
     try{
       const result=await inspect();
       if(result.readOnly!==true||result.sourceImmutable!==true||
-         result.accountsChecked!==14||!Array.isArray(result.items)||
+         result.historicalAccountsChecked!==14||
+         ![13,14].includes(result.accountsChecked)||
+         result.archivedHistoricalAccess!==14-result.accountsChecked||
+         result.deletionIdentityApproved!==false||
+         !Array.isArray(result.items)||
          result.pendingAccounts!==result.items.length||
          result.firestoreWrites!==0||result.authWrites!==0)
         throw Error('invalid_private_access_report');
@@ -228,12 +234,18 @@ export function FirebasePendingAccessReview({
       {pending?'Conferindo…':'Conferir cadastros no Firebase'}
     </button>
     {error&&<p role="alert" className="text-sm">
-      Não foi possível conferir todos os 14 cadastros com segurança.
+      Não foi possível reconciliar o histórico com as contas atuais com segurança.
       Nenhuma alteração foi feita.
     </p>}
     {report&&<div className="space-y-3" role="status">
-      <p className="text-sm">Contas conferidas: {report.accountsChecked}.
-        Cadastros que exigem revisão: {report.pendingAccounts}.</p>
+      <p className="text-sm">Contas atuais conferidas: {report.accountsChecked}
+        {' '}de {report.historicalAccountsChecked} registros históricos.
+        Cadastros atuais que exigem revisão: {report.pendingAccounts}.</p>
+      {report.archivedHistoricalAccess===1&&<p className="text-xs">
+        Uma identidade existe apenas no histórico de migração e não aparece
+        como conta atual. Ela não será reativada nem proposta para ajuste;
+        a confirmação de sua exclusão é uma auditoria separada.
+      </p>}
       {report.items.length===0?<p className="text-sm">
         Nenhum cadastro pendente neste inventário. A liberação do jogo
         ainda requer aceite operacional independente.
