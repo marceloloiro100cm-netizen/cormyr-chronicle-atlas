@@ -9,8 +9,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: build-check-${{ github.ref }}
-  # Preserve evidence from main; supersede outdated pull-request runs only.
+  group: build-check-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  # Unique run IDs for main/manual jobs preserve both running and queued evidence.
+  # PRs alone share a branch group so superseded checks can be cancelled.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
