@@ -32,7 +32,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: cormyr-ops-${{ github.event.issue.number || github.run_id }}
+  # Every issue-title edit is an independent requested action; never drop
+  # earlier pending dispatches when another request arrives immediately.
+  group: cormyr-ops-${{ github.run_id }}
   cancel-in-progress: false
 
 jobs:
