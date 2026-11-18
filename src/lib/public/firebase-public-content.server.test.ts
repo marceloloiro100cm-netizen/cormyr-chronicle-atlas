@@ -33,7 +33,9 @@ function fixture(overrides:Record<string,unknown>={}){
       publicTranslationsApproved:true,publishedTranslationsVersion:2,
       translationsVersion:2,sourceSecret:'PRIVATE_RUNTIME_VALUE',
     },
-    [stage]:{status:'complete',private:true,sourceSnapshotId:HASH},
+    [stage]:{status:'complete',private:true,sourceSnapshotId:HASH,
+      publicReviewApproved:true,reviewDigest:'b'.repeat(64),
+      catalogVersion:3,translationsVersion:2},
     [catalog]:{version:3,houses:[goodHouse],playerHouses:[{house_id:'hA'}]},
     [en]:{version:2,locale:'en',rows:goodRows},
     ...overrides,
@@ -115,6 +117,28 @@ describe('Firebase-only catálogo público com publicação independente',()=>{
     ]){
       const f=fixture(changes);
       await denied(f.getCatalog());
+    }
+  });
+  it('exige revisão editorial e digest do estágio antes de servir dados',async()=>{
+    const base={
+      status:'complete',private:true,sourceSnapshotId:HASH,
+      publicReviewApproved:true,reviewDigest:'b'.repeat(64),
+      catalogVersion:3,translationsVersion:2,
+    };
+    for(const modified of [
+      {publicReviewApproved:false},{publicReviewApproved:undefined},
+      {reviewDigest:undefined},{reviewDigest:'invalid'},
+      {catalogVersion:2},{translationsVersion:1},
+    ]){
+      const f=fixture({[stage]:{...base,...modified}});
+      if(Object.hasOwn(modified,'catalogVersion')||
+         Object.hasOwn(modified,'publicReviewApproved')||
+         Object.hasOwn(modified,'reviewDigest'))
+        await denied(f.getCatalog());
+      if(Object.hasOwn(modified,'translationsVersion')||
+         Object.hasOwn(modified,'publicReviewApproved')||
+         Object.hasOwn(modified,'reviewDigest'))
+        await denied(f.getTranslations());
     }
   });
   it('rejeita Casa não revisada, não ativa e IDs de roster estranhos',async()=>{
