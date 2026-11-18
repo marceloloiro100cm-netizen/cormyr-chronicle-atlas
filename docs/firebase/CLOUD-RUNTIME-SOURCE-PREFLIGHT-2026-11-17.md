@@ -10,4 +10,18 @@ Esta implementação acrescenta uma sonda somente leitura ao auditor protegido, 
 
 A saída é sanitizada em fourBlocks.operations.sourcePreflight. Nenhum ID, hash, data do calendário, senha, Casa ou mensagem é serializado. Falhas de provedor viram apenas o booleano runtimeSourceProbeFailed. O workflow de auditoria protegida continua exigindo aprovação de firebase-auth-test-activation.
 
+## Alinhamento obrigatório para envio de missivas
+
+A auditoria OIDC de prontidão passou a consultar **somente os campos
+mascarados** `openRound`, `calendarVersion` e `mailWriteApproved` dos
+runtimes, mais a versão do calendário histórico privado. Não lê nem registra
+números de rodada, datas, nomes de Casas ou identificadores de snapshot.
+
+O resultado `mailWriteGatesAligned` só é verdadeiro se os dois documentos
+estiverem ativos, reconciliados e liberados para correio, com rodada e versão
+idênticas entre si e à versão do calendário. Mesmo nesse caso, é apenas
+consistência de metadados: **não confirma a fonte viva atual, a reconciliação
+do delta, nem os testes autenticados entre Casas**. Esses permanecem
+pendências independentes; nenhuma ativação é feita pelo diagnóstico.
+
 **Nenhum documento novo é criado no Cloud; nenhum flag/secret é alterado.** readyForRuntimeProvisioning=false, readyForPlayers=false, readyForCutover=false e releaseDecision=NO_GO permanecem constantes. Esse diagnóstico identifica exatamente quais fontes de operação estão prontas e quais dependem de revisão privada.
