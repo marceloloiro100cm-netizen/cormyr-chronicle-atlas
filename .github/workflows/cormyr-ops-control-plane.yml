@@ -217,12 +217,21 @@ jobs:
               'Firebase player pilot — GitHub-only preflight':'Site: leitura pública e bloqueios de visitante anônimo',
               'Firebase Cloud — bootstrap disabled runtime drafts':'Cloud: pré-validação de fontes e runtimes (prévia, somente leitura)'
             });
-            const run=context.payload.workflow_run;
-            if (!run || !Object.hasOwn(allowed,run.name)) return;
+            const incoming=context.payload.workflow_run;
+            if (!incoming || !Number.isSafeInteger(Number(incoming.id))) return;
             const expected='marceloloiro100cm-netizen/cormyr-chronicle-atlas';
-            if (context.repo.owner+'/'+context.repo.repo!==expected ||
+            if (context.repo.owner+'/'+context.repo.repo!==expected) return;
+            // Resolve authoritative GitHub data: optional webhook fields may
+            // be absent even for a completed, legitimate manual run.
+            const {data:run}=await github.rest.actions.getWorkflowRun({
+              ...context.repo,run_id:Number(incoming.id)
+            });
+            if (!Object.hasOwn(allowed,run.name) ||
+                run.repository?.full_name!==expected ||
                 run.head_repository?.full_name!==expected ||
-                run.head_branch!=='main'||run.event!=='workflow_dispatch') return;
+                run.head_branch!=='main'||
+                run.event!=='workflow_dispatch'||
+                run.status!=='completed') return;
             const verdict=['success','failure','cancelled','timed_out','skipped'].includes(run.conclusion)
               ? run.conclusion:'unknown';
             const url='https://github.com/'+expected+'/actions/runs/'+Number(run.id);
@@ -238,5 +247,5 @@ jobs:
               '**Decisão da campanha: NO_GO até aceite real independente.**'
             ];
             await github.rest.issues.createComment({
-              ...context.repo,issue_number:582,body:lines.join('\\n')
+              ...context.repo,issue_number:582,body:lines.join('\n')
             });
