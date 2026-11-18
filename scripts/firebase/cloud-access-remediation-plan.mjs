@@ -5,6 +5,8 @@
  * requirePasswordChange, grant admin or enable game runtime.
  * Input and temporary draft contain private identities: do not log.
  */
+import {createHash} from 'node:crypto';
+
 const HASH=/^[a-f0-9]{64}$/;
 const ID=/^[^\/\u0000-\u001f\u007f]{1,128}$/;
 const ROLES=new Set(['jogador','editor','narrador']);
@@ -16,6 +18,13 @@ const asIds=value=>Array.isArray(value)&&value.length<=250&&
 const fail=code=>{throw Error('access_remediation_preview_'+code);};
 const orderedEqual=(a,b)=>JSON.stringify([...a].sort())===
   JSON.stringify([...b].sort());
+
+/** Opaque proof of which proposal was previewed, NOT approval or write authority. */
+const proposalFingerprint=({snapshotId,actorUid,targetUid,profile,active,members,edits})=>
+  createHash('sha256').update(JSON.stringify([
+    'cormyr-access-preview-v1',snapshotId,actorUid,targetUid,
+    profile,active,[...members].sort(),[...edits].sort(),
+  ])).digest('hex');
 
 /**
  * Trust only server-read snapshot, Auth and active House catalog.
@@ -100,6 +109,10 @@ export function planNarratorAccessRemediation({
     proposedActive:proposal.active,
     proposedMemberHouseCount:members.length,
     proposedEditHouseCount:edits.length,
+    // A later mutation must independently re-check identity, source version,
+    // House catalog, password proof and explicit narrator authorization.
+    proposalFingerprint:proposalFingerprint({snapshotId,actorUid,targetUid,
+      profile:proposal.profile,active:proposal.active,members,edits}),
     changedFields:adjustments,
     requiresPasswordResetProof:sourceAccess.requirePasswordChange,
     authAccountDisabled:authUser.disabled,
