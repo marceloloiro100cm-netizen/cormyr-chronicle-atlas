@@ -63,6 +63,13 @@ env:
     availability:
       - RUNTIME
 
+  # Narrator-only PENDING week proposals; does not publish calendar or mail.
+  # Server still verifies Firebase Auth and the immutable historic snapshot.
+  - variable: CORMYR_FIREBASE_NARRATOR_WEEK_DRAFT_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+
   # Narrator-only House reconciliation diagnostics. Strictly read-only:
   # every request checks Firebase Auth, admin role and current House scope.
   # This enables investigation, NOT operational seeding, publication or GO.
