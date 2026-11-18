@@ -15,6 +15,7 @@ on:
       - 'src/routes/api/firebase-cloud-newspaper.ts'
       - 'src/routes/api/firebase-cloud-treasury.ts'
       - 'scripts/firebase/cloud-readonly-service.mjs'
+      - 'scripts/firebase/cloud-access-remediation-plan.mjs'
       - 'scripts/firebase/cloud-mail-service.mjs'
       - 'scripts/firebase/cloud-mail-runtime-approval.mjs'
       - 'scripts/firebase/cloud-season2-house-scope*.mjs'
