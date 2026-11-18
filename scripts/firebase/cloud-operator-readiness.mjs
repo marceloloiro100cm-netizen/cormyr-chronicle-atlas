@@ -8,6 +8,8 @@ import {appendFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {inspectFirebaseCloudReadiness} from './cloud-access-readiness.mjs';
 import {inspectCloudRuntimeSources} from './cloud-runtime-source-preflight.mjs';
+import {inspectPublicAssetInventory} from './public-archive-asset-integrity.mjs';
+import {verifyStorageReadOnly} from './verify-storage-homologation.mjs';
 import {inspectPublicArchiveCoverage} from './public-archive-coverage-readonly.mjs';
 import {inspectCloudRoleLinkage} from './cloud-role-linkage-readonly.mjs';
 import {executeAllExistingAuthTestAccounts,safePreflightFailureCode}
@@ -71,6 +73,7 @@ export function evaluateOperatorEvidence({
   cloud=null,authPreview=null,authError=null,cloudError=false,
   runtimeSources=null,runtimeSourceError=false,
   roleLinkage=null,roleLinkageError=false,
+  storageComparison=null,storageError=null,publicAssets=null,publicAssetsError=false,
 }={}){
   const stages=cloud?.singleVerifiedSnapshot===true&&cloud?.stagesVerified===6;
   const auxiliary=cloud?.auxiliaryStagesComplete===true&&cloud?.auxiliaryStagesVerified===4;
@@ -111,6 +114,17 @@ export function evaluateOperatorEvidence({
               safeCount(runtimeSources?.archiveCoverage?.candidateFields?.[k])])),
         reviewApproved:false,ready:false,
       },
+      assetInventory:{
+        checked:publicAssets?.scope==='CORMYR_PUBLIC_ARCHIVE_ASSET_INVENTORY_OFFLINE'&&
+          publicAssets.checked===true&&!publicAssetsError,
+        totalHouses:safeCount(publicAssets?.houses),
+        validCrests:safeCount(publicAssets?.crestVerified),
+        invalidCrests:safeCount(publicAssets?.crestUnverified),
+        validHistories:safeCount(publicAssets?.historyVerified),
+        invalidHistories:safeCount(publicAssets?.historyUnverified),
+        missingHistoryReferences:safeCount(publicAssets?.withoutHistoryReference),
+        reviewApproved:false,
+      },
       ready:false,
     },
     operations:{
@@ -120,6 +134,29 @@ export function evaluateOperatorEvidence({
       mailWriteGatesAligned,
       calendarMetadataVerified:cloud?.historicalCalendarVersionVerified===true,
       sourceDeltaReconciled:false,
+      storageComparison:{
+        attempted:storageComparison!==null||storageError!==null,
+        sourceReadVerified:storageComparison?.scope==='read-only-gcs-prefix-integrity',
+        sourceObjects:safeCount(storageComparison?.sourceObjects),
+        destinationObjects:safeCount(storageComparison?.destinationObjects),
+        sourceBytes:Number.isSafeInteger(storageComparison?.sourceBytes)&&
+          storageComparison.sourceBytes>=0?storageComparison.sourceBytes:null,
+        destinationBytes:Number.isSafeInteger(storageComparison?.destinationBytes)&&
+          storageComparison.destinationBytes>=0?storageComparison.destinationBytes:null,
+        missing:safeCount(storageComparison?.missing),
+        extra:safeCount(storageComparison?.extra),
+        crcMismatch:safeCount(storageComparison?.crcMismatch),
+        md5Mismatch:safeCount(storageComparison?.md5Mismatch),
+        sizeMismatch:safeCount(storageComparison?.sizeMismatch),
+        md5Compared:safeCount(storageComparison?.md5Compared),
+        copyMetadataMatches:storageComparison?.scope==='read-only-gcs-prefix-integrity'&&
+          storageComparison.sourceToStagingBytesMatch===true,
+        failureCode:typeof storageError==='string'&&
+          /^(?:SOURCE|DESTINATION)_(?:GCS_HTTP_(?:400|401|403|404|408|429|500|502|503|504|OTHER)|INVENTORY_UNAVAILABLE)$/.test(storageError)
+          ?storageError:null,
+        currentSourceFrozen:false,
+        readyForCutover:false,
+      },
       sourcePreflight:{
         checked:runtimeSources!==null&&!runtimeSourceError,
         completeStages:safeCount(runtimeSources?.sourceStagesVerified),
@@ -169,6 +206,10 @@ export function evaluateOperatorEvidence({
     blockingCodes.push('ROLES_OR_HOUSE_LINKS_INCOMPLETE');
   if(roleLinkageError||roleLinkage&&!summarizeRoleLinkageEvidence(roleLinkage).checked)
     blockingCodes.push('ROLE_LINKAGE_DIAGNOSIS_INCOMPLETE');
+  if(storageComparison?.sourceToStagingBytesMatch!==true)
+    blockingCodes.push('STORAGE_COPY_COMPARISON_UNVERIFIED');
+  if(storageComparison?.sourceToStagingBytesMatch===true)
+    blockingCodes.push('STORAGE_LIVE_DELTA_NOT_FROZEN');
   blockingCodes.push('SOURCE_DELTA_AND_STORAGE_UNVERIFIED');
   blockingCodes.push('CROSS_HOUSE_CLOUD_E2E_PENDING');
   blockingCodes.push('PRODUCTION_RUNTIME_ACCEPTANCE_PENDING');
@@ -192,6 +233,10 @@ export function evaluateOperatorEvidence({
     mailRuntimeVerified:mail,operationalRuntimeVerified:runtime,
     mailWriteGatesAligned,
     runtimeSourceProbeFailed:runtimeSourceError===true,
+    storageCopyMetadataMatched:
+      storageComparison?.scope==='read-only-gcs-prefix-integrity'&&
+      storageComparison.sourceToStagingBytesMatch===true,
+    publicAssetInventoryChecked:publicAssets?.checked===true&&!publicAssetsError,
     fourBlocks,
     authUpdatesAttempted:0,firestoreWrites:0,roleWrites:0,
     sourceLiveReconciliationVerified:false,storageVerified:false,
@@ -201,12 +246,15 @@ export function evaluateOperatorEvidence({
 }
 export async function inspectOperatorEvidence({
   readCloud,previewAuth,readRuntimeSources,readRoleLinkage,
+  readStorageComparison,readPublicAssets,
 }={}){
   if(typeof readCloud!=='function'||typeof previewAuth!=='function')
     throw Error('two_read_probes_required');
   let cloud=null,authPreview=null,authError=null,cloudError=false;
   let runtimeSources=null,runtimeSourceError=false;
   let roleLinkage=null,roleLinkageError=false;
+  let storageComparison=null,storageError=null;
+  let publicAssets=null,publicAssetsError=false;
   try{cloud=await readCloud();}catch{cloudError=true;}
   try{authPreview=await previewAuth();}
   catch(e){authError=safePreflightFailureCode(e);}
@@ -218,9 +266,23 @@ export async function inspectOperatorEvidence({
     try{roleLinkage=await readRoleLinkage();}
     catch{roleLinkageError=true;}
   }
+  if(typeof readStorageComparison==='function'){
+    try{storageComparison=await readStorageComparison();}
+    catch(error){
+      const code=error?.auditCode;
+      storageError=typeof code==='string'&&
+        /^(?:SOURCE|DESTINATION)_(?:GCS_HTTP_(?:400|401|403|404|408|429|500|502|503|504|OTHER)|INVENTORY_UNAVAILABLE)$/.test(code)
+        ?code:'SOURCE_INVENTORY_UNAVAILABLE';
+    }
+  }
+  if(typeof readPublicAssets==='function'){
+    try{publicAssets=await readPublicAssets();}
+    catch{publicAssetsError=true;}
+  }
   return evaluateOperatorEvidence({
     cloud,authPreview,authError,cloudError,
     runtimeSources,runtimeSourceError,roleLinkage,roleLinkageError,
+    storageComparison,storageError,publicAssets,publicAssetsError,
   });
 }
 /**
@@ -271,6 +333,12 @@ export function safeOperatorSummary(report){
       n(report?.fourBlocks?.publicContent?.archiveCoverage?.candidateFields?.crest)+' |',
     '| Histórias com referência pública (a revisar) | '+
       n(report?.fourBlocks?.publicContent?.archiveCoverage?.candidateFields?.historyReference)+' |',
+    '| Arquivos públicos inspecionados (sem aprovação editorial) | '+
+      yes(report?.fourBlocks?.publicContent?.assetInventory?.checked)+' |',
+    '| Brasões válidos do acervo público | '+
+      n(report?.fourBlocks?.publicContent?.assetInventory?.validCrests)+' |',
+    '| Histórias válidas do acervo público | '+
+      n(report?.fourBlocks?.publicContent?.assetInventory?.validHistories)+' |',
     '| Conteúdo público: estágio | '+
       (Number.isInteger(report?.fourBlocks?.publicContent?.stageHttpStatus)
         ?'HTTP '+report.fourBlocks.publicContent.stageHttpStatus:'Indisponível')+
@@ -299,6 +367,23 @@ export function safeOperatorSummary(report){
       yes(report?.fourBlocks?.operations?.sourcePreflight?.houseDraftConfirmed)+' |',
     '| Runtime de Missivas criado, inativo e íntegro | '+
       yes(report?.fourBlocks?.operations?.sourcePreflight?.mailDraftConfirmed)+' |',
+    '| Storage: comparação origem × homologação realizada | '+
+      yes(report?.fourBlocks?.operations?.storageComparison?.sourceReadVerified)+' |',
+    '| Storage: objetos na origem/destino | '+
+      n(report?.fourBlocks?.operations?.storageComparison?.sourceObjects)+' / '+
+      n(report?.fourBlocks?.operations?.storageComparison?.destinationObjects)+' |',
+    '| Storage: objetos faltantes/extras | '+
+      n(report?.fourBlocks?.operations?.storageComparison?.missing)+' / '+
+      n(report?.fourBlocks?.operations?.storageComparison?.extra)+' |',
+    '| Storage: tamanhos/CRC/MD5 divergentes | '+
+      n(report?.fourBlocks?.operations?.storageComparison?.sizeMismatch)+' / '+
+      n(report?.fourBlocks?.operations?.storageComparison?.crcMismatch)+' / '+
+      n(report?.fourBlocks?.operations?.storageComparison?.md5Mismatch)+' |',
+    '| Storage: cópia por metadados íntegra | '+
+      yes(report?.storageCopyMetadataMatched)+' |',
+    '| Storage: erro seguro (categoria) | '+
+      (report?.fourBlocks?.operations?.storageComparison?.failureCode??'nenhum')+' |',
+    '| Storage: origem congelada e delta aprovado | **Não verificado** |',
     '| Rodada atual aprovada | **Não — depende da fonte atual** |',
     '| Operação Cloud: correio e Casas (HTTP) | '+
       (Number.isInteger(report?.fourBlocks?.operations?.mailRuntimeHttpStatus)
@@ -364,6 +449,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
             return token.access_token;
           },
         }),
+        readStorageComparison:async()=>verifyStorageReadOnly({
+          token:(await credential.getAccessToken()).access_token,
+        }),
+        readPublicAssets:async()=>inspectPublicAssetInventory(),
         readRuntimeSources:async()=>{
           const db=getFirestore(app);
           const query=await db.collection('migrationDomainStage').limit(2).get();
