@@ -13,6 +13,7 @@ on:
       - 'Firebase typed domain staging and security'
       - 'Firebase Cloud — protected operator migration audit (read-only)'
       - 'Firebase App Hosting — verify main is actually serving'
+      - 'Firebase App Hosting - live revision read-only audit'
       - 'Firebase Cloud access readiness — read-only OIDC'
       - 'Validate'
       - 'Build check'
@@ -26,7 +27,7 @@ on:
         type: choice
         required: true
         default: audit
-        options: [status-audit, audit, operator-audit, auth-preview, auth-deletion-audit, auth-inventory-audit, verify-emulators, verify-build, verify-pilot, runtime-preview, runtime-draft]
+        options: [status-audit, apphosting-diagnostic, audit, operator-audit, auth-preview, auth-deletion-audit, auth-inventory-audit, verify-emulators, verify-build, verify-pilot, runtime-preview, runtime-draft]
 
 permissions:
   contents: read
@@ -58,7 +59,7 @@ jobs:
             const REPO = 'marceloloiro100cm-netizen/cormyr-chronicle-atlas';
             const CONTROL_ISSUE = 568;
             const AUTH_WORKFLOW = '.github/workflows/firebase-auth-enable-all-test-accounts.yml';
-            const titleFormat = /^Cormyr Ops \| (status-audit|audit|operator-audit|auth-preview|auth-deletion-audit|auth-inventory-audit|verify-emulators|verify-build|verify-pilot|runtime-preview|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
+            const titleFormat = /^Cormyr Ops \| (status-audit|apphosting-diagnostic|audit|operator-audit|auth-preview|auth-deletion-audit|auth-inventory-audit|verify-emulators|verify-build|verify-pilot|runtime-preview|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
             const {owner, repo} = context.repo;
             if (owner + '/' + repo !== REPO || Number(process.env.GITHUB_RUN_ATTEMPT) !== 1) {
               core.info('Untrusted context or retry: no remote action');
@@ -68,7 +69,7 @@ jobs:
             if (context.eventName === 'schedule') operation = 'audit';
             else if (context.eventName === 'workflow_dispatch') {
               operation = context.payload.inputs?.task;
-              if (!['status-audit', 'audit', 'operator-audit', 'auth-preview', 'auth-deletion-audit', 'auth-inventory-audit', 'verify-emulators', 'verify-build', 'verify-pilot', 'runtime-preview', 'runtime-draft'].includes(operation)) {
+              if (!['status-audit', 'apphosting-diagnostic', 'audit', 'operator-audit', 'auth-preview', 'auth-deletion-audit', 'auth-inventory-audit', 'verify-emulators', 'verify-build', 'verify-pilot', 'runtime-preview', 'runtime-draft'].includes(operation)) {
                 core.info('Unknown manual command: no action');
                 return;
               }
@@ -90,6 +91,7 @@ jobs:
             } else return;
             if (operation === 'status-audit') {
               const ids=[
+                ['firebase-apphosting-live-revision-readonly.yml','App Hosting: diagnóstico completo de rollouts'],
                 ['firebase-cloud-operator-readiness.yml','Cloud OIDC protegido'],
                 ['firebase-auth-deletion-readonly.yml','Identidade da exclusão'],
                 ['firebase-cloud-runtime-drafts.yml','Calendário/runtimes (prévia)'],
@@ -137,7 +139,9 @@ jobs:
               core.info('Published public-safe existing run status in issue 582');
               return;
             }
-            const tasks = operation === 'audit' ? [
+            const tasks = operation === 'apphosting-diagnostic' ? [
+              ['firebase-apphosting-live-revision-readonly.yml', {}],
+            ] : operation === 'audit' ? [
               ['firebase-apphosting-release-convergence.yml', {}],
               ['firebase-cloud-access-readiness.yml', {}],
             ] : operation === 'operator-audit' ? [
@@ -168,6 +172,7 @@ jobs:
             if (tasks.length) {
               const allowed = new Set([
                 'firebase-apphosting-release-convergence.yml',
+                'firebase-apphosting-live-revision-readonly.yml',
                 'firebase-cloud-access-readiness.yml',
                 'firebase-cloud-operator-readiness.yml',
                 'firebase-auth-enable-all-test-accounts.yml',
@@ -261,6 +266,7 @@ jobs:
               'Firebase typed domain staging and security':'Emulador: perfis e regras entre Casas',
               'Firebase Cloud — protected operator migration audit (read-only)':'Cloud: auditoria operacional protegida (somente leitura)',
               'Firebase App Hosting — verify main is actually serving':'Cloud: revisão atendida pelo App Hosting',
+              'Firebase App Hosting - live revision read-only audit':'Cloud: inspeção detalhada de builds e rollouts',
               'Firebase Cloud access readiness — read-only OIDC':'Cloud: disponibilidade de fontes por OIDC',
               'Validate':'CI: contratos, TypeScript, build e testes de componentes',
               'Build check':'CI: saída do Firebase App Hosting e tipografia do Jornal',
