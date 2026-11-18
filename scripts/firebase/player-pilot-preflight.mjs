@@ -71,6 +71,7 @@ export async function inspectPlayerPilotPublicPreflight({fetcher=fetch}={}){
     anonymousPrivateStatusCodes:anonymousStatusCodes,
     privateEndpointsFailClosedNow,
     privateAuthGuardVerified,
+    cloudReadAuthGuardVerified:anonymousStatusCodes.cloudHouseRead===401,
     pilotPageReachable,
     publicContentAvailable:statuses.publicCatalog===200&&
       statuses.publicTranslations===200,
@@ -108,6 +109,9 @@ export function formatPlayerPilotPreflightSummary(report){
     '| APIs privadas recusaram acesso anônimo | '+
       (report?.privateEndpointsFailClosedNow===true?'Sim, nesta consulta':
       '**Não comprovado**')+' |',
+    '| Leitura Firebase 401 sem autenticação | '+
+      (report?.cloudReadAuthGuardVerified===true?'Confirmado nesta consulta':
+      'Não comprovado (pode estar desativado)')+' |',
     '| Auth 401 em todas as APIs privadas | '+
       (report?.privateAuthGuardVerified===true?'Sim':
       'Não comprovado ou serviço desativado')+' |',

@@ -25,6 +25,11 @@ function fixture(role='jogador'){
     sourceSnapshotReconciled:true,mailWriteApproved:true,
     applicationEnabled:true,openRound:3,calendarVersion:5,
   });
+  records.set('campaignMailRuntime/'+snapshot,{
+    status:'active',private:true,sourceSnapshotId:snapshot,
+    sourceLiveReconciled:true,applicationEnabled:true,mailEnabled:true,
+    openRound:3,calendarVersion:5,
+  });
   records.set('migrationDomainStage/'+snapshot+'/access/player-1',{
     userId:'player-1',profile:role,active:true,
     requirePasswordChange:false,admin:role==='narrador',
@@ -141,6 +146,37 @@ test('One private gate or stale calendar stops every write',async()=>{
   f.records.set('migrationDomainStage/'+snapshot,{status:'incomplete',private:true});
   await rejects(()=>f.service().send(sampleToken,req()),
     'migration_stage_not_ready',503);
+});
+
+test('Independent mail runtime must be approved for sends, replies and receipts',async()=>{
+  const f=fixture();
+  const path='campaignMailRuntime/'+snapshot;
+  const approved=f.records.get(path);
+  for(const [field,value] of [
+    ['status','pending'],['private',false],
+    ['sourceSnapshotId','b'.repeat(64)],
+    ['sourceLiveReconciled',false],['applicationEnabled',false],
+    ['mailEnabled',false],['openRound',4],['calendarVersion',4],
+  ]){
+    f.records.set(path,{...approved,[field]:value});
+    assert.equal((await f.service().status(sampleToken)).canSend,false);
+    await rejects(()=>f.service().send(sampleToken,req()),
+      'mail_runtime_not_approved',503);
+    await rejects(()=>f.service().markRead(sampleToken,{
+      source:'imported',letterId:'historical-001',
+    }),'mail_runtime_not_approved',503);
+    await rejects(()=>f.service().reply(sampleToken,{
+      requestKey:'a-valid-key_1234',letterId:'c'.repeat(64),
+      content:'Resposta',
+    }),'mail_runtime_not_approved',503);
+    assert.equal([...f.records].some(([k])=>k.includes('/letters/')),false);
+  }
+  f.records.delete(path);
+  assert.equal((await f.service().status(sampleToken)).canSend,false);
+  await rejects(()=>f.service().send(sampleToken,req()),
+    'mail_runtime_not_approved',503);
+  f.records.set(path,approved);
+  assert.equal((await f.service().status(sampleToken)).canSend,true);
 });
 
 test('Disabled, revoked and access-inactive Firebase accounts cannot send',async()=>{

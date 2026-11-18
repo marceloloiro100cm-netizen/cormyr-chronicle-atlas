@@ -139,12 +139,54 @@ export async function probeEnabledCloudRead({port=39072,timeoutMs=25000,launch=s
   }
 }
 
+/**
+ * Verify the compiled Cloud mail route loads Firebase Admin without any
+ * production credentials or writes. A fake token must be rejected with 401;
+ * no Firestore transaction can begin without a valid authenticated user.
+ */
+export async function probeEnabledCloudMail({port=39073,timeoutMs=25000,launch=spawn}={}){
+  const origin=`http://127.0.0.1:${port}`;
+  const child=launch(process.execPath,['dist/server/index.mjs'],{
+    cwd:process.cwd(),
+    env:{...disabledProductionEnvironment(port),
+      CORMYR_FIREBASE_CLOUD_READ_ENABLED:'true',
+      CORMYR_FIREBASE_CLOUD_MAIL_ENABLED:'true',
+      CORMYR_FIREBASE_SNAPSHOT_ID:'a'.repeat(64),
+      GOOGLE_CLOUD_PROJECT:'cormyr',GCLOUD_PROJECT:'cormyr'},
+    stdio:'ignore',
+  });
+  const deadline=Date.now()+timeoutMs;
+  try{
+    while(Date.now()<deadline){
+      try{
+        const response=await fetch(origin+'/api/firebase-cloud-mail',{
+          method:'POST',redirect:'manual',credentials:'omit',cache:'no-store',
+          headers:{'Content-Type':'application/json',Origin:origin,
+            Authorization:'Bearer '+'x'.repeat(40)},
+          body:JSON.stringify({action:'status'}),
+          signal:AbortSignal.timeout(8000),
+        });
+        const body=await response.json().catch(()=>null);
+        return {name:'enabledCloudMailRejectsFakeToken',status:response.status,
+          code:typeof body?.error==='string'?body.error:null,
+          passed:response.status===401&&body?.error==='authentication_required'};
+      }catch{await sleep(250);}
+    }
+    return {name:'enabledCloudMailRejectsFakeToken',status:null,code:null,
+      passed:false};
+  }finally{
+    if(child.exitCode===null&&!child.killed)child.kill('SIGTERM');
+  }
+}
+
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   probeCompiledRoutes()
     .then(async report=>{
       const enabledRead=await probeEnabledCloudRead();
-      report.checks.push(enabledRead);
-      report.compiledRoutesPass=report.compiledRoutesPass&&enabledRead.passed;
+      const enabledMail=await probeEnabledCloudMail();
+      report.checks.push(enabledRead,enabledMail);
+      report.compiledRoutesPass=report.compiledRoutesPass&&
+        enabledRead.passed&&enabledMail.passed;
       process.stdout.write(JSON.stringify(report,null,2)+'\n');
       if(!report.compiledRoutesPass)process.exitCode=1;
     })

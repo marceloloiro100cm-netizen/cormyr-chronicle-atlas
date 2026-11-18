@@ -84,6 +84,17 @@ function validateRequest(v){
   };
 }
 
+// Separate mail approval is mandatory: activating the general campaign runtime
+// must never silently authorize sending letters from an unreconciled mailbox.
+function mailRuntimeReady(v,snapshotId,round,calendarVersion){
+  return v?.status==='active'&&v.private===true&&
+    v.sourceSnapshotId===snapshotId&&v.sourceLiveReconciled===true&&
+    v.applicationEnabled===true&&v.mailEnabled===true&&
+    Number.isInteger(v.openRound)&&v.openRound>=1&&v.openRound===round&&
+    Number.isInteger(v.calendarVersion)&&
+    v.calendarVersion===calendarVersion;
+}
+
 function runtimeActive(v,snapshotId,calendar){
   if(!v||v.status!=='active'||v.private!==true||
      v.sourceSnapshotId!==snapshotId||
@@ -113,6 +124,7 @@ export function createFirebaseCloudMail({
   const authStage=db.collection('migrationAuthStage').doc(snapshotId);
   const timeStage=db.collection('migrationTimeEngineStage').doc(snapshotId);
   const runtime=db.collection('campaignCloudRuntime').doc(snapshotId);
+  const mailRuntime=db.collection('campaignMailRuntime').doc(snapshotId);
   const access=stage.collection('access');
   const letters=runtime.collection('letters');
   const audits=runtime.collection('mailAudits');
@@ -133,10 +145,11 @@ export function createFirebaseCloudMail({
     return decoded.uid;
   }
   async function readyTransaction(tx,uid){
-    const [domain,authRoot,temporal,scopeDoc,calendar,live]=await Promise.all([
+    const [domain,authRoot,temporal,scopeDoc,calendar,live,mailGate]=await Promise.all([
       tx.get(stage),tx.get(authStage),tx.get(timeStage),
       tx.get(access.doc(uid)),
       tx.get(timeStage.collection('calendar').doc('current')),tx.get(runtime),
+      tx.get(mailRuntime),
     ]);
     for(const doc of [domain,authRoot,temporal])
       if(!doc.exists||doc.data()?.status!=='complete'||
@@ -147,6 +160,9 @@ export function createFirebaseCloudMail({
     const campaignDate=campaignDateOf(calendar.data());
     const actor=accessOf(uid,scopeDoc.data());
     runtimeActive(live.data(),snapshotId,calendar.data());
+    if(!mailRuntimeReady(mailGate.data(),snapshotId,
+      live.data().openRound,calendar.data().version))
+      deny('mail_runtime_not_approved',503);
     return {actor,date:campaignDate,round:live.data().openRound};
   }
 
@@ -218,9 +234,10 @@ export function createFirebaseCloudMail({
   return {
     async status(idToken){
       const uid=await uidFromToken(idToken);
-      const [doc,domain,authRoot,temporal,cal,live]=await Promise.all([
+      const [doc,domain,authRoot,temporal,cal,live,mailGate]=await Promise.all([
         access.doc(uid).get(),stage.get(),authStage.get(),timeStage.get(),
         timeStage.collection('calendar').doc('current').get(),runtime.get(),
+        mailRuntime.get(),
       ]);
       const actor=accessOf(uid,doc.data());
       // No snapshot metadata, UIDs or incomplete sources go to the caller.
@@ -237,7 +254,9 @@ export function createFirebaseCloudMail({
         v.private===true&&v.sourceSnapshotId===snapshotId&&
         v.sourceSnapshotReconciled===true&&v.mailWriteApproved===true&&
         v.applicationEnabled===true&&Number.isInteger(v.openRound)&&
-        v.openRound>=1&&v.calendarVersion===cal.data().version;
+        v.openRound>=1&&v.calendarVersion===cal.data().version&&
+        mailRuntimeReady(mailGate.data(),snapshotId,
+          v.openRound,cal.data().version);
       return {enabled:Boolean(writable),
         canSend:Boolean(writable&&(actor.role==='narrador'||actor.editHouses.length>0)),
         originHouseIds:actor.editHouses,
