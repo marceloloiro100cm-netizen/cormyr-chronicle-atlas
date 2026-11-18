@@ -35,7 +35,8 @@ describe('Firebase narrator pending-account panel is private and read-only',()=>
     expect(component).toContain('result.decisionApplied!==false');
     expect(component).toContain('result.firestoreWrites!==0');
     expect(component).not.toMatch(/(?:setDoc|updateDoc|updateUser|writeBatch)\s*\(/);
-    expect(component).not.toContain('profile:\'narrador\'');
+    expect(component).toContain("profile:'jogador'|'editor';");
+    expect(component).not.toContain('<option value="narrador">');
   });
   it('does not offer an implicit user-role or password approval button',()=>{
     expect(component).toContain('consulta privada');
