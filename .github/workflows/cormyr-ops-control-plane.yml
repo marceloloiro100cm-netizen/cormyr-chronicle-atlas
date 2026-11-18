@@ -171,7 +171,10 @@ jobs:
             ] : operation === 'auth-deletion-audit' ? [
               ['firebase-auth-deletion-readonly.yml', {}],
             ] : operation === 'runtime-preview' ? [
-              ['firebase-cloud-runtime-drafts.yml', {mode:'preview'}],
+              // The unprotected reader receives Firestore permission-denied.
+              // The existing protected operator already reports temporal source
+              // integrity and disabled House/Mail draft status without writes.
+              ['firebase-cloud-operator-readiness.yml', {}],
             ] : operation === 'runtime-draft' ? [
               ['firebase-cloud-runtime-drafts.yml', {
                 mode:'apply', confirmation:'CREATE_DISABLED_CORMYR_RUNTIME_DRAFTS',
@@ -230,7 +233,7 @@ jobs:
                 core.info('Requested allowlisted workflow: ' + workflow_id);
                 await core.summary.addRaw('- Requested: ' + workflow_id + '\n').write();
               }
-              if (operation.startsWith('auth-') || operation === 'operator-audit' || operation === 'runtime-draft')
+              if (operation.startsWith('auth-') || operation === 'operator-audit' || operation === 'runtime-preview' || operation === 'runtime-draft')
                 await core.summary.addRaw('Protected firebase-auth-test-activation approval remains mandatory for Auth, deletion audit, operator audits and disabled runtime drafts.\n').write();
               return;
             }
