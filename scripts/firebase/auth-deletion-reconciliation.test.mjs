@@ -6,7 +6,8 @@ import {reconcileAuthorizedAuthDeletions as reconcile}
 const fixtures=()=>{
   const historicalAccess=Array.from({length:14},(_,i)=>({
     id:'uid_'+i,
-    data:{userId:'uid_'+i,profile:i===0?'narrador':'jogador',admin:i===0},
+    data:{userId:'uid_'+i,profile:i===0?'narrador':'jogador',admin:i===0,
+      memberHouseIds:[],editHouseIds:[]},
   }));
   const liveAuth=historicalAccess.slice(0,13).map(x=>({uid:x.id,disabled:false}));
   return {historicalAccess,liveAuth,approvedDeletedUids:['uid_13'],authListComplete:true};
