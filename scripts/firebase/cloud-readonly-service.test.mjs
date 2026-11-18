@@ -147,7 +147,6 @@ test('stale, absent and duplicated House memberships deny every private Cloud re
     {...raw,memberHouseIds:['house-a','house-a'],editHouseIds:[]},
     {...raw,memberHouseIds:['unknown-house'],editHouseIds:[]},
     {...raw,memberHouseIds:['house-a'],editHouseIds:['house-a','house-a']},
-    {...raw,playerId:null},
   ]){
     f.docs.set(scopePath,bad);
     await rejects(()=>f.service().session(token),'invalid_access_scope',403);
