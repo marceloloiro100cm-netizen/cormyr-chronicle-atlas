@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {evaluateOperatorEvidence,inspectOperatorEvidence,safeOperatorSummary,
-  classifyOperatorCredentialError,summarizeRoleLinkageEvidence}
+  classifyOperatorCredentialError,summarizeRoleLinkageEvidence,
+  operatorAuditObservationComplete}
   from './cloud-operator-readiness.mjs';
 
 const cloud=()=>({singleVerifiedSnapshot:true,stagesVerified:6,
@@ -203,6 +204,40 @@ test('operator report never treats independent runtime mismatch as mail acceptan
   const summary=safeOperatorSummary(r);
   assert.match(summary,/Rodada e versão do calendário alinhadas/);
   assert.ok(!summary.includes('SECRET_CLOUD_SNAPSHOT'));
+});
+
+test('protected audit success is distinct from public-stage release NO_GO',()=>{
+  const keys=[
+    'missingProfile','unrecognizedProfile','accessInactiveOrInvalid',
+    'passwordChangePendingOrInvalid','adminFlagMismatch','invalidHouseLists',
+    'editScopeOutsideMembership','playerWithoutHouse','editorWithHouse',
+  ];
+  const report=evaluateOperatorEvidence({
+    cloud:{...cloud(),auxiliaryStagesComplete:false,
+      auxiliaryStagesVerified:3,auxiliaryPendingStages:['migrationPublicContentStage']},
+    authPreview:auth(),
+    roleLinkage:{scope:'FIREBASE_ROLE_LINKAGE_READ_ONLY',
+      singleVerifiedSnapshot:true,authListComplete:true,
+      accessListComplete:true,houseReferenceAuditComplete:true,
+      accounts:14,linkedAccounts:14,writes:0,
+      structurallyEligibleProfiles:10,unresolvedPlayerHouseReferences:0,
+      blockingReasonCounts:Object.fromEntries(keys.map(k=>[k,0])),
+      structurallyEligibleByProfile:{narrador:1,jogador:8,editor:1,other:0}},
+    runtimeSources:{sourceStagesVerified:6,auxiliaryStagesVerified:3,
+      calendarDocumentVerified:true},
+  });
+  assert.equal(operatorAuditObservationComplete(report),true);
+  assert.equal(report.readyForPlayers,false);
+  assert.equal(report.readyForCutover,false);
+  assert.equal(report.releaseDecision,'NO_GO');
+  assert.ok(report.blockingCodes.includes('AUXILIARY_STAGES_UNVERIFIED'));
+  assert.match(safeOperatorSummary(report),/Auditoria administrativa executada \\| Conferido/);
+  assert.equal(operatorAuditObservationComplete(evaluateOperatorEvidence({
+    cloudError:true})),false);
+  assert.equal(operatorAuditObservationComplete({...report,
+    runtimeSourceProbeFailed:true}),false);
+  assert.equal(operatorAuditObservationComplete({...report,
+    authInventoryValid:false}),false);
 });
 
 test('no implicit provider or cloud access',async()=>{
