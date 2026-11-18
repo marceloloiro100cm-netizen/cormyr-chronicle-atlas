@@ -178,6 +178,76 @@ test('Invalid group scopes are not trusted, and missing house sheet fails closed
   await rejects(()=>f.service().getHouse(token,'house-a'),'house_sheet_unavailable',404);
 });
 
+test('Narrator alone can inspect pending accounts without changing historic access',async()=>{
+  const f=fixture('narrador');
+  const root='migrationDomainStage/'+snapshot+'/access/';
+  for(let i=2;i<=14;i++){
+    const uid='account-'+i;
+    const changes={
+      userId:uid,profile:'jogador',active:true,admin:false,
+      requirePasswordChange:false,playerId:'player-'+i,
+      memberHouseIds:['house-a'],editHouseIds:['house-a'],
+    };
+    if(i===2)changes.active=false;
+    if(i===3){changes.profile=null;changes.memberHouseIds=[];changes.editHouseIds=[];}
+    if(i===4){changes.memberHouseIds=[];changes.editHouseIds=[];}
+    if(i===5)changes.requirePasswordChange=true;
+    f.docs.set(root+uid,changes);
+  }
+  f.auth.getUser=async uid=>({
+    uid,email:uid+'@example.invalid',disabled:false,
+  });
+  const before=JSON.stringify([...f.docs]);
+  const report=await f.service().listAccessRemediation(token);
+  assert.equal(report.accountsChecked,14);
+  assert.equal(report.pendingAccounts,4);
+  assert.equal(report.issues.inactive,1);
+  assert.equal(report.issues.missingProfile,1);
+  assert.equal(report.issues.playerWithoutHouse,1);
+  assert.equal(report.issues.passwordChangePending,1);
+  assert.equal(report.readOnly,true);
+  assert.equal(report.sourceImmutable,true);
+  assert.equal(report.readyForRemediation,false);
+  assert.equal(report.authWrites,0);
+  assert.equal(report.firestoreWrites,0);
+  assert.equal(report.items.length,4);
+  assert.ok(report.items.every(row=>
+    row.uid.startsWith('account-')&&row.email.endsWith('@example.invalid')));
+  assert.ok(report.items.every(row=>row.issues.length>0));
+  assert.ok(!JSON.stringify(report).includes('user-1@example.invalid'));
+  assert.equal(JSON.stringify([...f.docs]),before);
+  const player=fixture('jogador');
+  await rejects(()=>player.service().listAccessRemediation(token),'access_denied',403);
+  const editor=fixture('editor');
+  await rejects(()=>editor.service().listAccessRemediation(token),'access_denied',403);
+});
+
+test('Narrator pending access report fails closed on partial or spoofed inventory',async()=>{
+  const f=fixture('narrador');
+  await rejects(()=>f.service().listAccessRemediation(token),
+    'access_inventory_unverified',503);
+  const root='migrationDomainStage/'+snapshot+'/access/';
+  for(let i=2;i<=14;i++){
+    f.docs.set(root+'account-'+i,{
+      userId:'account-'+i,profile:'jogador',active:i!==2,
+      admin:false,requirePasswordChange:false,playerId:null,
+      memberHouseIds:['house-a'],editHouseIds:['house-a'],
+    });
+  }
+  // A provider mapping mismatch must not expose a partial list.
+  f.auth.getUser=async()=>({uid:'another-uid',email:'SECRET_ACCOUNT_EMAIL'});
+  await rejects(()=>f.service().listAccessRemediation(token),
+    'authentication_required',401);
+  f.auth.getUser=async uid=>uid==='user-1'
+    ?{uid,disabled:false}
+    :{uid:'wrong-uid',email:'SECRET_ACCOUNT_EMAIL',disabled:false};
+  await rejects(()=>f.service().listAccessRemediation(token),
+    'access_inventory_unverified',503);
+  // Even the Narrator cannot inspect when their account is suspended.
+  f.docs.set(root+'user-1',scope('narrador',{active:false}));
+  await rejects(()=>f.service().listAccessRemediation(token),'access_denied',403);
+});
+
 test('Mailbox includes delivered own correspondence and excludes other-house, drafts, deleted and ambiguous',async()=>{
   const f=fixture('jogador');
   const messages=await f.service().listMailbox(token);
