@@ -87,7 +87,14 @@ function fixture(profile='jogador',extra={}){
       if(token==='expired-token')throw Error('expired');
       return {uid:'user-1'};
     },
-    async getUser(){return {uid:'user-1',disabled:false};}
+    async getUser(){return {uid:'user-1',disabled:false};},
+    async listUsers(){
+      const prefix='migrationDomainStage/'+snapshot+'/access/';
+      return {users:[...docs.keys()]
+        .filter(key=>key.startsWith(prefix)&&
+          !key.slice(prefix.length).includes('/'))
+        .map(key=>({uid:key.slice(prefix.length),disabled:false}))};
+    }
   };
   const db={collection:name=>node(name)};
   const service=()=>createFirebaseCloudReadonly({
@@ -789,4 +796,64 @@ test('Oversized battle catalog fails closed instead of exposing unbounded rows',
   }
   await rejects(()=>f.service().listHouseBattles(token,'house-a'),
     'battle_catalog_too_large',503);
+});
+
+test('Narrator safely excludes one deleted legacy Auth account from pending review',async()=>{
+  const f=fixture('narrador');
+  const root='migrationDomainStage/'+snapshot+'/access/';
+  for(let i=2;i<=14;i++){
+    const uid='account-'+i;
+    f.docs.set(root+uid,{
+      userId:uid,profile:'jogador',active:i!==2,
+      admin:false,requirePasswordChange:false,playerId:uid,
+      memberHouseIds:['house-a'],editHouseIds:['house-a'],
+    });
+  }
+  f.docs.set(root+'account-3',{
+    userId:'account-3',profile:null,active:false,admin:false,
+    requirePasswordChange:false,playerId:null,
+    memberHouseIds:[],editHouseIds:[],
+  });
+  const originalList=f.auth.listUsers;
+  f.auth.listUsers=async()=>{
+    const inventory=await originalList();
+    return {users:inventory.users.filter(u=>u.uid!=='account-3')};
+  };
+  f.auth.getUser=async uid=>{
+    if(uid==='account-3')throw Error('auth/user-not-found');
+    return {uid,email:uid+'@example.invalid',disabled:false};
+  };
+  const report=await f.service().listAccessRemediation(token);
+  assert.equal(report.historicalAccountsChecked,14);
+  assert.equal(report.accountsChecked,13);
+  assert.equal(report.archivedHistoricalAccess,1);
+  assert.equal(report.deletionIdentityApproved,false);
+  assert.equal(report.pendingAccounts,1);
+  assert.equal(report.issues.inactive,1);
+  assert.equal(report.issues.missingProfile,0);
+  assert.ok(!JSON.stringify(report).includes('account-3'));
+  assert.equal(report.authWrites,0);
+  assert.equal(report.firestoreWrites,0);
+});
+test('Narrator pending-account review rejects unlinked or disabled current Auth users',async()=>{
+  const f=fixture('narrador');
+  const root='migrationDomainStage/'+snapshot+'/access/';
+  for(let i=2;i<=14;i++)
+    f.docs.set(root+'account-'+i,{
+      userId:'account-'+i,profile:'jogador',active:true,admin:false,
+      requirePasswordChange:false,playerId:null,
+      memberHouseIds:['house-a'],editHouseIds:[],
+    });
+  const valid=f.auth.listUsers;
+  f.auth.listUsers=async()=>({
+    users:(await valid()).users.slice(0,13).concat({
+      uid:'unlinked-new-user',disabled:false}),
+  });
+  await rejects(()=>f.service().listAccessRemediation(token),
+    'access_inventory_unverified',503);
+  f.auth.listUsers=async()=>({
+    users:(await valid()).users.map((u,i)=>({...u,disabled:i===1})),
+  });
+  await rejects(()=>f.service().listAccessRemediation(token),
+    'access_inventory_unverified',503);
 });
