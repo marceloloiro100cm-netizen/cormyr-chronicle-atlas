@@ -562,6 +562,7 @@ test('live thirteen vs immutable fourteen remains observational NO_GO',()=>{
   assert.equal(result.authInventoryValid,true);
   assert.equal(result.authAccounts,13);
   assert.equal(result.linkedAccounts,13);
+  assert.equal(result.roleLinkageConsistent,true);
   assert.equal(result.historicalAccessRecords,14);
   assert.equal(result.historicalAuthDifferenceObserved,1);
   assert.equal(result.deletionIdentityApproved,false);
@@ -625,4 +626,38 @@ test('modern operator reader is independent from bulk fourteen-account preview',
   });
   assert.equal(fail.authInventoryValid,false);
   assert.ok(!JSON.stringify(fail).includes('PRIVATE_PROVIDER_DETAILS'));
+});
+
+test('cross-probe mismatch rejects contradictory protected Auth observations',()=>{
+  const inventory={
+    scope:'CORMYR_AUTH_INVENTORY_READ_ONLY',checked:true,
+    historicalAccounts:14,liveAccounts:13,missingHistoricalAccounts:1,
+    unexpectedLiveAccounts:0,disabledLiveAccounts:0,
+    exactOneMissingObserved:true,deletionIdentityApproved:false,
+    authWrites:0,firestoreWrites:0,releaseDecision:'NO_GO',
+  };
+  const reasons=Object.fromEntries([
+    'missingProfile','unrecognizedProfile','accessInactiveOrInvalid',
+    'passwordChangePendingOrInvalid','adminFlagMismatch','invalidHouseLists',
+    'editScopeOutsideMembership','playerWithoutHouse','editorWithHouse'
+  ].map(k=>[k,0]));
+  const oldRole={
+    scope:'FIREBASE_ROLE_LINKAGE_READ_ONLY',singleVerifiedSnapshot:true,
+    authListComplete:true,accessListComplete:true,
+    houseReferenceAuditComplete:true,accounts:14,linkedAccounts:14,writes:0,
+    structurallyEligibleProfiles:14,unresolvedPlayerHouseReferences:0,
+    blockingReasonCounts:reasons,
+    structurallyEligibleByProfile:{narrador:1,jogador:12,editor:1,other:0},
+  };
+  const result=evaluateOperatorEvidence({
+    cloud:cloud(),authInventory:inventory,
+    roleLinkage:oldRole,
+    runtimeSources:{sourceStagesVerified:6,calendarDocumentVerified:true},
+  });
+  assert.equal(result.authInventoryValid,true);
+  assert.equal(result.fourBlocks.playerAccess.linkageDiagnostics.checked,true);
+  assert.equal(result.roleLinkageConsistent,false);
+  assert.ok(result.blockingCodes.includes('ROLE_LINKAGE_INVENTORY_MISMATCH'));
+  assert.equal(operatorAuditObservationComplete(result),false);
+  assert.equal(result.releaseDecision,'NO_GO');
 });
