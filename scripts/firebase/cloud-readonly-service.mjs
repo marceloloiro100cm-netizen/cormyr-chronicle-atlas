@@ -412,7 +412,7 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
           v&&v.source==='firebase-cloud'&&
           v.sourceSnapshotId===snapshotId&&
           typeof v.id==='string'&&v.id.startsWith('cloud-')&&
-          v.state==='published'&&
+          ['published','archived'].includes(v.state)&&
           typeof v.title==='string'&&Number.isInteger(v.editionNo)&&
           typeof v.publishedAt==='string'&&v.cancelledAt===null
         );
@@ -443,7 +443,7 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       const v=snap.data();
       if(cloudId&&(!v||v.source!=='firebase-cloud'||
          v.sourceSnapshotId!==snapshotId||v.id!==editionId||
-         v.state!=='published'))
+         !['published','archived'].includes(v.state)))
         deny('edition_unavailable',404);
       if(!snap.exists||!v||!['published','archived'].includes(v.state)||
          typeof v.publishedAt!=='string'||v.cancelledAt!=null)

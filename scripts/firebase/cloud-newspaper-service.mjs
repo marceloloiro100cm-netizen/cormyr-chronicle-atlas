@@ -1,3 +1,4 @@
+import {validateEditorialContent} from './cloud-editorial-content.mjs';
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 /**
  * Firebase Cloud-only newspaper publishing. Preserves imported editions.
@@ -112,7 +113,86 @@ export function createFirebaseCloudNewspaper({
     readyRuntime(docs[6]?.data(),snapshotId,cal);
     return {calendarDate:date,config:docs[6].data()};
   }
+  const editorialView=v=>({
+    id:v.id,editionNo:v.editionNo,title:v.title,subtitle:v.subtitle??'',
+    blocks:v.blocks,version:v.version,state:v.state,
+    campaignDate:v.campaignDate,publishedAt:v.publishedAt,
+  });
   return {
+    async listEditorial(token){
+      const uid=await actorId(token);
+      return db.runTransaction(async tx=>{
+        await readApproval(uid,tx);
+        const docs=await tx.get(editions.limit(101));
+        if(docs.docs.length>100)deny('editorial_response_too_large',503);
+        return {items:docs.docs.map(d=>d.data()).filter(v=>
+          v?.source==='firebase-cloud'&&v.sourceSnapshotId===snapshotId)
+          .sort((a,b)=>b.editionNo-a.editionNo)
+          .map(v=>({id:v.id,editionNo:v.editionNo,title:v.title,state:v.state,version:v.version}))};
+      });
+    },
+    async getEditorial(token,input){
+      const uid=await actorId(token);
+      if(!input||Object.keys(input).some(k=>!['action','id'].includes(k))||
+         input.action!=='getEditorial'||typeof input.id!=='string'||
+         !/^cloud-[a-f0-9]{64}$/.test(input.id))deny('invalid_editorial_request',400);
+      return db.runTransaction(async tx=>{
+        await readApproval(uid,tx);
+        const doc=await tx.get(editions.doc(input.id)),v=doc.data();
+        if(!doc.exists||v?.source!=='firebase-cloud'||v.sourceSnapshotId!==snapshotId)
+          deny('edition_unavailable',404);
+        return editorialView(v);
+      });
+    },
+    async saveEdition(token,input){
+      const uid=await actorId(token);
+      if(!input||Object.keys(input).some(k=>!['action','requestKey','id','expectedVersion','state','content'].includes(k))||
+         input.action!=='saveEdition'||typeof input.requestKey!=='string'||!KEY.test(input.requestKey)||
+         !number(input.expectedVersion,0,2147483646)||
+         !['draft','published','archived','cancelled'].includes(input.state)||
+         (input.id!==null&&(typeof input.id!=='string'||!/^cloud-[a-f0-9]{64}$/.test(input.id))))
+        deny('invalid_editorial_request',400);
+      let content;
+      try{content=validateEditorialContent(input.content);}
+      catch{deny('invalid_editorial_content',400);}
+      const id=input.id??'cloud-'+digest('editorial:'+uid+':'+input.requestKey);
+      const ref=editions.doc(id),audit=audits.doc('edit-'+digest(uid+':'+input.requestKey));
+      const fingerprint=digest(JSON.stringify({...input,content}));
+      return db.runTransaction(async tx=>{
+        const {calendarDate,config}=await readApproval(uid,tx);
+        const [oldDoc,auditDoc]=await Promise.all([tx.get(ref),tx.get(audit)]);
+        if(auditDoc.exists){
+          const prior=auditDoc.data();
+          if(prior.actorUid!==uid||prior.requestFingerprint!==fingerprint)
+            deny('request_key_conflict',409);
+          return {...editorialView(prior.after),duplicate:true};
+        }
+        const old=oldDoc.data();
+        if((oldDoc.exists&&(old?.source!=='firebase-cloud'||
+             old.sourceSnapshotId!==snapshotId||old.id!==id))||
+           (oldDoc.exists?old.version:0)!==input.expectedVersion||
+           (input.id!==null&&!oldDoc.exists))
+          deny('edition_version_conflict',409);
+        if(['archived','cancelled'].includes(input.state)&&!old?.publishedAt)
+          deny('edition_not_published',409);
+        const now=clock();
+        if(typeof now!=='string'||!Number.isFinite(Date.parse(now)))
+          deny('invalid_server_clock',503);
+        const published=input.state==='published';
+        const next={...(old??{}),...content,id,source:'firebase-cloud',
+          sourceSnapshotId:snapshotId,editionNo:old?.editionNo??config.nextNewspaperEditionNo,
+          state:input.state,version:input.expectedVersion+1,
+          campaignDate:published&&!old?.publishedAt?calendarDate:old?.campaignDate??calendarDate,
+          publishedAt:published?old?.publishedAt??now:old?.publishedAt??null,
+          cancelledAt:input.state==='cancelled'?now:null,
+          createdBy:old?.createdBy??uid,updatedBy:uid,updatedAt:now};
+        if(oldDoc.exists)tx.update(ref,next);else tx.create(ref,next);
+        tx.create(audit,{action:'save_edition',actorUid:uid,occurredAt:now,
+          editionId:id,requestFingerprint:fingerprint,before:old??null,after:next});
+        if(!oldDoc.exists)tx.update(runtime,{nextNewspaperEditionNo:config.nextNewspaperEditionNo+1});
+        return {...editorialView(next),duplicate:false};
+      });
+    },
     async status(token){
       const uid=await actorId(token);
       // Status is read-only. Do not leak private stage details, UID or

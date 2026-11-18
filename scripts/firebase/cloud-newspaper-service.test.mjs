@@ -32,6 +32,7 @@ function fixture(profile='editor'){
     path:p,
     collection(name){return ref(p?path(p,name):name);},
     doc(id){return ref(path(p,id));},
+    limit(n){return {async get(){return {docs:[...records].filter(([k])=>k.startsWith(p+'/')&&!k.slice(p.length+1).includes('/')).slice(0,n).map(([,v])=>doc(v))};}};},
     async get(){return doc(records.get(p));},
   });
   let transactions=0;
@@ -180,5 +181,44 @@ test('strict request shape, byte bounds and forged claims are rejected',async()=
   ])await denied(()=>s.publish(token,v),'invalid_newspaper_request',400);
   await denied(()=>s.publish('invalid-token',input()),'authentication_required',401);
   assert.equal([...f.records].filter(([k])=>k.includes('publishedNewspapers')).length,0);
+});
+
+
+const rich=(changes={})=>({action:'saveEdition',requestKey:'editorial-key-001',id:null,
+  expectedVersion:0,state:'draft',content:{title:'Edição especial',subtitle:'Vozes de Cormyr',
+    blocks:[{id:'a',type:'headline',text:'Abertura da campanha',span:12,height:110},
+      {id:'b',type:'article',text:'Notícia\nConteúdo da reportagem',bodyFont:'garamond',span:6,height:190}]},...changes});
+
+test('editorial lifecycle persists drafts, edits, cancellation and archive with audit and CAS',async()=>{
+  const f=fixture(),srv=f.service();
+  const initial=await srv.saveEdition(token,rich());
+  assert.equal(initial.state,'draft');assert.equal(initial.version,1);
+  assert.equal(initial.publishedAt,null);assert.equal(initial.editionNo,13);
+  assert.deepEqual((await srv.listEditorial(token)).items.map(x=>x.id),[initial.id]);
+  assert.equal((await srv.getEditorial(token,{action:'getEditorial',id:initial.id})).blocks.length,2);
+  assert.equal((await srv.saveEdition(token,rich())).duplicate,true);
+  const publish=rich({id:initial.id,expectedVersion:1,state:'published',requestKey:'editorial-key-002'});
+  const pub=await srv.saveEdition(token,publish);
+  assert.equal(pub.state,'published');assert.equal(pub.version,2);assert.ok(pub.publishedAt);
+  await denied(()=>srv.saveEdition(token,{...publish,requestKey:'editorial-key-stale'}),'edition_version_conflict',409);
+  const cancel=await srv.saveEdition(token,{...publish,expectedVersion:2,state:'cancelled',requestKey:'editorial-key-003'});
+  assert.equal(cancel.state,'cancelled');
+  const archived=await srv.saveEdition(token,{...publish,expectedVersion:3,state:'archived',requestKey:'editorial-key-004'});
+  assert.equal(archived.state,'archived');
+  assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,14);
+  assert.equal([...f.records.keys()].filter(k=>k.includes('/newspaperAudits/')).length,4);
+});
+
+test('editorial writes and private drafts reject players, forged fields and reused keys',async()=>{
+  const f=fixture('jogador'),srv=f.service();
+  await denied(()=>srv.listEditorial(token),'editor_not_authorized',403);
+  await denied(()=>srv.saveEdition(token,rich()),'editor_not_authorized',403);
+  const editor=fixture(),s=editor.service();
+  await denied(()=>s.saveEdition(token,rich({createdBy:'forged'})),'invalid_editorial_request',400);
+  await s.saveEdition(token,rich());
+  await denied(()=>s.saveEdition(token,rich({state:'published'})),'request_key_conflict',409);
+  await denied(()=>s.saveEdition(token,rich({content:{title:'T',subtitle:'',blocks:[
+    {id:'a',type:'image',text:'',imageSrc:'https://evil.invalid/track'}]}})),
+    'invalid_editorial_content',400);
 });
 

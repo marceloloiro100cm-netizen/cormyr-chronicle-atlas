@@ -23,7 +23,7 @@ async function boundedJson(request:Request):Promise<Record<string,unknown>>{
     const {value,done}=await reader.read();
     if(done)break;
     length+=value.length;
-    if(length>16_000){
+    if(length>260_000){
       await reader.cancel();
       throw new CloudNewspaperError('body_too_large',413);
     }
@@ -54,7 +54,7 @@ async function handle(request:Request):Promise<Response>{
     return fail(401,'authentication_required');
   try{
     const payload=await boundedJson(request);
-    if(payload['action']!=='status'&&payload['action']!=='publish')
+    if(!['status','publish','listEditorial','getEditorial','saveEdition'].includes(String(payload['action'])))
       return fail(400,'invalid_action');
     const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
       await Promise.all([
@@ -71,7 +71,10 @@ async function handle(request:Request):Promise<Response>{
       enabled:true,
     });
     const idToken=token.slice(7);
-    const result=payload['action']==='status'
+    const result=payload['action']==='getEditorial'?await paper.getEditorial(idToken,payload)
+      :payload['action']==='saveEdition'?await paper.saveEdition(idToken,payload)
+      :payload['action']==='listEditorial'?(Object.keys(payload).length===1?await paper.listEditorial(idToken):null)
+      :payload['action']==='status'
       ?Object.keys(payload).length===1
         ?await paper.status(idToken)
         :null
@@ -87,3 +90,4 @@ async function handle(request:Request):Promise<Response>{
 export const Route=createFileRoute('/api/firebase-cloud-newspaper')({
   server:{handlers:{POST:async({request})=>handle(request)}},
 });
+

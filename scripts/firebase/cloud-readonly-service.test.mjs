@@ -674,6 +674,14 @@ test('Cloud editions are readable only after separate runtime approval and remai
   assert.ok(list.items.some(e=>e.id==='published'));
   assert.ok(list.items.some(e=>e.id==='cloud-allowed'));
   assert.ok(!list.items.some(e=>e.id==='cloud-hidden'));
+  const original=f.docs.get(published);
+  f.docs.set(published,{...original,state:'archived'});
+  assert.equal((await f.service().getNewspaper(token,'cloud-allowed')).state,'archived');
+  assert.ok((await f.service().listNewspaper(token)).items.some(e=>e.id==='cloud-allowed'));
+  f.docs.set(published,{...original,state:'cancelled',cancelledAt:'2026-11-18T22:00:00Z'});
+  assert.ok(!(await f.service().listNewspaper(token)).items.some(e=>e.id==='cloud-allowed'));
+  await rejects(()=>f.service().getNewspaper(token,'cloud-allowed'),'edition_unavailable',404);
+  f.docs.set(published,original);
   const open=await f.service().getNewspaper(token,'cloud-allowed');
   assert.equal(open.blocks[0].text,'Edição Nova');
   await rejects(()=>f.service().getNewspaper(token,'cloud-hidden'),'edition_unavailable',404);
@@ -887,3 +895,4 @@ test('historical privileged deletion is never silently archived in narrator revi
       'access_inventory_unverified',503);
   }
 });
+
