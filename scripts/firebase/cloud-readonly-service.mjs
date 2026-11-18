@@ -9,6 +9,8 @@ import {createHash} from 'node:crypto';
 import {canAcknowledgeMail,mailReceiptId} from './cloud-mail-receipt-core.mjs';
 import {cloudReplyRoute} from './cloud-mail-reply-core.mjs';
 import {cloudMailRuntimeApproved} from './cloud-mail-runtime-approval.mjs';
+import {planNarratorAccessRemediation}
+  from './cloud-access-remediation-plan.mjs';
 import {activeSeason2HouseScopeValid} from './cloud-season2-house-scope.mjs';
 
 const SNAPSHOT=/^[a-f0-9]{64}$/;
@@ -207,6 +209,39 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
         pendingAccounts:items.length,issues:counts,items,
         authWrites:0,firestoreWrites:0,
         readyForRemediation:false,readyForPlayers:false};
+    },
+    /**
+     * Private, narrator-only preflight. NO accounts or documents are updated;
+     * source migration access remains immutable. Re-evaluate from the server
+     * instead of trusting stale browser rows or arbitrary client Houses.
+     */
+    async previewAccessRemediation(idToken,targetUid,proposal){
+      const viewer=await scopeFor(idToken);
+      if(viewer.profile!=='narrador')deny('access_denied',403);
+      if(typeof targetUid!=='string'||!SAFE_ID.test(targetUid)||
+         targetUid===viewer.uid)deny('invalid_access_decision',400);
+      const source=await get(db,'migrationDomainStage',snapshotId,
+        'access',targetUid);
+      if(!source.exists||source.data()?.userId!==targetUid)
+        deny('access_denied',403);
+      const houses=await db.collection('migrationDomainStage')
+        .doc(snapshotId).collection('houses').limit(251).get();
+      if(!Array.isArray(houses?.docs)||houses.docs.length>250)
+        deny('access_inventory_unverified',503);
+      let account;
+      try{account=await auth.getUser(targetUid);}
+      catch{deny('access_inventory_unverified',503);}
+      try{
+        return planNarratorAccessRemediation({
+          snapshotId,actorUid:viewer.uid,targetUid,
+          sourceAccess:source.data(),authUser:account,
+          houseCatalog:houses.docs.map(doc=>doc.data()),proposal,
+        });
+      }catch{
+        // Never return source identity, House names, provider details
+        // or the rejected proposal in a response or server log.
+        deny('invalid_access_decision',400);
+      }
     },
     async listHouses(idToken){
       await scopeFor(idToken);
