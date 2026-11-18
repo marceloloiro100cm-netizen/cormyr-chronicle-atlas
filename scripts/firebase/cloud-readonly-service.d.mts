@@ -7,6 +7,8 @@ export class CloudAccessError extends Error {
 
 export interface FirebaseCloudReadonly {
   session(idToken:string):Promise<unknown>;
+  /** Narrator-only, on-demand read of unresolved accounts. Never mutates. */
+  listAccessRemediation(idToken:string):Promise<unknown>;
   listHouses(idToken:string):Promise<unknown>;
   getHouse(idToken:string,houseId:unknown):Promise<unknown>;
   getCalendar(idToken:string):Promise<unknown>;
@@ -21,7 +23,7 @@ export interface FirebaseCloudReadonly {
 export function createFirebaseCloudReadonly(config:{
   auth:{
     verifyIdToken(token:string,checkRevoked:boolean):Promise<{uid:string}>;
-    getUser(uid:string):Promise<{uid:string;disabled:boolean}>;
+    getUser(uid:string):Promise<{uid:string;disabled:boolean;email?:string}>;
   };
   db:{collection(name:string):any};
   snapshotId:string;
