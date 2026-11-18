@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseCloudReadonly,CloudAccessError} from '../../../scripts/firebase/cloud-readonly-service.mjs';
 import {crossOriginRejected} from '@/lib/server/request-origin';
+import {cloudReadFailureCategory} from '@/lib/server/cloud-read-error-category';
 
 /**
  * Read-only Firebase CLOUD route. This is NOT the emulator proxy and contains
@@ -99,15 +100,8 @@ async function handle(request:Request):Promise<Response>{
     // Firebase provider messages may contain Firestore paths, account IDs or
     // personal details. Even Cloud Logging must never receive raw exceptions.
     // Only emit a fixed, allowlisted diagnostic category.
-    const providerCode=(e as {code?:unknown})?.code;
-    const category=providerCode==='permission-denied'||providerCode===7
-      ?'permission_denied'
-      :providerCode==='unavailable'||providerCode===14
-        ?'provider_unavailable'
-        :providerCode==='unauthenticated'||providerCode===16
-          ?'provider_unauthenticated'
-          :'unexpected_provider_failure';
-    console.error('[firebase-cloud-read] unavailable',category);
+    console.error('[firebase-cloud-read] unavailable',
+      cloudReadFailureCategory(e));
     return error(503,'firebase_cloud_unavailable');
   }
 }
