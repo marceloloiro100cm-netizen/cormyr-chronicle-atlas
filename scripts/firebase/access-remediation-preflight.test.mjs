@@ -122,6 +122,20 @@ test('fails closed on incomplete, duplicate and stale source catalogs',()=>{
   assert.throws(()=>plan(input([])),/inventory_unverified/);
 });
 
+test('an otherwise active user with a legacy House is an explicit remediation candidate',()=>{
+  const i=input([decision('account-1')]);
+  i.houses.push({sourceId:'house-old',active:false,season:1});
+  i.accessDocs[0].data.memberHouseIds=['house-old'];
+  i.accessDocs[0].data.editHouseIds=['house-old'];
+  const report=plan(i);
+  assert.equal(report.summary.pendingAtSource,5);
+  assert.equal(report.summary.proposedChanges,1);
+  assert.equal(report.summary.membershipChanged,1);
+  assert.equal(report.summary.wouldActivate,0);
+  assert.equal(report.summary.releaseDecision,'NO_GO');
+  assert.deepEqual(report.privatePlan.proposals[0].after.memberHouseIds,['house-0']);
+});
+
 test('deterministic private fingerprint independent of reviewed change ordering',()=>{
   const a=decision('account-2');
   const b=decision('account-3',{memberHouseIds:['house-3'],editHouseIds:[]});
