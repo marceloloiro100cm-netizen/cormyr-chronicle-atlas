@@ -279,6 +279,34 @@ test('Narrator pending access report fails closed on partial or spoofed inventor
   await rejects(()=>f.service().listAccessRemediation(token),'access_denied',403);
 });
 
+test('Narrator remediation identifies deactivated or outdated House memberships',async()=>{
+  const f=fixture('narrador');
+  const root='migrationDomainStage/'+snapshot+'/access/';
+  for(let i=2;i<=14;i++){
+    const uid='player-'+i;
+    f.docs.set(root+uid,{
+      userId:uid,profile:'jogador',admin:false,active:true,
+      requirePasswordChange:false,playerId:uid,
+      memberHouseIds:['house-a'],editHouseIds:['house-a'],
+    });
+  }
+  f.auth.getUser=async uid=>({uid,email:uid+'@example.invalid',disabled:false});
+  const base=await f.service().listAccessRemediation(token);
+  assert.equal(base.issues.invalidScope,0);
+  assert.equal(base.pendingAccounts,0);
+  const housePath='migrationDomainStage/'+snapshot+'/houses/'+hash('house:house-a');
+  const current=f.docs.get(housePath);
+  f.docs.set(housePath,{...current,season:1});
+  const report=await f.service().listAccessRemediation(token);
+  assert.equal(report.issues.invalidScope,13);
+  assert.equal(report.pendingAccounts,13);
+  assert.ok(report.items.every(item=>item.issues.includes('invalidScope')));
+  assert.equal(report.firestoreWrites,0);
+  assert.equal(report.authWrites,0);
+  f.docs.set(housePath,{...current,active:false});
+  assert.equal((await f.service().listAccessRemediation(token)).issues.invalidScope,13);
+});
+
 test('Mailbox includes delivered own correspondence and excludes other-house, drafts, deleted and ambiguous',async()=>{
   const f=fixture('jogador');
   const messages=await f.service().listMailbox(token);
