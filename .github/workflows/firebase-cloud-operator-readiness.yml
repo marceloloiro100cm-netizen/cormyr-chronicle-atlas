@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/firebase/cloud-operator-readiness*.mjs'
+      - 'scripts/firebase/cloud-auth-inventory-readonly*.mjs'
       - 'scripts/firebase/auth-deletion-reconciliation*.mjs'
       - 'scripts/firebase/cloud-runtime-source-preflight*.mjs'
       - 'scripts/firebase/public-archive-coverage-readonly*.mjs'
@@ -49,6 +50,7 @@ jobs:
       - name: Verify read-only evidence and negative cases
         run: |
           node --test scripts/firebase/auth-deletion-reconciliation.test.mjs
+          node --test scripts/firebase/cloud-auth-inventory-readonly.test.mjs
           node --test scripts/firebase/cloud-operator-readiness.test.mjs
           node --test scripts/firebase/cloud-role-linkage-readonly.test.mjs
           node --test scripts/firebase/cloud-runtime-source-preflight.test.mjs
@@ -107,7 +109,7 @@ jobs:
       # No Cloud SDK setup or shell token printing is necessary here.
       - name: Install locked Firebase Admin dependency
         run: bun install --frozen-lockfile
-      - name: Verify Cloud stages and all 14 accounts without writing
+      - name: Verify live Auth inventory against 14 immutable historical records and Cloud stages
         run: node scripts/firebase/cloud-operator-readiness.mjs
       - name: Explicitly retain NO_GO until Cloud E2E and fresh delta acceptance
         if: always()
