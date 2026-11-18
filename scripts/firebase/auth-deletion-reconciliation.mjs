@@ -34,7 +34,8 @@ export function reconcileAuthorizedAuthDeletions({
   const live=unique(liveAuth.map(x=>x?.uid),'live_ids_invalid');
   if(liveAuth.some(x=>typeof x.disabled!=='boolean'))fail('live_auth_invalid');
   const deleted=unique(approvedDeletedUids,'approval_invalid');
-  if(deleted.size===0||deleted.size>14)fail('approval_invalid');
+  // Exactly one previously authorized legacy deletion; never infer bulk approval.
+  if(deleted.size!==1||live.size!==13)fail('approval_invalid');
   for(const uid of deleted){
     const record=historicalAccess.find(x=>x.id===uid);
     if(!record||record.data.admin!==false||record.data.profile==='narrador'||
