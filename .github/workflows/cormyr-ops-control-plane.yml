@@ -12,7 +12,7 @@ on:
         type: choice
         required: true
         default: audit
-        options: [audit, operator-audit, auth-preview, auth-activate, auth-deletion-audit, runtime-draft]
+        options: [audit, operator-audit, auth-preview, auth-activate, auth-deletion-audit, auth-inventory-audit, runtime-draft]
 
 permissions:
   contents: read
@@ -41,7 +41,7 @@ jobs:
             const CONTROL_ISSUE = 568;
             const CONFIRMATION = 'ENABLE_ALL_14_CORMYR_TEST_ACCOUNTS';
             const AUTH_WORKFLOW = '.github/workflows/firebase-auth-enable-all-test-accounts.yml';
-            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-activate|auth-deletion-audit|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
+            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-activate|auth-deletion-audit|auth-inventory-audit|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
             const {owner, repo} = context.repo;
             if (owner + '/' + repo !== REPO || Number(process.env.GITHUB_RUN_ATTEMPT) !== 1) {
               core.info('Untrusted context or retry: no remote action');
@@ -51,7 +51,7 @@ jobs:
             if (context.eventName === 'schedule') operation = 'audit';
             else if (context.eventName === 'workflow_dispatch') {
               operation = context.payload.inputs?.task;
-              if (!['audit', 'operator-audit', 'auth-preview', 'auth-activate', 'auth-deletion-audit', 'runtime-draft'].includes(operation)) {
+              if (!['audit', 'operator-audit', 'auth-preview', 'auth-activate', 'auth-deletion-audit', 'auth-inventory-audit', 'runtime-draft'].includes(operation)) {
                 core.info('Unknown manual command: no action');
                 return;
               }
@@ -76,6 +76,8 @@ jobs:
               ['firebase-cloud-access-readiness.yml', {}],
             ] : operation === 'operator-audit' ? [
               ['firebase-cloud-operator-readiness.yml', {}],
+            ] : operation === 'auth-inventory-audit' ? [
+              ['firebase-auth-inventory-readonly.yml', {}],
             ] : operation === 'auth-deletion-audit' ? [
               ['firebase-auth-deletion-readonly.yml', {}],
             ] : operation === 'runtime-draft' ? [
@@ -97,6 +99,7 @@ jobs:
                 'firebase-auth-enable-all-test-accounts.yml',
                 'firebase-cloud-runtime-drafts.yml',
                 'firebase-auth-deletion-readonly.yml',
+                'firebase-auth-inventory-readonly.yml',
               ]);
               for (const [workflow_id, inputs] of tasks) {
                 if (!allowed.has(workflow_id)) throw new Error('Workflow not allowlisted');
