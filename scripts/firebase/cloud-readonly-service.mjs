@@ -104,6 +104,76 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       return {authenticated:true,profile,memberHouseIds,readOnly:true,
         snapshotReconciliationPending:true};
     },
+    /**
+     * Privileged narrator-only account review. Returns identities only to
+     * the authenticated narrator; never to Actions/logs or public endpoints.
+     * The historical migration collection is READ ONLY, even for Narrators.
+     */
+    async listAccessRemediation(idToken){
+      const viewer=await scopeFor(idToken);
+      if(viewer.profile!=='narrador')deny('access_denied',403);
+      const records=await db.collection('migrationDomainStage')
+        .doc(snapshotId).collection('access').get();
+      if(!Array.isArray(records?.docs)||records.docs.length!==14)
+        deny('access_inventory_unverified',503);
+      const seen=new Set(),candidates=[];
+      const counts={inactive:0,missingProfile:0,playerWithoutHouse:0,
+        passwordChangePending:0,invalidScope:0};
+      for(const doc of records.docs){
+        const v=doc.data();
+        if(!v||typeof v.userId!=='string'||!SAFE_ID.test(v.userId)||
+           seen.has(v.userId)||
+           typeof doc.id==='string'&&doc.id!==v.userId)
+          deny('access_inventory_unverified',503);
+        seen.add(v.userId);
+        const profile=['narrador','jogador','editor'].includes(v.profile)
+          ?v.profile:null;
+        const issues=[];
+        const member=Array.isArray(v.memberHouseIds)?v.memberHouseIds:null;
+        const edit=Array.isArray(v.editHouseIds)?v.editHouseIds:null;
+        const badScope=!member||!edit||
+          member.length>250||edit.length>250||
+          member.some(id=>typeof id!=='string'||!SAFE_ID.test(id))||
+          edit.some(id=>typeof id!=='string'||!SAFE_ID.test(id))||
+          edit.some(id=>!member.includes(id))||
+          profile==='editor'&&member.length!==0||
+          typeof v.admin!=='boolean'||
+          profile==='narrador'&&v.admin!==true||
+          profile!==null&&profile!=='narrador'&&v.admin!==false||
+          typeof v.active!=='boolean'||
+          typeof v.requirePasswordChange!=='boolean';
+        if(v.active!==true){issues.push('inactive');counts.inactive++;}
+        if(profile===null){issues.push('missingProfile');counts.missingProfile++;}
+        if(profile==='jogador'&&(!member||member.length===0)){
+          issues.push('playerWithoutHouse');counts.playerWithoutHouse++;
+        }
+        if(v.requirePasswordChange!==false){
+          issues.push('passwordChangePending');counts.passwordChangePending++;
+        }
+        if(badScope){issues.push('invalidScope');counts.invalidScope++;}
+        if(issues.length)candidates.push({uid:v.userId,profile,issues,
+          active:v.active===true,
+          requirePasswordChange:v.requirePasswordChange!==false,
+          memberHouseIds:!badScope&&member?[...member]:[],
+          editHouseIds:!badScope&&edit?[...edit]:[]});
+      }
+      // All lookups must succeed before returning any private row.
+      let items;
+      try{
+        items=await Promise.all(candidates.map(async c=>{
+          const u=await auth.getUser(c.uid);
+          if(u?.uid!==c.uid)throw Error('auth_access_inventory_mismatch');
+          const email=typeof u.email==='string'&&
+            u.email.length<=254&&!/[\u0000-\u001f\u007f]/.test(u.email)
+            ?u.email:null;
+          return {...c,email,authDisabled:u.disabled===true};
+        }));
+      }catch{deny('access_inventory_unverified',503);}
+      return {readOnly:true,sourceImmutable:true,accountsChecked:14,
+        pendingAccounts:items.length,issues:counts,items,
+        authWrites:0,firestoreWrites:0,
+        readyForRemediation:false,readyForPlayers:false};
+    },
     async listHouses(idToken){
       await scopeFor(idToken);
       const docs=await db.collection('migrationDomainStage')

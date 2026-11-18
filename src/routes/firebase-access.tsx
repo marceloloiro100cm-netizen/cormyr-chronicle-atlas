@@ -26,6 +26,8 @@ import {FirebaseHouseChronicle} from '@/components/houses/FirebaseHouseChronicle
 import {FirebaseHouseReconciliationAudit} from '@/components/houses/FirebaseHouseReconciliationAudit';
 import {FirebaseHouseReconciliationOverview}
   from '@/components/houses/FirebaseHouseReconciliationOverview';
+import {FirebasePendingAccessReview,type PendingAccessReview}
+  from '@/components/firebase/FirebasePendingAccessReview';
 import type {HouseReconciliationReport} from '@/lib/house/firebase-house-reconciliation-audit';
 
 /**
@@ -84,7 +86,7 @@ function spyValue(value:unknown):string {
   try{return JSON.stringify(value).slice(0,2000);}catch{return 'Registro não disponível';}
 }
 
-async function readCloud<T>(action:'session'|'listHouses'|'getHouse'|'getCalendar'|
+async function readCloud<T>(action:'session'|'listAccessRemediation'|'listHouses'|'getHouse'|'getCalendar'|
   'listMailbox'|'listNewspaper'|'getNewspaper'|'listSpyAgents'|'listSpyDossiers'|'listHouseBattles',
   houseId?:string,editionId?:string):Promise<T>{
   const token=await firebaseAuth()?.getToken();
@@ -696,6 +698,10 @@ function FirebaseAccess(){
             não grava tokens, UIDs ou conteúdo de outras Casas.</p>
         </div>}
       </section>
+      {view.profile==='narrador'&&
+        <FirebasePendingAccessReview
+          inspect={()=>readCloud<PendingAccessReview>('listAccessRemediation')}
+          resolveHouseName={id=>houses.find(h=>h.id===id)?.name??'Casa não localizada'}/>}
       {view.profile==='narrador'&&
         <section aria-label="Acervo reservado do Narrador"
           className="rounded border border-current/25 p-4 space-y-3">
