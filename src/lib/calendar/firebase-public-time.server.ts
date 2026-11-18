@@ -1,3 +1,4 @@
+import {effectiveCloudCalendar} from '../../../scripts/firebase/cloud-operational-calendar.mjs';
 /**
  * Firebase-only public campaign clock.
  *
@@ -55,7 +56,7 @@ export async function readApprovedFirebasePublicTime({
     return unavailable();
 
   const snapshot=await stageRef.collection('calendar').doc('current').get();
-  const record=snapshot.exists?snapshot.data():null;
+  const record=effectiveCloudCalendar(snapshot.exists?snapshot.data():null,controls,snapshotId);
   if(!record||record['version']!==controls['publishedTimeVersion'])
     return unavailable();
   try{
@@ -67,3 +68,4 @@ export async function readApprovedFirebasePublicTime({
     });
   }catch{return unavailable();}
 }
+

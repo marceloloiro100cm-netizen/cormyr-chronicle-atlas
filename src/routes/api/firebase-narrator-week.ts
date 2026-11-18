@@ -4,8 +4,8 @@ import {createFirebaseNarratorWeekDraft,NarratorWeekDraftError}
 import {crossOriginRejected} from '@/lib/server/request-origin';
 
 /**
- * Protected Firebase-only narrator week PROPOSAL, never a calendar publisher.
- * No migration* documents, campaignCloudRuntime or campaignMailRuntime writes.
+ * Protected narrator draft and explicit one-time operational calendar publication.
+ * Imported migration documents remain immutable.
  */
 const headers={
   'Cache-Control':'private, no-store, max-age=0',
@@ -57,7 +57,7 @@ async function handle(request:Request):Promise<Response>{
     return error(401,'authentication_required');
   try{
     const payload=await boundedJson(request);
-    if(payload['action']!=='get'&&payload['action']!=='save')
+    if(!['get','save','publish'].includes(String(payload['action'])))
       return error(400,'invalid_action');
     if(payload['action']==='get'&&Object.keys(payload).length!==1)
       return error(400,'invalid_request');
@@ -65,6 +65,10 @@ async function handle(request:Request):Promise<Response>{
       !['action','expectedCalendarVersion','expectedDraftVersion',
         'proposedDate','openRound','reason'].includes(key)))
       return error(400,'invalid_request');
+    if(payload['action']==='publish'&&(
+       process.env['CORMYR_FIREBASE_CAMPAIGN_LAUNCH_ENABLED']!=='true'||
+       Object.keys(payload).some(key=>!['action','expectedDraftVersion','adoptFirebaseSource'].includes(key))))
+      return error(403,'campaign_launch_disabled');
     const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
       await Promise.all([import('firebase-admin/app'),
         import('firebase-admin/auth'),import('firebase-admin/firestore')]);
@@ -77,7 +81,9 @@ async function handle(request:Request):Promise<Response>{
       projectId:'cormyr',enabled:true,
     });
     const token=authHeader.slice(7);
-    const result=payload['action']==='get'
+    const result=payload['action']==='publish'
+      ?await service.publish(token,{expectedDraftVersion:payload['expectedDraftVersion'],adoptFirebaseSource:payload['adoptFirebaseSource']})
+      :payload['action']==='get'
       ?await service.get(token)
       :await service.save(token,{
         expectedCalendarVersion:payload['expectedCalendarVersion'],
@@ -97,3 +103,4 @@ async function handle(request:Request):Promise<Response>{
 export const Route=createFileRoute('/api/firebase-narrator-week')({
   server:{handlers:{POST:async({request})=>handle(request)}},
 });
+

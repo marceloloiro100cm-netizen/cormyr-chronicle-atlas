@@ -1,5 +1,5 @@
 /** Type surface for a private Firebase-only Narrator week proposal.
- * This service never publishes calendar time or enables House/Mail writes.
+ * Initial publication requires an explicit narrator decision and preserves imported documents.
  */
 export class NarratorWeekDraftError extends Error {
   readonly code:string;
@@ -27,9 +27,9 @@ export interface NarratorWeekDraftView {
     updatedAt:string;
     status:'pending';
   })|null;
-  editable:true;
-  calendarPublished:false;
-  mailEnabled:false;
+  editable:boolean;
+  calendarPublished:boolean;
+  mailEnabled:boolean;
   saved?:boolean;
 }
 export function planNarratorWeekDraft(input:{
@@ -52,6 +52,8 @@ export function createFirebaseNarratorWeekDraft(config:{
   now?:()=>string;
   newId?:()=>string;
 }):{
+  publish(idToken:string,request:unknown):Promise<{published:true;duplicate:boolean;calendar:NarratorWeekDate&{version:number};openRound:number}>;
   get(idToken:string):Promise<NarratorWeekDraftView>;
   save(idToken:string,request:unknown):Promise<NarratorWeekDraftView>;
 };
+

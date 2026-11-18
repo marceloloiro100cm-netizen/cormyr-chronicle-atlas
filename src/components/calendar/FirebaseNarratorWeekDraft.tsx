@@ -10,10 +10,10 @@ type WeekDraft={
 type WeekView={
   archivedCalendar:DateView&{version:number};
   draft:WeekDraft|null;editable:boolean;
-  calendarPublished:false;mailEnabled:false;saved?:boolean;
+  calendarPublished:boolean;mailEnabled:boolean;saved?:boolean;
 };
 
-async function requestWeek(action:'get'|'save',fields?:Record<string,unknown>):Promise<WeekView>{
+async function requestWeek(action:'get'|'save'|'publish',fields?:Record<string,unknown>):Promise<WeekView>{
   const auth=firebasePilotAuth();
   const token=await auth?.getToken();
   if(!token)throw Error('Entre novamente com sua conta de Narrador.');
@@ -49,6 +49,7 @@ export function FirebaseNarratorWeekDraft(){
   const [festival,setFestival]=useState('');
   const [round,setRound]=useState('');
   const [reason,setReason]=useState('');
+  const [adoptSource,setAdoptSource]=useState(false);
 
   function populate(v:WeekView){
     setLoaded(v);
@@ -92,14 +93,24 @@ export function FirebaseNarratorWeekDraft(){
     }catch(e){setMessage(e instanceof Error?e.message:'Falha ao salvar.');}
     finally{setBusy(false);}
   }
+  async function publish(){
+    if(busy||!loaded?.draft||!adoptSource)return;
+    setBusy(true);setMessage('');
+    try{
+      await requestWeek('publish',{expectedDraftVersion:loaded.draft.draftVersion,
+        adoptFirebaseSource:true});
+      window.location.reload();
+    }catch(e){setMessage(e instanceof Error?e.message:'Falha na publicação.');}
+    finally{setBusy(false);}
+  }
   return <section aria-label="Configuração de semana pelo Narrador no Firebase"
     className="rounded border border-amber-800/40 p-4 space-y-3">
     <div>
       <h2 className="text-xl font-semibold">HUB Temporal · Administração Firebase</h2>
       <p className="text-sm opacity-80">
-        Escolha a semana e a rodada desejadas. Este formulário grava uma
-        proposta privada e auditada no Firestore. A data oficial só será
-        publicada após a reconciliação da campanha e a aprovação operacional.
+        Configure a data e a rodada inicial da campanha. Salve para conferir
+        os valores e publique para abrir as missivas e a edição do jornal.
+        O histórico importado será preservado.
       </p>
     </div>
     {!loaded?<div className="space-y-2">
@@ -113,7 +124,11 @@ export function FirebaseNarratorWeekDraft(){
       {loaded.draft&&<p className="text-sm">
         Proposta anterior: versão {loaded.draft.draftVersion} · pendente de publicação.
       </p>}
-      <form onSubmit={event=>void save(event)} className="space-y-3">
+      {loaded.calendarPublished&&<p role="status" className="rounded border p-3">
+        Configuração inicial publicada. Missivas habilitadas para a rodada escolhida.
+        Esta tela não avança o tempo nem aplica efeitos nas Casas.
+      </p>}
+      {!loaded.calendarPublished&&<form onSubmit={event=>void save(event)} className="space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <label className="text-sm">Ano (CV)
             <input type="number" min="1" max="9999" required
@@ -169,13 +184,24 @@ export function FirebaseNarratorWeekDraft(){
           onClick={()=>void refresh()} className="ml-2 rounded border px-3 py-2">
           Atualizar
         </button>
-      </form>
-      <p className="text-xs font-medium">
-        Esta operação NÃO altera o calendário publicado, os recursos das Casas,
-        as missivas históricas ou o status dos runtimes. Envio de Missivas
-        continua bloqueado até sua própria homologação.
-      </p>
+      </form>}
+      {!loaded.calendarPublished&&loaded.draft&&<div className="rounded border p-4 space-y-3">
+        <h3 className="font-semibold">Publicar configuração inicial</h3>
+        <p className="text-sm">Rodada {loaded.draft.proposedOpenRound} ·
+          {' '}{loaded.draft.proposedDate.day}/{loaded.draft.proposedDate.month+1}/{loaded.draft.proposedDate.year} CV.
+          A publicação usa estes valores salvos, sem entregar cartas antigas novamente.
+          Novas missivas serão entregues na rodada definida.</p>
+        <label className="flex gap-2 text-sm">
+          <input type="checkbox" checked={adoptSource}
+            onChange={e=>setAdoptSource(e.target.checked)}/>
+          Confirmo os dados importados no Firebase como base oficial e esta data e rodada.
+        </label>
+        <button type="button" disabled={busy||!adoptSource}
+          className="rounded border px-4 py-2 disabled:opacity-50"
+          onClick={()=>void publish()}>Publicar semana e abrir missivas</button>
+      </div>}
       {message&&<p role="status" className="text-sm">{message}</p>}
     </>}
   </section>;
 }
+

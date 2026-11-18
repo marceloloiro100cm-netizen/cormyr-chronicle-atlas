@@ -99,3 +99,15 @@ env:
   #     - RUNTIME
 
 # Configuração de autenticação e dados será substituída pelo Firebase na fase 2.
+
+  # Owner-authorized initial campaign setup, still requires the narrator's
+  # explicit saved date, round and source adoption inside a transaction.
+  - variable: CORMYR_FIREBASE_CAMPAIGN_LAUNCH_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+  - variable: CORMYR_FIREBASE_CLOUD_NEWSPAPER_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+
