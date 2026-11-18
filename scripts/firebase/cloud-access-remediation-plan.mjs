@@ -6,7 +6,7 @@
  * Input and temporary draft contain private identities: do not log.
  */
 const HASH=/^[a-f0-9]{64}$/;
-const ID=/^[A-Za-z0-9_-]{1,128}$/;
+const ID=/^[^\/\u0000-\u001f\u007f]{1,128}$/;
 const ROLES=new Set(['jogador','editor','narrador']);
 const INPUT_KEYS=['active','editHouseIds','manualReviewConfirmed',
   'memberHouseIds','profile'];
