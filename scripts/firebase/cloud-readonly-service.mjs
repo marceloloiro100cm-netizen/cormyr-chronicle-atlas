@@ -216,7 +216,9 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
          seen.size-liveByUid.size>1)
         deny('access_inventory_unverified',503);
       const archivedHistoricalAccess=seen.size-liveByUid.size;
+      let archivedIdentityUid=null;
       for(const [uid,row] of historicalAccessByUid){
+        if(!liveByUid.has(uid))archivedIdentityUid=uid;
         if(liveByUid.has(uid))continue;
         // A missing Auth record can be archived-only in this private review
         // only when it had no administrative, editorial or House privileges.
@@ -246,7 +248,8 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       }catch{deny('access_inventory_unverified',503);}
       return {readOnly:true,sourceImmutable:true,
         historicalAccountsChecked:14,accountsChecked:liveByUid.size,
-        archivedHistoricalAccess,deletionIdentityApproved:false,
+        archivedHistoricalAccess,archivedIdentityUid,
+        deletionIdentityApproved:false,
         pendingAccounts:items.length,issues:currentCounts,items,
         authWrites:0,firestoreWrites:0,
         readyForRemediation:false,readyForPlayers:false};
