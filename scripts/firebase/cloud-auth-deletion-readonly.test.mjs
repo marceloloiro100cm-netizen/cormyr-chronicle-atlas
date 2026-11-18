@@ -5,7 +5,7 @@ import {auditProtectedAuthDeletion,safeDeletionSummary}
 const fixture=()=>{
   const historic=Array.from({length:14},(_,i)=>({
     id:'uid_'+i,data:{userId:'uid_'+i,profile:i===0?'narrador':'jogador',
-      admin:i===0},
+      admin:i===0,memberHouseIds:[],editHouseIds:[]},
   }));
   const auth={listUsers:async()=>({users:historic.slice(0,13)
     .map(d=>({uid:d.id,disabled:false})),pageToken:undefined})};
