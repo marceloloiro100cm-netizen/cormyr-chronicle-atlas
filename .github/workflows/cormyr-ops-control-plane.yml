@@ -25,7 +25,7 @@ on:
         type: choice
         required: true
         default: audit
-        options: [audit, operator-audit, auth-preview, auth-activate, auth-deletion-audit, auth-inventory-audit, verify-emulators, verify-build, verify-pilot, runtime-draft]
+        options: [audit, operator-audit, auth-preview, auth-deletion-audit, auth-inventory-audit, verify-emulators, verify-build, verify-pilot, runtime-draft]
 
 permissions:
   contents: read
@@ -53,9 +53,8 @@ jobs:
           script: |
             const REPO = 'marceloloiro100cm-netizen/cormyr-chronicle-atlas';
             const CONTROL_ISSUE = 568;
-            const CONFIRMATION = 'ENABLE_ALL_14_CORMYR_TEST_ACCOUNTS';
             const AUTH_WORKFLOW = '.github/workflows/firebase-auth-enable-all-test-accounts.yml';
-            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-activate|auth-deletion-audit|auth-inventory-audit|verify-emulators|verify-build|verify-pilot|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
+            const titleFormat = /^Cormyr Ops \| (audit|operator-audit|auth-preview|auth-deletion-audit|auth-inventory-audit|verify-emulators|verify-build|verify-pilot|runtime-draft|cancel-auth:([1-9][0-9]{7,12})) \| ([0-9]{8})$/;
             const {owner, repo} = context.repo;
             if (owner + '/' + repo !== REPO || Number(process.env.GITHUB_RUN_ATTEMPT) !== 1) {
               core.info('Untrusted context or retry: no remote action');
@@ -65,7 +64,7 @@ jobs:
             if (context.eventName === 'schedule') operation = 'audit';
             else if (context.eventName === 'workflow_dispatch') {
               operation = context.payload.inputs?.task;
-              if (!['audit', 'operator-audit', 'auth-preview', 'auth-activate', 'auth-deletion-audit', 'auth-inventory-audit', 'verify-emulators', 'verify-build', 'verify-pilot', 'runtime-draft'].includes(operation)) {
+              if (!['audit', 'operator-audit', 'auth-preview', 'auth-deletion-audit', 'auth-inventory-audit', 'verify-emulators', 'verify-build', 'verify-pilot', 'runtime-draft'].includes(operation)) {
                 core.info('Unknown manual command: no action');
                 return;
               }
@@ -110,10 +109,6 @@ jobs:
               }],
             ] : operation === 'auth-preview' ? [
               ['firebase-auth-enable-all-test-accounts.yml', {mode:'preview'}],
-            ] : operation === 'auth-activate' ? [
-              ['firebase-auth-enable-all-test-accounts.yml', {
-                mode:'activate', confirmation:CONFIRMATION,
-              }],
             ] : [];
             if (tasks.length) {
               const allowed = new Set([
