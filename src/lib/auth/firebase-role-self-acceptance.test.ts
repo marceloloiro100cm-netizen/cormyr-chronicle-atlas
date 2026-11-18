@@ -15,6 +15,9 @@ function fixture(role:Profile,memberHouseIds:string[]){
     if(body.action==='session')return Response.json({result:{
       authenticated:true,profile:role,memberHouseIds,readOnly:true,
     }});
+    if(body.action==='listMailbox')return new Response('{}',{
+      status:role==='editor'?403:200,
+    });
     if(body.action==='getCalendar')return new Response('{}',{
       status:role==='editor'?403:200,
     });
@@ -39,6 +42,9 @@ describe('Firebase Cloud live role acceptance preflight',()=>{
     expect(f.requests).toContainEqual({action:'getHouse',hasToken:true,houseId:'house-a'});
     expect(f.requests).toContainEqual({action:'getHouse',hasToken:true,houseId:'house-b'});
     expect(f.requests[0]).toMatchObject({action:'session',hasToken:false});
+    expect(f.requests).toContainEqual({
+      action:'listMailbox',hasToken:true,houseId:null,
+    });
   });
   it('accepts player B only after positive B and denial of A',async()=>{
     const f=fixture('jogador',['house-b']);
@@ -49,7 +55,7 @@ describe('Firebase Cloud live role acceptance preflight',()=>{
     const f=fixture('narrador',[]);
     const result=await f.run();
     expect(result.passed).toBe(true);
-    expect(result.checks).toHaveLength(4);
+    expect(result.checks).toHaveLength(5);
     expect(f.requests.filter(x=>x.action==='getHouse')).toHaveLength(2);
   });
   it('Editor cannot read private House sheets or calendar',async()=>{
@@ -57,6 +63,7 @@ describe('Firebase Cloud live role acceptance preflight',()=>{
     const result=await f.run();
     expect(result.passed).toBe(true);
     expect(f.requests.some(x=>x.action==='getCalendar')).toBe(true);
+    expect(f.requests.some(x=>x.action==='listMailbox'&&x.hasToken)).toBe(true);
   });
   it('fails closed when a foreign House accidentally responds 200',async()=>{
     const f=fixture('jogador',['house-a']);
@@ -72,6 +79,36 @@ describe('Firebase Cloud live role acceptance preflight',()=>{
     });
     expect(result.passed).toBe(false);
     expect(result.checks.some(x=>!x.passed)).toBe(true);
+  });
+  it('a player cannot pass when mailbox is denied despite correct House scope',async()=>{
+    const f=fixture('jogador',['house-a']);
+    const report=await runFirebaseRoleSelfAcceptance({
+      token:'token-from-active-user',session:f.session,houses,
+      fetcher:async(url,init)=>{
+        const body=JSON.parse(String(init.body)) as {action:string};
+        if(body.action==='listMailbox')
+          return new Response('{}',{status:403});
+        return f.fetcher(url,init);
+      },
+    });
+    expect(report.passed).toBe(false);
+    expect(report.checks.some(x=>
+      x.label==='Próprias missivas autorizadas'&&!x.passed)).toBe(true);
+  });
+  it('editor cannot pass if mailbox accidentally allows private data',async()=>{
+    const f=fixture('editor',[]);
+    const report=await runFirebaseRoleSelfAcceptance({
+      token:'token-from-active-user',session:f.session,houses,
+      fetcher:async(url,init)=>{
+        const body=JSON.parse(String(init.body)) as {action:string};
+        if(body.action==='listMailbox')
+          return new Response('{}',{status:200});
+        return f.fetcher(url,init);
+      },
+    });
+    expect(report.passed).toBe(false);
+    expect(report.checks.some(x=>
+      x.label==='Editor sem acesso às missivas privadas'&&!x.passed)).toBe(true);
   });
   it('unavailable Cloud 503, missing Houses and invalid token never imply GO',async()=>{
     const f=fixture('jogador',['house-a']);

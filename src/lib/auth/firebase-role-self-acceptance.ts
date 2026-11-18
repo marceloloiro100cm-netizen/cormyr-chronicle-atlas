@@ -70,11 +70,15 @@ export async function runFirebaseRoleSelfAcceptance(args:{
     check('Casa própria autorizada',allowed.status,200);
     const foreign=other?await call('getHouse',other):{status:null};
     check('Outra Casa bloqueada',foreign.status,403);
+    const mailbox=await call('listMailbox');
+    check('Próprias missivas autorizadas',mailbox.status,200);
   }else if(session.profile==='editor'){
     const denied=ids[0]?await call('getHouse',ids[0]):{status:null};
     check('Editor não lê fichas privadas',denied.status,403);
     const calendar=await call('getCalendar');
     check('Editor sem acesso ao calendário reservado',calendar.status,403);
+    const mailbox=await call('listMailbox');
+    check('Editor sem acesso às missivas privadas',mailbox.status,403);
   }else{
     // Narrator must prove access to two distinct existing Houses, not just
     // obtain a "narrator" label in an unverified browser session.
@@ -86,6 +90,8 @@ export async function runFirebaseRoleSelfAcceptance(args:{
     if(ids.length<2)checks.push({
       label:'Duas Casas distintas para prova',passed:false,httpStatus:null,
     });
+    const mailbox=await call('listMailbox');
+    check('Narrador acessa a caixa de missivas',mailbox.status,200);
   }
   return {passed:checks.length>=4&&checks.every(c=>c.passed),
     checks,scope:session.profile};
