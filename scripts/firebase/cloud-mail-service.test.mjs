@@ -162,6 +162,13 @@ test('Independent mail runtime must be approved for sends, replies and receipts'
     assert.equal((await f.service().status(sampleToken)).canSend,false);
     await rejects(()=>f.service().send(sampleToken,req()),
       'mail_runtime_not_approved',503);
+    await rejects(()=>f.service().markRead(sampleToken,{
+      source:'imported',letterId:'historical-001',
+    }),'mail_runtime_not_approved',503);
+    await rejects(()=>f.service().reply(sampleToken,{
+      requestKey:'a-valid-key_1234',letterId:'c'.repeat(64),
+      content:'Resposta',
+    }),'mail_runtime_not_approved',503);
     assert.equal([...f.records].some(([k])=>k.includes('/letters/')),false);
   }
   f.records.delete(path);
