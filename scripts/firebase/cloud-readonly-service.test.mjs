@@ -831,7 +831,11 @@ test('Narrator safely excludes one deleted legacy Auth account from pending revi
   assert.equal(report.pendingAccounts,1);
   assert.equal(report.issues.inactive,1);
   assert.equal(report.issues.missingProfile,0);
-  assert.ok(!JSON.stringify(report).includes('account-3'));
+  assert.equal(report.archivedIdentityUid,'account-3');
+  assert.equal(report.deletionIdentityApproved,false);
+  const player=fixture('jogador');
+  await rejects(()=>player.service().listAccessRemediation(token),
+    'access_denied',403);
   assert.equal(report.authWrites,0);
   assert.equal(report.firestoreWrites,0);
 });
