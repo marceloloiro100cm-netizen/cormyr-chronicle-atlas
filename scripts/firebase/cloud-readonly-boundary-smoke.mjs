@@ -1,6 +1,7 @@
 /**
  * Anonymous, no-op verification of the four independently gated Firebase
- * Cloud READ routes and three legacy/WRITE routes still blocked by archive mode.
+ * Cloud READ routes, three private Cloud routes and four legacy/WRITE routes
+ * (including treasury) still blocked by archive mode.
  * Never authenticates, sends a valid action, or reads private documents.
  */
 import {appendFileSync} from 'node:fs';
@@ -13,8 +14,8 @@ export const READ_ROUTES=Object.freeze([
   ['houseReconciliation','/api/firebase-house-reconciliation-audit','house_reconciliation_audit_disabled'],
   ['treasuryAudit','/api/firebase-treasury-audit','firebase_treasury_audit_disabled'],
 ]);
-// These server-side Cloud routes are allowed through archive mode but require
-// either a disabled feature flag (503) or a Firebase ID token (401).
+// Only these three Cloud routes bypass archive mode, requiring either a
+// disabled feature flag (503) or a Firebase ID token (401).
 // Every probe sends an impossible action without credentials.
 export const CLOUD_ROUTES=Object.freeze([
   ['firebaseCloudSession','/api/firebase-cloud-read','firebase_cloud_read_disabled'],
