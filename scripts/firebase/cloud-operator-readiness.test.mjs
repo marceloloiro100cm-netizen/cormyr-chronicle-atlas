@@ -240,6 +240,74 @@ test('protected audit success is distinct from public-stage release NO_GO',()=>{
     authInventoryValid:false}),false);
 });
 
+test('protected operator checks source and homologation by checksums without releasing',async()=>{
+  const storage={
+    scope:'read-only-gcs-prefix-integrity',
+    sourceObjects:779,destinationObjects:779,
+    sourceBytes:2107760075,destinationBytes:2107760075,
+    missing:0,extra:0,sizeMismatch:0,crcMismatch:0,
+    md5Mismatch:0,md5Compared:779,sourceToStagingBytesMatch:true,
+    privatePath:'PRIVATE_OBJECT_NAME_NEVER_PRINT',
+  };
+  const assets={
+    scope:'CORMYR_PUBLIC_ARCHIVE_ASSET_INVENTORY_OFFLINE',
+    checked:true,houses:172,crestVerified:172,crestUnverified:0,
+    historyVerified:170,historyUnverified:0,withoutHistoryReference:2,
+    privateHistory:'PRIVATE_HISTORY_NEVER_PRINT',
+  };
+  const r=await inspectOperatorEvidence({
+    readCloud:async()=>cloud(),previewAuth:async()=>auth(),
+    readStorageComparison:async()=>storage,
+    readPublicAssets:async()=>assets,
+  });
+  assert.equal(r.storageCopyMetadataMatched,true);
+  assert.equal(r.fourBlocks.operations.storageComparison.sourceReadVerified,true);
+  assert.equal(r.fourBlocks.operations.storageComparison.md5Compared,779);
+  assert.equal(r.fourBlocks.publicContent.assetInventory.validCrests,172);
+  assert.equal(r.fourBlocks.publicContent.assetInventory.validHistories,170);
+  assert.equal(r.fourBlocks.publicContent.assetInventory.reviewApproved,false);
+  assert.equal(r.fourBlocks.operations.sourceDeltaReconciled,false);
+  assert.equal(r.sourceLiveReconciliationVerified,false);
+  assert.equal(r.storageVerified,false);
+  assert.equal(r.readyForPlayers,false);
+  assert.equal(r.releaseDecision,'NO_GO');
+  assert.ok(r.blockingCodes.includes('STORAGE_LIVE_DELTA_NOT_FROZEN'));
+  const sanitized=JSON.stringify(r)+safeOperatorSummary(r);
+  assert.ok(!sanitized.includes(storage.privatePath));
+  assert.ok(!sanitized.includes(assets.privateHistory));
+  assert.match(safeOperatorSummary(r),/Storage: cópia por metadados íntegra/);
+});
+
+test('source bucket IAM denial is redacted and does not block Auth diagnostics',async()=>{
+  const r=await inspectOperatorEvidence({
+    readCloud:async()=>cloud(),previewAuth:async()=>auth(),
+    readStorageComparison:async()=>{
+      const e=Error('PRIVATE_BUCKET_URL_AND_CREDENTIAL');
+      e.auditCode='SOURCE_GCS_HTTP_403';
+      throw e;
+    },
+    readPublicAssets:async()=>{throw Error('PRIVATE_ASSET_TEXT');},
+  });
+  assert.equal(r.fourBlocks.operations.storageComparison.failureCode,
+    'SOURCE_GCS_HTTP_403');
+  assert.equal(r.storageCopyMetadataMatched,false);
+  assert.equal(r.publicAssetInventoryChecked,false);
+  assert.equal(r.readyForCutover,false);
+  assert.ok(!JSON.stringify(r).includes('PRIVATE_BUCKET_URL_AND_CREDENTIAL'));
+  assert.ok(!JSON.stringify(r).includes('PRIVATE_ASSET_TEXT'));
+  assert.ok(r.blockingCodes.includes('STORAGE_COPY_COMPARISON_UNVERIFIED'));
+  const malformed=evaluateOperatorEvidence({
+    cloud:cloud(),authPreview:auth(),
+    storageError:'PRIVATE_STORAGE_TOKEN',
+    storageComparison:{scope:'spoofed',sourceToStagingBytesMatch:true,
+      sourceObjects:1,privatePath:'PRIVATE_SOURCE_PATH'},
+  });
+  assert.equal(malformed.storageCopyMetadataMatched,false);
+  assert.equal(malformed.fourBlocks.operations.storageComparison.failureCode,null);
+  assert.ok(!JSON.stringify(malformed).includes('PRIVATE_STORAGE_TOKEN'));
+  assert.ok(!JSON.stringify(malformed).includes('PRIVATE_SOURCE_PATH'));
+});
+
 test('no implicit provider or cloud access',async()=>{
   await assert.rejects(inspectOperatorEvidence({
     readCloud:async()=>cloud()}),/two_read_probes_required/);
