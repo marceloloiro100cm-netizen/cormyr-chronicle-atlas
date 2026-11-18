@@ -35,6 +35,7 @@ jobs:
   controlled-operations:
     if: >-
       github.repository == 'marceloloiro100cm-netizen/cormyr-chronicle-atlas' &&
+      github.event_name != 'workflow_run' &&
       (github.event_name != 'issues' ||
        (github.event.issue.number == 568 && github.event.changes.title != null))
     runs-on: ubuntu-latest
