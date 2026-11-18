@@ -15,6 +15,7 @@ import {createHash} from 'node:crypto';
 import {validateHarptosDate} from './stage-temporal-emulator.mjs';
 import {canAcknowledgeMail,mailReceiptId,validMailIdentity} from './cloud-mail-receipt-core.mjs';
 import {cloudReplyRoute} from './cloud-mail-reply-core.mjs';
+import {cloudMailRuntimeApproved} from './cloud-mail-runtime-approval.mjs';
 
 const SNAPSHOT=/^[a-f0-9]{64}$/;
 const SAFE_ID=/^[^/\u0000-\u001f]{1,128}$/;
@@ -86,27 +87,7 @@ function validateRequest(v){
 
 // Separate mail approval is mandatory: activating the general campaign runtime
 // must never silently authorize sending letters from an unreconciled mailbox.
-function mailRuntimeReady(v,snapshotId,round,calendarVersion){
-  return v?.status==='active'&&v.private===true&&
-    v.sourceSnapshotId===snapshotId&&v.sourceLiveReconciled===true&&
-    v.applicationEnabled===true&&v.mailEnabled===true&&
-    Number.isInteger(v.openRound)&&v.openRound>=1&&v.openRound===round&&
-    Number.isInteger(v.calendarVersion)&&
-    v.calendarVersion===calendarVersion;
-}
-
-function runtimeActive(v,snapshotId,calendar){
-  if(!v||v.status!=='active'||v.private!==true||
-     v.sourceSnapshotId!==snapshotId||
-     v.sourceSnapshotReconciled!==true||
-     v.mailWriteApproved!==true||v.applicationEnabled!==true||
-     !Number.isInteger(v.openRound)||v.openRound<1||
-     !Number.isInteger(v.calendarVersion)||
-     v.calendarVersion!==calendar.version)
-    deny('mail_runtime_not_approved',503);
-}
-
-/**
+ /**
  * Immutable migration roots and separate mutable Cloud mailbox namespace.
  * Emulator variables, project mismatch and missing flags are hard failures.
  */
@@ -159,10 +140,8 @@ export function createFirebaseCloudMail({
       deny('calendar_unavailable',503);
     const campaignDate=campaignDateOf(calendar.data());
     const actor=accessOf(uid,scopeDoc.data());
-    runtimeActive(live.data(),snapshotId,calendar.data());
-    if(!mailRuntimeReady(mailGate.data(),snapshotId,
-      live.data().openRound,calendar.data().version))
-      deny('mail_runtime_not_approved',503);
+    if(!cloudMailRuntimeApproved(live.data(),mailGate.data(),
+      calendar.data(),snapshotId))deny('mail_runtime_not_approved',503);
     return {actor,date:campaignDate,round:live.data().openRound};
   }
 
@@ -249,14 +228,9 @@ export function createFirebaseCloudMail({
         Number.isInteger(cal.data()?.day)&&
         validateHarptosDate(cal.data().year,cal.data().month,
           cal.data().day,cal.data().festival??null);
-      const v=live.data();
-      const writable=rootsReady&&dateValid&&live.exists&&v?.status==='active'&&
-        v.private===true&&v.sourceSnapshotId===snapshotId&&
-        v.sourceSnapshotReconciled===true&&v.mailWriteApproved===true&&
-        v.applicationEnabled===true&&Number.isInteger(v.openRound)&&
-        v.openRound>=1&&v.calendarVersion===cal.data().version&&
-        mailRuntimeReady(mailGate.data(),snapshotId,
-          v.openRound,cal.data().version);
+      const writable=rootsReady&&dateValid&&live.exists&&mailGate.exists&&
+        cloudMailRuntimeApproved(live.data(),mailGate.data(),
+          cal.data(),snapshotId);
       return {enabled:Boolean(writable),
         canSend:Boolean(writable&&(actor.role==='narrador'||actor.editHouses.length>0)),
         originHouseIds:actor.editHouses,

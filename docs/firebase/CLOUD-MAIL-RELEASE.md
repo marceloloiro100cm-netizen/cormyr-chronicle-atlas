@@ -65,6 +65,13 @@ e as transações de `send`, `reply` e `markRead` respondem 503.
 Essa exigência protege o estado inicial `pending` criado pelo bootstrap.
 Nenhum desses campos é alterado automaticamente pela API.
 
+O leitor histórico de missivas também usa o **mesmo predicado de aprovação**
+`cloudMailRuntimeApproved` dos envios, incluindo rodada e calendário.
+Se um dos runtimes estiver ausente ou desalinhado, o jogador continua vendo
+apenas suas cartas **históricas autorizadas**; cartas novas do Cloud e botões
+de resposta, comprovante de leitura e seus metadados ficam ocultos. Isso não
+modifica ou apaga registros; é uma proteção de leitura, não uma publicação.
+
 **Os números no exemplo são ilustrativos; o valor de `openRound` e
 `calendarVersion` deve vir do calendário atual verificado no Cloud,
 não deste arquivo.** Não copiar o JSON acima para produção sem reconciliação.
