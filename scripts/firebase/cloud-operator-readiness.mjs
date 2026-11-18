@@ -83,7 +83,7 @@ export function classifyOperatorCredentialError(error){
 }
 
 export function evaluateOperatorEvidence({
-  cloud=null,authPreview=null,authError=null,cloudError=false,
+  cloud=null,authPreview=null,authInventory=null,authError=null,cloudError=false,
   runtimeSources=null,runtimeSourceError=false,
   roleLinkage=null,roleLinkageError=false,
   storageComparison=null,storageError=null,publicAssets=null,publicAssetsError=false,
@@ -95,13 +95,26 @@ export function evaluateOperatorEvidence({
     ?[...new Set(cloud.auxiliaryPendingStages.filter(name=>
       typeof name==='string'&&AUX_STAGE_NAMES.has(name)))]
     :[];
-  const authValid=authPreview?.mode==='preview'&&
+  const legacyAuthValid=authPreview?.mode==='preview'&&
     authPreview.accounts===14&&authPreview.linkedAccounts===14&&
     authPreview.authUpdatesAttempted===0&&authPreview.authUsersEnabled===0&&
     authPreview.activationComplete===false&&
     safeCount(authPreview.toEnable)!==null&&
     safeCount(authPreview.alreadyEnabled)!==null&&
     authPreview.toEnable+authPreview.alreadyEnabled===14;
+  const countOnlyAuthValid=authInventory?.scope==='CORMYR_AUTH_INVENTORY_READ_ONLY'&&
+    authInventory.checked===true&&authInventory.historicalAccounts===14&&
+    authInventory.liveAccounts===13&&authInventory.missingHistoricalAccounts===1&&
+    authInventory.unexpectedLiveAccounts===0&&
+    authInventory.disabledLiveAccounts===0&&
+    authInventory.exactOneMissingObserved===true&&
+    authInventory.deletionIdentityApproved===false&&
+    authInventory.authWrites===0&&authInventory.firestoreWrites===0&&
+    authInventory.releaseDecision==='NO_GO';
+  const authValid=legacyAuthValid||countOnlyAuthValid;
+  const safeLinkage=roleLinkageError
+    ?summarizeRoleLinkageEvidence():summarizeRoleLinkageEvidence(roleLinkage);
+  const isCountOnly=countOnlyAuthValid&&!legacyAuthValid;
   const mail=cloud?.mailRuntimeEnabled===true;
   const runtime=cloud?.operationalRuntimeReconciled===true;
   const mailWriteGatesAligned=cloud?.mailWriteGatesAligned===true;
@@ -208,14 +221,17 @@ export function evaluateOperatorEvidence({
       ready:false,
     },
     playerAccess:{
-      authAccountsEnabled:authValid&&authPreview.toEnable===0,
-      linkageDiagnostics:roleLinkageError
-        ?summarizeRoleLinkageEvidence()
-        :summarizeRoleLinkageEvidence(roleLinkage),
-      missingProfiles:authValid?safeCount(authPreview.missingProfiles):null,
-      playersWithoutHouse:authValid?safeCount(authPreview.playersWithoutHouse):null,
-      inactiveAccess:authValid?safeCount(authPreview.inactiveAccess):null,
-      passwordResetPending:authValid?safeCount(authPreview.passwordResetPending):null,
+      authAccountsEnabled:legacyAuthValid?authPreview.toEnable===0:
+        countOnlyAuthValid,
+      linkageDiagnostics:safeLinkage,
+      missingProfiles:legacyAuthValid?safeCount(authPreview.missingProfiles):
+        isCountOnly&&safeLinkage.checked?safeLinkage.blockingReasonCounts.missingProfile:null,
+      playersWithoutHouse:legacyAuthValid?safeCount(authPreview.playersWithoutHouse):
+        isCountOnly&&safeLinkage.checked?safeLinkage.blockingReasonCounts.playerWithoutHouse:null,
+      // Legacy preview supplied these exact fields. Linkage aggregates blend
+      // invalid and inactive access, so do not silently relabel their meaning.
+      inactiveAccess:legacyAuthValid?safeCount(authPreview.inactiveAccess):null,
+      passwordResetPending:legacyAuthValid?safeCount(authPreview.passwordResetPending):null,
       ready:false,
     },
     acceptance:{
@@ -237,8 +253,8 @@ export function evaluateOperatorEvidence({
   if(!runtime)blockingCodes.push('OPERATIONAL_RUNTIME_UNVERIFIED');
   if(!mailWriteGatesAligned)blockingCodes.push('MAIL_WRITE_GATES_UNALIGNED');
   if(!authValid)blockingCodes.push('AUTH_INVENTORY_UNVERIFIED');
-  if(authValid&&authPreview.toEnable>0)blockingCodes.push('AUTH_ACCOUNTS_STILL_DISABLED');
-  if(authValid&&authPreview.pendingRoleOrHouse>0)
+  if(legacyAuthValid&&authPreview.toEnable>0)blockingCodes.push('AUTH_ACCOUNTS_STILL_DISABLED');
+  if(legacyAuthValid&&authPreview.pendingRoleOrHouse>0)
     blockingCodes.push('ROLES_OR_HOUSE_LINKS_INCOMPLETE');
   if(roleLinkageError||roleLinkage&&!summarizeRoleLinkageEvidence(roleLinkage).checked)
     blockingCodes.push('ROLE_LINKAGE_DIAGNOSIS_INCOMPLETE');
@@ -252,12 +268,19 @@ export function evaluateOperatorEvidence({
   return {
     project:'cormyr',scope:'CORMYR_PROTECTED_OPERATOR_READ_ONLY_AUDIT',
     authInventoryValid:Boolean(authValid),
-    authAccounts:authValid?14:null,
-    linkedAccounts:authValid?14:null,
-    disabledAccounts:authValid?authPreview.toEnable:null,
-    pendingRoleOrHouse:authValid?safeCount(authPreview.pendingRoleOrHouse):null,
-    inactiveAccess:authValid?safeCount(authPreview.inactiveAccess):null,
-    passwordResetPending:authValid?safeCount(authPreview.passwordResetPending):null,
+    authAccounts:legacyAuthValid?14:countOnlyAuthValid?13:null,
+    linkedAccounts:legacyAuthValid?14:
+      isCountOnly&&safeLinkage.checked?safeLinkage.accounts:null,
+    historicalAccessRecords:authValid?14:null,
+    historicalAuthDifferenceObserved:isCountOnly?1:authValid?0:null,
+    deletionIdentityApproved:false,
+    disabledAccounts:legacyAuthValid?authPreview.toEnable:
+      countOnlyAuthValid?0:null,
+    pendingRoleOrHouse:legacyAuthValid?safeCount(authPreview.pendingRoleOrHouse):
+      isCountOnly&&safeLinkage.checked&&safeLinkage.eligible<=safeLinkage.accounts
+        ?safeLinkage.accounts-safeLinkage.eligible:null,
+    inactiveAccess:legacyAuthValid?safeCount(authPreview.inactiveAccess):null,
+    passwordResetPending:legacyAuthValid?safeCount(authPreview.passwordResetPending):null,
     authPreflightFailure:typeof authError==='string'&&/^[a-z_]{1,80}$/.test(authError)
       ?authError:null,
     firestoreHttpStatus:safeHttp(cloud?.firestoreHttpStatus),
@@ -283,19 +306,26 @@ export function evaluateOperatorEvidence({
   };
 }
 export async function inspectOperatorEvidence({
-  readCloud,previewAuth,readRuntimeSources,readRoleLinkage,
+  readCloud,previewAuth,readAuthInventory,readRuntimeSources,readRoleLinkage,
   readStorageComparison,readPublicAssets,
 }={}){
-  if(typeof readCloud!=='function'||typeof previewAuth!=='function')
+  if(typeof readCloud!=='function'||
+     typeof previewAuth!=='function'&&typeof readAuthInventory!=='function')
     throw Error('two_read_probes_required');
-  let cloud=null,authPreview=null,authError=null,cloudError=false;
+  let cloud=null,authPreview=null,authInventory=null,authError=null,cloudError=false;
   let runtimeSources=null,runtimeSourceError=false;
   let roleLinkage=null,roleLinkageError=false;
   let storageComparison=null,storageError=null;
   let publicAssets=null,publicAssetsError=false;
   try{cloud=await readCloud();}catch{cloudError=true;}
-  try{authPreview=await previewAuth();}
-  catch(e){authError=safePreflightFailureCode(e);}
+  if(typeof previewAuth==='function'){
+    try{authPreview=await previewAuth();}
+    catch(e){authError=safePreflightFailureCode(e);}
+  }
+  if(typeof readAuthInventory==='function'){
+    try{authInventory=await readAuthInventory();}
+    catch{/* Missing count-only evidence fails closed. */}
+  }
   if(typeof readRuntimeSources==='function'){
     try{runtimeSources=await readRuntimeSources();}
     catch{runtimeSourceError=true;}
@@ -318,7 +348,7 @@ export async function inspectOperatorEvidence({
     catch{publicAssetsError=true;}
   }
   return evaluateOperatorEvidence({
-    cloud,authPreview,authError,cloudError,
+    cloud,authPreview,authInventory,authError,cloudError,
     runtimeSources,runtimeSourceError,roleLinkage,roleLinkageError,
     storageComparison,storageError,publicAssets,publicAssetsError,
   });
@@ -347,7 +377,10 @@ export function safeOperatorSummary(report){
     '## Cormyr — auditoria protegida e somente leitura',
     '',
     '| Evidência agregada | Resultado |','| --- | --- |',
-    '| Auth: 14 contas e vínculos | '+yes(report?.authInventoryValid)+' |',
+    '| Inventário Auth observado (não aprova exclusão) | '+yes(report?.authInventoryValid)+' |',
+    '| Auth: contas atuais | '+n(report?.authAccounts)+' |',
+    '| Histórico: registros de acesso | '+n(report?.historicalAccessRecords)+' |',
+    '| Identidades históricas sem conta Auth atual | '+n(report?.historicalAuthDifferenceObserved)+' |',
     '| Contas desativadas | '+n(report?.disabledAccounts)+' |',
     '| Perfis/Casas incompletos | '+n(report?.pendingRoleOrHouse)+' |',
     '| Estágios privados | '+n(report?.privateStagesVerified)+'/6 |',
@@ -494,10 +527,11 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
             return token.access_token;
           },
         }),
-        previewAuth:()=>executeAllExistingAuthTestAccounts({
+        // This does NOT use the obsolete bulk 14-account activation preview.
+        readAuthInventory:()=>inspectProtectedAuthInventory({
           auth:{listUsers:(...args)=>getAuth(app).listUsers(...args),
-            updateUser:neverWrite,getUser:neverWrite},
-          db:getFirestore(app),mode:'preview',confirmation:'',
+            updateUser:neverWrite,deleteUser:neverWrite},
+          db:getFirestore(app),
         }),
         readRoleLinkage:()=>inspectCloudRoleLinkage({
           tokenProvider:async()=>{
