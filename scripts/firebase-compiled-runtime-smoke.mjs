@@ -90,9 +90,61 @@ export async function probeCompiledRoutes({port=39071,timeoutMs=25000,fetcher=fe
   }
 }
 
+/**
+ * With the read pilot flags ON and a fake (but well-formed) bearer token, the
+ * compiled server must load firebase-admin and reject the token with 401.
+ * A 503 firebase_cloud_unavailable here means the server bundle cannot load
+ * or initialise firebase-admin, which is what production users would see.
+ * No credentials or network to Google are needed: a malformed ID token is
+ * rejected locally before any key download.
+ */
+export async function probeEnabledCloudRead({port=39072,timeoutMs=25000,launch=spawn}={}) {
+  const origin=`http://127.0.0.1:${port}`;
+  const child=launch(process.execPath,['dist/server/index.mjs'],{
+    cwd:process.cwd(),
+    env:{...disabledProductionEnvironment(port),
+      CORMYR_FIREBASE_CLOUD_READ_ENABLED:'true',
+      CORMYR_FIREBASE_SNAPSHOT_ID:'a'.repeat(64),
+      GOOGLE_CLOUD_PROJECT:'cormyr',GCLOUD_PROJECT:'cormyr'},
+    stdio:['ignore','ignore','pipe'],
+  });
+  const diagnostics=[];
+  child.stderr?.on('data',chunk=>{
+    for(const line of String(chunk).split('\n'))
+      if(line.startsWith('[firebase-cloud-read]'))diagnostics.push(line.slice(0,400));
+  });
+  const deadline=Date.now()+timeoutMs;
+  try{
+    while(Date.now()<deadline){
+      try{
+        const response=await fetch(origin+'/api/firebase-cloud-read',{
+          method:'POST',redirect:'manual',cache:'no-store',
+          headers:{'Content-Type':'application/json',Origin:origin,
+            Authorization:'Bearer '+'x'.repeat(40)},
+          body:JSON.stringify({action:'session'}),
+          signal:AbortSignal.timeout(8000),
+        });
+        const body=await response.json().catch(()=>null);
+        await sleep(200);
+        return {name:'enabledCloudReadRejectsFakeToken',status:response.status,
+          code:typeof body?.error==='string'?body.error:null,
+          passed:response.status===401&&body?.error==='authentication_required',
+          diagnostics};
+      }catch{await sleep(250);}
+    }
+    return {name:'enabledCloudReadRejectsFakeToken',status:null,code:null,
+      passed:false,diagnostics};
+  }finally{
+    if(child.exitCode===null&&!child.killed)child.kill('SIGTERM');
+  }
+}
+
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   probeCompiledRoutes()
-    .then(report=>{
+    .then(async report=>{
+      const enabledRead=await probeEnabledCloudRead();
+      report.checks.push(enabledRead);
+      report.compiledRoutesPass=report.compiledRoutesPass&&enabledRead.passed;
       process.stdout.write(JSON.stringify(report,null,2)+'\n');
       if(!report.compiledRoutesPass)process.exitCode=1;
     })

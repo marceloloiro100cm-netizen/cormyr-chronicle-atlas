@@ -96,7 +96,14 @@ async function handle(request:Request):Promise<Response>{
     return Response.json({result},{status:200,headers});
   }catch(e){
     if(e instanceof CloudAccessError)return error(e.status,e.code);
-    // Never disclose IAM errors, Firestore IDs, Firebase UIDs or tokens.
+    // Never disclose IAM errors, Firestore IDs, Firebase UIDs or tokens to the
+    // browser. The private server log keeps only the error class, code and a
+    // short message, so operators can diagnose runtime/IAM failures.
+    const err=e as {name?:unknown;code?:unknown;message?:unknown};
+    console.error('[firebase-cloud-read] unexpected',
+      String(err?.name??'Error').slice(0,60),
+      String(err?.code??'').slice(0,60),
+      String(err?.message??'').replace(/\s+/g,' ').slice(0,240));
     return error(503,'firebase_cloud_unavailable');
   }
 }
