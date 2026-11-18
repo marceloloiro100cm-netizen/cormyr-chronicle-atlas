@@ -96,7 +96,7 @@ test('historical count drift is informational when API and CLI match',()=>{
  assert.equal(report.destinationBytes,16);
  assert.equal(report.sourceCompared,false);
  const summary=safeStagingSummary(report);
- assert.match(summary,/API e CLI concordam \\| \\*\\*SIM\\*\\*/);
+ assert.ok(summary.includes('API e CLI concordam | **SIM**'));
  assert.match(summary,/não bloqueante/);
  assert.match(summary,/NÃO EFETUADA/);
  assert.match(summary,/NÃO AUTORIZADA/);
@@ -112,7 +112,7 @@ test('sanitized report never prints untrusted object names or numbers',()=>{
  });
  for(const secret of ['PRIVATE_OBJECT_NAME','PRIVATE_INFO','NaN','Infinity'])
    assert.ok(!summary.includes(secret));
- assert.match(summary,/API e CLI concordam \\| \\*\\*NÃO\\*\\*/);
+ assert.ok(summary.includes('API e CLI concordam | **NÃO**'));
 });
 
 test('real missing or extra objects remain blocked, independent of virtual folders',()=>{
