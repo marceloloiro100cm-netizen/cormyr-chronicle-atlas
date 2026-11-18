@@ -34,7 +34,8 @@ permissions:
 concurrency:
   # Isolate revisions and manual approvals: an older pending protected
   # read-only audit must not stall fresh offline contracts on main.
-  group: cormyr-operator-readiness-${{ github.event_name }}-${{ github.sha }}
+  # Distinct manual runs must never replace a queued environment approval.
+  group: cormyr-operator-readiness-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -120,3 +121,61 @@ jobs:
         run: |
           echo 'This job used preview mode and a read-only Auth facade; no user flag, IAM, Firestore or runtime was modified.' >> "$GITHUB_STEP_SUMMARY"
           echo 'A green audit is not permission to release players or cut over. Real per-House E2E is mandatory.' >> "$GITHUB_STEP_SUMMARY"
+
+  report-request:
+    name: Record manual audit run and its offline gate
+    if: always() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: synthetic
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    permissions:
+      contents: read
+      issues: write
+    env:
+      OFFLINE_RESULT: \${{ needs.synthetic.result }}
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=context.repo.owner,repo=context.repo.repo;
+            if(owner!=='marceloloiro100cm-netizen'||repo!=='cormyr-chronicle-atlas')return;
+            const offline=['success','failure','cancelled','skipped'].includes(
+              process.env.OFFLINE_RESULT)?process.env.OFFLINE_RESULT:'unknown';
+            const url='https://github.com/'+owner+'/'+repo+'/actions/runs/'+context.runId;
+            const body=[
+              '### Auditoria Cloud protegida — execução solicitada',
+              'GitHub Actions: '+url,
+              'Testes offline: **'+offline+'**',
+              'A etapa Cloud é independente, exige aprovação de ambiente e ainda não está comprovada por este registro.',
+              'Nenhuma autorização de jogadores ou alteração Cloud é concedida. **NO_GO**.'
+            ].join('\n\n');
+            await github.rest.issues.createComment({owner,repo,issue_number:582,body});
+
+  report-outcome:
+    name: Record final protected Cloud audit result
+    if: always() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: operator-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    permissions:
+      contents: read
+      issues: write
+    env:
+      PROTECTED_RESULT: \${{ needs.operator-audit.result }}
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=context.repo.owner,repo=context.repo.repo;
+            if(owner!=='marceloloiro100cm-netizen'||repo!=='cormyr-chronicle-atlas')return;
+            const result=['success','failure','cancelled','skipped'].includes(
+              process.env.PROTECTED_RESULT)?process.env.PROTECTED_RESULT:'unknown';
+            const url='https://github.com/'+owner+'/'+repo+'/actions/runs/'+context.runId;
+            const body=[
+              '### Auditoria Cloud protegida — conclusão do job',
+              'GitHub Actions: '+url,
+              'Resultado do job protegido: **'+result+'**',
+              'A conclusão não comprova liberação de usuários, revisão de Casas, Storage de origem nem E2E autenticado.',
+              '**Decisão de liberação: NO_GO.**'
+            ].join('\n\n');
+            await github.rest.issues.createComment({owner,repo,issue_number:582,body});
