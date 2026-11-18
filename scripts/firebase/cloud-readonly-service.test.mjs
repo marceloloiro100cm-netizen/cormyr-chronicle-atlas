@@ -137,6 +137,37 @@ test('Firebase ID token, enabled account and active scope required on each call'
   await rejects(()=>f.service().session(token),'migration_stage_not_ready',503);
 });
 
+test('stale, absent and duplicated House memberships deny every private Cloud read',async()=>{
+  const f=fixture('jogador');
+  const scopePath='migrationDomainStage/'+snapshot+'/access/user-1';
+  const housePath='migrationDomainStage/'+snapshot+'/houses/'+hash('house:house-a');
+  const raw=f.docs.get(scopePath),original=f.docs.get(housePath);
+  for(const bad of [
+    {...raw,memberHouseIds:[],editHouseIds:[]},
+    {...raw,memberHouseIds:['house-a','house-a'],editHouseIds:[]},
+    {...raw,memberHouseIds:['unknown-house'],editHouseIds:[]},
+    {...raw,memberHouseIds:['house-a'],editHouseIds:['house-a','house-a']},
+    {...raw,playerId:null},
+  ]){
+    f.docs.set(scopePath,bad);
+    await rejects(()=>f.service().session(token),'invalid_access_scope',403);
+    await rejects(()=>f.service().listMailbox(token),'invalid_access_scope',403);
+  }
+  f.docs.set(scopePath,raw);
+  for(const changes of [
+    {active:false},{season:1},{sourceId:'house-b'},
+  ]){
+    f.docs.set(housePath,{...original,...changes});
+    await rejects(()=>f.service().session(token),'invalid_access_scope',403);
+    await rejects(()=>f.service().getHouse(token,'house-a'),'invalid_access_scope',403);
+  }
+  f.docs.delete(housePath);
+  await rejects(()=>f.service().session(token),'invalid_access_scope',403);
+  const narrator=fixture('narrador');
+  // A narrator has no House membership, but remains separately authorized.
+  assert.equal((await narrator.service().session(token)).profile,'narrador');
+});
+
 test('Player can see own house, not other houses, with read-only state',async()=>{
   const f=fixture();
   const srv=f.service();
