@@ -1,6 +1,8 @@
 /**
  * A single protected, read-only OIDC audit of Firebase Cloud migration gates.
  * No Firebase Auth update, Firestore write, secret logging or release action.
+ * A protected preview after dual-runtime alignment validation requires
+ * environment approval; it never enables gameplay or changes any Cloud data.
  */
 import {appendFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
