@@ -236,7 +236,9 @@ export function evaluateOperatorEvidence({
     storageCopyMetadataMatched:
       storageComparison?.scope==='read-only-gcs-prefix-integrity'&&
       storageComparison.sourceToStagingBytesMatch===true,
-    publicAssetInventoryChecked:publicAssets?.checked===true&&!publicAssetsError,
+    publicAssetInventoryChecked:
+      publicAssets?.scope==='CORMYR_PUBLIC_ARCHIVE_ASSET_INVENTORY_OFFLINE'&&
+      publicAssets.checked===true&&!publicAssetsError,
     fourBlocks,
     authUpdatesAttempted:0,firestoreWrites:0,roleWrites:0,
     sourceLiveReconciliationVerified:false,storageVerified:false,
