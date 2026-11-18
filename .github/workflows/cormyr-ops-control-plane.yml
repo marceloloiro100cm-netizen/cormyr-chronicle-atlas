@@ -132,8 +132,32 @@ jobs:
                 'build-check.yml',
                 'firebase-player-pilot-preflight.yml',
               ]);
+              const protectedRuns = new Set([
+                'firebase-cloud-operator-readiness.yml',
+                'firebase-auth-deletion-readonly.yml',
+                'firebase-auth-inventory-readonly.yml',
+                'firebase-cloud-runtime-drafts.yml'
+              ]);
               for (const [workflow_id, inputs] of tasks) {
                 if (!allowed.has(workflow_id)) throw new Error('Workflow not allowlisted');
+                // Avoid a queue of duplicate protected jobs requiring approvals.
+                // A new protected request must not silently replace a waiting one.
+                if (protectedRuns.has(workflow_id)) {
+                  const response=await github.rest.actions.listWorkflowRuns({
+                    owner,repo,workflow_id,branch:'main',per_page:40
+                  });
+                  const active=response.data.workflow_runs.find(run=>
+                    run.event==='workflow_dispatch'&&
+                    ['waiting','pending','queued','requested','in_progress'].includes(run.status));
+                  if (active) {
+                    const safeId=Number(active.id);
+                    core.info('Protected audit already pending: '+workflow_id+
+                      ' run #'+safeId+'. No duplicate requested.');
+                    await core.summary.addRaw('- Existing protected run: '+
+                      workflow_id+' #'+safeId+' (no new dispatch)\\n').write();
+                    continue;
+                  }
+                }
                 await github.rest.actions.createWorkflowDispatch({
                   owner, repo, workflow_id, ref:'main', inputs,
                 });
