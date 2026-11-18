@@ -53,5 +53,5 @@ export function createFirebaseNarratorWeekDraft(config:{
   newId?:()=>string;
 }):{
   get(idToken:string):Promise<NarratorWeekDraftView>;
-  save(idToken:string,request:NarratorWeekProposal):Promise<NarratorWeekDraftView>;
+  save(idToken:string,request:unknown):Promise<NarratorWeekDraftView>;
 };
