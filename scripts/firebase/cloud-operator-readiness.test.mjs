@@ -308,6 +308,41 @@ test('source bucket IAM denial is redacted and does not block Auth diagnostics',
   assert.ok(!JSON.stringify(malformed).includes('PRIVATE_SOURCE_PATH'));
 });
 
+test('season-2 checked candidate assets are aggregated but never editorially approved',()=>{
+  const r=evaluateOperatorEvidence({
+    cloud:cloud(),authPreview:auth(),
+    runtimeSources:{
+      sourceStagesVerified:6,auxiliaryStagesVerified:3,
+      archiveCoverage:{
+        checked:true,archivedHouses:172,archivedRegions:11,
+        sourceHouses:11,activeSourceHouses:10,exactMatches:10,
+        unmatchedActive:0,ambiguousMatches:0,
+        assetVerification:{
+          checked:true,uniqueSeason2MatchesWithValidCrests:10,
+          uniqueSeason2MatchesWithValidHistories:9,
+          uniqueSeason2MatchesWithBothValid:9,
+          uniqueSeason2MatchesWithUnverifiedAssets:1,
+          PRIVATE_FILE:'DO_NOT_LOG_THIS_PRIVATE_PATH',
+        },
+        PRIVATE_HOUSE:'DO_NOT_LOG_THIS_PRIVATE_HOUSE',
+      },
+    },
+  });
+  const a=r.fourBlocks.publicContent.archiveCoverage;
+  assert.equal(a.candidateAssetVerification.checked,true);
+  assert.equal(a.candidateAssetVerification.crests,10);
+  assert.equal(a.candidateAssetVerification.histories,9);
+  assert.equal(a.candidateAssetVerification.bothValid,9);
+  assert.equal(a.candidateAssetVerification.unverified,1);
+  assert.equal(a.candidateAssetVerification.reviewApproved,false);
+  assert.equal(a.reviewApproved,false);
+  assert.equal(r.releaseDecision,'NO_GO');
+  assert.equal(r.readyForPlayers,false);
+  const safe=JSON.stringify(r)+safeOperatorSummary(r);
+  assert.ok(!safe.includes('DO_NOT_LOG_THIS_PRIVATE_PATH'));
+  assert.ok(!safe.includes('DO_NOT_LOG_THIS_PRIVATE_HOUSE'));
+  assert.match(safeOperatorSummary(r),/Casas ativas com ambos os arquivos íntegros/);
+});
 test('no implicit provider or cloud access',async()=>{
   await assert.rejects(inspectOperatorEvidence({
     readCloud:async()=>cloud()}),/two_read_probes_required/);

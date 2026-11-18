@@ -109,6 +109,22 @@ function imageFileSignature(file,ref){
   }catch{return false;}
   finally{if(fd!==null)closeSync(fd);}
 }
+/** Reusable safe file checks: only booleans, no text or paths returned. */
+export function verifyPublicHistoryAsset(ref,{root=PUBLIC_ROOT}={}){
+  const file=localAsset(root,ref,HISTORY,1_000_000);
+  if(!file)return false;
+  try{
+    const data=JSON.parse(readFileSync(file,'utf8'));
+    return !!data&&!Array.isArray(data)&&
+      typeof data.text==='string'&&data.text.trim().length>0&&
+      data.text.length<=1_000_000;
+  }catch{return false;}
+}
+export function verifyPublicCrestAsset(ref,{root=PUBLIC_ROOT}={}){
+  const file=localAsset(root,ref,CREST,10_000_000);
+  return file!==null&&imageFileSignature(file,ref);
+}
+
 export function inspectPublicAssetInventory({root=PUBLIC_ROOT}={}){
   if(root!==PUBLIC_ROOT&&
      (typeof root!=='string'||!isAbsolute(root)))fail('root_invalid');
@@ -119,20 +135,8 @@ export function inspectPublicAssetInventory({root=PUBLIC_ROOT}={}){
   }catch{fail('archive_unreadable');}
   return summarizePublicAssetInventory({
     archive,
-    checkHistory:ref=>{
-      const file=localAsset(root,ref,HISTORY,1_000_000);
-      if(!file)return false;
-      try{
-        const data=JSON.parse(readFileSync(file,'utf8'));
-        return !!data&&!Array.isArray(data)&&
-          typeof data.text==='string'&&data.text.trim().length>0&&
-          data.text.length<=1_000_000;
-      }catch{return false;}
-    },
-    checkCrest:ref=>{
-      const file=localAsset(root,ref,CREST,10_000_000);
-      return file!==null&&imageFileSignature(file,ref);
-    },
+    checkHistory:ref=>verifyPublicHistoryAsset(ref,{root}),
+    checkCrest:ref=>verifyPublicCrestAsset(ref,{root}),
   });
 }
 
