@@ -28,6 +28,7 @@ test('previews a real but incomplete player with NO write or privilege',()=>{
     ['active','memberHouseIds','editHouseIds']);
   assert.equal(plan.proposedMemberHouseCount,1);
   assert.match(plan.proposalFingerprint,/^[a-f0-9]{64}$/);
+  assert.match(plan.sourceFingerprint,/^[a-f0-9]{64}$/);
   assert.equal(plan.decisionApplied,false);
   assert.equal(plan.adminGranted,false);
   assert.equal(plan.authWrites,0);
@@ -110,4 +111,26 @@ test('fingerprint is stable for set order and changes for identity or permission
       editHouseIds:['house-1','house-2']})));
   assert.equal(reordered.proposalFingerprint,sameSet.proposalFingerprint);
   assert.equal(original.decisionApplied,false);
+});
+
+test('historical source changes invalidate earlier proposal fingerprints',()=>{
+  const baseline=planNarratorAccessRemediation(input());
+  const changedPassword=planNarratorAccessRemediation(input(current({
+    requirePasswordChange:true,
+  })));
+  assert.notEqual(baseline.sourceFingerprint,changedPassword.sourceFingerprint);
+  assert.notEqual(baseline.proposalFingerprint,changedPassword.proposalFingerprint);
+  assert.equal(changedPassword.requiresPasswordResetProof,true);
+
+  const changedSourceHouse=planNarratorAccessRemediation(input(current({
+    memberHouseIds:['house-2'],
+  })));
+  assert.notEqual(baseline.proposalFingerprint,changedSourceHouse.proposalFingerprint);
+  const changedAuth=input();
+  changedAuth.authUser.disabled=true;
+  const disabled=planNarratorAccessRemediation(changedAuth);
+  assert.notEqual(baseline.proposalFingerprint,disabled.proposalFingerprint);
+  assert.equal(disabled.decisionApplied,false);
+  assert.equal(disabled.authWrites,0);
+  assert.equal(disabled.firestoreWrites,0);
 });
