@@ -134,3 +134,25 @@ test('historical source changes invalidate earlier proposal fingerprints',()=>{
   assert.equal(disabled.authWrites,0);
   assert.equal(disabled.firestoreWrites,0);
 });
+
+test('preview binds the snapshot and legacy player identity without mutation',()=>{
+  const baseline=planNarratorAccessRemediation(input());
+  const otherSnapshot=input();
+  otherSnapshot.snapshotId='b'.repeat(64);
+  const migrated=planNarratorAccessRemediation(otherSnapshot);
+  assert.notEqual(baseline.sourceFingerprint,migrated.sourceFingerprint);
+  assert.notEqual(baseline.proposalFingerprint,migrated.proposalFingerprint);
+
+  const linkedPlayer=planNarratorAccessRemediation(input(current({
+    playerId:'legacy-player-2',
+  })));
+  assert.notEqual(baseline.sourceFingerprint,linkedPlayer.sourceFingerprint);
+  assert.notEqual(baseline.proposalFingerprint,linkedPlayer.proposalFingerprint);
+  for(const result of [migrated,linkedPlayer]){
+    assert.equal(result.mode,'preview-only');
+    assert.equal(result.decisionApplied,false);
+    assert.equal(result.authWrites,0);
+    assert.equal(result.firestoreWrites,0);
+    assert.equal(result.releaseDecision,'NO_GO');
+  }
+});
