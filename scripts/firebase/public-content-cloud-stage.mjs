@@ -10,6 +10,11 @@ import {planReviewedPublicContent} from './public-content-review-plan.mjs';
 const HASH=/^[a-f0-9]{64}$/;
 const safe=code=>{throw Error('reviewed_public_stage_'+code);};
 const short=v=>typeof v==='string'&&v.length>0&&v.length<=160;
+const requiredEditorialCoverage=summary=>
+  summary?.reviewPlanValid===true&&summary.reviewedHouses===10&&
+  ['en','es','de'].every(locale=>
+    Number.isSafeInteger(summary.reviewedTranslationsByLocale?.[locale])&&
+    summary.reviewedTranslationsByLocale[locale]>0);
 const rootComplete=(doc,snapshotId)=>doc?.exists===true&&
   doc.data()?.status==='complete'&&doc.data()?.private===true&&
   (doc.data()?.sourceSnapshotId===undefined||
@@ -17,7 +22,7 @@ const rootComplete=(doc,snapshotId)=>doc?.exists===true&&
 
 export function preflightReviewedPublicStage(source){
   const reviewed=planReviewedPublicContent(source);
-  if(!reviewed.summary.reviewPlanValid||!reviewed.privatePlan)
+  if(!requiredEditorialCoverage(reviewed.summary)||!reviewed.privatePlan)
     return {summary:reviewed.summary,approvalDigest:null};
   // Fixed domain prefix prevents digest reuse in unrelated migrations.
   const approvalDigest=createHash('sha256').update(
@@ -40,7 +45,7 @@ export async function publishReviewedPublicStage({
      source?.snapshotId!==expectedSnapshotId)
     safe('approval_missing_or_mismatch');
   const reviewed=planReviewedPublicContent(source);
-  if(!reviewed.summary.reviewPlanValid||!reviewed.privatePlan)
+  if(!requiredEditorialCoverage(reviewed.summary)||!reviewed.privatePlan)
     safe('review_plan_invalid');
   const fingerprint=preflightReviewedPublicStage(source).approvalDigest;
   if(fingerprint!==approvalDigest)safe('review_digest_mismatch');
@@ -76,7 +81,8 @@ export async function publishReviewedPublicStage({
     }
     const active=[...sourceHouses.values()].filter(v=>v.active&&v.season===2);
     // Never publish a subset or fabricated House even if individually reviewed.
-    if(catalog.houses.length!==active.length)
+    if(active.length!==10||catalog.houses.length!==10||
+       catalog.houses.length!==active.length)
       safe('source_catalog_divergent');
     for(const h of catalog.houses){
       const original=sourceHouses.get(h.id);
