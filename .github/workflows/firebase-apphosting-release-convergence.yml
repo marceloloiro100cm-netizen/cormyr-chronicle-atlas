@@ -1,8 +1,21 @@
 name: Firebase App Hosting — verify main is actually serving
 
 on:
-  # Só manual desde 17/11/2026: cobertura consolidada em Validate e
-  # firebase-cross-domain-acceptance (docs/firebase/REVISAO-WORKFLOWS-2026-11-17.md).
+  # Reativado apenas para alterações que afetam a publicação Cloud.
+  # Esta auditoria usa OIDC de leitura: não promove tráfego nem muda Firebase.
+  push:
+    branches: [main]
+    paths:
+      - 'apphosting.yaml'
+      - 'vite.config.ts'
+      - 'src/server.ts'
+      - 'src/lib/server/request-origin.ts'
+      - 'src/routes/api/firebase-cloud-read.ts'
+      - 'src/routes/api/firebase-cloud-mail.ts'
+      - 'scripts/firebase/cloud-readonly-service.mjs'
+      - 'scripts/firebase/cloud-mail-service.mjs'
+      - 'scripts/firebase-compiled-runtime-smoke.mjs'
+      - '.github/workflows/firebase-apphosting-release-convergence.yml'
   workflow_dispatch:
 
 permissions:
