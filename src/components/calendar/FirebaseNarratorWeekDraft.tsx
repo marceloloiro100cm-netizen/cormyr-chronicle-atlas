@@ -121,7 +121,7 @@ export function FirebaseNarratorWeekDraft(){
       <p className="text-sm">Calendário histórico preservado: versão
         {' '}{loaded.archivedCalendar.version}. Nenhuma rodada foi inferida
         do histórico.</p>
-      {loaded.draft&&<p className="text-sm">
+      {loaded.draft&&!loaded.calendarPublished&&<p className="text-sm">
         Proposta anterior: versão {loaded.draft.draftVersion} · pendente de publicação.
       </p>}
       {loaded.calendarPublished&&<p role="status" className="rounded border p-3">
