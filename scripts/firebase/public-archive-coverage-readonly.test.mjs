@@ -144,3 +144,65 @@ test('only unambiguous source names contribute to review field availability',()=
   for(const secret of ['src-1','src-2','PUBLIC ARCHIVE STORY','Evenhand'])
     assert.ok(!JSON.stringify(r).includes(secret));
 });
+
+test('unique current season houses require valid public asset bytes, not names alone',()=>{
+  const archive={regions:[{name:'Helmlands',houses:[
+    {name:'Evenhand',region:'Helmlands',hierarchy:{kind:'major'},
+      crest:'assets/evenhand.webp',historyPath:'histories/evenhand.json'},
+    {name:'Stonecastle',region:'Helmlands',hierarchy:{kind:'major'},
+      crest:'assets/stonecastle.webp',historyPath:'histories/stonecastle.json'},
+    {name:'Forgotten',region:'Helmlands',
+      crest:'assets/forgotten.webp'},
+  ]}]};
+  const sourceHouses=[
+    {sourceId:'private-a',name:'Evenhand',active:true,season:2},
+    {sourceId:'private-b',name:'Stonecastle',active:true,season:2},
+    {sourceId:'private-c',name:'Forgotten',active:false,season:1},
+  ];
+  const called=[];
+  const r=summarizePublicArchiveCoverage({archive,sourceHouses,assetChecks:{
+    crest:ref=>{called.push('crest');return ref==='assets/evenhand.webp';},
+    history:ref=>{
+      called.push('history');
+      if(ref==='histories/stonecastle.json')throw Error('SECRET_PRIVATE_PATH');
+      return ref==='histories/evenhand.json';
+    },
+  }});
+  assert.equal(r.exactMatches,2);
+  assert.equal(r.assetVerification.checked,true);
+  assert.equal(r.assetVerification.uniqueSeason2MatchesWithValidCrests,1);
+  assert.equal(r.assetVerification.uniqueSeason2MatchesWithValidHistories,1);
+  assert.equal(r.assetVerification.uniqueSeason2MatchesWithBothValid,1);
+  assert.equal(r.assetVerification.uniqueSeason2MatchesWithUnverifiedAssets,1);
+  assert.equal(called.length,4);
+  assert.equal(r.reviewApproved,false);
+  assert.equal(r.readyForPlayers,false);
+  assert.equal(r.releaseDecision,'NO_GO');
+  for(const secret of ['Evenhand','Stonecastle','private-a',
+    'SECRET_PRIVATE_PATH','assets/evenhand.webp']){
+    assert.ok(!JSON.stringify(r).includes(secret));
+  }
+});
+
+test('an unverified archive match never turns missing or invalid files into approval',()=>{
+  const archive={regions:[{name:'Helmlands',houses:[{
+    name:'Evenhand',region:'Helmlands',hierarchy:{kind:'major'},
+    crest:'../private.webp',historyPath:'histories/../private.json',
+  }]}]};
+  const privateHouses=[{sourceId:'internal-id',name:'Evenhand',
+    active:true,season:2}];
+  const r=summarizePublicArchiveCoverage({archive,sourceHouses:privateHouses,
+    assetChecks:{crest:()=>true,history:()=>true}});
+  assert.equal(r.exactMatches,1);
+  assert.equal(r.assetVerification.uniqueSeason2MatchesWithValidCrests,0);
+  assert.equal(r.assetVerification.uniqueSeason2MatchesWithValidHistories,0);
+  assert.equal(r.assetVerification.uniqueSeason2MatchesWithUnverifiedAssets,1);
+  const noChecks=summarizePublicArchiveCoverage({
+    archive,sourceHouses:privateHouses,
+  });
+  assert.equal(noChecks.assetVerification.checked,false);
+  assert.equal(noChecks.assetVerification.uniqueSeason2MatchesWithValidCrests,null);
+  assert.throws(()=>summarizePublicArchiveCoverage({
+    archive,sourceHouses:privateHouses,assetChecks:{crest:()=>true},
+  }),/public_archive_coverage_asset_checks_invalid/);
+});
