@@ -524,3 +524,105 @@ test('public archive candidate field metadata is sanitized, never reviewed',()=>
   assert.ok(!JSON.stringify(r).includes('VERY_PRIVATE'));
   assert.match(safeOperatorSummary(r),/Histórias com referência pública/);
 });
+
+test('live thirteen vs immutable fourteen remains observational NO_GO',()=>{
+  const authInventory={
+    scope:'CORMYR_AUTH_INVENTORY_READ_ONLY',checked:true,
+    historicalAccounts:14,liveAccounts:13,
+    missingHistoricalAccounts:1,unexpectedLiveAccounts:0,
+    disabledLiveAccounts:0,exactOneMissingObserved:true,
+    deletionIdentityApproved:false,authWrites:0,firestoreWrites:0,
+    releaseDecision:'NO_GO',
+  };
+  const linkage={
+    scope:'FIREBASE_ROLE_LINKAGE_READ_ONLY',singleVerifiedSnapshot:true,
+    authListComplete:true,accessListComplete:true,
+    houseReferenceAuditComplete:true,accounts:13,linkedAccounts:13,
+    unlinkedAccounts:0,unmatchedAccessDocuments:1,disabledAccounts:0,
+    writes:0,structurallyEligibleProfiles:9,
+    unresolvedPlayerHouseReferences:0,
+    blockingReasonCounts:{
+      missingProfile:2,unrecognizedProfile:0,
+      accessInactiveOrInvalid:3,passwordChangePendingOrInvalid:2,
+      adminFlagMismatch:0,invalidHouseLists:0,
+      editScopeOutsideMembership:0,playerWithoutHouse:2,
+      editorWithHouse:0,
+    },
+    structurallyEligibleByProfile:{narrador:1,jogador:7,editor:1,other:0},
+    privateEmail:'NEVER_PRINT_ACCOUNT',
+  };
+  const summary=summarizeRoleLinkageEvidence(linkage);
+  assert.equal(summary.checked,true);
+  assert.equal(summary.accounts,13);
+  assert.equal(summary.historicAccessNotInAuth,1);
+  assert.equal(summary.deletionIdentityApproved,false);
+  const result=evaluateOperatorEvidence({
+    cloud:cloud(),authInventory,roleLinkage:linkage,
+  });
+  assert.equal(result.authInventoryValid,true);
+  assert.equal(result.authAccounts,13);
+  assert.equal(result.linkedAccounts,13);
+  assert.equal(result.historicalAccessRecords,14);
+  assert.equal(result.historicalAuthDifferenceObserved,1);
+  assert.equal(result.deletionIdentityApproved,false);
+  assert.equal(result.disabledAccounts,0);
+  assert.equal(result.pendingRoleOrHouse,4);
+  assert.equal(result.fourBlocks.playerAccess.missingProfiles,2);
+  assert.equal(result.fourBlocks.playerAccess.inactiveAccess,null);
+  assert.equal(result.fourBlocks.playerAccess.passwordResetPending,null);
+  assert.equal(result.readyForPlayers,false);
+  assert.equal(result.releaseDecision,'NO_GO');
+  assert.equal(result.blockingCodes.includes('AUTH_INVENTORY_UNVERIFIED'),false);
+  assert.ok(!JSON.stringify(result).includes('NEVER_PRINT_ACCOUNT'));
+  assert.ok(!safeOperatorSummary(result).includes('NEVER_PRINT_ACCOUNT'));
+});
+test('count-only observations fail closed for added, disabled and missing accounts',()=>{
+  const base={
+    scope:'CORMYR_AUTH_INVENTORY_READ_ONLY',checked:true,
+    historicalAccounts:14,liveAccounts:13,
+    missingHistoricalAccounts:1,unexpectedLiveAccounts:0,
+    disabledLiveAccounts:0,exactOneMissingObserved:true,
+    deletionIdentityApproved:false,authWrites:0,firestoreWrites:0,
+    releaseDecision:'NO_GO',
+  };
+  for(const change of [
+    {liveAccounts:12},{missingHistoricalAccounts:2},
+    {unexpectedLiveAccounts:1},{disabledLiveAccounts:1},
+    {deletionIdentityApproved:true},{exactOneMissingObserved:false},
+    {authWrites:1},{releaseDecision:'GO'},
+  ]){
+    const r=evaluateOperatorEvidence({cloud:cloud(),authInventory:{...base,...change}});
+    assert.equal(r.authInventoryValid,false);
+    assert.ok(r.blockingCodes.includes('AUTH_INVENTORY_UNVERIFIED'));
+  }
+  const mismatch=summarizeRoleLinkageEvidence({
+    scope:'FIREBASE_ROLE_LINKAGE_READ_ONLY',singleVerifiedSnapshot:true,
+    authListComplete:true,accessListComplete:true,
+    houseReferenceAuditComplete:true,accounts:13,linkedAccounts:13,
+    unlinkedAccounts:0,unmatchedAccessDocuments:2,disabledAccounts:0,writes:0,
+  });
+  assert.equal(mismatch.checked,false);
+});
+test('modern operator reader is independent from bulk fourteen-account preview',async()=>{
+  const inventory={
+    scope:'CORMYR_AUTH_INVENTORY_READ_ONLY',checked:true,
+    historicalAccounts:14,liveAccounts:13,
+    missingHistoricalAccounts:1,unexpectedLiveAccounts:0,
+    disabledLiveAccounts:0,exactOneMissingObserved:true,
+    deletionIdentityApproved:false,authWrites:0,firestoreWrites:0,
+    releaseDecision:'NO_GO',
+  };
+  const r=await inspectOperatorEvidence({
+    readCloud:async()=>cloud(),
+    readAuthInventory:async()=>inventory,
+  });
+  assert.equal(r.authAccounts,13);
+  assert.equal(r.authInventoryValid,true);
+  assert.equal(r.readyForPlayers,false);
+  const fail=await inspectOperatorEvidence({
+    readCloud:async()=>cloud(),
+    readAuthInventory:async()=>{throw Error('PRIVATE_PROVIDER_DETAILS');},
+  });
+  assert.equal(fail.authInventoryValid,false);
+  assert.ok(!JSON.stringify(fail).includes('PRIVATE_PROVIDER_DETAILS'));
+});
