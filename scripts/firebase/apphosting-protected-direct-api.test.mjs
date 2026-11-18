@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {requestExactAppHostingRollout} from './apphosting-protected-direct-api.mjs';
+import {requestExactAppHostingRollout,classifyAppHostingDenial} from './apphosting-protected-direct-api.mjs';
 
 const sha='a'.repeat(40);
 const runId='44382536371';
@@ -89,4 +89,48 @@ test('existing matching build can be reused without accepting a different SHA',a
   const r=await requestExactAppHostingRollout(inputs({fetcher:f.fetcher}));
   assert.equal(r.rolloutRequested,true);
   assert.deepEqual(f.requests.map(x=>x.method),['GET','POST','GET','POST']);
+});
+
+test('HTTP 403 exposes only allowlisted structured Google RPC reasons',async()=>{
+  const denied={
+    error:{status:'PERMISSION_DENIED',
+      message:'PRIVATE_USER_OR_RESOURCE_SHOULD_NOT_BE_LOGGED',
+      details:[{'@type':'type.googleapis.com/google.rpc.ErrorInfo',
+        reason:'IAM_PERMISSION_DENIED',
+        metadata:{permission:'PRIVATE_PERMISSION_DETAIL',consumer:'PRIVATE_PROJECT'}}]},
+  };
+  assert.equal(classifyAppHostingDenial(denied,403),'iam_permission_denied');
+  assert.equal(classifyAppHostingDenial(denied,500),null);
+  assert.equal(classifyAppHostingDenial({error:{status:'PERMISSION_DENIED',
+    details:[{'@type':'type.googleapis.com/google.rpc.ErrorInfo',
+      reason:'PRIVATE_UNTRUSTED_REASON'}]}},403),'permission_denied_unspecified');
+  const requests=[];
+  const fetcher=async(url,options)=>{
+    requests.push({url,method:options.method});
+    if(url.endsWith('/traffic'))return Response.json({
+      rolloutPolicy:{codebaseBranch:'main',disabled:false},
+    });
+    return Response.json(denied,{status:403});
+  };
+  let message='';
+  try{await requestExactAppHostingRollout(inputs({fetcher}));}
+  catch(e){message=e.message;}
+  assert.equal(message,'apphosting_direct_build_create_http_403_iam_permission_denied');
+  assert.deepEqual(requests.map(x=>x.method),['GET','POST']);
+  for(const privateValue of ['PRIVATE_USER','PRIVATE_PERMISSION','PRIVATE_PROJECT'])
+    assert.ok(!message.includes(privateValue));
+});
+
+test('unstructured or unfamiliar denied reasons fail closed without provider data',async()=>{
+  for(const value of [
+    {error:{status:'PERMISSION_DENIED',details:[{'@type':
+      'type.googleapis.com/google.rpc.ErrorInfo',reason:'PRIVATE_REASON'}]}},
+    {error:{status:'PERMISSION_DENIED',message:'PRIVATE_EMAIL'}},
+    {error:{status:'UNKNOWN',message:'PRIVATE_EMAIL'}},
+    {private:'PRIVATE_EMAIL'},
+  ]){
+    const reason=classifyAppHostingDenial(value,403);
+    assert.ok(reason===null||reason==='permission_denied_unspecified');
+    assert.ok(!String(reason).includes('PRIVATE'));
+  }
 });
