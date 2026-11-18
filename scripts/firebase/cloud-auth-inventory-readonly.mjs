@@ -40,7 +40,7 @@ export function compareHistoricalAuthInventory({historicalAccess,liveUsers,
   });
 }
 export async function inspectProtectedAuthInventory({auth,db}={}){
-  if(typeof auth?.listUsers!=='function'||typeof db?.collection!=='function)
+  if(typeof auth?.listUsers!=='function'||typeof db?.collection!=='function')
     fail();
   const users=await auth.listUsers(1000);
   if(!Array.isArray(users?.users)||users.pageToken)fail();
