@@ -47,3 +47,11 @@ test('reject private history mismatches and malformed records',()=>{
   g.liveAuth[0].disabled='false';
   assert.throws(()=>reconcile(g));
 });
+
+test('reject approved deletion that still carries any House permission',()=>{
+  for(const field of ['memberHouseIds','editHouseIds']){
+    const f=fixtures();
+    f.historicalAccess[13].data[field]=['active_house'];
+    assert.throws(()=>reconcile(f));
+  }
+});
