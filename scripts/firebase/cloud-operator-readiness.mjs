@@ -206,10 +206,10 @@ export function evaluateOperatorEvidence({
     blockingCodes.push('ROLES_OR_HOUSE_LINKS_INCOMPLETE');
   if(roleLinkageError||roleLinkage&&!summarizeRoleLinkageEvidence(roleLinkage).checked)
     blockingCodes.push('ROLE_LINKAGE_DIAGNOSIS_INCOMPLETE');
-  if(storageComparison?.sourceToStagingBytesMatch!==true)
+  if(storageComparison?.scope!=='read-only-gcs-prefix-integrity'||
+     storageComparison.sourceToStagingBytesMatch!==true)
     blockingCodes.push('STORAGE_COPY_COMPARISON_UNVERIFIED');
-  if(storageComparison?.sourceToStagingBytesMatch===true)
-    blockingCodes.push('STORAGE_LIVE_DELTA_NOT_FROZEN');
+  else blockingCodes.push('STORAGE_LIVE_DELTA_NOT_FROZEN');
   blockingCodes.push('SOURCE_DELTA_AND_STORAGE_UNVERIFIED');
   blockingCodes.push('CROSS_HOUSE_CLOUD_E2E_PENDING');
   blockingCodes.push('PRODUCTION_RUNTIME_ACCEPTANCE_PENDING');
