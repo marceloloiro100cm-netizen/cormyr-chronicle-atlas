@@ -60,7 +60,11 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
    if(name==='campaign_players')return (await players()).filter(p=>admin||p['user_id']===scope.uid);
    if(name==='house_memberships')return (await memberships()).filter((m:Row)=>admin||m['player_id']===scope.playerId);
    if(name==='campaign_houses')return (await rows(name)).filter(r=>r['active']===true).map(r=>{
-    const {id,name,region,crest,castle,lord_name,season,active}=r;return {id,name,region,crest,castle,lord_name,season,active};
+    const {id,name,region,crest,castle,lord_name,season,active}=r;
+    // Preserve the original House narrative for its authorized members and
+    // the Narrator, never publish a foreign House's private historical text.
+    const details=houseAllowed(id)&&typeof r['details']==='string'?r['details']:'';
+    return {id,name,region,crest,castle,lord_name,season,active,details};
    });
    if(name==='house_catalog')return (await rows(name)).filter(r=>admin||r['public_reviewed']===true);
    if(name==='noble_house_sheets')return sheets();

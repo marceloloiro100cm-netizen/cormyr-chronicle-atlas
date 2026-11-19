@@ -80,6 +80,20 @@ describe('real Firebase workspace boundary',()=>{
   expect(data.houses.map((h:any)=>h.id)).toEqual(['ashkar']);
   expect(data.players.find((p:any)=>p.id==='pa').houses).toEqual(['ashkar']);
  });
+ it('restores actual House narratives without leaking a foreign House or editorial access',async()=>{
+  f.tables['campaign_houses']![0]!.details='História original Ashkar';
+  f.tables['campaign_houses']!.push({id:'other',name:'Casa Estrangeira',active:true,season:2,details:'SEGREDO DA OUTRA CASA'});
+  const getHouses=()=>run({kind:'query',table:'campaign_houses',steps:[{op:'select',args:['*']}]});
+  const own=await getHouses();
+  expect(own.data.find((h:any)=>h.id==='ashkar').details).toBe('História original Ashkar');
+  expect(own.data.find((h:any)=>h.id==='other').details).toBe('');
+  f.scope={...f.scope,uid:'editor',profile:'editor',playerId:null,memberHouseIds:[],editHouseIds:[]};
+  const editorial=await getHouses();
+  expect(editorial.data.every((h:any)=>h.details==='')).toBe(true);
+  f.scope={...f.scope,uid:'gm',profile:'narrador',playerId:'pg'};
+  const gm=await getHouses();
+  expect(gm.data.find((h:any)=>h.id==='other').details).toBe('SEGREDO DA OUTRA CASA');
+ });
  it('unknown operations never fall back to Supabase or synthetic success',async()=>{
   await expect(run({kind:'rpc',name:'arbitrary_write',args:{}})).rejects.toThrow('workspace_operation_not_implemented');
  });
