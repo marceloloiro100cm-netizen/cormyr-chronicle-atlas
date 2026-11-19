@@ -369,6 +369,19 @@ test('narrator dry-run uses server House catalog and never changes access',async
     token,'account-2',decision),'access_denied',403);
 });
 
+test('original mail workspace scope is checked against live Auth and House stage',async()=>{
+ const player=fixture('jogador');
+ const scope=await player.service().workspaceMailScope(token);
+ assert.deepEqual(scope,{uid:'user-1',profile:'jogador',
+  playerId:'player-a',memberHouseIds:['house-a']});
+ const gm=fixture('narrador');
+ assert.equal((await gm.service().workspaceMailScope(token)).profile,'narrador');
+ const editor=fixture('editor');
+ await rejects(()=>editor.service().workspaceMailScope(token),'access_denied',403);
+ const noPlayer=fixture('jogador',{playerId:null});
+ await rejects(()=>noPlayer.service().workspaceMailScope(token),'access_denied',403);
+});
+
 test('only the Narrator may inspect imported workspace metadata',async()=>{
  const f=fixture('jogador');
  await rejects(()=>f.service().inspectWorkspaceImport(token),'access_denied',403);

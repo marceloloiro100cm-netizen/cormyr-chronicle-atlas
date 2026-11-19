@@ -1,5 +1,6 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseCloudReadonly,CloudAccessError} from '../../../scripts/firebase/cloud-readonly-service.mjs';
+import {loadWorkspaceMailPage} from '@/lib/mail/firebase-workspace-mail';
 import {crossOriginRejected} from '@/lib/server/request-origin';
 import {cloudReadFailureCategory} from '@/lib/server/cloud-read-error-category';
 
@@ -61,10 +62,10 @@ async function handle(request:Request):Promise<Response>{
     return error(401,'authentication_required');
   try{
     const payload=await boundedJson(request) as {action?:unknown;houseId?:unknown;editionId?:unknown;
-      targetUid?:unknown;proposal?:unknown};
+      targetUid?:unknown;proposal?:unknown;filters?:unknown;page?:unknown;size?:unknown};
     if(!['session','inspectWorkspaceImport','listAccessRemediation','previewAccessRemediation','listHouses',
       'getHouse','getCalendar',
-      'listMailbox','listNewspaper','getNewspaper','listSpyAgents',
+      'listOriginalMail','listMailbox','listNewspaper','getNewspaper','listSpyAgents',
       'listSpyDossiers','listHouseBattles'].includes(String(payload.action)))
       return error(400,'invalid_action');
     // Firebase Admin uses the App Hosting service account, not a JSON key in source.
@@ -96,6 +97,11 @@ async function handle(request:Request):Promise<Response>{
       case 'getCalendar':result=await service.getCalendar(token);break;
       case 'getHouse':result=await service.getHouse(token,payload.houseId);break;
       case 'listMailbox':result=await service.listMailbox(token);break;
+      case 'listOriginalMail':
+        result=await loadWorkspaceMailPage(getFirestore(app),snapshotId,
+          await service.workspaceMailScope(token),
+          {filters:payload.filters,page:payload.page,size:payload.size});
+        break;
       case 'listNewspaper':result=await service.listNewspaper(token);break;
       case 'getNewspaper':result=await service.getNewspaper(token,payload.editionId);break;
       case 'listSpyAgents':result=await service.listSpyAgents(token,payload.houseId);break;

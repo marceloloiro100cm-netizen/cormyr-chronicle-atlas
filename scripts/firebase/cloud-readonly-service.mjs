@@ -121,6 +121,14 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       return {authenticated:true,profile,memberHouseIds,readOnly:true,
         snapshotReconciliationPending:true};
     },
+    /** Internal-only access scope for the original Firebase mail projection. */
+    async workspaceMailScope(idToken){
+      const scope=await scopeFor(idToken);
+      if(scope.profile==='editor'||scope.profile==='jogador'&&!scope.playerId)
+        deny('access_denied',403);
+      return {uid:scope.uid,profile:scope.profile,playerId:scope.playerId,
+        memberHouseIds:scope.memberHouseIds};
+    },
     /** Narrator-only, aggregate metadata inspection; no private rows returned. */
     async inspectWorkspaceImport(idToken){
       const viewer=await scopeFor(idToken);
