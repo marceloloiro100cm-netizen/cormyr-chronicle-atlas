@@ -60,7 +60,7 @@ describe('área interna Firebase com a interface original (prévia visual)', () 
     await waitFor(() => expect(screen.queryByRole('heading', {name: 'Calendário de Harptos'})).toBeNull());
 
     unmount();
-    expect(isVisualPreview()).toBe(false);
+    await waitFor(() => expect(isVisualPreview()).toBe(false));
   });
 
   it('Narrador navega pelo menu original e pela visão dos jogadores', async () => {

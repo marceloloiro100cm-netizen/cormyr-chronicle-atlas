@@ -1,7 +1,7 @@
 import {useEffect, useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 import {PlayersArea} from '@/components/players/players-workspace';
-import {activateVisualPreview, deactivateVisualPreview} from '@/lib/visual-preview/activate';
+import {activateVisualPreview, deactivateVisualPreviewSoon} from '@/lib/visual-preview/activate';
 import type {VisualPreviewProfile} from '@/lib/visual-preview/state';
 
 /**
@@ -25,8 +25,8 @@ export default function FirebaseCampaignWorkspace({profile, memberHouseIds, onSi
   useEffect(() => {
     activateVisualPreview(profile, houseKey ? houseKey.split(',') : []);
     return () => {
-      deactivateVisualPreview();
       qc.clear();
+      deactivateVisualPreviewSoon();
     };
   }, [profile, houseKey, qc]);
   return <PlayersArea onSignOut={onSignOut} hideBattle/>;
