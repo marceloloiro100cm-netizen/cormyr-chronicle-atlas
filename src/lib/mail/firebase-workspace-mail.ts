@@ -58,7 +58,8 @@ export function validateWorkspaceMailInput(input:WorkspaceMailInput){
   const size=input.size===undefined?20:input.size;
   if(!integer(page,0,100000)||!integer(size,1,50))invalid();
   const source=input.filters===undefined?{}:input.filters;
-  if(!plain(source)||Object.keys(source).some(k=>!FILTER_KEYS.has(k)))invalid();
+  if(!plain(source))invalid();
+  if(Object.keys(source).some(k=>!FILTER_KEYS.has(k)))invalid();
   const filters:MailFilters={};
   for(const [key,value] of Object.entries(source)){
     if(key==='group_house_ids'){
