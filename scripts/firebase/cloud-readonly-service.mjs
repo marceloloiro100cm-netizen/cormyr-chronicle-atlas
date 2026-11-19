@@ -346,7 +346,25 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
            checkedLive.has(u.uid))
           deny('access_inventory_unverified',503);
         checkedLive.add(u.uid);
-        if(seen.has(u.uid))liveByUid.set(u.uid,u);
+        // Uma conta adicional só é legítima com vínculo operacional
+        // explicitamente autorizado, nunca por simples presença no Auth.
+        if(!seen.has(u.uid)){
+          const current=await currentAccountAccess(db,snapshotId,u.uid);
+          if(!current||current.profile==='narrador'||
+             current.active===true&&u.disabled===true||
+             current.active===false&&u.disabled===false)
+            deny('access_inventory_unverified',503);
+          continue;
+        }
+        // Desativação de conta histórica exige um overlay atual inativo.
+        if(u.disabled===true){
+          const current=await currentAccountAccess(db,snapshotId,u.uid);
+          const overlay=await db.collection('campaignCloudRuntime')
+            .doc(snapshotId).collection('accountAccess').doc(u.uid).get();
+          if(!overlay.exists||current?.active!==false)
+            deny('access_inventory_unverified',503);
+        }
+        liveByUid.set(u.uid,u);
       }
       if(![13,14].includes(liveByUid.size)||
          seen.size-liveByUid.size>1)
