@@ -393,6 +393,15 @@ test('original mail workspace scope is checked against live Auth and House stage
  await rejects(()=>noPlayer.service().workspaceMailScope(token),'access_denied',403);
 });
 
+test('editor may not read historic military rosters and a player cannot query a foreign House',async()=>{
+ const editor=fixture('editor');
+ await rejects(()=>editor.service().listOriginalHouseSheets(token,{}),
+   'access_denied',403);
+ const player=fixture('jogador');
+ await rejects(()=>player.service().listOriginalHouseSheets(token,
+   {houseId:'house-b'}),'access_denied',403);
+});
+
 test('editor never reads original spies or missions regardless of memberships',async()=>{
  const editor=fixture('editor');
  await rejects(()=>editor.service().listOriginalSpies(token,{}),'access_denied',403);

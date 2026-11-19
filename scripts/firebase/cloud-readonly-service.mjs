@@ -7,6 +7,8 @@ import {listWorkspaceNewspapers,getWorkspaceNewspaper,
   listWorkspaceNewspaperRevisions,getWorkspaceNewspaperRevision,
   WorkspaceNewspaperError} from './workspace-newspaper.mjs';
 import {readWorkspaceSpies,WorkspaceSpyError} from './workspace-spies.mjs';
+import {listWorkspaceHouseSheets,WorkspaceHouseError}
+  from './workspace-house-sheets.mjs';
 /**
  * Cormyr: Firebase Cloud-only, read-only campaign access.
  *
@@ -127,6 +129,16 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       const {profile,memberHouseIds}=await scopeFor(idToken);
       return {authenticated:true,profile,memberHouseIds,readOnly:true,
         snapshotReconciliationPending:true};
+    },
+    /** Real archived noble sheets: authorized unit and holding rosters only. */
+    async listOriginalHouseSheets(idToken,input){
+      const viewer=await scopeFor(idToken);
+      if(viewer.profile==='editor')deny('access_denied',403);
+      try{return await listWorkspaceHouseSheets(db,snapshotId,viewer,input);}
+      catch(error){
+        if(error instanceof WorkspaceHouseError)deny(error.code,error.status);
+        throw error;
+      }
     },
     /** Imported spy assets and missions; authenticated House-only visibility. */
     async listOriginalSpies(idToken,input){
