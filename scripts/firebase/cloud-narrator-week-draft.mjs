@@ -236,8 +236,10 @@ export function createFirebaseNarratorWeekDraft({
           live.publishedTimeVersion===effective.version);
         const mailEnabled=launched&&
           cloudMailRuntimeApproved(live,mail,state.calendar,snapshotId);
-        return {...publicView(state),editable:!launched,
-          calendarPublished:launched,mailEnabled:Boolean(mailEnabled),
+        return {...publicView(state),editable:live?.status!=='active',
+          calendarPublished:launched,
+          requiresReconciliation:live?.status==='active'&&!launched,
+          mailEnabled:Boolean(mailEnabled),
           operationalCalendar:launched?{
             year:effective.year,month:effective.month,day:effective.day,
             festival:effective.festival??null,version:effective.version,
