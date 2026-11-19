@@ -295,6 +295,12 @@ function FirebaseOriginalArchive(){
           automática das interfaces.</p>
       </>}
     </section>}
+    {(session?.profile==='editor'||session?.profile==='narrador')&&
+      <p className="text-sm">
+        <a className="underline" href="/firebase-redacao">
+          Abrir redação operacional Firebase (se a rodada estiver habilitada)
+        </a>
+      </p>}
     {session?.profile==='editor'&&<section className="rounded border p-4 text-sm">
       O Editor-Chefe pode conferir o acervo integral do jornal abaixo,
       mas não tem acesso a missivas ou documentos particulares das Casas.
