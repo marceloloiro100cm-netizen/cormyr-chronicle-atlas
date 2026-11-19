@@ -37,9 +37,10 @@ const sameDate=(a,b)=>a.year===b.year&&a.month===b.month&&a.day===b.day&&
 
 /**
  * Weekly advance after launch: exactly one round forward, never backwards
- * in time. Crossing a month or year requires the narrator to acknowledge
- * that monthly House effects are NOT processed here (no operational
- * resource ledger yet); the crossing is recorded for later reconciliation.
+ * in time. Crossing a month or year requires the narrator's explicit
+ * confirmation; the crossing is counted in pendingHouseEffectMonths until
+ * the HUB route runs the canonical monthly House processing for every
+ * activated operational House sheet (src/lib/house/firebase-house-monthly).
  */
 export function planWeekAdvance({live,request}){
   if(!request||typeof request!=='object'||Array.isArray(request))

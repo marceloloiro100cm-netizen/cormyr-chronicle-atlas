@@ -70,5 +70,19 @@ describe('Explicit narrator House activation',()=>{
     expect((await f.inspect()).status).toBe('existing_document_requires_review');
     expect(f.docs.get(f.runtime+'/houseTreasuries/'+hash('house:house-a')).balance).toBe(99);
   });
+  it('brings an imported sheet up to 3 months behind to the official month with the original engine',async()=>{
+    const f=fixture();
+    const source=f.docs.get(f.sheet);source.state.month-=2;
+    const preview=await f.inspect();
+    expect(preview.status).toBe('ready_for_operator_review');
+    expect((preview.preview as {catchUpMonths?:number}|null)?.catchUpMonths).toBe(2);
+    expect((await f.activate()).status).toBe('activated');
+    const op=f.docs.get(f.runtime+'/houseEconomies/'+hash('house:house-a'));
+    expect(op.state.month).toBe(1522*12);expect(op.version).toBe(1);
+    expect(op.monthlyProcessedTo).toBe(1522*12);
+    expect(f.docs.get(f.sheet).state.month).toBe(1522*12-2);
+    source.state.month-=5;
+    const far=fixture();far.docs.get(far.sheet).state.month-=4;
+    expect((await far.inspect()).status).toBe('calendar_mismatch');
+  });
 });
-

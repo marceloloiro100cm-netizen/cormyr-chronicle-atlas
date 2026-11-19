@@ -57,9 +57,9 @@ async function handle(request:Request):Promise<Response>{
     return error(401,'authentication_required');
   try{
     const payload=await boundedJson(request);
-    if(!['get','save','publish','advance','history','publishEvents'].includes(String(payload['action'])))
+    if(!['get','save','publish','advance','history','publishEvents','processHouseMonths'].includes(String(payload['action'])))
       return error(400,'invalid_action');
-    if((payload['action']==='history'||payload['action']==='publishEvents')&&Object.keys(payload).length!==1)
+    if(['history','publishEvents','processHouseMonths'].includes(String(payload['action']))&&Object.keys(payload).length!==1)
       return error(400,'invalid_request');
     if(payload['action']==='advance'&&Object.keys(payload).some(key=>
       !['action','expectedCalendarVersion','expectedOpenRound','proposedDate','reason',
@@ -87,6 +87,20 @@ async function handle(request:Request):Promise<Response>{
       projectId:'cormyr',enabled:true,
     });
     const token=authHeader.slice(7);
+    const db=getFirestore(app);
+    // Monthly House effects run right after a month turn (and on retry),
+    // with the ORIGINAL engine, once per House, only for the Narrator.
+    const monthly=async(calendar:{year:number;month:number;version:number})=>{
+      const uid=(await getAuth(app).verifyIdToken(token,true)).uid;
+      const {processMonthlyHouseEffects}=await import('@/lib/house/firebase-house-monthly');
+      return processMonthlyHouseEffects({db,snapshotId,actorUid:uid,calendar});
+    };
+    if(payload['action']==='processHouseMonths'){
+      const view=await service.get(token);
+      if(!view.calendarPublished||!view.operationalCalendar)
+        return error(409,'campaign_not_launched');
+      return Response.json({result:await monthly(view.operationalCalendar)},{status:200,headers});
+    }
     const result=payload['action']==='advance'
       ?await service.advance(token,{
         expectedCalendarVersion:payload['expectedCalendarVersion'],
@@ -110,6 +124,13 @@ async function handle(request:Request):Promise<Response>{
         proposedDate:payload['proposedDate'],openRound:payload['openRound'],
         reason:payload['reason'],
       });
+    if(payload['action']==='advance'&&result&&typeof result==='object'&&'monthsCrossed' in result&&
+       (result as {monthsCrossed?:number}).monthsCrossed&&!(result as {duplicate?:boolean}).duplicate){
+      let houses=null;
+      try{houses=await monthly((result as {calendar:{year:number;month:number;version:number}}).calendar);}
+      catch{houses={error:'house_monthly_processing_pending'};}
+      return Response.json({result:{...result,houses}},{status:200,headers});
+    }
     return Response.json({result},{status:200,headers});
   }catch(e){
     if(e instanceof NarratorWeekDraftError)
