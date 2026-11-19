@@ -1,6 +1,7 @@
 import {useEffect,useState,type FormEvent} from 'react';
 import {FESTIVALS,MONTHS,formatCampaignPeriod} from '@/lib/calendar/harptos';
 import {buildThirdTendayRequest} from '@/lib/calendar/firebase-third-tenday';
+import {nextTendayStart,crossesMonth} from '@/lib/calendar/firebase-next-tenday';
 import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
 
 type DateView={year:number;month:number;day:number;festival:string|null;};
@@ -15,9 +16,12 @@ type WeekView={
   requiresReconciliation?:boolean;
   operationalCalendar?:(DateView&{version:number})|null;
   openRound?:number|null;
+  pendingHouseEffectMonths?:number;
 };
+type HistoryItem={id:string;action:string;at:string;from:DateView|null;to:DateView|null;
+  fromRound:number|null;toRound:number|null;monthsCrossed:number;reason:string|null};
 
-async function requestWeek(action:'get'|'save'|'publish',fields?:Record<string,unknown>):Promise<WeekView>{
+async function requestWeek<T=WeekView>(action:'get'|'save'|'publish'|'advance'|'history'|'publishEvents',fields?:Record<string,unknown>):Promise<T>{
   const auth=firebasePilotAuth();
   const token=await auth?.getToken();
   if(!token)throw Error('Entre novamente com sua conta de Narrador.');
@@ -29,13 +33,104 @@ async function requestWeek(action:'get'|'save'|'publish',fields?:Record<string,u
   if(!r.ok)throw Error(r.status===401
     ?'Sua sessão Firebase expirou. Entre novamente.'
     :r.status===403?'Somente o Narrador autorizado pode configurar esta proposta.'
-    :r.status===409?'O calendário ou a proposta mudou. Atualize antes de salvar.'
+    :r.status===409?await conflictMessage(r)
     :r.status===400?'Revise a data, a rodada e a justificativa.'
     :'A configuração da semana está indisponível neste momento.');
   const body:unknown=await r.json();
   if(!body||typeof body!=='object'||!('result' in body))
     throw Error('Resposta inválida do Firebase.');
-  return (body as {result:WeekView}).result;
+  return (body as {result:T}).result;
+}
+
+async function conflictMessage(r:Response){
+  try{
+    const b=await r.clone().json();
+    if(b?.error==='house_effects_acknowledgement_required')
+      return 'Esta abertura vira o mês: confirme que os efeitos mensais das Casas ficam pendentes.';
+    if(b?.error==='campaign_not_launched')return 'A campanha ainda não foi publicada no Firebase.';
+  }catch{/* sem corpo */}
+  return 'O calendário ou a proposta mudou. Atualize antes de salvar.';
+}
+
+/**
+ * Weekly opening after launch: one round forward, one decision, audited.
+ * Scheduled letters of the new round are delivered automatically and the
+ * previous week's letters stop being editable or cancellable.
+ */
+function WeeklyAdvance({view,onDone}:{view:WeekView;onDone:()=>void}){
+  const current=view.operationalCalendar!;
+  const suggestion=nextTendayStart(current);
+  const [date,setDate]=useState(suggestion);
+  const [reason,setReason]=useState('');
+  const [ack,setAck]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const [message,setMessage]=useState('');
+  const [history,setHistory]=useState<HistoryItem[]|null>(null);
+  const [key]=useState(()=>typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'k'+Date.now());
+  const monthTurn=crossesMonth(current,date);
+  useEffect(()=>{void requestWeek<HistoryItem[]>('history').then(setHistory).catch(()=>setHistory([]));},[view.openRound]);
+  async function advance(event:FormEvent){
+    event.preventDefault();
+    if(busy)return;
+    if(!window.confirm(`Fechar a Semana ${view.openRound} e abrir a Semana ${(view.openRound??0)+1} em ${formatCampaignPeriod(date)}? Envios da semana atual deixam de ser editáveis e as programadas para a nova semana são entregues.`))return;
+    setBusy(true);setMessage('');
+    try{
+      const r=await requestWeek<{openRound:number;publishedEvents?:number}>('advance',{expectedCalendarVersion:current.version,
+        expectedOpenRound:view.openRound,proposedDate:date,reason:reason.trim(),requestKey:key,
+        ...(monthTurn?{acknowledgeHouseEffectsPending:ack}:{})});
+      setMessage(`Semana ${r.openRound} aberta.`+(r.publishedEvents?` ${r.publishedEvents} evento(s) do calendário publicado(s).`:''));onDone();
+    }catch(e){setMessage(e instanceof Error?e.message:'Não foi possível abrir a semana.');}
+    finally{setBusy(false);}
+  }
+  const num=(v:string)=>Number.parseInt(v,10);
+  return <div className="rounded border p-4 space-y-3">
+    <h3 className="font-semibold">Abrir a próxima semana</h3>
+    <p className="text-sm">Ao abrir a semana: os envios da semana atual deixam de poder ser editados ou cancelados,
+      as missivas programadas para a nova semana são entregues e os eventos do calendário em rascunho são publicados.</p>
+    <p className="text-sm">Semana aberta agora: {view.openRound}. A próxima será a Semana {(view.openRound??0)+1}.
+      Sugestão: início da próxima désdia ({date.day}/{date.month+1}/{date.year} CV).</p>
+    {(view.pendingHouseEffectMonths??0)>0&&<p role="status" className="text-sm rounded border p-2">
+      Efeitos mensais das Casas pendentes de reconciliação: {view.pendingHouseEffectMonths} mês(es).</p>}
+    <form onSubmit={e=>void advance(e)} className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <label className="text-sm">Ano (CV)<input type="number" min="1" max="9999" required className="block w-full rounded border p-2"
+          value={date.year} onChange={e=>setDate({...date,year:num(e.target.value)})}/></label>
+        <label className="text-sm">Mês<select className="block w-full rounded border p-2" value={date.month}
+          onChange={e=>setDate({...date,month:num(e.target.value),festival:null})}>
+          {MONTHS.map((name,index)=><option key={name} value={index}>{name}</option>)}</select></label>
+        <label className="text-sm">Dia<input type="number" min="1" max="30" required className="block w-full rounded border p-2"
+          value={date.day} disabled={Boolean(date.festival)} onChange={e=>setDate({...date,day:num(e.target.value)})}/></label>
+      </div>
+      <label className="block text-sm">Festival (opcional)<select className="block w-full rounded border p-2" value={date.festival??''}
+        onChange={e=>{const f=FESTIVALS.find(x=>x.id===e.target.value);
+          setDate(f?{...date,festival:f.id,month:f.month,day:30}:{...date,festival:null});}}>
+        <option value="">Dia comum da campanha</option>
+        {FESTIVALS.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
+      <label className="block text-sm">Justificativa<textarea minLength={12} maxLength={300} required rows={2}
+        className="block w-full rounded border p-2" value={reason} onChange={e=>setReason(e.target.value)}
+        placeholder="Ex.: Fechamento da semana e abertura da próxima désdia"/></label>
+      {monthTurn&&<label className="flex gap-2 text-sm rounded border p-2">
+        <input type="checkbox" checked={ack} onChange={e=>setAck(e.target.checked)}/>
+        Esta abertura vira o mês. Entendo que os efeitos mensais das Casas (produção, posses e obras)
+        ainda não são processados no Firebase e ficam registrados como pendentes.</label>}
+      <button type="submit" disabled={busy||(monthTurn&&!ack)} className="rounded border px-4 py-2 disabled:opacity-50">
+        {busy?'Abrindo…':`Fechar Semana ${view.openRound} e abrir Semana ${(view.openRound??0)+1}`}</button>
+    </form>
+    <button type="button" disabled={busy} className="rounded border px-3 py-1 text-sm" onClick={async()=>{
+      setBusy(true);setMessage('');
+      try{const r=await requestWeek<{published:number}>('publishEvents');
+        setMessage(r.published?`${r.published} evento(s) do calendário publicado(s).`:'Nenhum evento pendente de publicação.');}
+      catch(e){setMessage(e instanceof Error?e.message:'Falha ao publicar eventos.');}
+      finally{setBusy(false);}}}>Publicar eventos do calendário sem abrir semana</button>
+    {message&&<p role="status" className="text-sm">{message}</p>}
+    <details><summary className="text-sm">Histórico de aberturas</summary>
+      {history===null?<p className="text-sm">Carregando…</p>:history.length===0?<p className="text-sm">Nenhum registro.</p>:
+      <ul className="text-sm">{history.map(h=><li key={h.id}>
+        {new Date(h.at).toLocaleString('pt-BR')} · {h.action==='launch_firebase_campaign'?'Lançamento':'Abertura'}
+        {h.toRound?` da Semana ${h.toRound}`:''}{h.to?` em ${h.to.day}/${h.to.month+1}/${h.to.year}`:''}
+        {h.monthsCrossed?` · ${h.monthsCrossed} mês(es) com efeitos pendentes`:''}{h.reason?` · ${h.reason}`:''}</li>)}</ul>}
+    </details>
+  </div>;
 }
 
 /**
@@ -167,6 +262,8 @@ export function FirebaseNarratorWeekDraft(){
           :'Missivas ainda bloqueadas: os dois runtimes não estão alinhados.'}
         {' '}O histórico importado permanece preservado.
       </p>}
+      {loaded.calendarPublished&&loaded.operationalCalendar&&loaded.mailEnabled&&
+        <WeeklyAdvance key={String(loaded.openRound)} view={loaded} onDone={()=>void refresh()}/>}
       {!loaded.calendarPublished&&loaded.editable&&<form onSubmit={event=>void save(event)} className="space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <label className="text-sm">Ano (CV)

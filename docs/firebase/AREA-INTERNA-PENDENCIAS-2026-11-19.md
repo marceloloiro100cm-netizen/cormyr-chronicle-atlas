@@ -22,10 +22,26 @@ Ver `MISSIVAS-V4-2026-11-19.md`. Restam imagens e consequências na ficha.
 
 | Domínio | Chamadas ainda 501 | O que falta |
 |---|---|---|
-| Hub Temporal | `get_campaign_chronology`, `get_campaign_time_history`, `get_campaign_schedule_*`, `save_campaign_schedule_event`, `preview_*`, `publish_campaign_time_change`, `replay/resolve_temporal_delivery`, `get_temporal_*`, idades de personagens | Ligar ao calendário operacional (`/firebase-hub`) já existente |
-| Jornal (leitura do jogador) | `mark_campaign_newspaper_read/unread`, `mark_newspaper_commissions_seen`, `newspaper_commission_story`, `newspaper_reject_commission`, `publish_due_campaign_newspapers`, exclusões | Reaproveitar o serviço editorial Cloud |
+| Hub Temporal | `preview_campaign_time_change`, `publish_campaign_time_change` e `preview_house_time_impacts` da tela antiga, `replay/resolve_temporal_delivery`, `get_temporal_*`, idades de personagens | A abertura das semanas já é feita no HUB Firebase (veja abaixo); efeitos mensais das Casas e idades dependem do livro de recursos e das fichas |
+| Jornal | `mark_newspaper_commissions_seen`, `newspaper_commission_story` (custa 1 Riqueza), `newspaper_reject_commission`, `publish_due_campaign_newspapers`, exclusões | Leitura e marcação de lida já usam o serviço editorial Cloud; encomendas dependem do livro de recursos |
 | Casas e fichas | `commit_noble_house_operation`, `commit_noble_house_source`, `save_campaign_record`, `apply_drive_record`, `save_imported_source` | Livro operacional dos recursos e versões de registros |
 | Galeria | `house_gallery_mail_images` | Storage privado (mesma dependência das imagens) |
 | Representação do Narrador | `start/stop_campaign_representation`, `campaign_representation_action` | Sessão curta auditada no Cloud |
 | Administração | `admin_save_player_account`, `claim_drive_binding`, `can_export_mail` | Operador de contas e Drive (fora do navegador) |
 | Batalha | `battle_sim_commit_*` | Módulo oculto na área Firebase |
+
+## HUB Temporal (entregue em 19/11/2026, PR seguinte)
+
+- **Abrir a próxima semana** no `/firebase-hub`: fecha a semana atual e
+  abre exatamente a próxima rodada, com data nunca anterior à atual, versão
+  otimista, chave de repetição e auditoria. Atualiza os dois runtimes juntos,
+  então as missivas programadas da nova semana são entregues e os envios da
+  semana anterior deixam de ser editáveis.
+- Virada de mês exige confirmação explícita do Narrador: os efeitos mensais
+  das Casas ficam registrados como pendentes (`pendingHouseEffectMonths`)
+  até existir o livro operacional de recursos.
+- **Eventos do calendário**: o Narrador salva rascunhos na tela original;
+  eles são publicados ao abrir a semana ou pelo botão "Publicar eventos do
+  calendário sem abrir semana". Jogadores e Editor-Chefe veem os publicados
+  no calendário e na **cronologia** (com as missivas entregues que podem ler).
+- **Histórico** das aberturas no HUB e no calendário interno do Narrador.

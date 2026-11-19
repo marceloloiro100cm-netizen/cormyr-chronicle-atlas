@@ -57,8 +57,14 @@ async function handle(request:Request):Promise<Response>{
     return error(401,'authentication_required');
   try{
     const payload=await boundedJson(request);
-    if(!['get','save','publish'].includes(String(payload['action'])))
+    if(!['get','save','publish','advance','history','publishEvents'].includes(String(payload['action'])))
       return error(400,'invalid_action');
+    if((payload['action']==='history'||payload['action']==='publishEvents')&&Object.keys(payload).length!==1)
+      return error(400,'invalid_request');
+    if(payload['action']==='advance'&&Object.keys(payload).some(key=>
+      !['action','expectedCalendarVersion','expectedOpenRound','proposedDate','reason',
+        'acknowledgeHouseEffectsPending','requestKey'].includes(key)))
+      return error(400,'invalid_request');
     if(payload['action']==='get'&&Object.keys(payload).length!==1)
       return error(400,'invalid_request');
     if(payload['action']==='save'&&Object.keys(payload).some(key=>
@@ -81,7 +87,20 @@ async function handle(request:Request):Promise<Response>{
       projectId:'cormyr',enabled:true,
     });
     const token=authHeader.slice(7);
-    const result=payload['action']==='publish'
+    const result=payload['action']==='advance'
+      ?await service.advance(token,{
+        expectedCalendarVersion:payload['expectedCalendarVersion'],
+        expectedOpenRound:payload['expectedOpenRound'],
+        proposedDate:payload['proposedDate'],reason:payload['reason'],
+        requestKey:payload['requestKey'],
+        ...(payload['acknowledgeHouseEffectsPending']!==undefined?
+          {acknowledgeHouseEffectsPending:payload['acknowledgeHouseEffectsPending']}:{}),
+      })
+      :payload['action']==='history'
+      ?await service.history(token)
+      :payload['action']==='publishEvents'
+      ?await service.publishEvents(token)
+      :payload['action']==='publish'
       ?await service.publish(token,{expectedDraftVersion:payload['expectedDraftVersion'],adoptFirebaseSource:payload['adoptFirebaseSource']})
       :payload['action']==='get'
       ?await service.get(token)

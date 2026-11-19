@@ -12,7 +12,8 @@ import {readWorkspaceSpy} from '../../../scripts/firebase/workspace-spy.mjs';
 import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/firebase-workspace-mail';
 import {CORE_CATALOG} from '../house/catalog';
 import {queryRows,type Row,type QueryStep} from './query';
-import {createHash} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
+import {planEventSave,parseEventDate,isEventId} from '../../../scripts/firebase/cloud-schedule-events-core.mjs';
 
 export type Scope={uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]};
 const denied=()=>{throw new CloudAccessError('access_denied',403);};
@@ -157,6 +158,12 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
    const version=row['version'];
    if(!Number.isSafeInteger(version))throw new CloudAccessError('invalid_mail_lifecycle_request',400);
    return {row,version:version as number};
+  };
+  const eventsCollection=()=>db.collection('campaignCloudRuntime').doc(snapshotId).collection('scheduleEvents');
+  const cloudEvents=async():Promise<Row[]>=>{
+   const snap=await eventsCollection().limit(2001).get();
+   if(!Array.isArray(snap.docs)||snap.docs.length>2000)throw new CloudAccessError('schedule_events_too_large',503);
+   return snap.docs.map((d:any)=>d.data()).filter((v:any)=>isEventId(v?.id)&&Number.isSafeInteger(v?.version));
   };
   const notesCollection=()=>db.collection('campaignCloudRuntime').doc(snapshotId).collection('narratorMailNotes');
   const runtimeApproved=async()=>{
@@ -455,6 +462,66 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
    if(name==='is_campaign_admin')return admin;
    // workspaceScope already proved an active, password-cleared account.
    if(name==='campaign_access_active')return true;
+   if(name==='save_campaign_schedule_event'){
+    if(!admin)denied();
+    if(!await runtimeApproved())throw new CloudAccessError('campaign_not_launched',409);
+    const payload=args['p_payload'] as Record<string,unknown>|undefined;
+    const id=payload?.['id'];
+    if(id!==null&&id!==undefined&&!isEventId(id))throw new CloudAccessError('invalid_event',400);
+    const col=eventsCollection();
+    return db.runTransaction(async(tx:any)=>{
+     const prevDoc=typeof id==='string'?await tx.get(col.doc(id)):null;
+     const at=new Date().toISOString();
+     const next=planEventSave(prevDoc?.exists?prevDoc.data():null,payload,{
+      deny:(code:string,status:number)=>{throw new CloudAccessError(code,status);},
+      newId:()=>'evt-'+randomUUID().replace(/-/g,''),uid:scope.uid,at});
+     tx.set(col.doc(next.id),next);
+     tx.create(db.collection('campaignCloudRuntime').doc(snapshotId).collection('mailAudits')
+      .doc(createHash('sha256').update('schedule-event:'+next.id+':'+next.version).digest('hex')),
+      {action:'schedule_event_draft',actorUid:scope.uid,eventId:next.id,version:next.version,occurredAt:at});
+     return {id:next.id,version:next.version};
+    });
+   }
+   if(name==='get_campaign_schedule_drafts'){
+    if(!admin)denied();
+    return (await cloudEvents()).filter(e=>e['draft']).map(e=>({id:e['id'],date:e['draft'].date,
+     title:e['draft'].title,description:e['draft'].description??'',deleted:e['draft'].deleted===true,
+     version:e['version'],published:e['published']!==null}));
+   }
+   if(name==='get_campaign_schedule_events'||name==='get_campaign_chronology'){
+    const year=args['p_year'],month=args['p_month'];
+    if(!Number.isSafeInteger(year)||!Number.isSafeInteger(month)||(month as number)<0||(month as number)>11)
+     throw new CloudAccessError('invalid_calendar_request',400);
+    const inMonth=(key:unknown)=>{const d=parseEventDate(key);return Boolean(d&&d.year===year&&d.month===month);};
+    const kingdom=(await cloudEvents()).filter(e=>e['published']&&inMonth(e['published'].date))
+     .map(e=>({id:'evento-'+e['id'],date:e['published'].date,title:e['published'].title,kind:'kingdom' as const,
+      ...(e['published'].description?{description:e['published'].description}:{})}));
+    if(name==='get_campaign_schedule_events')return kingdom;
+    // Chronology: published Kingdom events and delivered letters the viewer may read.
+    const ds=await mail();
+    const letters=ds.letters.filter(l=>l.publication_state==='delivered'&&l.deleted_at===null&&
+     inMonth(l['campaign_date'])&&canReadLetterAs(ds,l,scope.uid))
+     .map(l=>({id:'mail-'+l.id,date:l['campaign_date'] as string,title:l.subject,kind:'mail' as const}));
+    return {year,month,events:[...kingdom,...letters],rounds:[],unassigned_round_count:0};
+   }
+   if(name==='get_campaign_time_history'){
+    // Narrator history of the Firebase HUB (launch and weekly openings).
+    if(!admin)denied();
+    const limit=args['p_limit']??15;
+    if(!Number.isSafeInteger(limit)||(limit as number)<1||(limit as number)>50)
+     throw new CloudAccessError('invalid_history_request',400);
+    const docs=await db.collection('campaignNarratorDrafts').doc(snapshotId)
+     .collection('calendarAudit').limit(500).get();
+    const key=(d:any)=>d&&Number.isSafeInteger(d.year)&&Number.isSafeInteger(d.month)&&Number.isSafeInteger(d.day)
+     ?dateKey({year:d.year,month:d.month,day:d.day,festival:d.festival??null}):null;
+    return (docs.docs??[]).map((d:any)=>({id:d.id,...d.data()}))
+     .filter((a:any)=>a.action==='advance_week'||a.action==='launch_firebase_campaign')
+     .sort((a:any,b:any)=>String(b.at).localeCompare(String(a.at))).slice(0,limit as number)
+     .map((a:any)=>({id:a.id,from:key(a.from)??'',to:key(a.to??a.calendar)??'',
+      mode:a.action==='launch_firebase_campaign'?'set':'advance',
+      reason:typeof a.reason==='string'?a.reason:'Lançamento da campanha no Firebase',
+      created_at:a.at}));
+   }
    if(name==='current_campaign_profile')return scope.profile;
    if(name==='in_campaign_house')return args['edit_required']?admin||scope.editHouseIds.includes(args['h']):houseAllowed(args['h']);
    if(name==='get_public_campaign_time'||name==='get_campaign_calendar')return cloud.workspaceCalendar(token);

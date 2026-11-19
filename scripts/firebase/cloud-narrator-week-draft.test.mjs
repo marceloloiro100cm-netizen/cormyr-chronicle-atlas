@@ -224,3 +224,70 @@ test('narrator confirmation reads actual published Harptos date and both mail ga
   assert.equal(invalidClock.operationalCalendar,null);
   assert.equal(invalidClock.openRound,null);
 });
+
+/* ---- Abertura semanal após o lançamento ---- */
+async function launched(){
+  const f=readyLaunch();
+  await f.service.save('valid-token',request);
+  f.data.delete('campaignNarratorDrafts/'+HASH+'/calendarAudit/audit-1');
+  await f.service.publish('valid-token',{expectedDraftVersion:1,adoptFirebaseSource:true});
+  f.data.delete('campaignNarratorDrafts/'+HASH+'/calendarAudit/audit-1');
+  return f;
+}
+const advanceReq=(changes={})=>({expectedCalendarVersion:5,expectedOpenRound:3,
+  proposedDate:{year:1522,month:0,day:21,festival:null},
+  reason:'Abertura da próxima désdia pelo Narrador',requestKey:'advance-key-01',...changes});
+
+test('advance opens exactly the next round, moves both runtimes and keeps mail aligned',async()=>{
+  const {service,data}=await launched();
+  const r=await service.advance('valid-token',advanceReq());
+  assert.deepEqual([r.openRound,r.calendar.day,r.calendar.version,r.monthsCrossed],[4,21,6,0]);
+  const live=data.get('campaignCloudRuntime/'+HASH),gate=data.get('campaignMailRuntime/'+HASH);
+  assert.equal(live.openRound,4);assert.equal(gate.openRound,4);
+  assert.equal(gate.calendarVersion,6);assert.equal(live.publishedTimeVersion,6);
+  const view=await service.get('valid-token');
+  assert.equal(view.mailEnabled,true);assert.equal(view.openRound,4);
+  // Repetir a mesma solicitação não abre outra semana.
+  const again=await service.advance('valid-token',advanceReq());
+  assert.equal(again.duplicate,true);assert.equal(data.get('campaignCloudRuntime/'+HASH).openRound,4);
+  const hist=await service.history('valid-token');
+  assert.equal(hist[0].action,'advance_week');
+  assert.deepEqual([hist[0].fromRound,hist[0].toRound],[3,4]);
+  assert.ok(!JSON.stringify(hist).includes('narrator-1'),'sem UID no histórico');
+});
+
+test('advance refuses stale versions, backdating, skipped acknowledgement and non-narrators',async()=>{
+  const {service,data}=await launched();
+  await assert.rejects(service.advance('valid-token',advanceReq({expectedCalendarVersion:4})),e=>e.code==='calendar_version_conflict');
+  await assert.rejects(service.advance('valid-token',advanceReq({expectedOpenRound:2})),e=>e.code==='calendar_version_conflict');
+  await assert.rejects(service.advance('valid-token',advanceReq({proposedDate:{year:1522,month:0,day:1,festival:null}})),e=>e.code==='advance_backdate_forbidden');
+  await assert.rejects(service.advance('valid-token',advanceReq({proposedDate:{year:1522,month:1,day:1,festival:null}})),e=>e.code==='house_effects_acknowledgement_required');
+  await assert.rejects(service.advance('valid-token',advanceReq({requestKey:'x'})),e=>e.code==='advance_invalid_request');
+  const ok=await service.advance('valid-token',advanceReq({proposedDate:{year:1522,month:1,day:1,festival:null},
+    acknowledgeHouseEffectsPending:true,requestKey:'advance-key-02'}));
+  assert.equal(ok.monthsCrossed,1);
+  assert.equal(data.get('campaignCloudRuntime/'+HASH).pendingHouseEffectMonths,1);
+  for(const config of [{profile:'jogador'},{profile:'editor'}]){
+    const other=readyLaunch(config);
+    await assert.rejects(other.service.advance('valid-token',advanceReq()));
+  }
+});
+
+test('advance is impossible before the campaign launch',async()=>{
+  const {service}=readyLaunch();
+  await service.save('valid-token',request);
+  await assert.rejects(service.advance('valid-token',advanceReq()),e=>e.code==='campaign_not_launched');
+});
+
+test('opening the week publishes pending calendar events; explicit publish also works',async()=>{
+  const {service,data}=await launched();
+  const ev='campaignCloudRuntime/'+HASH+'/scheduleEvents/evt-1';
+  data.set(ev,{id:'evt-1',version:1,draft:{date:'1522-01-25',title:'Feira',description:'',deleted:false},published:null});
+  const r=await service.advance('valid-token',advanceReq());
+  assert.equal(r.publishedEvents,1);
+  assert.deepEqual(data.get(ev).published,{date:'1522-01-25',title:'Feira',description:''});
+  data.set(ev,{...data.get(ev),draft:{date:'1522-01-25',title:'Feira',description:'',deleted:true}});
+  data.delete('campaignNarratorDrafts/'+HASH+'/calendarAudit/audit-1');
+  assert.equal((await service.publishEvents('valid-token')).published,1);
+  assert.equal(data.get(ev).published,null);
+});

@@ -9,6 +9,7 @@ import {randomUUID} from 'node:crypto';
 import {validateHarptosDate} from './stage-temporal-emulator.mjs';
 import {cloudMailRuntimeApproved} from './cloud-mail-runtime-approval.mjs';
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
+import {publishEvent} from './cloud-schedule-events-core.mjs';
 
 const HASH=/^[a-f0-9]{64}$/;
 const UID=/^[^/\u0000-\u001f]{1,128}$/;
@@ -26,6 +27,44 @@ const calendarOkay=c=>whole(c?.version,1,2147483647)&&
 const complete=(doc,id)=>doc?.exists===true&&doc.data()?.status==='complete'&&
   doc.data()?.private===true&&
   (doc.data()?.sourceSnapshotId===undefined||doc.data()?.sourceSnapshotId===id);
+
+/** Sortable position of a Harptos date (festivals follow day 30 of their month). */
+export function harptosOrdinal(d){
+  return d.year*1000+d.month*40+(d.festival?31:d.day);
+}
+const sameDate=(a,b)=>a.year===b.year&&a.month===b.month&&a.day===b.day&&
+  (a.festival??null)===(b.festival??null);
+
+/**
+ * Weekly advance after launch: exactly one round forward, never backwards
+ * in time. Crossing a month or year requires the narrator to acknowledge
+ * that monthly House effects are NOT processed here (no operational
+ * resource ledger yet); the crossing is recorded for later reconciliation.
+ */
+export function planWeekAdvance({live,request}){
+  if(!request||typeof request!=='object'||Array.isArray(request))
+    deny('advance_invalid_request',400);
+  const current=live.calendar;
+  if(!whole(request.expectedCalendarVersion,1,2147483647)||
+     request.expectedCalendarVersion!==live.calendarVersion||
+     !whole(request.expectedOpenRound,1,2147483646)||
+     request.expectedOpenRound!==live.openRound)
+    deny('calendar_version_conflict',409);
+  const d=request.proposedDate;
+  if(!d||typeof d!=='object'||Array.isArray(d)||
+     !validateHarptosDate(d.year,d.month,d.day,d.festival??null))
+    deny('draft_date_invalid',400);
+  const next={year:d.year,month:d.month,day:d.day,festival:d.festival??null};
+  if(harptosOrdinal(next)<harptosOrdinal(current))deny('advance_backdate_forbidden',400);
+  if(typeof request.reason!=='string'||!REASON.test(request.reason.trim()))
+    deny('draft_reason_invalid',400);
+  const monthsCrossed=(next.year-current.year)*12+(next.month-current.month);
+  if(monthsCrossed>0&&request.acknowledgeHouseEffectsPending!==true)
+    deny('house_effects_acknowledgement_required',409);
+  if(monthsCrossed>3)deny('advance_too_far',400);
+  return {date:next,monthsCrossed,openRound:live.openRound+1,
+    version:live.calendarVersion+1,reason:request.reason.trim()};
+}
 
 export function planNarratorWeekDraft({archivedCalendar,previous,request,actorUid,at}){
   if(!UID.test(actorUid??'')||!calendarOkay(archivedCalendar)||
@@ -130,6 +169,17 @@ export function createFirebaseNarratorWeekDraft({
     }:null,
     editable:true,calendarPublished:false,mailEnabled:false,
   });
+  function publishPending(tx,cloud,eventDocs,at){
+    const docs=Array.isArray(eventDocs?.docs)?eventDocs.docs:[];
+    if(docs.length>2000)deny('schedule_events_too_large',503);
+    let count=0;
+    for(const d of docs){
+      const next=publishEvent(d.data(),at);
+      if(!next)continue;
+      tx.set(cloud.collection('scheduleEvents').doc(d.id),next);count++;
+    }
+    return count;
+  }
   return {
 
     /** One-time baseline launch, explicitly selected by the authenticated narrator. */
@@ -208,6 +258,82 @@ export function createFirebaseNarratorWeekDraft({
         return {published:true,duplicate:false,calendar,openRound:next.openRound};
       });
     },
+    async advance(token,request){
+      const uid=await authenticate(token);
+      if(!request||typeof request!=='object'||Array.isArray(request)||
+         Object.keys(request).some(k=>!['expectedCalendarVersion','expectedOpenRound',
+           'proposedDate','reason','acknowledgeHouseEffectsPending','requestKey'].includes(k))||
+         typeof request.requestKey!=='string'||!/^[A-Za-z0-9_-]{8,128}$/.test(request.requestKey))
+        deny('advance_invalid_request',400);
+      return db.runTransaction(async tx=>{
+        const state=await readState(tx,uid);
+        const cloud=db.collection('campaignCloudRuntime').doc(snapshotId);
+        const mail=db.collection('campaignMailRuntime').doc(snapshotId);
+        const [liveDoc,mailDoc,eventDocs]=await Promise.all([tx.get(cloud),tx.get(mail),
+          tx.get(cloud.collection('scheduleEvents').limit(2001))]);
+        const live=liveDoc.data(),gate=mailDoc.data();
+        // Retrying the same request after success returns the same week.
+        if(live?.lastAdvanceKey===request.requestKey&&live?.lastAdvanceBy===uid)
+          return {advanced:true,duplicate:true,calendar:live.calendar,openRound:live.openRound};
+        const effective=effectiveCloudCalendar(state.calendar,live,snapshotId);
+        const launched=live?.status==='active'&&live?.calendarSource==='operational'&&
+          live?.sourceAuthority==='owner_adopted_firebase'&&effective&&
+          live.calendarVersion===effective.version&&whole(live.openRound,1,2147483646)&&
+          cloudMailRuntimeApproved(live,gate,state.calendar,snapshotId);
+        if(!launched)deny('campaign_not_launched',409);
+        const plan=planWeekAdvance({live:{...live,calendar:effective},request});
+        const at=now();
+        if(!Number.isFinite(Date.parse(at)))deny('draft_clock_invalid',503);
+        const calendar={...plan.date,version:plan.version};
+        const pending=whole(live.pendingHouseEffectMonths,0,1200)?live.pendingHouseEffectMonths:0;
+        tx.set(cloud,{...live,calendar,calendarVersion:plan.version,openRound:plan.openRound,
+          publishedTimeVersion:plan.version,
+          pendingHouseEffectMonths:pending+plan.monthsCrossed,
+          lastAdvanceKey:request.requestKey,lastAdvanceBy:uid,lastAdvancedAt:at});
+        tx.set(mail,{...gate,calendarVersion:plan.version,openRound:plan.openRound,
+          lastAdvancedAt:at});
+        // Opening the week also publishes the Narrator's pending calendar events.
+        const published=publishPending(tx,cloud,eventDocs,at);
+        tx.create(audit.doc(newId()),{action:'advance_week',actorUid:uid,at,publishedEvents:published,
+          from:{...effective},to:calendar,fromRound:live.openRound,toRound:plan.openRound,
+          monthsCrossed:plan.monthsCrossed,houseEffectsPending:plan.monthsCrossed>0,
+          reason:plan.reason});
+        return {advanced:true,duplicate:false,calendar,openRound:plan.openRound,
+          monthsCrossed:plan.monthsCrossed,publishedEvents:published};
+      });
+    },
+    /** Explicit publication of pending calendar events, without a new week. */
+    async publishEvents(token){
+      const uid=await authenticate(token);
+      return db.runTransaction(async tx=>{
+        await readState(tx,uid);
+        const cloud=db.collection('campaignCloudRuntime').doc(snapshotId);
+        const [liveDoc,eventDocs]=await Promise.all([tx.get(cloud),
+          tx.get(cloud.collection('scheduleEvents').limit(2001))]);
+        if(liveDoc.data()?.status!=='active')deny('campaign_not_launched',409);
+        const at=now();
+        if(!Number.isFinite(Date.parse(at)))deny('draft_clock_invalid',503);
+        const published=publishPending(tx,cloud,eventDocs,at);
+        if(published>0)tx.create(audit.doc(newId()),{action:'publish_events',actorUid:uid,at,publishedEvents:published});
+        return {published};
+      });
+    },
+    /** Narrator history of launch and weekly advances (no UIDs). */
+    async history(token,limit=15){
+      const uid=await authenticate(token);
+      if(!whole(limit,1,50))deny('advance_invalid_request',400);
+      return db.runTransaction(async tx=>{
+        await readState(tx,uid);
+        const docs=await tx.get(audit.limit(500));
+        return (docs.docs??[]).map(d=>({id:d.id,...d.data()}))
+          .filter(a=>a.action==='advance_week'||a.action==='launch_firebase_campaign')
+          .sort((a,b)=>String(b.at).localeCompare(String(a.at))).slice(0,limit)
+          .map(a=>({id:a.id,action:a.action,at:a.at,
+            from:a.from??null,to:a.to??a.calendar??null,
+            fromRound:a.fromRound??null,toRound:a.toRound??a.openRound??null,
+            monthsCrossed:a.monthsCrossed??0,reason:a.reason??null}));
+      });
+    },
     async get(token){
       const uid=await authenticate(token);
       return db.runTransaction(async tx=>{
@@ -244,7 +370,9 @@ export function createFirebaseNarratorWeekDraft({
             year:effective.year,month:effective.month,day:effective.day,
             festival:effective.festival??null,version:effective.version,
           }:null,
-          openRound:launched?live.openRound:null};
+          openRound:launched?live.openRound:null,
+          pendingHouseEffectMonths:launched&&whole(live.pendingHouseEffectMonths,0,1200)
+            ?live.pendingHouseEffectMonths:0};
       });
     },
     async save(token,request){
