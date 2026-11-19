@@ -9,6 +9,13 @@ on:
       - 'scripts/firebase/workspace-link-audit.test.mjs'
       - 'scripts/firebase/workspace-audit.mjs'
       - 'scripts/firebase/workspace-audit.test.mjs'
+      - 'scripts/firebase/workspace-module-smoke.mjs'
+      - 'scripts/firebase/workspace-module-smoke.test.mjs'
+      - 'scripts/firebase/workspace-module-smoke-cli.mjs'
+      - 'scripts/firebase/workspace-records.mjs'
+      - 'scripts/firebase/workspace-newspaper.mjs'
+      - 'scripts/firebase/workspace-spies.mjs'
+      - 'src/lib/mail/firebase-workspace-mail.ts'
       - '.github/workflows/firebase-workspace-link-audit.yml'
 permissions:
   contents: read
@@ -23,7 +30,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: node --test scripts/firebase/workspace-audit.test.mjs scripts/firebase/workspace-link-audit.test.mjs
+      - run: node --test scripts/firebase/workspace-audit.test.mjs scripts/firebase/workspace-link-audit.test.mjs scripts/firebase/workspace-module-smoke.test.mjs
   audit:
     needs: contracts
     environment: firebase-auth-test-activation
@@ -47,3 +54,5 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Verify private import reference counts without modifying data
         run: node scripts/firebase/workspace-link-audit-cli.mjs
+      - name: Verify actual imported module projections (read-only)
+        run: node scripts/firebase/workspace-module-smoke-cli.mjs
