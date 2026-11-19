@@ -19,7 +19,7 @@ export async function handleWorkspace(request:Request){
   let input;try{input=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{return error(400,'invalid_json');}
   const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=await Promise.all([import('firebase-admin/app'),import('firebase-admin/auth'),import('firebase-admin/firestore')]);
   const name='cormyr-workspace',app=getApps().find(a=>a.name===name)??initializeApp({projectId:'cormyr',credential:applicationDefault()},name);
-  const result=await createWorkspaceService({db:getFirestore(app),auth:getAuth(app),snapshotId}).execute(bearer.slice(7),input);
+  const result=await createWorkspaceService({db:getFirestore(app),auth:getAuth(app),snapshotId,cacheImportedTables:true}).execute(bearer.slice(7),input);
   return Response.json({result},{headers});
  }catch(e){
   if(e instanceof CloudAccessError)return error(e.status,e.code);

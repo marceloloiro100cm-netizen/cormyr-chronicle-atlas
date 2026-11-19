@@ -7,6 +7,7 @@ import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { firebasePilotAuth } from '@/lib/auth/firebase-pilot-session';
 import { firebasePilotLoginFailure } from '@/lib/auth/firebase-pilot-login-feedback';
 import { loadFirebasePublicSeasonHouses } from '@/lib/auth/season-houses';
+import { takeLoginMessage } from '@/lib/auth/firebase-login-handoff';
 
 export const Route = createFileRoute('/auth')({
  validateSearch: (search: Record<string, unknown>) => ({
@@ -27,7 +28,9 @@ function Auth() {
  const navigate = useNavigate();
  const [email,setEmail] = useState('');
  const [password,setPassword] = useState('');
+ // Aviso deixado pela área interna ao voltar para esta única tela de login.
  const [message,setMessage] = useState('');
+ useEffect(()=>{const notice=takeLoginMessage();if(notice)setMessage(notice);},[]);
  const [busy,setBusy] = useState(false);
 
  // A single Firebase session is shared with /firebase-access in this tab.

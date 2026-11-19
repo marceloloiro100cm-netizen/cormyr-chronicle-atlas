@@ -21,25 +21,60 @@ export type Scope={uid:string;profile:'narrador'|'jogador'|'editor';playerId:str
 const denied=()=>{throw new CloudAccessError('access_denied',403);};
 export const recordVisible=(s:Scope,r:Row)=>s.profile==='narrador'||s.profile==='jogador'&&
  (r['visibility']==='player'&&s.playerId!==null&&r['player_id']===s.playerId||r['visibility']==='house'&&s.memberHouseIds.includes(r['house_id']));
-export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;snapshotId:string}){
+/**
+ * O acervo importado é imutável: readWorkspaceTable só responde depois que a
+ * importação foi marcada como completa. Relê-lo do Firestore a cada consulta
+ * (centenas de documentos por tabela) deixava o login perto de um minuto.
+ * Cache por instância do Firestore; falhas nunca ficam guardadas. Permissões
+ * continuam aplicadas a cada consulta, depois da leitura.
+ */
+const TABLE_TTL_MS=30*60_000;
+const tableCache=new WeakMap<object,Map<string,{at:number;rows:Promise<Row[]>}>>();
+export function cachedWorkspaceTable(db:any,snapshotId:string,name:string,now=Date.now()):Promise<Row[]>{
+ let byDb=tableCache.get(db);
+ if(!byDb){byDb=new Map();tableCache.set(db,byDb);}
+ const key=snapshotId+'|'+name,hit=byDb.get(key);
+ // Cada consulta recebe linhas próprias: nada do cache é alterado por engano.
+ const copy=(rows:Row[])=>rows.map(r=>({...r}));
+ if(hit&&now-hit.at<TABLE_TTL_MS)return hit.rows.then(copy);
+ const entry={at:now,rows:readWorkspaceTable(db,snapshotId,name) as Promise<Row[]>};
+ byDb.set(key,entry);
+ entry.rows.catch(()=>{if(byDb.get(key)===entry)byDb.delete(key);});
+ return entry.rows.then(copy);
+}
+/** Leituras idênticas simultâneas (várias páginas da caixa ao mesmo tempo)
+ * compartilham a mesma consulta em andamento. Nada fica guardado depois. */
+const inflight=new WeakMap<object,Map<string,Promise<any>>>();
+function shared<T>(db:any,key:string,read:()=>Promise<T>):Promise<T>{
+ let byDb=inflight.get(db);
+ if(!byDb){byDb=new Map();inflight.set(db,byDb);}
+ const running=byDb.get(key);if(running)return running;
+ const p=read().finally(()=>{if(byDb.get(key)===p)byDb.delete(key);});
+ byDb.set(key,p);return p;
+}
+/** cacheImportedTables: ligado só pela rota de produção (acervo imutável). */
+export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=false}: {db:any;auth:any;snapshotId:string;cacheImportedTables?:boolean}){
  const cloud=createFirebaseCloudReadonly({db,auth,snapshotId,projectId:'cormyr',enabled:true});
  async function execute(token:string,input:any){
   const scope=await cloud.workspaceScope(token),admin=scope.profile==='narrador',editor=admin||scope.profile==='editor';
   const cache=new Map<string,Promise<Row[]>>();
   const rows=(name:string)=>{
    if(!cache.has(name))cache.set(name,(async()=>{
-    const original=await readWorkspaceTable(db,snapshotId,name);
+    const original=cacheImportedTables?await cachedWorkspaceTable(db,snapshotId,name)
+     :await readWorkspaceTable(db,snapshotId,name) as Row[];
     return original;
    })());
    return cache.get(name)!;
   };
+  const once=<T,>(key:string,read:()=>Promise<T>)=>cacheImportedTables?shared(db,key,read):read();
   const houseAllowed=(id:string)=>admin||scope.profile==='jogador'&&scope.memberHouseIds.includes(id);
   const checkHouse=(id:string)=>{if(typeof id!=='string'||!houseAllowed(id))denied();};
   // All permission-bearing data come from CURRENT Cloud access, never historical memberships.
-  const accessDocs=async()=>{
+  let accessPromise:Promise<any[]>|undefined;
+  const accessDocs=()=>accessPromise??=(async()=>{
    const docs=await db.collection('migrationDomainStage').doc(snapshotId).collection('access').get();
    return docs.docs.map((d:any)=>d['data']()).filter((a:any)=>a.active===true&&a.requirePasswordChange===false);
-  };
+  })();
   const players=async():Promise<Row[]>=>{
    const [original,access]=await Promise.all([rows('campaign_players'),accessDocs()]);
    return original.map(p=>{
@@ -62,8 +97,8 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
     return {letters,receipts:historical,openRound:null};
    // Read the whole bounded approved runtime before exposing any new row.
    const [mailDocs,snapshot]=await Promise.all([
-    runtime.collection('letters').limit(501).get(),
-    runtime.collection('mailReadReceipts').limit(2001).get()]);
+    once(snapshotId+'|letters',()=>runtime.collection('letters').limit(501).get()),
+    once(snapshotId+'|receipts',()=>runtime.collection('mailReadReceipts').limit(2001).get())]) as [any,any];
    if(!Array.isArray(mailDocs.docs)||mailDocs.docs.length>500)
     throw new CloudAccessError('mailbox_requires_pagination',503);
    const operational=projectCloudLetters(mailDocs.docs,snapshotId,live.data().openRound as number);

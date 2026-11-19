@@ -3,13 +3,16 @@ import {FirebaseEditorialDesk} from '@/components/newspaper/FirebaseEditorialDes
 import {FirebaseOfficialFrame,FirebaseOfficialHome,type FirebaseOfficialModule}
   from '@/components/firebase/FirebaseOfficialFrame';
 import '../firebase-official.css';
-import {createFileRoute} from '@tanstack/react-router';
+import {createFileRoute,useNavigate} from '@tanstack/react-router';
+import {CouncilOpening} from '@/components/firebase/CouncilOpening';
+import {Button} from '@/components/ui/button';
+import {hasStoredFirebaseSession,handOffLoginMessage} from '@/lib/auth/firebase-login-handoff';
 import {lazy,Suspense,useEffect,useRef,useState,type FormEvent} from 'react';
 import {runFirebaseRoleSelfAcceptance}
   from '@/lib/auth/firebase-role-self-acceptance';
 import {firebasePilotAuth as firebaseAuth} from '@/lib/auth/firebase-pilot-session';
 import {firebasePilotLoginFailure} from '@/lib/auth/firebase-pilot-login-feedback';
-import {canApplyPilotResourceLoad,loadFirebasePilotResources} from '@/lib/auth/firebase-pilot-resource-loader';
+import {canApplyPilotResourceLoad} from '@/lib/auth/firebase-pilot-resource-loader';
 import {canApplyPilotPrivateResult} from '@/lib/auth/firebase-pilot-private-result';
 import {describeFirebasePilotSignals} from '@/lib/auth/firebase-pilot-readiness-ui';
 import {GmEventos,GmAventuras} from '@/components/gm-panels';
@@ -110,10 +113,10 @@ async function readCloud<T>(action:'session'|'listAccessRemediation'|
     body:JSON.stringify({action,...(houseId?{houseId}:{}),
       ...(editionId?{editionId}:{}),...(remediation??{})}),
   });
-  if(!response.ok)throw Error(response.status===403
+  if(!response.ok)throw Object.assign(Error(response.status===403
     ? 'Seu perfil não tem permissão para esta consulta.'
     :response.status===401?'Sua sessão não está ativa no Firebase.'
-    :'Serviço Firebase indisponível ou ainda não liberado.');
+    :'Serviço Firebase indisponível ou ainda não liberado.'),{status:response.status});
   const body:unknown=await response.json();
   if(!body||typeof body!=='object'||!('result' in body))
     throw Error('Resposta inválida do serviço Firebase.');
@@ -230,8 +233,10 @@ async function cloudHouseQuote(input:Record<string,unknown>):Promise<Constructio
 
 function FirebaseAccess(){
   const [configured]=useState(()=>firebaseAuth()!==null);
-  const [email,setEmail]=useState('');
-  const [password,setPassword]=useState('');
+  const navigate=useNavigate();
+  const [loadError,setLoadError]=useState<string|null>(null);
+  const [,setEmail]=useState('');
+  const [,setPassword]=useState('');
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
   const [view,setView]=useState<SessionView|null>(null);
@@ -291,14 +296,13 @@ function FirebaseAccess(){
     if(profile?.authenticated!==true||
        !['jogador','narrador','editor'].includes(profile.profile))
       throw Error('Firebase session not authorized');
-    const resources=await loadFirebasePilotResources(profile.profile,{
-      listHouses:()=>readCloud<House[]>('listHouses'),
-      getCalendar:()=>readCloud<Calendar>('getCalendar'),
-      listMailbox:()=>readCloud<Inbox>('listMailbox'),
-      listNewspaper:()=>readCloud<{items:EditionSummary[]}>('listNewspaper'),
-      mailStatus:()=>cloudMail<MailStatus>({action:'status'}),
-      publishingStatus:()=>cloudPaper<PaperStatus>({action:'status'}),
-    });
+    // Após a sessão, a área interna (Conselho) carrega os próprios dados.
+    // Não buscar aqui caixa de correio, jornal ou calendário evita esperar
+    // por consultas que nenhuma tela usa.
+    const resources={houses:[] as House[],houseCatalogAvailable:true,
+      calendar:null as Calendar|null,inbox:null as Inbox|null,
+      newspaper:null as {items:EditionSummary[]}|null,
+      mailStatus:null as MailStatus|null,publishing:null as PaperStatus|null};
     // A stale response must never repopulate another user's private views
     // after sign-out, a fresh login, a retry, or an unmounted page.
     if(!canApplyPilotResourceLoad(generation,loadGeneration.current)||
@@ -333,36 +337,30 @@ function FirebaseAccess(){
     setMailRecipientHouse(resources.houses[0]?.id??'');
   }
 
-  useEffect(()=>{
-    let current=true;
-    void firebaseAuth()?.getToken().then(async token=>{
-      if(!token||!current)return;
-      try{await load();}catch{
-        if(current){signOut();}
-      }
-    });
-    return ()=>{current=false;loadGeneration.current++;};
-  },[]);
-
-  async function submit(event:FormEvent){
-    event.preventDefault();
-    loadGeneration.current++;
-    setBusy(true);setMessage('');setRoleCheck(null);
-    let authenticatedByFirebase=false;
-    try{
-      const auth=firebaseAuth();
-      if(!auth)throw Error('Configuração Firebase indisponível.');
-      await auth.signInWithPassword(email,password);
-      authenticatedByFirebase=true;
-      setPassword('');
-      await load();
-    }catch{
-      // Sign-in and server-side campaign permission are separate steps.
-      // Keep the token out of storage if the game access check fails.
-      signOut();
-      setMessage(firebasePilotLoginFailure(authenticatedByFirebase));
-    }finally{setBusy(false);}
+  /** Reabre a sessão desta aba. Falha temporária não desloga nem apaga nada. */
+  async function restore(){
+    setLoadError(null);
+    const token=await firebaseAuth()?.getToken();
+    if(!token){signOut('Sua sessão expirou. Entre novamente.');return;}
+    try{await load();}catch(e){
+      const status=(e as {status?:unknown}|null)?.status;
+      if(status===401||status===403||
+         (e instanceof Error&&e.message==='Firebase session not authorized'))
+        signOut(firebasePilotLoginFailure(true));
+      else setLoadError('Não foi possível abrir o Conselho agora. Sua sessão continua ativa: tente novamente em instantes.');
+    }
   }
+
+  useEffect(()=>{
+    if(!configured)return;
+    // Uma só tela de login: sem sessão, volta para /auth.
+    if(!hasStoredFirebaseSession(firebaseAuth()?.current())){
+      void navigate({to:'/auth',search:{next:'/'},replace:true});
+      return;
+    }
+    void restore();
+    return ()=>{loadGeneration.current++;};
+  },[]);
 
   async function retryHouseCatalog(){
     setBusy(true);
@@ -372,23 +370,6 @@ function FirebaseAccess(){
       signOut();
       setMessage('Sua sessão Firebase não pôde ser confirmada. Entre novamente.');
     }finally{setBusy(false);}
-  }
-
-  async function requestPasswordReset(){
-    if(!email.trim()){
-      setMessage('Informe seu e-mail para solicitar a recuperação de senha.');
-      return;
-    }
-    setBusy(true);
-    try{
-      await firebaseAuth()?.requestPasswordReset(email.trim());
-    }catch{
-      // Intentionally the same message for missing users, disabled accounts,
-      // provider errors and network failures. Never enumerate Auth emails.
-    }finally{
-      setBusy(false);
-      setMessage('Se a conta existir e a recuperação estiver disponível, você receberá um e-mail com as instruções. Verifique também a caixa de spam.');
-    }
   }
 
   async function checkOwnRole(){
@@ -596,7 +577,7 @@ function FirebaseAccess(){
     }finally{setBusy(false);}
   }
 
-  function signOut(){
+  function signOut(notice?:string){
     loadGeneration.current++;
     houseRequestVersion.current++;
     editionRequestVersion.current++;
@@ -620,6 +601,8 @@ function FirebaseAccess(){
     setTreasuryKey(null);
     setPaperKey(null);setMailKey(null);
     setBusy(false);
+    handOffLoginMessage(notice);
+    void navigate({to:'/auth',search:{next:'/'},replace:true});
   }
 
   const pilotStatus=view?describeFirebasePilotSignals({
@@ -633,40 +616,26 @@ function FirebaseAccess(){
   // Após o login ("Portões de Cormyr"), a área interna é a interface original
   // da segunda temporada. Os módulos Firebase abaixo seguem disponíveis no código
   // para a ligação dos conectores.
-  const council=view?<Suspense fallback={<p role="status" className="firebase-official-module-note">
-    Abrindo o Conselho…</p>}>
+  const council=view?<Suspense fallback={<CouncilOpening publicTime/>}>
     <FirebaseCampaignWorkspace key={view.profile+'|'+view.memberHouseIds.join(',')}
-      profile={view.profile} memberHouseIds={view.memberHouseIds} onSignOut={signOut}/>
+      profile={view.profile} memberHouseIds={view.memberHouseIds} onSignOut={()=>signOut()}/>
   </Suspense>:null;
   if(council)return council;
+  // Enquanto a sessão é conferida: a mesma tela de abertura, nunca um
+  // segundo formulário de login (Portões de Cormyr foi unificado em /auth).
+  if(!view)return <CouncilOpening publicTime>
+    {!configured?<p role="alert">A configuração pública do Firebase Auth ainda
+      não foi disponibilizada neste ambiente.</p>
+    :loadError?<div role="alert"><p>{loadError}</p>
+      <div className="campaign-actions">
+        <Button type="button" onClick={()=>void restore()}>Tentar novamente</Button>
+        <Button type="button" variant="outline" onClick={()=>signOut()}>Sair</Button>
+      </div></div>
+    :<p role="status">Abrindo o Conselho…</p>}
+  </CouncilOpening>;
 
   return <FirebaseOfficialFrame profile={view?.profile??null}
     active={activeModule} onSelect={setActiveModule} onSignOut={signOut}>
-    {!view&&<div className="firebase-official-auth-intro">
-      <h1>Portões de Cormyr</h1>
-      <p>Entre com suas credenciais Firebase para acessar o Conselho e os registros da campanha.</p>
-    </div>}
-    {!configured&&<p role="alert">A configuração pública do Firebase Auth ainda
-      não foi disponibilizada neste ambiente.</p>}
-    {configured&&!view&&<form onSubmit={submit} className="firebase-auth-form">
-      <label className="block text-sm">E-mail
-        <input type="email" required autoComplete="email"
-          className="block w-full rounded border p-2"
-          value={email} onChange={e=>setEmail(e.target.value)}/>
-      </label>
-      <label className="block text-sm">Senha
-        <input type="password" required minLength={6} autoComplete="current-password"
-          className="block w-full rounded border p-2"
-          value={password} onChange={e=>setPassword(e.target.value)}/>
-      </label>
-      <button type="submit" disabled={busy}
-        className="rounded border px-4 py-2">{busy?'Verificando…':'Entrar'}</button>
-      <button type="button" disabled={busy||!email.trim()}
-        onClick={()=>void requestPasswordReset()}
-        className="ml-2 rounded border px-4 py-2 disabled:opacity-50">
-        Recuperar senha
-      </button>
-    </form>}
     {view&&!houseCatalogAvailable&&
       (activeModule==='inicio'||activeModule==='casas')&&<section role="status"
       aria-label="Catálogo de Casas temporariamente indisponível"

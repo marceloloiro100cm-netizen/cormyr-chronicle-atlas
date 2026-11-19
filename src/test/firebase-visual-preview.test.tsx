@@ -113,6 +113,10 @@ describe('área interna Firebase com a interface original (prévia visual)', () 
     expect(route).toContain("lazy(()=>import('@/components/firebase/FirebaseCampaignWorkspace'))");
     expect(route).toContain('const council=view?<Suspense');
     expect(route).toContain('if(council)return council;');
-    expect(route).toContain('<h1>Portões de Cormyr</h1>');
+    // Uma só tela de login (/auth): a rota interna nunca mostra outro formulário.
+    expect(route).not.toContain('<h1>Portões de Cormyr</h1>');
+    expect(route).not.toContain('signInWithPassword');
+    expect(route).toContain("navigate({to:'/auth',search:{next:'/'},replace:true})");
+    expect(route).toContain('<CouncilOpening publicTime>');
   });
 });
