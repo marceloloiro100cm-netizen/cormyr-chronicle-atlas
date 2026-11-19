@@ -1,6 +1,6 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 const f=vi.hoisted(()=>({scope:{uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']} as any,tables:{} as Record<string,any[]>,after:null as any,calls:0,
- runtimeReady:false,cloudReceipts:[] as any[],ack:vi.fn()}));
+ runtimeReady:false,cloudReceipts:[] as any[],cloudLetters:[] as any[],ack:vi.fn()}));
 vi.mock('../../../scripts/firebase/workspace-import.mjs',()=>({workspaceTables:new Set(),readWorkspaceTable:async(_d:any,_s:any,n:string)=>{
  if(!(n in f.tables))throw Error('workspace_source_table_missing');return f.tables[n];
 }}));
@@ -25,14 +25,14 @@ const db:any={collection:(name:string)=>({doc:()=>({
  collection:(sub:string)=>({
   get:async()=>({docs:sub==='access'?access.map(v=>({data:()=>v})):[]}),
   doc:()=>({get:async()=>({exists:f.runtimeReady,data:()=>({year:1522,month:0,day:1,version:1})})}),
-  limit:()=>({get:async()=>({docs:f.cloudReceipts.map(v=>({id:v.id,data:()=>v.data}))})}),
+  limit:()=>({get:async()=>({docs:(sub==='letters'?f.cloudLetters:f.cloudReceipts).map(v=>({id:v.id,data:()=>v.data}))})}),
   where:()=>({get:async()=>({docs:[]})}),
  })
 })})};
 const run=(input:any)=>createWorkspaceService({db,auth:{},snapshotId:'a'.repeat(64)}).execute('valid-token',input);
 const letter=(id:string,house:string,extra:any={})=>({id,sender_user_id:'gm',sender_player_id:'pg',sender_name:'Narrador',recipient_house_id:house,recipient_player_id:null,origin_house_id:null,subject:id,content:'real source '+id,created_at:'2026-11-01T00:00:00Z',delivered_at:'2026-11-01T00:00:00Z',deleted_at:null,publication_state:'delivered',delivery_week:2,creation_week:2,letter_number:2,letter_kind:'reservada',court_member_id:null,court_assignment:null,military_unit_id:null,batch_key:null,...extra});
 beforeEach(()=>{
- f.calls=0;f.after=null;f.runtimeReady=false;f.cloudReceipts=[];f.ack.mockReset();vi.unstubAllEnvs();
+ f.calls=0;f.after=null;f.runtimeReady=false;f.cloudReceipts=[];f.cloudLetters=[];f.ack.mockReset();vi.unstubAllEnvs();
  f.scope={uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']};
  f.tables={campaign_players:[{id:'pa',user_id:'a',roster_house_id:'ashkar'},{id:'pg',user_id:'gm'}],campaign_houses:[{id:'ashkar',name:'Ashkar',active:true}],
  campaign_letters:[letter('mine','ashkar'),letter('secret','other'),letter('draft','ashkar',{publication_state:'draft'})],
@@ -125,6 +125,35 @@ describe('real Firebase workspace boundary',()=>{
   expect((await run({kind:'rpc',name:'mail_page',args:{p_filters:{read:'yes'}}})).letters.map((l:any)=>l.id)).toEqual(['mine']);
   expect((await run({kind:'rpc',name:'mail_page',args:{p_filters:{read:'no'}}})).letters.map((l:any)=>l.id)).toEqual([]);
   expect(f.tables['letter_receipts']).toEqual([]);
+ });
+ it('includes separately approved live Firebase messages in the original filtered inbox',async()=>{
+  f.runtimeReady=true;
+  const id='b'.repeat(64),foreign='c'.repeat(64);
+  const base={source:'firebase-cloud',sourceSnapshotId:'a'.repeat(64),
+   senderUid:'gm',senderPlayerId:null,senderName:'Narrador',
+   originHouseId:null,recipientKind:'house',recipientPlayerId:null,
+   subject:'Aviso operacional',content:'Conteúdo real Cloud',
+   createdAt:'2026-11-19T14:00:00Z',deliveredAt:'2026-11-19T14:00:00Z',
+   campaignDate:'1522-01-01',creationRound:2,deliveryRound:2,
+   deletedAt:null,publicationState:'delivered'};
+  f.cloudLetters=[
+   {id,data:{...base,id,recipientHouseId:'ashkar'}},
+   {id:foreign,data:{...base,id:foreign,recipientHouseId:'other',subject:'SEGREDO'}},
+  ];
+  const rows=await run({kind:'query',table:'campaign_letters',steps:[]});
+  expect(rows.data.map((m:any)=>m.id)).toEqual(['mine',id]);
+  const page=await run({kind:'rpc',name:'mail_page',args:{p_filters:{text:'Aviso operacional'}}});
+  expect(page.letters.map((m:any)=>m.id)).toEqual([id]);
+  expect(JSON.stringify(page)).not.toContain('SEGREDO');
+  f.scope={...f.scope,uid:'editor',profile:'editor',playerId:null,memberHouseIds:[],editHouseIds:[]};
+  expect((await run({kind:'query',table:'campaign_letters',steps:[]})).data).toEqual([]);
+ });
+ it('refuses a malformed approved Cloud message rather than returning a partial inbox',async()=>{
+  f.runtimeReady=true;
+  f.cloudLetters=[{id:'b'.repeat(64),data:{subject:'bad'}}];
+  await expect(run({kind:'rpc',name:'mail_page',args:{}})).rejects.toThrow('firebase_operational_mail_integrity_failed');
+  f.runtimeReady=false;
+  expect((await run({kind:'rpc',name:'mail_page',args:{}})).letters.map((x:any)=>x.id)).toEqual(['mine']);
  });
  it('does not trust receipts from an unapproved Cloud runtime',async()=>{
   const {mailReceiptId}=await import('../../../scripts/firebase/cloud-mail-receipt-core.mjs');

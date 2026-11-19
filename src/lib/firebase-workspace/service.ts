@@ -4,6 +4,7 @@ import {readWorkspaceTable} from '../../../scripts/firebase/workspace-import.mjs
 import {createFirebaseCloudMail,CloudMailError} from '../../../scripts/firebase/cloud-mail-service.mjs';
 import {cloudMailRuntimeApproved} from '../../../scripts/firebase/cloud-mail-runtime-approval.mjs';
 import {mailReceiptId} from '../../../scripts/firebase/cloud-mail-receipt-core.mjs';
+import {projectCloudLetters} from '../mail/firebase-operational-mail';
 import {canReadLetterAs,canReadReply,mailPage,mailTrashPage,mailInsights,mailInsightsGrouped,mailOverviewGrouped,type MailDataset} from '../mail/mail-page-contract';
 import {readWorkspaceSpy} from '../../../scripts/firebase/workspace-spy.mjs';
 import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/firebase-workspace-mail';
@@ -45,42 +46,51 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
   // Operational read receipts live outside the immutable migration snapshot.
   // Reconcile them only under the independently approved live mail runtime.
   // Never use an unapproved or partially scanned receipt set for read indicators.
-  const addOperationalReceipts=async(letters:Row[],historical:Row[]):Promise<Row[]>=>{
+  const addOperationalMail=async(letters:Row[],historical:Row[]):Promise<{letters:Row[];receipts:Row[]}>=>{
    const runtime=db.collection('campaignCloudRuntime').doc(snapshotId);
    const [live,mailGate,calendar]=await Promise.all([
     runtime.get(),db.collection('campaignMailRuntime').doc(snapshotId).get(),
     db.collection('migrationTimeEngineStage').doc(snapshotId).collection('calendar').doc('current').get()]);
    if(!live.exists||!mailGate.exists||!calendar.exists||
       !cloudMailRuntimeApproved(live.data(),mailGate.data(),calendar.data(),snapshotId))
-    return historical;
-   const snapshot=await runtime.collection('mailReadReceipts').limit(2001).get();
+    return {letters,receipts:historical};
+   // Read the whole bounded approved runtime before exposing any new row.
+   const [mailDocs,snapshot]=await Promise.all([
+    runtime.collection('letters').limit(501).get(),
+    runtime.collection('mailReadReceipts').limit(2001).get()]);
+   if(!Array.isArray(mailDocs.docs)||mailDocs.docs.length>500)
+    throw new CloudAccessError('mailbox_requires_pagination',503);
+   const operational=projectCloudLetters(mailDocs.docs,snapshotId);
+   const all=[...letters,...operational];
+   if(new Set(all.map(l=>l['id'])).size!==all.length)
+    throw new CloudAccessError('mailbox_id_conflict',503);
    if(!Array.isArray(snapshot.docs)||snapshot.docs.length>2000)
     throw new CloudAccessError('mail_receipts_too_large',503);
    const existing=new Map<string,Row>();
    const key=(letterId:string,uid:string)=>letterId+'|'+uid;
    for(const row of historical)existing.set(key(String(row['letter_id']),String(row['user_id'])),row);
-   const delivered=new Set(letters.filter(l=>l['publication_state']==='delivered'&&
+   const delivered=new Set(all.filter(l=>l['publication_state']==='delivered'&&
     l['deleted_at']==null).map(l=>l['id']));
    const safe=/^[^/\u0000-\u001f\u007f]{1,128}$/;
    for(const doc of snapshot.docs){
     const data=doc.data(),uid=data?.viewerUid,letterId=data?.letterId,at=data?.readAt;
-    if(data?.source!=='imported'||typeof uid!=='string'||!safe.test(uid)||
+    if(!['imported','firebase-cloud'].includes(String(data?.source))||typeof uid!=='string'||!safe.test(uid)||
        typeof letterId!=='string'||!safe.test(letterId)||!delivered.has(letterId)||
        typeof at!=='string'||at.length>56||!Number.isFinite(Date.parse(at))||
-       doc.id!==mailReceiptId(uid,'imported',letterId))continue;
+       doc.id!==mailReceiptId(uid,data.source,letterId))continue;
     const k=key(letterId,uid),current=existing.get(k);
     if(!current||String(current['read_at'])<at)
       existing.set(k,{letter_id:letterId,user_id:uid,read_at:at});
    }
-   return [...existing.values()];
+   return {letters:all,receipts:[...existing.values()]};
   };
   let mailPromise:Promise<MailDataset>|undefined;
   const mail=()=>mailPromise??=(async()=>{
    const [letters,replies,receipts,p,m,h,rounds]=await Promise.all([
     rows('campaign_letters'),rows('letter_replies'),rows('letter_receipts'),players(),memberships(),rows('campaign_houses'),rows('letter_rounds')]);
    if(scope.profile==='editor')denied();
-   const mergedReceipts=await addOperationalReceipts(letters,receipts);
-   const dataset=projectWorkspaceMailTables({campaign_letters:letters,letter_replies:replies,letter_receipts:mergedReceipts,
+   const merged=await addOperationalMail(letters,receipts);
+   const dataset=projectWorkspaceMailTables({campaign_letters:merged.letters,letter_replies:replies,letter_receipts:merged.receipts,
     campaign_players:p,house_memberships:m,campaign_houses:h,letter_rounds:rounds} as WorkspaceMailTables,
     {...scope,profile:scope.profile as 'narrador'|'jogador'});
    // A foreign letter may have a valid receipt identity, but it must never
