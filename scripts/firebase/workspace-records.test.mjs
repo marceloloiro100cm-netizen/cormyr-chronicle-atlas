@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterWorkspaceRecords,mayReadWorkspaceRecord,WorkspaceRecordError}
+import {filterWorkspaceRecords,mayReadWorkspaceRecord,listWorkspaceRecords,WorkspaceRecordError}
   from './workspace-records.mjs';
 const player={uid:'u1',profile:'jogador',playerId:'p1',memberHouseIds:['h1']};
 const narrator={uid:'gm',profile:'narrador',playerId:null,memberHouseIds:[]};
@@ -35,4 +35,14 @@ test('unexpected malformed imported rows fail before any projection',()=>{
  const bad=input.map(x=>({...x}));bad[0].version='1';
  assert.throws(()=>filterWorkspaceRecords(bad,player),/workspace_record_invalid/);
  assert.ok(!JSON.stringify(filterWorkspaceRecords(input,player)).includes('CONTEUDO DE OUTRA CASA'));
+});
+
+test('denied House and invalid query do not touch the imported Firestore rows',async()=>{
+ const db={collection(){throw Error('SHOULD_NOT_READ_PRIVATE_SOURCE');}};
+ await assert.rejects(
+   listWorkspaceRecords(db,'a'.repeat(64),player,{houseId:'h2'}),
+   e=>e instanceof WorkspaceRecordError&&e.code==='access_denied'&&e.status===403);
+ await assert.rejects(
+   listWorkspaceRecords(db,'a'.repeat(64),player,{kind:'bad/query'}),
+   e=>e instanceof WorkspaceRecordError&&e.code==='invalid_record_request');
 });

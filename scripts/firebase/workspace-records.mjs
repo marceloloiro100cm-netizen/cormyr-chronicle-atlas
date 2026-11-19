@@ -72,7 +72,12 @@ export function filterWorkspaceRecords(rows,viewer,{houseId,kind}={}){
     .sort(order);
 }
 export async function listWorkspaceRecords(db,snapshotId,viewer,input={}){
+  // Reject unauthorized House queries BEFORE reading any immutable archive row.
   validateViewer(viewer);
+  if(!input||typeof input!=='object'||Array.isArray(input))bad();
+  validateHouseArg(input.houseId,viewer);
+  if(input.kind!==undefined&&
+     (typeof input.kind!=='string'||!/^[-a-z_]{1,80}$/.test(input.kind)))bad();
   const rows=await readWorkspaceTable(db,snapshotId,'campaign_records');
   const visible=filterWorkspaceRecords(rows,viewer,input);
   return {readOnly:true,source:'verified-workspace-archive',
