@@ -253,38 +253,63 @@ export function createFirebaseAccountService({
   const v=await currentAccountAccess(db,snapshotId,uid);
   if(!v||v.userId!==uid)deny('access_denied',403);
   return {profile:v.profile,active:v.active===true,
-   requirePasswordChange:v.requirePasswordChange===true};
+   requirePasswordChange:v.requirePasswordChange===true,
+   version:Number.isSafeInteger(v.version)?v.version:0};
  }
  async function completePassword(token,input){
   const uid=await actor(token);
-  if(!asObject(input)||!asPassword(input.password)||(typeof input.requestKey!=='string'||!KEY.test(input.requestKey)))
+  if(!asObject(input)||!asPassword(input.password)||
+     typeof input.requestKey!=='string'||!KEY.test(input.requestKey)||
+     !Number.isSafeInteger(input.expectedVersion)||input.expectedVersion<0)
     deny('invalid_password_request');
   await gate();
-  const access=await currentAccountAccess(db,snapshotId,uid);
-  if(!access||access.userId!==uid||access.active!==true||
-     !['jogador','editor'].includes(access.profile))
-   deny('password_change_not_required',403);
-  // Mudança de senha acontece no Firebase Admin, não no Supabase.
+  const account=await currentAccountAccess(db,snapshotId,uid);
+  if(!account||account.userId!==uid||account.active!==true||
+     !['jogador','editor'].includes(account.profile))
+    deny('password_change_not_allowed',403);
+  const nowAt=now(),ref=accounts.doc(uid);
+  const op=requests.doc(hash('password-request:'+uid+':'+input.requestKey));
+  const auditRef=audit.doc(hash('password:'+uid+':'+input.requestKey));
+  const already=await op.get();
+  if(already.exists){
+    if(already.data()?.actorUid!==uid||
+       already.data()?.expectedVersion!==input.expectedVersion)
+      deny('request_key_conflict',409);
+    return {changed:true,loginRequired:true,duplicate:true};
+  }
+  if((account.version??0)!==input.expectedVersion)
+    deny('version_conflict',409);
+  // A nova senha fica só no provedor Auth; nenhuma derivação dela vai ao
+  // Firestore, a logs ou à auditoria.
   try{await auth.updateUser(uid,{password:input.password});}
   catch{deny('password_update_failed',503);}
-  const nowAt=now(),ref=accounts.doc(uid),auditRef=audit.doc(hash('password:'+uid+':'+input.requestKey));
   try{
-   await db.runTransaction(async tx=>{
-     const [live,prev]=await Promise.all([tx.get(runtime),tx.get(ref)]);
-     if(!runtimeReady(live.data(),snapshotId))deny('account_runtime_not_ready',503);
-     const current=prev.exists?prev.data():access;
-     if(current.userId!==uid||current.active!==true||
-        current.profile==='narrador')deny('access_denied',403);
-     const updated={...current,requirePasswordChange:false,
-       version:(current.version??0)+1,updatedBy:uid,updatedAt:nowAt};
-     tx.set(ref,updated);
-     tx.create(auditRef,{actorUid:uid,targetUid:uid,
-       action:'password_completed',version:updated.version,at:nowAt});
-   });
-   if(typeof auth.revokeRefreshTokens==='function')
-     await auth.revokeRefreshTokens(uid);
-   return {changed:true,loginRequired:true};
+    await db.runTransaction(async tx=>{
+      const [live,prev,request]=await Promise.all([
+        tx.get(runtime),tx.get(ref),tx.get(op),
+      ]);
+      if(!runtimeReady(live.data(),snapshotId))
+        deny('account_runtime_not_ready',503);
+      if(request.exists)deny('request_key_conflict',409);
+      const current=prev.exists?prev.data():account;
+      if(current.userId!==uid||current.active!==true||
+         current.profile==='narrador')deny('access_denied',403);
+      if((current.version??0)!==input.expectedVersion)
+        deny('version_conflict',409);
+      const updated={...current,requirePasswordChange:false,
+        version:input.expectedVersion+1,updatedBy:uid,updatedAt:nowAt};
+      tx.set(ref,updated);
+      tx.create(op,{actorUid:uid,targetUid:uid,
+        expectedVersion:input.expectedVersion,version:updated.version,at:nowAt});
+      tx.create(auditRef,{actorUid:uid,targetUid:uid,
+        action:'password_completed',version:updated.version,
+        requestKeyDigest:hash(input.requestKey),at:nowAt});
+    });
+    if(typeof auth.revokeRefreshTokens==='function')
+      await auth.revokeRefreshTokens(uid);
+    return {changed:true,loginRequired:true,duplicate:false};
   }catch{deny('password_updated_access_pending',503);}
  }
+
  return {submit,list,status,completePassword};
 }
