@@ -62,10 +62,12 @@ async function handle(request:Request):Promise<Response>{
     return error(401,'authentication_required');
   try{
     const payload=await boundedJson(request) as {action?:unknown;houseId?:unknown;editionId?:unknown;
-      targetUid?:unknown;proposal?:unknown;filters?:unknown;page?:unknown;size?:unknown};
+      targetUid?:unknown;proposal?:unknown;filters?:unknown;page?:unknown;size?:unknown;
+      recordId?:unknown;kind?:unknown};
     if(!['session','inspectWorkspaceImport','inspectWorkspaceLinks','listAccessRemediation','previewAccessRemediation','listHouses',
       'getHouse','getCalendar',
-      'listOriginalMail','listMailbox','listNewspaper','getNewspaper','listSpyAgents',
+      'listOriginalMail','listOriginalRecords','getOriginalRecord',
+      'listOriginalRecordVersions','listMailbox','listNewspaper','getNewspaper','listSpyAgents',
       'listSpyDossiers','listHouseBattles'].includes(String(payload.action)))
       return error(400,'invalid_action');
     // Firebase Admin uses the App Hosting service account, not a JSON key in source.
@@ -99,6 +101,12 @@ async function handle(request:Request):Promise<Response>{
       case 'getCalendar':result=await service.getCalendar(token);break;
       case 'getHouse':result=await service.getHouse(token,payload.houseId);break;
       case 'listMailbox':result=await service.listMailbox(token);break;
+      case 'listOriginalRecords':
+        result=await service.listOriginalRecords(token,{houseId:payload.houseId,kind:payload.kind});break;
+      case 'getOriginalRecord':
+        result=await service.getOriginalRecord(token,payload.recordId);break;
+      case 'listOriginalRecordVersions':
+        result=await service.listOriginalRecordVersions(token,payload.recordId);break;
       case 'listOriginalMail':
         result=await loadWorkspaceMailPage(getFirestore(app),snapshotId,
           await service.workspaceMailScope(token),

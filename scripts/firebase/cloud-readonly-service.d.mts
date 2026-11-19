@@ -26,6 +26,10 @@ export interface FirebaseCloudReadonly {
   getHouse(idToken:string,houseId:unknown):Promise<unknown>;
   getCalendar(idToken:string):Promise<unknown>;
   listMailbox(idToken:string):Promise<unknown>;
+  /** Read-only, per-session migration archive records with original SQL scope. */
+  listOriginalRecords(idToken:string,input:unknown):Promise<unknown>;
+  getOriginalRecord(idToken:string,recordId:unknown):Promise<unknown>;
+  listOriginalRecordVersions(idToken:string,recordId:unknown):Promise<unknown>;
   listNewspaper(idToken:string):Promise<unknown>;
   getNewspaper(idToken:string,editionId:unknown):Promise<unknown>;
   listSpyAgents(idToken:string,houseId:unknown):Promise<unknown>;

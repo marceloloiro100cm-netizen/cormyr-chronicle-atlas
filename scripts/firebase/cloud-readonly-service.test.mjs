@@ -393,6 +393,16 @@ test('original mail workspace scope is checked against live Auth and House stage
  await rejects(()=>noPlayer.service().workspaceMailScope(token),'access_denied',403);
 });
 
+test('original record archive endpoints enforce viewer roles before private IO',async()=>{
+ const f=fixture('editor');
+ await rejects(()=>f.service().listOriginalRecords(token,{}),'access_denied',403);
+ await rejects(()=>f.service().getOriginalRecord(token,'x'),'access_denied',403);
+ await rejects(()=>f.service().listOriginalRecordVersions(token,'x'),'access_denied',403);
+ const player=fixture('jogador');
+ await rejects(()=>player.service().listOriginalRecords(token,{houseId:'house-b'}),'access_denied',403);
+ await rejects(()=>player.service().getOriginalRecord(token,'../secret'),'invalid_record_request',400);
+});
+
 test('only the Narrator may inspect imported workspace metadata',async()=>{
  const f=fixture('jogador');
  await rejects(()=>f.service().inspectWorkspaceImport(token),'access_denied',403);

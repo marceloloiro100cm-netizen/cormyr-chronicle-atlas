@@ -1,6 +1,8 @@
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 import {inspectWorkspaceMetadata} from './workspace-audit.mjs';
 import {inspectWorkspaceLinks} from './workspace-link-audit.mjs';
+import {listWorkspaceRecords,getWorkspaceRecord,listWorkspaceRecordVersions,
+  WorkspaceRecordError} from './workspace-records.mjs';
 /**
  * Cormyr: Firebase Cloud-only, read-only campaign access.
  *
@@ -121,6 +123,34 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       const {profile,memberHouseIds}=await scopeFor(idToken);
       return {authenticated:true,profile,memberHouseIds,readOnly:true,
         snapshotReconciliationPending:true};
+    },
+    /** Original archived records; never changes the operational Firestore data. */
+    async listOriginalRecords(idToken,input){
+      const viewer=await scopeFor(idToken);
+      if(viewer.profile==='editor')deny('access_denied',403);
+      try{return await listWorkspaceRecords(db,snapshotId,viewer,input);}
+      catch(error){
+        if(error instanceof WorkspaceRecordError)deny(error.code,error.status);
+        throw error;
+      }
+    },
+    async getOriginalRecord(idToken,recordId){
+      const viewer=await scopeFor(idToken);
+      if(viewer.profile==='editor')deny('access_denied',403);
+      try{return await getWorkspaceRecord(db,snapshotId,viewer,recordId);}
+      catch(error){
+        if(error instanceof WorkspaceRecordError)deny(error.code,error.status);
+        throw error;
+      }
+    },
+    async listOriginalRecordVersions(idToken,recordId){
+      const viewer=await scopeFor(idToken);
+      if(viewer.profile==='editor')deny('access_denied',403);
+      try{return await listWorkspaceRecordVersions(db,snapshotId,viewer,recordId);}
+      catch(error){
+        if(error instanceof WorkspaceRecordError)deny(error.code,error.status);
+        throw error;
+      }
     },
     /** Internal-only access scope for the original Firebase mail projection. */
     async workspaceMailScope(idToken){
