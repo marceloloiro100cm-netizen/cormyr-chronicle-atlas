@@ -6,6 +6,8 @@ export class CloudAccessError extends Error {
 }
 
 export interface FirebaseCloudReadonly {
+  workspaceScope(idToken:string):Promise<{uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]}>;
+  workspaceCalendar(idToken:string):Promise<unknown>;
   session(idToken:string):Promise<unknown>;
   /** Aggregate workspace import counts, restricted to authenticated Narrator. */
   inspectWorkspaceImport(idToken:string):Promise<unknown>;

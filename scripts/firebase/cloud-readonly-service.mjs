@@ -125,6 +125,7 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
   }
 
   return {
+    workspaceScope:scopeFor,
     async session(idToken){
       const {profile,memberHouseIds}=await scopeFor(idToken);
       return {authenticated:true,profile,memberHouseIds,readOnly:true,
@@ -694,6 +695,19 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       if(Buffer.byteLength(JSON.stringify(response),'utf8')>40_000)
         deny('battle_response_too_large',503);
       return response;
+    },
+    async workspaceCalendar(idToken){
+      await scopeFor(idToken);
+      await stageReady('migrationTimeEngineStage');
+      const doc=await get(db,'migrationTimeEngineStage',snapshotId,'calendar','current');
+      const live=await db.collection('campaignCloudRuntime').doc(snapshotId).get();
+      const d=effectiveCloudCalendar(doc.data(),live.data(),snapshotId);
+      const autoAdvance=d?.autoAdvance??doc.data()?.autoAdvance;
+      if(!doc.exists||!Number.isInteger(d?.year)||!Number.isInteger(d?.month)||
+         !Number.isInteger(d?.day)||!Number.isInteger(d?.version)||typeof autoAdvance!=='boolean')
+        deny('calendar_unavailable',503);
+      return {year:d.year,month:d.month,day:d.day,festival:d.festival??null,
+        version:d.version,auto_advance:autoAdvance,last_round:d.lastRound??null};
     },
     async getCalendar(idToken){
       const scope=await scopeFor(idToken);

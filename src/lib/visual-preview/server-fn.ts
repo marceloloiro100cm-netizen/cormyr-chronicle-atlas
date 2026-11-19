@@ -1,3 +1,4 @@
+import {firebaseWorkspaceClient,workspaceFunction} from '@/lib/firebase-workspace/state';
 import {useServerFn as useStartServerFn} from '@tanstack/react-start';
 import {isVisualPreview, VISUAL_PREVIEW_PENDING} from './state';
 
@@ -30,6 +31,10 @@ export function clearVisualServerFns() {
  */
 export function useServerFn<T extends AnyServerFn>(serverFn: T): (...args: Parameters<T>) => ReturnType<T> {
   const real = useStartServerFn(serverFn);
+  if (firebaseWorkspaceClient()) return ((...args: Parameters<T>) => {
+    const handler=workspaceFunction(serverFn);
+    return handler?handler(args[0]):Promise.reject(new Error('Esta operação ainda não está disponível no Firebase.'));
+  }) as unknown as (...args: Parameters<T>) => ReturnType<T>;
   if (!isVisualPreview()) return real as unknown as (...args: Parameters<T>) => ReturnType<T>;
   return ((...args: Parameters<T>) => {
     const handler = handlers.get(serverFn);
