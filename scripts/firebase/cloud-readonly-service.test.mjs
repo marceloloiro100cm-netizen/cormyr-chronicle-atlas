@@ -765,7 +765,7 @@ test('Cloud editions are readable only after separate runtime approval and remai
   f.docs.set(runtime,approved);
   f.docs.set(published,{
     id:'cloud-allowed',source:'firebase-cloud',sourceSnapshotId:snapshot,
-    title:'Nova Folha',subtitle:'Notícias de Cormyr',editionNo:4,
+    title:'Nova Folha',subtitle:'Notícias de Cormyr',editionNo:4,version:1,
     publishedAt:'2026-11-16T14:00:00Z',cancelledAt:null,
     state:'published',blocks:[{type:'article',text:'Edição Nova'}],
   });
@@ -788,6 +788,7 @@ test('Cloud editions are readable only after separate runtime approval and remai
   f.docs.set(published,original);
   const open=await f.service().getNewspaper(token,'cloud-allowed');
   assert.equal(open.blocks[0].text,'Edição Nova');
+  assert.equal(open.version,1);
   await rejects(()=>f.service().getNewspaper(token,'cloud-hidden'),'edition_unavailable',404);
   f.docs.set(runtime,{...approved,newspaperWriteApproved:false});
   list=await f.service().listNewspaper(token);
