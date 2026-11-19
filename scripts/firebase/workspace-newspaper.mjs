@@ -5,7 +5,7 @@
  */
 import {readWorkspaceTable} from './workspace-import.mjs';
 
-const ID=/^[^/\\u0000-\\u001f]{1,128}$/;
+const ID=/^[^/\u0000-\u001f]{1,128}$/;
 const STATES=new Set(['draft','published','archived','cancelled']);
 const PUBLIC=new Set(['published','archived']);
 export class WorkspaceNewspaperError extends Error{
