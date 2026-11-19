@@ -7,11 +7,13 @@ export type HouseRuleRevision={definition:CatalogItem;version:number};
 export function mergeHouseRuleCatalog(
  archived:CatalogItem[],operational:HouseRuleRevision[],
 ):CatalogItem[]{
- const merged=new Map<string,CatalogItem>();
- for(const rule of CORE_CATALOG)merged.set(rule.id,rule);
- for(const rule of archived)merged.set(rule.id,rule);
- for(const row of operational)merged.set(row.definition.id,{
+ const historical=archived.filter(row=>row&&typeof row.id==='string');
+ const revisions=new Map(operational.map(row=>[row.definition.id,row]));
+ const base=CORE_CATALOG.filter(item=>!historical.some(r=>r.id===item.id)&&
+  !revisions.has(item.id));
+ const previous=historical.filter(item=>!revisions.has(item.id));
+ const current=operational.map(row=>({
   ...row.definition,operationalRuleVersion:row.version,
- } as CatalogItem);
- return [...merged.values()];
+ } as CatalogItem));
+ return [...base,...previous,...current];
 }
