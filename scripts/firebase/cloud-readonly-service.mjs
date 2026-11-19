@@ -337,16 +337,18 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
         inventory=await auth.listUsers(1000);
       }catch{deny('access_inventory_unverified',503);}
       if(!Array.isArray(inventory?.users)||inventory.pageToken||
-         ![13,14].includes(inventory.users.length))
+         inventory.users.length>250||inventory.users.length<13)
         deny('access_inventory_unverified',503);
-      const liveByUid=new Map();
+      // Contas operacionais novas não integram as 14 identidades importadas.
+      const liveByUid=new Map(),checkedLive=new Set();
       for(const u of inventory.users){
         if(!u||typeof u.uid!=='string'||!SAFE_ID.test(u.uid)||
-           u.disabled!==false||!seen.has(u.uid)||liveByUid.has(u.uid))
+           checkedLive.has(u.uid))
           deny('access_inventory_unverified',503);
-        liveByUid.set(u.uid,u);
+        checkedLive.add(u.uid);
+        if(seen.has(u.uid))liveByUid.set(u.uid,u);
       }
-      if(liveByUid.size!==inventory.users.length||
+      if(![13,14].includes(liveByUid.size)||
          seen.size-liveByUid.size>1)
         deny('access_inventory_unverified',503);
       const archivedHistoricalAccess=seen.size-liveByUid.size;
