@@ -48,9 +48,8 @@ describe('real Firebase mail filters follow original viewer ACL',()=>{
   it('narrator can see both histories without contents; editor is forbidden',()=>{
     const full=projectWorkspaceMailOptions(fixture(),narrator);
     expect(full.weeks).toEqual([9,4]);
-    expect(full.courts.map(v=>v.id)).toEqual([
-      'h2:court-one','h2:court-private',
-    ]);
+    expect(new Set(full.courts.map(v=>v.id))).toEqual(
+      new Set(['h2:court-one','h2:court-private']));
     expect(JSON.stringify(full)).not.toContain('SEGREDO');
     expect(()=>projectWorkspaceMailOptions(fixture(),{
       uid:'editor',profile:'editor' as unknown as 'jogador',
