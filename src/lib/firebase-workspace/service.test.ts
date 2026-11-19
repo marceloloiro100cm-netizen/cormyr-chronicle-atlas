@@ -205,7 +205,7 @@ describe('real Firebase workspace boundary',()=>{
   const reply=await run({kind:'rpc',name:'dated_mail_action',args});
   expect(reply.ids).toHaveLength(2);expect(reply.state).toBe('delivered');
   expect(f.batch).toHaveBeenCalledTimes(1);expect(f.send).not.toHaveBeenCalled();
-  const sent=f.batch.mock.calls[0][1];
+  const sent=f.batch.mock.calls[0]![1];
   expect(sent.map((x:any)=>x.requestKey)).toEqual(['batch-abc123_0','batch-abc123_1']);
  });
  it('connects original reply and week detection to approved Firebase mail',async()=>{
