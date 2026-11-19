@@ -77,6 +77,18 @@ describe('Firebase-only catálogo público com publicação independente',()=>{
     for(const bad of ['SUPER_SECRET','treasury','private','sourceSnapshotId',HASH])
       expect(output).not.toContain(bad);
   });
+  it('permite catálogo português revisado sem criar ou liberar traduções',async()=>{
+    const f=fixture({[stage]:{
+      status:'complete',private:true,sourceSnapshotId:HASH,
+      publicReviewApproved:true,reviewDigest:'b'.repeat(64),
+      catalogVersion:3,reviewScope:'catalog-only',translationsDeferred:true,
+    },[en]:null});
+    const result=await f.getCatalog();
+    expect(result.houses.map(h=>h.name)).toEqual(['Evenhand']);
+    expect(f.reads).toEqual([runtime,stage,catalog]);
+    await denied(f.getTranslations('en'));
+    expect(f.reads).toEqual([runtime,stage,catalog,runtime,stage]);
+  });
   it('não consulta nenhum dado se flag, projeto, snapshot ou ambiente falharem',async()=>{
     const f=fixture();
     for(const changes of [

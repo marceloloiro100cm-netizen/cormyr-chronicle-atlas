@@ -97,6 +97,19 @@ describe('real Firebase workspace boundary',()=>{
   expect(data.houses.map((h:any)=>h.id)).toEqual(['ashkar']);
   expect(data.players.find((p:any)=>p.id==='pa').houses).toEqual(['ashkar']);
  });
+ it('does not route historical player memberships into inactive or old-season recipient filters',async()=>{
+  f.tables['noble_house_sheets']=[];
+  const original=f.tables['campaign_houses']![0]!;
+  original.season=1;
+  const old=await run({kind:'rpc',name:'mail_compose_options'});
+  expect(old.players.find((p:any)=>p.id==='pa')?.houses).toEqual([]);
+  original.season=2;original.active=false;
+  const disabled=await run({kind:'rpc',name:'mail_compose_options'});
+  expect(disabled.players.find((p:any)=>p.id==='pa')?.houses).toEqual([]);
+  original.active=true;
+  const current=await run({kind:'rpc',name:'mail_compose_options'});
+  expect(current.players.find((p:any)=>p.id==='pa')?.houses).toEqual(['ashkar']);
+ });
  it('restores actual House narratives without leaking a foreign House or editorial access',async()=>{
   f.tables['campaign_houses']![0]!.details='História original Ashkar';
   f.tables['campaign_houses']!.push({id:'other',name:'Casa Estrangeira',active:true,season:2,details:'SEGREDO DA OUTRA CASA'});

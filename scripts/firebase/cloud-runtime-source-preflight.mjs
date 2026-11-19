@@ -4,6 +4,8 @@
  * This code never writes, sets flags, creates accounts or selects a round.
  */
 import {validateHarptosDate} from './stage-temporal-emulator.mjs';
+import {cloudMailRuntimeApproved} from './cloud-mail-runtime-approval.mjs';
+import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 
 const HASH=/^[a-f0-9]{64}$/;
 const CORE=Object.freeze([
@@ -88,6 +90,26 @@ export async function inspectCloudRuntimeSources({db,snapshotId}={}){
   const auxiliaryStagesVerified=AUX.filter(name=>stages[name]===true).length;
   const validCalendar=stages.migrationTimeEngineStage===true&&
     calendarValid(calendar);
+  const live=houseDoc?.exists===true?houseDoc.data():null;
+  const mailState=mailDoc?.exists===true?mailDoc.data():null;
+  const currentCalendar=validCalendar?
+    effectiveCloudCalendar(calendar.data(),live,snapshotId):null;
+  // Verify a coherent, explicitly recorded operational clock and both
+  // mail gates. This is NOT evidence that the post-import source delta is zero.
+  const operationalCalendarPublished=Boolean(
+    live?.status==='active'&&live.private===true&&
+    live.sourceSnapshotId===snapshotId&&
+    live.sourceSnapshotReconciled===true&&
+    live.applicationEnabled===true&&live.calendarSource==='operational'&&
+    live.publicTimeApproved===true&&
+    Number.isSafeInteger(live.publishedTimeVersion)&&
+    live.publishedTimeVersion>=1&&
+    live.publishedTimeVersion===currentCalendar?.version&&
+    Number.isSafeInteger(live.openRound)&&live.openRound>=1&&
+    Number.isSafeInteger(live.launchDraftVersion)&&live.launchDraftVersion>=1&&
+    live.sourceAuthority==='owner_adopted_firebase');
+  const mailRuntimeAligned=validCalendar&&
+    cloudMailRuntimeApproved(live,mailState,calendar.data(),snapshotId);
   return {
     scope:'CORMYR_CLOUD_RUNTIME_SOURCE_PREFLIGHT_READ_ONLY',
     sourceStagesVerified:requiredStagesVerified?CORE.length:
@@ -104,6 +126,10 @@ export async function inspectCloudRuntimeSources({db,snapshotId}={}){
     mailDraftConfirmed,
     houseDraftConfirmed,
     disabledDraftsConfirmed:mailDraftConfirmed&&houseDraftConfirmed,
+    operationalCalendarPublished,
+    mailRuntimeAligned:Boolean(mailRuntimeAligned),
+    // A coherent operational clock is not equivalent to final source
+    // reconciliation. This intentionally stays an independent blocker.
     // Neither a historical lastRound nor a calendar version tells us the
     // CURRENT open round without a separate live-source reconciliation.
     currentRoundApproved:false,
