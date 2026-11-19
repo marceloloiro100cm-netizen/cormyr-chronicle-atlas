@@ -11,7 +11,6 @@ import { CORE_CATALOG } from './catalog';
 import { newHouseState, RESOURCE_KEYS, type HouseState, type CatalogItem, type Unit, type Resource, type CourtMember } from './types';
 import { alternativeFortune, balances, activeHoldings,createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
 import { calendarMonthIndex, requireCalendarAlignment, reconcileHouseCalendar } from './calendar-consistency';
-import { isMonthSensitiveHouseAction } from './monthly-operation-policy';
 import { confirmFortune, convertResources, runTournament } from './fortune';
 import { historyAdjustments, memberBonusAdjustments, historicalFoundationYear, rollFoundation, rollHistoricalEvent } from './creation-history';
 import { improveEquipment } from './equipment';
