@@ -51,7 +51,7 @@ describe('Batalha V2 — lotes 5, 6 e 7',()=>{
   expect(screen.getByText(/sem alterações nas fichas oficiais/)).toBeInTheDocument();
  });
  it('menu do Narrador permanece sob data.admin e flag; arena não chama API de casas',()=>{
-  const route=readFileSync(resolve('src/routes/_authenticated/jogadores.tsx'),'utf8');
+  const route=readFileSync(resolve('src/components/players/players-workspace.tsx'),'utf8');
   expect(route).toContain("section==='batalha'&&BATTLE_MODULE_ENABLED?<BattleNarratorHub/>");
   expect(route).toContain("data.admin?<div");
   expect(route).toContain("NARRATOR_MENU.filter(([id])=>id!=='batalha'||BATTLE_MODULE_ENABLED)");

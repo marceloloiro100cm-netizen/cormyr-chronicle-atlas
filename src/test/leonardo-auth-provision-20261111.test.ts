@@ -17,7 +17,7 @@ describe('Cormyr: Jogador, Editor-Chefe e Narrador',()=>{
   expect(auth).not.toContain('<option value="espiao">Leonardo</option>');
  });
  it('a identidade editorial não carrega o painel ou as fichas de Casas',()=>{
-  const route=source('src/routes/_authenticated/jogadores.tsx');
+  const route=source('src/components/players/players-workspace.tsx');
   expect(route).toContain("scope.data.profile==='editor'");
   expect(route).toContain('<EditorialWorkspace key={approved}');
   expect(route).not.toContain('showLeonardoEditorial');
@@ -40,7 +40,7 @@ describe('Cormyr: Jogador, Editor-Chefe e Narrador',()=>{
   expect(backend).not.toContain("password:'cormyr'");
  });
  it('a senha deve ser alterada antes de consultas privadas',()=>{
-  const route=source('src/routes/_authenticated/jogadores.tsx');
+  const route=source('src/components/players/players-workspace.tsx');
   const change=source('src/components/change-password.tsx');
   expect(route.indexOf('(!scope.data.active||scope.data.passwordChangeRequired)'))
    .toBeLessThan(route.indexOf("scope.data.profile==='editor'"));

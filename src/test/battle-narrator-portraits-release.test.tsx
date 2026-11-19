@@ -40,7 +40,7 @@ describe('Publicação de batalha exclusiva do Narrador · retratos',()=>{
  it('jogadores não veem o módulo nem convocações enquanto o Narrador recebe a ferramenta',()=>{
   expect(BATTLE_MODULE_ENABLED).toBe(true);
   expect(BATTLE_PLAYERS_ENABLED).toBe(false);
-  const route=readFileSync('src/routes/_authenticated/jogadores.tsx','utf8');
+  const route=readFileSync('src/components/players/players-workspace.tsx','utf8');
   const hub=readFileSync('src/components/battle/BattleNarratorHub.tsx','utf8');
   expect(route).toContain("!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED?");
   expect(route).toContain("tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED&&<BattleV3PlayerEntry");

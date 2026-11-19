@@ -33,7 +33,7 @@ export const FINAL_TEMPORAL_CONTRACTS=Object.freeze({
   markers:['TEMPORAL_QUERY_CONNECTIONS','temporalQueryKeysForInvalidation'],
  },
  'bloqueio global':{
-  path:'src/routes/_authenticated/jogadores.tsx',
+  path:'src/components/players/players-workspace.tsx',
   markers:['watchNarratorPrivateReadRevocations(qc)','if(revoked.data)return','CAMPAIGN_ACCESS_SCOPE_POLL_MS'],
  },
  'leitura privada':{

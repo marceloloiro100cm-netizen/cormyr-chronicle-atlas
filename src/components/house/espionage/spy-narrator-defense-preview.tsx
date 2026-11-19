@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
-import {useServerFn} from '@tanstack/react-start';
+import {useServerFn} from '@/lib/visual-preview/server-fn';
 import {Button} from '@/components/ui/button';
 import {reviewSpyTargetDefense} from '@/lib/espionage/spy-target-defense.functions';
 

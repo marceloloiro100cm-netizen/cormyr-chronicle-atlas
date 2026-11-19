@@ -46,7 +46,7 @@ describe('Auditoria UX — módulo de batalha narrador',()=>{
  });
  it('mantém o acesso dos jogadores desativado, sem alterar o motor ou criar escrituras oficiais',()=>{
   const flags=source('src/lib/battle/feature-flag.ts');
-  const route=source('src/routes/_authenticated/jogadores.tsx');
+  const route=source('src/components/players/players-workspace.tsx');
   const quick=source('src/components/battle/BattleSetup.tsx');
   expect(flags).toContain('BATTLE_PLAYERS_ENABLED=false');
   expect(route).toContain("!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED");

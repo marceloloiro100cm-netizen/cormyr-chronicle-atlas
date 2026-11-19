@@ -21,7 +21,7 @@ describe('Leonardo — acesso de usuário ao simulador isolado',()=>{
   expect(entry).not.toMatch(/useServerFn|supabaseAdmin|saveBattleReplay|previewBattleSourceStack|BattleNarratorHub|BattleGotConvocation|BattleV3LiveArena/);
  });
  it('não oferece batalhas a Leonardo nem a perfis editoriais',()=>{
-  const route=readFileSync('src/routes/_authenticated/jogadores.tsx','utf8');
+  const route=readFileSync('src/components/players/players-workspace.tsx','utf8');
   const flags=readFileSync('src/lib/battle/feature-flag.ts','utf8');
   expect(flags).toContain('BATTLE_PLAYERS_ENABLED=false');
   expect(route).toContain("scope.data.profile==='editor'");

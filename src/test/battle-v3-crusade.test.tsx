@@ -88,7 +88,7 @@ describe('Crusada V3 — exércitos modelos, habilidades e separação da campan
  });
  it('exposição de jogador tem escopo autenticado e não importa operações de escrita oficiais',()=>{
   const src=(path:string)=>readFileSync(resolve(path),'utf8');
-  const route=src('src/routes/_authenticated/jogadores.tsx');
+  const route=src('src/components/players/players-workspace.tsx');
   const game=src('src/components/battle/BattleV3Game.tsx');
   const engine=src('src/lib/battle/v3/engine.ts');
   expect(route).toContain("tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED&&<BattleV3PlayerEntry");

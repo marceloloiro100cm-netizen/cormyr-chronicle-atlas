@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
-import {useServerFn} from '@tanstack/react-start';
+import {useServerFn} from '@/lib/visual-preview/server-fn';
 import {UserPlus,Archive} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {recruitSpyAgent} from '@/lib/espionage/spy-agent-actions.functions';

@@ -14,7 +14,7 @@ describe('Três simuladores do jogador preparados, mas ainda NÃO liberados',()=
   expect(BATTLE_PLAYERS_ENABLED).toBe(false);
   expect(BATTLE_RULESET_OPTIONS.map(mode=>mode.id))
    .toEqual(['got','adapted','dnd']);
-  const route=readFileSync('src/routes/_authenticated/jogadores.tsx','utf8');
+  const route=readFileSync('src/components/players/players-workspace.tsx','utf8');
   const menu=readFileSync('src/components/battle/BattleV3PlayerEntry.tsx','utf8');
   expect(route).toContain("tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED&&<BattleV3PlayerEntry");
   expect(menu).toContain('BattleRulesetSelector');

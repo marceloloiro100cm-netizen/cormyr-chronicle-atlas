@@ -41,7 +41,7 @@ describe('CORMYR produção: calendário de login e configurações públicas',(
   expect(privateClock).toContain('useCampaignTime()');
   expect(privateClock).toContain('useCampaignCalendarRealtime()');
   expect(source('src/lib/calendar/campaign-time.ts')).toContain("supabase.rpc('get_campaign_calendar')");
-  expect(source('src/routes/_authenticated/jogadores.tsx')).toContain('<CampaignShell>');
+  expect(source('src/components/players/players-workspace.tsx')).toContain('<CampaignShell>');
  });
  it('a API pública mantém apenas cinco campos e ignora identidade do visitante',()=>{
   const endpoint=source('src/routes/api/public/time.ts');

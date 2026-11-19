@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {useServerFn} from '@tanstack/react-start';
+import {useServerFn} from '@/lib/visual-preview/server-fn';
 import {Button} from '@/components/ui/button';
 import {loadCharacterV2MigrationPreview} from '@/lib/character-v2/migration.functions';
 import {exportCharacterV2ReportPdf} from '@/lib/character-v2/pdf';

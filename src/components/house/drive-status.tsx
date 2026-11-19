@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useServerFn } from '@tanstack/react-start';
+import {useServerFn} from '@/lib/visual-preview/server-fn';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CloudUpload } from 'lucide-react';
 import { Button } from '@/components/ui/button';

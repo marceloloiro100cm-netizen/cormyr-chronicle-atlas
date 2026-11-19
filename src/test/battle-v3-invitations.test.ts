@@ -27,7 +27,7 @@ describe('Batalha V3 — convocações entre narrador e jogador',()=>{
  });
  it('convocações permanecem preparadas mas ocultas para jogadores nesta publicação',()=>{
   const ui=file('src/components/battle/BattleV3PlayerEntry.tsx');
-  const route=file('src/routes/_authenticated/jogadores.tsx');
+  const route=file('src/components/players/players-workspace.tsx');
   expect(ui).toContain("invites.length>0&&<Button");
   expect(ui).toContain("Batalha convocada (");
   expect(ui).toContain("i.target_house_id===houseId&&i.status==='open'");

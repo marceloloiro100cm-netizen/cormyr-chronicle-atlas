@@ -5,7 +5,7 @@ import {describe,it,expect} from 'vitest';
 const source=(path:string)=>readFileSync(resolve(process.cwd(),path),'utf8');
 describe('Limpeza da interface solicitada, sem remover relógio ou rotas',()=>{
  it('oculta conta e botões superiores redundantes, mantendo funções de conta e navegação',()=>{
-  const council=source('src/routes/_authenticated/jogadores.tsx');
+  const council=source('src/components/players/players-workspace.tsx');
   const shell=source('src/components/campaign-shell.tsx');
   expect(council).not.toContain('{data.user.email}</p>');
   expect(council).not.toContain('Atualizar acervo público</Button>');

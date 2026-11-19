@@ -1,6 +1,6 @@
 import {isNarrativeNpc,COURT_NPC_ARCHIVED_MARKER} from '@/lib/house/narrative-npc';
 import {loadHouseHub} from '@/lib/house/house.functions';
-import {useServerFn} from '@tanstack/react-start';
+import {useServerFn} from '@/lib/visual-preview/server-fn';
 import { useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, UserRound, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';

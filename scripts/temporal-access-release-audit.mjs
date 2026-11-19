@@ -12,7 +12,7 @@ export const ACCESS_CRITICAL_FILES=Object.freeze({
  root:'src/routes/__root.tsx',
  sessions:'src/lib/auth/session-boundary.ts',
  permissions:'src/lib/auth/campaign-access-scope.ts',
- council:'src/routes/_authenticated/jogadores.tsx',
+ council:'src/components/players/players-workspace.tsx',
  panel:'src/components/players/panel-data.ts',
  houses:'src/lib/house/house.functions.ts',
  commit:'drizzle/migrations/0039_house_commander_transaction.sql',

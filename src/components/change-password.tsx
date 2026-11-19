@@ -4,7 +4,7 @@ import {CAMPAIGN_ACCESS_SCOPE_KEY} from '@/lib/auth/campaign-access-scope';
 import { KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { useServerFn } from '@tanstack/react-start';
+import {useServerFn} from '@/lib/visual-preview/server-fn';
 import { completePasswordChange } from '@/lib/player-admin.functions';
 
 function PasswordForm() {

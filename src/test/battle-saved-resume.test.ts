@@ -32,7 +32,7 @@ describe('Batalha V2 — retomada local de replay persistido',()=>{
   const ui=source('src/components/battle/BattleSavedPanel.tsx');
   const hub=source('src/components/battle/BattleNarratorHub.tsx');
   const arena=source('src/components/battle/BattleArena.tsx');
-  const routes=source('src/routes/_authenticated/jogadores.tsx');
+  const routes=source('src/components/players/players-workspace.tsx');
   const server=source('src/lib/battle/battle-session.functions.ts');
   expect(ui).toContain("loaded.state.phase==='active'");
   expect(ui).toContain('onResume(loaded.file.initial,loaded.state)');

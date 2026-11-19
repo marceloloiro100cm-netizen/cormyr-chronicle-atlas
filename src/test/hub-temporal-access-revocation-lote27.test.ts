@@ -114,7 +114,7 @@ describe('Lote 27 · revogação e alteração de escopo durante sessão',()=>{
  });
  it('rota impede mostrar documentos antigos antes de verificação nova',()=>{
   const src=readFileSync(resolve(process.cwd(),
-   'src/routes/_authenticated/jogadores.tsx'),'utf8');
+   'src/components/players/players-workspace.tsx'),'utf8');
   expect(src).toContain('queryFn:loadCampaignAccessScope');
   expect(src).toContain('refetchInterval:CAMPAIGN_ACCESS_SCOPE_POLL_MS');
   expect(src).toContain("refetchOnWindowFocus:'always'");

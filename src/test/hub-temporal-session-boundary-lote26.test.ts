@@ -105,7 +105,7 @@ describe('Lote 26 · isolamento de cache na troca de identidade',()=>{
   qc.setQueryData(['mail-page',B],{letters:['correspondência da representação B']});
   clearRepresentationQueryCache(qc);
   expect(qc.getQueryData(['mail-page',B])).toBeUndefined();
-  const players=readFileSync(resolve(process.cwd(),'src/routes/_authenticated/jogadores.tsx'),'utf8');
+  const players=readFileSync(resolve(process.cwd(),'src/components/players/players-workspace.tsx'),'utf8');
   expect(players).toContain('clearRepresentationQueryCache(qc);setRepresenting(true)');
   expect(players).toContain('clearRepresentationQueryCache(qc);setRepresentedTheme(null);setRepresenting(false)');
  });

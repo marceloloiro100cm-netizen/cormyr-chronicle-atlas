@@ -61,7 +61,7 @@ describe('Lote 35 · consultas temporais e revogação de leitura',()=>{
   qc.clear();
  });
  it('a rota instala guarda apenas sob escopo administrativo confirmado',()=>{
-  const s=readFileSync(resolve(process.cwd(),'src/routes/_authenticated/jogadores.tsx'),'utf8');
+  const s=readFileSync(resolve(process.cwd(),'src/components/players/players-workspace.tsx'),'utf8');
   expect(s).toContain('if(!scope.data?.admin||revoked.data)return;');
   expect(s).toContain('return watchNarratorPrivateReadRevocations(qc);');
   expect(s).toContain('if(revoked.data)return <section role="alert">');
