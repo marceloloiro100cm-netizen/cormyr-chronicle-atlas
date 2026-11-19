@@ -53,10 +53,44 @@ test('all module projections verify shape with aggregate-only output',()=>{
  assert.equal(v.newspaper.editions,1);
  assert.equal(v.espionagem.agents,1);
  assert.equal(v.missivas.playerProjection,'source_shape_valid');
+ assert.equal(v.missivas.playerHouseScope,'source_shape_valid');
+ assert.equal(v.missivas.playerSpyScope,'source_shape_valid');
  assert.equal(v.operationalUIConnected,false);
  const encoded=JSON.stringify(v);
  for(const secret of ['Private','secret-house','u1','p1','h1'])
    assert.ok(!encoded.includes(secret));
+});
+test('player House and spy scope remains isolated with real foreign rows',()=>{
+ const t=add(data());
+ t.campaign_houses.push({id:'h2',name:'Foreign House Secret'});
+ t.spy_assets.push({id:'a2',owner_house_id:'h2',
+   codename:'Foreign Secret Agent',status:'available',
+   mission_successes:0,version:1});
+ t.spy_operations.push({id:'o2',asset_id:'a2',owner_house_id:'h2',
+   status:'completed',mission_kind:'intelligence',
+   target_type:'house',target_id:'h1'});
+ t.spy_mission_timeline.push({operation_id:'o2',agent_id:'a2',
+   owner_house_id:'h2'});
+ t.campaign_records.push({id:'r2',visibility:'house',kind:'document',
+   house_id:'h2',title:'Foreign private record',
+   content:'Foreign secret',version:1});
+ t.record_versions.push({record_id:'r2',version:1,
+   snapshot:{title:'Foreign private record'}});
+ const v=inspectModuleSourceContracts(t,mail);
+ assert.equal(v.status,'source_projection_consistent');
+ assert.equal(v.missivas.playerHouseScope,'source_shape_valid');
+ assert.equal(v.missivas.playerSpyScope,'source_shape_valid');
+ assert.equal(v.espionagem.agents,2);
+ assert.equal(v.espionagem.missions,2);
+ const encoded=JSON.stringify(v);
+ for(const secret of ['Foreign','h2','a2','r2'])
+   assert.ok(!encoded.includes(secret));
+});
+test('orphan source House membership blocks player scope without details',()=>{
+ const t=add(data());
+ t.house_memberships.push({player_id:'p1',house_id:'unknown-private-house'});
+ assert.throws(()=>inspectModuleSourceContracts(t,mail),
+   e=>e.message==='workspace_module_contract_mail_failed');
 });
 test('malformed historical records fail closed with only a public module label',()=>{
  const data1=add(data());
