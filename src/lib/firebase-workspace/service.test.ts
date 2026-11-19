@@ -211,7 +211,7 @@ describe('real Firebase workspace boundary',()=>{
  it('connects original reply and week detection to approved Firebase mail',async()=>{
   f.runtimeReady=true;vi.stubEnv('CORMYR_FIREBASE_CLOUD_MAIL_ENABLED','true');
   expect((await run({kind:'rpc',name:'reply_delivery_week',
-   args:{p_recipient:'gm'}})).toEqual(2);
+   args:{p_recipient:'gm'}}))).toEqual(2);
   f.reply.mockResolvedValue({id:'f'.repeat(64),duplicate:false,state:'delivered',deliveryRound:2});
   const args={p_action:'reply_weekly_message',p_date:'1522-01-01',p_args:{
    p_letter:'b'.repeat(64),p_reply:null,p_content:'Resposta',
