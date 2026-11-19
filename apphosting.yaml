@@ -134,6 +134,17 @@ env:
     availability:
       - RUNTIME
 
+  # Itens 4 e 5: nunca ativar mutações de Casas sem
+  # reconciliação econômica e homologação por perfil no servidor.
+  - variable: CORMYR_FIREBASE_HOUSE_OPS_ENABLED
+    value: "false"
+    availability:
+      - RUNTIME
+  - variable: CORMYR_FIREBASE_HOUSE_RULES_ENABLED
+    value: "false"
+    availability:
+      - RUNTIME
+
   # Gestão de contas: ativar somente depois de aceitar isolamento entre
   # Casas, sincronização das permissões e troca de senha no primeiro acesso.
   - variable: CORMYR_FIREBASE_ACCOUNTS_ENABLED
