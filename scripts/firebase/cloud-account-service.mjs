@@ -127,15 +127,26 @@ export function createFirebaseAccountService({
  }
  async function submit(token,input){
   const actorUid=await narrator(token);
-  if(!asObject(input)||!KEY.test(input.requestKey??'')||
-     (input.targetUid!==undefined&&!ID.test(input.targetUid))||
+  if(!asObject(input)||typeof input.requestKey!=='string'||
+     !KEY.test(input.requestKey)||
+     (input.targetUid!==undefined&&
+       (typeof input.targetUid!=='string'||!ID.test(input.targetUid)))||
      !Number.isSafeInteger(input.expectedVersion)||input.expectedVersion<0)
    deny('invalid_account_request');
+  // A mesma chave nunca pode representar outro comando. A senha em texto
+  // claro e qualquer derivação dela não são persistidas nem registradas.
+  const commandFingerprint=hash(JSON.stringify([
+    input.targetUid??null,input.expectedVersion,input.name,input.email,
+    input.profile,input.active,input.requireChange,
+    input.memberHouseIds,input.editHouseIds,input.attrHouseIds,
+    typeof input.password==='string',
+  ]));
   const requestRef=requests.doc(hash('accounts:'+actorUid+':'+input.requestKey));
   const already=await requestRef.get();
   if(already.exists){
    if(already.data()?.actorUid!==actorUid||
-      already.data()?.targetUid!==(input.targetUid??null))
+      already.data()?.targetUid!==(input.targetUid??null)||
+      already.data()?.commandFingerprint!==commandFingerprint)
     deny('request_key_conflict',409);
    const prior=already.data().result;
    // Recuperar apenas se a versão atual ainda for a mesma da operação:
@@ -205,7 +216,7 @@ export function createFirebaseAccountService({
      const result=publicResult(account);
      tx.set(accounts.doc(uid),account);
      tx.create(requestRef,{actorUid,targetUid:target,result,
-       operationFingerprint:f,at:nowAt});
+       operationFingerprint:f,commandFingerprint,at:nowAt});
      tx.create(audit.doc(key),{actorUid,targetUid:uid,
        action:created?'create':'update',version:account.version,
        requestKeyDigest:hash(input.requestKey),at:nowAt});
@@ -246,7 +257,7 @@ export function createFirebaseAccountService({
  }
  async function completePassword(token,input){
   const uid=await actor(token);
-  if(!asObject(input)||!asPassword(input.password)||!KEY.test(input.requestKey??''))
+  if(!asObject(input)||!asPassword(input.password)||(typeof input.requestKey!=='string'||!KEY.test(input.requestKey)))
     deny('invalid_password_request');
   await gate();
   const access=await currentAccountAccess(db,snapshotId,uid);
