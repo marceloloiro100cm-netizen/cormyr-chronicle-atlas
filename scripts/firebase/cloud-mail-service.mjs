@@ -229,6 +229,7 @@ export function createFirebaseCloudMail({
     const [domain,authRoot,temporal,scopeDoc,overlayDoc,calendar,live,mailGate]=await Promise.all([
       tx.get(stage),tx.get(authStage),tx.get(timeStage),
       tx.get(access.doc(uid)),
+      tx.get(runtime.collection('accountAccess').doc(uid)),
       tx.get(timeStage.collection('calendar').doc('current')),tx.get(runtime),
       tx.get(mailRuntime),
     ]);
