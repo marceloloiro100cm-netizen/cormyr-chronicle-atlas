@@ -61,6 +61,21 @@ describe('Firebase Cloud — tempo público sem Supabase',()=>{
     expect(json).not.toContain(SNAPSHOT);
   });
 
+  it('serve dia 21 e 3ª désdia usando a versão operacional publicada, sem alterar arquivo histórico',async()=>{
+    const baseline=setup();
+    const controls={...(baseline.map[runtimePath] as Record<string,unknown>),
+      calendarSource:'operational',
+      calendar:{year:1522,month:0,day:21,festival:null,version:5},
+      calendarVersion:5,publishedTimeVersion:5,
+    };
+    const s=setup({[runtimePath]:controls});
+    const result=await s.read();
+    expect(result.date).toBe('1522-01-21');
+    expect(result.period).toBe('3ª désdia · Hammer · 1522 CV');
+    expect(result.version).toBe(5);
+    expect((s.map[calendarPath] as {day:number}).day).toBe(11);
+    expect(s.reads).toEqual([runtimePath,stagePath,calendarPath]);
+  });
   it('nunca consulta Firestore com a flag desligada ou snapshot inválido',async()=>{
     const s=setup();
     const args=[
