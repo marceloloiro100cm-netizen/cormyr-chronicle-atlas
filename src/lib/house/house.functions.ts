@@ -1,3 +1,5 @@
+import {applyHouseDomainOperation,requireHouseOperationRole,
+ requireHouseOperationPhase,needsHouseOperationCalendar} from './operation-core';
 import {isNarrativeNpc} from './narrative-npc';
 import {attachVassal,createVassal,vassalState} from './vassals';
 import { createServerFn } from '@tanstack/react-start';
