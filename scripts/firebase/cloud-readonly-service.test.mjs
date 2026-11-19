@@ -369,6 +369,17 @@ test('narrator dry-run uses server House catalog and never changes access',async
     token,'account-2',decision),'access_denied',403);
 });
 
+test('source link audit is Narrator-only and pending before workspace import',async()=>{
+ const player=fixture('jogador');
+ await rejects(()=>player.service().inspectWorkspaceLinks(token),'access_denied',403);
+ const editor=fixture('editor');
+ await rejects(()=>editor.service().inspectWorkspaceLinks(token),'access_denied',403);
+ const gm=fixture('narrador');
+ const report=await gm.service().inspectWorkspaceLinks(token);
+ assert.equal(report.status,'pending');
+ assert.equal(report.operationalConnected,false);
+});
+
 test('original mail workspace scope is checked against live Auth and House stage',async()=>{
  const player=fixture('jogador');
  const scope=await player.service().workspaceMailScope(token);

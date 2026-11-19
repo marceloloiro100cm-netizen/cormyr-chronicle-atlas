@@ -1,5 +1,6 @@
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 import {inspectWorkspaceMetadata} from './workspace-audit.mjs';
+import {inspectWorkspaceLinks} from './workspace-link-audit.mjs';
 /**
  * Cormyr: Firebase Cloud-only, read-only campaign access.
  *
@@ -128,6 +129,13 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
         deny('access_denied',403);
       return {uid:scope.uid,profile:scope.profile,playerId:scope.playerId,
         memberHouseIds:scope.memberHouseIds};
+    },
+    /** Narrator-only private relationship audit. No row data is returned. */
+    async inspectWorkspaceLinks(idToken){
+      const viewer=await scopeFor(idToken);
+      if(viewer.profile!=='narrador')deny('access_denied',403);
+      try{return await inspectWorkspaceLinks(db,snapshotId);}
+      catch{deny('workspace_integrity_unverified',503);}
     },
     /** Narrator-only, aggregate metadata inspection; no private rows returned. */
     async inspectWorkspaceImport(idToken){
