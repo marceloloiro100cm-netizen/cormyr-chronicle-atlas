@@ -10,7 +10,7 @@ O teste \`scripts/firebase/legacy-view-parity-lock.test.mjs\` fixa os Git blob S
 
 ### Narrador — visual e comportamentos que devem permanecer idênticos
 
-Fontes: \`src/routes/_authenticated/jogadores.tsx\`, \`src/components/players/narrator-missives-hub.tsx\`, \`src/components/players/admin-panel.tsx\`, \`src/components/calendar/narrator-calendar.tsx\`, \`src/components/players/missivas-tab.tsx\`.
+Fontes: \`src/components/players/players-workspace.tsx\` (antes em \`src/routes/_authenticated/jogadores.tsx\`), \`src/components/players/narrator-missives-hub.tsx\`, \`src/components/players/admin-panel.tsx\`, \`src/components/calendar/narrator-calendar.tsx\`, \`src/components/players/missivas-tab.tsx\`.
 
 Menu original, nesta ordem:
 
@@ -58,7 +58,7 @@ Preservar fluxo de criar/editar/publicar/cancelar/arquivar, histórico, revisõe
 
 ### Jogadores — mesmo painel e mesmas funções
 
-Fonte: \`src/routes/_authenticated/jogadores.tsx\`; conservar:
+Fonte: \`src/components/players/players-workspace.tsx\` (antes em \`src/routes/_authenticated/jogadores.tsx\`); conservar:
 
 1. Casa
 2. Ficha
