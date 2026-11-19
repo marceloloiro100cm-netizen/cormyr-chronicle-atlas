@@ -20,6 +20,14 @@ const validOverlay=(uid,v)=>v&&v.userId===uid&&
  v.editHouseIds.every(x=>v.memberHouseIds.includes(x))&&
  (v.profile!=='editor'||v.memberHouseIds.length===0&&v.editHouseIds.length===0);
 
+export function chooseCurrentAccountAccess(uid,archived,overlay,live){
+ if(!overlay)return archived??null;
+ if(!ID.test(uid)||!isLive(live)||
+    archived?.profile==='narrador'||!validOverlay(uid,overlay))
+   throw Error('invalid_access_scope');
+ return overlay;
+}
+
 export async function currentAccountAccess(db,snapshotId,uid){
  if(!SNAPSHOT.test(snapshotId)||!ID.test(uid))throw Error('invalid_access_scope');
  const source=db.collection('migrationDomainStage').doc(snapshotId).collection('access').doc(uid);
@@ -27,11 +35,9 @@ export async function currentAccountAccess(db,snapshotId,uid){
   source.get(),db.collection('campaignCloudRuntime').doc(snapshotId).get(),
   operationalAccessCollection(db,snapshotId).doc(uid).get(),
  ]);
- if(!overlay.exists)return archived.exists?archived.data():null;
- if(!isLive(live.data())||archived.data()?.profile==='narrador'||
-    !validOverlay(uid,overlay.data()))
-   throw Error('invalid_access_scope');
- return overlay.data();
+ return chooseCurrentAccountAccess(uid,
+   archived.exists?archived.data():null,overlay.exists?overlay.data():null,
+   live.data());
 }
 
 export async function listCurrentAccountAccess(db,snapshotId){
