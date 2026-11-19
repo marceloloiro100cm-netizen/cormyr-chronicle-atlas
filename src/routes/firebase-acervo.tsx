@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
+import {FirebaseHouseArchiveDetail} from '@/components/firebase/FirebaseHouseArchiveDetail';
 
 /**
  * Conferência do acervo ORIGINAL importado ao Firestore.
@@ -489,6 +490,7 @@ function FirebaseOriginalArchive(){
             {row.holdings.length===0&&<p className="text-sm">
               Nenhuma posse registrada nesta ficha histórica.</p>}
           </details>
+          <FirebaseHouseArchiveDetail houseId={row.houseId}/>
         </article>)}
       </div>}
     </section>}
