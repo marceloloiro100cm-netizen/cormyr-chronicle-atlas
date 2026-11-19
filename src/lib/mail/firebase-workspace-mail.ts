@@ -44,7 +44,7 @@ const FILTER_KEYS=new Set([
   'box','number','kind','origin','house','court','unit','answered','read',
   'text','group_house_ids',
 ]);
-const invalid=()=>{throw Error('workspace_mail_contract_invalid');};
+const invalid=():never=>{throw Error('workspace_mail_contract_invalid');};
 const str=(v:unknown)=>typeof v==='string'&&v.length>0&&v.length<=512;
 const optional=(v:unknown)=>v===null||v===undefined||str(v);
 const plain=(v:unknown):v is Record<string,unknown>=>
