@@ -232,8 +232,7 @@ export function createFirebaseAccountService({
   await gate();
   const access=await currentAccountAccess(db,snapshotId,uid);
   if(!access||access.userId!==uid||access.active!==true||
-     !['jogador','editor'].includes(access.profile)||
-     access.requirePasswordChange!==true)
+     !['jogador','editor'].includes(access.profile))
    deny('password_change_not_required',403);
   // Mudança de senha acontece no Firebase Admin, não no Supabase.
   try{await auth.updateUser(uid,{password:input.password});}
@@ -246,7 +245,6 @@ export function createFirebaseAccountService({
      const current=prev.exists?prev.data():access;
      if(current.userId!==uid||current.active!==true||
         current.profile==='narrador')deny('access_denied',403);
-     if(current.requirePasswordChange===false)return;
      const updated={...current,requirePasswordChange:false,
        version:(current.version??0)+1,updatedBy:uid,updatedAt:nowAt};
      tx.set(ref,updated);
