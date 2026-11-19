@@ -158,3 +158,59 @@ test('troca obrigatória remove bloqueio só depois do Firebase Auth aceitar a s
  assert.equal(changed.requirePasswordChange,false);
  assert.equal(f.documents.has('migrationDomainStage/'+SNAP+'/access/new-account'),false);
 });
+
+
+test('desativação e reativação exigem versão atual e preservam acesso à mesma Casa',async()=>{
+ const f=fixture();
+ const created=await f.service.submit('token-narrator',input);
+ assert.equal(f.users.get(created.uid).disabled,false);
+ const inactive=await f.service.submit('token-narrator',{
+   ...input,targetUid:created.uid,expectedVersion:created.version,
+   requestKey:'disable-account-001',active:false,password:undefined,
+ });
+ assert.equal(inactive.active,false);
+ assert.equal(f.users.get(created.uid).disabled,true);
+ const scope=await currentAccountAccess(f.db,SNAP,created.uid);
+ assert.equal(scope.active,false);
+ assert.deepEqual(scope.memberHouseIds,['house-a']);
+ await assert.rejects(()=>f.service.submit('token-narrator',{
+   ...input,targetUid:created.uid,expectedVersion:created.version,
+   requestKey:'stale-version-001',active:true,password:undefined,
+ }),e=>e.code==='version_conflict');
+ assert.equal(f.users.get(created.uid).disabled,true);
+ const enabled=await f.service.submit('token-narrator',{
+   ...input,targetUid:created.uid,expectedVersion:inactive.version,
+   requestKey:'enable-account-001',active:true,password:undefined,
+ });
+ assert.equal(enabled.active,true);
+ assert.equal(f.users.get(created.uid).disabled,false);
+ assert.deepEqual((await currentAccountAccess(f.db,SNAP,created.uid)).memberHouseIds,
+   ['house-a']);
+});
+
+test('mesma chave com outro comando é recusada sem alterar a conta',async()=>{
+ const f=fixture();
+ const created=await f.service.submit('token-narrator',input);
+ await assert.rejects(()=>f.service.submit('token-narrator',{
+   ...input,active:false,
+ }),e=>e.code==='request_key_conflict');
+ const current=await currentAccountAccess(f.db,SNAP,created.uid);
+ assert.equal(current.active,true);
+ assert.equal(current.version,created.version);
+});
+
+test('Editor-Chefe não recebe Casa nem permissão de Narrador',async()=>{
+ const f=fixture();
+ const editor=await f.service.submit('token-narrator',{
+   ...input,requestKey:'editor-create-001',profile:'editor',
+   memberHouseIds:[],editHouseIds:[],attrHouseIds:[],
+ });
+ assert.equal(editor.profile,'editor');
+ assert.equal(editor.playerId,null);
+ assert.deepEqual(editor.memberHouseIds,[]);
+ const access=await currentAccountAccess(f.db,SNAP,editor.uid);
+ assert.equal(access.admin,false);
+ await assert.rejects(()=>f.service.submit('token-narrator',{
+   ...input,requestKey:'editor-invalid-001',profile:'editor',
+ }),e=>e.code==='editor_without_house_required');
+});
