@@ -18,12 +18,13 @@ const fields=new Set(['p_key','p_origin','p_targets','p_subject','p_content',
  'p_court','p_unit','p_role','p_draft','p_week','p_signed_by']);
 export function originalMailSend(input:unknown,canonicalDate:string):
  CloudMailMessageRequest&{expectedCampaignDate:string}{
- if(!isObj(input)||input['p_action']!=='send_linked_mail'||
-    !isObj(input['p_args'])||typeof input['p_date']!=='string'||
-    Object.keys(input).some(k=>!['p_action','p_args','p_date'].includes(k)))
+ const envelope=isObj(input)?input:invalid();
+ const args=isObj(envelope['p_args'])?envelope['p_args']:invalid();
+ if(envelope['p_action']!=='send_linked_mail'||
+    typeof envelope['p_date']!=='string'||
+    Object.keys(envelope).some(k=>!['p_action','p_args','p_date'].includes(k)))
   invalid();
- const args=input['p_args'];
- if(typeof canonicalDate!=='string'||input['p_date']!==canonicalDate)
+ if(typeof canonicalDate!=='string'||envelope['p_date']!==canonicalDate)
   throw new OriginalMailBridgeError('campaign_date_changed',409);
  if(Object.keys(args).some(k=>!fields.has(k)))unsupported();
  if(args['p_draft']!==false&&!nullable(args['p_draft'])||
@@ -40,8 +41,8 @@ export function originalMailSend(input:unknown,canonicalDate:string):
  if(args['p_targets'].length!==1)unsupported();
  const target=args['p_targets'][0];
  if(typeof target!=='string')invalid();
- const kind=target==='narrator'?'narrator':target.startsWith('h:')?'house':null;
- if(!kind)invalid();
+ const kind:'house'|'narrator'=target==='narrator'?'narrator':
+  target.startsWith('h:')?'house':invalid();
  const house=kind==='house'?target.slice(2):null;
  if(house!==null&&!ID.test(house))invalid();
  return {
