@@ -265,6 +265,10 @@ function FirebaseOriginalArchive(){
     {session&&<p className="text-sm">Perfil autorizado nesta sessão:
       <strong> {session.profile==='narrador'?'Narrador':
         session.profile==='editor'?'Editor-Chefe':'Jogador'}</strong>.</p>}
+    {session?.profile==='narrador'&&<p className="text-sm">
+      <a className="underline" href="/firebase-hub">Abrir HUB Temporal Firebase
+        para configurar a semana oficial</a>
+    </p>}
     {session?.profile==='narrador'&&<section className="space-y-3 rounded border p-4">
       <h2 className="text-lg font-semibold">Integridade dos dados importados</h2>
       <p className="text-sm">Totais e integridade dos vínculos, sem abrir conteúdos
