@@ -62,7 +62,7 @@ async function handle(request:Request):Promise<Response>{
   try{
     const payload=await boundedJson(request) as {action?:unknown;houseId?:unknown;editionId?:unknown;
       targetUid?:unknown;proposal?:unknown};
-    if(!['session','listAccessRemediation','previewAccessRemediation','listHouses',
+    if(!['session','inspectWorkspaceImport','listAccessRemediation','previewAccessRemediation','listHouses',
       'getHouse','getCalendar',
       'listMailbox','listNewspaper','getNewspaper','listSpyAgents',
       'listSpyDossiers','listHouseBattles'].includes(String(payload.action)))
@@ -85,6 +85,8 @@ async function handle(request:Request):Promise<Response>{
     let result:unknown;
     switch(payload.action){
       case 'session':result=await service.session(token);break;
+      case 'inspectWorkspaceImport':
+        result=await service.inspectWorkspaceImport(token);break;
       case 'listAccessRemediation':
         result=await service.listAccessRemediation(token);break;
       case 'previewAccessRemediation':

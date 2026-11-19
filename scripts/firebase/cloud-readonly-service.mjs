@@ -1,4 +1,5 @@
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
+import {inspectWorkspaceMetadata} from './workspace-audit.mjs';
 /**
  * Cormyr: Firebase Cloud-only, read-only campaign access.
  *
@@ -119,6 +120,13 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       const {profile,memberHouseIds}=await scopeFor(idToken);
       return {authenticated:true,profile,memberHouseIds,readOnly:true,
         snapshotReconciliationPending:true};
+    },
+    /** Narrator-only, aggregate metadata inspection; no private rows returned. */
+    async inspectWorkspaceImport(idToken){
+      const viewer=await scopeFor(idToken);
+      if(viewer.profile!=='narrador')deny('access_denied',403);
+      try{return await inspectWorkspaceMetadata(db,snapshotId);}
+      catch{deny('workspace_integrity_unverified',503);}
     },
     /**
      * Privileged narrator-only account review. Returns identities only to

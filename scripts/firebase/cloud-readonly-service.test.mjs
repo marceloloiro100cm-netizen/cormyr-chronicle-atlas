@@ -369,6 +369,30 @@ test('narrator dry-run uses server House catalog and never changes access',async
     token,'account-2',decision),'access_denied',403);
 });
 
+test('only the Narrator may inspect imported workspace metadata',async()=>{
+ const f=fixture('jogador');
+ await rejects(()=>f.service().inspectWorkspaceImport(token),'access_denied',403);
+ const editor=fixture('editor');
+ await rejects(()=>editor.service().inspectWorkspaceImport(token),'access_denied',403);
+ const gm=fixture('narrador');
+ const pending=await gm.service().inspectWorkspaceImport(token);
+ assert.equal(pending.status,'pending');
+ assert.equal(pending.operationalConnected,false);
+ const root='campaignWorkspaceImports/'+snapshot;
+ gm.docs.set(root,{status:'complete',private:true,formatVersion:1,
+  sourceSnapshotId:snapshot,counts:{campaign_letters:1}});
+ gm.docs.set(root+'/tables/campaign_letters',{rowCount:1,
+  sourceTableDocumentId:'archive-table-1',columns:['id','subject']});
+ const complete=await gm.service().inspectWorkspaceImport(token);
+ assert.equal(complete.status,'complete');
+ assert.equal(complete.rowsImported,1);
+ assert.equal(complete.relationshipsVerified,false);
+ gm.docs.set(root+'/tables/campaign_letters',{rowCount:2,
+  sourceTableDocumentId:'archive-table-1',columns:['id','subject']});
+ await rejects(()=>gm.service().inspectWorkspaceImport(token),
+  'workspace_integrity_unverified',503);
+});
+
 test('Mailbox includes delivered own correspondence and excludes other-house, drafts, deleted and ambiguous',async()=>{
   const f=fixture('jogador');
   const messages=await f.service().listMailbox(token);
