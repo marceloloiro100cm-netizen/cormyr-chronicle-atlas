@@ -98,6 +98,7 @@ describe('real Firebase workspace boundary',()=>{
   expect(data.players.find((p:any)=>p.id==='pa').houses).toEqual(['ashkar']);
  });
  it('does not route historical player memberships into inactive or old-season recipient filters',async()=>{
+  f.tables['noble_house_sheets']=[];
   const original=f.tables['campaign_houses']![0]!;
   original.season=1;
   const old=await run({kind:'rpc',name:'mail_compose_options'});
