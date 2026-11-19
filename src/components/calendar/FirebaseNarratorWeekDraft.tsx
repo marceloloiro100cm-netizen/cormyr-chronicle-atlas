@@ -1,5 +1,6 @@
 import {useEffect,useState,type FormEvent} from 'react';
-import {FESTIVALS,MONTHS} from '@/lib/calendar/harptos';
+import {FESTIVALS,MONTHS,formatCampaignPeriod} from '@/lib/calendar/harptos';
+import {buildThirdTendayRequest} from '@/lib/calendar/firebase-third-tenday';
 import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
 
 type DateView={year:number;month:number;day:number;festival:string|null;};
@@ -11,6 +12,8 @@ type WeekView={
   archivedCalendar:DateView&{version:number};
   draft:WeekDraft|null;editable:boolean;
   calendarPublished:boolean;mailEnabled:boolean;saved?:boolean;
+  operationalCalendar?:(DateView&{version:number})|null;
+  openRound?:number|null;
 };
 
 async function requestWeek(action:'get'|'save'|'publish',fields?:Record<string,unknown>):Promise<WeekView>{
@@ -53,7 +56,7 @@ export function FirebaseNarratorWeekDraft(){
 
   function populate(v:WeekView){
     setLoaded(v);
-    const date=v.draft?.proposedDate??v.archivedCalendar;
+    const date=v.draft?.proposedDate??v.operationalCalendar??v.archivedCalendar;
     setYear(String(date.year));setMonth(String(date.month));
     setDay(String(date.day));setFestival(date.festival??'');
     setRound(v.draft?String(v.draft.proposedOpenRound):'');
@@ -75,6 +78,19 @@ export function FirebaseNarratorWeekDraft(){
     try{populate(await requestWeek('get'));}
     catch(e){setMessage(e instanceof Error?e.message:'Falha na consulta.');}
     finally{setBusy(false);}
+  }
+  async function prepareThirdTenday(){
+    if(busy||!loaded||!loaded.editable||loaded.calendarPublished)return;
+    setBusy(true);setMessage('');
+    try{
+      const proposal=buildThirdTendayRequest(
+        loaded.archivedCalendar,loaded.draft?.draftVersion??0);
+      const result=await requestWeek('save',proposal);
+      populate(result);
+      setMessage('A 3ª désdia (dia 21) e a rodada 3 foram salvas como proposta. Revise abaixo e confirme a publicação.');
+    }catch(e){
+      setMessage(e instanceof Error?e.message:'Não foi possível preparar a terceira désdia.');
+    }finally{setBusy(false);}
   }
   async function save(event:FormEvent){
     event.preventDefault();
@@ -121,12 +137,29 @@ export function FirebaseNarratorWeekDraft(){
       <p className="text-sm">Calendário histórico preservado: versão
         {' '}{loaded.archivedCalendar.version}. Nenhuma rodada foi inferida
         do histórico.</p>
+      <p className="text-sm rounded border p-3">
+        No calendário de Harptos, a 2ª désdia termina no dia 20 e a
+        <strong> 3ª désdia começa no dia 21</strong>. A rodada 3 das
+        Missivas é configurada explicitamente, não deduzida da data.
+      </p>
+      {!loaded.calendarPublished&&loaded.editable&&<button type="button"
+        disabled={busy} onClick={()=>void prepareThirdTenday()}
+        className="rounded border px-4 py-2 disabled:opacity-50">
+        Preparar 3ª désdia e rodada 3 com a data oficial
+      </button>}
       {loaded.draft&&!loaded.calendarPublished&&<p className="text-sm">
         Proposta anterior: versão {loaded.draft.draftVersion} · pendente de publicação.
       </p>}
       {loaded.calendarPublished&&<p role="status" className="rounded border p-3">
-        Configuração inicial publicada. Missivas habilitadas para a rodada escolhida.
-        Esta tela não avança o tempo nem aplica efeitos nas Casas.
+        Calendário operacional publicado:
+        {' '}{loaded.operationalCalendar
+          ?formatCampaignPeriod(loaded.operationalCalendar)
+          :'versão operacional não disponível'}.
+        {' '}Rodada aberta: {loaded.openRound??'não confirmada'}.
+        {' '}{loaded.mailEnabled
+          ?'Missivas liberadas pelos dois runtimes.'
+          :'Missivas ainda bloqueadas: os dois runtimes não estão alinhados.'}
+        {' '}O histórico importado permanece preservado.
       </p>}
       {!loaded.calendarPublished&&<form onSubmit={event=>void save(event)} className="space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
