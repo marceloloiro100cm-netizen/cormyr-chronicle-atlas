@@ -122,6 +122,7 @@ export function PlayersArea({onSignOut,hideBattle=false}:PlayersAreaProps={}){
   </section>;
   if(scope.isError)return <section role="alert">
     Não foi possível confirmar seus vínculos e permissões. O acervo reservado está bloqueado.
+    {scope.error instanceof Error&&<small className="block text-xs opacity-80">Detalhe técnico: {scope.error.message}</small>}
     <Button onClick={()=>void scope.refetch()}>Verificar novamente</Button>
   </section>;
   if(!scope.data||approved!==scope.data.fingerprint)return <p role="status">

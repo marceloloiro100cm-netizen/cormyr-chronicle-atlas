@@ -60,4 +60,15 @@ describe('Approved operational letters preserve original Council filters',()=>{
   const [active]=projectCloudLetters([mk(id)],snapshot);
   expect(active).toMatchObject({deleted_at:null,removal_kind:null,version:1,edited_at:null});
  });
+ it('shows drafts and scheduled letters, delivering scheduled ones when the round opens',()=>{
+  const id='a1'.padEnd(64,'0');
+  const draft=projectCloudLetters([mk(id,{publicationState:'draft',deliveredAt:null,deliveryRound:null})],snapshot,2);
+  expect(draft[0]).toMatchObject({publication_state:'draft',delivered_at:null,delivery_week:null});
+  const sched=mk(id,{publicationState:'scheduled',deliveredAt:null,deliveryRound:3,scheduledAt:'2026-11-19T15:00:00.000Z',
+   signedBy:'Vetrus',courtMemberId:'c1',courtAssignment:'executor',unitId:'u1'});
+  expect(projectCloudLetters([sched],snapshot,2)[0]).toMatchObject({publication_state:'scheduled',delivery_week:3});
+  expect(projectCloudLetters([sched],snapshot,3)[0]).toMatchObject({publication_state:'delivered',
+   delivered_at:'2026-11-19T15:00:00.000Z',sender_name:'Vetrus',court_member_id:'c1',military_unit_id:'u1'});
+  expect(()=>projectCloudLetters([mk(id,{courtMemberId:'c1'})],snapshot,2)).toThrow();
+ });
 });

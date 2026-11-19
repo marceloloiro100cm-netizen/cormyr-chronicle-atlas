@@ -51,8 +51,8 @@ describe('menu e grupos do Narrador',()=>{
   expect(mailHouseRegion('Horselands')).toBe('horselands');
  });
  it('classifica Harcourt somente em Horselands nos filtros internos',()=>{
-  expect(narrationHouseIds('1',['harcourt','everlost'])).toEqual(['everlost']);
-  expect(narrationHouseIds('2',['harcourt','everlost'])).toEqual(['harcourt']);
+  expect(narrationHouseIds('1',['harcourt','everlost','ashkar','goldfin'])).toEqual(['ashkar','goldfin']);
+  expect(narrationHouseIds('2',['harcourt','everlost','ashkar','goldfin'])).toEqual(['harcourt','everlost']);
  });
  it('permite selecionar os dois grupos simultaneamente, atualizando indicadores e consulta',async()=>{
   const onManage=mount();

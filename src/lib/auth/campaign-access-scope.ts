@@ -34,28 +34,33 @@ export function accessScopeFingerprint(scope:Omit<CampaignAccessScope,'fingerpri
   scope.active,scope.passwordChangeRequired,members]);
 }
 
+/** Código técnico seguro (lista fixa do servidor) para o diagnóstico na tela. */
+function serverCode(error:unknown):string{
+ const code=(error as {serverCode?:unknown}|null)?.serverCode;
+ return typeof code==='string'&&/^[a-z_]{3,60}$/.test(code)?' Código: '+code+'.':'';
+}
 /** Contract: no public roster, other people's IDs, names or correspondence. */
 export async function loadCampaignAccessScope():Promise<CampaignAccessScope>{
  const {data:{user},error:userError}=await supabase.auth.getUser();
- if(userError||!user)throw new Error('Sessão não autorizada.');
+ if(userError||!user)throw new Error('Sessão não autorizada.'+serverCode(userError));
  const {data:admin,error:roleError}=await supabase.rpc('is_campaign_admin');
- if(roleError||typeof admin!=='boolean')throw new Error('Permissões do Narrador indisponíveis.');
+ if(roleError||typeof admin!=='boolean')throw new Error('Permissões do Narrador indisponíveis.'+serverCode(roleError));
  const {data:profileResult,error:profileError}=await (supabase as unknown as SupabaseClient)
   .rpc('current_campaign_profile');
- if(profileError)throw new Error('Perfil de acesso da campanha indisponível.');
+ if(profileError)throw new Error('Perfil de acesso da campanha indisponível.'+serverCode(profileError));
  const profile:CampaignProfile|null=profileResult==='jogador'||profileResult==='editor'||profileResult==='narrador'?profileResult:null;
  if((admin&&profile!=='narrador')||(!admin&&profile==='narrador'))
   throw new Error('Perfil e autorização administrativa divergentes.');
  const {data:player,error:playerError}=await supabase.from('campaign_players')
   .select('id,active,require_password_change')
   .eq('user_id',user.id).maybeSingle();
- if(playerError)throw new Error('Permissões de jogador indisponíveis.');
+ if(playerError)throw new Error('Permissões de jogador indisponíveis.'+serverCode(playerError));
  const {data:members,error:memberError}=profile==='jogador'&&player
   ?await supabase.from('house_memberships')
    .select('house_id,can_edit,can_edit_attributes')
    .eq('player_id',player.id)
   :{data:[],error:null};
- if(memberError)throw new Error('Vínculos com Casas indisponíveis.');
+ if(memberError)throw new Error('Vínculos com Casas indisponíveis.'+serverCode(memberError));
  // Auth may switch while the three authorized RLS reads are in flight.
  // A second getUser verifies the same identity before exporting any snapshot
  // to React Query; a failed check never reuses old permissions.
