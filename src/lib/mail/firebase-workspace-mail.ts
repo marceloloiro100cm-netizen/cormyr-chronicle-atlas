@@ -16,14 +16,25 @@ export type VerifiedWorkspaceMailScope={
   memberHouseIds:string[];
 };
 export type WorkspaceMailInput={page?:unknown;size?:unknown;filters?:unknown};
+type WorkspaceMailSourceField =
+  'id'|'user_id'|'roster_house_id'|'active'|'require_password_change'|
+  'player_id'|'house_id'|'name'|'sender_user_id'|'sender_player_id'|
+  'sender_name'|'recipient_player_id'|'recipient_house_id'|'origin_house_id'|
+  'subject'|'content'|'created_at'|'publication_state'|'delivered_at'|
+  'deleted_at'|'creation_week'|'delivery_week'|'letter_number'|'letter_kind'|
+  'court_member_id'|'court_assignment'|'military_unit_id'|'batch_key'|
+  'letter_id'|'author_user_id'|'author_name'|'recipient_user_id'|
+  'read_at'|'number'|'status';
+export type WorkspaceMailRow=Record<string,unknown> &
+  Partial<Record<WorkspaceMailSourceField,unknown>>;
 export type WorkspaceMailTables={
-  campaign_letters:Record<string,unknown>[];
-  letter_replies:Record<string,unknown>[];
-  letter_receipts:Record<string,unknown>[];
-  letter_rounds:Record<string,unknown>[];
-  campaign_players:Record<string,unknown>[];
-  house_memberships:Record<string,unknown>[];
-  campaign_houses:Record<string,unknown>[];
+  campaign_letters:WorkspaceMailRow[];
+  letter_replies:WorkspaceMailRow[];
+  letter_receipts:WorkspaceMailRow[];
+  letter_rounds:WorkspaceMailRow[];
+  campaign_players:WorkspaceMailRow[];
+  house_memberships:WorkspaceMailRow[];
+  campaign_houses:WorkspaceMailRow[];
 };
 const TABLES=[
   'campaign_letters','letter_replies','letter_receipts','letter_rounds',
