@@ -192,3 +192,35 @@ test('invalid imported edition sequence aborts without partial runtime writes',a
   assert.equal(data.get('campaignMailRuntime/'+HASH).status,'pending');
 });
 
+
+test('narrator confirmation reads actual published Harptos date and both mail gates',async()=>{
+  const {service,data}=readyLaunch();
+  await service.save('valid-token',{
+    ...request,proposedDate:{year:1522,month:0,day:21,festival:null},
+    reason:'Abertura da terceira désdia e rodada três',
+  });
+  data.delete('campaignNarratorDrafts/'+HASH+'/calendarAudit/audit-1');
+  await service.publish('valid-token',{expectedDraftVersion:1,adoptFirebaseSource:true});
+  const published=await service.get('valid-token');
+  assert.equal(published.calendarPublished,true);
+  assert.equal(published.mailEnabled,true);
+  assert.equal(published.openRound,3);
+  assert.deepEqual(published.operationalCalendar,{
+    year:1522,month:0,day:21,festival:null,version:5,
+  });
+  const mailKey='campaignMailRuntime/'+HASH;
+  data.set(mailKey,{...data.get(mailKey),openRound:4});
+  const blockedMail=await service.get('valid-token');
+  assert.equal(blockedMail.calendarPublished,true);
+  assert.equal(blockedMail.mailEnabled,false);
+  const runtimeKey='campaignCloudRuntime/'+HASH;
+  data.set(runtimeKey,{...data.get(runtimeKey),
+    calendar:{year:1522,month:0,day:99,festival:null,version:5}});
+  const invalidClock=await service.get('valid-token');
+  assert.equal(invalidClock.calendarPublished,false);
+  assert.equal(invalidClock.editable,false);
+  assert.equal(invalidClock.requiresReconciliation,true);
+  assert.equal(invalidClock.mailEnabled,false);
+  assert.equal(invalidClock.operationalCalendar,null);
+  assert.equal(invalidClock.openRound,null);
+});

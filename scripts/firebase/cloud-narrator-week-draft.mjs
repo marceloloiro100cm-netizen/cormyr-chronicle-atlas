@@ -7,6 +7,8 @@
  */
 import {randomUUID} from 'node:crypto';
 import {validateHarptosDate} from './stage-temporal-emulator.mjs';
+import {cloudMailRuntimeApproved} from './cloud-mail-runtime-approval.mjs';
+import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 
 const HASH=/^[a-f0-9]{64}$/;
 const UID=/^[^/\u0000-\u001f]{1,128}$/;
@@ -210,12 +212,39 @@ export function createFirebaseNarratorWeekDraft({
       const uid=await authenticate(token);
       return db.runTransaction(async tx=>{
         const state=await readState(tx,uid);
-        const runtime=await tx.get(db.collection('campaignCloudRuntime').doc(snapshotId));
-        const live=runtime.data();
-        const launched=live?.status==='active'&&live?.calendarSource==='operational'&&
-          live?.sourceSnapshotId===snapshotId&&live?.applicationEnabled===true;
-        return {...publicView(state),editable:!launched,calendarPublished:launched,
-          mailEnabled:launched&&live.mailWriteApproved===true};
+        const [runtime,mailRuntime]=await Promise.all([
+          tx.get(db.collection('campaignCloudRuntime').doc(snapshotId)),
+          tx.get(db.collection('campaignMailRuntime').doc(snapshotId)),
+        ]);
+        const live=runtime?.exists?runtime.data():null;
+        const mail=mailRuntime?.exists?mailRuntime.data():null;
+        const effective=effectiveCloudCalendar(state.calendar,live,snapshotId);
+        // An active marker without coherent operational date and explicit
+        // narrator source adoption must never appear as a published week.
+        const launched=Boolean(
+          live?.status==='active'&&live?.private===true&&
+          live?.calendarSource==='operational'&&
+          live?.sourceSnapshotId===snapshotId&&
+          live?.sourceSnapshotReconciled===true&&
+          live?.applicationEnabled===true&&
+          live?.sourceAuthority==='owner_adopted_firebase'&&
+          whole(live?.launchDraftVersion,1,2147483647)&&
+          whole(live?.openRound,1,2147483647)&&
+          effective&&calendarOkay(effective)&&
+          live.calendarVersion===effective.version&&
+          live.publicTimeApproved===true&&
+          live.publishedTimeVersion===effective.version);
+        const mailEnabled=launched&&
+          cloudMailRuntimeApproved(live,mail,state.calendar,snapshotId);
+        return {...publicView(state),editable:live?.status!=='active',
+          calendarPublished:launched,
+          requiresReconciliation:live?.status==='active'&&!launched,
+          mailEnabled:Boolean(mailEnabled),
+          operationalCalendar:launched?{
+            year:effective.year,month:effective.month,day:effective.day,
+            festival:effective.festival??null,version:effective.version,
+          }:null,
+          openRound:launched?live.openRound:null};
       });
     },
     async save(token,request){

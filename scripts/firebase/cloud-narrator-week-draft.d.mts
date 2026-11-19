@@ -29,7 +29,10 @@ export interface NarratorWeekDraftView {
   })|null;
   editable:boolean;
   calendarPublished:boolean;
+  requiresReconciliation?:boolean;
   mailEnabled:boolean;
+  operationalCalendar?:NarratorWeekDate&{version:number}|null;
+  openRound?:number|null;
   saved?:boolean;
 }
 export function planNarratorWeekDraft(input:{
