@@ -50,7 +50,9 @@ describe('Lote 23 · segurança temporal das operações da Casa',()=>{
  it('as verificações financeiras e militares são feitas novamente no servidor',()=>{
   // Source contract: backend cannot rely only on React state to approve purchases.
   const file=readFileSync(resolve(process.cwd(),'src/lib/house/house.functions.ts'),'utf8');
-  const guarded=file.indexOf("if(state.phase==='active'&&isMonthSensitiveHouseAction(data.action))");
+  const guarded=file.indexOf('if(needsHouseOperationCalendar(state,data.action))');
+  const core=readFileSync(resolve(process.cwd(),'src/lib/house/operation-core.ts'),'utf8');
+  expect(core).toContain("state.phase==='active'&&isMonthSensitiveHouseAction(action)");
   const rpc=file.indexOf("rpc('get_campaign_calendar')",guarded);
   const alignment=file.indexOf('requireCalendarAlignment(state,response.data',rpc);
   const unit=file.indexOf("if(data.action==='unit')");
