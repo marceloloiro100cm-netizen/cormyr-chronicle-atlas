@@ -47,9 +47,16 @@ type SpyMission={id:string;asset_id:string;owner_house_id:string;
   timeline?:{departure_key:string|null;arrival_key:string|null;
     investigation_end_key:string|null;origin_region:string|null;
     destination_region:string|null;travel_days:number|null}};
+type SpyHistory={id:string;agent_id:string;owner_house_id:string;
+  event_type:string|null;event_date_key:string|null;
+  agent_rank:string|null;cunning:number|null;total_successes:number|null};
+type SpyRemoval={agent_id:string;owner_house_id:string;
+  codename:string|null;removed_at:string|null;refunded_wealth:number|null};
 type SpyArchive={readOnly:true;source:string;operationalConnected:false;
   agents:{total:number;items:SpyAgent[]};
-  missions:{total:number;items:SpyMission[]}};
+  missions:{total:number;items:SpyMission[]};
+  history:{total:number;items:SpyHistory[]};
+  removals:{total:number;items:SpyRemoval[]}};
 const moduleLabels:Record<string,string>={
   casas:'Casas e fichas',registros:'Registros e versões',
   missivas:'Missivas e respostas',jornal:'Jornal e edições',espionagem:'Espionagem e missões',
@@ -231,7 +238,8 @@ function FirebaseOriginalArchive(){
     const result=await readFirebaseArchive<SpyArchive>('listOriginalSpies',
       spyHouseId?{houseId:spyHouseId}:{});
     if(result.readOnly!==true||!Array.isArray(result.agents?.items)||
-       !Array.isArray(result.missions?.items))
+       !Array.isArray(result.missions?.items)||
+       !Array.isArray(result.history?.items)||!Array.isArray(result.removals?.items))
       throw Error('Acervo de espionagem inconsistente.');
     setSpies(result);
   });
@@ -442,9 +450,28 @@ function FirebaseOriginalArchive(){
               Chegada: {m.timeline.arrival_key??'—'}.</p>}
           </details>)}
         </div>
+        <div>
+          <h3 className="font-semibold">Histórico dos agentes ({spies.history.total})</h3>
+          {spies.history.items.map(h=><div key={h.id}
+            className="border-t py-2 text-sm">
+            <strong>{spies.agents.items.find(a=>a.id===h.agent_id)?.codename
+              ??'Agente histórico'}</strong>
+            <p>{h.event_type??'Registro'} · {h.event_date_key??'data não informada'}
+              {' '}· Posto: {h.agent_rank??'—'} · Astúcia: {h.cunning??'—'}
+              {' '}· Sucessos: {h.total_successes??'—'}</p>
+          </div>)}
+        </div>
+        <div>
+          <h3 className="font-semibold">Remoções registradas ({spies.removals.total})</h3>
+          {spies.removals.items.map(r=><div key={r.agent_id}
+            className="border-t py-2 text-sm">
+            {r.codename??'Agente'} · {r.removed_at??'data não informada'}
+            {' '}· Riqueza devolvida: {r.refunded_wealth??'—'}
+          </div>)}
+        </div>
         <p className="text-xs opacity-70">O acervo é somente leitura:
           nenhuma operação ou melhoria é comprada, movimentada ou resolvida
-          por esta tela.</p>
+          por esta tela. Detalhes reservados do Narrador permanecem ocultos.</p>
       </div>}
     </section>}
     {canView&&<section className="space-y-3 rounded border p-4">

@@ -30,6 +30,7 @@ const visible=(viewer,owner,requested)=>
   (requested===undefined||owner===requested)&&
   (viewer.profile==='narrador'||viewer.memberHouseIds.includes(owner));
 const MAX_ASSETS=1000,MAX_OPERATIONS=1000,MAX_TIMELINES=1000;
+const MAX_HISTORY=5000,MAX_REMOVALS=5000;
 function validateAssets(items){
   if(!Array.isArray(items)||items.length>MAX_ASSETS)fail();
   const seen=new Set();
@@ -78,6 +79,33 @@ function validateTimeline(items,operations,assets){
   }
   return new Map(items.map(row=>[row.operation_id,row]));
 }
+function validateHistory(rows,assets,operations){
+  if(!Array.isArray(rows)||rows.length>MAX_HISTORY)fail();
+  const seen=new Set();
+  for(const h of rows){
+    if(!h||typeof h!=='object'||Array.isArray(h)||
+       !id(h.id)||!id(h.agent_id)||!id(h.owner_house_id)||
+       seen.has(h.id)||!assets.has(h.agent_id)||
+       assets.get(h.agent_id).owner_house_id!==h.owner_house_id||
+       h.operation_id!=null&&
+         (!operations.has(h.operation_id)||
+          operations.get(h.operation_id).owner_house_id!==h.owner_house_id))
+      fail('spy_archive_relationship_inconsistent',503);
+    seen.add(h.id);
+  }
+}
+function validateRemovals(rows,assets){
+  if(!Array.isArray(rows)||rows.length>MAX_REMOVALS)fail();
+  const seen=new Set();
+  for(const row of rows){
+    if(!row||typeof row!=='object'||Array.isArray(row)||
+       !id(row.agent_id)||!id(row.owner_house_id)||
+       seen.has(row.agent_id)||!assets.has(row.agent_id)||
+       assets.get(row.agent_id).owner_house_id!==row.owner_house_id)
+      fail('spy_archive_relationship_inconsistent',503);
+    seen.add(row.agent_id);
+  }
+}
 const agentSummary=a=>({
   id:a.id,owner_house_id:a.owner_house_id,codename:a.codename,
   kind:a.kind??null,status:a.status,version:a.version,
@@ -106,6 +134,8 @@ export function projectWorkspaceSpies(tables,viewer,{houseId}={}){
   const assets=validateAssets(tables.spy_assets);
   const operations=validateOperations(tables.spy_operations,assets);
   const timeline=validateTimeline(tables.spy_mission_timeline,operations,assets);
+  validateHistory(tables.spy_agent_history,assets,operations);
+  validateRemovals(tables.spy_agent_removals,assets);
   // Only after ALL source links are validated may the requested subset leave
   // the private server. No admin audit, investigations or enemy dossiers.
   const ownAgents=[...assets.values()].filter(a=>
@@ -115,16 +145,33 @@ export function projectWorkspaceSpies(tables,viewer,{houseId}={}){
     visible(viewer,op.owner_house_id,houseId))
     .map(op=>operationSummary(op,timeline.get(op.id)))
     .sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+  const ownHistory=tables.spy_agent_history.filter(row=>
+    visible(viewer,row.owner_house_id,houseId))
+    .map(row=>({
+      id:row.id,agent_id:row.agent_id,owner_house_id:row.owner_house_id,
+      event_type:row.event_type??null,event_date_key:row.event_date_key??null,
+      agent_rank:row.agent_rank??null,cunning:row.cunning??null,
+      total_successes:row.total_successes??null,
+      // Deliberately exclude detail, actor, roll and private target-law data.
+    })).sort((a,b)=>String(b.event_date_key).localeCompare(String(a.event_date_key)));
+  const ownRemovals=tables.spy_agent_removals.filter(row=>
+    visible(viewer,row.owner_house_id,houseId))
+    .map(row=>({agent_id:row.agent_id,owner_house_id:row.owner_house_id,
+      codename:row.codename??null,removed_at:row.removed_at??null,
+      refunded_wealth:row.refunded_wealth??null}));
   return {readOnly:true,source:'verified-workspace-archive',
     operationalConnected:false,
     agents:{total:ownAgents.length,items:ownAgents},
-    missions:{total:ownMissions.length,items:ownMissions}};
+    missions:{total:ownMissions.length,items:ownMissions},
+    history:{total:ownHistory.length,items:ownHistory},
+    removals:{total:ownRemovals.length,items:ownRemovals}};
 }
 export async function readWorkspaceSpies(db,snapshotId,viewer,input={}){
   authorize(viewer,input?.houseId);
   if(!input||typeof input!=='object'||Array.isArray(input)||
      Object.keys(input).some(k=>k!=='houseId'))fail('invalid_spy_request',400);
-  const names=['spy_assets','spy_operations','spy_mission_timeline'];
+  const names=['spy_assets','spy_operations','spy_mission_timeline',
+    'spy_agent_history','spy_agent_removals'];
   const rows=await Promise.all(names.map(name=>readWorkspaceTable(db,snapshotId,name)));
   return projectWorkspaceSpies(Object.fromEntries(names.map((n,i)=>[n,rows[i]])),
     viewer,input);
