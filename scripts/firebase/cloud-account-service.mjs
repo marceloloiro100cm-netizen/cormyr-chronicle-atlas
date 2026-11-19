@@ -95,8 +95,10 @@ export function createFirebaseAccountService({
    deny('editor_without_house_required');
   if(input.profile==='jogador'&&!input.memberHouseIds.length)
    deny('player_house_required');
-  if(old?.profile==='narrador')deny('narrator_cannot_be_reassigned',403);
-  if(old&&old.profile!==input.profile)deny('role_transfer_requires_review',409);
+  if(old&&(old.profile==='narrador'||old.admin===true))
+   deny('narrator_cannot_be_reassigned',403);
+  if(old&&old.profile!==input.profile&&old.profile!==null&&
+     old.profile!==undefined)deny('role_transfer_requires_review',409);
   if(typeof input.email!=='string'||!EMAIL.test(input.email.trim().toLowerCase()))
    deny('invalid_account_email');
   const initial=!old;
@@ -221,7 +223,7 @@ export function createFirebaseAccountService({
     deny('account_inventory_unavailable',503);
   const byUid=new Map(users.users.map(u=>[u.uid,u]));
   return {items:all.filter(a=>
-    (a.profile==='jogador'||a.profile==='editor')&&byUid.has(a.userId))
+    a.profile!=='narrador'&&a.admin===false&&byUid.has(a.userId))
    .map(a=>{
      const user=byUid.get(a.userId);
      return {...publicResult(a),email:user.email??null,
