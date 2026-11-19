@@ -48,14 +48,14 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
   // Operational read receipts live outside the immutable migration snapshot.
   // Reconcile them only under the independently approved live mail runtime.
   // Never use an unapproved or partially scanned receipt set for read indicators.
-  const addOperationalMail=async(letters:Row[],historical:Row[]):Promise<{letters:Row[];receipts:Row[]}>=>{
+  const addOperationalMail=async(letters:Row[],historical:Row[]):Promise<{letters:Row[];receipts:Row[];openRound:number|null}>=>{
    const runtime=db.collection('campaignCloudRuntime').doc(snapshotId);
    const [live,mailGate,calendar]=await Promise.all([
     runtime.get(),db.collection('campaignMailRuntime').doc(snapshotId).get(),
     db.collection('migrationTimeEngineStage').doc(snapshotId).collection('calendar').doc('current').get()]);
    if(!live.exists||!mailGate.exists||!calendar.exists||
       !cloudMailRuntimeApproved(live.data(),mailGate.data(),calendar.data(),snapshotId))
-    return {letters,receipts:historical};
+    return {letters,receipts:historical,openRound:null};
    // Read the whole bounded approved runtime before exposing any new row.
    const [mailDocs,snapshot]=await Promise.all([
     runtime.collection('letters').limit(501).get(),
@@ -84,7 +84,8 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
     if(!current||String(current['read_at'])<at)
       existing.set(k,{letter_id:letterId,user_id:uid,read_at:at});
    }
-   return {letters:all,receipts:[...existing.values()]};
+   return {letters:all,receipts:[...existing.values()],
+    openRound:live.data().openRound as number};
   };
   let mailPromise:Promise<MailDataset>|undefined;
   const mail=()=>mailPromise??=(async()=>{
@@ -92,8 +93,16 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
     rows('campaign_letters'),rows('letter_replies'),rows('letter_receipts'),players(),memberships(),rows('campaign_houses'),rows('letter_rounds')]);
    if(scope.profile==='editor')denied();
    const merged=await addOperationalMail(letters,receipts);
+   // Historical rounds remain immutable. Once independently reconciled,
+   // the operational round supersedes stale "open" archive flags in the UI.
+   const currentRounds=merged.openRound===null?rounds:[
+    ...rounds.filter(r=>r['number']!==merged.openRound)
+     .map(r=>r['status']==='open'?{...r,status:'closed',closed:true}:r),
+    {...(rounds.find(r=>r['number']===merged.openRound)??{number:merged.openRound}),
+     status:'open',closed:false},
+   ];
    const dataset=projectWorkspaceMailTables({campaign_letters:merged.letters,letter_replies:replies,letter_receipts:merged.receipts,
-    campaign_players:p,house_memberships:m,campaign_houses:h,letter_rounds:rounds} as WorkspaceMailTables,
+    campaign_players:p,house_memberships:m,campaign_houses:h,letter_rounds:currentRounds} as WorkspaceMailTables,
     {...scope,profile:scope.profile as 'narrador'|'jogador'});
    // A foreign letter may have a valid receipt identity, but it must never
    // reveal its existence through the original table/RPC compatibility API.

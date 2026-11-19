@@ -1,6 +1,6 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 const f=vi.hoisted(()=>({scope:{uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']} as any,tables:{} as Record<string,any[]>,after:null as any,calls:0,
- runtimeReady:false,cloudReceipts:[] as any[],cloudLetters:[] as any[],ack:vi.fn(),send:vi.fn()}));
+ runtimeReady:false,liveRound:2,cloudReceipts:[] as any[],cloudLetters:[] as any[],ack:vi.fn(),send:vi.fn()}));
 vi.mock('../../../scripts/firebase/workspace-import.mjs',()=>({workspaceTables:new Set(),readWorkspaceTable:async(_d:any,_s:any,n:string)=>{
  if(!(n in f.tables))throw Error('workspace_source_table_missing');return f.tables[n];
 }}));
@@ -19,8 +19,8 @@ const db:any={collection:(name:string)=>({doc:()=>({
  get:async()=>({
   exists:f.runtimeReady&&['campaignCloudRuntime','campaignMailRuntime','migrationTimeEngineStage'].includes(name),
   data:()=>name==='campaignCloudRuntime'?{status:'active',private:true,sourceSnapshotId:'a'.repeat(64),sourceSnapshotReconciled:true,applicationEnabled:true,
-   mailWriteApproved:true,openRound:2,calendarVersion:1}
-   :name==='campaignMailRuntime'?{status:'active',private:true,sourceSnapshotId:'a'.repeat(64),sourceLiveReconciled:true,applicationEnabled:true,mailEnabled:true,openRound:2,calendarVersion:1}:undefined,
+   mailWriteApproved:true,openRound:f.liveRound,calendarVersion:1}
+   :name==='campaignMailRuntime'?{status:'active',private:true,sourceSnapshotId:'a'.repeat(64),sourceLiveReconciled:true,applicationEnabled:true,mailEnabled:true,openRound:f.liveRound,calendarVersion:1}:undefined,
  }),
  collection:(sub:string)=>({
   get:async()=>({docs:sub==='access'?access.map(v=>({data:()=>v})):[]}),
@@ -32,7 +32,7 @@ const db:any={collection:(name:string)=>({doc:()=>({
 const run=(input:any)=>createWorkspaceService({db,auth:{},snapshotId:'a'.repeat(64)}).execute('valid-token',input);
 const letter=(id:string,house:string,extra:any={})=>({id,sender_user_id:'gm',sender_player_id:'pg',sender_name:'Narrador',recipient_house_id:house,recipient_player_id:null,origin_house_id:null,subject:id,content:'real source '+id,created_at:'2026-11-01T00:00:00Z',delivered_at:'2026-11-01T00:00:00Z',deleted_at:null,publication_state:'delivered',delivery_week:2,creation_week:2,letter_number:2,letter_kind:'reservada',court_member_id:null,court_assignment:null,military_unit_id:null,batch_key:null,...extra});
 beforeEach(()=>{
- f.calls=0;f.after=null;f.runtimeReady=false;f.cloudReceipts=[];f.cloudLetters=[];f.ack.mockReset();f.send.mockReset();vi.unstubAllEnvs();
+ f.calls=0;f.after=null;f.runtimeReady=false;f.liveRound=2;f.cloudReceipts=[];f.cloudLetters=[];f.ack.mockReset();f.send.mockReset();vi.unstubAllEnvs();
  f.scope={uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']};
  f.tables={campaign_players:[{id:'pa',user_id:'a',roster_house_id:'ashkar'},{id:'pg',user_id:'gm'}],campaign_houses:[{id:'ashkar',name:'Ashkar',active:true}],
  campaign_letters:[letter('mine','ashkar'),letter('secret','other'),letter('draft','ashkar',{publication_state:'draft'})],
@@ -154,6 +154,17 @@ describe('real Firebase workspace boundary',()=>{
   await expect(run({kind:'rpc',name:'mail_page',args:{}})).rejects.toThrow('firebase_operational_mail_integrity_failed');
   f.runtimeReady=false;
   expect((await run({kind:'rpc',name:'mail_page',args:{}})).letters.map((x:any)=>x.id)).toEqual(['mine']);
+ });
+ it('uses approved Cloud open round without changing the immutable archived week',async()=>{
+  f.runtimeReady=true;f.liveRound=3;
+  const live=await run({kind:'query',table:'letter_rounds',steps:[]});
+  expect(live.data.map((r:any)=>({number:r.number,status:r.status}))).toEqual([
+   {number:2,status:'closed'},{number:3,status:'open'},
+  ]);
+  expect(f.tables['letter_rounds']).toEqual([{number:2,status:'open'}]);
+  f.runtimeReady=false;
+  expect((await run({kind:'query',table:'letter_rounds',steps:[]})).data)
+   .toEqual([{number:2,status:'open'}]);
  });
  it('does not trust receipts from an unapproved Cloud runtime',async()=>{
   const {mailReceiptId}=await import('../../../scripts/firebase/cloud-mail-receipt-core.mjs');
