@@ -14,7 +14,16 @@ vi.mock('@tanstack/react-start', async importOriginal => ({
 }));
 
 import {I18nProvider} from '@/lib/i18n/context';
-import FirebaseCampaignWorkspace from '@/components/firebase/FirebaseCampaignWorkspace';
+import {useEffect} from 'react';
+import {PlayersArea} from '@/components/players/players-workspace';
+import {activateVisualPreview,deactivateVisualPreviewSoon} from '@/lib/visual-preview/activate';
+
+// Fixture harness only: the official Firebase entry must never activate demo data.
+function VisualPreviewHarness({profile,memberHouseIds,onSignOut}: {profile:'jogador'|'narrador'|'editor';memberHouseIds:string[];onSignOut:()=>void}) {
+  activateVisualPreview(profile,memberHouseIds);
+  useEffect(()=>()=>deactivateVisualPreviewSoon(),[]);
+  return <PlayersArea onSignOut={onSignOut} hideBattle/>;
+}
 import {isVisualPreview} from '@/lib/visual-preview/state';
 import {supabase} from '@/integrations/supabase/client';
 
@@ -33,7 +42,7 @@ function mount(profile: 'jogador' | 'narrador' | 'editor', houses: string[] = []
   const qc = new QueryClient({defaultOptions: {queries: {retry: false, refetchInterval: false}}});
   const signOut = vi.fn();
   const view = render(<QueryClientProvider client={qc}><I18nProvider>
-    <FirebaseCampaignWorkspace profile={profile} memberHouseIds={houses} onSignOut={signOut}/>
+    <VisualPreviewHarness profile={profile} memberHouseIds={houses} onSignOut={signOut}/>
   </I18nProvider></QueryClientProvider>);
   return {...view, signOut};
 }

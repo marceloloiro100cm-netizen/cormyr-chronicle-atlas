@@ -1,0 +1,21 @@
+import {afterEach,expect,it,vi} from 'vitest';
+import {cleanup,render,screen,waitFor} from '@testing-library/react';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+vi.mock('@tanstack/react-router',async original=>({...await original<typeof import('@tanstack/react-router')>(),useNavigate:()=>vi.fn()}));
+vi.mock('@tanstack/react-start',async original=>({...await original<typeof import('@tanstack/react-start')>(),useServerFn:(fn:unknown)=>fn}));
+vi.mock('@/lib/auth/firebase-pilot-session',()=>({firebasePilotAuth:()=>null}));
+import Workspace from '@/components/firebase/FirebaseCampaignWorkspace';
+import {I18nProvider} from '@/lib/i18n/context';
+import {isVisualPreview} from '@/lib/visual-preview/state';
+import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
+afterEach(cleanup);
+it('official entry uses the real connector and never grants access from profile props',async()=>{
+ const qc=new QueryClient({defaultOptions:{queries:{retry:false}}});
+ const view=render(<QueryClientProvider client={qc}><I18nProvider><Workspace profile="narrador" memberHouseIds={['ashkar']} onSignOut={()=>{}}/></I18nProvider></QueryClientProvider>);
+ expect(isVisualPreview()).toBe(false);
+ expect(firebaseWorkspaceClient()).not.toBeNull();
+ expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível confirmar seus vínculos e permissões');
+ expect(screen.queryByRole('heading',{name:'Conselho do mestre'})).toBeNull();
+ view.unmount();
+ await waitFor(()=>expect(firebaseWorkspaceClient()).toBeNull());
+});
